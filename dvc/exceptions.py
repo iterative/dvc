@@ -3,8 +3,6 @@
 import traceback
 
 from dvc.utils import relpath
-from dvc.utils.compat import builtin_str
-from dvc.utils.compat import str
 
 
 class DvcException(Exception):
@@ -38,7 +36,7 @@ class OutputDuplicationError(DvcException):
     """
 
     def __init__(self, output, stages):
-        assert isinstance(output, (str, builtin_str))
+        assert isinstance(output, str)
         assert all(hasattr(stage, "relpath") for stage in stages)
         msg = (
             "file/directory '{}' is specified as an output in more than one "
@@ -75,7 +73,7 @@ class StagePathAsOutputError(DvcException):
     """
 
     def __init__(self, stage, output):
-        assert isinstance(output, (str, builtin_str))
+        assert isinstance(output, str)
         super(StagePathAsOutputError, self).__init__(
             "'{stage}' is within an output '{output}' of another stage".format(
                 stage=stage.relpath, output=output
@@ -92,7 +90,7 @@ class CircularDependencyError(DvcException):
     """
 
     def __init__(self, dependency):
-        assert isinstance(dependency, (str, builtin_str))
+        assert isinstance(dependency, str)
 
         msg = (
             "file/directory '{}' is specified as an output and as a "
@@ -110,7 +108,7 @@ class ArgumentDuplicationError(DvcException):
     """
 
     def __init__(self, path):
-        assert isinstance(path, (str, builtin_str))
+        assert isinstance(path, str)
         msg = "file '{}' is specified more than once."
         super(ArgumentDuplicationError, self).__init__(msg.format(path))
 

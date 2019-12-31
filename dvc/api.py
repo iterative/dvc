@@ -9,7 +9,7 @@ try:
 except ImportError:
     from contextlib import GeneratorContextManager as GCM
 
-from dvc.utils.compat import urlparse, builtin_str
+from dvc.utils.compat import urlparse
 
 import ruamel.yaml
 from voluptuous import Schema, Required, Invalid
@@ -188,8 +188,6 @@ def _import_string(import_name):
 
     :return: imported object
     """
-    import_name = builtin_str(import_name)
-
     if "." in import_name:
         module, obj = import_name.rsplit(".", 1)
     else:

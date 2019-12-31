@@ -17,7 +17,7 @@ from dvc.lock import Lock, LockError
 from dvc.repo import Repo
 from dvc.scm import SCM
 from dvc.utils import env2bool, is_binary, makedirs
-from dvc.utils.compat import str, FileNotFoundError
+from dvc.utils.compat import FileNotFoundError
 
 
 logger = logging.getLogger(__name__)

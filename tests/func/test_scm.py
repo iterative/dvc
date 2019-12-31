@@ -6,7 +6,6 @@ from dvc.scm import Git
 from dvc.scm import NoSCM
 from dvc.scm import SCM
 from dvc.system import System
-from dvc.utils.compat import str  # noqa: F401
 from tests.basic_env import TestDir
 from tests.basic_env import TestGit
 from tests.basic_env import TestGitSubmodule

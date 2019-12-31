@@ -8,7 +8,6 @@ from mock import patch
 import dvc
 from dvc.main import main
 from dvc.utils import makedirs
-from dvc.utils.compat import str
 from tests.basic_env import TestDvc
 from tests.utils import spy
 

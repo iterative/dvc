@@ -17,7 +17,6 @@ from dvc.remote.base import RemoteBASE
 from dvc.remote.pool import get_connection
 from dvc.scheme import Schemes
 from dvc.utils import to_chunks
-from dvc.utils.compat import StringIO
 from dvc.utils.compat import urlparse
 
 logger = logging.getLogger(__name__)
@@ -104,7 +103,7 @@ class RemoteSSH(RemoteBASE):
             ssh_config = paramiko.SSHConfig()
             with open(user_config_file) as f:
                 # For whatever reason parsing directly from f is unreliable
-                f_copy = StringIO(f.read())
+                f_copy = io.StringIO(f.read())
                 ssh_config.parse(f_copy)
             user_ssh_config = ssh_config.lookup(hostname)
         return user_ssh_config

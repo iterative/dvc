@@ -1,6 +1,6 @@
 import errno
 
-from dvc.utils.compat import basestring, FileNotFoundError, str, urlparse
+from dvc.utils.compat import FileNotFoundError, urlparse
 
 import itertools
 import json
@@ -153,7 +153,7 @@ class RemoteBASE(object):
 
     @classmethod
     def supported(cls, config):
-        if isinstance(config, basestring):
+        if isinstance(config, (str, bytes)):
             url = config
         else:
             url = config[Config.SECTION_REMOTE_URL]

@@ -1,11 +1,10 @@
+import io
 import errno
 import os
 
 from dvc.exceptions import DvcException
 from dvc.scm.tree import BaseTree
 from dvc.utils import relpath
-from dvc.utils.compat import BytesIO
-from dvc.utils.compat import StringIO
 
 
 # see git-fast-import(1)
@@ -63,8 +62,8 @@ class GitTree(BaseTree):
         # and `open` with default "r" mode returns str)
         data = obj.data_stream.read()
         if mode == "rb":
-            return BytesIO(data)
-        return StringIO(data.decode(encoding))
+            return io.BytesIO(data)
+        return io.StringIO(data.decode(encoding))
 
     def exists(self, path):
         return self.git_object_by_path(path) is not None

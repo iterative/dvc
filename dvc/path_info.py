@@ -4,16 +4,13 @@ import posixpath
 from funcy import cached_property
 
 from dvc.utils import relpath
-from dvc.utils.compat import basestring
-from dvc.utils.compat import builtin_str
 from dvc.utils.compat import pathlib
-from dvc.utils.compat import str
 from dvc.utils.compat import urlparse
 
 
 class _BasePath(object):
     def overlaps(self, other):
-        if isinstance(other, basestring):
+        if isinstance(other, (str, bytes)):
             other = self.__class__(other)
         elif self.__class__ != other.__class__:
             return False
@@ -54,7 +51,7 @@ class PathInfo(pathlib.PurePath, _BasePath):
         return relpath(path)
 
     def __repr__(self):
-        return builtin_str("{}: '{}'").format(type(self).__name__, self)
+        return str("{}: '{}'").format(type(self).__name__, self)
 
     # This permits passing it to file utils directly in Python 3.6+
     # With Python 2.7, Python 3.5+ we are stuck with path_info.fspath for now
@@ -71,7 +68,7 @@ class PathInfo(pathlib.PurePath, _BasePath):
         return self.__class__(relpath(self, other))
 
     def isin(self, other):
-        if isinstance(other, basestring):
+        if isinstance(other, (str, bytes)):
             other = self.__class__(other)
         elif self.__class__ != other.__class__:
             return False
@@ -135,13 +132,13 @@ class URLInfo(_BasePath):
 
     def fill_parts(self, scheme, host, user, port, path):
         assert scheme != "remote"
-        assert isinstance(path, (basestring, _URLPathInfo))
+        assert isinstance(path, (str, bytes, _URLPathInfo))
 
         self.scheme, self.host, self.user = scheme, host, user
         self.port = int(port) if port else self.DEFAULT_PORTS.get(self.scheme)
 
         if isinstance(path, _URLPathInfo):
-            self._spath = builtin_str(path)
+            self._spath = str(path)
             self._path = path
         else:
             if path and path[0] != "/":
@@ -170,7 +167,7 @@ class URLInfo(_BasePath):
         return "{}: '{}'".format(type(self).__name__, self)
 
     def __eq__(self, other):
-        if isinstance(other, basestring):
+        if isinstance(other, (str, bytes)):
             other = self.__class__(other)
         return (
             self.__class__ == other.__class__
@@ -220,7 +217,7 @@ class URLInfo(_BasePath):
         return _URLPathParents(self)
 
     def relative_to(self, other):
-        if isinstance(other, basestring):
+        if isinstance(other, (str, bytes)):
             other = self.__class__(other)
         if self.__class__ != other.__class__:
             msg = "'{}' has incompatible class with '{}'".format(self, other)
@@ -231,7 +228,7 @@ class URLInfo(_BasePath):
         return self._path.relative_to(other._path)
 
     def isin(self, other):
-        if isinstance(other, basestring):
+        if isinstance(other, (str, bytes)):
             other = self.__class__(other)
         elif self.__class__ != other.__class__:
             return False

@@ -1,6 +1,5 @@
 import argparse
 import logging
-from dvc.utils.compat import str
 
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
@@ -102,7 +101,7 @@ class CmdPipelineShow(CmdBase):
         tree.show()
 
     def __write_dot(self, target, commands, outs):
-        from dvc.utils.compat import StringIO
+        import io
         import networkx
         from networkx.drawing.nx_pydot import write_dot
 
@@ -112,7 +111,7 @@ class CmdPipelineShow(CmdBase):
         simple_g = networkx.DiGraph()
         simple_g.add_edges_from(edges)
 
-        dot_file = StringIO()
+        dot_file = io.StringIO()
         write_dot(simple_g, dot_file)
         logger.info(dot_file.getvalue())
 

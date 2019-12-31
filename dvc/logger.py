@@ -1,5 +1,6 @@
 """Manages logging configuration for dvc repo."""
 
+import io
 import logging.config
 import logging.handlers
 
@@ -7,8 +8,6 @@ import colorama
 
 from dvc.progress import Tqdm
 from dvc.utils.compat import RecursionError
-from dvc.utils.compat import str
-from dvc.utils.compat import StringIO
 
 
 FOOTER = (
@@ -105,7 +104,7 @@ class ColorFormatter(logging.Formatter):
     def _walk_exc(self, exc_info):
         import traceback
 
-        buffer = StringIO()
+        buffer = io.StringIO()
 
         traceback.print_exception(*exc_info, file=buffer)
 

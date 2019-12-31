@@ -7,10 +7,6 @@ from voluptuous import Schema, Any
 
 from dvc import analytics
 from dvc.cli import parse_args
-from dvc.utils.compat import str, builtin_str
-
-
-string = Any(str, builtin_str)
 
 
 @pytest.fixture
@@ -51,10 +47,10 @@ def test_collect_and_send_report(mock_json, mock_daemon, tmp_global_config):
 def test_runtime_info(tmp_global_config):
     schema = Schema(
         {
-            "dvc_version": string,
+            "dvc_version": str,
             "is_binary": bool,
             "scm_class": Any("Git", None),
-            "user_id": string,
+            "user_id": str,
             "system_info": dict,
         },
         required=True,
@@ -109,19 +105,19 @@ def test_system_info():
                 "windows_version_build": int,
                 "windows_version_major": int,
                 "windows_version_minor": int,
-                "windows_version_service_pack": string,
+                "windows_version_service_pack": str,
             }
         )
 
     if system == "Darwin":
-        schema = schema.extend({"mac_version": string})
+        schema = schema.extend({"mac_version": str})
 
     if system == "Linux":
         schema = schema.extend(
             {
-                "linux_distro": string,
-                "linux_distro_like": string,
-                "linux_distro_version": string,
+                "linux_distro": str,
+                "linux_distro_like": str,
+                "linux_distro_version": str,
             }
         )
 

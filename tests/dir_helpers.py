@@ -49,7 +49,7 @@ import pytest
 from funcy.py3 import lmap, retry
 
 from dvc.utils import makedirs
-from dvc.utils.compat import basestring, pathlib, fspath, fspath_py35, bytes
+from dvc.utils.compat import pathlib, fspath, fspath_py35
 
 
 __all__ = ["tmp_dir", "scm", "dvc", "repo_template", "run_copy", "erepo_dir"]
@@ -87,7 +87,7 @@ class TmpDir(pathlib.Path):
             )
 
     def gen(self, struct, text=""):
-        if isinstance(struct, (basestring, pathlib.PurePath)):
+        if isinstance(struct, (str, bytes, pathlib.PurePath)):
             struct = {struct: text}
 
         self._gen(struct)
@@ -142,7 +142,7 @@ class TmpDir(pathlib.Path):
 
 
 def _coerce_filenames(filenames):
-    if isinstance(filenames, (basestring, pathlib.PurePath)):
+    if isinstance(filenames, (str, bytes, pathlib.PurePath)):
         filenames = [filenames]
     return lmap(fspath, filenames)
 

@@ -8,20 +8,18 @@ import os
 import re
 import sys
 import time
+import io
 
 import colorama
 import nanotime
 from ruamel.yaml import YAML
 from shortuuid import uuid
 
-from dvc.utils.compat import builtin_str
 from dvc.utils.compat import cast_bytes_py2
 from dvc.utils.compat import fspath
 from dvc.utils.compat import fspath_py35
 from dvc.utils.compat import makedirs as _makedirs
 from dvc.utils.compat import open
-from dvc.utils.compat import str
-from dvc.utils.compat import StringIO
 
 
 logger = logging.getLogger(__name__)
@@ -92,16 +90,14 @@ def dict_filter(d, exclude=()):
     Exclude specified keys from a nested dict
     """
 
-    def fix_key(k):
-        return str(k) if isinstance(k, builtin_str) else k
-
     if isinstance(d, list):
         return [dict_filter(e, exclude) for e in d]
 
     if isinstance(d, dict):
-        items = ((fix_key(k), v) for k, v in d.items())
         return {
-            k: dict_filter(v, exclude) for k, v in items if k not in exclude
+            k: dict_filter(v, exclude)
+            for k, v in d.items()
+            if k not in exclude
         }
 
     return d
@@ -268,7 +264,7 @@ def fix_env(env=None):
 
 def tmp_fname(fname):
     """ Temporary name for a partial download """
-    return fspath(fname) + "." + str(uuid()) + ".tmp"
+    return fspath(fname) + "." + uuid() + ".tmp"
 
 
 def current_timestamp():
@@ -276,11 +272,11 @@ def current_timestamp():
 
 
 def from_yaml_string(s):
-    return YAML().load(StringIO(s))
+    return YAML().load(io.StringIO(s))
 
 
 def to_yaml_string(data):
-    stream = StringIO()
+    stream = io.StringIO()
     yaml = YAML()
     yaml.default_flow_style = False
     yaml.dump(data, stream)

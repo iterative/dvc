@@ -12,7 +12,7 @@ from voluptuous import All, Any, Lower, Range, Coerce, Match
 
 from dvc.exceptions import DvcException
 from dvc.exceptions import NotDvcRepoError
-from dvc.utils.compat import open, str
+from dvc.utils.compat import open
 
 logger = logging.getLogger(__name__)
 

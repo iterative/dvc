@@ -30,7 +30,6 @@ from dvc.utils import tmp_fname
 from dvc.utils import walk_files
 from dvc.utils.compat import fspath_py35
 from dvc.utils.compat import open
-from dvc.utils.compat import str
 from dvc.utils.fs import move
 from dvc.utils.fs import remove
 
@@ -411,7 +410,7 @@ class RemoteLOCAL(RemoteBASE):
     def _unprotect_file(path):
         if System.is_symlink(path) or System.is_hardlink(path):
             logger.debug("Unprotecting '{}'".format(path))
-            tmp = os.path.join(os.path.dirname(path), "." + str(uuid()))
+            tmp = os.path.join(os.path.dirname(path), "." + uuid())
 
             # The operations order is important here - if some application
             # would access the file during the process of copyfile then it
