@@ -1,4 +1,3 @@
-
 from voluptuous import Any, Required
 
 from dvc.output.base import OutputBase

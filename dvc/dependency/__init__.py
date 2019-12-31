@@ -1,4 +1,3 @@
-
 import dvc.output as output
 from dvc.dependency.gs import DependencyGS
 from dvc.dependency.hdfs import DependencyHDFS

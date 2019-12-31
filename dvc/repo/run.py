@@ -1,4 +1,3 @@
-
 from . import locked
 from .scm_context import scm_context
 

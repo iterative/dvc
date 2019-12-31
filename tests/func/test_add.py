@@ -1,4 +1,3 @@
-
 import filecmp
 import logging
 import os

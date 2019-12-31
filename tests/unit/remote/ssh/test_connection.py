@@ -1,4 +1,3 @@
-
 import filecmp
 import os
 import platform

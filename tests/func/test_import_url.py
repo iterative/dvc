@@ -1,4 +1,3 @@
-
 import filecmp
 import os
 from uuid import uuid4

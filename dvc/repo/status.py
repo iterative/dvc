@@ -1,4 +1,3 @@
-
 import logging
 
 from funcy.py3 import cat

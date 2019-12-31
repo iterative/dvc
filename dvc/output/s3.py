@@ -1,4 +1,3 @@
-
 from dvc.output.base import OutputBase
 from dvc.remote.s3 import RemoteS3
 

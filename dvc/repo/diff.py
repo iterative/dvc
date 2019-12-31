@@ -1,4 +1,3 @@
-
 import os
 from errno import ENOENT
 

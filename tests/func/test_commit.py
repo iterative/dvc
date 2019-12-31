@@ -1,4 +1,3 @@
-
 import pytest
 
 from dvc.stage import StageCommitError

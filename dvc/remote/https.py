@@ -1,4 +1,3 @@
-
 from .http import RemoteHTTP
 from dvc.scheme import Schemes
 

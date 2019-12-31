@@ -1,4 +1,3 @@
-
 from dvc.dependency.base import DependencyBase
 from dvc.output.ssh import OutputSSH
 

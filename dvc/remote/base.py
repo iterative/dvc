@@ -1,4 +1,3 @@
-
 import errno
 
 from dvc.utils.compat import basestring, FileNotFoundError, str, urlparse

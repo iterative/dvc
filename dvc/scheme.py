@@ -1,5 +1,3 @@
-
-
 class Schemes:
     SSH = "ssh"
     HDFS = "hdfs"

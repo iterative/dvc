@@ -1,5 +1,3 @@
-
-
 def check_acyclic(graph):
     import networkx as nx
     from dvc.exceptions import CyclicGraphError

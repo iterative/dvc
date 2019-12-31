@@ -1,4 +1,3 @@
-
 from dvc.command.base import CmdBaseNoRepo
 from dvc.command.base import fix_subparsers
 

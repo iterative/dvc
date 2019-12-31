@@ -1,4 +1,3 @@
-
 from dvc.utils.compat import FileNotFoundError, urlparse
 import io
 import logging
