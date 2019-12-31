@@ -1,31 +1,23 @@
+import importlib.util
 import os
 import sys
 
-from setuptools import find_packages
-from setuptools import setup
+from setuptools import find_packages, setup
 from setuptools.command.build_py import build_py as _build_py
-
-import fastentrypoints  # noqa: F401
 
 # Prevents pkg_resources import in entry point script,
 # see https://github.com/ninjaaron/fast-entry_points.
 # This saves about 200 ms on startup time for non-wheel installs.
+import fastentrypoints  # noqa: F401
 
 
-# https://packaging.python.org/guides/single-sourcing-package-version/
+# Read package meta-data from version.py
+# see https://packaging.python.org/guides/single-sourcing-package-version/
 pkg_dir = os.path.dirname(os.path.abspath(__file__))
 version_path = os.path.join(pkg_dir, "dvc", "version.py")
-if sys.version_info[0] == 2:
-    import imp
-
-    dvc_version = imp.load_source("dvc.version", version_path)
-else:
-    import importlib.util
-
-    spec = importlib.util.spec_from_file_location("dvc.version", version_path)
-    dvc_version = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(dvc_version)
-
+spec = importlib.util.spec_from_file_location("dvc.version", version_path)
+dvc_version = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(dvc_version)
 version = dvc_version.__version__  # noqa: F821
 
 
@@ -80,6 +72,7 @@ install_requires = [
     "tqdm>=4.40.0,<5",
     "packaging>=19.0",
     "zc.lockfile>=1.2.1",
+    "flufl.lock>=3.2",
     "win-unicode-console>=0.5; sys_platform == 'win32'",
     "pywin32>=225; sys_platform == 'win32'",
 ]
@@ -100,17 +93,13 @@ s3 = ["boto3>=1.9.201"]
 azure = ["azure-storage-blob==2.1.0"]
 oss = ["oss2==2.6.1"]
 ssh = ["paramiko>=2.5.0"]
+hdfs = ["pyarrow==0.15.1"]
 # gssapi should not be included in all_remotes, because it doesn't have wheels
 # for linux and mac, so it will fail to compile if user doesn't have all the
 # requirements, including kerberos itself. Once all the wheels are available,
 # we can start shipping it by default.
 ssh_gssapi = ["paramiko[gssapi]>=2.5.0"]
-hdfs = ["pyarrow==0.15.1"]
-all_remotes = gs + s3 + azure + ssh + oss + gdrive
-
-if os.name != "nt" or sys.version_info[0] != 2:
-    # NOTE: there are no pyarrow wheels for python2 on windows
-    all_remotes += hdfs
+all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs
 
 # Extra dependecies to run tests
 tests_requirements = [
@@ -163,17 +152,12 @@ setup(
         "ssh": ssh,
         "ssh_gssapi": ssh_gssapi,
         "hdfs": hdfs,
-        # NOTE: https://github.com/inveniosoftware/troubleshooting/issues/1
-        ":python_version=='2.7'": ["futures", "pathlib2", "contextlib2"],
-        ":python_version>='3.0'": ["flufl.lock>=3.2"],
         "tests": tests_requirements,
     },
     keywords="data science, data version control, machine learning",
-    python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
+    python_requires=">=3.5",
     classifiers=[
         "Development Status :: 4 - Beta",
-        "Programming Language :: Python :: 2",
-        "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
