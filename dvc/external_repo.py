@@ -33,18 +33,20 @@ def external_repo(url=None, rev=None, rev_lock=None, cache_dir=None):
     repo.close()
 
 
-def _external_repo(url=None, rev=None, cache_dir=None):
-    from dvc.config import Config
-    from dvc.cache import CacheConfig
-    from dvc.repo import Repo
+def cached_clone(url, rev=None, rev_lock=None, cache_dir=None):
+    """Clone an external git repo to a temporary directory.
 
-    key = (url, rev, cache_dir)
-    if key in REPO_CACHE:
-        return REPO_CACHE[key]
+    Returns the path to a local temporary directory with the specified
+    revision checked out.
+
+    Uses the REPO_CACHE to avoid accessing the remote server again if
+    cloning from the same URL twice in the same session.
+
+    """
 
     new_path = tempfile.mkdtemp("dvc-erepo")
 
-    # Copy and adjust existing clone
+    # Copy and adjust existing clean clone
     if (url, None, None) in REPO_CACHE:
         old_path = REPO_CACHE[url, None, None]
 
@@ -59,12 +61,23 @@ def _external_repo(url=None, rev=None, cache_dir=None):
         copy_tree(new_path, clean_clone_path)
         REPO_CACHE[url, None, None] = clean_clone_path
 
-    # Adjust new clone/copy to fit rev and cache_dir
-
-    # Checkout needs to be done first because current branch might not be
-    # DVC repository
+    # Check out the specified revision
     if rev is not None:
         _git_checkout(new_path, rev)
+
+    return new_path
+
+
+def _external_repo(url=None, rev=None, cache_dir=None):
+    from dvc.config import Config
+    from dvc.cache import CacheConfig
+    from dvc.repo import Repo
+
+    key = (url, rev, cache_dir)
+    if key in REPO_CACHE:
+        return REPO_CACHE[key]
+
+    new_path = cached_clone(url, rev=rev)
 
     repo = Repo(new_path)
     try:
