@@ -83,6 +83,25 @@ class TestMetricsBase(TestDvcGit):
         self.dvc.scm.checkout("master")
 
 
+def test_show_dirty(tmp_dir, scm, dvc):
+    tmp_dir.gen("metric", "master")
+    dvc.run(metrics_no_cache=["metric"], overwrite=True)
+    tmp_dir.scm_add(["metric", "metric.dvc"], commit="add metric")
+
+    tmp_dir.gen("metric", "dirty")
+
+    assert dvc.metrics.show(["metric"]) == {"": {"metric": "dirty"}}
+
+    assert dvc.metrics.show(["metric"], all_branches=True) == {
+        "working tree": {"metric": "dirty"},
+        "master": {"metric": "master"},
+    }
+
+    assert dvc.metrics.show(["metric"], all_tags=True) == {
+        "working tree": {"metric": "dirty"}
+    }
+
+
 class TestMetrics(TestMetricsBase):
     def test_show(self):
         ret = self.dvc.metrics.show(["metric"], all_branches=True)
@@ -708,7 +727,6 @@ class TestCachedMetrics(TestDvcGit):
                 "master": {"metrics.json": ["master"]},
                 "one": {"metrics.json": ["one"]},
                 "two": {"metrics.json": ["two"]},
-                "working tree": {"metrics.json": ["two"]},
             },
         )
 
@@ -722,7 +740,6 @@ class TestCachedMetrics(TestDvcGit):
                 "master": {"metrics.json": ["master"]},
                 "one": {"metrics.json": ["one"]},
                 "two": {"metrics.json": ["two"]},
-                "working tree": {"metrics.json": ["two"]},
             },
         )
 
