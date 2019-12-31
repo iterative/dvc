@@ -11,7 +11,6 @@ from dvc.utils import current_timestamp
 from dvc.utils import relpath
 from dvc.utils import to_chunks
 from dvc.utils.compat import fspath_py35
-from dvc.utils.compat import is_py2
 from dvc.utils.compat import urlencode
 from dvc.utils.compat import urlunparse
 from dvc.utils.fs import get_inode
@@ -485,7 +484,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
 def _connect_sqlite(filename, options):
     # Connect by URI was added in Python 3.4 and sqlite 3.7.7,
     # we ignore options, which should be fine unless repo is on old NFS/CIFS
-    if is_py2 or sqlite3.sqlite_version_info < (3, 7, 7):
+    if sqlite3.sqlite_version_info < (3, 7, 7):
         return sqlite3.connect(filename)
 
     uri = _build_sqlite_uri(filename, options)

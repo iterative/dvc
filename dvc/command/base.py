@@ -12,11 +12,8 @@ def fix_subparsers(subparsers):
         Args:
             subparsers: subparsers to fix.
     """
-    from dvc.utils.compat import is_py3
-
-    if is_py3:  # pragma: no cover
-        subparsers.required = True
-        subparsers.dest = "cmd"
+    subparsers.required = True
+    subparsers.dest = "cmd"
 
 
 def append_doc_link(help_message, path):
