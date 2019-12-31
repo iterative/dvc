@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import errno
 import logging
 import os

@@ -1,5 +1,4 @@
 """Helpers for other modules."""
-from __future__ import unicode_literals
 
 import hashlib
 import json

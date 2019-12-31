@@ -1,5 +1,4 @@
 """Manages state database used for checksum caching."""
-from __future__ import unicode_literals
 
 import logging
 import os

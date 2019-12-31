@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from dvc.command.base import CmdBaseNoRepo
 from dvc.command.base import fix_subparsers
 

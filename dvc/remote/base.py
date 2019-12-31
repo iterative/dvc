@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import errno
 
 from dvc.utils.compat import basestring, FileNotFoundError, str, urlparse

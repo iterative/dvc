@@ -1,6 +1,3 @@
-from __future__ import unicode_literals
-
-
 def check_acyclic(graph):
     import networkx as nx
     from dvc.exceptions import CyclicGraphError

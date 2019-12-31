@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from dvc.exceptions import DvcException
 from dvc.repo import locked
 
