@@ -79,6 +79,7 @@ class DependencyREPO(DependencyLOCAL):
     @staticmethod
     def _is_git_file(repo_dir, path):
         from dvc.repo import Repo
+
         if os.path.isabs(path):
             return False
 
