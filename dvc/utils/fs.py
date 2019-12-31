@@ -13,7 +13,6 @@ from dvc.utils import dict_md5
 from dvc.utils import fspath
 from dvc.utils import fspath_py35
 from dvc.utils import relpath
-from dvc.utils.compat import str
 
 
 logger = logging.getLogger(__name__)
@@ -101,7 +100,7 @@ def move(src, dst, mode=None):
     dst = fspath_py35(dst)
 
     dst = os.path.abspath(dst)
-    tmp = "{}.{}".format(dst, str(uuid()))
+    tmp = "{}.{}".format(dst, uuid())
 
     if os.path.islink(src):
         shutil.copy(os.readlink(src), tmp)

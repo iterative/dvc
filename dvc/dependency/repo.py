@@ -7,7 +7,6 @@ from funcy import merge
 
 from .local import DependencyLOCAL
 from dvc.external_repo import external_repo
-from dvc.utils.compat import str
 from dvc.exceptions import OutputNotFoundError
 from dvc.exceptions import PathMissingError
 from dvc.utils.fs import fs_copy

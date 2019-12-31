@@ -5,7 +5,6 @@ from collections import defaultdict
 from funcy import cached_property
 
 from dvc.config import Config
-from dvc.utils.compat import builtin_str
 
 
 class CacheConfig(object):
@@ -54,7 +53,7 @@ def _make_remote_property(name):
 
         return Remote(self.repo, name=remote)
 
-    getter.__name__ = builtin_str(name)
+    getter.__name__ = str(name)
     return cached_property(getter)
 
 

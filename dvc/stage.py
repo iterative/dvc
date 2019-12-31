@@ -1,4 +1,4 @@
-from dvc.utils.compat import pathlib, str
+from dvc.utils.compat import pathlib
 import logging
 import os
 import re

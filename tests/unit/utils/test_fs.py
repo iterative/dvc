@@ -10,7 +10,6 @@ from dvc.path_info import PathInfo
 from dvc.scm.tree import WorkingTree
 from dvc.system import System
 from dvc.utils import relpath
-from dvc.utils.compat import str
 from dvc.utils.fs import BasePathNotInCheckedPathException
 from dvc.utils.fs import contains_symlink_up_to
 from dvc.utils.fs import get_inode
