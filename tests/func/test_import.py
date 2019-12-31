@@ -29,7 +29,12 @@ def test_import(tmp_dir, scm, dvc, erepo_dir, monkeypatch):
     assert scm.repo.git.check_ignore("foo_imported")
 
 
-def test_import_git_file(erepo_dir, tmp_dir, dvc, scm):
+@pytest.mark.parametrize('src_is_dvc', [True, False])
+def test_import_git_file(erepo_dir, tmp_dir, dvc, scm, src_is_dvc):
+    if not src_is_dvc:
+        erepo_dir.dvc.scm.repo.index.remove([".dvc"], r=True)
+        erepo_dir.dvc.scm.commit("remove .dvc")
+
     src = "some_file"
     dst = "some_file_imported"
 
@@ -44,7 +49,12 @@ def test_import_git_file(erepo_dir, tmp_dir, dvc, scm):
     assert tmp_dir.scm.repo.git.check_ignore(fspath(tmp_dir / dst))
 
 
-def test_import_git_dir(erepo_dir, tmp_dir, dvc, scm):
+@pytest.mark.parametrize('src_is_dvc', [True, False])
+def test_import_git_dir(erepo_dir, tmp_dir, dvc, scm, src_is_dvc):
+    if not src_is_dvc:
+        erepo_dir.dvc.scm.repo.index.remove([".dvc"], r=True)
+        erepo_dir.dvc.scm.commit("remove .dvc")
+
     src = "some_directory"
     dst = "some_directory_imported"
 
