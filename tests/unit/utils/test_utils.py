@@ -9,6 +9,7 @@ from dvc.utils import copyfile
 from dvc.utils import file_md5
 from dvc.utils import fix_env
 from dvc.utils import makedirs
+from dvc.utils import relpath
 from dvc.utils import to_chunks
 from dvc.utils import tmp_fname
 from tests.basic_env import TestDir
@@ -139,3 +140,10 @@ def test_tmp_fname():
         tmp_fname(file_path_info),
         re.IGNORECASE,
     )
+
+
+def test_relpath():
+    path = "path"
+    path_info = PathInfo(path)
+
+    assert relpath(path) == relpath(path_info)
