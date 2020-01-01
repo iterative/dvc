@@ -1,7 +1,6 @@
 """Handle import compatibility between Python 2 and Python 3"""
 
 import errno
-import os
 import sys
 from contextlib import contextmanager
 
@@ -13,60 +12,6 @@ is_py2 = _ver[0] == 2
 
 #: Python 3.x?
 is_py3 = _ver[0] == 3
-
-
-def csv_reader(unicode_csv_data, dialect=None, **kwargs):
-    """csv.reader doesn't support Unicode input, so need to use some tricks
-    to work around this.
-
-    Source: https://docs.python.org/2/library/csv.html#csv-examples
-    """
-    import csv
-
-    dialect = dialect or csv.excel
-
-    if is_py3:
-        # Python3 supports encoding by default, so just return the object
-        for row in csv.reader(unicode_csv_data, dialect=dialect, **kwargs):
-            yield [cell for cell in row]
-
-    else:
-        # csv.py doesn't do Unicode; encode temporarily as UTF-8:
-        reader = csv.reader(
-            utf_8_encoder(unicode_csv_data), dialect=dialect, **kwargs
-        )
-        for row in reader:
-            # decode UTF-8 back to Unicode, cell by cell:
-            yield [unicode(cell, "utf-8") for cell in row]  # noqa: F821
-
-
-def utf_8_encoder(unicode_csv_data):
-    """Source: https://docs.python.org/2/library/csv.html#csv-examples"""
-    for line in unicode_csv_data:
-        yield line.encode("utf-8")
-
-
-def _makedirs(name, mode=0o777, exist_ok=False):
-    """Source: https://github.com/python/cpython/blob/
-        3ce3dea60646d8a5a1c952469a2eb65f937875b3/Lib/os.py#L196-L226
-    """
-    head, tail = os.path.split(name)
-    if not tail:
-        head, tail = os.path.split(head)
-    if head and tail and not os.path.exists(head):
-        try:
-            _makedirs(head, exist_ok=exist_ok)
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise
-        cdir = os.curdir
-        if tail == cdir:
-            return
-    try:
-        os.mkdir(name, mode)
-    except OSError:
-        if not exist_ok or not os.path.isdir(name):
-            raise
 
 
 @contextmanager
@@ -94,7 +39,6 @@ if is_py2:
     numeric_types = (int, long, float)  # noqa: F821
     integer_types = (int, long)  # noqa: F821
     input = raw_input  # noqa: F821
-    makedirs = _makedirs
     range = xrange  # noqa: F821
     FileNotFoundError = IOError
     JSONDecodeError = ValueError
@@ -119,7 +63,6 @@ if is_py2:
 
 elif is_py3:
     import pathlib  # noqa: F401
-    from os import makedirs  # noqa: F401
     from urllib.parse import (  # noqa: F401
         urlparse,  # noqa: F401
         urlunparse,  # noqa: F401
