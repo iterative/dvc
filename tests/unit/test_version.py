@@ -3,7 +3,6 @@ import subprocess
 import mock
 
 import dvc.version
-from dvc.utils.compat import cast_bytes
 
 
 def test_is_release():
@@ -13,10 +12,10 @@ def test_is_release():
         assert ret is False
 
         m.side_effect = None
-        m.return_value = cast_bytes(dvc.version._BASE_VERSION)
+        m.return_value = dvc.version._BASE_VERSION
         ret = dvc.version._is_release(None, dvc.version._BASE_VERSION)
         assert ret
 
-        m.return_value = cast_bytes("630d1741c2d5dd89a3176bd15b63121b905d35c9")
+        m.return_value = "630d1741c2d5dd89a3176bd15b63121b905d35c9"
         ret = dvc.version._is_release(None, dvc.version._BASE_VERSION)
         assert ret is False
