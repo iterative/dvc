@@ -10,7 +10,6 @@ from jsonpath_ng.ext import parse
 from dvc.exceptions import NoMetricsError
 from dvc.exceptions import OutputNotFoundError
 from dvc.repo import locked
-from dvc.utils.compat import csv_reader
 from dvc.utils.compat import open
 
 NO_METRICS_FILE_AT_REFERENCE_WARNING = (
@@ -101,7 +100,7 @@ def _format_csv(content, delimiter):
         "0.67528    0.289545        testing\n"
         "0.671502   0.297848        validation\n"
     """
-    reader = csv_reader(io.StringIO(content), delimiter=delimiter)
+    reader = csv.reader(io.StringIO(content), delimiter=delimiter)
     rows = [row for row in reader]
     max_widths = [max(map(len, column)) for column in zip(*rows)]
 
