@@ -1,8 +1,6 @@
 import io
 from contextlib import contextmanager
 
-from dvc.utils.compat import FileNotFoundError
-
 
 @contextmanager
 def open_url(url, mode="r", encoding=None):

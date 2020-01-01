@@ -26,7 +26,7 @@ def gc(
     jobs=None,
     repos=None,
 ):
-    from dvc.utils.compat import ExitStack
+    from contextlib import ExitStack
     from dvc.repo import Repo
 
     all_repos = []

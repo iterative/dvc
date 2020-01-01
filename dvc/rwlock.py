@@ -9,7 +9,6 @@ from funcy.py3 import lmap, lfilter, lmapcat
 
 from .exceptions import DvcException
 from .lock import LockError
-from .utils.compat import FileNotFoundError, JSONDecodeError, str
 from .utils.fs import relpath
 
 INFO_SCHEMA = {"pid": int, "cmd": str}
@@ -42,7 +41,7 @@ def _edit_rwlock(lock_dir):
         lock = SCHEMA(lock)
     except FileNotFoundError:
         lock = SCHEMA({})
-    except JSONDecodeError as exc:
+    except json.JSONDecodeError as exc:
         raise RWLockFileCorruptedError(path, cause=exc)
     except Invalid as exc:
         raise RWLockFileFormatError(path, cause=exc)

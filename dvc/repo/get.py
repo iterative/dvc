@@ -1,6 +1,5 @@
 import logging
 import os
-from dvc.utils.compat import FileNotFoundError
 
 import shortuuid
 

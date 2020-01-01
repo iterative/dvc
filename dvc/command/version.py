@@ -4,6 +4,7 @@ import logging
 import os
 import platform
 import uuid
+import pathlib
 
 try:
     import psutil
@@ -11,7 +12,6 @@ except ImportError:
     psutil = None
 
 from dvc.utils import is_binary, relpath
-from dvc.utils.compat import pathlib
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.version import __version__
 from dvc.exceptions import DvcException, NotDvcRepoError

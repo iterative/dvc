@@ -10,7 +10,6 @@ from jsonpath_ng.ext import parse
 from dvc.exceptions import NoMetricsError
 from dvc.exceptions import OutputNotFoundError
 from dvc.repo import locked
-from dvc.utils.compat import open
 
 NO_METRICS_FILE_AT_REFERENCE_WARNING = (
     "Metrics file '{}' does not exist at the reference '{}'."

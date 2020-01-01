@@ -4,7 +4,6 @@ import os
 import shutil
 
 from dvc.utils.compat import fspath
-from dvc.utils.compat import open
 
 
 logger = logging.getLogger(__name__)

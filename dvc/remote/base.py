@@ -1,11 +1,9 @@
 import errno
-
-from dvc.utils.compat import FileNotFoundError, urlparse
-
 import itertools
 import json
 import logging
 import tempfile
+from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from functools import partial

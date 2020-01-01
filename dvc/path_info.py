@@ -1,11 +1,11 @@
 import os
 import posixpath
+import pathlib
+from urllib.parse import urlparse
 
 from funcy import cached_property
 
 from dvc.utils import relpath
-from dvc.utils.compat import pathlib
-from dvc.utils.compat import urlparse
 
 
 class _BasePath(object):

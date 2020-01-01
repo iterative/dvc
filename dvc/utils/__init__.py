@@ -15,9 +15,7 @@ import nanotime
 from ruamel.yaml import YAML
 from shortuuid import uuid
 
-from dvc.utils.compat import fspath
-from dvc.utils.compat import fspath_py35
-from dvc.utils.compat import open
+from dvc.utils.compat import fspath, fspath_py35
 
 
 logger = logging.getLogger(__name__)

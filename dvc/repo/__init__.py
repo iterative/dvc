@@ -5,7 +5,7 @@ from functools import wraps
 from itertools import chain
 
 from dvc.ignore import CleanTree
-from dvc.utils.compat import FileNotFoundError, fspath_py35, open as _open
+from dvc.utils.compat import fspath_py35
 
 from funcy import cached_property
 
@@ -471,7 +471,7 @@ class Repo(object):
         cache_file = fspath_py35(cache_file)
 
         if os.path.exists(cache_file):
-            return _open(cache_file, mode=mode, encoding=encoding)
+            return open(cache_file, mode=mode, encoding=encoding)
 
         try:
             remote_obj = self.cloud.get_remote(remote)
@@ -482,7 +482,7 @@ class Repo(object):
                 cache_info = out.get_used_cache(remote=remote)
                 self.cloud.pull(cache_info, remote=remote)
 
-            return _open(cache_file, mode=mode, encoding=encoding)
+            return open(cache_file, mode=mode, encoding=encoding)
 
     def close(self):
         self.scm.close()

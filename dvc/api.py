@@ -2,14 +2,8 @@ import importlib
 import os
 import sys
 import copy
-from contextlib import contextmanager
-
-try:
-    from contextlib import _GeneratorContextManager as GCM
-except ImportError:
-    from contextlib import GeneratorContextManager as GCM
-
-from dvc.utils.compat import urlparse
+from urllib.parse import urlparse
+from contextlib import contextmanager, _GeneratorContextManager as GCM
 
 import ruamel.yaml
 from voluptuous import Schema, Required, Invalid

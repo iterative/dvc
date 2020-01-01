@@ -17,7 +17,6 @@ from dvc.utils import fix_env
 from dvc.utils import is_binary
 from dvc.utils import relpath
 from dvc.utils.fs import path_isin
-from dvc.utils.compat import open
 
 
 logger = logging.getLogger(__name__)

@@ -1,4 +1,4 @@
-from dvc.utils.compat import Mapping
+from collections.abc import Mapping
 
 
 def apply_diff(src, dest):

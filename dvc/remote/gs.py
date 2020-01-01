@@ -13,7 +13,6 @@ from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.remote.base import RemoteBASE
 from dvc.scheme import Schemes
-from dvc.utils.compat import FileNotFoundError  # skipcq: PYL-W0622
 
 logger = logging.getLogger(__name__)
 
