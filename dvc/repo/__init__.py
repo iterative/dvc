@@ -7,7 +7,7 @@ from itertools import chain
 from dvc.ignore import CleanTree
 from dvc.compat import fspath_py35
 
-from funcy import cached_property
+from funcy import cached_property, cat
 
 from dvc.config import Config
 from dvc.exceptions import (
@@ -238,7 +238,6 @@ class Repo(object):
             A dictionary with Schemes (representing output's location) as keys,
             and a list with the outputs' `dumpd` as values.
         """
-        from funcy.py2 import icat
         from dvc.cache import NamedCache
 
         cache = NamedCache()
@@ -250,7 +249,7 @@ class Repo(object):
         ):
             targets = targets or [None]
 
-            pairs = icat(
+            pairs = cat(
                 self.collect_granular(
                     target, recursive=recursive, with_deps=with_deps
                 )
