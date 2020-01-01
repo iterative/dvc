@@ -4,9 +4,6 @@ import logging
 import sys
 from getpass import getpass
 
-from dvc.utils.compat import input
-
-
 logger = logging.getLogger(__name__)
 
 

@@ -7,6 +7,7 @@ import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing, contextmanager
+from urllib.parse import urlparse
 
 from funcy import memoize, wrap_with
 
@@ -17,7 +18,6 @@ from dvc.remote.base import RemoteBASE
 from dvc.remote.pool import get_connection
 from dvc.scheme import Schemes
 from dvc.utils import to_chunks
-from dvc.utils.compat import urlparse
 
 logger = logging.getLogger(__name__)
 

@@ -8,7 +8,6 @@ except ImportError:
     from yaml import SafeLoader
 
 from dvc.exceptions import StageFileCorruptedError
-from dvc.utils.compat import open
 
 
 def load_stage_file(path):

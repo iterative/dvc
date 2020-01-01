@@ -1,12 +1,12 @@
-from dvc.utils.compat import FileNotFoundError, urlparse
 import io
 import logging
 import os
 import posixpath
 import re
+import subprocess
 from collections import deque
 from contextlib import closing, contextmanager
-import subprocess
+from urllib.parse import urlparse
 
 from .base import RemoteBASE, RemoteCmdError
 from .pool import get_connection

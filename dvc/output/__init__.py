@@ -1,3 +1,4 @@
+from urllib.parse import urlparse
 from voluptuous import Any, Required
 
 from dvc.output.base import OutputBase
@@ -11,7 +12,6 @@ from dvc.remote.hdfs import RemoteHDFS
 from dvc.remote.local import RemoteLOCAL
 from dvc.remote.s3 import RemoteS3
 from dvc.scheme import Schemes
-from dvc.utils.compat import urlparse
 
 OUTS = [
     OutputHDFS,
