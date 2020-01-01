@@ -9,7 +9,7 @@ from dvc.rwlock import (
     RWLockFileCorruptedError,
 )
 from dvc.lock import LockError
-from dvc.utils.compat import fspath
+from dvc.compat import fspath
 from dvc.path_info import PathInfo
 
 

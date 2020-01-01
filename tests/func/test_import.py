@@ -13,7 +13,7 @@ from dvc.exceptions import NoOutputInExternalRepoError
 from dvc.stage import Stage
 from dvc.system import System
 from dvc.utils import makedirs
-from dvc.utils.compat import fspath
+from dvc.compat import fspath
 from tests.utils import trees_equal
 
 

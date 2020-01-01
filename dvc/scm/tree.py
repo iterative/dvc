@@ -1,6 +1,6 @@
 import os
 
-from dvc.utils.compat import fspath
+from dvc.compat import fspath
 
 
 class BaseTree(object):

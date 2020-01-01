@@ -15,7 +15,7 @@ import nanotime
 from ruamel.yaml import YAML
 from shortuuid import uuid
 
-from dvc.utils.compat import fspath, fspath_py35
+from dvc.compat import fspath, fspath_py35
 
 
 logger = logging.getLogger(__name__)
@@ -387,7 +387,7 @@ def env2bool(var, undefined=False):
 
 
 def resolve_output(inp, out):
-    from dvc.utils.compat import urlparse
+    from urllib.parse import urlparse
 
     name = os.path.basename(urlparse(inp).path)
     if not out:

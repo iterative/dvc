@@ -7,8 +7,7 @@ from dvc.exceptions import DvcIgnoreInCollectedDirError
 from dvc.ignore import DvcIgnore, DvcIgnoreDirs, DvcIgnorePatterns, CleanTree
 from dvc.scm.tree import WorkingTree
 from dvc.utils import relpath
-from dvc.utils.compat import fspath_py35
-from dvc.utils.compat import fspath
+from dvc.compat import fspath_py35, fspath
 from dvc.utils.fs import get_mtime_and_size
 from dvc.remote import RemoteLOCAL
 
