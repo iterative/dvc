@@ -146,9 +146,9 @@ def test_walk_files(repo_dir):
     path_list = []
     for path in walk_files(repo_dir.root_dir):
         path_list.append(path)
-    
+
     path_info_list = []
     for path_info in walk_files(PathInfo(repo_dir.root_dir)):
         path_info_list.append(path_info)
-    
+
     assert path_list == path_info_list
