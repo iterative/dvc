@@ -421,10 +421,8 @@ class Stage(object):
 
     @staticmethod
     def validate(d, fname=None):
-        from dvc.utils.compat import convert_to_unicode
-
         try:
-            Stage.COMPILED_SCHEMA(convert_to_unicode(d))
+            Stage.COMPILED_SCHEMA(d)
         except MultipleInvalid as exc:
             raise StageFileFormatError(fname, exc)
 

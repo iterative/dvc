@@ -53,7 +53,7 @@ def _make_remote_property(name):
 
         return Remote(self.repo, name=remote)
 
-    getter.__name__ = str(name)
+    getter.__name__ = name
     return cached_property(getter)
 
 

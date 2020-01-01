@@ -17,7 +17,6 @@ from dvc.utils import fix_env
 from dvc.utils import is_binary
 from dvc.utils import relpath
 from dvc.utils.fs import path_isin
-from dvc.utils.compat import cast_bytes_py2
 from dvc.utils.compat import open
 
 
@@ -76,7 +75,7 @@ class Git(Base):
             # LD_LIBRARY_PATH that has been set by PyInstaller.
             # See [1] for more info.
             # [1] https://github.com/gitpython-developers/GitPython/issues/924
-            env[cast_bytes_py2(ld_key)] = ""
+            env[ld_key] = ""
 
         try:
             tmp_repo = git.Repo.clone_from(

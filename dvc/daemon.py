@@ -9,7 +9,6 @@ from subprocess import Popen
 from dvc.env import DVC_DAEMON
 from dvc.utils import fix_env
 from dvc.utils import is_binary
-from dvc.utils.compat import cast_bytes_py2
 
 
 logger = logging.getLogger(__name__)
@@ -98,9 +97,7 @@ def daemon(args):
 
     env = fix_env()
     file_path = os.path.abspath(inspect.stack()[0][1])
-    env[cast_bytes_py2("PYTHONPATH")] = cast_bytes_py2(
-        os.path.dirname(os.path.dirname(file_path))
-    )
-    env[cast_bytes_py2(DVC_DAEMON)] = cast_bytes_py2("1")
+    env["PYTHONPATH"] = os.path.dirname(os.path.dirname(file_path))
+    env[DVC_DAEMON] = "1"
 
     _spawn(cmd, env)

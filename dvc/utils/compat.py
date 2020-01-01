@@ -14,23 +14,6 @@ is_py2 = _ver[0] == 2
 #: Python 3.x?
 is_py3 = _ver[0] == 3
 
-# simplified version of ipython_genutils/encoding.py
-DEFAULT_ENCODING = sys.getdefaultencoding()
-
-if _ver[:2] < (3, 5):
-    RecursionError = RuntimeError
-else:
-    RecursionError = RecursionError
-
-
-def no_code(x, encoding=None):
-    return x
-
-
-def encode(u, encoding=None):
-    encoding = encoding or DEFAULT_ENCODING
-    return u.encode(encoding, "replace")
-
 
 def csv_reader(unicode_csv_data, dialect=None, **kwargs):
     """csv.reader doesn't support Unicode input, so need to use some tricks
@@ -61,13 +44,6 @@ def utf_8_encoder(unicode_csv_data):
     """Source: https://docs.python.org/2/library/csv.html#csv-examples"""
     for line in unicode_csv_data:
         yield line.encode("utf-8")
-
-
-def cast_bytes(s, encoding=None):
-    """Source: https://github.com/ipython/ipython_genutils"""
-    if not isinstance(s, bytes):
-        return encode(s, encoding)
-    return s
 
 
 def _makedirs(name, mode=0o777, exist_ok=False):
@@ -118,7 +94,6 @@ if is_py2:
     numeric_types = (int, long, float)  # noqa: F821
     integer_types = (int, long)  # noqa: F821
     input = raw_input  # noqa: F821
-    cast_bytes_py2 = cast_bytes
     makedirs = _makedirs
     range = xrange  # noqa: F821
     FileNotFoundError = IOError
@@ -140,15 +115,6 @@ if is_py2:
 
         def __exit__(self, *args):
             self.close()
-
-    def convert_to_unicode(data):
-        if isinstance(data, builtin_str):
-            return str(data)
-        if isinstance(data, dict):
-            return dict(map(convert_to_unicode, data.items()))
-        if isinstance(data, (list, tuple)):
-            return type(data)(map(convert_to_unicode, data))
-        return data
 
 
 elif is_py3:
@@ -174,12 +140,8 @@ elif is_py3:
     integer_types = (int,)  # noqa: F821
     input = input  # noqa: F821
     open = open  # noqa: F821
-    cast_bytes_py2 = no_code
     range = range  # noqa: F821
     FileNotFoundError = FileNotFoundError
-
-    def convert_to_unicode(data):
-        return data
 
 
 # Backport os.fspath() from Python 3.6
