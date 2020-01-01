@@ -116,15 +116,6 @@ if is_py2:
         def __exit__(self, *args):
             self.close()
 
-    def convert_to_unicode(data):
-        if isinstance(data, builtin_str):
-            return str(data)
-        if isinstance(data, dict):
-            return dict(map(convert_to_unicode, data.items()))
-        if isinstance(data, (list, tuple)):
-            return type(data)(map(convert_to_unicode, data))
-        return data
-
 
 elif is_py3:
     import pathlib  # noqa: F401
@@ -151,9 +142,6 @@ elif is_py3:
     open = open  # noqa: F821
     range = range  # noqa: F821
     FileNotFoundError = FileNotFoundError
-
-    def convert_to_unicode(data):
-        return data
 
 
 # Backport os.fspath() from Python 3.6

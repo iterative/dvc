@@ -9,12 +9,7 @@ from funcy.py3 import lmap, lfilter, lmapcat
 
 from .exceptions import DvcException
 from .lock import LockError
-from .utils.compat import (
-    convert_to_unicode,
-    FileNotFoundError,
-    JSONDecodeError,
-    str,
-)
+from .utils.compat import FileNotFoundError, JSONDecodeError, str
 from .utils.fs import relpath
 
 INFO_SCHEMA = {"pid": int, "cmd": str}
@@ -44,7 +39,7 @@ def _edit_rwlock(lock_dir):
     try:
         with open(path, "r") as fobj:
             lock = json.load(fobj)
-        lock = SCHEMA(convert_to_unicode(lock))
+        lock = SCHEMA(lock)
     except FileNotFoundError:
         lock = SCHEMA({})
     except JSONDecodeError as exc:
