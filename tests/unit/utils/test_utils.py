@@ -11,6 +11,7 @@ from dvc.utils import fix_env
 from dvc.utils import makedirs
 from dvc.utils import to_chunks
 from dvc.utils import tmp_fname
+from dvc.utils import walk_files
 from tests.basic_env import TestDir
 
 
@@ -139,3 +140,15 @@ def test_tmp_fname():
         tmp_fname(file_path_info),
         re.IGNORECASE,
     )
+
+
+def test_walk_files(repo_dir):
+    path_list = []
+    for path in walk_files(repo_dir.root_dir):
+        path_list.append(path)
+    
+    path_info_list = []
+    for path_info in walk_files(PathInfo(repo_dir.root_dir)):
+        path_info_list.append(path_info)
+    
+    assert path_list == path_info_list
