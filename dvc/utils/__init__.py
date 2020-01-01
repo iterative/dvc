@@ -17,7 +17,6 @@ from shortuuid import uuid
 
 from dvc.utils.compat import fspath
 from dvc.utils.compat import fspath_py35
-from dvc.utils.compat import makedirs as _makedirs
 from dvc.utils.compat import open
 
 
@@ -142,7 +141,7 @@ def makedirs(path, exist_ok=False, mode=None):
     path = fspath_py35(path)
 
     if mode is None:
-        _makedirs(path, exist_ok=exist_ok)
+        os.makedirs(path, exist_ok=exist_ok)
         return
 
     # utilize umask to set proper permissions since Python 3.7 the `mode`
@@ -150,7 +149,7 @@ def makedirs(path, exist_ok=False, mode=None):
     # newly-created intermediate-level directories.
     umask = os.umask(0o777 - mode)
     try:
-        _makedirs(path, exist_ok=exist_ok)
+        os.makedirs(path, exist_ok=exist_ok)
     finally:
         os.umask(umask)
 
