@@ -23,7 +23,7 @@ from dvc.system import System
 from dvc.utils import file_md5
 from dvc.utils import LARGE_DIR_SIZE
 from dvc.utils import relpath
-from dvc.utils.compat import fspath
+from dvc.compat import fspath
 from dvc.utils.fs import path_isin
 from dvc.utils.stage import load_stage_file
 from tests.basic_env import TestDvc

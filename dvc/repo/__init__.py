@@ -5,7 +5,7 @@ from functools import wraps
 from itertools import chain
 
 from dvc.ignore import CleanTree
-from dvc.utils.compat import fspath_py35
+from dvc.compat import fspath_py35
 
 from funcy import cached_property
 

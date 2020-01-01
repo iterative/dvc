@@ -7,7 +7,7 @@ from dvc.istextfile import istextfile
 from dvc.output.base import OutputBase
 from dvc.remote.local import RemoteLOCAL
 from dvc.utils import relpath
-from dvc.utils.compat import fspath_py35
+from dvc.compat import fspath_py35
 from dvc.utils.fs import path_isin
 
 

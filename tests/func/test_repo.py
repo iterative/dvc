@@ -4,7 +4,7 @@ from dvc.scm.git.tree import GitTree
 from dvc.cache import Cache
 from dvc.repo import Repo
 from dvc.system import System
-from dvc.utils.compat import fspath
+from dvc.compat import fspath
 
 
 def test_destroy(tmp_dir, dvc):

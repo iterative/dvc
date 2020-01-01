@@ -1,7 +1,7 @@
 import mock
 
 from dvc.main import main
-from dvc.utils.compat import fspath
+from dvc.compat import fspath
 
 
 @mock.patch("dvc.analytics.send")

@@ -11,7 +11,7 @@ from dvc.exceptions import FileMissingError
 from dvc.main import main
 from dvc.path_info import URLInfo
 from dvc.remote.config import RemoteConfig
-from dvc.utils.compat import fspath
+from dvc.compat import fspath
 from tests.remotes import Azure, GCP, HDFS, Local, OSS, S3, SSH
 
 

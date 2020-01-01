@@ -3,7 +3,7 @@ import logging
 import os
 import shutil
 
-from dvc.utils.compat import fspath
+from dvc.compat import fspath
 
 
 logger = logging.getLogger(__name__)
