@@ -104,9 +104,8 @@ class GitTree(BaseTree):
             raise DvcException(
                 "revision '{}' not found in git '{}'".format(
                     self.rev, os.path.relpath(self.git.working_dir)
-                ),
-                cause=exc,
-            )
+                )
+            ) from exc
 
         if not path or path == ".":
             return tree

@@ -21,8 +21,10 @@ FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 class GDriveRetriableError(DvcException):
     pass
 
+
 class GDriveAccessTokenRefreshError(DvcException):
     pass
+
 
 class GDriveMissedCredentialKeyError(DvcException):
     pass
@@ -203,21 +205,22 @@ class RemoteGDrive(RemoteBASE):
 
             try:
                 gauth.CommandLineAuth()
-            except RefreshError as e:
+            except RefreshError as exc:
                 raise GDriveAccessTokenRefreshError(
-                    "Google Drive's access token refreshment is failed", e
-                )
-            except KeyError as e:
+                    "Google Drive's access token refreshment is failed"
+                ) from exc
+            except KeyError as exc:
                 raise GDriveMissedCredentialKeyError(
                     "Google Drive's user credentials file '{}' "
                     "misses value for key '{}'".format(
-                        self.gdrive_user_credentials_path, str(e)
-                    ),
-                    e,
+                        self.gdrive_user_credentials_path, str(exc)
+                    )
                 )
             # Handle pydrive.auth.AuthenticationError and others auth failures
-            except Exception as e:
-                raise DvcException("Google Drive authentication failed", e)
+            except Exception as exc:
+                raise DvcException(
+                    "Google Drive authentication failed"
+                ) from exc
             finally:
                 if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA):
                     os.remove(self.gdrive_user_credentials_path)

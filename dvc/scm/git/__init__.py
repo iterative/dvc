@@ -85,7 +85,7 @@ class Git(Base):
             )
             tmp_repo.close()
         except git.exc.GitCommandError as exc:
-            raise CloneError(url, to_path, exc)
+            raise CloneError(url, to_path) from exc
 
         # NOTE: using our wrapper to make sure that env is fixed in __init__
         repo = Git(to_path)
@@ -94,7 +94,7 @@ class Git(Base):
             try:
                 repo.checkout(rev)
             except git.exc.GitCommandError as exc:
-                raise RevError(url, rev, exc)
+                raise RevError(url, rev) from exc
 
         return repo
 
@@ -331,8 +331,8 @@ class Git(Base):
             commits.append(b_commit)
             trees[DIFF_A_TREE] = self.get_tree(commits[0])
             trees[DIFF_B_TREE] = self.get_tree(commits[1])
-        except (BadName, BadObject) as e:
-            raise SCMError("git problem", cause=e)
+        except (BadName, BadObject) as exc:
+            raise SCMError("git problem") from exc
         return trees, commits
 
     def get_diff_trees(self, a_ref, b_ref=None):

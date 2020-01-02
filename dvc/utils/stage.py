@@ -19,7 +19,7 @@ def parse_stage(text, path):
     try:
         return yaml.load(text, Loader=SafeLoader) or {}
     except yaml.error.YAMLError as exc:
-        raise StageFileCorruptedError(path, cause=exc)
+        raise StageFileCorruptedError(path) from exc
 
 
 def parse_stage_for_update(text, path):
@@ -35,7 +35,7 @@ def parse_stage_for_update(text, path):
         yaml = YAML()
         return yaml.load(text) or {}
     except YAMLError as exc:
-        raise StageFileCorruptedError(path, cause=exc)
+        raise StageFileCorruptedError(path) from exc
 
 
 def dump_stage_file(path, data):

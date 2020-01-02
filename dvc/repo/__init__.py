@@ -444,24 +444,24 @@ class Repo(object):
         cause = None
         try:
             out, = self.find_outs_by_path(path)
-        except OutputNotFoundError as e:
+        except OutputNotFoundError as exc:
             out = None
-            cause = e
+            cause = exc
 
         if out and out.use_cache:
             try:
                 with self._open_cached(out, remote, mode, encoding) as fd:
                     yield fd
                 return
-            except FileNotFoundError as e:
-                raise FileMissingError(relpath(path, self.root_dir), cause=e)
+            except FileNotFoundError as exc:
+                raise FileMissingError(relpath(path, self.root_dir)) from exc
 
         if self.tree.exists(path):
             with self.tree.open(path, mode, encoding) as fd:
                 yield fd
             return
 
-        raise FileMissingError(relpath(path, self.root_dir), cause=cause)
+        raise FileMissingError(relpath(path, self.root_dir)) from cause
 
     def _open_cached(self, out, remote=None, mode="r", encoding=None):
         if out.isdir():

@@ -17,18 +17,17 @@ SCHEMA = Schema({"write": {str: INFO_SCHEMA}, "read": {str: [INFO_SCHEMA]}})
 
 
 class RWLockFileCorruptedError(DvcException):
-    def __init__(self, path, cause):
+    def __init__(self, path):
         super().__init__(
             "Unable to read RWLock-file '{}'. JSON structure is "
-            "corrupted".format(relpath(path)),
-            cause=cause,
+            "corrupted".format(relpath(path))
         )
 
 
 class RWLockFileFormatError(DvcException):
-    def __init__(self, path, cause):
+    def __init__(self, path):
         super().__init__(
-            "RWLock-file '{}' format error.".format(relpath(path)), cause=cause
+            "RWLock-file '{}' format error.".format(relpath(path))
         )
 
 
@@ -42,9 +41,9 @@ def _edit_rwlock(lock_dir):
     except FileNotFoundError:
         lock = SCHEMA({})
     except json.JSONDecodeError as exc:
-        raise RWLockFileCorruptedError(path, cause=exc)
+        raise RWLockFileCorruptedError(path) from exc
     except Invalid as exc:
-        raise RWLockFileFormatError(path, cause=exc)
+        raise RWLockFileFormatError(path) from exc
     lock = defaultdict(dict, lock)
     lock["read"] = defaultdict(list, lock["read"])
     lock["write"] = defaultdict(dict, lock["write"])
