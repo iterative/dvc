@@ -696,8 +696,10 @@ class Stage(object):
             stage_text=stage_text,
         )
 
-        stage.deps = dependency.loadd_from(stage, d.get(Stage.PARAM_DEPS, []))
-        stage.outs = output.loadd_from(stage, d.get(Stage.PARAM_OUTS, []))
+        stage.deps = dependency.loadd_from(
+            stage, d.get(Stage.PARAM_DEPS) or []
+        )
+        stage.outs = output.loadd_from(stage, d.get(Stage.PARAM_OUTS) or [])
 
         return stage
 
