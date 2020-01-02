@@ -353,3 +353,10 @@ class PathMissingError(DvcException):
             " neighther as an output nor a git-handled file."
         )
         super(PathMissingError, self).__init__(msg.format(path, repo))
+
+
+class UpdateWithRevNotPossibleError(DvcException):
+    def __init__(self):
+        super(UpdateWithRevNotPossibleError, self).__init__(
+            "Revision option (--rev) is not a feature of non-Git sources."
+        )

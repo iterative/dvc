@@ -1,7 +1,9 @@
 import filecmp
 import os
 import shutil
+import pytest
 
+from dvc.exceptions import UpdateWithRevNotPossibleError
 from dvc.external_repo import clean_repos
 from dvc.repo import Repo
 
@@ -73,3 +75,47 @@ def test_update_import_url(repo_dir, dvc_repo):
     assert os.path.isfile(dst)
     assert filecmp.cmp(src, dst, shallow=False)
 
+
+def test_update_rev(dvc_repo, erepo):
+    src = "version"
+    dst = src
+
+    stage = dvc_repo.imp(erepo.root_dir, src, dst, rev="branch")
+
+    # update data
+    repo = Repo(erepo.root_dir)
+
+    saved_dir = os.getcwd()
+    os.chdir(erepo.root_dir)
+
+    repo.scm.checkout("master")
+    os.unlink("version")
+    erepo.create("version", "updated")
+    repo.add("version")
+    repo.scm.add([".gitignore", "version.dvc"])
+    repo.scm.commit("updated")
+
+    repo.scm.close()
+
+    os.chdir(saved_dir)
+
+    # Caching in external repos doesn't see upstream updates within single
+    # cli call, so we need to clean the caches to see the changes.
+    clean_repos()
+
+    dvc_repo.update(stage.path, "master")
+
+    with open(dst, "r+") as fobj:
+        assert fobj.read() == "updated"
+
+
+def test_update_rev_non_git_failure(repo_dir, dvc_repo):
+    src = "file"
+    dst = src + "_imported"
+
+    shutil.copyfile(repo_dir.FOO, src)
+
+    stage = dvc_repo.imp_url(src, dst)
+
+    with pytest.raises(UpdateWithRevNotPossibleError):
+        dvc_repo.update(stage.path, rev="dev")
