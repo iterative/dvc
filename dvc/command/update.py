@@ -16,10 +16,7 @@ class CmdUpdate(CmdBase):
         ret = 0
         for target in self.args.targets:
             try:
-                self.repo.update(
-                    target,
-                    rev=self.args.rev,
-                )
+                self.repo.update(target, rev=self.args.rev)
             except DvcException:
                 logger.exception("failed to update '{}'.".format(target))
                 ret = 1

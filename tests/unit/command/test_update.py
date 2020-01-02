@@ -18,7 +18,7 @@ def test_update(dvc_repo, mocker):
     m.assert_has_calls(calls)
 
 
-def test_update_rev_failed(mocker, caplog, dvc_repo):
+def test_update_rev_failed(mocker, caplog):
     targets = ["target1", "target2", "target3"]
     cli_args = parse_args(["update", "--rev", "develop"] + targets)
     assert cli_args.func == CmdUpdate
