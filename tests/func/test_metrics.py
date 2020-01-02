@@ -15,7 +15,7 @@ from tests.basic_env import TestDvcGit
 
 class TestMetricsBase(TestDvcGit):
     def setUp(self):
-        super(TestMetricsBase, self).setUp()
+        super().setUp()
         self.dvc.scm.commit("init")
 
         branches = ["foo", "bar", "baz"]
@@ -386,7 +386,7 @@ class TestMetrics(TestMetricsBase):
 
 class TestMetricsRecursive(TestDvcGit):
     def setUp(self):
-        super(TestMetricsRecursive, self).setUp()
+        super().setUp()
         self.dvc.scm.commit("init")
 
         self.dvc.scm.checkout("nested", create_new=True)
@@ -763,7 +763,7 @@ class TestMetricsType(TestDvcGit):
     xpaths = [None, None, "branch", "0,0", "0,branch", "0,0", "0,branch"]
 
     def setUp(self):
-        super(TestMetricsType, self).setUp()
+        super().setUp()
         self.dvc.scm.commit("init")
 
         for branch in self.branches:

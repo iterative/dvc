@@ -40,7 +40,7 @@ class RemoteOSS(RemoteBASE):
     COPY_POLL_SECONDS = 5
 
     def __init__(self, repo, config):
-        super(RemoteOSS, self).__init__(repo, config)
+        super().__init__(repo, config)
 
         url = config.get(Config.SECTION_REMOTE_URL)
         self.path_info = self.path_cls(url) if url else None

@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class CmdRemoteConfig(CmdConfig):
     def __init__(self, args):
-        super(CmdRemoteConfig, self).__init__(args)
+        super().__init__(args)
         self.remote_config = RemoteConfig(self.config)
 
 

@@ -48,7 +48,7 @@ class RemoteLOCAL(RemoteBASE):
     SHARED_MODE_MAP = {None: (0o644, 0o755), "group": (0o664, 0o775)}
 
     def __init__(self, repo, config):
-        super(RemoteLOCAL, self).__init__(repo, config)
+        super().__init__(repo, config)
         self.protected = config.get(Config.SECTION_CACHE_PROTECTED, False)
 
         shared = config.get(Config.SECTION_CACHE_SHARED)

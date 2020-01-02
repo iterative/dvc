@@ -25,9 +25,7 @@ class ConfigError(DvcException):
     """
 
     def __init__(self, msg, cause=None):
-        super(ConfigError, self).__init__(
-            "config file error: {}".format(msg), cause=cause
-        )
+        super().__init__("config file error: {}".format(msg), cause=cause)
 
 
 class NoRemoteError(ConfigError):
@@ -39,7 +37,7 @@ class NoRemoteError(ConfigError):
             "    dvc {} -r <name>\n".format(command)
         )
 
-        super(NoRemoteError, self).__init__(msg, cause=cause)
+        super().__init__(msg, cause=cause)
 
 
 def supported_cache_type(types):

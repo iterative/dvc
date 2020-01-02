@@ -21,7 +21,7 @@ class DependencyREPO(DependencyLOCAL):
 
     def __init__(self, def_repo, stage, *args, **kwargs):
         self.def_repo = def_repo
-        super(DependencyREPO, self).__init__(stage, *args, **kwargs)
+        super().__init__(stage, *args, **kwargs)
 
     def _parse_path(self, remote, path):
         return None

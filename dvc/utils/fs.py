@@ -69,7 +69,7 @@ class BasePathNotInCheckedPathException(DvcException):
         msg = "Path: {} does not overlap with base path: {}".format(
             path, base_path
         )
-        super(DvcException, self).__init__(msg)
+        super().__init__(msg)
 
 
 def contains_symlink_up_to(path, base_path):

@@ -12,7 +12,7 @@ from tests.basic_env import TestDir, TestDvcGit
 
 class TestGC(TestDvcGit):
     def setUp(self):
-        super(TestGC, self).setUp()
+        super().setUp()
 
         self.dvc.add(self.FOO)
         self.dvc.add(self.DATA_DIR)
@@ -112,7 +112,7 @@ class TestGCMultipleDvcRepos(TestDvcGit):
         self.assertEqual(total, num)
 
     def setUp(self):
-        super(TestGCMultipleDvcRepos, self).setUp()
+        super().setUp()
         self.additional_path = TestDir.mkdtemp()
         self.additional_git = Repo.init(self.additional_path)
         self.additional_dvc = DvcRepo.init(self.additional_path)

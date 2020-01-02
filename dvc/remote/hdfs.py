@@ -24,7 +24,7 @@ class RemoteHDFS(RemoteBASE):
     REQUIRES = {"pyarrow": "pyarrow"}
 
     def __init__(self, repo, config):
-        super(RemoteHDFS, self).__init__(repo, config)
+        super().__init__(repo, config)
         self.path_info = None
         url = config.get(Config.SECTION_REMOTE_URL)
         if not url:

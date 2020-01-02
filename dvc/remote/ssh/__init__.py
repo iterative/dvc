@@ -49,7 +49,7 @@ class RemoteSSH(RemoteBASE):
     DEFAULT_CACHE_TYPES = ["copy"]
 
     def __init__(self, repo, config):
-        super(RemoteSSH, self).__init__(repo, config)
+        super().__init__(repo, config)
         url = config.get(Config.SECTION_REMOTE_URL)
         if url:
             parsed = urlparse(url)

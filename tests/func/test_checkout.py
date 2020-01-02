@@ -30,7 +30,7 @@ logger = logging.getLogger("dvc")
 
 class TestCheckout(TestRepro):
     def setUp(self):
-        super(TestCheckout, self).setUp()
+        super().setUp()
 
         stages = self.dvc.add(self.DATA_DIR)
         self.assertEqual(len(stages), 1)

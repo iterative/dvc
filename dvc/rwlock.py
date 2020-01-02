@@ -18,7 +18,7 @@ SCHEMA = Schema({"write": {str: INFO_SCHEMA}, "read": {str: [INFO_SCHEMA]}})
 
 class RWLockFileCorruptedError(DvcException):
     def __init__(self, path, cause):
-        super(RWLockFileCorruptedError, self).__init__(
+        super().__init__(
             "Unable to read RWLock-file '{}'. JSON structure is "
             "corrupted".format(relpath(path)),
             cause=cause,
@@ -27,7 +27,7 @@ class RWLockFileCorruptedError(DvcException):
 
 class RWLockFileFormatError(DvcException):
     def __init__(self, path, cause):
-        super(RWLockFileFormatError, self).__init__(
+        super().__init__(
             "RWLock-file '{}' format error.".format(relpath(path)), cause=cause
         )
 

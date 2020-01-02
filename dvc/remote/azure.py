@@ -31,7 +31,7 @@ class RemoteAZURE(RemoteBASE):
     COPY_POLL_SECONDS = 5
 
     def __init__(self, repo, config):
-        super(RemoteAZURE, self).__init__(repo, config)
+        super().__init__(repo, config)
 
         url = config.get(Config.SECTION_REMOTE_URL, "azure://")
 
