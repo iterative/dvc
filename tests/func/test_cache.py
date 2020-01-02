@@ -14,7 +14,7 @@ from tests.basic_env import TestDvc
 
 class TestCache(TestDvc):
     def setUp(self):
-        super(TestCache, self).setUp()
+        super().setUp()
         self.cache1_md5 = "123"
         self.cache2_md5 = "234"
         self.cache1 = os.path.join(

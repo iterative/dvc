@@ -77,7 +77,7 @@ class Tqdm(tqdm):
             and hasattr(file, "isatty")
         ):
             disable = not file.isatty()
-        super(Tqdm, self).__init__(
+        super().__init__(
             iterable=iterable,
             disable=disable,
             leave=leave,
@@ -114,12 +114,12 @@ class Tqdm(tqdm):
     def close(self):
         if self.desc_persist is not None:
             self.set_description_str(self.desc_persist, refresh=False)
-        super(Tqdm, self).close()
+        super().close()
 
     @property
     def format_dict(self):
         """inject `ncols_desc` to fill the display width (`ncols`)"""
-        d = super(Tqdm, self).format_dict
+        d = super().format_dict
         ncols = d["ncols"] or 80
         ncols_desc = ncols - len(self.format_meter(ncols_desc=1, **d)) + 1
         ncols_desc = max(ncols_desc, 0)

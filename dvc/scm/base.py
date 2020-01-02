@@ -23,14 +23,14 @@ class FileNotInCommitError(SCMError):
 
 class CloneError(SCMError):
     def __init__(self, url, path, cause):
-        super(CloneError, self).__init__(
+        super().__init__(
             "Failed to clone repo '{}' to '{}'".format(url, path), cause=cause
         )
 
 
 class RevError(SCMError):
     def __init__(self, url, rev, cause):
-        super(RevError, self).__init__(
+        super().__init__(
             "Failed to access revision '{}' for repo '{}'".format(rev, url),
             cause=cause,
         )

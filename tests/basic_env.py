@@ -117,7 +117,7 @@ class TestGitFixture(TestDirFixture):
     N_RETRIES = 5
 
     def setUp(self):
-        super(TestGitFixture, self).setUp()
+        super().setUp()
         # NOTE: handles EAGAIN error on BSD systems (osx in our case).
         # Otherwise when running tests you might get this exception:
         #
@@ -138,12 +138,12 @@ class TestGitFixture(TestDirFixture):
 
     def tearDown(self):
         self.git.close()
-        super(TestGitFixture, self).tearDown()
+        super().tearDown()
 
 
 class TestGitSubmoduleFixture(TestGitFixture):
     def setUp(self):
-        super(TestGitSubmoduleFixture, self).setUp()
+        super().setUp()
         subrepo = Repo.init()
         subrepo_path = "subrepo"
         self.git.create_submodule(subrepo_path, subrepo_path, subrepo.git_dir)
@@ -152,19 +152,19 @@ class TestGitSubmoduleFixture(TestGitFixture):
 
 class TestDvcFixture(TestDirFixture):
     def setUp(self):
-        super(TestDvcFixture, self).setUp()
+        super().setUp()
         self.dvc = DvcRepo.init(self.root_dir, no_scm=True)
 
 
 class TestDvcGitFixture(TestGitFixture):
     def setUp(self):
-        super(TestDvcGitFixture, self).setUp()
+        super().setUp()
         self.dvc = DvcRepo.init(self.root_dir)
         self.dvc.scm.commit("init dvc")
 
     def tearDown(self):
         self.dvc.scm.close()
-        super(TestDvcGitFixture, self).tearDown()
+        super().tearDown()
 
 
 # NOTE: Inheritance order in the classes below is important.

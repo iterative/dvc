@@ -8,7 +8,7 @@ from tests.func.test_repro import TestReproChangedDeepData
 
 class TestPipelineShowSingle(TestDvc):
     def setUp(self):
-        super(TestPipelineShowSingle, self).setUp()
+        super().setUp()
         self.stage = "foo.dvc"
         ret = main(["add", self.FOO])
         self.assertEqual(ret, 0)
@@ -123,7 +123,7 @@ def test_dot_outs(repo_dir, dvc_repo):
 
 class TestPipelineShowOuts(TestRepro):
     def setUp(self):
-        super(TestPipelineShowOuts, self).setUp()
+        super().setUp()
 
     def test_outs(self):
         ret = main(["pipeline", "show", self.file1_stage, "--outs"])

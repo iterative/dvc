@@ -56,7 +56,7 @@ class OutputLOCAL(OutputBase):
         return def_scheme != "remote" and not os.path.isabs(self.def_path)
 
     def dumpd(self):
-        ret = super(OutputLOCAL, self).dumpd()
+        ret = super().dumpd()
         if self.is_in_repo:
             path = self.path_info.relpath(self.stage.wdir).as_posix()
         else:

@@ -22,7 +22,7 @@ class RemoteHTTP(RemoteBASE):
     PARAM_CHECKSUM = "etag"
 
     def __init__(self, repo, config):
-        super(RemoteHTTP, self).__init__(repo, config)
+        super().__init__(repo, config)
 
         url = config.get(Config.SECTION_REMOTE_URL)
         self.path_info = self.path_cls(url) if url else None

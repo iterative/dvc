@@ -73,7 +73,7 @@ class RemoteGS(RemoteBASE):
     PARAM_CHECKSUM = "md5"
 
     def __init__(self, repo, config):
-        super(RemoteGS, self).__init__(repo, config)
+        super().__init__(repo, config)
 
         url = config.get(Config.SECTION_REMOTE_URL, "gs:///")
         self.path_info = self.path_cls(url)

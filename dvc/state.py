@@ -26,7 +26,7 @@ class StateVersionTooNewError(DvcException):
     """Thrown when dvc version is older than the state database version."""
 
     def __init__(self, dvc_version, expected, actual):
-        super(StateVersionTooNewError, self).__init__(
+        super().__init__(
             "you are using an old version '{dvc_version}' of dvc that is "
             "using state file version '{expected}' which is not compatible "
             "with the state file version '{actual}' that is used in this "

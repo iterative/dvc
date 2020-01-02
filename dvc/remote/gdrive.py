@@ -20,17 +20,17 @@ FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 
 class GDriveRetriableError(DvcException):
     def __init__(self, msg, cause=None):
-        super(GDriveRetriableError, self).__init__(msg, cause=cause)
+        super().__init__(msg, cause=cause)
 
 
 class GDriveAccessTokenRefreshError(DvcException):
     def __init__(self, msg, cause=None):
-        super(GDriveAccessTokenRefreshError, self).__init__(msg, cause=cause)
+        super().__init__(msg, cause=cause)
 
 
 class GDriveMissedCredentialKeyError(DvcException):
     def __init__(self, msg, cause=None):
-        super(GDriveMissedCredentialKeyError, self).__init__(msg, cause=cause)
+        super().__init__(msg, cause=cause)
 
 
 @decorator
@@ -68,7 +68,7 @@ class RemoteGDrive(RemoteBASE):
     DEFAULT_USER_CREDENTIALS_FILE = "gdrive-user-credentials.json"
 
     def __init__(self, repo, config):
-        super(RemoteGDrive, self).__init__(repo, config)
+        super().__init__(repo, config)
         self.no_traverse = False
         self.path_info = self.path_cls(config[Config.SECTION_REMOTE_URL])
         self.config = config

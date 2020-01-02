@@ -24,7 +24,7 @@ class RemoteS3(RemoteBASE):
     PARAM_CHECKSUM = "etag"
 
     def __init__(self, repo, config):
-        super(RemoteS3, self).__init__(repo, config)
+        super().__init__(repo, config)
 
         url = config.get(Config.SECTION_REMOTE_URL, "s3://")
         self.path_info = self.path_cls(url)
