@@ -114,7 +114,7 @@ class DependencyREPO(DependencyLOCAL):
                 self.def_path, self.def_repo[self.PARAM_URL]
             )
 
-    def update(self, rev):
+    def update(self, rev=None):
         if not rev:
             rev = self.def_repo.get("rev")
 

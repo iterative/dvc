@@ -132,6 +132,13 @@ class MissingDataSource(DvcException):
         super(MissingDataSource, self).__init__(msg)
 
 
+class UpdateWithRevNotPossibleError(DvcException):
+    def __init__(self):
+        super(UpdateWithRevNotPossibleError, self).__init__(
+            "Revision option (--rev) is not a feature of non-Git sources."
+        )
+
+
 @decorator
 def rwlocked(call, read=None, write=None):
     import sys
@@ -398,6 +405,9 @@ class Stage(object):
     def update(self, rev=None):
         if not self.is_repo_import and not self.is_import:
             raise StageUpdateError(self.relpath)
+
+        if not self.is_repo_import and rev:
+            raise UpdateWithRevNotPossibleError()
 
         self.deps[0].update(rev)
         locked = self.locked
