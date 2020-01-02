@@ -13,18 +13,6 @@ class DvcException(Exception):
         cause (Exception): optional cause exception.
     """
 
-    def __init__(self, msg, cause=None):
-        # NOTE: unlike python 3, python 2 doesn't have built-in support
-        # for chained exceptions, so we are using our own implementation.
-        self.cause = cause
-        self.cause_tb = None
-        if cause:
-            try:
-                self.cause_tb = traceback.format_exc()
-            except AttributeError:  # pragma: no cover
-                pass
-        super().__init__(msg)
-
 
 class OutputDuplicationError(DvcException):
     """Thrown if a file/directory is specified as an output in more than one
@@ -109,8 +97,7 @@ class ArgumentDuplicationError(DvcException):
 
     def __init__(self, path):
         assert isinstance(path, str)
-        msg = "file '{}' is specified more than once."
-        super().__init__(msg.format(path))
+        super().__init__("file '{}' is specified more than once.".format(path))
 
 
 class MoveNotDataSourceError(DvcException):
@@ -175,8 +162,7 @@ class ConfirmRemoveError(DvcException):
 
 
 class InitError(DvcException):
-    def __init__(self, msg):
-        super().__init__(msg)
+    pass
 
 
 class ReproductionError(DvcException):

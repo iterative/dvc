@@ -71,8 +71,7 @@ class StageFileIsNotDvcFileError(DvcException):
 
 
 class StageFileBadNameError(DvcException):
-    def __init__(self, msg):
-        super().__init__(msg)
+    pass
 
 
 class StagePathOutsideError(DvcException):

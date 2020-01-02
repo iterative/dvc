@@ -19,18 +19,13 @@ FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 
 
 class GDriveRetriableError(DvcException):
-    def __init__(self, msg, cause=None):
-        super().__init__(msg, cause=cause)
-
+    pass
 
 class GDriveAccessTokenRefreshError(DvcException):
-    def __init__(self, msg, cause=None):
-        super().__init__(msg, cause=cause)
-
+    pass
 
 class GDriveMissedCredentialKeyError(DvcException):
-    def __init__(self, msg, cause=None):
-        super().__init__(msg, cause=cause)
+    pass
 
 
 @decorator
