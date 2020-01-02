@@ -293,6 +293,15 @@ def show(
     if not res and not any(targets):
         raise NoMetricsError()
 
+    # Hide working tree metrics if they are the same as in the active branch
+    try:
+        active_branch = repo.scm.active_branch()
+    except TypeError:
+        pass  # Detached head
+    else:
+        if res.get("working tree") == res.get(active_branch):
+            res.pop("working tree", None)
+
     missing = set(targets) - found
 
     if missing:
