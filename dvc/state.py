@@ -429,14 +429,13 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             path_info (dict): path info to add to the list of links.
         """
         assert path_info.scheme == "local"
-        path = fspath_py35(path_info)
 
-        if not os.path.exists(path):
+        if not os.path.exists(fspath_py35(path_info)):
             return
 
-        mtime, _ = get_mtime_and_size(path, self.repo.tree)
-        inode = get_inode(path)
-        relative_path = relpath(path, self.root_dir)
+        mtime, _ = get_mtime_and_size(path_info, self.repo.tree)
+        inode = get_inode(path_info)
+        relative_path = relpath(path_info, self.root_dir)
 
         cmd = "REPLACE INTO {}(path, inode, mtime) " "VALUES (?, ?, ?)".format(
             self.LINK_STATE_TABLE
