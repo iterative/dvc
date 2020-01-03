@@ -29,7 +29,6 @@ def run_dvc(*argv):
     assert main(argv) == 0
 
 
-# FIXME
 @pytest.mark.parametrize("remote_url", remote_params, indirect=True)
 def test_get_url(remote_url, tmp_dir, dvc, repo_template):
     run_dvc("remote", "add", "-d", "upstream", remote_url)
@@ -49,7 +48,6 @@ def test_get_url_external(remote_url, erepo_dir):
     assert api.get_url("foo", repo=repo_url) == expected_url
 
 
-# FIXME
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
 def test_open(remote_url, tmp_dir, dvc):
     run_dvc("remote", "add", "-d", "upstream", remote_url)
@@ -83,17 +81,17 @@ def test_open_external(remote_url, erepo_dir):
     assert api.read("version", repo=repo_url, rev="branch") == "branch"
 
 
-# FIXME
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
-def test_missing(remote_url, tmp_dir, dvc):
-    tmp_dir.dvc_gen("foo", "foo")
-    run_dvc("remote", "add", "-d", "upstream", remote_url)
+def test_missing(remote_url, tmp_dir, erepo_dir, monkeypatch):
+    _set_remote_url_and_commit(erepo_dir.dvc, remote_url)
+    with monkeypatch.context() as m:
+        m.chdir(fspath(erepo_dir))
 
     # Remove cache to make foo missing
-    shutil.rmtree(dvc.cache.local.cache_dir)
+    shutil.rmtree(erepo_dir.dvc.cache.local.cache_dir)
 
     with pytest.raises(FileMissingError):
-        api.read("foo")
+        api.read("foo", repo=fspath(erepo_dir))
 
 
 def _set_remote_url_and_commit(repo, remote_url):
@@ -103,33 +101,34 @@ def _set_remote_url_and_commit(repo, remote_url):
     repo.scm.commit("modify remote")
 
 
-# FIXME
-def test_open_scm_controlled(tmp_dir, scm, dvc):
-    tmp_dir.scm_gen({"scm_controlled": "file content"}, commit="create file")
+def test_open_scm_controlled(tmp_dir, erepo_dir):
+    erepo_dir.scm_gen({"scm_controlled": "file content"}, commit="create file")
 
-    with api.open("scm_controlled") as fd:
+    with api.open("scm_controlled", repo=fspath(erepo_dir)) as fd:
         assert fd.read() == "file content"
 
 
-# FIXME WHAT TO DO ABOUT THAT ONE
-# TODO: simplify, we shouldn't need run.
-def test_open_not_cached(dvc):
-    metric_file = "metric.txt"
+def test_open_not_cached(dvc, erepo_dir, monkeypatch):
     metric_content = "0.6"
-    metric_code = "open('{}', 'w').write('{}')".format(
-        metric_file, metric_content
-    )
-    dvc.run(
-        metrics_no_cache=[metric_file],
-        cmd=('python -c "{}"'.format(metric_code)),
-    )
+    with monkeypatch.context() as m:
+        m.chdir(erepo_dir)
+        erepo_dir.dvc.run(
+            metrics_no_cache=["metric.txt"],
+            cmd=(
+                'python -c "{}"'.format(
+                    "open('{}', 'w').write('{}')".format(
+                        "metric.txt", metric_content
+                    )
+                )
+            ),
+        )
 
-    with api.open(metric_file) as fd:
+    with api.open("metric.txt", repo=fspath(erepo_dir)) as fd:
         assert fd.read() == metric_content
 
-    os.remove(metric_file)
+    os.remove(fspath(erepo_dir / "metric.txt"))
     with pytest.raises(FileMissingError):
-        api.read(metric_file)
+        api.read("metric.txt", repo=fspath(erepo_dir))
 
 
 def test_summon(tmp_dir, dvc, erepo_dir):
