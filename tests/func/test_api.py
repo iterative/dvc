@@ -30,17 +30,19 @@ def run_dvc(*argv):
 
 
 @pytest.mark.parametrize("remote_url", remote_params, indirect=True)
-def test_get_url(remote_url, tmp_dir, dvc, repo_template):
+def test_get_url(tmp_dir, dvc, remote_url):
     run_dvc("remote", "add", "-d", "upstream", remote_url)
-    dvc.add("foo")
+    tmp_dir.dvc_gen("foo", "foo")
 
     expected_url = URLInfo(remote_url) / "ac/bd18db4cc2f85cedef654fccc4a4d8"
     assert api.get_url("foo") == expected_url
 
 
 @pytest.mark.parametrize("remote_url", remote_params, indirect=True)
-def test_get_url_external(remote_url, erepo_dir):
+def test_get_url_external(erepo_dir, remote_url):
     _set_remote_url_and_commit(erepo_dir.dvc, remote_url)
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo", commit="add foo")
 
     # Using file url to force clone to tmp repo
     repo_url = "file://{}".format(erepo_dir)

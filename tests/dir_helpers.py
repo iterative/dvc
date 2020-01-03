@@ -276,7 +276,7 @@ def erepo_dir(tmp_path_factory, monkeypatch):
         _git_init()
         path.dvc = Repo.init()
         path.scm = path.dvc.scm
-        path.dvc_gen(REPO_TEMPLATE, commit="init repo")
+        path.scm.commit("init dvc")
 
         rconfig = RemoteConfig(path.dvc.config)
         rconfig.add("upstream", path.dvc.cache.local.cache_dir, default=True)
