@@ -14,9 +14,8 @@ from dvc.compat import fspath
 from tests.utils import trees_equal
 
 
-def test_get_repo_file(tmp_dir, erepo_dir, monkeypatch):
-    with monkeypatch.context() as m:
-        m.chdir(fspath(erepo_dir))
+def test_get_repo_file(tmp_dir, erepo_dir):
+    with erepo_dir.chdir():
         erepo_dir.dvc_gen("file", "contents", commit="create file")
 
     Repo.get(fspath(erepo_dir), "file", "file_imported")
@@ -25,9 +24,8 @@ def test_get_repo_file(tmp_dir, erepo_dir, monkeypatch):
     assert (tmp_dir / "file_imported").read_text() == "contents"
 
 
-def test_get_repo_dir(tmp_dir, erepo_dir, monkeypatch):
-    with monkeypatch.context() as m:
-        m.chdir(fspath(erepo_dir))
+def test_get_repo_dir(tmp_dir, erepo_dir):
+    with erepo_dir.chdir():
         erepo_dir.dvc_gen({"dir": {"file": "contents"}}, commit="create dir")
 
     Repo.get(fspath(erepo_dir), "dir", "dir_imported")
@@ -60,9 +58,8 @@ def test_get_git_dir(tmp_dir, erepo_dir):
     trees_equal(fspath(erepo_dir / src), fspath(tmp_dir / dst))
 
 
-def test_cache_type_is_properly_overridden(tmp_dir, erepo_dir, monkeypatch):
-    with monkeypatch.context() as m:
-        m.chdir(fspath(erepo_dir))
+def test_cache_type_is_properly_overridden(tmp_dir, erepo_dir):
+    with erepo_dir.chdir():
         erepo_dir.dvc.config.set(
             Config.SECTION_CACHE, Config.SECTION_CACHE_TYPE, "symlink"
         )
@@ -79,9 +76,8 @@ def test_cache_type_is_properly_overridden(tmp_dir, erepo_dir, monkeypatch):
     assert (tmp_dir / "file_imported").read_text() == "contents"
 
 
-def test_get_repo_rev(tmp_dir, erepo_dir, monkeypatch):
-    with monkeypatch.context() as m:
-        m.chdir(fspath(erepo_dir))
+def test_get_repo_rev(tmp_dir, erepo_dir):
+    with erepo_dir.chdir():
         erepo_dir.scm.checkout("new_branch", create_new=True)
         erepo_dir.dvc_gen("file", "contents", commit="create file on branch")
         erepo_dir.scm.checkout("master")
@@ -105,13 +101,12 @@ def test_get_a_dvc_file(tmp_dir, erepo_dir):
 
 
 # https://github.com/iterative/dvc/pull/2837#discussion_r352123053
-def test_get_full_dvc_path(tmp_dir, erepo_dir, tmp_path_factory, monkeypatch):
+def test_get_full_dvc_path(tmp_dir, erepo_dir, tmp_path_factory):
     path = tmp_path_factory.mktemp("ext")
     external_data = path / "ext_data"
     external_data.write_text("ext_data")
 
-    with monkeypatch.context() as m:
-        m.chdir(fspath(erepo_dir))
+    with erepo_dir.chdir():
         erepo_dir.dvc.add(fspath(external_data))
         erepo_dir.scm_add(["ext_data.dvc"], commit="add external data")
 
@@ -120,12 +115,11 @@ def test_get_full_dvc_path(tmp_dir, erepo_dir, tmp_path_factory, monkeypatch):
     assert (tmp_dir / "ext_data_imported").read_text() == "ext_data"
 
 
-def test_non_cached_output(tmp_dir, erepo_dir, monkeypatch):
+def test_non_cached_output(tmp_dir, erepo_dir):
     src = "non_cached_file"
     dst = src + "_imported"
 
-    with monkeypatch.context() as m:
-        m.chdir(fspath(erepo_dir))
+    with erepo_dir.chdir():
         erepo_dir.dvc.run(
             outs_no_cache=[src], cmd="echo hello > non_cached_file"
         )
@@ -151,9 +145,8 @@ def test_unknown_path(tmp_dir, erepo_dir):
 
 
 @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])
-def test_get_to_dir(tmp_dir, erepo_dir, monkeypatch, dname):
-    with monkeypatch.context() as m:
-        m.chdir(fspath(erepo_dir))
+def test_get_to_dir(tmp_dir, erepo_dir, dname):
+    with erepo_dir.chdir():
         erepo_dir.dvc_gen("file", "contents", commit="create file")
 
     makedirs(dname, exist_ok=True)
@@ -164,11 +157,8 @@ def test_get_to_dir(tmp_dir, erepo_dir, monkeypatch, dname):
     assert (tmp_dir / dname / "file").read_text() == "contents"
 
 
-def test_get_from_non_dvc_master(
-    tmp_dir, erepo_dir, tmp_path, monkeypatch, caplog
-):
-    with monkeypatch.context() as m:
-        m.chdir(fspath(erepo_dir))
+def test_get_from_non_dvc_master(tmp_dir, erepo_dir, caplog):
+    with erepo_dir.chdir():
         erepo_dir.scm.checkout("new_branch", create_new=True)
         erepo_dir.scm_gen(
             {"some_file": "some_contents"}, commit="create some file"

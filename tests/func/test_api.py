@@ -11,7 +11,6 @@ from dvc.exceptions import FileMissingError
 from dvc.main import main
 from dvc.path_info import URLInfo
 from dvc.remote.config import RemoteConfig
-from dvc.compat import fspath
 from tests.remotes import Azure, GCP, HDFS, Local, OSS, S3, SSH
 
 
@@ -130,7 +129,7 @@ def test_open_not_cached(dvc):
         api.read(metric_file)
 
 
-def test_summon(tmp_dir, erepo_dir, dvc, monkeypatch):
+def test_summon(tmp_dir, dvc, erepo_dir):
     objects = {
         "objects": [
             {
@@ -152,9 +151,7 @@ def test_summon(tmp_dir, erepo_dir, dvc, monkeypatch):
     dup_objects = copy.deepcopy(objects)
     dup_objects["objects"] *= 2
 
-    with monkeypatch.context() as m:
-        m.chdir(fspath(erepo_dir))
-
+    with erepo_dir.chdir():
         erepo_dir.dvc_gen("number", "100", commit="Add number.dvc")
         erepo_dir.scm_gen("dvcsummon.yaml", ruamel.yaml.dump(objects))
         erepo_dir.scm_gen("other.yaml", ruamel.yaml.dump(other_objects))
