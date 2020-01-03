@@ -33,9 +33,10 @@ def get_inode(path):
 
 
 def get_mtime_and_size(path, tree):
-    assert is_working_tree(tree)
 
     if os.path.isdir(fspath_py35(path)):
+        assert is_working_tree(tree)
+
         size = 0
         files_mtimes = {}
         for file_path in tree.walk_files(path):
