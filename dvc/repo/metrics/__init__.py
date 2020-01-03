@@ -21,3 +21,8 @@ class Metrics(object):
         from dvc.repo.metrics.remove import remove
 
         return remove(self.repo, *args, **kwargs)
+
+    def diff(self, *args, **kwargs):
+        from .diff import diff
+
+        return diff(self.repo, *args, **kwargs)
