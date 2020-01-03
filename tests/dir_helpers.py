@@ -45,8 +45,9 @@ from global repo template to creating everything inplace, which:
 
 import os
 import pathlib
-import pytest
+from contextlib import contextmanager
 
+import pytest
 from funcy.py3 import lmap, retry
 
 from dvc.utils import makedirs
@@ -87,6 +88,7 @@ class TmpDir(pathlib.Path):
                 'Did you forget to use "{name}" fixture?'.format(name=name)
             )
 
+    # Bootstrapping methods
     def gen(self, struct, text=""):
         if isinstance(struct, (str, bytes, pathlib.PurePath)):
             struct = {struct: text}
@@ -136,6 +138,15 @@ class TmpDir(pathlib.Path):
         self.scm.add(filenames)
         if commit:
             self.scm.commit(commit)
+
+    @contextmanager
+    def chdir(self):
+        old = os.getcwd()
+        try:
+            os.chdir(fspath_py35(self))
+            yield
+        finally:
+            os.chdir(old)
 
     # Introspection methods
     def list(self):
@@ -250,9 +261,7 @@ def erepo_dir(tmp_path_factory, monkeypatch):
     path = TmpDir(fspath_py35(tmp_path_factory.mktemp("erepo")))
 
     # Chdir for git and dvc to work locally
-    with monkeypatch.context() as m:
-        m.chdir(fspath_py35(path))
-
+    with path.chdir():
         _git_init()
         path.dvc = Repo.init()
         path.scm = path.dvc.scm
