@@ -1,29 +1,10 @@
 """Exceptions raised by the dvc."""
 
-import traceback
-
 from dvc.utils import relpath
 
 
 class DvcException(Exception):
-    """Base class for all dvc exceptions.
-
-    Args:
-        msg (unicode): message for this exception.
-        cause (Exception): optional cause exception.
-    """
-
-    def __init__(self, msg, cause=None):
-        # NOTE: unlike python 3, python 2 doesn't have built-in support
-        # for chained exceptions, so we are using our own implementation.
-        self.cause = cause
-        self.cause_tb = None
-        if cause:
-            try:
-                self.cause_tb = traceback.format_exc()
-            except AttributeError:  # pragma: no cover
-                pass
-        super().__init__(msg)
+    """Base class for all dvc exceptions."""
 
 
 class OutputDuplicationError(DvcException):
@@ -109,8 +90,7 @@ class ArgumentDuplicationError(DvcException):
 
     def __init__(self, path):
         assert isinstance(path, str)
-        msg = "file '{}' is specified more than once."
-        super().__init__(msg.format(path))
+        super().__init__("file '{}' is specified more than once.".format(path))
 
 
 class MoveNotDataSourceError(DvcException):
@@ -175,15 +155,13 @@ class ConfirmRemoveError(DvcException):
 
 
 class InitError(DvcException):
-    def __init__(self, msg):
-        super().__init__(msg)
+    pass
 
 
 class ReproductionError(DvcException):
-    def __init__(self, dvc_file_name, ex):
+    def __init__(self, dvc_file_name):
         self.path = dvc_file_name
-        msg = "failed to reproduce '{}'".format(dvc_file_name)
-        super().__init__(msg, cause=ex)
+        super().__init__("failed to reproduce '{}'".format(dvc_file_name))
 
 
 class BadMetricError(DvcException):
@@ -205,12 +183,11 @@ class NoMetricsError(DvcException):
 
 
 class StageFileCorruptedError(DvcException):
-    def __init__(self, path, cause=None):
+    def __init__(self, path):
         path = relpath(path)
         super().__init__(
             "unable to read DVC-file: {} "
-            "YAML file structure is corrupted".format(path),
-            cause=cause,
+            "YAML file structure is corrupted".format(path)
         )
 
 
@@ -236,10 +213,8 @@ class OverlappingOutputPathsError(DvcException):
 
 
 class CheckoutErrorSuggestGit(DvcException):
-    def __init__(self, target, cause):
-        super().__init__(
-            "Did you mean `git checkout {}`?".format(target), cause=cause
-        )
+    def __init__(self, target):
+        super().__init__("Did you mean `git checkout {}`?".format(target))
 
 
 class ETagMismatchError(DvcException):
@@ -251,10 +226,9 @@ class ETagMismatchError(DvcException):
 
 
 class FileMissingError(DvcException):
-    def __init__(self, path, cause=None):
+    def __init__(self, path):
         super().__init__(
-            "Can't find '{}' neither locally nor on remote".format(path),
-            cause=cause,
+            "Can't find '{}' neither locally nor on remote".format(path)
         )
 
 

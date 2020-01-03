@@ -162,6 +162,6 @@ def _reproduce_stages(
                 kwargs["force"] = True
 
             result.extend(ret)
-        except Exception as ex:
-            raise ReproductionError(st.relpath, ex)
+        except Exception as exc:
+            raise ReproductionError(st.relpath) from exc
     return result

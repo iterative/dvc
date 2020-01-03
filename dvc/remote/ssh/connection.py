@@ -103,14 +103,13 @@ class SSHConnection:
         if tail:
             try:
                 self.sftp.mkdir(path)
-            except IOError as e:
+            except IOError as exc:
                 # Since paramiko errors are very vague we need to recheck
                 # whether it's because path already exists or something else
-                if e.errno == errno.EACCES or not self.exists(path):
+                if exc.errno == errno.EACCES or not self.exists(path):
                     raise DvcException(
-                        "unable to create remote directory '{}'".format(path),
-                        cause=e,
-                    )
+                        "unable to create remote directory '{}'".format(path)
+                    ) from exc
 
     def walk(self, directory, topdown=True):
         # NOTE: original os.walk() implementation [1] with default options was
@@ -123,9 +122,8 @@ class SSHConnection:
             raise DvcException(
                 "couldn't get the '{}' remote directory files list".format(
                     directory
-                ),
-                cause=exc,
-            )
+                )
+            ) from exc
 
         dirs = []
         nondirs = []

@@ -49,7 +49,7 @@ def _checkout(
         except (StageFileDoesNotExistError, StageFileBadNameError) as exc:
             if not target:
                 raise
-            raise CheckoutErrorSuggestGit(target, exc)
+            raise CheckoutErrorSuggestGit(target) from exc
 
     total = get_all_files_numbers(pairs)
     if total == 0:

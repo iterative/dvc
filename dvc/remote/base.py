@@ -63,10 +63,9 @@ class RemoteMissingDepsError(DvcException):
 
 
 class DirCacheError(DvcException):
-    def __init__(self, checksum, cause=None):
+    def __init__(self, checksum):
         super().__init__(
-            "Failed to load dir cache for checksum: '{}'.".format(checksum),
-            cause=cause,
+            "Failed to load dir cache for checksum: '{}'.".format(checksum)
         )
 
 
@@ -264,7 +263,7 @@ class RemoteBASE(object):
             with self.cache.open(path_info, "r") as fobj:
                 d = json.load(fobj)
         except (ValueError, FileNotFoundError) as exc:
-            raise DirCacheError(checksum, cause=exc)
+            raise DirCacheError(checksum) from exc
 
         if not isinstance(d, list):
             msg = "dir cache file format error '{}' [skipping the file]"

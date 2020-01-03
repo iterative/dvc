@@ -114,11 +114,11 @@ class ColorFormatter(logging.Formatter):
         tb_list = [tb]
 
         # NOTE: parsing chained exceptions. See dvc/exceptions.py for more info
-        while hasattr(exc, "cause") and exc.cause:
-            exc_list.append(str(exc.cause))
+        while hasattr(exc, "__cause__") and exc.__cause__:
+            exc_list.append(str(exc.__cause__))
             if hasattr(exc, "cause_tb") and exc.cause_tb:
                 tb_list.insert(0, str(exc.cause_tb))
-            exc = exc.cause
+            exc = exc.__cause__
 
         return exc_list, tb_list
 

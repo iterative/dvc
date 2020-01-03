@@ -104,9 +104,8 @@ def summon(name, repo=None, rev=None, summon_file="dvcsummon.yaml", args=None):
             info = obj["summon"]
         except SummonError as exc:
             raise SummonError(
-                str(exc) + " at '{}' in '{}'".format(summon_file, repo),
-                cause=exc.cause,
-            )
+                str(exc) + " at '{}' in '{}'".format(summon_file, repo)
+            ) from exc
 
         _pull_dependencies(_repo, info.get("deps", []))
 
@@ -138,7 +137,7 @@ def _get_object_from_summon_file(name, path):
     except FileMissingError:
         raise SummonError("Summon file not found")
     except ruamel.yaml.YAMLError as exc:
-        raise SummonError("Failed to parse summon file", exc)
+        raise SummonError("Failed to parse summon file") from exc
     except Invalid as exc:
         raise SummonError(str(exc))
 

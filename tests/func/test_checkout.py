@@ -392,15 +392,15 @@ class TestCheckoutSuggestGit(TestRepro):
             self.dvc.checkout(targets=["gitbranch"])
         except DvcException as exc:
             self.assertIsInstance(exc, CheckoutErrorSuggestGit)
-            self.assertIsInstance(exc.cause, StageFileDoesNotExistError)
-            self.assertIsNone(exc.cause.cause)
+            self.assertIsInstance(exc.__cause__, StageFileDoesNotExistError)
+            self.assertIsNone(exc.__cause__.__cause__)
 
         try:
             self.dvc.checkout(targets=[self.FOO])
         except DvcException as exc:
             self.assertIsInstance(exc, CheckoutErrorSuggestGit)
-            self.assertIsInstance(exc.cause, StageFileBadNameError)
-            self.assertIsNone(exc.cause.cause)
+            self.assertIsInstance(exc.__cause__, StageFileBadNameError)
+            self.assertIsNone(exc.__cause__.__cause__)
 
 
 class TestCheckoutTargetRecursiveShouldNotRemoveOtherUsedFiles(TestDvc):

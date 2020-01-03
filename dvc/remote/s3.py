@@ -87,8 +87,8 @@ class RemoteS3(RemoteBASE):
             obj = s3.head_object(Bucket=bucket, Key=path, *args, **kwargs)
         except Exception as exc:
             raise DvcException(
-                "s3://{}/{} does not exist".format(bucket, path), exc
-            )
+                "s3://{}/{} does not exist".format(bucket, path)
+            ) from exc
         return obj
 
     @classmethod
