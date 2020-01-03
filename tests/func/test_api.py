@@ -7,6 +7,7 @@ import pytest
 
 from dvc import api
 from dvc.api import SummonError
+from dvc.compat import fspath
 from dvc.exceptions import FileMissingError
 from dvc.main import main
 from dvc.path_info import URLInfo
@@ -82,16 +83,15 @@ def test_open_external(remote_url, erepo_dir):
 
 
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
-def test_missing(remote_url, tmp_dir, erepo_dir, monkeypatch):
-    _set_remote_url_and_commit(erepo_dir.dvc, remote_url)
-    with monkeypatch.context() as m:
-        m.chdir(fspath(erepo_dir))
+def test_missing(remote_url, tmp_dir, dvc):
+    tmp_dir.dvc_gen("foo", "foo")
+    run_dvc("remote", "add", "-d", "upstream", remote_url)
 
     # Remove cache to make foo missing
-    shutil.rmtree(erepo_dir.dvc.cache.local.cache_dir)
+    shutil.rmtree(dvc.cache.local.cache_dir)
 
     with pytest.raises(FileMissingError):
-        api.read("foo", repo=fspath(erepo_dir))
+        api.read("foo")
 
 
 def _set_remote_url_and_commit(repo, remote_url):
@@ -108,27 +108,23 @@ def test_open_scm_controlled(tmp_dir, erepo_dir):
         assert fd.read() == "file content"
 
 
-def test_open_not_cached(dvc, erepo_dir, monkeypatch):
+def test_open_not_cached(dvc):
+    metric_file = "metric.txt"
     metric_content = "0.6"
-    with monkeypatch.context() as m:
-        m.chdir(erepo_dir)
-        erepo_dir.dvc.run(
-            metrics_no_cache=["metric.txt"],
-            cmd=(
-                'python -c "{}"'.format(
-                    "open('{}', 'w').write('{}')".format(
-                        "metric.txt", metric_content
-                    )
-                )
-            ),
-        )
+    metric_code = "open('{}', 'w').write('{}')".format(
+        metric_file, metric_content
+    )
+    dvc.run(
+        metrics_no_cache=[metric_file],
+        cmd=('python -c "{}"'.format(metric_code)),
+    )
 
-    with api.open("metric.txt", repo=fspath(erepo_dir)) as fd:
+    with api.open(metric_file) as fd:
         assert fd.read() == metric_content
 
-    os.remove(fspath(erepo_dir / "metric.txt"))
+    os.remove(metric_file)
     with pytest.raises(FileMissingError):
-        api.read("metric.txt", repo=fspath(erepo_dir))
+        api.read(metric_file)
 
 
 def test_summon(tmp_dir, dvc, erepo_dir):
