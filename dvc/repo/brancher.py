@@ -1,6 +1,5 @@
 from funcy import group_by
 
-from dvc.ignore import CleanTree
 from dvc.scm.tree import WorkingTree
 
 
@@ -30,7 +29,7 @@ def brancher(  # noqa: E302
 
     scm = self.scm
 
-    self.tree = CleanTree(WorkingTree(self.root_dir))
+    self.tree = WorkingTree(self.root_dir)
     yield "working tree"
 
     if all_commits:
@@ -44,7 +43,7 @@ def brancher(  # noqa: E302
 
     try:
         for sha, names in group_by(scm.resolve_rev, revs).items():
-            self.tree = CleanTree(scm.get_tree(sha))
+            self.tree = scm.get_tree(sha)
             yield ", ".join(names)
     finally:
         self.tree = saved_tree

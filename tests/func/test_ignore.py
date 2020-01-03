@@ -4,7 +4,7 @@ import shutil
 import pytest
 
 from dvc.exceptions import DvcIgnoreInCollectedDirError
-from dvc.ignore import DvcIgnore, DvcIgnoreDirs, DvcIgnorePatterns, CleanTree
+from dvc.ignore import DvcIgnore, DvcIgnoreDirs, DvcIgnorePatterns
 from dvc.scm.tree import WorkingTree
 from dvc.utils import relpath
 from dvc.compat import fspath_py35, fspath
@@ -113,11 +113,10 @@ def test_ignore_on_branch(tmp_dir, scm, dvc):
     scm.checkout("master")
     assert _files_set(".", dvc.tree) == {"./foo", "./bar"}
 
-    tree = CleanTree(scm.get_tree("branch"))
-
-    assert _files_set(".", tree) == {
-        to_posixpath(os.path.join(tree.tree_root, DvcIgnore.DVCIGNORE_FILE)),
-        to_posixpath(os.path.join(tree.tree_root, "bar")),
+    dvc.tree = scm.get_tree("branch")
+    assert _files_set(".", dvc.tree) == {
+        to_posixpath(os.path.join(dvc.root_dir, DvcIgnore.DVCIGNORE_FILE)),
+        to_posixpath(os.path.join(dvc.root_dir, "bar")),
     }
 
 
