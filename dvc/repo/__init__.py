@@ -363,17 +363,6 @@ class Repo(object):
     def pipelines(self):
         return get_pipelines(self.graph)
 
-    @staticmethod
-    def _filter_out_dirs(dirs, outs, root_dir):
-        def filter_dirs(dname):
-            path = os.path.join(root_dir, dname)
-            for out in outs:
-                if path == os.path.normpath(out):
-                    return False
-            return True
-
-        return list(filter(filter_dirs, dirs))
-
     @cached_property
     def stages(self):
         """
@@ -388,7 +377,7 @@ class Repo(object):
         from dvc.stage import Stage
 
         stages = []
-        outs = []
+        outs = set()
 
         for root, dirs, files in self.tree.walk(self.root_dir):
             for fname in files:
@@ -396,12 +385,13 @@ class Repo(object):
                 if not Stage.is_valid_filename(path):
                     continue
                 stage = Stage.load(self, path)
-                for out in stage.outs:
-                    if out.scheme == "local":
-                        outs.append(out.fspath + out.sep)
                 stages.append(stage)
 
-            dirs[:] = self._filter_out_dirs(dirs, outs, root)
+                for out in stage.outs:
+                    if out.scheme == "local":
+                        outs.add(out.fspath)
+
+            dirs[:] = [d for d in dirs if os.path.join(root, d) not in outs]
 
         return stages
 
