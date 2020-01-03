@@ -1,15 +1,11 @@
 import os
 from errno import ENOENT
 
-import dvc.logger as logger
-from dvc.ignore import CleanTree
-from . import locked
+from dvc import logger
 from dvc.scm.base import FileNotInCommitError
-from dvc.scm.git import DIFF_A_REF
-from dvc.scm.git import DIFF_A_TREE
-from dvc.scm.git import DIFF_B_REF
-from dvc.scm.git import DIFF_B_TREE
+from dvc.scm.git import DIFF_A_REF, DIFF_B_REF, DIFF_A_TREE, DIFF_B_TREE
 from dvc.scm.git import DIFF_EQUAL
+from . import locked
 
 
 DIFF_TARGET = "target"
@@ -136,9 +132,9 @@ def _is_dir(path, a_outs, b_outs):
 
 
 def _get_diff_outs(self, diff_dct):
-    self.tree = CleanTree(diff_dct[DIFF_A_TREE])
+    self.tree = diff_dct[DIFF_A_TREE]
     a_outs = {str(out): out for st in self.stages for out in st.outs}
-    self.tree = CleanTree(diff_dct[DIFF_B_TREE])
+    self.tree = diff_dct[DIFF_B_TREE]
     b_outs = {str(out): out for st in self.stages for out in st.outs}
     outs_paths = set(a_outs.keys())
     outs_paths.update(b_outs.keys())

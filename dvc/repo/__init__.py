@@ -83,7 +83,7 @@ class Repo(object):
 
         self.scm = SCM(self.root_dir)
 
-        self.tree = CleanTree(WorkingTree(self.root_dir))
+        self.tree = WorkingTree(self.root_dir)
 
         self.tmp_dir = os.path.join(self.dvc_dir, "tmp")
         makedirs(self.tmp_dir, exist_ok=True)
@@ -120,7 +120,7 @@ class Repo(object):
 
     @tree.setter
     def tree(self, tree):
-        self._tree = tree
+        self._tree = tree if isinstance(tree, CleanTree) else CleanTree(tree)
         # Our graph cache is no longer valid, as it was based on the previous
         # tree.
         self._reset()
