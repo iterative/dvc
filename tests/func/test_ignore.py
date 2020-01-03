@@ -107,10 +107,9 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
 def test_ignore_on_branch(tmp_dir, scm, dvc):
     tmp_dir.scm_gen({"foo": "foo", "bar": "bar"}, commit="add files")
 
-    scm.checkout("branch", create_new=True)
-    tmp_dir.scm_gen(DvcIgnore.DVCIGNORE_FILE, "foo", commit="add ignore")
+    with tmp_dir.branch("branch", new=True):
+        tmp_dir.scm_gen(DvcIgnore.DVCIGNORE_FILE, "foo", commit="add ignore")
 
-    scm.checkout("master")
     assert _files_set(".", dvc.tree) == {"./foo", "./bar"}
 
     dvc.tree = scm.get_tree("branch")

@@ -63,10 +63,14 @@ def test_open(remote_url, tmp_dir, dvc):
 
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
 def test_open_external(remote_url, erepo_dir):
-    erepo_dir.scm.checkout("branch")
     _set_remote_url_and_commit(erepo_dir.dvc, remote_url)
-    erepo_dir.scm.checkout("master")
-    _set_remote_url_and_commit(erepo_dir.dvc, remote_url)
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("version", "master", commit="add version")
+
+        with erepo_dir.branch("branch", new="True"):
+            # NOTE: need file to be other size for Mac
+            erepo_dir.dvc_gen("version", "branchver", commit="add version")
 
     erepo_dir.dvc.push(all_branches=True)
 
@@ -78,7 +82,7 @@ def test_open_external(remote_url, erepo_dir):
     with api.open("version", repo=repo_url) as fd:
         assert fd.read() == "master"
 
-    assert api.read("version", repo=repo_url, rev="branch") == "branch"
+    assert api.read("version", repo=repo_url, rev="branch") == "branchver"
 
 
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
