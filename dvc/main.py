@@ -10,11 +10,12 @@ from dvc.exceptions import DvcParserError
 from dvc.exceptions import NotDvcRepoError
 from dvc.external_repo import clean_repos
 from dvc.logger import FOOTER
-
+from dvc.utils import format_link
 
 # Workaround for CPython bug. See [1] and [2] for more info.
 # [1] https://github.com/aws/aws-cli/blob/1.16.277/awscli/clidriver.py#L55
 # [2] https://bugs.python.org/issue29288
+
 "".encode("idna")
 
 
@@ -60,8 +61,8 @@ def main(argv=None):
         if isinstance(exc, OSError) and exc.errno == errno.EMFILE:
             logger.exception(
                 "too many open files, please visit "
-                "https://error.dvc.org/many-files to see how to handle this "
-                "problem",
+                "{} to see how to handle this "
+                "problem".format(format_link("https://error.dvc.org/many-files")),
                 extra={"tb_only": True},
             )
         else:
