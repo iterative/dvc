@@ -464,6 +464,10 @@ class RemoteLOCAL(RemoteBASE):
         info = self.checksum_to_path_info(checksum)
         return info.with_name(info.name + self.UNPACKED_DIR_SUFFIX)
 
+    def _remove_unpacked_dir(self, checksum):
+        path_info = self._get_unpacked_dir_path_info(checksum)
+        self.remove(path_info)
+
     def _path_info_changed(self, path_info):
         if self.exists(path_info) and self.state.get(path_info):
             return False
