@@ -77,7 +77,7 @@ def test_update_import_url(repo_dir, dvc_repo):
     assert filecmp.cmp(src, dst, shallow=False)
 
 
-def test_update_rev(tmp_dir, scm, dvc, erepo_dir, monkeypatch):
+def test_update_rev(tmp_dir, dvc, erepo_dir, monkeypatch):
     with monkeypatch.context() as m:
         m.chdir(fspath(erepo_dir))
         erepo_dir.scm.checkout("feature", create_new=True)
