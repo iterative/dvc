@@ -194,11 +194,7 @@ class RemoteS3(RemoteBASE):
         }
         paginator = self.s3.get_paginator(self.list_objects_api)
         for page in paginator.paginate(**kwargs):
-            contents = page.get("Contents", None)
-            if not contents:
-                continue
-            for item in contents:
-                yield item
+            yield from page.get("Contents", ())
 
     def _list_paths(self, path_info, max_items=None):
         return (

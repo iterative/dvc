@@ -128,8 +128,7 @@ class GitTree(BaseTree):
             yield os.path.normpath(tree.abspath), dirs, nondirs
 
         for i in dirs:
-            for x in self._walk(tree[i], topdown=True):
-                yield x
+            yield from self._walk(tree[i], topdown=topdown)
 
         if not topdown:
             yield os.path.normpath(tree.abspath), dirs, nondirs
@@ -146,5 +145,4 @@ class GitTree(BaseTree):
         if tree is None:
             raise IOError(errno.ENOENT, "No such file")
 
-        for x in self._walk(tree, topdown):
-            yield x
+        yield from self._walk(tree, topdown=topdown)

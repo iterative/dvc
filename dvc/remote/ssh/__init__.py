@@ -260,8 +260,7 @@ class RemoteSSH(RemoteBASE):
     def list_cache_paths(self):
         with self.ssh(self.path_info) as ssh:
             # If we simply return an iterator then with above closes instantly
-            for path in ssh.walk_files(self.path_info.path):
-                yield path
+            yield from ssh.walk_files(self.path_info.path)
 
     def walk_files(self, path_info):
         with self.ssh(path_info) as ssh:
