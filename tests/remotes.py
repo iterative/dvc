@@ -54,13 +54,6 @@ def _should_test_aws():
     return False
 
 
-def _should_test_gdrive():
-    if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA):
-        return True
-
-    return False
-
-
 def _should_test_gcp():
     do_test = env2bool("DVC_TEST_GCP", undefined=None)
     if do_test is not None:
@@ -193,10 +186,6 @@ def get_aws_url():
     return "s3://" + get_aws_storagepath()
 
 
-def get_gdrive_url():
-    return "gdrive://root/" + str(uuid.uuid4())
-
-
 def get_gcp_storagepath():
     return TEST_GCP_REPO_BUCKET + "/" + str(uuid.uuid4())
 
@@ -266,6 +255,16 @@ class GCP:
         bucket = client.get_bucket(remote.path_info.bucket)
         for key, body in objects.items():
             bucket.blob((remote.path_info / key).path).upload_from_string(body)
+
+
+class GDrive:
+    @staticmethod
+    def should_test():
+        return os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA) is not None
+
+    @staticmethod
+    def get_url():
+        return "gdrive://root/" + str(uuid.uuid4())
 
 
 class Azure:
