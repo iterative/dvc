@@ -34,11 +34,11 @@ from dvc.utils.stage import dump_stage_file
 from dvc.utils.stage import load_stage_file
 from tests.basic_env import TestDvc
 from tests.remotes import (
-    _should_test_aws,
     _should_test_gcp,
     _should_test_hdfs,
     _should_test_ssh,
     get_ssh_url,
+    S3,
     TEST_AWS_REPO_BUCKET,
     TEST_GCP_REPO_BUCKET,
 )
@@ -954,7 +954,7 @@ class TestReproExternalBase(TestDvc):
 @pytest.mark.skipif(os.name == "nt", reason="temporarily disabled on windows")
 class TestReproExternalS3(TestReproExternalBase):
     def should_test(self):
-        return _should_test_aws()
+        return S3.should_test()
 
     @property
     def scheme(self):
