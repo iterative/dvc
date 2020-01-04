@@ -135,7 +135,7 @@ class MissingDataSource(DvcException):
 class UpdateWithRevNotPossibleError(DvcException):
     def __init__(self):
         super(UpdateWithRevNotPossibleError, self).__init__(
-            "Revision option (--rev) is not a feature of non-Git sources."
+            "Revision option (`--rev`) is not a feature of non-Git sources."
         )
 
 
