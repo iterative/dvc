@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from dvc.exceptions import DvcException
+from dvc.exceptions import UpdateWithRevNotPossibleError
 
 
 class DependencyDoesNotExistError(DvcException):
@@ -30,4 +31,5 @@ class DependencyBase(object):
     IsStageFileError = DependencyIsStageFileError
 
     def update(self, rev=None):
-        pass
+        if rev:
+            raise UpdateWithRevNotPossibleError()

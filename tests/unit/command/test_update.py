@@ -2,7 +2,7 @@ import logging
 
 from dvc.cli import parse_args
 from dvc.command.update import CmdUpdate
-from dvc.stage import UpdateWithRevNotPossibleError
+from dvc.exceptions import UpdateWithRevNotPossibleError
 
 
 def test_update(dvc_repo, mocker):

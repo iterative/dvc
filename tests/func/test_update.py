@@ -3,7 +3,7 @@ import os
 import shutil
 import pytest
 
-from dvc.stage import UpdateWithRevNotPossibleError
+from dvc.exceptions import UpdateWithRevNotPossibleError
 from dvc.external_repo import clean_repos
 from dvc.repo import Repo
 from dvc.utils.compat import fspath
