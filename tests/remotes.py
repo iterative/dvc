@@ -84,16 +84,6 @@ def _should_test_gcp():
     return True
 
 
-def _should_test_azure():
-    do_test = env2bool("DVC_TEST_AZURE", undefined=None)
-    if do_test is not None:
-        return do_test
-
-    return os.getenv("AZURE_STORAGE_CONTAINER_NAME") and os.getenv(
-        "AZURE_STORAGE_CONNECTION_STRING"
-    )
-
-
 def _should_test_oss():
     do_test = env2bool("DVC_TEST_OSS", undefined=None)
     if do_test is not None:
@@ -205,12 +195,6 @@ def get_gcp_url():
     return "gs://" + get_gcp_storagepath()
 
 
-def get_azure_url():
-    container_name = os.getenv("AZURE_STORAGE_CONTAINER_NAME")
-    assert container_name is not None
-    return "azure://{}/{}".format(container_name, str(uuid.uuid4()))
-
-
 def get_oss_storagepath():
     return "{}/{}".format(TEST_OSS_REPO_BUCKET, (uuid.uuid4()))
 
@@ -271,8 +255,21 @@ class GCP:
 
 
 class Azure:
-    should_test = staticmethod(_should_test_azure)
-    get_url = staticmethod(get_azure_url)
+    @staticmethod
+    def should_test():
+        do_test = env2bool("DVC_TEST_AZURE", undefined=None)
+        if do_test is not None:
+            return do_test
+
+        return os.getenv("AZURE_STORAGE_CONTAINER_NAME") and os.getenv(
+            "AZURE_STORAGE_CONNECTION_STRING"
+        )
+
+    @staticmethod
+    def get_url():
+        container_name = os.getenv("AZURE_STORAGE_CONTAINER_NAME")
+        assert container_name is not None
+        return "azure://{}/{}".format(container_name, str(uuid.uuid4()))
 
 
 class OSS:

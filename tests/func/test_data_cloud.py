@@ -32,12 +32,12 @@ from tests.utils import spy
 
 from tests.remotes import (
     _should_test_aws,
-    _should_test_azure,
     _should_test_gcp,
     _should_test_gdrive,
     _should_test_hdfs,
     _should_test_oss,
     _should_test_ssh,
+    Azure,
     TEST_CONFIG,
     TEST_SECTION,
     TEST_GCP_CREDS_FILE,
@@ -45,7 +45,6 @@ from tests.remotes import (
     TEST_GDRIVE_CLIENT_SECRET,
     TEST_REMOTE,
     get_aws_url,
-    get_azure_url,
     get_gcp_url,
     get_gdrive_url,
     get_hdfs_url,
@@ -264,10 +263,10 @@ class TestRemoteGS(TestDataCloudBase):
 
 class TestRemoteAZURE(TestDataCloudBase):
     def _should_test(self):
-        return _should_test_azure()
+        return Azure.should_test()
 
     def _get_url(self):
-        return get_azure_url()
+        return Azure.get_url()
 
     def _get_cloud_class(self):
         return RemoteAZURE
@@ -535,10 +534,10 @@ class TestRemoteGSCLI(TestDataCloudCLIBase):
 
 class TestRemoteAZURECLI(TestDataCloudCLIBase):
     def _should_test(self):
-        return _should_test_azure()
+        return Azure.should_test()
 
     def _test(self):
-        url = get_azure_url()
+        url = Azure.get_url()
 
         self.main(["remote", "add", TEST_REMOTE, url])
 
