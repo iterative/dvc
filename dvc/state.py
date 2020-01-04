@@ -1,20 +1,17 @@
 """Manages state database used for checksum caching."""
-from __future__ import unicode_literals
 
 import logging
 import os
 import re
 import sqlite3
+from urllib.parse import urlunparse, urlencode
 
 from dvc.config import Config
 from dvc.exceptions import DvcException
 from dvc.utils import current_timestamp
 from dvc.utils import relpath
 from dvc.utils import to_chunks
-from dvc.utils.compat import fspath_py35
-from dvc.utils.compat import is_py2
-from dvc.utils.compat import urlencode
-from dvc.utils.compat import urlunparse
+from dvc.compat import fspath_py35
 from dvc.utils.fs import get_inode
 from dvc.utils.fs import get_mtime_and_size
 from dvc.utils.fs import remove
@@ -29,7 +26,7 @@ class StateVersionTooNewError(DvcException):
     """Thrown when dvc version is older than the state database version."""
 
     def __init__(self, dvc_version, expected, actual):
-        super(StateVersionTooNewError, self).__init__(
+        super().__init__(
             "you are using an old version '{dvc_version}' of dvc that is "
             "using state file version '{expected}' which is not compatible "
             "with the state file version '{actual}' that is used in this "
@@ -378,7 +375,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         assert os.path.exists(fspath_py35(path_info))
 
         actual_mtime, actual_size = get_mtime_and_size(
-            path_info, self.repo.dvcignore
+            path_info, self.repo.tree
         )
         actual_inode = get_inode(path_info)
 
@@ -410,9 +407,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         if not os.path.exists(path):
             return None
 
-        actual_mtime, actual_size = get_mtime_and_size(
-            path, self.repo.dvcignore
-        )
+        actual_mtime, actual_size = get_mtime_and_size(path, self.repo.tree)
         actual_inode = get_inode(path)
 
         existing_record = self.get_state_record_for_inode(actual_inode)
@@ -434,14 +429,13 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             path_info (dict): path info to add to the list of links.
         """
         assert path_info.scheme == "local"
-        path = fspath_py35(path_info)
 
-        if not os.path.exists(path):
+        if not os.path.exists(fspath_py35(path_info)):
             return
 
-        mtime, _ = get_mtime_and_size(path, self.repo.dvcignore)
-        inode = get_inode(path)
-        relative_path = relpath(path, self.root_dir)
+        mtime, _ = get_mtime_and_size(path_info, self.repo.tree)
+        inode = get_inode(path_info)
+        relative_path = relpath(path_info, self.root_dir)
 
         cmd = "REPLACE INTO {}(path, inode, mtime) " "VALUES (?, ?, ?)".format(
             self.LINK_STATE_TABLE
@@ -469,7 +463,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
                 continue
 
             actual_inode = get_inode(path)
-            actual_mtime, _ = get_mtime_and_size(path, self.repo.dvcignore)
+            actual_mtime, _ = get_mtime_and_size(path, self.repo.tree)
 
             if inode == actual_inode and mtime == actual_mtime:
                 logger.debug("Removing '{}' as unused link.".format(path))
@@ -488,7 +482,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
 def _connect_sqlite(filename, options):
     # Connect by URI was added in Python 3.4 and sqlite 3.7.7,
     # we ignore options, which should be fine unless repo is on old NFS/CIFS
-    if is_py2 or sqlite3.sqlite_version_info < (3, 7, 7):
+    if sqlite3.sqlite_version_info < (3, 7, 7):
         return sqlite3.connect(filename)
 
     uri = _build_sqlite_uri(filename, options)

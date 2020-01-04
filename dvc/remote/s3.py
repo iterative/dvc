@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 
 import logging
 import os
@@ -25,7 +24,7 @@ class RemoteS3(RemoteBASE):
     PARAM_CHECKSUM = "etag"
 
     def __init__(self, repo, config):
-        super(RemoteS3, self).__init__(repo, config)
+        super().__init__(repo, config)
 
         url = config.get(Config.SECTION_REMOTE_URL, "s3://")
         self.path_info = self.path_cls(url)
@@ -88,8 +87,8 @@ class RemoteS3(RemoteBASE):
             obj = s3.head_object(Bucket=bucket, Key=path, *args, **kwargs)
         except Exception as exc:
             raise DvcException(
-                "s3://{}/{} does not exist".format(bucket, path), exc
-            )
+                "s3://{}/{} does not exist".format(bucket, path)
+            ) from exc
         return obj
 
     @classmethod
@@ -195,11 +194,7 @@ class RemoteS3(RemoteBASE):
         }
         paginator = self.s3.get_paginator(self.list_objects_api)
         for page in paginator.paginate(**kwargs):
-            contents = page.get("Contents", None)
-            if not contents:
-                continue
-            for item in contents:
-                yield item
+            yield from page.get("Contents", ())
 
     def _list_paths(self, path_info, max_items=None):
         return (

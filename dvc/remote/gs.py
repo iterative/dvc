@@ -1,5 +1,3 @@
-from __future__ import unicode_literals, division
-
 import logging
 from datetime import timedelta
 from functools import wraps
@@ -15,7 +13,6 @@ from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.remote.base import RemoteBASE
 from dvc.scheme import Schemes
-from dvc.utils.compat import FileNotFoundError  # skipcq: PYL-W0622
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +73,7 @@ class RemoteGS(RemoteBASE):
     PARAM_CHECKSUM = "md5"
 
     def __init__(self, repo, config):
-        super(RemoteGS, self).__init__(repo, config)
+        super().__init__(repo, config)
 
         url = config.get(Config.SECTION_REMOTE_URL, "gs:///")
         self.path_info = self.path_cls(url)

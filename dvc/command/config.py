@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import argparse
 import logging
 
@@ -13,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class CmdConfig(CmdBaseNoRepo):
     def __init__(self, args):
-        super(CmdConfig, self).__init__(args)
+        super().__init__(args)
 
         self.config = Config(validate=False)
 

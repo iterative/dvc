@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 
 import json
 import logging
@@ -16,7 +15,7 @@ from tests.basic_env import TestDvcGit
 
 class TestMetricsBase(TestDvcGit):
     def setUp(self):
-        super(TestMetricsBase, self).setUp()
+        super().setUp()
         self.dvc.scm.commit("init")
 
         branches = ["foo", "bar", "baz"]
@@ -81,6 +80,25 @@ class TestMetricsBase(TestDvcGit):
             self.dvc.scm.commit("metric")
 
         self.dvc.scm.checkout("master")
+
+
+def test_show_dirty(tmp_dir, scm, dvc):
+    tmp_dir.gen("metric", "master")
+    dvc.run(metrics_no_cache=["metric"], overwrite=True)
+    tmp_dir.scm_add(["metric", "metric.dvc"], commit="add metric")
+
+    tmp_dir.gen("metric", "dirty")
+
+    assert dvc.metrics.show(["metric"]) == {"": {"metric": "dirty"}}
+
+    assert dvc.metrics.show(["metric"], all_branches=True) == {
+        "working tree": {"metric": "dirty"},
+        "master": {"metric": "master"},
+    }
+
+    assert dvc.metrics.show(["metric"], all_tags=True) == {
+        "working tree": {"metric": "dirty"}
+    }
 
 
 class TestMetrics(TestMetricsBase):
@@ -368,7 +386,7 @@ class TestMetrics(TestMetricsBase):
 
 class TestMetricsRecursive(TestDvcGit):
     def setUp(self):
-        super(TestMetricsRecursive, self).setUp()
+        super().setUp()
         self.dvc.scm.commit("init")
 
         self.dvc.scm.checkout("nested", create_new=True)
@@ -708,7 +726,6 @@ class TestCachedMetrics(TestDvcGit):
                 "master": {"metrics.json": ["master"]},
                 "one": {"metrics.json": ["one"]},
                 "two": {"metrics.json": ["two"]},
-                "working tree": {"metrics.json": ["two"]},
             },
         )
 
@@ -722,7 +739,6 @@ class TestCachedMetrics(TestDvcGit):
                 "master": {"metrics.json": ["master"]},
                 "one": {"metrics.json": ["one"]},
                 "two": {"metrics.json": ["two"]},
-                "working tree": {"metrics.json": ["two"]},
             },
         )
 
@@ -747,7 +763,7 @@ class TestMetricsType(TestDvcGit):
     xpaths = [None, None, "branch", "0,0", "0,branch", "0,0", "0,branch"]
 
     def setUp(self):
-        super(TestMetricsType, self).setUp()
+        super().setUp()
         self.dvc.scm.commit("init")
 
         for branch in self.branches:

@@ -1,5 +1,4 @@
 """Helpers for other modules."""
-from __future__ import unicode_literals
 
 import hashlib
 import json
@@ -9,20 +8,14 @@ import os
 import re
 import sys
 import time
+import io
 
 import colorama
 import nanotime
 from ruamel.yaml import YAML
 from shortuuid import uuid
 
-from dvc.utils.compat import builtin_str
-from dvc.utils.compat import cast_bytes_py2
-from dvc.utils.compat import fspath
-from dvc.utils.compat import fspath_py35
-from dvc.utils.compat import makedirs as _makedirs
-from dvc.utils.compat import open
-from dvc.utils.compat import str
-from dvc.utils.compat import StringIO
+from dvc.compat import fspath, fspath_py35
 
 
 logger = logging.getLogger(__name__)
@@ -50,7 +43,9 @@ def file_md5(fname):
         no_progress_bar = True
         if size >= LARGE_FILE_SIZE:
             no_progress_bar = False
-            msg = "Computing md5 for a large file {}. This is only done once."
+            msg = (
+                "Computing md5 for a large file '{}'. This is only done once."
+            )
             logger.info(msg.format(relpath(fname)))
         name = relpath(fname)
 
@@ -91,16 +86,14 @@ def dict_filter(d, exclude=()):
     Exclude specified keys from a nested dict
     """
 
-    def fix_key(k):
-        return str(k) if isinstance(k, builtin_str) else k
-
     if isinstance(d, list):
         return [dict_filter(e, exclude) for e in d]
 
     if isinstance(d, dict):
-        items = ((fix_key(k), v) for k, v in d.items())
         return {
-            k: dict_filter(v, exclude) for k, v in items if k not in exclude
+            k: dict_filter(v, exclude)
+            for k, v in d.items()
+            if k not in exclude
         }
 
     return d
@@ -146,7 +139,7 @@ def makedirs(path, exist_ok=False, mode=None):
     path = fspath_py35(path)
 
     if mode is None:
-        _makedirs(path, exist_ok=exist_ok)
+        os.makedirs(path, exist_ok=exist_ok)
         return
 
     # utilize umask to set proper permissions since Python 3.7 the `mode`
@@ -154,7 +147,7 @@ def makedirs(path, exist_ok=False, mode=None):
     # newly-created intermediate-level directories.
     umask = os.umask(0o777 - mode)
     try:
-        _makedirs(path, exist_ok=exist_ok)
+        os.makedirs(path, exist_ok=exist_ok)
     finally:
         os.umask(umask)
 
@@ -208,8 +201,7 @@ def fix_env(env=None):
         lp_key = "LD_LIBRARY_PATH"
         lp_orig = env.get(lp_key + "_ORIG", None)
         if lp_orig is not None:
-            # NOTE: py2 doesn't like unicode strings in environ
-            env[cast_bytes_py2(lp_key)] = cast_bytes_py2(lp_orig)
+            env[lp_key] = lp_orig
         else:
             env.pop(lp_key, None)
 
@@ -267,7 +259,7 @@ def fix_env(env=None):
 
 def tmp_fname(fname):
     """ Temporary name for a partial download """
-    return fspath(fname) + "." + str(uuid()) + ".tmp"
+    return fspath(fname) + "." + uuid() + ".tmp"
 
 
 def current_timestamp():
@@ -275,36 +267,19 @@ def current_timestamp():
 
 
 def from_yaml_string(s):
-    return YAML().load(StringIO(s))
+    return YAML().load(io.StringIO(s))
 
 
 def to_yaml_string(data):
-    stream = StringIO()
+    stream = io.StringIO()
     yaml = YAML()
     yaml.default_flow_style = False
     yaml.dump(data, stream)
     return stream.getvalue()
 
 
-def dvc_walk(top, dvcignore, topdown=True, onerror=None, followlinks=False):
-    """
-    Proxy for `os.walk` directory tree generator.
-    Utilizes DvcIgnoreFilter functionality.
-    """
-    top = fspath_py35(top)
-
-    for root, dirs, files in os.walk(
-        top, topdown=topdown, onerror=onerror, followlinks=followlinks
-    ):
-
-        if dvcignore:
-            dirs[:], files[:] = dvcignore(root, dirs, files)
-
-        yield root, dirs, files
-
-
-def walk_files(directory, dvcignore):
-    for root, _, files in dvc_walk(directory, dvcignore):
+def walk_files(directory):
+    for root, _, files in os.walk(fspath(directory)):
         for f in files:
             yield os.path.join(root, f)
 
@@ -412,7 +387,7 @@ def env2bool(var, undefined=False):
 
 
 def resolve_output(inp, out):
-    from dvc.utils.compat import urlparse
+    from urllib.parse import urlparse
 
     name = os.path.basename(urlparse(inp).path)
     if not out:
@@ -423,8 +398,6 @@ def resolve_output(inp, out):
 
 
 def format_link(link):
-    import colorama
-
     return "<{blue}{link}{nc}>".format(
         blue=colorama.Fore.CYAN, link=link, nc=colorama.Fore.RESET
     )

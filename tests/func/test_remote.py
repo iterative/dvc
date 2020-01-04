@@ -11,7 +11,7 @@ from dvc.main import main
 from dvc.path_info import PathInfo
 from dvc.remote import RemoteLOCAL, RemoteConfig
 from dvc.remote.base import RemoteBASE
-from dvc.utils.compat import fspath
+from dvc.compat import fspath
 from tests.basic_env import TestDvc
 from tests.remotes import get_local_url, get_local_storagepath
 

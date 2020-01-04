@@ -1,14 +1,8 @@
-from __future__ import unicode_literals
-
 import argparse
 import logging
 
-from dvc.command.base import append_doc_link
-from dvc.command.base import CmdBase
-from dvc.command.base import fix_subparsers
+from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
-from dvc.utils import relpath
-from dvc.utils.compat import str
 
 
 logger = logging.getLogger(__name__)
@@ -21,23 +15,21 @@ class CmdPipelineShow(CmdBase):
 
         stage = Stage.load(self.repo, target)
         G = self.repo.graph
-        stages = networkx.get_node_attributes(G, "stage")
-        node = relpath(stage.path, self.repo.root_dir)
-        nodes = networkx.dfs_postorder_nodes(G, node)
+        stages = networkx.dfs_postorder_nodes(G, stage)
 
         if locked:
-            nodes = [n for n in nodes if stages[n].locked]
+            stages = [s for s in stages if s.locked]
 
-        for n in nodes:
+        for stage in stages:
             if commands:
-                if stages[n].cmd is None:
+                if stage.cmd is None:
                     continue
-                logger.info(stages[n].cmd)
+                logger.info(stage.cmd)
             elif outs:
-                for out in stages[n].outs:
+                for out in stage.outs:
                     logger.info(str(out))
             else:
-                logger.info(n)
+                logger.info(stage.path_in_repo)
 
     def __build_graph(self, target, commands, outs):
         import networkx
@@ -45,14 +37,10 @@ class CmdPipelineShow(CmdBase):
         from dvc.repo.graph import get_pipeline
 
         stage = Stage.load(self.repo, target)
-        node = relpath(stage.path, self.repo.root_dir)
-
-        G = get_pipeline(self.repo.pipelines, node)
-        stages = networkx.get_node_attributes(G, "stage")
+        G = get_pipeline(self.repo.pipelines, stage)
 
         nodes = []
-        for n in G:
-            stage = stages[n]
+        for stage in G:
             if commands:
                 if stage.cmd is None:
                     continue
@@ -64,9 +52,7 @@ class CmdPipelineShow(CmdBase):
                 nodes.append(stage.relpath)
 
         edges = []
-        for e in G.edges():
-            from_stage = stages[e[0]]
-            to_stage = stages[e[1]]
+        for from_stage, to_stage in G.edges():
             if commands:
                 if to_stage.cmd is None:
                     continue
@@ -115,7 +101,7 @@ class CmdPipelineShow(CmdBase):
         tree.show()
 
     def __write_dot(self, target, commands, outs):
-        from dvc.utils.compat import StringIO
+        import io
         import networkx
         from networkx.drawing.nx_pydot import write_dot
 
@@ -125,7 +111,7 @@ class CmdPipelineShow(CmdBase):
         simple_g = networkx.DiGraph()
         simple_g.add_edges_from(edges)
 
-        dot_file = StringIO()
+        dot_file = io.StringIO()
         write_dot(simple_g, dot_file)
         logger.info(dot_file.getvalue())
 
@@ -163,14 +149,11 @@ class CmdPipelineShow(CmdBase):
 
 class CmdPipelineList(CmdBase):
     def run(self):
-        import networkx
-
         pipelines = self.repo.pipelines
-        for p in pipelines:
-            stages = networkx.get_node_attributes(p, "stage")
-            for stage in stages:
-                logger.info(stage)
-            if len(stages) != 0:
+        for pipeline in pipelines:
+            for stage in pipeline:
+                logger.info(stage.relpath)
+            if len(pipeline) != 0:
                 logger.info("=" * 80)
         logger.info("{} pipelines total".format(len(pipelines)))
 

@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import argparse
 import logging
 
@@ -20,7 +18,7 @@ class CmdRemove(CmdBase):
         if self.args.force:
             return False
 
-        msg = "Are you sure you want to remove {} with its outputs?".format(
+        msg = "Are you sure you want to remove '{}' with its outputs?".format(
             target
         )
 
@@ -38,7 +36,7 @@ class CmdRemove(CmdBase):
                 outs_only = self._is_outs_only(target)
                 self.repo.remove(target, outs_only=outs_only)
             except DvcException:
-                logger.exception("failed to remove {}".format(target))
+                logger.exception("failed to remove '{}'".format(target))
                 return 1
         return 0
 

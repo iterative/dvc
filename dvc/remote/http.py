@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import logging
 import threading
 
@@ -11,7 +9,6 @@ from dvc.exceptions import DvcException, HTTPError
 from dvc.progress import Tqdm
 from dvc.remote.base import RemoteBASE
 from dvc.scheme import Schemes
-from dvc.utils.compat import open
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +22,7 @@ class RemoteHTTP(RemoteBASE):
     PARAM_CHECKSUM = "etag"
 
     def __init__(self, repo, config):
-        super(RemoteHTTP, self).__init__(repo, config)
+        super().__init__(repo, config)
 
         url = config.get(Config.SECTION_REMOTE_URL)
         self.path_info = self.path_cls(url) if url else None

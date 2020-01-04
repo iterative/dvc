@@ -1,6 +1,3 @@
-from __future__ import unicode_literals
-
-
 def check_acyclic(graph):
     import networkx as nx
     from dvc.exceptions import CyclicGraphError
@@ -28,9 +25,3 @@ def get_pipelines(G):
     import networkx as nx
 
     return [G.subgraph(c).copy() for c in nx.weakly_connected_components(G)]
-
-
-def get_stages(G):
-    import networkx
-
-    return list(networkx.get_node_attributes(G, "stage").values())

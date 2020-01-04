@@ -42,15 +42,16 @@ from global repo template to creating everything inplace, which:
     - allows using telling filenames, e.g. "git_tracked_file" instead of "foo"
     - does not create unnecessary files
 """
-from __future__ import unicode_literals
 
 import os
-import pytest
+import pathlib
+from contextlib import contextmanager
 
+import pytest
 from funcy.py3 import lmap, retry
 
 from dvc.utils import makedirs
-from dvc.utils.compat import basestring, pathlib, fspath, fspath_py35, bytes
+from dvc.compat import fspath, fspath_py35
 
 
 __all__ = ["tmp_dir", "scm", "dvc", "repo_template", "run_copy", "erepo_dir"]
@@ -87,8 +88,9 @@ class TmpDir(pathlib.Path):
                 'Did you forget to use "{name}" fixture?'.format(name=name)
             )
 
+    # Bootstrapping methods
     def gen(self, struct, text=""):
-        if isinstance(struct, (basestring, pathlib.PurePath)):
+        if isinstance(struct, (str, bytes, pathlib.PurePath)):
             struct = {struct: text}
 
         self._gen(struct)
@@ -137,13 +139,33 @@ class TmpDir(pathlib.Path):
         if commit:
             self.scm.commit(commit)
 
+    # contexts
+    @contextmanager
+    def chdir(self):
+        old = os.getcwd()
+        try:
+            os.chdir(fspath_py35(self))
+            yield
+        finally:
+            os.chdir(old)
+
+    @contextmanager
+    def branch(self, name, new=False):
+        self._require("scm")
+        old = self.scm.active_branch()
+        try:
+            self.scm.checkout(name, create_new=new)
+            yield
+        finally:
+            self.scm.checkout(old)
+
     # Introspection methods
     def list(self):
         return [p.name for p in self.iterdir()]
 
 
 def _coerce_filenames(filenames):
-    if isinstance(filenames, (basestring, pathlib.PurePath)):
+    if isinstance(filenames, (str, bytes, pathlib.PurePath)):
         filenames = [filenames]
     return lmap(fspath, filenames)
 
@@ -250,27 +272,16 @@ def erepo_dir(tmp_path_factory, monkeypatch):
     path = TmpDir(fspath_py35(tmp_path_factory.mktemp("erepo")))
 
     # Chdir for git and dvc to work locally
-    with monkeypatch.context() as m:
-        m.chdir(fspath_py35(path))
-
+    with path.chdir():
         _git_init()
         path.dvc = Repo.init()
         path.scm = path.dvc.scm
-        path.dvc_gen(REPO_TEMPLATE, commit="init repo")
+        path.scm.commit("init dvc")
 
         rconfig = RemoteConfig(path.dvc.config)
         rconfig.add("upstream", path.dvc.cache.local.cache_dir, default=True)
         path.scm_add([path.dvc.config.config_file], commit="add remote")
 
-        path.dvc_gen("version", "master")
-        path.scm_add([".gitignore", "version.dvc"], commit="master")
-
-        path.scm.checkout("branch", create_new=True)
-        (path / "version").unlink()  # For mac ???
-        path.dvc_gen("version", "branch")
-        path.scm_add([".gitignore", "version.dvc"], commit="branch")
-
-        path.scm.checkout("master")
         path.dvc.close()
 
     return path

@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import filecmp
 import logging
 import os
@@ -25,7 +23,7 @@ from dvc.system import System
 from dvc.utils import file_md5
 from dvc.utils import LARGE_DIR_SIZE
 from dvc.utils import relpath
-from dvc.utils.compat import range, fspath
+from dvc.compat import fspath
 from dvc.utils.fs import path_isin
 from dvc.utils.stage import load_stage_file
 from tests.basic_env import TestDvc
@@ -92,7 +90,7 @@ class TestAddCmdDirectoryRecursive(TestDvc):
             "You are adding a large directory 'large-dir' recursively,"
             " consider tracking it as a whole instead.\n"
             "{purple}HINT:{nc} Remove the generated DVC-file and then"
-            " run {cyan}dvc add large-dir{nc}".format(
+            " run `{cyan}dvc add large-dir{nc}`".format(
                 purple=colorama.Fore.MAGENTA,
                 cyan=colorama.Fore.CYAN,
                 nc=colorama.Style.RESET_ALL,

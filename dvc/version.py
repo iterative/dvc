@@ -7,7 +7,7 @@ import os
 import subprocess
 
 
-_BASE_VERSION = "0.77.3"
+_BASE_VERSION = "0.80.0"
 
 
 def _generate_version(base_version):
@@ -49,7 +49,7 @@ def _is_release(dir_path, base_version):
             ["git", "describe", "--tags", "--exact-match"],
             cwd=dir_path,
             stderr=subprocess.STDOUT,
-        ).decode("utf-8")
+        )
         tag = output.strip()
         return tag == base_version
     except subprocess.CalledProcessError:

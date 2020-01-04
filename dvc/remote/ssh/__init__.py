@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import errno
 import getpass
 import io
@@ -9,6 +7,7 @@ import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing, contextmanager
+from urllib.parse import urlparse
 
 from funcy import memoize, wrap_with
 
@@ -19,8 +18,6 @@ from dvc.remote.base import RemoteBASE
 from dvc.remote.pool import get_connection
 from dvc.scheme import Schemes
 from dvc.utils import to_chunks
-from dvc.utils.compat import StringIO
-from dvc.utils.compat import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +49,7 @@ class RemoteSSH(RemoteBASE):
     DEFAULT_CACHE_TYPES = ["copy"]
 
     def __init__(self, repo, config):
-        super(RemoteSSH, self).__init__(repo, config)
+        super().__init__(repo, config)
         url = config.get(Config.SECTION_REMOTE_URL)
         if url:
             parsed = urlparse(url)
@@ -106,7 +103,7 @@ class RemoteSSH(RemoteBASE):
             ssh_config = paramiko.SSHConfig()
             with open(user_config_file) as f:
                 # For whatever reason parsing directly from f is unreliable
-                f_copy = StringIO(f.read())
+                f_copy = io.StringIO(f.read())
                 ssh_config.parse(f_copy)
             user_ssh_config = ssh_config.lookup(hostname)
         return user_ssh_config
@@ -263,8 +260,7 @@ class RemoteSSH(RemoteBASE):
     def list_cache_paths(self):
         with self.ssh(self.path_info) as ssh:
             # If we simply return an iterator then with above closes instantly
-            for path in ssh.walk_files(self.path_info.path):
-                yield path
+            yield from ssh.walk_files(self.path_info.path)
 
     def walk_files(self, path_info):
         with self.ssh(path_info) as ssh:

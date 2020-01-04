@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import errno
 import logging
 import os
@@ -13,6 +11,7 @@ from dvc.config import Config
 from dvc.exceptions import DownloadError
 from dvc.exceptions import DvcException
 from dvc.exceptions import UploadError
+from dvc.ignore import CleanTree
 from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
 from dvc.remote.base import RemoteBASE
@@ -21,6 +20,7 @@ from dvc.remote.base import STATUS_MAP
 from dvc.remote.base import STATUS_MISSING
 from dvc.remote.base import STATUS_NEW
 from dvc.scheme import Schemes
+from dvc.scm.tree import WorkingTree
 from dvc.system import System
 from dvc.utils import copyfile
 from dvc.utils import file_md5
@@ -28,9 +28,7 @@ from dvc.utils import makedirs
 from dvc.utils import relpath
 from dvc.utils import tmp_fname
 from dvc.utils import walk_files
-from dvc.utils.compat import fspath_py35
-from dvc.utils.compat import open
-from dvc.utils.compat import str
+from dvc.compat import fspath_py35
 from dvc.utils.fs import move
 from dvc.utils.fs import remove
 
@@ -50,7 +48,7 @@ class RemoteLOCAL(RemoteBASE):
     SHARED_MODE_MAP = {None: (0o644, 0o755), "group": (0o664, 0o775)}
 
     def __init__(self, repo, config):
-        super(RemoteLOCAL, self).__init__(repo, config)
+        super().__init__(repo, config)
         self.protected = config.get(Config.SECTION_CACHE_PROTECTED, False)
 
         shared = config.get(Config.SECTION_CACHE_SHARED)
@@ -83,7 +81,7 @@ class RemoteLOCAL(RemoteBASE):
 
     def list_cache_paths(self):
         assert self.path_info is not None
-        return walk_files(self.path_info, None)
+        return walk_files(self.path_info)
 
     def get(self, md5):
         if not md5:
@@ -138,7 +136,11 @@ class RemoteLOCAL(RemoteBASE):
         return os.path.getsize(fspath_py35(path_info))
 
     def walk_files(self, path_info):
-        for fname in walk_files(path_info, self.repo.dvcignore):
+        assert isinstance(self.repo.tree, CleanTree) and isinstance(
+            self.repo.tree.tree, WorkingTree
+        )
+
+        for fname in self.repo.tree.walk_files(path_info):
             yield PathInfo(fname)
 
     def get_file_checksum(self, path_info):
@@ -407,7 +409,7 @@ class RemoteLOCAL(RemoteBASE):
     def _unprotect_file(path):
         if System.is_symlink(path) or System.is_hardlink(path):
             logger.debug("Unprotecting '{}'".format(path))
-            tmp = os.path.join(os.path.dirname(path), "." + str(uuid()))
+            tmp = os.path.join(os.path.dirname(path), "." + uuid())
 
             # The operations order is important here - if some application
             # would access the file during the process of copyfile then it
@@ -427,7 +429,9 @@ class RemoteLOCAL(RemoteBASE):
         os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
 
     def _unprotect_dir(self, path):
-        for fname in walk_files(path, self.repo.dvcignore):
+        assert isinstance(self.repo.tree, CleanTree)
+
+        for fname in self.repo.tree.walk_files(path):
             RemoteLOCAL._unprotect_file(fname)
 
     def unprotect(self, path_info):

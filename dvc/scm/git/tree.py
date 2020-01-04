@@ -1,11 +1,10 @@
+import io
 import errno
 import os
 
 from dvc.exceptions import DvcException
 from dvc.scm.tree import BaseTree
 from dvc.utils import relpath
-from dvc.utils.compat import BytesIO
-from dvc.utils.compat import StringIO
 
 
 # see git-fast-import(1)
@@ -63,8 +62,8 @@ class GitTree(BaseTree):
         # and `open` with default "r" mode returns str)
         data = obj.data_stream.read()
         if mode == "rb":
-            return BytesIO(data)
-        return StringIO(data.decode(encoding))
+            return io.BytesIO(data)
+        return io.StringIO(data.decode(encoding))
 
     def exists(self, path):
         return self.git_object_by_path(path) is not None
@@ -105,9 +104,8 @@ class GitTree(BaseTree):
             raise DvcException(
                 "revision '{}' not found in git '{}'".format(
                     self.rev, os.path.relpath(self.git.working_dir)
-                ),
-                cause=exc,
-            )
+                )
+            ) from exc
 
         if not path or path == ".":
             return tree
@@ -130,13 +128,12 @@ class GitTree(BaseTree):
             yield os.path.normpath(tree.abspath), dirs, nondirs
 
         for i in dirs:
-            for x in self._walk(tree[i], topdown=True):
-                yield x
+            yield from self._walk(tree[i], topdown=topdown)
 
         if not topdown:
             yield os.path.normpath(tree.abspath), dirs, nondirs
 
-    def walk(self, top, topdown=True, dvcignore=None):
+    def walk(self, top, topdown=True):
         """Directory tree generator.
 
         See `os.walk` for the docs. Differences:
@@ -148,5 +145,4 @@ class GitTree(BaseTree):
         if tree is None:
             raise IOError(errno.ENOENT, "No such file")
 
-        for x in self._walk(tree, topdown):
-            yield x
+        yield from self._walk(tree, topdown=topdown)

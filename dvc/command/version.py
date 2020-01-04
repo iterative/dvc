@@ -1,11 +1,10 @@
-from __future__ import unicode_literals
-
 import argparse
 import itertools
 import logging
 import os
 import platform
 import uuid
+import pathlib
 
 try:
     import psutil
@@ -13,7 +12,6 @@ except ImportError:
     psutil = None
 
 from dvc.utils import is_binary, relpath
-from dvc.utils.compat import pathlib
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.version import __version__
 from dvc.exceptions import DvcException, NotDvcRepoError
@@ -27,23 +25,13 @@ class CmdVersion(CmdBaseNoRepo):
     def run(self):
         from dvc.repo import Repo
 
-        dvc_version = __version__
-        python_version = platform.python_version()
-        platform_type = platform.platform()
-        binary = is_binary()
-        info = (
-            "DVC version: {dvc_version}\n"
-            "Python version: {python_version}\n"
-            "Platform: {platform_type}\n"
-            "Binary: {binary}\n"
-            "Package: {package}\n"
-        ).format(
-            dvc_version=dvc_version,
-            python_version=python_version,
-            platform_type=platform_type,
-            binary=binary,
-            package=PKG,
-        )
+        info = [
+            "DVC version: {}".format(__version__),
+            "Python version: {}".format(platform.python_version()),
+            "Platform: {}".format(platform.platform()),
+            "Binary: {}".format(is_binary()),
+            "Package: {}".format(PKG),
+        ]
 
         try:
             repo = Repo()
@@ -54,9 +42,14 @@ class CmdVersion(CmdBaseNoRepo):
             # later decides to enable shared cache mode with
             # `dvc config cache.shared group`.
             if os.path.exists(repo.cache.local.cache_dir):
-                info += "Cache: {cache}\n".format(
-                    cache=self.get_linktype_support_info(repo)
+                info.append(
+                    "Cache: {}".format(self.get_linktype_support_info(repo))
                 )
+                if psutil:
+                    fs_type = self.get_fs_type(repo.cache.local.cache_dir)
+                    info.append(
+                        "Filesystem type (cache directory): {}".format(fs_type)
+                    )
             else:
                 logger.warning(
                     "Unable to detect supported link types, as cache "
@@ -66,19 +59,14 @@ class CmdVersion(CmdBaseNoRepo):
                     "check.".format(relpath(repo.cache.local.cache_dir))
                 )
 
-            if psutil:
-                info += (
-                    "Filesystem type (cache directory): {fs_cache}\n"
-                ).format(fs_cache=self.get_fs_type(repo.cache.local.cache_dir))
         except NotDvcRepoError:
             root_directory = os.getcwd()
 
         if psutil:
-            info += ("Filesystem type (workspace): {fs_root}").format(
-                fs_root=self.get_fs_type(os.path.abspath(root_directory))
-            )
+            fs_root = self.get_fs_type(os.path.abspath(root_directory))
+            info.append("Filesystem type (workspace): {}".format(fs_root))
 
-        logger.info(info)
+        logger.info("\n".join(info))
         return 0
 
     @staticmethod

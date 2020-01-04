@@ -3,6 +3,7 @@ import logging
 import os
 import posixpath
 import stat
+from contextlib import suppress
 
 from funcy import cached_property
 
@@ -12,7 +13,6 @@ except ImportError:
     paramiko = None
 
 from dvc.utils import tmp_fname
-from dvc.utils.compat import ignore_file_not_found
 from dvc.progress import Tqdm
 from dvc.exceptions import DvcException
 from dvc.remote.base import RemoteCmdError
@@ -60,13 +60,13 @@ class SSHConnection:
         self._ssh.close()
 
     def st_mode(self, path):
-        with ignore_file_not_found():
+        with suppress(FileNotFoundError):
             return self.sftp.lstat(path).st_mode
 
         return 0
 
     def getsize(self, path):
-        with ignore_file_not_found():
+        with suppress(FileNotFoundError):
             return self.sftp.lstat(path).st_size
 
         return 0
@@ -103,14 +103,13 @@ class SSHConnection:
         if tail:
             try:
                 self.sftp.mkdir(path)
-            except IOError as e:
+            except IOError as exc:
                 # Since paramiko errors are very vague we need to recheck
                 # whether it's because path already exists or something else
-                if e.errno == errno.EACCES or not self.exists(path):
+                if exc.errno == errno.EACCES or not self.exists(path):
                     raise DvcException(
-                        "unable to create remote directory '{}'".format(path),
-                        cause=e,
-                    )
+                        "unable to create remote directory '{}'".format(path)
+                    ) from exc
 
     def walk(self, directory, topdown=True):
         # NOTE: original os.walk() implementation [1] with default options was
@@ -123,9 +122,8 @@ class SSHConnection:
             raise DvcException(
                 "couldn't get the '{}' remote directory files list".format(
                     directory
-                ),
-                cause=exc,
-            )
+                )
+            ) from exc
 
         dirs = []
         nondirs = []
@@ -141,8 +139,7 @@ class SSHConnection:
 
         for dname in dirs:
             newpath = posixpath.join(directory, dname)
-            for entry in self.walk(newpath, topdown=topdown):
-                yield entry
+            yield from self.walk(newpath, topdown=topdown)
 
         if not topdown:
             yield directory, dirs, nondirs
@@ -153,22 +150,22 @@ class SSHConnection:
                 yield posixpath.join(root, fname)
 
     def _remove_file(self, path):
-        with ignore_file_not_found():
+        with suppress(FileNotFoundError):
             self.sftp.remove(path)
 
     def _remove_dir(self, path):
         for root, dirs, files in self.walk(path, topdown=False):
             for fname in files:
                 path = posixpath.join(root, fname)
-                with ignore_file_not_found():
+                with suppress(FileNotFoundError):
                     self._remove_file(path)
 
             for dname in dirs:
                 path = posixpath.join(root, dname)
-                with ignore_file_not_found():
+                with suppress(FileNotFoundError):
                     self.sftp.rmdir(dname)
 
-        with ignore_file_not_found():
+        with suppress(FileNotFoundError):
             self.sftp.rmdir(path)
 
     def remove(self, path):

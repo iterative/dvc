@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import os
 
 import dvc.repo.diff as diff
@@ -10,7 +8,7 @@ from tests.basic_env import TestDvcGit
 
 class TestDiff(TestDvcGit):
     def setUp(self):
-        super(TestDiff, self).setUp()
+        super().setUp()
 
         self.new_file = "new_test_file"
         self.create(self.new_file, self.new_file)
@@ -58,7 +56,7 @@ class TestDiffCmdLine(TestDiff):
 
 class TestDiffDir(TestDvcGit):
     def setUp(self):
-        super(TestDiffDir, self).setUp()
+        super().setUp()
 
         stage = self.dvc.add(self.DATA_DIR)[0]
         self.git.index.add([self.DATA_DIR + ".dvc"])
@@ -118,7 +116,7 @@ class TestDiffDirRepoDeletedFile(TestDiffDir):
     maxDiff = None
 
     def setUp(self):
-        super(TestDiffDirRepoDeletedFile, self).setUp()
+        super().setUp()
 
         self.b_ref = self.a_ref
         tmp = self.new_checksum
@@ -155,7 +153,7 @@ class TestDiffDirRepoDeletedFile(TestDiffDir):
 
 class TestDiffFileNotFound(TestDiffDir):
     def setUp(self):
-        super(TestDiffFileNotFound, self).setUp()
+        super().setUp()
         self.unknown_file = "unknown_file_" + str(id(self))
 
     def test(self):
@@ -167,7 +165,7 @@ class TestDiffModifiedFile(TestDiff):
     maxDiff = None
 
     def setUp(self):
-        super(TestDiffModifiedFile, self).setUp()
+        super().setUp()
 
         self.old_checksum = self.new_checksum
         self.new_file_content = "new_test_file_bigger_content_123456789"
@@ -202,7 +200,7 @@ class TestDiffDirWithFile(TestDiffDir):
     maxDiff = None
 
     def setUp(self):
-        super(TestDiffDirWithFile, self).setUp()
+        super().setUp()
 
         self.a_ref = self.git.git.rev_parse(self.git.head.commit, short=True)
         self.old_checksum = self.new_checksum

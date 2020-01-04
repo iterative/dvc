@@ -1,13 +1,9 @@
-from __future__ import unicode_literals
-
 import errno
 import logging
 import os
 import shutil
 
-from dvc.utils.compat import fspath
-from dvc.utils.compat import open
-from dvc.utils.compat import str
+from dvc.compat import fspath
 
 
 logger = logging.getLogger(__name__)
@@ -35,7 +31,7 @@ class System(object):
                 os.link(source, link_name)
                 return
             except Exception as exc:
-                raise DvcException("link", cause=exc)
+                raise DvcException("link") from exc
 
         CreateHardLink = ctypes.windll.kernel32.CreateHardLinkW
         CreateHardLink.argtypes = [
@@ -47,7 +43,7 @@ class System(object):
 
         res = CreateHardLink(link_name, source, None)
         if res == 0:
-            raise DvcException("CreateHardLinkW", cause=ctypes.WinError())
+            raise DvcException("CreateHardLinkW") from ctypes.WinError()
 
     @staticmethod
     def symlink(source, link_name):
@@ -73,7 +69,7 @@ class System(object):
         func.restype = ctypes.c_ubyte
 
         if func(link_name, source, flags) == 0:
-            raise DvcException("CreateSymbolicLinkW", cause=ctypes.WinError())
+            raise DvcException("CreateSymbolicLinkW") from ctypes.WinError()
 
     @staticmethod
     def _reflink_darwin(src, dst):

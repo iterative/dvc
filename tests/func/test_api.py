@@ -1,11 +1,12 @@
-from __future__ import unicode_literals
-
 import os
 import shutil
+import copy
 
+import ruamel.yaml
 import pytest
 
 from dvc import api
+from dvc.api import SummonError
 from dvc.exceptions import FileMissingError
 from dvc.main import main
 from dvc.path_info import URLInfo
@@ -29,17 +30,19 @@ def run_dvc(*argv):
 
 
 @pytest.mark.parametrize("remote_url", remote_params, indirect=True)
-def test_get_url(remote_url, tmp_dir, dvc, repo_template):
+def test_get_url(tmp_dir, dvc, remote_url):
     run_dvc("remote", "add", "-d", "upstream", remote_url)
-    dvc.add("foo")
+    tmp_dir.dvc_gen("foo", "foo")
 
     expected_url = URLInfo(remote_url) / "ac/bd18db4cc2f85cedef654fccc4a4d8"
     assert api.get_url("foo") == expected_url
 
 
 @pytest.mark.parametrize("remote_url", remote_params, indirect=True)
-def test_get_url_external(remote_url, erepo_dir):
+def test_get_url_external(erepo_dir, remote_url):
     _set_remote_url_and_commit(erepo_dir.dvc, remote_url)
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo", commit="add foo")
 
     # Using file url to force clone to tmp repo
     repo_url = "file://{}".format(erepo_dir)
@@ -62,10 +65,14 @@ def test_open(remote_url, tmp_dir, dvc):
 
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
 def test_open_external(remote_url, erepo_dir):
-    erepo_dir.scm.checkout("branch")
     _set_remote_url_and_commit(erepo_dir.dvc, remote_url)
-    erepo_dir.scm.checkout("master")
-    _set_remote_url_and_commit(erepo_dir.dvc, remote_url)
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("version", "master", commit="add version")
+
+        with erepo_dir.branch("branch", new="True"):
+            # NOTE: need file to be other size for Mac
+            erepo_dir.dvc_gen("version", "branchver", commit="add version")
 
     erepo_dir.dvc.push(all_branches=True)
 
@@ -77,7 +84,7 @@ def test_open_external(remote_url, erepo_dir):
     with api.open("version", repo=repo_url) as fd:
         assert fd.read() == "master"
 
-    assert api.read("version", repo=repo_url, rev="branch") == "branch"
+    assert api.read("version", repo=repo_url, rev="branch") == "branchver"
 
 
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
@@ -126,3 +133,68 @@ def test_open_not_cached(dvc):
     os.remove(metric_file)
     with pytest.raises(FileMissingError):
         api.read(metric_file)
+
+
+def test_summon(tmp_dir, dvc, erepo_dir):
+    objects = {
+        "objects": [
+            {
+                "name": "sum",
+                "meta": {"description": "Add <x> to <number>"},
+                "summon": {
+                    "type": "python",
+                    "call": "calculator.add_to_num",
+                    "args": {"x": 1},
+                    "deps": ["number"],
+                },
+            }
+        ]
+    }
+
+    other_objects = copy.deepcopy(objects)
+    other_objects["objects"][0]["summon"]["args"]["x"] = 100
+
+    dup_objects = copy.deepcopy(objects)
+    dup_objects["objects"] *= 2
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("number", "100", commit="Add number.dvc")
+        erepo_dir.scm_gen("dvcsummon.yaml", ruamel.yaml.dump(objects))
+        erepo_dir.scm_gen("other.yaml", ruamel.yaml.dump(other_objects))
+        erepo_dir.scm_gen("dup.yaml", ruamel.yaml.dump(dup_objects))
+        erepo_dir.scm_gen("invalid.yaml", ruamel.yaml.dump({"name": "sum"}))
+        erepo_dir.scm_gen("not_yaml.yaml", "a: - this is not a YAML file")
+        erepo_dir.scm_gen(
+            "calculator.py",
+            "def add_to_num(x): return x + int(open('number').read())",
+        )
+        erepo_dir.scm.commit("Add files")
+
+    repo_url = "file://{}".format(erepo_dir)
+
+    assert api.summon("sum", repo=repo_url) == 101
+    assert api.summon("sum", repo=repo_url, args={"x": 2}) == 102
+    assert api.summon("sum", repo=repo_url, summon_file="other.yaml") == 200
+
+    try:
+        api.summon("sum", repo=repo_url, summon_file="missing.yaml")
+    except SummonError as exc:
+        assert "Summon file not found" in str(exc)
+        assert "missing.yaml" in str(exc)
+        assert repo_url in str(exc)
+    else:
+        pytest.fail("Did not raise on missing summon file")
+
+    with pytest.raises(SummonError, match=r"No object with name 'missing'"):
+        api.summon("missing", repo=repo_url)
+
+    with pytest.raises(
+        SummonError, match=r"More than one object with name 'sum'"
+    ):
+        api.summon("sum", repo=repo_url, summon_file="dup.yaml")
+
+    with pytest.raises(SummonError, match=r"extra keys not allowed"):
+        api.summon("sum", repo=repo_url, summon_file="invalid.yaml")
+
+    with pytest.raises(SummonError, match=r"Failed to parse summon file"):
+        api.summon("sum", repo=repo_url, summon_file="not_yaml.yaml")

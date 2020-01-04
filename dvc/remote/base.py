@@ -1,13 +1,9 @@
-from __future__ import unicode_literals
-
 import errno
-
-from dvc.utils.compat import basestring, FileNotFoundError, str, urlparse
-
 import itertools
 import json
 import logging
 import tempfile
+from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from functools import partial
@@ -50,7 +46,7 @@ STATUS_MAP = {
 
 class RemoteCmdError(DvcException):
     def __init__(self, remote, cmd, ret, err):
-        super(RemoteCmdError, self).__init__(
+        super().__init__(
             "{remote} command '{cmd}' finished with non-zero return code"
             " {ret}': {err}".format(remote=remote, cmd=cmd, ret=ret, err=err)
         )
@@ -58,8 +54,8 @@ class RemoteCmdError(DvcException):
 
 class RemoteActionNotImplemented(DvcException):
     def __init__(self, action, scheme):
-        m = "{} is not supported by {} remote".format(action, scheme)
-        super(RemoteActionNotImplemented, self).__init__(m)
+        m = "{} is not supported for {} remotes".format(action, scheme)
+        super().__init__(m)
 
 
 class RemoteMissingDepsError(DvcException):
@@ -67,10 +63,9 @@ class RemoteMissingDepsError(DvcException):
 
 
 class DirCacheError(DvcException):
-    def __init__(self, checksum, cause=None):
-        super(DirCacheError, self).__init__(
-            "Failed to load dir cache for checksum: '{}'.".format(checksum),
-            cause=cause,
+    def __init__(self, checksum):
+        super().__init__(
+            "Failed to load dir cache for checksum: '{}'.".format(checksum)
         )
 
 
@@ -155,7 +150,7 @@ class RemoteBASE(object):
 
     @classmethod
     def supported(cls, config):
-        if isinstance(config, basestring):
+        if isinstance(config, (str, bytes)):
             url = config
         else:
             url = config[Config.SECTION_REMOTE_URL]
@@ -268,7 +263,7 @@ class RemoteBASE(object):
             with self.cache.open(path_info, "r") as fobj:
                 d = json.load(fobj)
         except (ValueError, FileNotFoundError) as exc:
-            raise DirCacheError(checksum, cause=exc)
+            raise DirCacheError(checksum) from exc
 
         if not isinstance(d, list):
             msg = "dir cache file format error '{}' [skipping the file]"
@@ -739,24 +734,36 @@ class RemoteBASE(object):
 
         return True
 
-    def _changed_dir_cache(self, checksum):
+    def _changed_dir_cache(self, checksum, path_info=None, filter_info=None):
         if self.changed_cache_file(checksum):
             return True
 
-        if not self._changed_unpacked_dir(checksum):
+        if not (path_info and filter_info) and not self._changed_unpacked_dir(
+            checksum
+        ):
             return False
 
         for entry in self.get_dir_cache(checksum):
             entry_checksum = entry[self.PARAM_CHECKSUM]
+
+            if path_info and filter_info:
+                entry_info = path_info / entry[self.PARAM_RELPATH]
+                if not entry_info.isin_or_eq(filter_info):
+                    continue
+
             if self.changed_cache_file(entry_checksum):
                 return True
 
-        self._update_unpacked_dir(checksum)
+        if not (path_info and filter_info):
+            self._update_unpacked_dir(checksum)
+
         return False
 
-    def changed_cache(self, checksum):
+    def changed_cache(self, checksum, path_info=None, filter_info=None):
         if self.is_dir_checksum(checksum):
-            return self._changed_dir_cache(checksum)
+            return self._changed_dir_cache(
+                checksum, path_info=path_info, filter_info=filter_info
+            )
         return self.changed_cache_file(checksum)
 
     def cache_exists(self, checksums, jobs=None, name=None):
@@ -849,7 +856,13 @@ class RemoteBASE(object):
         pass
 
     def _checkout_dir(
-        self, path_info, checksum, force, progress_callback=None, relink=False
+        self,
+        path_info,
+        checksum,
+        force,
+        progress_callback=None,
+        relink=False,
+        filter_info=None,
     ):
         # Create dir separately so that dir is created
         # even if there are no files in it
@@ -865,6 +878,9 @@ class RemoteBASE(object):
             entry_checksum = entry[self.PARAM_CHECKSUM]
             entry_cache_info = self.checksum_to_path_info(entry_checksum)
             entry_info = path_info / relative_path
+
+            if filter_info and not entry_info.isin_or_eq(filter_info):
+                continue
 
             entry_checksum_info = {self.PARAM_CHECKSUM: entry_checksum}
             if relink or self.changed(entry_info, entry_checksum_info):
@@ -896,6 +912,7 @@ class RemoteBASE(object):
         force=False,
         progress_callback=None,
         relink=False,
+        filter_info=None,
     ):
         if path_info.scheme not in ["local", self.scheme]:
             raise NotImplementedError
@@ -916,7 +933,9 @@ class RemoteBASE(object):
             logger.debug(msg.format(str(path_info)))
             skip = True
 
-        elif self.changed_cache(checksum):
+        elif self.changed_cache(
+            checksum, path_info=path_info, filter_info=filter_info
+        ):
             msg = "Cache '{}' not found. File '{}' won't be created."
             logger.warning(msg.format(checksum, str(path_info)))
             self.safe_remove(path_info, force=force)
@@ -925,15 +944,19 @@ class RemoteBASE(object):
         if failed or skip:
             if progress_callback:
                 progress_callback(
-                    str(path_info), self.get_files_number(checksum)
+                    str(path_info),
+                    self.get_files_number(
+                        self.path_info, checksum, filter_info
+                    ),
                 )
             return failed
 
         msg = "Checking out '{}' with cache '{}'."
         logger.debug(msg.format(str(path_info), checksum))
 
-        self._checkout(path_info, checksum, force, progress_callback, relink)
-        return None
+        self._checkout(
+            path_info, checksum, force, progress_callback, relink, filter_info
+        )
 
     def _checkout(
         self,
@@ -942,23 +965,32 @@ class RemoteBASE(object):
         force=False,
         progress_callback=None,
         relink=False,
+        filter_info=None,
     ):
         if not self.is_dir_checksum(checksum):
             return self._checkout_file(
                 path_info, checksum, force, progress_callback=progress_callback
             )
         return self._checkout_dir(
-            path_info, checksum, force, progress_callback, relink
+            path_info, checksum, force, progress_callback, relink, filter_info
         )
 
-    def get_files_number(self, checksum):
+    def get_files_number(self, path_info, checksum, filter_info):
+        from funcy.py3 import ilen
+
         if not checksum:
             return 0
 
-        if self.is_dir_checksum(checksum):
+        if not self.is_dir_checksum(checksum):
+            return 1
+
+        if not filter_info:
             return len(self.get_dir_cache(checksum))
 
-        return 1
+        return ilen(
+            filter_info.isin_or_eq(path_info / entry[self.PARAM_CHECKSUM])
+            for entry in self.get_dir_cache(checksum)
+        )
 
     @staticmethod
     def unprotect(path_info):

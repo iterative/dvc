@@ -17,7 +17,6 @@ from dvc.lock import Lock, LockError
 from dvc.repo import Repo
 from dvc.scm import SCM
 from dvc.utils import env2bool, is_binary, makedirs
-from dvc.utils.compat import str, FileNotFoundError
 
 
 logger = logging.getLogger(__name__)
@@ -164,4 +163,6 @@ def _find_or_create_user_id():
             return user_id
 
     except LockError:
-        logger.debug("Failed to acquire {lockfile}".format(lockfile=lockfile))
+        logger.debug(
+            "Failed to acquire '{lockfile}'".format(lockfile=lockfile)
+        )

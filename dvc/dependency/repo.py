@@ -1,15 +1,11 @@
-from __future__ import unicode_literals
-
 import copy
 import os
 from contextlib import contextmanager
-from dvc.utils.compat import FileNotFoundError
 
 from funcy import merge
 
 from .local import DependencyLOCAL
 from dvc.external_repo import external_repo
-from dvc.utils.compat import str
 from dvc.exceptions import OutputNotFoundError
 from dvc.exceptions import PathMissingError
 from dvc.utils.fs import fs_copy
@@ -25,7 +21,7 @@ class DependencyREPO(DependencyLOCAL):
 
     def __init__(self, def_repo, stage, *args, **kwargs):
         self.def_repo = def_repo
-        super(DependencyREPO, self).__init__(stage, *args, **kwargs)
+        super().__init__(stage, *args, **kwargs)
 
     def _parse_path(self, remote, path):
         return None

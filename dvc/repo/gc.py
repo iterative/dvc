@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import logging
 
 from . import locked
@@ -12,7 +10,7 @@ logger = logging.getLogger(__name__)
 def _do_gc(typ, func, clist):
     removed = func(clist)
     if not removed:
-        logger.info("No unused {} cache to remove.".format(typ))
+        logger.info("No unused '{}' cache to remove.".format(typ))
 
 
 @locked
@@ -28,7 +26,7 @@ def gc(
     jobs=None,
     repos=None,
 ):
-    from dvc.utils.compat import ExitStack
+    from contextlib import ExitStack
     from dvc.repo import Repo
 
     all_repos = []

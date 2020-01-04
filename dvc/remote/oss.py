@@ -1,6 +1,3 @@
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import logging
 import os
 import threading
@@ -43,7 +40,7 @@ class RemoteOSS(RemoteBASE):
     COPY_POLL_SECONDS = 5
 
     def __init__(self, repo, config):
-        super(RemoteOSS, self).__init__(repo, config)
+        super().__init__(repo, config)
 
         url = config.get(Config.SECTION_REMOTE_URL)
         self.path_info = self.path_cls(url) if url else None
@@ -69,9 +66,9 @@ class RemoteOSS(RemoteBASE):
     def oss_service(self):
         import oss2
 
-        logger.debug("URL {}".format(self.path_info))
-        logger.debug("key id {}".format(self.key_id))
-        logger.debug("key secret {}".format(self.key_secret))
+        logger.debug("URL: {}".format(self.path_info))
+        logger.debug("key id: {}".format(self.key_id))
+        logger.debug("key secret: {}".format(self.key_secret))
 
         auth = oss2.Auth(self.key_id, self.key_secret)
         bucket = oss2.Bucket(auth, self.endpoint, self.path_info.bucket)

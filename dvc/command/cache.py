@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import argparse
 
 from dvc.cache import CacheConfig
@@ -10,7 +8,7 @@ from dvc.command.config import CmdConfig
 
 class CmdCacheDir(CmdConfig):
     def __init__(self, args):
-        super(CmdCacheDir, self).__init__(args)
+        super().__init__(args)
         self.cache_config = CacheConfig(self.config)
 
     def run(self):

@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+from urllib.parse import urlparse
 
 import dvc.output as output
 from dvc.dependency.gs import DependencyGS
@@ -46,8 +46,6 @@ SCHEMA[DependencyREPO.PARAM_REPO] = DependencyREPO.REPO_SCHEMA
 
 
 def _get(stage, p, info):
-    from dvc.utils.compat import urlparse
-
     parsed = urlparse(p)
 
     if parsed.scheme == "remote":

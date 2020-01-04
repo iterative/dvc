@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from dvc.exceptions import DvcException
 from dvc.exceptions import UpdateWithRevNotPossibleError
 
@@ -7,18 +5,18 @@ from dvc.exceptions import UpdateWithRevNotPossibleError
 class DependencyDoesNotExistError(DvcException):
     def __init__(self, path):
         msg = "dependency '{}' does not exist".format(path)
-        super(DependencyDoesNotExistError, self).__init__(msg)
+        super().__init__(msg)
 
 
 class DependencyIsNotFileOrDirError(DvcException):
     def __init__(self, path):
         msg = "dependency '{}' is not a file or directory".format(path)
-        super(DependencyIsNotFileOrDirError, self).__init__(msg)
+        super().__init__(msg)
 
 
 class DependencyIsStageFileError(DvcException):
     def __init__(self, path):
-        super(DependencyIsStageFileError, self).__init__(
+        super().__init__(
             "Stage file '{}' cannot be a dependency.".format(path)
         )
 

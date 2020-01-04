@@ -1,15 +1,12 @@
 """Manages logging configuration for dvc repo."""
-from __future__ import unicode_literals
 
+import io
 import logging.config
 import logging.handlers
 
 import colorama
 
 from dvc.progress import Tqdm
-from dvc.utils.compat import RecursionError
-from dvc.utils.compat import str
-from dvc.utils.compat import StringIO
 
 
 FOOTER = (
@@ -26,7 +23,7 @@ FOOTER = (
 class LoggingException(Exception):
     def __init__(self, record):
         msg = "failed to log {}".format(str(record))
-        super(LoggingException, self).__init__(msg)
+        super().__init__(msg)
 
 
 class ExcludeErrorsFilter(logging.Filter):
@@ -106,7 +103,7 @@ class ColorFormatter(logging.Formatter):
     def _walk_exc(self, exc_info):
         import traceback
 
-        buffer = StringIO()
+        buffer = io.StringIO()
 
         traceback.print_exception(*exc_info, file=buffer)
 
@@ -117,11 +114,11 @@ class ColorFormatter(logging.Formatter):
         tb_list = [tb]
 
         # NOTE: parsing chained exceptions. See dvc/exceptions.py for more info
-        while hasattr(exc, "cause") and exc.cause:
-            exc_list.append(str(exc.cause))
+        while hasattr(exc, "__cause__") and exc.__cause__:
+            exc_list.append(str(exc.__cause__))
             if hasattr(exc, "cause_tb") and exc.cause_tb:
                 tb_list.insert(0, str(exc.cause_tb))
-            exc = exc.cause
+            exc = exc.__cause__
 
         return exc_list, tb_list
 
@@ -150,7 +147,7 @@ class ColorFormatter(logging.Formatter):
 
 class LoggerHandler(logging.StreamHandler):
     def handleError(self, record):
-        super(LoggerHandler, self).handleError(record)
+        super().handleError(record)
         raise LoggingException(record)
 
     def emit(self, record):

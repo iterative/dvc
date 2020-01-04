@@ -1,11 +1,11 @@
-from __future__ import unicode_literals
-
 import logging
 import os
 
+from funcy import cached_property
 from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 
+from dvc.scm.tree import BaseTree
 from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
@@ -72,13 +72,12 @@ class DvcIgnoreDirs(DvcIgnore):
 
 
 class DvcIgnoreFilter(object):
-    def __init__(self, root_dir, tree):
+    def __init__(self, tree):
         self.tree = tree
         self.ignores = {DvcIgnoreDirs([".git", ".hg", ".dvc"])}
-        self._update(root_dir)
-        for root, dirs, _ in self.tree.walk(root_dir, dvcignore=self):
-            for d in dirs:
-                self._update(os.path.join(root, d))
+        for root, dirs, files in self.tree.walk(self.tree.tree_root):
+            self._update(root)
+            dirs[:], files[:] = self(root, dirs, files)
 
     def _update(self, dirname):
         ignore_file_path = os.path.join(dirname, DvcIgnore.DVCIGNORE_FILE)
@@ -90,3 +89,39 @@ class DvcIgnoreFilter(object):
             dirs, files = ignore(root, dirs, files)
 
         return dirs, files
+
+
+class CleanTree(BaseTree):
+    def __init__(self, tree):
+        self.tree = tree
+
+    @cached_property
+    def dvcignore(self):
+        return DvcIgnoreFilter(self.tree)
+
+    @property
+    def tree_root(self):
+        return self.tree.tree_root
+
+    def open(self, path, mode="r", encoding="utf-8"):
+        return self.tree.open(path, mode, encoding)
+
+    def exists(self, path):
+        return self.tree.exists(path)
+
+    def isdir(self, path):
+        return self.tree.isdir(path)
+
+    def isfile(self, path):
+        return self.tree.isfile(path)
+
+    def walk(self, top, topdown=True):
+        for root, dirs, files in self.tree.walk(top, topdown):
+            dirs[:], files[:] = self.dvcignore(root, dirs, files)
+
+            yield root, dirs, files
+
+    def walk_files(self, top):
+        for root, _, files in self.walk(top):
+            for file in files:
+                yield os.path.join(root, file)

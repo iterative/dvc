@@ -1,5 +1,4 @@
 """DVC config objects."""
-from __future__ import unicode_literals
 
 import copy
 import errno
@@ -13,27 +12,19 @@ from voluptuous import All, Any, Lower, Range, Coerce, Match
 
 from dvc.exceptions import DvcException
 from dvc.exceptions import NotDvcRepoError
-from dvc.utils.compat import open, str
 
 logger = logging.getLogger(__name__)
 
 
 class ConfigError(DvcException):
-    """DVC config exception.
+    """DVC config exception."""
 
-    Args:
-        msg (str): error message.
-        cause (Exception): optional exception that has caused this error.
-    """
-
-    def __init__(self, msg, cause=None):
-        super(ConfigError, self).__init__(
-            "config file error: {}".format(msg), cause=cause
-        )
+    def __init__(self, msg):
+        super().__init__("config file error: {}".format(msg))
 
 
 class NoRemoteError(ConfigError):
-    def __init__(self, command, cause=None):
+    def __init__(self, command):
         msg = (
             "no remote specified. Setup default remote with\n"
             "    dvc config core.remote <name>\n"
@@ -41,7 +32,7 @@ class NoRemoteError(ConfigError):
             "    dvc {} -r <name>\n".format(command)
         )
 
-        super(NoRemoteError, self).__init__(msg, cause=cause)
+        super().__init__(msg)
 
 
 def supported_cache_type(types):
@@ -81,7 +72,7 @@ def Choices(*choices):
         *choices: pass allowed values as arguments, or pass a list or
             tuple as a single argument
     """
-    return Any(*choices, msg="expected one of {}".format(",".join(choices)))
+    return Any(*choices, msg="expected one of {}".format(", ".join(choices)))
 
 
 class Config(object):  # pylint: disable=too-many-instance-attributes
@@ -396,7 +387,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         try:
             d = self.COMPILED_SCHEMA(d)
         except Invalid as exc:
-            raise ConfigError(str(exc), cause=exc)
+            raise ConfigError(str(exc)) from exc
         self.config = configobj.ConfigObj(d, write_empty_values=True)
 
     def save(self, config=None):

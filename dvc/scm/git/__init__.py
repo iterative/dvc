@@ -1,5 +1,4 @@
 """Manages Git."""
-from __future__ import unicode_literals
 
 import logging
 import os
@@ -18,9 +17,6 @@ from dvc.utils import fix_env
 from dvc.utils import is_binary
 from dvc.utils import relpath
 from dvc.utils.fs import path_isin
-from dvc.utils.compat import cast_bytes_py2
-from dvc.utils.compat import open
-from dvc.utils.compat import str
 
 
 logger = logging.getLogger(__name__)
@@ -43,7 +39,7 @@ class Git(Base):
         """Git class constructor.
         Requires `Repo` class from `git` module (from gitpython package).
         """
-        super(Git, self).__init__(root_dir)
+        super().__init__(root_dir)
 
         import git
         from git.exc import InvalidGitRepositoryError
@@ -78,7 +74,7 @@ class Git(Base):
             # LD_LIBRARY_PATH that has been set by PyInstaller.
             # See [1] for more info.
             # [1] https://github.com/gitpython-developers/GitPython/issues/924
-            env[cast_bytes_py2(ld_key)] = ""
+            env[ld_key] = ""
 
         try:
             tmp_repo = git.Repo.clone_from(
@@ -89,7 +85,7 @@ class Git(Base):
             )
             tmp_repo.close()
         except git.exc.GitCommandError as exc:
-            raise CloneError(url, to_path, exc)
+            raise CloneError(url, to_path) from exc
 
         # NOTE: using our wrapper to make sure that env is fixed in __init__
         repo = Git(to_path)
@@ -98,7 +94,7 @@ class Git(Base):
             try:
                 repo.checkout(rev)
             except git.exc.GitCommandError as exc:
-                raise RevError(url, rev, exc)
+                raise RevError(url, rev) from exc
 
         return repo
 
@@ -335,8 +331,8 @@ class Git(Base):
             commits.append(b_commit)
             trees[DIFF_A_TREE] = self.get_tree(commits[0])
             trees[DIFF_B_TREE] = self.get_tree(commits[1])
-        except (BadName, BadObject) as e:
-            raise SCMError("git problem", cause=e)
+        except (BadName, BadObject) as exc:
+            raise SCMError("git problem") from exc
         return trees, commits
 
     def get_diff_trees(self, a_ref, b_ref=None):

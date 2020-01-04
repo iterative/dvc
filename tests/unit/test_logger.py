@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import logging
 import traceback
 
@@ -109,11 +107,10 @@ class TestColorFormatter:
             try:
                 raise Exception("first")
             except Exception as exc:
-                first_traceback = traceback.format_exc()
                 try:
-                    raise DvcException("second", cause=exc)
+                    raise DvcException("second") from exc
                 except DvcException:
-                    second_traceback = traceback.format_exc()
+                    stack_trace = traceback.format_exc()
                     logger.exception("message")
 
             expected = (
@@ -121,13 +118,12 @@ class TestColorFormatter:
                 "{red}{line}{nc}\n"
                 "{stack_trace}"
                 "{red}{line}{nc}\n".format(
-                    line="-" * 60,
-                    stack_trace="\n".join([first_traceback, second_traceback]),
-                    **colors
+                    line="-" * 60, stack_trace=stack_trace, **colors
                 )
             )
-
             assert expected == formatter.format(caplog.records[0])
+            assert "Exception: first" in stack_trace
+            assert "dvc.exceptions.DvcException: second" in stack_trace
 
     def test_progress_awareness(self, mocker, capsys, caplog):
         from dvc.progress import Tqdm

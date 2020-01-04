@@ -1,29 +1,25 @@
-from __future__ import unicode_literals
-
 import logging
 import os
 from contextlib import contextmanager
 from functools import wraps
 from itertools import chain
 
+from dvc.ignore import CleanTree
+from dvc.compat import fspath_py35
+
 from funcy import cached_property
 
-from .graph import check_acyclic
-from .graph import get_pipeline
-from .graph import get_pipelines
-from .graph import get_stages
 from dvc.config import Config
-from dvc.exceptions import FileMissingError
-from dvc.exceptions import NotDvcRepoError
-from dvc.exceptions import OutputNotFoundError
-from dvc.ignore import DvcIgnoreFilter
+from dvc.exceptions import (
+    FileMissingError,
+    NotDvcRepoError,
+    OutputNotFoundError,
+)
 from dvc.path_info import PathInfo
 from dvc.remote.base import RemoteActionNotImplemented
 from dvc.utils import relpath
 from dvc.utils.fs import path_isin
-from dvc.utils.compat import FileNotFoundError
-from dvc.utils.compat import fspath_py35
-from dvc.utils.compat import open as _open
+from .graph import check_acyclic, get_pipeline, get_pipelines
 
 
 logger = logging.getLogger(__name__)
@@ -124,7 +120,7 @@ class Repo(object):
 
     @tree.setter
     def tree(self, tree):
-        self._tree = tree
+        self._tree = tree if isinstance(tree, CleanTree) else CleanTree(tree)
         # Our graph cache is no longer valid, as it was based on the previous
         # tree.
         self._reset()
@@ -190,32 +186,32 @@ class Repo(object):
         G = graph or self.graph
 
         if not target:
-            return get_stages(G)
+            return list(G)
 
         target = os.path.abspath(target)
 
         if recursive and os.path.isdir(target):
-            attrs = nx.get_node_attributes(G, "stage")
-            nodes = [node for node in nx.dfs_postorder_nodes(G)]
-
-            ret = []
-            for node in nodes:
-                stage = attrs[node]
-                if path_isin(stage.path, target):
-                    ret.append(stage)
-            return ret
+            stages = nx.dfs_postorder_nodes(G)
+            return [stage for stage in stages if path_isin(stage.path, target)]
 
         stage = Stage.load(self, target)
         if not with_deps:
             return [stage]
 
-        node = relpath(stage.path, self.root_dir)
-        pipeline = get_pipeline(get_pipelines(G), node)
+        pipeline = get_pipeline(get_pipelines(G), stage)
+        return list(nx.dfs_postorder_nodes(pipeline, stage))
 
-        return [
-            pipeline.node[n]["stage"]
-            for n in nx.dfs_postorder_nodes(pipeline, node)
-        ]
+    def collect_granular(self, target, *args, **kwargs):
+        if not target:
+            return [(stage, None) for stage in self.stages]
+
+        try:
+            out, = self.find_outs_by_path(target, strict=False)
+            filter_info = PathInfo(os.path.abspath(target))
+            return [(out.stage, filter_info)]
+        except OutputNotFoundError:
+            stages = self.collect(target, *args, **kwargs)
+            return [(stage, None) for stage in stages]
 
     def used_cache(
         self,
@@ -242,6 +238,7 @@ class Repo(object):
             A dictionary with Schemes (representing output's location) as keys,
             and a list with the outputs' `dumpd` as values.
         """
+        from funcy.py2 import icat
         from dvc.cache import NamedCache
 
         cache = NamedCache()
@@ -251,28 +248,24 @@ class Repo(object):
             all_tags=all_tags,
             all_commits=all_commits,
         ):
-            if targets:
-                stages = []
-                for target in targets:
-                    collected = self.collect(
-                        target, recursive=recursive, with_deps=with_deps
-                    )
-                    stages.extend(collected)
-            else:
-                stages = self.stages
+            targets = targets or [None]
 
-            for stage in stages:
-                if stage.is_repo_import:
-                    dep, = stage.deps
-                    cache.external[dep.repo_pair].add(dep.def_path)
-                    continue
+            pairs = icat(
+                self.collect_granular(
+                    target, recursive=recursive, with_deps=with_deps
+                )
+                for target in targets
+            )
 
-                for out in stage.outs:
-                    used_cache = out.get_used_cache(
-                        remote=remote, force=force, jobs=jobs
-                    )
-                    suffix = "({})".format(branch) if branch else ""
-                    cache.update(used_cache, suffix=suffix)
+            suffix = "({})".format(branch) if branch else ""
+            for stage, filter_info in pairs:
+                used_cache = stage.get_used_cache(
+                    remote=remote,
+                    force=force,
+                    jobs=jobs,
+                    filter_info=filter_info,
+                )
+                cache.update(used_cache, suffix=suffix)
 
         return cache
 
@@ -323,15 +316,15 @@ class Repo(object):
         )
 
         G = nx.DiGraph()
-        stages = stages or self.collect_stages()
+        stages = stages or self.stages
         stages = [stage for stage in stages if stage]
         outs = {}
 
         for stage in stages:
             for out in stage.outs:
                 if out.path_info in outs:
-                    stages = [stage.relpath, outs[out.path_info].stage.relpath]
-                    raise OutputDuplicationError(str(out), stages)
+                    dup_stages = [stage, outs[out.path_info].stage]
+                    raise OutputDuplicationError(str(out), dup_stages)
                 outs[out.path_info] = out
 
         for stage in stages:
@@ -344,23 +337,19 @@ class Repo(object):
             stage_path_info = PathInfo(stage.path)
             for p in chain([stage_path_info], stage_path_info.parents):
                 if p in outs:
-                    raise StagePathAsOutputError(stage.wdir, stage.relpath)
+                    raise StagePathAsOutputError(stage, str(outs[p]))
 
         for stage in stages:
-            node = relpath(stage.path, self.root_dir)
-
-            G.add_node(node, stage=stage)
+            G.add_node(stage)
 
             for dep in stage.deps:
                 if dep.path_info is None:
                     continue
 
-                for out in outs:
-                    if out.overlaps(dep.path_info):
-                        dep_stage = outs[out].stage
-                        dep_node = relpath(dep_stage.path, self.root_dir)
-                        G.add_node(dep_node, stage=dep_stage)
-                        G.add_edge(node, dep_node)
+                for out_path_info, out in outs.items():
+                    if out_path_info.overlaps(dep.path_info):
+                        G.add_node(out.stage)
+                        G.add_edge(stage, out.stage)
 
         check_acyclic(G)
 
@@ -374,18 +363,8 @@ class Repo(object):
     def pipelines(self):
         return get_pipelines(self.graph)
 
-    @staticmethod
-    def _filter_out_dirs(dirs, outs, root_dir):
-        def filter_dirs(dname):
-            path = os.path.join(root_dir, dname)
-            for out in outs:
-                if path == os.path.normpath(out):
-                    return False
-            return True
-
-        return list(filter(filter_dirs, dirs))
-
-    def collect_stages(self):
+    @cached_property
+    def stages(self):
         """
         Walks down the root directory looking for Dvcfiles,
         skipping the directories that are related with
@@ -398,41 +377,38 @@ class Repo(object):
         from dvc.stage import Stage
 
         stages = []
-        outs = []
+        outs = set()
 
-        for root, dirs, files in self.tree.walk(
-            self.root_dir, dvcignore=self.dvcignore
-        ):
+        for root, dirs, files in self.tree.walk(self.root_dir):
             for fname in files:
                 path = os.path.join(root, fname)
                 if not Stage.is_valid_filename(path):
                     continue
                 stage = Stage.load(self, path)
-                for out in stage.outs:
-                    if out.scheme == "local":
-                        outs.append(out.fspath + out.sep)
                 stages.append(stage)
 
-            dirs[:] = self._filter_out_dirs(dirs, outs, root)
+                for out in stage.outs:
+                    if out.scheme == "local":
+                        outs.add(out.fspath)
+
+            dirs[:] = [d for d in dirs if os.path.join(root, d) not in outs]
 
         return stages
 
-    @cached_property
-    def stages(self):
-        return get_stages(self.graph)
-
-    def find_outs_by_path(self, path, outs=None, recursive=False):
+    def find_outs_by_path(self, path, outs=None, recursive=False, strict=True):
         if not outs:
             outs = [out for stage in self.stages for out in stage.outs]
 
         abs_path = os.path.abspath(path)
+        path_info = PathInfo(abs_path)
         is_dir = self.tree.isdir(abs_path)
+        match = path_info.__eq__ if strict else path_info.isin_or_eq
 
         def func(out):
-            if out.scheme == "local" and out.fspath == abs_path:
+            if out.scheme == "local" and match(out.path_info):
                 return True
 
-            if is_dir and recursive and out.path_info.isin(abs_path):
+            if is_dir and recursive and out.path_info.isin(path_info):
                 return True
 
             return False
@@ -458,24 +434,24 @@ class Repo(object):
         cause = None
         try:
             out, = self.find_outs_by_path(path)
-        except OutputNotFoundError as e:
+        except OutputNotFoundError as exc:
             out = None
-            cause = e
+            cause = exc
 
         if out and out.use_cache:
             try:
                 with self._open_cached(out, remote, mode, encoding) as fd:
                     yield fd
                 return
-            except FileNotFoundError as e:
-                raise FileMissingError(relpath(path, self.root_dir), cause=e)
+            except FileNotFoundError as exc:
+                raise FileMissingError(relpath(path, self.root_dir)) from exc
 
         if self.tree.exists(path):
             with self.tree.open(path, mode, encoding) as fd:
                 yield fd
             return
 
-        raise FileMissingError(relpath(path, self.root_dir), cause=cause)
+        raise FileMissingError(relpath(path, self.root_dir)) from cause
 
     def _open_cached(self, out, remote=None, mode="r", encoding=None):
         if out.isdir():
@@ -485,7 +461,7 @@ class Repo(object):
         cache_file = fspath_py35(cache_file)
 
         if os.path.exists(cache_file):
-            return _open(cache_file, mode=mode, encoding=encoding)
+            return open(cache_file, mode=mode, encoding=encoding)
 
         try:
             remote_obj = self.cloud.get_remote(remote)
@@ -496,11 +472,7 @@ class Repo(object):
                 cache_info = out.get_used_cache(remote=remote)
                 self.cloud.pull(cache_info, remote=remote)
 
-            return _open(cache_file, mode=mode, encoding=encoding)
-
-    @cached_property
-    def dvcignore(self):
-        return DvcIgnoreFilter(self.root_dir, self.tree)
+            return open(cache_file, mode=mode, encoding=encoding)
 
     def close(self):
         self.scm.close()

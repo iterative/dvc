@@ -1,14 +1,14 @@
-from __future__ import unicode_literals
-
 import filecmp
 import getpass
 import os
 import posixpath
+import pathlib
 import re
 import shutil
 import uuid
 from subprocess import PIPE
 from subprocess import Popen
+from urllib.parse import urljoin
 
 import boto3
 import paramiko
@@ -30,9 +30,6 @@ from dvc.stage import StageFileDoesNotExistError
 from dvc.system import System
 from dvc.utils import file_md5
 from dvc.utils import relpath
-from dvc.utils.compat import pathlib
-from dvc.utils.compat import str
-from dvc.utils.compat import urljoin
 from dvc.utils.stage import dump_stage_file
 from dvc.utils.stage import load_stage_file
 from tests.basic_env import TestDvc
@@ -50,7 +47,7 @@ from tests.utils.httpd import StaticFileServer, ContentMD5Handler
 
 class TestRepro(TestDvc):
     def setUp(self):
-        super(TestRepro, self).setUp()
+        super().setUp()
 
         stages = self.dvc.add(self.FOO)
         self.assertEqual(len(stages), 1)
@@ -170,14 +167,13 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
 
         # NOTE: os.walk() walks in a sorted order and we need dir2 subdirs to
         # be processed before dir1 to load error.dvc first.
-        with patch.object(self.dvc, "collect_stages") as mock_stages:
-            mock_stages.return_value = [
-                nested_stage,
-                Stage.load(self.dvc, error_stage_path),
-            ]
+        self.dvc.stages = [
+            nested_stage,
+            Stage.load(self.dvc, error_stage_path),
+        ]
 
-            with self.assertRaises(StagePathAsOutputError):
-                self.dvc.reproduce(error_stage_path)
+        with self.assertRaises(StagePathAsOutputError):
+            self.dvc.reproduce(error_stage_path)
 
     def test_similar_paths(self):
         # File structure:
@@ -376,7 +372,7 @@ class TestReproDryNoExec(TestDvc):
 
 class TestReproChangedDeepData(TestReproChangedData):
     def setUp(self):
-        super(TestReproChangedDeepData, self).setUp()
+        super().setUp()
 
         self.file2 = "file2"
         self.file2_stage = self.file2 + ".dvc"
@@ -457,7 +453,7 @@ class TestReproPipeline(TestReproChangedDeepData):
 
 class TestReproPipelines(TestDvc):
     def setUp(self):
-        super(TestReproPipelines, self).setUp()
+        super().setUp()
 
         stages = self.dvc.add(self.FOO)
         self.assertEqual(len(stages), 1)
@@ -1106,7 +1102,7 @@ class TestReproExternalSSH(TestReproExternalBase):
 
 class TestReproExternalLOCAL(TestReproExternalBase):
     def setUp(self):
-        super(TestReproExternalLOCAL, self).setUp()
+        super().setUp()
         self.tmpdir = TestDvc.mkdtemp()
         ret = main(["config", "cache.type", "hardlink"])
         self.assertEqual(ret, 0)

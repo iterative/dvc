@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import errno
 import logging
 import os
@@ -15,8 +13,6 @@ from dvc.utils import dict_md5
 from dvc.utils import fspath
 from dvc.utils import fspath_py35
 from dvc.utils import relpath
-from dvc.utils import walk_files
-from dvc.utils.compat import str
 
 
 logger = logging.getLogger(__name__)
@@ -35,11 +31,15 @@ def get_inode(path):
     return inode
 
 
-def get_mtime_and_size(path, dvcignore):
+def get_mtime_and_size(path, tree):
+    from dvc.ignore import CleanTree
+
+    assert isinstance(tree, CleanTree)
+
     if os.path.isdir(fspath_py35(path)):
         size = 0
         files_mtimes = {}
-        for file_path in walk_files(path, dvcignore):
+        for file_path in tree.walk_files(path):
             try:
                 stat = os.stat(file_path)
             except OSError as exc:
@@ -69,7 +69,7 @@ class BasePathNotInCheckedPathException(DvcException):
         msg = "Path: {} does not overlap with base path: {}".format(
             path, base_path
         )
-        super(DvcException, self).__init__(msg)
+        super().__init__(msg)
 
 
 def contains_symlink_up_to(path, base_path):
@@ -100,7 +100,7 @@ def move(src, dst, mode=None):
     dst = fspath_py35(dst)
 
     dst = os.path.abspath(dst)
-    tmp = "{}.{}".format(dst, str(uuid()))
+    tmp = "{}.{}".format(dst, uuid())
 
     if os.path.islink(src):
         shutil.copy(os.readlink(src), tmp)

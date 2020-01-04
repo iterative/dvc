@@ -1,24 +1,10 @@
 """Use heuristics to guess if it is a text file or a binary file."""
-from __future__ import unicode_literals
-
-from dvc.utils.compat import is_py3
-from dvc.utils.compat import open
 
 # Based on https://eli.thegreenplace.net/2011/10/19/
 # perls-guess-if-file-is-text-or-binary-implemented-in-python
 
 
-# A function that takes an integer in the 8-bit range and returns
-# a single-character byte object in py3 / a single-character string
-# in py2.
-#
-def _int2byte(i):
-    if is_py3:
-        return bytes((i,))
-    return chr(i)
-
-
-TEXT_CHARS = b"".join(_int2byte(i) for i in range(32, 127)) + b"\n\r\t\f\b"
+TEXT_CHARS = bytes(range(32, 127)) + b"\n\r\t\f\b"
 
 
 def istextfile(fname, blocksize=512):

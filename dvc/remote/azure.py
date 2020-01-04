@@ -1,10 +1,8 @@
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import logging
 import os
 import re
 from datetime import datetime, timedelta
+from urllib.parse import urlparse
 import threading
 
 from funcy import cached_property, wrap_prop
@@ -14,7 +12,6 @@ from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.remote.base import RemoteBASE
 from dvc.scheme import Schemes
-from dvc.utils.compat import urlparse
 
 
 logger = logging.getLogger(__name__)
@@ -34,7 +31,7 @@ class RemoteAZURE(RemoteBASE):
     COPY_POLL_SECONDS = 5
 
     def __init__(self, repo, config):
-        super(RemoteAZURE, self).__init__(repo, config)
+        super().__init__(repo, config)
 
         url = config.get(Config.SECTION_REMOTE_URL, "azure://")
 

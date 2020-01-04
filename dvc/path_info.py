@@ -1,35 +1,23 @@
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import os
 import posixpath
-import sys
+import pathlib
+from urllib.parse import urlparse
 
 from funcy import cached_property
 
 from dvc.utils import relpath
-from dvc.utils.compat import basestring
-from dvc.utils.compat import builtin_str
-from dvc.utils.compat import is_py2
-from dvc.utils.compat import pathlib
-from dvc.utils.compat import str
-from dvc.utils.compat import urlparse
-
-
-# On Python 2.7/Windows sys.getfilesystemencoding() is set to mbcs,
-# which is lossy, thus we can't use that,
-# see https://github.com/mcmtroffaes/pathlib2/issues/56.
-if is_py2:
-    fs_encoding = "utf-8"
 
 
 class _BasePath(object):
     def overlaps(self, other):
-        if isinstance(other, basestring):
+        if isinstance(other, (str, bytes)):
             other = self.__class__(other)
         elif self.__class__ != other.__class__:
             return False
-        return self == other or self.isin(other) or other.isin(self)
+        return self.isin_or_eq(other) or other.isin(self)
+
+    def isin_or_eq(self, other):
+        return self == other or self.isin(other)
 
 
 class PathInfo(pathlib.PurePath, _BasePath):
@@ -63,7 +51,7 @@ class PathInfo(pathlib.PurePath, _BasePath):
         return relpath(path)
 
     def __repr__(self):
-        return builtin_str("{}: '{}'").format(type(self).__name__, self)
+        return "{}: '{}'".format(type(self).__name__, self)
 
     # This permits passing it to file utils directly in Python 3.6+
     # With Python 2.7, Python 3.5+ we are stuck with path_info.fspath for now
@@ -80,41 +68,13 @@ class PathInfo(pathlib.PurePath, _BasePath):
         return self.__class__(relpath(self, other))
 
     def isin(self, other):
-        if isinstance(other, basestring):
+        if isinstance(other, (str, bytes)):
             other = self.__class__(other)
         elif self.__class__ != other.__class__:
             return False
         # Use cached casefolded parts to compare paths
         n = len(other._cparts)
         return len(self._cparts) > n and self._cparts[:n] == other._cparts
-
-    # pathlib2 uses bytes internally in Python 2, and we use unicode everywhere
-    # for paths in both pythons, thus we need this glue.
-    if is_py2:
-        __unicode__ = __str__
-
-        def __str__(self):
-            return self.__unicode__().encode(sys.getfilesystemencoding())
-
-        @classmethod
-        def _parse_args(cls, args):
-            args = [
-                a.encode(fs_encoding)
-                if isinstance(a, unicode)  # noqa: F821
-                else a
-                for a in args
-            ]
-            return super(PathInfo, cls)._parse_args(args)
-
-        @property
-        def name(self):
-            return super(PathInfo, self).name.decode(fs_encoding)
-
-        def __fspath__(self):  # noqa: F811
-            return pathlib.PurePath.__str__(self).decode(fs_encoding)
-
-        def with_name(self, name):
-            return pathlib.PurePath.with_name(self, name.encode(fs_encoding))
 
 
 class WindowsPathInfo(PathInfo, pathlib.PureWindowsPath):
@@ -172,13 +132,13 @@ class URLInfo(_BasePath):
 
     def fill_parts(self, scheme, host, user, port, path):
         assert scheme != "remote"
-        assert isinstance(path, (basestring, _URLPathInfo))
+        assert isinstance(path, (str, bytes, _URLPathInfo))
 
         self.scheme, self.host, self.user = scheme, host, user
         self.port = int(port) if port else self.DEFAULT_PORTS.get(self.scheme)
 
         if isinstance(path, _URLPathInfo):
-            self._spath = builtin_str(path)
+            self._spath = str(path)
             self._path = path
         else:
             if path and path[0] != "/":
@@ -207,7 +167,7 @@ class URLInfo(_BasePath):
         return "{}: '{}'".format(type(self).__name__, self)
 
     def __eq__(self, other):
-        if isinstance(other, basestring):
+        if isinstance(other, (str, bytes)):
             other = self.__class__(other)
         return (
             self.__class__ == other.__class__
@@ -257,7 +217,7 @@ class URLInfo(_BasePath):
         return _URLPathParents(self)
 
     def relative_to(self, other):
-        if isinstance(other, basestring):
+        if isinstance(other, (str, bytes)):
             other = self.__class__(other)
         if self.__class__ != other.__class__:
             msg = "'{}' has incompatible class with '{}'".format(self, other)
@@ -268,7 +228,7 @@ class URLInfo(_BasePath):
         return self._path.relative_to(other._path)
 
     def isin(self, other):
-        if isinstance(other, basestring):
+        if isinstance(other, (str, bytes)):
             other = self.__class__(other)
         elif self.__class__ != other.__class__:
             return False

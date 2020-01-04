@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import os
 import json
 
@@ -11,12 +9,6 @@ from funcy.py3 import lmap, lfilter, lmapcat
 
 from .exceptions import DvcException
 from .lock import LockError
-from .utils.compat import (
-    convert_to_unicode,
-    FileNotFoundError,
-    JSONDecodeError,
-    str,
-)
 from .utils.fs import relpath
 
 INFO_SCHEMA = {"pid": int, "cmd": str}
@@ -25,18 +17,17 @@ SCHEMA = Schema({"write": {str: INFO_SCHEMA}, "read": {str: [INFO_SCHEMA]}})
 
 
 class RWLockFileCorruptedError(DvcException):
-    def __init__(self, path, cause):
-        super(RWLockFileCorruptedError, self).__init__(
+    def __init__(self, path):
+        super().__init__(
             "Unable to read RWLock-file '{}'. JSON structure is "
-            "corrupted".format(relpath(path)),
-            cause=cause,
+            "corrupted".format(relpath(path))
         )
 
 
 class RWLockFileFormatError(DvcException):
-    def __init__(self, path, cause):
-        super(RWLockFileFormatError, self).__init__(
-            "RWLock-file '{}' format error.".format(relpath(path)), cause=cause
+    def __init__(self, path):
+        super().__init__(
+            "RWLock-file '{}' format error.".format(relpath(path))
         )
 
 
@@ -46,13 +37,13 @@ def _edit_rwlock(lock_dir):
     try:
         with open(path, "r") as fobj:
             lock = json.load(fobj)
-        lock = SCHEMA(convert_to_unicode(lock))
+        lock = SCHEMA(lock)
     except FileNotFoundError:
         lock = SCHEMA({})
-    except JSONDecodeError as exc:
-        raise RWLockFileCorruptedError(path, cause=exc)
+    except json.JSONDecodeError as exc:
+        raise RWLockFileCorruptedError(path) from exc
     except Invalid as exc:
-        raise RWLockFileFormatError(path, cause=exc)
+        raise RWLockFileFormatError(path) from exc
     lock = defaultdict(dict, lock)
     lock["read"] = defaultdict(list, lock["read"])
     lock["write"] = defaultdict(dict, lock["write"])

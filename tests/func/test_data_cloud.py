@@ -25,7 +25,6 @@ from dvc.remote.base import STATUS_DELETED
 from dvc.remote.base import STATUS_NEW
 from dvc.remote.base import STATUS_OK
 from dvc.utils import file_md5
-from dvc.utils.compat import str
 from dvc.utils.stage import dump_stage_file
 from dvc.utils.stage import load_stage_file
 from tests.basic_env import TestDvc
@@ -35,10 +34,10 @@ from tests.remotes import (
     _should_test_aws,
     _should_test_azure,
     _should_test_gcp,
-    _should_test_gdrive,
     _should_test_hdfs,
     _should_test_oss,
     _should_test_ssh,
+    GDrive,
     TEST_CONFIG,
     TEST_SECTION,
     TEST_GCP_CREDS_FILE,
@@ -48,7 +47,6 @@ from tests.remotes import (
     get_aws_url,
     get_azure_url,
     get_gcp_url,
-    get_gdrive_url,
     get_hdfs_url,
     get_local_url,
     get_oss_url,
@@ -210,7 +208,7 @@ class TestRemoteS3(TestDataCloudBase):
 
 class TestRemoteGDrive(TestDataCloudBase):
     def _should_test(self):
-        return _should_test_gdrive()
+        return GDrive.should_test()
 
     def _setup_cloud(self):
         self._ensure_should_run()
@@ -231,7 +229,7 @@ class TestRemoteGDrive(TestDataCloudBase):
         self.assertIsInstance(self.cloud.get_remote(), self._get_cloud_class())
 
     def _get_url(self):
-        return get_gdrive_url()
+        return GDrive.get_url()
 
     def _get_cloud_class(self):
         return RemoteGDrive
@@ -297,7 +295,7 @@ class TestRemoteLOCAL(TestDataCloudBase):
         return RemoteLOCAL
 
     def test(self):
-        super(TestRemoteLOCAL, self).test()
+        super().test()
         self.assertTrue(os.path.isdir(self.dname))
 
 
@@ -485,10 +483,10 @@ class TestRemoteS3CLI(TestDataCloudCLIBase):
 
 class TestRemoteGDriveCLI(TestDataCloudCLIBase):
     def _should_test(self):
-        return _should_test_gdrive()
+        return GDrive.should_test()
 
     def _test(self):
-        url = get_gdrive_url()
+        url = GDrive.get_url()
 
         self.main(["remote", "add", TEST_REMOTE, url])
         self.main(
@@ -707,7 +705,7 @@ class TestCheckSumRecalculation(TestDvc):
 
 class TestShouldWarnOnNoChecksumInLocalAndRemoteCache(TestDvc):
     def setUp(self):
-        super(TestShouldWarnOnNoChecksumInLocalAndRemoteCache, self).setUp()
+        super().setUp()
 
         cache_dir = self.mkdtemp()
         ret = main(["add", self.FOO])

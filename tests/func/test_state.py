@@ -6,7 +6,6 @@ from dvc.main import main
 from dvc.path_info import PathInfo
 from dvc.state import State
 from dvc.utils import file_md5
-from dvc.utils.compat import str
 
 
 def test_state(dvc_repo, repo_dir):

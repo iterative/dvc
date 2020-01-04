@@ -1,6 +1,5 @@
-from __future__ import unicode_literals
-
 import logging
+from urllib.parse import urlparse
 from copy import copy
 
 from voluptuous import Any
@@ -10,8 +9,6 @@ from dvc.cache import NamedCache
 from dvc.exceptions import CollectCacheError
 from dvc.exceptions import DvcException
 from dvc.remote.base import RemoteBASE
-from dvc.utils.compat import str
-from dvc.utils.compat import urlparse
 
 
 logger = logging.getLogger(__name__)
@@ -20,26 +17,24 @@ logger = logging.getLogger(__name__)
 class OutputDoesNotExistError(DvcException):
     def __init__(self, path):
         msg = "output '{}' does not exist".format(path)
-        super(OutputDoesNotExistError, self).__init__(msg)
+        super().__init__(msg)
 
 
 class OutputIsNotFileOrDirError(DvcException):
     def __init__(self, path):
         msg = "output '{}' is not a file or directory".format(path)
-        super(OutputIsNotFileOrDirError, self).__init__(msg)
+        super().__init__(msg)
 
 
 class OutputAlreadyTrackedError(DvcException):
     def __init__(self, path):
         msg = "output '{}' is already tracked by scm (e.g. git)".format(path)
-        super(OutputAlreadyTrackedError, self).__init__(msg)
+        super().__init__(msg)
 
 
 class OutputIsStageFileError(DvcException):
     def __init__(self, path):
-        super(OutputIsStageFileError, self).__init__(
-            "Stage file '{}' cannot be an output.".format(path)
-        )
+        super().__init__("Stage file '{}' cannot be an output.".format(path))
 
 
 class OutputBase(object):
@@ -283,11 +278,18 @@ class OutputBase(object):
         self.remote.download(self.path_info, to.path_info)
 
     def checkout(
-        self, force=False, progress_callback=None, tag=None, relink=False
+        self,
+        force=False,
+        progress_callback=None,
+        tag=None,
+        relink=False,
+        filter_info=None,
     ):
         if not self.use_cache:
             if progress_callback:
-                progress_callback(str(self.path_info), self.get_files_number())
+                progress_callback(
+                    str(self.path_info), self.get_files_number(filter_info)
+                )
             return None
 
         if tag:
@@ -301,6 +303,7 @@ class OutputBase(object):
             force=force,
             progress_callback=progress_callback,
             relink=relink,
+            filter_info=filter_info,
         )
 
     def remove(self, ignore_remove=False):
@@ -324,17 +327,21 @@ class OutputBase(object):
         if self.scheme == "local" and self.use_scm_ignore:
             self.repo.scm.ignore(self.fspath)
 
-    def get_files_number(self):
+    def get_files_number(self, filter_info=None):
         if not self.use_cache:
             return 0
 
-        return self.cache.get_files_number(self.checksum)
+        return self.cache.get_files_number(
+            self.path_info, self.checksum, filter_info
+        )
 
     def unprotect(self):
         if self.exists:
             self.remote.unprotect(self.path_info)
 
-    def _collect_used_dir_cache(self, remote=None, force=False, jobs=None):
+    def _collect_used_dir_cache(
+        self, remote=None, force=False, jobs=None, filter_info=None
+    ):
         """Get a list of `info`s related to the given directory.
 
         - Pull the directory entry from the remote cache if it was changed.
@@ -383,8 +390,9 @@ class OutputBase(object):
 
         for entry in self.dir_cache:
             checksum = entry[self.remote.PARAM_CHECKSUM]
-            path_info = self.path_info / entry[self.remote.PARAM_RELPATH]
-            cache.add(self.scheme, checksum, str(path_info))
+            info = self.path_info / entry[self.remote.PARAM_RELPATH]
+            if not filter_info or info.isin_or_eq(filter_info):
+                cache.add(self.scheme, checksum, str(info))
 
         return cache
 
@@ -399,6 +407,12 @@ class OutputBase(object):
 
         if not self.use_cache:
             return NamedCache()
+
+        if self.stage.is_repo_import:
+            cache = NamedCache()
+            dep, = self.stage.deps
+            cache.external[dep.repo_pair].add(dep.def_path)
+            return cache
 
         if not self.info:
             logger.warning(

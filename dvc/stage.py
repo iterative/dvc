@@ -1,6 +1,4 @@
-from __future__ import unicode_literals
-
-from dvc.utils.compat import pathlib, str
+import pathlib
 import logging
 import os
 import re
@@ -35,13 +33,13 @@ logger = logging.getLogger(__name__)
 class StageCmdFailedError(DvcException):
     def __init__(self, stage):
         msg = "stage '{}' cmd '{}' failed".format(stage.relpath, stage.cmd)
-        super(StageCmdFailedError, self).__init__(msg)
+        super().__init__(msg)
 
 
 class StageFileFormatError(DvcException):
     def __init__(self, fname, e):
         msg = "DVC-file '{}' format error: {}".format(fname, str(e))
-        super(StageFileFormatError, self).__init__(msg)
+        super().__init__(msg)
 
 
 class StageFileDoesNotExistError(DvcException):
@@ -52,13 +50,13 @@ class StageFileDoesNotExistError(DvcException):
         if Stage.is_stage_file(sname):
             msg += " Do you mean '{}'?".format(sname)
 
-        super(StageFileDoesNotExistError, self).__init__(msg)
+        super().__init__(msg)
 
 
 class StageFileAlreadyExistsError(DvcException):
     def __init__(self, relpath):
         msg = "stage '{}' already exists".format(relpath)
-        super(StageFileAlreadyExistsError, self).__init__(msg)
+        super().__init__(msg)
 
 
 class StageFileIsNotDvcFileError(DvcException):
@@ -69,30 +67,29 @@ class StageFileIsNotDvcFileError(DvcException):
         if Stage.is_stage_file(sname):
             msg += " Do you mean '{}'?".format(sname)
 
-        super(StageFileIsNotDvcFileError, self).__init__(msg)
+        super().__init__(msg)
 
 
 class StageFileBadNameError(DvcException):
-    def __init__(self, msg):
-        super(StageFileBadNameError, self).__init__(msg)
+    pass
 
 
 class StagePathOutsideError(DvcException):
     def __init__(self, path):
         msg = "stage working or file path '{}' is outside of dvc repo"
-        super(StagePathOutsideError, self).__init__(msg.format(path))
+        super().__init__(msg.format(path))
 
 
 class StagePathNotFoundError(DvcException):
     def __init__(self, path):
         msg = "stage working or file path '{}' does not exist"
-        super(StagePathNotFoundError, self).__init__(msg.format(path))
+        super().__init__(msg.format(path))
 
 
 class StagePathNotDirectoryError(DvcException):
     def __init__(self, path):
         msg = "stage working or file path '{}' is not directory"
-        super(StagePathNotDirectoryError, self).__init__(msg.format(path))
+        super().__init__(msg.format(path))
 
 
 class StageCommitError(DvcException):
@@ -101,7 +98,7 @@ class StageCommitError(DvcException):
 
 class StageUpdateError(DvcException):
     def __init__(self, path):
-        super(StageUpdateError, self).__init__(
+        super().__init__(
             "update is not supported for '{}' that is not an "
             "import.".format(path)
         )
@@ -116,8 +113,8 @@ class MissingDep(DvcException):
         else:
             dep = "dependency"
 
-        msg = "missing {}: {}".format(dep, ", ".join(map(str, deps)))
-        super(MissingDep, self).__init__(msg)
+        msg = "missing '{}': {}".format(dep, ", ".join(map(str, deps)))
+        super().__init__(msg)
 
 
 class MissingDataSource(DvcException):
@@ -128,8 +125,8 @@ class MissingDataSource(DvcException):
         if len(missing_files) > 1:
             source += "s"
 
-        msg = "missing data {}: {}".format(source, ", ".join(missing_files))
-        super(MissingDataSource, self).__init__(msg)
+        msg = "missing data '{}': {}".format(source, ", ".join(missing_files))
+        super().__init__(msg)
 
 
 @decorator
@@ -240,6 +237,20 @@ class Stage(object):
         return "Stage: '{path}'".format(
             path=self.relpath if self.path else "No path"
         )
+
+    def __hash__(self):
+        return hash(self.path_in_repo)
+
+    def __eq__(self, other):
+        return (
+            self.__class__ == other.__class__
+            and self.repo is other.repo
+            and self.path_in_repo == other.path_in_repo
+        )
+
+    @property
+    def path_in_repo(self):
+        return relpath(self.path, self.repo.root_dir)
 
     @property
     def relpath(self):
@@ -409,10 +420,8 @@ class Stage(object):
 
     @staticmethod
     def validate(d, fname=None):
-        from dvc.utils.compat import convert_to_unicode
-
         try:
-            Stage.COMPILED_SCHEMA(convert_to_unicode(d))
+            Stage.COMPILED_SCHEMA(d)
         except MultipleInvalid as exc:
             raise StageFileFormatError(fname, exc)
 
@@ -686,8 +695,10 @@ class Stage(object):
             stage_text=stage_text,
         )
 
-        stage.deps = dependency.loadd_from(stage, d.get(Stage.PARAM_DEPS, []))
-        stage.outs = output.loadd_from(stage, d.get(Stage.PARAM_OUTS, []))
+        stage.deps = dependency.loadd_from(
+            stage, d.get(Stage.PARAM_DEPS) or []
+        )
+        stage.outs = output.loadd_from(stage, d.get(Stage.PARAM_OUTS) or [])
 
         return stage
 
@@ -959,15 +970,28 @@ class Stage(object):
         if paths:
             raise MissingDataSource(paths)
 
+    def _filter_outs(self, path_info):
+        def _func(o):
+            return path_info.isin_or_eq(o.path_info)
+
+        return filter(_func, self.outs) if path_info else self.outs
+
     @rwlocked(write=["outs"])
-    def checkout(self, force=False, progress_callback=None, relink=False):
+    def checkout(
+        self,
+        force=False,
+        progress_callback=None,
+        relink=False,
+        filter_info=None,
+    ):
         failed_checkouts = []
-        for out in self.outs:
+        for out in self._filter_outs(filter_info):
             failed = out.checkout(
                 force=force,
                 tag=self.tag,
                 progress_callback=progress_callback,
                 relink=relink,
+                filter_info=filter_info,
             )
             if failed:
                 failed_checkouts.append(failed)
@@ -1016,5 +1040,17 @@ class Stage(object):
             )
         )
 
-    def get_all_files_number(self):
-        return sum(out.get_files_number() for out in self.outs)
+    def get_all_files_number(self, filter_info=None):
+        return sum(
+            out.get_files_number(filter_info)
+            for out in self._filter_outs(filter_info)
+        )
+
+    def get_used_cache(self, *args, **kwargs):
+        from .cache import NamedCache
+
+        cache = NamedCache()
+        for out in self._filter_outs(kwargs.get("filter_info")):
+            cache.update(out.get_used_cache(*args, **kwargs))
+
+        return cache

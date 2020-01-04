@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import filecmp
 import os
 import shutil
@@ -15,13 +13,12 @@ from dvc.exceptions import NoOutputInExternalRepoError
 from dvc.stage import Stage
 from dvc.system import System
 from dvc.utils import makedirs
-from dvc.utils.compat import fspath
+from dvc.compat import fspath
 from tests.utils import trees_equal
 
 
-def test_import(tmp_dir, scm, dvc, erepo_dir, monkeypatch):
-    with monkeypatch.context() as m:
-        m.chdir(fspath(erepo_dir))
+def test_import(tmp_dir, scm, dvc, erepo_dir):
+    with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
 
     dvc.imp(fspath(erepo_dir), "foo", "foo_imported")
@@ -59,9 +56,8 @@ def test_import_git_dir(erepo_dir, tmp_dir, dvc, scm):
     assert tmp_dir.scm.repo.git.check_ignore(fspath(tmp_dir / dst))
 
 
-def test_import_dir(tmp_dir, scm, dvc, erepo_dir, monkeypatch):
-    with monkeypatch.context() as m:
-        m.chdir(fspath(erepo_dir))
+def test_import_dir(tmp_dir, scm, dvc, erepo_dir):
+    with erepo_dir.chdir():
         erepo_dir.dvc_gen({"dir": {"foo": "foo content"}}, commit="create dir")
 
     dvc.imp(fspath(erepo_dir), "dir", "dir_imported")
@@ -93,22 +89,18 @@ def test_import_non_cached(erepo_dir, tmp_dir, dvc, scm):
     assert tmp_dir.scm.repo.git.check_ignore(dst)
 
 
-def test_import_rev(tmp_dir, scm, dvc, erepo_dir, monkeypatch):
-    with monkeypatch.context() as m:
-        m.chdir(fspath(erepo_dir))
-        erepo_dir.scm.checkout("new_branch", create_new=True)
+def test_import_rev(tmp_dir, scm, dvc, erepo_dir):
+    with erepo_dir.chdir(), erepo_dir.branch("branch", new=True):
         erepo_dir.dvc_gen("foo", "foo content", commit="create foo on branch")
-        erepo_dir.scm.checkout("master")
 
-    dvc.imp(fspath(erepo_dir), "foo", "foo_imported", rev="new_branch")
+    dvc.imp(fspath(erepo_dir), "foo", "foo_imported", rev="branch")
 
     assert (tmp_dir / "foo_imported").read_text() == "foo content"
     assert scm.repo.git.check_ignore("foo_imported")
 
 
-def test_pull_imported_stage(tmp_dir, dvc, erepo_dir, monkeypatch):
-    with monkeypatch.context() as m:
-        m.chdir(fspath(erepo_dir))
+def test_pull_imported_stage(tmp_dir, dvc, erepo_dir):
+    with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
     dvc.imp(fspath(erepo_dir), "foo", "foo_imported")
 
@@ -123,11 +115,8 @@ def test_pull_imported_stage(tmp_dir, dvc, erepo_dir, monkeypatch):
     assert os.path.isfile(dst_cache)
 
 
-def test_cache_type_is_properly_overridden(
-    tmp_dir, scm, dvc, erepo_dir, monkeypatch
-):
-    with monkeypatch.context() as m:
-        m.chdir(fspath(erepo_dir))
+def test_cache_type_is_properly_overridden(tmp_dir, scm, dvc, erepo_dir):
+    with erepo_dir.chdir():
         erepo_dir.dvc.config.set(
             Config.SECTION_CACHE, Config.SECTION_CACHE_TYPE, "symlink"
         )
@@ -146,9 +135,8 @@ def test_cache_type_is_properly_overridden(
     assert scm.repo.git.check_ignore("foo_imported")
 
 
-def test_pull_imported_directory_stage(tmp_dir, dvc, erepo_dir, monkeypatch):
-    with monkeypatch.context() as m:
-        m.chdir(fspath(erepo_dir))
+def test_pull_imported_directory_stage(tmp_dir, dvc, erepo_dir):
+    with erepo_dir.chdir():
         erepo_dir.dvc_gen({"dir": {"foo": "foo content"}}, commit="create dir")
 
     dvc.imp(fspath(erepo_dir), "dir", "dir_imported")
@@ -162,11 +150,8 @@ def test_pull_imported_directory_stage(tmp_dir, dvc, erepo_dir, monkeypatch):
     trees_equal(fspath(erepo_dir / "dir"), "dir_imported")
 
 
-def test_download_error_pulling_imported_stage(
-    tmp_dir, dvc, erepo_dir, monkeypatch
-):
-    with monkeypatch.context() as m:
-        m.chdir(fspath(erepo_dir))
+def test_download_error_pulling_imported_stage(tmp_dir, dvc, erepo_dir):
+    with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
     dvc.imp(fspath(erepo_dir), "foo", "foo_imported")
 
@@ -183,11 +168,10 @@ def test_download_error_pulling_imported_stage(
 
 
 @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])
-def test_import_to_dir(dname, tmp_dir, dvc, erepo_dir, monkeypatch):
+def test_import_to_dir(dname, tmp_dir, dvc, erepo_dir):
     makedirs(dname, exist_ok=True)
 
-    with monkeypatch.context() as m:
-        m.chdir(fspath(erepo_dir))
+    with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
 
     stage = dvc.imp(fspath(erepo_dir), "foo", dname)
@@ -199,16 +183,16 @@ def test_import_to_dir(dname, tmp_dir, dvc, erepo_dir, monkeypatch):
     assert (tmp_dir / dst).read_text() == "foo content"
 
 
-def test_pull_non_workspace(tmp_dir, scm, dvc, erepo_dir, monkeypatch):
-    with monkeypatch.context() as m:
-        m.chdir(fspath(erepo_dir))
+def test_pull_non_workspace(tmp_dir, scm, dvc, erepo_dir):
+    with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "master content", commit="create foo")
-        erepo_dir.scm.checkout("new_branch", create_new=True)
-        erepo_dir.dvc_gen("foo", "branch content", commit="modify foo")
 
-    stage = dvc.imp(fspath(erepo_dir), "foo", "foo_imported", rev="new_branch")
+        with erepo_dir.branch("branch", new=True):
+            erepo_dir.dvc_gen("foo", "branch content", commit="modify foo")
+
+    stage = dvc.imp(fspath(erepo_dir), "foo", "foo_imported", rev="branch")
     tmp_dir.scm_add([stage.relpath], commit="imported branch")
-    dvc.scm.tag("ref-to-branch")
+    scm.tag("ref-to-branch")
 
     # Overwrite via import
     dvc.imp(fspath(erepo_dir), "foo", "foo_imported", rev="master")
@@ -221,6 +205,7 @@ def test_pull_non_workspace(tmp_dir, scm, dvc, erepo_dir, monkeypatch):
 def test_import_non_existing(erepo_dir, tmp_dir, dvc):
     with pytest.raises(PathMissingError):
         tmp_dir.dvc.imp(fspath(erepo_dir), "invalid_output")
+
     # https://github.com/iterative/dvc/pull/2837#discussion_r352123053
     with pytest.raises(NoOutputInExternalRepoError):
         tmp_dir.dvc.imp(fspath(erepo_dir), "/root/", "root")

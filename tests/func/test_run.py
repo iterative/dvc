@@ -874,9 +874,7 @@ class TestNewRunShouldNotRemoveOutsOnPersist(TestRerunWithSameOutputs):
 
 class TestShouldNotCheckoutUponCorruptedLocalHardlinkCache(TestDvc):
     def setUp(self):
-        super(
-            TestShouldNotCheckoutUponCorruptedLocalHardlinkCache, self
-        ).setUp()
+        super().setUp()
         ret = main(["config", "cache.type", "hardlink"])
         self.assertEqual(ret, 0)
         self.dvc = DvcRepo(".")

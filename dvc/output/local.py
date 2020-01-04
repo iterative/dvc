@@ -1,16 +1,13 @@
-from __future__ import unicode_literals
-
 import logging
 import os
+from urllib.parse import urlparse
 
 from dvc.exceptions import DvcException
 from dvc.istextfile import istextfile
 from dvc.output.base import OutputBase
 from dvc.remote.local import RemoteLOCAL
 from dvc.utils import relpath
-from dvc.utils.compat import fspath_py35
-from dvc.utils.compat import str
-from dvc.utils.compat import urlparse
+from dvc.compat import fspath_py35
 from dvc.utils.fs import path_isin
 
 
@@ -59,7 +56,7 @@ class OutputLOCAL(OutputBase):
         return def_scheme != "remote" and not os.path.isabs(self.def_path)
 
     def dumpd(self):
-        ret = super(OutputLOCAL, self).dumpd()
+        ret = super().dumpd()
         if self.is_in_repo:
             path = self.path_info.relpath(self.stage.wdir).as_posix()
         else:

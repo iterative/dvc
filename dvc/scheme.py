@@ -1,6 +1,3 @@
-from __future__ import unicode_literals
-
-
 class Schemes:
     SSH = "ssh"
     HDFS = "hdfs"
