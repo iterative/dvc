@@ -139,8 +139,7 @@ class SSHConnection:
 
         for dname in dirs:
             newpath = posixpath.join(directory, dname)
-            for entry in self.walk(newpath, topdown=topdown):
-                yield entry
+            yield from self.walk(newpath, topdown=topdown)
 
         if not topdown:
             yield directory, dirs, nondirs

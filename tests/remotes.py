@@ -238,8 +238,7 @@ class S3Mocked:
     @contextmanager
     def remote(cls):
         with mock_s3():
-            remote = RemoteS3(None, {"url": cls.get_url()})
-            yield remote
+            yield RemoteS3(None, {"url": cls.get_url()})
 
     @staticmethod
     def put_objects(remote, objects):
@@ -259,8 +258,7 @@ class GCP:
     @classmethod
     @contextmanager
     def remote(cls):
-        remote = RemoteGS(None, {"url": cls.get_url()})
-        yield remote
+        yield RemoteGS(None, {"url": cls.get_url()})
 
     @staticmethod
     def put_objects(remote, objects):
