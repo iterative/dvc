@@ -90,12 +90,10 @@ def test_import_non_cached(erepo_dir, tmp_dir, dvc, scm):
 
 
 def test_import_rev(tmp_dir, scm, dvc, erepo_dir):
-    with erepo_dir.chdir():
-        erepo_dir.scm.checkout("new_branch", create_new=True)
+    with erepo_dir.chdir(), erepo_dir.branch("branch", new=True):
         erepo_dir.dvc_gen("foo", "foo content", commit="create foo on branch")
-        erepo_dir.scm.checkout("master")
 
-    dvc.imp(fspath(erepo_dir), "foo", "foo_imported", rev="new_branch")
+    dvc.imp(fspath(erepo_dir), "foo", "foo_imported", rev="branch")
 
     assert (tmp_dir / "foo_imported").read_text() == "foo content"
     assert scm.repo.git.check_ignore("foo_imported")
@@ -188,12 +186,13 @@ def test_import_to_dir(dname, tmp_dir, dvc, erepo_dir):
 def test_pull_non_workspace(tmp_dir, scm, dvc, erepo_dir):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "master content", commit="create foo")
-        erepo_dir.scm.checkout("new_branch", create_new=True)
-        erepo_dir.dvc_gen("foo", "branch content", commit="modify foo")
 
-    stage = dvc.imp(fspath(erepo_dir), "foo", "foo_imported", rev="new_branch")
+        with erepo_dir.branch("branch", new=True):
+            erepo_dir.dvc_gen("foo", "branch content", commit="modify foo")
+
+    stage = dvc.imp(fspath(erepo_dir), "foo", "foo_imported", rev="branch")
     tmp_dir.scm_add([stage.relpath], commit="imported branch")
-    dvc.scm.tag("ref-to-branch")
+    scm.tag("ref-to-branch")
 
     # Overwrite via import
     dvc.imp(fspath(erepo_dir), "foo", "foo_imported", rev="master")

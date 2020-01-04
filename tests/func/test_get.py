@@ -77,13 +77,10 @@ def test_cache_type_is_properly_overridden(tmp_dir, erepo_dir):
 
 
 def test_get_repo_rev(tmp_dir, erepo_dir):
-    with erepo_dir.chdir():
-        erepo_dir.scm.checkout("new_branch", create_new=True)
+    with erepo_dir.chdir(), erepo_dir.branch("branch", new=True):
         erepo_dir.dvc_gen("file", "contents", commit="create file on branch")
-        erepo_dir.scm.checkout("master")
 
-    Repo.get(fspath(erepo_dir), "file", "file_imported", rev="new_branch")
-
+    Repo.get(fspath(erepo_dir), "file", "file_imported", rev="branch")
     assert (tmp_dir / "file_imported").read_text() == "contents"
 
 
@@ -159,11 +156,10 @@ def test_get_to_dir(tmp_dir, erepo_dir, dname):
 
 def test_get_from_non_dvc_master(tmp_dir, erepo_dir, caplog):
     with erepo_dir.chdir():
-        erepo_dir.scm.checkout("new_branch", create_new=True)
-        erepo_dir.scm_gen(
-            {"some_file": "some_contents"}, commit="create some file"
-        )
-        erepo_dir.scm.checkout("master")
+        with erepo_dir.branch("branch", new=True):
+            erepo_dir.scm_gen(
+                {"some_file": "some_contents"}, commit="create some file"
+            )
 
         erepo_dir.dvc.scm.repo.index.remove([".dvc"], r=True)
         erepo_dir.dvc.scm.commit("remove .dvc")
@@ -175,7 +171,7 @@ def test_get_from_non_dvc_master(tmp_dir, erepo_dir, caplog):
     caplog.clear()
     dst = "file_imported"
     with caplog.at_level(logging.INFO, logger="dvc"):
-        Repo.get(fspath(erepo_dir), "some_file", out=dst, rev="new_branch")
+        Repo.get(fspath(erepo_dir), "some_file", out=dst, rev="branch")
 
     assert caplog.text == ""
     assert (tmp_dir / dst).read_text() == "some_contents"

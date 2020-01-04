@@ -139,6 +139,7 @@ class TmpDir(pathlib.Path):
         if commit:
             self.scm.commit(commit)
 
+    # contexts
     @contextmanager
     def chdir(self):
         old = os.getcwd()
@@ -147,6 +148,16 @@ class TmpDir(pathlib.Path):
             yield
         finally:
             os.chdir(old)
+
+    @contextmanager
+    def branch(self, name, new=False):
+        self._require("scm")
+        old = self.scm.active_branch()
+        try:
+            self.scm.checkout(name, create_new=new)
+            yield
+        finally:
+            self.scm.checkout(old)
 
     # Introspection methods
     def list(self):
@@ -265,21 +276,12 @@ def erepo_dir(tmp_path_factory, monkeypatch):
         _git_init()
         path.dvc = Repo.init()
         path.scm = path.dvc.scm
-        path.dvc_gen(REPO_TEMPLATE, commit="init repo")
+        path.scm.commit("init dvc")
 
         rconfig = RemoteConfig(path.dvc.config)
         rconfig.add("upstream", path.dvc.cache.local.cache_dir, default=True)
         path.scm_add([path.dvc.config.config_file], commit="add remote")
 
-        path.dvc_gen("version", "master")
-        path.scm_add([".gitignore", "version.dvc"], commit="master")
-
-        path.scm.checkout("branch", create_new=True)
-        (path / "version").unlink()  # For mac ???
-        path.dvc_gen("version", "branch")
-        path.scm_add([".gitignore", "version.dvc"], commit="branch")
-
-        path.scm.checkout("master")
         path.dvc.close()
 
     return path
