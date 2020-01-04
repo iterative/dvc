@@ -29,5 +29,5 @@ class DependencyBase(object):
     IsNotFileOrDirError = DependencyIsNotFileOrDirError
     IsStageFileError = DependencyIsStageFileError
 
-    def update(self, rev):
+    def update(self, rev=None):
         pass
