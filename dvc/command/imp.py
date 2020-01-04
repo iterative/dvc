@@ -52,6 +52,6 @@ def add_parser(subparsers, parent_parser):
         "-o", "--out", nargs="?", help="Destination path to put data to."
     )
     import_parser.add_argument(
-        "--rev", nargs="?", help="DVC repository git revision."
+        "--rev", nargs="?", help="Git revision in repository to update from."
     )
     import_parser.set_defaults(func=CmdImport)
