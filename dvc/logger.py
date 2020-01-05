@@ -1,6 +1,6 @@
 """Manages logging configuration for dvc repo."""
 
-import io
+import traceback
 import logging.config
 import logging.handlers
 
@@ -21,9 +21,7 @@ FOOTER = (
 
 
 class LoggingException(Exception):
-    def __init__(self, record):
-        msg = "failed to log {}".format(str(record))
-        super().__init__(msg)
+    pass
 
 
 class ExcludeErrorsFilter(logging.Filter):
@@ -37,16 +35,12 @@ class ExcludeInfoFilter(logging.Filter):
 
 
 class ColorFormatter(logging.Formatter):
-    """Enable color support when logging to a terminal that supports it.
+    """Spit out colored text in supported terminals.
 
-    Color support on Windows versions that do not support ANSI color codes is
-    enabled by use of the colorama__ library.
+    colorama__ makes ANSI escape character sequences work under Windows.
     See the colorama documentation for details.
 
     __ https://pypi.python.org/pypi/colorama
-
-    For records containing `exc_info`, it will use a custom `_walk_exc` to
-    retrieve the whole traceback.
     """
 
     color_code = {
@@ -58,97 +52,54 @@ class ColorFormatter(logging.Formatter):
     }
 
     def format(self, record):
+        info = record.msg
+
         if record.levelname == "INFO":
-            return record.msg
+            return info
 
-        if record.levelname == "ERROR" or record.levelname == "CRITICAL":
-            exception, stack_trace = self._parse_exc(record.exc_info)
+        if record.exc_info:
+            _, exception, _ = record.exc_info
+            cause = exception.__cause__
 
-            return (
-                "{color}{levelname}{nc}: {description}" "{stack_trace}\n"
-            ).format(
-                color=self.color_code.get(record.levelname, ""),
-                nc=colorama.Fore.RESET,
-                levelname=record.levelname,
-                description=self._description(record.msg, exception),
-                msg=record.msg,
-                stack_trace=stack_trace,
+            info = "{message}{separator}{exception}{cause}".format(
+                message=record.msg or "",
+                separator=" - " if record.msg and exception.args else "",
+                exception=exception,
+                cause=": " + str(cause) if cause else "",
             )
 
-        return "{color}{levelname}{nc}: {msg}".format(
-            color=self.color_code.get(record.levelname, ""),
-            nc=colorama.Fore.RESET,
+            if self._current_level() == logging.DEBUG:
+                trace = "".join(traceback.format_exception(*record.exc_info))
+
+                return (
+                    "{red}{levelname}{nc}: {info}\n"
+                    "{red}{line}{nc}\n"
+                    "{trace}"
+                    "{red}{line}{nc}".format(
+                        levelname=record.levelname,
+                        info=info,
+                        red=colorama.Fore.RED,
+                        line="-" * 60,
+                        trace=trace,
+                        nc=colorama.Fore.RESET,
+                    )
+                )
+
+        return "{color}{levelname}{nc}: {info}".format(
+            color=self.color_code[record.levelname],
             levelname=record.levelname,
-            msg=record.msg,
+            nc=colorama.Fore.RESET,
+            info=info,
         )
 
     def _current_level(self):
         return logging.getLogger("dvc").getEffectiveLevel()
 
-    def _is_visible(self, record):
-        return record.levelno >= self._current_level()
-
-    def _description(self, message, exception):
-        description = ""
-
-        if exception and message:
-            description = "{message} - {exception}"
-        elif exception:
-            description = "{exception}"
-        elif message:
-            description = "{message}"
-
-        return description.format(message=message, exception=exception)
-
-    def _walk_exc(self, exc_info):
-        import traceback
-
-        buffer = io.StringIO()
-
-        traceback.print_exception(*exc_info, file=buffer)
-
-        exc = exc_info[1]
-        tb = buffer.getvalue()
-
-        exc_list = [str(exc)]
-        tb_list = [tb]
-
-        # NOTE: parsing chained exceptions. See dvc/exceptions.py for more info
-        while hasattr(exc, "__cause__") and exc.__cause__:
-            exc_list.append(str(exc.__cause__))
-            if hasattr(exc, "cause_tb") and exc.cause_tb:
-                tb_list.insert(0, str(exc.cause_tb))
-            exc = exc.__cause__
-
-        return exc_list, tb_list
-
-    def _parse_exc(self, exc_info):
-        if not exc_info:
-            return (None, "")
-
-        exc_list, tb_list = self._walk_exc(exc_info)
-
-        exception = ": ".join(exc_list)
-
-        if self._current_level() == logging.DEBUG:
-            stack_trace = (
-                "\n" "{red}{line}{nc}\n" "{stack_trace}" "{red}{line}{nc}"
-            ).format(
-                red=colorama.Fore.RED,
-                nc=colorama.Fore.RESET,
-                line="-" * 60,
-                stack_trace="\n".join(tb_list),
-            )
-        else:
-            stack_trace = ""
-
-        return (exception, stack_trace)
-
 
 class LoggerHandler(logging.StreamHandler):
     def handleError(self, record):
         super().handleError(record)
-        raise LoggingException(record)
+        raise LoggingException("failed to log {}".format(record))
 
     def emit(self, record):
         """Write to Tqdm's stream so as to not break progress-bars"""
