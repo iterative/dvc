@@ -31,6 +31,6 @@ def test_update_rev_failed(mocker, caplog):
             assert cmd.run() == 1
             expected_error = (
                 "Revision option (`--rev`) is not a feature"
-                "of non-Git sources."
+                " of non-Git sources."
             )
             assert expected_error in caplog.text
