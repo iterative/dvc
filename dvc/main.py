@@ -60,7 +60,8 @@ def main(argv=None):
     except Exception as exc:  # pylint: disable=broad-except
         if isinstance(exc, OSError) and exc.errno == errno.EMFILE:
             logger.exception(
-                "too many open files, please increase your `ulimit`"
+                "too many open files, please increase your `ulimit`",
+                extra={"tb_only": True},
             )
         else:
             logger.exception("unexpected error")
