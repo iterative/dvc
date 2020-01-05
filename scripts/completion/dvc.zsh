@@ -74,7 +74,7 @@ _dvc_checkout=(
   {-d,--with-deps}"[Checkout all dependencies of the specified target.]"
   {-R,--recursive}"[Checkout all subdirectories of the specified directory.]"
   {-f,--force}"[Do not prompt when removing working directory files.]"
-  {--relink}"[Recreate links or copies from cache to workspace.]"
+  "--relink[Recreate links or copies from cache to workspace.]"
   "1:Stages:_files -g '(*.dvc|Dvcfile)'"
 )
 
