@@ -6,7 +6,7 @@ import pytest
 from dvc.exceptions import UpdateWithRevNotPossibleError
 from dvc.external_repo import clean_repos
 from dvc.repo import Repo
-from dvc.utils.compat import fspath
+from dvc.compat import fspath
 
 
 def test_update_import(dvc_repo, erepo):
