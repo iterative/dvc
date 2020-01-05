@@ -8,6 +8,7 @@ import nanotime
 from shortuuid import uuid
 
 from dvc.exceptions import DvcException
+from dvc.scm.tree import is_working_tree
 from dvc.system import System
 from dvc.utils import dict_md5
 from dvc.utils import fspath
@@ -32,11 +33,10 @@ def get_inode(path):
 
 
 def get_mtime_and_size(path, tree):
-    from dvc.ignore import CleanTree
-
-    assert isinstance(tree, CleanTree)
 
     if os.path.isdir(fspath_py35(path)):
+        assert is_working_tree(tree)
+
         size = 0
         files_mtimes = {}
         for file_path in tree.walk_files(path):

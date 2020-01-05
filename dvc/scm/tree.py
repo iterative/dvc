@@ -74,3 +74,9 @@ class WorkingTree(BaseTree):
             top, topdown=topdown, onerror=onerror
         ):
             yield os.path.normpath(root), dirs, files
+
+
+def is_working_tree(tree):
+    return isinstance(tree, WorkingTree) or isinstance(
+        getattr(tree, "tree", None), WorkingTree
+    )
