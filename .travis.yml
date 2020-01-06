@@ -75,33 +75,6 @@ jobs:
     language: python
     python: 3.7
     script: ./scripts/build_package.sh
-  - name: Snapcraft snap
-    addons:
-     snaps:
-     - name: snapcraft
-       channel: stable
-       confinement: classic
-     - name: lxd
-       channel: stable
-    env:
-    - SNAPCRAFT_IMAGE_INFO: '{"build_url": "$TRAVIS_BUILD_URL"}'
-    before_install:
-    - sudo /snap/bin/lxd.migrate -yes
-    - sudo /snap/bin/lxd waitready
-    - sudo /snap/bin/lxd init --auto
-    install:
-    script:
-    - sudo snapcraft --use-lxd
-    after_failure:
-    - sudo journalctl -u snapd
-    #uncomment after classic approval
-    #<>
-    #stage: deploy
-    #deploy:
-    #- provider: snap
-    #  snap: dvc_*.snap
-    #  channel: ${SOURCE_TAG:+stable}${SOURCE_TAG:-edge}
-    #  skip_cleanup: true
   # deploy jobs
   - name: "Pypi pkgs"
     if: tag is present
@@ -124,6 +97,31 @@ jobs:
       on:
         tags: true
         repo: iterative/dvc
+  - name: Snapcraft snap
+    addons:
+     snaps:
+     - name: snapcraft
+       channel: stable
+       confinement: classic
+     - name: lxd
+       channel: stable
+    env:
+    - SNAPCRAFT_IMAGE_INFO: '{"build_url": "$TRAVIS_BUILD_URL"}'
+    before_install:
+    - sudo /snap/bin/lxd.migrate -yes
+    - sudo /snap/bin/lxd waitready
+    - sudo /snap/bin/lxd init --auto
+    install:
+    script:
+    - sudo snapcraft --use-lxd
+    after_failure:
+    - sudo journalctl -u snapd
+    stage: deploy
+    deploy:
+    - provider: snap
+      snap: dvc_*.snap
+      channel: ${SOURCE_TAG:+stable}${SOURCE_TAG:-edge}
+      skip_cleanup: true
 
 before_install:
   - bash ./scripts/ci/before_install.sh
@@ -144,7 +142,6 @@ deploy:
       - dvc*.deb
       - dvc*.pkg
       - dvc*.exe
-      - dvc*.snap
     skip_cleanup: true
     on:
       tags: true
