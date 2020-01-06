@@ -2,7 +2,7 @@ from dvc.cli import parse_args
 from dvc.command.imp import CmdImport
 
 
-def test_import(mocker, dvc_repo):
+def test_import(mocker, dvc):
     cli_args = parse_args(
         ["import", "repo_url", "src", "--out", "out", "--rev", "version"]
     )
