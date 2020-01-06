@@ -111,5 +111,6 @@ def test_stage_run_ignore_sigint(dvc_repo, mocker):
 def test_always_changed(dvc_repo):
     stage = Stage(dvc_repo, "path", always_changed=True)
     stage.save()
-    assert stage.changed()
-    assert stage.status()["path"] == ["always changed"]
+    with dvc_repo.lock:
+        assert stage.changed()
+        assert stage.status()["path"] == ["always changed"]

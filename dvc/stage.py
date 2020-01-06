@@ -143,6 +143,8 @@ def rwlocked(call, read=None, write=None):
 
     stage = call._args[0]
 
+    assert stage.repo.lock.is_locked
+
     def _chain(names):
         return [
             item.path_info

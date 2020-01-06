@@ -108,7 +108,7 @@ class TestDefaultWorkingDirectory(TestDvc):
         d = load_stage_file(stage.relpath)
         self.assertNotIn(Stage.PARAM_WDIR, d.keys())
 
-        with self.dvc.state:
+        with self.dvc.lock, self.dvc.state:
             stage = Stage.load(self.dvc, stage.relpath)
             self.assertFalse(stage.changed())
 
