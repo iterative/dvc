@@ -7,6 +7,7 @@ import pytest
 
 from dvc import api
 from dvc.api import SummonError
+from dvc.compat import fspath
 from dvc.exceptions import FileMissingError
 from dvc.main import main
 from dvc.path_info import URLInfo
@@ -106,16 +107,13 @@ def _set_remote_url_and_commit(repo, remote_url):
     repo.scm.commit("modify remote")
 
 
-# FIXME: this test doesn't use scm ;D
-def test_open_scm_controlled(dvc_repo, repo_dir):
-    stage, = dvc_repo.add(repo_dir.FOO)
+def test_open_scm_controlled(tmp_dir, erepo_dir):
+    erepo_dir.scm_gen({"scm_controlled": "file content"}, commit="create file")
 
-    stage_content = open(stage.path, "r").read()
-    with api.open(stage.path) as fd:
-        assert fd.read() == stage_content
+    with api.open("scm_controlled", repo=fspath(erepo_dir)) as fd:
+        assert fd.read() == "file content"
 
 
-# TODO: simplify, we shouldn't need run.
 def test_open_not_cached(dvc):
     metric_file = "metric.txt"
     metric_content = "0.6"
