@@ -123,7 +123,8 @@ jobs:
       channel: ${SOURCE_TAG:+stable}${SOURCE_TAG:-edge}
       skip_cleanup: true
       on:
-        branch: master
+        tags: true
+        repo: iterative/dvc
 
 before_install:
   - bash ./scripts/ci/before_install.sh
