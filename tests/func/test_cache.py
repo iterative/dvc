@@ -188,16 +188,16 @@ class TestShouldCacheBeReflinkOrCopyByDefault(TestDvc):
     "protected,dir_mode,file_mode",
     [(False, 0o775, 0o664), (True, 0o775, 0o444)],
 )
-def test_shared_cache(repo_dir, dvc_repo, protected, dir_mode, file_mode):
-    assert main(["config", "cache.shared", "group"]) == 0
+def test_shared_cache(tmp_dir, dvc, protected, dir_mode, file_mode):
+    dvc.config.set("cache", "shared", "group")
+    dvc.config.set("cache", "protected", str(protected))
+    dvc.cache = Cache(dvc)
 
-    if protected:
-        assert main(["config", "cache.protected", "true"]) == 0
+    tmp_dir.dvc_gen(
+        {"file": "file content", "dir": {"file2": "file 2 " "content"}}
+    )
 
-    assert main(["add", repo_dir.FOO]) == 0
-    assert main(["add", repo_dir.DATA_DIR]) == 0
-
-    for root, dnames, fnames in os.walk(dvc_repo.cache.local.cache_dir):
+    for root, dnames, fnames in os.walk(dvc.cache.local.cache_dir):
         for dname in dnames:
             path = os.path.join(root, dname)
             assert stat.S_IMODE(os.stat(path).st_mode) == dir_mode

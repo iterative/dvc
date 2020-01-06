@@ -66,18 +66,6 @@ def _should_test_gcp():
     return True
 
 
-def _should_test_oss():
-    do_test = env2bool("DVC_TEST_OSS", undefined=None)
-    if do_test is not None:
-        return do_test
-
-    return (
-        os.getenv("OSS_ENDPOINT")
-        and os.getenv("OSS_ACCESS_KEY_ID")
-        and os.getenv("OSS_ACCESS_KEY_SECRET")
-    )
-
-
 def _should_test_ssh():
     do_test = env2bool("DVC_TEST_SSH", undefined=None)
     if do_test is not None:
@@ -163,14 +151,6 @@ def get_gcp_storagepath():
 
 def get_gcp_url():
     return "gs://" + get_gcp_storagepath()
-
-
-def get_oss_storagepath():
-    return "{}/{}".format(TEST_OSS_REPO_BUCKET, (uuid.uuid4()))
-
-
-def get_oss_url():
-    return "oss://{}".format(get_oss_storagepath())
 
 
 # NOTE: staticmethod is only needed in Python 2
@@ -268,8 +248,25 @@ class Azure:
 
 
 class OSS:
-    should_test = staticmethod(_should_test_oss)
-    get_url = staticmethod(get_oss_url)
+    @staticmethod
+    def should_test():
+        do_test = env2bool("DVC_TEST_OSS", undefined=None)
+        if do_test is not None:
+            return do_test
+
+        return (
+            os.getenv("OSS_ENDPOINT")
+            and os.getenv("OSS_ACCESS_KEY_ID")
+            and os.getenv("OSS_ACCESS_KEY_SECRET")
+        )
+
+    @staticmethod
+    def get_storagepath():
+        return "{}/{}".format(TEST_OSS_REPO_BUCKET, (uuid.uuid4()))
+
+    @staticmethod
+    def get_url():
+        return "oss://{}".format(OSS.get_storagepath())
 
 
 class SSH:
