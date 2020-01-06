@@ -34,10 +34,10 @@ from tests.remotes import (
     _should_test_aws,
     _should_test_gcp,
     _should_test_hdfs,
-    _should_test_oss,
     _should_test_ssh,
     Azure,
     GDrive,
+    OSS,
     TEST_CONFIG,
     TEST_SECTION,
     TEST_GCP_CREDS_FILE,
@@ -48,7 +48,6 @@ from tests.remotes import (
     get_gcp_url,
     get_hdfs_url,
     get_local_url,
-    get_oss_url,
     get_ssh_url,
     get_ssh_url_mocked,
 )
@@ -273,10 +272,10 @@ class TestRemoteAZURE(TestDataCloudBase):
 
 class TestRemoteOSS(TestDataCloudBase):
     def _should_test(self):
-        return _should_test_oss()
+        return OSS.should_test()
 
     def _get_url(self):
-        return get_oss_url()
+        return OSS.get_url()
 
     def _get_cloud_class(self):
         return RemoteOSS
@@ -545,10 +544,10 @@ class TestRemoteAZURECLI(TestDataCloudCLIBase):
 
 class TestRemoteOSSCLI(TestDataCloudCLIBase):
     def _should_test(self):
-        return _should_test_oss()
+        return OSS.should_test()
 
     def _test(self):
-        url = get_oss_url()
+        url = OSS.get_url()
 
         self.main(["remote", "add", TEST_REMOTE, url])
 
