@@ -98,6 +98,7 @@ jobs:
         tags: true
         repo: iterative/dvc
   - name: Snapcraft snap
+    stage: deploy
     addons:
      snaps:
      - name: snapcraft
@@ -121,6 +122,8 @@ jobs:
       snap: dvc_*.snap
       channel: ${SOURCE_TAG:+stable}${SOURCE_TAG:-edge}
       skip_cleanup: true
+      on:
+        branch: master
 
 before_install:
   - bash ./scripts/ci/before_install.sh
