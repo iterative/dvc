@@ -94,6 +94,14 @@ jobs:
     - sudo snapcraft --use-lxd
     after_failure:
     - sudo journalctl -u snapd
+    #uncomment after classic approval
+    #<>
+    #stage: deploy
+    #deploy:
+    #- provider: snap
+    #  snap: dvc_*.snap
+    #  channel: ${SOURCE_TAG:+stable}${SOURCE_TAG:-edge}
+    #  skip_cleanup: true
   # deploy jobs
   - name: "Pypi pkgs"
     if: tag is present
