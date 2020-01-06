@@ -31,12 +31,12 @@ from tests.basic_env import TestDvc
 from tests.utils import spy
 
 from tests.remotes import (
-    _should_test_aws,
     _should_test_gcp,
     _should_test_hdfs,
     _should_test_ssh,
     Azure,
     GDrive,
+    S3,
     OSS,
     TEST_CONFIG,
     TEST_SECTION,
@@ -44,7 +44,6 @@ from tests.remotes import (
     TEST_GDRIVE_CLIENT_ID,
     TEST_GDRIVE_CLIENT_SECRET,
     TEST_REMOTE,
-    get_aws_url,
     get_gcp_url,
     get_hdfs_url,
     get_local_url,
@@ -195,10 +194,10 @@ class TestDataCloudBase(TestDvc):
 
 class TestRemoteS3(TestDataCloudBase):
     def _should_test(self):
-        return _should_test_aws()
+        return S3.should_test()
 
     def _get_url(self):
-        return get_aws_url()
+        return S3.get_url()
 
     def _get_cloud_class(self):
         return RemoteS3
@@ -469,10 +468,10 @@ class TestRemoteHDFSCLI(TestDataCloudCLIBase):
 
 class TestRemoteS3CLI(TestDataCloudCLIBase):
     def _should_test(self):
-        return _should_test_aws()
+        return S3.should_test()
 
     def _test(self):
-        url = get_aws_url()
+        url = S3.get_url()
 
         self.main(["remote", "add", TEST_REMOTE, url])
 

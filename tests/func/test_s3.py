@@ -5,7 +5,7 @@ import moto.s3.models as s3model
 from moto import mock_s3
 
 from dvc.remote.s3 import RemoteS3
-from tests.remotes import get_aws_url
+from tests.remotes import S3
 
 
 # from https://github.com/spulec/moto/blob/v1.3.5/tests/test_s3/test_s3.py#L40
@@ -30,7 +30,7 @@ def reduced_min_part_size(f):
 
 
 def _get_src_dst():
-    base_info = RemoteS3.path_cls(get_aws_url())
+    base_info = RemoteS3.path_cls(S3.get_url())
     return base_info / "from", base_info / "to"
 
 

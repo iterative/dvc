@@ -43,17 +43,6 @@ TEST_GDRIVE_CLIENT_ID = (
 TEST_GDRIVE_CLIENT_SECRET = "2fy_HyzSwkxkGzEken7hThXb"
 
 
-def _should_test_aws():
-    do_test = env2bool("DVC_TEST_AWS", undefined=None)
-    if do_test is not None:
-        return do_test
-
-    if os.getenv("AWS_ACCESS_KEY_ID") and os.getenv("AWS_SECRET_ACCESS_KEY"):
-        return True
-
-    return False
-
-
 def _should_test_gcp():
     do_test = env2bool("DVC_TEST_GCP", undefined=None)
     if do_test is not None:
@@ -156,14 +145,6 @@ def get_hdfs_url():
     )
 
 
-def get_aws_storagepath():
-    return TEST_AWS_REPO_BUCKET + "/" + str(uuid.uuid4())
-
-
-def get_aws_url():
-    return "s3://" + get_aws_storagepath()
-
-
 def get_gcp_storagepath():
     return TEST_GCP_REPO_BUCKET + "/" + str(uuid.uuid4())
 
@@ -179,13 +160,30 @@ class Local:
 
 
 class S3:
-    should_test = staticmethod(_should_test_aws)
-    get_url = staticmethod(get_aws_url)
+    @staticmethod
+    def should_test():
+        do_test = env2bool("DVC_TEST_AWS", undefined=None)
+        if do_test is not None:
+            return do_test
+
+        if os.getenv("AWS_ACCESS_KEY_ID") and os.getenv(
+            "AWS_SECRET_ACCESS_KEY"
+        ):
+            return True
+
+        return False
+
+    @staticmethod
+    def get_storagepath():
+        return TEST_AWS_REPO_BUCKET + "/" + str(uuid.uuid4())
+
+    @staticmethod
+    def get_url():
+        return "s3://" + S3.get_storagepath()
 
 
-class S3Mocked:
+class S3Mocked(S3):
     should_test = staticmethod(lambda: True)
-    get_url = staticmethod(get_aws_url)
 
     @classmethod
     @contextmanager
