@@ -83,8 +83,8 @@ def test_send(mock_post, tmp_path):
         ({"analytics": "false", "unknown": "broken"}, False),
     ],
 )
-def test_is_enabled(dvc_repo, config, result, monkeypatch, tmp_global_config):
-    configobj = dvc_repo.config._repo_config
+def test_is_enabled(dvc, config, result, monkeypatch, tmp_global_config):
+    configobj = dvc.config._repo_config
     configobj["core"] = config
     configobj.write()
 
