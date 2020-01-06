@@ -116,7 +116,6 @@ jobs:
     - sudo snapcraft --use-lxd
     after_failure:
     - sudo journalctl -u snapd
-    stage: deploy
     deploy:
     - provider: snap
       snap: dvc_*.snap
