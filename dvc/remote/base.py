@@ -697,6 +697,8 @@ class RemoteBASE(object):
             if checksum in used:
                 continue
             path_info = self.checksum_to_path_info(checksum)
+            if self.is_dir_checksum(checksum):
+                self._remove_unpacked_dir(checksum)
             self.remove(path_info)
             removed = True
         return removed
@@ -1008,4 +1010,7 @@ class RemoteBASE(object):
         return True
 
     def _update_unpacked_dir(self, checksum):
+        pass
+
+    def _remove_unpacked_dir(self, checksum):
         pass

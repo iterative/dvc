@@ -7,6 +7,7 @@ from git import Repo
 from dvc.exceptions import CollectCacheError
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
+from dvc.remote.local import RemoteLOCAL
 from tests.basic_env import TestDir, TestDvcGit
 
 
@@ -204,3 +205,18 @@ def test_gc_no_dir_cache(tmp_dir, dvc, repo_template):
 
 def _count_files(path):
     return sum(len(files) for _, _, files in os.walk(path))
+
+
+def test_gc_no_unpacked_dir(tmp_dir, dvc, repo_template):
+    dir_stages = dvc.add("dir")
+    dvc.status()
+
+    os.remove("dir.dvc")
+    unpackeddir = (
+        dir_stages[0].outs[0].cache_path + RemoteLOCAL.UNPACKED_DIR_SUFFIX
+    )
+
+    assert os.path.exists(unpackeddir)
+
+    dvc.gc(force=True)
+    assert not os.path.exists(unpackeddir)
