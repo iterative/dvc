@@ -102,19 +102,14 @@ class ColorFormatter(logging.Formatter):
 
     def _walk_exc(self, exc_info):
         exc = exc_info[1]
-        tb = traceback.format_exc(*exc_info)
 
         exc_list = [str(exc)]
-        tb_list = [tb]
 
-        # NOTE: parsing chained exceptions. See dvc/exceptions.py for more info
         while hasattr(exc, "__cause__") and exc.__cause__:
             exc_list.append(str(exc.__cause__))
-            if hasattr(exc, "cause_tb") and exc.cause_tb:
-                tb_list.insert(0, str(exc.cause_tb))
             exc = exc.__cause__
 
-        return exc_list, tb_list
+        return exc_list
 
     def _parse_exc(self, record):
         tb_only = getattr(record, "tb_only", False)
@@ -122,7 +117,8 @@ class ColorFormatter(logging.Formatter):
         if not record.exc_info:
             return (None, "")
 
-        exc_list, tb_list = self._walk_exc(record.exc_info)
+        exc_list = self._walk_exc(record.exc_info)
+        tb = traceback.format_exception(*record.exc_info)
 
         exception = None if tb_only else ": ".join(exc_list)
 
@@ -133,7 +129,7 @@ class ColorFormatter(logging.Formatter):
                 red=colorama.Fore.RED,
                 nc=colorama.Fore.RESET,
                 line="-" * 60,
-                stack_trace="\n".join(tb_list),
+                stack_trace="".join(tb),
             )
         else:
             stack_trace = ""
