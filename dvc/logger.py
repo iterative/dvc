@@ -62,7 +62,7 @@ class ColorFormatter(logging.Formatter):
             return record.msg
 
         if record.levelname == "ERROR" or record.levelname == "CRITICAL":
-            exception, stack_trace = self._parse_exc(record.exc_info)
+            exception, stack_trace = self._parse_exc(record)
 
             return (
                 "{color}{levelname}{nc}: {description}" "{stack_trace}\n"
@@ -122,13 +122,15 @@ class ColorFormatter(logging.Formatter):
 
         return exc_list, tb_list
 
-    def _parse_exc(self, exc_info):
-        if not exc_info:
+    def _parse_exc(self, record):
+        tb_only = getattr(record, "tb_only", False)
+
+        if not record.exc_info:
             return (None, "")
 
-        exc_list, tb_list = self._walk_exc(exc_info)
+        exc_list, tb_list = self._walk_exc(record.exc_info)
 
-        exception = ": ".join(exc_list)
+        exception = None if tb_only else ": ".join(exc_list)
 
         if self._current_level() == logging.DEBUG:
             stack_trace = (

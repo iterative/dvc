@@ -102,6 +102,25 @@ class TestColorFormatter:
 
             assert expected == formatter.format(caplog.records[0])
 
+    def test_tb_only(self, caplog):
+        with caplog.at_level(logging.DEBUG, logger="dvc"):
+            try:
+                raise Exception("description")
+            except Exception:
+                stack_trace = traceback.format_exc()
+                logger.exception("something", extra={"tb_only": True})
+
+            expected = (
+                "{red}ERROR{nc}: something\n"
+                "{red}{line}{nc}\n"
+                "{stack_trace}"
+                "{red}{line}{nc}\n".format(
+                    line="-" * 60, stack_trace=stack_trace, **colors
+                )
+            )
+
+            assert expected == formatter.format(caplog.records[0])
+
     def test_nested_exceptions(self, caplog):
         with caplog.at_level(logging.DEBUG, logger="dvc"):
             try:
