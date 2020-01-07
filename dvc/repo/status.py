@@ -1,7 +1,9 @@
 import logging
+from itertools import compress
 
 from funcy.py3 import cat
 
+from dvc.exceptions import DvcException
 from . import locked
 
 
@@ -113,4 +115,15 @@ def status(
             remote=remote,
             all_tags=all_tags,
         )
+
+    ignored = list(
+        compress(
+            ["--all-branches", "--all-tags", "--jobs"],
+            [all_branches, all_tags, jobs],
+        )
+    )
+    if ignored:
+        msg = "the following options are meaningless for local status: {}"
+        raise DvcException(msg.format(", ".join(ignored)))
+
     return _local_status(self, targets, with_deps=with_deps)

@@ -868,6 +868,6 @@ def test_show_multiple_outputs(tmp_dir, dvc, caplog):
         assert 1 == main(["metrics", "show", "1.json", "not-found"])
         assert '1.json: {"AUC": 1}' in caplog.text
         assert (
-            "the following metrics do not exists, "
+            "the following metrics do not exist, "
             "are not metric files or are malformed: 'not-found'"
         ) in caplog.text

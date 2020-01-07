@@ -167,7 +167,7 @@ class ReproductionError(DvcException):
 class BadMetricError(DvcException):
     def __init__(self, paths):
         super().__init__(
-            "the following metrics do not exists, "
+            "the following metrics do not exist, "
             "are not metric files or are malformed: {paths}".format(
                 paths=", ".join("'{}'".format(path) for path in paths)
             )
