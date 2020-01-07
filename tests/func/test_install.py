@@ -16,7 +16,7 @@ class TestInstall(object):
     def _hook(self, name):
         return pathlib.Path(".git") / "hooks" / name
 
-    def test_should_create_hooks(self, scm, dvc):
+    def test_create_hooks(self, scm, dvc):
         scm.install()
 
         hooks_with_commands = [
@@ -30,13 +30,13 @@ class TestInstall(object):
             assert hook_path.is_file()
             assert command in hook_path.read_text()
 
-    def test_should_fail_if_file_already_exists(self, scm):
+    def test_fail_if_hook_exists(self, scm):
         self._hook("post-checkout").write_text("hook content")
 
         with pytest.raises(GitHookAlreadyExistsError):
             scm.install()
 
-    def test_should_post_checkout_hook_checkout(self, tmp_dir, scm, dvc):
+    def test_post_checkout(self, tmp_dir, scm, dvc):
         scm.install()
         tmp_dir.dvc_gen({"file": "file content"}, commit="add")
 
@@ -45,9 +45,7 @@ class TestInstall(object):
 
         assert os.path.isfile("file")
 
-    def test_should_pre_push_hook_push(
-        self, tmp_dir, scm, dvc, tmp_path_factory
-    ):
+    def test_pre_push_hook(self, tmp_dir, scm, dvc, tmp_path_factory):
         scm.install()
 
         temp = tmp_path_factory.mktemp("external")
