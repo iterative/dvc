@@ -59,13 +59,11 @@ class ColorFormatter(logging.Formatter):
 
         if record.exc_info:
             _, exception, _ = record.exc_info
-            cause = exception.__cause__
 
-            info = "{message}{separator}{exception}{cause}".format(
+            info = "{message}{separator}{exception}".format(
                 message=record.msg or "",
                 separator=" - " if record.msg and exception.args else "",
-                exception=exception,
-                cause=": " + str(cause) if cause else "",
+                exception=": ".join(self._causes(exception)),
             )
 
             if self._current_level() == logging.DEBUG:
@@ -91,6 +89,11 @@ class ColorFormatter(logging.Formatter):
             nc=colorama.Fore.RESET,
             info=info,
         )
+
+    def _causes(self, exc):
+        while exc:
+            yield str(exc)
+            exc = exc.__cause__
 
     def _current_level(self):
         return logging.getLogger("dvc").getEffectiveLevel()
