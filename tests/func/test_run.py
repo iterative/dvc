@@ -655,7 +655,8 @@ def test_run_deterministic_overwrite(deterministic_run):
 
 
 def test_run_deterministic_callback(deterministic_run):
-    deterministic_run.stage.remove()
+    with deterministic_run.stage.repo.lock:
+        deterministic_run.stage.remove()
     deterministic_run.deps = []
     deterministic_run.run()
     with mock.patch("dvc.prompt.confirm", return_value=True):
