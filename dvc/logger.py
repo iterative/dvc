@@ -1,6 +1,6 @@
 """Manages logging configuration for dvc repo."""
 
-import io
+import traceback
 import logging.config
 import logging.handlers
 
@@ -101,14 +101,8 @@ class ColorFormatter(logging.Formatter):
         return description.format(message=message, exception=exception)
 
     def _walk_exc(self, exc_info):
-        import traceback
-
-        buffer = io.StringIO()
-
-        traceback.print_exception(*exc_info, file=buffer)
-
         exc = exc_info[1]
-        tb = buffer.getvalue()
+        tb = traceback.format_exc(*exc_info)
 
         exc_list = [str(exc)]
         tb_list = [tb]
