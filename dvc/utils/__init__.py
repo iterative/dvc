@@ -105,36 +105,6 @@ def dict_md5(d, exclude=()):
     return bytes_md5(byts)
 
 
-def copyfile(src, dest, no_progress_bar=False, name=None):
-    """Copy file with progress bar"""
-    from dvc.exceptions import DvcException
-    from dvc.progress import Tqdm
-    from dvc.system import System
-
-    src = fspath_py35(src)
-    dest = fspath_py35(dest)
-
-    name = name if name else os.path.basename(dest)
-    total = os.stat(src).st_size
-
-    if os.path.isdir(dest):
-        dest = os.path.join(dest, os.path.basename(src))
-
-    try:
-        System.reflink(src, dest)
-    except DvcException:
-        with Tqdm(
-            desc=name, disable=no_progress_bar, total=total, bytes=True
-        ) as pbar:
-            with open(src, "rb") as fsrc, open(dest, "wb+") as fdest:
-                while True:
-                    buf = fsrc.read(LOCAL_CHUNK_SIZE)
-                    if not buf:
-                        break
-                    fdest.write(buf)
-                    pbar.update(len(buf))
-
-
 def _split(list_to_split, chunk_size):
     return [
         list_to_split[i : i + chunk_size]

@@ -1,23 +1,6 @@
 # encoding: utf-8
-import os
 
 from dvc import utils
-
-
-def test_copyfile(tmp_dir):
-    src = "file1"
-    dest = "file2"
-    dest_dir = "testdir"
-
-    tmp_dir.gen(src, "file1contents")
-
-    os.mkdir(dest_dir)
-
-    utils.copyfile(src, dest)
-    assert (tmp_dir / dest).read_text() == "file1contents"
-
-    utils.copyfile(src, dest_dir)
-    assert (tmp_dir / dest_dir / src).read_text() == "file1contents"
 
 
 def test_file_md5_crlf(tmp_dir):

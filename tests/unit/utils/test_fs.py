@@ -1,3 +1,4 @@
+import filecmp
 import os
 from unittest import TestCase
 
@@ -11,6 +12,7 @@ from dvc.scm.tree import WorkingTree
 from dvc.system import System
 from dvc.utils import relpath
 from dvc.utils.fs import BasePathNotInCheckedPathException
+from dvc.utils.fs import copyfile
 from dvc.utils.fs import contains_symlink_up_to
 from dvc.utils.fs import get_inode
 from dvc.utils.fs import get_mtime_and_size
@@ -216,3 +218,29 @@ def test_makedirs(repo_dir):
 
     makedirs(path_info)
     assert os.path.isdir(path_info.fspath)
+
+
+@pytest.mark.parametrize("path", [TestDir.DATA, TestDir.DATA_DIR])
+def test_copyfile(path, repo_dir):
+    src = repo_dir.FOO
+    dest = path
+    src_info = PathInfo(repo_dir.BAR)
+    dest_info = PathInfo(path)
+
+    copyfile(src, dest)
+    if os.path.isdir(dest):
+        assert filecmp.cmp(
+            src, os.path.join(dest, os.path.basename(src)), shallow=False
+        )
+    else:
+        assert filecmp.cmp(src, dest, shallow=False)
+
+    copyfile(src_info, dest_info)
+    if os.path.isdir(dest_info.fspath):
+        assert filecmp.cmp(
+            src_info.fspath,
+            os.path.join(dest_info.fspath, os.path.basename(src_info.fspath)),
+            shallow=False,
+        )
+    else:
+        assert filecmp.cmp(src_info.fspath, dest_info.fspath, shallow=False)

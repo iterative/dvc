@@ -1,18 +1,15 @@
-import filecmp
 import re
 import os
 
 import pytest
 
 from dvc.path_info import PathInfo
-from dvc.utils import copyfile
 from dvc.utils import file_md5
 from dvc.utils import fix_env
 from dvc.utils import relpath
 from dvc.utils import to_chunks
 from dvc.utils import tmp_fname
 from dvc.utils import walk_files
-from tests.basic_env import TestDir
 
 
 @pytest.mark.parametrize(
@@ -86,32 +83,6 @@ def test_file_md5(repo_dir):
     fname = repo_dir.FOO
     fname_object = PathInfo(fname)
     assert file_md5(fname) == file_md5(fname_object)
-
-
-@pytest.mark.parametrize("path", [TestDir.DATA, TestDir.DATA_DIR])
-def test_copyfile(path, repo_dir):
-    src = repo_dir.FOO
-    dest = path
-    src_info = PathInfo(repo_dir.BAR)
-    dest_info = PathInfo(path)
-
-    copyfile(src, dest)
-    if os.path.isdir(dest):
-        assert filecmp.cmp(
-            src, os.path.join(dest, os.path.basename(src)), shallow=False
-        )
-    else:
-        assert filecmp.cmp(src, dest, shallow=False)
-
-    copyfile(src_info, dest_info)
-    if os.path.isdir(dest_info.fspath):
-        assert filecmp.cmp(
-            src_info.fspath,
-            os.path.join(dest_info.fspath, os.path.basename(src_info.fspath)),
-            shallow=False,
-        )
-    else:
-        assert filecmp.cmp(src_info.fspath, dest_info.fspath, shallow=False)
 
 
 def test_tmp_fname():
