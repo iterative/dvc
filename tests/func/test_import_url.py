@@ -100,6 +100,6 @@ def test_import_url_to_dir(dname, tmp_dir, dvc):
 
     dst = tmp_dir / dname / "file"
 
-    assert stage.outs[0].fspath == fspath(dst)
+    assert stage.outs[0].path_info == dst
     assert os.path.isdir(dname)
     assert (tmp_dir / dname / "file").read_text() == "file content"
