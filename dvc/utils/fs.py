@@ -152,3 +152,20 @@ def path_isin(child, parent):
     parent = os.path.join(normalize_path(parent), "")
     child = normalize_path(child)
     return child != parent and child.startswith(parent)
+
+
+def makedirs(path, exist_ok=False, mode=None):
+    path = fspath_py35(path)
+
+    if mode is None:
+        os.makedirs(path, exist_ok=exist_ok)
+        return
+
+    # utilize umask to set proper permissions since Python 3.7 the `mode`
+    # `makedirs` argument no longer affects the file permission bits of
+    # newly-created intermediate-level directories.
+    umask = os.umask(0o777 - mode)
+    try:
+        os.makedirs(path, exist_ok=exist_ok)
+    finally:
+        os.umask(umask)

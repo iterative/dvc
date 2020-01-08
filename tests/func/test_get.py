@@ -9,7 +9,7 @@ from dvc.exceptions import UrlNotDvcRepoError
 from dvc.repo.get import GetDVCFileError, PathMissingError
 from dvc.repo import Repo
 from dvc.system import System
-from dvc.utils import makedirs
+from dvc.utils.fs import makedirs
 from dvc.compat import fspath
 from tests.utils import trees_equal
 

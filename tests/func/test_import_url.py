@@ -7,7 +7,7 @@ from mock import patch
 
 import dvc
 from dvc.main import main
-from dvc.utils import makedirs
+from dvc.utils.fs import makedirs
 from tests.basic_env import TestDvc
 from tests.utils import spy
 

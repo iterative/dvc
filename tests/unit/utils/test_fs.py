@@ -16,6 +16,7 @@ from dvc.utils.fs import get_inode
 from dvc.utils.fs import get_mtime_and_size
 from dvc.utils.fs import move
 from dvc.utils.fs import path_isin, remove
+from dvc.utils.fs import makedirs
 from tests.basic_env import TestDir
 from tests.utils import spy
 
@@ -202,3 +203,16 @@ def test_path_isin_with_absolute_path():
     child = os.path.join(parent, "to", "folder")
 
     assert path_isin(child, parent)
+
+
+def test_makedirs(repo_dir):
+    path = os.path.join(repo_dir.root_dir, "directory")
+    path_info = PathInfo(
+        os.path.join(repo_dir.root_dir, "another", "directory")
+    )
+
+    makedirs(path)
+    assert os.path.isdir(path)
+
+    makedirs(path_info)
+    assert os.path.isdir(path_info.fspath)
