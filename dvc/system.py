@@ -1,7 +1,7 @@
 import errno
 import logging
 import os
-import shutil
+import speedcopy
 
 from dvc.compat import fspath
 
@@ -17,7 +17,7 @@ class System(object):
     @staticmethod
     def copy(src, dest):
         src, dest = fspath(src), fspath(dest)
-        return shutil.copyfile(src, dest)
+        return speedcopy.copyfile(src, dest)
 
     @staticmethod
     def hardlink(source, link_name):
