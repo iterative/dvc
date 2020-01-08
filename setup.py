@@ -74,12 +74,9 @@ install_requires = [
     "flufl.lock>=3.2",
     "win-unicode-console>=0.5; sys_platform == 'win32'",
     "pywin32>=225; sys_platform == 'win32'",
+    "networkx>=2.1,<2.4",
 ]
 
-if sys.version_info[0] == 2:
-    install_requires.append("networkx>=2.1,<2.3")
-else:
-    install_requires.append("networkx>=2.1,<2.4")
 
 # Extra dependencies for remote integrations
 
