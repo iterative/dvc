@@ -4,6 +4,7 @@ import os
 import shutil
 
 from dvc.compat import fspath
+from dvc.exceptions import DvcException
 
 
 logger = logging.getLogger(__name__)
@@ -21,55 +22,19 @@ class System(object):
 
     @staticmethod
     def hardlink(source, link_name):
-        import ctypes
-        from dvc.exceptions import DvcException
-
-        source, link_name = fspath(source), fspath(link_name)
-
-        if System.is_unix():
-            try:
-                os.link(source, link_name)
-                return
-            except Exception as exc:
-                raise DvcException("link") from exc
-
-        CreateHardLink = ctypes.windll.kernel32.CreateHardLinkW
-        CreateHardLink.argtypes = [
-            ctypes.c_wchar_p,
-            ctypes.c_wchar_p,
-            ctypes.c_void_p,
-        ]
-        CreateHardLink.restype = ctypes.wintypes.BOOL
-
-        res = CreateHardLink(link_name, source, None)
-        if res == 0:
-            raise DvcException("CreateHardLinkW") from ctypes.WinError()
+        try:
+            os.link(source, link_name)
+            return
+        except Exception as exc:
+            raise DvcException("failed to link") from exc
 
     @staticmethod
     def symlink(source, link_name):
-        import ctypes
-        from dvc.exceptions import DvcException
-
-        source, link_name = fspath(source), fspath(link_name)
-
-        if System.is_unix():
-            try:
-                os.symlink(source, link_name)
-                return
-            except Exception as exc:
-                msg = "failed to symlink '{}' -> '{}': {}"
-                raise DvcException(msg.format(source, link_name, str(exc)))
-
-        flags = 0
-        if source is not None and os.path.isdir(source):
-            flags = 1
-
-        func = ctypes.windll.kernel32.CreateSymbolicLinkW
-        func.argtypes = (ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_uint32)
-        func.restype = ctypes.c_ubyte
-
-        if func(link_name, source, flags) == 0:
-            raise DvcException("CreateSymbolicLinkW") from ctypes.WinError()
+        try:
+            os.symlink(source, link_name)
+            return
+        except Exception as exc:
+            raise DvcException("failed to symlink") from exc
 
     @staticmethod
     def _reflink_darwin(src, dst):
