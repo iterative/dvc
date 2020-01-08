@@ -5,6 +5,7 @@ import posixpath
 import re
 import shutil
 import uuid
+from pathlib import Path
 from subprocess import PIPE
 from subprocess import Popen
 from urllib.parse import urljoin
@@ -1373,70 +1374,68 @@ class TestShouldDisplayMetricsOnReproWithMetricsOption(TestDvc):
 
 @pytest.fixture
 def repro_dir(tmp_dir, dvc, run_copy):
+    # Creates repo with following structure:
+    #    data_dir/dir_file              origin_data
+    #         |       |                   |
+    #         |       |              origin_copy.dvc
+    # unrelated2.dvc  |               |       |
+    #                 |               |    unrelated1.dvc
+    #    dir/subdir/dir_file_copy.dvc |
+    #                  |              |
+    #                  |        dir/origin_copy_2.dvc
+    #                  |            |
+    #                   \          /
+    #                    \        /
+    #                   dir/Dvcfile
     tmp_dir.gen(
         {
-            "foo": "foo content",
-            "bar": "bar content",
+            "origin_data": "origin data content",
             "data_dir": {"dir_file": "dir file content"},
+            "dir": {"subdir": {}},
         }
     )
-    (tmp_dir / "dir").mkdir()
-    subdname = os.path.join("dir", "subdir")
-    (tmp_dir / "dir" / "subdir").mkdir()
 
-    tmp_dir.source = "source"
-    tmp_dir.source_stage = tmp_dir.source + ".dvc"
-    stage = dvc.run(
-        fname=tmp_dir.source_stage, outs=[tmp_dir.source], deps=["foo"]
+    tmp_dir.origin_copy = "origin_copy"
+    assert run_copy("origin_data", tmp_dir.origin_copy) is not None
+    assert (tmp_dir / tmp_dir.origin_copy).read_text() == "origin data content"
+
+    # Unrelated are to verify that reproducing `dir` will not trigger them too
+    assert run_copy(tmp_dir.origin_copy, "unrelated1") is not None
+    dir_file_path = tmp_dir / "data_dir" / "dir_file"
+    assert run_copy(fspath(dir_file_path), "unrelated2") is not None
+
+    tmp_dir.origin_copy_2 = os.path.join("dir", "origin_copy_2")
+    assert (
+        run_copy(
+            tmp_dir.origin_copy,
+            tmp_dir.origin_copy_2,
+            fname=tmp_dir.origin_copy_2 + ".dvc",
+        )
+        is not None
     )
-    assert stage is not None
-    assert filecmp.cmp(tmp_dir.source, "foo", shallow=False)
+    assert (
+        tmp_dir / tmp_dir.origin_copy_2
+    ).read_text() == "origin data content"
 
-    tmp_dir.unrelated1 = "unrelated1"
-    tmp_dir.unrelated1_stage = tmp_dir.unrelated1 + ".dvc"
-    stage = dvc.run(
-        fname=tmp_dir.unrelated1_stage,
-        outs=[tmp_dir.unrelated1],
-        deps=[tmp_dir.source],
+    tmp_dir.dir_file_copy = os.path.join("dir", "subdir", "dir_file_copy")
+    assert (
+        run_copy(
+            fspath(dir_file_path),
+            tmp_dir.dir_file_copy,
+            fname=tmp_dir.dir_file_copy + ".dvc",
+        )
+        is not None
     )
-    assert stage is not None
+    assert (tmp_dir / tmp_dir.dir_file_copy).read_text() == "dir file content"
 
-    tmp_dir.unrelated2 = "unrelated2"
-    tmp_dir.unrelated2_stage = tmp_dir.unrelated2 + ".dvc"
-    stage = dvc.run(
-        fname=tmp_dir.unrelated2_stage,
-        outs=[tmp_dir.unrelated2],
-        deps=[fspath(tmp_dir / "data_dir" / "dir_file")],
+    tmp_dir.last_stage = os.path.join("dir", "Dvcfile")
+    assert (
+        dvc.run(
+            fname=tmp_dir.last_stage,
+            deps=[tmp_dir.origin_copy_2, tmp_dir.dir_file_copy],
+        )
+        is not None
     )
-    assert stage is not None
-
-    tmp_dir.first = os.path.join("dir", "first")
-    tmp_dir.first_stage = tmp_dir.first + ".dvc"
-
-    stage = run_copy(tmp_dir.source, tmp_dir.first, fname=tmp_dir.first_stage)
-
-    assert stage is not None
-    assert filecmp.cmp(tmp_dir.first, "foo", shallow=False)
-
-    tmp_dir.second = os.path.join(subdname, "second")
-    tmp_dir.second_stage = tmp_dir.second + ".dvc"
-    stage = dvc.run(
-        fname=tmp_dir.second_stage,
-        outs=[tmp_dir.second],
-        deps=[fspath(tmp_dir / "data_dir" / "dir_file")],
-    )
-    assert stage is not None
-    assert filecmp.cmp(
-        tmp_dir.second,
-        fspath(tmp_dir / "data_dir" / "dir_file"),
-        shallow=False,
-    )
-
-    tmp_dir.third_stage = os.path.join("dir", "Dvcfile")
-    stage = dvc.run(
-        fname=tmp_dir.third_stage, deps=[tmp_dir.first, tmp_dir.second]
-    )
-    assert stage is not None
 
     yield tmp_dir
 
@@ -1445,19 +1444,25 @@ def test_recursive_repro_default(dvc, repro_dir):
     """
     Test recursive repro on dir after a dep outside this dir has changed.
     """
-    os.unlink("foo")
-    shutil.copyfile("bar", "foo")
+    origin = Path("origin_data")
+    origin.unlink()
+    origin.write_text("new origin data content")
 
     stages = dvc.reproduce("dir", recursive=True)
+
     # Check that the dependency ("source") and the dependent stages
     # inside the folder have been reproduced ("first", "third")
-    assert len(stages) == 3
-    names = [stage.relpath for stage in stages]
-    assert repro_dir.source_stage in names
-    assert repro_dir.first_stage in names
-    assert repro_dir.third_stage in names
-    assert filecmp.cmp(repro_dir.source, "bar", shallow=False)
-    assert filecmp.cmp(repro_dir.first, "bar", shallow=False)
+    names = [s.relpath for s in stages]
+    assert len(names) == 3
+    assert set(names) == {
+        repro_dir.origin_copy + ".dvc",
+        repro_dir.origin_copy_2 + ".dvc",
+        repro_dir.last_stage,
+    }
+    assert Path(repro_dir.origin_copy).read_text() == "new origin data content"
+    assert (
+        Path(repro_dir.origin_copy_2).read_text() == "new origin data content"
+    )
 
 
 def test_recursive_repro_single(dvc, repro_dir):
@@ -1465,23 +1470,26 @@ def test_recursive_repro_single(dvc, repro_dir):
     Test recursive single-item repro on dir
     after a dep outside this dir has changed.
     """
-    os.unlink("foo")
-    shutil.copyfile("bar", "foo")
+    origin_data = Path("origin_data")
+    origin_data.unlink()
+    origin_data.write_text("new origin content")
 
-    # os.unlink(repro_dir.DATA)
-    (repro_dir / "data_dir" / "dir_file").unlink()
-    shutil.copyfile("bar", fspath(repro_dir / "data_dir" / "dir_file"))
+    dir_file = repro_dir / "data_dir" / "dir_file"
+    dir_file.unlink()
+    dir_file.write_text("new dir file content")
 
     stages = dvc.reproduce("dir", recursive=True, single_item=True)
     # Check that just stages inside given dir
     # with changed direct deps have been reproduced.
     # This means that "first" stage should not be reproduced
     # since it depends on "source".
-    # Also check that "second" stage was reproduced before "third" stage
+    # Also check that "dir_file_copy" stage was reproduced before "third" stage
     assert len(stages) == 2
-    assert repro_dir.second_stage == stages[0].relpath
-    assert repro_dir.third_stage == stages[1].relpath
-    assert filecmp.cmp(repro_dir.second, "bar", shallow=False)
+    assert [s.relpath for s in stages] == [
+        repro_dir.dir_file_copy + ".dvc",
+        repro_dir.last_stage,
+    ]
+    assert Path(repro_dir.dir_file_copy).read_text() == "new dir file content"
 
 
 def test_recursive_repro_single_force(dvc, repro_dir):
@@ -1491,26 +1499,28 @@ def test_recursive_repro_single_force(dvc, repro_dir):
     """
     stages = dvc.reproduce("dir", recursive=True, single_item=True, force=True)
     assert len(stages) == 3
-    names = [stage.relpath for stage in stages]
     # Check that all stages inside given dir have been reproduced
-    # Also check that "second" stage was reproduced before "third" stage
+    # Also check that "dir_file_copy" stage was reproduced before "third" stage
     # and that "first" stage was reproduced before "third" stage
-    assert repro_dir.first_stage in names
-    assert repro_dir.second_stage in names
-    assert repro_dir.third_stage in names
-    assert names.index(repro_dir.first_stage) < names.index(
-        repro_dir.third_stage
+    names = [s.relpath for s in stages]
+    assert {
+        repro_dir.origin_copy_2 + ".dvc",
+        repro_dir.dir_file_copy + ".dvc",
+        repro_dir.last_stage,
+    } == set(names)
+    assert names.index(repro_dir.origin_copy_2 + ".dvc") < names.index(
+        repro_dir.last_stage
     )
-    assert names.index(repro_dir.second_stage) < names.index(
-        repro_dir.third_stage
+    assert names.index(repro_dir.dir_file_copy + ".dvc") < names.index(
+        repro_dir.last_stage
     )
 
 
-def test_recursive_repro_empty_dir(tmp_dir, dvc):
+def test_recursive_repro_empty_dir(dvc, repro_dir):
     """
     Test recursive repro on an empty directory
     """
-    (tmp_dir / "emptydir").mkdir()
+    (repro_dir / "emptydir").mkdir()
 
     stages = dvc.reproduce("emptydir", recursive=True, force=True)
     assert len(stages) == 0
@@ -1530,11 +1540,14 @@ def test_recursive_repro_on_stage_file(dvc, repro_dir):
     """
     Test recursive repro on a stage file instead of directory
     """
-    stages = dvc.reproduce(repro_dir.first_stage, recursive=True, force=True)
+    stages = dvc.reproduce(
+        repro_dir.origin_copy_2 + ".dvc", recursive=True, force=True
+    )
     assert len(stages) == 2
-    names = [stage.relpath for stage in stages]
-    assert repro_dir.source_stage in names
-    assert repro_dir.first_stage in names
+    assert [
+        repro_dir.origin_copy + ".dvc",
+        repro_dir.origin_copy_2 + ".dvc",
+    ] == [stage.relpath for stage in stages]
 
 
 def test_dvc_formatting_retained(tmp_dir, dvc, run_copy):
