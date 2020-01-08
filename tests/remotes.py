@@ -153,10 +153,9 @@ def get_gcp_url():
     return "gs://" + get_gcp_storagepath()
 
 
-# NOTE: staticmethod is only needed in Python 2
 class Local:
-    should_test = staticmethod(lambda: True)
-    get_url = staticmethod(get_local_url)
+    should_test = lambda: True  # noqa: E731
+    get_url = get_local_url
 
 
 class S3:
@@ -183,7 +182,7 @@ class S3:
 
 
 class S3Mocked(S3):
-    should_test = staticmethod(lambda: True)
+    should_test = lambda: True  # noqa: E731
 
     @classmethod
     @contextmanager
@@ -203,8 +202,8 @@ class S3Mocked(S3):
 
 
 class GCP:
-    should_test = staticmethod(_should_test_gcp)
-    get_url = staticmethod(get_gcp_url)
+    should_test = _should_test_gcp
+    get_url = get_gcp_url
 
     @classmethod
     @contextmanager
@@ -270,10 +269,10 @@ class OSS:
 
 
 class SSH:
-    should_test = staticmethod(_should_test_ssh)
-    get_url = staticmethod(get_ssh_url)
+    should_test = _should_test_ssh
+    get_url = get_ssh_url
 
 
 class HDFS:
-    should_test = staticmethod(_should_test_hdfs)
-    get_url = staticmethod(get_hdfs_url)
+    should_test = _should_test_hdfs
+    get_url = get_hdfs_url
