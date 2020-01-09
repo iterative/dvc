@@ -231,12 +231,6 @@ def to_yaml_string(data):
     return stream.getvalue()
 
 
-def walk_files(directory):
-    for root, _, files in os.walk(fspath(directory)):
-        for f in files:
-            yield os.path.join(root, f)
-
-
 def colorize(message, color=None):
     """Returns a message in a specified color."""
     if not color:

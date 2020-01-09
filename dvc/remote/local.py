@@ -25,9 +25,9 @@ from dvc.utils.fs import copyfile
 from dvc.utils import file_md5
 from dvc.utils import relpath
 from dvc.utils import tmp_fname
-from dvc.utils import walk_files
 from dvc.compat import fspath_py35
 from dvc.utils.fs import move, makedirs, remove
+from dvc.utils.fs import walk_files
 
 logger = logging.getLogger(__name__)
 

@@ -19,6 +19,7 @@ from dvc.utils.fs import get_mtime_and_size
 from dvc.utils.fs import move
 from dvc.utils.fs import path_isin, remove
 from dvc.utils.fs import makedirs
+from dvc.utils.fs import walk_files
 from tests.basic_env import TestDir
 from tests.utils import spy
 
@@ -244,3 +245,7 @@ def test_copyfile(path, repo_dir):
         )
     else:
         assert filecmp.cmp(src_info.fspath, dest_info.fspath, shallow=False)
+
+
+def test_walk_files(tmp_dir):
+    assert list(walk_files(".")) == list(walk_files(tmp_dir))

@@ -201,3 +201,9 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
                         break
                     fdest.write(buf)
                     pbar.update(len(buf))
+
+
+def walk_files(directory):
+    for root, _, files in os.walk(fspath(directory)):
+        for f in files:
+            yield os.path.join(root, f)

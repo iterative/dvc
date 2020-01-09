@@ -9,7 +9,6 @@ from dvc.utils import fix_env
 from dvc.utils import relpath
 from dvc.utils import to_chunks
 from dvc.utils import tmp_fname
-from dvc.utils import walk_files
 
 
 @pytest.mark.parametrize(
@@ -105,7 +104,3 @@ def test_relpath():
     path_info = PathInfo(path)
 
     assert relpath(path) == relpath(path_info)
-
-
-def test_walk_files(tmp_dir):
-    assert list(walk_files(".")) == list(walk_files(tmp_dir))
