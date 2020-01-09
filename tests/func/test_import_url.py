@@ -1,4 +1,3 @@
-import filecmp
 import os
 from uuid import uuid4
 
@@ -90,15 +89,16 @@ class TestImportFilename(TestDvc):
 
 
 @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])
-def test_import_url_to_dir(dname, repo_dir, dvc_repo):
-    src = repo_dir.DATA
+def test_import_url_to_dir(dname, tmp_dir, dvc):
+    tmp_dir.gen({"data_dir": {"file": "file content"}})
+    src = os.path.join("data_dir", "file")
 
     makedirs(dname, exist_ok=True)
 
-    stage = dvc_repo.imp_url(src, dname)
+    stage = dvc.imp_url(src, dname)
 
-    dst = os.path.join(dname, os.path.basename(src))
+    dst = tmp_dir / dname / "file"
 
-    assert stage.outs[0].fspath == os.path.abspath(dst)
+    assert stage.outs[0].path_info == dst
     assert os.path.isdir(dname)
-    assert filecmp.cmp(repo_dir.DATA, dst, shallow=False)
+    assert dst.read_text() == "file content"
