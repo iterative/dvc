@@ -1397,34 +1397,43 @@ def repro_dir(tmp_dir, dvc, run_copy):
 
     stages = {}
 
-    origin_copy = "origin_copy"
-    stage = run_copy("origin_data", origin_copy)
+    origin_copy = tmp_dir / "origin_copy"
+    stage = run_copy("origin_data", fspath(origin_copy))
     assert stage is not None
-    assert (tmp_dir / origin_copy).read_text() == "origin data content"
+    assert origin_copy.read_text() == "origin data content"
     stages["origin_copy"] = stage
 
-    origin_copy_2 = os.path.join("dir", "origin_copy_2")
-    stage = run_copy(origin_copy, origin_copy_2, fname=origin_copy_2 + ".dvc")
+    origin_copy_2 = tmp_dir / "dir" / "origin_copy_2"
+    stage = run_copy(
+        fspath(origin_copy),
+        fspath(origin_copy_2),
+        fname=fspath(origin_copy_2) + ".dvc",
+    )
     assert stage is not None
-    assert (tmp_dir / origin_copy_2).read_text() == "origin data content"
+    assert origin_copy_2.read_text() == "origin data content"
     stages["origin_copy_2"] = stage
 
     dir_file_path = tmp_dir / "data_dir" / "dir_file"
-    dir_file_copy = os.path.join("dir", "subdir", "dir_file_copy")
+    dir_file_copy = tmp_dir / "dir" / "subdir" / "dir_file_copy"
     stage = run_copy(
-        fspath(dir_file_path), dir_file_copy, fname=dir_file_copy + ".dvc"
+        fspath(dir_file_path),
+        fspath(dir_file_copy),
+        fname=fspath(dir_file_copy) + ".dvc",
     )
     assert stage is not None
-    assert (tmp_dir / dir_file_copy).read_text() == "dir file content"
+    assert dir_file_copy.read_text() == "dir file content"
     stages["dir_file_copy"] = stage
 
-    last_stage = os.path.join("dir", "Dvcfile")
-    stage = dvc.run(fname=last_stage, deps=[origin_copy_2, dir_file_copy])
+    last_stage = tmp_dir / "dir" / "Dvcfile"
+    stage = dvc.run(
+        fname=fspath(last_stage),
+        deps=[fspath(origin_copy_2), fspath(dir_file_copy)],
+    )
     assert stage is not None
     stages["last_stage"] = stage
 
     # Unrelated are to verify that reproducing `dir` will not trigger them too
-    assert run_copy(origin_copy, "unrelated1") is not None
+    assert run_copy(fspath(origin_copy), "unrelated1") is not None
     assert run_copy(fspath(dir_file_path), "unrelated2") is not None
 
     yield stages
@@ -1438,8 +1447,8 @@ def _rewrite_file(path_elements, new_content):
     file.write_text(new_content)
 
 
-def _out_path(stage):
-    return Path(stage.outs[0].fspath)
+def _read_out(stage):
+    return Path(stage.outs[0].fspath).read_text()
 
 
 def test_recursive_repro_default(dvc, repro_dir):
@@ -1457,14 +1466,8 @@ def test_recursive_repro_default(dvc, repro_dir):
         repro_dir["origin_copy_2"],
         repro_dir["last_stage"],
     ]
-    assert (
-        _out_path(repro_dir["origin_copy"]).read_text()
-        == "new origin data content"
-    )
-    assert (
-        _out_path(repro_dir["origin_copy_2"]).read_text()
-        == "new origin data content"
-    )
+    assert _read_out(repro_dir["origin_copy"]) == "new origin data content"
+    assert _read_out(repro_dir["origin_copy_2"]) == "new origin data content"
 
 
 def test_recursive_repro_single(dvc, repro_dir):
@@ -1482,10 +1485,7 @@ def test_recursive_repro_single(dvc, repro_dir):
     # since it depends on "origin_copy".
     # Also check that "dir_file_copy" stage was reproduced before "last_stage"
     assert stages == [repro_dir["dir_file_copy"], repro_dir["last_stage"]]
-    assert (
-        _out_path(repro_dir["dir_file_copy"]).read_text()
-        == "new dir file content"
-    )
+    assert _read_out(repro_dir["dir_file_copy"]) == "new dir file content"
 
 
 def test_recursive_repro_single_force(dvc, repro_dir):
@@ -1511,7 +1511,7 @@ def test_recursive_repro_single_force(dvc, repro_dir):
     )
 
 
-def test_recursive_repro_empty_dir(tmp_dir, dvc, repro_dir):
+def test_recursive_repro_empty_dir(tmp_dir, dvc):
     """
     Test recursive repro on an empty directory
     """
@@ -1611,9 +1611,11 @@ class TestReproDownstream(TestDvc):
         assert evaluation[2].relpath == "E.dvc"
 
 
-def test_ssh_dir_out(dvc):
+def test_ssh_dir_out(tmp_dir, dvc):
     if not _should_test_ssh():
         pytest.skip()
+
+    tmp_dir.gen({"foo": "foo content"})
 
     # Set up remote and cache
     remote_url = get_ssh_url()
