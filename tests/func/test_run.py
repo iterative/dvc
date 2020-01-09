@@ -611,100 +611,57 @@ class TestCmdRunWorkingDirectory(TestDvc):
         )
 
 
-class DeterministicRunBaseFixture(object):
-    def __init__(self, tmp_dir, dvc):
-        tmp_dir.gen(
-            "copy.py",
-            "import sys, shutil\nshutil.copyfile(sys.argv[1], sys.argv[2])",
+def test_rerun_deterministic(tmp_dir, run_copy):
+    tmp_dir.gen("foo", "foo content")
+
+    assert run_copy("foo", "out") is not None
+    assert run_copy("foo", "out") is None
+
+
+def test_rerun_deterministic_ignore_cache(tmp_dir, run_copy):
+    tmp_dir.gen("foo", "foo content")
+
+    assert run_copy("foo", "out") is not None
+    assert run_copy("foo", "out", ignore_build_cache=True) is not None
+
+
+def test_rerun_callback(dvc):
+    def run_callback():
+        return dvc.run(
+            cmd=("echo content > out"), outs=["out"], deps=[], overwrite=False
         )
-        tmp_dir.gen("foo", "foo content")
 
-        self.out_file = "out"
-        self.stage_file = self.out_file + ".dvc"
-        self.cmd = "python {} {} {}".format("copy.py", "foo", self.out_file)
-        self.deps = ["foo", "copy.py"]
-        self.outs = [self.out_file]
-        self.overwrite = False
-        self.ignore_build_cache = False
-        self.dvc = dvc
-        self.stage = None
+    assert run_callback() is not None
 
-    def run(self):
-        self.stage = self.dvc.run(
-            cmd=self.cmd,
-            fname=self.stage_file,
-            overwrite=self.overwrite,
-            ignore_build_cache=self.ignore_build_cache,
-            deps=self.deps,
-            outs=self.outs,
-        )
-        return self.stage
-
-
-@pytest.fixture
-def deterministic_run(tmp_dir, dvc):
-    run_base = DeterministicRunBaseFixture(tmp_dir, dvc)
-    run_base.run()
-    yield run_base
-
-
-def test_run_deterministic(deterministic_run):
-    deterministic_run.run()
-
-
-def test_run_deterministic_overwrite(deterministic_run):
-    deterministic_run.overwrite = True
-    deterministic_run.ignore_build_cache = True
-    deterministic_run.run()
-
-
-def test_run_deterministic_callback(deterministic_run):
-    with deterministic_run.stage.repo.lock:
-        deterministic_run.stage.remove()
-    deterministic_run.deps = []
-    deterministic_run.run()
     with mock.patch("dvc.prompt.confirm", return_value=True):
-        assert deterministic_run.run()
+        assert run_callback() is not None
 
 
-def test_run_deterministic_changed_dep(deterministic_run):
-    foo = Path("foo")
-    foo.unlink()
-    foo.write_text("bar")
+def test_rerun_changed_dep(tmp_dir, run_copy):
+    tmp_dir.gen("foo", "foo content")
+    assert run_copy("foo", "out") is not None
+
+    tmp_dir.gen("foo", "changed content")
     with pytest.raises(StageFileAlreadyExistsError):
-        deterministic_run.run()
+        run_copy("foo", "out", overwrite=False)
 
 
-def test_run_deterministic_changed_deps_list(tmp_dir, deterministic_run):
+def test_rerun_changed_stage(tmp_dir, run_copy):
+    tmp_dir.gen("foo", "foo content")
+    assert run_copy("foo", "out") is not None
+
     tmp_dir.gen("bar", "bar content")
-    deterministic_run.deps = ["bar", "copy.py"]
     with pytest.raises(StageFileAlreadyExistsError):
-        deterministic_run.run()
+        run_copy("bar", "out", overwrite=False)
 
 
-def test_run_deterministic_new_dep(tmp_dir, deterministic_run):
-    tmp_dir.gen("bar", "bar content")
-    deterministic_run.deps.append("bar")
+def test_rerun_changed_out(tmp_dir, run_copy):
+    tmp_dir.gen("foo", "foo content")
+    assert run_copy("foo", "out") is not None
+
+    Path("out").write_text("modification")
     with pytest.raises(StageFileAlreadyExistsError):
-        deterministic_run.run()
-
-
-def test_run_deterministic_remove_dep(deterministic_run):
-    deterministic_run.deps = ["copy.py"]
-    with pytest.raises(StageFileAlreadyExistsError):
-        deterministic_run.run()
-
-
-def test_run_deterministic_changed_out(deterministic_run):
-    os.unlink(deterministic_run.out_file)
-    with pytest.raises(StageFileAlreadyExistsError):
-        deterministic_run.run()
-
-
-def test_run_deterministic_changed_cmd(deterministic_run):
-    deterministic_run.cmd += " arg"
-    with pytest.raises(StageFileAlreadyExistsError):
-        deterministic_run.run()
+        run_copy("foo", "out", overwrite=False)
 
 
 class TestRunCommit(TestDvc):
