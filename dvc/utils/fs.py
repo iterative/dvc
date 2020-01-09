@@ -18,6 +18,8 @@ from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
 
+LOCAL_CHUNK_SIZE = 2 ** 20  # 1 MB
+
 
 def fs_copy(src, dst):
     if os.path.isdir(src):
@@ -152,3 +154,56 @@ def path_isin(child, parent):
     parent = os.path.join(normalize_path(parent), "")
     child = normalize_path(child)
     return child != parent and child.startswith(parent)
+
+
+def makedirs(path, exist_ok=False, mode=None):
+    path = fspath_py35(path)
+
+    if mode is None:
+        os.makedirs(path, exist_ok=exist_ok)
+        return
+
+    # utilize umask to set proper permissions since Python 3.7 the `mode`
+    # `makedirs` argument no longer affects the file permission bits of
+    # newly-created intermediate-level directories.
+    umask = os.umask(0o777 - mode)
+    try:
+        os.makedirs(path, exist_ok=exist_ok)
+    finally:
+        os.umask(umask)
+
+
+def copyfile(src, dest, no_progress_bar=False, name=None):
+    """Copy file with progress bar"""
+    from dvc.exceptions import DvcException
+    from dvc.progress import Tqdm
+    from dvc.system import System
+
+    src = fspath_py35(src)
+    dest = fspath_py35(dest)
+
+    name = name if name else os.path.basename(dest)
+    total = os.stat(src).st_size
+
+    if os.path.isdir(dest):
+        dest = os.path.join(dest, os.path.basename(src))
+
+    try:
+        System.reflink(src, dest)
+    except DvcException:
+        with Tqdm(
+            desc=name, disable=no_progress_bar, total=total, bytes=True
+        ) as pbar:
+            with open(src, "rb") as fsrc, open(dest, "wb+") as fdest:
+                while True:
+                    buf = fsrc.read(LOCAL_CHUNK_SIZE)
+                    if not buf:
+                        break
+                    fdest.write(buf)
+                    pbar.update(len(buf))
+
+
+def walk_files(directory):
+    for root, _, files in os.walk(fspath(directory)):
+        for f in files:
+            yield os.path.join(root, f)

@@ -24,8 +24,8 @@ from dvc.path_info import PathInfo, URLInfo
 from dvc.progress import Tqdm
 from dvc.remote.slow_link_detection import slow_link_guard
 from dvc.state import StateNoop
-from dvc.utils import makedirs, relpath, tmp_fname
-from dvc.utils.fs import move
+from dvc.utils import relpath, tmp_fname
+from dvc.utils.fs import move, makedirs
 from dvc.utils.http import open_url
 
 logger = logging.getLogger(__name__)

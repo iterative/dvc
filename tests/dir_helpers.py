@@ -50,7 +50,7 @@ from contextlib import contextmanager
 import pytest
 from funcy.py3 import lmap, retry
 
-from dvc.utils import makedirs
+from dvc.utils.fs import makedirs
 from dvc.compat import fspath, fspath_py35
 
 

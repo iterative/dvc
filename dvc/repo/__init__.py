@@ -72,7 +72,7 @@ class Repo(object):
         from dvc.repo.metrics import Metrics
         from dvc.scm.tree import WorkingTree
         from dvc.repo.tag import Tag
-        from dvc.utils import makedirs
+        from dvc.utils.fs import makedirs
 
         root_dir = self.find_root(root_dir)
 
