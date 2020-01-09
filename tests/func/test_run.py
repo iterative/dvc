@@ -1,8 +1,8 @@
 import filecmp
 import logging
 import os
-import shutil
 import uuid
+from pathlib import Path
 
 import mock
 import pytest
@@ -612,21 +612,25 @@ class TestCmdRunWorkingDirectory(TestDvc):
 
 
 class DeterministicRunBaseFixture(object):
-    def __init__(self, repo_dir, dvc_repo):
+    def __init__(self, tmp_dir, dvc):
+        tmp_dir.gen(
+            "copy.py",
+            "import sys, shutil\nshutil.copyfile(sys.argv[1], sys.argv[2])",
+        )
+        tmp_dir.gen("foo", "foo content")
+
         self.out_file = "out"
         self.stage_file = self.out_file + ".dvc"
-        self.cmd = "python {} {} {}".format(
-            repo_dir.CODE, repo_dir.FOO, self.out_file
-        )
-        self.deps = [repo_dir.FOO, repo_dir.CODE]
+        self.cmd = "python {} {} {}".format("copy.py", "foo", self.out_file)
+        self.deps = ["foo", "copy.py"]
         self.outs = [self.out_file]
         self.overwrite = False
         self.ignore_build_cache = False
-        self.dvc_repo = dvc_repo
+        self.dvc = dvc
         self.stage = None
 
     def run(self):
-        self.stage = self.dvc_repo.run(
+        self.stage = self.dvc.run(
             cmd=self.cmd,
             fname=self.stage_file,
             overwrite=self.overwrite,
@@ -638,8 +642,8 @@ class DeterministicRunBaseFixture(object):
 
 
 @pytest.fixture
-def deterministic_run(dvc_repo, repo_dir):
-    run_base = DeterministicRunBaseFixture(repo_dir, dvc_repo)
+def deterministic_run(tmp_dir, dvc):
+    run_base = DeterministicRunBaseFixture(tmp_dir, dvc)
     run_base.run()
     yield run_base
 
@@ -663,27 +667,30 @@ def test_run_deterministic_callback(deterministic_run):
         assert deterministic_run.run()
 
 
-def test_run_deterministic_changed_dep(deterministic_run, repo_dir):
-    os.unlink(repo_dir.FOO)
-    shutil.copy(repo_dir.BAR, repo_dir.FOO)
+def test_run_deterministic_changed_dep(deterministic_run):
+    foo = Path("foo")
+    foo.unlink()
+    foo.write_text("bar")
     with pytest.raises(StageFileAlreadyExistsError):
         deterministic_run.run()
 
 
-def test_run_deterministic_changed_deps_list(deterministic_run, repo_dir):
-    deterministic_run.deps = [repo_dir.BAR, repo_dir.CODE]
+def test_run_deterministic_changed_deps_list(tmp_dir, deterministic_run):
+    tmp_dir.gen("bar", "bar content")
+    deterministic_run.deps = ["bar", "copy.py"]
     with pytest.raises(StageFileAlreadyExistsError):
         deterministic_run.run()
 
 
-def test_run_deterministic_new_dep(deterministic_run, repo_dir):
-    deterministic_run.deps = [repo_dir.FOO, repo_dir.BAR, repo_dir.CODE]
+def test_run_deterministic_new_dep(tmp_dir, deterministic_run):
+    tmp_dir.gen("bar", "bar content")
+    deterministic_run.deps.append("bar")
     with pytest.raises(StageFileAlreadyExistsError):
         deterministic_run.run()
 
 
-def test_run_deterministic_remove_dep(deterministic_run, repo_dir):
-    deterministic_run.deps = [repo_dir.CODE]
+def test_run_deterministic_remove_dep(deterministic_run):
+    deterministic_run.deps = ["copy.py"]
     with pytest.raises(StageFileAlreadyExistsError):
         deterministic_run.run()
 
