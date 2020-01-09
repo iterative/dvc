@@ -931,33 +931,24 @@ class TestPersistentOutput(TestDvc):
             assert "hello\nhello\n" == fobj.read()
 
 
-def test_bad_stage_fname(repo_dir, dvc_repo):
-    dvc_repo.add(repo_dir.FOO)
+def test_bad_stage_fname(tmp_dir, dvc, run_copy):
+    tmp_dir.dvc_gen("foo", "foo content")
+
     with pytest.raises(StageFileBadNameError):
-        dvc_repo.run(
-            cmd="python {} {} {}".format(repo_dir.CODE, repo_dir.FOO, "out"),
-            deps=[repo_dir.FOO, repo_dir.CODE],
-            outs=["out"],
-            fname="out_stage",  # Bad name, should end with .dvc
-        )
+        # fname should end with .dvc
+        run_copy("foo", "foo_copy", fname="out_stage")
 
     # Check that command hasn't been run
-    assert not os.path.exists("out")
+    assert not (tmp_dir / "foo_copy").exists()
 
 
-def test_should_raise_on_stage_dependency(repo_dir, dvc_repo):
+def test_should_raise_on_stage_dependency(run_copy):
     with pytest.raises(DependencyIsStageFileError):
-        dvc_repo.run(
-            cmd="python {} {} {}".format(repo_dir.CODE, repo_dir.FOO, "out"),
-            deps=[repo_dir.FOO, "name.dvc"],
-            outs=["out"],
-        )
+        run_copy("name.dvc", "stage_copy")
 
 
-def test_should_raise_on_stage_output(repo_dir, dvc_repo):
+def test_should_raise_on_stage_output(tmp_dir, dvc, run_copy):
+    tmp_dir.dvc_gen("foo", "foo content")
+
     with pytest.raises(OutputIsStageFileError):
-        dvc_repo.run(
-            cmd="python {} {} {}".format(repo_dir.CODE, repo_dir.FOO, "out"),
-            deps=[repo_dir.FOO],
-            outs=["name.dvc"],
-        )
+        run_copy("foo", "name.dvc")
