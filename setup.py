@@ -76,6 +76,7 @@ install_requires = [
     "pywin32>=225; sys_platform == 'win32'",
     "networkx>=2.1,<2.4",
     "speedcopy @ git+https://github.com/rxxg/speedcopy@5",
+    "pyfastcopy>=1.0.3",
 ]
 
 
