@@ -1,7 +1,7 @@
 import errno
 import logging
 import os
-import speedcopy
+import platform
 
 from dvc.compat import fspath
 from dvc.exceptions import DvcException
@@ -18,7 +18,20 @@ class System(object):
     @staticmethod
     def copy(src, dest):
         src, dest = fspath(src), fspath(dest)
-        return speedcopy.copyfile(src, dest)
+        system = platform.system()
+        if system == "Windows":
+            import speedcopy
+
+            return speedcopy.copyfile(src, dest)
+        else:
+            import shutil
+            import sys
+
+            if sys.version_info < (3, 8):
+                # Importing the module monkey-patches shutil.copyfile
+                import pyfastcopy  # noqa: F401
+
+            return shutil.copyfile(src, dest)
 
     @staticmethod
     def hardlink(source, link_name):
@@ -90,8 +103,6 @@ class System(object):
 
     @staticmethod
     def reflink(source, link_name):
-        import platform
-
         source, link_name = fspath(source), fspath(link_name)
 
         system = platform.system()
