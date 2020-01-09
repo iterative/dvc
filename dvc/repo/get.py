@@ -7,10 +7,9 @@ from dvc.exceptions import (
     DvcException,
     NotDvcRepoError,
     OutputNotFoundError,
-    UrlNotDvcRepoError,
     PathMissingError,
 )
-from dvc.external_repo import external_repo
+from dvc.external_repo import cached_clone
 from dvc.path_info import PathInfo
 from dvc.stage import Stage
 from dvc.utils import resolve_output
@@ -28,8 +27,15 @@ class GetDVCFileError(DvcException):
         )
 
 
+# Dummy exception raised to signal a plain file copy is needed
+class _DoPlainCopy(DvcException):
+    pass
+
+
 @staticmethod
 def get(url, path, out=None, rev=None):
+    from dvc.repo import Repo
+
     out = resolve_output(path, out)
 
     if Stage.is_valid_filename(out):
@@ -43,7 +49,8 @@ def get(url, path, out=None, rev=None):
     dpath = os.path.dirname(os.path.abspath(out))
     tmp_dir = os.path.join(dpath, "." + str(shortuuid.uuid()))
     try:
-        with external_repo(cache_dir=tmp_dir, url=url, rev=rev) as repo:
+        cached_clone(url, rev=rev, clone_path=tmp_dir)
+        try:
             # Try any links possible to avoid data duplication.
             #
             # Not using symlink, because we need to remove cache after we are
@@ -53,26 +60,24 @@ def get(url, path, out=None, rev=None):
             #
             # Also, we can't use theoretical "move" link type here, because
             # the same cache file might be used a few times in a directory.
+            repo = Repo(tmp_dir)
             repo.cache.local.cache_types = ["reflink", "hardlink", "copy"]
+            output = repo.find_out_by_relpath(path)
+            if not output.use_cache:
+                # Catch this below and go for a plain old fs_copy
+                raise _DoPlainCopy
+            _get_cached(repo, output, out)
 
-            try:
-                output = repo.find_out_by_relpath(path)
-            except OutputNotFoundError:
-                output = None
+        except (NotDvcRepoError, OutputNotFoundError, _DoPlainCopy):
+            # It's an uncached out with absolute path, a non-DVC repo, or a
+            # user error
+            if os.path.isabs(path):
+                raise FileNotFoundError
 
-            if output and output.use_cache:
-                _get_cached(repo, output, out)
-            else:
-                # Either an uncached out with absolute path or a user error
-                if os.path.isabs(path):
-                    raise FileNotFoundError
-
-                fs_copy(os.path.join(repo.root_dir, path), out)
+            fs_copy(os.path.join(tmp_dir, path), out)
 
     except (OutputNotFoundError, FileNotFoundError):
         raise PathMissingError(path, url)
-    except NotDvcRepoError:
-        raise UrlNotDvcRepoError(url)
     finally:
         remove(tmp_dir)
 
