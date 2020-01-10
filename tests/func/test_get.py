@@ -136,6 +136,14 @@ def test_absolute_file_outside_repo(tmp_dir, erepo_dir):
         Repo.get(fspath(erepo_dir), "/root/")
 
 
+def test_absolute_file_outside_git_repo(tmp_dir, erepo_dir):
+    erepo_dir.scm.repo.index.remove([erepo_dir.dvc.dvc_dir], r=True)
+    erepo_dir.scm.commit("remove dvc")
+
+    with pytest.raises(PathMissingError):
+        Repo.get(fspath(erepo_dir), "/root/")
+
+
 def test_unknown_path(tmp_dir, erepo_dir):
     with pytest.raises(PathMissingError):
         Repo.get(fspath(erepo_dir), "a_non_existing_file")
