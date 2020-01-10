@@ -30,7 +30,7 @@ class CmdImport(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     IMPORT_HELP = (
-        "Download data from DVC project or Git repository and take it under "
+        "Download a file or directory from any DVC project or Git repository and take it under "
         "DVC control."
     )
 
@@ -43,13 +43,13 @@ def add_parser(subparsers, parent_parser):
     )
     import_parser.add_argument(
         "url",
-        help="Location of Git repository with DVC project to download from.",
+        help="Location of DVC project or Git repository to download from",
     )
-    import_parser.add_argument("path", help="Path to data within DVC project.")
+    import_parser.add_argument("path", help="Path to a file or directory within the project or repository")
     import_parser.add_argument(
-        "-o", "--out", nargs="?", help="Destination path to put data in."
+        "-o", "--out", nargs="?", help="Destination path to download files to"
     )
     import_parser.add_argument(
-        "--rev", nargs="?", help="DVC repository git revision."
+        "--rev", nargs="?", help="Git revision (e.g. branch, tag, SHA)"
     )
     import_parser.set_defaults(func=CmdImport)
