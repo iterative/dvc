@@ -70,7 +70,6 @@ def get(url, path, out=None, rev=None):
 
             output = repo.find_out_by_relpath(path)
             if output.use_cache:
-                # Catch this below and go for a plain old fs_copy
                 _get_cached(repo, output, out)
                 return
 
