@@ -43,7 +43,7 @@ def add_parser(subparsers, parent_parser):
     )
     get_parser.add_argument(
         "url",
-        help="Location of DVC project or Git repository to download from.",
+        help="Location of DVC project or Git repository to download from",
     )
     get_parser.add_argument(
         "path",
