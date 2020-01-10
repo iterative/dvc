@@ -43,7 +43,7 @@ def add_parser(subparsers, parent_parser):
         "url", help="URL of Git repository to download from."
     )
     get_parser.add_argument(
-        "path", help="Path to a file or directory within the repository."
+        "path", help="Path to a file or directory within the project or repository"
     )
     get_parser.add_argument(
         "-o",
