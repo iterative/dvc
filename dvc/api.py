@@ -1,3 +1,4 @@
+from builtins import open as builtin_open
 import importlib
 import os
 import sys
@@ -11,7 +12,7 @@ import ruamel.yaml
 from voluptuous import Schema, Required, Invalid
 
 from dvc.repo import Repo
-from dvc.exceptions import DvcException, FileMissingError
+from dvc.exceptions import DvcException
 from dvc.external_repo import external_repo
 
 
@@ -123,8 +124,8 @@ def _get_object_from_summon_file(name, path):
     and return its description.
     """
     try:
-        with open(path, "r") as fobj:
-            content = SUMMON_SCHEMA(ruamel.yaml.safe_load(fobj.read()))
+        with builtin_open(path, "r") as fd:
+            content = SUMMON_SCHEMA(ruamel.yaml.safe_load(fd.read()))
             objects = [x for x in content["objects"] if x["name"] == name]
 
         if not objects:
@@ -136,8 +137,8 @@ def _get_object_from_summon_file(name, path):
 
         return objects[0]
 
-    except FileMissingError:
-        raise SummonError("Summon file not found")
+    except FileNotFoundError as exc:
+        raise SummonError("Summon file not found") from exc
     except ruamel.yaml.YAMLError as exc:
         raise SummonError("Failed to parse summon file") from exc
     except Invalid as exc:
