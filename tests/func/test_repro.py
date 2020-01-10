@@ -38,7 +38,7 @@ from tests.remotes import (
     _should_test_gcp,
     _should_test_hdfs,
     _should_test_ssh,
-    get_ssh_url,
+    get_ssh_url_mocked,
     S3,
     TEST_AWS_REPO_BUCKET,
     TEST_GCP_REPO_BUCKET,
@@ -1611,30 +1611,46 @@ class TestReproDownstream(TestDvc):
         assert evaluation[2].relpath == "E.dvc"
 
 
-def test_ssh_dir_out(tmp_dir, dvc):
-    if not _should_test_ssh():
-        pytest.skip()
-
+@pytest.mark.skipif(
+    os.name == "nt",
+    reason="external output scenario is not supported on Windows",
+)
+def test_ssh_dir_out(tmp_dir, dvc, ssh_server):
     tmp_dir.gen({"foo": "foo content"})
 
     # Set up remote and cache
-    remote_url = get_ssh_url()
-    assert main(["remote", "add", "upstream", remote_url]) == 0
+    user = ssh_server.test_creds["username"]
+    port = ssh_server.port
+    keyfile = ssh_server.test_creds["key_filename"]
 
-    cache_url = get_ssh_url()
+    remote_url = get_ssh_url_mocked(user, port)
+    assert main(["remote", "add", "upstream", remote_url]) == 0
+    assert main(["remote", "modify", "upstream", "keyfile", keyfile]) == 0
+
+    cache_url = get_ssh_url_mocked(user, port)
     assert main(["remote", "add", "sshcache", cache_url]) == 0
     assert main(["config", "cache.ssh", "sshcache"]) == 0
+    assert main(["remote", "modify", "sshcache", "keyfile", keyfile]) == 0
 
     # Recreating to reread configs
     repo = DvcRepo(dvc.root_dir)
 
+    # To avoid "WARNING: UNPROTECTED PRIVATE KEY FILE" from ssh
+    os.chmod(keyfile, 0o600)
+
+    (tmp_dir / "script.py").write_text(
+        "import sys, pathlib\n"
+        "path = pathlib.Path(sys.argv[1])\n"
+        "dir_out = path / 'dir-out'\n"
+        "dir_out.mkdir()\n"
+        "(dir_out / '1.txt').write_text('1')\n"
+        "(dir_out / '2.txt').write_text('2')\n"
+    )
+
     url_info = URLInfo(remote_url)
-    mkdir_cmd = "mkdir dir-out;cd dir-out;echo 1 > 1.txt; echo 2 > 2.txt"
     repo.run(
-        cmd="ssh {netloc} 'cd {path};{cmd}'".format(
-            netloc=url_info.netloc, path=url_info.path, cmd=mkdir_cmd
-        ),
-        outs=[(url_info / "dir-out").url],
+        cmd="python {} {}".format(tmp_dir / "script.py", url_info.path),
+        outs=["remote://upstream/dir-out"],
         deps=["foo"],  # add a fake dep to not consider this a callback
     )
 
