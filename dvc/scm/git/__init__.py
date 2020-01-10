@@ -229,7 +229,8 @@ class Git(Base):
         # it is equivalent to `bool(self.repo.git.ls_files(path))` by
         # functionality, but ls_files fails on unicode filenames
         path = relpath(path, self.root_dir)
-        return path in [i[0] for i in self.repo.index.entries]
+        # There are 4 stages, see BaseIndexEntry.stage
+        return any((path, i) in self.repo.index.entries for i in (0, 1, 2, 3))
 
     def is_dirty(self):
         return self.repo.is_dirty()
