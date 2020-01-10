@@ -26,7 +26,7 @@ class System(object):
             import shutil
             import sys
 
-            if sys.version < (3, 8):
+            if sys.version_info < (3, 8):
                 # Importing the module monkey-patches shutil.copyfile
                 import pyfastcopy  # noqa: F401
 
