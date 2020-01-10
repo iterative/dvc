@@ -27,11 +27,6 @@ class GetDVCFileError(DvcException):
         )
 
 
-# Dummy exception raised to signal a plain file copy is needed
-class _DoPlainCopy(DvcException):
-    pass
-
-
 @staticmethod
 def get(url, path, out=None, rev=None):
     from dvc.repo import Repo
