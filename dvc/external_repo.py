@@ -33,7 +33,7 @@ def external_repo(url=None, rev=None, rev_lock=None, cache_dir=None):
     repo.close()
 
 
-def cached_clone(url, rev=None, **_ignored_kwargs):
+def cached_clone(url, rev=None, clone_path=None, **_ignored_kwargs):
     """Clone an external git repo to a temporary directory.
 
     Returns the path to a local temporary directory with the specified
@@ -44,7 +44,7 @@ def cached_clone(url, rev=None, **_ignored_kwargs):
 
     """
 
-    new_path = tempfile.mkdtemp("dvc-erepo")
+    new_path = clone_path or tempfile.mkdtemp("dvc-erepo")
 
     # Copy and adjust existing clean clone
     if (url, None, None) in REPO_CACHE:

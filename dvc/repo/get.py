@@ -3,8 +3,6 @@ import os
 
 import shortuuid
 
-from dvc.cache import CacheConfig
-from dvc.config import Config
 from dvc.exceptions import (
     DvcException,
     NotDvcRepoError,
@@ -51,11 +49,9 @@ def get(url, path, out=None, rev=None):
     dpath = os.path.dirname(os.path.abspath(out))
     tmp_dir = os.path.join(dpath, "." + str(shortuuid.uuid()))
     try:
-        clone_dir = cached_clone(url, rev=rev)
+        cached_clone(url, rev=rev, clone_path=tmp_dir)
         try:
-            repo = Repo(clone_dir)
-            cache_config = CacheConfig(repo.config)
-            cache_config.set_dir(tmp_dir, level=Config.LEVEL_LOCAL)
+            repo = Repo(tmp_dir)
 
             # Try any links possible to avoid data duplication.
             #
@@ -81,13 +77,12 @@ def get(url, path, out=None, rev=None):
         if os.path.isabs(path):
             raise FileNotFoundError
 
-        fs_copy(os.path.join(clone_dir, path), out)
+        fs_copy(os.path.join(tmp_dir, path), out)
 
     except (OutputNotFoundError, FileNotFoundError):
         raise PathMissingError(path, url)
     finally:
         remove(tmp_dir)
-        remove(clone_dir)
 
 
 def _get_cached(repo, output, out):
