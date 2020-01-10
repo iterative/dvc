@@ -4,7 +4,9 @@ import sys
 import copy
 from urllib.parse import urlparse
 from contextlib import contextmanager, _GeneratorContextManager as GCM
+import threading
 
+from funcy import wrap_with
 import ruamel.yaml
 from voluptuous import Schema, Required, Invalid
 
@@ -154,14 +156,8 @@ def _pull_dependencies(repo, deps):
             out.checkout()
 
 
+@wrap_with(threading.Lock())
 def _invoke_method(call, args, path):
-    # XXX: Some issues with this approach:
-    #   * Not thread safe
-    #   * Import will pollute sys.modules
-    #   * Weird errors if there is a name clash within sys.modules
-
-    # XXX: sys.path manipulation is "theoretically" not needed
-    #      but tests are failing for an unknown reason.
     cwd = os.getcwd()
 
     try:
