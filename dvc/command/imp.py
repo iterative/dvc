@@ -47,7 +47,7 @@ def add_parser(subparsers, parent_parser):
     )
     import_parser.add_argument("path", help="Path to data within DVC project.")
     import_parser.add_argument(
-        "-o", "--out", nargs="?", help="Destination path to put data in."
+        "-o", "--out", nargs="?", help="Destination path to download files to"
     )
     import_parser.add_argument(
         "--rev", nargs="?", help="Git revision (e.g. branch, tag, SHA)"
