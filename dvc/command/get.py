@@ -53,7 +53,7 @@ def add_parser(subparsers, parent_parser):
         "-o",
         "--out",
         nargs="?",
-        help="Destination path to copy/download files to.",
+        help="Destination path to download files to",
     )
     get_parser.add_argument(
         "--rev", nargs="?", help="Git revision (e.g. branch, tag, SHA)"
