@@ -24,16 +24,14 @@ class System(object):
     def hardlink(source, link_name):
         try:
             os.link(source, link_name)
-            return
-        except Exception as exc:
+        except OSError as exc:
             raise DvcException("failed to link") from exc
 
     @staticmethod
     def symlink(source, link_name):
         try:
             os.symlink(source, link_name)
-            return
-        except Exception as exc:
+        except OSError as exc:
             raise DvcException("failed to symlink") from exc
 
     @staticmethod
