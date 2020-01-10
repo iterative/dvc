@@ -32,7 +32,7 @@ class CmdGet(CmdBaseNoRepo):
 
 def add_parser(subparsers, parent_parser):
     GET_HELP = (
-        "Download a file or directory from any DVC project or Git repository"
+        "Download a file or directory from any DVC project or Git repository."
     )
     get_parser = subparsers.add_parser(
         "get",
