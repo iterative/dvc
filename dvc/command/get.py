@@ -52,6 +52,6 @@ def add_parser(subparsers, parent_parser):
         help="Destination path to copy/download files to.",
     )
     get_parser.add_argument(
-        "--rev", nargs="?", help="Repository git revision."
+        "--rev", nargs="?", help="Git revision (e.g. branch, tag, SHA)"
     )
     get_parser.set_defaults(func=CmdGet)
