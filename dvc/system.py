@@ -22,6 +22,7 @@ class System(object):
 
     @staticmethod
     def hardlink(source, link_name):
+        source, link_name = fspath(source), fspath(link_name)
         try:
             os.link(source, link_name)
         except OSError as exc:
@@ -29,6 +30,7 @@ class System(object):
 
     @staticmethod
     def symlink(source, link_name):
+        source, link_name = fspath(source), fspath(link_name)
         try:
             os.symlink(source, link_name)
         except OSError as exc:
