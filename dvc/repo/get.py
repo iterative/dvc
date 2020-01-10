@@ -66,7 +66,6 @@ def get(url, path, out=None, rev=None):
                     return
 
                 # Either an uncached out with absolute path or a user error
-
                 if os.path.isabs(path):
                     raise FileNotFoundError
 
