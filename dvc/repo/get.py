@@ -51,6 +51,8 @@ def get(url, path, out=None, rev=None):
     try:
         cached_clone(url, rev=rev, clone_path=tmp_dir)
         try:
+            repo = Repo(tmp_dir)
+
             # Try any links possible to avoid data duplication.
             #
             # Not using symlink, because we need to remove cache after we are
@@ -60,21 +62,23 @@ def get(url, path, out=None, rev=None):
             #
             # Also, we can't use theoretical "move" link type here, because
             # the same cache file might be used a few times in a directory.
-            repo = Repo(tmp_dir)
             repo.cache.local.cache_types = ["reflink", "hardlink", "copy"]
+
             output = repo.find_out_by_relpath(path)
-            if not output.use_cache:
+            if output.use_cache:
                 # Catch this below and go for a plain old fs_copy
-                raise _DoPlainCopy
-            _get_cached(repo, output, out)
+                _get_cached(repo, output, out)
+                return
 
-        except (NotDvcRepoError, OutputNotFoundError, _DoPlainCopy):
-            # It's an uncached out with absolute path, a non-DVC repo, or a
-            # user error
-            if os.path.isabs(path):
-                raise FileNotFoundError
+        except (NotDvcRepoError, OutputNotFoundError):
+            pass
 
-            fs_copy(os.path.join(tmp_dir, path), out)
+        # It's an uncached out with absolute path, a non-DVC repo, or a
+        # user error
+        if os.path.isabs(path):
+            raise FileNotFoundError
+
+        fs_copy(os.path.join(tmp_dir, path), out)
 
     except (OutputNotFoundError, FileNotFoundError):
         raise PathMissingError(path, url)
