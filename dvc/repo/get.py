@@ -27,11 +27,6 @@ class GetDVCFileError(DvcException):
         )
 
 
-def _forbid_absolute_path(path):
-    if os.path.isabs(path):
-        raise FileNotFoundError
-
-
 @staticmethod
 def get(url, path, out=None, rev=None):
     out = resolve_output(path, out)
@@ -46,6 +41,7 @@ def get(url, path, out=None, rev=None):
     # and won't work with reflink/hardlink.
     dpath = os.path.dirname(os.path.abspath(out))
     tmp_dir = os.path.join(dpath, "." + str(shortuuid.uuid()))
+    repo_dir = None
     try:
         try:
             with external_repo(cache_dir=tmp_dir, url=url, rev=rev) as repo:
@@ -70,18 +66,20 @@ def get(url, path, out=None, rev=None):
                     return
 
                 # Either an uncached out with absolute path or a user error
-                _forbid_absolute_path(path)
 
-                fs_copy(os.path.join(repo.root_dir, path), out)
-                return
+                repo_dir = repo.root_dir
 
         except NotDvcRepoError:
             # Not a DVC repository, continue below and copy from git
             pass
 
-        _forbid_absolute_path(path)
-        raw_git_dir = cached_clone(url, rev=rev)
-        fs_copy(os.path.join(raw_git_dir, path), out)
+        if os.path.isabs(path):
+            raise FileNotFoundError
+
+        if not repo_dir:
+            repo_dir = cached_clone(url, rev=rev)
+
+        fs_copy(os.path.join(repo_dir, path), out)
     except (OutputNotFoundError, FileNotFoundError):
         raise PathMissingError(path, url)
     finally:
