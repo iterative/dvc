@@ -46,7 +46,6 @@ def get(url, path, out=None, rev=None):
     # and won't work with reflink/hardlink.
     dpath = os.path.dirname(os.path.abspath(out))
     tmp_dir = os.path.join(dpath, "." + str(shortuuid.uuid()))
-    raw_git_dir = None
     try:
         try:
             with external_repo(cache_dir=tmp_dir, url=url, rev=rev) as repo:
@@ -87,8 +86,6 @@ def get(url, path, out=None, rev=None):
         raise PathMissingError(path, url)
     finally:
         remove(tmp_dir)
-        if raw_git_dir:
-            remove(raw_git_dir)
 
 
 def _get_cached(repo, output, out):
