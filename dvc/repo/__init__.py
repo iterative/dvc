@@ -130,10 +130,13 @@ class Repo(object):
 
     @classmethod
     def find_root(cls, root=None):
+        logger.info("find_root")
+        logger.info(root)
         if root is None:
             root = os.getcwd()
         else:
             root = os.path.abspath(os.path.realpath(root))
+        logger.info(root)
 
         while True:
             dvc_dir = os.path.join(root, cls.DVC_DIR)
@@ -142,6 +145,7 @@ class Repo(object):
             if os.path.ismount(root):
                 break
             root = os.path.dirname(root)
+            logger.info(root)
         raise NotDvcRepoError(root)
 
     @classmethod
