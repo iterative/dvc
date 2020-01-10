@@ -27,6 +27,11 @@ class GetDVCFileError(DvcException):
         )
 
 
+def _forbid_absolute_path(path):
+    if os.path.isabs(path):
+        raise FileNotFoundError
+
+
 @staticmethod
 def get(url, path, out=None, rev=None):
     out = resolve_output(path, out)
@@ -66,8 +71,7 @@ def get(url, path, out=None, rev=None):
                     return
 
                 # Either an uncached out with absolute path or a user error
-                if os.path.isabs(path):
-                    raise FileNotFoundError
+                _forbid_absolute_path(path)
 
                 fs_copy(os.path.join(repo.root_dir, path), out)
                 return
@@ -76,6 +80,7 @@ def get(url, path, out=None, rev=None):
             # Not a DVC repository, continue below and copy from git
             pass
 
+        _forbid_absolute_path(path)
         raw_git_dir = cached_clone(url, rev=rev)
         fs_copy(os.path.join(raw_git_dir, path), out)
     except (OutputNotFoundError, FileNotFoundError):
