@@ -91,7 +91,6 @@ class System(object):
     @staticmethod
     def reflink(source, link_name):
         import platform
-        from dvc.exceptions import DvcException
 
         source, link_name = fspath(source), fspath(link_name)
 
