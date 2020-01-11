@@ -17,7 +17,9 @@ def test_info_in_repo(tmp_dir, dvc, caplog):
     assert re.search(r"Platform: .*", caplog.text)
     assert re.search(r"Binary: (True|False)", caplog.text)
     assert re.search(r"Package: .*", caplog.text)
-    assert re.search(r"(Cache: (.*link - (True|False)(,\s)?){3})", caplog.text)
+    assert re.search(
+        r"(Cache: (.*link - (not )?supported(,\s)?){3})", caplog.text
+    )
 
 
 @pytest.mark.skipif(psutil is None, reason="No psutil.")
@@ -37,9 +39,7 @@ def test_info_outside_of_repo(tmp_dir, caplog):
     assert re.search(r"Platform: .*", caplog.text)
     assert re.search(r"Binary: (True|False)", caplog.text)
     assert re.search(r"Package: .*", caplog.text)
-    assert not re.search(
-        r"(Cache: (.*link - (True|False)(,\s)?){3})", caplog.text
-    )
+    assert not re.search(r"(Cache: (.*link - (not )?(,\s)?){3})", caplog.text)
 
 
 @pytest.mark.skipif(psutil is None, reason="No psutil.")

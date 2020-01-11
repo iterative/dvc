@@ -178,6 +178,10 @@ class RemoteLOCAL(RemoteBASE):
     def symlink(from_info, to_info):
         System.symlink(from_info, to_info)
 
+    @staticmethod
+    def is_symlink(path_info):
+        return System.is_symlink(path_info)
+
     def hardlink(self, from_info, to_info):
         # If there are a lot of empty files (which happens a lot in datasets),
         # and the cache type is `hardlink`, we might reach link limits and
@@ -203,6 +207,10 @@ class RemoteLOCAL(RemoteBASE):
             return
 
         System.hardlink(from_info, to_info)
+
+    @staticmethod
+    def is_hardlink(path_info):
+        return System.is_hardlink(path_info)
 
     @staticmethod
     def reflink(from_info, to_info):
