@@ -2,6 +2,7 @@ import os
 import posixpath
 import logging
 import threading
+import re
 
 from funcy import retry, compose, decorator, wrap_with
 from funcy.py3 import cat
@@ -68,6 +69,16 @@ class RemoteGDrive(RemoteBASE):
         super().__init__(repo, config)
         self.no_traverse = False
         self.path_info = self.path_cls(config[Config.SECTION_REMOTE_URL])
+
+        bucket = re.search(
+            "{}://(.*)".format(self.scheme),
+            config[Config.SECTION_REMOTE_URL],
+            re.IGNORECASE,
+        )
+        self.bucket = (
+            bucket.group(1).split("/")[0] if bucket else self.path_info.bucket
+        )
+
         self.config = config
         self.init_drive()
 
@@ -144,7 +155,7 @@ class RemoteGDrive(RemoteBASE):
         cached_dirs = {}
         cached_ids = {}
         for dir1 in self.gdrive_list_item(
-            "'{}' in parents and trashed=false".format(self.root_id)
+            "'{}' in parents and trashed=false".format(self.remote_root_id)
         ):
             remote_path = posixpath.join(self.path_info.path, dir1["title"])
             cached_dirs.setdefault(remote_path, []).append(dir1["id"])
@@ -227,7 +238,9 @@ class RemoteGDrive(RemoteBASE):
 
             self._gdrive = GoogleDrive(gauth)
 
-            self.root_id = self.get_remote_id(self.path_info, create=True)
+            self.remote_root_id = self.get_remote_id(
+                self.path_info, create=True
+            )
             self._cached_dirs, self._cached_ids = self.cache_root_dirs()
 
         return self._gdrive
@@ -261,7 +274,7 @@ class RemoteGDrive(RemoteBASE):
         return next(iter(item_list), None)
 
     def resolve_remote_item_from_path(self, path_parts, create):
-        parents_ids = ["root"]
+        parents_ids = [self.bucket]
         current_path = ""
         for path_part in path_parts:
             current_path = posixpath.join(current_path, path_part)

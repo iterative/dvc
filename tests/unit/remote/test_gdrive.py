@@ -1,5 +1,3 @@
-from unittest import TestCase
-
 import pytest
 import os
 
@@ -18,7 +16,7 @@ class Repo(object):
     tmp_dir = ""
 
 
-class TestRemoteGDrive(TestCase):
+class TestRemoteGDrive(object):
     CONFIG = {
         "url": "gdrive://root/data",
         "gdrive_client_id": "client",
