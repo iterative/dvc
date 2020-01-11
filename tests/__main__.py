@@ -18,3 +18,4 @@ cmd = (
     " --cov=dvc {params} --durations=0".format(params=params)
 )
 check_call(cmd, shell=True)
+pass
