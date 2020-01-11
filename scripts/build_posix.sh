@@ -95,10 +95,8 @@ install_dependencies()
 	pip install --upgrade pip
 
 	print_info "Installing requirements..."
-	pip install .[all] psutil
-
-	print_info "Installing pyinstaller..."
-	pip install pyinstaller
+	pip install .[all]
+	pip install -r scripts/build-requirements.txt
 }
 
 build_dvc()
