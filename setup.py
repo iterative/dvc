@@ -101,7 +101,6 @@ all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs
 
 # Extra dependecies to run tests
 tests_requirements = [
-    "PyInstaller==3.5",
     "wheel>=0.31.1",
     "pydot>=1.2.4",
     # Test requirements:

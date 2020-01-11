@@ -1,0 +1,2 @@
+PyInstaller==3.5
+psutil

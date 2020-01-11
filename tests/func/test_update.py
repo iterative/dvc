@@ -1,74 +1,49 @@
-import filecmp
-import os
-import shutil
-
+from dvc.compat import fspath
 from dvc.external_repo import clean_repos
-from dvc.repo import Repo
 
 
-def test_update_import(dvc_repo, erepo):
-    src = "version"
-    dst = src
+def test_update_import(tmp_dir, dvc, erepo_dir):
+    with erepo_dir.branch("branch", new=True), erepo_dir.chdir():
+        erepo_dir.dvc_gen("version", "branch", "add version file")
 
-    stage = dvc_repo.imp(erepo.root_dir, src, dst, rev="branch")
+    stage = dvc.imp(fspath(erepo_dir), "version", "version", rev="branch")
 
-    assert os.path.exists(dst)
-    assert os.path.isfile(dst)
-    with open(dst, "r+") as fobj:
-        assert fobj.read() == "branch"
+    imported = tmp_dir / "version"
+    assert imported.is_file()
+    assert imported.read_text() == "branch"
 
-    # update data
-    repo = Repo(erepo.root_dir)
-
-    saved_dir = os.getcwd()
-    os.chdir(erepo.root_dir)
-
-    repo.scm.checkout("branch")
-    os.unlink("version")
-    erepo.create("version", "updated")
-    repo.add("version")
-    repo.scm.add([".gitignore", "version.dvc"])
-    repo.scm.commit("updated")
-    repo.scm.checkout("master")
-
-    repo.scm.close()
-
-    os.chdir(saved_dir)
+    with erepo_dir.branch("branch", new=False), erepo_dir.chdir():
+        erepo_dir.dvc_gen("version", "updated", "update version content")
 
     # Caching in external repos doesn't see upstream updates within single
     # cli call, so we need to clean the caches to see the changes.
     clean_repos()
 
-    assert dvc_repo.status([stage.path]) == {}
-    dvc_repo.update(stage.path)
-    assert dvc_repo.status([stage.path]) == {}
+    assert dvc.status([stage.path]) == {}
+    dvc.update(stage.path)
+    assert dvc.status([stage.path]) == {}
 
-    assert os.path.exists(dst)
-    assert os.path.isfile(dst)
-    with open(dst, "r+") as fobj:
-        assert fobj.read() == "updated"
+    assert imported.is_file()
+    assert imported.read_text() == "updated"
 
 
-def test_update_import_url(repo_dir, dvc_repo):
-    src = "file"
-    dst = src + "_imported"
+def test_update_import_url(tmp_dir, dvc, tmp_path_factory):
+    import_src = tmp_path_factory.mktemp("import_url_source")
+    src = import_src / "file"
+    src.write_text("file content")
 
-    shutil.copyfile(repo_dir.FOO, src)
+    dst = tmp_dir / "imported_file"
+    stage = dvc.imp_url(fspath(src), fspath(dst))
 
-    stage = dvc_repo.imp_url(src, dst)
-
-    assert os.path.exists(dst)
-    assert os.path.isfile(dst)
-    assert filecmp.cmp(src, dst, shallow=False)
+    assert dst.is_file()
+    assert dst.read_text() == "file content"
 
     # update data
-    os.unlink(src)
-    shutil.copyfile(repo_dir.BAR, src)
+    src.write_text("updated file content")
 
-    assert dvc_repo.status([stage.path]) == {}
-    dvc_repo.update(stage.path)
-    assert dvc_repo.status([stage.path]) == {}
+    assert dvc.status([stage.path]) == {}
+    dvc.update(stage.path)
+    assert dvc.status([stage.path]) == {}
 
-    assert os.path.exists(dst)
-    assert os.path.isfile(dst)
-    assert filecmp.cmp(src, dst, shallow=False)
+    assert dst.is_file()
+    assert dst.read_text() == "updated file content"

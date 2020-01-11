@@ -266,10 +266,7 @@ class Stage(object):
     @staticmethod
     def is_valid_filename(path):
         return (
-            # path.endswith doesn't work for encoded unicode filenames on
-            # Python 2 and since Stage.STAGE_FILE_SUFFIX is ascii then it is
-            # not needed to decode the path from py2's str
-            path[-len(Stage.STAGE_FILE_SUFFIX) :] == Stage.STAGE_FILE_SUFFIX
+            path.endswith(Stage.STAGE_FILE_SUFFIX)
             or os.path.basename(path) == Stage.STAGE_FILE
         )
 

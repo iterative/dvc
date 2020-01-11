@@ -21,15 +21,13 @@ from dvc.remote.base import STATUS_NEW
 from dvc.scheme import Schemes
 from dvc.scm.tree import is_working_tree
 from dvc.system import System
-from dvc.utils import copyfile
+from dvc.utils.fs import copyfile
 from dvc.utils import file_md5
-from dvc.utils import makedirs
 from dvc.utils import relpath
 from dvc.utils import tmp_fname
-from dvc.utils import walk_files
 from dvc.compat import fspath_py35
-from dvc.utils.fs import move
-from dvc.utils.fs import remove
+from dvc.utils.fs import move, makedirs, remove
+from dvc.utils.fs import walk_files
 
 logger = logging.getLogger(__name__)
 
