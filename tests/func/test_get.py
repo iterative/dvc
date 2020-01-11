@@ -5,7 +5,6 @@ import pytest
 
 from dvc.cache import Cache
 from dvc.config import Config
-from dvc.exceptions import UrlNotDvcRepoError
 from dvc.repo.get import GetDVCFileError, PathMissingError
 from dvc.repo import Repo
 from dvc.system import System
@@ -87,9 +86,10 @@ def test_get_repo_rev(tmp_dir, erepo_dir):
 def test_get_from_non_dvc_repo(tmp_dir, erepo_dir):
     erepo_dir.scm.repo.index.remove([erepo_dir.dvc.dvc_dir], r=True)
     erepo_dir.scm.commit("remove dvc")
+    erepo_dir.scm_gen({"some_file": "contents"}, commit="create file")
 
-    with pytest.raises(UrlNotDvcRepoError):
-        Repo.get(fspath(erepo_dir), "some_file.zip")
+    Repo.get(fspath(erepo_dir), "some_file", "file_imported")
+    assert (tmp_dir / "file_imported").read_text() == "contents"
 
 
 def test_get_a_dvc_file(tmp_dir, erepo_dir):
@@ -136,6 +136,14 @@ def test_absolute_file_outside_repo(tmp_dir, erepo_dir):
         Repo.get(fspath(erepo_dir), "/root/")
 
 
+def test_absolute_file_outside_git_repo(tmp_dir, erepo_dir):
+    erepo_dir.scm.repo.index.remove([erepo_dir.dvc.dvc_dir], r=True)
+    erepo_dir.scm.commit("remove dvc")
+
+    with pytest.raises(PathMissingError):
+        Repo.get(fspath(erepo_dir), "/root/")
+
+
 def test_unknown_path(tmp_dir, erepo_dir):
     with pytest.raises(PathMissingError):
         Repo.get(fspath(erepo_dir), "a_non_existing_file")
@@ -163,10 +171,6 @@ def test_get_from_non_dvc_master(tmp_dir, erepo_dir, caplog):
 
         erepo_dir.dvc.scm.repo.index.remove([".dvc"], r=True)
         erepo_dir.dvc.scm.commit("remove .dvc")
-
-    # sanity check
-    with pytest.raises(UrlNotDvcRepoError):
-        Repo.get(fspath(erepo_dir), "some_file")
 
     caplog.clear()
     dst = "file_imported"

@@ -240,11 +240,6 @@ class DvcIgnoreInCollectedDirError(DvcException):
         )
 
 
-class UrlNotDvcRepoError(DvcException):
-    def __init__(self, url):
-        super().__init__("URL '{}' is not a dvc repository.".format(url))
-
-
 class GitHookAlreadyExistsError(DvcException):
     def __init__(self, hook_name):
         super().__init__(
