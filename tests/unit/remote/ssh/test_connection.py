@@ -35,6 +35,16 @@ def test_makedirs(tmp_path, ssh):
     assert os.path.isdir(path)
 
 
+def test_remove_dir(tmp_path, ssh):
+    dpath = tmp_path / "dir"
+    dpath.mkdir()
+    (dpath / "file").write_text("file")
+    (dpath / "subdir").mkdir()
+    (dpath / "subdir" / "subfile").write_text("subfile")
+    ssh.remove(dpath.absolute().as_posix())
+    assert not dpath.exists()
+
+
 def test_walk(tmp_path, ssh):
     root_path = tmp_path
     dir_path = root_path / "dir"

@@ -33,7 +33,6 @@ from tests.utils import spy
 from tests.remotes import (
     _should_test_gcp,
     _should_test_hdfs,
-    _should_test_ssh,
     Azure,
     GDrive,
     S3,
@@ -47,7 +46,6 @@ from tests.remotes import (
     get_gcp_url,
     get_hdfs_url,
     get_local_url,
-    get_ssh_url,
     get_ssh_url_mocked,
 )
 
@@ -296,17 +294,6 @@ class TestRemoteLOCAL(TestDataCloudBase):
         self.assertTrue(os.path.isdir(self.dname))
 
 
-class TestRemoteSSH(TestDataCloudBase):
-    def _should_test(self):
-        return _should_test_ssh()
-
-    def _get_url(self):
-        return get_ssh_url()
-
-    def _get_cloud_class(self):
-        return RemoteSSH
-
-
 @pytest.mark.usefixtures("ssh_server")
 class TestRemoteSSHMocked(TestDataCloudBase):
     @pytest.fixture(autouse=True)
@@ -436,18 +423,6 @@ class TestDataCloudCLIBase(TestDvc):
 class TestRemoteLOCALCLI(TestDataCloudCLIBase):
     def _test(self):
         url = get_local_url()
-
-        self.main(["remote", "add", TEST_REMOTE, url])
-
-        self._test_cloud(TEST_REMOTE)
-
-
-class TestRemoteSSHCLI(TestDataCloudCLIBase):
-    def _should_test(self):
-        return _should_test_ssh()
-
-    def _test(self):
-        url = get_ssh_url()
 
         self.main(["remote", "add", TEST_REMOTE, url])
 
