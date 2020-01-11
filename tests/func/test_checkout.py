@@ -18,7 +18,8 @@ from dvc.stage import Stage
 from dvc.stage import StageFileBadNameError
 from dvc.stage import StageFileDoesNotExistError
 from dvc.system import System
-from dvc.utils import relpath, walk_files
+from dvc.utils import relpath
+from dvc.utils.fs import walk_files
 from dvc.utils.stage import dump_stage_file
 from dvc.utils.stage import load_stage_file
 from tests.basic_env import TestDvc

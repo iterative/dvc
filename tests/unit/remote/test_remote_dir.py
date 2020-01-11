@@ -2,7 +2,7 @@
 import pytest
 import os
 from dvc.remote.s3 import RemoteS3
-from dvc.utils import walk_files
+from dvc.utils.fs import walk_files
 from dvc.path_info import PathInfo
 from tests.remotes import GCP, S3Mocked
 

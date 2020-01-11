@@ -4,7 +4,7 @@ import os
 import pytest
 
 from dvc.repo import Repo
-from dvc.utils import makedirs
+from dvc.utils.fs import makedirs
 
 
 def test_get_file(repo_dir):

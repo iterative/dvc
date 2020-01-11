@@ -23,9 +23,8 @@ if %errorlevel% neq 0 (echo Error: Couldn't find Inno Setup compiler. && goto :e
 echo ====== Installing requirements... ======
 echo PKG = "exe" > dvc\utils\build.py
 call pip install .[all] || goto :error
-call pip install psutil || goto :error
+call pip install -r scripts\build-requirements.txt || goto :error
 call dvc pull || goto :error
-call pip install pyinstaller || goto :error
 
 echo ====== Building dvc binary... ======
 call pyinstaller --additional-hooks-dir scripts\hooks dvc/__main__.py --name dvc --specpath build

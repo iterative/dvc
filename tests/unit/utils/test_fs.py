@@ -1,3 +1,4 @@
+import filecmp
 import os
 from unittest import TestCase
 
@@ -11,11 +12,14 @@ from dvc.scm.tree import WorkingTree
 from dvc.system import System
 from dvc.utils import relpath
 from dvc.utils.fs import BasePathNotInCheckedPathException
+from dvc.utils.fs import copyfile
 from dvc.utils.fs import contains_symlink_up_to
 from dvc.utils.fs import get_inode
 from dvc.utils.fs import get_mtime_and_size
 from dvc.utils.fs import move
 from dvc.utils.fs import path_isin, remove
+from dvc.utils.fs import makedirs
+from dvc.utils.fs import walk_files
 from tests.basic_env import TestDir
 from tests.utils import spy
 
@@ -202,3 +206,46 @@ def test_path_isin_with_absolute_path():
     child = os.path.join(parent, "to", "folder")
 
     assert path_isin(child, parent)
+
+
+def test_makedirs(repo_dir):
+    path = os.path.join(repo_dir.root_dir, "directory")
+    path_info = PathInfo(
+        os.path.join(repo_dir.root_dir, "another", "directory")
+    )
+
+    makedirs(path)
+    assert os.path.isdir(path)
+
+    makedirs(path_info)
+    assert os.path.isdir(path_info.fspath)
+
+
+@pytest.mark.parametrize("path", [TestDir.DATA, TestDir.DATA_DIR])
+def test_copyfile(path, repo_dir):
+    src = repo_dir.FOO
+    dest = path
+    src_info = PathInfo(repo_dir.BAR)
+    dest_info = PathInfo(path)
+
+    copyfile(src, dest)
+    if os.path.isdir(dest):
+        assert filecmp.cmp(
+            src, os.path.join(dest, os.path.basename(src)), shallow=False
+        )
+    else:
+        assert filecmp.cmp(src, dest, shallow=False)
+
+    copyfile(src_info, dest_info)
+    if os.path.isdir(dest_info.fspath):
+        assert filecmp.cmp(
+            src_info.fspath,
+            os.path.join(dest_info.fspath, os.path.basename(src_info.fspath)),
+            shallow=False,
+        )
+    else:
+        assert filecmp.cmp(src_info.fspath, dest_info.fspath, shallow=False)
+
+
+def test_walk_files(tmp_dir):
+    assert list(walk_files(".")) == list(walk_files(tmp_dir))
