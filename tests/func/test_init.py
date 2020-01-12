@@ -66,7 +66,7 @@ class TestInitNoSCM(TestDir):
         self._test_init()
 
 
-def test_init_quiet_should_not_display_welcome_screen(git, caplog):
+def test_init_quiet_should_not_display_welcome_screen(scm, caplog):
     ret = main(["init", "--quiet"])
 
     assert 0 == ret
