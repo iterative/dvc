@@ -6,6 +6,7 @@ from dvc.scm import Git
 from dvc.scm import NoSCM
 from dvc.scm import SCM
 from dvc.system import System
+from dvc.compat import fspath
 from tests.basic_env import TestDir
 from tests.basic_env import TestGit
 from tests.basic_env import TestGitSubmodule
@@ -61,112 +62,91 @@ class TestSCMGitSubmodule(TestGitSubmodule):
         self.assertTrue("foo" in self.git.git.ls_files())
 
 
-class TestIgnore(object):
-    @staticmethod
-    def _count_gitignore_entries(string):
-        lines = get_gitignore_content()
-        return len([i for i in lines if i == string])
+def _count_gitignore_entries(line):
+    lines = get_gitignore_content()
+    return lines.count(line)
 
-    def test_ignore(self, git, repo_dir):
-        git = Git(repo_dir._root_dir)
-        foo = os.path.join(repo_dir._root_dir, repo_dir.FOO)
 
-        target = "/" + repo_dir.FOO
+def test_ignore(tmp_dir, scm):
+    foo = fspath(tmp_dir / "foo")
+    target = "/foo"
 
-        git.ignore(foo)
-        assert os.path.isfile(Git.GITIGNORE)
-        assert self._count_gitignore_entries(target) == 1
+    scm.ignore(foo)
+    assert (tmp_dir / ".gitignore").is_file()
+    assert _count_gitignore_entries(target) == 1
 
-        git.ignore(foo)
-        assert os.path.isfile(Git.GITIGNORE)
-        assert self._count_gitignore_entries(target) == 1
+    scm.ignore(foo)
+    assert (tmp_dir / ".gitignore").is_file()
+    assert _count_gitignore_entries(target) == 1
 
-        git.ignore_remove(foo)
-        assert self._count_gitignore_entries(target) == 0
+    scm.ignore_remove(foo)
+    assert _count_gitignore_entries(target) == 0
 
-    def test_get_gitignore(self, git, repo_dir):
-        data_dir = os.path.join(repo_dir._root_dir, "file1")
-        entry, gitignore = Git(repo_dir._root_dir)._get_gitignore(data_dir)
-        assert entry == "/file1"
-        assert gitignore == os.path.join(repo_dir._root_dir, Git.GITIGNORE)
 
-        data_dir = os.path.join(repo_dir._root_dir, "dir")
-        entry, gitignore = Git(repo_dir._root_dir)._get_gitignore(data_dir)
+def test_get_gitignore(tmp_dir, scm):
+    tmp_dir.gen({"file1": "contents", "dir": {}})
 
-        assert entry == "/dir"
-        assert gitignore == os.path.join(repo_dir._root_dir, Git.GITIGNORE)
+    data_dir = fspath(tmp_dir / "file1")
+    entry, gitignore = scm._get_gitignore(data_dir)
+    assert entry == "/file1"
+    assert gitignore == fspath(tmp_dir / ".gitignore")
 
-    def test_get_gitignore_symlink(self, git, repo_dir):
-        link = os.path.join(repo_dir.root_dir, "link")
-        target = os.path.join(repo_dir.root_dir, repo_dir.DATA_SUB)
-        System.symlink(target, link)
-        entry, gitignore = Git(repo_dir._root_dir)._get_gitignore(link)
-        assert entry == "/link"
-        assert gitignore == os.path.join(repo_dir.root_dir, Git.GITIGNORE)
+    data_dir = fspath(tmp_dir / "dir")
+    entry, gitignore = scm._get_gitignore(data_dir)
 
-    def test_get_gitignore_subdir(self, git, repo_dir):
-        data_dir = os.path.join(
-            repo_dir._root_dir, os.path.join("dir1", "file1")
-        )
-        entry, gitignore = Git(repo_dir._root_dir)._get_gitignore(data_dir)
-        assert entry == "/file1"
-        assert gitignore == os.path.join(
-            repo_dir._root_dir, "dir1", Git.GITIGNORE
-        )
+    assert entry == "/dir"
+    assert gitignore == fspath(tmp_dir / ".gitignore")
 
-        data_dir = os.path.join(
-            repo_dir._root_dir, os.path.join("dir1", "dir2")
-        )
-        entry, gitignore = Git(repo_dir._root_dir)._get_gitignore(data_dir)
-        assert entry == "/dir2"
-        assert gitignore == os.path.join(
-            repo_dir._root_dir, "dir1", Git.GITIGNORE
-        )
 
-    def test_gitignore_should_end_with_newline(self, git, repo_dir):
-        git = Git(repo_dir._root_dir)
+def test_get_gitignore_symlink(tmp_dir, scm):
+    tmp_dir.gen({"dir": {"subdir": {"data": "contents"}}})
+    link = fspath(tmp_dir / "link")
+    target = fspath(tmp_dir / "dir" / "subdir" / "data")
+    System.symlink(target, link)
+    entry, gitignore = scm._get_gitignore(link)
+    assert entry == "/link"
+    assert gitignore == fspath(tmp_dir / ".gitignore")
 
-        foo = os.path.join(repo_dir._root_dir, repo_dir.FOO)
-        bar = os.path.join(repo_dir._root_dir, repo_dir.BAR)
-        gitignore = os.path.join(repo_dir._root_dir, Git.GITIGNORE)
 
-        git.ignore(foo)
+def test_get_gitignore_subdir(tmp_dir, scm):
+    tmp_dir.gen({"dir1": {"file1": "cont", "dir2": {}}})
 
-        with open(gitignore, "r") as fobj:
-            last = fobj.readlines()[-1]
+    data_dir = fspath(tmp_dir / "dir1" / "file1")
+    entry, gitignore = scm._get_gitignore(data_dir)
+    assert entry == "/file1"
+    assert gitignore == fspath(tmp_dir / "dir1" / ".gitignore")
 
-        assert last.endswith("\n")
+    data_dir = fspath(tmp_dir / "dir1" / "dir2")
+    entry, gitignore = scm._get_gitignore(data_dir)
+    assert entry == "/dir2"
+    assert gitignore == fspath(tmp_dir / "dir1" / ".gitignore")
 
-        git.ignore(bar)
 
-        with open(gitignore, "r") as fobj:
-            last = fobj.readlines()[-1]
+def test_gitignore_should_end_with_newline(tmp_dir, scm):
+    tmp_dir.gen({"foo": "foo", "bar": "bar"})
 
-        assert last.endswith("\n")
+    foo = fspath(tmp_dir / "foo")
+    bar = fspath(tmp_dir / "bar")
+    gitignore = tmp_dir / ".gitignore"
 
-    def test_gitignore_should_append_newline_to_gitignore(self, git, repo_dir):
-        git = Git(repo_dir._root_dir)
+    scm.ignore(foo)
+    assert gitignore.read_text().endswith("\n")
 
-        foo_ignore_pattern = "/foo"
-        bar_ignore_pattern = "/bar"
-        bar_path = os.path.join(repo_dir._root_dir, repo_dir.BAR)
-        gitignore = os.path.join(repo_dir._root_dir, Git.GITIGNORE)
+    scm.ignore(bar)
+    assert gitignore.read_text().endswith("\n")
 
-        with open(gitignore, "w") as fobj:
-            fobj.write(foo_ignore_pattern)
 
-        with open(gitignore, "r") as fobj:
-            last = fobj.readlines()[-1]
-        assert not last.endswith("\n")
+def test_gitignore_should_append_newline_to_gitignore(tmp_dir, scm):
+    tmp_dir.gen({"foo": "foo", "bar": "bar"})
 
-        git.ignore(bar_path)
+    bar_path = fspath(tmp_dir / "bar")
+    gitignore = tmp_dir / ".gitignore"
 
-        with open(gitignore, "r") as fobj:
-            lines = list(fobj.readlines())
+    gitignore.write_text("/foo")
+    assert not gitignore.read_text().endswith("\n")
 
-        assert len(lines) == 2
-        for l in lines:
-            assert l.endswith("\n")
+    scm.ignore(bar_path)
+    contents = gitignore.read_text()
+    assert gitignore.read_text().endswith("\n")
 
-        assert lines[0].strip() == foo_ignore_pattern
-        assert lines[1].strip() == bar_ignore_pattern
+    assert contents.splitlines() == ["/foo", "/bar"]
