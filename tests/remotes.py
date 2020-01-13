@@ -66,23 +66,6 @@ def _should_test_gcp():
     return True
 
 
-def _should_test_ssh():
-    do_test = env2bool("DVC_TEST_SSH", undefined=None)
-    if do_test is not None:
-        return do_test
-
-    # FIXME: enable on windows
-    if os.name == "nt":
-        return False
-
-    try:
-        check_output(["ssh", "-o", "BatchMode=yes", "127.0.0.1", "ls"])
-    except (CalledProcessError, IOError):
-        return False
-
-    return True
-
-
 def _should_test_hdfs():
     if platform.system() != "Linux":
         return False
@@ -112,31 +95,6 @@ def get_local_storagepath():
 
 def get_local_url():
     return get_local_storagepath()
-
-
-def get_ssh_url():
-    return "ssh://{}@127.0.0.1:22{}".format(
-        getpass.getuser(), get_local_storagepath()
-    )
-
-
-def get_ssh_url_mocked(user, port):
-    path = get_local_storagepath()
-    if os.name == "nt":
-        # NOTE: On Windows get_local_storagepath() will return an ntpath
-        # that looks something like `C:\some\path`, which is not compatible
-        # with SFTP paths [1], so we need to convert it to a proper posixpath.
-        # To do that, we should construct a posixpath that would be relative
-        # to the server's root. In our case our ssh server is running with
-        # `c:/` as a root, and our URL format requires absolute paths, so the
-        # resulting path would look like `/some/path`.
-        #
-        # [1]https://tools.ietf.org/html/draft-ietf-secsh-filexfer-13#section-6
-        drive, path = os.path.splitdrive(path)
-        assert drive.lower() == "c:"
-        path = path.replace("\\", "/")
-    url = "ssh://{}@127.0.0.1:{}{}".format(user, port, path)
-    return url
 
 
 def get_hdfs_url():
@@ -269,8 +227,53 @@ class OSS:
 
 
 class SSH:
-    should_test = _should_test_ssh
-    get_url = get_ssh_url
+    @staticmethod
+    def should_test():
+        do_test = env2bool("DVC_TEST_SSH", undefined=None)
+        if do_test is not None:
+            return do_test
+
+        # FIXME: enable on windows
+        if os.name == "nt":
+            return False
+
+        try:
+            check_output(["ssh", "-o", "BatchMode=yes", "127.0.0.1", "ls"])
+        except (CalledProcessError, IOError):
+            return False
+
+        return True
+
+    @staticmethod
+    def get_url():
+        return "ssh://{}@127.0.0.1:22{}".format(
+            getpass.getuser(), get_local_storagepath()
+        )
+
+
+class SSHMocked:
+    should_test = lambda: True  # noqa: E731
+
+    @staticmethod
+    def get_url(user, port):
+        path = get_local_storagepath()
+        if os.name == "nt":
+            # NOTE: On Windows get_local_storagepath() will return an
+            # ntpath that looks something like `C:\some\path`, which is not
+            # compatible with SFTP paths [1], so we need to convert it to
+            # a proper posixpath.
+            # To do that, we should construct a posixpath that would be
+            # relative to the server's root.
+            # In our case our ssh server is running with `c:/` as a root,
+            # and our URL format requires absolute paths, so the
+            # resulting path would look like `/some/path`.
+            #
+            # [1]https://tools.ietf.org/html/draft-ietf-secsh-filexfer-13#section-6
+            drive, path = os.path.splitdrive(path)
+            assert drive.lower() == "c:"
+            path = path.replace("\\", "/")
+        url = "ssh://{}@127.0.0.1:{}{}".format(user, port, path)
+        return url
 
 
 class HDFS:
