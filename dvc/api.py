@@ -110,21 +110,29 @@ def summon(name, repo=None, rev=None, summon_file="dvcsummon.yaml", args=None):
         name, repo=repo, rev=rev, summon_file=summon_file
     ) as desc:
         try:
-            summon = SUMMON_PYTHON_SCHEMA(desc.obj["summon"])
+            summon_dict = SUMMON_PYTHON_SCHEMA(desc.obj["summon"])
         except Invalid as exc:
             raise SummonError(str(exc)) from exc
 
-        _args = {**summon.get("args", {}), **(args or {})}
-        return _invoke_method(summon["call"], _args, path=desc.repo.root_dir)
+        _args = {**summon_dict.get("args", {}), **(args or {})}
+        return _invoke_method(summon_dict["call"], _args, desc.repo.root_dir)
 
 
 @contextmanager
 def prepare_summon(name, repo=None, rev=None, summon_file="dvcsummon.yaml"):
-    """Instantiate an object described in the summon file."""
+    """Does a couple of things every summon needs as a prerequisite:
+    clones the repo, parses the summon file and pulls the deps.
+
+    Calling code is expected to complete the summon logic following
+    instructions stated in "summon" dict of the object spec.
+
+    Returns a SummonDesc instance, which contains references to a Repo object,
+    named object specification and resolved paths to deps.
+    """
     with _make_repo(repo, rev=rev) as _repo:
         try:
             path = os.path.join(_repo.root_dir, summon_file)
-            obj = _get_object_desc(name, path)
+            obj = _get_object_spec(name, path)
             yield SummonDesc(_repo, obj)
         except SummonError as exc:
             raise SummonError(
@@ -158,7 +166,7 @@ class SummonDesc:
                 out.checkout()
 
 
-def _get_object_desc(name, path):
+def _get_object_spec(name, path):
     """
     Given a summonable object's name, search for it on the given file
     and return its description.
