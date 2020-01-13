@@ -9,6 +9,7 @@ from pathlib import Path
 from subprocess import PIPE
 from subprocess import Popen
 from urllib.parse import urljoin
+from unittest import SkipTest
 
 import boto3
 import paramiko
@@ -35,7 +36,7 @@ from dvc.utils.stage import dump_stage_file
 from dvc.utils.stage import load_stage_file
 from tests.basic_env import TestDvc
 from tests.remotes import (
-    _should_test_gcp,
+    GCP,
     HDFS,
     S3,
     SSH,
@@ -857,7 +858,9 @@ class TestReproExternalBase(TestDvc):
     @patch("dvc.prompt.confirm", return_value=True)
     def test(self, mock_prompt):
         if not self.should_test():
-            return
+            raise SkipTest(
+                "Test {} is disabled".format(self.__class__.__name__)
+            )
 
         cache = (
             self.scheme
@@ -975,7 +978,7 @@ class TestReproExternalS3(TestReproExternalBase):
 
 class TestReproExternalGS(TestReproExternalBase):
     def should_test(self):
-        return _should_test_gcp()
+        return GCP.should_test()
 
     @property
     def scheme(self):

@@ -43,43 +43,12 @@ TEST_GDRIVE_CLIENT_ID = (
 TEST_GDRIVE_CLIENT_SECRET = "2fy_HyzSwkxkGzEken7hThXb"
 
 
-def _should_test_gcp():
-    do_test = env2bool("DVC_TEST_GCP", undefined=None)
-    if do_test is not None:
-        return do_test
-
-    if not os.path.exists(TEST_GCP_CREDS_FILE):
-        return False
-
-    try:
-        check_output(
-            [
-                "gcloud",
-                "auth",
-                "activate-service-account",
-                "--key-file",
-                TEST_GCP_CREDS_FILE,
-            ]
-        )
-    except (CalledProcessError, OSError):
-        return False
-    return True
-
-
 def get_local_storagepath():
     return TestDvc.mkdtemp()
 
 
 def get_local_url():
     return get_local_storagepath()
-
-
-def get_gcp_storagepath():
-    return TEST_GCP_REPO_BUCKET + "/" + str(uuid.uuid4())
-
-
-def get_gcp_url():
-    return "gs://" + get_gcp_storagepath()
 
 
 class Local:
@@ -131,8 +100,36 @@ class S3Mocked(S3):
 
 
 class GCP:
-    should_test = _should_test_gcp
-    get_url = get_gcp_url
+    @staticmethod
+    def should_test():
+        do_test = env2bool("DVC_TEST_GCP", undefined=None)
+        if do_test is not None:
+            return do_test
+
+        if not os.path.exists(TEST_GCP_CREDS_FILE):
+            return False
+
+        try:
+            check_output(
+                [
+                    "gcloud",
+                    "auth",
+                    "activate-service-account",
+                    "--key-file",
+                    TEST_GCP_CREDS_FILE,
+                ]
+            )
+        except (CalledProcessError, OSError):
+            return False
+        return True
+
+    @staticmethod
+    def get_storagepath():
+        return TEST_GCP_REPO_BUCKET + "/" + str(uuid.uuid4())
+
+    @staticmethod
+    def get_url():
+        return "gs://" + GCP.get_storagepath()
 
     @classmethod
     @contextmanager
