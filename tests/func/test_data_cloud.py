@@ -35,6 +35,7 @@ from tests.remotes import (
     GCP,
     GDrive,
     HDFS,
+    Local,
     S3,
     SSHMocked,
     OSS,
@@ -44,7 +45,6 @@ from tests.remotes import (
     TEST_GDRIVE_CLIENT_ID,
     TEST_GDRIVE_CLIENT_SECRET,
     TEST_REMOTE,
-    get_local_url,
 )
 
 
@@ -278,10 +278,10 @@ class TestRemoteOSS(TestDataCloudBase):
 
 class TestRemoteLOCAL(TestDataCloudBase):
     def _should_test(self):
-        return True
+        return Local.should_test()
 
     def _get_url(self):
-        self.dname = get_local_url()
+        self.dname = Local.get_url()
         return self.dname
 
     def _get_cloud_class(self):
@@ -420,7 +420,7 @@ class TestDataCloudCLIBase(TestDvc):
 
 class TestRemoteLOCALCLI(TestDataCloudCLIBase):
     def _test(self):
-        url = get_local_url()
+        url = Local.get_url()
 
         self.main(["remote", "add", TEST_REMOTE, url])
 
@@ -545,7 +545,7 @@ class TestWarnOnOutdatedStage(TestDvc):
         self.assertEqual(ret, 0)
 
     def _test(self):
-        url = get_local_url()
+        url = Local.get_url()
         self.main(["remote", "add", "-d", TEST_REMOTE, url])
 
         stage = self.dvc.run(outs=["bar"], cmd="echo bar > bar")
@@ -577,11 +577,11 @@ class TestRecursiveSyncOperations(TestDataCloudBase):
         self.assertEqual(ret, 0)
 
     def _get_url(self):
-        self.dname = get_local_url()
+        self.dname = Local.get_url()
         return self.dname
 
     def _should_test(self):
-        return True
+        return Local.should_test()
 
     def _get_cloud_class(self):
         return RemoteLOCAL
@@ -659,7 +659,7 @@ class TestCheckSumRecalculation(TestDvc):
         with patch.object(
             RemoteLOCAL, "get_file_checksum", test_get_file_checksum
         ):
-            url = get_local_url()
+            url = Local.get_url()
             ret = main(["remote", "add", "-d", TEST_REMOTE, url])
             self.assertEqual(ret, 0)
             ret = main(["config", "cache.type", "hardlink"])
