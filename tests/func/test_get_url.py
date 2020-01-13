@@ -1,32 +1,22 @@
-import filecmp
-import os
-
 import pytest
 
 from dvc.repo import Repo
-from dvc.utils.fs import makedirs
 
 
-def test_get_file(repo_dir):
-    src = repo_dir.FOO
-    dst = repo_dir.FOO + "_imported"
+def test_get_file(tmp_dir):
+    tmp_dir.gen({"foo": "foo contents"})
 
-    Repo.get_url(src, dst)
+    Repo.get_url("foo", "foo_imported")
 
-    assert os.path.exists(dst)
-    assert os.path.isfile(dst)
-    assert filecmp.cmp(repo_dir.FOO, dst, shallow=False)
+    assert (tmp_dir / "foo_imported").is_file()
+    assert (tmp_dir / "foo_imported").read_text() == "foo contents"
 
 
 @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])
-def test_get_url_to_dir(dname, repo_dir):
-    src = repo_dir.DATA
+def test_get_url_to_dir(tmp_dir, dname):
+    tmp_dir.gen({"foo": "foo contents", "dir": {"subdir": {}}})
 
-    makedirs(dname, exist_ok=True)
+    Repo.get_url("foo", dname)
 
-    Repo.get_url(src, dname)
-
-    dst = os.path.join(dname, os.path.basename(src))
-
-    assert os.path.isdir(dname)
-    assert filecmp.cmp(repo_dir.DATA, dst, shallow=False)
+    assert (tmp_dir / dname).is_dir()
+    assert (tmp_dir / dname / "foo").read_text() == "foo contents"
