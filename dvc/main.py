@@ -62,7 +62,9 @@ def main(argv=None):
             logger.exception(
                 "too many open files, please visit "
                 "{} to see how to handle this "
-                "problem".format(format_link("https://error.dvc.org/many-files")),
+                "problem".format(
+                    format_link("https://error.dvc.org/many-files")
+                ),
                 extra={"tb_only": True},
             )
         else:
