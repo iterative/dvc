@@ -45,7 +45,6 @@ def get(url, path, out=None, rev=None):
     # and won't work with reflink/hardlink.
     dpath = os.path.dirname(os.path.abspath(out))
     tmp_dir = os.path.join(dpath, "." + str(shortuuid.uuid()))
-    repo_dir = None
     try:
         try:
             with external_repo(cache_dir=tmp_dir, url=url, rev=rev) as repo:
