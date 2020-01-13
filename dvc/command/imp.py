@@ -30,7 +30,7 @@ class CmdImport(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     IMPORT_HELP = (
-        "Download a file or directory from any DVC project or Git repository"
+        "Download a file or directory from any DVC project or Git repository "
         "and take it under DVC control."
     )
 
