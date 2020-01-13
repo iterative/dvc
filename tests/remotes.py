@@ -66,41 +66,12 @@ def _should_test_gcp():
     return True
 
 
-def _should_test_hdfs():
-    if platform.system() != "Linux":
-        return False
-
-    try:
-        check_output(
-            ["hadoop", "version"], shell=True, executable=os.getenv("SHELL")
-        )
-    except (CalledProcessError, IOError):
-        return False
-
-    p = Popen(
-        "hadoop fs -ls hdfs://127.0.0.1/",
-        shell=True,
-        executable=os.getenv("SHELL"),
-    )
-    p.communicate()
-    if p.returncode != 0:
-        return False
-
-    return True
-
-
 def get_local_storagepath():
     return TestDvc.mkdtemp()
 
 
 def get_local_url():
     return get_local_storagepath()
-
-
-def get_hdfs_url():
-    return "hdfs://{}@127.0.0.1{}".format(
-        getpass.getuser(), get_local_storagepath()
-    )
 
 
 def get_gcp_storagepath():
@@ -277,5 +248,33 @@ class SSHMocked:
 
 
 class HDFS:
-    should_test = _should_test_hdfs
-    get_url = get_hdfs_url
+    @staticmethod
+    def should_test():
+        if platform.system() != "Linux":
+            return False
+
+        try:
+            check_output(
+                ["hadoop", "version"],
+                shell=True,
+                executable=os.getenv("SHELL"),
+            )
+        except (CalledProcessError, IOError):
+            return False
+
+        p = Popen(
+            "hadoop fs -ls hdfs://127.0.0.1/",
+            shell=True,
+            executable=os.getenv("SHELL"),
+        )
+        p.communicate()
+        if p.returncode != 0:
+            return False
+
+        return True
+
+    @staticmethod
+    def get_url():
+        return "hdfs://{}@127.0.0.1{}".format(
+            getpass.getuser(), get_local_storagepath()
+        )

@@ -36,7 +36,7 @@ from dvc.utils.stage import load_stage_file
 from tests.basic_env import TestDvc
 from tests.remotes import (
     _should_test_gcp,
-    _should_test_hdfs,
+    HDFS,
     S3,
     SSH,
     SSHMocked,
@@ -996,7 +996,7 @@ class TestReproExternalGS(TestReproExternalBase):
 
 class TestReproExternalHDFS(TestReproExternalBase):
     def should_test(self):
-        return _should_test_hdfs()
+        return HDFS.should_test()
 
     @property
     def scheme(self):
