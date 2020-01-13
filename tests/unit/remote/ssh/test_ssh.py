@@ -9,7 +9,7 @@ from mock import patch
 
 from dvc.remote.ssh import RemoteSSH
 from dvc.system import System
-from tests.remotes import get_ssh_url_mocked
+from tests.remotes import SSHMocked
 
 
 class TestRemoteSSH(TestCase):
@@ -191,7 +191,7 @@ def test_hardlink_optimization(repo_dir, ssh_server):
     user = ssh_server.test_creds["username"]
 
     config = {
-        "url": get_ssh_url_mocked(user, port),
+        "url": SSHMocked.get_url(user, port),
         "port": port,
         "user": user,
         "keyfile": ssh_server.test_creds["key_filename"],

@@ -37,9 +37,9 @@ from tests.basic_env import TestDvc
 from tests.remotes import (
     _should_test_gcp,
     _should_test_hdfs,
-    _should_test_ssh,
-    get_ssh_url_mocked,
     S3,
+    SSH,
+    SSHMocked,
     TEST_AWS_REPO_BUCKET,
     TEST_GCP_REPO_BUCKET,
 )
@@ -1058,7 +1058,7 @@ class TestReproExternalSSH(TestReproExternalBase):
     _dir = None
 
     def should_test(self):
-        return _should_test_ssh()
+        return SSH.should_test()
 
     @property
     def scheme(self):
@@ -1623,11 +1623,11 @@ def test_ssh_dir_out(tmp_dir, dvc, ssh_server):
     port = ssh_server.port
     keyfile = ssh_server.test_creds["key_filename"]
 
-    remote_url = get_ssh_url_mocked(user, port)
+    remote_url = SSHMocked.get_url(user, port)
     assert main(["remote", "add", "upstream", remote_url]) == 0
     assert main(["remote", "modify", "upstream", "keyfile", keyfile]) == 0
 
-    cache_url = get_ssh_url_mocked(user, port)
+    cache_url = SSHMocked.get_url(user, port)
     assert main(["remote", "add", "sshcache", cache_url]) == 0
     assert main(["config", "cache.ssh", "sshcache"]) == 0
     assert main(["remote", "modify", "sshcache", "keyfile", keyfile]) == 0

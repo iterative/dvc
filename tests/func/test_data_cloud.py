@@ -36,6 +36,7 @@ from tests.remotes import (
     Azure,
     GDrive,
     S3,
+    SSHMocked,
     OSS,
     TEST_CONFIG,
     TEST_SECTION,
@@ -46,7 +47,6 @@ from tests.remotes import (
     get_gcp_url,
     get_hdfs_url,
     get_local_url,
-    get_ssh_url_mocked,
 )
 
 
@@ -318,13 +318,13 @@ class TestRemoteSSHMocked(TestDataCloudBase):
 
     def _get_url(self):
         user = self.ssh_server.test_creds["username"]
-        return get_ssh_url_mocked(user, self.ssh_server.port)
+        return SSHMocked.get_url(user, self.ssh_server.port)
 
     def _get_keyfile(self):
         return self.ssh_server.test_creds["key_filename"]
 
     def _should_test(self):
-        return True
+        return SSHMocked.should_test()
 
     def _get_cloud_class(self):
         return RemoteSSH
