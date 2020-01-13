@@ -9,7 +9,11 @@ from dvc.exceptions import (
     OutputNotFoundError,
     PathMissingError,
 )
-from dvc.external_repo import external_repo, cached_clone
+from dvc.external_repo import (
+    external_repo,
+    cached_clone,
+    NoOutputInExternalRepoError,
+)
 from dvc.path_info import PathInfo
 from dvc.stage import Stage
 from dvc.utils import resolve_output
@@ -41,7 +45,6 @@ def get(url, path, out=None, rev=None):
     # and won't work with reflink/hardlink.
     dpath = os.path.dirname(os.path.abspath(out))
     tmp_dir = os.path.join(dpath, "." + str(shortuuid.uuid()))
-    repo_dir = None
     try:
         try:
             with external_repo(cache_dir=tmp_dir, url=url, rev=rev) as repo:
@@ -55,29 +58,20 @@ def get(url, path, out=None, rev=None):
                 # Also, we can't use theoretical "move" link type here, because
                 # the same cache file might be used a few times in a directory.
                 repo.cache.local.cache_types = ["reflink", "hardlink", "copy"]
-
-                try:
-                    output = repo.find_out_by_relpath(path)
-                except OutputNotFoundError:
-                    output = None
-
-                if output and output.use_cache:
+                output = repo.find_out_by_relpath(path)
+                if output.use_cache:
                     _get_cached(repo, output, out)
                     return
-
-                # Either an uncached out with absolute path or a user error
-
-                repo_dir = repo.root_dir
-
-        except NotDvcRepoError:
-            # Not a DVC repository, continue below and copy from git
+                # Non-cached output, fall through and try to copy from git.
+        except (NotDvcRepoError, NoOutputInExternalRepoError):
+            # Not a DVC repository or, possibly, path is not tracked by DVC.
+            # Fall through and try to copy from git.
             pass
 
         if os.path.isabs(path):
             raise FileNotFoundError
 
-        if not repo_dir:
-            repo_dir = cached_clone(url, rev=rev)
+        repo_dir = cached_clone(url, rev=rev)
 
         fs_copy(os.path.join(repo_dir, path), out)
     except (OutputNotFoundError, FileNotFoundError):
