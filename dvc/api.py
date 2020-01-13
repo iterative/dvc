@@ -187,6 +187,10 @@ def _get_object_desc(name, path):
 
 @wrap_with(threading.Lock())
 def _invoke_method(call, args, path):
+    # XXX: Some issues with this approach:
+    #   * Import will pollute sys.modules
+    #   * sys.path manipulation is "theoretically" not needed,
+    #     but tests are failing for an unknown reason.
     cwd = os.getcwd()
 
     try:
