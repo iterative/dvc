@@ -118,6 +118,7 @@ jobs:
         tags: true
         repo: iterative/dvc
   - name: Snapcraft snap
+    if: tag is present or branch = master
     stage: deploy
     addons:
      snaps:
