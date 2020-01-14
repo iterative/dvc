@@ -93,14 +93,14 @@ def test_stage_update(mocker):
     not isinstance(threading.current_thread(), threading._MainThread),
     reason="Not running in the main thread.",
 )
-def test_stage_run_ignore_sigint(dvc_repo, mocker):
+def test_stage_run_ignore_sigint(dvc, mocker):
     proc = mocker.Mock()
     communicate = mocker.Mock()
     proc.configure_mock(returncode=0, communicate=communicate)
     popen = mocker.patch.object(subprocess, "Popen", return_value=proc)
     signal_mock = mocker.patch("signal.signal")
 
-    dvc_repo.run(cmd="path")
+    dvc.run(cmd="path")
 
     assert popen.called_once()
     assert communicate.called_once_with()
@@ -108,9 +108,9 @@ def test_stage_run_ignore_sigint(dvc_repo, mocker):
     assert signal.getsignal(signal.SIGINT) == signal.default_int_handler
 
 
-def test_always_changed(dvc_repo):
-    stage = Stage(dvc_repo, "path", always_changed=True)
+def test_always_changed(dvc):
+    stage = Stage(dvc, "path", always_changed=True)
     stage.save()
-    with dvc_repo.lock:
+    with dvc.lock:
         assert stage.changed()
         assert stage.status()["path"] == ["always changed"]
