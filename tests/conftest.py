@@ -4,7 +4,6 @@ import mockssh
 import pytest
 
 from dvc.remote.ssh.connection import SSHConnection
-from .basic_env import TestDirFixture
 from .dir_helpers import *  # noqa
 
 
@@ -26,17 +25,6 @@ def reset_loglevel(request, caplog):
             yield
     else:
         yield
-
-
-# Wrap class like fixture as pytest-like one to avoid code duplication
-@pytest.fixture
-def repo_dir():
-    old_fixture = TestDirFixture()
-    old_fixture.setUp()
-    try:
-        yield old_fixture
-    finally:
-        old_fixture.tearDown()
 
 
 here = os.path.abspath(os.path.dirname(__file__))
