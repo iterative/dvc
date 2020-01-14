@@ -42,9 +42,11 @@ TEST_GDRIVE_CLIENT_ID = (
 )
 TEST_GDRIVE_CLIENT_SECRET = "2fy_HyzSwkxkGzEken7hThXb"
 
+always_test = staticmethod(lambda: True)
+
 
 class Local:
-    should_test = lambda: True  # noqa: E731
+    should_test = always_test
 
     @staticmethod
     def get_storagepath():
@@ -79,7 +81,7 @@ class S3:
 
 
 class S3Mocked(S3):
-    should_test = lambda: True  # noqa: E731
+    should_test = always_test
 
     @classmethod
     @contextmanager
@@ -219,7 +221,7 @@ class SSH:
 
 
 class SSHMocked:
-    should_test = lambda: True  # noqa: E731
+    should_test = always_test
 
     @staticmethod
     def get_url(user, port):

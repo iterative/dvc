@@ -77,17 +77,19 @@ class TestDataCloudBase(TestDvc):
     def _get_cloud_class(self):
         return None
 
-    def _should_test(self):
+    @staticmethod
+    def should_test():
         return False
 
-    def _get_url(self):
-        return ""
+    @staticmethod
+    def get_url():
+        return NotImplementedError
 
     def _get_keyfile(self):
         return None
 
     def _ensure_should_run(self):
-        if not self._should_test():
+        if not self.should_test():
             raise SkipTest(
                 "Test {} is disabled".format(self.__class__.__name__)
             )
@@ -95,7 +97,7 @@ class TestDataCloudBase(TestDvc):
     def _setup_cloud(self):
         self._ensure_should_run()
 
-        repo = self._get_url()
+        repo = self.get_url()
         keyfile = self._get_keyfile()
 
         config = copy.deepcopy(TEST_CONFIG)
@@ -188,25 +190,16 @@ class TestDataCloudBase(TestDvc):
         self._test_cloud()
 
 
-class TestRemoteS3(TestDataCloudBase):
-    def _should_test(self):
-        return S3.should_test()
-
-    def _get_url(self):
-        return S3.get_url()
-
+class TestRemoteS3(S3, TestDataCloudBase):
     def _get_cloud_class(self):
         return RemoteS3
 
 
-class TestRemoteGDrive(TestDataCloudBase):
-    def _should_test(self):
-        return GDrive.should_test()
-
+class TestRemoteGDrive(GDrive, TestDataCloudBase):
     def _setup_cloud(self):
         self._ensure_should_run()
 
-        repo = self._get_url()
+        repo = self.get_url()
 
         config = copy.deepcopy(TEST_CONFIG)
         config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
@@ -221,21 +214,15 @@ class TestRemoteGDrive(TestDataCloudBase):
 
         self.assertIsInstance(self.cloud.get_remote(), self._get_cloud_class())
 
-    def _get_url(self):
-        return GDrive.get_url()
-
     def _get_cloud_class(self):
         return RemoteGDrive
 
 
-class TestRemoteGS(TestDataCloudBase):
-    def _should_test(self):
-        return GCP.should_test()
-
+class TestRemoteGS(GCP, TestDataCloudBase):
     def _setup_cloud(self):
         self._ensure_should_run()
 
-        repo = self._get_url()
+        repo = self.get_url()
 
         config = copy.deepcopy(TEST_CONFIG)
         config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
@@ -247,53 +234,27 @@ class TestRemoteGS(TestDataCloudBase):
 
         self.assertIsInstance(self.cloud.get_remote(), self._get_cloud_class())
 
-    def _get_url(self):
-        return GCP.get_url()
-
     def _get_cloud_class(self):
         return RemoteGS
 
 
-class TestRemoteAZURE(TestDataCloudBase):
-    def _should_test(self):
-        return Azure.should_test()
-
-    def _get_url(self):
-        return Azure.get_url()
-
+class TestRemoteAZURE(Azure, TestDataCloudBase):
     def _get_cloud_class(self):
         return RemoteAZURE
 
 
-class TestRemoteOSS(TestDataCloudBase):
-    def _should_test(self):
-        return OSS.should_test()
-
-    def _get_url(self):
-        return OSS.get_url()
-
+class TestRemoteOSS(OSS, TestDataCloudBase):
     def _get_cloud_class(self):
         return RemoteOSS
 
 
-class TestRemoteLOCAL(TestDataCloudBase):
-    def _should_test(self):
-        return Local.should_test()
-
-    def _get_url(self):
-        self.dname = Local.get_url()
-        return self.dname
-
+class TestRemoteLOCAL(Local, TestDataCloudBase):
     def _get_cloud_class(self):
         return RemoteLOCAL
 
-    def test(self):
-        super().test()
-        self.assertTrue(os.path.isdir(self.dname))
-
 
 @pytest.mark.usefixtures("ssh_server")
-class TestRemoteSSHMocked(TestDataCloudBase):
+class TestRemoteSSHMocked(SSHMocked, TestDataCloudBase):
     @pytest.fixture(autouse=True)
     def setup_method_fixture(self, request, ssh_server):
         self.ssh_server = ssh_server
@@ -302,7 +263,7 @@ class TestRemoteSSHMocked(TestDataCloudBase):
     def _setup_cloud(self):
         self._ensure_should_run()
 
-        repo = self._get_url()
+        repo = self.get_url()
         keyfile = self._get_keyfile()
 
         config = copy.deepcopy(TEST_CONFIG)
@@ -314,27 +275,18 @@ class TestRemoteSSHMocked(TestDataCloudBase):
 
         self.assertIsInstance(self.cloud.get_remote(), self._get_cloud_class())
 
-    def _get_url(self):
+    def get_url(self):
         user = self.ssh_server.test_creds["username"]
-        return SSHMocked.get_url(user, self.ssh_server.port)
+        return super().get_url(user, self.ssh_server.port)
 
     def _get_keyfile(self):
         return self.ssh_server.test_creds["key_filename"]
-
-    def _should_test(self):
-        return SSHMocked.should_test()
 
     def _get_cloud_class(self):
         return RemoteSSH
 
 
-class TestRemoteHDFS(TestDataCloudBase):
-    def _should_test(self):
-        return HDFS.should_test()
-
-    def _get_url(self):
-        return HDFS.get_url()
-
+class TestRemoteHDFS(HDFS, TestDataCloudBase):
     def _get_cloud_class(self):
         return RemoteHDFS
 
@@ -571,17 +523,10 @@ class TestWarnOnOutdatedStage(TestDvc):
         self._test()
 
 
-class TestRecursiveSyncOperations(TestDataCloudBase):
+class TestRecursiveSyncOperations(Local, TestDataCloudBase):
     def main(self, args):
         ret = main(args)
         self.assertEqual(ret, 0)
-
-    def _get_url(self):
-        self.dname = Local.get_url()
-        return self.dname
-
-    def _should_test(self):
-        return Local.should_test()
 
     def _get_cloud_class(self):
         return RemoteLOCAL
