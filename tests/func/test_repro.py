@@ -38,6 +38,7 @@ from tests.basic_env import TestDvc
 from tests.remotes import (
     GCP,
     HDFS,
+    Local,
     S3,
     SSH,
     SSHMocked,
@@ -807,7 +808,8 @@ class TestCmdReproChdir(TestDvc):
 
 
 class TestReproExternalBase(TestDvc):
-    def should_test(self):
+    @staticmethod
+    def should_test():
         return False
 
     @property
@@ -956,10 +958,7 @@ class TestReproExternalBase(TestDvc):
 
 
 @pytest.mark.skipif(os.name == "nt", reason="temporarily disabled on windows")
-class TestReproExternalS3(TestReproExternalBase):
-    def should_test(self):
-        return S3.should_test()
-
+class TestReproExternalS3(S3, TestReproExternalBase):
     @property
     def scheme(self):
         return "s3"
@@ -976,10 +975,7 @@ class TestReproExternalS3(TestReproExternalBase):
         s3.put_object(Bucket=bucket, Key=key, Body=body)
 
 
-class TestReproExternalGS(TestReproExternalBase):
-    def should_test(self):
-        return GCP.should_test()
-
+class TestReproExternalGS(GCP, TestReproExternalBase):
     @property
     def scheme(self):
         return "gs"
@@ -997,10 +993,7 @@ class TestReproExternalGS(TestReproExternalBase):
         bucket.blob(key).upload_from_string(body)
 
 
-class TestReproExternalHDFS(TestReproExternalBase):
-    def should_test(self):
-        return HDFS.should_test()
-
+class TestReproExternalHDFS(HDFS, TestReproExternalBase):
     @property
     def scheme(self):
         return "hdfs"
@@ -1057,11 +1050,8 @@ class TestReproExternalHDFS(TestReproExternalBase):
 
 
 @flaky(max_runs=3, min_passes=1)
-class TestReproExternalSSH(TestReproExternalBase):
+class TestReproExternalSSH(SSH, TestReproExternalBase):
     _dir = None
-
-    def should_test(self):
-        return SSH.should_test()
 
     @property
     def scheme(self):
@@ -1070,7 +1060,7 @@ class TestReproExternalSSH(TestReproExternalBase):
     @property
     def bucket(self):
         if not self._dir:
-            self._dir = TestDvc.mkdtemp()
+            self._dir = self.mkdtemp()
         return "{}@127.0.0.1:{}".format(getpass.getuser(), self._dir)
 
     def cmd(self, i, o):
@@ -1104,10 +1094,10 @@ class TestReproExternalSSH(TestReproExternalBase):
             fobj.write(body)
 
 
-class TestReproExternalLOCAL(TestReproExternalBase):
+class TestReproExternalLOCAL(Local, TestReproExternalBase):
     def setUp(self):
         super().setUp()
-        self.tmpdir = TestDvc.mkdtemp()
+        self.tmpdir = self.mkdtemp()
         ret = main(["config", "cache.type", "hardlink"])
         self.assertEqual(ret, 0)
         self.dvc = DvcRepo(".")
@@ -1115,9 +1105,6 @@ class TestReproExternalLOCAL(TestReproExternalBase):
     @property
     def cache_type(self):
         return "hardlink"
-
-    def should_test(self):
-        return True
 
     @property
     def cache_scheme(self):
