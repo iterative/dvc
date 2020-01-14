@@ -43,17 +43,16 @@ TEST_GDRIVE_CLIENT_ID = (
 TEST_GDRIVE_CLIENT_SECRET = "2fy_HyzSwkxkGzEken7hThXb"
 
 
-def get_local_storagepath():
-    return TestDvc.mkdtemp()
-
-
-def get_local_url():
-    return get_local_storagepath()
-
-
 class Local:
     should_test = lambda: True  # noqa: E731
-    get_url = get_local_url
+
+    @staticmethod
+    def get_storagepath():
+        return TestDvc.mkdtemp()
+
+    @staticmethod
+    def get_url():
+        return Local.get_storagepath()
 
 
 class S3:
@@ -215,7 +214,7 @@ class SSH:
     @staticmethod
     def get_url():
         return "ssh://{}@127.0.0.1:22{}".format(
-            getpass.getuser(), get_local_storagepath()
+            getpass.getuser(), Local.get_storagepath()
         )
 
 
@@ -224,9 +223,9 @@ class SSHMocked:
 
     @staticmethod
     def get_url(user, port):
-        path = get_local_storagepath()
+        path = Local.get_storagepath()
         if os.name == "nt":
-            # NOTE: On Windows get_local_storagepath() will return an
+            # NOTE: On Windows Local.get_storagepath() will return an
             # ntpath that looks something like `C:\some\path`, which is not
             # compatible with SFTP paths [1], so we need to convert it to
             # a proper posixpath.
@@ -273,5 +272,5 @@ class HDFS:
     @staticmethod
     def get_url():
         return "hdfs://{}@127.0.0.1{}".format(
-            getpass.getuser(), get_local_storagepath()
+            getpass.getuser(), Local.get_storagepath()
         )
