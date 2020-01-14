@@ -133,6 +133,7 @@ class RemoteConfig(object):
                 break
 
     def modify(self, name, option, value, level=None):
+        # try to get remote settings to verify that section exists
         self.get_settings(name)
 
         self.config.set(
