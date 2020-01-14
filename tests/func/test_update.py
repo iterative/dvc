@@ -56,6 +56,57 @@ def test_update_import(tmp_dir, dvc, erepo_dir, cached):
     }
 
 
+def test_update_import_after_remote_updates_to_dvc(tmp_dir, dvc, erepo_dir):
+    old_rev = None
+    with erepo_dir.branch("branch", new=True), erepo_dir.chdir():
+        erepo_dir.scm_gen("version", "branch", commit="add version file")
+        old_rev = erepo_dir.scm.get_rev()
+
+    stage = dvc.imp(fspath(erepo_dir), "version", "version", rev="branch")
+
+    imported = tmp_dir / "version"
+    assert imported.is_file()
+    assert imported.read_text() == "branch"
+    assert stage.deps[0].def_repo == {
+        "url": fspath(erepo_dir),
+        "rev": "branch",
+        "rev_lock": old_rev,
+    }
+
+    new_rev = None
+    with erepo_dir.branch("branch", new=False), erepo_dir.chdir():
+        erepo_dir.scm.repo.index.remove("version")
+        erepo_dir.dvc_gen("version", "updated")
+        erepo_dir.scm.add(["version", "version.dvc"])
+        erepo_dir.scm.commit("upgrade to DVC tracking")
+        new_rev = erepo_dir.scm.get_rev()
+
+    assert old_rev != new_rev
+
+    # Caching in external repos doesn't see upstream updates within single
+    # cli call, so we need to clean the caches to see the changes.
+    clean_repos()
+
+    status, = dvc.status([stage.path])["version.dvc"]
+    changed_dep, = list(status["changed deps"].items())
+    assert changed_dep[0].startswith("version ")
+    assert changed_dep[1] == "update available"
+
+    dvc.update(stage.path)
+
+    assert dvc.status([stage.path]) == {}
+
+    assert imported.is_file()
+    assert imported.read_text() == "updated"
+
+    stage = Stage.load(dvc, stage.path)
+    assert stage.deps[0].def_repo == {
+        "url": fspath(erepo_dir),
+        "rev": "branch",
+        "rev_lock": new_rev,
+    }
+
+
 def test_update_import_url(tmp_dir, dvc, tmp_path_factory):
     import_src = tmp_path_factory.mktemp("import_url_source")
     src = import_src / "file"
