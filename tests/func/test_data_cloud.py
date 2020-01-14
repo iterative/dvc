@@ -31,10 +31,10 @@ from tests.basic_env import TestDvc
 from tests.utils import spy
 
 from tests.remotes import (
-    _should_test_gcp,
-    _should_test_hdfs,
     Azure,
+    GCP,
     GDrive,
+    HDFS,
     S3,
     SSHMocked,
     OSS,
@@ -44,8 +44,6 @@ from tests.remotes import (
     TEST_GDRIVE_CLIENT_ID,
     TEST_GDRIVE_CLIENT_SECRET,
     TEST_REMOTE,
-    get_gcp_url,
-    get_hdfs_url,
     get_local_url,
 )
 
@@ -232,7 +230,7 @@ class TestRemoteGDrive(TestDataCloudBase):
 
 class TestRemoteGS(TestDataCloudBase):
     def _should_test(self):
-        return _should_test_gcp()
+        return GCP.should_test()
 
     def _setup_cloud(self):
         self._ensure_should_run()
@@ -250,7 +248,7 @@ class TestRemoteGS(TestDataCloudBase):
         self.assertIsInstance(self.cloud.get_remote(), self._get_cloud_class())
 
     def _get_url(self):
-        return get_gcp_url()
+        return GCP.get_url()
 
     def _get_cloud_class(self):
         return RemoteGS
@@ -332,10 +330,10 @@ class TestRemoteSSHMocked(TestDataCloudBase):
 
 class TestRemoteHDFS(TestDataCloudBase):
     def _should_test(self):
-        return _should_test_hdfs()
+        return HDFS.should_test()
 
     def _get_url(self):
-        return get_hdfs_url()
+        return HDFS.get_url()
 
     def _get_cloud_class(self):
         return RemoteHDFS
@@ -431,10 +429,10 @@ class TestRemoteLOCALCLI(TestDataCloudCLIBase):
 
 class TestRemoteHDFSCLI(TestDataCloudCLIBase):
     def _should_test(self):
-        return _should_test_hdfs()
+        return HDFS.should_test()
 
     def _test(self):
-        url = get_hdfs_url()
+        url = HDFS.get_url()
 
         self.main(["remote", "add", TEST_REMOTE, url])
 
@@ -485,10 +483,10 @@ class TestRemoteGDriveCLI(TestDataCloudCLIBase):
 
 class TestRemoteGSCLI(TestDataCloudCLIBase):
     def _should_test(self):
-        return _should_test_gcp()
+        return GCP.should_test()
 
     def _test(self):
-        url = get_gcp_url()
+        url = GCP.get_url()
 
         self.main(["remote", "add", TEST_REMOTE, url])
         self.main(
