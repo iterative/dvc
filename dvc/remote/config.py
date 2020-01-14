@@ -3,8 +3,7 @@ import os
 import posixpath
 from urllib.parse import urlparse
 
-from dvc.config import Config
-from dvc.config import ConfigError
+from dvc.config import Config, ConfigError
 from dvc.utils import relpath
 
 
@@ -134,6 +133,8 @@ class RemoteConfig(object):
                 break
 
     def modify(self, name, option, value, level=None):
+        self.get_settings(name)
+
         self.config.set(
             Config.SECTION_REMOTE_FMT.format(name), option, value, level=level
         )
