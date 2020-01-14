@@ -15,14 +15,14 @@ default_arguments = {
 }
 
 
-def test_default_arguments(dvc_repo, mocker):
+def test_default_arguments(dvc, mocker):
     cmd = CmdRepro(parse_args(["repro"]))
     mocker.patch.object(cmd.repo, "reproduce")
     cmd.run()
     cmd.repo.reproduce.assert_called_with("Dvcfile", **default_arguments)
 
 
-def test_downstream(dvc_repo, mocker):
+def test_downstream(dvc, mocker):
     cmd = CmdRepro(parse_args(["repro", "--downstream"]))
     mocker.patch.object(cmd.repo, "reproduce")
     cmd.run()
