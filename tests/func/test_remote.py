@@ -6,7 +6,7 @@ import configobj
 import pytest
 from mock import patch
 
-from dvc.config import Config
+from dvc.config import Config, ConfigError
 from dvc.exceptions import DownloadError, UploadError
 from dvc.main import main
 from dvc.path_info import PathInfo
@@ -14,7 +14,7 @@ from dvc.remote import RemoteLOCAL, RemoteConfig
 from dvc.remote.base import RemoteBASE
 from dvc.compat import fspath
 from tests.basic_env import TestDvc
-from tests.remotes import get_local_storagepath
+from tests.remotes import Local
 
 
 class TestRemote(TestDvc):
@@ -31,10 +31,10 @@ class TestRemote(TestDvc):
 
         self.assertEqual(main(["remote", "list"]), 0)
 
-        self.assertEqual(main(["remote", "remove", remotes[0]]), 0)
         self.assertEqual(
             main(["remote", "modify", remotes[0], "option", "value"]), 0
         )
+        self.assertEqual(main(["remote", "remove", remotes[0]]), 0)
 
         self.assertEqual(main(["remote", "list"]), 0)
 
@@ -159,7 +159,7 @@ class TestRemoteShouldHandleUppercaseRemoteName(TestDvc):
     upper_case_remote_name = "UPPERCASEREMOTE"
 
     def test(self):
-        remote_url = get_local_storagepath()
+        remote_url = Local.get_storagepath()
         ret = main(["remote", "add", self.upper_case_remote_name, remote_url])
         self.assertEqual(ret, 0)
 
@@ -250,3 +250,10 @@ def test_raise_on_too_many_open_files(tmp_dir, dvc, tmp_path_factory, mocker):
     with pytest.raises(OSError) as e:
         dvc.push()
         assert e.errno == errno.EMFILE
+
+
+def test_modify_missing_remote(dvc):
+    remote_config = RemoteConfig(dvc.config)
+
+    with pytest.raises(ConfigError, match=r"unable to find remote section"):
+        remote_config.modify("myremote", "gdrive_client_id", "xxx")

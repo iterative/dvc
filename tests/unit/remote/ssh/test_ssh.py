@@ -186,7 +186,7 @@ def test_ssh_gss_auth(mock_file, mock_exists, config, expected_gss_auth):
     assert remote.gss_auth == expected_gss_auth
 
 
-def test_hardlink_optimization(repo_dir, ssh_server):
+def test_hardlink_optimization(tmp_dir, ssh_server):
     port = ssh_server.test_creds["port"]
     user = ssh_server.test_creds["username"]
 

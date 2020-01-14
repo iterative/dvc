@@ -75,6 +75,26 @@ jobs:
     language: python
     python: 3.7
     script: ./scripts/build_package.sh
+  # build snap in parallel with other pkgs
+  - name: Snapcraft snap
+    addons:
+     snaps:
+     - name: snapcraft
+       channel: stable
+       confinement: classic
+     - name: lxd
+       channel: stable
+    env:
+    - SNAPCRAFT_IMAGE_INFO: '{"build_url": "$TRAVIS_BUILD_URL"}'
+    before_install:
+    - sudo /snap/bin/lxd.migrate -yes
+    - sudo /snap/bin/lxd waitready
+    - sudo /snap/bin/lxd init --auto
+    install:
+    script:
+    - sudo snapcraft --use-lxd
+    after_failure:
+    - sudo journalctl -u snapd
   # deploy jobs
   - name: "Pypi pkgs"
     if: tag is present
@@ -98,6 +118,7 @@ jobs:
         tags: true
         repo: iterative/dvc
   - name: Snapcraft snap
+    if: type != pull_request
     stage: deploy
     addons:
      snaps:
