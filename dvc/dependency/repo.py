@@ -1,6 +1,7 @@
 import copy
 import os
 from contextlib import contextmanager
+import filecmp
 
 from funcy import merge
 
@@ -10,6 +11,7 @@ from dvc.external_repo import external_repo
 from dvc.exceptions import NotDvcRepoError
 from dvc.exceptions import OutputNotFoundError
 from dvc.exceptions import PathMissingError
+from dvc.exceptions import NoOutputInExternalRepoError
 from dvc.utils.fs import fs_copy
 
 
@@ -46,14 +48,29 @@ class DependencyREPO(DependencyLOCAL):
             yield repo
 
     def status(self):
-        with self._make_repo() as repo:
-            current = repo.find_out_by_relpath(self.def_path).info
+        try:
+            with self._make_repo() as repo:
+                current = repo.find_out_by_relpath(self.def_path).info
 
-        with self._make_repo(rev_lock=None) as repo:
-            updated = repo.find_out_by_relpath(self.def_path).info
+            with self._make_repo(rev_lock=None) as repo:
+                updated = repo.find_out_by_relpath(self.def_path).info
 
-        if current != updated:
-            return {str(self): "update available"}
+            if current != updated:
+                return {str(self): "update available"}
+
+        except NoOutputInExternalRepoError:
+            url = self.def_repo["url"]
+            old_clone = cached_clone(url, rev=self.def_repo.get("rev_lock"))
+            new_clone = cached_clone(url)
+            old_file = os.path.join(old_clone, self.def_path)
+            new_file = os.path.join(new_clone, self.def_path)
+
+            if not os.path.exists(old_file) or not os.path.exists(new_file):
+                raise
+
+            files_differ = not filecmp.cmp(old_file, new_file)
+            if files_differ:
+                return {str(self): "update available"}
 
         return {}
 
