@@ -11,7 +11,6 @@ from dvc.external_repo import external_repo
 from dvc.exceptions import NotDvcRepoError
 from dvc.exceptions import OutputNotFoundError
 from dvc.exceptions import PathMissingError
-from dvc.exceptions import NoOutputInExternalRepoError
 from dvc.utils.fs import fs_copy
 
 
@@ -48,29 +47,23 @@ class DependencyREPO(DependencyLOCAL):
             yield repo
 
     def status(self):
-        try:
-            with self._make_repo() as repo:
+        with self._make_repo() as repo, self._make_repo(
+            rev_lock=None
+        ) as updated_repo:
+            try:
                 current = repo.find_out_by_relpath(self.def_path).info
+                updated = updated_repo.find_out_by_relpath(self.def_path).info
 
-            with self._make_repo(rev_lock=None) as repo:
-                updated = repo.find_out_by_relpath(self.def_path).info
+                has_changed = current != updated
+            except OutputNotFoundError:
+                current_path = os.path.join(repo.root_dir, self.def_path)
+                updated_path = os.path.join(
+                    updated_repo.root_dir, self.def_path
+                )
+                has_changed = not filecmp.cmp(current_path, updated_path)
 
-            if current != updated:
-                return {str(self): "update available"}
-
-        except NoOutputInExternalRepoError:
-            url = self.def_repo["url"]
-            old_clone = cached_clone(url, rev=self.def_repo.get("rev_lock"))
-            new_clone = cached_clone(url)
-            old_file = os.path.join(old_clone, self.def_path)
-            new_file = os.path.join(new_clone, self.def_path)
-
-            if not os.path.exists(old_file) or not os.path.exists(new_file):
-                raise
-
-            files_differ = not filecmp.cmp(old_file, new_file)
-            if files_differ:
-                return {str(self): "update available"}
+        if has_changed:
+            return {str(self): "update available"}
 
         return {}
 
