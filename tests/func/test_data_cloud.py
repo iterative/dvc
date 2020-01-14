@@ -296,6 +296,14 @@ class TestDataCloudCLIBase(TestDvc):
         ret = main(args)
         self.assertEqual(ret, 0)
 
+    @staticmethod
+    def should_test():
+        return False
+
+    @staticmethod
+    def get_url():
+        raise NotImplementedError
+
     def _test_cloud(self, remote=None):
         args = ["-v", "-j", "2"]
         if remote:
@@ -356,59 +364,47 @@ class TestDataCloudCLIBase(TestDvc):
         self.assertTrue(os.path.isfile(self.FOO))
         self.assertTrue(os.path.isdir(self.DATA_DIR))
 
-    def _should_test(self):
-        return True
-
     def _test(self):
         pass
 
     def test(self):
-        if not self._should_test():
+        if not self.should_test():
             raise SkipTest(
                 "Test {} is disabled".format(self.__class__.__name__)
             )
         self._test()
 
 
-class TestRemoteLOCALCLI(TestDataCloudCLIBase):
+class TestRemoteLOCALCLI(Local, TestDataCloudCLIBase):
     def _test(self):
-        url = Local.get_url()
+        url = self.get_url()
 
         self.main(["remote", "add", TEST_REMOTE, url])
 
         self._test_cloud(TEST_REMOTE)
 
 
-class TestRemoteHDFSCLI(TestDataCloudCLIBase):
-    def _should_test(self):
-        return HDFS.should_test()
-
+class TestRemoteHDFSCLI(HDFS, TestDataCloudCLIBase):
     def _test(self):
-        url = HDFS.get_url()
+        url = self.get_url()
 
         self.main(["remote", "add", TEST_REMOTE, url])
 
         self._test_cloud(TEST_REMOTE)
 
 
-class TestRemoteS3CLI(TestDataCloudCLIBase):
-    def _should_test(self):
-        return S3.should_test()
-
+class TestRemoteS3CLI(S3, TestDataCloudCLIBase):
     def _test(self):
-        url = S3.get_url()
+        url = self.get_url()
 
         self.main(["remote", "add", TEST_REMOTE, url])
 
         self._test_cloud(TEST_REMOTE)
 
 
-class TestRemoteGDriveCLI(TestDataCloudCLIBase):
-    def _should_test(self):
-        return GDrive.should_test()
-
+class TestRemoteGDriveCLI(GDrive, TestDataCloudCLIBase):
     def _test(self):
-        url = GDrive.get_url()
+        url = self.get_url()
 
         self.main(["remote", "add", TEST_REMOTE, url])
         self.main(
@@ -433,12 +429,9 @@ class TestRemoteGDriveCLI(TestDataCloudCLIBase):
         self._test_cloud(TEST_REMOTE)
 
 
-class TestRemoteGSCLI(TestDataCloudCLIBase):
-    def _should_test(self):
-        return GCP.should_test()
-
+class TestRemoteGSCLI(GCP, TestDataCloudCLIBase):
     def _test(self):
-        url = GCP.get_url()
+        url = self.get_url()
 
         self.main(["remote", "add", TEST_REMOTE, url])
         self.main(
@@ -454,24 +447,18 @@ class TestRemoteGSCLI(TestDataCloudCLIBase):
         self._test_cloud(TEST_REMOTE)
 
 
-class TestRemoteAZURECLI(TestDataCloudCLIBase):
-    def _should_test(self):
-        return Azure.should_test()
-
+class TestRemoteAZURECLI(Azure, TestDataCloudCLIBase):
     def _test(self):
-        url = Azure.get_url()
+        url = self.get_url()
 
         self.main(["remote", "add", TEST_REMOTE, url])
 
         self._test_cloud(TEST_REMOTE)
 
 
-class TestRemoteOSSCLI(TestDataCloudCLIBase):
-    def _should_test(self):
-        return OSS.should_test()
-
+class TestRemoteOSSCLI(OSS, TestDataCloudCLIBase):
     def _test(self):
-        url = OSS.get_url()
+        url = self.get_url()
 
         self.main(["remote", "add", TEST_REMOTE, url])
 
