@@ -49,7 +49,7 @@ def _is_release(dir_path, base_version):
             ["git", "describe", "--tags", "--exact-match"],
             cwd=dir_path,
             stderr=subprocess.STDOUT,
-        )
+        ).decode("utf-8")
         tag = output.strip()
         return tag == base_version
     except subprocess.CalledProcessError:

@@ -12,10 +12,10 @@ def test_is_release():
         assert ret is False
 
         m.side_effect = None
-        m.return_value = dvc.version._BASE_VERSION
+        m.return_value = dvc.version._BASE_VERSION.encode("ascii")
         ret = dvc.version._is_release(None, dvc.version._BASE_VERSION)
         assert ret
 
-        m.return_value = "630d1741c2d5dd89a3176bd15b63121b905d35c9"
+        m.return_value = b"630d1741c2d5dd89a3176bd15b63121b905d35c9"
         ret = dvc.version._is_release(None, dvc.version._BASE_VERSION)
         assert ret is False
