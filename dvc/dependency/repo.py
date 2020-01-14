@@ -11,6 +11,7 @@ from dvc.exceptions import NotDvcRepoError
 from dvc.exceptions import OutputNotFoundError
 from dvc.exceptions import PathMissingError
 from dvc.utils.fs import fs_copy
+from dvc.scm import SCM
 
 
 class DependencyREPO(DependencyLOCAL):
@@ -105,6 +106,7 @@ class DependencyREPO(DependencyLOCAL):
         src_full_path = os.path.join(repo_dir, src_path)
         dst_full_path = os.path.abspath(to_path)
         fs_copy(src_full_path, dst_full_path)
+        self.def_repo[self.PARAM_REV_LOCK] = SCM(repo_dir).get_rev()
         return True
 
     def download(self, to):
