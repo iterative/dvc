@@ -19,8 +19,13 @@ def test_update_import(tmp_dir, dvc, erepo_dir):
     # cli call, so we need to clean the caches to see the changes.
     clean_repos()
 
-    assert dvc.status([stage.path]) == {}
+    status, = dvc.status([stage.path])["version.dvc"]
+    changed_dep, = list(status["changed deps"].items())
+    assert changed_dep[0].startswith("version ")
+    assert changed_dep[1] == "update available"
+
     dvc.update(stage.path)
+
     assert dvc.status([stage.path]) == {}
 
     assert imported.is_file()
