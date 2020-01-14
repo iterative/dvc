@@ -1,7 +1,6 @@
 import copy
 import os
 from contextlib import contextmanager
-import filecmp
 
 from funcy import merge
 
@@ -12,6 +11,7 @@ from dvc.exceptions import NotDvcRepoError
 from dvc.exceptions import OutputNotFoundError
 from dvc.exceptions import PathMissingError
 from dvc.utils.fs import fs_copy
+from dvc.path_info import PathInfo
 
 
 class DependencyREPO(DependencyLOCAL):
@@ -46,6 +46,11 @@ class DependencyREPO(DependencyLOCAL):
         with external_repo(**merge(self.def_repo, overrides)) as repo:
             yield repo
 
+    def _get_checksum_in_repo(self, repo):
+        return repo.cache.local.get_checksum(
+            PathInfo(os.path.join(repo.root_dir, self.def_path))
+        )
+
     def status(self):
         with self._make_repo() as repo, self._make_repo(
             rev_lock=None
@@ -56,11 +61,13 @@ class DependencyREPO(DependencyLOCAL):
 
                 has_changed = current != updated
             except OutputNotFoundError:
-                current_path = os.path.join(repo.root_dir, self.def_path)
-                updated_path = os.path.join(
-                    updated_repo.root_dir, self.def_path
-                )
-                has_changed = not filecmp.cmp(current_path, updated_path)
+                # Need to load the state before calculating checksums
+                repo.state.load()
+                updated_repo.state.load()
+
+                has_changed = self._get_checksum_in_repo(
+                    repo
+                ) != self._get_checksum_in_repo(updated_repo)
 
         if has_changed:
             return {str(self): "update available"}
