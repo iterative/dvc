@@ -186,6 +186,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_GDRIVE_CLIENT_SECRET = "gdrive_client_secret"
     SECTION_GDRIVE_USER_CREDENTIALS_FILE = "gdrive_user_credentials_file"
 
+    SECTION_REMOTE_CHECKSUM_JOBS = "checksum_jobs"
     SECTION_REMOTE_REGEX = r'^\s*remote\s*"(?P<name>.*)"\s*$'
     SECTION_REMOTE_FMT = 'remote "{}"'
     SECTION_REMOTE_URL = "url"
@@ -214,6 +215,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         SECTION_GCP_PROJECTNAME: str,
         SECTION_CACHE_TYPE: supported_cache_type,
         Optional(SECTION_CACHE_PROTECTED, default=False): Bool,
+        SECTION_REMOTE_CHECKSUM_JOBS: All(Coerce(int), Range(1)),
         SECTION_REMOTE_USER: str,
         SECTION_REMOTE_PORT: Coerce(int),
         SECTION_REMOTE_KEY_FILE: str,
