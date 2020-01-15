@@ -13,8 +13,6 @@ stages:
   - check
   - test
   - build
-  - name: deploy
-    if: (branch = master OR tag is present) AND repo = iterative/dvc
 # Travis doesn't support testing python on Mac yet, so we need
 # to workaround it by installing it directly with brew.
 #
@@ -75,7 +73,6 @@ jobs:
     language: python
     python: 3.7
     script: ./scripts/build_package.sh
-  # build snap in parallel with other pkgs
   - name: Snapcraft snap
     addons:
      snaps:
@@ -95,57 +92,6 @@ jobs:
     - sudo snapcraft --use-lxd
     after_failure:
     - sudo journalctl -u snapd
-  # deploy jobs
-  - name: "Pypi pkgs"
-    if: tag is present
-    stage: deploy
-    language: python
-    python: 3.7
-    script: ./scripts/build_package.sh
-    deploy:
-    - provider: pypi
-      user:
-        secure: "IOzNfgPoG3ICg3+s4AuZCCnawgd/KqMzeiAB9R0B9Xb6ProPQJp9O3GBZrtg5OJMHdWQQtwULeOh/LWk4sFdXMcX1iNEgm5Tb7DwO7TDtltW14jUgN9AqfY2twj4UIsW/ON8w0P8v36ZoQq1kO6Pfgjijdm3w+9h6rpps8rJ6jXYpVZVO+SSzzijWddanMkEz4GgctZ2r7U5MWlmm1UogF60kEZIZCQykz0yJnhTpP9nMFDKw6Maki/mcfVwTQ/v3RqjzttHei/aaEMGQXYr3TOX8NPYJXerBpjShDZqcgcCfqPzhi7uCwVYaPvRsMMYH5jgtMz/SO3J6ToeGKT0f1F1ihRyCdusg325TMK7Vv8yHJzL4ngeUbb/oqxWtxhLY7f77Lkx6hBwe6ROpTqiQHIfZad5qyIHihKcDcIHo4FwLHVzxR4y+Ds2js5dXwBkUBaEAx0Dmc6ZdgXqxd815GDwv+VVpzXJhtO6qXmKE36F/Oe6eCNG3dk5MdOK4C2DrM9M8MXllqeQtX6JrM2stWlBalAc9Jn4b0xxAoghX3x3G3hNsLc9Uist1VinY2+IcPozusqj66c+Vbi5YngWSbICOjlIcq2GaOlBi3xioGts396442ztf1eLjMVuvykCI3b4Yz/vJYZOZjUvG/6nLfaFQTJLSXkTvI4do3foeY4="
-      password:
-        secure: "ts/3FSPL+w4euXryip9wCJWUqUwuJ2CqHi0nEpYVM10KL0cp9aMkQXN/7C8ih+j/JZ25kaO+tis1nx0JERVnKrg/1F/fJhxHTpakCP4OSIlhKRXDt7yUUHcKKt5QdM2XCKhApptP6RTpWL1vlc36CMrhdvTcMYp7hlDOiWjdhhim24FGQzabL42Ko59ttyyCROqgcnjHqj+WlhJl7iYO+lv2PLOtslpkIYY5EMjgBLuGyOvxTqZsAXtworsASdB2CrsTE6iMRcrM1afgkyBlUqDezoiv9TwfZrZ85oRoAxPB7su4QWK7lEP0wGQV/SDz/RL7c+cNfRaauxUKVcC8I2LfaEpudv8vi205+v/08wzPbS4xSOnf89irUJnyGxUy+bYLoXPPVPMyzcQRAUnrQl+ENCmN62HU+/2pkIyiUJvt0wYYP0vp+3pIbXbYQGmAIMq7nZJd7K3rikfnQIGKI03xZsFe3PEdjzhDI9Ej/tRUbJx4pgg084QuYYca6MSYn/zJ5pqIG4A7ngCSxoxoWZT0duo8PrUWQeT17L73Q86HeEv3OzZhWfEF2fNDN3Qbsu4CllSZnbE7DXgAuysTwTYHS/na6lp7wejOqdRUXrHbidVla9Mwxyc9JdWNWzUDxALvNxAdNbV6l85mO8izy8wjQF6M1O7idqTfjQeR4pc="
-      skip_existing: true
-      file_glob: true
-      file:
-        - dist/dvc*.whl
-        - dist/dvc*.tar.gz
-      skip_cleanup: true
-      on:
-        tags: true
-        repo: iterative/dvc
-  - name: Snapcraft snap
-    if: type != pull_request
-    stage: deploy
-    addons:
-     snaps:
-     - name: snapcraft
-       channel: stable
-       confinement: classic
-     - name: lxd
-       channel: stable
-    env:
-    - SNAPCRAFT_IMAGE_INFO: '{"build_url": "$TRAVIS_BUILD_URL"}'
-    before_install:
-    - sudo /snap/bin/lxd.migrate -yes
-    - sudo /snap/bin/lxd waitready
-    - sudo /snap/bin/lxd init --auto
-    install:
-    script:
-    - sudo snapcraft --use-lxd
-    after_failure:
-    - sudo journalctl -u snapd
-    deploy:
-    - provider: snap
-      snap: dvc_*.snap
-      channel: ${SOURCE_TAG:+stable}${SOURCE_TAG:-edge}
-      skip_cleanup: true
-      on:
-        branch: master
-        repo: iterative/dvc
 
 before_install:
   - bash ./scripts/ci/before_install.sh
@@ -157,7 +103,6 @@ script:
   - bash ./scripts/ci/script.sh
 deploy:
   - provider: releases
-    condition: "[[ $(./scripts/ci/deploy_condition.sh) == 'true' ]]"
     api_key:
       secure: nyo17gF4Xl6DFL/KVkMewC805Cv+eK99L7SiYCU+WUAYDIzzFL3YJm7fm8bznPeor7DmpO7uSLSveMnJETBtdurW6JWhCTUss4yD66yFzpk6Z5cvHf/1UA5pdMHkkMM54fRaTRt6L2Yal7RPwGEQTBECLXW1Xmf78Y6+0l8lTvXQ9jXOQSRO/63VDKI5Zww2+XytVicUFlr0hLMGKUuaCjjXcQlAPzBgQz3/5Iz6EtzeTf2o+gTPjocbRbSFPikfiBXUn8XlJ8jBj7i114XJRJffw59KxYGDzxp+enfLBULGNoW0Np2hZqkKkPUIdB08C8XVbRXlFYX8cEYBczjqhv8A05p5F5CnltnqQ0KazcoUP2awPVqn68dWNRF+kqrnMBus8euYKIZ4dy/6bVEKJRa84ESJXZVDcwXTAXRqyovSxOlXqg9ZgAImMKBfKn/fpDX2xIvQPaXcnJxKbmcePfdbC1d0HYJ5jkbNaxKE/T15VvhzIho7mJ2WAv1r8QouQUuzqtpzIGbRn/KXHRUzCtyP0k4+eMKMLFOPzg848WsDarP3v8VYiSy4nFY7ZP7DRd3KttvW5bgVbSeO4jPmTgS6TnnpRwual9BJXSG7bjbfpIMii3bNZ7jWL4zpKT9Jfm8w9RGKLcX9HqkZ3+y60+LtYdhEfBvqsIlWQoIJBXg=
     file_glob: true
@@ -168,6 +113,32 @@ deploy:
       - dvc*.exe
     skip_cleanup: true
     on:
+      condition: "$(./scripts/ci/deploy_condition.sh)"
       tags: true
+      repo: iterative/dvc
+      stage: build
+  - provider: pypi
+    user:
+      secure: "IOzNfgPoG3ICg3+s4AuZCCnawgd/KqMzeiAB9R0B9Xb6ProPQJp9O3GBZrtg5OJMHdWQQtwULeOh/LWk4sFdXMcX1iNEgm5Tb7DwO7TDtltW14jUgN9AqfY2twj4UIsW/ON8w0P8v36ZoQq1kO6Pfgjijdm3w+9h6rpps8rJ6jXYpVZVO+SSzzijWddanMkEz4GgctZ2r7U5MWlmm1UogF60kEZIZCQykz0yJnhTpP9nMFDKw6Maki/mcfVwTQ/v3RqjzttHei/aaEMGQXYr3TOX8NPYJXerBpjShDZqcgcCfqPzhi7uCwVYaPvRsMMYH5jgtMz/SO3J6ToeGKT0f1F1ihRyCdusg325TMK7Vv8yHJzL4ngeUbb/oqxWtxhLY7f77Lkx6hBwe6ROpTqiQHIfZad5qyIHihKcDcIHo4FwLHVzxR4y+Ds2js5dXwBkUBaEAx0Dmc6ZdgXqxd815GDwv+VVpzXJhtO6qXmKE36F/Oe6eCNG3dk5MdOK4C2DrM9M8MXllqeQtX6JrM2stWlBalAc9Jn4b0xxAoghX3x3G3hNsLc9Uist1VinY2+IcPozusqj66c+Vbi5YngWSbICOjlIcq2GaOlBi3xioGts396442ztf1eLjMVuvykCI3b4Yz/vJYZOZjUvG/6nLfaFQTJLSXkTvI4do3foeY4="
+    password:
+      secure: "ts/3FSPL+w4euXryip9wCJWUqUwuJ2CqHi0nEpYVM10KL0cp9aMkQXN/7C8ih+j/JZ25kaO+tis1nx0JERVnKrg/1F/fJhxHTpakCP4OSIlhKRXDt7yUUHcKKt5QdM2XCKhApptP6RTpWL1vlc36CMrhdvTcMYp7hlDOiWjdhhim24FGQzabL42Ko59ttyyCROqgcnjHqj+WlhJl7iYO+lv2PLOtslpkIYY5EMjgBLuGyOvxTqZsAXtworsASdB2CrsTE6iMRcrM1afgkyBlUqDezoiv9TwfZrZ85oRoAxPB7su4QWK7lEP0wGQV/SDz/RL7c+cNfRaauxUKVcC8I2LfaEpudv8vi205+v/08wzPbS4xSOnf89irUJnyGxUy+bYLoXPPVPMyzcQRAUnrQl+ENCmN62HU+/2pkIyiUJvt0wYYP0vp+3pIbXbYQGmAIMq7nZJd7K3rikfnQIGKI03xZsFe3PEdjzhDI9Ej/tRUbJx4pgg084QuYYca6MSYn/zJ5pqIG4A7ngCSxoxoWZT0duo8PrUWQeT17L73Q86HeEv3OzZhWfEF2fNDN3Qbsu4CllSZnbE7DXgAuysTwTYHS/na6lp7wejOqdRUXrHbidVla9Mwxyc9JdWNWzUDxALvNxAdNbV6l85mO8izy8wjQF6M1O7idqTfjQeR4pc="
+    skip_existing: true
+    file_glob: true
+    file:
+      - dist/dvc*.whl
+      - dist/dvc*.tar.gz
+    skip_cleanup: true
+    on:
+      condition: "$(ls dist/dvc*.whl dist/dvc*.tar.gz 2>&1)"
+      tags: true
+      repo: iterative/dvc
+      stage: build
+  - provider: snap
+    snap: dvc_*.snap
+    channel: ${SOURCE_TAG:+stable}${SOURCE_TAG:-edge}
+    skip_cleanup: true
+    on:
+      all_branches: true
+      condition: "$(ls dvc_*.snap 2>&1) && (($TRAVIS_BRANCH = master) || (-n $TRAVIS_TAG))"
       repo: iterative/dvc
       stage: build
