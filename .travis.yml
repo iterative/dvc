@@ -69,7 +69,7 @@ jobs:
     before_install:
     install:
     script: ./scripts/build_posix.sh
-  - name: "Pypi pkgs"
+  - name: "PyPI pkgs"
     language: python
     python: 3.7
     script: ./scripts/build_package.sh
