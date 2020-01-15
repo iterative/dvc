@@ -113,7 +113,7 @@ deploy:
       - dvc*.exe
     skip_cleanup: true
     on:
-      condition: "$(./scripts/ci/deploy_condition.sh)"
+      condition: "$(./scripts/ci/deploy_condition.sh) && $(ls dvc*.rpm dvc*.deb dvc*.pkg dvc*.exe 2>&1)"
       tags: true
       repo: iterative/dvc
       stage: build
