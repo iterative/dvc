@@ -10,7 +10,6 @@ from dvc.exceptions import DvcParserError
 from dvc.exceptions import NotDvcRepoError
 from dvc.external_repo import clean_repos
 from dvc.logger import FOOTER
-from dvc.remote.pool import close_pools
 
 
 # Workaround for CPython bug. See [1] and [2] for more info.
@@ -60,17 +59,14 @@ def main(argv=None):
     except Exception as exc:  # pylint: disable=broad-except
         if isinstance(exc, OSError) and exc.errno == errno.EMFILE:
             logger.exception(
-                "too many open files, please increase your `ulimit`"
+                "too many open files, please increase your `ulimit`",
+                extra={"tb_only": True},
             )
         else:
             logger.exception("unexpected error")
         ret = 255
     finally:
         logger.setLevel(outerLogLevel)
-
-        # Python 2 fails to close these clean occasionally and users see
-        # weird error messages, so we do it manually
-        close_pools()
 
         # Remove cached repos in the end of the call, these are anonymous
         # so won't be reused by any other subsequent run anyway.

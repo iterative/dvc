@@ -6,14 +6,15 @@ import configobj
 import pytest
 from mock import patch
 
-from dvc.config import Config
+from dvc.config import Config, ConfigError
+from dvc.exceptions import DownloadError, UploadError
 from dvc.main import main
 from dvc.path_info import PathInfo
 from dvc.remote import RemoteLOCAL, RemoteConfig
 from dvc.remote.base import RemoteBASE
 from dvc.compat import fspath
 from tests.basic_env import TestDvc
-from tests.remotes import get_local_url, get_local_storagepath
+from tests.remotes import Local
 
 
 class TestRemote(TestDvc):
@@ -30,10 +31,10 @@ class TestRemote(TestDvc):
 
         self.assertEqual(main(["remote", "list"]), 0)
 
-        self.assertEqual(main(["remote", "remove", remotes[0]]), 0)
         self.assertEqual(
             main(["remote", "modify", remotes[0], "option", "value"]), 0
         )
+        self.assertEqual(main(["remote", "remove", remotes[0]]), 0)
 
         self.assertEqual(main(["remote", "list"]), 0)
 
@@ -147,7 +148,7 @@ class TestRemoteDefault(TestDvc):
         self.assertEqual(default, None)
 
 
-def test_show_default(dvc_repo, capsys):
+def test_show_default(dvc, capsys):
     assert main(["remote", "default", "foo"]) == 0
     assert main(["remote", "default"]) == 0
     out, _ = capsys.readouterr()
@@ -158,7 +159,7 @@ class TestRemoteShouldHandleUppercaseRemoteName(TestDvc):
     upper_case_remote_name = "UPPERCASEREMOTE"
 
     def test(self):
-        remote_url = get_local_storagepath()
+        remote_url = Local.get_storagepath()
         ret = main(["remote", "add", self.upper_case_remote_name, remote_url])
         self.assertEqual(ret, 0)
 
@@ -169,34 +170,11 @@ class TestRemoteShouldHandleUppercaseRemoteName(TestDvc):
         self.assertEqual(ret, 0)
 
 
-def test_large_dir_progress(repo_dir, dvc_repo):
-    from dvc.utils import LARGE_DIR_SIZE
-    from dvc.progress import Tqdm
+def test_dir_checksum_should_be_key_order_agnostic(tmp_dir, dvc):
+    tmp_dir.gen({"data": {"1": "1 content", "2": "2 content"}})
 
-    # Create a "large dir"
-    for i in range(LARGE_DIR_SIZE + 1):
-        repo_dir.create(os.path.join("gen", "{}.txt".format(i)), str(i))
-
-    with patch.object(Tqdm, "update") as update:
-        assert not update.called
-        dvc_repo.add("gen")
-        assert update.called
-
-
-def test_dir_checksum_should_be_key_order_agnostic(dvc_repo):
-    data_dir = os.path.join(dvc_repo.root_dir, "data")
-    file1 = os.path.join(data_dir, "1")
-    file2 = os.path.join(data_dir, "2")
-
-    os.mkdir(data_dir)
-    with open(file1, "w") as fobj:
-        fobj.write("1")
-
-    with open(file2, "w") as fobj:
-        fobj.write("2")
-
-    path_info = PathInfo(data_dir)
-    with dvc_repo.state:
+    path_info = PathInfo("data")
+    with dvc.state:
         with patch.object(
             RemoteBASE,
             "_collect_dir",
@@ -205,7 +183,7 @@ def test_dir_checksum_should_be_key_order_agnostic(dvc_repo):
                 {"relpath": "2", "md5": "2"},
             ],
         ):
-            checksum1 = dvc_repo.cache.local.get_dir_checksum(path_info)
+            checksum1 = dvc.cache.local.get_dir_checksum(path_info)
 
         with patch.object(
             RemoteBASE,
@@ -215,19 +193,19 @@ def test_dir_checksum_should_be_key_order_agnostic(dvc_repo):
                 {"md5": "2", "relpath": "2"},
             ],
         ):
-            checksum2 = dvc_repo.cache.local.get_dir_checksum(path_info)
+            checksum2 = dvc.cache.local.get_dir_checksum(path_info)
 
     assert checksum1 == checksum2
 
 
-def test_partial_push_n_pull(dvc_repo, repo_dir, caplog):
-    assert main(["remote", "add", "-d", "upstream", get_local_url()]) == 0
-    # Recreate the repo to reread config
-    repo = dvc_repo.__class__(dvc_repo.root_dir)
-    remote = repo.cloud.get_remote("upstream")
+def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory):
+    remote_config = RemoteConfig(dvc.config)
+    remote_config.add(
+        "upstream", fspath(tmp_path_factory.mktemp("upstream")), default=True
+    )
 
-    foo = repo.add(repo_dir.FOO)[0].outs[0]
-    bar = repo.add(repo_dir.BAR)[0].outs[0]
+    foo = tmp_dir.dvc_gen({"foo": "foo content"})[0].outs[0]
+    bar = tmp_dir.dvc_gen({"bar": "bar content"})[0].outs[0]
 
     # Faulty upload version, failing on foo
     original = RemoteLOCAL._upload
@@ -238,24 +216,22 @@ def test_partial_push_n_pull(dvc_repo, repo_dir, caplog):
         return original(self, from_file, to_info, name, **kwargs)
 
     with patch.object(RemoteLOCAL, "_upload", unreliable_upload):
-        assert main(["push"]) == 1
-        assert str(get_last_exc(caplog)) == "1 files failed to upload"
+        with pytest.raises(UploadError) as upload_error_info:
+            dvc.push()
+        assert upload_error_info.value.amount == 1
 
+        remote = dvc.cloud.get_remote("upstream")
         assert not remote.exists(remote.checksum_to_path_info(foo.checksum))
         assert remote.exists(remote.checksum_to_path_info(bar.checksum))
 
     # Push everything and delete local cache
-    assert main(["push"]) == 0
-    shutil.rmtree(repo.cache.local.cache_dir)
+    dvc.push()
+    shutil.rmtree(dvc.cache.local.cache_dir)
 
     with patch.object(RemoteLOCAL, "_download", side_effect=Exception):
-        assert main(["pull"]) == 1
-        assert str(get_last_exc(caplog)) == "2 files failed to download"
-
-
-def get_last_exc(caplog):
-    _, exc, _ = caplog.records[-2].exc_info
-    return exc
+        with pytest.raises(DownloadError) as download_error_info:
+            dvc.pull()
+        assert download_error_info.value.amount == 2
 
 
 def test_raise_on_too_many_open_files(tmp_dir, dvc, tmp_path_factory, mocker):
@@ -274,3 +250,10 @@ def test_raise_on_too_many_open_files(tmp_dir, dvc, tmp_path_factory, mocker):
     with pytest.raises(OSError) as e:
         dvc.push()
         assert e.errno == errno.EMFILE
+
+
+def test_modify_missing_remote(dvc):
+    remote_config = RemoteConfig(dvc.config)
+
+    with pytest.raises(ConfigError, match=r"unable to find remote section"):
+        remote_config.modify("myremote", "gdrive_client_id", "xxx")

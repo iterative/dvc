@@ -156,14 +156,12 @@ class SSHConnection:
     def _remove_dir(self, path):
         for root, dirs, files in self.walk(path, topdown=False):
             for fname in files:
-                path = posixpath.join(root, fname)
                 with suppress(FileNotFoundError):
-                    self._remove_file(path)
+                    self._remove_file(posixpath.join(root, fname))
 
             for dname in dirs:
-                path = posixpath.join(root, dname)
                 with suppress(FileNotFoundError):
-                    self.sftp.rmdir(dname)
+                    self.sftp.rmdir(posixpath.join(root, dname))
 
         with suppress(FileNotFoundError):
             self.sftp.rmdir(path)

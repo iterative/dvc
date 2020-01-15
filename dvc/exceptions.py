@@ -167,7 +167,7 @@ class ReproductionError(DvcException):
 class BadMetricError(DvcException):
     def __init__(self, paths):
         super().__init__(
-            "the following metrics do not exists, "
+            "the following metrics do not exist, "
             "are not metric files or are malformed: {paths}".format(
                 paths=", ".join("'{}'".format(path) for path in paths)
             )
@@ -238,11 +238,6 @@ class DvcIgnoreInCollectedDirError(DvcException):
             ".dvcignore file should not be in collected dir path: "
             "'{}'".format(ignore_dirname)
         )
-
-
-class UrlNotDvcRepoError(DvcException):
-    def __init__(self, url):
-        super().__init__("URL '{}' is not a dvc repository.".format(url))
 
 
 class GitHookAlreadyExistsError(DvcException):

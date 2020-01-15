@@ -1,3 +1,4 @@
+import filecmp
 import os
 from unittest import TestCase
 
@@ -5,17 +6,21 @@ import pytest
 from mock import patch
 
 import dvc
+from dvc.compat import fspath
 from dvc.ignore import CleanTree
 from dvc.path_info import PathInfo
 from dvc.scm.tree import WorkingTree
 from dvc.system import System
 from dvc.utils import relpath
 from dvc.utils.fs import BasePathNotInCheckedPathException
+from dvc.utils.fs import copyfile
 from dvc.utils.fs import contains_symlink_up_to
 from dvc.utils.fs import get_inode
 from dvc.utils.fs import get_mtime_and_size
 from dvc.utils.fs import move
 from dvc.utils.fs import path_isin, remove
+from dvc.utils.fs import makedirs
+from dvc.utils.fs import walk_files
 from tests.basic_env import TestDir
 from tests.utils import spy
 
@@ -116,26 +121,33 @@ def test_relpath_windows_different_drives():
     assert rel_info == path1
 
 
-def test_get_inode(repo_dir):
-    path = repo_dir.FOO
-    path_info = PathInfo(path)
-    assert get_inode(path) == get_inode(path_info)
+def test_get_inode(tmp_dir):
+    tmp_dir.gen("foo", "foo content")
+
+    assert get_inode("foo") == get_inode(PathInfo("foo"))
 
 
-@pytest.mark.parametrize("path", [TestDir.DATA, TestDir.DATA_DIR])
-def test_path_object_and_str_are_valid_types_get_mtime_and_size(
-    path, repo_dir
-):
-    tree = CleanTree(WorkingTree(repo_dir.root_dir))
-    time, size = get_mtime_and_size(path, tree)
-    object_time, object_size = get_mtime_and_size(PathInfo(path), tree)
+def test_path_object_and_str_are_valid_types_get_mtime_and_size(tmp_dir):
+    tmp_dir.gen(
+        {"dir": {"dir_file": "dir file content"}, "file": "file_content"}
+    )
+    tree = CleanTree(WorkingTree(tmp_dir))
+
+    time, size = get_mtime_and_size("dir", tree)
+    object_time, object_size = get_mtime_and_size(PathInfo("dir"), tree)
+    assert time == object_time
+    assert size == object_size
+
+    time, size = get_mtime_and_size("file", tree)
+    object_time, object_size = get_mtime_and_size(PathInfo("file"), tree)
     assert time == object_time
     assert size == object_size
 
 
-def test_move(repo_dir):
-    src = repo_dir.FOO
-    src_info = PathInfo(repo_dir.BAR)
+def test_move(tmp_dir):
+    tmp_dir.gen({"foo": "foo content", "bar": "bar content"})
+    src = "foo"
+    src_info = PathInfo("bar")
     dest = os.path.join("some", "directory")
     dest_info = PathInfo(os.path.join("some", "path-like", "directory"))
 
@@ -152,9 +164,10 @@ def test_move(repo_dir):
     assert len(os.listdir(dest_info.fspath)) == 1
 
 
-def test_remove(repo_dir):
-    path = repo_dir.FOO
-    path_info = PathInfo(repo_dir.BAR)
+def test_remove(tmp_dir):
+    tmp_dir.gen({"foo": "foo content", "bar": "bar content"})
+    path = "foo"
+    path_info = PathInfo("bar")
 
     remove(path)
     assert not os.path.isfile(path)
@@ -202,3 +215,52 @@ def test_path_isin_with_absolute_path():
     child = os.path.join(parent, "to", "folder")
 
     assert path_isin(child, parent)
+
+
+def test_makedirs(tmp_dir):
+    path = os.path.join(fspath(tmp_dir), "directory")
+    path_info = PathInfo(os.path.join(fspath(tmp_dir), "another", "directory"))
+
+    makedirs(path)
+    assert os.path.isdir(path)
+
+    makedirs(path_info)
+    assert os.path.isdir(path_info.fspath)
+
+
+@pytest.mark.parametrize("path", ["file", "dir"])
+def test_copyfile(path, tmp_dir):
+    tmp_dir.gen(
+        {
+            "foo": "foo content",
+            "bar": "bar content",
+            "file": "file content",
+            "dir": {},
+        }
+    )
+    src = "foo"
+    dest = path
+    src_info = PathInfo("bar")
+    dest_info = PathInfo(path)
+
+    copyfile(src, dest)
+    if os.path.isdir(dest):
+        assert filecmp.cmp(
+            src, os.path.join(dest, os.path.basename(src)), shallow=False
+        )
+    else:
+        assert filecmp.cmp(src, dest, shallow=False)
+
+    copyfile(src_info, dest_info)
+    if os.path.isdir(dest_info.fspath):
+        assert filecmp.cmp(
+            src_info.fspath,
+            os.path.join(dest_info.fspath, os.path.basename(src_info.fspath)),
+            shallow=False,
+        )
+    else:
+        assert filecmp.cmp(src_info.fspath, dest_info.fspath, shallow=False)
+
+
+def test_walk_files(tmp_dir):
+    assert list(walk_files(".")) == list(walk_files(tmp_dir))

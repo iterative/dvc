@@ -153,17 +153,12 @@ Currently, this includes support for Python versions 2.7, 3.6 and 3.7.
 Snap (Snapcraft)
 ----------------
 
-Download the latest ``dvc_*.snap`` from the
-GitHub `releases page <https://github.com/iterative/dvc/releases>`_.
-
 .. code-block:: bash
 
-   snap install dvc_*.snap --dangerous --classic
+   snap install dvc --classic
 
-Once ``dvc`` is released on the snap store
-(`pending request <https://forum.snapcraft.io/t/classic-confinement-request-for-dvc/14124>`_)
-there will be no need to download ``dvc_*.snap`` or use ``--dangerous``
-(``snap install dvc --classic`` would suffice).
+This corresponds to the latest tagged release.
+Add ``--edge`` for the latest ``master`` version.
 
 Package
 -------

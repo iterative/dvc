@@ -48,9 +48,9 @@ jobs:
   - name: "3.7 on Linux"
     language: python
     python: 3.7
-  - name: "3.6 on Mac"
+  - name: "3.7 on Mac"
     os: osx
-    osx_image: xcode9.4
+    osx_image: xcode11.3
   # build jobs
   - name: "Mac pkg"
     stage: build
@@ -75,6 +75,7 @@ jobs:
     language: python
     python: 3.7
     script: ./scripts/build_package.sh
+  # build snap in parallel with other pkgs
   - name: Snapcraft snap
     addons:
      snaps:
@@ -116,6 +117,35 @@ jobs:
       on:
         tags: true
         repo: iterative/dvc
+  - name: Snapcraft snap
+    if: type != pull_request
+    stage: deploy
+    addons:
+     snaps:
+     - name: snapcraft
+       channel: stable
+       confinement: classic
+     - name: lxd
+       channel: stable
+    env:
+    - SNAPCRAFT_IMAGE_INFO: '{"build_url": "$TRAVIS_BUILD_URL"}'
+    before_install:
+    - sudo /snap/bin/lxd.migrate -yes
+    - sudo /snap/bin/lxd waitready
+    - sudo /snap/bin/lxd init --auto
+    install:
+    script:
+    - sudo snapcraft --use-lxd
+    after_failure:
+    - sudo journalctl -u snapd
+    deploy:
+    - provider: snap
+      snap: dvc_*.snap
+      channel: ${SOURCE_TAG:+stable}${SOURCE_TAG:-edge}
+      skip_cleanup: true
+      on:
+        branch: master
+        repo: iterative/dvc
 
 before_install:
   - bash ./scripts/ci/before_install.sh
@@ -136,7 +166,6 @@ deploy:
       - dvc*.deb
       - dvc*.pkg
       - dvc*.exe
-      - dvc*.snap
     skip_cleanup: true
     on:
       tags: true

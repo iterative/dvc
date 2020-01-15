@@ -108,7 +108,7 @@ class TestDefaultWorkingDirectory(TestDvc):
         d = load_stage_file(stage.relpath)
         self.assertNotIn(Stage.PARAM_WDIR, d.keys())
 
-        with self.dvc.state:
+        with self.dvc.lock, self.dvc.state:
             stage = Stage.load(self.dvc, stage.relpath)
             self.assertFalse(stage.changed())
 
@@ -154,18 +154,18 @@ class TestExternalRemoteResolution(TestDvc):
         assert os.path.exists("movie.txt")
 
 
-def test_md5_ignores_comments(repo_dir, dvc_repo):
-    stage, = dvc_repo.add("foo")
+def test_md5_ignores_comments(tmp_dir, dvc):
+    stage, = tmp_dir.dvc_gen("foo", "foo content")
 
     with open(stage.path, "a") as f:
         f.write("# End comment\n")
 
-    new_stage = Stage.load(dvc_repo, stage.path)
+    new_stage = Stage.load(dvc, stage.path)
     assert not new_stage.changed_md5()
 
 
-def test_meta_is_preserved(dvc_repo):
-    stage, = dvc_repo.add("foo")
+def test_meta_is_preserved(tmp_dir, dvc):
+    stage, = tmp_dir.dvc_gen("foo", "foo content")
 
     # Add meta to DVC-file
     data = load_stage_file(stage.path)
@@ -173,7 +173,7 @@ def test_meta_is_preserved(dvc_repo):
     dump_stage_file(stage.path, data)
 
     # Loading and dumping to test that it works and meta is retained
-    new_stage = Stage.load(dvc_repo, stage.path)
+    new_stage = Stage.load(dvc, stage.path)
     new_stage.dump()
 
     new_data = load_stage_file(stage.path)

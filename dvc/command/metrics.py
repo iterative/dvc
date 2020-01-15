@@ -26,7 +26,12 @@ def show_metrics(metrics, all_branches=False, all_tags=False):
             logger.info("{branch}:".format(branch=branch))
 
         for fname, metric in val.items():
-            lines = metric if type(metric) is list else metric.splitlines()
+            if isinstance(metric, dict):
+                lines = list(metric.values())
+            elif isinstance(metric, list):
+                lines = metric
+            else:
+                lines = metric.splitlines()
 
             if len(lines) > 1:
                 logger.info("\t{fname}:".format(fname=fname))
@@ -95,6 +100,59 @@ class CmdMetricsRemove(CmdBase):
         except DvcException:
             msg = "failed to remove metric file '{}'".format(self.args.path)
             logger.exception(msg)
+            return 1
+
+        return 0
+
+
+def _show_diff(diff):
+    from texttable import Texttable
+
+    if not diff:
+        return "No changes."
+
+    table = Texttable()
+
+    # remove borders to make it easier for users to copy stuff
+    table.set_chars(("", "", "", ""))
+    table.set_deco(0)
+
+    rows = [["Path", "Metric", "Value", "Change"]]
+    for fname, mdiff in diff.items():
+        for metric, change in mdiff.items():
+            rows.append(
+                [
+                    fname,
+                    metric,
+                    change["new"],
+                    change.get("diff", "diff not supported"),
+                ]
+            )
+    table.add_rows(rows)
+    return table.draw()
+
+
+class CmdMetricsDiff(CmdBase):
+    def run(self):
+        try:
+            diff = self.repo.metrics.diff(
+                a_ref=self.args.a_ref,
+                b_ref=self.args.b_ref,
+                targets=self.args.targets,
+                typ=self.args.type,
+                xpath=self.args.xpath,
+                recursive=self.args.recursive,
+            )
+
+            if self.args.show_json:
+                import json
+
+                logger.info(json.dumps(diff))
+            else:
+                logger.info(_show_diff(diff))
+
+        except DvcException:
+            logger.exception("failed to show metrics diff")
             return 1
 
         return 0
@@ -214,3 +272,65 @@ def add_parser(subparsers, parent_parser):
     )
     metrics_remove_parser.add_argument("path", help="Path to a metric file.")
     metrics_remove_parser.set_defaults(func=CmdMetricsRemove)
+
+    METRICS_DIFF_HELP = "Output metric values."
+    metrics_diff_parser = metrics_subparsers.add_parser(
+        "diff",
+        parents=[parent_parser],
+        description=append_doc_link(METRICS_DIFF_HELP, "metrics/diff"),
+        help=METRICS_DIFF_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    metrics_diff_parser.add_argument(
+        "a_ref",
+        nargs="?",
+        help=(
+            "Git reference from which diff is calculated. "
+            "If omitted `HEAD`(latest commit) is used."
+        ),
+    )
+    metrics_diff_parser.add_argument(
+        "b_ref",
+        nargs="?",
+        help=(
+            "Git reference to which diff is calculated. "
+            "If omitted current working tree is used."
+        ),
+    )
+    metrics_diff_parser.add_argument(
+        "--targets",
+        nargs="*",
+        help=(
+            "Metric files or directories (see -R) to show diff for. "
+            "Shows diff for all metric files by default."
+        ),
+    )
+    metrics_diff_parser.add_argument(
+        "-t",
+        "--type",
+        help=(
+            "Type of metrics (json/tsv/htsv/csv/hcsv). "
+            "It can be detected by the file extension automatically. "
+            "Unsupported types will be treated as raw."
+        ),
+    )
+    metrics_diff_parser.add_argument(
+        "-x", "--xpath", help="json/tsv/htsv/csv/hcsv path."
+    )
+    metrics_diff_parser.add_argument(
+        "-R",
+        "--recursive",
+        action="store_true",
+        default=False,
+        help=(
+            "If any target is a directory, recursively search and process "
+            "metric files."
+        ),
+    )
+    metrics_diff_parser.add_argument(
+        "--show-json",
+        action="store_true",
+        default=False,
+        help="Show output in JSON format.",
+    )
+    metrics_diff_parser.set_defaults(func=CmdMetricsDiff)

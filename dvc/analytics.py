@@ -16,7 +16,8 @@ from dvc.exceptions import NotDvcRepoError
 from dvc.lock import Lock, LockError
 from dvc.repo import Repo
 from dvc.scm import SCM
-from dvc.utils import env2bool, is_binary, makedirs
+from dvc.utils import env2bool, is_binary
+from dvc.utils.fs import makedirs
 
 
 logger = logging.getLogger(__name__)

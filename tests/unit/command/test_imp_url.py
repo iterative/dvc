@@ -5,7 +5,7 @@ from dvc.command.imp_url import CmdImportUrl
 from dvc.exceptions import DvcException
 
 
-def test_import_url(mocker, dvc_repo):
+def test_import_url(mocker):
     cli_args = parse_args(["import-url", "src", "out", "--file", "file"])
     assert cli_args.func == CmdImportUrl
 
@@ -17,7 +17,7 @@ def test_import_url(mocker, dvc_repo):
     m.assert_called_once_with("src", out="out", fname="file")
 
 
-def test_failed_import_url(mocker, caplog, dvc_repo):
+def test_failed_import_url(mocker, caplog):
     cli_args = parse_args(["import-url", "http://somesite.com/file_name"])
     assert cli_args.func == CmdImportUrl
 

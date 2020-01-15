@@ -2,7 +2,7 @@ from dvc.cli import parse_args
 from dvc.command.update import CmdUpdate
 
 
-def test_update(dvc_repo, mocker):
+def test_update(dvc, mocker):
     targets = ["target1", "target2", "target3"]
     cli_args = parse_args(["update", "--rev", "develop"] + targets)
     assert cli_args.func == CmdUpdate

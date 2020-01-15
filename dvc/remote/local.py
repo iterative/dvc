@@ -11,7 +11,6 @@ from dvc.config import Config
 from dvc.exceptions import DownloadError
 from dvc.exceptions import DvcException
 from dvc.exceptions import UploadError
-from dvc.ignore import CleanTree
 from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
 from dvc.remote.base import RemoteBASE
@@ -20,17 +19,15 @@ from dvc.remote.base import STATUS_MAP
 from dvc.remote.base import STATUS_MISSING
 from dvc.remote.base import STATUS_NEW
 from dvc.scheme import Schemes
-from dvc.scm.tree import WorkingTree
+from dvc.scm.tree import is_working_tree
 from dvc.system import System
-from dvc.utils import copyfile
+from dvc.utils.fs import copyfile
 from dvc.utils import file_md5
-from dvc.utils import makedirs
 from dvc.utils import relpath
 from dvc.utils import tmp_fname
-from dvc.utils import walk_files
 from dvc.compat import fspath_py35
-from dvc.utils.fs import move
-from dvc.utils.fs import remove
+from dvc.utils.fs import move, makedirs, remove
+from dvc.utils.fs import walk_files
 
 logger = logging.getLogger(__name__)
 
@@ -136,9 +133,7 @@ class RemoteLOCAL(RemoteBASE):
         return os.path.getsize(fspath_py35(path_info))
 
     def walk_files(self, path_info):
-        assert isinstance(self.repo.tree, CleanTree) and isinstance(
-            self.repo.tree.tree, WorkingTree
-        )
+        assert is_working_tree(self.repo.tree)
 
         for fname in self.repo.tree.walk_files(path_info):
             yield PathInfo(fname)
@@ -429,7 +424,7 @@ class RemoteLOCAL(RemoteBASE):
         os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
 
     def _unprotect_dir(self, path):
-        assert isinstance(self.repo.tree, CleanTree)
+        assert is_working_tree(self.repo.tree)
 
         for fname in self.repo.tree.walk_files(path):
             RemoteLOCAL._unprotect_file(fname)
@@ -466,6 +461,10 @@ class RemoteLOCAL(RemoteBASE):
     def _get_unpacked_dir_path_info(self, checksum):
         info = self.checksum_to_path_info(checksum)
         return info.with_name(info.name + self.UNPACKED_DIR_SUFFIX)
+
+    def _remove_unpacked_dir(self, checksum):
+        path_info = self._get_unpacked_dir_path_info(checksum)
+        self.remove(path_info)
 
     def _path_info_changed(self, path_info):
         if self.exists(path_info) and self.state.get(path_info):

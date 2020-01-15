@@ -4,6 +4,8 @@ import json
 import logging
 import os
 
+import pytest
+
 from dvc.exceptions import DvcException
 from dvc.exceptions import NoMetricsError
 from dvc.main import main
@@ -113,9 +115,9 @@ class TestMetrics(TestMetricsBase):
             ["metric_json"], typ="json", xpath="branch", all_branches=True
         )
         self.assertEqual(len(ret), 3)
-        self.assertSequenceEqual(ret["foo"]["metric_json"], ["foo"])
-        self.assertSequenceEqual(ret["bar"]["metric_json"], ["bar"])
-        self.assertSequenceEqual(ret["baz"]["metric_json"], ["baz"])
+        self.assertSequenceEqual(ret["foo"]["metric_json"], {"branch": "foo"})
+        self.assertSequenceEqual(ret["bar"]["metric_json"], {"branch": "bar"})
+        self.assertSequenceEqual(ret["baz"]["metric_json"], {"branch": "baz"})
 
         ret = self.dvc.metrics.show(
             ["metric_tsv"], typ="tsv", xpath="0,0", all_branches=True
@@ -158,13 +160,13 @@ class TestMetrics(TestMetricsBase):
         self.assertEqual(len(ret), 1)
         self.assertSequenceEqual(
             ret["foo"]["metric_json_ext"],
-            [
-                {
+            {
+                "metrics.[0]": {
                     "dataset": "train",
                     "deviation_mse": 0.173461,
                     "value_mse": 0.421601,
                 }
-            ],
+            },
         )
         self.assertRaises(KeyError, lambda: ret["bar"])
         self.assertRaises(KeyError, lambda: ret["baz"])
@@ -723,9 +725,9 @@ class TestCachedMetrics(TestDvcGit):
         self.assertEqual(
             res,
             {
-                "master": {"metrics.json": ["master"]},
-                "one": {"metrics.json": ["one"]},
-                "two": {"metrics.json": ["two"]},
+                "master": {"metrics.json": {"metrics": "master"}},
+                "one": {"metrics.json": {"metrics": "one"}},
+                "two": {"metrics.json": {"metrics": "two"}},
             },
         )
 
@@ -736,9 +738,9 @@ class TestCachedMetrics(TestDvcGit):
         self.assertEqual(
             res,
             {
-                "master": {"metrics.json": ["master"]},
-                "one": {"metrics.json": ["one"]},
-                "two": {"metrics.json": ["two"]},
+                "master": {"metrics.json": {"metrics": "master"}},
+                "one": {"metrics.json": {"metrics": "one"}},
+                "two": {"metrics.json": {"metrics": "two"}},
             },
         )
 
@@ -802,6 +804,10 @@ class TestMetricsType(TestDvcGit):
         for branch in self.branches:
             if isinstance(ret[branch][file_name], list):
                 self.assertSequenceEqual(ret[branch][file_name], [branch])
+            elif isinstance(ret[branch][file_name], dict):
+                self.assertSequenceEqual(
+                    ret[branch][file_name], {"branch": branch}
+                )
             else:
                 self.assertSequenceEqual(ret[branch][file_name], branch)
 
@@ -834,7 +840,7 @@ def test_show_xpath_should_override_stage_xpath(tmp_dir, dvc):
     dvc.run(cmd="", overwrite=True, metrics=["metric"])
     dvc.metrics.modify("metric", typ="json", xpath="m2")
 
-    assert dvc.metrics.show(xpath="m1") == {"": {"metric": [0.1]}}
+    assert dvc.metrics.show(xpath="m1") == {"": {"metric": {"m1": 0.1}}}
 
 
 def test_show_multiple_outputs(tmp_dir, dvc, caplog):
@@ -868,6 +874,69 @@ def test_show_multiple_outputs(tmp_dir, dvc, caplog):
         assert 1 == main(["metrics", "show", "1.json", "not-found"])
         assert '1.json: {"AUC": 1}' in caplog.text
         assert (
-            "the following metrics do not exists, "
+            "the following metrics do not exist, "
             "are not metric files or are malformed: 'not-found'"
         ) in caplog.text
+
+
+def test_metrics_diff_raw(tmp_dir, scm, dvc):
+    def _gen(val):
+        tmp_dir.gen({"metrics": val})
+        dvc.run(cmd="", metrics=["metrics"])
+        dvc.scm.add(["metrics.dvc"])
+        dvc.scm.commit(str(val))
+
+    _gen("raw 1")
+    _gen("raw 2")
+    _gen("raw 3")
+
+    assert dvc.metrics.diff(a_ref="HEAD~2") == {
+        "metrics": {"": {"old": "raw 1", "new": "raw 3"}}
+    }
+
+
+@pytest.mark.parametrize("xpath", [True, False])
+def test_metrics_diff_json(tmp_dir, scm, dvc, xpath):
+    def _gen(val):
+        metrics = {"a": {"b": {"c": val, "d": 1, "e": str(val)}}}
+        tmp_dir.gen({"m.json": json.dumps(metrics)})
+        dvc.run(cmd="", metrics=["m.json"])
+        dvc.metrics.modify("m.json", typ="json")
+        if xpath:
+            dvc.metrics.modify("m.json", xpath="a.b.c")
+        dvc.scm.add(["m.json.dvc"])
+        dvc.scm.commit(str(val))
+
+    _gen(1)
+    _gen(2)
+    _gen(3)
+
+    expected = {"m.json": {"a.b.c": {"old": 1, "new": 3, "diff": 2}}}
+
+    if not xpath:
+        expected["m.json"]["a.b.e"] = {"old": "1", "new": "3"}
+
+    assert expected == dvc.metrics.diff(a_ref="HEAD~2")
+
+
+def test_metrics_diff_broken_json(tmp_dir, scm, dvc):
+    metrics = {"a": {"b": {"c": 1, "d": 1, "e": "3"}}}
+    tmp_dir.gen({"m.json": json.dumps(metrics)})
+    dvc.run(cmd="", metrics_no_cache=["m.json"])
+    dvc.scm.add(["m.json.dvc", "m.json"])
+    dvc.scm.commit("add metrics")
+
+    (tmp_dir / "m.json").write_text(json.dumps(metrics) + "ma\nlformed\n")
+
+    assert dvc.metrics.diff() == {
+        "m.json": {
+            "a.b.c": {"old": 1, "new": "unable to parse"},
+            "a.b.d": {"old": 1, "new": "unable to parse"},
+            "a.b.e": {"old": "3", "new": "unable to parse"},
+        }
+    }
+
+
+def test_metrics_diff_no_metrics(tmp_dir, scm, dvc):
+    tmp_dir.scm_gen({"foo": "foo"}, commit="add foo")
+    assert dvc.metrics.diff(a_ref="HEAD~1") == {}

@@ -143,6 +143,8 @@ def rwlocked(call, read=None, write=None):
 
     stage = call._args[0]
 
+    assert stage.repo.lock.is_locked
+
     def _chain(names):
         return [
             item.path_info
@@ -264,10 +266,7 @@ class Stage(object):
     @staticmethod
     def is_valid_filename(path):
         return (
-            # path.endswith doesn't work for encoded unicode filenames on
-            # Python 2 and since Stage.STAGE_FILE_SUFFIX is ascii then it is
-            # not needed to decode the path from py2's str
-            path[-len(Stage.STAGE_FILE_SUFFIX) :] == Stage.STAGE_FILE_SUFFIX
+            path.endswith(Stage.STAGE_FILE_SUFFIX)
             or os.path.basename(path) == Stage.STAGE_FILE
         )
 

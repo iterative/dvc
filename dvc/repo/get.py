@@ -7,10 +7,13 @@ from dvc.exceptions import (
     DvcException,
     NotDvcRepoError,
     OutputNotFoundError,
-    UrlNotDvcRepoError,
     PathMissingError,
 )
-from dvc.external_repo import external_repo
+from dvc.external_repo import (
+    external_repo,
+    cached_clone,
+    NoOutputInExternalRepoError,
+)
 from dvc.path_info import PathInfo
 from dvc.stage import Stage
 from dvc.utils import resolve_output
@@ -43,36 +46,36 @@ def get(url, path, out=None, rev=None):
     dpath = os.path.dirname(os.path.abspath(out))
     tmp_dir = os.path.join(dpath, "." + str(shortuuid.uuid()))
     try:
-        with external_repo(cache_dir=tmp_dir, url=url, rev=rev) as repo:
-            # Try any links possible to avoid data duplication.
-            #
-            # Not using symlink, because we need to remove cache after we are
-            # done, and to make that work we would have to copy data over
-            # anyway before removing the cache, so we might just copy it
-            # right away.
-            #
-            # Also, we can't use theoretical "move" link type here, because
-            # the same cache file might be used a few times in a directory.
-            repo.cache.local.cache_types = ["reflink", "hardlink", "copy"]
-
-            try:
+        try:
+            with external_repo(cache_dir=tmp_dir, url=url, rev=rev) as repo:
+                # Try any links possible to avoid data duplication.
+                #
+                # Not using symlink, because we need to remove cache after we
+                # are done, and to make that work we would have to copy data
+                # over anyway before removing the cache, so we might just copy
+                # it right away.
+                #
+                # Also, we can't use theoretical "move" link type here, because
+                # the same cache file might be used a few times in a directory.
+                repo.cache.local.cache_types = ["reflink", "hardlink", "copy"]
                 output = repo.find_out_by_relpath(path)
-            except OutputNotFoundError:
-                output = None
+                if output.use_cache:
+                    _get_cached(repo, output, out)
+                    return
+                # Non-cached output, fall through and try to copy from git.
+        except (NotDvcRepoError, NoOutputInExternalRepoError):
+            # Not a DVC repository or, possibly, path is not tracked by DVC.
+            # Fall through and try to copy from git.
+            pass
 
-            if output and output.use_cache:
-                _get_cached(repo, output, out)
-            else:
-                # Either an uncached out with absolute path or a user error
-                if os.path.isabs(path):
-                    raise FileNotFoundError
+        if os.path.isabs(path):
+            raise FileNotFoundError
 
-                fs_copy(os.path.join(repo.root_dir, path), out)
+        repo_dir = cached_clone(url, rev=rev)
 
+        fs_copy(os.path.join(repo_dir, path), out)
     except (OutputNotFoundError, FileNotFoundError):
         raise PathMissingError(path, url)
-    except NotDvcRepoError:
-        raise UrlNotDvcRepoError(url)
     finally:
         remove(tmp_dir)
 

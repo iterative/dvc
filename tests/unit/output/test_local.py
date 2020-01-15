@@ -23,27 +23,27 @@ class TestOutputLOCAL(TestDvc):
                 o.save()
 
 
-def test_str_workdir_outside_repo(erepo):
-    stage = Stage(erepo.dvc)
+def test_str_workdir_outside_repo(erepo_dir):
+    stage = Stage(erepo_dir.dvc)
     output = OutputLOCAL(stage, "path", cache=False)
 
-    assert relpath("path", erepo.dvc.root_dir) == str(output)
+    assert relpath("path", erepo_dir.dvc.root_dir) == str(output)
 
 
-def test_str_workdir_inside_repo(dvc_repo):
-    stage = Stage(dvc_repo)
+def test_str_workdir_inside_repo(dvc):
+    stage = Stage(dvc)
     output = OutputLOCAL(stage, "path", cache=False)
 
     assert "path" == str(output)
 
-    stage = Stage(dvc_repo, wdir="some_folder")
+    stage = Stage(dvc, wdir="some_folder")
     output = OutputLOCAL(stage, "path", cache=False)
 
     assert os.path.join("some_folder", "path") == str(output)
 
 
-def test_str_on_absolute_path(dvc_repo):
-    stage = Stage(dvc_repo)
+def test_str_on_absolute_path(dvc):
+    stage = Stage(dvc)
 
     path = os.path.abspath(os.path.join("path", "to", "file"))
     output = OutputLOCAL(stage, path, cache=False)

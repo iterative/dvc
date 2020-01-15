@@ -54,13 +54,13 @@ class TestPipelineShowSingle(TestDvc):
         self.assertNotEqual(ret, 0)
 
 
-def test_single_ascii(repo_dir, dvc_repo):
-    dvc_repo.add(repo_dir.FOO)
+def test_single_ascii(tmp_dir, dvc):
+    tmp_dir.dvc_gen("foo", "foo content")
     assert main(["pipeline", "show", "--ascii", "foo.dvc"]) == 0
 
 
-def test_single_ascii_commands(repo_dir, dvc_repo):
-    dvc_repo.add(repo_dir.FOO)
+def test_single_ascii_commands(tmp_dir, dvc):
+    tmp_dir.dvc_gen("foo", "foo content")
     assert main(["pipeline", "show", "--ascii", "foo.dvc", "--commands"]) == 0
 
 
@@ -98,10 +98,9 @@ class TestPipelineShow(TestRepro):
         self.assertEqual(ret, 0)
 
 
-def test_print_locked_stages(repo_dir, dvc_repo, caplog):
-    dvc_repo.add("foo")
-    dvc_repo.add("bar")
-    dvc_repo.lock_stage("foo.dvc")
+def test_print_locked_stages(tmp_dir, dvc, caplog):
+    tmp_dir.dvc_gen({"foo": "foo content", "bar": "bar content"})
+    dvc.lock_stage("foo.dvc")
 
     caplog.clear()
     with caplog.at_level(logging.INFO, logger="dvc"):
@@ -111,13 +110,9 @@ def test_print_locked_stages(repo_dir, dvc_repo, caplog):
     assert "bar.dvc" not in caplog.text
 
 
-def test_dot_outs(repo_dir, dvc_repo):
-    dvc_repo.add(repo_dir.FOO)
-    dvc_repo.run(
-        outs=["file"],
-        deps=[repo_dir.FOO, repo_dir.CODE],
-        cmd="python {} {} {}".format(repo_dir.CODE, repo_dir.FOO, "file"),
-    )
+def test_dot_outs(tmp_dir, dvc, run_copy):
+    tmp_dir.gen("foo", "foo content")
+    run_copy("foo", "file")
     assert main(["pipeline", "show", "--dot", "file.dvc", "--outs"]) == 0
 
 

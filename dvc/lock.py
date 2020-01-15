@@ -68,6 +68,10 @@ class Lock(object):
         self._lock.close()
         self._lock = None
 
+    @property
+    def is_locked(self):
+        return bool(self._lock)
+
     def __enter__(self):
         self.lock()
 
