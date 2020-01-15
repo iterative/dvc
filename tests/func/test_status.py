@@ -3,6 +3,7 @@ import shutil
 
 from mock import patch
 
+from dvc.repo import Repo
 from dvc.main import main
 from dvc.compat import fspath
 from tests.basic_env import TestDvc
@@ -58,3 +59,36 @@ def test_status_non_dvc_repo_import(tmp_dir, dvc, erepo_dir):
             "file ({})".format(fspath(erepo_dir)): "update available"
         }
     }
+
+
+def test_status_before_and_after_dvc_init(tmp_dir, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.scm.repo.index.remove([".dvc"], r=True)
+        shutil.rmtree(".dvc")
+        erepo_dir.scm_gen("file", "first version")
+        erepo_dir.scm.add(["file"])
+        erepo_dir.scm.commit("first version")
+        old_rev = erepo_dir.scm.get_rev()
+
+    dvc.imp(fspath(erepo_dir), "file", "file")
+
+    assert dvc.status(["file.dvc"]) == {}
+
+    with erepo_dir.chdir():
+        Repo.init()
+        erepo_dir.scm.repo.index.remove(["file"])
+        os.remove("file")
+        erepo_dir.dvc_gen("file", "second version")
+        erepo_dir.scm.add([".dvc", "file.dvc"])
+        erepo_dir.scm.commit("version with dvc")
+        new_rev = erepo_dir.scm.get_rev()
+
+    assert old_rev != new_rev
+
+    # Caching in external repos doesn't see upstream updates within single
+    # cli call, so we need to clean the caches to see the changes.
+    clean_repos()
+
+    status = dvc.status(["file.dvc"])
+
+    print("STATUS", status)

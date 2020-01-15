@@ -53,35 +53,37 @@ class DependencyREPO(DependencyLOCAL):
             PathInfo(os.path.join(repo.root_dir, self.def_path))
         )
 
-    def _has_changed(self):
-        with self._make_repo() as repo, self._make_repo(
-            rev_lock=None
-        ) as updated_repo:
-            try:
-                current = repo.find_out_by_relpath(self.def_path).info
-                updated = updated_repo.find_out_by_relpath(self.def_path).info
+    # fileinfo is a dictionary containing "checksum" and "path"
+    def _get_fileinfo(self, updated=False):
+        rev_lock = None
+        if not updated:
+            rev_lock = self.def_repo.get(self.PARAM_REV_LOCK)
 
-                return current != updated
-            except OutputNotFoundError:
-                # Need to load the state before calculating checksums
-                repo.state.load()
-                updated_repo.state.load()
+        try:
+            with self._make_repo(rev_lock=rev_lock) as repo:
+                path = os.path.join(repo.root_dir, self.def_path)
+                try:
+                    checksum = repo.find_out_by_relpath(self.def_path).info[
+                        "md5"
+                    ]
+                except OutputNotFoundError:
+                    repo.state.load()
+                    checksum = repo.cache.local.get_checksum(PathInfo(path))
 
-                return self._get_checksum_in_repo(
-                    repo
-                ) != self._get_checksum_in_repo(updated_repo)
+                assert checksum
 
-    def _has_changed_non_dvc(self):
-        url = self.def_repo[self.PARAM_URL]
-        rev = self.def_repo.get(self.PARAM_REV)
-        rev_lock = self.def_repo.get(self.PARAM_REV_LOCK, rev)
+                return {"checksum": checksum, "path": path, "repo": repo}
 
-        current_repo = cached_clone(url, rev=rev_lock or rev)
-        updated_repo = cached_clone(url, rev=rev)
+        except NotDvcRepoError:
+            repo_path = cached_clone(
+                self.def_repo[self.PARAM_URL],
+                rev=rev_lock or self.def_repo.get(self.PARAM_REV),
+            )
+            path = os.path.join(repo_path, self.def_path)
+            return {"checksum": None, "path": path, "repo": None}
 
-        current_path = os.path.join(current_repo, self.def_path)
-        updated_path = os.path.join(updated_repo, self.def_path)
-
+    @staticmethod
+    def _paths_changed(current_path, updated_path):
         if not os.path.exists(current_path):
             raise FileNotFoundError(current_path)
 
@@ -102,11 +104,29 @@ class DependencyREPO(DependencyLOCAL):
 
         return not filecmp.cmp(current_path, updated_path, shallow=False)
 
+    def _checkout_if_needed(self, fileinfo):
+        if os.path.exists(fileinfo["path"]):
+            return
+        if "repo" not in fileinfo:
+            return
+
+        fileinfo["repo"].checkout([fileinfo["path"] + ".dvc"], recursive=True)
+
     def status(self):
-        try:
-            has_changed = self._has_changed()
-        except NotDvcRepoError:
-            has_changed = self._has_changed_non_dvc()
+        current_fileinfo = self._get_fileinfo(updated=False)
+        updated_fileinfo = self._get_fileinfo(updated=True)
+        print("CURRENT", current_fileinfo, "UPDATED", updated_fileinfo)
+
+        if current_fileinfo["checksum"] and updated_fileinfo["checksum"]:
+            has_changed = (
+                current_fileinfo["checksum"] != updated_fileinfo["checksum"]
+            )
+        else:
+            self._checkout_if_needed(current_fileinfo)
+            self._checkout_if_needed(updated_fileinfo)
+            has_changed = DependencyREPO._paths_changed(
+                current_fileinfo["path"], updated_fileinfo["path"]
+            )
 
         if has_changed:
             return {str(self): "update available"}
