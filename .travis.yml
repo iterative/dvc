@@ -113,7 +113,7 @@ deploy:
       - dvc*.exe
     skip_cleanup: true
     on:
-      condition: "$(./scripts/ci/deploy_condition.sh) && $TRAVIS_EVENT_TYPE = push && $(ls dvc*.rpm dvc*.deb dvc*.pkg dvc*.exe 2>&1)"
+      condition: "$(./scripts/ci/deploy_condition.sh dvc*.rpm dvc*.deb dvc*.pkg dvc*.exe)"
       tags: true
       repo: iterative/dvc
       stage: build
@@ -129,7 +129,7 @@ deploy:
       - dist/dvc*.tar.gz
     skip_cleanup: true
     on:
-      condition: "$(ls dist/dvc*.whl dist/dvc*.tar.gz 2>&1) && $TRAVIS_EVENT_TYPE = push"
+      condition: "$(./scripts/ci/deploy_condition.sh dist/dvc*.whl dist/dvc*.tar.gz)"
       tags: true
       repo: iterative/dvc
       stage: build
@@ -139,6 +139,6 @@ deploy:
     skip_cleanup: true
     on:
       all_branches: true
-      condition: "$(ls dvc_*.snap 2>&1) && ($TRAVIS_BRANCH = master || -n $TRAVIS_TAG) && $TRAVIS_EVENT_TYPE = push"
+      condition: "$(./scripts/ci/deploy_condition.sh dvc_*.snap) && ($TRAVIS_BRANCH = master || -n $TRAVIS_TAG)"
       repo: iterative/dvc
       stage: build
