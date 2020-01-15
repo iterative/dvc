@@ -2,7 +2,7 @@ from dvc.cli import parse_args
 from dvc.command.run import CmdRun
 
 
-def test_run(mocker, dvc_repo):
+def test_run(mocker, dvc):
     cli_args = parse_args(
         [
             "run",
@@ -64,7 +64,7 @@ def test_run(mocker, dvc_repo):
     )
 
 
-def test_run_args_from_cli(mocker, dvc_repo):
+def test_run_args_from_cli(mocker, dvc):
     args = parse_args(["run", "echo", "foo"])
     cmd = args.func(args)
     m = mocker.patch.object(cmd.repo, "run", autospec=True)
@@ -90,7 +90,7 @@ def test_run_args_from_cli(mocker, dvc_repo):
     )
 
 
-def test_run_args_with_spaces(mocker, dvc_repo):
+def test_run_args_with_spaces(mocker, dvc):
     args = parse_args(["run", "echo", "foo bar"])
     cmd = args.func(args)
     m = mocker.patch.object(cmd.repo, "run", autospec=True)

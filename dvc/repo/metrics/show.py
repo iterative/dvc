@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 def _read_metric_json(fd, json_path):
     parser = parse(json_path)
-    return [x.value for x in parser.find(json.load(fd))]
+    return {str(x.full_path): x.value for x in parser.find(json.load(fd))}
 
 
 def _get_values(row):
@@ -266,6 +266,7 @@ def show(
     all_branches=False,
     all_tags=False,
     recursive=False,
+    revs=None,
 ):
     res = {}
     found = set()
@@ -274,7 +275,9 @@ def show(
         # Iterate once to call `_collect_metrics` on all the stages
         targets = [None]
 
-    for branch in repo.brancher(all_branches=all_branches, all_tags=all_tags):
+    for branch in repo.brancher(
+        revs=revs, all_branches=all_branches, all_tags=all_tags
+    ):
         metrics = {}
 
         for target in targets:

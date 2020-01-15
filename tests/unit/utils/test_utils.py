@@ -78,10 +78,10 @@ def test_fix_env_pyenv(path, orig):
     assert fix_env(env)["PATH"] == orig
 
 
-def test_file_md5(repo_dir):
-    fname = repo_dir.FOO
-    fname_object = PathInfo(fname)
-    assert file_md5(fname) == file_md5(fname_object)
+def test_file_md5(tmp_dir):
+    tmp_dir.gen("foo", "foo content")
+
+    assert file_md5("foo") == file_md5(PathInfo("foo"))
 
 
 def test_tmp_fname():

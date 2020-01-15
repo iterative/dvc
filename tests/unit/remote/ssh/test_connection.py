@@ -88,7 +88,8 @@ def test_walk(tmp_path, ssh):
     not in ["xfs", "apfs", "btrfs"],
     reason="Reflinks only work in specified file systems",
 )
-def test_reflink(repo_dir, ssh):
+def test_reflink(tmp_dir, ssh):
+    tmp_dir.gen("foo", "foo content")
     ssh.reflink("foo", "link")
     assert filecmp.cmp("foo", "link")
     assert not System.is_symlink("link")
@@ -99,7 +100,8 @@ def test_reflink(repo_dir, ssh):
     platform.system() == "Windows",
     reason="sftp symlink is not supported on Windows",
 )
-def test_symlink(repo_dir, ssh):
+def test_symlink(tmp_dir, ssh):
+    tmp_dir.gen("foo", "foo content")
     ssh.symlink("foo", "link")
     assert System.is_symlink("link")
 
@@ -108,7 +110,8 @@ def test_symlink(repo_dir, ssh):
     platform.system() == "Windows",
     reason="hardlink is temporarily not supported on Windows",
 )
-def test_hardlink(repo_dir, ssh):
+def test_hardlink(tmp_dir, ssh):
+    tmp_dir.gen("foo", "foo content")
     ssh.hardlink("foo", "link")
     assert System.is_hardlink("link")
 
@@ -117,12 +120,14 @@ def test_hardlink(repo_dir, ssh):
     platform.system() == "Windows",
     reason="copy is temporarily not supported on Windows",
 )
-def test_copy(repo_dir, ssh):
+def test_copy(tmp_dir, ssh):
+    tmp_dir.gen("foo", "foo content")
     ssh.copy("foo", "link")
     assert filecmp.cmp("foo", "link")
 
 
-def test_move(repo_dir, ssh):
+def test_move(tmp_dir, ssh):
+    tmp_dir.gen("foo", "foo content")
     ssh.move("foo", "copy")
     assert os.path.exists("copy")
     assert not os.path.exists("foo")

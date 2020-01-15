@@ -14,7 +14,7 @@ from dvc.remote import RemoteLOCAL, RemoteConfig
 from dvc.remote.base import RemoteBASE
 from dvc.compat import fspath
 from tests.basic_env import TestDvc
-from tests.remotes import get_local_storagepath
+from tests.remotes import Local
 
 
 class TestRemote(TestDvc):
@@ -159,7 +159,7 @@ class TestRemoteShouldHandleUppercaseRemoteName(TestDvc):
     upper_case_remote_name = "UPPERCASEREMOTE"
 
     def test(self):
-        remote_url = get_local_storagepath()
+        remote_url = Local.get_storagepath()
         ret = main(["remote", "add", self.upper_case_remote_name, remote_url])
         self.assertEqual(ret, 0)
 
