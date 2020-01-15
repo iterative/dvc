@@ -261,8 +261,11 @@ class RemoteGDrive(RemoteBASE):
     def get_remote_item(self, name, parents_ids):
         if not parents_ids:
             return None
-        query = " or ".join(
-            "'{}' in parents".format(parent_id) for parent_id in parents_ids
+        query = "({})".format(
+            " or ".join(
+                "'{}' in parents".format(parent_id)
+                for parent_id in parents_ids
+            )
         )
 
         query += " and trashed=false and title='{}'".format(name)
@@ -331,8 +334,10 @@ class RemoteGDrive(RemoteBASE):
         if not self.cached_ids:
             return
 
-        query = " or ".join(
-            "'{}' in parents".format(dir_id) for dir_id in self.cached_ids
+        query = "({})".format(
+            " or ".join(
+                "'{}' in parents".format(dir_id) for dir_id in self.cached_ids
+            )
         )
 
         query += " and trashed=false"
