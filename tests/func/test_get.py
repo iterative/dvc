@@ -5,6 +5,7 @@ import pytest
 
 from dvc.cache import Cache
 from dvc.config import Config
+from dvc.main import main
 from dvc.repo.get import GetDVCFileError, PathMissingError
 from dvc.repo import Repo
 from dvc.system import System
@@ -184,3 +185,15 @@ def test_get_from_non_dvc_master(tmp_dir, erepo_dir, caplog):
 
     assert caplog.text == ""
     assert (tmp_dir / dst).read_text() == "some_contents"
+
+
+def test_get_url(tmp_dir, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo")
+        assert main(["get", ".", "foo", "--show-url"]) == 0
+
+
+def test_get_url_not_existing(tmp_dir, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo")
+        assert main(["get", ".", "food", "--show-url"]) == 1

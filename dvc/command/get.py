@@ -10,7 +10,28 @@ logger = logging.getLogger(__name__)
 
 
 class CmdGet(CmdBaseNoRepo):
+    def _run_get_url(self):
+        from dvc.api import get_url
+
+        try:
+            url = get_url(
+                self.args.path, repo=self.args.url, rev=self.args.rev
+            )
+            logger.info("{} {}".format(self.args.path, url))
+        except DvcException:
+            logger.exception(
+                "failed to show url for '{}' from '{}'".format(
+                    self.args.path, self.args.url
+                )
+            )
+            return 1
+        return 0
+
     def run(self):
+
+        if self.args.show_url:
+            return self._run_get_url()
+
         from dvc.repo import Repo
 
         try:
@@ -54,5 +75,10 @@ def add_parser(subparsers, parent_parser):
     )
     get_parser.add_argument(
         "--rev", nargs="?", help="Git revision (e.g. branch, tag, SHA)"
+    )
+    get_parser.add_argument(
+        "--show-url",
+        action="store_true",
+        help="Returns path/url to the location in remote for specified path",
     )
     get_parser.set_defaults(func=CmdGet)
