@@ -1,6 +1,7 @@
 import copy
 import os
 from contextlib import contextmanager
+import filecmp
 
 from funcy import merge
 
@@ -52,7 +53,7 @@ class DependencyREPO(DependencyLOCAL):
             PathInfo(os.path.join(repo.root_dir, self.def_path))
         )
 
-    def status(self):
+    def _has_changed(self):
         with self._make_repo() as repo, self._make_repo(
             rev_lock=None
         ) as updated_repo:
@@ -60,15 +61,52 @@ class DependencyREPO(DependencyLOCAL):
                 current = repo.find_out_by_relpath(self.def_path).info
                 updated = updated_repo.find_out_by_relpath(self.def_path).info
 
-                has_changed = current != updated
+                return current != updated
             except OutputNotFoundError:
                 # Need to load the state before calculating checksums
                 repo.state.load()
                 updated_repo.state.load()
 
-                has_changed = self._get_checksum_in_repo(
+                return self._get_checksum_in_repo(
                     repo
                 ) != self._get_checksum_in_repo(updated_repo)
+
+    def _has_changed_non_dvc(self):
+        url = self.def_repo[self.PARAM_URL]
+        rev = self.def_repo.get(self.PARAM_REV)
+        rev_lock = self.def_repo.get(self.PARAM_REV_LOCK, rev)
+
+        current_repo = cached_clone(url, rev=rev_lock or rev)
+        updated_repo = cached_clone(url, rev=rev)
+
+        current_path = os.path.join(current_repo, self.def_path)
+        updated_path = os.path.join(updated_repo, self.def_path)
+
+        if not os.path.exists(current_path):
+            raise FileNotFoundError(current_path)
+
+        if not os.path.exists(updated_path):
+            raise FileNotFoundError(updated_path)
+
+        is_dir = os.path.isdir(current_path)
+
+        assert is_dir == os.path.isdir(updated_path)
+
+        if is_dir:
+            comparison = filecmp.dircmp(current_path, updated_path)
+            return not (
+                comparison.left_only
+                or comparison.right_only
+                or comparison.diff_files
+            )
+
+        return not filecmp.cmp(current_path, updated_path, shallow=False)
+
+    def status(self):
+        try:
+            has_changed = self._has_changed()
+        except NotDvcRepoError:
+            has_changed = self._has_changed_non_dvc()
 
         if has_changed:
             return {str(self): "update available"}
