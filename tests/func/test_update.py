@@ -80,16 +80,19 @@ def test_update_import_url(repo_dir, dvc_repo):
 def test_update_rev(tmp_dir, dvc, erepo_dir, monkeypatch):
     with monkeypatch.context() as m:
         m.chdir(fspath(erepo_dir))
-        erepo_dir.scm.checkout("feature", create_new=True)
+        erepo_dir.scm.checkout("new_branch", create_new=True)
+        erepo_dir.dvc_gen("foo", "foo content", commit="create foo on branch")
+        erepo_dir.scm.checkout("master")
+        erepo_dir.scm.checkout("new_branch_2", create_new=True)
         erepo_dir.dvc_gen(
-            "foo", "foo content", commit="create foo on feature branch"
+            "foo", "foo content 2", commit="create foo on branch"
         )
         erepo_dir.scm.checkout("master")
 
-    stage = dvc.imp(fspath(erepo_dir), "foo", "foo_imported")
-    dvc.update(stage.path, rev="feature")
+    stage = dvc.imp(fspath(erepo_dir), "foo", "foo_imported", rev="new_branch")
+    dvc.update(stage.path, rev="new_branch_2")
 
-    assert (tmp_dir / "foo_imported").read_text() == "foo content"
+    assert (tmp_dir / "foo_imported").read_text() == "foo content 2"
 
 
 def test_update_rev_non_git_failure(repo_dir, dvc_repo):
