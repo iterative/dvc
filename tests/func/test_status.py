@@ -89,6 +89,10 @@ def test_status_before_and_after_dvc_init(tmp_dir, dvc, erepo_dir):
     # cli call, so we need to clean the caches to see the changes.
     clean_repos()
 
-    status = dvc.status(["file.dvc"])
+    status, = dvc.status(["file.dvc"])["file.dvc"]
 
-    print("STATUS", status)
+    assert status == {
+        "changed deps": {
+            "file ({})".format(fspath(erepo_dir)): "update available"
+        }
+    }

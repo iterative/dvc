@@ -115,7 +115,6 @@ class DependencyREPO(DependencyLOCAL):
     def status(self):
         current_fileinfo = self._get_fileinfo(updated=False)
         updated_fileinfo = self._get_fileinfo(updated=True)
-        print("CURRENT", current_fileinfo, "UPDATED", updated_fileinfo)
 
         if current_fileinfo["checksum"] and updated_fileinfo["checksum"]:
             has_changed = (
