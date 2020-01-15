@@ -135,7 +135,7 @@ deploy:
       stage: build
   - provider: snap
     snap: dvc_*.snap
-    channel: ${SOURCE_TAG:+stable}${SOURCE_TAG:-edge}
+    channel: ${TRAVIS_TAG:+stable}${TRAVIS_TAG:-edge}
     skip_cleanup: true
     on:
       all_branches: true
