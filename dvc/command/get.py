@@ -3,7 +3,7 @@ import logging
 
 from .base import append_doc_link
 from .base import CmdBaseNoRepo
-from dvc.exceptions import DvcException, NotDvcRepoError
+from dvc.exceptions import DvcException
 
 
 logger = logging.getLogger(__name__)
@@ -18,23 +18,8 @@ class CmdGet(CmdBaseNoRepo):
                 self.args.path, repo=self.args.url, rev=self.args.rev
             )
             logger.info(url)
-        except NotDvcRepoError:
-            # NOTE: there's no way to get direct links to files inside
-            # git repository.
-            logger.exception(
-                "Could not show url for '{}' from '{}'. ".format(
-                    self.args.path, self.args.url
-                )
-                + "Only DVC repository is supported currently.",
-                exc_info=None,
-            )
-            return 1
         except DvcException:
-            logger.exception(
-                "failed to show url for '{}' from '{}'".format(
-                    self.args.path, self.args.url
-                )
-            )
+            logger.exception("failed to show url")
             return 1
 
         return 0
