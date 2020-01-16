@@ -1,13 +1,30 @@
 import errno
 import logging
 import os
+import platform
 import shutil
 
 from dvc.compat import fspath
 from dvc.exceptions import DvcException
 
-
 logger = logging.getLogger(__name__)
+
+if platform.system() == "Windows":
+    try:
+        import speedcopy
+
+        speedcopy.patch_copyfile()
+    except ImportError:
+        pass
+else:
+    import sys
+
+    if sys.version_info < (3, 8):
+        try:
+            # Importing the module monkey-patches shutil.copyfile
+            import pyfastcopy  # noqa: F401
+        except ImportError:
+            pass
 
 
 class System(object):
@@ -90,8 +107,6 @@ class System(object):
 
     @staticmethod
     def reflink(source, link_name):
-        import platform
-
         source, link_name = fspath(source), fspath(link_name)
 
         system = platform.system()

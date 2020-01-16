@@ -75,6 +75,8 @@ install_requires = [
     "win-unicode-console>=0.5; sys_platform == 'win32'",
     "pywin32>=225; sys_platform == 'win32'",
     "networkx>=2.1,<2.4",
+    "speedcopy>=2.0.1",
+    "pyfastcopy>=1.0.3",
     "flatten-dict>=0.2.0",
     "texttable>=0.5.2",
 ]
