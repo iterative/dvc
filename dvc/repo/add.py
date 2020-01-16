@@ -4,12 +4,12 @@ import os
 import colorama
 
 from . import locked
-from dvc.exceptions import RecursiveAddingWhileUsingFilename
-from dvc.output.base import OutputDoesNotExistError
-from dvc.progress import Tqdm
-from dvc.repo.scm_context import scm_context
-from dvc.stage import Stage
-from dvc.utils import LARGE_DIR_SIZE
+from ..exceptions import RecursiveAddingWhileUsingFilename
+from ..output.base import OutputDoesNotExistError
+from ..progress import Tqdm
+from ..repo.scm_context import scm_context
+from ..stage import Stage
+from ..utils import LARGE_DIR_SIZE
 
 logger = logging.getLogger(__name__)
 
