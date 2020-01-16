@@ -4,7 +4,6 @@ import logging
 import sys
 from threading import RLock
 
-from funcy import merge
 from tqdm import tqdm
 
 from dvc.utils import env2bool
@@ -63,7 +62,7 @@ class Tqdm(tqdm):
         """
         kwargs = kwargs.copy()
         if bytes:
-            kwargs = merge(self.BYTES_DEFAULTS, kwargs)
+            kwargs = {**self.BYTES_DEFAULTS, **kwargs}
         else:
             kwargs.setdefault("unit_scale", total > 999 if total else True)
         if file is None:
