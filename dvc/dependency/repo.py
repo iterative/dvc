@@ -47,7 +47,6 @@ class DependencyREPO(DependencyLOCAL):
         with external_repo(**merge(self.def_repo, overrides)) as repo:
             yield repo
 
-    # fileinfo is a dictionary containing "checksum" and "path"
     def _get_checksum(self, updated=False):
         rev_lock = None
         if not updated:
@@ -55,15 +54,11 @@ class DependencyREPO(DependencyLOCAL):
 
         try:
             with self._make_repo(rev_lock=rev_lock) as repo:
-                path = os.path.join(repo.root_dir, self.def_path)
-
                 try:
                     return repo.find_out_by_relpath(self.def_path).info["md5"]
                 except OutputNotFoundError:
-                    with repo.state:
-                        return self.repo.cache.local.get_checksum(
-                            PathInfo(path)
-                        )
+                    # Fall through to after exception handler
+                    path = os.path.join(repo.root_dir, self.def_path)
 
         except NotDvcRepoError:
             repo_path = cached_clone(
@@ -71,7 +66,8 @@ class DependencyREPO(DependencyLOCAL):
                 rev=rev_lock or self.def_repo.get(self.PARAM_REV),
             )
             path = os.path.join(repo_path, self.def_path)
-            return self.repo.cache.local.get_checksum(PathInfo(path))
+
+        return self.repo.cache.local.get_checksum(PathInfo(path))
 
     def status(self):
         current_checksum = self._get_checksum(updated=False)
