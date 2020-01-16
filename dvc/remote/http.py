@@ -109,6 +109,8 @@ class RemoteHTTP(RemoteBASE):
                 # This should be treated as an error
                 raise requests.exceptions.RequestException
 
+            return res
+
         except requests.exceptions.RequestException:
             raise DvcException("could not perform a {} request".format(method))
 
