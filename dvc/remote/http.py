@@ -103,7 +103,7 @@ class RemoteHTTP(RemoteBASE):
         try:
             res = self._session.request(method, url, **kwargs)
 
-            if kwargs["allow_redirects"] and res.is_redirect:
+            if kwargs["allow_redirects"] and res.status_code in (301, 302):
                 # AWS s3 doesn't like to add a location header to its redirects
                 # from https://s3.amazonaws.com/<bucket name>/* type URLs.
                 # This should be treated as an error
