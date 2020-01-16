@@ -54,20 +54,19 @@ class DependencyREPO(DependencyLOCAL):
 
         try:
             with self._make_repo(rev_lock=rev_lock) as repo:
-                try:
-                    return repo.find_out_by_relpath(self.def_path).info["md5"]
-                except OutputNotFoundError:
-                    # Fall through to after exception handler
-                    path = os.path.join(repo.root_dir, self.def_path)
+                return repo.find_out_by_relpath(self.def_path).info["md5"]
 
-        except NotDvcRepoError:
-            repo_path = cached_clone(
-                self.def_repo[self.PARAM_URL],
-                rev=rev_lock or self.def_repo.get(self.PARAM_REV),
-            )
-            path = os.path.join(repo_path, self.def_path)
+        except (NotDvcRepoError, OutputNotFoundError):
+            # Fall through and clone
+            pass
 
-        return self.repo.cache.local.get_checksum(PathInfo(path))
+        repo_path = cached_clone(
+            self.def_repo[self.PARAM_URL],
+            rev=rev_lock or self.def_repo.get(self.PARAM_REV),
+        )
+        path = PathInfo(os.path.join(repo_path, self.def_path))
+
+        return self.repo.cache.local.get_checksum(path)
 
     def status(self):
         current_checksum = self._get_checksum(updated=False)
