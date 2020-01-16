@@ -24,6 +24,7 @@ def test_get_url(mocker):
 
     cmd = cli_args.func(cli_args)
     m = mocker.patch("dvc.api.get_url")
+    m.return_value = "url"
 
     assert cmd.run() == 0
 
