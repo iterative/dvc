@@ -56,6 +56,7 @@ def add(repo, targets, recursive=False, no_commit=False, fname=None):
                 unit="file",
                 disable=True if len(stages) == 1 else None,
             ):
+                stage.save()
 
                 if not no_commit:
                     stage.commit()
