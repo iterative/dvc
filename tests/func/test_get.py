@@ -174,7 +174,9 @@ def test_get_from_non_dvc_master(tmp_dir, erepo_dir, caplog):
 
     caplog.clear()
     dst = "file_imported"
-    with caplog.at_level(logging.INFO, logger="dvc"):
+    with caplog.at_level(logging.INFO, logger="dvc"), caplog.at_level(
+        logging.INFO, logger="git"
+    ):
         Repo.get(fspath(erepo_dir), "some_file", out=dst, rev="branch")
 
     assert caplog.text == ""
