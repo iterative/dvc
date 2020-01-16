@@ -174,7 +174,12 @@ def test_get_from_non_dvc_master(tmp_dir, erepo_dir, caplog):
 
     caplog.clear()
     dst = "file_imported"
-    with caplog.at_level(logging.INFO, logger="dvc"):
+
+    # removing `git` import in conftest resulted in unexpected logs from
+    # that package, see https://github.com/iterative/dvc/issues/3167
+    with caplog.at_level(logging.INFO, logger="git"), caplog.at_level(
+        logging.INFO, logger="dvc"
+    ):
         Repo.get(fspath(erepo_dir), "some_file", out=dst, rev="branch")
 
     assert caplog.text == ""
