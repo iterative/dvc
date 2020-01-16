@@ -5,6 +5,7 @@ import colorama
 
 from . import locked
 from dvc.exceptions import RecursiveAddingWhileUsingFilename
+from dvc.output.base import OutputDoesNotExistError
 from dvc.progress import Tqdm
 from dvc.repo.scm_context import scm_context
 from dvc.stage import Stage
@@ -50,18 +51,24 @@ def add(repo, targets, recursive=False, no_commit=False, fname=None):
 
             repo.check_modified_graph(stages)
 
-            for stage in Tqdm(
-                stages,
+            with Tqdm(
+                total=len(stages),
                 desc="Processing",
                 unit="file",
                 disable=True if len(stages) == 1 else None,
-            ):
-                stage.save()
+            ) as pbar_stages:
+                for stage in stages:
+                    try:
+                        stage.save()
+                    except OutputDoesNotExistError:
+                        pbar.n -= 1
+                        raise
 
-                if not no_commit:
-                    stage.commit()
+                    if not no_commit:
+                        stage.commit()
 
-                stage.dump()
+                    stage.dump()
+                    pbar_stages.update()
 
             stages_list += stages
 
