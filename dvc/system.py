@@ -2,12 +2,29 @@ import errno
 import logging
 import os
 import platform
+import shutil
 
 from dvc.compat import fspath
 from dvc.exceptions import DvcException
 
-
 logger = logging.getLogger(__name__)
+
+if platform.system() == "Windows":
+    try:
+        import speedcopy
+
+        speedcopy.patch_copyfile()
+    except ImportError:
+        pass
+else:
+    import sys
+
+    if sys.version_info < (3, 8):
+        try:
+            # Importing the module monkey-patches shutil.copyfile
+            import pyfastcopy  # noqa: F401
+        except ImportError:
+            pass
 
 
 class System(object):
@@ -18,20 +35,7 @@ class System(object):
     @staticmethod
     def copy(src, dest):
         src, dest = fspath(src), fspath(dest)
-        system = platform.system()
-        if system == "Windows":
-            import speedcopy
-
-            return speedcopy.copyfile(src, dest)
-        else:
-            import shutil
-            import sys
-
-            if sys.version_info < (3, 8):
-                # Importing the module monkey-patches shutil.copyfile
-                import pyfastcopy  # noqa: F401
-
-            return shutil.copyfile(src, dest)
+        return shutil.copyfile(src, dest)
 
     @staticmethod
     def hardlink(source, link_name):
