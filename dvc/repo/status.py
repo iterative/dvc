@@ -10,16 +10,11 @@ from . import locked
 logger = logging.getLogger(__name__)
 
 
-def _local_status(self, targets=None, with_deps=False):
+def _joint_status(stages):
     status = {}
 
-    if targets:
-        stages = cat(self.collect(t, with_deps=with_deps) for t in targets)
-    else:
-        stages = self.collect(None, with_deps=with_deps)
-
     for stage in stages:
-        if stage.locked:
+        if stage.locked and not stage.is_repo_import:
             logger.warning(
                 "DVC-file '{path}' is locked. Its dependencies are"
                 " not going to be shown in the status output.".format(
@@ -27,9 +22,18 @@ def _local_status(self, targets=None, with_deps=False):
                 )
             )
 
-        status.update(stage.status())
+        status.update(stage.status(check_updates=True))
 
     return status
+
+
+def _local_status(self, targets=None, with_deps=False):
+    if targets:
+        stages = cat(self.collect(t, with_deps=with_deps) for t in targets)
+    else:
+        stages = self.collect(None, with_deps=with_deps)
+
+    return _joint_status(stages)
 
 
 def _cloud_status(
