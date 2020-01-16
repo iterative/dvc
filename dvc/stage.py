@@ -1006,10 +1006,10 @@ class Stage(object):
         return ret
 
     @rwlocked(read=["deps", "outs"])
-    def status(self, for_status_command=False):
+    def status(self, check_updates=False):
         ret = []
 
-        show_import = self.is_repo_import and for_status_command
+        show_import = self.is_repo_import and check_updates
 
         if not self.locked or show_import:
             deps_status = self._status(self.deps)

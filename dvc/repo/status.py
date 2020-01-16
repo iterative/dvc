@@ -22,7 +22,7 @@ def _joint_status(stages):
                 )
             )
 
-        status.update(stage.status(for_status_command=True))
+        status.update(stage.status(check_updates=True))
 
     return status
 
