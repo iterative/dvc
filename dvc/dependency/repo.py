@@ -142,5 +142,10 @@ class DependencyREPO(DependencyLOCAL):
             )
 
     def update(self):
-        with self._make_repo(rev_lock=None) as repo:
-            self.def_repo[self.PARAM_REV_LOCK] = repo.scm.get_rev()
+        try:
+            with self._make_repo(rev_lock=None) as repo:
+                rev = repo.scm.get_rev()
+        except NotDvcRepoError:
+            clone_path = cached_clone(**self.def_repo)
+            rev = SCM(clone_path).get_rev()
+        self.def_repo[self.PARAM_REV_LOCK] = rev
