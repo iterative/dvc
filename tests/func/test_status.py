@@ -6,8 +6,8 @@ from mock import patch
 from dvc.repo import Repo
 from dvc.main import main
 from dvc.compat import fspath
-from tests.basic_env import TestDvc
 from dvc.external_repo import clean_repos
+from tests.basic_env import TestDvc
 
 
 class TestStatus(TestDvc):
