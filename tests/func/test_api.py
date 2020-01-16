@@ -14,7 +14,6 @@ from dvc.path_info import URLInfo
 from dvc.remote.config import RemoteConfig
 from tests.remotes import Azure, GCP, HDFS, Local, OSS, S3, SSH
 
-
 remote_params = [S3, GCP, Azure, OSS, SSH, HDFS]
 all_remote_params = [Local] + remote_params
 
@@ -57,7 +56,10 @@ def test_get_url_git_only_repo_throws_exception(tmp_dir, scm):
     with pytest.raises(UrlNotDvcRepoError) as exc_info:
         api.get_url("foo", fspath(tmp_dir))
 
-    assert fspath(tmp_dir) in str(exc_info)
+    print(fspath(tmp_dir))
+
+    # On windows, exc_info has path escaped, eg: `C:\\\\Users\\\\Files`.
+    assert fspath(tmp_dir) in str(exc_info).replace("\\\\", "\\")
 
 
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
