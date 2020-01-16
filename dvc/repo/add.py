@@ -81,8 +81,6 @@ def add(repo, targets, recursive=False, no_commit=False, fname=None):
 
 def _find_all_targets(repo, target, recursive):
     target = os.path.normpath(target)
-    if path_isin(target, repo.root_dir):
-        target = os.path.relpath(target, repo.root_dir)
 
     if os.path.isdir(target) and recursive:
         return [
