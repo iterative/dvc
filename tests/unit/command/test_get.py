@@ -23,10 +23,9 @@ def test_get_url(mocker, caplog):
     assert cli_args.func == CmdGet
 
     cmd = cli_args.func(cli_args)
-    m = mocker.patch("dvc.api.get_url")
-    m.return_value = "url"
+    m = mocker.patch("dvc.api.get_url", return_value="resource_url")
 
     assert cmd.run() == 0
-    assert "url" in caplog.text
+    assert "resource_url" in caplog.text
 
     m.assert_called_once_with("src", repo="repo_url", rev="version")
