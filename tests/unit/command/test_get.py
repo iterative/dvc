@@ -16,7 +16,7 @@ def test_get(mocker):
     m.assert_called_once_with("repo_url", path="src", out="out", rev="version")
 
 
-def test_get_url(mocker):
+def test_get_url(mocker, caplog):
     cli_args = parse_args(
         ["get", "repo_url", "src", "--rev", "version", "--show-url"]
     )
@@ -27,5 +27,6 @@ def test_get_url(mocker):
     m.return_value = "url"
 
     assert cmd.run() == 0
+    assert "url" in caplog.text
 
     m.assert_called_once_with("src", repo="repo_url", rev="version")
