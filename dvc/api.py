@@ -2,7 +2,6 @@ from builtins import open as builtin_open
 import importlib
 import os
 import sys
-from urllib.parse import urlparse
 from contextlib import contextmanager, _GeneratorContextManager as GCM
 import threading
 
@@ -96,7 +95,7 @@ def read(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
 
 @contextmanager
 def _make_repo(repo_url, rev=None):
-    if not repo_url or urlparse(repo_url).scheme == "":
+    if not repo_url or os.path.exists(repo_url):
         assert rev is None, "Custom revision is not supported for local repo"
         yield Repo(repo_url)
     else:
