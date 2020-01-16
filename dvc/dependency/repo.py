@@ -9,6 +9,7 @@ from dvc.external_repo import cached_clone
 from dvc.external_repo import external_repo
 from dvc.exceptions import NotDvcRepoError
 from dvc.exceptions import OutputNotFoundError
+from dvc.exceptions import NoOutputInExternalRepoError
 from dvc.exceptions import PathMissingError
 from dvc.utils.fs import fs_copy
 from dvc.path_info import PathInfo
@@ -55,8 +56,7 @@ class DependencyREPO(DependencyLOCAL):
         try:
             with self._make_repo(rev_lock=rev_lock) as repo:
                 return repo.find_out_by_relpath(self.def_path).info["md5"]
-
-        except (NotDvcRepoError, OutputNotFoundError):
+        except (NotDvcRepoError, NoOutputInExternalRepoError):
             # Fall through and clone
             pass
 
