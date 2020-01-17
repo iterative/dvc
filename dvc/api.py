@@ -58,6 +58,7 @@ def get_url(path, repo=None, rev=None, remote=None):
     """
     Returns the full URL to the data artifact specified by its `path` in a
     `repo`.
+    NOTE: There is no guarantee that the file actually exists in that location.
     """
     try:
         with _make_repo(repo, rev=rev) as _repo:
