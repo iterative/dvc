@@ -4,7 +4,7 @@ import os
 import pytest
 
 from dvc.path_info import PathInfo
-from dvc.utils import file_md5
+from dvc.utils import file_md5, resolve_output
 from dvc.utils import fix_env
 from dvc.utils import relpath
 from dvc.utils import to_chunks
@@ -104,3 +104,28 @@ def test_relpath():
     path_info = PathInfo(path)
 
     assert relpath(path) == relpath(path_info)
+
+
+@pytest.mark.parametrize(
+    "inp,out,is_dir,expected",
+    [
+        ["target", None, False, "target"],
+        ["target", "dir", True, os.path.join("dir", "target")],
+        ["target", "file_target", False, "file_target"],
+        [
+            "target",
+            os.path.join("dir", "subdir"),
+            True,
+            os.path.join("dir", "subdir", "target"),
+        ],
+        ["dir/", None, False, "dir"],
+        ["dir", None, False, "dir"],
+        ["dir", "other_dir", False, "other_dir"],
+        ["dir", "other_dir", True, os.path.join("other_dir", "dir")],
+    ],
+)
+def test_resolve_output(inp, out, is_dir, expected, mocker):
+    with mocker.patch("os.path.isdir", return_value=is_dir):
+        result = resolve_output(inp, out)
+
+    assert result == expected
