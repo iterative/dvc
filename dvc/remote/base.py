@@ -24,7 +24,7 @@ from dvc.path_info import PathInfo, URLInfo
 from dvc.progress import Tqdm
 from dvc.remote.slow_link_detection import slow_link_guard
 from dvc.state import StateNoop
-from dvc.utils import relpath, tmp_fname
+from dvc.utils import tmp_fname
 from dvc.utils.fs import move, makedirs
 from dvc.utils.http import open_url
 
@@ -275,8 +275,10 @@ class RemoteBASE(object):
             raise DirCacheError(checksum) from exc
 
         if not isinstance(d, list):
-            msg = "dir cache file format error '{}' [skipping the file]"
-            logger.error(msg.format(relpath(path_info)))
+            logger.error(
+                "dir cache file format error '{}' [skipping the file]",
+                path_info,
+            )
             return []
 
         for info in d:
@@ -342,36 +344,35 @@ class RemoteBASE(object):
         """
 
         logger.debug(
-            "checking if '{}'('{}') has changed.".format(
-                path_info, checksum_info
-            )
+            "checking if '{}'('{}') has changed.", path_info, checksum_info
         )
 
         if not self.exists(path_info):
-            logger.debug("'{}' doesn't exist.".format(path_info))
+            logger.debug("'{}' doesn't exist.", path_info)
             return True
 
         checksum = checksum_info.get(self.PARAM_CHECKSUM)
         if checksum is None:
-            logger.debug("checksum for '{}' is missing.".format(path_info))
+            logger.debug("checksum for '{}' is missing.", path_info)
             return True
 
         if self.changed_cache(checksum):
             logger.debug(
-                "cache for '{}'('{}') has changed.".format(path_info, checksum)
+                "cache for '{}'('{}') has changed.", path_info, checksum
             )
             return True
 
         actual = self.get_checksum(path_info)
         if checksum != actual:
             logger.debug(
-                "checksum '{}'(actual '{}') for '{}' has changed.".format(
-                    checksum, actual, path_info
-                )
+                "checksum '{}'(actual '{}') for '{}' has changed.",
+                checksum,
+                actual,
+                path_info,
             )
             return True
 
-        logger.debug("'{}' hasn't changed.".format(path_info))
+        logger.debug("'{}' hasn't changed.", path_info)
         return False
 
     def link(self, from_info, to_info):
@@ -394,8 +395,9 @@ class RemoteBASE(object):
                 return
 
             except DvcException as exc:
-                msg = "Cache type '{}' is not supported: {}"
-                logger.debug(msg.format(link_types[0], str(exc)))
+                logger.debug(
+                    "Cache type '{}' is not supported: {}", link_types[0], exc
+                )
                 del link_types[0]
 
         raise DvcException("no possible cache types left to try out.")
@@ -409,13 +411,13 @@ class RemoteBASE(object):
         if self.protected:
             self.protect(to_info)
 
-        msg = "Created {}'{}': {} -> {}".format(
+        logger.debug(
+            "Created {}'{}': {} -> {}",
             "protected " if self.protected else "",
             self.cache_types[0],
             from_info,
             to_info,
         )
-        logger.debug(msg)
 
     def _save_file(self, path_info, checksum, save_link=True):
         assert checksum
@@ -517,7 +519,7 @@ class RemoteBASE(object):
 
     def _save(self, path_info, checksum):
         to_info = self.checksum_to_path_info(checksum)
-        logger.debug("Saving '{}' to '{}'.".format(path_info, to_info))
+        logger.debug("Saving '{}' to '{}'.", path_info, to_info)
         if self.isdir(path_info):
             self._save_dir(path_info, checksum)
             return
@@ -529,8 +531,9 @@ class RemoteBASE(object):
         if isinstance(exception, OSError) and exception.errno == errno.EMFILE:
             raise exception
 
-        msg = "failed to {} '{}' to '{}'".format(operation, from_info, to_info)
-        logger.exception(msg)
+        logger.exception(
+            "failed to {} '{}' to '{}'", operation, from_info, to_info
+        )
         return 1
 
     def upload(self, from_info, to_info, name=None, no_progress_bar=False):
@@ -543,7 +546,7 @@ class RemoteBASE(object):
         if from_info.scheme != "local":
             raise NotImplementedError
 
-        logger.debug("Uploading '{}' to '{}'".format(from_info, to_info))
+        logger.debug("Uploading '{}' to '{}'", from_info, to_info)
 
         name = name or from_info.name
 
@@ -622,7 +625,7 @@ class RemoteBASE(object):
     ):
         makedirs(to_info.parent, exist_ok=True, mode=dir_mode)
 
-        logger.debug("Downloading '{}' to '{}'".format(from_info, to_info))
+        logger.debug("Downloading '{}' to '{}'", from_info, to_info)
         name = name or to_info.name
 
         tmp_file = tmp_fname(to_info)
@@ -728,9 +731,10 @@ class RemoteBASE(object):
         actual = self.get_checksum(cache_info)
 
         logger.debug(
-            "cache '{}' expected '{}' actual '{}'".format(
-                str(cache_info), checksum, actual
-            )
+            "cache '{}' expected '{}' actual '{}'",
+            cache_info,
+            checksum,
+            actual,
         )
 
         if not checksum or not actual:
@@ -740,7 +744,7 @@ class RemoteBASE(object):
             return False
 
         if self.exists(cache_info):
-            logger.warning("corrupted cache file '{}'.".format(cache_info))
+            logger.warning("corrupted cache file '{}'.", cache_info)
             self.remove(cache_info)
 
         return True
@@ -850,8 +854,9 @@ class RemoteBASE(object):
         """The file is changed we need to checkout a new copy"""
         cache_info = self.checksum_to_path_info(checksum)
         if self.exists(path_info):
-            msg = "data '{}' exists. Removing before checkout."
-            logger.warning(msg.format(str(path_info)))
+            logger.warning(
+                "data '{}' exists. Removing before checkout.", path_info
+            )
             self.safe_remove(path_info, force=force)
 
         self.link(cache_info, path_info)
@@ -882,7 +887,7 @@ class RemoteBASE(object):
 
         dir_info = self.get_dir_cache(checksum)
 
-        logger.debug("Linking directory '{}'.".format(path_info))
+        logger.debug("Linking directory '{}'.", path_info)
 
         for entry in dir_info:
             relative_path = entry[self.PARAM_RELPATH]
@@ -933,22 +938,24 @@ class RemoteBASE(object):
         skip = False
         if not checksum:
             logger.warning(
-                "No checksum info found for '{}'. "
-                "It won't be created.".format(str(path_info))
+                "No checksum info found for '{}'. " "It won't be created.",
+                path_info,
             )
             self.safe_remove(path_info, force=force)
             failed = path_info
 
         elif not relink and not self.changed(path_info, checksum_info):
-            msg = "Data '{}' didn't change."
-            logger.debug(msg.format(str(path_info)))
+            logger.debug("Data '{}' didn't change.", path_info)
             skip = True
 
         elif self.changed_cache(
             checksum, path_info=path_info, filter_info=filter_info
         ):
-            msg = "Cache '{}' not found. File '{}' won't be created."
-            logger.warning(msg.format(checksum, str(path_info)))
+            logger.warning(
+                "Cache '{}' not found. File '{}' won't be created.",
+                checksum,
+                path_info,
+            )
             self.safe_remove(path_info, force=force)
             failed = path_info
 
@@ -962,8 +969,7 @@ class RemoteBASE(object):
                 )
             return failed
 
-        msg = "Checking out '{}' with cache '{}'."
-        logger.debug(msg.format(str(path_info), checksum))
+        logger.debug("Checking out '{}' with cache '{}'.", path_info, checksum)
 
         self._checkout(
             path_info, checksum, force, progress_callback, relink, filter_info
