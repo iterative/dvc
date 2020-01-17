@@ -86,11 +86,7 @@ class RemoteBASE(object):
         self.repo = repo
 
         self._check_requires(config)
-
-        core = config.get(Config.SECTION_CORE, {})
-        self.checksum_jobs = core.get(
-            Config.SECTION_CORE_CHECKSUM_JOBS, self.CHECKSUM_JOBS
-        )
+        self.checksum_jobs = self._get_checksum_jobs(config)
 
         self.protected = False
         self.no_traverse = config.get(Config.SECTION_REMOTE_NO_TRAVERSE, True)
@@ -141,6 +137,19 @@ class RemoteBASE(object):
             "using https://github.com/iterative/dvc/issues. Thank you!"
         ).format(url, missing, " ".join(missing), self.scheme)
         raise RemoteMissingDepsError(msg)
+
+    def _get_checksum_jobs(self, config):
+        checksum_jobs = config.get(Config.SECTION_REMOTE_CHECKSUM_JOBS)
+        if checksum_jobs:
+            return checksum_jobs
+
+        if self.repo:
+            core = self.repo.config.config.get(Config.SECTION_CORE, {})
+            return core.get(
+                Config.SECTION_CORE_CHECKSUM_JOBS, self.CHECKSUM_JOBS
+            )
+
+        return self.CHECKSUM_JOBS
 
     def __repr__(self):
         return "{class_name}: '{path_info}'".format(

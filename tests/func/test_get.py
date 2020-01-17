@@ -5,6 +5,7 @@ import pytest
 
 from dvc.cache import Cache
 from dvc.config import Config
+from dvc.main import main
 from dvc.repo.get import GetDVCFileError, PathMissingError
 from dvc.repo import Repo
 from dvc.system import System
@@ -174,8 +175,40 @@ def test_get_from_non_dvc_master(tmp_dir, erepo_dir, caplog):
 
     caplog.clear()
     dst = "file_imported"
-    with caplog.at_level(logging.INFO, logger="dvc"):
+
+    # removing `git` import in conftest resulted in unexpected logs from
+    # that package, see https://github.com/iterative/dvc/issues/3167
+    with caplog.at_level(logging.INFO, logger="git"), caplog.at_level(
+        logging.INFO, logger="dvc"
+    ):
         Repo.get(fspath(erepo_dir), "some_file", out=dst, rev="branch")
 
     assert caplog.text == ""
     assert (tmp_dir / dst).read_text() == "some_contents"
+
+
+def test_get_url_positive(tmp_dir, erepo_dir, caplog):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo")
+
+    caplog.clear()
+    with caplog.at_level(logging.ERROR, logger="dvc"):
+        assert main(["get", fspath(erepo_dir), "foo", "--show-url"]) == 0
+        assert caplog.text == ""
+
+
+def test_get_url_not_existing(tmp_dir, erepo_dir, caplog):
+    with caplog.at_level(logging.ERROR, logger="dvc"):
+        assert (
+            main(["get", fspath(erepo_dir), "not-existing-file", "--show-url"])
+            == 1
+        )
+        assert "failed to show url" in caplog.text
+
+
+def test_get_url_git_only_repo(tmp_dir, scm, caplog):
+    tmp_dir.scm_gen({"foo": "foo"}, commit="initial")
+
+    with caplog.at_level(logging.ERROR):
+        assert main(["get", fspath(tmp_dir), "foo", "--show-url"]) == 1
+        assert "failed to show url" in caplog.text

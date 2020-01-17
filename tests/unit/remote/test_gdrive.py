@@ -1,6 +1,7 @@
 import pytest
 import os
 
+from dvc.config import Config
 from dvc.remote.gdrive import (
     RemoteGDrive,
     GDriveAccessTokenRefreshError,
@@ -14,6 +15,7 @@ USER_CREDS_MISSED_KEY_ERROR = "{}"
 
 class Repo(object):
     tmp_dir = ""
+    config = Config()
 
 
 class TestRemoteGDrive(object):

@@ -3,6 +3,7 @@
 import logging
 import os
 import threading
+from boto3.s3.transfer import TransferConfig
 
 from funcy import cached_property, wrap_prop
 
@@ -169,7 +170,13 @@ class RemoteS3(RemoteBASE):
             )
         else:
             source = {"Bucket": from_info.bucket, "Key": from_info.path}
-            s3.copy(source, to_info.bucket, to_info.path, ExtraArgs=extra_args)
+            s3.copy(
+                source,
+                to_info.bucket,
+                to_info.path,
+                ExtraArgs=extra_args,
+                Config=TransferConfig(multipart_threshold=size + 1),
+            )
 
         cached_etag = cls.get_etag(s3, to_info.bucket, to_info.path)
         if etag != cached_etag:

@@ -34,7 +34,7 @@ class GDriveMissedCredentialKeyError(DvcException):
 @decorator
 def _wrap_pydrive_retriable(call):
     from apiclient import errors
-    from pydrive.files import ApiRequestError
+    from pydrive2.files import ApiRequestError
 
     try:
         result = call()
@@ -61,7 +61,7 @@ gdrive_retry = compose(
 class RemoteGDrive(RemoteBASE):
     scheme = Schemes.GDRIVE
     path_cls = CloudURLInfo
-    REQUIRES = {"pydrive": "pydrive"}
+    REQUIRES = {"pydrive2": "pydrive2"}
     GDRIVE_USER_CREDENTIALS_DATA = "GDRIVE_USER_CREDENTIALS_DATA"
     DEFAULT_USER_CREDENTIALS_FILE = "gdrive-user-credentials.json"
 
@@ -177,11 +177,11 @@ class RemoteGDrive(RemoteBASE):
     @property
     @wrap_with(threading.RLock())
     def drive(self):
-        from pydrive.auth import RefreshError
+        from pydrive2.auth import RefreshError
 
         if not hasattr(self, "_gdrive"):
-            from pydrive.auth import GoogleAuth
-            from pydrive.drive import GoogleDrive
+            from pydrive2.auth import GoogleAuth
+            from pydrive2.drive import GoogleDrive
 
             if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA):
                 with open(
@@ -227,7 +227,7 @@ class RemoteGDrive(RemoteBASE):
                         self.gdrive_user_credentials_path, str(exc)
                     )
                 )
-            # Handle pydrive.auth.AuthenticationError and others auth failures
+            # Handle pydrive2.auth.AuthenticationError and others auth failures
             except Exception as exc:
                 raise DvcException(
                     "Google Drive authentication failed"
@@ -261,8 +261,11 @@ class RemoteGDrive(RemoteBASE):
     def get_remote_item(self, name, parents_ids):
         if not parents_ids:
             return None
-        query = " or ".join(
-            "'{}' in parents".format(parent_id) for parent_id in parents_ids
+        query = "({})".format(
+            " or ".join(
+                "'{}' in parents".format(parent_id)
+                for parent_id in parents_ids
+            )
         )
 
         query += " and trashed=false and title='{}'".format(name)
@@ -331,8 +334,10 @@ class RemoteGDrive(RemoteBASE):
         if not self.cached_ids:
             return
 
-        query = " or ".join(
-            "'{}' in parents".format(dir_id) for dir_id in self.cached_ids
+        query = "({})".format(
+            " or ".join(
+                "'{}' in parents".format(dir_id) for dir_id in self.cached_ids
+            )
         )
 
         query += " and trashed=false"

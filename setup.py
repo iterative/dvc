@@ -46,7 +46,6 @@ class build_py(_build_py):
 install_requires = [
     "python-dateutil<2.8.1,>=2.1",  # Consolidates azure-blob-storage and boto3
     "ply>=3.9",  # See https://github.com/pyinstaller/pyinstaller/issues/1945
-    "configparser>=3.5.0",
     "colorama>=0.3.9",
     "configobj>=5.0.6",
     "gitpython>=2.1.8",
@@ -75,6 +74,10 @@ install_requires = [
     "win-unicode-console>=0.5; sys_platform == 'win32'",
     "pywin32>=225; sys_platform == 'win32'",
     "networkx>=2.1,<2.4",
+    "speedcopy>=2.0.1",
+    "pyfastcopy>=1.0.3",
+    "flatten-dict>=0.2.0",
+    "texttable>=0.5.2",
 ]
 
 
@@ -84,10 +87,7 @@ gs = ["google-cloud-storage==1.19.0"]
 # google-api-python-client is internal dependency of pydrive. After merge of
 # https://github.com/gsuitedevs/PyDrive/pull/180 into pydrive's master,
 # usage of google-api-python-client can be removed from DVC.
-gdrive = [
-    "pydrive @ git+https://github.com/gsuitedevs/PyDrive@master#egg=pydrive",
-    "google-api-python-client>=1.2",
-]
+gdrive = ["pydrive2>=1.4.0", "google-api-python-client>=1.2"]
 s3 = ["boto3>=1.9.201"]
 azure = ["azure-storage-blob==2.1.0"]
 oss = ["oss2==2.6.1"]

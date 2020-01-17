@@ -9,8 +9,11 @@ from dvc.external_repo import cached_clone
 from dvc.external_repo import external_repo
 from dvc.exceptions import NotDvcRepoError
 from dvc.exceptions import OutputNotFoundError
+from dvc.exceptions import NoOutputInExternalRepoError
 from dvc.exceptions import PathMissingError
 from dvc.utils.fs import fs_copy
+from dvc.path_info import PathInfo
+from dvc.scm import SCM
 
 
 class DependencyREPO(DependencyLOCAL):
@@ -45,14 +48,31 @@ class DependencyREPO(DependencyLOCAL):
         with external_repo(**merge(self.def_repo, overrides)) as repo:
             yield repo
 
+    def _get_checksum(self, updated=False):
+        rev_lock = None
+        if not updated:
+            rev_lock = self.def_repo.get(self.PARAM_REV_LOCK)
+
+        try:
+            with self._make_repo(rev_lock=rev_lock) as repo:
+                return repo.find_out_by_relpath(self.def_path).info["md5"]
+        except (NotDvcRepoError, NoOutputInExternalRepoError):
+            # Fall through and clone
+            pass
+
+        repo_path = cached_clone(
+            self.def_repo[self.PARAM_URL],
+            rev=rev_lock or self.def_repo.get(self.PARAM_REV),
+        )
+        path = PathInfo(os.path.join(repo_path, self.def_path))
+
+        return self.repo.cache.local.get_checksum(path)
+
     def status(self):
-        with self._make_repo() as repo:
-            current = repo.find_out_by_relpath(self.def_path).info
+        current_checksum = self._get_checksum(updated=False)
+        updated_checksum = self._get_checksum(updated=True)
 
-        with self._make_repo(rev_lock=None) as repo:
-            updated = repo.find_out_by_relpath(self.def_path).info
-
-        if current != updated:
+        if current_checksum != updated_checksum:
             return {str(self): "update available"}
 
         return {}
@@ -105,6 +125,7 @@ class DependencyREPO(DependencyLOCAL):
         src_full_path = os.path.join(repo_dir, src_path)
         dst_full_path = os.path.abspath(to_path)
         fs_copy(src_full_path, dst_full_path)
+        self.def_repo[self.PARAM_REV_LOCK] = SCM(repo_dir).get_rev()
         return True
 
     def download(self, to):

@@ -2,7 +2,6 @@ from builtins import open as builtin_open
 import importlib
 import os
 import sys
-from urllib.parse import urlparse
 from contextlib import contextmanager, _GeneratorContextManager as GCM
 import threading
 
@@ -11,7 +10,7 @@ import ruamel.yaml
 from voluptuous import Schema, Required, Invalid
 
 from dvc.repo import Repo
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, NotDvcRepoError
 from dvc.external_repo import external_repo
 
 
@@ -44,16 +43,30 @@ class SummonError(DvcException):
     pass
 
 
+class UrlNotDvcRepoError(DvcException):
+    """Thrown if given url is not a DVC repository.
+
+    Args:
+        url (str): url to the repository.
+    """
+
+    def __init__(self, url):
+        super().__init__("URL '{}' is not a dvc repository.".format(url))
+
+
 def get_url(path, repo=None, rev=None, remote=None):
     """
     Returns the full URL to the data artifact specified by its `path` in a
     `repo`.
     """
-    with _make_repo(repo, rev=rev) as _repo:
-        abspath = os.path.join(_repo.root_dir, path)
-        out, = _repo.find_outs_by_path(abspath)
-        remote_obj = _repo.cloud.get_remote(remote)
-        return str(remote_obj.checksum_to_path_info(out.checksum))
+    try:
+        with _make_repo(repo, rev=rev) as _repo:
+            abspath = os.path.join(_repo.root_dir, path)
+            out, = _repo.find_outs_by_path(abspath)
+            remote_obj = _repo.cloud.get_remote(remote)
+            return str(remote_obj.checksum_to_path_info(out.checksum))
+    except NotDvcRepoError:
+        raise UrlNotDvcRepoError(repo)
 
 
 def open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
@@ -99,7 +112,7 @@ def read(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
 
 @contextmanager
 def _make_repo(repo_url, rev=None):
-    if not repo_url or urlparse(repo_url).scheme == "":
+    if not repo_url or os.path.exists(repo_url):
         assert (
             rev is None
         ), "Git revisions are not supported for local DVC projects."
