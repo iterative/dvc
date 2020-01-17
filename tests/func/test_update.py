@@ -174,28 +174,24 @@ def test_update_import_url(tmp_dir, dvc, tmp_path_factory):
     assert dst.read_text() == "updated file content"
 
 
-def test_update_git_tracked(tmp_dir, dvc, erepo_dir):
-    with erepo_dir.chdir():
-        erepo_dir.scm.repo.index.remove([".dvc"], r=True)
-        shutil.rmtree(".dvc")
-        erepo_dir.scm_gen("file", "first version")
-        erepo_dir.scm.add(["file"])
-        erepo_dir.scm.commit("first version")
+def test_update_git_tracked(tmp_dir, dvc, git_dir):
+    with git_dir.chdir():
+        git_dir.scm_gen("file", "first version", commit="create")
 
-    stage = dvc.imp(fspath(erepo_dir), "file", "file")
+    tmp_dir.dvc.imp(fspath(git_dir), "file", "file")
 
     # Just to make sure it doesn't crash
-    dvc.update(stage.path)
+    tmp_dir.dvc.update("file.dvc")
 
     assert (tmp_dir / "file").read_text() == "first version"
 
-    with erepo_dir.chdir():
-        erepo_dir.scm_gen("file", "second version", commit="update file")
+    with git_dir.chdir():
+        git_dir.scm_gen("file", "second version", commit="update file")
 
     # Caching in external repos doesn't see upstream updates within single
     # cli call, so we need to clean the caches to see the changes.
     clean_repos()
 
-    dvc.update("file.dvc")
+    tmp_dir.dvc.update("file.dvc")
 
     assert (tmp_dir / "file").read_text() == "second version"

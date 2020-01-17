@@ -54,7 +54,15 @@ from dvc.utils.fs import makedirs
 from dvc.compat import fspath, fspath_py35
 
 
-__all__ = ["tmp_dir", "scm", "dvc", "repo_template", "run_copy", "erepo_dir"]
+__all__ = [
+    "tmp_dir",
+    "scm",
+    "dvc",
+    "repo_template",
+    "run_copy",
+    "erepo_dir",
+    "git_dir",
+]
 REPO_TEMPLATE = {
     "foo": "foo",
     "bar": "bar",
@@ -285,3 +293,20 @@ def erepo_dir(tmp_path_factory, monkeypatch):
         path.dvc.close()
 
     return path
+
+
+@pytest.fixture
+def git_dir(tmp_path_factory, monkeypatch):
+    from dvc.scm.git import Git
+
+    path = TmpDir(fspath_py35(tmp_path_factory.mktemp("git_dir")))
+
+    # Create git repo
+    with path.chdir():
+        _git_init()
+
+    try:
+        path.scm = Git(fspath(path))
+        yield path
+    finally:
+        path.scm.close()
