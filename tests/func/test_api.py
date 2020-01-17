@@ -6,7 +6,7 @@ import ruamel.yaml
 import pytest
 
 from dvc import api
-from dvc.api import SummonError
+from dvc.api import SummonError, UrlNotDvcRepoError
 from dvc.compat import fspath
 from dvc.exceptions import FileMissingError
 from dvc.main import main
@@ -49,6 +49,16 @@ def test_get_url_external(erepo_dir, remote_url):
     repo_url = "file://{}".format(erepo_dir)
     expected_url = URLInfo(remote_url) / "ac/bd18db4cc2f85cedef654fccc4a4d8"
     assert api.get_url("foo", repo=repo_url) == expected_url
+
+
+def test_get_url_git_only_repo_throws_exception(tmp_dir, scm):
+    tmp_dir.scm_gen({"foo": "foo"}, commit="initial")
+
+    with pytest.raises(UrlNotDvcRepoError) as exc_info:
+        api.get_url("foo", fspath(tmp_dir))
+
+    # On windows, `exc_info` has path escaped, eg: `C:\\\\Users\\\\travis`
+    assert fspath(tmp_dir) in str(exc_info).replace("\\\\", "\\")
 
 
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
