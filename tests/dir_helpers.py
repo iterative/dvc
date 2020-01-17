@@ -307,6 +307,7 @@ def git_dir(tmp_path_factory, monkeypatch):
 
     try:
         path.scm = Git(fspath(path))
+        path.scm.commit("initial commit to create the master branch")
         yield path
     finally:
         path.scm.close()
