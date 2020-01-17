@@ -190,17 +190,12 @@ def test_update_git_tracked(tmp_dir, dvc, erepo_dir):
     assert (tmp_dir / "file").read_text() == "first version"
 
     with erepo_dir.chdir():
-        erepo_dir.scm.repo.index.remove(["file"])
-        os.remove("file")
-        erepo_dir.scm_gen("file", "second version")
-        erepo_dir.scm.add(["file"])
-        erepo_dir.scm.commit("x")
+        erepo_dir.scm_gen("file", "second version", commit="update file")
 
     # Caching in external repos doesn't see upstream updates within single
     # cli call, so we need to clean the caches to see the changes.
     clean_repos()
 
-    dvc.update(stage.path)
+    dvc.update("file.dvc")
 
     assert (tmp_dir / "file").read_text() == "second version"
-    assert dvc.status([stage.path]) == {}
