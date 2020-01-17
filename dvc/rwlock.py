@@ -9,7 +9,7 @@ from funcy.py3 import lmap, lfilter, lmapcat
 
 from .exceptions import DvcException
 from .lock import LockError
-from .utils.fs import relpath
+from .utils import relpath
 
 INFO_SCHEMA = {"pid": int, "cmd": str}
 

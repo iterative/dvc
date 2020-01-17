@@ -13,7 +13,6 @@ from dvc.system import System
 from dvc.utils import dict_md5
 from dvc.utils import fspath
 from dvc.utils import fspath_py35
-from dvc.utils import relpath
 
 
 logger = logging.getLogger(__name__)
@@ -30,7 +29,7 @@ def fs_copy(src, dst):
 
 def get_inode(path):
     inode = System.inode(path)
-    logger.debug("Path {} inode {}".format(path, inode))
+    logger.debug("Path {} inode {}", path, inode)
     return inode
 
 
@@ -131,10 +130,9 @@ def _chmod(func, p, excinfo):
 
 
 def remove(path):
+    logger.debug("Removing '{}'", path)
+
     path = fspath_py35(path)
-
-    logger.debug("Removing '{}'".format(relpath(path)))
-
     try:
         if os.path.isdir(path):
             shutil.rmtree(path, onerror=_chmod)
