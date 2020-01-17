@@ -175,7 +175,7 @@ class RemoteS3(RemoteBASE):
                 to_info.bucket,
                 to_info.path,
                 ExtraArgs=extra_args,
-                Config=TransferConfig(multipart_threshold=size + 1)
+                Config=TransferConfig(multipart_threshold=size + 1),
             )
 
         cached_etag = cls.get_etag(s3, to_info.bucket, to_info.path)
