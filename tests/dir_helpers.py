@@ -61,7 +61,7 @@ __all__ = [
     "repo_template",
     "run_copy",
     "erepo_dir",
-    "git_dir",
+    "external_git_dir",
 ]
 REPO_TEMPLATE = {
     "foo": "foo",
@@ -296,10 +296,10 @@ def erepo_dir(tmp_path_factory, monkeypatch):
 
 
 @pytest.fixture
-def git_dir(tmp_path_factory, monkeypatch):
+def external_git_dir(tmp_path_factory, monkeypatch):
     from dvc.scm.git import Git
 
-    path = TmpDir(fspath_py35(tmp_path_factory.mktemp("git_dir")))
+    path = TmpDir(fspath_py35(tmp_path_factory.mktemp("external_git_dir")))
 
     # Create git repo
     with path.chdir():

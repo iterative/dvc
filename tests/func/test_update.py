@@ -174,19 +174,21 @@ def test_update_import_url(tmp_dir, dvc, tmp_path_factory):
     assert dst.read_text() == "updated file content"
 
 
-def test_update_git_tracked(tmp_dir, dvc, git_dir):
-    with git_dir.chdir():
-        git_dir.scm_gen("file", "first version", commit="create")
+def test_update_git_tracked(tmp_dir, dvc, external_git_dir):
+    with external_git_dir.chdir():
+        external_git_dir.scm_gen("file", "first version", commit="create")
 
-    tmp_dir.dvc.imp(fspath(git_dir), "file", "file")
+    tmp_dir.dvc.imp(fspath(external_git_dir), "file", "file")
 
     # Just to make sure it doesn't crash
     tmp_dir.dvc.update("file.dvc")
 
     assert (tmp_dir / "file").read_text() == "first version"
 
-    with git_dir.chdir():
-        git_dir.scm_gen("file", "second version", commit="update file")
+    with external_git_dir.chdir():
+        external_git_dir.scm_gen(
+            "file", "second version", commit="update file"
+        )
 
     # Caching in external repos doesn't see upstream updates within single
     # cli call, so we need to clean the caches to see the changes.

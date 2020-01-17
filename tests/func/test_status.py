@@ -61,23 +61,25 @@ def test_status_non_dvc_repo_import(tmp_dir, dvc, erepo_dir):
     }
 
 
-def test_status_before_and_after_dvc_init(tmp_dir, dvc, git_dir):
-    with git_dir.chdir():
-        git_dir.scm_gen("file", "first version", commit="first version")
-        old_rev = git_dir.scm.get_rev()
+def test_status_before_and_after_dvc_init(tmp_dir, dvc, external_git_dir):
+    with external_git_dir.chdir():
+        external_git_dir.scm_gen(
+            "file", "first version", commit="first version"
+        )
+        old_rev = external_git_dir.scm.get_rev()
 
-    dvc.imp(fspath(git_dir), "file", "file")
+    dvc.imp(fspath(external_git_dir), "file", "file")
 
     assert dvc.status(["file.dvc"]) == {}
 
-    with git_dir.chdir():
-        git_dir.dvc = Repo.init()
-        git_dir.scm.repo.index.remove(["file"])
+    with external_git_dir.chdir():
+        external_git_dir.dvc = Repo.init()
+        external_git_dir.scm.repo.index.remove(["file"])
         os.remove("file")
-        git_dir.dvc_gen("file", "second version")
-        git_dir.scm.add([".dvc", "file.dvc"])
-        git_dir.scm.commit("version with dvc")
-        new_rev = git_dir.scm.get_rev()
+        external_git_dir.dvc_gen("file", "second version")
+        external_git_dir.scm.add([".dvc", "file.dvc"])
+        external_git_dir.scm.commit("version with dvc")
+        new_rev = external_git_dir.scm.get_rev()
 
     assert old_rev != new_rev
 
@@ -89,6 +91,6 @@ def test_status_before_and_after_dvc_init(tmp_dir, dvc, git_dir):
 
     assert status == {
         "changed deps": {
-            "file ({})".format(fspath(git_dir)): "update available"
+            "file ({})".format(fspath(external_git_dir)): "update available"
         }
     }
