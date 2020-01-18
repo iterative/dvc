@@ -117,7 +117,8 @@ _dvc_geturl=(
 
 _dvc_get=(
   {-o,--out}"[Destination path to put data to.]:OUT:_files -/"
-  "--rev[DVC repository git revision.]:Commit hash:"
+  "--rev[Git revision (e.g. branch, tag, SHA)]:Revision:"
+  "--show-url[Returns path/url to the location in remote for given path]"
   "1:URL:"
   "2:Path:"
 )
