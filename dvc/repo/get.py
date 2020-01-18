@@ -3,22 +3,11 @@ import os
 
 import shortuuid
 
-from dvc.exceptions import (
-    DvcException,
-    NotDvcRepoError,
-    OutputNotFoundError,
-    PathMissingError,
-)
-from dvc.external_repo import (
-    external_repo,
-    cached_clone,
-    NoOutputInExternalRepoError,
-)
-from dvc.path_info import PathInfo
+from dvc.exceptions import DvcException
 from dvc.stage import Stage
 from dvc.utils import resolve_output
 from dvc.utils.fs import remove
-from dvc.utils.fs import fs_copy
+from dvc.path_info import PathInfo
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +22,8 @@ class GetDVCFileError(DvcException):
 
 @staticmethod
 def get(url, path, out=None, rev=None):
+    from dvc.external_repo import external_repo
+
     out = resolve_output(path, out)
 
     if Stage.is_valid_filename(out):
@@ -46,8 +37,10 @@ def get(url, path, out=None, rev=None):
     dpath = os.path.dirname(os.path.abspath(out))
     tmp_dir = os.path.join(dpath, "." + str(shortuuid.uuid()))
     try:
-        try:
-            with external_repo(cache_dir=tmp_dir, url=url, rev=rev) as repo:
+        with external_repo(url=url, rev=rev) as repo:
+            if hasattr(repo, "cache"):
+                repo.cache.local.cache_dir = tmp_dir
+
                 # Try any links possible to avoid data duplication.
                 #
                 # Not using symlink, because we need to remove cache after we
@@ -58,33 +51,7 @@ def get(url, path, out=None, rev=None):
                 # Also, we can't use theoretical "move" link type here, because
                 # the same cache file might be used a few times in a directory.
                 repo.cache.local.cache_types = ["reflink", "hardlink", "copy"]
-                output = repo.find_out_by_relpath(path)
-                if output.use_cache:
-                    _get_cached(repo, output, out)
-                    return
-                # Non-cached output, fall through and try to copy from git.
-        except (NotDvcRepoError, NoOutputInExternalRepoError):
-            # Not a DVC repository or, possibly, path is not tracked by DVC.
-            # Fall through and try to copy from git.
-            pass
 
-        if os.path.isabs(path):
-            raise FileNotFoundError
-
-        repo_dir = cached_clone(url, rev=rev)
-
-        fs_copy(os.path.join(repo_dir, path), out)
-    except (OutputNotFoundError, FileNotFoundError):
-        raise PathMissingError(path, url)
+            repo.pull_to(path, PathInfo(out))
     finally:
         remove(tmp_dir)
-
-
-def _get_cached(repo, output, out):
-    with repo.state:
-        repo.cloud.pull(output.get_used_cache())
-        output.path_info = PathInfo(os.path.abspath(out))
-        failed = output.checkout()
-        # This might happen when pull haven't really pulled all the files
-        if failed:
-            raise FileNotFoundError

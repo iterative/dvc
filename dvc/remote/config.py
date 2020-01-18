@@ -157,3 +157,7 @@ class RemoteConfig(object):
         return self.config.get(
             Config.SECTION_CORE, Config.SECTION_CORE_REMOTE, level=level
         )
+
+    def has_default(self):
+        core = self.config.config[Config.SECTION_CORE]
+        return bool(core.get(Config.SECTION_CORE_REMOTE))

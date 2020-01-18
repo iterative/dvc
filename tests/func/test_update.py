@@ -114,9 +114,7 @@ def test_update_before_and_after_dvc_init(tmp_dir, dvc, erepo_dir):
     with erepo_dir.chdir():
         erepo_dir.scm.repo.index.remove([".dvc"], r=True)
         shutil.rmtree(".dvc")
-        erepo_dir.scm_gen("file", "first version")
-        erepo_dir.scm.add(["file"])
-        erepo_dir.scm.commit("first version")
+        erepo_dir.scm_gen("file", "first version", commit="first version")
         old_rev = erepo_dir.scm.get_rev()
 
     stage = dvc.imp(fspath(erepo_dir), "file", "file")

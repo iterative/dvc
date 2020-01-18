@@ -4,7 +4,6 @@ from dvc.cache import NamedCache
 from dvc.config import NoRemoteError
 from dvc.exceptions import DownloadError
 from dvc.exceptions import OutputNotFoundError
-from dvc.external_repo import external_repo
 from dvc.scm.base import CloneError
 
 
@@ -70,11 +69,13 @@ def _fetch(
 
 
 def _fetch_external(self, repo_url, repo_rev, files):
-    failed = 0
+    from dvc.external_repo import external_repo
 
-    cache_dir = self.cache.local.cache_dir
+    failed = 0
     try:
-        with external_repo(repo_url, repo_rev, cache_dir=cache_dir) as repo:
+        with external_repo(repo_url, repo_rev) as repo:
+            repo.cache.local.cache_dir = self.cache.local.cache_dir
+
             with repo.state:
                 cache = NamedCache()
                 for name in files:

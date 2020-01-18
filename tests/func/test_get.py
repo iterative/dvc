@@ -6,7 +6,8 @@ import pytest
 from dvc.cache import Cache
 from dvc.config import Config
 from dvc.main import main
-from dvc.repo.get import GetDVCFileError, PathMissingError
+from dvc.exceptions import PathMissingError
+from dvc.repo.get import GetDVCFileError
 from dvc.repo import Repo
 from dvc.system import System
 from dvc.utils.fs import makedirs

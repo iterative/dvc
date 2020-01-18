@@ -227,6 +227,7 @@ class ETagMismatchError(DvcException):
 
 class FileMissingError(DvcException):
     def __init__(self, path):
+        self.path = path
         super().__init__(
             "Can't find '{}' neither locally nor on remote".format(path)
         )
