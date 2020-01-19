@@ -6,9 +6,9 @@ import ruamel.yaml
 import pytest
 
 from dvc import api
-from dvc.api import SummonError, NotDvcRepoError, UrlNotDvcRepoError
+from dvc.api import SummonError, UrlNotDvcRepoError
 from dvc.compat import fspath
-from dvc.exceptions import FileMissingError
+from dvc.exceptions import FileMissingError, NotDvcRepoError
 from dvc.main import main
 from dvc.path_info import URLInfo
 from dvc.remote.config import RemoteConfig

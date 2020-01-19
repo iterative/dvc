@@ -10,7 +10,7 @@ import ruamel.yaml
 from voluptuous import Schema, Required, Invalid
 
 from dvc.repo import Repo
-from dvc.exceptions import DvcException, NotDvcRepoError
+from dvc.exceptions import DvcException
 from dvc.external_repo import external_repo
 
 
@@ -43,7 +43,7 @@ class SummonError(DvcException):
     pass
 
 
-class UrlNotDvcRepoError(NotDvcRepoError):
+class UrlNotDvcRepoError(DvcException):
     """Thrown if given url is not a DVC repository.
 
     Args:
