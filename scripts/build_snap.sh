@@ -23,8 +23,8 @@ if [[ -n "$TRAVIS_TAG" ]]; then
   fi
 fi
 # ensure basic commands can run
+# N.B.: cannot run `dvc get` on travis (#2956)
 dvc version
 dvc.git status
 dvc.git fetch --all
-dvc get -v https://github.com/iterative/dvc scripts/innosetup/dvc.ico
 sudo snap remove dvc
