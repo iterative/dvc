@@ -73,7 +73,10 @@ class ExternalRepo(Repo):
 
     def _pull_cached(self, out, to_info):
         with self.state:
-            self.cloud.pull(out.get_used_cache())
+            # Only pull unless all needed cache is present
+            if out.changed_cache():
+                self.cloud.pull(out.get_used_cache())
+
             out.path_info = to_info
             failed = out.checkout()
             # This might happen when pull haven't really pulled all the files
