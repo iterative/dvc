@@ -257,3 +257,22 @@ def test_modify_missing_remote(dvc):
 
     with pytest.raises(ConfigError, match=r"unable to find remote section"):
         remote_config.modify("myremote", "gdrive_client_id", "xxx")
+
+
+@pytest.mark.parametrize(
+    "cmd",
+    [
+        ["remote", "add", "example", "https://example.com"],
+        ["remote", "add", "--local", "example", "https://example.com"],
+        ["remote", "modify", "example", "random", "value"],
+        ["remote", "modify", "--local", "example", "random", "value"],
+        ["remote", "remove", "example"],
+        ["remote", "remove", "--local", "example"],
+        ["remote", "list"],
+        ["remote", "list", "--local"],
+        ["remote", "default", "example"],
+        ["remote", "default", "--local", "example"],
+    ],
+)
+def test_commands_outside_dvc_repository(tmp_dir, cmd):
+    assert 253 == main(cmd)
