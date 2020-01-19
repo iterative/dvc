@@ -33,11 +33,11 @@ class TestConfigCLI(TestDvc):
         self.assertEqual(ret, 0)
 
     def _do_test(self, local=False):
-        section = "setsection"
-        field = "setfield"
+        section = "core"
+        field = "analytics"
         section_field = "{}.{}".format(section, field)
-        value = "setvalue"
-        newvalue = "setnewvalue"
+        value = "True"
+        newvalue = "False"
 
         base = ["config"]
         if local:
