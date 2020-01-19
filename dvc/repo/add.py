@@ -101,7 +101,7 @@ def _create_stages(repo, targets, fname, pbar=None):
 
     for out in Tqdm(
         targets,
-        desc="Creating stages",
+        desc="Creating DVC-files",
         disable=True if len(targets) < LARGE_DIR_SIZE else None,
         unit="file",
     ):
