@@ -11,6 +11,7 @@ from dvc.exceptions import NotDvcRepoError
 from dvc.exceptions import OutputNotFoundError
 from dvc.exceptions import NoOutputInExternalRepoError
 from dvc.exceptions import PathMissingError
+from dvc.config import NoRemoteError
 from dvc.utils.fs import fs_copy
 from dvc.path_info import PathInfo
 from dvc.scm import SCM
@@ -91,7 +92,14 @@ class DependencyREPO(DependencyLOCAL):
 
             out = repo.find_out_by_relpath(self.def_path)
             with repo.state:
-                repo.cloud.pull(out.get_used_cache())
+                try:
+                    repo.cloud.pull(out.get_used_cache())
+                except NoRemoteError:
+                    # It would not be good idea to raise exception if the
+                    # file is already present in the cache
+                    if not self.repo.cache.local.changed_cache(out.checksum):
+                        return out
+                    raise
 
         return out
 

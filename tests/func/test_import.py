@@ -10,10 +10,12 @@ from dvc.config import Config
 from dvc.exceptions import DownloadError
 from dvc.exceptions import PathMissingError
 from dvc.exceptions import NoOutputInExternalRepoError
+from dvc.config import NoRemoteError
 from dvc.stage import Stage
 from dvc.system import System
 from dvc.utils.fs import makedirs
 from dvc.compat import fspath
+import dvc.data_cloud as cloud
 from tests.utils import trees_equal
 
 
@@ -54,6 +56,26 @@ def test_import_git_file(erepo_dir, tmp_dir, dvc, scm, src_is_dvc):
         "url": fspath(erepo_dir),
         "rev_lock": erepo_dir.scm.get_rev(),
     }
+
+
+def test_import_cached_file(erepo_dir, tmp_dir, dvc, scm, monkeypatch):
+    src = "some_file"
+    dst = "some_file_imported"
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen({src: "hello"}, commit="add a regular file")
+
+    tmp_dir.dvc_gen({dst: "hello"})
+    (tmp_dir / dst).unlink()
+
+    remote_exception = NoRemoteError("dvc import")
+    with patch.object(cloud.DataCloud, "pull", side_effect=remote_exception):
+        tmp_dir.dvc.imp(fspath(erepo_dir), src, dst)
+
+    assert (tmp_dir / dst).is_file()
+    assert filecmp.cmp(
+        fspath(erepo_dir / src), fspath(tmp_dir / dst), shallow=False
+    )
 
 
 @pytest.mark.parametrize("src_is_dvc", [True, False])
