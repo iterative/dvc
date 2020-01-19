@@ -10,7 +10,6 @@ from ..progress import Tqdm
 from ..repo.scm_context import scm_context
 from ..stage import Stage
 from ..utils import LARGE_DIR_SIZE
-from ..utils.fs import path_isin
 
 logger = logging.getLogger(__name__)
 
@@ -80,8 +79,6 @@ def add(repo, targets, recursive=False, no_commit=False, fname=None):
 
 
 def _find_all_targets(repo, target, recursive):
-    target = os.path.normpath(target)
-
     if os.path.isdir(target) and recursive:
         return [
             fname
