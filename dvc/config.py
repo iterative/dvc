@@ -424,10 +424,13 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         config.write()
 
     def validate(self, config=None):
-        d = (config or self.config).dict()
+        ret = copy.deepcopy(self.config)
+
+        if config:
+            ret.merge(config)
 
         try:
-            return self.COMPILED_SCHEMA(d)
+            return self.COMPILED_SCHEMA(ret.dict())
         except Invalid as exc:
             raise ConfigError(str(exc)) from exc
 
