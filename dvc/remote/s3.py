@@ -3,7 +3,6 @@
 import logging
 import os
 import threading
-from boto3.s3.transfer import TransferConfig
 
 from funcy import cached_property, wrap_prop
 
@@ -157,6 +156,7 @@ class RemoteS3(RemoteBASE):
         # the same throughout the transfer, so it means that in order to
         # preserve etag, we need to transfer each part separately, so the
         # object is transfered in the same chunks as it was originally.
+        from boto3.s3.transfer import TransferConfig
 
         obj = cls.get_head_object(s3, from_info.bucket, from_info.path)
         etag = obj["ETag"].strip('"')
