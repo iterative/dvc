@@ -101,7 +101,22 @@ class RemoteHTTP(RemoteBASE):
         kwargs.setdefault("timeout", self.REQUEST_TIMEOUT)
 
         try:
-            return self._session.request(method, url, **kwargs)
+            res = self._session.request(method, url, **kwargs)
+
+            redirect_no_location = (
+                kwargs["allow_redirects"]
+                and res.status_code in (301, 302)
+                and "location" not in res.headers
+            )
+
+            if redirect_no_location:
+                # AWS s3 doesn't like to add a location header to its redirects
+                # from https://s3.amazonaws.com/<bucket name>/* type URLs.
+                # This should be treated as an error
+                raise requests.exceptions.RequestException
+
+            return res
+
         except requests.exceptions.RequestException:
             raise DvcException("could not perform a {} request".format(method))
 
