@@ -89,7 +89,7 @@ jobs:
     - sudo /snap/bin/lxd init --auto
     install:
     script:
-    - sudo snapcraft --use-lxd
+    - ./scripts/build_snap.sh
     after_failure:
     - sudo journalctl -u snapd
 
@@ -135,7 +135,7 @@ deploy:
       stage: build
   - provider: snap
     snap: dvc_*.snap
-    channel: ${TRAVIS_TAG:+stable}${TRAVIS_TAG:-edge}
+    channel: $SNAP_CHANNEL
     skip_cleanup: true
     on:
       all_branches: true

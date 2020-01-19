@@ -50,3 +50,9 @@ elif [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
     ln -s -f /usr/local/bin/python3 /usr/local/bin/python
     ln -s -f /usr/local/bin/pip3 /usr/local/bin/pip
 fi
+
+if [[ -n "$TRAVIS_TAG" ]]; then
+    echo "export SNAP_CHANNEL=stable" >> env.sh
+else
+    echo "export SNAP_CHANNEL=edge" >> env.sh
+fi
