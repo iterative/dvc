@@ -1,5 +1,7 @@
 import configobj
 
+import pytest
+
 from dvc.main import main
 from tests.basic_env import TestDvc
 
@@ -83,3 +85,14 @@ class TestConfigCLI(TestDvc):
 
         ret = main(["config", "core.non_existing_field", "-u"])
         self.assertEqual(ret, 251)
+
+
+@pytest.mark.parametrize(
+    "cmd",
+    [
+        ["config", "core.analytics", "false"],
+        ["config", "--local", "core.analytics", "false"],
+    ],
+)
+def test_commands_outside_dvc_repository(tmp_dir, cmd):
+    assert 253 == main(cmd)

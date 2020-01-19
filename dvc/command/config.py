@@ -13,7 +13,11 @@ class CmdConfig(CmdBaseNoRepo):
     def __init__(self, args):
         super().__init__(args)
 
-        self.config = Config(validate=False)
+        # Verify repository existance when level requires to modify its config
+        repository_levels = [Config.LEVEL_REPO, Config.LEVEL_LOCAL]
+        verify_repo = self.args.level in repository_levels
+
+        self.config = Config(validate=False, verify_repo=verify_repo)
 
     def run(self):
         section, opt = self.args.name.lower().strip().split(".", 1)

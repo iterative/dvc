@@ -250,7 +250,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     }
     COMPILED_SCHEMA = Schema(SCHEMA)
 
-    def __init__(self, dvc_dir=None, validate=True):
+    def __init__(self, dvc_dir=None, validate=True, verify_repo=False):
         self.dvc_dir = dvc_dir
         self.validate = validate
 
@@ -260,6 +260,8 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
 
                 self.dvc_dir = os.path.join(Repo.find_dvc_dir())
             except NotDvcRepoError:
+                if verify_repo:
+                    raise
                 self.dvc_dir = None
         else:
             self.dvc_dir = os.path.abspath(os.path.realpath(dvc_dir))

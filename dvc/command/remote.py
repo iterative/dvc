@@ -1,7 +1,6 @@
 import argparse
 import logging
 
-from dvc.repo import Repo
 from dvc.command.base import append_doc_link
 from dvc.command.base import fix_subparsers
 from dvc.command.config import CmdConfig
@@ -14,12 +13,6 @@ class CmdRemoteConfig(CmdConfig):
     def __init__(self, args):
         super().__init__(args)
         self.remote_config = RemoteConfig(self.config)
-
-        # Verify repository existance when level requires to modify its config
-        repository_levels = [self.config.LEVEL_REPO, self.config.LEVEL_LOCAL]
-
-        if self.args.level in repository_levels:
-            Repo.find_dvc_dir()
 
 
 class CmdRemoteAdd(CmdRemoteConfig):
