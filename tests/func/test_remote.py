@@ -257,18 +257,3 @@ def test_modify_missing_remote(dvc):
 
     with pytest.raises(ConfigError, match=r"unable to find remote section"):
         remote_config.modify("myremote", "gdrive_client_id", "xxx")
-
-
-def test_modify_invalid_key(dvc):
-    remote_config = RemoteConfig(dvc.config)
-    remote_config.add("example", "https://example.com")
-
-    with pytest.raises(ConfigError, match=r"extra keys not allowed"):
-        remote_config.modify("example", "random_key", "value")
-
-
-def test_merging_two_levels(tmp_dir, dvc):
-    assert 0 == main(["remote", "add", "test", "https://example.com"])
-    assert 0 == main(["remote", "modify", "--local", "test", "password", "1"])
-    assert "example.com" in (tmp_dir / ".dvc" / "config").read_text()
-    assert "password" in (tmp_dir / ".dvc" / "config.local").read_text()
