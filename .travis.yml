@@ -135,10 +135,19 @@ deploy:
       stage: build
   - provider: snap
     snap: dvc_*.snap
-    channel: ${TRAVIS_TAG:+stable}${TRAVIS_TAG:-edge}
+    channel: stable
     skip_cleanup: true
     on:
-      all_branches: true
-      condition: "$(./scripts/ci/deploy_condition.sh dvc_*.snap) && ($TRAVIS_BRANCH = master || -n $TRAVIS_TAG)"
+      condition: "$(./scripts/ci/deploy_condition.sh dvc_*.snap)"
+      tags: true
+      repo: iterative/dvc
+      stage: build
+  - provider: snap
+    snap: dvc_*.snap
+    channel: edge
+    skip_cleanup: true
+    on:
+      branch: master
+      condition: "$(./scripts/ci/deploy_condition.sh dvc_*.snap)"
       repo: iterative/dvc
       stage: build
