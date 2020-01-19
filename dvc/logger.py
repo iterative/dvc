@@ -58,8 +58,10 @@ class ColorFormatter(logging.Formatter):
     }
 
     def format(self, record):
+        msg = record.msg.format(*record.args) if record.args else record.msg
+
         if record.levelname == "INFO":
-            return record.msg
+            return msg
 
         if record.levelname == "ERROR" or record.levelname == "CRITICAL":
             exception, stack_trace = self._parse_exc(record)
@@ -70,8 +72,8 @@ class ColorFormatter(logging.Formatter):
                 color=self.color_code.get(record.levelname, ""),
                 nc=colorama.Fore.RESET,
                 levelname=record.levelname,
-                description=self._description(record.msg, exception),
-                msg=record.msg,
+                description=self._description(msg, exception),
+                msg=msg,
                 stack_trace=stack_trace,
             )
 
@@ -79,7 +81,7 @@ class ColorFormatter(logging.Formatter):
             color=self.color_code.get(record.levelname, ""),
             nc=colorama.Fore.RESET,
             levelname=record.levelname,
-            msg=record.msg,
+            msg=msg,
         )
 
     def _current_level(self):

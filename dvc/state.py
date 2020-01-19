@@ -141,7 +141,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
 
     def _fetchall(self):
         ret = self.cursor.fetchall()
-        logger.debug("fetched: {}".format(ret))
+        logger.debug("fetched: {}", ret)
         return ret
 
     def _to_sqlite(self, num):
@@ -181,11 +181,12 @@ class State(object):  # pylint: disable=too-many-instance-attributes
                     __version__, self.VERSION, version
                 )
             elif version < self.VERSION:
-                msg = (
+                logger.warning(
                     "State file version '{}' is too old. "
-                    "Reformatting to the current version '{}'."
+                    "Reformatting to the current version '{}'.",
+                    version,
+                    self.VERSION,
                 )
-                logger.warning(msg.format(version, self.VERSION))
                 cmd = "DROP TABLE IF EXISTS {};"
                 self._execute(cmd.format(self.STATE_TABLE))
                 self._execute(cmd.format(self.STATE_INFO_TABLE))
@@ -466,7 +467,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             actual_mtime, _ = get_mtime_and_size(path, self.repo.tree)
 
             if inode == actual_inode and mtime == actual_mtime:
-                logger.debug("Removing '{}' as unused link.".format(path))
+                logger.debug("Removing '{}' as unused link.", path)
                 remove(path)
                 unused.append(relpath)
 
