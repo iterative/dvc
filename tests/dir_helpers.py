@@ -48,13 +48,13 @@ import pathlib
 from contextlib import contextmanager
 
 import pytest
-from funcy.py3 import lmap, retry
+from funcy import lmap, retry
 
 from dvc.utils.fs import makedirs
 from dvc.compat import fspath, fspath_py35
 
 
-__all__ = ["tmp_dir", "scm", "dvc", "run_copy", "erepo_dir"]
+__all__ = ["make_tmp_dir", "tmp_dir", "scm", "dvc", "run_copy", "erepo_dir"]
 
 
 class TmpDir(pathlib.Path):
@@ -72,6 +72,28 @@ class TmpDir(pathlib.Path):
     # Not needed in Python 3.6+
     def __fspath__(self):
         return str(self)
+
+    def init(self, *, scm=False, dvc=False):
+        from dvc.repo import Repo
+        from dvc.scm.git import Git
+
+        assert not scm or not hasattr(self, "scm")
+        assert not dvc or not hasattr(self, "dvc")
+
+        str_path = fspath(self)
+
+        if scm:
+            _git_init(str_path)
+        if dvc:
+            self.dvc = Repo.init(str_path, no_scm=True)
+        if scm:
+            self.scm = self.dvc.scm if hasattr(self, "dvc") else Git(str_path)
+        if dvc and hasattr(self, "scm"):
+            self.scm.commit("init dvc")
+
+    def close(self):
+        if hasattr(self, "scm"):
+            self.scm.close()
 
     def _require(self, name):
         if not hasattr(self, name):
@@ -151,10 +173,6 @@ class TmpDir(pathlib.Path):
         finally:
             self.scm.checkout(old)
 
-    # Introspection methods
-    def list(self):
-        return [p.name for p in self.iterdir()]
-
 
 def _coerce_filenames(filenames):
     if isinstance(filenames, (str, bytes, pathlib.PurePath)):
@@ -170,32 +188,36 @@ class PosixTmpDir(TmpDir, pathlib.PurePosixPath):
     pass
 
 
+@pytest.fixture(scope="session")
+def make_tmp_dir(tmp_path_factory, request):
+    def make(name, *, scm=False, dvc=False):
+        path = tmp_path_factory.mktemp(name) if isinstance(name, str) else name
+        new_dir = TmpDir(fspath_py35(path))
+        new_dir.init(scm=scm, dvc=dvc)
+        request.addfinalizer(new_dir.close)
+        return new_dir
+
+    return make
+
+
 @pytest.fixture
-def tmp_dir(tmp_path, monkeypatch):
+def tmp_dir(tmp_path, make_tmp_dir, request, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    return TmpDir(fspath_py35(tmp_path))
+    fixtures = request.fixturenames
+    return make_tmp_dir(tmp_path, scm="scm" in fixtures, dvc="dvc" in fixtures)
 
 
 @pytest.fixture
-def scm(tmp_dir, request):
-    # Use dvc.scm if available
-    if "dvc" in request.fixturenames:
-        dvc = request.getfixturevalue("dvc")
-        tmp_dir.scm = dvc.scm
-        yield dvc.scm
-
-    else:
-        from dvc.scm.git import Git
-
-        _git_init()
-        try:
-            scm = tmp_dir.scm = Git(fspath(tmp_dir))
-            yield scm
-        finally:
-            scm.close()
+def scm(tmp_dir):
+    return tmp_dir.scm
 
 
-def _git_init():
+@pytest.fixture
+def dvc(tmp_dir):
+    return tmp_dir.dvc
+
+
+def _git_init(path):
     from git import Repo
     from git.exc import GitCommandNotFound
 
@@ -204,40 +226,19 @@ def _git_init():
     #
     #    GitCommandNotFound: Cmd('git') not found due to:
     #        OSError('[Errno 35] Resource temporarily unavailable')
-    git = retry(5, GitCommandNotFound)(Repo.init)()
+    git = retry(5, GitCommandNotFound)(Repo.init)(path)
     git.close()
 
 
 @pytest.fixture
-def dvc(tmp_dir, request):
-    from dvc.repo import Repo
-
-    if "scm" in request.fixturenames:
-        if not hasattr(tmp_dir, "scm"):
-            _git_init()
-
-        dvc = Repo.init(fspath(tmp_dir))
-        dvc.scm.commit("init dvc")
-    else:
-        dvc = Repo.init(fspath(tmp_dir), no_scm=True)
-
-    try:
-        tmp_dir.dvc = dvc
-        yield dvc
-    finally:
-        dvc.close()
-
-
-@pytest.fixture
-def run_copy(tmp_dir, dvc, request):
+def run_copy(tmp_dir, dvc):
     tmp_dir.gen(
         "copy.py",
         "import sys, shutil\nshutil.copyfile(sys.argv[1], sys.argv[2])",
     )
 
     # Do we need this?
-    if "scm" in request.fixturenames:
-        request.getfixturevalue("scm")
+    if hasattr(tmp_dir, "scm"):
         tmp_dir.scm_add("copy.py", commit="add copy.py")
 
     def run_copy(src, dst, **run_kwargs):
@@ -252,23 +253,15 @@ def run_copy(tmp_dir, dvc, request):
 
 
 @pytest.fixture
-def erepo_dir(tmp_path_factory, monkeypatch):
-    from dvc.repo import Repo
+def erepo_dir(make_tmp_dir):
     from dvc.remote.config import RemoteConfig
 
-    path = TmpDir(fspath_py35(tmp_path_factory.mktemp("erepo")))
+    path = make_tmp_dir("erepo", scm=True, dvc=True)
 
     # Chdir for git and dvc to work locally
     with path.chdir():
-        _git_init()
-        path.dvc = Repo.init()
-        path.scm = path.dvc.scm
-        path.scm.commit("init dvc")
-
         rconfig = RemoteConfig(path.dvc.config)
         rconfig.add("upstream", path.dvc.cache.local.cache_dir, default=True)
         path.scm_add([path.dvc.config.config_file], commit="add remote")
-
-        path.dvc.close()
 
     return path
