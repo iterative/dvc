@@ -79,6 +79,7 @@ class RemoteBASE(object):
     CHECKSUM_DIR_SUFFIX = ".dir"
     CHECKSUM_JOBS = max(1, min(4, cpu_count() // 2))
     DEFAULT_CACHE_TYPES = ["copy"]
+    DEFAULT_NO_TRAVERSE = True
 
     state = StateNoop()
 
@@ -89,7 +90,9 @@ class RemoteBASE(object):
         self.checksum_jobs = self._get_checksum_jobs(config)
 
         self.protected = False
-        self.no_traverse = config.get(Config.SECTION_REMOTE_NO_TRAVERSE, True)
+        self.no_traverse = config.get(
+            Config.SECTION_REMOTE_NO_TRAVERSE, self.DEFAULT_NO_TRAVERSE
+        )
         self._dir_info = {}
 
         types = config.get(Config.SECTION_CACHE_TYPE, None)

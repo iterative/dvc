@@ -231,7 +231,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         SECTION_GDRIVE_CLIENT_SECRET: str,
         SECTION_GDRIVE_USER_CREDENTIALS_FILE: str,
         PRIVATE_CWD: str,
-        Optional(SECTION_REMOTE_NO_TRAVERSE, default=True): Bool,
+        SECTION_REMOTE_NO_TRAVERSE: Bool,
     }
 
     SECTION_STATE = "state"
