@@ -6,7 +6,6 @@ import configobj
 import pytest
 from mock import patch
 
-from dvc import remote
 from dvc.config import Config, ConfigError
 from dvc.exceptions import DownloadError, UploadError
 from dvc.main import main
@@ -15,7 +14,6 @@ from dvc.remote import RemoteLOCAL, RemoteConfig
 from dvc.remote.base import RemoteBASE
 from dvc.compat import fspath
 from dvc.scm import Git
-from dvc.utils import file_md5
 from tests.basic_env import TestDvc
 from tests.remotes import Local
 
@@ -262,7 +260,7 @@ def test_modify_missing_remote(dvc):
         remote_config.modify("myremote", "gdrive_client_id", "xxx")
 
 
-def test_trust_remote_checksums(tmp_dir, mocker, tmp_path_factory, erepo_dir):
+def test_trust_remote_checksums(tmp_dir, tmp_path_factory, erepo_dir, mocker):
     with erepo_dir.chdir():
 
         erepo_dir.dvc_gen({"file": "file content"}, commit="add dir")
@@ -273,14 +271,11 @@ def test_trust_remote_checksums(tmp_dir, mocker, tmp_path_factory, erepo_dir):
 
     dvc = Repo(fspath(tmp_dir))
 
-    from tests.utils import spy
-
-    file_md5_spy = spy(file_md5)
-    mocker.patch.object(remote.local, "file_md5", file_md5_spy)
+    md5_spy = mocker.spy(dvc.cache.local, "get_file_checksum")
 
     dvc.pull(trust_remote=True)
 
-    assert len(file_md5_spy.mock.call_args_list) == 1
+    assert md5_spy.call_count == 0
 
 
 def test_trust_remote_checksums_dir(
@@ -295,14 +290,11 @@ def test_trust_remote_checksums_dir(
 
     dvc = Repo(fspath(tmp_dir))
 
-    from tests.utils import spy
+    md5_spy = mocker.spy(dvc.cache.local, "get_file_checksum")
 
-    file_md5_spy = spy(file_md5)
-    mocker.patch.object(remote.local, "file_md5", file_md5_spy)
+    dvc.pull(trust_remote=False)
 
-    dvc.pull(trust_remote=True)
-
-    assert len(file_md5_spy.mock.call_args_list) == 1
+    assert md5_spy.call_count == 0
 
 
 def test_trust_remote_checksums_external_dep(
@@ -320,11 +312,8 @@ def test_trust_remote_checksums_external_dep(
 
     dvc = Repo(fspath(tmp_dir))
 
-    from tests.utils import spy
-
-    file_md5_spy = spy(file_md5)
-    mocker.patch.object(remote.local, "file_md5", file_md5_spy)
+    md5_spy = mocker.spy(dvc.cache.local, "get_file_checksum")
 
     dvc.pull(trust_remote=True)
 
-    assert len(file_md5_spy.mock.call_args_list) == 1
+    assert md5_spy.call_count == 0
