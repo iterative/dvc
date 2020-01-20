@@ -463,7 +463,9 @@ class TestAddFilename(TestDvc):
         self.assertFalse(os.path.exists("foo.dvc"))
 
 
-def test_should_cleanup_after_failed_add(tmp_dir, scm, dvc, repo_template):
+def test_failed_add_cleanup(tmp_dir, scm, dvc):
+    tmp_dir.gen({"foo": "foo", "bar": "bar"})
+
     # Add and corrupt a stage file
     dvc.add("foo")
     tmp_dir.gen("foo.dvc", "- broken\nyaml")
