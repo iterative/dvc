@@ -54,15 +54,7 @@ from dvc.utils.fs import makedirs
 from dvc.compat import fspath, fspath_py35
 
 
-__all__ = ["tmp_dir", "scm", "dvc", "repo_template", "run_copy", "erepo_dir"]
-REPO_TEMPLATE = {
-    "foo": "foo",
-    "bar": "bar",
-    "dir": {
-        "data": "dir/data text",
-        "subdir": {"subdata": "dir/subdir/subdata text"},
-    },
-}
+__all__ = ["tmp_dir", "scm", "dvc", "run_copy", "erepo_dir"]
 
 
 class TmpDir(pathlib.Path):
@@ -234,11 +226,6 @@ def dvc(tmp_dir, request):
         yield dvc
     finally:
         dvc.close()
-
-
-@pytest.fixture
-def repo_template(tmp_dir):
-    tmp_dir.gen(REPO_TEMPLATE)
 
 
 @pytest.fixture

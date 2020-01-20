@@ -189,9 +189,9 @@ def test_all_commits(tmp_dir, scm, dvc):
     assert _count_files(dvc.cache.local.cache_dir) == n - 1
 
 
-def test_gc_no_dir_cache(tmp_dir, dvc, repo_template):
-    dvc.add(["foo", "bar"])
-    dir_stage, = dvc.add("dir")
+def test_gc_no_dir_cache(tmp_dir, dvc):
+    tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
+    dir_stage, = tmp_dir.dvc_gen({"dir": {"x": "x", "subdir": {"y": "y"}}})
 
     os.unlink(dir_stage.outs[0].cache_path)
 
@@ -207,8 +207,8 @@ def _count_files(path):
     return sum(len(files) for _, _, files in os.walk(path))
 
 
-def test_gc_no_unpacked_dir(tmp_dir, dvc, repo_template):
-    dir_stages = dvc.add("dir")
+def test_gc_no_unpacked_dir(tmp_dir, dvc):
+    dir_stages = tmp_dir.dvc_gen({"dir": {"file": "text"}})
     dvc.status()
 
     os.remove("dir.dvc")
