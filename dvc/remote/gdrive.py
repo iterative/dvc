@@ -62,12 +62,13 @@ class RemoteGDrive(RemoteBASE):
     scheme = Schemes.GDRIVE
     path_cls = CloudURLInfo
     REQUIRES = {"pydrive2": "pydrive2"}
+    DEFAULT_NO_TRAVERSE = False
+
     GDRIVE_USER_CREDENTIALS_DATA = "GDRIVE_USER_CREDENTIALS_DATA"
     DEFAULT_USER_CREDENTIALS_FILE = "gdrive-user-credentials.json"
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
-        self.no_traverse = False
         self.path_info = self.path_cls(config[Config.SECTION_REMOTE_URL])
 
         bucket = re.search(
