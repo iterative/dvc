@@ -1,7 +1,7 @@
 import json
 from collections import defaultdict
 
-from flatten_dict import flatten
+from flatten_json import flatten
 
 from dvc.exceptions import NoMetricsError
 
@@ -34,25 +34,18 @@ def _diff_vals(old, new):
     return res
 
 
-# dot_reducer is not released yet (flatten-dict > 0.2.0)
-def _dot(k1, k2):
-    if k1 is None:
-        return k2
-    return "{0}.{1}".format(k1, k2)
-
-
 def _diff_dicts(old_dict, new_dict):
     old_default = None
     new_default = None
 
     if isinstance(new_dict, dict):
-        new = flatten(new_dict, reducer=_dot)
+        new = flatten(new_dict, ".")
     else:
         new = defaultdict(lambda: "not a dict")
         new_default = "unable to parse"
 
     if isinstance(old_dict, dict):
-        old = flatten(old_dict, reducer=_dot)
+        old = flatten(old_dict, ".")
     else:
         old = defaultdict(lambda: "not a dict")
         old_default = "unable to parse"
