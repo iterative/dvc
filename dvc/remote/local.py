@@ -61,7 +61,7 @@ class RemoteLOCAL(RemoteBASE):
             cwd = config[Config.PRIVATE_CWD]
             cache_dir = os.path.abspath(os.path.join(cwd, cache_dir))
 
-        self.path_info = PathInfo(cache_dir) if cache_dir else None
+        self.cache_dir = cache_dir
         self._dir_info = {}
 
     @property
@@ -71,6 +71,10 @@ class RemoteLOCAL(RemoteBASE):
     @property
     def cache_dir(self):
         return self.path_info.fspath if self.path_info else None
+
+    @cache_dir.setter
+    def cache_dir(self, value):
+        self.path_info = PathInfo(value) if value else None
 
     @classmethod
     def supported(cls, config):

@@ -33,9 +33,7 @@ def test_status_non_dvc_repo_import(tmp_dir, dvc, erepo_dir):
     with erepo_dir.branch("branch", new=True), erepo_dir.chdir():
         erepo_dir.scm.repo.index.remove([".dvc"], r=True)
         shutil.rmtree(".dvc")
-        erepo_dir.scm_gen("file", "first version")
-        erepo_dir.scm.add(["file"])
-        erepo_dir.scm.commit("first version")
+        erepo_dir.scm_gen("file", "first version", commit="first version")
 
     dvc.imp(fspath(erepo_dir), "file", "file", rev="branch")
 
@@ -49,8 +47,6 @@ def test_status_non_dvc_repo_import(tmp_dir, dvc, erepo_dir):
 
     with erepo_dir.branch("branch", new=False), erepo_dir.chdir():
         erepo_dir.scm_gen("file", "second_version", commit="update file")
-        erepo_dir.scm.add(["file"])
-        erepo_dir.scm.commit("first version")
 
     status, = dvc.status(["file.dvc"])["file.dvc"]
 
@@ -65,9 +61,7 @@ def test_status_before_and_after_dvc_init(tmp_dir, dvc, erepo_dir):
     with erepo_dir.chdir():
         erepo_dir.scm.repo.index.remove([".dvc"], r=True)
         shutil.rmtree(".dvc")
-        erepo_dir.scm_gen("file", "first version")
-        erepo_dir.scm.add(["file"])
-        erepo_dir.scm.commit("first version")
+        erepo_dir.scm_gen("file", "first version", commit="first verison")
         old_rev = erepo_dir.scm.get_rev()
 
     dvc.imp(fspath(erepo_dir), "file", "file")

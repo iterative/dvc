@@ -17,7 +17,6 @@ from dvc.exceptions import (
 )
 from dvc.path_info import PathInfo
 from dvc.remote.base import RemoteActionNotImplemented
-from dvc.utils import relpath
 from dvc.utils.fs import path_isin
 from .graph import check_acyclic, get_pipeline, get_pipelines
 
@@ -428,11 +427,11 @@ class Repo(object):
         return self.DVC_DIR in path_parts
 
     @contextmanager
-    def open(self, path, remote=None, mode="r", encoding=None):
+    def open_by_relpath(self, path, remote=None, mode="r", encoding=None):
         """Opens a specified resource as a file descriptor"""
         cause = None
         try:
-            out, = self.find_outs_by_path(path)
+            out = self.find_out_by_relpath(path)
         except OutputNotFoundError as exc:
             out = None
             cause = exc
@@ -443,14 +442,15 @@ class Repo(object):
                     yield fd
                 return
             except FileNotFoundError as exc:
-                raise FileMissingError(relpath(path, self.root_dir)) from exc
+                raise FileMissingError(path) from exc
 
-        if self.tree.exists(path):
-            with self.tree.open(path, mode, encoding) as fd:
+        abs_path = os.path.join(self.root_dir, path)
+        if os.path.exists(abs_path):
+            with open(abs_path, mode=mode, encoding=encoding) as fd:
                 yield fd
             return
 
-        raise FileMissingError(relpath(path, self.root_dir)) from cause
+        raise FileMissingError(path) from cause
 
     def _open_cached(self, out, remote=None, mode="r", encoding=None):
         if out.isdir():

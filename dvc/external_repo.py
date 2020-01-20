@@ -3,25 +3,27 @@ import tempfile
 from contextlib import contextmanager
 from distutils.dir_util import copy_tree
 
-from funcy import retry
+from funcy import retry, suppress, memoize, cached_property
 
-from dvc.config import NoRemoteError, ConfigError
+from dvc.compat import fspath
+from dvc.repo import Repo
+from dvc.config import Config, NoRemoteError, NotDvcRepoError
 from dvc.exceptions import NoRemoteInExternalRepoError
+from dvc.exceptions import OutputNotFoundError, NoOutputInExternalRepoError
+from dvc.exceptions import FileMissingError, PathMissingError
 from dvc.remote import RemoteConfig
-from dvc.exceptions import NoOutputInExternalRepoError
-from dvc.exceptions import OutputNotFoundError
-from dvc.utils.fs import remove
-
-
-REPO_CACHE = {}
+from dvc.utils.fs import remove, fs_copy
+from dvc.scm import SCM
 
 
 @contextmanager
-def external_repo(url=None, rev=None, rev_lock=None, cache_dir=None):
-    from dvc.repo import Repo
+def external_repo(url, rev=None):
+    path = _cached_clone(url, rev)
+    try:
+        repo = ExternalRepo(path, url)
+    except NotDvcRepoError:
+        repo = ExternalGitRepo(path, url)
 
-    path = _external_repo(url=url, rev=rev_lock or rev, cache_dir=cache_dir)
-    repo = Repo(path)
     try:
         yield repo
     except NoRemoteError:
@@ -30,28 +32,124 @@ def external_repo(url=None, rev=None, rev_lock=None, cache_dir=None):
         if exc.repo is repo:
             raise NoOutputInExternalRepoError(exc.output, repo.root_dir, url)
         raise
-    repo.close()
+    except FileMissingError as exc:
+        raise PathMissingError(exc.path, url)
+    finally:
+        repo.close()
 
 
-def cached_clone(url, rev=None, **_ignored_kwargs):
+def clean_repos():
+    # Outside code should not see cache while we are removing
+    repo_paths = list(_cached_clone.memory.values())
+    _cached_clone.memory.clear()
+
+    for path in repo_paths:
+        _remove(path)
+
+
+class ExternalRepo(Repo):
+    def __init__(self, root_dir, url):
+        super().__init__(root_dir)
+        self.url = url
+        self._set_upstream()
+
+    def pull_to(self, path, to_info):
+        try:
+            out = None
+            with suppress(OutputNotFoundError):
+                out = self.find_out_by_relpath(path)
+
+            if out and out.use_cache:
+                self._pull_cached(out, to_info)
+                return
+
+            # Git handled files can't have absolute path
+            if os.path.isabs(path):
+                raise FileNotFoundError
+
+            fs_copy(os.path.join(self.root_dir, path), fspath(to_info))
+        except FileNotFoundError:
+            raise PathMissingError(path, self.url)
+
+    def _pull_cached(self, out, to_info):
+        with self.state:
+            # Only pull unless all needed cache is present
+            if out.changed_cache():
+                self.cloud.pull(out.get_used_cache())
+
+            out.path_info = to_info
+            failed = out.checkout()
+            # This might happen when pull haven't really pulled all the files
+            if failed:
+                raise FileNotFoundError
+
+    def _set_upstream(self):
+        # check if the URL is local and no default remote is present
+        # add default remote pointing to the original repo's cache location
+        if os.path.isdir(self.url):
+            rconfig = RemoteConfig(self.config)
+            if not rconfig.has_default():
+                src_repo = Repo(self.url)
+                try:
+                    rconfig.add(
+                        "auto-generated-upstream",
+                        src_repo.cache.local.cache_dir,
+                        default=True,
+                        level=Config.LEVEL_LOCAL,
+                    )
+                finally:
+                    src_repo.close()
+
+
+class ExternalGitRepo:
+    def __init__(self, root_dir, url):
+        self.root_dir = root_dir
+        self.url = url
+
+    @cached_property
+    def scm(self):
+        return SCM(self.root_dir)
+
+    def close(self):
+        if "scm" in self.__dict__:
+            self.scm.close()
+
+    def find_out_by_relpath(self, path):
+        raise OutputNotFoundError(path, self)
+
+    def pull_to(self, path, to_info):
+        try:
+            # Git handled files can't have absolute path
+            if os.path.isabs(path):
+                raise FileNotFoundError
+
+            fs_copy(os.path.join(self.root_dir, path), fspath(to_info))
+        except FileNotFoundError:
+            raise PathMissingError(path, self.url)
+
+    @contextmanager
+    def open_by_relpath(self, path, mode="r", encoding=None):
+        try:
+            abs_path = os.path.join(self.root_dir, path)
+            with open(abs_path, mode, encoding) as fd:
+                yield fd
+        except FileNotFoundError:
+            raise PathMissingError(path, self.url)
+
+
+@memoize
+def _cached_clone(url, rev):
     """Clone an external git repo to a temporary directory.
 
     Returns the path to a local temporary directory with the specified
     revision checked out.
-
-    Uses the REPO_CACHE to avoid accessing the remote server again if
-    cloning from the same URL twice in the same session.
-
     """
-
     new_path = tempfile.mkdtemp("dvc-erepo")
 
-    # Copy and adjust existing clean clone
-    if (url, None, None) in REPO_CACHE:
-        old_path = REPO_CACHE[url, None, None]
-
+    if url in _cached_clone.memory:
+        # Copy and an existing clean clone
         # This one unlike shutil.copytree() works with an existing dir
-        copy_tree(old_path, new_path)
+        copy_tree(_cached_clone.memory[url], new_path)
     else:
         # Create a new clone
         _clone_repo(url, new_path)
@@ -59,52 +157,12 @@ def cached_clone(url, rev=None, **_ignored_kwargs):
         # Save clean clone dir so that we will have access to a default branch
         clean_clone_path = tempfile.mkdtemp("dvc-erepo")
         copy_tree(new_path, clean_clone_path)
-        REPO_CACHE[url, None, None] = clean_clone_path
+        _cached_clone.memory[url] = clean_clone_path
 
     # Check out the specified revision
     if rev is not None:
         _git_checkout(new_path, rev)
 
-    return new_path
-
-
-def _external_repo(url=None, rev=None, cache_dir=None):
-    from dvc.config import Config
-    from dvc.cache import CacheConfig
-    from dvc.repo import Repo
-
-    key = (url, rev, cache_dir)
-    if key in REPO_CACHE:
-        return REPO_CACHE[key]
-
-    new_path = cached_clone(url, rev=rev)
-
-    repo = Repo(new_path)
-    try:
-        # check if the URL is local and no default remote is present
-        # add default remote pointing to the original repo's cache location
-        if os.path.isdir(url):
-            rconfig = RemoteConfig(repo.config)
-            if not _default_remote_set(rconfig):
-                original_repo = Repo(url)
-                try:
-                    rconfig.add(
-                        "auto-generated-upstream",
-                        original_repo.cache.local.cache_dir,
-                        default=True,
-                        level=Config.LEVEL_LOCAL,
-                    )
-                finally:
-                    original_repo.close()
-
-        if cache_dir is not None:
-            cache_config = CacheConfig(repo.config)
-            cache_config.set_dir(cache_dir, level=Config.LEVEL_LOCAL)
-    finally:
-        # Need to close/reopen repo to force config reread
-        repo.close()
-
-    REPO_CACHE[key] = new_path
     return new_path
 
 
@@ -116,15 +174,6 @@ def _git_checkout(repo_path, revision):
         git.checkout(revision)
     finally:
         git.close()
-
-
-def clean_repos():
-    # Outside code should not see cache while we are removing
-    repo_paths = list(REPO_CACHE.values())
-    REPO_CACHE.clear()
-
-    for path in repo_paths:
-        _remove(path)
 
 
 def _remove(path):
@@ -141,19 +190,3 @@ def _clone_repo(url, path):
 
     git = Git.clone(url, path)
     git.close()
-
-
-def _default_remote_set(rconfig):
-    """
-    Checks if default remote config is present.
-    Args:
-        rconfig: a remote config
-
-    Returns:
-        True if the default remote config is set, else False
-    """
-    try:
-        rconfig.get_default()
-        return True
-    except ConfigError:
-        return False

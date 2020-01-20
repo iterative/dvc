@@ -1,20 +1,18 @@
 import filecmp
 import os
 import shutil
+from dvc.compat import fspath
 
 import pytest
 from mock import patch
 
 from dvc.cache import Cache
 from dvc.config import Config
-from dvc.exceptions import DownloadError
-from dvc.exceptions import PathMissingError
-from dvc.exceptions import NoOutputInExternalRepoError
+from dvc.exceptions import DownloadError, PathMissingError
 from dvc.config import NoRemoteError
 from dvc.stage import Stage
 from dvc.system import System
 from dvc.utils.fs import makedirs
-from dvc.compat import fspath
 import dvc.data_cloud as cloud
 from tests.utils import trees_equal
 
@@ -266,5 +264,5 @@ def test_import_non_existing(erepo_dir, tmp_dir, dvc):
         tmp_dir.dvc.imp(fspath(erepo_dir), "invalid_output")
 
     # https://github.com/iterative/dvc/pull/2837#discussion_r352123053
-    with pytest.raises(NoOutputInExternalRepoError):
+    with pytest.raises(PathMissingError):
         tmp_dir.dvc.imp(fspath(erepo_dir), "/root/", "root")

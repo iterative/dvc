@@ -10,7 +10,7 @@ import ruamel.yaml
 from voluptuous import Schema, Required, Invalid
 
 from dvc.repo import Repo
-from dvc.exceptions import DvcException, NotDvcRepoError
+from dvc.exceptions import DvcException
 from dvc.external_repo import external_repo
 
 
@@ -60,14 +60,11 @@ def get_url(path, repo=None, rev=None, remote=None):
     `repo`.
     NOTE: There is no guarantee that the file actually exists in that location.
     """
-    try:
-        with _make_repo(repo, rev=rev) as _repo:
-            abspath = os.path.join(_repo.root_dir, path)
-            out, = _repo.find_outs_by_path(abspath)
-            remote_obj = _repo.cloud.get_remote(remote)
-            return str(remote_obj.checksum_to_path_info(out.checksum))
-    except NotDvcRepoError:
-        raise UrlNotDvcRepoError(repo)
+    with _make_repo(repo, rev=rev) as _repo:
+        _require_dvc(_repo)
+        out = _repo.find_out_by_relpath(path)
+        remote_obj = _repo.cloud.get_remote(remote)
+        return str(remote_obj.checksum_to_path_info(out.checksum))
 
 
 def open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
@@ -96,9 +93,8 @@ class _OpenContextManager(GCM):
 
 def _open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
     with _make_repo(repo, rev=rev) as _repo:
-        abspath = os.path.join(_repo.root_dir, path)
-        with _repo.open(
-            abspath, remote=remote, mode=mode, encoding=encoding
+        with _repo.open_by_relpath(
+            path, remote=remote, mode=mode, encoding=encoding
         ) as fd:
             yield fd
 
@@ -113,10 +109,7 @@ def read(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
 
 @contextmanager
 def _make_repo(repo_url, rev=None):
-    if not repo_url or os.path.exists(repo_url):
-        assert (
-            rev is None
-        ), "Git revisions are not supported for local DVC projects."
+    if rev is None and (not repo_url or os.path.exists(repo_url)):
         yield Repo(repo_url)
     else:
         with external_repo(url=repo_url, rev=rev) as repo:
@@ -149,6 +142,7 @@ def prepare_summon(name, repo=None, rev=None, summon_file="dvcsummon.yaml"):
     named object specification and resolved paths to deps.
     """
     with _make_repo(repo, rev=rev) as _repo:
+        _require_dvc(_repo)
         try:
             path = os.path.join(_repo.root_dir, summon_file)
             obj = _get_object_spec(name, path)
@@ -242,3 +236,8 @@ def _import_string(import_name):
     else:
         return importlib.import_module(import_name)
     return getattr(importlib.import_module(module), obj)
+
+
+def _require_dvc(repo):
+    if not isinstance(repo, Repo):
+        raise UrlNotDvcRepoError(repo.url)

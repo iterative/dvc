@@ -8,7 +8,7 @@ import pytest
 from dvc import api
 from dvc.api import SummonError, UrlNotDvcRepoError
 from dvc.compat import fspath
-from dvc.exceptions import FileMissingError
+from dvc.exceptions import FileMissingError, NotDvcRepoError
 from dvc.main import main
 from dvc.path_info import URLInfo
 from dvc.remote.config import RemoteConfig
@@ -51,14 +51,14 @@ def test_get_url_external(erepo_dir, remote_url):
     assert api.get_url("foo", repo=repo_url) == expected_url
 
 
-def test_get_url_git_only_repo_throws_exception(tmp_dir, scm):
+def test_get_url_requires_dvc(tmp_dir, scm):
     tmp_dir.scm_gen({"foo": "foo"}, commit="initial")
 
-    with pytest.raises(UrlNotDvcRepoError) as exc_info:
-        api.get_url("foo", fspath(tmp_dir))
+    with pytest.raises(NotDvcRepoError, match="not inside of a dvc repo"):
+        api.get_url("foo", repo=fspath(tmp_dir))
 
-    # On windows, `exc_info` has path escaped, eg: `C:\\\\Users\\\\travis`
-    assert fspath(tmp_dir) in str(exc_info).replace("\\\\", "\\")
+    with pytest.raises(UrlNotDvcRepoError):
+        api.get_url("foo", repo="file://{}".format(tmp_dir))
 
 
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
