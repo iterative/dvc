@@ -237,10 +237,6 @@ def run_copy(tmp_dir, dvc):
         "import sys, shutil\nshutil.copyfile(sys.argv[1], sys.argv[2])",
     )
 
-    # Do we need this?
-    if hasattr(tmp_dir, "scm"):
-        tmp_dir.scm_add("copy.py", commit="add copy.py")
-
     def run_copy(src, dst, **run_kwargs):
         return dvc.run(
             cmd="python copy.py {} {}".format(src, dst),
