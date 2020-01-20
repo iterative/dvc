@@ -66,6 +66,7 @@ class CmdDataFetch(CmdDataBase):
                 all_tags=self.args.all_tags,
                 with_deps=self.args.with_deps,
                 recursive=self.args.recursive,
+                trust_remote=self.args.trust_remote,
             )
         except DvcException:
             logger.exception("failed to fetch data from the cloud")
@@ -230,6 +231,12 @@ def add_parser(subparsers, _parent_parser):
         action="store_true",
         default=False,
         help="Fetch cache for subdirectories of specified directory.",
+    )
+    fetch_parser.add_argument(
+        "--trust-remote",
+        action="store_true",
+        default=False,
+        help="Trust remote cache checksums upon fetching.",
     )
     fetch_parser.set_defaults(func=CmdDataFetch)
 

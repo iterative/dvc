@@ -62,7 +62,14 @@ class DataCloud(object):
             show_checksums=show_checksums,
         )
 
-    def pull(self, cache, jobs=None, remote=None, show_checksums=False):
+    def pull(
+        self,
+        cache,
+        jobs=None,
+        remote=None,
+        show_checksums=False,
+        trust_remote=False,
+    ):
         """Pull data items in a cloud-agnostic way.
 
         Args:
@@ -73,12 +80,20 @@ class DataCloud(object):
             show_checksums (bool): show checksums instead of file names in
                 information messages.
         """
-        return self.repo.cache.local.pull(
+        downloaded_items_num = self.repo.cache.local.pull(
             cache,
             jobs=jobs,
             remote=self.get_remote(remote, "pull"),
             show_checksums=show_checksums,
         )
+        if trust_remote:
+            for checksum in cache["local"].keys():
+                cache_file = self.repo.cache.local.checksum_to_path_info(
+                    checksum
+                )
+                if self.repo.cache.local.exists(cache_file):
+                    self.repo.state.save(cache_file, checksum)
+        return downloaded_items_num
 
     def status(self, cache, jobs=None, remote=None, show_checksums=False):
         """Check status of data items in a cloud-agnostic way.

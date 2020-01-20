@@ -6,6 +6,7 @@ import configobj
 import pytest
 from mock import patch
 
+from dvc import remote
 from dvc.config import Config, ConfigError
 from dvc.exceptions import DownloadError, UploadError
 from dvc.main import main
@@ -13,6 +14,8 @@ from dvc.path_info import PathInfo
 from dvc.remote import RemoteLOCAL, RemoteConfig
 from dvc.remote.base import RemoteBASE
 from dvc.compat import fspath
+from dvc.scm import Git
+from dvc.utils import file_md5
 from tests.basic_env import TestDvc
 from tests.remotes import Local
 
@@ -257,3 +260,71 @@ def test_modify_missing_remote(dvc):
 
     with pytest.raises(ConfigError, match=r"unable to find remote section"):
         remote_config.modify("myremote", "gdrive_client_id", "xxx")
+
+
+def test_trust_remote_checksums(tmp_dir, mocker, tmp_path_factory, erepo_dir):
+    with erepo_dir.chdir():
+
+        erepo_dir.dvc_gen({"file": "file content"}, commit="add dir")
+
+    Git.clone(fspath(erepo_dir), fspath(tmp_dir))
+
+    from dvc.repo import Repo
+
+    dvc = Repo(fspath(tmp_dir))
+
+    from tests.utils import spy
+
+    file_md5_spy = spy(file_md5)
+    mocker.patch.object(remote.local, "file_md5", file_md5_spy)
+
+    dvc.pull(trust_remote=True)
+
+    assert len(file_md5_spy.mock.call_args_list) == 1
+
+
+def test_trust_remote_checksums_dir(
+    tmp_dir, mocker, tmp_path_factory, erepo_dir
+):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen({"dir": {"file": "file content"}}, commit="add dir")
+
+    Git.clone(fspath(erepo_dir), fspath(tmp_dir))
+
+    from dvc.repo import Repo
+
+    dvc = Repo(fspath(tmp_dir))
+
+    from tests.utils import spy
+
+    file_md5_spy = spy(file_md5)
+    mocker.patch.object(remote.local, "file_md5", file_md5_spy)
+
+    dvc.pull(trust_remote=True)
+
+    assert len(file_md5_spy.mock.call_args_list) == 1
+
+
+def test_trust_remote_checksums_external_dep(
+    tmp_dir, mocker, tmp_path_factory, erepo_dir
+):
+    external_path = tmp_path_factory.mktemp("external_dep") / "file"
+    external_path.write_text("file content")
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_add(fspath(external_path), commit="add external file")
+
+    Git.clone(fspath(erepo_dir), fspath(tmp_dir))
+
+    from dvc.repo import Repo
+
+    dvc = Repo(fspath(tmp_dir))
+
+    from tests.utils import spy
+
+    file_md5_spy = spy(file_md5)
+    mocker.patch.object(remote.local, "file_md5", file_md5_spy)
+
+    dvc.pull(trust_remote=True)
+
+    assert len(file_md5_spy.mock.call_args_list) == 1
