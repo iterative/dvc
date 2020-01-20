@@ -9,6 +9,7 @@ from dvc.cache import NamedCache
 from dvc.exceptions import CollectCacheError, RemoteCacheRequiredError
 from dvc.exceptions import DvcException
 from dvc.remote.base import RemoteBASE
+from dvc.utils.fs import path_isin
 
 
 logger = logging.getLogger(__name__)
