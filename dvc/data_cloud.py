@@ -87,6 +87,10 @@ class DataCloud(object):
         for checksum in cache["local"].keys():
             cache_file = self.repo.cache.local.checksum_to_path_info(checksum)
             if self.repo.cache.local.exists(cache_file):
+                # We can safely save here, as existing corrupted files will be
+                # removed upon status, while files corrupted during download
+                # will not be copied from tmp_file (see download
+                # implementation in `remote/base`)
                 self.repo.state.save(cache_file, checksum)
 
     def status(self, cache, jobs=None, remote=None, show_checksums=False):
