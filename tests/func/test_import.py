@@ -33,26 +33,19 @@ def test_import(tmp_dir, scm, dvc, erepo_dir):
 
 
 @pytest.mark.parametrize("src_is_dvc", [True, False])
-def test_import_git_file(erepo_dir, tmp_dir, dvc, scm, src_is_dvc):
-    if not src_is_dvc:
-        erepo_dir.dvc.scm.repo.index.remove([".dvc"], r=True)
-        erepo_dir.dvc.scm.commit("remove .dvc")
+def test_import_git_file(tmp_dir, scm, dvc, git_dir, src_is_dvc):
+    if src_is_dvc:
+        git_dir.init(dvc=True)
 
-    src = "some_file"
-    dst = "some_file_imported"
+    git_dir.scm_gen("src", "hello", commit="add a git file")
 
-    erepo_dir.scm_gen({src: "hello"}, commit="add a regular file")
+    stage = tmp_dir.dvc.imp(fspath(git_dir), "src", "dst")
 
-    stage = tmp_dir.dvc.imp(fspath(erepo_dir), src, dst)
-
-    assert (tmp_dir / dst).is_file()
-    assert filecmp.cmp(
-        fspath(erepo_dir / src), fspath(tmp_dir / dst), shallow=False
-    )
-    assert tmp_dir.scm.repo.git.check_ignore(fspath(tmp_dir / dst))
+    assert (tmp_dir / "dst").read_text() == "hello"
+    assert tmp_dir.scm.repo.git.check_ignore(fspath(tmp_dir / "dst"))
     assert stage.deps[0].def_repo == {
-        "url": fspath(erepo_dir),
-        "rev_lock": erepo_dir.scm.get_rev(),
+        "url": fspath(git_dir),
+        "rev_lock": git_dir.scm.get_rev(),
     }
 
 
@@ -77,24 +70,20 @@ def test_import_cached_file(erepo_dir, tmp_dir, dvc, scm, monkeypatch):
 
 
 @pytest.mark.parametrize("src_is_dvc", [True, False])
-def test_import_git_dir(erepo_dir, tmp_dir, dvc, scm, src_is_dvc):
-    if not src_is_dvc:
-        erepo_dir.dvc.scm.repo.index.remove([".dvc"], r=True)
-        erepo_dir.dvc.scm.commit("remove .dvc")
+def test_import_git_dir(tmp_dir, scm, dvc, git_dir, src_is_dvc):
+    if src_is_dvc:
+        git_dir.init(dvc=True)
 
-    src = "some_directory"
-    dst = "some_directory_imported"
+    git_dir.scm_gen({"src": {"file.txt": "hello"}}, commit="add a dir")
 
-    erepo_dir.scm_gen({src: {"file.txt": "hello"}}, commit="add a dir")
+    stage = dvc.imp(fspath(git_dir), "src", "dst")
 
-    stage = dvc.imp(fspath(erepo_dir), src, dst)
-
-    assert (tmp_dir / dst).is_dir()
-    trees_equal(fspath(erepo_dir / src), fspath(tmp_dir / dst))
-    assert tmp_dir.scm.repo.git.check_ignore(fspath(tmp_dir / dst))
+    assert (tmp_dir / "dst").is_dir()
+    trees_equal(fspath(git_dir / "src"), fspath(tmp_dir / "dst"))
+    assert tmp_dir.scm.repo.git.check_ignore(fspath(tmp_dir / "dst"))
     assert stage.deps[0].def_repo == {
-        "url": fspath(erepo_dir),
-        "rev_lock": erepo_dir.scm.get_rev(),
+        "url": fspath(git_dir),
+        "rev_lock": git_dir.scm.get_rev(),
     }
 
 
@@ -123,8 +112,7 @@ def test_import_non_cached(erepo_dir, tmp_dir, dvc, scm):
         cwd=fspath(erepo_dir),
     )
 
-    erepo_dir.scm.add([fspath(erepo_dir / src)])
-    erepo_dir.scm.commit("add a non-cached output")
+    erepo_dir.scm_add([fspath(erepo_dir / src)], commit="add a non-cached out")
 
     stage = tmp_dir.dvc.imp(fspath(erepo_dir), src, dst)
 

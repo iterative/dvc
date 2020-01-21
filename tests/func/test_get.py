@@ -85,12 +85,10 @@ def test_get_repo_rev(tmp_dir, erepo_dir):
     assert (tmp_dir / "file_imported").read_text() == "contents"
 
 
-def test_get_from_non_dvc_repo(tmp_dir, erepo_dir):
-    erepo_dir.scm.repo.index.remove([erepo_dir.dvc.dvc_dir], r=True)
-    erepo_dir.scm.commit("remove dvc")
-    erepo_dir.scm_gen({"some_file": "contents"}, commit="create file")
+def test_get_from_non_dvc_repo(tmp_dir, git_dir):
+    git_dir.scm_gen({"some_file": "contents"}, commit="create file")
 
-    Repo.get(fspath(erepo_dir), "some_file", "file_imported")
+    Repo.get(fspath(git_dir), "some_file", "file_imported")
     assert (tmp_dir / "file_imported").read_text() == "contents"
 
 
@@ -106,11 +104,9 @@ def test_get_full_dvc_path(tmp_dir, erepo_dir, tmp_path_factory):
     external_data.write_text("ext_data")
 
     with erepo_dir.chdir():
-        erepo_dir.dvc.add(fspath(external_data))
-        erepo_dir.scm_add(["ext_data.dvc"], commit="add external data")
+        erepo_dir.dvc_add(fspath(external_data), commit="add external data")
 
     Repo.get(fspath(erepo_dir), fspath(external_data), "ext_data_imported")
-    assert (tmp_dir / "ext_data_imported").is_file()
     assert (tmp_dir / "ext_data_imported").read_text() == "ext_data"
 
 
@@ -122,8 +118,7 @@ def test_non_cached_output(tmp_dir, erepo_dir):
         erepo_dir.dvc.run(
             outs_no_cache=[src], cmd="echo hello > non_cached_file"
         )
-        erepo_dir.scm.add([src, src + ".dvc"])
-        erepo_dir.scm.commit("add non-cached output")
+        erepo_dir.scm_add([src, src + ".dvc"], commit="add non-cached output")
 
     Repo.get(fspath(erepo_dir), src, dst)
 
@@ -138,12 +133,9 @@ def test_absolute_file_outside_repo(tmp_dir, erepo_dir):
         Repo.get(fspath(erepo_dir), "/root/")
 
 
-def test_absolute_file_outside_git_repo(tmp_dir, erepo_dir):
-    erepo_dir.scm.repo.index.remove([erepo_dir.dvc.dvc_dir], r=True)
-    erepo_dir.scm.commit("remove dvc")
-
+def test_absolute_file_outside_git_repo(tmp_dir, git_dir):
     with pytest.raises(PathMissingError):
-        Repo.get(fspath(erepo_dir), "/root/")
+        Repo.get(fspath(git_dir), "/root/")
 
 
 def test_unknown_path(tmp_dir, erepo_dir):
@@ -164,28 +156,22 @@ def test_get_to_dir(tmp_dir, erepo_dir, dname):
     assert (tmp_dir / dname / "file").read_text() == "contents"
 
 
-def test_get_from_non_dvc_master(tmp_dir, erepo_dir, caplog):
-    with erepo_dir.chdir():
-        with erepo_dir.branch("branch", new=True):
-            erepo_dir.scm_gen(
-                {"some_file": "some_contents"}, commit="create some file"
-            )
-
-        erepo_dir.dvc.scm.repo.index.remove([".dvc"], r=True)
-        erepo_dir.dvc.scm.commit("remove .dvc")
+def test_get_from_non_dvc_master(tmp_dir, git_dir, caplog):
+    with git_dir.chdir(), git_dir.branch("branch", new=True):
+        git_dir.init(dvc=True)
+        git_dir.dvc_gen("some_file", "some text", commit="create some file")
 
     caplog.clear()
-    dst = "file_imported"
 
     # removing `git` import in conftest resulted in unexpected logs from
     # that package, see https://github.com/iterative/dvc/issues/3167
     with caplog.at_level(logging.INFO, logger="git"), caplog.at_level(
         logging.INFO, logger="dvc"
     ):
-        Repo.get(fspath(erepo_dir), "some_file", out=dst, rev="branch")
+        Repo.get(fspath(git_dir), "some_file", out="some_dst", rev="branch")
 
     assert caplog.text == ""
-    assert (tmp_dir / dst).read_text() == "some_contents"
+    assert (tmp_dir / "some_dst").read_text() == "some text"
 
 
 def test_get_url_positive(tmp_dir, erepo_dir, caplog):

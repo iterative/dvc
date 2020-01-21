@@ -54,7 +54,15 @@ from dvc.utils.fs import makedirs
 from dvc.compat import fspath, fspath_py35
 
 
-__all__ = ["make_tmp_dir", "tmp_dir", "scm", "dvc", "run_copy", "erepo_dir"]
+__all__ = [
+    "make_tmp_dir",
+    "tmp_dir",
+    "scm",
+    "dvc",
+    "run_copy",
+    "erepo_dir",
+    "git_dir",
+]
 
 
 class TmpDir(pathlib.Path):
@@ -260,4 +268,11 @@ def erepo_dir(make_tmp_dir):
         rconfig.add("upstream", path.dvc.cache.local.cache_dir, default=True)
         path.scm_add([path.dvc.config.config_file], commit="add remote")
 
+    return path
+
+
+@pytest.fixture
+def git_dir(make_tmp_dir):
+    path = make_tmp_dir("git-erepo", scm=True)
+    path.scm.commit("init repo")
     return path
