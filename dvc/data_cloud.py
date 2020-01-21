@@ -63,12 +63,7 @@ class DataCloud(object):
         )
 
     def pull(
-        self,
-        cache,
-        jobs=None,
-        remote=None,
-        show_checksums=False,
-        trust_remote=False,
+        self, cache, jobs=None, remote=None, show_checksums=False, verify=False
     ):
         """Pull data items in a cloud-agnostic way.
 
@@ -86,14 +81,17 @@ class DataCloud(object):
             remote=self.get_remote(remote, "pull"),
             show_checksums=show_checksums,
         )
-        if trust_remote:
-            for checksum in cache["local"].keys():
-                cache_file = self.repo.cache.local.checksum_to_path_info(
-                    checksum
-                )
-                if self.repo.cache.local.exists(cache_file):
-                    self.repo.state.save(cache_file, checksum)
+
+        if not verify:
+            self._save_pulled_checksums(cache)
+
         return downloaded_items_num
+
+    def _save_pulled_checksums(self, cache):
+        for checksum in cache["local"].keys():
+            cache_file = self.repo.cache.local.checksum_to_path_info(checksum)
+            if self.repo.cache.local.exists(cache_file):
+                self.repo.state.save(cache_file, checksum)
 
     def status(self, cache, jobs=None, remote=None, show_checksums=False):
         """Check status of data items in a cloud-agnostic way.

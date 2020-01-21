@@ -260,10 +260,12 @@ def test_modify_missing_remote(dvc):
         remote_config.modify("myremote", "gdrive_client_id", "xxx")
 
 
-def test_trust_remote_checksums(tmp_dir, tmp_path_factory, erepo_dir, mocker):
+def test_verify_checksums(tmp_dir, tmp_path_factory, erepo_dir, mocker):
     with erepo_dir.chdir():
-
-        erepo_dir.dvc_gen({"file": "file content"}, commit="add dir")
+        erepo_dir.dvc_gen({"file": "file1 content"}, commit="add file")
+        erepo_dir.dvc_gen(
+            {"dir": {"subfile": "file2 content"}}, commit="add " "dir"
+        )
 
     Git.clone(fspath(erepo_dir), fspath(tmp_dir))
 
@@ -271,49 +273,14 @@ def test_trust_remote_checksums(tmp_dir, tmp_path_factory, erepo_dir, mocker):
 
     dvc = Repo(fspath(tmp_dir))
 
-    md5_spy = mocker.spy(dvc.cache.local, "get_file_checksum")
+    file_md5_spy = mocker.spy(dvc.cache.local, "get_file_checksum")
 
-    dvc.pull(trust_remote=True)
+    dvc.pull()
+    assert file_md5_spy.call_count == 0
 
-    assert md5_spy.call_count == 0
+    # Removing cache will invalidate existing state entries
+    shutil.rmtree(dvc.cache.local.cache_dir)
 
-
-def test_trust_remote_checksums_dir(
-    tmp_dir, mocker, tmp_path_factory, erepo_dir
-):
-    with erepo_dir.chdir():
-        erepo_dir.dvc_gen({"dir": {"file": "file content"}}, commit="add dir")
-
-    Git.clone(fspath(erepo_dir), fspath(tmp_dir))
-
-    from dvc.repo import Repo
-
-    dvc = Repo(fspath(tmp_dir))
-
-    md5_spy = mocker.spy(dvc.cache.local, "get_file_checksum")
-
-    dvc.pull(trust_remote=False)
-
-    assert md5_spy.call_count == 0
-
-
-def test_trust_remote_checksums_external_dep(
-    tmp_dir, mocker, tmp_path_factory, erepo_dir
-):
-    external_path = tmp_path_factory.mktemp("external_dep") / "file"
-    external_path.write_text("file content")
-
-    with erepo_dir.chdir():
-        erepo_dir.dvc_add(fspath(external_path), commit="add external file")
-
-    Git.clone(fspath(erepo_dir), fspath(tmp_dir))
-
-    from dvc.repo import Repo
-
-    dvc = Repo(fspath(tmp_dir))
-
-    md5_spy = mocker.spy(dvc.cache.local, "get_file_checksum")
-
-    dvc.pull(trust_remote=True)
-
-    assert md5_spy.call_count == 0
+    dvc.pull(verify=True)
+    assert file_md5_spy.call_count == 3
+    pass
