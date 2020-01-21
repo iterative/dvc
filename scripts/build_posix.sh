@@ -91,9 +91,6 @@ install_dependencies()
 	# https://github.com/iterative/dvc/issues/2970
 	gem uninstall -i /Users/travis/.rvm/gems/ruby-2.4.3@global rubygems-bundler
 
-	print_info "Upgrading pip..."
-	pip install --upgrade pip
-
 	print_info "Installing requirements..."
 	pip install .[all]
 	pip install -r scripts/build-requirements.txt
