@@ -307,6 +307,6 @@ class PathMissingError(DvcException):
     def __init__(self, path, repo):
         msg = (
             "The path '{}' does not exist in the target repository '{}'"
-            " neighther as an output nor a git-handled file."
+            " neither as an output nor a git-handled file."
         )
         super().__init__(msg.format(path, repo))
