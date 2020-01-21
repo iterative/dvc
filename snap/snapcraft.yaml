@@ -27,10 +27,12 @@ parts:
     - git
     override-pull: |
         snapcraftctl pull
-        echo 'PKG = "snap"' > $SNAPCRAFT_PART_SRC/dvc/utils/build.py
         snapcraftctl set-version `cd $SNAPCRAFT_PART_SRC && git describe --tags`
+        echo 'PKG = "snap"' > $SNAPCRAFT_PART_SRC/dvc/utils/build.py
         # install all optional extras
         sed -ri 's/(=install_requires)/\1+all_remotes+hdfs/' $SNAPCRAFT_PART_SRC/setup.py
+        sed -rn 's/^(_BASE_VERSION = .*)$/__version__ = \1/p' $SNAPCRAFT_PART_SRC/dvc/version.py > $SNAPCRAFT_PART_SRC/dvc/version.py.new
+        mv $SNAPCRAFT_PART_SRC/dvc/version.py.new $SNAPCRAFT_PART_SRC/dvc/version.py
     override-build: |
         snapcraftctl build
         cp $SNAPCRAFT_PART_BUILD/scripts/completion/dvc.bash $SNAPCRAFT_PART_INSTALL/completion.sh
