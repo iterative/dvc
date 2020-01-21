@@ -266,3 +266,21 @@ def test_import_non_existing(erepo_dir, tmp_dir, dvc):
     # https://github.com/iterative/dvc/pull/2837#discussion_r352123053
     with pytest.raises(PathMissingError):
         tmp_dir.dvc.imp(fspath(erepo_dir), "/root/", "root")
+
+
+def test_pull_no_rev_lock(erepo_dir, tmp_dir, dvc):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "contents", commit="create foo")
+
+    stage = dvc.imp(fspath(erepo_dir), "foo", "foo_imported")
+    assert "rev" not in stage.deps[0].def_repo
+    stage.deps[0].def_repo.pop("rev_lock")
+    stage.dump()
+
+    os.remove(stage.outs[0].cache_path)
+    (tmp_dir / "foo_imported").unlink()
+
+    dvc.pull([stage.path])
+
+    assert (tmp_dir / "foo_imported").is_file()
+    assert (tmp_dir / "foo_imported").read_text() == "contents"
