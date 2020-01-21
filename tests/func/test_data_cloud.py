@@ -28,7 +28,6 @@ from dvc.utils import file_md5
 from dvc.utils.stage import dump_stage_file
 from dvc.utils.stage import load_stage_file
 from tests.basic_env import TestDvc
-from tests.utils import spy
 
 from tests.remotes import (
     Azure,
@@ -586,8 +585,14 @@ class TestRecursiveSyncOperations(Local, TestDataCloudBase):
 
 
 class TestCheckSumRecalculation(TestDvc):
+    @pytest.fixture(autouse=True)
+    def use_mocker(self, mocker):
+        self.mocker = mocker
+
     def test(self):
-        test_get_file_checksum = spy(RemoteLOCAL.get_file_checksum)
+        test_get_file_checksum = self.mocker.spy(
+            RemoteLOCAL, "get_file_checksum"
+        )
         with patch.object(
             RemoteLOCAL, "get_file_checksum", test_get_file_checksum
         ):

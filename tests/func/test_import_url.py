@@ -8,7 +8,6 @@ import dvc
 from dvc.main import main
 from dvc.utils.fs import makedirs
 from tests.basic_env import TestDvc
-from tests.utils import spy
 
 
 class TestCmdImport(TestDvc):
@@ -42,6 +41,10 @@ class TestDefaultOutput(TestDvc):
 
 
 class TestShouldRemoveOutsBeforeImport(TestDvc):
+    @pytest.fixture(autouse=True)
+    def use_mocker(self, mocker):
+        self.mocker = mocker
+
     def setUp(self):
         super().setUp()
         tmp_dir = self.mkdtemp()
@@ -50,7 +53,9 @@ class TestShouldRemoveOutsBeforeImport(TestDvc):
             fobj.write("content")
 
     def test(self):
-        remove_outs_call_counter = spy(dvc.stage.Stage.remove_outs)
+        remove_outs_call_counter = self.mocker.spy(
+            dvc.stage.Stage, "remove_outs"
+        )
         with patch.object(
             dvc.stage.Stage, "remove_outs", remove_outs_call_counter
         ):

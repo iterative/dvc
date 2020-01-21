@@ -22,7 +22,6 @@ from dvc.utils.fs import path_isin, remove
 from dvc.utils.fs import makedirs
 from dvc.utils.fs import walk_files
 from tests.basic_env import TestDir
-from tests.utils import spy
 
 
 class TestMtimeAndSize(TestDir):
@@ -45,6 +44,10 @@ class TestMtimeAndSize(TestDir):
 
 
 class TestContainsLink(TestCase):
+    @pytest.fixture(autouse=True)
+    def use_mocker(self, mocker):
+        self.mocker = mocker
+
     def test_should_raise_exception_on_base_path_not_in_path(self):
         with self.assertRaises(BasePathNotInCheckedPathException):
             contains_symlink_up_to(os.path.join("foo", "path"), "bar")
@@ -72,7 +75,9 @@ class TestContainsLink(TestCase):
 
     @patch.object(System, "is_symlink", return_value=False)
     def test_should_call_recursive_on_no_condition_matched(self, _):
-        contains_symlink_spy = spy(contains_symlink_up_to)
+        contains_symlink_spy = self.mocker.spy(
+            dvc.utils.fs, "contains_symlink_up_to"
+        )
         with patch.object(
             dvc.utils.fs, "contains_symlink_up_to", contains_symlink_spy
         ):

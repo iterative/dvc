@@ -28,7 +28,6 @@ from dvc.utils.fs import path_isin
 from dvc.utils.stage import load_stage_file
 from tests.basic_env import TestDvc
 from tests.utils import get_gitignore_content
-from tests.utils import spy
 
 
 def test_add(tmp_dir, dvc):
@@ -245,9 +244,15 @@ class TestDoubleAddUnchanged(TestDvc):
         self.assertEqual(ret, 0)
 
 
-class TestShouldUpdateStateEntryForFileAfterAdd(TestDvc):
+class TestDvcWithMocker(TestDvc):
+    @pytest.fixture(autouse=True)
+    def use_mocker(self, mocker):
+        self.mocker = mocker
+
+
+class TestShouldUpdateStateEntryForFileAfterAdd(TestDvcWithMocker):
     def test(self):
-        file_md5_counter = spy(dvc.remote.local.file_md5)
+        file_md5_counter = self.mocker.spy(dvc.remote.local, "file_md5")
         with patch.object(dvc.remote.local, "file_md5", file_md5_counter):
             ret = main(["config", "cache.type", "copy"])
             self.assertEqual(ret, 0)
@@ -274,9 +279,9 @@ class TestShouldUpdateStateEntryForFileAfterAdd(TestDvc):
             self.assertEqual(file_md5_counter.mock.call_count, 1)
 
 
-class TestShouldUpdateStateEntryForDirectoryAfterAdd(TestDvc):
+class TestShouldUpdateStateEntryForDirectoryAfterAdd(TestDvcWithMocker):
     def test(self):
-        file_md5_counter = spy(dvc.remote.local.file_md5)
+        file_md5_counter = self.mocker.spy(dvc.remote.local, "file_md5")
         with patch.object(dvc.remote.local, "file_md5", file_md5_counter):
 
             ret = main(["config", "cache.type", "copy"])
@@ -320,11 +325,13 @@ class TestAddCommit(TestDvc):
         self.assertEqual(len(os.listdir(self.dvc.cache.local.cache_dir)), 1)
 
 
-class TestShouldCollectDirCacheOnlyOnce(TestDvc):
+class TestShouldCollectDirCacheOnlyOnce(TestDvcWithMocker):
     def test(self):
         from dvc.remote.local import RemoteLOCAL
 
-        get_dir_checksum_counter = spy(RemoteLOCAL.get_dir_checksum)
+        get_dir_checksum_counter = self.mocker.spy(
+            RemoteLOCAL, "get_dir_checksum"
+        )
         with patch.object(
             RemoteLOCAL, "get_dir_checksum", get_dir_checksum_counter
         ):
@@ -477,15 +484,15 @@ def test_should_cleanup_after_failed_add(tmp_dir, scm, dvc, repo_template):
     assert "/bar" not in gitignore_content
 
 
-class TestShouldNotTrackGitInternalFiles(TestDvc):
+class TestShouldNotTrackGitInternalFiles(TestDvcWithMocker):
     def test(self):
-        stage_creator_spy = spy(dvc.repo.add._create_stages)
+        stage_creator_spy = self.mocker.spy(dvc.repo.add, "_create_stages")
 
         with patch.object(dvc.repo.add, "_create_stages", stage_creator_spy):
             ret = main(["add", "-R", self.dvc.root_dir])
             self.assertEqual(0, ret)
 
-        created_stages_filenames = stage_creator_spy.mock.call_args[0][0]
+        created_stages_filenames = stage_creator_spy.mock.call_args[0][1]
         for fname in created_stages_filenames:
             self.assertNotIn(".git", fname)
 
@@ -572,7 +579,7 @@ def test_readding_dir_should_not_unprotect_all(tmp_dir, dvc, mocker):
     dvc.add("dir")
     tmp_dir.gen("dir/new_file", "new_file_content")
 
-    unprotect_spy = spy(RemoteLOCAL.unprotect)
+    unprotect_spy = mocker.spy(RemoteLOCAL, "unprotect")
     mocker.patch.object(RemoteLOCAL, "unprotect", unprotect_spy)
     dvc.add("dir")
 
@@ -587,7 +594,7 @@ def test_should_not_checkout_when_adding_cached_copy(tmp_dir, dvc, mocker):
 
     shutil.copy("bar", "foo")
 
-    copy_spy = spy(dvc.cache.local.copy)
+    copy_spy = mocker.spy(dvc.cache.local, "copy")
     mocker.patch.object(dvc.cache.local, "copy", copy_spy)
 
     dvc.add("foo")
