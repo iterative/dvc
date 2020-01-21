@@ -260,7 +260,7 @@ def test_modify_missing_remote(dvc):
         remote_config.modify("myremote", "gdrive_client_id", "xxx")
 
 
-def test_verify_checksums(tmp_dir, tmp_path_factory, erepo_dir, mocker):
+def test_verify_checksums(tmp_dir, erepo_dir, mocker):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen({"file": "file1 content"}, commit="add file")
         erepo_dir.dvc_gen(
@@ -283,4 +283,3 @@ def test_verify_checksums(tmp_dir, tmp_path_factory, erepo_dir, mocker):
 
     dvc.pull(verify=True)
     assert file_md5_spy.call_count == 3
-    pass
