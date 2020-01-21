@@ -78,17 +78,14 @@ class TestContainsLink(TestCase):
         contains_symlink_spy = self.mocker.spy(
             dvc.utils.fs, "contains_symlink_up_to"
         )
-        with patch.object(
-            dvc.utils.fs, "contains_symlink_up_to", contains_symlink_spy
-        ):
 
-            # call from full path to match contains_symlink_spy patch path
-            self.assertFalse(
-                dvc.utils.fs.contains_symlink_up_to(
-                    os.path.join("foo", "path"), "foo"
-                )
+        # call from full path to match contains_symlink_spy patch path
+        self.assertFalse(
+            dvc.utils.fs.contains_symlink_up_to(
+                os.path.join("foo", "path"), "foo"
             )
-            self.assertEqual(2, contains_symlink_spy.mock.call_count)
+        )
+        self.assertEqual(2, contains_symlink_spy.mock.call_count)
 
     @patch.object(System, "is_symlink", return_value=True)
     def test_should_return_false_when_base_path_is_symlink(self, _):

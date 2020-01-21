@@ -2,7 +2,6 @@ import os
 from uuid import uuid4
 
 import pytest
-from mock import patch
 
 import dvc
 from dvc.main import main
@@ -56,11 +55,8 @@ class TestShouldRemoveOutsBeforeImport(TestDvc):
         remove_outs_call_counter = self.mocker.spy(
             dvc.stage.Stage, "remove_outs"
         )
-        with patch.object(
-            dvc.stage.Stage, "remove_outs", remove_outs_call_counter
-        ):
-            ret = main(["import-url", self.external_source])
-            self.assertEqual(0, ret)
+        ret = main(["import-url", self.external_source])
+        self.assertEqual(0, ret)
 
         self.assertEqual(1, remove_outs_call_counter.mock.call_count)
 
