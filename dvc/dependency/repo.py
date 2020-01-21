@@ -1,5 +1,7 @@
 import os
 
+from voluptuous import Required
+
 from .local import DependencyLOCAL
 from dvc.exceptions import OutputNotFoundError
 from dvc.path_info import PathInfo
@@ -11,7 +13,11 @@ class DependencyREPO(DependencyLOCAL):
     PARAM_REV = "rev"
     PARAM_REV_LOCK = "rev_lock"
 
-    REPO_SCHEMA = {PARAM_URL: str, PARAM_REV: str, PARAM_REV_LOCK: str}
+    REPO_SCHEMA = {
+        Required(PARAM_URL): str,
+        PARAM_REV: str,
+        PARAM_REV_LOCK: str,
+    }
 
     def __init__(self, def_repo, stage, *args, **kwargs):
         self.def_repo = def_repo
@@ -27,7 +33,8 @@ class DependencyREPO(DependencyLOCAL):
     @property
     def repo_pair(self):
         d = self.def_repo
-        return d[self.PARAM_URL], d[self.PARAM_REV_LOCK] or d[self.PARAM_REV]
+        rev = d.get(self.PARAM_REV_LOCK) or d.get(self.PARAM_REV)
+        return d[self.PARAM_URL], rev
 
     def __str__(self):
         return "{} ({})".format(self.def_path, self.def_repo[self.PARAM_URL])
