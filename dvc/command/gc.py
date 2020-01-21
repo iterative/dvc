@@ -9,19 +9,28 @@ from dvc.command.base import CmdBase
 
 logger = logging.getLogger(__name__)
 
+supported_removal_filters = ("commits", "branches", "tags")
+
 
 class CmdGC(CmdBase):
     def run(self):
-        msg = "This will remove all cache except items used in "
 
+        msg = "This will remove all cache except items used in "
         msg += "the working tree"
-        if self.args.all_commits:
+
+        self.args.remove = self.args.remove or []
+
+        if "commits" not in self.args.remove:
             msg += " and all git commits"
-        elif self.args.all_branches and self.args.all_tags:
+
+        if (
+            "branches" not in self.args.remove
+            and "tags" not in self.args.remove
+        ):
             msg += " and all git branches and tags"
-        elif self.args.all_branches:
+        elif "branches" not in self.args.remove:
             msg += " and all git branches"
-        elif self.args.all_tags:
+        elif "tags" not in self.args.remove:
             msg += " and all git tags"
 
         if self.args.repos:
@@ -39,9 +48,9 @@ class CmdGC(CmdBase):
             return 1
 
         self.repo.gc(
-            all_branches=self.args.all_branches,
-            all_tags=self.args.all_tags,
-            all_commits=self.args.all_commits,
+            all_branches="branches" in self.args.remove,
+            all_tags="tags" in self.args.remove,
+            all_commits="commits" in self.args.remove,
             cloud=self.args.cloud,
             remote=self.args.remote,
             force=self.args.force,
@@ -65,26 +74,6 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     gc_parser.add_argument(
-        "-a",
-        "--all-branches",
-        action="store_true",
-        default=False,
-        help="Keep data files for the tips of all git branches.",
-    )
-    gc_parser.add_argument(
-        "-T",
-        "--all-tags",
-        action="store_true",
-        default=False,
-        help="Keep data files for all git tags.",
-    )
-    gc_parser.add_argument(
-        "--all-commits",
-        action="store_true",
-        default=False,
-        help=argparse.SUPPRESS,
-    )
-    gc_parser.add_argument(
         "-c",
         "--cloud",
         action="store_true",
@@ -93,6 +82,12 @@ def add_parser(subparsers, parent_parser):
     )
     gc_parser.add_argument(
         "-r", "--remote", help="Remote storage to collect garbage in."
+    )
+    gc_parser.add_argument(
+        "--remove",
+        nargs="*",
+        choices=supported_removal_filters,
+        help="Available choices for remove: %(choices)s",
     )
     gc_parser.add_argument(
         "-f",

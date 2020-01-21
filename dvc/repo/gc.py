@@ -2,6 +2,7 @@ import logging
 
 from . import locked
 from dvc.cache import NamedCache
+from dvc.scm import NoSCM
 
 
 logger = logging.getLogger(__name__)
@@ -41,12 +42,13 @@ def gc(
 
         used = NamedCache()
         for repo in all_repos + [self]:
+            has_scm = not isinstance(repo.scm, NoSCM)
             used.update(
                 repo.used_cache(
-                    all_branches=all_branches,
+                    all_branches=not all_branches and has_scm,
                     with_deps=with_deps,
-                    all_tags=all_tags,
-                    all_commits=all_commits,
+                    all_tags=not all_tags and has_scm,
+                    all_commits=not all_commits and has_scm,
                     remote=remote,
                     force=force,
                     jobs=jobs,
