@@ -10,9 +10,13 @@
 • `Tutorial <https://dvc.org/doc/get-started>`_
 • `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
 
-.. image:: https://travis-ci.com/iterative/dvc.svg?branch=master
+.. image:: https://img.shields.io/badge/release-ok-brightgreen
   :target: https://travis-ci.com/iterative/dvc
-  :alt: Travis
+  :alt: Release
+
+.. image:: https://img.shields.io/travis/com/iterative/dvc/master?label=dev
+  :target: https://travis-ci.com/iterative/dvc
+  :alt: Travis dev branch
 
 .. image:: https://codeclimate.com/github/iterative/dvc/badges/gpa.svg
   :target: https://codeclimate.com/github/iterative/dvc
