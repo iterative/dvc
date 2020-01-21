@@ -1,8 +1,6 @@
 import pytest
 import os
-import shutil
 
-from dvc.repo import Repo
 from dvc.stage import Stage
 from dvc.compat import fspath
 from dvc.external_repo import clean_repos
@@ -10,9 +8,9 @@ from dvc.external_repo import clean_repos
 
 @pytest.mark.parametrize("cached", [True, False])
 def test_update_import(tmp_dir, dvc, erepo_dir, cached):
-    old_rev = None
+    gen = erepo_dir.dvc_gen if cached else erepo_dir.scm_gen
+
     with erepo_dir.branch("branch", new=True), erepo_dir.chdir():
-        gen = erepo_dir.dvc_gen if cached else erepo_dir.scm_gen
         gen("version", "branch", "add version file")
         old_rev = erepo_dir.scm.get_rev()
 
@@ -27,9 +25,7 @@ def test_update_import(tmp_dir, dvc, erepo_dir, cached):
         "rev_lock": old_rev,
     }
 
-    new_rev = None
     with erepo_dir.branch("branch", new=False), erepo_dir.chdir():
-        gen = erepo_dir.dvc_gen if cached else erepo_dir.scm_gen
         gen("version", "updated", "update version content")
         new_rev = erepo_dir.scm.get_rev()
 
@@ -110,23 +106,19 @@ def test_update_import_after_remote_updates_to_dvc(tmp_dir, dvc, erepo_dir):
     }
 
 
-def test_update_before_and_after_dvc_init(tmp_dir, dvc, erepo_dir):
-    with erepo_dir.chdir():
-        erepo_dir.scm.repo.index.remove([".dvc"], r=True)
-        shutil.rmtree(".dvc")
-        erepo_dir.scm_gen("file", "first version", commit="first version")
-        old_rev = erepo_dir.scm.get_rev()
+def test_update_before_and_after_dvc_init(tmp_dir, dvc, git_dir):
+    with git_dir.chdir():
+        git_dir.scm_gen("file", "first version", commit="first version")
+        old_rev = git_dir.scm.get_rev()
 
-    stage = dvc.imp(fspath(erepo_dir), "file", "file")
+    stage = dvc.imp(fspath(git_dir), "file", "file")
 
-    with erepo_dir.chdir():
-        Repo.init()
-        erepo_dir.scm.repo.index.remove(["file"])
+    with git_dir.chdir():
+        git_dir.init(dvc=True)
+        git_dir.scm.repo.index.remove(["file"])
         os.remove("file")
-        erepo_dir.dvc_gen("file", "second version")
-        erepo_dir.scm.add([".dvc", "file.dvc"])
-        erepo_dir.scm.commit("version with dvc")
-        new_rev = erepo_dir.scm.get_rev()
+        git_dir.dvc_gen("file", "second version", commit="with dvc")
+        new_rev = git_dir.scm.get_rev()
 
     assert old_rev != new_rev
 
@@ -138,7 +130,7 @@ def test_update_before_and_after_dvc_init(tmp_dir, dvc, erepo_dir):
         "file.dvc": [
             {
                 "changed deps": {
-                    "file ({})".format(fspath(erepo_dir)): "update available"
+                    "file ({})".format(fspath(git_dir)): "update available"
                 }
             }
         ]
