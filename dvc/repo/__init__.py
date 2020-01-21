@@ -223,7 +223,6 @@ class Repo(object):
         force=False,
         jobs=None,
         recursive=False,
-        verify=False,
     ):
         """Get the stages related to the given target and collect
         the `info` of its outputs.
@@ -263,7 +262,6 @@ class Repo(object):
                     force=force,
                     jobs=jobs,
                     filter_info=filter_info,
-                    verify=verify,
                 )
                 cache.update(used_cache, suffix=suffix)
 

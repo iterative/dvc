@@ -340,12 +340,7 @@ class OutputBase(object):
             self.remote.unprotect(self.path_info)
 
     def _collect_used_dir_cache(
-        self,
-        remote=None,
-        force=False,
-        jobs=None,
-        filter_info=None,
-        verify=False,
+        self, remote=None, force=False, jobs=None, filter_info=None
     ):
         """Get a list of `info`s related to the given directory.
 
@@ -375,7 +370,6 @@ class OutputBase(object):
                     jobs=jobs,
                     remote=remote,
                     show_checksums=False,
-                    verify=verify,
                 )
             except DvcException:
                 logger.debug("failed to pull cache for '{}'".format(self))

@@ -17,7 +17,6 @@ def pull(
     all_tags=False,
     force=False,
     recursive=False,
-    verify=False,
 ):
     processed_files_count = self._fetch(
         targets,
@@ -27,7 +26,6 @@ def pull(
         all_tags=all_tags,
         with_deps=with_deps,
         recursive=recursive,
-        verify=verify,
     )
     self._checkout(
         targets=targets, with_deps=with_deps, force=force, recursive=recursive

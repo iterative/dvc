@@ -28,7 +28,6 @@ class CmdDataPull(CmdDataBase):
                 with_deps=self.args.with_deps,
                 force=self.args.force,
                 recursive=self.args.recursive,
-                verify=self.args.verify,
             )
         except DvcException:
             logger.exception("failed to pull data from the cloud")
@@ -67,7 +66,6 @@ class CmdDataFetch(CmdDataBase):
                 all_tags=self.args.all_tags,
                 with_deps=self.args.with_deps,
                 recursive=self.args.recursive,
-                verify=self.args.verify,
             )
         except DvcException:
             logger.exception("failed to fetch data from the cloud")
@@ -146,12 +144,6 @@ def add_parser(subparsers, _parent_parser):
         action="store_true",
         default=False,
         help="Pull cache for subdirectories of the specified directory.",
-    )
-    pull_parser.add_argument(
-        "--verify",
-        action="store_true",
-        default=False,
-        help="Verify downloaded files checksums.",
     )
     pull_parser.set_defaults(func=CmdDataPull)
 
@@ -238,12 +230,6 @@ def add_parser(subparsers, _parent_parser):
         action="store_true",
         default=False,
         help="Fetch cache for subdirectories of specified directory.",
-    )
-    fetch_parser.add_argument(
-        "--verify",
-        action="store_true",
-        default=False,
-        help="Verify downloaded files checksums.",
     )
     fetch_parser.set_defaults(func=CmdDataFetch)
 

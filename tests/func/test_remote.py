@@ -280,6 +280,11 @@ def test_verify_checksums(tmp_dir, erepo_dir, mocker):
 
     # Removing cache will invalidate existing state entries
     shutil.rmtree(dvc.cache.local.cache_dir)
+    dvc.config.set(
+        Config.SECTION_REMOTE_FMT.format("upstream"),
+        Config.SECTION_REMOTE_VERIFY,
+        "True",
+    )
 
-    dvc.pull(verify=True)
+    dvc.pull()
     assert file_md5_spy.call_count == 3
