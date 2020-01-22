@@ -79,6 +79,8 @@ jobs:
     python: 3.7
     script: ./scripts/build_package.sh
   - name: Snapcraft snap
+    language: python
+    python: 3.7
     stage: debug  # TODO: remove
     addons:
      snaps:
