@@ -137,6 +137,7 @@ deploy:
     snap: dvc_*.snap
     channel: $RELEASE_SNAP_CHANNEL
     skip_cleanup: true
+    edge: true
     on:
       all_branches: true
       condition: "$(./scripts/ci/deploy_condition.sh dvc_*.snap) && ($TRAVIS_BRANCH = master || -n $TRAVIS_TAG)"
