@@ -1,267 +1,86 @@
-import os
-
-import dvc.repo.diff as diff
-from dvc.main import main
-from dvc.scm.base import FileNotInCommitError
-from tests.basic_env import TestDvcGit
+import pytest
 
 
-class TestDiff(TestDvcGit):
-    def setUp(self):
-        super().setUp()
+def test_no_scm(tmp_dir, dvc):
+    tmp_dir.dvc_gen("file", "text")
 
-        self.new_file = "new_test_file"
-        self.create(self.new_file, self.new_file)
-        stage = self.dvc.add(self.new_file)[0]
-        self.a_ref = self.git.git.rev_parse(self.git.head.commit, short=True)
-        self.new_checksum = stage.outs[0].checksum
-        self.git.index.add([self.new_file + ".dvc"])
-        self.git.index.commit("adds new_file")
-        self.test_dct = {
-            diff.DIFF_A_REF: self.a_ref,
-            diff.DIFF_B_REF: self.git.git.rev_parse(
-                self.git.head.commit, short=True
-            ),
-            diff.DIFF_LIST: [
-                {
-                    diff.DIFF_TARGET: self.new_file,
-                    diff.DIFF_NEW_FILE: self.new_file,
-                    diff.DIFF_NEW_CHECKSUM: self.new_checksum,
-                    diff.DIFF_SIZE: 13,
-                }
-            ],
-        }
-
-    def test(self):
-        out = self.dvc.scm.get_diff_trees(self.a_ref)
-        self.assertFalse(out[diff.DIFF_EQUAL])
-        self.assertEqual(self.a_ref, out[diff.DIFF_A_REF])
-        self.assertEqual(
-            self.git.git.rev_parse(self.git.head.commit, short=True),
-            out[diff.DIFF_B_REF],
-        )
+    pytest.skip("TODO: define behavior, should it fail?")
 
 
-class TestDiffRepo(TestDiff):
-    def test(self):
-        result = self.dvc.diff(self.a_ref, target=self.new_file)
-        self.assertEqual(self.test_dct, result)
+def test_added(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen("file", "text")
+
+    pytest.skip("TODO: define output structure")
 
 
-class TestDiffCmdLine(TestDiff):
-    def test(self):
-        ret = main(["diff", "-t", self.new_file, self.a_ref])
-        self.assertEqual(ret, 0)
+def test_deleted(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen("file", "text", commit="add file")
+    (tmp_dir / "file").unlink()
+
+    pytest.skip("TODO: define output structure")
 
 
-class TestDiffDir(TestDvcGit):
-    def setUp(self):
-        super().setUp()
+def test_modified(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen("file", "first", commit="first version")
+    tmp_dir.dvc_gen("file", "second")
 
-        stage = self.dvc.add(self.DATA_DIR)[0]
-        self.git.index.add([self.DATA_DIR + ".dvc"])
-        self.git.index.commit("adds data_dir")
-        self.a_ref = self.git.git.rev_parse(
-            self.dvc.scm.repo.head.commit, short=True
-        )
-        self.old_checksum = stage.outs[0].checksum
-        self.new_file = os.path.join(self.DATA_SUB_DIR, diff.DIFF_NEW_FILE)
-        self.create(self.new_file, self.new_file)
-        stage = self.dvc.add(self.DATA_DIR)[0]
-        self.git.index.add([self.DATA_DIR + ".dvc"])
-        self.git.index.commit(message="adds data_dir with new_file")
-        self.new_checksum = stage.outs[0].checksum
-
-    def test(self):
-        out = self.dvc.scm.get_diff_trees(self.a_ref)
-        self.assertFalse(out[diff.DIFF_EQUAL])
-        self.assertEqual(self.a_ref, out[diff.DIFF_A_REF])
-        self.assertEqual(
-            self.git.git.rev_parse(self.git.head.commit, short=True),
-            out[diff.DIFF_B_REF],
-        )
+    pytest.skip("TODO: define output structure")
 
 
-class TestDiffDirRepo(TestDiffDir):
-    maxDiff = None
+def test_refs(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen("file", "first", commit="first version")
+    tmp_dir.dvc_gen("file", "second", commit="second version")
+    tmp_dir.dvc_gen("file", "third", commit="third version")
 
-    def test(self):
-        result = self.dvc.diff(self.a_ref, target=self.DATA_DIR)
-        test_dct = {
-            diff.DIFF_A_REF: self.git.git.rev_parse(self.a_ref, short=True),
-            diff.DIFF_B_REF: self.git.git.rev_parse(
-                self.git.head.commit, short=True
-            ),
-            diff.DIFF_LIST: [
-                {
-                    diff.DIFF_CHANGE: 0,
-                    diff.DIFF_DEL: 0,
-                    diff.DIFF_IDENT: 2,
-                    diff.DIFF_MOVE: 0,
-                    diff.DIFF_NEW: 1,
-                    diff.DIFF_IS_DIR: True,
-                    diff.DIFF_TARGET: self.DATA_DIR,
-                    diff.DIFF_NEW_FILE: self.DATA_DIR,
-                    diff.DIFF_NEW_CHECKSUM: self.new_checksum,
-                    diff.DIFF_OLD_FILE: self.DATA_DIR,
-                    diff.DIFF_OLD_CHECKSUM: self.old_checksum,
-                    diff.DIFF_SIZE: 30,
-                }
-            ],
-        }
-        self.assertEqual(test_dct, result)
+    # dvc.diff("HEAD~1") --> (third, second)
+    # dvc.diff("HEAD~1", "HEAD~2") --> (second, first)
+    # dvc.diff("missing") --> error
+    pytest.skip("TODO: define output structure")
 
 
-class TestDiffDirRepoDeletedFile(TestDiffDir):
-    maxDiff = None
+def test_target(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen("foo", "foo")
+    tmp_dir.dvc_gen("bar", "bar")
+    scm.add([".gitignore", "foo.dvc", "bar.dvc"])
+    scm.commit("lowercase")
 
-    def setUp(self):
-        super().setUp()
+    tmp_dir.dvc_gen("foo", "FOO")
+    tmp_dir.dvc_gen("bar", "BAR")
+    scm.add(["foo.dvc", "bar.dvc"])
+    scm.commit("uppercase")
 
-        self.b_ref = self.a_ref
-        tmp = self.new_checksum
-        self.new_checksum = self.old_checksum
-        self.a_ref = str(self.dvc.scm.repo.head.commit)
-        self.old_checksum = tmp
-
-    def test(self):
-        result = self.dvc.diff(
-            self.a_ref, b_ref=self.b_ref, target=self.DATA_DIR
-        )
-        test_dct = {
-            diff.DIFF_A_REF: self.git.git.rev_parse(self.a_ref, short=True),
-            diff.DIFF_B_REF: self.git.git.rev_parse(self.b_ref, short=True),
-            diff.DIFF_LIST: [
-                {
-                    diff.DIFF_CHANGE: 0,
-                    diff.DIFF_DEL: 1,
-                    diff.DIFF_IDENT: 2,
-                    diff.DIFF_MOVE: 0,
-                    diff.DIFF_NEW: 0,
-                    diff.DIFF_IS_DIR: True,
-                    diff.DIFF_TARGET: self.DATA_DIR,
-                    diff.DIFF_NEW_FILE: self.DATA_DIR,
-                    diff.DIFF_NEW_CHECKSUM: self.new_checksum,
-                    diff.DIFF_OLD_FILE: self.DATA_DIR,
-                    diff.DIFF_OLD_CHECKSUM: self.old_checksum,
-                    diff.DIFF_SIZE: -30,
-                }
-            ],
-        }
-        self.assertEqual(test_dct, result)
+    # dvc.diff("HEAD~1", target="foo")
+    # dvc.diff("HEAD~1", target="missing") --> error
+    pytest.skip("TODO: define output structure")
 
 
-class TestDiffFileNotFound(TestDiffDir):
-    def setUp(self):
-        super().setUp()
-        self.unknown_file = "unknown_file_" + str(id(self))
+def test_directories(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen({"dir": {"1": "1", "2": "2"}}, commit="add a directory")
+    tmp_dir.dvc_gen({"dir": {"2": "2"}}, commit="delete a file")
+    tmp_dir.dvc_gen({"dir": {"2": "two"}}, commit="modify a file")
+    tmp_dir.dvc_gen({"dir": {"2": "two", "3": "3"}}, commit="add a file")
 
-    def test(self):
-        with self.assertRaises(FileNotInCommitError):
-            self.dvc.diff(self.a_ref, target=self.unknown_file)
-
-
-class TestDiffModifiedFile(TestDiff):
-    maxDiff = None
-
-    def setUp(self):
-        super().setUp()
-
-        self.old_checksum = self.new_checksum
-        self.new_file_content = "new_test_file_bigger_content_123456789"
-        self.diff_len = len(self.new_file) + len(self.new_file_content)
-        self.create(self.new_file, self.new_file_content)
-        stage = self.dvc.add(self.new_file)[0]
-        self.git.index.add([self.new_file + ".dvc"])
-        self.git.index.commit("change new_file content to be bigger")
-        self.new_checksum = stage.outs[0].checksum
-        self.b_ref = self.git.git.rev_parse(self.git.head.commit, short=True)
-
-    def test(self):
-        result = self.dvc.diff(
-            self.a_ref, b_ref=self.b_ref, target=self.new_file
-        )
-        test_dct = {
-            diff.DIFF_A_REF: self.git.git.rev_parse(self.a_ref, short=True),
-            diff.DIFF_B_REF: self.git.git.rev_parse(self.b_ref, short=True),
-            diff.DIFF_LIST: [
-                {
-                    diff.DIFF_NEW_CHECKSUM: self.new_checksum,
-                    diff.DIFF_NEW_FILE: self.new_file,
-                    diff.DIFF_TARGET: self.new_file,
-                    diff.DIFF_SIZE: self.diff_len,
-                }
-            ],
-        }
-        self.assertEqual(test_dct, result)
+    # dvc.diff(":/directory", ":/init")     --> (add: dir/1, dir/2)
+    # dvc.diff(":/delete", ":/directory")   --> (deleted: dir/1)
+    # dvc.diff(":/modify", ":/directory")   --> (modified: dir/2)
+    # dvc.diff(":/modify", ":/delete")      --> (add: dir/3)
+    # dvc.diff(":/add a file", ":/modify")
+    pytest.skip("TODO: define output structure")
 
 
-class TestDiffDirWithFile(TestDiffDir):
-    maxDiff = None
-
-    def setUp(self):
-        super().setUp()
-
-        self.a_ref = self.git.git.rev_parse(self.git.head.commit, short=True)
-        self.old_checksum = self.new_checksum
-        self.new_file_content = "new_test_file_bigger_content_123456789"
-        self.diff_len = len(self.new_file_content)
-        self.create(self.new_file, self.new_file_content)
-        stage = self.dvc.add(self.DATA_DIR)[0]
-        self.git.index.add([self.DATA_DIR + ".dvc"])
-        self.git.index.commit(message="modify file in the data dir")
-        self.new_checksum = stage.outs[0].checksum
-        self.b_ref = self.git.git.rev_parse(self.git.head.commit, short=True)
-
-    def test(self):
-        result = self.dvc.diff(self.a_ref, target=self.DATA_DIR)
-        test_dct = {
-            diff.DIFF_A_REF: self.git.git.rev_parse(self.a_ref, short=True),
-            diff.DIFF_B_REF: self.git.git.rev_parse(self.b_ref, short=True),
-            diff.DIFF_LIST: [
-                {
-                    diff.DIFF_IDENT: 2,
-                    diff.DIFF_CHANGE: 1,
-                    diff.DIFF_DEL: 0,
-                    diff.DIFF_MOVE: 0,
-                    diff.DIFF_NEW: 0,
-                    diff.DIFF_IS_DIR: True,
-                    diff.DIFF_TARGET: self.DATA_DIR,
-                    diff.DIFF_NEW_FILE: self.DATA_DIR,
-                    diff.DIFF_NEW_CHECKSUM: self.new_checksum,
-                    diff.DIFF_OLD_FILE: self.DATA_DIR,
-                    diff.DIFF_OLD_CHECKSUM: self.old_checksum,
-                    diff.DIFF_SIZE: self.diff_len,
-                }
-            ],
-        }
-        self.assertEqual(test_dct, result)
+def test_cli(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen("file", "text")
+    # main(["diff"])
+    pytest.skip("TODO: define output structure")
 
 
-class TestDiffCmdMessage(TestDiff):
-    maxDiff = None
+def test_json(tmp_dir, scm, dvc):
+    # result = {
+    #     "added": {...},
+    #     "renamed": {...},
+    #     "modified": {...},
+    #     "deleted": {...},
+    # }
 
-    def test(self):
-        ret = main(
-            [
-                "diff",
-                self.test_dct[diff.DIFF_A_REF],
-                self.test_dct[diff.DIFF_B_REF],
-            ]
-        )
-        self.assertEqual(ret, 0)
-
-        msg1 = "dvc diff from {0} to {1}".format(
-            self.git.git.rev_parse(self.test_dct[diff.DIFF_A_REF], short=True),
-            self.git.git.rev_parse(self.test_dct[diff.DIFF_B_REF], short=True),
-        )
-        msg2 = "diff for '{0}'".format(
-            self.test_dct[diff.DIFF_LIST][0][diff.DIFF_TARGET]
-        )
-        msg3 = "+{0} with md5 {1}".format(
-            self.test_dct[diff.DIFF_LIST][0][diff.DIFF_TARGET],
-            self.test_dct[diff.DIFF_LIST][0][diff.DIFF_NEW_CHECKSUM],
-        )
-        msg4 = "added file with size 13 Bytes"
-        for m in [msg1, msg2, msg3, msg4]:
-            assert m in self._caplog.text
+    # main(["diff", "--json"])
+    pytest.skip("TODO: define output structure")

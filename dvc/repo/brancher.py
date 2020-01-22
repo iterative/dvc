@@ -41,6 +41,8 @@ def brancher(  # noqa: E302
         if all_tags:
             revs.extend(scm.list_tags())
 
+    revs = filter(None, revs)
+
     try:
         if revs:
             for sha, names in group_by(scm.resolve_rev, revs).items():
