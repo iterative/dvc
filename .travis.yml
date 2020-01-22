@@ -140,7 +140,7 @@ deploy:
       stage: build
   - provider: snap
     snap: dvc_*.snap
-    channel: $RELEASE_SNAP_CHANNEL
+    channel: $SNAP_CHANNEL
     skip_cleanup: true
     on:
       all_branches: true
