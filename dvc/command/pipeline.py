@@ -36,8 +36,8 @@ class CmdPipelineShow(CmdBase):
         from dvc.stage import Stage
         from dvc.repo.graph import get_pipeline
 
-        stage = Stage.load(self.repo, target)
-        G = get_pipeline(self.repo.pipelines, stage)
+        target_stage = Stage.load(self.repo, target)
+        G = get_pipeline(self.repo.pipelines, target_stage)
 
         nodes = []
         for stage in G:
@@ -52,7 +52,7 @@ class CmdPipelineShow(CmdBase):
                 nodes.append(stage.relpath)
 
         edges = []
-        for from_stage, to_stage in G.edges():
+        for from_stage, to_stage in networkx.dfs_edges(G, target_stage):
             if commands:
                 if to_stage.cmd is None:
                     continue
