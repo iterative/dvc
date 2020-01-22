@@ -74,6 +74,8 @@ jobs:
     python: 3.7
     script: ./scripts/build_package.sh
   - name: Snapcraft snap
+    language: python
+    python: 3.7
     addons:
      snaps:
      - name: snapcraft
@@ -83,11 +85,10 @@ jobs:
        channel: stable
     env:
     - SNAPCRAFT_IMAGE_INFO: '{"build_url": "$TRAVIS_BUILD_URL"}'
-    before_install:
+    install:
     - sudo /snap/bin/lxd.migrate -yes
     - sudo /snap/bin/lxd waitready
     - sudo /snap/bin/lxd init --auto
-    install:
     script:
     - ./scripts/build_snap.sh
     after_failure:
@@ -135,7 +136,7 @@ deploy:
       stage: build
   - provider: snap
     snap: dvc_*.snap
-    channel: $RELEASE_SNAP_CHANNEL
+    channel: $SNAP_CHANNEL
     skip_cleanup: true
     on:
       all_branches: true
