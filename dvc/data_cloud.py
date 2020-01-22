@@ -39,7 +39,9 @@ class DataCloud(object):
         if remote:
             return self._init_remote(remote)
 
-        raise NoRemoteError(command)
+        has_any_remote = any(key.startswith("remote ") for key in self._config)
+
+        raise NoRemoteError(command, has_any_remote=has_any_remote)
 
     def _init_remote(self, remote):
         return Remote(self.repo, name=remote)
