@@ -52,7 +52,7 @@ elif [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
 fi
 
 if [[ -n "$TRAVIS_TAG" ]]; then
-    echo "export SNAP_CHANNEL=stable" >> env.sh
+    echo "export RELEASE_SNAP_CHANNEL=stable" >> env.sh
 else
-    echo "export SNAP_CHANNEL=edge" >> env.sh
+    echo "export RELEASE_SNAP_CHANNEL=edge" >> env.sh
 fi
