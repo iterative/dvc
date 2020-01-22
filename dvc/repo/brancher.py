@@ -42,8 +42,9 @@ def brancher(  # noqa: E302
             revs.extend(scm.list_tags())
 
     try:
-        for sha, names in group_by(scm.resolve_rev, revs).items():
-            self.tree = scm.get_tree(sha)
-            yield ", ".join(names)
+        if revs:
+            for sha, names in group_by(scm.resolve_rev, revs).items():
+                self.tree = scm.get_tree(sha)
+                yield ", ".join(names)
     finally:
         self.tree = saved_tree
