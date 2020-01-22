@@ -73,12 +73,24 @@ class DataCloud(object):
             show_checksums (bool): show checksums instead of file names in
                 information messages.
         """
-        return self.repo.cache.local.pull(
-            cache,
-            jobs=jobs,
-            remote=self.get_remote(remote, "pull"),
-            show_checksums=show_checksums,
+        remote = self.get_remote(remote, "pull")
+        downloaded_items_num = self.repo.cache.local.pull(
+            cache, jobs=jobs, remote=remote, show_checksums=show_checksums
         )
+
+        if not remote.verify:
+            self._save_pulled_checksums(cache)
+
+        return downloaded_items_num
+
+    def _save_pulled_checksums(self, cache):
+        for checksum in cache["local"].keys():
+            cache_file = self.repo.cache.local.checksum_to_path_info(checksum)
+            if self.repo.cache.local.exists(cache_file):
+                # We can safely save here, as existing corrupted files will be
+                # removed upon status, while files corrupted during download
+                # will not be moved from tmp_file (see `RemoteBASE.download()`)
+                self.repo.state.save(cache_file, checksum)
 
     def status(self, cache, jobs=None, remote=None, show_checksums=False):
         """Check status of data items in a cloud-agnostic way.

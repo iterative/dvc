@@ -80,6 +80,7 @@ class RemoteBASE(object):
     CHECKSUM_JOBS = max(1, min(4, cpu_count() // 2))
     DEFAULT_CACHE_TYPES = ["copy"]
     DEFAULT_NO_TRAVERSE = True
+    DEFAULT_VERIFY = False
 
     state = StateNoop()
 
@@ -92,6 +93,9 @@ class RemoteBASE(object):
         self.protected = False
         self.no_traverse = config.get(
             Config.SECTION_REMOTE_NO_TRAVERSE, self.DEFAULT_NO_TRAVERSE
+        )
+        self.verify = config.get(
+            Config.SECTION_REMOTE_VERIFY, self.DEFAULT_VERIFY
         )
         self._dir_info = {}
 

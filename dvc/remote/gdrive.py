@@ -63,6 +63,7 @@ class RemoteGDrive(RemoteBASE):
     path_cls = CloudURLInfo
     REQUIRES = {"pydrive2": "pydrive2"}
     DEFAULT_NO_TRAVERSE = False
+    DEFAULT_VERIFY = True
 
     GDRIVE_USER_CREDENTIALS_DATA = "GDRIVE_USER_CREDENTIALS_DATA"
     DEFAULT_USER_CREDENTIALS_FILE = "gdrive-user-credentials.json"

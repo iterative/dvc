@@ -9,10 +9,11 @@ import pytest
 from mock import patch
 
 from dvc.cache import NamedCache
+from dvc.compat import fspath
 from dvc.config import Config
 from dvc.data_cloud import DataCloud
 from dvc.main import main
-from dvc.remote import RemoteAZURE
+from dvc.remote import RemoteAZURE, RemoteConfig
 from dvc.remote import RemoteGDrive
 from dvc.remote import RemoteGS
 from dvc.remote import RemoteHDFS
@@ -653,3 +654,37 @@ class TestShouldWarnOnNoChecksumInLocalAndRemoteCache(TestDvc):
         assert self.message_header in self._caplog.text
         assert self.message_foo_part in self._caplog.text
         assert self.message_bar_part in self._caplog.text
+
+
+def test_verify_checksums(tmp_dir, scm, dvc, mocker, tmp_path_factory):
+    tmp_dir.dvc_gen({"file": "file1 content"}, commit="add file")
+    tmp_dir.dvc_gen({"dir": {"subfile": "file2 content"}}, commit="add dir")
+
+    RemoteConfig(dvc.config).add(
+        "local_remote",
+        fspath(tmp_path_factory.mktemp("local_remote")),
+        default=True,
+    )
+    dvc.push()
+
+    # remove artifacts and cache to trigger fetching
+    os.remove("file")
+    shutil.rmtree("dir")
+    shutil.rmtree(dvc.cache.local.cache_dir)
+
+    checksum_spy = mocker.spy(dvc.cache.local, "get_file_checksum")
+
+    dvc.pull()
+    assert checksum_spy.call_count == 0
+
+    # Removing cache will invalidate existing state entries
+    shutil.rmtree(dvc.cache.local.cache_dir)
+
+    dvc.config.set(
+        Config.SECTION_REMOTE_FMT.format("local_remote"),
+        Config.SECTION_REMOTE_VERIFY,
+        "True",
+    )
+
+    dvc.pull()
+    assert checksum_spy.call_count == 3

@@ -198,6 +198,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_REMOTE_ASK_PASSWORD = "ask_password"
     SECTION_REMOTE_GSS_AUTH = "gss_auth"
     SECTION_REMOTE_NO_TRAVERSE = "no_traverse"
+    SECTION_REMOTE_VERIFY = "verify"
     SECTION_REMOTE_SCHEMA = {
         Required(SECTION_REMOTE_URL): str,
         SECTION_AWS_REGION: str,
@@ -232,6 +233,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         SECTION_GDRIVE_USER_CREDENTIALS_FILE: str,
         PRIVATE_CWD: str,
         SECTION_REMOTE_NO_TRAVERSE: Bool,
+        SECTION_REMOTE_VERIFY: Bool,
     }
 
     SECTION_STATE = "state"
