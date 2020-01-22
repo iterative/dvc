@@ -583,27 +583,21 @@ class TestRecursiveSyncOperations(Local, TestDataCloudBase):
         self._test_recursive_pull()
 
 
-class TestCheckSumRecalculation(TestDvc):
-    @pytest.fixture(autouse=True)
-    def use_mocker(self, mocker):
-        self.mocker = mocker
-
-    def test(self):
-        test_get_file_checksum = self.mocker.spy(
-            RemoteLOCAL, "get_file_checksum"
-        )
-        url = Local.get_url()
-        ret = main(["remote", "add", "-d", TEST_REMOTE, url])
-        self.assertEqual(ret, 0)
-        ret = main(["config", "cache.type", "hardlink"])
-        self.assertEqual(ret, 0)
-        ret = main(["add", self.FOO])
-        self.assertEqual(ret, 0)
-        ret = main(["push"])
-        self.assertEqual(ret, 0)
-        ret = main(["run", "-d", self.FOO, "echo foo"])
-        self.assertEqual(ret, 0)
-        self.assertEqual(test_get_file_checksum.mock.call_count, 1)
+def test_checksum_recalculation(mocker, dvc, tmp_dir):
+    tmp_dir.gen({"foo": "foo"})
+    test_get_file_checksum = mocker.spy(RemoteLOCAL, "get_file_checksum")
+    url = Local.get_url()
+    ret = main(["remote", "add", "-d", TEST_REMOTE, url])
+    assert ret == 0
+    ret = main(["config", "cache.type", "hardlink"])
+    assert ret == 0
+    ret = main(["add", "foo"])
+    assert ret == 0
+    ret = main(["push"])
+    assert ret == 0
+    ret = main(["run", "-d", "foo", "echo foo"])
+    assert ret == 0
+    assert test_get_file_checksum.mock.call_count == 1
 
 
 class TestShouldWarnOnNoChecksumInLocalAndRemoteCache(TestDvc):

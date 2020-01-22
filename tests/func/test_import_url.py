@@ -4,9 +4,12 @@ from uuid import uuid4
 import pytest
 
 import dvc
+from dvc.stage import Stage
 from dvc.main import main
 from dvc.utils.fs import makedirs
+from dvc.compat import fspath
 from tests.basic_env import TestDvc
+from tests.dir_helpers import TmpDir
 
 
 class TestCmdImport(TestDvc):
@@ -59,6 +62,17 @@ class TestShouldRemoveOutsBeforeImport(TestDvc):
         self.assertEqual(0, ret)
 
         self.assertEqual(1, remove_outs_call_counter.mock.call_count)
+
+
+def test_should_remove_outs_before_import(mocker, dvc, tmp_path_factory):
+    import_dir = TmpDir(tmp_path_factory.mktemp("import"))
+    import_dir.gen({"foo": "foo"})
+
+    remove_outs_call_counter = mocker.spy(Stage, "remove_outs")
+    ret = main(["import-url", fspath(import_dir / "foo")])
+
+    assert ret == 0
+    assert remove_outs_call_counter.mock.call_count == 1
 
 
 class TestImportFilename(TestDvc):
