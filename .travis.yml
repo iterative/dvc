@@ -10,14 +10,9 @@ env:
     - PATH="$PYENV_ROOT/bin:$PATH"
     - PIP_CACHE_DIR="$HOME/.cache/pip"  # unify pip cache location for all platforms
 stages:
-  # TODO: revert
-  - debug
-  - name: check
-    if: false
-  - name: test
-    if: false
-  - name: build
-    if: false
+  - check
+  - test
+  - build
 # Travis doesn't support testing python on Mac yet, so we need
 # to workaround it by installing it directly with brew.
 #
@@ -81,7 +76,6 @@ jobs:
   - name: Snapcraft snap
     language: python
     python: 3.7
-    stage: debug  # TODO: remove
     addons:
      snaps:
      - name: snapcraft
@@ -146,9 +140,6 @@ deploy:
     skip_cleanup: true
     on:
       all_branches: true
-      # TODO: revert for below
-      condition: "true"
-      stage: debug
-      # condition: "$(./scripts/ci/deploy_condition.sh dvc_*.snap) && ($TRAVIS_BRANCH = master || -n $TRAVIS_TAG)"
-      # repo: iterative/dvc
-      # stage: build
+      condition: "$(./scripts/ci/deploy_condition.sh dvc_*.snap) && ($TRAVIS_BRANCH = master || -n $TRAVIS_TAG)"
+      repo: iterative/dvc
+      stage: build
