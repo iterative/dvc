@@ -9,7 +9,7 @@ import colorama
 import pytest
 from mock import patch
 
-import dvc
+import dvc as dvc_module
 from dvc.cache import Cache
 from dvc.exceptions import DvcException
 from dvc.exceptions import RecursiveAddingWhileUsingFilename
@@ -28,8 +28,6 @@ from dvc.utils.fs import path_isin
 from dvc.utils.stage import load_stage_file
 from tests.basic_env import TestDvc
 from tests.utils import get_gitignore_content
-
-dvc_module = dvc  # to disambiguate between the module and the fixture
 
 
 def test_add(tmp_dir, dvc):
@@ -244,12 +242,6 @@ class TestDoubleAddUnchanged(TestDvc):
 
         ret = main(["add", self.DATA_DIR])
         self.assertEqual(ret, 0)
-
-
-class TestDvcWithMocker(TestDvc):
-    @pytest.fixture(autouse=True)
-    def use_mocker(self, mocker):
-        self.mocker = mocker
 
 
 def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
