@@ -89,8 +89,7 @@ class DataCloud(object):
             if self.repo.cache.local.exists(cache_file):
                 # We can safely save here, as existing corrupted files will be
                 # removed upon status, while files corrupted during download
-                # will not be copied from tmp_file (see download
-                # implementation in `remote/base`)
+                # will not be moved from tmp_file (see `RemoteBASE.download()`)
                 self.repo.state.save(cache_file, checksum)
 
     def status(self, cache, jobs=None, remote=None, show_checksums=False):

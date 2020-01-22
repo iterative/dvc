@@ -13,7 +13,6 @@ from dvc.path_info import PathInfo
 from dvc.remote import RemoteLOCAL, RemoteConfig
 from dvc.remote.base import RemoteBASE
 from dvc.compat import fspath
-from dvc.scm import Git
 from tests.basic_env import TestDvc
 from tests.remotes import Local
 
@@ -258,33 +257,3 @@ def test_modify_missing_remote(dvc):
 
     with pytest.raises(ConfigError, match=r"unable to find remote section"):
         remote_config.modify("myremote", "gdrive_client_id", "xxx")
-
-
-def test_verify_checksums(tmp_dir, erepo_dir, mocker):
-    with erepo_dir.chdir():
-        erepo_dir.dvc_gen({"file": "file1 content"}, commit="add file")
-        erepo_dir.dvc_gen(
-            {"dir": {"subfile": "file2 content"}}, commit="add " "dir"
-        )
-
-    Git.clone(fspath(erepo_dir), fspath(tmp_dir))
-
-    from dvc.repo import Repo
-
-    dvc = Repo(fspath(tmp_dir))
-
-    file_md5_spy = mocker.spy(dvc.cache.local, "get_file_checksum")
-
-    dvc.pull()
-    assert file_md5_spy.call_count == 0
-
-    # Removing cache will invalidate existing state entries
-    shutil.rmtree(dvc.cache.local.cache_dir)
-    dvc.config.set(
-        Config.SECTION_REMOTE_FMT.format("upstream"),
-        Config.SECTION_REMOTE_VERIFY,
-        "True",
-    )
-
-    dvc.pull()
-    assert file_md5_spy.call_count == 3
