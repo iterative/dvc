@@ -47,11 +47,11 @@ class UrlNotDvcRepoError(DvcException):
     """Thrown if given url is not a DVC repository.
 
     Args:
-        url (str): url to the repository.
+        url (str): URL to the repository
     """
 
     def __init__(self, url):
-        super().__init__("URL '{}' is not a dvc repository.".format(url))
+        super().__init__("URL '{}' is not a DVC repository.".format(url))
 
 
 def get_url(path, repo=None, rev=None, remote=None):
