@@ -23,3 +23,16 @@ def test_external_repo(erepo_dir):
                 assert fd.read() == "branch"
 
         assert mock.call_count == 1
+
+
+def test_source_change(erepo_dir):
+    url = fspath(erepo_dir)
+    with external_repo(url) as repo:
+        old_rev = repo.scm.get_rev()
+
+    erepo_dir.scm_gen("file", "text", commit="a change")
+
+    with external_repo(url) as repo:
+        new_rev = repo.scm.get_rev()
+
+    assert old_rev != new_rev
