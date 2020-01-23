@@ -38,9 +38,9 @@ TEST_GCP_CREDS_FILE = os.path.abspath(
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = TEST_GCP_CREDS_FILE
 
 TEST_GDRIVE_CLIENT_ID = (
-    "719861249063-v4an78j9grdtuuuqg3lnm0sugna6v3lh.apps.googleusercontent.com"
+    "217948389181-rs7it4a635b3qrf8dnmklmoj2kimun9n.apps.googleusercontent.com"
 )
-TEST_GDRIVE_CLIENT_SECRET = "2fy_HyzSwkxkGzEken7hThXb"
+TEST_GDRIVE_CLIENT_SECRET = "LNg9n_cK7bohI8gEHn4bUeMX"
 
 always_test = staticmethod(lambda: True)
 
