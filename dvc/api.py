@@ -108,8 +108,9 @@ def read(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
 
 
 @contextmanager
-def _make_repo(repo_url, rev=None):
-    if rev is None and (not repo_url or os.path.exists(repo_url)):
+def _make_repo(repo_url=None, rev=None):
+    repo_url = repo_url or os.getcwd()
+    if rev is None and os.path.exists(repo_url):
         try:
             yield Repo(repo_url)
             return
