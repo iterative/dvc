@@ -76,7 +76,7 @@ def Choices(*choices):
 
 
 class Config(object):  # pylint: disable=too-many-instance-attributes
-    """Class that manages configuration files for a dvc repo.
+    """Class that manages configuration files for a DVC repo.
 
     Args:
         dvc_dir (str): optional path to `.dvc` directory, that is used to

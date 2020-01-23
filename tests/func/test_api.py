@@ -54,7 +54,7 @@ def test_get_url_external(erepo_dir, remote_url):
 def test_get_url_requires_dvc(tmp_dir, scm):
     tmp_dir.scm_gen({"foo": "foo"}, commit="initial")
 
-    with pytest.raises(NotDvcRepoError, match="not inside of a dvc repo"):
+    with pytest.raises(NotDvcRepoError, match="not inside of a DVC repo"):
         api.get_url("foo", repo=fspath(tmp_dir))
 
     with pytest.raises(UrlNotDvcRepoError):

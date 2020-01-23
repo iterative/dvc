@@ -51,7 +51,7 @@ class UrlNotDvcRepoError(DvcException):
     """
 
     def __init__(self, url):
-        super().__init__("URL '{}' is not a DVC repository.".format(url))
+        super().__init__("'{}' is not a DVC repository.".format(url))
 
 
 def get_url(path, repo=None, rev=None, remote=None):

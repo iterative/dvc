@@ -172,7 +172,7 @@ def add_parser(subparsers, parent_parser):
 
     pipeline_subparsers = pipeline_parser.add_subparsers(
         dest="cmd",
-        help="Use dvc pipeline CMD --help for command-specific help.",
+        help="Use `dvc pipeline CMD --help` for command-specific help.",
     )
 
     fix_subparsers(pipeline_subparsers)

@@ -1,4 +1,4 @@
-"""Command line interface for dvc."""
+"""DVC command line interface"""
 import argparse
 import logging
 import sys
@@ -170,7 +170,7 @@ def parse_args(argv=None):
         title="Available Commands",
         metavar="COMMAND",
         dest="cmd",
-        help="Use dvc COMMAND --help for command-specific help.",
+        help="Use `dvc COMMAND --help` for command-specific help.",
     )
 
     fix_subparsers(subparsers)

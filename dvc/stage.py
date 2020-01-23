@@ -76,7 +76,7 @@ class StageFileBadNameError(DvcException):
 
 class StagePathOutsideError(DvcException):
     def __init__(self, path):
-        msg = "stage working or file path '{}' is outside of dvc repo"
+        msg = "stage working or file path '{}' is outside of DVC repo"
         super().__init__(msg.format(path))
 
 

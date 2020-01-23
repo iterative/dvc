@@ -13,7 +13,7 @@ class CmdInstall(CmdBase):
         try:
             self.repo.install()
         except Exception:
-            logger.exception("failed to install dvc hooks")
+            logger.exception("Failed to install DVC Git hooks")
             return 1
         return 0
 
