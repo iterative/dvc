@@ -40,7 +40,7 @@ class CmdPipelineShow(CmdBase):
         G = get_pipeline(self.repo.pipelines, target_stage)
 
         nodes = []
-        for stage in G:
+        for stage in networkx.preorder_nodes(G, target_stage):
             if commands:
                 if stage.cmd is None:
                     continue
@@ -48,6 +48,8 @@ class CmdPipelineShow(CmdBase):
             elif outs:
                 for out in stage.outs:
                     nodes.append(str(out))
+                for dep in stage.deps:
+                    nodes.append(str(dep))
             else:
                 nodes.append(stage.relpath)
 
