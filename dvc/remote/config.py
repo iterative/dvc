@@ -33,7 +33,7 @@ class RemoteConfig(object):
 
         if settings is None:
             raise ConfigError(
-                "unable to find remote section '{}'".format(name)
+                "Unable to find remote section '{}'".format(name)
             )
 
         parsed = urlparse(settings["url"])

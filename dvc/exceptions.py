@@ -38,7 +38,7 @@ class OutputNotFoundError(DvcException):
         self.output = output
         self.repo = repo
         super().__init__(
-            "unable to find DVC-file with output '{path}'".format(
+            "Unable to find DVC-file with output '{path}'".format(
                 path=relpath(self.output)
             )
         )
