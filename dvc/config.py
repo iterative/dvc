@@ -27,8 +27,10 @@ class NoRemoteError(ConfigError):
     def __init__(self, command, *, config=None):
         has_any_remote = False
         if config:
-            has_any_remote = config.list_options(
-                Config.SECTION_REMOTE_REGEX, Config.SECTION_REMOTE_URL
+            has_any_remote = bool(
+                config.list_options(
+                    Config.SECTION_REMOTE_REGEX, Config.SECTION_REMOTE_URL
+                )
             )
 
         if has_any_remote:
