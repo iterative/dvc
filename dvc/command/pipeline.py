@@ -52,15 +52,16 @@ class CmdPipelineShow(CmdBase):
                 nodes.append(stage.relpath)
 
         edges = []
-        for from_stage, to_stage in networkx.dfs_edges(G, target_stage):
+        for from_stage, to_stage in G.edges():
             if commands:
                 if to_stage.cmd is None:
                     continue
                 edges.append((from_stage.cmd, to_stage.cmd))
             elif outs:
-                for from_out in from_stage.outs:
+                for from_dep in from_stage.deps:
                     for to_out in to_stage.outs:
-                        edges.append((str(from_out), str(to_out)))
+                        if from_dep.path_info == to_out.path_info:
+                            edges.append((str(from_dep), str(to_out)))
             else:
                 edges.append((from_stage.relpath, to_stage.relpath))
 
