@@ -40,7 +40,7 @@ class TestDefaultOutput(TestDvc):
             self.assertEqual(fd.read(), "content")
 
 
-def test_should_remove_outs_before_import(mocker, erepo_dir):
+def test_should_remove_outs_before_import(tmp_dir, dvc, mocker, erepo_dir):
     erepo_dir.gen({"foo": "foo"})
 
     remove_outs_call_counter = mocker.spy(Stage, "remove_outs")
