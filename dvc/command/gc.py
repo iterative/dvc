@@ -48,9 +48,7 @@ class CmdGC(CmdBase):
             return 1
 
         self.repo.gc(
-            all_branches="branches" in self.args.remove,
-            all_tags="tags" in self.args.remove,
-            all_commits="commits" in self.args.remove,
+            remove=self.args.remove,
             cloud=self.args.cloud,
             remote=self.args.remote,
             force=self.args.force,

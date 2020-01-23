@@ -2,7 +2,6 @@ import logging
 
 from . import locked
 from dvc.cache import NamedCache
-from dvc.scm import NoSCM
 
 
 logger = logging.getLogger(__name__)
@@ -17,12 +16,10 @@ def _do_gc(typ, func, clist):
 @locked
 def gc(
     self,
-    all_branches=False,
+    remove=None,
     cloud=False,
     remote=None,
     with_deps=False,
-    all_tags=False,
-    all_commits=False,
     force=False,
     jobs=None,
     repos=None,
@@ -31,6 +28,7 @@ def gc(
     from dvc.repo import Repo
 
     all_repos = []
+    remove = remove or []
 
     if repos:
         all_repos = [Repo(path) for path in repos]
@@ -42,16 +40,27 @@ def gc(
 
         used = NamedCache()
         for repo in all_repos + [self]:
-            has_scm = not isinstance(repo.scm, NoSCM)
+            exclude_revs = (
+                repo.scm.list_branches()
+                if {"commits", "branches"} - set(remove)
+                else []
+            )
+            exclude_revs += (
+                repo.scm.list_tags()
+                if {"tags", "commits"} - set(remove)
+                else []
+            )
+
             used.update(
                 repo.used_cache(
-                    all_branches=not all_branches and has_scm,
+                    all_branches="branches" not in remove,
                     with_deps=with_deps,
-                    all_tags=not all_tags and has_scm,
-                    all_commits=not all_commits and has_scm,
+                    all_tags="tags" not in remove,
+                    all_commits="commits" not in remove,
                     remote=remote,
                     force=force,
                     jobs=jobs,
+                    exclude_revs=exclude_revs,
                 )
             )
 
