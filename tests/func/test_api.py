@@ -8,7 +8,7 @@ import pytest
 from dvc import api
 from dvc.api import SummonError, UrlNotDvcRepoError
 from dvc.compat import fspath
-from dvc.exceptions import FileMissingError, NotDvcRepoError
+from dvc.exceptions import FileMissingError
 from dvc.main import main
 from dvc.path_info import URLInfo
 from dvc.remote.config import RemoteConfig
@@ -54,7 +54,7 @@ def test_get_url_external(erepo_dir, remote_url):
 def test_get_url_requires_dvc(tmp_dir, scm):
     tmp_dir.scm_gen({"foo": "foo"}, commit="initial")
 
-    with pytest.raises(NotDvcRepoError, match="not inside of a DVC repo"):
+    with pytest.raises(UrlNotDvcRepoError, match="not a DVC repository"):
         api.get_url("foo", repo=fspath(tmp_dir))
 
     with pytest.raises(UrlNotDvcRepoError):

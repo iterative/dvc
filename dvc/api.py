@@ -10,7 +10,7 @@ import ruamel.yaml
 from voluptuous import Schema, Required, Invalid
 
 from dvc.repo import Repo
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, NotDvcRepoError
 from dvc.external_repo import external_repo
 
 
@@ -110,10 +110,13 @@ def read(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
 @contextmanager
 def _make_repo(repo_url, rev=None):
     if rev is None and (not repo_url or os.path.exists(repo_url)):
-        yield Repo(repo_url)
-    else:
-        with external_repo(url=repo_url, rev=rev) as repo:
-            yield repo
+        try:
+            yield Repo(repo_url)
+            return
+        except NotDvcRepoError:
+            pass  # fallthrough to external_repo
+    with external_repo(url=repo_url, rev=rev) as repo:
+        yield repo
 
 
 def summon(name, repo=None, rev=None, summon_file="dvcsummon.yaml", args=None):
