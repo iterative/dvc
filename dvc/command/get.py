@@ -19,7 +19,7 @@ class CmdGet(CmdBaseNoRepo):
             )
             logger.info(url)
         except DvcException:
-            logger.exception("Failed to show URL")
+            logger.exception("failed to show URL")
             return 1
 
         return 0

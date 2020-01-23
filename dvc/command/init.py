@@ -19,7 +19,7 @@ class CmdInit(CmdBaseNoRepo):
             )
             self.config = self.repo.config
         except InitError:
-            logger.exception("Failed to initiate DVC")
+            logger.exception("failed to initiate DVC")
             return 1
         return 0
 

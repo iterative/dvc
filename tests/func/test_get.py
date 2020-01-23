@@ -190,7 +190,7 @@ def test_get_url_not_existing(tmp_dir, erepo_dir, caplog):
             main(["get", fspath(erepo_dir), "not-existing-file", "--show-url"])
             == 1
         )
-        assert "Failed to show URL" in caplog.text
+        assert "failed to show URL" in caplog.text
 
 
 def test_get_url_git_only_repo(tmp_dir, scm, caplog):
@@ -198,4 +198,4 @@ def test_get_url_git_only_repo(tmp_dir, scm, caplog):
 
     with caplog.at_level(logging.ERROR):
         assert main(["get", fspath(tmp_dir), "foo", "--show-url"]) == 1
-        assert "Failed to show URL" in caplog.text
+        assert "failed to show URL" in caplog.text
