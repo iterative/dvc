@@ -1,6 +1,6 @@
 """Exceptions raised by the dvc."""
 
-from dvc.utils import relpath
+from dvc.utils import relpath, format_link
 
 
 class DvcException(Exception):
@@ -310,3 +310,18 @@ class PathMissingError(DvcException):
             " neither as an output nor a git-handled file."
         )
         super().__init__(msg.format(path, repo))
+
+
+class RemoteCacheRequiredError(DvcException):
+    def __init__(self, path_info):
+        super().__init__(
+            (
+                "Current operation was unsuccessful because '{}' requires "
+                "existing cache on '{}' remote. See {} for information on how "
+                "to set up remote cache."
+            ).format(
+                path_info,
+                path_info.scheme,
+                format_link("https://man.dvc.org/config#cache"),
+            )
+        )
