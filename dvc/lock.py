@@ -22,11 +22,11 @@ FAILED_TO_LOCK_MESSAGE = (
 
 
 class LockError(DvcException):
-    """Thrown when unable to acquire the lock for dvc repo."""
+    """Thrown when unable to acquire the lock for DVC repo."""
 
 
 class Lock(object):
-    """Class for dvc repo lock.
+    """Class for DVC repo lock.
 
     Uses zc.lockfile as backend.
     """
@@ -80,7 +80,7 @@ class Lock(object):
 
 
 class HardlinkLock(flufl.lock.Lock):
-    """Class for dvc repo lock.
+    """Class for DVC repo lock.
 
     Args:
         lockfile (str): the lock filename

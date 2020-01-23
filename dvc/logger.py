@@ -1,4 +1,4 @@
-"""Manages logging configuration for dvc repo."""
+"""Manages logging configuration for DVC repo."""
 
 import traceback
 import logging.config

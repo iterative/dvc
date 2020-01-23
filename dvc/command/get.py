@@ -19,7 +19,7 @@ class CmdGet(CmdBaseNoRepo):
             )
             logger.info(url)
         except DvcException:
-            logger.exception("failed to show url")
+            logger.exception("failed to show URL")
             return 1
 
         return 0
@@ -78,6 +78,7 @@ def add_parser(subparsers, parent_parser):
     get_parser.add_argument(
         "--show-url",
         action="store_true",
-        help="Returns path/url to the location in remote for specified path",
+        help="Print the storage location (URL) the target data would be "
+        "downloaded from, and exit.",
     )
     get_parser.set_defaults(func=CmdGet)

@@ -16,7 +16,7 @@ def SCM(root_dir):  # pylint: disable=invalid-name
 
     Args:
         root_dir (str): path to a root directory of the repo.
-        repo (dvc.repo.Repo): dvc repo instance that root_dir belongs to.
+        repo (dvc.repo.Repo): DVC repo instance that root_dir belongs to.
 
     Returns:
         dvc.scm.base.Base: SCM instance.

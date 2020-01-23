@@ -38,7 +38,7 @@ class OutputNotFoundError(DvcException):
         self.output = output
         self.repo = repo
         super().__init__(
-            "unable to find DVC-file with output '{path}'".format(
+            "Unable to find DVC-file with output '{path}'".format(
                 path=relpath(self.output)
             )
         )
@@ -112,7 +112,7 @@ class MoveNotDataSourceError(DvcException):
 
 
 class NotDvcRepoError(DvcException):
-    """Thrown if a directory is not a dvc repo.
+    """Thrown if a directory is not a DVC repo.
 
     Args:
         root (str): path to the directory.
@@ -120,7 +120,7 @@ class NotDvcRepoError(DvcException):
 
     def __init__(self, root):
         msg = (
-            "you are not inside of a dvc repository "
+            "you are not inside of a DVC repository "
             "(checked up to mount point '{}')"
         )
         super().__init__(msg.format(root))

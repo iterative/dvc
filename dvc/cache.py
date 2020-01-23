@@ -1,4 +1,4 @@
-"""Manages cache of a dvc repo."""
+"""Manages cache of a DVC repo."""
 import os
 from collections import defaultdict
 
@@ -58,7 +58,7 @@ def _make_remote_property(name):
 
 
 class Cache(object):
-    """Class that manages cache locations of a dvc repo.
+    """Class that manages cache locations of a DVC repo.
 
     Args:
         repo (dvc.repo.Repo): repo instance that this cache belongs to.

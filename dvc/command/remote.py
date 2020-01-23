@@ -83,7 +83,7 @@ def add_parser(subparsers, parent_parser):
 
     remote_subparsers = remote_parser.add_subparsers(
         dest="cmd",
-        help="Use dvc remote CMD --help for " "command-specific help.",
+        help="Use `dvc remote CMD --help` for " "command-specific help.",
     )
 
     fix_subparsers(remote_subparsers)

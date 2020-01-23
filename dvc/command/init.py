@@ -19,7 +19,7 @@ class CmdInit(CmdBaseNoRepo):
             )
             self.config = self.repo.config
         except InitError:
-            logger.exception("failed to initiate dvc")
+            logger.exception("failed to initiate DVC")
             return 1
         return 0
 
@@ -43,7 +43,7 @@ def add_parser(subparsers, parent_parser):
         "--no-scm",
         action="store_true",
         default=False,
-        help="Initiate dvc in directory that is "
+        help="Initiate DVC in directory that is "
         "not tracked by any scm tool (e.g. git).",
     )
     init_parser.add_argument(

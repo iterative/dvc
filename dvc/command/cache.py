@@ -30,7 +30,8 @@ def add_parser(subparsers, parent_parser):
     )
 
     cache_subparsers = cache_parser.add_subparsers(
-        dest="cmd", help="Use dvc cache CMD --help for command-specific help."
+        dest="cmd",
+        help="Use `dvc cache CMD --help` for command-specific " "help.",
     )
 
     fix_subparsers(cache_subparsers)

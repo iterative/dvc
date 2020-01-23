@@ -171,7 +171,7 @@ def add_parser(subparsers, parent_parser):
 
     metrics_subparsers = metrics_parser.add_subparsers(
         dest="cmd",
-        help="Use dvc metrics CMD --help to display command-specific help.",
+        help="Use `dvc metrics CMD --help` to display command-specific help.",
     )
 
     fix_subparsers(metrics_subparsers)

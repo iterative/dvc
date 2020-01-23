@@ -1,4 +1,4 @@
-"""Manages progress bars for dvc repo."""
+"""Manages progress bars for DVC repo."""
 
 import logging
 import sys

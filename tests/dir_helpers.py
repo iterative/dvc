@@ -1,11 +1,11 @@
 """
 The goal of this module is making dvc functional tests setup a breeze. This
-includes a temporary dir, initializing git and dvc repos and bootstrapping some
+includes a temporary dir, initializing git and DVC repos and bootstrapping some
 file structure.
 
 The cornerstone of these fixtures is `tmp_dir`, which creates a temporary dir
 and changes path to it, it might be combined with `scm` and `dvc` to initialize
-empty git and dvc repos. `tmp_dir` returns a Path instance, which should save
+empty git and DVC repos. `tmp_dir` returns a Path instance, which should save
 you from using `open()`, `os` and `os.path` utils many times:
 
     (tmp_dir / "some_file").write_text("some text")

@@ -255,5 +255,5 @@ def test_raise_on_too_many_open_files(tmp_dir, dvc, tmp_path_factory, mocker):
 def test_modify_missing_remote(dvc):
     remote_config = RemoteConfig(dvc.config)
 
-    with pytest.raises(ConfigError, match=r"unable to find remote section"):
+    with pytest.raises(ConfigError, match=r"Unable to find remote section"):
         remote_config.modify("myremote", "gdrive_client_id", "xxx")
