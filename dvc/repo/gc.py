@@ -41,22 +41,17 @@ def gc(
         used = NamedCache()
         for repo in all_repos + [self]:
             exclude_revs = (
-                repo.scm.list_branches()
-                if {"commits", "branches"} - set(remove)
-                else []
+                repo.scm.list_branches() if "branches" in remove else []
             )
-            exclude_revs += (
-                repo.scm.list_tags()
-                if {"tags", "commits"} - set(remove)
-                else []
-            )
+            exclude_revs += repo.scm.list_tags() if "tags" in remove else []
+            all_commits = "commits" not in remove and not bool(exclude_revs)
 
             used.update(
                 repo.used_cache(
-                    all_branches="branches" not in remove,
+                    all_branches="branches" not in remove and not all_commits,
                     with_deps=with_deps,
-                    all_tags="tags" not in remove,
-                    all_commits="commits" not in remove,
+                    all_tags="tags" not in remove and not all_commits,
+                    all_commits=all_commits,
                     remote=remote,
                     force=force,
                     jobs=jobs,
