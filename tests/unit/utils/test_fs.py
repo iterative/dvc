@@ -22,7 +22,6 @@ from dvc.utils.fs import path_isin, remove
 from dvc.utils.fs import makedirs
 from dvc.utils.fs import walk_files
 from tests.basic_env import TestDir
-from tests.utils import spy
 
 
 class TestMtimeAndSize(TestDir):
@@ -70,21 +69,6 @@ class TestContainsLink(TestCase):
         )
         dirname_patch.assert_called_once()
 
-    @patch.object(System, "is_symlink", return_value=False)
-    def test_should_call_recursive_on_no_condition_matched(self, _):
-        contains_symlink_spy = spy(contains_symlink_up_to)
-        with patch.object(
-            dvc.utils.fs, "contains_symlink_up_to", contains_symlink_spy
-        ):
-
-            # call from full path to match contains_symlink_spy patch path
-            self.assertFalse(
-                dvc.utils.fs.contains_symlink_up_to(
-                    os.path.join("foo", "path"), "foo"
-                )
-            )
-            self.assertEqual(2, contains_symlink_spy.mock.call_count)
-
     @patch.object(System, "is_symlink", return_value=True)
     def test_should_return_false_when_base_path_is_symlink(self, _):
         base_path = "foo"
@@ -107,6 +91,18 @@ class TestContainsLink(TestCase):
         self.assertFalse(
             contains_symlink_up_to(PathInfo(target_path), PathInfo(base_path))
         )
+
+
+def test_should_call_recursive_on_no_condition_matched(mocker):
+    mocker.patch.object(System, "is_symlink", return_value=False)
+
+    contains_symlink_spy = mocker.spy(dvc.utils.fs, "contains_symlink_up_to")
+
+    # call from full path to match contains_symlink_spy patch path
+    assert not dvc.utils.fs.contains_symlink_up_to(
+        os.path.join("foo", "path"), "foo"
+    )
+    assert contains_symlink_spy.mock.call_count == 2
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows specific")

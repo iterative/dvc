@@ -2,20 +2,7 @@ import os
 from contextlib import contextmanager
 from filecmp import dircmp
 
-from mock import MagicMock
-
 from dvc.scm import Git
-
-
-def spy(method_to_decorate):
-    mock = MagicMock()
-
-    def wrapper(self, *args, **kwargs):
-        mock(*args, **kwargs)
-        return method_to_decorate(self, *args, **kwargs)
-
-    wrapper.mock = mock
-    return wrapper
 
 
 def get_gitignore_content():

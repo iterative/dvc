@@ -2,13 +2,12 @@ import os
 from uuid import uuid4
 
 import pytest
-from mock import patch
 
-import dvc
+from dvc.stage import Stage
 from dvc.main import main
 from dvc.utils.fs import makedirs
+from dvc.compat import fspath
 from tests.basic_env import TestDvc
-from tests.utils import spy
 
 
 class TestCmdImport(TestDvc):
@@ -41,23 +40,14 @@ class TestDefaultOutput(TestDvc):
             self.assertEqual(fd.read(), "content")
 
 
-class TestShouldRemoveOutsBeforeImport(TestDvc):
-    def setUp(self):
-        super().setUp()
-        tmp_dir = self.mkdtemp()
-        self.external_source = os.path.join(tmp_dir, "file")
-        with open(self.external_source, "w") as fobj:
-            fobj.write("content")
+def test_should_remove_outs_before_import(mocker, erepo_dir):
+    erepo_dir.gen({"foo": "foo"})
 
-    def test(self):
-        remove_outs_call_counter = spy(dvc.stage.Stage.remove_outs)
-        with patch.object(
-            dvc.stage.Stage, "remove_outs", remove_outs_call_counter
-        ):
-            ret = main(["import-url", self.external_source])
-            self.assertEqual(0, ret)
+    remove_outs_call_counter = mocker.spy(Stage, "remove_outs")
+    ret = main(["import-url", fspath(erepo_dir / "foo")])
 
-        self.assertEqual(1, remove_outs_call_counter.mock.call_count)
+    assert ret == 0
+    assert remove_outs_call_counter.mock.call_count == 1
 
 
 class TestImportFilename(TestDvc):

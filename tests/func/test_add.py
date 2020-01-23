@@ -9,7 +9,7 @@ import colorama
 import pytest
 from mock import patch
 
-import dvc
+import dvc as dvc_module
 from dvc.cache import Cache
 from dvc.exceptions import DvcException
 from dvc.exceptions import RecursiveAddingWhileUsingFilename
@@ -28,7 +28,6 @@ from dvc.utils.fs import path_isin
 from dvc.utils.stage import load_stage_file
 from tests.basic_env import TestDvc
 from tests.utils import get_gitignore_content
-from tests.utils import spy
 
 
 def test_add(tmp_dir, dvc):
@@ -245,66 +244,66 @@ class TestDoubleAddUnchanged(TestDvc):
         self.assertEqual(ret, 0)
 
 
-class TestShouldUpdateStateEntryForFileAfterAdd(TestDvc):
-    def test(self):
-        file_md5_counter = spy(dvc.remote.local.file_md5)
-        with patch.object(dvc.remote.local, "file_md5", file_md5_counter):
-            ret = main(["config", "cache.type", "copy"])
-            self.assertEqual(ret, 0)
+def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
+    file_md5_counter = mocker.spy(dvc_module.remote.local, "file_md5")
+    tmp_dir.gen("foo", "foo")
 
-            ret = main(["add", self.FOO])
-            self.assertEqual(ret, 0)
-            self.assertEqual(file_md5_counter.mock.call_count, 1)
+    ret = main(["config", "cache.type", "copy"])
+    assert ret == 0
 
-            ret = main(["status"])
-            self.assertEqual(ret, 0)
-            self.assertEqual(file_md5_counter.mock.call_count, 1)
+    ret = main(["add", "foo"])
+    assert ret == 0
+    assert file_md5_counter.mock.call_count == 1
 
-            ret = main(["run", "-d", self.FOO, "echo foo"])
-            self.assertEqual(ret, 0)
-            self.assertEqual(file_md5_counter.mock.call_count, 1)
+    ret = main(["status"])
+    assert ret == 0
+    assert file_md5_counter.mock.call_count == 1
 
-            os.rename(self.FOO, self.FOO + ".back")
-            ret = main(["checkout"])
-            self.assertEqual(ret, 0)
-            self.assertEqual(file_md5_counter.mock.call_count, 1)
+    ret = main(["run", "-d", "foo", "echo foo"])
+    assert ret == 0
+    assert file_md5_counter.mock.call_count == 1
 
-            ret = main(["status"])
-            self.assertEqual(ret, 0)
-            self.assertEqual(file_md5_counter.mock.call_count, 1)
+    os.rename("foo", "foo.back")
+    ret = main(["checkout"])
+    assert ret == 0
+    assert file_md5_counter.mock.call_count == 1
+
+    ret = main(["status"])
+    assert ret == 0
+    assert file_md5_counter.mock.call_count == 1
 
 
-class TestShouldUpdateStateEntryForDirectoryAfterAdd(TestDvc):
-    def test(self):
-        file_md5_counter = spy(dvc.remote.local.file_md5)
-        with patch.object(dvc.remote.local, "file_md5", file_md5_counter):
+def test_should_update_state_entry_for_directory_after_add(
+    mocker, dvc, tmp_dir
+):
+    file_md5_counter = mocker.spy(dvc_module.remote.local, "file_md5")
 
-            ret = main(["config", "cache.type", "copy"])
-            self.assertEqual(ret, 0)
+    tmp_dir.gen({"data/data": "foo", "data/data_sub/sub_data": "foo"})
 
-            ret = main(["add", self.DATA_DIR])
-            self.assertEqual(ret, 0)
-            self.assertEqual(file_md5_counter.mock.call_count, 3)
+    ret = main(["config", "cache.type", "copy"])
+    assert ret == 0
 
-            ret = main(["status"])
-            self.assertEqual(ret, 0)
-            self.assertEqual(file_md5_counter.mock.call_count, 3)
+    ret = main(["add", "data"])
+    assert ret == 0
+    assert file_md5_counter.mock.call_count == 3
 
-            ls = "dir" if os.name == "nt" else "ls"
-            ret = main(
-                ["run", "-d", self.DATA_DIR, "{} {}".format(ls, self.DATA_DIR)]
-            )
-            self.assertEqual(ret, 0)
-            self.assertEqual(file_md5_counter.mock.call_count, 3)
+    ret = main(["status"])
+    assert ret == 0
+    assert file_md5_counter.mock.call_count == 3
 
-            os.rename(self.DATA_DIR, self.DATA_DIR + ".back")
-            ret = main(["checkout"])
-            self.assertEqual(ret, 0)
-            self.assertEqual(file_md5_counter.mock.call_count, 3)
+    ls = "dir" if os.name == "nt" else "ls"
+    ret = main(["run", "-d", "data", "{} {}".format(ls, "data")])
+    assert ret == 0
+    assert file_md5_counter.mock.call_count == 3
 
-            ret = main(["status"])
-            self.assertEqual(ret, 0)
-            self.assertEqual(file_md5_counter.mock.call_count, 3)
+    os.rename("data", "data" + ".back")
+    ret = main(["checkout"])
+    assert ret == 0
+    assert file_md5_counter.mock.call_count == 3
+
+    ret = main(["status"])
+    assert ret == 0
+    assert file_md5_counter.mock.call_count == 3
 
 
 class TestAddCommit(TestDvc):
@@ -320,23 +319,18 @@ class TestAddCommit(TestDvc):
         self.assertEqual(len(os.listdir(self.dvc.cache.local.cache_dir)), 1)
 
 
-class TestShouldCollectDirCacheOnlyOnce(TestDvc):
-    def test(self):
-        from dvc.remote.local import RemoteLOCAL
+def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
+    tmp_dir.gen({"data/data": "foo"})
+    get_dir_checksum_counter = mocker.spy(RemoteLOCAL, "get_dir_checksum")
+    ret = main(["add", "data"])
+    assert ret == 0
 
-        get_dir_checksum_counter = spy(RemoteLOCAL.get_dir_checksum)
-        with patch.object(
-            RemoteLOCAL, "get_dir_checksum", get_dir_checksum_counter
-        ):
-            ret = main(["add", self.DATA_DIR])
-            self.assertEqual(0, ret)
+    ret = main(["status"])
+    assert ret == 0
 
-            ret = main(["status"])
-            self.assertEqual(0, ret)
-
-            ret = main(["status"])
-            self.assertEqual(0, ret)
-        self.assertEqual(1, get_dir_checksum_counter.mock.call_count)
+    ret = main(["status"])
+    assert ret == 0
+    assert get_dir_checksum_counter.mock.call_count == 1
 
 
 class SymlinkAddTestBase(TestDvc):
@@ -479,17 +473,15 @@ def test_failed_add_cleanup(tmp_dir, scm, dvc):
     assert "/bar" not in gitignore_content
 
 
-class TestShouldNotTrackGitInternalFiles(TestDvc):
-    def test(self):
-        stage_creator_spy = spy(dvc.repo.add._create_stages)
+def test_should_not_track_git_internal_files(mocker, dvc, tmp_dir):
+    stage_creator_spy = mocker.spy(dvc_module.repo.add, "_create_stages")
 
-        with patch.object(dvc.repo.add, "_create_stages", stage_creator_spy):
-            ret = main(["add", "-R", self.dvc.root_dir])
-            self.assertEqual(0, ret)
+    ret = main(["add", "-R", dvc.root_dir])
+    assert ret == 0
 
-        created_stages_filenames = stage_creator_spy.mock.call_args[0][0]
-        for fname in created_stages_filenames:
-            self.assertNotIn(".git", fname)
+    created_stages_filenames = stage_creator_spy.mock.call_args[0][1]
+    for fname in created_stages_filenames:
+        assert ".git" not in fname
 
 
 class TestAddUnprotected(TestDvc):
@@ -574,8 +566,7 @@ def test_readding_dir_should_not_unprotect_all(tmp_dir, dvc, mocker):
     dvc.add("dir")
     tmp_dir.gen("dir/new_file", "new_file_content")
 
-    unprotect_spy = spy(RemoteLOCAL.unprotect)
-    mocker.patch.object(RemoteLOCAL, "unprotect", unprotect_spy)
+    unprotect_spy = mocker.spy(RemoteLOCAL, "unprotect")
     dvc.add("dir")
 
     assert not unprotect_spy.mock.called
@@ -589,8 +580,7 @@ def test_should_not_checkout_when_adding_cached_copy(tmp_dir, dvc, mocker):
 
     shutil.copy("bar", "foo")
 
-    copy_spy = spy(dvc.cache.local.copy)
-    mocker.patch.object(dvc.cache.local, "copy", copy_spy)
+    copy_spy = mocker.spy(dvc.cache.local, "copy")
 
     dvc.add("foo")
 

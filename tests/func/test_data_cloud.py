@@ -6,7 +6,6 @@ import uuid
 from unittest import SkipTest
 
 import pytest
-from mock import patch
 
 from dvc.cache import NamedCache
 from dvc.compat import fspath
@@ -29,7 +28,6 @@ from dvc.utils import file_md5
 from dvc.utils.stage import dump_stage_file
 from dvc.utils.stage import load_stage_file
 from tests.basic_env import TestDvc
-from tests.utils import spy
 
 from tests.remotes import (
     Azure,
@@ -586,24 +584,21 @@ class TestRecursiveSyncOperations(Local, TestDataCloudBase):
         self._test_recursive_pull()
 
 
-class TestCheckSumRecalculation(TestDvc):
-    def test(self):
-        test_get_file_checksum = spy(RemoteLOCAL.get_file_checksum)
-        with patch.object(
-            RemoteLOCAL, "get_file_checksum", test_get_file_checksum
-        ):
-            url = Local.get_url()
-            ret = main(["remote", "add", "-d", TEST_REMOTE, url])
-            self.assertEqual(ret, 0)
-            ret = main(["config", "cache.type", "hardlink"])
-            self.assertEqual(ret, 0)
-            ret = main(["add", self.FOO])
-            self.assertEqual(ret, 0)
-            ret = main(["push"])
-            self.assertEqual(ret, 0)
-            ret = main(["run", "-d", self.FOO, "echo foo"])
-            self.assertEqual(ret, 0)
-        self.assertEqual(test_get_file_checksum.mock.call_count, 1)
+def test_checksum_recalculation(mocker, dvc, tmp_dir):
+    tmp_dir.gen({"foo": "foo"})
+    test_get_file_checksum = mocker.spy(RemoteLOCAL, "get_file_checksum")
+    url = Local.get_url()
+    ret = main(["remote", "add", "-d", TEST_REMOTE, url])
+    assert ret == 0
+    ret = main(["config", "cache.type", "hardlink"])
+    assert ret == 0
+    ret = main(["add", "foo"])
+    assert ret == 0
+    ret = main(["push"])
+    assert ret == 0
+    ret = main(["run", "-d", "foo", "echo foo"])
+    assert ret == 0
+    assert test_get_file_checksum.mock.call_count == 1
 
 
 class TestShouldWarnOnNoChecksumInLocalAndRemoteCache(TestDvc):
