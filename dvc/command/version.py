@@ -86,9 +86,9 @@ class CmdVersion(CmdBaseNoRepo):
     @staticmethod
     def get_linktype_support_info(repo):
         links = {
-            "reflink": System.reflink,
-            "hardlink": System.hardlink,
-            "symlink": System.symlink,
+            "reflink": (System.reflink, None),
+            "hardlink": (System.hardlink, System.is_hardlink),
+            "symlink": (System.symlink, System.is_symlink),
         }
 
         fname = "." + str(uuid.uuid4())
@@ -98,18 +98,16 @@ class CmdVersion(CmdBaseNoRepo):
 
         cache = []
 
-        for name, link in links.items():
+        for name, (link, is_link) in links.items():
             try:
                 link(src, dst)
+                status = "supported"
+                if is_link and not is_link(dst):
+                    status = "broken"
                 os.unlink(dst)
-                supported = True
             except DvcException:
-                supported = False
-            cache.append(
-                "{name} - {supported}".format(
-                    name=name, supported=True if supported else False
-                )
-            )
+                status = "not supported"
+            cache.append("{name} - {status}".format(name=name, status=status))
         os.remove(src)
 
         return ", ".join(cache)

@@ -392,13 +392,24 @@ class RemoteBASE(object):
 
         self._try_links(from_info, to_info, link_types)
 
+    def _verify_link(self, path_info, link_type):
+        if self.cache_type_confirmed:
+            return
+
+        is_link = getattr(self, "is_{}".format(link_type), None)
+        if is_link and not is_link(path_info):
+            self.remove(path_info)
+            raise DvcException("failed to verify {}".format(link_type))
+
+        self.cache_type_confirmed = True
+
     @slow_link_guard
     def _try_links(self, from_info, to_info, link_types):
         while link_types:
             link_method = getattr(self, link_types[0])
             try:
                 self._do_link(from_info, to_info, link_method)
-                self.cache_type_confirmed = True
+                self._verify_link(to_info, link_types[0])
                 return
 
             except DvcException as exc:
