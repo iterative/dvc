@@ -128,10 +128,10 @@ class ExternalGitRepo:
             raise PathMissingError(path, self.url)
 
     @contextmanager
-    def open_by_relpath(self, path, mode="r", encoding=None):
+    def open_by_relpath(self, path, mode="r", encoding=None, **kwargs):
         try:
             abs_path = os.path.join(self.root_dir, path)
-            with open(abs_path, mode, encoding) as fd:
+            with open(abs_path, mode, encoding=encoding) as fd:
                 yield fd
         except FileNotFoundError:
             raise PathMissingError(path, self.url)
