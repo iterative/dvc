@@ -33,12 +33,11 @@ class GDriveMissedCredentialKeyError(DvcException):
 
 @decorator
 def _wrap_pydrive_retriable(call):
-    from apiclient import errors
     from pydrive2.files import ApiRequestError
 
     try:
         result = call()
-    except (ApiRequestError, errors.HttpError) as exception:
+    except ApiRequestError as exception:
         retry_codes = ["403", "500", "502", "503", "504"]
         if any(
             "HttpError {}".format(code) in str(exception)
@@ -210,6 +209,7 @@ class RemoteGDrive(RemoteBASE):
             GoogleAuth.DEFAULT_SETTINGS["get_refresh_token"] = True
             GoogleAuth.DEFAULT_SETTINGS["oauth_scope"] = [
                 "https://www.googleapis.com/auth/drive",
+                # drive.appdata grants access to appDataFolder GDrive directory
                 "https://www.googleapis.com/auth/drive.appdata",
             ]
 
