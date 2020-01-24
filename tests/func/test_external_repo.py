@@ -3,6 +3,7 @@ from dvc.compat import fspath
 
 from dvc.external_repo import external_repo
 from dvc.scm.git import Git
+from dvc.remote import RemoteLOCAL
 
 
 def test_external_repo(erepo_dir):
@@ -36,3 +37,22 @@ def test_source_change(erepo_dir):
         new_rev = repo.scm.get_rev()
 
     assert old_rev != new_rev
+
+
+def test_cache_reused(erepo_dir, mocker):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("file", "text", commit="add file")
+
+    download_spy = mocker.spy(RemoteLOCAL, "download")
+
+    # Use URL to prevent any fishy optimizations
+    url = "file://{}".format(erepo_dir)
+    with external_repo(url) as repo:
+        repo.fetch()
+        assert download_spy.mock.call_count == 1
+
+    # Should not download second time
+    erepo_dir.scm.branch("branch")
+    with external_repo(url, "branch") as repo:
+        repo.fetch()
+        assert download_spy.mock.call_count == 1
