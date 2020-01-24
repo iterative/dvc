@@ -24,31 +24,7 @@ class ConfigError(DvcException):
 
 
 class NoRemoteError(ConfigError):
-    def __init__(self, command, *, config=None):
-        has_any_remote = False
-        if config:
-            has_any_remote = bool(
-                config.list_options(
-                    Config.SECTION_REMOTE_REGEX, Config.SECTION_REMOTE_URL
-                )
-            )
-
-        if has_any_remote:
-            msg = (
-                "no remote specified. Setup default remote with\n"
-                "    dvc remote default <remote name>\n"
-                "or use:\n"
-                "    dvc {} -r <remote name>".format(command)
-            )
-        else:
-            msg = (
-                "no remote specified. Create a remote with\n"
-                "    dvc remote add <remote name> <remote url>\n"
-                "To create a default remote use the -d flag:\n"
-                "    dvc remote add -d <remote name> <remote url>"
-            )
-
-        super().__init__(msg)
+    pass
 
 
 def supported_cache_type(types):
