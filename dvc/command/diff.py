@@ -32,13 +32,16 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     diff_parser.add_argument(
-        "a_ref", help="Git reference from which diff calculates"
+        "a_ref",
+        help="Git reference from which diff calculates (defaults to HEAD)",
+        nargs="?",
+        default="HEAD"
     )
     diff_parser.add_argument(
         "b_ref",
         help=(
             "Git reference until which diff calculates, if omitted "
-            "diff shows the difference between current HEAD and a_ref"
+            "diff shows the difference between the working tree and a_ref"
         ),
         nargs="?",
     )

@@ -1,8 +1,8 @@
 import os
 import collections
 
-from . import locked
-from ..compat import fspath
+from dvc.repo import locked
+from dvc.compat import fspath
 
 
 Diffable = collections.namedtuple("Diffable", "filename, checksum, size")
@@ -12,16 +12,14 @@ Diffable.__doc__ = "Common interface for comparable entries."
 def diffable_from_output(output):
     try:
         size = os.path.getsize(fspath(output.path_info))
-    except OSError:
+    except FileNotFoundError:
         size = None
 
-    return Diffable(
-        filename=str(output.path_info), checksum=output.checksum, size=size
-    )
+    return Diffable(filename=str(output), checksum=output.checksum, size=size)
 
 
 @locked
-def diff(self, a_ref=None, b_ref=None, *, target=None):
+def diff(self, a_ref="HEAD", b_ref=None, *, target=None):
     """
     By default, it compares the working tree with the last commit's tree.
 
@@ -30,7 +28,6 @@ def diff(self, a_ref=None, b_ref=None, *, target=None):
     This implementation differs from `git diff`, since DVC doesn't have
     the concept of `index`, `dvc diff` would be the same as `dvc diff HEAD`.
     """
-    a_ref = a_ref or "HEAD"
     outs = {}
 
     for branch in self.brancher(revs=[a_ref, b_ref]):
