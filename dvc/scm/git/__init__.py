@@ -247,11 +247,12 @@ class Git(Base):
     def list_all_commits(self):
         return [c.hexsha for c in self.repo.iter_commits("--all")]
 
-    def _install_hook(self, name, cmd):
-        command = (
-            '[ "$3" = "0" ]'
-            ' || [ -z "$(git ls-files --full-name .dvc)" ]'
-            " || exec dvc {}".format(cmd)
+    def _install_hook(self, name, preconditions, cmd):
+        # only run in dvc repo
+        in_dvc_repo = '[ -n "$(git ls-files --full-name .dvc)" ]'
+
+        command = "if {}; then exec dvc {}; fi".format(
+            " && ".join([in_dvc_repo] + preconditions), cmd
         )
 
         hook = self._hook_path(name)
@@ -269,9 +270,19 @@ class Git(Base):
     def install(self):
         self._verify_dvc_hooks()
 
-        self._install_hook("post-checkout", "checkout")
-        self._install_hook("pre-commit", "status")
-        self._install_hook("pre-push", "push")
+        self._install_hook(
+            "post-checkout",
+            [
+                # checking out some reference and not specific file.
+                '[ "$3" = "1" ]',
+                # check that we are on some branch/tag and not in detached HEAD
+                # state, so we don't accidentally break a rebase.
+                '[ "$(git rev-parse --abbrev-ref HEAD)" != "HEAD" ]',
+            ],
+            "checkout",
+        )
+        self._install_hook("pre-commit", [], "status")
+        self._install_hook("pre-push", [], "push")
 
     def cleanup_ignores(self):
         for path in self.ignored_paths:
