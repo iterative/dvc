@@ -6,7 +6,7 @@ from dvc.compat import fspath
 
 
 Diffable = collections.namedtuple("Diffable", "filename, checksum, size")
-Diffable.__doc__ = "Common interface for comparable entries."
+Diffable.__doc__ = "Common interface to compare outputs."
 Diffable._asdict = lambda x: {"checksum": x.checksum, "size": x.size}
 
 
