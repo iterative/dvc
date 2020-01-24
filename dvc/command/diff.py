@@ -35,7 +35,7 @@ def add_parser(subparsers, parent_parser):
         "a_ref",
         help="Git reference from which diff calculates (defaults to HEAD)",
         nargs="?",
-        default="HEAD"
+        default="HEAD",
     )
     diff_parser.add_argument(
         "b_ref",
