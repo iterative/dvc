@@ -1,6 +1,6 @@
 """Exceptions raised by the dvc."""
 
-from dvc.utils import relpath
+from dvc.utils import relpath, format_link
 
 
 class DvcException(Exception):
@@ -244,9 +244,10 @@ class DvcIgnoreInCollectedDirError(DvcException):
 class GitHookAlreadyExistsError(DvcException):
     def __init__(self, hook_name):
         super().__init__(
-            "Hook '{}' already exists. Please refer to "
-            "https://man.dvc.org/install "
-            "for more info.".format(hook_name)
+            "Hook '{}' already exists. Please refer to {} for more "
+            "info.".format(
+                hook_name, format_link("https://man.dvc.org/install")
+            )
         )
 
 

@@ -13,7 +13,7 @@ from dvc.path_info import CloudURLInfo
 from dvc.remote.base import RemoteBASE
 from dvc.config import Config
 from dvc.exceptions import DvcException
-from dvc.utils import tmp_fname
+from dvc.utils import tmp_fname, format_link
 
 logger = logging.getLogger(__name__)
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
@@ -93,7 +93,7 @@ class RemoteGDrive(RemoteBASE):
             raise DvcException(
                 "Please specify Google Drive's client id and "
                 "secret in DVC's config. Learn more at "
-                "https://man.dvc.org/remote/add."
+                "{}.".format(format_link("https://man.dvc.org/remote/add"))
             )
         self.gdrive_user_credentials_path = (
             tmp_fname(os.path.join(self.repo.tmp_dir, ""))
