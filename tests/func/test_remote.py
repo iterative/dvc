@@ -11,7 +11,7 @@ from dvc.exceptions import DownloadError, UploadError
 from dvc.main import main
 from dvc.path_info import PathInfo
 from dvc.remote import RemoteLOCAL, RemoteConfig
-from dvc.remote.base import RemoteBASE
+from dvc.remote.base import RemoteBASE, RemoteCacheRequiredError
 from dvc.compat import fspath
 from tests.basic_env import TestDvc
 from tests.remotes import Local
@@ -257,3 +257,14 @@ def test_modify_missing_remote(dvc):
 
     with pytest.raises(ConfigError, match=r"Unable to find remote section"):
         remote_config.modify("myremote", "gdrive_client_id", "xxx")
+
+
+def test_external_dir_resource_on_no_cache(tmp_dir, dvc, tmp_path_factory):
+    # https://github.com/iterative/dvc/issues/2647, is some situations
+    # (external dir dependency) cache is required to calculate dir md5
+    external_dir = tmp_path_factory.mktemp("external_dir")
+    (external_dir / "file").write_text("content")
+
+    dvc.cache.local = None
+    with pytest.raises(RemoteCacheRequiredError):
+        dvc.run(deps=[fspath(external_dir)])

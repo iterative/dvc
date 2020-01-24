@@ -18,6 +18,7 @@ from dvc.exceptions import (
     DvcException,
     ConfirmRemoveError,
     DvcIgnoreInCollectedDirError,
+    RemoteCacheRequiredError,
 )
 from dvc.ignore import DvcIgnore
 from dvc.path_info import PathInfo, URLInfo
@@ -233,6 +234,9 @@ class RemoteBASE(object):
         return sorted(result, key=itemgetter(self.PARAM_RELPATH))
 
     def get_dir_checksum(self, path_info):
+        if not self.cache:
+            raise RemoteCacheRequiredError(path_info)
+
         dir_info = self._collect_dir(path_info)
         checksum, tmp_info = self._get_dir_info_checksum(dir_info)
         new_info = self.cache.checksum_to_path_info(checksum)

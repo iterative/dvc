@@ -6,7 +6,7 @@ from voluptuous import Any
 
 import dvc.prompt as prompt
 from dvc.cache import NamedCache
-from dvc.exceptions import CollectCacheError
+from dvc.exceptions import CollectCacheError, RemoteCacheRequiredError
 from dvc.exceptions import DvcException
 from dvc.remote.base import RemoteBASE
 
@@ -98,14 +98,9 @@ class OutputBase(object):
         self.persist = persist
         self.tags = None if self.IS_DEPENDENCY else (tags or {})
 
-        if self.use_cache and self.cache is None:
-            raise DvcException(
-                "no cache location setup for '{}' outputs.".format(
-                    self.REMOTE.scheme
-                )
-            )
-
         self.path_info = self._parse_path(remote, path)
+        if self.use_cache and self.cache is None:
+            raise RemoteCacheRequiredError(self.path_info)
 
     def _parse_path(self, remote, path):
         if remote:
