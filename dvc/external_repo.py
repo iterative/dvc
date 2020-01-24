@@ -1,9 +1,11 @@
+import logging
 import os
 import tempfile
 from contextlib import contextmanager
 from distutils.dir_util import copy_tree
+import threading
 
-from funcy import retry, suppress, memoize, cached_property
+from funcy import retry, suppress, wrap_with, cached_property
 
 from dvc.compat import fspath
 from dvc.repo import Repo
@@ -14,6 +16,9 @@ from dvc.exceptions import FileMissingError, PathMissingError
 from dvc.remote import RemoteConfig
 from dvc.utils.fs import remove, fs_copy
 from dvc.scm import SCM
+
+
+logger = logging.getLogger(__name__)
 
 
 @contextmanager
@@ -40,8 +45,8 @@ def external_repo(url, rev=None):
 
 def clean_repos():
     # Outside code should not see cache while we are removing
-    repo_paths = list(_cached_clone.memory.values())
-    _cached_clone.memory.clear()
+    repo_paths = list(REPOS_CACHE.values())
+    REPOS_CACHE.clear()
 
     for path in repo_paths:
         _remove(path)
@@ -137,19 +142,28 @@ class ExternalGitRepo:
             raise PathMissingError(path, self.url)
 
 
-@memoize
+REPOS_CACHE = {}
+
+
+@wrap_with(threading.Lock())
 def _cached_clone(url, rev):
     """Clone an external git repo to a temporary directory.
 
     Returns the path to a local temporary directory with the specified
     revision checked out.
     """
+    if (url, rev) in REPOS_CACHE:
+        path = REPOS_CACHE[url, rev]
+        _git_pull(path, rev)
+        return path
+
     new_path = tempfile.mkdtemp("dvc-erepo")
 
-    if url in _cached_clone.memory:
+    if url in REPOS_CACHE:
         # Copy and an existing clean clone
         # This one unlike shutil.copytree() works with an existing dir
-        copy_tree(_cached_clone.memory[url], new_path)
+        copy_tree(REPOS_CACHE[url], new_path)
+        _git_pull(new_path, None)
     else:
         # Create a new clone
         _clone_repo(url, new_path)
@@ -157,21 +171,37 @@ def _cached_clone(url, rev):
         # Save clean clone dir so that we will have access to a default branch
         clean_clone_path = tempfile.mkdtemp("dvc-erepo")
         copy_tree(new_path, clean_clone_path)
-        _cached_clone.memory[url] = clean_clone_path
+        REPOS_CACHE[url] = clean_clone_path
 
     # Check out the specified revision
     if rev is not None:
         _git_checkout(new_path, rev)
 
+    REPOS_CACHE[url, rev] = new_path
     return new_path
 
 
-def _git_checkout(repo_path, revision):
+def _git_checkout(repo_path, rev):
     from dvc.scm import Git
 
     git = Git(repo_path)
     try:
-        git.checkout(revision)
+        git.checkout(rev)
+    finally:
+        git.close()
+
+
+def _git_pull(repo_path, rev):
+    import git
+
+    # Do not try to pull in a detached mode
+    if rev and git.Repo.re_hexsha_only.search(rev):
+        return
+
+    git = git.Repo(repo_path)
+    try:
+        msg = git.git.pull()
+        logger.debug("external repo: git pull: {}", msg)
     finally:
         git.close()
 

@@ -4,7 +4,6 @@ from mock import patch
 
 from dvc.main import main
 from dvc.compat import fspath
-from dvc.external_repo import clean_repos
 from tests.basic_env import TestDvc
 
 
@@ -33,19 +32,12 @@ def test_status_non_dvc_repo_import(tmp_dir, dvc, git_dir):
 
     dvc.imp(fspath(git_dir), "file", "file", rev="branch")
 
-    status = dvc.status(["file.dvc"])
-
-    assert status == {}
-
-    # Caching in external repos doesn't see upstream updates within single
-    # cli call, so we need to clean the caches to see the changes.
-    clean_repos()
+    assert dvc.status(["file.dvc"]) == {}
 
     with git_dir.branch("branch", new=False):
         git_dir.scm_gen("file", "second version", commit="update file")
 
     status, = dvc.status(["file.dvc"])["file.dvc"]
-
     assert status == {
         "changed deps": {"file ({})".format(git_dir): "update available"}
     }
@@ -68,12 +60,7 @@ def test_status_before_and_after_dvc_init(tmp_dir, dvc, git_dir):
 
     assert old_rev != new_rev
 
-    # Caching in external repos doesn't see upstream updates within single
-    # cli call, so we need to clean the caches to see the changes.
-    clean_repos()
-
     status, = dvc.status(["file.dvc"])["file.dvc"]
-
     assert status == {
         "changed deps": {
             "file ({})".format(fspath(git_dir)): "update available"
