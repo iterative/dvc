@@ -24,15 +24,7 @@ class ConfigError(DvcException):
 
 
 class NoRemoteError(ConfigError):
-    def __init__(self, command):
-        msg = (
-            "no remote specified. Setup default remote with\n"
-            "    dvc remote default <name>\n"
-            "or use:\n"
-            "    dvc {} -r <name>\n".format(command)
-        )
-
-        super().__init__(msg)
+    pass
 
 
 def supported_cache_type(types):

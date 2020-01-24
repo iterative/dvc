@@ -39,7 +39,26 @@ class DataCloud(object):
         if remote:
             return self._init_remote(remote)
 
-        raise NoRemoteError(command)
+        has_non_default_remote = bool(
+            self.repo.config.list_options(
+                Config.SECTION_REMOTE_REGEX, Config.SECTION_REMOTE_URL
+            )
+        )
+
+        if has_non_default_remote:
+            error_msg = (
+                "no remote specified. Setup default remote with\n"
+                "    dvc remote default <remote name>\n"
+                "or use:\n"
+                "    dvc {} -r <remote name>".format(command)
+            )
+        else:
+            error_msg = (
+                "no remote specified. Create a default remote with\n"
+                "    dvc remote add -d <remote name> <remote url>"
+            )
+
+        raise NoRemoteError(error_msg)
 
     def _init_remote(self, remote):
         return Remote(self.repo, name=remote)
