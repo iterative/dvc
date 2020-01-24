@@ -7,6 +7,7 @@ from dvc.compat import fspath
 
 Diffable = collections.namedtuple("Diffable", "filename, checksum, size")
 Diffable.__doc__ = "Common interface for comparable entries."
+Diffable._asdict = lambda x: {"checksum": x.checksum, "size": x.size}
 
 
 def diffable_from_output(output):
@@ -16,6 +17,21 @@ def diffable_from_output(output):
         size = None
 
     return Diffable(filename=str(output), checksum=output.checksum, size=size)
+
+
+def compare_states(old, new):
+    if old and new:
+        try:
+            size = new["size"] - old["size"]
+        except KeyError:
+            size = "unknown"
+        return {"status": "modified", "size": size}
+
+    if old and not new:
+        return {"status": "deleted", "size": old.get("size", "unknown")}
+
+    if not old and new:
+        return {"status": "added", "size": new.get("size", "unknown")}
 
 
 @locked
@@ -44,10 +60,15 @@ def diff(self, a_ref="HEAD", b_ref=None, *, target=None):
     if not delta:
         return
 
-    old &= delta
-    new &= delta
+    result = {}
 
-    return {
-        "old": [entry._asdict() for entry in old],
-        "new": [entry._asdict() for entry in new],
-    }
+    for entry in delta:
+        result[entry.filename] = {
+            "old": entry._asdict() if entry in old else {},
+            "new": entry._asdict() if entry in new else {},
+        }
+
+    for filename, entry in result.items():
+        entry.update({"diff": compare_states(entry["old"], entry["new"])})
+
+    return result

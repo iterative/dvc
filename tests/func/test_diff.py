@@ -11,14 +11,11 @@ def test_added(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("file", "text")
 
     result = {
-        "old": [],
-        "new": [
-            {
-                "filename": "file",
-                "checksum": "1cb251ec0d568de6a929b520c4aed8d1",
-                "size": 4,
-            }
-        ],
+        "file": {
+            "old": {},
+            "new": {"checksum": "1cb251ec0d568de6a929b520c4aed8d1", "size": 4},
+            "diff": {"status": "added", "size": 4},
+        }
     }
 
     assert result == dvc.diff()
@@ -26,17 +23,14 @@ def test_added(tmp_dir, scm, dvc):
 
 def test_deleted(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("file", "text", commit="add file")
-    (tmp_dir / "file").unlink()
+    (tmp_dir / "file.dvc").unlink()
 
     result = {
-        "old": [
-            {
-                "filename": "file",
-                "checksum": "1cb251ec0d568de6a929b520c4aed8d1",
-                "size": 4,
-            }
-        ],
-        "new": [],
+        "file": {
+            "old": {"checksum": "1cb251ec0d568de6a929b520c4aed8d1", "size": 4},
+            "new": {},
+            "diff": {"status": "deleted", "size": 4},
+        }
     }
 
     assert result == dvc.diff()
@@ -47,20 +41,11 @@ def test_modified(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("file", "second")
 
     result = {
-        "old": [
-            {
-                "filename": "file",
-                "checksum": "8b04d5e3775d298e78455efc5ca404d5",
-                "size": 6,
-            }
-        ],
-        "new": [
-            {
-                "filename": "file",
-                "checksum": "a9f0e61a137d86aa9db53465e0801612",
-                "size": 6,
-            }
-        ],
+        "file": {
+            "old": {"checksum": "8b04d5e3775d298e78455efc5ca404d5", "size": 6},
+            "new": {},
+            "diff": {"status": "deleted", "size": 6},
+        }
     }
 
     assert result == dvc.diff()

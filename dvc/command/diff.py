@@ -11,7 +11,9 @@ logger = logging.getLogger(__name__)
 class CmdDiff(CmdBase):
     def run(self):
         try:
-            self.repo.diff(self.args.a_ref, self.args.b_ref, self.args.target)
+            self.repo.diff(
+                self.args.a_ref, self.args.b_ref, target=self.args.target
+            )
         except DvcException:
             logger.exception("failed to get 'diff {}'")
             return 1
