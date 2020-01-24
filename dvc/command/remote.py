@@ -5,6 +5,7 @@ from dvc.command.base import append_doc_link
 from dvc.command.base import fix_subparsers
 from dvc.command.config import CmdConfig
 from dvc.remote.config import RemoteConfig
+from dvc.utils import format_link
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +100,9 @@ def add_parser(subparsers, parent_parser):
     remote_add_parser.add_argument("name", help="Name of the remote")
     remote_add_parser.add_argument(
         "url",
-        help="URL. See full list of supported urls at " "man.dvc.org/remote",
+        help="URL. See full list of supported urls at {}".format(
+            format_link("https://man.dvc.org/remote")
+        ),
     )
     remote_add_parser.add_argument(
         "-d",

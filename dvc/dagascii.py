@@ -14,7 +14,7 @@ from grandalf.routing import EdgeViewer
 from grandalf.routing import route_with_lines
 
 from dvc.env import DVC_PAGER
-
+from dvc.utils import format_link
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,9 @@ def find_pager():
 
     logger.warning(
         "Unable to find `less` in the PATH. Check out "
-        "man.dvc.org/doc/command-reference/pipeline/show for more info."
+        "{} for more info.".format(
+            format_link("https://man.dvc.org/pipeline/show")
+        )
     )
     return pydoc.plainpager
 
