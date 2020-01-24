@@ -84,10 +84,7 @@ install_requires = [
 # Extra dependencies for remote integrations
 
 gs = ["google-cloud-storage==1.19.0"]
-# google-api-python-client is internal dependency of pydrive. After merge of
-# https://github.com/gsuitedevs/PyDrive/pull/180 into pydrive's master,
-# usage of google-api-python-client can be removed from DVC.
-gdrive = ["pydrive2>=1.4.0", "google-api-python-client>=1.2"]
+gdrive = ["pydrive2>=1.4.1"]
 s3 = ["boto3>=1.9.201"]
 azure = ["azure-storage-blob==2.1.0"]
 oss = ["oss2==2.6.1"]
