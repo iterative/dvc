@@ -13,6 +13,7 @@ from dvc.repo import Repo
 from dvc.exceptions import DvcException, NotDvcRepoError
 from dvc.external_repo import external_repo
 
+DEF_SUMMON = "Summon.yaml"
 
 SUMMON_FILE_SCHEMA = Schema(
     {
@@ -40,6 +41,10 @@ SUMMON_PYTHON_SCHEMA = Schema(
 
 
 class SummonError(DvcException):
+    pass
+
+
+class SummonErrorNoObjectFound(SummonError):
     pass
 
 
@@ -120,81 +125,95 @@ def _make_repo(repo_url=None, rev=None):
         yield repo
 
 
-def summon(name, repo=None, rev=None, summon_file="dvcsummon.yaml", args=None):
+def summon(name, repo=None, rev=None, summon_file=DEF_SUMMON, args=None):
     """Instantiate an object described in the `summon_file`."""
-    with prepare_summon(
-        name, repo=repo, rev=rev, summon_file=summon_file
-    ) as desc:
+    with SummonDesc.prepare_summon(repo, rev, summon_file) as desc:
+        dobj = desc.get_dobject(name)
         try:
-            summon_dict = SUMMON_PYTHON_SCHEMA(desc.obj["summon"])
+            summon_dict = SUMMON_PYTHON_SCHEMA(dobj["summon"])
         except Invalid as exc:
             raise SummonError(str(exc)) from exc
 
+        desc.pull(dobj)
         _args = {**summon_dict.get("args", {}), **(args or {})}
         return _invoke_method(summon_dict["call"], _args, desc.repo.root_dir)
 
 
-@contextmanager
-def prepare_summon(name, repo=None, rev=None, summon_file="dvcsummon.yaml"):
-    """Does a couple of things every summon needs as a prerequisite:
-    clones the repo, parses the summon file and pulls the deps.
+class SummonDesc(object):
+    def __init__(self, repo_obj, summon_file=DEF_SUMMON):
+        self.repo = repo_obj
+        self.path = os.path.join(self.repo.root_dir, summon_file)
+        self.summon_content = self._read_summon_content()
 
-    Calling code is expected to complete the summon logic following
-    instructions stated in "summon" dict of the object spec.
-
-    Returns a SummonDesc instance, which contains references to a Repo object,
-    named object specification and resolved paths to deps.
-    """
-    with _make_repo(repo, rev=rev) as _repo:
-        _require_dvc(_repo)
+    def _read_summon_content(self):
         try:
-            path = os.path.join(_repo.root_dir, summon_file)
-            obj = _get_object_spec(name, path)
-            yield SummonDesc(_repo, obj)
-        except SummonError as exc:
-            raise SummonError(
-                str(exc) + " at '{}' in '{}'".format(summon_file, repo)
-            ) from exc.__cause__
+            with builtin_open(self.path, "r") as fobj:
+                return SUMMON_FILE_SCHEMA(ruamel.yaml.safe_load(fobj.read()))
+        except FileNotFoundError as exc:
+            raise SummonError("Summon file not found") from exc
+        except ruamel.yaml.YAMLError as exc:
+            raise SummonError("Failed to parse summon file") from exc
+        except Invalid as exc:
+            raise SummonError(str(exc)) from exc
 
+    @staticmethod
+    @contextmanager
+    def prepare_summon(repo=None, rev=None, summon_file=DEF_SUMMON):
+        """Does a couple of things every summon needs as a prerequisite:
+        clones the repo and parses the summon file.
 
-class SummonDesc:
-    def __init__(self, repo, obj):
-        self.repo = repo
-        self.obj = obj
-        self._pull_deps()
+        Calling code is expected to complete the summon logic following
+        instructions stated in "summon" dict of the object spec.
 
-    @property
-    def deps(self):
-        return [os.path.join(self.repo.root_dir, d) for d in self._deps]
+        Returns a SummonDesc instance, which contains references to a Repo
+        object, named object specification and resolved paths to deps.
+        """
+        with _make_repo(repo, rev=rev) as _repo:
+            _require_dvc(_repo)
+            try:
+                yield SummonDesc(_repo, summon_file)
+            except SummonError as exc:
+                raise SummonError(
+                    str(exc) + " at '{}' in '{}'".format(summon_file, _repo)
+                ) from exc.__cause__
 
-    @property
-    def _deps(self):
-        return self.obj["summon"].get("deps", [])
+    def deps_paths(self, dobj):
+        return dobj["summon"].get("deps", [])
 
-    def _pull_deps(self):
-        if not self._deps:
-            return
+    def deps_abs_paths(self, dobj):
+        return [
+            os.path.join(self.repo.root_dir, p) for p in self.deps_paths(dobj)
+        ]
 
-        outs = [self.repo.find_out_by_relpath(d) for d in self._deps]
+    def outs(self, dobj):
+        return [
+            self.repo.find_out_by_relpath(d) for d in self.deps_paths(dobj)
+        ]
+
+    def pull(self, dobj):
+        outs = self.outs(dobj)
 
         with self.repo.state:
             for out in outs:
                 self.repo.cloud.pull(out.get_used_cache())
                 out.checkout()
 
+    # def to_abs_paths(self, paths):
+    #     return [self.repo.find_out_by_relpath(d) for d in paths]
 
-def _get_object_spec(name, path):
-    """
-    Given a summonable object's name, search for it on the given file
-    and return its description.
-    """
-    try:
-        with builtin_open(path, "r") as fobj:
-            content = SUMMON_FILE_SCHEMA(ruamel.yaml.safe_load(fobj.read()))
-            objects = [x for x in content["objects"] if x["name"] == name]
+    def get_dobject(self, name):
+        """
+        Given a summonable object's name, search for it on the given content
+        and return its description.
+        """
+        objects = [
+            x for x in self.summon_content["objects"] if x["name"] == name
+        ]
 
         if not objects:
-            raise SummonError("No object with name '{}'".format(name))
+            raise SummonErrorNoObjectFound(
+                "No object with name '{}'".format(name)
+            )
         elif len(objects) >= 2:
             raise SummonError(
                 "More than one object with name '{}'".format(name)
@@ -202,12 +221,18 @@ def _get_object_spec(name, path):
 
         return objects[0]
 
-    except FileNotFoundError as exc:
-        raise SummonError("Summon file not found") from exc
-    except ruamel.yaml.YAMLError as exc:
-        raise SummonError("Failed to parse summon file") from exc
-    except Invalid as exc:
-        raise SummonError(str(exc)) from exc
+    def set_dobject(self, obj_new, overwrite=False):
+        try:
+            name = obj_new["name"]
+            obj = self.get_dobject(name)
+
+            if overwrite:
+                idx = self.summon_content["objects"].index(obj)
+                self.summon_content["objects"][idx] = obj_new
+            else:
+                raise SummonError("Object '{}' already exist".format(name))
+        except SummonErrorNoObjectFound:
+            self.summon_content["objects"].append(obj_new)
 
 
 @wrap_with(threading.Lock())
