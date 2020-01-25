@@ -40,8 +40,9 @@ def diff(self, a_ref="HEAD", b_ref=None, *, target=None):
     By default, it compares the working tree with the last commit's tree.
 
     When a `target` path is given, it only shows that file's comparison.
+    It will silently fail when `target` is not found in any of the trees.
 
-    This implementation differs from `git diff`, since DVC doesn't have
+    This implementation differs from `git diff` since DVC doesn't have
     the concept of `index`, `dvc diff` would be the same as `dvc diff HEAD`.
     """
     outs = {}
@@ -52,10 +53,12 @@ def diff(self, a_ref="HEAD", b_ref=None, *, target=None):
             for stage in self.stages
             for out in stage.outs
         )
-
     old = outs[a_ref]
     new = outs[b_ref or "working tree"]
     delta = old ^ new
+
+    if target:
+        delta = set(x for x in delta if x.filename == target)
 
     if not delta:
         return
