@@ -43,8 +43,8 @@ def test_modified(tmp_dir, scm, dvc):
     result = {
         "file": {
             "old": {"checksum": "8b04d5e3775d298e78455efc5ca404d5", "size": 6},
-            "new": {},
-            "diff": {"status": "deleted", "size": 6},
+            "new": {"checksum": "a9f0e61a137d86aa9db53465e0801612", "size": 6},
+            "diff": {"status": "modified", "size": 0},
         }
     }
 

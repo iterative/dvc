@@ -60,13 +60,14 @@ def diff(self, a_ref="HEAD", b_ref=None, *, target=None):
     if not delta:
         return
 
-    result = {}
+    result = collections.defaultdict(dict)
 
     for entry in delta:
-        result[entry.filename] = {
-            "old": entry._asdict() if entry in old else {},
-            "new": entry._asdict() if entry in new else {},
-        }
+        states = result[entry.filename]
+        states.update(
+            old=states.get("old") or (entry._asdict() if entry in old else {}),
+            new=states.get("new") or (entry._asdict() if entry in new else {}),
+        )
 
     for filename, entry in result.items():
         entry.update({"diff": compare_states(entry["old"], entry["new"])})
