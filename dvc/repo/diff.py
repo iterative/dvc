@@ -11,14 +11,36 @@ Diffable.__hash__ = lambda self: hash(self.filename)
 
 
 def diffables_from_output(output):
-    if not output.is_dir_checksum:
-        return [Diffable(str(output), output.checksum)]
+    """
+    Transform an output into a list of Diffable objects so we can
+    compare them lately.
 
-    # Unpack directory and include its outputs in the result
-    return [Diffable(os.path.join(str(output), ""), output.checksum)] + [
-        Diffable(str(output.path_info / entry["relpath"]), entry["md5"])
-        for entry in output.dir_cache
-    ]
+    Unpack directories to include entries' Diffables.
+
+    To help distinguish between an a directory output and a file output,
+    the former one will come with a trailing slash in the filename:
+
+        directory: "data/"
+        file:      "data"
+
+    You can also rely on the checksum to tell whether it was computed for
+    a file or a directory as a whole.
+    """
+    if output.is_dir_checksum:
+        return [
+            Diffable(
+                filename=os.path.join(str(output), ""),
+                checksum=output.checksum,
+            )
+        ] + [
+            Diffable(
+                filename=str(output.path_info / entry["relpath"]),
+                checksum=entry["md5"],
+            )
+            for entry in output.dir_cache
+        ]
+
+    return [Diffable(filename=str(output), checksum=output.checksum)]
 
 
 @locked
