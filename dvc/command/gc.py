@@ -9,29 +9,21 @@ from dvc.command.base import CmdBase
 
 logger = logging.getLogger(__name__)
 
-supported_removal_filters = ("commits", "branches", "tags")
-
 
 class CmdGC(CmdBase):
     def run(self):
-
-        msg = "This will remove all cache except items used in "
-        msg += "the working tree"
-
-        self.args.remove = self.args.remove or []
-
-        if "commits" not in self.args.remove:
-            msg += " and all git commits"
-
-        if (
-            "branches" not in self.args.remove
-            and "tags" not in self.args.remove
-        ):
-            msg += " and all git branches and tags"
-        elif "branches" not in self.args.remove:
-            msg += " and all git branches"
-        elif "tags" not in self.args.remove:
-            msg += " and all git tags"
+        msg = (
+            "This will remove all cache except items used in the working tree"
+            "{tags}{history}{branches}{history}"
+        ).format(
+            tags="" if self.args.remove_all_tags else "and all git tags",
+            branches=""
+            if self.args.remove_all_branches
+            else "and all git branches",
+            history=""
+            if self.args.remove_all_history
+            else "and their history",
+        )
 
         if self.args.repos:
             msg += " of the current and the following repos:"
@@ -48,7 +40,9 @@ class CmdGC(CmdBase):
             return 1
 
         self.repo.gc(
-            remove=self.args.remove,
+            remove_all_tags=self.args.remove_all_tags,
+            remove_all_branches=self.args.remove_all_branches,
+            remove_all_history=self.args.remove_all_history,
             cloud=self.args.cloud,
             remote=self.args.remote,
             force=self.args.force,
@@ -82,10 +76,22 @@ def add_parser(subparsers, parent_parser):
         "-r", "--remote", help="Remote storage to collect garbage in."
     )
     gc_parser.add_argument(
-        "--remove",
-        nargs="*",
-        choices=supported_removal_filters,
-        help="Available choices for remove: %(choices)s",
+        "--remove-all-tags",
+        action="store_true",
+        default=False,
+        help="Remove cache for all git tags.",
+    )
+    gc_parser.add_argument(
+        "--remove-all-branches",
+        action="store_true",
+        default=False,
+        help="Remove cache for all git branches.",
+    )
+    gc_parser.add_argument(
+        "--remove-all-history",
+        action="store_true",
+        default=False,
+        help="Remove cache for all history of all branches and tags.",
     )
     gc_parser.add_argument(
         "-f",

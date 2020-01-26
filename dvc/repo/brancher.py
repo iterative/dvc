@@ -4,12 +4,7 @@ from dvc.scm.tree import WorkingTree
 
 
 def brancher(  # noqa: E302
-    self,
-    revs=None,
-    all_branches=False,
-    all_tags=False,
-    all_commits=False,
-    exclude_revs=None,
+    self, revs=None, all_branches=False, all_tags=False, all_commits=False
 ):
     """Generator that iterates over specified revisions.
 
@@ -31,7 +26,6 @@ def brancher(  # noqa: E302
 
     saved_tree = self.tree
     revs = revs or []
-    exclude_revs = exclude_revs or []
 
     scm = self.scm
 
@@ -39,7 +33,10 @@ def brancher(  # noqa: E302
     yield "working tree"
 
     if all_commits:
-        revs = scm.list_all_commits()
+        revs = scm.list_all_commits(
+            exclude_all_tags=not all_tags,
+            exclude_all_branches=not all_branches,
+        )
     else:
         if all_branches:
             revs.extend(scm.list_branches())
@@ -47,13 +44,9 @@ def brancher(  # noqa: E302
         if all_tags:
             revs.extend(scm.list_tags())
 
-    excluded_shas = [scm.resolve_rev(rev) for rev in exclude_revs]
-
     try:
         if revs:
             for sha, names in group_by(scm.resolve_rev, revs).items():
-                if sha in excluded_shas:
-                    continue
                 self.tree = scm.get_tree(sha)
                 yield ", ".join(names)
     finally:

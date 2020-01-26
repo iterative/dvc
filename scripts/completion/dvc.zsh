@@ -124,8 +124,8 @@ _dvc_get=(
 )
 
 _dvc_gc=(
-  {-a,--all-branches}"[Keep data files for the tips of all git branches.]"
-  {-T,--all-tags}"[Keep data files for all git tags.]"
+  "--remove-all-branches[Keep data files for the tips of all git branches.]"
+  "--remove-all-tags[Keep data files for all git tags.]"
   {-c,--cloud}"[Collect garbage in remote repository.]"
   {-r,--remote}"[Remote storage to collect garbage in.]:Remote repository:"
   {-f,--force}"[Force garbage collection - automatically agree to all prompts.]:Repos:_files"

@@ -223,7 +223,6 @@ class Repo(object):
         force=False,
         jobs=None,
         recursive=False,
-        exclude_revs=None,
     ):
         """Get the stages related to the given target and collect
         the `info` of its outputs.
@@ -246,7 +245,6 @@ class Repo(object):
             all_branches=all_branches,
             all_tags=all_tags,
             all_commits=all_commits,
-            exclude_revs=exclude_revs,
         ):
             targets = targets or [None]
 

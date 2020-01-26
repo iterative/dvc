@@ -244,8 +244,18 @@ class Git(Base):
     def list_tags(self):
         return [t.name for t in self.repo.tags]
 
-    def list_all_commits(self):
-        return [c.hexsha for c in self.repo.iter_commits("--all")]
+    def list_all_commits(
+        self, exclude_all_tags=False, exclude_all_branches=False
+    ):
+        args = []
+        if exclude_all_tags:
+            args.extend(["--exclude", "refs/tags/*"])
+        if exclude_all_branches:
+            args.extend(["--exclude", "refs/heads/*"])
+        # NOTE: order matters, `--exclude` needs to be before `--all` in order
+        # to affect it.
+        args.append("--all")
+        return self.repo.git.rev_list(*args).splitlines()
 
     def _install_hook(self, name, cmd):
         command = (

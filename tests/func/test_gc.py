@@ -92,16 +92,26 @@ class TestGCBranchesTags(TestDvcGit):
 
         self._check_cache(4)
 
-        self.dvc.gc(all_tags=True, all_branches=True)
+        self.dvc.gc()
+        self._check_cache(4)
 
+        self.dvc.gc(remove_all_history=True)
         self._check_cache(3)
 
-        self.dvc.gc(all_tags=False, all_branches=True)
+        self.dvc.gc(remove_all_tags=True)
+        self._check_cache(3)
 
+        self.dvc.gc(remove_all_branches=True)
         self._check_cache(2)
 
-        self.dvc.gc(all_tags=True, all_branches=False)
+        self.dvc.gc(remove_all_branches=True, remove_all_tags=True)
+        self._check_cache(2)
 
+        self.dvc.gc(
+            remove_all_branches=True,
+            remove_all_tags=True,
+            remove_all_history=True,
+        )
         self._check_cache(1)
 
 
@@ -183,7 +193,7 @@ def test_all_commits(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("testfile", "workspace")
 
     n = _count_files(dvc.cache.local.cache_dir)
-    dvc.gc(all_commits=True)
+    dvc.gc()
 
     # Only one uncommitted file should go away
     assert _count_files(dvc.cache.local.cache_dir) == n - 1

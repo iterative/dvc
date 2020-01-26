@@ -16,7 +16,9 @@ def _do_gc(typ, func, clist):
 @locked
 def gc(
     self,
-    remove=None,
+    remove_all_tags=False,
+    remove_all_branches=False,
+    remove_all_history=False,
     cloud=False,
     remote=None,
     with_deps=False,
@@ -28,7 +30,6 @@ def gc(
     from dvc.repo import Repo
 
     all_repos = []
-    remove = remove or []
 
     if repos:
         all_repos = [Repo(path) for path in repos]
@@ -40,22 +41,15 @@ def gc(
 
         used = NamedCache()
         for repo in all_repos + [self]:
-            exclude_revs = (
-                repo.scm.list_branches() if "branches" in remove else []
-            )
-            exclude_revs += repo.scm.list_tags() if "tags" in remove else []
-            all_commits = "commits" not in remove and not bool(exclude_revs)
-
             used.update(
                 repo.used_cache(
-                    all_branches="branches" not in remove and not all_commits,
                     with_deps=with_deps,
-                    all_tags="tags" not in remove and not all_commits,
-                    all_commits=all_commits,
+                    all_branches=not remove_all_branches,
+                    all_tags=not remove_all_tags,
+                    all_commits=not remove_all_history,
                     remote=remote,
                     force=force,
                     jobs=jobs,
-                    exclude_revs=exclude_revs,
                 )
             )
 
