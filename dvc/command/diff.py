@@ -2,6 +2,8 @@ import argparse
 import json
 import logging
 
+import colorama
+
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
 
@@ -10,6 +12,48 @@ logger = logging.getLogger(__name__)
 
 
 class CmdDiff(CmdBase):
+    @staticmethod
+    def _format(diff):
+        """
+        Given a diff structure, generate a string of filenames separated
+        by new lines and grouped together by their state.
+
+        A group's header is colored and its entries are sorted to enhance
+        readability, for example:
+
+            Added:
+                another_file.txt
+                backup.tar
+                dir/
+                dir/1
+
+        If a group has no entries, it won't be included in the result.
+        """
+        colors = {
+            "added": colorama.Fore.GREEN,
+            "modified": colorama.Fore.YELLOW,
+            "deleted": colorama.Fore.RED,
+        }
+
+        groups = []
+
+        for key, values in diff.items():
+            if not values:
+                continue
+
+            entries = sorted("    " + entry["filename"] for entry in values)
+
+            groups.append(
+                "{color}{header}{nc}:\n{entries}".format(
+                    color=colors[key],
+                    header=key.capitalize(),
+                    nc=colorama.Fore.RESET,
+                    entries="\n".join(entries),
+                )
+            )
+
+        return "\n\n".join(groups)
+
     def run(self):
         try:
             diff = self.repo.diff(
@@ -21,6 +65,8 @@ class CmdDiff(CmdBase):
             if self.args.json:
                 print(json.dumps(diff))
                 return 0
+
+            print(self._format(diff))
 
         except DvcException:
             logger.exception("failed to get 'diff {}'")

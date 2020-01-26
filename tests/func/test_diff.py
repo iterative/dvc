@@ -3,6 +3,8 @@ import json
 import os
 import pytest
 
+import colorama
+
 from dvc.main import main
 
 
@@ -176,17 +178,16 @@ def test_directories(tmp_dir, scm, dvc):
     }
 
 
-def test_cli(tmp_dir, scm, dvc):
-    tmp_dir.dvc_gen("file", "text")
-    # main(["diff"])
-    pytest.skip("TODO: define output structure")
-
-
-def test_json(tmp_dir, scm, dvc, capsys):
+def test_json(tmp_dir, scm, dvc, mocker, capsys):
     assert 0 == main(["diff", "--json"])
     assert not capsys.readouterr().out
 
-    tmp_dir.dvc_gen("file", "text")
+    diff = {
+        "added": [{"filename": "file", "checksum": digest("text")}],
+        "deleted": [],
+        "modified": [],
+    }
+    mocker.patch("dvc.repo.Repo.diff", return_value=diff)
     assert 0 == main(["diff", "--json"])
     assert (
         json.dumps(
@@ -197,4 +198,46 @@ def test_json(tmp_dir, scm, dvc, capsys):
             }
         )
         in capsys.readouterr().out
+    )
+
+
+def test_cli(tmp_dir, scm, dvc, mocker, capsys):
+    assert 0 == main(["diff"])
+    assert not capsys.readouterr().out
+
+    diff = {
+        "added": [{"filename": "file", "checksum": digest("text")}],
+        "deleted": [],
+        "modified": [],
+    }
+    mocker.patch("dvc.repo.Repo.diff", return_value=diff)
+    assert 0 == main(["diff"])
+    assert (
+        "{green}Added{nc}:\n"
+        "    file\n".format(green=colorama.Fore.GREEN, nc=colorama.Fore.RESET)
+        == capsys.readouterr().out
+    )
+
+    diff = {
+        "added": [],
+        "deleted": [{"filename": "file", "checksum": digest("text")}],
+        "modified": [
+            {"filename": "foo", "checksum": digest("foo")},
+            {"filename": "bar", "checksum": digest("bar")},
+        ],
+    }
+    mocker.patch("dvc.repo.Repo.diff", return_value=diff)
+    assert 0 == main(["diff"])
+    assert (
+        "{red}Deleted{nc}:\n"
+        "    file\n"
+        "\n"
+        "{yellow}Modified{nc}:\n"
+        "    bar\n"
+        "    foo\n".format(
+            red=colorama.Fore.RED,
+            yellow=colorama.Fore.YELLOW,
+            nc=colorama.Fore.RESET,
+        )
+        == capsys.readouterr().out
     )

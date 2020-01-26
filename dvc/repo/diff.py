@@ -10,7 +10,7 @@ Diffable.__eq__ = lambda self, other: self.filename == other.filename
 Diffable.__hash__ = lambda self: hash(self.filename)
 
 
-def diffables_from_output(output):
+def _diffables_from_output(output):
     """
     Transform an output into a list of Diffable objects so we can
     compare them lately.
@@ -61,7 +61,7 @@ def diff(self, a_ref="HEAD", b_ref=None, *, target=None):
             diffable
             for stage in self.stages
             for out in stage.outs
-            for diffable in diffables_from_output(out)
+            for diffable in _diffables_from_output(out)
             if not target or target == str(out)
         )
 
