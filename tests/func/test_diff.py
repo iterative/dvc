@@ -1,6 +1,9 @@
 import hashlib
+import json
 import os
 import pytest
+
+from dvc.main import main
 
 
 def digest(text):
@@ -126,7 +129,7 @@ def test_directories(tmp_dir, scm, dvc):
     assert dvc.diff(":/init", ":/directory") == {
         "added": [
             {
-                "filename": os.path.dir("dir", ""),
+                "filename": os.path.join("dir", ""),
                 "checksum": "5fb6b29836c388e093ca0715c872fe2a.dir",
             },
             {"filename": os.path.join("dir", "1"), "checksum": digest("1")},
@@ -179,13 +182,19 @@ def test_cli(tmp_dir, scm, dvc):
     pytest.skip("TODO: define output structure")
 
 
-def test_json(tmp_dir, scm, dvc):
-    # result = {
-    #     "added": {...},
-    #     "renamed": {...},
-    #     "modified": {...},
-    #     "deleted": {...},
-    # }
+def test_json(tmp_dir, scm, dvc, capsys):
+    assert 0 == main(["diff", "--json"])
+    assert not capsys.readouterr().out
 
-    # main(["diff", "--json"])
-    pytest.skip("TODO: define output structure")
+    tmp_dir.dvc_gen("file", "text")
+    assert 0 == main(["diff", "--json"])
+    assert (
+        json.dumps(
+            {
+                "added": [{"filename": "file", "checksum": digest("text")}],
+                "deleted": [],
+                "modified": [],
+            }
+        )
+        in capsys.readouterr().out
+    )

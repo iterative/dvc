@@ -1,4 +1,5 @@
 import argparse
+import json
 import logging
 
 from dvc.command.base import CmdBase, append_doc_link
@@ -11,9 +12,16 @@ logger = logging.getLogger(__name__)
 class CmdDiff(CmdBase):
     def run(self):
         try:
-            self.repo.diff(
+            diff = self.repo.diff(
                 self.args.a_ref, self.args.b_ref, target=self.args.target
             )
+            if not any(diff.values()):
+                return 0
+
+            if self.args.json:
+                print(json.dumps(diff))
+                return 0
+
         except DvcException:
             logger.exception("failed to get 'diff {}'")
             return 1
@@ -55,5 +63,11 @@ def add_parser(subparsers, parent_parser):
             "If not specified, compares all files and directories "
             "that are under DVC control in the current working space."
         ),
+    )
+    diff_parser.add_argument(
+        "--json",
+        help=("Format the output into a JSON"),
+        action="store_true",
+        default=False,
     )
     diff_parser.set_defaults(func=CmdDiff)
