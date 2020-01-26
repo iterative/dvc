@@ -14,12 +14,14 @@ from dvc.exceptions import DvcException, NotDvcRepoError
 from dvc.external_repo import external_repo
 
 DEF_SUMMON = "Summon.yaml"
+DOBJ_SECTION = "d-objects"
 
 SUMMON_FILE_SCHEMA = Schema(
     {
-        Required("objects"): [
+        Required(DOBJ_SECTION): [
             {
                 Required("name"): str,
+                "description": str,
                 "meta": dict,
                 Required("summon"): {
                     Required("type"): str,
@@ -142,8 +144,9 @@ def summon(name, repo=None, rev=None, summon_file=DEF_SUMMON, args=None):
 class SummonDesc(object):
     def __init__(self, repo_obj, summon_file=DEF_SUMMON):
         self.repo = repo_obj
+        self.filename = summon_file
         self.path = os.path.join(self.repo.root_dir, summon_file)
-        self.summon_content = self._read_summon_content()
+        self.content = self._read_summon_content()
 
     def _read_summon_content(self):
         try:
@@ -154,6 +157,16 @@ class SummonDesc(object):
         except ruamel.yaml.YAMLError as exc:
             raise SummonError("Failed to parse summon file") from exc
         except Invalid as exc:
+            raise SummonError(str(exc)) from exc
+
+    def _write_summon_content(self):
+        try:
+            with builtin_open(self.path, "w") as fobj:
+                content = SUMMON_FILE_SCHEMA(self.content)
+                ruamel.yaml.serialize_all(content, fobj)
+        except ruamel.yaml.YAMLError as exc:
+            raise SummonError("Summon file schema error") from exc
+        except Exception as exc:
             raise SummonError(str(exc)) from exc
 
     @staticmethod
@@ -198,17 +211,20 @@ class SummonDesc(object):
                 self.repo.cloud.pull(out.get_used_cache())
                 out.checkout()
 
-    # def to_abs_paths(self, paths):
-    #     return [self.repo.find_out_by_relpath(d) for d in paths]
+    def push(self, dobj):
+        paths = self.deps_abs_paths(dobj)
 
-    def get_dobject(self, name):
+        with self.repo.state:
+            for path in paths:
+                self.repo.add(path)
+                self.repo.add(path)
+
+    def get_dobject(self, name, default=False):
         """
         Given a summonable object's name, search for it on the given content
         and return its description.
         """
-        objects = [
-            x for x in self.summon_content["objects"] if x["name"] == name
-        ]
+        objects = [x for x in self.content[DOBJ_SECTION] if x["name"] == name]
 
         if not objects:
             raise SummonErrorNoObjectFound(
@@ -221,18 +237,24 @@ class SummonDesc(object):
 
         return objects[0]
 
-    def set_dobject(self, obj_new, overwrite=False):
+    def update_dobj(self, new_dobj, overwrite=False):
         try:
-            name = obj_new["name"]
-            obj = self.get_dobject(name)
+            name = new_dobj["name"]
+            dobj = self.get_dobject(name)
 
             if overwrite:
-                idx = self.summon_content["objects"].index(obj)
-                self.summon_content["objects"][idx] = obj_new
+                idx = self.content[DOBJ_SECTION].index(dobj)
+                self.content[DOBJ_SECTION][idx] = new_dobj
             else:
-                raise SummonError("Object '{}' already exist".format(name))
+                raise SummonError(
+                    "D-object '{}' already exist in '{}'".format(
+                        name, self.filename
+                    )
+                )
         except SummonErrorNoObjectFound:
-            self.summon_content["objects"].append(obj_new)
+            self.content[DOBJ_SECTION].append(new_dobj)
+
+        self._write_summon_content()
 
 
 @wrap_with(threading.Lock())

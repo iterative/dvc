@@ -6,7 +6,7 @@ import ruamel.yaml
 import pytest
 
 from dvc import api
-from dvc.api import SummonError, UrlNotDvcRepoError, DEF_SUMMON
+from dvc.api import SummonError, UrlNotDvcRepoError, DEF_SUMMON, DOBJ_SECTION
 from dvc.compat import fspath
 from dvc.exceptions import FileMissingError
 from dvc.main import main
@@ -145,7 +145,7 @@ def test_open_not_cached(dvc):
 
 def test_summon(tmp_dir, dvc, erepo_dir):
     objects = {
-        "objects": [
+        DOBJ_SECTION: [
             {
                 "name": "sum",
                 "meta": {"description": "Add <x> to <number>"},
@@ -160,10 +160,10 @@ def test_summon(tmp_dir, dvc, erepo_dir):
     }
 
     other_objects = copy.deepcopy(objects)
-    other_objects["objects"][0]["summon"]["args"]["x"] = 100
+    other_objects[DOBJ_SECTION][0]["summon"]["args"]["x"] = 100
 
     dup_objects = copy.deepcopy(objects)
-    dup_objects["objects"] *= 2
+    dup_objects[DOBJ_SECTION] *= 2
 
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("number", "100", commit="Add number.dvc")
