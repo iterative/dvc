@@ -126,11 +126,11 @@ def test_directories(tmp_dir, scm, dvc):
     assert dvc.diff(":/init", ":/directory") == {
         "added": [
             {
-                "filename": "dir/",
+                "filename": os.path.dir("dir", ""),
                 "checksum": "5fb6b29836c388e093ca0715c872fe2a.dir",
             },
             {"filename": os.path.join("dir", "1"), "checksum": digest("1")},
-            {"filename": "dir/2", "checksum": digest("2")},
+            {"filename": os.path.join("dir", "2"), "checksum": digest("2")},
         ],
         "deleted": [],
         "modified": [],
