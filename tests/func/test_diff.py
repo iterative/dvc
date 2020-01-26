@@ -1,8 +1,9 @@
-import pytest
 import hashlib
+import os
+import pytest
 
 
-def _checksum(text):
+def digest(text):
     return hashlib.md5(bytes(text, "utf-8")).hexdigest()
 
 
@@ -16,11 +17,9 @@ def test_added(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("file", "text")
 
     result = {
-        "file": {
-            "old": {},
-            "new": {"checksum": _checksum("text"), "size": 4},
-            "diff": {"status": "added", "size": 4},
-        }
+        "added": [{"filename": "file", "checksum": digest("text")}],
+        "deleted": [],
+        "modified": [],
     }
 
     assert result == dvc.diff()
@@ -31,11 +30,9 @@ def test_deleted(tmp_dir, scm, dvc):
     (tmp_dir / "file.dvc").unlink()
 
     result = {
-        "file": {
-            "old": {"checksum": _checksum("text"), "size": 4},
-            "new": {},
-            "diff": {"status": "deleted", "size": 4},
-        }
+        "added": [],
+        "deleted": [{"filename": "file", "checksum": digest("text")}],
+        "modified": [],
     }
 
     assert result == dvc.diff()
@@ -46,11 +43,14 @@ def test_modified(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("file", "second")
 
     result = {
-        "file": {
-            "old": {"checksum": _checksum("first"), "size": 6},
-            "new": {"checksum": _checksum("second"), "size": 6},
-            "diff": {"status": "modified", "size": 0},
-        }
+        "added": [],
+        "deleted": [],
+        "modified": [
+            {
+                "filename": "file",
+                "checksum": {"old": digest("first"), "new": digest("second")},
+            }
+        ],
     }
 
     assert result == dvc.diff()
@@ -61,24 +61,24 @@ def test_refs(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("file", "second", commit="second version")
     tmp_dir.dvc_gen("file", "third", commit="third version")
 
-    HEAD_2 = _checksum("first")
-    HEAD_1 = _checksum("second")
-    HEAD = _checksum("third")
+    HEAD_2 = digest("first")
+    HEAD_1 = digest("second")
+    HEAD = digest("third")
 
     assert dvc.diff("HEAD~1") == {
-        "file": {
-            "old": {"checksum": HEAD_1, "size": 5},
-            "new": {"checksum": HEAD, "size": 5},
-            "diff": {"status": "modified", "size": 0},
-        }
+        "added": [],
+        "deleted": [],
+        "modified": [
+            {"filename": "file", "checksum": {"old": HEAD_1, "new": HEAD}}
+        ],
     }
 
-    assert dvc.diff("HEAD~1", "HEAD~2") == {
-        "file": {
-            "old": {"checksum": HEAD_2, "size": 5},
-            "new": {"checksum": HEAD_1, "size": 5},
-            "diff": {"status": "modified", "size": 0},
-        }
+    assert dvc.diff("HEAD~2", "HEAD~1") == {
+        "added": [],
+        "deleted": [],
+        "modified": [
+            {"filename": "file", "checksum": {"old": HEAD_2, "new": HEAD_1}}
+        ],
     }
 
     pytest.skip('TODO: test dvc.diff("missing")')
@@ -96,28 +96,81 @@ def test_target(tmp_dir, scm, dvc):
     scm.commit("uppercase")
 
     assert dvc.diff("HEAD~1", target="foo") == {
-        "foo": {
-            "old": {"checksum": _checksum("foo"), "size": 3},
-            "new": {"checksum": _checksum("FOO"), "size": 3},
-            "diff": {"status": "modified", "size": 0},
-        }
+        "added": [],
+        "deleted": [],
+        "modified": [
+            {
+                "filename": "foo",
+                "checksum": {"old": digest("foo"), "new": digest("FOO")},
+            }
+        ],
     }
 
-    assert not dvc.diff("HEAD~1", target="missing")
+    assert dvc.diff("HEAD~1", target="missing") == {
+        "added": [],
+        "deleted": [],
+        "modified": [],
+    }
 
 
 def test_directories(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen({"dir": {"1": "1", "2": "2"}}, commit="add a directory")
-    tmp_dir.dvc_gen({"dir": {"2": "2"}}, commit="delete a file")
+    tmp_dir.dvc_gen({"dir": {"3": "3"}}, commit="add a file")
     tmp_dir.dvc_gen({"dir": {"2": "two"}}, commit="modify a file")
-    tmp_dir.dvc_gen({"dir": {"2": "two", "3": "3"}}, commit="add a file")
 
-    # dvc.diff(":/directory", ":/init")     --> (add: dir/1, dir/2)
-    # dvc.diff(":/delete", ":/directory")   --> (deleted: dir/1)
-    # dvc.diff(":/modify", ":/directory")   --> (modified: dir/2)
-    # dvc.diff(":/modify", ":/delete")      --> (add: dir/3)
-    # dvc.diff(":/add a file", ":/modify")
-    pytest.skip("TODO: define output structure")
+    (tmp_dir / "dir" / "2").unlink()
+    dvc.add("dir")
+    scm.add("dir.dvc")
+    scm.commit("delete a file")
+
+    assert dvc.diff(":/init", ":/directory") == {
+        "added": [
+            {
+                "filename": "dir/",
+                "checksum": "5fb6b29836c388e093ca0715c872fe2a.dir",
+            },
+            {"filename": os.path.join("dir", "1"), "checksum": digest("1")},
+            {"filename": "dir/2", "checksum": digest("2")},
+        ],
+        "deleted": [],
+        "modified": [],
+    }
+
+    assert dvc.diff(":/directory", ":/modify") == {
+        "added": [
+            {"filename": os.path.join("dir", "3"), "checksum": digest("3")}
+        ],
+        "deleted": [],
+        "modified": [
+            {
+                "filename": os.path.join("dir", ""),
+                "checksum": {
+                    "old": "5fb6b29836c388e093ca0715c872fe2a.dir",
+                    "new": "9b5faf37366b3370fd98e3e60ca439c1.dir",
+                },
+            },
+            {
+                "filename": os.path.join("dir", "2"),
+                "checksum": {"old": digest("2"), "new": digest("two")},
+            },
+        ],
+    }
+
+    assert dvc.diff(":/modify", ":/delete") == {
+        "added": [],
+        "deleted": [
+            {"filename": os.path.join("dir", "2"), "checksum": digest("two")}
+        ],
+        "modified": [
+            {
+                "filename": os.path.join("dir", ""),
+                "checksum": {
+                    "old": "9b5faf37366b3370fd98e3e60ca439c1.dir",
+                    "new": "83ae82fb367ac9926455870773ff09e6.dir",
+                },
+            }
+        ],
+    }
 
 
 def test_cli(tmp_dir, scm, dvc):

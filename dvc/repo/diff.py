@@ -1,37 +1,24 @@
-import os
 import collections
+import os
 
 from dvc.repo import locked
-from dvc.compat import fspath
 
 
-Diffable = collections.namedtuple("Diffable", "filename, checksum, size")
+Diffable = collections.namedtuple("Diffable", "filename, checksum")
 Diffable.__doc__ = "Common interface to compare outputs."
-Diffable._asdict = lambda x: {"checksum": x.checksum, "size": x.size}
+Diffable.__eq__ = lambda self, other: self.filename == other.filename
+Diffable.__hash__ = lambda self: hash(self.filename)
 
 
-def diffable_from_output(output):
-    try:
-        size = os.path.getsize(fspath(output.path_info))
-    except FileNotFoundError:
-        size = None
+def diffables_from_output(output):
+    if not output.is_dir_checksum:
+        return [Diffable(str(output), output.checksum)]
 
-    return Diffable(filename=str(output), checksum=output.checksum, size=size)
-
-
-def compare_states(old, new):
-    if old and new:
-        try:
-            size = new["size"] - old["size"]
-        except KeyError:
-            size = "unknown"
-        return {"status": "modified", "size": size}
-
-    if old and not new:
-        return {"status": "deleted", "size": old.get("size", "unknown")}
-
-    if not old and new:
-        return {"status": "added", "size": new.get("size", "unknown")}
+    # Unpack directory and include its outputs in the result
+    return [Diffable(os.path.join(str(output), ""), output.checksum)] + [
+        Diffable(str(output.path_info / entry["relpath"]), entry["md5"])
+        for entry in output.dir_cache
+    ]
 
 
 @locked
@@ -40,39 +27,44 @@ def diff(self, a_ref="HEAD", b_ref=None, *, target=None):
     By default, it compares the working tree with the last commit's tree.
 
     When a `target` path is given, it only shows that file's comparison.
-    It will silently fail when `target` is not found in any of the trees.
 
     This implementation differs from `git diff` since DVC doesn't have
-    the concept of `index`, `dvc diff` would be the same as `dvc diff HEAD`.
+    the concept of `index`, but it keeps the same interface, thus,
+    `dvc diff` would be the same as `dvc diff HEAD`.
     """
     outs = {}
 
     for branch in self.brancher(revs=[a_ref, b_ref]):
         outs[branch] = set(
-            diffable_from_output(out)
+            diffable
             for stage in self.stages
             for out in stage.outs
+            for diffable in diffables_from_output(out)
+            if not target or target == str(out)
         )
+
     old = outs[a_ref]
     new = outs[b_ref or "working tree"]
+
+    added = new - old
+    deleted = old - new
     delta = old ^ new
 
-    if target:
-        delta = set(x for x in delta if x.filename == target)
+    result = {
+        "added": [entry._asdict() for entry in sorted(added)],
+        "deleted": [entry._asdict() for entry in sorted(deleted)],
+        "modified": [],
+    }
 
-    if not delta:
-        return
+    for _old, _new in zip(sorted(old - delta), sorted(new - delta)):
+        if _old.checksum == _new.checksum:
+            continue
 
-    result = collections.defaultdict(dict)
-
-    for entry in delta:
-        states = result[entry.filename]
-        states.update(
-            old=states.get("old") or (entry._asdict() if entry in old else {}),
-            new=states.get("new") or (entry._asdict() if entry in new else {}),
+        result["modified"].append(
+            {
+                "filename": _new.filename,
+                "checksum": {"old": _old.checksum, "new": _new.checksum},
+            }
         )
-
-    for filename, entry in result.items():
-        entry.update({"diff": compare_states(entry["old"], entry["new"])})
 
     return result
