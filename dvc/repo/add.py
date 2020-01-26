@@ -84,7 +84,7 @@ def _find_all_targets(repo, target, recursive):
             fname
             for fname in Tqdm(
                 repo.tree.walk_files(target),
-                desc="Recursing " + target,
+                desc="Searching " + target,
                 bar_format=Tqdm.BAR_FMT_NOTOTAL,
                 unit="file",
             )
