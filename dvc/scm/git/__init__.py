@@ -363,7 +363,12 @@ class Git(Base):
         return self.repo.git.rev_parse("HEAD")
 
     def resolve_rev(self, rev):
-        return self.repo.git.rev_parse(rev)
+        from git.exc import GitCommandError
+
+        try:
+            return self.repo.git.rev_parse(rev)
+        except GitCommandError as exc:
+            raise RevError(url=self.root_dir, rev=rev) from exc
 
     def close(self):
         self.repo.close()

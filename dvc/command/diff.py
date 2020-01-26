@@ -69,7 +69,7 @@ class CmdDiff(CmdBase):
             print(self._format(diff))
 
         except DvcException:
-            logger.exception("failed to get 'diff {}'")
+            logger.exception("failed to get diff")
             return 1
         return 0
 

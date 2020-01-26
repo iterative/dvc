@@ -1,7 +1,9 @@
 import collections
 import os
 
+from dvc.exceptions import DvcException
 from dvc.repo import locked
+from dvc.scm.git import Git
 
 
 Diffable = collections.namedtuple("Diffable", "filename, checksum")
@@ -54,6 +56,9 @@ def diff(self, a_ref="HEAD", b_ref=None, *, target=None):
     the concept of `index`, but it keeps the same interface, thus,
     `dvc diff` would be the same as `dvc diff HEAD`.
     """
+    if type(self.scm) is not Git:
+        raise DvcException("only supported for Git repositories")
+
     outs = {}
 
     for branch in self.brancher(revs=[a_ref, b_ref]):

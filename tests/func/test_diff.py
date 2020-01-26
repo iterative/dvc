@@ -6,6 +6,7 @@ import pytest
 import colorama
 
 from dvc.main import main
+from dvc.exceptions import DvcException
 
 
 def digest(text):
@@ -15,7 +16,8 @@ def digest(text):
 def test_no_scm(tmp_dir, dvc):
     tmp_dir.dvc_gen("file", "text")
 
-    pytest.skip("TODO: define behavior, should it fail?")
+    with pytest.raises(DvcException, match=r"only supported for Git repos"):
+        dvc.diff()
 
 
 def test_added(tmp_dir, scm, dvc):
@@ -86,7 +88,10 @@ def test_refs(tmp_dir, scm, dvc):
         ],
     }
 
-    pytest.skip('TODO: test dvc.diff("missing")')
+    with pytest.raises(
+        DvcException, match=r"failed to access revision 'missing'"
+    ):
+        dvc.diff("missing")
 
 
 def test_target(tmp_dir, scm, dvc):
