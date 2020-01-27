@@ -385,7 +385,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         if not self.should_validate:
             return
 
-        d = self.validate()
+        d = self.validate(self.config)
         self.config = configobj.ConfigObj(d, write_empty_values=True)
 
     def save(self, config=None):
@@ -423,14 +423,9 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
                 raise
         config.write()
 
-    def validate(self, config=None):
-        ret = copy.deepcopy(self.config)
-
-        if config:
-            ret.merge(config)
-
+    def validate(self, config):
         try:
-            return self.COMPILED_SCHEMA(ret.dict())
+            return self.COMPILED_SCHEMA(config.dict())
         except Invalid as exc:
             raise ConfigError(str(exc)) from exc
 
@@ -499,7 +494,10 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
 
         config[section][opt] = value
 
-        self.validate(config)
+        result = copy.deepcopy(self.config)
+        result.merge(config)
+        self.validate(result)
+
         self.save(config)
 
     def get(self, section, opt=None, level=None):
