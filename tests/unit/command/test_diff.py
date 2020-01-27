@@ -1,5 +1,3 @@
-import json
-
 from dvc.cli import parse_args
 
 
@@ -56,4 +54,24 @@ def test_json(mocker, caplog):
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
 
     assert 0 == cmd.run()
-    assert json.dumps(diff) in caplog.text
+    assert (
+        '{"added": [{"filename": "file"}], "deleted": [], "modified": []}'
+        in caplog.text
+    )
+
+
+def test_json_checksums(mocker, caplog):
+    args = parse_args(["diff", "--show-json", "--checksums"])
+    cmd = args.func(args)
+    diff = {
+        "added": [{"filename": "file", "checksum": "00000000"}],
+        "deleted": [],
+        "modified": [],
+    }
+    mocker.patch("dvc.repo.Repo.diff", return_value=diff)
+
+    assert 0 == cmd.run()
+    assert (
+        '{"added": [{"filename": "file", "checksum": "00000000"}], '
+        '"deleted": [], "modified": []}' in caplog.text
+    )
