@@ -86,7 +86,7 @@ class CmdDiff(CmdBase):
             if not any(diff.values()):
                 return 0
 
-            if self.args.json:
+            if self.args.show_json:
                 res = json.dumps(diff)
             else:
                 res = self._format(diff, include_checksums=self.args.checksums)
@@ -136,7 +136,7 @@ def add_parser(subparsers, parent_parser):
         ),
     )
     diff_parser.add_argument(
-        "--json",
+        "--show-json",
         help="Format the output into a JSON",
         action="store_true",
         default=False,

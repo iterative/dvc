@@ -46,7 +46,7 @@ def test_checksums(mocker, caplog):
 
 
 def test_json(mocker, caplog):
-    args = parse_args(["diff", "--json"])
+    args = parse_args(["diff", "--show-json"])
     cmd = args.func(args)
     diff = {
         "added": [{"filename": "file", "checksum": "00000000"}],
