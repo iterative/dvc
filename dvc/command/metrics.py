@@ -273,7 +273,7 @@ def add_parser(subparsers, parent_parser):
     metrics_remove_parser.add_argument("path", help="Path to a metric file.")
     metrics_remove_parser.set_defaults(func=CmdMetricsRemove)
 
-    METRICS_DIFF_HELP = "Output metric values."
+    METRICS_DIFF_HELP = "Calculates the numeric difference between metrics."
     metrics_diff_parser = metrics_subparsers.add_parser(
         "diff",
         parents=[parent_parser],
@@ -285,16 +285,16 @@ def add_parser(subparsers, parent_parser):
         "a_ref",
         nargs="?",
         help=(
-            "Git reference from which diff is calculated. "
-            "If omitted `HEAD`(latest commit) is used."
+            "Git reference from which the diff begins. "
+            "If omitted, `HEAD` (latest commit) is used."
         ),
     )
     metrics_diff_parser.add_argument(
         "b_ref",
         nargs="?",
         help=(
-            "Git reference to which diff is calculated. "
-            "If omitted current working tree is used."
+            "Git reference until which the diff ends. "
+            "If omitted, the current workspace is used instead."
         ),
     )
     metrics_diff_parser.add_argument(
