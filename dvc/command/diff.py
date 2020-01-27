@@ -72,9 +72,7 @@ class CmdDiff(CmdBase):
 
     def run(self):
         try:
-            diff = self.repo.diff(
-                self.args.a_ref, self.args.b_ref, target=self.args.target
-            )
+            diff = self.repo.diff(self.args.a_ref, self.args.b_ref)
 
             if not any(diff.values()):
                 return 0
@@ -123,15 +121,6 @@ def add_parser(subparsers, parent_parser):
             "diff shows the difference between the working tree and a_ref"
         ),
         nargs="?",
-    )
-    diff_parser.add_argument(
-        "-t",
-        "--target",
-        help=(
-            "Source path to a data file or directory. Default None. "
-            "If not specified, compares all files and directories "
-            "that are under DVC control in the current working space."
-        ),
     )
     diff_parser.add_argument(
         "--show-json",

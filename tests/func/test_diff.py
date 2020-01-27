@@ -111,35 +111,6 @@ def test_refs(tmp_dir, scm, dvc):
         dvc.diff("missing")
 
 
-def test_target(tmp_dir, scm, dvc):
-    tmp_dir.dvc_gen("foo", "foo")
-    tmp_dir.dvc_gen("bar", "bar")
-    scm.add([".gitignore", "foo.dvc", "bar.dvc"])
-    scm.commit("lowercase")
-
-    tmp_dir.dvc_gen("foo", "FOO")
-    tmp_dir.dvc_gen("bar", "BAR")
-    scm.add(["foo.dvc", "bar.dvc"])
-    scm.commit("uppercase")
-
-    assert dvc.diff("HEAD~1", target="foo") == {
-        "added": [],
-        "deleted": [],
-        "modified": [
-            {
-                "filename": "foo",
-                "checksum": {"old": digest("foo"), "new": digest("FOO")},
-            }
-        ],
-    }
-
-    assert dvc.diff("HEAD~1", target="missing") == {
-        "added": [],
-        "deleted": [],
-        "modified": [],
-    }
-
-
 def test_directories(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen({"dir": {"1": "1", "2": "2"}}, commit="add a directory")
     tmp_dir.dvc_gen({"dir": {"3": "3"}}, commit="add a file")

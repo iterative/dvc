@@ -97,7 +97,6 @@ _dvc_destroy=(
 )
 
 _dvc_diff=(
-  {-t,--target}"[Source path to a data file or directory.]:Target files:"
   "--show-json[Format the output into a JSON]"
   "--checksums[Display checksums for each entry]"
   {1,2}":Git revision (e.g. branch, tag, SHA):"

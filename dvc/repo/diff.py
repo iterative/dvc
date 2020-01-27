@@ -46,11 +46,9 @@ def _diffables_from_output(output):
 
 
 @locked
-def diff(self, a_ref="HEAD", b_ref=None, *, target=None):
+def diff(self, a_ref="HEAD", b_ref=None):
     """
     By default, it compares the working tree with the last commit's tree.
-
-    When a `target` path is given, it only shows that file's comparison.
 
     This implementation differs from `git diff` since DVC doesn't have
     the concept of `index`, but it keeps the same interface, thus,
@@ -67,7 +65,6 @@ def diff(self, a_ref="HEAD", b_ref=None, *, target=None):
             for stage in self.stages
             for out in stage.outs
             for diffable in _diffables_from_output(out)
-            if not target or target == str(out)
         )
 
     old = outs[a_ref]
