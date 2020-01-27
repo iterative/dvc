@@ -27,10 +27,7 @@ class CloneError(SCMError):
 
 
 class RevError(SCMError):
-    def __init__(self, url, rev):
-        super().__init__(
-            "failed to access revision '{}' for repo '{}'".format(rev, url)
-        )
+    pass
 
 
 class Base(object):

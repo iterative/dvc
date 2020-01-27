@@ -107,9 +107,7 @@ def test_refs(tmp_dir, scm, dvc):
         ],
     }
 
-    with pytest.raises(
-        DvcException, match=r"failed to access revision 'missing'"
-    ):
+    with pytest.raises(DvcException, match=r"unknown Git revision 'missing'"):
         dvc.diff("missing")
 
 

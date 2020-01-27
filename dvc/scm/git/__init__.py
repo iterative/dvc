@@ -94,7 +94,11 @@ class Git(Base):
             try:
                 repo.checkout(rev)
             except git.exc.GitCommandError as exc:
-                raise RevError(url, rev) from exc
+                raise RevError(
+                    "failed to access revision '{}' for repo '{}'".format(
+                        rev, url
+                    )
+                ) from exc
 
         return repo
 
@@ -367,8 +371,8 @@ class Git(Base):
 
         try:
             return self.repo.git.rev_parse(rev)
-        except GitCommandError as exc:
-            raise RevError(url=self.root_dir, rev=rev) from exc
+        except GitCommandError:
+            raise RevError("unknown Git revision '{}'".format(rev))
 
     def close(self):
         self.repo.close()
