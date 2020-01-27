@@ -156,6 +156,10 @@ def test_directories(tmp_dir, scm, dvc):
     scm.add("dir.dvc")
     scm.commit("delete a file")
 
+
+    # The ":/<text>" format is a way to specify revisions by commit message:
+    #       https://git-scm.com/docs/git-rev-parse
+    #
     assert dvc.diff(":/init", ":/directory") == {
         "added": [
             {
