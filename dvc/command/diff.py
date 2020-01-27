@@ -55,7 +55,7 @@ class CmdDiff(CmdBase):
             if not entries:
                 continue
 
-            entries = sorted(tuple(entry.values()) for entry in entries)
+            entries = [tuple(entry.values()) for entry in entries]
             entries = [
                 "{space}{checksum}{separator}{filename}".format(
                     space="    ",

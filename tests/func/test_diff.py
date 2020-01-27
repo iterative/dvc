@@ -248,8 +248,8 @@ def test_cli(tmp_dir, scm, dvc, mocker, capsys):
     diff = {
         "added": [],
         "deleted": [
-            {"filename": "foo", "checksum": digest("foo")},
             {"filename": "bar", "checksum": digest("bar")},
+            {"filename": "foo", "checksum": digest("foo")},
         ],
         "modified": [
             {
