@@ -33,13 +33,29 @@ def test_added(tmp_dir, scm, dvc):
 
 
 def test_no_cache_entry(tmp_dir, scm, dvc):
-    tmp_dir.dvc_gen("file", "text")
+    tmp_dir.dvc_gen("file", "first", commit="add a file")
+
+    tmp_dir.dvc_gen({"dir": {"1": "1", "2": "2"}})
+    tmp_dir.dvc_gen("file", "second")
+
     shutil.rmtree(fspath(tmp_dir / ".dvc" / "cache"))
+    (tmp_dir / ".dvc" / "state").unlink()
+
+    dir_checksum = "5fb6b29836c388e093ca0715c872fe2a.dir"
 
     assert dvc.diff() == {
-        "added": [{"filename": "file", "checksum": digest("text")}],
+        "added": [
+            {"filename": "dir/", "checksum": dir_checksum},
+            {"filename": "dir/1", "checksum": digest("1")},
+            {"filename": "dir/2", "checksum": digest("2")},
+        ],
         "deleted": [],
-        "modified": [],
+        "modified": [
+            {
+                "filename": "file",
+                "checksum": {"old": digest("first"), "new": digest("second")},
+            }
+        ],
     }
 
 
