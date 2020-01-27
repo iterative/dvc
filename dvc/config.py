@@ -246,7 +246,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
 
     def __init__(self, dvc_dir=None, validate=True):
         self.dvc_dir = dvc_dir
-        self.validate = validate
+        self.should_validate = validate
 
         if not dvc_dir:
             try:
@@ -376,14 +376,10 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
             c = self._lower(c)
             self.config.merge(c)
 
-        if not self.validate:
+        if not self.should_validate:
             return
 
-        d = self.config.dict()
-        try:
-            d = self.COMPILED_SCHEMA(d)
-        except Invalid as exc:
-            raise ConfigError(str(exc)) from exc
+        d = self.validate(self.config)
         self.config = configobj.ConfigObj(d, write_empty_values=True)
 
     def save(self, config=None):
@@ -420,6 +416,12 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
             if exc.errno != errno.EEXIST:
                 raise
         config.write()
+
+    def validate(self, config):
+        try:
+            return self.COMPILED_SCHEMA(config.dict())
+        except Invalid as exc:
+            raise ConfigError(str(exc)) from exc
 
     def unset(self, section, opt=None, level=None, force=False):
         """Unsets specified option and/or section in the config.
@@ -485,6 +487,11 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
             )
 
         config[section][opt] = value
+
+        result = copy.deepcopy(self.config)
+        result.merge(config)
+        self.validate(result)
+
         self.save(config)
 
     def get(self, section, opt=None, level=None):

@@ -32,7 +32,7 @@ class TestRemote(TestDvc):
         self.assertEqual(main(["remote", "list"]), 0)
 
         self.assertEqual(
-            main(["remote", "modify", remotes[0], "option", "value"]), 0
+            main(["remote", "modify", remotes[0], "checksum_jobs", "1"]), 0
         )
         self.assertEqual(main(["remote", "remove", remotes[0]]), 0)
 
@@ -113,7 +113,7 @@ class TestRemoteRemoveDefault(TestDvc):
 
 class TestRemoteRemove(TestDvc):
     def test(self):
-        ret = main(["config", "core.jobs", "1"])
+        ret = main(["config", "core.checksum_jobs", "1"])
         self.assertEqual(ret, 0)
 
         remote = "mys3"

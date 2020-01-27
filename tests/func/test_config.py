@@ -1,6 +1,8 @@
+import pytest
 import configobj
 
 from dvc.main import main
+from dvc.config import Config, ConfigError
 from tests.basic_env import TestDvc
 
 
@@ -33,11 +35,11 @@ class TestConfigCLI(TestDvc):
         self.assertEqual(ret, 0)
 
     def _do_test(self, local=False):
-        section = "setsection"
-        field = "setfield"
+        section = "core"
+        field = "analytics"
         section_field = "{}.{}".format(section, field)
-        value = "setvalue"
-        newvalue = "setnewvalue"
+        value = "True"
+        newvalue = "False"
 
         base = ["config"]
         if local:
@@ -83,3 +85,13 @@ class TestConfigCLI(TestDvc):
 
         ret = main(["config", "core.non_existing_field", "-u"])
         self.assertEqual(ret, 251)
+
+
+def test_set_invalid_key(dvc):
+    with pytest.raises(ConfigError, match=r"extra keys not allowed"):
+        dvc.config.set("core", "invalid.key", "value")
+
+
+def test_merging_two_levels(dvc):
+    dvc.config.set('remote "test"', "url", "https://example.com")
+    dvc.config.set('remote "test"', "password", "1", level=Config.LEVEL_LOCAL)
