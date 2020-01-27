@@ -9,7 +9,6 @@ from dvc.cache import NamedCache
 from dvc.exceptions import CollectCacheError, RemoteCacheRequiredError
 from dvc.exceptions import DvcException
 from dvc.remote.base import RemoteBASE
-from dvc.utils.fs import path_isin
 
 
 logger = logging.getLogger(__name__)
@@ -91,8 +90,6 @@ class OutputBase(object):
         # should be absolute and don't contain remote:// refs.
         self.stage = stage
         self.repo = stage.repo if stage else None
-        if self.repo is not None and path_isin(path, self.repo.root_dir):
-            path = os.path.relpath(path, self.repo.root_dir)
         self.def_path = path
         self.info = info
         self.remote = remote or self.REMOTE(self.repo, {})
