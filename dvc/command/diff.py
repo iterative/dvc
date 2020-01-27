@@ -136,13 +136,13 @@ def add_parser(subparsers, parent_parser):
     )
     diff_parser.add_argument(
         "--json",
-        help=("Format the output into a JSON"),
+        help="Format the output into a JSON",
         action="store_true",
         default=False,
     )
     diff_parser.add_argument(
         "--checksums",
-        help=("Display checksums for each entry"),
+        help="Display checksums for each entry",
         action="store_true",
         default=False,
     )
