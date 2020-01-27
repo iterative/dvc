@@ -41,9 +41,9 @@ def test_no_cache_entry(tmp_dir, scm, dvc):
 
     assert dvc.diff() == {
         "added": [
-            {"filename": "dir/", "checksum": dir_checksum},
-            {"filename": "dir/1", "checksum": digest("1")},
-            {"filename": "dir/2", "checksum": digest("2")},
+            {"filename": os.path.join("dir", ""), "checksum": dir_checksum},
+            {"filename": os.path.join("dir", "1"), "checksum": digest("1")},
+            {"filename": os.path.join("dir", "2"), "checksum": digest("2")},
         ],
         "deleted": [],
         "modified": [
