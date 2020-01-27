@@ -2,11 +2,13 @@ import hashlib
 import json
 import os
 import pytest
+import shutil
 
 import colorama
 
-from dvc.main import main
+from dvc.compat import fspath
 from dvc.exceptions import DvcException
+from dvc.main import main
 
 
 def digest(text):
@@ -23,33 +25,40 @@ def test_no_scm(tmp_dir, dvc):
 def test_added(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("file", "text")
 
-    result = {
+    assert dvc.diff() == {
         "added": [{"filename": "file", "checksum": digest("text")}],
         "deleted": [],
         "modified": [],
     }
 
-    assert result == dvc.diff()
+
+def test_no_cache_entry(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen("file", "text")
+    shutil.rmtree(fspath(tmp_dir / ".dvc" / "cache"))
+
+    assert dvc.diff() == {
+        "added": [{"filename": "file", "checksum": digest("text")}],
+        "deleted": [],
+        "modified": [],
+    }
 
 
 def test_deleted(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("file", "text", commit="add file")
     (tmp_dir / "file.dvc").unlink()
 
-    result = {
+    assert dvc.diff() == {
         "added": [],
         "deleted": [{"filename": "file", "checksum": digest("text")}],
         "modified": [],
     }
-
-    assert result == dvc.diff()
 
 
 def test_modified(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("file", "first", commit="first version")
     tmp_dir.dvc_gen("file", "second")
 
-    result = {
+    assert dvc.diff() == {
         "added": [],
         "deleted": [],
         "modified": [
@@ -59,8 +68,6 @@ def test_modified(tmp_dir, scm, dvc):
             }
         ],
     }
-
-    assert result == dvc.diff()
 
 
 def test_refs(tmp_dir, scm, dvc):
