@@ -41,14 +41,20 @@ def external_repo(url, rev=None):
         raise PathMissingError(exc.path, url)
     finally:
         repo.close()
+        _remove(path)
+
+
+CLONES = {}
+CACHE_DIRS = {}
 
 
 def clean_repos():
     # Outside code should not see cache while we are removing
-    repo_paths = list(REPOS_CACHE.values())
-    REPOS_CACHE.clear()
+    paths = list(CLONES.values()) + list(CACHE_DIRS.values())
+    CLONES.clear()
+    CACHE_DIRS.clear()
 
-    for path in repo_paths:
+    for path in paths:
         _remove(path)
 
 
@@ -56,6 +62,7 @@ class ExternalRepo(Repo):
     def __init__(self, root_dir, url):
         super().__init__(root_dir)
         self.url = url
+        self._set_cache_dir()
         self._set_upstream()
 
     def pull_to(self, path, to_info):
@@ -87,6 +94,15 @@ class ExternalRepo(Repo):
             # This might happen when pull haven't really pulled all the files
             if failed:
                 raise FileNotFoundError
+
+    @wrap_with(threading.Lock())
+    def _set_cache_dir(self):
+        try:
+            cache_dir = CACHE_DIRS[self.url]
+        except KeyError:
+            cache_dir = CACHE_DIRS[self.url] = tempfile.mkdtemp("dvc-cache")
+
+        self.cache.local.cache_dir = cache_dir
 
     def _set_upstream(self):
         # check if the URL is local and no default remote is present
@@ -142,9 +158,6 @@ class ExternalGitRepo:
             raise PathMissingError(path, self.url)
 
 
-REPOS_CACHE = {}
-
-
 @wrap_with(threading.Lock())
 def _cached_clone(url, rev):
     """Clone an external git repo to a temporary directory.
@@ -152,33 +165,33 @@ def _cached_clone(url, rev):
     Returns the path to a local temporary directory with the specified
     revision checked out.
     """
-    if (url, rev) in REPOS_CACHE:
-        path = REPOS_CACHE[url, rev]
-        _git_pull(path, rev)
-        return path
-
-    new_path = tempfile.mkdtemp("dvc-erepo")
-
-    if url in REPOS_CACHE:
-        # Copy and an existing clean clone
-        # This one unlike shutil.copytree() works with an existing dir
-        copy_tree(REPOS_CACHE[url], new_path)
-        _git_pull(new_path, None)
+    # Get or create a clean clone
+    clone_path = CLONES.get(url)
+    if clone_path:
+        # Do not pull for known shas, branches and tags might move
+        if not _is_known_sha(clone_path, rev):
+            _git_pull(clone_path)
     else:
-        # Create a new clone
-        _clone_repo(url, new_path)
+        clone_path = tempfile.mkdtemp("dvc-clone")
+        _git_clone(url, clone_path)
+        CLONES[url] = clone_path
 
-        # Save clean clone dir so that we will have access to a default branch
-        clean_clone_path = tempfile.mkdtemp("dvc-erepo")
-        copy_tree(new_path, clean_clone_path)
-        REPOS_CACHE[url] = clean_clone_path
+    # Copy to a new dir to keep the clone clean
+    repo_path = tempfile.mkdtemp("dvc-erepo")
+    copy_tree(clone_path, repo_path)
 
     # Check out the specified revision
     if rev is not None:
-        _git_checkout(new_path, rev)
+        _git_checkout(repo_path, rev)
 
-    REPOS_CACHE[url, rev] = new_path
-    return new_path
+    return repo_path
+
+
+def _git_clone(url, path):
+    from dvc.scm.git import Git
+
+    git = Git.clone(url, path)
+    git.close()
 
 
 def _git_checkout(repo_path, rev):
@@ -191,19 +204,29 @@ def _git_checkout(repo_path, rev):
         git.close()
 
 
-def _git_pull(repo_path, rev):
+def _is_known_sha(repo_path, rev):
+    import git
+    from gitdb.exc import BadName
+
+    if not rev or not git.Repo.re_hexsha_shortened.search(rev):
+        return False
+
+    try:
+        git.Repo(repo_path).commit(rev)
+        return True
+    except BadName:
+        return False
+
+
+def _git_pull(repo_path):
     import git
 
-    # Do not try to pull in a detached mode
-    if rev and git.Repo.re_hexsha_only.search(rev):
-        return
-
-    git = git.Repo(repo_path)
+    repo = git.Repo(repo_path)
     try:
-        msg = git.git.pull()
+        msg = repo.git.pull()
         logger.debug("external repo: git pull: {}", msg)
     finally:
-        git.close()
+        repo.close()
 
 
 def _remove(path):
@@ -213,10 +236,3 @@ def _remove(path):
         os_retry(remove)(path)
     else:
         remove(path)
-
-
-def _clone_repo(url, path):
-    from dvc.scm.git import Git
-
-    git = Git.clone(url, path)
-    git.close()
