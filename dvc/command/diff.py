@@ -87,10 +87,11 @@ class CmdDiff(CmdBase):
                 return 0
 
             if self.args.json:
-                print(json.dumps(diff))
-                return 0
+                res = json.dumps(diff)
+            else:
+                res = self._format(diff, include_checksums=self.args.checksums)
 
-            print(self._format(diff, include_checksums=self.args.checksums))
+            logger.info(res)
 
         except DvcException:
             logger.exception("failed to get diff")

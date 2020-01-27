@@ -1,14 +1,10 @@
 import hashlib
-import json
 import os
 import pytest
 import shutil
 
-import colorama
-
 from dvc.compat import fspath
 from dvc.exceptions import DvcException
-from dvc.main import main
 
 
 def digest(text):
@@ -156,7 +152,6 @@ def test_directories(tmp_dir, scm, dvc):
     scm.add("dir.dvc")
     scm.commit("delete a file")
 
-
     # The ":/<text>" format is a way to specify revisions by commit message:
     #       https://git-scm.com/docs/git-rev-parse
     #
@@ -208,71 +203,3 @@ def test_directories(tmp_dir, scm, dvc):
             }
         ],
     }
-
-
-def test_json(tmp_dir, scm, dvc, mocker, capsys):
-    assert 0 == main(["diff", "--json"])
-    assert not capsys.readouterr().out
-
-    diff = {
-        "added": [{"filename": "file", "checksum": digest("text")}],
-        "deleted": [],
-        "modified": [],
-    }
-    mocker.patch("dvc.repo.Repo.diff", return_value=diff)
-    assert 0 == main(["diff", "--json"])
-    assert (
-        json.dumps(
-            {
-                "added": [{"filename": "file", "checksum": digest("text")}],
-                "deleted": [],
-                "modified": [],
-            }
-        )
-        in capsys.readouterr().out
-    )
-
-
-def test_cli(tmp_dir, scm, dvc, mocker, capsys):
-    assert 0 == main(["diff"])
-    assert not capsys.readouterr().out
-
-    diff = {
-        "added": [{"filename": "file", "checksum": digest("text")}],
-        "deleted": [],
-        "modified": [],
-    }
-    mocker.patch("dvc.repo.Repo.diff", return_value=diff)
-    assert 0 == main(["diff"])
-    assert capsys.readouterr().out == (
-        "{green}Added{nc}:\n"
-        "    file\n".format(green=colorama.Fore.GREEN, nc=colorama.Fore.RESET)
-    )
-
-    diff = {
-        "added": [],
-        "deleted": [
-            {"filename": "bar", "checksum": digest("bar")},
-            {"filename": "foo", "checksum": digest("foo")},
-        ],
-        "modified": [
-            {
-                "filename": "file",
-                "checksum": {"old": digest("first"), "new": digest("second")},
-            }
-        ],
-    }
-    mocker.patch("dvc.repo.Repo.diff", return_value=diff)
-    assert 0 == main(["diff", "--checksums"])
-    assert capsys.readouterr().out == (
-        "{red}Deleted{nc}:\n"
-        "    37b51d19  bar\n"
-        "    acbd18db  foo\n"
-        "\n"
-        "{yellow}Modified{nc}:\n"
-        "    8b04d5e3..a9f0e61a  file\n".format(
-            red=colorama.Fore.RED,
-            yellow=colorama.Fore.YELLOW,
-            nc=colorama.Fore.RESET,
-        )
-    )
