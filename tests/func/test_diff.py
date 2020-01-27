@@ -217,32 +217,35 @@ def test_cli(tmp_dir, scm, dvc, mocker, capsys):
     }
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
     assert 0 == main(["diff"])
-    assert (
+    assert capsys.readouterr().out == (
         "{green}Added{nc}:\n"
         "    file\n".format(green=colorama.Fore.GREEN, nc=colorama.Fore.RESET)
-        == capsys.readouterr().out
     )
 
     diff = {
         "added": [],
-        "deleted": [{"filename": "file", "checksum": digest("text")}],
-        "modified": [
+        "deleted": [
             {"filename": "foo", "checksum": digest("foo")},
             {"filename": "bar", "checksum": digest("bar")},
         ],
+        "modified": [
+            {
+                "filename": "file",
+                "checksum": {"old": digest("first"), "new": digest("second")},
+            }
+        ],
     }
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
-    assert 0 == main(["diff"])
-    assert (
+    assert 0 == main(["diff", "--checksums"])
+    assert capsys.readouterr().out == (
         "{red}Deleted{nc}:\n"
-        "    file\n"
+        "    37b51d19  bar\n"
+        "    acbd18db  foo\n"
         "\n"
         "{yellow}Modified{nc}:\n"
-        "    bar\n"
-        "    foo\n".format(
+        "    8b04d5e3..a9f0e61a  file\n".format(
             red=colorama.Fore.RED,
             yellow=colorama.Fore.YELLOW,
             nc=colorama.Fore.RESET,
         )
-        == capsys.readouterr().out
     )

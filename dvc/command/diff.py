@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class CmdDiff(CmdBase):
     @staticmethod
-    def _format(diff):
+    def _format(diff, include_checksums=False):
         """
         Given a diff structure, generate a string of filenames separated
         by new lines and grouped together by their state.
@@ -27,8 +27,22 @@ class CmdDiff(CmdBase):
                 dir/
                 dir/1
 
+        An example of a diff formatted when `include_checksums` is truthy:
+
+            Added:
+                d3b07384 foo
+
+            Modified:
+                c157a790..f98bf6f1 bar
+
         If a group has no entries, it won't be included in the result.
         """
+
+        def _digest(checksum):
+            if type(checksum) is str:
+                return checksum[0:8]
+            return "{}..{}".format(checksum["old"][0:8], checksum["new"][0:8])
+
         colors = {
             "added": colorama.Fore.GREEN,
             "modified": colorama.Fore.YELLOW,
@@ -37,16 +51,25 @@ class CmdDiff(CmdBase):
 
         groups = []
 
-        for key, values in diff.items():
-            if not values:
+        for state, entries in diff.items():
+            if not entries:
                 continue
 
-            entries = sorted("    " + entry["filename"] for entry in values)
+            entries = sorted(tuple(entry.values()) for entry in entries)
+            entries = [
+                "{space}{checksum}{separator}{filename}".format(
+                    space="    ",
+                    checksum=_digest(checksum) if include_checksums else "",
+                    separator="  " if include_checksums else "",
+                    filename=filename,
+                )
+                for filename, checksum in entries
+            ]
 
             groups.append(
                 "{color}{header}{nc}:\n{entries}".format(
-                    color=colors[key],
-                    header=key.capitalize(),
+                    color=colors[state],
+                    header=state.capitalize(),
                     nc=colorama.Fore.RESET,
                     entries="\n".join(entries),
                 )
@@ -59,6 +82,7 @@ class CmdDiff(CmdBase):
             diff = self.repo.diff(
                 self.args.a_ref, self.args.b_ref, target=self.args.target
             )
+
             if not any(diff.values()):
                 return 0
 
@@ -66,7 +90,7 @@ class CmdDiff(CmdBase):
                 print(json.dumps(diff))
                 return 0
 
-            print(self._format(diff))
+            print(self._format(diff, include_checksums=self.args.checksums))
 
         except DvcException:
             logger.exception("failed to get diff")
@@ -113,6 +137,12 @@ def add_parser(subparsers, parent_parser):
     diff_parser.add_argument(
         "--json",
         help=("Format the output into a JSON"),
+        action="store_true",
+        default=False,
+    )
+    diff_parser.add_argument(
+        "--checksums",
+        help=("Display checksums of each entry"),
         action="store_true",
         default=False,
     )
