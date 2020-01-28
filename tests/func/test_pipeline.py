@@ -110,12 +110,11 @@ def test_disconnected_stage(tmp_dir, dvc, caplog):
     )
 
     args = ["pipeline", "show", "--outs", "--dot", final_stage.path]
-    with tmp_dir.chdir():
-        command = CmdPipelineShow(args)
-        # Need to test __build_graph directly
-        nodes, edges, is_tree = command._CmdPipelineShow__build_graph(
-            final_stage.path, commands=False, outs=True
-        )
+    command = CmdPipelineShow(args)
+    # Need to test __build_graph directly
+    nodes, edges, is_tree = command._CmdPipelineShow__build_graph(
+        final_stage.path, commands=False, outs=True
+    )
 
     assert set(nodes) == set(["final", "derived1", "base"])
     assert edges == [("final", "derived1"), ("derived1", "base")]
