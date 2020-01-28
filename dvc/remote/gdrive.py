@@ -104,13 +104,15 @@ class RemoteGDrive(RemoteBASE):
                 ),
             )
         )
+        self.remote_drive_id = None
 
     @gdrive_retry
     def gdrive_upload_file(
         self, args, no_progress_bar=True, from_file="", progress_name=""
     ):
+        parent = {"id": args["parent_id"]}
         item = self.drive.CreateFile(
-            {"title": args["title"], "parents": [{"id": args["parent_id"]}]}
+            {"title": args["title"], "parents": [parent]}
         )
 
         with open(from_file, "rb") as fobj:
@@ -133,7 +135,9 @@ class RemoteGDrive(RemoteBASE):
     def gdrive_download_file(
         self, file_id, to_file, progress_name, no_progress_bar
     ):
-        gdrive_file = self.drive.CreateFile({"id": file_id})
+        param = {"id": file_id}
+        # it does not create a file on the remote
+        gdrive_file = self.drive.CreateFile(param)
         bar_format = (
             "Donwloading {desc:{ncols_desc}.{ncols_desc}}... "
             + Tqdm.format_sizeof(int(gdrive_file["fileSize"]), "B", 1024)
@@ -144,7 +148,12 @@ class RemoteGDrive(RemoteBASE):
             gdrive_file.GetContentFile(to_file)
 
     def gdrive_list_item(self, query):
-        file_list = self.drive.ListFile({"q": query, "maxResults": 1000})
+        param = {"q": query, "maxResults": 1000, "corpora": self.corpora}
+
+        if self.remote_drive_id:
+            param["driveId"] = self.remote_drive_id
+
+        file_list = self.drive.ListFile(param)
 
         # Isolate and decorate fetching of remote drive items in pages
         get_list = gdrive_retry(lambda: next(file_list, None))
@@ -240,21 +249,22 @@ class RemoteGDrive(RemoteBASE):
 
             self._gdrive = GoogleDrive(gauth)
 
+            if self.bucket != "root" and self.bucket != "appDataFolder":
+                self.remote_drive_id = self.get_remote_drive_id(self.bucket)
+            self.corpora = "drive" if self.remote_drive_id else "default"
             self.remote_root_id = self.get_remote_id(
                 self.path_info, create=True
             )
+
             self._cached_dirs, self._cached_ids = self.cache_root_dirs()
 
         return self._gdrive
 
     @gdrive_retry
     def create_remote_dir(self, parent_id, title):
+        parent = {"id": parent_id}
         item = self.drive.CreateFile(
-            {
-                "title": title,
-                "parents": [{"id": parent_id}],
-                "mimeType": FOLDER_MIME_TYPE,
-            }
+            {"title": title, "parents": [parent], "mimeType": FOLDER_MIME_TYPE}
         )
         item.Upload()
         return item
@@ -272,11 +282,27 @@ class RemoteGDrive(RemoteBASE):
 
         query += " and trashed=false and title='{}'".format(name)
 
+        param = {
+            "q": query,
+            # Remote might contain items with duplicated titles
+            "maxResults": 1,
+            "corpora": self.corpora,
+        }
+
+        if self.remote_drive_id:
+            param["driveId"] = self.remote_drive_id
+
         # Limit found remote items count to 1 in response
-        item_list = self.drive.ListFile(
-            {"q": query, "maxResults": 1}
-        ).GetList()
+        item_list = self.drive.ListFile(param).GetList()
         return next(iter(item_list), None)
+
+    @gdrive_retry
+    def get_remote_drive_id(self, remote_id):
+        param = {"id": remote_id}
+        # it does not create a file on the remote
+        item = self.drive.CreateFile(param)
+        item.FetchMetadata("driveId")
+        return item.get("driveId", None)
 
     def resolve_remote_item_from_path(self, path_parts, create):
         parents_ids = [self.bucket]
@@ -301,6 +327,10 @@ class RemoteGDrive(RemoteBASE):
         return []
 
     def get_remote_id(self, path_info, create=False):
+        if not path_info.path and path_info.bucket:
+            # Case sensitive base path
+            return self.bucket
+
         remote_ids = self.get_remote_id_from_cache(path_info.path)
 
         if remote_ids:
