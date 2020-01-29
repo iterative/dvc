@@ -53,6 +53,6 @@ def add_parser(subparsers, parent_parser):
         "-o", "--out", nargs="?", help="Destination path to download files to"
     )
     import_parser.add_argument(
-        "--rev", nargs="?", help="Git revision (e.g. branch, tag, SHA)"
+        "--rev", nargs="?", help="Git revision (e.g. SHA, branch, tag)"
     )
     import_parser.set_defaults(func=CmdImport)

@@ -191,7 +191,7 @@ class RemoteBASE(object):
                 tasks,
                 total=len(file_infos),
                 unit="md5",
-                desc="Computing hashes (only done once)",
+                desc="Computing file checksum(s) (only done once)",
             ) as tasks:
                 checksums = dict(zip(file_infos, tasks))
         return checksums

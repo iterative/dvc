@@ -22,7 +22,7 @@ _dvc_commands() {
     "fetch:Fetch data files from a DVC remote storage."
     "get-url:Download or copy files from URL."
     "get:Download data from DVC repository."
-    "gc:Collect unused data from DVC cache or a remote storage."
+    "gc:Garbage collect unused objects from cache or remote storage."
     "import-url:Download or copy file from URL and take it under DVC control."
     "import:Download data from DVC repository and take it under DVC control."
     "init:Initialize DVC in the current directory."
@@ -117,7 +117,7 @@ _dvc_geturl=(
 
 _dvc_get=(
   {-o,--out}"[Destination path to put data to.]:OUT:_files -/"
-  "--rev[Git revision (e.g. branch, tag, SHA)]:Revision:"
+  "--rev[Git revision (e.g. SHA, branch, tag)]:Revision:"
   "--show-url[Returns path/url to the location in remote for given path]"
   "1:URL:"
   "2:Path:"
@@ -141,7 +141,7 @@ _dvc_importurl=(
 
 _dvc_import=(
   {-o,--out}"[Destination path to put data to.]:OUT:_files -/"
-  "--rev[DVC repository git revision.]:Commit hash:"
+  "--rev[Git revision (e.g. SHA, branch, tag)]:Commit hash:"
   "1:URL:"
   "2:Path:"
 )
