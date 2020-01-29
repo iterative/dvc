@@ -205,7 +205,7 @@ class Repo(object):
             return [(stage, None) for stage in self.stages]
 
         try:
-            out, = self.find_outs_by_path(target, strict=False)
+            (out,) = self.find_outs_by_path(target, strict=False)
             filter_info = PathInfo(os.path.abspath(target))
             return [(out.stage, filter_info)]
         except OutputNotFoundError:
@@ -419,7 +419,7 @@ class Repo(object):
 
     def find_out_by_relpath(self, relpath):
         path = os.path.join(self.root_dir, relpath)
-        out, = self.find_outs_by_path(path)
+        (out,) = self.find_outs_by_path(path)
         return out
 
     def is_dvc_internal(self, path):
