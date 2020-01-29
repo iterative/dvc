@@ -13,34 +13,6 @@ from dvc.repo import Repo
 from dvc.exceptions import DvcException, NotDvcRepoError
 from dvc.external_repo import external_repo
 
-DEF_SUMMON = "Summon.yaml"
-DOBJ_SECTION = "d-objects"
-
-SUMMON_FILE_SCHEMA = Schema(
-    {
-        Required(DOBJ_SECTION): [
-            {
-                Required("name"): str,
-                "description": str,
-                "meta": dict,
-                Required("summon"): {
-                    Required("type"): str,
-                    "deps": [str],
-                    str: object,
-                },
-            }
-        ]
-    }
-)
-SUMMON_PYTHON_SCHEMA = Schema(
-    {
-        Required("type"): "python",
-        Required("call"): str,
-        "args": dict,
-        "deps": [str],
-    }
-)
-
 
 class SummonError(DvcException):
     pass
@@ -127,31 +99,45 @@ def _make_repo(repo_url=None, rev=None):
         yield repo
 
 
-def summon(name, repo=None, rev=None, summon_file=DEF_SUMMON, args=None):
-    """Instantiate an object described in the `summon_file`."""
-    with SummonDesc.prepare_summon(repo, rev, summon_file) as desc:
-        dobj = desc.get_dobject(name)
-        try:
-            summon_dict = SUMMON_PYTHON_SCHEMA(dobj["summon"])
-        except Invalid as exc:
-            raise SummonError(str(exc)) from exc
+class SummonFile(object):
+    DEF_NAME = "dvcsummon.yaml"
+    DOBJ_SECTION = "dvc-objects"
 
-        desc.pull(dobj)
-        _args = {**summon_dict.get("args", {}), **(args or {})}
-        return _invoke_method(summon_dict["call"], _args, desc.repo.root_dir)
+    SCHEMA = Schema(
+        {
+            Required(DOBJ_SECTION): {
+                str: {
+                    "description": str,
+                    "meta": dict,
+                    Required("summon"): {
+                        Required("type"): str,
+                        "deps": [str],
+                        str: object,
+                    },
+                }
+            }
+        }
+    )
 
+    PYTHON_SCHEMA = Schema(
+        {
+            Required("type"): "python",
+            Required("call"): str,
+            "args": dict,
+            "deps": [str],
+        }
+    )
 
-class SummonDesc(object):
-    def __init__(self, repo_obj, summon_file=DEF_SUMMON):
+    def __init__(self, repo_obj, summon_file=None):
         self.repo = repo_obj
-        self.filename = summon_file
+        self.filename = summon_file or SummonFile.DEF_NAME
         self.path = os.path.join(self.repo.root_dir, summon_file)
-        self.content = self._read_summon_content()
+        self.dobjs = self._read_summon_content().get(self.DOBJ_SECTION)
 
     def _read_summon_content(self):
         try:
             with builtin_open(self.path, "r") as fobj:
-                return SUMMON_FILE_SCHEMA(ruamel.yaml.safe_load(fobj.read()))
+                return SummonFile.SCHEMA(ruamel.yaml.safe_load(fobj.read()))
         except FileNotFoundError as exc:
             raise SummonError("Summon file not found") from exc
         except ruamel.yaml.YAMLError as exc:
@@ -162,35 +148,39 @@ class SummonDesc(object):
     def _write_summon_content(self):
         try:
             with builtin_open(self.path, "w") as fobj:
-                content = SUMMON_FILE_SCHEMA(self.content)
+                content = SummonFile.SCHEMA(self.dobjs)
                 ruamel.yaml.serialize_all(content, fobj)
         except ruamel.yaml.YAMLError as exc:
-            raise SummonError("Summon file schema error") from exc
+            raise SummonError(
+                "Summon file '{}' schema error".format(self.path)
+            ) from exc
         except Exception as exc:
             raise SummonError(str(exc)) from exc
 
     @staticmethod
     @contextmanager
-    def prepare_summon(repo=None, rev=None, summon_file=DEF_SUMMON):
+    def prepare(repo=None, rev=None, summon_file=None):
         """Does a couple of things every summon needs as a prerequisite:
         clones the repo and parses the summon file.
 
         Calling code is expected to complete the summon logic following
         instructions stated in "summon" dict of the object spec.
 
-        Returns a SummonDesc instance, which contains references to a Repo
+        Returns a SummonFile instance, which contains references to a Repo
         object, named object specification and resolved paths to deps.
         """
+        summon_file = summon_file or SummonFile.DEF_NAME
         with _make_repo(repo, rev=rev) as _repo:
             _require_dvc(_repo)
             try:
-                yield SummonDesc(_repo, summon_file)
+                yield SummonFile(_repo, summon_file)
             except SummonError as exc:
                 raise SummonError(
                     str(exc) + " at '{}' in '{}'".format(summon_file, _repo)
                 ) from exc.__cause__
 
-    def deps_paths(self, dobj):
+    @staticmethod
+    def deps_paths(dobj):
         return dobj["summon"].get("deps", [])
 
     def deps_abs_paths(self, dobj):
@@ -219,40 +209,28 @@ class SummonDesc(object):
                 self.repo.add(path)
                 self.repo.add(path)
 
-    def get_dobject(self, name, default=False):
+    def get_dobject(self, name):
         """
         Given a summonable object's name, search for it on the given content
         and return its description.
         """
-        objects = [x for x in self.content[DOBJ_SECTION] if x["name"] == name]
 
-        if not objects:
+        if name not in self.dobjs:
             raise SummonErrorNoObjectFound(
-                "No object with name '{}'".format(name)
+                "No object with name '{}' in file '{}'".format(name, self.path)
             )
-        elif len(objects) >= 2:
+
+        return self.dobjs[name]
+
+    def update_dobj(self, name, new_dobj, overwrite=True):
+        if (new_dobj[name] not in self.dobjs) or overwrite:
+            self.dobjs[name] = new_dobj
+        else:
             raise SummonError(
-                "More than one object with name '{}'".format(name)
-            )
-
-        return objects[0]
-
-    def update_dobj(self, new_dobj, overwrite=False):
-        try:
-            name = new_dobj["name"]
-            dobj = self.get_dobject(name)
-
-            if overwrite:
-                idx = self.content[DOBJ_SECTION].index(dobj)
-                self.content[DOBJ_SECTION][idx] = new_dobj
-            else:
-                raise SummonError(
-                    "D-object '{}' already exist in '{}'".format(
-                        name, self.filename
-                    )
+                "DVC-object '{}' already exist in '{}'".format(
+                    name, self.filename
                 )
-        except SummonErrorNoObjectFound:
-            self.content[DOBJ_SECTION].append(new_dobj)
+            )
 
         self._write_summon_content()
 
@@ -273,6 +251,22 @@ def _invoke_method(call, args, path):
     finally:
         os.chdir(cwd)
         sys.path.pop(0)
+
+
+def summon(
+    name, repo=None, rev=None, summon_file=SummonFile.DEF_NAME, args=None
+):
+    """Instantiate an object described in the `summon_file`."""
+    with SummonFile.prepare(repo, rev, summon_file) as desc:
+        dobj = desc.get_dobject(name)
+        try:
+            summon_dict = SummonFile.PYTHON_SCHEMA(dobj["summon"])
+        except Invalid as exc:
+            raise SummonError(str(exc)) from exc
+
+        desc.pull(dobj)
+        _args = {**summon_dict.get("args", {}), **(args or {})}
+        return _invoke_method(summon_dict["call"], _args, desc.repo.root_dir)
 
 
 def _import_string(import_name):

@@ -6,7 +6,7 @@ import ruamel.yaml
 import pytest
 
 from dvc import api
-from dvc.api import SummonError, UrlNotDvcRepoError, DEF_SUMMON, DOBJ_SECTION
+from dvc.api import SummonFile, SummonError, UrlNotDvcRepoError
 from dvc.compat import fspath
 from dvc.exceptions import FileMissingError
 from dvc.main import main
@@ -145,9 +145,8 @@ def test_open_not_cached(dvc):
 
 def test_summon(tmp_dir, dvc, erepo_dir):
     objects = {
-        DOBJ_SECTION: [
-            {
-                "name": "sum",
+        SummonFile.DOBJ_SECTION: {
+            "sum": {
                 "meta": {"description": "Add <x> to <number>"},
                 "summon": {
                     "type": "python",
@@ -156,20 +155,16 @@ def test_summon(tmp_dir, dvc, erepo_dir):
                     "deps": ["number"],
                 },
             }
-        ]
+        }
     }
 
     other_objects = copy.deepcopy(objects)
-    other_objects[DOBJ_SECTION][0]["summon"]["args"]["x"] = 100
-
-    dup_objects = copy.deepcopy(objects)
-    dup_objects[DOBJ_SECTION] *= 2
+    other_objects[SummonFile.DOBJ_SECTION]["sum"]["summon"]["args"]["x"] = 100
 
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("number", "100", commit="Add number.dvc")
-        erepo_dir.scm_gen(DEF_SUMMON, ruamel.yaml.dump(objects))
+        erepo_dir.scm_gen(SummonFile.DEF_NAME, ruamel.yaml.dump(objects))
         erepo_dir.scm_gen("other.yaml", ruamel.yaml.dump(other_objects))
-        erepo_dir.scm_gen("dup.yaml", ruamel.yaml.dump(dup_objects))
         erepo_dir.scm_gen("invalid.yaml", ruamel.yaml.dump({"name": "sum"}))
         erepo_dir.scm_gen("not_yaml.yaml", "a: - this is not a YAML file")
         erepo_dir.scm_gen(
@@ -196,11 +191,6 @@ def test_summon(tmp_dir, dvc, erepo_dir):
 
     with pytest.raises(SummonError, match=r"No object with name 'missing'"):
         api.summon("missing", repo=repo_url)
-
-    with pytest.raises(
-        SummonError, match=r"More than one object with name 'sum'"
-    ):
-        api.summon("sum", repo=repo_url, summon_file="dup.yaml")
 
     with pytest.raises(SummonError, match=r"extra keys not allowed"):
         api.summon("sum", repo=repo_url, summon_file="invalid.yaml")
