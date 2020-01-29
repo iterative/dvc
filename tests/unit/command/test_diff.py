@@ -5,7 +5,7 @@ def test_default(mocker, caplog):
     args = parse_args(["diff"])
     cmd = args.func(args)
     diff = {
-        "added": [{"filename": "file", "checksum": "00000000"}],
+        "added": [{"path": "file", "checksum": "00000000"}],
         "deleted": [],
         "modified": [],
     }
@@ -21,12 +21,12 @@ def test_checksums(mocker, caplog):
     diff = {
         "added": [],
         "deleted": [
-            {"filename": "bar", "checksum": "00000000"},
-            {"filename": "foo", "checksum": "11111111"},
+            {"path": "bar", "checksum": "00000000"},
+            {"path": "foo", "checksum": "11111111"},
         ],
         "modified": [
             {
-                "filename": "file",
+                "path": "file",
                 "checksum": {"old": "AAAAAAAA", "new": "BBBBBBBB"},
             }
         ],
@@ -47,7 +47,7 @@ def test_json(mocker, caplog):
     args = parse_args(["diff", "--show-json"])
     cmd = args.func(args)
     diff = {
-        "added": [{"filename": "file", "checksum": "00000000"}],
+        "added": [{"path": "file", "checksum": "00000000"}],
         "deleted": [],
         "modified": [],
     }
@@ -55,7 +55,7 @@ def test_json(mocker, caplog):
 
     assert 0 == cmd.run()
     assert (
-        '{"added": [{"filename": "file"}], "deleted": [], "modified": []}'
+        '{"added": [{"path": "file"}], "deleted": [], "modified": []}'
         in caplog.text
     )
 
@@ -64,7 +64,7 @@ def test_json_checksums(mocker, caplog):
     args = parse_args(["diff", "--show-json", "--checksums"])
     cmd = args.func(args)
     diff = {
-        "added": [{"filename": "file", "checksum": "00000000"}],
+        "added": [{"path": "file", "checksum": "00000000"}],
         "deleted": [],
         "modified": [],
     }
@@ -72,6 +72,6 @@ def test_json_checksums(mocker, caplog):
 
     assert 0 == cmd.run()
     assert (
-        '{"added": [{"filename": "file", "checksum": "00000000"}], '
+        '{"added": [{"path": "file", "checksum": "00000000"}], '
         '"deleted": [], "modified": []}' in caplog.text
     )

@@ -15,7 +15,7 @@ class CmdDiff(CmdBase):
     @staticmethod
     def _format(diff):
         """
-        Given a diff structure, generate a string of filenames separated
+        Given a diff structure, generate a string of paths separated
         by new lines and grouped together by their state.
 
         A group's header is colored and its entries are sorted to enhance
@@ -57,17 +57,16 @@ class CmdDiff(CmdBase):
                 header=state.capitalize(),
                 nc=colorama.Fore.RESET,
                 entries="\n".join(
-                    "{space}{checksum}{separator}{filename}".format(
+                    "{space}{checksum}{separator}{path}".format(
                         space="    ",
                         checksum=_digest(entry.get("checksum")),
                         separator="  " if entry.get("checksum") else "",
-                        filename=entry["filename"],
+                        path=entry["path"],
                     )
-                    for entry in entries
+                    for entry in diff[state]
                 ),
             )
-            for state, entries in diff.items()
-            if entries
+            for state in ["added", "deleted", "modified"]
         )
 
     def run(self):

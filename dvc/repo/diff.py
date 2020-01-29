@@ -1,4 +1,3 @@
-import collections
 import os
 
 from dvc.exceptions import DvcException
@@ -18,16 +17,15 @@ def diff(self, a_ref="HEAD", b_ref=None):
     if type(self.scm) is not Git:
         raise DvcException("only supported for Git repositories")
 
-
-    def _checksums_by_filenames():
+    def _paths_checksums():
         """
-        A dictionary of checksums addressed by filenames collected from
+        A dictionary of checksums addressed by relpaths collected from
         the current tree outputs.
 
         Unpack directories to include their entries
 
         To help distinguish between a directory and a file output,
-        the former one will come with a trailing slash in the filename:
+        the former one will come with a trailing slash in the path:
 
             directory: "data/"
             file:      "data"
@@ -43,42 +41,36 @@ def diff(self, a_ref="HEAD", b_ref=None):
                 result.update({os.path.join(str(output), ""): output.checksum})
 
                 for entry in output.dir_cache:
-                    filename = str(output.path_info / entry["relpath"])
-                    result.update({filename: entry["md5"]})
+                    path = str(output.path_info / entry["relpath"])
+                    result.update({path: entry["md5"]})
 
         return result
 
+    working_tree = self.tree
+    a_tree = self.scm.get_tree(a_ref)
+    b_tree = self.scm.get_tree(b_ref) if b_ref else working_tree
 
-    def _compare_trees(a_ref, b_ref):
-        working_tree = self.tree
+    try:
+        self.tree = a_tree
+        old = _paths_checksums()
 
-        a_tree = self.scm.get_tree(self.scm.resolve_rev(a_ref))
-        b_tree = self.scm.get_tree(self.scm.resolve_rev(b_ref)) if b_tree else working_tree
+        self.tree = b_tree
+        new = _paths_checksums()
+    finally:
+        self.tree = working_tree
 
-    breakpoint()
+    # Compare paths between the old and new tree.
+    # set() efficiently converts dict keys to a set
+    added = sorted(set(new) - set(old))
+    deleted = sorted(set(old) - set(new))
+    modified = sorted(set(old) & set(new))
 
-    old = outs[a_ref]
-    new = outs[b_ref or "working tree"]
-
-    added = new - old
-    deleted = old - new
-    delta = old ^ new
-
-    result = {
-        "added": [entry._asdict() for entry in sorted(added)],
-        "deleted": [entry._asdict() for entry in sorted(deleted)],
-        "modified": [],
+    return {
+        "added": [{"path": path, "checksum": new[path]} for path in added],
+        "deleted": [{"path": path, "checksum": old[path]} for path in deleted],
+        "modified": [
+            {"path": path, "checksum": {"old": old[path], "new": new[path]}}
+            for path in modified
+            if old[path] != new[path]
+        ],
     }
-
-    for _old, _new in zip(sorted(old - delta), sorted(new - delta)):
-        if _old.checksum == _new.checksum:
-            continue
-
-        result["modified"].append(
-            {
-                "filename": _new.filename,
-                "checksum": {"old": _old.checksum, "new": _new.checksum},
-            }
-        )
-
-    return result

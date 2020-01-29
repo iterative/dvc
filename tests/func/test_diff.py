@@ -22,7 +22,7 @@ def test_added(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("file", "text")
 
     assert dvc.diff() == {
-        "added": [{"filename": "file", "checksum": digest("text")}],
+        "added": [{"path": "file", "checksum": digest("text")}],
         "deleted": [],
         "modified": [],
     }
@@ -41,14 +41,14 @@ def test_no_cache_entry(tmp_dir, scm, dvc):
 
     assert dvc.diff() == {
         "added": [
-            {"filename": os.path.join("dir", ""), "checksum": dir_checksum},
-            {"filename": os.path.join("dir", "1"), "checksum": digest("1")},
-            {"filename": os.path.join("dir", "2"), "checksum": digest("2")},
+            {"path": os.path.join("dir", ""), "checksum": dir_checksum},
+            {"path": os.path.join("dir", "1"), "checksum": digest("1")},
+            {"path": os.path.join("dir", "2"), "checksum": digest("2")},
         ],
         "deleted": [],
         "modified": [
             {
-                "filename": "file",
+                "path": "file",
                 "checksum": {"old": digest("first"), "new": digest("second")},
             }
         ],
@@ -61,7 +61,7 @@ def test_deleted(tmp_dir, scm, dvc):
 
     assert dvc.diff() == {
         "added": [],
-        "deleted": [{"filename": "file", "checksum": digest("text")}],
+        "deleted": [{"path": "file", "checksum": digest("text")}],
         "modified": [],
     }
 
@@ -75,7 +75,7 @@ def test_modified(tmp_dir, scm, dvc):
         "deleted": [],
         "modified": [
             {
-                "filename": "file",
+                "path": "file",
                 "checksum": {"old": digest("first"), "new": digest("second")},
             }
         ],
@@ -95,7 +95,7 @@ def test_refs(tmp_dir, scm, dvc):
         "added": [],
         "deleted": [],
         "modified": [
-            {"filename": "file", "checksum": {"old": HEAD_1, "new": HEAD}}
+            {"path": "file", "checksum": {"old": HEAD_1, "new": HEAD}}
         ],
     }
 
@@ -103,7 +103,7 @@ def test_refs(tmp_dir, scm, dvc):
         "added": [],
         "deleted": [],
         "modified": [
-            {"filename": "file", "checksum": {"old": HEAD_2, "new": HEAD_1}}
+            {"path": "file", "checksum": {"old": HEAD_2, "new": HEAD_1}}
         ],
     }
 
@@ -127,31 +127,29 @@ def test_directories(tmp_dir, scm, dvc):
     assert dvc.diff(":/init", ":/directory") == {
         "added": [
             {
-                "filename": os.path.join("dir", ""),
+                "path": os.path.join("dir", ""),
                 "checksum": "5fb6b29836c388e093ca0715c872fe2a.dir",
             },
-            {"filename": os.path.join("dir", "1"), "checksum": digest("1")},
-            {"filename": os.path.join("dir", "2"), "checksum": digest("2")},
+            {"path": os.path.join("dir", "1"), "checksum": digest("1")},
+            {"path": os.path.join("dir", "2"), "checksum": digest("2")},
         ],
         "deleted": [],
         "modified": [],
     }
 
     assert dvc.diff(":/directory", ":/modify") == {
-        "added": [
-            {"filename": os.path.join("dir", "3"), "checksum": digest("3")}
-        ],
+        "added": [{"path": os.path.join("dir", "3"), "checksum": digest("3")}],
         "deleted": [],
         "modified": [
             {
-                "filename": os.path.join("dir", ""),
+                "path": os.path.join("dir", ""),
                 "checksum": {
                     "old": "5fb6b29836c388e093ca0715c872fe2a.dir",
                     "new": "9b5faf37366b3370fd98e3e60ca439c1.dir",
                 },
             },
             {
-                "filename": os.path.join("dir", "2"),
+                "path": os.path.join("dir", "2"),
                 "checksum": {"old": digest("2"), "new": digest("two")},
             },
         ],
@@ -160,11 +158,11 @@ def test_directories(tmp_dir, scm, dvc):
     assert dvc.diff(":/modify", ":/delete") == {
         "added": [],
         "deleted": [
-            {"filename": os.path.join("dir", "2"), "checksum": digest("two")}
+            {"path": os.path.join("dir", "2"), "checksum": digest("two")}
         ],
         "modified": [
             {
-                "filename": os.path.join("dir", ""),
+                "path": os.path.join("dir", ""),
                 "checksum": {
                     "old": "9b5faf37366b3370fd98e3e60ca439c1.dir",
                     "new": "83ae82fb367ac9926455870773ff09e6.dir",
