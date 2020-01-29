@@ -215,6 +215,9 @@ class Git(Base):
         else:
             self.repo.git.checkout(branch)
 
+    def push(self):
+        self.repo.remote().push()
+
     def branch(self, branch):
         self.repo.git.branch(branch)
 
