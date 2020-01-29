@@ -136,15 +136,14 @@ class CmdDiff(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     DIFF_DESCRIPTION = (
-        "Show diff of a data file or a directory that is under DVC control.\n"
-        "Some basic statistics summary, how many files were deleted/changed."
+        "Show changes between revisions of the DVC repository.\n"
+        "Summary of how many files were deleted/changed, et al."
     )
-    DIFF_HELP = "Show a diff of a DVC controlled data file or a directory."
     diff_parser = subparsers.add_parser(
         "diff",
         parents=[parent_parser],
         description=append_doc_link(DIFF_DESCRIPTION, "diff"),
-        help=DIFF_HELP,
+        help=DIFF_DESCRIPTION,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     diff_parser.add_argument(
