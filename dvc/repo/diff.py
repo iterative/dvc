@@ -6,45 +6,6 @@ from dvc.repo import locked
 from dvc.scm.git import Git
 
 
-Diffable = collections.namedtuple("Diffable", "filename, checksum")
-Diffable.__doc__ = "Common interface to compare outputs."
-Diffable.__eq__ = lambda self, other: self.filename == other.filename
-Diffable.__hash__ = lambda self: hash(self.filename)
-
-
-def _diffables_from_output(output):
-    """
-    Transform an output into a list of Diffable objects so we can
-    compare them lately.
-
-    Unpack directories to include entries' Diffables.
-
-    To help distinguish between an a directory output and a file output,
-    the former one will come with a trailing slash in the filename:
-
-        directory: "data/"
-        file:      "data"
-
-    You can also rely on the checksum to tell whether it was computed for
-    a file or a directory as a whole.
-    """
-    if output.is_dir_checksum:
-        return [
-            Diffable(
-                filename=os.path.join(str(output), ""),
-                checksum=output.checksum,
-            )
-        ] + [
-            Diffable(
-                filename=str(output.path_info / entry["relpath"]),
-                checksum=entry["md5"],
-            )
-            for entry in output.dir_cache
-        ]
-
-    return [Diffable(filename=str(output), checksum=output.checksum)]
-
-
 @locked
 def diff(self, a_ref="HEAD", b_ref=None):
     """
@@ -57,15 +18,44 @@ def diff(self, a_ref="HEAD", b_ref=None):
     if type(self.scm) is not Git:
         raise DvcException("only supported for Git repositories")
 
-    outs = {}
 
-    for branch in self.brancher(revs=[a_ref, b_ref]):
-        outs[branch] = set(
-            diffable
-            for stage in self.stages
-            for out in stage.outs
-            for diffable in _diffables_from_output(out)
-        )
+    def _checksums_by_filenames():
+        """
+        A dictionary of checksums addressed by filenames collected from
+        the current tree outputs.
+
+        Unpack directories to include their entries
+
+        To help distinguish between a directory and a file output,
+        the former one will come with a trailing slash in the filename:
+
+            directory: "data/"
+            file:      "data"
+        """
+        result = {}
+
+        for stage in self.stages:
+            for output in stage.outs:
+                if not output.is_dir_checksum:
+                    result.update({str(output): output.checksum})
+                    continue
+
+                result.update({os.path.join(str(output), ""): output.checksum})
+
+                for entry in output.dir_cache:
+                    filename = str(output.path_info / entry["relpath"])
+                    result.update({filename: entry["md5"]})
+
+        return result
+
+
+    def _compare_trees(a_ref, b_ref):
+        working_tree = self.tree
+
+        a_tree = self.scm.get_tree(self.scm.resolve_rev(a_ref))
+        b_tree = self.scm.get_tree(self.scm.resolve_rev(b_ref)) if b_tree else working_tree
+
+    breakpoint()
 
     old = outs[a_ref]
     new = outs[b_ref or "working tree"]
