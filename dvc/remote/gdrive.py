@@ -185,6 +185,12 @@ class RemoteGDrive(RemoteBASE):
         return self._cached_ids
 
     @property
+    def corpora(self):
+        if not hasattr(self, "_corpora"):
+            self.drive
+        return self._corpora
+
+    @property
     @wrap_with(threading.RLock())
     def drive(self):
         from pydrive2.auth import RefreshError
@@ -251,7 +257,7 @@ class RemoteGDrive(RemoteBASE):
 
             if self.bucket != "root" and self.bucket != "appDataFolder":
                 self.remote_drive_id = self.get_remote_drive_id(self.bucket)
-            self.corpora = "drive" if self.remote_drive_id else "default"
+            self._corpora = "drive" if self.remote_drive_id else "default"
             self.remote_root_id = self.get_remote_id(
                 self.path_info, create=True
             )
