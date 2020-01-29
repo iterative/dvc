@@ -412,7 +412,7 @@ class OutputBase(object):
         if not self.info:
             logger.warning(
                 "Output '{}'({}) is missing version info. Cache for it will "
-                "not be collected. Use dvc repro to get your pipeline up to "
+                "not be collected. Use `dvc repro` to get your pipeline up to "
                 "date.".format(self, self.stage)
             )
             return NamedCache()

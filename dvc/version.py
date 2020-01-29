@@ -11,7 +11,7 @@ _BASE_VERSION = "0.82.3"
 
 
 def _generate_version(base_version):
-    """Generate a version with information about the git repository"""
+    """Generate a version with information about the Git repository."""
     pkg_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     if not _is_git_repo(pkg_dir) or not _have_git():
@@ -28,7 +28,7 @@ def _generate_version(base_version):
 
 
 def _is_git_repo(dir_path):
-    """Is the given directory version-controlled with git?"""
+    """Is the given directory version-controlled with Git?"""
     return os.path.exists(os.path.join(dir_path, ".git"))
 
 
