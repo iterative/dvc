@@ -9,4 +9,4 @@ pip install Pygments collective.checkdocs pre-commit
 python setup.py checkdocs
 
 # stop the build if there are any formatting errors
-pre-commit run --all-files
+GO111MODULE=on pre-commit run --all-files
