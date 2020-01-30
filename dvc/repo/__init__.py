@@ -125,7 +125,7 @@ class Repo(object):
         self._reset()
 
     def __repr__(self):
-        return "Repo: '{root_dir}'".format(root_dir=self.root_dir)
+        return "{}: '{}'".format(self.__class__.__name__, self.root_dir)
 
     @classmethod
     def find_root(cls, root=None):
