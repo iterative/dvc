@@ -1,3 +1,4 @@
+import collections
 import os
 
 from dvc.cli import parse_args
@@ -73,8 +74,14 @@ def test_json(mocker, caplog):
 def test_json_checksums(mocker, caplog):
     args = parse_args(["diff", "--show-json", "--checksums"])
     cmd = args.func(args)
+
     diff = {
-        "added": [{"path": "file", "checksum": "00000000"}],
+        "added": [
+            # py35: maintain a consistent key order for tests purposes
+            collections.OrderedDict(
+                [("path", "file"), ("checksum", "00000000")]
+            )
+        ],
         "deleted": [],
         "modified": [],
     }
