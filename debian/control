@@ -1,5 +1,5 @@
 Source: dvc
-Maintainer: Dmitry Petrov <dmitry@dataversioncontrol.com>
+Maintainer: Dmitry Petrov <dmitry@dvc.org>
 Section: python
 Priority: optional
 Build-Depends: dh-python, python3-setuptools, python3-all, debhelper (>= 9)
