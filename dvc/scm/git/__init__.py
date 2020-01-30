@@ -215,8 +215,15 @@ class Git(Base):
         else:
             self.repo.git.checkout(branch)
 
+    def pull(self):
+        info, = self.repo.remote().pull()
+        if info.flags & info.ERROR:
+            raise SCMError("pull failed: {}".format(info.note))
+
     def push(self):
-        self.repo.remote().push()
+        info, = self.repo.remote().push()
+        if info.flags & info.ERROR:
+            raise SCMError("push failed: {}".format(info.summary))
 
     def branch(self, branch):
         self.repo.git.branch(branch)
