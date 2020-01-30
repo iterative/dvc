@@ -12,9 +12,9 @@ sudo apt-get install -y docker-ce
 
 # run azurite
 sudo docker run -d --restart always -e executable=blob -p 10000:10000 \
-	--tmpfs /opt/azurite/folder \
-	mcr.microsoft.com/azure-storage/azurite:3.3.0-preview \
-	azurite -l /data --blobHost 0.0.0.0
+  --tmpfs /opt/azurite/folder \
+  mcr.microsoft.com/azure-storage/azurite:3.3.0-preview \
+  azurite -l /data --blobHost 0.0.0.0
 
 # save secrets
 echo "export AZURE_STORAGE_CONTAINER_NAME='travis-tests'" >>env.sh
