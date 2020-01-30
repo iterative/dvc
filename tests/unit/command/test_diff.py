@@ -65,10 +65,9 @@ def test_json(mocker, caplog):
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
 
     assert 0 == cmd.run()
-    assert (
-        '{"added": [{"path": "file"}], "deleted": [], "modified": []}'
-        in caplog.text
-    )
+    assert '"added": [{"path": "file"}]' in caplog.text
+    assert '"deleted": []' in caplog.text
+    assert '"modified": []' in caplog.text
 
 
 def test_json_checksums(mocker, caplog):
@@ -82,7 +81,6 @@ def test_json_checksums(mocker, caplog):
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
 
     assert 0 == cmd.run()
-    assert (
-        '{"added": [{"path": "file", "checksum": "00000000"}], '
-        '"deleted": [], "modified": []}' in caplog.text
-    )
+    assert '"added": [{"path": "file", "checksum": "00000000"}]' in caplog.text
+    assert '"deleted": []' in caplog.text
+    assert '"modified": []' in caplog.text
