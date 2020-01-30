@@ -1,12 +1,10 @@
 import os
 import shutil
-import copy
 
-import ruamel.yaml
 import pytest
 
 from dvc import api
-from dvc.api import SummonError, UrlNotDvcRepoError
+from dvc.api import UrlNotDvcRepoError
 from dvc.compat import fspath
 from dvc.exceptions import FileMissingError
 from dvc.main import main
@@ -141,68 +139,3 @@ def test_open_not_cached(dvc):
     os.remove(metric_file)
     with pytest.raises(FileMissingError):
         api.read(metric_file)
-
-
-def test_summon(tmp_dir, dvc, erepo_dir):
-    objects = {
-        "objects": [
-            {
-                "name": "sum",
-                "meta": {"description": "Add <x> to <number>"},
-                "summon": {
-                    "type": "python",
-                    "call": "calculator.add_to_num",
-                    "args": {"x": 1},
-                    "deps": ["number"],
-                },
-            }
-        ]
-    }
-
-    other_objects = copy.deepcopy(objects)
-    other_objects["objects"][0]["summon"]["args"]["x"] = 100
-
-    dup_objects = copy.deepcopy(objects)
-    dup_objects["objects"] *= 2
-
-    with erepo_dir.chdir():
-        erepo_dir.dvc_gen("number", "100", commit="Add number.dvc")
-        erepo_dir.scm_gen("dvcsummon.yaml", ruamel.yaml.dump(objects))
-        erepo_dir.scm_gen("other.yaml", ruamel.yaml.dump(other_objects))
-        erepo_dir.scm_gen("dup.yaml", ruamel.yaml.dump(dup_objects))
-        erepo_dir.scm_gen("invalid.yaml", ruamel.yaml.dump({"name": "sum"}))
-        erepo_dir.scm_gen("not_yaml.yaml", "a: - this is not a YAML file")
-        erepo_dir.scm_gen(
-            "calculator.py",
-            "def add_to_num(x): return x + int(open('number').read())",
-        )
-        erepo_dir.scm.commit("Add files")
-
-    repo_url = "file://{}".format(erepo_dir)
-
-    assert api.summon("sum", repo=repo_url) == 101
-    assert api.summon("sum", repo=repo_url, args={"x": 2}) == 102
-    assert api.summon("sum", repo=repo_url, summon_file="other.yaml") == 200
-
-    try:
-        api.summon("sum", repo=repo_url, summon_file="missing.yaml")
-    except SummonError as exc:
-        assert "Summon file not found" in str(exc)
-        assert "missing.yaml" in str(exc)
-        assert repo_url in str(exc)
-    else:
-        pytest.fail("Did not raise on missing summon file")
-
-    with pytest.raises(SummonError, match=r"No object with name 'missing'"):
-        api.summon("missing", repo=repo_url)
-
-    with pytest.raises(
-        SummonError, match=r"More than one object with name 'sum'"
-    ):
-        api.summon("sum", repo=repo_url, summon_file="dup.yaml")
-
-    with pytest.raises(SummonError, match=r"extra keys not allowed"):
-        api.summon("sum", repo=repo_url, summon_file="invalid.yaml")
-
-    with pytest.raises(SummonError, match=r"Failed to parse summon file"):
-        api.summon("sum", repo=repo_url, summon_file="not_yaml.yaml")
