@@ -9,3 +9,14 @@ repos:
     hooks:
     - id: flake8
       language_version: python3
+-   repo: https://github.com/casperdcl/sh
+    rev: master
+    hooks:
+    - id: shfmt
+      language: golang
+      args:
+      - -l  # list files whose formatting differs from shfmt's
+      - -d  # error with a diff when the formatting differs
+      - -i  # indentation
+      - '2' # 2 spaces
+      - -ci  # switch cases will be indented
