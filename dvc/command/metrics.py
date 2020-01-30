@@ -273,8 +273,8 @@ def add_parser(subparsers, parent_parser):
     metrics_remove_parser.add_argument("path", help="Path to a metric file.")
     metrics_remove_parser.set_defaults(func=CmdMetricsRemove)
 
-    METRICS_DIFF_HELP = "Show a table of changes between metrics among DVC "
-    "repository revisions."
+    METRICS_DIFF_HELP = "Show a table of changes between metrics among "
+    "versions of the DVC repository."
     metrics_diff_parser = metrics_subparsers.add_parser(
         "diff",
         parents=[parent_parser],
@@ -286,16 +286,16 @@ def add_parser(subparsers, parent_parser):
         "a_ref",
         nargs="?",
         help=(
-            "Git reference from which the diff begins. "
-            "If omitted, `HEAD` (latest commit) is used."
+            "Git reference to the older version to compare"
+            " (defaults to `HEAD`)"
         ),
     )
     metrics_diff_parser.add_argument(
         "b_ref",
         nargs="?",
         help=(
-            "Git reference until which the diff ends. "
-            "If omitted, the current workspace is used instead."
+            "Git reference to the newer version to compare"
+            " (defaults to the current workspace including changes)"
         ),
     )
     metrics_diff_parser.add_argument(
