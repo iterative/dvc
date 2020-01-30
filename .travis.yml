@@ -29,6 +29,7 @@ jobs:
     os: linux
     language: python
     python: 3.7
+    go: 1.13
     before_install:
     install:
     script: ./scripts/ci/check_patch.sh
