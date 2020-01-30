@@ -119,28 +119,31 @@ class CmdDiff(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     DIFF_DESCRIPTION = (
-        "Show diff of a data file or a directory that is under DVC control.\n"
-        "Some basic statistics summary, how many files were deleted/changed."
+        "Compare two different versions of your DVC project (tracked by Git)"
+        " and shows a list of paths grouped in the following categories:"
+        " added, modified, or deleted."
     )
-    DIFF_HELP = "Show a diff of a DVC controlled data file or a directory."
     diff_parser = subparsers.add_parser(
         "diff",
         parents=[parent_parser],
         description=append_doc_link(DIFF_DESCRIPTION, "diff"),
-        help=DIFF_HELP,
+        help=DIFF_DESCRIPTION,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     diff_parser.add_argument(
         "a_ref",
-        help="Git reference from which diff calculates (defaults to HEAD)",
+        help=(
+            "Git reference to the old version that you want to compare"
+            " (defaults to HEAD)"
+        ),
         nargs="?",
         default="HEAD",
     )
     diff_parser.add_argument(
         "b_ref",
         help=(
-            "Git reference until which diff calculates, if omitted "
-            "diff shows the difference between the working tree and a_ref"
+            "Git reference to the new version that you want to compare."
+            " (defaults to the working tree)"
         ),
         nargs="?",
     )
