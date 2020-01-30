@@ -3,10 +3,13 @@
 set -x
 set -e
 
-python3 -m pip install --user Pygments collective.checkdocs pre-commit
+pip install Pygments collective.checkdocs pre-commit
 
 # stop the build if there are any readme formatting errors
-python3 setup.py checkdocs
+python setup.py checkdocs
 
 # stop the build if there are any formatting errors
-GO111MODULE=on pre-commit run --all-files
+err=0
+pre-commit run --all-files black || err=1
+pre-commit run --all-files flake8 || err=1
+exit $err
