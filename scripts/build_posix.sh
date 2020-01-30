@@ -27,8 +27,7 @@ else
 	BASH_CMPLT_DIR=usr/local/etc/bash_completion.d
 fi
 
-print_error()
-{
+print_error() {
 	echo -e "\e[31m$1\e[0m" >&2
 }
 
@@ -39,39 +38,34 @@ fi
 
 trap 'print_error "FAIL"; exit 1' ERR
 
-print_info()
-{
+print_info() {
 	echo -e "\e[32m$1\e[0m"
 }
 
-command_exists()
-{
-	command -v $1 > /dev/null 2>&1
+command_exists() {
+	command -v $1 >/dev/null 2>&1
 }
 
-fpm_build()
-{
+fpm_build() {
 	print_info "Building $1..."
 	VERSION=$(python -c "import dvc; from dvc import __version__; print(str(__version__))")
 	fpm -s dir \
-	    -f \
-	    -t $1 \
-            --description "$DESC" \
-	    $FPM_FLAGS \
-	    -n dvc \
-	    -v $VERSION \
-	    -C $BUILD_DIR \
-	    $FPM_PACKAGE_DIRS
+		-f \
+		-t $1 \
+		--description "$DESC" \
+		$FPM_FLAGS \
+		-n dvc \
+		-v $VERSION \
+		-C $BUILD_DIR \
+		$FPM_PACKAGE_DIRS
 }
 
-cleanup()
-{
+cleanup() {
 	print_info "Cleaning up..."
 	rm -rf build
 }
 
-install_dependencies()
-{
+install_dependencies() {
 	print_info "Installing fpm..."
 	if command_exists dnf; then
 		sudo dnf install ruby-devel gcc make rpm-build
@@ -87,7 +81,7 @@ install_dependencies()
 	fi
 
 	gem install --no-document fpm
-	
+
 	# https://github.com/iterative/dvc/issues/2970
 	gem uninstall -i /Users/travis/.rvm/gems/ruby-2.4.3@global rubygems-bundler
 
@@ -96,14 +90,13 @@ install_dependencies()
 	pip install -r scripts/build-requirements.txt
 }
 
-build_dvc()
-{
+build_dvc() {
 	print_info "Building dvc binary..."
 	pyinstaller \
-            --additional-hooks-dir $(pwd)/scripts/hooks dvc/__main__.py \
-            --name dvc \
-            --distpath $LIB_DIR \
-            --specpath $BUILD_DIR
+		--additional-hooks-dir $(pwd)/scripts/hooks dvc/__main__.py \
+		--name dvc \
+		--distpath $LIB_DIR \
+		--specpath $BUILD_DIR
 
 	$LIB_DIR/dvc/dvc --help
 
@@ -118,21 +111,20 @@ build_dvc()
 		$BIN_DIR/dvc --help
 	fi
 
-        # NOTE: temporarily not adding scripts to mac package. See [1]
-        # [1] https://github.com/iterative/dvc/issues/2585
-        if [[ "$(uname)" == 'Linux' ]]; then
-            mkdir -p $BUILD_DIR/$BASH_CMPLT_DIR
-            cp scripts/completion/dvc.bash $BUILD_DIR/$BASH_CMPLT_DIR/dvc
+	# NOTE: temporarily not adding scripts to mac package. See [1]
+	# [1] https://github.com/iterative/dvc/issues/2585
+	if [[ "$(uname)" == 'Linux' ]]; then
+		mkdir -p $BUILD_DIR/$BASH_CMPLT_DIR
+		cp scripts/completion/dvc.bash $BUILD_DIR/$BASH_CMPLT_DIR/dvc
 
-            mkdir -p $BUILD_DIR/$ZSH_CMPLT_DIR
-            cp scripts/completion/dvc.zsh $BUILD_DIR/$ZSH_CMPLT_DIR
-        fi
+		mkdir -p $BUILD_DIR/$ZSH_CMPLT_DIR
+		cp scripts/completion/dvc.zsh $BUILD_DIR/$ZSH_CMPLT_DIR
+	fi
 }
 
-build()
-{
+build() {
 	cleanup
-	echo "PKG = \"$1\"" > dvc/utils/build.py
+	echo "PKG = \"$1\"" >dvc/utils/build.py
 	build_dvc
 	fpm_build $1
 }

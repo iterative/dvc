@@ -17,14 +17,14 @@ sudo mkdir hadoop
 sudo mv hadoop-2.6.5/* hadoop/
 popd
 
-echo "export HADOOP_HOME=/usr/local/hadoop" >> env.sh
-echo "export HADOOP_MAPRED_HOME=/usr/local/hadoop" >> env.sh
-echo "export HADOOP_COMMON_HOME=/usr/local/hadoop" >> env.sh
-echo "export HADOOP_HDFS_HOME=/usr/local/hadoop" >> env.sh
-echo "export YARN_HOME=/usr/local/hadoop" >> env.sh
-echo "export HADOOP_COMMON_LIB_NATIVE_DIR=/usr/local/hadoop/lib/native" >> env.sh
-echo "export JAVA_HOME=/usr/" >> env.sh
-echo "export PATH=\$PATH:/usr/local/hadoop/sbin:/usr/local/hadoop/bin:$JAVA_PATH/bin" >> env.sh
+echo "export HADOOP_HOME=/usr/local/hadoop" >>env.sh
+echo "export HADOOP_MAPRED_HOME=/usr/local/hadoop" >>env.sh
+echo "export HADOOP_COMMON_HOME=/usr/local/hadoop" >>env.sh
+echo "export HADOOP_HDFS_HOME=/usr/local/hadoop" >>env.sh
+echo "export YARN_HOME=/usr/local/hadoop" >>env.sh
+echo "export HADOOP_COMMON_LIB_NATIVE_DIR=/usr/local/hadoop/lib/native" >>env.sh
+echo "export JAVA_HOME=/usr/" >>env.sh
+echo "export PATH=\$PATH:/usr/local/hadoop/sbin:/usr/local/hadoop/bin:$JAVA_PATH/bin" >>env.sh
 
 source env.sh
 
