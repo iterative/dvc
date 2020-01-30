@@ -36,11 +36,11 @@ class CmdDiff(CmdBase):
                 c157a790..f98bf6f1 bar
 
         If a group has no entries, it won't be included in the result.
+
+        At the bottom, include a summary with the number of files per state.
         """
 
         def _digest(checksum):
-            if not checksum:
-                return ""
             if type(checksum) is str:
                 return checksum[0:8]
             return "{}..{}".format(checksum["old"][0:8], checksum["new"][0:8])
@@ -51,23 +51,46 @@ class CmdDiff(CmdBase):
             "deleted": colorama.Fore.RED,
         }
 
-        return "\n\n".join(
-            "{color}{header}{nc}:\n{entries}".format(
-                color=colors[state],
-                header=state.capitalize(),
-                nc=colorama.Fore.RESET,
-                entries="\n".join(
+        summary = {}
+        groups = []
+
+        for state in ["added", "deleted", "modified"]:
+            summary[state] = 0
+            entries = diff[state]
+
+            if not entries:
+                continue
+
+            content = []
+
+            for entry in entries:
+                path = entry["path"]
+                checksum = entry.get("checksum")
+                summary[state] += 1 if not path.endswith("/") else 0
+                content.append(
                     "{space}{checksum}{separator}{path}".format(
                         space="    ",
-                        checksum=_digest(entry.get("checksum")),
-                        separator="  " if entry.get("checksum") else "",
+                        checksum=_digest(checksum) if checksum else "",
+                        separator="  " if checksum else "",
                         path=entry["path"],
                     )
-                    for entry in diff[state]
-                ),
+                )
+
+            groups.append(
+                "{color}{header}{nc}:\n{content}".format(
+                    color=colors[state],
+                    header=state.capitalize(),
+                    nc=colorama.Fore.RESET,
+                    content="\n".join(content),
+                )
             )
-            for state in ["added", "deleted", "modified"]
+
+        groups.append(
+            "summary: added ({added}), deleted ({deleted}),"
+            " modified ({modified})".format_map(summary)
         )
+
+        return "\n\n".join(groups)
 
     def run(self):
         try:

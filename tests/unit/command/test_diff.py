@@ -1,3 +1,5 @@
+import os
+
 from dvc.cli import parse_args
 
 
@@ -12,7 +14,12 @@ def test_default(mocker, caplog):
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
 
     assert 0 == cmd.run()
-    assert "Added:\n    file\n" in caplog.text
+    assert (
+        "Added:\n"
+        "    file\n"
+        "\n"
+        "summary: added (1), deleted (0), modified (0)"
+    ) in caplog.text
 
 
 def test_checksums(mocker, caplog):
@@ -21,8 +28,9 @@ def test_checksums(mocker, caplog):
     diff = {
         "added": [],
         "deleted": [
-            {"path": "bar", "checksum": "00000000"},
-            {"path": "foo", "checksum": "11111111"},
+            {"path": os.path.join("data", ""), "checksum": "XXXXXXXX.dir"},
+            {"path": os.path.join("data", "bar"), "checksum": "00000000"},
+            {"path": os.path.join("data", "foo"), "checksum": "11111111"},
         ],
         "modified": [
             {
@@ -35,11 +43,14 @@ def test_checksums(mocker, caplog):
     assert 0 == cmd.run()
     assert (
         "Deleted:\n"
-        "    00000000  bar\n"
-        "    11111111  foo\n"
+        "    XXXXXXXX  " + os.path.join("data", "") + "\n"
+        "    00000000  " + os.path.join("data", "bar") + "\n"
+        "    11111111  " + os.path.join("data", "foo") + "\n"
         "\n"
         "Modified:\n"
         "    AAAAAAAA..BBBBBBBB  file\n"
+        "\n"
+        "summary: added (0), deleted (2), modified (1)"
     ) in caplog.text
 
 
