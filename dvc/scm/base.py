@@ -15,12 +15,6 @@ class FileNotInRepoError(SCMError):
     """
 
 
-class FileNotInCommitError(SCMError):
-    """Thrown when trying to find a file/directory that is not
-    in the specified commit in the repository.
-    """
-
-
 class CloneError(SCMError):
     def __init__(self, url, path):
         super().__init__("Failed to clone repo '{}' to '{}'".format(url, path))
