@@ -32,13 +32,13 @@ def dos2unix(data):
 def file_md5(fname):
     """ get the (md5 hexdigest, md5 digest) of a file """
     from dvc.progress import Tqdm
-    from dvc.istextfile import istextfile
+    from dvc.istextfile import istext
 
     fname = fspath_py35(fname)
 
     if os.path.exists(fname):
         hash_md5 = hashlib.md5()
-        binary = not istextfile(fname)
+        is_file_binary = None
         size = os.path.getsize(fname)
         no_progress_bar = True
         if size >= LARGE_FILE_SIZE:
@@ -62,7 +62,10 @@ def file_md5(fname):
                     if not data:
                         break
 
-                    if binary:
+                    if is_file_binary is None:
+                        is_file_binary = not istext(data)
+
+                    if is_file_binary:
                         chunk = data
                     else:
                         chunk = dos2unix(data)

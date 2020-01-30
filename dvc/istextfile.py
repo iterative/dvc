@@ -7,15 +7,11 @@
 TEXT_CHARS = bytes(range(32, 127)) + b"\n\r\t\f\b"
 
 
-def istextfile(fname, blocksize=512):
-    """ Uses heuristics to guess whether the given file is text or binary,
-        by reading a single block of bytes from the file.
-        If more than 30% of the chars in the block are non-text, or there
-        are NUL ('\x00') bytes in the block, assume this is a binary file.
+def istext(block):
+    """ Uses heuristics to guess whether the given block of bytes is text or
+    binary. If more than 30% of the chars in the block are non-text, or there
+    are NUL ('\x00') bytes in the block, assume this is a binary file.
     """
-    with open(fname, "rb") as fobj:
-        block = fobj.read(blocksize)
-
     if not block:
         # An empty file is considered a valid text file
         return True
@@ -28,3 +24,11 @@ def istextfile(fname, blocksize=512):
     # occurrences of TEXT_CHARS from the block
     nontext = block.translate(None, TEXT_CHARS)
     return float(len(nontext)) / len(block) <= 0.30
+
+
+def istextfile(fname, blocksize=2048):
+    """ Uses heuristics on the first 'blocksize' bytes in a file to guess
+    whether the given file is text or binary.
+    """
+    with open(fname, "rb") as fobj:
+        return istext(fobj.read(blocksize))
