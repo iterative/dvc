@@ -278,7 +278,7 @@ class Git(Base):
                 # make sure we are not in the middle of a rebase/merge, so we
                 # don't accidentally break it with an unsuccessful dvc checkout.
                 # Note that git hooks are always running in repo root.
-                '[ ! -d .git/rebase-merge ]'
+                "[ ! -d .git/rebase-merge ]",
             ],
             "checkout",
         )
