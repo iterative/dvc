@@ -1,6 +1,7 @@
 import argparse
 import json
 import logging
+import os
 
 import colorama
 
@@ -66,7 +67,7 @@ class CmdDiff(CmdBase):
             for entry in entries:
                 path = entry["path"]
                 checksum = entry.get("checksum")
-                summary[state] += 1 if not path.endswith("/") else 0
+                summary[state] += 1 if not path.endswith(os.sep) else 0
                 content.append(
                     "{space}{checksum}{separator}{path}".format(
                         space="    ",
