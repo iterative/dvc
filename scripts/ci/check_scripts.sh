@@ -3,5 +3,7 @@
 set -x
 set -e
 
+GO111MODULE=on go get mvdan.cc/sh/v3/cmd/shfmt
+
 # stop the build if there are any formatting errors
-GO111MODULE=on pre-commit run --all-files shfmt
+shfmt -l -d -i 2 -ci -w .
