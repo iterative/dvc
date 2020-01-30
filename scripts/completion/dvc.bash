@@ -82,8 +82,8 @@ _dvc() {
 
   if [ "${COMP_CWORD}" -eq 1 ]; then
     case "$word" in
-    -*) COMPREPLY=($(compgen -W "$_dvc_options" -- "$word")) ;;
-    *) COMPREPLY=($(compgen -W "$_dvc_commands" -- "$word")) ;;
+      -*) COMPREPLY=($(compgen -W "$_dvc_options" -- "$word")) ;;
+      *) COMPREPLY=($(compgen -W "$_dvc_commands" -- "$word")) ;;
     esac
   elif [ "${COMP_CWORD}" -eq 2 ]; then
     local options_list="_dvc_$(replace_hyphen ${COMP_WORDS[1]})"
