@@ -28,7 +28,11 @@ class Base(object):
     """Base class for source control management driver implementations."""
 
     def __init__(self, root_dir=os.curdir):
-        self.root_dir = os.path.realpath(root_dir)
+        self._root_dir = os.path.realpath(root_dir)
+
+    @property
+    def root_dir(self):
+        return self._root_dir
 
     def __repr__(self):
         return "{class_name}: '{directory}'".format(

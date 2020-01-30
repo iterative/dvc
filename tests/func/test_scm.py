@@ -1,31 +1,43 @@
 import os
 
+import pytest
 from git import Repo
 
 from dvc.scm import Git
 from dvc.scm import NoSCM
 from dvc.scm import SCM
+from dvc.scm.base import SCMError
 from dvc.system import System
 from dvc.compat import fspath
-from tests.basic_env import TestDir
 from tests.basic_env import TestGit
 from tests.basic_env import TestGitSubmodule
 from tests.utils import get_gitignore_content
 
 
-class TestSCM(TestDir):
-    def test_none(self):
-        self.assertIsInstance(SCM(self._root_dir), NoSCM)
+def test_init_none(tmp_dir):
+    assert isinstance(SCM(fspath(tmp_dir), no_scm=True), NoSCM)
 
-    def test_git(self):
-        Repo.init(os.curdir)
-        self.assertIsInstance(SCM(self._root_dir), Git)
+
+def test_init_git(tmp_dir):
+    Repo.init(fspath(tmp_dir))
+    assert isinstance(SCM(fspath(tmp_dir)), Git)
+
+
+def test_init_no_git(tmp_dir):
+    with pytest.raises(SCMError):
+        SCM(fspath(tmp_dir))
+
+
+def test_init_sub_dir(tmp_dir):
+    Repo.init(fspath(tmp_dir))
+    subdir = tmp_dir / "dir"
+    subdir.mkdir()
+
+    scm = SCM(fspath(subdir))
+    assert scm.root_dir == fspath(tmp_dir)
 
 
 class TestSCMGit(TestGit):
-    def test_is_repo(self):
-        self.assertTrue(Git.is_repo(os.curdir))
-
     def test_commit(self):
         G = Git(self._root_dir)
         G.add(["foo"])
@@ -51,9 +63,6 @@ class TestSCMGit(TestGit):
 class TestSCMGitSubmodule(TestGitSubmodule):
     def test_git_submodule(self):
         self.assertIsInstance(SCM(os.curdir), Git)
-
-    def test_is_submodule(self):
-        self.assertTrue(Git.is_submodule(os.curdir))
 
     def test_commit_in_submodule(self):
         G = Git(self._root_dir)

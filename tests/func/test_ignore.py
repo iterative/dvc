@@ -4,7 +4,12 @@ import shutil
 import pytest
 
 from dvc.exceptions import DvcIgnoreInCollectedDirError
-from dvc.ignore import DvcIgnore, DvcIgnoreDirs, DvcIgnorePatterns
+from dvc.ignore import (
+    DvcIgnore,
+    DvcIgnoreDirs,
+    DvcIgnorePatterns,
+    DvcIgnoreRepo,
+)
 from dvc.scm.tree import WorkingTree
 from dvc.utils import relpath
 from dvc.compat import fspath_py35, fspath
@@ -93,10 +98,15 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
     ignore_file = tmp_dir / dname / DvcIgnore.DVCIGNORE_FILE
     ignore_file.write_text("foo")
 
-    assert dvc.tree.dvcignore.ignores == {
-        DvcIgnoreDirs([".git", ".hg", ".dvc"]),
-        DvcIgnorePatterns(fspath(top_ignore_file), WorkingTree(dvc.root_dir)),
-    }
+    assert len(dvc.tree.dvcignore.ignores) == 3
+    assert DvcIgnoreDirs([".git", ".hg", ".dvc"]) in dvc.tree.dvcignore.ignores
+    assert (
+        DvcIgnorePatterns(fspath(top_ignore_file), WorkingTree(dvc.root_dir))
+        in dvc.tree.dvcignore.ignores
+    )
+    assert any(
+        i for i in dvc.tree.dvcignore.ignores if isinstance(i, DvcIgnoreRepo)
+    )
 
 
 def test_ignore_on_branch(tmp_dir, scm, dvc):
