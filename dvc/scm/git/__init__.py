@@ -275,9 +275,10 @@ class Git(Base):
             [
                 # checking out some reference and not specific file.
                 '[ "$3" = "1" ]',
-                # check that we are on some branch/tag and not in detached HEAD
-                # state, so we don't accidentally break a rebase.
-                '[ "$(git rev-parse --abbrev-ref HEAD)" != "HEAD" ]',
+                # make sure we are not in the middle of a rebase/merge, so we
+                # don't accidentally break it with an unsuccessful checkout.
+                # Note that git hooks are always running in repo root.
+                "[ ! -d .git/rebase-merge ]",
             ],
             "checkout",
         )
