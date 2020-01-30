@@ -2,6 +2,7 @@ import os
 
 from mock import patch
 from dvc.output import OutputLOCAL
+from dvc.output.base import OutputBase
 from dvc.remote.local import RemoteLOCAL
 from dvc.stage import Stage
 from dvc.utils import relpath
@@ -46,9 +47,14 @@ def test_str_on_absolute_path(dvc):
     stage = Stage(dvc)
 
     path = os.path.abspath(os.path.join("path", "to", "file"))
-    output = OutputLOCAL(stage, path, cache=False)
+    output = OutputBase(stage, path, cache=False)
 
     assert path == str(output)
+
+    output = OutputLOCAL(stage, path, cache=False)
+
+    assert path != str(output)
+    assert path == os.path.abspath(str(output))
 
 
 class TestGetFilesNumber(TestDvc):
