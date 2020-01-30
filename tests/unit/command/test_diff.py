@@ -80,7 +80,7 @@ def test_json_checksums(mocker, caplog):
             # py35: maintain a consistent key order for tests purposes
             collections.OrderedDict(
                 [("path", "file"), ("checksum", "00000000")]
-            ),
+            )
         ],
         "deleted": [],
         "modified": [],
