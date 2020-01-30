@@ -15,22 +15,13 @@ class FileNotInRepoError(SCMError):
     """
 
 
-class FileNotInCommitError(SCMError):
-    """Thrown when trying to find a file/directory that is not
-    in the specified commit in the repository.
-    """
-
-
 class CloneError(SCMError):
     def __init__(self, url, path):
         super().__init__("Failed to clone repo '{}' to '{}'".format(url, path))
 
 
 class RevError(SCMError):
-    def __init__(self, url, rev):
-        super().__init__(
-            "Failed to access revision '{}' for repo '{}'".format(rev, url)
-        )
+    pass
 
 
 class Base(object):

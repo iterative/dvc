@@ -22,13 +22,6 @@ from dvc.utils.fs import path_isin
 logger = logging.getLogger(__name__)
 
 
-DIFF_A_TREE = "a_tree"
-DIFF_B_TREE = "b_tree"
-DIFF_A_REF = "a_ref"
-DIFF_B_REF = "b_ref"
-DIFF_EQUAL = "equal"
-
-
 class Git(Base):
     """Class for managing Git."""
 
@@ -94,7 +87,11 @@ class Git(Base):
             try:
                 repo.checkout(rev)
             except git.exc.GitCommandError as exc:
-                raise RevError(url, rev) from exc
+                raise RevError(
+                    "failed to access revision '{}' for repo '{}'".format(
+                        rev, url
+                    )
+                ) from exc
 
         return repo
 
@@ -316,66 +313,18 @@ class Git(Base):
         return basename == self.ignore_file or Git.GIT_DIR in path_parts
 
     def get_tree(self, rev):
-        return GitTree(self.repo, rev)
-
-    def _get_diff_trees(self, a_ref, b_ref):
-        """Private method for getting the trees and commit hashes of 2 git
-        references. Requires `gitdb` module (from gitpython package).
-
-        Args:
-            a_ref (str): git reference
-            b_ref (str): second git reference. If None, uses HEAD
-
-        Returns:
-            tuple: tuple with elements: (trees, commits)
-        """
-        from gitdb.exc import BadObject, BadName
-
-        trees = {DIFF_A_TREE: None, DIFF_B_TREE: None}
-        commits = []
-        if b_ref is None:
-            b_ref = self.repo.head.commit
-        try:
-            a_commit = self.repo.git.rev_parse(a_ref, short=True)
-            b_commit = self.repo.git.rev_parse(b_ref, short=True)
-            # See https://gitpython.readthedocs.io
-            # /en/2.1.11/reference.html#git.objects.base.Object.__str__
-            commits.append(a_commit)
-            commits.append(b_commit)
-            trees[DIFF_A_TREE] = self.get_tree(commits[0])
-            trees[DIFF_B_TREE] = self.get_tree(commits[1])
-        except (BadName, BadObject) as exc:
-            raise SCMError("git problem") from exc
-        return trees, commits
-
-    def get_diff_trees(self, a_ref, b_ref=None):
-        """Method for getting two repo trees between two git tag commits.
-        Returns the dvc hash names of changed file/directory
-
-        Args:
-            a_ref (str): git reference
-            b_ref (str): optional second git reference, default None
-
-        Returns:
-            dict: dictionary with keys: {a_ref, b_ref, equal}
-                or {a_ref, b_ref, a_tree, b_tree}
-        """
-        diff_dct = {DIFF_EQUAL: False}
-        trees, commits = self._get_diff_trees(a_ref, b_ref)
-        diff_dct[DIFF_A_REF] = commits[0]
-        diff_dct[DIFF_B_REF] = commits[1]
-        if commits[0] == commits[1]:
-            diff_dct[DIFF_EQUAL] = True
-            return diff_dct
-        diff_dct[DIFF_A_TREE] = trees[DIFF_A_TREE]
-        diff_dct[DIFF_B_TREE] = trees[DIFF_B_TREE]
-        return diff_dct
+        return GitTree(self.repo, self.resolve_rev(rev))
 
     def get_rev(self):
         return self.repo.git.rev_parse("HEAD")
 
     def resolve_rev(self, rev):
-        return self.repo.git.rev_parse(rev)
+        from git.exc import GitCommandError
+
+        try:
+            return self.repo.git.rev_parse(rev)
+        except GitCommandError:
+            raise RevError("unknown Git revision '{}'".format(rev))
 
     def close(self):
         self.repo.close()
