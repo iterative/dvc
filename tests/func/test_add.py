@@ -216,7 +216,7 @@ class TestAddLocalRemoteFile(TestDvc):
         self.assertEqual(ret, 0)
 
         d = load_stage_file("bar.dvc")
-        self.assertEqual(d["outs"][0]["path"], bar)
+        self.assertEqual(d["outs"][0]["path"], self.BAR)
 
 
 class TestCmdAdd(TestDvc):
