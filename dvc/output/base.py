@@ -405,7 +405,7 @@ class OutputBase(object):
 
         if self.stage.is_repo_import:
             cache = NamedCache()
-            dep, = self.stage.deps
+            (dep,) = self.stage.deps
             cache.external[dep.repo_pair].add(dep.def_path)
             return cache
 

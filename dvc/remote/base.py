@@ -493,7 +493,9 @@ class RemoteBASE(object):
         cache_info = self.checksum_to_path_info(checksum)
         dir_info = self.get_dir_cache(checksum)
 
-        for entry in dir_info:
+        for entry in Tqdm(
+            dir_info, desc="Saving " + path_info.name, unit="file"
+        ):
             entry_info = path_info / entry[self.PARAM_RELPATH]
             entry_checksum = entry[self.PARAM_CHECKSUM]
             self._save_file(entry_info, entry_checksum, save_link=False)

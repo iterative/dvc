@@ -4,7 +4,6 @@ import logging
 import sys
 from threading import RLock
 
-from funcy import merge
 from tqdm import tqdm
 
 from dvc.utils import env2bool
@@ -31,7 +30,10 @@ class Tqdm(tqdm):
     )
     BAR_FMT_NOTOTAL = (
         "{desc:{ncols_desc}.{ncols_desc}}{n_fmt}"
-        " [{elapsed}<??:??, {rate_fmt:>11}{postfix}]"
+        " [{elapsed}, {rate_fmt:>11}{postfix}]"
+    )
+    BYTES_DEFAULTS = dict(
+        unit="B", unit_scale=True, unit_divisor=1024, miniters=1
     )
 
     def __init__(
@@ -44,6 +46,7 @@ class Tqdm(tqdm):
         bar_format=None,
         bytes=False,  # pylint: disable=W0622
         file=None,
+        total=None,
         **kwargs
     ):
         """
@@ -58,12 +61,10 @@ class Tqdm(tqdm):
         kwargs  : anything accepted by `tqdm.tqdm()`
         """
         kwargs = kwargs.copy()
-        kwargs.setdefault("unit_scale", True)
         if bytes:
-            bytes_defaults = dict(
-                unit="B", unit_scale=True, unit_divisor=1024, miniters=1
-            )
-            kwargs = merge(bytes_defaults, kwargs)
+            kwargs = {**self.BYTES_DEFAULTS, **kwargs}
+        else:
+            kwargs.setdefault("unit_scale", total > 999 if total else True)
         if file is None:
             file = sys.stderr
         self.desc_persist = desc
@@ -84,6 +85,7 @@ class Tqdm(tqdm):
             desc=desc,
             bar_format="!",
             lock_args=(False,),
+            total=total,
             **kwargs
         )
         if bar_format is None:
@@ -114,6 +116,10 @@ class Tqdm(tqdm):
     def close(self):
         if self.desc_persist is not None:
             self.set_description_str(self.desc_persist, refresh=False)
+        # unknown/zero ETA
+        self.bar_format = self.bar_format.replace("<{remaining}", "")
+        # remove completed bar
+        self.bar_format = self.bar_format.replace("|{bar:10}|", " ")
         super().close()
 
     @property

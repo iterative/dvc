@@ -3,37 +3,39 @@ import argparse
 import logging
 import sys
 
-import dvc.command.add as add
-import dvc.command.cache as cache
-import dvc.command.checkout as checkout
-import dvc.command.commit as commit
-import dvc.command.config as config
-import dvc.command.daemon as daemon
-import dvc.command.data_sync as data_sync
-import dvc.command.destroy as destroy
-import dvc.command.diff as diff
-import dvc.command.gc as gc
-import dvc.command.get as get
-import dvc.command.get_url as get_url
-import dvc.command.imp as imp
-import dvc.command.imp_url as imp_url
-import dvc.command.init as init
-import dvc.command.install as install
-import dvc.command.lock as lock
-import dvc.command.metrics as metrics
-import dvc.command.move as move
-import dvc.command.pipeline as pipeline
-import dvc.command.remote as remote
-import dvc.command.remove as remove
-import dvc.command.repro as repro
-import dvc.command.root as root
-import dvc.command.run as run
-import dvc.command.tag as tag
-import dvc.command.unprotect as unprotect
-import dvc.command.update as update
-import dvc.command.version as version
-from dvc.command.base import fix_subparsers
-from dvc.exceptions import DvcParserError
+from .command import (
+    add,
+    cache,
+    checkout,
+    commit,
+    config,
+    daemon,
+    data_sync,
+    destroy,
+    diff,
+    gc,
+    get,
+    get_url,
+    imp,
+    imp_url,
+    init,
+    install,
+    lock,
+    metrics,
+    move,
+    pipeline,
+    remote,
+    remove,
+    repro,
+    root,
+    run,
+    tag,
+    unprotect,
+    update,
+    version,
+)
+from .command.base import fix_subparsers
+from .exceptions import DvcParserError
 
 
 logger = logging.getLogger(__name__)
