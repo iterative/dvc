@@ -3,7 +3,7 @@
 set -e
 
 if [[ $TRAVIS_EVENT_TYPE = pull_request || $TRAVIS_EVENT_TPYE = cron ]]; then
-    exit 2
+  exit 2
 fi
 
 # positional args are assumed to be file glob patterns to deploy

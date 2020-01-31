@@ -9,3 +9,9 @@ repos:
     hooks:
     - id: flake8
       language_version: python3
+-   repo: https://github.com/lovesegfault/beautysh
+    rev: master
+    hooks:
+    - id: beautysh
+      language_version: python3
+      args: [-i, '2']  # 2-space indentaion

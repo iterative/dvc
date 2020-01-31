@@ -9,8 +9,8 @@
 #----------------------------------------------------------
 
 _dvc_commands='add cache checkout commit config destroy diff fetch get-url get gc \
-              import-url import init install lock metrics move pipeline pull push \
-              remote remove repro root run status unlock unprotect update version'
+  import-url import init install lock metrics move pipeline pull push \
+  remote remove repro root run status unlock unprotect update version'
 
 _dvc_options='-h --help -V --version'
 _dvc_global_options='-h --help -q --quiet -v --verbose'
@@ -71,8 +71,8 @@ _dvc_version=''
 #       x="hello"
 #       ${!x} ->  ${hello} ->  "world"
 #
-_dvc () {
-  replace_hyphen () {
+_dvc() {
+  replace_hyphen() {
     echo $(echo $1 | sed 's/-/_/g')
   }
 
@@ -83,7 +83,7 @@ _dvc () {
   if [ "${COMP_CWORD}" -eq 1 ]; then
     case "$word" in
       -*) COMPREPLY=($(compgen -W "$_dvc_options" -- "$word")) ;;
-      *)  COMPREPLY=($(compgen -W "$_dvc_commands" -- "$word")) ;;
+      *) COMPREPLY=($(compgen -W "$_dvc_commands" -- "$word")) ;;
     esac
   elif [ "${COMP_CWORD}" -eq 2 ]; then
     local options_list="_dvc_$(replace_hyphen ${COMP_WORDS[1]})"

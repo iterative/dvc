@@ -18,8 +18,8 @@ sudo snap install --dangerous --classic dvc_*.snap
 if [[ -n "$TRAVIS_TAG" ]]; then
   # Make sure we have a correct version
   if [[ "$(dvc --version)" != "$TRAVIS_TAG" ]]; then
-      echo "ERROR: 'dvc --version'$(dvc -V) doesn't match '$TRAVIS_TAG'" >&2
-      exit 1
+    echo "ERROR: 'dvc --version'$(dvc -V) doesn't match '$TRAVIS_TAG'" >&2
+    exit 1
   fi
 fi
 # ensure basic commands can run

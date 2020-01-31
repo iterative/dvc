@@ -4,11 +4,11 @@ set -e
 set -x
 
 if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
-    where python
-    where pip
+  where python
+  where pip
 else
-    which python
-    which pip
+  which python
+  which pip
 fi
 
 py_ver="$(python -c 'import sys; print(sys.version[0])')"
