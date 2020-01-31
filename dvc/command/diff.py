@@ -87,8 +87,8 @@ class CmdDiff(CmdBase):
             )
 
         groups.append(
-            "summary: added ({added}), deleted ({deleted}),"
-            " modified ({modified})".format_map(summary)
+            "files summary: {added} added, {deleted} deleted,"
+            " {modified} modified".format_map(summary)
         )
 
         return "\n\n".join(groups)

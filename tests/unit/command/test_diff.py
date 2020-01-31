@@ -19,7 +19,7 @@ def test_default(mocker, caplog):
         "Added:\n"
         "    file\n"
         "\n"
-        "summary: added (1), deleted (0), modified (0)"
+        "files summary: 1 added, 0 deleted, 0 modified"
     ) in caplog.text
 
 
@@ -51,7 +51,7 @@ def test_checksums(mocker, caplog):
         "Modified:\n"
         "    AAAAAAAA..BBBBBBBB  file\n"
         "\n"
-        "summary: added (0), deleted (2), modified (1)"
+        "files summary: 0 added, 2 deleted, 1 modified"
     ) in caplog.text
 
 
