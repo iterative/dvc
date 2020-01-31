@@ -9,8 +9,8 @@
 #----------------------------------------------------------
 
 _dvc_commands='add cache checkout commit config destroy diff fetch get-url get gc \
-              import-url import init install lock metrics move pipeline pull push \
-              remote remove repro root run status unlock unprotect update version'
+  import-url import init install lock metrics move pipeline pull push \
+  remote remove repro root run status unlock unprotect update version'
 
 _dvc_options='-h --help -V --version'
 _dvc_global_options='-h --help -q --quiet -v --verbose'
