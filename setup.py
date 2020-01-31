@@ -74,6 +74,7 @@ install_requires = [
     "win-unicode-console>=0.5; sys_platform == 'win32'",
     "pywin32>=225; sys_platform == 'win32'",
     "networkx>=2.1,<2.4",
+    "pydot>=1.2.4",
     "speedcopy>=2.0.1",
     "pyfastcopy>=1.0.3",
     "flatten_json>=0.1.6",
@@ -100,7 +101,6 @@ all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs
 # Extra dependecies to run tests
 tests_requirements = [
     "wheel>=0.31.1",
-    "pydot>=1.2.4",
     # Test requirements:
     "pytest>=4.6.0",
     "pytest-timeout>=1.3.3",
