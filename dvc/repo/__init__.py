@@ -399,14 +399,13 @@ class Repo(object):
 
         abs_path = os.path.abspath(path)
         path_info = PathInfo(abs_path)
-        is_dir = self.tree.isdir(abs_path)
         match = path_info.__eq__ if strict else path_info.isin_or_eq
 
         def func(out):
             if out.scheme == "local" and match(out.path_info):
                 return True
 
-            if is_dir and recursive and out.path_info.isin(path_info):
+            if recursive and out.path_info.isin(path_info):
                 return True
 
             return False
