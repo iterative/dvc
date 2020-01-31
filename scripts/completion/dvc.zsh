@@ -99,7 +99,8 @@ _dvc_destroy=(
 _dvc_diff=(
   "--show-json[Format the output into a JSON]"
   "--checksums[Display checksums for each entry]"
-  {1,2}":Git revision (e.g. branch, tag, SHA):"
+  "1:Git reference to the older version:"
+  "2:Git reference to the newer version:"
 )
 
 _dvc_fetch=(
@@ -160,7 +161,7 @@ _dvc_lock=(
 )
 
 _dvc_metrics=(
-  "1:Sub command:(show add modify remove)"
+  "1:Sub command:(add show diff modify remove)"
 )
 
 _dvc_move=(
