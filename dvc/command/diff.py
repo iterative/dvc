@@ -155,7 +155,7 @@ def add_parser(subparsers, parent_parser):
     )
     diff_parser.add_argument(
         "--checksums",
-        help="Display checksums for each entry",
+        help="Display hash value for each entry",
         action="store_true",
         default=False,
     )
