@@ -24,7 +24,7 @@ stages:
 jobs:
   include:
   # patch formatting checks
-  - name: "Python formatting"
+  - name: "Check patch formatting"
     stage: check
     os: linux
     language: python
@@ -32,13 +32,6 @@ jobs:
     before_install:
     install:
     script: ./scripts/ci/check_patch.sh
-  - name: "Script formatting"
-    os: linux
-    language: go
-    go: 1.13
-    before_install:
-    install:
-    script: ./scripts/ci/check_scripts.sh
   # test jobs
   - name: "3.7 on Windows"
     stage: test
