@@ -73,8 +73,11 @@ def _check_no_writers(lock, info, path_infos):
             continue
 
         raise LockError(
-            "'{}' is busy, it is being written to by:\n{}".format(
-                str(path_info), _infos_to_str(writers)
+            "'{path}' is busy, it is being written to by:\n{process}"
+            "\n\n"
+            "If there's no process with such PID, you can manually remove"
+            "'.dvc/tmp/rwlock' and try again.".format(
+                path=str(path_info), process=_infos_to_str(writers)
             )
         )
 
@@ -91,8 +94,11 @@ def _check_no_readers(lock, info, path_infos):
             continue
 
         raise LockError(
-            "'{}' is busy, it is being read by:\n{}".format(
-                str(path_info), _infos_to_str(readers)
+            "'{path}' is busy, it is being read by:\n{process}"
+            "\n\n"
+            "If there's no process with such PID, you can manually remove"
+            "'.dvc/tmp/rwlock' and try again.".format(
+                path=str(path_info), process=_infos_to_str(readers)
             )
         )
 
