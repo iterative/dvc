@@ -286,16 +286,16 @@ def add_parser(subparsers, parent_parser):
         "a_ref",
         nargs="?",
         help=(
-            "Git reference to the older version to compare"
-            " (defaults to `HEAD`)"
+            "Git reference to the older version to compare "
+            "(defaults to `HEAD`)"
         ),
     )
     metrics_diff_parser.add_argument(
         "b_ref",
         nargs="?",
         help=(
-            "Git reference to the newer version to compare"
-            " (defaults to the current workspace including changes)"
+            "Git reference to the newer version to compare "
+            "(defaults to the current workspace)"
         ),
     )
     metrics_diff_parser.add_argument(
