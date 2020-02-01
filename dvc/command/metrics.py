@@ -287,7 +287,7 @@ def add_parser(subparsers, parent_parser):
         nargs="?",
         help=(
             "Git reference to the older version to compare "
-            "(defaults to `HEAD`)"
+            "(defaults to HEAD)"
         ),
     )
     metrics_diff_parser.add_argument(

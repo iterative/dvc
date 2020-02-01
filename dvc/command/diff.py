@@ -134,7 +134,7 @@ def add_parser(subparsers, parent_parser):
         "a_ref",
         help=(
             "Git reference to the older version to compare "
-            "(defaults to `HEAD`)"
+            "(defaults to HEAD)"
         ),
         nargs="?",
         default="HEAD",
