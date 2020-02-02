@@ -11,6 +11,7 @@ from dvc.exceptions import NotDvcRepoError
 from dvc.external_repo import clean_repos
 from dvc.logger import FOOTER
 from dvc.utils import format_link
+from dvc.remote.pool import close_pools
 
 # Workaround for CPython bug. See [1] and [2] for more info.
 # [1] https://github.com/aws/aws-cli/blob/1.16.277/awscli/clidriver.py#L55
@@ -72,6 +73,11 @@ def main(argv=None):
         ret = 255
     finally:
         logger.setLevel(outerLogLevel)
+
+        # Closing pools by-hand to prevent wierd messages when closing SSH
+        # connections. See https://github.com/iterative/dvc/issues/3248 for
+        # more info.
+        close_pools()
 
         # Remove cached repos in the end of the call, these are anonymous
         # so won't be reused by any other subsequent run anyway.
