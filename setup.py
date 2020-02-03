@@ -133,7 +133,7 @@ setup(
     description="Git for data scientists - manage your code and data together",
     long_description=open("README.rst", "r").read(),
     author="Dmitry Petrov",
-    author_email="dmitry@dataversioncontrol.com",
+    author_email="dmitry@dvc.org",
     download_url="https://github.com/iterative/dvc",
     license="Apache License 2.0",
     install_requires=install_requires,

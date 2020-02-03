@@ -498,9 +498,9 @@ class TestWarnOnOutdatedStage(TestDvc):
             self._caplog.clear()
             self.main(["status", "-c"])
             expected_warning = (
-                "Output 'bar'(Stage: 'bar.dvc') is missing version info."
-                " Cache for it will not be collected."
-                " Use dvc repro to get your pipeline up to date."
+                "Output 'bar'(Stage: 'bar.dvc') is missing version info. "
+                "Cache for it will not be collected. "
+                "Use `dvc repro` to get your pipeline up to date."
             )
 
             assert expected_warning in self._caplog.text

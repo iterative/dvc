@@ -120,9 +120,8 @@ class CmdDiff(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     DIFF_DESCRIPTION = (
-        "Compare two different versions of your DVC project (tracked by Git)"
-        " and shows a list of paths grouped in the following categories:"
-        " added, modified, or deleted."
+        "Compare two versions of the DVC repository.\n"
+        "Shows the list of paths added, modified, or deleted"
     )
     diff_parser = subparsers.add_parser(
         "diff",
@@ -134,8 +133,8 @@ def add_parser(subparsers, parent_parser):
     diff_parser.add_argument(
         "a_ref",
         help=(
-            "Git reference to the old version that you want to compare"
-            " (defaults to HEAD)"
+            "Git reference to the older version to compare "
+            "(defaults to HEAD)"
         ),
         nargs="?",
         default="HEAD",
@@ -143,8 +142,8 @@ def add_parser(subparsers, parent_parser):
     diff_parser.add_argument(
         "b_ref",
         help=(
-            "Git reference to the new version that you want to compare."
-            " (defaults to the working tree)"
+            "Git reference to the newer version to compare "
+            "(defaults to the current workspace)"
         ),
         nargs="?",
     )
@@ -156,7 +155,7 @@ def add_parser(subparsers, parent_parser):
     )
     diff_parser.add_argument(
         "--checksums",
-        help="Display checksums for each entry",
+        help="Display hash value for each entry",
         action="store_true",
         default=False,
     )

@@ -66,7 +66,7 @@ class RemoteMissingDepsError(DvcException):
 class DirCacheError(DvcException):
     def __init__(self, checksum):
         super().__init__(
-            "Failed to load dir cache for checksum: '{}'.".format(checksum)
+            "Failed to load dir cache for hash value: '{}'.".format(checksum)
         )
 
 
@@ -191,7 +191,7 @@ class RemoteBASE(object):
                 tasks,
                 total=len(file_infos),
                 unit="md5",
-                desc="Computing hashes (only done once)",
+                desc="Computing file/dir hashes (only done once)",
             ) as tasks:
                 checksums = dict(zip(file_infos, tasks))
         return checksums
@@ -342,13 +342,13 @@ class RemoteBASE(object):
 
         A file is considered changed if:
             - It doesn't exist on the working directory (was unlinked)
-            - Checksum is not computed (saving a new file)
-            - The checkusm stored in the State is different from the given one
+            - Hash value is not computed (saving a new file)
+            - The hash value stored is different from the given one
             - There's no file in the cache
 
         Args:
             path_info: dict with path information.
-            checksum: expected checksum for this data.
+            checksum: expected hash value for this data.
 
         Returns:
             bool: True if data has changed, False otherwise.
@@ -364,7 +364,7 @@ class RemoteBASE(object):
 
         checksum = checksum_info.get(self.PARAM_CHECKSUM)
         if checksum is None:
-            logger.debug("checksum for '{}' is missing.", path_info)
+            logger.debug("hash value for '{}' is missing.", path_info)
             return True
 
         if self.changed_cache(checksum):
@@ -376,7 +376,7 @@ class RemoteBASE(object):
         actual = self.get_checksum(path_info)
         if checksum != actual:
             logger.debug(
-                "checksum '{}'(actual '{}') for '{}' has changed.",
+                "hash value '{}' for '{}' has changed (actual '{}').",
                 checksum,
                 actual,
                 path_info,
@@ -962,7 +962,7 @@ class RemoteBASE(object):
         skip = False
         if not checksum:
             logger.warning(
-                "No checksum info found for '{}'. " "It won't be created.",
+                "No file hash info found for '{}'. " "It won't be created.",
                 path_info,
             )
             self.safe_remove(path_info, force=force)

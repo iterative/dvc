@@ -2,4 +2,4 @@ dvc (0.75.b1) experimental; urgency=low
 
   * First native Debian package version.
 
- -- Dmitry Petrov <dmitry@dataversioncontrol.com>  Sat, 07 Dec 2019 09:49:28 +0300
+ -- Dmitry Petrov <dmitry@dvc.org>  Sat, 07 Dec 2019 09:49:28 +0300

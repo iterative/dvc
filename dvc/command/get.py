@@ -73,7 +73,7 @@ def add_parser(subparsers, parent_parser):
         "-o", "--out", nargs="?", help="Destination path to download files to"
     )
     get_parser.add_argument(
-        "--rev", nargs="?", help="Git revision (e.g. branch, tag, SHA)"
+        "--rev", nargs="?", help="Git revision (e.g. SHA, branch, tag)"
     )
     get_parser.add_argument(
         "--show-url",

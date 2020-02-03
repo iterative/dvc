@@ -91,7 +91,7 @@ class DvcParser(argparse.ArgumentParser):
 
 class VersionAction(argparse.Action):  # pragma: no cover
     # pylint: disable=too-few-public-methods
-    """Shows dvc version and exits."""
+    """Shows DVC version and exits."""
 
     def __call__(self, parser, namespace, values, option_string=None):
         from dvc import __version__
