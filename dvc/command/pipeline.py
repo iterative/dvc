@@ -55,7 +55,7 @@ class CmdPipelineShow(CmdBase):
 
         edges = []
 
-        if outs and not commands:
+        if outs:
             for stage in networkx.dfs_preorder_nodes(G, target_stage):
                 for dep in stage.deps:
                     for out in stage.outs:

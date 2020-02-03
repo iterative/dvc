@@ -99,7 +99,7 @@ class TestPipelineShow(TestRepro):
         self.assertEqual(ret, 0)
 
 
-def test_disconnected_stage(tmp_dir, dvc, caplog):
+def test_disconnected_stage(tmp_dir, dvc):
     tmp_dir.dvc_gen({"base": "base"})
 
     dvc.add("base")
@@ -109,14 +109,13 @@ def test_disconnected_stage(tmp_dir, dvc, caplog):
         deps=["derived1"], outs=["final"], cmd="echo final > final"
     )
 
-    args = ["pipeline", "show", "--outs", "--dot", final_stage.path]
-    command = CmdPipelineShow(args)
+    command = CmdPipelineShow([])
     # Need to test __build_graph directly
     nodes, edges, is_tree = command._build_graph(
         final_stage.path, commands=False, outs=True
     )
 
-    assert set(nodes) == set(["final", "derived1", "base"])
+    assert set(nodes) == {"final", "derived1", "base"}
     assert edges == [("final", "derived1"), ("derived1", "base")]
     assert is_tree is True
 
