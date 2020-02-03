@@ -30,7 +30,7 @@ class CmdImport(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     IMPORT_HELP = (
-        "Download file or directory from any DVC project or Git repository "
+        "Download file or directory from any DVC or Git repository "
         "into the workspace, and track it."
     )
 
@@ -42,8 +42,7 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawTextHelpFormatter,
     )
     import_parser.add_argument(
-        "url",
-        help="Location of DVC project or Git repository to download from",
+        "url", help="Location of DVC or Git repository to download from"
     )
     import_parser.add_argument(
         "path",
