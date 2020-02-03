@@ -31,7 +31,7 @@ class CmdPipelineShow(CmdBase):
             else:
                 logger.info(stage.path_in_repo)
 
-    def __build_graph(self, target, commands, outs):
+    def _build_graph(self, target, commands, outs):
         import networkx
         from dvc.stage import Stage
         from dvc.repo.graph import get_pipeline
@@ -74,7 +74,7 @@ class CmdPipelineShow(CmdBase):
     def _show_ascii(self, target, commands, outs):
         from dvc.dagascii import draw
 
-        nodes, edges, _ = self.__build_graph(target, commands, outs)
+        nodes, edges, _ = self._build_graph(target, commands, outs)
 
         if not nodes:
             return
@@ -84,7 +84,7 @@ class CmdPipelineShow(CmdBase):
     def _show_dependencies_tree(self, target, commands, outs):
         from treelib import Tree
 
-        nodes, edges, is_tree = self.__build_graph(target, commands, outs)
+        nodes, edges, is_tree = self._build_graph(target, commands, outs)
         if not nodes:
             return
         if not is_tree:
@@ -105,12 +105,12 @@ class CmdPipelineShow(CmdBase):
             observe_list.pop(0)
         tree.show()
 
-    def __write_dot(self, target, commands, outs):
+    def _write_dot(self, target, commands, outs):
         import io
         import networkx
         from networkx.drawing.nx_pydot import write_dot
 
-        _, edges, _ = self.__build_graph(target, commands, outs)
+        _, edges, _ = self._build_graph(target, commands, outs)
         edges = [edge[::-1] for edge in edges]
 
         simple_g = networkx.DiGraph()
@@ -131,9 +131,7 @@ class CmdPipelineShow(CmdBase):
                         target, self.args.commands, self.args.outs
                     )
                 elif self.args.dot:
-                    self.__write_dot(
-                        target, self.args.commands, self.args.outs
-                    )
+                    self._write_dot(target, self.args.commands, self.args.outs)
                 elif self.args.tree:
                     self._show_dependencies_tree(
                         target, self.args.commands, self.args.outs
