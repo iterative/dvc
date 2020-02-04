@@ -1,6 +1,7 @@
 import logging
 
 from dvc.main import main
+from dvc.command.pipeline import CmdPipelineShow
 from tests.basic_env import TestDvc
 from tests.func.test_repro import TestRepro
 from tests.func.test_repro import TestReproChangedDeepData
@@ -96,6 +97,27 @@ class TestPipelineShow(TestRepro):
             ["pipeline", "show", "--dot", self.file1_stage, "--commands"]
         )
         self.assertEqual(ret, 0)
+
+
+def test_disconnected_stage(tmp_dir, dvc):
+    tmp_dir.dvc_gen({"base": "base"})
+
+    dvc.add("base")
+    dvc.run(deps=["base"], outs=["derived1"], cmd="echo derived1 > derived1")
+    dvc.run(deps=["base"], outs=["derived2"], cmd="echo derived2 > derived2")
+    final_stage = dvc.run(
+        deps=["derived1"], outs=["final"], cmd="echo final > final"
+    )
+
+    command = CmdPipelineShow([])
+    # Need to test __build_graph directly
+    nodes, edges, is_tree = command._build_graph(
+        final_stage.path, commands=False, outs=True
+    )
+
+    assert set(nodes) == {"final", "derived1", "base"}
+    assert edges == [("final", "derived1"), ("derived1", "base")]
+    assert is_tree is True
 
 
 def test_print_locked_stages(tmp_dir, dvc, caplog):
