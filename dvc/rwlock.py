@@ -4,15 +4,20 @@ import json
 from collections import defaultdict
 from contextlib import contextmanager
 
-from voluptuous import Schema, Invalid
+from voluptuous import Schema, Invalid, Required, Optional
 
 from .exceptions import DvcException
 from .lock import LockError
 from .utils import relpath
 
-INFO_SCHEMA = {"pid": int, "cmd": str}
+INFO_SCHEMA = {Required("pid"): int, Required("cmd"): str}
 
-SCHEMA = Schema({"write": {str: INFO_SCHEMA}, "read": {str: [INFO_SCHEMA]}})
+SCHEMA = Schema(
+    {
+        Optional("write", default={}): {str: INFO_SCHEMA},
+        Optional("read", default={}): {str: [INFO_SCHEMA]},
+    }
+)
 
 
 class RWLockFileCorruptedError(DvcException):
@@ -35,15 +40,13 @@ def _edit_rwlock(lock_dir):
     path = os.path.join(lock_dir, "rwlock")
     try:
         with open(path, "r") as fobj:
-            lock = json.load(fobj)
-        lock = SCHEMA(lock)
+            lock = SCHEMA(json.load(fobj))
     except FileNotFoundError:
         lock = SCHEMA({})
     except json.JSONDecodeError as exc:
         raise RWLockFileCorruptedError(path) from exc
     except Invalid as exc:
         raise RWLockFileFormatError(path) from exc
-    lock = defaultdict(dict, lock)
     lock["read"] = defaultdict(list, lock["read"])
     lock["write"] = defaultdict(dict, lock["write"])
     yield lock
