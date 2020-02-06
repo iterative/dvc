@@ -62,12 +62,12 @@ def test_rwlock_subdirs(tmp_path):
     subfoo = PathInfo("foo/subfoo")
 
     with rwlock(path, "cmd1", [foo], []):
-        with pytest.raises(LockError):
+        with pytest.raises(LockError, match=r"subfoo(.|\n)*cmd1"):
             with rwlock(path, "cmd2", [], [subfoo]):
                 pass
 
     with rwlock(path, "cmd1", [], [subfoo]):
-        with pytest.raises(LockError):
+        with pytest.raises(LockError, match=r"'foo'(.|\n)*cmd1"):
             with rwlock(path, "cmd2", [foo], []):
                 pass
 

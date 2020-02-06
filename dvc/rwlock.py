@@ -66,10 +66,11 @@ def _infos_to_str(infos):
 def _check_blockers(lock, info, *, mode, waiters):
     for path_info in waiters:
         blockers = [
-            info
+            blocker
             for path, infos in lock[mode].items()
             if path_info.overlaps(path)
-            if info not in (infos if type(infos) is list else [infos])
+            for blocker in (infos if isinstance(infos, list) else [infos])
+            if blocker != info
         ]
 
         if not blockers:
