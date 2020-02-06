@@ -134,7 +134,7 @@ class Git(Base):
 
     def _ignored(self, path):
 
-        # We want to check first if `entry` is already being ignored
+        # We want to check first if `path` is already being ignored
         # by the .gitignore file in the root dir.
         from git.exc import GitCommandError
 
