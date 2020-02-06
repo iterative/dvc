@@ -133,17 +133,12 @@ class Git(Base):
         return entry, gitignore
 
     def _ignored(self, path):
-
-        # We want to check first if `path` is already being ignored
-        # by the .gitignore file in the root dir.
         from git.exc import GitCommandError
 
         try:
             self.repo.git.check_ignore(path)
             return True
         except GitCommandError:
-            # If none of the paths passed to `check_ignore` are ignored,
-            # GitPython annoyingly raises an Exception
             return False
 
     def ignore(self, path):
