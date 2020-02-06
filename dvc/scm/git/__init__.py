@@ -133,8 +133,18 @@ class Git(Base):
 
         return entry, gitignore
 
-    @staticmethod
-    def _ignored(entry, gitignore_path):
+    def _ignored(self, entry, gitignore_path):
+
+        # We want to check first if `entry` is already being ignored by the .gitignore file in the root dir.
+        entry_path = os.path.join(os.path.dirname(gitignore_path), entry)
+        from git.exc import GitCommandError
+        try:
+            self.repo.git.check_ignore(entry_path)
+            return True
+        except GitCommandError:
+            # If none of the paths passed to `check_ignore` are ignored, GitPython annoyingly raises an Exception
+            pass
+
         if os.path.exists(gitignore_path):
             with open(gitignore_path, "r") as fobj:
                 ignore_list = fobj.readlines()
