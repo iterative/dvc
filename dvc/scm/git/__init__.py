@@ -18,7 +18,6 @@ from dvc.utils import is_binary
 from dvc.utils import relpath
 from dvc.utils.fs import path_isin
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -135,23 +134,22 @@ class Git(Base):
 
     def _ignored(self, entry, gitignore_path):
 
-        # We want to check first if `entry` is already being ignored by the .gitignore file in the root dir.
+        # We want to check first if `entry` is already being ignored
+        # by the .gitignore file in the root dir.
+
+        entry = (
+            entry[1:] if entry[0] == "/" else entry
+        )  # make sure that joining the paths works
         entry_path = os.path.join(os.path.dirname(gitignore_path), entry)
         from git.exc import GitCommandError
+
         try:
             self.repo.git.check_ignore(entry_path)
             return True
         except GitCommandError:
-            # If none of the paths passed to `check_ignore` are ignored, GitPython annoyingly raises an Exception
-            pass
-
-        if os.path.exists(gitignore_path):
-            with open(gitignore_path, "r") as fobj:
-                ignore_list = fobj.readlines()
-            return any(
-                filter(lambda x: x.strip() == entry.strip(), ignore_list)
-            )
-        return False
+            # If none of the paths passed to `check_ignore` are ignored,
+            # GitPython annoyingly raises an Exception
+            return False
 
     def ignore(self, path):
         entry, gitignore = self._get_gitignore(path)
