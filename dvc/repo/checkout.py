@@ -15,7 +15,7 @@ def _cleanup_unused_links(repo):
         for out in stage.outs
         if out.scheme == "local"
     ]
-    repo.state.remove_unused_links(used)
+    return repo.state.remove_unused_links(used)
 
 
 def get_all_files_numbers(pairs):
@@ -34,9 +34,10 @@ def _checkout(
 ):
     from dvc.stage import StageFileDoesNotExistError, StageFileBadNameError
 
+    cleaned = False
     if not targets:
         targets = [None]
-        _cleanup_unused_links(self)
+        cleaned = _cleanup_unused_links(self)
 
     pairs = set()
     for target in targets:
@@ -52,7 +53,7 @@ def _checkout(
             raise CheckoutErrorSuggestGit(target) from exc
 
     total = get_all_files_numbers(pairs)
-    if total == 0:
+    if total == 0 and not cleaned:
         logger.info("Nothing to do")
     failed = []
     with Tqdm(

@@ -467,7 +467,10 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             actual_mtime, _ = get_mtime_and_size(path, self.repo.tree)
 
             if inode == actual_inode and mtime == actual_mtime:
-                logger.debug("Removing '{}' as unused link.", path)
+                logger.info(
+                    "Removing '{}' as it is unused in the current worktree.",
+                    relpath,
+                )
                 remove(path)
                 unused.append(relpath)
 
@@ -478,6 +481,8 @@ class State(object):  # pylint: disable=too-many-instance-attributes
                 self.LINK_STATE_TABLE, ",".join(["?"] * len(chunk_unused))
             )
             self._execute(cmd, tuple(chunk_unused))
+
+        return bool(unused)
 
 
 def _connect_sqlite(filename, options):
