@@ -45,6 +45,7 @@ from global repo template to creating everything inplace, which:
 
 import os
 import pathlib
+import logging
 from contextlib import contextmanager
 
 import pytest
@@ -63,6 +64,11 @@ __all__ = [
     "erepo_dir",
     "git_dir",
 ]
+
+
+# see https://github.com/iterative/dvc/issues/3167
+git_logger = logging.getLogger("git")
+git_logger.setLevel(logging.CRITICAL)
 
 
 class TmpDir(pathlib.Path):
