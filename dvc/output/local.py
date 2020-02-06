@@ -22,7 +22,7 @@ class OutputLOCAL(OutputBase):
         super().__init__(*args, **kwargs)
 
         if self.repo and path_isin(self.def_path, self.repo.root_dir):
-            self.def_path = relpath(self.def_path, self.repo.root_dir)
+            self.def_path = relpath(self.def_path, self.stage.wdir)
 
     def _parse_path(self, remote, path):
         parsed = urlparse(path)
