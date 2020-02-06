@@ -87,8 +87,8 @@ def test_ignored(tmp_dir, scm):
     tmp_dir.gen({"dir1": {"file1.jpg": "cont", "file2.txt": "cont"}})
     tmp_dir.gen({".gitignore": "dir1/*.jpg"})
 
-    assert scm._ignored("file1.jpg", fspath(tmp_dir / "dir1" / ".gitignore"))
-    assert not scm._ignored("file2.txt", fspath(tmp_dir / "dir1" / ".gitignore"))
+    assert scm._ignored(fspath(tmp_dir / "dir1" / "file1.jpg"))
+    assert not scm._ignored(fspath(tmp_dir / "dir1" / "file2.txt"))
 
 
 def test_get_gitignore(tmp_dir, scm):

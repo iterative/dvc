@@ -132,19 +132,14 @@ class Git(Base):
 
         return entry, gitignore
 
-    def _ignored(self, entry, gitignore_path):
+    def _ignored(self, path):
 
         # We want to check first if `entry` is already being ignored
         # by the .gitignore file in the root dir.
-
-        entry = (
-            entry[1:] if entry[0] == "/" else entry
-        )  # make sure that joining the paths works
-        entry_path = os.path.join(os.path.dirname(gitignore_path), entry)
         from git.exc import GitCommandError
 
         try:
-            self.repo.git.check_ignore(entry_path)
+            self.repo.git.check_ignore(path)
             return True
         except GitCommandError:
             # If none of the paths passed to `check_ignore` are ignored,
@@ -154,7 +149,7 @@ class Git(Base):
     def ignore(self, path):
         entry, gitignore = self._get_gitignore(path)
 
-        if self._ignored(entry, gitignore):
+        if self._ignored(path):
             return
 
         msg = "Adding '{}' to '{}'.".format(relpath(path), relpath(gitignore))
