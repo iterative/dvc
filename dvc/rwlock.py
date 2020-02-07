@@ -4,16 +4,20 @@ import json
 from collections import defaultdict
 from contextlib import contextmanager
 
-from voluptuous import Schema, Invalid
-from funcy.py3 import lmap, lfilter, lmapcat
+from voluptuous import Schema, Invalid, Required, Optional
 
 from .exceptions import DvcException
 from .lock import LockError
 from .utils import relpath
 
-INFO_SCHEMA = {"pid": int, "cmd": str}
+INFO_SCHEMA = {Required("pid"): int, Required("cmd"): str}
 
-SCHEMA = Schema({"write": {str: INFO_SCHEMA}, "read": {str: [INFO_SCHEMA]}})
+SCHEMA = Schema(
+    {
+        Optional("write", default={}): {str: INFO_SCHEMA},
+        Optional("read", default={}): {str: [INFO_SCHEMA]},
+    }
+)
 
 
 class RWLockFileCorruptedError(DvcException):
@@ -36,15 +40,13 @@ def _edit_rwlock(lock_dir):
     path = os.path.join(lock_dir, "rwlock")
     try:
         with open(path, "r") as fobj:
-            lock = json.load(fobj)
-        lock = SCHEMA(lock)
+            lock = SCHEMA(json.load(fobj))
     except FileNotFoundError:
         lock = SCHEMA({})
     except json.JSONDecodeError as exc:
         raise RWLockFileCorruptedError(path) from exc
     except Invalid as exc:
         raise RWLockFileFormatError(path) from exc
-    lock = defaultdict(dict, lock)
     lock["read"] = defaultdict(list, lock["read"])
     lock["write"] = defaultdict(dict, lock["write"])
     yield lock
@@ -61,38 +63,26 @@ def _infos_to_str(infos):
     )
 
 
-def _check_no_writers(lock, info, path_infos):
-    for path_info in path_infos:
-        blocking_urls = lfilter(path_info.overlaps, lock["write"])
-        if not blocking_urls:
-            continue
+def _check_blockers(lock, info, *, mode, waiters):
+    for path_info in waiters:
+        blockers = [
+            blocker
+            for path, infos in lock[mode].items()
+            if path_info.overlaps(path)
+            for blocker in (infos if isinstance(infos, list) else [infos])
+            if blocker != info
+        ]
 
-        writers = lmap(lock["write"].get, blocking_urls)
-        writers = lfilter(lambda i: info != i, writers)
-        if not writers:
-            continue
-
-        raise LockError(
-            "'{}' is busy, it is being written to by:\n{}".format(
-                str(path_info), _infos_to_str(writers)
-            )
-        )
-
-
-def _check_no_readers(lock, info, path_infos):
-    for path_info in path_infos:
-        blocking_urls = lfilter(path_info.overlaps, lock["read"])
-        if not blocking_urls:
-            continue
-
-        readers = lmapcat(lock["read"].get, blocking_urls)
-        readers = lfilter(lambda i: info != i, readers)
-        if not readers:
+        if not blockers:
             continue
 
         raise LockError(
-            "'{}' is busy, it is being read by:\n{}".format(
-                str(path_info), _infos_to_str(readers)
+            "'{path}' is busy, it is being blocked by:\n"
+            "{blockers}\n"
+            "\n"
+            "If there are no processes with such PIDs, you can manually remove"
+            "'.dvc/tmp/rwlock' and try again.".format(
+                path=str(path_info), blockers=_infos_to_str(blockers)
             )
         )
 
@@ -171,8 +161,9 @@ def rwlock(tmp_dir, cmd, read, write):
     info = {"pid": os.getpid(), "cmd": cmd}
 
     with _edit_rwlock(tmp_dir) as lock:
-        _check_no_writers(lock, info, read + write)
-        _check_no_readers(lock, info, write)
+
+        _check_blockers(lock, info, mode="write", waiters=read + write)
+        _check_blockers(lock, info, mode="read", waiters=write)
 
         rchanges = _acquire_read(lock, info, read)
         wchanges = _acquire_write(lock, info, write)

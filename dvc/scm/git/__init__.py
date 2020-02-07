@@ -18,7 +18,6 @@ from dvc.utils import is_binary
 from dvc.utils import relpath
 from dvc.utils.fs import path_isin
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -133,20 +132,19 @@ class Git(Base):
 
         return entry, gitignore
 
-    @staticmethod
-    def _ignored(entry, gitignore_path):
-        if os.path.exists(gitignore_path):
-            with open(gitignore_path, "r") as fobj:
-                ignore_list = fobj.readlines()
-            return any(
-                filter(lambda x: x.strip() == entry.strip(), ignore_list)
-            )
-        return False
+    def _ignored(self, path):
+        from git.exc import GitCommandError
+
+        try:
+            self.repo.git.check_ignore(path)
+            return True
+        except GitCommandError:
+            return False
 
     def ignore(self, path):
         entry, gitignore = self._get_gitignore(path)
 
-        if self._ignored(entry, gitignore):
+        if self._ignored(path):
             return
 
         msg = "Adding '{}' to '{}'.".format(relpath(path), relpath(gitignore))
