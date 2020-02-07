@@ -30,7 +30,7 @@ class CmdImport(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     IMPORT_HELP = (
-        "Download file or directory from any DVC or Git repository "
+        "Download file or directory tracked by DVC or by Git "
         "into the workspace, and track it."
     )
 
