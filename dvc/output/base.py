@@ -162,11 +162,11 @@ class OutputBase(object):
     def changed_checksum(self):
         return self.checksum != self.remote.get_checksum(self.path_info)
 
-    def changed_cache(self):
+    def changed_cache(self, filter_info=None):
         if not self.use_cache or not self.checksum:
             return True
 
-        return self.cache.changed_cache(self.checksum)
+        return self.cache.changed_cache(self.checksum, filter_info=filter_info)
 
     def status(self):
         if self.checksum and self.use_cache and self.changed_cache():
