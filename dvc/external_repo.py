@@ -15,15 +15,16 @@ from dvc.exceptions import OutputNotFoundError, NoOutputInExternalRepoError
 from dvc.exceptions import FileMissingError, PathMissingError
 from dvc.remote import RemoteConfig
 from dvc.utils.fs import remove, fs_copy
-from dvc.scm import SCM
+from dvc.scm.git import Git
 
 
 logger = logging.getLogger(__name__)
 
 
 @contextmanager
-def external_repo(url, rev=None):
-    path = _cached_clone(url, rev)
+def external_repo(url, rev=None, for_write=False):
+    logger.debug("Creating external repo {}@{}", url, rev)
+    path = _cached_clone(url, rev, for_write=for_write)
     try:
         repo = ExternalRepo(path, url)
     except NotDvcRepoError:
@@ -41,7 +42,8 @@ def external_repo(url, rev=None):
         raise PathMissingError(exc.path, url)
     finally:
         repo.close()
-        _remove(path)
+        if for_write:
+            _remove(path)
 
 
 CLONES = {}
@@ -129,7 +131,7 @@ class ExternalGitRepo:
 
     @cached_property
     def scm(self):
-        return SCM(self.root_dir)
+        return Git(self.root_dir)
 
     def close(self):
         if "scm" in self.__dict__:
@@ -158,23 +160,21 @@ class ExternalGitRepo:
             raise PathMissingError(path, self.url)
 
 
-@wrap_with(threading.Lock())
-def _cached_clone(url, rev):
+def _cached_clone(url, rev, for_write=False):
     """Clone an external git repo to a temporary directory.
 
     Returns the path to a local temporary directory with the specified
-    revision checked out.
+    revision checked out. If for_write is set prevents reusing this dir via
+    cache.
     """
-    # Get or create a clean clone
-    clone_path = CLONES.get(url)
-    if clone_path:
-        # Do not pull for known shas, branches and tags might move
-        if not _is_known_sha(clone_path, rev):
-            _git_pull(clone_path)
-    else:
-        clone_path = tempfile.mkdtemp("dvc-clone")
-        _git_clone(url, clone_path)
-        CLONES[url] = clone_path
+    if not for_write and Git.is_sha(rev) and (url, rev) in CLONES:
+        return CLONES[url, rev]
+
+    clone_path = _clone_default_branch(url, rev)
+    rev_sha = Git(clone_path).resolve_rev(rev or "HEAD")
+
+    if not for_write and (url, rev_sha) in CLONES:
+        return CLONES[url, rev_sha]
 
     # Copy to a new dir to keep the clone clean
     repo_path = tempfile.mkdtemp("dvc-erepo")
@@ -184,49 +184,43 @@ def _cached_clone(url, rev):
     if rev is not None:
         _git_checkout(repo_path, rev)
 
+    if not for_write:
+        CLONES[url, rev_sha] = repo_path
     return repo_path
 
 
-def _git_clone(url, path):
-    from dvc.scm.git import Git
+@wrap_with(threading.Lock())
+def _clone_default_branch(url, rev):
+    """Get or create a clean clone of the url.
 
-    git = Git.clone(url, path)
-    git.close()
+    The cloned is reactualized with git pull unless rev is a known sha.
+    """
+    clone_path = CLONES.get(url)
+
+    git = None
+    try:
+        if clone_path:
+            git = Git(clone_path)
+            # Do not pull for known shas, branches and tags might move
+            if not Git.is_sha(rev) or not git.is_known(rev):
+                git.pull()
+        else:
+            clone_path = tempfile.mkdtemp("dvc-clone")
+            git = Git.clone(url, clone_path)
+            CLONES[url] = clone_path
+    finally:
+        if git:
+            git.close()
+
+    return clone_path
 
 
 def _git_checkout(repo_path, rev):
-    from dvc.scm import Git
-
     git = Git(repo_path)
     try:
         git.checkout(rev)
     finally:
         git.close()
-
-
-def _is_known_sha(repo_path, rev):
-    import git
-    from gitdb.exc import BadName
-
-    if not rev or not git.Repo.re_hexsha_shortened.search(rev):
-        return False
-
-    try:
-        git.Repo(repo_path).commit(rev)
-        return True
-    except BadName:
-        return False
-
-
-def _git_pull(repo_path):
-    import git
-
-    repo = git.Repo(repo_path)
-    try:
-        msg = repo.git.pull()
-        logger.debug("external repo: git pull: {}", msg)
-    finally:
-        repo.close()
 
 
 def _remove(path):
