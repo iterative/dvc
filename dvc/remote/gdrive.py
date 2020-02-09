@@ -276,6 +276,13 @@ class RemoteGDrive(RemoteBASE):
         return item
 
     @gdrive_retry
+    def delete_remote_file(self, remote_id):
+        param = {"id": remote_id}
+        # it does not create a file on the remote
+        item = self.drive.CreateFile(param)
+        item.Delete()
+
+    @gdrive_retry
     def get_remote_item(self, name, parents_ids):
         if not parents_ids:
             return None
@@ -387,3 +394,7 @@ class RemoteGDrive(RemoteBASE):
             except ValueError:
                 # We ignore all the non-cache looking files
                 logger.debug('Ignoring path as "non-cache looking"')
+
+    def remove(self, path_info):
+        remote_id = self.get_remote_id(path_info)
+        self.delete_remote_file(remote_id)
