@@ -47,14 +47,19 @@ def test_str_on_absolute_path(dvc):
     stage = Stage(dvc)
 
     path = os.path.abspath(os.path.join("path", "to", "file"))
-    output = OutputBase(stage, path, cache=False)
-
-    assert path == str(output)
-
     output = OutputLOCAL(stage, path, cache=False)
 
     assert path != str(output)
     assert path == os.path.abspath(str(output))
+
+
+def test_base_str_on_absolute_path(dvc):
+    stage = Stage(dvc)
+
+    path = os.path.abspath(os.path.join("path", "to", "file"))
+    output = OutputBase(stage, path, cache=False)
+
+    assert path == str(output)
 
 
 class TestGetFilesNumber(TestDvc):
