@@ -76,7 +76,10 @@ def send(report):
     headers = {"content-type": "application/json"}
 
     with open(report, "rb") as fobj:
-        requests.post(url, data=fobj, headers=headers, timeout=5)
+        try:
+            requests.post(url, data=fobj, headers=headers, timeout=5)
+        except requests.exceptions.RequestException:
+            logger.debug("failed to send analytics report", exc_info=True)
 
     os.remove(report)
 

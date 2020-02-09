@@ -61,16 +61,19 @@ def test_runtime_info(tmp_global_config):
 
 @mock.patch("requests.post")
 def test_send(mock_post, tmp_path):
+    import requests
+
     url = "https://analytics.dvc.org"
     report = {"name": "dummy report"}
-    fname = str(tmp_path / "report")
+    report_file = tmp_path / "report"
 
-    with open(fname, "w") as fobj:
-        json.dump(report, fobj)
+    report_file.write_text(json.dumps(report))
+    mock_post.side_effect = requests.exceptions.RequestException
 
-    analytics.send(fname)
+    analytics.send(str(report_file))
     assert mock_post.called
     assert mock_post.call_args.args[0] == url
+    assert not report_file.exists()
 
 
 @pytest.mark.parametrize(
