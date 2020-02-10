@@ -21,7 +21,7 @@ def _cleanup_unused_links(repo):
         logger.info(
             "Removing '{}' as it already exists in the current worktree.", link
         )
-    repo.state.remove_unused_links(unused)
+    repo.state.remove_links(unused)
     return bool(unused)
 
 

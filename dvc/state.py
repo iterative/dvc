@@ -471,17 +471,12 @@ class State(object):  # pylint: disable=too-many-instance-attributes
 
         return unused
 
-    def remove_unused_links(self, unused):
-        """Removes all unused links.
-
-        Args:
-            unused (list): list of unused links that should be removed.
-        """
-        for relative_path in unused:
-            remove(os.path.join(self.root_dir, relative_path))
+    def remove_links(self, links):
+        for link in links:
+            remove(os.path.join(self.root_dir, link))
 
         for chunk_unused in to_chunks(
-            unused, chunk_size=SQLITE_MAX_VARIABLES_NUMBER
+            links, chunk_size=SQLITE_MAX_VARIABLES_NUMBER
         ):
             cmd = "DELETE FROM {} WHERE path IN ({})".format(
                 self.LINK_STATE_TABLE, ",".join(["?"] * len(chunk_unused))
