@@ -337,18 +337,17 @@ class RemoteGDrive(RemoteBASE):
         item.FetchMetadata("driveId")
         return item.get("driveId", None)
 
-    def _get_remote_ids_from_cache(self, remote_path):
-        if hasattr(self, "_cached_dirs"):
-            return self.cached_dirs.get(remote_path, [])
-        return []
-
-    def _path_to_remote_ids(self, path, create):
+    def _get_known_remote_ids(self, path):
         if not path:
             return [self._bucket]
         if path == self.path_info.path and self._remote_root_id:
             return [self._remote_root_id]
+        if hasattr(self, "_cached_dirs"):
+            return self.cached_dirs.get(path, [])
+        return []
 
-        remote_ids = self._get_remote_ids_from_cache(path)
+    def _path_to_remote_ids(self, path, create):
+        remote_ids = self._get_known_remote_ids(path)
         if remote_ids:
             return remote_ids
 
