@@ -444,10 +444,10 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         self._execute(cmd, (relative_path, self._to_sqlite(inode), mtime))
 
     def get_unused_links(self, used):
-        """Removes all saved links except the ones that are used.
+        """Returns all saved links except the ones that are used.
 
         Args:
-            used (list): list of used links that should not be removed.
+            used (list): list of used links
         """
         unused = []
 
@@ -472,6 +472,11 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         return unused
 
     def remove_unused_links(self, unused):
+        """Removes all unused links.
+
+        Args:
+            unused (list): list of unused links that should be removed.
+        """
         for relative_path in unused:
             remove(os.path.join(self.root_dir, relative_path))
 
