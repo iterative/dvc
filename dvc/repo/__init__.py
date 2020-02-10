@@ -129,19 +129,19 @@ class Repo(object):
 
     @classmethod
     def find_root(cls, root=None):
-        if root is None:
-            root = os.getcwd()
-        else:
-            root = os.path.abspath(os.path.realpath(root))
+        root_dir = os.path.abspath(os.path.realpath(root or os.getcwd()))
+
+        if not os.path.isdir(root_dir):
+            raise NotDvcRepoError(root, msg="folder {} does not exist")
 
         while True:
-            dvc_dir = os.path.join(root, cls.DVC_DIR)
+            dvc_dir = os.path.join(root_dir, cls.DVC_DIR)
             if os.path.isdir(dvc_dir):
-                return root
-            if os.path.ismount(root):
+                return root_dir
+            if os.path.ismount(root_dir):
                 break
-            root = os.path.dirname(root)
-        raise NotDvcRepoError(root)
+            root_dir = os.path.dirname(root_dir)
+        raise NotDvcRepoError(root_dir)
 
     @classmethod
     def find_dvc_dir(cls, root=None):

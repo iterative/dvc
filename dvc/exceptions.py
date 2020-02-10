@@ -118,8 +118,8 @@ class NotDvcRepoError(DvcException):
         root (str): path to the directory.
     """
 
-    def __init__(self, root):
-        msg = (
+    def __init__(self, root, msg=None):
+        msg = msg or (
             "you are not inside of a DVC repository "
             "(checked up to mount point '{}')"
         )
