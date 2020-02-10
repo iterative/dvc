@@ -15,7 +15,14 @@ def _cleanup_unused_links(repo):
         for out in stage.outs
         if out.scheme == "local"
     ]
-    return repo.state.remove_unused_links(used)
+
+    unused = repo.state.get_unused_links(used)
+    for link in unused:
+        logger.info(
+            "Removing '{}' as it already exists in the current worktree.", link
+        )
+    repo.state.remove_unused_links(unused)
+    return bool(unused)
 
 
 def get_all_files_numbers(pairs):

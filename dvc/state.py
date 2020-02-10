@@ -443,7 +443,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         )
         self._execute(cmd, (relative_path, self._to_sqlite(inode), mtime))
 
-    def remove_unused_links(self, used):
+    def get_unused_links(self, used):
         """Removes all saved links except the ones that are used.
 
         Args:
@@ -453,9 +453,9 @@ class State(object):  # pylint: disable=too-many-instance-attributes
 
         self._execute("SELECT * FROM {}".format(self.LINK_STATE_TABLE))
         for row in self.cursor:
-            relpath, inode, mtime = row
+            relative_path, inode, mtime = row
             inode = self._from_sqlite(inode)
-            path = os.path.join(self.root_dir, relpath)
+            path = os.path.join(self.root_dir, relative_path)
 
             if path in used:
                 continue
@@ -467,12 +467,13 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             actual_mtime, _ = get_mtime_and_size(path, self.repo.tree)
 
             if inode == actual_inode and mtime == actual_mtime:
-                logger.info(
-                    "Removing '{}' as it is unused in the current worktree.",
-                    relpath,
-                )
-                remove(path)
-                unused.append(relpath)
+                unused.append(relative_path)
+
+        return unused
+
+    def remove_unused_links(self, unused):
+        for relative_path in unused:
+            remove(os.path.join(self.root_dir, relative_path))
 
         for chunk_unused in to_chunks(
             unused, chunk_size=SQLITE_MAX_VARIABLES_NUMBER
@@ -481,8 +482,6 @@ class State(object):  # pylint: disable=too-many-instance-attributes
                 self.LINK_STATE_TABLE, ",".join(["?"] * len(chunk_unused))
             )
             self._execute(cmd, tuple(chunk_unused))
-
-        return bool(unused)
 
 
 def _connect_sqlite(filename, options):
