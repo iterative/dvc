@@ -129,10 +129,10 @@ class Repo(object):
 
     @classmethod
     def find_root(cls, root=None):
-        root_dir = os.path.abspath(os.path.realpath(root or os.getcwd()))
+        root_dir = os.path.realpath(root or os.curdir)
 
         if not os.path.isdir(root_dir):
-            raise NotDvcRepoError(root, msg="folder {} does not exist")
+            raise NotDvcRepoError("directory '{}' does not exist".format(root))
 
         while True:
             dvc_dir = os.path.join(root_dir, cls.DVC_DIR)
@@ -141,7 +141,12 @@ class Repo(object):
             if os.path.ismount(root_dir):
                 break
             root_dir = os.path.dirname(root_dir)
-        raise NotDvcRepoError(root_dir)
+
+        message = (
+            "you are not inside of a DVC repository "
+            "(checked up to mount point '{}')"
+        ).format(root_dir)
+        raise NotDvcRepoError(message)
 
     @classmethod
     def find_dvc_dir(cls, root=None):
