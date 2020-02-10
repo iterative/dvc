@@ -351,11 +351,7 @@ class RemoteGDrive(RemoteBASE):
         if remote_ids:
             return remote_ids
 
-        if "/" in path:
-            parent_path, path_part = path.rsplit("/", 1)
-        else:
-            parent_path, path_part = ["", path]
-
+        parent_path, path_part = posixpath.split(path)
         parent_ids = self._path_to_remote_ids(parent_path, create)
         item = self.get_remote_item(path_part, parent_ids)
 
