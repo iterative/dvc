@@ -33,11 +33,18 @@ def _get_active_graph(G):
     for stage in G:
         if not stage.locked:
             continue
-        for st in nx.dfs_postorder_nodes(G, stage):
-            if st == stage:
-                continue
-            if st in active:
-                active.remove_node(st)
+        active.remove_edges_from(G.out_edges(stage))
+        for edge in G.out_edges(stage):
+            _, to_stage = edge
+            for node in nx.dfs_preorder_nodes(G, to_stage):
+                # NOTE: `in_degree` will return InDegreeView({}) if stage
+                # no longer exists in the `active` DAG.
+                if not active.in_degree(node):
+                    # NOTE: if some edge no longer exists `remove_edges_from`
+                    # will ignore it without error.
+                    active.remove_edges_from(G.out_edges(node))
+                    active.remove_node(node)
+
     return active
 
 
