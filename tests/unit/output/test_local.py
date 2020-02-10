@@ -2,7 +2,6 @@ import os
 
 from mock import patch
 from dvc.output import OutputLOCAL
-from dvc.output.base import OutputBase
 from dvc.remote.local import RemoteLOCAL
 from dvc.stage import Stage
 from dvc.utils import relpath
@@ -43,23 +42,28 @@ def test_str_workdir_inside_repo(dvc):
     assert os.path.join("some_folder", "path") == str(output)
 
 
-def test_str_on_absolute_path(dvc):
+def test_str_on_local_absolute_path(dvc):
     stage = Stage(dvc)
 
-    path = os.path.abspath(os.path.join("path", "to", "file"))
-    output = OutputLOCAL(stage, path, cache=False)
+    rel_path = os.path.join("path", "to", "file")
+    abs_path = os.path.abspath(rel_path)
+    output = OutputLOCAL(stage, abs_path, cache=False)
 
-    assert path != str(output)
-    assert path == os.path.abspath(str(output))
+    assert output.def_path == rel_path
+    assert output.path_info.fspath == abs_path
+    assert str(output) == rel_path
 
 
-def test_base_str_on_absolute_path(dvc):
+def test_str_on_external_absolute_path(dvc):
     stage = Stage(dvc)
 
-    path = os.path.abspath(os.path.join("path", "to", "file"))
-    output = OutputBase(stage, path, cache=False)
+    rel_path = os.path.join("..", "path", "to", "file")
+    abs_path = os.path.abspath(rel_path)
+    output = OutputLOCAL(stage, abs_path, cache=False)
 
-    assert path == str(output)
+    assert output.def_path == abs_path
+    assert output.path_info.fspath == abs_path
+    assert str(output) == abs_path
 
 
 class TestGetFilesNumber(TestDvc):
