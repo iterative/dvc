@@ -6,7 +6,7 @@ from dvc.scm.git import Git
 
 
 @locked
-def diff(self, a_ref="HEAD", b_ref=None):
+def diff(self, a_rev="HEAD", b_rev=None):
     """
     By default, it compares the working tree with the last commit's tree.
 
@@ -47,8 +47,8 @@ def diff(self, a_ref="HEAD", b_ref=None):
         return result
 
     working_tree = self.tree
-    a_tree = self.scm.get_tree(a_ref)
-    b_tree = self.scm.get_tree(b_ref) if b_ref else working_tree
+    a_tree = self.scm.get_tree(a_rev)
+    b_tree = self.scm.get_tree(b_rev) if b_rev else working_tree
 
     try:
         self.tree = a_tree

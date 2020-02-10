@@ -890,7 +890,7 @@ def test_metrics_diff_raw(tmp_dir, scm, dvc):
     _gen("raw 2")
     _gen("raw 3")
 
-    assert dvc.metrics.diff(a_ref="HEAD~2") == {
+    assert dvc.metrics.diff(a_rev="HEAD~2") == {
         "metrics": {"": {"old": "raw 1", "new": "raw 3"}}
     }
 
@@ -916,7 +916,7 @@ def test_metrics_diff_json(tmp_dir, scm, dvc, xpath):
     if not xpath:
         expected["m.json"]["a.b.e"] = {"old": "1", "new": "3"}
 
-    assert expected == dvc.metrics.diff(a_ref="HEAD~2")
+    assert expected == dvc.metrics.diff(a_rev="HEAD~2")
 
 
 def test_metrics_diff_broken_json(tmp_dir, scm, dvc):
@@ -939,4 +939,4 @@ def test_metrics_diff_broken_json(tmp_dir, scm, dvc):
 
 def test_metrics_diff_no_metrics(tmp_dir, scm, dvc):
     tmp_dir.scm_gen({"foo": "foo"}, commit="add foo")
-    assert dvc.metrics.diff(a_ref="HEAD~1") == {}
+    assert dvc.metrics.diff(a_rev="HEAD~1") == {}
