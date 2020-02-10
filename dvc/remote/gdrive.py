@@ -74,12 +74,12 @@ class GDriveURLInfo(CloudURLInfo):
 
         # GDrive URL host part is case sensitive,
         # we are restoring it here.
-        assert self.netloc == self.host
         p = urlparse(url)
         self.host = p.netloc
+        assert self.netloc == self.host
 
-        # Normalize path. Important since we have a cache
-        # path to ID and don't want to deal with it everywhere in code
+        # Normalize path. Important since we have a cache (path to ID)
+        # and don't want to deal with different variations of path in it.
         self._spath = re.sub("/{2,}", "/", self._spath.rstrip("/"))
 
 
@@ -97,6 +97,7 @@ class RemoteGDrive(RemoteBASE):
         super().__init__(repo, config)
         url = config[Config.SECTION_REMOTE_URL]
         self.path_info = self.path_cls(url)
+        self.config = config
 
         if not self.path_info.bucket:
             raise DvcException(
@@ -106,19 +107,20 @@ class RemoteGDrive(RemoteBASE):
                 )
             )
 
-        self.bucket = self.path_info.bucket
-        self.config = config
-        self.client_id = self.config.get(Config.SECTION_GDRIVE_CLIENT_ID, None)
-        self.client_secret = self.config.get(
+        self._bucket = self.path_info.bucket
+        self._client_id = self.config.get(
+            Config.SECTION_GDRIVE_CLIENT_ID, None
+        )
+        self._client_secret = self.config.get(
             Config.SECTION_GDRIVE_CLIENT_SECRET, None
         )
-        if not self.client_id or not self.client_secret:
+        if not self._client_id or not self._client_secret:
             raise DvcException(
                 "Please specify Google Drive's client id and "
                 "secret in DVC config. Learn more at "
                 "{}.".format(format_link("https://man.dvc.org/remote/add"))
             )
-        self.gdrive_user_credentials_path = (
+        self._gdrive_user_credentials_path = (
             tmp_fname(os.path.join(self.repo.tmp_dir, ""))
             if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA)
             else self.config.get(
@@ -128,7 +130,8 @@ class RemoteGDrive(RemoteBASE):
                 ),
             )
         )
-        self.remote_drive_id = None
+        self._remote_drive_id = None
+        self._remote_root_id = None
 
     @gdrive_retry
     def gdrive_upload_file(
@@ -174,8 +177,8 @@ class RemoteGDrive(RemoteBASE):
     def gdrive_list_item(self, query):
         param = {"q": query, "maxResults": 1000, "corpora": self.corpora}
 
-        if self.remote_drive_id:
-            param["driveId"] = self.remote_drive_id
+        if self._remote_drive_id:
+            param["driveId"] = self._remote_drive_id
 
         file_list = self.drive.ListFile(param)
 
@@ -226,7 +229,7 @@ class RemoteGDrive(RemoteBASE):
 
             if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA):
                 with open(
-                    self.gdrive_user_credentials_path, "w"
+                    self._gdrive_user_credentials_path, "w"
                 ) as credentials_file:
                     credentials_file.write(
                         os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA)
@@ -234,8 +237,8 @@ class RemoteGDrive(RemoteBASE):
 
             GoogleAuth.DEFAULT_SETTINGS["client_config_backend"] = "settings"
             GoogleAuth.DEFAULT_SETTINGS["client_config"] = {
-                "client_id": self.client_id,
-                "client_secret": self.client_secret,
+                "client_id": self._client_id,
+                "client_secret": self._client_secret,
                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                 "token_uri": "https://oauth2.googleapis.com/token",
                 "revoke_uri": "https://oauth2.googleapis.com/revoke",
@@ -245,7 +248,7 @@ class RemoteGDrive(RemoteBASE):
             GoogleAuth.DEFAULT_SETTINGS["save_credentials_backend"] = "file"
             GoogleAuth.DEFAULT_SETTINGS[
                 "save_credentials_file"
-            ] = self.gdrive_user_credentials_path
+            ] = self._gdrive_user_credentials_path
             GoogleAuth.DEFAULT_SETTINGS["get_refresh_token"] = True
             GoogleAuth.DEFAULT_SETTINGS["oauth_scope"] = [
                 "https://www.googleapis.com/auth/drive",
@@ -261,7 +264,7 @@ class RemoteGDrive(RemoteBASE):
                 raise GDriveAccessTokenRefreshError from exc
             except KeyError as exc:
                 raise GDriveMissedCredentialKeyError(
-                    self.gdrive_user_credentials_path
+                    self._gdrive_user_credentials_path
                 ) from exc
             # Handle pydrive2.auth.AuthenticationError and other auth failures
             except Exception as exc:
@@ -270,13 +273,13 @@ class RemoteGDrive(RemoteBASE):
                 ) from exc
             finally:
                 if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA):
-                    os.remove(self.gdrive_user_credentials_path)
+                    os.remove(self._gdrive_user_credentials_path)
 
             self._gdrive = GoogleDrive(gauth)
 
-            if self.bucket != "root" and self.bucket != "appDataFolder":
-                self.remote_drive_id = self._get_remote_drive_id(self.bucket)
-            self._corpora = "drive" if self.remote_drive_id else "default"
+            if self._bucket != "root" and self._bucket != "appDataFolder":
+                self._remote_drive_id = self._get_remote_drive_id(self._bucket)
+            self._corpora = "drive" if self._remote_drive_id else "default"
             self._remote_root_id = self._get_remote_id(self.path_info)
 
             self._cached_dirs, self._cached_ids = self.cache_root_dirs()
@@ -319,8 +322,8 @@ class RemoteGDrive(RemoteBASE):
             "corpora": self.corpora,
         }
 
-        if self.remote_drive_id:
-            param["driveId"] = self.remote_drive_id
+        if self._remote_drive_id:
+            param["driveId"] = self._remote_drive_id
 
         # Limit found remote items count to 1 in response
         item_list = self.drive.ListFile(param).GetList()
@@ -341,7 +344,7 @@ class RemoteGDrive(RemoteBASE):
 
     def _path_to_remote_ids(self, path, create):
         if not path:
-            return [self.bucket]
+            return [self._bucket]
         if path == self.path_info.path and self._remote_root_id:
             return [self._remote_root_id]
 
@@ -366,7 +369,7 @@ class RemoteGDrive(RemoteBASE):
         return [item["id"]]
 
     def _get_remote_id(self, path_info, create=False):
-        assert path_info.bucket == self.bucket
+        assert path_info.bucket == self._bucket
 
         remote_ids = self._path_to_remote_ids(path_info.path, create)
         if not remote_ids:
@@ -421,5 +424,5 @@ class RemoteGDrive(RemoteBASE):
                 logger.debug('Ignoring path as "non-cache looking"')
 
     def remove(self, path_info):
-        remote_id = self.get_remote_id(path_info)
+        remote_id = self._get_remote_id(path_info)
         self.delete_remote_file(remote_id)
