@@ -7,7 +7,7 @@ from dvc.external_repo import external_repo
 
 
 class UrlNotDvcRepoError(DvcException):
-    """Thrown if given url is not a DVC repository.
+    """Thrown if given URL is not a DVC repository.
 
     Args:
         url (str): URL to the repository
