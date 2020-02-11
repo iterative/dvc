@@ -457,16 +457,13 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             inode = self._from_sqlite(inode)
             path = os.path.join(self.root_dir, relative_path)
 
-            if path in used:
-                continue
-
-            if not os.path.exists(path):
+            if path in used or not os.path.exists(path):
                 continue
 
             actual_inode = get_inode(path)
             actual_mtime, _ = get_mtime_and_size(path, self.repo.tree)
 
-            if inode == actual_inode and mtime == actual_mtime:
+            if (inode, mtime) == (actual_inode, actual_mtime):
                 unused.append(relative_path)
 
         return unused
