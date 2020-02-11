@@ -112,18 +112,7 @@ class MoveNotDataSourceError(DvcException):
 
 
 class NotDvcRepoError(DvcException):
-    """Thrown if a directory is not a DVC repo.
-
-    Args:
-        root (str): path to the directory.
-    """
-
-    def __init__(self, root):
-        msg = (
-            "you are not inside of a DVC repository "
-            "(checked up to mount point '{}')"
-        )
-        super().__init__(msg.format(root))
+    """Thrown if a directory is not a DVC repo"""
 
 
 class DvcParserError(DvcException):

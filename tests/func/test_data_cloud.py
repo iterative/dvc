@@ -194,24 +194,30 @@ class TestRemoteS3(S3, TestDataCloudBase):
         return RemoteS3
 
 
+def setup_gdrive_cloud(remote_url, dvc):
+    config = copy.deepcopy(TEST_CONFIG)
+    config[TEST_SECTION][Config.SECTION_REMOTE_URL] = remote_url
+    config[TEST_SECTION][
+        Config.SECTION_GDRIVE_CLIENT_ID
+    ] = TEST_GDRIVE_CLIENT_ID
+    config[TEST_SECTION][
+        Config.SECTION_GDRIVE_CLIENT_SECRET
+    ] = TEST_GDRIVE_CLIENT_SECRET
+
+    dvc.config.config = config
+    remote = DataCloud(dvc).get_remote()
+    remote._create_remote_dir("root", remote.path_info.path)
+
+
 class TestRemoteGDrive(GDrive, TestDataCloudBase):
     def _setup_cloud(self):
         self._ensure_should_run()
 
-        repo = self.get_url()
+        setup_gdrive_cloud(self.get_url(), self.dvc)
 
-        config = copy.deepcopy(TEST_CONFIG)
-        config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
-        config[TEST_SECTION][
-            Config.SECTION_GDRIVE_CLIENT_ID
-        ] = TEST_GDRIVE_CLIENT_ID
-        config[TEST_SECTION][
-            Config.SECTION_GDRIVE_CLIENT_SECRET
-        ] = TEST_GDRIVE_CLIENT_SECRET
-        self.dvc.config.config = config
         self.cloud = DataCloud(self.dvc)
-
-        self.assertIsInstance(self.cloud.get_remote(), self._get_cloud_class())
+        remote = self.cloud.get_remote()
+        self.assertIsInstance(remote, self._get_cloud_class())
 
     def _get_cloud_class(self):
         return RemoteGDrive
@@ -303,7 +309,12 @@ class TestDataCloudCLIBase(TestDvc):
     def get_url():
         raise NotImplementedError
 
+    def _setup_cloud(self):
+        pass
+
     def _test_cloud(self, remote=None):
+        self._setup_cloud()
+
         args = ["-v", "-j", "2"]
         if remote:
             args += ["-r", remote]
@@ -402,6 +413,9 @@ class TestRemoteS3CLI(S3, TestDataCloudCLIBase):
 
 
 class TestRemoteGDriveCLI(GDrive, TestDataCloudCLIBase):
+    def _setup_cloud(self):
+        setup_gdrive_cloud(self.get_url(), self.dvc)
+
     def _test(self):
         url = self.get_url()
 

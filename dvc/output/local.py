@@ -18,6 +18,12 @@ class OutputLOCAL(OutputBase):
     REMOTE = RemoteLOCAL
     sep = os.sep
 
+    def __init__(self, stage, path, *args, **kwargs):
+        if stage and path_isin(path, stage.repo.root_dir):
+            path = relpath(path, stage.wdir)
+
+        super().__init__(stage, path, *args, **kwargs)
+
     def _parse_path(self, remote, path):
         parsed = urlparse(path)
         if parsed.scheme == "remote":

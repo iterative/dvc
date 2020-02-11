@@ -136,8 +136,8 @@ class CmdMetricsDiff(CmdBase):
     def run(self):
         try:
             diff = self.repo.metrics.diff(
-                a_ref=self.args.a_ref,
-                b_ref=self.args.b_ref,
+                a_rev=self.args.a_rev,
+                b_rev=self.args.b_rev,
                 targets=self.args.targets,
                 typ=self.args.type,
                 xpath=self.args.xpath,
@@ -283,20 +283,12 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     metrics_diff_parser.add_argument(
-        "a_ref",
-        nargs="?",
-        help=(
-            "Git reference to the older version to compare "
-            "(defaults to HEAD)"
-        ),
+        "a_rev", nargs="?", help="Old Git commit to compare (defaults to HEAD)"
     )
     metrics_diff_parser.add_argument(
-        "b_ref",
+        "b_rev",
         nargs="?",
-        help=(
-            "Git reference to the newer version to compare "
-            "(defaults to the current workspace)"
-        ),
+        help=("New Git commit to compare (defaults to the current workspace)"),
     )
     metrics_diff_parser.add_argument(
         "--targets",
