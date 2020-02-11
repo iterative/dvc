@@ -8,14 +8,9 @@ from pathspec.patterns import GitWildMatchPattern
 
 from dvc.exceptions import GitHookAlreadyExistsError
 from dvc.scm.base import Base
-from dvc.scm.base import CloneError
-from dvc.scm.base import FileNotInRepoError
-from dvc.scm.base import RevError
-from dvc.scm.base import SCMError
+from dvc.scm.base import CloneError, FileNotInRepoError, RevError, SCMError
 from dvc.scm.git.tree import GitTree
-from dvc.utils import fix_env
-from dvc.utils import is_binary
-from dvc.utils import relpath
+from dvc.utils import fix_env, is_binary, relpath
 from dvc.utils.fs import path_isin
 
 logger = logging.getLogger(__name__)
@@ -93,6 +88,12 @@ class Git(Base):
                 ) from exc
 
         return repo
+
+    @staticmethod
+    def is_sha(rev):
+        import git
+
+        return rev and git.Repo.re_hexsha_shortened.search(rev)
 
     @staticmethod
     def is_repo(root_dir):
@@ -211,14 +212,16 @@ class Git(Base):
             self.repo.git.checkout(branch)
 
     def pull(self):
-        info, = self.repo.remote().pull()
-        if info.flags & info.ERROR:
-            raise SCMError("pull failed: {}".format(info.note))
+        infos = self.repo.remote().pull()
+        for info in infos:
+            if info.flags & info.ERROR:
+                raise SCMError("pull failed: {}".format(info.note))
 
     def push(self):
-        info, = self.repo.remote().push()
-        if info.flags & info.ERROR:
-            raise SCMError("push failed: {}".format(info.summary))
+        infos = self.repo.remote().push()
+        for info in infos:
+            if info.flags & info.ERROR:
+                raise SCMError("push failed: {}".format(info.summary))
 
     def branch(self, branch):
         self.repo.git.branch(branch)
@@ -324,15 +327,45 @@ class Git(Base):
         return GitTree(self.repo, self.resolve_rev(rev))
 
     def get_rev(self):
-        return self.repo.git.rev_parse("HEAD")
+        return self.repo.rev_parse("HEAD").hexsha
 
     def resolve_rev(self, rev):
-        from git.exc import GitCommandError
+        from git.exc import BadName, GitCommandError
+        from contextlib import suppress
 
+        def _resolve_rev(name):
+            with suppress(BadName, GitCommandError):
+                try:
+                    # Try python implementation of rev-parse first, it's faster
+                    return self.repo.rev_parse(name).hexsha
+                except NotImplementedError:
+                    # Fall back to `git rev-parse` for advanced features
+                    return self.repo.git.rev_parse(name)
+
+        # Resolve across local names
+        sha = _resolve_rev(rev)
+        if sha:
+            return sha
+
+        # Try all the remotes and if it resolves unambiguously then take it
+        if not Git.is_sha(rev):
+            shas = {
+                _resolve_rev("{}/{}".format(remote.name, rev))
+                for remote in self.repo.remotes
+            } - {None}
+            if len(shas) > 1:
+                raise RevError("ambiguous Git revision '{}'".format(rev))
+            if len(shas) == 1:
+                return shas.pop()
+
+        raise RevError("unknown Git revision '{}'".format(rev))
+
+    def has_rev(self, rev):
         try:
-            return self.repo.git.rev_parse(rev)
-        except GitCommandError:
-            raise RevError("unknown Git revision '{}'".format(rev))
+            self.resolve_rev(rev)
+            return True
+        except RevError:
+            return False
 
     def close(self):
         self.repo.close()
