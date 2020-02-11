@@ -333,8 +333,7 @@ class Git(Base):
         from git.exc import BadName, GitCommandError
         from contextlib import suppress
 
-        names = [rev] + ([] if Git.is_sha(rev) else ["origin/" + rev])
-        for name in names:
+        def _resolve_rev(name):
             with suppress(BadName, GitCommandError):
                 try:
                     # Try python implementation of rev-parse first, it's faster
@@ -342,6 +341,22 @@ class Git(Base):
                 except NotImplementedError:
                     # Fall back to `git rev-parse` for advanced features
                     return self.repo.git.rev_parse(name)
+
+        # Resolve across local names
+        sha = _resolve_rev(rev)
+        if sha:
+            return sha
+
+        # Try all the remotes and if it resolves unambiguously then take it
+        if not Git.is_sha(rev):
+            shas = {
+                _resolve_rev("{}/{}".format(remote.name, rev))
+                for remote in self.repo.remotes
+            } - {None}
+            if len(shas) > 1:
+                raise RevError("ambiguous Git revision '{}'".format(rev))
+            if len(shas) == 1:
+                return shas.pop()
 
         raise RevError("unknown Git revision '{}'".format(rev))
 
