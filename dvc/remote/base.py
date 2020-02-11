@@ -13,7 +13,6 @@ from operator import itemgetter
 from shortuuid import uuid
 
 import dvc.prompt as prompt
-from dvc.config import Config
 from dvc.exceptions import (
     DvcException,
     ConfirmRemoveError,
@@ -89,24 +88,18 @@ class RemoteBASE(object):
         self.repo = repo
 
         self._check_requires(config)
-        self.checksum_jobs = self._get_checksum_jobs(config)
 
+        self.checksum_jobs = (
+            config.get("checksum_jobs")
+            or (self.repo and self.repo.config["core"].get("checksum_jobs"))
+            or self.CHECKSUM_JOBS
+        )
         self.protected = False
-        self.no_traverse = config.get(
-            Config.SECTION_REMOTE_NO_TRAVERSE, self.DEFAULT_NO_TRAVERSE
-        )
-        self.verify = config.get(
-            Config.SECTION_REMOTE_VERIFY, self.DEFAULT_VERIFY
-        )
+        self.no_traverse = config.get("no_traverse", self.DEFAULT_NO_TRAVERSE)
+        self.verify = config.get("verify", self.DEFAULT_VERIFY)
         self._dir_info = {}
 
-        types = config.get(Config.SECTION_CACHE_TYPE, None)
-        if types:
-            if isinstance(types, str):
-                types = [t.strip() for t in types.split(",")]
-            self.cache_types = types
-        else:
-            self.cache_types = copy(self.DEFAULT_CACHE_TYPES)
+        self.cache_types = config.get("type") or copy(self.DEFAULT_CACHE_TYPES)
         self.cache_type_confirmed = False
 
     def _check_requires(self, config):
@@ -123,9 +116,7 @@ class RemoteBASE(object):
         if not missing:
             return
 
-        url = config.get(
-            Config.SECTION_REMOTE_URL, "{}://".format(self.scheme)
-        )
+        url = config.get("url", "{}://".format(self.scheme))
         msg = (
             "URL '{}' is supported but requires these missing "
             "dependencies: {}. If you have installed dvc using pip, "
@@ -146,19 +137,6 @@ class RemoteBASE(object):
         ).format(url, missing, " ".join(missing), self.scheme)
         raise RemoteMissingDepsError(msg)
 
-    def _get_checksum_jobs(self, config):
-        checksum_jobs = config.get(Config.SECTION_REMOTE_CHECKSUM_JOBS)
-        if checksum_jobs:
-            return checksum_jobs
-
-        if self.repo:
-            core = self.repo.config.config.get(Config.SECTION_CORE, {})
-            return core.get(
-                Config.SECTION_CORE_CHECKSUM_JOBS, self.CHECKSUM_JOBS
-            )
-
-        return self.CHECKSUM_JOBS
-
     def __repr__(self):
         return "{class_name}: '{path_info}'".format(
             class_name=type(self).__name__,
@@ -170,7 +148,7 @@ class RemoteBASE(object):
         if isinstance(config, (str, bytes)):
             url = config
         else:
-            url = config[Config.SECTION_REMOTE_URL]
+            url = config["url"]
 
         # NOTE: silently skipping remote, calling code should handle that
         parsed = urlparse(url)
@@ -893,7 +871,6 @@ class RemoteBASE(object):
         """Optional: Implement only if the remote needs to create
         directories before copying/linking/moving data
         """
-        pass
 
     def _checkout_dir(
         self,

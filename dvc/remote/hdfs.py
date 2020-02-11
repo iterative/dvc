@@ -10,7 +10,6 @@ from urllib.parse import urlparse
 
 from .base import RemoteBASE, RemoteCmdError
 from .pool import get_connection
-from dvc.config import Config
 from dvc.scheme import Schemes
 from dvc.utils import fix_env, tmp_fname
 
@@ -26,13 +25,12 @@ class RemoteHDFS(RemoteBASE):
     def __init__(self, repo, config):
         super().__init__(repo, config)
         self.path_info = None
-        url = config.get(Config.SECTION_REMOTE_URL)
+        url = config.get("url")
         if not url:
             return
 
         parsed = urlparse(url)
-
-        user = parsed.username or config.get(Config.SECTION_REMOTE_USER)
+        user = parsed.username or config.get("user")
 
         self.path_info = self.path_cls.from_parts(
             scheme=self.scheme,

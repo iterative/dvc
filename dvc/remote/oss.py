@@ -4,7 +4,6 @@ import threading
 
 from funcy import cached_property, wrap_prop
 
-from dvc.config import Config
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.remote.base import RemoteBASE
@@ -42,21 +41,19 @@ class RemoteOSS(RemoteBASE):
     def __init__(self, repo, config):
         super().__init__(repo, config)
 
-        url = config.get(Config.SECTION_REMOTE_URL)
+        url = config.get("url")
         self.path_info = self.path_cls(url) if url else None
 
-        self.endpoint = config.get(Config.SECTION_OSS_ENDPOINT) or os.getenv(
-            "OSS_ENDPOINT"
-        )
+        self.endpoint = config.get("oss_endpoint") or os.getenv("OSS_ENDPOINT")
 
         self.key_id = (
-            config.get(Config.SECTION_OSS_ACCESS_KEY_ID)
+            config.get("oss_key_id")
             or os.getenv("OSS_ACCESS_KEY_ID")
             or "defaultId"
         )
 
         self.key_secret = (
-            config.get(Config.SECTION_OSS_ACCESS_KEY_SECRET)
+            config.get("oss_key_secret")
             or os.getenv("OSS_ACCESS_KEY_SECRET")
             or "defaultSecret"
         )

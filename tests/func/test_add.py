@@ -601,7 +601,7 @@ def test_should_relink_on_repeated_add(
 ):
     from dvc.path_info import PathInfo
 
-    dvc.config.set("cache", "type", link)
+    dvc.config["cache"]["type"] = link
 
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
 

@@ -3,7 +3,6 @@ import threading
 
 from funcy import cached_property, wrap_prop
 
-from dvc.config import Config
 from dvc.config import ConfigError
 from dvc.exceptions import DvcException, HTTPError
 from dvc.progress import Tqdm
@@ -24,7 +23,7 @@ class RemoteHTTP(RemoteBASE):
     def __init__(self, repo, config):
         super().__init__(repo, config)
 
-        url = config.get(Config.SECTION_REMOTE_URL)
+        url = config.get("url")
         self.path_info = self.path_cls(url) if url else None
 
         if not self.no_traverse:

@@ -12,7 +12,6 @@ from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 from dvc.path_info import CloudURLInfo
 from dvc.remote.base import RemoteBASE
-from dvc.config import Config
 from dvc.exceptions import DvcException
 from dvc.utils import tmp_fname, format_link
 
@@ -95,25 +94,20 @@ class RemoteGDrive(RemoteBASE):
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
-        url = config[Config.SECTION_REMOTE_URL]
-        self.path_info = self.path_cls(url)
-        self.config = config
+        self.path_info = self.path_cls(config["url"])
 
         if not self.path_info.bucket:
             raise DvcException(
                 "Empty Google Drive URL '{}'. Learn more at "
                 "{}.".format(
-                    url, format_link("https://man.dvc.org/remote/add")
+                    config["url"],
+                    format_link("https://man.dvc.org/remote/add"),
                 )
             )
 
         self._bucket = self.path_info.bucket
-        self._client_id = self.config.get(
-            Config.SECTION_GDRIVE_CLIENT_ID, None
-        )
-        self._client_secret = self.config.get(
-            Config.SECTION_GDRIVE_CLIENT_SECRET, None
-        )
+        self._client_id = config.get("gdrive_client_id")
+        self._client_secret = config.get("gdrive_client_secret")
         if not self._client_id or not self._client_secret:
             raise DvcException(
                 "Please specify Google Drive's client id and "
@@ -123,8 +117,8 @@ class RemoteGDrive(RemoteBASE):
         self._gdrive_user_credentials_path = (
             tmp_fname(os.path.join(self.repo.tmp_dir, ""))
             if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA)
-            else self.config.get(
-                Config.SECTION_GDRIVE_USER_CREDENTIALS_FILE,
+            else config.get(
+                "gdrive_user_credentials_file",
                 os.path.join(
                     self.repo.tmp_dir, self.DEFAULT_USER_CREDENTIALS_FILE
                 ),
