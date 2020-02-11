@@ -130,100 +130,21 @@ class RemoteGDrive(RemoteBASE):
                 ),
             )
         )
-        self._remote_drive_id = None
+
+        self._list_params = None
+        self._gdrive = None
+
+        self._cache_initialized = False
         self._remote_root_id = None
-
-    @gdrive_retry
-    def gdrive_upload_file(
-        self, args, no_progress_bar=True, from_file="", progress_name=""
-    ):
-        parent = {"id": args["parent_id"]}
-        item = self.drive.CreateFile(
-            {"title": args["title"], "parents": [parent]}
-        )
-
-        with open(from_file, "rb") as fobj:
-            total = os.path.getsize(from_file)
-            with Tqdm.wrapattr(
-                fobj,
-                "read",
-                desc=progress_name,
-                total=total,
-                disable=no_progress_bar,
-            ) as wrapped:
-                # PyDrive doesn't like content property setting for empty files
-                # https://github.com/gsuitedevs/PyDrive/issues/121
-                if total:
-                    item.content = wrapped
-                item.Upload()
-        return item
-
-    @gdrive_retry
-    def gdrive_download_file(
-        self, file_id, to_file, progress_name, no_progress_bar
-    ):
-        param = {"id": file_id}
-        # it does not create a file on the remote
-        gdrive_file = self.drive.CreateFile(param)
-        bar_format = (
-            "Downloading {desc:{ncols_desc}.{ncols_desc}}... "
-            + Tqdm.format_sizeof(int(gdrive_file["fileSize"]), "B", 1024)
-        )
-        with Tqdm(
-            bar_format=bar_format, desc=progress_name, disable=no_progress_bar
-        ):
-            gdrive_file.GetContentFile(to_file)
-
-    def gdrive_list_item(self, query):
-        param = {"q": query, "maxResults": 1000, "corpora": self.corpora}
-
-        if self._remote_drive_id:
-            param["driveId"] = self._remote_drive_id
-
-        file_list = self.drive.ListFile(param)
-
-        # Isolate and decorate fetching of remote drive items in pages
-        get_list = gdrive_retry(lambda: next(file_list, None))
-
-        # Fetch pages until None is received, lazily flatten the thing
-        return cat(iter(get_list, None))
-
-    def cache_root_dirs(self):
-        cached_dirs = {}
-        cached_ids = {}
-        for dir1 in self.gdrive_list_item(
-            "'{}' in parents and trashed=false".format(self._remote_root_id)
-        ):
-            remote_path = posixpath.join(self.path_info.path, dir1["title"])
-            cached_dirs.setdefault(remote_path, []).append(dir1["id"])
-            cached_ids[dir1["id"]] = dir1["title"]
-
-        return cached_dirs, cached_ids
-
-    @property
-    def cached_dirs(self):
-        if not hasattr(self, "_cached_dirs"):
-            self.drive
-        return self._cached_dirs
-
-    @property
-    def cached_ids(self):
-        if not hasattr(self, "_cached_ids"):
-            self.drive
-        return self._cached_ids
-
-    @property
-    def corpora(self):
-        if not hasattr(self, "_corpora"):
-            self.drive
-        return self._corpora
+        self._cached_dirs = None
+        self._cached_ids = None
 
     @property
     @wrap_with(threading.RLock())
     def drive(self):
         from pydrive2.auth import RefreshError
 
-        if not hasattr(self, "_gdrive"):
+        if not self._gdrive:
             from pydrive2.auth import GoogleAuth
             from pydrive2.drive import GoogleDrive
 
@@ -277,17 +198,129 @@ class RemoteGDrive(RemoteBASE):
 
             self._gdrive = GoogleDrive(gauth)
 
-            if self._bucket != "root" and self._bucket != "appDataFolder":
-                self._remote_drive_id = self._get_remote_drive_id(self._bucket)
-            self._corpora = "drive" if self._remote_drive_id else "default"
-            self._remote_root_id = self._get_remote_id(self.path_info)
-
-            self._cached_dirs, self._cached_ids = self.cache_root_dirs()
-
         return self._gdrive
 
+    @wrap_with(threading.RLock())
+    def _initialize_cache(self):
+        if self._cache_initialized:
+            return
+
+        cached_dirs = {}
+        cached_ids = {}
+        self._remote_root_id = self._get_remote_id(self.path_info)
+        for dir1 in self.gdrive_list_item(
+            "'{}' in parents and trashed=false".format(self._remote_root_id)
+        ):
+            remote_path = posixpath.join(self.path_info.path, dir1["title"])
+            cached_dirs.setdefault(remote_path, []).append(dir1["id"])
+            cached_ids[dir1["id"]] = dir1["title"]
+
+        self._cached_dirs = cached_dirs
+        self._cached_ids = cached_ids
+        self._cache_initialized = True
+
+    @property
+    def cached_dirs(self):
+        if not self._cache_initialized:
+            self._initialize_cache()
+        return self._cached_dirs
+
+    @property
+    def cached_ids(self):
+        if not self._cache_initialized:
+            self._initialize_cache()
+        return self._cached_ids
+
+    @property
+    def remote_root_id(self):
+        if not self._cache_initialized:
+            self._initialize_cache()
+        return self._remote_root_id
+
+    @property
+    def list_params(self):
+        if not self._list_params:
+            params = {"corpora": "default"}
+            if self._bucket != "root" and self._bucket != "appDataFolder":
+                params["driveId"] = self._get_remote_drive_id(self._bucket)
+                params["corpora"] = "drive"
+            self._list_params = params
+        return self._list_params
+
     @gdrive_retry
-    def create_remote_dir(self, parent_id, title):
+    def gdrive_upload_file(
+        self,
+        parent_id,
+        title,
+        no_progress_bar=True,
+        from_file="",
+        progress_name="",
+    ):
+        item = self.drive.CreateFile(
+            {"title": title, "parents": [{"id": parent_id}]}
+        )
+
+        with open(from_file, "rb") as fobj:
+            total = os.path.getsize(from_file)
+            with Tqdm.wrapattr(
+                fobj,
+                "read",
+                desc=progress_name,
+                total=total,
+                disable=no_progress_bar,
+            ) as wrapped:
+                # PyDrive doesn't like content property setting for empty files
+                # https://github.com/gsuitedevs/PyDrive/issues/121
+                if total:
+                    item.content = wrapped
+                item.Upload()
+        return item
+
+    @gdrive_retry
+    def gdrive_download_file(
+        self, file_id, to_file, progress_name, no_progress_bar
+    ):
+        param = {"id": file_id}
+        # it does not create a file on the remote
+        gdrive_file = self.drive.CreateFile(param)
+        bar_format = (
+            "Downloading {desc:{ncols_desc}.{ncols_desc}}... "
+            + Tqdm.format_sizeof(int(gdrive_file["fileSize"]), "B", 1024)
+        )
+        with Tqdm(
+            bar_format=bar_format, desc=progress_name, disable=no_progress_bar
+        ):
+            gdrive_file.GetContentFile(to_file)
+
+    def gdrive_list_item(self, query):
+        param = {"q": query, "maxResults": 1000}
+        param.update(self.list_params)
+
+        file_list = self.drive.ListFile(param)
+
+        # Isolate and decorate fetching of remote drive items in pages
+        get_list = gdrive_retry(lambda: next(file_list, None))
+
+        # Fetch pages until None is received, lazily flatten the thing
+        return cat(iter(get_list, None))
+
+    @wrap_with(threading.RLock())
+    def gdrive_create_dir(self, parent_id, title, remote_path):
+        if parent_id == self.remote_root_id:
+            cached = self.cached_dirs.get(remote_path, [])
+            if cached:
+                return cached[0]
+
+        item = self._create_remote_dir(parent_id, title)
+
+        if parent_id == self.remote_root_id:
+            self.cached_dirs.setdefault(remote_path, []).append(item["id"])
+            self.cached_ids[item["id"]] = item["title"]
+
+        return item["id"]
+
+    @gdrive_retry
+    def _create_remote_dir(self, parent_id, title):
         parent = {"id": parent_id}
         item = self.drive.CreateFile(
             {"title": title, "parents": [parent], "mimeType": FOLDER_MIME_TYPE}
@@ -296,14 +329,14 @@ class RemoteGDrive(RemoteBASE):
         return item
 
     @gdrive_retry
-    def delete_remote_file(self, remote_id):
+    def _delete_remote_file(self, remote_id):
         param = {"id": remote_id}
         # it does not create a file on the remote
         item = self.drive.CreateFile(param)
         item.Delete()
 
     @gdrive_retry
-    def get_remote_item(self, name, parents_ids):
+    def _get_remote_item(self, name, parents_ids):
         if not parents_ids:
             return None
         query = "({})".format(
@@ -315,15 +348,10 @@ class RemoteGDrive(RemoteBASE):
 
         query += " and trashed=false and title='{}'".format(name)
 
-        param = {
-            "q": query,
-            # Remote might contain items with duplicated titles
-            "maxResults": 1,
-            "corpora": self.corpora,
-        }
-
-        if self._remote_drive_id:
-            param["driveId"] = self._remote_drive_id
+        # Remote might contain items with duplicated path (titles).
+        # We thus limit number of items.
+        param = {"q": query, "maxResults": 1}
+        param.update(self.list_params)
 
         # Limit found remote items count to 1 in response
         item_list = self.drive.ListFile(param).GetList()
@@ -337,29 +365,30 @@ class RemoteGDrive(RemoteBASE):
         item.FetchMetadata("driveId")
         return item.get("driveId", None)
 
-    def _get_known_remote_ids(self, path):
+    def _get_cached_remote_ids(self, path):
         if not path:
             return [self._bucket]
-        if path == self.path_info.path and self._remote_root_id:
-            return [self._remote_root_id]
-        if hasattr(self, "_cached_dirs"):
+        if self._cache_initialized:
+            if path == self.path_info.path:
+                return [self.remote_root_id]
             return self.cached_dirs.get(path, [])
         return []
 
     def _path_to_remote_ids(self, path, create):
-        remote_ids = self._get_known_remote_ids(path)
+        remote_ids = self._get_cached_remote_ids(path)
         if remote_ids:
             return remote_ids
 
-        parent_path, path_part = posixpath.split(path)
+        parent_path, part = posixpath.split(path)
         parent_ids = self._path_to_remote_ids(parent_path, create)
-        item = self.get_remote_item(path_part, parent_ids)
+        item = self._get_remote_item(part, parent_ids)
 
         if not item:
-            if create:
-                item = self.create_remote_dir(parent_ids[0], path_part)
-            else:
-                return None
+            return (
+                [self.gdrive_create_dir(parent_ids[0], part, path)]
+                if create
+                else []
+            )
 
         return [item["id"]]
 
@@ -382,16 +411,11 @@ class RemoteGDrive(RemoteBASE):
 
     def _upload(self, from_file, to_info, name, no_progress_bar):
         dirname = to_info.parent
-        if dirname:
-            parent_id = self._get_remote_id(dirname, True)
-        else:
-            parent_id = to_info.bucket
+        assert dirname
+        parent_id = self._get_remote_id(dirname, True)
 
         self.gdrive_upload_file(
-            {"title": to_info.name, "parent_id": parent_id},
-            no_progress_bar,
-            from_file,
-            name,
+            parent_id, to_info.name, no_progress_bar, from_file, name
         )
 
     def _download(self, from_info, to_file, name, no_progress_bar):
@@ -420,4 +444,4 @@ class RemoteGDrive(RemoteBASE):
 
     def remove(self, path_info):
         remote_id = self._get_remote_id(path_info)
-        self.delete_remote_file(remote_id)
+        self._delete_remote_file(remote_id)
