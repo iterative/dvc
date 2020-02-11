@@ -1,6 +1,5 @@
 """Manages logging configuration for DVC repo."""
 
-import traceback
 import logging.config
 import logging.handlers
 
@@ -37,16 +36,15 @@ class ExcludeInfoFilter(logging.Filter):
 
 
 class ColorFormatter(logging.Formatter):
-    """Enable color support when logging to a terminal that supports it.
+    """Spit out colored text in supported terminals.
 
-    Color support on Windows versions that do not support ANSI color codes is
-    enabled by use of the colorama__ library.
+    colorama__ makes ANSI escape character sequences work under Windows.
     See the colorama documentation for details.
 
     __ https://pypi.python.org/pypi/colorama
 
-    For records containing `exc_info`, it will use a custom `_walk_exc` to
-    retrieve the whole traceback.
+    If record has an extra `tb_only` attribute, it will not show the
+    exception cause, just the message and the traceback.
     """
 
     color_code = {
@@ -58,92 +56,44 @@ class ColorFormatter(logging.Formatter):
 
     def format(self, record):
         msg = record.msg.format(*record.args) if record.args else record.msg
-        exception, stack_trace = self._parse_exc(record)
-        return ("{asctime}{prefix}{description}{stack_trace}").format(
+
+        if record.levelname == "INFO":
+            return msg
+
+        if record.exc_info:
+            if getattr(record, "tb_only", False):
+                cause = ""
+            else:
+                cause = ": ".join(_iter_causes(record.exc_info[1]))
+
+            msg = "{message}{separator}{cause}".format(
+                message=msg or "",
+                separator=" - " if msg and cause else "",
+                cause=cause,
+            )
+
+            if _is_verbose():
+                msg += _stack_trace(record.exc_info)
+
+        return "{asctime}{color}{levelname}{nc}: {msg}".format(
             asctime=self.formatTime(record, self.datefmt),
-            prefix=self._prefix(record),
-            description=self._description(msg, exception),
-            stack_trace=stack_trace,
+            color=self.color_code[record.levelname],
+            nc=colorama.Fore.RESET,
+            levelname=record.levelname,
+            msg=msg,
         )
 
     def formatTime(self, record, datefmt=None):
         # only show if current level is set to DEBUG
         # also, skip INFO as it is used for UI
-        if (
-            self._current_level() != logging.DEBUG
-            or record.levelno == logging.INFO
-        ):
+        if not _is_verbose() or record.levelno == logging.INFO:
             return ""
 
-        return "{color}{date}{nc} ".format(
-            color=colorama.Fore.GREEN,
+        return "{green}{date}{nc} ".format(
+            green=colorama.Fore.GREEN,
             date=super().formatTime(record, datefmt),
             nc=colorama.Fore.RESET,
         )
-
-    def _prefix(self, record):
-        if record.levelname == "INFO":
-            return ""
-
-        return "{color}{levelname}{nc}: ".format(
-            color=self.color_code.get(record.levelname, ""),
-            levelname=record.levelname,
-            nc=colorama.Fore.RESET,
-        )
-
-    def _current_level(self):
-        return logging.getLogger("dvc").getEffectiveLevel()
-
-    def _is_visible(self, record):
-        return record.levelno >= self._current_level()
-
-    def _description(self, message, exception):
-        description = ""
-
-        if exception and message:
-            description = "{message} - {exception}"
-        elif exception:
-            description = "{exception}"
-        elif message:
-            description = "{message}"
-
-        return description.format(message=message, exception=exception)
-
-    def _walk_exc(self, exc_info):
-        exc = exc_info[1]
-
-        exc_list = [str(exc)]
-
-        while hasattr(exc, "__cause__") and exc.__cause__:
-            exc_list.append(str(exc.__cause__))
-            exc = exc.__cause__
-
-        return exc_list
-
-    def _parse_exc(self, record):
-        tb_only = getattr(record, "tb_only", False)
-
-        if not record.exc_info:
-            return (None, "")
-
-        exc_list = self._walk_exc(record.exc_info)
-        tb = traceback.format_exception(*record.exc_info)
-
-        exception = None if tb_only else ": ".join(exc_list)
-
-        if self._current_level() == logging.DEBUG:
-            stack_trace = (
-                "\n" "{red}{line}{nc}\n" "{stack_trace}" "{red}{line}{nc}"
-            ).format(
-                red=colorama.Fore.RED,
-                nc=colorama.Fore.RESET,
-                line="-" * 60,
-                stack_trace="".join(tb),
-            )
-        else:
-            stack_trace = ""
-
-        return (exception, stack_trace)
 
 
 class LoggerHandler(logging.StreamHandler):
@@ -163,6 +113,32 @@ class LoggerHandler(logging.StreamHandler):
             raise
         except Exception:
             self.handleError(record)
+
+
+def _is_verbose():
+    return logging.getLogger("dvc").getEffectiveLevel() == logging.DEBUG
+
+
+def _iter_causes(exc):
+    while exc:
+        yield str(exc)
+        exc = exc.__cause__
+
+
+def _stack_trace(exc_info):
+    import traceback
+
+    return (
+        "\n"
+        "{red}{line}{nc}\n"
+        "{trace}"
+        "{red}{line}{nc}".format(
+            red=colorama.Fore.RED,
+            line="-" * 60,
+            trace="".join(traceback.format_exception(*exc_info)),
+            nc=colorama.Fore.RESET,
+        )
+    )
 
 
 def setup(level=logging.INFO):

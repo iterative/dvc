@@ -113,7 +113,30 @@ class TestColorFormatter:
                     line="-" * 60,
                     stack_trace=stack_trace,
                     **colors,
-                    datetime=dt
+                    datetime=dt,
+                )
+            )
+
+            assert expected == formatter.format(caplog.records[0])
+
+    def test_exc_info_on_other_record_types(self, caplog, dt):
+        with caplog.at_level(logging.DEBUG, logger="dvc"):
+            try:
+                raise Exception("description")
+            except Exception:
+                stack_trace = traceback.format_exc()
+                logger.debug("", exc_info=True)
+
+            expected = (
+                "{green}{datetime}{nc} "
+                "{blue}DEBUG{nc}: description\n"
+                "{red}{line}{nc}\n"
+                "{stack_trace}"
+                "{red}{line}{nc}".format(
+                    line="-" * 60,
+                    stack_trace=stack_trace,
+                    datetime=dt,
+                    **colors,
                 )
             )
 
@@ -136,7 +159,7 @@ class TestColorFormatter:
                     line="-" * 60,
                     stack_trace=stack_trace,
                     **colors,
-                    datetime=dt
+                    datetime=dt,
                 )
             )
 
@@ -162,7 +185,7 @@ class TestColorFormatter:
                     line="-" * 60,
                     stack_trace=stack_trace,
                     **colors,
-                    datetime=dt
+                    datetime=dt,
                 )
             )
             assert expected == formatter.format(caplog.records[0])
