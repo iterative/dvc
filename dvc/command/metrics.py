@@ -273,7 +273,7 @@ def add_parser(subparsers, parent_parser):
     metrics_remove_parser.add_argument("path", help="Path to a metric file.")
     metrics_remove_parser.set_defaults(func=CmdMetricsRemove)
 
-    METRICS_DIFF_HELP = "Show a table of changes in metrics between versions"
+    METRICS_DIFF_HELP = "Show differences among metrics between versions"
     " of the DVC repository."
     metrics_diff_parser = metrics_subparsers.add_parser(
         "diff",
