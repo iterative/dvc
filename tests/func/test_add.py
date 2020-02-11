@@ -546,7 +546,7 @@ def temporary_windows_drive(tmp_path_factory):
 def test_windows_should_add_when_cache_on_different_drive(
     tmp_dir, dvc, temporary_windows_drive
 ):
-    dvc.config.set("cache", "dir", temporary_windows_drive)
+    dvc.config["cache"]["dir"] = temporary_windows_drive
     dvc.cache = Cache(dvc)
 
     (stage,) = tmp_dir.dvc_gen({"file": "file"})
