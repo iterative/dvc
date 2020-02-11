@@ -205,8 +205,7 @@ def setup_gdrive_cloud(remote_url, dvc):
     ] = TEST_GDRIVE_CLIENT_SECRET
 
     dvc.config.config = config
-    cloud = DataCloud(dvc)
-    remote = cloud.get_remote()
+    remote = DataCloud(dvc).get_remote()
     remote._create_remote_dir("root", remote.path_info.path)
 
 
