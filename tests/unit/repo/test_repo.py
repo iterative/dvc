@@ -17,7 +17,7 @@ def test_is_dvc_internal(dvc):
     ],
 )
 def test_find_outs_by_path(tmp_dir, dvc, path):
-    stage, = tmp_dir.dvc_gen(
+    (stage,) = tmp_dir.dvc_gen(
         {"dir": {"subdir": {"file": "file"}, "other": "other"}}
     )
 

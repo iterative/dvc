@@ -125,7 +125,7 @@ tests_requirements = [
 ]
 
 if (sys.version_info) >= (3, 6):
-    tests_requirements.append("black==19.3b0")
+    tests_requirements.append("black==19.10b0")
 
 setup(
     name="dvc",
