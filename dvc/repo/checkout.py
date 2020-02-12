@@ -56,7 +56,10 @@ def _checkout(
         logger.info("Nothing to do")
     failed = []
     with Tqdm(
-        total=total, unit="file", desc="Checkout", disable=total == 0
+        total=total,
+        unit="file",
+        desc="Checkout",
+        disable=True if total == 0 else None,
     ) as pbar:
         for stage, filter_info in pairs:
             failed.extend(
