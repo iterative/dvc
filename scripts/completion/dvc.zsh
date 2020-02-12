@@ -18,7 +18,7 @@ _dvc_commands() {
     "commit:Save changed data to cache and update DVC-files."
     "config:Get or set config settings."
     "destroy:Remove DVC-files, local DVC config and data cache."
-    "diff:Show a diff of a DVC controlled data file or a directory."
+    "diff:Show differences between two versions of the DVC repository."
     "fetch:Fetch data files from a DVC remote storage."
     "get-url:Download or copy files from URL."
     "get:Download data from DVC repository."
@@ -99,8 +99,8 @@ _dvc_destroy=(
 _dvc_diff=(
   "--show-json[Format the output into a JSON]"
   "--checksums[Display checksums for each entry]"
-  "1:Git reference to the older version:"
-  "2:Git reference to the newer version:"
+  "1:Old Git commit to compare (defaults to HEAD):"
+  "2:New Git commit to compare (defaults to the current workspace):"
 )
 
 _dvc_fetch=(
