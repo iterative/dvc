@@ -2,7 +2,7 @@ from dvc.repo.reproduce import _get_active_graph
 
 
 def test_get_active_graph(tmp_dir, dvc):
-    pre_foo_stage, = tmp_dir.dvc_gen({"pre-foo": "pre-foo"})
+    (pre_foo_stage,) = tmp_dir.dvc_gen({"pre-foo": "pre-foo"})
     foo_stage = dvc.run(deps=["pre-foo"], outs=["foo"], cmd="echo foo > foo")
     bar_stage = dvc.run(deps=["foo"], outs=["bar"], cmd="echo bar > bar")
     baz_stage = dvc.run(deps=["foo"], outs=["baz"], cmd="echo baz > baz")

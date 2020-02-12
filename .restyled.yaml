@@ -1,7 +1,7 @@
 ---
 restylers:
   - name: black
-    image: restyled/restyler-black:v19.3b0
+    image: restyled/restyler-black:v19.10b0
     command:
     - black
     arguments: []
