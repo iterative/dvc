@@ -9,7 +9,7 @@
 #----------------------------------------------------------
 
 _dvc_commands='add cache checkout commit config destroy diff fetch get-url get gc \
-  import-url import init install lock metrics move pipeline pull push \
+  import-url import init install lock list metrics move pipeline pull push \
   remote remove repro root run status unlock unprotect update version'
 
 _dvc_options='-h --help -V --version'
@@ -31,6 +31,7 @@ _dvc_import_url='-f --file'
 _dvc_import='-o --out --rev'
 _dvc_init='--no-scm -f --force'
 _dvc_install=''
+_dvc_list='-R --recursive --outs-only --rev $(compgen -G *)'
 _dvc_lock='$(compgen -G *.dvc)'
 _dvc_metrics='add modify rmeove show'
 _dvc_metrics_add='-t --type -x --xpath $(compgen -G *)'
@@ -60,6 +61,26 @@ _dvc_unprotect='$(compgen -G *)'
 _dvc_update='$(compgen -G *.dvc)'
 _dvc_version=''
 
+# Params
+# $1 - COMP_WORDS[1]
+comp_command() {
+  local options_list="_dvc_$(replace_hyphen $1)"
+
+  COMPREPLY=( $(compgen -W "$_dvc_global_options ${!options_list}" -- "$word") )
+}
+
+# Params
+# $1 - COMP_WORDS[1]
+# $1 - COMP_WORDS[2]
+comp_subcommand() {
+  local options_list="_dvc_$(replace_hyphen $1)_$(replace_hyphen $2)"
+  if [ -z "${!options_list}" ]; then
+    comp_command $1
+  else
+    COMPREPLY=( $(compgen -W "$_dvc_global_options ${!options_list}" -- "$word") )
+  fi
+}
+
 # Notes:
 #
 # `COMPREPLY` contains what will be rendered after completion is triggered
@@ -76,7 +97,6 @@ _dvc() {
   replace_hyphen() {
     echo $(echo $1 | sed 's/-/_/g')
   }
-
   local word="${COMP_WORDS[COMP_CWORD]}"
 
   COMPREPLY=()
@@ -87,13 +107,9 @@ _dvc() {
       *) COMPREPLY=($(compgen -W "$_dvc_commands" -- "$word")) ;;
     esac
   elif [ "${COMP_CWORD}" -eq 2 ]; then
-    local options_list="_dvc_$(replace_hyphen ${COMP_WORDS[1]})"
-
-    COMPREPLY=($(compgen -W "$_dvc_global_options ${!options_list}" -- "$word"))
+    comp_command ${COMP_WORDS[1]}
   elif [ "${COMP_CWORD}" -eq 3 ]; then
-    local options_list="_dvc_$(replace_hyphen ${COMP_WORDS[1]})_$(replace_hyphen ${COMP_WORDS[2]})"
-
-    COMPREPLY=($(compgen -W "$_dvc_global_options ${!options_list}" -- "$word"))
+    comp_subcommand ${COMP_WORDS[1]} ${COMP_WORDS[2]}
   fi
 
   return 0

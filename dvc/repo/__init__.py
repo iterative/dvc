@@ -43,6 +43,7 @@ class Repo(object):
     from dvc.repo.install import install
     from dvc.repo.add import add
     from dvc.repo.remove import remove
+    from dvc.repo.ls import ls
     from dvc.repo.lock import lock as lock_stage
     from dvc.repo.move import move
     from dvc.repo.run import run
