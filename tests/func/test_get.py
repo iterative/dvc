@@ -177,10 +177,10 @@ def test_get_file_from_dir(tmp_dir, erepo_dir):
                 "dir": {
                     "1": "1",
                     "2": "2",
-                    "subdir": {"foo": "foo", "bar": "bar"}
+                    "subdir": {"foo": "foo", "bar": "bar"},
                 }
             },
-            commit="create dir"
+            commit="create dir",
         )
 
     Repo.get(fspath(erepo_dir), os.path.join("dir", "1"))
