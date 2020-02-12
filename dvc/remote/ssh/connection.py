@@ -172,7 +172,7 @@ class SSHConnection:
         else:
             self._remove_file(path)
 
-    def download(self, src, dest, no_progress_bar=False, progress_title=None):
+    def download(self, src, dest, no_progress_bar=None, progress_title=None):
         with Tqdm(
             desc=progress_title or os.path.basename(src),
             disable=no_progress_bar,
@@ -202,7 +202,7 @@ class SSHConnection:
         finally:
             self.remove(tmp)
 
-    def upload(self, src, dest, no_progress_bar=False, progress_title=None):
+    def upload(self, src, dest, no_progress_bar=None, progress_title=None):
         self.makedirs(posixpath.dirname(dest))
         tmp_file = tmp_fname(dest)
         if not progress_title:

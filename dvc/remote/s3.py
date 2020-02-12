@@ -267,7 +267,7 @@ class RemoteS3(RemoteBASE):
         dir_path = path_info / ""
         return bool(list(self._list_paths(dir_path, max_items=1)))
 
-    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
+    def _upload(self, from_file, to_info, name=None, no_progress_bar=None):
         total = os.path.getsize(from_file)
         with Tqdm(
             disable=no_progress_bar, total=total, bytes=True, desc=name
@@ -280,7 +280,7 @@ class RemoteS3(RemoteBASE):
                 ExtraArgs=self.extra_args,
             )
 
-    def _download(self, from_info, to_file, name=None, no_progress_bar=False):
+    def _download(self, from_info, to_file, name=None, no_progress_bar=None):
         if no_progress_bar:
             total = None
         else:

@@ -102,7 +102,7 @@ class RemoteOSS(RemoteBASE):
         return self._list_paths(self.path_info.path)
 
     def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
+        self, from_file, to_info, name=None, no_progress_bar=None, **_kwargs
     ):
         with Tqdm(desc=name, disable=no_progress_bar, bytes=True) as pbar:
             self.oss_service.put_object_from_file(
@@ -110,7 +110,7 @@ class RemoteOSS(RemoteBASE):
             )
 
     def _download(
-        self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
+        self, from_info, to_file, name=None, no_progress_bar=None, **_kwargs
     ):
         with Tqdm(desc=name, disable=no_progress_bar, bytes=True) as pbar:
             self.oss_service.get_object_to_file(

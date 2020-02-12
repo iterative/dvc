@@ -560,7 +560,7 @@ class RemoteBASE(object):
         )
         return 1
 
-    def upload(self, from_info, to_info, name=None, no_progress_bar=False):
+    def upload(self, from_info, to_info, name=None, no_progress_bar=None):
         if not hasattr(self, "_upload"):
             raise RemoteActionNotImplemented("upload", self.scheme)
 
@@ -593,7 +593,7 @@ class RemoteBASE(object):
         from_info,
         to_info,
         name=None,
-        no_progress_bar=False,
+        no_progress_bar=None,
         file_mode=None,
         dir_mode=None,
     ):

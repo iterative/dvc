@@ -229,7 +229,7 @@ class RemoteLOCAL(RemoteBASE):
         ]
 
     def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
+        self, from_file, to_info, name=None, no_progress_bar=None, **_kwargs
     ):
         makedirs(to_info.parent, exist_ok=True)
 
@@ -240,7 +240,7 @@ class RemoteLOCAL(RemoteBASE):
         os.rename(tmp_file, fspath_py35(to_info))
 
     def _download(
-        self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
+        self, from_info, to_file, name=None, no_progress_bar=None, **_kwargs
     ):
         copyfile(
             from_info, to_file, no_progress_bar=no_progress_bar, name=name

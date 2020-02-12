@@ -33,7 +33,7 @@ class RemoteHTTP(RemoteBASE):
                 "files. Use: `dvc remote modify <name> no_traverse true`"
             )
 
-    def _download(self, from_info, to_file, name=None, no_progress_bar=False):
+    def _download(self, from_info, to_file, name=None, no_progress_bar=None):
         response = self._request("GET", from_info.url, stream=True)
         if response.status_code != 200:
             raise HTTPError(response.status_code, response.reason)
