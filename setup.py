@@ -85,7 +85,7 @@ install_requires = [
 # Extra dependencies for remote integrations
 
 gs = ["google-cloud-storage==1.19.0"]
-gdrive = ["pydrive2>=1.4.2"]
+gdrive = ["pydrive2>=1.4.5"]
 s3 = ["boto3>=1.9.201"]
 azure = ["azure-storage-blob==2.1.0"]
 oss = ["oss2==2.6.1"]
@@ -125,7 +125,7 @@ tests_requirements = [
 ]
 
 if (sys.version_info) >= (3, 6):
-    tests_requirements.append("black==19.3b0")
+    tests_requirements.append("black==19.10b0")
 
 setup(
     name="dvc",

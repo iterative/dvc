@@ -51,7 +51,6 @@ class ColorFormatter(logging.Formatter):
 
     color_code = {
         "DEBUG": colorama.Fore.BLUE,
-        "INFO": "",
         "WARNING": colorama.Fore.YELLOW,
         "ERROR": colorama.Fore.RED,
         "CRITICAL": colorama.Fore.RED,
@@ -59,29 +58,21 @@ class ColorFormatter(logging.Formatter):
 
     def format(self, record):
         msg = record.msg.format(*record.args) if record.args else record.msg
+        exception, stack_trace = self._parse_exc(record)
+        return ("{prefix}{description}{stack_trace}").format(
+            prefix=self._prefix(record),
+            description=self._description(msg, exception),
+            stack_trace=stack_trace,
+        )
 
+    def _prefix(self, record):
         if record.levelname == "INFO":
-            return msg
+            return ""
 
-        if record.levelname == "ERROR" or record.levelname == "CRITICAL":
-            exception, stack_trace = self._parse_exc(record)
-
-            return (
-                "{color}{levelname}{nc}: {description}" "{stack_trace}\n"
-            ).format(
-                color=self.color_code.get(record.levelname, ""),
-                nc=colorama.Fore.RESET,
-                levelname=record.levelname,
-                description=self._description(msg, exception),
-                msg=msg,
-                stack_trace=stack_trace,
-            )
-
-        return "{color}{levelname}{nc}: {msg}".format(
+        return "{color}{levelname}{nc}: ".format(
             color=self.color_code.get(record.levelname, ""),
-            nc=colorama.Fore.RESET,
             levelname=record.levelname,
-            msg=msg,
+            nc=colorama.Fore.RESET,
         )
 
     def _current_level(self):

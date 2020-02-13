@@ -9,10 +9,9 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing, contextmanager
 from urllib.parse import urlparse
 
-from funcy import memoize, wrap_with
+from funcy import memoize, wrap_with, silent, first
 
 import dvc.prompt as prompt
-from dvc.config import Config
 from dvc.progress import Tqdm
 from dvc.remote.base import RemoteBASE
 from dvc.remote.pool import get_connection
@@ -50,20 +49,20 @@ class RemoteSSH(RemoteBASE):
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
-        url = config.get(Config.SECTION_REMOTE_URL)
+        url = config.get("url")
         if url:
             parsed = urlparse(url)
             user_ssh_config = self._load_user_ssh_config(parsed.hostname)
 
             host = user_ssh_config.get("hostname", parsed.hostname)
             user = (
-                config.get(Config.SECTION_REMOTE_USER)
+                config.get("user")
                 or parsed.username
                 or user_ssh_config.get("user")
                 or getpass.getuser()
             )
             port = (
-                config.get(Config.SECTION_REMOTE_PORT)
+                config.get("port")
                 or parsed.port
                 or self._try_get_ssh_config_port(user_ssh_config)
                 or self.DEFAULT_PORT
@@ -80,14 +79,12 @@ class RemoteSSH(RemoteBASE):
             user_ssh_config = {}
 
         self.keyfile = config.get(
-            Config.SECTION_REMOTE_KEY_FILE
+            "keyfile"
         ) or self._try_get_ssh_config_keyfile(user_ssh_config)
-        self.timeout = config.get(Config.SECTION_REMOTE_TIMEOUT, self.TIMEOUT)
-        self.password = config.get(Config.SECTION_REMOTE_PASSWORD, None)
-        self.ask_password = config.get(
-            Config.SECTION_REMOTE_ASK_PASSWORD, False
-        )
-        self.gss_auth = config.get(Config.SECTION_REMOTE_GSS_AUTH, False)
+        self.timeout = config.get("timeout", self.TIMEOUT)
+        self.password = config.get("password", None)
+        self.ask_password = config.get("ask_password", False)
+        self.gss_auth = config.get("gss_auth", False)
 
     @staticmethod
     def ssh_config_filename():
@@ -110,17 +107,11 @@ class RemoteSSH(RemoteBASE):
 
     @staticmethod
     def _try_get_ssh_config_port(user_ssh_config):
-        try:
-            return int(user_ssh_config.get("port"))
-        except (ValueError, TypeError):
-            return None
+        return silent(int)(user_ssh_config.get("port"))
 
     @staticmethod
     def _try_get_ssh_config_keyfile(user_ssh_config):
-        identity_file = user_ssh_config.get("identityfile")
-        if identity_file and len(identity_file) > 0:
-            return identity_file[0]
-        return None
+        return first(user_ssh_config.get("identityfile") or ())
 
     def ensure_credentials(self, path_info=None):
         if path_info is None:

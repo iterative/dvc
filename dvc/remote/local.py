@@ -7,27 +7,17 @@ from functools import partial
 
 from shortuuid import uuid
 
-from dvc.config import Config
-from dvc.exceptions import DownloadError
-from dvc.exceptions import DvcException
-from dvc.exceptions import UploadError
+from dvc.compat import fspath_py35
+from dvc.exceptions import DvcException, DownloadError, UploadError
 from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import RemoteBASE
-from dvc.remote.base import STATUS_DELETED
-from dvc.remote.base import STATUS_MAP
-from dvc.remote.base import STATUS_MISSING
-from dvc.remote.base import STATUS_NEW
+from dvc.remote.base import RemoteBASE, STATUS_MAP
+from dvc.remote.base import STATUS_DELETED, STATUS_MISSING, STATUS_NEW
 from dvc.scheme import Schemes
 from dvc.scm.tree import is_working_tree
 from dvc.system import System
-from dvc.utils.fs import copyfile
-from dvc.utils import file_md5
-from dvc.utils import relpath
-from dvc.utils import tmp_fname
-from dvc.compat import fspath_py35
-from dvc.utils.fs import move, makedirs, remove
-from dvc.utils.fs import walk_files
+from dvc.utils import file_md5, relpath, tmp_fname
+from dvc.utils.fs import copyfile, move, makedirs, remove, walk_files
 
 logger = logging.getLogger(__name__)
 
@@ -46,22 +36,16 @@ class RemoteLOCAL(RemoteBASE):
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
-        self.protected = config.get(Config.SECTION_CACHE_PROTECTED, False)
+        self.protected = config.get("protected", False)
 
-        shared = config.get(Config.SECTION_CACHE_SHARED)
+        shared = config.get("shared")
         self._file_mode, self._dir_mode = self.SHARED_MODE_MAP[shared]
 
         if self.protected:
             # cache files are set to be read-only for everyone
             self._file_mode = stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH
 
-        cache_dir = config.get(Config.SECTION_REMOTE_URL)
-
-        if cache_dir is not None and not os.path.isabs(cache_dir):
-            cwd = config[Config.PRIVATE_CWD]
-            cache_dir = os.path.abspath(os.path.join(cwd, cache_dir))
-
-        self.cache_dir = cache_dir
+        self.cache_dir = config.get("url")
         self._dir_info = {}
 
     @property

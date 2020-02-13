@@ -155,7 +155,7 @@ class TestExternalRemoteResolution(TestDvc):
 
 
 def test_md5_ignores_comments(tmp_dir, dvc):
-    stage, = tmp_dir.dvc_gen("foo", "foo content")
+    (stage,) = tmp_dir.dvc_gen("foo", "foo content")
 
     with open(stage.path, "a") as f:
         f.write("# End comment\n")
@@ -165,7 +165,7 @@ def test_md5_ignores_comments(tmp_dir, dvc):
 
 
 def test_meta_is_preserved(tmp_dir, dvc):
-    stage, = tmp_dir.dvc_gen("foo", "foo content")
+    (stage,) = tmp_dir.dvc_gen("foo", "foo content")
 
     # Add meta to DVC-file
     data = load_stage_file(stage.path)

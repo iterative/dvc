@@ -9,7 +9,6 @@ from dvc.compat import fspath
 from dvc.exceptions import FileMissingError
 from dvc.main import main
 from dvc.path_info import URLInfo
-from dvc.remote.config import RemoteConfig
 from tests.remotes import Azure, GCP, HDFS, Local, OSS, S3, SSH
 
 
@@ -109,9 +108,9 @@ def test_missing(remote_url, tmp_dir, dvc):
 
 
 def _set_remote_url_and_commit(repo, remote_url):
-    rconfig = RemoteConfig(repo.config)
-    rconfig.modify("upstream", "url", remote_url)
-    repo.scm.add([repo.config.config_file])
+    with repo.config.edit() as conf:
+        conf["remote"]["upstream"]["url"] = remote_url
+    repo.scm.add([repo.config.files["repo"]])
     repo.scm.commit("modify remote")
 
 

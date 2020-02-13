@@ -30,8 +30,8 @@ def test_metrics_diff(dvc, mocker):
     m.assert_called_once_with(
         cmd.repo,
         targets=["target1", "target2"],
-        a_ref="HEAD~10",
-        b_ref="HEAD~1",
+        a_rev="HEAD~10",
+        b_rev="HEAD~1",
         typ="json",
         xpath="x.path",
         recursive=True,

@@ -44,7 +44,7 @@ class TestColorFormatter:
         with caplog.at_level(logging.INFO, logger="dvc"):
             logger.error("message")
 
-            expected = "{red}ERROR{nc}: message\n".format(**colors)
+            expected = "{red}ERROR{nc}: message".format(**colors)
 
             assert expected == formatter.format(caplog.records[0])
 
@@ -55,7 +55,7 @@ class TestColorFormatter:
             except Exception:
                 logger.exception("message")
 
-            expected = "{red}ERROR{nc}: message\n".format(**colors)
+            expected = "{red}ERROR{nc}: message".format(**colors)
 
             assert expected == formatter.format(caplog.records[0])
 
@@ -66,7 +66,7 @@ class TestColorFormatter:
             except Exception:
                 logger.exception("")
 
-            expected = "{red}ERROR{nc}: description\n".format(**colors)
+            expected = "{red}ERROR{nc}: description".format(**colors)
 
             assert expected == formatter.format(caplog.records[0])
 
@@ -77,9 +77,7 @@ class TestColorFormatter:
             except Exception:
                 logger.exception("message")
 
-            expected = "{red}ERROR{nc}: message - description\n".format(
-                **colors
-            )
+            expected = "{red}ERROR{nc}: message - description".format(**colors)
 
             assert expected == formatter.format(caplog.records[0])
 
@@ -95,7 +93,7 @@ class TestColorFormatter:
                 "{red}ERROR{nc}: description\n"
                 "{red}{line}{nc}\n"
                 "{stack_trace}"
-                "{red}{line}{nc}\n".format(
+                "{red}{line}{nc}".format(
                     line="-" * 60, stack_trace=stack_trace, **colors
                 )
             )
@@ -114,7 +112,7 @@ class TestColorFormatter:
                 "{red}ERROR{nc}: something\n"
                 "{red}{line}{nc}\n"
                 "{stack_trace}"
-                "{red}{line}{nc}\n".format(
+                "{red}{line}{nc}".format(
                     line="-" * 60, stack_trace=stack_trace, **colors
                 )
             )
@@ -136,7 +134,7 @@ class TestColorFormatter:
                 "{red}ERROR{nc}: message - second: first\n"
                 "{red}{line}{nc}\n"
                 "{stack_trace}"
-                "{red}{line}{nc}\n".format(
+                "{red}{line}{nc}".format(
                     line="-" * 60, stack_trace=stack_trace, **colors
                 )
             )

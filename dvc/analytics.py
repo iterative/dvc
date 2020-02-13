@@ -54,11 +54,8 @@ def is_enabled():
         return False
 
     enabled = to_bool(
-        Config(validate=False)
-        .config.get(Config.SECTION_CORE, {})
-        .get(Config.SECTION_CORE_ANALYTICS, "true")
+        Config(validate=False).get("core", {}).get("analytics", "true")
     )
-
     logger.debug("Analytics is {}abled.".format("en" if enabled else "dis"))
 
     return enabled
@@ -76,7 +73,10 @@ def send(report):
     headers = {"content-type": "application/json"}
 
     with open(report, "rb") as fobj:
-        requests.post(url, data=fobj, headers=headers, timeout=5)
+        try:
+            requests.post(url, data=fobj, headers=headers, timeout=5)
+        except requests.exceptions.RequestException:
+            logger.debug("failed to send analytics report", exc_info=True)
 
     os.remove(report)
 
@@ -141,7 +141,7 @@ def _find_or_create_user_id():
 
     IDs are generated randomly with UUID.
     """
-    config_dir = Config.get_global_config_dir()
+    config_dir = Config.get_dir("global")
     fname = os.path.join(config_dir, "user_id")
     lockfile = os.path.join(config_dir, "user_id.lock")
 

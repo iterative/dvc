@@ -6,7 +6,7 @@ import threading
 
 from funcy import cached_property, wrap_prop
 
-from dvc.config import Config, ConfigError
+from dvc.config import ConfigError
 from dvc.exceptions import DvcException
 from dvc.exceptions import ETagMismatchError
 from dvc.path_info import CloudURLInfo
@@ -26,35 +26,33 @@ class RemoteS3(RemoteBASE):
     def __init__(self, repo, config):
         super().__init__(repo, config)
 
-        url = config.get(Config.SECTION_REMOTE_URL, "s3://")
+        url = config.get("url", "s3://")
         self.path_info = self.path_cls(url)
 
-        self.region = config.get(Config.SECTION_AWS_REGION)
+        self.region = config.get("region")
+        self.profile = config.get("profile")
+        self.endpoint_url = config.get("endpointurl")
 
-        self.profile = config.get(Config.SECTION_AWS_PROFILE)
-
-        self.endpoint_url = config.get(Config.SECTION_AWS_ENDPOINT_URL)
-
-        if config.get(Config.SECTION_AWS_LIST_OBJECTS):
+        if config.get("listobjects"):
             self.list_objects_api = "list_objects"
         else:
             self.list_objects_api = "list_objects_v2"
 
-        self.use_ssl = config.get(Config.SECTION_AWS_USE_SSL, True)
+        self.use_ssl = config.get("use_ssl", True)
 
         self.extra_args = {}
 
-        self.sse = config.get(Config.SECTION_AWS_SSE, "")
+        self.sse = config.get("sse")
         if self.sse:
             self.extra_args["ServerSideEncryption"] = self.sse
 
-        self.acl = config.get(Config.SECTION_AWS_ACL, "")
+        self.acl = config.get("acl")
         if self.acl:
             self.extra_args["ACL"] = self.acl
 
         self._append_aws_grants_to_extra_args(config)
 
-        shared_creds = config.get(Config.SECTION_AWS_CREDENTIALPATH)
+        shared_creds = config.get("credentialpath")
         if shared_creds:
             os.environ.setdefault("AWS_SHARED_CREDENTIALS_FILE", shared_creds)
 
@@ -322,14 +320,14 @@ class RemoteS3(RemoteBASE):
         """
 
         grants = {
-            Config.SECTION_AWS_GRANT_FULL_CONTROL: "GrantFullControl",
-            Config.SECTION_AWS_GRANT_READ: "GrantRead",
-            Config.SECTION_AWS_GRANT_READ_ACP: "GrantReadACP",
-            Config.SECTION_AWS_GRANT_WRITE_ACP: "GrantWriteACP",
+            "grant_full_control": "GrantFullControl",
+            "grant_read": "GrantRead",
+            "grant_read_acp": "GrantReadACP",
+            "grant_write_acp": "GrantWriteACP",
         }
 
         for grant_option, extra_args_key in grants.items():
-            if config.get(grant_option, ""):
+            if config.get(grant_option):
                 if self.acl:
                     raise ConfigError(
                         "`acl` and `grant_*` AWS S3 config options "

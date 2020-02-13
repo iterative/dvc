@@ -4,7 +4,6 @@ import os
 import pytest
 
 from dvc.cache import Cache
-from dvc.config import Config
 from dvc.main import main
 from dvc.exceptions import PathMissingError
 from dvc.repo.get import GetDVCFileError
@@ -61,12 +60,11 @@ def test_get_git_dir(tmp_dir, erepo_dir):
 
 def test_cache_type_is_properly_overridden(tmp_dir, erepo_dir):
     with erepo_dir.chdir():
-        erepo_dir.dvc.config.set(
-            Config.SECTION_CACHE, Config.SECTION_CACHE_TYPE, "symlink"
-        )
+        with erepo_dir.dvc.config.edit() as conf:
+            conf["cache"]["type"] = "symlink"
         erepo_dir.dvc.cache = Cache(erepo_dir.dvc)
         erepo_dir.scm_add(
-            [erepo_dir.dvc.config.config_file], "set cache type to symlinks"
+            [erepo_dir.dvc.config.files["repo"]], "set cache type to symlinks"
         )
         erepo_dir.dvc_gen("file", "contents", "create file")
     assert System.is_symlink(erepo_dir / "file")

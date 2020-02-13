@@ -35,7 +35,7 @@ class CmdBase(object):
         self.repo = Repo()
         self.config = self.repo.config
         self.args = args
-        hardlink_lock = self.config.config["core"].get("hardlink_lock", False)
+        hardlink_lock = self.config["core"].get("hardlink_lock", False)
         updater = Updater(self.repo.dvc_dir, hardlink_lock=hardlink_lock)
         updater.check()
 
