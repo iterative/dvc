@@ -655,3 +655,24 @@ def test_add_from_data_dir(tmp_dir, scm, dvc):
         "tracked output: 'dir'.\n"
         "To include '{out}' in 'dir', run 'dvc commit dir.dvc'"
     ).format(out=os.path.join("dir", "file2"))
+
+
+def test_pull_same_lowercase_names(tmp_dir, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen(
+            {"dir": {"file": "file content", "File": "File " "content"}},
+            commit="create data",
+        )
+
+    from dvc.scm import Git
+
+    Git.clone(fspath(erepo_dir), ".")
+
+    repo = DvcRepo(".")
+    repo.pull()
+
+    assert (tmp_dir / "dir" / "file").exists()
+    assert (tmp_dir / "dir" / "File").exists()
+
+    assert (tmp_dir / "dir" / "file").read_text() == "file content"
+    assert (tmp_dir / "dir" / "File").read_text() == "File content"
