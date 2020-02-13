@@ -1,4 +1,3 @@
-import logging
 import os
 from contextlib import contextmanager
 from functools import wraps
@@ -19,9 +18,6 @@ from dvc.path_info import PathInfo
 from dvc.remote.base import RemoteActionNotImplemented
 from dvc.utils.fs import path_isin
 from .graph import check_acyclic, get_pipeline, get_pipelines
-
-
-logger = logging.getLogger(__name__)
 
 
 def locked(f):
@@ -99,10 +95,6 @@ class Repo(object):
         # NOTE: storing state and link_state in the repository itself to avoid
         # any possible state corruption in 'shared cache dir' scenario.
         self.state = State(self)
-
-        level = self.config.get("core", {}).get("loglevel")
-        if level:
-            logger.setLevel(level.upper())
 
         self.cache = Cache(self)
         self.cloud = DataCloud(self)
