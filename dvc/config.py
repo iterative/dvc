@@ -100,10 +100,6 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     LEVEL_SYSTEM = 3
 
     SECTION_CORE = "core"
-    SECTION_CORE_LOGLEVEL = "loglevel"
-    SECTION_CORE_LOGLEVEL_SCHEMA = All(
-        Lower, Choices("info", "debug", "warning", "error")
-    )
     SECTION_CORE_REMOTE = "remote"
     SECTION_CORE_INTERACTIVE = "interactive"
     SECTION_CORE_ANALYTICS = "analytics"
@@ -139,7 +135,6 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     }
 
     SECTION_CORE_SCHEMA = {
-        SECTION_CORE_LOGLEVEL: SECTION_CORE_LOGLEVEL_SCHEMA,
         SECTION_CORE_REMOTE: Lower,
         Optional(SECTION_CORE_INTERACTIVE, default=False): Bool,
         Optional(SECTION_CORE_ANALYTICS, default=True): Bool,
