@@ -335,7 +335,17 @@ class Repo(object):
             for out in stage.outs:
                 for p in out.path_info.parents:
                     if p in outs:
-                        raise OverlappingOutputPathsError(outs[p], out)
+                        msg = (
+                            "Paths for outs:\n'{}'('{}')\n'{}'('{}')\n"
+                            "overlap. To avoid unpredictable behaviour, "
+                            "rerun command with non overlapping outs paths."
+                        ).format(
+                            str(outs[p]),
+                            outs[p].stage.relpath,
+                            str(out),
+                            out.stage.relpath,
+                        )
+                        raise OverlappingOutputPathsError(outs[p], out, msg)
 
         for stage in stages:
             stage_path_info = PathInfo(stage.path)

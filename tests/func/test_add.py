@@ -11,7 +11,7 @@ from mock import patch
 
 import dvc as dvc_module
 from dvc.cache import Cache
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, OverlappingOutputPathsError
 from dvc.exceptions import RecursiveAddingWhileUsingFilename
 from dvc.exceptions import StageFileCorruptedError
 from dvc.main import main
@@ -641,3 +641,17 @@ def test_escape_gitignore_entries(tmp_dir, scm, dvc):
 
     tmp_dir.dvc_gen(fname, "...")
     assert ignored_fname in get_gitignore_content()
+
+
+def test_add_from_data_dir(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen({"dir": {"file1": "file1 content"}})
+
+    tmp_dir.gen({"dir": {"file2": "file2 content"}})
+
+    with pytest.raises(OverlappingOutputPathsError) as e:
+        dvc.add(os.path.join("dir", "file2"))
+    assert str(e.value) == (
+        "Cannot add '{out}', because it is overlapping with other DVC "
+        "tracked output: 'dir'.\n"
+        "To include '{out}' in 'dir', run 'dvc commit dir.dvc'"
+    ).format(out=os.path.join("dir", "file2"))
