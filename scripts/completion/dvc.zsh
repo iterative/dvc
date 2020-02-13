@@ -18,7 +18,7 @@ _dvc_commands() {
     "commit:Save changed data to cache and update DVC-files."
     "config:Get or set config settings."
     "destroy:Remove DVC-files, local DVC config and data cache."
-    "diff:Show differences between two commits in the DVC repository."
+    "diff:Show changes between commits in the DVC repository, or between a commit and the workspace."
     "fetch:Fetch data files from a DVC remote storage."
     "get-url:Download or copy files from URL."
     "get:Download data from DVC repository."
