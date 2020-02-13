@@ -1,17 +1,17 @@
 """DVC config objects."""
-
-import copy
-import errno
+from contextlib import contextmanager
 import logging
 import os
 import re
+from urllib.parse import urlparse
 
+from funcy import cached_property, re_find, walk_values, compact
 import configobj
-from voluptuous import Schema, Required, Optional, Invalid
-from voluptuous import All, Any, Lower, Range, Coerce, Match
+from voluptuous import Schema, Optional, Invalid, ALLOW_EXTRA
+from voluptuous import All, Any, Lower, Range, Coerce
 
-from dvc.exceptions import DvcException
-from dvc.exceptions import NotDvcRepoError
+from dvc.exceptions import DvcException, NotDvcRepoError
+from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
 
@@ -48,13 +48,12 @@ def supported_cache_type(types):
 
 
 # Checks that value is either true or false and converts it to bool
-Bool = All(
+to_bool = Bool = All(
     Lower,
     Any("true", "false"),
     lambda v: v == "true",
     msg="expected true or false",
 )
-to_bool = Schema(Bool)
 
 
 def Choices(*choices):
@@ -67,7 +66,125 @@ def Choices(*choices):
     return Any(*choices, msg="expected one of {}".format(", ".join(choices)))
 
 
-class Config(object):  # pylint: disable=too-many-instance-attributes
+def ByUrl(mapping):
+    schemas = walk_values(Schema, mapping)
+
+    def validate(data):
+        if "url" not in data:
+            raise Invalid("expected 'url'")
+
+        parsed = urlparse(data["url"])
+        # Windows absolute paths should really have scheme == "" (local)
+        if os.name == "nt" and len(parsed.scheme) == 1 and parsed.netloc == "":
+            return schemas[""](data)
+        if parsed.scheme not in schemas:
+            raise Invalid("Unsupported URL type {}://".format(parsed.scheme))
+
+        return schemas[parsed.scheme](data)
+
+    return validate
+
+
+class RelPath(str):
+    pass
+
+
+REMOTE_COMMON = {
+    "url": str,
+    "checksum_jobs": All(Coerce(int), Range(1)),
+    "no_traverse": Bool,
+    "verify": Bool,
+}
+LOCAL_COMMON = {
+    "type": supported_cache_type,
+    Optional("protected", default=False): Bool,
+    "shared": All(Lower, Choices("group")),
+    Optional("slow_link_warning", default=True): Bool,
+}
+SCHEMA = {
+    "core": {
+        "remote": Lower,
+        "checksum_jobs": All(Coerce(int), Range(1)),
+        "loglevel": All(Lower, Choices("info", "debug", "warning", "error")),
+        Optional("interactive", default=False): Bool,
+        Optional("analytics", default=True): Bool,
+        Optional("hardlink_lock", default=False): Bool,
+    },
+    "cache": {
+        "local": str,
+        "s3": str,
+        "gs": str,
+        "hdfs": str,
+        "ssh": str,
+        "azure": str,
+        # This is for default local cache
+        "dir": str,
+        **LOCAL_COMMON,
+    },
+    "remote": {
+        str: ByUrl(
+            {
+                "": {**LOCAL_COMMON, **REMOTE_COMMON},
+                "s3": {
+                    "region": str,
+                    "profile": str,
+                    "credentialpath": str,
+                    "endpointurl": str,
+                    Optional("listobjects", default=False): Bool,
+                    Optional("use_ssl", default=True): Bool,
+                    "sse": str,
+                    "acl": str,
+                    "grant_read": str,
+                    "grant_read_acp": str,
+                    "grant_write_acp": str,
+                    "grant_full_control": str,
+                    **REMOTE_COMMON,
+                },
+                "gs": {
+                    "projectname": str,
+                    "credentialpath": str,
+                    **REMOTE_COMMON,
+                },
+                "ssh": {
+                    "type": supported_cache_type,
+                    "port": Coerce(int),
+                    "user": str,
+                    "password": str,
+                    "ask_password": Bool,
+                    "keyfile": str,
+                    "timeout": Coerce(int),
+                    "gss_auth": Bool,
+                    **REMOTE_COMMON,
+                },
+                "hdfs": {"user": str, **REMOTE_COMMON},
+                "azure": {"connection_string": str, **REMOTE_COMMON},
+                "oss": {
+                    "oss_key_id": str,
+                    "oss_key_secret": str,
+                    "oss_endpoint": str,
+                    **REMOTE_COMMON,
+                },
+                "gdrive": {
+                    "gdrive_client_id": str,
+                    "gdrive_client_secret": str,
+                    "gdrive_user_credentials_file": str,
+                    **REMOTE_COMMON,
+                },
+                "http": REMOTE_COMMON,
+                "https": REMOTE_COMMON,
+                "remote": {str: object},  # Any of the above options are valid
+            }
+        )
+    },
+    "state": {
+        "row_limit": All(Coerce(int), Range(1)),
+        "row_cleanup_quota": All(Coerce(int), Range(0, 100)),
+    },
+}
+COMPILED_SCHEMA = Schema(SCHEMA)
+
+
+class Config(dict):
     """Class that manages configuration files for a DVC repo.
 
     Args:
@@ -85,168 +202,14 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     APPNAME = "dvc"
     APPAUTHOR = "iterative"
 
-    # NOTE: used internally in RemoteLOCAL to know config
-    # location, that url should resolved relative to.
-    PRIVATE_CWD = "_cwd"
+    # In the order they shadow each other
+    LEVELS = ("system", "global", "repo", "local")
 
     CONFIG = "config"
     CONFIG_LOCAL = "config.local"
 
-    CREDENTIALPATH = "credentialpath"
-
-    LEVEL_LOCAL = 0
-    LEVEL_REPO = 1
-    LEVEL_GLOBAL = 2
-    LEVEL_SYSTEM = 3
-
-    SECTION_CORE = "core"
-    SECTION_CORE_LOGLEVEL = "loglevel"
-    SECTION_CORE_LOGLEVEL_SCHEMA = All(
-        Lower, Choices("info", "debug", "warning", "error")
-    )
-    SECTION_CORE_REMOTE = "remote"
-    SECTION_CORE_INTERACTIVE = "interactive"
-    SECTION_CORE_ANALYTICS = "analytics"
-    SECTION_CORE_CHECKSUM_JOBS = "checksum_jobs"
-    SECTION_CORE_HARDLINK_LOCK = "hardlink_lock"
-
-    SECTION_CACHE = "cache"
-    SECTION_CACHE_DIR = "dir"
-    SECTION_CACHE_TYPE = "type"
-    SECTION_CACHE_PROTECTED = "protected"
-    SECTION_CACHE_SHARED = "shared"
-    SECTION_CACHE_SHARED_SCHEMA = All(Lower, Choices("group"))
-    SECTION_CACHE_LOCAL = "local"
-    SECTION_CACHE_S3 = "s3"
-    SECTION_CACHE_GS = "gs"
-    SECTION_CACHE_SSH = "ssh"
-    SECTION_CACHE_HDFS = "hdfs"
-    SECTION_CACHE_AZURE = "azure"
-    SECTION_CACHE_SLOW_LINK_WARNING = "slow_link_warning"
-    SECTION_CACHE_SCHEMA = {
-        SECTION_CACHE_LOCAL: str,
-        SECTION_CACHE_S3: str,
-        SECTION_CACHE_GS: str,
-        SECTION_CACHE_HDFS: str,
-        SECTION_CACHE_SSH: str,
-        SECTION_CACHE_AZURE: str,
-        SECTION_CACHE_DIR: str,
-        SECTION_CACHE_TYPE: supported_cache_type,
-        Optional(SECTION_CACHE_PROTECTED, default=False): Bool,
-        SECTION_CACHE_SHARED: SECTION_CACHE_SHARED_SCHEMA,
-        PRIVATE_CWD: str,
-        Optional(SECTION_CACHE_SLOW_LINK_WARNING, default=True): Bool,
-    }
-
-    SECTION_CORE_SCHEMA = {
-        SECTION_CORE_LOGLEVEL: SECTION_CORE_LOGLEVEL_SCHEMA,
-        SECTION_CORE_REMOTE: Lower,
-        Optional(SECTION_CORE_INTERACTIVE, default=False): Bool,
-        Optional(SECTION_CORE_ANALYTICS, default=True): Bool,
-        SECTION_CORE_CHECKSUM_JOBS: All(Coerce(int), Range(1)),
-        Optional(SECTION_CORE_HARDLINK_LOCK, default=False): Bool,
-    }
-
-    # aws specific options
-    SECTION_AWS_CREDENTIALPATH = CREDENTIALPATH
-    SECTION_AWS_ENDPOINT_URL = "endpointurl"
-    SECTION_AWS_LIST_OBJECTS = "listobjects"
-    SECTION_AWS_REGION = "region"
-    SECTION_AWS_PROFILE = "profile"
-    SECTION_AWS_USE_SSL = "use_ssl"
-    SECTION_AWS_SSE = "sse"
-    SECTION_AWS_ACL = "acl"
-    SECTION_AWS_GRANT_READ = "grant_read"
-    SECTION_AWS_GRANT_READ_ACP = "grant_read_acp"
-    SECTION_AWS_GRANT_WRITE_ACP = "grant_write_acp"
-    SECTION_AWS_GRANT_FULL_CONTROL = "grant_full_control"
-
-    # gcp specific options
-    SECTION_GCP_CREDENTIALPATH = CREDENTIALPATH
-    SECTION_GCP_PROJECTNAME = "projectname"
-
-    # azure specific option
-    SECTION_AZURE_CONNECTION_STRING = "connection_string"
-
-    # Alibabacloud oss options
-    SECTION_OSS_ACCESS_KEY_ID = "oss_key_id"
-    SECTION_OSS_ACCESS_KEY_SECRET = "oss_key_secret"
-    SECTION_OSS_ENDPOINT = "oss_endpoint"
-
-    # GDrive options
-    SECTION_GDRIVE_CLIENT_ID = "gdrive_client_id"
-    SECTION_GDRIVE_CLIENT_SECRET = "gdrive_client_secret"
-    SECTION_GDRIVE_USER_CREDENTIALS_FILE = "gdrive_user_credentials_file"
-
-    SECTION_REMOTE_CHECKSUM_JOBS = "checksum_jobs"
-    SECTION_REMOTE_REGEX = r'^\s*remote\s*"(?P<name>.*)"\s*$'
-    SECTION_REMOTE_FMT = 'remote "{}"'
-    SECTION_REMOTE_URL = "url"
-    SECTION_REMOTE_USER = "user"
-    SECTION_REMOTE_PORT = "port"
-    SECTION_REMOTE_KEY_FILE = "keyfile"
-    SECTION_REMOTE_TIMEOUT = "timeout"
-    SECTION_REMOTE_PASSWORD = "password"
-    SECTION_REMOTE_ASK_PASSWORD = "ask_password"
-    SECTION_REMOTE_GSS_AUTH = "gss_auth"
-    SECTION_REMOTE_NO_TRAVERSE = "no_traverse"
-    SECTION_REMOTE_VERIFY = "verify"
-    SECTION_REMOTE_SCHEMA = {
-        Required(SECTION_REMOTE_URL): str,
-        SECTION_AWS_REGION: str,
-        SECTION_AWS_PROFILE: str,
-        SECTION_AWS_CREDENTIALPATH: str,
-        SECTION_AWS_ENDPOINT_URL: str,
-        Optional(SECTION_AWS_LIST_OBJECTS, default=False): Bool,
-        Optional(SECTION_AWS_USE_SSL, default=True): Bool,
-        SECTION_AWS_SSE: str,
-        SECTION_AWS_ACL: str,
-        SECTION_AWS_GRANT_READ: str,
-        SECTION_AWS_GRANT_READ_ACP: str,
-        SECTION_AWS_GRANT_WRITE_ACP: str,
-        SECTION_AWS_GRANT_FULL_CONTROL: str,
-        SECTION_GCP_PROJECTNAME: str,
-        SECTION_CACHE_TYPE: supported_cache_type,
-        Optional(SECTION_CACHE_PROTECTED, default=False): Bool,
-        SECTION_REMOTE_CHECKSUM_JOBS: All(Coerce(int), Range(1)),
-        SECTION_REMOTE_USER: str,
-        SECTION_REMOTE_PORT: Coerce(int),
-        SECTION_REMOTE_KEY_FILE: str,
-        SECTION_REMOTE_TIMEOUT: Coerce(int),
-        SECTION_REMOTE_PASSWORD: str,
-        SECTION_REMOTE_ASK_PASSWORD: Bool,
-        SECTION_REMOTE_GSS_AUTH: Bool,
-        SECTION_AZURE_CONNECTION_STRING: str,
-        SECTION_OSS_ACCESS_KEY_ID: str,
-        SECTION_OSS_ACCESS_KEY_SECRET: str,
-        SECTION_OSS_ENDPOINT: str,
-        SECTION_GDRIVE_CLIENT_ID: str,
-        SECTION_GDRIVE_CLIENT_SECRET: str,
-        SECTION_GDRIVE_USER_CREDENTIALS_FILE: str,
-        PRIVATE_CWD: str,
-        SECTION_REMOTE_NO_TRAVERSE: Bool,
-        SECTION_REMOTE_VERIFY: Bool,
-    }
-
-    SECTION_STATE = "state"
-    SECTION_STATE_ROW_LIMIT = "row_limit"
-    SECTION_STATE_ROW_CLEANUP_QUOTA = "row_cleanup_quota"
-    SECTION_STATE_SCHEMA = {
-        SECTION_STATE_ROW_LIMIT: All(Coerce(int), Range(1)),
-        SECTION_STATE_ROW_CLEANUP_QUOTA: All(Coerce(int), Range(0, 100)),
-    }
-
-    SCHEMA = {
-        Optional(SECTION_CORE, default={}): SECTION_CORE_SCHEMA,
-        Match(SECTION_REMOTE_REGEX): SECTION_REMOTE_SCHEMA,
-        Optional(SECTION_CACHE, default={}): SECTION_CACHE_SCHEMA,
-        Optional(SECTION_STATE, default={}): SECTION_STATE_SCHEMA,
-    }
-    COMPILED_SCHEMA = Schema(SCHEMA)
-
     def __init__(self, dvc_dir=None, validate=True):
         self.dvc_dir = dvc_dir
-        self.should_validate = validate
 
         if not dvc_dir:
             try:
@@ -258,33 +221,31 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         else:
             self.dvc_dir = os.path.abspath(os.path.realpath(dvc_dir))
 
-        self.load()
+        self.load(validate=validate)
 
-    @staticmethod
-    def get_global_config_dir():
-        """Returns global config location. E.g. ~/.config/dvc/config.
+    @classmethod
+    def get_dir(cls, level):
+        from appdirs import user_config_dir, site_config_dir
 
-        Returns:
-            str: path to the global config directory.
-        """
-        from appdirs import user_config_dir
+        assert level in ("global", "system")
 
-        return user_config_dir(
-            appname=Config.APPNAME, appauthor=Config.APPAUTHOR
-        )
+        if level == "global":
+            return user_config_dir(cls.APPNAME, cls.APPAUTHOR)
+        if level == "system":
+            return site_config_dir(cls.APPNAME, cls.APPAUTHOR)
 
-    @staticmethod
-    def get_system_config_dir():
-        """Returns system config location. E.g. /etc/dvc.conf.
+    @cached_property
+    def files(self):
+        files = {
+            level: os.path.join(self.get_dir(level), self.CONFIG)
+            for level in ("system", "global")
+        }
 
-        Returns:
-            str: path to the system config directory.
-        """
-        from appdirs import site_config_dir
+        if self.dvc_dir is not None:
+            files["repo"] = os.path.join(self.dvc_dir, self.CONFIG)
+            files["local"] = os.path.join(self.dvc_dir, self.CONFIG_LOCAL)
 
-        return site_config_dir(
-            appname=Config.APPNAME, appauthor=Config.APPAUTHOR
-        )
+        return files
 
     @staticmethod
     def init(dvc_dir):
@@ -300,250 +261,137 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         open(config_file, "w+").close()
         return Config(dvc_dir)
 
-    def _resolve_cache_path(self, config):
-        cache = config.get(self.SECTION_CACHE)
-        if cache is None:
-            return
-
-        cache_dir = cache.get(self.SECTION_CACHE_DIR)
-        if cache_dir is None:
-            return
-
-        cache[self.PRIVATE_CWD] = os.path.dirname(config.filename)
-
-    def _resolve_paths(self, config):
-        if config.filename is None:
-            return config
-
-        ret = copy.deepcopy(config)
-        self._resolve_cache_path(ret)
-
-        for section in ret.values():
-            if self.SECTION_REMOTE_URL not in section.keys():
-                continue
-
-            section[self.PRIVATE_CWD] = os.path.dirname(ret.filename)
-
-        return ret
-
-    def _load_configs(self):
-        system_config_file = os.path.join(
-            self.get_system_config_dir(), self.CONFIG
-        )
-
-        global_config_file = os.path.join(
-            self.get_global_config_dir(), self.CONFIG
-        )
-
-        self._system_config = configobj.ConfigObj(system_config_file)
-        self._global_config = configobj.ConfigObj(global_config_file)
-        self._repo_config = configobj.ConfigObj()
-        self._local_config = configobj.ConfigObj()
-
-        if not self.dvc_dir:
-            return
-
-        config_file = os.path.join(self.dvc_dir, self.CONFIG)
-        config_local_file = os.path.join(self.dvc_dir, self.CONFIG_LOCAL)
-
-        self._repo_config = configobj.ConfigObj(config_file)
-        self._local_config = configobj.ConfigObj(config_local_file)
-
-    @property
-    def config_local_file(self):
-        return self._local_config.filename
-
-    @property
-    def config_file(self):
-        return self._repo_config.filename
-
-    def load(self):
+    def load(self, validate=True):
         """Loads config from all the config files.
 
         Raises:
             dvc.config.ConfigError: thrown if config has invalid format.
         """
-        self._load_configs()
+        conf = {}
+        for level in self.LEVELS:
+            if level in self.files:
+                _merge(conf, self.load_one(level))
 
-        self.config = configobj.ConfigObj()
-        for c in [
-            self._system_config,
-            self._global_config,
-            self._repo_config,
-            self._local_config,
-        ]:
-            c = self._resolve_paths(c)
-            c = self._lower(c)
-            self.config.merge(c)
+        if validate:
+            conf = self.validate(conf)
 
-        if not self.should_validate:
-            return
+        self.clear()
+        self.update(conf)
 
-        d = self.validate(self.config)
-        self.config = configobj.ConfigObj(d, write_empty_values=True)
+        # Add resolved default cache.dir
+        if not self["cache"].get("dir"):
+            self["cache"]["dir"] = os.path.join(self.dvc_dir, "cache")
 
-    def save(self, config=None):
-        """Saves config to config files.
+    def load_one(self, level):
+        conf = _load_config(self.files[level])
+        conf = self._load_paths(conf, self.files[level])
 
-        Raises:
-            dvc.config.ConfigError: thrown if failed to write config file.
-        """
-        if config is not None:
-            clist = [config]
-        else:
-            clist = [
-                self._system_config,
-                self._global_config,
-                self._repo_config,
-                self._local_config,
-            ]
+        # Autovivify sections
+        for key in COMPILED_SCHEMA.schema:
+            conf.setdefault(key, {})
 
-        for conf in clist:
-            self._save(conf)
+        return conf
 
+    @staticmethod
+    def _load_paths(conf, filename):
+        abs_conf_dir = os.path.abspath(os.path.dirname(filename))
+
+        def resolve(path):
+            if os.path.isabs(path) or re.match(r"\w+://", path):
+                return path
+            return RelPath(os.path.join(abs_conf_dir, path))
+
+        return Config._map_dirs(conf, resolve)
+
+    @staticmethod
+    def _save_paths(conf, filename):
+        conf_dir = os.path.dirname(filename)
+
+        def rel(path):
+            if re.match(r"\w+://", path):
+                return path
+
+            if isinstance(path, RelPath) or not os.path.isabs(path):
+                return relpath(path, conf_dir)
+            return path
+
+        return Config._map_dirs(conf, rel)
+
+    @staticmethod
+    def _map_dirs(conf, func):
+        dirs_schema = {"cache": {"dir": func}, "remote": {str: {"url": func}}}
+        return Schema(dirs_schema, extra=ALLOW_EXTRA)(conf)
+
+    @contextmanager
+    def edit(self, level="repo"):
+        if level in {"repo", "local"} and self.dvc_dir is None:
+            raise ConfigError("Not inside a dvc repo")
+
+        conf = self.load_one(level)
+        yield conf
+
+        conf = self._save_paths(conf, self.files[level])
+        _save_config(self.files[level], conf)
         self.load()
 
     @staticmethod
-    def _save(config):
-        if config.filename is None:
-            return
-
-        logger.debug("Writing '{}'.".format(config.filename))
-        dname = os.path.dirname(os.path.abspath(config.filename))
+    def validate(data):
         try:
-            os.makedirs(dname)
-        except OSError as exc:
-            if exc.errno != errno.EEXIST:
-                raise
-        config.write()
-
-    def validate(self, config):
-        try:
-            return self.COMPILED_SCHEMA(config.dict())
+            return COMPILED_SCHEMA(data)
         except Invalid as exc:
-            raise ConfigError(str(exc)) from exc
+            raise ConfigError(str(exc)) from None
 
-    def unset(self, section, opt=None, level=None, force=False):
-        """Unsets specified option and/or section in the config.
 
-        Args:
-            section (str): section name.
-            opt (str): optional option name.
-            level (int): config level to use.
-            force (bool): don't error-out even if section doesn't exist. False
-                by default.
+def _load_config(filename):
+    conf_obj = configobj.ConfigObj(filename)
+    return _parse_remotes(_lower_keys(conf_obj.dict()))
 
-        Raises:
-            dvc.config.ConfigError: thrown if section doesn't exist and
-                `force != True`.
-        """
-        config = self.get_configobj(level)
 
-        if section not in config.keys():
-            if force:
-                return
-            raise ConfigError("section '{}' doesn't exist".format(section))
+def _save_config(filename, conf_dict):
+    logger.debug("Writing '{}'.".format(filename))
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
 
-        if opt:
-            if opt not in config[section].keys():
-                if force:
-                    return
-                raise ConfigError(
-                    "option '{}.{}' doesn't exist".format(section, opt)
-                )
-            del config[section][opt]
+    config = configobj.ConfigObj(_pack_remotes(conf_dict))
+    config.filename = filename
+    config.write()
 
-            if not config[section]:
-                del config[section]
+
+def _parse_remotes(conf):
+    result = {"remote": {}}
+
+    for section, val in conf.items():
+        name = re_find(r'^\s*remote\s*"(.*)"\s*$', section)
+        if name:
+            result["remote"][name] = val
         else:
-            del config[section]
+            result[section] = val
 
-        self.save(config)
+    return result
 
-    def set(self, section, opt, value, level=None, force=True):
-        """Sets specified option in the config.
 
-        Args:
-            section (str): section name.
-            opt (str): option name.
-            value: value to set option to.
-            level (int): config level to use.
-            force (bool): set option even if section already exists. True by
-                default.
+def _pack_remotes(conf):
+    # Drop empty sections
+    result = compact(conf)
 
-        Raises:
-            dvc.config.ConfigError: thrown if section already exists and
-                `force != True`.
+    # Transform remote.name -> 'remote "name"'
+    for name, val in conf["remote"].items():
+        result['remote "{}"'.format(name)] = val
+    result.pop("remote", None)
 
-        """
-        config = self.get_configobj(level)
+    return result
 
-        if section not in config.keys():
-            config[section] = {}
-        elif not force:
-            raise ConfigError(
-                "Section '{}' already exists. Use `-f|--force` to overwrite "
-                "section with new value.".format(section)
-            )
 
-        config[section][opt] = value
+def _merge(into, update):
+    """Merges second dict into first recursively"""
+    for key, val in update.items():
+        if isinstance(into.get(key), dict) and isinstance(val, dict):
+            _merge(into[key], val)
+        else:
+            into[key] = val
 
-        result = copy.deepcopy(self.config)
-        result.merge(config)
-        self.validate(result)
 
-        self.save(config)
-
-    def get(self, section, opt=None, level=None):
-        """Return option value from the config.
-
-        Args:
-            section (str): section name.
-            opt (str): option name.
-            level (int): config level to use.
-
-        Returns:
-            value (str, int): option value.
-        """
-        config = self.get_configobj(level)
-
-        if section not in config.keys():
-            raise ConfigError("section '{}' doesn't exist".format(section))
-
-        if opt not in config[section].keys():
-            raise ConfigError(
-                "option '{}.{}' doesn't exist".format(section, opt)
-            )
-
-        return config[section][opt]
-
-    @staticmethod
-    def _lower(config):
-        new_config = configobj.ConfigObj()
-        for s_key, s_value in config.items():
-            new_s = {}
-            for key, value in s_value.items():
-                new_s[key.lower()] = str(value)
-            new_config[s_key.lower()] = new_s
-        return new_config
-
-    def get_configobj(self, level):
-        configs = {
-            self.LEVEL_LOCAL: self._local_config,
-            self.LEVEL_REPO: self._repo_config,
-            self.LEVEL_GLOBAL: self._global_config,
-            self.LEVEL_SYSTEM: self._system_config,
-        }
-
-        return configs.get(level, self._repo_config)
-
-    def list_options(self, section_regex, option, level=None):
-        ret = {}
-        config = self.get_configobj(level)
-        for section in config.keys():
-            r = re.match(section_regex, section)
-            if r:
-                name = r.group("name")
-                value = config[section].get(option, "")
-                ret[name] = value
-        return ret
+def _lower_keys(data):
+    return {
+        k.lower(): _lower_keys(v) if isinstance(v, dict) else v
+        for k, v in data.items()
+    }

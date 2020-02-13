@@ -5,7 +5,6 @@ import sys
 import pytest
 
 from dvc.exceptions import GitHookAlreadyExistsError
-from dvc.remote import RemoteConfig
 from dvc.utils import file_md5, fspath
 
 
@@ -52,9 +51,9 @@ class TestInstall(object):
         git_remote = temp / "project.git"
         storage_path = temp / "dvc_storage"
 
-        RemoteConfig(dvc.config).add(
-            "store", fspath(storage_path), default=True
-        )
+        with dvc.config.edit() as conf:
+            conf["remote"]["store"] = {"url": fspath(storage_path)}
+            conf["core"]["remote"] = "store"
         tmp_dir.dvc_gen("file", "file_content", "commit message")
 
         file_checksum = file_md5("file")[0]

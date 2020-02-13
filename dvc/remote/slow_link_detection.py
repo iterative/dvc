@@ -1,11 +1,9 @@
 import logging
 import sys
 import time
+
 from functools import wraps
-
 import colorama
-
-from dvc.config import Config
 
 
 logger = logging.getLogger(__name__)
@@ -31,11 +29,9 @@ def slow_link_guard(f):
         if this.already_displayed:
             return f(remote, *args, **kwargs)
 
-        config = remote.repo.config.config.get(Config.SECTION_CACHE, {})
-        cache_type = config.get(Config.SECTION_CACHE_TYPE)
-        should_warn = config.get(Config.SECTION_CACHE_SLOW_LINK_WARNING, True)
-
-        if not should_warn or cache_type:
+        cache_conf = remote.repo.config["cache"]
+        slow_link_warning = cache_conf.get("slow_link_warning", True)
+        if not slow_link_warning or cache_conf.get("type"):
             return f(remote, *args, **kwargs)
 
         start = time.time()

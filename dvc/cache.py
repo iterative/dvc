@@ -1,24 +1,7 @@
 """Manages cache of a DVC repo."""
-import os
 from collections import defaultdict
 
 from funcy import cached_property
-
-from dvc.config import Config
-
-
-class CacheConfig(object):
-    def __init__(self, config):
-        self.config = config
-
-    def set_dir(self, dname, level=None):
-        from dvc.remote.config import RemoteConfig
-
-        configobj = self.config.get_configobj(level)
-        path = RemoteConfig.resolve_path(dname, configobj.filename)
-        self.config.set(
-            Config.SECTION_CACHE, Config.SECTION_CACHE_DIR, path, level=level
-        )
 
 
 def _make_remote_property(name):
@@ -70,37 +53,22 @@ class Cache(object):
         from dvc.remote import Remote
 
         self.repo = repo
+        self.config = config = repo.config["cache"]
 
-        self.config = config = repo.config.config[Config.SECTION_CACHE]
-        local = config.get(Config.SECTION_CACHE_LOCAL)
+        local = config.get("local")
 
         if local:
-            name = Config.SECTION_REMOTE_FMT.format(local)
-            settings = repo.config.config[name]
+            settings = {"name": local}
         else:
-            default_cache_dir = os.path.join(repo.dvc_dir, self.CACHE_DIR)
-            cache_dir = config.get(Config.SECTION_CACHE_DIR, default_cache_dir)
-            cache_type = config.get(Config.SECTION_CACHE_TYPE)
-            protected = config.get(Config.SECTION_CACHE_PROTECTED)
-            shared = config.get(Config.SECTION_CACHE_SHARED)
-
-            settings = {
-                Config.PRIVATE_CWD: config.get(
-                    Config.PRIVATE_CWD, repo.dvc_dir
-                ),
-                Config.SECTION_REMOTE_URL: cache_dir,
-                Config.SECTION_CACHE_TYPE: cache_type,
-                Config.SECTION_CACHE_PROTECTED: protected,
-                Config.SECTION_CACHE_SHARED: shared,
-            }
+            settings = {**config, "url": config["dir"]}
 
         self.local = Remote(repo, **settings)
 
-    s3 = _make_remote_property(Config.SECTION_CACHE_S3)
-    gs = _make_remote_property(Config.SECTION_CACHE_GS)
-    ssh = _make_remote_property(Config.SECTION_CACHE_SSH)
-    hdfs = _make_remote_property(Config.SECTION_CACHE_HDFS)
-    azure = _make_remote_property(Config.SECTION_CACHE_AZURE)
+    s3 = _make_remote_property("s3")
+    gs = _make_remote_property("gs")
+    ssh = _make_remote_property("ssh")
+    hdfs = _make_remote_property("hdfs")
+    azure = _make_remote_property("azure")
 
 
 class NamedCache(object):

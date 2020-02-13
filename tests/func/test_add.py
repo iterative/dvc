@@ -546,7 +546,7 @@ def temporary_windows_drive(tmp_path_factory):
 def test_windows_should_add_when_cache_on_different_drive(
     tmp_dir, dvc, temporary_windows_drive
 ):
-    dvc.config.set("cache", "dir", temporary_windows_drive)
+    dvc.config["cache"]["dir"] = temporary_windows_drive
     dvc.cache = Cache(dvc)
 
     (stage,) = tmp_dir.dvc_gen({"file": "file"})
@@ -601,7 +601,7 @@ def test_should_relink_on_repeated_add(
 ):
     from dvc.path_info import PathInfo
 
-    dvc.config.set("cache", "type", link)
+    dvc.config["cache"]["type"] = link
 
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
 

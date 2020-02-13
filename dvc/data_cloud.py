@@ -2,7 +2,6 @@
 
 import logging
 
-from dvc.config import Config
 from dvc.config import NoRemoteError
 from dvc.remote import Remote
 
@@ -24,28 +23,14 @@ class DataCloud(object):
     def __init__(self, repo):
         self.repo = repo
 
-    @property
-    def _config(self):
-        return self.repo.config.config
-
-    @property
-    def _core(self):
-        return self._config.get(Config.SECTION_CORE, {})
-
     def get_remote(self, remote=None, command="<command>"):
         if not remote:
-            remote = self._core.get(Config.SECTION_CORE_REMOTE)
+            remote = self.repo.config["core"].get("remote")
 
         if remote:
             return self._init_remote(remote)
 
-        has_non_default_remote = bool(
-            self.repo.config.list_options(
-                Config.SECTION_REMOTE_REGEX, Config.SECTION_REMOTE_URL
-            )
-        )
-
-        if has_non_default_remote:
+        if bool(self.repo.config["remote"]):
             error_msg = (
                 "no remote specified. Setup default remote with\n"
                 "    dvc remote default <remote name>\n"

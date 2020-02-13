@@ -264,15 +264,15 @@ def run_copy(tmp_dir, dvc):
 
 @pytest.fixture
 def erepo_dir(make_tmp_dir):
-    from dvc.remote.config import RemoteConfig
-
     path = make_tmp_dir("erepo", scm=True, dvc=True)
 
     # Chdir for git and dvc to work locally
     with path.chdir():
-        rconfig = RemoteConfig(path.dvc.config)
-        rconfig.add("upstream", path.dvc.cache.local.cache_dir, default=True)
-        path.scm_add([path.dvc.config.config_file], commit="add remote")
+        with path.dvc.config.edit() as conf:
+            cache_dir = path.dvc.cache.local.cache_dir
+            conf["remote"]["upstream"] = {"url": cache_dir}
+            conf["core"]["remote"] = "upstream"
+        path.scm_add([path.dvc.config.files["repo"]], commit="add remote")
 
     return path
 

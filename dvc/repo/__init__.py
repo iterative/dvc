@@ -88,7 +88,7 @@ class Repo(object):
         self.tmp_dir = os.path.join(self.dvc_dir, "tmp")
         makedirs(self.tmp_dir, exist_ok=True)
 
-        hardlink_lock = self.config.config["core"].get("hardlink_lock", False)
+        hardlink_lock = self.config["core"].get("hardlink_lock", False)
         self.lock = make_lock(
             os.path.join(self.dvc_dir, "lock"),
             tmp_dir=os.path.join(self.dvc_dir, "tmp"),
@@ -98,11 +98,9 @@ class Repo(object):
 
         # NOTE: storing state and link_state in the repository itself to avoid
         # any possible state corruption in 'shared cache dir' scenario.
-        self.state = State(self, self.config.config)
+        self.state = State(self)
 
-        core = self.config.config[Config.SECTION_CORE]
-
-        level = core.get(Config.SECTION_CORE_LOGLEVEL)
+        level = self.config.get("core", {}).get("loglevel")
         if level:
             logger.setLevel(level.upper())
 
@@ -170,7 +168,7 @@ class Repo(object):
         updater = Updater(self.dvc_dir)
 
         flist = (
-            [self.config.config_local_file, updater.updater_file]
+            [self.config.files["local"], updater.updater_file]
             + [self.lock.lockfile, updater.lock.lockfile, self.tmp_dir]
             + self.state.files
         )

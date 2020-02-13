@@ -9,11 +9,10 @@ from funcy import retry, suppress, wrap_with, cached_property
 
 from dvc.compat import fspath
 from dvc.repo import Repo
-from dvc.config import Config, NoRemoteError, NotDvcRepoError
+from dvc.config import NoRemoteError, NotDvcRepoError
 from dvc.exceptions import NoRemoteInExternalRepoError
 from dvc.exceptions import OutputNotFoundError, NoOutputInExternalRepoError
 from dvc.exceptions import FileMissingError, PathMissingError
-from dvc.remote import RemoteConfig
 from dvc.utils.fs import remove, fs_copy
 from dvc.scm.git import Git
 
@@ -110,18 +109,17 @@ class ExternalRepo(Repo):
         # check if the URL is local and no default remote is present
         # add default remote pointing to the original repo's cache location
         if os.path.isdir(self.url):
-            rconfig = RemoteConfig(self.config)
-            if not rconfig.has_default():
+            if not self.config["core"].get("remote"):
                 src_repo = Repo(self.url)
                 try:
-                    rconfig.add(
-                        "auto-generated-upstream",
-                        src_repo.cache.local.cache_dir,
-                        default=True,
-                        level=Config.LEVEL_LOCAL,
-                    )
+                    cache_dir = src_repo.cache.local.cache_dir
                 finally:
                     src_repo.close()
+
+                self.config["remote"]["auto-generated-upstream"] = {
+                    "url": cache_dir
+                }
+                self.config["core"]["remote"] = "auto-generated-upstream"
 
 
 class ExternalGitRepo:
