@@ -27,6 +27,7 @@ _dvc_commands() {
     "import:Download data from DVC repository and take it under DVC control."
     "init:Initialize DVC in the current directory."
     "install:Install DVC git hooks into the repository."
+    "list:List files."
     "lock:Lock DVC-file."
     "metrics:Commands to add, manage, collect and display metrics."
     "move:Rename or move a DVC controlled data file or a directory."
@@ -158,6 +159,14 @@ _dvc_install=()
 
 _dvc_lock=(
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
+)
+
+_dvc_list=(
+  "--rev[Git revision (e.g. branch, tag, SHA)]:Revision:"
+  {-R,--recursive}"[Recursively add each file under the directory.]"
+  "--outs-only[Only outputs DVC-outs.]"
+  "1:URL:"
+  "2:Target:"
 )
 
 _dvc_metrics=(
@@ -292,6 +301,7 @@ case $words[1] in
   init) _arguments $_dvc_global_options $_dvc_init ;;
   install) _arguments $_dvc_global_options $_dvc_install ;;
   lock) _arguments $_dvc_global_options $_dvc_lock ;;
+  list) _arguments $_dvc_global_options $_dvc_list ;;
   metrics) _arguments $_dvc_global_options $_dvc_metrics ;;
   move) _arguments $_dvc_global_options $_dvc_move ;;
   pipeline) _arguments $_dvc_global_options $_dvc_pipeline ;;

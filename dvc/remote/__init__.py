@@ -1,4 +1,6 @@
-from .config import RemoteConfig
+import posixpath
+from urllib.parse import urlparse
+
 from dvc.remote.azure import RemoteAZURE
 from dvc.remote.gdrive import RemoteGDrive
 from dvc.remote.gs import RemoteGS
@@ -25,9 +27,9 @@ REMOTES = [
 ]
 
 
-def _get(config):
+def _get(remote_conf):
     for remote in REMOTES:
-        if remote.supported(config):
+        if remote.supported(remote_conf):
             return remote
     return RemoteLOCAL
 
@@ -35,8 +37,39 @@ def _get(config):
 def Remote(repo, **kwargs):
     name = kwargs.get("name")
     if name:
-        remote_config = RemoteConfig(repo.config)
-        settings = remote_config.get_settings(name)
+        remote_conf = repo.config["remote"][name.lower()]
     else:
-        settings = kwargs
-    return _get(settings)(repo, settings)
+        remote_conf = kwargs
+    remote_conf = _resolve_remote_refs(repo.config, remote_conf)
+    return _get(remote_conf)(repo, remote_conf)
+
+
+def _resolve_remote_refs(config, remote_conf):
+    # Support for cross referenced remotes.
+    # This will merge the settings, shadowing base ref with remote_conf.
+    # For example, having:
+    #
+    #       dvc remote add server ssh://localhost
+    #       dvc remote modify server user root
+    #       dvc remote modify server ask_password true
+    #
+    #       dvc remote add images remote://server/tmp/pictures
+    #       dvc remote modify images user alice
+    #       dvc remote modify images ask_password false
+    #       dvc remote modify images password asdf1234
+    #
+    # Results on a config dictionary like:
+    #
+    #       {
+    #           "url": "ssh://localhost/tmp/pictures",
+    #           "user": "alice",
+    #           "password": "asdf1234",
+    #           "ask_password": False,
+    #       }
+    parsed = urlparse(remote_conf["url"])
+    if parsed.scheme != "remote":
+        return remote_conf
+
+    base = config["remote"][parsed.netloc]
+    url = posixpath.join(base["url"], parsed.path.lstrip("/"))
+    return {**base, **remote_conf, "url": url}

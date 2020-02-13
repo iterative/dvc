@@ -26,7 +26,7 @@ innosetup/config.ini
 .coverage
 .coverage.*
 
-*.swp
+*.sw?
 
 pip-wheel-metadata/
 .vscode/

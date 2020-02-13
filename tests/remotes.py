@@ -7,7 +7,6 @@ from contextlib import contextmanager
 from subprocess import CalledProcessError, check_output, Popen
 
 from dvc.utils import env2bool
-from dvc.config import Config
 from dvc.remote import RemoteGDrive
 from dvc.remote.gs import RemoteGS
 from dvc.remote.s3 import RemoteS3
@@ -17,11 +16,10 @@ from moto.s3 import mock_s3
 
 
 TEST_REMOTE = "upstream"
-TEST_SECTION = 'remote "{}"'.format(TEST_REMOTE)
 TEST_CONFIG = {
-    Config.SECTION_CACHE: {},
-    Config.SECTION_CORE: {Config.SECTION_CORE_REMOTE: TEST_REMOTE},
-    TEST_SECTION: {Config.SECTION_REMOTE_URL: ""},
+    "cache": {},
+    "core": {"remote": TEST_REMOTE},
+    "remote": {TEST_REMOTE: {"url": ""}},
 }
 
 TEST_AWS_REPO_BUCKET = os.environ.get("DVC_TEST_AWS_REPO_BUCKET", "dvc-test")
@@ -150,9 +148,10 @@ class GDrive:
     def should_test():
         return os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA) is not None
 
-    @staticmethod
-    def get_url():
-        return "gdrive://root/" + str(uuid.uuid4())
+    def get_url(self):
+        if not getattr(self, "_remote_url", None):
+            self._remote_url = "gdrive://root/" + str(uuid.uuid4())
+        return self._remote_url
 
 
 class Azure:

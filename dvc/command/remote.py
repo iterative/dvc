@@ -1,72 +1,99 @@
 import argparse
 import logging
 
-from dvc.command.base import append_doc_link
-from dvc.command.base import fix_subparsers
+from dvc.config import ConfigError
+from dvc.command.base import append_doc_link, fix_subparsers
 from dvc.command.config import CmdConfig
-from dvc.remote.config import RemoteConfig
 from dvc.utils import format_link
 
 logger = logging.getLogger(__name__)
 
 
-class CmdRemoteConfig(CmdConfig):
+class CmdRemote(CmdConfig):
     def __init__(self, args):
         super().__init__(args)
-        self.remote_config = RemoteConfig(self.config)
+
+        if getattr(self.args, "name", None):
+            self.args.name = self.args.name.lower()
+
+    def _check_exists(self, conf):
+        if self.args.name not in conf["remote"]:
+            raise ConfigError(
+                "remote '{}' doesn't exists.".format(self.args.name)
+            )
 
 
-class CmdRemoteAdd(CmdRemoteConfig):
+class CmdRemoteAdd(CmdRemote):
     def run(self):
         if self.args.default:
             logger.info(
                 "Setting '{}' as a default remote.".format(self.args.name)
             )
-        self.remote_config.add(
-            self.args.name,
-            self.args.url,
-            force=self.args.force,
-            default=self.args.default,
-            level=self.args.level,
-        )
+
+        with self.config.edit(self.args.level) as conf:
+            if self.args.name in conf["remote"] and not self.args.force:
+                raise ConfigError(
+                    "remote '{}' already exists. Use `-f|--force` to "
+                    "overwrite it.".format(self.args.name)
+                )
+
+            conf["remote"][self.args.name] = {"url": self.args.url}
+            if self.args.default:
+                conf["core"]["remote"] = self.args.name
+
         return 0
 
 
-class CmdRemoteRemove(CmdRemoteConfig):
+class CmdRemoteRemove(CmdRemote):
     def run(self):
-        self.remote_config.remove(self.args.name, level=self.args.level)
+        with self.config.edit(self.args.level) as conf:
+            self._check_exists(conf)
+            del conf["remote"][self.args.name]
+
+        # Remove core.remote refs to this remote in any shadowing configs
+        for level in reversed(self.config.LEVELS):
+            with self.config.edit(level) as conf:
+                if conf["core"].get("remote") == self.args.name:
+                    del conf["core"]["remote"]
+
+            if level == self.args.level:
+                break
+
         return 0
 
 
-class CmdRemoteModify(CmdRemoteConfig):
+class CmdRemoteModify(CmdRemote):
     def run(self):
-        self.remote_config.modify(
-            self.args.name,
-            self.args.option,
-            self.args.value,
-            level=self.args.level,
-        )
+        with self.config.edit(self.args.level) as conf:
+            self._check_exists(conf)
+            conf["remote"][self.args.name][self.args.option] = self.args.value
         return 0
 
 
-class CmdRemoteDefault(CmdRemoteConfig):
+class CmdRemoteDefault(CmdRemote):
     def run(self):
+
         if self.args.name is None and not self.args.unset:
-            name = self.remote_config.get_default(level=self.args.level)
-            print(name)
+            conf = self.config.load_one(self.args.level)
+            try:
+                print(conf["core"]["remote"])
+            except KeyError:
+                logger.info("No default remote set")
+                return 1
         else:
-            self.remote_config.set_default(
-                self.args.name, unset=self.args.unset, level=self.args.level
-            )
+            with self.config.edit(self.args.level) as conf:
+                if self.args.unset:
+                    conf["core"].pop("remote", None)
+                else:
+                    conf["core"]["remote"] = self.args.name
         return 0
 
 
-class CmdRemoteList(CmdRemoteConfig):
+class CmdRemoteList(CmdRemote):
     def run(self):
-        for name, url in self.remote_config.list(
-            level=self.args.level
-        ).items():
-            logger.info("{}\t{}".format(name, url))
+        conf = self.config.load_one(self.args.level)
+        for name, conf in conf["remote"].items():
+            logger.info("{}\t{}".format(name, conf["url"]))
         return 0
 
 

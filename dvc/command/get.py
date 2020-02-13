@@ -51,9 +51,7 @@ class CmdGet(CmdBaseNoRepo):
 
 
 def add_parser(subparsers, parent_parser):
-    GET_HELP = (
-        "Download file or directory from any DVC project or Git repository."
-    )
+    GET_HELP = "Download file or directory tracked by DVC or by Git."
     get_parser = subparsers.add_parser(
         "get",
         parents=[parent_parser],
@@ -62,12 +60,10 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     get_parser.add_argument(
-        "url",
-        help="Location of DVC project or Git repository to download from",
+        "url", help="Location of DVC or Git repository to download from"
     )
     get_parser.add_argument(
-        "path",
-        help="Path to a file or directory within the project or repository",
+        "path", help="Path to a file or directory within the repository"
     )
     get_parser.add_argument(
         "-o", "--out", nargs="?", help="Destination path to download files to"

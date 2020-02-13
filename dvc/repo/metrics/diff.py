@@ -83,9 +83,9 @@ def _get_metrics(repo, *args, rev=None, **kwargs):
         return {}
 
 
-def diff(repo, *args, a_ref=None, b_ref=None, **kwargs):
-    old = _get_metrics(repo, *args, **kwargs, rev=(a_ref or "HEAD"))
-    new = _get_metrics(repo, *args, **kwargs, rev=b_ref)
+def diff(repo, *args, a_rev=None, b_rev=None, **kwargs):
+    old = _get_metrics(repo, *args, **kwargs, rev=(a_rev or "HEAD"))
+    new = _get_metrics(repo, *args, **kwargs, rev=b_rev)
 
     paths = set(old.keys())
     paths.update(set(new.keys()))

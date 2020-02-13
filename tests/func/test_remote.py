@@ -6,11 +6,11 @@ import configobj
 import pytest
 from mock import patch
 
-from dvc.config import Config, ConfigError
+from dvc.config import Config
 from dvc.exceptions import DownloadError, UploadError
 from dvc.main import main
 from dvc.path_info import PathInfo
-from dvc.remote import RemoteLOCAL, RemoteConfig
+from dvc.remote import RemoteLOCAL
 from dvc.remote.base import RemoteBASE, RemoteCacheRequiredError
 from dvc.compat import fspath
 from tests.basic_env import TestDvc
@@ -46,7 +46,7 @@ class TestRemote(TestDvc):
         # NOTE: we are in the repo's root and config is in .dvc/, so
         # dir path written to config should be just one level above.
         rel = os.path.join("..", dname)
-        config = configobj.ConfigObj(self.dvc.config.config_file)
+        config = configobj.ConfigObj(self.dvc.config.files["repo"])
         self.assertEqual(config['remote "mylocal"']["url"], rel)
 
     def test_overwrite(self):
@@ -62,53 +62,29 @@ class TestRemote(TestDvc):
         assert main(["remote", "add", "foo", "ssh://localhost/"]) == 0
         assert main(["remote", "add", "bar", "remote://foo/dvc-storage"]) == 0
 
-        config = configobj.ConfigObj(self.dvc.config.config_file)
-
+        config = configobj.ConfigObj(self.dvc.config.files["repo"])
         assert config['remote "bar"']["url"] == "remote://foo/dvc-storage"
 
 
-class TestRemoteRemoveDefault(TestDvc):
-    def test(self):
-        remote = "mys3"
-        self.assertEqual(
-            main(["remote", "add", "--default", remote, "s3://bucket/name"]), 0
-        )
-        self.assertEqual(
-            main(["remote", "modify", remote, "profile", "default"]), 0
-        )
-        self.assertEqual(main(["config", "--local", "core.remote", remote]), 0)
+def test_remove_default(tmp_dir, dvc):
+    remote = "mys3"
+    assert (
+        main(["remote", "add", "--default", remote, "s3://bucket/name"]) == 0
+    )
+    assert main(["remote", "modify", remote, "profile", "default"]) == 0
+    assert main(["config", "--local", "core.remote", remote]) == 0
 
-        config = configobj.ConfigObj(
-            os.path.join(self.dvc.dvc_dir, Config.CONFIG)
-        )
-        local_config = configobj.ConfigObj(
-            os.path.join(self.dvc.dvc_dir, Config.CONFIG_LOCAL)
-        )
-        self.assertEqual(
-            config[Config.SECTION_CORE][Config.SECTION_CORE_REMOTE], remote
-        )
-        self.assertEqual(
-            local_config[Config.SECTION_CORE][Config.SECTION_CORE_REMOTE],
-            remote,
-        )
+    config = configobj.ConfigObj(dvc.config.files["repo"])
+    local_config = configobj.ConfigObj(dvc.config.files["local"])
+    assert config["core"]["remote"] == remote
+    assert local_config["core"]["remote"] == remote
 
-        self.assertEqual(main(["remote", "remove", remote]), 0)
-        config = configobj.ConfigObj(
-            os.path.join(self.dvc.dvc_dir, Config.CONFIG)
-        )
-        local_config = configobj.ConfigObj(
-            os.path.join(self.dvc.dvc_dir, Config.CONFIG_LOCAL)
-        )
-        section = Config.SECTION_REMOTE_FMT.format(remote)
-        self.assertTrue(section not in config.keys())
+    assert main(["remote", "remove", remote]) == 0
 
-        core = config.get(Config.SECTION_CORE, None)
-        if core is not None:
-            self.assertTrue(Config.SECTION_CORE_REMOTE not in core.keys())
-
-        core = local_config.get(Config.SECTION_CORE, None)
-        if core is not None:
-            self.assertTrue(Config.SECTION_CORE_REMOTE not in core.keys())
+    config = configobj.ConfigObj(dvc.config.files["repo"])
+    local_config = configobj.ConfigObj(dvc.config.files["local"])
+    assert config.get("core", {}).get("remote") is None
+    assert local_config.get("core", {}).get("remote") is None
 
 
 class TestRemoteRemove(TestDvc):
@@ -134,17 +110,13 @@ class TestRemoteDefault(TestDvc):
         self.assertEqual(ret, 0)
         config_file = os.path.join(self.dvc.dvc_dir, Config.CONFIG)
         config = configobj.ConfigObj(config_file)
-        default = config[Config.SECTION_CORE][Config.SECTION_CORE_REMOTE]
+        default = config["core"]["remote"]
         self.assertEqual(default, remote)
 
         ret = main(["remote", "default", "--unset"])
         self.assertEqual(ret, 0)
         config = configobj.ConfigObj(config_file)
-        core = config.get(Config.SECTION_CORE)
-        if core is not None:
-            default = core.get(Config.SECTION_CORE_REMOTE)
-        else:
-            default = None
+        default = config.get("core", {}).get("remote")
         self.assertEqual(default, None)
 
 
@@ -199,10 +171,9 @@ def test_dir_checksum_should_be_key_order_agnostic(tmp_dir, dvc):
 
 
 def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory):
-    remote_config = RemoteConfig(dvc.config)
-    remote_config.add(
-        "upstream", fspath(tmp_path_factory.mktemp("upstream")), default=True
-    )
+    url = fspath(tmp_path_factory.mktemp("upstream"))
+    dvc.config["remote"]["upstream"] = {"url": url}
+    dvc.config["core"]["remote"] = "upstream"
 
     foo = tmp_dir.dvc_gen({"foo": "foo content"})[0].outs[0]
     bar = tmp_dir.dvc_gen({"bar": "bar content"})[0].outs[0]
@@ -235,9 +206,9 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory):
 
 
 def test_raise_on_too_many_open_files(tmp_dir, dvc, tmp_path_factory, mocker):
-    storage = tmp_path_factory.mktemp("test_remote_base")
-    remote_config = RemoteConfig(dvc.config)
-    remote_config.add("local_remote", fspath(storage), default=True)
+    storage = fspath(tmp_path_factory.mktemp("test_remote_base"))
+    dvc.config["remote"]["local_remote"] = {"url": storage}
+    dvc.config["core"]["remote"] = "local_remote"
 
     tmp_dir.dvc_gen({"file": "file content"})
 
@@ -252,11 +223,8 @@ def test_raise_on_too_many_open_files(tmp_dir, dvc, tmp_path_factory, mocker):
         assert e.errno == errno.EMFILE
 
 
-def test_modify_missing_remote(dvc):
-    remote_config = RemoteConfig(dvc.config)
-
-    with pytest.raises(ConfigError, match=r"Unable to find remote section"):
-        remote_config.modify("myremote", "gdrive_client_id", "xxx")
+def test_modify_missing_remote(tmp_dir, dvc):
+    assert main(["remote", "modify", "myremote", "user", "xxx"]) == 251
 
 
 def test_external_dir_resource_on_no_cache(tmp_dir, dvc, tmp_path_factory):

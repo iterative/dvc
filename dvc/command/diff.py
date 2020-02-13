@@ -95,7 +95,7 @@ class CmdDiff(CmdBase):
 
     def run(self):
         try:
-            diff = self.repo.diff(self.args.a_ref, self.args.b_ref)
+            diff = self.repo.diff(self.args.a_rev, self.args.b_rev)
 
             if not any(diff.values()):
                 return 0
@@ -131,20 +131,14 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     diff_parser.add_argument(
-        "a_ref",
-        help=(
-            "Git reference to the older version to compare "
-            "(defaults to HEAD)"
-        ),
+        "a_rev",
+        help="Old Git commit to compare (defaults to HEAD)",
         nargs="?",
         default="HEAD",
     )
     diff_parser.add_argument(
-        "b_ref",
-        help=(
-            "Git reference to the newer version to compare "
-            "(defaults to the current workspace)"
-        ),
+        "b_rev",
+        help=("New Git commit to compare (defaults to the current workspace)"),
         nargs="?",
     )
     diff_parser.add_argument(

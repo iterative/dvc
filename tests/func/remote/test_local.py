@@ -8,7 +8,7 @@ from tests.utils import trees_equal
 
 
 def test_dont_fail_on_unpacked_create_fail(tmp_dir, dvc):
-    stage, = tmp_dir.dvc_gen({"dir": {"file": "file_content"}})
+    (stage,) = tmp_dir.dvc_gen({"dir": {"file": "file_content"}})
 
     with mock.patch.object(
         RemoteLOCAL, "_create_unpacked_dir", side_effect=DvcException("msg")
@@ -18,7 +18,7 @@ def test_dont_fail_on_unpacked_create_fail(tmp_dir, dvc):
 
 
 def test_remove_unpacked_on_create_fail(tmp_dir, dvc):
-    stage, = tmp_dir.dvc_gen({"dir": {"file": "file_content"}})
+    (stage,) = tmp_dir.dvc_gen({"dir": {"file": "file_content"}})
     unpacked_dir = stage.outs[0].cache_path + RemoteLOCAL.UNPACKED_DIR_SUFFIX
 
     # artificial unpacked dir for test purpose
@@ -34,7 +34,7 @@ def test_remove_unpacked_on_create_fail(tmp_dir, dvc):
 
 
 def test_create_unpacked_on_status(tmp_dir, dvc):
-    stage, = tmp_dir.dvc_gen({"dir": {"file": "file_content"}})
+    (stage,) = tmp_dir.dvc_gen({"dir": {"file": "file_content"}})
     unpacked_dir = stage.outs[0].cache_path + RemoteLOCAL.UNPACKED_DIR_SUFFIX
     assert not os.path.exists(unpacked_dir)
 
@@ -45,7 +45,7 @@ def test_create_unpacked_on_status(tmp_dir, dvc):
 
 
 def test_dir_cache_changed_on_single_cache_file_modification(tmp_dir, dvc):
-    stage, = tmp_dir.dvc_gen(
+    (stage,) = tmp_dir.dvc_gen(
         {"dir": {"file1": "file1 content", "file2": "file2 content"}}
     )
     unpacked_dir = stage.outs[0].cache_path + RemoteLOCAL.UNPACKED_DIR_SUFFIX

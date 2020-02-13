@@ -11,7 +11,7 @@ def test_state(tmp_dir, dvc):
     path_info = PathInfo(path)
     md5 = file_md5(path)[0]
 
-    state = State(dvc, dvc.config.config)
+    state = State(dvc)
 
     with state:
         state.save(path_info, md5)
@@ -34,7 +34,7 @@ def test_state(tmp_dir, dvc):
 def test_state_overflow(tmp_dir, dvc):
     # NOTE: trying to add more entries than state can handle,
     # to see if it will clean up and vacuum successfully
-    dvc.config.set("state", "row_limit", 10)
+    dvc.config["state"]["row_limit"] = 10
 
     path = tmp_dir / "dir"
     path.mkdir()
@@ -55,7 +55,7 @@ def mock_get_inode(inode):
 def test_get_state_record_for_inode(get_inode_mock, tmp_dir, dvc):
     tmp_dir.gen("foo", "foo content")
 
-    state = State(dvc, dvc.config.config)
+    state = State(dvc)
     inode = state.MAX_INT + 2
     assert inode != state._to_sqlite(inode)
 

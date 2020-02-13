@@ -7,7 +7,6 @@ import pytest
 from mock import patch
 
 from dvc.cache import Cache
-from dvc.config import Config
 from dvc.exceptions import DownloadError, PathMissingError
 from dvc.config import NoRemoteError
 from dvc.stage import Stage
@@ -162,12 +161,11 @@ def test_pull_imported_stage(tmp_dir, dvc, erepo_dir):
 
 def test_cache_type_is_properly_overridden(tmp_dir, scm, dvc, erepo_dir):
     with erepo_dir.chdir():
-        erepo_dir.dvc.config.set(
-            Config.SECTION_CACHE, Config.SECTION_CACHE_TYPE, "symlink"
-        )
+        with erepo_dir.dvc.config.edit() as conf:
+            conf["cache"]["type"] = "symlink"
         erepo_dir.dvc.cache = Cache(erepo_dir.dvc)
         erepo_dir.scm_add(
-            [erepo_dir.dvc.config.config_file],
+            [erepo_dir.dvc.config.files["repo"]],
             "set source repo cache type to symlink",
         )
         erepo_dir.dvc_gen("foo", "foo content", "create foo")

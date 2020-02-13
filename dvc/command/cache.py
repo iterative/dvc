@@ -1,18 +1,13 @@
 import argparse
 
-from dvc.cache import CacheConfig
-from dvc.command.base import append_doc_link
-from dvc.command.base import fix_subparsers
+from dvc.command.base import append_doc_link, fix_subparsers
 from dvc.command.config import CmdConfig
 
 
 class CmdCacheDir(CmdConfig):
-    def __init__(self, args):
-        super().__init__(args)
-        self.cache_config = CacheConfig(self.config)
-
     def run(self):
-        self.cache_config.set_dir(self.args.value, level=self.args.level)
+        with self.config.edit(level=self.args.level) as edit:
+            edit["cache"]["dir"] = self.args.value
         return 0
 
 
