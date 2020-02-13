@@ -231,7 +231,7 @@ class Config(dict):
 
         if level == "global":
             return user_config_dir(cls.APPNAME, cls.APPAUTHOR)
-        elif level == "system":
+        if level == "system":
             return site_config_dir(cls.APPNAME, cls.APPAUTHOR)
 
     @cached_property
@@ -294,25 +294,27 @@ class Config(dict):
 
     @staticmethod
     def _load_paths(conf, filename):
+        abs_conf_dir = os.path.abspath(os.path.dirname(filename))
+
         def resolve(path):
             if os.path.isabs(path) or re.match(r"\w+://", path):
                 return path
-            return RelPath(os.path.join(cwd, path))
+            return RelPath(os.path.join(abs_conf_dir, path))
 
-        cwd = os.path.abspath(os.path.dirname(filename))
         return Config._map_dirs(conf, resolve)
 
     @staticmethod
     def _save_paths(conf, filename):
+        conf_dir = os.path.dirname(filename)
+
         def rel(path):
             if re.match(r"\w+://", path):
                 return path
 
             if isinstance(path, RelPath) or not os.path.isabs(path):
-                return relpath(path, config_dir)
+                return relpath(path, conf_dir)
             return path
 
-        config_dir = os.path.dirname(filename)
         return Config._map_dirs(conf, rel)
 
     @staticmethod
@@ -332,7 +334,8 @@ class Config(dict):
         _save_config(self.files[level], conf)
         self.load()
 
-    def validate(self, data):
+    @staticmethod
+    def validate(data):
         try:
             return COMPILED_SCHEMA(data)
         except Invalid as exc:
