@@ -16,9 +16,7 @@ class CmdDaemonUpdater(CmdDaemonBase):
         root_dir = Repo.find_root()
         dvc_dir = os.path.join(root_dir, Repo.DVC_DIR)
         config = Config(dvc_dir, validate=False)
-        hardlink_lock = config.config.get("core", {}).get(
-            "hardlink_lock", False
-        )
+        hardlink_lock = config.get("core", {}).get("hardlink_lock", False)
         updater = Updater(dvc_dir, hardlink_lock=hardlink_lock)
         updater.fetch(detach=False)
 
