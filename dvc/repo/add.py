@@ -73,7 +73,7 @@ def add(repo, targets, recursive=False, no_commit=False, fname=None):
                 total=len(stages),
                 desc="Processing",
                 unit="file",
-                disable=True if len(stages) == 1 else None,
+                disable=len(stages) == 1,
             ) as pbar_stages:
                 for stage in stages:
                     try:
@@ -120,7 +120,7 @@ def _create_stages(repo, targets, fname, pbar=None):
     for out in Tqdm(
         targets,
         desc="Creating DVC-files",
-        disable=True if len(targets) < LARGE_DIR_SIZE else None,
+        disable=len(targets) < LARGE_DIR_SIZE,
         unit="file",
     ):
         stage = Stage.create(
