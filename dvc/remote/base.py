@@ -856,9 +856,7 @@ class RemoteBASE(object):
         """The file is changed we need to checkout a new copy"""
         cache_info = self.checksum_to_path_info(checksum)
         if self.exists(path_info):
-            logger.warning(
-                "data '{}' exists. Removing before checkout.", path_info
-            )
+            logger.debug("data '{}' will be replaced.", path_info)
             self.safe_remove(path_info, force=force)
 
         self.link(cache_info, path_info)
