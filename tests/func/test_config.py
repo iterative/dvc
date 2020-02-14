@@ -2,7 +2,7 @@ import pytest
 import configobj
 
 from dvc.main import main
-from dvc.config import ConfigError
+from dvc.config import Config, ConfigError
 from tests.basic_env import TestDvc
 
 
@@ -101,3 +101,8 @@ def test_merging_two_levels(dvc):
         "url": "ssh://example.com",
         "password": "1",
     }
+
+
+def test_config_loads_without_error_for_non_dvc_repo(tmp_dir):
+    # regression testing for https://github.com/iterative/dvc/issues/3328
+    Config(validate=True)

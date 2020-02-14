@@ -278,7 +278,7 @@ class Config(dict):
         self.update(conf)
 
         # Add resolved default cache.dir
-        if not self["cache"].get("dir"):
+        if not self["cache"].get("dir") and self.dvc_dir:
             self["cache"]["dir"] = os.path.join(self.dvc_dir, "cache")
 
     def load_one(self, level):
