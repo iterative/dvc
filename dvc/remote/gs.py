@@ -52,7 +52,7 @@ def _upload_to_bucket(
     to_info,
     chunk_size=None,
     name=None,
-    no_progress_bar=True,
+    no_progress_bar=False,
 ):
     blob = bucket.blob(to_info.path, chunk_size=chunk_size)
     with io.open(from_file, mode="rb") as fobj:
@@ -167,7 +167,7 @@ class RemoteGS(RemoteBASE):
         """
         return self.isfile(path_info) or self.isdir(path_info)
 
-    def _upload(self, from_file, to_info, name=None, no_progress_bar=True):
+    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         bucket = self.gs.bucket(to_info.bucket)
         _upload_to_bucket(
             bucket,
@@ -177,7 +177,7 @@ class RemoteGS(RemoteBASE):
             no_progress_bar=no_progress_bar,
         )
 
-    def _download(self, from_info, to_file, name=None, no_progress_bar=True):
+    def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         bucket = self.gs.bucket(from_info.bucket)
         blob = bucket.get_blob(from_info.path)
         with io.open(to_file, mode="wb") as fobj:
