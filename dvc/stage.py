@@ -191,7 +191,7 @@ class Stage(object):
     PARAM_ALWAYS_CHANGED = "always_changed"
 
     SCHEMA = {
-        PARAM_MD5: Any(str, None),
+        PARAM_MD5: output.CHECKSUM_SCHEMA,
         PARAM_CMD: Any(str, None),
         PARAM_WDIR: Any(str, None),
         PARAM_DEPS: Any([dependency.SCHEMA], None),
