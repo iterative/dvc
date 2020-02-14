@@ -246,7 +246,7 @@ class RemoteGDrive(RemoteBASE):
         self,
         parent_id,
         title,
-        no_progress_bar=True,
+        no_progress_bar=False,
         from_file="",
         progress_name="",
     ):
