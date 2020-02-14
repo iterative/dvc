@@ -44,7 +44,7 @@ class Lock(object):
         try:
             with Tqdm(
                 bar_format="{desc}",
-                disable=True if not self._friendly else None,
+                disable=not self._friendly,
                 desc=(
                     "If DVC froze, see `hardlink_lock` in {}".format(
                         format_link("man.dvc.org/config#core")
