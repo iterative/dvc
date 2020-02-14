@@ -123,7 +123,9 @@ def _create_stages(repo, targets, fname, pbar=None):
         disable=True if len(targets) < LARGE_DIR_SIZE else None,
         unit="file",
     ):
-        stage = Stage.create(repo, outs=[out], add=True, fname=fname)
+        stage = Stage.create(
+            repo, outs=[out], accompany_outs=True, fname=fname
+        )
 
         if not stage:
             if pbar is not None:
