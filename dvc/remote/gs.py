@@ -7,7 +7,6 @@ import threading
 
 from funcy import cached_property, wrap_prop
 
-from dvc.config import Config
 from dvc.exceptions import DvcException
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
@@ -75,11 +74,11 @@ class RemoteGS(RemoteBASE):
     def __init__(self, repo, config):
         super().__init__(repo, config)
 
-        url = config.get(Config.SECTION_REMOTE_URL, "gs:///")
+        url = config.get("url", "gs:///")
         self.path_info = self.path_cls(url)
 
-        self.projectname = config.get(Config.SECTION_GCP_PROJECTNAME, None)
-        self.credentialpath = config.get(Config.SECTION_GCP_CREDENTIALPATH)
+        self.projectname = config.get("projectname", None)
+        self.credentialpath = config.get("credentialpath")
 
     @wrap_prop(threading.Lock())
     @cached_property

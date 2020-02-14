@@ -7,12 +7,11 @@ from unittest import SkipTest
 
 import pytest
 
-from dvc.cache import NamedCache
 from dvc.compat import fspath
-from dvc.config import Config
+from dvc.cache import NamedCache
 from dvc.data_cloud import DataCloud
 from dvc.main import main
-from dvc.remote import RemoteAZURE, RemoteConfig
+from dvc.remote import RemoteAZURE
 from dvc.remote import RemoteGDrive
 from dvc.remote import RemoteGS
 from dvc.remote import RemoteHDFS
@@ -21,12 +20,9 @@ from dvc.remote import RemoteLOCAL
 from dvc.remote import RemoteOSS
 from dvc.remote import RemoteS3
 from dvc.remote import RemoteSSH
-from dvc.remote.base import STATUS_DELETED
-from dvc.remote.base import STATUS_NEW
-from dvc.remote.base import STATUS_OK
+from dvc.remote.base import STATUS_DELETED, STATUS_NEW, STATUS_OK
 from dvc.utils import file_md5
-from dvc.utils.stage import dump_stage_file
-from dvc.utils.stage import load_stage_file
+from dvc.utils.stage import dump_stage_file, load_stage_file
 from tests.basic_env import TestDvc
 
 from tests.remotes import (
@@ -39,7 +35,6 @@ from tests.remotes import (
     SSHMocked,
     OSS,
     TEST_CONFIG,
-    TEST_SECTION,
     TEST_GCP_CREDS_FILE,
     TEST_GDRIVE_CLIENT_ID,
     TEST_GDRIVE_CLIENT_SECRET,
@@ -49,7 +44,7 @@ from tests.remotes import (
 
 class TestDataCloud(TestDvc):
     def _test_cloud(self, config, cl):
-        self.dvc.config.config = config
+        self.dvc.config = config
         cloud = DataCloud(self.dvc)
         self.assertIsInstance(cloud.get_remote(), cl)
 
@@ -68,7 +63,7 @@ class TestDataCloud(TestDvc):
 
         for scheme, cl in clist:
             remote_url = scheme + str(uuid.uuid4())
-            config[TEST_SECTION][Config.SECTION_REMOTE_URL] = remote_url
+            config["remote"][TEST_REMOTE]["url"] = remote_url
             self._test_cloud(config, cl)
 
 
@@ -100,9 +95,8 @@ class TestDataCloudBase(TestDvc):
         keyfile = self._get_keyfile()
 
         config = copy.deepcopy(TEST_CONFIG)
-        config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
-        config[TEST_SECTION][Config.SECTION_REMOTE_KEY_FILE] = keyfile
-        self.dvc.config.config = config
+        config["remote"][TEST_REMOTE] = {"url": repo, "keyfile": keyfile}
+        self.dvc.config = config
         self.cloud = DataCloud(self.dvc)
 
         self.assertIsInstance(self.cloud.get_remote(), self._get_cloud_class())
@@ -196,15 +190,13 @@ class TestRemoteS3(S3, TestDataCloudBase):
 
 def setup_gdrive_cloud(remote_url, dvc):
     config = copy.deepcopy(TEST_CONFIG)
-    config[TEST_SECTION][Config.SECTION_REMOTE_URL] = remote_url
-    config[TEST_SECTION][
-        Config.SECTION_GDRIVE_CLIENT_ID
-    ] = TEST_GDRIVE_CLIENT_ID
-    config[TEST_SECTION][
-        Config.SECTION_GDRIVE_CLIENT_SECRET
-    ] = TEST_GDRIVE_CLIENT_SECRET
+    config["remote"][TEST_REMOTE] = {
+        "url": remote_url,
+        "gdrive_client_id": TEST_GDRIVE_CLIENT_ID,
+        "grdive_client_secret": TEST_GDRIVE_CLIENT_SECRET,
+    }
 
-    dvc.config.config = config
+    dvc.config = config
     remote = DataCloud(dvc).get_remote()
     remote._create_remote_dir("root", remote.path_info.path)
 
@@ -230,11 +222,11 @@ class TestRemoteGS(GCP, TestDataCloudBase):
         repo = self.get_url()
 
         config = copy.deepcopy(TEST_CONFIG)
-        config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
-        config[TEST_SECTION][
-            Config.SECTION_GCP_CREDENTIALPATH
-        ] = TEST_GCP_CREDS_FILE
-        self.dvc.config.config = config
+        config["remote"][TEST_REMOTE] = {
+            "url": repo,
+            "credentialpath": TEST_GCP_CREDS_FILE,
+        }
+        self.dvc.config = config
         self.cloud = DataCloud(self.dvc)
 
         self.assertIsInstance(self.cloud.get_remote(), self._get_cloud_class())
@@ -272,10 +264,12 @@ class TestRemoteSSHMocked(SSHMocked, TestDataCloudBase):
         keyfile = self._get_keyfile()
 
         config = copy.deepcopy(TEST_CONFIG)
-        config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
-        config[TEST_SECTION][Config.SECTION_REMOTE_KEY_FILE] = keyfile
-        config[TEST_SECTION][Config.SECTION_REMOTE_NO_TRAVERSE] = False
-        self.dvc.config.config = config
+        config["remote"][TEST_REMOTE] = {
+            "url": repo,
+            "keyfile": keyfile,
+            "no_traverse": False,
+        }
+        self.dvc.config = config
         self.cloud = DataCloud(self.dvc)
 
         self.assertIsInstance(self.cloud.get_remote(), self._get_cloud_class())
@@ -425,7 +419,7 @@ class TestRemoteGDriveCLI(GDrive, TestDataCloudCLIBase):
                 "remote",
                 "modify",
                 TEST_REMOTE,
-                Config.SECTION_GDRIVE_CLIENT_ID,
+                "gdrive_client_id",
                 TEST_GDRIVE_CLIENT_ID,
             ]
         )
@@ -434,7 +428,7 @@ class TestRemoteGDriveCLI(GDrive, TestDataCloudCLIBase):
                 "remote",
                 "modify",
                 TEST_REMOTE,
-                Config.SECTION_GDRIVE_CLIENT_SECRET,
+                "grdive_client_secret",
                 TEST_GDRIVE_CLIENT_SECRET,
             ]
         )
@@ -669,11 +663,10 @@ def test_verify_checksums(tmp_dir, scm, dvc, mocker, tmp_path_factory):
     tmp_dir.dvc_gen({"file": "file1 content"}, commit="add file")
     tmp_dir.dvc_gen({"dir": {"subfile": "file2 content"}}, commit="add dir")
 
-    RemoteConfig(dvc.config).add(
-        "local_remote",
-        fspath(tmp_path_factory.mktemp("local_remote")),
-        default=True,
-    )
+    dvc.config["remote"]["local_remote"] = {
+        "url": fspath(tmp_path_factory.mktemp("local_remote"))
+    }
+    dvc.config["core"]["remote"] = "local_remote"
     dvc.push()
 
     # remove artifacts and cache to trigger fetching
@@ -689,11 +682,7 @@ def test_verify_checksums(tmp_dir, scm, dvc, mocker, tmp_path_factory):
     # Removing cache will invalidate existing state entries
     shutil.rmtree(dvc.cache.local.cache_dir)
 
-    dvc.config.set(
-        Config.SECTION_REMOTE_FMT.format("local_remote"),
-        Config.SECTION_REMOTE_VERIFY,
-        "True",
-    )
+    dvc.config["remote"]["local_remote"]["verify"] = True
 
     dvc.pull()
     assert checksum_spy.call_count == 3

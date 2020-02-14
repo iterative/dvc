@@ -808,6 +808,8 @@ class TestCmdReproChdir(TestDvc):
 
 
 class TestReproExternalBase(TestDvc):
+    cache_type = None
+
     @staticmethod
     def should_test():
         return False
@@ -815,10 +817,6 @@ class TestReproExternalBase(TestDvc):
     @property
     def cache_scheme(self):
         return self.scheme
-
-    @property
-    def cache_type(self):
-        return "copy"
 
     @property
     def scheme(self):
@@ -876,8 +874,9 @@ class TestReproExternalBase(TestDvc):
         self.assertEqual(ret, 0)
         ret = main(["remote", "add", "myrepo", cache])
         self.assertEqual(ret, 0)
-        ret = main(["remote", "modify", "myrepo", "type", self.cache_type])
-        self.assertEqual(ret, 0)
+        if self.cache_type:
+            ret = main(["remote", "modify", "myrepo", "type", self.cache_type])
+            self.assertEqual(ret, 0)
 
         remote_name = "myremote"
         remote_key = str(uuid.uuid4())
@@ -887,8 +886,11 @@ class TestReproExternalBase(TestDvc):
 
         ret = main(["remote", "add", remote_name, remote])
         self.assertEqual(ret, 0)
-        ret = main(["remote", "modify", remote_name, "type", self.cache_type])
-        self.assertEqual(ret, 0)
+        if self.cache_type:
+            ret = main(
+                ["remote", "modify", remote_name, "type", self.cache_type]
+            )
+            self.assertEqual(ret, 0)
 
         self.dvc = DvcRepo(".")
 
@@ -1052,6 +1054,7 @@ class TestReproExternalHDFS(HDFS, TestReproExternalBase):
 @flaky(max_runs=3, min_passes=1)
 class TestReproExternalSSH(SSH, TestReproExternalBase):
     _dir = None
+    cache_type = "copy"
 
     @property
     def scheme(self):
@@ -1095,16 +1098,14 @@ class TestReproExternalSSH(SSH, TestReproExternalBase):
 
 
 class TestReproExternalLOCAL(Local, TestReproExternalBase):
+    cache_type = "hardlink"
+
     def setUp(self):
         super().setUp()
         self.tmpdir = self.mkdtemp()
         ret = main(["config", "cache.type", "hardlink"])
         self.assertEqual(ret, 0)
         self.dvc = DvcRepo(".")
-
-    @property
-    def cache_type(self):
-        return "hardlink"
 
     @property
     def cache_scheme(self):

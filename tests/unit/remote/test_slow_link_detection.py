@@ -2,7 +2,6 @@ import mock
 import pytest
 
 import dvc.remote.slow_link_detection
-from dvc.config import Config
 from dvc.remote.slow_link_detection import slow_link_guard
 
 
@@ -15,9 +14,8 @@ def timeout_immediately(monkeypatch):
 def make_remote():
     def _make_remote(cache_type=None, should_warn=True):
         remote = mock.Mock()
-        remote.repo.config.config.get.return_value = {
-            Config.SECTION_CACHE_TYPE: cache_type,
-            Config.SECTION_CACHE_SLOW_LINK_WARNING: should_warn,
+        remote.repo.config = {
+            "cache": {"type": cache_type, "slow_link_warning": should_warn}
         }
         return remote
 
@@ -29,8 +27,8 @@ def test_show_warning_once(caplog, make_remote):
     slow_link_guard(lambda x: None)(remote)
     slow_link_guard(lambda x: None)(remote)
 
-    assert caplog.records[0].message == dvc.remote.slow_link_detection.message
     assert len(caplog.records) == 1
+    assert caplog.records[0].message == dvc.remote.slow_link_detection.message
 
 
 def test_dont_warn_when_cache_type_is_set(caplog, make_remote):

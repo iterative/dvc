@@ -2,16 +2,13 @@ import pytest
 import configobj
 
 from dvc.main import main
-from dvc.config import Config, ConfigError
+from dvc.config import ConfigError
 from tests.basic_env import TestDvc
 
 
 class TestConfigCLI(TestDvc):
     def _contains(self, section, field, value, local=False):
-        if local:
-            fname = self.dvc.config.config_local_file
-        else:
-            fname = self.dvc.config.config_file
+        fname = self.dvc.config.files["local" if local else "repo"]
 
         config = configobj.ConfigObj(fname)
         if section not in config.keys():
@@ -89,9 +86,18 @@ class TestConfigCLI(TestDvc):
 
 def test_set_invalid_key(dvc):
     with pytest.raises(ConfigError, match=r"extra keys not allowed"):
-        dvc.config.set("core", "invalid.key", "value")
+        with dvc.config.edit() as conf:
+            conf["core"]["invalid_key"] = "value"
 
 
 def test_merging_two_levels(dvc):
-    dvc.config.set('remote "test"', "url", "https://example.com")
-    dvc.config.set('remote "test"', "password", "1", level=Config.LEVEL_LOCAL)
+    with dvc.config.edit() as conf:
+        conf["remote"]["test"] = {"url": "ssh://example.com"}
+
+    with dvc.config.edit("local") as conf:
+        conf["remote"]["test"] = {"password": "1"}
+
+    assert dvc.config["remote"]["test"] == {
+        "url": "ssh://example.com",
+        "password": "1",
+    }

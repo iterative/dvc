@@ -89,7 +89,7 @@ def init(root_dir=os.curdir, no_scm=False, force=False):
     config = Config.init(dvc_dir)
     proj = Repo(root_dir)
 
-    scm.add([config.config_file])
+    scm.add([config.files["repo"]])
 
     if scm.ignore_file:
         scm.add([os.path.join(dvc_dir, scm.ignore_file)])

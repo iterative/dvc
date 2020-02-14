@@ -59,8 +59,8 @@ def test_update_import_after_remote_updates_to_dvc(tmp_dir, dvc, erepo_dir):
 
     assert old_rev != new_rev
 
-    status, = dvc.status([stage.path])["version.dvc"]
-    changed_dep, = list(status["changed deps"].items())
+    (status,) = dvc.status([stage.path])["version.dvc"]
+    (changed_dep,) = list(status["changed deps"].items())
     assert changed_dep[0].startswith("version ")
     assert changed_dep[1] == "update available"
 

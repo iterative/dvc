@@ -8,7 +8,7 @@ from dvc.compat import fspath
 
 
 def test_destroy(tmp_dir, dvc):
-    dvc.config.set("cache", "type", "symlink")
+    dvc.config["cache"]["type"] = ["symlink"]
     dvc.cache = Cache(dvc)
 
     tmp_dir.dvc_gen("file", "text")

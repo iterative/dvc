@@ -7,7 +7,6 @@ import threading
 
 from funcy import cached_property, wrap_prop
 
-from dvc.config import Config
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.remote.base import RemoteBASE
@@ -33,7 +32,7 @@ class RemoteAZURE(RemoteBASE):
     def __init__(self, repo, config):
         super().__init__(repo, config)
 
-        url = config.get(Config.SECTION_REMOTE_URL, "azure://")
+        url = config.get("url", "azure://")
 
         match = re.match(self.REGEX, url)  # backward compatibility
         path = match.group("path")
@@ -44,7 +43,7 @@ class RemoteAZURE(RemoteBASE):
         )
 
         self.connection_string = (
-            config.get(Config.SECTION_AZURE_CONNECTION_STRING)
+            config.get("connection_string")
             or match.group("connection_string")  # backward compatibility
             or os.getenv("AZURE_STORAGE_CONNECTION_STRING")
         )

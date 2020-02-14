@@ -188,17 +188,10 @@ class RecursiveAddingWhileUsingFilename(DvcException):
 
 
 class OverlappingOutputPathsError(DvcException):
-    def __init__(self, out_1, out_2):
-        super().__init__(
-            "Paths for outs:\n'{}'('{}')\n'{}'('{}')\noverlap. To avoid "
-            "unpredictable behaviour, rerun command with non overlapping outs "
-            "paths.".format(
-                str(out_1),
-                out_1.stage.relpath,
-                str(out_2),
-                out_2.stage.relpath,
-            )
-        )
+    def __init__(self, parent, overlapping_out, message):
+        self.parent = parent
+        self.overlapping_out = overlapping_out
+        super().__init__(message)
 
 
 class CheckoutErrorSuggestGit(DvcException):
@@ -294,12 +287,23 @@ class HTTPError(DvcException):
 
 
 class PathMissingError(DvcException):
-    def __init__(self, path, repo):
+    default_msg = (
+        "The path '{}' does not exist in the target repository '{}'"
+        " neither as an output nor a git-handled file."
+    )
+    default_msg_output_only = (
+        "The path '{}' does not exist in the target repository '{}'"
+        " as an output."
+    )
+
+    def __init__(self, path, repo, output_only=False):
         msg = (
-            "The path '{}' does not exist in the target repository '{}'"
-            " neither as an output nor a git-handled file."
+            self.default_msg
+            if not output_only
+            else self.default_msg_output_only
         )
         super().__init__(msg.format(path, repo))
+        self.output_only = output_only
 
 
 class RemoteCacheRequiredError(DvcException):

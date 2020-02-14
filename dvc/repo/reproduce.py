@@ -65,11 +65,7 @@ def reproduce(
 
     interactive = kwargs.get("interactive", False)
     if not interactive:
-        config = self.config
-        core = config.config[config.SECTION_CORE]
-        kwargs["interactive"] = core.get(
-            config.SECTION_CORE_INTERACTIVE, False
-        )
+        kwargs["interactive"] = self.config["core"].get("interactive", False)
 
     active_graph = _get_active_graph(self.graph)
     active_pipelines = get_pipelines(active_graph)

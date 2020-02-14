@@ -11,7 +11,7 @@ from mock import patch
 
 import dvc as dvc_module
 from dvc.cache import Cache
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, OverlappingOutputPathsError
 from dvc.exceptions import RecursiveAddingWhileUsingFilename
 from dvc.exceptions import StageFileCorruptedError
 from dvc.main import main
@@ -31,7 +31,7 @@ from tests.utils import get_gitignore_content
 
 
 def test_add(tmp_dir, dvc):
-    stage, = tmp_dir.dvc_gen({"foo": "foo"})
+    (stage,) = tmp_dir.dvc_gen({"foo": "foo"})
     md5, _ = file_md5("foo")
 
     assert stage is not None
@@ -49,7 +49,7 @@ def test_add_unicode(tmp_dir, dvc):
     with open("\xe1", "wb") as fd:
         fd.write("something".encode("utf-8"))
 
-    stage, = dvc.add("\xe1")
+    (stage,) = dvc.add("\xe1")
 
     assert os.path.isfile(stage.path)
 
@@ -60,7 +60,7 @@ def test_add_unsupported_file(dvc):
 
 
 def test_add_directory(tmp_dir, dvc):
-    stage, = tmp_dir.dvc_gen({"dir": {"file": "file"}})
+    (stage,) = tmp_dir.dvc_gen({"dir": {"file": "file"}})
 
     assert stage is not None
     assert len(stage.deps) == 0
@@ -161,7 +161,7 @@ def test_add_file_in_dir(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"subdir": {"subdata": "subdata content"}}})
     subdir_path = os.path.join("dir", "subdir", "subdata")
 
-    stage, = dvc.add(subdir_path)
+    (stage,) = dvc.add(subdir_path)
 
     assert stage is not None
     assert len(stage.deps) == 0
@@ -546,10 +546,10 @@ def temporary_windows_drive(tmp_path_factory):
 def test_windows_should_add_when_cache_on_different_drive(
     tmp_dir, dvc, temporary_windows_drive
 ):
-    dvc.config.set("cache", "dir", temporary_windows_drive)
+    dvc.config["cache"]["dir"] = temporary_windows_drive
     dvc.cache = Cache(dvc)
 
-    stage, = tmp_dir.dvc_gen({"file": "file"})
+    (stage,) = tmp_dir.dvc_gen({"file": "file"})
     cache_path = stage.outs[0].cache_path
 
     assert path_isin(cache_path, temporary_windows_drive)
@@ -601,7 +601,7 @@ def test_should_relink_on_repeated_add(
 ):
     from dvc.path_info import PathInfo
 
-    dvc.config.set("cache", "type", link)
+    dvc.config["cache"]["type"] = link
 
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
 
@@ -641,3 +641,17 @@ def test_escape_gitignore_entries(tmp_dir, scm, dvc):
 
     tmp_dir.dvc_gen(fname, "...")
     assert ignored_fname in get_gitignore_content()
+
+
+def test_add_from_data_dir(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen({"dir": {"file1": "file1 content"}})
+
+    tmp_dir.gen({"dir": {"file2": "file2 content"}})
+
+    with pytest.raises(OverlappingOutputPathsError) as e:
+        dvc.add(os.path.join("dir", "file2"))
+    assert str(e.value) == (
+        "Cannot add '{out}', because it is overlapping with other DVC "
+        "tracked output: 'dir'.\n"
+        "To include '{out}' in 'dir', run 'dvc commit dir.dvc'"
+    ).format(out=os.path.join("dir", "file2"))

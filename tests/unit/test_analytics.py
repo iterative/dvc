@@ -10,19 +10,17 @@ from dvc.cli import parse_args
 
 
 @pytest.fixture
-def tmp_global_config(tmp_path):
+def tmp_global_dir(tmp_path):
     """
     Fixture to prevent modifying the actual global config
     """
-    with mock.patch(
-        "dvc.config.Config.get_global_config_dir", return_value=str(tmp_path)
-    ):
+    with mock.patch("dvc.config.Config.get_dir", return_value=str(tmp_path)):
         yield
 
 
 @mock.patch("dvc.daemon._spawn")
 @mock.patch("json.dump")
-def test_collect_and_send_report(mock_json, mock_daemon, tmp_global_config):
+def test_collect_and_send_report(mock_json, mock_daemon, tmp_global_dir):
     analytics.collect_and_send_report()
     report = mock_json.call_args[0][0]
 
@@ -44,7 +42,7 @@ def test_collect_and_send_report(mock_json, mock_daemon, tmp_global_config):
     assert mock_daemon.call_count == 2
 
 
-def test_runtime_info(tmp_global_config):
+def test_runtime_info(tmp_global_dir):
     schema = Schema(
         {
             "dvc_version": str,
@@ -86,10 +84,12 @@ def test_send(mock_post, tmp_path):
         ({"analytics": "false", "unknown": "broken"}, False),
     ],
 )
-def test_is_enabled(dvc, config, result, monkeypatch, tmp_global_config):
-    configobj = dvc.config._repo_config
-    configobj["core"] = config
-    configobj.write()
+def test_is_enabled(dvc, config, result, monkeypatch, tmp_global_dir):
+    import configobj
+
+    conf = configobj.ConfigObj({"core": config})
+    conf.filename = dvc.config.files["repo"]
+    conf.write()
 
     # reset DVC_TEST env var, which affects `is_enabled()`
     monkeypatch.delenv("DVC_TEST")
@@ -127,7 +127,7 @@ def test_system_info():
     assert schema(analytics._system_info())
 
 
-def test_find_or_create_user_id(tmp_global_config):
+def test_find_or_create_user_id(tmp_global_dir):
     created = analytics._find_or_create_user_id()
     found = analytics._find_or_create_user_id()
 

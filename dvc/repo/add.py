@@ -4,7 +4,10 @@ import os
 import colorama
 
 from . import locked
-from ..exceptions import RecursiveAddingWhileUsingFilename
+from ..exceptions import (
+    RecursiveAddingWhileUsingFilename,
+    OverlappingOutputPathsError,
+)
 from ..output.base import OutputDoesNotExistError
 from ..progress import Tqdm
 from ..repo.scm_context import scm_context
@@ -49,7 +52,22 @@ def add(repo, targets, recursive=False, no_commit=False, fname=None):
 
             stages = _create_stages(repo, sub_targets, fname, pbar=pbar)
 
-            repo.check_modified_graph(stages)
+            try:
+                repo.check_modified_graph(stages)
+            except OverlappingOutputPathsError as exc:
+                msg = (
+                    "Cannot add '{out}', because it is overlapping with other "
+                    "DVC tracked output: '{parent}'.\n"
+                    "To include '{out}' in '{parent}', run "
+                    "'dvc commit {parent_stage}'"
+                ).format(
+                    out=exc.overlapping_out.path_info,
+                    parent=exc.parent.path_info,
+                    parent_stage=exc.parent.stage.relpath,
+                )
+                raise OverlappingOutputPathsError(
+                    exc.parent, exc.overlapping_out, msg
+                )
 
             with Tqdm(
                 total=len(stages),

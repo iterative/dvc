@@ -1,4 +1,3 @@
-import logging
 import os
 from contextlib import contextmanager
 from functools import wraps
@@ -21,9 +20,6 @@ from dvc.utils.fs import path_isin
 from .graph import check_acyclic, get_pipeline, get_pipelines
 
 
-logger = logging.getLogger(__name__)
-
-
 def locked(f):
     @wraps(f)
     def wrapper(repo, *args, **kwargs):
@@ -43,6 +39,7 @@ class Repo(object):
     from dvc.repo.install import install
     from dvc.repo.add import add
     from dvc.repo.remove import remove
+    from dvc.repo.ls import ls
     from dvc.repo.lock import lock as lock_stage
     from dvc.repo.move import move
     from dvc.repo.run import run
@@ -87,7 +84,7 @@ class Repo(object):
         self.tmp_dir = os.path.join(self.dvc_dir, "tmp")
         makedirs(self.tmp_dir, exist_ok=True)
 
-        hardlink_lock = self.config.config["core"].get("hardlink_lock", False)
+        hardlink_lock = self.config["core"].get("hardlink_lock", False)
         self.lock = make_lock(
             os.path.join(self.dvc_dir, "lock"),
             tmp_dir=os.path.join(self.dvc_dir, "tmp"),
@@ -97,13 +94,7 @@ class Repo(object):
 
         # NOTE: storing state and link_state in the repository itself to avoid
         # any possible state corruption in 'shared cache dir' scenario.
-        self.state = State(self, self.config.config)
-
-        core = self.config.config[Config.SECTION_CORE]
-
-        level = core.get(Config.SECTION_CORE_LOGLEVEL)
-        if level:
-            logger.setLevel(level.upper())
+        self.state = State(self)
 
         self.cache = Cache(self)
         self.cloud = DataCloud(self)
@@ -169,7 +160,7 @@ class Repo(object):
         updater = Updater(self.dvc_dir)
 
         flist = (
-            [self.config.config_local_file, updater.updater_file]
+            [self.config.files["local"], updater.updater_file]
             + [self.lock.lockfile, updater.lock.lockfile, self.tmp_dir]
             + self.state.files
         )
@@ -334,7 +325,17 @@ class Repo(object):
             for out in stage.outs:
                 for p in out.path_info.parents:
                     if p in outs:
-                        raise OverlappingOutputPathsError(outs[p], out)
+                        msg = (
+                            "Paths for outs:\n'{}'('{}')\n'{}'('{}')\n"
+                            "overlap. To avoid unpredictable behaviour, "
+                            "rerun command with non overlapping outs paths."
+                        ).format(
+                            str(outs[p]),
+                            outs[p].stage.relpath,
+                            str(out),
+                            out.stage.relpath,
+                        )
+                        raise OverlappingOutputPathsError(outs[p], out, msg)
 
         for stage in stages:
             stage_path_info = PathInfo(stage.path)
