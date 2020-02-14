@@ -1,4 +1,5 @@
 import logging
+import os.path
 import threading
 
 from funcy import cached_property, wrap_prop
@@ -47,6 +48,28 @@ class RemoteHTTP(RemoteBASE):
                 for chunk in response.iter_content(chunk_size=self.CHUNK_SIZE):
                     fd.write(chunk)
                     pbar.update(len(chunk))
+
+    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
+        with Tqdm(
+            total=None if no_progress_bar else os.path.getsize(from_file),
+            leave=False,
+            bytes=True,
+            desc=to_info.url if name is None else name,
+            disable=no_progress_bar,
+        ) as pbar:
+
+            def chunks():
+                with open(from_file, "rb") as fd:
+                    while True:
+                        chunk = fd.read(self.CHUNK_SIZE)
+                        if not chunk:
+                            break
+                        pbar.update(len(chunk))
+                        yield chunk
+
+            response = self._request("POST", to_info.url, data=chunks())
+            if response.status_code != 200:
+                raise HTTPError(response.status_code, response.reason)
 
     def exists(self, path_info):
         return bool(self._request("HEAD", path_info.url))
