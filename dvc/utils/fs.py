@@ -171,7 +171,7 @@ def makedirs(path, exist_ok=False, mode=None):
         os.umask(umask)
 
 
-def copyfile(src, dest, no_progress_bar=None, name=None):
+def copyfile(src, dest, no_progress_bar=False, name=None):
     """Copy file with progress bar"""
     from dvc.exceptions import DvcException
     from dvc.progress import Tqdm

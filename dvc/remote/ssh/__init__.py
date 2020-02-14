@@ -225,7 +225,7 @@ class RemoteSSH(RemoteBASE):
         with self.ssh(from_info) as ssh:
             ssh.move(from_info.path, to_info.path)
 
-    def _download(self, from_info, to_file, name=None, no_progress_bar=None):
+    def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         assert from_info.isin(self.path_info)
         with self.ssh(self.path_info) as ssh:
             ssh.download(
@@ -235,7 +235,7 @@ class RemoteSSH(RemoteBASE):
                 no_progress_bar=no_progress_bar,
             )
 
-    def _upload(self, from_file, to_info, name=None, no_progress_bar=None):
+    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         assert to_info.isin(self.path_info)
         with self.ssh(self.path_info) as ssh:
             ssh.upload(
