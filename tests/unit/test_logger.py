@@ -4,6 +4,10 @@ import traceback
 import colorama
 
 import dvc.logger
+import time
+from datetime import datetime
+import pytest
+
 from dvc.exceptions import DvcException
 
 
@@ -11,18 +15,29 @@ logger = logging.getLogger("dvc")
 formatter = dvc.logger.ColorFormatter()
 colors = {
     "blue": colorama.Fore.BLUE,
+    "green": colorama.Fore.GREEN,
     "red": colorama.Fore.RED,
     "yellow": colorama.Fore.YELLOW,
     "nc": colorama.Fore.RESET,
 }
 
 
+@pytest.fixture()
+def dt(mocker):
+    with mocker.patch(
+        "time.time", return_value=time.mktime(datetime(2020, 2, 2).timetuple())
+    ):
+        yield "2020-02-02 00:00:00,000"
+
+
 class TestColorFormatter:
-    def test_debug(self, caplog):
+    def test_debug(self, caplog, dt):
         with caplog.at_level(logging.DEBUG, logger="dvc"):
             logger.debug("message")
 
-            expected = "{blue}DEBUG{nc}: message".format(**colors)
+            expected = "{green}{datetime}{nc} {blue}DEBUG{nc}: message".format(
+                **colors, datetime=dt
+            )
 
             assert expected == formatter.format(caplog.records[0])
 
@@ -81,7 +96,7 @@ class TestColorFormatter:
 
             assert expected == formatter.format(caplog.records[0])
 
-    def test_exception_under_verbose(self, caplog):
+    def test_exception_under_verbose(self, caplog, dt):
         with caplog.at_level(logging.DEBUG, logger="dvc"):
             try:
                 raise Exception("description")
@@ -90,17 +105,21 @@ class TestColorFormatter:
                 logger.exception("")
 
             expected = (
+                "{green}{datetime}{nc} "
                 "{red}ERROR{nc}: description\n"
                 "{red}{line}{nc}\n"
                 "{stack_trace}"
                 "{red}{line}{nc}".format(
-                    line="-" * 60, stack_trace=stack_trace, **colors
+                    line="-" * 60,
+                    stack_trace=stack_trace,
+                    **colors,
+                    datetime=dt
                 )
             )
 
             assert expected == formatter.format(caplog.records[0])
 
-    def test_tb_only(self, caplog):
+    def test_tb_only(self, caplog, dt):
         with caplog.at_level(logging.DEBUG, logger="dvc"):
             try:
                 raise Exception("description")
@@ -109,17 +128,21 @@ class TestColorFormatter:
                 logger.exception("something", extra={"tb_only": True})
 
             expected = (
+                "{green}{datetime}{nc} "
                 "{red}ERROR{nc}: something\n"
                 "{red}{line}{nc}\n"
                 "{stack_trace}"
                 "{red}{line}{nc}".format(
-                    line="-" * 60, stack_trace=stack_trace, **colors
+                    line="-" * 60,
+                    stack_trace=stack_trace,
+                    **colors,
+                    datetime=dt
                 )
             )
 
             assert expected == formatter.format(caplog.records[0])
 
-    def test_nested_exceptions(self, caplog):
+    def test_nested_exceptions(self, caplog, dt):
         with caplog.at_level(logging.DEBUG, logger="dvc"):
             try:
                 raise Exception("first")
@@ -131,11 +154,15 @@ class TestColorFormatter:
                     logger.exception("message")
 
             expected = (
+                "{green}{datetime}{nc} "
                 "{red}ERROR{nc}: message - second: first\n"
                 "{red}{line}{nc}\n"
                 "{stack_trace}"
                 "{red}{line}{nc}".format(
-                    line="-" * 60, stack_trace=stack_trace, **colors
+                    line="-" * 60,
+                    stack_trace=stack_trace,
+                    **colors,
+                    datetime=dt
                 )
             )
             assert expected == formatter.format(caplog.records[0])
@@ -179,3 +206,21 @@ def test_handlers():
     assert out.level == logging.INFO
     assert deb.level == logging.DEBUG
     assert err.level == logging.WARNING
+
+
+def test_logging_debug_with_datetime(caplog, dt):
+    with caplog.at_level(logging.DEBUG, logger="dvc"):
+        logger.warning("WARNING")
+        logger.debug("DEBUG")
+        logger.error("ERROR")
+
+        for record in caplog.records:
+            assert dt in formatter.format(record)
+            assert record.levelname == record.message
+
+
+def test_info_with_debug_loglevel_shows_no_datetime(caplog, dt):
+    with caplog.at_level(logging.DEBUG, logger="dvc"):
+        logger.info("message")
+
+        assert "message" == formatter.format(caplog.records[0])

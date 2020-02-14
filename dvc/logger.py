@@ -59,10 +59,26 @@ class ColorFormatter(logging.Formatter):
     def format(self, record):
         msg = record.msg.format(*record.args) if record.args else record.msg
         exception, stack_trace = self._parse_exc(record)
-        return ("{prefix}{description}{stack_trace}").format(
+        return ("{asctime}{prefix}{description}{stack_trace}").format(
+            asctime=self.formatTime(record, self.datefmt),
             prefix=self._prefix(record),
             description=self._description(msg, exception),
             stack_trace=stack_trace,
+        )
+
+    def formatTime(self, record, datefmt=None):
+        # only show if current level is set to DEBUG
+        # also, skip INFO as it is used for UI
+        if (
+            self._current_level() != logging.DEBUG
+            or record.levelno == logging.INFO
+        ):
+            return ""
+
+        return "{color}{date}{nc} ".format(
+            color=colorama.Fore.GREEN,
+            date=super().formatTime(record, datefmt),
+            nc=colorama.Fore.RESET,
         )
 
     def _prefix(self, record):
