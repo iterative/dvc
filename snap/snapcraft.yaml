@@ -20,6 +20,8 @@ parts:
     plugin: python
     python-packages: [wheel]
     source: .
+    build-snaps:
+    - snapd
     build-packages:
     - git
     - libc-dev

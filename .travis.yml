@@ -81,6 +81,8 @@ jobs:
      - name: snapcraft
        channel: stable
        confinement: classic
+     - name: review-tools
+       channel: stable
      - name: lxd
        channel: stable
     env:
