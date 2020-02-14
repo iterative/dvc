@@ -193,7 +193,7 @@ def setup_gdrive_cloud(remote_url, dvc):
     config["remote"][TEST_REMOTE] = {
         "url": remote_url,
         "gdrive_client_id": TEST_GDRIVE_CLIENT_ID,
-        "grdive_client_secret": TEST_GDRIVE_CLIENT_SECRET,
+        "gdrive_client_secret": TEST_GDRIVE_CLIENT_SECRET,
     }
 
     dvc.config = config
@@ -428,7 +428,7 @@ class TestRemoteGDriveCLI(GDrive, TestDataCloudCLIBase):
                 "remote",
                 "modify",
                 TEST_REMOTE,
-                "grdive_client_secret",
+                "gdrive_client_secret",
                 TEST_GDRIVE_CLIENT_SECRET,
             ]
         )
