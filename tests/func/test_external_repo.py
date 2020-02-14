@@ -56,3 +56,18 @@ def test_cache_reused(erepo_dir, mocker):
     with external_repo(url, "branch") as repo:
         repo.fetch()
         assert download_spy.mock.call_count == 1
+
+
+def test_known_sha(erepo_dir):
+    url = "file://{}".format(erepo_dir)
+    with external_repo(url) as repo:
+        rev = repo.scm.get_rev()
+        prev_rev = repo.scm.resolve_rev("HEAD^")
+
+    # Hits cache
+    with external_repo(url, rev) as repo:
+        pass
+
+    # No clone, no pull, copies a repo, checks out the known sha
+    with external_repo(url, prev_rev) as repo:
+        pass

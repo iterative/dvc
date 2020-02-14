@@ -200,7 +200,7 @@ def _clone_default_branch(url, rev):
         if clone_path:
             git = Git(clone_path)
             # Do not pull for known shas, branches and tags might move
-            if not Git.is_sha(rev) or not git.is_known(rev):
+            if not Git.is_sha(rev) or not git.has_rev(rev):
                 git.pull()
         else:
             clone_path = tempfile.mkdtemp("dvc-clone")
