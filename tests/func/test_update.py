@@ -2,7 +2,7 @@ import pytest
 import os
 
 from dvc.stage import Stage
-from dvc.compat import fspath
+from dvc.compat import fspath, fspath_py35
 
 
 @pytest.mark.parametrize("cached", [True, False])
@@ -154,7 +154,7 @@ def test_update_rev(tmp_dir, dvc, scm, git_dir):
         "rev": "branch1",
         "rev_lock": branch1_head,
     }
-    with open((tmp_dir / "foo")) as f:
+    with open(fspath_py35(tmp_dir / "foo")) as f:
         assert "foobar" == f.read()
 
     stage = dvc.update("foo.dvc", rev="branch2")
@@ -163,5 +163,5 @@ def test_update_rev(tmp_dir, dvc, scm, git_dir):
         "rev": "branch2",
         "rev_lock": branch2_head,
     }
-    with open(tmp_dir / "foo") as f:
+    with open(fspath_py35(tmp_dir / "foo")) as f:
         assert "foobar foo" == f.read()
