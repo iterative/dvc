@@ -2,7 +2,7 @@ import pytest
 import os
 
 from dvc.stage import Stage
-from dvc.compat import fspath
+from dvc.compat import fspath, fspath_py35
 
 
 @pytest.mark.parametrize("cached", [True, False])
@@ -131,3 +131,37 @@ def test_update_import_url(tmp_dir, dvc, tmp_path_factory):
 
     assert dst.is_file()
     assert dst.read_text() == "updated file content"
+
+
+def test_update_rev(tmp_dir, dvc, scm, git_dir):
+    with git_dir.chdir():
+        git_dir.scm_gen({"foo": "foo"}, commit="first")
+
+    dvc.imp(fspath(git_dir), "foo")
+    assert (tmp_dir / "foo.dvc").exists()
+
+    with git_dir.chdir(), git_dir.branch("branch1", new=True):
+        git_dir.scm_gen({"foo": "foobar"}, commit="branch1 commit")
+        branch1_head = git_dir.scm.get_rev()
+
+    with git_dir.chdir(), git_dir.branch("branch2", new=True):
+        git_dir.scm_gen({"foo": "foobar foo"}, commit="branch2 commit")
+        branch2_head = git_dir.scm.get_rev()
+
+    stage = dvc.update("foo.dvc", rev="branch1")
+    assert stage.deps[0].def_repo == {
+        "url": fspath(git_dir),
+        "rev": "branch1",
+        "rev_lock": branch1_head,
+    }
+    with open(fspath_py35(tmp_dir / "foo")) as f:
+        assert "foobar" == f.read()
+
+    stage = dvc.update("foo.dvc", rev="branch2")
+    assert stage.deps[0].def_repo == {
+        "url": fspath(git_dir),
+        "rev": "branch2",
+        "rev_lock": branch2_head,
+    }
+    with open(fspath_py35(tmp_dir / "foo")) as f:
+        assert "foobar foo" == f.read()

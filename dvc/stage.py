@@ -405,11 +405,11 @@ class Stage(object):
 
         return self
 
-    def update(self):
+    def update(self, rev=None):
         if not self.is_repo_import and not self.is_import:
             raise StageUpdateError(self.relpath)
 
-        self.deps[0].update()
+        self.deps[0].update(rev=rev)
         locked = self.locked
         self.locked = False
         try:

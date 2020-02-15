@@ -58,7 +58,7 @@ _dvc_run='--no-exec -f --file -c --cwd -d --deps -o --outs -O --outs-no-cache --
 _dvc_status='-j --jobs -r --remote -a --all-branches -T --all-tags -d --with-deps -c --cloud $(compgen -G *.dvc)'
 _dvc_unlock='$(compgen -G *.dvc)'
 _dvc_unprotect='$(compgen -G *)'
-_dvc_update='$(compgen -G *.dvc)'
+_dvc_update='--rev $(compgen -G *.dvc)'
 _dvc_version=''
 
 # Params
