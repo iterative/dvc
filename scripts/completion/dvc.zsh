@@ -273,6 +273,7 @@ _dvc_unprotect=(
 )
 
 _dvc_update=(
+  "--rev[Git revision (e.g. SHA, branch, tag)]:Revision:"
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
 )
 
