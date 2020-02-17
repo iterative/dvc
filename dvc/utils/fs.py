@@ -97,8 +97,8 @@ def move(src, dst, mode=None):
     of data is happening.
     """
 
-    src = fspath_py35(src)
-    dst = fspath_py35(dst)
+    src = fspath(src)
+    dst = fspath(dst)
 
     dst = os.path.abspath(dst)
     tmp = "{}.{}".format(dst, uuid())

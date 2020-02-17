@@ -168,6 +168,33 @@ def test_get_from_non_dvc_master(tmp_dir, git_dir, caplog):
     assert (tmp_dir / "some_dst").read_text() == "some text"
 
 
+def test_get_file_from_dir(tmp_dir, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen(
+            {
+                "dir": {
+                    "1": "1",
+                    "2": "2",
+                    "subdir": {"foo": "foo", "bar": "bar"},
+                }
+            },
+            commit="create dir",
+        )
+
+    Repo.get(fspath(erepo_dir), os.path.join("dir", "1"))
+    assert (tmp_dir / "1").read_text() == "1"
+
+    Repo.get(fspath(erepo_dir), os.path.join("dir", "2"), out="file")
+    assert (tmp_dir / "file").read_text() == "2"
+
+    Repo.get(fspath(erepo_dir), os.path.join("dir", "subdir"))
+    assert (tmp_dir / "subdir" / "foo").read_text() == "foo"
+    assert (tmp_dir / "subdir" / "bar").read_text() == "bar"
+
+    Repo.get(fspath(erepo_dir), os.path.join("dir", "subdir", "foo"), out="X")
+    assert (tmp_dir / "X").read_text() == "foo"
+
+
 def test_get_url_positive(tmp_dir, erepo_dir, caplog):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo")
