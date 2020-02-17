@@ -24,6 +24,7 @@ def locked(f):
     @wraps(f)
     def wrapper(repo, *args, **kwargs):
         with repo.lock, repo.state:
+            repo._reset()
             ret = f(repo, *args, **kwargs)
             # Our graph cache is no longer valid after we release the repo.lock
             repo._reset()
