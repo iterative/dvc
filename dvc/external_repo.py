@@ -84,7 +84,7 @@ class ExternalRepo(Repo):
 
         try:
             if out and out.use_cache:
-                self._pull_cached(out, path, to_info)
+                self._pull_cached(out, path_info, to_info)
                 return
 
             # Check if it is handled by Git (it can't have an absolute path)
@@ -95,11 +95,10 @@ class ExternalRepo(Repo):
         except FileNotFoundError:
             raise PathMissingError(path, self.url)
 
-    def _pull_cached(self, out, src, dest):
+    def _pull_cached(self, out, path_info, dest):
         with self.state:
             tmp = PathInfo(tmp_fname(dest))
-            target = (out.path_info.parent / src).relative_to(out.path_info)
-            src = tmp / target
+            src = tmp / path_info.relative_to(out.path_info)
 
             out.path_info = tmp
 
