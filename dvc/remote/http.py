@@ -2,8 +2,9 @@ import logging
 import os.path
 import threading
 
-from funcy import cached_property, wrap_prop
+from funcy import cached_property, memoize, wrap_prop, wrap_with
 
+import dvc.prompt as prompt
 from dvc.config import ConfigError
 from dvc.exceptions import DvcException, HTTPError
 from dvc.progress import Tqdm
@@ -11,6 +12,15 @@ from dvc.remote.base import RemoteBASE
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
+
+
+@wrap_with(threading.Lock())
+@memoize
+def ask_password(host, user):
+    return prompt.password(
+        "Enter a password for "
+        "host '{host}' user '{user}'".format(host=host, user=user)
+    )
 
 
 class RemoteHTTP(RemoteBASE):
@@ -25,13 +35,24 @@ class RemoteHTTP(RemoteBASE):
         super().__init__(repo, config)
 
         url = config.get("url")
-        self.path_info = self.path_cls(url) if url else None
+        if url:
+            self.path_info = self.path_cls(url)
+            user = config.get("user", None)
+            if user:
+                self.path_info.user = user
+        else:
+            self.path_info = None
 
         if not self.no_traverse:
             raise ConfigError(
                 "HTTP doesn't support traversing the remote to list existing "
                 "files. Use: `dvc remote modify <name> no_traverse true`"
             )
+
+        self.basic_auth = config.get("basic_auth", False)
+        self.digest_auth = config.get("digest_auth", False)
+        self.password = config.get("password", None)
+        self.ask_password = config.get("ask_password", False)
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         response = self._request("GET", from_info.url, stream=True)
@@ -97,6 +118,21 @@ class RemoteHTTP(RemoteBASE):
 
         return etag
 
+    def auth_method(self, path_info=None):
+        from requests.auth import HTTPBasicAuth, HTTPDigestAuth
+
+        if path_info is None:
+            path_info = self.path_info
+
+        if self.basic_auth or self.digest_auth:
+            if self.ask_password and self.password is None:
+                host, user = path_info.host, path_info.user
+                self.password = ask_password(host, user)
+            if self.digest_auth:
+                return HTTPDigestAuth(path_info.user, self.password)
+            return HTTPBasicAuth(path_info.user, self.password)
+        return None
+
     @wrap_prop(threading.Lock())
     @cached_property
     def _session(self):
@@ -123,7 +159,9 @@ class RemoteHTTP(RemoteBASE):
         kwargs.setdefault("timeout", self.REQUEST_TIMEOUT)
 
         try:
-            res = self._session.request(method, url, **kwargs)
+            res = self._session.request(
+                method, url, auth=self.auth_method(), **kwargs,
+            )
 
             redirect_no_location = (
                 kwargs["allow_redirects"]
