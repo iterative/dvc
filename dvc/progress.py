@@ -55,7 +55,8 @@ class Tqdm(tqdm):
         desc  : persists after `close()`
         level  : effective logging level for determining `disable`;
             used only if `disable` is unspecified
-        disable  : If (default: None), will be determined by logging level.
+        disable  : If (default: None) or False,
+            will be determined by logging level.
             May be overridden to `True` due to non-TTY status.
             Skip override by specifying env var `DVC_IGNORE_ISATTY`.
         kwargs  : anything accepted by `tqdm.tqdm()`
@@ -69,7 +70,7 @@ class Tqdm(tqdm):
             file = sys.stderr
         self.desc_persist = desc
         # auto-disable based on `logger.level`
-        if disable is None:
+        if not disable:
             disable = logger.getEffectiveLevel() > level
         # auto-disable based on TTY
         if (

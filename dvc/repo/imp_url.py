@@ -11,7 +11,13 @@ def imp_url(self, url, out=None, fname=None, erepo=None, locked=True):
     out = resolve_output(url, out)
 
     stage = Stage.create(
-        self, cmd=None, deps=[url], outs=[out], fname=fname, erepo=erepo
+        self,
+        cmd=None,
+        deps=[url],
+        outs=[out],
+        fname=fname,
+        erepo=erepo,
+        accompany_outs=True,
     )
 
     if stage is None:

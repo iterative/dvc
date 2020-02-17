@@ -18,7 +18,7 @@ def test_commit_recursive(tmp_dir, dvc):
 
 def test_commit_force(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"file": "text1", "file2": "text2"}})
-    stage, = dvc.add("dir", no_commit=True)
+    (stage,) = dvc.add("dir", no_commit=True)
 
     with dvc.state:
         assert stage.outs[0].changed_cache()
@@ -40,7 +40,7 @@ def test_commit_force(tmp_dir, dvc):
 
 def test_commit_with_deps(tmp_dir, dvc, run_copy):
     tmp_dir.gen("foo", "foo")
-    foo_stage, = dvc.add("foo", no_commit=True)
+    (foo_stage,) = dvc.add("foo", no_commit=True)
     assert foo_stage is not None
     assert len(foo_stage.outs) == 1
 
@@ -60,7 +60,7 @@ def test_commit_with_deps(tmp_dir, dvc, run_copy):
 
 def test_commit_changed_md5(tmp_dir, dvc):
     tmp_dir.gen({"file": "file content"})
-    stage, = dvc.add("file", no_commit=True)
+    (stage,) = dvc.add("file", no_commit=True)
 
     stage_file_content = load_stage_file(stage.path)
     stage_file_content["md5"] = "1111111111"

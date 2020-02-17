@@ -92,3 +92,15 @@ def test_import_url_to_dir(dname, tmp_dir, dvc):
     assert stage.outs[0].path_info == dst
     assert os.path.isdir(dname)
     assert dst.read_text() == "file content"
+
+
+def test_import_stage_accompanies_target(tmp_dir, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("file1", "file1 content", commit="commit file")
+
+    tmp_dir.gen({"dir": {}})
+    erepo = {"url": fspath(erepo_dir)}
+    dvc.imp_url("file1", out=os.path.join("dir", "imported_file"), erepo=erepo)
+
+    assert (tmp_dir / "dir" / "imported_file").exists()
+    assert (tmp_dir / "dir" / "imported_file.dvc").exists()

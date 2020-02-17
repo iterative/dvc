@@ -1,10 +1,8 @@
 import argparse
 import logging
 
-from dvc.command.base import append_doc_link
-from dvc.command.base import CmdBaseNoRepo
-from dvc.config import Config
-
+from dvc.command.base import append_doc_link, CmdBaseNoRepo
+from dvc.config import Config, ConfigError
 
 logger = logging.getLogger(__name__)
 
@@ -18,17 +16,21 @@ class CmdConfig(CmdBaseNoRepo):
     def run(self):
         section, opt = self.args.name.lower().strip().split(".", 1)
 
-        if self.args.unset:
-            self.config.unset(section, opt, level=self.args.level)
-        elif self.args.value is None:
-            logger.info(self.config.get(section, opt, level=self.args.level))
-        else:
-            self.config.set(
-                section, opt, self.args.value, level=self.args.level
-            )
+        if self.args.value is None and not self.args.unset:
+            conf = self.config.load_one(self.args.level)
+            self._check(conf, section, opt)
+            logger.info(conf[section][opt])
+            return 0
 
-        is_write = self.args.unset or self.args.value is not None
-        if is_write and self.args.name == "cache.type":
+        with self.config.edit(self.args.level) as conf:
+            if self.args.unset:
+                self._check(conf, section, opt)
+                del conf[section][opt]
+            else:
+                self._check(conf, section)
+                conf[section][opt] = self.args.value
+
+        if self.args.name == "cache.type":
             logger.warning(
                 "You have changed the 'cache.type' option. This doesn't update"
                 " any existing workspace file links, but it can be done with:"
@@ -37,30 +39,39 @@ class CmdConfig(CmdBaseNoRepo):
 
         return 0
 
+    def _check(self, conf, section, opt=None):
+        if section not in conf:
+            msg = "section {} doesn't exist"
+            raise ConfigError(msg.format(self.args.name))
+
+        if opt and opt not in conf[section]:
+            msg = "option {} doesn't exist"
+            raise ConfigError(msg.format(self.args.name))
+
 
 parent_config_parser = argparse.ArgumentParser(add_help=False)
 parent_config_parser.add_argument(
     "--global",
     dest="level",
     action="store_const",
-    const=Config.LEVEL_GLOBAL,
+    const="global",
     help="Use global config.",
 )
 parent_config_parser.add_argument(
     "--system",
     dest="level",
     action="store_const",
-    const=Config.LEVEL_SYSTEM,
+    const="system",
     help="Use system config.",
 )
 parent_config_parser.add_argument(
     "--local",
     dest="level",
     action="store_const",
-    const=Config.LEVEL_LOCAL,
+    const="local",
     help="Use local config.",
 )
-parent_config_parser.set_defaults(level=Config.LEVEL_REPO)
+parent_config_parser.set_defaults(level="repo")
 
 
 def add_parser(subparsers, parent_parser):

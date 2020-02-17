@@ -191,7 +191,7 @@ def test_all_commits(tmp_dir, scm, dvc):
 
 def test_gc_no_dir_cache(tmp_dir, dvc):
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
-    dir_stage, = tmp_dir.dvc_gen({"dir": {"x": "x", "subdir": {"y": "y"}}})
+    (dir_stage,) = tmp_dir.dvc_gen({"dir": {"x": "x", "subdir": {"y": "y"}}})
 
     os.unlink(dir_stage.outs[0].cache_path)
 

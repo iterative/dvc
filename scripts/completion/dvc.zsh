@@ -12,14 +12,14 @@
 
 _dvc_commands() {
   local _commands=(
-    "add:Take data files or directories under DVC control."
+    "add:Track data files or directories with DVC."
     "cache:Manage cache settings."
     "checkout:Checkout data files from cache."
     "commit:Save changed data to cache and update DVC-files."
     "config:Get or set config settings."
     "destroy:Remove DVC-files, local DVC config and data cache."
     "diff:Show changes between commits in the DVC repository, or between a commit and the workspace."
-    "fetch:Fetch data files from a DVC remote storage."
+    "fetch:Get files or directories tracked by DVC from remote storage into the cache."
     "get-url:Download or copy files from URL."
     "get:Download data from DVC repository."
     "gc:Garbage collect unused objects from cache or remote storage."
@@ -27,6 +27,7 @@ _dvc_commands() {
     "import:Download data from DVC repository and take it under DVC control."
     "init:Initialize DVC in the current directory."
     "install:Install DVC git hooks into the repository."
+    "list:List files."
     "lock:Lock DVC-file."
     "metrics:Commands to add, manage, collect and display metrics."
     "move:Rename or move a DVC controlled data file or a directory."
@@ -160,6 +161,14 @@ _dvc_lock=(
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
 )
 
+_dvc_list=(
+  "--rev[Git revision (e.g. branch, tag, SHA)]:Revision:"
+  {-R,--recursive}"[Recursively add each file under the directory.]"
+  "--outs-only[Only outputs DVC-outs.]"
+  "1:URL:"
+  "2:Target:"
+)
+
 _dvc_metrics=(
   "1:Sub command:(add show diff modify remove)"
 )
@@ -264,6 +273,7 @@ _dvc_unprotect=(
 )
 
 _dvc_update=(
+  "--rev[Git revision (e.g. SHA, branch, tag)]:Revision:"
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
 )
 
@@ -292,6 +302,7 @@ case $words[1] in
   init) _arguments $_dvc_global_options $_dvc_init ;;
   install) _arguments $_dvc_global_options $_dvc_install ;;
   lock) _arguments $_dvc_global_options $_dvc_lock ;;
+  list) _arguments $_dvc_global_options $_dvc_list ;;
   metrics) _arguments $_dvc_global_options $_dvc_metrics ;;
   move) _arguments $_dvc_global_options $_dvc_move ;;
   pipeline) _arguments $_dvc_global_options $_dvc_pipeline ;;

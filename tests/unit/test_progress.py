@@ -16,6 +16,17 @@ def test_quiet_logging(caplog, capsys):
         assert out_err.err == ""
 
 
+def test_quiet_logging_disable_false(caplog, capsys):
+    with caplog.at_level(logging.CRITICAL, logger="dvc"):
+        # simulate interactive terminal
+        with mock.patch.object(sys.stderr, "isatty", return_value=True):
+            for _ in Tqdm(range(10), disable=False):
+                pass
+            out_err = capsys.readouterr()
+            assert out_err.out == ""
+            assert out_err.err == ""
+
+
 def test_quiet_notty(caplog, capsys):
     with caplog.at_level(logging.INFO, logger="dvc"):
         for _ in Tqdm(range(10)):

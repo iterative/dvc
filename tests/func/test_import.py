@@ -7,7 +7,6 @@ import pytest
 from mock import patch
 
 from dvc.cache import Cache
-from dvc.config import Config
 from dvc.exceptions import DownloadError, PathMissingError
 from dvc.config import NoRemoteError
 from dvc.stage import Stage
@@ -102,6 +101,42 @@ def test_import_dir(tmp_dir, scm, dvc, erepo_dir):
     }
 
 
+def test_import_file_from_dir(tmp_dir, scm, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen(
+            {
+                "dir": {
+                    "1": "1",
+                    "2": "2",
+                    "subdir": {"foo": "foo", "bar": "bar"},
+                }
+            },
+            commit="create dir",
+        )
+
+    stage = dvc.imp(fspath(erepo_dir), os.path.join("dir", "1"))
+
+    assert (tmp_dir / "1").read_text() == "1"
+    assert scm.repo.git.check_ignore("1")
+    assert stage.deps[0].def_repo == {
+        "url": fspath(erepo_dir),
+        "rev_lock": erepo_dir.scm.get_rev(),
+    }
+
+    dvc.imp(fspath(erepo_dir), os.path.join("dir", "2"), out="file")
+    assert (tmp_dir / "file").read_text() == "2"
+    assert (tmp_dir / "file.dvc").exists()
+
+    dvc.imp(fspath(erepo_dir), os.path.join("dir", "subdir"))
+    assert (tmp_dir / "subdir" / "foo").read_text() == "foo"
+    assert (tmp_dir / "subdir" / "bar").read_text() == "bar"
+    assert (tmp_dir / "subdir.dvc").exists()
+
+    dvc.imp(fspath(erepo_dir), os.path.join("dir", "subdir", "foo"), out="X")
+    assert (tmp_dir / "X").read_text() == "foo"
+    assert (tmp_dir / "X.dvc").exists()
+
+
 def test_import_non_cached(erepo_dir, tmp_dir, dvc, scm):
     src = "non_cached_output"
     dst = src + "_imported"
@@ -162,12 +197,11 @@ def test_pull_imported_stage(tmp_dir, dvc, erepo_dir):
 
 def test_cache_type_is_properly_overridden(tmp_dir, scm, dvc, erepo_dir):
     with erepo_dir.chdir():
-        erepo_dir.dvc.config.set(
-            Config.SECTION_CACHE, Config.SECTION_CACHE_TYPE, "symlink"
-        )
+        with erepo_dir.dvc.config.edit() as conf:
+            conf["cache"]["type"] = "symlink"
         erepo_dir.dvc.cache = Cache(erepo_dir.dvc)
         erepo_dir.scm_add(
-            [erepo_dir.dvc.config.config_file],
+            [erepo_dir.dvc.config.files["repo"]],
             "set source repo cache type to symlink",
         )
         erepo_dir.dvc_gen("foo", "foo content", "create foo")

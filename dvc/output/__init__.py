@@ -1,5 +1,5 @@
 from urllib.parse import urlparse
-from voluptuous import Any, Required
+from voluptuous import Any, Required, Lower, Length, Coerce, And, SetTo
 
 from dvc.output.base import OutputBase
 from dvc.output.gs import OutputGS
@@ -29,6 +29,12 @@ OUTS_MAP = {
     Schemes.LOCAL: OutputLOCAL,
 }
 
+CHECKSUM_SCHEMA = Any(
+    None,
+    And(str, Length(max=0), SetTo(None)),
+    And(Any(str, And(int, Coerce(str))), Length(min=3), Lower),
+)
+
 # NOTE: currently there are only 3 possible checksum names:
 #
 #    1) md5 (LOCAL, SSH, GS);
@@ -37,15 +43,15 @@ OUTS_MAP = {
 #
 # so when a few types of outputs share the same name, we only need
 # specify it once.
-CHECKSUM_SCHEMA = {
-    RemoteLOCAL.PARAM_CHECKSUM: Any(str, None),
-    RemoteS3.PARAM_CHECKSUM: Any(str, None),
-    RemoteHDFS.PARAM_CHECKSUM: Any(str, None),
+CHECKSUMS_SCHEMA = {
+    RemoteLOCAL.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    RemoteS3.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    RemoteHDFS.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
 }
 
-TAGS_SCHEMA = {str: CHECKSUM_SCHEMA}
+TAGS_SCHEMA = {str: CHECKSUMS_SCHEMA}
 
-SCHEMA = CHECKSUM_SCHEMA.copy()
+SCHEMA = CHECKSUMS_SCHEMA.copy()
 SCHEMA[Required(OutputBase.PARAM_PATH)] = str
 SCHEMA[OutputBase.PARAM_CACHE] = bool
 SCHEMA[OutputBase.PARAM_METRIC] = OutputBase.METRIC_SCHEMA

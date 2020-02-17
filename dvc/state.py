@@ -6,7 +6,6 @@ import re
 import sqlite3
 from urllib.parse import urlunparse, urlencode
 
-from dvc.config import Config
 from dvc.exceptions import DvcException
 from dvc.utils import current_timestamp
 from dvc.utils import relpath
@@ -95,18 +94,15 @@ class State(object):  # pylint: disable=too-many-instance-attributes
     MAX_INT = 2 ** 63 - 1
     MAX_UINT = 2 ** 64 - 2
 
-    def __init__(self, repo, config):
+    def __init__(self, repo):
         self.repo = repo
         self.dvc_dir = repo.dvc_dir
         self.root_dir = repo.root_dir
 
-        state_config = config.get(Config.SECTION_STATE, {})
-        self.row_limit = state_config.get(
-            Config.SECTION_STATE_ROW_LIMIT, self.STATE_ROW_LIMIT
-        )
+        state_config = repo.config.get("state", {})
+        self.row_limit = state_config.get("row_limit", self.STATE_ROW_LIMIT)
         self.row_cleanup_quota = state_config.get(
-            Config.SECTION_STATE_ROW_CLEANUP_QUOTA,
-            self.STATE_ROW_CLEANUP_QUOTA,
+            "row_cleanup_quota", self.STATE_ROW_CLEANUP_QUOTA
         )
 
         if not self.dvc_dir:

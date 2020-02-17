@@ -154,7 +154,7 @@ class TestCmdCacheDir(TestDvc):
         ret = main(["cache", "dir", dname])
         self.assertEqual(ret, 0)
 
-        config = configobj.ConfigObj(self.dvc.config.config_file)
+        config = configobj.ConfigObj(self.dvc.config.files["repo"])
         self.assertEqual(config["cache"]["dir"], dname)
 
     def test_relative_path(self):
@@ -166,7 +166,7 @@ class TestCmdCacheDir(TestDvc):
         # NOTE: we are in the repo's root and config is in .dvc/, so
         # dir path written to config should be just one level above.
         rel = os.path.join("..", dname)
-        config = configobj.ConfigObj(self.dvc.config.config_file)
+        config = configobj.ConfigObj(self.dvc.config.files["repo"])
         self.assertEqual(config["cache"]["dir"], rel)
 
         ret = main(["add", self.FOO])
@@ -178,9 +178,8 @@ class TestCmdCacheDir(TestDvc):
         self.assertEqual(len(files), 1)
 
 
-class TestShouldCacheBeReflinkOrCopyByDefault(TestDvc):
-    def test(self):
-        self.assertEqual(self.dvc.cache.local.cache_types, ["reflink", "copy"])
+def test_default_cache_type(dvc):
+    assert dvc.cache.local.cache_types == ["reflink", "copy"]
 
 
 @pytest.mark.skipif(os.name == "nt", reason="Not supported for Windows.")
@@ -189,8 +188,8 @@ class TestShouldCacheBeReflinkOrCopyByDefault(TestDvc):
     [(False, 0o775, 0o664), (True, 0o775, 0o444)],
 )
 def test_shared_cache(tmp_dir, dvc, protected, dir_mode, file_mode):
-    dvc.config.set("cache", "shared", "group")
-    dvc.config.set("cache", "protected", str(protected))
+    with dvc.config.edit() as conf:
+        conf["cache"].update({"shared": "group", "protected": str(protected)})
     dvc.cache = Cache(dvc)
 
     tmp_dir.dvc_gen(

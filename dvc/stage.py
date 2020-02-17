@@ -191,7 +191,7 @@ class Stage(object):
     PARAM_ALWAYS_CHANGED = "always_changed"
 
     SCHEMA = {
-        PARAM_MD5: Any(str, None),
+        PARAM_MD5: output.CHECKSUM_SCHEMA,
         PARAM_CMD: Any(str, None),
         PARAM_WDIR: Any(str, None),
         PARAM_DEPS: Any([dependency.SCHEMA], None),
@@ -405,11 +405,11 @@ class Stage(object):
 
         return self
 
-    def update(self):
+    def update(self, rev=None):
         if not self.is_repo_import and not self.is_import:
             raise StageUpdateError(self.relpath)
 
-        self.deps[0].update()
+        self.deps[0].update(rev=rev)
         locked = self.locked
         self.locked = False
         try:
@@ -502,12 +502,11 @@ class Stage(object):
         return True
 
     @staticmethod
-    def create(repo, **kwargs):
+    def create(repo, accompany_outs=False, **kwargs):
 
         wdir = kwargs.get("wdir", None)
         cwd = kwargs.get("cwd", None)
         fname = kwargs.get("fname", None)
-        add = kwargs.get("add", False)
 
         # Backward compatibility for `cwd` option
         if wdir is None and cwd is not None:
@@ -539,12 +538,12 @@ class Stage(object):
         stage._check_duplicated_arguments()
 
         if not fname:
-            fname = Stage._stage_fname(stage.outs, add)
+            fname = Stage._stage_fname(stage.outs, accompany_outs)
         stage._check_dvc_filename(fname)
 
         # Autodetecting wdir for add, we need to create outs first to do that,
         # so we start with wdir = . and remap out paths later.
-        if add and kwargs.get("wdir") is None and cwd is None:
+        if accompany_outs and kwargs.get("wdir") is None and cwd is None:
             wdir = os.path.dirname(fname)
 
             for out in chain(stage.outs, stage.deps):

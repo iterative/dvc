@@ -4,7 +4,6 @@ import os
 import pytest
 
 from dvc.cache import Cache
-from dvc.config import Config
 from dvc.main import main
 from dvc.exceptions import PathMissingError
 from dvc.repo.get import GetDVCFileError
@@ -61,12 +60,11 @@ def test_get_git_dir(tmp_dir, erepo_dir):
 
 def test_cache_type_is_properly_overridden(tmp_dir, erepo_dir):
     with erepo_dir.chdir():
-        erepo_dir.dvc.config.set(
-            Config.SECTION_CACHE, Config.SECTION_CACHE_TYPE, "symlink"
-        )
+        with erepo_dir.dvc.config.edit() as conf:
+            conf["cache"]["type"] = "symlink"
         erepo_dir.dvc.cache = Cache(erepo_dir.dvc)
         erepo_dir.scm_add(
-            [erepo_dir.dvc.config.config_file], "set cache type to symlinks"
+            [erepo_dir.dvc.config.files["repo"]], "set cache type to symlinks"
         )
         erepo_dir.dvc_gen("file", "contents", "create file")
     assert System.is_symlink(erepo_dir / "file")
@@ -168,6 +166,33 @@ def test_get_from_non_dvc_master(tmp_dir, git_dir, caplog):
 
     assert caplog.text == ""
     assert (tmp_dir / "some_dst").read_text() == "some text"
+
+
+def test_get_file_from_dir(tmp_dir, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen(
+            {
+                "dir": {
+                    "1": "1",
+                    "2": "2",
+                    "subdir": {"foo": "foo", "bar": "bar"},
+                }
+            },
+            commit="create dir",
+        )
+
+    Repo.get(fspath(erepo_dir), os.path.join("dir", "1"))
+    assert (tmp_dir / "1").read_text() == "1"
+
+    Repo.get(fspath(erepo_dir), os.path.join("dir", "2"), out="file")
+    assert (tmp_dir / "file").read_text() == "2"
+
+    Repo.get(fspath(erepo_dir), os.path.join("dir", "subdir"))
+    assert (tmp_dir / "subdir" / "foo").read_text() == "foo"
+    assert (tmp_dir / "subdir" / "bar").read_text() == "bar"
+
+    Repo.get(fspath(erepo_dir), os.path.join("dir", "subdir", "foo"), out="X")
+    assert (tmp_dir / "X").read_text() == "foo"
 
 
 def test_get_url_positive(tmp_dir, erepo_dir, caplog):
