@@ -12,14 +12,14 @@
 
 _dvc_commands() {
   local _commands=(
-    "add:Take data files or directories under DVC control."
+    "add:Track data files or directories with DVC."
     "cache:Manage cache settings."
     "checkout:Checkout data files from cache."
     "commit:Save changed data to cache and update DVC-files."
     "config:Get or set config settings."
     "destroy:Remove DVC-files, local DVC config and data cache."
-    "diff:Show a diff of a DVC controlled data file or a directory."
-    "fetch:Fetch data files from a DVC remote storage."
+    "diff:Show changes between commits in the DVC repository, or between a commit and the workspace."
+    "fetch:Get files or directories tracked by DVC from remote storage into the cache."
     "get-url:Download or copy files from URL."
     "get:Download data from DVC repository."
     "gc:Garbage collect unused objects from cache or remote storage."
@@ -100,8 +100,8 @@ _dvc_destroy=(
 _dvc_diff=(
   "--show-json[Format the output into a JSON]"
   "--checksums[Display checksums for each entry]"
-  "1:Git reference to the older version:"
-  "2:Git reference to the newer version:"
+  "1:Old Git commit to compare (defaults to HEAD):"
+  "2:New Git commit to compare (defaults to the current workspace):"
 )
 
 _dvc_fetch=(

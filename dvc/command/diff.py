@@ -120,8 +120,9 @@ class CmdDiff(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     DIFF_DESCRIPTION = (
-        "Compare two versions of the DVC repository.\n"
-        "Shows the list of paths added, modified, or deleted"
+        "Show changes between commits in the DVC repository,"
+        " or between a commit and the workspace."
+        "Prints the list of paths added, modified, or deleted."
     )
     diff_parser = subparsers.add_parser(
         "diff",
