@@ -200,6 +200,6 @@ def setup(level=logging.INFO):
                     ],
                 },
             },
-            "disable_existing_loggers": False
+            "disable_existing_loggers": False,
         }
     )
