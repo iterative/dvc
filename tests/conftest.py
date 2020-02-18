@@ -4,6 +4,7 @@ import mockssh
 import pytest
 
 from dvc.remote.ssh.connection import SSHConnection
+from tests.utils.httpd import TempFileServer
 from .dir_helpers import *  # noqa
 
 
@@ -57,3 +58,9 @@ def _close_pools():
 
     yield
     close_pools()
+
+
+@pytest.fixture
+def http_server():
+    with TempFileServer() as httpd:
+        yield httpd
