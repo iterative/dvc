@@ -234,7 +234,7 @@ class RemoteBASE(object):
 
         from_info = PathInfo(tmp)
         to_info = self.cache.path_info / tmp_fname("")
-        self.cache.upload(from_info, to_info, no_progress_bar=False)
+        self.cache.upload(from_info, to_info, no_progress_bar=True)
 
         checksum = self.get_file_checksum(to_info) + self.CHECKSUM_DIR_SUFFIX
         return checksum, to_info
