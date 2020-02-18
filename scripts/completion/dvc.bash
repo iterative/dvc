@@ -80,10 +80,11 @@ _dvc_comp_command() {
 # $1 - COMP_WORDS[2]
 _dvc_comp_subcommand() {
   local options_list="_dvc_$(_dvc_replace_hyphen $1)_$(_dvc_replace_hyphen $2)"
-  if [ -z "${!options_list}" ]; then
+  local _dvc_opts="${!options_list}"
+  if [ -z "$_dvc_opts" ]; then
     _dvc_comp_command $1
   else
-    COMPREPLY=( $(compgen -W "$_dvc_global_options ${!options_list}" -- "$word") )
+    COMPREPLY=( $(compgen -W "$_dvc_global_options $_dvc_opts" -- "$word") )
   fi
 }
 
