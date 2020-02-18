@@ -63,8 +63,14 @@ _dvc_version=''
 
 # Params
 # $1 - COMP_WORDS[1]
-comp_command() {
-  local options_list="_dvc_$(replace_hyphen $1)"
+_dvc_replace_hyphen() {
+  echo $1 | sed 's/-/_/g'
+}
+
+# Params
+# $1 - COMP_WORDS[1]
+_dvc_comp_command() {
+  local options_list="_dvc_$(_dvc_replace_hyphen $1)"
 
   COMPREPLY=( $(compgen -W "$_dvc_global_options ${!options_list}" -- "$word") )
 }
@@ -72,10 +78,10 @@ comp_command() {
 # Params
 # $1 - COMP_WORDS[1]
 # $1 - COMP_WORDS[2]
-comp_subcommand() {
-  local options_list="_dvc_$(replace_hyphen $1)_$(replace_hyphen $2)"
+_dvc_comp_subcommand() {
+  local options_list="_dvc_$(_dvc_replace_hyphen $1)_$(_dvc_replace_hyphen $2)"
   if [ -z "${!options_list}" ]; then
-    comp_command $1
+    _dvc_comp_command $1
   else
     COMPREPLY=( $(compgen -W "$_dvc_global_options ${!options_list}" -- "$word") )
   fi
@@ -94,9 +100,6 @@ comp_subcommand() {
 #       ${!x} ->  ${hello} ->  "world"
 #
 _dvc() {
-  replace_hyphen() {
-    echo $(echo $1 | sed 's/-/_/g')
-  }
   local word="${COMP_WORDS[COMP_CWORD]}"
 
   COMPREPLY=()
@@ -107,9 +110,9 @@ _dvc() {
       *) COMPREPLY=($(compgen -W "$_dvc_commands" -- "$word")) ;;
     esac
   elif [ "${COMP_CWORD}" -eq 2 ]; then
-    comp_command ${COMP_WORDS[1]}
+    _dvc_comp_command ${COMP_WORDS[1]}
   elif [ "${COMP_CWORD}" -eq 3 ]; then
-    comp_subcommand ${COMP_WORDS[1]} ${COMP_WORDS[2]}
+    _dvc_comp_subcommand ${COMP_WORDS[1]} ${COMP_WORDS[2]}
   fi
 
   return 0
