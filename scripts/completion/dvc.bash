@@ -16,14 +16,14 @@ _dvc_add_COMPGEN=_dvc_compgen_files
 _dvc_cache='dir'
 _dvc_cache_dir=' --global --system --local -u --unset'
 _dvc_checkout='-d --with-deps -R --recursive -f --force --relink'
-_dvc_checkout_COMPGEN=_dvc_compgen_DVCfiles
+_dvc_checkout_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_commit='-f --force -d --with-deps -R --recursive'
-_dvc_commit_COMPGEN=_dvc_compgen_DVCfiles
+_dvc_commit_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_config='-u --unset --local --system --global'
 _dvc_destroy='-f --force'
 _dvc_diff='-t --show-json --checksums'
 _dvc_fetch='-j --jobs -r --remote -a --all-branches -T --all-tags -d --with-deps -R --recursive'
-_dvc_fetch_COMPGEN=_dvc_compgen_DVCfiles
+_dvc_fetch_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_get_url=''
 _dvc_get='-o --out --rev --show-url'
 _dvc_gc='-a --all-branches -T --all-tags -c --cloud -r --remote -f --force -p --projects -j --jobs'
@@ -47,11 +47,11 @@ _dvc_move='$(compgen -f)'
 _dvc_pipeline='list show'
 _dvc_pipeline_list=''
 _dvc_pipeline_show='-c --commands -o --outs --ascii --dot --tree -l --locked'
-_dvc_pipeline_show_COMPGEN=_dvc_compgen_DVCfiles
+_dvc_pipeline_show_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_pull='-j --jobs -r --remote -a --all-branches -T --all-tags -f --force -d --with-deps -R --recursive'
-_dvc_pull_COMPGEN=_dvc_compgen_DVCfiles
+_dvc_pull_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_push='-j --jobs -r --remote -a --all-branches -T --all-tags -d --with-deps -R --recursive'
-_dvc_push_COMPGEN=_dvc_compgen_DVCfiles
+_dvc_push_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_remote='add default list modify remove'
 _dvc_remote_add='--global --system --local -d --default -f --force'
 _dvc_remote_default='--global --system --local -u --unset'
@@ -59,23 +59,26 @@ _dvc_remote_list='--global --system --local'
 _dvc_remote_modify='--global --system --local -u --unset'
 _dvc_remote_remove='--global --system --local'
 _dvc_remove='-o --outs -p --purge -f --force'
-_dvc_remove_COMPGEN=_dvc_compgen_DVCfiles
+_dvc_remove_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_repro='-f --force -s --single-item -c --cwd -m --metrics --dry -i --interactive -p --pipeline -P --all-pipelines --ignore-build-cache --no-commit -R --recursive --downstream'
-_dvc_repro_COMPGEN=_dvc_compgen_DVCfiles
+_dvc_repro_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_root=''
 _dvc_run='--no-exec -f --file -c --cwd -d --deps -o --outs -O --outs-no-cache --outs-persist --outs-persist-no-cache -m --metrics -M --metrics-no-cache -y --yes --overwrite-dvcfile --ignore-build-cache --remove-outs --no-commit -w --wdir'
 _dvc_status='-j --jobs -r --remote -a --all-branches -T --all-tags -d --with-deps -c --cloud'
-_dvc_run_COMPGEN=_dvc_compgen_DVCfiles
-_dvc_unlock_COMPGEN=_dvc_compgen_DVCfiles
+_dvc_run_COMPGEN=_dvc_compgen_DVCFiles
+_dvc_unlock_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_unprotect_COMPGEN=_dvc_compgen_files
 _dvc_update='--rev'
-_dvc_update_COMPGEN=_dvc_compgen_DVCfiles
+_dvc_update_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_version=''
 
 # $1=COMP_WORDS[1]
-_dvc_compgen_DVCfiles() {
+_dvc_compgen_DVCFiles() {
   compgen -f -X '!*?.dvc' -- $1
   compgen -d -S '/' -- $1  # recurse into subdirs
+  # Note that the recurse into dirs is only for looking for DVC-files.
+  # Since dirs themselves are not required, we need `-o nospace` at the bottom
+  # unfortunately :(
 }
 
 # $1=COMP_WORDS[1]
