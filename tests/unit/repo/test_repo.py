@@ -2,6 +2,8 @@ import os
 
 import pytest
 
+from dvc.repo import locked
+
 
 def test_is_dvc_internal(dvc):
     assert dvc.is_dvc_internal(os.path.join("path", "to", ".dvc", "file"))
@@ -49,3 +51,18 @@ def test_used_cache(tmp_dir, dvc, path):
             used_cache._items == expected._items
             and used_cache.external == expected.external
         )
+
+
+def test_locked(mocker):
+    repo = mocker.MagicMock()
+    repo.method = locked(repo.method)
+
+    args = {}
+    kwargs = {}
+    repo.method(repo, args, kwargs)
+
+    assert repo.method_calls == [
+        mocker.call._reset(),
+        mocker.call.method(repo, args, kwargs),
+        mocker.call._reset(),
+    ]
