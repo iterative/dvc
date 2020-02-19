@@ -1,12 +1,7 @@
 #!/usr/bin/env bash
-
-#----------------------------------------------------------
-# Repository:  https://github.com/iterative/dvc
-#
 # References:
 #   - https://www.gnu.org/software/bash/manual/html_node/Programmable-Completion.html
 #   - https://opensource.com/article/18/3/creating-bash-completion-script
-#----------------------------------------------------------
 
 _dvc_commands='add cache checkout commit config destroy diff fetch get-url get gc \
   import-url import init install lock list metrics move pipeline pull push \
@@ -89,17 +84,12 @@ _dvc_comp_subcommand() {
 }
 
 # Notes:
-#
 # `COMPREPLY` contains what will be rendered after completion is triggered
-#
 # `word` refers to the current typed word
-#
 # `${!var}` is to evaluate the content of `var` and expand its content as a variable
-#
 #       hello="world"
 #       x="hello"
 #       ${!x} ->  ${hello} ->  "world"
-#
 _dvc() {
   local word="${COMP_WORDS[COMP_CWORD]}"
 
@@ -112,7 +102,7 @@ _dvc() {
     esac
   elif [ "${COMP_CWORD}" -eq 2 ]; then
     _dvc_comp_command ${COMP_WORDS[1]}
-  elif [ "${COMP_CWORD}" -eq 3 ]; then
+  elif [ "${COMP_CWORD}" -ge 3 ]; then
     _dvc_comp_subcommand ${COMP_WORDS[1]} ${COMP_WORDS[2]}
   fi
 
