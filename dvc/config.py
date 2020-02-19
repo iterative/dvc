@@ -102,8 +102,8 @@ LOCAL_COMMON = {
     Optional("slow_link_warning", default=True): Bool,
 }
 HTTP_COMMON = {
-    "basic_auth": Bool,
-    "digest_auth": Bool,
+    "auth": All(Lower, Choices("basic", "digest", "custom")),
+    "custom_header": str,
     "user": str,
     "password": str,
     "ask_password": Bool,

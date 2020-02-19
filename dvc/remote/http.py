@@ -49,10 +49,11 @@ class RemoteHTTP(RemoteBASE):
                 "files. Use: `dvc remote modify <name> no_traverse true`"
             )
 
-        self.basic_auth = config.get("basic_auth", False)
-        self.digest_auth = config.get("digest_auth", False)
+        self.auth = config.get("auth", None)
+        self.custom_header = config.get("custom_header", None)
         self.password = config.get("password", None)
         self.ask_password = config.get("ask_password", False)
+        self.headers = {}
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         response = self._request("GET", from_info.url, stream=True)
@@ -124,13 +125,16 @@ class RemoteHTTP(RemoteBASE):
         if path_info is None:
             path_info = self.path_info
 
-        if self.basic_auth or self.digest_auth:
+        if self.auth:
             if self.ask_password and self.password is None:
                 host, user = path_info.host, path_info.user
                 self.password = ask_password(host, user)
-            if self.digest_auth:
+            if self.auth == "basic":
+                return HTTPBasicAuth(path_info.user, self.password)
+            elif self.auth == "digest":
                 return HTTPDigestAuth(path_info.user, self.password)
-            return HTTPBasicAuth(path_info.user, self.password)
+            elif self.auth == "custom" and self.custom_header:
+                self.headers.update({self.custom_header: self.password})
         return None
 
     @wrap_prop(threading.Lock())
@@ -160,7 +164,11 @@ class RemoteHTTP(RemoteBASE):
 
         try:
             res = self._session.request(
-                method, url, auth=self.auth_method(), **kwargs,
+                method,
+                url,
+                auth=self.auth_method(),
+                headers=self.headers,
+                **kwargs,
             )
 
             redirect_no_location = (

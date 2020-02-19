@@ -51,9 +51,9 @@ def test_basic_auth_method(dvc):
     config = {
         "url": "http://example.com/",
         "path_info": "file.html",
+        "auth": "basic",
         "user": user,
         "password": password,
-        "basic_auth": True,
     }
 
     remote = RemoteHTTP(dvc, config)
@@ -71,12 +71,30 @@ def test_digest_auth_method(dvc):
     config = {
         "url": "http://example.com/",
         "path_info": "file.html",
+        "auth": "digest",
         "user": user,
         "password": password,
-        "digest_auth": True,
     }
 
     remote = RemoteHTTP(dvc, config)
 
     assert remote.auth_method() == auth
     assert isinstance(remote.auth_method(), HTTPDigestAuth)
+
+
+def test_custom_auth_method(dvc):
+    header = "Custom Header"
+    password = "password"
+    config = {
+        "url": "http://example.com/",
+        "path_info": "file.html",
+        "auth": "custom",
+        "custom_header": header,
+        "password": password,
+    }
+
+    remote = RemoteHTTP(dvc, config)
+
+    assert remote.auth_method() is None
+    assert header in remote.headers
+    assert remote.headers[header] == password
