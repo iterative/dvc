@@ -50,7 +50,7 @@ class RemoteHTTP(RemoteBASE):
             )
 
         self.auth = config.get("auth", None)
-        self.custom_header = config.get("custom_header", None)
+        self.custom_auth_header = config.get("custom_auth_header", None)
         self.password = config.get("password", None)
         self.ask_password = config.get("ask_password", False)
         self.headers = {}
@@ -133,8 +133,8 @@ class RemoteHTTP(RemoteBASE):
                 return HTTPBasicAuth(path_info.user, self.password)
             elif self.auth == "digest":
                 return HTTPDigestAuth(path_info.user, self.password)
-            elif self.auth == "custom" and self.custom_header:
-                self.headers.update({self.custom_header: self.password})
+            elif self.auth == "custom" and self.custom_auth_header:
+                self.headers.update({self.custom_auth_header: self.password})
         return None
 
     @wrap_prop(threading.Lock())

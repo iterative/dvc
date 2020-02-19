@@ -103,7 +103,7 @@ LOCAL_COMMON = {
 }
 HTTP_COMMON = {
     "auth": All(Lower, Choices("basic", "digest", "custom")),
-    "custom_header": str,
+    "custom_auth_header": str,
     "user": str,
     "password": str,
     "ask_password": Bool,

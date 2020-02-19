@@ -83,13 +83,13 @@ def test_digest_auth_method(dvc):
 
 
 def test_custom_auth_method(dvc):
-    header = "Custom Header"
+    header = "Custom-Header"
     password = "password"
     config = {
         "url": "http://example.com/",
         "path_info": "file.html",
         "auth": "custom",
-        "custom_header": header,
+        "custom_auth_header": header,
         "password": password,
     }
 
