@@ -91,20 +91,22 @@ _dvc_replace_hyphen() {
 
 # $1=COMP_WORDS[1]
 _dvc_compgen_command() {
-  local options_list="_dvc_$(_dvc_replace_hyphen $1)"
-  local options_gen="${options_list}_COMPGEN"
-  COMPREPLY=( $(compgen -W "$_dvc_global_options ${!options_list}" -- "$word"; [ -n "${!options_gen}" ] && ${!options_gen} "$word") )
+  local flags_list="_dvc_$(_dvc_replace_hyphen $1)"
+  local args_gen="${flags_list}_COMPGEN"
+  COMPREPLY=( $(compgen -W "$_dvc_global_options ${!flags_list}" -- "$word"; [ -n "${!args_gen}" ] && ${!args_gen} "$word") )
 }
 
 # $1=COMP_WORDS[1]
 # $2=COMP_WORDS[2]
 _dvc_compgen_subcommand() {
-  local options_list="_dvc_$(_dvc_replace_hyphen $1)_$(_dvc_replace_hyphen $2)"
-  local _dvc_opts="${!options_list}"
-  if [ -z "$_dvc_opts" ]; then
+  local flags_list="_dvc_$(_dvc_replace_hyphen $1)_$(_dvc_replace_hyphen $2)"
+  local args_gen="${flags_list}_COMPGEN"
+  [ -n "${!args_gen}" ] && local opts_more="$(${!args_gen} "$word")"
+  local opts="${!flags_list}"
+  if [ -z "$opts$opts_more" ]; then
     _dvc_compgen_command $1
   else
-    COMPREPLY=( $(compgen -W "$_dvc_global_options $_dvc_opts" -- "$word") )
+    COMPREPLY=( $(compgen -W "$_dvc_global_options $opts" -- "$word"; [ -n "$opts_more" ] && echo "$opts_more") )
   fi
 }
 
