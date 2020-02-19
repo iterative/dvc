@@ -7,6 +7,10 @@ class DvcException(Exception):
     """Base class for all dvc exceptions."""
 
 
+class InvalidArgumentError(ValueError, DvcException):
+    """Thrown if arguments are invalid."""
+
+
 class OutputDuplicationError(DvcException):
     """Thrown if a file/directory is specified as an output in more than one
     stage.
