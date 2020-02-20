@@ -175,8 +175,9 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
             Stage.load(self.dvc, error_stage_path),
         ]
 
-        with self.assertRaises(StagePathAsOutputError):
-            self.dvc.reproduce(error_stage_path)
+        with patch.object(self.dvc, "_reset"):  # to prevent `stages` resetting
+            with self.assertRaises(StagePathAsOutputError):
+                self.dvc.reproduce(error_stage_path)
 
     def test_similar_paths(self):
         # File structure:
