@@ -14,6 +14,10 @@
   :target: https://travis-ci.com/iterative/dvc
   :alt: Release
 
+.. image:: https://img.shields.io/badge/DOI-10.5281/zenodo.3677553-blue.svg
+  :target: https://doi.org/10.5281/zenodo.3677553
+  :alt: DOI
+
 .. image:: https://img.shields.io/travis/com/iterative/dvc/master?label=dev
   :target: https://travis-ci.com/iterative/dvc
   :alt: Travis dev branch
