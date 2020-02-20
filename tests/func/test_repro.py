@@ -949,7 +949,7 @@ class TestReproExternalBase(TestDvc):
         self.assertEqual(self.dvc.status([cmd_stage.path]), {})
 
         self.assertEqual(self.dvc.status(), {})
-        self.dvc.gc()
+        self.dvc.gc(workspace=True)
         self.assertEqual(self.dvc.status(), {})
 
         self.dvc.remove(cmd_stage.path, outs_only=True)
