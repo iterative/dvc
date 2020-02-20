@@ -148,7 +148,8 @@ setup(
         "hdfs": hdfs,
         "tests": tests_requirements,
     },
-    keywords="data science, data version control, machine learning",
+    keywords="data-science data-version-control machine-learning git"
+    " developer-tools reproducibility collaboration ai",
     python_requires=">=3.5",
     classifiers=[
         "Development Status :: 4 - Beta",
