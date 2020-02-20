@@ -59,7 +59,7 @@ class PushRequestHandler(SimpleHTTPRequestHandler):
                 else:
                     size = int(self.headers.get("Content-Length", 0))
                     fd.write(self.rfile.read(size))
-        except (IOError, OSError) as e:
+        except OSError as e:
             self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR, str(e))
         self.send_response(HTTPStatus.OK)
         self.end_headers()

@@ -90,7 +90,7 @@ class RemoteHTTP(RemoteBASE):
                         yield chunk
 
             response = self._request("POST", to_info.url, data=chunks())
-            if response.status_code != 200:
+            if response.status_code not in (200, 201):
                 raise HTTPError(response.status_code, response.reason)
 
     def exists(self, path_info):
@@ -131,9 +131,9 @@ class RemoteHTTP(RemoteBASE):
                 self.password = ask_password(host, user)
             if self.auth == "basic":
                 return HTTPBasicAuth(path_info.user, self.password)
-            elif self.auth == "digest":
+            if self.auth == "digest":
                 return HTTPDigestAuth(path_info.user, self.password)
-            elif self.auth == "custom" and self.custom_auth_header:
+            if self.auth == "custom" and self.custom_auth_header:
                 self.headers.update({self.custom_auth_header: self.password})
         return None
 
