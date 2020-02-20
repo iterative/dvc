@@ -1,6 +1,6 @@
 .. image:: https://dvc.org/static/img/logo-github-readme.png
-  :target: https://dvc.org
-  :alt: DVC logo
+   :target: https://dvc.org
+   :alt: DVC logo
 
 `Website <https://dvc.org>`_
 • `Docs <https://dvc.org/doc>`_
@@ -11,36 +11,36 @@
 • `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
 
 .. image:: https://img.shields.io/badge/release-ok-brightgreen
-  :target: https://travis-ci.com/iterative/dvc
-  :alt: Release
+   :target: https://travis-ci.com/iterative/dvc
+   :alt: Release
 
 .. image:: https://img.shields.io/badge/DOI-10.5281/zenodo.3677553-blue.svg
-  :target: https://doi.org/10.5281/zenodo.3677553
-  :alt: DOI
+   :target: https://doi.org/10.5281/zenodo.3677553
+   :alt: DOI
 
 .. image:: https://img.shields.io/travis/com/iterative/dvc/master?label=dev
-  :target: https://travis-ci.com/iterative/dvc
-  :alt: Travis dev branch
+   :target: https://travis-ci.com/iterative/dvc
+   :alt: Travis dev branch
 
 .. image:: https://codeclimate.com/github/iterative/dvc/badges/gpa.svg
-  :target: https://codeclimate.com/github/iterative/dvc
-  :alt: Code Climate
+   :target: https://codeclimate.com/github/iterative/dvc
+   :alt: Code Climate
 
 .. image:: https://codecov.io/gh/iterative/dvc/branch/master/graph/badge.svg
-  :target: https://codecov.io/gh/iterative/dvc
-  :alt: Codecov
+   :target: https://codecov.io/gh/iterative/dvc
+   :alt: Codecov
 
 .. image:: https://img.shields.io/badge/patreon-donate-green.svg
-  :target: https://www.patreon.com/DVCorg/overview
-  :alt: Donate
+   :target: https://www.patreon.com/DVCorg/overview
+   :alt: Donate
 
 .. image:: https://anaconda.org/conda-forge/dvc/badges/version.svg
-  :target: https://anaconda.org/conda-forge/dvc
-  :alt: Conda-forge
+   :target: https://anaconda.org/conda-forge/dvc
+   :alt: Conda-forge
 
 .. image:: https://img.shields.io/badge/snap-install-82BEA0.svg?logo=snapcraft
-  :target: https://snapcraft.io/dvc
-  :alt: Snapcraft
+   :target: https://snapcraft.io/dvc
+   :alt: Snapcraft
 
 |
 
@@ -214,36 +214,36 @@ Contributions are welcome! Please see our `Contributing Guide <https://dvc.org/d
 details.
 
 .. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/0
-  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/0
-  :alt: 0
+   :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/0
+   :alt: 0
 
 .. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/1
-  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/1
-  :alt: 1
+   :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/1
+   :alt: 1
 
 .. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/2
-  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/2
-  :alt: 2
+   :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/2
+   :alt: 2
 
 .. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/3
-  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/3
-  :alt: 3
+   :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/3
+   :alt: 3
 
 .. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/4
-  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/4
-  :alt: 4
+   :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/4
+   :alt: 4
 
 .. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/5
-  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/5
-  :alt: 5
+   :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/5
+   :alt: 5
 
 .. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/6
-  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/6
-  :alt: 6
+   :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/6
+   :alt: 6
 
 .. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/7
-  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/7
-  :alt: 7
+   :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/7
+   :alt: 7
 
 Mailing List
 ============
