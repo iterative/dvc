@@ -5,7 +5,7 @@ import re
 import threading
 from urllib.parse import urlparse
 
-from funcy import retry, compose, decorator, wrap_with
+from funcy import retry, wrap_with, wrap_prop, cached_property
 from funcy.py3 import cat
 
 from dvc.progress import Tqdm
@@ -41,30 +41,18 @@ class GDriveMissedCredentialKeyError(DvcException):
         )
 
 
-@decorator
-def _wrap_pydrive_retriable(call):
+def gdrive_retry(func):
     from pydrive2.files import ApiRequestError
 
-    try:
-        result = call()
-    except ApiRequestError as exception:
-        retry_codes = ["403", "500", "502", "503", "504"]
-        if any(
-            "HttpError {}".format(code) in str(exception)
-            for code in retry_codes
-        ):
-            raise GDriveRetriableError("Google API request failed")
-        raise
-    return result
+    retry_re = re.compile(r"HttpError (403|500|502|503|504)")
 
-
-gdrive_retry = compose(
     # 15 tries, start at 0.5s, multiply by golden ratio, cap at 20s
-    retry(
-        15, GDriveRetriableError, timeout=lambda a: min(0.5 * 1.618 ** a, 20)
-    ),
-    _wrap_pydrive_retriable,
-)
+    return retry(
+        15,
+        timeout=lambda a: min(0.5 * 1.618 ** a, 20),
+        errors=ApiRequestError,
+        filter_errors=lambda exc: retry_re.search(str(exc)),
+    )(func)
 
 
 class GDriveURLInfo(CloudURLInfo):
@@ -126,73 +114,66 @@ class RemoteGDrive(RemoteBASE):
         )
 
         self._list_params = None
-        self._gdrive = None
 
         self._cache_initialized = False
         self._remote_root_id = None
         self._cached_dirs = None
         self._cached_ids = None
 
-    @property
-    @wrap_with(threading.RLock())
+    @wrap_prop(threading.RLock())
+    @cached_property
     def drive(self):
         from pydrive2.auth import RefreshError
+        from pydrive2.auth import GoogleAuth
+        from pydrive2.drive import GoogleDrive
 
-        if not self._gdrive:
-            from pydrive2.auth import GoogleAuth
-            from pydrive2.drive import GoogleDrive
+        if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA):
+            with open(
+                self._gdrive_user_credentials_path, "w"
+            ) as credentials_file:
+                credentials_file.write(
+                    os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA)
+                )
 
+        GoogleAuth.DEFAULT_SETTINGS["client_config_backend"] = "settings"
+        GoogleAuth.DEFAULT_SETTINGS["client_config"] = {
+            "client_id": self._client_id,
+            "client_secret": self._client_secret,
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "revoke_uri": "https://oauth2.googleapis.com/revoke",
+            "redirect_uri": "",
+        }
+        GoogleAuth.DEFAULT_SETTINGS["save_credentials"] = True
+        GoogleAuth.DEFAULT_SETTINGS["save_credentials_backend"] = "file"
+        GoogleAuth.DEFAULT_SETTINGS[
+            "save_credentials_file"
+        ] = self._gdrive_user_credentials_path
+        GoogleAuth.DEFAULT_SETTINGS["get_refresh_token"] = True
+        GoogleAuth.DEFAULT_SETTINGS["oauth_scope"] = [
+            "https://www.googleapis.com/auth/drive",
+            "https://www.googleapis.com/auth/drive.appdata",
+        ]
+
+        # Pass non existent settings path to force DEFAULT_SETTINGS loading
+        gauth = GoogleAuth(settings_file="")
+
+        try:
+            gauth.CommandLineAuth()
+        except RefreshError as exc:
+            raise GDriveAccessTokenRefreshError from exc
+        except KeyError as exc:
+            raise GDriveMissedCredentialKeyError(
+                self._gdrive_user_credentials_path
+            ) from exc
+        # Handle pydrive2.auth.AuthenticationError and other auth failures
+        except Exception as exc:
+            raise DvcException("Google Drive authentication failed") from exc
+        finally:
             if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA):
-                with open(
-                    self._gdrive_user_credentials_path, "w"
-                ) as credentials_file:
-                    credentials_file.write(
-                        os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA)
-                    )
+                os.remove(self._gdrive_user_credentials_path)
 
-            GoogleAuth.DEFAULT_SETTINGS["client_config_backend"] = "settings"
-            GoogleAuth.DEFAULT_SETTINGS["client_config"] = {
-                "client_id": self._client_id,
-                "client_secret": self._client_secret,
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "revoke_uri": "https://oauth2.googleapis.com/revoke",
-                "redirect_uri": "",
-            }
-            GoogleAuth.DEFAULT_SETTINGS["save_credentials"] = True
-            GoogleAuth.DEFAULT_SETTINGS["save_credentials_backend"] = "file"
-            GoogleAuth.DEFAULT_SETTINGS[
-                "save_credentials_file"
-            ] = self._gdrive_user_credentials_path
-            GoogleAuth.DEFAULT_SETTINGS["get_refresh_token"] = True
-            GoogleAuth.DEFAULT_SETTINGS["oauth_scope"] = [
-                "https://www.googleapis.com/auth/drive",
-                "https://www.googleapis.com/auth/drive.appdata",
-            ]
-
-            # Pass non existent settings path to force DEFAULT_SETTINGS loading
-            gauth = GoogleAuth(settings_file="")
-
-            try:
-                gauth.CommandLineAuth()
-            except RefreshError as exc:
-                raise GDriveAccessTokenRefreshError from exc
-            except KeyError as exc:
-                raise GDriveMissedCredentialKeyError(
-                    self._gdrive_user_credentials_path
-                ) from exc
-            # Handle pydrive2.auth.AuthenticationError and other auth failures
-            except Exception as exc:
-                raise DvcException(
-                    "Google Drive authentication failed"
-                ) from exc
-            finally:
-                if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA):
-                    os.remove(self._gdrive_user_credentials_path)
-
-            self._gdrive = GoogleDrive(gauth)
-
-        return self._gdrive
+        return GoogleDrive(gauth)
 
     @wrap_with(threading.RLock())
     def _initialize_cache(self):
