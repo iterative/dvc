@@ -106,8 +106,9 @@ def test_relative_remote(erepo_dir, tmp_path_factory):
 
     erepo_dir.dvc.push()
 
-    os.remove(erepo_dir / "file")
-    shutil.rmtree(erepo_dir / ".dvc" / "cache")
+    with erepo_dir.chdir():
+        os.remove("file")
+    shutil.rmtree(erepo_dir.dvc.cache.local.cache_dir)
 
     url = fspath(erepo_dir)
 
