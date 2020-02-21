@@ -275,3 +275,11 @@ class HDFS:
         return "hdfs://{}@127.0.0.1{}".format(
             getpass.getuser(), Local.get_storagepath()
         )
+
+
+class HTTP:
+    should_test = always_test
+
+    @staticmethod
+    def get_url(port):
+        return "http://127.0.0.1:{}".format(port)

@@ -1,8 +1,10 @@
 import logging
+import os.path
 import threading
 
-from funcy import cached_property, wrap_prop
+from funcy import cached_property, memoize, wrap_prop, wrap_with
 
+import dvc.prompt as prompt
 from dvc.config import ConfigError
 from dvc.exceptions import DvcException, HTTPError
 from dvc.progress import Tqdm
@@ -10,6 +12,15 @@ from dvc.remote.base import RemoteBASE
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
+
+
+@wrap_with(threading.Lock())
+@memoize
+def ask_password(host, user):
+    return prompt.password(
+        "Enter a password for "
+        "host '{host}' user '{user}'".format(host=host, user=user)
+    )
 
 
 class RemoteHTTP(RemoteBASE):
@@ -24,13 +35,25 @@ class RemoteHTTP(RemoteBASE):
         super().__init__(repo, config)
 
         url = config.get("url")
-        self.path_info = self.path_cls(url) if url else None
+        if url:
+            self.path_info = self.path_cls(url)
+            user = config.get("user", None)
+            if user:
+                self.path_info.user = user
+        else:
+            self.path_info = None
 
         if not self.no_traverse:
             raise ConfigError(
                 "HTTP doesn't support traversing the remote to list existing "
                 "files. Use: `dvc remote modify <name> no_traverse true`"
             )
+
+        self.auth = config.get("auth", None)
+        self.custom_auth_header = config.get("custom_auth_header", None)
+        self.password = config.get("password", None)
+        self.ask_password = config.get("ask_password", False)
+        self.headers = {}
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         response = self._request("GET", from_info.url, stream=True)
@@ -47,6 +70,28 @@ class RemoteHTTP(RemoteBASE):
                 for chunk in response.iter_content(chunk_size=self.CHUNK_SIZE):
                     fd.write(chunk)
                     pbar.update(len(chunk))
+
+    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
+        with Tqdm(
+            total=None if no_progress_bar else os.path.getsize(from_file),
+            leave=False,
+            bytes=True,
+            desc=to_info.url if name is None else name,
+            disable=no_progress_bar,
+        ) as pbar:
+
+            def chunks():
+                with open(from_file, "rb") as fd:
+                    while True:
+                        chunk = fd.read(self.CHUNK_SIZE)
+                        if not chunk:
+                            break
+                        pbar.update(len(chunk))
+                        yield chunk
+
+            response = self._request("POST", to_info.url, data=chunks())
+            if response.status_code not in (200, 201):
+                raise HTTPError(response.status_code, response.reason)
 
     def exists(self, path_info):
         return bool(self._request("HEAD", path_info.url))
@@ -74,6 +119,24 @@ class RemoteHTTP(RemoteBASE):
 
         return etag
 
+    def auth_method(self, path_info=None):
+        from requests.auth import HTTPBasicAuth, HTTPDigestAuth
+
+        if path_info is None:
+            path_info = self.path_info
+
+        if self.auth:
+            if self.ask_password and self.password is None:
+                host, user = path_info.host, path_info.user
+                self.password = ask_password(host, user)
+            if self.auth == "basic":
+                return HTTPBasicAuth(path_info.user, self.password)
+            if self.auth == "digest":
+                return HTTPDigestAuth(path_info.user, self.password)
+            if self.auth == "custom" and self.custom_auth_header:
+                self.headers.update({self.custom_auth_header: self.password})
+        return None
+
     @wrap_prop(threading.Lock())
     @cached_property
     def _session(self):
@@ -100,7 +163,13 @@ class RemoteHTTP(RemoteBASE):
         kwargs.setdefault("timeout", self.REQUEST_TIMEOUT)
 
         try:
-            res = self._session.request(method, url, **kwargs)
+            res = self._session.request(
+                method,
+                url,
+                auth=self.auth_method(),
+                headers=self.headers,
+                **kwargs,
+            )
 
             redirect_no_location = (
                 kwargs["allow_redirects"]

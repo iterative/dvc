@@ -101,6 +101,13 @@ LOCAL_COMMON = {
     "shared": All(Lower, Choices("group")),
     Optional("slow_link_warning", default=True): Bool,
 }
+HTTP_COMMON = {
+    "auth": All(Lower, Choices("basic", "digest", "custom")),
+    "custom_auth_header": str,
+    "user": str,
+    "password": str,
+    "ask_password": Bool,
+}
 SCHEMA = {
     "core": {
         "remote": Lower,
@@ -169,8 +176,8 @@ SCHEMA = {
                     "gdrive_user_credentials_file": str,
                     **REMOTE_COMMON,
                 },
-                "http": REMOTE_COMMON,
-                "https": REMOTE_COMMON,
+                "http": {**HTTP_COMMON, **REMOTE_COMMON},
+                "https": {**HTTP_COMMON, **REMOTE_COMMON},
                 "remote": {str: object},  # Any of the above options are valid
             }
         )

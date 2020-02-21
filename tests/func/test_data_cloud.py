@@ -30,6 +30,7 @@ from tests.remotes import (
     GCP,
     GDrive,
     HDFS,
+    HTTP,
     Local,
     S3,
     SSHMocked,
@@ -288,6 +289,20 @@ class TestRemoteSSHMocked(SSHMocked, TestDataCloudBase):
 class TestRemoteHDFS(HDFS, TestDataCloudBase):
     def _get_cloud_class(self):
         return RemoteHDFS
+
+
+@pytest.mark.usefixtures("http_server")
+class TestRemoteHTTP(HTTP, TestDataCloudBase):
+    @pytest.fixture(autouse=True)
+    def setup_method_fixture(self, request, http_server):
+        self.http_server = http_server
+        self.method_name = request.function.__name__
+
+    def get_url(self):
+        return super().get_url(self.http_server.server_port)
+
+    def _get_cloud_class(self):
+        return RemoteHTTP
 
 
 class TestDataCloudCLIBase(TestDvc):
