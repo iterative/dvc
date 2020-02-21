@@ -252,11 +252,11 @@ Iterative, *DVC: Data Version Control - Git for Data & Models* (2020)
    :alt: DVC logo
 
 .. |Release| image:: https://img.shields.io/badge/release-ok-brightgreen
-   :target: https://travis-ci.com/iterative/dvc
+   :target: https://travis-ci.com/iterative/dvc/branches
    :alt: Release
 
 .. |CI| image:: https://img.shields.io/travis/com/iterative/dvc/master?label=dev&logo=travis
-   :target: https://travis-ci.com/iterative/dvc
+   :target: https://travis-ci.com/iterative/dvc/builds
    :alt: Travis dev branch
 
 .. |Maintainability| image:: https://codeclimate.com/github/iterative/dvc/badges/gpa.svg
@@ -275,19 +275,19 @@ Iterative, *DVC: Data Version Control - Git for Data & Models* (2020)
    :target: https://snapcraft.io/dvc
    :alt: Snapcraft
 
-.. |Choco| image:: https://img.shields.io/chocolatey/v/dvc
+.. |Choco| image:: https://img.shields.io/chocolatey/v/dvc?label=choco
    :target: https://chocolatey.org/packages/dvc
    :alt: Chocolatey
 
-.. |Brew| image:: https://img.shields.io/homebrew/v/dvc
+.. |Brew| image:: https://img.shields.io/homebrew/v/dvc?label=brew
    :target: https://formulae.brew.sh/formula/dvc
    :alt: Homebrew
 
-.. |Conda| image:: https://img.shields.io/conda/v/conda-forge/dvc.svg?label=conda-forge&logo=conda-forge
+.. |Conda| image:: https://img.shields.io/conda/v/conda-forge/dvc.svg?label=conda&logo=conda-forge
    :target: https://anaconda.org/conda-forge/dvc
    :alt: Conda-forge
 
-.. |PyPI| image:: https://img.shields.io/pypi/v/dvc.svg?logo=PyPI&logoColor=white
+.. |PyPI| image:: https://img.shields.io/pypi/v/dvc.svg?label=pip&logo=PyPI&logoColor=white
    :target: https://pypi.org/project/dvc
    :alt: PyPI
 
