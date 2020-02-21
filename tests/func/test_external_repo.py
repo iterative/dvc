@@ -1,4 +1,5 @@
 import os
+import shutil
 
 from mock import patch
 from dvc.compat import fspath
@@ -6,6 +7,7 @@ from dvc.compat import fspath
 from dvc.external_repo import external_repo
 from dvc.scm.git import Git
 from dvc.remote import RemoteLOCAL
+from dvc.utils import relpath
 
 
 def test_external_repo(erepo_dir):
@@ -88,3 +90,29 @@ def test_pull_subdir_file(tmp_dir, erepo_dir):
 
     assert dest.is_file()
     assert dest.read_text() == "contents"
+
+
+def test_relative_remote(erepo_dir, tmp_dir, tmp_path_factory):
+    # these steps reproduce the script on this issue:
+    # https://github.com/iterative/dvc/issues/2756
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("file", "contents", commit="create file")
+
+    upstream_dir = fspath(tmp_path_factory.mktemp("upstream"))
+    upstream_url = relpath(upstream_dir, erepo_dir)
+    with erepo_dir.dvc.config.edit() as conf:
+        conf["remote"]["upstream"] = {"url": upstream_url}
+        conf["core"]["remote"] = "upstream"
+
+    erepo_dir.dvc.push()
+
+    os.remove(erepo_dir / "file")
+    shutil.rmtree(erepo_dir / ".dvc" / "cache")
+
+    url = fspath(erepo_dir)
+
+    with external_repo(url) as repo:
+        assert os.path.isabs(repo.config["remote"]["upstream"]["url"])
+        assert os.path.isdir(repo.config["remote"]["upstream"]["url"])
+        with repo.open_by_relpath("file") as fd:
+            assert fd.read() == "contents"
