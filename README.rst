@@ -1,6 +1,4 @@
-.. image:: https://dvc.org/static/img/logo-github-readme.png
-  :target: https://dvc.org
-  :alt: DVC logo
+|Banner|
 
 `Website <https://dvc.org>`_
 • `Docs <https://dvc.org/doc>`_
@@ -10,33 +8,7 @@
 • `Tutorial <https://dvc.org/doc/get-started>`_
 • `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
 
-.. image:: https://img.shields.io/badge/release-ok-brightgreen
-  :target: https://travis-ci.com/iterative/dvc
-  :alt: Release
-
-.. image:: https://img.shields.io/travis/com/iterative/dvc/master?label=dev
-  :target: https://travis-ci.com/iterative/dvc
-  :alt: Travis dev branch
-
-.. image:: https://codeclimate.com/github/iterative/dvc/badges/gpa.svg
-  :target: https://codeclimate.com/github/iterative/dvc
-  :alt: Code Climate
-
-.. image:: https://codecov.io/gh/iterative/dvc/branch/master/graph/badge.svg
-  :target: https://codecov.io/gh/iterative/dvc
-  :alt: Codecov
-
-.. image:: https://img.shields.io/badge/patreon-donate-green.svg
-  :target: https://www.patreon.com/DVCorg/overview
-  :alt: Donate
-
-.. image:: https://anaconda.org/conda-forge/dvc/badges/version.svg
-  :target: https://anaconda.org/conda-forge/dvc
-  :alt: Conda-forge
-
-.. image:: https://img.shields.io/badge/snap-install-82BEA0.svg?logo=snapcraft
-  :target: https://snapcraft.io/dvc
-  :alt: Snapcraft
+|Release| |CI| |Maintainability| |Coverage| |Donate| |Conda| |Snap| |DOI|
 
 |
 
@@ -79,9 +51,7 @@ to store data and model files seamlessly out of Git, while preserving almost the
 were stored in Git itself. To store and share the data cache, DVC supports multiple remotes - any cloud (S3, Azure,
 Google Cloud, etc) or any on-premise network storage (via SSH, for example).
 
-.. image:: https://dvc.org/static/img/flow.gif
-   :target: https://dvc.org/static/img/flow.gif
-   :alt: how_dvc_works
+|Flowchart|
 
 The DVC pipelines (computational graph) feature connects code and data together. It is possible to explicitly
 specify all steps required to produce a model: input dependencies including data, commands to run,
@@ -148,6 +118,8 @@ Homebrew
 Conda (Anaconda)
 ----------------
 
+|Conda|
+
 .. code-block:: bash
 
    conda install -c conda-forge dvc
@@ -156,6 +128,8 @@ Currently, this includes support for Python versions 2.7, 3.6 and 3.7.
 
 Snap (Snapcraft)
 ----------------
+
+|Snap|
 
 .. code-block:: bash
 
@@ -206,40 +180,43 @@ Comparison to related technologies
 
 Contributing
 ============
+
+|Maintainability| |Donate|
+
 Contributions are welcome! Please see our `Contributing Guide <https://dvc.org/doc/user-guide/contributing/core>`_ for more
 details.
 
 .. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/0
-  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/0
-  :alt: 0
+   :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/0
+   :alt: 0
 
 .. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/1
-  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/1
-  :alt: 1
+   :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/1
+   :alt: 1
 
 .. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/2
-  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/2
-  :alt: 2
+   :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/2
+   :alt: 2
 
 .. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/3
-  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/3
-  :alt: 3
+   :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/3
+   :alt: 3
 
 .. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/4
-  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/4
-  :alt: 4
+   :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/4
+   :alt: 4
 
 .. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/5
-  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/5
-  :alt: 5
+   :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/5
+   :alt: 5
 
 .. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/6
-  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/6
-  :alt: 6
+   :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/6
+   :alt: 6
 
 .. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/7
-  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/7
-  :alt: 7
+   :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/7
+   :alt: 7
 
 Mailing List
 ============
@@ -253,3 +230,51 @@ This project is distributed under the Apache license version 2.0 (see the LICENS
 
 By submitting a pull request to this project, you agree to license your contribution under the Apache license version
 2.0 to this project.
+
+Citation
+========
+
+|DOI|
+
+Iterative, *DVC: Data Version Control - Git for Data & Models* (2020)
+`DOI:10.5281/zenodo.012345 <https://doi.org/10.5281/zenodo.3677553>`_.
+
+.. |Banner| image:: https://dvc.org/static/img/logo-github-readme.png
+   :target: https://dvc.org
+   :alt: DVC logo
+
+.. |Release| image:: https://img.shields.io/badge/release-ok-brightgreen
+   :target: https://travis-ci.com/iterative/dvc
+   :alt: Release
+
+.. |CI| image:: https://img.shields.io/travis/com/iterative/dvc/master?label=dev
+   :target: https://travis-ci.com/iterative/dvc
+   :alt: Travis dev branch
+
+.. |Maintainability| image:: https://codeclimate.com/github/iterative/dvc/badges/gpa.svg
+   :target: https://codeclimate.com/github/iterative/dvc
+   :alt: Code Climate
+
+.. |Coverage| image:: https://codecov.io/gh/iterative/dvc/branch/master/graph/badge.svg
+   :target: https://codecov.io/gh/iterative/dvc
+   :alt: Codecov
+
+.. |Donate| image:: https://img.shields.io/badge/patreon-donate-green.svg
+   :target: https://www.patreon.com/DVCorg/overview
+   :alt: Donate
+
+.. |Conda| image:: https://anaconda.org/conda-forge/dvc/badges/version.svg
+   :target: https://anaconda.org/conda-forge/dvc
+   :alt: Conda-forge
+
+.. |Snap| image:: https://img.shields.io/badge/snap-install-82BEA0.svg?logo=snapcraft
+   :target: https://snapcraft.io/dvc
+   :alt: Snapcraft
+
+.. |DOI| image:: https://img.shields.io/badge/DOI-10.5281/zenodo.3677553-blue.svg
+   :target: https://doi.org/10.5281/zenodo.3677553
+   :alt: DOI
+
+.. |Flowchart| image:: https://dvc.org/static/img/flow.gif
+   :target: https://dvc.org/static/img/flow.gif
+   :alt: how_dvc_works

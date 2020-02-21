@@ -1,0 +1,8 @@
+{
+  "title": "DVC: Data Version Control - Git for Data & Models",
+  "keywords": [
+    "data-science", "data-version-control", "machine-learning", "git",
+    "developer-tools", "reproducibility", "collaboration", "ai", "python"],
+  "contributors": [
+    {"name": "DVC team", "type": "Other", "affiliation": "Iterative"}]
+}
