@@ -92,7 +92,7 @@ def test_pull_subdir_file(tmp_dir, erepo_dir):
     assert dest.read_text() == "contents"
 
 
-def test_relative_remote(erepo_dir, tmp_dir, tmp_path_factory):
+def test_relative_remote(erepo_dir, tmp_path_factory):
     # these steps reproduce the script on this issue:
     # https://github.com/iterative/dvc/issues/2756
     with erepo_dir.chdir():
