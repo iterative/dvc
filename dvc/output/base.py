@@ -409,12 +409,23 @@ class OutputBase(object):
             cache.external[dep.repo_pair].add(dep.def_path)
             return cache
 
-        if not self.info:
-            logger.warning(
-                "Output '{}'({}) is missing version info. Cache for it will "
-                "not be collected. Use `dvc repro` to get your pipeline up to "
-                "date.".format(self, self.stage)
+        if not self.checksum:
+            msg = (
+                "Output '{}'({}) is missing version info. "
+                "Cache for it will not be collected. "
+                "Use `dvc repro` to get your pipeline up to date.".format(
+                    self, self.stage
+                )
             )
+            if self.exists:
+                msg += (
+                    "\n"
+                    "You can also use `dvc commit {stage}` to associate "
+                    "existing '{out}' with '{stage}'.".format(
+                        out=self, stage=self.stage.relpath
+                    )
+                )
+            logger.warning(msg)
             return NamedCache()
 
         ret = NamedCache.make(self.scheme, self.checksum, str(self))
