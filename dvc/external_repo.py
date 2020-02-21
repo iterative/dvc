@@ -124,11 +124,23 @@ class ExternalRepo(Repo):
         self.cache.local.cache_dir = cache_dir
 
     def _set_upstream(self):
-        # check if the URL is local and no default remote is present
-        # add default remote pointing to the original repo's cache location
+        # check if the URL is local and:
+        # - if no default remote is present, then add default remote
+        #   pointing to the original repo's cache location
+        # - if a default remote is present, make the URL
+        #   relative to the original repo
         if os.path.isdir(self.url):
-            if not self.config["core"].get("remote"):
-                src_repo = Repo(self.url)
+            src_repo = Repo(self.url)
+            remote_name = self.config["core"].get("remote")
+            if remote_name:
+                remote_cfg = self.config["remote"][remote_name]
+                old_remote_url = src_repo.config["remote"][remote_name]["url"]
+                if remote_cfg["url"] != old_remote_url:
+                    remote_cfg["url"] = os.path.join(
+                        src_repo.root_dir, old_remote_url
+                    )
+                src_repo.close()
+            else:
                 try:
                     cache_dir = src_repo.cache.local.cache_dir
                 finally:
