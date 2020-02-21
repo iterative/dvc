@@ -8,7 +8,9 @@
 • `Tutorial <https://dvc.org/doc/get-started>`_
 • `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
 
-|Release| |CI| |Maintainability| |Coverage| |Donate| |Conda| |Snap| |DOI|
+|Release| |CI| |Maintainability| |Coverage| |Donate| |DOI|
+
+|Snap| |Choco| |Brew| |Conda| |PyPI| |Packages|
 
 |
 
@@ -92,6 +94,8 @@ Full instructions are `available here <https://dvc.org/doc/get-started/install>`
 pip (PyPI)
 ----------
 
+|PyPI|
+
 .. code-block:: bash
 
    pip install dvc
@@ -109,6 +113,8 @@ To install the development version, run:
 
 Homebrew
 --------
+
+|Brew|
 
 .. code-block:: bash
 
@@ -140,6 +146,8 @@ Add ``--edge`` for the latest ``master`` version.
 
 Package
 -------
+
+|Packages|
 
 Self-contained packages for Linux, Windows, and Mac are available. The latest version of the packages
 can be found on the GitHub `releases page <https://github.com/iterative/dvc/releases>`_.
@@ -263,13 +271,29 @@ Iterative, *DVC: Data Version Control - Git for Data & Models* (2020)
    :target: https://www.patreon.com/DVCorg/overview
    :alt: Donate
 
-.. |Conda| image:: https://anaconda.org/conda-forge/dvc/badges/version.svg
-   :target: https://anaconda.org/conda-forge/dvc
-   :alt: Conda-forge
-
 .. |Snap| image:: https://img.shields.io/badge/snap-install-82BEA0.svg?logo=snapcraft
    :target: https://snapcraft.io/dvc
    :alt: Snapcraft
+
+.. |Choco| image:: https://img.shields.io/chocolatey/v/dvc
+   :target: https://chocolatey.org/packages/dvc
+   :alt: Chocolatey
+
+.. |Brew| image:: https://img.shields.io/homebrew/v/dvc
+   :target: https://formulae.brew.sh/formula/dvc
+   :alt: Homebrew
+
+.. |Conda| image:: https://img.shields.io/conda/v/conda-forge/dvc.svg?label=conda-forge&logo=conda-forge
+   :target: https://anaconda.org/conda-forge/dvc
+   :alt: Conda-forge
+
+.. |PyPI| image:: https://img.shields.io/pypi/v/dvc.svg?logo=PyPI&logoColor=white
+   :target: https://pypi.org/project/dvc
+   :alt: PyPI
+
+.. |Packages| image:: https://img.shields.io/github/v/release/iterative/dvc?label=deb|pkg|rpm|exe&logo=GitHub
+   :target: https://github.com/iterative/dvc/releases/latest
+   :alt: deb|pkg|rpm|exe
 
 .. |DOI| image:: https://img.shields.io/badge/DOI-10.5281/zenodo.3677553-blue.svg
    :target: https://doi.org/10.5281/zenodo.3677553
