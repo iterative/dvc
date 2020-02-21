@@ -8,21 +8,7 @@
 • `Tutorial <https://dvc.org/doc/get-started>`_
 • `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
 
-|Release|
-
-|CI|
-
-|Maintainability|
-
-|Coverage|
-
-|Donate|
-
-|Conda|
-
-|Snap|
-
-|DOI|
+|Release| |CI| |Maintainability| |Coverage| |Donate| |Conda| |Snap| |DOI|
 
 |
 
