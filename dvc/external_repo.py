@@ -66,6 +66,7 @@ class ExternalRepo(Repo):
         super().__init__(root_dir)
         self.url = url
         self._set_cache_dir()
+        self._set_relative_upstream()
         self._set_upstream()
 
     def pull_to(self, path, to_info):
@@ -123,16 +124,14 @@ class ExternalRepo(Repo):
 
         self.cache.local.cache_dir = cache_dir
 
-    def _set_upstream(self):
-        # check if the URL is local and:
-        # - if no default remote is present, then add default remote
-        #   pointing to the original repo's cache location
-        # - if a default remote is present, make the URL
-        #   relative to the original repo
+    def _set_relative_upstream(self):
+        # check if the URL is local and if a default relative-path
+        # remote is present, if so, make the URL relative to the
+        # original repo
         if os.path.isdir(self.url):
-            src_repo = Repo(self.url)
             remote_name = self.config["core"].get("remote")
             if remote_name:
+                src_repo = Repo(self.url)
                 remote_cfg = self.config["remote"][remote_name]
                 old_remote_url = src_repo.config["remote"][remote_name]["url"]
                 if remote_cfg["url"] != old_remote_url:
@@ -140,7 +139,13 @@ class ExternalRepo(Repo):
                         src_repo.root_dir, old_remote_url
                     )
                 src_repo.close()
-            else:
+
+    def _set_upstream(self):
+        # check if the URL is local and no default remote is present
+        # add default remote pointing to the original repo's cache location
+        if os.path.isdir(self.url):
+            if not self.config["core"].get("remote"):
+                src_repo = Repo(self.url)
                 try:
                     cache_dir = src_repo.cache.local.cache_dir
                 finally:
