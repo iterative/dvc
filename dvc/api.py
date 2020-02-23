@@ -84,6 +84,5 @@ def _make_repo(repo_url=None, rev=None):
 
 
 def _require_dvc(repo):
-    """Raises UrlNotDvcRepoError if repo is not a DVC repository."""
     if not isinstance(repo, Repo):
         raise UrlNotDvcRepoError(repo.url)
