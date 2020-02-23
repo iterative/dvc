@@ -8,7 +8,7 @@ def test_default(mocker, caplog):
     args = parse_args(["diff"])
     cmd = args.func(args)
     diff = {
-        "added": [{"path": "file", "checksum": "00000000"}],
+        "added": [{"path": "file", "hash": "00000000"}],
         "deleted": [],
         "modified": [],
     }
@@ -23,21 +23,18 @@ def test_default(mocker, caplog):
     ) in caplog.text
 
 
-def test_checksums(mocker, caplog):
-    args = parse_args(["diff", "--checksums"])
+def test_show_hash(mocker, caplog):
+    args = parse_args(["diff", "--show-hash"])
     cmd = args.func(args)
     diff = {
         "added": [],
         "deleted": [
-            {"path": os.path.join("data", ""), "checksum": "XXXXXXXX.dir"},
-            {"path": os.path.join("data", "bar"), "checksum": "00000000"},
-            {"path": os.path.join("data", "foo"), "checksum": "11111111"},
+            {"path": os.path.join("data", ""), "hash": "XXXXXXXX.dir"},
+            {"path": os.path.join("data", "bar"), "hash": "00000000"},
+            {"path": os.path.join("data", "foo"), "hash": "11111111"},
         ],
         "modified": [
-            {
-                "path": "file",
-                "checksum": {"old": "AAAAAAAA", "new": "BBBBBBBB"},
-            }
+            {"path": "file", "hash": {"old": "AAAAAAAA", "new": "BBBBBBBB"}}
         ],
     }
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
@@ -55,11 +52,11 @@ def test_checksums(mocker, caplog):
     ) in caplog.text
 
 
-def test_json(mocker, caplog):
+def test_show_json(mocker, caplog):
     args = parse_args(["diff", "--show-json"])
     cmd = args.func(args)
     diff = {
-        "added": [{"path": "file", "checksum": "00000000"}],
+        "added": [{"path": "file", "hash": "00000000"}],
         "deleted": [],
         "modified": [],
     }
@@ -71,16 +68,14 @@ def test_json(mocker, caplog):
     assert '"modified": []' in caplog.text
 
 
-def test_json_checksums(mocker, caplog):
-    args = parse_args(["diff", "--show-json", "--checksums"])
+def test_show_json_and_hash(mocker, caplog):
+    args = parse_args(["diff", "--show-json", "--show-hash"])
     cmd = args.func(args)
 
     diff = {
         "added": [
             # py35: maintain a consistent key order for tests purposes
-            collections.OrderedDict(
-                [("path", "file"), ("checksum", "00000000")]
-            )
+            collections.OrderedDict([("path", "file"), ("hash", "00000000")])
         ],
         "deleted": [],
         "modified": [],
@@ -88,6 +83,6 @@ def test_json_checksums(mocker, caplog):
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
 
     assert 0 == cmd.run()
-    assert '"added": [{"path": "file", "checksum": "00000000"}]' in caplog.text
+    assert '"added": [{"path": "file", "hash": "00000000"}]' in caplog.text
     assert '"deleted": []' in caplog.text
     assert '"modified": []' in caplog.text

@@ -66,10 +66,10 @@ def diff(self, a_rev="HEAD", b_rev=None):
     modified = sorted(set(old) & set(new))
 
     return {
-        "added": [{"path": path, "checksum": new[path]} for path in added],
-        "deleted": [{"path": path, "checksum": old[path]} for path in deleted],
+        "added": [{"path": path, "hash": new[path]} for path in added],
+        "deleted": [{"path": path, "hash": old[path]} for path in deleted],
         "modified": [
-            {"path": path, "checksum": {"old": old[path], "new": new[path]}}
+            {"path": path, "hash": {"old": old[path], "new": new[path]}}
             for path in modified
             if old[path] != new[path]
         ],
