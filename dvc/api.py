@@ -18,10 +18,10 @@ class UrlNotDvcRepoError(DvcException):
 
 
 def get_url(path, repo=None, rev=None, remote=None):
-    """
-    Returns the full URL to the data artifact specified by its `path` in a
-    `repo`.
-    NOTE: There is no guarantee that the file actually exists in that location.
+    """Returns URL to the storage location of a data artifact tracked
+    by DVC, specified by its path in a repo.
+
+    NOTE: There's no guarantee that the file actually exists in that location.
     """
     with _make_repo(repo, rev=rev) as _repo:
         _require_dvc(_repo)
@@ -31,7 +31,7 @@ def get_url(path, repo=None, rev=None, remote=None):
 
 
 def open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
-    """Context manager to open a file artifact as a file object."""
+    """Context manager to open a tracked file as a file object."""
     args = (path,)
     kwargs = {
         "repo": repo,
@@ -63,7 +63,7 @@ def _open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
 
 
 def read(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
-    """Returns the contents of a file artifact."""
+    """Returns the contents of a tracked file."""
     with open(
         path, repo=repo, rev=rev, remote=remote, mode=mode, encoding=encoding
     ) as fd:
