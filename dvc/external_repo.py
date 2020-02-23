@@ -66,8 +66,7 @@ class ExternalRepo(Repo):
         super().__init__(root_dir)
         self.url = url
         self._set_cache_dir()
-        self._set_relative_upstream()
-        self._set_upstream()
+        self._fix_upstream()
 
     def pull_to(self, path, to_info):
         """
@@ -124,37 +123,40 @@ class ExternalRepo(Repo):
 
         self.cache.local.cache_dir = cache_dir
 
-    def _set_relative_upstream(self):
-        # check if the URL is local and if a default relative-path
-        # remote is present, if so, make the URL relative to the
-        # original repo
+    def _fix_upstream(self):
         if os.path.isdir(self.url):
-            remote_name = self.config["core"].get("remote")
-            if remote_name:
-                src_repo = Repo(self.url)
-                remote_cfg = self.config["remote"][remote_name]
-                old_remote_url = src_repo.config["remote"][remote_name]["url"]
-                if remote_cfg["url"] != old_remote_url:
-                    remote_cfg["url"] = os.path.join(
-                        src_repo.root_dir, old_remote_url
-                    )
-                src_repo.close()
+            upstream_name = self.config["core"].get("remote")
+            if upstream_name:
+                self._fix_local_remote(upstream_name)
+            else:
+                self._add_upstream()
 
-    def _set_upstream(self):
-        # check if the URL is local and no default remote is present
-        # add default remote pointing to the original repo's cache location
-        if os.path.isdir(self.url):
-            if not self.config["core"].get("remote"):
-                src_repo = Repo(self.url)
-                try:
-                    cache_dir = src_repo.cache.local.cache_dir
-                finally:
-                    src_repo.close()
+    def _fix_local_remote(self, remote_name):
+        # Keep the relative path for a local remote relative
+        # to the original repo.
+        src_repo = Repo(self.url)
+        try:
+            new_remote = self.config["remote"][remote_name]
+            old_remote = src_repo.config["remote"][remote_name]
+            # NOTE: it is assumed that only local+relative urls
+            # will be different from their old version. Revise this
+            # test if that stops being true.
+            if new_remote["url"] != old_remote["url"]:
+                new_remote["url"] = old_remote["url"]
+        finally:
+            src_repo.close()
 
-                self.config["remote"]["auto-generated-upstream"] = {
-                    "url": cache_dir
-                }
-                self.config["core"]["remote"] = "auto-generated-upstream"
+    def _add_upstream(self):
+        # Fill the empty upstream entry with a new remote pointing to the
+        # original repo's cache location.
+        src_repo = Repo(self.url)
+        try:
+            cache_dir = src_repo.cache.local.cache_dir
+        finally:
+            src_repo.close()
+
+        self.config["remote"]["auto-generated-upstream"] = {"url": cache_dir}
+        self.config["core"]["remote"] = "auto-generated-upstream"
 
 
 class ExternalGitRepo:
