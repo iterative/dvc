@@ -140,9 +140,6 @@ class ExternalRepo(Repo):
         # to the original repo.
         new_remote = self.config["remote"][remote_name]
         old_remote = src_repo.config["remote"][remote_name]
-        # NOTE: it is assumed that only local+relative urls
-        # will be different from their old version. Revise this
-        # test if that stops being true.
         if new_remote["url"] != old_remote["url"]:
             new_remote["url"] = old_remote["url"]
 
