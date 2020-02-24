@@ -92,22 +92,23 @@ def test_pull_subdir_file(tmp_dir, erepo_dir):
     assert dest.read_text() == "contents"
 
 
-def test_relative_remote(erepo_dir, tmp_path_factory):
+def test_relative_remote(erepo_dir, tmp_dir):
     # these steps reproduce the script on this issue:
     # https://github.com/iterative/dvc/issues/2756
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("file", "contents", commit="create file")
 
-    upstream_dir = fspath(tmp_path_factory.mktemp("upstream"))
+    upstream_dir = tmp_dir
     upstream_url = relpath(upstream_dir, erepo_dir)
     with erepo_dir.dvc.config.edit() as conf:
         conf["remote"]["upstream"] = {"url": upstream_url}
         conf["core"]["remote"] = "upstream"
 
+    erepo_dir.scm_add(erepo_dir.dvc.config.files["repo"])
+    erepo_dir.scm.commit("Update dvc config")
     erepo_dir.dvc.push()
 
-    with erepo_dir.chdir():
-        os.remove("file")
+    (erepo_dir / "file").unlink()
     shutil.rmtree(erepo_dir.dvc.cache.local.cache_dir)
 
     url = fspath(erepo_dir)
