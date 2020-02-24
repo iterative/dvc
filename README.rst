@@ -91,6 +91,47 @@ Installation
 There are four options to install DVC: ``pip``, Homebrew, Conda (Anaconda) or an OS-specific package.
 Full instructions are `available here <https://dvc.org/doc/get-started/install>`_.
 
+Snap (Snapcraft/Linux)
+----------------------
+
+|Snap|
+
+.. code-block:: bash
+
+   snap install dvc --classic
+
+This corresponds to the latest tagged release.
+Add ``--edge`` for the latest ``master`` version.
+
+Choco (Chocolatey/Windows)
+--------------------------
+
+|Choco|
+
+.. code-block:: bash
+
+   choco install dvc
+
+Brew (Homebrew/Mac OS)
+----------------------
+
+|Brew|
+
+.. code-block:: bash
+
+   brew install dvc
+
+Conda (Anaconda)
+----------------
+
+|Conda|
+
+.. code-block:: bash
+
+   conda install -c conda-forge dvc
+
+Currently, this includes support for Python versions 2.7, 3.6 and 3.7.
+
 pip (PyPI)
 ----------
 
@@ -110,39 +151,6 @@ To install the development version, run:
 .. code-block:: bash
 
    pip install git+git://github.com/iterative/dvc
-
-Homebrew
---------
-
-|Brew|
-
-.. code-block:: bash
-
-   brew install dvc
-
-
-Conda (Anaconda)
-----------------
-
-|Conda|
-
-.. code-block:: bash
-
-   conda install -c conda-forge dvc
-
-Currently, this includes support for Python versions 2.7, 3.6 and 3.7.
-
-Snap (Snapcraft)
-----------------
-
-|Snap|
-
-.. code-block:: bash
-
-   snap install dvc --classic
-
-This corresponds to the latest tagged release.
-Add ``--edge`` for the latest ``master`` version.
 
 Package
 -------
