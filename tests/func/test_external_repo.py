@@ -104,8 +104,9 @@ def test_relative_remote(erepo_dir, tmp_dir):
         conf["remote"]["upstream"] = {"url": upstream_url}
         conf["core"]["remote"] = "upstream"
 
-    erepo_dir.scm_add(erepo_dir.dvc.config.files["repo"])
-    erepo_dir.scm.commit("Update dvc config")
+    erepo_dir.scm_add(
+        erepo_dir.dvc.config.files["repo"], commit="Update dvc config"
+    )
     erepo_dir.dvc.push()
 
     (erepo_dir / "file").unlink()
