@@ -439,7 +439,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         )
         self._execute(cmd, (relative_path, self._to_sqlite(inode), mtime))
 
-    def remove_unused_links(self, used):
+    def get_unused_links(self, used):
         """Removes all saved links except the ones that are used.
 
         Args:
@@ -453,19 +453,21 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             inode = self._from_sqlite(inode)
             path = os.path.join(self.root_dir, relpath)
 
-            if path in used:
-                continue
-
-            if not os.path.exists(path):
+            if path in used or not os.path.exists(path):
                 continue
 
             actual_inode = get_inode(path)
             actual_mtime, _ = get_mtime_and_size(path, self.repo.tree)
 
-            if inode == actual_inode and mtime == actual_mtime:
+            if (inode, mtime) == (actual_inode, actual_mtime):
                 logger.debug("Removing '{}' as unused link.", path)
-                remove(path)
                 unused.append(relpath)
+
+        return unused
+
+    def remove_links(self, unused):
+        for path in unused:
+            remove(path)
 
         for chunk_unused in to_chunks(
             unused, chunk_size=SQLITE_MAX_VARIABLES_NUMBER

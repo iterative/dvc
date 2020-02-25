@@ -11,7 +11,7 @@ from dvc.path_info import PathInfo
 from dvc.compat import fspath
 from dvc.repo import Repo
 from dvc.config import NoRemoteError, NotDvcRepoError
-from dvc.exceptions import NoRemoteInExternalRepoError
+from dvc.exceptions import NoRemoteInExternalRepoError, CheckoutError
 from dvc.exceptions import OutputNotFoundError, NoOutputInExternalRepoError
 from dvc.exceptions import FileMissingError, PathMissingError
 from dvc.utils.fs import remove, fs_copy, move
@@ -106,7 +106,11 @@ class ExternalRepo(Repo):
             if out.changed_cache(filter_info=src):
                 self.cloud.pull(out.get_used_cache(filter_info=src))
 
-            failed = out.checkout(filter_info=src)
+            failed = False
+            try:
+                out.checkout(filter_info=src)
+            except CheckoutError:
+                failed = True
 
             move(src, dest)
             remove(tmp)

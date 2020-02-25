@@ -27,7 +27,9 @@ def pull(
         with_deps=with_deps,
         recursive=recursive,
     )
-    self._checkout(
+    stats = self._checkout(
         targets=targets, with_deps=with_deps, force=force, recursive=recursive
     )
-    return processed_files_count
+
+    stats["downloaded"] = processed_files_count
+    return stats

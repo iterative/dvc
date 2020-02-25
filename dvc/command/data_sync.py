@@ -3,7 +3,8 @@ import logging
 
 from dvc.command.base import append_doc_link
 from dvc.command.base import CmdBase
-from dvc.exceptions import DvcException
+from dvc.command.checkout import log_summary
+from dvc.exceptions import DvcException, CheckoutError
 
 
 logger = logging.getLogger(__name__)
@@ -19,7 +20,7 @@ class CmdDataBase(CmdBase):
 class CmdDataPull(CmdDataBase):
     def run(self):
         try:
-            processed_files_count = self.repo.pull(
+            stats = self.repo.pull(
                 targets=self.args.targets,
                 jobs=self.args.jobs,
                 remote=self.args.remote,
@@ -29,10 +30,13 @@ class CmdDataPull(CmdDataBase):
                 force=self.args.force,
                 recursive=self.args.recursive,
             )
-        except DvcException:
+            log_summary(stats)
+        except (CheckoutError, DvcException) as exc:
+            log_summary(getattr(exc, "stats", {}))
             logger.exception("failed to pull data from the cloud")
             return 1
-        self.check_up_to_date(processed_files_count)
+
+        self.check_up_to_date(stats["downloaded"])
         return 0
 
 
