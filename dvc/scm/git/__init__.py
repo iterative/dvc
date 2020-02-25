@@ -2,10 +2,14 @@
 
 import logging
 import os
+from shutil import which
+from subprocess import check_call
+import yaml
 
 from funcy import cached_property
 from pathspec.patterns import GitWildMatchPattern
 
+from dvc.exceptions import DvcException
 from dvc.exceptions import GitHookAlreadyExistsError
 from dvc.scm.base import Base
 from dvc.scm.base import CloneError, FileNotInRepoError, RevError, SCMError
@@ -273,7 +277,82 @@ class Git(Base):
 
         os.chmod(hook, 0o777)
 
-    def install(self):
+    def _install_with_pre_commit_tool(self):
+        if not which("pre-commit"):
+            raise DvcException("pre-commit is not installed")
+
+        check_call("pre-commit install", shell=True)
+
+        pre_commit_entry = (
+            'bash -c "#!/bin/sh\\n'
+            'if [ -n "$(git ls-files --full-name .dvc)" ]; '
+            'then exec dvc status; fi"'
+        )
+
+        pre_push_entry = (
+            'bash -c "#!/bin/sh\\n'
+            'if [ -n "$(git ls-files --full-name .dvc)" ]; å'
+            'then exec dvc push; fi"'
+        )
+
+        # post_checkout_entry = (
+        #     'bash -c "#!/bin/sh\\n'
+        #     'if [ -n "$(git ls-files --full-name .dvc)" ] '
+        #     '&& [ "$3" = "1" ] && [ ! -d .git/rebase-merge ]; '
+        #     'then exec dvc checkout; fi"'
+        # )
+
+        conf = {
+            "repos": [
+                {
+                    "repo": "local",
+                    "hooks": [
+                        {
+                            "id": "dvc-pre-commit",
+                            "name": "DVC Pre Commit",
+                            "entry": pre_commit_entry,
+                            "language": "system",
+                            "stages": ["commit"],
+                        },
+                        {
+                            "id": "dvc-pre-push",
+                            "name": "DVC Pre Push",
+                            "entry": pre_push_entry,
+                            "language": "system",
+                            "stages": ["push"],
+                        },
+                        # TODO(andrewhare): Enable this with latest
+                        # pre-commit changes.
+                        # {
+                        #     "id": "dvc-post-checkout",
+                        #     "name": "DVC Post Checkout",
+                        #     "entry": post_checkout_entry,
+                        #     "language": "system",
+                        #     "always_run": True,
+                        #     "stages": ["post-checkout"],
+                        # }
+                    ],
+                }
+            ]
+        }
+
+        conf_yaml = ".pre-commit-config.yaml"
+        with open(conf_yaml, "w+") as f:
+            existing_conf = yaml.safe_load(f)
+            if existing_conf:
+                # TODO(andrewhare): Do an intelligent merge of `conf`
+                # and `existing_conf` if the user already has a
+                # pre-commit config YAML.
+                pass
+            yaml.dump(conf, f)
+
+        os.chmod(conf_yaml, 0o777)
+
+    def install(self, use_pre_commit_tool):
+        if use_pre_commit_tool:
+            self._install_with_pre_commit_tool()
+            return
+
         self._verify_dvc_hooks()
 
         self._install_hook(
