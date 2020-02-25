@@ -5,6 +5,7 @@ import tempfile
 from dvc.main import main
 from dvc.output.local import OutputLOCAL
 from dvc.remote.local import RemoteLOCAL
+from dvc.repo import Repo
 from dvc.stage import Stage
 from dvc.stage import StageFileFormatError
 from dvc.utils.stage import dump_stage_file
@@ -179,3 +180,19 @@ def test_meta_is_preserved(tmp_dir, dvc):
 
     new_data = load_stage_file(stage.path)
     assert new_data["meta"] == data["meta"]
+
+
+def test_parent_repo_collect_stages(tmp_dir, scm, dvc):
+    tmp_dir.gen({"subdir": {}})
+    subrepo_dir = tmp_dir / "subdir"
+
+    with subrepo_dir.chdir():
+        subrepo = Repo.init(subdir=True)
+        subrepo_dir.gen("subrepo_file", "subrepo file content")
+        subrepo.add("subrepo_file")
+
+    stages = dvc.collect(None)
+    subrepo_stages = subrepo.collect(None)
+
+    assert stages == []
+    assert subrepo_stages != []

@@ -99,7 +99,9 @@ class TmpDir(pathlib.Path):
         if scm:
             _git_init(str_path)
         if dvc:
-            self.dvc = Repo.init(str_path, no_scm=True)
+            self.dvc = Repo.init(
+                str_path, no_scm=not scm and not hasattr(self, "scm")
+            )
         if scm:
             self.scm = self.dvc.scm if hasattr(self, "dvc") else Git(str_path)
         if dvc and hasattr(self, "scm"):
