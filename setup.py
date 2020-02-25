@@ -75,7 +75,6 @@ install_requires = [
     "networkx>=2.1,<2.4",
     "pydot>=1.2.4",
     "speedcopy>=2.0.1",
-    "pyfastcopy>=1.0.3",
     "flatten_json>=0.1.6",
     "texttable>=0.5.2",
 ]
