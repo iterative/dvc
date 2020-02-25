@@ -45,12 +45,12 @@ from global repo template to creating everything inplace, which:
 
 import os
 import pathlib
-import logging
 from contextlib import contextmanager
 
 import pytest
 from funcy import lmap, retry
 
+from dvc.logger import disable_other_loggers
 from dvc.utils.fs import makedirs
 from dvc.compat import fspath, fspath_py35
 
@@ -67,8 +67,7 @@ __all__ = [
 
 
 # see https://github.com/iterative/dvc/issues/3167
-git_logger = logging.getLogger("git")
-git_logger.setLevel(logging.CRITICAL)
+disable_other_loggers()
 
 
 class TmpDir(pathlib.Path):
