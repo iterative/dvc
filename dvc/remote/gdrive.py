@@ -39,16 +39,18 @@ class GDriveMissedCredentialKeyError(DvcException):
 
 
 def gdrive_retry(func):
-    from pydrive2.files import ApiRequestError
-
     retry_re = re.compile(r"HttpError (403|500|502|503|504)")
+
+    def should_retry(exc):
+        from pydrive2.files import ApiRequestError
+
+        return isinstance(exc, ApiRequestError) and retry_re.search(str(exc))
 
     # 15 tries, start at 0.5s, multiply by golden ratio, cap at 20s
     return retry(
         15,
         timeout=lambda a: min(0.5 * 1.618 ** a, 20),
-        errors=ApiRequestError,
-        filter_errors=lambda exc: retry_re.search(str(exc)),
+        filter_errors=should_retry,
     )(func)
 
 
