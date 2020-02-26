@@ -58,7 +58,7 @@ def _fetch(
         failed += exc.amount
 
     for (repo_url, repo_rev), files in used.external.items():
-        d, f = _fetch_external(self, repo_url, repo_rev, files)
+        d, f = _fetch_external(self, repo_url, repo_rev, files, jobs)
         downloaded += d
         failed += f
 
@@ -68,7 +68,7 @@ def _fetch(
     return downloaded
 
 
-def _fetch_external(self, repo_url, repo_rev, files):
+def _fetch_external(self, repo_url, repo_rev, files, jobs):
     from dvc.external_repo import external_repo
 
     failed = 0
@@ -91,7 +91,7 @@ def _fetch_external(self, repo_url, repo_rev, files):
                         cache.update(out.get_used_cache())
 
                 try:
-                    return repo.cloud.pull(cache), failed
+                    return repo.cloud.pull(cache, jobs=jobs), failed
                 except DownloadError as exc:
                     failed += exc.amount
     except CloneError:
