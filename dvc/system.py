@@ -16,15 +16,6 @@ if platform.system() == "Windows":
         speedcopy.patch_copyfile()
     except ImportError:
         pass
-else:
-    import sys
-
-    if sys.version_info < (3, 8):
-        try:
-            # Importing the module monkey-patches shutil.copyfile
-            import pyfastcopy  # noqa: F401
-        except ImportError:
-            pass
 
 
 class System(object):
