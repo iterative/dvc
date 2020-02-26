@@ -15,7 +15,8 @@ from dvc.daemon import daemon
 from dvc.exceptions import NotDvcRepoError
 from dvc.lock import Lock, LockError
 from dvc.repo import Repo
-from dvc.scm import SCM
+from dvc.scm import SCM, NoSCM
+from dvc.scm.base import SCMError
 from dvc.utils import env2bool, is_binary
 from dvc.utils.fs import makedirs
 
@@ -85,6 +86,8 @@ def _scm_in_use():
     try:
         scm = SCM(root_dir=Repo.find_root())
         return type(scm).__name__
+    except SCMError:
+        return NoSCM.__name__
     except NotDvcRepoError:
         pass
 
