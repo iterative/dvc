@@ -74,7 +74,7 @@ install_requires = [
     "pywin32>=225; sys_platform == 'win32'",
     "networkx>=2.1,<2.4",
     "pydot>=1.2.4",
-    "speedcopy>=2.0.1",
+    "speedcopy>=2.0.1; sys_platform == 'win32'",
     "flatten_json>=0.1.6",
     "texttable>=0.5.2",
 ]
