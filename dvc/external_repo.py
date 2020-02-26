@@ -138,6 +138,9 @@ class ExternalRepo(Repo):
             src_repo.close()
 
     def _fix_local_remote(self, src_repo, remote_name):
+        # If a remote URL is relative to the source repo,
+        # it will have changed upon config load and made
+        # relative to this new repo. Restore the old one here.
         new_remote = self.config["remote"][remote_name]
         old_remote = src_repo.config["remote"][remote_name]
         if new_remote["url"] != old_remote["url"]:
