@@ -8,7 +8,9 @@
 • `Tutorial <https://dvc.org/doc/get-started>`_
 • `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
 
-|Release| |CI| |Maintainability| |Coverage| |Donate| |Conda| |Snap| |DOI|
+|Release| |CI| |Maintainability| |Coverage| |Donate| |DOI|
+
+|Snap| |Choco| |Brew| |Conda| |PyPI| |Packages|
 
 |
 
@@ -89,8 +91,51 @@ Installation
 There are four options to install DVC: ``pip``, Homebrew, Conda (Anaconda) or an OS-specific package.
 Full instructions are `available here <https://dvc.org/doc/get-started/install>`_.
 
+Snap (Snapcraft/Linux)
+----------------------
+
+|Snap|
+
+.. code-block:: bash
+
+   snap install dvc --classic
+
+This corresponds to the latest tagged release.
+Add ``--edge`` for the latest ``master`` version.
+
+Choco (Chocolatey/Windows)
+--------------------------
+
+|Choco|
+
+.. code-block:: bash
+
+   choco install dvc
+
+Brew (Homebrew/Mac OS)
+----------------------
+
+|Brew|
+
+.. code-block:: bash
+
+   brew install dvc
+
+Conda (Anaconda)
+----------------
+
+|Conda|
+
+.. code-block:: bash
+
+   conda install -c conda-forge dvc
+
+Currently, this includes support for Python versions 2.7, 3.6 and 3.7.
+
 pip (PyPI)
 ----------
+
+|PyPI|
 
 .. code-block:: bash
 
@@ -107,39 +152,10 @@ To install the development version, run:
 
    pip install git+git://github.com/iterative/dvc
 
-Homebrew
---------
-
-.. code-block:: bash
-
-   brew install dvc
-
-
-Conda (Anaconda)
-----------------
-
-|Conda|
-
-.. code-block:: bash
-
-   conda install -c conda-forge dvc
-
-Currently, this includes support for Python versions 2.7, 3.6 and 3.7.
-
-Snap (Snapcraft)
-----------------
-
-|Snap|
-
-.. code-block:: bash
-
-   snap install dvc --classic
-
-This corresponds to the latest tagged release.
-Add ``--edge`` for the latest ``master`` version.
-
 Package
 -------
+
+|Packages|
 
 Self-contained packages for Linux, Windows, and Mac are available. The latest version of the packages
 can be found on the GitHub `releases page <https://github.com/iterative/dvc/releases>`_.
@@ -244,11 +260,11 @@ Iterative, *DVC: Data Version Control - Git for Data & Models* (2020)
    :alt: DVC logo
 
 .. |Release| image:: https://img.shields.io/badge/release-ok-brightgreen
-   :target: https://travis-ci.com/iterative/dvc
+   :target: https://travis-ci.com/iterative/dvc/branches
    :alt: Release
 
-.. |CI| image:: https://img.shields.io/travis/com/iterative/dvc/master?label=dev
-   :target: https://travis-ci.com/iterative/dvc
+.. |CI| image:: https://img.shields.io/travis/com/iterative/dvc/master?label=dev&logo=travis
+   :target: https://travis-ci.com/iterative/dvc/builds
    :alt: Travis dev branch
 
 .. |Maintainability| image:: https://codeclimate.com/github/iterative/dvc/badges/gpa.svg
@@ -259,17 +275,33 @@ Iterative, *DVC: Data Version Control - Git for Data & Models* (2020)
    :target: https://codecov.io/gh/iterative/dvc
    :alt: Codecov
 
-.. |Donate| image:: https://img.shields.io/badge/patreon-donate-green.svg
+.. |Donate| image:: https://img.shields.io/badge/patreon-donate-green.svg?logo=patreon
    :target: https://www.patreon.com/DVCorg/overview
    :alt: Donate
-
-.. |Conda| image:: https://anaconda.org/conda-forge/dvc/badges/version.svg
-   :target: https://anaconda.org/conda-forge/dvc
-   :alt: Conda-forge
 
 .. |Snap| image:: https://img.shields.io/badge/snap-install-82BEA0.svg?logo=snapcraft
    :target: https://snapcraft.io/dvc
    :alt: Snapcraft
+
+.. |Choco| image:: https://img.shields.io/chocolatey/v/dvc?label=choco
+   :target: https://chocolatey.org/packages/dvc
+   :alt: Chocolatey
+
+.. |Brew| image:: https://img.shields.io/homebrew/v/dvc?label=brew
+   :target: https://formulae.brew.sh/formula/dvc
+   :alt: Homebrew
+
+.. |Conda| image:: https://img.shields.io/conda/v/conda-forge/dvc.svg?label=conda&logo=conda-forge
+   :target: https://anaconda.org/conda-forge/dvc
+   :alt: Conda-forge
+
+.. |PyPI| image:: https://img.shields.io/pypi/v/dvc.svg?label=pip&logo=PyPI&logoColor=white
+   :target: https://pypi.org/project/dvc
+   :alt: PyPI
+
+.. |Packages| image:: https://img.shields.io/github/v/release/iterative/dvc?label=deb|pkg|rpm|exe&logo=GitHub
+   :target: https://github.com/iterative/dvc/releases/latest
+   :alt: deb|pkg|rpm|exe
 
 .. |DOI| image:: https://img.shields.io/badge/DOI-10.5281/zenodo.3677553-blue.svg
    :target: https://doi.org/10.5281/zenodo.3677553
