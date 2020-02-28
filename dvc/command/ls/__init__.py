@@ -1,12 +1,26 @@
 import argparse
 import logging
+import sys
 
 from dvc.command.base import append_doc_link
 from dvc.command.base import CmdBaseNoRepo
+from dvc.command.ls.ls_colors import LsColors
 from dvc.exceptions import DvcException
 
 
 logger = logging.getLogger(__name__)
+
+
+def _prettify(entries, with_color=False):
+    if with_color:
+        ls_colors = LsColors()
+        fmt = ls_colors.format
+    else:
+
+        def fmt(entry):
+            return entry["path"]
+
+    return [fmt(entry) for entry in entries]
 
 
 class CmdList(CmdBaseNoRepo):
@@ -14,15 +28,16 @@ class CmdList(CmdBaseNoRepo):
         from dvc.repo import Repo
 
         try:
-            nodes = Repo.ls(
+            entries = Repo.ls(
                 self.args.url,
                 self.args.target,
                 rev=self.args.rev,
                 recursive=self.args.recursive,
                 outs_only=self.args.outs_only,
             )
-            if nodes:
-                logger.info("\n".join(nodes))
+            if entries:
+                entries = _prettify(entries, sys.stdout.isatty())
+                logger.info("\n".join(entries))
             return 0
         except DvcException:
             logger.exception("failed to list '{}'".format(self.args.url))
