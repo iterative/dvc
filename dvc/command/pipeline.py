@@ -61,7 +61,7 @@ class CmdPipelineShow(CmdBase):
                     for out in stage.outs:
                         edges.append((str(out), str(dep)))
         else:
-            for from_stage, to_stage in networkx.dfs_edges(G, target_stage):
+            for from_stage, to_stage in networkx.edge_dfs(G, target_stage):
                 if commands:
                     if to_stage.cmd is None:
                         continue
