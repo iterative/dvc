@@ -141,6 +141,13 @@ def _stack_trace(exc_info):
     )
 
 
+def disable_other_loggers():
+    root = logging.root
+    for (logger_name, logger) in root.manager.loggerDict.items():
+        if logger_name != "dvc" and not logger_name.startswith("dvc."):
+            logger.disabled = True
+
+
 def setup(level=logging.INFO):
     colorama.init()
 
@@ -183,22 +190,7 @@ def setup(level=logging.INFO):
                         "console_errors",
                     ],
                 },
-                "paramiko": {
-                    "level": logging.CRITICAL,
-                    "handlers": [
-                        "console_info",
-                        "console_debug",
-                        "console_errors",
-                    ],
-                },
-                "flufl.lock": {
-                    "level": logging.CRITICAL,
-                    "handlers": [
-                        "console_info",
-                        "console_debug",
-                        "console_errors",
-                    ],
-                },
             },
+            "disable_existing_loggers": False,
         }
     )

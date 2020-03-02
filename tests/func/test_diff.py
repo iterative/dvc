@@ -22,7 +22,7 @@ def test_added(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("file", "text")
 
     assert dvc.diff() == {
-        "added": [{"path": "file", "checksum": digest("text")}],
+        "added": [{"path": "file", "hash": digest("text")}],
         "deleted": [],
         "modified": [],
     }
@@ -41,15 +41,15 @@ def test_no_cache_entry(tmp_dir, scm, dvc):
 
     assert dvc.diff() == {
         "added": [
-            {"path": os.path.join("dir", ""), "checksum": dir_checksum},
-            {"path": os.path.join("dir", "1"), "checksum": digest("1")},
-            {"path": os.path.join("dir", "2"), "checksum": digest("2")},
+            {"path": os.path.join("dir", ""), "hash": dir_checksum},
+            {"path": os.path.join("dir", "1"), "hash": digest("1")},
+            {"path": os.path.join("dir", "2"), "hash": digest("2")},
         ],
         "deleted": [],
         "modified": [
             {
                 "path": "file",
-                "checksum": {"old": digest("first"), "new": digest("second")},
+                "hash": {"old": digest("first"), "new": digest("second")},
             }
         ],
     }
@@ -61,7 +61,7 @@ def test_deleted(tmp_dir, scm, dvc):
 
     assert dvc.diff() == {
         "added": [],
-        "deleted": [{"path": "file", "checksum": digest("text")}],
+        "deleted": [{"path": "file", "hash": digest("text")}],
         "modified": [],
     }
 
@@ -76,7 +76,7 @@ def test_modified(tmp_dir, scm, dvc):
         "modified": [
             {
                 "path": "file",
-                "checksum": {"old": digest("first"), "new": digest("second")},
+                "hash": {"old": digest("first"), "new": digest("second")},
             }
         ],
     }
@@ -94,17 +94,13 @@ def test_refs(tmp_dir, scm, dvc):
     assert dvc.diff("HEAD~1") == {
         "added": [],
         "deleted": [],
-        "modified": [
-            {"path": "file", "checksum": {"old": HEAD_1, "new": HEAD}}
-        ],
+        "modified": [{"path": "file", "hash": {"old": HEAD_1, "new": HEAD}}],
     }
 
     assert dvc.diff("HEAD~2", "HEAD~1") == {
         "added": [],
         "deleted": [],
-        "modified": [
-            {"path": "file", "checksum": {"old": HEAD_2, "new": HEAD_1}}
-        ],
+        "modified": [{"path": "file", "hash": {"old": HEAD_2, "new": HEAD_1}}],
     }
 
     with pytest.raises(DvcException, match=r"unknown Git revision 'missing'"):
@@ -128,42 +124,40 @@ def test_directories(tmp_dir, scm, dvc):
         "added": [
             {
                 "path": os.path.join("dir", ""),
-                "checksum": "5fb6b29836c388e093ca0715c872fe2a.dir",
+                "hash": "5fb6b29836c388e093ca0715c872fe2a.dir",
             },
-            {"path": os.path.join("dir", "1"), "checksum": digest("1")},
-            {"path": os.path.join("dir", "2"), "checksum": digest("2")},
+            {"path": os.path.join("dir", "1"), "hash": digest("1")},
+            {"path": os.path.join("dir", "2"), "hash": digest("2")},
         ],
         "deleted": [],
         "modified": [],
     }
 
     assert dvc.diff(":/directory", ":/modify") == {
-        "added": [{"path": os.path.join("dir", "3"), "checksum": digest("3")}],
+        "added": [{"path": os.path.join("dir", "3"), "hash": digest("3")}],
         "deleted": [],
         "modified": [
             {
                 "path": os.path.join("dir", ""),
-                "checksum": {
+                "hash": {
                     "old": "5fb6b29836c388e093ca0715c872fe2a.dir",
                     "new": "9b5faf37366b3370fd98e3e60ca439c1.dir",
                 },
             },
             {
                 "path": os.path.join("dir", "2"),
-                "checksum": {"old": digest("2"), "new": digest("two")},
+                "hash": {"old": digest("2"), "new": digest("two")},
             },
         ],
     }
 
     assert dvc.diff(":/modify", ":/delete") == {
         "added": [],
-        "deleted": [
-            {"path": os.path.join("dir", "2"), "checksum": digest("two")}
-        ],
+        "deleted": [{"path": os.path.join("dir", "2"), "hash": digest("two")}],
         "modified": [
             {
                 "path": os.path.join("dir", ""),
-                "checksum": {
+                "hash": {
                     "old": "9b5faf37366b3370fd98e3e60ca439c1.dir",
                     "new": "83ae82fb367ac9926455870773ff09e6.dir",
                 },

@@ -1,9 +1,11 @@
+import logging
 import os
 
 import configobj
 import pytest
 from git import Repo
 
+from dvc.compat import fspath
 from dvc.exceptions import CollectCacheError
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
@@ -28,11 +30,11 @@ class TestGC(TestDvcGit):
             self.bad_cache.append(path)
 
     def test_api(self):
-        self.dvc.gc()
+        self.dvc.gc(workspace=True)
         self._test_gc()
 
     def test_cli(self):
-        ret = main(["gc", "-f"])
+        ret = main(["gc", "-wf"])
         self.assertEqual(ret, 0)
         self._test_gc()
 
@@ -169,10 +171,10 @@ class TestGCMultipleDvcRepos(TestDvcGit):
 
         self._check_cache(3)
 
-        self.dvc.gc(repos=[self.additional_path])
+        self.dvc.gc(repos=[self.additional_path], workspace=True)
         self._check_cache(3)
 
-        self.dvc.gc()
+        self.dvc.gc(workspace=True)
         self._check_cache(2)
 
 
@@ -196,10 +198,10 @@ def test_gc_no_dir_cache(tmp_dir, dvc):
     os.unlink(dir_stage.outs[0].cache_path)
 
     with pytest.raises(CollectCacheError):
-        dvc.gc()
+        dvc.gc(workspace=True)
 
     assert _count_files(dvc.cache.local.cache_dir) == 4
-    dvc.gc(force=True)
+    dvc.gc(force=True, workspace=True)
     assert _count_files(dvc.cache.local.cache_dir) == 2
 
 
@@ -218,5 +220,59 @@ def test_gc_no_unpacked_dir(tmp_dir, dvc):
 
     assert os.path.exists(unpackeddir)
 
-    dvc.gc(force=True)
+    dvc.gc(force=True, workspace=True)
     assert not os.path.exists(unpackeddir)
+
+
+def test_gc_without_workspace_raises_error(tmp_dir, dvc):
+    dvc.gc(force=True, workspace=True)  # works without error
+
+    from dvc.exceptions import InvalidArgumentError
+
+    with pytest.raises(InvalidArgumentError):
+        dvc.gc(force=True)
+
+    with pytest.raises(InvalidArgumentError):
+        dvc.gc(force=True, workspace=False)
+
+
+def test_gc_without_workspace_on_tags_branches_commits(tmp_dir, dvc):
+    dvc.gc(force=True, all_tags=True)
+    dvc.gc(force=True, all_commits=True)
+    dvc.gc(force=False, all_branches=True)
+
+    # even if workspace is disabled, and others are enabled, assume as if
+    # workspace is enabled.
+    dvc.gc(force=False, all_branches=True, all_commits=False, workspace=False)
+
+
+def test_gc_without_workspace(tmp_dir, dvc, caplog):
+    with caplog.at_level(logging.WARNING, logger="dvc"):
+        assert main(["gc", "-vf"]) == 255
+
+    assert "Invalid Arguments" in caplog.text
+
+
+def test_gc_with_possible_args_positive(tmp_dir, dvc):
+    for flag in [
+        "-w",
+        "-a",
+        "-T",
+        "--all-commits",
+        "-aT",
+        "-wa",
+        "-waT",
+    ]:
+        assert main(["gc", "-vf", flag]) == 0
+
+
+def test_gc_cloud_positive(tmp_dir, dvc, tmp_path_factory):
+    with dvc.config.edit() as conf:
+        storage = fspath(tmp_path_factory.mktemp("test_remote_base"))
+        conf["remote"]["local_remote"] = {"url": storage}
+        conf["core"]["remote"] = "local_remote"
+
+    dvc.push()
+
+    for flag in ["-c", "-ca", "-cT", "-caT", "-cwT"]:
+        assert main(["gc", "-vf", flag]) == 0

@@ -2,6 +2,7 @@ import logging
 
 from . import locked
 from dvc.cache import NamedCache
+from dvc.exceptions import InvalidArgumentError
 
 
 logger = logging.getLogger(__name__)
@@ -11,6 +12,15 @@ def _do_gc(typ, func, clist):
     removed = func(clist)
     if not removed:
         logger.info("No unused '{}' cache to remove.".format(typ))
+
+
+def _raise_error_if_all_disabled(**kwargs):
+    if not any(kwargs.values()):
+        raise InvalidArgumentError(
+            "Invalid Arguments. Either of ({}) needs to be enabled.".format(
+                ", ".join(kwargs.keys())
+            )
+        )
 
 
 @locked
@@ -25,7 +35,20 @@ def gc(
     force=False,
     jobs=None,
     repos=None,
+    workspace=False,
 ):
+
+    # require `workspace` to be true to come into effect.
+    # assume `workspace` to be enabled if any of `all_tags`, `all_commits`,
+    # or `all_branches` are enabled.
+    _raise_error_if_all_disabled(
+        workspace=workspace,
+        all_tags=all_tags,
+        all_commits=all_commits,
+        all_branches=all_branches,
+        cloud=cloud,
+    )
+
     from contextlib import ExitStack
     from dvc.repo import Repo
 

@@ -126,6 +126,7 @@ def _create_stages(repo, targets, fname, pbar=None):
         stage = Stage.create(
             repo, outs=[out], accompany_outs=True, fname=fname
         )
+        repo._reset()
 
         if not stage:
             if pbar is not None:

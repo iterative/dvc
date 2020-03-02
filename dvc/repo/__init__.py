@@ -24,6 +24,7 @@ def locked(f):
     @wraps(f)
     def wrapper(repo, *args, **kwargs):
         with repo.lock, repo.state:
+            repo._reset()
             ret = f(repo, *args, **kwargs)
             # Our graph cache is no longer valid after we release the repo.lock
             repo._reset()
@@ -77,7 +78,8 @@ class Repo(object):
 
         self.config = Config(self.dvc_dir)
 
-        self.scm = SCM(self.root_dir)
+        no_scm = self.config["core"].get("no_scm", False)
+        self.scm = SCM(self.root_dir, no_scm=no_scm)
 
         self.tree = WorkingTree(self.root_dir)
 
@@ -145,10 +147,10 @@ class Repo(object):
         return os.path.join(root_dir, cls.DVC_DIR)
 
     @staticmethod
-    def init(root_dir=os.curdir, no_scm=False, force=False):
+    def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
         from dvc.repo.init import init
 
-        init(root_dir=root_dir, no_scm=no_scm, force=force)
+        init(root_dir=root_dir, no_scm=no_scm, force=force, subdir=subdir)
         return Repo(root_dir)
 
     def unprotect(self, target):

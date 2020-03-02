@@ -655,3 +655,10 @@ def test_add_from_data_dir(tmp_dir, scm, dvc):
         "tracked output: 'dir'.\n"
         "To include '{out}' in 'dir', run 'dvc commit dir.dvc'"
     ).format(out=os.path.join("dir", "file2"))
+
+
+def test_not_raises_on_re_add(tmp_dir, dvc):
+    tmp_dir.dvc_gen("file", "file content")
+
+    tmp_dir.gen({"file2": "file2 content", "file": "modified file"})
+    dvc.add(["file2", "file"])

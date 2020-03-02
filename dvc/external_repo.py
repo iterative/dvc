@@ -66,7 +66,7 @@ class ExternalRepo(Repo):
         super().__init__(root_dir)
         self.url = url
         self._set_cache_dir()
-        self._set_upstream()
+        self._fix_upstream()
 
     def pull_to(self, path, to_info):
         """
@@ -123,21 +123,35 @@ class ExternalRepo(Repo):
 
         self.cache.local.cache_dir = cache_dir
 
-    def _set_upstream(self):
-        # check if the URL is local and no default remote is present
-        # add default remote pointing to the original repo's cache location
-        if os.path.isdir(self.url):
-            if not self.config["core"].get("remote"):
-                src_repo = Repo(self.url)
-                try:
-                    cache_dir = src_repo.cache.local.cache_dir
-                finally:
-                    src_repo.close()
+    def _fix_upstream(self):
+        if not os.path.isdir(self.url):
+            return
 
-                self.config["remote"]["auto-generated-upstream"] = {
-                    "url": cache_dir
-                }
-                self.config["core"]["remote"] = "auto-generated-upstream"
+        remote_name = self.config["core"].get("remote")
+        src_repo = Repo(self.url)
+        try:
+            if remote_name:
+                self._fix_local_remote(src_repo, remote_name)
+            else:
+                self._add_upstream(src_repo)
+        finally:
+            src_repo.close()
+
+    def _fix_local_remote(self, src_repo, remote_name):
+        # If a remote URL is relative to the source repo,
+        # it will have changed upon config load and made
+        # relative to this new repo. Restore the old one here.
+        new_remote = self.config["remote"][remote_name]
+        old_remote = src_repo.config["remote"][remote_name]
+        if new_remote["url"] != old_remote["url"]:
+            new_remote["url"] = old_remote["url"]
+
+    def _add_upstream(self, src_repo):
+        # Fill the empty upstream entry with a new remote pointing to the
+        # original repo's cache location.
+        cache_dir = src_repo.cache.local.cache_dir
+        self.config["remote"]["auto-generated-upstream"] = {"url": cache_dir}
+        self.config["core"]["remote"] = "auto-generated-upstream"
 
 
 class ExternalGitRepo:
@@ -194,6 +208,7 @@ def _cached_clone(url, rev, for_write=False):
 
     # Copy to a new dir to keep the clone clean
     repo_path = tempfile.mkdtemp("dvc-erepo")
+    logger.debug("erepo: making a copy of {} clone", url)
     copy_tree(clone_path, repo_path)
 
     # Check out the specified revision
@@ -219,8 +234,10 @@ def _clone_default_branch(url, rev):
             git = Git(clone_path)
             # Do not pull for known shas, branches and tags might move
             if not Git.is_sha(rev) or not git.has_rev(rev):
+                logger.debug("erepo: git pull {}", url)
                 git.pull()
         else:
+            logger.debug("erepo: git clone {} to a temporary dir", url)
             clone_path = tempfile.mkdtemp("dvc-clone")
             git = Git.clone(url, clone_path)
             CLONES[url] = clone_path
@@ -232,6 +249,7 @@ def _clone_default_branch(url, rev):
 
 
 def _git_checkout(repo_path, rev):
+    logger.debug("erepo: git checkout {}@{}", repo_path, rev)
     git = Git(repo_path)
     try:
         git.checkout(rev)

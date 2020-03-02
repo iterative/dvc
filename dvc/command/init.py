@@ -15,7 +15,10 @@ class CmdInit(CmdBaseNoRepo):
 
         try:
             self.repo = Repo.init(
-                ".", no_scm=self.args.no_scm, force=self.args.force
+                ".",
+                no_scm=self.args.no_scm,
+                force=self.args.force,
+                subdir=self.args.subdir,
             )
             self.config = self.repo.config
         except InitError:
@@ -54,6 +57,15 @@ def add_parser(subparsers, parent_parser):
         help=(
             "Overwrite existing '.dvc/' directory. "
             "This operation removes local cache."
+        ),
+    )
+    init_parser.add_argument(
+        "--subdir",
+        action="store_true",
+        default=False,
+        help=(
+            "Necessary for running this command inside a subdirectory of a "
+            "parent SCM repository."
         ),
     )
     init_parser.set_defaults(func=CmdInit)

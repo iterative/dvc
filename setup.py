@@ -74,8 +74,7 @@ install_requires = [
     "pywin32>=225; sys_platform == 'win32'",
     "networkx>=2.1,<2.4",
     "pydot>=1.2.4",
-    "speedcopy>=2.0.1",
-    "pyfastcopy>=1.0.3",
+    "speedcopy>=2.0.1; sys_platform == 'win32'",
     "flatten_json>=0.1.6",
     "texttable>=0.5.2",
 ]
@@ -148,7 +147,8 @@ setup(
         "hdfs": hdfs,
         "tests": tests_requirements,
     },
-    keywords="data science, data version control, machine learning",
+    keywords="data-science data-version-control machine-learning git"
+    " developer-tools reproducibility collaboration ai",
     python_requires=">=3.5",
     classifiers=[
         "Development Status :: 4 - Beta",

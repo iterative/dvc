@@ -9,7 +9,7 @@ from dvc.config import ConfigError
 from dvc.exceptions import DvcParserError
 from dvc.exceptions import NotDvcRepoError
 from dvc.external_repo import clean_repos
-from dvc.logger import FOOTER
+from dvc.logger import disable_other_loggers, FOOTER
 from dvc.utils import format_link
 from dvc.remote.pool import close_pools
 
@@ -34,6 +34,7 @@ def main(argv=None):
     """
     args = None
     cmd = None
+    disable_other_loggers()
 
     outerLogLevel = logger.level
     try:

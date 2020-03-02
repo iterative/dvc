@@ -10,18 +10,23 @@ class NoSCM(Base):
     pass
 
 
-def SCM(root_dir):  # pylint: disable=invalid-name
+def SCM(
+    root_dir, search_parent_directories=True, no_scm=False
+):  # pylint: disable=invalid-name
     """Returns SCM instance that corresponds to a repo at the specified
     path.
 
     Args:
         root_dir (str): path to a root directory of the repo.
-        repo (dvc.repo.Repo): DVC repo instance that root_dir belongs to.
+        search_parent_directories (bool): whether to look for repo root in
+        parent directories.
+        no_scm (bool): return NoSCM if True.
 
     Returns:
         dvc.scm.base.Base: SCM instance.
     """
-    if Git.is_repo(root_dir) or Git.is_submodule(root_dir):
-        return Git(root_dir)
 
-    return NoSCM(root_dir)
+    if no_scm:
+        return NoSCM(root_dir)
+
+    return Git(root_dir, search_parent_directories=search_parent_directories)

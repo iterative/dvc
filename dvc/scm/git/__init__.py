@@ -22,7 +22,7 @@ class Git(Base):
     GITIGNORE = ".gitignore"
     GIT_DIR = ".git"
 
-    def __init__(self, root_dir=os.curdir):
+    def __init__(self, root_dir=os.curdir, search_parent_directories=True):
         """Git class constructor.
         Requires `Repo` class from `git` module (from gitpython package).
         """
@@ -32,10 +32,12 @@ class Git(Base):
         from git.exc import InvalidGitRepositoryError
 
         try:
-            self.repo = git.Repo(self.root_dir)
+            self.repo = git.Repo(
+                root_dir, search_parent_directories=search_parent_directories
+            )
         except InvalidGitRepositoryError:
             msg = "{} is not a git repository"
-            raise SCMError(msg.format(self.root_dir))
+            raise SCMError(msg.format(root_dir))
 
         # NOTE: fixing LD_LIBRARY_PATH for binary built by PyInstaller.
         # http://pyinstaller.readthedocs.io/en/stable/runtime-information.html
@@ -45,6 +47,10 @@ class Git(Base):
 
         self.ignored_paths = []
         self.files_to_track = set()
+
+    @property
+    def root_dir(self):
+        return self.repo.working_tree_dir
 
     @staticmethod
     def clone(url, to_path, rev=None):
@@ -94,14 +100,6 @@ class Git(Base):
         import git
 
         return rev and git.Repo.re_hexsha_shortened.search(rev)
-
-    @staticmethod
-    def is_repo(root_dir):
-        return os.path.isdir(Git._get_git_dir(root_dir))
-
-    @staticmethod
-    def is_submodule(root_dir):
-        return os.path.isfile(Git._get_git_dir(root_dir))
 
     @staticmethod
     def _get_git_dir(root_dir):

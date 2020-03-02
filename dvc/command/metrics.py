@@ -187,8 +187,7 @@ def add_parser(subparsers, parent_parser):
     metrics_show_parser.add_argument(
         "targets",
         nargs="*",
-        help="Metric files or directories (see -R) to show "
-        "(leave empty to display all)",
+        help="Metric files or directories (see -R) to show",
     )
     metrics_show_parser.add_argument(
         "-t",

@@ -1,8 +1,12 @@
+import logging
+
 import pytest
+from funcy import first
 
 from voluptuous import Schema, MultipleInvalid
 
-from dvc.output import CHECKSUM_SCHEMA
+from dvc.cache import NamedCache
+from dvc.output import CHECKSUM_SCHEMA, OutputBase
 
 
 @pytest.mark.parametrize(
@@ -40,3 +44,47 @@ def test_checksum_schema(value, expected):
 def test_checksum_schema_fail(value):
     with pytest.raises(MultipleInvalid):
         Schema(CHECKSUM_SCHEMA)(value)["md5"]
+
+
+@pytest.mark.parametrize(
+    "exists, expected_message",
+    [
+        (
+            False,
+            (
+                "Output 'path'(Stage stage.dvc) is missing version info. "
+                "Cache for it will not be collected. "
+                "Use `dvc repro` to get your pipeline up to date."
+            ),
+        ),
+        (
+            True,
+            (
+                "Output 'path'(Stage stage.dvc) is missing version info. "
+                "Cache for it will not be collected. "
+                "Use `dvc repro` to get your pipeline up to date.\n"
+                "You can also use `dvc commit stage.dvc` to associate "
+                "existing 'path' with 'stage.dvc'."
+            ),
+        ),
+    ],
+)
+def test_get_used_cache(exists, expected_message, mocker, caplog):
+    stage = mocker.MagicMock()
+    mocker.patch.object(stage, "__str__", return_value="Stage stage.dvc")
+    mocker.patch.object(stage, "relpath", "stage.dvc")
+
+    output = OutputBase(stage, "path")
+
+    mocker.patch.object(output, "use_cache", True)
+    mocker.patch.object(stage, "is_repo_import", False)
+    mocker.patch.object(
+        OutputBase, "checksum", new_callable=mocker.PropertyMock
+    ).return_value = None
+    mocker.patch.object(
+        OutputBase, "exists", new_callable=mocker.PropertyMock
+    ).return_value = exists
+
+    with caplog.at_level(logging.WARNING, logger="dvc"):
+        assert isinstance(output.get_used_cache(), NamedCache)
+    assert first(caplog.messages) == expected_message

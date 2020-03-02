@@ -28,7 +28,7 @@ class CmdDiff(CmdBase):
                 dir/
                 dir/1
 
-        An example of a diff formatted when entries contain checksums:
+        An example of a diff formatted when entries contain hash:
 
             Added:
                 d3b07384 foo
@@ -66,7 +66,7 @@ class CmdDiff(CmdBase):
 
             for entry in entries:
                 path = entry["path"]
-                checksum = entry.get("checksum")
+                checksum = entry.get("hash")
                 summary[state] += 1 if not path.endswith(os.sep) else 0
                 content.append(
                     "{space}{checksum}{separator}{path}".format(
@@ -100,10 +100,10 @@ class CmdDiff(CmdBase):
             if not any(diff.values()):
                 return 0
 
-            if not self.args.checksums:
+            if not self.args.show_hash:
                 for _, entries in diff.items():
                     for entry in entries:
-                        del entry["checksum"]
+                        del entry["hash"]
 
             if self.args.show_json:
                 res = json.dumps(diff)
@@ -149,7 +149,7 @@ def add_parser(subparsers, parent_parser):
         default=False,
     )
     diff_parser.add_argument(
-        "--checksums",
+        "--show-hash",
         help="Display hash value for each entry",
         action="store_true",
         default=False,

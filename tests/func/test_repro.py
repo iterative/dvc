@@ -175,8 +175,9 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
             Stage.load(self.dvc, error_stage_path),
         ]
 
-        with self.assertRaises(StagePathAsOutputError):
-            self.dvc.reproduce(error_stage_path)
+        with patch.object(self.dvc, "_reset"):  # to prevent `stages` resetting
+            with self.assertRaises(StagePathAsOutputError):
+                self.dvc.reproduce(error_stage_path)
 
     def test_similar_paths(self):
         # File structure:
@@ -949,7 +950,7 @@ class TestReproExternalBase(TestDvc):
         self.assertEqual(self.dvc.status([cmd_stage.path]), {})
 
         self.assertEqual(self.dvc.status(), {})
-        self.dvc.gc()
+        self.dvc.gc(workspace=True)
         self.assertEqual(self.dvc.status(), {})
 
         self.dvc.remove(cmd_stage.path, outs_only=True)

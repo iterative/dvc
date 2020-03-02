@@ -1,0 +1,19 @@
+import subprocess
+
+
+def test_no_remote_imports():
+    remote_modules = {
+        "boto3",
+        "botocore",
+        "google.cloud.storage",
+        "azure.storage.blob",
+        "oss2",
+        "pydrive2",
+        "paramiko",
+        "pyarrow",
+    }
+
+    code = "import dvc.main, sys; print(' '.join(sys.modules))"
+    res = subprocess.run(["python", "-c", code], stdout=subprocess.PIPE)
+    modules = res.stdout.decode().split()
+    assert not set(modules) & remote_modules

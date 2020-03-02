@@ -4,6 +4,7 @@ import mockssh
 import pytest
 
 from dvc.remote.ssh.connection import SSHConnection
+from tests.utils.httpd import PushRequestHandler, StaticFileServer
 from .dir_helpers import *  # noqa
 
 
@@ -57,3 +58,9 @@ def _close_pools():
 
     yield
     close_pools()
+
+
+@pytest.fixture
+def http_server(tmp_dir):
+    with StaticFileServer(handler_class=PushRequestHandler) as httpd:
+        yield httpd

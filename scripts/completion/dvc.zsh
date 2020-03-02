@@ -99,7 +99,7 @@ _dvc_destroy=(
 
 _dvc_diff=(
   "--show-json[Format the output into a JSON]"
-  "--checksums[Display checksums for each entry]"
+  "--show-hash[Display hash value for each entry]"
   "1:Old Git commit to compare (defaults to HEAD):"
   "2:New Git commit to compare (defaults to the current workspace):"
 )
@@ -254,7 +254,6 @@ _dvc_run=(
 
 _dvc_status=(
   {-j,--jobs}"[Number of jobs to run simultaneously.]:Number of jobs:"
-  "--show-checksums[Show checksums instead of file names.]"
   {-q,--quiet}"[Suppresses all output. Exit with 0 if pipelines are up to date, otherwise 1.]"
   {-c,--cloud}"[Show status of a local cache compared to a remote repository.]"
   {-r,--remote}"[Remote repository to compare local cache to.]:Remote repository:"
