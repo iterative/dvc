@@ -20,11 +20,14 @@ def get_url(path, repo=None, rev=None, remote=None):
     DVC-file where the given path is an output. For Git repos, HEAD is used
     unless a rev argument is supplied.
 
+    Raises UrlNotDvcRepoError if repo is not a DVC project.
+
     NOTE: This function does not check for the actual existence of the file or
     directory in the remote storage.
     """
     with _make_repo(repo, rev=rev) as _repo:
-        _require_dvc(_repo)
+        if not isinstance(_repo, Repo):
+            raise UrlNotDvcRepoError(_repo.url)
         out = _repo.find_out_by_relpath(path)
         remote_obj = _repo.cloud.get_remote(remote)
         return str(remote_obj.checksum_to_path_info(out.checksum))
@@ -85,8 +88,3 @@ def _make_repo(repo_url=None, rev=None):
             pass  # fallthrough to external_repo
     with external_repo(url=repo_url, rev=rev) as repo:
         yield repo
-
-
-def _require_dvc(repo):
-    if not isinstance(repo, Repo):
-        raise UrlNotDvcRepoError(repo.url)
