@@ -7,21 +7,21 @@ from dvc.external_repo import external_repo
 
 
 class UrlNotDvcRepoError(DvcException):
-    """Thrown if given URL is not a DVC repository.
-
-    Args:
-        url (str): URL to the repository
-    """
+    """Thrown if the given URL is not a DVC repository."""
 
     def __init__(self, url):
         super().__init__("'{}' is not a DVC repository.".format(url))
 
 
 def get_url(path, repo=None, rev=None, remote=None):
-    """Returns URL to the storage location of a data artifact tracked
-    by DVC, specified by its path in a repo.
+    """
+    Returns the URL to the storage location of a data file or directory tracked
+    in a DVC repo. Its formed by reading the remote configuration, and the
+    DVC-file where the given path is an output. For Git repos, HEAD is used
+    unless a rev argument is supplied.
 
-    NOTE: There's no guarantee that the file actually exists in that location.
+    NOTE: This function does not check for the actual existence of the file or
+    directory in the remote storage.
     """
     with _make_repo(repo, rev=rev) as _repo:
         _require_dvc(_repo)
@@ -31,7 +31,11 @@ def get_url(path, repo=None, rev=None, remote=None):
 
 
 def open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
-    """Context manager to open a tracked file as a file object."""
+    """
+    Open file or model (path) tracked in a repo (by DVC or Git), and and return
+    a file object. For Git repos, HEAD is used unless a rev argument is
+    supplied. The default remote is tried unless a remote argument is supplied.
+    """
     args = (path,)
     kwargs = {
         "repo": repo,
@@ -63,7 +67,7 @@ def _open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
 
 
 def read(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
-    """Returns the contents of a tracked file."""
+    """Returns the contents of a tracked file (by DVC or Git). Wraps open()"""
     with open(
         path, repo=repo, rev=rev, remote=remote, mode=mode, encoding=encoding
     ) as fd:
