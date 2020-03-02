@@ -1,6 +1,6 @@
 import logging
 
-from dvc.exceptions import ReproductionError
+from dvc.exceptions import ReproductionError, InvalidArgumentError
 from dvc.repo.scm_context import scm_context
 from . import locked
 from .graph import get_pipeline, get_pipelines
@@ -61,7 +61,9 @@ def reproduce(
     from dvc.stage import Stage
 
     if not target and not all_pipelines:
-        raise ValueError()
+        raise InvalidArgumentError(
+            "Neither target nor all_pipelines are specified."
+        )
 
     interactive = kwargs.get("interactive", False)
     if not interactive:
