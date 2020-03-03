@@ -35,9 +35,18 @@ def get_url(path, repo=None, rev=None, remote=None):
 
 def open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
     """
-    Open file or model (path) tracked in a repo (by DVC or Git), and and return
-    a file object. For Git repos, HEAD is used unless a rev argument is
+    Open file or model in the supplied path tracked in a repo (both DVC
+    projects and plain Git repos are supported), and produces a file object
+    (see example below). For Git repos, HEAD is used unless a rev argument is
     supplied. The default remote is tried unless a remote argument is supplied.
+
+    Example:
+
+        with dvc.api.open(
+                'path/to/tracked.dat',
+                repo='https://example.com/url/to/repo'
+                ) as fd:
+            # ... Handle file object fd
     """
     args = (path,)
     kwargs = {
