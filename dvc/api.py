@@ -70,7 +70,11 @@ def _open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
 
 
 def read(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
-    """Returns the contents of a tracked file (by DVC or Git). Wraps open()"""
+    """
+    Returns the contents of a tracked file (by DVC or Git). For Git repos, HEAD
+    is used unless a rev argument is supplied. The default remote is tried
+    unless a remote argument is supplied.
+    """
     with open(
         path, repo=repo, rev=rev, remote=remote, mode=mode, encoding=encoding
     ) as fd:
