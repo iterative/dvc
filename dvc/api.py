@@ -16,9 +16,8 @@ class UrlNotDvcRepoError(DvcException):
 def get_url(path, repo=None, rev=None, remote=None):
     """
     Returns the URL to the storage location of a data file or directory tracked
-    in a DVC repo. Its formed by reading the remote configuration, and the
-    DVC-file where the given path is an output. For Git repos, HEAD is used
-    unless a rev argument is supplied.
+    in a DVC repo. For Git repos, HEAD is used unless a rev argument is
+    supplied. The default remote is tried unless a remote argument is supplied.
 
     Raises UrlNotDvcRepoError if repo is not a DVC project.
 
