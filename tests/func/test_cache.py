@@ -206,17 +206,16 @@ def test_shared_cache(tmp_dir, dvc, protected, dir_mode, file_mode):
             assert stat.S_IMODE(os.stat(path).st_mode) == file_mode
 
 
-def test_file(tmp_dir, dvc):
+def test_file_by_inode(tmp_dir, dvc):
     (tmp_dir / "data").mkdir()
     (tmp_dir / "data" / "DATA").write_text("asdfsdf")
 
     DATA = os.path.join("data", "DATA")
     data = os.path.join("data", "data")
 
-    from dvc.path_info import PathInfo
+    # assert dvc.cache.local.exists(PathInfo(DATA))
+    # assert not dvc.cache.local.exists(PathInfo(data))
 
-    assert dvc.cache.local.exists(PathInfo(DATA))
-    assert not dvc.cache.local.exists(PathInfo(data))
+    from dvc.system import System
 
-    assert os.path.exists(DATA)
-    assert not os.path.exists(data)
+    assert System.inode(DATA) == System.inode(data)
