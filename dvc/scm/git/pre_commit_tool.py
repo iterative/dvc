@@ -37,4 +37,3 @@ def merge_pre_commit_tool_confs(existing_conf, conf):
 
     existing_conf["repos"].append(conf["repos"][0])
     return existing_conf
-
