@@ -35,7 +35,7 @@ def get_url(path, repo=None, rev=None, remote=None):
 def open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
     """
     Open file or model in the supplied path tracked in a repo (both DVC
-    projects and plain Git repos are supported), and produces a file object
+    projects and plain Git repos are supported), and generated a file object
     (see example below). For Git repos, HEAD is used unless a rev argument is
     supplied. The default remote is tried unless a remote argument is supplied.
 
