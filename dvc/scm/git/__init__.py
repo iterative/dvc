@@ -260,7 +260,8 @@ class Git(Base):
     def list_all_commits(self):
         return [c.hexsha for c in self.repo.iter_commits("--all")]
 
-    def _install_hook(self, name, preconditions, cmd, hook_path_fn):
+    @staticmethod
+    def _install_hook(name, preconditions, cmd, hook_path_fn):
         # only run in dvc repo
         in_dvc_repo = '[ -n "$(git ls-files --full-name .dvc)" ]'
 
@@ -287,7 +288,7 @@ class Git(Base):
 
         if use_pre_commit_tool:
             hook_path_fn = self._pre_commit_tool_hook_path
-            path = Path(self._pre_commit_tool_hooks_home)
+            path = Path(self._pre_commit_tool_hooks_home())
             path.mkdir(parents=True, exist_ok=True)
 
         self._install_hook(
@@ -321,7 +322,7 @@ class Git(Base):
 
         conf_yaml = os.path.join(self.root_dir, ".pre-commit-config.yaml")
         if not os.path.isfile(conf_yaml):
-            check_call("pre-commit install", shell=True)
+            check_call(["pre-commit", "install"])
 
         with open(conf_yaml, "w+") as conf_yaml_f:
             existing_conf = yaml.safe_load(conf_yaml_f)
@@ -409,16 +410,15 @@ class Git(Base):
     def _hooks_home(self):
         return os.path.join(self.root_dir, self.GIT_DIR, "hooks")
 
-    @cached_property
-    def _pre_commit_tool_hooks_home(self):
-        # TODO(andrewhare): Is there a const somewhere for ".dvc/tmp"?
+    @staticmethod
+    def _pre_commit_tool_hooks_home():
         return os.path.join(".dvc", "tmp", "hooks")
 
     def _hook_path(self, name):
         return os.path.join(self._hooks_home, name)
 
     def _pre_commit_tool_hook_path(self, name):
-        return os.path.join(self._pre_commit_tool_hooks_home, name)
+        return os.path.join(self._pre_commit_tool_hooks_home(), name)
 
     def _verify_hook(self, name):
         if os.path.exists(self._hook_path(name)):
@@ -428,9 +428,3 @@ class Git(Base):
         self._verify_hook("post-checkout")
         self._verify_hook("pre-commit")
         self._verify_hook("pre-push")
-
-    def _verify_pre_commit_tool(self):
-        if not which("pre-commit"):
-            raise DvcException("pre-commit is not installed")
-
-        check_call("pre-commit install", shell=True)
