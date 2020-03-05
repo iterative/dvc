@@ -237,3 +237,29 @@ class TestDvcRepoPipeline(TestDvc):
 
         pipelines = self.dvc.pipelines
         self.assertEqual(len(pipelines), 0)
+
+
+def test_split_pipeline(tmp_dir, dvc):
+    tmp_dir.dvc_gen("data", "source file content")
+    dvc.run(
+        deps=["data"],
+        outs=["data_train", "data_valid"],
+        cmd="echo train >> data_train && echo valid >> data_valid",
+    )
+    stage = dvc.run(
+        deps=["data_train", "data_valid"],
+        outs=["result"],
+        cmd="echo result >> result",
+    )
+
+    command = CmdPipelineShow([])
+    nodes, edges, is_tree = command._build_graph(
+        stage.path, commands=False, outs=True
+    )
+    assert set(nodes) == {"data", "data_train", "data_valid", "result"}
+    assert set(edges) == {
+        ("result", "data_train"),
+        ("result", "data_valid"),
+        ("data_train", "data"),
+        ("data_valid", "data"),
+    }
