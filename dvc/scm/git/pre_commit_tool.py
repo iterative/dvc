@@ -32,9 +32,8 @@ def pre_commit_tool_conf(pre_commit_path, push_path, post_checkout_path):
 
 
 def merge_pre_commit_tool_confs(existing_conf, conf):
-    if not existing_conf or not "repos" in existing_conf:
+    if not existing_conf or "repos" not in existing_conf:
         return conf
 
     existing_conf["repos"].append(conf["repos"][0])
     return existing_conf
-
