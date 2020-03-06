@@ -11,8 +11,27 @@ from dvc.utils import env2bool
 logger = logging.getLogger(__name__)
 tqdm.set_lock(RLock())
 
+MAX_LINES = 20
 
-class Tqdm(tqdm):
+
+class Meta(type):
+    def __call__(cls, *args, **kwargs):
+        if not hasattr(cls, "_hidden_instances"):
+            cls._hidden_instances = set()
+        instance = cls.__new__(cls, *args, **kwargs)
+
+        if (
+            "disable" not in kwargs
+            and len(getattr(cls, "_instances", [])) > MAX_LINES
+        ):
+            kwargs["hidden"] = True
+            cls._hidden_instances.add(instance)
+
+        instance.__init__(*args, **kwargs)
+        return instance
+
+
+class Tqdm(tqdm, metaclass=Meta):
     """
     maximum-compatibility tqdm-based progressbars
     """
@@ -36,6 +55,20 @@ class Tqdm(tqdm):
         unit="B", unit_scale=True, unit_divisor=1024, miniters=1
     )
 
+    @classmethod
+    def _get_free_pos(cls, instance=None):
+        if getattr(instance, "hidden", False):
+            return None
+
+        positions = set(
+            abs(inst.pos)
+            for inst in cls._instances
+            if inst is not instance
+            and hasattr(inst, "pos")
+            and not inst.hidden
+        )
+        return min(set(range(len(positions) + 1)).difference(positions))
+
     def __init__(
         self,
         iterable=None,
@@ -47,6 +80,7 @@ class Tqdm(tqdm):
         bytes=False,  # pylint: disable=W0622
         file=None,
         total=None,
+        hidden=False,
         **kwargs
     ):
         """
@@ -59,6 +93,7 @@ class Tqdm(tqdm):
             will be determined by logging level.
             May be overridden to `True` due to non-TTY status.
             Skip override by specifying env var `DVC_IGNORE_ISATTY`.
+        hidden  : hide the bar
         kwargs  : anything accepted by `tqdm.tqdm()`
         """
         kwargs = kwargs.copy()
@@ -79,6 +114,8 @@ class Tqdm(tqdm):
             and hasattr(file, "isatty")
         ):
             disable = not file.isatty()
+
+        self.hidden = hidden
         super().__init__(
             iterable=iterable,
             disable=disable,
@@ -89,6 +126,7 @@ class Tqdm(tqdm):
             total=total,
             **kwargs
         )
+
         if bar_format is None:
             if self.__len__():
                 self.bar_format = (
@@ -114,6 +152,11 @@ class Tqdm(tqdm):
             self.total = total  # pylint: disable=W0613,W0201
         self.update(current - self.n)
 
+    def display(self, msg=None, pos=None):
+        if getattr(self, "hidden", False):
+            return
+        super().display(msg=msg, pos=pos)
+
     def close(self):
         if self.desc_persist is not None:
             self.set_description_str(self.desc_persist, refresh=False)
@@ -121,7 +164,29 @@ class Tqdm(tqdm):
         self.bar_format = self.bar_format.replace("<{remaining}", "")
         # remove completed bar
         self.bar_format = self.bar_format.replace("|{bar:10}|", " ")
+
+        self._decr_hidden_instances(self)
         super().close()
+
+    @classmethod
+    def _decr_hidden_instances(cls, instance):
+        if instance.hidden and cls._hidden_instances:
+            with cls._lock:
+                try:
+                    cls._hidden_instances.remove(instance)
+                except KeyError:
+                    pass
+
+        if not instance.hidden:
+            with cls._lock:
+                while cls._hidden_instances:
+                    hidden_instance = cls._hidden_instances.pop()
+                    if not hidden_instance.disable:
+                        hidden_instance.hidden = False
+                        hidden_instance.pos = cls._get_free_pos(
+                            hidden_instance
+                        )
+                        break
 
     @property
     def format_dict(self):
