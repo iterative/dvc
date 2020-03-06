@@ -112,8 +112,11 @@ def test_ls_repo_recursive(tmp_dir, dvc, scm):
             (("data", "subcontent", "data.xml.dvc"), False),
             (("data", "subcontent", "statistics", "data.csv.dvc"), False),
             (("data", "subcontent", "statistics", "data.csv"), True),
+            (("data", "subcontent", "statistics", ".gitignore"), False),
             (("data", "subcontent", "data.xml"), True),
+            (("data", "subcontent", ".gitignore"), False),
             (("model", "people.csv"), True),
+            (("model", ".gitignore"), False),
             (("structure.xml",), True),
         ),
     )
@@ -147,6 +150,7 @@ def test_ls_repo_with_target_dir(tmp_dir, dvc, scm):
             (("train.py",), False),
             (("people.csv",), True),
             (("people.csv.dvc",), False),
+            ((".gitignore",), False),
         ),
     )
 
@@ -172,6 +176,7 @@ def test_ls_repo_with_target_subdir(tmp_dir, dvc, scm):
             (("data.xml",), True),
             (("data.xml.dvc",), False),
             (("statistics",), False),
+            ((".gitignore",), False),
         ),
     )
 
@@ -249,6 +254,7 @@ def test_ls_repo_with_removed_dvc_dir(tmp_dir, dvc, scm):
             (("out.dvc",), False),
             (("dep",), True),
             (("out",), False),
+            ((".gitignore",), False),
         ),
     )
 
@@ -265,6 +271,7 @@ def test_ls_repo_with_removed_dvc_dir_recursive(tmp_dir, dvc, scm):
             (("out.dvc",), False),
             (("dep",), True),
             (("out", "file"), True),
+            ((".gitignore",), False),
         ),
     )
 
@@ -324,8 +331,11 @@ def test_ls_remote_repo_recursive(erepo_dir):
             (("data", "subcontent", "data.xml.dvc"), False),
             (("data", "subcontent", "statistics", "data.csv.dvc"), False),
             (("data", "subcontent", "statistics", "data.csv"), True),
+            (("data", "subcontent", "statistics", ".gitignore"), False),
             (("data", "subcontent", "data.xml"), True),
+            (("data", "subcontent", ".gitignore"), False),
             (("model", "people.csv"), True),
+            (("model", ".gitignore"), False),
             (("structure.xml",), True),
         ),
     )
@@ -363,6 +373,7 @@ def test_ls_remote_repo_with_target_dir(erepo_dir):
             (("train.py",), False),
             (("people.csv",), True),
             (("people.csv.dvc",), False),
+            ((".gitignore",), False),
         ),
     )
 
@@ -401,9 +412,13 @@ def test_ls_remote_repo_with_rev_recursive(erepo_dir):
             (("data", "subcontent", "data.xml.dvc"), False),
             (("data", "subcontent", "statistics", "data.csv.dvc"), False),
             (("data", "subcontent", "statistics", "data.csv"), True),
+            (("data", "subcontent", "statistics", ".gitignore"), False),
             (("data", "subcontent", "data.xml"), True),
+            (("data", "subcontent", ".gitignore"), False),
             (("model", "people.csv"), True),
+            (("model", ".gitignore"), False),
             (("structure.xml",), True),
+            ((".gitignore",), False),
         ),
     )
 
