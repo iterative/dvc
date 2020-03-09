@@ -195,8 +195,10 @@ class RemoteGDrive(RemoteBASE):
     def list_params(self):
         params = {"corpora": "default"}
         if self._bucket != "root" and self._bucket != "appDataFolder":
-            params["driveId"] = self._get_remote_drive_id(self._bucket)
-            params["corpora"] = "drive"
+            drive_id = self._get_remote_drive_id(self._bucket)
+            if drive_id:
+                params["driveId"] = drive_id
+                params["corpora"] = "drive"
         return params
 
     @gdrive_retry
