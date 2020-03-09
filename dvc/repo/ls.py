@@ -6,13 +6,13 @@ from dvc.exceptions import PathMissingError, OutputNotFoundError
 
 @staticmethod
 def ls(
-    url, target=None, rev=None, recursive=None, outs_only=False,
+    url, path=None, rev=None, recursive=None, outs_only=False,
 ):
     """Methods for getting files and outputs for the repo.
 
     Args:
         url (str): the repo url
-        target (str, optional): relative path into the repo
+        path (str, optional): relative path into the repo
         rev (str, optional): SHA commit, branch or tag name
         recursive (bool, optional): recursively walk the repo
         outs_only (bool, optional): show only DVC-artifacts
@@ -34,25 +34,25 @@ def ls(
     from dvc.utils import relpath
 
     with external_repo(url, rev) as repo:
-        target_path_info = _get_target_path_info(repo, target)
+        path_info = _get_path_info(repo, path)
         fs_nodes = []
         if isinstance(repo, Repo):
-            fs_nodes.extend(_ls_outs_repo(repo, target_path_info, recursive))
+            fs_nodes.extend(_ls_outs_repo(repo, path_info, recursive))
 
         if not outs_only:
-            fs_nodes.extend(_ls_files_repo(target_path_info, recursive))
+            fs_nodes.extend(_ls_files_repo(path_info, recursive))
 
-        if target and not fs_nodes:
-            raise PathMissingError(target, repo, output_only=outs_only)
+        if path and not fs_nodes:
+            raise PathMissingError(path, repo, output_only=outs_only)
 
         fs_nodes = {n["path_info"]: n for n in fs_nodes}.values()
 
         def get_entry(fs_node):
-            path_info = fs_node["path_info"]
+            node_path_info = fs_node["path_info"]
             path = (
-                path_info.name
-                if path_info == target_path_info
-                else relpath(path_info, target_path_info)
+                node_path_info.name
+                if node_path_info == path_info
+                else relpath(node_path_info, path_info)
             )
             return {
                 "path": path,
@@ -123,12 +123,12 @@ def _ls_outs_repo(repo, path_info, recursive=None):
     ]
 
 
-def _get_target_path_info(repo, target=None):
+def _get_path_info(repo, path=None):
     from dvc.path_info import PathInfo
 
-    if not target:
+    if not path:
         return PathInfo(repo.root_dir)
-    return PathInfo(repo.root_dir, target)
+    return PathInfo(repo.root_dir, path)
 
 
 def _get_fs_node(path_info, out=None):
