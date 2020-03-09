@@ -77,6 +77,7 @@ install_requires = [
     "speedcopy>=2.0.1; sys_platform == 'win32'",
     "flatten_json>=0.1.6",
     "texttable>=0.5.2",
+    "pygtrie==2.3.2",
 ]
 
 
