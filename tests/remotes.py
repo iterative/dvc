@@ -22,7 +22,7 @@ TEST_CONFIG = {
     "remote": {TEST_REMOTE: {"url": ""}},
 }
 
-TEST_AWS_REPO_BUCKET = os.environ.get("DVC_TEST_AWS_REPO_BUCKET", "dvc-test")
+TEST_AWS_REPO_BUCKET = os.environ.get("DVC_TEST_AWS_REPO_BUCKET", "dvc-temp")
 TEST_GCP_REPO_BUCKET = os.environ.get("DVC_TEST_GCP_REPO_BUCKET", "dvc-test")
 TEST_OSS_REPO_BUCKET = "dvc-test"
 
