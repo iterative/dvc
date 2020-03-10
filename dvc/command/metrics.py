@@ -244,7 +244,7 @@ def add_parser(subparsers, parent_parser):
     metrics_add_parser.add_argument("path", help="Path to a metric file.")
     metrics_add_parser.set_defaults(func=CmdMetricsAdd)
 
-    METRICS_MODIFY_HELP = "Modify metric file options."
+    METRICS_MODIFY_HELP = "Modify metric file values."
     metrics_modify_parser = metrics_subparsers.add_parser(
         "modify",
         parents=[parent_parser],
