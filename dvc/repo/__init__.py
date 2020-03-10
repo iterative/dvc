@@ -228,7 +228,7 @@ class Repo(object):
         (namely, a file described as an output on a stage).
 
         The scope is, by default, the working directory, but you can use
-        `all_branches` or `all_tags` to expand scope.
+        `all_branches`/`all_tags`/`all_commits` to expand the scope.
 
         Returns:
             A dictionary with Schemes (representing output's location) as keys,

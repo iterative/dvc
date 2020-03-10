@@ -9,9 +9,9 @@ def brancher(  # noqa: E302
     """Generator that iterates over specified revisions.
 
     Args:
-        branches (list): a list of branches to iterate over.
+        revs (list): a list of revisions to iterate over.
         all_branches (bool): iterate over all available branches.
-        tags (list): a list of tags to iterate over.
+        all_commits (bool): iterate over all commits.
         all_tags (bool): iterate over all available tags.
 
     Yields:
