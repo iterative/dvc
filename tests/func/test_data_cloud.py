@@ -37,8 +37,6 @@ from tests.remotes import (
     OSS,
     TEST_CONFIG,
     TEST_GCP_CREDS_FILE,
-    TEST_GDRIVE_CLIENT_ID,
-    TEST_GDRIVE_CLIENT_SECRET,
     TEST_REMOTE,
 )
 
@@ -193,8 +191,9 @@ def setup_gdrive_cloud(remote_url, dvc):
     config = copy.deepcopy(TEST_CONFIG)
     config["remote"][TEST_REMOTE] = {
         "url": remote_url,
-        "gdrive_client_id": TEST_GDRIVE_CLIENT_ID,
-        "gdrive_client_secret": TEST_GDRIVE_CLIENT_SECRET,
+        "gdrive_service_account_email": "test",
+        "gdrive_service_account_p12_file_path": "test.p12",
+        "gdrive_use_service_account": True,
     }
 
     dvc.config = config
@@ -434,8 +433,8 @@ class TestRemoteGDriveCLI(GDrive, TestDataCloudCLIBase):
                 "remote",
                 "modify",
                 TEST_REMOTE,
-                "gdrive_client_id",
-                TEST_GDRIVE_CLIENT_ID,
+                "gdrive_service_account_email",
+                "modified",
             ]
         )
         self.main(
@@ -443,8 +442,17 @@ class TestRemoteGDriveCLI(GDrive, TestDataCloudCLIBase):
                 "remote",
                 "modify",
                 TEST_REMOTE,
-                "gdrive_client_secret",
-                TEST_GDRIVE_CLIENT_SECRET,
+                "gdrive_service_account_p12_file_path",
+                "modified.p12",
+            ]
+        )
+        self.main(
+            [
+                "remote",
+                "modify",
+                TEST_REMOTE,
+                "gdrive_use_service_account",
+                "True",
             ]
         )
 

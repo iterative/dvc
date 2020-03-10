@@ -76,7 +76,7 @@ class RemoteGDrive(RemoteBASE):
     DEFAULT_NO_TRAVERSE = False
     DEFAULT_VERIFY = True
 
-    GDRIVE_USER_CREDENTIALS_DATA = "GDRIVE_USER_CREDENTIALS_DATA"
+    GDRIVE_CREDENTIALS_DATA = "GDRIVE_CREDENTIALS_DATA"
     DEFAULT_USER_CREDENTIALS_FILE = "gdrive-user-credentials.json"
 
     def __init__(self, repo, config):
@@ -93,17 +93,22 @@ class RemoteGDrive(RemoteBASE):
             )
 
         self._bucket = self.path_info.bucket
+        self._use_service_account = config.get("gdrive_use_service_account")
+        self._service_account_email = config.get(
+            "gdrive_service_account_email"
+        )
+        self._service_account_user_email = config.get(
+            "gdrive_service_account_user_email"
+        )
+        self._service_account_p12_file_path = config.get(
+            "gdrive_service_account_p12_file_path"
+        )
         self._client_id = config.get("gdrive_client_id")
         self._client_secret = config.get("gdrive_client_secret")
-        if not self._client_id or not self._client_secret:
-            raise DvcException(
-                "Please specify Google Drive's client id and "
-                "secret in DVC config. Learn more at "
-                "{}.".format(format_link("https://man.dvc.org/remote/add"))
-            )
+        self._validate_config()
         self._gdrive_user_credentials_path = (
             tmp_fname(os.path.join(self.repo.tmp_dir, ""))
-            if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA)
+            if os.getenv(RemoteGDrive.GDRIVE_CREDENTIALS_DATA)
             else config.get(
                 "gdrive_user_credentials_file",
                 os.path.join(
@@ -114,6 +119,33 @@ class RemoteGDrive(RemoteBASE):
 
         self._list_params = None
 
+    def _validate_config(self):
+        # Validate Service Account configuration
+        if self._use_service_account and (
+            not self._service_account_email
+            or not self._service_account_p12_file_path
+        ):
+            raise DvcException(
+                "To use service account please specify {}, {} and "
+                "{} in DVC config. Learn more at "
+                "{}.".format(
+                    "gdrive_service_account_email",
+                    "gdrive_service_account_p12_file_path",
+                    "gdrive_service_account_user_email (optional)",
+                    format_link("https://man.dvc.org/remote/modify"),
+                )
+            )
+
+        # Validate OAuth 2.0 Client ID configuration
+        if not self._use_service_account and (
+            not self._client_id or not self._client_secret
+        ):
+            raise DvcException(
+                "Please specify Google Drive's client id and "
+                "secret in DVC config. Learn more at "
+                "{}.".format(format_link("https://man.dvc.org/remote/modify"))
+            )
+
     @wrap_prop(threading.RLock())
     @cached_property
     def drive(self):
@@ -121,23 +153,30 @@ class RemoteGDrive(RemoteBASE):
         from pydrive2.auth import GoogleAuth
         from pydrive2.drive import GoogleDrive
 
-        if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA):
+        if os.getenv(RemoteGDrive.GDRIVE_CREDENTIALS_DATA):
             with open(
                 self._gdrive_user_credentials_path, "w"
             ) as credentials_file:
                 credentials_file.write(
-                    os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA)
+                    os.getenv(RemoteGDrive.GDRIVE_CREDENTIALS_DATA)
                 )
 
         GoogleAuth.DEFAULT_SETTINGS["client_config_backend"] = "settings"
-        GoogleAuth.DEFAULT_SETTINGS["client_config"] = {
-            "client_id": self._client_id,
-            "client_secret": self._client_secret,
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token",
-            "revoke_uri": "https://oauth2.googleapis.com/revoke",
-            "redirect_uri": "",
-        }
+        if self._use_service_account:
+            GoogleAuth.DEFAULT_SETTINGS["service_config"] = {
+                "client_service_email": self._service_account_email,
+                "client_user_email": self._service_account_user_email,
+                "client_pkcs12_file_path": self._service_account_p12_file_path,
+            }
+        else:
+            GoogleAuth.DEFAULT_SETTINGS["client_config"] = {
+                "client_id": self._client_id,
+                "client_secret": self._client_secret,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "revoke_uri": "https://oauth2.googleapis.com/revoke",
+                "redirect_uri": "",
+            }
         GoogleAuth.DEFAULT_SETTINGS["save_credentials"] = True
         GoogleAuth.DEFAULT_SETTINGS["save_credentials_backend"] = "file"
         GoogleAuth.DEFAULT_SETTINGS[
@@ -153,7 +192,10 @@ class RemoteGDrive(RemoteBASE):
         gauth = GoogleAuth(settings_file="")
 
         try:
-            gauth.CommandLineAuth()
+            if self._use_service_account:
+                gauth.ServiceAuth()
+            else:
+                gauth.CommandLineAuth()
         except RefreshError as exc:
             raise GDriveAccessTokenRefreshError from exc
         except KeyError as exc:
@@ -164,7 +206,7 @@ class RemoteGDrive(RemoteBASE):
         except Exception as exc:
             raise DvcException("Google Drive authentication failed") from exc
         finally:
-            if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA):
+            if os.getenv(RemoteGDrive.GDRIVE_CREDENTIALS_DATA):
                 os.remove(self._gdrive_user_credentials_path)
 
         return GoogleDrive(gauth)
