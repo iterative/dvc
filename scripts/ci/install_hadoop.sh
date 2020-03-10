@@ -11,7 +11,7 @@ sudo apt-get install openjdk-7-jdk
 java -version
 
 pushd /usr/local
-sudo wget https://s3-us-west-2.amazonaws.com/dvc-share/test/hadoop-2.6.5.tar.gz
+sudo wget https://s3-us-east-2.amazonaws.com/dvc-public/travis-test/hadoop-2.6.5.tar.gz
 sudo tar xzf hadoop-2.6.5.tar.gz
 sudo mkdir hadoop
 sudo mv hadoop-2.6.5/* hadoop/
