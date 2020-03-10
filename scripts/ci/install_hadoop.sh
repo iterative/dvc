@@ -23,6 +23,13 @@ echo "export HADOOP_COMMON_HOME=/usr/local/hadoop" >>env.sh
 echo "export HADOOP_HDFS_HOME=/usr/local/hadoop" >>env.sh
 echo "export YARN_HOME=/usr/local/hadoop" >>env.sh
 echo "export HADOOP_COMMON_LIB_NATIVE_DIR=/usr/local/hadoop/lib/native" >>env.sh
+
+# regression on PyArrow==0.16.0: https://issues.apache.org/jira/browse/ARROW-7841
+# it tries to retrieve native library from $HADOOP_HOME directory, instead of
+# `$HADOOP_HOME/lib/native`.
+# force it to search for `libhdfs.so` inside `$HADOOP_HOME/lib/native`
+echo "export ARROW_LIBHDFS_DIR=/usr/local/hadoop/lib/native" >> env.sh
+
 echo "export JAVA_HOME=/usr/" >>env.sh
 echo "export PATH=\$PATH:/usr/local/hadoop/sbin:/usr/local/hadoop/bin:$JAVA_PATH/bin" >>env.sh
 
