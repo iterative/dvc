@@ -675,13 +675,10 @@ def test_add_empty_files(tmp_dir, dvc, link):
     assert os.path.exists(stages[0].outs[0].cache_path)
 
 
-@mock.patch(
-    "dvc.remote.local.RemoteLOCAL.is_hardlink",
-    side_effect=RemoteLOCAL.is_hardlink,
-)
-def test_add_optimization_for_hardlink_on_empty_files(m, tmp_dir, dvc):
+def test_add_optimization_for_hardlink_on_empty_files(tmp_dir, dvc, mocker):
     dvc.cache.local.cache_types = ["hardlink"]
     tmp_dir.gen({"foo": "", "bar": "", "lorem": "lorem", "ipsum": "ipsum"})
+    m = mocker.spy(RemoteLOCAL, "is_hardlink")
     stages = dvc.add(["foo", "bar", "lorem", "ipsum"])
 
     m.assert_called_once()
