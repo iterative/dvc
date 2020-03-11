@@ -573,14 +573,15 @@ def test_stats_on_checkout(tmp_dir, dvc, scm):
 
 
 def test_checkout_stats_on_failure(tmp_dir, dvc, scm):
-    stages = tmp_dir.dvc_gen(
+    tmp_dir.dvc_gen(
         {"foo": "foo", "dir": {"subdir": {"file": "file"}}, "other": "other"},
         commit="initial",
     )
+    stage = Stage.load(dvc, "foo.dvc")
     tmp_dir.dvc_gen({"foo": "foobar", "other": "other other"}, commit="second")
 
     # corrupt cache
-    cache = stages[0].outs[0].cache_path
+    cache = stage.outs[0].cache_path
     with open(cache, "a") as fd:
         fd.write("destroy cache")
 
