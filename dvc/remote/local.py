@@ -32,19 +32,11 @@ class RemoteLOCAL(RemoteBASE):
 
     DEFAULT_CACHE_TYPES = ["reflink", "copy"]
 
+    CACHE_MODE = 0o444
     SHARED_MODE_MAP = {None: (0o644, 0o755), "group": (0o664, 0o775)}
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
-        self.protected = config.get("protected", False)
-
-        shared = config.get("shared")
-        self._file_mode, self._dir_mode = self.SHARED_MODE_MAP[shared]
-
-        if self.protected:
-            # cache files are set to be read-only for everyone
-            self._file_mode = stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH
-
         self.cache_dir = config.get("url")
         self._dir_info = {}
 
@@ -142,16 +134,17 @@ class RemoteLOCAL(RemoteBASE):
         if self.exists(path_info):
             remove(path_info.fspath)
 
-    def move(self, from_info, to_info):
+    def move(self, from_info, to_info, mode=None):
         if from_info.scheme != "local" or to_info.scheme != "local":
             raise NotImplementedError
 
         self.makedirs(to_info.parent)
 
-        if self.isfile(from_info):
-            mode = self._file_mode
-        else:
-            mode = self._dir_mode
+        if mode is None:
+            if self.isfile(from_info):
+                mode = self._file_mode
+            else:
+                mode = self._dir_mode
 
         move(from_info, to_info, mode=mode)
 
@@ -159,6 +152,7 @@ class RemoteLOCAL(RemoteBASE):
         tmp_info = to_info.parent / tmp_fname(to_info.name)
         try:
             System.copy(from_info, tmp_info)
+            os.chmod(fspath_py35(tmp_info), self._file_mode)
             os.rename(fspath_py35(tmp_info), fspath_py35(to_info))
         except Exception:
             self.remove(tmp_info)
@@ -202,9 +196,13 @@ class RemoteLOCAL(RemoteBASE):
     def is_hardlink(path_info):
         return System.is_hardlink(path_info)
 
-    @staticmethod
-    def reflink(from_info, to_info):
-        System.reflink(from_info, to_info)
+    def reflink(self, from_info, to_info):
+        tmp_info = to_info.parent / tmp_fname(to_info.name)
+        System.reflink(from_info, tmp_info)
+        # NOTE: reflink has its own separate inode, so you can set permissions
+        # that are different from the source.
+        os.chmod(fspath_py35(tmp_info), self._file_mode)
+        os.rename(fspath_py35(tmp_info), fspath_py35(to_info))
 
     def cache_exists(self, checksums, jobs=None, name=None):
         return [
@@ -402,8 +400,7 @@ class RemoteLOCAL(RemoteBASE):
             )
             logger.warning(msg)
 
-    @staticmethod
-    def _unprotect_file(path):
+    def _unprotect_file(self, path):
         if System.is_symlink(path) or System.is_hardlink(path):
             logger.debug("Unprotecting '{}'".format(path))
             tmp = os.path.join(os.path.dirname(path), "." + uuid())
@@ -423,13 +420,13 @@ class RemoteLOCAL(RemoteBASE):
                 "a symlink or a hardlink.".format(path)
             )
 
-        os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
+        os.chmod(path, self._file_mode)
 
     def _unprotect_dir(self, path):
         assert is_working_tree(self.repo.tree)
 
         for fname in self.repo.tree.walk_files(path):
-            RemoteLOCAL._unprotect_file(fname)
+            self._unprotect_file(fname)
 
     def unprotect(self, path_info):
         path = path_info.fspath
@@ -441,12 +438,11 @@ class RemoteLOCAL(RemoteBASE):
         if os.path.isdir(path):
             self._unprotect_dir(path)
         else:
-            RemoteLOCAL._unprotect_file(path)
+            self._unprotect_file(path)
 
-    @staticmethod
-    def protect(path_info):
+    def protect(self, path_info):
         path = fspath_py35(path_info)
-        mode = stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH
+        mode = self.CACHE_MODE
 
         try:
             os.chmod(path, mode)
@@ -519,3 +515,11 @@ class RemoteLOCAL(RemoteBASE):
             if self.is_dir_checksum(c):
                 unpacked.add(c + self.UNPACKED_DIR_SUFFIX)
         return unpacked
+
+    def is_protected(self, path_info):
+        if not self.exists(path_info):
+            return False
+
+        mode = os.stat(fspath_py35(path_info)).st_mode
+
+        return stat.S_IMODE(mode) == self.CACHE_MODE

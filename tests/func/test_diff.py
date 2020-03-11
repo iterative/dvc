@@ -1,11 +1,11 @@
 import hashlib
 import os
 import pytest
-import shutil
 
 from funcy import first
 
 from dvc.compat import fspath
+from dvc.utils.fs import remove
 from dvc.exceptions import DvcException
 
 
@@ -36,7 +36,7 @@ def test_no_cache_entry(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen({"dir": {"1": "1", "2": "2"}})
     tmp_dir.dvc_gen("file", "second")
 
-    shutil.rmtree(fspath(tmp_dir / ".dvc" / "cache"))
+    remove(fspath(tmp_dir / ".dvc" / "cache"))
     (tmp_dir / ".dvc" / "state").unlink()
 
     dir_checksum = "5fb6b29836c388e093ca0715c872fe2a.dir"
