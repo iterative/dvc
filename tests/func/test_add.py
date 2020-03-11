@@ -7,7 +7,7 @@ import time
 
 import colorama
 import pytest
-from mock import patch
+from mock import patch, call
 
 import dvc as dvc_module
 from dvc.cache import Cache
@@ -662,3 +662,36 @@ def test_not_raises_on_re_add(tmp_dir, dvc):
 
     tmp_dir.gen({"file2": "file2 content", "file": "modified file"})
     dvc.add(["file2", "file"])
+
+
+@pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])
+def test_add_empty_files(tmp_dir, dvc, link):
+    file = "foo"
+    dvc.cache.local.cache_types = [link]
+    stages = tmp_dir.dvc_gen(file, "")
+
+    assert (tmp_dir / file).exists()
+    assert (tmp_dir / (file + Stage.STAGE_FILE_SUFFIX)).exists()
+    assert os.path.exists(stages[0].outs[0].cache_path)
+
+
+def test_add_optimization_for_hardlink_on_empty_files(tmp_dir, dvc, mocker):
+    dvc.cache.local.cache_types = ["hardlink"]
+    tmp_dir.gen({"foo": "", "bar": "", "lorem": "lorem", "ipsum": "ipsum"})
+    m = mocker.spy(RemoteLOCAL, "is_hardlink")
+    stages = dvc.add(["foo", "bar", "lorem", "ipsum"])
+
+    assert m.call_count == 1
+    assert m.call_args != call(tmp_dir / "foo")
+    assert m.call_args != call(tmp_dir / "bar")
+
+    for stage in stages[:2]:
+        # hardlinks are not created for empty files
+        assert not System.is_hardlink(stage.outs[0].path_info)
+
+    for stage in stages[2:]:
+        assert System.is_hardlink(stage.outs[0].path_info)
+
+    for stage in stages:
+        assert os.path.exists(stage.path)
+        assert os.path.exists(stage.outs[0].cache_path)
