@@ -205,9 +205,8 @@ class Config(dict):
         validate (bool): optional flag to tell dvc if it should validate the
             config or just load it as is. 'True' by default.
 
-
     Raises:
-        ConfigError: thrown when config has an invalid format.
+        ConfigError: thrown if config has an invalid format.
     """
 
     APPNAME = "dvc"
@@ -276,7 +275,7 @@ class Config(dict):
         """Loads config from all the config files.
 
         Raises:
-            dvc.config.ConfigError: thrown if config has invalid format.
+            ConfigError: thrown if config has an invalid format.
         """
         conf = {}
         for level in self.LEVELS:
@@ -336,7 +335,7 @@ class Config(dict):
     @contextmanager
     def edit(self, level="repo"):
         if level in {"repo", "local"} and self.dvc_dir is None:
-            raise ConfigError("Not inside a dvc repo")
+            raise ConfigError("Not inside a DVC repo")
 
         conf = self.load_one(level)
         yield conf

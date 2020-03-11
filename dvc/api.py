@@ -7,31 +7,44 @@ from dvc.external_repo import external_repo
 
 
 class UrlNotDvcRepoError(DvcException):
-    """Thrown if given URL is not a DVC repository.
-
-    Args:
-        url (str): URL to the repository
-    """
+    """Thrown if the given URL is not a DVC repository."""
 
     def __init__(self, url):
         super().__init__("'{}' is not a DVC repository.".format(url))
 
 
 def get_url(path, repo=None, rev=None, remote=None):
-    """Returns URL to the storage location of a data artifact tracked
-    by DVC, specified by its path in a repo.
+    """
+    Returns the URL to the storage location of a data file or directory tracked
+    in a DVC repo. For Git repos, HEAD is used unless a rev argument is
+    supplied. The default remote is tried unless a remote argument is supplied.
 
-    NOTE: There's no guarantee that the file actually exists in that location.
+    Raises UrlNotDvcRepoError if repo is not a DVC project.
+
+    NOTE: This function does not check for the actual existence of the file or
+    directory in the remote storage.
     """
     with _make_repo(repo, rev=rev) as _repo:
-        _require_dvc(_repo)
+        if not isinstance(_repo, Repo):
+            raise UrlNotDvcRepoError(_repo.url)
         out = _repo.find_out_by_relpath(path)
         remote_obj = _repo.cloud.get_remote(remote)
         return str(remote_obj.checksum_to_path_info(out.checksum))
 
 
 def open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
-    """Context manager to open a tracked file as a file object."""
+    """
+    Open file in the supplied path tracked in a repo (both DVC projects and
+    plain Git repos are supported). For Git repos, HEAD is used unless a rev
+    argument is supplied. The default remote is tried unless a remote argument
+    is supplied. It may only be used as a context manager:
+
+        with dvc.api.open(
+                'path/to/file',
+                repo='https://example.com/url/to/repo'
+                ) as fd:
+            # ... Handle file object fd
+    """
     args = (path,)
     kwargs = {
         "repo": repo,
@@ -63,7 +76,11 @@ def _open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
 
 
 def read(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
-    """Returns the contents of a tracked file."""
+    """
+    Returns the contents of a tracked file (by DVC or Git). For Git repos, HEAD
+    is used unless a rev argument is supplied. The default remote is tried
+    unless a remote argument is supplied.
+    """
     with open(
         path, repo=repo, rev=rev, remote=remote, mode=mode, encoding=encoding
     ) as fd:
@@ -81,8 +98,3 @@ def _make_repo(repo_url=None, rev=None):
             pass  # fallthrough to external_repo
     with external_repo(url=repo_url, rev=rev) as repo:
         yield repo
-
-
-def _require_dvc(repo):
-    if not isinstance(repo, Repo):
-        raise UrlNotDvcRepoError(repo.url)
