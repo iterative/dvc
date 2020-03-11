@@ -304,9 +304,6 @@ class TestRunUnprotectOutsCopy(TestDvc):
             fobj.write("with open(sys.argv[1], 'a+') as fobj:\n")
             fobj.write("    fobj.write('foo')\n")
 
-        ret = main(["config", "cache.protected", "true"])
-        self.assertEqual(ret, 0)
-
         ret = main(["config", "cache.type", "copy"])
         self.assertEqual(ret, 0)
 
@@ -323,7 +320,7 @@ class TestRunUnprotectOutsCopy(TestDvc):
             ]
         )
         self.assertEqual(ret, 0)
-        self.assertFalse(os.access(self.FOO, os.W_OK))
+        self.assertTrue(os.access(self.FOO, os.W_OK))
         with open(self.FOO, "r") as fd:
             self.assertEqual(fd.read(), "foo")
 
@@ -342,7 +339,7 @@ class TestRunUnprotectOutsCopy(TestDvc):
             ]
         )
         self.assertEqual(ret, 0)
-        self.assertFalse(os.access(self.FOO, os.W_OK))
+        self.assertTrue(os.access(self.FOO, os.W_OK))
         with open(self.FOO, "r") as fd:
             self.assertEqual(fd.read(), "foo")
 
@@ -354,9 +351,6 @@ class TestRunUnprotectOutsSymlink(TestDvc):
             fobj.write("import os\n")
             fobj.write("with open(sys.argv[1], 'a+') as fobj:\n")
             fobj.write("    fobj.write('foo')\n")
-
-        ret = main(["config", "cache.protected", "true"])
-        self.assertEqual(ret, 0)
 
         ret = main(["config", "cache.type", "symlink"])
         self.assertEqual(ret, 0)
@@ -375,7 +369,13 @@ class TestRunUnprotectOutsSymlink(TestDvc):
             ]
         )
         self.assertEqual(ret, 0)
-        self.assertFalse(os.access(self.FOO, os.W_OK))
+
+        if os.name == "nt":
+            # NOTE: Windows symlink perms don't propagate to the target
+            self.assertTrue(os.access(self.FOO, os.W_OK))
+        else:
+            self.assertFalse(os.access(self.FOO, os.W_OK))
+
         self.assertTrue(System.is_symlink(self.FOO))
         with open(self.FOO, "r") as fd:
             self.assertEqual(fd.read(), "foo")
@@ -395,7 +395,13 @@ class TestRunUnprotectOutsSymlink(TestDvc):
             ]
         )
         self.assertEqual(ret, 0)
-        self.assertFalse(os.access(self.FOO, os.W_OK))
+
+        if os.name == "nt":
+            # NOTE: Windows symlink perms don't propagate to the target
+            self.assertTrue(os.access(self.FOO, os.W_OK))
+        else:
+            self.assertFalse(os.access(self.FOO, os.W_OK))
+
         self.assertTrue(System.is_symlink(self.FOO))
         with open(self.FOO, "r") as fd:
             self.assertEqual(fd.read(), "foo")
@@ -408,9 +414,6 @@ class TestRunUnprotectOutsHardlink(TestDvc):
             fobj.write("import os\n")
             fobj.write("with open(sys.argv[1], 'a+') as fobj:\n")
             fobj.write("    fobj.write('foo')\n")
-
-        ret = main(["config", "cache.protected", "true"])
-        self.assertEqual(ret, 0)
 
         ret = main(["config", "cache.type", "hardlink"])
         self.assertEqual(ret, 0)
@@ -848,6 +851,7 @@ class TestShouldNotCheckoutUponCorruptedLocalHardlinkCache(TestDvc):
         cmd = "python {} {} {}".format(self.CODE, self.FOO, self.BAR)
         stage = self.dvc.run(deps=[self.FOO], outs=[self.BAR], cmd=cmd)
 
+        os.chmod(self.BAR, 0o644)
         with open(self.BAR, "w") as fd:
             fd.write("corrupting the output cache")
 

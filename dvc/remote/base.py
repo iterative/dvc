@@ -83,6 +83,9 @@ class RemoteBASE(object):
     DEFAULT_NO_TRAVERSE = True
     DEFAULT_VERIFY = False
 
+    CACHE_MODE = None
+    SHARED_MODE_MAP = {None: (None, None), "group": (None, None)}
+
     state = StateNoop()
 
     def __init__(self, repo, config):
@@ -90,12 +93,14 @@ class RemoteBASE(object):
 
         self._check_requires(config)
 
+        shared = config.get("shared")
+        self._file_mode, self._dir_mode = self.SHARED_MODE_MAP[shared]
+
         self.checksum_jobs = (
             config.get("checksum_jobs")
             or (self.repo and self.repo.config["core"].get("checksum_jobs"))
             or self.CHECKSUM_JOBS
         )
-        self.protected = False
         self.no_traverse = config.get("no_traverse", self.DEFAULT_NO_TRAVERSE)
         self.verify = config.get("verify", self.DEFAULT_VERIFY)
         self._dir_info = {}
@@ -221,7 +226,7 @@ class RemoteBASE(object):
         new_info = self.cache.checksum_to_path_info(checksum)
         if self.cache.changed_cache_file(checksum):
             self.cache.makedirs(new_info.parent)
-            self.cache.move(tmp_info, new_info)
+            self.cache.move(tmp_info, new_info, mode=self.CACHE_MODE)
 
         self.state.save(path_info, checksum)
         self.state.save(new_info, checksum)
@@ -409,15 +414,8 @@ class RemoteBASE(object):
 
         link_method(from_info, to_info)
 
-        if self.protected:
-            self.protect(to_info)
-
         logger.debug(
-            "Created %s'%s': %s -> %s",
-            "protected " if self.protected else "",
-            self.cache_types[0],
-            from_info,
-            to_info,
+            "Created '%s': %s -> %s", self.cache_types[0], from_info, to_info,
         )
 
     def _save_file(self, path_info, checksum, save_link=True):
@@ -425,14 +423,11 @@ class RemoteBASE(object):
 
         cache_info = self.checksum_to_path_info(checksum)
         if self.changed_cache(checksum):
-            self.move(path_info, cache_info)
+            self.move(path_info, cache_info, mode=self.CACHE_MODE)
             self.link(cache_info, path_info)
         elif self.iscopy(path_info) and self._cache_is_copy(path_info):
             # Default relink procedure involves unneeded copy
-            if self.protected:
-                self.protect(path_info)
-            else:
-                self.unprotect(path_info)
+            self.unprotect(path_info)
         else:
             self.remove(path_info)
             self.link(cache_info, path_info)
@@ -656,7 +651,8 @@ class RemoteBASE(object):
     def remove(self, path_info):
         raise RemoteActionNotImplemented("remove", self.scheme)
 
-    def move(self, from_info, to_info):
+    def move(self, from_info, to_info, mode=None):
+        assert mode is None
         self.copy(from_info, to_info)
         self.remove(from_info)
 
@@ -718,6 +714,9 @@ class RemoteBASE(object):
             removed = True
         return removed
 
+    def is_protected(self, path_info):
+        return False
+
     def changed_cache_file(self, checksum):
         """Compare the given checksum with the (corresponding) actual one.
 
@@ -730,7 +729,14 @@ class RemoteBASE(object):
 
         - Remove the file from cache if it doesn't match the actual checksum
         """
+
         cache_info = self.checksum_to_path_info(checksum)
+        if self.is_protected(cache_info):
+            logger.debug(
+                "Assuming '%s' is unchanged since it is read-only", cache_info
+            )
+            return False
+
         actual = self.get_checksum(cache_info)
 
         logger.debug(
@@ -744,6 +750,9 @@ class RemoteBASE(object):
             return True
 
         if actual.split(".")[0] == checksum.split(".")[0]:
+            # making cache file read-only so we don't need to check it
+            # next time
+            self.protect(cache_info)
             return False
 
         if self.exists(cache_info):

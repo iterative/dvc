@@ -209,7 +209,8 @@ class RemoteSSH(RemoteBASE):
         with self.ssh(path_info) as ssh:
             ssh.remove(path_info.path)
 
-    def move(self, from_info, to_info):
+    def move(self, from_info, to_info, mode=None):
+        assert mode is None
         if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
             raise NotImplementedError
 
