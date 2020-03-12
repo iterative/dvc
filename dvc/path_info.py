@@ -285,3 +285,32 @@ class HTTPURLInfo(URLInfo):
         obj.query = query
         obj.fragment = fragment
         return obj
+
+    @property
+    def _extra_parts(self):
+        return (self.params, self.query, self.fragment)
+
+    @property
+    def parts(self):
+        return self._base_parts + self._path.parts + self._extra_parts
+
+    @cached_property
+    def url(self):
+        return "{}://{}{}{}{}{}".format(
+            self.scheme,
+            self.netloc,
+            self._spath,
+            (";" + self.params) if self.params else "",
+            ("?" + self.query) if self.query else "",
+            ("#" + self.fragment) if self.fragment else "",
+        )
+
+    def __eq__(self, other):
+        if isinstance(other, (str, bytes)):
+            other = self.__class__(other)
+        return (
+            self.__class__ == other.__class__
+            and self._base_parts == other._base_parts
+            and self._path == other._path
+            and self._extra_parts == other._extra_parts
+        )
