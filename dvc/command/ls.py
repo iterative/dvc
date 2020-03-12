@@ -39,14 +39,12 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawTextHelpFormatter,
     )
     list_parser.add_argument(
-        "url",
-        help="Supported urls:\n"
-        "/path/to/file\n"
-        "/path/to/directory\n"
-        "C:\\\\path\\to\\file\n"
-        "C:\\\\path\\to\\directory\n"
-        "https://github.com/path/to/repo\n"
-        "git@github.com:path/to/repo.git\n",
+        "url", help="Location of DVC or Git repository to download from"
+    )
+    list_parser.add_argument(
+        "target",
+        nargs="?",
+        help="Path to directory within the repository to list outputs for",
     )
     list_parser.add_argument(
         "-R",
@@ -59,10 +57,5 @@ def add_parser(subparsers, parent_parser):
     )
     list_parser.add_argument(
         "--rev", nargs="?", help="Git revision (e.g. branch, tag, SHA)"
-    )
-    list_parser.add_argument(
-        "target",
-        nargs="?",
-        help="Path to directory within the repository to list outputs for",
     )
     list_parser.set_defaults(func=CmdList)
