@@ -530,9 +530,13 @@ class Stage(object):
         )
 
         Stage._fill_stage_outputs(stage, **kwargs)
-        stage.deps = dependency.loads_from(
+        deps = dependency.loads_from(
             stage, kwargs.get("deps", []), erepo=kwargs.get("erepo", None)
         )
+        params = dependency.loads_from(
+            stage, kwargs.get("params", []), erepo=kwargs.get("erepo", None),
+            is_param=True)
+        stage.deps = deps + params
 
         stage._check_circular_dependency()
         stage._check_duplicated_arguments()
@@ -858,7 +862,7 @@ class Stage(object):
         from dvc.exceptions import ArgumentDuplicationError
         from collections import Counter
 
-        path_counts = Counter(edge.path_info for edge in self.deps + self.outs)
+        path_counts = Counter(edge.unique_identifier for edge in self.deps + self.outs)
 
         for path, occurrence in path_counts.items():
             if occurrence > 1:
