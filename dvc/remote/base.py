@@ -868,7 +868,6 @@ class RemoteBASE(object):
         if progress_callback:
             progress_callback(str(path_info))
 
-        # relink is not modified
         return added, modified and not relink
 
     def makedirs(self, path_info):

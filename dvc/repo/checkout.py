@@ -83,9 +83,9 @@ def _checkout(
                 filter_info=filter_info,
             )
             for data in ["failed", "added", "modified"]:
-                stats[data] += [
+                stats[data].extend(
                     _fspath_dir(path, self.root_dir) for path in result[data]
-                ]
+                )
 
     if stats.get("failed"):
         raise CheckoutError(stats["failed"], stats)

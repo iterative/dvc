@@ -10,8 +10,8 @@ from dvc.exceptions import CheckoutError
 logger = logging.getLogger(__name__)
 
 
-def _human_join(words=None):
-    words = list(words or [])
+def _human_join(words):
+    words = list(words)
     if not words:
         return ""
 
@@ -25,21 +25,13 @@ def _human_join(words=None):
 
 
 def log_summary(stats):
-    message = [
-        ("added", "{added} added"),
-        ("deleted", "{deleted} deleted"),
-        ("modified", "{modified} modified"),
-    ]
-    summary = {
-        stat: len(stats[stat]) for stat, num in message if stats.get(stat)
-    }
-    if not summary:
-        return
-
-    template = _human_join(
-        fragment for stat, fragment in message if stat in summary
+    states = ("added", "deleted", "modified")
+    summary = (
+        "{} {}".format(len(stats[state]), state)
+        for state in states
+        if stats.get(state)
     )
-    logger.info(template.format_map(summary))
+    logger.info(_human_join(summary))
 
 
 def log_changes(stats):
@@ -59,7 +51,7 @@ def log_changes(stats):
             logger.info(
                 "{color}{state}{nc}{spacing}{entry}".format(
                     color=color,
-                    state=state[0].capitalize(),
+                    state=state[0].upper(),
                     nc=colorama.Fore.RESET,
                     spacing="\t",
                     entry=entry,

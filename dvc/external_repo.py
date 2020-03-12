@@ -106,17 +106,13 @@ class ExternalRepo(Repo):
             if out.changed_cache(filter_info=src):
                 self.cloud.pull(out.get_used_cache(filter_info=src))
 
-            failed = False
             try:
                 out.checkout(filter_info=src)
             except CheckoutError:
-                failed = True
+                raise FileNotFoundError
 
             move(src, dest)
             remove(tmp)
-
-            if failed:
-                raise FileNotFoundError
 
     @wrap_with(threading.Lock())
     def _set_cache_dir(self):
