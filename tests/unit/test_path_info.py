@@ -57,6 +57,9 @@ def test_https_url_info_str():
     u = HTTPURLInfo(url)
     assert u.url == url
     assert str(u) == u.url
+    assert u.params == "p=par"
+    assert u.query == "q=quer"
+    assert u.fragment == "frag"
 
 
 @pytest.mark.parametrize(
