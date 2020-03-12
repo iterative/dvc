@@ -98,7 +98,7 @@ def add_parser(subparsers, _parent_parser):
     from dvc.command.status import CmdDataStatus
 
     # Pull
-    PULL_HELP = "Pull data files from a DVC remote storage."
+    PULL_HELP = "Download tracked files or directories from remote storage."
 
     pull_parser = subparsers.add_parser(
         "pull",
@@ -148,8 +148,7 @@ def add_parser(subparsers, _parent_parser):
     pull_parser.set_defaults(func=CmdDataPull)
 
     # Push
-    PUSH_HELP = "Uploads files or directories tracked by DVC"
-    " to remote storage."
+    PUSH_HELP = "Upload tracked files or directories to remote storage."
 
     push_parser = subparsers.add_parser(
         "push",
@@ -192,7 +191,7 @@ def add_parser(subparsers, _parent_parser):
     push_parser.set_defaults(func=CmdDataPush)
 
     # Fetch
-    FETCH_HELP = "Get files or directories tracked by DVC from remote storage"
+    FETCH_HELP = "Get tracked files or directories from remote storage"
     " into the cache."
 
     fetch_parser = subparsers.add_parser(
