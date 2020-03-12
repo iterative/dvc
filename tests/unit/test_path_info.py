@@ -52,10 +52,9 @@ def test_url_info_deepcopy(cls):
     assert u1 == u2
 
 
-@pytest.mark.parametrize("cls", [HTTPURLInfo])
-def test_https_url_info_str(cls):
+def test_https_url_info_str():
     url = "https://user@test.com/test1;p=par?q=quer#frag"
-    u = cls("https://user@test.com/test1;p=par?q=quer#frag")
+    u = HTTPURLInfo(url)
     assert u.url == url
     assert str(u) == u.url
 
