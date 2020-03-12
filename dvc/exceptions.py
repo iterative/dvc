@@ -261,7 +261,7 @@ class CheckoutError(DvcException):
         self.stats = stats
         targets = [str(t) for t in target_infos]
         m = (
-            "Checkout failed for following targets:\n {}\nDid you "
+            "Checkout failed for following targets:\n{}\nDid you "
             "forget to fetch?".format("\n".join(targets))
         )
         super().__init__(m)
