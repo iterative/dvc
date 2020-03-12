@@ -76,7 +76,9 @@ class Git(Base):
                 url,
                 to_path,
                 env=env,  # needed before we can fix it in __init__
-                no_single_branch=True,
+                branch=rev,
+                single_branch=True,
+                depth=1,
             )
             tmp_repo.close()
         except git.exc.GitCommandError as exc:
