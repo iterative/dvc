@@ -80,27 +80,27 @@ def add_parser(subparsers, parent_parser):
         "--workspace",
         action="store_true",
         default=False,
-        help="Keep data files used in the current workspace.",
+        help="Keep data files used in the current workspace (working tree).",
     )
     gc_parser.add_argument(
         "-a",
         "--all-branches",
         action="store_true",
         default=False,
-        help="Keep data files for the tips of all git branches.",
+        help="Keep data files for the tips of all Git branches.",
     )
     gc_parser.add_argument(
         "-T",
         "--all-tags",
         action="store_true",
         default=False,
-        help="Keep data files for all git tags.",
+        help="Keep data files for all Git tags.",
     )
     gc_parser.add_argument(
         "--all-commits",
         action="store_true",
         default=False,
-        help=argparse.SUPPRESS,
+        help="Keep data files for all Git commits.",
     )
     gc_parser.add_argument(
         "-c",

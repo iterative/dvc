@@ -4,8 +4,8 @@ from dvc.scm.base import Base
 from dvc.scm.git import Git
 
 
-# just a sugar to point that this is an actual implementation for a dvc
-# project under no SCM control
+# Syntactic sugar to signal that this is an actual implementation for a DVC
+# project under no SCM control.
 class NoSCM(Base):
     pass
 

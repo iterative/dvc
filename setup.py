@@ -53,7 +53,7 @@ install_requires = [
     "nanotime>=0.5.2",
     "pyasn1>=0.4.1",
     "voluptuous>=0.11.7",
-    "jsonpath-ng>=1.4.3",
+    "jsonpath-ng>=1.5.1",
     "requests>=2.22.0",
     "grandalf==0.6",
     "distro>=1.3.0",
@@ -77,13 +77,14 @@ install_requires = [
     "speedcopy>=2.0.1; sys_platform == 'win32'",
     "flatten_json>=0.1.6",
     "texttable>=0.5.2",
+    "pygtrie==2.3.2",
 ]
 
 
 # Extra dependencies for remote integrations
 
 gs = ["google-cloud-storage==1.19.0"]
-gdrive = ["pydrive2>=1.4.5"]
+gdrive = ["pydrive2>=1.4.6"]
 s3 = ["boto3>=1.9.201"]
 azure = ["azure-storage-blob==2.1.0"]
 oss = ["oss2==2.6.1"]

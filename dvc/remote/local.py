@@ -92,6 +92,12 @@ class RemoteLOCAL(RemoteBASE):
 
         return not self.changed_cache(current_md5)
 
+    def _verify_link(self, path_info, link_type):
+        if link_type == "hardlink" and self.getsize(path_info) == 0:
+            return
+
+        super()._verify_link(path_info, link_type)
+
     def is_empty(self, path_info):
         path = path_info.fspath
 

@@ -22,7 +22,7 @@ TEST_CONFIG = {
     "remote": {TEST_REMOTE: {"url": ""}},
 }
 
-TEST_AWS_REPO_BUCKET = os.environ.get("DVC_TEST_AWS_REPO_BUCKET", "dvc-test")
+TEST_AWS_REPO_BUCKET = os.environ.get("DVC_TEST_AWS_REPO_BUCKET", "dvc-temp")
 TEST_GCP_REPO_BUCKET = os.environ.get("DVC_TEST_GCP_REPO_BUCKET", "dvc-test")
 TEST_OSS_REPO_BUCKET = "dvc-test"
 
@@ -34,11 +34,6 @@ TEST_GCP_CREDS_FILE = os.path.abspath(
 )
 # Ensure that absolute path is used
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = TEST_GCP_CREDS_FILE
-
-TEST_GDRIVE_CLIENT_ID = (
-    "217948389181-rs7it4a635b3qrf8dnmklmoj2kimun9n.apps.googleusercontent.com"
-)
-TEST_GDRIVE_CLIENT_SECRET = "LNg9n_cK7bohI8gEHn4bUeMX"
 
 always_test = staticmethod(lambda: True)
 
@@ -146,7 +141,7 @@ class GCP:
 class GDrive:
     @staticmethod
     def should_test():
-        return os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA) is not None
+        return os.getenv(RemoteGDrive.GDRIVE_CREDENTIALS_DATA) is not None
 
     def get_url(self):
         if not getattr(self, "_remote_url", None):
