@@ -182,6 +182,7 @@ class ExternalGitRepo:
 
     @contextmanager
     def open_by_relpath(self, path, mode="r", encoding=None, **kwargs):
+        """Opens a specified resource as a file descriptor"""
         try:
             abs_path = os.path.join(self.root_dir, path)
             with open(abs_path, mode, encoding=encoding) as fd:
