@@ -4,6 +4,7 @@ import threading
 
 from funcy import cached_property, memoize, wrap_prop, wrap_with
 
+from dvc.path_info import HTTPURLInfo
 import dvc.prompt as prompt
 from dvc.config import ConfigError
 from dvc.exceptions import DvcException, HTTPError
@@ -25,6 +26,7 @@ def ask_password(host, user):
 
 class RemoteHTTP(RemoteBASE):
     scheme = Schemes.HTTP
+    path_cls = HTTPURLInfo
     SESSION_RETRIES = 5
     SESSION_BACKOFF_FACTOR = 0.1
     REQUEST_TIMEOUT = 10

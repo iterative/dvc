@@ -314,3 +314,6 @@ class HTTPURLInfo(URLInfo):
             and self._path == other._path
             and self._extra_parts == other._extra_parts
         )
+
+    def __hash__(self):
+        return hash(self.parts)
