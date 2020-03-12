@@ -82,10 +82,10 @@ class CmdCheckout(CmdBase):
             exc = _exc
             stats = exc.stats
 
-        if self.args.show_changes:
-            log_changes(stats)
-        else:
+        if self.args.summary:
             log_summary(stats)
+        else:
+            log_changes(stats)
 
         if exc:
             raise exc
@@ -103,10 +103,10 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     checkout_parser.add_argument(
-        "--show-changes",
+        "--summary",
         action="store_true",
         default=False,
-        help="Show list of changes",
+        help="Show summary of the changes",
     )
     checkout_parser.add_argument(
         "-d",

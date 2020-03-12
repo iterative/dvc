@@ -658,7 +658,7 @@ def test_stats_on_show_changes_does_not_show_summary(
 
     with caplog.at_level(logging.INFO, logger="dvc"):
         caplog.clear()
-        assert main(["checkout", "--show-changes"]) == 0
+        assert main(["checkout"]) == 0
         for out in ["D\tdir" + os.sep, "D\tother"]:
             assert out in caplog.text
         assert "modified" not in caplog.text
@@ -675,7 +675,7 @@ def test_stats_does_not_show_changes_by_default(tmp_dir, dvc, scm, caplog):
 
     with caplog.at_level(logging.INFO, logger="dvc"):
         caplog.clear()
-        assert main(["checkout"]) == 0
+        assert main(["checkout", "--summary"]) == 0
         assert "2 deleted" in caplog.text
         assert "dir" not in caplog.text
         assert "other" not in caplog.text
