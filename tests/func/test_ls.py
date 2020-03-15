@@ -79,9 +79,9 @@ def test_ls_repo_with_color(tmp_dir, dvc, scm, mocker, monkeypatch, caplog):
     cmd = cli_args.func(cli_args)
 
     caplog.clear()
-    with mocker.patch("sys.stdout.isatty", return_value=True):
-        with caplog.at_level(logging.INFO, logger="dvc.command.ls"):
-            assert cmd.run() == 0
+    mocker.patch("sys.stdout.isatty", return_value=True)
+    with caplog.at_level(logging.INFO, logger="dvc.command.ls"):
+        assert cmd.run() == 0
 
     assert caplog.records[-1].msg == "\n".join(
         [
