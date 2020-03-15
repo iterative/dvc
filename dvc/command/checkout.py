@@ -98,7 +98,7 @@ def add_parser(subparsers, parent_parser):
         "--summary",
         action="store_true",
         default=False,
-        help="Show summary of the changes",
+        help="Show summary of the changes.",
     )
     checkout_parser.add_argument(
         "-d",
