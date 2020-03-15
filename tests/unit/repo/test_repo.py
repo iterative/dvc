@@ -1,5 +1,6 @@
 import os
 
+from funcy import raiser
 import pytest
 
 from dvc.repo import locked
@@ -66,3 +67,18 @@ def test_locked(mocker):
         mocker.call.method(repo, args, kwargs),
         mocker.call._reset(),
     ]
+
+
+def test_collect_optimization(tmp_dir, dvc, mocker):
+    (stage,) = tmp_dir.dvc_gen("foo", "foo text")
+
+    # Forget cached stages and graph and error out on collection
+    dvc._reset()
+    mocker.patch(
+        "dvc.repo.Repo.stages",
+        property(raiser(Exception("Should not collect"))),
+    )
+
+    # Should read stage directly instead of collecting the whole graph
+    dvc.collect(stage.path)
+    dvc.collect_granular(stage.path)
