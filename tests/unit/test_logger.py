@@ -24,10 +24,10 @@ colors = {
 
 @pytest.fixture()
 def dt(mocker):
-    with mocker.patch(
+    mocker.patch(
         "time.time", return_value=time.mktime(datetime(2020, 2, 2).timetuple())
-    ):
-        yield "2020-02-02 00:00:00,000"
+    )
+    yield "2020-02-02 00:00:00,000"
 
 
 class TestColorFormatter:
@@ -195,32 +195,32 @@ class TestColorFormatter:
     def test_progress_awareness(self, mocker, capsys, caplog):
         from dvc.progress import Tqdm
 
-        with mocker.patch("sys.stdout.isatty", return_value=True):
-            with Tqdm(total=100, desc="progress") as pbar:
-                pbar.update()
+        mocker.patch("sys.stdout.isatty", return_value=True)
+        with Tqdm(total=100, desc="progress") as pbar:
+            pbar.update()
 
-                # logging an invisible message should not break
-                # the progress bar output
-                with caplog.at_level(logging.INFO, logger="dvc"):
-                    debug_record = logging.LogRecord(
-                        name="dvc",
-                        level=logging.DEBUG,
-                        pathname=__name__,
-                        lineno=1,
-                        msg="debug",
-                        args=(),
-                        exc_info=None,
-                    )
+            # logging an invisible message should not break
+            # the progress bar output
+            with caplog.at_level(logging.INFO, logger="dvc"):
+                debug_record = logging.LogRecord(
+                    name="dvc",
+                    level=logging.DEBUG,
+                    pathname=__name__,
+                    lineno=1,
+                    msg="debug",
+                    args=(),
+                    exc_info=None,
+                )
 
-                    formatter.format(debug_record)
-                    captured = capsys.readouterr()
-                    assert captured.out == ""
+                formatter.format(debug_record)
+                captured = capsys.readouterr()
+                assert captured.out == ""
 
-                #  when the message is actually visible
-                with caplog.at_level(logging.INFO, logger="dvc"):
-                    logger.info("some info")
-                    captured = capsys.readouterr()
-                    assert captured.out == ""
+            #  when the message is actually visible
+            with caplog.at_level(logging.INFO, logger="dvc"):
+                logger.info("some info")
+                captured = capsys.readouterr()
+                assert captured.out == ""
 
 
 def test_handlers():

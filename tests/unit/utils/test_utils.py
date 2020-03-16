@@ -125,7 +125,6 @@ def test_relpath():
     ],
 )
 def test_resolve_output(inp, out, is_dir, expected, mocker):
-    with mocker.patch("os.path.isdir", return_value=is_dir):
-        result = resolve_output(inp, out)
-
+    mocker.patch("os.path.isdir", return_value=is_dir)
+    result = resolve_output(inp, out)
     assert result == expected
