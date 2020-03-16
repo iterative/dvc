@@ -4,7 +4,6 @@ import logging
 import os
 import yaml
 from shutil import which
-from subprocess import check_call
 from pathlib import Path
 
 from funcy import cached_property
@@ -321,8 +320,6 @@ class Git(Base):
         )
 
         conf_yaml = os.path.join(self.root_dir, ".pre-commit-config.yaml")
-        if not os.path.isfile(conf_yaml):
-            check_call(["pre-commit", "install"])
 
         existing_conf = {}
         if os.path.exists(conf_yaml):
