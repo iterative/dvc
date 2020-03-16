@@ -31,5 +31,5 @@ repos:
     language_version: python3
     stages:
     - post-checkout
-  repo: https://github.com/andrewhare/dvc
-  rev: WIP-pre-commit-tool
+  repo: https://github.com/iterative/dvc
+  rev: master
