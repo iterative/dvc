@@ -277,8 +277,8 @@ class Git(Base):
                 config = yaml.safe_load(fobj)
 
         entry = {
-            "repo": "https://github.com/andrewhare/dvc",  # FIXME
-            "rev": "WIP-pre-commit-tool",
+            "repo": "https://github.com/iterative/dvc",
+            "rev": "master",
             "hooks": [
                 {
                     "id": "dvc-pre-commit",
