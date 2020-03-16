@@ -22,29 +22,25 @@ def diff(self, a_rev="HEAD", b_rev=None):
         A dictionary of checksums addressed by relpaths collected from
         the current tree outputs.
 
-        Unpack directories to include their entries
-
         To help distinguish between a directory and a file output,
         the former one will come with a trailing slash in the path:
 
             directory: "data/"
             file:      "data"
         """
-        result = {}
 
-        for stage in self.stages:
-            for output in stage.outs:
-                if not output.is_dir_checksum:
-                    result.update({str(output): output.checksum})
-                    continue
+        def _to_path(output):
+            return (
+                str(output)
+                if not output.is_dir_checksum
+                else os.path.join(str(output), "")
+            )
 
-                result.update({os.path.join(str(output), ""): output.checksum})
-
-                for entry in output.dir_cache:
-                    path = str(output.path_info / entry["relpath"])
-                    result.update({path: entry["md5"]})
-
-        return result
+        return {
+            _to_path(output): output.checksum
+            for stage in self.stages
+            for output in stage.outs
+        }
 
     working_tree = self.tree
     a_tree = self.scm.get_tree(a_rev)
