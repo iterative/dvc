@@ -55,7 +55,8 @@ class ColorFormatter(logging.Formatter):
     }
 
     def format(self, record):
-        msg = record.msg.format(*record.args) if record.args else record.msg
+        record.message = record.getMessage()
+        msg = self.formatMessage(record)
 
         if record.levelname == "INFO":
             return msg
