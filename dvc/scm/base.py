@@ -114,7 +114,7 @@ class Base(object):
         """Returns a list of commits in the repo."""
         return []
 
-    def install(self, use_pre_commit_tool):
+    def install(self, use_pre_commit_tool=False):
         """
         Adds dvc commands to SCM hooks for the repo.
 

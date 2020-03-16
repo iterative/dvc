@@ -281,7 +281,7 @@ class Git(Base):
 
         os.chmod(hook, 0o777)
 
-    def install(self, use_pre_commit_tool):
+    def install(self, use_pre_commit_tool=False):
         self._verify_dvc_hooks()
 
         hook_path_fn = self._hook_path
