@@ -23,7 +23,7 @@ def pre_commit_tool_conf(pre_commit_path, push_path, post_checkout_path):
                         "name": "DVC Post Checkout",
                         "entry": post_checkout_path,
                         "language": "script",
-                        "stages": ["checkout"],
+                        "stages": ["post-checkout"],
                     },
                 ],
             }
