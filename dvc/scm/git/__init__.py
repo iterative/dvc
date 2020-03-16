@@ -324,10 +324,15 @@ class Git(Base):
         if not os.path.isfile(conf_yaml):
             check_call(["pre-commit", "install"])
 
-        with open(conf_yaml, "w+") as conf_yaml_f:
-            existing_conf = yaml.safe_load(conf_yaml_f)
-            conf = merge_pre_commit_tool_confs(existing_conf, conf)
-            yaml.dump(conf, conf_yaml_f)
+        existing_conf = {}
+        if os.path.exists(conf_yaml):
+            with open(conf_yaml, "r") as fobj:
+                existing_conf = yaml.safe_load(fobj)
+
+        conf = merge_pre_commit_tool_confs(existing_conf, conf)
+
+        with open(conf_yaml, "w+") as fobj:
+            yaml.dump(conf, fobj)
 
     def cleanup_ignores(self):
         for path in self.ignored_paths:

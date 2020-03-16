@@ -1,5 +1,23 @@
 repos:
 - hooks:
+  - id: black
+    language_version: python3
+  repo: https://github.com/ambv/black
+  rev: 19.10b0
+- hooks:
+  - id: flake8
+    language_version: python3
+  repo: https://gitlab.com/pycqa/flake8
+  rev: master
+- hooks:
+  - args:
+    - -i
+    - '2'
+    id: beautysh
+    language_version: python3
+  repo: https://github.com/lovesegfault/beautysh
+  rev: master
+- hooks:
   - entry: .dvc/tmp/hooks/pre-commit
     id: dvc-pre-commit
     language: script
