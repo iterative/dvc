@@ -2,6 +2,19 @@ import json
 import re
 
 from dvc.dependency.local import DependencyLOCAL
+from dvc.exceptions import DvcException
+
+
+class BadParamNameError(DvcException):
+    def __init__(self, param_name):
+        msg = "Parameter name '{}' is not allowed".format(param_name)
+        super().__init__(msg)
+
+
+class BadParamFileError(DvcException):
+    def __init__(self, path):
+        msg = "Parameter file '{}' could not be read".format(path)
+        super().__init__(msg)
 
 
 class DependencyPARAM(DependencyLOCAL):
@@ -19,10 +32,10 @@ class DependencyPARAM(DependencyLOCAL):
         path, _, param_name = path_and_param_name.rpartition(self.DELIMITER)
         path = path or self.DEFAULT_PARAMS_FILE
         if not self._is_valid_name(param_name):
-            raise NotImplementedError()  # TODO: raise BadParamNameError() ?
+            raise BadParamNameError(param_name)
         super().__init__(stage, path, *args, **kwargs)
         self.param_name = param_name
-        self.param_value = self._parse()[param_name]
+        self.param_value = None
 
     def __str__(self):
         path = super().__str__()
@@ -32,9 +45,9 @@ class DependencyPARAM(DependencyLOCAL):
     def unique_identifier(self):
         return self.param_name
 
-    # def save(self):
-    #     # TODO: Do we need to do anything different regarding `save()`?
-    #     super().save()
+    def save(self):
+        self.param_value = self._parse()[self.param_name]
+        super().save()  # TODO: Not sure if this is needed
 
     def dumpd(self):
         return {
@@ -62,6 +75,5 @@ class DependencyPARAM(DependencyLOCAL):
                 try:
                     self._params_cache = json.load(fp)
                 except json.JSONDecodeError:
-                    # TODO raise BadParamFileError()?
-                    raise NotImplementedError()
+                    raise BadParamFileError(path)
             return self._params_cache
