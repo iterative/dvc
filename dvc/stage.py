@@ -862,7 +862,7 @@ class Stage(object):
         from dvc.exceptions import ArgumentDuplicationError
         from collections import Counter
 
-        path_counts = Counter(edge.unique_identifier for edge in self.deps + self.outs)
+        path_counts = Counter(edge.path_info for edge in self.deps + self.outs)
 
         for path, occurrence in path_counts.items():
             if occurrence > 1:
