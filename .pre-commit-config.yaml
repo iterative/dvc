@@ -1,17 +1,21 @@
 repos:
--   repo: https://github.com/ambv/black
-    rev: 19.10b0
-    hooks:
-    - id: black
-      language_version: python3
--   repo: https://gitlab.com/pycqa/flake8
-    rev: master
-    hooks:
-    - id: flake8
-      language_version: python3
--   repo: https://github.com/lovesegfault/beautysh
-    rev: master
-    hooks:
-    - id: beautysh
-      language_version: python3
-      args: [-i, '2']  # 2-space indentaion
+- hooks:
+  - entry: .dvc/tmp/hooks/pre-commit
+    id: dvc-pre-commit
+    language: script
+    name: DVC Pre Commit
+    stages:
+    - commit
+  - entry: .dvc/tmp/hooks/push
+    id: dvc-pre-push
+    language: script
+    name: DVC Pre Push
+    stages:
+    - push
+  - entry: .dvc/tmp/hooks/post-checkout
+    id: dvc-post-checkout
+    language: script
+    name: DVC Post Checkout
+    stages:
+    - post-checkout
+  repo: local
