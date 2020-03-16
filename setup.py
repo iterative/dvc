@@ -8,7 +8,10 @@ from setuptools.command.build_py import build_py as _build_py
 # Prevents pkg_resources import in entry point script,
 # see https://github.com/ninjaaron/fast-entry_points.
 # This saves about 200 ms on startup time for non-wheel installs.
-import fastentrypoints  # noqa: F401
+try:
+    import fastentrypoints  # noqa: F401
+except ImportError:
+    pass  # not able to import when installing through pre-commit
 
 
 # Read package meta-data from version.py

@@ -281,21 +281,18 @@ class Git(Base):
             "rev": "WIP-pre-commit-tool",
             "hooks": [
                 {
-                    "id": "dvc",
+                    "id": "dvc-pre-commit",
                     "language_version": "python3",
-                    "args": ["pre-commit"],
                     "stages": ["commit"],
                 },
                 {
-                    "id": "dvc",
+                    "id": "dvc-pre-push",
                     "language_version": "python3",
-                    "args": ["pre-push"],
                     "stages": ["push"],
                 },
                 {
-                    "id": "dvc",
+                    "id": "dvc-post-checkout",
                     "language_version": "python3",
-                    "args": ["post-checkout"],
                     "stages": ["post-checkout"],
                     "always_run": True,
                 },

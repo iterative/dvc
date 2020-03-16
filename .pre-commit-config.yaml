@@ -18,22 +18,16 @@ repos:
   repo: https://github.com/lovesegfault/beautysh
   rev: master
 - hooks:
-  - args:
-    - pre-commit
-    id: dvc
+  - id: dvc-pre-commit
     language_version: python3
     stages:
     - commit
-  - args:
-    - pre-push
-    id: dvc
+  - id: dvc-pre-push
     language_version: python3
     stages:
     - push
   - always_run: true
-    args:
-    - post-checkout
-    id: dvc
+    id: dvc-post-checkout
     language_version: python3
     stages:
     - post-checkout

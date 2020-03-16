@@ -1,7 +1,6 @@
 import logging
 import os
 
-from dvc.utils import format_link
 from dvc.command.base import CmdBaseNoRepo, fix_subparsers
 from dvc.exceptions import NotDvcRepoError
 
@@ -30,8 +29,15 @@ class CmdPreCommit(CmdHookBase):
 
 class CmdPostCheckout(CmdHookBase):
     def run(self):
+        # when we are running from pre-commit tool, it doesn't provide CLI
+        # flags, but instead provides respective env vars that we could use.
+        flag = os.environ.get("PRE_COMMIT_CHECKOUT_TYPE")
+        if flag is None and len(self.args.args) >= 3:
+            # see https://git-scm.com/docs/githooks#_post_checkout
+            flag = self.args.args[2]
+
         # checking out some reference and not specific file.
-        if self.args.flag != "1":
+        if flag != "1":
             return 0
 
         # make sure we are not in the middle of a rebase/merge, so we
@@ -76,6 +82,9 @@ def add_parser(subparsers, parent_parser):
         description=PRE_COMMIT_HELP,
         help=PRE_COMMIT_HELP,
     )
+    pre_commit_parser.add_argument(
+        "args", nargs="*", help="Arguments passed by GIT or pre-commit tool.",
+    )
     pre_commit_parser.set_defaults(func=CmdPreCommit)
 
     POST_CHECKOUT_HELP = "Run post-checkout GIT hook."
@@ -86,22 +95,7 @@ def add_parser(subparsers, parent_parser):
         help=POST_CHECKOUT_HELP,
     )
     post_checkout_parser.add_argument(
-        "old_ref",
-        help="Old ref provided by GIT (see {})".format(
-            format_link("https://git-scm.com/docs/githooks#_post_checkout")
-        ),
-    )
-    post_checkout_parser.add_argument(
-        "new_ref",
-        help="New ref provided by GIT (see {})".format(
-            format_link("https://git-scm.com/docs/githooks#_post_checkout")
-        ),
-    )
-    post_checkout_parser.add_argument(
-        "flag",
-        help="Flag provided by GIT (see {})".format(
-            format_link("https://git-scm.com/docs/githooks#_post_checkout")
-        ),
+        "args", nargs="*", help="Arguments passed by GIT or pre-commit tool.",
     )
     post_checkout_parser.set_defaults(func=CmdPostCheckout)
 
@@ -113,15 +107,6 @@ def add_parser(subparsers, parent_parser):
         help=PRE_PUSH_HELP,
     )
     pre_push_parser.add_argument(
-        "name",
-        help="Name provided by GIT (see {})".format(
-            format_link("https://git-scm.com/docs/githooks#_pre_push")
-        ),
-    )
-    pre_push_parser.add_argument(
-        "location",
-        help="Location provided by GIT (see {})".format(
-            format_link("https://git-scm.com/docs/githooks#_pre_push")
-        ),
+        "args", nargs="*", help="Arguments passed by GIT or pre-commit tool.",
     )
     pre_push_parser.set_defaults(func=CmdPrePush)
