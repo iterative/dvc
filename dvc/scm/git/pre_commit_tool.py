@@ -24,6 +24,7 @@ def pre_commit_tool_conf(pre_commit_path, push_path, post_checkout_path):
                         "entry": post_checkout_path,
                         "language": "script",
                         "stages": ["post-checkout"],
+                        "always_run": True,
                     },
                 ],
             }
