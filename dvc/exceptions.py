@@ -256,10 +256,12 @@ class UploadError(DvcException):
 
 
 class CheckoutError(DvcException):
-    def __init__(self, target_infos):
+    def __init__(self, target_infos, stats=None):
+        self.target_infos = target_infos
+        self.stats = stats
         targets = [str(t) for t in target_infos]
         m = (
-            "Checkout failed for following targets:\n {}\nDid you "
+            "Checkout failed for following targets:\n{}\nDid you "
             "forget to fetch?".format("\n".join(targets))
         )
         super().__init__(m)

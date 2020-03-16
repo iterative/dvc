@@ -15,7 +15,7 @@ from voluptuous import Any, Schema, MultipleInvalid
 import dvc.dependency as dependency
 import dvc.output as output
 import dvc.prompt as prompt
-from dvc.exceptions import DvcException
+from dvc.exceptions import CheckoutError, DvcException
 from dvc.utils import dict_md5
 from dvc.utils import fix_env
 from dvc.utils import relpath
@@ -982,18 +982,25 @@ class Stage(object):
         relink=False,
         filter_info=None,
     ):
-        failed_checkouts = []
+        checkouts = {"failed": [], "added": [], "modified": []}
         for out in self._filter_outs(filter_info):
-            failed = out.checkout(
-                force=force,
-                tag=self.tag,
-                progress_callback=progress_callback,
-                relink=relink,
-                filter_info=filter_info,
-            )
-            if failed:
-                failed_checkouts.append(failed)
-        return failed_checkouts
+            try:
+                result = out.checkout(
+                    force=force,
+                    tag=self.tag,
+                    progress_callback=progress_callback,
+                    relink=relink,
+                    filter_info=filter_info,
+                )
+                added, modified = result or (None, None)
+                if modified:
+                    checkouts["modified"].append(out.path_info)
+                elif added:
+                    checkouts["added"].append(out.path_info)
+            except CheckoutError as exc:
+                checkouts["failed"].extend(exc.target_infos)
+
+        return checkouts
 
     @staticmethod
     def _status(entries):

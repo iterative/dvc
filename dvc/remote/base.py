@@ -14,6 +14,7 @@ from shortuuid import uuid
 
 import dvc.prompt as prompt
 from dvc.exceptions import (
+    CheckoutError,
     DvcException,
     ConfirmRemoveError,
     DvcIgnoreInCollectedDirError,
@@ -851,19 +852,23 @@ class RemoteBASE(object):
         self.remove(path_info)
 
     def _checkout_file(
-        self, path_info, checksum, force, progress_callback=None
+        self, path_info, checksum, force, progress_callback=None, relink=False
     ):
         """The file is changed we need to checkout a new copy"""
+        added, modified = True, False
         cache_info = self.checksum_to_path_info(checksum)
         if self.exists(path_info):
             logger.debug("data '{}' will be replaced.", path_info)
             self.safe_remove(path_info, force=force)
+            added, modified = False, True
 
         self.link(cache_info, path_info)
         self.state.save_link(path_info)
         self.state.save(path_info, checksum)
         if progress_callback:
             progress_callback(str(path_info))
+
+        return added, modified and not relink
 
     def makedirs(self, path_info):
         """Optional: Implement only if the remote needs to create
@@ -879,9 +884,11 @@ class RemoteBASE(object):
         relink=False,
         filter_info=None,
     ):
+        added, modified = False, False
         # Create dir separately so that dir is created
         # even if there are no files in it
         if not self.exists(path_info):
+            added = True
             self.makedirs(path_info)
 
         dir_info = self.get_dir_cache(checksum)
@@ -899,16 +906,23 @@ class RemoteBASE(object):
 
             entry_checksum_info = {self.PARAM_CHECKSUM: entry_checksum}
             if relink or self.changed(entry_info, entry_checksum_info):
+                modified = True
                 self.safe_remove(entry_info, force=force)
                 self.link(entry_cache_info, entry_info)
                 self.state.save(entry_info, entry_checksum)
             if progress_callback:
                 progress_callback(str(entry_info))
 
-        self._remove_redundant_files(path_info, dir_info, force)
+        modified = (
+            self._remove_redundant_files(path_info, dir_info, force)
+            or modified
+        )
 
         self.state.save_link(path_info)
         self.state.save(path_info, checksum)
+
+        # relink is not modified, assume it as nochange
+        return added, not added and modified and not relink
 
     def _remove_redundant_files(self, path_info, dir_info, force):
         existing_files = set(self.walk_files(path_info))
@@ -916,9 +930,11 @@ class RemoteBASE(object):
         needed_files = {
             path_info / entry[self.PARAM_RELPATH] for entry in dir_info
         }
-
-        for path in existing_files - needed_files:
+        redundant_files = existing_files - needed_files
+        for path in redundant_files:
             self.safe_remove(path, force)
+
+        return bool(redundant_files)
 
     def checkout(
         self,
@@ -966,12 +982,14 @@ class RemoteBASE(object):
                         self.path_info, checksum, filter_info
                     ),
                 )
-            return failed
+            if failed:
+                raise CheckoutError([failed])
+            return
 
         logger.debug("Checking out '{}' with cache '{}'.", path_info, checksum)
 
-        self._checkout(
-            path_info, checksum, force, progress_callback, relink, filter_info
+        return self._checkout(
+            path_info, checksum, force, progress_callback, relink, filter_info,
         )
 
     def _checkout(
@@ -985,8 +1003,9 @@ class RemoteBASE(object):
     ):
         if not self.is_dir_checksum(checksum):
             return self._checkout_file(
-                path_info, checksum, force, progress_callback=progress_callback
+                path_info, checksum, force, progress_callback, relink
             )
+
         return self._checkout_dir(
             path_info, checksum, force, progress_callback, relink, filter_info
         )

@@ -1,4 +1,5 @@
 import mock
+import os
 
 from dvc.path_info import PathInfo
 from dvc.state import State
@@ -69,16 +70,33 @@ def test_get_state_record_for_inode(get_inode_mock, tmp_dir, dvc):
         assert ret is not None
 
 
-def test_remove_unused_links(tmp_dir, dvc):
-    assert len(tmp_dir.dvc_gen("foo", "foo_content")) == 1
-    assert len(tmp_dir.dvc_gen("bar", "bar_content")) == 1
+def test_remove_links(tmp_dir, dvc):
+    tmp_dir.dvc_gen({"foo": "foo_content", "bar": "bar_content"})
 
-    cmd_count_links = "SELECT count(*) FROM {}".format(State.LINK_STATE_TABLE)
     with dvc.state:
+        cmd_count_links = "SELECT count(*) FROM {}".format(
+            State.LINK_STATE_TABLE
+        )
         result = dvc.state._execute(cmd_count_links).fetchone()[0]
         assert result == 2
 
-        dvc.state.remove_unused_links([])
+        dvc.state.remove_links(["foo", "bar"])
 
         result = dvc.state._execute(cmd_count_links).fetchone()[0]
         assert result == 0
+
+
+def test_get_unused_links(tmp_dir, dvc):
+    tmp_dir.dvc_gen({"foo": "foo_content", "bar": "bar_content"})
+
+    with dvc.state:
+        links = [os.path.join(dvc.root_dir, link) for link in ["foo", "bar"]]
+        assert set(dvc.state.get_unused_links([])) == {"foo", "bar"}
+        assert set(dvc.state.get_unused_links(links[:1])) == {"bar"}
+        assert set(dvc.state.get_unused_links(links)) == set()
+        assert set(
+            dvc.state.get_unused_links(
+                used=links[:1]
+                + [os.path.join(dvc.root_dir, "not-existing-file")]
+            )
+        ) == {"bar"}
