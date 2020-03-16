@@ -2,6 +2,7 @@
 
 import logging
 import os
+import yaml
 
 from funcy import cached_property
 from pathspec.patterns import GitWildMatchPattern
@@ -253,43 +254,57 @@ class Git(Base):
     def list_all_commits(self):
         return [c.hexsha for c in self.repo.iter_commits("--all")]
 
-    def _install_hook(self, name, preconditions, cmd):
-        # only run in dvc repo
-        in_dvc_repo = '[ -n "$(git ls-files --full-name .dvc)" ]'
-
-        command = "if {}; then exec dvc {}; fi".format(
-            " && ".join([in_dvc_repo] + preconditions), cmd
-        )
-
+    def _install_hook(self, name):
         hook = self._hook_path(name)
-
-        if os.path.isfile(hook):
-            with open(hook, "r+") as fobj:
-                if command not in fobj.read():
-                    fobj.write("{command}\n".format(command=command))
-        else:
-            with open(hook, "w+") as fobj:
-                fobj.write("#!/bin/sh\n" "{command}\n".format(command=command))
+        with open(hook, "w+") as fobj:
+            fobj.write("#!/bin/sh\nexec dvc git-hook {} $@\n".format(name))
 
         os.chmod(hook, 0o777)
 
-    def install(self):
-        self._verify_dvc_hooks()
+    def install(self, use_pre_commit_tool=False):
+        if not use_pre_commit_tool:
+            self._verify_dvc_hooks()
+            self._install_hook("post-checkout")
+            self._install_hook("pre-commit")
+            self._install_hook("pre-push")
+            return
 
-        self._install_hook(
-            "post-checkout",
-            [
-                # checking out some reference and not specific file.
-                '[ "$3" = "1" ]',
-                # make sure we are not in the middle of a rebase/merge, so we
-                # don't accidentally break it with an unsuccessful checkout.
-                # Note that git hooks are always running in repo root.
-                "[ ! -d .git/rebase-merge ]",
+        config_path = os.path.join(self.root_dir, ".pre-commit-config.yaml")
+
+        config = {}
+        if os.path.exists(config_path):
+            with open(config_path, "r") as fobj:
+                config = yaml.safe_load(fobj)
+
+        entry = {
+            "repo": "https://github.com/andrewhare/dvc",  # FIXME
+            "rev": "WIP-pre-commit-tool",
+            "hooks": [
+                {
+                    "id": "dvc-pre-commit",
+                    "language_version": "python3",
+                    "stages": ["commit"],
+                },
+                {
+                    "id": "dvc-pre-push",
+                    "language_version": "python3",
+                    "stages": ["push"],
+                },
+                {
+                    "id": "dvc-post-checkout",
+                    "language_version": "python3",
+                    "stages": ["post-checkout"],
+                    "always_run": True,
+                },
             ],
-            "checkout",
-        )
-        self._install_hook("pre-commit", [], "status")
-        self._install_hook("pre-push", [], "push")
+        }
+
+        if entry in config["repos"]:
+            return
+
+        config["repos"].append(entry)
+        with open(config_path, "w+") as fobj:
+            yaml.dump(config, fobj)
 
     def cleanup_ignores(self):
         for path in self.ignored_paths:

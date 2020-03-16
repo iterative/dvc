@@ -1,17 +1,35 @@
 repos:
--   repo: https://github.com/ambv/black
-    rev: 19.10b0
-    hooks:
-    - id: black
-      language_version: python3
--   repo: https://gitlab.com/pycqa/flake8
-    rev: master
-    hooks:
-    - id: flake8
-      language_version: python3
--   repo: https://github.com/lovesegfault/beautysh
-    rev: master
-    hooks:
-    - id: beautysh
-      language_version: python3
-      args: [-i, '2']  # 2-space indentaion
+- hooks:
+  - id: black
+    language_version: python3
+  repo: https://github.com/ambv/black
+  rev: 19.10b0
+- hooks:
+  - id: flake8
+    language_version: python3
+  repo: https://gitlab.com/pycqa/flake8
+  rev: master
+- hooks:
+  - args:
+    - -i
+    - '2'
+    id: beautysh
+    language_version: python3
+  repo: https://github.com/lovesegfault/beautysh
+  rev: master
+- hooks:
+  - id: dvc-pre-commit
+    language_version: python3
+    stages:
+    - commit
+  - id: dvc-pre-push
+    language_version: python3
+    stages:
+    - push
+  - always_run: true
+    id: dvc-post-checkout
+    language_version: python3
+    stages:
+    - post-checkout
+  repo: https://github.com/andrewhare/dvc
+  rev: WIP-pre-commit-tool
