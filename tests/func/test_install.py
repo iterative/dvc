@@ -19,9 +19,9 @@ class TestInstall(object):
         scm.install()
 
         hooks_with_commands = [
-            ("post-checkout", "exec dvc checkout"),
-            ("pre-commit", "exec dvc status"),
-            ("pre-push", "exec dvc push"),
+            ("post-checkout", "exec dvc git-hook post-checkout"),
+            ("pre-commit", "exec dvc git-hook pre-commit"),
+            ("pre-push", "exec dvc git-hook pre-push"),
         ]
 
         for fname, command in hooks_with_commands:

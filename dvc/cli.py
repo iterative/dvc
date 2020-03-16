@@ -34,6 +34,7 @@ from .command import (
     unprotect,
     update,
     version,
+    git_hook,
 )
 from .command.base import fix_subparsers
 from .exceptions import DvcParserError
@@ -72,6 +73,7 @@ COMMANDS = [
     diff,
     version,
     update,
+    git_hook,
 ]
 
 

@@ -3,18 +3,13 @@
 import logging
 import os
 import yaml
-from shutil import which
-from pathlib import Path
 
 from funcy import cached_property
 from pathspec.patterns import GitWildMatchPattern
 
-from dvc.exceptions import DvcException
 from dvc.exceptions import GitHookAlreadyExistsError
 from dvc.scm.base import Base
 from dvc.scm.base import CloneError, FileNotInRepoError, RevError, SCMError
-from dvc.scm.git.pre_commit_tool import pre_commit_tool_conf
-from dvc.scm.git.pre_commit_tool import merge_pre_commit_tool_confs
 from dvc.scm.git.tree import GitTree
 from dvc.utils import fix_env, is_binary, relpath
 from dvc.utils.fs import path_isin
@@ -259,77 +254,60 @@ class Git(Base):
     def list_all_commits(self):
         return [c.hexsha for c in self.repo.iter_commits("--all")]
 
-    @staticmethod
-    def _install_hook(name, preconditions, cmd, hook_path_fn):
-        # only run in dvc repo
-        in_dvc_repo = '[ -n "$(git ls-files --full-name .dvc)" ]'
-
-        command = "if {}; then exec dvc {}; fi".format(
-            " && ".join([in_dvc_repo] + preconditions), cmd
-        )
-
-        hook = hook_path_fn(name)
-
-        if os.path.isfile(hook):
-            with open(hook, "r+") as fobj:
-                if command not in fobj.read():
-                    fobj.write("{command}\n".format(command=command))
-        else:
-            with open(hook, "w+") as fobj:
-                fobj.write("#!/bin/sh\n" "{command}\n".format(command=command))
+    def _install_hook(self, name):
+        hook = self._hook_path(name)
+        with open(hook, "w+") as fobj:
+            fobj.write("#!/bin/sh\nexec dvc git-hook {} $@\n".format(name))
 
         os.chmod(hook, 0o777)
 
     def install(self, use_pre_commit_tool=False):
-        hook_path_fn = self._hook_path
-
-        if use_pre_commit_tool:
-            hook_path_fn = self._pre_commit_tool_hook_path
-            path = Path(self._pre_commit_tool_hooks_home())
-            path.mkdir(parents=True, exist_ok=True)
-        else:
+        if not use_pre_commit_tool:
             self._verify_dvc_hooks()
+            self._install_hook("post-checkout")
+            self._install_hook("pre-commit")
+            self._install_hook("pre-push")
+            return
 
-        self._install_hook(
-            "post-checkout",
-            [
-                # checking out some reference and not specific file.
-                '[ "$3" = "1" ]',
-                # make sure we are not in the middle of a rebase/merge, so we
-                # don't accidentally break it with an unsuccessful checkout.
-                # Note that git hooks are always running in repo root.
-                "[ ! -d .git/rebase-merge ]",
+        config_path = os.path.join(self.root_dir, ".pre-commit-config.yaml")
+
+        config = {}
+        if os.path.exists(config_path):
+            with open(config_path, "r") as fobj:
+                config = yaml.safe_load(fobj)
+
+        entry = {
+            "repo": "https://github.com/andrewhare/dvc",  # FIXME
+            "rev": "WIP-pre-commit-tool",
+            "hooks": [
+                {
+                    "id": "dvc",
+                    "language_version": "python3",
+                    "args": ["pre-commit"],
+                    "stages": ["commit"],
+                },
+                {
+                    "id": "dvc",
+                    "language_version": "python3",
+                    "args": ["pre-push"],
+                    "stages": ["push"],
+                },
+                {
+                    "id": "dvc",
+                    "language_version": "python3",
+                    "args": ["post-checkout"],
+                    "stages": ["post-checkout"],
+                    "always_run": True,
+                },
             ],
-            "checkout",
-            hook_path_fn,
-        )
-        self._install_hook("pre-commit", [], "status", hook_path_fn)
-        self._install_hook("pre-push", [], "push", hook_path_fn)
+        }
 
-        if use_pre_commit_tool:
-            self._integrate_pre_commit_tool()
+        if entry in config["repos"]:
+            return
 
-    def _integrate_pre_commit_tool(self):
-        if not which("pre-commit"):
-            raise DvcException("pre-commit is not installed")
-
-        conf = pre_commit_tool_conf(
-            self._pre_commit_tool_hook_path("pre-commit"),
-            self._pre_commit_tool_hook_path("pre-push"),
-            self._pre_commit_tool_hook_path("post-checkout"),
-        )
-
-        conf_yaml = os.path.join(self.root_dir, ".pre-commit-config.yaml")
-
-        existing_conf = {}
-        if os.path.exists(conf_yaml):
-            with open(conf_yaml, "r") as fobj:
-                existing_conf = yaml.safe_load(fobj)
-
-        conf = merge_pre_commit_tool_confs(existing_conf, conf)
-
-        with open(conf_yaml, "w+") as fobj:
-            yaml.dump(conf, fobj)
+        config["repos"].append(entry)
+        with open(config_path, "w+") as fobj:
+            yaml.dump(config, fobj)
 
     def cleanup_ignores(self):
         for path in self.ignored_paths:
@@ -412,15 +390,8 @@ class Git(Base):
     def _hooks_home(self):
         return os.path.join(self.root_dir, self.GIT_DIR, "hooks")
 
-    @staticmethod
-    def _pre_commit_tool_hooks_home():
-        return os.path.join(".dvc", "tmp", "hooks")
-
     def _hook_path(self, name):
         return os.path.join(self._hooks_home, name)
-
-    def _pre_commit_tool_hook_path(self, name):
-        return os.path.join(self._pre_commit_tool_hooks_home(), name)
 
     def _verify_hook(self, name):
         if os.path.exists(self._hook_path(name)):
