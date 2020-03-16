@@ -1,4 +1,4 @@
-def pre_commit_tool_conf(pre_commit_path, push_path, post_checkout_path):
+def pre_commit_tool_conf(pre_commit_path, pre_push_path, post_checkout_path):
     return {
         "repos": [
             {
@@ -14,7 +14,7 @@ def pre_commit_tool_conf(pre_commit_path, push_path, post_checkout_path):
                     {
                         "id": "dvc-pre-push",
                         "name": "DVC Pre Push",
-                        "entry": push_path,
+                        "entry": pre_push_path,
                         "language": "script",
                         "stages": ["push"],
                     },

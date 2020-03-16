@@ -281,14 +281,14 @@ class Git(Base):
         os.chmod(hook, 0o777)
 
     def install(self, use_pre_commit_tool=False):
-        self._verify_dvc_hooks()
-
         hook_path_fn = self._hook_path
 
         if use_pre_commit_tool:
             hook_path_fn = self._pre_commit_tool_hook_path
             path = Path(self._pre_commit_tool_hooks_home())
             path.mkdir(parents=True, exist_ok=True)
+        else:
+            self._verify_dvc_hooks()
 
         self._install_hook(
             "post-checkout",
@@ -315,7 +315,7 @@ class Git(Base):
 
         conf = pre_commit_tool_conf(
             self._pre_commit_tool_hook_path("pre-commit"),
-            self._pre_commit_tool_hook_path("push"),
+            self._pre_commit_tool_hook_path("pre-push"),
             self._pre_commit_tool_hook_path("post-checkout"),
         )
 

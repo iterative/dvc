@@ -24,7 +24,7 @@ repos:
     name: DVC Pre Commit
     stages:
     - commit
-  - entry: .dvc/tmp/hooks/push
+  - entry: .dvc/tmp/hooks/pre-push
     id: dvc-pre-push
     language: script
     name: DVC Pre Push
