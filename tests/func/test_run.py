@@ -35,7 +35,7 @@ class TestRun(TestDvc):
     def test(self):
         cmd = "python {} {} {}".format(self.CODE, self.FOO, "out")
         deps = [self.FOO, self.CODE]
-        params = ["foo:some_param"]
+        params = ["par.json:someparam"]
         outs = [os.path.join(self.dvc.root_dir, "out")]
         outs_no_cache = []
         fname = "out.dvc"
