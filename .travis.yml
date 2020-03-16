@@ -76,9 +76,12 @@ jobs:
     language: shell
     install:
     script: ./scripts/build_windows.cmd
+    env:
+      - PYTHON_VERSION=3.7.5
+      - PATH=/c/Python37:/c/Python37/Scripts:$PATH
   - name: "Linux pkgs"
     language: python
-    python: 3.8
+    python: 3.7
     before_install:
     install:
     script: ./scripts/build_posix.sh
