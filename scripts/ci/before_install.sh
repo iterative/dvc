@@ -44,8 +44,8 @@ if [[ "$TRAVIS_BUILD_STAGE_NAME" == "Test" ]]; then
 fi
 
 if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
-  $scriptdir/retry.sh choco install python --version 3.7.5
-  echo 'PATH="/c/Python37:/c/Python37/Scripts:$PATH"' >>env.sh
+  $scriptdir/retry.sh choco install python --version $PYTHON_VERSION
+  echo "PATH='$PATH'" >>env.sh
 elif [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
   ln -s -f /usr/local/bin/python3 /usr/local/bin/python
   ln -s -f /usr/local/bin/pip3 /usr/local/bin/pip

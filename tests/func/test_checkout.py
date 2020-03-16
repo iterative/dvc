@@ -441,10 +441,10 @@ class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):
         self.assertEqual(ret, 0)
 
         self.assertTrue(System.is_symlink(self.FOO))
-        old_foo_link = os.readlink(self.FOO)
+        old_foo_link = os.path.realpath(self.FOO)
 
         self.assertTrue(System.is_symlink(self.DATA))
-        old_data_link = os.readlink(self.DATA)
+        old_data_link = os.path.realpath(self.DATA)
 
         old_cache_dir = self.dvc.cache.local.cache_dir
         new_cache_dir = old_cache_dir + "_new"
@@ -457,10 +457,10 @@ class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):
         self.assertEqual(ret, 0)
 
         self.assertTrue(System.is_symlink(self.FOO))
-        new_foo_link = os.readlink(self.FOO)
+        new_foo_link = os.path.realpath(self.FOO)
 
         self.assertTrue(System.is_symlink(self.DATA))
-        new_data_link = os.readlink(self.DATA)
+        new_data_link = os.path.realpath(self.DATA)
 
         self.assertEqual(
             relpath(old_foo_link, old_cache_dir),
