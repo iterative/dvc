@@ -7,7 +7,7 @@ from dvc.exceptions import DvcException
 
 class BadParamNameError(DvcException):
     def __init__(self, param_name):
-        msg = "Parameter name '{}' is not allowed".format(param_name)
+        msg = "Parameter name '{}' is not valid".format(param_name)
         super().__init__(msg)
 
 
@@ -17,54 +17,56 @@ class BadParamFileError(DvcException):
         super().__init__(msg)
 
 
-class DependencyPARAM(DependencyLOCAL):
+class DependencyPARAMS(DependencyLOCAL):
     # SCHEMA:
     #   params:
     #   - <parameter name>: <parameter value>
+    #   - <parameter name>: <parameter value>
     PARAM_PARAMS = "params"
-    # TODO: Combine parameter deps across multiple param deps
     PARAM_SCHEMA = {PARAM_PARAMS: {str: str}}
-    DELIMITER = ':'
+    FILE_DELIMITER = ':'
+    PARAM_DELIMITER = ','
     DEFAULT_PARAMS_FILE = 'PARAMS.json'
-    PARAM_NAME_REGEX = re.compile(r'^\w+$')
 
-    def __init__(self, stage, path_and_param_name, *args, **kwargs):
-        path, _, param_name = path_and_param_name.rpartition(self.DELIMITER)
+    REGEX_SUBNAME = r'\w+'
+    REGEX_NAME = r'{sub}(\.{sub})*'.format(sub=REGEX_SUBNAME)
+    REGEX_MULTI_PARAMS = r'^{param}(,{param})*$'.format(param=REGEX_NAME)
+    REGEX_COMPILED = re.compile(REGEX_MULTI_PARAMS)
+
+    def __init__(self, stage, input_str, *args, **kwargs):
+        path, _, param_names = input_str.rpartition(self.FILE_DELIMITER)
         path = path or self.DEFAULT_PARAMS_FILE
-        if not self._is_valid_name(param_name):
-            raise BadParamNameError(param_name)
+        if not self._is_valid_name(param_names):
+            raise BadParamNameError(param_names)
         super().__init__(stage, path, *args, **kwargs)
-        self.param_name = param_name
-        self.param_value = None
+        self.param_names = sorted(param_names.split(self.PARAM_DELIMITER))
+        self.param_values = {}
 
     def __str__(self):
         path = super().__str__()
-        return path + ':' + self.param_name
-
-    @property
-    def unique_identifier(self):
-        return self.param_name
+        return path + ':' + self.PARAM_DELIMITER.join(self.param_names)
 
     def save(self):
-        self.param_value = self._parse()[self.param_name]
-        super().save()  # TODO: Not sure if this is needed
+        super().save()
+        params_in_file = self._parse()
+        self.param_values = {k: params_in_file[k] for k in self.param_names}
 
     def dumpd(self):
         return {
             self.PARAM_PATH: self.def_path,
-            self.PARAM_PARAMS: {self.param_name: self.param_value},
+            self.PARAM_PARAMS: self.param_values,
         }
 
     @classmethod
     def _is_valid_name(cls, param_name):
-        return cls.PARAM_NAME_REGEX.match(param_name)
+        return cls.REGEX_COMPILED.match(param_name)
 
     @property
     def exists(self):
         file_exists = super().exists
-        params = self._parse()
-        param_exists = self.param_name in params
-        return file_exists and param_exists
+        params_in_file = self._parse()
+        params_exists = all([p in params_in_file for p in self.param_names])
+        return file_exists and params_exists
 
     def _parse(self):
         try:

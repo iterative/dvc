@@ -8,7 +8,7 @@ from dvc.dependency.https import DependencyHTTPS
 from dvc.dependency.local import DependencyLOCAL
 from dvc.dependency.s3 import DependencyS3
 from dvc.dependency.ssh import DependencySSH
-from dvc.dependency.param import DependencyPARAM
+from dvc.dependency.param import DependencyPARAMS
 from dvc.output.base import OutputBase
 from dvc.remote import Remote
 from dvc.scheme import Schemes
@@ -44,7 +44,7 @@ SCHEMA = output.SCHEMA.copy()
 del SCHEMA[OutputBase.PARAM_CACHE]
 del SCHEMA[OutputBase.PARAM_METRIC]
 SCHEMA.update(DependencyREPO.REPO_SCHEMA)
-SCHEMA.update(DependencyPARAM.PARAM_SCHEMA)
+SCHEMA.update(DependencyPARAMS.PARAM_SCHEMA)
 
 
 def _get_by_path(stage, path, info):
@@ -77,7 +77,7 @@ def loads_from(stage, s_list, erepo=None, is_param=False):
     for s in s_list:
         info = {DependencyREPO.PARAM_REPO: erepo} if erepo else {}
         if is_param:
-            dep_obj = DependencyPARAM(stage, s, info)
+            dep_obj = DependencyPARAMS(stage, s, info)
         else:
             dep_obj = _get_by_path(stage, s, info)
         ret.append(dep_obj)

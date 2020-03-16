@@ -159,10 +159,6 @@ class OutputBase(object):
     def exists(self):
         return self.remote.exists(self.path_info)
 
-    @property
-    def unique_identifier(self):
-        return self.path_info
-
     def changed_checksum(self):
         return self.checksum != self.remote.get_checksum(self.path_info)
 
