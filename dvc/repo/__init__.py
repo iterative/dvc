@@ -10,6 +10,7 @@ from funcy import cached_property, cat, first
 from dvc.config import Config
 from dvc.exceptions import (
     FileMissingError,
+    IsADirectoryError,
     NotDvcRepoError,
     OutputNotFoundError,
 )
@@ -476,7 +477,7 @@ class Repo(object):
 
     def _open_cached(self, out, remote=None, mode="r", encoding=None):
         if out.isdir():
-            raise ValueError("Can't open a dir")
+            raise IsADirectoryError("Can't open a dir")
 
         cache_file = self.cache.local.checksum_to_path_info(out.checksum)
         cache_file = fspath_py35(cache_file)

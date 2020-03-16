@@ -325,3 +325,7 @@ class RemoteCacheRequiredError(DvcException):
                 format_link("https://man.dvc.org/config#cache"),
             )
         )
+
+
+class IsADirectoryError(DvcException):
+    """Raised when a file operation is requested on a directory."""
