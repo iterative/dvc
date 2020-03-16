@@ -29,7 +29,7 @@ def fs_copy(src, dst):
 
 def get_inode(path):
     inode = System.inode(path)
-    logger.debug("Path {} inode {}", path, inode)
+    logger.debug("Path '%s' inode '%d'", path, inode)
     return inode
 
 
@@ -130,7 +130,7 @@ def _chmod(func, p, excinfo):
 
 
 def remove(path):
-    logger.debug("Removing '{}'", path)
+    logger.debug("Removing '%s'", path)
 
     path = fspath_py35(path)
     try:

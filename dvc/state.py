@@ -137,7 +137,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
 
     def _fetchall(self):
         ret = self.cursor.fetchall()
-        logger.debug("fetched: {}", ret)
+        logger.debug("fetched: %s", ret)
         return ret
 
     def _to_sqlite(self, num):
@@ -178,8 +178,8 @@ class State(object):  # pylint: disable=too-many-instance-attributes
                 )
             elif version < self.VERSION:
                 logger.warning(
-                    "State file version '{}' is too old. "
-                    "Reformatting to the current version '{}'.",
+                    "State file version '%d' is too old. "
+                    "Reformatting to the current version '%d'.",
                     version,
                     self.VERSION,
                 )
@@ -460,7 +460,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             actual_mtime, _ = get_mtime_and_size(path, self.repo.tree)
 
             if (inode, mtime) == (actual_inode, actual_mtime):
-                logger.debug("Removing '{}' as unused link.", path)
+                logger.debug("Removing '%s' as unused link.", path)
                 unused.append(relpath)
 
         return unused
