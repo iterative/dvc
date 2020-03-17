@@ -97,7 +97,7 @@ REMOTE_COMMON = {
 }
 LOCAL_COMMON = {
     "type": supported_cache_type,
-    Optional("protected", default=False): Bool,
+    Optional("protected", default=False): Bool,  # obsoleted
     "shared": All(Lower, Choices("group")),
     Optional("slow_link_warning", default=True): Bool,
 }
