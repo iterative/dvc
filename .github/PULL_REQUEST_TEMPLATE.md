@@ -1,4 +1,4 @@
-* [ ] ❗ I have followed the [Contributing to DVC](https://dvc.org/doc/user-guide/contributing/core) checklist
+* [ ] ❗ I have followed the [Contributing to DVC](https://dvc.org/doc/user-guide/contributing/core) checklist.
 
 * [ ] 📖 If this PR requires [documentation](https://dvc.org/doc) updates, I have created a separate PR (or at least issue) in [dvc.org](https://github.com/iterative/dvc.org). If the CLI API is changed, I have updated [tab completion scripts](https://github.com/iterative/dvc/tree/master/scripts/completion).
 
