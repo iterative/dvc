@@ -22,7 +22,10 @@ class CmdUnprotect(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    UNPROTECT_HELP = "Unprotect data files or directories."
+    UNPROTECT_HELP = (
+        "Unprotect tracked files or directories (when hardlinks or symlinks "
+        "have been enabled with `dvc config cache.type`)"
+    )
     unprotect_parser = subparsers.add_parser(
         "unprotect",
         parents=[parent_parser],
