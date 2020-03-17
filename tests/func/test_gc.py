@@ -236,6 +236,20 @@ def test_gc_without_workspace_raises_error(tmp_dir, dvc):
         dvc.gc(force=True, workspace=False)
 
 
+def test_gc_cloud_with_or_without_specifier(tmp_dir, erepo_dir):
+    dvc = erepo_dir.dvc
+    with erepo_dir.chdir():
+        from dvc.exceptions import InvalidArgumentError
+
+        with pytest.raises(InvalidArgumentError):
+            dvc.gc(force=True, cloud=True)
+
+        dvc.gc(cloud=True, all_tags=True)
+        dvc.gc(cloud=True, all_commits=True)
+        dvc.gc(cloud=True, all_branches=True)
+        dvc.gc(cloud=True, all_commits=False, all_branches=True, all_tags=True)
+
+
 def test_gc_without_workspace_on_tags_branches_commits(tmp_dir, dvc):
     dvc.gc(force=True, all_tags=True)
     dvc.gc(force=True, all_commits=True)
@@ -249,6 +263,13 @@ def test_gc_without_workspace_on_tags_branches_commits(tmp_dir, dvc):
 def test_gc_without_workspace(tmp_dir, dvc, caplog):
     with caplog.at_level(logging.WARNING, logger="dvc"):
         assert main(["gc", "-vf"]) == 255
+
+    assert "Invalid Arguments" in caplog.text
+
+
+def test_gc_cloud_without_any_specifier(tmp_dir, dvc, caplog):
+    with caplog.at_level(logging.WARNING, logger="dvc"):
+        assert main(["gc", "-cvf"]) == 255
 
     assert "Invalid Arguments" in caplog.text
 
@@ -274,5 +295,5 @@ def test_gc_cloud_positive(tmp_dir, dvc, tmp_path_factory):
 
     dvc.push()
 
-    for flag in ["-c", "-ca", "-cT", "-caT", "-cwT"]:
+    for flag in ["-cw", "-ca", "-cT", "-caT", "-cwT"]:
         assert main(["gc", "-vf", flag]) == 0
