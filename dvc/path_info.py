@@ -241,3 +241,79 @@ class CloudURLInfo(URLInfo):
     @property
     def path(self):
         return self._spath.lstrip("/")
+
+
+class HTTPURLInfo(URLInfo):
+    def __init__(self, url):
+        p = urlparse(url)
+        stripped = p._replace(params=None, query=None, fragment=None)
+        super().__init__(stripped.geturl())
+        self.params = p.params
+        self.query = p.query
+        self.fragment = p.fragment
+
+    @classmethod
+    def from_parts(
+        cls,
+        scheme=None,
+        host=None,
+        user=None,
+        port=None,
+        path="",
+        netloc=None,
+        params=None,
+        query=None,
+        fragment=None,
+    ):
+        assert bool(host) ^ bool(netloc)
+
+        if netloc is not None:
+            return cls(
+                "{}://{}{}{}{}{}".format(
+                    scheme,
+                    netloc,
+                    path,
+                    (";" + params) if params else "",
+                    ("?" + query) if query else "",
+                    ("#" + fragment) if fragment else "",
+                )
+            )
+
+        obj = cls.__new__(cls)
+        obj.fill_parts(scheme, host, user, port, path)
+        obj.params = params
+        obj.query = query
+        obj.fragment = fragment
+        return obj
+
+    @property
+    def _extra_parts(self):
+        return (self.params, self.query, self.fragment)
+
+    @property
+    def parts(self):
+        return self._base_parts + self._path.parts + self._extra_parts
+
+    @cached_property
+    def url(self):
+        return "{}://{}{}{}{}{}".format(
+            self.scheme,
+            self.netloc,
+            self._spath,
+            (";" + self.params) if self.params else "",
+            ("?" + self.query) if self.query else "",
+            ("#" + self.fragment) if self.fragment else "",
+        )
+
+    def __eq__(self, other):
+        if isinstance(other, (str, bytes)):
+            other = self.__class__(other)
+        return (
+            self.__class__ == other.__class__
+            and self._base_parts == other._base_parts
+            and self._path == other._path
+            and self._extra_parts == other._extra_parts
+        )
+
+    def __hash__(self):
+        return hash(self.parts)

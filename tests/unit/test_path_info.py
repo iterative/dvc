@@ -4,6 +4,7 @@ import pathlib
 import pytest
 
 from dvc.path_info import CloudURLInfo
+from dvc.path_info import HTTPURLInfo
 from dvc.path_info import PathInfo
 from dvc.path_info import URLInfo
 
@@ -44,11 +45,21 @@ def test_url_info_parents(cls):
     ]
 
 
-@pytest.mark.parametrize("cls", [URLInfo, CloudURLInfo])
+@pytest.mark.parametrize("cls", [URLInfo, CloudURLInfo, HTTPURLInfo])
 def test_url_info_deepcopy(cls):
     u1 = cls("ssh://user@test.com:/test1/test2/test3")
     u2 = copy.deepcopy(u1)
     assert u1 == u2
+
+
+def test_https_url_info_str():
+    url = "https://user@test.com/test1;p=par?q=quer#frag"
+    u = HTTPURLInfo(url)
+    assert u.url == url
+    assert str(u) == u.url
+    assert u.params == "p=par"
+    assert u.query == "q=quer"
+    assert u.fragment == "frag"
 
 
 @pytest.mark.parametrize(
