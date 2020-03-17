@@ -174,7 +174,8 @@ class Repo(object):
 
     def check_modified_graph(self, new_stages):
         """Generate graph including the new stage to check for errors"""
-        self._collect_graph(self.stages + new_stages)
+        if not getattr(self, "_skip_graph_checks", False):
+            self._collect_graph(self.stages + new_stages)
 
     def collect(self, target, with_deps=False, recursive=False, graph=None):
         import networkx as nx
