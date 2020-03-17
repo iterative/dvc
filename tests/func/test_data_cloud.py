@@ -367,7 +367,7 @@ class TestDataCloudCLIBase(TestDvc):
         self.assertTrue(os.path.isfile(cache_dir))
 
         # NOTE: check if remote gc works correctly on directories
-        self.main(["gc", "-c", "-f"] + args)
+        self.main(["gc", "-cw", "-f"] + args)
         shutil.move(
             self.dvc.cache.local.cache_dir,
             self.dvc.cache.local.cache_dir + ".back",

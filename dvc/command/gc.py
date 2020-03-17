@@ -19,7 +19,6 @@ class CmdGC(CmdBase):
             all_tags=self.args.all_tags,
             all_commits=self.args.all_commits,
             workspace=self.args.workspace,
-            cloud=self.args.cloud,
         )
 
         msg = "This will remove all cache except items used in "

@@ -46,7 +46,6 @@ def gc(
         all_tags=all_tags,
         all_commits=all_commits,
         all_branches=all_branches,
-        cloud=cloud,
     )
 
     from contextlib import ExitStack
