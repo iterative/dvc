@@ -3,13 +3,12 @@ import pytest
 from dvc.output import _get
 from dvc.output import OUTS_MAP
 from dvc.stage import Stage
-
+from tests.remotes import HDFS
 
 TESTS = [
     ("s3://bucket/path", "s3"),
     ("gs://bucket/path", "gs"),
     ("ssh://example.com:/dir/path", "ssh"),
-    ("hdfs://example.com/dir/path", "hdfs"),
     ("path/to/file", "local"),
     ("path\\to\\file", "local"),
     ("file", "local"),
@@ -19,6 +18,9 @@ TESTS = [
     ("..\\file", "local"),
     ("unknown://path", "local"),
 ]
+
+if HDFS.should_test():
+    TESTS.append(("hdfs://example.com/dir/path", "hdfs"),)
 
 
 def _get_out(dvc, path):

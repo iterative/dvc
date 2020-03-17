@@ -34,7 +34,7 @@ if [[ "$TRAVIS_BUILD_STAGE_NAME" == "Test" ]]; then
   if [ "$TRAVIS_OS_NAME" == "linux" ]; then
     bash "$scriptdir/install_azurite.sh"
     bash "$scriptdir/install_oss.sh"
-    bash "$scriptdir/install_hadoop.sh"
+    [[ -z "$SKIP_HADOOP_INSTALL" ]] && bash "$scriptdir/install_hadoop.sh"
   fi
 
   if [[ "$TRAVIS_OS_NAME" == "osx" && "$TRAVIS_PULL_REQUEST" == "false" ]]; then

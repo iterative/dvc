@@ -1,6 +1,5 @@
 import importlib.util
 import os
-import sys
 
 from setuptools import find_packages, setup
 from setuptools.command.build_py import build_py as _build_py
@@ -121,18 +120,13 @@ tests_requirements = [
     "google-compute-engine==2.8.13",
     "Pygments",  # required by collective.checkdocs,
     "collective.checkdocs",
-    "flake8",
     "psutil",
-    "flake8-docstrings",
     "pydocstyle<4.0",
     "jaraco.windows==3.9.2",
     "mock-ssh-server>=0.6.0",
     "moto==1.3.14.dev464",
     "rangehttpserver==1.2.0",
 ]
-
-if (sys.version_info) >= (3, 6):
-    tests_requirements.append("black==19.10b0")
 
 setup(
     name="dvc",

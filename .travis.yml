@@ -58,6 +58,11 @@ jobs:
   - name: "3.8 on Linux"
     language: python
     python: 3.8
+  - name: "3.9 on Linux"
+    language: python
+    python: 3.9-dev
+    env:
+      - SKIP_HADOOP_INSTALL=True
   - name: "3.7 on Mac"
     os: osx
     osx_image: xcode11.3
