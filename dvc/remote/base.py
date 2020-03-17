@@ -108,17 +108,21 @@ class RemoteBASE(object):
         self.cache_types = config.get("type") or copy(self.DEFAULT_CACHE_TYPES)
         self.cache_type_confirmed = False
 
-    def _check_requires(self, config):
+    @classmethod
+    def get_missing_deps(cls):
         import importlib
 
         missing = []
-
-        for package, module in self.REQUIRES.items():
+        for package, module in cls.REQUIRES.items():
             try:
                 importlib.import_module(module)
             except ImportError:
                 missing.append(package)
 
+        return missing
+
+    def _check_requires(self, config):
+        missing = self.get_missing_deps()
         if not missing:
             return
 
