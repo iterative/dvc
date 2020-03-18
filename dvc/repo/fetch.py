@@ -2,9 +2,9 @@ import logging
 
 from dvc.cache import NamedCache
 from dvc.config import NoRemoteError
-from dvc.exceptions import DownloadError
-from dvc.exceptions import OutputNotFoundError
+from dvc.exceptions import DownloadError, OutputNotFoundError
 from dvc.scm.base import CloneError
+from dvc.path_info import PathInfo
 
 
 logger = logging.getLogger(__name__)
@@ -74,8 +74,12 @@ def _fetch_external(self, repo_url, repo_rev, files, jobs):
     failed = 0
     try:
         with external_repo(repo_url, repo_rev) as repo:
-            repo.cache.local.cache_dir = self.cache.local.cache_dir
+            if not hasattr(repo, "cache"):
+                return _fetch_external_git(
+                    self.cache.local, repo.root_dir, files
+                )
 
+            repo.cache.local.cache_dir = self.cache.local.cache_dir
             with repo.state:
                 cache = NamedCache()
                 for name in files:
@@ -101,3 +105,19 @@ def _fetch_external(self, repo_url, repo_rev, files, jobs):
         )
 
     return 0, failed
+
+
+def _fetch_external_git(cache, root_dir, files):
+    failed, downloaded = 0, 0
+    root_dir = PathInfo(root_dir)
+    for file in files:
+        info = cache.save_info(root_dir / file)
+        if info.get(cache.PARAM_CHECKSUM) is None:
+            failed += 1
+            continue
+
+        if cache.changed_cache(info[cache.PARAM_CHECKSUM]):
+            downloaded += 1
+            cache.save(root_dir / file, info)
+
+    return downloaded, failed
