@@ -26,6 +26,7 @@ class RemoteAZURE(RemoteBASE):
         r"(?P<connection_string>.+)?)?)$"
     )
     REQUIRES = {"azure-storage-blob": "azure.storage.blob"}
+    DEFAULT_NO_TRAVERSE = False
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
 
@@ -103,8 +104,12 @@ class RemoteAZURE(RemoteBASE):
 
             next_marker = blobs.next_marker
 
-    def list_cache_paths(self):
-        return self._list_paths(self.path_info.bucket, self.path_info.path)
+    def list_cache_paths(self, prefix=None):
+        if prefix:
+            prefix = "/".join([self.path_info.path, prefix[:2], prefix[2:]])
+        else:
+            prefix = self.path_info.path
+        return self._list_paths(self.path_info.bucket, prefix)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs

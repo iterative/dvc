@@ -69,6 +69,7 @@ class RemoteGS(RemoteBASE):
     scheme = Schemes.GS
     path_cls = CloudURLInfo
     REQUIRES = {"google-cloud-storage": "google.cloud.storage"}
+    DEFAULT_NO_TRAVERSE = False
     PARAM_CHECKSUM = "md5"
 
     def __init__(self, repo, config):
@@ -126,14 +127,18 @@ class RemoteGS(RemoteBASE):
 
         blob.delete()
 
-    def _list_paths(self, path_info, max_items=None):
+    def _list_paths(self, path_info, max_items=None, prefix=None):
+        if prefix:
+            prefix = "/".join([path_info.path, prefix[:2], prefix[2:]])
+        else:
+            prefix = path_info.path
         for blob in self.gs.bucket(path_info.bucket).list_blobs(
             prefix=path_info.path, max_results=max_items
         ):
             yield blob.name
 
-    def list_cache_paths(self):
-        return self._list_paths(self.path_info)
+    def list_cache_paths(self, prefix=None):
+        return self._list_paths(self.path_info, prefix=prefix)
 
     def walk_files(self, path_info):
         for fname in self._list_paths(path_info / ""):

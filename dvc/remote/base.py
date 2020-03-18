@@ -82,6 +82,8 @@ class RemoteBASE(object):
     DEFAULT_CACHE_TYPES = ["copy"]
     DEFAULT_NO_TRAVERSE = True
     DEFAULT_VERIFY = False
+    LIST_OBJECT_PAGE_SIZE = 1000
+    TRAVERSE_WEIGHT_MULTIPLIER = 20
 
     CACHE_MODE = None
     SHARED_MODE_MAP = {None: (None, None), "group": (None, None)}
@@ -686,7 +688,7 @@ class RemoteBASE(object):
     def checksum_to_path_info(self, checksum):
         return self.path_info / checksum[0:2] / checksum[2:]
 
-    def list_cache_paths(self):
+    def list_cache_paths(self, prefix=None):
         raise NotImplementedError
 
     def all(self):
@@ -804,7 +806,9 @@ class RemoteBASE(object):
 
         - Traverse: Get a list of all the files in the remote
             (traversing the cache directory) and compare it with
-            the given checksums.
+            the given checksums. Cache parent directories will
+            be retrieved in parallel threads, and a progress bar
+            will be displayed.
 
         - No traverse: For each given checksum, run the `exists`
             method and filter the checksums that aren't on the remote.
@@ -820,9 +824,90 @@ class RemoteBASE(object):
         Returns:
             A list with checksums that were found in the remote
         """
-        if not self.no_traverse:
-            return list(set(checksums) & set(self.all()))
 
+        if self.no_traverse:
+            return self._cache_exists_no_traverse(checksums, jobs, name)
+
+        # Fetch one parent cache dir for estimating size of entire remote cache
+        checksums = frozenset(checksums)
+        remote_checksums = set(
+            map(self.path_to_checksum, self.list_cache_paths(prefix="00"))
+        )
+        if not remote_checksums:
+            remote_size = 256
+        else:
+            remote_size = 256 * len(remote_checksums)
+        logger.debug("Estimated remote size: {} files".format(remote_size))
+
+        traverse_pages = remote_size / self.LIST_OBJECT_PAGE_SIZE
+        # For sufficiently large remotes, traverse must be weighted to account
+        # for performance overhead from large lists/sets.
+        # From testing with S3, for remotes with 1M+ files, no_traverse is
+        # faster until len(checksums) is at least 10k~100k
+        if remote_size > 500000:
+            traverse_weight = traverse_pages * self.TRAVERSE_WEIGHT_MULTIPLIER
+        else:
+            traverse_weight = traverse_pages
+        if len(checksums) < traverse_weight:
+            logger.debug(
+                "Large remote, using no_traverse for remaining checksums"
+            )
+            return list(
+                checksums & remote_checksums
+            ) + self._cache_exists_no_traverse(
+                checksums - remote_checksums, jobs, name
+            )
+
+        if traverse_pages < 256 / self.JOBS:
+            # Threaded traverse will require making at least 255 more requests
+            # to the remote, so for small enough remotes, fetching the entire
+            # list at once will require fewer requests (but also take into
+            # account that this must be done sequentially rather than in
+            # parallel)
+            logger.debug(
+                "Querying {} checksums via default traverse".format(
+                    len(checksums)
+                )
+            )
+            return list(checksums & set(self.all()))
+
+        logger.debug(
+            "Querying {} checksums via threaded traverse".format(
+                len(checksums)
+            )
+        )
+
+        with Tqdm(
+            desc="Querying "
+            + ("cache in " + name if name else "remote cache"),
+            total=256,
+            unit="dir",
+        ) as pbar:
+
+            def list_with_update(prefix):
+                ret = map(
+                    self.path_to_checksum,
+                    list(self.list_cache_paths(prefix=prefix)),
+                )
+                pbar.update_desc(
+                    "Querying cache in {}/{}".format(self.path_info, prefix)
+                )
+                return ret
+
+            with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
+                in_remote = executor.map(
+                    list_with_update,
+                    ["{:02x}".format(i) for i in range(1, 256)],
+                )
+                remote_checksums.update(
+                    itertools.chain.from_iterable(in_remote)
+                )
+            return list(checksums & remote_checksums)
+
+    def _cache_exists_no_traverse(self, checksums, jobs=None, name=None):
+        logger.debug(
+            "Querying {} checksums via no_traverse".format(len(checksums))
+        )
         with Tqdm(
             desc="Querying "
             + ("cache in " + name if name else "remote cache"),
