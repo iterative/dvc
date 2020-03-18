@@ -12,19 +12,11 @@ GIT_MODE_DIR = 0o40000
 GIT_MODE_FILE = 0o644
 
 
-def _iter_tree(tree):
-    # During usual tree iteration with ``for .. in ..`` GitPython returns each
-    # submodule instance without correctly filled ``name`` property. It raises
-    # an exception during accessing such submodule ``name`` later.
-    # The same time repo's submodules property contains correctly initialized
-    # submodules list.
-    # Here we just replace submodule instance from iterator with the
-    # corresponding instance from ``repo.submodules.``
-    submodules = {x.hexsha: x for x in tree.repo.submodules}
-    for node in tree:
-        if node.type == "submodule":
-            node = submodules[node.hexsha]
-        yield node
+def _item_basename(item):
+    # NOTE: `item.name` is not always a basename. See [1] for more details.
+    #
+    # [1] https://github.com/iterative/dvc/issues/3481#issuecomment-600693884
+    return os.path.basename(item.path)
 
 
 class GitTree(BaseTree):
@@ -87,8 +79,8 @@ class GitTree(BaseTree):
             return False
         # see https://github.com/gitpython-developers/GitPython/issues/851
         # `return (i in tree)` doesn't work so here is a workaround:
-        for i in _iter_tree(obj):
-            if i.name == path:
+        for item in obj:
+            if _item_basename(item) == path:
                 return True
         return False
 
@@ -118,11 +110,12 @@ class GitTree(BaseTree):
 
     def _walk(self, tree, topdown=True):
         dirs, nondirs = [], []
-        for i in _iter_tree(tree):
-            if i.mode == GIT_MODE_DIR:
-                dirs.append(i.name)
+        for item in tree:
+            name = _item_basename(item)
+            if item.mode == GIT_MODE_DIR:
+                dirs.append(name)
             else:
-                nondirs.append(i.name)
+                nondirs.append(name)
 
         if topdown:
             yield os.path.normpath(tree.abspath), dirs, nondirs
