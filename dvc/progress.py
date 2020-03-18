@@ -35,6 +35,7 @@ class Tqdm(tqdm):
     BYTES_DEFAULTS = dict(
         unit="B", unit_scale=True, unit_divisor=1024, miniters=1
     )
+    MAX_BARS = 20  # maximum parallel bars to display
 
     def __init__(
         self,
@@ -152,3 +153,13 @@ class Tqdm(tqdm):
             d["ncols_desc"] = 1
             d["prefix"] = ""
         return d
+
+    def display(self, msg=None, pos=None):
+        if pos is None:
+            pos = abs(getattr(self, "pos", self.MAX_BARS))
+        if pos < self.MAX_BARS:
+            super().display(msg=msg, pos=pos)
+
+    def clear(self, nolock=False):
+        if abs(getattr(self, "pos", self.MAX_BARS)) < self.MAX_BARS:
+            super().clear(nolock=nolock)
