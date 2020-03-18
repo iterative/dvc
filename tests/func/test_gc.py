@@ -265,14 +265,20 @@ def test_gc_without_workspace(tmp_dir, dvc, caplog):
     with caplog.at_level(logging.WARNING, logger="dvc"):
         assert main(["gc", "-vf"]) == 255
 
-    assert "Invalid Arguments" in caplog.text
+    assert (
+        "Either of `-w|--workspace`, `-a|--all-branches`, `-T|--all-tags` "
+        "or `--all-commits` needs to be set."
+    ) in caplog.text
 
 
 def test_gc_cloud_without_any_specifier(tmp_dir, dvc, caplog):
     with caplog.at_level(logging.WARNING, logger="dvc"):
         assert main(["gc", "-cvf"]) == 255
 
-    assert "Invalid Arguments" in caplog.text
+    assert (
+        "Either of `-w|--workspace`, `-a|--all-branches`, `-T|--all-tags` "
+        "or `--all-commits` needs to be set."
+    ) in caplog.text
 
 
 def test_gc_with_possible_args_positive(tmp_dir, dvc):

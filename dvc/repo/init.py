@@ -5,7 +5,7 @@ import colorama
 
 from dvc import analytics
 from dvc.config import Config
-from dvc.exceptions import InitError
+from dvc.exceptions import InitError, InvalidArgumentError
 from dvc.repo import Repo
 from dvc.scm import SCM
 from dvc.scm.base import SCMError
@@ -65,7 +65,7 @@ def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
     """
 
     if no_scm and subdir:
-        raise InitError(
+        raise InvalidArgumentError(
             "Cannot initialize repo with `--no-scm` and `--subdir`"
         )
 

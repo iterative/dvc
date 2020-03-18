@@ -17,9 +17,8 @@ def _do_gc(typ, func, clist):
 def _raise_error_if_all_disabled(**kwargs):
     if not any(kwargs.values()):
         raise InvalidArgumentError(
-            "Invalid Arguments. Either of ({}) needs to be enabled.".format(
-                ", ".join(kwargs.keys())
-            )
+            "Either of `-w|--workspace`, `-a|--all-branches`, `-T|--all-tags` "
+            "or `--all-commits` needs to be set."
         )
 
 

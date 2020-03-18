@@ -62,7 +62,7 @@ def reproduce(
 
     if not target and not all_pipelines:
         raise InvalidArgumentError(
-            "Neither target nor all_pipelines are specified."
+            "Neither `target` nor `--all-pipelines` are specified."
         )
 
     interactive = kwargs.get("interactive", False)
