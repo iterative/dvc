@@ -3,7 +3,7 @@ from itertools import compress
 
 from funcy.py3 import cat
 
-from dvc.exceptions import DvcException
+from dvc.exceptions import InvalidArgumentError
 from . import locked
 
 
@@ -127,7 +127,7 @@ def status(
         )
     )
     if ignored:
-        msg = "the following options are meaningless for local status: {}"
-        raise DvcException(msg.format(", ".join(ignored)))
+        msg = "The following options are meaningless for local status: {}"
+        raise InvalidArgumentError(msg.format(", ".join(ignored)))
 
     return _local_status(self, targets, with_deps=with_deps)
