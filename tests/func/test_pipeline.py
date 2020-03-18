@@ -239,15 +239,18 @@ class TestDvcRepoPipeline(TestDvc):
         self.assertEqual(len(pipelines), 0)
 
 
-def test_split_pipeline(tmp_dir, dvc):
+def test_split_pipeline(tmp_dir, scm, dvc):
+    tmp_dir.scm_gen("git_dep1", "git_dep1")
+    tmp_dir.scm_gen("git_dep2", "git_dep2")
+
     tmp_dir.dvc_gen("data", "source file content")
     dvc.run(
-        deps=["data"],
+        deps=["git_dep1", "data"],
         outs=["data_train", "data_valid"],
         cmd="echo train >> data_train && echo valid >> data_valid",
     )
     stage = dvc.run(
-        deps=["data_train", "data_valid"],
+        deps=["git_dep2", "data_train", "data_valid"],
         outs=["result"],
         cmd="echo result >> result",
     )
