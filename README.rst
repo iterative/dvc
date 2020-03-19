@@ -308,5 +308,5 @@ Iterative, *DVC: Data Version Control - Git for Data & Models* (2020)
    :alt: DOI
 
 .. |Flowchart| image:: https://dvc.org/static/img/flow.gif
-   :target: https://dvc.org/static/img/flow.gif
+   :target: https://dvc.org/img/flow.gif
    :alt: how_dvc_works
