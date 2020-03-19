@@ -127,8 +127,12 @@ class ExternalRepo(Repo):
         if not os.path.isdir(self.url):
             return
 
+        try:
+            src_repo = Repo(self.url)
+        except NotDvcRepoError:
+            return
+
         remote_name = self.config["core"].get("remote")
-        src_repo = Repo(self.url)
         try:
             if remote_name:
                 self._fix_local_remote(src_repo, remote_name)
