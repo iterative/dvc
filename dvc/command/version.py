@@ -15,6 +15,7 @@ from dvc.utils import is_binary, relpath
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.version import __version__
 from dvc.exceptions import DvcException, NotDvcRepoError
+from dvc.scm.base import SCMError
 from dvc.system import System
 from dvc.utils.pkg import PKG
 
@@ -62,6 +63,11 @@ class CmdVersion(CmdBaseNoRepo):
 
         except NotDvcRepoError:
             root_directory = os.getcwd()
+        except SCMError:
+            root_directory = os.getcwd()
+            info.append("Repo: dvc, git (broken)")
+        else:
+            info.append("Repo: {}".format(_get_dvc_repo_info(repo)))
 
         if psutil:
             fs_root = self.get_fs_type(os.path.abspath(root_directory))
@@ -123,6 +129,16 @@ class CmdVersion(CmdBaseNoRepo):
                 supported_remotes.append(remote.scheme)
 
         return ", ".join(supported_remotes)
+
+
+def _get_dvc_repo_info(repo):
+    if repo.config.get("core", {}).get("no_scm", False):
+        return "dvc (no_scm)"
+
+    if repo.root_dir != repo.scm.root_dir:
+        return "dvc (subdir), git"
+
+    return "dvc, git"
 
 
 def add_parser(subparsers, parent_parser):
