@@ -15,7 +15,6 @@ from dvc.utils import is_binary, relpath
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.version import __version__
 from dvc.exceptions import DvcException, NotDvcRepoError
-from dvc.scm import NoSCM
 from dvc.scm.base import SCMError
 from dvc.system import System
 from dvc.utils.pkg import PKG
@@ -36,13 +35,7 @@ class CmdVersion(CmdBaseNoRepo):
         ]
 
         try:
-            try:
-                repo = Repo()
-            except SCMError:
-                repo = Repo(no_scm=True)
-
-            info.append("Repo: " + _get_dvc_repo_info(repo))
-
+            repo = Repo()
             root_directory = repo.root_dir
 
             # cache_dir might not exist yet (e.g. after `dvc init`), and we
@@ -69,6 +62,11 @@ class CmdVersion(CmdBaseNoRepo):
 
         except NotDvcRepoError:
             root_directory = os.getcwd()
+        except SCMError:
+            root_directory = os.getcwd()
+            info.append("Repo: dvc, git (broken)")
+        else:
+            info.append("Repo: {}".format(_get_dvc_repo_info(repo)))
 
         if psutil:
             fs_root = self.get_fs_type(os.path.abspath(root_directory))
@@ -124,9 +122,6 @@ class CmdVersion(CmdBaseNoRepo):
 def _get_dvc_repo_info(repo):
     if repo.config.get("core", {}).get("no_scm", False):
         return "dvc (no_scm)"
-
-    if isinstance(repo.scm, NoSCM):
-        return "dvc, git (broken)"
 
     if repo.root_dir != repo.scm.root_dir:
         return "dvc (subdir), git"

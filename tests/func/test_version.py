@@ -49,6 +49,8 @@ def test_info_in_broken_git_repo(tmp_dir, dvc, scm, caplog):
     shutil.rmtree(dvc.scm.dir)
     assert main(["version"]) == 0
 
+    assert "Repo: dvc, git (broken)" in caplog.text
+
 
 @pytest.mark.skipif(psutil is None, reason="No psutil.")
 def test_fs_info_in_repo(tmp_dir, dvc, caplog):
