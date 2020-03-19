@@ -100,7 +100,7 @@ class CmdRemoteList(CmdRemote):
 def add_parser(subparsers, parent_parser):
     from dvc.command.config import parent_config_parser
 
-    REMOTE_HELP = "Manage remote storage configuration."
+    REMOTE_HELP = "Set up and manage data remotes."
     remote_parser = subparsers.add_parser(
         "remote",
         parents=[parent_parser],
