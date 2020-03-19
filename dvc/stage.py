@@ -536,9 +536,7 @@ class Stage(object):
         deps = dependency.loads_from(
             stage, kwargs.get("deps", []), erepo=kwargs.get("erepo", None)
         )
-        params = dependency.loads_from(
-            stage, kwargs.get("params", []), erepo=kwargs.get("erepo", None),
-            is_param=True)
+        params = dependency.loads_params(stage, kwargs.get("params", []))
         stage.deps = deps + params
 
         stage._check_circular_dependency()

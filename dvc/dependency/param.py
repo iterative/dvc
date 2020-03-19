@@ -1,5 +1,6 @@
 import json
 import re
+from itertools import groupby
 
 from dvc.dependency.local import DependencyLOCAL
 from dvc.exceptions import DvcException
@@ -26,7 +27,7 @@ class DependencyPARAMS(DependencyLOCAL):
     PARAM_SCHEMA = {PARAM_PARAMS: {str: str}}
     FILE_DELIMITER = ':'
     PARAM_DELIMITER = ','
-    DEFAULT_PARAMS_FILE = 'PARAMS.json'
+    DEFAULT_PARAMS_FILE = 'params.json'
 
     REGEX_SUBNAME = r'\w+'
     REGEX_NAME = r'{sub}(\.{sub})*'.format(sub=REGEX_SUBNAME)
@@ -34,21 +35,50 @@ class DependencyPARAMS(DependencyLOCAL):
     REGEX_COMPILED = re.compile(REGEX_MULTI_PARAMS)
 
     def __init__(self, stage, input_str, *args, **kwargs):
-        path, _, param_names = input_str.rpartition(self.FILE_DELIMITER)
-        path = path or self.DEFAULT_PARAMS_FILE
-        if not self._is_valid_name(param_names):
-            raise BadParamNameError(param_names)
+        path, param_names = self._parse_and_validate_input(input_str)
         super().__init__(stage, path, *args, **kwargs)
         self.param_names = sorted(param_names.split(self.PARAM_DELIMITER))
         self.param_values = {}
 
     def __str__(self):
         path = super().__str__()
-        return path + ':' + self.PARAM_DELIMITER.join(self.param_names)
+        return self._reverse_parse_input(path, self.param_names)
+
+    @classmethod
+    def from_list(cls, stage, s_list):
+        # Creates an object for each unique file that is referenced in the list
+        ret = []
+        pathname_tuples = [cls._parse_and_validate_input(s) for s in s_list]
+        grouped_by_path = groupby(sorted(pathname_tuples), key=lambda x: x[0])
+        for path, group in grouped_by_path:
+            param_names = [g[1] for g in group]
+            regrouped_input = cls._reverse_parse_input(path, param_names)
+            ret.append(DependencyPARAMS(stage, regrouped_input))
+        return ret
+
+    @classmethod
+    def _parse_and_validate_input(cls, input_str):
+        path, _, param_names = input_str.rpartition(cls.FILE_DELIMITER)
+        cls._validate_input(param_names)
+        path = path or cls.DEFAULT_PARAMS_FILE
+        return path, param_names
+
+    @classmethod
+    def _reverse_parse_input(cls, path, param_names):
+        return '{path}{delimiter}{params}'.format(
+            path=path,
+            delimiter=cls.FILE_DELIMITER,
+            params=cls.PARAM_DELIMITER.join(param_names),
+        )
+
+    @classmethod
+    def _validate_input(cls, param_names):
+        if not cls.REGEX_COMPILED.match(param_names):
+            raise BadParamNameError(param_names)
 
     def save(self):
         super().save()
-        params_in_file = self._parse()
+        params_in_file = self._parse_file()
         self.param_values = {k: params_in_file[k] for k in self.param_names}
 
     def dumpd(self):
@@ -57,18 +87,14 @@ class DependencyPARAMS(DependencyLOCAL):
             self.PARAM_PARAMS: self.param_values,
         }
 
-    @classmethod
-    def _is_valid_name(cls, param_name):
-        return cls.REGEX_COMPILED.match(param_name)
-
     @property
     def exists(self):
         file_exists = super().exists
-        params_in_file = self._parse()
+        params_in_file = self._parse_file()
         params_exists = all([p in params_in_file for p in self.param_names])
         return file_exists and params_exists
 
-    def _parse(self):
+    def _parse_file(self):
         try:
             return self._params_cache
         except AttributeError:

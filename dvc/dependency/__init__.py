@@ -72,13 +72,14 @@ def loadd_from(stage, d_list):
     return ret
 
 
-def loads_from(stage, s_list, erepo=None, is_param=False):
+def loads_from(stage, s_list, erepo=None):
     ret = []
     for s in s_list:
         info = {DependencyREPO.PARAM_REPO: erepo} if erepo else {}
-        if is_param:
-            dep_obj = DependencyPARAMS(stage, s, info)
-        else:
-            dep_obj = _get_by_path(stage, s, info)
+        dep_obj = _get_by_path(stage, s, info)
         ret.append(dep_obj)
     return ret
+
+
+def loads_params(stage, s_list):  # TODO: Make support for `eropo=` as well ?
+    return DependencyPARAMS.from_list(stage, s_list)
