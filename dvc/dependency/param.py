@@ -25,13 +25,13 @@ class DependencyPARAMS(DependencyLOCAL):
     #   - <parameter name>: <parameter value>
     PARAM_PARAMS = "params"
     PARAM_SCHEMA = {PARAM_PARAMS: {str: str}}
-    FILE_DELIMITER = ':'
-    PARAM_DELIMITER = ','
-    DEFAULT_PARAMS_FILE = 'params.json'
+    FILE_DELIMITER = ":"
+    PARAM_DELIMITER = ","
+    DEFAULT_PARAMS_FILE = "params.json"
 
-    REGEX_SUBNAME = r'\w+'
-    REGEX_NAME = r'{sub}(\.{sub})*'.format(sub=REGEX_SUBNAME)
-    REGEX_MULTI_PARAMS = r'^{param}(,{param})*$'.format(param=REGEX_NAME)
+    REGEX_SUBNAME = r"\w+"
+    REGEX_NAME = r"{sub}(\.{sub})*".format(sub=REGEX_SUBNAME)
+    REGEX_MULTI_PARAMS = r"^{param}(,{param})*$".format(param=REGEX_NAME)
     REGEX_COMPILED = re.compile(REGEX_MULTI_PARAMS)
 
     def __init__(self, stage, input_str, *args, **kwargs):
@@ -65,7 +65,7 @@ class DependencyPARAMS(DependencyLOCAL):
 
     @classmethod
     def _reverse_parse_input(cls, path, param_names):
-        return '{path}{delimiter}{params}'.format(
+        return "{path}{delimiter}{params}".format(
             path=path,
             delimiter=cls.FILE_DELIMITER,
             params=cls.PARAM_DELIMITER.join(param_names),
@@ -99,7 +99,7 @@ class DependencyPARAMS(DependencyLOCAL):
             return self._params_cache
         except AttributeError:
             path = self.path_info.fspath
-            with open(path, 'r') as fp:
+            with open(path, "r") as fp:
                 try:
                     self._params_cache = json.load(fp)
                 except json.JSONDecodeError:
