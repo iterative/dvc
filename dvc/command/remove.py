@@ -42,7 +42,7 @@ class CmdRemove(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    REMOVE_HELP = "Remove data files or directories tracked by DVC."
+    REMOVE_HELP = "Remove DVC-tracked files or directories."
     remove_parser = subparsers.add_parser(
         "remove",
         parents=[parent_parser],
