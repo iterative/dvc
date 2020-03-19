@@ -307,7 +307,7 @@ def test_pull_no_rev_lock(erepo_dir, tmp_dir, dvc):
     assert (tmp_dir / "foo_imported").read_text() == "contents"
 
 
-def test_import_git_repo(tmp_dir, make_tmp_dir, erepo_dir):
+def test_import_from_bare_git_repo(tmp_dir, make_tmp_dir, erepo_dir):
     import git
 
     git.Repo.init(fspath(tmp_dir), bare=True)
