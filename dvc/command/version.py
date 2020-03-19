@@ -15,6 +15,7 @@ from dvc.utils import is_binary, relpath
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.version import __version__
 from dvc.exceptions import DvcException, NotDvcRepoError
+from dvc.scm.base import SCMError
 from dvc.system import System
 from dvc.utils.pkg import PKG
 
@@ -34,7 +35,11 @@ class CmdVersion(CmdBaseNoRepo):
         ]
 
         try:
-            repo = Repo()
+            try:
+                repo = Repo()
+            except SCMError:
+                repo = Repo(no_scm=True)
+
             root_directory = repo.root_dir
 
             # cache_dir might not exist yet (e.g. after `dvc init`), and we

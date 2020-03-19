@@ -60,7 +60,7 @@ class Repo(object):
     from dvc.repo.get_url import get_url
     from dvc.repo.update import update
 
-    def __init__(self, root_dir=None):
+    def __init__(self, root_dir=None, no_scm=False):
         from dvc.state import State
         from dvc.lock import make_lock
         from dvc.scm import SCM
@@ -78,7 +78,7 @@ class Repo(object):
 
         self.config = Config(self.dvc_dir)
 
-        no_scm = self.config["core"].get("no_scm", False)
+        no_scm = no_scm or self.config["core"].get("no_scm", False)
         self.scm = SCM(self.root_dir, no_scm=no_scm)
 
         self.tree = WorkingTree(self.root_dir)
