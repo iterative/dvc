@@ -75,21 +75,15 @@ class StageFileBadNameError(DvcException):
 
 
 class StagePathOutsideError(DvcException):
-    def __init__(self, path):
-        msg = "stage working or file path '{}' is outside of DVC repo"
-        super().__init__(msg.format(path))
+    pass
 
 
 class StagePathNotFoundError(DvcException):
-    def __init__(self, path):
-        msg = "stage working or file path '{}' does not exist"
-        super().__init__(msg.format(path))
+    pass
 
 
 class StagePathNotDirectoryError(DvcException):
-    def __init__(self, path):
-        msg = "stage working or file path '{}' is not directory"
-        super().__init__(msg.format(path))
+    pass
 
 
 class StageCommitError(DvcException):
@@ -442,19 +436,28 @@ class Stage(object):
         return fname
 
     @staticmethod
-    def _check_stage_path(repo, path):
+    def _check_stage_path(repo, path, is_wdir=False):
         assert repo is not None
+
+        error_msg = "{wdir_or_path} '{path}' {{}}".format(
+            wdir_or_path="stage working dir" if is_wdir else "file path",
+            path=path,
+        )
 
         real_path = os.path.realpath(path)
         if not os.path.exists(real_path):
-            raise StagePathNotFoundError(path)
+            raise StagePathNotFoundError(error_msg.format("does not exist"))
 
         if not os.path.isdir(real_path):
-            raise StagePathNotDirectoryError(path)
+            raise StagePathNotDirectoryError(
+                error_msg.format("is not directory")
+            )
 
         proj_dir = os.path.realpath(repo.root_dir)
         if real_path != proj_dir and not path_isin(real_path, proj_dir):
-            raise StagePathOutsideError(path)
+            raise StagePathOutsideError(
+                error_msg.format("is outside of DVC repo")
+            )
 
     @property
     def is_cached(self):
@@ -557,7 +560,7 @@ class Stage(object):
         else:
             path = os.path.abspath(fname)
 
-        Stage._check_stage_path(repo, wdir)
+        Stage._check_stage_path(repo, wdir, is_wdir=kwargs.get("wdir"))
         Stage._check_stage_path(repo, os.path.dirname(path))
 
         stage.wdir = wdir
