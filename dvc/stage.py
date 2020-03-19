@@ -533,9 +533,11 @@ class Stage(object):
         )
 
         Stage._fill_stage_outputs(stage, **kwargs)
-        stage.deps = dependency.loads_from(
+        deps = dependency.loads_from(
             stage, kwargs.get("deps", []), erepo=kwargs.get("erepo", None)
         )
+        params = dependency.loads_params(stage, kwargs.get("params", []))
+        stage.deps = deps + params
 
         stage._check_circular_dependency()
         stage._check_duplicated_arguments()

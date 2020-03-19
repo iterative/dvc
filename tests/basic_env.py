@@ -38,6 +38,10 @@ class TestDirFixture(object):
     # in tests, we replace foo with bar, so we need to make sure that when we
     # modify a file in our tests, its content length changes.
     BAR_CONTENTS = BAR + "r"
+    PARAMSDEFAULT = "params.json"
+    PARAMSDEFAULT_CONTENTS = '{"p_one": "1", "p_two": "1"}'
+    PARAMS = "par.json"
+    PARAMS_CONTENTS = '{"p_three": "3"}'
     CODE = "code.py"
     CODE_CONTENTS = (
         "import sys\nimport shutil\n"
@@ -87,6 +91,8 @@ class TestDirFixture(object):
         self._pushd(self._root_dir)
         self.create(self.FOO, self.FOO_CONTENTS)
         self.create(self.BAR, self.BAR_CONTENTS)
+        self.create(self.PARAMSDEFAULT, self.PARAMSDEFAULT_CONTENTS)
+        self.create(self.PARAMS, self.PARAMS_CONTENTS)
         self.create(self.CODE, self.CODE_CONTENTS)
         os.mkdir(self.DATA_DIR)
         os.mkdir(self.DATA_SUB_DIR)
