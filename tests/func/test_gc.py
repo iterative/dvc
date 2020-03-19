@@ -10,6 +10,7 @@ from dvc.exceptions import CollectCacheError
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
 from dvc.remote.local import RemoteLOCAL
+from dvc.utils.fs import remove
 from tests.basic_env import TestDir, TestDvcGit
 
 
@@ -195,7 +196,7 @@ def test_gc_no_dir_cache(tmp_dir, dvc):
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
     (dir_stage,) = tmp_dir.dvc_gen({"dir": {"x": "x", "subdir": {"y": "y"}}})
 
-    os.unlink(dir_stage.outs[0].cache_path)
+    remove(dir_stage.outs[0].cache_path)
 
     with pytest.raises(CollectCacheError):
         dvc.gc(workspace=True)
@@ -236,6 +237,20 @@ def test_gc_without_workspace_raises_error(tmp_dir, dvc):
         dvc.gc(force=True, workspace=False)
 
 
+def test_gc_cloud_with_or_without_specifier(tmp_dir, erepo_dir):
+    dvc = erepo_dir.dvc
+    with erepo_dir.chdir():
+        from dvc.exceptions import InvalidArgumentError
+
+        with pytest.raises(InvalidArgumentError):
+            dvc.gc(force=True, cloud=True)
+
+        dvc.gc(cloud=True, all_tags=True)
+        dvc.gc(cloud=True, all_commits=True)
+        dvc.gc(cloud=True, all_branches=True)
+        dvc.gc(cloud=True, all_commits=False, all_branches=True, all_tags=True)
+
+
 def test_gc_without_workspace_on_tags_branches_commits(tmp_dir, dvc):
     dvc.gc(force=True, all_tags=True)
     dvc.gc(force=True, all_commits=True)
@@ -250,7 +265,20 @@ def test_gc_without_workspace(tmp_dir, dvc, caplog):
     with caplog.at_level(logging.WARNING, logger="dvc"):
         assert main(["gc", "-vf"]) == 255
 
-    assert "Invalid Arguments" in caplog.text
+    assert (
+        "Either of `-w|--workspace`, `-a|--all-branches`, `-T|--all-tags` "
+        "or `--all-commits` needs to be set."
+    ) in caplog.text
+
+
+def test_gc_cloud_without_any_specifier(tmp_dir, dvc, caplog):
+    with caplog.at_level(logging.WARNING, logger="dvc"):
+        assert main(["gc", "-cvf"]) == 255
+
+    assert (
+        "Either of `-w|--workspace`, `-a|--all-branches`, `-T|--all-tags` "
+        "or `--all-commits` needs to be set."
+    ) in caplog.text
 
 
 def test_gc_with_possible_args_positive(tmp_dir, dvc):
@@ -274,5 +302,5 @@ def test_gc_cloud_positive(tmp_dir, dvc, tmp_path_factory):
 
     dvc.push()
 
-    for flag in ["-c", "-ca", "-cT", "-caT", "-cwT"]:
+    for flag in ["-cw", "-ca", "-cT", "-caT", "-cwT"]:
         assert main(["gc", "-vf", flag]) == 0

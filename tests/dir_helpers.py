@@ -156,7 +156,18 @@ class TmpDir(pathlib.Path):
         stages = self.dvc.add(filenames)
         if commit:
             stage_paths = [s.path for s in stages]
-            self.scm_add(stage_paths, commit=commit)
+
+            def to_gitignore(stage_path):
+                from dvc.scm import Git
+
+                return os.path.join(os.path.dirname(stage_path), Git.GITIGNORE)
+
+            gitignores = [
+                to_gitignore(s)
+                for s in stage_paths
+                if os.path.exists(to_gitignore(s))
+            ]
+            self.scm_add(stage_paths + gitignores, commit=commit)
 
         return stages
 

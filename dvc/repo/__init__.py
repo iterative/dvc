@@ -10,6 +10,7 @@ from funcy import cached_property, cat, first
 from dvc.config import Config
 from dvc.exceptions import (
     FileMissingError,
+    IsADirectoryError,
     NotDvcRepoError,
     OutputNotFoundError,
 )
@@ -179,27 +180,33 @@ class Repo(object):
         import networkx as nx
         from dvc.stage import Stage
 
-        G = graph or self.graph
-
         if not target:
-            return list(G)
+            return list(graph) if graph else self.stages
 
         target = os.path.abspath(target)
 
         if recursive and os.path.isdir(target):
-            stages = nx.dfs_postorder_nodes(G)
+            stages = nx.dfs_postorder_nodes(graph or self.graph)
             return [stage for stage in stages if path_isin(stage.path, target)]
 
         stage = Stage.load(self, target)
+
+        # Optimization: do not collect the graph for a specific target
         if not with_deps:
             return [stage]
 
-        pipeline = get_pipeline(get_pipelines(G), stage)
+        pipeline = get_pipeline(get_pipelines(graph or self.graph), stage)
         return list(nx.dfs_postorder_nodes(pipeline, stage))
 
     def collect_granular(self, target, *args, **kwargs):
+        from dvc.stage import Stage
+
         if not target:
             return [(stage, None) for stage in self.stages]
+
+        # Optimization: do not collect the graph for a specific .dvc target
+        if Stage.is_valid_filename(target) and not kwargs.get("with_deps"):
+            return [(Stage.load(self, target), None)]
 
         try:
             (out,) = self.find_outs_by_path(target, strict=False)
@@ -470,7 +477,7 @@ class Repo(object):
 
     def _open_cached(self, out, remote=None, mode="r", encoding=None):
         if out.isdir():
-            raise ValueError("Can't open a dir")
+            raise IsADirectoryError("Can't open a dir")
 
         cache_file = self.cache.local.checksum_to_path_info(out.checksum)
         cache_file = fspath_py35(cache_file)

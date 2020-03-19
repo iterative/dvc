@@ -31,6 +31,7 @@ class CmdVersion(CmdBaseNoRepo):
             "Platform: {}".format(platform.platform()),
             "Binary: {}".format(is_binary()),
             "Package: {}".format(PKG),
+            "Supported remotes: {}".format(self.get_supported_remotes()),
         ]
 
         try:
@@ -111,6 +112,17 @@ class CmdVersion(CmdBaseNoRepo):
         os.remove(src)
 
         return ", ".join(cache)
+
+    @staticmethod
+    def get_supported_remotes():
+        from dvc.remote import REMOTES
+
+        supported_remotes = []
+        for remote in REMOTES:
+            if not remote.get_missing_deps():
+                supported_remotes.append(remote.scheme)
+
+        return ", ".join(supported_remotes)
 
 
 def add_parser(subparsers, parent_parser):

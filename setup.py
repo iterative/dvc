@@ -8,7 +8,10 @@ from setuptools.command.build_py import build_py as _build_py
 # Prevents pkg_resources import in entry point script,
 # see https://github.com/ninjaaron/fast-entry_points.
 # This saves about 200 ms on startup time for non-wheel installs.
-import fastentrypoints  # noqa: F401
+try:
+    import fastentrypoints  # noqa: F401
+except ImportError:
+    pass  # not able to import when installing through pre-commit
 
 
 # Read package meta-data from version.py
@@ -74,7 +77,7 @@ install_requires = [
     "pywin32>=225; sys_platform == 'win32'",
     "networkx>=2.1,<2.4",
     "pydot>=1.2.4",
-    "speedcopy>=2.0.1; sys_platform == 'win32'",
+    "speedcopy>=2.0.1; python_version < '3.8' and sys_platform == 'win32'",
     "flatten_json>=0.1.6",
     "texttable>=0.5.2",
     "pygtrie==2.3.2",
@@ -89,7 +92,12 @@ s3 = ["boto3>=1.9.201"]
 azure = ["azure-storage-blob==2.1.0"]
 oss = ["oss2==2.6.1"]
 ssh = ["paramiko>=2.5.0"]
-hdfs = ["pyarrow==0.15.1"]
+hdfs = [
+    # pyarrow-0.16.0 import fails on 3.5 and 3.7 (works on 3.6 though)
+    # due to: https://issues.apache.org/jira/browse/ARROW-7852
+    "pyarrow==0.15.1; python_version < '3.8'",
+    "pyarrow==0.16.0; python_version == '3.8'",
+]
 # gssapi should not be included in all_remotes, because it doesn't have wheels
 # for linux and mac, so it will fail to compile if user doesn't have all the
 # requirements, including kerberos itself. Once all the wheels are available,
@@ -157,6 +165,7 @@ setup(
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
     ],
     packages=find_packages(exclude=["tests"]),
     include_package_data=True,

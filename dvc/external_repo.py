@@ -11,7 +11,7 @@ from dvc.path_info import PathInfo
 from dvc.compat import fspath
 from dvc.repo import Repo
 from dvc.config import NoRemoteError, NotDvcRepoError
-from dvc.exceptions import NoRemoteInExternalRepoError
+from dvc.exceptions import NoRemoteInExternalRepoError, CheckoutError
 from dvc.exceptions import OutputNotFoundError, NoOutputInExternalRepoError
 from dvc.exceptions import FileMissingError, PathMissingError
 from dvc.utils.fs import remove, fs_copy, move
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 @contextmanager
 def external_repo(url, rev=None, for_write=False):
-    logger.debug("Creating external repo {}@{}", url, rev)
+    logger.debug("Creating external repo %s@%s", url, rev)
     path = _cached_clone(url, rev, for_write=for_write)
     try:
         repo = ExternalRepo(path, url)
@@ -106,13 +106,13 @@ class ExternalRepo(Repo):
             if out.changed_cache(filter_info=src):
                 self.cloud.pull(out.get_used_cache(filter_info=src))
 
-            failed = out.checkout(filter_info=src)
+            try:
+                out.checkout(filter_info=src)
+            except CheckoutError:
+                raise FileNotFoundError
 
             move(src, dest)
             remove(tmp)
-
-            if failed:
-                raise FileNotFoundError
 
     @wrap_with(threading.Lock())
     def _set_cache_dir(self):
@@ -209,7 +209,7 @@ def _cached_clone(url, rev, for_write=False):
 
     # Copy to a new dir to keep the clone clean
     repo_path = tempfile.mkdtemp("dvc-erepo")
-    logger.debug("erepo: making a copy of {} clone", url)
+    logger.debug("erepo: making a copy of %s clone", url)
     copy_tree(clone_path, repo_path)
 
     # Check out the specified revision
@@ -235,10 +235,10 @@ def _clone_default_branch(url, rev):
             git = Git(clone_path)
             # Do not pull for known shas, branches and tags might move
             if not Git.is_sha(rev) or not git.has_rev(rev):
-                logger.debug("erepo: git pull {}", url)
+                logger.debug("erepo: git pull %s", url)
                 git.pull()
         else:
-            logger.debug("erepo: git clone {} to a temporary dir", url)
+            logger.debug("erepo: git clone %s to a temporary dir", url)
             clone_path = tempfile.mkdtemp("dvc-clone")
             git = Git.clone(url, clone_path)
             CLONES[url] = clone_path
@@ -250,7 +250,7 @@ def _clone_default_branch(url, rev):
 
 
 def _git_checkout(repo_path, rev):
-    logger.debug("erepo: git checkout {}@{}", repo_path, rev)
+    logger.debug("erepo: git checkout %s@%s", repo_path, rev)
     git = Git(repo_path)
     try:
         git.checkout(rev)

@@ -256,10 +256,12 @@ class UploadError(DvcException):
 
 
 class CheckoutError(DvcException):
-    def __init__(self, target_infos):
+    def __init__(self, target_infos, stats=None):
+        self.target_infos = target_infos
+        self.stats = stats
         targets = [str(t) for t in target_infos]
         m = (
-            "Checkout failed for following targets:\n {}\nDid you "
+            "Checkout failed for following targets:\n{}\nDid you "
             "forget to fetch?".format("\n".join(targets))
         )
         super().__init__(m)
@@ -293,11 +295,11 @@ class HTTPError(DvcException):
 class PathMissingError(DvcException):
     default_msg = (
         "The path '{}' does not exist in the target repository '{}'"
-        " neither as an output nor a git-handled file."
+        " neither as a DVC output nor as a Git-tracked file."
     )
     default_msg_output_only = (
         "The path '{}' does not exist in the target repository '{}'"
-        " as an output."
+        " as an DVC output."
     )
 
     def __init__(self, path, repo, output_only=False):
@@ -323,3 +325,7 @@ class RemoteCacheRequiredError(DvcException):
                 format_link("https://man.dvc.org/config#cache"),
             )
         )
+
+
+class IsADirectoryError(DvcException):
+    """Raised when a file operation is requested on a directory."""

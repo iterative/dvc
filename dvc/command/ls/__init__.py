@@ -30,7 +30,7 @@ class CmdList(CmdBaseNoRepo):
         try:
             entries = Repo.ls(
                 self.args.url,
-                self.args.target,
+                self.args.path,
                 rev=self.args.rev,
                 recursive=self.args.recursive,
                 outs_only=self.args.outs_only,
@@ -45,7 +45,10 @@ class CmdList(CmdBaseNoRepo):
 
 
 def add_parser(subparsers, parent_parser):
-    LIST_HELP = "List files and DVC outputs in the repo."
+    LIST_HELP = (
+        "List repository contents, including files"
+        " and directories tracked by DVC and by Git."
+    )
     list_parser = subparsers.add_parser(
         "list",
         parents=[parent_parser],
@@ -53,14 +56,7 @@ def add_parser(subparsers, parent_parser):
         help=LIST_HELP,
         formatter_class=argparse.RawTextHelpFormatter,
     )
-    list_parser.add_argument(
-        "url", help="Location of DVC or Git repository to download from"
-    )
-    list_parser.add_argument(
-        "target",
-        nargs="?",
-        help="Path to directory within the repository to list outputs for",
-    )
+    list_parser.add_argument("url", help="Location of DVC repository to list")
     list_parser.add_argument(
         "-R",
         "--recursive",
@@ -72,5 +68,10 @@ def add_parser(subparsers, parent_parser):
     )
     list_parser.add_argument(
         "--rev", nargs="?", help="Git revision (e.g. branch, tag, SHA)"
+    )
+    list_parser.add_argument(
+        "path",
+        nargs="?",
+        help="Path to directory within the repository to list outputs for",
     )
     list_parser.set_defaults(func=CmdList)

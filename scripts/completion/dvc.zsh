@@ -27,7 +27,7 @@ _dvc_commands() {
     "import:Download data from DVC repository and take it under DVC control."
     "init:Initialize DVC in the current directory."
     "install:Install DVC git hooks into the repository."
-    "list:List files."
+    "list:List repository contents, including files and directories tracked by DVC and by Git."
     "lock:Lock DVC-file."
     "metrics:Commands to add, manage, collect and display metrics."
     "move:Rename or move a DVC controlled data file or a directory."
@@ -76,6 +76,7 @@ _dvc_checkout=(
   {-R,--recursive}"[Checkout all subdirectories of the specified directory.]"
   {-f,--force}"[Do not prompt when removing working directory files.]"
   "--relink[Recreate links or copies from cache to workspace.]"
+  "--summary[Show summary of the changes.]"
   "1:Stages:_files -g '(*.dvc|Dvcfile)'"
 )
 
@@ -168,7 +169,7 @@ _dvc_list=(
   {-R,--recursive}"[Recursively add each file under the directory.]"
   "--outs-only[Only outputs DVC-outs.]"
   "1:URL:"
-  "2:Target:"
+  "2:Path:"
 )
 
 _dvc_metrics=(

@@ -79,9 +79,9 @@ def test_ls_repo_with_color(tmp_dir, dvc, scm, mocker, monkeypatch, caplog):
     cmd = cli_args.func(cli_args)
 
     caplog.clear()
-    with mocker.patch("sys.stdout.isatty", return_value=True):
-        with caplog.at_level(logging.INFO, logger="dvc.command.ls"):
-            assert cmd.run() == 0
+    mocker.patch("sys.stdout.isatty", return_value=True)
+    with caplog.at_level(logging.INFO, logger="dvc.command.ls"):
+        assert cmd.run() == 0
 
     assert caplog.records[-1].msg == "\n".join(
         [
@@ -112,8 +112,11 @@ def test_ls_repo_recursive(tmp_dir, dvc, scm):
             (("data", "subcontent", "data.xml.dvc"), False),
             (("data", "subcontent", "statistics", "data.csv.dvc"), False),
             (("data", "subcontent", "statistics", "data.csv"), True),
+            (("data", "subcontent", "statistics", ".gitignore"), False),
             (("data", "subcontent", "data.xml"), True),
+            (("data", "subcontent", ".gitignore"), False),
             (("model", "people.csv"), True),
+            (("model", ".gitignore"), False),
             (("structure.xml",), True),
         ),
     )
@@ -135,11 +138,11 @@ def test_ls_repo_outs_only_recursive(tmp_dir, dvc, scm):
     )
 
 
-def test_ls_repo_with_target_dir(tmp_dir, dvc, scm):
+def test_ls_repo_with_path_dir(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
     tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
-    files = Repo.ls(fspath(tmp_dir), target="model")
+    files = Repo.ls(fspath(tmp_dir), path="model")
     match_files(
         files,
         (
@@ -147,90 +150,92 @@ def test_ls_repo_with_target_dir(tmp_dir, dvc, scm):
             (("train.py",), False),
             (("people.csv",), True),
             (("people.csv.dvc",), False),
+            ((".gitignore",), False),
         ),
     )
 
 
-def test_ls_repo_with_target_dir_outs_only_empty(tmp_dir, dvc, scm):
+def test_ls_repo_with_path_dir_outs_only_empty(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
     tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
     tmp_dir.scm_gen({"folder/.keep": "content"}, commit="add .keep")
 
     with pytest.raises(PathMissingError):
-        Repo.ls(fspath(tmp_dir), target="folder", outs_only=True)
+        Repo.ls(fspath(tmp_dir), path="folder", outs_only=True)
 
 
-def test_ls_repo_with_target_subdir(tmp_dir, dvc, scm):
+def test_ls_repo_with_path_subdir(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
     tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
-    target = os.path.join("data", "subcontent")
-    files = Repo.ls(fspath(tmp_dir), target)
+    path = os.path.join("data", "subcontent")
+    files = Repo.ls(fspath(tmp_dir), path)
     match_files(
         files,
         (
             (("data.xml",), True),
             (("data.xml.dvc",), False),
             (("statistics",), False),
+            ((".gitignore",), False),
         ),
     )
 
 
-def test_ls_repo_with_target_subdir_outs_only(tmp_dir, dvc, scm):
+def test_ls_repo_with_path_subdir_outs_only(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
     tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
-    target = os.path.join("data", "subcontent")
-    files = Repo.ls(fspath(tmp_dir), target, outs_only=True)
+    path = os.path.join("data", "subcontent")
+    files = Repo.ls(fspath(tmp_dir), path, outs_only=True)
     match_files(files, ((("data.xml",), True), (("statistics",), False),))
 
 
-def test_ls_repo_with_target_subdir_outs_only_recursive(tmp_dir, dvc, scm):
+def test_ls_repo_with_path_subdir_outs_only_recursive(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
     tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
-    target = os.path.join("data", "subcontent")
-    files = Repo.ls(fspath(tmp_dir), target, outs_only=True, recursive=True)
+    path = os.path.join("data", "subcontent")
+    files = Repo.ls(fspath(tmp_dir), path, outs_only=True, recursive=True)
     match_files(
         files, ((("data.xml",), True), (("statistics", "data.csv"), True),)
     )
 
 
-def test_ls_repo_with_target_file_out(tmp_dir, dvc, scm):
+def test_ls_repo_with_path_file_out(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
     tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
-    target = os.path.join("data", "subcontent", "data.xml")
-    files = Repo.ls(fspath(tmp_dir), target)
+    path = os.path.join("data", "subcontent", "data.xml")
+    files = Repo.ls(fspath(tmp_dir), path)
     match_files(files, ((("data.xml",), True),))
 
 
-def test_ls_repo_with_file_target_fs(tmp_dir, dvc, scm):
+def test_ls_repo_with_file_path_fs(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
     tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
-    target = "README.md"
-    files = Repo.ls(fspath(tmp_dir), target, recursive=True)
+    path = "README.md"
+    files = Repo.ls(fspath(tmp_dir), path, recursive=True)
     match_files(files, ((("README.md",), False),))
 
 
-def test_ls_repo_with_missed_target(tmp_dir, dvc, scm):
+def test_ls_repo_with_missed_path(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
     tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
     with pytest.raises(PathMissingError) as exc_info:
-        Repo.ls(fspath(tmp_dir), target="missed_target")
+        Repo.ls(fspath(tmp_dir), path="missed_path")
     assert not exc_info.value.output_only
 
 
-def test_ls_repo_with_missed_target_outs_only(tmp_dir, dvc, scm):
+def test_ls_repo_with_missed_path_outs_only(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
     tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
     with pytest.raises(PathMissingError) as exc_info:
         Repo.ls(
             fspath(tmp_dir),
-            target="missed_target",
+            path="missed_path",
             recursive=True,
             outs_only=True,
         )
@@ -249,6 +254,7 @@ def test_ls_repo_with_removed_dvc_dir(tmp_dir, dvc, scm):
             (("out.dvc",), False),
             (("dep",), True),
             (("out",), False),
+            ((".gitignore",), False),
         ),
     )
 
@@ -265,23 +271,24 @@ def test_ls_repo_with_removed_dvc_dir_recursive(tmp_dir, dvc, scm):
             (("out.dvc",), False),
             (("dep",), True),
             (("out", "file"), True),
+            ((".gitignore",), False),
         ),
     )
 
 
-def test_ls_repo_with_removed_dvc_dir_with_target_dir(tmp_dir, dvc, scm):
+def test_ls_repo_with_removed_dvc_dir_with_path_dir(tmp_dir, dvc, scm):
     create_dvc_pipeline(tmp_dir, dvc)
 
-    target = "out"
-    files = Repo.ls(fspath(tmp_dir), target)
+    path = "out"
+    files = Repo.ls(fspath(tmp_dir), path)
     match_files(files, ((("file",), True),))
 
 
-def test_ls_repo_with_removed_dvc_dir_with_target_file(tmp_dir, dvc, scm):
+def test_ls_repo_with_removed_dvc_dir_with_path_file(tmp_dir, dvc, scm):
     create_dvc_pipeline(tmp_dir, dvc)
 
-    target = os.path.join("out", "file")
-    files = Repo.ls(fspath(tmp_dir), target)
+    path = os.path.join("out", "file")
+    files = Repo.ls(fspath(tmp_dir), path)
     match_files(files, ((("file",), True),))
 
 
@@ -324,8 +331,11 @@ def test_ls_remote_repo_recursive(erepo_dir):
             (("data", "subcontent", "data.xml.dvc"), False),
             (("data", "subcontent", "statistics", "data.csv.dvc"), False),
             (("data", "subcontent", "statistics", "data.csv"), True),
+            (("data", "subcontent", "statistics", ".gitignore"), False),
             (("data", "subcontent", "data.xml"), True),
+            (("data", "subcontent", ".gitignore"), False),
             (("model", "people.csv"), True),
+            (("model", ".gitignore"), False),
             (("structure.xml",), True),
         ),
     )
@@ -348,14 +358,14 @@ def test_ls_remote_git_only_repo_recursive(git_dir):
     )
 
 
-def test_ls_remote_repo_with_target_dir(erepo_dir):
+def test_ls_remote_repo_with_path_dir(erepo_dir):
     with erepo_dir.chdir():
         erepo_dir.scm_gen(FS_STRUCTURE, commit="init")
         erepo_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
     url = "file://{}".format(erepo_dir)
-    target = "model"
-    files = Repo.ls(url, target)
+    path = "model"
+    files = Repo.ls(url, path)
     match_files(
         files,
         (
@@ -363,6 +373,7 @@ def test_ls_remote_repo_with_target_dir(erepo_dir):
             (("train.py",), False),
             (("people.csv",), True),
             (("people.csv.dvc",), False),
+            ((".gitignore",), False),
         ),
     )
 
@@ -401,9 +412,13 @@ def test_ls_remote_repo_with_rev_recursive(erepo_dir):
             (("data", "subcontent", "data.xml.dvc"), False),
             (("data", "subcontent", "statistics", "data.csv.dvc"), False),
             (("data", "subcontent", "statistics", "data.csv"), True),
+            (("data", "subcontent", "statistics", ".gitignore"), False),
             (("data", "subcontent", "data.xml"), True),
+            (("data", "subcontent", ".gitignore"), False),
             (("model", "people.csv"), True),
+            (("model", ".gitignore"), False),
             (("structure.xml",), True),
+            ((".gitignore",), False),
         ),
     )
 

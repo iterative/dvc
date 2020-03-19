@@ -1,9 +1,11 @@
 import hashlib
 import os
 import pytest
-import shutil
+
+from funcy import first
 
 from dvc.compat import fspath
+from dvc.utils.fs import remove
 from dvc.exceptions import DvcException
 
 
@@ -34,17 +36,13 @@ def test_no_cache_entry(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen({"dir": {"1": "1", "2": "2"}})
     tmp_dir.dvc_gen("file", "second")
 
-    shutil.rmtree(fspath(tmp_dir / ".dvc" / "cache"))
+    remove(fspath(tmp_dir / ".dvc" / "cache"))
     (tmp_dir / ".dvc" / "state").unlink()
 
     dir_checksum = "5fb6b29836c388e093ca0715c872fe2a.dir"
 
     assert dvc.diff() == {
-        "added": [
-            {"path": os.path.join("dir", ""), "hash": dir_checksum},
-            {"path": os.path.join("dir", "1"), "hash": digest("1")},
-            {"path": os.path.join("dir", "2"), "hash": digest("2")},
-        ],
+        "added": [{"path": os.path.join("dir", ""), "hash": dir_checksum}],
         "deleted": [],
         "modified": [
             {
@@ -126,15 +124,13 @@ def test_directories(tmp_dir, scm, dvc):
                 "path": os.path.join("dir", ""),
                 "hash": "5fb6b29836c388e093ca0715c872fe2a.dir",
             },
-            {"path": os.path.join("dir", "1"), "hash": digest("1")},
-            {"path": os.path.join("dir", "2"), "hash": digest("2")},
         ],
         "deleted": [],
         "modified": [],
     }
 
     assert dvc.diff(":/directory", ":/modify") == {
-        "added": [{"path": os.path.join("dir", "3"), "hash": digest("3")}],
+        "added": [],
         "deleted": [],
         "modified": [
             {
@@ -144,16 +140,12 @@ def test_directories(tmp_dir, scm, dvc):
                     "new": "9b5faf37366b3370fd98e3e60ca439c1.dir",
                 },
             },
-            {
-                "path": os.path.join("dir", "2"),
-                "hash": {"old": digest("2"), "new": digest("two")},
-            },
         ],
     }
 
     assert dvc.diff(":/modify", ":/delete") == {
         "added": [],
-        "deleted": [{"path": os.path.join("dir", "2"), "hash": digest("two")}],
+        "deleted": [],
         "modified": [
             {
                 "path": os.path.join("dir", ""),
@@ -164,3 +156,24 @@ def test_directories(tmp_dir, scm, dvc):
             }
         ],
     }
+
+
+def test_diff_no_cache(tmp_dir, scm, dvc):
+    (stage,) = tmp_dir.dvc_gen(
+        {"dir": {"file": "file content"}}, commit="first"
+    )
+    scm.tag("v1")
+    tmp_dir.dvc_gen(
+        {"dir": {"file": "modified file content"}}, commit="second"
+    )
+
+    remove(first(stage.outs).cache_path)
+    remove("dir")
+
+    # invalidate_dir_info to force cache loading
+    dvc.cache.local._dir_info = {}
+
+    diff = dvc.diff("v1")
+    assert diff["added"] == []
+    assert diff["deleted"] == []
+    assert first(diff["modified"])["path"] == os.path.join("dir", "")
