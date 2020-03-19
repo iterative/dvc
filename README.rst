@@ -307,6 +307,6 @@ Iterative, *DVC: Data Version Control - Git for Data & Models* (2020)
    :target: https://doi.org/10.5281/zenodo.3677553
    :alt: DOI
 
-.. |Flowchart| image:: https://dvc.org/static/img/flow.gif
+.. |Flowchart| image:: https://dvc.org/img/flow.gif
    :target: https://dvc.org/img/flow.gif
    :alt: how_dvc_works
