@@ -227,7 +227,7 @@ def add_parser(subparsers, parent_parser):
     )
     metrics_show_parser.set_defaults(func=CmdMetricsShow)
 
-    METRICS_ADD_HELP = "Mark output file as a metric."
+    METRICS_ADD_HELP = "Mark a DVC-tracked file as a metric."
     metrics_add_parser = metrics_subparsers.add_parser(
         "add",
         parents=[parent_parser],
@@ -261,7 +261,7 @@ def add_parser(subparsers, parent_parser):
     metrics_modify_parser.add_argument("path", help="Path to a metric file.")
     metrics_modify_parser.set_defaults(func=CmdMetricsModify)
 
-    METRICS_REMOVE_HELP = "Stop tracking a metric file."
+    METRICS_REMOVE_HELP = "Remove metric mark on a DVC-tracked file."
     metrics_remove_parser = metrics_subparsers.add_parser(
         "remove",
         parents=[parent_parser],
