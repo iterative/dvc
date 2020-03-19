@@ -40,7 +40,6 @@ class CmdRun(CmdBase):
                 metrics=self.args.metrics,
                 metrics_no_cache=self.args.metrics_no_cache,
                 deps=self.args.deps,
-                params=self.args.params,
                 fname=self.args.file,
                 cwd=self.args.cwd,
                 wdir=self.args.wdir,
@@ -111,13 +110,6 @@ def add_parser(subparsers, parent_parser):
         default=[],
         help="Declare output file or directory "
         "(do not put into DVC cache).",
-    )
-    run_parser.add_argument(
-        "-p",
-        "--params",
-        action="append",
-        default=[],
-        help="Declare parameter to use as additional dependency.",
     )
     run_parser.add_argument(
         "-m",

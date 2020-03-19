@@ -14,11 +14,9 @@ class DependencyREPO(DependencyLOCAL):
     PARAM_REV_LOCK = "rev_lock"
 
     REPO_SCHEMA = {
-        PARAM_REPO: {
-            Required(PARAM_URL): str,
-            PARAM_REV: str,
-            PARAM_REV_LOCK: str,
-        }
+        Required(PARAM_URL): str,
+        PARAM_REV: str,
+        PARAM_REV_LOCK: str,
     }
 
     def __init__(self, def_repo, stage, *args, **kwargs):
