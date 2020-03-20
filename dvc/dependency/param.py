@@ -1,6 +1,7 @@
 import json
 import re
 from itertools import groupby
+from voluptuous import Any
 
 from dvc.dependency.local import DependencyLOCAL
 from dvc.exceptions import DvcException
@@ -19,12 +20,8 @@ class BadParamFileError(DvcException):
 
 
 class DependencyPARAMS(DependencyLOCAL):
-    # SCHEMA:
-    #   params:
-    #   - <parameter name>: <parameter value>
-    #   - <parameter name>: <parameter value>
     PARAM_PARAMS = "params"
-    PARAM_SCHEMA = {PARAM_PARAMS: {str: str}}
+    PARAM_SCHEMA = {PARAM_PARAMS: Any(dict, None)}
     FILE_DELIMITER = ":"
     PARAM_DELIMITER = ","
     DEFAULT_PARAMS_FILE = "params.json"
