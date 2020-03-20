@@ -127,9 +127,17 @@ class ExternalRepo(Repo):
         if not os.path.isdir(self.url):
             return
 
-        remote_name = self.config["core"].get("remote")
-        src_repo = Repo(self.url)
         try:
+            src_repo = Repo(self.url)
+        except NotDvcRepoError:
+            # If ExternalRepo does not throw NotDvcRepoError and Repo does,
+            # the self.url might be a bare git repo.
+            # NOTE: This will fail to resolve remote with relative path,
+            # same as if it was a remote DVC repo.
+            return
+
+        try:
+            remote_name = self.config["core"].get("remote")
             if remote_name:
                 self._fix_local_remote(src_repo, remote_name)
             else:

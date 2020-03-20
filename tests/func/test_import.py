@@ -305,3 +305,20 @@ def test_pull_no_rev_lock(erepo_dir, tmp_dir, dvc):
 
     assert (tmp_dir / "foo_imported").is_file()
     assert (tmp_dir / "foo_imported").read_text() == "contents"
+
+
+def test_import_from_bare_git_repo(tmp_dir, make_tmp_dir, erepo_dir):
+    import git
+
+    git.Repo.init(fspath(tmp_dir), bare=True)
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen({"foo": "foo"}, commit="initial")
+        erepo_dir.dvc.push()
+
+        erepo_dir.scm.repo.create_remote("origin", fspath(tmp_dir))
+        erepo_dir.scm.repo.remote("origin").push("master")
+
+    dvc_repo = make_tmp_dir("dvc-repo", scm=True, dvc=True)
+    with dvc_repo.chdir():
+        dvc_repo.dvc.imp(fspath(tmp_dir), "foo")
