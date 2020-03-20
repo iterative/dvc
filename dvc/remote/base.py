@@ -10,7 +10,7 @@ from functools import partial
 from multiprocessing import cpu_count
 from operator import itemgetter
 
-from shortuuid import uuid
+from funcy import memoize
 
 import dvc.prompt as prompt
 from dvc.exceptions import (
@@ -109,7 +109,6 @@ class RemoteBASE(object):
         self._dir_info = {}
 
         self.cache_types = config.get("type") or copy(self.DEFAULT_CACHE_TYPES)
-        self.cache_type_confirmed = False
 
     @classmethod
     def get_missing_deps(cls):
@@ -388,32 +387,47 @@ class RemoteBASE(object):
         self._try_links(from_info, to_info, link_types)
 
     def _verify_link(self, path_info, link_type):
-        if self.cache_type_confirmed:
-            return
-
         is_link = getattr(self, "is_{}".format(link_type), None)
-        if is_link and not is_link(path_info):
-            self.remove(path_info)
-            raise DvcException("failed to verify {}".format(link_type))
-
-        self.cache_type_confirmed = True
+        return is_link is not None and is_link(path_info)
 
     @slow_link_guard
     def _try_links(self, from_info, to_info, link_types):
-        while link_types:
-            link_method = getattr(self, link_types[0])
-            try:
-                self._do_link(from_info, to_info, link_method)
-                self._verify_link(to_info, link_types[0])
-                return
+        link_type = self.get_supported_linktype(link_types)
+        link_method = getattr(self, link_type)
+        self._do_link(from_info, to_info, link_method)
 
-            except DvcException as exc:
-                logger.debug(
-                    "Cache type '%s' is not supported: %s", link_types[0], exc
-                )
-                del link_types[0]
+    @memoize
+    def supports_linktype(self, link_type):
+        link_method = getattr(self, link_type)
+        if not link_method:
+            return False
 
-        raise DvcException("no possible cache types left to try out.")
+        tmp_file = PathInfo(tempfile.NamedTemporaryFile(delete=False).name)
+        temp_cache_file = self.path_info / ".cache_support_test_file"
+        with self.open(tmp_file, "wb") as fd:
+            fd.write("random file on test".encode("utf-8"))
+
+        verified = False
+        try:
+            link_method(tmp_file, temp_cache_file)
+            verified = self._verify_link(temp_cache_file, link_type)
+        except DvcException:
+            logger.debug("failed to verify for %s", link_type)
+
+        self.remove(tmp_file)
+        self.remove(temp_cache_file)
+
+        return verified
+
+    def get_supported_linktype(self, link_types):
+        for link_type in link_types:
+            if link_type == "copy":
+                return "copy"
+
+            if self.supports_linktype(link_type):
+                return link_type
+
+        raise DvcException("no cache left to try")
 
     def _do_link(self, from_info, to_info, link_method):
         if self.exists(to_info):
@@ -422,7 +436,7 @@ class RemoteBASE(object):
         link_method(from_info, to_info)
 
         logger.debug(
-            "Created '%s': %s -> %s", self.cache_types[0], from_info, to_info,
+            "Created '%s': %s -> %s", link_method, from_info, to_info,
         )
 
     def _save_file(self, path_info, checksum, save_link=True):
@@ -450,25 +464,10 @@ class RemoteBASE(object):
 
     def _cache_is_copy(self, path_info):
         """Checks whether cache uses copies."""
-        if self.cache_type_confirmed:
-            return self.cache_types[0] == "copy"
-
-        if set(self.cache_types) <= {"copy"}:
-            return True
-
-        workspace_file = path_info.with_name("." + uuid())
-        test_cache_file = self.path_info / ".cache_type_test_file"
-        if not self.exists(test_cache_file):
-            with self.open(test_cache_file, "wb") as fobj:
-                fobj.write(bytes(1))
-        try:
-            self.link(test_cache_file, workspace_file)
-        finally:
-            self.remove(workspace_file)
-            self.remove(test_cache_file)
-
-        self.cache_type_confirmed = True
-        return self.cache_types[0] == "copy"
+        return (
+            set(self.cache_types) <= {"copy"}
+            or self.get_supported_linktype(self.cache_types) == "copy"
+        )
 
     def _save_dir(self, path_info, checksum, save_link=True):
         cache_info = self.checksum_to_path_info(checksum)
