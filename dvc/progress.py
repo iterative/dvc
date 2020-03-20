@@ -157,9 +157,12 @@ class Tqdm(tqdm):
     def display(self, msg=None, pos=None):
         if pos is None:
             pos = abs(getattr(self, "pos", self.MAX_BARS))
-        if pos < self.MAX_BARS:
-            super().display(msg=msg, pos=pos)
+        if pos <= self.MAX_BARS:
+            super().display(
+                msg=msg if pos < self.MAX_BARS else " ... (more hidden) ...",
+                pos=pos,
+            )
 
     def clear(self, nolock=False):
-        if abs(getattr(self, "pos", self.MAX_BARS)) < self.MAX_BARS:
+        if abs(getattr(self, "pos", self.MAX_BARS)) <= self.MAX_BARS:
             super().clear(nolock=nolock)
