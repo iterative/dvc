@@ -35,7 +35,6 @@ class TestRun(TestDvc):
     def test(self):
         cmd = "python {} {} {}".format(self.CODE, self.FOO, "out")
         deps = [self.FOO, self.CODE]
-        params = ["p_one", "p_two", "par.json:p_three"]
         outs = [os.path.join(self.dvc.root_dir, "out")]
         outs_no_cache = []
         fname = "out.dvc"
@@ -46,7 +45,6 @@ class TestRun(TestDvc):
             cmd=cmd,
             deps=deps,
             outs=outs,
-            params=params,
             outs_no_cache=outs_no_cache,
             fname=fname,
             cwd=cwd,
@@ -55,7 +53,7 @@ class TestRun(TestDvc):
         self.assertTrue(filecmp.cmp(self.FOO, "out", shallow=False))
         self.assertTrue(os.path.isfile(stage.path))
         self.assertEqual(stage.cmd, cmd)
-        self.assertEqual(len(stage.deps), len(deps) + 2)
+        self.assertEqual(len(stage.deps), len(deps))
         self.assertEqual(len(stage.outs), len(outs + outs_no_cache))
         self.assertEqual(stage.outs[0].fspath, outs[0])
         self.assertEqual(stage.outs[0].checksum, file_md5(self.FOO)[0])

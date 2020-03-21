@@ -159,6 +159,9 @@ class OutputBase(object):
     def exists(self):
         return self.remote.exists(self.path_info)
 
+    def save_info(self):
+        return self.remote.save_info(self.path_info)
+
     def changed_checksum(self):
         return self.checksum != self.remote.get_checksum(self.path_info)
 
@@ -215,7 +218,7 @@ class OutputBase(object):
             self.repo.scm.ignore(self.fspath)
 
         if not self.use_cache:
-            self.info = self.remote.save_info(self.path_info)
+            self.info = self.save_info()
             if self.metric:
                 self.verify_metric()
             if not self.IS_DEPENDENCY:
@@ -234,7 +237,7 @@ class OutputBase(object):
             )
             return
 
-        self.info = self.remote.save_info(self.path_info)
+        self.info = self.save_info()
 
     def commit(self):
         if self.use_cache:
