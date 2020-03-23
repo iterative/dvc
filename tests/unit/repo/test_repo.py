@@ -82,3 +82,18 @@ def test_collect_optimization(tmp_dir, dvc, mocker):
     # Should read stage directly instead of collecting the whole graph
     dvc.collect(stage.path)
     dvc.collect_granular(stage.path)
+
+
+def test_skip_graph_checks(tmp_dir, dvc, mocker, run_copy):
+    (stage,) = tmp_dir.dvc_gen("foo", "foo text")
+
+    # Error out on graph collection and raise a skip graph checks flag
+    mocker.patch(
+        "dvc.repo.Repo._collect_graph",
+        side_effect=Exception("Should not collect"),
+    )
+    dvc._skip_graph_checks = True
+
+    tmp_dir.gen("foo", "foo text")
+    dvc.add("foo")
+    run_copy("foo", "bar")
