@@ -175,7 +175,7 @@ def add_parser(subparsers, parent_parser):
 
     fix_subparsers(pipeline_subparsers)
 
-    PIPELINE_SHOW_HELP = "Show pipelines."
+    PIPELINE_SHOW_HELP = "Show stages in a pipeline."
     pipeline_show_parser = pipeline_subparsers.add_parser(
         "show",
         parents=[parent_parser],
@@ -231,7 +231,7 @@ def add_parser(subparsers, parent_parser):
     )
     pipeline_show_parser.set_defaults(func=CmdPipelineShow)
 
-    PIPELINE_LIST_HELP = "List pipelines."
+    PIPELINE_LIST_HELP = "List connected groups of stages (pipelines)."
     pipeline_list_parser = pipeline_subparsers.add_parser(
         "list",
         parents=[parent_parser],

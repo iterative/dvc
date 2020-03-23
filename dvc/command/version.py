@@ -142,7 +142,8 @@ def _get_dvc_repo_info(repo):
 
 
 def add_parser(subparsers, parent_parser):
-    VERSION_HELP = "Show DVC version and system/environment information."
+    VERSION_HELP = "Display the DVC version"
+    " and system/environment information."
 
     version_parser = subparsers.add_parser(
         "version",

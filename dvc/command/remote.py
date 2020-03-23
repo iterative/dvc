@@ -100,7 +100,7 @@ class CmdRemoteList(CmdRemote):
 def add_parser(subparsers, parent_parser):
     from dvc.command.config import parent_config_parser
 
-    REMOTE_HELP = "Manage remote storage configuration."
+    REMOTE_HELP = "Set up and manage data remotes."
     remote_parser = subparsers.add_parser(
         "remote",
         parents=[parent_parser],
@@ -116,7 +116,7 @@ def add_parser(subparsers, parent_parser):
 
     fix_subparsers(remote_subparsers)
 
-    REMOTE_ADD_HELP = "Add remote."
+    REMOTE_ADD_HELP = "Add a new data remote."
     remote_add_parser = remote_subparsers.add_parser(
         "add",
         parents=[parent_config_parser, parent_parser],
@@ -147,7 +147,7 @@ def add_parser(subparsers, parent_parser):
     )
     remote_add_parser.set_defaults(func=CmdRemoteAdd)
 
-    REMOTE_DEFAULT_HELP = "Set/unset default remote."
+    REMOTE_DEFAULT_HELP = "Set/unset the default data remote."
     remote_default_parser = remote_subparsers.add_parser(
         "default",
         parents=[parent_config_parser, parent_parser],
@@ -167,7 +167,7 @@ def add_parser(subparsers, parent_parser):
     )
     remote_default_parser.set_defaults(func=CmdRemoteDefault)
 
-    REMOTE_REMOVE_HELP = "Remove remote."
+    REMOTE_REMOVE_HELP = "Remove a data remote."
     remote_remove_parser = remote_subparsers.add_parser(
         "remove",
         parents=[parent_config_parser, parent_parser],
@@ -180,7 +180,7 @@ def add_parser(subparsers, parent_parser):
     )
     remote_remove_parser.set_defaults(func=CmdRemoteRemove)
 
-    REMOTE_MODIFY_HELP = "Modify remote."
+    REMOTE_MODIFY_HELP = "Modify the configuration of a data remote."
     remote_modify_parser = remote_subparsers.add_parser(
         "modify",
         parents=[parent_config_parser, parent_parser],
@@ -204,7 +204,7 @@ def add_parser(subparsers, parent_parser):
     )
     remote_modify_parser.set_defaults(func=CmdRemoteModify)
 
-    REMOTE_LIST_HELP = "List available remotes."
+    REMOTE_LIST_HELP = "List all available data remotes."
     remote_list_parser = remote_subparsers.add_parser(
         "list",
         parents=[parent_config_parser, parent_parser],
