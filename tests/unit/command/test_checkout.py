@@ -47,7 +47,7 @@ def test_log_summary(caplog):
     del stats["modified"]
     _assert_output(stats, "3 added")
 
-    _assert_output({}, "")
+    _assert_output({}, "No changes.")
 
 
 def test_log_changes(caplog):

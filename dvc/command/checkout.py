@@ -31,7 +31,7 @@ def log_summary(stats):
         for state in states
         if stats.get(state)
     )
-    logger.info(_human_join(summary))
+    logger.info(_human_join(summary) or "No changes.")
 
 
 def log_changes(stats):
