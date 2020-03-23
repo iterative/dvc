@@ -37,3 +37,9 @@ class TestScmContext(TestCase):
 
         self.assertEqual(0, self.scm_mock.reset_ignores.call_count)
         self.assertEqual(0, self.scm_mock.remind_to_track.call_count)
+
+
+def test_remind_to_track(scm, caplog):
+    scm.files_to_track = ["fname with spaces.txt", "тест", "foo"]
+    scm.remind_to_track()
+    assert "git add 'fname with spaces.txt' 'тест' foo" in caplog.text
