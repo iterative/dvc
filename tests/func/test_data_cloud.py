@@ -40,6 +40,7 @@ from tests.remotes import (
     TEST_GCP_CREDS_FILE,
     TEST_REMOTE,
 )
+from dvc.utils.fs import remove
 
 
 class TestDataCloud(TestDvc):
@@ -712,19 +713,20 @@ def test_verify_checksums(tmp_dir, scm, dvc, mocker, tmp_path_factory):
     assert checksum_spy.call_count == 3
 
 
-def test_pull_git_imports(tmp_dir, dvc, scm, git_dir):
-    with git_dir.chdir():
-        git_dir.scm_gen({"dir": {"bar": "bar"}}, commit="second")
-        git_dir.scm_gen("foo", "foo", commit="first")
+@pytest.mark.parametrize("erepo", ["git_dir", "erepo_dir"])
+def test_pull_git_imports(request, tmp_dir, dvc, scm, erepo):
+    erepo = request.getfixturevalue(erepo)
+    with erepo.chdir():
+        erepo.scm_gen({"dir": {"bar": "bar"}}, commit="second")
+        erepo.scm_gen("foo", "foo", commit="first")
 
-    dvc.imp(fspath(git_dir), "foo")
-    dvc.imp(fspath(git_dir), "dir", out="new_dir", rev="HEAD~")
+    dvc.imp(fspath(erepo), "foo")
+    dvc.imp(fspath(erepo), "dir", out="new_dir", rev="HEAD~")
 
     assert dvc.pull()["downloaded"] == 0
 
-    os.remove("foo")
-    shutil.rmtree("new_dir")
-    shutil.rmtree(dvc.cache.local.cache_dir)
+    for item in ["foo", "new_dir", dvc.cache.local.cache_dir]:
+        remove(item)
     os.makedirs(dvc.cache.local.cache_dir, exist_ok=True)
     clean_repos()
 
@@ -750,34 +752,8 @@ def test_pull_external_dvc_imports(tmp_dir, dvc, scm, erepo_dir):
 
     assert dvc.pull()["downloaded"] == 0
 
-    os.remove("foo")
-    shutil.rmtree("new_dir")
-    shutil.rmtree(dvc.cache.local.cache_dir)
-    os.makedirs(dvc.cache.local.cache_dir, exist_ok=True)
-    clean_repos()
-
-    assert dvc.pull(force=True)["downloaded"] == 2
-
-    assert os.path.exists("foo")
-    assert open("foo").read() == "foo"
-
-    assert os.path.isdir("new_dir")
-    assert open(os.path.join("new_dir", "bar")).read() == "bar"
-
-
-def test_pull_git_imports_from_dvc_repo(tmp_dir, dvc, scm, erepo_dir):
-    with erepo_dir.chdir():
-        erepo_dir.scm_gen({"dir": {"bar": "bar"}}, commit="second")
-        erepo_dir.scm_gen("foo", "foo", commit="first")
-
-    dvc.imp(fspath(erepo_dir), "foo")
-    dvc.imp(fspath(erepo_dir), "dir", out="new_dir", rev="HEAD~")
-
-    assert dvc.pull()["downloaded"] == 0
-
-    os.remove("foo")
-    shutil.rmtree("new_dir")
-    shutil.rmtree(dvc.cache.local.cache_dir)
+    for item in ["foo", "new_dir", dvc.cache.local.cache_dir]:
+        remove(item)
     os.makedirs(dvc.cache.local.cache_dir, exist_ok=True)
     clean_repos()
 
