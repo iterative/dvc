@@ -763,3 +763,28 @@ def test_pull_external_dvc_imports(tmp_dir, dvc, scm, erepo_dir):
 
     assert os.path.isdir("new_dir")
     assert open(os.path.join("new_dir", "bar")).read() == "bar"
+
+
+def test_pull_git_imports_from_dvc_repo(tmp_dir, dvc, scm, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.scm_gen({"dir": {"bar": "bar"}}, commit="second")
+        erepo_dir.scm_gen("foo", "foo", commit="first")
+
+    dvc.imp(fspath(erepo_dir), "foo")
+    dvc.imp(fspath(erepo_dir), "dir", out="new_dir", rev="HEAD~")
+
+    assert dvc.pull()["downloaded"] == 0
+
+    os.remove("foo")
+    shutil.rmtree("new_dir")
+    shutil.rmtree(dvc.cache.local.cache_dir)
+    os.makedirs(dvc.cache.local.cache_dir, exist_ok=True)
+    clean_repos()
+
+    assert dvc.pull(force=True)["downloaded"] == 2
+
+    assert os.path.exists("foo")
+    assert open("foo").read() == "foo"
+
+    assert os.path.isdir("new_dir")
+    assert open(os.path.join("new_dir", "bar")).read() == "bar"
