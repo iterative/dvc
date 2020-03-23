@@ -85,15 +85,27 @@ def test_collect_optimization(tmp_dir, dvc, mocker):
 
 
 def test_skip_graph_checks(tmp_dir, dvc, mocker, run_copy):
-    (stage,) = tmp_dir.dvc_gen("foo", "foo text")
+    # See https://github.com/iterative/dvc/issues/2671 for more info
+    mock_collect_graph = mocker.patch("dvc.repo.Repo._collect_graph")
 
-    # Error out on graph collection and raise a skip graph checks flag
-    mocker.patch(
-        "dvc.repo.Repo._collect_graph",
-        side_effect=Exception("Should not collect"),
-    )
-    dvc._skip_graph_checks = True
-
+    # sanity check
     tmp_dir.gen("foo", "foo text")
     dvc.add("foo")
     run_copy("foo", "bar")
+    assert mock_collect_graph.called
+
+    # check that our hack can be enabled
+    mock_collect_graph.reset_mock()
+    dvc._skip_graph_checks = True
+    tmp_dir.gen("baz", "baz text")
+    dvc.add("baz")
+    run_copy("baz", "qux")
+    assert not mock_collect_graph.called
+
+    # check that our hack can be disabled
+    mock_collect_graph.reset_mock()
+    dvc._skip_graph_checks = False
+    tmp_dir.gen("quux", "quux text")
+    dvc.add("quux")
+    run_copy("quux", "quuz")
+    assert mock_collect_graph.called
