@@ -189,16 +189,20 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
     try:
         System.reflink(src, dest)
     except DvcException:
-        with Tqdm(
-            desc=name, disable=no_progress_bar, total=total, bytes=True
-        ) as pbar:
-            with open(src, "rb") as fsrc, open(dest, "wb+") as fdest:
+        with open(src, "rb") as fsrc, open(dest, "wb+") as fdest:
+            with Tqdm.wrapattr(
+                fdest,
+                "write",
+                desc=name,
+                disable=no_progress_bar,
+                total=total,
+                bytes=True,
+            ) as fdest_wrapped:
                 while True:
                     buf = fsrc.read(LOCAL_CHUNK_SIZE)
                     if not buf:
                         break
-                    fdest.write(buf)
-                    pbar.update(len(buf))
+                    fdest_wrapped.write(buf)
 
 
 def walk_files(directory):
