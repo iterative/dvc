@@ -119,6 +119,7 @@ def _git_to_cache(cache, repo_root, files):
             continue
 
         if cache.changed_cache(info[cache.PARAM_CHECKSUM]):
+            logger.debug("fetched '%s' from '%s' repo", file, repo_root)
             num_downloads += 1
             cache.save(repo_root / file, info)
 
