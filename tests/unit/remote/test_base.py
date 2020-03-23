@@ -102,7 +102,7 @@ def test_cache_exists(path_to_checksum, no_traverse, traverse):
 def test_cache_exists_traverse(path_to_checksum, list_cache_paths):
     remote = RemoteBASE(None, {})
     remote.path_info = ""
-    remote._cache_exists_traverse(set([0]), set())
+    remote._cache_exists_traverse({0}, set())
     for i in range(1, 16):
         list_cache_paths.assert_any_call(prefix="{:03x}".format(i))
     for i in range(1, 256):
