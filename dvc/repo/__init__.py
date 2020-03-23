@@ -174,7 +174,20 @@ class Repo(object):
 
     def check_modified_graph(self, new_stages):
         """Generate graph including the new stage to check for errors"""
-        self._collect_graph(self.stages + new_stages)
+        # Building graph might be costly for the ones with many DVC-files,
+        # so we provide this undocumented hack to skip it. See [1] for
+        # more details. The hack can be used as:
+        #
+        #     repo = Repo(...)
+        #     repo._skip_graph_checks = True
+        #     repo.add(...)
+        #
+        # A user should care about not duplicating outs and not adding cycles,
+        # otherwise DVC might have an undefined behaviour.
+        #
+        # [1] https://github.com/iterative/dvc/issues/2671
+        if not getattr(self, "_skip_graph_checks", False):
+            self._collect_graph(self.stages + new_stages)
 
     def collect(self, target, with_deps=False, recursive=False, graph=None):
         import networkx as nx
