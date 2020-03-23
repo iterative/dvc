@@ -174,6 +174,15 @@ class Repo(object):
 
     def check_modified_graph(self, new_stages):
         """Generate graph including the new stage to check for errors"""
+        # Building graph might be costly for ones with many stages,
+        # we provide this non-documented hack to skip this for add and run.
+        # Can be used as:
+        #
+        #     repo = Repo(...)
+        #     repo._skip_graph_checks = True
+        #     repo.add(...)
+        #
+        # A user should care about not duplicating outs and not adding cycles.
         if not getattr(self, "_skip_graph_checks", False):
             self._collect_graph(self.stages + new_stages)
 
