@@ -22,6 +22,7 @@ from dvc.remote import RemoteS3
 from dvc.remote import RemoteSSH
 from dvc.remote.base import STATUS_DELETED, STATUS_NEW, STATUS_OK
 from dvc.utils import file_md5
+from dvc.utils.fs import remove
 from dvc.utils.stage import dump_stage_file, load_stage_file
 from dvc.external_repo import clean_repos
 from tests.basic_env import TestDvc
@@ -40,7 +41,6 @@ from tests.remotes import (
     TEST_GCP_CREDS_FILE,
     TEST_REMOTE,
 )
-from dvc.utils.fs import remove
 
 
 class TestDataCloud(TestDvc):
