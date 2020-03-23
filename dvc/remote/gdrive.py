@@ -77,6 +77,7 @@ class RemoteGDrive(RemoteBASE):
     DEFAULT_VERIFY = True
     # Always prefer traverse for GDrive since API usage quotas are a concern.
     TRAVERSE_WEIGHT_MULTIPLIER = 1
+    TRAVERSE_PREFIX_LEN = 2
 
     GDRIVE_CREDENTIALS_DATA = "GDRIVE_CREDENTIALS_DATA"
     DEFAULT_USER_CREDENTIALS_FILE = "gdrive-user-credentials.json"

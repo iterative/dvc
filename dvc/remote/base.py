@@ -84,6 +84,7 @@ class RemoteBASE(object):
     DEFAULT_VERIFY = False
     LIST_OBJECT_PAGE_SIZE = 1000
     TRAVERSE_WEIGHT_MULTIPLIER = 20
+    TRAVERSE_PREFIX_LEN = 3
 
     CACHE_MODE = None
     SHARED_MODE_MAP = {None: (None, None), "group": (None, None)}
@@ -830,13 +831,15 @@ class RemoteBASE(object):
 
         # Fetch one parent cache dir for estimating size of entire remote cache
         checksums = frozenset(checksums)
+        prefix = "0" * self.TRAVERSE_PREFIX_LEN
+        traverse_dirs = pow(16, self.TRAVERSE_PREFIX_LEN)
         remote_checksums = set(
-            map(self.path_to_checksum, self.list_cache_paths(prefix="00"))
+            map(self.path_to_checksum, self.list_cache_paths(prefix=prefix))
         )
         if not remote_checksums:
-            remote_size = 256
+            remote_size = traverse_dirs
         else:
-            remote_size = 256 * len(remote_checksums)
+            remote_size = traverse_dirs * len(remote_checksums)
         logger.debug("Estimated remote size: {} files".format(remote_size))
 
         traverse_pages = remote_size / self.LIST_OBJECT_PAGE_SIZE
@@ -871,16 +874,29 @@ class RemoteBASE(object):
             )
             return list(checksums & set(self.all()))
 
+        return self._cache_exists_traverse(
+            checksums, remote_checksums, jobs, name
+        )
+
+    def _cache_exists_traverse(
+        self, checksums, remote_checksums, jobs=None, name=None
+    ):
         logger.debug(
             "Querying {} checksums via threaded traverse".format(
                 len(checksums)
             )
         )
 
+        traverse_prefixes = ["{:02x}".format(i) for i in range(1, 256)]
+        if self.TRAVERSE_PREFIX_LEN > 2:
+            traverse_prefixes += [
+                "{0:0{1}x}".format(i, self.TRAVERSE_PREFIX_LEN)
+                for i in range(1, pow(16, self.TRAVERSE_PREFIX_LEN - 2))
+            ]
         with Tqdm(
             desc="Querying "
             + ("cache in " + name if name else "remote cache"),
-            total=256,
+            total=len(traverse_prefixes),
             unit="dir",
         ) as pbar:
 
@@ -895,10 +911,7 @@ class RemoteBASE(object):
                 return ret
 
             with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
-                in_remote = executor.map(
-                    list_with_update,
-                    ["{:02x}".format(i) for i in range(1, 256)],
-                )
+                in_remote = executor.map(list_with_update, traverse_prefixes,)
                 remote_checksums.update(
                     itertools.chain.from_iterable(in_remote)
                 )
