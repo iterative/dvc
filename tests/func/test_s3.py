@@ -2,6 +2,7 @@ from functools import wraps
 
 import boto3
 import moto.s3.models as s3model
+import pytest
 from moto import mock_s3
 
 from dvc.remote.s3 import RemoteS3
@@ -43,6 +44,30 @@ def test_copy_singlepart_preserve_etag():
     s3.put_object(Bucket=from_info.bucket, Key=from_info.path, Body="data")
 
     RemoteS3._copy(s3, from_info, to_info, {})
+
+
+@mock_s3
+@pytest.mark.parametrize(
+    "base_info",
+    [RemoteS3.path_cls("s3://bucket/"), RemoteS3.path_cls("s3://bucket/ns/")],
+)
+def test_link_created_on_non_nested_path(base_info, tmp_dir, dvc, scm):
+    remote = RemoteS3(dvc, {"url": str(base_info.parent)})
+    remote.s3.create_bucket(Bucket=base_info.bucket)
+    remote.s3.put_object(
+        Bucket=base_info.bucket, Key=(base_info / "from").path, Body="data"
+    )
+    remote.link(base_info / "from", base_info / "to")
+
+    assert remote.exists(base_info / "from")
+    assert remote.exists(base_info / "to")
+
+
+@mock_s3
+def test_makedirs_doesnot_try_on_top_level_paths(tmp_dir, dvc, scm):
+    base_info = RemoteS3.path_cls("s3://bucket/")
+    remote = RemoteS3(dvc, {"url": str(base_info)})
+    remote.makedirs(base_info)
 
 
 def _upload_multipart(s3, Bucket, Key):
