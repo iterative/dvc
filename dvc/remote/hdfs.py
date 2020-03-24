@@ -159,7 +159,7 @@ class RemoteHDFS(RemoteBASE):
             return
 
         if prefix:
-            root = "/".join([self.path_info.path, prefix[:2]])
+            root = posixpath.join([self.path_info.path, prefix[:2]])
         else:
             root = self.path_info.path
         dirs = deque([root])

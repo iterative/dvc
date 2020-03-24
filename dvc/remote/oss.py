@@ -1,5 +1,6 @@
 import logging
 import os
+import posixpath
 import threading
 
 from funcy import cached_property, wrap_prop
@@ -98,7 +99,9 @@ class RemoteOSS(RemoteBASE):
 
     def list_cache_paths(self, prefix=None):
         if prefix:
-            prefix = "/".join([self.path_info.path, prefix[:2], prefix[2:]])
+            prefix = posixpath.join(
+                [self.path_info.path, prefix[:2], prefix[2:]]
+            )
         else:
             prefix = self.path_info.path
         return self._list_paths(prefix)

@@ -3,6 +3,7 @@ from datetime import timedelta
 from functools import wraps
 import io
 import os.path
+import posixpath
 import threading
 
 from funcy import cached_property, wrap_prop
@@ -129,7 +130,7 @@ class RemoteGS(RemoteBASE):
 
     def _list_paths(self, path_info, max_items=None, prefix=None):
         if prefix:
-            prefix = "/".join([path_info.path, prefix[:2], prefix[2:]])
+            prefix = posixpath.join([path_info.path, prefix[:2], prefix[2:]])
         else:
             prefix = path_info.path
         for blob in self.gs.bucket(path_info.bucket).list_blobs(

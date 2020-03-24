@@ -85,6 +85,7 @@ class RemoteBASE(object):
     LIST_OBJECT_PAGE_SIZE = 1000
     TRAVERSE_WEIGHT_MULTIPLIER = 20
     TRAVERSE_PREFIX_LEN = 3
+    TRAVERSE_THRESHOLD_SIZE = 500000
 
     CACHE_MODE = None
     SHARED_MODE_MAP = {None: (None, None), "group": (None, None)}
@@ -847,7 +848,7 @@ class RemoteBASE(object):
         # for performance overhead from large lists/sets.
         # From testing with S3, for remotes with 1M+ files, no_traverse is
         # faster until len(checksums) is at least 10k~100k
-        if remote_size > 500000:
+        if remote_size > self.TRAVERSE_THRESHOLD_SIZE:
             traverse_weight = traverse_pages * self.TRAVERSE_WEIGHT_MULTIPLIER
         else:
             traverse_weight = traverse_pages
