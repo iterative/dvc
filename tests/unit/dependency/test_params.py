@@ -1,3 +1,5 @@
+import yaml
+
 import pytest
 
 from dvc.dependency import DependencyPARAMS, loads_params, loadd_from
@@ -65,6 +67,12 @@ def test_get_info_unsupported_format(tmp_dir, dvc):
     dep = DependencyPARAMS(Stage(dvc), None, ["foo"])
     with pytest.raises(BadParamFileError):
         dep._get_info()
+
+
+def test_get_info_nested(tmp_dir, dvc):
+    tmp_dir.gen("params.yaml", yaml.dump({"some": {"path": {"foo": "val"}}}))
+    dep = DependencyPARAMS(Stage(dvc), None, ["some.path.foo"])
+    assert dep._get_info() == {"some.path.foo": "val"}
 
 
 def test_save_info_missing_params(dvc):

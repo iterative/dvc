@@ -4,6 +4,7 @@ from collections import defaultdict
 
 from voluptuous import Any
 from funcy import select_keys
+from flatten_json import flatten
 
 from dvc.compat import fspath_py35
 from dvc.dependency.local import DependencyLOCAL
@@ -85,6 +86,8 @@ class DependencyPARAMS(DependencyLOCAL):
                 raise BadParamFileError(
                     "Unable to read parameters from '{}'".format(self)
                 ) from exc
+
+        config = flatten(config, ".")
 
         return select_keys(lambda key: key in self.params, config)
 
