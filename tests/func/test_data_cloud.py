@@ -732,11 +732,11 @@ def test_pull_git_imports(request, tmp_dir, dvc, scm, erepo):
 
     assert dvc.pull(force=True)["downloaded"] == 2
 
-    assert os.path.exists("foo")
-    assert open("foo").read() == "foo"
+    assert (tmp_dir / "foo").exists()
+    assert (tmp_dir / "foo").read_text() == "foo"
 
-    assert os.path.isdir("new_dir")
-    assert open(os.path.join("new_dir", "bar")).read() == "bar"
+    assert (tmp_dir / "new_dir").exists()
+    assert (tmp_dir / "new_dir" / "bar").read_text() == "bar"
 
 
 def test_pull_external_dvc_imports(tmp_dir, dvc, scm, erepo_dir):
@@ -759,8 +759,8 @@ def test_pull_external_dvc_imports(tmp_dir, dvc, scm, erepo_dir):
 
     assert dvc.pull(force=True)["downloaded"] == 2
 
-    assert os.path.exists("foo")
-    assert open("foo").read() == "foo"
+    assert (tmp_dir / "foo").exists()
+    assert (tmp_dir / "foo").read_text() == "foo"
 
-    assert os.path.isdir("new_dir")
-    assert open(os.path.join("new_dir", "bar")).read() == "bar"
+    assert (tmp_dir / "new_dir").exists()
+    assert (tmp_dir / "new_dir" / "bar").read_text() == "bar"
