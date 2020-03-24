@@ -467,7 +467,7 @@ class RemoteBASE(object):
         self.cache_type_confirmed = True
         return self.cache_types[0] == "copy"
 
-    def _save_dir(self, path_info, checksum):
+    def _save_dir(self, path_info, checksum, save_link=True):
         cache_info = self.checksum_to_path_info(checksum)
         dir_info = self.get_dir_cache(checksum)
 
@@ -478,7 +478,9 @@ class RemoteBASE(object):
             entry_checksum = entry[self.PARAM_CHECKSUM]
             self._save_file(entry_info, entry_checksum, save_link=False)
 
-        self.state.save_link(path_info)
+        if save_link:
+            self.state.save_link(path_info)
+
         self.state.save(cache_info, checksum)
         self.state.save(path_info, checksum)
 
@@ -509,7 +511,7 @@ class RemoteBASE(object):
     def protect(path_info):
         pass
 
-    def save(self, path_info, checksum_info):
+    def save(self, path_info, checksum_info, save_link=True):
         if path_info.scheme != self.scheme:
             raise RemoteActionNotImplemented(
                 "save {} -> {}".format(path_info.scheme, self.scheme),
@@ -517,15 +519,15 @@ class RemoteBASE(object):
             )
 
         checksum = checksum_info[self.PARAM_CHECKSUM]
-        self._save(path_info, checksum)
+        self._save(path_info, checksum, save_link)
 
-    def _save(self, path_info, checksum):
+    def _save(self, path_info, checksum, save_link=True):
         to_info = self.checksum_to_path_info(checksum)
         logger.debug("Saving '%s' to '%s'.", path_info, to_info)
         if self.isdir(path_info):
-            self._save_dir(path_info, checksum)
+            self._save_dir(path_info, checksum, save_link)
             return
-        self._save_file(path_info, checksum)
+        self._save_file(path_info, checksum, save_link)
 
     def _handle_transfer_exception(
         self, from_info, to_info, exception, operation

@@ -24,6 +24,7 @@ from dvc.remote.base import STATUS_DELETED, STATUS_NEW, STATUS_OK
 from dvc.utils import file_md5
 from dvc.utils.fs import remove
 from dvc.utils.stage import dump_stage_file, load_stage_file
+from dvc.external_repo import clean_repos
 from tests.basic_env import TestDvc
 
 from tests.remotes import (
@@ -710,3 +711,56 @@ def test_verify_checksums(tmp_dir, scm, dvc, mocker, tmp_path_factory):
 
     dvc.pull()
     assert checksum_spy.call_count == 3
+
+
+@pytest.mark.parametrize("erepo", ["git_dir", "erepo_dir"])
+def test_pull_git_imports(request, tmp_dir, dvc, scm, erepo):
+    erepo = request.getfixturevalue(erepo)
+    with erepo.chdir():
+        erepo.scm_gen({"dir": {"bar": "bar"}}, commit="second")
+        erepo.scm_gen("foo", "foo", commit="first")
+
+    dvc.imp(fspath(erepo), "foo")
+    dvc.imp(fspath(erepo), "dir", out="new_dir", rev="HEAD~")
+
+    assert dvc.pull()["downloaded"] == 0
+
+    for item in ["foo", "new_dir", dvc.cache.local.cache_dir]:
+        remove(item)
+    os.makedirs(dvc.cache.local.cache_dir, exist_ok=True)
+    clean_repos()
+
+    assert dvc.pull(force=True)["downloaded"] == 2
+
+    assert (tmp_dir / "foo").exists()
+    assert (tmp_dir / "foo").read_text() == "foo"
+
+    assert (tmp_dir / "new_dir").exists()
+    assert (tmp_dir / "new_dir" / "bar").read_text() == "bar"
+
+
+def test_pull_external_dvc_imports(tmp_dir, dvc, scm, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen({"dir": {"bar": "bar"}}, commit="second")
+        erepo_dir.dvc_gen("foo", "foo", commit="first")
+
+        os.remove("foo")
+        shutil.rmtree("dir")
+
+    dvc.imp(fspath(erepo_dir), "foo")
+    dvc.imp(fspath(erepo_dir), "dir", out="new_dir", rev="HEAD~")
+
+    assert dvc.pull()["downloaded"] == 0
+
+    for item in ["foo", "new_dir", dvc.cache.local.cache_dir]:
+        remove(item)
+    os.makedirs(dvc.cache.local.cache_dir, exist_ok=True)
+    clean_repos()
+
+    assert dvc.pull(force=True)["downloaded"] == 2
+
+    assert (tmp_dir / "foo").exists()
+    assert (tmp_dir / "foo").read_text() == "foo"
+
+    assert (tmp_dir / "new_dir").exists()
+    assert (tmp_dir / "new_dir" / "bar").read_text() == "bar"
