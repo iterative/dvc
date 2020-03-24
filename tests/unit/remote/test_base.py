@@ -2,6 +2,7 @@ from unittest import TestCase
 
 import mock
 
+from dvc.path_info import PathInfo
 from dvc.remote.base import RemoteBASE
 from dvc.remote.base import RemoteCmdError
 from dvc.remote.base import RemoteMissingDepsError
@@ -38,11 +39,11 @@ class TestCmdError(TestCase, TestRemoteBASE):
 
 
 @mock.patch.object(RemoteBASE, "_cache_exists_traverse")
-@mock.patch.object(RemoteBASE, "_cache_exists_no_traverse")
+@mock.patch.object(RemoteBASE, "_cache_object_exists")
 @mock.patch.object(
     RemoteBASE, "path_to_checksum", side_effect=lambda x: x,
 )
-def test_cache_exists(path_to_checksum, no_traverse, traverse):
+def test_cache_exists(path_to_checksum, object_exists, traverse):
     remote = RemoteBASE(None, {})
 
     # remote does not support traverse
@@ -52,24 +53,26 @@ def test_cache_exists(path_to_checksum, no_traverse, traverse):
     ):
         checksums = list(range(1000))
         remote.cache_exists(checksums)
-        no_traverse.assert_called_with(checksums, None, None)
+        object_exists.assert_called_with(checksums, None, None)
         traverse.assert_not_called()
 
     remote.CAN_TRAVERSE = True
 
     # large remote, small local
-    no_traverse.reset_mock()
+    object_exists.reset_mock()
     traverse.reset_mock()
     with mock.patch.object(
         remote, "list_cache_paths", return_value=list(range(256))
     ):
         checksums = list(range(1000))
         remote.cache_exists(checksums)
-        no_traverse.assert_called_with(frozenset(range(256, 1000)), None, None)
+        object_exists.assert_called_with(
+            frozenset(range(256, 1000)), None, None
+        )
         traverse.assert_not_called()
 
     # large remote, large local
-    no_traverse.reset_mock()
+    object_exists.reset_mock()
     traverse.reset_mock()
     remote.JOBS = 16
     with mock.patch.object(
@@ -77,20 +80,20 @@ def test_cache_exists(path_to_checksum, no_traverse, traverse):
     ):
         checksums = list(range(1000000))
         remote.cache_exists(checksums)
-        no_traverse.assert_not_called()
+        object_exists.assert_not_called()
         traverse.assert_called_with(
             frozenset(checksums), set(range(256)), None, None
         )
 
     # default traverse
-    no_traverse.reset_mock()
+    object_exists.reset_mock()
     traverse.reset_mock()
     remote.TRAVERSE_WEIGHT_MULTIPLIER = 1
     with mock.patch.object(remote, "list_cache_paths", return_value=[0]):
         checksums = set(range(1000000))
         remote.cache_exists(checksums)
         traverse.assert_not_called()
-        no_traverse.assert_not_called()
+        object_exists.assert_not_called()
 
 
 @mock.patch.object(
@@ -101,7 +104,7 @@ def test_cache_exists(path_to_checksum, no_traverse, traverse):
 )
 def test_cache_exists_traverse(path_to_checksum, list_cache_paths):
     remote = RemoteBASE(None, {})
-    remote.path_info = ""
+    remote.path_info = PathInfo("foo")
     remote._cache_exists_traverse({0}, set())
     for i in range(1, 16):
         list_cache_paths.assert_any_call(prefix="{:03x}".format(i))

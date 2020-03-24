@@ -805,13 +805,13 @@ class RemoteBASE(object):
 
         There are two ways of performing this check:
 
-        - Traverse: Get a list of all the files in the remote
+        - Traverse method: Get a list of all the files in the remote
             (traversing the cache directory) and compare it with
-            the given checksums. Cache parent directories will
-            be retrieved in parallel threads, and a progress bar
-            will be displayed.
+            the given checksums. Cache entries will be retrieved in parallel
+            threads according to prefix (i.e. entries starting with, "00...",
+            "01...", and so on) and a progress bar will be displayed.
 
-        - No traverse: For each given checksum, run the `exists`
+        - Exists method: For each given checksum, run the `exists`
             method and filter the checksums that aren't on the remote.
             This is done in parallel threads.
             It also shows a progress bar when performing the check.
@@ -838,7 +838,7 @@ class RemoteBASE(object):
         assert self.TRAVERSE_PREFIX_LEN >= 2
 
         if len(checksums) == 1 or not self.CAN_TRAVERSE:
-            return self._cache_exists_no_traverse(checksums, jobs, name)
+            return self._cache_object_exists(checksums, jobs, name)
 
         # Fetch cache entries beginning with "00..." prefix for estimating the
         # size of entire remote cache
@@ -857,7 +857,7 @@ class RemoteBASE(object):
         traverse_pages = remote_size / self.LIST_OBJECT_PAGE_SIZE
         # For sufficiently large remotes, traverse must be weighted to account
         # for performance overhead from large lists/sets.
-        # From testing with S3, for remotes with 1M+ files, no_traverse is
+        # From testing with S3, for remotes with 1M+ files, object_exists is
         # faster until len(checksums) is at least 10k~100k
         if remote_size > self.TRAVERSE_THRESHOLD_SIZE:
             traverse_weight = traverse_pages * self.TRAVERSE_WEIGHT_MULTIPLIER
@@ -865,14 +865,14 @@ class RemoteBASE(object):
             traverse_weight = traverse_pages
         if len(checksums) < traverse_weight:
             logger.debug(
-                "Large remote ({} checksums < {} traverse weight), "
-                "using no_traverse for remaining checksums".format(
+                "Large remote ('{}' checksums < '{}' traverse weight), "
+                "using object_exists for remaining checksums".format(
                     len(checksums), traverse_weight
                 )
             )
             return list(
                 checksums & remote_checksums
-            ) + self._cache_exists_no_traverse(
+            ) + self._cache_object_exists(
                 checksums - remote_checksums, jobs, name
             )
 
@@ -921,7 +921,7 @@ class RemoteBASE(object):
                     list(self.list_cache_paths(prefix=prefix)),
                 )
                 pbar.update_desc(
-                    "Querying cache in {}/{}".format(self.path_info, prefix)
+                    "Querying cache in '{}'".format(self.path_info / prefix)
                 )
                 return ret
 
@@ -932,9 +932,9 @@ class RemoteBASE(object):
                 )
             return list(checksums & remote_checksums)
 
-    def _cache_exists_no_traverse(self, checksums, jobs=None, name=None):
+    def _cache_object_exists(self, checksums, jobs=None, name=None):
         logger.debug(
-            "Querying {} checksums via no_traverse".format(len(checksums))
+            "Querying {} checksums via object_exists".format(len(checksums))
         )
         with Tqdm(
             desc="Querying "
