@@ -22,13 +22,14 @@ class CmdRun(CmdBase):
                 self.args.metrics_no_cache,
                 self.args.outs_persist,
                 self.args.outs_persist_no_cache,
+                self.args.params,
                 self.args.command,
             ]
         ):  # pragma: no cover
             logger.error(
                 "too few arguments. Specify at least one: `-d`, `-o`, `-O`, "
-                "`-m`, `-M`, `--outs-persist`, `--outs-persist-no-cache`, "
-                "`command`."
+                "`-m`, `-M`, `-p`, `--outs-persist`, "
+                "`--outs-persist-no-cache`, `command`."
             )
             return 1
 
@@ -40,6 +41,7 @@ class CmdRun(CmdBase):
                 metrics=self.args.metrics,
                 metrics_no_cache=self.args.metrics_no_cache,
                 deps=self.args.deps,
+                params=self.args.params,
                 fname=self.args.file,
                 cwd=self.args.cwd,
                 wdir=self.args.wdir,
@@ -110,6 +112,13 @@ def add_parser(subparsers, parent_parser):
         default=[],
         help="Declare output file or directory "
         "(do not put into DVC cache).",
+    )
+    run_parser.add_argument(
+        "-p",
+        "--params",
+        action="append",
+        default=[],
+        help="Declare parameter to use as additional dependency.",
     )
     run_parser.add_argument(
         "-m",
