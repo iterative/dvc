@@ -1,5 +1,5 @@
 from dvc.cli import parse_args
-from dvc.command.metrics import CmdMetricsDiff, _show_diff
+from dvc.command.metrics import CmdMetricsDiff, _show_diff, CmdMetricsShow
 
 
 def test_metrics_diff(dvc, mocker):
@@ -82,4 +82,40 @@ def test_metrics_diff_deleted_metric():
     ) == (
         "   Path      Metric   Value         Change      \n"
         "other.json   a.b.d    None    diff not supported"
+    )
+
+
+def test_metrics_show(dvc, mocker):
+    cli_args = parse_args(
+        [
+            "metrics",
+            "show",
+            "-t",
+            "json",
+            "-x",
+            "x.path",
+            "-R",
+            "--all-tags",
+            "--all-branches",
+            "--all-commits",
+            "target1",
+            "target2",
+        ]
+    )
+    assert cli_args.func == CmdMetricsShow
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch("dvc.repo.metrics.show.show", return_value={})
+
+    assert cmd.run() == 0
+
+    m.assert_called_once_with(
+        cmd.repo,
+        ["target1", "target2"],
+        typ="json",
+        xpath="x.path",
+        recursive=True,
+        all_tags=True,
+        all_branches=True,
+        all_commits=True,
     )
