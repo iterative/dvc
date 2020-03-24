@@ -823,24 +823,36 @@ class RemoteBASE(object):
         check if particular file exists much quicker, use their own
         implementation of cache_exists (see ssh, local).
 
+        Which method to use will be automatically determined after estimating
+        the size of the remote cache, and comparing the estimated size with
+        len(checksums). To estimate the size of the remote cache, we fetch
+        a small subset of cache entries (i.e. entries starting with "00...").
+        Based on the number of entries in that subset, the size of the full
+        cache can be estimated, since the cache is evenly distributed according
+        to checksum.
+
         Returns:
             A list with checksums that were found in the remote
         """
+        # Remotes which do not use traverse prefix should override
+        # cache_exists() (see ssh, local)
+        assert self.TRAVERSE_PREFIX_LEN >= 2
 
         if self.no_traverse:
             return self._cache_exists_no_traverse(checksums, jobs, name)
 
-        # Fetch one parent cache dir for estimating size of entire remote cache
+        # Fetch cache entries beginning with "00..." prefix for estimating the
+        # size of entire remote cache
         checksums = frozenset(checksums)
         prefix = "0" * self.TRAVERSE_PREFIX_LEN
-        traverse_dirs = pow(16, self.TRAVERSE_PREFIX_LEN)
+        total_prefixes = pow(16, self.TRAVERSE_PREFIX_LEN)
         remote_checksums = set(
             map(self.path_to_checksum, self.list_cache_paths(prefix=prefix))
         )
-        if not remote_checksums:
-            remote_size = traverse_dirs
+        if remote_checksums:
+            remote_size = total_prefixes * len(remote_checksums)
         else:
-            remote_size = traverse_dirs * len(remote_checksums)
+            remote_size = total_prefixes
         logger.debug("Estimated remote size: {} files".format(remote_size))
 
         traverse_pages = remote_size / self.LIST_OBJECT_PAGE_SIZE
@@ -854,7 +866,10 @@ class RemoteBASE(object):
             traverse_weight = traverse_pages
         if len(checksums) < traverse_weight:
             logger.debug(
-                "Large remote, using no_traverse for remaining checksums"
+                "Large remote ({} checksums < {} traverse weight), "
+                "using no_traverse for remaining checksums".format(
+                    len(checksums), traverse_weight
+                )
             )
             return list(
                 checksums & remote_checksums
