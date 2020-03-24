@@ -200,7 +200,7 @@ class RemoteS3(RemoteBASE):
             "PaginationConfig": {"MaxItems": max_items},
         }
         if prefix:
-            kwargs["Prefix"] = posixpath.join([path_info.path, prefix[:2]])
+            kwargs["Prefix"] = posixpath.join(path_info.path, prefix[:2])
         paginator = self.s3.get_paginator(self.list_objects_api)
         for page in paginator.paginate(**kwargs):
             yield from page.get("Contents", ())

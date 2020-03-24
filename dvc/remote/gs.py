@@ -130,7 +130,7 @@ class RemoteGS(RemoteBASE):
 
     def _list_paths(self, path_info, max_items=None, prefix=None):
         if prefix:
-            prefix = posixpath.join([path_info.path, prefix[:2], prefix[2:]])
+            prefix = posixpath.join(path_info.path, prefix[:2], prefix[2:])
         else:
             prefix = path_info.path
         for blob in self.gs.bucket(path_info.bucket).list_blobs(

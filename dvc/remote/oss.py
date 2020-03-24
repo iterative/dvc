@@ -100,7 +100,7 @@ class RemoteOSS(RemoteBASE):
     def list_cache_paths(self, prefix=None):
         if prefix:
             prefix = posixpath.join(
-                [self.path_info.path, prefix[:2], prefix[2:]]
+                self.path_info.path, prefix[:2], prefix[2:]
             )
         else:
             prefix = self.path_info.path
