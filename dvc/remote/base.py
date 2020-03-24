@@ -80,12 +80,12 @@ class RemoteBASE(object):
     CHECKSUM_DIR_SUFFIX = ".dir"
     CHECKSUM_JOBS = max(1, min(4, cpu_count() // 2))
     DEFAULT_CACHE_TYPES = ["copy"]
-    DEFAULT_NO_TRAVERSE = True
     DEFAULT_VERIFY = False
     LIST_OBJECT_PAGE_SIZE = 1000
     TRAVERSE_WEIGHT_MULTIPLIER = 20
     TRAVERSE_PREFIX_LEN = 3
     TRAVERSE_THRESHOLD_SIZE = 500000
+    CAN_TRAVERSE = True
 
     CACHE_MODE = None
     SHARED_MODE_MAP = {None: (None, None), "group": (None, None)}
@@ -105,7 +105,6 @@ class RemoteBASE(object):
             or (self.repo and self.repo.config["core"].get("checksum_jobs"))
             or self.CHECKSUM_JOBS
         )
-        self.no_traverse = config.get("no_traverse", self.DEFAULT_NO_TRAVERSE)
         self.verify = config.get("verify", self.DEFAULT_VERIFY)
         self._dir_info = {}
 
@@ -838,7 +837,7 @@ class RemoteBASE(object):
         # cache_exists() (see ssh, local)
         assert self.TRAVERSE_PREFIX_LEN >= 2
 
-        if self.no_traverse:
+        if len(checksums) == 1 or not self.CAN_TRAVERSE:
             return self._cache_exists_no_traverse(checksums, jobs, name)
 
         # Fetch cache entries beginning with "00..." prefix for estimating the

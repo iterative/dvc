@@ -45,8 +45,8 @@ class TestCmdError(TestCase, TestRemoteBASE):
 def test_cache_exists(path_to_checksum, no_traverse, traverse):
     remote = RemoteBASE(None, {})
 
-    # no_traverse option set
-    remote.no_traverse = True
+    # remote does not support traverse
+    remote.CAN_TRAVERSE = False
     with mock.patch.object(
         remote, "list_cache_paths", return_value=list(range(256))
     ):
@@ -55,7 +55,7 @@ def test_cache_exists(path_to_checksum, no_traverse, traverse):
         no_traverse.assert_called_with(checksums, None, None)
         traverse.assert_not_called()
 
-    remote.no_traverse = False
+    remote.CAN_TRAVERSE = True
 
     # large remote, small local
     no_traverse.reset_mock()

@@ -70,7 +70,6 @@ class RemoteGS(RemoteBASE):
     scheme = Schemes.GS
     path_cls = CloudURLInfo
     REQUIRES = {"google-cloud-storage": "google.cloud.storage"}
-    DEFAULT_NO_TRAVERSE = False
     PARAM_CHECKSUM = "md5"
 
     def __init__(self, repo, config):

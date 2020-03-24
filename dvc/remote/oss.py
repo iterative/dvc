@@ -36,7 +36,6 @@ class RemoteOSS(RemoteBASE):
     scheme = Schemes.OSS
     path_cls = CloudURLInfo
     REQUIRES = {"oss2": "oss2"}
-    DEFAULT_NO_TRAVERSE = False
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
 

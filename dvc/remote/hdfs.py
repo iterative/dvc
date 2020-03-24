@@ -21,7 +21,6 @@ class RemoteHDFS(RemoteBASE):
     REGEX = r"^hdfs://((?P<user>.*)@)?.*$"
     PARAM_CHECKSUM = "checksum"
     REQUIRES = {"pyarrow": "pyarrow"}
-    DEFAULT_NO_TRAVERSE = False
     TRAVERSE_PREFIX_LEN = 2
 
     def __init__(self, repo, config):

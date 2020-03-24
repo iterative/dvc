@@ -22,7 +22,6 @@ class RemoteS3(RemoteBASE):
     scheme = Schemes.S3
     path_cls = CloudURLInfo
     REQUIRES = {"boto3": "boto3"}
-    DEFAULT_NO_TRAVERSE = False
     PARAM_CHECKSUM = "etag"
 
     def __init__(self, repo, config):

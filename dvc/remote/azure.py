@@ -27,7 +27,6 @@ class RemoteAZURE(RemoteBASE):
         r"(?P<connection_string>.+)?)?)$"
     )
     REQUIRES = {"azure-storage-blob": "azure.storage.blob"}
-    DEFAULT_NO_TRAVERSE = False
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
 

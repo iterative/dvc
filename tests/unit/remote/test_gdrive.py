@@ -28,7 +28,6 @@ class TestRemoteGDrive(object):
     def test_init(self):
         remote = RemoteGDrive(Repo(), self.CONFIG)
         assert str(remote.path_info) == self.CONFIG["url"]
-        assert not remote.no_traverse
 
     def test_drive(self):
         remote = RemoteGDrive(Repo(), self.CONFIG)

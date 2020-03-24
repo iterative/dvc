@@ -298,9 +298,6 @@ class RemoteSSH(RemoteBASE):
         faster than current approach (relying on exists(path_info)) applied in
         remote/base.
         """
-        if not self.no_traverse:
-            return list(set(checksums) & set(self.all()))
-
         # possibly prompt for credentials before "Querying" progress output
         self.ensure_credentials()
 
