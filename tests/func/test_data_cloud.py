@@ -264,6 +264,7 @@ class TestRemoteSSHMocked(SSHMocked, TestDataCloudBase):
         repo = self.get_url()
         keyfile = self._get_keyfile()
 
+        self._get_cloud_class().CAN_TRAVERSE = False
         config = copy.deepcopy(TEST_CONFIG)
         config["remote"][TEST_REMOTE] = {
             "url": repo,
