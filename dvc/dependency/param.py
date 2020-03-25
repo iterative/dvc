@@ -2,9 +2,8 @@ import os
 import yaml
 from collections import defaultdict
 
+import dpath.util
 from voluptuous import Any
-from funcy import select_keys
-from flatten_json import flatten
 
 from dvc.compat import fspath_py35
 from dvc.dependency.local import DependencyLOCAL
@@ -87,9 +86,10 @@ class DependencyPARAMS(DependencyLOCAL):
                     "Unable to read parameters from '{}'".format(self)
                 ) from exc
 
-        config = flatten(config, ".")
-
-        return select_keys(lambda key: key in self.params, config)
+        ret = {}
+        for param in self.params:
+            ret[param] = dpath.util.get(config, param, separator=".")
+        return ret
 
     def save_info(self):
         info = self._get_info()

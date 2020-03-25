@@ -70,9 +70,11 @@ def test_get_info_unsupported_format(tmp_dir, dvc):
 
 
 def test_get_info_nested(tmp_dir, dvc):
-    tmp_dir.gen("params.yaml", yaml.dump({"some": {"path": {"foo": "val"}}}))
+    tmp_dir.gen(
+        "params.yaml", yaml.dump({"some": {"path": {"foo": ["val1", "val2"]}}})
+    )
     dep = DependencyPARAMS(Stage(dvc), None, ["some.path.foo"])
-    assert dep._get_info() == {"some.path.foo": "val"}
+    assert dep._get_info() == {"some.path.foo": ["val1", "val2"]}
 
 
 def test_save_info_missing_params(dvc):

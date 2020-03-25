@@ -81,6 +81,7 @@ install_requires = [
     "flatten_json>=0.1.6",
     "texttable>=0.5.2",
     "pygtrie==2.3.2",
+    "dpath>=2.0.1,<3",
 ]
 
 
