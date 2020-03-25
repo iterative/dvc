@@ -159,21 +159,51 @@ def test_directories(tmp_dir, scm, dvc):
 
 
 def test_diff_no_cache(tmp_dir, scm, dvc):
-    (stage,) = tmp_dir.dvc_gen(
-        {"dir": {"file": "file content"}}, commit="first"
-    )
+    tmp_dir.dvc_gen({"dir": {"file": "file content"}}, commit="first")
     scm.tag("v1")
+
     tmp_dir.dvc_gen(
         {"dir": {"file": "modified file content"}}, commit="second"
     )
+    scm.tag("v2")
 
-    remove(first(stage.outs).cache_path)
-    remove("dir")
+    remove(dvc.cache.local.cache_dir)
 
     # invalidate_dir_info to force cache loading
     dvc.cache.local._dir_info = {}
 
-    diff = dvc.diff("v1")
+    diff = dvc.diff("v1", "v2")
     assert diff["added"] == []
     assert diff["deleted"] == []
     assert first(diff["modified"])["path"] == os.path.join("dir", "")
+
+
+def test_diff_dirty(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen(
+        {"file": "file_content", "dir": {"dir_file1": "dir file content"}},
+        commit="initial",
+    )
+
+    (tmp_dir / "file").unlink()
+    tmp_dir.gen({"dir": {"dir_file2": "dir file 2 content"}})
+    tmp_dir.dvc_gen("new_file", "new_file_content")
+
+    result = dvc.diff()
+
+    assert result == {
+        "added": [
+            {"hash": "86d049de17c76ac44cdcac146042ec9b", "path": "new_file"}
+        ],
+        "deleted": [
+            {"hash": "7f0b6bb0b7e951b7fd2b2a4a326297e1", "path": "file"}
+        ],
+        "modified": [
+            {
+                "hash": {
+                    "new": "38175ad60f0e58ac94e0e2b7688afd81.dir",
+                    "old": "92daf39af116ca2fb245acaeb2ae65f7.dir",
+                },
+                "path": os.path.join("dir", ""),
+            }
+        ],
+    }
