@@ -7,7 +7,7 @@ from dvc.exceptions import NoMetricsError
 
 
 def _parse(raw):
-    if isinstance(raw, (dict, list, int, float)):
+    if raw is None or isinstance(raw, (dict, list, int, float)):
         return raw
 
     assert isinstance(raw, str)
@@ -34,29 +34,27 @@ def _diff_vals(old, new):
     return res
 
 
+def _flatten(d):
+    if not d:
+        return defaultdict(lambda: None)
+
+    if isinstance(d, dict):
+        return defaultdict(lambda: None, flatten(d, "."))
+
+    return defaultdict(lambda: "unable to parse")
+
+
 def _diff_dicts(old_dict, new_dict):
-    old_default = None
-    new_default = None
-
-    if isinstance(new_dict, dict):
-        new = flatten(new_dict, ".")
-    else:
-        new = defaultdict(lambda: "not a dict")
-        new_default = "unable to parse"
-
-    if isinstance(old_dict, dict):
-        old = flatten(old_dict, ".")
-    else:
-        old = defaultdict(lambda: "not a dict")
-        old_default = "unable to parse"
+    new = _flatten(new_dict)
+    old = _flatten(old_dict)
 
     res = defaultdict(dict)
 
     xpaths = set(old.keys())
     xpaths.update(set(new.keys()))
     for xpath in xpaths:
-        old_val = old.get(xpath, old_default)
-        new_val = new.get(xpath, new_default)
+        old_val = old[xpath]
+        new_val = new[xpath]
         val_diff = _diff_vals(old_val, new_val)
         if val_diff:
             res[xpath] = val_diff
@@ -78,7 +76,7 @@ def _get_metrics(repo, *args, rev=None, **kwargs):
         metrics = repo.metrics.show(
             *args, **kwargs, revs=[rev] if rev else None
         )
-        return metrics[rev or ""]
+        return metrics.get(rev or "", {})
     except NoMetricsError:
         return {}
 
@@ -92,7 +90,7 @@ def diff(repo, *args, a_rev=None, b_rev=None, **kwargs):
 
     res = defaultdict(dict)
     for path in paths:
-        path_diff = _diff(old[path], new[path])
+        path_diff = _diff(old.get(path), new.get(path))
         if path_diff:
             res[path] = path_diff
     return dict(res)
