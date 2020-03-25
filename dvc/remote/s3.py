@@ -2,6 +2,7 @@
 
 import logging
 import os
+import posixpath
 import threading
 
 from funcy import cached_property, wrap_prop
@@ -190,24 +191,27 @@ class RemoteS3(RemoteBASE):
         logger.debug("Removing {}".format(path_info))
         self.s3.delete_object(Bucket=path_info.bucket, Key=path_info.path)
 
-    def _list_objects(self, path_info, max_items=None):
+    def _list_objects(self, path_info, max_items=None, prefix=None):
         """ Read config for list object api, paginate through list objects."""
         kwargs = {
             "Bucket": path_info.bucket,
             "Prefix": path_info.path,
             "PaginationConfig": {"MaxItems": max_items},
         }
+        if prefix:
+            kwargs["Prefix"] = posixpath.join(path_info.path, prefix[:2])
         paginator = self.s3.get_paginator(self.list_objects_api)
         for page in paginator.paginate(**kwargs):
             yield from page.get("Contents", ())
 
-    def _list_paths(self, path_info, max_items=None):
+    def _list_paths(self, path_info, max_items=None, prefix=None):
         return (
-            item["Key"] for item in self._list_objects(path_info, max_items)
+            item["Key"]
+            for item in self._list_objects(path_info, max_items, prefix)
         )
 
-    def list_cache_paths(self):
-        return self._list_paths(self.path_info)
+    def list_cache_paths(self, prefix=None):
+        return self._list_paths(self.path_info, prefix=prefix)
 
     def isfile(self, path_info):
         from botocore.exceptions import ClientError

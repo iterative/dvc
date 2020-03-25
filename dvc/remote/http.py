@@ -6,7 +6,6 @@ from funcy import cached_property, memoize, wrap_prop, wrap_with
 
 from dvc.path_info import HTTPURLInfo
 import dvc.prompt as prompt
-from dvc.config import ConfigError
 from dvc.exceptions import DvcException, HTTPError
 from dvc.progress import Tqdm
 from dvc.remote.base import RemoteBASE
@@ -32,6 +31,7 @@ class RemoteHTTP(RemoteBASE):
     REQUEST_TIMEOUT = 10
     CHUNK_SIZE = 2 ** 16
     PARAM_CHECKSUM = "etag"
+    CAN_TRAVERSE = False
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
@@ -44,12 +44,6 @@ class RemoteHTTP(RemoteBASE):
                 self.path_info.user = user
         else:
             self.path_info = None
-
-        if not self.no_traverse:
-            raise ConfigError(
-                "HTTP doesn't support traversing the remote to list existing "
-                "files. Use: `dvc remote modify <name> no_traverse true`"
-            )
 
         self.auth = config.get("auth", None)
         self.custom_auth_header = config.get("custom_auth_header", None)

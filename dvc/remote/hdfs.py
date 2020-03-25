@@ -21,6 +21,7 @@ class RemoteHDFS(RemoteBASE):
     REGEX = r"^hdfs://((?P<user>.*)@)?.*$"
     PARAM_CHECKSUM = "checksum"
     REQUIRES = {"pyarrow": "pyarrow"}
+    TRAVERSE_PREFIX_LEN = 2
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
@@ -152,16 +153,26 @@ class RemoteHDFS(RemoteBASE):
                 raise FileNotFoundError(*e.args)
             raise
 
-    def list_cache_paths(self):
+    def list_cache_paths(self, prefix=None):
         if not self.exists(self.path_info):
             return
 
-        dirs = deque([self.path_info.path])
+        if prefix:
+            root = posixpath.join(self.path_info.path, prefix[:2])
+        else:
+            root = self.path_info.path
+        dirs = deque([root])
 
         with self.hdfs(self.path_info) as hdfs:
             while dirs:
-                for entry in hdfs.ls(dirs.pop(), detail=True):
-                    if entry["kind"] == "directory":
-                        dirs.append(urlparse(entry["name"]).path)
-                    elif entry["kind"] == "file":
-                        yield urlparse(entry["name"]).path
+                try:
+                    for entry in hdfs.ls(dirs.pop(), detail=True):
+                        if entry["kind"] == "directory":
+                            dirs.append(urlparse(entry["name"]).path)
+                        elif entry["kind"] == "file":
+                            yield urlparse(entry["name"]).path
+                except IOError as e:
+                    # When searching for a specific prefix pyarrow raises an
+                    # exception if the specified cache dir does not exist
+                    if not prefix:
+                        raise e

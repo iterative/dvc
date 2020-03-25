@@ -73,8 +73,10 @@ class RemoteGDrive(RemoteBASE):
     scheme = Schemes.GDRIVE
     path_cls = GDriveURLInfo
     REQUIRES = {"pydrive2": "pydrive2"}
-    DEFAULT_NO_TRAVERSE = False
     DEFAULT_VERIFY = True
+    # Always prefer traverse for GDrive since API usage quotas are a concern.
+    TRAVERSE_WEIGHT_MULTIPLIER = 1
+    TRAVERSE_PREFIX_LEN = 2
 
     GDRIVE_CREDENTIALS_DATA = "GDRIVE_CREDENTIALS_DATA"
     DEFAULT_USER_CREDENTIALS_FILE = "gdrive-user-credentials.json"
@@ -414,12 +416,18 @@ class RemoteGDrive(RemoteBASE):
         file_id = self._get_remote_id(from_info)
         self.gdrive_download_file(file_id, to_file, name, no_progress_bar)
 
-    def list_cache_paths(self):
+    def list_cache_paths(self, prefix=None):
         if not self.cache["ids"]:
             return
 
+        if prefix:
+            dir_ids = self.cache["dirs"].get(prefix[:2])
+            if not dir_ids:
+                return
+        else:
+            dir_ids = self.cache["ids"]
         parents_query = " or ".join(
-            "'{}' in parents".format(dir_id) for dir_id in self.cache["ids"]
+            "'{}' in parents".format(dir_id) for dir_id in dir_ids
         )
         query = "({}) and trashed=false".format(parents_query)
 

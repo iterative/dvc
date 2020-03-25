@@ -249,7 +249,8 @@ class RemoteSSH(RemoteBASE):
             else:
                 yield io.TextIOWrapper(fd, encoding=encoding)
 
-    def list_cache_paths(self):
+    def list_cache_paths(self, prefix=None):
+        assert prefix is None
         with self.ssh(self.path_info) as ssh:
             # If we simply return an iterator then with above closes instantly
             yield from ssh.walk_files(self.path_info.path)
@@ -297,7 +298,7 @@ class RemoteSSH(RemoteBASE):
         faster than current approach (relying on exists(path_info)) applied in
         remote/base.
         """
-        if not self.no_traverse:
+        if not self.CAN_TRAVERSE:
             return list(set(checksums) & set(self.all()))
 
         # possibly prompt for credentials before "Querying" progress output

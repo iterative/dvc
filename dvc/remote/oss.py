@@ -1,5 +1,6 @@
 import logging
 import os
+import posixpath
 import threading
 
 from funcy import cached_property, wrap_prop
@@ -95,8 +96,14 @@ class RemoteOSS(RemoteBASE):
         for blob in oss2.ObjectIterator(self.oss_service, prefix=prefix):
             yield blob.key
 
-    def list_cache_paths(self):
-        return self._list_paths(self.path_info.path)
+    def list_cache_paths(self, prefix=None):
+        if prefix:
+            prefix = posixpath.join(
+                self.path_info.path, prefix[:2], prefix[2:]
+            )
+        else:
+            prefix = self.path_info.path
+        return self._list_paths(prefix)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs

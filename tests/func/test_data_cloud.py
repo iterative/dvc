@@ -265,11 +265,11 @@ class TestRemoteSSHMocked(SSHMocked, TestDataCloudBase):
         repo = self.get_url()
         keyfile = self._get_keyfile()
 
+        self._get_cloud_class().CAN_TRAVERSE = False
         config = copy.deepcopy(TEST_CONFIG)
         config["remote"][TEST_REMOTE] = {
             "url": repo,
             "keyfile": keyfile,
-            "no_traverse": False,
         }
         self.dvc.config = config
         self.cloud = DataCloud(self.dvc)

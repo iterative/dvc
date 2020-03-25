@@ -80,8 +80,12 @@ class RemoteBASE(object):
     CHECKSUM_DIR_SUFFIX = ".dir"
     CHECKSUM_JOBS = max(1, min(4, cpu_count() // 2))
     DEFAULT_CACHE_TYPES = ["copy"]
-    DEFAULT_NO_TRAVERSE = True
     DEFAULT_VERIFY = False
+    LIST_OBJECT_PAGE_SIZE = 1000
+    TRAVERSE_WEIGHT_MULTIPLIER = 20
+    TRAVERSE_PREFIX_LEN = 3
+    TRAVERSE_THRESHOLD_SIZE = 500000
+    CAN_TRAVERSE = True
 
     CACHE_MODE = None
     SHARED_MODE_MAP = {None: (None, None), "group": (None, None)}
@@ -101,7 +105,6 @@ class RemoteBASE(object):
             or (self.repo and self.repo.config["core"].get("checksum_jobs"))
             or self.CHECKSUM_JOBS
         )
-        self.no_traverse = config.get("no_traverse", self.DEFAULT_NO_TRAVERSE)
         self.verify = config.get("verify", self.DEFAULT_VERIFY)
         self._dir_info = {}
 
@@ -688,7 +691,7 @@ class RemoteBASE(object):
     def checksum_to_path_info(self, checksum):
         return self.path_info / checksum[0:2] / checksum[2:]
 
-    def list_cache_paths(self):
+    def list_cache_paths(self, prefix=None):
         raise NotImplementedError
 
     def all(self):
@@ -804,11 +807,13 @@ class RemoteBASE(object):
 
         There are two ways of performing this check:
 
-        - Traverse: Get a list of all the files in the remote
+        - Traverse method: Get a list of all the files in the remote
             (traversing the cache directory) and compare it with
-            the given checksums.
+            the given checksums. Cache entries will be retrieved in parallel
+            threads according to prefix (i.e. entries starting with, "00...",
+            "01...", and so on) and a progress bar will be displayed.
 
-        - No traverse: For each given checksum, run the `exists`
+        - Exists method: For each given checksum, run the `exists`
             method and filter the checksums that aren't on the remote.
             This is done in parallel threads.
             It also shows a progress bar when performing the check.
@@ -819,12 +824,120 @@ class RemoteBASE(object):
         check if particular file exists much quicker, use their own
         implementation of cache_exists (see ssh, local).
 
+        Which method to use will be automatically determined after estimating
+        the size of the remote cache, and comparing the estimated size with
+        len(checksums). To estimate the size of the remote cache, we fetch
+        a small subset of cache entries (i.e. entries starting with "00...").
+        Based on the number of entries in that subset, the size of the full
+        cache can be estimated, since the cache is evenly distributed according
+        to checksum.
+
         Returns:
             A list with checksums that were found in the remote
         """
-        if not self.no_traverse:
-            return list(set(checksums) & set(self.all()))
+        # Remotes which do not use traverse prefix should override
+        # cache_exists() (see ssh, local)
+        assert self.TRAVERSE_PREFIX_LEN >= 2
 
+        if len(checksums) == 1 or not self.CAN_TRAVERSE:
+            return self._cache_object_exists(checksums, jobs, name)
+
+        # Fetch cache entries beginning with "00..." prefix for estimating the
+        # size of entire remote cache
+        checksums = frozenset(checksums)
+        prefix = "0" * self.TRAVERSE_PREFIX_LEN
+        total_prefixes = pow(16, self.TRAVERSE_PREFIX_LEN)
+        remote_checksums = set(
+            map(self.path_to_checksum, self.list_cache_paths(prefix=prefix))
+        )
+        if remote_checksums:
+            remote_size = total_prefixes * len(remote_checksums)
+        else:
+            remote_size = total_prefixes
+        logger.debug("Estimated remote size: {} files".format(remote_size))
+
+        traverse_pages = remote_size / self.LIST_OBJECT_PAGE_SIZE
+        # For sufficiently large remotes, traverse must be weighted to account
+        # for performance overhead from large lists/sets.
+        # From testing with S3, for remotes with 1M+ files, object_exists is
+        # faster until len(checksums) is at least 10k~100k
+        if remote_size > self.TRAVERSE_THRESHOLD_SIZE:
+            traverse_weight = traverse_pages * self.TRAVERSE_WEIGHT_MULTIPLIER
+        else:
+            traverse_weight = traverse_pages
+        if len(checksums) < traverse_weight:
+            logger.debug(
+                "Large remote ('{}' checksums < '{}' traverse weight), "
+                "using object_exists for remaining checksums".format(
+                    len(checksums), traverse_weight
+                )
+            )
+            return list(
+                checksums & remote_checksums
+            ) + self._cache_object_exists(
+                checksums - remote_checksums, jobs, name
+            )
+
+        if traverse_pages < 256 / self.JOBS:
+            # Threaded traverse will require making at least 255 more requests
+            # to the remote, so for small enough remotes, fetching the entire
+            # list at once will require fewer requests (but also take into
+            # account that this must be done sequentially rather than in
+            # parallel)
+            logger.debug(
+                "Querying {} checksums via default traverse".format(
+                    len(checksums)
+                )
+            )
+            return list(checksums & set(self.all()))
+
+        return self._cache_exists_traverse(
+            checksums, remote_checksums, jobs, name
+        )
+
+    def _cache_exists_traverse(
+        self, checksums, remote_checksums, jobs=None, name=None
+    ):
+        logger.debug(
+            "Querying {} checksums via threaded traverse".format(
+                len(checksums)
+            )
+        )
+
+        traverse_prefixes = ["{:02x}".format(i) for i in range(1, 256)]
+        if self.TRAVERSE_PREFIX_LEN > 2:
+            traverse_prefixes += [
+                "{0:0{1}x}".format(i, self.TRAVERSE_PREFIX_LEN)
+                for i in range(1, pow(16, self.TRAVERSE_PREFIX_LEN - 2))
+            ]
+        with Tqdm(
+            desc="Querying "
+            + ("cache in " + name if name else "remote cache"),
+            total=len(traverse_prefixes),
+            unit="dir",
+        ) as pbar:
+
+            def list_with_update(prefix):
+                ret = map(
+                    self.path_to_checksum,
+                    list(self.list_cache_paths(prefix=prefix)),
+                )
+                pbar.update_desc(
+                    "Querying cache in '{}'".format(self.path_info / prefix)
+                )
+                return ret
+
+            with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
+                in_remote = executor.map(list_with_update, traverse_prefixes,)
+                remote_checksums.update(
+                    itertools.chain.from_iterable(in_remote)
+                )
+            return list(checksums & remote_checksums)
+
+    def _cache_object_exists(self, checksums, jobs=None, name=None):
+        logger.debug(
+            "Querying {} checksums via object_exists".format(len(checksums))
+        )
         with Tqdm(
             desc="Querying "
             + ("cache in " + name if name else "remote cache"),

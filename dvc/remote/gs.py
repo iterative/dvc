@@ -3,6 +3,7 @@ from datetime import timedelta
 from functools import wraps
 import io
 import os.path
+import posixpath
 import threading
 
 from funcy import cached_property, wrap_prop
@@ -126,14 +127,18 @@ class RemoteGS(RemoteBASE):
 
         blob.delete()
 
-    def _list_paths(self, path_info, max_items=None):
+    def _list_paths(self, path_info, max_items=None, prefix=None):
+        if prefix:
+            prefix = posixpath.join(path_info.path, prefix[:2], prefix[2:])
+        else:
+            prefix = path_info.path
         for blob in self.gs.bucket(path_info.bucket).list_blobs(
             prefix=path_info.path, max_results=max_items
         ):
             yield blob.name
 
-    def list_cache_paths(self):
-        return self._list_paths(self.path_info)
+    def list_cache_paths(self, prefix=None):
+        return self._list_paths(self.path_info, prefix=prefix)
 
     def walk_files(self, path_info):
         for fname in self._list_paths(path_info / ""):

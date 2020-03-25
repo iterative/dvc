@@ -92,7 +92,7 @@ class RelPath(str):
 REMOTE_COMMON = {
     "url": str,
     "checksum_jobs": All(Coerce(int), Range(1)),
-    "no_traverse": Bool,
+    Optional("no_traverse"): Bool,  # obsoleted
     "verify": Bool,
 }
 LOCAL_COMMON = {
