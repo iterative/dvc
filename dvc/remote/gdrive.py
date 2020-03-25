@@ -39,12 +39,14 @@ class GDriveMissedCredentialKeyError(DvcException):
 
 
 def gdrive_retry(func):
-    retry_re = re.compile(r"HttpError (403|500|502|503|504)")
-
     def should_retry(exc):
         from pydrive2.files import ApiRequestError
 
-        return isinstance(exc, ApiRequestError) and retry_re.search(str(exc))
+        if not isinstance(exc, ApiRequestError):
+            return False
+
+        retry_codes = [403, 500, 502, 503, 504]
+        return exc.error.get("code", 0) in retry_codes
 
     # 15 tries, start at 0.5s, multiply by golden ratio, cap at 20s
     return retry(
@@ -52,6 +54,19 @@ def gdrive_retry(func):
         timeout=lambda a: min(0.5 * 1.618 ** a, 20),
         filter_errors=should_retry,
     )(func)
+
+
+def _location(exc):
+    from pydrive2.files import ApiRequestError
+
+    assert isinstance(exc, ApiRequestError)
+
+    # https://cloud.google.com/storage/docs/json_api/v1/status-codes#errorformat
+    return (
+        exc.error["errors"][0].get("location", "")
+        if exc.error.get("errors", [])
+        else ""
+    )
 
 
 class GDriveURLInfo(CloudURLInfo):
@@ -95,6 +110,7 @@ class RemoteGDrive(RemoteBASE):
             )
 
         self._bucket = self.path_info.bucket
+        self._trash_only = config.get("gdrive_trash_only")
         self._use_service_account = config.get("gdrive_use_service_account")
         self._service_account_email = config.get(
             "gdrive_service_account_email"
@@ -118,8 +134,6 @@ class RemoteGDrive(RemoteBASE):
                 ),
             )
         )
-
-        self._list_params = None
 
     def _validate_config(self):
         # Validate Service Account configuration
@@ -326,10 +340,35 @@ class RemoteGDrive(RemoteBASE):
 
     @gdrive_retry
     def _delete_remote_file(self, remote_id):
+        from pydrive2.files import ApiRequestError
+
         param = {"id": remote_id}
         # it does not create a file on the remote
         item = self.drive.CreateFile(param)
-        item.Delete()
+
+        try:
+            item.Trash() if self._trash_only else item.Delete()
+        except ApiRequestError as exc:
+            http_error_code = exc.error.get("code", 0)
+            if (
+                http_error_code == 403
+                and self.list_params["corpora"] == "drive"
+                and _location(exc) == "file.permissions"
+            ):
+                raise DvcException(
+                    "Insufficient permissions to {}. You should have {} "
+                    "access level for the used shared drive. More details "
+                    "at {}.".format(
+                        "move the file into Trash"
+                        if self._trash_only
+                        else "permanently delete the file",
+                        "Manager or Content Manager"
+                        if self._trash_only
+                        else "Manager",
+                        "https://support.google.com/a/answer/7337554",
+                    )
+                ) from exc
+            raise
 
     @gdrive_retry
     def _get_remote_item(self, name, parents_ids):
