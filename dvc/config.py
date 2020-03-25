@@ -179,6 +179,7 @@ SCHEMA = {
                     "gdrive_service_account_email": str,
                     "gdrive_service_account_user_email": str,
                     "gdrive_service_account_p12_file_path": str,
+                    Optional("gdrive_trash_only", default=False): Bool,
                     **REMOTE_COMMON,
                 },
                 "http": {**HTTP_COMMON, **REMOTE_COMMON},
