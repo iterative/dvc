@@ -65,3 +65,21 @@ def test_metrics_diff_no_diff():
 
 def test_metrics_diff_no_changes():
     assert _show_diff({}) == "No changes."
+
+
+def test_metrics_diff_new_metric():
+    assert _show_diff(
+        {"other.json": {"a.b.d": {"old": None, "new": "new"}}}
+    ) == (
+        "   Path      Metric   Value         Change      \n"
+        "other.json   a.b.d    new     diff not supported"
+    )
+
+
+def test_metrics_diff_deleted_metric():
+    assert _show_diff(
+        {"other.json": {"a.b.d": {"old": "old", "new": None}}}
+    ) == (
+        "   Path      Metric   Value         Change      \n"
+        "other.json   a.b.d    None    diff not supported"
+    )

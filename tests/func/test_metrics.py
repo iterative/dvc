@@ -940,3 +940,35 @@ def test_metrics_diff_broken_json(tmp_dir, scm, dvc):
 def test_metrics_diff_no_metrics(tmp_dir, scm, dvc):
     tmp_dir.scm_gen({"foo": "foo"}, commit="add foo")
     assert dvc.metrics.diff(a_rev="HEAD~1") == {}
+
+
+def test_metrics_diff_new_metric(tmp_dir, scm, dvc):
+    metrics = {"a": {"b": {"c": 1, "d": 1, "e": "3"}}}
+    tmp_dir.gen({"m.json": json.dumps(metrics)})
+    dvc.run(cmd="", metrics_no_cache=["m.json"])
+
+    assert dvc.metrics.diff() == {
+        "m.json": {
+            "a.b.c": {"old": None, "new": 1},
+            "a.b.d": {"old": None, "new": 1},
+            "a.b.e": {"old": None, "new": "3"},
+        }
+    }
+
+
+def test_metrics_diff_deleted_metric(tmp_dir, scm, dvc):
+    metrics = {"a": {"b": {"c": 1, "d": 1, "e": "3"}}}
+    tmp_dir.gen({"m.json": json.dumps(metrics)})
+    dvc.run(cmd="", metrics_no_cache=["m.json"])
+    dvc.scm.add(["m.json.dvc", "m.json"])
+    dvc.scm.commit("add metrics")
+
+    (tmp_dir / "m.json").unlink()
+
+    assert dvc.metrics.diff() == {
+        "m.json": {
+            "a.b.c": {"old": 1, "new": None},
+            "a.b.d": {"old": 1, "new": None},
+            "a.b.e": {"old": "3", "new": None},
+        }
+    }
