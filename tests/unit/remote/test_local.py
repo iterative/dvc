@@ -1,4 +1,5 @@
 import os
+import errno
 
 import pytest
 
@@ -58,3 +59,18 @@ def test_is_protected(tmp_dir, link_name):
         assert remote.is_protected(foo)
     else:
         assert not remote.is_protected(foo)
+
+
+@pytest.mark.parametrize("err", [errno.EPERM, errno.EACCES])
+def test_protect_ignore_errors(tmp_dir, mocker, err):
+    tmp_dir.gen("foo", "foo")
+    foo = PathInfo("foo")
+    remote = RemoteLOCAL(None, {})
+
+    remote.protect(foo)
+
+    mock_chmod = mocker.patch(
+        "os.chmod", side_effect=OSError(err, "something")
+    )
+    remote.protect(foo)
+    assert mock_chmod.called

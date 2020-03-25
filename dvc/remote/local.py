@@ -453,8 +453,8 @@ class RemoteLOCAL(RemoteBASE):
             if exc.errno not in [errno.EPERM, errno.EACCES]:
                 raise
 
-            actual = os.stat(path).st_mode
-            if actual & mode != mode:
+            actual = stat.S_IMODE(os.stat(path).st_mode)
+            if actual != mode:
                 raise
 
     def _get_unpacked_dir_path_info(self, checksum):
