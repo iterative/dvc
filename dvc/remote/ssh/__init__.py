@@ -249,7 +249,7 @@ class RemoteSSH(RemoteBASE):
             else:
                 yield io.TextIOWrapper(fd, encoding=encoding)
 
-    def list_cache_paths(self, prefix=None):
+    def list_cache_paths(self, prefix=None, progress_callback=None):
         assert prefix is None
         with self.ssh(self.path_info) as ssh:
             # If we simply return an iterator then with above closes instantly

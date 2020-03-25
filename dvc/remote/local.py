@@ -56,7 +56,7 @@ class RemoteLOCAL(RemoteBASE):
     def supported(cls, config):
         return True
 
-    def list_cache_paths(self, prefix=None):
+    def list_cache_paths(self, prefix=None, progress_callback=None):
         assert prefix is None
         assert self.path_info is not None
         return walk_files(self.path_info)

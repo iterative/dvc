@@ -304,14 +304,20 @@ class RemoteGDrive(RemoteBASE):
         ):
             gdrive_file.GetContentFile(to_file)
 
-    def gdrive_list_item(self, query):
+    def gdrive_list_item(self, query, progress_callback=None):
         param = {"q": query, "maxResults": 1000}
         param.update(self.list_params)
 
         file_list = self.drive.ListFile(param)
 
         # Isolate and decorate fetching of remote drive items in pages
-        get_list = gdrive_retry(lambda: next(file_list, None))
+        def next_list():
+            list_ = next(file_list, None)
+            if list_ and progress_callback:
+                progress_callback(len(list_))
+            return list_
+
+        get_list = gdrive_retry(next_list)
 
         # Fetch pages until None is received, lazily flatten the thing
         return cat(iter(get_list, None))
@@ -455,7 +461,7 @@ class RemoteGDrive(RemoteBASE):
         file_id = self._get_remote_id(from_info)
         self.gdrive_download_file(file_id, to_file, name, no_progress_bar)
 
-    def list_cache_paths(self, prefix=None):
+    def list_cache_paths(self, prefix=None, progress_callback=None):
         if not self.cache["ids"]:
             return
 
@@ -470,7 +476,7 @@ class RemoteGDrive(RemoteBASE):
         )
         query = "({}) and trashed=false".format(parents_query)
 
-        for item in self.gdrive_list_item(query):
+        for item in self.gdrive_list_item(query, progress_callback):
             parent_id = item["parents"][0]["id"]
             yield posixpath.join(self.cache["ids"][parent_id], item["title"])
 

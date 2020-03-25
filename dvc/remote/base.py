@@ -691,7 +691,7 @@ class RemoteBASE(object):
     def checksum_to_path_info(self, checksum):
         return self.path_info / checksum[0:2] / checksum[2:]
 
-    def list_cache_paths(self, prefix=None):
+    def list_cache_paths(self, prefix=None, progress_callback=None):
         raise NotImplementedError
 
     def all(self):
@@ -892,11 +892,11 @@ class RemoteBASE(object):
             return list(checksums & set(self.all()))
 
         return self._cache_exists_traverse(
-            checksums, remote_checksums, jobs, name
+            checksums, remote_checksums, remote_size, jobs, name
         )
 
     def _cache_exists_traverse(
-        self, checksums, remote_checksums, jobs=None, name=None
+        self, checksums, remote_checksums, remote_size, jobs=None, name=None
     ):
         logger.debug(
             "Querying {} checksums via threaded traverse".format(
@@ -912,20 +912,21 @@ class RemoteBASE(object):
             ]
         with Tqdm(
             desc="Querying "
-            + ("cache in " + name if name else "remote cache"),
-            total=len(traverse_prefixes),
-            unit="dir",
+            + ("cache in '{}'".format(name) if name else "remote cache"),
+            total=remote_size,
+            initial=len(remote_checksums),
+            unit="objects",
         ) as pbar:
 
             def list_with_update(prefix):
-                ret = map(
+                return map(
                     self.path_to_checksum,
-                    list(self.list_cache_paths(prefix=prefix)),
+                    list(
+                        self.list_cache_paths(
+                            prefix=prefix, progress_callback=pbar.update
+                        )
+                    ),
                 )
-                pbar.update_desc(
-                    "Querying cache in '{}'".format(self.path_info / prefix)
-                )
-                return ret
 
             with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
                 in_remote = executor.map(list_with_update, traverse_prefixes,)

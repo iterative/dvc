@@ -82,7 +82,7 @@ def test_cache_exists(path_to_checksum, object_exists, traverse):
         remote.cache_exists(checksums)
         object_exists.assert_not_called()
         traverse.assert_called_with(
-            frozenset(checksums), set(range(256)), None, None
+            frozenset(checksums), set(range(256)), mock.ANY, None, None
         )
 
     # default traverse
@@ -105,8 +105,12 @@ def test_cache_exists(path_to_checksum, object_exists, traverse):
 def test_cache_exists_traverse(path_to_checksum, list_cache_paths):
     remote = RemoteBASE(None, {})
     remote.path_info = PathInfo("foo")
-    remote._cache_exists_traverse({0}, set())
+    remote._cache_exists_traverse({0}, set(), 4096)
     for i in range(1, 16):
-        list_cache_paths.assert_any_call(prefix="{:03x}".format(i))
+        list_cache_paths.assert_any_call(
+            prefix="{:03x}".format(i), progress_callback=mock.ANY
+        )
     for i in range(1, 256):
-        list_cache_paths.assert_any_call(prefix="{:02x}".format(i))
+        list_cache_paths.assert_any_call(
+            prefix="{:02x}".format(i), progress_callback=mock.ANY
+        )
