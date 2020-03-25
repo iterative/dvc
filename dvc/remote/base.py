@@ -376,25 +376,29 @@ class RemoteBASE(object):
         logger.debug("'%s' hasn't changed.", path_info)
         return False
 
-    def link(self, from_info, to_info):
-        self._link(from_info, to_info, self.cache_types)
+    def link(self, from_info, to_info, link_types=None):
+        """
+         Pass link_types if link needs to be of different type
+        than specified in user's config or default cache types
+        """
+        link_type = self.get_supported_linktype(link_types or self.cache_types)
+        if not link_types:
+            self.cache_types = [link_type]
 
-    def _link(self, from_info, to_info, link_types):
+        self._link(from_info, to_info, link_type)
+
+    @slow_link_guard
+    def _link(self, from_info, to_info, link_type):
         assert self.isfile(from_info)
 
         self.makedirs(to_info.parent)
-
-        self._try_links(from_info, to_info, link_types)
+        self._do_link(from_info, to_info, getattr(self, link_type))
 
     def _verify_link(self, path_info, link_type):
         is_link = getattr(self, "is_{}".format(link_type), None)
-        return is_link is not None and is_link(path_info)
-
-    @slow_link_guard
-    def _try_links(self, from_info, to_info, link_types):
-        link_type = self.get_supported_linktype(link_types)
-        link_method = getattr(self, link_type)
-        self._do_link(from_info, to_info, link_method)
+        # assuming no verification is required if there's
+        # no verification procedure
+        return not is_link or is_link(path_info)
 
     @memoize
     def supports_linktype(self, link_type):
@@ -414,16 +418,13 @@ class RemoteBASE(object):
         except DvcException:
             logger.debug("failed to verify for %s", link_type)
 
-        self.remove(tmp_file)
-        self.remove(temp_cache_file)
+        for file in [tmp_file, temp_cache_file]:
+            self.remove(file)
 
         return verified
 
     def get_supported_linktype(self, link_types):
         for link_type in link_types:
-            if link_type == "copy":
-                return "copy"
-
             if self.supports_linktype(link_type):
                 return link_type
 
@@ -446,7 +447,7 @@ class RemoteBASE(object):
         if self.changed_cache(checksum):
             self.move(path_info, cache_info, mode=self.CACHE_MODE)
             self.link(cache_info, path_info)
-        elif self.iscopy(path_info) and self._cache_is_copy(path_info):
+        elif self.iscopy(path_info) and self._cache_is_copy():
             # Default relink procedure involves unneeded copy
             self.unprotect(path_info)
         else:
@@ -462,12 +463,14 @@ class RemoteBASE(object):
         self.state.save(path_info, checksum)
         self.state.save(cache_info, checksum)
 
-    def _cache_is_copy(self, path_info):
+    def _cache_is_copy(self):
         """Checks whether cache uses copies."""
-        return (
-            set(self.cache_types) <= {"copy"}
-            or self.get_supported_linktype(self.cache_types) == "copy"
-        )
+        if set(self.cache_types) <= {"copy"}:
+            return True
+
+        link_type = self.get_supported_linktype(self.cache_types)
+        self.cache_types = [link_type]
+        return link_type == "copy"
 
     def _save_dir(self, path_info, checksum, save_link=True):
         cache_info = self.checksum_to_path_info(checksum)

@@ -492,9 +492,10 @@ class RemoteLOCAL(RemoteBASE):
             # user, so we need to use symlinks because, unless
             # /proc/sys/fs/protected_hardlinks is disabled, the user is not
             # allowed to create hardlinks to files that he doesn't own.
-            link_types = ["hardlink", "symlink"]
-            self._link(
-                entry_cache_info, unpacked_dir_info / relative_path, link_types
+            self.link(
+                entry_cache_info,
+                unpacked_dir_info / relative_path,
+                link_types=["hardlink", "symlink"],
             )
 
         self.state.save(unpacked_dir_info, checksum)
