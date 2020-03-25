@@ -448,7 +448,11 @@ class RemoteLOCAL(RemoteBASE):
         try:
             os.chmod(path, mode)
         except OSError as exc:
-            # In share cache scenario, we might not own the cache file, so we
+            # There is nothing we need to do in case of a read-only file system
+            if exc.errno == errno.EROFS:
+                return
+
+            # In shared cache scenario, we might not own the cache file, so we
             # need to check if cache file is already protected.
             if exc.errno not in [errno.EPERM, errno.EACCES]:
                 raise

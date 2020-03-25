@@ -74,3 +74,15 @@ def test_protect_ignore_errors(tmp_dir, mocker, err):
     )
     remote.protect(foo)
     assert mock_chmod.called
+
+
+def test_protect_ignore_erofs(tmp_dir, mocker):
+    tmp_dir.gen("foo", "foo")
+    foo = PathInfo("foo")
+    remote = RemoteLOCAL(None, {})
+
+    mock_chmod = mocker.patch(
+        "os.chmod", side_effect=OSError(errno.EROFS, "read-only fs")
+    )
+    remote.protect(foo)
+    assert mock_chmod.called
