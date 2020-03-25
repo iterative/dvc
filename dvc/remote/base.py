@@ -847,9 +847,23 @@ class RemoteBASE(object):
         checksums = frozenset(checksums)
         prefix = "0" * self.TRAVERSE_PREFIX_LEN
         total_prefixes = pow(16, self.TRAVERSE_PREFIX_LEN)
-        remote_checksums = set(
-            map(self.path_to_checksum, self.list_cache_paths(prefix=prefix))
-        )
+        with Tqdm(
+            desc="Estimating size of "
+            + ("cache in '{}'".format(name) if name else "remote cache"),
+            bar_format=Tqdm.BAR_FMT_NOTOTAL,
+            unit="objects",
+        ) as pbar:
+            remote_checksums = set(
+                map(
+                    self.path_to_checksum,
+                    self.list_cache_paths(
+                        prefix=prefix,
+                        progress_callback=lambda n: pbar.update(
+                            n * total_prefixes
+                        ),
+                    ),
+                )
+            )
         if remote_checksums:
             remote_size = total_prefixes * len(remote_checksums)
         else:
