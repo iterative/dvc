@@ -1,5 +1,6 @@
 from unittest import TestCase
 
+import math
 import mock
 
 from dvc.path_info import PathInfo
@@ -76,8 +77,15 @@ def test_cache_exists(path_to_checksum, object_exists, traverse):
     ):
         checksums = list(range(1000))
         remote.cache_exists(checksums)
+        # verify that _cache_paths_with_max() short circuits
+        # before returning all 256 remote checksums
+        max_checksums = math.ceil(
+            remote._max_estimation_size(checksums)
+            / pow(16, remote.TRAVERSE_PREFIX_LEN)
+        )
+        assert max_checksums < 256
         object_exists.assert_called_with(
-            frozenset(range(256, 1000)), None, None
+            frozenset(range(max_checksums, 1000)), None, None
         )
         traverse.assert_not_called()
 

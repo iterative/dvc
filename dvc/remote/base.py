@@ -845,30 +845,12 @@ class RemoteBASE(object):
         if len(checksums) == 1 or not self.CAN_TRAVERSE:
             return self._cache_object_exists(checksums, jobs, name)
 
-        # Fetch cache entries beginning with "00..." prefix for estimating the
-        # size of entire remote cache
         checksums = frozenset(checksums)
-        prefix = "0" * self.TRAVERSE_PREFIX_LEN
-        total_prefixes = pow(16, self.TRAVERSE_PREFIX_LEN)
-        with Tqdm(
-            desc="Estimating size of "
-            + ("cache in '{}'".format(name) if name else "remote cache"),
-            unit="file",
-        ) as pbar:
 
-            def update(n=1):
-                pbar.update(n * total_prefixes)
-
-            paths = self.list_cache_paths(
-                prefix=prefix, progress_callback=update
-            )
-            remote_checksums = set(map(self.path_to_checksum, paths))
-
-        if remote_checksums:
-            remote_size = total_prefixes * len(remote_checksums)
-        else:
-            remote_size = total_prefixes
-        logger.debug("Estimated remote size: {} files".format(remote_size))
+        # Max remote size allowed for us to use traverse method
+        remote_size, remote_checksums = self._estimate_cache_size(
+            checksums, name=name
+        )
 
         traverse_pages = remote_size / self.LIST_OBJECT_PAGE_SIZE
         # For sufficiently large remotes, traverse must be weighted to account
@@ -908,6 +890,65 @@ class RemoteBASE(object):
         return self._cache_exists_traverse(
             checksums, remote_checksums, remote_size, jobs, name
         )
+
+    def _cache_paths_with_max(
+        self, max_paths, prefix=None, progress_callback=None
+    ):
+        count = 0
+        for path in self.list_cache_paths(prefix, progress_callback):
+            yield path
+            count += 1
+            if count > max_paths:
+                logger.debug(
+                    "list_cache_paths() returned max '{}' paths, "
+                    "skipping remaining results".format(max_paths)
+                )
+                return
+
+    def _max_estimation_size(self, checksums):
+        # Max remote size allowed for us to use traverse method
+        return max(
+            self.TRAVERSE_THRESHOLD_SIZE,
+            len(checksums)
+            / self.TRAVERSE_WEIGHT_MULTIPLIER
+            * self.LIST_OBJECT_PAGE_SIZE,
+        )
+
+    def _estimate_cache_size(self, checksums, short_circuit=True, name=None):
+        """Estimate remote cache size based on number of entries beginning with
+        "00..." prefix.
+        """
+        prefix = "0" * self.TRAVERSE_PREFIX_LEN
+        total_prefixes = pow(16, self.TRAVERSE_PREFIX_LEN)
+        if short_circuit:
+            max_remote_size = self._max_estimation_size(checksums)
+        else:
+            max_remote_size = None
+
+        with Tqdm(
+            desc="Estimating size of "
+            + ("cache in '{}'".format(name) if name else "remote cache"),
+            unit="file",
+            total=max_remote_size,
+        ) as pbar:
+
+            def update(n=1):
+                pbar.update(n * total_prefixes)
+
+            if max_remote_size:
+                paths = self._cache_paths_with_max(
+                    max_remote_size / total_prefixes, prefix, update
+                )
+            else:
+                paths = self.list_cache_paths(prefix, update)
+
+            remote_checksums = set(map(self.path_to_checksum, paths))
+            if remote_checksums:
+                remote_size = total_prefixes * len(remote_checksums)
+            else:
+                remote_size = total_prefixes
+            logger.debug("Estimated remote size: {} files".format(remote_size))
+        return remote_size, remote_checksums
 
     def _cache_exists_traverse(
         self, checksums, remote_checksums, remote_size, jobs=None, name=None
