@@ -46,7 +46,10 @@ def gdrive_retry(func):
             return False
 
         retry_codes = [403, 500, 502, 503, 504]
-        return exc.error.get("code", 0) in retry_codes
+        result = exc.error.get("code", 0) in retry_codes
+        if result:
+            logger.debug("Retry GDrive API call failed with {}.".format(exc))
+        return result
 
     # 15 tries, start at 0.5s, multiply by golden ratio, cap at 20s
     return retry(
@@ -95,6 +98,9 @@ class RemoteGDrive(RemoteBASE):
 
     GDRIVE_CREDENTIALS_DATA = "GDRIVE_CREDENTIALS_DATA"
     DEFAULT_USER_CREDENTIALS_FILE = "gdrive-user-credentials.json"
+
+    DEFAULT_GDRIVE_CLIENT_ID = "710796635688-iivsgbgsb6uv1fap6635dhvuei09o66c.apps.googleusercontent.com"  # noqa: E501
+    DEFAULT_GDRIVE_CLIENT_SECRET = "a1Fz59uTpVNeG_VGuSKDLJXv"
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
@@ -153,14 +159,15 @@ class RemoteGDrive(RemoteBASE):
             )
 
         # Validate OAuth 2.0 Client ID configuration
-        if not self._use_service_account and (
-            not self._client_id or not self._client_secret
-        ):
-            raise DvcException(
-                "Please specify Google Drive's client id and "
-                "secret in DVC config. Learn more at "
-                "{}.".format(format_link("https://man.dvc.org/remote/modify"))
-            )
+        if not self._use_service_account:
+            if bool(self._client_id) != bool(self._client_secret):
+                raise DvcException(
+                    "Please specify Google Drive's client id and secret in "
+                    "DVC config or omit both to use defaults. Learn more at "
+                    "{}.".format(
+                        format_link("https://man.dvc.org/remote/modify")
+                    )
+                )
 
     @wrap_prop(threading.RLock())
     @cached_property
@@ -186,8 +193,9 @@ class RemoteGDrive(RemoteBASE):
             }
         else:
             GoogleAuth.DEFAULT_SETTINGS["client_config"] = {
-                "client_id": self._client_id,
-                "client_secret": self._client_secret,
+                "client_id": self._client_id or self.DEFAULT_GDRIVE_CLIENT_ID,
+                "client_secret": self._client_secret
+                or self.DEFAULT_GDRIVE_CLIENT_SECRET,
                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                 "token_uri": "https://oauth2.googleapis.com/token",
                 "revoke_uri": "https://oauth2.googleapis.com/revoke",
