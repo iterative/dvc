@@ -78,7 +78,7 @@ class DependencyPARAMS(DependencyLOCAL):
         if not self.exists:
             return {}
 
-        with open(fspath_py35(self.path_info), "r") as fobj:
+        with self.repo.tree.open(fspath_py35(self.path_info), "r") as fobj:
             try:
                 config = yaml.safe_load(fobj)
             except yaml.YAMLError as exc:
