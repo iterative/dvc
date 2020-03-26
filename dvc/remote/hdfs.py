@@ -172,7 +172,7 @@ class RemoteHDFS(RemoteBASE):
                             dirs.append(urlparse(entry["name"]).path)
                         elif entry["kind"] == "file":
                             if progress_callback:
-                                progress_callback.update()
+                                progress_callback()
                             yield urlparse(entry["name"]).path
                 except IOError as e:
                     # When searching for a specific prefix pyarrow raises an

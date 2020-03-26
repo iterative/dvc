@@ -12,7 +12,7 @@ class _CallableOrNone(object):
     """Helper for testing if object is callable() or None."""
 
     def __eq__(self, other):
-        return True if other is None else callable(other)
+        return other is None or callable(other)
 
 
 CallableOrNone = _CallableOrNone()
