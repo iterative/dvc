@@ -115,7 +115,7 @@ class URLInfo(_BasePath):
         assert not p.query and not p.params and not p.fragment
         assert p.password is None
 
-        self.fill_parts(p.scheme, p.hostname, p.username, p.port, p.path)
+        self._fill_parts(p.scheme, p.hostname, p.username, p.port, p.path)
 
     @classmethod
     def from_parts(
@@ -127,10 +127,10 @@ class URLInfo(_BasePath):
             return cls("{}://{}{}".format(scheme, netloc, path))
 
         obj = cls.__new__(cls)
-        obj.fill_parts(scheme, host, user, port, path)
+        obj._fill_parts(scheme, host, user, port, path)
         return obj
 
-    def fill_parts(self, scheme, host, user, port, path):
+    def _fill_parts(self, scheme, host, user, port, path):
         assert scheme != "remote"
         assert isinstance(path, (str, bytes, _URLPathInfo))
 
@@ -244,6 +244,8 @@ class CloudURLInfo(URLInfo):
 
 
 class HTTPURLInfo(URLInfo):
+    __hash__ = URLInfo.__hash__
+
     def __init__(self, url):
         p = urlparse(url)
         stripped = p._replace(params=None, query=None, fragment=None)
@@ -280,7 +282,7 @@ class HTTPURLInfo(URLInfo):
             )
 
         obj = cls.__new__(cls)
-        obj.fill_parts(scheme, host, user, port, path)
+        obj._fill_parts(scheme, host, user, port, path)
         obj.params = params
         obj.query = query
         obj.fragment = fragment
@@ -314,6 +316,3 @@ class HTTPURLInfo(URLInfo):
             and self._path == other._path
             and self._extra_parts == other._extra_parts
         )
-
-    def __hash__(self):
-        return hash(self.parts)
