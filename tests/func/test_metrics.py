@@ -895,6 +895,20 @@ def test_metrics_diff_raw(tmp_dir, scm, dvc):
     }
 
 
+def test_metrics_diff_raw_unchanged(tmp_dir, scm, dvc):
+    def _gen(val):
+        tmp_dir.gen({"metrics": val})
+        dvc.run(cmd="", metrics=["metrics"])
+        dvc.scm.add(["metrics.dvc"])
+        dvc.scm.commit(str(val))
+
+    _gen("raw 1")
+    _gen("raw 2")
+    _gen("raw 1")
+
+    assert dvc.metrics.diff(a_rev="HEAD~2") == {}
+
+
 @pytest.mark.parametrize("xpath", [True, False])
 def test_metrics_diff_json(tmp_dir, scm, dvc, xpath):
     def _gen(val):
@@ -917,6 +931,25 @@ def test_metrics_diff_json(tmp_dir, scm, dvc, xpath):
         expected["m.json"]["a.b.e"] = {"old": "1", "new": "3"}
 
     assert expected == dvc.metrics.diff(a_rev="HEAD~2")
+
+
+@pytest.mark.parametrize("xpath", [True, False])
+def test_metrics_diff_json_unchanged(tmp_dir, scm, dvc, xpath):
+    def _gen(val):
+        metrics = {"a": {"b": {"c": val, "d": 1, "e": str(val)}}}
+        tmp_dir.gen({"m.json": json.dumps(metrics)})
+        dvc.run(cmd="", metrics=["m.json"])
+        dvc.metrics.modify("m.json", typ="json")
+        if xpath:
+            dvc.metrics.modify("m.json", xpath="a.b.c")
+        dvc.scm.add(["m.json.dvc"])
+        dvc.scm.commit(str(val))
+
+    _gen(1)
+    _gen(2)
+    _gen(1)
+
+    assert dvc.metrics.diff(a_rev="HEAD~2") == {}
 
 
 def test_metrics_diff_broken_json(tmp_dir, scm, dvc):

@@ -68,7 +68,11 @@ def _diff(old_raw, new_raw):
     if isinstance(new, dict) or isinstance(old, dict):
         return _diff_dicts(old, new)
 
-    return {"": _diff_vals(old, new)}
+    val_diff = _diff_vals(old, new)
+    if val_diff:
+        return {"": val_diff}
+
+    return {}
 
 
 def _get_metrics(repo, *args, rev=None, **kwargs):
