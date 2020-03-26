@@ -167,12 +167,12 @@ class RemoteHDFS(RemoteBASE):
             while dirs:
                 try:
                     entries = hdfs.ls(dirs.pop(), detail=True)
-                    if progress_callback:
-                        progress_callback.update(len(entries))
                     for entry in entries:
                         if entry["kind"] == "directory":
                             dirs.append(urlparse(entry["name"]).path)
                         elif entry["kind"] == "file":
+                            if progress_callback:
+                                progress_callback.update()
                             yield urlparse(entry["name"]).path
                 except IOError as e:
                     # When searching for a specific prefix pyarrow raises an

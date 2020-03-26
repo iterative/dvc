@@ -97,10 +97,9 @@ class RemoteAZURE(RemoteBASE):
                 bucket, prefix=prefix, marker=next_marker
             )
 
-            if progress_callback:
-                progress_callback(len(blobs))
-
             for blob in blobs:
+                if progress_callback:
+                    progress_callback()
                 yield blob.name
 
             if not blobs.next_marker:

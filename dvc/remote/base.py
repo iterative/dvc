@@ -850,15 +850,14 @@ class RemoteBASE(object):
         with Tqdm(
             desc="Estimating size of "
             + ("cache in '{}'".format(name) if name else "remote cache"),
-            bar_format=Tqdm.BAR_FMT_NOTOTAL,
-            unit="objects",
+            unit="file",
         ) as pbar:
             remote_checksums = set(
                 map(
                     self.path_to_checksum,
                     self.list_cache_paths(
                         prefix=prefix,
-                        progress_callback=lambda n: pbar.update(
+                        progress_callback=lambda n=1: pbar.update(
                             n * total_prefixes
                         ),
                     ),

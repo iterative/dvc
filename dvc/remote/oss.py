@@ -94,16 +94,10 @@ class RemoteOSS(RemoteBASE):
     def _list_paths(self, prefix, progress_callback=None):
         import oss2
 
-        # oss2.ObjectIterator lacks any convenient way to iterate over pages
-        # instead of the flattened list of blobs
-        count = 0
-        iterator = oss2.ObjectIterator(self.oss_service, prefix=prefix)
-        for blob in iterator:
-            yield blob.key
+        for blob in oss2.ObjectIterator(self.oss_service, prefix=prefix):
             if progress_callback:
-                count = (count + 1) % iterator.max_keys
-                if count == 0:
-                    progress_callback(iterator.max_keys)
+                progress_callback()
+            yield blob.key
 
     def list_cache_paths(self, prefix=None, progress_callback=None):
         if prefix:

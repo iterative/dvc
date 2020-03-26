@@ -206,8 +206,11 @@ class RemoteS3(RemoteBASE):
         for page in paginator.paginate(**kwargs):
             contents = page.get("Contents", ())
             if progress_callback:
-                progress_callback(len(contents))
-            yield from contents
+                for item in contents:
+                    progress_callback()
+                    yield item
+            else:
+                yield from contents
 
     def _list_paths(
         self, path_info, max_items=None, prefix=None, progress_callback=None

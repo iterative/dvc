@@ -134,15 +134,12 @@ class RemoteGS(RemoteBASE):
             prefix = posixpath.join(path_info.path, prefix[:2], prefix[2:])
         else:
             prefix = path_info.path
-        for page in (
-            self.gs.bucket(path_info.bucket)
-            .list_blobs(prefix=path_info.path, max_results=max_items)
-            .pages
+        for blob in self.gs.bucket(path_info.bucket).list_blobs(
+            prefix=path_info.path, max_results=max_items
         ):
             if progress_callback:
-                progress_callback.update(page.num_items)
-            for blob in page:
-                yield blob.name
+                progress_callback()
+            yield blob.name
 
     def list_cache_paths(self, prefix=None, progress_callback=None):
         return self._list_paths(
