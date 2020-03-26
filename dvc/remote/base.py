@@ -425,6 +425,9 @@ class RemoteBASE(object):
 
     def get_supported_linktype(self, link_types):
         for link_type in link_types:
+            if link_type == "copy":
+                return "copy"  # no need to verify
+
             if self.supports_linktype(link_type):
                 return link_type
 
