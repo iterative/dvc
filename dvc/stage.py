@@ -55,7 +55,7 @@ class StageFileDoesNotExistError(DvcException):
 
 class StageFileAlreadyExistsError(DvcException):
     def __init__(self, relpath):
-        msg = "stage '{}' already exists".format(relpath)
+        msg = "not overwriting '{}'".format(relpath)
         super().__init__(msg)
 
 
