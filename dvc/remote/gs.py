@@ -148,6 +148,9 @@ class RemoteGS(RemoteBASE):
             yield path_info.replace(fname)
 
     def makedirs(self, path_info):
+        if not path_info.path:
+            return
+
         self.gs.bucket(path_info.bucket).blob(
             (path_info / "").path
         ).upload_from_string("")

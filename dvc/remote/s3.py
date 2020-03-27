@@ -242,6 +242,9 @@ class RemoteS3(RemoteBASE):
         #
         # We are not creating directory objects for every parent prefix,
         # as it is not required.
+        if not path_info.path:
+            return
+
         dir_path = path_info / ""
         self.s3.put_object(Bucket=path_info.bucket, Key=dir_path.path, Body="")
 

@@ -1,4 +1,6 @@
-from dvc.remote import Remote
+import pytest
+
+from dvc.remote import Remote, RemoteS3, RemoteGS
 
 
 def test_remote_with_checksum_jobs(dvc):
@@ -25,3 +27,15 @@ def test_remote_without_checksum_jobs_default(dvc):
 
     remote = Remote(dvc, name="without_checksum_jobs")
     assert remote.checksum_jobs == remote.CHECKSUM_JOBS
+
+
+@pytest.mark.parametrize("remote_cls", [RemoteGS, RemoteS3])
+def test_makedirs_not_create_for_top_level_path(remote_cls, mocker):
+    url = "{.scheme}://bucket/".format(remote_cls)
+    remote = remote_cls(None, {"url": url})
+    mocked_client = mocker.PropertyMock()
+    # we use remote clients with same name as scheme to interact with remote
+    mocker.patch.object(remote_cls, remote.scheme, mocked_client)
+
+    remote.makedirs(remote.path_info)
+    assert not mocked_client.called
