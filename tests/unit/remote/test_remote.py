@@ -33,8 +33,10 @@ def test_remote_without_checksum_jobs_default(dvc):
 def test_makedirs_not_create_for_top_level_path(remote_cls, mocker):
     url = "{.scheme}://bucket/".format(remote_cls)
     remote = remote_cls(None, {"url": url})
-    exc = Exception("should not try to create dir on top-level path")
-    client = mocker.PropertyMock(side_effect=exc)
+    mocked_client = mocker.PropertyMock()
     # we use remote clients with same name as scheme to interact with remote
-    setattr(remote_cls, remote_cls.scheme, client)
+    mocker.patch.object(remote_cls, remote.scheme, mocked_client)
+
     remote.makedirs(remote.path_info)
+
+    assert not mocked_client.called
