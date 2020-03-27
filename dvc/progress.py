@@ -114,6 +114,21 @@ class Tqdm(tqdm):
             self.total = total  # pylint: disable=W0613,W0201
         self.update(current - self.n)
 
+    def wrap_fn(self, fn, callback=None):
+        """
+        Returns a wrapped `fn` which calls `callback()` on each call.
+        `callback` is `self.update` by default.
+        """
+        if callback is None:
+            callback = self.update
+
+        def wrapped(*args, **kwargs):
+            res = fn(*args, **kwargs)
+            callback()
+            return res
+
+        return wrapped
+
     def close(self):
         if self.desc_persist is not None:
             self.set_description_str(self.desc_persist, refresh=False)

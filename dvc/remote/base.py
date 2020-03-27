@@ -176,14 +176,16 @@ class RemoteBASE(object):
 
     def _calculate_checksums(self, file_infos):
         file_infos = list(file_infos)
-        with ThreadPoolExecutor(max_workers=self.checksum_jobs) as executor:
-            tasks = executor.map(self.get_file_checksum, file_infos)
-            with Tqdm(
-                tasks,
-                total=len(file_infos),
-                unit="md5",
-                desc="Computing file/dir hashes (only done once)",
-            ) as tasks:
+        with Tqdm(
+            total=len(file_infos),
+            unit="md5",
+            desc="Computing file/dir hashes (only done once)",
+        ) as pbar:
+            worker = pbar.wrap_fn(self.get_file_checksum)
+            with ThreadPoolExecutor(
+                max_workers=self.checksum_jobs
+            ) as executor:
+                tasks = executor.map(worker, file_infos)
                 checksums = dict(zip(file_infos, tasks))
         return checksums
 
@@ -609,22 +611,23 @@ class RemoteBASE(object):
             to_info / info.relative_to(from_info) for info in from_infos
         )
 
-        with ThreadPoolExecutor(max_workers=self.JOBS) as executor:
-            download_files = partial(
-                self._download_file,
-                name=name,
-                no_progress_bar=True,
-                file_mode=file_mode,
-                dir_mode=dir_mode,
+        with Tqdm(
+            total=len(from_infos),
+            desc="Downloading directory",
+            unit="Files",
+            disable=no_progress_bar,
+        ) as pbar:
+            download_files = pbar.wrap_fn(
+                partial(
+                    self._download_file,
+                    name=name,
+                    no_progress_bar=True,
+                    file_mode=file_mode,
+                    dir_mode=dir_mode,
+                )
             )
-            futures = executor.map(download_files, from_infos, to_infos)
-            with Tqdm(
-                futures,
-                total=len(from_infos),
-                desc="Downloading directory",
-                unit="Files",
-                disable=no_progress_bar,
-            ) as futures:
+            with ThreadPoolExecutor(max_workers=self.JOBS) as executor:
+                futures = executor.map(download_files, from_infos, to_infos)
                 return sum(futures)
 
     def _download_file(

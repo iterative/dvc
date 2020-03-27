@@ -55,39 +55,42 @@ class RemoteHTTP(RemoteBASE):
         response = self._request("GET", from_info.url, stream=True)
         if response.status_code != 200:
             raise HTTPError(response.status_code, response.reason)
-        with Tqdm(
-            total=None if no_progress_bar else self._content_length(response),
-            leave=False,
-            bytes=True,
-            desc=from_info.url if name is None else name,
-            disable=no_progress_bar,
-        ) as pbar:
-            with open(to_file, "wb") as fd:
+        with open(to_file, "wb") as fd:
+            with Tqdm.wrapattr(
+                fd,
+                "write",
+                total=None
+                if no_progress_bar
+                else self._content_length(response),
+                leave=False,
+                desc=from_info.url if name is None else name,
+                disable=no_progress_bar,
+            ) as fd_wrapped:
                 for chunk in response.iter_content(chunk_size=self.CHUNK_SIZE):
-                    fd.write(chunk)
-                    pbar.update(len(chunk))
+                    fd_wrapped.write(chunk)
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
-        with Tqdm(
-            total=None if no_progress_bar else os.path.getsize(from_file),
-            leave=False,
-            bytes=True,
-            desc=to_info.url if name is None else name,
-            disable=no_progress_bar,
-        ) as pbar:
-
-            def chunks():
-                with open(from_file, "rb") as fd:
+        def chunks():
+            with open(from_file, "rb") as fd:
+                with Tqdm.wrapattr(
+                    fd,
+                    "read",
+                    total=None
+                    if no_progress_bar
+                    else os.path.getsize(from_file),
+                    leave=False,
+                    desc=to_info.url if name is None else name,
+                    disable=no_progress_bar,
+                ) as fd_wrapped:
                     while True:
-                        chunk = fd.read(self.CHUNK_SIZE)
+                        chunk = fd_wrapped.read(self.CHUNK_SIZE)
                         if not chunk:
                             break
-                        pbar.update(len(chunk))
                         yield chunk
 
-            response = self._request("POST", to_info.url, data=chunks())
-            if response.status_code not in (200, 201):
-                raise HTTPError(response.status_code, response.reason)
+        response = self._request("POST", to_info.url, data=chunks())
+        if response.status_code not in (200, 201):
+            raise HTTPError(response.status_code, response.reason)
 
     def exists(self, path_info):
         return bool(self._request("HEAD", path_info.url))
