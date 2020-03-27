@@ -3,6 +3,7 @@ import os
 from dvc.exceptions import DvcException
 from dvc.repo import locked
 from dvc.scm.git import Git
+from dvc.scm.tree import is_working_tree
 
 
 @locked
@@ -36,10 +37,23 @@ def diff(self, a_rev="HEAD", b_rev=None):
                 else os.path.join(str(output), "")
             )
 
+        on_working_tree = is_working_tree(self.tree)
+
+        def _to_checksum(output):
+            if on_working_tree:
+                return self.cache.local.get_checksum(output.path_info)
+            return output.checksum
+
+        def _exists(output):
+            if on_working_tree:
+                return output.exists
+            return True
+
         return {
-            _to_path(output): output.checksum
+            _to_path(output): _to_checksum(output)
             for stage in self.stages
             for output in stage.outs
+            if _exists(output)
         }
 
     working_tree = self.tree
