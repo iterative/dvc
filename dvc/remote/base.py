@@ -852,17 +852,15 @@ class RemoteBASE(object):
             + ("cache in '{}'".format(name) if name else "remote cache"),
             unit="file",
         ) as pbar:
-            remote_checksums = set(
-                map(
-                    self.path_to_checksum,
-                    self.list_cache_paths(
-                        prefix=prefix,
-                        progress_callback=lambda n=1: pbar.update(
-                            n * total_prefixes
-                        ),
-                    ),
-                )
+
+            def update(n=1):
+                pbar.update(n * total_prefixes)
+
+            paths = self.list_cache_paths(
+                prefix=prefix, progress_callback=update
             )
+            remote_checksums = set(map(self.path_to_checksum, paths))
+
         if remote_checksums:
             remote_size = total_prefixes * len(remote_checksums)
         else:
@@ -932,14 +930,10 @@ class RemoteBASE(object):
         ) as pbar:
 
             def list_with_update(prefix):
-                return map(
-                    self.path_to_checksum,
-                    list(
-                        self.list_cache_paths(
-                            prefix=prefix, progress_callback=pbar.update
-                        )
-                    ),
+                paths = self.list_cache_paths(
+                    prefix=prefix, progress_callback=pbar.update
                 )
+                return map(self.path_to_checksum, list(paths))
 
             with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
                 in_remote = executor.map(list_with_update, traverse_prefixes,)
