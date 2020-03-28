@@ -38,6 +38,7 @@ class RemoteOSS(RemoteBASE):
     REQUIRES = {"oss2": "oss2"}
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
+    LIST_OBJECT_PAGE_SIZE = 100
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
@@ -90,20 +91,22 @@ class RemoteOSS(RemoteBASE):
         logger.debug("Removing oss://{}".format(path_info))
         self.oss_service.delete_object(path_info.path)
 
-    def _list_paths(self, prefix):
+    def _list_paths(self, prefix, progress_callback=None):
         import oss2
 
         for blob in oss2.ObjectIterator(self.oss_service, prefix=prefix):
+            if progress_callback:
+                progress_callback()
             yield blob.key
 
-    def list_cache_paths(self, prefix=None):
+    def list_cache_paths(self, prefix=None, progress_callback=None):
         if prefix:
             prefix = posixpath.join(
                 self.path_info.path, prefix[:2], prefix[2:]
             )
         else:
             prefix = self.path_info.path
-        return self._list_paths(prefix)
+        return self._list_paths(prefix, progress_callback)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs

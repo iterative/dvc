@@ -8,6 +8,16 @@ from dvc.remote.base import RemoteCmdError
 from dvc.remote.base import RemoteMissingDepsError
 
 
+class _CallableOrNone(object):
+    """Helper for testing if object is callable() or None."""
+
+    def __eq__(self, other):
+        return other is None or callable(other)
+
+
+CallableOrNone = _CallableOrNone()
+
+
 class TestRemoteBASE(object):
     REMOTE_CLS = RemoteBASE
 
@@ -82,7 +92,11 @@ def test_cache_exists(path_to_checksum, object_exists, traverse):
         remote.cache_exists(checksums)
         object_exists.assert_not_called()
         traverse.assert_called_with(
-            frozenset(checksums), set(range(256)), None, None
+            frozenset(checksums),
+            set(range(256)),
+            256 * pow(16, remote.TRAVERSE_PREFIX_LEN),
+            None,
+            None,
         )
 
     # default traverse
@@ -105,8 +119,12 @@ def test_cache_exists(path_to_checksum, object_exists, traverse):
 def test_cache_exists_traverse(path_to_checksum, list_cache_paths):
     remote = RemoteBASE(None, {})
     remote.path_info = PathInfo("foo")
-    remote._cache_exists_traverse({0}, set())
+    remote._cache_exists_traverse({0}, set(), 4096)
     for i in range(1, 16):
-        list_cache_paths.assert_any_call(prefix="{:03x}".format(i))
+        list_cache_paths.assert_any_call(
+            prefix="{:03x}".format(i), progress_callback=CallableOrNone
+        )
     for i in range(1, 256):
-        list_cache_paths.assert_any_call(prefix="{:02x}".format(i))
+        list_cache_paths.assert_any_call(
+            prefix="{:02x}".format(i), progress_callback=CallableOrNone
+        )

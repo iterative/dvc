@@ -153,7 +153,7 @@ class RemoteHDFS(RemoteBASE):
                 raise FileNotFoundError(*e.args)
             raise
 
-    def list_cache_paths(self, prefix=None):
+    def list_cache_paths(self, prefix=None, progress_callback=None):
         if not self.exists(self.path_info):
             return
 
@@ -166,10 +166,13 @@ class RemoteHDFS(RemoteBASE):
         with self.hdfs(self.path_info) as hdfs:
             while dirs:
                 try:
-                    for entry in hdfs.ls(dirs.pop(), detail=True):
+                    entries = hdfs.ls(dirs.pop(), detail=True)
+                    for entry in entries:
                         if entry["kind"] == "directory":
                             dirs.append(urlparse(entry["name"]).path)
                         elif entry["kind"] == "file":
+                            if progress_callback:
+                                progress_callback()
                             yield urlparse(entry["name"]).path
                 except IOError as e:
                     # When searching for a specific prefix pyarrow raises an

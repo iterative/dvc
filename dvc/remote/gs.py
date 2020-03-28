@@ -127,7 +127,9 @@ class RemoteGS(RemoteBASE):
 
         blob.delete()
 
-    def _list_paths(self, path_info, max_items=None, prefix=None):
+    def _list_paths(
+        self, path_info, max_items=None, prefix=None, progress_callback=None
+    ):
         if prefix:
             prefix = posixpath.join(path_info.path, prefix[:2], prefix[2:])
         else:
@@ -135,10 +137,14 @@ class RemoteGS(RemoteBASE):
         for blob in self.gs.bucket(path_info.bucket).list_blobs(
             prefix=path_info.path, max_results=max_items
         ):
+            if progress_callback:
+                progress_callback()
             yield blob.name
 
-    def list_cache_paths(self, prefix=None):
-        return self._list_paths(self.path_info, prefix=prefix)
+    def list_cache_paths(self, prefix=None, progress_callback=None):
+        return self._list_paths(
+            self.path_info, prefix=prefix, progress_callback=progress_callback
+        )
 
     def walk_files(self, path_info):
         for fname in self._list_paths(path_info / ""):

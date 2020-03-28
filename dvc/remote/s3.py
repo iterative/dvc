@@ -191,7 +191,9 @@ class RemoteS3(RemoteBASE):
         logger.debug("Removing {}".format(path_info))
         self.s3.delete_object(Bucket=path_info.bucket, Key=path_info.path)
 
-    def _list_objects(self, path_info, max_items=None, prefix=None):
+    def _list_objects(
+        self, path_info, max_items=None, prefix=None, progress_callback=None
+    ):
         """ Read config for list object api, paginate through list objects."""
         kwargs = {
             "Bucket": path_info.bucket,
@@ -202,16 +204,28 @@ class RemoteS3(RemoteBASE):
             kwargs["Prefix"] = posixpath.join(path_info.path, prefix[:2])
         paginator = self.s3.get_paginator(self.list_objects_api)
         for page in paginator.paginate(**kwargs):
-            yield from page.get("Contents", ())
+            contents = page.get("Contents", ())
+            if progress_callback:
+                for item in contents:
+                    progress_callback()
+                    yield item
+            else:
+                yield from contents
 
-    def _list_paths(self, path_info, max_items=None, prefix=None):
+    def _list_paths(
+        self, path_info, max_items=None, prefix=None, progress_callback=None
+    ):
         return (
             item["Key"]
-            for item in self._list_objects(path_info, max_items, prefix)
+            for item in self._list_objects(
+                path_info, max_items, prefix, progress_callback
+            )
         )
 
-    def list_cache_paths(self, prefix=None):
-        return self._list_paths(self.path_info, prefix=prefix)
+    def list_cache_paths(self, prefix=None, progress_callback=None):
+        return self._list_paths(
+            self.path_info, prefix=prefix, progress_callback=progress_callback
+        )
 
     def isfile(self, path_info):
         from botocore.exceptions import ClientError

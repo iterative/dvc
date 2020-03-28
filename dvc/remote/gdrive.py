@@ -463,7 +463,7 @@ class RemoteGDrive(RemoteBASE):
         file_id = self._get_remote_id(from_info)
         self.gdrive_download_file(file_id, to_file, name, no_progress_bar)
 
-    def list_cache_paths(self, prefix=None):
+    def list_cache_paths(self, prefix=None, progress_callback=None):
         if not self.cache["ids"]:
             return
 
@@ -479,6 +479,8 @@ class RemoteGDrive(RemoteBASE):
         query = "({}) and trashed=false".format(parents_query)
 
         for item in self.gdrive_list_item(query):
+            if progress_callback:
+                progress_callback()
             parent_id = item["parents"][0]["id"]
             yield posixpath.join(self.cache["ids"][parent_id], item["title"])
 

@@ -29,6 +29,7 @@ class RemoteAZURE(RemoteBASE):
     REQUIRES = {"azure-storage-blob": "azure.storage.blob"}
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
+    LIST_OBJECT_PAGE_SIZE = 5000
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
@@ -88,7 +89,7 @@ class RemoteAZURE(RemoteBASE):
         logger.debug("Removing {}".format(path_info))
         self.blob_service.delete_blob(path_info.bucket, path_info.path)
 
-    def _list_paths(self, bucket, prefix):
+    def _list_paths(self, bucket, prefix, progress_callback=None):
         blob_service = self.blob_service
         next_marker = None
         while True:
@@ -97,6 +98,8 @@ class RemoteAZURE(RemoteBASE):
             )
 
             for blob in blobs:
+                if progress_callback:
+                    progress_callback()
                 yield blob.name
 
             if not blobs.next_marker:
@@ -104,14 +107,16 @@ class RemoteAZURE(RemoteBASE):
 
             next_marker = blobs.next_marker
 
-    def list_cache_paths(self, prefix=None):
+    def list_cache_paths(self, prefix=None, progress_callback=None):
         if prefix:
             prefix = posixpath.join(
                 self.path_info.path, prefix[:2], prefix[2:]
             )
         else:
             prefix = self.path_info.path
-        return self._list_paths(self.path_info.bucket, prefix)
+        return self._list_paths(
+            self.path_info.bucket, prefix, progress_callback
+        )
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
