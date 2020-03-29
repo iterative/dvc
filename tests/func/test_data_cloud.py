@@ -200,7 +200,7 @@ def setup_gdrive_cloud(remote_url, dvc):
 
     dvc.config = config
     remote = DataCloud(dvc).get_remote()
-    remote._create_remote_dir("root", remote.path_info.path)
+    remote._gdrive_create_dir("root", remote.path_info.path)
 
 
 class TestRemoteGDrive(GDrive, TestDataCloudBase):
