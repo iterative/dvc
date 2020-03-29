@@ -151,10 +151,9 @@ deploy:
       tags: true
       repo: iterative/dvc
       stage: build
-  - provider: snap
-    snap: dvc_*.snap
-    channel: $SNAP_CHANNEL
+  - provider: script
     skip_cleanup: true
+    script: "timeout 600 snapcraft push dvc_*.snap --release $SNAP_CHANNEL || echo timed out"
     on:
       all_branches: true
       condition: "$(./scripts/ci/deploy_condition.sh dvc_*.snap) && ($TRAVIS_BRANCH = master || -n $TRAVIS_TAG)"
