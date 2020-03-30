@@ -67,6 +67,7 @@ class Repo(object):
         from dvc.cache import Cache
         from dvc.data_cloud import DataCloud
         from dvc.repo.metrics import Metrics
+        from dvc.repo.params import Params
         from dvc.scm.tree import WorkingTree
         from dvc.repo.tag import Tag
         from dvc.utils.fs import makedirs
@@ -102,6 +103,7 @@ class Repo(object):
         self.cloud = DataCloud(self)
 
         self.metrics = Metrics(self)
+        self.params = Params(self)
         self.tag = Tag(self)
 
         self._ignore()
