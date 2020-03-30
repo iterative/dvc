@@ -687,7 +687,7 @@ class RemoteBASE(object):
         parts = self.path_cls(path).parts[-2:]
 
         if not (len(parts) == 2 and parts[0] and len(parts[0]) == 2):
-            raise ValueError("Bad cache file path")
+            raise ValueError("Bad cache file path '{}'".format(path))
 
         return "".join(parts)
 
