@@ -61,6 +61,7 @@ class Repo(object):
     from dvc.repo.get import get
     from dvc.repo.get_url import get_url
     from dvc.repo.update import update
+    from dvc.repo.viz import viz
 
     def __init__(self, root_dir=None):
         from dvc.state import State
