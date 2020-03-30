@@ -35,7 +35,7 @@ class TestRemoteGDrive(object):
             RemoteGDrive.GDRIVE_CREDENTIALS_DATA
         ] = USER_CREDS_TOKEN_REFRESH_ERROR
         with pytest.raises(GDriveAccessTokenRefreshError):
-            remote.drive
+            remote._drive
 
         os.environ[RemoteGDrive.GDRIVE_CREDENTIALS_DATA] = ""
         remote = RemoteGDrive(Repo(), self.CONFIG)
@@ -43,4 +43,4 @@ class TestRemoteGDrive(object):
             RemoteGDrive.GDRIVE_CREDENTIALS_DATA
         ] = USER_CREDS_MISSED_KEY_ERROR
         with pytest.raises(GDriveMissedCredentialKeyError):
-            remote.drive
+            remote._drive
