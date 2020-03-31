@@ -10,6 +10,7 @@ from contextlib import closing, contextmanager
 from urllib.parse import urlparse
 
 from funcy import memoize, wrap_with, silent, first
+import paramiko
 
 import dvc.prompt as prompt
 from dvc.progress import Tqdm
@@ -85,6 +86,11 @@ class RemoteSSH(RemoteBASE):
         self.password = config.get("password", None)
         self.ask_password = config.get("ask_password", False)
         self.gss_auth = config.get("gss_auth", False)
+        proxy_command = user_ssh_config.get("proxycommand", False)
+        if proxy_command:
+            self.sock = paramiko.ProxyCommand(proxy_command)
+        else:
+            self.sock = None
 
     @staticmethod
     def ssh_config_filename():
@@ -92,8 +98,6 @@ class RemoteSSH(RemoteBASE):
 
     @staticmethod
     def _load_user_ssh_config(hostname):
-        import paramiko
-
         user_config_file = RemoteSSH.ssh_config_filename()
         user_ssh_config = {}
         if hostname and os.path.exists(user_config_file):
@@ -136,6 +140,7 @@ class RemoteSSH(RemoteBASE):
             timeout=self.timeout,
             password=self.password,
             gss_auth=self.gss_auth,
+            sock=self.sock,
         )
 
     def exists(self, path_info):
