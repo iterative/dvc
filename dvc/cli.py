@@ -3,7 +3,7 @@ import argparse
 import logging
 import sys
 
-from dvc.command import viz
+from dvc.command import plot
 from .command import (
     add,
     cache,
@@ -75,7 +75,7 @@ COMMANDS = [
     version,
     update,
     git_hook,
-    viz,
+    plot,
 ]
 
 
