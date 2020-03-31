@@ -9,23 +9,6 @@ logger = logging.getLogger(__name__)
 
 
 class AbstractTemplate:
-    HTML_TEMPLATE = """<!DOCTYPE html>
-<html>
-  <head>
-    <title>Embedding Vega-Lite</title>
-    <script src="https://cdn.jsdelivr.net/npm/vega@5.10.0"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-lite@4.8.1"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.5.1"></script>
-  </head>
-  <body>
-    <div id="vis"></div>
-
-    <script type="text/javascript">
-      var yourVlSpec = {vega_json};
-      vegaEmbed('#vis', yourVlSpec);
-    </script>
-  </body>
-</html>"""
 
     TEMPLATES_DIR = "plot"
     INDENT = 4
@@ -61,13 +44,13 @@ class AbstractTemplate:
     def fill(self, data):
         raise NotImplementedError
 
-    def save(self, update_dict, path):
-        vega_dict = self.fill(update_dict)
+    # def save(self, update_dict, path):
+    #     vega_dict = self.fill(update_dict)
 
-        with open(path, "w") as fd:
-            fd.write(self.HTML_TEMPLATE.format(vega_json=vega_dict))
+    # with open(path, "w") as fd:
+    #     fd.write(self.HTML_TEMPLATE.format(vega_json=vega_dict))
 
-        logger.error("PATH: {}".format(path))
+    # logger.error("PATH: {}".format(path))
 
 
 class DefaultTemplate(AbstractTemplate):
