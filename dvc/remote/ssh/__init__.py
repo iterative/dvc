@@ -85,6 +85,13 @@ class RemoteSSH(RemoteBASE):
         self.password = config.get("password", None)
         self.ask_password = config.get("ask_password", False)
         self.gss_auth = config.get("gss_auth", False)
+        proxy_command = user_ssh_config.get("proxycommand", False)
+        if proxy_command:
+            import paramiko
+
+            self.sock = paramiko.ProxyCommand(proxy_command)
+        else:
+            self.sock = None
 
     @staticmethod
     def ssh_config_filename():
@@ -136,6 +143,7 @@ class RemoteSSH(RemoteBASE):
             timeout=self.timeout,
             password=self.password,
             gss_auth=self.gss_auth,
+            sock=self.sock,
         )
 
     def exists(self, path_info):
