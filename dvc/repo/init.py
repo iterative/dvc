@@ -12,7 +12,7 @@ from dvc.scm.base import SCMError
 from dvc.utils import boxify
 from dvc.utils import relpath
 from dvc.utils.fs import remove
-from dvc.visualization import VisualizationTemplates
+from dvc.plot import PlotTemplates
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +101,7 @@ def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
         with config.edit() as conf:
             conf["core"]["no_scm"] = True
 
-    VisualizationTemplates.init(dvc_dir)
+    PlotTemplates.init(dvc_dir)
 
     proj = Repo(root_dir)
 
