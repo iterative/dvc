@@ -133,3 +133,14 @@ def test_cache_checksums_traverse(path_to_checksum, cache_checksums):
     cache_checksums.assert_called_with(
         prefix=None, progress_callback=CallableOrNone
     )
+
+
+def test_cache_checksums():
+    remote = RemoteBASE(None, {})
+    remote.path_info = PathInfo("foo")
+
+    with mock.patch.object(
+        remote, "list_cache_paths", return_value=["12/3456", "bar"]
+    ):
+        checksums = list(remote.cache_checksums())
+        assert checksums == ["123456"]
