@@ -202,7 +202,7 @@ _dvc_push=(
   {-a,--all-branches}"[Push cache for all branches.]"
   {-T,--all-tags}"[Push cache for all tags.]"
   {-d,--with-deps}"[Push cache for all dependencies of the specified target.]"
-  {-R,--recursive}"[Push cache from subdirectories of specified directory.]"
+  {-R,--recursive}"[Push cache for subdirectories of specified directory.]"
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
 )
 
