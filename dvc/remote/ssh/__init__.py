@@ -10,7 +10,6 @@ from contextlib import closing, contextmanager
 from urllib.parse import urlparse
 
 from funcy import memoize, wrap_with, silent, first
-import paramiko
 
 import dvc.prompt as prompt
 from dvc.progress import Tqdm
@@ -49,6 +48,7 @@ class RemoteSSH(RemoteBASE):
     DEFAULT_CACHE_TYPES = ["copy"]
 
     def __init__(self, repo, config):
+        import paramiko
         super().__init__(repo, config)
         url = config.get("url")
         if url:
