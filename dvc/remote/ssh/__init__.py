@@ -89,6 +89,7 @@ class RemoteSSH(RemoteBASE):
         self.gss_auth = config.get("gss_auth", False)
         proxy_command = user_ssh_config.get("proxycommand", False)
         if proxy_command:
+            import paramiko
             self.sock = paramiko.ProxyCommand(proxy_command)
         else:
             self.sock = None
