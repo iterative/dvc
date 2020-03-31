@@ -706,8 +706,9 @@ class RemoteBASE(object):
             try:
                 yield self.path_to_checksum(path)
             except ValueError:
-                # We ignore all the non-cache looking files
-                pass
+                logger.debug(
+                    "'%s' doesn't look like a cache file, skipping", path
+                )
 
     def gc(self, named_cache):
         used = self.extract_used_local_checksums(named_cache)
