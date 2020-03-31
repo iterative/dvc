@@ -190,7 +190,7 @@ def add_parser(subparsers, _parent_parser):
         "--recursive",
         action="store_true",
         default=False,
-        help="Push cache from subdirectories of specified directory.",
+        help="Push cache for subdirectories of specified directory.",
     )
     push_parser.set_defaults(func=CmdDataPush)
 
