@@ -10,7 +10,6 @@ from contextlib import closing, contextmanager
 from urllib.parse import urlparse
 
 from funcy import memoize, wrap_with, silent, first
-import paramiko
 
 import dvc.prompt as prompt
 from dvc.progress import Tqdm
@@ -34,6 +33,8 @@ def ask_password(host, user, port):
 
 
 class RemoteSSH(RemoteBASE):
+    import paramiko
+
     scheme = Schemes.SSH
     REQUIRES = {"paramiko": "paramiko"}
 
