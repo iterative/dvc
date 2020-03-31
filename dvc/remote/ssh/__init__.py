@@ -49,6 +49,7 @@ class RemoteSSH(RemoteBASE):
 
     def __init__(self, repo, config):
         import paramiko
+
         super().__init__(repo, config)
         url = config.get("url")
         if url:
