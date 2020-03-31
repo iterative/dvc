@@ -722,6 +722,10 @@ class RemoteBASE(object):
                 name if name else "remote cache"
             )
         )
+
+        if not self.CAN_TRAVERSE:
+            return self.cache_checksums()
+
         remote_size, remote_checksums = self._estimate_cache_size(name=name)
         return self._cache_checksums_traverse(
             remote_size, remote_checksums, jobs, name
