@@ -687,7 +687,7 @@ class RemoteBASE(object):
         parts = self.path_cls(path).parts[-2:]
 
         if not (len(parts) == 2 and parts[0] and len(parts[0]) == 2):
-            raise ValueError("Bad cache file path")
+            raise ValueError("Bad cache file path '{}'".format(path))
 
         return "".join(parts)
 
@@ -697,17 +697,18 @@ class RemoteBASE(object):
     def list_cache_paths(self, prefix=None, progress_callback=None):
         raise NotImplementedError
 
-    def all(self):
+    def all(self, *args, **kwargs):
         # NOTE: The list might be way too big(e.g. 100M entries, md5 for each
         # is 32 bytes, so ~3200Mb list) and we don't really need all of it at
         # the same time, so it makes sense to use a generator to gradually
         # iterate over it, without keeping all of it in memory.
-        for path in self.list_cache_paths():
+        for path in self.list_cache_paths(*args, **kwargs):
             try:
                 yield self.path_to_checksum(path)
             except ValueError:
-                # We ignore all the non-cache looking files
-                pass
+                logger.debug(
+                    "'%s' doesn't look like a cache file, skipping", path
+                )
 
     def gc(self, named_cache):
         used = self.extract_used_local_checksums(named_cache)
@@ -891,16 +892,14 @@ class RemoteBASE(object):
             checksums, remote_checksums, remote_size, jobs, name
         )
 
-    def _cache_paths_with_max(
-        self, max_paths, prefix=None, progress_callback=None
-    ):
+    def _all_with_limit(self, max_paths, prefix=None, progress_callback=None):
         count = 0
-        for path in self.list_cache_paths(prefix, progress_callback):
-            yield path
+        for checksum in self.all(prefix, progress_callback):
+            yield checksum
             count += 1
             if count > max_paths:
                 logger.debug(
-                    "list_cache_paths() returned max '{}' paths, "
+                    "`all()` returned max '{}' checksums, "
                     "skipping remaining results".format(max_paths)
                 )
                 return
@@ -936,13 +935,13 @@ class RemoteBASE(object):
                 pbar.update(n * total_prefixes)
 
             if max_remote_size:
-                paths = self._cache_paths_with_max(
+                checksums = self._all_with_limit(
                     max_remote_size / total_prefixes, prefix, update
                 )
             else:
-                paths = self.list_cache_paths(prefix, update)
+                checksums = self.all(prefix, update)
 
-            remote_checksums = set(map(self.path_to_checksum, paths))
+            remote_checksums = set(checksums)
             if remote_checksums:
                 remote_size = total_prefixes * len(remote_checksums)
             else:
@@ -974,10 +973,7 @@ class RemoteBASE(object):
         ) as pbar:
 
             def list_with_update(prefix):
-                paths = self.list_cache_paths(
-                    prefix=prefix, progress_callback=pbar.update
-                )
-                return map(self.path_to_checksum, list(paths))
+                return self.all(prefix=prefix, progress_callback=pbar.update)
 
             with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
                 in_remote = executor.map(list_with_update, traverse_prefixes,)
