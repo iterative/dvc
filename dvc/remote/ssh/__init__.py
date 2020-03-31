@@ -33,8 +33,6 @@ def ask_password(host, user, port):
 
 
 class RemoteSSH(RemoteBASE):
-    import paramiko
-
     scheme = Schemes.SSH
     REQUIRES = {"paramiko": "paramiko"}
 
