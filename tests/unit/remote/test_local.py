@@ -8,12 +8,12 @@ from dvc.path_info import PathInfo
 from dvc.remote.local import RemoteLOCAL
 
 
-def test_status_download_optimization(mocker):
+def test_status_download_optimization(mocker, dvc):
     """When comparing the status to pull a remote cache,
         And the desired files to fetch are already on the local cache,
         Don't check the existence of the desired files on the remote cache
     """
-    remote = RemoteLOCAL(None, {})
+    remote = RemoteLOCAL(dvc, {})
 
     infos = NamedCache()
     infos.add("local", "acbd18db4cc2f85cedef654fccc4a4d8", "foo")
@@ -32,8 +32,8 @@ def test_status_download_optimization(mocker):
 
 
 @pytest.mark.parametrize("link_name", ["hardlink", "symlink"])
-def test_is_protected(tmp_dir, link_name):
-    remote = RemoteLOCAL(None, {})
+def test_is_protected(tmp_dir, dvc, link_name):
+    remote = RemoteLOCAL(dvc, {})
     link_method = getattr(remote, link_name)
 
     (tmp_dir / "foo").write_text("foo")
