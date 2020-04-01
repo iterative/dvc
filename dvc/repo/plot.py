@@ -53,10 +53,14 @@ def _load(tree, target, revision="current workspace"):
     return data
 
 
-def plot(repo, targets, plot_filename="plot.html", typ="json"):
+def plot(repo, targets, plot_path="plot.html", typ="json"):
     divs = []
     for target in targets:
         data = _load(repo.tree, target)
         vega_plot_json = DefaultTemplate(repo.dvc_dir).fill(data)
         divs.append(DivTemplate.prepare_div(vega_plot_json))
-    PageTemplate.save(divs, plot_filename)
+    PageTemplate.save(divs, plot_path)
+    logger.info(
+        "Your can see your plot by opening '{}' in your "
+        "browser!".format(plot_path)
+    )
