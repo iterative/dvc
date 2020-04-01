@@ -8,8 +8,8 @@ from dvc.exceptions import InvalidArgumentError
 logger = logging.getLogger(__name__)
 
 
-def _do_gc(typ, func, clist):
-    removed = func(clist)
+def _do_gc(typ, func, clist, jobs=None):
+    removed = func(clist, jobs=jobs)
     if not removed:
         logger.info("No unused '{}' cache to remove.".format(typ))
 
@@ -74,22 +74,22 @@ def gc(
                 )
             )
 
-    _do_gc("local", self.cache.local.gc, used)
+    _do_gc("local", self.cache.local.gc, used, jobs)
 
     if self.cache.s3:
-        _do_gc("s3", self.cache.s3.gc, used)
+        _do_gc("s3", self.cache.s3.gc, used, jobs)
 
     if self.cache.gs:
-        _do_gc("gs", self.cache.gs.gc, used)
+        _do_gc("gs", self.cache.gs.gc, used, jobs)
 
     if self.cache.ssh:
-        _do_gc("ssh", self.cache.ssh.gc, used)
+        _do_gc("ssh", self.cache.ssh.gc, used, jobs)
 
     if self.cache.hdfs:
-        _do_gc("hdfs", self.cache.hdfs.gc, used)
+        _do_gc("hdfs", self.cache.hdfs.gc, used, jobs)
 
     if self.cache.azure:
-        _do_gc("azure", self.cache.azure.gc, used)
+        _do_gc("azure", self.cache.azure.gc, used, jobs)
 
     if cloud:
-        _do_gc("remote", self.cloud.get_remote(remote, "gc -c").gc, used)
+        _do_gc("remote", self.cloud.get_remote(remote, "gc -c").gc, used, jobs)

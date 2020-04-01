@@ -4,6 +4,7 @@ import io
 import itertools
 import logging
 import os
+import posixpath
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing, contextmanager
@@ -44,6 +45,7 @@ class RemoteSSH(RemoteBASE):
     # paramiko stuff, so we would ideally have it double of server processors.
     # We use conservative setting of 4 instead to not exhaust max sessions.
     CHECKSUM_JOBS = 4
+    TRAVERSE_PREFIX_LEN = 2
 
     DEFAULT_CACHE_TYPES = ["copy"]
 
@@ -258,15 +260,18 @@ class RemoteSSH(RemoteBASE):
                 yield io.TextIOWrapper(fd, encoding=encoding)
 
     def list_cache_paths(self, prefix=None, progress_callback=None):
-        assert prefix is None
+        if prefix:
+            root = posixpath.join(self.path_info.path, prefix[:2])
+        else:
+            root = self.path_info.path
         with self.ssh(self.path_info) as ssh:
             # If we simply return an iterator then with above closes instantly
             if progress_callback:
-                for path in ssh.walk_files(self.path_info.path):
+                for path in ssh.walk_files(root):
                     progress_callback()
                     yield path
             else:
-                yield from ssh.walk_files(self.path_info.path)
+                yield from ssh.walk_files(root)
 
     def walk_files(self, path_info):
         with self.ssh(path_info) as ssh:

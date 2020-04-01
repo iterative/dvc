@@ -697,12 +697,13 @@ class RemoteBASE(object):
     def list_cache_paths(self, prefix=None, progress_callback=None):
         raise NotImplementedError
 
-    def all(self, *args, **kwargs):
-        # NOTE: The list might be way too big(e.g. 100M entries, md5 for each
-        # is 32 bytes, so ~3200Mb list) and we don't really need all of it at
-        # the same time, so it makes sense to use a generator to gradually
-        # iterate over it, without keeping all of it in memory.
-        for path in self.list_cache_paths(*args, **kwargs):
+    def cache_checksums(self, prefix=None, progress_callback=None):
+        """Iterate over remote cache checksums.
+
+        If `prefix` is specified, only checksums which begin with `prefix`
+        will be returned.
+        """
+        for path in self.list_cache_paths(prefix, progress_callback):
             try:
                 yield self.path_to_checksum(path)
             except ValueError:
@@ -710,14 +711,35 @@ class RemoteBASE(object):
                     "'%s' doesn't look like a cache file, skipping", path
                 )
 
-    def gc(self, named_cache):
+    def all(self, jobs=None, name=None):
+        """Iterate over all checksums in the remote cache.
+
+        Checksums will be fetched in parallel threads according to prefix
+        (except for small remotes) and a progress bar will be displayed.
+        """
+        logger.debug(
+            "Fetching all checksums from '{}'".format(
+                name if name else "remote cache"
+            )
+        )
+
+        if not self.CAN_TRAVERSE:
+            return self.cache_checksums()
+
+        remote_size, remote_checksums = self._estimate_cache_size(name=name)
+        return self._cache_checksums_traverse(
+            remote_size, remote_checksums, jobs, name
+        )
+
+    def gc(self, named_cache, jobs=None):
+        logger.debug("named_cache: {} jobs: {}".format(named_cache, jobs))
         used = self.extract_used_local_checksums(named_cache)
 
         if self.scheme != "":
             used.update(named_cache[self.scheme])
 
         removed = False
-        for checksum in self.all():
+        for checksum in self.all(jobs, str(self.path_info)):
             if checksum in used:
                 continue
             path_info = self.checksum_to_path_info(checksum)
@@ -850,7 +872,7 @@ class RemoteBASE(object):
 
         # Max remote size allowed for us to use traverse method
         remote_size, remote_checksums = self._estimate_cache_size(
-            checksums, name=name
+            checksums, name
         )
 
         traverse_pages = remote_size / self.LIST_OBJECT_PAGE_SIZE
@@ -875,32 +897,25 @@ class RemoteBASE(object):
                 checksums - remote_checksums, jobs, name
             )
 
-        if traverse_pages < 256 / self.JOBS:
-            # Threaded traverse will require making at least 255 more requests
-            # to the remote, so for small enough remotes, fetching the entire
-            # list at once will require fewer requests (but also take into
-            # account that this must be done sequentially rather than in
-            # parallel)
-            logger.debug(
-                "Querying {} checksums via default traverse".format(
-                    len(checksums)
-                )
-            )
-            return list(checksums & set(self.all()))
-
-        return self._cache_exists_traverse(
-            checksums, remote_checksums, remote_size, jobs, name
+        logger.debug(
+            "Querying {} checksums via traverse".format(len(checksums))
         )
+        remote_checksums = self._cache_checksums_traverse(
+            remote_size, remote_checksums, jobs, name
+        )
+        return list(checksums & set(remote_checksums))
 
-    def _all_with_limit(self, max_paths, prefix=None, progress_callback=None):
+    def _checksums_with_limit(
+        self, limit, prefix=None, progress_callback=None
+    ):
         count = 0
-        for checksum in self.all(prefix, progress_callback):
+        for checksum in self.cache_checksums(prefix, progress_callback):
             yield checksum
             count += 1
-            if count > max_paths:
+            if count > limit:
                 logger.debug(
-                    "`all()` returned max '{}' checksums, "
-                    "skipping remaining results".format(max_paths)
+                    "`cache_checksums()` returned max '{}' checksums, "
+                    "skipping remaining results".format(limit)
                 )
                 return
 
@@ -913,33 +928,32 @@ class RemoteBASE(object):
             * self.LIST_OBJECT_PAGE_SIZE,
         )
 
-    def _estimate_cache_size(self, checksums, short_circuit=True, name=None):
+    def _estimate_cache_size(self, checksums=None, name=None):
         """Estimate remote cache size based on number of entries beginning with
         "00..." prefix.
         """
         prefix = "0" * self.TRAVERSE_PREFIX_LEN
         total_prefixes = pow(16, self.TRAVERSE_PREFIX_LEN)
-        if short_circuit:
-            max_remote_size = self._max_estimation_size(checksums)
+        if checksums:
+            max_checksums = self._max_estimation_size(checksums)
         else:
-            max_remote_size = None
+            max_checksums = None
 
         with Tqdm(
             desc="Estimating size of "
             + ("cache in '{}'".format(name) if name else "remote cache"),
             unit="file",
-            total=max_remote_size,
         ) as pbar:
 
             def update(n=1):
                 pbar.update(n * total_prefixes)
 
-            if max_remote_size:
-                checksums = self._all_with_limit(
-                    max_remote_size / total_prefixes, prefix, update
+            if max_checksums:
+                checksums = self._checksums_with_limit(
+                    max_checksums / total_prefixes, prefix, update
                 )
             else:
-                checksums = self.all(prefix, update)
+                checksums = self.cache_checksums(prefix, update)
 
             remote_checksums = set(checksums)
             if remote_checksums:
@@ -949,38 +963,60 @@ class RemoteBASE(object):
             logger.debug("Estimated remote size: {} files".format(remote_size))
         return remote_size, remote_checksums
 
-    def _cache_exists_traverse(
-        self, checksums, remote_checksums, remote_size, jobs=None, name=None
+    def _cache_checksums_traverse(
+        self, remote_size, remote_checksums, jobs=None, name=None
     ):
-        logger.debug(
-            "Querying {} checksums via threaded traverse".format(
-                len(checksums)
-            )
-        )
+        """Iterate over all checksums in the remote cache.
+        Checksums are fetched in parallel according to prefix, except in
+        cases where the remote size is very small.
 
-        traverse_prefixes = ["{:02x}".format(i) for i in range(1, 256)]
-        if self.TRAVERSE_PREFIX_LEN > 2:
-            traverse_prefixes += [
-                "{0:0{1}x}".format(i, self.TRAVERSE_PREFIX_LEN)
-                for i in range(1, pow(16, self.TRAVERSE_PREFIX_LEN - 2))
-            ]
+        All checksums from the remote (including any from the size
+        estimation step passed via the `remote_checksums` argument) will be
+        returned.
+
+        NOTE: For large remotes the list of checksums will be very
+        big(e.g. 100M entries, md5 for each is 32 bytes, so ~3200Mb list)
+        and we don't really need all of it at the same time, so it makes
+        sense to use a generator to gradually iterate over it, without
+        keeping all of it in memory.
+        """
+        num_pages = remote_size / self.LIST_OBJECT_PAGE_SIZE
+        if num_pages < 256 / self.JOBS:
+            # Fetching prefixes in parallel requires at least 255 more
+            # requests, for small enough remotes it will be faster to fetch
+            # entire cache without splitting it into prefixes.
+            #
+            # NOTE: this ends up re-fetching checksums that were already
+            # fetched during remote size estimation
+            traverse_prefixes = [None]
+            initial = 0
+        else:
+            yield from remote_checksums
+            initial = len(remote_checksums)
+            traverse_prefixes = ["{:02x}".format(i) for i in range(1, 256)]
+            if self.TRAVERSE_PREFIX_LEN > 2:
+                traverse_prefixes += [
+                    "{0:0{1}x}".format(i, self.TRAVERSE_PREFIX_LEN)
+                    for i in range(1, pow(16, self.TRAVERSE_PREFIX_LEN - 2))
+                ]
         with Tqdm(
             desc="Querying "
             + ("cache in '{}'".format(name) if name else "remote cache"),
             total=remote_size,
-            initial=len(remote_checksums),
-            unit="objects",
+            initial=initial,
+            unit="file",
         ) as pbar:
 
             def list_with_update(prefix):
-                return self.all(prefix=prefix, progress_callback=pbar.update)
+                return list(
+                    self.cache_checksums(
+                        prefix=prefix, progress_callback=pbar.update
+                    )
+                )
 
             with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
                 in_remote = executor.map(list_with_update, traverse_prefixes,)
-                remote_checksums.update(
-                    itertools.chain.from_iterable(in_remote)
-                )
-            return list(checksums & remote_checksums)
+                yield from itertools.chain.from_iterable(in_remote)
 
     def _cache_object_exists(self, checksums, jobs=None, name=None):
         logger.debug(

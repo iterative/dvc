@@ -27,6 +27,7 @@ class RemoteLOCAL(RemoteBASE):
     path_cls = PathInfo
     PARAM_CHECKSUM = "md5"
     PARAM_PATH = "path"
+    TRAVERSE_PREFIX_LEN = 2
 
     UNPACKED_DIR_SUFFIX = ".unpacked"
 
@@ -57,14 +58,17 @@ class RemoteLOCAL(RemoteBASE):
         return True
 
     def list_cache_paths(self, prefix=None, progress_callback=None):
-        assert prefix is None
         assert self.path_info is not None
+        if prefix:
+            path_info = self.path_info / prefix[:2]
+        else:
+            path_info = self.path_info
         if progress_callback:
-            for path in walk_files(self.path_info):
+            for path in walk_files(path_info):
                 progress_callback()
                 yield path
         else:
-            yield from walk_files(self.path_info)
+            yield from walk_files(path_info)
 
     def get(self, md5):
         if not md5:
