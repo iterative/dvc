@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-
 from dvc.utils.fs import makedirs
 
 
@@ -9,7 +8,6 @@ logger = logging.getLogger(__name__)
 
 
 class AbstractTemplate:
-
     TEMPLATES_DIR = "plot"
     INDENT = 4
     SEPARATORS = (",", ": ")
@@ -33,24 +31,8 @@ class AbstractTemplate:
                 separators=self.SEPARATORS,
             )
 
-    def load(self):
-        import json
-
-        with open(
-            os.path.join(self.plot_templates_dir, self.TEMPLATE_NAME), "r"
-        ) as fd:
-            return json.load(fd)
-
     def fill(self, data):
         raise NotImplementedError
-
-    # def save(self, update_dict, path):
-    #     vega_dict = self.fill(update_dict)
-
-    # with open(path, "w") as fd:
-    #     fd.write(self.HTML_TEMPLATE.format(vega_json=vega_dict))
-
-    # logger.error("PATH: {}".format(path))
 
 
 class DefaultTemplate(AbstractTemplate):
@@ -68,7 +50,12 @@ class DefaultTemplate(AbstractTemplate):
         },
     }
 
-    def fill(self, update_dict):
+    def fill(self, data):
+        assert isinstance(data, list)
+        assert all({"x", "y", "revision"} == set(d.keys()) for d in data)
+
+        update_dict = {"data": {"values": data}}
+
         with open(
             os.path.join(self.plot_templates_dir, self.TEMPLATE_NAME), "r"
         ) as fd:
@@ -78,10 +65,6 @@ class DefaultTemplate(AbstractTemplate):
         return vega_spec
 
 
-TEMPLATES = [DefaultTemplate]
-
-
-class PlotTemplates:
-    @staticmethod
-    def init(dvc_dir):
-        [t(dvc_dir).dump() for t in TEMPLATES]
+def init_plot_templates(dvc_dir):
+    templates = [DefaultTemplate]
+    [t(dvc_dir).dump() for t in templates]
