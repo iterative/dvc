@@ -29,7 +29,7 @@ def test_plot_vega_compliant_json(tmp_dir, dvc):
 
     with_revision = _add_revision(metric)
     expected_script_content = json.dumps(
-        DefaultTemplate(dvc.dvc_dir).fill(with_revision),
+        DefaultTemplate(dvc.dvc_dir).fill(with_revision, "metric.json"),
         indent=4,
         separators=(",", ": "),
     )
