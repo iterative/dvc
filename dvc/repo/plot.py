@@ -59,7 +59,7 @@ def plot(repo, targets, plot_path="plot.html", typ="json"):
     divs = []
     for target in targets:
         data = _load(repo.tree, target)
-        vega_plot_json = DefaultTemplate(repo.dvc_dir).fill(data)
+        vega_plot_json = DefaultTemplate(repo.dvc_dir).fill(data, target)
         divs.append(DivTemplate.prepare_div(vega_plot_json))
     PageTemplate.save(divs, plot_path)
     logger.info(

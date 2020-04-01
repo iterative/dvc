@@ -34,7 +34,7 @@ class AbstractTemplate:
                 separators=self.SEPARATORS,
             )
 
-    def fill(self, data):
+    def fill(self, data, data_src=""):
         raise NotImplementedError
 
 
@@ -53,11 +53,11 @@ class DefaultTemplate(AbstractTemplate):
         },
     }
 
-    def fill(self, data):
+    def fill(self, data, data_src=""):
         assert isinstance(data, list)
         assert all({"x", "y", "revision"} == set(d.keys()) for d in data)
 
-        update_dict = {"data": {"values": data}}
+        update_dict = {"data": {"values": data}, "title": data_src}
 
         with open(
             os.path.join(self.plot_templates_dir, self.TEMPLATE_NAME), "r"
