@@ -1,7 +1,9 @@
 import json
 import logging
+import os
 
 from dvc.plot import DefaultTemplate
+from dvc.utils import format_link
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +63,10 @@ def plot(repo, targets, plot_path="plot.html", typ="json"):
         divs.append(DivTemplate.prepare_div(vega_plot_json))
     PageTemplate.save(divs, plot_path)
     logger.info(
-        "Your can see your plot by opening '{}' in your "
-        "browser!".format(plot_path)
+        "Your can see your plot by opening {} in your "
+        "browser!".format(
+            format_link(
+                "file://{}".format(os.path.join(repo.root_dir, plot_path))
+            )
+        )
     )
