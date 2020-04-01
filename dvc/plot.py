@@ -21,6 +21,9 @@ class AbstractTemplate:
 
         makedirs(self.plot_templates_dir, exist_ok=True)
 
+        if not os.path.exists(self.plot_templates_dir):
+            makedirs(self.plot_templates_dir)
+
         with open(
             os.path.join(self.plot_templates_dir, self.TEMPLATE_NAME), "w+"
         ) as fd:
@@ -66,5 +69,6 @@ class DefaultTemplate(AbstractTemplate):
 
 
 def init_plot_templates(dvc_dir):
+
     templates = [DefaultTemplate]
     [t(dvc_dir).dump() for t in templates]
