@@ -6,13 +6,13 @@ import colorama
 from dvc import analytics
 from dvc.config import Config
 from dvc.exceptions import InitError, InvalidArgumentError
+from dvc.plot import init_plot_templates
 from dvc.repo import Repo
 from dvc.scm import SCM
 from dvc.scm.base import SCMError
 from dvc.utils import boxify
 from dvc.utils import relpath
 from dvc.utils.fs import remove
-from dvc.plot import PlotTemplates
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +101,7 @@ def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
         with config.edit() as conf:
             conf["core"]["no_scm"] = True
 
-    PlotTemplates.init(dvc_dir)
+    init_plot_templates(dvc_dir)
 
     proj = Repo(root_dir)
 

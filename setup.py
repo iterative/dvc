@@ -129,6 +129,7 @@ tests_requirements = [
     "mock-ssh-server>=0.6.0",
     "moto==1.3.14.dev464",
     "rangehttpserver==1.2.0",
+    "beautifulsoup4==4.4.0",
 ]
 
 if (sys.version_info) >= (3, 6):
