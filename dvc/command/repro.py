@@ -57,8 +57,9 @@ class CmdRepro(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    REPRO_HELP = "Reproduce complete or partial pipelines"
-    " by executing their stages."
+    REPRO_HELP = (
+        "Reproduce complete or partial pipelines by executing their stages."
+    )
     repro_parser = subparsers.add_parser(
         "repro",
         parents=[parent_parser],
