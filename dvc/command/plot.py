@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 class CmdPlot(CmdBase):
     def run(self):
         self.repo.plot(self.args.targets)
+        return 0
 
 
 def add_parser(subparsers, parent_parser):
