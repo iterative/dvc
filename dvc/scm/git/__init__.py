@@ -90,8 +90,8 @@ class Git(Base):
                 tmp_repo = clone_from()
             except git.exc.GitCommandError as exc:
                 raise CloneError(url, to_path) from exc
-        else:
-            tmp_repo.close()
+
+        tmp_repo.close()
 
         # NOTE: using our wrapper to make sure that env is fixed in __init__
         repo = Git(to_path)
