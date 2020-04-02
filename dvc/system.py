@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 if (
     platform.system() == "Windows"
     and sys.version_info < (3, 8)
-    and sys.getwindowsversion() > (6, 2)
+    and sys.getwindowsversion() >= (6, 2)
 ):
     try:
         import speedcopy
