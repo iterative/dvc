@@ -1,8 +1,12 @@
 import json
 from copy import copy
 
+import pytest
 from bs4 import BeautifulSoup
 from funcy import first
+
+from dvc.exceptions import DvcException
+from dvc.plot import Template
 
 
 def _run_with_metric(tmp_dir, dvc, metric, metric_filename, commit=None):
@@ -18,6 +22,8 @@ def _add_revision(data, rev="current workspace"):
     new_data = copy(data)
     for e in new_data:
         e["revision"] = rev
+
+    return new_data
 
 
 def to_data(rev_data):
@@ -125,8 +131,8 @@ def test_plot_multiple_revisions(tmp_dir, scm, dvc):
         revisions=["HEAD", "v2", "v1"],
         plot_path="result.html",
     )
-    page = tmp_dir / "result.html"
 
+    page = tmp_dir / "result.html"
     assert page.exists()
 
     all_data = to_data({"HEAD": metric_3, "v2": metric_2, "v1": metric_1})
@@ -138,3 +144,54 @@ def test_plot_multiple_revisions(tmp_dir, scm, dvc):
 
     page_content = BeautifulSoup(page.read_text())
     assert expected_script_content in first(page_content.body.script.contents)
+
+
+def test_plot_even_if_metric_missing(tmp_dir, scm, dvc, caplog):
+    tmp_dir.scm_gen("some_file", "content", commit="there is no metric")
+    scm.tag("v1")
+
+    metric = [{"x": 1, "y": 2}, {"x": 2, "y": 3}]
+    tmp_dir.scm_gen(
+        {"metric.json": json.dumps(metric)}, commit="there is metric"
+    )
+    scm.tag("v2")
+
+    caplog.clear()
+    with caplog.at_level(logging.WARNING, "dvc"):
+        dvc.plot(
+            ["metric.json"], revisions=["v1", "v2"], plot_path="result.html"
+        )
+    assert (
+        first(caplog.messages)
+        == "File 'metric.json' was not found at: 'v1'. It will not be plotted."
+    )
+
+    page = tmp_dir / "result.html"
+    assert page.exists()
+
+    data = to_data({"v2": metric})
+    expected_script_content = json.dumps(
+        Template(dvc.dvc_dir).fill(data, "metric.json"),
+        indent=4,
+        separators=(",", ": "),
+    )
+
+    page_content = BeautifulSoup(page.read_text())
+    assert expected_script_content in first(page_content.body.script.contents)
+
+
+def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc):
+    tmp_dir.scm_gen("some_file", "content", commit="there is no metric")
+    scm.tag("v1")
+
+    tmp_dir.scm_gen(
+        "some_other_file",
+        "other content",
+        commit="there is no " "metric as well",
+    )
+    scm.tag("v2")
+
+    with pytest.raises(DvcException):
+        dvc.plot(
+            ["metric.json"], revisions=["v2", "v1"], plot_path="result.html",
+        )

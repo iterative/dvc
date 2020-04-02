@@ -43,11 +43,24 @@ def _prepare_div(vega_dict):
     )
 
 
-def _load_data(tree, target, revision="current workspace"):
-    with tree.open(target, "r") as fobj:
-        data = json.load(fobj)
-        for d in data:
-            d["revision"] = revision
+def _load_data(repo, target, revision=None):
+    if revision is None:
+        revision = "current workspace"
+        tree = repo.tree
+    else:
+        tree = repo.scm.get_tree(revision)
+
+    try:
+        with tree.open(target, "r") as fobj:
+            data = json.load(fobj)
+            for d in data:
+                d["revision"] = revision
+    except FileNotFoundError:
+        logger.warning(
+            "File '{}' was not found at: '{}'. It will not be "
+            "plotted.".format(target, revision)
+        )
+        data = []
     return data
 
 
@@ -55,17 +68,21 @@ def _load_from_rev(repo, revisions, target):
     data = []
     if len(revisions) == 0:
         if repo.scm.is_dirty():
-            data.extend(_load_data(repo.scm.get_tree("HEAD"), target, "HEAD"))
-        data.extend(_load_data(repo.tree, target))
-        logger.error(data)
+            data.extend(_load_data(repo, target, "HEAD"))
+        data.extend(_load_data(repo, target))
     elif len(revisions) == 1:
-        data.extend(
-            _load_data(repo.scm.get_tree(revisions[0]), target, revisions[0])
-        )
-        data.extend(_load_data(repo.tree, target))
+        data.extend(_load_data(repo, target, revisions[0]))
+        data.extend(_load_data(repo, target))
     else:
         for rev in revisions:
-            data.extend(_load_data(repo.scm.get_tree(rev), target, rev))
+            data.extend(_load_data(repo, target, rev))
+
+    if not data:
+        raise DvcException(
+            "Target metric: '{}' could not be found at any of '{}'".format(
+                target, ", ".join(revisions)
+            )
+        )
     return data
 
 
