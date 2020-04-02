@@ -1,5 +1,6 @@
 """Manages Git."""
 
+from functools import partial
 import logging
 import os
 import yaml
@@ -71,18 +72,26 @@ class Git(Base):
             # [1] https://github.com/gitpython-developers/GitPython/issues/924
             env[ld_key] = ""
 
+        clone_from = partial(
+            git.Repo.clone_from,
+            url,
+            to_path,
+            env=env,  # needed before we can fix it in __init__
+            no_single_branch=True,
+        )
+
         try:
-            tmp_repo = git.Repo.clone_from(
-                url,
-                to_path,
-                env=env,  # needed before we can fix it in __init__
-                branch=rev,
-                no_single_branch=True,
-                depth=1,
-            )
-            tmp_repo.close()
+            tmp_repo = clone_from(branch=rev, depth=1)
         except git.exc.GitCommandError as exc:
-            raise CloneError(url, to_path) from exc
+            if f"Remote branch {rev} not found" not in str(exc):
+                raise CloneError(url, to_path) from exc
+            try:
+                # not a branch - need to do full clone
+                tmp_repo = clone_from()
+            except git.exc.GitCommandError as exc:
+                raise CloneError(url, to_path) from exc
+        else:
+            tmp_repo.close()
 
         # NOTE: using our wrapper to make sure that env is fixed in __init__
         repo = Git(to_path)
