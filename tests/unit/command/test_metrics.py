@@ -64,7 +64,7 @@ def test_metrics_diff_no_diff():
 
 
 def test_metrics_diff_no_changes():
-    assert _show_diff({}) == "No changes."
+    assert _show_diff({}) == ""
 
 
 def test_metrics_diff_new_metric():
