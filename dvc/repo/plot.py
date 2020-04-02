@@ -1,6 +1,8 @@
 import json
 import logging
 import os
+import random
+import string
 
 from dvc.plot import DefaultTemplate
 from dvc.repo import locked
@@ -34,9 +36,8 @@ def _save_plot_html(divs, path):
 
 
 def _prepare_div(vega_dict):
-    from shortuuid import uuid
 
-    id = uuid()
+    id = random.sample(string.ascii_lowercase, 8)
     return DIV_HTML.format(
         id=str(id),
         vega_json=json.dumps(vega_dict, indent=4, separators=(",", ": ")),
