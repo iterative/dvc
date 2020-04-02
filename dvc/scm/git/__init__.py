@@ -77,7 +77,7 @@ class Git(Base):
                 to_path,
                 env=env,  # needed before we can fix it in __init__
                 branch=rev,
-                single_branch=True,
+                no_single_branch=True,
                 depth=1,
             )
             tmp_repo.close()
