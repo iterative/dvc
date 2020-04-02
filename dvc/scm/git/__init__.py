@@ -81,12 +81,17 @@ class Git(Base):
         )
 
         try:
-            tmp_repo = clone_from(branch=rev, depth=1)
+            if rev:
+                logger.debug("attempting shallow clone of branch %s", rev)
+                tmp_repo = clone_from(branch=rev, depth=1)
+            else:
+                logger.debug("full clone")
+                tmp_repo = clone_from()
         except git.exc.GitCommandError as exc:
-            if f"Remote branch {rev} not found" not in str(exc):
+            if not rev or f"Remote branch {rev} not found" not in str(exc):
                 raise CloneError(url, to_path) from exc
             try:
-                # not a branch - need to do full clone
+                logger.debug("not a branch - performing full clone")
                 tmp_repo = clone_from()
             except git.exc.GitCommandError as exc:
                 raise CloneError(url, to_path) from exc
