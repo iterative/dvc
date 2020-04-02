@@ -1,20 +1,21 @@
 import json
 import logging
 import os
+
+from funcy import cached_property
+
 from dvc.utils.fs import makedirs
 
 
 logger = logging.getLogger(__name__)
 
 
-class AbstractTemplate:
-    TEMPLATES_DIR = "plot"
+class Template:
     INDENT = 4
     SEPARATORS = (",", ": ")
 
-    def __init__(self, dvc_dir):
-        self.dvc_dir = dvc_dir
-        self.plot_templates_dir = os.path.join(dvc_dir, self.TEMPLATES_DIR)
+    def __init__(self, templates_dir):
+        self.plot_templates_dir = templates_dir
 
     def dump(self):
         import json
@@ -34,16 +35,25 @@ class AbstractTemplate:
                 separators=self.SEPARATORS,
             )
 
-    def fill(self, data, data_src=""):
-        raise NotImplementedError
+    @staticmethod
+    def fill(template_path, data, data_src=""):
+        assert isinstance(data, list)
+        assert all({"x", "y", "revision"} == set(d.keys()) for d in data)
+
+        update_dict = {"data": {"values": data}, "title": data_src}
+
+        with open(template_path, "r") as fd:
+            vega_spec = json.load(fd)
+
+        vega_spec.update(update_dict)
+        return vega_spec
 
 
-class DefaultTemplate(AbstractTemplate):
+class DefaultLinearTemplate(Template):
     TEMPLATE_NAME = "default.json"
 
     DEFAULT_CONTENT = {
         "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
-        "title": "",
         "data": {"values": []},
         "mark": {"type": "line"},
         "encoding": {
@@ -53,22 +63,43 @@ class DefaultTemplate(AbstractTemplate):
         },
     }
 
-    def fill(self, data, data_src=""):
-        assert isinstance(data, list)
-        assert all({"x", "y", "revision"} == set(d.keys()) for d in data)
 
-        update_dict = {"data": {"values": data}, "title": data_src}
+class DefaultConfusionTemplate(Template):
+    TEMPLATE_NAME = "default_confusion.json"
+    DEFAULT_CONTENT = {
+        "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
+        "data": {"values": []},
+        "mark": "rect",
+        "encoding": {
+            "x": {
+                "field": "x",
+                "type": "nominal",
+                "sort": "ascending",
+                "title": "Predicted value",
+            },
+            "y": {
+                "field": "y",
+                "type": "nominal",
+                "sort": "ascending",
+                "title": "Actual value",
+            },
+            "color": {"aggregate": "count", "type": "quantitative"},
+        },
+    }
 
-        with open(
-            os.path.join(self.plot_templates_dir, self.TEMPLATE_NAME), "r"
-        ) as fd:
-            vega_spec = json.load(fd)
 
-        vega_spec.update(update_dict)
-        return vega_spec
+class PlotTemplates:
+    TEMPLATES_DIR = "plot"
+    TEMPLATES = [DefaultLinearTemplate, DefaultConfusionTemplate]
 
+    @cached_property
+    def templates_dir(self):
+        return os.path.join(self.dvc_dir, self.TEMPLATES_DIR)
 
-def init_plot_templates(dvc_dir):
+    def __init__(self, dvc_dir):
+        self.dvc_dir = dvc_dir
 
-    templates = [DefaultTemplate]
-    [t(dvc_dir).dump() for t in templates]
+        if not os.path.exists(self.templates_dir):
+            makedirs(self.templates_dir, exist_ok=True)
+            for t in self.TEMPLATES:
+                t(self.templates_dir).dump()
