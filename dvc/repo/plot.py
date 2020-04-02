@@ -51,6 +51,24 @@ def _load_data(tree, target, revision="current workspace"):
     return data
 
 
+def _load_from_rev(repo, revisions, target):
+    data = []
+    if len(revisions) == 0:
+        if repo.scm.is_dirty():
+            data.extend(_load_data(repo.scm.get_tree("HEAD"), target, "HEAD"))
+        data.extend(_load_data(repo.tree, target))
+        logger.error(data)
+    elif len(revisions) == 1:
+        data.extend(
+            _load_data(repo.scm.get_tree(revisions[0]), target, revisions[0])
+        )
+        data.extend(_load_data(repo.tree, target))
+    else:
+        for rev in revisions:
+            data.extend(_load_data(repo.scm.get_tree(rev), target, rev))
+    return data
+
+
 def _parse_plots(path):
     with open(path, "r") as fobj:
         content = fobj.read()
