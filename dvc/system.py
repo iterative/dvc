@@ -10,8 +10,11 @@ from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
 
-if platform.system() == "Windows" and sys.version_info < (3, 8) and \
-        sys.getwindowsversion() > (6, 0):
+if (
+    platform.system() == "Windows"
+    and sys.version_info < (3, 8)
+    and sys.getwindowsversion() > (6, 0)
+):
     try:
         import speedcopy
 
