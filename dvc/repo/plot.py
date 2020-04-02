@@ -4,7 +4,7 @@ import os
 import random
 import string
 
-from dvc.plot import DefaultTemplate
+from dvc.plot import Template
 from dvc.repo import locked
 from dvc.utils import format_link
 
@@ -52,15 +52,20 @@ def _load(tree, target, revision="current workspace"):
 
 
 @locked
-def plot(repo, targets, plot_path=None, typ="json"):
+def plot(repo, targets, plot_path=None, template=None, typ="json"):
 
     if not plot_path:
         plot_path = "plot.html"
 
+    if not template:
+        template = os.path.join(
+            repo.plot_templates.templates_dir, "default.json"
+        )
+
     divs = []
     for target in targets:
         data = _load(repo.tree, target)
-        vega_plot_json = DefaultTemplate(repo.dvc_dir).fill(data, target)
+        vega_plot_json = Template.fill(template, data, target)
         divs.append(_prepare_div(vega_plot_json))
 
     _save_plot_html(divs, plot_path)
