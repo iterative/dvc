@@ -88,7 +88,7 @@ class Git(Base):
                 logger.debug("full clone")
                 tmp_repo = clone_from()
         except git.exc.GitCommandError as exc:
-            if not rev or f"Remote branch {rev} not found" not in str(exc):
+            if not rev or ("Remote branch %s not found" % rev) not in str(exc):
                 raise CloneError(url, to_path) from exc
             try:
                 logger.debug("not a branch - performing full clone")
