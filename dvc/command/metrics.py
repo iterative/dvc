@@ -109,7 +109,7 @@ def _show_diff(diff):
     from texttable import Texttable
 
     if not diff:
-        return "No changes."
+        return ""
 
     table = Texttable()
 
