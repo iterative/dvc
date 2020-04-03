@@ -1,5 +1,4 @@
 import json
-import os
 
 from bs4 import BeautifulSoup
 from funcy import first
@@ -14,17 +13,22 @@ def _run_with_metric(tmp_dir, dvc, metric, metric_filename, commit=None):
             dvc.scm.commit(commit)
 
 
-def test_plot_linear(tmp_dir, scm, dvc):
+# TODO
+def test_plot_in_html_file(tmp_dir):
+    pass
+
+
+def test_plot_in_no_html(tmp_dir, scm, dvc):
     metric = [{"x": 1, "y": 2}, {"x": 2, "y": 3}]
     _run_with_metric(tmp_dir, dvc, metric, "metric.json", "first run")
 
-    dvc.plot(["metric.json"], "result.html")
+    template_content = "<DVC_PLOT::metric.json>"
+    (tmp_dir / "template.dvct").write_text(template_content)
 
-    page = tmp_dir / "result.html"
-    assert page.exists()
-    page_content = BeautifulSoup(page.read_text())
+    result = dvc.plot("template.dvct")
 
-    expected_vega_json = json.dumps(
+    page_content = BeautifulSoup((tmp_dir / result).read_text())
+    assert json.dumps(
         {
             "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
             "data": {
@@ -43,9 +47,7 @@ def test_plot_linear(tmp_dir, scm, dvc):
         },
         indent=4,
         separators=(",", ": "),
-    )
-
-    assert expected_vega_json in first(page_content.body.script.contents)
+    ) in first(page_content.body.script.contents)
 
 
 def test_plot_confusion(tmp_dir, dvc):
@@ -53,18 +55,13 @@ def test_plot_confusion(tmp_dir, dvc):
     _run_with_metric(
         tmp_dir, dvc, confusion_matrix, "metric.json", "first run"
     )
+    template_content = "<DVC_PLOT::metric.json::cf.json>"
+    (tmp_dir / "template.dvct").write_text(template_content)
 
-    dvc.plot(
-        ["metric.json"],
-        "result.html",
-        os.path.join(".dvc", "plot", "default_confusion.json"),
-    )
+    result = dvc.plot("template.dvct")
 
-    page = tmp_dir / "result.html"
-    assert page.exists()
-    page_content = BeautifulSoup(page.read_text())
-
-    expected_vega_json = json.dumps(
+    page_content = BeautifulSoup((tmp_dir / result).read_text())
+    assert json.dumps(
         {
             "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
             "data": {
@@ -93,6 +90,4 @@ def test_plot_confusion(tmp_dir, dvc):
         },
         indent=4,
         separators=(",", ": "),
-    )
-
-    assert expected_vega_json in first(page_content.body.script.contents)
+    ) in first(page_content.body.script.contents)

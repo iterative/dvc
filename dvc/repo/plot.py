@@ -1,12 +1,12 @@
 import json
 import logging
-import os
 import random
+import re
 import string
 
+from dvc.exceptions import DvcException
 from dvc.plot import Template
 from dvc.repo import locked
-from dvc.utils import format_link
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ def _prepare_div(vega_dict):
     )
 
 
-def _load(tree, target, revision="current workspace"):
+def _load_data(tree, target, revision="current workspace"):
     with tree.open(target, "r") as fobj:
         data = json.load(fobj)
         for d in data:
@@ -51,30 +51,50 @@ def _load(tree, target, revision="current workspace"):
     return data
 
 
-@locked
-def plot(repo, targets, plot_path=None, template=None, typ="json"):
+def _parse_plots(path):
+    with open(path, "r") as fobj:
+        content = fobj.read()
 
-    if not plot_path:
-        plot_path = "plot.html"
+    plot_regex = re.compile("<DVC_PLOT::.*>")
 
-    if not template:
-        template = os.path.join(
-            repo.plot_templates.templates_dir, "default.json"
-        )
+    plots = list(plot_regex.findall(content))
+    return False, plots
 
-    divs = []
-    for target in targets:
-        data = _load(repo.tree, target)
-        vega_plot_json = Template.fill(template, data, target)
-        divs.append(_prepare_div(vega_plot_json))
 
-    _save_plot_html(divs, plot_path)
+def _parse_plot_str(plot_str):
+    content = plot_str.replace("<", "")
+    content = content.replace(">", "")
+    args = content.split("::")[1:]
+    if len(args) == 2:
+        return args
+    elif len(args) == 1:
+        return args[0], "default.json"
+    raise DvcException("Error parsing")
 
-    logger.info(
-        "Your can see your plot by opening {} in your "
-        "browser!".format(
-            format_link(
-                "file://{}".format(os.path.join(repo.root_dir, plot_path))
-            )
-        )
+
+def to_div(repo, plot_str):
+    datafile, templatefile = _parse_plot_str(plot_str)
+
+    data = _load_data(repo.tree, datafile)
+    vega_plot_json = Template(repo.plot_templates.templates_dir).fill(
+        templatefile, data, datafile
     )
+    return _prepare_div(vega_plot_json)
+
+
+@locked
+def plot(repo, template_file, revisions=None):
+    if revisions is None:
+        revisions = []
+
+    is_html, plot_strings = _parse_plots(template_file)
+    m = {plot_str: to_div(repo, plot_str) for plot_str in plot_strings}
+
+    result = template_file.replace(".dvct", ".html")
+    if not is_html:
+        _save_plot_html(
+            [m[p] for p in plot_strings], result,
+        )
+        return result
+    else:
+        raise NotImplementedError
