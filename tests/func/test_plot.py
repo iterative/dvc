@@ -84,6 +84,7 @@ def test_plot_confusion(tmp_dir, dvc):
                     "title": "Actual value",
                 },
                 "color": {"aggregate": "count", "type": "quantitative"},
+                "facet": {"field": "revision", "type": "nominal"},
             },
             "title": "metric.json",
         },

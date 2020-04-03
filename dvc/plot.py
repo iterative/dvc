@@ -95,6 +95,7 @@ class DefaultConfusionTemplate(Template):
                 "title": "Actual value",
             },
             "color": {"aggregate": "count", "type": "quantitative"},
+            "facet": {"field": "revision", "type": "nominal"},
         },
     }
 
