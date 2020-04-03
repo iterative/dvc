@@ -4,6 +4,7 @@ import os
 
 from funcy import cached_property
 
+from dvc.exceptions import DvcException
 from dvc.utils.fs import makedirs
 
 
@@ -35,16 +36,26 @@ class Template:
                 separators=self.SEPARATORS,
             )
 
-    @staticmethod
-    def fill(template_path, data, data_src=""):
+    def load_template(self, path):
+        try:
+            with open(path, "r") as fd:
+                return json.load(fd)
+        except FileNotFoundError:
+            try:
+                with open(
+                    os.path.join(self.plot_templates_dir, path), "r"
+                ) as fd:
+                    return json.load(fd)
+            except FileNotFoundError:
+                raise DvcException("Not in repo nor in defaults")
+
+    def fill(self, template_path, data, data_src=""):
         assert isinstance(data, list)
         assert all({"x", "y", "revision"} == set(d.keys()) for d in data)
 
         update_dict = {"data": {"values": data}, "title": data_src}
 
-        with open(template_path, "r") as fd:
-            vega_spec = json.load(fd)
-
+        vega_spec = self.load_template(template_path)
         vega_spec.update(update_dict)
         return vega_spec
 
@@ -65,7 +76,7 @@ class DefaultLinearTemplate(Template):
 
 
 class DefaultConfusionTemplate(Template):
-    TEMPLATE_NAME = "default_confusion.json"
+    TEMPLATE_NAME = "cf.json"
     DEFAULT_CONTENT = {
         "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
         "data": {"values": []},
