@@ -88,7 +88,10 @@ class DependencyPARAMS(DependencyLOCAL):
 
         ret = {}
         for param in self.params:
-            ret[param] = dpath.util.get(config, param, separator=".")
+            try:
+                ret[param] = dpath.util.get(config, param, separator=".")
+            except KeyError:
+                pass
         return ret
 
     def save_info(self):

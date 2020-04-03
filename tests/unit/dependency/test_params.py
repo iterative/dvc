@@ -77,7 +77,14 @@ def test_get_info_nested(tmp_dir, dvc):
     assert dep._get_info() == {"some.path.foo": ["val1", "val2"]}
 
 
-def test_save_info_missing_params(dvc):
+def test_save_info_missing_config(dvc):
+    dep = DependencyPARAMS(Stage(dvc), None, ["foo"])
+    with pytest.raises(MissingParamsError):
+        dep.save_info()
+
+
+def test_save_info_missing_param(tmp_dir, dvc):
+    tmp_dir.gen("params.yaml", "bar: baz")
     dep = DependencyPARAMS(Stage(dvc), None, ["foo"])
     with pytest.raises(MissingParamsError):
         dep.save_info()
