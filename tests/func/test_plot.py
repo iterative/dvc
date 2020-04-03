@@ -1,6 +1,5 @@
 import json
 import logging
-from copy import copy
 
 import pytest
 from bs4 import BeautifulSoup
@@ -18,26 +17,6 @@ def _run_with_metric(tmp_dir, metric, metric_filename, commit=None, tag=None):
             tmp_dir.dvc.scm.commit(commit)
         if tag:
             tmp_dir.dvc.scm.tag(tag)
-
-
-def _add_revision(data, rev="current workspace"):
-    new_data = copy(data)
-    for e in new_data:
-        e["revision"] = rev
-
-    return new_data
-
-
-def to_data(rev_data):
-    result = []
-    for key, data in rev_data.items():
-        result.extend(_add_revision(data, key))
-    return result
-
-
-# TODO
-def test_plot_in_html_file(tmp_dir):
-    pass
 
 
 def test_plot_in_no_html(tmp_dir, scm, dvc):
@@ -209,3 +188,10 @@ def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc):
     # TODO create exception
     with pytest.raises(DvcException):
         dvc.plot("template.dvct", revisions=["v2", "v1"])
+
+
+# TODO
+# def test_plot_in_html_file(tmp_dir):
+# def test_plot_override_data_file
+# def test_plot_custom_template_file
+# def test_plot_multiple_plots

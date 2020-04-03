@@ -114,6 +114,7 @@ class Repo(object):
 
         self._ignore()
 
+        # TODO is it necessary?
         self.plot_templates = PlotTemplates(self.dvc_dir)
 
     @property

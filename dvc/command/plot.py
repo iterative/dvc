@@ -1,6 +1,5 @@
 import argparse
 import logging
-import os
 
 from dvc.command.base import append_doc_link, CmdBase, fix_subparsers
 from dvc.exceptions import DvcException
@@ -12,17 +11,9 @@ logger = logging.getLogger(__name__)
 class CmdPlotShow(CmdBase):
     def run(self):
         try:
-            path = self.repo.plot(self.args.targets)
-            logger.info(
-                "Your can see your plot by opening {} in your "
-                "browser!".format(
-                    format_link(
-                        "file://{}".format(
-                            os.path.join(self.repo.root_dir, path)
-                        )
-                    )
-                )
-            )
+            # TODO overriding datafile functionality
+            self.repo.plot(self.args.templatefile)
+
         except DvcException:
             logger.exception("failed to plot metrics")
         return 0
@@ -31,10 +22,7 @@ class CmdPlotShow(CmdBase):
 class CmdPlotDiff(CmdBase):
     def run(self):
         try:
-            logger.error("Plotting diff")
-            self.repo.plot(
-                self.args.targets, revisions=[self.args.a_rev, self.args.b_rev]
-            )
+            self.repo.plot(self.args.template, revisions=self.args.revisions)
 
         except DvcException:
             logger.exception("failed to plot metrics diff")
@@ -60,7 +48,7 @@ def add_parser(subparsers, parent_parser):
 
     fix_subparsers(plot_subparsers)
 
-    SHOW_HELP = "Visualize target metric file using {}.".format(
+    SHOW_HELP = "Visualize target dvct file using {}.".format(
         format_link("https://vega.github.io")
     )
     plot_show_parser = plot_subparsers.add_parser(
@@ -71,10 +59,13 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     plot_show_parser.add_argument(
-        "--template", nargs="?", help="Template file to choose."
+        "templatefile", nargs="?", help="dvct file to visualize."
     )
-    plot_parser.add_argument(
-        "target", nargs="?", help="Metric files to visualize."
+    plot_show_parser.add_argument(
+        "datafile",
+        nargs="?",
+        default=None,
+        help="Vega template file " "used to visualize " "data from datafile",
     )
     plot_show_parser.set_defaults(func=CmdPlotShow)
 
@@ -88,19 +79,12 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     plot_diff_parser.add_argument(
-        "a_rev", nargs="?", help="Old Git commit to plot"
+        "template", nargs="?", help=("dvct template file to process."),
     )
     plot_diff_parser.add_argument(
-        "b_rev",
-        nargs="?",
-        help=("New Git commit to plot(defaults to the current workspace)"),
-    )
-    plot_diff_parser.add_argument(
-        "--targets",
-        nargs="*",
-        help=(
-            "Metric files or directories to plot for. "
-            "Plots for all metric files by default."
-        ),
+        "revisions",
+        nargs="+",
+        default=[],
+        help=("Git revisions to plot from"),
     )
     plot_diff_parser.set_defaults(func=CmdPlotDiff)

@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import random
 import re
 import string
@@ -7,6 +8,7 @@ import string
 from dvc.exceptions import DvcException
 from dvc.plot import Template
 from dvc.repo import locked
+from dvc.utils import format_link
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +135,15 @@ def plot(repo, dvc_template_file, revisions=None):
         _save_plot_html(
             [m[p] for p in plot_strings], result,
         )
-        return result
     else:
         raise NotImplementedError
+
+    logger.info(
+        "Your can see your plot by opening {} in your "
+        "browser!".format(
+            format_link(
+                "file://{}".format(os.path.join(repo.root_dir, result))
+            )
+        )
+    )
+    return result
