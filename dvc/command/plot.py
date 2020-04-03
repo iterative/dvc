@@ -18,7 +18,8 @@ class CmdPlotShow(CmdBase):
                 "browser!".format(
                     format_link(
                         "file://{}".format(
-                            os.path.join(self.repo.root_dir, path))
+                            os.path.join(self.repo.root_dir, path)
+                        )
                     )
                 )
             )

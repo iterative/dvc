@@ -43,7 +43,7 @@ def _prepare_div(vega_dict):
     )
 
 
-def _load_data(repo, target, revision=None):
+def _load_data(repo, datafile, revision=None):
     if revision is None:
         revision = "current workspace"
         tree = repo.tree
@@ -51,36 +51,36 @@ def _load_data(repo, target, revision=None):
         tree = repo.scm.get_tree(revision)
 
     try:
-        with tree.open(target, "r") as fobj:
+        with tree.open(datafile, "r") as fobj:
             data = json.load(fobj)
             for d in data:
                 d["revision"] = revision
     except FileNotFoundError:
         logger.warning(
             "File '{}' was not found at: '{}'. It will not be "
-            "plotted.".format(target, revision)
+            "plotted.".format(datafile, revision)
         )
         data = []
     return data
 
 
-def _load_from_rev(repo, revisions, target):
+def _load_from_rev(repo, datafile, revisions):
     data = []
     if len(revisions) == 0:
         if repo.scm.is_dirty():
-            data.extend(_load_data(repo, target, "HEAD"))
-        data.extend(_load_data(repo, target))
+            data.extend(_load_data(repo, datafile, "HEAD"))
+        data.extend(_load_data(repo, datafile))
     elif len(revisions) == 1:
-        data.extend(_load_data(repo, target, revisions[0]))
-        data.extend(_load_data(repo, target))
+        data.extend(_load_data(repo, datafile, revisions[0]))
+        data.extend(_load_data(repo, datafile))
     else:
         for rev in revisions:
-            data.extend(_load_data(repo, target, rev))
+            data.extend(_load_data(repo, datafile, rev))
 
     if not data:
         raise DvcException(
             "Target metric: '{}' could not be found at any of '{}'".format(
-                target, ", ".join(revisions)
+                datafile, ", ".join(revisions)
             )
         )
     return data
@@ -107,25 +107,28 @@ def _parse_plot_str(plot_str):
     raise DvcException("Error parsing")
 
 
-def to_div(repo, plot_str):
-    datafile, templatefile = _parse_plot_str(plot_str)
+def to_div(repo, plot_str, revisions=None):
+    datafile, vega_template_file = _parse_plot_str(plot_str)
 
-    data = _load_data(repo.tree, datafile)
+    data = _load_from_rev(repo, datafile, revisions)
     vega_plot_json = Template(repo.plot_templates.templates_dir).fill(
-        templatefile, data, datafile
+        vega_template_file, data, datafile
     )
     return _prepare_div(vega_plot_json)
 
 
 @locked
-def plot(repo, template_file, revisions=None):
-    if revisions is None:
+def plot(repo, dvc_template_file, revisions=None):
+    if not revisions:
         revisions = []
 
-    is_html, plot_strings = _parse_plots(template_file)
-    m = {plot_str: to_div(repo, plot_str) for plot_str in plot_strings}
+    is_html, plot_strings = _parse_plots(dvc_template_file)
+    m = {
+        plot_str: to_div(repo, plot_str, revisions)
+        for plot_str in plot_strings
+    }
 
-    result = template_file.replace(".dvct", ".html")
+    result = dvc_template_file.replace(".dvct", ".html")
     if not is_html:
         _save_plot_html(
             [m[p] for p in plot_strings], result,
