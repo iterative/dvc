@@ -33,7 +33,6 @@ def main(argv=None):
         int: command's return code.
     """
     args = None
-    cmd = None
     disable_other_loggers()
 
     outerLogLevel = logger.level

@@ -143,6 +143,7 @@ def _stack_trace(exc_info):
 
 
 def disable_other_loggers():
+    logging.captureWarnings(True)
     root = logging.root
     for (logger_name, logger) in root.manager.loggerDict.items():
         if logger_name != "dvc" and not logger_name.startswith("dvc."):
