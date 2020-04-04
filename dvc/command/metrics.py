@@ -11,7 +11,9 @@ from dvc.exceptions import DvcException
 logger = logging.getLogger(__name__)
 
 
-def show_metrics(metrics, all_branches=False, all_tags=False):
+def show_metrics(
+    metrics, all_branches=False, all_tags=False, all_commits=False
+):
     """
     Args:
         metrics (list): Where each element is either a `list`
@@ -22,7 +24,7 @@ def show_metrics(metrics, all_branches=False, all_tags=False):
     missing = metrics.pop(None, None)
 
     for branch, val in metrics.items():
-        if all_branches or all_tags:
+        if all_branches or all_tags or all_commits:
             logger.info("{branch}:".format(branch=branch))
 
         for fname, metric in val.items():
@@ -55,10 +57,16 @@ class CmdMetricsShow(CmdBase):
                 xpath=self.args.xpath,
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,
+                all_commits=self.args.all_commits,
                 recursive=self.args.recursive,
             )
 
-            show_metrics(metrics, self.args.all_branches, self.args.all_tags)
+            show_metrics(
+                metrics,
+                self.args.all_branches,
+                self.args.all_tags,
+                self.args.all_commits,
+            )
         except DvcException:
             logger.exception("failed to show metrics")
             return 1
@@ -214,6 +222,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Show metrics for all tags.",
+    )
+    metrics_show_parser.add_argument(
+        "--all-commits",
+        action="store_true",
+        default=False,
+        help="Show metrics for all commits.",
     )
     metrics_show_parser.add_argument(
         "-R",

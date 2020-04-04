@@ -44,6 +44,7 @@ def _cloud_status(
     all_branches=False,
     with_deps=False,
     all_tags=False,
+    all_commits=False,
 ):
     """Returns a dictionary with the files that are new or deleted.
 
@@ -77,6 +78,7 @@ def _cloud_status(
         targets,
         all_branches=all_branches,
         all_tags=all_tags,
+        all_commits=all_commits,
         with_deps=with_deps,
         force=True,
         remote=remote,
@@ -108,6 +110,7 @@ def status(
     all_branches=False,
     with_deps=False,
     all_tags=False,
+    all_commits=False,
 ):
     if cloud or remote:
         return _cloud_status(
@@ -118,12 +121,13 @@ def status(
             with_deps=with_deps,
             remote=remote,
             all_tags=all_tags,
+            all_commits=all_commits,
         )
 
     ignored = list(
         compress(
-            ["--all-branches", "--all-tags", "--jobs"],
-            [all_branches, all_tags, jobs],
+            ["--all-branches", "--all-tags", "--all-commits", "--jobs"],
+            [all_branches, all_tags, all_commits, jobs],
         )
     )
     if ignored:

@@ -20,6 +20,7 @@ def _fetch(
     with_deps=False,
     all_tags=False,
     recursive=False,
+    all_commits=False,
 ):
     """Download data items from a cloud and imported repositories
 
@@ -37,6 +38,7 @@ def _fetch(
         targets,
         all_branches=all_branches,
         all_tags=all_tags,
+        all_commits=all_commits,
         with_deps=with_deps,
         force=True,
         remote=remote,

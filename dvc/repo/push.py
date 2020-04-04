@@ -11,11 +11,13 @@ def push(
     with_deps=False,
     all_tags=False,
     recursive=False,
+    all_commits=False,
 ):
     used = self.used_cache(
         targets,
         all_branches=all_branches,
         all_tags=all_tags,
+        all_commits=all_commits,
         with_deps=with_deps,
         force=True,
         remote=remote,

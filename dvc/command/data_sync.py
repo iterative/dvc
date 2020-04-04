@@ -26,6 +26,7 @@ class CmdDataPull(CmdDataBase):
                 remote=self.args.remote,
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,
+                all_commits=self.args.all_commits,
                 with_deps=self.args.with_deps,
                 force=self.args.force,
                 recursive=self.args.recursive,
@@ -49,6 +50,7 @@ class CmdDataPush(CmdDataBase):
                 remote=self.args.remote,
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,
+                all_commits=self.args.all_commits,
                 with_deps=self.args.with_deps,
                 recursive=self.args.recursive,
             )
@@ -68,6 +70,7 @@ class CmdDataFetch(CmdDataBase):
                 remote=self.args.remote,
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,
+                all_commits=self.args.all_commits,
                 with_deps=self.args.with_deps,
                 recursive=self.args.recursive,
             )
@@ -129,6 +132,12 @@ def add_parser(subparsers, _parent_parser):
         help="Fetch cache for all tags.",
     )
     pull_parser.add_argument(
+        "--all-commits",
+        action="store_true",
+        default=False,
+        help="Fetch cache for all commits.",
+    )
+    pull_parser.add_argument(
         "-f",
         "--force",
         action="store_true",
@@ -179,6 +188,12 @@ def add_parser(subparsers, _parent_parser):
         help="Push cache for all tags.",
     )
     push_parser.add_argument(
+        "--all-commits",
+        action="store_true",
+        default=False,
+        help="Push cache for all commits.",
+    )
+    push_parser.add_argument(
         "-d",
         "--with-deps",
         action="store_true",
@@ -223,6 +238,12 @@ def add_parser(subparsers, _parent_parser):
         action="store_true",
         default=False,
         help="Fetch cache for all tags.",
+    )
+    fetch_parser.add_argument(
+        "--all-commits",
+        action="store_true",
+        default=False,
+        help="Fetch cache for all commits.",
     )
     fetch_parser.add_argument(
         "-d",
@@ -288,6 +309,13 @@ def add_parser(subparsers, _parent_parser):
         default=False,
         help="Show status of a local cache compared to a remote repository "
         "for all tags.",
+    )
+    status_parser.add_argument(
+        "--all-commits",
+        action="store_true",
+        default=False,
+        help="Show status of a local cache compared to a remote repository "
+        "for all commits.",
     )
     status_parser.add_argument(
         "-d",

@@ -267,6 +267,7 @@ def show(
     all_tags=False,
     recursive=False,
     revs=None,
+    all_commits=False,
 ):
     res = {}
     found = set()
@@ -276,7 +277,10 @@ def show(
         targets = [None]
 
     for branch in repo.brancher(
-        revs=revs, all_branches=all_branches, all_tags=all_tags
+        revs=revs,
+        all_branches=all_branches,
+        all_tags=all_tags,
+        all_commits=all_commits,
     ):
         metrics = {}
 
