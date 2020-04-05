@@ -341,9 +341,11 @@ class RemoteLOCAL(RemoteBASE):
                 file_mode=self._file_mode,
             )
             status = STATUS_DELETED
+            desc = "Pulling"
         else:
             func = remote.upload
             status = STATUS_NEW
+            desc = "Pushing"
 
         if jobs is None:
             jobs = remote.JOBS
@@ -361,11 +363,13 @@ class RemoteLOCAL(RemoteBASE):
         if len(plans[0]) == 0:
             return 0
 
-        if jobs > 1:
-            with ThreadPoolExecutor(max_workers=jobs) as executor:
-                fails = sum(executor.map(func, *plans))
-        else:
-            fails = sum(map(func, *plans))
+        with Tqdm(total=len(plans[0]), unit="file", desc=desc) as pbar:
+            func = pbar.wrap_fn(func)
+            if jobs > 1:
+                with ThreadPoolExecutor(max_workers=jobs) as executor:
+                    fails = sum(executor.map(func, *plans))
+            else:
+                fails = sum(map(func, *plans))
 
         if fails:
             if download:
