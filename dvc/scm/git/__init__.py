@@ -21,9 +21,36 @@ logger = logging.getLogger(__name__)
 
 class TqdmGit(Tqdm):
     def update_git(self, op_code, cur_count, max_count=None, message=""):
+        op_code = self.code2desc(op_code)
+        if op_code:
+            message = op_code + " " + message
         if message:
             self.set_description_str(message, refresh=False)
         self.update_to(cur_count, max_count)
+
+    @staticmethod
+    def code2desc(op_code):
+        from git import RootUpdateProgress as OP
+
+        ops = dict(
+            (
+                (OP.COUNTING, "Counting"),
+                (OP.COMPRESSING, "Compressing"),
+                (OP.WRITING, "Writing"),
+                (OP.RECEIVING, "Receiving"),
+                (OP.RESOLVING, "Resolving"),
+                (OP.FINDING_SOURCES, "Finding sources"),
+                (OP.CHECKING_OUT, "Checking out"),
+                (OP.CLONE, "Cloning"),
+                (OP.FETCH, "Fetching"),
+                (OP.UPDWKTREE, "Updating working tree"),
+                (OP.REMOVE, "Removing"),
+                (OP.PATHCHANGE, "Changing path"),
+                (OP.URLCHANGE, "Changing URL"),
+                (OP.BRANCHCHANGE, "Changing branch"),
+            )
+        )
+        return ops.get(op_code & OP.OP_MASK, "")
 
 
 class Git(Base):
