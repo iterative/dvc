@@ -51,7 +51,6 @@ class Template:
 
     def fill(self, template_path, data, data_src=""):
         assert isinstance(data, list)
-        assert all({"x", "y", "revision"} == set(d.keys()) for d in data)
 
         update_dict = {"data": {"values": data}, "title": data_src}
 
@@ -83,17 +82,11 @@ class DefaultConfusionTemplate(Template):
         "mark": "rect",
         "encoding": {
             "x": {
-                "field": "x",
+                "field": "predicted",
                 "type": "nominal",
                 "sort": "ascending",
-                "title": "Predicted value",
             },
-            "y": {
-                "field": "y",
-                "type": "nominal",
-                "sort": "ascending",
-                "title": "Actual value",
-            },
+            "y": {"field": "actual", "type": "nominal", "sort": "ascending"},
             "color": {"aggregate": "count", "type": "quantitative"},
             "facet": {"field": "revision", "type": "nominal"},
         },

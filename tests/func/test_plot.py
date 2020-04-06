@@ -52,7 +52,10 @@ def test_plot_in_no_html(tmp_dir, scm, dvc):
 
 
 def test_plot_confusion(tmp_dir, dvc):
-    confusion_matrix = [{"x": "B", "y": "A"}, {"x": "A", "y": "A"}]
+    confusion_matrix = [
+        {"predicted": "B", "actual": "A"},
+        {"predicted": "A", "actual": "A"},
+    ]
     _run_with_metric(tmp_dir, confusion_matrix, "metric.json", "first run")
     template_content = "<DVC_PLOT::metric.json::cf.json>"
     (tmp_dir / "template.dvct").write_text(template_content)
@@ -65,23 +68,29 @@ def test_plot_confusion(tmp_dir, dvc):
             "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
             "data": {
                 "values": [
-                    {"x": "B", "y": "A", "revision": "current workspace"},
-                    {"x": "A", "y": "A", "revision": "current workspace"},
+                    {
+                        "predicted": "B",
+                        "actual": "A",
+                        "revision": "current workspace",
+                    },
+                    {
+                        "predicted": "A",
+                        "actual": "A",
+                        "revision": "current workspace",
+                    },
                 ]
             },
             "mark": "rect",
             "encoding": {
                 "x": {
-                    "field": "x",
+                    "field": "predicted",
                     "type": "nominal",
                     "sort": "ascending",
-                    "title": "Predicted value",
                 },
                 "y": {
-                    "field": "y",
+                    "field": "actual",
                     "type": "nominal",
                     "sort": "ascending",
-                    "title": "Actual value",
                 },
                 "color": {"aggregate": "count", "type": "quantitative"},
                 "facet": {"field": "revision", "type": "nominal"},
