@@ -48,6 +48,13 @@ class CmdConfig(CmdBaseNoRepo):
             msg = "option {} doesn't exist"
             raise ConfigError(msg.format(self.args.name))
 
+        if self.args.name == "core.no_scm" and self.args.level in [
+            "global",
+            "system",
+        ]:
+            msg = "{} not allowed on a {} level"
+            raise ConfigError(msg.format(self.args.name, self.args.level))
+
 
 parent_config_parser = argparse.ArgumentParser(add_help=False)
 parent_config_parser.add_argument(

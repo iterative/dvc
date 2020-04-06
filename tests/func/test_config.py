@@ -106,3 +106,10 @@ def test_merging_two_levels(dvc):
 def test_config_loads_without_error_for_non_dvc_repo(tmp_dir):
     # regression testing for https://github.com/iterative/dvc/issues/3328
     Config(validate=True)
+
+
+def test_no_scm(dvc):
+    assert 251 == main(["config", "--global", "core.no_scm", "true"])
+    assert 251 == main(["config", "--system", "core.no_scm", "true"])
+    assert 0 == main(["config", "--local", "core.no_scm", "true"])
+    assert 0 == main(["config", "core.no_scm", "true"])
