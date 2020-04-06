@@ -52,7 +52,7 @@ def test_cache_exists(object_exists, traverse, dvc):
     with mock.patch.object(
         remote, "cache_checksums", return_value=list(range(256))
     ):
-        checksums = list(range(1000))
+        checksums = set(range(1000))
         remote.cache_exists(checksums)
         object_exists.assert_called_with(checksums, None, None)
         traverse.assert_not_called()
