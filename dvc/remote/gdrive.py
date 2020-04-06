@@ -38,6 +38,17 @@ class GDriveMissedCredentialKeyError(DvcException):
         )
 
 
+def _extract(exc, field):
+    from pydrive2.files import ApiRequestError
+
+    assert isinstance(exc, ApiRequestError)
+
+    # https://cloud.google.com/storage/docs/json_api/v1/status-codes#errorformat
+    return (
+        exc.error["errors"][0].get(field, "") if "errors" in exc.error else ""
+    )
+
+
 def _gdrive_retry(func):
     def should_retry(exc):
         from pydrive2.files import ApiRequestError
@@ -45,10 +56,19 @@ def _gdrive_retry(func):
         if not isinstance(exc, ApiRequestError):
             return False
 
-        retry_codes = [403, 500, 502, 503, 504]
-        result = exc.error.get("code", 0) in retry_codes
+        error_code = exc.error.get("code", 0)
+        result = False
+        if 500 <= error_code < 600:
+            result = True
+
+        if error_code == 403:
+            result = _extract(exc, "reason") in [
+                "userRateLimitExceeded",
+                "rateLimitExceeded",
+            ]
         if result:
             logger.debug("Retrying GDrive API call, error: {}.".format(exc))
+
         return result
 
     # 16 tries, start at 0.5s, multiply by golden ratio, cap at 20s
@@ -57,19 +77,6 @@ def _gdrive_retry(func):
         timeout=lambda a: min(0.5 * 1.618 ** a, 20),
         filter_errors=should_retry,
     )(func)
-
-
-def _location(exc):
-    from pydrive2.files import ApiRequestError
-
-    assert isinstance(exc, ApiRequestError)
-
-    # https://cloud.google.com/storage/docs/json_api/v1/status-codes#errorformat
-    return (
-        exc.error["errors"][0].get("location", "")
-        if exc.error.get("errors", [])
-        else ""
-    )
 
 
 class GDriveURLInfo(CloudURLInfo):
@@ -339,7 +346,7 @@ class RemoteGDrive(RemoteBASE):
             if (
                 http_error_code == 403
                 and self._list_params["corpora"] == "drive"
-                and _location(exc) == "file.permissions"
+                and _extract(exc, "location") == "file.permissions"
             ):
                 raise DvcException(
                     "Insufficient permissions to {}. You should have {} "
