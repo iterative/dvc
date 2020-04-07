@@ -401,16 +401,22 @@ class OutputBase(object):
 
         In case that the given output is a directory, it will also
         include the `info` of its files.
+
+        Returns:
+            2-tuple of NamedCache objects in the form of
+            (directory `info`, file `info`).
+            If the given output is not a directory, the first tuple entry will
+            be None.
         """
 
         if not self.use_cache:
-            return NamedCache()
+            return None, NamedCache()
 
         if self.stage.is_repo_import:
             cache = NamedCache()
             (dep,) = self.stage.deps
             cache.external[dep.repo_pair].add(dep.def_path)
-            return cache
+            return None, cache
 
         if not self.checksum:
             msg = (
@@ -429,16 +435,14 @@ class OutputBase(object):
                     )
                 )
             logger.warning(msg)
-            return NamedCache()
+            return None, NamedCache()
 
         ret = NamedCache.make(self.scheme, self.checksum, str(self))
 
         if not self.is_dir_checksum:
-            return ret
+            return None, ret
 
-        ret.update(self._collect_used_dir_cache(**kwargs))
-
-        return ret
+        return ret, self._collect_used_dir_cache(**kwargs)
 
     @classmethod
     def _validate_output_path(cls, path):

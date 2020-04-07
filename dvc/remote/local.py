@@ -5,8 +5,11 @@ import stat
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 
+from funcy import cat
+
 from shortuuid import uuid
 
+from dvc.cache import NamedCache
 from dvc.compat import fspath_py35
 from dvc.exceptions import DvcException, DownloadError, UploadError
 from dvc.path_info import PathInfo
@@ -250,7 +253,7 @@ class RemoteLOCAL(RemoteBASE):
 
     def status(
         self,
-        named_cache,
+        named_caches,
         remote,
         jobs=None,
         show_checksums=False,
@@ -259,28 +262,59 @@ class RemoteLOCAL(RemoteBASE):
         logger.debug(
             "Preparing to collect status from {}".format(remote.path_info)
         )
-        md5s = list(named_cache[self.scheme])
+        cache = NamedCache()
+        dir_md5s = {}
+        md5s = set()
+        for dir_cache, file_cache in named_caches:
+            cache.update(file_cache)
+            md5s.update(file_cache[self.scheme])
+            if dir_cache is not None:
+                cache.update(dir_cache)
+                checksums = frozenset(dir_cache[self.scheme].keys())
+                md5s.update(checksums)
+                dir_md5s[checksums] = frozenset(file_cache[self.scheme])
 
         logger.debug("Collecting information from local cache...")
-        local_exists = self.cache_exists(md5s, jobs=jobs, name=self.cache_dir)
+        local_exists = frozenset(
+            self.cache_exists(md5s, jobs=jobs, name=self.cache_dir)
+        )
 
         # This is a performance optimization. We can safely assume that,
         # if the resources that we want to fetch are already cached,
         # there's no need to check the remote storage for the existence of
         # those files.
-        if download and sorted(local_exists) == sorted(md5s):
+        if download and local_exists == md5s:
             remote_exists = local_exists
         else:
             logger.debug("Collecting information from remote cache...")
-            remote_exists = list(
-                remote.cache_exists(
-                    md5s, jobs=jobs, name=str(remote.path_info)
-                )
+            remote_exists = set()
+            # verify that our index is still valid by checking that any known
+            # .dir checksums still exist on the remote
+            verify_md5s = remote.index.checksums.intersection(
+                cat(dir_md5s.keys())
             )
+            if verify_md5s:
+                remote_dir_exists = frozenset(
+                    remote._cache_object_exists(verify_md5s)
+                )
+                md5s -= remote_dir_exists
+                remote_exists.update(remote_dir_exists)
+                if remote_dir_exists != verify_md5s:
+                    logger.debug(
+                        "Remote cache missing an expected .dir checksum, "
+                        "clearing local index"
+                    )
+                    remote.index.invalidate()
+            if md5s:
+                remote_exists.update(
+                    remote.cache_exists(
+                        md5s, jobs=jobs, name=str(remote.path_info)
+                    )
+                )
 
         ret = {
             checksum: {"name": checksum if show_checksums else " ".join(names)}
-            for checksum, names in named_cache[self.scheme].items()
+            for checksum, names in cache[self.scheme].items()
         }
         self._fill_statuses(ret, local_exists, remote_exists)
 
@@ -321,7 +355,7 @@ class RemoteLOCAL(RemoteBASE):
 
     def _process(
         self,
-        named_cache,
+        named_caches,
         remote,
         jobs=None,
         show_checksums=False,
@@ -349,7 +383,7 @@ class RemoteLOCAL(RemoteBASE):
             jobs = remote.JOBS
 
         status_info = self.status(
-            named_cache,
+            named_caches,
             remote,
             jobs=jobs,
             show_checksums=show_checksums,
@@ -384,18 +418,18 @@ class RemoteLOCAL(RemoteBASE):
 
         return len(plans[0])
 
-    def push(self, named_cache, remote, jobs=None, show_checksums=False):
+    def push(self, named_caches, remote, jobs=None, show_checksums=False):
         return self._process(
-            named_cache,
+            named_caches,
             remote,
             jobs=jobs,
             show_checksums=show_checksums,
             download=False,
         )
 
-    def pull(self, named_cache, remote, jobs=None, show_checksums=False):
+    def pull(self, named_caches, remote, jobs=None, show_checksums=False):
         return self._process(
-            named_cache,
+            named_caches,
             remote,
             jobs=jobs,
             show_checksums=show_checksums,

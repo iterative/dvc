@@ -252,12 +252,18 @@ class Repo(object):
         `all_branches`/`all_tags`/`all_commits` to expand the scope.
 
         Returns:
-            A dictionary with Schemes (representing output's location) as keys,
+            A list of 2-tuples in the form (dir_cache, file_cache).
+            Each NamedCache object is a dictionary with Schemes
+            (representing output's location) as keys,
             and a list with the outputs' `dumpd` as values.
+            If the given output is not a directory, the first tuple entry
+            will be None.
         """
         from dvc.cache import NamedCache
 
-        cache = NamedCache()
+        used_caches = []
+        # group together file caches which do not have an associated directory
+        file_caches = NamedCache()
 
         for branch in self.brancher(
             all_branches=all_branches,
@@ -275,15 +281,23 @@ class Repo(object):
 
             suffix = "({})".format(branch) if branch else ""
             for stage, filter_info in pairs:
-                used_cache = stage.get_used_cache(
+                for dir_cache, file_cache in stage.get_used_cache(
                     remote=remote,
                     force=force,
                     jobs=jobs,
                     filter_info=filter_info,
-                )
-                cache.update(used_cache, suffix=suffix)
+                ):
+                    if dir_cache is None:
+                        file_caches.update(file_cache, suffix=suffix)
+                    else:
+                        used_dir = NamedCache()
+                        used_dir.update(dir_cache, suffix=suffix)
+                        used_file = NamedCache()
+                        used_file.update(file_cache, suffix=suffix)
+                        used_caches.append((used_dir, used_file))
 
-        return cache
+        used_caches.append((None, file_caches))
+        return used_caches
 
     def _collect_graph(self, stages=None):
         """Generate a graph by using the given stages on the given directory
