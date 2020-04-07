@@ -121,6 +121,9 @@ def _show_diff(diff):
 
     table = Texttable()
 
+    # disable automatic formatting
+    table.set_cols_dtype(["t", "t", "t", "t"])
+
     # remove borders to make it easier for users to copy stuff
     table.set_chars(("", "", "", ""))
     table.set_deco(0)
