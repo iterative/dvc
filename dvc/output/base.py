@@ -363,8 +363,9 @@ class OutputBase(object):
 
         if self.cache.changed_cache_file(self.checksum):
             try:
+                cache = NamedCache.make("local", self.checksum, str(self))
                 self.repo.cloud.pull(
-                    NamedCache.make("local", self.checksum, str(self)),
+                    [(None, cache)],
                     jobs=jobs,
                     remote=remote,
                     show_checksums=False,

@@ -59,7 +59,19 @@ def _fetch(
             drop_index=drop_index,
         )
     except NoRemoteError:
-        if not used.external and used["local"]:
+        external = False
+        local = False
+        for dir_cache, file_cache in used:
+            if dir_cache:
+                if dir_cache.external:
+                    external = True
+                if dir_cache["local"]:
+                    local = True
+            if file_cache.external:
+                external = True
+            if file_cache["local"]:
+                local = True
+        if not external and local:
             raise
     except DownloadError as exc:
         failed += exc.amount

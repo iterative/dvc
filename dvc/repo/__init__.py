@@ -296,7 +296,8 @@ class Repo(object):
                         used_file.update(file_cache, suffix=suffix)
                         used_caches.append((used_dir, used_file))
 
-        used_caches.append((None, file_caches))
+        if file_caches._items or file_caches.external:
+            used_caches.append((None, file_caches))
         return used_caches
 
     def _collect_graph(self, stages=None):

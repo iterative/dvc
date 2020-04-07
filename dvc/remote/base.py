@@ -740,12 +740,15 @@ class RemoteBASE(object):
             remote_size, remote_checksums, jobs, name
         )
 
-    def gc(self, named_cache, jobs=None):
-        logger.debug("named_cache: {} jobs: {}".format(named_cache, jobs))
-        used = self.extract_used_local_checksums(named_cache)
+    def gc(self, named_caches, jobs=None):
+        logger.debug("named_caches: {} jobs: {}".format(named_caches, jobs))
+        used = self.extract_used_local_checksums(named_caches)
 
         if self.scheme != "":
-            used.update(named_cache[self.scheme])
+            for dir_cache, file_cache in named_caches:
+                if dir_cache:
+                    used.update(dir_cache[self.scheme])
+                used.update(file_cache[self.scheme])
 
         removed = False
         for checksum in self.all(jobs, str(self.path_info)):
@@ -1275,8 +1278,12 @@ class RemoteBASE(object):
     def _get_unpacked_dir_names(self, checksums):
         return set()
 
-    def extract_used_local_checksums(self, named_cache):
-        used = set(named_cache["local"])
+    def extract_used_local_checksums(self, named_caches):
+        used = set()
+        for dir_cache, file_cache in named_caches:
+            if dir_cache:
+                used.update(dir_cache["local"])
+            used.update(file_cache["local"])
         unpacked = self._get_unpacked_dir_names(used)
         return used | unpacked
 

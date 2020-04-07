@@ -112,7 +112,7 @@ class TestDataCloudBase(TestDvc):
         out = stage.outs[0]
         cache = out.cache_path
         md5 = out.checksum
-        info = out.get_used_cache()
+        info = [out.get_used_cache()]
 
         stages = self.dvc.add(self.DATA_DIR)
         self.assertEqual(len(stages), 1)
@@ -122,7 +122,9 @@ class TestDataCloudBase(TestDvc):
         cache_dir = out_dir.cache_path
         name_dir = str(out_dir)
         md5_dir = out_dir.checksum
-        info_dir = NamedCache.make(out_dir.scheme, md5_dir, name_dir)
+        info_dir = [
+            (NamedCache.make(out_dir.scheme, md5_dir, name_dir), NamedCache())
+        ]
 
         with self.cloud.repo.state:
             # Check status
