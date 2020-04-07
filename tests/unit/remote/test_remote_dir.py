@@ -25,10 +25,10 @@ FILE_WITH_CONTENTS = {
 
 
 @pytest.fixture
-def remote(request):
+def remote(request, dvc):
     if not request.param.should_test():
         raise pytest.skip()
-    with request.param.remote() as remote:
+    with request.param.remote(dvc) as remote:
         request.param.put_objects(remote, FILE_WITH_CONTENTS)
         yield remote
 
@@ -86,11 +86,11 @@ def test_walk_files(remote):
 
 
 @pytest.mark.parametrize("remote", [S3Mocked], indirect=True)
-def test_copy_preserve_etag_across_buckets(remote):
+def test_copy_preserve_etag_across_buckets(remote, dvc):
     s3 = remote.s3
     s3.create_bucket(Bucket="another")
 
-    another = RemoteS3(None, {"url": "s3://another", "region": "us-east-1"})
+    another = RemoteS3(dvc, {"url": "s3://another", "region": "us-east-1"})
 
     from_info = remote.path_info / "foo"
     to_info = another.path_info / "foo"

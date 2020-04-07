@@ -1,7 +1,6 @@
 import pytest
 import os
 
-from dvc.config import Config
 from dvc.remote.gdrive import (
     RemoteGDrive,
     GDriveAccessTokenRefreshError,
@@ -13,11 +12,6 @@ USER_CREDS_TOKEN_REFRESH_ERROR = '{"access_token": "", "client_id": "", "client_
 USER_CREDS_MISSED_KEY_ERROR = "{}"
 
 
-class Repo(object):
-    tmp_dir = ""
-    config = Config()
-
-
 class TestRemoteGDrive(object):
     CONFIG = {
         "url": "gdrive://root/data",
@@ -25,12 +19,12 @@ class TestRemoteGDrive(object):
         "gdrive_client_secret": "secret",
     }
 
-    def test_init(self):
-        remote = RemoteGDrive(Repo(), self.CONFIG)
+    def test_init(self, dvc):
+        remote = RemoteGDrive(dvc, self.CONFIG)
         assert str(remote.path_info) == self.CONFIG["url"]
 
-    def test_drive(self):
-        remote = RemoteGDrive(Repo(), self.CONFIG)
+    def test_drive(self, dvc):
+        remote = RemoteGDrive(dvc, self.CONFIG)
         os.environ[
             RemoteGDrive.GDRIVE_CREDENTIALS_DATA
         ] = USER_CREDS_TOKEN_REFRESH_ERROR
@@ -38,7 +32,7 @@ class TestRemoteGDrive(object):
             remote._drive
 
         os.environ[RemoteGDrive.GDRIVE_CREDENTIALS_DATA] = ""
-        remote = RemoteGDrive(Repo(), self.CONFIG)
+        remote = RemoteGDrive(dvc, self.CONFIG)
         os.environ[
             RemoteGDrive.GDRIVE_CREDENTIALS_DATA
         ] = USER_CREDS_MISSED_KEY_ERROR
