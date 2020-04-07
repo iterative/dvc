@@ -48,7 +48,14 @@ class DataCloud(object):
     def _init_remote(self, remote):
         return Remote(self.repo, name=remote)
 
-    def push(self, caches, jobs=None, remote=None, show_checksums=False):
+    def push(
+        self,
+        caches,
+        jobs=None,
+        remote=None,
+        show_checksums=False,
+        drop_index=False,
+    ):
         """Push data items in a cloud-agnostic way.
 
         Args:
@@ -65,9 +72,17 @@ class DataCloud(object):
             jobs=jobs,
             remote=self.get_remote(remote, "push"),
             show_checksums=show_checksums,
+            drop_index=drop_index,
         )
 
-    def pull(self, caches, jobs=None, remote=None, show_checksums=False):
+    def pull(
+        self,
+        caches,
+        jobs=None,
+        remote=None,
+        show_checksums=False,
+        drop_index=False,
+    ):
         """Pull data items in a cloud-agnostic way.
 
         Args:
@@ -81,7 +96,11 @@ class DataCloud(object):
         """
         remote = self.get_remote(remote, "pull")
         downloaded_items_num = self.repo.cache.local.pull(
-            caches, jobs=jobs, remote=remote, show_checksums=show_checksums
+            caches,
+            jobs=jobs,
+            remote=remote,
+            show_checksums=show_checksums,
+            drop_index=drop_index,
         )
 
         if not remote.verify:
@@ -105,7 +124,14 @@ class DataCloud(object):
                     # (see `RemoteBASE.download()`)
                     self.repo.state.save(cache_file, checksum)
 
-    def status(self, caches, jobs=None, remote=None, show_checksums=False):
+    def status(
+        self,
+        caches,
+        jobs=None,
+        remote=None,
+        show_checksums=False,
+        drop_index=False,
+    ):
         """Check status of data items in a cloud-agnostic way.
 
         Args:
@@ -120,5 +146,9 @@ class DataCloud(object):
         """
         remote = self.get_remote(remote, "status")
         return self.repo.cache.local.status(
-            caches, jobs=jobs, remote=remote, show_checksums=show_checksums
+            caches,
+            jobs=jobs,
+            remote=remote,
+            show_checksums=show_checksums,
+            drop_index=drop_index,
         )

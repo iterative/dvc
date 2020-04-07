@@ -258,6 +258,7 @@ class RemoteLOCAL(RemoteBASE):
         jobs=None,
         show_checksums=False,
         download=False,
+        drop_index=False,
     ):
         logger.debug(
             "Preparing to collect status from {}".format(remote.path_info)
@@ -288,23 +289,27 @@ class RemoteLOCAL(RemoteBASE):
         else:
             logger.debug("Collecting information from remote cache...")
             remote_exists = set()
-            # verify that our index is still valid by checking that any known
-            # .dir checksums still exist on the remote
-            verify_md5s = remote.index.checksums.intersection(
-                cat(dir_md5s.keys())
-            )
-            if verify_md5s:
-                remote_dir_exists = frozenset(
-                    remote._cache_object_exists(verify_md5s)
+            if drop_index:
+                logger.debug("Clearing local index for remote cache")
+                remote.index.invalidate()
+            else:
+                # verify that our index is still valid by checking that any
+                # known .dir checksums still exist on the remote
+                verify_md5s = remote.index.checksums.intersection(
+                    cat(dir_md5s.keys())
                 )
-                md5s -= remote_dir_exists
-                remote_exists.update(remote_dir_exists)
-                if remote_dir_exists != verify_md5s:
-                    logger.debug(
-                        "Remote cache missing an expected .dir checksum, "
-                        "clearing local index"
+                if verify_md5s:
+                    remote_dir_exists = frozenset(
+                        remote._cache_object_exists(verify_md5s)
                     )
-                    remote.index.invalidate()
+                    md5s -= remote_dir_exists
+                    remote_exists.update(remote_dir_exists)
+                    if remote_dir_exists != verify_md5s:
+                        logger.debug(
+                            "Remote cache missing an expected .dir checksum, "
+                            "clearing local index"
+                        )
+                        remote.index.invalidate()
             if md5s:
                 remote_exists.update(
                     remote.cache_exists(
@@ -360,6 +365,7 @@ class RemoteLOCAL(RemoteBASE):
         jobs=None,
         show_checksums=False,
         download=False,
+        drop_index=False,
     ):
         logger.debug(
             "Preparing to {} '{}'".format(
@@ -388,6 +394,7 @@ class RemoteLOCAL(RemoteBASE):
             jobs=jobs,
             show_checksums=show_checksums,
             download=download,
+            drop_index=drop_index,
         )
 
         plans = self._get_plans(download, remote, status_info, status)
@@ -418,22 +425,38 @@ class RemoteLOCAL(RemoteBASE):
 
         return len(plans[0])
 
-    def push(self, named_caches, remote, jobs=None, show_checksums=False):
+    def push(
+        self,
+        named_caches,
+        remote,
+        jobs=None,
+        show_checksums=False,
+        drop_index=False,
+    ):
         return self._process(
             named_caches,
             remote,
             jobs=jobs,
             show_checksums=show_checksums,
             download=False,
+            drop_index=drop_index,
         )
 
-    def pull(self, named_caches, remote, jobs=None, show_checksums=False):
+    def pull(
+        self,
+        named_caches,
+        remote,
+        jobs=None,
+        show_checksums=False,
+        drop_index=False,
+    ):
         return self._process(
             named_caches,
             remote,
             jobs=jobs,
             show_checksums=show_checksums,
             download=True,
+            drop_index=drop_index,
         )
 
     @staticmethod
