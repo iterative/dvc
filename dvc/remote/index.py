@@ -9,13 +9,17 @@ class RemoteIndex(object):
     """Class for locally indexing remote checksums.
 
     Args:
-        repo: repo for this remote
+        repo: repo for this remote index.
+        name: name for this index. If name is provided, this index will be
+            loaded from and saved to ``.dvc/tmp/index/{name}.idx``.
+            If name is not provided (i.e. for local remotes), this index will
+            be kept in memory but not saved to disk.
     """
 
     INDEX_SUFFIX = ".idx"
 
-    def __init__(self, repo, name):
-        if repo and hasattr(repo, "index_dir") and name:
+    def __init__(self, repo, name=None):
+        if name:
             self.path = pathlib.Path(repo.index_dir).joinpath(
                 "{}{}".format(name, self.INDEX_SUFFIX)
             )
@@ -33,24 +37,26 @@ class RemoteIndex(object):
 
     def load(self):
         """(Re)load this index from disk."""
-        if self.path and self.path.exists():
+        if self.path and self.path.is_file():
             try:
-                with open(self.path, "rb") as fd:
-                    self._checksums = pickle.load(fd)
-            except IOError:
+                with open(self.path, "rb") as fobj:
+                    self._checksums = pickle.load(fobj)
+            except PermissionError:
                 logger.error(
-                    "Failed to load remote index from '{}'".format(self.path)
+                    "Insufficient permissions to read index file "
+                    "'{}'".format(self.path)
                 )
 
     def save(self):
         """Save this index to disk."""
         if self.path:
             try:
-                with open(self.path, "wb") as fd:
-                    pickle.dump(self._checksums, fd)
-            except IOError:
+                with open(self.path, "wb") as fobj:
+                    pickle.dump(self._checksums, fobj)
+            except PermissionError:
                 logger.error(
-                    "Failed to save remote index to '{}'".format(self.path)
+                    "Insufficient permissions to write index file "
+                    "'{}'".format(self.path)
                 )
 
     def invalidate(self):
