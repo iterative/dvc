@@ -1,7 +1,6 @@
-from unittest import TestCase
-
 import math
 import mock
+import pytest
 
 from dvc.path_info import PathInfo
 from dvc.remote.base import RemoteBASE
@@ -17,42 +16,36 @@ class _CallableOrNone(object):
 
 
 CallableOrNone = _CallableOrNone()
+REMOTE_CLS = RemoteBASE
 
 
-class TestRemoteBASE(object):
-    REMOTE_CLS = RemoteBASE
+def test_missing_deps(dvc):
+    requires = {"missing": "missing"}
+    with mock.patch.object(REMOTE_CLS, "REQUIRES", requires):
+        with pytest.raises(RemoteMissingDepsError):
+            REMOTE_CLS(dvc, {})
 
 
-class TestMissingDeps(TestCase, TestRemoteBASE):
-    def test(self):
-        requires = {"missing": "missing"}
-        with mock.patch.object(self.REMOTE_CLS, "REQUIRES", requires):
-            with self.assertRaises(RemoteMissingDepsError):
-                self.REMOTE_CLS(None, {})
+def test_cmd_error(dvc):
+    config = {}
 
+    cmd = "sed 'hello'"
+    ret = "1"
+    err = "sed: expression #1, char 2: extra characters after command"
 
-class TestCmdError(TestCase, TestRemoteBASE):
-    def test(self):
-        repo = None
-        config = {}
-
-        cmd = "sed 'hello'"
-        ret = "1"
-        err = "sed: expression #1, char 2: extra characters after command"
-
-        with mock.patch.object(
-            self.REMOTE_CLS,
-            "remove",
-            side_effect=RemoteCmdError("base", cmd, ret, err),
-        ):
-            with self.assertRaises(RemoteCmdError):
-                self.REMOTE_CLS(repo, config).remove("file")
+    with mock.patch.object(
+        REMOTE_CLS,
+        "remove",
+        side_effect=RemoteCmdError("base", cmd, ret, err),
+    ):
+        with pytest.raises(RemoteCmdError):
+            REMOTE_CLS(dvc, config).remove("file")
 
 
 @mock.patch.object(RemoteBASE, "_cache_checksums_traverse")
 @mock.patch.object(RemoteBASE, "_cache_object_exists")
-def test_cache_exists(object_exists, traverse):
-    remote = RemoteBASE(None, {})
+def test_cache_exists(object_exists, traverse, dvc):
+    remote = RemoteBASE(dvc, {})
 
     # remote does not support traverse
     remote.CAN_TRAVERSE = False
@@ -110,8 +103,8 @@ def test_cache_exists(object_exists, traverse):
 @mock.patch.object(
     RemoteBASE, "path_to_checksum", side_effect=lambda x: x,
 )
-def test_cache_checksums_traverse(path_to_checksum, cache_checksums):
-    remote = RemoteBASE(None, {})
+def test_cache_checksums_traverse(path_to_checksum, cache_checksums, dvc):
+    remote = RemoteBASE(dvc, {})
     remote.path_info = PathInfo("foo")
 
     # parallel traverse
@@ -135,8 +128,8 @@ def test_cache_checksums_traverse(path_to_checksum, cache_checksums):
     )
 
 
-def test_cache_checksums():
-    remote = RemoteBASE(None, {})
+def test_cache_checksums(dvc):
+    remote = RemoteBASE(dvc, {})
     remote.path_info = PathInfo("foo")
 
     with mock.patch.object(
