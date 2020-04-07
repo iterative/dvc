@@ -47,7 +47,7 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Initiate DVC in directory that is "
-        "not tracked by any scm tool (e.g. git).",
+        "not tracked by any SCM tool (e.g. Git).",
     )
     init_parser.add_argument(
         "-f",

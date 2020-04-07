@@ -1,4 +1,4 @@
-"""Manages source control systems(e.g. Git) in dvc."""
+"""Manages source control systems (e.g. Git) in DVC."""
 
 import os
 
