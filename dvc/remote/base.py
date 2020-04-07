@@ -115,7 +115,7 @@ class RemoteBASE(object):
 
         url = config.get("url")
         if url:
-            index_name = hashlib.md5(url.encode("utf-8")).hexdigest()
+            index_name = hashlib.sha256(url.encode("utf-8")).hexdigest()
         else:
             index_name = None
         self.index = RemoteIndex(self.repo, index_name)
