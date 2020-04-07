@@ -28,7 +28,7 @@ class OutputIsNotFileOrDirError(DvcException):
 
 class OutputAlreadyTrackedError(DvcException):
     def __init__(self, path):
-        msg = "output '{}' is already tracked by scm (e.g. git)".format(path)
+        msg = "output '{}' is already tracked by SCM (e.g. Git)".format(path)
         super().__init__(msg)
 
 

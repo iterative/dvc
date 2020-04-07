@@ -1,4 +1,4 @@
-"""Manages source control systems(e.g. Git)."""
+"""Manages source control systems (e.g. Git)."""
 
 from dvc.scm.base import Base
 from dvc.scm.git import Git
