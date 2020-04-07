@@ -119,3 +119,12 @@ def test_metrics_show(dvc, mocker):
         all_branches=True,
         all_commits=True,
     )
+
+
+def test_metrics_diff_prec():
+    assert _show_diff(
+        {"other.json": {"a.b": {"old": 0.0042, "new": 0.0043, "diff": 0.0001}}}
+    ) == (
+        "   Path      Metric   Value    Change\n"
+        "other.json   a.b      0.0043   0.0001"
+    )
