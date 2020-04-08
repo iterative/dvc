@@ -302,7 +302,8 @@ def test_custom_template_with_specified_data(tmp_dir, scm, dvc):
 
 
 # TODO
+# test for pure json template
 # def test_plot_in_html_file(tmp_dir):
 # def test_plot_override_data_file
-# def test_plot_custom_template_file
+# def test_plot_custom_template_file / test_
 # def test_plot_multiple_plots

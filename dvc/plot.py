@@ -90,33 +90,67 @@ class Template:
                 raise DvcException("Not in repo nor in defaults")
 
     @staticmethod
-    def parse_data_placeholders(template_path):
-        regex = re.compile("<DVC_METRIC_DATA.*>")
+    def get_data_placeholders(template_path):
+        regex = re.compile('"<DVC_METRIC_DATA.*>"')
         with open(template_path, "r") as fobj:
             template_content = fobj.read()
-        matches = regex.findall(template_content)
-        data_files = [
-            m.replace("<", "")
-            .replace(">", "")
-            .replace("DVC_METRIC_DATA::", "")
-            for m in matches
-        ]
-        return data_files
+        return regex.findall(template_content)
 
     @staticmethod
-    def fill(template_path, data):
-        with open(template_path, "r") as fobj:
-            template_str = fobj.read()
-        regex = re.compile('"<DVC_METRIC_DATA.*>"')
-        matches = regex.findall(template_str)
+    def parse_data_placeholders(template_path):
+        data_files = {
+            Template.get_datafile(m)
+            for m in Template.get_data_placeholders(template_path)
+        }
+        return {df for df in data_files if df}
 
-        result_path = os.path.basename(template_path).replace(".dvct", ".html")
-        result_content = template_str.replace(
-            matches[0],
-            json.dumps(
-                data, indent=Template.INDENT, separators=Template.SEPARATORS
-            ),
+    @staticmethod
+    def get_datafile(placeholder_string):
+        return (
+            placeholder_string.replace("<", "")
+            .replace('"', "")
+            .replace(">", "")
+            .replace("DVC_METRIC_DATA", "")
+            .replace("::", "")
         )
+
+    @staticmethod
+    def fill(template_path, data, priority_datafile=None):
+        result_path = os.path.basename(template_path).replace(".dvct", ".html")
+
+        with open(template_path, "r") as fobj:
+            result_content = fobj.read()
+
+        template_placeholders = Template.get_data_placeholders(template_path)
+        if priority_datafile and len(template_placeholders) > 1:
+            raise DvcException("Dont know which datafile to ovveride")  # Todo
+
+        def dump(data):
+            return json.dumps(
+                data, indent=Template.INDENT, separators=Template.SEPARATORS
+            )
+
+        for placeholder in Template.get_data_placeholders(template_path):
+            file = Template.get_datafile(placeholder)
+            if not file or priority_datafile:
+                to_dump = data[priority_datafile]
+            else:
+                to_dump = data[file]
+            result_content = result_content.replace(
+                placeholder,
+                json.dumps(
+                    to_dump,
+                    indent=Template.INDENT,
+                    separators=Template.SEPARATORS,
+                ),
+            )
+
+        # result_content = template_str.replace(
+        #     matches[0],
+        #     json.dumps(
+        #         data, indent=Template.INDENT, separators=Template.SEPARATORS
+        #     ),
+        # )
         with open(result_path, "w") as fobj:
             fobj.write(result_content)
         return result_path

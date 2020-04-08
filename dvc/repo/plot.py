@@ -68,7 +68,6 @@ def _load_from_revision(repo, datafile, revision=None, default_plot=False):
 
 
 def _load_from_revisions(repo, datafile, revisions, default_plot=False):
-    # TODO those _load_from_revision calls
     data = []
     if len(revisions) == 0:
         if repo.scm.is_dirty():
@@ -117,10 +116,6 @@ def _evaluate_templatepath(repo, template):
         raise DvcException("No template found")
 
 
-def _parse_template(path):
-    pass
-
-
 @locked
 def plot(repo, datafile=None, template=None, revisions=None):
     default_plot = False
@@ -138,11 +133,16 @@ def plot(repo, datafile=None, template=None, revisions=None):
     if revisions is None:
         revisions = []
 
-    # load datafiles from template
-    # TODO templatepath from templatefile
-    # datafiles = _parse_template(template_path)
-    data = _load_from_revisions(repo, datafile, revisions, default_plot)
-    result_path = Template.fill(template_path, data)
+    template_datafiles = Template.parse_data_placeholders(template_path)
+    if datafile:
+        template_datafiles.add(datafile)
+
+    data = {
+        datafile: _load_from_revisions(repo, datafile, revisions, default_plot)
+        for datafile in template_datafiles
+    }
+
+    result_path = Template.fill(template_path, data, datafile)
     logger.info(
         "Your can see your plot by opening {} in your "
         "browser!".format(
