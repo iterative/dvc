@@ -309,7 +309,7 @@ class Stage(object):
         for dep in self.deps:
             status = dep.status()
             if status:
-                logger.warning(
+                logger.debug(
                     "Dependency '{dep}' of '{stage}' changed because it is "
                     "'{status}'.".format(
                         dep=dep, stage=self.relpath, status=status[str(dep)]
@@ -323,7 +323,7 @@ class Stage(object):
         for out in self.outs:
             status = out.status()
             if status:
-                logger.warning(
+                logger.debug(
                     "Output '{out}' of '{stage}' changed because it is "
                     "'{status}'".format(
                         out=out, stage=self.relpath, status=status[str(out)]
