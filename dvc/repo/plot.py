@@ -1,9 +1,10 @@
+import csv
 import json
 import logging
 import os
-import random
 import re
-import string
+
+from funcy import first
 
 from dvc.exceptions import DvcException
 from dvc.plot import Template
@@ -12,40 +13,41 @@ from dvc.utils import format_link
 
 logger = logging.getLogger(__name__)
 
-PAGE_HTML = """<html>
-<head>
-    <title>dvc plot</title>
-    <script src="https://cdn.jsdelivr.net/npm/vega@5.10.0"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-lite@4.8.1"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.5.1"></script>
-</head>
-<body>
-    {divs}
-</body>
-</html>"""
 
-DIV_HTML = """<div id = "{id}"></div>
-<script type = "text/javascript">
-    var spec = {vega_json};
-    vegaEmbed('#{id}', spec);
-</script>"""
+def _all_dict_of_length_one(data):
+    return all([isinstance(e, dict) and len(e) == 1 for e in data])
 
 
-def _save_plot_html(divs, path):
-    page = PAGE_HTML.format(divs="\n".join(divs))
-    with open(path, "w") as fobj:
-        fobj.write(page)
+def _load_from_tree(tree, datafile, default_plot=False):
+    if datafile.endswith(".json"):
+        with tree.open(datafile, "r") as fobj:
+            data = json.load(fobj)
+            assert isinstance(data, list)
+
+        if default_plot:
+            assert all(len(e) >= 1 for e in data)
+            last_key = list(first(data).keys())[-1]
+            data = [{"y": d[last_key], "x": i} for i, d in enumerate(data)]
+    elif datafile.endswith(".csv"):
+        with tree.open(datafile, "r") as fobj:
+            if default_plot:
+                data = []
+                for index, row in enumerate(csv.reader(fobj)):
+                    assert len(row) >= 1
+                    if index == 0 and len(row) > 1:
+                        # skip header
+                        continue
+                    data.append({"y": row[-1], "x": index})
+            else:
+                data = [
+                    row
+                    for row in (csv.DictReader(fobj, skipinitialspace=True))
+                ]
+
+    return data
 
 
-def _prepare_div(vega_dict):
-    id = "".join(random.sample(string.ascii_lowercase, 8))
-    return DIV_HTML.format(
-        id=str(id),
-        vega_json=json.dumps(vega_dict, indent=4, separators=(",", ": ")),
-    )
-
-
-def _load_data(repo, datafile, revision=None):
+def _load_from_revision(repo, datafile, revision=None, default_plot=False):
     if revision is None:
         revision = "current workspace"
         tree = repo.tree
@@ -53,10 +55,9 @@ def _load_data(repo, datafile, revision=None):
         tree = repo.scm.get_tree(revision)
 
     try:
-        with tree.open(datafile, "r") as fobj:
-            data = json.load(fobj)
-            for d in data:
-                d["revision"] = revision
+        data = _load_from_tree(tree, datafile, default_plot)
+        for d in data:
+            d["revision"] = revision
     except FileNotFoundError:
         logger.warning(
             "File '{}' was not found at: '{}'. It will not be "
@@ -66,18 +67,27 @@ def _load_data(repo, datafile, revision=None):
     return data
 
 
-def _load_from_rev(repo, datafile, revisions):
+def _load_from_revisions(repo, datafile, revisions, default_plot=False):
+    # TODO those _load_from_revision calls
     data = []
     if len(revisions) == 0:
         if repo.scm.is_dirty():
-            data.extend(_load_data(repo, datafile, "HEAD"))
-        data.extend(_load_data(repo, datafile))
+            data.extend(
+                _load_from_revision(repo, datafile, "HEAD", default_plot)
+            )
+        data.extend(
+            _load_from_revision(repo, datafile, default_plot=default_plot)
+        )
     elif len(revisions) == 1:
-        data.extend(_load_data(repo, datafile, revisions[0]))
-        data.extend(_load_data(repo, datafile))
+        data.extend(
+            _load_from_revision(repo, datafile, revisions[0], default_plot)
+        )
+        data.extend(
+            _load_from_revision(repo, datafile, default_plot=default_plot)
+        )
     else:
         for rev in revisions:
-            data.extend(_load_data(repo, datafile, rev))
+            data.extend(_load_from_revision(repo, datafile, rev, default_plot))
 
     if not data:
         raise DvcException(
@@ -88,62 +98,58 @@ def _load_from_rev(repo, datafile, revisions):
     return data
 
 
-def _parse_plots(path):
-    with open(path, "r") as fobj:
-        content = fobj.read()
-
-    plot_regex = re.compile("<DVC_PLOT::.*>")
-
-    plots = list(plot_regex.findall(content))
-    return False, plots
-
-
-def _parse_plot_str(plot_str):
-    content = plot_str.replace("<", "")
-    content = content.replace(">", "")
-    args = content.split("::")[1:]
-    if len(args) == 2:
-        return args
-    elif len(args) == 1:
-        return args[0], "default.json"
-    raise DvcException("Error parsing")
+def _evaluate_templatepath(repo, template):
+    if os.path.exists(template):
+        return template
+    else:
+        # TODO
+        logger.debug("Template '{}' not found, checking in plot dir.")
+        plots_dir_path = os.path.join(
+            repo.plot_templates.templates_dir, template
+        )
+        if os.path.exists(plots_dir_path):
+            return plots_dir_path
+        else:
+            regex = re.compile(template + ".*")
+            for t in os.listdir(repo.plot_templates.templates_dir):
+                if regex.match(t):
+                    return os.path.join(repo.plot_templates.templates_dir, t)
+        raise DvcException("No template found")
 
 
-def to_div(repo, plot_str, revisions=None):
-    datafile, vega_template_file = _parse_plot_str(plot_str)
-
-    data = _load_from_rev(repo, datafile, revisions)
-    vega_plot_json = Template(repo.plot_templates.templates_dir).fill(
-        vega_template_file, data, datafile
-    )
-    return _prepare_div(vega_plot_json)
+def _parse_template(path):
+    pass
 
 
 @locked
-def plot(repo, dvc_template_file, revisions=None):
-    if not revisions:
+def plot(repo, datafile=None, template=None, revisions=None):
+    default_plot = False
+
+    if template is None:
+        template_path = os.path.join(
+            repo.plot_templates.templates_dir, "default.dvct"
+        )
+        default_plot = True
+    else:
+        template_path = _evaluate_templatepath(repo, template)
+        # TODO exception
+        assert template_path.endswith(".dvct")
+
+    if revisions is None:
         revisions = []
 
-    is_html, plot_strings = _parse_plots(dvc_template_file)
-    m = {
-        plot_str: to_div(repo, plot_str, revisions)
-        for plot_str in plot_strings
-    }
-
-    result = dvc_template_file.replace(".dvct", ".html")
-    if not is_html:
-        _save_plot_html(
-            [m[p] for p in plot_strings], result,
-        )
-    else:
-        raise NotImplementedError
-
+    # load datafiles from template
+    # TODO templatepath from templatefile
+    # datafiles = _parse_template(template_path)
+    data = _load_from_revisions(repo, datafile, revisions, default_plot)
+    result_path = Template.fill(template_path, data)
     logger.info(
         "Your can see your plot by opening {} in your "
         "browser!".format(
             format_link(
-                "file://{}".format(os.path.join(repo.root_dir, result))
+                "file://{}".format(os.path.join(repo.root_dir, result_path))
             )
         )
     )
-    return result
+    return result_path
+    # replace DVC_PLOT_DATA in template w

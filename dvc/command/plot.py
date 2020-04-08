@@ -12,7 +12,7 @@ class CmdPlotShow(CmdBase):
     def run(self):
         try:
             # TODO overriding datafile functionality
-            self.repo.plot(self.args.templatefile)
+            self.repo.plot(self.args.datafile, self.args.template)
 
         except DvcException:
             logger.exception("failed to plot metrics")
@@ -22,7 +22,11 @@ class CmdPlotShow(CmdBase):
 class CmdPlotDiff(CmdBase):
     def run(self):
         try:
-            self.repo.plot(self.args.template, revisions=self.args.revisions)
+            self.repo.plot(
+                self.args.datafile,
+                self.args.template,
+                revisions=self.args.revisions,
+            )
 
         except DvcException:
             logger.exception("failed to plot metrics diff")
@@ -59,7 +63,7 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     plot_show_parser.add_argument(
-        "templatefile", nargs="?", help="dvct file to visualize."
+        "--template", nargs="?", default=None, help="dvct file to visualize."
     )
     plot_show_parser.add_argument(
         "datafile",
@@ -79,7 +83,16 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     plot_diff_parser.add_argument(
-        "template", nargs="?", help=("dvct template file to process."),
+        "--template",
+        nargs="?",
+        default=None,
+        help=("dvct template file to " "process."),
+    )
+    plot_diff_parser.add_argument(
+        "--datafile",
+        nargs="?",
+        default=None,
+        help="Vega template file " "used to visualize " "data from datafile",
     )
     plot_diff_parser.add_argument(
         "revisions",
