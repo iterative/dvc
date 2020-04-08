@@ -741,7 +741,12 @@ class RemoteBASE(object):
                 used.update(file_cache[self.scheme])
 
         removed = False
-        for checksum in self.all(jobs, str(self.path_info)):
+        # checksums must be sorted to ensure we always remove .dir files first
+        for checksum in sorted(
+            self.all(jobs, str(self.path_info)),
+            key=self.is_dir_checksum,
+            reverse=True,
+        ):
             if checksum in used:
                 continue
             path_info = self.checksum_to_path_info(checksum)
