@@ -51,8 +51,8 @@ def test_plot_csv_one_column(tmp_dir, scm, dvc):
     vega_data = json.dumps(
         [
             # TODO csv reads as strings, what to do with that?
-            {"y": "2", "x": 0, "revision": "current workspace"},
-            {"y": "3", "x": 1, "revision": "current workspace"},
+            {"y": "2", "x": 0, "rev": "current"},
+            {"y": "3", "x": 1, "rev": "current"},
         ],
         indent=4,
         separators=(",", ": "),
@@ -70,8 +70,8 @@ def test_plot_csv_multiple_columns(tmp_dir, scm, dvc):
     vega_data = json.dumps(
         [
             # header was skipped so index starts at 1
-            {"y": "2", "x": 1, "revision": "current workspace"},
-            {"y": "3", "x": 2, "revision": "current workspace"},
+            {"y": "2", "x": 1, "rev": "current"},
+            {"y": "3", "x": 2, "rev": "current"},
         ],
         indent=4,
         separators=(",", ": "),
@@ -89,8 +89,8 @@ def test_plot_json_single_val(tmp_dir, scm, dvc):
     page_content = BeautifulSoup((tmp_dir / result).read_text())
     vega_data = json.dumps(
         [
-            {"y": 2, "x": 0, "revision": "current workspace"},
-            {"y": 3, "x": 1, "revision": "current workspace"},
+            {"y": 2, "x": 0, "rev": "current"},
+            {"y": 3, "x": 1, "rev": "current"},
         ],
         indent=4,
         separators=(",", ": "),
@@ -108,8 +108,8 @@ def test_plot_json_multiple_val(tmp_dir, scm, dvc):
     page_content = BeautifulSoup((tmp_dir / result).read_text())
     vega_data = json.dumps(
         [
-            {"y": 2, "x": 0, "revision": "current workspace"},
-            {"y": 3, "x": 1, "revision": "current workspace"},
+            {"y": 2, "x": 0, "rev": "current"},
+            {"y": 3, "x": 1, "rev": "current"},
         ],
         indent=4,
         separators=(",", ": "),
@@ -135,16 +135,8 @@ def test_plot_confusion(tmp_dir, dvc):
             "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
             "data": {
                 "values": [
-                    {
-                        "predicted": "B",
-                        "actual": "A",
-                        "revision": "current workspace",
-                    },
-                    {
-                        "predicted": "A",
-                        "actual": "A",
-                        "revision": "current workspace",
-                    },
+                    {"predicted": "B", "actual": "A", "rev": "current"},
+                    {"predicted": "A", "actual": "A", "rev": "current"},
                 ]
             },
             "mark": "rect",
@@ -160,7 +152,7 @@ def test_plot_confusion(tmp_dir, dvc):
                     "sort": "ascending",
                 },
                 "color": {"aggregate": "count", "type": "quantitative"},
-                "facet": {"field": "revision", "type": "nominal"},
+                "facet": {"field": "rev", "type": "nominal"},
             },
             "title": "metric.json",
         },
@@ -169,7 +161,7 @@ def test_plot_confusion(tmp_dir, dvc):
     ) in first(page_content.body.script.contents)
 
 
-def test_plot_multiple_revisions(tmp_dir, scm, dvc):
+def test_plot_multiple_revs(tmp_dir, scm, dvc):
     metric_1 = [{"x": 1, "y": 2}, {"x": 2, "y": 3}]
     _write_json(tmp_dir, metric_1, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "init", "v1")
@@ -187,12 +179,12 @@ def test_plot_multiple_revisions(tmp_dir, scm, dvc):
     content = BeautifulSoup((tmp_dir / "default.html").read_text())
     vega_data = json.dumps(
         [
-            {"y": 5, "x": 0, "revision": "HEAD"},
-            {"y": 6, "x": 1, "revision": "HEAD"},
-            {"y": 3, "x": 0, "revision": "v2"},
-            {"y": 5, "x": 1, "revision": "v2"},
-            {"y": 2, "x": 0, "revision": "v1"},
-            {"y": 3, "x": 1, "revision": "v1"},
+            {"y": 5, "x": 0, "rev": "HEAD"},
+            {"y": 6, "x": 1, "rev": "HEAD"},
+            {"y": 3, "x": 0, "rev": "v2"},
+            {"y": 5, "x": 1, "rev": "v2"},
+            {"y": 2, "x": 0, "rev": "v1"},
+            {"y": 3, "x": 1, "rev": "v1"},
         ],
         indent=4,
         separators=(",", ": "),
@@ -218,10 +210,7 @@ def test_plot_even_if_metric_missing(tmp_dir, scm, dvc, caplog):
 
     page_content = BeautifulSoup((tmp_dir / result).read_text())
     vega_data = json.dumps(
-        [
-            {"y": 2, "x": 0, "revision": "v2"},
-            {"y": 3, "x": 1, "revision": "v2"},
-        ],
+        [{"y": 2, "x": 0, "rev": "v2"}, {"y": 3, "x": 1, "rev": "v2"}],
         indent=4,
         separators=(",", ": "),
     )
@@ -259,8 +248,8 @@ def test_custom_template(tmp_dir, scm, dvc):
     page_content = BeautifulSoup((tmp_dir / result).read_text())
     vega_data = json.dumps(
         [
-            {"a": 1, "b": 2, "revision": "current workspace"},
-            {"a": 2, "b": 3, "revision": "current workspace"},
+            {"a": 1, "b": 2, "rev": "current"},
+            {"a": 2, "b": 3, "rev": "current"},
         ],
         indent=4,
         separators=(",", ": "),
@@ -292,8 +281,8 @@ def test_custom_template_with_specified_data(tmp_dir, scm, dvc):
     page_content = BeautifulSoup((tmp_dir / result).read_text())
     vega_data = json.dumps(
         [
-            {"a": 1, "b": 2, "revision": "current workspace"},
-            {"a": 2, "b": 3, "revision": "current workspace"},
+            {"a": 1, "b": 2, "rev": "current"},
+            {"a": 2, "b": 3, "rev": "current"},
         ],
         indent=4,
         separators=(",", ": "),

@@ -69,12 +69,6 @@ class Template:
                 self.plot_templates_dir, self.TEMPLATE_NAME + self.EXTENTION
             ),
         )
-        # json.dump(
-        #         self.DEFAULT_CONTENT,
-        #         fd,
-        #         indent=self.INDENT,
-        #         separators=self.SEPARATORS,
-        #     )
 
     def load_template(self, path):
         try:
@@ -166,7 +160,7 @@ class DefaultLinearTemplate(Template):
         "encoding": {
             "x": {"field": "x", "type": "quantitative"},
             "y": {"field": "y", "type": "quantitative"},
-            "color": {"field": "revision", "type": "nominal"},
+            "color": {"field": "rev", "type": "nominal"},
         },
     }
 
@@ -185,7 +179,7 @@ class DefaultConfusionTemplate(Template):
             },
             "y": {"field": "actual", "type": "nominal", "sort": "ascending"},
             "color": {"aggregate": "count", "type": "quantitative"},
-            "facet": {"field": "revision", "type": "nominal"},
+            "facet": {"field": "rev", "type": "nominal"},
         },
     }
 

@@ -49,7 +49,7 @@ def _load_from_tree(tree, datafile, default_plot=False):
 
 def _load_from_revision(repo, datafile, revision=None, default_plot=False):
     if revision is None:
-        revision = "current workspace"
+        revision = "current"
         tree = repo.tree
     else:
         tree = repo.scm.get_tree(revision)
@@ -57,7 +57,7 @@ def _load_from_revision(repo, datafile, revision=None, default_plot=False):
     try:
         data = _load_from_tree(tree, datafile, default_plot)
         for d in data:
-            d["revision"] = revision
+            d["rev"] = revision
     except FileNotFoundError:
         logger.warning(
             "File '{}' was not found at: '{}'. It will not be "
@@ -71,6 +71,7 @@ def _load_from_revisions(repo, datafile, revisions, default_plot=False):
     data = []
     if len(revisions) == 0:
         if repo.scm.is_dirty():
+            logger.warning("Repo is dirty, extending with HEAD data")
             data.extend(
                 _load_from_revision(repo, datafile, "HEAD", default_plot)
             )
