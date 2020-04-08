@@ -2,10 +2,10 @@ import errno
 import logging
 import os
 import stat
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import as_completed, ThreadPoolExecutor
 from functools import partial
 
-from funcy import cat
+from funcy import cat, concat
 
 from shortuuid import uuid
 
@@ -260,20 +260,48 @@ class RemoteLOCAL(RemoteBASE):
         download=False,
         drop_index=False,
     ):
+        # Return flattened dict containing all status info
+        dir_status, file_status, _ = self._status(
+            named_caches,
+            remote,
+            jobs=jobs,
+            show_checksums=show_checksums,
+            download=download,
+            drop_index=drop_index,
+        )
+        return dict(dir_status, **file_status)
+
+    def _status(
+        self,
+        named_caches,
+        remote,
+        jobs=None,
+        show_checksums=False,
+        download=False,
+        drop_index=False,
+    ):
+        """Return a tuple of (dir_status_info, file_status_info, dir_mapping).
+
+        dir_status_info contains status for .dir files, file_status_info
+        contains status for all other files, and dir_mapping is a dict of
+        {dir_path_info: set(file_path_info...)} which can be used to map
+        a .dir file to its file contents.
+        """
         logger.debug(
             "Preparing to collect status from {}".format(remote.path_info)
         )
-        cache = NamedCache()
+        merged_dir_cache = NamedCache()
+        merged_file_cache = NamedCache()
         dir_md5s = {}
         md5s = set()
         for dir_cache, file_cache in named_caches:
-            cache.update(file_cache)
+            merged_file_cache.update(file_cache)
             md5s.update(file_cache[self.scheme])
             if dir_cache is not None:
-                cache.update(dir_cache)
-                checksums = frozenset(dir_cache[self.scheme].keys())
-                md5s.update(checksums)
-                dir_md5s[checksums] = frozenset(file_cache[self.scheme])
+                merged_dir_cache.update(dir_cache)
+                for checksum in dir_cache[self.scheme]:
+                    dir_md5s[checksum] = frozenset(file_cache[self.scheme])
+        md5s.update(dir_md5s.keys())
 
         logger.debug("Collecting information from local cache...")
         local_exists = frozenset(
@@ -317,15 +345,27 @@ class RemoteLOCAL(RemoteBASE):
                     )
                 )
 
-        ret = {
-            checksum: {"name": checksum if show_checksums else " ".join(names)}
-            for checksum, names in cache[self.scheme].items()
-        }
-        self._fill_statuses(ret, local_exists, remote_exists)
+        def cache_to_dict(cache):
+            return {
+                checksum: {
+                    "name": checksum if show_checksums else " ".join(names)
+                }
+                for checksum, names in cache[self.scheme].items()
+            }
 
-        self._log_missing_caches(ret)
+        dir_status = cache_to_dict(merged_dir_cache)
+        file_status = cache_to_dict(merged_file_cache)
+        self._fill_statuses(dir_status, local_exists, remote_exists)
+        self._fill_statuses(file_status, local_exists, remote_exists)
 
-        return ret
+        self._log_missing_caches(dict(dir_status, **file_status))
+
+        dir_paths = {}
+        for md5, file_md5s in dir_md5s.items():
+            dir_paths[remote.checksum_to_path_info(md5)] = frozenset(
+                map(remote.checksum_to_path_info, file_md5s)
+            )
+        return dir_status, file_status, dir_paths
 
     @staticmethod
     def _fill_statuses(checksum_info_dir, local_exists, remote_exists):
@@ -388,7 +428,7 @@ class RemoteLOCAL(RemoteBASE):
         if jobs is None:
             jobs = remote.JOBS
 
-        status_info = self.status(
+        dir_status, file_status, dir_paths = self._status(
             named_caches,
             remote,
             jobs=jobs,
@@ -397,16 +437,45 @@ class RemoteLOCAL(RemoteBASE):
             drop_index=drop_index,
         )
 
-        plans = self._get_plans(download, remote, status_info, status)
+        dir_plans = self._get_plans(download, remote, dir_status, status)
+        file_plans = self._get_plans(download, remote, file_status, status)
 
-        if len(plans[0]) == 0:
+        if len(dir_plans[0]) + len(file_plans[0]) == 0:
             return 0
 
-        if jobs > 1:
-            with ThreadPoolExecutor(max_workers=jobs) as executor:
-                fails = sum(executor.map(func, *plans))
-        else:
-            fails = sum(map(func, *plans))
+        with ThreadPoolExecutor(max_workers=jobs) as executor:
+            if download:
+                fails = sum(executor.map(func, *dir_plans))
+                fails += sum(executor.map(func, *file_plans))
+            else:
+                # for uploads, push files first, and any .dir files last
+
+                file_futures = {}
+                for from_info, to_info, name in zip(*file_plans):
+                    file_futures[to_info] = executor.submit(
+                        func, from_info, to_info, name
+                    )
+                dir_futures = {}
+                for from_info, to_info, name in zip(*dir_plans):
+                    wait_futures = {
+                        future
+                        for file_path, future in file_futures.items()
+                        if file_path in dir_paths[to_info]
+                    }
+                    dir_futures[to_info] = executor.submit(
+                        self._dir_upload,
+                        func,
+                        wait_futures,
+                        from_info,
+                        to_info,
+                        name,
+                    )
+                fails = sum(
+                    future.result()
+                    for future in concat(
+                        file_futures.values(), dir_futures.values()
+                    )
+                )
 
         if fails:
             if download:
@@ -414,7 +483,9 @@ class RemoteLOCAL(RemoteBASE):
                 raise DownloadError(fails)
             raise UploadError(fails)
         elif not download:
-            pushed_checksums = list(map(self.path_to_checksum, plans[0]))
+            pushed_checksums = list(
+                map(self.path_to_checksum, dir_plans[0] + file_plans[0])
+            )
             logger.debug(
                 "Adding {} pushed checksums to index".format(
                     len(pushed_checksums)
@@ -423,7 +494,22 @@ class RemoteLOCAL(RemoteBASE):
             remote.index.update(pushed_checksums)
             remote.index.save()
 
-        return len(plans[0])
+        return len(dir_plans[0]) + len(file_plans[0])
+
+    def _dir_upload(self, func, futures, from_info, to_info, name):
+        for future in as_completed(futures):
+            if future.result():
+                # do not upload this .dir file if any file in this
+                # directory failed to upload
+                logger.debug(
+                    "failed to upload full contents of '{}', "
+                    "aborting .dir file upload".format(name)
+                )
+                logger.error(
+                    "failed to upload '{}' to '{}'".format(from_info, to_info)
+                )
+                return 1
+        return func(from_info, to_info, name)
 
     def push(
         self,
