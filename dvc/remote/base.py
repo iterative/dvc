@@ -741,7 +741,6 @@ class RemoteBASE(object):
         )
 
     def gc(self, named_caches, jobs=None):
-        logger.debug("named_caches: {} jobs: {}".format(named_caches, jobs))
         used = self.extract_used_local_checksums(named_caches)
 
         if self.scheme != "":
@@ -751,7 +750,12 @@ class RemoteBASE(object):
                 used.update(file_cache[self.scheme])
 
         removed = False
-        for checksum in self.all(jobs, str(self.path_info)):
+        # checksums must be sorted to ensure we always remove .dir files first
+        for checksum in sorted(
+            self.all(jobs, str(self.path_info)),
+            key=self.is_dir_checksum,
+            reverse=True,
+        ):
             if checksum in used:
                 continue
             path_info = self.checksum_to_path_info(checksum)
@@ -761,7 +765,7 @@ class RemoteBASE(object):
             self.remove(path_info)
             removed = True
         if removed:
-            self.index.save()
+            self.index.invalidate()
         return removed
 
     def is_protected(self, path_info):
