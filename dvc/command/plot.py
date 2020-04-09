@@ -96,8 +96,8 @@ def add_parser(subparsers, parent_parser):
     )
     plot_diff_parser.add_argument(
         "revisions",
-        nargs="+",
-        default=[],
+        nargs="*",
+        default=None,
         help=("Git revisions to plot from"),
     )
     plot_diff_parser.set_defaults(func=CmdPlotDiff)

@@ -81,7 +81,6 @@ def _load_from_revisions(repo, datafile, revisions, default_plot=False):
     if len(revisions) == 0:
         # TODO implement status for file
         if repo.scm.is_dirty():
-            logger.warning("Repo is dirty, extending with HEAD data")
             data.extend(
                 _load_from_revision(repo, datafile, "HEAD", default_plot)
             )
