@@ -4,6 +4,7 @@ import os
 import random
 import re
 import string
+from json import JSONDecodeError
 
 from funcy import cached_property
 
@@ -46,6 +47,18 @@ def _prepare_div(vega_dict):
     )
 
 
+def _embed(content):
+    if "<html>" in content:
+        return content
+
+    try:
+        vega_dict = json.loads(content)
+    except JSONDecodeError:
+        # TODO
+        raise DvcException("Not html, nor json")
+    return PAGE_HTML.format(divs=_prepare_div([vega_dict]))
+
+
 class Template:
     INDENT = 4
     SEPARATORS = (",", ": ")
@@ -85,7 +98,7 @@ class Template:
 
     @staticmethod
     def get_data_placeholders(template_path):
-        regex = re.compile('"<DVC_METRIC_DATA.*>"')
+        regex = re.compile('"<DVC_METRIC_DATA[^>"]*>"')
         with open(template_path, "r") as fobj:
             template_content = fobj.read()
         return regex.findall(template_content)
@@ -102,10 +115,10 @@ class Template:
     def get_datafile(placeholder_string):
         return (
             placeholder_string.replace("<", "")
-            .replace('"', "")
             .replace(">", "")
+            .replace('"', "")
             .replace("DVC_METRIC_DATA", "")
-            .replace("::", "")
+            .replace(",", "")
         )
 
     @staticmethod
@@ -114,15 +127,6 @@ class Template:
 
         with open(template_path, "r") as fobj:
             result_content = fobj.read()
-
-        template_placeholders = Template.get_data_placeholders(template_path)
-        if priority_datafile and len(template_placeholders) > 1:
-            raise DvcException("Dont know which datafile to ovveride")  # Todo
-
-        def dump(data):
-            return json.dumps(
-                data, indent=Template.INDENT, separators=Template.SEPARATORS
-            )
 
         for placeholder in Template.get_data_placeholders(template_path):
             file = Template.get_datafile(placeholder)
@@ -139,12 +143,8 @@ class Template:
                 ),
             )
 
-        # result_content = template_str.replace(
-        #     matches[0],
-        #     json.dumps(
-        #         data, indent=Template.INDENT, separators=Template.SEPARATORS
-        #     ),
-        # )
+        result_content = _embed(result_content)
+
         with open(result_path, "w") as fobj:
             fobj.write(result_content)
         return result_path
@@ -185,12 +185,31 @@ class DefaultConfusionTemplate(Template):
 
 
 class PlotTemplates:
+    # TODO os.path? check whether it should not be repo.tree
     TEMPLATES_DIR = "plot"
     TEMPLATES = [DefaultLinearTemplate, DefaultConfusionTemplate]
 
     @cached_property
     def templates_dir(self):
         return os.path.join(self.dvc_dir, self.TEMPLATES_DIR)
+
+    @cached_property
+    def default_template(self):
+        return os.path.join(self.templates_dir, "default.dvct")
+
+    def get_template(self, path):
+        t_path = os.path.join(self.templates_dir, path)
+        if os.path.exists(t_path):
+            return t_path
+        else:
+            regex = re.compile(t_path + ".*")
+            for root, d, fs in os.walk(self.templates_dir):
+                for f in fs:
+                    path = os.path.join(root, f)
+                    if regex.findall(path):
+                        return path
+
+        raise DvcException("Template not found")
 
     def __init__(self, dvc_dir):
         self.dvc_dir = dvc_dir

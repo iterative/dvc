@@ -9,6 +9,11 @@ from funcy import first
 
 from dvc.compat import fspath
 from dvc.exceptions import DvcException
+from dvc.plot import DefaultLinearTemplate
+
+
+def _remove_whitespace(value):
+    return value.replace(" ", "").replace("\n", "")
 
 
 def _run_with_metric(tmp_dir, metric_filename, commit=None, tag=None):
@@ -54,10 +59,10 @@ def test_plot_csv_one_column(tmp_dir, scm, dvc):
             {"y": "2", "x": 0, "rev": "current"},
             {"y": "3", "x": 1, "rev": "current"},
         ],
-        indent=4,
-        separators=(",", ": "),
     )
-    assert vega_data in first(page_content.body.script.contents)
+    assert _remove_whitespace(vega_data) in _remove_whitespace(
+        first(page_content.body.script.contents)
+    )
 
 
 def test_plot_csv_multiple_columns(tmp_dir, scm, dvc):
@@ -73,10 +78,10 @@ def test_plot_csv_multiple_columns(tmp_dir, scm, dvc):
             {"y": "2", "x": 1, "rev": "current"},
             {"y": "3", "x": 2, "rev": "current"},
         ],
-        indent=4,
-        separators=(",", ": "),
     )
-    assert vega_data in first(page_content.body.script.contents)
+    assert _remove_whitespace(vega_data) in _remove_whitespace(
+        first(page_content.body.script.contents)
+    )
 
 
 def test_plot_json_single_val(tmp_dir, scm, dvc):
@@ -92,10 +97,10 @@ def test_plot_json_single_val(tmp_dir, scm, dvc):
             {"y": 2, "x": 0, "rev": "current"},
             {"y": 3, "x": 1, "rev": "current"},
         ],
-        indent=4,
-        separators=(",", ": "),
     )
-    assert vega_data in first(page_content.body.script.contents)
+    assert _remove_whitespace(vega_data) in _remove_whitespace(
+        first(page_content.body.script.contents)
+    )
 
 
 def test_plot_json_multiple_val(tmp_dir, scm, dvc):
@@ -111,54 +116,32 @@ def test_plot_json_multiple_val(tmp_dir, scm, dvc):
             {"y": 2, "x": 0, "rev": "current"},
             {"y": 3, "x": 1, "rev": "current"},
         ],
-        indent=4,
-        separators=(",", ": "),
     )
-    assert vega_data in first(page_content.body.script.contents)
+    assert _remove_whitespace(vega_data) in _remove_whitespace(
+        first(page_content.body.script.contents)
+    )
 
 
-@pytest.mark.skip
 def test_plot_confusion(tmp_dir, dvc):
     confusion_matrix = [
         {"predicted": "B", "actual": "A"},
         {"predicted": "A", "actual": "A"},
     ]
-    _run_with_metric(tmp_dir, confusion_matrix, "metric.json", "first run")
-    template_content = "<DVC_PLOT::metric.json::cf.json>"
-    (tmp_dir / "template.dvct").write_text(template_content)
+    _write_json(tmp_dir, confusion_matrix, "metric.json")
+    _run_with_metric(tmp_dir, "metric.json", "first run")
 
-    result = dvc.plot_template("template.dvct")
+    result = dvc.plot(datafile="metric.json", template="cf")
 
     page_content = BeautifulSoup((tmp_dir / result).read_text())
-    assert json.dumps(
-        {
-            "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
-            "data": {
-                "values": [
-                    {"predicted": "B", "actual": "A", "rev": "current"},
-                    {"predicted": "A", "actual": "A", "rev": "current"},
-                ]
-            },
-            "mark": "rect",
-            "encoding": {
-                "x": {
-                    "field": "predicted",
-                    "type": "nominal",
-                    "sort": "ascending",
-                },
-                "y": {
-                    "field": "actual",
-                    "type": "nominal",
-                    "sort": "ascending",
-                },
-                "color": {"aggregate": "count", "type": "quantitative"},
-                "facet": {"field": "rev", "type": "nominal"},
-            },
-            "title": "metric.json",
-        },
-        indent=4,
-        separators=(",", ": "),
-    ) in first(page_content.body.script.contents)
+    vega_data = json.dumps(
+        [
+            {"predicted": "B", "actual": "A", "rev": "current"},
+            {"predicted": "A", "actual": "A", "rev": "current"},
+        ],
+    )
+    assert _remove_whitespace(vega_data) in _remove_whitespace(
+        first(page_content.body.script.contents)
+    )
 
 
 def test_plot_multiple_revs(tmp_dir, scm, dvc):
@@ -176,7 +159,7 @@ def test_plot_multiple_revs(tmp_dir, scm, dvc):
 
     dvc.plot("metric.json", revisions=["HEAD", "v2", "v1"])
 
-    content = BeautifulSoup((tmp_dir / "default.html").read_text())
+    page_content = BeautifulSoup((tmp_dir / "default.html").read_text())
     vega_data = json.dumps(
         [
             {"y": 5, "x": 0, "rev": "HEAD"},
@@ -189,7 +172,9 @@ def test_plot_multiple_revs(tmp_dir, scm, dvc):
         indent=4,
         separators=(",", ": "),
     )
-    assert vega_data in first(content.body.script.contents)
+    assert _remove_whitespace(vega_data) in _remove_whitespace(
+        first(page_content.body.script.contents)
+    )
 
 
 def test_plot_even_if_metric_missing(tmp_dir, scm, dvc, caplog):
@@ -211,10 +196,10 @@ def test_plot_even_if_metric_missing(tmp_dir, scm, dvc, caplog):
     page_content = BeautifulSoup((tmp_dir / result).read_text())
     vega_data = json.dumps(
         [{"y": 2, "x": 0, "rev": "v2"}, {"y": 3, "x": 1, "rev": "v2"}],
-        indent=4,
-        separators=(",", ": "),
     )
-    assert vega_data in first(page_content.body.script.contents)
+    assert _remove_whitespace(vega_data) in _remove_whitespace(
+        first(page_content.body.script.contents)
+    )
 
 
 def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc):
@@ -251,10 +236,10 @@ def test_custom_template(tmp_dir, scm, dvc):
             {"a": 1, "b": 2, "rev": "current"},
             {"a": 2, "b": 3, "rev": "current"},
         ],
-        indent=4,
-        separators=(",", ": "),
     )
-    assert vega_data in first(page_content.body.script.contents)
+    assert _remove_whitespace(vega_data) in _remove_whitespace(
+        first(page_content.body.script.contents)
+    )
 
 
 def _replace(path, src, dst):
@@ -269,7 +254,7 @@ def test_custom_template_with_specified_data(tmp_dir, scm, dvc):
     _replace(
         tmp_dir / "newtemplate.dvct",
         "DVC_METRIC_DATA",
-        "DVC_METRIC_DATA::metric.json",
+        "DVC_METRIC_DATA,metric.json",
     )
 
     metric = [{"a": 1, "b": 2}, {"a": 2, "b": 3}]
@@ -284,15 +269,60 @@ def test_custom_template_with_specified_data(tmp_dir, scm, dvc):
             {"a": 1, "b": 2, "rev": "current"},
             {"a": 2, "b": 3, "rev": "current"},
         ],
-        indent=4,
-        separators=(",", ": "),
     )
-    assert vega_data in first(page_content.body.script.contents)
+    assert _remove_whitespace(vega_data) in _remove_whitespace(
+        first(page_content.body.script.contents)
+    )
 
 
-# TODO
-# test for pure json template
-# def test_plot_in_html_file(tmp_dir):
-# def test_plot_override_data_file
-# def test_plot_custom_template_file / test_
-# def test_plot_multiple_plots
+def test_plot_override_specified_data_source(tmp_dir, scm, dvc):
+    shutil.copy(
+        fspath(tmp_dir / ".dvc" / "plot" / "default.dvct"),
+        fspath(tmp_dir / "newtemplate.dvct"),
+    )
+    _replace(
+        tmp_dir / "newtemplate.dvct",
+        "DVC_METRIC_DATA",
+        "DVC_METRIC_DATA,metric.json",
+    )
+
+    metric = [{"a": 1, "b": 2}, {"a": 2, "b": 3}]
+    _write_json(tmp_dir, metric, "metric2.json")
+    _run_with_metric(tmp_dir, "metric2.json", "init", "v1")
+
+    result = dvc.plot(datafile="metric2.json", template="newtemplate.dvct")
+
+    page_content = BeautifulSoup((tmp_dir / result).read_text())
+    vega_data = json.dumps(
+        [
+            {"a": 1, "b": 2, "rev": "current"},
+            {"a": 2, "b": 3, "rev": "current"},
+        ],
+    )
+    assert _remove_whitespace(vega_data) in _remove_whitespace(
+        first(page_content.body.script.contents)
+    )
+
+
+def test_should_embed_vega_json_template(tmp_dir, scm, dvc):
+    template = DefaultLinearTemplate.DEFAULT_CONTENT
+    template["data"] = {"values": "<DVC_METRIC_DATA>"}
+
+    (tmp_dir / "template.dvct").write_text(json.dumps(template))
+
+    metric = [{"x": 1, "y": 2}, {"x": 2, "y": 3}]
+    _write_json(tmp_dir, metric, "metric.json")
+    _run_with_metric(tmp_dir, "metric.json", "init", "v1")
+
+    result = dvc.plot("metric.json", "template.dvct")
+
+    page_content = BeautifulSoup((tmp_dir / result).read_text())
+    vega_data = json.dumps(
+        [
+            {"x": 1, "y": 2, "rev": "current"},
+            {"x": 2, "y": 3, "rev": "current"},
+        ],
+    )
+    assert _remove_whitespace(vega_data) in _remove_whitespace(
+        first(page_content.body.script.contents)
+    )
