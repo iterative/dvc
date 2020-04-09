@@ -12,7 +12,9 @@ class CmdPipelineShow(CmdBase):
     def _show(self, target, commands, outs, locked):
         import networkx
 
-        stage = self.repo._get_stage_from(self.repo.pipeline_stages, name=target, path=target)
+        stage = self.repo._get_stage_from(
+            self.repo.pipeline_stages, name=target, path=target
+        )
         G = self.repo.pipeline_graph
         stages = networkx.dfs_postorder_nodes(G, stage)
 
@@ -35,7 +37,9 @@ class CmdPipelineShow(CmdBase):
         from dvc.stage import Stage
         from dvc.repo.graph import get_pipeline
 
-        target_stage = self.repo._get_stage_from(self.repo.pipeline_stages, name=target, path=target)
+        target_stage = self.repo._get_stage_from(
+            self.repo.pipeline_stages, name=target, path=target
+        )
         G = get_pipeline(self.repo.pipelines, target_stage)
 
         nodes = set()
