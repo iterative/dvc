@@ -118,7 +118,9 @@ class RemoteBASE(object):
             index_name = hashlib.sha256(url.encode("utf-8")).hexdigest()
         else:
             index_name = None
-        self.index = RemoteIndex(self.repo, index_name)
+        self.index = RemoteIndex(
+            self.repo, index_name, self.CHECKSUM_DIR_SUFFIX
+        )
 
     @classmethod
     def get_missing_deps(cls):
