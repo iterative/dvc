@@ -53,6 +53,7 @@ class CmdRun(CmdBase):
                 outs_persist=self.args.outs_persist,
                 outs_persist_no_cache=self.args.outs_persist_no_cache,
                 always_changed=self.args.always_changed,
+                name=self.args.name,
             )
         except DvcException:
             logger.exception("failed to run command")
@@ -98,6 +99,7 @@ def add_parser(subparsers, parent_parser):
         default=[],
         help="Declare dependencies for reproducible cmd.",
     )
+    run_parser.add_argument("-n", "--name", help="Specify name of the stage.")
     run_parser.add_argument(
         "-o",
         "--outs",

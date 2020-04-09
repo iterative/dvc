@@ -172,7 +172,7 @@ class Repo(object):
 
         self.scm.ignore_list(flist)
 
-    def check_modified_graph(self, new_stages):
+    def check_modified_graph(self, new_stages, old_stages=None):
         """Generate graph including the new stage to check for errors"""
         # Building graph might be costly for the ones with many DVC-files,
         # so we provide this undocumented hack to skip it. See [1] for
@@ -187,7 +187,7 @@ class Repo(object):
         #
         # [1] https://github.com/iterative/dvc/issues/2671
         if not getattr(self, "_skip_graph_checks", False):
-            self._collect_graph(self.stages + new_stages)
+            self._collect_graph((old_stages or self.stages) + new_stages)
 
     def collect(self, target, with_deps=False, recursive=False, graph=None):
         import networkx as nx
@@ -210,6 +210,78 @@ class Repo(object):
 
         pipeline = get_pipeline(get_pipelines(graph or self.graph), stage)
         return list(nx.dfs_postorder_nodes(pipeline, stage))
+
+    def _collect_for_pipelines(
+        self, target, with_deps=False, recursive=False, graph=None
+    ):
+        # TODO: Refactor `collect`
+        import networkx as nx
+        from dvc.stage import Stage
+
+        name = target
+        if not target:
+            return list(graph) if graph else self.stages
+
+        target = os.path.abspath(target)
+
+        if recursive and os.path.isdir(target):
+            stages = nx.dfs_postorder_nodes(graph or self.pipeline_graph)
+            return [stage for stage in stages if path_isin(stage.path, target)]
+
+        stage = self._get_stage_from(
+            self.pipeline_stages, name=name, path=target
+        )
+        # Optimization: do not collect the graph for a specific target
+        if not with_deps:
+            return [stage]
+
+        pipeline = get_pipeline(
+            get_pipelines(graph or self.pipeline_graph), stage
+        )
+        return list(nx.dfs_postorder_nodes(pipeline, stage))
+
+    def _get_stage_from(
+        self, stages=None, path=None, name=None, priority="name"
+    ):
+        # HACK: Split this into two: one that reloads a given stage and returns
+        # other one that can return a stage from a given name or path from
+        # `stages`.
+        # ?: Make `pipeline_stages` {name: value} pair?
+        stages = stages or []
+        assert priority in ("name", "path")
+        # prioritize path, then use target
+        found = None
+        for s in stages:
+            if name and getattr(s, "name", None) == name:
+                found = s
+                if priority == "name":
+                    break
+
+            if path and s.path == path:
+                found = s
+                if priority == "path":
+                    break
+
+        from dvc.dvcfile import Dvcfile
+
+        if found:
+            dvcfile = Dvcfile(self, found.path)
+            stages = dvcfile.stages
+            if dvcfile.is_multi_stages:
+                return stages[0]
+            for st in stages:
+                if getattr(st, "name", None) == name:
+                    if priority == "name":
+                        return st
+                    found = st
+
+            for st in stages:
+                if st.path == path:
+                    if priority == "path":
+                        return st
+                    found = st
+
+        return found
 
     def collect_granular(self, target, *args, **kwargs):
         from dvc.stage import Stage
@@ -396,7 +468,42 @@ class Repo(object):
 
     @cached_property
     def pipelines(self):
-        return get_pipelines(self.graph)
+        return get_pipelines(self.pipeline_graph)
+
+    @cached_property
+    def pipeline_stages(self):
+        # Remove code duplication
+        # It's okay to do it for each `stages` and `pipeline_stages`.
+        # Because, only one of them will be used at a given time?
+        from dvc.dvcfile import Dvcfile
+        from dvc.stage import Stage
+
+        stages = []
+        outs = set()
+
+        for root, dirs, files in self.tree.walk(self.root_dir):
+            for fname in files:
+                path = os.path.join(root, fname)
+                if not Stage.is_valid_filename(path) or path.endswith(
+                    ".pipeline" + Stage.STAGE_FILE_SUFFIX
+                ):
+                    continue
+                dvcfile = Dvcfile(self, path)
+                stgs = dvcfile.stages
+                stages.extend(stgs)
+
+                for stage in stgs:
+                    for out in stage.outs:
+                        if out.scheme == "local":
+                            outs.add(out.fspath)
+
+            dirs[:] = [d for d in dirs if os.path.join(root, d) not in outs]
+
+        return stages
+
+    @cached_property
+    def pipeline_graph(self):
+        return self._collect_graph(self.pipeline_stages)
 
     @cached_property
     def stages(self):

@@ -11,10 +11,9 @@ logger = logging.getLogger(__name__)
 class CmdPipelineShow(CmdBase):
     def _show(self, target, commands, outs, locked):
         import networkx
-        from dvc.stage import Stage
 
-        stage = Stage.load(self.repo, target)
-        G = self.repo.graph
+        stage = self.repo._get_stage_from(self.repo.pipeline_stages, name=target, path=target)
+        G = self.repo.pipeline_graph
         stages = networkx.dfs_postorder_nodes(G, stage)
 
         if locked:
@@ -36,7 +35,7 @@ class CmdPipelineShow(CmdBase):
         from dvc.stage import Stage
         from dvc.repo.graph import get_pipeline
 
-        target_stage = Stage.load(self.repo, target)
+        target_stage = self.repo._get_stage_from(self.repo.pipeline_stages, name=target, path=target)
         G = get_pipeline(self.repo.pipelines, target_stage)
 
         nodes = set()

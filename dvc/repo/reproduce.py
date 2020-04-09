@@ -69,14 +69,16 @@ def reproduce(
     if not interactive:
         kwargs["interactive"] = self.config["core"].get("interactive", False)
 
-    active_graph = _get_active_graph(self.graph)
+    active_graph = _get_active_graph(self.pipeline_graph)
     active_pipelines = get_pipelines(active_graph)
 
     if pipeline or all_pipelines:
         if all_pipelines:
             pipelines = active_pipelines
         else:
-            stage = Stage.load(self, target)
+            stage = self._get_stage_from(
+                self.pipeline_stages, name=target, path=target
+            )
             pipelines = [get_pipeline(active_pipelines, stage)]
 
         targets = []
@@ -85,7 +87,9 @@ def reproduce(
                 if pipeline.in_degree(stage) == 0:
                     targets.append(stage)
     else:
-        targets = self.collect(target, recursive=recursive, graph=active_graph)
+        targets = self._collect_for_pipelines(
+            target, recursive=recursive, graph=active_graph
+        )
 
     ret = []
     for target in targets:
