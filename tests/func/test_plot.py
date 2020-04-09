@@ -130,7 +130,7 @@ def test_plot_confusion(tmp_dir, dvc):
     _write_json(tmp_dir, confusion_matrix, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "first run")
 
-    result = dvc.plot(datafile="metric.json", template="cf")
+    result = dvc.plot(datafile="metric.json", template="confusion")
 
     page_content = BeautifulSoup((tmp_dir / result).read_text())
     vega_data = json.dumps(

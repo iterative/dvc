@@ -166,7 +166,7 @@ class DefaultLinearTemplate(Template):
 
 
 class DefaultConfusionTemplate(Template):
-    TEMPLATE_NAME = "cf"
+    TEMPLATE_NAME = "confusion_matrix"
     DEFAULT_CONTENT = {
         "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
         "data": {"values": Template.METRIC_DATA_STRING},
