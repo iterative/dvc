@@ -107,7 +107,7 @@ class Git(Base):
             env[ld_key] = ""
 
         try:
-            with TqdmGit(desc="Cloning") as pbar:
+            with TqdmGit(desc="Cloning", unit="obj") as pbar:
                 tmp_repo = git.Repo.clone_from(
                     url,
                     to_path,
