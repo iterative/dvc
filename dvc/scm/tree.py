@@ -47,7 +47,7 @@ class WorkingTree(BaseTree):
 
     def exists(self, path):
         """Test whether a path exists."""
-        return os.path.exists(path)
+        return os.path.lexists(path)
 
     def isdir(self, path):
         """Return true if the pathname refers to an existing directory."""

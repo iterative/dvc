@@ -114,21 +114,9 @@ class CmdMetricsRemove(CmdBase):
 
 
 def _show_diff(diff):
-    from texttable import Texttable
+    from dvc.utils.diff import table
 
-    if not diff:
-        return ""
-
-    table = Texttable()
-
-    # disable automatic formatting
-    table.set_cols_dtype(["t", "t", "t", "t"])
-
-    # remove borders to make it easier for users to copy stuff
-    table.set_chars(("", "", "", ""))
-    table.set_deco(0)
-
-    rows = [["Path", "Metric", "Value", "Change"]]
+    rows = []
     for fname, mdiff in diff.items():
         for metric, change in mdiff.items():
             rows.append(
@@ -139,8 +127,8 @@ def _show_diff(diff):
                     change.get("diff", "diff not supported"),
                 ]
             )
-    table.add_rows(rows)
-    return table.draw()
+
+    return table(["Path", "Metric", "Value", "Change"], rows)
 
 
 class CmdMetricsDiff(CmdBase):
@@ -160,7 +148,9 @@ class CmdMetricsDiff(CmdBase):
 
                 logger.info(json.dumps(diff))
             else:
-                logger.info(_show_diff(diff))
+                table = _show_diff(diff)
+                if table:
+                    logger.info(table)
 
         except DvcException:
             logger.exception("failed to show metrics diff")

@@ -57,27 +57,34 @@ def test_dumpd_without_info(dvc):
     }
 
 
-def test_get_info_nonexistent_file(dvc):
+def test_read_params_nonexistent_file(dvc):
     dep = DependencyPARAMS(Stage(dvc), None, ["foo"])
-    assert dep._get_info() == {}
+    assert dep.read_params() == {}
 
 
-def test_get_info_unsupported_format(tmp_dir, dvc):
+def test_read_params_unsupported_format(tmp_dir, dvc):
     tmp_dir.gen("params.yaml", b"\0\1\2\3\4\5\6\7")
     dep = DependencyPARAMS(Stage(dvc), None, ["foo"])
     with pytest.raises(BadParamFileError):
-        dep._get_info()
+        dep.read_params()
 
 
-def test_get_info_nested(tmp_dir, dvc):
+def test_read_params_nested(tmp_dir, dvc):
     tmp_dir.gen(
         "params.yaml", yaml.dump({"some": {"path": {"foo": ["val1", "val2"]}}})
     )
     dep = DependencyPARAMS(Stage(dvc), None, ["some.path.foo"])
-    assert dep._get_info() == {"some.path.foo": ["val1", "val2"]}
+    assert dep.read_params() == {"some.path.foo": ["val1", "val2"]}
 
 
-def test_save_info_missing_params(dvc):
+def test_save_info_missing_config(dvc):
+    dep = DependencyPARAMS(Stage(dvc), None, ["foo"])
+    with pytest.raises(MissingParamsError):
+        dep.save_info()
+
+
+def test_save_info_missing_param(tmp_dir, dvc):
+    tmp_dir.gen("params.yaml", "bar: baz")
     dep = DependencyPARAMS(Stage(dvc), None, ["foo"])
     with pytest.raises(MissingParamsError):
         dep.save_info()

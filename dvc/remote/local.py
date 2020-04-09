@@ -76,10 +76,9 @@ class RemoteLOCAL(RemoteBASE):
 
         return self.checksum_to_path_info(md5).url
 
-    @staticmethod
-    def exists(path_info):
+    def exists(self, path_info):
         assert path_info.scheme == "local"
-        return os.path.lexists(fspath_py35(path_info))
+        return self.repo.tree.exists(fspath_py35(path_info))
 
     def makedirs(self, path_info):
         makedirs(path_info, exist_ok=True, mode=self._dir_mode)

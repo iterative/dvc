@@ -52,7 +52,7 @@ class DependencyPARAMS(DependencyLOCAL):
             return status
 
         status = defaultdict(dict)
-        info = self._get_info()
+        info = self.read_params()
         for param in self.params:
             if param not in info.keys():
                 st = "deleted"
@@ -74,11 +74,11 @@ class DependencyPARAMS(DependencyLOCAL):
             self.PARAM_PARAMS: self.info or self.params,
         }
 
-    def _get_info(self):
+    def read_params(self):
         if not self.exists:
             return {}
 
-        with open(fspath_py35(self.path_info), "r") as fobj:
+        with self.repo.tree.open(fspath_py35(self.path_info), "r") as fobj:
             try:
                 config = yaml.safe_load(fobj)
             except yaml.YAMLError as exc:
@@ -88,11 +88,14 @@ class DependencyPARAMS(DependencyLOCAL):
 
         ret = {}
         for param in self.params:
-            ret[param] = dpath.util.get(config, param, separator=".")
+            try:
+                ret[param] = dpath.util.get(config, param, separator=".")
+            except KeyError:
+                pass
         return ret
 
     def save_info(self):
-        info = self._get_info()
+        info = self.read_params()
 
         missing_params = set(self.params) - set(info.keys())
         if missing_params:
