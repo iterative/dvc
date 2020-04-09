@@ -83,3 +83,20 @@ def test_params_diff_show_json(dvc, mocker, caplog):
     with caplog.at_level(logging.INFO, logger="dvc"):
         assert cmd.run() == 0
         assert '{"params.yaml": {"a": "b"}}\n' in caplog.text
+
+
+def test_params_diff_sorted():
+    assert _show_diff(
+        {
+            "params.yaml": {
+                "x.b": {"old": 5, "new": 6},
+                "a.d.e": {"old": 3, "new": 4},
+                "a.b.c": {"old": 1, "new": 2},
+            }
+        }
+    ) == (
+        "   Path       Param   Old   New\n"
+        "params.yaml   a.b.c   1     2  \n"
+        "params.yaml   a.d.e   3     4  \n"
+        "params.yaml   x.b     5     6  "
+    )
