@@ -20,9 +20,9 @@ def _collect_params(repo):
                 configs[dep.path_info] = copy.copy(dep)
                 continue
 
-            existing = set(configs[dep.path_info].params)
-            new = set(dep.params)
-            configs[dep.path_info].params = list(existing.update(new))
+            params = set(configs[dep.path_info].params)
+            params.update(set(dep.params))
+            configs[dep.path_info].params = list(params)
 
     return configs.values()
 
