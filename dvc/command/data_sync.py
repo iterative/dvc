@@ -164,7 +164,7 @@ def add_parser(subparsers, _parent_parser):
         "--drop-index",
         action="store_true",
         default=False,
-        help="Drop local index for the specified remote cache.",
+        help="Drop local index for the specified remote.",
     )
     pull_parser.set_defaults(func=CmdDataPull)
 

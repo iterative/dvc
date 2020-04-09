@@ -501,12 +501,9 @@ class RemoteLOCAL(RemoteBASE):
             if future.result():
                 # do not upload this .dir file if any file in this
                 # directory failed to upload
-                logger.debug(
-                    "failed to upload full contents of '{}', "
-                    "aborting .dir file upload".format(name)
-                )
                 logger.error(
-                    "failed to upload '{}' to '{}'".format(from_info, to_info)
+                    "one or more files failed while uploading "
+                    "'{}' to '{}'".format(from_info, to_info)
                 )
                 return 1
         return func(from_info, to_info, name)
