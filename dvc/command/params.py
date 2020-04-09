@@ -1,6 +1,8 @@
 import argparse
 import logging
 
+from collections import OrderedDict
+
 from dvc.command.base import append_doc_link
 from dvc.command.base import CmdBase
 from dvc.command.base import fix_subparsers
@@ -14,8 +16,9 @@ def _show_diff(diff):
     from dvc.utils.diff import table
 
     rows = []
-    for fname, mdiff in diff.items():
-        for param, change in mdiff.items():
+    for fname, pdiff in diff.items():
+        sorted_pdiff = OrderedDict(sorted(pdiff.items()))
+        for param, change in sorted_pdiff.items():
             rows.append([fname, param, change["old"], change["new"]])
 
     return table(["Path", "Param", "Old", "New"], rows)
