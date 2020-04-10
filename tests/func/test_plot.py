@@ -2,6 +2,7 @@ import csv
 import json
 import logging
 import shutil
+from collections import OrderedDict
 
 import pytest
 from bs4 import BeautifulSoup
@@ -59,6 +60,7 @@ def test_plot_csv_one_column(tmp_dir, scm, dvc):
             {"y": "2", "x": 0, "rev": "current"},
             {"y": "3", "x": 1, "rev": "current"},
         ],
+        sort_keys=True,
     )
     assert _remove_whitespace(vega_data) in _remove_whitespace(
         first(page_content.body.script.contents)
@@ -66,7 +68,10 @@ def test_plot_csv_one_column(tmp_dir, scm, dvc):
 
 
 def test_plot_csv_multiple_columns(tmp_dir, scm, dvc):
-    metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
+    metric = [
+        OrderedDict([("first_val", 100), ("val", 2)]),
+        OrderedDict([("first_val", 200), ("val", 3)]),
+    ]
     _write_csv(metric, "metric.csv")
     _run_with_metric(tmp_dir, metric_filename="metric.csv")
 
@@ -78,6 +83,7 @@ def test_plot_csv_multiple_columns(tmp_dir, scm, dvc):
             {"y": "2", "x": 1, "rev": "current"},
             {"y": "3", "x": 2, "rev": "current"},
         ],
+        sort_keys=True,
     )
     assert _remove_whitespace(vega_data) in _remove_whitespace(
         first(page_content.body.script.contents)
@@ -97,14 +103,22 @@ def test_plot_json_single_val(tmp_dir, scm, dvc):
             {"y": 2, "x": 0, "rev": "current"},
             {"y": 3, "x": 1, "rev": "current"},
         ],
+        sort_keys=True,
     )
     assert _remove_whitespace(vega_data) in _remove_whitespace(
         first(page_content.body.script.contents)
     )
 
 
+@pytest.mark.skip(
+    reason="Consider whether we want to support this case, "
+    "problems with dict keys order for python 3.5"
+)
 def test_plot_json_multiple_val(tmp_dir, scm, dvc):
-    metric = [{"first_val": 100, "val": 2}, {"first_val": 100, "val": 3}]
+    metric = [
+        OrderedDict([("first_val", 100), ("val", 2)]),
+        OrderedDict([("first_val", 200), ("val", 3)]),
+    ]
     _write_json(tmp_dir, metric, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "first run")
 
@@ -116,6 +130,7 @@ def test_plot_json_multiple_val(tmp_dir, scm, dvc):
             {"y": 2, "x": 0, "rev": "current"},
             {"y": 3, "x": 1, "rev": "current"},
         ],
+        sort_keys=True,
     )
     assert _remove_whitespace(vega_data) in _remove_whitespace(
         first(page_content.body.script.contents)
@@ -138,6 +153,7 @@ def test_plot_confusion(tmp_dir, dvc):
             {"predicted": "B", "actual": "A", "rev": "current"},
             {"predicted": "A", "actual": "A", "rev": "current"},
         ],
+        sort_keys=True,
     )
     assert _remove_whitespace(vega_data) in _remove_whitespace(
         first(page_content.body.script.contents)
@@ -145,6 +161,10 @@ def test_plot_confusion(tmp_dir, dvc):
 
 
 def test_plot_multiple_revs(tmp_dir, scm, dvc):
+    shutil.copy(
+        fspath(tmp_dir / ".dvc" / "plot" / "default.dvct"), "template.dvct"
+    )
+
     metric_1 = [{"x": 1, "y": 2}, {"x": 2, "y": 3}]
     _write_json(tmp_dir, metric_1, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "init", "v1")
@@ -157,20 +177,24 @@ def test_plot_multiple_revs(tmp_dir, scm, dvc):
     _write_json(tmp_dir, metric_3, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "third")
 
-    result = dvc.plot("metric.json", revisions=["HEAD", "v2", "v1"])
+    result = dvc.plot(
+        "metric.json",
+        template="template.dvct",
+        revisions=["HEAD", "v2", "v1"],
+        file="result.html",
+    )
 
     page_content = BeautifulSoup((tmp_dir / result).read_text())
     vega_data = json.dumps(
         [
-            {"y": 5, "x": 0, "rev": "HEAD"},
-            {"y": 6, "x": 1, "rev": "HEAD"},
-            {"y": 3, "x": 0, "rev": "v2"},
-            {"y": 5, "x": 1, "rev": "v2"},
-            {"y": 2, "x": 0, "rev": "v1"},
-            {"y": 3, "x": 1, "rev": "v1"},
+            {"y": 5, "x": 1, "rev": "HEAD"},
+            {"y": 6, "x": 2, "rev": "HEAD"},
+            {"y": 3, "x": 1, "rev": "v2"},
+            {"y": 5, "x": 2, "rev": "v2"},
+            {"y": 2, "x": 1, "rev": "v1"},
+            {"y": 3, "x": 2, "rev": "v1"},
         ],
-        indent=4,
-        separators=(",", ": "),
+        sort_keys=True,
     )
     assert _remove_whitespace(vega_data) in _remove_whitespace(
         first(page_content.body.script.contents)
@@ -181,7 +205,7 @@ def test_plot_even_if_metric_missing(tmp_dir, scm, dvc, caplog):
     tmp_dir.scm_gen("some_file", "content", commit="there is no metric")
     scm.tag("v1")
 
-    metric = [{"x": 1, "y": 2}, {"x": 2, "y": 3}]
+    metric = [{"y": 2}, {"y": 3}]
     _write_json(tmp_dir, metric, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "there is metric", "v2")
 
@@ -196,6 +220,7 @@ def test_plot_even_if_metric_missing(tmp_dir, scm, dvc, caplog):
     page_content = BeautifulSoup((tmp_dir / result).read_text())
     vega_data = json.dumps(
         [{"y": 2, "x": 0, "rev": "v2"}, {"y": 3, "x": 1, "rev": "v2"}],
+        sort_keys=True,
     )
     assert _remove_whitespace(vega_data) in _remove_whitespace(
         first(page_content.body.script.contents)
@@ -236,6 +261,7 @@ def test_custom_template(tmp_dir, scm, dvc):
             {"a": 1, "b": 2, "rev": "current"},
             {"a": 2, "b": 3, "rev": "current"},
         ],
+        sort_keys=True,
     )
     assert _remove_whitespace(vega_data) in _remove_whitespace(
         first(page_content.body.script.contents)
@@ -269,6 +295,7 @@ def test_custom_template_with_specified_data(tmp_dir, scm, dvc):
             {"a": 1, "b": 2, "rev": "current"},
             {"a": 2, "b": 3, "rev": "current"},
         ],
+        sort_keys=True,
     )
     assert _remove_whitespace(vega_data) in _remove_whitespace(
         first(page_content.body.script.contents)
@@ -298,6 +325,7 @@ def test_plot_override_specified_data_source(tmp_dir, scm, dvc):
             {"a": 1, "b": 2, "rev": "current"},
             {"a": 2, "b": 3, "rev": "current"},
         ],
+        sort_keys=True,
     )
     assert _remove_whitespace(vega_data) in _remove_whitespace(
         first(page_content.body.script.contents)

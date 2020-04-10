@@ -24,6 +24,9 @@ def _load_from_tree(tree, datafile, default_plot=False):
     elif datafile.endswith(".csv"):
         data = _parse_csv(datafile, default_plot, tree)
 
+    else:
+        raise DvcException("Could not parse")
+
     return data
 
 

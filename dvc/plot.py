@@ -42,7 +42,9 @@ def _prepare_div(vega_dict):
     id = "".join(random.sample(string.ascii_lowercase, 8))
     return DIV_HTML.format(
         id=str(id),
-        vega_json=json.dumps(vega_dict, indent=4, separators=(",", ": ")),
+        vega_json=json.dumps(
+            vega_dict, indent=4, separators=(",", ": "), sort_keys=True
+        ),
     )
 
 
@@ -128,6 +130,7 @@ class Template:
                     to_dump,
                     indent=Template.INDENT,
                     separators=Template.SEPARATORS,
+                    sort_keys=True,
                 ),
             )
 
