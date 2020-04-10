@@ -9,8 +9,8 @@ from bs4 import BeautifulSoup
 from funcy import first
 
 from dvc.compat import fspath
-from dvc.exceptions import DvcException
 from dvc.plot import DefaultLinearTemplate
+from dvc.repo.plot import NoMetricsInHistoryError
 
 
 def _remove_whitespace(value):
@@ -237,8 +237,7 @@ def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc):
     )
     scm.tag("v2")
 
-    # TODO create exception
-    with pytest.raises(DvcException):
+    with pytest.raises(NoMetricsInHistoryError):
         dvc.plot("metric.json", revisions=["v2", "v1"])
 
 

@@ -12,11 +12,29 @@ from dvc.repo import locked
 logger = logging.getLogger(__name__)
 
 
+class NoMetricsInHistoryError(DvcException):
+    def __init__(self, path, revisions):
+        super().__init__(
+            "Could not find '{}' on any of the revisions: "
+            "'{}'".format(path, ", ".join(revisions))
+        )
+
+
+class TooManyDataSourcesError(DvcException):
+    def __init__(self, datafile, template_datafiles):
+        super().__init__(
+            "Unable to reason which of possible data sources: '{}' "
+            "should be replaced with '{}'".format(
+                ", ".join(template_datafiles), datafile
+            )
+        )
+
+
 def _all_dict_of_length_one(data):
     return all([isinstance(e, dict) and len(e) == 1 for e in data])
 
 
-# TODO test parsing
+# TODO try to use parsing from metric
 def _load_from_tree(tree, datafile, default_plot=False):
     if datafile.endswith(".json"):
         data = _parse_json(datafile, default_plot, tree)
@@ -81,7 +99,6 @@ def _load_from_revision(repo, datafile, revision=None, default_plot=False):
 def _load_from_revisions(repo, datafile, revisions, default_plot=False):
     data = []
     if len(revisions) == 0:
-        # TODO implement status for file
         if repo.scm.is_dirty():
             data.extend(
                 _load_from_revision(
@@ -109,11 +126,7 @@ def _load_from_revisions(repo, datafile, revisions, default_plot=False):
             )
 
     if not data:
-        raise DvcException(
-            "Target metric: '{}' could not be found at any of '{}'".format(
-                datafile, ", ".join(revisions)
-            )
-        )
+        raise NoMetricsInHistoryError(datafile, revisions)
     return data
 
 
@@ -130,8 +143,6 @@ def plot(repo, datafile=None, template=None, revisions=None, file=None):
         template_path = repo.plot_templates.default_template
     else:
         template_path = _evaluate_templatepath(repo, template)
-        # TODO exception
-        assert template_path.endswith(".dvct")
 
     default_plot = (
         True
@@ -146,8 +157,7 @@ def plot(repo, datafile=None, template=None, revisions=None, file=None):
 
     if datafile:
         if len(template_datafiles) > 1:
-            # TODO
-            raise DvcException("Don't know which datafile to replace")
+            raise TooManyDataSourcesError(datafile, template_datafiles)
         template_datafiles = {datafile}
 
     data = {
