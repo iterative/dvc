@@ -56,7 +56,6 @@ def test_plot_csv_one_column(tmp_dir, scm, dvc):
     page_content = BeautifulSoup((tmp_dir / result).read_text())
     vega_data = json.dumps(
         [
-            # TODO csv reads as strings, what to do with that?
             {"y": "2", "x": 0, "rev": "current"},
             {"y": "3", "x": 1, "rev": "current"},
         ],

@@ -79,27 +79,34 @@ def _load_from_revision(repo, datafile, revision=None, default_plot=False):
 
 
 def _load_from_revisions(repo, datafile, revisions, default_plot=False):
-    # TODO test
     data = []
     if len(revisions) == 0:
         # TODO implement status for file
         if repo.scm.is_dirty():
             data.extend(
-                _load_from_revision(repo, datafile, "HEAD", default_plot)
+                _load_from_revision(
+                    repo, datafile, "HEAD", default_plot=default_plot
+                )
             )
         data.extend(
             _load_from_revision(repo, datafile, default_plot=default_plot)
         )
     elif len(revisions) == 1:
         data.extend(
-            _load_from_revision(repo, datafile, revisions[0], default_plot)
+            _load_from_revision(
+                repo, datafile, revisions[0], default_plot=default_plot
+            )
         )
         data.extend(
             _load_from_revision(repo, datafile, default_plot=default_plot)
         )
     else:
         for rev in revisions:
-            data.extend(_load_from_revision(repo, datafile, rev, default_plot))
+            data.extend(
+                _load_from_revision(
+                    repo, datafile, rev, default_plot=default_plot
+                )
+            )
 
     if not data:
         raise DvcException(
