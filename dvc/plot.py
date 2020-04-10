@@ -190,7 +190,7 @@ class PlotTemplates:
         if os.path.exists(t_path):
             return t_path
         else:
-            regex = re.compile(t_path + ".*")
+            regex = re.compile(re.escape(t_path) + ".*")
             for root, d, fs in os.walk(self.templates_dir):
                 for f in fs:
                     path = os.path.join(root, f)
