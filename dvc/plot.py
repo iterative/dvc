@@ -115,9 +115,17 @@ class Template:
         if not result_path:
             result_path = os.path.basename(template_path) + ".html"
 
+        result_content = Template._fill(template_path, data, priority_datafile)
+
+        with open(result_path, "w") as fobj:
+            fobj.write(result_content)
+
+        return result_path
+
+    @staticmethod
+    def _fill(template_path, data, priority_datafile):
         with open(template_path, "r") as fobj:
             result_content = fobj.read()
-
         for placeholder in Template.get_data_placeholders(template_path):
             file = Template.get_datafile(placeholder)
             if not file or priority_datafile:
@@ -133,10 +141,7 @@ class Template:
                     sort_keys=True,
                 ),
             )
-
-        with open(result_path, "w") as fobj:
-            fobj.write(result_content)
-        return result_path
+        return result_content
 
 
 class DefaultLinearTemplate(Template):
