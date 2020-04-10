@@ -124,6 +124,7 @@ class RemoteIndex(object):
             loaded from and saved to ``.dvc/tmp/index/{name}.idx``.
             If name is not provided (i.e. for local remotes), this index will
             be kept in memory but not saved to disk.
+        dir_suffix: suffix used for naming directory checksums
     """
 
     INDEX_SUFFIX = ".idx"
@@ -204,32 +205,39 @@ class RemoteIndex(object):
                 )
         self.lock.release()
 
-    def remove(self, checksum):
-        if checksum in self._checksums:
-            self.lock.acquire()
-            self._checksums.remove(checksum)
-            self.modified = True
-            self.lock.release()
-
-    def replace(self, checksums):
-        """Replace the full contents of this index with ``checksums``.
+    def replace(self, dir_checksums, file_checksums):
+        """Replace the contents of this index with the specified checksums.
 
         Changes to the index will not be written to disk.
         """
         self.lock.acquire()
-        self._dir_checksums = set()
-        self._file_checksums = set()
-        self.update(checksums)
+        self._dir_checksums = set(dir_checksums)
+        self._file_checksums = set(file_checksums)
         self.lock.release()
 
-    def update(self, *checksums):
-        """Update this index, adding elements from ``checksums``.
+    def replace_all(self, *checksums):
+        """Replace the contents of this index with the specified checksums.
 
         Changes to the index will not be written to disk.
         """
         dir_checksums, file_checksums = split(self.is_dir_checksum, *checksums)
+        self.replace(dir_checksums, file_checksums)
+
+    def update(self, dir_checksums, file_checksums):
+        """Update this index, adding the specified checksums.
+
+        Changes to the index will not be written to disk.
+        """
         self.lock.acquire()
         self._dir_checksums.update(dir_checksums)
         self._file_checksums.update(file_checksums)
         self.modified = True
         self.lock.release()
+
+    def update_all(self, *checksums):
+        """Update this index, adding the specified checksums.
+
+        Changes to the index will not be written to disk.
+        """
+        dir_checksums, file_checksums = split(self.is_dir_checksum, *checksums)
+        self.update(dir_checksums, file_checksums)

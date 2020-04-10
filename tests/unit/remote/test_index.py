@@ -29,7 +29,7 @@ def test_roundtrip(dvc):
     expected_dir = frozenset(["0123456789abcdef0123456789abcdef.dir"])
     expected_file = frozenset(["fedcba9876543210fedcba9876543210"])
     index = RemoteIndex(dvc, "foo")
-    index.replace(expected_dir | expected_file)
+    index.replace(expected_dir, expected_file)
     index.save()
     index.load()
     assert index._dir_checksums == expected_dir
@@ -39,8 +39,57 @@ def test_roundtrip(dvc):
 
 def test_invalidate(dvc):
     index = RemoteIndex(dvc, "foo")
-    index.replace({_to_checksum(n) for n in (1, 2, 3)})
+    index.replace(
+        ["0123456789abcdef0123456789abcdef.dir"],
+        ["fedcba9876543210fedcba9876543210"],
+    )
     index.save()
     index.invalidate()
     assert not index.checksums
     assert not os.path.exists(index.path)
+
+
+def test_replace(dvc):
+    index = RemoteIndex(dvc, "foo")
+    index._dir_checksums = set()
+    index._file_checksums = set()
+    expected_dir = frozenset(["0123456789abcdef0123456789abcdef.dir"])
+    expected_file = frozenset(["fedcba9876543210fedcba9876543210"])
+    index.replace(expected_dir, expected_file)
+    assert index._dir_checksums == expected_dir
+    assert index._file_checksums == expected_file
+
+
+def test_replace_all(dvc):
+    index = RemoteIndex(dvc, "foo")
+    index._dir_checksums = set()
+    index._file_checksums = set()
+    expected_dir = frozenset(["0123456789abcdef0123456789abcdef.dir"])
+    expected_file = frozenset(["fedcba9876543210fedcba9876543210"])
+    index.replace_all(expected_dir | expected_file)
+    assert index._dir_checksums == expected_dir
+    assert index._file_checksums == expected_file
+
+
+def test_update(dvc):
+    index = RemoteIndex(dvc, "foo")
+    initial_dir = frozenset(["0123456789abcdef0123456789abcdef.dir"])
+    initial_file = frozenset(["fedcba9876543210fedcba9876543210"])
+    index.replace(initial_dir, initial_file)
+    expected_dir = frozenset(["1123456789abcdef0123456789abcdef.dir"])
+    expected_file = frozenset(["fedcba9876543210fedcba9876543211"])
+    index.update(expected_dir, expected_file)
+    assert index._dir_checksums == initial_dir | expected_dir
+    assert index._file_checksums == initial_file | expected_file
+
+
+def test_update_all(dvc):
+    index = RemoteIndex(dvc, "foo")
+    initial_dir = frozenset(["0123456789abcdef0123456789abcdef.dir"])
+    initial_file = frozenset(["fedcba9876543210fedcba9876543210"])
+    index.replace(initial_dir, initial_file)
+    expected_dir = frozenset(["1123456789abcdef0123456789abcdef.dir"])
+    expected_file = frozenset(["fedcba9876543210fedcba9876543211"])
+    index.update_all(expected_dir | expected_file)
+    assert index._dir_checksums == initial_dir | expected_dir
+    assert index._file_checksums == initial_file | expected_file

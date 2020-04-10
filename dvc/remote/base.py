@@ -763,7 +763,6 @@ class RemoteBASE(object):
             path_info = self.checksum_to_path_info(checksum)
             if self.is_dir_checksum(checksum):
                 self._remove_unpacked_dir(checksum)
-            self.index.remove(checksum)
             self.remove(path_info)
             removed = True
         if removed:
@@ -898,7 +897,7 @@ class RemoteBASE(object):
         if len(checksums) == 1 or not self.CAN_TRAVERSE:
             remote_checksums = self._cache_object_exists(checksums, jobs, name)
             if remote_checksums:
-                self.index.update(remote_checksums)
+                self.index.update_all(remote_checksums)
             return list(indexed_checksums) + remote_checksums
 
         # Max remote size allowed for us to use traverse method
@@ -936,7 +935,7 @@ class RemoteBASE(object):
                 remote_size, remote_checksums, jobs, name
             )
         )
-        self.index.replace(remote_checksums)
+        self.index.replace_all(remote_checksums)
         return list(indexed_checksums) + list(
             checksums & set(remote_checksums)
         )
