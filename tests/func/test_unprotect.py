@@ -24,11 +24,14 @@ class TestUnprotect(TestDvc):
 
         self.assertTrue(os.access(self.FOO, os.W_OK))
 
-        # NOTE: cache is now unprotected, bceause we try to set write perms
-        # on files that we try to delete, as some filesystems require that
-        # (e.g. NTFS). But it should be restored after the next cache check,
-        # hence why we call `dvc status` here.
-        self.assertTrue(os.access(cache, os.W_OK))
-        ret = main(["status"])
-        self.assertEqual(ret, 0)
+        if os.name == "nt":
+            # NOTE: cache is now unprotected, because NTFS doesn't allow
+            # deleting read-only files, so we have to try to set write perms
+            # on files that we try to delete, which propagates to the cache
+            # file. But it should be restored after the next cache check, hence
+            # why we call `dvc status` here.
+            self.assertTrue(os.access(cache, os.W_OK))
+            ret = main(["status"])
+            self.assertEqual(ret, 0)
+
         self.assertFalse(os.access(cache, os.W_OK))
