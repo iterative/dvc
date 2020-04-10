@@ -4,7 +4,6 @@ import os
 import random
 import re
 import string
-from json import JSONDecodeError
 
 from funcy import cached_property
 
@@ -45,18 +44,6 @@ def _prepare_div(vega_dict):
         id=str(id),
         vega_json=json.dumps(vega_dict, indent=4, separators=(",", ": ")),
     )
-
-
-def _embed(content):
-    if "<html>" in content:
-        return content
-
-    try:
-        vega_dict = json.loads(content)
-    except JSONDecodeError:
-        # TODO
-        raise DvcException("Not html, nor json")
-    return PAGE_HTML.format(divs=_prepare_div([vega_dict]))
 
 
 class Template:
@@ -142,8 +129,6 @@ class Template:
                     separators=Template.SEPARATORS,
                 ),
             )
-
-        result_content = _embed(result_content)
 
         with open(result_path, "w") as fobj:
             fobj.write(result_content)

@@ -316,13 +316,10 @@ def test_should_embed_vega_json_template(tmp_dir, scm, dvc):
 
     result = dvc.plot("metric.json", "template.dvct")
 
-    page_content = BeautifulSoup((tmp_dir / result).read_text())
-    vega_data = json.dumps(
-        [
-            {"x": 1, "y": 2, "rev": "current"},
-            {"x": 2, "y": 3, "rev": "current"},
-        ],
-    )
-    assert _remove_whitespace(vega_data) in _remove_whitespace(
-        first(page_content.body.script.contents)
-    )
+    result_content = json.loads((tmp_dir / result).read_text())
+    vega_data = [
+        {"x": 1, "y": 2, "rev": "current"},
+        {"x": 2, "y": 3, "rev": "current"},
+    ]
+
+    assert vega_data == result_content["data"]["values"]
