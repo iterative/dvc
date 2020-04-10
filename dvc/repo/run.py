@@ -5,9 +5,9 @@ from .scm_context import scm_context
 @locked
 @scm_context
 def run(self, no_exec=False, **kwargs):
-    from dvc.stage import Stage
+    from dvc.dvcfile import Dvcfile
 
-    stage = Stage.create(self, **kwargs)
+    stage = Dvcfile.create_stage(self, **kwargs)
 
     if stage is None:
         return None
@@ -17,6 +17,6 @@ def run(self, no_exec=False, **kwargs):
     if not no_exec:
         stage.run(no_commit=kwargs.get("no_commit", False))
 
-    stage.dump()
+    Dvcfile(self, stage.path).dump(stage)
 
     return stage

@@ -6,18 +6,17 @@ from dvc.utils import resolve_output
 @locked_repo
 @scm_context
 def imp_url(self, url, out=None, fname=None, erepo=None, locked=True):
-    from dvc.stage import Stage
+    from dvc.dvcfile import Dvcfile
 
     out = resolve_output(url, out)
-
-    stage = Stage.create(
+    stage = Dvcfile.create_stage(
         self,
         cmd=None,
         deps=[url],
         outs=[out],
-        fname=fname,
         erepo=erepo,
         accompany_outs=True,
+        fname=fname,
     )
 
     if stage is None:
@@ -29,6 +28,6 @@ def imp_url(self, url, out=None, fname=None, erepo=None, locked=True):
 
     stage.locked = locked
 
-    stage.dump()
+    Dvcfile(self, stage.path).dump(stage)
 
     return stage

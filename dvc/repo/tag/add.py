@@ -2,6 +2,7 @@ import logging
 from copy import copy
 
 from dvc.repo import locked
+from dvc.dvcfile import Dvcfile
 
 
 logger = logging.getLogger(__name__)
@@ -19,4 +20,5 @@ def add(self, tag, target=None, with_deps=False, recursive=False):
             out.tags[tag] = copy(out.info)
             changed = True
         if changed:
-            stage.dump()
+            dvcfile = Dvcfile(self, stage.path)
+            dvcfile.dump(stage)

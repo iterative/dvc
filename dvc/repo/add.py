@@ -4,6 +4,7 @@ import os
 import colorama
 
 from . import locked
+from ..dvcfile import Dvcfile
 from ..exceptions import (
     RecursiveAddingWhileUsingFilename,
     OverlappingOutputPathsError,
@@ -11,7 +12,6 @@ from ..exceptions import (
 from ..output.base import OutputDoesNotExistError
 from ..progress import Tqdm
 from ..repo.scm_context import scm_context
-from ..stage import Stage
 from ..utils import LARGE_DIR_SIZE
 
 logger = logging.getLogger(__name__)
@@ -85,7 +85,7 @@ def add(repo, targets, recursive=False, no_commit=False, fname=None):
                     if not no_commit:
                         stage.commit()
 
-                    stage.dump()
+                    Dvcfile(repo, stage.path).dump(stage)
                     pbar_stages.update()
 
             stages_list += stages
@@ -107,7 +107,7 @@ def _find_all_targets(repo, target, recursive):
                 unit="file",
             )
             if not repo.is_dvc_internal(fname)
-            if not Stage.is_stage_file(fname)
+            if not Dvcfile.is_stage_file(fname)
             if not repo.scm.belongs_to_scm(fname)
             if not repo.scm.is_tracked(fname)
         ]
@@ -123,8 +123,8 @@ def _create_stages(repo, targets, fname, pbar=None):
         disable=len(targets) < LARGE_DIR_SIZE,
         unit="file",
     ):
-        stage = Stage.create(
-            repo, outs=[out], accompany_outs=True, fname=fname
+        stage = Dvcfile.create_stage(
+            repo, accompany_outs=True, outs=[out], fname=fname
         )
         repo._reset()
 

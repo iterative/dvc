@@ -9,8 +9,7 @@ import pytest
 from dvc.dependency.repo import DependencyREPO
 from dvc.path_info import PathInfo
 from dvc.stage import Stage
-from dvc.stage import StageUpdateError
-
+from dvc.stage.exceptions import StageUpdateError
 
 TEST_STAGE_DICT = {
     "md5": "123456",

@@ -3,11 +3,13 @@ from . import locked
 
 @locked
 def update(self, target, rev=None):
-    from dvc.stage import Stage
+    from ..dvcfile import Dvcfile
 
-    stage = Stage.load(self, target)
+    dvcfile = Dvcfile(self, target)
+    stage = dvcfile.load()
+
     stage.update(rev)
 
-    stage.dump()
+    dvcfile.dump(stage)
 
     return stage

@@ -442,7 +442,7 @@ class OutputBase(object):
 
     @classmethod
     def _validate_output_path(cls, path):
-        from dvc.stage import Stage
+        from dvc.dvcfile import Dvcfile
 
-        if Stage.is_valid_filename(path):
+        if Dvcfile.is_valid_filename(path):
             raise cls.IsStageFileError(path)

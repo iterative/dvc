@@ -33,6 +33,7 @@ def move(self, from_path, to_path):
     """
     import dvc.output as Output
     from dvc.stage import Stage
+    from ..dvcfile import DVC_FILE_SUFFIX, Dvcfile
 
     from_out = Output.loads_from(Stage(self), [from_path])[0]
     assert from_out.scheme == "local"
@@ -54,7 +55,7 @@ def move(self, from_path, to_path):
 
         stage.path = os.path.join(
             os.path.dirname(to_path),
-            os.path.basename(to_path) + Stage.STAGE_FILE_SUFFIX,
+            os.path.basename(to_path) + DVC_FILE_SUFFIX,
         )
 
         stage.wdir = os.path.abspath(
@@ -68,4 +69,4 @@ def move(self, from_path, to_path):
     out.move(to_out)
     stage.save()
 
-    stage.dump()
+    Dvcfile(self, stage.path).dump(stage)
