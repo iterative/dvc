@@ -11,6 +11,8 @@ from functools import partial
 from multiprocessing import cpu_count
 from operator import itemgetter
 
+from funcy import split
+
 from shortuuid import uuid
 
 import dvc.prompt as prompt
@@ -751,23 +753,40 @@ class RemoteBASE(object):
                     used.update(dir_cache[self.scheme])
                 used.update(file_cache[self.scheme])
 
-        removed = False
-        # checksums must be sorted to ensure we always remove .dir files first
-        for checksum in sorted(
-            self.all(jobs, str(self.path_info)),
-            key=self.is_dir_checksum,
-            reverse=True,
-        ):
+        # checksums must be separated into .dir and file checksums
+        # to ensure we always remove .dir files first
+        dir_checksums, file_checksums = split(
+            self.is_dir_checksum, self.all(jobs, str(self.path_info))
+        )
+        dir_checksums = frozenset(dir_checksums)
+        file_checksums = frozenset(file_checksums)
+
+        def remove_checksum(checksum, is_dir=False):
             if checksum in used:
-                continue
+                return False
             path_info = self.checksum_to_path_info(checksum)
-            if self.is_dir_checksum(checksum):
+            if is_dir:
                 self._remove_unpacked_dir(checksum)
             self.remove(path_info)
-            removed = True
-        if removed:
-            self.index.invalidate()
-        return removed
+            return True
+
+        dir_removed = {
+            checksum
+            for checksum in dir_checksums
+            if remove_checksum(checksum, True)
+        }
+        file_removed = {
+            checksum
+            for checksum in file_checksums
+            if remove_checksum(checksum)
+        }
+
+        # save full remote index
+        self.index.replace(
+            dir_checksums - dir_removed, file_checksums - file_removed,
+        )
+        self.index.save()
+        return dir_removed or file_removed
 
     def is_protected(self, path_info):
         return False
