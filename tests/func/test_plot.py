@@ -28,7 +28,7 @@ def _run_with_metric(tmp_dir, metric_filename, commit=None, tag=None):
 
 
 def _write_csv(metric, filename):
-    with open(filename, "w") as csvobj:
+    with open(filename, "w", newline="") as csvobj:
         if all([len(e) > 1 for e in metric]):
             writer = csv.DictWriter(
                 csvobj, fieldnames=list(first(metric).keys())
