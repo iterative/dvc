@@ -219,7 +219,7 @@ def add_parser(subparsers, _parent_parser):
         "--drop-index",
         action="store_true",
         default=False,
-        help="Drop local index for the specified remote cache.",
+        help="Drop local index for the remote.",
     )
     push_parser.set_defaults(func=CmdDataPush)
 
@@ -342,6 +342,6 @@ def add_parser(subparsers, _parent_parser):
         "--drop-index",
         action="store_true",
         default=False,
-        help="Drop local index for the specified remote cache.",
+        help="Drop local index for the remote.",
     )
     status_parser.set_defaults(func=CmdDataStatus)

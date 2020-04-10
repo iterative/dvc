@@ -66,6 +66,7 @@ class DataCloud(object):
                 By default remote from core.remote config option is used.
             show_checksums (bool): show checksums instead of file names in
                 information messages.
+            drop_index (bool): clear local index for the remote
         """
         return self.repo.cache.local.push(
             caches,
@@ -93,6 +94,7 @@ class DataCloud(object):
                 By default remote from core.remote config option is used.
             show_checksums (bool): show checksums instead of file names in
                 information messages.
+            drop_index (bool): clear local index for the remote
         """
         remote = self.get_remote(remote, "pull")
         downloaded_items_num = self.repo.cache.local.pull(
@@ -143,6 +145,7 @@ class DataCloud(object):
                 is used.
             show_checksums (bool): show checksums instead of file names in
                 information messages.
+            drop_index (bool): clear local index for the remote
         """
         remote = self.get_remote(remote, "status")
         return self.repo.cache.local.status(

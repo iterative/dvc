@@ -38,13 +38,13 @@ def _verify_protocol(protocol=None):
         protocol = DEFAULT_PROTOCOL
     if protocol not in SUPPORTED_PROTOCOLS:
         raise DvcException(
-            "unsupported remote index protocol version: {}".format(protocol)
+            "unsupported remote index protocol version: '{}'".format(protocol)
         )
     return protocol
 
 
 def dump(dir_checksums, file_checksums, fobj, protocol=None):
-    """Write specified checksums to the open file object ``fobj``."""
+    """Write specified checksums to the specified open file object"""
     protocol = _verify_protocol(protocol)
     _dump_v1(dir_checksums, file_checksums, fobj)
 
@@ -70,7 +70,7 @@ def _dump_v1(dir_checksums, file_checksums, fobj):
 
 
 def load(fobj, protocol=None, dir_suffix=".dir"):
-    """Read index checksums from the open file object ``fobj``.
+    """Read index checksums from the specified open file object.
 
     Returns a 2-tuple of (dir_checksums, file_checksums).
     """
@@ -87,7 +87,7 @@ def _load_v1(fobj, dir_suffix=""):
             fobj.read(_header_v1.size)
         )
     except struct.error as exc:
-        raise DvcException("Invalid v1 remote index file: {}".format(exc))
+        raise DvcException("Invalid v1 remote index file: '{}'".format(exc))
     dir_checksums = set()
     file_checksums = set()
     crc = 0
@@ -166,7 +166,7 @@ class RemoteIndex(object):
             except IOError as exc:
                 logger.error(
                     "Failed to load remote index file '{}'. "
-                    "Remote will be re-indexed: {}".format(self.path, exc)
+                    "Remote will be re-indexed: '{}'".format(self.path, exc)
                 )
             finally:
                 self.lock.release()
