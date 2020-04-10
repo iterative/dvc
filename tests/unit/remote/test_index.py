@@ -7,7 +7,7 @@ def test_protocol_v1_roundtrip(tmp_dir):
     tmpfile = os.path.join(tmp_dir, "foo.idx")
 
     expected_dir = frozenset(["0123456789abcdef0123456789abcdef.dir"])
-    expected_file = frozenset(map(_to_checksum, range(2000)))
+    expected_file = frozenset(map(_to_checksum, range(10000)))
     with open(tmpfile, "wb") as fobj:
         dump(expected_dir, expected_file, fobj)
     with open(tmpfile, "rb") as fobj:

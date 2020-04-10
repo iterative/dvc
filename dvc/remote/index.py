@@ -5,7 +5,7 @@ import threading
 import zlib
 from binascii import unhexlify
 
-from funcy import chunks, concat, split, split_at
+from funcy import chunks, concat, split
 
 from dvc.exceptions import DvcException
 
@@ -24,15 +24,13 @@ SUPPORTED_PROTOCOLS = [1]
 #   protocol_version (32-bit uint): index file protocol version
 #   dir_checksum_count (64-bit uint): number of .dir checksums in data section
 #   file_checksum_count (64-bit uint): number of file checksums in data section
-#   compressed_len (64-bit uint): length of data section
 #   crc - 32-bit CRC32 checksum of uncompressed data
 #
-# Data (zlib compressed)
+# Data (total length = 16 * dir_checksum_count * file_checksum_count bytes)
 # ----------------------
 #   array of <dir_checksum_count> 128-bit MD5 .dir checksums
 #   array of <file_checksum_count> 128-bit MD5 file checksums
-_header_v1 = struct.Struct("<IQQ")
-_compress_crc_v1 = struct.Struct("<QI")
+_header_v1 = struct.Struct("<IQQI")
 
 
 def _verify_protocol(protocol=None):
@@ -54,13 +52,8 @@ def dump(dir_checksums, file_checksums, fobj, protocol=None):
 def _dump_v1(dir_checksums, file_checksums, fobj):
     pos = fobj.tell()
     # write header
-    fobj.write(
-        _header_v1.pack(1, len(dir_checksums), len(file_checksums))
-        + _compress_crc_v1.pack(0, 0)
-    )
-    # compress 1024 MD5 checksums (16kB chunks) at a time
-    compress = zlib.compressobj()
-    compress_len = 0
+    fobj.write(_header_v1.pack(1, len(dir_checksums), len(file_checksums), 0))
+    # write 1024 MD5 checksums (16kB chunks) at a time
     crc = 0
     data_checksums = concat(
         (csum[:32] for csum in dir_checksums), file_checksums
@@ -68,11 +61,11 @@ def _dump_v1(dir_checksums, file_checksums, fobj):
     for checksums in chunks(1024, data_checksums):
         data = unhexlify("".join(checksums))
         crc = zlib.crc32(data, crc)
-        compress_len += fobj.write(compress.compress(data))
-    compress_len += fobj.write(compress.flush())
+        fobj.write(data)
     endpos = fobj.tell()
-    fobj.seek(pos + _header_v1.size)
-    fobj.write(_compress_crc_v1.pack(compress_len, crc))
+    # write final CRC value
+    fobj.seek(pos + _header_v1.size - 4)
+    fobj.write(struct.pack("<I", crc))
     fobj.seek(endpos)
 
 
@@ -90,49 +83,34 @@ def load(fobj, protocol=None, dir_suffix=".dir"):
 
 def _load_v1(fobj, dir_suffix=""):
     try:
-        protocol, dir_count, file_count = _header_v1.unpack(
+        protocol, dir_count, file_count, file_crc = _header_v1.unpack(
             fobj.read(_header_v1.size)
-        )
-        compress_len, file_crc = _compress_crc_v1.unpack(
-            fobj.read(_compress_crc_v1.size)
         )
     except struct.error as exc:
         raise DvcException("Invalid v1 remote index file: {}".format(exc))
     dir_checksums = set()
     file_checksums = set()
+    crc = 0
 
-    def read_chunks():
-        # decompress 4kB chunks at a time and return uncompressed data aligned
-        # to a 4-byte (checksum length) boundary
-        decompress = zlib.decompressobj()
-        bytes_read = 0
-        unconsumed = b""
-        extra = b""
-        crc = 0
-        while bytes_read < compress_len:
-            compress_data = fobj.read(4096)
-            bytes_read += len(compress_data)
-            data = extra + decompress.decompress(unconsumed + compress_data)
-            unconsumed = decompress.unconsumed_tail
-            extra_count = len(data) % 4
-            extra = data[len(data) - extra_count :]
-            data = data[: len(data) - extra_count]
-            crc = zlib.crc32(data, crc)
+    def read_chunks(num_checksums):
+        bytes_remaining = 16 * num_checksums
+        # read 1024 checksums (16kB chunks) at a time
+        while bytes_remaining > 0:
+            data = fobj.read(min(bytes_remaining, 16384))
+            bytes_remaining -= len(data)
             yield data
-        data = extra + decompress.flush()
-        crc = zlib.crc32(data, crc)
-        if crc != file_crc:
-            raise DvcException("Remote index file failed CRC check")
-        return data
 
-    for data in read_chunks():
+    for data in read_chunks(dir_count):
+        crc = zlib.crc32(data, crc)
         checksums = chunks(32, data.hex())
-        if len(dir_checksums) < dir_count:
-            dirs, files = split_at(dir_count - len(dir_checksums), checksums)
-            dir_checksums.update(checksum + dir_suffix for checksum in dirs)
-            file_checksums.update(files)
-        else:
-            file_checksums.update(checksums)
+        dir_checksums.update(checksum + dir_suffix for checksum in checksums)
+    for data in read_chunks(file_count):
+        crc = zlib.crc32(data, crc)
+        checksums = chunks(32, data.hex())
+        file_checksums.update(checksums)
+
+    if crc != file_crc:
+        raise DvcException("Remote index file failed CRC check")
 
     return dir_checksums, file_checksums
 
