@@ -124,7 +124,10 @@ def _load_from_revisions(repo, datafile, revisions, default_plot=False):
     return data
 
 
-def _evaluate_templatepath(repo, template):
+def _evaluate_templatepath(repo, template=None):
+    if not template:
+        return repo.plot_templates.default_template
+
     if os.path.exists(template):
         return template
     return repo.plot_templates.get_template(template)
@@ -133,10 +136,7 @@ def _evaluate_templatepath(repo, template):
 @locked
 def plot(repo, datafile=None, template=None, revisions=None, file=None):
 
-    if template is None:
-        template_path = repo.plot_templates.default_template
-    else:
-        template_path = _evaluate_templatepath(repo, template)
+    template_path = _evaluate_templatepath(repo, template)
 
     default_plot = template_path == repo.plot_templates.default_template
 
