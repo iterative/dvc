@@ -41,18 +41,21 @@ def _load_from_tree(tree, datafile, default_plot=False):
 
     elif datafile.endswith(".csv"):
         data = _parse_csv(datafile, default_plot, tree)
-
+    elif datafile.endswith(".tsv"):
+        data = _parse_csv(datafile, default_plot, tree, "\t")
     else:
-        raise DvcException("Could not parse")
+        raise DvcException(
+            "Could not deduct file type from file: '{}'".format(datafile)
+        )
 
     return data
 
 
-def _parse_csv(datafile, default_plot, tree):
+def _parse_csv(datafile, default_plot, tree, delimiter=","):
     with tree.open(datafile, "r") as fobj:
         if default_plot:
             data = []
-            for index, row in enumerate(csv.reader(fobj)):
+            for index, row in enumerate(csv.reader(fobj, delimiter=delimiter)):
                 assert len(row) >= 1
                 if index == 0 and len(row) > 1:
                     # skip header
@@ -60,7 +63,12 @@ def _parse_csv(datafile, default_plot, tree):
                 data.append({"y": row[-1], "x": index})
         else:
             data = [
-                row for row in (csv.DictReader(fobj, skipinitialspace=True))
+                row
+                for row in (
+                    csv.DictReader(
+                        fobj, skipinitialspace=True, delimiter=delimiter
+                    )
+                )
             ]
     return data
 
