@@ -133,6 +133,7 @@ def _evaluate_templatepath(repo, template):
 
 @locked
 def plot(repo, datafile=None, template=None, revisions=None, file=None):
+
     if template is None:
         template_path = repo.plot_templates.default_template
     else:
@@ -147,13 +148,7 @@ def plot(repo, datafile=None, template=None, revisions=None, file=None):
     if revisions is None:
         revisions = []
 
-    template_datafiles = Template.parse_data_placeholders(template_path)
-
-    if datafile:
-        if len(template_datafiles) > 1:
-            raise TooManyDataSourcesError(datafile, template_datafiles)
-        template_datafiles = {datafile}
-
+    template_datafiles = _parse_template(template_path, datafile)
     data = {
         datafile: _load_from_revisions(repo, datafile, revisions, default_plot)
         for datafile in template_datafiles
@@ -164,3 +159,12 @@ def plot(repo, datafile=None, template=None, revisions=None, file=None):
     )
     logger.info("file://{}".format(os.path.join(repo.root_dir, result_path)))
     return result_path
+
+
+def _parse_template(template_path, datafile):
+    template_datafiles = Template.parse_data_placeholders(template_path)
+    if datafile:
+        if len(template_datafiles) > 1:
+            raise TooManyDataSourcesError(datafile, template_datafiles)
+        template_datafiles = {datafile}
+    return template_datafiles
