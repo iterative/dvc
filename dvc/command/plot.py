@@ -41,7 +41,10 @@ class CmdPlotDiff(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    PLOT_HELP = "For visualisation"
+    PLOT_HELP = (
+        "For visualisation of metrics stored in structured files ("
+        "json, csv, tsv)."
+    )
 
     plot_parser = subparsers.add_parser(
         "plot",
@@ -68,20 +71,17 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     plot_show_parser.add_argument(
-        "-f", "--file", help="Specify name of the " "file it generates."
-    )
-    plot_show_parser.add_argument(
         "-t",
         "--template",
         nargs="?",
         default=None,
-        help="dvct file to " "visualize.",
+        help="File to be injected with data.",
     )
     plot_show_parser.add_argument(
-        "datafile",
-        nargs="?",
-        default=None,
-        help="Vega template file " "used to visualize " "data from datafile",
+        "datafile", nargs="?", default=None, help="Data to be visualized."
+    )
+    plot_show_parser.add_argument(
+        "-f", "--file", help="Specify name of the file it generates."
     )
     plot_show_parser.set_defaults(func=CmdPlotShow)
 
@@ -95,26 +95,26 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     plot_diff_parser.add_argument(
-        "-f", "--file", help="Specify name of the " "file it generates."
-    )
-    plot_diff_parser.add_argument(
         "-t",
         "--template",
         nargs="?",
         default=None,
-        help=("dvct template file to " "process."),
+        help=("File to be injected wit data."),
     )
     plot_diff_parser.add_argument(
         "-d",
         "--datafile",
         nargs="?",
         default=None,
-        help="Vega template file " "used to visualize " "data from datafile",
+        help="Data to be visualized.",
+    )
+    plot_diff_parser.add_argument(
+        "-f", "--file", help="Specify name of the file it generates."
     )
     plot_diff_parser.add_argument(
         "revisions",
         nargs="*",
         default=None,
-        help=("Git revisions to plot from"),
+        help="Git revisions to plot from",
     )
     plot_diff_parser.set_defaults(func=CmdPlotDiff)

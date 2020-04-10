@@ -34,7 +34,6 @@ def _all_dict_of_length_one(data):
     return all([isinstance(e, dict) and len(e) == 1 for e in data])
 
 
-# TODO try to use parsing from metric
 def _load_from_tree(tree, datafile, default_plot=False):
     if datafile.endswith(".json"):
         data = _parse_json(datafile, default_plot, tree)
