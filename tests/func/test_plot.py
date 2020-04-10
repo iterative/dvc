@@ -157,9 +157,9 @@ def test_plot_multiple_revs(tmp_dir, scm, dvc):
     _write_json(tmp_dir, metric_3, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "third")
 
-    dvc.plot("metric.json", revisions=["HEAD", "v2", "v1"])
+    result = dvc.plot("metric.json", revisions=["HEAD", "v2", "v1"])
 
-    page_content = BeautifulSoup((tmp_dir / "default.html").read_text())
+    page_content = BeautifulSoup((tmp_dir / result).read_text())
     vega_data = json.dumps(
         [
             {"y": 5, "x": 0, "rev": "HEAD"},

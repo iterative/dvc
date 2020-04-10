@@ -11,11 +11,15 @@ logger = logging.getLogger(__name__)
 class CmdPlotShow(CmdBase):
     def run(self):
         try:
-            # TODO overriding datafile functionality
-            self.repo.plot(self.args.datafile, self.args.template)
+            self.repo.plot(
+                datafile=self.args.datafile,
+                template=self.args.template,
+                file=self.args.file,
+            )
 
         except DvcException:
             logger.exception("failed to plot metrics")
+            return 1
         return 0
 
 
@@ -26,6 +30,7 @@ class CmdPlotDiff(CmdBase):
                 self.args.datafile,
                 self.args.template,
                 revisions=self.args.revisions,
+                file=self.args.file,
             )
 
         except DvcException:
@@ -63,7 +68,14 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     plot_show_parser.add_argument(
-        "--template", nargs="?", default=None, help="dvct file to visualize."
+        "-f", "--file", help="Specify name of the " "file it generates."
+    )
+    plot_show_parser.add_argument(
+        "-t",
+        "--template",
+        nargs="?",
+        default=None,
+        help="dvct file to " "visualize.",
     )
     plot_show_parser.add_argument(
         "datafile",
@@ -83,12 +95,17 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     plot_diff_parser.add_argument(
+        "-f", "--file", help="Specify name of the " "file it generates."
+    )
+    plot_diff_parser.add_argument(
+        "-t",
         "--template",
         nargs="?",
         default=None,
         help=("dvct template file to " "process."),
     )
     plot_diff_parser.add_argument(
+        "-d",
         "--datafile",
         nargs="?",
         default=None,

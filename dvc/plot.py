@@ -109,8 +109,9 @@ class Template:
         )
 
     @staticmethod
-    def fill(template_path, data, priority_datafile=None):
-        result_path = os.path.basename(template_path).replace(".dvct", ".html")
+    def fill(template_path, data, priority_datafile=None, result_path=None):
+        if not result_path:
+            result_path = os.path.basename(template_path) + ".html"
 
         with open(template_path, "r") as fobj:
             result_content = fobj.read()
@@ -170,7 +171,6 @@ class DefaultConfusionTemplate(Template):
 
 
 class PlotTemplates:
-    # TODO os.path? check whether it should not be repo.tree
     TEMPLATES_DIR = "plot"
     TEMPLATES = [DefaultLinearTemplate, DefaultConfusionTemplate]
 
