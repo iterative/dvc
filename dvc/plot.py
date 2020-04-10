@@ -39,9 +39,9 @@ def _save_plot_html(divs, path):
 
 
 def _prepare_div(vega_dict):
-    id = "".join(random.sample(string.ascii_lowercase, 8))
+    div_id = "".join(random.sample(string.ascii_lowercase, 8))
     return DIV_HTML.format(
-        id=str(id),
+        id=str(div_id),
         vega_json=json.dumps(
             vega_dict, indent=4, separators=(",", ": "), sort_keys=True
         ),
@@ -194,13 +194,13 @@ class PlotTemplates:
         t_path = os.path.join(self.templates_dir, path)
         if os.path.exists(t_path):
             return t_path
-        else:
-            regex = re.compile(re.escape(t_path) + ".*")
-            for root, d, fs in os.walk(self.templates_dir):
-                for f in fs:
-                    path = os.path.join(root, f)
-                    if regex.findall(path):
-                        return path
+
+        regex = re.compile(re.escape(t_path) + ".*")
+        for root, d, fs in os.walk(self.templates_dir):
+            for f in fs:
+                path = os.path.join(root, f)
+                if regex.findall(path):
+                    return path
 
         raise DvcException("Template not found")
 
