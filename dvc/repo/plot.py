@@ -135,13 +135,12 @@ def _evaluate_templatepath(repo, template=None):
 
 @locked
 def plot(repo, datafile=None, template=None, revisions=None, file=None):
+    if revisions is None:
+        revisions = []
 
     template_path = _evaluate_templatepath(repo, template)
 
     default_plot = template_path == repo.plot_templates.default_template
-
-    if revisions is None:
-        revisions = []
 
     template_datafiles = _parse_template(template_path, datafile)
     data = {
