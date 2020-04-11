@@ -7,7 +7,6 @@ import mock
 import pytest
 
 from dvc.dependency.repo import DependencyREPO
-from dvc.path_info import PathInfo
 from dvc.stage import Stage
 from dvc.stage import StageUpdateError
 
@@ -59,15 +58,6 @@ class TestPathConversion(TestCase):
 
         stage.wdir = os.path.join("..", "..")
         self.assertEqual(stage.dumpd()["wdir"], "../..")
-
-
-@pytest.mark.parametrize("add", [True, False])
-def test_stage_fname(add):
-    out = mock.Mock()
-    out.is_in_repo = False
-    out.path_info = PathInfo("path/to/out.txt")
-    fname = Stage._stage_fname([out], add)
-    assert fname == "out.txt.dvc"
 
 
 def test_stage_update(mocker):
