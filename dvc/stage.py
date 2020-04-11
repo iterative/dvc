@@ -506,23 +506,8 @@ class Stage(object):
 
     @staticmethod
     def create(repo, accompany_outs=False, **kwargs):
-
-        wdir = kwargs.get("wdir", None)
-        cwd = kwargs.get("cwd", None)
+        wdir = kwargs.get("wdir", None) or os.curdir
         fname = kwargs.get("fname", None)
-
-        # Backward compatibility for `cwd` option
-        if wdir is None and cwd is not None:
-            if fname is not None and os.path.basename(fname) != fname:
-                raise StageFileBadNameError(
-                    "DVC-file name '{fname}' may not contain subdirectories"
-                    " if `-c|--cwd` (deprecated) is specified. Use `-w|--wdir`"
-                    " along with `-f` to specify DVC-file path with working"
-                    " directory.".format(fname=fname)
-                )
-            wdir = cwd
-        elif wdir is None:
-            wdir = os.curdir
 
         stage = Stage(
             repo=repo,
@@ -548,7 +533,7 @@ class Stage(object):
 
         # Autodetecting wdir for add, we need to create outs first to do that,
         # so we start with wdir = . and remap out paths later.
-        if accompany_outs and kwargs.get("wdir") is None and cwd is None:
+        if accompany_outs and kwargs.get("wdir") is None:
             wdir = os.path.dirname(fname)
 
             for out in chain(stage.outs, stage.deps):
@@ -556,11 +541,7 @@ class Stage(object):
                     out.def_path = relpath(out.path_info, wdir)
 
         wdir = os.path.abspath(wdir)
-
-        if cwd is not None:
-            path = os.path.join(wdir, fname)
-        else:
-            path = os.path.abspath(fname)
+        path = os.path.abspath(fname)
 
         Stage._check_stage_path(repo, wdir, is_wdir=kwargs.get("wdir"))
         Stage._check_stage_path(repo, os.path.dirname(path))

@@ -140,11 +140,10 @@ def test_import_non_cached(erepo_dir, tmp_dir, dvc, scm):
     src = "non_cached_output"
     dst = src + "_imported"
 
-    erepo_dir.dvc.run(
-        cmd="echo hello > {}".format(src),
-        outs_no_cache=[src],
-        cwd=fspath(erepo_dir),
-    )
+    with erepo_dir.chdir():
+        erepo_dir.dvc.run(
+            cmd="echo hello > {}".format(src), outs_no_cache=[src],
+        )
 
     erepo_dir.scm_add([fspath(erepo_dir / src)], commit="add a non-cached out")
 
