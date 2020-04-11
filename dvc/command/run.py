@@ -43,7 +43,6 @@ class CmdRun(CmdBase):
                 deps=self.args.deps,
                 params=self.args.params,
                 fname=self.args.file,
-                cwd=self.args.cwd,
                 wdir=self.args.wdir,
                 no_exec=self.args.no_exec,
                 overwrite=overwrite,
@@ -137,9 +136,6 @@ def add_parser(subparsers, parent_parser):
     )
     run_parser.add_argument(
         "-f", "--file", help="Specify name of the DVC-file it generates."
-    )
-    run_parser.add_argument(
-        "-c", "--cwd", help="Deprecated, use -w and -f instead."
     )
     run_parser.add_argument(
         "-w",

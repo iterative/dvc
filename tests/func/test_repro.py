@@ -118,8 +118,9 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
         os.mkdir(os.path.join(self.dvc.root_dir, "dir1"))
 
         self.dvc.run(
-            cwd="dir1",
-            outs=["../dir2"],
+            fname=os.path.join("dir1", "dir2.dvc"),
+            wdir="dir1",
+            outs=[os.path.join("..", "dir2")],
             cmd="mkdir {path}".format(path=os.path.join("..", "dir2")),
         )
 
@@ -153,7 +154,8 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
         out_dir = relpath(nested_dir, dir1)
 
         nested_stage = self.dvc.run(
-            cwd=dir1,  # b
+            fname=os.path.join(dir1, "b.dvc"),
+            wdir=dir1,
             outs=[out_dir],  # ../a/nested
             cmd="mkdir {path}".format(path=out_dir),
         )
@@ -731,44 +733,6 @@ class TestCmdRepro(TestReproChangedData):
 
         ret = main(["repro", "non-existing-file"])
         self.assertNotEqual(ret, 0)
-
-
-class TestCmdReproChdirCwdBackwardCompatible(TestDvc):
-    def test(self):
-        dname = "dir"
-        os.mkdir(dname)
-        foo = os.path.join(dname, self.FOO)
-        bar = os.path.join(dname, self.BAR)
-        code = os.path.join(dname, self.CODE)
-        shutil.copyfile(self.FOO, foo)
-        shutil.copyfile(self.CODE, code)
-
-        ret = main(
-            [
-                "run",
-                "-f",
-                "Dvcfile",
-                "-c",
-                dname,
-                "-d",
-                self.FOO,
-                "-o",
-                self.BAR,
-                "python {} {} {}".format(self.CODE, self.FOO, self.BAR),
-            ]
-        )
-        self.assertEqual(ret, 0)
-        self.assertTrue(os.path.isfile(foo))
-        self.assertTrue(os.path.isfile(bar))
-        self.assertTrue(filecmp.cmp(foo, bar, shallow=False))
-
-        os.unlink(bar)
-
-        ret = main(["repro", "-c", dname])
-        self.assertEqual(ret, 0)
-        self.assertTrue(os.path.isfile(foo))
-        self.assertTrue(os.path.isfile(bar))
-        self.assertTrue(filecmp.cmp(foo, bar, shallow=False))
 
 
 class TestCmdReproChdir(TestDvc):

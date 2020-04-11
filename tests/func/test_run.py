@@ -38,7 +38,6 @@ class TestRun(TestDvc):
         outs = [os.path.join(self.dvc.root_dir, "out")]
         outs_no_cache = []
         fname = "out.dvc"
-        cwd = os.curdir
 
         self.dvc.add(self.FOO)
         stage = self.dvc.run(
@@ -47,7 +46,6 @@ class TestRun(TestDvc):
             outs=outs,
             outs_no_cache=outs_no_cache,
             fname=fname,
-            cwd=cwd,
         )
 
         self.assertTrue(filecmp.cmp(self.FOO, "out", shallow=False))
@@ -66,19 +64,13 @@ class TestRun(TestDvc):
                 outs=outs,
                 outs_no_cache=outs_no_cache,
                 fname="duplicate" + fname,
-                cwd=cwd,
             )
 
 
 class TestRunEmpty(TestDvc):
     def test(self):
         self.dvc.run(
-            cmd="",
-            deps=[],
-            outs=[],
-            outs_no_cache=[],
-            fname="empty.dvc",
-            cwd=os.curdir,
+            cmd="", deps=[], outs=[], outs_no_cache=[], fname="empty.dvc",
         )
 
 
@@ -91,20 +83,6 @@ class TestRunMissingDep(TestDvc):
                 outs=[],
                 outs_no_cache=[],
                 fname="empty.dvc",
-                cwd=os.curdir,
-            )
-
-
-class TestRunBadStageFilename(TestDvc):
-    def test(self):
-        with self.assertRaises(StageFileBadNameError):
-            self.dvc.run(
-                cmd="",
-                deps=[],
-                outs=[],
-                outs_no_cache=[],
-                fname=os.path.join(self.DATA_DIR, "empty.dvc"),
-                cwd=os.curdir,
             )
 
 
@@ -194,7 +172,9 @@ class TestRunStageInsideOutput(TestDvc):
         self.dvc.run(cmd="", deps=[], outs=[self.DATA_DIR])
 
         with self.assertRaises(StagePathAsOutputError):
-            self.dvc.run(cmd="", cwd=self.DATA_DIR, fname="inside-cwd.dvc")
+            self.dvc.run(
+                cmd="", fname=os.path.join(self.DATA_DIR, "inside-cwd.dvc")
+            )
 
     def test_file_name(self):
         self.dvc.run(cmd="", deps=[], outs=[self.DATA_DIR])
@@ -210,13 +190,13 @@ class TestRunStageInsideOutput(TestDvc):
 class TestRunBadCwd(TestDvc):
     def test(self):
         with self.assertRaises(StagePathOutsideError):
-            self.dvc.run(cmd="", cwd=self.mkdtemp())
+            self.dvc.run(cmd="", wdir=self.mkdtemp())
 
     def test_same_prefix(self):
         with self.assertRaises(StagePathOutsideError):
             path = "{}-{}".format(self._root_dir, uuid.uuid4())
             os.mkdir(path)
-            self.dvc.run(cmd="", cwd=path)
+            self.dvc.run(cmd="", wdir=path)
 
 
 class TestRunBadWdir(TestDvc):
@@ -281,20 +261,11 @@ class TestRunRemoveOuts(TestDvc):
             fobj.write("    sys.exit(1)\n")
             fobj.write("open(sys.argv[1], 'w+').close()\n")
 
-        ret = main(
-            [
-                "run",
-                "--remove-outs",
-                "-d",
-                self.CODE,
-                "-o",
-                self.FOO,
-                "python",
-                self.CODE,
-                self.FOO,
-            ]
+        self.dvc.run(
+            deps=[self.CODE],
+            outs=[self.FOO],
+            cmd="python {} {}".format(self.CODE, self.FOO),
         )
-        self.assertEqual(ret, 0)
 
 
 class TestRunUnprotectOutsCopy(TestDvc):
@@ -595,23 +566,6 @@ class TestCmdRunWorkingDirectory(TestDvc):
         # Check that it is dumped properly (relative to fname)
         d = load_stage_file(stage.relpath)
         self.assertEqual(d[Stage.PARAM_WDIR], "..")
-
-    def test_cwd_is_ignored(self):
-        dname = "dir"
-        os.mkdir(os.path.join(self._root_dir, dname))
-        foo = os.path.join(dname, self.FOO)
-        fname = os.path.join("stage" + Stage.STAGE_FILE_SUFFIX)
-        stage = self.dvc.run(
-            cmd="echo test > {}".format(foo),
-            outs=[foo],
-            cwd=dname,
-            wdir=".",
-            fname=fname,
-        )
-        self.assertEqual(stage.wdir, os.path.realpath(self._root_dir))
-        self.assertEqual(
-            stage.path, os.path.join(os.path.realpath(self._root_dir), fname)
-        )
 
 
 def test_rerun_deterministic(tmp_dir, run_copy):
