@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 LOCAL_CHUNK_SIZE = 2 ** 20  # 1 MB
 LARGE_FILE_SIZE = 2 ** 30  # 1 GB
 LARGE_DIR_SIZE = 100
+TARGET_REGEX = re.compile(r"^(?P<path>.*):(?P<name>[^\\/@:]*)$")
 
 
 def dos2unix(data):
@@ -374,3 +375,16 @@ def format_link(link):
     return "<{blue}{link}{nc}>".format(
         blue=colorama.Fore.CYAN, link=link, nc=colorama.Fore.RESET
     )
+
+
+def parse_target(target, default="Dvcfile"):
+    if not target:
+        return None, None
+
+    match = TARGET_REGEX.match(target)
+    if not match:
+        return target, None
+    path, name = match.group("path"), match.group("name")
+    if not path:
+        logger.warning("Assuming file to be '%s'", default)
+    return path or default, name

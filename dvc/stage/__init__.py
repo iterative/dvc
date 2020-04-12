@@ -7,6 +7,8 @@ import threading
 
 from itertools import chain
 
+from funcy import project
+
 import dvc.dependency as dependency
 import dvc.output as output
 import dvc.prompt as prompt
@@ -22,17 +24,66 @@ from .exceptions import (
     MissingDep,
     MissingDataSource,
 )
-from . import schema
+from . import params
 from dvc.utils import dict_md5
 from dvc.utils import fix_env
 from dvc.utils import relpath
 from dvc.utils.fs import path_isin
-
+from .params import OutputParams
 
 logger = logging.getLogger(__name__)
 
 
-class Stage(schema.StageParams):
+def loads_from(cls, repo, path, wdir, data):
+    kw = {
+        "repo": repo,
+        "path": path,
+        "wdir": wdir,
+        **project(
+            data,
+            [
+                Stage.PARAM_CMD,
+                Stage.PARAM_LOCKED,
+                Stage.PARAM_ALWAYS_CHANGED,
+                Stage.PARAM_MD5,
+                "name",
+            ],
+        ),
+    }
+    return cls(**kw)
+
+
+def create_stage(cls, repo, path, **kwargs):
+    from dvc.dvcfile import Dvcfile
+
+    wdir = os.path.abspath(kwargs.get("wdir", None) or os.curdir)
+    path = os.path.abspath(path)
+    Dvcfile.check_dvc_filename(path)
+    cls._check_stage_path(repo, wdir, is_wdir=kwargs.get("wdir"))
+    cls._check_stage_path(repo, os.path.dirname(path))
+
+    stage = loads_from(cls, repo, path, wdir, kwargs)
+    stage._fill_stage_outputs(**kwargs)
+    stage._fill_stage_dependencies(**kwargs)
+    stage._check_circular_dependency()
+    stage._check_duplicated_arguments()
+
+    if stage and stage.dvcfile.exists():
+        has_persist_outs = any(out.persist for out in stage.outs)
+        ignore_build_cache = (
+            kwargs.get("ignore_build_cache", False) or has_persist_outs
+        )
+        if has_persist_outs:
+            logger.warning("Build cache is ignored when persisting outputs.")
+
+        if not ignore_build_cache and stage.can_be_skipped:
+            logger.info("Stage is cached, skipping.")
+            return None
+
+    return stage
+
+
+class Stage(params.StageParams):
     def __init__(
         self,
         repo,
@@ -46,6 +97,7 @@ class Stage(schema.StageParams):
         tag=None,
         always_changed=False,
         stage_text=None,
+        dvcfile=None,
     ):
         if deps is None:
             deps = []
@@ -63,6 +115,7 @@ class Stage(schema.StageParams):
         self.tag = tag
         self.always_changed = always_changed
         self._stage_text = stage_text
+        self._dvcfile = dvcfile
 
     @property
     def path(self):
@@ -71,6 +124,26 @@ class Stage(schema.StageParams):
     @path.setter
     def path(self, path):
         self._path = path
+
+    @property
+    def dvcfile(self):
+        if self.path and self._dvcfile and self.path == self._dvcfile.path:
+            return self._dvcfile
+
+        if not self.path:
+            raise DvcException(
+                "Stage does not have any path set "
+                "and is detached from dvcfile."
+            )
+
+        from dvc.dvcfile import Dvcfile
+
+        self._dvcfile = Dvcfile(self.repo, self.path)
+        return self._dvcfile
+
+    @dvcfile.setter
+    def dvcfile(self, dvcfile):
+        self._dvcfile = dvcfile
 
     def __repr__(self):
         return "Stage: '{path}'".format(
@@ -82,7 +155,7 @@ class Stage(schema.StageParams):
 
     def __eq__(self, other):
         return (
-            isinstance(other, Stage)
+            self.__class__ == other.__class__
             and self.repo is other.repo
             and self.path_in_repo == other.path_in_repo
         )
@@ -173,17 +246,18 @@ class Stage(schema.StageParams):
 
     @rwlocked(read=["deps", "outs"])
     def changed(self):
+        if self._changed():
+            logger.warning("{} changed.".format(self))
+            return True
+
+        logger.debug("{} didn't change.".format(self))
+        return False
+
+    def _changed(self):
         # Short-circuit order: stage md5 is fast, deps are expected to change
-        ret = (
+        return (
             self._changed_md5() or self._changed_deps() or self._changed_outs()
         )
-
-        if ret:
-            logger.warning("Stage '{}' changed.".format(self.relpath))
-        else:
-            logger.debug("Stage '{}' didn't change.".format(self.relpath))
-
-        return ret
 
     @rwlocked(write=["outs"])
     def remove_outs(self, ignore_remove=False, force=False):
@@ -273,6 +347,9 @@ class Stage(schema.StageParams):
             self.is_cached and not self.is_callback and not self.always_changed
         )
 
+    def reload(self):
+        return self.dvcfile.load()
+
     @property
     def is_cached(self):
         """
@@ -280,9 +357,8 @@ class Stage(schema.StageParams):
         """
         from dvc.remote.local import RemoteLOCAL
         from dvc.remote.s3 import RemoteS3
-        from dvc.dvcfile import Dvcfile
 
-        old = Dvcfile(self.repo, self.path).load()
+        old = self.reload()
         if old._changed_outs():
             return False
 
@@ -319,66 +395,11 @@ class Stage(schema.StageParams):
 
         return True
 
-    @staticmethod
-    def create(repo, path, **kwargs):
-        from dvc.dvcfile import Dvcfile
-
-        wdir = kwargs.get("wdir", None) or os.curdir
-
-        wdir = os.path.abspath(wdir)
-        path = os.path.abspath(path)
-
-        Dvcfile.check_dvc_filename(path)
-
-        Stage._check_stage_path(repo, wdir, is_wdir=kwargs.get("wdir"))
-        Stage._check_stage_path(repo, os.path.dirname(path))
-
-        stage = Stage(
-            repo=repo,
-            path=path,
-            wdir=wdir,
-            cmd=kwargs.get("cmd", None),
-            locked=kwargs.get("locked", False),
-            always_changed=kwargs.get("always_changed", False),
-        )
-
-        stage._fill_stage_outputs(**kwargs)
-        stage._fill_stage_dependencies(**kwargs)
-
-        stage._check_circular_dependency()
-        stage._check_duplicated_arguments()
-
-        Dvcfile.check_dvc_filename(path)
-
-        dvcfile = Dvcfile(stage.repo, stage.path)
-        if dvcfile.exists():
-            has_persist_outs = any(out.persist for out in stage.outs)
-            ignore_build_cache = (
-                kwargs.get("ignore_build_cache", False) or has_persist_outs
-            )
-            if has_persist_outs:
-                logger.warning(
-                    "Build cache is ignored when persisting outputs."
-                )
-
-            if not ignore_build_cache and stage.can_be_skipped:
-                logger.info("Stage is cached, skipping.")
-                return None
-
-        return stage
-
     def _fill_stage_outputs(self, **kwargs):
         assert not self.outs
 
         self.outs = []
-        for key in [
-            "outs",
-            "metrics",
-            "outs_persist",
-            "outs_no_cache",
-            "metrics_no_cache",
-            "outs_persist_no_cache",
-        ]:
+        for key in (p.value for p in OutputParams):
             self.outs += output.loads_from(
                 self,
                 kwargs.get(key, []),
@@ -400,18 +421,19 @@ class Stage(schema.StageParams):
             if out.is_in_repo:
                 out.def_path = relpath(out.path_info, wdir)
 
-    def dumpd(self):
+    def resolve_wdir(self):
         rel_wdir = relpath(self.wdir, os.path.dirname(self.path))
+        return (
+            pathlib.PurePath(rel_wdir).as_posix() if rel_wdir != "." else None
+        )
 
-        wdir = pathlib.PurePath(rel_wdir).as_posix()
-        wdir = wdir if wdir != "." else None
-
+    def dumpd(self):
         return {
             key: value
             for key, value in {
                 Stage.PARAM_MD5: self.md5,
                 Stage.PARAM_CMD: self.cmd,
-                Stage.PARAM_WDIR: wdir,
+                Stage.PARAM_WDIR: self.resolve_wdir(),
                 Stage.PARAM_LOCKED: self.locked,
                 Stage.PARAM_DEPS: [d.dumpd() for d in self.deps],
                 Stage.PARAM_OUTS: [o.dumpd() for o in self.outs],
@@ -606,7 +628,11 @@ class Stage(schema.StageParams):
                 )
             )
             if not dry:
-                if not force and self._already_cached():
+                if (
+                    not force
+                    and not self._changed_md5()
+                    and self._already_cached()
+                ):
                     self.outs[0].checkout()
                 else:
                     self.deps[0].download(self.outs[0])
@@ -709,13 +735,9 @@ class Stage(schema.StageParams):
         return {}
 
     def _already_cached(self):
-        return (
-            not self.changed_md5()
-            and all(not dep.changed() for dep in self.deps)
-            and all(
-                not out.changed_cache() if out.use_cache else not out.changed()
-                for out in self.outs
-            )
+        return all(not dep.changed() for dep in self.deps) and all(
+            not out.changed_cache() if out.use_cache else not out.changed()
+            for out in self.outs
         )
 
     def get_all_files_number(self, filter_info=None):
@@ -732,3 +754,34 @@ class Stage(schema.StageParams):
             cache.update(out.get_used_cache(*args, **kwargs))
 
         return cache
+
+
+class PipelineStage(Stage):
+    def __init__(self, name=None, **kwargs):
+        super().__init__(**kwargs)
+        self.name = name
+        self.cmd_changed = False
+
+    def __eq__(self, other):
+        return super().__eq__(other) and self.name == other.name
+
+    def __hash__(self):
+        return hash((self.path_in_repo, self.name))
+
+    def __repr__(self):
+        return "Stage: '{path}:{name}'".format(
+            path=self.relpath if self.path else "No path", name=self.name
+        )
+
+    def _changed(self):
+        if self.cmd_changed:
+            logger.warning("'cmd' of {} has changed.".format(self))
+
+        return self.cmd_changed or self._changed_deps() or self._changed_outs()
+
+    def reload(self):
+        return self.dvcfile.load_one(self.name)
+
+    @property
+    def is_cached(self):
+        return self.dvcfile.has_stage(name=self.name) and super().is_cached
