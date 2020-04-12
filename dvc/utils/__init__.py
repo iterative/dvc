@@ -345,7 +345,7 @@ def resolve_output(inp, out):
 
 
 def resolve_paths(repo, out):
-    from ..stage import Stage
+    from ..dvcfile import DVC_FILE_SUFFIX
     from ..path_info import PathInfo
     from .fs import contains_symlink_up_to
 
@@ -365,7 +365,7 @@ def resolve_paths(repo, out):
     else:
         wdir = os.getcwd()
 
-    path = os.path.join(wdir, base + Stage.STAGE_FILE_SUFFIX)
+    path = os.path.join(wdir, base + DVC_FILE_SUFFIX)
 
     return (path, wdir, out)
 

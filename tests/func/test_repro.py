@@ -28,7 +28,8 @@ from dvc.path_info import URLInfo
 from dvc.remote.local import RemoteLOCAL
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
-from dvc.stage import StageFileDoesNotExistError
+from dvc.dvcfile import Dvcfile
+from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
 from dvc.utils import file_md5
 from dvc.utils import relpath
@@ -175,7 +176,7 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
         # be processed before dir1 to load error.dvc first.
         self.dvc.stages = [
             nested_stage,
-            Stage.load(self.dvc, error_stage_path),
+            Dvcfile(self.dvc, error_stage_path).load(),
         ]
 
         with patch.object(self.dvc, "_reset"):  # to prevent `stages` resetting
@@ -1207,31 +1208,34 @@ class TestReproShell(TestDvc):
 
 class TestReproAllPipelines(TestDvc):
     def test(self):
-        self.dvc.run(
-            fname="start.dvc", outs=["start.txt"], cmd="echo start > start.txt"
-        )
+        stages = [
+            self.dvc.run(
+                fname="start.dvc",
+                outs=["start.txt"],
+                cmd="echo start > start.txt",
+            ),
+            self.dvc.run(
+                fname="middle.dvc",
+                deps=["start.txt"],
+                outs=["middle.txt"],
+                cmd="echo middle > middle.txt",
+            ),
+            self.dvc.run(
+                fname="final.dvc",
+                deps=["middle.txt"],
+                outs=["final.txt"],
+                cmd="echo final > final.txt",
+            ),
+            self.dvc.run(
+                fname="disconnected.dvc",
+                outs=["disconnected.txt"],
+                cmd="echo other > disconnected.txt",
+            ),
+        ]
 
-        self.dvc.run(
-            fname="middle.dvc",
-            deps=["start.txt"],
-            outs=["middle.txt"],
-            cmd="echo middle > middle.txt",
-        )
-
-        self.dvc.run(
-            fname="final.dvc",
-            deps=["middle.txt"],
-            outs=["final.txt"],
-            cmd="echo final > final.txt",
-        )
-
-        self.dvc.run(
-            fname="disconnected.dvc",
-            outs=["disconnected.txt"],
-            cmd="echo other > disconnected.txt",
-        )
-
-        with patch.object(Stage, "reproduce") as mock_reproduce:
+        with patch.object(
+            Stage, "reproduce", side_effect=stages
+        ) as mock_reproduce:
             ret = main(["repro", "--all-pipelines"])
             self.assertEqual(ret, 0)
             self.assertEqual(mock_reproduce.call_count, 4)
@@ -1269,7 +1273,7 @@ class TestReproAlreadyCached(TestRepro):
         ret = main(["repro", "--force", "datetime.dvc"])
         self.assertEqual(ret, 0)
 
-        repro_out = Stage.load(self.dvc, "datetime.dvc").outs[0]
+        repro_out = Dvcfile(self.dvc, "datetime.dvc").load().outs[0]
 
         self.assertNotEqual(run_out.checksum, repro_out.checksum)
 
@@ -1315,13 +1319,11 @@ class TestShouldDisplayMetricsOnReproWithMetricsOption(TestDvc):
         self.assertEqual(0, ret)
 
         self._caplog.clear()
+
+        from dvc.dvcfile import DVC_FILE_SUFFIX
+
         ret = main(
-            [
-                "repro",
-                "--force",
-                "--metrics",
-                metrics_file + Stage.STAGE_FILE_SUFFIX,
-            ]
+            ["repro", "--force", "--metrics", metrics_file + DVC_FILE_SUFFIX]
         )
         self.assertEqual(0, ret)
 

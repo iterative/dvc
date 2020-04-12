@@ -1,3 +1,4 @@
+from dvc.dvcfile import Dvcfile
 from dvc.exceptions import DvcException
 from dvc.repo import locked
 
@@ -37,4 +38,5 @@ def modify(repo, path, typ=None, xpath=None, delete=False):
 
     out.verify_metric()
 
-    out.stage.dump()
+    dvcfile = Dvcfile(repo, out.stage.path)
+    dvcfile.dump(out.stage)

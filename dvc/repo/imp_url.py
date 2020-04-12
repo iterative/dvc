@@ -9,6 +9,7 @@ from dvc.utils.fs import path_isin
 @locked_repo
 @scm_context
 def imp_url(self, url, out=None, fname=None, erepo=None, locked=True):
+    from dvc.dvcfile import Dvcfile
     from dvc.stage import Stage
 
     out = resolve_output(url, out)
@@ -25,12 +26,15 @@ def imp_url(self, url, out=None, fname=None, erepo=None, locked=True):
     if stage is None:
         return None
 
+    dvcfile = Dvcfile(self, stage.path)
+    dvcfile.overwrite_with_prompt(force=True)
+
     self.check_modified_graph([stage])
 
     stage.run()
 
     stage.locked = locked
 
-    stage.dump()
+    dvcfile.dump(stage)
 
     return stage

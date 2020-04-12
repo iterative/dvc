@@ -14,17 +14,20 @@ from dvc.exceptions import CyclicGraphError
 from dvc.exceptions import OutputDuplicationError
 from dvc.exceptions import OverlappingOutputPathsError
 from dvc.exceptions import StagePathAsOutputError
+from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.main import main
 from dvc.output import OutputBase
 from dvc.output.base import OutputIsStageFileError
 from dvc.repo import Repo as DvcRepo
-from dvc.stage import MissingDep
 from dvc.stage import Stage
-from dvc.stage import StageFileAlreadyExistsError
-from dvc.stage import StageFileBadNameError
-from dvc.stage import StagePathNotDirectoryError
-from dvc.stage import StagePathNotFoundError
-from dvc.stage import StagePathOutsideError
+from dvc.stage.exceptions import (
+    StageFileAlreadyExistsError,
+    StageFileBadNameError,
+    StagePathOutsideError,
+    StagePathNotFoundError,
+    StagePathNotDirectoryError,
+    MissingDep,
+)
 from dvc.system import System
 from dvc.utils import file_md5
 from dvc.utils.stage import load_stage_file
@@ -229,9 +232,7 @@ class TestRunBadName(TestDvc):
         with self.assertRaises(StagePathOutsideError):
             self.dvc.run(
                 cmd="",
-                fname=os.path.join(
-                    self.mkdtemp(), self.FOO + Stage.STAGE_FILE_SUFFIX
-                ),
+                fname=os.path.join(self.mkdtemp(), self.FOO + DVC_FILE_SUFFIX),
             )
 
     def test_same_prefix(self):
@@ -239,16 +240,14 @@ class TestRunBadName(TestDvc):
             path = "{}-{}".format(self._root_dir, uuid.uuid4())
             os.mkdir(path)
             self.dvc.run(
-                cmd="",
-                fname=os.path.join(path, self.FOO + Stage.STAGE_FILE_SUFFIX),
+                cmd="", fname=os.path.join(path, self.FOO + DVC_FILE_SUFFIX),
             )
 
     def test_not_found(self):
         with self.assertRaises(StagePathNotFoundError):
             path = os.path.join(self._root_dir, str(uuid.uuid4()))
             self.dvc.run(
-                cmd="",
-                fname=os.path.join(path, self.FOO + Stage.STAGE_FILE_SUFFIX),
+                cmd="", fname=os.path.join(path, self.FOO + DVC_FILE_SUFFIX),
             )
 
 
@@ -554,7 +553,7 @@ class TestCmdRunWorkingDirectory(TestDvc):
         dname = "dir"
         os.mkdir(os.path.join(self._root_dir, dname))
         foo = os.path.join(dname, self.FOO)
-        fname = os.path.join(dname, "stage" + Stage.STAGE_FILE_SUFFIX)
+        fname = os.path.join(dname, "stage" + DVC_FILE_SUFFIX)
         stage = self.dvc.run(
             cmd="echo test > {}".format(foo), outs=[foo], fname=fname
         )
@@ -645,7 +644,7 @@ class TestRunPersist(TestDvc):
     def _test(self):
         file = "file.txt"
         file_content = "content"
-        stage_file = file + Stage.STAGE_FILE_SUFFIX
+        stage_file = file + DVC_FILE_SUFFIX
 
         self.run_command(file, file_content)
         self.stage_should_contain_persist_flag(stage_file)
@@ -715,8 +714,8 @@ class TestShouldRaiseOnOverlappingOutputPaths(TestDvc):
             )
         error_output = str(err.exception)
 
-        data_dir_stage = self.DATA_DIR + Stage.STAGE_FILE_SUFFIX
-        data_stage = os.path.basename(self.DATA) + Stage.STAGE_FILE_SUFFIX
+        data_dir_stage = self.DATA_DIR + DVC_FILE_SUFFIX
+        data_stage = os.path.basename(self.DATA) + DVC_FILE_SUFFIX
 
         self.assertIn("Paths for outs:\n", error_output)
         self.assertIn(

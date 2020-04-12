@@ -3,9 +3,9 @@ from . import locked
 
 @locked
 def remove(self, target, outs_only=False):
-    from dvc.stage import Stage
+    from ..dvcfile import Dvcfile
 
-    stage = Stage.load(self, target)
+    stage = Dvcfile(self, target).load()
     if outs_only:
         stage.remove_outs(force=True)
     else:

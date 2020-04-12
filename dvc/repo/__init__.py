@@ -193,7 +193,7 @@ class Repo(object):
 
     def collect(self, target, with_deps=False, recursive=False, graph=None):
         import networkx as nx
-        from dvc.stage import Stage
+        from ..dvcfile import Dvcfile
 
         if not target:
             return list(graph) if graph else self.stages
@@ -204,7 +204,7 @@ class Repo(object):
             stages = nx.dfs_postorder_nodes(graph or self.graph)
             return [stage for stage in stages if path_isin(stage.path, target)]
 
-        stage = Stage.load(self, target)
+        stage = Dvcfile(self, target).load()
 
         # Optimization: do not collect the graph for a specific target
         if not with_deps:
@@ -214,14 +214,14 @@ class Repo(object):
         return list(nx.dfs_postorder_nodes(pipeline, stage))
 
     def collect_granular(self, target, *args, **kwargs):
-        from dvc.stage import Stage
+        from ..dvcfile import Dvcfile
 
         if not target:
             return [(stage, None) for stage in self.stages]
 
         # Optimization: do not collect the graph for a specific .dvc target
-        if Stage.is_valid_filename(target) and not kwargs.get("with_deps"):
-            return [(Stage.load(self, target), None)]
+        if Dvcfile.is_valid_filename(target) and not kwargs.get("with_deps"):
+            return [(Dvcfile(self, target).load(), None)]
 
         try:
             (out,) = self.find_outs_by_path(target, strict=False)
@@ -411,7 +411,7 @@ class Repo(object):
         NOTE: For large repos, this could be an expensive
               operation. Consider using some memoization.
         """
-        from dvc.stage import Stage
+        from ..dvcfile import Dvcfile
 
         stages = []
         outs = set()
@@ -419,9 +419,9 @@ class Repo(object):
         for root, dirs, files in self.tree.walk(self.root_dir):
             for fname in files:
                 path = os.path.join(root, fname)
-                if not Stage.is_valid_filename(path):
+                if not Dvcfile.is_valid_filename(path):
                     continue
-                stage = Stage.load(self, path)
+                stage = Dvcfile(self, path).load()
                 stages.append(stage)
 
                 for out in stage.outs:

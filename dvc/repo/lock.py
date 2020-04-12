@@ -3,10 +3,11 @@ from . import locked
 
 @locked
 def lock(self, target, unlock=False):
-    from dvc.stage import Stage
+    from ..dvcfile import Dvcfile
 
-    stage = Stage.load(self, target)
+    dvcfile = Dvcfile(self, target)
+    stage = dvcfile.load()
     stage.locked = False if unlock else True
-    stage.dump()
+    dvcfile.dump(stage)
 
     return stage
