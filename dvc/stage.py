@@ -7,7 +7,6 @@ import subprocess
 import threading
 
 from functools import wraps
-from itertools import chain
 from funcy import decorator
 
 from voluptuous import Any, Schema, MultipleInvalid
@@ -21,7 +20,6 @@ from dvc.utils import fix_env
 from dvc.utils import relpath
 from dvc.utils.fs import path_isin
 from dvc.utils.collections import apply_diff
-from dvc.utils.fs import contains_symlink_up_to
 from dvc.utils.stage import dump_stage_file
 from dvc.utils.stage import parse_stage
 from dvc.utils.stage import parse_stage_for_update
@@ -418,23 +416,6 @@ class Stage(object):
         except MultipleInvalid as exc:
             raise StageFileFormatError(fname, exc)
 
-    @classmethod
-    def _stage_fname(cls, outs, add):
-        if not outs:
-            return cls.STAGE_FILE
-
-        out = outs[0]
-        fname = out.path_info.name + cls.STAGE_FILE_SUFFIX
-
-        if (
-            add
-            and out.is_in_repo
-            and not contains_symlink_up_to(out.fspath, out.repo.root_dir)
-        ):
-            fname = out.path_info.with_name(fname).fspath
-
-        return fname
-
     @staticmethod
     def _check_stage_path(repo, path, is_wdir=False):
         assert repo is not None
@@ -505,12 +486,20 @@ class Stage(object):
         return True
 
     @staticmethod
-    def create(repo, accompany_outs=False, **kwargs):
+    def create(repo, path, **kwargs):
         wdir = kwargs.get("wdir", None) or os.curdir
-        fname = kwargs.get("fname", None)
+
+        wdir = os.path.abspath(wdir)
+        path = os.path.abspath(path)
+
+        Stage._check_dvc_filename(path)
+
+        Stage._check_stage_path(repo, wdir, is_wdir=kwargs.get("wdir"))
+        Stage._check_stage_path(repo, os.path.dirname(path))
 
         stage = Stage(
             repo=repo,
+            path=path,
             wdir=wdir,
             cmd=kwargs.get("cmd", None),
             locked=kwargs.get("locked", False),
@@ -526,28 +515,6 @@ class Stage(object):
 
         stage._check_circular_dependency()
         stage._check_duplicated_arguments()
-
-        if not fname:
-            fname = Stage._stage_fname(stage.outs, accompany_outs)
-        stage._check_dvc_filename(fname)
-
-        # Autodetecting wdir for add, we need to create outs first to do that,
-        # so we start with wdir = . and remap out paths later.
-        if accompany_outs and kwargs.get("wdir") is None:
-            wdir = os.path.dirname(fname)
-
-            for out in chain(stage.outs, stage.deps):
-                if out.is_in_repo:
-                    out.def_path = relpath(out.path_info, wdir)
-
-        wdir = os.path.abspath(wdir)
-        path = os.path.abspath(fname)
-
-        Stage._check_stage_path(repo, wdir, is_wdir=kwargs.get("wdir"))
-        Stage._check_stage_path(repo, os.path.dirname(path))
-
-        stage.wdir = wdir
-        stage.path = path
 
         ignore_build_cache = kwargs.get("ignore_build_cache", False)
 

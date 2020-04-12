@@ -12,7 +12,7 @@ from ..output.base import OutputDoesNotExistError
 from ..progress import Tqdm
 from ..repo.scm_context import scm_context
 from ..stage import Stage
-from ..utils import LARGE_DIR_SIZE
+from ..utils import LARGE_DIR_SIZE, resolve_paths
 
 logger = logging.getLogger(__name__)
 
@@ -123,9 +123,8 @@ def _create_stages(repo, targets, fname, pbar=None):
         disable=len(targets) < LARGE_DIR_SIZE,
         unit="file",
     ):
-        stage = Stage.create(
-            repo, outs=[out], accompany_outs=True, fname=fname
-        )
+        path, wdir, out = resolve_paths(repo, out)
+        stage = Stage.create(repo, fname or path, wdir=wdir, outs=[out])
         repo._reset()
 
         if not stage:
