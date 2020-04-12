@@ -95,7 +95,7 @@ def test_merging_two_levels(dvc):
         conf["remote"]["test"] = {"url": "ssh://example.com"}
 
     with dvc.config.edit("local") as conf:
-        conf["remote"]["test"] = {"password": "1"}
+        conf["remote"]["test"] = {"url": "ssh://example.com", "password": "1"}
 
     assert dvc.config["remote"]["test"] == {
         "url": "ssh://example.com",
