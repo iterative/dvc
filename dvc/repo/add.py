@@ -115,6 +115,8 @@ def _find_all_targets(repo, target, recursive):
 
 
 def _create_stages(repo, targets, fname, pbar=None):
+    from dvc.stage import Stage
+
     stages = []
 
     for out in Tqdm(
@@ -123,9 +125,12 @@ def _create_stages(repo, targets, fname, pbar=None):
         disable=len(targets) < LARGE_DIR_SIZE,
         unit="file",
     ):
-        stage = Dvcfile.create_stage(
+        stage = Stage.create(
             repo, accompany_outs=True, outs=[out], fname=fname
         )
+        if stage:
+            Dvcfile(repo, stage.path).overwrite_with_prompt(force=True)
+
         repo._reset()
 
         if not stage:

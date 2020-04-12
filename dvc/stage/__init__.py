@@ -381,6 +381,21 @@ class Stage(schema.StageParams):
         stage._check_and_set_wdir(wdir, is_wdir=kwargs.get("wdir", False))
         stage._check_and_set_path(fname)
 
+        dvcfile = Dvcfile(stage.repo, stage.path)
+        if dvcfile.exists():
+            has_persist_outs = any(out.persist for out in stage.outs)
+            ignore_build_cache = (
+                kwargs.get("ignore_build_cache", False) or has_persist_outs
+            )
+            if has_persist_outs:
+                logger.warning(
+                    "Build cache is ignored when persisting outputs."
+                )
+
+            if not ignore_build_cache and stage.can_be_skipped:
+                logger.info("Stage is cached, skipping.")
+                return None
+
         return stage
 
     def _fill_stage_outputs(self, **kwargs):

@@ -160,43 +160,15 @@ class Dvcfile:
         except MultipleInvalid as exc:
             raise StageFileFormatError(fname, exc)
 
-    @classmethod
-    def create_stage(cls, repo, accompany_outs=False, **kwargs):
-        from dvc.stage import Stage
+    def overwrite_with_prompt(self, force=False):
+        if not self.exists():
+            return
 
-        stage = Stage.create(repo, accompany_outs=accompany_outs, **kwargs)
+        msg = (
+            "'{}' already exists. Do you wish to run the command and "
+            "overwrite it?".format(self.path)
+        )
+        if not (force or prompt.confirm(msg)):
+            raise StageFileAlreadyExistsError(self.path)
 
-        ignore_build_cache = kwargs.get("ignore_build_cache", False)
-        # NOTE: remove outs before we check build cache
-        if kwargs.get("remove_outs", False):
-            logger.warning(
-                "--remove-outs is deprecated."
-                " It is now the default behavior,"
-                " so there's no need to use this option anymore."
-            )
-            stage.remove_outs(ignore_remove=False)
-            logger.warning("Build cache is ignored when using --remove-outs.")
-            ignore_build_cache = True
-
-        dvcfile = Dvcfile(stage.repo, stage.path)
-        if dvcfile.exists():
-            if any(out.persist for out in stage.outs):
-                logger.warning(
-                    "Build cache is ignored when persisting outputs."
-                )
-                ignore_build_cache = True
-
-            if not ignore_build_cache and stage.can_be_skipped:
-                logger.info("Stage is cached, skipping.")
-                return None
-
-            msg = (
-                "'{}' already exists. Do you wish to run the command and "
-                "overwrite it?".format(stage.relpath)
-            )
-            if not (kwargs.get("overwrite", True) or prompt.confirm(msg)):
-                raise StageFileAlreadyExistsError(stage.relpath)
-
-            os.unlink(dvcfile.path)
-
-        return stage
+        os.unlink(self.path)

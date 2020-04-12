@@ -7,9 +7,10 @@ from dvc.utils import resolve_output
 @scm_context
 def imp_url(self, url, out=None, fname=None, erepo=None, locked=True):
     from dvc.dvcfile import Dvcfile
+    from dvc.stage import Stage
 
     out = resolve_output(url, out)
-    stage = Dvcfile.create_stage(
+    stage = Stage.create(
         self,
         cmd=None,
         deps=[url],
@@ -22,12 +23,15 @@ def imp_url(self, url, out=None, fname=None, erepo=None, locked=True):
     if stage is None:
         return None
 
+    dvcfile = Dvcfile(self, stage.path)
+    dvcfile.overwrite_with_prompt(force=True)
+
     self.check_modified_graph([stage])
 
     stage.run()
 
     stage.locked = locked
 
-    Dvcfile(self, stage.path).dump(stage)
+    dvcfile.dump(stage)
 
     return stage
