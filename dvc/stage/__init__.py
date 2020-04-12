@@ -4,6 +4,7 @@ import os
 import signal
 import subprocess
 import threading
+
 from itertools import chain
 
 import dvc.dependency as dependency
@@ -26,7 +27,7 @@ from dvc.utils import dict_md5
 from dvc.utils import fix_env
 from dvc.utils import relpath
 from dvc.utils.fs import path_isin
-from dvc.utils.fs import contains_symlink_up_to
+
 
 logger = logging.getLogger(__name__)
 
@@ -243,25 +244,6 @@ class Stage(schema.StageParams):
             self.locked = locked
 
     @staticmethod
-    def _stage_fname(outs, add):
-        from dvc.dvcfile import DVC_FILE, DVC_FILE_SUFFIX
-
-        if not outs:
-            return DVC_FILE
-
-        out = outs[0]
-        fname = out.path_info.name + DVC_FILE_SUFFIX
-
-        if (
-            add
-            and out.is_in_repo
-            and not contains_symlink_up_to(out.fspath, out.repo.root_dir)
-        ):
-            fname = out.path_info.with_name(fname).fspath
-
-        return fname
-
-    @staticmethod
     def _check_stage_path(repo, path, is_wdir=False):
         assert repo is not None
 
@@ -284,16 +266,6 @@ class Stage(schema.StageParams):
             raise StagePathOutsideError(
                 error_msg.format("is outside of DVC repo")
             )
-
-    def _check_and_set_wdir(self, wdir, is_wdir=True):
-        wdir = os.path.abspath(wdir)
-        Stage._check_stage_path(self.repo, wdir, is_wdir=is_wdir)
-        self.wdir = wdir
-
-    def _check_and_set_path(self, fname):
-        path = os.path.abspath(fname)
-        Stage._check_stage_path(self.repo, os.path.dirname(path))
-        self.path = path
 
     @property
     def can_be_skipped(self):
@@ -348,12 +320,22 @@ class Stage(schema.StageParams):
         return True
 
     @staticmethod
-    def create(repo, accompany_outs=False, **kwargs):
-        wdir = kwargs.get("wdir") or os.curdir
-        fname = kwargs.get("fname", None)
+    def create(repo, path, **kwargs):
+        from dvc.dvcfile import Dvcfile
+
+        wdir = kwargs.get("wdir", None) or os.curdir
+
+        wdir = os.path.abspath(wdir)
+        path = os.path.abspath(path)
+
+        Dvcfile.check_dvc_filename(path)
+
+        Stage._check_stage_path(repo, wdir, is_wdir=kwargs.get("wdir"))
+        Stage._check_stage_path(repo, os.path.dirname(path))
 
         stage = Stage(
             repo=repo,
+            path=path,
             wdir=wdir,
             cmd=kwargs.get("cmd", None),
             locked=kwargs.get("locked", False),
@@ -366,20 +348,7 @@ class Stage(schema.StageParams):
         stage._check_circular_dependency()
         stage._check_duplicated_arguments()
 
-        fname = fname or Stage._stage_fname(stage.outs, accompany_outs)
-
-        from dvc.dvcfile import Dvcfile
-
-        Dvcfile.check_dvc_filename(fname)
-
-        # Autodetecting wdir for add, we need to create outs first to do that,
-        # so we start with wdir = . and remap out paths later.
-        if accompany_outs and not kwargs.get("wdir"):
-            wdir = os.path.dirname(fname)
-            stage._fix_outs_deps_path(wdir)
-
-        stage._check_and_set_wdir(wdir, is_wdir=kwargs.get("wdir", False))
-        stage._check_and_set_path(fname)
+        Dvcfile.check_dvc_filename(path)
 
         dvcfile = Dvcfile(stage.repo, stage.path)
         if dvcfile.exists():
