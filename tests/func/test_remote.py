@@ -49,6 +49,29 @@ class TestRemote(TestDvc):
         config = configobj.ConfigObj(self.dvc.config.files["repo"])
         self.assertEqual(config['remote "mylocal"']["url"], rel)
 
+    def test_remote_modify_validation(self):
+        remote_name = "drive"
+        unsupported_config = "unsupported_config"
+        self.assertEqual(
+            main(["remote", "add", "-d", remote_name, "gdrive://test/test"]), 0
+        )
+        self.assertEqual(
+            main(
+                [
+                    "remote",
+                    "modify",
+                    remote_name,
+                    unsupported_config,
+                    "something",
+                ]
+            ),
+            251,
+        )
+        config = configobj.ConfigObj(self.dvc.config.files["repo"])
+        self.assertFalse(
+            unsupported_config in config['remote "{}"'.format(remote_name)]
+        )
+
     def test_overwrite(self):
         remote_name = "a"
         remote_url = "s3://bucket/name"

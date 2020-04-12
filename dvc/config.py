@@ -342,6 +342,7 @@ class Config(dict):
         yield conf
 
         conf = self._save_paths(conf, self.files[level])
+        self.validate(conf)
         _save_config(self.files[level], conf)
         self.load()
 
