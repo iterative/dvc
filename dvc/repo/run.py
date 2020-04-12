@@ -1,9 +1,5 @@
-import logging
-
 from . import locked
 from .scm_context import scm_context
-
-logger = logging.getLogger(__name__)
 
 
 @locked
@@ -13,7 +9,7 @@ def run(self, no_exec=False, **kwargs):
     from dvc.dvcfile import Dvcfile
 
     stage = Stage.create(self, **kwargs)
-    if not stage:
+    if stage is None:
         return None
 
     dvcfile = Dvcfile(self, stage.path)
