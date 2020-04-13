@@ -1,5 +1,6 @@
 import logging
 import os
+from mock import patch
 
 import configobj
 import pytest
@@ -304,3 +305,33 @@ def test_gc_cloud_positive(tmp_dir, dvc, tmp_path_factory):
 
     for flag in ["-cw", "-ca", "-cT", "-caT", "-cwT"]:
         assert main(["gc", "-vf", flag]) == 0
+
+
+def test_gc_cloud_remove_order(tmp_dir, scm, dvc, tmp_path_factory, mocker):
+    storage = fspath(tmp_path_factory.mktemp("test_remote_base"))
+    dvc.config["remote"]["local_remote"] = {"url": storage}
+    dvc.config["core"]["remote"] = "local_remote"
+
+    (standalone, dir1, dir2) = tmp_dir.dvc_gen(
+        {
+            "file1": "standalone",
+            "dir1": {"file2": "file2"},
+            "dir2": {"file3": "file3", "file4": "file4"},
+        }
+    )
+    dvc.push()
+    dvc.remove(standalone.relpath)
+    dvc.remove(dir1.relpath)
+    dvc.remove(dir2.relpath)
+    dvc.gc(workspace=True)
+
+    with patch.object(RemoteLOCAL, "remove", autospec=True) as remove:
+        dvc.gc(workspace=True, cloud=True)
+        assert len(remove.mock_calls) == 8
+        # dir (and unpacked dir) should be first 4 checksums removed from
+        # the remote
+        for args in remove.call_args_list[:4]:
+            checksum = str(args.args[1])
+            assert checksum.endswith(".dir") or checksum.endswith(
+                ".dir.unpacked"
+            )
