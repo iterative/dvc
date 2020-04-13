@@ -725,10 +725,9 @@ class Stage(schema.StageParams):
         )
 
     def get_used_cache(self, *args, **kwargs):
-        from dvc.cache import NamedCache
 
-        cache = NamedCache()
+        ret = []
         for out in self._filter_outs(kwargs.get("filter_info")):
-            cache.update(out.get_used_cache(*args, **kwargs))
+            ret.append(out.get_used_cache(*args, **kwargs))
 
-        return cache
+        return ret

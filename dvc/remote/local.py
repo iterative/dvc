@@ -320,7 +320,7 @@ class RemoteLOCAL(RemoteBASE):
 
     def _process(
         self,
-        named_cache,
+        named_caches,
         remote,
         jobs=None,
         show_checksums=False,
@@ -348,7 +348,7 @@ class RemoteLOCAL(RemoteBASE):
             jobs = remote.JOBS
 
         status_info = self.status(
-            named_cache,
+            named_caches,
             remote,
             jobs=jobs,
             show_checksums=show_checksums,
@@ -373,18 +373,18 @@ class RemoteLOCAL(RemoteBASE):
 
         return len(plans[0])
 
-    def push(self, named_cache, remote, jobs=None, show_checksums=False):
+    def push(self, named_caches, remote, jobs=None, show_checksums=False):
         return self._process(
-            named_cache,
+            named_caches,
             remote,
             jobs=jobs,
             show_checksums=show_checksums,
             download=False,
         )
 
-    def pull(self, named_cache, remote, jobs=None, show_checksums=False):
+    def pull(self, named_caches, remote, jobs=None, show_checksums=False):
         return self._process(
-            named_cache,
+            named_caches,
             remote,
             jobs=jobs,
             show_checksums=show_checksums,
