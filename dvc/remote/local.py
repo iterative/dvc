@@ -5,8 +5,11 @@ import stat
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 
+from funcy import first
+
 from shortuuid import uuid
 
+from dvc.cache import NamedCache
 from dvc.compat import fspath_py35
 from dvc.exceptions import DvcException, DownloadError, UploadError
 from dvc.path_info import PathInfo
@@ -249,7 +252,7 @@ class RemoteLOCAL(RemoteBASE):
 
     def status(
         self,
-        named_cache,
+        named_caches,
         remote,
         jobs=None,
         show_checksums=False,
@@ -258,28 +261,58 @@ class RemoteLOCAL(RemoteBASE):
         logger.debug(
             "Preparing to collect status from {}".format(remote.path_info)
         )
-        md5s = list(named_cache[self.scheme])
+        cache = NamedCache()
+        dir_contents = {}
+        md5s = set()
+        for dir_cache, file_cache in named_caches:
+            cache.update(file_cache)
+            md5s.update(file_cache[self.scheme])
+            if dir_cache is not None:
+                cache.update(dir_cache)
+                dir_checksum = first(dir_cache[self.scheme].keys())
+                md5s.add(dir_checksum)
+                dir_contents[dir_checksum] = file_cache[self.scheme].keys()
 
         logger.debug("Collecting information from local cache...")
-        local_exists = self.cache_exists(md5s, jobs=jobs, name=self.cache_dir)
+        local_exists = frozenset(
+            self.cache_exists(md5s, jobs=jobs, name=self.cache_dir)
+        )
 
         # This is a performance optimization. We can safely assume that,
         # if the resources that we want to fetch are already cached,
         # there's no need to check the remote storage for the existence of
         # those files.
-        if download and sorted(local_exists) == sorted(md5s):
+        if download and local_exists == md5s:
             remote_exists = local_exists
         else:
             logger.debug("Collecting information from remote cache...")
-            remote_exists = list(
-                remote.cache_exists(
-                    md5s, jobs=jobs, name=str(remote.path_info)
+            remote_exists = set()
+            dir_md5s = set(dir_contents.keys())
+            if dir_md5s:
+                # If .dir checksum exists on the remote, assume directory
+                # contents also exists on the remote
+                for dir_checksum in remote._cache_object_exists(dir_md5s):
+                    file_checksums = dir_contents[dir_checksum]
+                    logger.debug(
+                        "'{}' exists on remote, "
+                        "assuming '{}' files also exist".format(
+                            dir_checksum, len(file_checksums)
+                        )
+                    )
+                    md5s.remove(dir_checksum)
+                    remote_exists.add(dir_checksum)
+                    md5s.difference_update(file_checksums)
+                    remote_exists.update(file_checksums)
+            if md5s:
+                remote_exists.update(
+                    remote.cache_exists(
+                        md5s, jobs=jobs, name=str(remote.path_info)
+                    )
                 )
-            )
 
         ret = {
             checksum: {"name": checksum if show_checksums else " ".join(names)}
-            for checksum, names in named_cache[self.scheme].items()
+            for checksum, names in cache[self.scheme].items()
         }
         self._fill_statuses(ret, local_exists, remote_exists)
 
