@@ -10,7 +10,7 @@ from funcy import first
 
 from dvc.compat import fspath
 from dvc.plot import DefaultLinearTemplate
-from dvc.repo.plot import NoMetricsInHistoryError
+from dvc.repo.plot import NoMetricsInHistoryError, NoDataNorTemplateProvided
 
 
 def _remove_whitespace(value):
@@ -348,3 +348,8 @@ def test_should_embed_vega_json_template(tmp_dir, scm, dvc):
     ]
 
     assert vega_data == result_content["data"]["values"]
+
+
+def test_should_raise_on_no_template_and_datafile(tmp_dir, dvc):
+    with pytest.raises(NoDataNorTemplateProvided):
+        dvc.plot()

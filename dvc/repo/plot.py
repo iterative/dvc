@@ -30,6 +30,13 @@ class TooManyDataSourcesError(DvcException):
         )
 
 
+class NoDataNorTemplateProvided(DvcException):
+    def __init__(self):
+        super().__init__(
+            "Cannot plot if datafile or template is not provided."
+        )
+
+
 def _load_from_tree(tree, datafile, default_plot=False):
     if datafile.endswith(".json"):
         data = _parse_json(datafile, default_plot, tree)
@@ -133,6 +140,9 @@ def _evaluate_templatepath(repo, template=None):
 def plot(repo, datafile=None, template=None, revisions=None, file=None):
     if revisions is None:
         revisions = []
+
+    if not datafile and not template:
+        raise NoDataNorTemplateProvided()
 
     template_path = _evaluate_templatepath(repo, template)
 
