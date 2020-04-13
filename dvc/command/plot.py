@@ -99,7 +99,7 @@ def add_parser(subparsers, parent_parser):
         "--template",
         nargs="?",
         default=None,
-        help=("File to be injected wit data."),
+        help=("File to be injected with data."),
     )
     plot_diff_parser.add_argument(
         "-d",

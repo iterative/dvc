@@ -2,6 +2,7 @@ import csv
 import json
 import logging
 import os
+from collections import OrderedDict
 
 from funcy import first
 
@@ -77,7 +78,7 @@ def _parse_csv(datafile, default_plot, tree, delimiter=","):
 
 def _parse_json(datafile, default_plot, tree):
     with tree.open(datafile, "r") as fobj:
-        data = json.load(fobj)
+        data = json.load(fobj, object_pairs_hook=OrderedDict)
         assert isinstance(data, list)
     if default_plot:
         assert all(len(e) >= 1 for e in data)

@@ -43,7 +43,7 @@ def _write_csv(metric, filename):
 
 
 def _write_json(tmp_dir, metric, filename):
-    tmp_dir.gen(filename, json.dumps(metric))
+    tmp_dir.gen(filename, json.dumps(metric, sort_keys=True))
 
 
 def test_plot_csv_one_column(tmp_dir, scm, dvc):
@@ -108,14 +108,10 @@ def test_plot_json_single_val(tmp_dir, scm, dvc):
     )
 
 
-@pytest.mark.skip(
-    reason="Consider whether we want to support this case, "
-    "problems with dict keys order for python 3.5"
-)
 def test_plot_json_multiple_val(tmp_dir, scm, dvc):
     metric = [
-        OrderedDict([("first_val", 100), ("val", 2)]),
-        OrderedDict([("first_val", 200), ("val", 3)]),
+        {"first_val": 100, "val": 2},
+        {"first_val": 200, "val": 3},
     ]
     _write_json(tmp_dir, metric, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "first run")
