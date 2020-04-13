@@ -10,7 +10,7 @@ from funcy import first
 
 from dvc.compat import fspath
 from dvc.plot import DefaultLinearTemplate
-from dvc.repo.plot import NoMetricsInHistoryError, NoDataNorTemplateProvided
+from dvc.repo.plot import NoMetricInHistoryError, NoDataNorTemplateProvided
 
 
 def _remove_whitespace(value):
@@ -221,19 +221,25 @@ def test_plot_even_if_metric_missing(tmp_dir, scm, dvc, caplog):
     )
 
 
-def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc):
+def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc, caplog):
     tmp_dir.scm_gen("some_file", "content", commit="there is no metric")
     scm.tag("v1")
 
-    tmp_dir.scm_gen(
-        "some_other_file",
-        "other content",
-        commit="there is no metric as well",
-    )
-    scm.tag("v2")
+    tmp_dir.gen("some_file", "make repo dirty")
 
-    with pytest.raises(NoMetricsInHistoryError):
-        dvc.plot("metric.json", revisions=["v2", "v1"])
+    caplog.clear()
+    with pytest.raises(NoMetricInHistoryError) as error, caplog.at_level(
+        logging.WARNING, "dvc"
+    ):
+        dvc.plot("metric.json", revisions=["v1"])
+
+    # do not warn if none found
+    assert len(caplog.messages) == 0
+
+    assert (
+        "Could not find 'metric.json' on any of the revisions: 'v1, current'"
+        == str(error.value)
+    )
 
 
 def test_custom_template(tmp_dir, scm, dvc):

@@ -13,11 +13,20 @@ from dvc.repo import locked
 logger = logging.getLogger(__name__)
 
 
-class NoMetricsInHistoryError(DvcException):
+class NoMetricInHistoryError(DvcException):
     def __init__(self, path, revisions):
         super().__init__(
             "Could not find '{}' on any of the revisions: "
             "'{}'".format(path, ", ".join(revisions))
+        )
+
+
+class NoMetricOnRevisionError(DvcException):
+    def __init__(self, path, revision):
+        self.path = path
+        self.revision = revision
+        super().__init__(
+            "Could not find '{}' on revision: " "'{}'".format(path, revision)
         )
 
 
@@ -36,6 +45,9 @@ class NoDataNorTemplateProvided(DvcException):
         super().__init__(
             "Cannot plot if datafile or template is not provided."
         )
+
+
+WORKSPACE_REVISION_NAME = "current"
 
 
 def _load_from_tree(tree, datafile, default_plot=False):
@@ -87,9 +99,8 @@ def _parse_json(datafile, default_plot, tree):
     return data
 
 
-def _load_from_revision(repo, datafile, revision=None, default_plot=False):
-    if revision is None:
-        revision = "current"
+def _load_from_revision(repo, datafile, revision, default_plot=False):
+    if revision is WORKSPACE_REVISION_NAME:
         tree = repo.tree
     else:
         tree = repo.scm.get_tree(revision)
@@ -99,32 +110,37 @@ def _load_from_revision(repo, datafile, revision=None, default_plot=False):
         for d in data:
             d["rev"] = revision
     except FileNotFoundError:
-        logger.warning(
-            "File '{}' was not found at: '{}'. It will not be "
-            "plotted.".format(datafile, revision)
-        )
-        data = []
+        raise NoMetricOnRevisionError(datafile, revision)
     return data
 
 
 def _load_from_revisions(repo, datafile, revisions, default_plot=False):
     data = []
+    exceptions = []
 
     if len(revisions) <= 1:
-        data.extend(
-            _load_from_revision(repo, datafile, default_plot=default_plot)
-        )
-
         if len(revisions) == 0 and repo.scm.is_dirty():
             revisions.append("HEAD")
+        revisions.append(WORKSPACE_REVISION_NAME)
 
     for rev in revisions:
-        data.extend(
-            _load_from_revision(repo, datafile, rev, default_plot=default_plot)
-        )
+        try:
+            data.extend(
+                _load_from_revision(
+                    repo, datafile, rev, default_plot=default_plot
+                )
+            )
+        except NoMetricOnRevisionError as e:
+            exceptions.append(e)
 
-    if not data:
-        raise NoMetricsInHistoryError(datafile, revisions)
+    if not data and exceptions:
+        raise NoMetricInHistoryError(datafile, revisions)
+    elif exceptions:
+        for e in exceptions:
+            logger.warning(
+                "File '{}' was not found at: '{}'. It will not be "
+                "plotted.".format(e.path, e.revision)
+            )
     return data
 
 

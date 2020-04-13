@@ -1,7 +1,7 @@
 import pytest
 
 from dvc.exceptions import DvcException
-from dvc.repo.plot import _load_from_revisions
+from dvc.repo.plot import _load_from_revisions, WORKSPACE_REVISION_NAME
 
 
 def test_load_no_revisions_clean(mocker):
@@ -14,7 +14,7 @@ def test_load_no_revisions_clean(mocker):
 
     assert m.call_count == 1
     assert m.call_args_list[0] == mocker.call(
-        repo, "datafile", default_plot=False
+        repo, "datafile", WORKSPACE_REVISION_NAME, default_plot=False
     )
 
 
@@ -27,11 +27,11 @@ def test_load_no_revisions_dirty(mocker):
         _load_from_revisions(repo, "datafile", [], False)
 
     assert m.call_count == 2
-    assert m.call_args_list[1] == mocker.call(
+    assert m.call_args_list[0] == mocker.call(
         repo, "datafile", "HEAD", default_plot=False
     )
-    assert m.call_args_list[0] == mocker.call(
-        repo, "datafile", default_plot=False
+    assert m.call_args_list[1] == mocker.call(
+        repo, "datafile", WORKSPACE_REVISION_NAME, default_plot=False
     )
 
 
@@ -45,10 +45,10 @@ def test_load_one(mocker):
 
     assert m.call_count == 2
     assert m.call_args_list[0] == mocker.call(
-        repo, "datafile", default_plot=False
+        repo, "datafile", "tag1", default_plot=False
     )
     assert m.call_args_list[1] == mocker.call(
-        repo, "datafile", "tag1", default_plot=False
+        repo, "datafile", WORKSPACE_REVISION_NAME, default_plot=False
     )
 
 
