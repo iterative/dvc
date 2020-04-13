@@ -30,7 +30,7 @@ def _collect_configs(repo):
 def _read_params(repo, configs, rev):
     res = {}
     for config in configs:
-        if not repo.tree.exists(config):
+        if not repo.tree.exists(fspath_py35(config)):
             continue
 
         with repo.tree.open(fspath_py35(config), "r") as fobj:
