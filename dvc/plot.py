@@ -113,7 +113,7 @@ class Template:
     @staticmethod
     def fill(template_path, data, priority_datafile=None, result_path=None):
         if not result_path:
-            result_path = os.path.basename(template_path) + ".html"
+            result_path = os.path.join(os.getcwd(), "plot.html")
 
         result_content = Template._fill(template_path, data, priority_datafile)
 
