@@ -5,11 +5,10 @@ import stat
 from concurrent.futures import as_completed, ThreadPoolExecutor
 from functools import partial
 
-from funcy import concat, first
+from funcy import concat
 
 from shortuuid import uuid
 
-from dvc.cache import NamedCache
 from dvc.compat import fspath_py35
 from dvc.exceptions import DvcException, DownloadError, UploadError
 from dvc.path_info import PathInfo
@@ -252,7 +251,7 @@ class RemoteLOCAL(RemoteBASE):
 
     def status(
         self,
-        named_caches,
+        named_cache,
         remote,
         jobs=None,
         show_checksums=False,
@@ -260,7 +259,7 @@ class RemoteLOCAL(RemoteBASE):
     ):
         # Return flattened dict containing all status info
         dir_status, file_status, _ = self._status(
-            named_caches,
+            named_cache,
             remote,
             jobs=jobs,
             show_checksums=show_checksums,
@@ -270,7 +269,7 @@ class RemoteLOCAL(RemoteBASE):
 
     def _status(
         self,
-        named_caches,
+        named_cache,
         remote,
         jobs=None,
         show_checksums=False,
@@ -286,18 +285,7 @@ class RemoteLOCAL(RemoteBASE):
         logger.debug(
             "Preparing to collect status from {}".format(remote.path_info)
         )
-        merged_dir_cache = NamedCache()
-        merged_file_cache = NamedCache()
-        dir_contents = {}
-        md5s = set()
-        for dir_cache, file_cache in named_caches:
-            merged_file_cache.update(file_cache)
-            md5s.update(file_cache[self.scheme])
-            if dir_cache is not None:
-                merged_dir_cache.update(dir_cache)
-                dir_checksum = first(dir_cache[self.scheme].keys())
-                md5s.add(dir_checksum)
-                dir_contents[dir_checksum] = file_cache[self.scheme].keys()
+        md5s = set(named_cache.scheme_keys(self.scheme))
 
         logger.debug("Collecting information from local cache...")
         local_exists = frozenset(
@@ -313,12 +301,14 @@ class RemoteLOCAL(RemoteBASE):
         else:
             logger.debug("Collecting information from remote cache...")
             remote_exists = set()
-            dir_md5s = set(dir_contents.keys())
+            dir_md5s = set(named_cache.dir_keys(self.scheme))
             if dir_md5s:
                 # If .dir checksum exists on the remote, assume directory
                 # contents also exists on the remote
                 for dir_checksum in remote._cache_object_exists(dir_md5s):
-                    file_checksums = dir_contents[dir_checksum]
+                    file_checksums = list(
+                        named_cache.child_keys(self.scheme, dir_checksum)
+                    )
                     logger.debug(
                         "'{}' exists on remote, "
                         "assuming '{}' files also exist".format(
@@ -336,26 +326,32 @@ class RemoteLOCAL(RemoteBASE):
                     )
                 )
 
-        def cache_to_dict(cache):
-            return {
-                checksum: {
-                    "name": checksum if show_checksums else " ".join(names)
-                }
-                for checksum, names in cache[self.scheme].items()
-            }
+        def make_names(checksum, names):
+            return {"name": checksum if show_checksums else " ".join(names)}
 
-        dir_status = cache_to_dict(merged_dir_cache)
-        file_status = cache_to_dict(merged_file_cache)
+        dir_status = {}
+        file_status = {}
+        dir_paths = {}
+        for checksum, item in named_cache[self.scheme].items():
+            if item.children:
+                dir_status[checksum] = make_names(checksum, item.names)
+                file_status.update(
+                    {
+                        child_checksum: make_names(child_checksum, child.names)
+                        for child_checksum, child in item.children.items()
+                    }
+                )
+                dir_paths[remote.checksum_to_path_info(checksum)] = frozenset(
+                    map(remote.checksum_to_path_info, item.child_keys())
+                )
+            else:
+                file_status[checksum] = make_names(checksum, item.names)
+
         self._fill_statuses(dir_status, local_exists, remote_exists)
         self._fill_statuses(file_status, local_exists, remote_exists)
 
         self._log_missing_caches(dict(dir_status, **file_status))
 
-        dir_paths = {}
-        for dir_checksum, file_checksums in dir_contents.items():
-            dir_paths[remote.checksum_to_path_info(dir_checksum)] = frozenset(
-                map(remote.checksum_to_path_info, file_checksums)
-            )
         return dir_status, file_status, dir_paths
 
     @staticmethod
@@ -391,7 +387,7 @@ class RemoteLOCAL(RemoteBASE):
 
     def _process(
         self,
-        named_caches,
+        named_cache,
         remote,
         jobs=None,
         show_checksums=False,
@@ -419,7 +415,7 @@ class RemoteLOCAL(RemoteBASE):
             jobs = remote.JOBS
 
         dir_status, file_status, dir_paths = self._status(
-            named_caches,
+            named_cache,
             remote,
             jobs=jobs,
             show_checksums=show_checksums,
@@ -488,18 +484,18 @@ class RemoteLOCAL(RemoteBASE):
                 return 1
         return func(from_info, to_info, name)
 
-    def push(self, named_caches, remote, jobs=None, show_checksums=False):
+    def push(self, named_cache, remote, jobs=None, show_checksums=False):
         return self._process(
-            named_caches,
+            named_cache,
             remote,
             jobs=jobs,
             show_checksums=show_checksums,
             download=False,
         )
 
-    def pull(self, named_caches, remote, jobs=None, show_checksums=False):
+    def pull(self, named_cache, remote, jobs=None, show_checksums=False):
         return self._process(
-            named_caches,
+            named_cache,
             remote,
             jobs=jobs,
             show_checksums=show_checksums,

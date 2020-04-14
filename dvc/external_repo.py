@@ -104,7 +104,7 @@ class ExternalRepo(Repo):
 
             # Only pull unless all needed cache is present
             if out.changed_cache(filter_info=src):
-                self.cloud.pull([out.get_used_cache(filter_info=src)])
+                self.cloud.pull(out.get_used_cache(filter_info=src))
 
             try:
                 out.checkout(filter_info=src)

@@ -48,12 +48,11 @@ class DataCloud(object):
     def _init_remote(self, remote):
         return Remote(self.repo, name=remote)
 
-    def push(self, caches, jobs=None, remote=None, show_checksums=False):
+    def push(self, cache, jobs=None, remote=None, show_checksums=False):
         """Push data items in a cloud-agnostic way.
 
         Args:
-            caches (list): list of (dir_cache, file_cache) tuples containing
-                named checksums to push to the cloud.
+            cache (NamedCache): named checksums to push to the cloud.
             jobs (int): number of jobs that can be running simultaneously.
             remote (dvc.remote.base.RemoteBASE): optional remote to push to.
                 By default remote from core.remote config option is used.
@@ -61,18 +60,17 @@ class DataCloud(object):
                 information messages.
         """
         return self.repo.cache.local.push(
-            caches,
+            cache,
             jobs=jobs,
             remote=self.get_remote(remote, "push"),
             show_checksums=show_checksums,
         )
 
-    def pull(self, caches, jobs=None, remote=None, show_checksums=False):
+    def pull(self, cache, jobs=None, remote=None, show_checksums=False):
         """Pull data items in a cloud-agnostic way.
 
         Args:
-            caches (list): list of (dir_cache, file_cache) tuples containing
-                named checksums to pull from the cloud.
+            cache (NamedCache): named checksums to pull from the cloud.
             jobs (int): number of jobs that can be running simultaneously.
             remote (dvc.remote.base.RemoteBASE): optional remote to pull from.
                 By default remote from core.remote config option is used.
@@ -81,36 +79,29 @@ class DataCloud(object):
         """
         remote = self.get_remote(remote, "pull")
         downloaded_items_num = self.repo.cache.local.pull(
-            caches, jobs=jobs, remote=remote, show_checksums=show_checksums
+            cache, jobs=jobs, remote=remote, show_checksums=show_checksums
         )
 
         if not remote.verify:
-            self._save_pulled_checksums(caches)
+            self._save_pulled_checksums(cache)
 
         return downloaded_items_num
 
     def _save_pulled_checksums(self, cache):
-        for dir_cache, file_cache in cache:
-            checksums = set(file_cache["local"].keys())
-            if dir_cache is not None:
-                checksums.update(dir_cache["local"].keys())
-            for checksum in checksums:
-                cache_file = self.repo.cache.local.checksum_to_path_info(
-                    checksum
-                )
-                if self.repo.cache.local.exists(cache_file):
-                    # We can safely save here, as existing corrupted files will
-                    # be removed upon status, while files corrupted during
-                    # download will not be moved from tmp_file
-                    # (see `RemoteBASE.download()`)
-                    self.repo.state.save(cache_file, checksum)
+        for checksum in cache.scheme_keys("local"):
+            cache_file = self.repo.cache.local.checksum_to_path_info(checksum)
+            if self.repo.cache.local.exists(cache_file):
+                # We can safely save here, as existing corrupted files will
+                # be removed upon status, while files corrupted during
+                # download will not be moved from tmp_file
+                # (see `RemoteBASE.download()`)
+                self.repo.state.save(cache_file, checksum)
 
-    def status(self, caches, jobs=None, remote=None, show_checksums=False):
+    def status(self, cache, jobs=None, remote=None, show_checksums=False):
         """Check status of data items in a cloud-agnostic way.
 
         Args:
-            caches (list): list of (dir_cache, file_cache) tuples containg
-                named checksums to check status for.
+            cache (NamedCache): named checksums to check status for.
             jobs (int): number of jobs that can be running simultaneously.
             remote (dvc.remote.base.RemoteBASE): optional remote to compare
                 cache to. By default remote from core.remote config option
@@ -120,5 +111,5 @@ class DataCloud(object):
         """
         remote = self.get_remote(remote, "status")
         return self.repo.cache.local.status(
-            caches, jobs=jobs, remote=remote, show_checksums=show_checksums
+            cache, jobs=jobs, remote=remote, show_checksums=show_checksums
         )

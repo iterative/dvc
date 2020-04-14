@@ -731,14 +731,11 @@ class RemoteBASE(object):
             remote_size, remote_checksums, jobs, name
         )
 
-    def gc(self, named_caches, jobs=None):
-        used = self.extract_used_local_checksums(named_caches)
+    def gc(self, named_cache, jobs=None):
+        used = self.extract_used_local_checksums(named_cache)
 
         if self.scheme != "":
-            for dir_cache, file_cache in named_caches:
-                if dir_cache:
-                    used.update(dir_cache[self.scheme])
-                used.update(file_cache[self.scheme])
+            used.update(named_cache.scheme_keys(self.scheme))
 
         removed = False
         # checksums must be sorted to ensure we always remove .dir files first
@@ -1253,12 +1250,8 @@ class RemoteBASE(object):
     def _get_unpacked_dir_names(self, checksums):
         return set()
 
-    def extract_used_local_checksums(self, named_caches):
-        used = set()
-        for dir_cache, file_cache in named_caches:
-            if dir_cache:
-                used.update(dir_cache["local"])
-            used.update(file_cache["local"])
+    def extract_used_local_checksums(self, named_cache):
+        used = set(named_cache.scheme_keys("local"))
         unpacked = self._get_unpacked_dir_names(used)
         return used | unpacked
 
