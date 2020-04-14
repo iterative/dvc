@@ -7,8 +7,8 @@ from collections import OrderedDict
 from funcy import first
 from ruamel import yaml
 
-from dvc.exceptions import DvcException
-from dvc.plot import Template
+from dvc.exceptions import DvcException, PathMissingError
+from dvc.plot import Template, NoDataForTemplateError
 from dvc.repo import locked
 
 logger = logging.getLogger(__name__)
@@ -57,10 +57,8 @@ class PlotMetricTypeError(DvcException):
 WORKSPACE_REVISION_NAME = "workspace"
 
 
-def _parse(datafile, default_plot, tree, loading_function):
-    with tree.open(datafile, "r") as fobj:
-        data = loading_function(fobj)
-        assert isinstance(data, list)
+def _parse(data, default_plot):
+    assert isinstance(data, list)
     if default_plot:
         assert all(len(e) >= 1 for e in data)
         last_key = list(first(data).keys())[-1]
@@ -68,52 +66,49 @@ def _parse(datafile, default_plot, tree, loading_function):
     return data
 
 
-def _parse_yaml(datafile, default_plot, tree):
-    def load_yaml(fobj):
-        return yaml.load(fobj)
+def _parse_yaml(fobj, default_plot):
+    data = yaml.load(fobj)
 
-    return _parse(datafile, default_plot, tree, load_yaml)
-
-
-def _parse_json(datafile, default_plot, tree):
-    def load_json(fobj):
-        return json.load(fobj, object_pairs_hook=OrderedDict)
-
-    return _parse(datafile, default_plot, tree, load_json)
+    return _parse(data, default_plot)
 
 
-def _parse_csv(datafile, default_plot, tree, delimiter=","):
-    with tree.open(datafile, "r") as fobj:
-        if default_plot:
-            data = []
-            for index, row in enumerate(csv.reader(fobj, delimiter=delimiter)):
-                assert len(row) >= 1
-                if index == 0 and len(row) > 1:
-                    # skip header
-                    continue
-                data.append({"y": row[-1], "x": index})
-        else:
-            data = [
-                row
-                for row in (
-                    csv.DictReader(
-                        fobj, skipinitialspace=True, delimiter=delimiter
-                    )
+def _parse_json(fobj, default_plot):
+    data = json.load(fobj, object_pairs_hook=OrderedDict)
+
+    return _parse(data, default_plot)
+
+
+def _parse_csv(fobj, default_plot, delimiter=","):
+    if default_plot:
+        data = []
+        for index, row in enumerate(csv.reader(fobj, delimiter=delimiter)):
+            assert len(row) >= 1
+            if index == 0 and len(row) > 1:
+                # skip header
+                continue
+            data.append({"y": row[-1], "x": index})
+    else:
+        data = [
+            row
+            for row in (
+                csv.DictReader(
+                    fobj, skipinitialspace=True, delimiter=delimiter
                 )
-            ]
+            )
+        ]
     return data
 
 
-def _load_from_tree(tree, datafile, default_plot=False):
+def _load_from(fobj, datafile, default_plot=False):
     filename = datafile.lower()
     if filename.endswith(".json"):
-        data = _parse_json(datafile, default_plot, tree)
+        data = _parse_json(fobj, default_plot)
     elif filename.endswith(".csv"):
-        data = _parse_csv(datafile, default_plot, tree)
+        data = _parse_csv(fobj, default_plot)
     elif filename.endswith(".tsv"):
-        data = _parse_csv(datafile, default_plot, tree, "\t")
+        data = _parse_csv(fobj, default_plot, "\t")
     elif filename.endswith(".yaml"):
-        data = _parse_yaml(datafile, default_plot, tree)
+        data = _parse_yaml(fobj, default_plot)
     else:
         raise PlotMetricTypeError(datafile)
 
@@ -121,16 +116,24 @@ def _load_from_tree(tree, datafile, default_plot=False):
 
 
 def _load_from_revision(repo, datafile, revision, default_plot=False):
-    if revision is WORKSPACE_REVISION_NAME:
-        tree = repo.tree
-    else:
-        tree = repo.scm.get_tree(revision)
-
     try:
-        data = _load_from_tree(tree, datafile, default_plot)
-        for d in data:
-            d["rev"] = revision
-    except FileNotFoundError:
+        if revision is WORKSPACE_REVISION_NAME:
+
+            def open_datafile():
+                return repo.tree.open(datafile, "r")
+
+        else:
+
+            def open_datafile():
+                from dvc import api
+
+                return api.open(datafile, repo.root_dir, revision)
+
+        with open_datafile() as fobj:
+            data = _load_from(fobj, datafile, default_plot)
+            for d in data:
+                d["rev"] = revision
+    except (FileNotFoundError, PathMissingError):
         raise NoMetricOnRevisionError(datafile, revision)
     return data
 
@@ -192,9 +195,17 @@ def plot(repo, datafile=None, template=None, revisions=None, file=None):
         for datafile in template_datafiles
     }
 
-    result_path = Template.fill(
-        template_path, data, datafile, result_path=file
-    )
+    if not file:
+        if datafile:
+            file = datafile
+        else:
+            file = first(template_datafiles)
+        if not file:
+            raise NoDataForTemplateError(template_path)
+
+        file += ".html"
+
+    result_path = Template.fill(template_path, data, file, datafile)
     logger.info("file://{}".format(os.path.join(repo.root_dir, result_path)))
     return result_path
 

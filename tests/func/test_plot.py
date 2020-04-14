@@ -375,6 +375,7 @@ def test_plot_no_data(tmp_dir, dvc):
         dvc.plot(template="default")
 
 
-def test_plot_wrong_metric_type(tmp_dir, dvc):
+def test_plot_wrong_metric_type(tmp_dir, scm, dvc):
+    tmp_dir.scm_gen("metric.txt", "content", commit="initial")
     with pytest.raises(PlotMetricTypeError):
         dvc.plot(datafile="metric.txt")

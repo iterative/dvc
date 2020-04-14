@@ -122,21 +122,7 @@ class Template:
         )
 
     @staticmethod
-    def fill(template_path, data, priority_datafile=None, result_path=None):
-        if not result_path:
-            filename = os.path.basename(template_path)
-            filename.replace(Template.EXTENTION, ".html")
-            result_path = os.path.join(os.getcwd(), filename)
-
-        result_content = Template._fill(template_path, data, priority_datafile)
-
-        with open(result_path, "w") as fobj:
-            fobj.write(result_content)
-
-        return result_path
-
-    @staticmethod
-    def _fill(template_path, data, priority_datafile):
+    def fill(template_path, data, result_path, priority_datafile=None):
         with open(template_path, "r") as fobj:
             result_content = fobj.read()
 
@@ -148,9 +134,6 @@ class Template:
             else:
                 key = file
 
-            if not key:
-                raise NoDataForTemplateError(template_path)
-
             result_content = result_content.replace(
                 placeholder,
                 json.dumps(
@@ -160,7 +143,10 @@ class Template:
                     sort_keys=True,
                 ),
             )
-        return result_content
+        with open(result_path, "w") as fobj:
+            fobj.write(result_content)
+
+        return result_path
 
 
 class DefaultLinearTemplate(Template):
