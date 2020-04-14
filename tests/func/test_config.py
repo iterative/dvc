@@ -94,8 +94,14 @@ def test_merging_two_levels(dvc):
     with dvc.config.edit() as conf:
         conf["remote"]["test"] = {"url": "ssh://example.com"}
 
+    with pytest.raises(
+        ConfigError, match=r"expected 'url' for dictionary value"
+    ):
+        with dvc.config.edit("global") as conf:
+            conf["remote"]["test"] = {"password": "1"}
+
     with dvc.config.edit("local") as conf:
-        conf["remote"]["test"] = {"url": "ssh://example.com", "password": "1"}
+        conf["remote"]["test"] = {"password": "1"}
 
     assert dvc.config["remote"]["test"] == {
         "url": "ssh://example.com",

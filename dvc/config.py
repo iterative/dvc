@@ -342,7 +342,16 @@ class Config(dict):
         yield conf
 
         conf = self._save_paths(conf, self.files[level])
-        self.validate(conf)
+
+        merged_conf = {}
+        for merge_level in self.LEVELS:
+            if merge_level == level:
+                _merge(merged_conf, conf)
+                break
+            elif merge_level in self.files:
+                _merge(merged_conf, self.load_one(merge_level))
+        self.validate(merged_conf)
+
         _save_config(self.files[level], conf)
         self.load()
 
