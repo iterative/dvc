@@ -242,7 +242,7 @@ def test_external_dir_resource_on_no_cache(tmp_dir, dvc, tmp_path_factory):
         dvc.run(deps=[fspath(external_dir)])
 
 
-def test_push_order(tmp_dir, dvc, tmp_path_factory):
+def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker):
     url = fspath(tmp_path_factory.mktemp("upstream"))
     dvc.config["remote"]["upstream"] = {"url": url}
     dvc.config["core"]["remote"] = "upstream"
@@ -250,7 +250,7 @@ def test_push_order(tmp_dir, dvc, tmp_path_factory):
     tmp_dir.dvc_gen({"foo": {"bar": "bar content"}})
     tmp_dir.dvc_gen({"baz": "baz content"})
 
-    with patch.object(RemoteLOCAL, "_upload", return_value=0) as upload:
-        dvc.push()
-        # last uploaded file should be dir checksum
-        assert upload.call_args.args[0].endswith(".dir")
+    mocked_upload = mocker.patch.object(RemoteLOCAL, "_upload", return_value=0)
+    dvc.push()
+    # last uploaded file should be dir checksum
+    assert mocked_upload.call_args[0][0].endswith(".dir")

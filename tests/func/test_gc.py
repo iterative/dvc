@@ -1,6 +1,5 @@
 import logging
 import os
-from mock import patch
 
 import configobj
 import pytest
@@ -325,13 +324,11 @@ def test_gc_cloud_remove_order(tmp_dir, scm, dvc, tmp_path_factory, mocker):
     dvc.remove(dir2.relpath)
     dvc.gc(workspace=True)
 
-    with patch.object(RemoteLOCAL, "remove", autospec=True) as remove:
-        dvc.gc(workspace=True, cloud=True)
-        assert len(remove.mock_calls) == 8
-        # dir (and unpacked dir) should be first 4 checksums removed from
-        # the remote
-        for args in remove.call_args_list[:4]:
-            checksum = str(args.args[1])
-            assert checksum.endswith(".dir") or checksum.endswith(
-                ".dir.unpacked"
-            )
+    mocked_remove = mocker.patch.object(RemoteLOCAL, "remove", autospec=True)
+    dvc.gc(workspace=True, cloud=True)
+    assert len(mocked_remove.mock_calls) == 8
+    # dir (and unpacked dir) should be first 4 checksums removed from
+    # the remote
+    for args in mocked_remove.call_args_list[:4]:
+        checksum = str(args[0][1])
+        assert checksum.endswith(".dir") or checksum.endswith(".dir.unpacked")
