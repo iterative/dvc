@@ -204,7 +204,9 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory):
     with patch.object(RemoteLOCAL, "_download", side_effect=Exception):
         with pytest.raises(DownloadError) as download_error_info:
             dvc.pull()
-        assert download_error_info.value.amount == 4
+        # error count should be len(.dir + standalone file checksums)
+        # since files inside dir are ignored if dir cache entry is missing
+        assert download_error_info.value.amount == 3
 
 
 def test_raise_on_too_many_open_files(tmp_dir, dvc, tmp_path_factory, mocker):

@@ -26,7 +26,7 @@ def test_status_download_optimization(mocker, dvc):
     other_remote.url = "other_remote"
     other_remote.cache_exists.return_value = []
 
-    remote.status([(None, infos)], other_remote, download=True)
+    remote.status(infos, other_remote, download=True)
 
     assert other_remote.cache_exists.call_count == 0
 

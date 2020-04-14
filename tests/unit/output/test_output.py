@@ -86,8 +86,5 @@ def test_get_used_cache(exists, expected_message, mocker, caplog):
     ).return_value = exists
 
     with caplog.at_level(logging.WARNING, logger="dvc"):
-        used = output.get_used_cache()
-        assert isinstance(used, tuple)
-        assert used[0] is None
-        assert isinstance(used[1], NamedCache)
+        assert isinstance(output.get_used_cache(), NamedCache)
     assert first(caplog.messages) == expected_message
