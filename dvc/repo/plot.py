@@ -203,7 +203,7 @@ def plot(repo, datafile=None, template=None, revisions=None, file=None):
         if not file:
             raise NoDataForTemplateError(template_path)
 
-        file += ".html"
+        file = "".join(file.split(".")[:-1] or file) + ".html"
 
     result_path = Template.fill(template_path, data, file, datafile)
     logger.info("file://{}".format(os.path.join(repo.root_dir, result_path)))
