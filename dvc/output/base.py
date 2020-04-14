@@ -436,7 +436,9 @@ class OutputBase(object):
         if not self.is_dir_checksum:
             return ret
 
-        ret.update(self._collect_used_dir_cache(**kwargs))
+        ret.add_child_cache(
+            self.checksum, self._collect_used_dir_cache(**kwargs),
+        )
 
         return ret
 

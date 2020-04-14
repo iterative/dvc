@@ -253,8 +253,9 @@ class Repo(object):
         `all_branches`/`all_tags`/`all_commits` to expand the scope.
 
         Returns:
-            A dictionary with Schemes (representing output's location) as keys,
-            and a list with the outputs' `dumpd` as values.
+            A dictionary with Schemes (representing output's location) mapped
+            to items containing the output's `dumpd` names and the output's
+            children (if the given output is a directory).
         """
         from dvc.cache import NamedCache
 

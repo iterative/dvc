@@ -2,8 +2,10 @@ import errno
 import logging
 import os
 import stat
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import as_completed, ThreadPoolExecutor
 from functools import partial
+
+from funcy import concat
 
 from shortuuid import uuid
 
@@ -255,37 +257,102 @@ class RemoteLOCAL(RemoteBASE):
         show_checksums=False,
         download=False,
     ):
+        # Return flattened dict containing all status info
+        dir_status, file_status, _ = self._status(
+            named_cache,
+            remote,
+            jobs=jobs,
+            show_checksums=show_checksums,
+            download=download,
+        )
+        return dict(dir_status, **file_status)
+
+    def _status(
+        self,
+        named_cache,
+        remote,
+        jobs=None,
+        show_checksums=False,
+        download=False,
+    ):
+        """Return a tuple of (dir_status_info, file_status_info, dir_mapping).
+
+        dir_status_info contains status for .dir files, file_status_info
+        contains status for all other files, and dir_mapping is a dict of
+        {dir_path_info: set(file_path_info...)} which can be used to map
+        a .dir file to its file contents.
+        """
         logger.debug(
             "Preparing to collect status from {}".format(remote.path_info)
         )
-        md5s = list(named_cache[self.scheme])
+        md5s = set(named_cache.scheme_keys(self.scheme))
 
         logger.debug("Collecting information from local cache...")
-        local_exists = self.cache_exists(md5s, jobs=jobs, name=self.cache_dir)
+        local_exists = frozenset(
+            self.cache_exists(md5s, jobs=jobs, name=self.cache_dir)
+        )
 
         # This is a performance optimization. We can safely assume that,
         # if the resources that we want to fetch are already cached,
         # there's no need to check the remote storage for the existence of
         # those files.
-        if download and sorted(local_exists) == sorted(md5s):
+        if download and local_exists == md5s:
             remote_exists = local_exists
         else:
             logger.debug("Collecting information from remote cache...")
-            remote_exists = list(
-                remote.cache_exists(
-                    md5s, jobs=jobs, name=str(remote.path_info)
+            remote_exists = set()
+            dir_md5s = set(named_cache.dir_keys(self.scheme))
+            if dir_md5s:
+                # If .dir checksum exists on the remote, assume directory
+                # contents also exists on the remote
+                for dir_checksum in remote._cache_object_exists(dir_md5s):
+                    file_checksums = list(
+                        named_cache.child_keys(self.scheme, dir_checksum)
+                    )
+                    logger.debug(
+                        "'{}' exists on remote, "
+                        "assuming '{}' files also exist".format(
+                            dir_checksum, len(file_checksums)
+                        )
+                    )
+                    md5s.remove(dir_checksum)
+                    remote_exists.add(dir_checksum)
+                    md5s.difference_update(file_checksums)
+                    remote_exists.update(file_checksums)
+            if md5s:
+                remote_exists.update(
+                    remote.cache_exists(
+                        md5s, jobs=jobs, name=str(remote.path_info)
+                    )
                 )
-            )
 
-        ret = {
-            checksum: {"name": checksum if show_checksums else " ".join(names)}
-            for checksum, names in named_cache[self.scheme].items()
-        }
-        self._fill_statuses(ret, local_exists, remote_exists)
+        def make_names(checksum, names):
+            return {"name": checksum if show_checksums else " ".join(names)}
 
-        self._log_missing_caches(ret)
+        dir_status = {}
+        file_status = {}
+        dir_paths = {}
+        for checksum, item in named_cache[self.scheme].items():
+            if item.children:
+                dir_status[checksum] = make_names(checksum, item.names)
+                file_status.update(
+                    {
+                        child_checksum: make_names(child_checksum, child.names)
+                        for child_checksum, child in item.children.items()
+                    }
+                )
+                dir_paths[remote.checksum_to_path_info(checksum)] = frozenset(
+                    map(remote.checksum_to_path_info, item.child_keys())
+                )
+            else:
+                file_status[checksum] = make_names(checksum, item.names)
 
-        return ret
+        self._fill_statuses(dir_status, local_exists, remote_exists)
+        self._fill_statuses(file_status, local_exists, remote_exists)
+
+        self._log_missing_caches(dict(dir_status, **file_status))
+
+        return dir_status, file_status, dir_paths
 
     @staticmethod
     def _fill_statuses(checksum_info_dir, local_exists, remote_exists):
@@ -347,7 +414,7 @@ class RemoteLOCAL(RemoteBASE):
         if jobs is None:
             jobs = remote.JOBS
 
-        status_info = self.status(
+        dir_status, file_status, dir_paths = self._status(
             named_cache,
             remote,
             jobs=jobs,
@@ -355,23 +422,68 @@ class RemoteLOCAL(RemoteBASE):
             download=download,
         )
 
-        plans = self._get_plans(download, remote, status_info, status)
+        dir_plans = self._get_plans(download, remote, dir_status, status)
+        file_plans = self._get_plans(download, remote, file_status, status)
 
-        if len(plans[0]) == 0:
+        if len(dir_plans[0]) + len(file_plans[0]) == 0:
             return 0
 
-        if jobs > 1:
-            with ThreadPoolExecutor(max_workers=jobs) as executor:
-                fails = sum(executor.map(func, *plans))
-        else:
-            fails = sum(map(func, *plans))
+        with ThreadPoolExecutor(max_workers=jobs) as executor:
+            if download:
+                fails = sum(executor.map(func, *dir_plans))
+                fails += sum(executor.map(func, *file_plans))
+            else:
+                # for uploads, push files first, and any .dir files last
+
+                file_futures = {}
+                for from_info, to_info, name in zip(*file_plans):
+                    file_futures[to_info] = executor.submit(
+                        func, from_info, to_info, name
+                    )
+                dir_futures = {}
+                for from_info, to_info, name in zip(*dir_plans):
+                    wait_futures = {
+                        future
+                        for file_path, future in file_futures.items()
+                        if file_path in dir_paths[to_info]
+                    }
+                    dir_futures[to_info] = executor.submit(
+                        self._dir_upload,
+                        func,
+                        wait_futures,
+                        from_info,
+                        to_info,
+                        name,
+                    )
+                fails = sum(
+                    future.result()
+                    for future in concat(
+                        file_futures.values(), dir_futures.values()
+                    )
+                )
 
         if fails:
             if download:
                 raise DownloadError(fails)
             raise UploadError(fails)
 
-        return len(plans[0])
+        return len(dir_plans[0]) + len(file_plans[0])
+
+    @staticmethod
+    def _dir_upload(func, futures, from_info, to_info, name):
+        for future in as_completed(futures):
+            if future.result():
+                # do not upload this .dir file if any file in this
+                # directory failed to upload
+                logger.debug(
+                    "failed to upload full contents of '{}', "
+                    "aborting .dir file upload".format(name)
+                )
+                logger.error(
+                    "failed to upload '{}' to '{}'".format(from_info, to_info)
+                )
+                return 1
+        return func(from_info, to_info, name)
 
     def push(self, named_cache, remote, jobs=None, show_checksums=False):
         return self._process(

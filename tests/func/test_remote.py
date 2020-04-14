@@ -177,23 +177,25 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory):
 
     foo = tmp_dir.dvc_gen({"foo": "foo content"})[0].outs[0]
     bar = tmp_dir.dvc_gen({"bar": "bar content"})[0].outs[0]
+    baz = tmp_dir.dvc_gen({"baz": {"foo": "baz content"}})[0].outs[0]
 
     # Faulty upload version, failing on foo
     original = RemoteLOCAL._upload
 
     def unreliable_upload(self, from_file, to_info, name=None, **kwargs):
-        if name == "foo":
+        if "foo" in name:
             raise Exception("stop foo")
         return original(self, from_file, to_info, name, **kwargs)
 
     with patch.object(RemoteLOCAL, "_upload", unreliable_upload):
         with pytest.raises(UploadError) as upload_error_info:
             dvc.push()
-        assert upload_error_info.value.amount == 1
+        assert upload_error_info.value.amount == 3
 
         remote = dvc.cloud.get_remote("upstream")
         assert not remote.exists(remote.checksum_to_path_info(foo.checksum))
         assert remote.exists(remote.checksum_to_path_info(bar.checksum))
+        assert not remote.exists(remote.checksum_to_path_info(baz.checksum))
 
     # Push everything and delete local cache
     dvc.push()
@@ -202,7 +204,9 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory):
     with patch.object(RemoteLOCAL, "_download", side_effect=Exception):
         with pytest.raises(DownloadError) as download_error_info:
             dvc.pull()
-        assert download_error_info.value.amount == 2
+        # error count should be len(.dir + standalone file checksums)
+        # since files inside dir are ignored if dir cache entry is missing
+        assert download_error_info.value.amount == 3
 
 
 def test_raise_on_too_many_open_files(tmp_dir, dvc, tmp_path_factory, mocker):
@@ -236,3 +240,17 @@ def test_external_dir_resource_on_no_cache(tmp_dir, dvc, tmp_path_factory):
     dvc.cache.local = None
     with pytest.raises(RemoteCacheRequiredError):
         dvc.run(deps=[fspath(external_dir)])
+
+
+def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker):
+    url = fspath(tmp_path_factory.mktemp("upstream"))
+    dvc.config["remote"]["upstream"] = {"url": url}
+    dvc.config["core"]["remote"] = "upstream"
+
+    tmp_dir.dvc_gen({"foo": {"bar": "bar content"}})
+    tmp_dir.dvc_gen({"baz": "baz content"})
+
+    mocked_upload = mocker.patch.object(RemoteLOCAL, "_upload", return_value=0)
+    dvc.push()
+    # last uploaded file should be dir checksum
+    assert mocked_upload.call_args[0][0].endswith(".dir")
