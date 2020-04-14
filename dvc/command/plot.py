@@ -18,7 +18,7 @@ class CmdPlotShow(CmdBase):
             )
 
         except DvcException:
-            logger.exception("failed to plot metrics")
+            logger.exception("plot show:")
             return 1
         return 0
 
@@ -34,7 +34,7 @@ class CmdPlotDiff(CmdBase):
             )
 
         except DvcException:
-            logger.exception("failed to plot metrics diff")
+            logger.exception("plot diff:")
             return 1
 
         return 0

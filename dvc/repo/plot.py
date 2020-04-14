@@ -42,12 +42,19 @@ class TooManyDataSourcesError(DvcException):
 
 class NoDataNorTemplateProvided(DvcException):
     def __init__(self):
+        super().__init__("Datafile or template is not specified.")
+
+
+# TODO support yaml
+class PlotMetricTypeError(DvcException):
+    def __init__(self, path):
         super().__init__(
-            "Cannot plot if datafile or template is not provided."
+            "'{}' - file type error\n"
+            "Only json, yaml, csv and tsv types are supported.".format(path)
         )
 
 
-WORKSPACE_REVISION_NAME = "current"
+WORKSPACE_REVISION_NAME = "workspace"
 
 
 def _load_from_tree(tree, datafile, default_plot=False):
@@ -59,9 +66,7 @@ def _load_from_tree(tree, datafile, default_plot=False):
     elif datafile.endswith(".tsv"):
         data = _parse_csv(datafile, default_plot, tree, "\t")
     else:
-        raise DvcException(
-            "Could not deduct file type from file: '{}'".format(datafile)
-        )
+        raise PlotMetricTypeError(datafile)
 
     return data
 

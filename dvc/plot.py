@@ -13,6 +13,17 @@ from dvc.utils.fs import makedirs
 
 logger = logging.getLogger(__name__)
 
+
+class TemplateNotFound(DvcException):
+    def __init__(self, path):
+        super().__init__("Template: '{}' not found.".format(path))
+
+
+class NoDataForTemplateError(DvcException):
+    def __init__(self, template_path):
+        super().__init__("No data provided for '{}'.".format(template_path))
+
+
 PAGE_HTML = """<html>
 <head>
     <title>dvc plot</title>
@@ -51,7 +62,7 @@ def _prepare_div(vega_dict):
 class Template:
     INDENT = 4
     SEPARATORS = (",", ": ")
-    EXTENTION = ".dvct"
+    EXTENTION = ".vt"
     METRIC_DATA_STRING = "<DVC_METRIC_DATA>"
 
     def __init__(self, templates_dir):
@@ -113,7 +124,9 @@ class Template:
     @staticmethod
     def fill(template_path, data, priority_datafile=None, result_path=None):
         if not result_path:
-            result_path = os.path.join(os.getcwd(), "plot.html")
+            filename = os.path.basename(template_path)
+            filename.replace(Template.EXTENTION, ".html")
+            result_path = os.path.join(os.getcwd(), filename)
 
         result_content = Template._fill(template_path, data, priority_datafile)
 
@@ -126,16 +139,22 @@ class Template:
     def _fill(template_path, data, priority_datafile):
         with open(template_path, "r") as fobj:
             result_content = fobj.read()
+
         for placeholder in Template.get_data_placeholders(template_path):
             file = Template.get_datafile(placeholder)
+
             if not file or priority_datafile:
-                to_dump = data[priority_datafile]
+                key = priority_datafile
             else:
-                to_dump = data[file]
+                key = file
+
+            if not key:
+                raise NoDataForTemplateError(template_path)
+
             result_content = result_content.replace(
                 placeholder,
                 json.dumps(
-                    to_dump,
+                    data[key],
                     indent=Template.INDENT,
                     separators=Template.SEPARATORS,
                     sort_keys=True,
@@ -188,7 +207,7 @@ class PlotTemplates:
 
     @cached_property
     def default_template(self):
-        return os.path.join(self.templates_dir, "default.dvct")
+        return os.path.join(self.templates_dir, "default.vt")
 
     def get_template(self, path):
         t_path = os.path.join(self.templates_dir, path)
@@ -196,13 +215,13 @@ class PlotTemplates:
             return t_path
 
         regex = re.compile(re.escape(t_path) + ".*")
-        for root, d, fs in os.walk(self.templates_dir):
-            for f in fs:
-                path = os.path.join(root, f)
-                if regex.findall(path):
-                    return path
+        for root, _, files in os.walk(self.templates_dir):
+            for file in files:
+                full_file = os.path.join(root, file)
+                if regex.findall(full_file):
+                    return full_file
 
-        raise DvcException("Template not found")
+        raise TemplateNotFound(path)
 
     def __init__(self, dvc_dir):
         self.dvc_dir = dvc_dir
