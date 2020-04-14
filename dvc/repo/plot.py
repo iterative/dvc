@@ -5,6 +5,7 @@ import os
 from collections import OrderedDict
 
 from funcy import first
+from ruamel import yaml
 
 from dvc.exceptions import DvcException
 from dvc.plot import Template
@@ -45,7 +46,6 @@ class NoDataNorTemplateProvided(DvcException):
         super().__init__("Datafile or template is not specified.")
 
 
-# TODO support yaml
 class PlotMetricTypeError(DvcException):
     def __init__(self, path):
         super().__init__(
@@ -57,18 +57,29 @@ class PlotMetricTypeError(DvcException):
 WORKSPACE_REVISION_NAME = "workspace"
 
 
-def _load_from_tree(tree, datafile, default_plot=False):
-    if datafile.endswith(".json"):
-        data = _parse_json(datafile, default_plot, tree)
-
-    elif datafile.endswith(".csv"):
-        data = _parse_csv(datafile, default_plot, tree)
-    elif datafile.endswith(".tsv"):
-        data = _parse_csv(datafile, default_plot, tree, "\t")
-    else:
-        raise PlotMetricTypeError(datafile)
-
+def _parse(datafile, default_plot, tree, loading_function):
+    with tree.open(datafile, "r") as fobj:
+        data = loading_function(fobj)
+        assert isinstance(data, list)
+    if default_plot:
+        assert all(len(e) >= 1 for e in data)
+        last_key = list(first(data).keys())[-1]
+        data = [{"y": d[last_key], "x": i} for i, d in enumerate(data)]
     return data
+
+
+def _parse_yaml(datafile, default_plot, tree):
+    def load_yaml(fobj):
+        return yaml.load(fobj)
+
+    return _parse(datafile, default_plot, tree, load_yaml)
+
+
+def _parse_json(datafile, default_plot, tree):
+    def load_json(fobj):
+        return json.load(fobj, object_pairs_hook=OrderedDict)
+
+    return _parse(datafile, default_plot, tree, load_json)
 
 
 def _parse_csv(datafile, default_plot, tree, delimiter=","):
@@ -93,14 +104,20 @@ def _parse_csv(datafile, default_plot, tree, delimiter=","):
     return data
 
 
-def _parse_json(datafile, default_plot, tree):
-    with tree.open(datafile, "r") as fobj:
-        data = json.load(fobj, object_pairs_hook=OrderedDict)
-        assert isinstance(data, list)
-    if default_plot:
-        assert all(len(e) >= 1 for e in data)
-        last_key = list(first(data).keys())[-1]
-        data = [{"y": d[last_key], "x": i} for i, d in enumerate(data)]
+def _load_from_tree(tree, datafile, default_plot=False):
+    filename = datafile.lower()
+    if filename.endswith(".json"):
+        data = _parse_json(datafile, default_plot, tree)
+
+    elif filename.endswith(".csv"):
+        data = _parse_csv(datafile, default_plot, tree)
+    elif filename.endswith(".tsv"):
+        data = _parse_csv(datafile, default_plot, tree, "\t")
+    elif filename.endswith(".yaml"):
+        data = _parse_yaml(datafile, default_plot, tree)
+    else:
+        raise PlotMetricTypeError(datafile)
+
     return data
 
 

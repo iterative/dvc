@@ -75,8 +75,8 @@ def test_plot_csv_one_column(tmp_dir, scm, dvc):
 
 def test_plot_csv_multiple_columns(tmp_dir, scm, dvc):
     metric = [
-        OrderedDict([("first_val", 100), ("val", 2)]),
-        OrderedDict([("first_val", 200), ("val", 3)]),
+        OrderedDict([("first_val", 100), ("second_val", 100), ("val", 2)]),
+        OrderedDict([("first_val", 200), ("second_val", 300), ("val", 3)]),
     ]
     _write_csv(metric, "metric.csv")
     _run_with_metric(tmp_dir, metric_filename="metric.csv")
