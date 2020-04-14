@@ -469,7 +469,8 @@ class RemoteLOCAL(RemoteBASE):
 
         return len(dir_plans[0]) + len(file_plans[0])
 
-    def _dir_upload(self, func, futures, from_info, to_info, name):
+    @staticmethod
+    def _dir_upload(func, futures, from_info, to_info, name):
         for future in as_completed(futures):
             if future.result():
                 # do not upload this .dir file if any file in this

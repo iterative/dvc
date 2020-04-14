@@ -97,8 +97,8 @@ class NamedCacheItem(object):
             self.names.update(n + suffix for n in item.names)
         else:
             self.names.update(item.names)
-        for checksum, item in item.children.items():
-            self.children[checksum].update(item)
+        for checksum, child_item in item.children.items():
+            self.children[checksum].update(child_item)
 
 
 class NamedCache(object):
