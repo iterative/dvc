@@ -108,7 +108,6 @@ def _load_from_tree(tree, datafile, default_plot=False):
     filename = datafile.lower()
     if filename.endswith(".json"):
         data = _parse_json(datafile, default_plot, tree)
-
     elif filename.endswith(".csv"):
         data = _parse_csv(datafile, default_plot, tree)
     elif filename.endswith(".tsv"):
