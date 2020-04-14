@@ -71,7 +71,7 @@ class Cache(object):
     azure = _make_remote_property("azure")
 
 
-class NamedCacheItem(object):
+class NamedCacheItem:
     def __init__(self):
         self.names = set()
         self.children = defaultdict(NamedCacheItem)
