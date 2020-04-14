@@ -1,6 +1,7 @@
 import logging
 
 from . import locked
+from dvc.cache import NamedCache
 from dvc.exceptions import InvalidArgumentError
 
 
@@ -59,9 +60,9 @@ def gc(
             stack.enter_context(repo.lock)
             stack.enter_context(repo.state)
 
-        used = []
+        used = NamedCache()
         for repo in all_repos + [self]:
-            used.extend(
+            used.update(
                 repo.used_cache(
                     all_branches=all_branches,
                     with_deps=with_deps,

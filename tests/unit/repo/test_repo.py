@@ -37,27 +37,23 @@ def test_used_cache(tmp_dir, dvc, path):
     from dvc.cache import NamedCache
 
     tmp_dir.dvc_gen({"dir": {"subdir": {"file": "file"}, "other": "other"}})
-    expected_dir = NamedCache.make(
+    expected = NamedCache.make(
         "local", "70922d6bf66eb073053a82f77d58c536.dir", "dir"
     )
-    expected_file = NamedCache.make(
-        "local",
-        "8c7dd922ad47494fc02c388e12c00eac",
-        os.path.join("dir", "subdir", "file"),
+    expected.add_child_cache(
+        "70922d6bf66eb073053a82f77d58c536.dir",
+        NamedCache.make(
+            "local",
+            "8c7dd922ad47494fc02c388e12c00eac",
+            os.path.join("dir", "subdir", "file"),
+        ),
     )
 
     with dvc.state:
         used_cache = dvc.used_cache([path])
-        assert isinstance(used_cache, list)
-        assert len(used_cache) == 1
-        assert isinstance(used_cache[0], tuple)
-        used_dir = used_cache[0][0]
-        used_file = used_cache[0][1]
         assert (
-            used_dir._items == expected_dir._items
-            and used_dir.external == expected_dir.external
-            and used_file._items == expected_file._items
-            and used_file.external == expected_file.external
+            used_cache._items == expected._items
+            and used_cache.external == expected.external
         )
 
 

@@ -1,7 +1,6 @@
 import logging
 
-from funcy import concat
-
+from dvc.cache import NamedCache
 from dvc.config import NoRemoteError
 from dvc.exceptions import DownloadError, OutputNotFoundError
 from dvc.scm.base import CloneError
@@ -54,34 +53,15 @@ def _fetch(
             used, jobs, remote=remote, show_checksums=show_checksums
         )
     except NoRemoteError:
-        external = False
-        local = False
-        for dir_cache, file_cache in used:
-            if dir_cache:
-                if dir_cache.external:
-                    external = True
-                if dir_cache["local"]:
-                    local = True
-            if file_cache.external:
-                external = True
-            if file_cache["local"]:
-                local = True
-        if not external and local:
+        if not used.external and used["local"]:
             raise
     except DownloadError as exc:
         failed += exc.amount
 
-    for dir_cache, file_cache in used:
-        if dir_cache is None:
-            items = file_cache.external.items()
-        else:
-            items = concat(
-                dir_cache.external.items(), file_cache.external.items()
-            )
-        for (repo_url, repo_rev), files in items:
-            d, f = _fetch_external(self, repo_url, repo_rev, files, jobs)
-            downloaded += d
-            failed += f
+    for (repo_url, repo_rev), files in used.external.items():
+        d, f = _fetch_external(self, repo_url, repo_rev, files, jobs)
+        downloaded += d
+        failed += f
 
     if failed:
         raise DownloadError(failed)
@@ -101,7 +81,7 @@ def _fetch_external(self, repo_url, repo_rev, files, jobs):
             if is_dvc_repo:
                 repo.cache.local.cache_dir = self.cache.local.cache_dir
                 with repo.state:
-                    used_cache = []
+                    cache = NamedCache()
                     for name in files:
                         try:
                             out = repo.find_out_by_relpath(name)
@@ -109,12 +89,10 @@ def _fetch_external(self, repo_url, repo_rev, files, jobs):
                             # try to add to cache if they are git-tracked files
                             git_files.append(name)
                         else:
-                            used_cache.append(out.get_used_cache())
+                            cache.update(out.get_used_cache())
 
                         try:
-                            downloaded += repo.cloud.pull(
-                                used_cache, jobs=jobs
-                            )
+                            downloaded += repo.cloud.pull(cache, jobs=jobs)
                         except DownloadError as exc:
                             failed += exc.amount
 
