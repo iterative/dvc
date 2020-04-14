@@ -39,7 +39,7 @@ def test_diff_deleted(tmp_dir, scm, dvc):
     scm.add(["params.yaml", "Dvcfile"])
     scm.commit("bar")
 
-    (tmp_dir / "Dvcfile").unlink()
+    (tmp_dir / "params.yaml").unlink()
 
     assert dvc.params.diff() == {
         "params.yaml": {"foo": {"old": "bar", "new": None}}
