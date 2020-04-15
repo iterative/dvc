@@ -18,6 +18,7 @@ def _run_plot(repo, datafile, template, revisions, file):
             file=file,
         )
     except DvcException:
+        logger.exception("")
         return 1
     logger.info("file://{}".format(os.path.join(repo.root_dir, result)))
     return 0
