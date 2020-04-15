@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class NoMetricInHistoryError(DvcException):
     def __init__(self, path, revisions):
         super().__init__(
-            "Could not find '{}' on any of the revisions: "
+            "Could not find '{}' on any of the revisions "
             "'{}'".format(path, ", ".join(revisions))
         )
 
@@ -27,7 +27,7 @@ class NoMetricOnRevisionError(DvcException):
         self.path = path
         self.revision = revision
         super().__init__(
-            "Could not find '{}' on revision: " "'{}'".format(path, revision)
+            "Could not find '{}' on revision " "'{}'".format(path, revision)
         )
 
 
@@ -41,7 +41,7 @@ class TooManyDataSourcesError(DvcException):
         )
 
 
-class NoDataNorTemplateProvided(DvcException):
+class NoDataOrTemplateProvided(DvcException):
     def __init__(self):
         super().__init__("Datafile or template is not specified.")
 
@@ -159,7 +159,7 @@ def _load_from_revisions(repo, datafile, revisions, default_plot=False):
 
     if not data and exceptions:
         raise NoMetricInHistoryError(datafile, revisions)
-    elif exceptions:
+    else:
         for e in exceptions:
             logger.warning(
                 "File '{}' was not found at: '{}'. It will not be "
@@ -183,7 +183,7 @@ def plot(repo, datafile=None, template=None, revisions=None, file=None):
         revisions = []
 
     if not datafile and not template:
-        raise NoDataNorTemplateProvided()
+        raise NoDataOrTemplateProvided()
 
     template_path = _evaluate_templatepath(repo, template)
 
@@ -206,7 +206,6 @@ def plot(repo, datafile=None, template=None, revisions=None, file=None):
         file = "".join(file.split(".")[:-1] or file) + ".html"
 
     result_path = Template.fill(template_path, data, file, datafile)
-    logger.info("file://{}".format(os.path.join(repo.root_dir, result_path)))
     return result_path
 
 

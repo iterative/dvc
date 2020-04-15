@@ -23,14 +23,15 @@ def test_metrics_diff(dvc, mocker):
     cmd = cli_args.func(cli_args)
 
     m = mocker.patch.object(cmd.repo, "plot", autospec=True)
+    mocker.patch("os.path.join")
 
     assert cmd.run() == 0
 
     m.assert_called_once_with(
         datafile="datafile",
         template="template",
-        file="result.extension",
         revisions=["HEAD", "tag1", "tag2"],
+        file="result.extension",
     )
 
 
@@ -51,9 +52,13 @@ def test_metrics_show(dvc, mocker):
     cmd = cli_args.func(cli_args)
 
     m = mocker.patch.object(cmd.repo, "plot", autospec=True)
+    mocker.patch("os.path.join")
 
     assert cmd.run() == 0
 
     m.assert_called_once_with(
-        datafile="datafile", template="template", file="result.extension",
+        datafile="datafile",
+        template="template",
+        file="result.extension",
+        revisions=None,
     )

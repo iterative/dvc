@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 class TemplateNotFound(DvcException):
     def __init__(self, path):
-        super().__init__("Template: '{}' not found.".format(path))
+        super().__init__("Template '{}' not found.".format(path))
 
 
 class NoDataForTemplateError(DvcException):

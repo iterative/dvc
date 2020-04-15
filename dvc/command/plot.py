@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 
 from dvc.command.base import append_doc_link, CmdBase, fix_subparsers
 from dvc.exceptions import DvcException
@@ -8,36 +9,40 @@ from dvc.utils import format_link
 logger = logging.getLogger(__name__)
 
 
+def _run_plot(repo, datafile, template, revisions, file):
+    try:
+        result = repo.plot(
+            datafile=datafile,
+            template=template,
+            revisions=revisions,
+            file=file,
+        )
+    except DvcException:
+        return 1
+    logger.info("file://{}".format(os.path.join(repo.root_dir, result)))
+    return 0
+
+
 class CmdPlotShow(CmdBase):
     def run(self):
-        try:
-            self.repo.plot(
-                datafile=self.args.datafile,
-                template=self.args.template,
-                file=self.args.file,
-            )
-
-        except DvcException:
-            logger.exception("plot show:")
-            return 1
-        return 0
+        return _run_plot(
+            self.repo,
+            self.args.datafile,
+            self.args.template,
+            None,
+            self.args.file,
+        )
 
 
 class CmdPlotDiff(CmdBase):
     def run(self):
-        try:
-            self.repo.plot(
-                self.args.datafile,
-                self.args.template,
-                revisions=self.args.revisions,
-                file=self.args.file,
-            )
-
-        except DvcException:
-            logger.exception("plot diff:")
-            return 1
-
-        return 0
+        return _run_plot(
+            self.repo,
+            self.args.datafile,
+            self.args.template,
+            self.args.revisions,
+            self.args.file,
+        )
 
 
 def add_parser(subparsers, parent_parser):
@@ -85,8 +90,10 @@ def add_parser(subparsers, parent_parser):
     )
     plot_show_parser.set_defaults(func=CmdPlotShow)
 
-    PLOT_DIFF_HELP = "Plot changes in metrics between commits"
-    " in the DVC repository, or between a commit and the workspace."
+    PLOT_DIFF_HELP = (
+        "Plot changes in metrics between commits"
+        " in the DVC repository, or between a commit and the workspace."
+    )
     plot_diff_parser = plot_subparsers.add_parser(
         "diff",
         parents=[parent_parser],

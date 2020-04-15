@@ -16,7 +16,7 @@ from dvc.plot import (
 )
 from dvc.repo.plot import (
     NoMetricInHistoryError,
-    NoDataNorTemplateProvided,
+    NoDataOrTemplateProvided,
     PlotMetricTypeError,
 )
 
@@ -245,7 +245,7 @@ def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc, caplog):
     assert len(caplog.messages) == 0
 
     assert (
-        "Could not find 'metric.json' on any of the revisions: 'v1, workspace'"
+        "Could not find 'metric.json' on any of the revisions 'v1, workspace'"
         == str(error.value)
     )
 
@@ -361,7 +361,7 @@ def test_should_embed_vega_json_template(tmp_dir, scm, dvc):
 
 
 def test_should_raise_on_no_template_and_datafile(tmp_dir, dvc):
-    with pytest.raises(NoDataNorTemplateProvided):
+    with pytest.raises(NoDataOrTemplateProvided):
         dvc.plot()
 
 
