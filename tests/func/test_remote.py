@@ -49,29 +49,6 @@ class TestRemote(TestDvc):
         config = configobj.ConfigObj(self.dvc.config.files["repo"])
         self.assertEqual(config['remote "mylocal"']["url"], rel)
 
-    def test_remote_modify_validation(self):
-        remote_name = "drive"
-        unsupported_config = "unsupported_config"
-        self.assertEqual(
-            main(["remote", "add", "-d", remote_name, "gdrive://test/test"]), 0
-        )
-        self.assertEqual(
-            main(
-                [
-                    "remote",
-                    "modify",
-                    remote_name,
-                    unsupported_config,
-                    "something",
-                ]
-            ),
-            251,
-        )
-        config = configobj.ConfigObj(self.dvc.config.files["repo"])
-        self.assertFalse(
-            unsupported_config in config['remote "{}"'.format(remote_name)]
-        )
-
     def test_overwrite(self):
         remote_name = "a"
         remote_url = "s3://bucket/name"
@@ -259,3 +236,19 @@ def test_external_dir_resource_on_no_cache(tmp_dir, dvc, tmp_path_factory):
     dvc.cache.local = None
     with pytest.raises(RemoteCacheRequiredError):
         dvc.run(deps=[fspath(external_dir)])
+
+
+def test_remote_modify_validation(dvc):
+    remote_name = "drive"
+    unsupported_config = "unsupported_config"
+    assert (
+        main(["remote", "add", "-d", remote_name, "gdrive://test/test"]) == 0
+    )
+    assert (
+        main(
+            ["remote", "modify", remote_name, unsupported_config, "something"]
+        )
+        == 251
+    )
+    config = configobj.ConfigObj(dvc.config.files["repo"])
+    assert unsupported_config not in config['remote "{}"'.format(remote_name)]

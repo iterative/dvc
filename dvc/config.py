@@ -333,10 +333,10 @@ class Config(dict):
     def _load_config_to_level(self, level):
         merged_conf = {}
         for merge_level in self.LEVELS:
-            if merge_level in self.files:
-                _merge(merged_conf, self.load_one(merge_level))
             if merge_level == level:
                 break
+            if merge_level in self.files:
+                _merge(merged_conf, self.load_one(merge_level))
         return merged_conf
 
     @contextmanager
