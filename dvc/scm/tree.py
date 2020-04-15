@@ -1,4 +1,5 @@
 import os
+import stat
 
 from dvc.compat import fspath
 
@@ -74,6 +75,10 @@ class WorkingTree(BaseTree):
             top, topdown=topdown, onerror=onerror
         ):
             yield os.path.normpath(root), dirs, files
+
+    def isexec(self, path):
+        mode = os.stat(path).st_mode
+        return mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
 
 def is_working_tree(tree):
