@@ -21,7 +21,7 @@ from dvc.exceptions import (
     RemoteCacheRequiredError,
 )
 from dvc.ignore import DvcIgnore
-from dvc.path_info import PathInfo, URLInfo
+from dvc.path_info import PathInfo, URLInfo, WindowsPathInfo
 from dvc.progress import Tqdm
 from dvc.remote.slow_link_detection import slow_link_guard
 from dvc.state import StateNoop
@@ -285,10 +285,13 @@ class RemoteBASE(object):
             )
             return []
 
-        for info in d:
-            # NOTE: here is a BUG, see comment to .as_posix() below
-            relative_path = PathInfo.from_posix(info[self.PARAM_RELPATH])
-            info[self.PARAM_RELPATH] = relative_path.fspath
+        if self.path_cls == WindowsPathInfo:
+            # only need to convert it for Windows
+            for info in d:
+                # NOTE: here is a BUG, see comment to .as_posix() below
+                info[self.PARAM_RELPATH] = info[self.PARAM_RELPATH].replace(
+                    "/", self.path_cls.sep
+                )
 
         return d
 

@@ -33,10 +33,6 @@ class PathInfo(pathlib.PurePath, _BasePath):
             cls = WindowsPathInfo if os.name == "nt" else PosixPathInfo
         return cls._from_parts(args)
 
-    @classmethod
-    def from_posix(cls, s):
-        return cls(PosixPathInfo(s))
-
     def as_posix(self):
         f = self._flavour
         # Unlike original implementation [1] that uses `str()` we actually need
