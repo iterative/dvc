@@ -319,6 +319,18 @@ class RemoteLOCAL(RemoteBASE):
                     remote_exists.add(dir_checksum)
                     md5s.difference_update(file_checksums)
                     remote_exists.update(file_checksums)
+                # Validate our index by verifying all indexed .dir checksums
+                # still exist on the remote
+                missing_dirs = (
+                    remote.index.checksums.intersection(dir_md5s)
+                    - remote_exists
+                )
+                if missing_dirs:
+                    logger.debug(
+                        "Remote cache missing indexed .dir checksums '{}', "
+                        "clearing local index".format(", ".join(missing_dirs))
+                    )
+                    remote.index.invalidate()
             if md5s:
                 remote_exists.update(
                     remote.cache_exists(
@@ -468,7 +480,9 @@ class RemoteLOCAL(RemoteBASE):
                 raise DownloadError(fails)
             raise UploadError(fails)
         elif not download:
-            pushed_checksums = list(map(self.path_to_checksum, plans[0]))
+            pushed_checksums = list(
+                map(self.path_to_checksum, dir_plans[0] + file_plans[0])
+            )
             logger.debug(
                 "Adding {} pushed checksums to index".format(
                     len(pushed_checksums)

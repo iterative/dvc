@@ -34,4 +34,4 @@ def test_invalidate(dvc):
     index.save()
     index.invalidate()
     assert not index.checksums
-    assert not index.path.exists()
+    assert not os.path.exists(index.path)

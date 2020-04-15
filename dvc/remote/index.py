@@ -1,5 +1,5 @@
 import logging
-import pathlib
+import os
 import pickle
 
 logger = logging.getLogger(__name__)
@@ -20,8 +20,8 @@ class RemoteIndex(object):
 
     def __init__(self, repo, name=None):
         if name:
-            self.path = pathlib.Path(repo.index_dir).joinpath(
-                "{}{}".format(name, self.INDEX_SUFFIX)
+            self.path = os.path.join(
+                repo.index_dir, "{}{}".format(name, self.INDEX_SUFFIX)
             )
         else:
             self.path = None
@@ -37,7 +37,7 @@ class RemoteIndex(object):
 
     def load(self):
         """(Re)load this index from disk."""
-        if self.path and self.path.is_file():
+        if self.path and os.path.isfile(self.path):
             try:
                 with open(self.path, "rb") as fobj:
                     self._checksums = pickle.load(fobj)
@@ -62,8 +62,8 @@ class RemoteIndex(object):
     def invalidate(self):
         """Invalidate this index (to force re-indexing later)."""
         self._checksums.clear()
-        if self.path and self.path.exists():
-            self.path.unlink()
+        if self.path and os.path.isfile(self.path):
+            os.unlink(self.path)
 
     def remove(self, checksum):
         if checksum in self._checksums:
