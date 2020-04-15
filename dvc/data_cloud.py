@@ -48,7 +48,14 @@ class DataCloud(object):
     def _init_remote(self, remote):
         return Remote(self.repo, name=remote)
 
-    def push(self, cache, jobs=None, remote=None, show_checksums=False):
+    def push(
+        self,
+        cache,
+        jobs=None,
+        remote=None,
+        show_checksums=False,
+        drop_index=False,
+    ):
         """Push data items in a cloud-agnostic way.
 
         Args:
@@ -58,15 +65,24 @@ class DataCloud(object):
                 By default remote from core.remote config option is used.
             show_checksums (bool): show checksums instead of file names in
                 information messages.
+            drop_index (bool): clear local index for the remote
         """
         return self.repo.cache.local.push(
             cache,
             jobs=jobs,
             remote=self.get_remote(remote, "push"),
             show_checksums=show_checksums,
+            drop_index=drop_index,
         )
 
-    def pull(self, cache, jobs=None, remote=None, show_checksums=False):
+    def pull(
+        self,
+        cache,
+        jobs=None,
+        remote=None,
+        show_checksums=False,
+        drop_index=False,
+    ):
         """Pull data items in a cloud-agnostic way.
 
         Args:
@@ -76,10 +92,15 @@ class DataCloud(object):
                 By default remote from core.remote config option is used.
             show_checksums (bool): show checksums instead of file names in
                 information messages.
+            drop_index (bool): clear local index for the remote
         """
         remote = self.get_remote(remote, "pull")
         downloaded_items_num = self.repo.cache.local.pull(
-            cache, jobs=jobs, remote=remote, show_checksums=show_checksums
+            cache,
+            jobs=jobs,
+            remote=remote,
+            show_checksums=show_checksums,
+            drop_index=drop_index,
         )
 
         if not remote.verify:
@@ -97,7 +118,14 @@ class DataCloud(object):
                 # (see `RemoteBASE.download()`)
                 self.repo.state.save(cache_file, checksum)
 
-    def status(self, cache, jobs=None, remote=None, show_checksums=False):
+    def status(
+        self,
+        cache,
+        jobs=None,
+        remote=None,
+        show_checksums=False,
+        drop_index=False,
+    ):
         """Check status of data items in a cloud-agnostic way.
 
         Args:
@@ -108,8 +136,13 @@ class DataCloud(object):
                 is used.
             show_checksums (bool): show checksums instead of file names in
                 information messages.
+            drop_index (bool): clear local index for the remote
         """
         remote = self.get_remote(remote, "status")
         return self.repo.cache.local.status(
-            cache, jobs=jobs, remote=remote, show_checksums=show_checksums
+            cache,
+            jobs=jobs,
+            remote=remote,
+            show_checksums=show_checksums,
+            drop_index=drop_index,
         )

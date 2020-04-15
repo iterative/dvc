@@ -18,6 +18,7 @@ def pull(
     force=False,
     recursive=False,
     all_commits=False,
+    drop_index=False,
 ):
     processed_files_count = self._fetch(
         targets,
@@ -28,6 +29,7 @@ def pull(
         all_commits=all_commits,
         with_deps=with_deps,
         recursive=recursive,
+        drop_index=drop_index,
     )
     stats = self._checkout(
         targets=targets, with_deps=with_deps, force=force, recursive=recursive
