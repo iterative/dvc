@@ -1,3 +1,4 @@
+import os
 import errno
 
 from dvc.scm.tree import BaseTree
@@ -27,12 +28,12 @@ class DvcTree(BaseTree):
         except OutputNotFoundError as exc:
             raise FileNotFoundError from exc
 
-        if len(outs) != 1 or outs[0].isdir():
+        if len(outs) != 1 or outs[0].is_dir_checksum:
             raise IOError(errno.EISDIR)
 
         out = outs[0]
         if not out.changed_cache():
-            return open(out.cache_path.fspath, mode=mode, encoding=encoding)
+            return open(out.cache_path, mode=mode, encoding=encoding)
 
         raise FileNotFoundError
 
@@ -47,12 +48,12 @@ class DvcTree(BaseTree):
         if not self.exists(path):
             return False
 
+        path_info = PathInfo(os.path.abspath(path))
         outs = self._find_outs(path, strict=False, recursive=True)
-
-        if len(outs) != 1 or outs[0].path_info.fspath != path:
+        if len(outs) != 1 or outs[0].path_info != path_info:
             return True
 
-        return outs[0].isdir()
+        return outs[0].is_dir_checksum
 
     def isfile(self, path):
         if not self.exists(path):
@@ -70,7 +71,7 @@ class DvcTree(BaseTree):
                 continue
 
             name = key[root_len]
-            if len(key) > root_len + 1 or out.isdir():
+            if len(key) > root_len + 1 or out.is_dir_checksum:
                 dirs.add(name)
                 continue
 
@@ -95,7 +96,7 @@ class DvcTree(BaseTree):
         if not self.isdir(top):
             raise NotADirectoryError
 
-        root = PathInfo(top)
+        root = PathInfo(os.path.abspath(top))
         outs = self._find_outs(top, recursive=True, strict=False)
 
         trie = Trie()
