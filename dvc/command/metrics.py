@@ -14,11 +14,9 @@ logger = logging.getLogger(__name__)
 def show_metrics(
     metrics, all_branches=False, all_tags=False, all_commits=False
 ):
-    """
-    Args:
-        metrics (list): Where each element is either a `list`
-            if an xpath was specified, otherwise a `str`
-    """
+    from flatten_json import flatten
+    from dvc.utils.diff import format_dict
+
     # When `metrics` contains a `None` key, it means that some files
     # specified as `targets` in `repo.metrics.show` didn't contain any metrics.
     missing = metrics.pop(None, None)
@@ -28,21 +26,13 @@ def show_metrics(
             logger.info("{branch}:".format(branch=branch))
 
         for fname, metric in val.items():
-            if isinstance(metric, dict):
-                lines = list(metric.values())
-            elif isinstance(metric, list):
-                lines = metric
-            else:
-                lines = metric.splitlines()
+            if not isinstance(metric, dict):
+                logger.info("\t{}: {}".format(fname, str(metric)))
+                continue
 
-            if len(lines) > 1:
-                logger.info("\t{fname}:".format(fname=fname))
-
-                for line in lines:
-                    logger.info("\t\t{content}".format(content=line))
-
-            else:
-                logger.info("\t{}: {}".format(fname, metric))
+            logger.info("\t{}:".format(fname))
+            for key, value in flatten(format_dict(metric), ".").items():
+                logger.info("\t\t{}: {}".format(key, value))
 
     if missing:
         raise BadMetricError(missing)
@@ -53,35 +43,25 @@ class CmdMetricsShow(CmdBase):
         try:
             metrics = self.repo.metrics.show(
                 self.args.targets,
-                typ=self.args.type,
-                xpath=self.args.xpath,
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,
                 all_commits=self.args.all_commits,
                 recursive=self.args.recursive,
             )
 
-            show_metrics(
-                metrics,
-                self.args.all_branches,
-                self.args.all_tags,
-                self.args.all_commits,
-            )
+            if self.args.show_json:
+                import json
+
+                logger.info(json.dumps(metrics))
+            else:
+                show_metrics(
+                    metrics,
+                    self.args.all_branches,
+                    self.args.all_tags,
+                    self.args.all_commits,
+                )
         except DvcException:
             logger.exception("failed to show metrics")
-            return 1
-
-        return 0
-
-
-class CmdMetricsModify(CmdBase):
-    def run(self):
-        try:
-            self.repo.metrics.modify(
-                self.args.path, typ=self.args.type, xpath=self.args.xpath
-            )
-        except DvcException:
-            logger.exception("failed to modify metric file settings")
             return 1
 
         return 0
@@ -90,9 +70,7 @@ class CmdMetricsModify(CmdBase):
 class CmdMetricsAdd(CmdBase):
     def run(self):
         try:
-            self.repo.metrics.add(
-                self.args.path, self.args.type, self.args.xpath
-            )
+            self.repo.metrics.add(self.args.path)
         except DvcException:
             msg = "failed to add metric file '{}'".format(self.args.path)
             logger.exception(msg)
@@ -114,11 +92,14 @@ class CmdMetricsRemove(CmdBase):
 
 
 def _show_diff(diff):
+    from collections import OrderedDict
+
     from dvc.utils.diff import table
 
     rows = []
     for fname, mdiff in diff.items():
-        for metric, change in mdiff.items():
+        sorted_mdiff = OrderedDict(sorted(mdiff.items()))
+        for metric, change in sorted_mdiff.items():
             rows.append(
                 [
                     fname,
@@ -138,9 +119,8 @@ class CmdMetricsDiff(CmdBase):
                 a_rev=self.args.a_rev,
                 b_rev=self.args.b_rev,
                 targets=self.args.targets,
-                typ=self.args.type,
-                xpath=self.args.xpath,
                 recursive=self.args.recursive,
+                all=self.args.all,
             )
 
             if self.args.show_json:
@@ -185,31 +165,8 @@ def add_parser(subparsers, parent_parser):
         help=METRICS_ADD_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    metrics_add_parser.add_argument(
-        "-t", "--type", help="Type of metrics (json/yaml).", metavar="<type>",
-    )
-    metrics_add_parser.add_argument(
-        "-x", "--xpath", help="json/yaml path.", metavar="<path>",
-    )
     metrics_add_parser.add_argument("path", help="Path to a metric file.")
     metrics_add_parser.set_defaults(func=CmdMetricsAdd)
-
-    METRICS_MODIFY_HELP = "Modify metric default formatting."
-    metrics_modify_parser = metrics_subparsers.add_parser(
-        "modify",
-        parents=[parent_parser],
-        description=append_doc_link(METRICS_MODIFY_HELP, "metrics/modify"),
-        help=METRICS_MODIFY_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    metrics_modify_parser.add_argument(
-        "-t", "--type", help="Type of metrics (json/yaml).", metavar="<type>",
-    )
-    metrics_modify_parser.add_argument(
-        "-x", "--xpath", help="json/yaml path.", metavar="<path>",
-    )
-    metrics_modify_parser.add_argument("path", help="Path to a metric file.")
-    metrics_modify_parser.set_defaults(func=CmdMetricsModify)
 
     METRICS_SHOW_HELP = "Print metrics, with optional formatting."
     metrics_show_parser = metrics_subparsers.add_parser(
@@ -223,19 +180,6 @@ def add_parser(subparsers, parent_parser):
         "targets",
         nargs="*",
         help="Metric files or directories (see -R) to show",
-    )
-    metrics_show_parser.add_argument(
-        "-t",
-        "--type",
-        help=(
-            "Type of metrics (json/yaml). "
-            "It can be detected by the file extension automatically. "
-            "Unsupported types will be treated as raw."
-        ),
-        metavar="<type>",
-    )
-    metrics_show_parser.add_argument(
-        "-x", "--xpath", help="json/yaml path.", metavar="<path>",
     )
     metrics_show_parser.add_argument(
         "-a",
@@ -267,6 +211,12 @@ def add_parser(subparsers, parent_parser):
             "metric files."
         ),
     )
+    metrics_show_parser.add_argument(
+        "--show-json",
+        action="store_true",
+        default=False,
+        help="Show output in JSON format.",
+    )
     metrics_show_parser.set_defaults(func=CmdMetricsShow)
 
     METRICS_DIFF_HELP = "Show changes in metrics between commits"
@@ -296,19 +246,6 @@ def add_parser(subparsers, parent_parser):
         metavar="<paths>",
     )
     metrics_diff_parser.add_argument(
-        "-t",
-        "--type",
-        help=(
-            "Type of metrics (json/yaml). "
-            "It can be detected by the file extension automatically. "
-            "Unsupported types will be treated as raw."
-        ),
-        metavar="<type>",
-    )
-    metrics_diff_parser.add_argument(
-        "-x", "--xpath", help="json/yaml path.", metavar="<path>",
-    )
-    metrics_diff_parser.add_argument(
         "-R",
         "--recursive",
         action="store_true",
@@ -317,6 +254,12 @@ def add_parser(subparsers, parent_parser):
             "If any target is a directory, recursively search and process "
             "metric files."
         ),
+    )
+    metrics_diff_parser.add_argument(
+        "--all",
+        action="store_true",
+        default=False,
+        help="Show unchanged metrics as well.",
     )
     metrics_diff_parser.add_argument(
         "--show-json",

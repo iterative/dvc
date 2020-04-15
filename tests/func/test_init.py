@@ -69,10 +69,11 @@ def test_init_no_scm_cli(tmp_dir):
 
 
 def test_init_quiet_should_not_display_welcome_screen(tmp_dir, scm, caplog):
-    ret = main(["init", "--quiet"])
+    with caplog.at_level(logging.INFO, logger="dvc"):
+        ret = main(["init", "--quiet"])
 
-    assert 0 == ret
-    assert "" == caplog.text
+        assert 0 == ret
+        assert "" == caplog.text
 
 
 def test_allow_init_dvc_subdir(tmp_dir, scm, monkeypatch):

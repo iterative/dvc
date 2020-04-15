@@ -1,7 +1,7 @@
 import os
 import errno
 
-from dvc.scm.tree import BaseTree
+from dvc.scm.tree import BaseTree, WorkingTree
 from dvc.path_info import PathInfo
 from dvc.exceptions import OutputNotFoundError
 
@@ -32,10 +32,17 @@ class DvcTree(BaseTree):
             raise IOError(errno.EISDIR)
 
         out = outs[0]
-        if not out.changed_cache():
-            return open(out.cache_path, mode=mode, encoding=encoding)
+        # temporary hack to make cache use WorkingTree and not GitTree, because
+        # cache dir doesn't exist in the latter.
+        saved_tree = self.repo.tree
+        self.repo.tree = WorkingTree(self.repo.root_dir)
+        try:
+            if out.changed_cache():
+                raise FileNotFoundError
+        finally:
+            self.repo.tree = saved_tree
 
-        raise FileNotFoundError
+        return open(out.cache_path, mode=mode, encoding=encoding)
 
     def exists(self, path):
         try:
@@ -115,3 +122,20 @@ class DvcTree(BaseTree):
 
     def isexec(self, path):
         return False
+
+
+class RepoTree(BaseTree):
+    def __init__(self, repo):
+        self.repo = repo
+        self.dvctree = DvcTree(repo)
+
+    def open(self, *args, **kwargs):
+        try:
+            return self.dvctree.open(*args, **kwargs)
+        except FileNotFoundError:
+            pass
+
+        return self.repo.tree.open(*args, **kwargs)
+
+    def exists(self, path):
+        return self.repo.tree.exists(path) or self.dvctree.exists(path)

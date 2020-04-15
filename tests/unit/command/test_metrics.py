@@ -9,11 +9,8 @@ def test_metrics_diff(dvc, mocker):
             "diff",
             "HEAD~10",
             "HEAD~1",
-            "-t",
-            "json",
-            "-x",
-            "x.path",
             "-R",
+            "--all",
             "--show-json",
             "--targets",
             "target1",
@@ -32,9 +29,8 @@ def test_metrics_diff(dvc, mocker):
         targets=["target1", "target2"],
         a_rev="HEAD~10",
         b_rev="HEAD~1",
-        typ="json",
-        xpath="x.path",
         recursive=True,
+        all=True,
     )
 
 
@@ -90,10 +86,6 @@ def test_metrics_show(dvc, mocker):
         [
             "metrics",
             "show",
-            "-t",
-            "json",
-            "-x",
-            "x.path",
             "-R",
             "--all-tags",
             "--all-branches",
@@ -112,8 +104,6 @@ def test_metrics_show(dvc, mocker):
     m.assert_called_once_with(
         cmd.repo,
         ["target1", "target2"],
-        typ="json",
-        xpath="x.path",
         recursive=True,
         all_tags=True,
         all_branches=True,
@@ -127,4 +117,21 @@ def test_metrics_diff_prec():
     ) == (
         "   Path      Metric   Value    Change\n"
         "other.json   a.b      0.0043   0.0001"
+    )
+
+
+def test_metrics_diff_sorted():
+    assert _show_diff(
+        {
+            "metrics.yaml": {
+                "x.b": {"old": 5, "new": 6, "diff": 1},
+                "a.d.e": {"old": 3, "new": 4, "diff": 1},
+                "a.b.c": {"old": 1, "new": 2, "diff": 1},
+            }
+        }
+    ) == (
+        "    Path       Metric   Value   Change\n"
+        "metrics.yaml   a.b.c    2       1     \n"
+        "metrics.yaml   a.d.e    4       1     \n"
+        "metrics.yaml   x.b      6       1     "
     )

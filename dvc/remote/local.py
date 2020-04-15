@@ -87,6 +87,7 @@ class RemoteLOCAL(RemoteBASE):
         return self.checksum_to_path_info(md5).url
 
     def exists(self, path_info):
+        assert is_working_tree(self.repo.tree)
         assert path_info.scheme == "local"
         return self.repo.tree.exists(fspath_py35(path_info))
 
