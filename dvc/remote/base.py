@@ -761,10 +761,10 @@ class RemoteBASE(object):
             path_info = self.checksum_to_path_info(checksum)
             if self.is_dir_checksum(checksum):
                 self._remove_unpacked_dir(checksum)
-            self.index.remove(checksum)
             self.remove(path_info)
             removed = True
         if removed:
+            self.index.invalidate()
             self.index.save()
         return removed
 
