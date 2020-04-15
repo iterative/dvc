@@ -278,7 +278,7 @@ class Config(dict):
         Raises:
             ConfigError: thrown if config has an invalid format.
         """
-        conf = self._load_config_to_level("all_levels")
+        conf = self._load_config_to_level()
 
         if validate:
             conf = self.validate(conf)
@@ -330,7 +330,7 @@ class Config(dict):
         dirs_schema = {"cache": {"dir": func}, "remote": {str: {"url": func}}}
         return Schema(dirs_schema, extra=ALLOW_EXTRA)(conf)
 
-    def _load_config_to_level(self, level):
+    def _load_config_to_level(self, level=None):
         merged_conf = {}
         for merge_level in self.LEVELS:
             if merge_level == level:
