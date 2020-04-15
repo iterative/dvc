@@ -245,8 +245,8 @@ def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc, caplog):
     assert len(caplog.messages) == 0
 
     assert (
-        "Could not find 'metric.json' on any of the revisions 'v1, workspace'"
-        == str(error.value)
+        str(error.value)
+        == "Could not find 'metric.json' on any of the revisions 'v1'"
     )
 
 

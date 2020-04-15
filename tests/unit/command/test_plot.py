@@ -1,8 +1,10 @@
+import pytest
+
 from dvc.cli import parse_args
 from dvc.command.plot import CmdPlotShow, CmdPlotDiff
 
 
-def test_metrics_diff(dvc, mocker):
+def test_metrics_diff(mocker):
     cli_args = parse_args(
         [
             "plot",
@@ -35,7 +37,7 @@ def test_metrics_diff(dvc, mocker):
     )
 
 
-def test_metrics_show(dvc, mocker):
+def test_metrics_show(mocker):
     cli_args = parse_args(
         [
             "plot",
@@ -62,3 +64,22 @@ def test_metrics_show(dvc, mocker):
         file="result.extension",
         revisions=None,
     )
+
+
+@pytest.mark.parametrize(
+    "arg_revisions,is_dirty,expected_revisions",
+    [
+        ([], False, ["workspace"]),
+        ([], True, ["HEAD", "workspace"]),
+        (["v1", "v2", "workspace"], False, ["v1", "v2", "workspace"]),
+        (["v1", "v2", "workspace"], True, ["v1", "v2", "workspace"]),
+    ],
+)
+def test_revisions(mocker, arg_revisions, is_dirty, expected_revisions):
+    args = mocker.MagicMock()
+
+    cmd = CmdPlotDiff(args)
+    mocker.patch.object(args, "revisions", arg_revisions)
+    mocker.patch.object(cmd.repo.scm, "is_dirty", return_value=is_dirty)
+
+    assert cmd._revisions() == expected_revisions

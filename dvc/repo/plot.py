@@ -47,10 +47,10 @@ class NoDataOrTemplateProvided(DvcException):
 
 
 class PlotMetricTypeError(DvcException):
-    def __init__(self, path):
+    def __init__(self, file):
         super().__init__(
             "'{}' - file type error\n"
-            "Only json, yaml, csv and tsv types are supported.".format(path)
+            "Only json, yaml, csv and tsv types are supported.".format(file)
         )
 
 
@@ -142,11 +142,6 @@ def _load_from_revisions(repo, datafile, revisions, default_plot=False):
     data = []
     exceptions = []
 
-    if len(revisions) <= 1:
-        if len(revisions) == 0 and repo.scm.is_dirty():
-            revisions.append("HEAD")
-        revisions.append(WORKSPACE_REVISION_NAME)
-
     for rev in revisions:
         try:
             data.extend(
@@ -180,7 +175,7 @@ def _evaluate_templatepath(repo, template=None):
 @locked
 def plot(repo, datafile=None, template=None, revisions=None, file=None):
     if revisions is None:
-        revisions = []
+        revisions = [WORKSPACE_REVISION_NAME]
 
     if not datafile and not template:
         raise NoDataOrTemplateProvided()

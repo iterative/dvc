@@ -4,46 +4,46 @@ import os
 
 from dvc.command.base import append_doc_link, CmdBase, fix_subparsers
 from dvc.exceptions import DvcException
+from dvc.repo.plot import WORKSPACE_REVISION_NAME
 from dvc.utils import format_link
 
 logger = logging.getLogger(__name__)
 
 
-def _run_plot(repo, datafile, template, revisions, file):
-    try:
-        result = repo.plot(
-            datafile=datafile,
-            template=template,
-            revisions=revisions,
-            file=file,
-        )
-    except DvcException:
-        logger.exception("")
-        return 1
-    logger.info("file://{}".format(os.path.join(repo.root_dir, result)))
-    return 0
+class CmdPLot(CmdBase):
+    def _revisions(self):
+        raise NotImplementedError
 
-
-class CmdPlotShow(CmdBase):
     def run(self):
-        return _run_plot(
-            self.repo,
-            self.args.datafile,
-            self.args.template,
-            None,
-            self.args.file,
+        try:
+            result = self.repo.plot(
+                datafile=self.args.datafile,
+                template=self.args.template,
+                revisions=self._revisions(),
+                file=self.args.file,
+            )
+        except DvcException:
+            logger.exception("")
+            return 1
+        logger.info(
+            "file://{}".format(os.path.join(self.repo.root_dir, result))
         )
+        return 0
 
 
-class CmdPlotDiff(CmdBase):
-    def run(self):
-        return _run_plot(
-            self.repo,
-            self.args.datafile,
-            self.args.template,
-            self.args.revisions,
-            self.args.file,
-        )
+class CmdPlotShow(CmdPLot):
+    def _revisions(self):
+        return None
+
+
+class CmdPlotDiff(CmdPLot):
+    def _revisions(self):
+        revisions = self.args.revisions or []
+        if len(revisions) <= 1:
+            if len(revisions) == 0 and self.repo.scm.is_dirty():
+                revisions.append("HEAD")
+            revisions.append(WORKSPACE_REVISION_NAME)
+        return revisions
 
 
 def add_parser(subparsers, parent_parser):
@@ -87,7 +87,7 @@ def add_parser(subparsers, parent_parser):
         "datafile", nargs="?", default=None, help="Data to be visualized."
     )
     plot_show_parser.add_argument(
-        "-f", "--file", help="Specify name of the file it generates."
+        "-f", "--file", help="Name of the generated file."
     )
     plot_show_parser.set_defaults(func=CmdPlotShow)
 
@@ -117,7 +117,7 @@ def add_parser(subparsers, parent_parser):
         help="Data to be visualized.",
     )
     plot_diff_parser.add_argument(
-        "-f", "--file", help="Specify name of the file it generates."
+        "-f", "--file", help="Name of the generated file."
     )
     plot_diff_parser.add_argument(
         "revisions",

@@ -21,7 +21,9 @@ class TemplateNotFound(DvcException):
 
 class NoDataForTemplateError(DvcException):
     def __init__(self, template_path):
-        super().__init__("No data provided for '{}'.".format(template_path))
+        super().__init__(
+            "No data provided for '{}'.".format(os.path.relpath(template_path))
+        )
 
 
 PAGE_HTML = """<html>
