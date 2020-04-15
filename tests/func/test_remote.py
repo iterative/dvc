@@ -254,3 +254,19 @@ def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker):
     dvc.push()
     # last uploaded file should be dir checksum
     assert mocked_upload.call_args[0][0].endswith(".dir")
+
+
+def test_remote_modify_validation(dvc):
+    remote_name = "drive"
+    unsupported_config = "unsupported_config"
+    assert (
+        main(["remote", "add", "-d", remote_name, "gdrive://test/test"]) == 0
+    )
+    assert (
+        main(
+            ["remote", "modify", remote_name, unsupported_config, "something"]
+        )
+        == 251
+    )
+    config = configobj.ConfigObj(dvc.config.files["repo"])
+    assert unsupported_config not in config['remote "{}"'.format(remote_name)]
