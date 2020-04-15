@@ -267,6 +267,7 @@ class RemoteLOCAL(RemoteBASE):
             download=download,
             drop_index=drop_index,
         )
+        remote.index.save()
         return dict(dir_status, **file_status)
 
     def _status(

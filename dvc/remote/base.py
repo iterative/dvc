@@ -897,7 +897,6 @@ class RemoteBASE(object):
             remote_checksums = self._cache_object_exists(checksums, jobs, name)
             if remote_checksums:
                 self.index.update(remote_checksums)
-                self.index.save()
             return list(indexed_checksums) + remote_checksums
 
         # Max remote size allowed for us to use traverse method
@@ -936,7 +935,6 @@ class RemoteBASE(object):
             )
         )
         self.index.replace(remote_checksums)
-        self.index.save()
         return list(indexed_checksums) + list(
             checksums & set(remote_checksums)
         )
