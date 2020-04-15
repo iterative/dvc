@@ -489,15 +489,18 @@ class RemoteLOCAL(RemoteBASE):
                 raise DownloadError(fails)
             raise UploadError(fails)
         elif not download:
-            pushed_checksums = list(
-                map(self.path_to_checksum, dir_plans[0] + file_plans[0])
+            pushed_dir_checksums = list(
+                map(self.path_to_checksum, dir_plans[0])
+            )
+            pushed_file_checksums = list(
+                map(self.path_to_checksum, file_plans[0])
             )
             logger.debug(
                 "Adding {} pushed checksums to index".format(
-                    len(pushed_checksums)
+                    len(pushed_dir_checksums) + len(pushed_file_checksums)
                 )
             )
-            remote.index.update(pushed_checksums)
+            remote.index.update(pushed_dir_checksums, pushed_file_checksums)
             remote.index.save()
 
         return len(dir_plans[0]) + len(file_plans[0])
