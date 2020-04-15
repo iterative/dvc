@@ -13,8 +13,15 @@ from dvc.compat import fspath_py35
 from dvc.exceptions import DvcException, DownloadError, UploadError
 from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import RemoteBASE, STATUS_MAP
-from dvc.remote.base import STATUS_DELETED, STATUS_MISSING, STATUS_NEW
+from dvc.remote.base import (
+    index_locked,
+    RemoteBASE,
+    STATUS_MAP,
+    STATUS_DELETED,
+    STATUS_MISSING,
+    STATUS_NEW,
+)
+from dvc.remote.index import RemoteIndexNoop
 from dvc.scheme import Schemes
 from dvc.scm.tree import is_working_tree
 from dvc.system import System
@@ -30,6 +37,7 @@ class RemoteLOCAL(RemoteBASE):
     PARAM_CHECKSUM = "md5"
     PARAM_PATH = "path"
     TRAVERSE_PREFIX_LEN = 2
+    INDEX_CLS = RemoteIndexNoop
 
     UNPACKED_DIR_SUFFIX = ".unpacked"
 
@@ -249,6 +257,7 @@ class RemoteLOCAL(RemoteBASE):
     def open(path_info, mode="r", encoding=None):
         return open(fspath_py35(path_info), mode=mode, encoding=encoding)
 
+    @index_locked
     def status(
         self,
         named_cache,
@@ -267,7 +276,6 @@ class RemoteLOCAL(RemoteBASE):
             download=download,
             drop_index=drop_index,
         )
-        remote.index.save()
         return dict(dir_status, **file_status)
 
     def _status(
@@ -329,7 +337,7 @@ class RemoteLOCAL(RemoteBASE):
                 # Validate our index by verifying all indexed .dir checksums
                 # still exist on the remote
                 missing_dirs = (
-                    remote.index.checksums.intersection(dir_md5s)
+                    dir_md5s.intersection(remote.index.dir_checksums())
                     - remote_exists
                 )
                 if missing_dirs:
@@ -489,19 +497,14 @@ class RemoteLOCAL(RemoteBASE):
                 raise DownloadError(fails)
             raise UploadError(fails)
         elif not download:
-            pushed_dir_checksums = list(
-                map(self.path_to_checksum, dir_plans[0])
-            )
-            pushed_file_checksums = list(
-                map(self.path_to_checksum, file_plans[0])
-            )
+            pushed_dir_checksums = map(self.path_to_checksum, dir_plans[0])
+            pushed_file_checksums = map(self.path_to_checksum, file_plans[0])
             logger.debug(
                 "Adding {} pushed checksums to index".format(
-                    len(pushed_dir_checksums) + len(pushed_file_checksums)
+                    len(dir_plans[0]) + len(file_plans[0])
                 )
             )
             remote.index.update(pushed_dir_checksums, pushed_file_checksums)
-            remote.index.save()
 
         return len(dir_plans[0]) + len(file_plans[0])
 
@@ -521,6 +524,7 @@ class RemoteLOCAL(RemoteBASE):
                 return 1
         return func(from_info, to_info, name)
 
+    @index_locked
     def push(
         self,
         named_cache,
@@ -538,6 +542,7 @@ class RemoteLOCAL(RemoteBASE):
             drop_index=drop_index,
         )
 
+    @index_locked
     def pull(
         self,
         named_cache,

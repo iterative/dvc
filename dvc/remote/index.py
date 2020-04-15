@@ -1,129 +1,228 @@
 import logging
 import os
-import pickle
+import sqlite3
 import threading
 
-from funcy import split
+from dvc.state import _connect_sqlite
 
 logger = logging.getLogger(__name__)
 
 
-class RemoteIndex(object):
-    """Class for locally indexing remote checksums.
+class RemoteIndexNoop:
+    """No-op class for remotes which are not indexed (i.e. local)."""
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, typ, value, tbck):
+        pass
+
+    def checksums(self):
+        return []
+
+    def dir_checksums(self):
+        return []
+
+    def load(self):
+        pass
+
+    def dump(self):
+        pass
+
+    def invalidate(self):
+        pass
+
+    def replace(self, *args):
+        pass
+
+    def replace_all(self, *args):
+        pass
+
+    def update(self, *args):
+        pass
+
+    def update_all(self, *args):
+        pass
+
+
+class RemoteIndex:
+    """Class for indexing remote checksums in a sqlite3 database.
 
     Args:
         repo: repo for this remote index.
-        name: name for this index. If name is provided, this index will be
-            loaded from and saved to ``.dvc/tmp/index/{name}.idx``.
-            If name is not provided (i.e. for local remotes), this index will
-            be kept in memory but not saved to disk.
+        name: name for this index. Index db will be loaded from and saved to
+            ``.dvc/tmp/index/{name}.idx``.
         dir_suffix: suffix used for naming directory checksums
     """
 
     INDEX_SUFFIX = ".idx"
+    VERSION = 1
+    INDEX_TABLE = "remote_index"
+    INDEX_TABLE_LAYOUT = "checksum TEXT PRIMARY KEY, " "dir INTEGER NOT NULL"
 
-    def __init__(self, repo, name=None):
-        if name:
-            self.path = os.path.join(
-                repo.index_dir, "{}{}".format(name, self.INDEX_SUFFIX)
-            )
-        else:
-            self.path = None
-        self.lock = threading.Lock()
-        self._checksums = set()
+    def __init__(self, repo, name, dir_suffix=".dir"):
+        self.path = os.path.join(
+            repo.index_dir, "{}{}".format(name, self.INDEX_SUFFIX)
+        )
+
+        self.dir_suffix = dir_suffix
+        self.database = None
+        self.cursor = None
         self.modified = False
-        self.load()
+        self.lock = threading.Lock()
 
     def __iter__(self):
-        return iter(self._checksums)
+        cmd = "SELECT checksum FROM {}".format(self.INDEX_TABLE)
+        for (checksum,) in self._execute(cmd):
+            yield checksum
 
-    @property
+    def __enter__(self):
+        self.lock.acquire()
+        self.load()
+
+    def __exit__(self, typ, value, tbck):
+        self.dump()
+        self.lock.release()
+
     def checksums(self):
-        return self._checksums
+        """Iterate over checksums stored in the index."""
+        return iter(self)
+
+    def dir_checksums(self):
+        """Iterate over .dir checksums stored in the index."""
+        cmd = "SELECT checksum FROM {} WHERE dir = 1".format(self.INDEX_TABLE)
+        for (checksum,) in self._execute(cmd):
+            yield checksum
+
+    def is_dir_checksum(self, checksum):
+        return checksum.endswith(self.dir_suffix)
+
+    def _execute(self, cmd, parameters=()):
+        logger.debug(cmd)
+        return self.cursor.execute(cmd, parameters)
+
+    def _executemany(self, cmd, seq_of_parameters):
+        logger.debug(cmd)
+        return self.cursor.executemany(cmd, seq_of_parameters)
+
+    def _prepare_db(self, empty=False):
+        if not empty:
+            cmd = "PRAGMA user_version;"
+            self._execute(cmd)
+            ret = self.cursor.fetchall()
+            assert len(ret) == 1
+            assert len(ret[0]) == 1
+            assert isinstance(ret[0][0], int)
+            version = ret[0][0]
+
+            if version != self.VERSION:
+                logger.error(
+                    "Index file version '{}' will be reformatted "
+                    "to the current version '{}'.".format(
+                        version, self.VERSION,
+                    )
+                )
+                cmd = "DROP TABLE IF EXISTS {};"
+                self._execute(cmd.format(self.INDEX_TABLE))
+
+        cmd = "CREATE TABLE IF NOT EXISTS {} ({})"
+        self._execute(cmd.format(self.INDEX_TABLE, self.INDEX_TABLE_LAYOUT))
+
+        cmd = "PRAGMA user_version = {};"
+        self._execute(cmd.format(self.VERSION))
 
     def load(self):
-        """(Re)load this index from disk."""
-        if self.path and os.path.isfile(self.path):
-            self.lock.acquire()
-            try:
-                with open(self.path, "rb") as fobj:
-                    self._checksums = pickle.load(fobj)
-                self.modified = False
-            except IOError as exc:
-                logger.error(
-                    "Failed to load remote index file '{}'. "
-                    "Remote will be re-indexed: '{}'".format(self.path, exc)
-                )
-            finally:
-                self.lock.release()
+        """(Re)load this index database."""
+        retries = 1
+        while True:
+            assert self.database is None
+            assert self.cursor is None
 
-    def save(self):
-        """Save this index to disk."""
-        if self.path and self.modified:
-            self.lock.acquire()
+            empty = not os.path.isfile(self.path)
+            self.database = _connect_sqlite(self.path, {"nolock": 1})
+            self.cursor = self.database.cursor()
+
             try:
-                with open(self.path, "wb") as fobj:
-                    pickle.dump(self._checksums, fobj)
-                self.modified = False
-            except IOError as exc:
-                logger.error(
-                    "Failed to save remote index file '{}': {}".format(
-                        self.path, exc
-                    )
-                )
-            finally:
-                self.lock.release()
+                self._prepare_db(empty=empty)
+                return
+            except sqlite3.DatabaseError:
+                self.cursor.close()
+                self.database.close()
+                self.database = None
+                self.cursor = None
+                if retries > 0:
+                    os.unlink(self.path)
+                    retries -= 1
+                else:
+                    raise
+
+    def dump(self):
+        """Save this index database."""
+        assert self.database is not None
+
+        self.database.commit()
+        self.cursor.close()
+        self.database.close()
+        self.database = None
+        self.cursor = None
+
+    def _clear(self):
+        cmd = "DELETE FROM {}".format(self.INDEX_TABLE)
+        self._execute(cmd)
 
     def invalidate(self):
-        """Invalidate this index (to force re-indexing later)."""
-        self.lock.acquire()
-        self._checksums.clear()
-        self.modified = True
-        if self.path and os.path.isfile(self.path):
-            try:
-                os.unlink(self.path)
-            except IOError as exc:
-                logger.error(
-                    "Failed to remove remote index file '{}': {}".format(
-                        self.path, exc
-                    )
-                )
-        self.lock.release()
+        """Invalidate this index (to force re-indexing later).
+
+        Changes to the index will not committed until dump() is called.
+        """
+        self._clear()
 
     def replace(self, dir_checksums, file_checksums):
         """Replace the contents of this index with the specified checksums.
 
-        Changes to the index will not be written to disk.
+        Changes to the index will not committed until dump() is called.
         """
-        self.lock.acquire()
-        self._dir_checksums = set(dir_checksums)
-        self._file_checksums = set(file_checksums)
-        self.modified = True
-        self.lock.release()
+        self._clear()
+        self.update(dir_checksums, file_checksums)
 
-    def replace_all(self, *checksums):
+    def replace_all(self, checksums):
         """Replace the contents of this index with the specified checksums.
 
-        Changes to the index will not be written to disk.
+        Changes to the index will not committed until dump() is called.
         """
-        dir_checksums, file_checksums = split(self.is_dir_checksum, *checksums)
-        self.replace(dir_checksums, file_checksums)
+        self._clear()
+        self.update_all(checksums)
 
     def update(self, dir_checksums, file_checksums):
         """Update this index, adding the specified checksums.
 
-        Changes to the index will not be written to disk.
+        Changes to the index will not committed until dump() is called.
         """
-        self.lock.acquire()
-        self._dir_checksums.update(dir_checksums)
-        self._file_checksums.update(file_checksums)
-        self.modified = True
-        self.lock.release()
+        cmd = "INSERT OR IGNORE INTO {} (checksum, dir) VALUES (?, ?)".format(
+            self.INDEX_TABLE
+        )
+        self._executemany(
+            cmd, ((checksum, True) for checksum in dir_checksums)
+        )
+        self._executemany(
+            cmd, ((checksum, False) for checksum in file_checksums)
+        )
 
-    def update_all(self, *checksums):
+    def update_all(self, checksums):
         """Update this index, adding the specified checksums.
 
-        Changes to the index will not be written to disk.
+        Changes to the index will not committed until dump() is called.
         """
-        dir_checksums, file_checksums = split(self.is_dir_checksum, *checksums)
-        self.update(dir_checksums, file_checksums)
+        cmd = "INSERT OR IGNORE INTO {} (checksum, dir) VALUES (?, ?)".format(
+            self.INDEX_TABLE
+        )
+        self._executemany(
+            cmd,
+            (
+                (checksum, self.is_dir_checksum(checksum))
+                for checksum in checksums
+            ),
+        )

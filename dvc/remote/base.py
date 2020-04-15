@@ -7,7 +7,7 @@ import tempfile
 from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy
-from functools import partial
+from functools import partial, wraps
 from multiprocessing import cpu_count
 from operator import itemgetter
 
@@ -24,7 +24,7 @@ from dvc.exceptions import (
 from dvc.ignore import DvcIgnore
 from dvc.path_info import PathInfo, URLInfo, WindowsPathInfo
 from dvc.progress import Tqdm
-from dvc.remote.index import RemoteIndex
+from dvc.remote.index import RemoteIndex, RemoteIndexNoop
 from dvc.remote.slow_link_detection import slow_link_guard
 from dvc.state import StateNoop
 from dvc.utils import tmp_fname
@@ -72,11 +72,24 @@ class DirCacheError(DvcException):
         )
 
 
+def index_locked(f):
+    @wraps(f)
+    def wrapper(remote_obj, *args, **kwargs):
+        remote = kwargs.get("remote")
+        if remote:
+            with remote.index:
+                return f(remote_obj, *args, **kwargs)
+        return f(remote_obj, *args, **kwargs)
+
+    return wrapper
+
+
 class RemoteBASE(object):
     scheme = "base"
     path_cls = URLInfo
     REQUIRES = {}
     JOBS = 4 * cpu_count()
+    INDEX_CLS = RemoteIndex
 
     PARAM_RELPATH = "relpath"
     CHECKSUM_DIR_SUFFIX = ".dir"
@@ -116,9 +129,11 @@ class RemoteBASE(object):
         url = config.get("url")
         if url:
             index_name = hashlib.sha256(url.encode("utf-8")).hexdigest()
+            self.index = self.INDEX_CLS(
+                self.repo, index_name, dir_suffix=self.CHECKSUM_DIR_SUFFIX
+            )
         else:
-            index_name = None
-        self.index = RemoteIndex(self.repo, index_name)
+            self.index = RemoteIndexNoop()
 
     @classmethod
     def get_missing_deps(cls):
@@ -743,6 +758,7 @@ class RemoteBASE(object):
             remote_size, remote_checksums, jobs, name
         )
 
+    @index_locked
     def gc(self, named_cache, jobs=None):
         used = self.extract_used_local_checksums(named_cache)
 
@@ -765,7 +781,6 @@ class RemoteBASE(object):
             removed = True
         if removed:
             self.index.invalidate()
-            self.index.save()
         return removed
 
     def is_protected(self, path_info):
@@ -885,7 +900,7 @@ class RemoteBASE(object):
         assert self.TRAVERSE_PREFIX_LEN >= 2
 
         checksums = set(checksums)
-        indexed_checksums = checksums & self.index.checksums
+        indexed_checksums = checksums.intersection(self.index.checksums())
         checksums -= indexed_checksums
         logger.debug(
             "Matched {} indexed checksums".format(len(indexed_checksums))
