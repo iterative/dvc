@@ -47,7 +47,6 @@ class CmdRun(CmdBase):
                 no_exec=self.args.no_exec,
                 overwrite=overwrite,
                 ignore_build_cache=self.args.ignore_build_cache,
-                remove_outs=self.args.remove_outs,
                 no_commit=self.args.no_commit,
                 outs_persist=self.args.outs_persist,
                 outs_persist_no_cache=self.args.outs_persist_no_cache,
@@ -167,12 +166,6 @@ def add_parser(subparsers, parent_parser):
         default=False,
         help="Run this stage even if it has been already ran with the same "
         "command/dependencies/outputs/etc before.",
-    )
-    run_parser.add_argument(
-        "--remove-outs",
-        action="store_true",
-        default=False,
-        help="Deprecated, this is now the default behavior",
     )
     run_parser.add_argument(
         "--no-commit",

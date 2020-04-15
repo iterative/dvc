@@ -436,13 +436,15 @@ class OutputBase(object):
         if not self.is_dir_checksum:
             return ret
 
-        ret.update(self._collect_used_dir_cache(**kwargs))
+        ret.add_child_cache(
+            self.checksum, self._collect_used_dir_cache(**kwargs),
+        )
 
         return ret
 
     @classmethod
     def _validate_output_path(cls, path):
-        from dvc.stage import Stage
+        from dvc.dvcfile import Dvcfile
 
-        if Stage.is_valid_filename(path):
+        if Dvcfile.is_valid_filename(path):
             raise cls.IsStageFileError(path)

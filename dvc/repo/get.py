@@ -4,7 +4,6 @@ import os
 import shortuuid
 
 from dvc.exceptions import DvcException
-from dvc.stage import Stage
 from dvc.utils import resolve_output
 from dvc.utils.fs import remove
 from dvc.path_info import PathInfo
@@ -23,10 +22,11 @@ class GetDVCFileError(DvcException):
 @staticmethod
 def get(url, path, out=None, rev=None):
     from dvc.external_repo import external_repo
+    from dvc.dvcfile import Dvcfile
 
     out = resolve_output(path, out)
 
-    if Stage.is_valid_filename(out):
+    if Dvcfile.is_valid_filename(out):
         raise GetDVCFileError()
 
     # Creating a directory right beside the output to make sure that they

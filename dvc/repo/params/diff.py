@@ -24,7 +24,11 @@ def _format(params):
 
 
 def diff(repo, *args, a_rev=None, b_rev=None, **kwargs):
+    with_unchanged = kwargs.pop("all", False)
+
     old = _get_params(repo, *args, **kwargs, rev=(a_rev or "HEAD"))
     new = _get_params(repo, *args, **kwargs, rev=b_rev)
 
-    return dvc.utils.diff.diff(_format(old), _format(new))
+    return dvc.utils.diff.diff(
+        _format(old), _format(new), with_unchanged=with_unchanged
+    )

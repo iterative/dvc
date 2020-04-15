@@ -40,10 +40,13 @@ def test_used_cache(tmp_dir, dvc, path):
     expected = NamedCache.make(
         "local", "70922d6bf66eb073053a82f77d58c536.dir", "dir"
     )
-    expected.add(
-        "local",
-        "8c7dd922ad47494fc02c388e12c00eac",
-        os.path.join("dir", "subdir", "file"),
+    expected.add_child_cache(
+        "70922d6bf66eb073053a82f77d58c536.dir",
+        NamedCache.make(
+            "local",
+            "8c7dd922ad47494fc02c388e12c00eac",
+            os.path.join("dir", "subdir", "file"),
+        ),
     )
 
     with dvc.state:
