@@ -20,10 +20,12 @@ class RemoteIndexNoop:
     def __exit__(self, typ, value, tbck):
         pass
 
-    def checksums(self):
+    @staticmethod
+    def checksums():
         return []
 
-    def dir_checksums(self):
+    @staticmethod
+    def dir_checksums():
         return []
 
     def load(self):

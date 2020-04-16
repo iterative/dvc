@@ -496,7 +496,8 @@ class RemoteLOCAL(RemoteBASE):
                 remote.index.invalidate()
                 raise DownloadError(fails)
             raise UploadError(fails)
-        elif not download:
+
+        if not download:
             pushed_dir_checksums = map(self.path_to_checksum, dir_plans[0])
             pushed_file_checksums = map(self.path_to_checksum, file_plans[0])
             logger.debug(
