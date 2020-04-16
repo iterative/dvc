@@ -30,6 +30,7 @@ def test_roundtrip(dvc, index):
     index.update(expected_dir, expected_file)
     index.dump()
     index.load()
+    assert set(index.dir_checksums()) == expected_dir
     assert set(index.checksums()) == expected_dir | expected_file
 
 
