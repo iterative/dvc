@@ -74,3 +74,10 @@ def test_update_all(dvc, index):
     index.update_all(expected_dir | expected_file)
     assert set(index.dir_checksums()) == expected_dir
     assert set(index.checksums()) == expected_dir | expected_file
+
+
+def test_intersection(dvc, index):
+    checksums = (str(i) for i in range(2000))
+    expected = set(str(i) for i in range(1000))
+    index.update([], checksums)
+    assert set(index.intersection(expected)) == expected

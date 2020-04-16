@@ -3,6 +3,8 @@ import os
 import sqlite3
 import threading
 
+from funcy import lchunks
+
 from dvc.state import _connect_sqlite
 
 logger = logging.getLogger(__name__)
@@ -48,6 +50,10 @@ class RemoteIndexNoop:
 
     def update_all(self, *args):
         pass
+
+    @staticmethod
+    def intersection(*args):
+        return []
 
 
 class RemoteIndex:
@@ -102,12 +108,10 @@ class RemoteIndex:
     def is_dir_checksum(self, checksum):
         return checksum.endswith(self.dir_suffix)
 
-    def _execute(self, cmd, parameters=()):
-        logger.debug(cmd)
+    def _execute(self, cmd, parameters=(), quiet=False):
         return self.cursor.execute(cmd, parameters)
 
     def _executemany(self, cmd, seq_of_parameters):
-        logger.debug(cmd)
         return self.cursor.executemany(cmd, seq_of_parameters)
 
     def _prepare_db(self, empty=False):
@@ -225,3 +229,14 @@ class RemoteIndex:
                 for checksum in checksums
             ),
         )
+
+    def intersection(self, checksums):
+        """Iterate over values from `checksums` which exist in the index."""
+        # sqlite has a compile time limit of 999, see:
+        # https://www.sqlite.org/c3ref/c_limit_attached.html#sqlitelimitvariablenumber
+        for chunk in lchunks(999, checksums):
+            cmd = "SELECT checksum FROM {} WHERE checksum IN ({})".format(
+                self.INDEX_TABLE, ",".join("?" for checksum in chunk)
+            )
+            for (checksum,) in self._execute(cmd, chunk):
+                yield checksum
