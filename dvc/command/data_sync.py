@@ -30,7 +30,7 @@ class CmdDataPull(CmdDataBase):
                 with_deps=self.args.with_deps,
                 force=self.args.force,
                 recursive=self.args.recursive,
-                drop_index=self.args.drop_index,
+                clear_index=self.args.clear_index,
             )
             log_summary(stats)
         except (CheckoutError, DvcException) as exc:
@@ -54,7 +54,7 @@ class CmdDataPush(CmdDataBase):
                 all_commits=self.args.all_commits,
                 with_deps=self.args.with_deps,
                 recursive=self.args.recursive,
-                drop_index=self.args.drop_index,
+                clear_index=self.args.clear_index,
             )
         except DvcException:
             logger.exception("failed to push data to the cloud")
@@ -165,7 +165,7 @@ def add_parser(subparsers, _parent_parser):
         help="Pull cache for subdirectories of the specified directory.",
     )
     pull_parser.add_argument(
-        "--drop-index",
+        "--clear-index",
         action="store_true",
         default=False,
         help="Drop local index for the specified remote.",
@@ -220,7 +220,7 @@ def add_parser(subparsers, _parent_parser):
         help="Push cache for subdirectories of specified directory.",
     )
     push_parser.add_argument(
-        "--drop-index",
+        "--clear-index",
         action="store_true",
         default=False,
         help="Drop local index for the remote.",
@@ -349,7 +349,7 @@ def add_parser(subparsers, _parent_parser):
         help="Show status for all dependencies of the specified target.",
     )
     status_parser.add_argument(
-        "--drop-index",
+        "--clear-index",
         action="store_true",
         default=False,
         help="Drop local index for the remote.",

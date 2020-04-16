@@ -265,7 +265,7 @@ class RemoteLOCAL(RemoteBASE):
         jobs=None,
         show_checksums=False,
         download=False,
-        drop_index=False,
+        clear_index=False,
     ):
         # Return flattened dict containing all status info
         dir_status, file_status, _ = self._status(
@@ -274,7 +274,7 @@ class RemoteLOCAL(RemoteBASE):
             jobs=jobs,
             show_checksums=show_checksums,
             download=download,
-            drop_index=drop_index,
+            clear_index=clear_index,
         )
         return dict(dir_status, **file_status)
 
@@ -285,7 +285,7 @@ class RemoteLOCAL(RemoteBASE):
         jobs=None,
         show_checksums=False,
         download=False,
-        drop_index=False,
+        clear_index=False,
     ):
         """Return a tuple of (dir_status_info, file_status_info, dir_mapping).
 
@@ -313,7 +313,7 @@ class RemoteLOCAL(RemoteBASE):
         else:
             logger.debug("Collecting information from remote cache...")
             remote_exists = set()
-            if drop_index:
+            if clear_index:
                 logger.debug("Clearing local index for remote cache")
                 remote.index.invalidate()
             dir_md5s = set(named_cache.dir_keys(self.scheme))
@@ -419,7 +419,7 @@ class RemoteLOCAL(RemoteBASE):
         jobs=None,
         show_checksums=False,
         download=False,
-        drop_index=False,
+        clear_index=False,
     ):
         logger.debug(
             "Preparing to {} '{}'".format(
@@ -448,7 +448,7 @@ class RemoteLOCAL(RemoteBASE):
             jobs=jobs,
             show_checksums=show_checksums,
             download=download,
-            drop_index=drop_index,
+            clear_index=clear_index,
         )
 
         dir_plans = self._get_plans(download, remote, dir_status, status)
@@ -532,7 +532,7 @@ class RemoteLOCAL(RemoteBASE):
         remote,
         jobs=None,
         show_checksums=False,
-        drop_index=False,
+        clear_index=False,
     ):
         return self._process(
             named_cache,
@@ -540,7 +540,7 @@ class RemoteLOCAL(RemoteBASE):
             jobs=jobs,
             show_checksums=show_checksums,
             download=False,
-            drop_index=drop_index,
+            clear_index=clear_index,
         )
 
     @index_locked
@@ -550,7 +550,7 @@ class RemoteLOCAL(RemoteBASE):
         remote,
         jobs=None,
         show_checksums=False,
-        drop_index=False,
+        clear_index=False,
     ):
         return self._process(
             named_cache,
@@ -558,7 +558,7 @@ class RemoteLOCAL(RemoteBASE):
             jobs=jobs,
             show_checksums=show_checksums,
             download=True,
-            drop_index=drop_index,
+            clear_index=clear_index,
         )
 
     @staticmethod
