@@ -780,7 +780,7 @@ class RemoteBASE(object):
             self.remove(path_info)
             removed = True
         if removed:
-            self.index.invalidate()
+            self.index.clear()
         return removed
 
     def is_protected(self, path_info):

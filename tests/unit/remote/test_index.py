@@ -33,11 +33,11 @@ def test_roundtrip(dvc, index):
     assert set(index.checksums()) == expected_dir | expected_file
 
 
-def test_invalidate(dvc, index):
+def test_clear(dvc, index):
     index.update(
         ["1234.dir"], ["5678"],
     )
-    index.invalidate()
+    index.clear()
     assert first(index.checksums()) is None
 
 

@@ -34,7 +34,7 @@ class RemoteIndexNoop:
     def dump(self):
         pass
 
-    def invalidate(self):
+    def clear(self):
         pass
 
     def replace(self, *args):
@@ -171,23 +171,20 @@ class RemoteIndex:
         self.database = None
         self.cursor = None
 
-    def _clear(self):
-        cmd = "DELETE FROM {}".format(self.INDEX_TABLE)
-        self._execute(cmd)
-
-    def invalidate(self):
-        """Invalidate this index (to force re-indexing later).
+    def clear(self):
+        """Clear this index (to force re-indexing later).
 
         Changes to the index will not committed until dump() is called.
         """
-        self._clear()
+        cmd = "DELETE FROM {}".format(self.INDEX_TABLE)
+        self._execute(cmd)
 
     def replace(self, dir_checksums, file_checksums):
         """Replace the contents of this index with the specified checksums.
 
         Changes to the index will not committed until dump() is called.
         """
-        self._clear()
+        self.clear()
         self.update(dir_checksums, file_checksums)
 
     def replace_all(self, checksums):
@@ -195,7 +192,7 @@ class RemoteIndex:
 
         Changes to the index will not committed until dump() is called.
         """
-        self._clear()
+        self.clear()
         self.update_all(checksums)
 
     def update(self, dir_checksums, file_checksums):

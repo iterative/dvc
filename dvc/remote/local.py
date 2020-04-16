@@ -315,7 +315,7 @@ class RemoteLOCAL(RemoteBASE):
             remote_exists = set()
             if clear_index:
                 logger.debug("Clearing local index for remote cache")
-                remote.index.invalidate()
+                remote.index.clear()
             dir_md5s = set(named_cache.dir_keys(self.scheme))
             if dir_md5s:
                 # If .dir checksum exists on the remote, assume directory
@@ -345,7 +345,7 @@ class RemoteLOCAL(RemoteBASE):
                         "Remote cache missing indexed .dir checksums '{}', "
                         "clearing local index".format(", ".join(missing_dirs))
                     )
-                    remote.index.invalidate()
+                    remote.index.clear()
             if md5s:
                 remote_exists.update(
                     remote.cache_exists(
@@ -493,7 +493,7 @@ class RemoteLOCAL(RemoteBASE):
 
         if fails:
             if download:
-                remote.index.invalidate()
+                remote.index.clear()
                 raise DownloadError(fails)
             raise UploadError(fails)
 
