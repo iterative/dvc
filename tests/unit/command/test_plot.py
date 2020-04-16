@@ -15,6 +15,7 @@ def test_metrics_diff(mocker):
             "template",
             "-d",
             "datafile",
+            "--no-embed",
             "HEAD",
             "tag1",
             "tag2",
@@ -34,6 +35,7 @@ def test_metrics_diff(mocker):
         template="template",
         revisions=["HEAD", "tag1", "tag2"],
         file="result.extension",
+        embed=False,
     )
 
 
@@ -46,6 +48,7 @@ def test_metrics_show(mocker):
             "result.extension",
             "-t",
             "template",
+            "--no-embed",
             "datafile",
         ]
     )
@@ -63,6 +66,7 @@ def test_metrics_show(mocker):
         template="template",
         file="result.extension",
         revisions=None,
+        embed=False,
     )
 
 

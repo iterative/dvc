@@ -64,7 +64,7 @@ def _prepare_div(vega_dict):
 class Template:
     INDENT = 4
     SEPARATORS = (",", ": ")
-    EXTENTION = ".vt"
+    EXTENSION = ".json"
     METRIC_DATA_STRING = "<DVC_METRIC_DATA>"
 
     def __init__(self, templates_dir):
@@ -76,14 +76,18 @@ class Template:
         if not os.path.exists(self.plot_templates_dir):
             makedirs(self.plot_templates_dir)
 
-        div = _prepare_div(self.DEFAULT_CONTENT)
-
-        _save_plot_html(
-            [div],
+        with open(
             os.path.join(
-                self.plot_templates_dir, self.TEMPLATE_NAME + self.EXTENTION
+                self.plot_templates_dir, self.TEMPLATE_NAME + self.EXTENSION
             ),
-        )
+            "w",
+        ) as fobj:
+            json.dump(
+                self.DEFAULT_CONTENT,
+                fobj,
+                indent=self.INDENT,
+                separators=self.SEPARATORS,
+            )
 
     def load_template(self, path):
         try:
@@ -124,7 +128,9 @@ class Template:
         )
 
     @staticmethod
-    def fill(template_path, data, result_path, priority_datafile=None):
+    def fill(
+        template_path, data, result_path, priority_datafile=None, embed=True
+    ):
         with open(template_path, "r") as fobj:
             result_content = fobj.read()
 
@@ -145,10 +151,21 @@ class Template:
                     sort_keys=True,
                 ),
             )
+
+        if embed:
+            result_content = Template._embed(result_content)
+
         with open(result_path, "w") as fobj:
             fobj.write(result_content)
 
         return result_path
+
+    @staticmethod
+    def _embed(vega_json_string):
+        # TODO what about id?
+        # TODO 2 what about supporting multiple plots, eg as json list?
+        div = DIV_HTML.format(id="dvc_plot", vega_json=vega_json_string)
+        return PAGE_HTML.format(divs=div)
 
 
 class DefaultLinearTemplate(Template):
@@ -195,7 +212,7 @@ class PlotTemplates:
 
     @cached_property
     def default_template(self):
-        return os.path.join(self.templates_dir, "default.vt")
+        return os.path.join(self.templates_dir, "default.json")
 
     def get_template(self, path):
         t_path = os.path.join(self.templates_dir, path)

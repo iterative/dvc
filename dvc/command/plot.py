@@ -21,6 +21,7 @@ class CmdPLot(CmdBase):
                 template=self.args.template,
                 revisions=self._revisions(),
                 file=self.args.file,
+                embed=not self.args.no_embed,
             )
         except DvcException:
             logger.exception("")
@@ -89,6 +90,12 @@ def add_parser(subparsers, parent_parser):
     plot_show_parser.add_argument(
         "-f", "--file", help="Name of the generated file."
     )
+    plot_show_parser.add_argument(
+        "--no-embed",
+        action="store_true",
+        default=False,
+        help="Do not wrap vega plot json with HTML.",
+    )
     plot_show_parser.set_defaults(func=CmdPlotShow)
 
     PLOT_DIFF_HELP = (
@@ -124,5 +131,12 @@ def add_parser(subparsers, parent_parser):
         nargs="*",
         default=None,
         help="Git revisions to plot from",
+    )
+
+    plot_diff_parser.add_argument(
+        "--no-embed",
+        action="store_true",
+        default=False,
+        help="Do not wrap vega plot json with HTML.",
     )
     plot_diff_parser.set_defaults(func=CmdPlotDiff)

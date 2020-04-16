@@ -173,7 +173,9 @@ def _evaluate_templatepath(repo, template=None):
 
 
 @locked
-def plot(repo, datafile=None, template=None, revisions=None, file=None):
+def plot(
+    repo, datafile=None, template=None, revisions=None, file=None, embed=False
+):
     if revisions is None:
         revisions = [WORKSPACE_REVISION_NAME]
 
@@ -200,7 +202,9 @@ def plot(repo, datafile=None, template=None, revisions=None, file=None):
 
         file = "".join(file.split(".")[:-1] or file) + ".html"
 
-    result_path = Template.fill(template_path, data, file, datafile)
+    result_path = Template.fill(
+        template_path, data, file, datafile, embed=embed
+    )
     return result_path
 
 

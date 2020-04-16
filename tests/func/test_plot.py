@@ -59,7 +59,8 @@ def test_plot_csv_one_column(tmp_dir, scm, dvc):
     _write_csv(metric, "metric.csv")
     _run_with_metric(tmp_dir, metric_filename="metric.csv")
 
-    result = dvc.plot("metric.csv")
+    result = dvc.plot("metric.csv", embed=True)
+
     page_content = BeautifulSoup((tmp_dir / result).read_text())
     vega_data = json.dumps(
         [
@@ -81,7 +82,7 @@ def test_plot_csv_multiple_columns(tmp_dir, scm, dvc):
     _write_csv(metric, "metric.csv")
     _run_with_metric(tmp_dir, metric_filename="metric.csv")
 
-    result = dvc.plot("metric.csv")
+    result = dvc.plot("metric.csv", embed=True)
     page_content = BeautifulSoup((tmp_dir / result).read_text())
     vega_data = json.dumps(
         [
@@ -101,7 +102,7 @@ def test_plot_json_single_val(tmp_dir, scm, dvc):
     _write_json(tmp_dir, metric, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "first run")
 
-    result = dvc.plot("metric.json")
+    result = dvc.plot("metric.json", embed=True)
 
     page_content = BeautifulSoup((tmp_dir / result).read_text())
     vega_data = json.dumps(
@@ -124,7 +125,7 @@ def test_plot_json_multiple_val(tmp_dir, scm, dvc):
     _write_json(tmp_dir, metric, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "first run")
 
-    result = dvc.plot("metric.json")
+    result = dvc.plot("metric.json", embed=True)
 
     page_content = BeautifulSoup((tmp_dir / result).read_text())
     vega_data = json.dumps(
@@ -147,7 +148,7 @@ def test_plot_confusion(tmp_dir, dvc):
     _write_json(tmp_dir, confusion_matrix, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "first run")
 
-    result = dvc.plot(datafile="metric.json", template="confusion")
+    result = dvc.plot(datafile="metric.json", template="confusion", embed=True)
 
     page_content = BeautifulSoup((tmp_dir / result).read_text())
     vega_data = json.dumps(
@@ -164,7 +165,7 @@ def test_plot_confusion(tmp_dir, dvc):
 
 def test_plot_multiple_revs(tmp_dir, scm, dvc):
     shutil.copy(
-        fspath(tmp_dir / ".dvc" / "plot" / "default.vt"), "template.vt"
+        fspath(tmp_dir / ".dvc" / "plot" / "default.json"), "template.json"
     )
 
     metric_1 = [{"x": 1, "y": 2}, {"x": 2, "y": 3}]
@@ -181,9 +182,10 @@ def test_plot_multiple_revs(tmp_dir, scm, dvc):
 
     result = dvc.plot(
         "metric.json",
-        template="template.vt",
+        template="template.json",
         revisions=["HEAD", "v2", "v1"],
         file="result.html",
+        embed=True,
     )
 
     page_content = BeautifulSoup((tmp_dir / result).read_text())
@@ -213,7 +215,7 @@ def test_plot_even_if_metric_missing(tmp_dir, scm, dvc, caplog):
 
     caplog.clear()
     with caplog.at_level(logging.WARNING, "dvc"):
-        result = dvc.plot("metric.json", revisions=["v1", "v2"])
+        result = dvc.plot("metric.json", revisions=["v1", "v2"], embed=True)
     assert (
         first(caplog.messages)
         == "File 'metric.json' was not found at: 'v1'. It will not be plotted."
@@ -239,7 +241,7 @@ def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc, caplog):
     with pytest.raises(NoMetricInHistoryError) as error, caplog.at_level(
         logging.WARNING, "dvc"
     ):
-        dvc.plot("metric.json", revisions=["v1"])
+        dvc.plot("metric.json", revisions=["v1"], embed=True)
 
     # do not warn if none found
     assert len(caplog.messages) == 0
@@ -252,15 +254,15 @@ def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc, caplog):
 
 def test_custom_template(tmp_dir, scm, dvc):
     shutil.copy(
-        fspath(tmp_dir / ".dvc" / "plot" / "default.vt"),
-        fspath(tmp_dir / "newtemplate.vt"),
+        fspath(tmp_dir / ".dvc" / "plot" / "default.json"),
+        fspath(tmp_dir / "newtemplate.json"),
     )
 
     metric = [{"a": 1, "b": 2}, {"a": 2, "b": 3}]
     _write_json(tmp_dir, metric, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "init", "v1")
 
-    result = dvc.plot("metric.json", "newtemplate.vt")
+    result = dvc.plot("metric.json", "newtemplate.json", embed=True)
 
     page_content = BeautifulSoup((tmp_dir / result).read_text())
     vega_data = json.dumps(
@@ -281,11 +283,11 @@ def _replace(path, src, dst):
 
 def test_custom_template_with_specified_data(tmp_dir, scm, dvc):
     shutil.copy(
-        fspath(tmp_dir / ".dvc" / "plot" / "default.vt"),
-        fspath(tmp_dir / "newtemplate.vt"),
+        fspath(tmp_dir / ".dvc" / "plot" / "default.json"),
+        fspath(tmp_dir / "newtemplate.json"),
     )
     _replace(
-        tmp_dir / "newtemplate.vt",
+        tmp_dir / "newtemplate.json",
         "DVC_METRIC_DATA",
         "DVC_METRIC_DATA,metric.json",
     )
@@ -294,7 +296,7 @@ def test_custom_template_with_specified_data(tmp_dir, scm, dvc):
     _write_json(tmp_dir, metric, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "init", "v1")
 
-    result = dvc.plot(datafile=None, template="newtemplate.vt")
+    result = dvc.plot(datafile=None, template="newtemplate.json", embed=True)
 
     page_content = BeautifulSoup((tmp_dir / result).read_text())
     vega_data = json.dumps(
@@ -311,11 +313,11 @@ def test_custom_template_with_specified_data(tmp_dir, scm, dvc):
 
 def test_plot_override_specified_data_source(tmp_dir, scm, dvc):
     shutil.copy(
-        fspath(tmp_dir / ".dvc" / "plot" / "default.vt"),
-        fspath(tmp_dir / "newtemplate.vt"),
+        fspath(tmp_dir / ".dvc" / "plot" / "default.json"),
+        fspath(tmp_dir / "newtemplate.json"),
     )
     _replace(
-        tmp_dir / "newtemplate.vt",
+        tmp_dir / "newtemplate.json",
         "DVC_METRIC_DATA",
         "DVC_METRIC_DATA,metric.json",
     )
@@ -324,7 +326,9 @@ def test_plot_override_specified_data_source(tmp_dir, scm, dvc):
     _write_json(tmp_dir, metric, "metric2.json")
     _run_with_metric(tmp_dir, "metric2.json", "init", "v1")
 
-    result = dvc.plot(datafile="metric2.json", template="newtemplate.vt")
+    result = dvc.plot(
+        datafile="metric2.json", template="newtemplate.json", embed=True
+    )
 
     page_content = BeautifulSoup((tmp_dir / result).read_text())
     vega_data = json.dumps(
@@ -343,13 +347,13 @@ def test_should_embed_vega_json_template(tmp_dir, scm, dvc):
     template = DefaultLinearTemplate.DEFAULT_CONTENT
     template["data"] = {"values": "<DVC_METRIC_DATA>"}
 
-    (tmp_dir / "template.vt").write_text(json.dumps(template))
+    (tmp_dir / "template.json").write_text(json.dumps(template))
 
     metric = [{"x": 1, "y": 2}, {"x": 2, "y": 3}]
     _write_json(tmp_dir, metric, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "init", "v1")
 
-    result = dvc.plot("metric.json", "template.vt")
+    result = dvc.plot("metric.json", "template.json", embed=False)
 
     result_content = json.loads((tmp_dir / result).read_text())
     vega_data = [
@@ -367,7 +371,7 @@ def test_should_raise_on_no_template_and_datafile(tmp_dir, dvc):
 
 def test_should_raise_on_no_template(tmp_dir, dvc):
     with pytest.raises(TemplateNotFound):
-        dvc.plot("metric.json", "non_existing_template.vt")
+        dvc.plot("metric.json", "non_existing_template.json")
 
 
 def test_plot_no_data(tmp_dir, dvc):
