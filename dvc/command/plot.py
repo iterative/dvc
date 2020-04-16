@@ -20,7 +20,7 @@ class CmdPLot(CmdBase):
                 datafile=self.args.datafile,
                 template=self.args.template,
                 revisions=self._revisions(),
-                file=self.args.file,
+                fname=self.args.file,
                 embed=not self.args.no_embed,
             )
         except DvcException:

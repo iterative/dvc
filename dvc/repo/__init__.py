@@ -16,7 +16,7 @@ from dvc.exceptions import (
     OutputNotFoundError,
 )
 from dvc.path_info import PathInfo
-from dvc.plot import PlotTemplates
+from dvc.template import PlotTemplates
 from dvc.remote.base import RemoteActionNotImplemented
 from dvc.utils.fs import path_isin
 from .graph import check_acyclic, get_pipeline, get_pipelines

@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 from funcy import first
 
 from dvc.compat import fspath
-from dvc.plot import (
+from dvc.template import (
     DefaultLinearTemplate,
     TemplateNotFound,
     NoDataForTemplateError,
@@ -184,7 +184,7 @@ def test_plot_multiple_revs(tmp_dir, scm, dvc):
         "metric.json",
         template="template.json",
         revisions=["HEAD", "v2", "v1"],
-        file="result.html",
+        fname="result.html",
         embed=True,
     )
 
@@ -216,10 +216,10 @@ def test_plot_even_if_metric_missing(tmp_dir, scm, dvc, caplog):
     caplog.clear()
     with caplog.at_level(logging.WARNING, "dvc"):
         result = dvc.plot("metric.json", revisions=["v1", "v2"], embed=True)
-    assert (
-        first(caplog.messages)
-        == "File 'metric.json' was not found at: 'v1'. It will not be plotted."
-    )
+        assert (
+            "File 'metric.json' was not found at: 'v1'. "
+            "It will not be plotted." in caplog.text
+        )
 
     page_content = BeautifulSoup((tmp_dir / result).read_text())
     vega_data = json.dumps(
@@ -243,8 +243,8 @@ def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc, caplog):
     ):
         dvc.plot("metric.json", revisions=["v1"], embed=True)
 
-    # do not warn if none found
-    assert len(caplog.messages) == 0
+        # do not warn if none found
+        assert len(caplog.messages) == 0
 
     assert (
         str(error.value)
@@ -353,7 +353,9 @@ def test_should_embed_vega_json_template(tmp_dir, scm, dvc):
     _write_json(tmp_dir, metric, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "init", "v1")
 
-    result = dvc.plot("metric.json", "template.json", embed=False)
+    result = dvc.plot(
+        "metric.json", "template.json", fname="result.json", embed=False
+    )
 
     result_content = json.loads((tmp_dir / result).read_text())
     vega_data = [

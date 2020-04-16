@@ -8,10 +8,28 @@ from funcy import first
 from ruamel import yaml
 
 from dvc.exceptions import DvcException, PathMissingError
-from dvc.plot import Template, NoDataForTemplateError
+from dvc.template import Template
 from dvc.repo import locked
 
 logger = logging.getLogger(__name__)
+
+PAGE_HTML = """<html>
+<head>
+    <title>dvc plot</title>
+    <script src="https://cdn.jsdelivr.net/npm/vega@5.10.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@4.8.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.5.1"></script>
+</head>
+<body>
+    {divs}
+</body>
+</html>"""
+
+DIV_HTML = """<div id = "{id}"></div>
+<script type = "text/javascript">
+    var spec = {vega_json};
+    vegaEmbed('#{id}', spec);
+</script>"""
 
 
 class NoMetricInHistoryError(DvcException):
@@ -173,8 +191,20 @@ def _evaluate_templatepath(repo, template=None):
 
 
 @locked
+def fill_template(repo, datafile, template_path, revisions):
+    default_plot = template_path == repo.plot_templates.default_template
+
+    template_datafiles = _parse_template(template_path, datafile)
+
+    data = {
+        datafile: _load_from_revisions(repo, datafile, revisions, default_plot)
+        for datafile in template_datafiles
+    }
+    return Template.fill(template_path, data, datafile)
+
+
 def plot(
-    repo, datafile=None, template=None, revisions=None, file=None, embed=False
+    repo, datafile=None, template=None, revisions=None, fname=None, embed=False
 ):
     if revisions is None:
         revisions = [WORKSPACE_REVISION_NAME]
@@ -184,28 +214,38 @@ def plot(
 
     template_path = _evaluate_templatepath(repo, template)
 
-    default_plot = template_path == repo.plot_templates.default_template
+    plot_content = fill_template(repo, datafile, template_path, revisions)
 
-    template_datafiles = _parse_template(template_path, datafile)
-    data = {
-        datafile: _load_from_revisions(repo, datafile, revisions, default_plot)
-        for datafile in template_datafiles
-    }
+    if embed:
+        div = DIV_HTML.format(id="plot", vega_json=plot_content)
+        plot_content = PAGE_HTML.format(divs=div)
 
-    if not file:
-        if datafile:
-            file = datafile
-        else:
-            file = first(template_datafiles)
-        if not file:
-            raise NoDataForTemplateError(template_path)
+    if not fname:
+        fname = _infer_result_file(datafile, template_path, embed)
 
-        file = "".join(file.split(".")[:-1] or file) + ".html"
+    with open(fname, "w") as fobj:
+        fobj.write(plot_content)
+    return fname
 
-    result_path = Template.fill(
-        template_path, data, file, datafile, embed=embed
-    )
-    return result_path
+
+def _infer_result_file(datafile, template_path, embed):
+    if datafile:
+        tmp = datafile
+    else:
+        tmp = "plot"
+
+    if not embed:
+        extension = os.path.splitext(template_path)[1]
+    else:
+        extension = ".html"
+
+    result_file = os.path.splitext(tmp)[0] + extension
+
+    if result_file == datafile or result_file == template_path:
+        raise DvcException(
+            "Could not infer plot name, please provide it " "with -f option."
+        )
+    return result_file
 
 
 def _parse_template(template_path, datafile):

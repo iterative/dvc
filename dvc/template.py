@@ -1,9 +1,7 @@
 import json
 import logging
 import os
-import random
 import re
-import string
 
 from funcy import cached_property
 
@@ -24,41 +22,6 @@ class NoDataForTemplateError(DvcException):
         super().__init__(
             "No data provided for '{}'.".format(os.path.relpath(template_path))
         )
-
-
-PAGE_HTML = """<html>
-<head>
-    <title>dvc plot</title>
-    <script src="https://cdn.jsdelivr.net/npm/vega@5.10.0"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-lite@4.8.1"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.5.1"></script>
-</head>
-<body>
-    {divs}
-</body>
-</html>"""
-
-DIV_HTML = """<div id = "{id}"></div>
-<script type = "text/javascript">
-    var spec = {vega_json};
-    vegaEmbed('#{id}', spec);
-</script>"""
-
-
-def _save_plot_html(divs, path):
-    page = PAGE_HTML.format(divs="\n".join(divs))
-    with open(path, "w") as fobj:
-        fobj.write(page)
-
-
-def _prepare_div(vega_dict):
-    div_id = "".join(random.sample(string.ascii_lowercase, 8))
-    return DIV_HTML.format(
-        id=str(div_id),
-        vega_json=json.dumps(
-            vega_dict, indent=4, separators=(",", ": "), sort_keys=True
-        ),
-    )
 
 
 class Template:
@@ -128,9 +91,7 @@ class Template:
         )
 
     @staticmethod
-    def fill(
-        template_path, data, result_path, priority_datafile=None, embed=True
-    ):
+    def fill(template_path, data, priority_datafile=None):
         with open(template_path, "r") as fobj:
             result_content = fobj.read()
 
@@ -142,6 +103,9 @@ class Template:
             else:
                 key = file
 
+            if key not in data:
+                raise NoDataForTemplateError(template_path)
+
             result_content = result_content.replace(
                 placeholder,
                 json.dumps(
@@ -152,20 +116,7 @@ class Template:
                 ),
             )
 
-        if embed:
-            result_content = Template._embed(result_content)
-
-        with open(result_path, "w") as fobj:
-            fobj.write(result_content)
-
-        return result_path
-
-    @staticmethod
-    def _embed(vega_json_string):
-        # TODO what about id?
-        # TODO 2 what about supporting multiple plots, eg as json list?
-        div = DIV_HTML.format(id="dvc_plot", vega_json=vega_json_string)
-        return PAGE_HTML.format(divs=div)
+        return result_content
 
 
 class DefaultLinearTemplate(Template):
