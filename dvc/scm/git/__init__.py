@@ -23,9 +23,9 @@ class TqdmGit(Tqdm):
     def update_git(self, op_code, cur_count, max_count=None, message=""):
         op_code = self.code2desc(op_code)
         if op_code:
-            message = op_code + " " + message
+            self.set_description_str(op_code, refresh=False)
         if message:
-            self.set_description_str(message, refresh=False)
+            self.set_postfix_str(message, refresh=False)
         self.update_to(cur_count, max_count)
 
     @staticmethod
