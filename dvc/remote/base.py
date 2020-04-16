@@ -900,7 +900,7 @@ class RemoteBASE(object):
         assert self.TRAVERSE_PREFIX_LEN >= 2
 
         checksums = set(checksums)
-        indexed_checksums = checksums.intersection(self.index.checksums())
+        indexed_checksums = set(self.index.intersection(checksums))
         checksums -= indexed_checksums
         logger.debug(
             "Matched {} indexed checksums".format(len(indexed_checksums))

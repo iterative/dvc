@@ -318,42 +318,23 @@ class RemoteLOCAL(RemoteBASE):
                 remote.index.clear()
             dir_md5s = set(named_cache.dir_keys(self.scheme))
             if dir_md5s:
-                # If .dir checksum exists on the remote, assume directory
-                # contents also exists on the remote
-                for dir_checksum in remote._cache_object_exists(dir_md5s):
-                    file_checksums = list(
-                        named_cache.child_keys(self.scheme, dir_checksum)
-                    )
-                    logger.debug(
-                        "'{}' exists on remote, "
-                        "assuming '{}' files also exist".format(
-                            dir_checksum, len(file_checksums)
-                        )
-                    )
-                    md5s.remove(dir_checksum)
-                    remote_exists.add(dir_checksum)
-                    md5s.difference_update(file_checksums)
-                    remote_exists.update(file_checksums)
-                    remote.index.update([dir_checksum], file_checksums)
-                # Validate our index by verifying all indexed .dir checksums
-                # still exist on the remote
-                missing_dirs = (
-                    dir_md5s.intersection(remote.index.dir_checksums())
-                    - remote_exists
+                remote_exists.update(
+                    self._indexed_dir_checksums(named_cache, remote, dir_md5s)
                 )
-                if missing_dirs:
-                    logger.debug(
-                        "Remote cache missing indexed .dir checksums '{}', "
-                        "clearing remote index".format(", ".join(missing_dirs))
-                    )
-                    remote.index.clear()
+                md5s.difference_update(remote_exists)
             if md5s:
-                file_checksums = remote.cache_exists(
-                    md5s, jobs=jobs, name=str(remote.path_info)
+                remote_exists.update(
+                    remote.cache_exists(
+                        md5s, jobs=jobs, name=str(remote.path_info)
+                    )
                 )
-                remote_exists.update(file_checksums)
-                remote.index.update([], file_checksums)
+        return self._make_status(
+            named_cache, remote, show_checksums, local_exists, remote_exists
+        )
 
+    def _make_status(
+        self, named_cache, remote, show_checksums, local_exists, remote_exists
+    ):
         def make_names(checksum, names):
             return {"name": checksum if show_checksums else " ".join(names)}
 
@@ -381,6 +362,27 @@ class RemoteLOCAL(RemoteBASE):
         self._log_missing_caches(dict(dir_status, **file_status))
 
         return dir_status, file_status, dir_paths
+
+    def _indexed_dir_checksums(self, named_cache, remote, dir_md5s):
+        # Validate our index by verifying all indexed .dir checksums
+        # still exist on the remote
+        dir_exists = remote._cache_object_exists(dir_md5s)
+        indexed_dirs = set(remote.index.intersection(dir_md5s))
+        missing_dirs = indexed_dirs.difference(dir_exists)
+        if missing_dirs:
+            logger.debug(
+                "Remote cache missing indexed .dir checksums '{}', "
+                "clearing remote index".format(", ".join(missing_dirs))
+            )
+            remote.index.clear()
+            yield from dir_exists
+
+        # If .dir checksum exists on the remote, assume any indexed
+        # directory contents also exists on the remote
+        for dir_checksum in dir_exists:
+            yield from remote.index.intersection(
+                named_cache.child_keys(self.scheme, dir_checksum)
+            )
 
     @staticmethod
     def _fill_statuses(checksum_info_dir, local_exists, remote_exists):
