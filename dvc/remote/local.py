@@ -314,7 +314,7 @@ class RemoteLOCAL(RemoteBASE):
             logger.debug("Collecting information from remote cache...")
             remote_exists = set()
             if clear_index:
-                logger.debug("Clearing local index for remote cache")
+                logger.debug("--clear-index used, clearing remote index")
                 remote.index.clear()
             dir_md5s = set(named_cache.dir_keys(self.scheme))
             if dir_md5s:
@@ -334,6 +334,7 @@ class RemoteLOCAL(RemoteBASE):
                     remote_exists.add(dir_checksum)
                     md5s.difference_update(file_checksums)
                     remote_exists.update(file_checksums)
+                    remote.index.update([dir_checksum], file_checksums)
                 # Validate our index by verifying all indexed .dir checksums
                 # still exist on the remote
                 missing_dirs = (
@@ -343,15 +344,15 @@ class RemoteLOCAL(RemoteBASE):
                 if missing_dirs:
                     logger.debug(
                         "Remote cache missing indexed .dir checksums '{}', "
-                        "clearing local index".format(", ".join(missing_dirs))
+                        "clearing remote index".format(", ".join(missing_dirs))
                     )
                     remote.index.clear()
             if md5s:
-                remote_exists.update(
-                    remote.cache_exists(
-                        md5s, jobs=jobs, name=str(remote.path_info)
-                    )
+                file_checksums = remote.cache_exists(
+                    md5s, jobs=jobs, name=str(remote.path_info)
                 )
+                remote_exists.update(file_checksums)
+                remote.index.update([], file_checksums)
 
         def make_names(checksum, names):
             return {"name": checksum if show_checksums else " ".join(names)}
