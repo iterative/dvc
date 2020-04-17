@@ -167,19 +167,6 @@ def add_parser(subparsers, parent_parser):
     )
     remote_default_parser.set_defaults(func=CmdRemoteDefault)
 
-    REMOTE_REMOVE_HELP = "Remove a data remote."
-    remote_remove_parser = remote_subparsers.add_parser(
-        "remove",
-        parents=[parent_config_parser, parent_parser],
-        description=append_doc_link(REMOTE_REMOVE_HELP, "remote/remove"),
-        help=REMOTE_REMOVE_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    remote_remove_parser.add_argument(
-        "name", help="Name of the remote to remove."
-    )
-    remote_remove_parser.set_defaults(func=CmdRemoteRemove)
-
     REMOTE_MODIFY_HELP = "Modify the configuration of a data remote."
     remote_modify_parser = remote_subparsers.add_parser(
         "modify",
@@ -213,3 +200,16 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     remote_list_parser.set_defaults(func=CmdRemoteList)
+
+    REMOTE_REMOVE_HELP = "Remove a data remote."
+    remote_remove_parser = remote_subparsers.add_parser(
+        "remove",
+        parents=[parent_config_parser, parent_parser],
+        description=append_doc_link(REMOTE_REMOVE_HELP, "remote/remove"),
+        help=REMOTE_REMOVE_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    remote_remove_parser.add_argument(
+        "name", help="Name of the remote to remove."
+    )
+    remote_remove_parser.set_defaults(func=CmdRemoteRemove)

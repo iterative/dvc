@@ -177,6 +177,40 @@ def add_parser(subparsers, parent_parser):
 
     fix_subparsers(metrics_subparsers)
 
+    METRICS_ADD_HELP = "Mark a DVC-tracked file as a metric."
+    metrics_add_parser = metrics_subparsers.add_parser(
+        "add",
+        parents=[parent_parser],
+        description=append_doc_link(METRICS_ADD_HELP, "metrics/add"),
+        help=METRICS_ADD_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    metrics_add_parser.add_argument(
+        "-t", "--type", help="Type of metrics (json/yaml).", metavar="<type>",
+    )
+    metrics_add_parser.add_argument(
+        "-x", "--xpath", help="json/yaml path.", metavar="<path>",
+    )
+    metrics_add_parser.add_argument("path", help="Path to a metric file.")
+    metrics_add_parser.set_defaults(func=CmdMetricsAdd)
+
+    METRICS_MODIFY_HELP = "Modify metric default formatting."
+    metrics_modify_parser = metrics_subparsers.add_parser(
+        "modify",
+        parents=[parent_parser],
+        description=append_doc_link(METRICS_MODIFY_HELP, "metrics/modify"),
+        help=METRICS_MODIFY_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    metrics_modify_parser.add_argument(
+        "-t", "--type", help="Type of metrics (json/yaml).", metavar="<type>",
+    )
+    metrics_modify_parser.add_argument(
+        "-x", "--xpath", help="json/yaml path.", metavar="<path>",
+    )
+    metrics_modify_parser.add_argument("path", help="Path to a metric file.")
+    metrics_modify_parser.set_defaults(func=CmdMetricsModify)
+
     METRICS_SHOW_HELP = "Print metrics, with optional formatting."
     metrics_show_parser = metrics_subparsers.add_parser(
         "show",
@@ -235,51 +269,6 @@ def add_parser(subparsers, parent_parser):
     )
     metrics_show_parser.set_defaults(func=CmdMetricsShow)
 
-    METRICS_ADD_HELP = "Mark a DVC-tracked file as a metric."
-    metrics_add_parser = metrics_subparsers.add_parser(
-        "add",
-        parents=[parent_parser],
-        description=append_doc_link(METRICS_ADD_HELP, "metrics/add"),
-        help=METRICS_ADD_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    metrics_add_parser.add_argument(
-        "-t", "--type", help="Type of metrics (json/yaml).", metavar="<type>",
-    )
-    metrics_add_parser.add_argument(
-        "-x", "--xpath", help="json/yaml path.", metavar="<path>",
-    )
-    metrics_add_parser.add_argument("path", help="Path to a metric file.")
-    metrics_add_parser.set_defaults(func=CmdMetricsAdd)
-
-    METRICS_MODIFY_HELP = "Modify metric default formatting."
-    metrics_modify_parser = metrics_subparsers.add_parser(
-        "modify",
-        parents=[parent_parser],
-        description=append_doc_link(METRICS_MODIFY_HELP, "metrics/modify"),
-        help=METRICS_MODIFY_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    metrics_modify_parser.add_argument(
-        "-t", "--type", help="Type of metrics (json/yaml).", metavar="<type>",
-    )
-    metrics_modify_parser.add_argument(
-        "-x", "--xpath", help="json/yaml path.", metavar="<path>",
-    )
-    metrics_modify_parser.add_argument("path", help="Path to a metric file.")
-    metrics_modify_parser.set_defaults(func=CmdMetricsModify)
-
-    METRICS_REMOVE_HELP = "Remove metric mark on a DVC-tracked file."
-    metrics_remove_parser = metrics_subparsers.add_parser(
-        "remove",
-        parents=[parent_parser],
-        description=append_doc_link(METRICS_REMOVE_HELP, "metrics/remove"),
-        help=METRICS_REMOVE_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    metrics_remove_parser.add_argument("path", help="Path to a metric file.")
-    metrics_remove_parser.set_defaults(func=CmdMetricsRemove)
-
     METRICS_DIFF_HELP = "Show changes in metrics between commits"
     " in the DVC repository, or between a commit and the workspace."
     metrics_diff_parser = metrics_subparsers.add_parser(
@@ -336,3 +325,14 @@ def add_parser(subparsers, parent_parser):
         help="Show output in JSON format.",
     )
     metrics_diff_parser.set_defaults(func=CmdMetricsDiff)
+
+    METRICS_REMOVE_HELP = "Remove metric mark on a DVC-tracked file."
+    metrics_remove_parser = metrics_subparsers.add_parser(
+        "remove",
+        parents=[parent_parser],
+        description=append_doc_link(METRICS_REMOVE_HELP, "metrics/remove"),
+        help=METRICS_REMOVE_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    metrics_remove_parser.add_argument("path", help="Path to a metric file.")
+    metrics_remove_parser.set_defaults(func=CmdMetricsRemove)
