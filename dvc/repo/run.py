@@ -53,7 +53,7 @@ def run(self, fname=None, no_exec=False, **kwargs):
                     relpath(dvcfile.path)
                 )
             )
-        dvcfile.overwrite_with_prompt(force=kwargs.get("overwrite", True))
+        dvcfile.remove_with_prompt(force=kwargs.get("overwrite", True))
 
     self.check_modified_graph([stage], self.pipeline_stages)
     if not no_exec:

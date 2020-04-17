@@ -33,7 +33,7 @@ def imp_url(self, url, out=None, fname=None, erepo=None, locked=True):
         return None
 
     dvcfile = Dvcfile(self, stage.path)
-    dvcfile.overwrite_with_prompt(force=True)
+    dvcfile.remove_with_prompt(force=True)
 
     self.check_modified_graph([stage])
 

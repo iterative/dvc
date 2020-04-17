@@ -39,7 +39,7 @@ def test_run_multi_stage_repeat(tmp_dir, dvc, run_copy):
     run_copy("foo1", "foo2", name="copy-foo1-foo2")
     run_copy("foo2", "foo3")
 
-    stages = Dvcfile(dvc, DVC_FILE).load_multi()
+    stages = list(Dvcfile(dvc, DVC_FILE).stages.values())
     assert len(stages) == 2
     assert all(isinstance(stage, PipelineStage) for stage in stages)
     assert set(stage.name for stage in stages) == {

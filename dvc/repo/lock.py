@@ -8,7 +8,7 @@ def lock(self, target, unlock=False):
 
     path, target = parse_target(target)
     dvcfile = dvcfile.Dvcfile(self, path)
-    stage = dvcfile.load_one(target)
+    stage = dvcfile.stages[target]
     stage.locked = False if unlock else True
     dvcfile.dump(stage, update_dvcfile=True)
 

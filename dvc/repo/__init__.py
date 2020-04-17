@@ -211,7 +211,7 @@ class Repo(object):
 
         dvcfile = Dvcfile(self, path)
         dvcfile.check_file_exists()
-        return [dvcfile.load_one(name)]
+        return [dvcfile.stages[name]]
 
     def collect(self, target, with_deps=False, recursive=False, graph=None):
         import networkx as nx
@@ -225,7 +225,7 @@ class Repo(object):
         if recursive and os.path.isdir(target):
             return self._collect_inside(target, graph or self.graph)
 
-        stage = Dvcfile(self, target).load()
+        stage = Dvcfile(self, target).stage
 
         # Optimization: do not collect the graph for a specific target
         if not with_deps:
@@ -242,7 +242,7 @@ class Repo(object):
 
         # Optimization: do not collect the graph for a specific .dvc target
         if Dvcfile.is_valid_filename(target) and not kwargs.get("with_deps"):
-            return [(Dvcfile(self, target).load(), None)]
+            return [(Dvcfile(self, target).stage, None)]
 
         try:
             (out,) = self.find_outs_by_path(target, strict=False)
@@ -308,7 +308,7 @@ class Repo(object):
 
         return cache
 
-    def _collect_graph(self, stages=None):
+    def _collect_graph(self, stages):
         """Generate a graph by using the given stages on the given directory
 
         The nodes of the graph are the stage's path relative to the root.
@@ -357,10 +357,9 @@ class Repo(object):
 
         G = nx.DiGraph()
         stages = stages or self.stages
-        stages = [stage for stage in stages if stage]
         outs = Trie()  # Use trie to efficiently find overlapping outs and deps
 
-        for stage in stages:
+        for stage in filter(bool, stages):
             for out in stage.outs:
                 out_key = out.path_info.parts
 
@@ -457,15 +456,8 @@ class Repo(object):
                 path = os.path.join(root, fname)
                 if not Dvcfile.is_valid_filename(path):
                     continue
-                stgs = Dvcfile(self, path).load_all()
-                ignored_outs.extend(
-                    out
-                    for stage in stgs
-                    if isinstance(stage, PipelineStage)
-                    for out in stage.outs
-                )
-
-                for stage in stgs:
+                dvcfile = Dvcfile(self, path)
+                for stage in dvcfile.stages.values():
                     stages = (
                         output_stages
                         if stage.is_data_source
@@ -477,9 +469,12 @@ class Repo(object):
                         or stage.is_data_source
                     ):
                         single_stages.append(stage)
+
                     for out in stage.outs:
                         if out.scheme == "local":
                             outs.add(out.fspath)
+                        if isinstance(stage, PipelineStage):
+                            ignored_outs.append(out)
 
             dirs[:] = [d for d in dirs if os.path.join(root, d) not in outs]
 

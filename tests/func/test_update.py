@@ -28,7 +28,7 @@ def test_update_import(tmp_dir, dvc, erepo_dir, cached):
     dvc.update(stage.path)
     assert (tmp_dir / "version").read_text() == "updated"
 
-    stage = Dvcfile(dvc, stage.path).load()
+    stage = Dvcfile(dvc, stage.path).stage
     assert stage.deps[0].def_repo["rev_lock"] == new_rev
 
 
@@ -71,7 +71,7 @@ def test_update_import_after_remote_updates_to_dvc(tmp_dir, dvc, erepo_dir):
     assert imported.is_file()
     assert imported.read_text() == "updated"
 
-    stage = Dvcfile(dvc, stage.path).load()
+    stage = Dvcfile(dvc, stage.path).stage
     assert stage.deps[0].def_repo == {
         "url": fspath(erepo_dir),
         "rev": "branch",

@@ -1,13 +1,12 @@
 from dvc.stage import PipelineStage
-from dvc import lockfile
+from dvc import lockfile, serialize
 import json
 import pytest
 
 
 def test_stage_dump_no_outs_deps(tmp_dir, dvc):
     stage = PipelineStage(name="s1", repo=dvc, path="path", cmd="command")
-
-    lockfile.dump(dvc, "path.lock", stage)
+    lockfile.dump(dvc, "path.lock", serialize.to_lockfile(stage))
     assert lockfile.load(dvc, "path.lock") == {
         "s1": {"cmd": "command", "deps": {}, "outs": {}}
     }
@@ -19,7 +18,7 @@ def test_stage_dump_when_already_exists(tmp_dir, dvc):
         json.dump(data, f)
     stage = PipelineStage(name="s2", repo=dvc, path="path", cmd="command2")
 
-    lockfile.dump(dvc, "path.lock", stage)
+    lockfile.dump(dvc, "path.lock", serialize.to_lockfile(stage))
     assert lockfile.load(dvc, "path.lock") == {
         **data,
         "s2": {"cmd": "command2", "deps": {}, "outs": {}},
@@ -38,7 +37,7 @@ def test_stage_dump_with_deps_and_outs(tmp_dir, dvc):
         json.dump(data, f)
 
     stage = PipelineStage(name="s2", repo=dvc, path="path", cmd="command2")
-    lockfile.dump(dvc, "path.lock", stage)
+    lockfile.dump(dvc, "path.lock", serialize.to_lockfile(stage))
     assert lockfile.load(dvc, "path.lock") == {
         **data,
         "s2": {"cmd": "command2", "deps": {}, "outs": {}},
@@ -47,9 +46,9 @@ def test_stage_dump_with_deps_and_outs(tmp_dir, dvc):
 
 def test_stage_overwrites_if_already_exists(tmp_dir, dvc):
     stage = PipelineStage(name="s2", repo=dvc, path="path", cmd="command2")
-    lockfile.dump(dvc, "path.lock", stage)
+    lockfile.dump(dvc, "path.lock", serialize.to_lockfile(stage))
     stage = PipelineStage(name="s2", repo=dvc, path="path", cmd="command3")
-    lockfile.dump(dvc, "path.lock", stage)
+    lockfile.dump(dvc, "path.lock", serialize.to_lockfile(stage))
     assert lockfile.load(dvc, "path.lock") == {
         "s2": {"cmd": "command3", "deps": {}, "outs": {}},
     }
