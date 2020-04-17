@@ -28,7 +28,7 @@ def test_get_active_graph(tmp_dir, dvc):
 
 
 @mock.patch("dvc.repo.reproduce._reproduce_stage", returns=[])
-def test_number_reproduces(tmp_dir, dvc, reproduce_stage_mock):
+def test_number_reproduces(reproduce_stage_mock, tmp_dir, dvc):
     tmp_dir.dvc_gen({"pre-foo": "pre-foo"})
 
     dvc.run(deps=["pre-foo"], outs=["foo"], cmd="echo foo > foo")
