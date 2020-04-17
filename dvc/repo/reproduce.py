@@ -91,9 +91,11 @@ def reproduce(
         targets = self.collect(target, recursive=recursive, graph=active_graph)
 
     ret = []
+    checked_stages = set()
     for target in targets:
-        stages = _reproduce_stages(active_graph, target, **kwargs)
+        stages, these_checked_stages = _reproduce_stages(active_graph, target, checked_stages, **kwargs)
         ret.extend(stages)
+        checked_stages.update(these_checked_stages)
 
     return ret
 
@@ -101,6 +103,7 @@ def reproduce(
 def _reproduce_stages(
     G,
     stage,
+    checked_stages,
     downstream=False,
     ignore_build_cache=False,
     single_item=False,
@@ -157,19 +160,22 @@ def _reproduce_stages(
         pipeline = nx.dfs_postorder_nodes(G, stage)
 
     result = []
+    these_checked_stages = []
     for st in pipeline:
-        try:
-            ret = _reproduce_stage(st, **kwargs)
+        if st not in checked_stages:
+            try:
+                ret = _reproduce_stage(st, **kwargs)
+                these_checked_stages.append(st)
 
-            if len(ret) != 0 and ignore_build_cache:
-                # NOTE: we are walking our pipeline from the top to the
-                # bottom. If one stage is changed, it will be reproduced,
-                # which tells us that we should force reproducing all of
-                # the other stages down below, even if their direct
-                # dependencies didn't change.
-                kwargs["force"] = True
+                if len(ret) != 0 and ignore_build_cache:
+                    # NOTE: we are walking our pipeline from the top to the
+                    # bottom. If one stage is changed, it will be reproduced,
+                    # which tells us that we should force reproducing all of
+                    # the other stages down below, even if their direct
+                    # dependencies didn't change.
+                    kwargs["force"] = True
 
-            result.extend(ret)
-        except Exception as exc:
-            raise ReproductionError(st.relpath) from exc
-    return result
+                result.extend(ret)
+            except Exception as exc:
+                raise ReproductionError(st.relpath) from exc
+    return result, these_checked_stages
