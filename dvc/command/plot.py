@@ -15,13 +15,18 @@ class CmdPLot(CmdBase):
         raise NotImplementedError
 
     def run(self):
+
+        columns = None
+        if self.args.columns:
+            columns = set(self.args.columns.split(","))
         try:
             result = self.repo.plot(
                 datafile=self.args.datafile,
                 template=self.args.template,
                 revisions=self._revisions(),
                 fname=self.args.file,
-                embed=not self.args.no_embed,
+                columns=columns,
+                embed=not self.args.show_json,
             )
         except DvcException:
             logger.exception("")
@@ -91,10 +96,16 @@ def add_parser(subparsers, parent_parser):
         "-f", "--file", help="Name of the generated file."
     )
     plot_show_parser.add_argument(
-        "--no-embed",
+        "--show-json",
         action="store_true",
         default=False,
         help="Do not wrap vega plot json with HTML.",
+    )
+    plot_show_parser.add_argument(
+        "-c",
+        "--columns",
+        default=None,
+        help="Choose which columns to put into plot.",
     )
     plot_show_parser.set_defaults(func=CmdPlotShow)
 
@@ -134,9 +145,15 @@ def add_parser(subparsers, parent_parser):
     )
 
     plot_diff_parser.add_argument(
-        "--no-embed",
+        "--show-json",
         action="store_true",
         default=False,
         help="Do not wrap vega plot json with HTML.",
+    )
+    plot_diff_parser.add_argument(
+        "-c",
+        "--columns",
+        default=None,
+        help="Choose which columns to put into plot.",
     )
     plot_diff_parser.set_defaults(func=CmdPlotDiff)

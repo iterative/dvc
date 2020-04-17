@@ -5,7 +5,7 @@ import logging
 import os
 from collections import OrderedDict
 
-from funcy import first
+from funcy import first, last
 from ruamel import yaml
 
 from dvc.exceptions import DvcException, PathMissingError
@@ -97,37 +97,35 @@ def _parse_json(fobj, default_plot):
     return _parse(data, default_plot)
 
 
-def _parse_csv(fobj, default_plot, delimiter=","):
-    if default_plot:
-        data = []
-        for index, row in enumerate(csv.reader(fobj, delimiter=delimiter)):
-            assert len(row) >= 1
-            if index == 0 and len(row) > 1:
-                # skip header
-                continue
-            data.append({"y": row[-1], "x": index})
+def _parse_csv(file_content, delimiter=","):
+    first_row = first(csv.reader(io.StringIO(file_content)))
+
+    if len(first_row) == 1:
+        reader = csv.DictReader(
+            io.StringIO(file_content),
+            delimiter=delimiter,
+            fieldnames=["value"],
+        )
     else:
-        data = [
-            row
-            for row in (
-                csv.DictReader(
-                    fobj, skipinitialspace=True, delimiter=delimiter
-                )
-            )
-        ]
-    return data
+        reader = csv.DictReader(
+            io.StringIO(file_content),
+            skipinitialspace=True,
+            delimiter=delimiter,
+        )
+
+    return [row for row in reader], reader.fieldnames
 
 
 def parse(datafile, content, default_plot=False):
     _, extension = os.path.splitext(datafile.lower())
     if extension == ".json":
-        return _parse_json(io.StringIO(content), default_plot)
+        return _parse_json(io.StringIO(content), default_plot), None
     elif extension == ".csv":
-        return _parse_csv(io.StringIO(content), default_plot)
+        return _parse_csv(content)
     elif extension == ".tsv":
-        return _parse_csv(io.StringIO(content), default_plot, "\t")
+        return _parse_csv(content, "\t")
     elif extension == ".yaml":
-        return _parse_yaml(io.StringIO(content), default_plot)
+        return _parse_yaml(io.StringIO(content), default_plot), None
     raise PlotMetricTypeError(datafile)
 
 
@@ -154,7 +152,9 @@ def _load_from_revision(repo, datafile, revision):
     return datafile_content
 
 
-def _load_from_revisions(repo, datafile, revisions, default_plot=False):
+def _load_from_revisions(
+    repo, datafile, revisions, default_plot=False, columns=None
+):
     data = []
     exceptions = []
 
@@ -162,11 +162,24 @@ def _load_from_revisions(repo, datafile, revisions, default_plot=False):
         try:
             content = _load_from_revision(repo, datafile, rev)
 
-            tmp = parse(datafile, content, default_plot)
-            for data_point in tmp:
+            tmp_data, fieldnames = parse(datafile, content)
+            _filter_columns(tmp_data, columns)
+
+            if default_plot:
+                new_tmp = []
+                if fieldnames:
+                    y = last(fieldnames)
+                else:
+                    y = last(list(first(tmp_data).keys()))
+
+                for index, data_point in enumerate(tmp_data):
+                    new_tmp.append({"x": index, "y": data_point[y]})
+                tmp_data = new_tmp
+
+            for data_point in tmp_data:
                 data_point["rev"] = rev
 
-            data.extend(tmp)
+            data.extend(tmp_data)
 
         except NoMetricOnRevisionError as e:
             exceptions.append(e)
@@ -187,6 +200,14 @@ def _load_from_revisions(repo, datafile, revisions, default_plot=False):
     return data
 
 
+def _filter_columns(data_points, columns):
+    if columns:
+        for data_point in data_points:
+            to_del = set(data_point.keys()) - columns
+            for key in to_del:
+                del data_point[key]
+
+
 def _evaluate_templatepath(repo, template=None):
     if not template:
         return repo.plot_templates.default_template
@@ -197,20 +218,28 @@ def _evaluate_templatepath(repo, template=None):
 
 
 @locked
-def fill_template(repo, datafile, template_path, revisions):
+def fill_template(repo, datafile, template_path, revisions, columns=None):
     default_plot = template_path == repo.plot_templates.default_template
 
     template_datafiles = _parse_template(template_path, datafile)
 
     data = {
-        datafile: _load_from_revisions(repo, datafile, revisions, default_plot)
+        datafile: _load_from_revisions(
+            repo, datafile, revisions, default_plot, columns=columns
+        )
         for datafile in template_datafiles
     }
     return Template.fill(template_path, data, datafile)
 
 
 def plot(
-    repo, datafile=None, template=None, revisions=None, fname=None, embed=False
+    repo,
+    datafile=None,
+    template=None,
+    revisions=None,
+    fname=None,
+    columns=None,
+    embed=False,
 ):
     if revisions is None:
         revisions = [WORKSPACE_REVISION_NAME]
@@ -220,7 +249,9 @@ def plot(
 
     template_path = _evaluate_templatepath(repo, template)
 
-    plot_content = fill_template(repo, datafile, template_path, revisions)
+    plot_content = fill_template(
+        repo, datafile, template_path, revisions, columns
+    )
 
     if embed:
         div = DIV_HTML.format(id="plot", vega_json=plot_content)

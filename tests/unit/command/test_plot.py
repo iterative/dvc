@@ -15,7 +15,9 @@ def test_metrics_diff(mocker):
             "template",
             "-d",
             "datafile",
-            "--no-embed",
+            "--columns",
+            "column1,column2",
+            "--show-json",
             "HEAD",
             "tag1",
             "tag2",
@@ -35,6 +37,7 @@ def test_metrics_diff(mocker):
         template="template",
         revisions=["HEAD", "tag1", "tag2"],
         fname="result.extension",
+        columns={"column1", "column2"},
         embed=False,
     )
 
@@ -48,7 +51,9 @@ def test_metrics_show(mocker):
             "result.extension",
             "-t",
             "template",
-            "--no-embed",
+            "--columns",
+            "column1,column2",
+            "--show-json",
             "datafile",
         ]
     )
@@ -66,6 +71,7 @@ def test_metrics_show(mocker):
         template="template",
         fname="result.extension",
         revisions=None,
+        columns={"column1", "column2"},
         embed=False,
     )
 

@@ -86,9 +86,8 @@ def test_plot_csv_multiple_columns(tmp_dir, scm, dvc):
     page_content = BeautifulSoup((tmp_dir / result).read_text())
     vega_data = json.dumps(
         [
-            # header was skipped so index starts at 1
-            {"y": "2", "x": 1, "rev": "workspace"},
-            {"y": "3", "x": 2, "rev": "workspace"},
+            {"y": "2", "x": 0, "rev": "workspace"},
+            {"y": "3", "x": 1, "rev": "workspace"},
         ],
         sort_keys=True,
     )
@@ -252,17 +251,22 @@ def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc, caplog):
     )
 
 
-def test_custom_template(tmp_dir, scm, dvc):
+@pytest.fixture()
+def custom_template(tmp_dir, dvc):
+    custom_template = tmp_dir / "custom_template.json"
     shutil.copy(
         fspath(tmp_dir / ".dvc" / "plot" / "default.json"),
-        fspath(tmp_dir / "newtemplate.json"),
+        fspath(custom_template),
     )
+    return custom_template
 
+
+def test_custom_template(tmp_dir, scm, dvc, custom_template):
     metric = [{"a": 1, "b": 2}, {"a": 2, "b": 3}]
     _write_json(tmp_dir, metric, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "init", "v1")
 
-    result = dvc.plot("metric.json", "newtemplate.json", embed=True)
+    result = dvc.plot("metric.json", fspath(custom_template), embed=True)
 
     page_content = BeautifulSoup((tmp_dir / result).read_text())
     vega_data = json.dumps(
@@ -281,22 +285,20 @@ def _replace(path, src, dst):
     path.write_text(path.read_text().replace(src, dst))
 
 
-def test_custom_template_with_specified_data(tmp_dir, scm, dvc):
-    shutil.copy(
-        fspath(tmp_dir / ".dvc" / "plot" / "default.json"),
-        fspath(tmp_dir / "newtemplate.json"),
-    )
+def test_custom_template_with_specified_data(
+    tmp_dir, scm, dvc, custom_template
+):
     _replace(
-        tmp_dir / "newtemplate.json",
-        "DVC_METRIC_DATA",
-        "DVC_METRIC_DATA,metric.json",
+        custom_template, "DVC_METRIC_DATA", "DVC_METRIC_DATA,metric.json",
     )
 
     metric = [{"a": 1, "b": 2}, {"a": 2, "b": 3}]
     _write_json(tmp_dir, metric, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "init", "v1")
 
-    result = dvc.plot(datafile=None, template="newtemplate.json", embed=True)
+    result = dvc.plot(
+        datafile=None, template=fspath(custom_template), embed=True
+    )
 
     page_content = BeautifulSoup((tmp_dir / result).read_text())
     vega_data = json.dumps(
@@ -385,3 +387,45 @@ def test_plot_wrong_metric_type(tmp_dir, scm, dvc):
     tmp_dir.scm_gen("metric.txt", "content", commit="initial")
     with pytest.raises(PlotMetricTypeError):
         dvc.plot(datafile="metric.txt")
+
+
+def test_plot_choose_columns(tmp_dir, scm, dvc, custom_template):
+    metric = [{"a": 1, "b": 2, "c": 3}, {"a": 2, "b": 3, "c": 4}]
+    _write_json(tmp_dir, metric, "metric.json")
+    _run_with_metric(tmp_dir, "metric.json", "init", "v1")
+
+    result = dvc.plot(
+        "metric.json", fspath(custom_template), columns={"b", "c"}, embed=True
+    )
+
+    page_content = BeautifulSoup((tmp_dir / result).read_text())
+    vega_data = json.dumps(
+        [
+            {"b": 2, "c": 3, "rev": "workspace"},
+            {"b": 3, "c": 4, "rev": "workspace"},
+        ],
+        sort_keys=True,
+    )
+    assert _remove_whitespace(vega_data) in _remove_whitespace(
+        first(page_content.body.script.contents)
+    )
+
+
+def test_plot_default_choose_column(tmp_dir, scm, dvc):
+    metric = [{"a": 1, "b": 2, "c": 3}, {"a": 2, "b": 3, "c": 4}]
+    _write_json(tmp_dir, metric, "metric.json")
+    _run_with_metric(tmp_dir, "metric.json", "init", "v1")
+
+    result = dvc.plot("metric.json", columns={"c"}, embed=True)
+
+    page_content = BeautifulSoup((tmp_dir / result).read_text())
+    vega_data = json.dumps(
+        [
+            {"x": 0, "y": 3, "rev": "workspace"},
+            {"x": 1, "y": 4, "rev": "workspace"},
+        ],
+        sort_keys=True,
+    )
+    assert _remove_whitespace(vega_data) in _remove_whitespace(
+        first(page_content.body.script.contents)
+    )
