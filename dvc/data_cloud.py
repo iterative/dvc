@@ -88,12 +88,13 @@ class DataCloud(object):
         return downloaded_items_num
 
     def _save_pulled_checksums(self, cache):
-        for checksum in cache["local"].keys():
+        for checksum in cache.scheme_keys("local"):
             cache_file = self.repo.cache.local.checksum_to_path_info(checksum)
             if self.repo.cache.local.exists(cache_file):
-                # We can safely save here, as existing corrupted files will be
-                # removed upon status, while files corrupted during download
-                # will not be moved from tmp_file (see `RemoteBASE.download()`)
+                # We can safely save here, as existing corrupted files will
+                # be removed upon status, while files corrupted during
+                # download will not be moved from tmp_file
+                # (see `RemoteBASE.download()`)
                 self.repo.state.save(cache_file, checksum)
 
     def status(self, cache, jobs=None, remote=None, show_checksums=False):

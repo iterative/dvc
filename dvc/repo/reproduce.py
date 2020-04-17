@@ -21,7 +21,10 @@ def _reproduce_stage(stage, **kwargs):
         return []
 
     if not kwargs.get("dry", False):
-        stage.dump()
+        from ..dvcfile import Dvcfile
+
+        dvcfile = Dvcfile(stage.repo, stage.path)
+        dvcfile.dump(stage)
 
     return [stage]
 
@@ -58,7 +61,7 @@ def reproduce(
     all_pipelines=False,
     **kwargs
 ):
-    from dvc.stage import Stage
+    from ..dvcfile import Dvcfile
 
     if not target and not all_pipelines:
         raise InvalidArgumentError(
@@ -76,7 +79,7 @@ def reproduce(
         if all_pipelines:
             pipelines = active_pipelines
         else:
-            stage = Stage.load(self, target)
+            stage = Dvcfile(self, target).load()
             pipelines = [get_pipeline(active_pipelines, stage)]
 
         targets = []

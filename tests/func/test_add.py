@@ -11,6 +11,7 @@ from mock import patch, call
 
 import dvc as dvc_module
 from dvc.cache import Cache
+from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import DvcException, OverlappingOutputPathsError
 from dvc.exceptions import RecursiveAddingWhileUsingFilename
 from dvc.exceptions import StageFileCorruptedError
@@ -354,7 +355,7 @@ class SymlinkAddTestBase(TestDvc):
         ret = main(["add", os.path.join(self.link_name, self.data_file_name)])
         self.assertEqual(0, ret)
 
-        stage_file = self.data_file_name + Stage.STAGE_FILE_SUFFIX
+        stage_file = self.data_file_name + DVC_FILE_SUFFIX
         self.assertTrue(os.path.exists(stage_file))
 
         d = load_stage_file(stage_file)
@@ -395,13 +396,13 @@ class TestShouldPlaceStageInDataDirIfRepositoryBelowSymlink(TestDvc):
             self.assertEqual(0, ret)
 
             stage_file_path_on_data_below_symlink = (
-                os.path.basename(self.DATA) + Stage.STAGE_FILE_SUFFIX
+                os.path.basename(self.DATA) + DVC_FILE_SUFFIX
             )
             self.assertFalse(
                 os.path.exists(stage_file_path_on_data_below_symlink)
             )
 
-            stage_file_path = self.DATA + Stage.STAGE_FILE_SUFFIX
+            stage_file_path = self.DATA + DVC_FILE_SUFFIX
             self.assertTrue(os.path.exists(stage_file_path))
 
 
@@ -410,7 +411,7 @@ class TestShouldThrowProperExceptionOnCorruptedStageFile(TestDvc):
         ret = main(["add", self.FOO])
         assert 0 == ret
 
-        foo_stage = relpath(self.FOO + Stage.STAGE_FILE_SUFFIX)
+        foo_stage = relpath(self.FOO + DVC_FILE_SUFFIX)
 
         # corrupt stage file
         with open(foo_stage, "a+") as file:
@@ -678,7 +679,7 @@ def test_add_empty_files(tmp_dir, dvc, link):
     stages = tmp_dir.dvc_gen(file, "")
 
     assert (tmp_dir / file).exists()
-    assert (tmp_dir / (file + Stage.STAGE_FILE_SUFFIX)).exists()
+    assert (tmp_dir / (file + DVC_FILE_SUFFIX)).exists()
     assert os.path.exists(stages[0].outs[0].cache_path)
 
 

@@ -1,42 +1,46 @@
-import copy
+import yaml
+import logging
 
 from dvc.repo import locked
+from dvc.path_info import PathInfo
+from dvc.compat import fspath_py35
 from dvc.exceptions import DvcException
 from dvc.dependency.param import DependencyPARAMS
+
+
+logger = logging.getLogger(__name__)
 
 
 class NoParamsError(DvcException):
     pass
 
 
-def _collect_params(repo):
-    configs = {}
+def _collect_configs(repo):
+    configs = set()
+    configs.add(PathInfo(repo.root_dir) / DependencyPARAMS.DEFAULT_PARAMS_FILE)
     for stage in repo.stages:
         for dep in stage.deps:
             if not isinstance(dep, DependencyPARAMS):
                 continue
 
-            if dep.path_info not in configs.keys():
-                configs[dep.path_info] = copy.copy(dep)
-                continue
-
-            params = set(configs[dep.path_info].params)
-            params.update(set(dep.params))
-            configs[dep.path_info].params = list(params)
-
-    return configs.values()
+            configs.add(dep.path_info)
+    return list(configs)
 
 
-def _read_params(deps):
+def _read_params(repo, configs, rev):
     res = {}
-    for dep in deps:
-        assert dep.scheme == "local"
-
-        params = dep.read_params()
-        if not params:
+    for config in configs:
+        if not repo.tree.exists(fspath_py35(config)):
             continue
 
-        res[str(dep.path_info)] = params
+        with repo.tree.open(fspath_py35(config), "r") as fobj:
+            try:
+                res[str(config)] = yaml.safe_load(fobj)
+            except yaml.YAMLError:
+                logger.debug(
+                    "failed to read '%s' on '%s'", config, rev, exc_info=True
+                )
+                continue
 
     return res
 
@@ -46,8 +50,8 @@ def show(repo, revs=None):
     res = {}
 
     for branch in repo.brancher(revs=revs):
-        entries = _collect_params(repo)
-        params = _read_params(entries)
+        configs = _collect_configs(repo)
+        params = _read_params(repo, configs, branch)
 
         if params:
             res[branch] = params

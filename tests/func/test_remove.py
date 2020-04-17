@@ -5,7 +5,7 @@ from mock import patch
 from dvc.exceptions import DvcException
 from dvc.main import main
 from dvc.stage import Stage
-from dvc.stage import StageFileDoesNotExistError
+from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
 from dvc.utils.fs import remove
 from tests.basic_env import TestDvc

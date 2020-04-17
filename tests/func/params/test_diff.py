@@ -39,7 +39,7 @@ def test_diff_deleted(tmp_dir, scm, dvc):
     scm.add(["params.yaml", "Dvcfile"])
     scm.commit("bar")
 
-    (tmp_dir / "Dvcfile").unlink()
+    (tmp_dir / "params.yaml").unlink()
 
     assert dvc.params.diff() == {
         "params.yaml": {"foo": {"old": "bar", "new": None}}
@@ -84,4 +84,21 @@ def test_diff_dict(tmp_dir, scm, dvc):
 
     assert dvc.params.diff() == {
         "params.yaml": {"foo.bar": {"old": "baz", "new": "qux"}}
+    }
+
+
+def test_diff_with_unchanged(tmp_dir, scm, dvc):
+    tmp_dir.gen("params.yaml", "foo: bar\nxyz: val")
+    dvc.run(params=["foo,xyz"])
+    scm.add(["params.yaml", "Dvcfile"])
+    scm.commit("bar")
+
+    tmp_dir.scm_gen("params.yaml", "foo: baz\nxyz: val", commit="baz")
+    tmp_dir.scm_gen("params.yaml", "foo: qux\nxyz: val", commit="qux")
+
+    assert dvc.params.diff(a_rev="HEAD~2", all=True) == {
+        "params.yaml": {
+            "foo": {"old": "bar", "new": "qux"},
+            "xyz": {"old": "val", "new": "val"},
+        }
     }

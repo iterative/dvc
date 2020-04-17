@@ -15,8 +15,11 @@ from dvc.main import main
 from dvc.remote.local import RemoteLOCAL
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
-from dvc.stage import StageFileBadNameError
-from dvc.stage import StageFileDoesNotExistError
+from dvc.dvcfile import Dvcfile, DVC_FILE_SUFFIX
+from dvc.stage.exceptions import (
+    StageFileDoesNotExistError,
+    StageFileBadNameError,
+)
 from dvc.system import System
 from dvc.utils import relpath
 from dvc.utils.fs import walk_files
@@ -219,7 +222,7 @@ class TestCheckoutSelectiveRemove(CheckoutBase):
         ret = main(["add", self.DATA_DIR])
         self.assertEqual(0, ret)
 
-        stage_path = self.DATA_DIR + Stage.STAGE_FILE_SUFFIX
+        stage_path = self.DATA_DIR + DVC_FILE_SUFFIX
         stage = load_stage_file(stage_path)
         staged_files = self.outs_info(stage)
 
@@ -583,7 +586,7 @@ def test_checkout_stats_on_failure(tmp_dir, dvc, scm):
         {"foo": "foo", "dir": {"subdir": {"file": "file"}}, "other": "other"},
         commit="initial",
     )
-    stage = Stage.load(dvc, "foo.dvc")
+    stage = Dvcfile(dvc, "foo.dvc").load()
     tmp_dir.dvc_gen({"foo": "foobar", "other": "other other"}, commit="second")
 
     # corrupt cache

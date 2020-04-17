@@ -28,7 +28,9 @@ class CmdParamsDiff(CmdBase):
     def run(self):
         try:
             diff = self.repo.params.diff(
-                a_rev=self.args.a_rev, b_rev=self.args.b_rev,
+                a_rev=self.args.a_rev,
+                b_rev=self.args.b_rev,
+                all=self.args.all,
             )
 
             if self.args.show_json:
@@ -83,6 +85,12 @@ def add_parser(subparsers, parent_parser):
         "b_rev",
         nargs="?",
         help=("New Git commit to compare (defaults to the current workspace)"),
+    )
+    params_diff_parser.add_argument(
+        "--all",
+        action="store_true",
+        default=False,
+        help="Show unchanged params as well.",
     )
     params_diff_parser.add_argument(
         "--show-json",

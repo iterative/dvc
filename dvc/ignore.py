@@ -130,6 +130,9 @@ class CleanTree(BaseTree):
     def isfile(self, path):
         return self.tree.isfile(path)
 
+    def isexec(self, path):
+        return self.tree.isexec(path)
+
     def walk(self, top, topdown=True):
         for root, dirs, files in self.tree.walk(top, topdown):
             dirs[:], files[:] = self.dvcignore(root, dirs, files)

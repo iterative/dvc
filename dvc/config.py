@@ -278,10 +278,7 @@ class Config(dict):
         Raises:
             ConfigError: thrown if config has an invalid format.
         """
-        conf = {}
-        for level in self.LEVELS:
-            if level in self.files:
-                _merge(conf, self.load_one(level))
+        conf = self._load_config_to_level()
 
         if validate:
             conf = self.validate(conf)
@@ -333,6 +330,15 @@ class Config(dict):
         dirs_schema = {"cache": {"dir": func}, "remote": {str: {"url": func}}}
         return Schema(dirs_schema, extra=ALLOW_EXTRA)(conf)
 
+    def _load_config_to_level(self, level=None):
+        merged_conf = {}
+        for merge_level in self.LEVELS:
+            if merge_level == level:
+                break
+            if merge_level in self.files:
+                _merge(merged_conf, self.load_one(merge_level))
+        return merged_conf
+
     @contextmanager
     def edit(self, level="repo"):
         if level in {"repo", "local"} and self.dvc_dir is None:
@@ -342,6 +348,11 @@ class Config(dict):
         yield conf
 
         conf = self._save_paths(conf, self.files[level])
+
+        merged_conf = self._load_config_to_level(level)
+        _merge(merged_conf, conf)
+        self.validate(merged_conf)
+
         _save_config(self.files[level], conf)
         self.load()
 

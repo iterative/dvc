@@ -2,8 +2,7 @@ import logging
 import os
 
 from dvc.compat import fspath
-from dvc.exceptions import CheckoutError
-from dvc.exceptions import CheckoutErrorSuggestGit
+from dvc.exceptions import CheckoutError, CheckoutErrorSuggestGit
 from dvc.progress import Tqdm
 from dvc.utils import relpath
 
@@ -42,7 +41,10 @@ def _checkout(
     relink=False,
     recursive=False,
 ):
-    from dvc.stage import StageFileDoesNotExistError, StageFileBadNameError
+    from dvc.stage.exceptions import (
+        StageFileBadNameError,
+        StageFileDoesNotExistError,
+    )
 
     unused = []
     stats = {

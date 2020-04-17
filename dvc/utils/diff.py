@@ -15,15 +15,15 @@ def _parse(raw):
         return raw
 
 
-def _diff_vals(old, new):
+def _diff_vals(old, new, with_unchanged):
     if (
         isinstance(new, list)
         and isinstance(old, list)
         and len(old) == len(new) == 1
     ):
-        return _diff_vals(old[0], new[0])
+        return _diff_vals(old[0], new[0], with_unchanged)
 
-    if old == new:
+    if not with_unchanged and old == new:
         return {}
 
     res = {"old": old, "new": new}
@@ -42,7 +42,7 @@ def _flatten(d):
     return defaultdict(lambda: "unable to parse")
 
 
-def _diff_dicts(old_dict, new_dict):
+def _diff_dicts(old_dict, new_dict, with_unchanged):
     new = _flatten(new_dict)
     old = _flatten(old_dict)
 
@@ -53,33 +53,33 @@ def _diff_dicts(old_dict, new_dict):
     for xpath in xpaths:
         old_val = old[xpath]
         new_val = new[xpath]
-        val_diff = _diff_vals(old_val, new_val)
+        val_diff = _diff_vals(old_val, new_val, with_unchanged)
         if val_diff:
             res[xpath] = val_diff
     return dict(res)
 
 
-def _diff(old_raw, new_raw):
+def _diff(old_raw, new_raw, with_unchanged):
     old = _parse(old_raw)
     new = _parse(new_raw)
 
     if isinstance(new, dict) or isinstance(old, dict):
-        return _diff_dicts(old, new)
+        return _diff_dicts(old, new, with_unchanged)
 
-    val_diff = _diff_vals(old, new)
+    val_diff = _diff_vals(old, new, with_unchanged)
     if val_diff:
         return {"": val_diff}
 
     return {}
 
 
-def diff(old, new):
+def diff(old, new, with_unchanged=False):
     paths = set(old.keys())
     paths.update(set(new.keys()))
 
     res = defaultdict(dict)
     for path in paths:
-        path_diff = _diff(old.get(path), new.get(path))
+        path_diff = _diff(old.get(path), new.get(path), with_unchanged)
         if path_diff:
             res[path] = path_diff
     return dict(res)

@@ -1,4 +1,5 @@
 from . import locked
+from dvc.dvcfile import Dvcfile
 
 
 @locked
@@ -7,4 +8,5 @@ def commit(self, target, with_deps=False, recursive=False, force=False):
     for stage in stages:
         stage.check_can_commit(force=force)
         stage.commit()
-        stage.dump()
+
+        Dvcfile(self, stage.path).dump(stage)
