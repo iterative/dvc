@@ -27,7 +27,7 @@ def remote(tmp_dir, dvc, tmp_path_factory, mocker):
     return dvc.cloud.get_remote("upstream")
 
 
-def test_indexed_on_status(tmp_dir, dvc, tmp_path_factory, remote, mocker):
+def test_indexed_on_status(tmp_dir, dvc, tmp_path_factory, remote):
     foo = tmp_dir.dvc_gen({"foo": "foo content"})[0].outs[0]
     bar = tmp_dir.dvc_gen({"bar": {"baz": "baz content"}})[0].outs[0]
     baz = bar.dir_cache[0]
@@ -42,7 +42,7 @@ def test_indexed_on_status(tmp_dir, dvc, tmp_path_factory, remote, mocker):
         assert foo.checksum not in remote.index.checksums()
 
 
-def test_indexed_on_push(tmp_dir, dvc, tmp_path_factory, remote, mocker):
+def test_indexed_on_push(tmp_dir, dvc, tmp_path_factory, remote):
     foo = tmp_dir.dvc_gen({"foo": "foo content"})[0].outs[0]
     bar = tmp_dir.dvc_gen({"bar": {"baz": "baz content"}})[0].outs[0]
     baz = bar.dir_cache[0]
@@ -54,7 +54,7 @@ def test_indexed_on_push(tmp_dir, dvc, tmp_path_factory, remote, mocker):
         assert foo.checksum not in remote.index.checksums()
 
 
-def test_indexed_dir_missing(tmp_dir, dvc, tmp_path_factory, remote, mocker):
+def test_indexed_dir_missing(tmp_dir, dvc, tmp_path_factory, remote):
     bar = tmp_dir.dvc_gen({"bar": {"baz": "baz content"}})[0].outs[0]
     with remote.index:
         remote.index.update([bar.checksum], [])
