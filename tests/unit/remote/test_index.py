@@ -78,6 +78,6 @@ def test_update_all(dvc, index):
 
 def test_intersection(dvc, index):
     checksums = (str(i) for i in range(2000))
-    expected = set(str(i) for i in range(1000))
+    expected = {str(i) for i in range(1000)}
     index.update([], checksums)
     assert set(index.intersection(expected)) == expected

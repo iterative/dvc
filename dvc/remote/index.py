@@ -108,7 +108,7 @@ class RemoteIndex:
     def is_dir_checksum(self, checksum):
         return checksum.endswith(self.dir_suffix)
 
-    def _execute(self, cmd, parameters=(), quiet=False):
+    def _execute(self, cmd, parameters=()):
         return self.cursor.execute(cmd, parameters)
 
     def _executemany(self, cmd, seq_of_parameters):
