@@ -194,14 +194,14 @@ def add_parser(subparsers, parent_parser):
         "-t",
         "--type",
         help=(
-            "Type of metrics (json/tsv/htsv/csv/hcsv). "
+            "Type of metrics (json/yaml). "
             "It can be detected by the file extension automatically. "
             "Unsupported types will be treated as raw."
         ),
         metavar="<type>",
     )
     metrics_show_parser.add_argument(
-        "-x", "--xpath", help="json/tsv/htsv/csv/hcsv path.", metavar="<path>",
+        "-x", "--xpath", help="json/yaml path.", metavar="<path>",
     )
     metrics_show_parser.add_argument(
         "-a",
@@ -244,13 +244,10 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     metrics_add_parser.add_argument(
-        "-t",
-        "--type",
-        help="Type of metrics (raw/json/tsv/htsv/csv/hcsv).",
-        metavar="<type>",
+        "-t", "--type", help="Type of metrics (json/yaml).", metavar="<type>",
     )
     metrics_add_parser.add_argument(
-        "-x", "--xpath", help="json/tsv/htsv/csv/hcsv path.", metavar="<path>",
+        "-x", "--xpath", help="json/yaml path.", metavar="<path>",
     )
     metrics_add_parser.add_argument("path", help="Path to a metric file.")
     metrics_add_parser.set_defaults(func=CmdMetricsAdd)
@@ -264,13 +261,10 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     metrics_modify_parser.add_argument(
-        "-t",
-        "--type",
-        help="Type of metrics (raw/json/tsv/htsv/csv/hcsv).",
-        metavar="<type>",
+        "-t", "--type", help="Type of metrics (json/yaml).", metavar="<type>",
     )
     metrics_modify_parser.add_argument(
-        "-x", "--xpath", help="json/tsv/htsv/csv/hcsv path.", metavar="<path>",
+        "-x", "--xpath", help="json/yaml path.", metavar="<path>",
     )
     metrics_modify_parser.add_argument("path", help="Path to a metric file.")
     metrics_modify_parser.set_defaults(func=CmdMetricsModify)
@@ -316,14 +310,14 @@ def add_parser(subparsers, parent_parser):
         "-t",
         "--type",
         help=(
-            "Type of metrics (json/tsv/htsv/csv/hcsv). "
+            "Type of metrics (json/yaml). "
             "It can be detected by the file extension automatically. "
             "Unsupported types will be treated as raw."
         ),
         metavar="<type>",
     )
     metrics_diff_parser.add_argument(
-        "-x", "--xpath", help="json/tsv/htsv/csv/hcsv path.", metavar="<path>",
+        "-x", "--xpath", help="json/yaml path.", metavar="<path>",
     )
     metrics_diff_parser.add_argument(
         "-R",
