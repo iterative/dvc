@@ -9,6 +9,7 @@ from funcy import cached_property
 from pathspec.patterns import GitWildMatchPattern
 
 from dvc.exceptions import GitHookAlreadyExistsError
+from dvc.progress import Tqdm
 from dvc.scm.base import Base
 from dvc.scm.base import CloneError, FileNotInRepoError, RevError, SCMError
 from dvc.scm.git.tree import GitTree
@@ -16,6 +17,40 @@ from dvc.utils import fix_env, is_binary, relpath
 from dvc.utils.fs import path_isin
 
 logger = logging.getLogger(__name__)
+
+
+class TqdmGit(Tqdm):
+    def update_git(self, op_code, cur_count, max_count=None, message=""):
+        op_code = self.code2desc(op_code)
+        if op_code:
+            self.set_description_str(op_code, refresh=False)
+        if message:
+            self.set_postfix_str(message, refresh=False)
+        self.update_to(cur_count, max_count)
+
+    @staticmethod
+    def code2desc(op_code):
+        from git import RootUpdateProgress as OP
+
+        ops = dict(
+            (
+                (OP.COUNTING, "Counting"),
+                (OP.COMPRESSING, "Compressing"),
+                (OP.WRITING, "Writing"),
+                (OP.RECEIVING, "Receiving"),
+                (OP.RESOLVING, "Resolving"),
+                (OP.FINDING_SOURCES, "Finding sources"),
+                (OP.CHECKING_OUT, "Checking out"),
+                (OP.CLONE, "Cloning"),
+                (OP.FETCH, "Fetching"),
+                (OP.UPDWKTREE, "Updating working tree"),
+                (OP.REMOVE, "Removing"),
+                (OP.PATHCHANGE, "Changing path"),
+                (OP.URLCHANGE, "Changing URL"),
+                (OP.BRANCHCHANGE, "Changing branch"),
+            )
+        )
+        return ops.get(op_code & OP.OP_MASK, "")
 
 
 class Git(Base):
@@ -72,12 +107,14 @@ class Git(Base):
             env[ld_key] = ""
 
         try:
-            tmp_repo = git.Repo.clone_from(
-                url,
-                to_path,
-                env=env,  # needed before we can fix it in __init__
-                no_single_branch=True,
-            )
+            with TqdmGit(desc="Cloning", unit="obj") as pbar:
+                tmp_repo = git.Repo.clone_from(
+                    url,
+                    to_path,
+                    env=env,  # needed before we can fix it in __init__
+                    no_single_branch=True,
+                    progress=pbar.update_git,
+                )
             tmp_repo.close()
         except git.exc.GitCommandError as exc:
             raise CloneError(url, to_path) from exc

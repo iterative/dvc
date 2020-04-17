@@ -10,7 +10,7 @@ from dvc.utils.fs import path_isin
 @scm_context
 def imp_url(self, url, out=None, fname=None, erepo=None, locked=True):
     from dvc.dvcfile import Dvcfile
-    from dvc.stage import Stage
+    from dvc.stage import Stage, create_stage
 
     out = resolve_output(url, out)
     path, wdir, out = resolve_paths(self, out)
@@ -19,8 +19,14 @@ def imp_url(self, url, out=None, fname=None, erepo=None, locked=True):
     if os.path.exists(url) and path_isin(os.path.abspath(url), self.root_dir):
         url = relpath(url, wdir)
 
-    stage = Stage.create(
-        self, fname or path, wdir=wdir, deps=[url], outs=[out], erepo=erepo,
+    stage = create_stage(
+        Stage,
+        self,
+        fname or path,
+        wdir=wdir,
+        deps=[url],
+        outs=[out],
+        erepo=erepo,
     )
 
     if stage is None:

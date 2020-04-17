@@ -6,6 +6,8 @@ def test_run(mocker, dvc):
     cli_args = parse_args(
         [
             "run",
+            "--name",
+            "nam",
             "--deps",
             "deps",
             "--outs",
@@ -61,6 +63,7 @@ def test_run(mocker, dvc):
         no_commit=True,
         always_changed=True,
         cmd="command",
+        name="nam",
     )
 
 
@@ -86,6 +89,7 @@ def test_run_args_from_cli(mocker, dvc):
         no_commit=False,
         always_changed=False,
         cmd="echo foo",
+        name=None,
     )
 
 
@@ -111,4 +115,5 @@ def test_run_args_with_spaces(mocker, dvc):
         no_commit=False,
         always_changed=False,
         cmd='echo "foo bar"',
+        name=None,
     )
