@@ -34,7 +34,7 @@ def test_metrics_diff(mocker):
         datafile="datafile",
         template="template",
         revisions=["HEAD", "tag1", "tag2"],
-        file="result.extension",
+        fname="result.extension",
         embed=False,
     )
 
@@ -64,7 +64,7 @@ def test_metrics_show(mocker):
     m.assert_called_once_with(
         datafile="datafile",
         template="template",
-        file="result.extension",
+        fname="result.extension",
         revisions=None,
         embed=False,
     )

@@ -1,4 +1,5 @@
 import csv
+import io
 import json
 import logging
 import os
@@ -117,43 +118,40 @@ def _parse_csv(fobj, default_plot, delimiter=","):
     return data
 
 
-def _load_from(fobj, datafile, default_plot=False):
-    filename = datafile.lower()
-    if filename.endswith(".json"):
-        data = _parse_json(fobj, default_plot)
-    elif filename.endswith(".csv"):
-        data = _parse_csv(fobj, default_plot)
-    elif filename.endswith(".tsv"):
-        data = _parse_csv(fobj, default_plot, "\t")
-    elif filename.endswith(".yaml"):
-        data = _parse_yaml(fobj, default_plot)
+def parse(datafile, content, default_plot=False):
+    _, extension = os.path.splitext(datafile.lower())
+    if extension == ".json":
+        return _parse_json(io.StringIO(content), default_plot)
+    elif extension == ".csv":
+        return _parse_csv(io.StringIO(content), default_plot)
+    elif extension == ".tsv":
+        return _parse_csv(io.StringIO(content), default_plot, "\t")
+    elif extension == ".yaml":
+        return _parse_yaml(io.StringIO(content), default_plot)
+    raise PlotMetricTypeError(datafile)
+
+
+def _load_from_revision(repo, datafile, revision):
+    if revision is WORKSPACE_REVISION_NAME:
+
+        def open_datafile():
+            return repo.tree.open(datafile, "r")
+
     else:
-        raise PlotMetricTypeError(datafile)
 
-    return data
+        def open_datafile():
+            from dvc import api
 
+            return api.open(datafile, repo.root_dir, revision)
 
-def _load_from_revision(repo, datafile, revision, default_plot=False):
     try:
-        if revision is WORKSPACE_REVISION_NAME:
-
-            def open_datafile():
-                return repo.tree.open(datafile, "r")
-
-        else:
-
-            def open_datafile():
-                from dvc import api
-
-                return api.open(datafile, repo.root_dir, revision)
-
         with open_datafile() as fobj:
-            data = _load_from(fobj, datafile, default_plot)
-            for d in data:
-                d["rev"] = revision
+            datafile_content = fobj.read()
+
     except (FileNotFoundError, PathMissingError):
         raise NoMetricOnRevisionError(datafile, revision)
-    return data
+
+    return datafile_content
 
 
 def _load_from_revisions(repo, datafile, revisions, default_plot=False):
@@ -162,13 +160,21 @@ def _load_from_revisions(repo, datafile, revisions, default_plot=False):
 
     for rev in revisions:
         try:
-            data.extend(
-                _load_from_revision(
-                    repo, datafile, rev, default_plot=default_plot
-                )
-            )
+            content = _load_from_revision(repo, datafile, rev)
+
+            tmp = parse(datafile, content, default_plot)
+            for data_point in tmp:
+                data_point["rev"] = rev
+
+            data.extend(tmp)
+
         except NoMetricOnRevisionError as e:
             exceptions.append(e)
+        except PlotMetricTypeError:
+            raise
+        except Exception:
+            logger.error("Failed to parse '{}' at '{}.'".format(datafile, rev))
+            raise
 
     if not data and exceptions:
         raise NoMetricInHistoryError(datafile, revisions)
