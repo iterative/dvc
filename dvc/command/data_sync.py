@@ -89,7 +89,11 @@ def shared_parent_parser():
         add_help=False, parents=[get_parent_parser()]
     )
     shared_parent_parser.add_argument(
-        "-j", "--jobs", type=int, help="Number of jobs to run simultaneously."
+        "-j",
+        "--jobs",
+        type=int,
+        help="Number of jobs to run simultaneously.",
+        metavar="<number>",
     )
     shared_parent_parser.add_argument(
         "targets",
@@ -115,7 +119,7 @@ def add_parser(subparsers, _parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     pull_parser.add_argument(
-        "-r", "--remote", help="Remote repository to pull from."
+        "-r", "--remote", help="Remote storage to pull from", metavar="<name>",
     )
     pull_parser.add_argument(
         "-a",
@@ -171,7 +175,7 @@ def add_parser(subparsers, _parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     push_parser.add_argument(
-        "-r", "--remote", help="Remote repository to push to."
+        "-r", "--remote", help="Remote storage to push to", metavar="<name>",
     )
     push_parser.add_argument(
         "-a",
@@ -223,7 +227,10 @@ def add_parser(subparsers, _parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     fetch_parser.add_argument(
-        "-r", "--remote", help="Remote repository to fetch from."
+        "-r",
+        "--remote",
+        help="Remote storage to fetch from",
+        metavar="<name>",
     )
     fetch_parser.add_argument(
         "-a",
@@ -292,7 +299,10 @@ def add_parser(subparsers, _parent_parser):
         help="Show status of a local cache compared to a remote repository.",
     )
     status_parser.add_argument(
-        "-r", "--remote", help="Remote repository to compare local cache to."
+        "-r",
+        "--remote",
+        help="Remote storage to compare local cache to",
+        metavar="<name>",
     )
     status_parser.add_argument(
         "-a",

@@ -95,6 +95,7 @@ def add_parser(subparsers, parent_parser):
         action="append",
         default=[],
         help="Declare dependencies for reproducible cmd.",
+        metavar="<path>",
     )
     run_parser.add_argument(
         "-o",
@@ -102,6 +103,7 @@ def add_parser(subparsers, parent_parser):
         action="append",
         default=[],
         help="Declare output file or directory.",
+        metavar="<filename>",
     )
     run_parser.add_argument(
         "-O",
@@ -110,6 +112,7 @@ def add_parser(subparsers, parent_parser):
         default=[],
         help="Declare output file or directory "
         "(do not put into DVC cache).",
+        metavar="<filename>",
     )
     run_parser.add_argument(
         "-p",
@@ -117,6 +120,7 @@ def add_parser(subparsers, parent_parser):
         action="append",
         default=[],
         help="Declare parameter to use as additional dependency.",
+        metavar="[<filename>:]<params_list>",
     )
     run_parser.add_argument(
         "-m",
@@ -124,6 +128,7 @@ def add_parser(subparsers, parent_parser):
         action="append",
         default=[],
         help="Declare output metric file or directory.",
+        metavar="<path>",
     )
     run_parser.add_argument(
         "-M",
@@ -132,14 +137,19 @@ def add_parser(subparsers, parent_parser):
         default=[],
         help="Declare output metric file or directory "
         "(do not put into DVC cache).",
+        metavar="<path>",
     )
     run_parser.add_argument(
-        "-f", "--file", help="Specify name of the DVC-file it generates."
+        "-f",
+        "--file",
+        help="Specify name of the DVC-file this command will generate.",
+        metavar="<filename>",
     )
     run_parser.add_argument(
         "-w",
         "--wdir",
         help="Directory within your repo to run your command in.",
+        metavar="<path>",
     )
     run_parser.add_argument(
         "--no-exec",
@@ -179,6 +189,7 @@ def add_parser(subparsers, parent_parser):
         default=[],
         help="Declare output file or directory that will not be "
         "removed upon repro.",
+        metavar="<filename>",
     )
     run_parser.add_argument(
         "--outs-persist-no-cache",
@@ -186,6 +197,7 @@ def add_parser(subparsers, parent_parser):
         default=[],
         help="Declare output file or directory that will not be "
         "removed upon repro (do not put into DVC cache).",
+        metavar="<filename>",
     )
     run_parser.add_argument(
         "--always-changed",
