@@ -115,7 +115,7 @@ def _find_all_targets(repo, target, recursive):
 
 
 def _create_stages(repo, targets, fname, pbar=None):
-    from dvc.stage import Stage
+    from dvc.stage import Stage, create_stage
 
     stages = []
 
@@ -126,7 +126,7 @@ def _create_stages(repo, targets, fname, pbar=None):
         unit="file",
     ):
         path, wdir, out = resolve_paths(repo, out)
-        stage = Stage.create(repo, fname or path, wdir=wdir, outs=[out])
+        stage = create_stage(Stage, repo, fname or path, wdir=wdir, outs=[out])
         if stage:
             Dvcfile(repo, stage.path).overwrite_with_prompt(force=True)
 
