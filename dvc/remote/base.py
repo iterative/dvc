@@ -910,8 +910,6 @@ class RemoteBASE(object):
 
         if len(checksums) == 1 or not self.CAN_TRAVERSE:
             remote_checksums = self._cache_object_exists(checksums, jobs, name)
-            if remote_checksums:
-                self.index.update_all(remote_checksums)
             return list(indexed_checksums) + remote_checksums
 
         # Max remote size allowed for us to use traverse method
@@ -949,7 +947,6 @@ class RemoteBASE(object):
                 remote_size, remote_checksums, jobs, name
             )
         )
-        self.index.replace_all(remote_checksums)
         return list(indexed_checksums) + list(
             checksums & set(remote_checksums)
         )
