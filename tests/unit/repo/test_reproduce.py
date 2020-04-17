@@ -1,5 +1,7 @@
-from dvc.repo.reproduce import _get_active_graph
 import mock
+import pytest
+
+from dvc.repo.reproduce import _get_active_graph, _reproduce_stage
 
 
 def test_get_active_graph(tmp_dir, dvc):
@@ -26,8 +28,8 @@ def test_get_active_graph(tmp_dir, dvc):
     assert not active_graph.edges
 
 
-@patch("dvc.repo.reproduce._reproduce_stage")
-def test_number_reproduces(tmp_dir, dvc):
+@mock.patch("dvc.repo.reproduce._reproduce_stage", returns=[])
+def test_number_reproduces(tmp_dir, dvc, reproduce_stage_mock):
     tmp_dir.dvc_gen({"pre-foo": "pre-foo"})
 
     foo_stage = dvc.run(deps=["pre-foo"], outs=["foo"], cmd="echo foo > foo")
@@ -35,4 +37,8 @@ def test_number_reproduces(tmp_dir, dvc):
     baz_stage = dvc.run(deps=["foo"], outs=["baz"], cmd="echo baz > baz")
     baz_stage = dvc.run(deps=["bar"], outs=["boop"], cmd="echo boop > boop")
 
-    
+    reproduce_stage_mock.reset_mock()
+
+    dvc.reproduce(all_pipelines=True)
+
+    assert reproduce_stage_mock.call_count == 5
