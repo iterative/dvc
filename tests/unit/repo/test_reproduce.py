@@ -1,7 +1,6 @@
 import mock
-import pytest
 
-from dvc.repo.reproduce import _get_active_graph, _reproduce_stage
+from dvc.repo.reproduce import _get_active_graph
 
 
 def test_get_active_graph(tmp_dir, dvc):
@@ -32,10 +31,10 @@ def test_get_active_graph(tmp_dir, dvc):
 def test_number_reproduces(tmp_dir, dvc, reproduce_stage_mock):
     tmp_dir.dvc_gen({"pre-foo": "pre-foo"})
 
-    foo_stage = dvc.run(deps=["pre-foo"], outs=["foo"], cmd="echo foo > foo")
-    bar_stage = dvc.run(deps=["foo"], outs=["bar"], cmd="echo bar > bar")
-    baz_stage = dvc.run(deps=["foo"], outs=["baz"], cmd="echo baz > baz")
-    baz_stage = dvc.run(deps=["bar"], outs=["boop"], cmd="echo boop > boop")
+    dvc.run(deps=["pre-foo"], outs=["foo"], cmd="echo foo > foo")
+    dvc.run(deps=["foo"], outs=["bar"], cmd="echo bar > bar")
+    dvc.run(deps=["foo"], outs=["baz"], cmd="echo baz > baz")
+    dvc.run(deps=["bar"], outs=["boop"], cmd="echo boop > boop")
 
     reproduce_stage_mock.reset_mock()
 
