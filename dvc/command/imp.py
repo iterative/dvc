@@ -48,9 +48,16 @@ def add_parser(subparsers, parent_parser):
         "path", help="Path to a file or directory within the repository"
     )
     import_parser.add_argument(
-        "-o", "--out", nargs="?", help="Destination path to download files to"
+        "-o",
+        "--out",
+        nargs="?",
+        help="Destination path to download files to",
+        metavar="<path>",
     )
     import_parser.add_argument(
-        "--rev", nargs="?", help="Git revision (e.g. SHA, branch, tag)"
+        "--rev",
+        nargs="?",
+        help="Git revision (e.g. SHA, branch, tag)",
+        metavar="<commit>",
     )
     import_parser.set_defaults(func=CmdImport)

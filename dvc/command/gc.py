@@ -109,7 +109,10 @@ def add_parser(subparsers, parent_parser):
         help="Collect garbage in remote repository.",
     )
     gc_parser.add_argument(
-        "-r", "--remote", help="Remote storage to collect garbage in."
+        "-r",
+        "--remote",
+        help="Remote storage to collect garbage in",
+        metavar="<name>",
     )
     gc_parser.add_argument(
         "-f",
@@ -119,7 +122,11 @@ def add_parser(subparsers, parent_parser):
         help="Force garbage collection - automatically agree to all prompts.",
     )
     gc_parser.add_argument(
-        "-j", "--jobs", type=int, help="Number of jobs to run simultaneously."
+        "-j",
+        "--jobs",
+        type=int,
+        help="Number of jobs to run simultaneously.",
+        metavar="<number>",
     )
     gc_parser.add_argument(
         "-p",
@@ -130,5 +137,6 @@ def add_parser(subparsers, parent_parser):
         help="Keep data files required by these projects "
         "in addition to the current one. "
         "Useful if you share a single cache across repos.",
+        metavar="<paths>",
     )
     gc_parser.set_defaults(func=CmdGC)

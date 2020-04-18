@@ -188,6 +188,16 @@ def add_parser(subparsers, parent_parser):
 
     fix_subparsers(pipeline_subparsers)
 
+    PIPELINE_LIST_HELP = "List connected groups of stages (pipelines)."
+    pipeline_list_parser = pipeline_subparsers.add_parser(
+        "list",
+        parents=[parent_parser],
+        description=append_doc_link(PIPELINE_LIST_HELP, "pipeline/list"),
+        help=PIPELINE_LIST_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    pipeline_list_parser.set_defaults(func=CmdPipelineList)
+
     PIPELINE_SHOW_HELP = "Show stages in a pipeline."
     pipeline_show_parser = pipeline_subparsers.add_parser(
         "show",
@@ -243,13 +253,3 @@ def add_parser(subparsers, parent_parser):
         "(Finds all DVC-files in the workspace by default.)",
     )
     pipeline_show_parser.set_defaults(func=CmdPipelineShow)
-
-    PIPELINE_LIST_HELP = "List connected groups of stages (pipelines)."
-    pipeline_list_parser = pipeline_subparsers.add_parser(
-        "list",
-        parents=[parent_parser],
-        description=append_doc_link(PIPELINE_LIST_HELP, "pipeline/list"),
-        help=PIPELINE_LIST_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    pipeline_list_parser.set_defaults(func=CmdPipelineList)
