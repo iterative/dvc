@@ -112,7 +112,7 @@ def test_directories(tmp_dir, scm, dvc):
 
     (tmp_dir / "dir" / "2").unlink()
     dvc.add("dir")
-    scm.add("dir.dvc")
+    scm.add(["dir.dvc"])
     scm.commit("delete a file")
 
     # The ":/<text>" format is a way to specify revisions by commit message:
