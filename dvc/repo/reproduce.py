@@ -97,7 +97,9 @@ def reproduce(
     ret = []
     checked_stages = set()
     for target in targets:
-        stages, these_checked_stages = _reproduce_stages(active_graph, target, checked_stages, **kwargs)
+        stages, these_checked_stages = _reproduce_stages(
+            active_graph, target, checked_stages, **kwargs
+        )
         ret.extend(stages)
         checked_stages.update(these_checked_stages)
 
