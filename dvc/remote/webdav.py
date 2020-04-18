@@ -1,9 +1,10 @@
-from .http import RemoteHTTP, ask_password
+from .http import RemoteHTTP
 from dvc.scheme import Schemes
 
 import os.path
 
 from dvc.progress import Tqdm
+from dvc.exceptions import HTTPError
 
 
 class RemoteWEBDAV(RemoteHTTP):
