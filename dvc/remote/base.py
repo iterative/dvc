@@ -552,8 +552,8 @@ class RemoteBASE(object):
         if not hasattr(self, "_upload"):
             raise RemoteActionNotImplemented("upload", self.scheme)
 
-        if to_info.scheme != self.scheme:
-            raise NotImplementedError
+        # if to_info.scheme != self.scheme:
+        #     raise NotImplementedError
 
         if from_info.scheme != "local":
             raise NotImplementedError
@@ -588,8 +588,8 @@ class RemoteBASE(object):
         if not hasattr(self, "_download"):
             raise RemoteActionNotImplemented("download", self.scheme)
 
-        if from_info.scheme != self.scheme:
-            raise NotImplementedError
+        # if from_info.scheme != self.scheme:
+        #     raise NotImplementedError
 
         if to_info.scheme == self.scheme != "local":
             self.copy(from_info, to_info)
