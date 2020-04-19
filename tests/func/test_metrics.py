@@ -1013,6 +1013,5 @@ def test_metrics_without_scm(tmp_dir, dvc):
     tmp_dir.gen({metrics_name: json.dumps(metrics)})
     dvc.add(metrics_name)
     dvc.metrics.add(metrics_name)
-    with pytest.raises(DvcException) as msg:
+    with pytest.raises(DvcException, match=r"only supported for Git repos"):
         dvc.metrics.diff()
-    assert "only supported for Git repositories" in str(msg.value)

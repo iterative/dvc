@@ -1,7 +1,7 @@
 from funcy import group_by
 
 from dvc.scm.tree import WorkingTree
-from dvc.exceptions import DvcException
+from dvc.scm.base import NOSCMError
 
 
 def brancher(  # noqa: E302
@@ -48,6 +48,6 @@ def brancher(  # noqa: E302
                 self.tree = scm.get_tree(sha)
                 yield ", ".join(names)
     except AttributeError:
-        raise DvcException("only supported for Git repositories")
+        raise NOSCMError()
     finally:
         self.tree = saved_tree

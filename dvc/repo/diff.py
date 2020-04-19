@@ -1,9 +1,9 @@
 import os
 
-from dvc.exceptions import DvcException
 from dvc.repo import locked
 from dvc.scm.git import Git
 from dvc.scm.tree import is_working_tree
+from dvc.scm.base import NOSCMError
 
 
 @locked
@@ -16,7 +16,7 @@ def diff(self, a_rev="HEAD", b_rev=None):
     `dvc diff` would be the same as `dvc diff HEAD`.
     """
     if type(self.scm) is not Git:
-        raise DvcException("only supported for Git repositories")
+        raise NOSCMError
 
     def _paths_checksums():
         """
