@@ -155,7 +155,3 @@ class Base(object):
 
     def close(self):
         """ Method to close the files """
-
-    def resolve_rev(self, rev):
-        """Pick out and massage parameters"""
-        raise SCMError("only supported for Git repositories")
