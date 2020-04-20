@@ -16,40 +16,40 @@ from tests.basic_env import TestDvc
 
 def test_cmd_obj():
     with pytest.raises(StageFileFormatError):
-        Dvcfile.validate({Stage.PARAM_CMD: {}})
+        Dvcfile.validate_single_stage({Stage.PARAM_CMD: {}})
 
 
 def test_cmd_none():
-    Dvcfile.validate({Stage.PARAM_CMD: None})
+    Dvcfile.validate_single_stage({Stage.PARAM_CMD: None})
 
 
 def test_no_cmd():
-    Dvcfile.validate({})
+    Dvcfile.validate_single_stage({})
 
 
 def test_cmd_str():
-    Dvcfile.validate({Stage.PARAM_CMD: "cmd"})
+    Dvcfile.validate_single_stage({Stage.PARAM_CMD: "cmd"})
 
 
 def test_object():
     with pytest.raises(StageFileFormatError):
-        Dvcfile.validate({Stage.PARAM_DEPS: {}})
+        Dvcfile.validate_single_stage({Stage.PARAM_DEPS: {}})
 
     with pytest.raises(StageFileFormatError):
-        Dvcfile.validate({Stage.PARAM_OUTS: {}})
+        Dvcfile.validate_single_stage({Stage.PARAM_OUTS: {}})
 
 
 def test_none():
-    Dvcfile.validate({Stage.PARAM_DEPS: None})
-    Dvcfile.validate({Stage.PARAM_OUTS: None})
+    Dvcfile.validate_single_stage({Stage.PARAM_DEPS: None})
+    Dvcfile.validate_single_stage({Stage.PARAM_OUTS: None})
 
 
 def test_empty_list():
     d = {Stage.PARAM_DEPS: []}
-    Dvcfile.validate(d)
+    Dvcfile.validate_single_stage(d)
 
     d = {Stage.PARAM_OUTS: []}
-    Dvcfile.validate(d)
+    Dvcfile.validate_single_stage(d)
 
 
 def test_list():
@@ -59,12 +59,12 @@ def test_list():
         {OutputLOCAL.PARAM_PATH: "baz"},
     ]
     d = {Stage.PARAM_DEPS: lst}
-    Dvcfile.validate(d)
+    Dvcfile.validate_single_stage(d)
 
     lst[0][OutputLOCAL.PARAM_CACHE] = True
     lst[1][OutputLOCAL.PARAM_CACHE] = False
     d = {Stage.PARAM_OUTS: lst}
-    Dvcfile.validate(d)
+    Dvcfile.validate_single_stage(d)
 
 
 class TestReload(TestDvc):
@@ -82,7 +82,7 @@ class TestReload(TestDvc):
         dump_stage_file(stage.relpath, d)
 
         dvcfile = Dvcfile(self.dvc, stage.relpath)
-        stage = dvcfile.load()
+        stage = dvcfile.stage
 
         self.assertTrue(stage is not None)
         dvcfile.dump(stage)
@@ -106,7 +106,7 @@ class TestDefaultWorkingDirectory(TestDvc):
         self.assertNotIn(Stage.PARAM_WDIR, d.keys())
 
         with self.dvc.lock, self.dvc.state:
-            stage = Dvcfile(self.dvc, stage.relpath).load()
+            stage = Dvcfile(self.dvc, stage.relpath).stage
             self.assertFalse(stage.changed())
 
 
@@ -157,7 +157,7 @@ def test_md5_ignores_comments(tmp_dir, dvc):
     with open(stage.path, "a") as f:
         f.write("# End comment\n")
 
-    new_stage = Dvcfile(dvc, stage.path).load()
+    new_stage = Dvcfile(dvc, stage.path).stage
     assert not new_stage.changed_md5()
 
 
@@ -171,7 +171,7 @@ def test_meta_is_preserved(tmp_dir, dvc):
 
     # Loading and dumping to test that it works and meta is retained
     dvcfile = Dvcfile(dvc, stage.path)
-    new_stage = dvcfile.load()
+    new_stage = dvcfile.stage
     dvcfile.dump(new_stage)
 
     new_data = load_stage_file(stage.path)

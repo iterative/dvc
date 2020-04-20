@@ -128,7 +128,7 @@ def _create_stages(repo, targets, fname, pbar=None):
         path, wdir, out = resolve_paths(repo, out)
         stage = create_stage(Stage, repo, fname or path, wdir=wdir, outs=[out])
         if stage:
-            Dvcfile(repo, stage.path).overwrite_with_prompt(force=True)
+            Dvcfile(repo, stage.path).remove_with_prompt(force=True)
 
         repo._reset()
 

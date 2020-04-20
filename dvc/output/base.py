@@ -151,6 +151,10 @@ class OutputBase(object):
     def checksum(self):
         return self.info.get(self.remote.PARAM_CHECKSUM)
 
+    @checksum.setter
+    def checksum(self, checksum):
+        self.info[self.remote.PARAM_CHECKSUM] = checksum
+
     @property
     def is_dir_checksum(self):
         return self.remote.is_dir_checksum(self.checksum)

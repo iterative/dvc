@@ -182,7 +182,7 @@ def test_pull_imported_stage(tmp_dir, dvc, erepo_dir):
         erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
     dvc.imp(fspath(erepo_dir), "foo", "foo_imported")
 
-    dst_stage = Dvcfile(dvc, "foo_imported.dvc").load()
+    dst_stage = Dvcfile(dvc, "foo_imported.dvc").stage
     dst_cache = dst_stage.outs[0].cache_path
 
     remove("foo_imported")
@@ -232,7 +232,7 @@ def test_download_error_pulling_imported_stage(tmp_dir, dvc, erepo_dir):
         erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
     dvc.imp(fspath(erepo_dir), "foo", "foo_imported")
 
-    dst_stage = Dvcfile(dvc, "foo_imported.dvc").load()
+    dst_stage = Dvcfile(dvc, "foo_imported.dvc").stage
     dst_cache = dst_stage.outs[0].cache_path
 
     remove("foo_imported")

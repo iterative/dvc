@@ -3,7 +3,9 @@ from textwrap import dedent
 
 import pytest
 
+from dvc.exceptions import CyclicGraphError
 from dvc.stage import PipelineStage
+from dvc.utils.stage import dump_stage_file
 from tests.func import test_repro
 
 from dvc.main import main
@@ -38,7 +40,6 @@ class TestReproFailMultiStage(MultiStageRun, test_repro.TestReproFail):
 class TestReproCyclicGraphMultiStage(
     MultiStageRun, test_repro.TestReproCyclicGraph
 ):
-    # TODO: Also test with new-style forced dump
     pass
 
 
@@ -238,7 +239,6 @@ def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy):
 
 def test_repro_when_new_deps_is_added_in_dvcfile(tmp_dir, dvc, run_copy):
     from dvc.dvcfile import Dvcfile
-    from dvc.utils.stage import dump_stage_file
 
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen({"foo": "foo", "bar": "bar"})
@@ -262,7 +262,6 @@ def test_repro_when_new_deps_is_added_in_dvcfile(tmp_dir, dvc, run_copy):
 
 def test_repro_when_new_outs_is_added_in_dvcfile(tmp_dir, dvc):
     from dvc.dvcfile import Dvcfile
-    from dvc.utils.stage import dump_stage_file
 
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen({"foo": "foo", "bar": "bar"})
@@ -286,7 +285,6 @@ def test_repro_when_new_outs_is_added_in_dvcfile(tmp_dir, dvc):
 
 def test_repro_when_new_deps_is_moved(tmp_dir, dvc):
     from dvc.dvcfile import Dvcfile
-    from dvc.utils.stage import dump_stage_file
 
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen({"foo": "foo", "bar": "foo"})
@@ -314,7 +312,6 @@ def test_repro_when_new_deps_is_moved(tmp_dir, dvc):
 
 
 def test_repro_when_new_out_overlaps_others_stage_outs(tmp_dir, dvc):
-    from dvc.utils.stage import dump_stage_file
     from dvc.exceptions import OverlappingOutputPathsError
 
     tmp_dir.gen({"dir": {"file1": "file1"}, "foo": "foo"})
@@ -336,7 +333,6 @@ def test_repro_when_new_out_overlaps_others_stage_outs(tmp_dir, dvc):
 
 
 def test_repro_when_new_deps_added_does_not_exist(tmp_dir, dvc):
-    from dvc.utils.stage import dump_stage_file
     from dvc.exceptions import ReproductionError
 
     tmp_dir.gen("copy.py", COPY_SCRIPT)
@@ -358,7 +354,6 @@ def test_repro_when_new_deps_added_does_not_exist(tmp_dir, dvc):
 
 
 def test_repro_when_new_outs_added_does_not_exist(tmp_dir, dvc):
-    from dvc.utils.stage import dump_stage_file
     from dvc.exceptions import ReproductionError
 
     tmp_dir.gen("copy.py", COPY_SCRIPT)
@@ -380,8 +375,6 @@ def test_repro_when_new_outs_added_does_not_exist(tmp_dir, dvc):
 
 
 def test_repro_when_lockfile_gets_deleted(tmp_dir, dvc):
-    from dvc.utils.stage import dump_stage_file
-
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("foo", "foo")
     dump_stage_file(
@@ -410,3 +403,24 @@ def test_repro_when_lockfile_gets_deleted(tmp_dir, dvc):
     )
 
     assert os.path.exists("foobar.dvc")
+
+
+def test_cyclic_graph_error(tmp_dir, dvc, run_copy):
+    tmp_dir.gen("foo", "foo")
+    run_copy("foo", "bar", name="copy-foo-bar")
+    run_copy("bar", "baz", name="copy-bar-baz")
+    run_copy("baz", "foobar", name="copy-baz-foobar")
+
+    stage_dump = {
+        "stages": {
+            "copy-baz-foo": {
+                "cmd": "echo baz > foo",
+                "deps": ["baz"],
+                "outs": ["foo"],
+            }
+        }
+    }
+    dump_stage_file("cycle.dvc", stage_dump)
+
+    with pytest.raises(CyclicGraphError):
+        dvc.reproduce("cycle.dvc:copy-baz-foo")

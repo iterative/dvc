@@ -193,7 +193,7 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
         # be processed before dir1 to load error.dvc first.
         self.dvc.pipeline_stages = [
             nested_stage,
-            Dvcfile(self.dvc, error_stage_path).load(),
+            Dvcfile(self.dvc, error_stage_path).stage,
         ]
 
         with patch.object(self.dvc, "_reset"):  # to prevent `stages` resetting
@@ -1320,7 +1320,7 @@ class TestReproAlreadyCached(TestRepro):
         ret = main(["repro", "--force", "datetime.dvc"])
         self.assertEqual(ret, 0)
 
-        repro_out = Dvcfile(self.dvc, "datetime.dvc").load().outs[0]
+        repro_out = Dvcfile(self.dvc, "datetime.dvc").stage.outs[0]
 
         self.assertNotEqual(run_out.checksum, repro_out.checksum)
 

@@ -586,7 +586,7 @@ def test_checkout_stats_on_failure(tmp_dir, dvc, scm):
         {"foo": "foo", "dir": {"subdir": {"file": "file"}}, "other": "other"},
         commit="initial",
     )
-    stage = Dvcfile(dvc, "foo.dvc").load()
+    stage = Dvcfile(dvc, "foo.dvc").stage
     tmp_dir.dvc_gen({"foo": "foobar", "other": "other other"}, commit="second")
 
     # corrupt cache

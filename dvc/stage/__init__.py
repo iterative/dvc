@@ -348,7 +348,7 @@ class Stage(params.StageParams):
         )
 
     def reload(self):
-        return self.dvcfile.load()
+        return self.dvcfile.stage
 
     @property
     def is_cached(self):
@@ -776,12 +776,11 @@ class PipelineStage(Stage):
     def _changed(self):
         if self.cmd_changed:
             logger.warning("'cmd' of {} has changed.".format(self))
-
         return self.cmd_changed or self._changed_deps() or self._changed_outs()
 
     def reload(self):
-        return self.dvcfile.load_one(self.name)
+        return self.dvcfile.stages[self.name]
 
     @property
     def is_cached(self):
-        return self.dvcfile.has_stage(name=self.name) and super().is_cached
+        return self.name in self.dvcfile.stages and super().is_cached
