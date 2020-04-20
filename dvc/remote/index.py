@@ -22,6 +22,12 @@ class RemoteIndexNoop:
     def __exit__(self, typ, value, tbck):
         pass
 
+    def __iter__(self):
+        return iter([])
+
+    def __contains__(self, checksum):
+        return False
+
     @staticmethod
     def checksums():
         return []
