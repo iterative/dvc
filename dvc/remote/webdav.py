@@ -70,13 +70,13 @@ class RemoteWEBDAV(RemoteHTTP):
 
     def _create_collections(self, to_info):
         url_cols = to_info.get_collections()
-        from_i = 0
-        for i in reversed(range(len(url_cols) + 1)):
-            from_i = i
-            if bool(self._request("HEAD", url_cols[i - 1])):
+        from_idx = 0
+        for idx in reversed(range(len(url_cols) + 1)):
+            from_idx = idx
+            if bool(self._request("HEAD", url_cols[idx - 1])):
                 break
-        for i in range(from_i, len(url_cols)):
-            response = self._request("MKCOL", url_cols[i])
+        for idx in range(from_idx, len(url_cols)):
+            response = self._request("MKCOL", url_cols[idx])
             if response.status_code not in (200, 201):
                 raise HTTPError(response.status_code, response.reason)
 
