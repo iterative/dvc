@@ -27,16 +27,15 @@ class WebdavURLInfo(HTTPURLInfo):
     def get_collections(self) -> list:
         def pcol(path):
             return "{}://{}{}".format(
-                self.scheme.replace("webdav", "http"),
-                self.netloc,
-                path,
+                self.scheme.replace("webdav", "http"), self.netloc, path,
             )
+
         p = self.path.split("/")[1:-1]
         if not p:
             return []
         r = []
         for i in range(len(p)):
-            r.append(pcol("/{}/".format("/".join(p[:i + 1]))))
+            r.append(pcol("/{}/".format("/".join(p[: i + 1]))))
         return r
 
 
