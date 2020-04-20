@@ -16,7 +16,7 @@ def digest(text):
 def test_no_scm(tmp_dir, dvc):
     tmp_dir.dvc_gen("file", "text")
 
-    with pytest.raises(DvcException, match=r"only supported for Git repos"):
+    with pytest.raises(DvcException, match=r"Only supported for Git repos"):
         dvc.diff()
 
 

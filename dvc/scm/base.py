@@ -27,9 +27,9 @@ class RevError(SCMError):
 class NOSCMError(SCMError):
     def __init__(self):
         msg = (
-            "only supported for Git repositories. If you had\n already "
-            "initialized a git repo, this may be caused by dvc configuration. "
-            "Use\n `dvc config core.no_scm False` to update it."
+            "Only supported for Git repositories. If you're\n"
+            "seeing this error in a Git repo, try updating the DVC "
+            "configuration with\n`dvc config core.no_scm False`."
         )
         super().__init__(msg)
 
