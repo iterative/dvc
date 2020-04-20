@@ -933,10 +933,12 @@ class RemoteBASE(object):
                     len(checksums), traverse_weight
                 )
             )
-            return list(
-                checksums & remote_checksums
-            ) + self._cache_object_exists(
-                checksums - remote_checksums, jobs, name
+            return (
+                list(indexed_checksums)
+                + list(checksums & remote_checksums)
+                + self._cache_object_exists(
+                    checksums - remote_checksums, jobs, name
+                )
             )
 
         logger.debug(
