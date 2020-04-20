@@ -1,7 +1,7 @@
 import pytest
 
 from dvc.compat import fspath
-from dvc.exceptions import DownloadError
+from dvc.exceptions import DownloadError, UploadError
 from dvc.remote.base import RemoteBASE
 from dvc.remote.index import RemoteIndex
 from dvc.remote.local import RemoteLOCAL
@@ -89,3 +89,21 @@ def test_clear_on_download_err(tmp_dir, dvc, tmp_path_factory, remote, mocker):
     with pytest.raises(DownloadError):
         dvc.pull()
     mocked_clear.assert_called_once_with()
+
+
+def test_partial_upload(tmp_dir, dvc, tmp_path_factory, remote, mocker):
+    tmp_dir.dvc_gen({"foo": "foo content"})
+    tmp_dir.dvc_gen({"bar": {"baz": "baz content"}})[0].outs[0]
+
+    original = RemoteLOCAL._upload
+
+    def unreliable_upload(self, from_file, to_info, name=None, **kwargs):
+        if "baz" in name:
+            raise Exception("stop baz")
+        return original(self, from_file, to_info, name, **kwargs)
+
+    mocker.patch.object(RemoteLOCAL, "_upload", unreliable_upload)
+    with pytest.raises(UploadError):
+        dvc.push()
+    with remote.index:
+        assert not list(remote.index.checksums())

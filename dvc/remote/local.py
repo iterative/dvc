@@ -519,13 +519,16 @@ class RemoteLOCAL(RemoteBASE):
             for to_info, future in dir_futures.items():
                 if future.result() == 0:
                     dir_checksum = remote.path_to_checksum(to_info)
+                    file_checksums = list(
+                        named_cache.child_keys(self.scheme, dir_checksum)
+                    )
                     logger.debug(
-                        "indexing pushed dir '{}'".format(dir_checksum)
+                        "Indexing pushed dir '{}' with "
+                        "'{}' nested files".format(
+                            dir_checksum, len(file_checksums)
+                        )
                     )
-                    remote.index.update(
-                        [dir_checksum],
-                        named_cache.child_keys(self.scheme, dir_checksum),
-                    )
+                    remote.index.update([dir_checksum], file_checksums)
 
         return len(dir_plans[0]) + len(file_plans[0])
 
