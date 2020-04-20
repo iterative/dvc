@@ -4,6 +4,7 @@ import json
 import logging
 import os
 from collections import OrderedDict
+from copy import copy
 
 from funcy import first, last
 from ruamel import yaml
@@ -152,6 +153,18 @@ def _load_from_revision(repo, datafile, revision):
     return datafile_content
 
 
+def _transform_to_default_data(data_points, fieldnames=None):
+    new_data = []
+    if fieldnames:
+        y = last(fieldnames)
+    else:
+        y = last(list(first(data_points).keys()))
+
+    for index, data_point in enumerate(data_points):
+        new_data.append({"x": index, "y": data_point[y]})
+    return new_data
+
+
 def _load_from_revisions(
     repo, datafile, revisions, default_plot=False, columns=None
 ):
@@ -163,18 +176,10 @@ def _load_from_revisions(
             content = _load_from_revision(repo, datafile, rev)
 
             tmp_data, fieldnames = parse(datafile, content)
-            _filter_columns(tmp_data, columns)
+            tmp_data = _filter_columns(tmp_data, columns)
 
             if default_plot:
-                new_tmp = []
-                if fieldnames:
-                    y = last(fieldnames)
-                else:
-                    y = last(list(first(tmp_data).keys()))
-
-                for index, data_point in enumerate(tmp_data):
-                    new_tmp.append({"x": index, "y": data_point[y]})
-                tmp_data = new_tmp
+                tmp_data = _transform_to_default_data(tmp_data, fieldnames)
 
             for data_point in tmp_data:
                 data_point["rev"] = rev
@@ -201,11 +206,17 @@ def _load_from_revisions(
 
 
 def _filter_columns(data_points, columns):
-    if columns:
-        for data_point in data_points:
-            to_del = set(data_point.keys()) - columns
-            for key in to_del:
-                del data_point[key]
+    if not columns:
+        return data_points
+
+    result = []
+    for data_point in data_points:
+        new_dp = copy(data_point)
+        to_del = set(data_point.keys()) - columns
+        for key in to_del:
+            del new_dp[key]
+        result.append(new_dp)
+    return result
 
 
 def _evaluate_templatepath(repo, template=None):
