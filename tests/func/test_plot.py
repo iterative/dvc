@@ -416,13 +416,13 @@ def test_plot_default_choose_column(tmp_dir, scm, dvc):
     _write_json(tmp_dir, metric, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "init", "v1")
 
-    result = dvc.plot("metric.json", columns={"c"}, embed=True)
+    result = dvc.plot("metric.json", columns={"b"}, embed=True)
 
     page_content = BeautifulSoup((tmp_dir / result).read_text())
     vega_data = json.dumps(
         [
-            {"x": 0, "y": 3, "rev": "workspace"},
-            {"x": 1, "y": 4, "rev": "workspace"},
+            {"x": 0, "y": 2, "rev": "workspace"},
+            {"x": 1, "y": 3, "rev": "workspace"},
         ],
         sort_keys=True,
     )

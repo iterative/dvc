@@ -17,8 +17,12 @@ class CmdPLot(CmdBase):
     def run(self):
 
         columns = None
+        path = None
         if self.args.columns:
-            columns = set(self.args.columns.split(","))
+            if self.args.columns.startswith("$"):
+                path = self.args.columns
+            else:
+                columns = set(self.args.columns.split(","))
         try:
             result = self.repo.plot(
                 datafile=self.args.datafile,
@@ -26,6 +30,7 @@ class CmdPLot(CmdBase):
                 revisions=self._revisions(),
                 fname=self.args.file,
                 columns=columns,
+                path=path,
                 embed=not self.args.show_json,
             )
         except DvcException:

@@ -74,28 +74,53 @@ class PlotMetricTypeError(DvcException):
         )
 
 
+class UnexpectedJsonStructureError(DvcException):
+    pass
+
+
+class JsonParsingError(DvcException):
+    def __init__(self, file):
+        super().__init__(
+            "Failed to infer data structure from '{}'. Did you forget "
+            "to specify jsonpath?".format(file)
+        )
+
+
 WORKSPACE_REVISION_NAME = "workspace"
 
 
-def _parse(data, default_plot):
-    assert isinstance(data, list)
-    if default_plot:
-        assert all(len(e) >= 1 for e in data)
-        last_key = list(first(data).keys())[-1]
-        data = [{"y": d[last_key], "x": i} for i, d in enumerate(data)]
-    return data
+def _parse_yaml(content):
+    return yaml.load(content)
 
 
-def _parse_yaml(fobj, default_plot):
-    data = yaml.load(fobj)
+def _parse_json(content, path=None):
+    import jsonpath_ng
 
-    return _parse(data, default_plot)
+    result = json.loads(content, object_pairs_hook=OrderedDict)
 
+    if path:
+        found = jsonpath_ng.parse(path).find(result)
+        first_datum = first(found)
+        if (
+            len(found) == 1
+            and isinstance(first_datum.value, list)
+            and isinstance(first(first_datum.value), dict)
+        ):
+            # list of dicts
+            result = first_datum.value
+        elif len(first_datum.path.fields) == 1:
+            # list of values
+            field_name = first(first_datum.path.fields)
+            result = [{field_name: datum.value} for datum in found]
+        else:
+            raise DvcException(
+                "Could not parse data for path '{}'".format(path)
+            )
 
-def _parse_json(fobj, default_plot):
-    data = json.load(fobj, object_pairs_hook=OrderedDict)
+    if not isinstance(result, list) or not (isinstance(first(result), dict)):
+        raise UnexpectedJsonStructureError("Unable to parse")
 
-    return _parse(data, default_plot)
+    return result
 
 
 def _parse_csv(file_content, delimiter=","):
@@ -117,16 +142,16 @@ def _parse_csv(file_content, delimiter=","):
     return [row for row in reader], reader.fieldnames
 
 
-def parse(datafile, content, default_plot=False):
+def parse(datafile, content, path):
     _, extension = os.path.splitext(datafile.lower())
     if extension == ".json":
-        return _parse_json(io.StringIO(content), default_plot), None
+        return _parse_json(content, path), None
     elif extension == ".csv":
         return _parse_csv(content)
     elif extension == ".tsv":
         return _parse_csv(content, "\t")
     elif extension == ".yaml":
-        return _parse_yaml(io.StringIO(content), default_plot), None
+        return _parse_yaml(io.StringIO(content)), None
     raise PlotMetricTypeError(datafile)
 
 
@@ -166,7 +191,7 @@ def _transform_to_default_data(data_points, fieldnames=None):
 
 
 def _load_from_revisions(
-    repo, datafile, revisions, default_plot=False, columns=None
+    repo, datafile, revisions, default_plot=False, columns=None, path=None
 ):
     data = []
     exceptions = []
@@ -175,7 +200,8 @@ def _load_from_revisions(
         try:
             content = _load_from_revision(repo, datafile, rev)
 
-            tmp_data, fieldnames = parse(datafile, content)
+            tmp_data, fieldnames = parse(datafile, content, path)
+
             tmp_data = _filter_columns(tmp_data, columns)
 
             if default_plot:
@@ -190,8 +216,10 @@ def _load_from_revisions(
             exceptions.append(e)
         except PlotMetricTypeError:
             raise
+        except UnexpectedJsonStructureError:
+            raise JsonParsingError(datafile)
         except Exception:
-            logger.error("Failed to parse '{}' at '{}.'".format(datafile, rev))
+            logger.error("Failed to parse '{}' at '{}'.".format(datafile, rev))
             raise
 
     if not data and exceptions:
@@ -229,14 +257,16 @@ def _evaluate_templatepath(repo, template=None):
 
 
 @locked
-def fill_template(repo, datafile, template_path, revisions, columns=None):
+def fill_template(
+    repo, datafile, template_path, revisions, columns=None, path=None
+):
     default_plot = template_path == repo.plot_templates.default_template
 
     template_datafiles = _parse_template(template_path, datafile)
 
     data = {
         datafile: _load_from_revisions(
-            repo, datafile, revisions, default_plot, columns=columns
+            repo, datafile, revisions, default_plot, columns=columns, path=path
         )
         for datafile in template_datafiles
     }
@@ -250,6 +280,7 @@ def plot(
     revisions=None,
     fname=None,
     columns=None,
+    path=None,
     embed=False,
 ):
     if revisions is None:
@@ -261,7 +292,7 @@ def plot(
     template_path = _evaluate_templatepath(repo, template)
 
     plot_content = fill_template(
-        repo, datafile, template_path, revisions, columns
+        repo, datafile, template_path, revisions, columns, path
     )
 
     if embed:
