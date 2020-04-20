@@ -95,6 +95,13 @@ class RemoteIndex:
         self.dump()
         self.lock.release()
 
+    def __contains__(self, checksum):
+        cmd = "SELECT checksum FROM {} WHERE checksum = (?)".format(
+            self.INDEX_TABLE
+        )
+        self._execute(cmd, (checksum,))
+        return self.cursor.fetchone() is not None
+
     def checksums(self):
         """Iterate over checksums stored in the index."""
         return iter(self)

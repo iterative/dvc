@@ -328,18 +328,6 @@ class RemoteLOCAL(RemoteBASE):
                         md5s, jobs=jobs, name=str(remote.path_info)
                     )
                 )
-                # index new files which are contained inside a directory (do
-                # not index standalone files)
-                for dir_checksum in dir_md5s:
-                    new_files = remote_exists.intersection(
-                        named_cache.child_keys(self.scheme, dir_checksum)
-                    )
-                    logger.debug(
-                        "indexing '{}' new files contained in '{}'".format(
-                            len(new_files), dir_checksum,
-                        )
-                    )
-                    remote.index.update([], new_files)
         return self._make_status(
             named_cache, remote, show_checksums, local_exists, remote_exists
         )
@@ -379,7 +367,7 @@ class RemoteLOCAL(RemoteBASE):
         # Validate our index by verifying all indexed .dir checksums
         # still exist on the remote
         dir_exists = remote._cache_object_exists(dir_md5s)
-        indexed_dirs = set(remote.index.intersection(dir_md5s))
+        indexed_dirs = set(remote.index.dir_checksums())
         missing_dirs = indexed_dirs.difference(dir_exists)
         if missing_dirs:
             logger.debug(
@@ -387,16 +375,21 @@ class RemoteLOCAL(RemoteBASE):
                 "clearing remote index".format(", ".join(missing_dirs))
             )
             remote.index.clear()
-        else:
-            # If .dir checksum exists on the remote, assume indexed
-            # directory contents still exists on the remote
-            for dir_checksum in dir_exists:
-                yield from remote.index.intersection(
-                    named_cache.child_keys(self.scheme, dir_checksum)
+        # If .dir checksum exists on the remote, assume directory contents
+        # still exists on the remote
+        for dir_checksum in dir_exists:
+            file_checksums = list(
+                named_cache.child_keys(self.scheme, dir_checksum)
+            )
+            if dir_checksum not in remote.index:
+                logger.debug(
+                    "Indexing new .dir '{}' with '{}' nested files".format(
+                        dir_checksum, len(file_checksums)
+                    )
                 )
-        logger.debug("indexing '{}' new dirs".format(len(dir_exists)))
-        remote.index.update(dir_exists, [])
-        yield from dir_exists
+                remote.index.update([dir_checksum], file_checksums)
+            yield dir_checksum
+            yield from file_checksums
 
     @staticmethod
     def _fill_statuses(checksum_info_dir, local_exists, remote_exists):
