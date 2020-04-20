@@ -25,7 +25,7 @@ def read(repo: "Repo", path: str) -> dict:
         return json.load(f, object_pairs_hook=OrderedDict)
 
 
-def write(repo: "Repo", path: str, data: dict) -> dict:
+def write(repo: "Repo", path: str, data: dict) -> None:
     with repo.tree.open(path, "w+") as f:
         json.dump(data, f)
 
