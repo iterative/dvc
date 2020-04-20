@@ -93,7 +93,7 @@ def test_clear_on_download_err(tmp_dir, dvc, tmp_path_factory, remote, mocker):
 
 def test_partial_upload(tmp_dir, dvc, tmp_path_factory, remote, mocker):
     tmp_dir.dvc_gen({"foo": "foo content"})
-    tmp_dir.dvc_gen({"bar": {"baz": "baz content"}})[0].outs[0]
+    tmp_dir.dvc_gen({"bar": {"baz": "baz content"}})
 
     original = RemoteLOCAL._upload
 
