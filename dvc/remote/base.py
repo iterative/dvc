@@ -903,7 +903,7 @@ class RemoteBASE(object):
         indexed_checksums = set(self.index.intersection(checksums))
         checksums -= indexed_checksums
         logger.debug(
-            "Matched {} indexed checksums".format(len(indexed_checksums))
+            "Matched '{}' indexed checksums".format(len(indexed_checksums))
         )
         if not checksums:
             return indexed_checksums
@@ -942,7 +942,7 @@ class RemoteBASE(object):
             )
 
         logger.debug(
-            "Querying {} checksums via traverse".format(len(checksums))
+            "Querying '{}' checksums via traverse".format(len(checksums))
         )
         remote_checksums = set(
             self._cache_checksums_traverse(
