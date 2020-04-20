@@ -70,10 +70,21 @@ class RemoteWEBDAV(RemoteHTTP):
 
     def _create_collections(self, to_info):
         url_cols = to_info.get_collections()
+        from_i = 0
         for i in reversed(range(len(url_cols) + 1)):
+            from_i = i
             if bool(self._request("HEAD", url_cols[i - 1])):
                 break
-        for i in range(i, len(url_cols)):
+        for i in range(from_i, len(url_cols)):
             response = self._request("MKCOL", url_cols[i])
             if response.status_code not in (200, 201):
                 raise HTTPError(response.status_code, response.reason)
+
+    def gc(self):
+        raise NotImplementedError
+
+    def list_cache_paths(self, prefix=None, progress_callback=None):
+        raise NotImplementedError
+
+    def walk_files(self, path_info):
+        raise NotImplementedError
