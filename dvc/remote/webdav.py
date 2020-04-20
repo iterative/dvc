@@ -1,4 +1,3 @@
-import copy
 import os.path
 
 from funcy import cached_property
@@ -71,11 +70,9 @@ class RemoteWEBDAV(RemoteHTTP):
 
     def _create_collections(self, to_info):
         url_cols = to_info.get_collections()
-        i = len(url_cols)
-        while i > 0:
+        for i in reversed(range(len(url_cols) + 1)):
             if bool(self._request("HEAD", url_cols[i - 1])):
                 break
-            i -= 1
         for i in range(i, len(url_cols)):
             response = self._request("MKCOL", url_cols[i])
             if response.status_code not in (200, 201):
