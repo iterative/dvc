@@ -85,7 +85,8 @@ class Repo(object):
         self.tree = WorkingTree(self.root_dir)
 
         self.tmp_dir = os.path.join(self.dvc_dir, "tmp")
-        makedirs(self.tmp_dir, exist_ok=True)
+        self.index_dir = os.path.join(self.tmp_dir, "index")
+        makedirs(self.index_dir, exist_ok=True)
 
         hardlink_lock = self.config["core"].get("hardlink_lock", False)
         self.lock = make_lock(

@@ -1,4 +1,5 @@
 import errno
+import hashlib
 import itertools
 import json
 import logging
@@ -6,7 +7,7 @@ import tempfile
 from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy
-from functools import partial
+from functools import partial, wraps
 from multiprocessing import cpu_count
 from operator import itemgetter
 
@@ -23,6 +24,7 @@ from dvc.exceptions import (
 from dvc.ignore import DvcIgnore
 from dvc.path_info import PathInfo, URLInfo, WindowsPathInfo
 from dvc.progress import Tqdm
+from dvc.remote.index import RemoteIndex, RemoteIndexNoop
 from dvc.remote.slow_link_detection import slow_link_guard
 from dvc.state import StateNoop
 from dvc.utils import tmp_fname
@@ -70,11 +72,24 @@ class DirCacheError(DvcException):
         )
 
 
+def index_locked(f):
+    @wraps(f)
+    def wrapper(remote_obj, *args, **kwargs):
+        remote = kwargs.get("remote")
+        if remote:
+            with remote.index:
+                return f(remote_obj, *args, **kwargs)
+        return f(remote_obj, *args, **kwargs)
+
+    return wrapper
+
+
 class RemoteBASE(object):
     scheme = "base"
     path_cls = URLInfo
     REQUIRES = {}
     JOBS = 4 * cpu_count()
+    INDEX_CLS = RemoteIndex
 
     PARAM_RELPATH = "relpath"
     CHECKSUM_DIR_SUFFIX = ".dir"
@@ -110,6 +125,15 @@ class RemoteBASE(object):
 
         self.cache_types = config.get("type") or copy(self.DEFAULT_CACHE_TYPES)
         self.cache_type_confirmed = False
+
+        url = config.get("url")
+        if url:
+            index_name = hashlib.sha256(url.encode("utf-8")).hexdigest()
+            self.index = self.INDEX_CLS(
+                self.repo, index_name, dir_suffix=self.CHECKSUM_DIR_SUFFIX
+            )
+        else:
+            self.index = RemoteIndexNoop()
 
     @classmethod
     def get_missing_deps(cls):
@@ -734,6 +758,7 @@ class RemoteBASE(object):
             remote_size, remote_checksums, jobs, name
         )
 
+    @index_locked
     def gc(self, named_cache, jobs=None):
         used = self.extract_used_local_checksums(named_cache)
 
@@ -754,6 +779,8 @@ class RemoteBASE(object):
                 self._remove_unpacked_dir(checksum)
             self.remove(path_info)
             removed = True
+        if removed:
+            self.index.clear()
         return removed
 
     def is_protected(self, path_info):
@@ -872,10 +899,18 @@ class RemoteBASE(object):
         # cache_exists() (see ssh, local)
         assert self.TRAVERSE_PREFIX_LEN >= 2
 
-        if len(checksums) == 1 or not self.CAN_TRAVERSE:
-            return self._cache_object_exists(checksums, jobs, name)
+        checksums = set(checksums)
+        indexed_checksums = set(self.index.intersection(checksums))
+        checksums -= indexed_checksums
+        logger.debug(
+            "Matched '{}' indexed checksums".format(len(indexed_checksums))
+        )
+        if not checksums:
+            return indexed_checksums
 
-        checksums = frozenset(checksums)
+        if len(checksums) == 1 or not self.CAN_TRAVERSE:
+            remote_checksums = self._cache_object_exists(checksums, jobs, name)
+            return list(indexed_checksums) + remote_checksums
 
         # Max remote size allowed for us to use traverse method
         remote_size, remote_checksums = self._estimate_cache_size(
@@ -898,19 +933,25 @@ class RemoteBASE(object):
                     len(checksums), traverse_weight
                 )
             )
-            return list(
-                checksums & remote_checksums
-            ) + self._cache_object_exists(
-                checksums - remote_checksums, jobs, name
+            return (
+                list(indexed_checksums)
+                + list(checksums & remote_checksums)
+                + self._cache_object_exists(
+                    checksums - remote_checksums, jobs, name
+                )
             )
 
         logger.debug(
-            "Querying {} checksums via traverse".format(len(checksums))
+            "Querying '{}' checksums via traverse".format(len(checksums))
         )
-        remote_checksums = self._cache_checksums_traverse(
-            remote_size, remote_checksums, jobs, name
+        remote_checksums = set(
+            self._cache_checksums_traverse(
+                remote_size, remote_checksums, jobs, name
+            )
         )
-        return list(checksums & set(remote_checksums))
+        return list(indexed_checksums) + list(
+            checksums & set(remote_checksums)
+        )
 
     def _checksums_with_limit(
         self, limit, prefix=None, progress_callback=None

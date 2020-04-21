@@ -13,8 +13,15 @@ from dvc.compat import fspath_py35
 from dvc.exceptions import DvcException, DownloadError, UploadError
 from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import RemoteBASE, STATUS_MAP
-from dvc.remote.base import STATUS_DELETED, STATUS_MISSING, STATUS_NEW
+from dvc.remote.base import (
+    index_locked,
+    RemoteBASE,
+    STATUS_MAP,
+    STATUS_DELETED,
+    STATUS_MISSING,
+    STATUS_NEW,
+)
+from dvc.remote.index import RemoteIndexNoop
 from dvc.scheme import Schemes
 from dvc.scm.tree import is_working_tree
 from dvc.system import System
@@ -30,6 +37,7 @@ class RemoteLOCAL(RemoteBASE):
     PARAM_CHECKSUM = "md5"
     PARAM_PATH = "path"
     TRAVERSE_PREFIX_LEN = 2
+    INDEX_CLS = RemoteIndexNoop
 
     UNPACKED_DIR_SUFFIX = ".unpacked"
 
@@ -249,6 +257,7 @@ class RemoteLOCAL(RemoteBASE):
     def open(path_info, mode="r", encoding=None):
         return open(fspath_py35(path_info), mode=mode, encoding=encoding)
 
+    @index_locked
     def status(
         self,
         named_cache,
@@ -303,29 +312,23 @@ class RemoteLOCAL(RemoteBASE):
             remote_exists = set()
             dir_md5s = set(named_cache.dir_keys(self.scheme))
             if dir_md5s:
-                # If .dir checksum exists on the remote, assume directory
-                # contents also exists on the remote
-                for dir_checksum in remote._cache_object_exists(dir_md5s):
-                    file_checksums = list(
-                        named_cache.child_keys(self.scheme, dir_checksum)
-                    )
-                    logger.debug(
-                        "'{}' exists on remote, "
-                        "assuming '{}' files also exist".format(
-                            dir_checksum, len(file_checksums)
-                        )
-                    )
-                    md5s.remove(dir_checksum)
-                    remote_exists.add(dir_checksum)
-                    md5s.difference_update(file_checksums)
-                    remote_exists.update(file_checksums)
+                remote_exists.update(
+                    self._indexed_dir_checksums(named_cache, remote, dir_md5s)
+                )
+                md5s.difference_update(remote_exists)
             if md5s:
                 remote_exists.update(
                     remote.cache_exists(
                         md5s, jobs=jobs, name=str(remote.path_info)
                     )
                 )
+        return self._make_status(
+            named_cache, remote, show_checksums, local_exists, remote_exists
+        )
 
+    def _make_status(
+        self, named_cache, remote, show_checksums, local_exists, remote_exists
+    ):
         def make_names(checksum, names):
             return {"name": checksum if show_checksums else " ".join(names)}
 
@@ -353,6 +356,43 @@ class RemoteLOCAL(RemoteBASE):
         self._log_missing_caches(dict(dir_status, **file_status))
 
         return dir_status, file_status, dir_paths
+
+    def _indexed_dir_checksums(self, named_cache, remote, dir_md5s):
+        # Validate our index by verifying all indexed .dir checksums
+        # still exist on the remote
+        indexed_dirs = set(remote.index.dir_checksums())
+        indexed_dir_exists = set()
+        if indexed_dirs:
+            indexed_dir_exists.update(
+                remote._cache_object_exists(indexed_dirs)
+            )
+            missing_dirs = indexed_dirs.difference(indexed_dir_exists)
+            if missing_dirs:
+                logger.debug(
+                    "Remote cache missing indexed .dir checksums '{}', "
+                    "clearing remote index".format(", ".join(missing_dirs))
+                )
+                remote.index.clear()
+
+        # Check if non-indexed (new) dir checksums exist on remote
+        dir_exists = dir_md5s.intersection(indexed_dir_exists)
+        dir_exists.update(remote._cache_object_exists(dir_md5s - dir_exists))
+
+        # If .dir checksum exists on the remote, assume directory contents
+        # still exists on the remote
+        for dir_checksum in dir_exists:
+            file_checksums = list(
+                named_cache.child_keys(self.scheme, dir_checksum)
+            )
+            if dir_checksum not in remote.index:
+                logger.debug(
+                    "Indexing new .dir '{}' with '{}' nested files".format(
+                        dir_checksum, len(file_checksums)
+                    )
+                )
+                remote.index.update([dir_checksum], file_checksums)
+            yield dir_checksum
+            yield from file_checksums
 
     @staticmethod
     def _fill_statuses(checksum_info_dir, local_exists, remote_exists):
@@ -464,8 +504,25 @@ class RemoteLOCAL(RemoteBASE):
 
         if fails:
             if download:
+                remote.index.clear()
                 raise DownloadError(fails)
             raise UploadError(fails)
+
+        if not download:
+            # index successfully pushed dirs
+            for to_info, future in dir_futures.items():
+                if future.result() == 0:
+                    dir_checksum = remote.path_to_checksum(str(to_info))
+                    file_checksums = list(
+                        named_cache.child_keys(self.scheme, dir_checksum)
+                    )
+                    logger.debug(
+                        "Indexing pushed dir '{}' with "
+                        "'{}' nested files".format(
+                            dir_checksum, len(file_checksums)
+                        )
+                    )
+                    remote.index.update([dir_checksum], file_checksums)
 
         return len(dir_plans[0]) + len(file_plans[0])
 
@@ -485,6 +542,7 @@ class RemoteLOCAL(RemoteBASE):
                 return 1
         return func(from_info, to_info, name)
 
+    @index_locked
     def push(self, named_cache, remote, jobs=None, show_checksums=False):
         return self._process(
             named_cache,
@@ -494,6 +552,7 @@ class RemoteLOCAL(RemoteBASE):
             download=False,
         )
 
+    @index_locked
     def pull(self, named_cache, remote, jobs=None, show_checksums=False):
         return self._process(
             named_cache,
