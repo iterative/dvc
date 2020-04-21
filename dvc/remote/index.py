@@ -45,16 +45,7 @@ class RemoteIndexNoop:
     def clear(self):
         pass
 
-    def replace(self, *args):
-        pass
-
-    def replace_all(self, *args):
-        pass
-
     def update(self, *args):
-        pass
-
-    def update_all(self, *args):
         pass
 
     @staticmethod
@@ -196,22 +187,6 @@ class RemoteIndex:
         cmd = "DELETE FROM {}".format(self.INDEX_TABLE)
         self._execute(cmd)
 
-    def replace(self, dir_checksums, file_checksums):
-        """Replace the contents of this index with the specified checksums.
-
-        Changes to the index will not committed until dump() is called.
-        """
-        self.clear()
-        self.update(dir_checksums, file_checksums)
-
-    def replace_all(self, checksums):
-        """Replace the contents of this index with the specified checksums.
-
-        Changes to the index will not committed until dump() is called.
-        """
-        self.clear()
-        self.update_all(checksums)
-
     def update(self, dir_checksums, file_checksums):
         """Update this index, adding the specified checksums.
 
@@ -225,22 +200,6 @@ class RemoteIndex:
         )
         self._executemany(
             cmd, ((checksum, False) for checksum in file_checksums)
-        )
-
-    def update_all(self, checksums):
-        """Update this index, adding the specified checksums.
-
-        Changes to the index will not committed until dump() is called.
-        """
-        cmd = "INSERT OR IGNORE INTO {} (checksum, dir) VALUES (?, ?)".format(
-            self.INDEX_TABLE
-        )
-        self._executemany(
-            cmd,
-            (
-                (checksum, self.is_dir_checksum(checksum))
-                for checksum in checksums
-            ),
         )
 
     def intersection(self, checksums):
