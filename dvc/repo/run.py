@@ -57,6 +57,9 @@ def run(self, fname=None, no_exec=False, **kwargs):
 
     self.check_modified_graph([stage], self.pipeline_stages)
     if not no_exec:
-        stage.run(no_commit=kwargs.get("no_commit", False))
+        stage.run(
+            no_commit=kwargs.get("no_commit", False),
+            ignore_build_cache=kwargs.get("ignore_build_cache", False),
+        )
     dvcfile.dump(stage, update_dvcfile=True)
     return stage

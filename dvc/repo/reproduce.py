@@ -102,7 +102,6 @@ def _reproduce_stages(
     G,
     stages,
     downstream=False,
-    ignore_build_cache=False,
     single_item=False,
     **kwargs
 ):
@@ -172,7 +171,7 @@ def _reproduce_stages(
         try:
             ret = _reproduce_stage(stage, **kwargs)
 
-            if len(ret) != 0 and ignore_build_cache:
+            if len(ret) != 0 and kwargs.get("ignore_build_cache", False):
                 # NOTE: we are walking our pipeline from the top to the
                 # bottom. If one stage is changed, it will be reproduced,
                 # which tells us that we should force reproducing all of

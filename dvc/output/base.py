@@ -155,6 +155,9 @@ class OutputBase(object):
     def checksum(self, checksum):
         self.info[self.remote.PARAM_CHECKSUM] = checksum
 
+    def get_checksum(self):
+        return self.remote.get_checksum(self.path_info)
+
     @property
     def is_dir_checksum(self):
         return self.remote.is_dir_checksum(self.checksum)
@@ -167,7 +170,7 @@ class OutputBase(object):
         return self.remote.save_info(self.path_info)
 
     def changed_checksum(self):
-        return self.checksum != self.remote.get_checksum(self.path_info)
+        return self.checksum != self.get_checksum()
 
     def changed_cache(self, filter_info=None):
         if not self.use_cache or not self.checksum:

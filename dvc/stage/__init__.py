@@ -24,7 +24,7 @@ from .exceptions import (
     MissingDep,
     MissingDataSource,
 )
-from . import params
+from . import params, cache as stage_cache
 from dvc.utils import dict_md5
 from dvc.utils import fix_env
 from dvc.utils import relpath
@@ -482,6 +482,8 @@ class Stage(params.StageParams):
 
         self.md5 = self._compute_md5()
 
+        stage_cache.save(self)
+
     @staticmethod
     def _changed_entries(entries):
         return [
@@ -608,7 +610,9 @@ class Stage(params.StageParams):
             raise StageCmdFailedError(self)
 
     @rwlocked(read=["deps"], write=["outs"])
-    def run(self, dry=False, no_commit=False, force=False):
+    def run(
+        self, dry=False, no_commit=False, force=False, ignore_build_cache=False
+    ):
         if (self.cmd or self.is_import) and not self.locked and not dry:
             self.remove_outs(ignore_remove=False, force=False)
 
@@ -643,16 +647,20 @@ class Stage(params.StageParams):
                 self.check_missing_outputs()
 
         else:
-            logger.info("Running command:\n\t{}".format(self.cmd))
             if not dry:
+                if not force and not ignore_build_cache:
+                    stage_cache.restore(self)
+
                 if (
                     not force
                     and not self.is_callback
                     and not self.always_changed
                     and self._already_cached()
                 ):
+                    logger.info("Stage is cached, skipping.")
                     self.checkout()
                 else:
+                    logger.info("Running command:\n\t{}".format(self.cmd))
                     self._run()
 
         if not dry:
