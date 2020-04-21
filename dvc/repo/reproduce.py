@@ -95,17 +95,12 @@ def reproduce(
             path, name=name, recursive=recursive, graph=active_graph
         )
 
-    ret = []
-    for target in targets:
-        stages = _reproduce_stages(active_graph, target, **kwargs)
-        ret.extend(stages)
-
-    return ret
+    return _reproduce_stages(active_graph, targets, **kwargs)
 
 
 def _reproduce_stages(
     G,
-    stage,
+    stages,
     downstream=False,
     ignore_build_cache=False,
     single_item=False,
@@ -148,23 +143,34 @@ def _reproduce_stages(
     import networkx as nx
 
     if single_item:
-        pipeline = [stage]
-    elif downstream:
-        # NOTE (py3 only):
-        # Python's `deepcopy` defaults to pickle/unpickle the object.
-        # Stages are complex objects (with references to `repo`, `outs`,
-        # and `deps`) that cause struggles when you try to serialize them.
-        # We need to create a copy of the graph itself, and then reverse it,
-        # instead of using graph.reverse() directly because it calls
-        # `deepcopy` underneath -- unless copy=False is specified.
-        pipeline = nx.dfs_preorder_nodes(G.copy().reverse(copy=False), stage)
+        all_pipelines = stages
     else:
-        pipeline = nx.dfs_postorder_nodes(G, stage)
+        all_pipelines = []
+        for stage in stages:
+            if downstream:
+                # NOTE (py3 only):
+                # Python's `deepcopy` defaults to pickle/unpickle the object.
+                # Stages are complex objects (with references to `repo`,
+                # `outs`, and `deps`) that cause struggles when you try
+                # to serialize them. We need to create a copy of the graph
+                # itself, and then reverse it, instead of using
+                # graph.reverse() directly because it calls `deepcopy`
+                # underneath -- unless copy=False is specified.
+                all_pipelines += nx.dfs_preorder_nodes(
+                    G.copy().reverse(copy=False), stage
+                )
+            else:
+                all_pipelines += nx.dfs_postorder_nodes(G, stage)
+
+    pipeline = []
+    for stage in all_pipelines:
+        if stage not in pipeline:
+            pipeline.append(stage)
 
     result = []
-    for st in pipeline:
+    for stage in pipeline:
         try:
-            ret = _reproduce_stage(st, **kwargs)
+            ret = _reproduce_stage(stage, **kwargs)
 
             if len(ret) != 0 and ignore_build_cache:
                 # NOTE: we are walking our pipeline from the top to the
@@ -176,5 +182,6 @@ def _reproduce_stages(
 
             result.extend(ret)
         except Exception as exc:
-            raise ReproductionError(st.relpath) from exc
+            raise ReproductionError(stage.relpath) from exc
+
     return result
