@@ -1,3 +1,4 @@
+import os
 import signal
 import subprocess
 import threading
@@ -103,3 +104,43 @@ def test_always_changed(dvc):
     with dvc.lock:
         assert stage.changed()
         assert stage.status()["path"] == ["always changed"]
+
+
+def test_stage_cache(tmp_dir, dvc, mocker):
+    tmp_dir.gen("dep", "dep")
+    stage = dvc.run(
+        deps=["dep"],
+        outs=["out"],
+        cmd="echo content > out",
+    )
+
+    with dvc.lock, dvc.state:
+        stage.remove(remove_outs=True, force=True)
+
+    assert not (tmp_dir / "out").exists()
+    assert not (tmp_dir / "out.dvc").exists()
+
+    cache_dir = os.path.join(
+        dvc.stage_cache.cache_dir,
+        "dc",
+        "dc512ad947c7fd4df1037dc9c46efd83d8d5f88297a1c71baad81081cd216c34"
+    )
+    cache_file = os.path.join(
+        cache_dir,
+        "fcbbdb34bfa75a1f821931b4714baf50e88d272a35c866597200bb2aac79621b"
+    )
+
+    assert os.path.isdir(cache_dir)
+    assert os.listdir(cache_dir) == [os.path.basename(cache_file)]
+    assert os.path.isfile(cache_file)
+
+    run_spy = mocker.spy(stage, "_run")
+    checkout_spy = mocker.spy(stage, "checkout")
+    with dvc.lock, dvc.state:
+        stage.run()
+
+    assert not run_spy.called
+    assert checkout_spy.call_count == 1
+
+    assert (tmp_dir / "out").exists()
+    assert (tmp_dir / "out").read_text() == "content\n"
