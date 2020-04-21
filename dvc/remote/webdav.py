@@ -1,7 +1,5 @@
 import os.path
 
-from funcy import cached_property
-
 from .http import RemoteHTTP
 from dvc.scheme import Schemes
 from dvc.progress import Tqdm
