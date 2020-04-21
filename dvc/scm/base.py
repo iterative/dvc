@@ -24,6 +24,16 @@ class RevError(SCMError):
     pass
 
 
+class NoSCMError(SCMError):
+    def __init__(self):
+        msg = (
+            "Only supported for Git repositories. If you're "
+            "seeing this error in a Git repo, try updating the DVC "
+            "configuration with `dvc config core.no_scm false`."
+        )
+        super().__init__(msg)
+
+
 class Base(object):
     """Base class for source control management driver implementations."""
 

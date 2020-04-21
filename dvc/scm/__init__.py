@@ -1,13 +1,14 @@
 """Manages source control systems (e.g. Git)."""
 
-from dvc.scm.base import Base
+from dvc.scm.base import Base, NoSCMError
 from dvc.scm.git import Git
 
 
 # Syntactic sugar to signal that this is an actual implementation for a DVC
 # project under no SCM control.
 class NoSCM(Base):
-    pass
+    def __getattr__(self, name):
+        raise NoSCMError
 
 
 def SCM(

@@ -14,9 +14,11 @@ def digest(text):
 
 
 def test_no_scm(tmp_dir, dvc):
+    from dvc.scm.base import NoSCMError
+
     tmp_dir.dvc_gen("file", "text")
 
-    with pytest.raises(DvcException, match=r"only supported for Git repos"):
+    with pytest.raises(NoSCMError):
         dvc.diff()
 
 

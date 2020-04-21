@@ -12,6 +12,7 @@ from dvc.main import main
 from dvc.repo import Repo as DvcRepo
 from dvc.repo.metrics.show import NO_METRICS_FILE_AT_REFERENCE_WARNING
 from dvc.utils import relpath
+from dvc.scm.base import NoSCMError
 from tests.basic_env import TestDvcGit
 
 
@@ -1005,3 +1006,13 @@ def test_metrics_diff_deleted_metric(tmp_dir, scm, dvc):
             "a.b.e": {"old": "3", "new": None},
         }
     }
+
+
+def test_metrics_without_scm(tmp_dir, dvc):
+    metrics = {"acc": 0.97, "recall": 0.95}
+    metrics_name = "metrics.json"
+    tmp_dir.gen({metrics_name: json.dumps(metrics)})
+    dvc.add(metrics_name)
+    dvc.metrics.add(metrics_name)
+    with pytest.raises(NoSCMError):
+        dvc.metrics.diff()
