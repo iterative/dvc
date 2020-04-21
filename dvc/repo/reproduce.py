@@ -94,9 +94,7 @@ def reproduce(
             path, name=name, recursive=recursive, graph=active_graph
         )
 
-    return _reproduce_stages(
-        active_graph, targets, **kwargs
-    )
+    return _reproduce_stages(active_graph, targets, **kwargs)
 
 
 def _reproduce_stages(
@@ -157,7 +155,8 @@ def _reproduce_stages(
                 # instead of using graph.reverse() directly because it calls
                 # `deepcopy` underneath -- unless copy=False is specified.
                 all_pipelines += nx.dfs_preorder_nodes(
-                    G.copy().reverse(copy=False), stage)
+                    G.copy().reverse(copy=False), stage
+                )
             else:
                 all_pipelines += nx.dfs_postorder_nodes(G, stage)
 
