@@ -63,12 +63,6 @@ def test_indexed_dir_missing(tmp_dir, dvc, tmp_path_factory, remote):
         assert not list(remote.index.checksums())
 
 
-def test_clear_index(tmp_dir, dvc, tmp_path_factory, remote, mocker):
-    mocked_clear = mocker.patch.object(remote.INDEX_CLS, "clear")
-    dvc.status(cloud=True, clear_index=True)
-    mocked_clear.assert_called_with()
-
-
 def test_clear_on_gc(tmp_dir, dvc, tmp_path_factory, remote, mocker):
     (foo,) = tmp_dir.dvc_gen({"foo": "foo content"})
     dvc.push()

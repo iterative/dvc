@@ -193,7 +193,6 @@ _dvc_pull=(
   {-d,--with-deps}"[Fetch cache for all dependencies of the specified target.]"
   {-f,--force}"[Do not prompt when removing working directory files.]"
   {-R,--recursive}"[Pull cache for subdirectories of the specified directory.]"
-  {--clear-index}"[Clear local index for the remote.]"
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
 )
 
@@ -204,7 +203,6 @@ _dvc_push=(
   {-T,--all-tags}"[Push cache for all tags.]"
   {-d,--with-deps}"[Push cache for all dependencies of the specified target.]"
   {-R,--recursive}"[Push cache for subdirectories of specified directory.]"
-  {--clear-index}"[Clear local index for the remote.]"
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
 )
 
@@ -265,7 +263,6 @@ _dvc_status=(
   {-a,--all-branches}"[Show status of a local cache compared to a remote repository for all branches.]"
   {-T,--all-tags}"[Show status of a local cache compared to a remote repository for all tags.]"
   {-d,--with-deps}"[Show status for all dependencies of the specified target.]"
-  {--clear-index}"[Clear local index for the remote.]"
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
 )
 

@@ -54,7 +54,6 @@ def test_pull(mocker):
             "--with-deps",
             "--force",
             "--recursive",
-            "--clear-index",
         ]
     )
     assert cli_args.func == CmdDataPull
@@ -74,7 +73,6 @@ def test_pull(mocker):
         with_deps=True,
         force=True,
         recursive=True,
-        clear_index=True,
     )
 
 
@@ -93,7 +91,6 @@ def test_push(mocker):
             "--all-commits",
             "--with-deps",
             "--recursive",
-            "--clear-index",
         ]
     )
     assert cli_args.func == CmdDataPush
@@ -112,5 +109,4 @@ def test_push(mocker):
         all_commits=True,
         with_deps=True,
         recursive=True,
-        clear_index=True,
     )

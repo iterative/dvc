@@ -20,7 +20,6 @@ def _fetch(
     all_tags=False,
     recursive=False,
     all_commits=False,
-    clear_index=False,
 ):
     """Download data items from a cloud and imported repositories
 
@@ -51,11 +50,7 @@ def _fetch(
 
     try:
         downloaded += self.cloud.pull(
-            used,
-            jobs,
-            remote=remote,
-            show_checksums=show_checksums,
-            clear_index=clear_index,
+            used, jobs, remote=remote, show_checksums=show_checksums
         )
     except NoRemoteError:
         if not used.external and used["local"]:

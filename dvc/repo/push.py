@@ -12,7 +12,6 @@ def push(
     all_tags=False,
     recursive=False,
     all_commits=False,
-    clear_index=False,
 ):
     used = self.used_cache(
         targets,
@@ -25,4 +24,4 @@ def push(
         jobs=jobs,
         recursive=recursive,
     )
-    return self.cloud.push(used, jobs, remote=remote, clear_index=clear_index)
+    return self.cloud.push(used, jobs, remote=remote)

@@ -45,7 +45,6 @@ def _cloud_status(
     with_deps=False,
     all_tags=False,
     all_commits=False,
-    clear_index=False,
 ):
     """Returns a dictionary with the files that are new or deleted.
 
@@ -87,9 +86,7 @@ def _cloud_status(
     )
 
     ret = {}
-    status_info = self.cloud.status(
-        used, jobs, remote=remote, clear_index=clear_index
-    )
+    status_info = self.cloud.status(used, jobs, remote=remote)
     for info in status_info.values():
         name = info["name"]
         status = info["status"]
@@ -114,7 +111,6 @@ def status(
     with_deps=False,
     all_tags=False,
     all_commits=False,
-    clear_index=False,
 ):
     if cloud or remote:
         return _cloud_status(
@@ -126,7 +122,6 @@ def status(
             remote=remote,
             all_tags=all_tags,
             all_commits=all_commits,
-            clear_index=clear_index,
         )
 
     ignored = list(

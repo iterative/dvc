@@ -265,7 +265,6 @@ class RemoteLOCAL(RemoteBASE):
         jobs=None,
         show_checksums=False,
         download=False,
-        clear_index=False,
     ):
         # Return flattened dict containing all status info
         dir_status, file_status, _ = self._status(
@@ -274,7 +273,6 @@ class RemoteLOCAL(RemoteBASE):
             jobs=jobs,
             show_checksums=show_checksums,
             download=download,
-            clear_index=clear_index,
         )
         return dict(dir_status, **file_status)
 
@@ -285,7 +283,6 @@ class RemoteLOCAL(RemoteBASE):
         jobs=None,
         show_checksums=False,
         download=False,
-        clear_index=False,
     ):
         """Return a tuple of (dir_status_info, file_status_info, dir_mapping).
 
@@ -313,9 +310,6 @@ class RemoteLOCAL(RemoteBASE):
         else:
             logger.debug("Collecting information from remote cache...")
             remote_exists = set()
-            if clear_index:
-                logger.debug("--clear-index used, clearing remote index")
-                remote.index.clear()
             dir_md5s = set(named_cache.dir_keys(self.scheme))
             if dir_md5s:
                 remote_exists.update(
@@ -438,7 +432,6 @@ class RemoteLOCAL(RemoteBASE):
         jobs=None,
         show_checksums=False,
         download=False,
-        clear_index=False,
     ):
         logger.debug(
             "Preparing to {} '{}'".format(
@@ -467,7 +460,6 @@ class RemoteLOCAL(RemoteBASE):
             jobs=jobs,
             show_checksums=show_checksums,
             download=download,
-            clear_index=clear_index,
         )
 
         dir_plans = self._get_plans(download, remote, dir_status, status)
@@ -551,39 +543,23 @@ class RemoteLOCAL(RemoteBASE):
         return func(from_info, to_info, name)
 
     @index_locked
-    def push(
-        self,
-        named_cache,
-        remote,
-        jobs=None,
-        show_checksums=False,
-        clear_index=False,
-    ):
+    def push(self, named_cache, remote, jobs=None, show_checksums=False):
         return self._process(
             named_cache,
             remote,
             jobs=jobs,
             show_checksums=show_checksums,
             download=False,
-            clear_index=clear_index,
         )
 
     @index_locked
-    def pull(
-        self,
-        named_cache,
-        remote,
-        jobs=None,
-        show_checksums=False,
-        clear_index=False,
-    ):
+    def pull(self, named_cache, remote, jobs=None, show_checksums=False):
         return self._process(
             named_cache,
             remote,
             jobs=jobs,
             show_checksums=show_checksums,
             download=True,
-            clear_index=clear_index,
         )
 
     @staticmethod
