@@ -12,6 +12,7 @@ from dvc.main import main
 from dvc.repo import Repo as DvcRepo
 from dvc.repo.metrics.show import NO_METRICS_FILE_AT_REFERENCE_WARNING
 from dvc.utils import relpath
+from dvc.scm.base import NoSCMError
 from tests.basic_env import TestDvcGit
 
 

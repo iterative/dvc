@@ -1,7 +1,6 @@
 from funcy import group_by
 
 from dvc.scm.tree import WorkingTree
-from dvc.scm.base import NOSCMError
 
 
 def brancher(  # noqa: E302
@@ -47,7 +46,5 @@ def brancher(  # noqa: E302
             for sha, names in group_by(scm.resolve_rev, revs).items():
                 self.tree = scm.get_tree(sha)
                 yield ", ".join(names)
-    except AttributeError:
-        raise NOSCMError()
     finally:
         self.tree = saved_tree
