@@ -75,11 +75,9 @@ class DirCacheError(DvcException):
 def index_locked(f):
     @wraps(f)
     def wrapper(remote_obj, *args, **kwargs):
-        remote = kwargs.get("remote")
-        if remote:
-            with remote.index:
-                return f(remote_obj, *args, **kwargs)
-        return f(remote_obj, *args, **kwargs)
+        remote = kwargs.get("remote", remote_obj)
+        with remote.index:
+            return f(remote_obj, *args, **kwargs)
 
     return wrapper
 
