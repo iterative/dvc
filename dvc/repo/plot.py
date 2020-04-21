@@ -201,8 +201,7 @@ def _load_from_revisions(
             content = _load_from_revision(repo, datafile, rev)
 
             tmp_data, fieldnames = parse(datafile, content, path)
-
-            tmp_data = _filter_fields(tmp_data, fields)
+            tmp_data, fieldnames = _filter_fields(tmp_data, fieldnames, fields)
 
             if default_plot:
                 tmp_data = _transform_to_default_data(tmp_data, fieldnames)
@@ -233,18 +232,21 @@ def _load_from_revisions(
     return data
 
 
-def _filter_fields(data_points, fields):
+def _filter_fields(data_points, fieldnames=None, fields=None):
     if not fields:
-        return data_points
+        return data_points, fieldnames
 
+    new_fieldnames = copy(fieldnames)
     result = []
     for data_point in data_points:
         new_dp = copy(data_point)
         to_del = set(data_point.keys()) - fields
         for key in to_del:
             del new_dp[key]
+            if fieldnames and key in new_fieldnames:
+                new_fieldnames.remove(key)
         result.append(new_dp)
-    return result
+    return result, new_fieldnames
 
 
 def _evaluate_templatepath(repo, template=None):
