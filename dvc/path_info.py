@@ -312,3 +312,33 @@ class HTTPURLInfo(URLInfo):
             and self._path == other._path
             and self._extra_parts == other._extra_parts
         )
+
+
+class WebdavURLInfo(HTTPURLInfo):
+    def __init__(self, url):
+        super().__init__(url)
+
+    @cached_property
+    def url(self):
+        return "{}://{}{}{}{}{}".format(
+            self.scheme.replace("webdav", "http"),
+            self.netloc,
+            self._spath,
+            (";" + self.params) if self.params else "",
+            ("?" + self.query) if self.query else "",
+            ("#" + self.fragment) if self.fragment else "",
+        )
+
+    def get_collections(self) -> list:
+        def pcol(path):
+            return "{}://{}{}".format(
+                self.scheme.replace("webdav", "http"), self.netloc, path,
+            )
+
+        p = self.path.split("/")[1:-1]
+        if not p:
+            return []
+        r = []
+        for i in range(len(p)):
+            r.append(pcol("/{}/".format("/".join(p[: i + 1]))))
+        return r

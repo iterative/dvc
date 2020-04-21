@@ -7,6 +7,7 @@ from dvc.path_info import CloudURLInfo
 from dvc.path_info import HTTPURLInfo
 from dvc.path_info import PathInfo
 from dvc.path_info import URLInfo
+from dvc.path_info import WebdavURLInfo
 
 
 TEST_DEPTH = len(pathlib.Path(__file__).parents) + 1
@@ -89,3 +90,35 @@ def test_https_url_info_str():
 def test_path_info_as_posix(mocker, path, as_posix, osname):
     mocker.patch("os.name", osname)
     assert PathInfo(path).as_posix() == as_posix
+
+
+@pytest.mark.parametrize("cls", [WebdavURLInfo])
+def test_webdav_url_info_str(cls):
+    u1 = cls("webdav://test.com/t1")
+    u2 = cls("webdavs://test.com/t1")
+    assert u1.url == "http://test.com/t1"
+    assert u2.url == "https://test.com/t1"
+
+
+@pytest.mark.parametrize("cls", [WebdavURLInfo])
+def test_webdav_collections_path(cls):
+    u = cls("webdav://test.com/t1")
+    assert u.get_collections() == []
+
+    u = cls("webdav://test.com/")
+    assert u.get_collections() == []
+
+    u = cls("webdav://test.com")
+    assert u.get_collections() == []
+
+    u = cls("webdav://test.com/t1/")
+    assert u.get_collections() == ["http://test.com/t1/"]
+
+    u = cls("webdav://test.com/t1/check")
+    assert u.get_collections() == ["http://test.com/t1/"]
+
+    u = cls("webdav://test.com/t1/t2/check")
+    assert u.get_collections() == [
+        "http://test.com/t1/",
+        "http://test.com/t1/t2/",
+    ]

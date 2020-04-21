@@ -65,6 +65,29 @@ class PushRequestHandler(SimpleHTTPRequestHandler):
         self.end_headers()
 
 
+class WebDavSimpleHandler(SimpleHTTPRequestHandler):
+    """
+    paths:
+        /a/ - exists
+        other - not exists
+    created path: "/a/b/"
+    """
+
+    def do_HEAD(self):
+        if self.path in ["/a/"]:
+            self.send_response(HTTPStatus.OK)
+        else:
+            self.send_response(HTTPStatus.BAD_REQUEST)
+        self.end_headers()
+
+    def do_MKCOL(self):
+        if self.path in ["/a/b/"]:
+            self.send_response(HTTPStatus.CREATED)
+        else:
+            self.send_response(HTTPStatus.BAD_REQUEST)
+        self.end_headers()
+
+
 class StaticFileServer:
     _lock = threading.Lock()
 
