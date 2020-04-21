@@ -68,6 +68,9 @@ def run(self, fname=None, no_exec=False, **kwargs):
         raise OutputDuplicationError(exc.output, set(exc.stages) - {stage})
 
     if not no_exec:
-        stage.run(no_commit=kwargs.get("no_commit", False))
+        stage.run(
+            no_commit=kwargs.get("no_commit", False),
+            ignore_build_cache=kwargs.get("ignore_build_cache", False),
+        )
     dvcfile.dump(stage, update_pipeline=True)
     return stage

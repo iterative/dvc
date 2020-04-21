@@ -72,6 +72,7 @@ class Repo(object):
         from dvc.repo.params import Params
         from dvc.scm.tree import WorkingTree
         from dvc.utils.fs import makedirs
+        from dvc.stage.cache import StageCache
 
         root_dir = self.find_root(root_dir)
 
@@ -103,6 +104,8 @@ class Repo(object):
 
         self.cache = Cache(self)
         self.cloud = DataCloud(self)
+
+        self.stage_cache = StageCache(self.cache.local.cache_dir)
 
         self.metrics = Metrics(self)
         self.params = Params(self)

@@ -1295,7 +1295,9 @@ class TestReproNoCommit(TestRepro):
             ["repro", self._get_stage_target(self.stage), "--no-commit"]
         )
         self.assertEqual(ret, 0)
-        self.assertFalse(os.path.exists(self.dvc.cache.local.cache_dir))
+        self.assertEqual(
+            os.listdir(self.dvc.cache.local.cache_dir), ["stages"]
+        )
 
 
 class TestReproAlreadyCached(TestRepro):

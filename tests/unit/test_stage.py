@@ -1,3 +1,4 @@
+import os
 import signal
 import subprocess
 import threading
@@ -51,8 +52,6 @@ def test_meta_ignored():
 
 class TestPathConversion(TestCase):
     def test(self):
-        import os
-
         stage = Stage(None, "path")
 
         stage.wdir = os.path.join("..", "..")
@@ -103,3 +102,39 @@ def test_always_changed(dvc):
     with dvc.lock:
         assert stage.changed()
         assert stage.status()["path"] == ["always changed"]
+
+
+def test_stage_cache(tmp_dir, dvc, run_copy, mocker):
+    tmp_dir.gen("dep", "dep")
+    stage = run_copy("dep", "out")
+
+    with dvc.lock, dvc.state:
+        stage.remove(remove_outs=True, force=True)
+
+    assert not (tmp_dir / "out").exists()
+    assert not (tmp_dir / "out.dvc").exists()
+
+    cache_dir = os.path.join(
+        dvc.stage_cache.cache_dir,
+        "ec",
+        "ec5b6d8dea9136dbb62d93a95c777f87e6c54b0a6bee839554acb99fdf23d2b1",
+    )
+    cache_file = os.path.join(
+        cache_dir,
+        "09f9eb17fdb1ee7f8566b3c57394cee060eaf28075244bc6058612ac91fdf04a",
+    )
+
+    assert os.path.isdir(cache_dir)
+    assert os.listdir(cache_dir) == [os.path.basename(cache_file)]
+    assert os.path.isfile(cache_file)
+
+    run_spy = mocker.spy(stage, "_run")
+    checkout_spy = mocker.spy(stage, "checkout")
+    with dvc.lock, dvc.state:
+        stage.run()
+
+    assert not run_spy.called
+    assert checkout_spy.call_count == 1
+
+    assert (tmp_dir / "out").exists()
+    assert (tmp_dir / "out").read_text() == "dep"
