@@ -59,19 +59,13 @@ def test_plot_csv_one_column(tmp_dir, scm, dvc):
     _write_csv(metric, "metric.csv")
     _run_with_metric(tmp_dir, metric_filename="metric.csv")
 
-    result = dvc.plot("metric.csv", embed=True)
+    result = dvc.plot("metric.csv")
 
-    page_content = BeautifulSoup((tmp_dir / result).read_text())
-    vega_data = json.dumps(
-        [
-            {"y": "2", "x": 0, "rev": "workspace"},
-            {"y": "3", "x": 1, "rev": "workspace"},
-        ],
-        sort_keys=True,
-    )
-    assert _remove_whitespace(vega_data) in _remove_whitespace(
-        first(page_content.body.script.contents)
-    )
+    plot_json = json.loads((tmp_dir / result).read_text())
+    assert plot_json["data"]["values"] == [
+        {"y": "2", "x": 0, "rev": "workspace"},
+        {"y": "3", "x": 1, "rev": "workspace"},
+    ]
 
 
 def test_plot_csv_multiple_columns(tmp_dir, scm, dvc):
@@ -82,18 +76,12 @@ def test_plot_csv_multiple_columns(tmp_dir, scm, dvc):
     _write_csv(metric, "metric.csv")
     _run_with_metric(tmp_dir, metric_filename="metric.csv")
 
-    result = dvc.plot("metric.csv", embed=True)
-    page_content = BeautifulSoup((tmp_dir / result).read_text())
-    vega_data = json.dumps(
-        [
-            {"y": "2", "x": 0, "rev": "workspace"},
-            {"y": "3", "x": 1, "rev": "workspace"},
-        ],
-        sort_keys=True,
-    )
-    assert _remove_whitespace(vega_data) in _remove_whitespace(
-        first(page_content.body.script.contents)
-    )
+    result = dvc.plot("metric.csv")
+    plot_json = json.loads((tmp_dir / result).read_text())
+    assert plot_json["data"]["values"] == [
+        {"y": "2", "x": 0, "rev": "workspace"},
+        {"y": "3", "x": 1, "rev": "workspace"},
+    ]
 
 
 def test_plot_json_single_val(tmp_dir, scm, dvc):
@@ -101,19 +89,13 @@ def test_plot_json_single_val(tmp_dir, scm, dvc):
     _write_json(tmp_dir, metric, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "first run")
 
-    result = dvc.plot("metric.json", embed=True)
+    result = dvc.plot("metric.json", fname="result.json")
 
-    page_content = BeautifulSoup((tmp_dir / result).read_text())
-    vega_data = json.dumps(
-        [
-            {"y": 2, "x": 0, "rev": "workspace"},
-            {"y": 3, "x": 1, "rev": "workspace"},
-        ],
-        sort_keys=True,
-    )
-    assert _remove_whitespace(vega_data) in _remove_whitespace(
-        first(page_content.body.script.contents)
-    )
+    plot_json = json.loads((tmp_dir / result).read_text())
+    assert plot_json["data"]["values"] == [
+        {"y": 2, "x": 0, "rev": "workspace"},
+        {"y": 3, "x": 1, "rev": "workspace"},
+    ]
 
 
 def test_plot_json_multiple_val(tmp_dir, scm, dvc):
@@ -124,19 +106,13 @@ def test_plot_json_multiple_val(tmp_dir, scm, dvc):
     _write_json(tmp_dir, metric, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "first run")
 
-    result = dvc.plot("metric.json", embed=True)
+    result = dvc.plot("metric.json", fname="result.json")
 
-    page_content = BeautifulSoup((tmp_dir / result).read_text())
-    vega_data = json.dumps(
-        [
-            {"y": 2, "x": 0, "rev": "workspace"},
-            {"y": 3, "x": 1, "rev": "workspace"},
-        ],
-        sort_keys=True,
-    )
-    assert _remove_whitespace(vega_data) in _remove_whitespace(
-        first(page_content.body.script.contents)
-    )
+    plot_json = json.loads((tmp_dir / result).read_text())
+    assert plot_json["data"]["values"] == [
+        {"y": 2, "x": 0, "rev": "workspace"},
+        {"y": 3, "x": 1, "rev": "workspace"},
+    ]
 
 
 def test_plot_confusion(tmp_dir, dvc):
@@ -147,19 +123,15 @@ def test_plot_confusion(tmp_dir, dvc):
     _write_json(tmp_dir, confusion_matrix, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "first run")
 
-    result = dvc.plot(datafile="metric.json", template="confusion", embed=True)
+    result = dvc.plot(
+        datafile="metric.json", template="confusion", fname="result.json"
+    )
 
-    page_content = BeautifulSoup((tmp_dir / result).read_text())
-    vega_data = json.dumps(
-        [
-            {"predicted": "B", "actual": "A", "rev": "workspace"},
-            {"predicted": "A", "actual": "A", "rev": "workspace"},
-        ],
-        sort_keys=True,
-    )
-    assert _remove_whitespace(vega_data) in _remove_whitespace(
-        first(page_content.body.script.contents)
-    )
+    plot_json = json.loads((tmp_dir / result).read_text())
+    assert plot_json["data"]["values"] == [
+        {"predicted": "B", "actual": "A", "rev": "workspace"},
+        {"predicted": "A", "actual": "A", "rev": "workspace"},
+    ]
 
 
 def test_plot_multiple_revs(tmp_dir, scm, dvc):
@@ -183,25 +155,18 @@ def test_plot_multiple_revs(tmp_dir, scm, dvc):
         "metric.json",
         template="template.json",
         revisions=["HEAD", "v2", "v1"],
-        fname="result.html",
-        embed=True,
+        fname="result.json",
     )
 
-    page_content = BeautifulSoup((tmp_dir / result).read_text())
-    vega_data = json.dumps(
-        [
-            {"y": 5, "x": 1, "rev": "HEAD"},
-            {"y": 6, "x": 2, "rev": "HEAD"},
-            {"y": 3, "x": 1, "rev": "v2"},
-            {"y": 5, "x": 2, "rev": "v2"},
-            {"y": 2, "x": 1, "rev": "v1"},
-            {"y": 3, "x": 2, "rev": "v1"},
-        ],
-        sort_keys=True,
-    )
-    assert _remove_whitespace(vega_data) in _remove_whitespace(
-        first(page_content.body.script.contents)
-    )
+    plot_json = json.loads((tmp_dir / result).read_text())
+    assert plot_json["data"]["values"] == [
+        {"y": 5, "x": 1, "rev": "HEAD"},
+        {"y": 6, "x": 2, "rev": "HEAD"},
+        {"y": 3, "x": 1, "rev": "v2"},
+        {"y": 5, "x": 2, "rev": "v2"},
+        {"y": 2, "x": 1, "rev": "v1"},
+        {"y": 3, "x": 2, "rev": "v1"},
+    ]
 
 
 def test_plot_even_if_metric_missing(tmp_dir, scm, dvc, caplog):
@@ -214,20 +179,19 @@ def test_plot_even_if_metric_missing(tmp_dir, scm, dvc, caplog):
 
     caplog.clear()
     with caplog.at_level(logging.WARNING, "dvc"):
-        result = dvc.plot("metric.json", revisions=["v1", "v2"], embed=True)
+        result = dvc.plot(
+            "metric.json", revisions=["v1", "v2"], fname="result.json"
+        )
         assert (
             "File 'metric.json' was not found at: 'v1'. "
             "It will not be plotted." in caplog.text
         )
 
-    page_content = BeautifulSoup((tmp_dir / result).read_text())
-    vega_data = json.dumps(
-        [{"y": 2, "x": 0, "rev": "v2"}, {"y": 3, "x": 1, "rev": "v2"}],
-        sort_keys=True,
-    )
-    assert _remove_whitespace(vega_data) in _remove_whitespace(
-        first(page_content.body.script.contents)
-    )
+    plot_json = json.loads((tmp_dir / result).read_text())
+    assert plot_json["data"]["values"] == [
+        {"y": 2, "x": 0, "rev": "v2"},
+        {"y": 3, "x": 1, "rev": "v2"},
+    ]
 
 
 def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc, caplog):
@@ -240,7 +204,7 @@ def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc, caplog):
     with pytest.raises(NoMetricInHistoryError) as error, caplog.at_level(
         logging.WARNING, "dvc"
     ):
-        dvc.plot("metric.json", revisions=["v1"], embed=True)
+        dvc.plot("metric.json", revisions=["v1"])
 
         # do not warn if none found
         assert len(caplog.messages) == 0
@@ -266,19 +230,15 @@ def test_custom_template(tmp_dir, scm, dvc, custom_template):
     _write_json(tmp_dir, metric, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "init", "v1")
 
-    result = dvc.plot("metric.json", fspath(custom_template), embed=True)
+    result = dvc.plot(
+        "metric.json", fspath(custom_template), fname="result.json"
+    )
 
-    page_content = BeautifulSoup((tmp_dir / result).read_text())
-    vega_data = json.dumps(
-        [
-            {"a": 1, "b": 2, "rev": "workspace"},
-            {"a": 2, "b": 3, "rev": "workspace"},
-        ],
-        sort_keys=True,
-    )
-    assert _remove_whitespace(vega_data) in _remove_whitespace(
-        first(page_content.body.script.contents)
-    )
+    plot_json = json.loads((tmp_dir / result).read_text())
+    assert plot_json["data"]["values"] == [
+        {"a": 1, "b": 2, "rev": "workspace"},
+        {"a": 2, "b": 3, "rev": "workspace"},
+    ]
 
 
 def _replace(path, src, dst):
@@ -297,20 +257,14 @@ def test_custom_template_with_specified_data(
     _run_with_metric(tmp_dir, "metric.json", "init", "v1")
 
     result = dvc.plot(
-        datafile=None, template=fspath(custom_template), embed=True
+        datafile=None, template=fspath(custom_template), fname="result.json"
     )
 
-    page_content = BeautifulSoup((tmp_dir / result).read_text())
-    vega_data = json.dumps(
-        [
-            {"a": 1, "b": 2, "rev": "workspace"},
-            {"a": 2, "b": 3, "rev": "workspace"},
-        ],
-        sort_keys=True,
-    )
-    assert _remove_whitespace(vega_data) in _remove_whitespace(
-        first(page_content.body.script.contents)
-    )
+    plot_json = json.loads((tmp_dir / result).read_text())
+    assert plot_json["data"]["values"] == [
+        {"a": 1, "b": 2, "rev": "workspace"},
+        {"a": 2, "b": 3, "rev": "workspace"},
+    ]
 
 
 def test_plot_override_specified_data_source(tmp_dir, scm, dvc):
@@ -329,20 +283,16 @@ def test_plot_override_specified_data_source(tmp_dir, scm, dvc):
     _run_with_metric(tmp_dir, "metric2.json", "init", "v1")
 
     result = dvc.plot(
-        datafile="metric2.json", template="newtemplate.json", embed=True
+        datafile="metric2.json",
+        template="newtemplate.json",
+        fname="result.json",
     )
 
-    page_content = BeautifulSoup((tmp_dir / result).read_text())
-    vega_data = json.dumps(
-        [
-            {"a": 1, "b": 2, "rev": "workspace"},
-            {"a": 2, "b": 3, "rev": "workspace"},
-        ],
-        sort_keys=True,
-    )
-    assert _remove_whitespace(vega_data) in _remove_whitespace(
-        first(page_content.body.script.contents)
-    )
+    plot_json = json.loads((tmp_dir / result).read_text())
+    assert plot_json["data"]["values"] == [
+        {"a": 1, "b": 2, "rev": "workspace"},
+        {"a": 2, "b": 3, "rev": "workspace"},
+    ]
 
 
 def test_should_embed_vega_json_template(tmp_dir, scm, dvc):
@@ -359,13 +309,11 @@ def test_should_embed_vega_json_template(tmp_dir, scm, dvc):
         "metric.json", "template.json", fname="result.json", embed=False
     )
 
-    result_content = json.loads((tmp_dir / result).read_text())
-    vega_data = [
+    plot_json = json.loads((tmp_dir / result).read_text())
+    assert [
         {"x": 1, "y": 2, "rev": "workspace"},
         {"x": 2, "y": 3, "rev": "workspace"},
-    ]
-
-    assert vega_data == result_content["data"]["values"]
+    ] == plot_json["data"]["values"]
 
 
 def test_should_raise_on_no_template_and_datafile(tmp_dir, dvc):
@@ -395,20 +343,17 @@ def test_plot_choose_columns(tmp_dir, scm, dvc, custom_template):
     _run_with_metric(tmp_dir, "metric.json", "init", "v1")
 
     result = dvc.plot(
-        "metric.json", fspath(custom_template), columns={"b", "c"}, embed=True
+        "metric.json",
+        fspath(custom_template),
+        fields={"b", "c"},
+        fname="result.json",
     )
 
-    page_content = BeautifulSoup((tmp_dir / result).read_text())
-    vega_data = json.dumps(
-        [
-            {"b": 2, "c": 3, "rev": "workspace"},
-            {"b": 3, "c": 4, "rev": "workspace"},
-        ],
-        sort_keys=True,
-    )
-    assert _remove_whitespace(vega_data) in _remove_whitespace(
-        first(page_content.body.script.contents)
-    )
+    plot_json = json.loads((tmp_dir / result).read_text())
+    assert plot_json["data"]["values"] == [
+        {"b": 2, "c": 3, "rev": "workspace"},
+        {"b": 3, "c": 4, "rev": "workspace"},
+    ]
 
 
 def test_plot_default_choose_column(tmp_dir, scm, dvc):
@@ -416,16 +361,31 @@ def test_plot_default_choose_column(tmp_dir, scm, dvc):
     _write_json(tmp_dir, metric, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "init", "v1")
 
-    result = dvc.plot("metric.json", columns={"b"}, embed=True)
+    result = dvc.plot("metric.json", fields={"b"}, fname="result.json")
+
+    plot_json = json.loads((tmp_dir / result).read_text())
+    assert plot_json["data"]["values"] == [
+        {"x": 0, "y": 2, "rev": "workspace"},
+        {"x": 1, "y": 3, "rev": "workspace"},
+    ]
+
+
+def test_plot_embed(tmp_dir, scm, dvc):
+    metric = [{"val": 2}, {"val": 3}]
+    _write_json(tmp_dir, metric, "metric.json")
+    _run_with_metric(tmp_dir, "metric.json", "first run")
+
+    result = dvc.plot("metric.json", fname="result.json", embed=True)
 
     page_content = BeautifulSoup((tmp_dir / result).read_text())
-    vega_data = json.dumps(
+    data_dump = json.dumps(
         [
-            {"x": 0, "y": 2, "rev": "workspace"},
-            {"x": 1, "y": 3, "rev": "workspace"},
+            {"y": 2, "x": 0, "rev": "workspace"},
+            {"y": 3, "x": 1, "rev": "workspace"},
         ],
         sort_keys=True,
     )
-    assert _remove_whitespace(vega_data) in _remove_whitespace(
+
+    assert _remove_whitespace(data_dump) in _remove_whitespace(
         first(page_content.body.script.contents)
     )

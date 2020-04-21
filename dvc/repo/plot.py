@@ -191,7 +191,7 @@ def _transform_to_default_data(data_points, fieldnames=None):
 
 
 def _load_from_revisions(
-    repo, datafile, revisions, default_plot=False, columns=None, path=None
+    repo, datafile, revisions, default_plot=False, fields=None, path=None
 ):
     data = []
     exceptions = []
@@ -202,7 +202,7 @@ def _load_from_revisions(
 
             tmp_data, fieldnames = parse(datafile, content, path)
 
-            tmp_data = _filter_columns(tmp_data, columns)
+            tmp_data = _filter_fields(tmp_data, fields)
 
             if default_plot:
                 tmp_data = _transform_to_default_data(tmp_data, fieldnames)
@@ -233,14 +233,14 @@ def _load_from_revisions(
     return data
 
 
-def _filter_columns(data_points, columns):
-    if not columns:
+def _filter_fields(data_points, fields):
+    if not fields:
         return data_points
 
     result = []
     for data_point in data_points:
         new_dp = copy(data_point)
-        to_del = set(data_point.keys()) - columns
+        to_del = set(data_point.keys()) - fields
         for key in to_del:
             del new_dp[key]
         result.append(new_dp)
@@ -258,7 +258,7 @@ def _evaluate_templatepath(repo, template=None):
 
 @locked
 def fill_template(
-    repo, datafile, template_path, revisions, columns=None, path=None
+    repo, datafile, template_path, revisions, fields=None, path=None
 ):
     default_plot = template_path == repo.plot_templates.default_template
 
@@ -266,7 +266,7 @@ def fill_template(
 
     data = {
         datafile: _load_from_revisions(
-            repo, datafile, revisions, default_plot, columns=columns, path=path
+            repo, datafile, revisions, default_plot, fields=fields, path=path
         )
         for datafile in template_datafiles
     }
@@ -279,7 +279,7 @@ def plot(
     template=None,
     revisions=None,
     fname=None,
-    columns=None,
+    fields=None,
     path=None,
     embed=False,
 ):
@@ -292,7 +292,7 @@ def plot(
     template_path = _evaluate_templatepath(repo, template)
 
     plot_content = fill_template(
-        repo, datafile, template_path, revisions, columns, path
+        repo, datafile, template_path, revisions, fields, path
     )
 
     if embed:

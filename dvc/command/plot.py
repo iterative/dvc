@@ -16,20 +16,20 @@ class CmdPLot(CmdBase):
 
     def run(self):
 
-        columns = None
+        fields = None
         path = None
-        if self.args.columns:
-            if self.args.columns.startswith("$"):
-                path = self.args.columns
+        if self.args.filter:
+            if self.args.filter.startswith("$"):
+                path = self.args.filter
             else:
-                columns = set(self.args.columns.split(","))
+                fields = set(self.args.filter.split(","))
         try:
             result = self.repo.plot(
                 datafile=self.args.datafile,
                 template=self.args.template,
                 revisions=self._revisions(),
                 fname=self.args.file,
-                columns=columns,
+                fields=fields,
                 path=path,
                 embed=not self.args.show_json,
             )
@@ -107,10 +107,9 @@ def add_parser(subparsers, parent_parser):
         help="Do not wrap vega plot json with HTML.",
     )
     plot_show_parser.add_argument(
-        "-c",
-        "--columns",
+        "--filter",
         default=None,
-        help="Choose which columns to put into plot.",
+        help="Choose which fileds or path to put into plot.",
     )
     plot_show_parser.set_defaults(func=CmdPlotShow)
 
@@ -156,9 +155,8 @@ def add_parser(subparsers, parent_parser):
         help="Do not wrap vega plot json with HTML.",
     )
     plot_diff_parser.add_argument(
-        "-c",
-        "--columns",
+        "--filter",
         default=None,
-        help="Choose which columns to put into plot.",
+        help="Choose which fileds or path to put into plot.",
     )
     plot_diff_parser.set_defaults(func=CmdPlotDiff)
