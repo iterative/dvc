@@ -1,8 +1,6 @@
 import json
 from collections import defaultdict
 
-from flatten_json import flatten
-
 
 def _parse(raw):
     if raw is None or isinstance(raw, (dict, list, int, float)):
@@ -37,7 +35,9 @@ def _flatten(d):
         return defaultdict(lambda: None)
 
     if isinstance(d, dict):
-        return defaultdict(lambda: None, flatten(d, "."))
+        from flatten_json import flatten as fltn
+
+        return defaultdict(lambda: None, fltn(d, "."))
 
     return defaultdict(lambda: "unable to parse")
 
@@ -103,3 +103,16 @@ def table(header, rows):
     t.add_rows([header] + rows)
 
     return t.draw()
+
+
+def format_dict(d):
+    ret = {}
+    for key, val in d.items():
+        if isinstance(val, dict):
+            new_val = format_dict(val)
+        elif isinstance(val, list):
+            new_val = str(val)
+        else:
+            new_val = val
+        ret[key] = new_val
+    return ret

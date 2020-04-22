@@ -24,6 +24,26 @@ def test_open(tmp_dir, dvc):
         assert fobj.read() == "foo"
 
 
+def test_open_in_history(tmp_dir, scm, dvc):
+    tmp_dir.gen("foo", "foo")
+    dvc.add("foo")
+    dvc.scm.add(["foo.dvc", ".gitignore"])
+    dvc.scm.commit("foo")
+
+    tmp_dir.gen("foo", "foofoo")
+    dvc.add("foo")
+    dvc.scm.add(["foo.dvc", ".gitignore"])
+    dvc.scm.commit("foofoo")
+
+    for rev in dvc.brancher(revs=["HEAD~1"]):
+        if rev == "working tree":
+            continue
+
+        tree = DvcTree(dvc)
+        with tree.open("foo", "r") as fobj:
+            assert fobj.read() == "foo"
+
+
 def test_isdir_isfile(tmp_dir, dvc):
     tmp_dir.gen({"datafile": "data", "datadir": {"foo": "foo", "bar": "bar"}})
 

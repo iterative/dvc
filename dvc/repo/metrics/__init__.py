@@ -7,11 +7,6 @@ class Metrics(object):
 
         return add(self.repo, *args, **kwargs)
 
-    def modify(self, *args, **kwargs):
-        from dvc.repo.metrics.modify import modify
-
-        return modify(self.repo, *args, **kwargs)
-
     def show(self, *args, **kwargs):
         from dvc.repo.metrics.show import show
 
