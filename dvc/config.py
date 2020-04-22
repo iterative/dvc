@@ -3,7 +3,6 @@ import logging
 import os
 import re
 from contextlib import contextmanager
-from pathlib import Path, PurePosixPath
 from urllib.parse import urlparse
 
 import configobj
@@ -21,6 +20,7 @@ from voluptuous import (
 )
 
 from dvc.exceptions import DvcException, NotDvcRepoError
+from dvc.path_info import PathInfo
 from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
@@ -332,8 +332,7 @@ class Config(dict):
             if isinstance(path, RelPath) or not os.path.isabs(path):
                 path = relpath(path, conf_dir)
 
-            posix_path = str(PurePosixPath(Path(path)))
-            return posix_path
+            return PathInfo(path).as_posix()
 
         return Config._map_dirs(conf, rel)
 

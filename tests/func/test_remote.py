@@ -1,17 +1,18 @@
 import errno
 import os
+from pathlib import Path
 
 import configobj
 import pytest
 from mock import patch
 
+from dvc.compat import fspath
 from dvc.config import Config
 from dvc.exceptions import DownloadError, UploadError
 from dvc.main import main
 from dvc.path_info import PathInfo
 from dvc.remote import RemoteLOCAL
 from dvc.remote.base import RemoteBASE, RemoteCacheRequiredError
-from dvc.compat import fspath
 from dvc.utils.fs import remove
 from tests.basic_env import TestDvc
 from tests.remotes import Local
@@ -47,7 +48,7 @@ class TestRemote(TestDvc):
         # dir path written to config should be just one level above.
         rel = os.path.join("..", dname)
         config = configobj.ConfigObj(self.dvc.config.files["repo"])
-        self.assertEqual(config['remote "mylocal"']["url"], rel)
+        self.assertEqual(Path(config['remote "mylocal"']["url"]), Path(rel))
 
     def test_overwrite(self):
         remote_name = "a"

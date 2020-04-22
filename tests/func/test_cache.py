@@ -1,5 +1,6 @@
 import os
 import stat
+from pathlib import Path
 
 import configobj
 import pytest
@@ -8,8 +9,7 @@ from dvc.cache import Cache
 from dvc.main import main
 from dvc.remote.base import DirCacheError
 from dvc.utils import relpath
-from tests.basic_env import TestDir
-from tests.basic_env import TestDvc
+from tests.basic_env import TestDir, TestDvc
 
 
 class TestCache(TestDvc):
@@ -155,7 +155,7 @@ class TestCmdCacheDir(TestDvc):
         self.assertEqual(ret, 0)
 
         config = configobj.ConfigObj(self.dvc.config.files["repo"])
-        self.assertEqual(config["cache"]["dir"], dname)
+        self.assertEqual(Path(config["cache"]["dir"]), Path(dname))
 
     def test_relative_path(self):
         tmpdir = self.mkdtemp()
@@ -167,7 +167,7 @@ class TestCmdCacheDir(TestDvc):
         # dir path written to config should be just one level above.
         rel = os.path.join("..", dname)
         config = configobj.ConfigObj(self.dvc.config.files["repo"])
-        self.assertEqual(config["cache"]["dir"], rel)
+        self.assertEqual(Path(config["cache"]["dir"]), Path(rel))
 
         ret = main(["add", self.FOO])
         self.assertEqual(ret, 0)
