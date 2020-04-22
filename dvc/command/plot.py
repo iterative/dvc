@@ -4,7 +4,7 @@ import os
 
 from dvc.command.base import append_doc_link, CmdBase, fix_subparsers
 from dvc.exceptions import DvcException
-from dvc.repo.plot import WORKSPACE_REVISION_NAME
+from dvc.repo.plot.data import WORKSPACE_REVISION_NAME
 from dvc.utils import format_link
 
 logger = logging.getLogger(__name__)

@@ -1,8 +1,6 @@
-import json
-
 import pytest
 
-from dvc.repo.plot import _parse_json
+from dvc.repo.plot.data import _apply_path
 
 
 @pytest.mark.parametrize(
@@ -17,6 +15,6 @@ def test_parse_json(path, expected_result):
         "some": {"path": [{"a": 1, "b": 2, "c": 3}, {"a": 4, "b": 5, "c": 6}]}
     }
 
-    result = _parse_json(json.dumps(value), path)
+    result, _ = _apply_path(value, path=path)
 
     assert result == expected_result
