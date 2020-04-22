@@ -5,6 +5,7 @@ from mock import MagicMock
 from dvc.config import Config
 
 
+@pytest.mark.skipif(os.name == "nt", reason="Linux only")
 def test_path_replacement():
 
     config_filename = "./config/file"
@@ -18,9 +19,6 @@ def test_path_replacement():
     assert rel_func("cache") == "../cache"
     assert rel_func("../cache") == "../../cache"
     assert rel_func("/path/to/cache") == "/path/to/cache"
-
-    assert rel_func("..\\cache") == "../../cache"
-    assert rel_func("c:\\path\\to\\cache") == "c:/path/to/cache"
 
     assert rel_func("ssh://something") == "ssh://something"
 
@@ -38,3 +36,5 @@ def test_path_replacement_windows():
 
     assert rel_func("..\\cache") == "../../cache"
     assert rel_func("c:\\path\\to\\cache") == "c:/path/to/cache"
+
+    assert rel_func("ssh://something") == "ssh://something"
