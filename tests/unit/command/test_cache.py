@@ -10,9 +10,10 @@ def test_path_replacement():
     config_filename = "./config/file"
 
     # Extract the "rel()" function from Config._save_paths
-    Config._map_dirs = MagicMock()
-    Config._save_paths(None, config_filename)
-    _, rel_func = Config._map_dirs.call_args[0]
+    PatchedConfig = Config
+    PatchedConfig._map_dirs = MagicMock()
+    PatchedConfig._save_paths(None, config_filename)
+    _, rel_func = PatchedConfig._map_dirs.call_args[0]
 
     assert rel_func("cache") == "../cache"
     assert rel_func("../cache") == "../../cache"
@@ -30,9 +31,10 @@ def test_path_replacement_windows():
     config_filename = "./config/file"
 
     # Extract the "rel()" function from Config._save_paths
-    Config._map_dirs = MagicMock()
-    Config._save_paths(None, config_filename)
-    _, rel_func = Config._map_dirs.call_args[0]
+    PatchedConfig = Config
+    PatchedConfig._map_dirs = MagicMock()
+    PatchedConfig._save_paths(None, config_filename)
+    _, rel_func = PatchedConfig._map_dirs.call_args[0]
 
     assert rel_func("..\\cache") == "../../cache"
     assert rel_func("c:\\path\\to\\cache") == "c:/path/to/cache"
