@@ -69,10 +69,6 @@ def plot_data(filename, revision, content):
 
 
 def _filter_fields(data_points, fieldnames=None, fields=None, **kwargs):
-    """
-        Try to filter each data_point, preserving only keys specified in
-        fields. This method assumes that data_points is list of dicts.
-    """
     if not fields:
         return data_points, fieldnames
     assert isinstance(fields, set)
@@ -80,7 +76,15 @@ def _filter_fields(data_points, fieldnames=None, fields=None, **kwargs):
     new_data = []
     for data_point in data_points:
         new_dp = copy(data_point)
-        to_del = set(data_point.keys()) - fields
+
+        keys = set(data_point.keys())
+        if keys & fields != fields:
+            raise DvcException(
+                "Could not find some of provided fields: "
+                "'{}' in '{}'.".format(", ".join(fields), ", ".join(keys))
+            )
+
+        to_del = keys - fields
         for key in to_del:
             del new_dp[key]
             if fieldnames and key in fieldnames:
