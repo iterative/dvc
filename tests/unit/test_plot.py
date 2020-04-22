@@ -1,6 +1,6 @@
 import pytest
 
-from dvc.repo.plot.data import _apply_path
+from dvc.repo.plot.data import _apply_path, _lists, _find_data
 
 
 @pytest.mark.parametrize(
@@ -18,3 +18,29 @@ def test_parse_json(path, expected_result):
     result, _ = _apply_path(value, path=path)
 
     assert result == expected_result
+
+
+@pytest.mark.parametrize(
+    "dictionary, expected_result",
+    [
+        ({}, []),
+        ({"x": ["a", "b", "c"]}, [["a", "b", "c"]]),
+        (
+            {"x": {"y": ["a", "b"]}, "z": {"w": ["c", "d"]}},
+            [["a", "b"], ["c", "d"]],
+        ),
+    ],
+)
+def test_finding_lists(dictionary, expected_result):
+    result = _lists(dictionary)
+
+    assert list(result) == expected_result
+
+
+def test_finding_data():
+    data = {"a": {"b": [{"x": 2, "y": 3}, {"x": 1, "y": 5}]}}
+
+    result, fieldnames = _find_data(data, None, fields={"x"})
+
+    assert fieldnames is None
+    assert result == [{"x": 2, "y": 3}, {"x": 1, "y": 5}]

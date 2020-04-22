@@ -25,8 +25,9 @@ class PlotMetricTypeError(DvcException):
         )
 
 
-class UnexpectedJsonStructureError(DvcException):
-    pass
+class PlotDataStructureError(DvcException):
+    def __init__(self):
+        super().__init__("Plot data extraction failed.")
 
 
 class JsonParsingError(DvcException):
@@ -68,6 +69,10 @@ def plot_data(filename, revision, content):
 
 
 def _filter_fields(data_points, fieldnames=None, fields=None, **kwargs):
+    """
+        Try to filter each data_point, preserving only keys specified in
+        fields. This method assumes that data_points is list of dicts.
+    """
     if not fields:
         return data_points, fieldnames
     assert isinstance(fields, set)
@@ -102,7 +107,7 @@ def _transform_to_default_data(
 
 
 def _apply_path(data, fieldnames=None, path=None, **kwargs):
-    if not path:
+    if not path or not isinstance(data, dict):
         return data, fieldnames
 
     import jsonpath_ng
@@ -118,16 +123,40 @@ def _apply_path(data, fieldnames=None, path=None, **kwargs):
         fieldnames = list(first(data_points).keys())
     elif len(first_datum.path.fields) == 1:
         field_name = first(first_datum.path.fields)
+        fieldnames = [field_name]
         data_points = [{field_name: datum.value} for datum in found]
     else:
-        raise DvcException("Could not parse data for path '{}'".format(path))
+        raise PlotDataStructureError()
 
     if not isinstance(data_points, list) or not (
         isinstance(first(data_points), dict)
     ):
-        raise UnexpectedJsonStructureError("Unable to parse")
+        raise PlotDataStructureError()
 
     return data_points, fieldnames
+
+
+def _lists(dictionary):
+    for key, value in dictionary.items():
+        if isinstance(value, dict):
+            yield from (_lists(value))
+        elif isinstance(value, list):
+            yield value
+
+
+def _find_data(data, fieldnames=None, fields=None, **kwargs):
+    if not fields or not isinstance(data, dict):
+        return data, fieldnames
+
+    assert isinstance(fields, set)
+
+    for l in _lists(data):
+        if all([isinstance(dp, dict) for dp in l]):
+            if set(first(l).keys()) & fields == fields:
+                if fieldnames:
+                    return l, [f for f in fieldnames if f in fields]
+                return l, None
+    raise PlotDataStructureError()
 
 
 class PlotData:
@@ -163,7 +192,7 @@ class JSONPlotData(PlotData):
 
     def _processors(self):
         parent_processors = super(JSONPlotData, self)._processors()
-        return [_apply_path] + parent_processors
+        return [_apply_path, _find_data] + parent_processors
 
 
 class CSVPlotData(PlotData):
@@ -232,8 +261,6 @@ def _load_from_revisions(repo, datafile, revisions):
             exceptions.append(e)
         except PlotMetricTypeError:
             raise
-        except UnexpectedJsonStructureError:
-            raise JsonParsingError(datafile)
         except Exception:
             logger.error("Failed to parse '{}' at '{}'.".format(datafile, rev))
             raise

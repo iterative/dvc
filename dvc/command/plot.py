@@ -157,6 +157,6 @@ def add_parser(subparsers, parent_parser):
     plot_diff_parser.add_argument(
         "--filter",
         default=None,
-        help="Choose which fileds or path to put into plot.",
+        help="Choose which filed(s) or jsonpath to put into plot.",
     )
     plot_diff_parser.set_defaults(func=CmdPlotDiff)
