@@ -8,6 +8,7 @@
   name: DVC pre-commit
   stages:
   - commit
+  verbose: true
 - args:
   - git-hook
   - pre-push
