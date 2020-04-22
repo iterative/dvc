@@ -3,6 +3,7 @@ import logging
 import os
 import re
 from contextlib import contextmanager
+from functools import partial
 from urllib.parse import urlparse
 
 import configobj
@@ -322,17 +323,19 @@ class Config(dict):
         return Config._map_dirs(conf, resolve)
 
     @staticmethod
+    def _to_relpath(conf_dir, path):
+        if re.match(r"\w+://", path):
+            return path
+
+        if isinstance(path, RelPath) or not os.path.isabs(path):
+            path = relpath(path, conf_dir)
+
+        return PathInfo(path).as_posix()
+
+    @staticmethod
     def _save_paths(conf, filename):
         conf_dir = os.path.dirname(filename)
-
-        def rel(path):
-            if re.match(r"\w+://", path):
-                return path
-
-            if isinstance(path, RelPath) or not os.path.isabs(path):
-                path = relpath(path, conf_dir)
-
-            return PathInfo(path).as_posix()
+        rel = partial(Config._to_relpath, conf_dir)
 
         return Config._map_dirs(conf, rel)
 

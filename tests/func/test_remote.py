@@ -1,6 +1,6 @@
 import errno
 import os
-from pathlib import Path
+import posixpath
 
 import configobj
 import pytest
@@ -40,15 +40,16 @@ class TestRemote(TestDvc):
         self.assertEqual(main(["remote", "list"]), 0)
 
     def test_relative_path(self):
-        dname = os.path.join("..", "path", "to", "dir")
+        dname_parts = ["..", "path", "to", "dir"]
+        dname = os.path.join(*dname_parts)
         ret = main(["remote", "add", "mylocal", dname])
         self.assertEqual(ret, 0)
 
         # NOTE: we are in the repo's root and config is in .dvc/, so
         # dir path written to config should be just one level above.
-        rel = os.path.join("..", dname)
+        rel = posixpath.join("..", *dname_parts)
         config = configobj.ConfigObj(self.dvc.config.files["repo"])
-        self.assertEqual(Path(config['remote "mylocal"']["url"]), Path(rel))
+        self.assertEqual(config['remote "mylocal"']["url"], rel)
 
     def test_overwrite(self):
         remote_name = "a"
