@@ -99,11 +99,7 @@ def reproduce(
 
 
 def _reproduce_stages(
-    G,
-    stages,
-    downstream=False,
-    single_item=False,
-    **kwargs
+    G, stages, downstream=False, single_item=False, **kwargs
 ):
     r"""Derive the evaluation of the given node for the given graph.
 
