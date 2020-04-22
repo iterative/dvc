@@ -1,14 +1,24 @@
 """DVC config objects."""
-from contextlib import contextmanager
 import logging
 import os
 import re
+from contextlib import contextmanager
+from pathlib import Path, PurePosixPath
 from urllib.parse import urlparse
 
-from funcy import cached_property, re_find, walk_values, compact
 import configobj
-from voluptuous import Schema, Optional, Invalid, ALLOW_EXTRA
-from voluptuous import All, Any, Lower, Range, Coerce
+from funcy import cached_property, compact, re_find, walk_values
+from voluptuous import (
+    ALLOW_EXTRA,
+    All,
+    Any,
+    Coerce,
+    Invalid,
+    Lower,
+    Optional,
+    Range,
+    Schema,
+)
 
 from dvc.exceptions import DvcException, NotDvcRepoError
 from dvc.utils import relpath
@@ -320,8 +330,10 @@ class Config(dict):
                 return path
 
             if isinstance(path, RelPath) or not os.path.isabs(path):
-                return relpath(path, conf_dir)
-            return path
+                path = relpath(path, conf_dir)
+
+            posix_path = str(PurePosixPath(Path(path)))
+            return posix_path
 
         return Config._map_dirs(conf, rel)
 
