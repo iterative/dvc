@@ -1,12 +1,13 @@
 import csv
 import io
+import itertools
 import json
 import logging
 import os
 from collections import OrderedDict
 from copy import copy
 
-from funcy import first, last
+from funcy import first, last, cached_property
 from ruamel import yaml
 
 from dvc.exceptions import DvcException, PathMissingError
@@ -89,70 +90,148 @@ class JsonParsingError(DvcException):
 WORKSPACE_REVISION_NAME = "workspace"
 
 
-def _parse_yaml(content):
-    return yaml.load(content)
+def plot_data(filename, revision, content):
+    _, extension = os.path.splitext(filename.lower())
+    if extension == ".json":
+        return JSONPlotData(filename, revision, content)
+    elif extension == ".csv":
+        return CSVPlotData(filename, revision, content)
+    elif extension == ".tsv":
+        return CSVPlotData(filename, revision, content, delimiter="\t")
+    elif extension == ".yaml":
+        return YAMLPLotData(filename, revision, content)
+    raise PlotMetricTypeError(filename)
 
 
-def _parse_json(content, path=None):
+def _filter_fields(data_points, fieldnames=None, fields=None, **kwargs):
+    if not fields:
+        return data_points, fieldnames
+    assert isinstance(fields, set)
+
+    new_data = []
+    for data_point in data_points:
+        new_dp = copy(data_point)
+        to_del = set(data_point.keys()) - fields
+        for key in to_del:
+            del new_dp[key]
+            if fieldnames and key in fieldnames:
+                fieldnames.remove(key)
+        new_data.append(new_dp)
+    return new_data, fieldnames
+
+
+def _transform_to_default_data(
+    data_points, fieldnames=None, default_plot=False, **kwargs
+):
+    if not default_plot:
+        return data_points, fieldnames
+
+    new_data = []
+    if fieldnames:
+        y = last(fieldnames)
+    else:
+        y = last(list(first(data_points).keys()))
+
+    for index, data_point in enumerate(data_points):
+        new_data.append({"x": index, "y": data_point[y]})
+    return new_data, ["x", "y"]
+
+
+def _apply_path(data, fieldnames=None, path=None, **kwargs):
+    if not path:
+        return data, fieldnames
+
     import jsonpath_ng
 
-    result = json.loads(content, object_pairs_hook=OrderedDict)
+    found = jsonpath_ng.parse(path).find(data)
+    first_datum = first(found)
+    if (
+        len(found) == 1
+        and isinstance(first_datum.value, list)
+        and isinstance(first(first_datum.value), dict)
+    ):
+        data_points = first_datum.value
+        fieldnames = list(first(data_points).keys())
+    elif len(first_datum.path.fields) == 1:
+        field_name = first(first_datum.path.fields)
+        data_points = [{field_name: datum.value} for datum in found]
+    else:
+        raise DvcException("Could not parse data for path '{}'".format(path))
 
-    if path:
-        found = jsonpath_ng.parse(path).find(result)
-        first_datum = first(found)
-        if (
-            len(found) == 1
-            and isinstance(first_datum.value, list)
-            and isinstance(first(first_datum.value), dict)
-        ):
-            # list of dicts
-            result = first_datum.value
-        elif len(first_datum.path.fields) == 1:
-            # list of values
-            field_name = first(first_datum.path.fields)
-            result = [{field_name: datum.value} for datum in found]
-        else:
-            raise DvcException(
-                "Could not parse data for path '{}'".format(path)
-            )
-
-    if not isinstance(result, list) or not (isinstance(first(result), dict)):
+    if not isinstance(data_points, list) or not (
+        isinstance(first(data_points), dict)
+    ):
         raise UnexpectedJsonStructureError("Unable to parse")
 
-    return result
+    return data_points, fieldnames
 
 
-def _parse_csv(file_content, delimiter=","):
-    first_row = first(csv.reader(io.StringIO(file_content)))
+class PlotData:
+    def __init__(self, filename, revision, content, **kwargs):
+        self.filename = filename
+        self.revision = revision
+        self.content = content
+        self.fieldnames = None
 
-    if len(first_row) == 1:
-        reader = csv.DictReader(
-            io.StringIO(file_content),
-            delimiter=delimiter,
-            fieldnames=["value"],
-        )
-    else:
-        reader = csv.DictReader(
-            io.StringIO(file_content),
-            skipinitialspace=True,
-            delimiter=delimiter,
-        )
+    @property
+    def raw(self):
+        raise NotImplementedError
 
-    return [row for row in reader], reader.fieldnames
+    def _processors(self):
+        return [_filter_fields, _transform_to_default_data]
+
+    def to_datapoints(self, **kwargs):
+        data = self.raw
+        fieldnames = self.fieldnames
+
+        for data_proc in self._processors():
+            data, fieldnames = data_proc(data, fieldnames, **kwargs)
+
+        for data_point in data:
+            data_point["rev"] = self.revision
+        return data
 
 
-def parse(datafile, content, path):
-    _, extension = os.path.splitext(datafile.lower())
-    if extension == ".json":
-        return _parse_json(content, path), None
-    elif extension == ".csv":
-        return _parse_csv(content)
-    elif extension == ".tsv":
-        return _parse_csv(content, "\t")
-    elif extension == ".yaml":
-        return _parse_yaml(io.StringIO(content)), None
-    raise PlotMetricTypeError(datafile)
+class JSONPlotData(PlotData):
+    @cached_property
+    def raw(self):
+        return json.loads(self.content, object_pairs_hook=OrderedDict)
+
+    def _processors(self):
+        parent_processors = super(JSONPlotData, self)._processors()
+        return [_apply_path] + parent_processors
+
+
+class CSVPlotData(PlotData):
+    def __init__(self, filename, revision, content, delimiter=","):
+        super(CSVPlotData, self).__init__(filename, revision, content)
+        self.delimiter = delimiter
+
+    @cached_property
+    def raw(self):
+        first_row = first(csv.reader(io.StringIO(self.content)))
+
+        if len(first_row) == 1:
+            reader = csv.DictReader(
+                io.StringIO(self.content),
+                delimiter=self.delimiter,
+                fieldnames=["value"],
+            )
+        else:
+            reader = csv.DictReader(
+                io.StringIO(self.content),
+                skipinitialspace=True,
+                delimiter=self.delimiter,
+            )
+
+        self.fieldnames = reader.fieldnames
+        return [row for row in reader]
+
+
+class YAMLPLotData(PlotData):
+    @cached_property
+    def raw(self):
+        return yaml.parse(io.StringIO(self.content))
 
 
 def _load_from_revision(repo, datafile, revision):
@@ -175,42 +254,16 @@ def _load_from_revision(repo, datafile, revision):
     except (FileNotFoundError, PathMissingError):
         raise NoMetricOnRevisionError(datafile, revision)
 
-    return datafile_content
+    return plot_data(datafile, revision, datafile_content)
 
 
-def _transform_to_default_data(data_points, fieldnames=None):
-    new_data = []
-    if fieldnames:
-        y = last(fieldnames)
-    else:
-        y = last(list(first(data_points).keys()))
-
-    for index, data_point in enumerate(data_points):
-        new_data.append({"x": index, "y": data_point[y]})
-    return new_data
-
-
-def _load_from_revisions(
-    repo, datafile, revisions, default_plot=False, fields=None, path=None
-):
+def _load_from_revisions(repo, datafile, revisions):
     data = []
     exceptions = []
 
     for rev in revisions:
         try:
-            content = _load_from_revision(repo, datafile, rev)
-
-            tmp_data, fieldnames = parse(datafile, content, path)
-            tmp_data, fieldnames = _filter_fields(tmp_data, fieldnames, fields)
-
-            if default_plot:
-                tmp_data = _transform_to_default_data(tmp_data, fieldnames)
-
-            for data_point in tmp_data:
-                data_point["rev"] = rev
-
-            data.extend(tmp_data)
-
+            data.append(_load_from_revision(repo, datafile, rev))
         except NoMetricOnRevisionError as e:
             exceptions.append(e)
         except PlotMetricTypeError:
@@ -232,23 +285,6 @@ def _load_from_revisions(
     return data
 
 
-def _filter_fields(data_points, fieldnames=None, fields=None):
-    if not fields:
-        return data_points, fieldnames
-
-    new_fieldnames = copy(fieldnames)
-    result = []
-    for data_point in data_points:
-        new_dp = copy(data_point)
-        to_del = set(data_point.keys()) - fields
-        for key in to_del:
-            del new_dp[key]
-            if fieldnames and key in new_fieldnames:
-                new_fieldnames.remove(key)
-        result.append(new_dp)
-    return result, new_fieldnames
-
-
 def _evaluate_templatepath(repo, template=None):
     if not template:
         return repo.plot_templates.default_template
@@ -266,13 +302,21 @@ def fill_template(
 
     template_datafiles = _parse_template(template_path, datafile)
 
-    data = {
-        datafile: _load_from_revisions(
-            repo, datafile, revisions, default_plot, fields=fields, path=path
+    template_data = {}
+    for datafile in template_datafiles:
+        plot_datas = _load_from_revisions(repo, datafile, revisions)
+        template_data[datafile] = list(
+            itertools.chain.from_iterable(
+                [
+                    pd.to_datapoints(
+                        fields=fields, default_plot=default_plot, path=path
+                    )
+                    for pd in plot_datas
+                ]
+            )
         )
-        for datafile in template_datafiles
-    }
-    return Template.fill(template_path, data, datafile)
+
+    return Template.fill(template_path, template_data, datafile)
 
 
 def plot(
