@@ -109,7 +109,7 @@ def add_parser(subparsers, parent_parser):
     plot_show_parser.add_argument(
         "--filter",
         default=None,
-        help="Choose which fileds or path to put into plot.",
+        help="Choose which fileds or jsonpath to put into plot.",
     )
     plot_show_parser.set_defaults(func=CmdPlotShow)
 
