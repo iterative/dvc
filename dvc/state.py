@@ -367,7 +367,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             path_info (dict): path_info to save checksum for.
             checksum (str): checksum to save.
         """
-        assert path_info.scheme == "local"
+        assert isinstance(path_info, str) or path_info.scheme == "local"
         assert checksum is not None
         assert os.path.exists(fspath_py35(path_info))
 
@@ -398,7 +398,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             str or None: checksum for the specified path info or None if it
             doesn't exist in the state database.
         """
-        assert path_info.scheme == "local"
+        assert isinstance(path_info, str) or path_info.scheme == "local"
         path = fspath_py35(path_info)
 
         if not os.path.exists(path):
@@ -425,7 +425,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         Args:
             path_info (dict): path info to add to the list of links.
         """
-        assert path_info.scheme == "local"
+        assert isinstance(path_info, str) or path_info.scheme == "local"
 
         if not os.path.exists(fspath_py35(path_info)):
             return

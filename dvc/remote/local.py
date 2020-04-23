@@ -1,6 +1,7 @@
 import errno
 import logging
 import os
+import posixpath
 import stat
 from concurrent.futures import as_completed, ThreadPoolExecutor
 from functools import partial
@@ -66,6 +67,9 @@ class LocalRemote(BaseRemote):
     @classmethod
     def supported(cls, config):
         return True
+
+    def checksum_to_path(self, checksum):
+        return posixpath.join(self._path_str, checksum[0:2], checksum[2:])
 
     def list_cache_paths(self, prefix=None, progress_callback=None):
         assert self.path_info is not None
@@ -148,11 +152,15 @@ class LocalRemote(BaseRemote):
         return file_md5(path_info)[0]
 
     def remove(self, path_info):
-        if path_info.scheme != "local":
-            raise NotImplementedError
+        if isinstance(path_info, PathInfo):
+            if path_info.scheme != "local":
+                raise NotImplementedError
+            path = path_info.fspath
+        else:
+            path = path_info
 
-        if self.exists(path_info):
-            remove(path_info.fspath)
+        if self.exists(path):
+            remove(path)
 
     def move(self, from_info, to_info, mode=None):
         if from_info.scheme != "local" or to_info.scheme != "local":

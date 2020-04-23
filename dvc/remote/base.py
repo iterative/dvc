@@ -3,7 +3,6 @@ import hashlib
 import itertools
 import json
 import logging
-import posixpath
 import tempfile
 from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor
@@ -722,8 +721,7 @@ class BaseRemote(object):
     def checksum_to_path_info(self, checksum):
         return self.path_info / checksum[0:2] / checksum[2:]
 
-    def checksum_to_path(self, checksum):
-        return posixpath.join(self._path_str, checksum[0:2], checksum[2:])
+    checksum_to_path = checksum_to_path_info
 
     @cached_property
     def _path_str(self):
@@ -806,19 +804,18 @@ class BaseRemote(object):
 
         - Remove the file from cache if it doesn't match the actual checksum
         """
-
-        cache_path = self.checksum_to_path(checksum)
-        if self.is_protected(cache_path):
+        cache_info = self.checksum_to_path(checksum)
+        if self.is_protected(cache_info):
             logger.debug(
-                "Assuming '%s' is unchanged since it is read-only", cache_path
+                "Assuming '%s' is unchanged since it is read-only", cache_info
             )
             return False
 
-        actual = self.get_checksum(cache_path)
+        actual = self.get_checksum(cache_info)
 
         logger.debug(
             "cache '%s' expected '%s' actual '%s'",
-            cache_path,
+            cache_info,
             checksum,
             actual,
         )
@@ -829,12 +826,12 @@ class BaseRemote(object):
         if actual.split(".")[0] == checksum.split(".")[0]:
             # making cache file read-only so we don't need to check it
             # next time
-            self.protect(cache_path)
+            self.protect(cache_info)
             return False
 
-        if self.exists(cache_path):
-            logger.warning("corrupted cache file '%s'.", cache_path)
-            self.remove(cache_path)
+        if self.exists(cache_info):
+            logger.warning("corrupted cache file '%s'.", cache_info)
+            self.remove(cache_info)
 
         return True
 
