@@ -1,4 +1,3 @@
-import itertools
 import json
 import logging
 import os
@@ -68,33 +67,33 @@ def fill_template(
         from dvc.repo.plot.data import _load_from_revisions
 
         plot_datas = _load_from_revisions(repo, datafile, revisions)
-        template_data[datafile] = list(
-            itertools.chain.from_iterable(
-                [
-                    pd.to_datapoints(fields=fields, path=path)
-                    for pd in plot_datas
-                ]
-            )
-        )
+
+        tmp_data = []
+        for pd in plot_datas:
+            rev_data_points = pd.to_datapoints(fields=fields, path=path)
+            if default_plot:
+                rev_data_points = _to_default_data(rev_data_points)
+            tmp_data.extend(rev_data_points)
+
+        template_data[datafile] = tmp_data
+
+    if len(template_data) == 0:
+        raise NoDataForTemplateError(template_path)
+
+    filled_template = Template.fill(template_path, template_data, datafile)
 
     if default_plot:
-        return _fill_default_template(repo, template_data)
+        return _fix_default_template(template_data, filled_template)
 
-    return Template.fill(template_path, template_data, datafile)
+    return filled_template
 
 
-def _fill_default_template(repo, template_data):
-    if len(template_data) == 0:
-        raise NoDataForTemplateError(repo.plot_templates.default_template)
-    assert (len(template_data)) == 1
-    datafile, data = first(template_data.items())
-
-    ordered_keys = list(first(data).keys())
-    ordered_keys.remove(PlotData.REVISION_FIELD)
-    data_field = last(ordered_keys)
-
+def _to_default_data(data_points):
+    keys = list(first(data_points).keys())
+    keys.remove(PlotData.REVISION_FIELD)
+    data_field = last(keys)
     new_data = []
-    for index, data_point in enumerate(data):
+    for index, data_point in enumerate(data_points):
         new_data.append(
             {
                 "x": index,
@@ -102,14 +101,19 @@ def _fill_default_template(repo, template_data):
                 PlotData.REVISION_FIELD: data_point[PlotData.REVISION_FIELD],
             }
         )
+    return new_data
 
-    tmp_plot = json.loads(
-        Template.fill(
-            repo.plot_templates.default_template,
-            {datafile: new_data},
-            datafile,
-        )
-    )
+
+def _fix_default_template(template_data, plot_json):
+    assert len(template_data) == 1
+    datafile, data = first(template_data.items())
+
+    keys = list(first(data).keys())
+    keys.remove(PlotData.REVISION_FIELD)
+    keys.remove("x")
+    data_field = first(keys)
+
+    tmp_plot = json.loads(plot_json)
     tmp_plot["title"] = datafile
     tmp_plot["encoding"]["y"]["field"] = data_field
     return json.dumps(

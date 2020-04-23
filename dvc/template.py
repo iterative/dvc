@@ -103,9 +103,6 @@ class Template:
             else:
                 key = file
 
-            if key not in data:
-                raise NoDataForTemplateError(template_path)
-
             result_content = result_content.replace(
                 placeholder,
                 json.dumps(
