@@ -15,7 +15,7 @@ def test_parse_json(path, expected_result):
         "some": {"path": [{"a": 1, "b": 2, "c": 3}, {"a": 4, "b": 5, "c": 6}]}
     }
 
-    result, _ = _apply_path(value, path=path)
+    result = _apply_path(value, path=path)
 
     assert result == expected_result
 
@@ -40,7 +40,6 @@ def test_finding_lists(dictionary, expected_result):
 def test_finding_data():
     data = {"a": {"b": [{"x": 2, "y": 3}, {"x": 1, "y": 5}]}}
 
-    result, fieldnames = _find_data(data, None, fields={"x"})
+    result = _find_data(data, fields={"x"})
 
-    assert fieldnames is None
     assert result == [{"x": 2, "y": 3}, {"x": 1, "y": 5}]

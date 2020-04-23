@@ -68,9 +68,9 @@ def plot_data(filename, revision, content):
     raise PlotMetricTypeError(filename)
 
 
-def _filter_fields(data_points, fieldnames=None, fields=None, **kwargs):
+def _filter_fields(data_points, fields=None, **kwargs):
     if not fields:
-        return data_points, fieldnames
+        return data_points
     assert isinstance(fields, set)
 
     new_data = []
@@ -87,32 +87,25 @@ def _filter_fields(data_points, fieldnames=None, fields=None, **kwargs):
         to_del = keys - fields
         for key in to_del:
             del new_dp[key]
-            if fieldnames and key in fieldnames:
-                fieldnames.remove(key)
         new_data.append(new_dp)
-    return new_data, fieldnames
+    return new_data
 
 
-def _transform_to_default_data(
-    data_points, fieldnames=None, default_plot=False, **kwargs
-):
+def _transform_to_default_data(data_points, default_plot=False, **kwargs):
     if not default_plot:
-        return data_points, fieldnames
+        return data_points
 
     new_data = []
-    if fieldnames:
-        y = last(fieldnames)
-    else:
-        y = last(list(first(data_points).keys()))
+    y = last(list(first(data_points).keys()))
 
     for index, data_point in enumerate(data_points):
         new_data.append({"x": index, y: data_point[y]})
-    return new_data, ["x", y]
+    return new_data
 
 
-def _apply_path(data, fieldnames=None, path=None, **kwargs):
+def _apply_path(data, path=None, **kwargs):
     if not path or not isinstance(data, dict):
-        return data, fieldnames
+        return data
 
     import jsonpath_ng
 
@@ -124,10 +117,8 @@ def _apply_path(data, fieldnames=None, path=None, **kwargs):
         and isinstance(first(first_datum.value), dict)
     ):
         data_points = first_datum.value
-        fieldnames = list(first(data_points).keys())
     elif len(first_datum.path.fields) == 1:
         field_name = first(first_datum.path.fields)
-        fieldnames = [field_name]
         data_points = [{field_name: datum.value} for datum in found]
     else:
         raise PlotDataStructureError()
@@ -137,7 +128,7 @@ def _apply_path(data, fieldnames=None, path=None, **kwargs):
     ):
         raise PlotDataStructureError()
 
-    return data_points, fieldnames
+    return data_points
 
 
 def _lists(dictionary):
@@ -148,18 +139,16 @@ def _lists(dictionary):
             yield value
 
 
-def _find_data(data, fieldnames=None, fields=None, **kwargs):
+def _find_data(data, fields=None, **kwargs):
     if not fields or not isinstance(data, dict):
-        return data, fieldnames
+        return data
 
     assert isinstance(fields, set)
 
     for l in _lists(data):
         if all([isinstance(dp, dict) for dp in l]):
             if set(first(l).keys()) & fields == fields:
-                if fieldnames:
-                    return l, [f for f in fieldnames if f in fields]
-                return l, None
+                return l
     raise PlotDataStructureError()
 
 
@@ -168,7 +157,6 @@ class PlotData:
         self.filename = filename
         self.revision = revision
         self.content = content
-        self.fieldnames = None
 
     @property
     def raw(self):
@@ -179,10 +167,9 @@ class PlotData:
 
     def to_datapoints(self, **kwargs):
         data = self.raw
-        fieldnames = self.fieldnames
 
         for data_proc in self._processors():
-            data, fieldnames = data_proc(data, fieldnames, **kwargs)
+            data = data_proc(data, **kwargs)
 
         for data_point in data:
             data_point["rev"] = self.revision
@@ -221,8 +208,13 @@ class CSVPlotData(PlotData):
                 delimiter=self.delimiter,
             )
 
-        self.fieldnames = reader.fieldnames
-        return [row for row in reader]
+        fieldnames = reader.fieldnames
+        data = [row for row in reader]
+
+        return [
+            OrderedDict([(field, data_point[field]) for field in fieldnames])
+            for data_point in data
+        ]
 
 
 class YAMLPLotData(PlotData):
