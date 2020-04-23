@@ -10,6 +10,7 @@ from dvc.path_info import WebdavURLInfo
 class RemoteWEBDAV(RemoteHTTP):
     scheme = Schemes.WEBDAV
     path_cls = WebdavURLInfo
+    REQUEST_TIMEOUT = 20
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         def chunks():
@@ -45,6 +46,8 @@ class RemoteWEBDAV(RemoteHTTP):
         for idx in range(from_idx, len(url_cols)):
             response = self._request("MKCOL", url_cols[idx])
             if response.status_code not in (200, 201):
+                if bool(self._request("HEAD", url_cols[idx])):
+                    continue
                 raise HTTPError(response.status_code, response.reason)
 
     def gc(self):

@@ -66,23 +66,22 @@ class PushRequestHandler(SimpleHTTPRequestHandler):
 
 
 class WebDavSimpleHandler(SimpleHTTPRequestHandler):
-    """
-    paths:
-        /a/ - exists
-        other - not exists
-    created path: "/a/b/"
-    """
-
     def do_HEAD(self):
-        if self.path in ["/a/"]:
+        if self.path == "/a/":
             self.send_response(HTTPStatus.OK)
+        elif self.path == "/a/b/":
+            self.send_response(HTTPStatus.OK)
+        elif self.path == "/a/c/":
+            self.send_response(HTTPStatus.BAD_REQUEST)
         else:
             self.send_response(HTTPStatus.BAD_REQUEST)
         self.end_headers()
 
     def do_MKCOL(self):
-        if self.path in ["/a/b/"]:
+        if self.path == "/a/b/":
             self.send_response(HTTPStatus.CREATED)
+        elif self.path == "/a/c/":
+            self.send_response(HTTPStatus.BAD_REQUEST)
         else:
             self.send_response(HTTPStatus.BAD_REQUEST)
         self.end_headers()
