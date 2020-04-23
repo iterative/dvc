@@ -1,6 +1,5 @@
 import os
 import stat
-from pathlib import Path
 
 import configobj
 import pytest
@@ -155,7 +154,7 @@ class TestCmdCacheDir(TestDvc):
         self.assertEqual(ret, 0)
 
         config = configobj.ConfigObj(self.dvc.config.files["repo"])
-        self.assertEqual(Path(config["cache"]["dir"]), Path(dname))
+        self.assertEqual(config["cache"]["dir"], dname.replace("\\", "/"))
 
     def test_relative_path(self):
         tmpdir = self.mkdtemp()
@@ -167,7 +166,7 @@ class TestCmdCacheDir(TestDvc):
         # dir path written to config should be just one level above.
         rel = os.path.join("..", dname)
         config = configobj.ConfigObj(self.dvc.config.files["repo"])
-        self.assertEqual(Path(config["cache"]["dir"]), Path(rel))
+        self.assertEqual(config["cache"]["dir"], rel.replace("\\", "/"))
 
         ret = main(["add", self.FOO])
         self.assertEqual(ret, 0)
