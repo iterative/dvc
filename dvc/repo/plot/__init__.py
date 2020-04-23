@@ -172,7 +172,8 @@ def _infer_result_file(datafile, template_path, embed):
 
     if result_file == datafile or result_file == template_path:
         raise DvcException(
-            "Could not infer plot name, please provide it " "with -f option."
+            "Cannot create '{}': file already exists, use -r to redefine "
+            "it".format(result_file)
         )
     return result_file
 

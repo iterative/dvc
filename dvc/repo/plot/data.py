@@ -80,8 +80,7 @@ def _filter_fields(data_points, fields=None, **kwargs):
         keys = set(data_point.keys())
         if keys & fields != fields:
             raise DvcException(
-                "Could not find some of provided fields: "
-                "'{}' in '{}'.".format(", ".join(fields), ", ".join(keys))
+                "Could not find fields: '{}'.".format(", ".join(fields))
             )
 
         to_del = keys - fields
