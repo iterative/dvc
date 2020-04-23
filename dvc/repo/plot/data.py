@@ -106,8 +106,8 @@ def _transform_to_default_data(
         y = last(list(first(data_points).keys()))
 
     for index, data_point in enumerate(data_points):
-        new_data.append({"x": index, "y": data_point[y]})
-    return new_data, ["x", "y"]
+        new_data.append({"x": index, y: data_point[y]})
+    return new_data, ["x", y]
 
 
 def _apply_path(data, fieldnames=None, path=None, **kwargs):

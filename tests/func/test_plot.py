@@ -52,6 +52,7 @@ def _write_json(tmp_dir, metric, filename):
 
 
 def test_plot_csv_one_column(tmp_dir, scm, dvc):
+    # for single column write with no header, hence `value` in result
     metric = [{"val": 2}, {"val": 3}]
     _write_csv(metric, "metric.csv")
     _run_with_metric(tmp_dir, metric_filename="metric.csv")
@@ -60,8 +61,8 @@ def test_plot_csv_one_column(tmp_dir, scm, dvc):
 
     plot_json = json.loads((tmp_dir / result).read_text())
     assert plot_json["data"]["values"] == [
-        {"y": "2", "x": 0, "rev": "workspace"},
-        {"y": "3", "x": 1, "rev": "workspace"},
+        {"value": "2", "x": 0, "rev": "workspace"},
+        {"value": "3", "x": 1, "rev": "workspace"},
     ]
 
 
@@ -76,8 +77,8 @@ def test_plot_csv_multiple_columns(tmp_dir, scm, dvc):
     result = dvc.plot("metric.csv")
     plot_json = json.loads((tmp_dir / result).read_text())
     assert plot_json["data"]["values"] == [
-        {"y": "2", "x": 0, "rev": "workspace"},
-        {"y": "3", "x": 1, "rev": "workspace"},
+        {"val": "2", "x": 0, "rev": "workspace"},
+        {"val": "3", "x": 1, "rev": "workspace"},
     ]
 
 
@@ -90,8 +91,8 @@ def test_plot_json_single_val(tmp_dir, scm, dvc):
 
     plot_json = json.loads((tmp_dir / result).read_text())
     assert plot_json["data"]["values"] == [
-        {"y": 2, "x": 0, "rev": "workspace"},
-        {"y": 3, "x": 1, "rev": "workspace"},
+        {"val": 2, "x": 0, "rev": "workspace"},
+        {"val": 3, "x": 1, "rev": "workspace"},
     ]
 
 
@@ -107,8 +108,8 @@ def test_plot_json_multiple_val(tmp_dir, scm, dvc):
 
     plot_json = json.loads((tmp_dir / result).read_text())
     assert plot_json["data"]["values"] == [
-        {"y": 2, "x": 0, "rev": "workspace"},
-        {"y": 3, "x": 1, "rev": "workspace"},
+        {"val": 2, "x": 0, "rev": "workspace"},
+        {"val": 3, "x": 1, "rev": "workspace"},
     ]
 
 
@@ -362,8 +363,8 @@ def test_plot_default_choose_column(tmp_dir, scm, dvc):
 
     plot_json = json.loads((tmp_dir / result).read_text())
     assert plot_json["data"]["values"] == [
-        {"x": 0, "y": 2, "rev": "workspace"},
-        {"x": 1, "y": 3, "rev": "workspace"},
+        {"x": 0, "b": 2, "rev": "workspace"},
+        {"x": 1, "b": 3, "rev": "workspace"},
     ]
 
 
@@ -377,8 +378,8 @@ def test_plot_embed(tmp_dir, scm, dvc):
     page_content = BeautifulSoup((tmp_dir / result).read_text())
     data_dump = json.dumps(
         [
-            {"y": 2, "x": 0, "rev": "workspace"},
-            {"y": 3, "x": 1, "rev": "workspace"},
+            {"val": 2, "x": 0, "rev": "workspace"},
+            {"val": 3, "x": 1, "rev": "workspace"},
         ],
         sort_keys=True,
     )

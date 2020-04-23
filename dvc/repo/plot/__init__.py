@@ -1,7 +1,9 @@
 import itertools
+import json
 import logging
 import os
 
+from funcy import first
 
 from dvc.exceptions import DvcException
 from dvc.template import Template
@@ -76,7 +78,20 @@ def fill_template(
             )
         )
 
-    return Template.fill(template_path, template_data, datafile)
+    filled_template = Template.fill(template_path, template_data, datafile)
+
+    if default_plot:
+        assert len(template_data) == 1
+        tmp_plot = json.loads(filled_template)
+        tmp_plot["title"] = first(template_data.keys())
+        tmp_plot["encoding"]["y"]["field"] = first(
+            set(first(first(template_data.values())).keys()) - {"x", "rev"}
+        )
+        filled_template = json.dumps(
+            tmp_plot, indent=4, separators=(",", ": "), sort_keys=True
+        )
+
+    return filled_template
 
 
 def plot(
