@@ -184,6 +184,8 @@ SCHEMA = {
                 },
                 "http": {**HTTP_COMMON, **REMOTE_COMMON},
                 "https": {**HTTP_COMMON, **REMOTE_COMMON},
+                "webdav": {**HTTP_COMMON, **REMOTE_COMMON},
+                "webdavs": {**HTTP_COMMON, **REMOTE_COMMON},
                 "remote": {str: object},  # Any of the above options are valid
             }
         )
