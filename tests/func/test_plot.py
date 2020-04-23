@@ -132,6 +132,37 @@ def test_plot_confusion(tmp_dir, dvc):
     ]
 
 
+def test_plot_multiple_revs_default(tmp_dir, scm, dvc):
+    metric_1 = [{"x": 1, "y": 2}, {"x": 2, "y": 3}]
+    _write_json(tmp_dir, metric_1, "metric.json")
+    _run_with_metric(tmp_dir, "metric.json", "init", "v1")
+
+    metric_2 = [{"x": 1, "y": 3}, {"x": 2, "y": 5}]
+    _write_json(tmp_dir, metric_2, "metric.json")
+    _run_with_metric(tmp_dir, "metric.json", "second", "v2")
+
+    metric_3 = [{"x": 1, "y": 5}, {"x": 2, "y": 6}]
+    _write_json(tmp_dir, metric_3, "metric.json")
+    _run_with_metric(tmp_dir, "metric.json", "third")
+
+    result = dvc.plot(
+        "metric.json",
+        fields={"y"},
+        revisions=["HEAD", "v2", "v1"],
+        fname="result.json",
+    )
+
+    plot_json = json.loads((tmp_dir / result).read_text())
+    assert plot_json["data"]["values"] == [
+        {"y": 5, "x": 0, "rev": "HEAD"},
+        {"y": 6, "x": 1, "rev": "HEAD"},
+        {"y": 3, "x": 0, "rev": "v2"},
+        {"y": 5, "x": 1, "rev": "v2"},
+        {"y": 2, "x": 0, "rev": "v1"},
+        {"y": 3, "x": 1, "rev": "v1"},
+    ]
+
+
 def test_plot_multiple_revs(tmp_dir, scm, dvc):
     shutil.copy(
         fspath(tmp_dir / ".dvc" / "plot" / "default.json"), "template.json"

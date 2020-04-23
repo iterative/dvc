@@ -37,9 +37,10 @@ def test_finding_lists(dictionary, expected_result):
     assert list(result) == expected_result
 
 
-def test_finding_data():
+@pytest.mark.parametrize("fields", [{"x"}, set()])
+def test_finding_data(fields):
     data = {"a": {"b": [{"x": 2, "y": 3}, {"x": 1, "y": 5}]}}
 
-    result = _find_data(data, fields={"x"})
+    result = _find_data(data, fields=fields)
 
     assert result == [{"x": 2, "y": 3}, {"x": 1, "y": 5}]

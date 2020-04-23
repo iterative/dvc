@@ -68,7 +68,7 @@ def plot_data(filename, revision, content):
     raise PlotMetricTypeError(filename)
 
 
-def _filter_fields(data_points, fields=None, **kwargs):
+def _filter_fields(data_points, filename, revision, fields=None, **kwargs):
     if not fields:
         return data_points
     assert isinstance(fields, set)
@@ -80,7 +80,9 @@ def _filter_fields(data_points, fields=None, **kwargs):
         keys = set(data_point.keys())
         if keys & fields != fields:
             raise DvcException(
-                "Could not find fields: '{}'.".format(", ".join(fields))
+                "Could not find fields: '{}' for '{}' at '{}'.".format(
+                    ", " "".join(fields), filename, revision
+                )
             )
 
         to_del = keys - fields
@@ -127,10 +129,12 @@ def _lists(dictionary):
 
 
 def _find_data(data, fields=None, **kwargs):
-    if not fields or not isinstance(data, dict):
+    if not isinstance(data, dict):
         return data
 
-    assert isinstance(fields, set)
+    if not fields:
+        # just look for first list of dicts
+        fields = set()
 
     for l in _lists(data):
         if all([isinstance(dp, dict) for dp in l]):
@@ -158,7 +162,9 @@ class PlotData:
         data = self.raw
 
         for data_proc in self._processors():
-            data = data_proc(data, **kwargs)
+            data = data_proc(
+                data, filename=self.filename, revision=self.revision, **kwargs
+            )
 
         for data_point in data:
             data_point[self.REVISION_FIELD] = self.revision
