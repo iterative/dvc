@@ -6,7 +6,7 @@ import os
 from collections import OrderedDict
 from copy import copy
 
-from funcy import first, last, cached_property
+from funcy import first, cached_property
 from ruamel import yaml
 
 from dvc.exceptions import DvcException, PathMissingError
@@ -91,18 +91,6 @@ def _filter_fields(data_points, fields=None, **kwargs):
     return new_data
 
 
-def _transform_to_default_data(data_points, default_plot=False, **kwargs):
-    if not default_plot:
-        return data_points
-
-    new_data = []
-    y = last(list(first(data_points).keys()))
-
-    for index, data_point in enumerate(data_points):
-        new_data.append({"x": index, y: data_point[y]})
-    return new_data
-
-
 def _apply_path(data, path=None, **kwargs):
     if not path or not isinstance(data, dict):
         return data
@@ -153,6 +141,8 @@ def _find_data(data, fields=None, **kwargs):
 
 
 class PlotData:
+    REVISION_FIELD = "rev"
+
     def __init__(self, filename, revision, content, **kwargs):
         self.filename = filename
         self.revision = revision
@@ -163,7 +153,7 @@ class PlotData:
         raise NotImplementedError
 
     def _processors(self):
-        return [_filter_fields, _transform_to_default_data]
+        return [_filter_fields]
 
     def to_datapoints(self, **kwargs):
         data = self.raw
@@ -172,7 +162,7 @@ class PlotData:
             data = data_proc(data, **kwargs)
 
         for data_point in data:
-            data_point["rev"] = self.revision
+            data_point[self.REVISION_FIELD] = self.revision
         return data
 
 
