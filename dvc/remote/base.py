@@ -3,6 +3,7 @@ import hashlib
 import itertools
 import json
 import logging
+import posixpath
 import tempfile
 from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor
@@ -10,6 +11,8 @@ from copy import copy
 from functools import partial, wraps
 from multiprocessing import cpu_count
 from operator import itemgetter
+
+from funcy import cached_property
 
 from shortuuid import uuid
 
@@ -322,7 +325,7 @@ class BaseRemote(object):
         return checksum.endswith(cls.CHECKSUM_DIR_SUFFIX)
 
     def get_checksum(self, path_info):
-        assert path_info.scheme == self.scheme
+        assert isinstance(path_info, str) or path_info.scheme == self.scheme
 
         if not self.exists(path_info):
             return None
@@ -719,6 +722,13 @@ class BaseRemote(object):
     def checksum_to_path_info(self, checksum):
         return self.path_info / checksum[0:2] / checksum[2:]
 
+    def checksum_to_path(self, checksum):
+        return posixpath.join(self._path_str, checksum[0:2], checksum[2:])
+
+    @cached_property
+    def _path_str(self):
+        return str(self.path_info)
+
     def list_cache_paths(self, prefix=None, progress_callback=None):
         raise NotImplementedError
 
@@ -797,18 +807,18 @@ class BaseRemote(object):
         - Remove the file from cache if it doesn't match the actual checksum
         """
 
-        cache_info = self.checksum_to_path_info(checksum)
-        if self.is_protected(cache_info):
+        cache_path = self.checksum_to_path(checksum)
+        if self.is_protected(cache_path):
             logger.debug(
-                "Assuming '%s' is unchanged since it is read-only", cache_info
+                "Assuming '%s' is unchanged since it is read-only", cache_path
             )
             return False
 
-        actual = self.get_checksum(cache_info)
+        actual = self.get_checksum(cache_path)
 
         logger.debug(
             "cache '%s' expected '%s' actual '%s'",
-            cache_info,
+            cache_path,
             checksum,
             actual,
         )
@@ -819,12 +829,12 @@ class BaseRemote(object):
         if actual.split(".")[0] == checksum.split(".")[0]:
             # making cache file read-only so we don't need to check it
             # next time
-            self.protect(cache_info)
+            self.protect(cache_path)
             return False
 
-        if self.exists(cache_info):
-            logger.warning("corrupted cache file '%s'.", cache_info)
-            self.remove(cache_info)
+        if self.exists(cache_path):
+            logger.warning("corrupted cache file '%s'.", cache_path)
+            self.remove(cache_path)
 
         return True
 

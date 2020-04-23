@@ -88,7 +88,7 @@ class LocalRemote(BaseRemote):
 
     def exists(self, path_info):
         assert is_working_tree(self.repo.tree)
-        assert path_info.scheme == "local"
+        assert isinstance(path_info, str) or path_info.scheme == "local"
         return self.repo.tree.exists(fspath_py35(path_info))
 
     def makedirs(self, path_info):
