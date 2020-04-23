@@ -17,27 +17,27 @@ class CmdPLot(CmdBase):
     def run(self):
 
         fields = None
-        path = None
-        if self.args.filter:
-            if self.args.filter.startswith("$"):
-                path = self.args.filter
+        jsonpath = None
+        if self.args.fields:
+            if self.args.fields.startswith("$"):
+                jsonpath = self.args.fields
             else:
-                fields = set(self.args.filter.split(","))
+                fields = set(self.args.fields.split(","))
         try:
-            result = self.repo.plot(
+            result_path = self.repo.plot(
                 datafile=self.args.datafile,
                 template=self.args.template,
                 revisions=self._revisions(),
-                fname=self.args.file,
+                fname=self.args.result,
                 fields=fields,
-                path=path,
+                path=jsonpath,
                 embed=not self.args.show_json,
             )
         except DvcException:
             logger.exception("")
             return 1
         logger.info(
-            "file://{}".format(os.path.join(self.repo.root_dir, result))
+            "file://{}".format(os.path.join(self.repo.root_dir, result_path))
         )
         return 0
 
@@ -98,7 +98,7 @@ def add_parser(subparsers, parent_parser):
         "datafile", nargs="?", default=None, help="Data to be visualized."
     )
     plot_show_parser.add_argument(
-        "-f", "--file", help="Name of the generated file."
+        "-r", "--result", help="Name of the generated file."
     )
     plot_show_parser.add_argument(
         "--show-json",
@@ -107,7 +107,8 @@ def add_parser(subparsers, parent_parser):
         help="Do not wrap vega plot json with HTML.",
     )
     plot_show_parser.add_argument(
-        "--filter",
+        "-f",
+        "--fields",
         default=None,
         help="Choose which fileds or jsonpath to put into plot.",
     )
@@ -139,7 +140,7 @@ def add_parser(subparsers, parent_parser):
         help="Data to be visualized.",
     )
     plot_diff_parser.add_argument(
-        "-f", "--file", help="Name of the generated file."
+        "-r", "--result", help="Name of the generated file."
     )
     plot_diff_parser.add_argument(
         "revisions",
@@ -155,7 +156,8 @@ def add_parser(subparsers, parent_parser):
         help="Do not wrap vega plot json with HTML.",
     )
     plot_diff_parser.add_argument(
-        "--filter",
+        "-f",
+        "--fields",
         default=None,
         help="Choose which filed(s) or jsonpath to put into plot.",
     )
