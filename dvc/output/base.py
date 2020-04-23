@@ -393,9 +393,13 @@ class OutputBase(object):
 
         path = str(self.path_info)
         filter_path = str(filter_info) if filter_info else None
+        is_win = os.name == "nt"
         for entry in self.dir_cache:
             checksum = entry[self.remote.PARAM_CHECKSUM]
-            entry_path = os.path.join(path, entry[self.remote.PARAM_RELPATH])
+            entry_relpath = entry[self.remote.PARAM_RELPATH]
+            if is_win:
+                entry_relpath = entry_relpath.replace("/", os.sep)
+            entry_path = os.path.join(path, entry_relpath)
             if (
                 not filter_path
                 or entry_path == filter_path
