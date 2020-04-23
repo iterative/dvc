@@ -1,4 +1,5 @@
 import logging
+import os
 from urllib.parse import urlparse
 from copy import copy
 
@@ -390,11 +391,21 @@ class OutputBase(object):
             else:
                 return cache
 
+        path = str(self.path_info)
+        filter_path = str(filter_info) if filter_info else None
+        is_win = os.name == "nt"
         for entry in self.dir_cache:
             checksum = entry[self.remote.PARAM_CHECKSUM]
-            info = self.path_info / entry[self.remote.PARAM_RELPATH]
-            if not filter_info or info.isin_or_eq(filter_info):
-                cache.add(self.scheme, checksum, str(info))
+            entry_relpath = entry[self.remote.PARAM_RELPATH]
+            if is_win:
+                entry_relpath = entry_relpath.replace("/", os.sep)
+            entry_path = os.path.join(path, entry_relpath)
+            if (
+                not filter_path
+                or entry_path == filter_path
+                or entry_path.startswith(filter_path + os.sep)
+            ):
+                cache.add(self.scheme, checksum, entry_path)
 
         return cache
 
