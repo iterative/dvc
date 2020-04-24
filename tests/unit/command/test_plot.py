@@ -41,6 +41,7 @@ def test_metrics_diff(mocker):
         fields={"column1", "column2"},
         path=None,
         embed=False,
+        csv_header=True,
     )
 
 
@@ -56,8 +57,9 @@ def test_metrics_show(mocker):
             "-f",
             "$.data",
             "--no-html",
-            "datafile",
             "--stdout",
+            "--no-csv-header",
+            "datafile",
         ]
     )
     assert cli_args.func == CmdPlotShow
@@ -77,6 +79,7 @@ def test_metrics_show(mocker):
         fields=None,
         path="$.data",
         embed=False,
+        csv_header=False,
     )
 
 

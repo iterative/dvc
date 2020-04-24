@@ -57,6 +57,7 @@ class CmdPLot(CmdBase):
                 fields=fields,
                 path=jsonpath,
                 embed=not self.args.no_html,
+                csv_header=not self.args.no_csv_header,
             )
 
             if self.args.stdout:
@@ -156,6 +157,12 @@ def add_parser(subparsers, parent_parser):
         default=False,
         help="Print plot content to stdout",
     )
+    plot_show_parser.add_argument(
+        "--no-csv-header",
+        action="store_true",
+        default=False,
+        help="Provided csv datafile does not have a header.",
+    )
     plot_show_parser.set_defaults(func=CmdPlotShow)
 
     PLOT_DIFF_HELP = (
@@ -211,5 +218,11 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Print plot content to stdout",
+    )
+    plot_diff_parser.add_argument(
+        "--no-csv-header",
+        action="store_true",
+        default=False,
+        help="Provided csv datafile does not have a header.",
     )
     plot_diff_parser.set_defaults(func=CmdPlotDiff)

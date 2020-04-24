@@ -57,12 +57,12 @@ def test_plot_csv_one_column(tmp_dir, scm, dvc):
     _write_csv(metric, "metric.csv")
     _run_with_metric(tmp_dir, metric_filename="metric.csv")
 
-    plot_string = dvc.plot("metric.csv")
+    plot_string = dvc.plot("metric.csv", csv_header=False)
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"value": "2", "x": 0, "rev": "workspace"},
-        {"value": "3", "x": 1, "rev": "workspace"},
+        {"0": "2", "x": 0, "rev": "workspace"},
+        {"0": "3", "x": 1, "rev": "workspace"},
     ]
 
 

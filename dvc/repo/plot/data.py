@@ -6,7 +6,7 @@ import os
 from collections import OrderedDict
 from copy import copy
 
-from funcy import first, cached_property
+from funcy import first
 from ruamel import yaml
 
 from dvc.exceptions import DvcException, PathMissingError
@@ -151,15 +151,14 @@ class PlotData:
         self.revision = revision
         self.content = content
 
-    @property
-    def raw(self):
+    def raw(self, **kwargs):
         raise NotImplementedError
 
     def _processors(self):
         return [_filter_fields]
 
     def to_datapoints(self, **kwargs):
-        data = self.raw
+        data = self.raw(**kwargs)
 
         for data_proc in self._processors():
             data = data_proc(
@@ -172,8 +171,7 @@ class PlotData:
 
 
 class JSONPlotData(PlotData):
-    @cached_property
-    def raw(self):
+    def raw(self, **kwargs):
         return json.loads(self.content, object_pairs_hook=OrderedDict)
 
     def _processors(self):
@@ -186,21 +184,18 @@ class CSVPlotData(PlotData):
         super(CSVPlotData, self).__init__(filename, revision, content)
         self.delimiter = delimiter
 
-    @cached_property
-    def raw(self):
+    def raw(self, csv_header=True, **kwargs):
         first_row = first(csv.reader(io.StringIO(self.content)))
 
-        if len(first_row) == 1:
+        if csv_header:
             reader = csv.DictReader(
-                io.StringIO(self.content),
-                delimiter=self.delimiter,
-                fieldnames=["value"],
+                io.StringIO(self.content), delimiter=self.delimiter,
             )
         else:
             reader = csv.DictReader(
                 io.StringIO(self.content),
-                skipinitialspace=True,
                 delimiter=self.delimiter,
+                fieldnames=[str(i) for i in range(len(first_row))],
             )
 
         fieldnames = reader.fieldnames
@@ -213,8 +208,7 @@ class CSVPlotData(PlotData):
 
 
 class YAMLPLotData(PlotData):
-    @cached_property
-    def raw(self):
+    def raw(self, **kwargs):
         return yaml.parse(io.StringIO(self.content))
 
 

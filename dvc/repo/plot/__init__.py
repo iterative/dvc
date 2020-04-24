@@ -56,7 +56,13 @@ def _evaluate_templatepath(repo, template=None):
 
 @locked
 def fill_template(
-    repo, datafile, template_path, revisions, fields=None, path=None
+    repo,
+    datafile,
+    template_path,
+    revisions,
+    fields=None,
+    path=None,
+    csv_header=True,
 ):
     default_plot = template_path == repo.plot_templates.default_template
 
@@ -70,7 +76,9 @@ def fill_template(
 
         tmp_data = []
         for pd in plot_datas:
-            rev_data_points = pd.to_datapoints(fields=fields, path=path)
+            rev_data_points = pd.to_datapoints(
+                fields=fields, path=path, csv_header=csv_header
+            )
             if default_plot:
                 rev_data_points = _to_default_data(rev_data_points)
             tmp_data.extend(rev_data_points)
@@ -129,6 +137,7 @@ def plot(
     fields=None,
     path=None,
     embed=False,
+    csv_header=True,
 ):
     if revisions is None:
         from dvc.repo.plot.data import WORKSPACE_REVISION_NAME
@@ -141,7 +150,7 @@ def plot(
     template_path = _evaluate_templatepath(repo, template)
 
     plot_content = fill_template(
-        repo, datafile, template_path, revisions, fields, path
+        repo, datafile, template_path, revisions, fields, path, csv_header
     )
 
     if embed:
