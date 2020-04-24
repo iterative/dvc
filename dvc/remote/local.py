@@ -336,11 +336,11 @@ class LocalRemote(BaseRemote):
                     )
                 )
         return self._make_status(
-            named_cache, remote, show_checksums, local_exists, remote_exists
+            named_cache, show_checksums, local_exists, remote_exists
         )
 
     def _make_status(
-        self, named_cache, remote, show_checksums, local_exists, remote_exists
+        self, named_cache, show_checksums, local_exists, remote_exists
     ):
         def make_names(checksum, names):
             return {"name": checksum if show_checksums else " ".join(names)}
