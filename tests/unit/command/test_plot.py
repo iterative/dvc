@@ -17,7 +17,7 @@ def test_metrics_diff(mocker):
             "datafile",
             "--field",
             "column1,column2",
-            "--show-json",
+            "--no-html",
             "--stdout",
             "HEAD",
             "tag1",
@@ -55,7 +55,7 @@ def test_metrics_show(mocker):
             "template",
             "-f",
             "$.data",
-            "--show-json",
+            "--no-html",
             "datafile",
             "--stdout",
         ]

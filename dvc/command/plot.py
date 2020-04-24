@@ -35,7 +35,7 @@ class CmdPLot(CmdBase):
         return "plot"
 
     def _result_extension(self):
-        if not self.args.show_json:
+        if not self.args.no_html:
             return ".html"
         elif self.args.template:
             return os.path.splitext(self.args.template)[-1]
@@ -56,7 +56,7 @@ class CmdPLot(CmdBase):
                 revisions=self._revisions(),
                 fields=fields,
                 path=jsonpath,
-                embed=not self.args.show_json,
+                embed=not self.args.no_html,
             )
 
             if self.args.stdout:
@@ -138,7 +138,7 @@ def add_parser(subparsers, parent_parser):
         "-r", "--result", help="Name of the generated file."
     )
     plot_show_parser.add_argument(
-        "--show-json",
+        "--no-html",
         action="store_true",
         default=False,
         help="Do not wrap vega plot json with HTML.",
@@ -150,6 +150,7 @@ def add_parser(subparsers, parent_parser):
         help="Choose which fileds or jsonpath to put into plot.",
     )
     plot_show_parser.add_argument(
+        "-o",
         "--stdout",
         action="store_true",
         default=False,
@@ -193,7 +194,7 @@ def add_parser(subparsers, parent_parser):
     )
 
     plot_diff_parser.add_argument(
-        "--show-json",
+        "--no-html",
         action="store_true",
         default=False,
         help="Do not wrap vega plot json with HTML.",
@@ -205,6 +206,7 @@ def add_parser(subparsers, parent_parser):
         help="Choose which filed(s) or jsonpath to put into plot.",
     )
     plot_diff_parser.add_argument(
+        "-o",
         "--stdout",
         action="store_true",
         default=False,
