@@ -10,6 +10,6 @@ def lock(self, target, unlock=False):
     dvcfile = dvcfile.Dvcfile(self, path)
     stage = dvcfile.stages[target]
     stage.locked = False if unlock else True
-    dvcfile.dump(stage, update_dvcfile=True)
+    dvcfile.dump(stage, update_pipeline=True)
 
     return stage

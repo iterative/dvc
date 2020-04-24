@@ -176,7 +176,7 @@ class Repo(object):
 
         self.scm.ignore_list(flist)
 
-    def check_modified_graph(self, new_stages, old_stages=None):
+    def check_modified_graph(self, new_stages):
         """Generate graph including the new stage to check for errors"""
         # Building graph might be costly for the ones with many DVC-files,
         # so we provide this undocumented hack to skip it. See [1] for
@@ -191,7 +191,7 @@ class Repo(object):
         #
         # [1] https://github.com/iterative/dvc/issues/2671
         if not getattr(self, "_skip_graph_checks", False):
-            self._collect_graph((old_stages or self.stages) + new_stages)
+            self._collect_graph(self.stages + new_stages)
 
     def _collect_inside(self, path, graph):
         import networkx as nx
@@ -213,14 +213,16 @@ class Repo(object):
             return self._collect_inside(target, graph or self.graph)
 
         dvcfile = Dvcfile(self, file)
-        if name:
-            stage = dvcfile.stages.get(name)
+        stages = list(dvcfile.stages.filter(name).values())
+        if not with_deps:
+            return stages
 
         if not name:
-            if with_deps:
-                raise Exception("where's name, huh?")
-            return list(dvcfile.stages.values())
+            raise Exception(
+                "Not supported combination of 'with_deps' with 'name'."
+            )
 
+        stage = stages[0]
         pipeline = get_pipeline(get_pipelines(graph or self.graph), stage)
         return list(nx.dfs_postorder_nodes(pipeline, stage))
 
@@ -230,11 +232,11 @@ class Repo(object):
         if not target:
             return [(stage, None) for stage in self.stages]
 
-        file, name = parse_target(target, "Dvcfile")
-
-        # Optimization: do not collect the graph for a specific .dvc target
+        file, name = parse_target(target, "pipelines.yaml")
         if Dvcfile.is_valid_filename(file) and not kwargs.get("with_deps"):
-            return [(Dvcfile(self, file).stages.get(name), None)]
+            # Optimization: do not collect the graph for a specific .dvc target
+            stages = Dvcfile(self, file).stages.filter(name)
+            return [(stage, None) for stage in stages.values()]
 
         try:
             (out,) = self.find_outs_by_path(file, strict=False)

@@ -34,6 +34,12 @@ class StageLoader(collections.abc.Mapping):
         self.stages_data = stages_data or {}
         self.lockfile_data = lockfile_data or {}
 
+    def filter(self, item=None):
+        data = self.stages_data
+        if item:
+            data = {item: data.get(item, {})}
+        return self.__class__(self.dvcfile, data, self.lockfile_data,)
+
     @staticmethod
     def _fill_lock_checksums(stage, lock_data):
         from .stage import Stage
@@ -100,6 +106,9 @@ class SingleStageLoader(collections.abc.Mapping):
         self.dvcfile = dvcfile
         self.stage_data = stage_data or {}
         self.stage_text = stage_text
+
+    def filter(self, item=None):
+        return self
 
     def __getitem__(self, item):
         if item:

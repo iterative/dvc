@@ -8,10 +8,6 @@ from voluptuous import MultipleInvalid
 from dvc import serialize
 from dvc.exceptions import DvcException
 from dvc.loader import SingleStageLoader, StageLoader
-from dvc.schema import (
-    COMPILED_SINGLE_STAGE_SCHEMA,
-    COMPILED_MULTI_STAGE_SCHEMA,
-)
 from dvc.stage.exceptions import (
     StageFileBadNameError,
     StageFileDoesNotExistError,
@@ -38,50 +34,28 @@ class MultiStageFileLoadError(DvcException):
         super().__init__("Cannot load multi-stage file: '{}'".format(file))
 
 
-class Dvcfile:
+class FileMixin:
     def __init__(self, repo, path):
         self.repo = repo
         self.path, self.tag = self._get_path_tag(path)
 
     def __repr__(self):
-        return "{}: {}".format(
+        return "Dvcfile: {}".format(
             DVC_FILE, relpath(self.path, self.repo.root_dir)
         )
 
     def __str__(self):
         return "{}: {}".format(DVC_FILE, self.relpath)
 
-    @property
     def relpath(self):
         return relpath(self.path)
 
-    @property
-    def stage(self):
-        data, raw = self._load()
-        if not self.is_multi_stage(data):
-            return SingleStageLoader.load_stage(self, data, raw)
-        raise MultiStageFileLoadError(self.path)
-
-    @property
-    def lockfile(self):
-        return os.path.splitext(self.path)[0] + ".lock"
-
-    @property
-    def stages(self):
-        from . import lockfile
-
-        data, raw = self._load()
-        if self.is_multi_stage(data):
-            lockfile_data = lockfile.load(self.repo, self.lockfile)
-            return StageLoader(self, data.get("stages", {}), lockfile_data)
-        return SingleStageLoader(self, data, raw)
-
     @classmethod
     def is_valid_filename(cls, path):
-        return (
-            path.endswith(DVC_FILE_SUFFIX)
-            or os.path.basename(path) == DVC_FILE
-        )
+        return path.endswith(DVC_FILE_SUFFIX) or os.path.basename(path) in [
+            DVC_FILE,
+            "pipelines.yaml",
+        ]
 
     @classmethod
     def is_stage_file(cls, path):
@@ -116,50 +90,6 @@ class Dvcfile:
             return s, None
         return match.group("path"), match.group("tag")
 
-    def dump(self, stage, update_dvcfile=False):
-        """Dumps given stage appropriately in the dvcfile."""
-        from dvc.stage import PipelineStage
-
-        if not isinstance(stage, PipelineStage):
-            self.dump_single_stage(stage)
-            return
-
-        self.dump_lockfile(stage)
-        if update_dvcfile and not stage.is_data_source:
-            self.dump_multistage_dvcfile(stage)
-
-    def dump_lockfile(self, stage):
-        from . import lockfile
-
-        lockfile.dump(self.repo, self.lockfile, serialize.to_lockfile(stage))
-        self.repo.scm.track_file(relpath(self.lockfile))
-
-    def dump_multistage_dvcfile(self, stage):
-        data = {}
-        if self.exists():
-            with open(self.path, "r") as fd:
-                data = parse_stage_for_update(fd.read(), self.path)
-            if not self.is_multi_stage(data):
-                raise MultiStageFileLoadError(self.path)
-        else:
-            open(self.path, "w+").close()
-
-        data["stages"] = data.get("stages", {})
-        data["stages"].update(serialize.to_dvcfile(stage))
-
-        dump_stage_file(self.path, COMPILED_MULTI_STAGE_SCHEMA(data))
-        self.repo.scm.track_file(relpath(self.path))
-
-    def dump_single_stage(self, stage):
-        self.check_dvc_filename(self.path)
-
-        logger.debug(
-            "Saving information to '{file}'.".format(file=relpath(self.path))
-        )
-
-        dump_stage_file(self.path, serialize.to_single_stage_file(stage))
-        self.repo.scm.track_file(relpath(self.path))
-
     def _load(self):
         # it raises the proper exceptions by priority:
         # 1. when the file doesn't exists
@@ -172,33 +102,15 @@ class Dvcfile:
         with self.repo.tree.open(self.path) as fd:
             stage_text = fd.read()
         d = parse_stage(stage_text, self.path)
+        self.validate(self.SCHEMA, d, self.path)
         return d, stage_text
 
     @staticmethod
-    def validate_single_stage(d, fname=None):
-        Dvcfile._validate(COMPILED_SINGLE_STAGE_SCHEMA, d, fname)
-
-    @staticmethod
-    def validate_multi_stage(d, fname=None):
-        Dvcfile._validate(COMPILED_MULTI_STAGE_SCHEMA, d, fname)
-
-    @staticmethod
-    def _validate(schema, d, fname=None):
+    def validate(schema, d, fname=None):
         try:
             schema(d)
         except MultipleInvalid as exc:
             raise StageFileFormatError(fname, exc)
-
-    def is_multi_stage(self, d=None):
-        if d is None:
-            d = self._load()[0]
-        check_multi_stage = d.get("stages")
-        if check_multi_stage:
-            self.validate_multi_stage(d, self.path)
-            return True
-
-        self.validate_single_stage(d, self.path)
-        return False
 
     def remove_with_prompt(self, force=False):
         if not self.exists():
@@ -212,3 +124,89 @@ class Dvcfile:
             raise StageFileAlreadyExistsError(self.path)
 
         os.unlink(self.path)
+
+
+class SingleStageFile(FileMixin):
+    from dvc.schema import COMPILED_SINGLE_STAGE_SCHEMA as SCHEMA
+
+    @property
+    def stage(self):
+        data, raw = self._load()
+        return SingleStageLoader.load_stage(self, data, raw)
+
+    @property
+    def stages(self):
+        data, raw = self._load()
+        return SingleStageLoader(self, data, raw)
+
+    def dump(self, stage, **kwargs):
+        """Dumps given stage appropriately in the dvcfile."""
+        from dvc.stage import PipelineStage
+
+        assert not isinstance(stage, PipelineStage)
+        self.check_dvc_filename(self.path)
+        logger.debug(
+            "Saving information to '{file}'.".format(file=relpath(self.path))
+        )
+        dump_stage_file(self.path, serialize.to_single_stage_file(stage))
+        self.repo.scm.track_file(relpath(self.path))
+
+
+class PipelineFile(FileMixin):
+    from dvc.schema import COMPILED_MULTI_STAGE_SCHEMA as SCHEMA
+
+    @property
+    def _lockfile(self):
+        return os.path.splitext(self.path)[0] + ".lock"
+
+    def dump(self, stage, update_pipeline=False):
+        """Dumps given stage appropriately in the dvcfile."""
+        from dvc.stage import PipelineStage
+
+        assert isinstance(stage, PipelineStage)
+        self._dump_lockfile(stage)
+        if update_pipeline and not stage.is_data_source:
+            self._dump_pipeline_file(stage)
+
+    def _dump_lockfile(self, stage):
+        from . import lockfile
+
+        lockfile.dump(self.repo, self._lockfile, serialize.to_lockfile(stage))
+        self.repo.scm.track_file(relpath(self._lockfile))
+
+    def _dump_pipeline_file(self, stage):
+        data = {}
+        if self.exists():
+            with open(self.path, "r") as fd:
+                data = parse_stage_for_update(fd.read(), self.path)
+        else:
+            open(self.path, "w+").close()
+
+        data["stages"] = data.get("stages", {})
+        data["stages"].update(serialize.to_dvcfile(stage))
+
+        dump_stage_file(self.path, self.SCHEMA(data))
+        self.repo.scm.track_file(relpath(self.path))
+
+    @property
+    def stage(self):
+        raise MultiStageFileLoadError(self.path)
+
+    @property
+    def stages(self):
+        from . import lockfile
+
+        data, raw = self._load()
+        lockfile_data = lockfile.load(self.repo, self._lockfile)
+        return StageLoader(self, data.get("stages", {}), lockfile_data)
+
+
+class Dvcfile(FileMixin):
+    def __new__(cls, repo, path):
+        assert path
+        _, ext = os.path.splitext(path)
+        assert not ext or ext in [".yml", ".yaml", ".dvc"]
+
+        if not ext or ext == ".dvc":
+            return SingleStageFile(repo, path)
+        return PipelineFile(repo, path)
