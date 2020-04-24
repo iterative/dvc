@@ -1555,7 +1555,7 @@ def test_dvc_formatting_retained(tmp_dir, dvc, run_copy):
     # Add comments and custom formatting to DVC-file
     lines = list(map(_format_dvc_line, stage_path.read_text().splitlines()))
     lines.insert(0, "# Starting comment")
-    stage_text = "".join(l + "\n" for l in lines)
+    stage_text = "".join(line + "\n" for line in lines)
     stage_path.write_text(stage_text)
 
     # Rewrite data source and repro
