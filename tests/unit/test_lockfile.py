@@ -7,13 +7,11 @@ import pytest
 def test_stage_dump_no_outs_deps(tmp_dir, dvc):
     stage = PipelineStage(name="s1", repo=dvc, path="path", cmd="command")
     lockfile.dump(dvc, "path.lock", serialize.to_lockfile(stage))
-    assert lockfile.load(dvc, "path.lock") == {
-        "s1": {"cmd": "command", "deps": {}, "outs": {}}
-    }
+    assert lockfile.load(dvc, "path.lock") == {"s1": {"cmd": "command"}}
 
 
 def test_stage_dump_when_already_exists(tmp_dir, dvc):
-    data = {"s1": {"cmd": "command", "deps": {}, "outs": {}}}
+    data = {"s1": {"cmd": "command", "deps": [], "outs": []}}
     with open("path.lock", "w+") as f:
         json.dump(data, f)
     stage = PipelineStage(name="s2", repo=dvc, path="path", cmd="command2")
@@ -21,7 +19,7 @@ def test_stage_dump_when_already_exists(tmp_dir, dvc):
     lockfile.dump(dvc, "path.lock", serialize.to_lockfile(stage))
     assert lockfile.load(dvc, "path.lock") == {
         **data,
-        "s2": {"cmd": "command2", "deps": {}, "outs": {}},
+        "s2": {"cmd": "command2"},
     }
 
 
@@ -29,8 +27,8 @@ def test_stage_dump_with_deps_and_outs(tmp_dir, dvc):
     data = {
         "s1": {
             "cmd": "command",
-            "deps": {"1.txt": "checksum"},
-            "outs": {"2.txt": "checksum"},
+            "deps": [{"md5": "1.txt", "path": "checksum"}],
+            "outs": [{"md5": "2.txt", "path": "checksum"}],
         }
     }
     with open("path.lock", "w+") as f:
@@ -40,7 +38,7 @@ def test_stage_dump_with_deps_and_outs(tmp_dir, dvc):
     lockfile.dump(dvc, "path.lock", serialize.to_lockfile(stage))
     assert lockfile.load(dvc, "path.lock") == {
         **data,
-        "s2": {"cmd": "command2", "deps": {}, "outs": {}},
+        "s2": {"cmd": "command2"},
     }
 
 
@@ -50,23 +48,28 @@ def test_stage_overwrites_if_already_exists(tmp_dir, dvc):
     stage = PipelineStage(name="s2", repo=dvc, path="path", cmd="command3")
     lockfile.dump(dvc, "path.lock", serialize.to_lockfile(stage))
     assert lockfile.load(dvc, "path.lock") == {
-        "s2": {"cmd": "command3", "deps": {}, "outs": {}},
+        "s2": {"cmd": "command3"},
     }
 
 
 def test_load_when_lockfile_does_not_exist(tmp_dir, dvc):
-    assert {} == lockfile.load(dvc, "dvcfile.lock")
+    assert {} == lockfile.load(dvc, "pipelines.lock")
 
 
 @pytest.mark.parametrize(
     "corrupt_data",
     [
-        {"s1": {"cmd": "command", "outs": {}}},
-        {"s1": {"outs": {}}},
-        {"s1": {"cmd": "command", "deps": {}}},
+        {"s1": {"outs": []}},
         {"s1": {}},
-        {"s1": {"cmd": "command", "outs": {"file": "checksum"}}},
-        {"s1": {"cmd": "command", "deps": {"file": "checksum"}}},
+        {
+            "s1": {
+                "cmd": "command",
+                "outs": [
+                    {"md5": "checksum", "path": "path", "random": "value"}
+                ],
+            }
+        },
+        {"s1": {"cmd": "command", "deps": [{"md5": "checksum"}]}},
     ],
 )
 def test_load_when_lockfile_is_corrupted(tmp_dir, dvc, corrupt_data):

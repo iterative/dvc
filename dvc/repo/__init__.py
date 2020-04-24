@@ -206,18 +206,19 @@ class Repo(object):
         if not target:
             return list(graph) if graph else self.stages
 
-        file, name = parse_target(target, "Dvcfile")
-        file = os.path.abspath(file)
+        if recursive and os.path.isdir(target):
+            stages = self._collect_inside(
+                os.path.abspath(target), graph or self.graph
+            )
+            return stages
 
-        if recursive and os.path.isdir(file):
-            return self._collect_inside(target, graph or self.graph)
-
+        file, name = parse_target(target)
         dvcfile = Dvcfile(self, file)
         stages = list(dvcfile.stages.filter(name).values())
         if not with_deps:
             return stages
 
-        if not name:
+        if name:
             raise Exception(
                 "Not supported combination of 'with_deps' with 'name'."
             )
@@ -436,7 +437,7 @@ class Repo(object):
         for root, dirs, files in self.tree.walk(self.root_dir):
             for file_name in filter(Dvcfile.is_valid_filename, files):
                 path = os.path.join(root, file_name)
-                stages = list(Dvcfile(self, path).stages.values())
+                stages.extend(list(Dvcfile(self, path).stages.values()))
                 outs.update(
                     out.fspath
                     for stage in stages

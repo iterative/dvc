@@ -16,40 +16,40 @@ from tests.basic_env import TestDvc
 
 def test_cmd_obj():
     with pytest.raises(StageFileFormatError):
-        Dvcfile.validate_single_stage({Stage.PARAM_CMD: {}})
+        Dvcfile.validate({Stage.PARAM_CMD: {}})
 
 
 def test_cmd_none():
-    Dvcfile.validate_single_stage({Stage.PARAM_CMD: None})
+    Dvcfile.validate({Stage.PARAM_CMD: None})
 
 
 def test_no_cmd():
-    Dvcfile.validate_single_stage({})
+    Dvcfile.validate({})
 
 
 def test_cmd_str():
-    Dvcfile.validate_single_stage({Stage.PARAM_CMD: "cmd"})
+    Dvcfile.validate({Stage.PARAM_CMD: "cmd"})
 
 
 def test_object():
     with pytest.raises(StageFileFormatError):
-        Dvcfile.validate_single_stage({Stage.PARAM_DEPS: {}})
+        Dvcfile.validate({Stage.PARAM_DEPS: {}})
 
     with pytest.raises(StageFileFormatError):
-        Dvcfile.validate_single_stage({Stage.PARAM_OUTS: {}})
+        Dvcfile.validate({Stage.PARAM_OUTS: {}})
 
 
 def test_none():
-    Dvcfile.validate_single_stage({Stage.PARAM_DEPS: None})
-    Dvcfile.validate_single_stage({Stage.PARAM_OUTS: None})
+    Dvcfile.validate({Stage.PARAM_DEPS: None})
+    Dvcfile.validate({Stage.PARAM_OUTS: None})
 
 
 def test_empty_list():
     d = {Stage.PARAM_DEPS: []}
-    Dvcfile.validate_single_stage(d)
+    Dvcfile.validate(d)
 
     d = {Stage.PARAM_OUTS: []}
-    Dvcfile.validate_single_stage(d)
+    Dvcfile.validate(d)
 
 
 def test_list():
@@ -59,12 +59,12 @@ def test_list():
         {OutputLOCAL.PARAM_PATH: "baz"},
     ]
     d = {Stage.PARAM_DEPS: lst}
-    Dvcfile.validate_single_stage(d)
+    Dvcfile.validate(d)
 
     lst[0][OutputLOCAL.PARAM_CACHE] = True
     lst[1][OutputLOCAL.PARAM_CACHE] = False
     d = {Stage.PARAM_OUTS: lst}
-    Dvcfile.validate_single_stage(d)
+    Dvcfile.validate(d)
 
 
 class TestReload(TestDvc):

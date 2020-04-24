@@ -377,7 +377,7 @@ def format_link(link):
     )
 
 
-def parse_target(target, default="Dvcfile"):
+def parse_target(target, default="pipelines.yaml"):
     if not target:
         return None, None
 

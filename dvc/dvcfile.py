@@ -26,6 +26,8 @@ logger = logging.getLogger(__name__)
 
 DVC_FILE = "Dvcfile"
 DVC_FILE_SUFFIX = ".dvc"
+PIPELINE_FILE = "pipelines.yaml"
+PIPELINE_LOCK = "pipelines.lock"
 TAG_REGEX = r"^(?P<path>.*)@(?P<tag>[^\\/@:]*)$"
 
 
@@ -40,7 +42,7 @@ class FileMixin:
         self.path, self.tag = self._get_path_tag(path)
 
     def __repr__(self):
-        return "Dvcfile: {}".format(
+        return "{}: {}".format(
             DVC_FILE, relpath(self.path, self.repo.root_dir)
         )
 
@@ -102,13 +104,13 @@ class FileMixin:
         with self.repo.tree.open(self.path) as fd:
             stage_text = fd.read()
         d = parse_stage(stage_text, self.path)
-        self.validate(self.SCHEMA, d, self.path)
+        self.validate(d, self.path)
         return d, stage_text
 
-    @staticmethod
-    def validate(schema, d, fname=None):
+    @classmethod
+    def validate(cls, d, fname=None):
         try:
-            schema(d)
+            cls.SCHEMA(d)
         except MultipleInvalid as exc:
             raise StageFileFormatError(fname, exc)
 
@@ -202,11 +204,16 @@ class PipelineFile(FileMixin):
 
 
 class Dvcfile(FileMixin):
+    from dvc.schema import COMPILED_SINGLE_STAGE_SCHEMA as SCHEMA
+
     def __new__(cls, repo, path):
         assert path
-        _, ext = os.path.splitext(path)
+        assert repo
+
+        file, _ = cls._get_path_tag(path)
+        _, ext = os.path.splitext(file)
         assert not ext or ext in [".yml", ".yaml", ".dvc"]
 
-        if not ext or ext == ".dvc":
+        if not ext or ext == DVC_FILE_SUFFIX:
             return SingleStageFile(repo, path)
         return PipelineFile(repo, path)
