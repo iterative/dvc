@@ -1,7 +1,6 @@
 import errno
 import logging
 import os
-import posixpath
 import stat
 from concurrent.futures import as_completed, ThreadPoolExecutor
 from functools import partial
@@ -233,7 +232,7 @@ class LocalRemote(BaseRemote):
         base_path = str(self.path_info)
 
         def checksum_to_path(checksum):
-            return posixpath.join(base_path, checksum[0:2], checksum[2:])
+            return os.path.join(base_path, checksum[0:2], checksum[2:])
 
         return [
             checksum
