@@ -27,7 +27,10 @@ class PlotMetricTypeError(DvcException):
 
 class PlotDataStructureError(DvcException):
     def __init__(self):
-        super().__init__("Plot data extraction failed.")
+        super().__init__(
+            "Plot data extraction failed. Please see "
+            "documentation for supported data formats."
+        )
 
 
 class JsonParsingError(DvcException):
