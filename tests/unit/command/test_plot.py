@@ -18,6 +18,7 @@ def test_metrics_diff(mocker):
             "--field",
             "column1,column2",
             "--show-json",
+            "--stdout",
             "HEAD",
             "tag1",
             "tag2",
@@ -28,6 +29,7 @@ def test_metrics_diff(mocker):
     cmd = cli_args.func(cli_args)
 
     m = mocker.patch.object(cmd.repo, "plot", autospec=True)
+    mocker.patch("builtins.open")
     mocker.patch("os.path.join")
 
     assert cmd.run() == 0
@@ -36,7 +38,6 @@ def test_metrics_diff(mocker):
         datafile="datafile",
         template="template",
         revisions=["HEAD", "tag1", "tag2"],
-        fname="result.extension",
         fields={"column1", "column2"},
         path=None,
         embed=False,
@@ -56,6 +57,7 @@ def test_metrics_show(mocker):
             "$.data",
             "--show-json",
             "datafile",
+            "--stdout",
         ]
     )
     assert cli_args.func == CmdPlotShow
@@ -63,6 +65,7 @@ def test_metrics_show(mocker):
     cmd = cli_args.func(cli_args)
 
     m = mocker.patch.object(cmd.repo, "plot", autospec=True)
+    mocker.patch("builtins.open")
     mocker.patch("os.path.join")
 
     assert cmd.run() == 0
@@ -70,7 +73,6 @@ def test_metrics_show(mocker):
     m.assert_called_once_with(
         datafile="datafile",
         template="template",
-        fname="result.extension",
         revisions=None,
         fields=None,
         path="$.data",

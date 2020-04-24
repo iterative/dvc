@@ -126,7 +126,6 @@ def plot(
     datafile=None,
     template=None,
     revisions=None,
-    fname=None,
     fields=None,
     path=None,
     embed=False,
@@ -149,15 +148,10 @@ def plot(
         div = DIV_HTML.format(id="plot", vega_json=plot_content)
         plot_content = PAGE_HTML.format(divs=div)
 
-    if not fname:
-        fname = _infer_result_file(datafile, template_path, embed)
-
-    with open(fname, "w") as fobj:
-        fobj.write(plot_content)
-    return fname
+    return plot_content
 
 
-def _infer_result_file(datafile, template_path, embed):
+def infer_result_file(datafile, template_path, embed):
     if datafile:
         tmp = datafile
     else:

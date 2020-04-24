@@ -14,8 +14,34 @@ class CmdPLot(CmdBase):
     def _revisions(self):
         raise NotImplementedError
 
-    def run(self):
+    def _result_file(self):
+        if self.args.result:
+            return self.args.result
 
+        extension = self._result_extension()
+        base = self._result_basename()
+
+        result_file = base + extension
+        if os.path.exists(result_file):
+            raise DvcException(
+                "Cannot create '{}': file already exists, use -r to redefine "
+                "it".format(result_file)
+            )
+        return result_file
+
+    def _result_basename(self):
+        if self.args.datafile:
+            return os.path.splitext(self.args.datafile)[0]
+        return "plot"
+
+    def _result_extension(self):
+        if not self.args.show_json:
+            return ".html"
+        elif self.args.template:
+            return os.path.splitext(self.args.template)[-1]
+        return ".json"
+
+    def run(self):
         fields = None
         jsonpath = None
         if self.args.fields:
@@ -24,21 +50,32 @@ class CmdPLot(CmdBase):
             else:
                 fields = set(self.args.fields.split(","))
         try:
-            result_path = self.repo.plot(
+            plot_string = self.repo.plot(
                 datafile=self.args.datafile,
                 template=self.args.template,
                 revisions=self._revisions(),
-                fname=self.args.result,
                 fields=fields,
                 path=jsonpath,
                 embed=not self.args.show_json,
             )
+
+            if self.args.stdout:
+                logger.info(plot_string)
+            else:
+                result_path = self._result_file()
+                with open(result_path, "w") as fobj:
+                    fobj.write(plot_string)
+
+                logger.info(
+                    "file://{}".format(
+                        os.path.join(self.repo.root_dir, result_path)
+                    )
+                )
+
         except DvcException:
             logger.exception("")
             return 1
-        logger.info(
-            "file://{}".format(os.path.join(self.repo.root_dir, result_path))
-        )
+
         return 0
 
 
@@ -112,6 +149,12 @@ def add_parser(subparsers, parent_parser):
         default=None,
         help="Choose which fileds or jsonpath to put into plot.",
     )
+    plot_show_parser.add_argument(
+        "--stdout",
+        action="store_true",
+        default=False,
+        help="Print plot content to stdout",
+    )
     plot_show_parser.set_defaults(func=CmdPlotShow)
 
     PLOT_DIFF_HELP = (
@@ -160,5 +203,11 @@ def add_parser(subparsers, parent_parser):
         "--fields",
         default=None,
         help="Choose which filed(s) or jsonpath to put into plot.",
+    )
+    plot_diff_parser.add_argument(
+        "--stdout",
+        action="store_true",
+        default=False,
+        help="Print plot content to stdout",
     )
     plot_diff_parser.set_defaults(func=CmdPlotDiff)
