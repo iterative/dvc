@@ -9,6 +9,8 @@ from funcy import cached_property
 
 try:
     import paramiko
+
+    logging.getLogger("paramiko.transport").disabled = True
 except ImportError:
     paramiko = None
 
