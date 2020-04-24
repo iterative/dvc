@@ -18,8 +18,8 @@ SINGLE_STAGE_SCHEMA = {
 
 LOCK_FILE_STAGE_SCHEMA = {
     Required(StageParams.PARAM_CMD): str,
-    Required(StageParams.PARAM_DEPS): {str: output.CHECKSUM_SCHEMA},
-    Required(StageParams.PARAM_OUTS): {str: output.CHECKSUM_SCHEMA},
+    StageParams.PARAM_DEPS: [{"md5": output.CHECKSUM_SCHEMA, "path": str}],
+    StageParams.PARAM_OUTS: [{"md5": output.CHECKSUM_SCHEMA, "path": str}],
 }
 LOCKFILE_SCHEMA = {str: LOCK_FILE_STAGE_SCHEMA}
 

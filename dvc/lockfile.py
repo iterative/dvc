@@ -1,7 +1,6 @@
-import json
+import yaml
 
 from typing import TYPE_CHECKING
-from collections import OrderedDict
 
 from dvc.exceptions import DvcException
 from dvc.schema import COMPILED_LOCKFILE_SCHEMA
@@ -22,12 +21,13 @@ def exists(repo: "Repo", path: str) -> bool:
 
 def read(repo: "Repo", path: str) -> dict:
     with repo.tree.open(path) as f:
-        return json.load(f, object_pairs_hook=OrderedDict)
+        return yaml.load(f)
 
 
 def write(repo: "Repo", path: str, data: dict) -> None:
     with repo.tree.open(path, "w+") as f:
-        json.dump(data, f)
+        # TODO: Serialized dump if it is even possible.
+        yaml.dump(data, f)
 
 
 def load(repo: "Repo", path: str) -> dict:

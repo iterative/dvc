@@ -118,7 +118,7 @@ class Dvcfile:
 
     def dump(self, stage, update_dvcfile=False):
         """Dumps given stage appropriately in the dvcfile."""
-        from dvc.stage import create_stage, PipelineStage, Stage
+        from dvc.stage import PipelineStage
 
         if not isinstance(stage, PipelineStage):
             self.dump_single_stage(stage)
@@ -127,17 +127,6 @@ class Dvcfile:
         self.dump_lockfile(stage)
         if update_dvcfile and not stage.is_data_source:
             self.dump_multistage_dvcfile(stage)
-
-        for out in filter(lambda o: o.use_cache, stage.outs):
-            s = create_stage(
-                Stage,
-                stage.repo,
-                os.path.join(stage.wdir, out.def_path + DVC_FILE_SUFFIX),
-                wdir=stage.wdir,
-            )
-            s.outs = [out]
-            s.md5 = s._compute_md5()
-            Dvcfile(s.repo, s.path).dump_single_stage(s)
 
     def dump_lockfile(self, stage):
         from . import lockfile

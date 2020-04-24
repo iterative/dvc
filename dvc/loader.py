@@ -43,8 +43,13 @@ class StageLoader(collections.abc.Mapping):
             ((Stage.PARAM_DEPS, dep) for dep in stage.deps),
             ((Stage.PARAM_OUTS, out) for out in outs),
         )
+
+        checksums = {
+            key: {item["path"]: item["md5"] for item in lock_data.get(key, {})}
+            for key in [Stage.PARAM_DEPS, Stage.PARAM_OUTS]
+        }
         for key, item in items:
-            item.checksum = lock_data.get(key, {}).get(item.def_path)
+            item.checksum = checksums.get(key, {}).get(item.def_path)
 
     @classmethod
     def load_stage(cls, dvcfile, name, stage_data, lock_data):

@@ -55,7 +55,7 @@ def run(self, fname=None, no_exec=False, **kwargs):
             )
         dvcfile.remove_with_prompt(force=kwargs.get("overwrite", True))
 
-    self.check_modified_graph([stage], self.pipeline_stages)
+    self.check_modified_graph([stage])
     if not no_exec:
         stage.run(no_commit=kwargs.get("no_commit", False))
     dvcfile.dump(stage, update_dvcfile=True)

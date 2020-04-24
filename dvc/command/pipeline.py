@@ -26,7 +26,7 @@ class CmdPipelineShow(CmdBase):
 
         path, name = parse_target(target)
         stage = dvcfile.Dvcfile(self.repo, path).stages[name]
-        G = self.repo.pipeline_graph
+        G = self.repo.graph
         stages = networkx.dfs_postorder_nodes(G, stage)
         if locked:
             stages = [s for s in stages if s.locked]
