@@ -95,7 +95,7 @@ class AsciiCanvas(object):
         self.cols = cols
         self.lines = lines
 
-        self.canvas = [[" "] * cols for l in range(lines)]
+        self.canvas = [[" "] * cols for line in range(lines)]
 
     def draw(self):
         """Draws ASCII canvas on the screen."""

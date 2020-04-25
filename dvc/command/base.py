@@ -42,11 +42,11 @@ class CmdBase(object):
     @property
     def default_targets(self):
         """Default targets for `dvc repro` and `dvc pipeline`."""
-        from dvc.stage import Stage
+        from dvc.dvcfile import DVC_FILE
 
-        msg = "assuming default target '{}'.".format(Stage.STAGE_FILE)
+        msg = "assuming default target '{}'.".format(DVC_FILE)
         logger.warning(msg)
-        return [Stage.STAGE_FILE]
+        return [DVC_FILE]
 
     # Abstract methods that have to be implemented by any inheritance class
     def run(self):

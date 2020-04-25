@@ -1,4 +1,5 @@
 import logging
+import os
 from urllib.parse import urlparse
 from copy import copy
 
@@ -28,7 +29,7 @@ class OutputIsNotFileOrDirError(DvcException):
 
 class OutputAlreadyTrackedError(DvcException):
     def __init__(self, path):
-        msg = "output '{}' is already tracked by scm (e.g. git)".format(path)
+        msg = "output '{}' is already tracked by SCM (e.g. Git)".format(path)
         super().__init__(msg)
 
 
@@ -150,6 +151,10 @@ class OutputBase(object):
     @property
     def checksum(self):
         return self.info.get(self.remote.PARAM_CHECKSUM)
+
+    @checksum.setter
+    def checksum(self, checksum):
+        self.info[self.remote.PARAM_CHECKSUM] = checksum
 
     @property
     def is_dir_checksum(self):
@@ -386,11 +391,21 @@ class OutputBase(object):
             else:
                 return cache
 
+        path = str(self.path_info)
+        filter_path = str(filter_info) if filter_info else None
+        is_win = os.name == "nt"
         for entry in self.dir_cache:
             checksum = entry[self.remote.PARAM_CHECKSUM]
-            info = self.path_info / entry[self.remote.PARAM_RELPATH]
-            if not filter_info or info.isin_or_eq(filter_info):
-                cache.add(self.scheme, checksum, str(info))
+            entry_relpath = entry[self.remote.PARAM_RELPATH]
+            if is_win:
+                entry_relpath = entry_relpath.replace("/", os.sep)
+            entry_path = os.path.join(path, entry_relpath)
+            if (
+                not filter_path
+                or entry_path == filter_path
+                or entry_path.startswith(filter_path + os.sep)
+            ):
+                cache.add(self.scheme, checksum, entry_path)
 
         return cache
 
@@ -436,13 +451,15 @@ class OutputBase(object):
         if not self.is_dir_checksum:
             return ret
 
-        ret.update(self._collect_used_dir_cache(**kwargs))
+        ret.add_child_cache(
+            self.checksum, self._collect_used_dir_cache(**kwargs),
+        )
 
         return ret
 
     @classmethod
     def _validate_output_path(cls, path):
-        from dvc.stage import Stage
+        from dvc.dvcfile import Dvcfile
 
-        if Stage.is_valid_filename(path):
+        if Dvcfile.is_valid_filename(path):
             raise cls.IsStageFileError(path)

@@ -8,15 +8,26 @@ from dvc.exceptions import DvcException
 logger = logging.getLogger(__name__)
 
 
+def _stage_repr(stage):
+    from dvc.stage import PipelineStage
+
+    return (
+        "{}:{}".format(stage.relpath, stage.name)
+        if isinstance(stage, PipelineStage)
+        else stage.relpath
+    )
+
+
 class CmdPipelineShow(CmdBase):
     def _show(self, target, commands, outs, locked):
         import networkx
-        from dvc.stage import Stage
+        from dvc import dvcfile
+        from dvc.utils import parse_target
 
-        stage = Stage.load(self.repo, target)
-        G = self.repo.graph
+        path, name = parse_target(target)
+        stage = dvcfile.Dvcfile(self.repo, path).stages[name]
+        G = self.repo.pipeline_graph
         stages = networkx.dfs_postorder_nodes(G, stage)
-
         if locked:
             stages = [s for s in stages if s.locked]
 
@@ -29,14 +40,16 @@ class CmdPipelineShow(CmdBase):
                 for out in stage.outs:
                     logger.info(str(out))
             else:
-                logger.info(stage.path_in_repo)
+                logger.info(_stage_repr(stage))
 
-    def _build_graph(self, target, commands, outs):
+    def _build_graph(self, target, commands=False, outs=False):
         import networkx
-        from dvc.stage import Stage
+        from dvc import dvcfile
         from dvc.repo.graph import get_pipeline
+        from dvc.utils import parse_target
 
-        target_stage = Stage.load(self.repo, target)
+        path, name = parse_target(target)
+        target_stage = dvcfile.Dvcfile(self.repo, path).stages[name]
         G = get_pipeline(self.repo.pipelines, target_stage)
 
         nodes = set()
@@ -49,7 +62,7 @@ class CmdPipelineShow(CmdBase):
                 for out in stage.outs:
                     nodes.add(str(out))
             else:
-                nodes.add(stage.relpath)
+                nodes.add(_stage_repr(stage))
 
         edges = []
         for from_stage, to_stage in networkx.edge_dfs(G, target_stage):
@@ -62,7 +75,7 @@ class CmdPipelineShow(CmdBase):
                     for to_out in to_stage.outs:
                         edges.append((str(from_out), str(to_out)))
             else:
-                edges.append((from_stage.relpath, to_stage.relpath))
+                edges.append((_stage_repr(from_stage), _stage_repr(to_stage)))
 
         return list(nodes), edges, networkx.is_tree(G)
 
@@ -150,7 +163,7 @@ class CmdPipelineList(CmdBase):
         pipelines = self.repo.pipelines
         for pipeline in pipelines:
             for stage in pipeline:
-                logger.info(stage.relpath)
+                logger.info(_stage_repr(stage))
             if len(pipeline) != 0:
                 logger.info("=" * 80)
         logger.info("{} pipelines total".format(len(pipelines)))
@@ -174,6 +187,16 @@ def add_parser(subparsers, parent_parser):
     )
 
     fix_subparsers(pipeline_subparsers)
+
+    PIPELINE_LIST_HELP = "List connected groups of stages (pipelines)."
+    pipeline_list_parser = pipeline_subparsers.add_parser(
+        "list",
+        parents=[parent_parser],
+        description=append_doc_link(PIPELINE_LIST_HELP, "pipeline/list"),
+        help=PIPELINE_LIST_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    pipeline_list_parser.set_defaults(func=CmdPipelineList)
 
     PIPELINE_SHOW_HELP = "Show stages in a pipeline."
     pipeline_show_parser = pipeline_subparsers.add_parser(
@@ -230,13 +253,3 @@ def add_parser(subparsers, parent_parser):
         "(Finds all DVC-files in the workspace by default.)",
     )
     pipeline_show_parser.set_defaults(func=CmdPipelineShow)
-
-    PIPELINE_LIST_HELP = "List connected groups of stages (pipelines)."
-    pipeline_list_parser = pipeline_subparsers.add_parser(
-        "list",
-        parents=[parent_parser],
-        description=append_doc_link(PIPELINE_LIST_HELP, "pipeline/list"),
-        help=PIPELINE_LIST_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    pipeline_list_parser.set_defaults(func=CmdPipelineList)

@@ -34,6 +34,9 @@ def add_parser(subparsers, parent_parser):
         "targets", nargs="+", help="DVC-files to update."
     )
     update_parser.add_argument(
-        "--rev", nargs="?", help="Git revision (e.g. SHA, branch, tag)"
+        "--rev",
+        nargs="?",
+        help="Git revision (e.g. SHA, branch, tag)",
+        metavar="<commit>",
     )
     update_parser.set_defaults(func=CmdUpdate)

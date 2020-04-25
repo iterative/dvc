@@ -53,6 +53,7 @@ def add_parser(subparsers, parent_parser):
         "-f",
         "--file",
         help="Specify name of the DVC-file this command will generate.",
+        metavar="<filename>",
     )
     parser.add_argument(
         "targets", nargs="+", help="Input files/directories to add."

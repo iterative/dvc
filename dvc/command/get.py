@@ -66,10 +66,17 @@ def add_parser(subparsers, parent_parser):
         "path", help="Path to a file or directory within the repository"
     )
     get_parser.add_argument(
-        "-o", "--out", nargs="?", help="Destination path to download files to"
+        "-o",
+        "--out",
+        nargs="?",
+        help="Destination path to download files to",
+        metavar="<path>",
     )
     get_parser.add_argument(
-        "--rev", nargs="?", help="Git revision (e.g. SHA, branch, tag)"
+        "--rev",
+        nargs="?",
+        help="Git revision (e.g. SHA, branch, tag)",
+        metavar="<commit>",
     )
     get_parser.add_argument(
         "--show-url",

@@ -67,7 +67,10 @@ def add_parser(subparsers, parent_parser):
         "--outs-only", action="store_true", help="Show only DVC outputs."
     )
     list_parser.add_argument(
-        "--rev", nargs="?", help="Git revision (e.g. branch, tag, SHA)"
+        "--rev",
+        nargs="?",
+        help="Git revision (e.g. SHA, branch, tag)",
+        metavar="<commit>",
     )
     list_parser.add_argument(
         "path",

@@ -21,7 +21,10 @@ def _reproduce_stage(stage, **kwargs):
         return []
 
     if not kwargs.get("dry", False):
-        stage.dump()
+        from ..dvcfile import Dvcfile
+
+        dvcfile = Dvcfile(stage.repo, stage.path)
+        dvcfile.dump(stage)
 
     return [stage]
 
@@ -58,7 +61,8 @@ def reproduce(
     all_pipelines=False,
     **kwargs
 ):
-    from dvc.stage import Stage
+    from ..dvcfile import Dvcfile
+    from dvc.utils import parse_target
 
     if not target and not all_pipelines:
         raise InvalidArgumentError(
@@ -69,14 +73,16 @@ def reproduce(
     if not interactive:
         kwargs["interactive"] = self.config["core"].get("interactive", False)
 
-    active_graph = _get_active_graph(self.graph)
+    active_graph = _get_active_graph(self.pipeline_graph)
     active_pipelines = get_pipelines(active_graph)
 
+    path, name = parse_target(target)
     if pipeline or all_pipelines:
         if all_pipelines:
             pipelines = active_pipelines
         else:
-            stage = Stage.load(self, target)
+            dvcfile = Dvcfile(self, path)
+            stage = dvcfile.stages[name]
             pipelines = [get_pipeline(active_pipelines, stage)]
 
         targets = []
@@ -85,19 +91,16 @@ def reproduce(
                 if pipeline.in_degree(stage) == 0:
                     targets.append(stage)
     else:
-        targets = self.collect(target, recursive=recursive, graph=active_graph)
+        targets = self.collect_for_pipelines(
+            path, name=name, recursive=recursive, graph=active_graph
+        )
 
-    ret = []
-    for target in targets:
-        stages = _reproduce_stages(active_graph, target, **kwargs)
-        ret.extend(stages)
-
-    return ret
+    return _reproduce_stages(active_graph, targets, **kwargs)
 
 
 def _reproduce_stages(
     G,
-    stage,
+    stages,
     downstream=False,
     ignore_build_cache=False,
     single_item=False,
@@ -140,23 +143,34 @@ def _reproduce_stages(
     import networkx as nx
 
     if single_item:
-        pipeline = [stage]
-    elif downstream:
-        # NOTE (py3 only):
-        # Python's `deepcopy` defaults to pickle/unpickle the object.
-        # Stages are complex objects (with references to `repo`, `outs`,
-        # and `deps`) that cause struggles when you try to serialize them.
-        # We need to create a copy of the graph itself, and then reverse it,
-        # instead of using graph.reverse() directly because it calls
-        # `deepcopy` underneath -- unless copy=False is specified.
-        pipeline = nx.dfs_preorder_nodes(G.copy().reverse(copy=False), stage)
+        all_pipelines = stages
     else:
-        pipeline = nx.dfs_postorder_nodes(G, stage)
+        all_pipelines = []
+        for stage in stages:
+            if downstream:
+                # NOTE (py3 only):
+                # Python's `deepcopy` defaults to pickle/unpickle the object.
+                # Stages are complex objects (with references to `repo`,
+                # `outs`, and `deps`) that cause struggles when you try
+                # to serialize them. We need to create a copy of the graph
+                # itself, and then reverse it, instead of using
+                # graph.reverse() directly because it calls `deepcopy`
+                # underneath -- unless copy=False is specified.
+                all_pipelines += nx.dfs_preorder_nodes(
+                    G.copy().reverse(copy=False), stage
+                )
+            else:
+                all_pipelines += nx.dfs_postorder_nodes(G, stage)
+
+    pipeline = []
+    for stage in all_pipelines:
+        if stage not in pipeline:
+            pipeline.append(stage)
 
     result = []
-    for st in pipeline:
+    for stage in pipeline:
         try:
-            ret = _reproduce_stage(st, **kwargs)
+            ret = _reproduce_stage(stage, **kwargs)
 
             if len(ret) != 0 and ignore_build_cache:
                 # NOTE: we are walking our pipeline from the top to the
@@ -168,5 +182,6 @@ def _reproduce_stages(
 
             result.extend(ret)
         except Exception as exc:
-            raise ReproductionError(st.relpath) from exc
+            raise ReproductionError(stage.relpath) from exc
+
     return result

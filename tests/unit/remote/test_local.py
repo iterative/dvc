@@ -8,12 +8,12 @@ from dvc.path_info import PathInfo
 from dvc.remote.local import RemoteLOCAL
 
 
-def test_status_download_optimization(mocker):
+def test_status_download_optimization(mocker, dvc):
     """When comparing the status to pull a remote cache,
         And the desired files to fetch are already on the local cache,
         Don't check the existence of the desired files on the remote cache
     """
-    remote = RemoteLOCAL(None, {})
+    remote = RemoteLOCAL(dvc, {})
 
     infos = NamedCache()
     infos.add("local", "acbd18db4cc2f85cedef654fccc4a4d8", "foo")
@@ -32,8 +32,8 @@ def test_status_download_optimization(mocker):
 
 
 @pytest.mark.parametrize("link_name", ["hardlink", "symlink"])
-def test_is_protected(tmp_dir, link_name):
-    remote = RemoteLOCAL(None, {})
+def test_is_protected(tmp_dir, dvc, link_name):
+    remote = RemoteLOCAL(dvc, {})
     link_method = getattr(remote, link_name)
 
     (tmp_dir / "foo").write_text("foo")
@@ -54,11 +54,12 @@ def test_is_protected(tmp_dir, link_name):
     remote.unprotect(link)
 
     assert not remote.is_protected(link)
-    if link_name == "symlink" and os.name == "nt":
-        # NOTE: Windows symlink perms don't propagate to the target
-        assert remote.is_protected(foo)
-    else:
+    if os.name == "nt" and link_name == "hardlink":
+        # NOTE: NTFS doesn't allow deleting read-only files, which forces us to
+        # set write perms on the link, which propagates to the source.
         assert not remote.is_protected(foo)
+    else:
+        assert remote.is_protected(foo)
 
 
 @pytest.mark.parametrize("err", [errno.EPERM, errno.EACCES])

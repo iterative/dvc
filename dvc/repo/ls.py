@@ -1,7 +1,5 @@
-import os
-import stat
-
-from dvc.exceptions import PathMissingError, OutputNotFoundError
+from dvc.path_info import PathInfo
+from dvc.exceptions import PathMissingError
 
 
 @staticmethod
@@ -31,124 +29,74 @@ def ls(
     """
     from dvc.external_repo import external_repo
     from dvc.repo import Repo
-    from dvc.utils import relpath
 
     with external_repo(url, rev) as repo:
-        path_info = _get_path_info(repo, path)
-        fs_nodes = []
+        path_info = PathInfo(repo.root_dir)
+        if path:
+            path_info /= path
+
+        ret = {}
         if isinstance(repo, Repo):
-            fs_nodes.extend(_ls_outs_repo(repo, path_info, recursive))
+            ret = _ls(repo, path_info, recursive, True)
 
+        nondvc = {}
         if not outs_only:
-            fs_nodes.extend(_ls_files_repo(path_info, recursive))
+            nondvc = _ls(repo, path_info, recursive, False)
 
-        if path and not fs_nodes:
+        ret.update(nondvc)
+
+        if path and not ret:
             raise PathMissingError(path, repo, output_only=outs_only)
 
-        fs_nodes = {n["path_info"]: n for n in fs_nodes}.values()
-
-        def get_entry(fs_node):
-            node_path_info = fs_node["path_info"]
-            path = (
-                node_path_info.name
-                if node_path_info == path_info
-                else relpath(node_path_info, path_info)
-            )
-            return {
-                "path": path,
-                "isout": fs_node.get("isout", False),
-                "isdir": fs_node.get("isdir", False),
-                "isexec": fs_node.get("isexec", False),
-            }
-
-        entries = sorted(map(get_entry, fs_nodes), key=lambda f: f["path"])
-    return entries
+        ret_list = []
+        for path, info in ret.items():
+            info["path"] = path
+            ret_list.append(info)
+        ret_list.sort(key=lambda f: f["path"])
+        return ret_list
 
 
-def _ls_files_repo(path_info, recursive=None):
-    from dvc.compat import fspath
+def _ls(repo, path_info, recursive=None, dvc=False):
     from dvc.ignore import CleanTree
-    from dvc.path_info import PathInfo
+    from dvc.repo.tree import DvcTree
     from dvc.scm.tree import WorkingTree
 
-    if not os.path.exists(fspath(path_info)):
-        return []
+    if dvc:
+        tree = DvcTree(repo)
+    else:
+        tree = CleanTree(WorkingTree(repo.root_dir))
 
-    files = []
-    tree = CleanTree(WorkingTree(path_info))
+    ret = {}
     try:
-        for dirpath, dirnames, filenames in tree.walk(path_info):
-            files.extend(PathInfo(dirpath, f) for f in filenames)
+        for root, dirs, files in tree.walk(path_info.fspath):
+            for fname in files:
+                info = PathInfo(root) / fname
+                path = str(info.relative_to(path_info))
+                ret[path] = {
+                    "isout": dvc,
+                    "isdir": False,
+                    "isexec": False if dvc else tree.isexec(info.fspath),
+                }
+
             if not recursive:
-                files.extend(PathInfo(dirpath, d) for d in dirnames)
+                for dname in dirs:
+                    info = PathInfo(root) / dname
+                    path = str(info.relative_to(path_info))
+                    ret[path] = {
+                        "isout": tree.isdvc(info.fspath) if dvc else False,
+                        "isdir": True,
+                        "isexec": False if dvc else tree.isexec(info.fspath),
+                    }
                 break
     except NotADirectoryError:
-        if os.path.isfile(fspath(path_info)):
-            files = [path_info]
+        return {
+            path_info.name: {
+                "isout": dvc,
+                "isdir": False,
+                "isexec": False if dvc else tree.isexec(path_info.fspath),
+            }
+        }
+    except FileNotFoundError:
+        return {}
 
-    return [_get_fs_node(f) for f in files]
-
-
-def _ls_outs_repo(repo, path_info, recursive=None):
-    from dvc.compat import fspath
-    from dvc.path_info import PathInfo
-
-    try:
-        outs = repo.find_outs_by_path(fspath(path_info), recursive=True)
-    except OutputNotFoundError:
-        return []
-
-    if recursive:
-        return [_get_fs_node(out.path_info, out) for out in outs]
-
-    def get_first_segment(out):
-        """Returns tuple with path_info and related out
-
-        path_info calculated as the first relpath segment
-        Example:
-            dir/file -> dir
-            dir/subdir/file -> dir
-            file -> file
-        """
-        relpath = out.path_info.relpath(path_info)
-        if relpath.parts:
-            out_path_info = PathInfo(path_info, relpath.parts[0])
-            isout = len(relpath.parts) == 1
-            return (out_path_info, out if isout else None)
-        return (out.path_info, out)
-
-    return [
-        _get_fs_node(p, out)
-        for (p, out) in {get_first_segment(out) for out in outs}
-    ]
-
-
-def _get_path_info(repo, path=None):
-    from dvc.path_info import PathInfo
-
-    if not path:
-        return PathInfo(repo.root_dir)
-    return PathInfo(repo.root_dir, path)
-
-
-def _get_fs_node(path_info, out=None):
-    from dvc.compat import fspath
-
-    if out:
-        isdir = out.is_dir_checksum if out.checksum else False
-        isexec = False
-    else:
-        try:
-            isdir = os.path.isdir(fspath(path_info))
-            mode = os.stat(fspath(path_info)).st_mode
-            isexec = mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-        except FileNotFoundError:
-            isdir = False
-            isexec = False
-
-    return {
-        "path_info": path_info,
-        "isout": bool(out),
-        "isdir": isdir,
-        "isexec": isexec,
-    }
+    return ret

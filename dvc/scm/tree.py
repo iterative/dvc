@@ -1,4 +1,5 @@
 import os
+import stat
 
 from dvc.compat import fspath
 
@@ -47,7 +48,7 @@ class WorkingTree(BaseTree):
 
     def exists(self, path):
         """Test whether a path exists."""
-        return os.path.exists(path)
+        return os.path.lexists(path)
 
     def isdir(self, path):
         """Return true if the pathname refers to an existing directory."""
@@ -74,6 +75,10 @@ class WorkingTree(BaseTree):
             top, topdown=topdown, onerror=onerror
         ):
             yield os.path.normpath(root), dirs, files
+
+    def isexec(self, path):
+        mode = os.stat(path).st_mode
+        return mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
 
 def is_working_tree(tree):

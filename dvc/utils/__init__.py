@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 LOCAL_CHUNK_SIZE = 2 ** 20  # 1 MB
 LARGE_FILE_SIZE = 2 ** 30  # 1 GB
 LARGE_DIR_SIZE = 100
+TARGET_REGEX = re.compile(r"^(?P<path>.*):(?P<name>[^\\/@:]*)$")
 
 
 def dos2unix(data):
@@ -344,7 +345,46 @@ def resolve_output(inp, out):
     return out
 
 
+def resolve_paths(repo, out):
+    from ..dvcfile import DVC_FILE_SUFFIX
+    from ..path_info import PathInfo
+    from .fs import contains_symlink_up_to
+
+    abspath = os.path.abspath(out)
+    dirname = os.path.dirname(abspath)
+    base = os.path.basename(os.path.normpath(out))
+
+    # NOTE: `out` might not exist yet, so using `dirname`(aka `wdir`) to check
+    # if it is a local path.
+    if (
+        os.path.exists(dirname)  # out might not exist yet, so
+        and PathInfo(abspath).isin_or_eq(repo.root_dir)
+        and not contains_symlink_up_to(abspath, repo.root_dir)
+    ):
+        wdir = dirname
+        out = base
+    else:
+        wdir = os.getcwd()
+
+    path = os.path.join(wdir, base + DVC_FILE_SUFFIX)
+
+    return (path, wdir, out)
+
+
 def format_link(link):
     return "<{blue}{link}{nc}>".format(
         blue=colorama.Fore.CYAN, link=link, nc=colorama.Fore.RESET
     )
+
+
+def parse_target(target, default="Dvcfile"):
+    if not target:
+        return None, None
+
+    match = TARGET_REGEX.match(target)
+    if not match:
+        return target, None
+    path, name = match.group("path"), match.group("name")
+    if not path:
+        logger.warning("Assuming file to be '%s'", default)
+    return path or default, name

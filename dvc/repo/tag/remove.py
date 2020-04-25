@@ -1,6 +1,7 @@
 import logging
 
 from dvc.repo import locked
+from dvc.dvcfile import Dvcfile
 
 
 logger = logging.getLogger(__name__)
@@ -18,4 +19,5 @@ def remove(self, tag, target=None, with_deps=False, recursive=False):
             del out.tags[tag]
             changed = True
         if changed:
-            stage.dump()
+            dvcfile = Dvcfile(self, stage.path)
+            dvcfile.dump(stage)

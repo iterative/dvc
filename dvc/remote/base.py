@@ -1,4 +1,5 @@
 import errno
+import hashlib
 import itertools
 import json
 import logging
@@ -6,7 +7,7 @@ import tempfile
 from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy
-from functools import partial
+from functools import partial, wraps
 from multiprocessing import cpu_count
 from operator import itemgetter
 
@@ -21,8 +22,9 @@ from dvc.exceptions import (
     RemoteCacheRequiredError,
 )
 from dvc.ignore import DvcIgnore
-from dvc.path_info import PathInfo, URLInfo
+from dvc.path_info import PathInfo, URLInfo, WindowsPathInfo
 from dvc.progress import Tqdm
+from dvc.remote.index import RemoteIndex, RemoteIndexNoop
 from dvc.remote.slow_link_detection import slow_link_guard
 from dvc.state import StateNoop
 from dvc.utils import tmp_fname
@@ -70,11 +72,22 @@ class DirCacheError(DvcException):
         )
 
 
+def index_locked(f):
+    @wraps(f)
+    def wrapper(remote_obj, *args, **kwargs):
+        remote = kwargs.get("remote", remote_obj)
+        with remote.index:
+            return f(remote_obj, *args, **kwargs)
+
+    return wrapper
+
+
 class RemoteBASE(object):
     scheme = "base"
     path_cls = URLInfo
     REQUIRES = {}
     JOBS = 4 * cpu_count()
+    INDEX_CLS = RemoteIndex
 
     PARAM_RELPATH = "relpath"
     CHECKSUM_DIR_SUFFIX = ".dir"
@@ -110,6 +123,15 @@ class RemoteBASE(object):
 
         self.cache_types = config.get("type") or copy(self.DEFAULT_CACHE_TYPES)
         self.cache_type_confirmed = False
+
+        url = config.get("url")
+        if url:
+            index_name = hashlib.sha256(url.encode("utf-8")).hexdigest()
+            self.index = self.INDEX_CLS(
+                self.repo, index_name, dir_suffix=self.CHECKSUM_DIR_SUFFIX
+            )
+        else:
+            self.index = RemoteIndexNoop()
 
     @classmethod
     def get_missing_deps(cls):
@@ -285,10 +307,13 @@ class RemoteBASE(object):
             )
             return []
 
-        for info in d:
-            # NOTE: here is a BUG, see comment to .as_posix() below
-            relative_path = PathInfo.from_posix(info[self.PARAM_RELPATH])
-            info[self.PARAM_RELPATH] = relative_path.fspath
+        if self.path_cls == WindowsPathInfo:
+            # only need to convert it for Windows
+            for info in d:
+                # NOTE: here is a BUG, see comment to .as_posix() below
+                info[self.PARAM_RELPATH] = info[self.PARAM_RELPATH].replace(
+                    "/", self.path_cls.sep
+                )
 
         return d
 
@@ -731,15 +756,20 @@ class RemoteBASE(object):
             remote_size, remote_checksums, jobs, name
         )
 
+    @index_locked
     def gc(self, named_cache, jobs=None):
-        logger.debug("named_cache: {} jobs: {}".format(named_cache, jobs))
         used = self.extract_used_local_checksums(named_cache)
 
         if self.scheme != "":
-            used.update(named_cache[self.scheme])
+            used.update(named_cache.scheme_keys(self.scheme))
 
         removed = False
-        for checksum in self.all(jobs, str(self.path_info)):
+        # checksums must be sorted to ensure we always remove .dir files first
+        for checksum in sorted(
+            self.all(jobs, str(self.path_info)),
+            key=self.is_dir_checksum,
+            reverse=True,
+        ):
             if checksum in used:
                 continue
             path_info = self.checksum_to_path_info(checksum)
@@ -747,6 +777,8 @@ class RemoteBASE(object):
                 self._remove_unpacked_dir(checksum)
             self.remove(path_info)
             removed = True
+        if removed:
+            self.index.clear()
         return removed
 
     def is_protected(self, path_info):
@@ -865,10 +897,18 @@ class RemoteBASE(object):
         # cache_exists() (see ssh, local)
         assert self.TRAVERSE_PREFIX_LEN >= 2
 
-        if len(checksums) == 1 or not self.CAN_TRAVERSE:
-            return self._cache_object_exists(checksums, jobs, name)
+        checksums = set(checksums)
+        indexed_checksums = set(self.index.intersection(checksums))
+        checksums -= indexed_checksums
+        logger.debug(
+            "Matched '{}' indexed checksums".format(len(indexed_checksums))
+        )
+        if not checksums:
+            return indexed_checksums
 
-        checksums = frozenset(checksums)
+        if len(checksums) == 1 or not self.CAN_TRAVERSE:
+            remote_checksums = self._cache_object_exists(checksums, jobs, name)
+            return list(indexed_checksums) + remote_checksums
 
         # Max remote size allowed for us to use traverse method
         remote_size, remote_checksums = self._estimate_cache_size(
@@ -891,19 +931,25 @@ class RemoteBASE(object):
                     len(checksums), traverse_weight
                 )
             )
-            return list(
-                checksums & remote_checksums
-            ) + self._cache_object_exists(
-                checksums - remote_checksums, jobs, name
+            return (
+                list(indexed_checksums)
+                + list(checksums & remote_checksums)
+                + self._cache_object_exists(
+                    checksums - remote_checksums, jobs, name
+                )
             )
 
         logger.debug(
-            "Querying {} checksums via traverse".format(len(checksums))
+            "Querying '{}' checksums via traverse".format(len(checksums))
         )
-        remote_checksums = self._cache_checksums_traverse(
-            remote_size, remote_checksums, jobs, name
+        remote_checksums = set(
+            self._cache_checksums_traverse(
+                remote_size, remote_checksums, jobs, name
+            )
         )
-        return list(checksums & set(remote_checksums))
+        return list(indexed_checksums) + list(
+            checksums & set(remote_checksums)
+        )
 
     def _checksums_with_limit(
         self, limit, prefix=None, progress_callback=None
@@ -1247,7 +1293,7 @@ class RemoteBASE(object):
         return set()
 
     def extract_used_local_checksums(self, named_cache):
-        used = set(named_cache["local"])
+        used = set(named_cache.scheme_keys("local"))
         unpacked = self._get_unpacked_dir_names(used)
         return used | unpacked
 

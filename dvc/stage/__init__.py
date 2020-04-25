@@ -1,203 +1,89 @@
 import pathlib
 import logging
 import os
-import re
 import signal
 import subprocess
 import threading
 
-from functools import wraps
 from itertools import chain
-from funcy import decorator
 
-from voluptuous import Any, Schema, MultipleInvalid
+from funcy import project
 
 import dvc.dependency as dependency
 import dvc.output as output
 import dvc.prompt as prompt
 from dvc.exceptions import CheckoutError, DvcException
+from .decorators import rwlocked, unlocked_repo
+from .exceptions import (
+    StageCmdFailedError,
+    StagePathOutsideError,
+    StagePathNotFoundError,
+    StagePathNotDirectoryError,
+    StageCommitError,
+    StageUpdateError,
+    MissingDep,
+    MissingDataSource,
+)
+from . import params
 from dvc.utils import dict_md5
 from dvc.utils import fix_env
 from dvc.utils import relpath
 from dvc.utils.fs import path_isin
-from dvc.utils.collections import apply_diff
-from dvc.utils.fs import contains_symlink_up_to
-from dvc.utils.stage import dump_stage_file
-from dvc.utils.stage import parse_stage
-from dvc.utils.stage import parse_stage_for_update
-
+from .params import OutputParams
 
 logger = logging.getLogger(__name__)
 
 
-class StageCmdFailedError(DvcException):
-    def __init__(self, stage):
-        msg = "stage '{}' cmd '{}' failed".format(stage.relpath, stage.cmd)
-        super().__init__(msg)
-
-
-class StageFileFormatError(DvcException):
-    def __init__(self, fname, e):
-        msg = "DVC-file '{}' format error: {}".format(fname, str(e))
-        super().__init__(msg)
-
-
-class StageFileDoesNotExistError(DvcException):
-    def __init__(self, fname):
-        msg = "'{}' does not exist.".format(fname)
-
-        sname = fname + Stage.STAGE_FILE_SUFFIX
-        if Stage.is_stage_file(sname):
-            msg += " Do you mean '{}'?".format(sname)
-
-        super().__init__(msg)
-
-
-class StageFileAlreadyExistsError(DvcException):
-    def __init__(self, relpath):
-        msg = "not overwriting '{}'".format(relpath)
-        super().__init__(msg)
-
-
-class StageFileIsNotDvcFileError(DvcException):
-    def __init__(self, fname):
-        msg = "'{}' is not a DVC-file".format(fname)
-
-        sname = fname + Stage.STAGE_FILE_SUFFIX
-        if Stage.is_stage_file(sname):
-            msg += " Do you mean '{}'?".format(sname)
-
-        super().__init__(msg)
-
-
-class StageFileBadNameError(DvcException):
-    pass
-
-
-class StagePathOutsideError(DvcException):
-    pass
-
-
-class StagePathNotFoundError(DvcException):
-    pass
-
-
-class StagePathNotDirectoryError(DvcException):
-    pass
-
-
-class StageCommitError(DvcException):
-    pass
-
-
-class StageUpdateError(DvcException):
-    def __init__(self, path):
-        super().__init__(
-            "update is not supported for '{}' that is not an "
-            "import.".format(path)
-        )
-
-
-class MissingDep(DvcException):
-    def __init__(self, deps):
-        assert len(deps) > 0
-
-        if len(deps) > 1:
-            dep = "dependencies"
-        else:
-            dep = "dependency"
-
-        msg = "missing '{}': {}".format(dep, ", ".join(map(str, deps)))
-        super().__init__(msg)
-
-
-class MissingDataSource(DvcException):
-    def __init__(self, missing_files):
-        assert len(missing_files) > 0
-
-        source = "source"
-        if len(missing_files) > 1:
-            source += "s"
-
-        msg = "missing data '{}': {}".format(source, ", ".join(missing_files))
-        super().__init__(msg)
-
-
-@decorator
-def rwlocked(call, read=None, write=None):
-    import sys
-    from dvc.rwlock import rwlock
-    from dvc.dependency.repo import DependencyREPO
-
-    if read is None:
-        read = []
-
-    if write is None:
-        write = []
-
-    stage = call._args[0]
-
-    assert stage.repo.lock.is_locked
-
-    def _chain(names):
-        return [
-            item.path_info
-            for attr in names
-            for item in getattr(stage, attr)
-            # There is no need to lock DependencyREPO deps, as there is no
-            # corresponding OutputREPO, so we can't even write it.
-            if not isinstance(item, DependencyREPO)
-        ]
-
-    cmd = " ".join(sys.argv)
-
-    with rwlock(stage.repo.tmp_dir, cmd, _chain(read), _chain(write)):
-        return call()
-
-
-def unlocked_repo(f):
-    @wraps(f)
-    def wrapper(stage, *args, **kwargs):
-        stage.repo.state.dump()
-        stage.repo.lock.unlock()
-        stage.repo._reset()
-        try:
-            ret = f(stage, *args, **kwargs)
-        finally:
-            stage.repo.lock.lock()
-            stage.repo.state.load()
-        return ret
-
-    return wrapper
-
-
-class Stage(object):
-    STAGE_FILE = "Dvcfile"
-    STAGE_FILE_SUFFIX = ".dvc"
-
-    PARAM_MD5 = "md5"
-    PARAM_CMD = "cmd"
-    PARAM_WDIR = "wdir"
-    PARAM_DEPS = "deps"
-    PARAM_OUTS = "outs"
-    PARAM_LOCKED = "locked"
-    PARAM_META = "meta"
-    PARAM_ALWAYS_CHANGED = "always_changed"
-
-    SCHEMA = {
-        PARAM_MD5: output.CHECKSUM_SCHEMA,
-        PARAM_CMD: Any(str, None),
-        PARAM_WDIR: Any(str, None),
-        PARAM_DEPS: Any([dependency.SCHEMA], None),
-        PARAM_OUTS: Any([output.SCHEMA], None),
-        PARAM_LOCKED: bool,
-        PARAM_META: object,
-        PARAM_ALWAYS_CHANGED: bool,
+def loads_from(cls, repo, path, wdir, data):
+    kw = {
+        "repo": repo,
+        "path": path,
+        "wdir": wdir,
+        **project(
+            data,
+            [
+                Stage.PARAM_CMD,
+                Stage.PARAM_LOCKED,
+                Stage.PARAM_ALWAYS_CHANGED,
+                Stage.PARAM_MD5,
+                "name",
+            ],
+        ),
     }
-    COMPILED_SCHEMA = Schema(SCHEMA)
+    return cls(**kw)
 
-    TAG_REGEX = r"^(?P<path>.*)@(?P<tag>[^\\/@:]*)$"
 
+def create_stage(cls, repo, path, **kwargs):
+    from dvc.dvcfile import Dvcfile
+
+    wdir = os.path.abspath(kwargs.get("wdir", None) or os.curdir)
+    path = os.path.abspath(path)
+    Dvcfile.check_dvc_filename(path)
+    cls._check_stage_path(repo, wdir, is_wdir=kwargs.get("wdir"))
+    cls._check_stage_path(repo, os.path.dirname(path))
+
+    stage = loads_from(cls, repo, path, wdir, kwargs)
+    stage._fill_stage_outputs(**kwargs)
+    stage._fill_stage_dependencies(**kwargs)
+    stage._check_circular_dependency()
+    stage._check_duplicated_arguments()
+
+    if stage and stage.dvcfile.exists():
+        has_persist_outs = any(out.persist for out in stage.outs)
+        ignore_build_cache = (
+            kwargs.get("ignore_build_cache", False) or has_persist_outs
+        )
+        if has_persist_outs:
+            logger.warning("Build cache is ignored when persisting outputs.")
+
+        if not ignore_build_cache and stage.can_be_skipped:
+            logger.info("Stage is cached, skipping.")
+            return None
+
+    return stage
+
+
+class Stage(params.StageParams):
     def __init__(
         self,
         repo,
@@ -211,6 +97,7 @@ class Stage(object):
         tag=None,
         always_changed=False,
         stage_text=None,
+        dvcfile=None,
     ):
         if deps is None:
             deps = []
@@ -218,7 +105,7 @@ class Stage(object):
             outs = []
 
         self.repo = repo
-        self.path = path
+        self._path = path
         self.cmd = cmd
         self.wdir = wdir
         self.outs = outs
@@ -228,6 +115,35 @@ class Stage(object):
         self.tag = tag
         self.always_changed = always_changed
         self._stage_text = stage_text
+        self._dvcfile = dvcfile
+
+    @property
+    def path(self):
+        return self._path
+
+    @path.setter
+    def path(self, path):
+        self._path = path
+
+    @property
+    def dvcfile(self):
+        if self.path and self._dvcfile and self.path == self._dvcfile.path:
+            return self._dvcfile
+
+        if not self.path:
+            raise DvcException(
+                "Stage does not have any path set "
+                "and is detached from dvcfile."
+            )
+
+        from dvc.dvcfile import Dvcfile
+
+        self._dvcfile = Dvcfile(self.repo, self.path)
+        return self._dvcfile
+
+    @dvcfile.setter
+    def dvcfile(self, dvcfile):
+        self._dvcfile = dvcfile
 
     def __repr__(self):
         return "Stage: '{path}'".format(
@@ -256,17 +172,6 @@ class Stage(object):
     def is_data_source(self):
         """Whether the DVC-file was created with `dvc add` or `dvc import`"""
         return self.cmd is None
-
-    @staticmethod
-    def is_valid_filename(path):
-        return (
-            path.endswith(Stage.STAGE_FILE_SUFFIX)
-            or os.path.basename(path) == Stage.STAGE_FILE
-        )
-
-    @staticmethod
-    def is_stage_file(path):
-        return os.path.isfile(path) and Stage.is_valid_filename(path)
 
     def changed_md5(self):
         return self.md5 != self._compute_md5()
@@ -309,7 +214,7 @@ class Stage(object):
         for dep in self.deps:
             status = dep.status()
             if status:
-                logger.warning(
+                logger.debug(
                     "Dependency '{dep}' of '{stage}' changed because it is "
                     "'{status}'.".format(
                         dep=dep, stage=self.relpath, status=status[str(dep)]
@@ -323,7 +228,7 @@ class Stage(object):
         for out in self.outs:
             status = out.status()
             if status:
-                logger.warning(
+                logger.debug(
                     "Output '{out}' of '{stage}' changed because it is "
                     "'{status}'".format(
                         out=out, stage=self.relpath, status=status[str(out)]
@@ -341,17 +246,18 @@ class Stage(object):
 
     @rwlocked(read=["deps", "outs"])
     def changed(self):
+        if self._changed():
+            logger.warning("{} changed.".format(self))
+            return True
+
+        logger.debug("{} didn't change.".format(self))
+        return False
+
+    def _changed(self):
         # Short-circuit order: stage md5 is fast, deps are expected to change
-        ret = (
+        return (
             self._changed_md5() or self._changed_deps() or self._changed_outs()
         )
-
-        if ret:
-            logger.warning("Stage '{}' changed.".format(self.relpath))
-        else:
-            logger.debug("Stage '{}' didn't change.".format(self.relpath))
-
-        return ret
 
     @rwlocked(write=["outs"])
     def remove_outs(self, ignore_remove=False, force=False):
@@ -412,30 +318,6 @@ class Stage(object):
             self.locked = locked
 
     @staticmethod
-    def validate(d, fname=None):
-        try:
-            Stage.COMPILED_SCHEMA(d)
-        except MultipleInvalid as exc:
-            raise StageFileFormatError(fname, exc)
-
-    @classmethod
-    def _stage_fname(cls, outs, add):
-        if not outs:
-            return cls.STAGE_FILE
-
-        out = outs[0]
-        fname = out.path_info.name + cls.STAGE_FILE_SUFFIX
-
-        if (
-            add
-            and out.is_in_repo
-            and not contains_symlink_up_to(out.fspath, out.repo.root_dir)
-        ):
-            fname = out.path_info.with_name(fname).fspath
-
-        return fname
-
-    @staticmethod
     def _check_stage_path(repo, path, is_wdir=False):
         assert repo is not None
 
@@ -460,6 +342,15 @@ class Stage(object):
             )
 
     @property
+    def can_be_skipped(self):
+        return (
+            self.is_cached and not self.is_callback and not self.always_changed
+        )
+
+    def reload(self):
+        return self.dvcfile.stage
+
+    @property
     def is_cached(self):
         """
         Checks if this stage has been already ran and stored
@@ -467,7 +358,7 @@ class Stage(object):
         from dvc.remote.local import RemoteLOCAL
         from dvc.remote.s3 import RemoteS3
 
-        old = Stage.load(self.repo, self.path)
+        old = self.reload()
         if old._changed_outs():
             return False
 
@@ -504,219 +395,45 @@ class Stage(object):
 
         return True
 
-    @staticmethod
-    def create(repo, accompany_outs=False, **kwargs):
+    def _fill_stage_outputs(self, **kwargs):
+        assert not self.outs
 
-        wdir = kwargs.get("wdir", None)
-        cwd = kwargs.get("cwd", None)
-        fname = kwargs.get("fname", None)
-
-        # Backward compatibility for `cwd` option
-        if wdir is None and cwd is not None:
-            if fname is not None and os.path.basename(fname) != fname:
-                raise StageFileBadNameError(
-                    "DVC-file name '{fname}' may not contain subdirectories"
-                    " if `-c|--cwd` (deprecated) is specified. Use `-w|--wdir`"
-                    " along with `-f` to specify DVC-file path with working"
-                    " directory.".format(fname=fname)
-                )
-            wdir = cwd
-        elif wdir is None:
-            wdir = os.curdir
-
-        stage = Stage(
-            repo=repo,
-            wdir=wdir,
-            cmd=kwargs.get("cmd", None),
-            locked=kwargs.get("locked", False),
-            always_changed=kwargs.get("always_changed", False),
-        )
-
-        Stage._fill_stage_outputs(stage, **kwargs)
-        deps = dependency.loads_from(
-            stage, kwargs.get("deps", []), erepo=kwargs.get("erepo", None)
-        )
-        params = dependency.loads_params(stage, kwargs.get("params", []))
-        stage.deps = deps + params
-
-        stage._check_circular_dependency()
-        stage._check_duplicated_arguments()
-
-        if not fname:
-            fname = Stage._stage_fname(stage.outs, accompany_outs)
-        stage._check_dvc_filename(fname)
-
-        # Autodetecting wdir for add, we need to create outs first to do that,
-        # so we start with wdir = . and remap out paths later.
-        if accompany_outs and kwargs.get("wdir") is None and cwd is None:
-            wdir = os.path.dirname(fname)
-
-            for out in chain(stage.outs, stage.deps):
-                if out.is_in_repo:
-                    out.def_path = relpath(out.path_info, wdir)
-
-        wdir = os.path.abspath(wdir)
-
-        if cwd is not None:
-            path = os.path.join(wdir, fname)
-        else:
-            path = os.path.abspath(fname)
-
-        Stage._check_stage_path(repo, wdir, is_wdir=kwargs.get("wdir"))
-        Stage._check_stage_path(repo, os.path.dirname(path))
-
-        stage.wdir = wdir
-        stage.path = path
-
-        ignore_build_cache = kwargs.get("ignore_build_cache", False)
-
-        # NOTE: remove outs before we check build cache
-        if kwargs.get("remove_outs", False):
-            logger.warning(
-                "--remove-outs is deprecated."
-                " It is now the default behavior,"
-                " so there's no need to use this option anymore."
-            )
-            stage.remove_outs(ignore_remove=False)
-            logger.warning("Build cache is ignored when using --remove-outs.")
-            ignore_build_cache = True
-
-        if os.path.exists(path) and any(out.persist for out in stage.outs):
-            logger.warning("Build cache is ignored when persisting outputs.")
-            ignore_build_cache = True
-
-        if os.path.exists(path):
-            if (
-                not ignore_build_cache
-                and stage.is_cached
-                and not stage.is_callback
-                and not stage.always_changed
-            ):
-                logger.info("Stage is cached, skipping.")
-                return None
-
-            msg = (
-                "'{}' already exists. Do you wish to run the command and "
-                "overwrite it?".format(stage.relpath)
+        self.outs = []
+        for key in (p.value for p in OutputParams):
+            self.outs += output.loads_from(
+                self,
+                kwargs.get(key, []),
+                use_cache="no_cache" not in key,
+                persist="persist" in key,
+                metric="metrics" in key,
             )
 
-            if not kwargs.get("overwrite", True) and not prompt.confirm(msg):
-                raise StageFileAlreadyExistsError(stage.relpath)
-
-            os.unlink(path)
-
-        return stage
-
-    @staticmethod
-    def _fill_stage_outputs(stage, **kwargs):
-        stage.outs = output.loads_from(
-            stage, kwargs.get("outs", []), use_cache=True
+    def _fill_stage_dependencies(self, **kwargs):
+        assert not self.deps
+        self.deps = []
+        self.deps += dependency.loads_from(
+            self, kwargs.get("deps", []), erepo=kwargs.get("erepo", None)
         )
-        stage.outs += output.loads_from(
-            stage, kwargs.get("metrics", []), use_cache=True, metric=True
+        self.deps += dependency.loads_params(self, kwargs.get("params", []))
+
+    def _fix_outs_deps_path(self, wdir):
+        for out in chain(self.outs, self.deps):
+            if out.is_in_repo:
+                out.def_path = relpath(out.path_info, wdir)
+
+    def resolve_wdir(self):
+        rel_wdir = relpath(self.wdir, os.path.dirname(self.path))
+        return (
+            pathlib.PurePath(rel_wdir).as_posix() if rel_wdir != "." else None
         )
-        stage.outs += output.loads_from(
-            stage, kwargs.get("outs_persist", []), use_cache=True, persist=True
-        )
-        stage.outs += output.loads_from(
-            stage, kwargs.get("outs_no_cache", []), use_cache=False
-        )
-        stage.outs += output.loads_from(
-            stage,
-            kwargs.get("metrics_no_cache", []),
-            use_cache=False,
-            metric=True,
-        )
-        stage.outs += output.loads_from(
-            stage,
-            kwargs.get("outs_persist_no_cache", []),
-            use_cache=False,
-            persist=True,
-        )
-
-    @staticmethod
-    def _check_dvc_filename(fname):
-        if not Stage.is_valid_filename(fname):
-            raise StageFileBadNameError(
-                "bad DVC-file name '{}'. DVC-files should be named "
-                "'Dvcfile' or have a '.dvc' suffix (e.g. '{}.dvc').".format(
-                    relpath(fname), os.path.basename(fname)
-                )
-            )
-
-    @staticmethod
-    def _check_file_exists(repo, fname):
-        if not repo.tree.exists(fname):
-            raise StageFileDoesNotExistError(fname)
-
-    @staticmethod
-    def _check_isfile(repo, fname):
-        if not repo.tree.isfile(fname):
-            raise StageFileIsNotDvcFileError(fname)
-
-    @classmethod
-    def _get_path_tag(cls, s):
-        regex = re.compile(cls.TAG_REGEX)
-        match = regex.match(s)
-        if not match:
-            return s, None
-        return match.group("path"), match.group("tag")
-
-    @staticmethod
-    def load(repo, fname):
-        fname, tag = Stage._get_path_tag(fname)
-
-        # it raises the proper exceptions by priority:
-        # 1. when the file doesn't exists
-        # 2. filename is not a DVC-file
-        # 3. path doesn't represent a regular file
-        Stage._check_file_exists(repo, fname)
-        Stage._check_dvc_filename(fname)
-        Stage._check_isfile(repo, fname)
-
-        with repo.tree.open(fname) as fd:
-            stage_text = fd.read()
-        d = parse_stage(stage_text, fname)
-
-        Stage.validate(d, fname=relpath(fname))
-        path = os.path.abspath(fname)
-
-        stage = Stage(
-            repo=repo,
-            path=path,
-            wdir=os.path.abspath(
-                os.path.join(
-                    os.path.dirname(path), d.get(Stage.PARAM_WDIR, ".")
-                )
-            ),
-            cmd=d.get(Stage.PARAM_CMD),
-            md5=d.get(Stage.PARAM_MD5),
-            locked=d.get(Stage.PARAM_LOCKED, False),
-            tag=tag,
-            always_changed=d.get(Stage.PARAM_ALWAYS_CHANGED, False),
-            # We store stage text to apply updates to the same structure
-            stage_text=stage_text,
-        )
-
-        stage.deps = dependency.loadd_from(
-            stage, d.get(Stage.PARAM_DEPS) or []
-        )
-        stage.outs = output.loadd_from(stage, d.get(Stage.PARAM_OUTS) or [])
-
-        return stage
 
     def dumpd(self):
-        rel_wdir = relpath(self.wdir, os.path.dirname(self.path))
-
-        wdir = pathlib.PurePath(rel_wdir).as_posix()
-        wdir = wdir if wdir != "." else None
-
         return {
             key: value
             for key, value in {
                 Stage.PARAM_MD5: self.md5,
                 Stage.PARAM_CMD: self.cmd,
-                Stage.PARAM_WDIR: wdir,
+                Stage.PARAM_WDIR: self.resolve_wdir(),
                 Stage.PARAM_LOCKED: self.locked,
                 Stage.PARAM_DEPS: [d.dumpd() for d in self.deps],
                 Stage.PARAM_OUTS: [o.dumpd() for o in self.outs],
@@ -724,35 +441,6 @@ class Stage(object):
             }.items()
             if value
         }
-
-    def dump(self):
-        fname = self.path
-
-        self._check_dvc_filename(fname)
-
-        logger.debug(
-            "Saving information to '{file}'.".format(file=relpath(fname))
-        )
-        state = self.dumpd()
-
-        # When we load a stage we parse yaml with a fast parser, which strips
-        # off all the comments and formatting. To retain those on update we do
-        # a trick here:
-        # - reparse the same yaml text with a slow but smart ruamel yaml parser
-        # - apply changes to a returned structure
-        # - serialize it
-        if self._stage_text is not None:
-            saved_state = parse_stage_for_update(self._stage_text, fname)
-            # Stage doesn't work with meta in any way, so .dumpd() doesn't
-            # have it. We simply copy it over.
-            if "meta" in saved_state:
-                state["meta"] = saved_state["meta"]
-            apply_diff(state, saved_state)
-            state = saved_state
-
-        dump_stage_file(fname, state)
-
-        self.repo.scm.track_file(relpath(fname))
 
     def _compute_md5(self):
         from dvc.output.base import OutputBase
@@ -940,7 +628,11 @@ class Stage(object):
                 )
             )
             if not dry:
-                if not force and self._already_cached():
+                if (
+                    not force
+                    and not self._changed_md5()
+                    and self._already_cached()
+                ):
                     self.outs[0].checkout()
                 else:
                     self.deps[0].download(self.outs[0])
@@ -1043,13 +735,9 @@ class Stage(object):
         return {}
 
     def _already_cached(self):
-        return (
-            not self.changed_md5()
-            and all(not dep.changed() for dep in self.deps)
-            and all(
-                not out.changed_cache() if out.use_cache else not out.changed()
-                for out in self.outs
-            )
+        return all(not dep.changed() for dep in self.deps) and all(
+            not out.changed_cache() if out.use_cache else not out.changed()
+            for out in self.outs
         )
 
     def get_all_files_number(self, filter_info=None):
@@ -1059,10 +747,40 @@ class Stage(object):
         )
 
     def get_used_cache(self, *args, **kwargs):
-        from .cache import NamedCache
+        from dvc.cache import NamedCache
 
         cache = NamedCache()
         for out in self._filter_outs(kwargs.get("filter_info")):
             cache.update(out.get_used_cache(*args, **kwargs))
 
         return cache
+
+
+class PipelineStage(Stage):
+    def __init__(self, name=None, **kwargs):
+        super().__init__(**kwargs)
+        self.name = name
+        self.cmd_changed = False
+
+    def __eq__(self, other):
+        return super().__eq__(other) and self.name == other.name
+
+    def __hash__(self):
+        return hash((self.path_in_repo, self.name))
+
+    def __repr__(self):
+        return "Stage: '{path}:{name}'".format(
+            path=self.relpath if self.path else "No path", name=self.name
+        )
+
+    def _changed(self):
+        if self.cmd_changed:
+            logger.warning("'cmd' of {} has changed.".format(self))
+        return self.cmd_changed or self._changed_deps() or self._changed_outs()
+
+    def reload(self):
+        return self.dvcfile.stages[self.name]
+
+    @property
+    def is_cached(self):
+        return self.name in self.dvcfile.stages and super().is_cached

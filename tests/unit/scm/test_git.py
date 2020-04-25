@@ -37,3 +37,37 @@ def test_walk_with_submodules(tmp_dir, scm, git_dir):
     # currently we don't walk through submodules
     assert not dirs
     assert set(files) == {".gitmodules", "submodule"}
+
+
+def test_is_tracked(tmp_dir, scm):
+    tmp_dir.scm_gen(
+        {
+            "tracked": "tracked",
+            "dir": {"data": "data", "subdir": {"subdata": "subdata"}},
+        },
+        commit="add dirs and files",
+    )
+    tmp_dir.gen({"untracked": "untracked", "dir": {"untracked": "untracked"}})
+
+    # sanity check
+    assert (tmp_dir / "untracked").exists()
+    assert (tmp_dir / "tracked").exists()
+    assert (tmp_dir / "dir" / "untracked").exists()
+    assert (tmp_dir / "dir" / "data").exists()
+    assert (tmp_dir / "dir" / "subdir" / "subdata").exists()
+
+    assert not scm.is_tracked("untracked")
+    assert not scm.is_tracked(os.path.join("dir", "untracked"))
+
+    assert scm.is_tracked("tracked")
+    assert scm.is_tracked("dir")
+    assert scm.is_tracked(os.path.join("dir", "data"))
+    assert scm.is_tracked(os.path.join("dir", "subdir"))
+    assert scm.is_tracked(os.path.join("dir", "subdir", "subdata"))
+
+
+def test_is_tracked_unicode(tmp_dir, scm):
+    tmp_dir.scm_gen("ṭṝḁḉḵḗḋ", "tracked", commit="add unicode")
+    tmp_dir.gen("ṳṋṭṝḁḉḵḗḋ", "untracked")
+    assert scm.is_tracked("ṭṝḁḉḵḗḋ")
+    assert not scm.is_tracked("ṳṋṭṝḁḉḵḗḋ")

@@ -1,9 +1,9 @@
 import os
 
+from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import DvcException
 from dvc.exceptions import MoveNotDataSourceError
 from dvc.main import main
-from dvc.stage import Stage
 from dvc.utils.stage import load_stage_file
 from tests.basic_env import TestDvc
 from tests.basic_env import TestDvcGit
@@ -84,13 +84,13 @@ class TestMoveFileWithExtension(TestDvc):
 
 class TestMoveFileToDirectory(TestDvc):
     def test(self):
-        foo_dvc_file = self.FOO + Stage.STAGE_FILE_SUFFIX
+        foo_dvc_file = self.FOO + DVC_FILE_SUFFIX
         ret = main(["add", self.FOO])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.exists(foo_dvc_file))
 
         new_foo_path = os.path.join(self.DATA_DIR, self.FOO)
-        new_foo_dvc_path = new_foo_path + Stage.STAGE_FILE_SUFFIX
+        new_foo_dvc_path = new_foo_path + DVC_FILE_SUFFIX
         ret = main(["move", self.FOO, new_foo_path])
         self.assertEqual(ret, 0)
 
@@ -102,13 +102,13 @@ class TestMoveFileToDirectory(TestDvc):
 
 class TestMoveFileToDirectoryWithoutSpecifiedTargetName(TestDvc):
     def test(self):
-        foo_stage_file_path = self.FOO + Stage.STAGE_FILE_SUFFIX
+        foo_stage_file_path = self.FOO + DVC_FILE_SUFFIX
         ret = main(["add", self.FOO])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.exists(foo_stage_file_path))
 
         target_foo_path = os.path.join(self.DATA_DIR, self.FOO)
-        target_foo_stage_file_path = target_foo_path + Stage.STAGE_FILE_SUFFIX
+        target_foo_stage_file_path = target_foo_path + DVC_FILE_SUFFIX
 
         ret = main(["move", self.FOO, self.DATA_DIR])
         self.assertEqual(ret, 0)
@@ -135,7 +135,7 @@ class TestMoveDirectoryShouldNotOverwriteExisting(TestDvcGit):
 
         self.dvc.move(self.DATA_DIR, dir_name)
 
-        data_dir_stage = self.DATA_DIR + Stage.STAGE_FILE_SUFFIX
+        data_dir_stage = self.DATA_DIR + DVC_FILE_SUFFIX
         self.assertFalse(os.path.exists(self.DATA_DIR))
         self.assertFalse(os.path.exists(data_dir_stage))
 
@@ -146,13 +146,13 @@ class TestMoveDirectoryShouldNotOverwriteExisting(TestDvcGit):
         )
 
         self.assertTrue(os.path.exists(new_dir_name))
-        self.assertTrue(os.path.isfile(new_dir_name + Stage.STAGE_FILE_SUFFIX))
+        self.assertTrue(os.path.isfile(new_dir_name + DVC_FILE_SUFFIX))
         self.assertEqual(set(os.listdir(new_dir_name)), orig_listdir)
 
 
 class TestMoveFileBetweenDirectories(TestDvc):
     def test(self):
-        data_stage_file = self.DATA + Stage.STAGE_FILE_SUFFIX
+        data_stage_file = self.DATA + DVC_FILE_SUFFIX
         ret = main(["add", self.DATA])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.exists(data_stage_file))
@@ -164,7 +164,7 @@ class TestMoveFileBetweenDirectories(TestDvc):
         self.assertEqual(ret, 0)
 
         new_data_path = os.path.join(new_data_dir, os.path.basename(self.DATA))
-        new_data_stage_file = new_data_path + Stage.STAGE_FILE_SUFFIX
+        new_data_stage_file = new_data_path + DVC_FILE_SUFFIX
 
         self.assertFalse(os.path.exists(self.DATA))
         self.assertFalse(os.path.exists(data_stage_file))

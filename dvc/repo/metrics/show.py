@@ -1,258 +1,79 @@
-import csv
-import errno
-import json
+import yaml
 import logging
 import os
-import io
 
-from jsonpath_ng.ext import parse
-
+from dvc.path_info import PathInfo
+from dvc.compat import fspath_py35
 from dvc.exceptions import NoMetricsError
-from dvc.exceptions import OutputNotFoundError
 from dvc.repo import locked
+from dvc.repo.tree import RepoTree
 
-NO_METRICS_FILE_AT_REFERENCE_WARNING = (
-    "Metrics file '{}' does not exist at the reference '{}'."
-)
 
 logger = logging.getLogger(__name__)
 
 
-def _read_metric_json(fd, json_path):
-    parser = parse(json_path)
-    return {str(x.full_path): x.value for x in parser.find(json.load(fd))}
+def _collect_metrics(repo, targets, recursive):
+    metrics = set()
+
+    for stage in repo.stages:
+        for out in stage.outs:
+            if not out.metric:
+                continue
+
+            metrics.add(out.path_info)
+
+    if not targets:
+        return list(metrics)
+
+    target_infos = [PathInfo(os.path.abspath(target)) for target in targets]
+
+    def _filter(path_info):
+        for info in target_infos:
+            func = path_info.isin_or_eq if recursive else path_info.__eq__
+            if func(info):
+                return True
+        return False
+
+    return list(filter(_filter, metrics))
 
 
-def _get_values(row):
-    if isinstance(row, dict):
-        return list(row.values())
-    else:
-        return row
+def _extract_metrics(metrics):
+    if isinstance(metrics, (int, float)):
+        return metrics
 
+    if not isinstance(metrics, dict):
+        return None
 
-def _do_read_metric_xsv(reader, row, col):
-    if col is not None and row is not None:
-        return [reader[row][col]]
-    elif col is not None:
-        return [r[col] for r in reader]
-    elif row is not None:
-        return _get_values(reader[row])
-    return [_get_values(r) for r in reader]
+    ret = {}
+    for key, val in metrics.items():
+        m = _extract_metrics(val)
+        if m:
+            ret[key] = m
 
-
-def _read_metric_hxsv(fd, hxsv_path, delimiter):
-    indices = hxsv_path.split(",")
-    row = indices[0]
-    row = int(row) if row else None
-    col = indices[1] if len(indices) > 1 and indices[1] else None
-    reader = list(csv.DictReader(fd, delimiter=delimiter))
-    return _do_read_metric_xsv(reader, row, col)
-
-
-def _read_metric_xsv(fd, xsv_path, delimiter):
-    indices = xsv_path.split(",")
-    row = indices[0]
-    row = int(row) if row else None
-    col = int(indices[1]) if len(indices) > 1 and indices[1] else None
-    reader = list(csv.reader(fd, delimiter=delimiter))
-    return _do_read_metric_xsv(reader, row, col)
-
-
-def _read_typed_metric(typ, xpath, fd):
-    if typ == "json":
-        ret = _read_metric_json(fd, xpath)
-    elif typ == "csv":
-        ret = _read_metric_xsv(fd, xpath, ",")
-    elif typ == "tsv":
-        ret = _read_metric_xsv(fd, xpath, "\t")
-    elif typ == "hcsv":
-        ret = _read_metric_hxsv(fd, xpath, ",")
-    elif typ == "htsv":
-        ret = _read_metric_hxsv(fd, xpath, "\t")
-    else:
-        ret = fd.read().strip()
     return ret
 
 
-def _format_csv(content, delimiter):
-    """Format delimited text to have same column width.
+def _read_metrics(repo, metrics, rev):
+    tree = RepoTree(repo)
 
-    Args:
-        content (str): The content of a metric.
-        delimiter (str): Value separator
-
-    Returns:
-        str: Formatted content.
-
-    Example:
-
-        >>> content = (
-            "value_mse,deviation_mse,data_set\n"
-            "0.421601,0.173461,train\n"
-            "0.67528,0.289545,testing\n"
-            "0.671502,0.297848,validation\n"
-        )
-        >>> _format_csv(content, ",")
-
-        "value_mse  deviation_mse   data_set\n"
-        "0.421601   0.173461        train\n"
-        "0.67528    0.289545        testing\n"
-        "0.671502   0.297848        validation\n"
-    """
-    reader = csv.reader(io.StringIO(content), delimiter=delimiter)
-    rows = [row for row in reader]
-    max_widths = [max(map(len, column)) for column in zip(*rows)]
-
-    lines = [
-        " ".join(
-            "{entry:{width}}".format(entry=entry, width=width + 2)
-            for entry, width in zip(row, max_widths)
-        )
-        for row in rows
-    ]
-
-    return "\n".join(lines)
-
-
-def _format_output(content, typ):
-    """Tabularize the content according to its type.
-
-    Args:
-        content (str): The content of a metric.
-        typ (str): The type of metric -- (raw|json|tsv|htsv|csv|hcsv).
-
-    Returns:
-        str: Content in a raw or tabular format.
-    """
-
-    if "csv" in typ:
-        return _format_csv(content, delimiter=",")
-
-    if "tsv" in typ:
-        return _format_csv(content, delimiter="\t")
-
-    return content
-
-
-def _read_metric(fd, typ=None, xpath=None, fname=None, branch=None):
-    typ = typ.lower().strip() if typ else typ
-    try:
-        if xpath:
-            return _read_typed_metric(typ, xpath.strip(), fd)
-        else:
-            return _format_output(fd.read().strip(), typ)
-    # Json path library has to be replaced or wrapped in
-    # order to fix this too broad except clause.
-    except Exception:
-        logger.exception(
-            "unable to read metric in '{}' in branch '{}'".format(
-                fname, branch
-            )
-        )
-        return None
-
-
-def _collect_metrics(repo, path, recursive, typ, xpath, branch):
-    """Gather all the metric outputs.
-
-    Args:
-        path (str): Path to a metric file or a directory.
-        recursive (bool): If path is a directory, do a recursive search for
-            metrics on the given path.
-        typ (str): The type that will be used to interpret the metric file,
-            one of the followings - (raw|json|tsv|htsv|csv|hcsv).
-        xpath (str): Path to search for.
-        branch (str): Branch to look up for metrics.
-
-    Returns:
-        list(tuple): (output, typ, xpath)
-            - output:
-            - typ:
-            - xpath:
-    """
-    outs = [out for stage in repo.stages for out in stage.outs]
-
-    if path:
-        try:
-            outs = repo.find_outs_by_path(path, outs=outs, recursive=recursive)
-        except OutputNotFoundError:
-            logger.debug(
-                "DVC-file not for found for '{}' in branch '{}'".format(
-                    path, branch
-                )
-            )
-            return []
-
-    res = []
-    for o in outs:
-        if not o.metric:
-            continue
-
-        # NOTE this case assumes that typ has not been provided in CLI call
-        # and one of the following cases:
-        # - stage file contains metric type
-        # - typ will be read from file extension later
-        if not typ and isinstance(o.metric, dict):
-            t = o.metric.get(o.PARAM_METRIC_TYPE, typ)
-            # NOTE user might want to check different xpath, hence xpath first
-            x = xpath or o.metric.get(o.PARAM_METRIC_XPATH)
-        else:
-            t = typ
-            x = xpath
-
-        res.append((o, t, x))
-
-    return res
-
-
-def _read_metrics(repo, metrics, branch):
-    """Read the content of each metric file and format it.
-
-    Args:
-        metrics (list): List of metric touples
-        branch (str): Branch to look up for metrics.
-
-    Returns:
-        A dict mapping keys with metrics path name and content.
-        For example:
-
-        {'metric.csv': ("value_mse  deviation_mse   data_set\n"
-                        "0.421601   0.173461        train\n"
-                        "0.67528    0.289545        testing\n"
-                        "0.671502   0.297848        validation\n")}
-    """
     res = {}
-    for out, typ, xpath in metrics:
-        assert out.scheme == "local"
-        if not typ:
-            typ = os.path.splitext(out.fspath.lower())[1].replace(".", "")
-        if out.use_cache:
-            open_fun = open
-            path = repo.cache.local.get(out.checksum)
-        else:
-            open_fun = repo.tree.open
-            path = out.fspath
-        try:
-
-            with open_fun(path) as fd:
-                metric = _read_metric(
-                    fd, typ=typ, xpath=xpath, fname=str(out), branch=branch
-                )
-        except IOError as e:
-            if e.errno == errno.ENOENT:
-                logger.warning(
-                    NO_METRICS_FILE_AT_REFERENCE_WARNING.format(
-                        out.path_info, branch
-                    )
-                )
-                metric = None
-            else:
-                raise
-
-        if not metric:
+    for metric in metrics:
+        if not tree.exists(fspath_py35(metric)):
             continue
 
-        res[str(out)] = metric
+        with tree.open(fspath_py35(metric), "r") as fobj:
+            try:
+                # NOTE this also supports JSON
+                val = yaml.safe_load(fobj)
+            except yaml.YAMLError:
+                logger.debug(
+                    "failed to read '%s' on '%s'", metric, rev, exc_info=True
+                )
+                continue
+
+            val = _extract_metrics(val)
+            if val:
+                res[str(metric)] = val
 
     return res
 
@@ -261,8 +82,6 @@ def _read_metrics(repo, metrics, branch):
 def show(
     repo,
     targets=None,
-    typ=None,
-    xpath=None,
     all_branches=False,
     all_tags=False,
     recursive=False,
@@ -270,34 +89,20 @@ def show(
     all_commits=False,
 ):
     res = {}
-    found = set()
 
-    if not targets:
-        # Iterate once to call `_collect_metrics` on all the stages
-        targets = [None]
-
-    for branch in repo.brancher(
+    for rev in repo.brancher(
         revs=revs,
         all_branches=all_branches,
         all_tags=all_tags,
         all_commits=all_commits,
     ):
-        metrics = {}
+        metrics = _collect_metrics(repo, targets, recursive)
+        vals = _read_metrics(repo, metrics, rev)
 
-        for target in targets:
-            entries = _collect_metrics(
-                repo, target, recursive, typ, xpath, branch
-            )
-            metric = _read_metrics(repo, entries, branch)
+        if vals:
+            res[rev] = vals
 
-            if metric:
-                found.add(target)
-                metrics.update(metric)
-
-        if metrics:
-            res[branch] = metrics
-
-    if not res and not any(targets):
+    if not res:
         raise NoMetricsError()
 
     # Hide working tree metrics if they are the same as in the active branch
@@ -308,10 +113,5 @@ def show(
     else:
         if res.get("working tree") == res.get(active_branch):
             res.pop("working tree", None)
-
-    missing = set(targets) - found
-
-    if missing:
-        res[None] = missing
 
     return res

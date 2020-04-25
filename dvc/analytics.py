@@ -36,7 +36,7 @@ def collect_and_send_report(args=None, return_code=None):
     report as a JSON, where the _collector_ generates it and the _sender_
     removes it after sending it.
     """
-    report = _runtime_info()
+    report = {}
 
     # Include command execution information on the report only when available.
     if args and hasattr(args, "func"):
@@ -62,7 +62,7 @@ def is_enabled():
     return enabled
 
 
-def send(report):
+def send(path):
     """
     Side effect: Removes the report after sending it.
 
@@ -73,13 +73,17 @@ def send(report):
     url = "https://analytics.dvc.org"
     headers = {"content-type": "application/json"}
 
-    with open(report, "rb") as fobj:
-        try:
-            requests.post(url, data=fobj, headers=headers, timeout=5)
-        except requests.exceptions.RequestException:
-            logger.debug("failed to send analytics report", exc_info=True)
+    with open(path, "r") as fobj:
+        report = json.load(fobj)
 
-    os.remove(report)
+    report.update(_runtime_info())
+
+    try:
+        requests.post(url, json=report, headers=headers, timeout=5)
+    except requests.exceptions.RequestException:
+        logger.debug("failed to send analytics report", exc_info=True)
+
+    os.remove(path)
 
 
 def _scm_in_use():

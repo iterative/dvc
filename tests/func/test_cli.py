@@ -35,7 +35,6 @@ class TestRun(TestDvc):
         out_no_cache2 = "out_no_cache2"
 
         fname = "dvc.dvc"
-        cwd = os.curdir
         cmd = "cmd"
         arg1 = "arg1"
         arg2 = "arg2"
@@ -59,8 +58,6 @@ class TestRun(TestDvc):
                 fname,
                 "--file",
                 fname,
-                "-c",
-                cwd,
                 cmd,
                 arg1,
                 arg2,
@@ -72,7 +69,6 @@ class TestRun(TestDvc):
         self.assertEqual(args.outs, [out1, out2])
         self.assertEqual(args.outs_no_cache, [out_no_cache1, out_no_cache2])
         self.assertEqual(args.file, fname)
-        self.assertEqual(args.cwd, cwd)
         self.assertEqual(args.command, [cmd, arg1, arg2])
 
 

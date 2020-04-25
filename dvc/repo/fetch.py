@@ -6,7 +6,6 @@ from dvc.exceptions import DownloadError, OutputNotFoundError
 from dvc.scm.base import CloneError
 from dvc.path_info import PathInfo
 
-
 logger = logging.getLogger(__name__)
 
 

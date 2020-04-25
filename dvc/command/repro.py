@@ -92,6 +92,7 @@ def add_parser(subparsers, parent_parser):
         "--cwd",
         default=os.path.curdir,
         help="Directory within your repo to reproduce from.",
+        metavar="<path>",
     )
     repro_parser.add_argument(
         "-m",

@@ -8,7 +8,7 @@ from mock import patch
 from dvc.cache import Cache
 from dvc.exceptions import DownloadError, PathMissingError
 from dvc.config import NoRemoteError
-from dvc.stage import Stage
+from dvc.dvcfile import Dvcfile
 from dvc.system import System
 from dvc.utils.fs import makedirs, remove
 import dvc.data_cloud as cloud
@@ -140,11 +140,10 @@ def test_import_non_cached(erepo_dir, tmp_dir, dvc, scm):
     src = "non_cached_output"
     dst = src + "_imported"
 
-    erepo_dir.dvc.run(
-        cmd="echo hello > {}".format(src),
-        outs_no_cache=[src],
-        cwd=fspath(erepo_dir),
-    )
+    with erepo_dir.chdir():
+        erepo_dir.dvc.run(
+            cmd="echo hello > {}".format(src), outs_no_cache=[src],
+        )
 
     erepo_dir.scm_add([fspath(erepo_dir / src)], commit="add a non-cached out")
 
@@ -183,7 +182,7 @@ def test_pull_imported_stage(tmp_dir, dvc, erepo_dir):
         erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
     dvc.imp(fspath(erepo_dir), "foo", "foo_imported")
 
-    dst_stage = Stage.load(dvc, "foo_imported.dvc")
+    dst_stage = Dvcfile(dvc, "foo_imported.dvc").stage
     dst_cache = dst_stage.outs[0].cache_path
 
     remove("foo_imported")
@@ -233,7 +232,7 @@ def test_download_error_pulling_imported_stage(tmp_dir, dvc, erepo_dir):
         erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
     dvc.imp(fspath(erepo_dir), "foo", "foo_imported")
 
-    dst_stage = Stage.load(dvc, "foo_imported.dvc")
+    dst_stage = Dvcfile(dvc, "foo_imported.dvc").stage
     dst_cache = dst_stage.outs[0].cache_path
 
     remove("foo_imported")
@@ -296,7 +295,8 @@ def test_pull_no_rev_lock(erepo_dir, tmp_dir, dvc):
     stage = dvc.imp(fspath(erepo_dir), "foo", "foo_imported")
     assert "rev" not in stage.deps[0].def_repo
     stage.deps[0].def_repo.pop("rev_lock")
-    stage.dump()
+
+    Dvcfile(dvc, stage.path).dump(stage)
 
     remove(stage.outs[0].cache_path)
     (tmp_dir / "foo_imported").unlink()
