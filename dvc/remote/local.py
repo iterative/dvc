@@ -448,9 +448,11 @@ class RemoteLOCAL(RemoteBASE):
                 file_mode=self._file_mode,
             )
             status = STATUS_DELETED
+            desc = "Downloading"
         else:
             func = remote.upload
             status = STATUS_NEW
+            desc = "Uploading"
 
         if jobs is None:
             jobs = remote.JOBS
@@ -466,42 +468,45 @@ class RemoteLOCAL(RemoteBASE):
         dir_plans = self._get_plans(download, remote, dir_status, status)
         file_plans = self._get_plans(download, remote, file_status, status)
 
-        if len(dir_plans[0]) + len(file_plans[0]) == 0:
+        total = len(dir_plans[0]) + len(file_plans[0])
+        if total == 0:
             return 0
 
-        with ThreadPoolExecutor(max_workers=jobs) as executor:
-            if download:
-                fails = sum(executor.map(func, *dir_plans))
-                fails += sum(executor.map(func, *file_plans))
-            else:
-                # for uploads, push files first, and any .dir files last
+        with Tqdm(total=total, unit="file", desc=desc) as pbar:
+            func = pbar.wrap_fn(func)
+            with ThreadPoolExecutor(max_workers=jobs) as executor:
+                if download:
+                    fails = sum(executor.map(func, *dir_plans))
+                    fails += sum(executor.map(func, *file_plans))
+                else:
+                    # for uploads, push files first, and any .dir files last
 
-                file_futures = {}
-                for from_info, to_info, name in zip(*file_plans):
-                    file_futures[to_info] = executor.submit(
-                        func, from_info, to_info, name
+                    file_futures = {}
+                    for from_info, to_info, name in zip(*file_plans):
+                        file_futures[to_info] = executor.submit(
+                            func, from_info, to_info, name
+                        )
+                    dir_futures = {}
+                    for from_info, to_info, name in zip(*dir_plans):
+                        wait_futures = {
+                            future
+                            for file_path, future in file_futures.items()
+                            if file_path in dir_paths[to_info]
+                        }
+                        dir_futures[to_info] = executor.submit(
+                            self._dir_upload,
+                            func,
+                            wait_futures,
+                            from_info,
+                            to_info,
+                            name,
+                        )
+                    fails = sum(
+                        future.result()
+                        for future in concat(
+                            file_futures.values(), dir_futures.values()
+                        )
                     )
-                dir_futures = {}
-                for from_info, to_info, name in zip(*dir_plans):
-                    wait_futures = {
-                        future
-                        for file_path, future in file_futures.items()
-                        if file_path in dir_paths[to_info]
-                    }
-                    dir_futures[to_info] = executor.submit(
-                        self._dir_upload,
-                        func,
-                        wait_futures,
-                        from_info,
-                        to_info,
-                        name,
-                    )
-                fails = sum(
-                    future.result()
-                    for future in concat(
-                        file_futures.values(), dir_futures.values()
-                    )
-                )
 
         if fails:
             if download:
