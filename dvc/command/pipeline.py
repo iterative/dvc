@@ -8,16 +8,6 @@ from dvc.exceptions import DvcException
 logger = logging.getLogger(__name__)
 
 
-def _stage_repr(stage):
-    from dvc.stage import PipelineStage
-
-    return (
-        "{}:{}".format(stage.relpath, stage.name)
-        if isinstance(stage, PipelineStage)
-        else stage.relpath
-    )
-
-
 class CmdPipelineShow(CmdBase):
     def _show(self, target, commands, outs, locked):
         import networkx
@@ -40,7 +30,7 @@ class CmdPipelineShow(CmdBase):
                 for out in stage.outs:
                     logger.info(str(out))
             else:
-                logger.info(_stage_repr(stage))
+                logger.info(stage.addressing)
 
     def _build_graph(self, target, commands=False, outs=False):
         import networkx
@@ -62,7 +52,7 @@ class CmdPipelineShow(CmdBase):
                 for out in stage.outs:
                     nodes.add(str(out))
             else:
-                nodes.add(_stage_repr(stage))
+                nodes.add(stage.addressing)
 
         edges = []
         for from_stage, to_stage in networkx.edge_dfs(G, target_stage):
@@ -75,7 +65,7 @@ class CmdPipelineShow(CmdBase):
                     for to_out in to_stage.outs:
                         edges.append((str(from_out), str(to_out)))
             else:
-                edges.append((_stage_repr(from_stage), _stage_repr(to_stage)))
+                edges.append((from_stage.addressing, to_stage.addressing))
 
         return list(nodes), edges, networkx.is_tree(G)
 
@@ -163,7 +153,7 @@ class CmdPipelineList(CmdBase):
         pipelines = self.repo.pipelines
         for pipeline in pipelines:
             for stage in pipeline:
-                logger.info(_stage_repr(stage))
+                logger.info(stage.addressing)
             if len(pipeline) != 0:
                 logger.info("=" * 80)
         logger.info("{} pipelines total".format(len(pipelines)))

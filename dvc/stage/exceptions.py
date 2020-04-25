@@ -3,7 +3,7 @@ from dvc.exceptions import DvcException
 
 class StageCmdFailedError(DvcException):
     def __init__(self, stage):
-        msg = "stage '{}' cmd '{}' failed".format(stage.relpath, stage.cmd)
+        msg = "{} cmd '{}' failed".format(stage, stage.cmd)
         super().__init__(msg)
 
 
@@ -15,12 +15,12 @@ class StageFileFormatError(DvcException):
 
 class StageFileDoesNotExistError(DvcException):
     def __init__(self, fname):
-        from dvc.dvcfile import DVC_FILE_SUFFIX, Dvcfile
+        from dvc.dvcfile import DVC_FILE_SUFFIX, is_dvc_file
 
         msg = "'{}' does not exist.".format(fname)
 
         sname = fname + DVC_FILE_SUFFIX
-        if Dvcfile.is_stage_file(sname):
+        if is_dvc_file(sname):
             msg += " Do you mean '{}'?".format(sname)
 
         super().__init__(msg)
@@ -34,12 +34,12 @@ class StageFileAlreadyExistsError(DvcException):
 
 class StageFileIsNotDvcFileError(DvcException):
     def __init__(self, fname):
-        from dvc.dvcfile import Dvcfile, DVC_FILE_SUFFIX
+        from dvc.dvcfile import DVC_FILE_SUFFIX, is_dvc_file
 
         msg = "'{}' is not a DVC-file".format(fname)
 
         sname = fname + DVC_FILE_SUFFIX
-        if Dvcfile.is_stage_file(sname):
+        if is_dvc_file(sname):
             msg += " Do you mean '{}'?".format(sname)
 
         super().__init__(msg)

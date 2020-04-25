@@ -46,7 +46,7 @@ def move(self, from_path, to_path):
     stage = out.stage
 
     if not stage.is_data_source:
-        raise MoveNotDataSourceError(stage.relpath)
+        raise MoveNotDataSourceError(stage.addressing)
 
     stage_name = os.path.splitext(os.path.basename(stage.path))[0]
     from_name = os.path.basename(from_out.fspath)

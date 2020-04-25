@@ -25,9 +25,11 @@ class OutputDuplicationError(DvcException):
         assert all(hasattr(stage, "relpath") for stage in stages)
         msg = (
             "file/directory '{}' is specified as an output in more than one "
-            "stage: {}\n"
+            "stage: \n{}\n"
             "This is not allowed. Consider using a different output name."
-        ).format(output, "\n    ".join(s.relpath for s in stages))
+        ).format(
+            output, "\n".join("\t{}".format(s.addressing) for s in stages)
+        )
         super().__init__(msg)
 
 
@@ -60,8 +62,8 @@ class StagePathAsOutputError(DvcException):
     def __init__(self, stage, output):
         assert isinstance(output, str)
         super().__init__(
-            "'{stage}' is within an output '{output}' of another stage".format(
-                stage=stage.relpath, output=output
+            "{stage} is within an output '{output}' of another stage".format(
+                stage=stage, output=output
             )
         )
 
@@ -129,7 +131,9 @@ class DvcParserError(DvcException):
 class CyclicGraphError(DvcException):
     def __init__(self, stages):
         assert isinstance(stages, list)
-        stages = "\n".join("\t- {}".format(stage.relpath) for stage in stages)
+        stages = "\n".join(
+            "\t- {}".format(stage.addressing) for stage in stages
+        )
         msg = (
             "you've introduced a cycle in your pipeline that involves "
             "the following stages:"

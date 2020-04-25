@@ -16,10 +16,8 @@ def _joint_status(stages):
     for stage in stages:
         if stage.locked and not stage.is_repo_import:
             logger.warning(
-                "DVC-file '{path}' is locked. Its dependencies are"
-                " not going to be shown in the status output.".format(
-                    path=stage.relpath
-                )
+                "{} is locked. Its dependencies are"
+                " not going to be shown in the status output.".format(stage)
             )
 
         status.update(stage.status(check_updates=True))

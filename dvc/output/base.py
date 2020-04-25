@@ -438,9 +438,9 @@ class OutputBase(object):
             if self.exists:
                 msg += (
                     "\n"
-                    "You can also use `dvc commit {stage}` to associate "
-                    "existing '{out}' with '{stage}'.".format(
-                        out=self, stage=self.stage.relpath
+                    "You can also use `dvc commit {stage.addressing}` "
+                    "to associate existing '{out}' with {stage}.".format(
+                        out=self, stage=self.stage
                     )
                 )
             logger.warning(msg)
@@ -459,7 +459,7 @@ class OutputBase(object):
 
     @classmethod
     def _validate_output_path(cls, path):
-        from dvc.dvcfile import Dvcfile
+        from dvc.dvcfile import is_valid_filename
 
-        if Dvcfile.is_valid_filename(path):
+        if is_valid_filename(path):
             raise cls.IsStageFileError(path)

@@ -207,34 +207,30 @@ class Repo(object):
             return list(graph) if graph else self.stages
 
         if recursive and os.path.isdir(target):
-            stages = self._collect_inside(
+            return self._collect_inside(
                 os.path.abspath(target), graph or self.graph
             )
-            return stages
 
-        file, name = parse_target(target)
+        file, name, = parse_target(target)
         dvcfile = Dvcfile(self, file)
         stages = list(dvcfile.stages.filter(name).values())
         if not with_deps:
             return stages
 
-        if name:
-            raise Exception(
-                "Not supported combination of 'with_deps' with 'name'."
-            )
-
-        stage = stages[0]
-        pipeline = get_pipeline(get_pipelines(graph or self.graph), stage)
-        return list(nx.dfs_postorder_nodes(pipeline, stage))
+        res = set()
+        for stage in stages:
+            pipeline = get_pipeline(get_pipelines(graph or self.graph), stage)
+            res.update(nx.dfs_postorder_nodes(pipeline, stage))
+        return res
 
     def collect_granular(self, target, *args, **kwargs):
-        from ..dvcfile import Dvcfile
+        from ..dvcfile import Dvcfile, is_valid_filename
 
         if not target:
             return [(stage, None) for stage in self.stages]
 
-        file, name = parse_target(target, "pipelines.yaml")
-        if Dvcfile.is_valid_filename(file) and not kwargs.get("with_deps"):
+        file, name = parse_target(target)
+        if is_valid_filename(file) and not kwargs.get("with_deps"):
             # Optimization: do not collect the graph for a specific .dvc target
             stages = Dvcfile(self, file).stages.filter(name)
             return [(stage, None) for stage in stages.values()]
@@ -377,9 +373,9 @@ class Repo(object):
                         "rerun command with non overlapping outs paths."
                     ).format(
                         str(parent),
-                        parent.stage.relpath,
+                        parent.stage.addressing,
                         str(overlapping),
-                        overlapping.stage.relpath,
+                        overlapping.stage.addressing,
                     )
                     raise OverlappingOutputPathsError(parent, overlapping, msg)
 
@@ -429,13 +425,13 @@ class Repo(object):
         return self._collect_stages()
 
     def _collect_stages(self):
-        from dvc.dvcfile import Dvcfile
+        from dvc.dvcfile import Dvcfile, is_valid_filename
 
         stages = []
         outs = set()
 
         for root, dirs, files in self.tree.walk(self.root_dir):
-            for file_name in filter(Dvcfile.is_valid_filename, files):
+            for file_name in filter(is_valid_filename, files):
                 path = os.path.join(root, file_name)
                 stages.extend(list(Dvcfile(self, path).stages.values()))
                 outs.update(

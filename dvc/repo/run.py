@@ -31,9 +31,9 @@ def _get_file_path(kwargs):
 @scm_context
 def run(self, fname=None, no_exec=False, **kwargs):
     from dvc.stage import PipelineStage, Stage, create_stage
-    from dvc.dvcfile import Dvcfile
+    from dvc.dvcfile import Dvcfile, PIPELINE_FILE
 
-    stage_cls, path = PipelineStage, "pipelines.yaml"
+    stage_cls, path = PipelineStage, PIPELINE_FILE
     if not kwargs.get("name"):
         kwargs.pop("name", None)
         stage_cls, path = Stage, fname or _get_file_path(kwargs)

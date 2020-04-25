@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 def _reproduce_stage(stage, **kwargs):
     if stage.locked:
         logger.warning(
-            "DVC-file '{path}' is locked. Its dependencies are"
-            " not going to be reproduced.".format(path=stage.relpath)
+            "{} is locked. Its dependencies are"
+            " not going to be reproduced.".format(stage)
         )
 
     stage = stage.reproduce(**kwargs)

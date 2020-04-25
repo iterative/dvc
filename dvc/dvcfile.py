@@ -31,15 +31,46 @@ PIPELINE_LOCK = "pipelines.lock"
 TAG_REGEX = r"^(?P<path>.*)@(?P<tag>[^\\/@:]*)$"
 
 
+def is_valid_filename(path):
+    return path.endswith(DVC_FILE_SUFFIX) or os.path.basename(path) in [
+        DVC_FILE,
+        PIPELINE_FILE,
+    ]
+
+
+def is_dvc_file(path):
+    return os.path.isfile(path) and is_valid_filename(path)
+
+
+def check_dvc_filename(path):
+    if not is_valid_filename(path):
+        raise StageFileBadNameError(
+            "bad DVC-file name '{}'. DVC-files should be named "
+            "'Dvcfile' or have a '.dvc' suffix (e.g. '{}.dvc').".format(
+                relpath(path), os.path.basename(path)
+            )
+        )
+
+
+def _get_path_tag(s):
+    regex = re.compile(TAG_REGEX)
+    match = regex.match(s)
+    if not match:
+        return s, None
+    return match.group("path"), match.group("tag")
+
+
 class MultiStageFileLoadError(DvcException):
     def __init__(self, file):
         super().__init__("Cannot load multi-stage file: '{}'".format(file))
 
 
 class FileMixin:
+    SCHEMA = None
+
     def __init__(self, repo, path):
         self.repo = repo
-        self.path, self.tag = self._get_path_tag(path)
+        self.path, self.tag = _get_path_tag(path)
 
     def __repr__(self):
         return "{}: {}".format(
@@ -52,27 +83,6 @@ class FileMixin:
     def relpath(self):
         return relpath(self.path)
 
-    @classmethod
-    def is_valid_filename(cls, path):
-        return path.endswith(DVC_FILE_SUFFIX) or os.path.basename(path) in [
-            DVC_FILE,
-            "pipelines.yaml",
-        ]
-
-    @classmethod
-    def is_stage_file(cls, path):
-        return os.path.isfile(path) and cls.is_valid_filename(path)
-
-    @classmethod
-    def check_dvc_filename(cls, path):
-        if not cls.is_valid_filename(path):
-            raise StageFileBadNameError(
-                "bad DVC-file name '{}'. DVC-files should be named "
-                "'Dvcfile' or have a '.dvc' suffix (e.g. '{}.dvc').".format(
-                    relpath(path), os.path.basename(path)
-                )
-            )
-
     def exists(self):
         return self.repo.tree.exists(self.path)
 
@@ -84,13 +94,8 @@ class FileMixin:
         if not self.repo.tree.isfile(self.path):
             raise StageFileIsNotDvcFileError(self.path)
 
-    @staticmethod
-    def _get_path_tag(s):
-        regex = re.compile(TAG_REGEX)
-        match = regex.match(s)
-        if not match:
-            return s, None
-        return match.group("path"), match.group("tag")
+    def check_filename(self):
+        raise NotImplementedError
 
     def _load(self):
         # it raises the proper exceptions by priority:
@@ -98,7 +103,7 @@ class FileMixin:
         # 2. filename is not a DVC-file
         # 3. path doesn't represent a regular file
         self.check_file_exists()
-        self.check_dvc_filename(self.path)
+        check_dvc_filename(self.path)
         self.check_isfile()
 
         with self.repo.tree.open(self.path) as fd:
@@ -109,6 +114,7 @@ class FileMixin:
 
     @classmethod
     def validate(cls, d, fname=None):
+        assert cls.SCHEMA
         try:
             cls.SCHEMA(d)
         except MultipleInvalid as exc:
@@ -146,7 +152,7 @@ class SingleStageFile(FileMixin):
         from dvc.stage import PipelineStage
 
         assert not isinstance(stage, PipelineStage)
-        self.check_dvc_filename(self.path)
+        check_dvc_filename(self.path)
         logger.debug(
             "Saving information to '{file}'.".format(file=relpath(self.path))
         )
@@ -203,14 +209,12 @@ class PipelineFile(FileMixin):
         return StageLoader(self, data.get("stages", {}), lockfile_data)
 
 
-class Dvcfile(FileMixin):
-    from dvc.schema import COMPILED_SINGLE_STAGE_SCHEMA as SCHEMA
-
+class Dvcfile:
     def __new__(cls, repo, path):
         assert path
         assert repo
 
-        file, _ = cls._get_path_tag(path)
+        file, _ = _get_path_tag(path)
         _, ext = os.path.splitext(file)
         assert not ext or ext in [".yml", ".yaml", ".dvc"]
 

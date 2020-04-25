@@ -54,11 +54,11 @@ def loads_from(cls, repo, path, wdir, data):
 
 
 def create_stage(cls, repo, path, **kwargs):
-    from dvc.dvcfile import Dvcfile
+    from dvc.dvcfile import check_dvc_filename
 
     wdir = os.path.abspath(kwargs.get("wdir", None) or os.curdir)
     path = os.path.abspath(path)
-    Dvcfile.check_dvc_filename(path)
+    check_dvc_filename(path)
     cls._check_stage_path(repo, wdir, is_wdir=kwargs.get("wdir"))
     cls._check_stage_path(repo, os.path.dirname(path))
 
@@ -147,8 +147,21 @@ class Stage(params.StageParams):
 
     def __repr__(self):
         return "Stage: '{path}'".format(
+            path=self.path_in_repo if self.path else "No path"
+        )
+
+    def __str__(self):
+        return "stage: '{path}'".format(
             path=self.relpath if self.path else "No path"
         )
+
+    @property
+    def addressing(self):
+        """
+        Useful for alternative presentations where we don't need
+        `Stage:` prefix.
+        """
+        return self.relpath
 
     def __hash__(self):
         return hash(self.path_in_repo)
@@ -202,9 +215,9 @@ class Stage(params.StageParams):
 
         if self.is_callback:
             logger.warning(
-                "DVC-file '{fname}' is a \"callback\" stage "
+                '{stage} is a "callback" stage '
                 "(has a command and no dependencies) and thus always "
-                "considered as changed.".format(fname=self.relpath)
+                "considered as changed.".format(stage=self)
             )
             return True
 
@@ -215,9 +228,9 @@ class Stage(params.StageParams):
             status = dep.status()
             if status:
                 logger.debug(
-                    "Dependency '{dep}' of '{stage}' changed because it is "
+                    "Dependency '{dep}' of {stage} changed because it is "
                     "'{status}'.".format(
-                        dep=dep, stage=self.relpath, status=status[str(dep)]
+                        dep=dep, stage=self, status=status[str(dep)]
                     )
                 )
                 return True
@@ -229,9 +242,9 @@ class Stage(params.StageParams):
             status = out.status()
             if status:
                 logger.debug(
-                    "Output '{out}' of '{stage}' changed because it is "
+                    "Output '{out}' of {stage} changed because it is "
                     "'{status}'".format(
-                        out=out, stage=self.relpath, status=status[str(out)]
+                        out=out, stage=self, status=status[str(out)]
                     )
                 )
                 return True
@@ -292,8 +305,8 @@ class Stage(params.StageParams):
             return None
 
         msg = (
-            "Going to reproduce '{stage}'. "
-            "Are you sure you want to continue?".format(stage=self.relpath)
+            "Going to reproduce {stage}. "
+            "Are you sure you want to continue?".format(stage=self)
         )
 
         if interactive and not prompt.confirm(msg):
@@ -301,7 +314,7 @@ class Stage(params.StageParams):
 
         self.run(**kwargs)
 
-        logger.debug("'{stage}' was reproduced".format(stage=self.relpath))
+        logger.debug("{stage} was reproduced".format(stage=self))
 
         return self
 
@@ -470,7 +483,7 @@ class Stage(params.StageParams):
                 OutputBase.PARAM_PERSIST,
             ],
         )
-        logger.debug("Computed stage '{}' md5: '{}'".format(self.relpath, m))
+        logger.debug("Computed {} md5: '{}'".format(self, m))
         return m
 
     def save(self):
@@ -505,8 +518,8 @@ class Stage(params.StageParams):
             msg += "Are you sure you want to commit it?"
             if not force and not prompt.confirm(msg):
                 raise StageCommitError(
-                    "unable to commit changed '{}'. Use `-f|--force` to "
-                    "force.".format(self.relpath)
+                    "unable to commit changed {}. Use `-f|--force` to "
+                    "force.".format(self)
                 )
             self.save()
 
@@ -614,9 +627,7 @@ class Stage(params.StageParams):
 
         if self.locked:
             logger.info(
-                "Verifying outputs in locked stage '{stage}'".format(
-                    stage=self.relpath
-                )
+                "Verifying outputs in locked {stage}".format(stage=self)
             )
             if not dry:
                 self.check_missing_outputs()
@@ -637,7 +648,7 @@ class Stage(params.StageParams):
                 else:
                     self.deps[0].download(self.outs[0])
         elif self.is_data_source:
-            msg = "Verifying data sources in '{}'".format(self.relpath)
+            msg = "Verifying data sources in {}".format(self)
             logger.info(msg)
             if not dry:
                 self.check_missing_outputs()
@@ -757,10 +768,12 @@ class Stage(params.StageParams):
 
 
 class PipelineStage(Stage):
-    def __init__(self, name=None, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, *args, name=None, meta=None, **kwargs):
+        super().__init__(*args, **kwargs)
         self.name = name
         self.cmd_changed = False
+        # This is how the Stage will discover any discrepancies
+        self.meta = meta or {}
 
     def __eq__(self, other):
         return super().__eq__(other) and self.name == other.name
@@ -772,6 +785,15 @@ class PipelineStage(Stage):
         return "Stage: '{path}:{name}'".format(
             path=self.relpath if self.path else "No path", name=self.name
         )
+
+    def __str__(self):
+        return "stage: '{path}:{name}'".format(
+            path=self.relpath if self.path else "No path", name=self.name
+        )
+
+    @property
+    def addressing(self):
+        return super().addressing + ":" + self.name
 
     def _changed(self):
         if self.cmd_changed:

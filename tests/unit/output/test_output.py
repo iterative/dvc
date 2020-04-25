@@ -52,7 +52,7 @@ def test_checksum_schema_fail(value):
         (
             False,
             (
-                "Output 'path'(Stage stage.dvc) is missing version info. "
+                "Output 'path'(stage: 'stage.dvc') is missing version info. "
                 "Cache for it will not be collected. "
                 "Use `dvc repro` to get your pipeline up to date."
             ),
@@ -60,19 +60,19 @@ def test_checksum_schema_fail(value):
         (
             True,
             (
-                "Output 'path'(Stage stage.dvc) is missing version info. "
+                "Output 'path'(stage: 'stage.dvc') is missing version info. "
                 "Cache for it will not be collected. "
                 "Use `dvc repro` to get your pipeline up to date.\n"
                 "You can also use `dvc commit stage.dvc` to associate "
-                "existing 'path' with 'stage.dvc'."
+                "existing 'path' with stage: 'stage.dvc'."
             ),
         ),
     ],
 )
 def test_get_used_cache(exists, expected_message, mocker, caplog):
     stage = mocker.MagicMock()
-    mocker.patch.object(stage, "__str__", return_value="Stage stage.dvc")
-    mocker.patch.object(stage, "relpath", "stage.dvc")
+    mocker.patch.object(stage, "__str__", return_value="stage: 'stage.dvc'")
+    mocker.patch.object(stage, "addressing", "stage.dvc")
 
     output = OutputBase(stage, "path")
 

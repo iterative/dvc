@@ -377,7 +377,9 @@ def format_link(link):
     )
 
 
-def parse_target(target, default="pipelines.yaml"):
+def parse_target(target, default=None):
+    from dvc.dvcfile import PIPELINE_FILE
+
     if not target:
         return None, None
 
@@ -387,4 +389,4 @@ def parse_target(target, default="pipelines.yaml"):
     path, name = match.group("path"), match.group("name")
     if not path:
         logger.warning("Assuming file to be '%s'", default)
-    return path or default, name
+    return path or default or PIPELINE_FILE, name
