@@ -468,10 +468,11 @@ class RemoteLOCAL(RemoteBASE):
         dir_plans = self._get_plans(download, remote, dir_status, status)
         file_plans = self._get_plans(download, remote, file_status, status)
 
-        if len(dir_plans[0]) + len(file_plans[0]) == 0:
+        total = len(dir_plans[0]) + len(file_plans[0])
+        if total == 0:
             return 0
 
-        with Tqdm(total=len(plans[0]), unit="file", desc=desc) as pbar:
+        with Tqdm(total=total, unit="file", desc=desc) as pbar:
             func = pbar.wrap_fn(func)
             with ThreadPoolExecutor(max_workers=jobs) as executor:
                 if download:
