@@ -341,11 +341,11 @@ class RemoteLOCAL(RemoteBASE):
                 file_mode=self._file_mode,
             )
             status = STATUS_DELETED
-            desc = "Pulling"
+            desc = "Downloading"
         else:
             func = remote.upload
             status = STATUS_NEW
-            desc = "Pushing"
+            desc = "Uploading"
 
         if jobs is None:
             jobs = remote.JOBS
