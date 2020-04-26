@@ -23,12 +23,12 @@ class DataCloud(object):
     def __init__(self, repo):
         self.repo = repo
 
-    def get_remote(self, remote=None, command="<command>"):
-        if not remote:
-            remote = self.repo.config["core"].get("remote")
+    def get_remote(self, name=None, command="<command>"):
+        if not name:
+            name = self.repo.config["core"].get("remote")
 
-        if remote:
-            return self._init_remote(remote)
+        if name:
+            return self._init_remote(name)
 
         if bool(self.repo.config["remote"]):
             error_msg = (
@@ -45,8 +45,8 @@ class DataCloud(object):
 
         raise NoRemoteError(error_msg)
 
-    def _init_remote(self, remote):
-        return Remote(self.repo, name=remote)
+    def _init_remote(self, name):
+        return Remote(self.repo, name=name)
 
     def push(self, cache, jobs=None, remote=None, show_checksums=False):
         """Push data items in a cloud-agnostic way.
