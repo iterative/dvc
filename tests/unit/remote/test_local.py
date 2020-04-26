@@ -5,7 +5,7 @@ import pytest
 
 from dvc.cache import NamedCache
 from dvc.path_info import PathInfo
-from dvc.remote.local import RemoteLOCAL
+from dvc.remote.local import LocalRemote
 
 
 def test_status_download_optimization(mocker, dvc):
@@ -13,7 +13,7 @@ def test_status_download_optimization(mocker, dvc):
         And the desired files to fetch are already on the local cache,
         Don't check the existence of the desired files on the remote cache
     """
-    remote = RemoteLOCAL(dvc, {})
+    remote = LocalRemote(dvc, {})
 
     infos = NamedCache()
     infos.add("local", "acbd18db4cc2f85cedef654fccc4a4d8", "foo")
@@ -33,7 +33,7 @@ def test_status_download_optimization(mocker, dvc):
 
 @pytest.mark.parametrize("link_name", ["hardlink", "symlink"])
 def test_is_protected(tmp_dir, dvc, link_name):
-    remote = RemoteLOCAL(dvc, {})
+    remote = LocalRemote(dvc, {})
     link_method = getattr(remote, link_name)
 
     (tmp_dir / "foo").write_text("foo")
@@ -66,7 +66,7 @@ def test_is_protected(tmp_dir, dvc, link_name):
 def test_protect_ignore_errors(tmp_dir, mocker, err):
     tmp_dir.gen("foo", "foo")
     foo = PathInfo("foo")
-    remote = RemoteLOCAL(None, {})
+    remote = LocalRemote(None, {})
 
     remote.protect(foo)
 
@@ -80,7 +80,7 @@ def test_protect_ignore_errors(tmp_dir, mocker, err):
 def test_protect_ignore_erofs(tmp_dir, mocker):
     tmp_dir.gen("foo", "foo")
     foo = PathInfo("foo")
-    remote = RemoteLOCAL(None, {})
+    remote = LocalRemote(None, {})
 
     mock_chmod = mocker.patch(
         "os.chmod", side_effect=OSError(errno.EROFS, "read-only fs")

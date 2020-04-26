@@ -14,7 +14,7 @@ from funcy import memoize, wrap_with, silent, first
 
 import dvc.prompt as prompt
 from dvc.progress import Tqdm
-from dvc.remote.base import RemoteBASE
+from dvc.remote.base import BaseRemote
 from dvc.remote.pool import get_connection
 from dvc.scheme import Schemes
 from dvc.utils import to_chunks
@@ -33,7 +33,7 @@ def ask_password(host, user, port):
     )
 
 
-class RemoteSSH(RemoteBASE):
+class SSHRemote(BaseRemote):
     scheme = Schemes.SSH
     REQUIRES = {"paramiko": "paramiko"}
 
@@ -103,7 +103,7 @@ class RemoteSSH(RemoteBASE):
     def _load_user_ssh_config(hostname):
         import paramiko
 
-        user_config_file = RemoteSSH.ssh_config_filename()
+        user_config_file = SSHRemote.ssh_config_filename()
         user_ssh_config = {}
         if hostname and os.path.exists(user_config_file):
             ssh_config = paramiko.SSHConfig()

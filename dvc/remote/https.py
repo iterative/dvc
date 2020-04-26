@@ -1,6 +1,6 @@
-from .http import RemoteHTTP
+from .http import HTTPRemote
 from dvc.scheme import Schemes
 
 
-class RemoteHTTPS(RemoteHTTP):
+class HTTPSRemote(HTTPRemote):
     scheme = Schemes.HTTPS

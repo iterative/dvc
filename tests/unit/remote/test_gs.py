@@ -3,7 +3,7 @@ import pytest
 import requests
 
 from dvc.remote.gs import dynamic_chunk_size
-from dvc.remote.gs import RemoteGS
+from dvc.remote.gs import GSRemote
 
 
 BUCKET = "bucket"
@@ -19,7 +19,7 @@ CONFIG = {
 
 
 def test_init(dvc):
-    remote = RemoteGS(dvc, CONFIG)
+    remote = GSRemote(dvc, CONFIG)
     assert remote.path_info == URL
     assert remote.projectname == PROJECT
     assert remote.credentialpath == CREDENTIALPATH
@@ -27,7 +27,7 @@ def test_init(dvc):
 
 @mock.patch("google.cloud.storage.Client.from_service_account_json")
 def test_gs(mock_client, dvc):
-    remote = RemoteGS(dvc, CONFIG)
+    remote = GSRemote(dvc, CONFIG)
     assert remote.credentialpath
     remote.gs()
     mock_client.assert_called_once_with(CREDENTIALPATH)
@@ -37,7 +37,7 @@ def test_gs(mock_client, dvc):
 def test_gs_no_credspath(mock_client, dvc):
     config = CONFIG.copy()
     del config["credentialpath"]
-    remote = RemoteGS(dvc, config)
+    remote = GSRemote(dvc, config)
     remote.gs()
     mock_client.assert_called_with(PROJECT)
 

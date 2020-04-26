@@ -4,7 +4,7 @@ import pytest
 
 from dvc.main import main
 from dvc.output.local import OutputLOCAL
-from dvc.remote.local import RemoteLOCAL
+from dvc.remote.local import LocalRemote
 from dvc.repo import Repo
 from dvc.stage import Stage
 from dvc.dvcfile import Dvcfile
@@ -54,8 +54,8 @@ def test_empty_list():
 
 def test_list():
     lst = [
-        {OutputLOCAL.PARAM_PATH: "foo", RemoteLOCAL.PARAM_CHECKSUM: "123"},
-        {OutputLOCAL.PARAM_PATH: "bar", RemoteLOCAL.PARAM_CHECKSUM: None},
+        {OutputLOCAL.PARAM_PATH: "foo", LocalRemote.PARAM_CHECKSUM: "123"},
+        {OutputLOCAL.PARAM_PATH: "bar", LocalRemote.PARAM_CHECKSUM: None},
         {OutputLOCAL.PARAM_PATH: "baz"},
     ]
     d = {Stage.PARAM_DEPS: lst}

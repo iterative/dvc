@@ -5,7 +5,7 @@ from dvc.compat import fspath
 
 from dvc.external_repo import external_repo
 from dvc.scm.git import Git
-from dvc.remote import RemoteLOCAL
+from dvc.remote import LocalRemote
 from dvc.utils import relpath
 from dvc.utils.fs import remove
 
@@ -47,7 +47,7 @@ def test_cache_reused(erepo_dir, mocker):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("file", "text", commit="add file")
 
-    download_spy = mocker.spy(RemoteLOCAL, "download")
+    download_spy = mocker.spy(LocalRemote, "download")
 
     # Use URL to prevent any fishy optimizations
     url = "file://{}".format(erepo_dir)

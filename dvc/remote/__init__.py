@@ -1,29 +1,29 @@
 import posixpath
 from urllib.parse import urlparse
 
-from dvc.remote.azure import RemoteAZURE
-from dvc.remote.gdrive import RemoteGDrive
-from dvc.remote.gs import RemoteGS
-from dvc.remote.hdfs import RemoteHDFS
-from dvc.remote.http import RemoteHTTP
-from dvc.remote.https import RemoteHTTPS
-from dvc.remote.local import RemoteLOCAL
-from dvc.remote.oss import RemoteOSS
-from dvc.remote.s3 import RemoteS3
-from dvc.remote.ssh import RemoteSSH
+from dvc.remote.azure import AzureRemote
+from dvc.remote.gdrive import GDriveRemote
+from dvc.remote.gs import GSRemote
+from dvc.remote.hdfs import HDFSRemote
+from dvc.remote.http import HTTPRemote
+from dvc.remote.https import HTTPSRemote
+from dvc.remote.local import LocalRemote
+from dvc.remote.oss import OSSRemote
+from dvc.remote.s3 import S3Remote
+from dvc.remote.ssh import SSHRemote
 
 
 REMOTES = [
-    RemoteAZURE,
-    RemoteGDrive,
-    RemoteGS,
-    RemoteHDFS,
-    RemoteHTTP,
-    RemoteHTTPS,
-    RemoteS3,
-    RemoteSSH,
-    RemoteOSS,
-    # NOTE: RemoteLOCAL is the default
+    AzureRemote,
+    GDriveRemote,
+    GSRemote,
+    HDFSRemote,
+    HTTPRemote,
+    HTTPSRemote,
+    S3Remote,
+    SSHRemote,
+    OSSRemote,
+    # NOTE: LocalRemote is the default
 ]
 
 
@@ -31,7 +31,7 @@ def _get(remote_conf):
     for remote in REMOTES:
         if remote.supported(remote_conf):
             return remote
-    return RemoteLOCAL
+    return LocalRemote
 
 
 def Remote(repo, **kwargs):

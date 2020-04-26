@@ -54,7 +54,7 @@ class DataCloud(object):
         Args:
             cache (NamedCache): named checksums to push to the cloud.
             jobs (int): number of jobs that can be running simultaneously.
-            remote (dvc.remote.base.RemoteBASE): optional remote to push to.
+            remote (dvc.remote.base.BaseRemote): optional remote to push to.
                 By default remote from core.remote config option is used.
             show_checksums (bool): show checksums instead of file names in
                 information messages.
@@ -72,7 +72,7 @@ class DataCloud(object):
         Args:
             cache (NamedCache): named checksums to pull from the cloud.
             jobs (int): number of jobs that can be running simultaneously.
-            remote (dvc.remote.base.RemoteBASE): optional remote to pull from.
+            remote (dvc.remote.base.BaseRemote): optional remote to pull from.
                 By default remote from core.remote config option is used.
             show_checksums (bool): show checksums instead of file names in
                 information messages.
@@ -103,7 +103,7 @@ class DataCloud(object):
         Args:
             cache (NamedCache): named checksums to check status for.
             jobs (int): number of jobs that can be running simultaneously.
-            remote (dvc.remote.base.RemoteBASE): optional remote to compare
+            remote (dvc.remote.base.BaseRemote): optional remote to compare
                 cache to. By default remote from core.remote config option
                 is used.
             show_checksums (bool): show checksums instead of file names in

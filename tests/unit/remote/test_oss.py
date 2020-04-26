@@ -1,4 +1,4 @@
-from dvc.remote.oss import RemoteOSS
+from dvc.remote.oss import OSSRemote
 
 
 bucket_name = "bucket-name"
@@ -16,7 +16,7 @@ def test_init(dvc):
         "oss_key_secret": key_secret,
         "oss_endpoint": endpoint,
     }
-    remote = RemoteOSS(dvc, config)
+    remote = OSSRemote(dvc, config)
     assert remote.path_info == url
     assert remote.endpoint == endpoint
     assert remote.key_id == key_id

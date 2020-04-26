@@ -17,7 +17,7 @@ from dvc.exceptions import RecursiveAddingWhileUsingFilename
 from dvc.exceptions import StageFileCorruptedError
 from dvc.main import main
 from dvc.output.base import OutputAlreadyTrackedError
-from dvc.remote import RemoteLOCAL
+from dvc.remote import LocalRemote
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.system import System
@@ -322,7 +322,7 @@ class TestAddCommit(TestDvc):
 
 def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
     tmp_dir.gen({"data/data": "foo"})
-    get_dir_checksum_counter = mocker.spy(RemoteLOCAL, "get_dir_checksum")
+    get_dir_checksum_counter = mocker.spy(LocalRemote, "get_dir_checksum")
     ret = main(["add", "data"])
     assert ret == 0
 
@@ -566,7 +566,7 @@ def test_readding_dir_should_not_unprotect_all(tmp_dir, dvc, mocker):
     dvc.add("dir")
     tmp_dir.gen("dir/new_file", "new_file_content")
 
-    unprotect_spy = mocker.spy(RemoteLOCAL, "unprotect")
+    unprotect_spy = mocker.spy(LocalRemote, "unprotect")
     dvc.add("dir")
 
     assert not unprotect_spy.mock.called
@@ -686,7 +686,7 @@ def test_add_empty_files(tmp_dir, dvc, link):
 def test_add_optimization_for_hardlink_on_empty_files(tmp_dir, dvc, mocker):
     dvc.cache.local.cache_types = ["hardlink"]
     tmp_dir.gen({"foo": "", "bar": "", "lorem": "lorem", "ipsum": "ipsum"})
-    m = mocker.spy(RemoteLOCAL, "is_hardlink")
+    m = mocker.spy(LocalRemote, "is_hardlink")
     stages = dvc.add(["foo", "bar", "lorem", "ipsum"])
 
     assert m.call_count == 1

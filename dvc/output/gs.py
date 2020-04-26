@@ -1,6 +1,6 @@
 from dvc.output.s3 import OutputS3
-from dvc.remote.gs import RemoteGS
+from dvc.remote.gs import GSRemote
 
 
 class OutputGS(OutputS3):
-    REMOTE = RemoteGS
+    REMOTE = GSRemote

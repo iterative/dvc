@@ -5,7 +5,7 @@ import moto.s3.models as s3model
 import pytest
 from moto import mock_s3
 
-from dvc.remote.s3 import RemoteS3
+from dvc.remote.s3 import S3Remote
 from tests.remotes import S3
 
 
@@ -31,7 +31,7 @@ def reduced_min_part_size(f):
 
 
 def _get_src_dst():
-    base_info = RemoteS3.path_cls(S3.get_url())
+    base_info = S3Remote.path_cls(S3.get_url())
     return base_info / "from", base_info / "to"
 
 
@@ -43,16 +43,16 @@ def test_copy_singlepart_preserve_etag():
     s3.create_bucket(Bucket=from_info.bucket)
     s3.put_object(Bucket=from_info.bucket, Key=from_info.path, Body="data")
 
-    RemoteS3._copy(s3, from_info, to_info, {})
+    S3Remote._copy(s3, from_info, to_info, {})
 
 
 @mock_s3
 @pytest.mark.parametrize(
     "base_info",
-    [RemoteS3.path_cls("s3://bucket/"), RemoteS3.path_cls("s3://bucket/ns/")],
+    [S3Remote.path_cls("s3://bucket/"), S3Remote.path_cls("s3://bucket/ns/")],
 )
 def test_link_created_on_non_nested_path(base_info, tmp_dir, dvc, scm):
-    remote = RemoteS3(dvc, {"url": str(base_info.parent)})
+    remote = S3Remote(dvc, {"url": str(base_info.parent)})
     remote.s3.create_bucket(Bucket=base_info.bucket)
     remote.s3.put_object(
         Bucket=base_info.bucket, Key=(base_info / "from").path, Body="data"
@@ -65,8 +65,8 @@ def test_link_created_on_non_nested_path(base_info, tmp_dir, dvc, scm):
 
 @mock_s3
 def test_makedirs_doesnot_try_on_top_level_paths(tmp_dir, dvc, scm):
-    base_info = RemoteS3.path_cls("s3://bucket/")
-    remote = RemoteS3(dvc, {"url": str(base_info)})
+    base_info = S3Remote.path_cls("s3://bucket/")
+    remote = S3Remote(dvc, {"url": str(base_info)})
     remote.makedirs(base_info)
 
 
@@ -108,4 +108,4 @@ def test_copy_multipart_preserve_etag():
     s3 = boto3.client("s3")
     s3.create_bucket(Bucket=from_info.bucket)
     _upload_multipart(s3, from_info.bucket, from_info.path)
-    RemoteS3._copy(s3, from_info, to_info, {})
+    S3Remote._copy(s3, from_info, to_info, {})

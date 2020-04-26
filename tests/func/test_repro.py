@@ -25,7 +25,7 @@ from dvc.exceptions import StagePathAsOutputError
 from dvc.main import main
 from dvc.output.base import OutputBase
 from dvc.path_info import URLInfo
-from dvc.remote.local import RemoteLOCAL
+from dvc.remote.local import LocalRemote
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.dvcfile import Dvcfile
@@ -748,8 +748,8 @@ class TestReproChangedDirData(SingleStageRun, TestDvc):
 class TestReproMissingMd5InStageFile(TestRepro):
     def test(self):
         d = load_stage_file(self.file1_stage)
-        del d[Stage.PARAM_OUTS][0][RemoteLOCAL.PARAM_CHECKSUM]
-        del d[Stage.PARAM_DEPS][0][RemoteLOCAL.PARAM_CHECKSUM]
+        del d[Stage.PARAM_OUTS][0][LocalRemote.PARAM_CHECKSUM]
+        del d[Stage.PARAM_DEPS][0][LocalRemote.PARAM_CHECKSUM]
         dump_stage_file(self.file1_stage, d)
 
         stages = self.dvc.reproduce(self.file1_stage)
@@ -1329,9 +1329,9 @@ class TestReproAlreadyCached(TestRepro):
         self.assertEqual(ret, 0)
 
         patch_download = patch.object(
-            RemoteLOCAL,
+            LocalRemote,
             "download",
-            side_effect=RemoteLOCAL.download,
+            side_effect=LocalRemote.download,
             autospec=True,
         )
 

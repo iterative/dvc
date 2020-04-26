@@ -1,6 +1,6 @@
 import pytest
 
-from dvc.remote import Remote, RemoteS3, RemoteGS
+from dvc.remote import Remote, S3Remote, GSRemote
 
 
 def test_remote_with_checksum_jobs(dvc):
@@ -29,7 +29,7 @@ def test_remote_without_checksum_jobs_default(dvc):
     assert remote.checksum_jobs == remote.CHECKSUM_JOBS
 
 
-@pytest.mark.parametrize("remote_cls", [RemoteGS, RemoteS3])
+@pytest.mark.parametrize("remote_cls", [GSRemote, S3Remote])
 def test_makedirs_not_create_for_top_level_path(remote_cls, dvc, mocker):
     url = "{.scheme}://bucket/".format(remote_cls)
     remote = remote_cls(dvc, {"url": url})

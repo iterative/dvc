@@ -2,7 +2,7 @@ import pytest
 import os
 
 from dvc.remote.gdrive import (
-    RemoteGDrive,
+    GDriveRemote,
     GDriveAccessTokenRefreshError,
     GDriveMissedCredentialKeyError,
 )
@@ -20,21 +20,21 @@ class TestRemoteGDrive(object):
     }
 
     def test_init(self, dvc):
-        remote = RemoteGDrive(dvc, self.CONFIG)
+        remote = GDriveRemote(dvc, self.CONFIG)
         assert str(remote.path_info) == self.CONFIG["url"]
 
     def test_drive(self, dvc):
-        remote = RemoteGDrive(dvc, self.CONFIG)
+        remote = GDriveRemote(dvc, self.CONFIG)
         os.environ[
-            RemoteGDrive.GDRIVE_CREDENTIALS_DATA
+            GDriveRemote.GDRIVE_CREDENTIALS_DATA
         ] = USER_CREDS_TOKEN_REFRESH_ERROR
         with pytest.raises(GDriveAccessTokenRefreshError):
             remote._drive
 
-        os.environ[RemoteGDrive.GDRIVE_CREDENTIALS_DATA] = ""
-        remote = RemoteGDrive(dvc, self.CONFIG)
+        os.environ[GDriveRemote.GDRIVE_CREDENTIALS_DATA] = ""
+        remote = GDriveRemote(dvc, self.CONFIG)
         os.environ[
-            RemoteGDrive.GDRIVE_CREDENTIALS_DATA
+            GDriveRemote.GDRIVE_CREDENTIALS_DATA
         ] = USER_CREDS_MISSED_KEY_ERROR
         with pytest.raises(GDriveMissedCredentialKeyError):
             remote._drive

@@ -355,8 +355,8 @@ class Stage(params.StageParams):
         """
         Checks if this stage has been already ran and stored
         """
-        from dvc.remote.local import RemoteLOCAL
-        from dvc.remote.s3 import RemoteS3
+        from dvc.remote.local import LocalRemote
+        from dvc.remote.s3 import S3Remote
 
         old = self.reload()
         if old._changed_outs():
@@ -376,8 +376,8 @@ class Stage(params.StageParams):
         new_d.pop(self.PARAM_MD5, None)
         outs = old_d.get(self.PARAM_OUTS, [])
         for out in outs:
-            out.pop(RemoteLOCAL.PARAM_CHECKSUM, None)
-            out.pop(RemoteS3.PARAM_CHECKSUM, None)
+            out.pop(LocalRemote.PARAM_CHECKSUM, None)
+            out.pop(S3Remote.PARAM_CHECKSUM, None)
 
         if old_d != new_d:
             return False

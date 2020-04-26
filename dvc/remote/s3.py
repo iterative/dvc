@@ -12,13 +12,13 @@ from dvc.exceptions import DvcException
 from dvc.exceptions import ETagMismatchError
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import RemoteBASE
+from dvc.remote.base import BaseRemote
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
 
 
-class RemoteS3(RemoteBASE):
+class S3Remote(BaseRemote):
     scheme = Schemes.S3
     path_cls = CloudURLInfo
     REQUIRES = {"boto3": "boto3"}

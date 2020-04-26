@@ -9,7 +9,7 @@ import dvc.prompt as prompt
 from dvc.cache import NamedCache
 from dvc.exceptions import CollectCacheError, RemoteCacheRequiredError
 from dvc.exceptions import DvcException
-from dvc.remote.base import RemoteBASE
+from dvc.remote.base import BaseRemote
 
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class OutputIsStageFileError(DvcException):
 class OutputBase(object):
     IS_DEPENDENCY = False
 
-    REMOTE = RemoteBASE
+    REMOTE = BaseRemote
 
     PARAM_PATH = "path"
     PARAM_CACHE = "cache"

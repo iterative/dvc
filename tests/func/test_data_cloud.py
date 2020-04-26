@@ -11,15 +11,15 @@ from dvc.compat import fspath
 from dvc.cache import NamedCache
 from dvc.data_cloud import DataCloud
 from dvc.main import main
-from dvc.remote import RemoteAZURE
-from dvc.remote import RemoteGDrive
-from dvc.remote import RemoteGS
-from dvc.remote import RemoteHDFS
-from dvc.remote import RemoteHTTP
-from dvc.remote import RemoteLOCAL
-from dvc.remote import RemoteOSS
-from dvc.remote import RemoteS3
-from dvc.remote import RemoteSSH
+from dvc.remote import AzureRemote
+from dvc.remote import GDriveRemote
+from dvc.remote import GSRemote
+from dvc.remote import HDFSRemote
+from dvc.remote import HTTPRemote
+from dvc.remote import LocalRemote
+from dvc.remote import OSSRemote
+from dvc.remote import S3Remote
+from dvc.remote import SSHRemote
 from dvc.remote.base import STATUS_DELETED, STATUS_NEW, STATUS_OK
 from dvc.utils import file_md5
 from dvc.utils.fs import remove
@@ -53,13 +53,13 @@ class TestDataCloud(TestDvc):
         config = copy.deepcopy(TEST_CONFIG)
 
         clist = [
-            ("s3://mybucket/", RemoteS3),
-            ("gs://mybucket/", RemoteGS),
-            ("ssh://user@localhost:/", RemoteSSH),
-            ("http://localhost:8000/", RemoteHTTP),
-            ("azure://ContainerName=mybucket;conn_string;", RemoteAZURE),
-            ("oss://mybucket/", RemoteOSS),
-            (TestDvc.mkdtemp(), RemoteLOCAL),
+            ("s3://mybucket/", S3Remote),
+            ("gs://mybucket/", GSRemote),
+            ("ssh://user@localhost:/", SSHRemote),
+            ("http://localhost:8000/", HTTPRemote),
+            ("azure://ContainerName=mybucket;conn_string;", AzureRemote),
+            ("oss://mybucket/", OSSRemote),
+            (TestDvc.mkdtemp(), LocalRemote),
         ]
 
         for scheme, cl in clist:
@@ -184,9 +184,9 @@ class TestDataCloudBase(TestDvc):
         self._test_cloud()
 
 
-class TestRemoteS3(S3, TestDataCloudBase):
+class TestS3Remote(S3, TestDataCloudBase):
     def _get_cloud_class(self):
-        return RemoteS3
+        return S3Remote
 
 
 def setup_gdrive_cloud(remote_url, dvc):
@@ -203,7 +203,7 @@ def setup_gdrive_cloud(remote_url, dvc):
     remote._gdrive_create_dir("root", remote.path_info.path)
 
 
-class TestRemoteGDrive(GDrive, TestDataCloudBase):
+class TestGDriveRemote(GDrive, TestDataCloudBase):
     def _setup_cloud(self):
         self._ensure_should_run()
 
@@ -214,10 +214,10 @@ class TestRemoteGDrive(GDrive, TestDataCloudBase):
         self.assertIsInstance(remote, self._get_cloud_class())
 
     def _get_cloud_class(self):
-        return RemoteGDrive
+        return GDriveRemote
 
 
-class TestRemoteGS(GCP, TestDataCloudBase):
+class TestGSRemote(GCP, TestDataCloudBase):
     def _setup_cloud(self):
         self._ensure_should_run()
 
@@ -234,26 +234,26 @@ class TestRemoteGS(GCP, TestDataCloudBase):
         self.assertIsInstance(self.cloud.get_remote(), self._get_cloud_class())
 
     def _get_cloud_class(self):
-        return RemoteGS
+        return GSRemote
 
 
-class TestRemoteAZURE(Azure, TestDataCloudBase):
+class TestAzureRemote(Azure, TestDataCloudBase):
     def _get_cloud_class(self):
-        return RemoteAZURE
+        return AzureRemote
 
 
-class TestRemoteOSS(OSS, TestDataCloudBase):
+class TestOSSRemote(OSS, TestDataCloudBase):
     def _get_cloud_class(self):
-        return RemoteOSS
+        return OSSRemote
 
 
-class TestRemoteLOCAL(Local, TestDataCloudBase):
+class TestLocalRemote(Local, TestDataCloudBase):
     def _get_cloud_class(self):
-        return RemoteLOCAL
+        return LocalRemote
 
 
 @pytest.mark.usefixtures("ssh_server")
-class TestRemoteSSHMocked(SSHMocked, TestDataCloudBase):
+class TestSSHRemoteMocked(SSHMocked, TestDataCloudBase):
     @pytest.fixture(autouse=True)
     def setup_method_fixture(self, request, ssh_server):
         self.ssh_server = ssh_server
@@ -284,16 +284,16 @@ class TestRemoteSSHMocked(SSHMocked, TestDataCloudBase):
         return self.ssh_server.test_creds["key_filename"]
 
     def _get_cloud_class(self):
-        return RemoteSSH
+        return SSHRemote
 
 
-class TestRemoteHDFS(HDFS, TestDataCloudBase):
+class TestHDFSRemote(HDFS, TestDataCloudBase):
     def _get_cloud_class(self):
-        return RemoteHDFS
+        return HDFSRemote
 
 
 @pytest.mark.usefixtures("http_server")
-class TestRemoteHTTP(HTTP, TestDataCloudBase):
+class TestHTTPRemote(HTTP, TestDataCloudBase):
     @pytest.fixture(autouse=True)
     def setup_method_fixture(self, request, http_server):
         self.http_server = http_server
@@ -303,7 +303,7 @@ class TestRemoteHTTP(HTTP, TestDataCloudBase):
         return super().get_url(self.http_server.server_port)
 
     def _get_cloud_class(self):
-        return RemoteHTTP
+        return HTTPRemote
 
 
 class TestDataCloudCLIBase(TestDvc):
@@ -395,7 +395,7 @@ class TestDataCloudCLIBase(TestDvc):
         self._test()
 
 
-class TestRemoteLOCALCLI(Local, TestDataCloudCLIBase):
+class TestLocalRemoteCLI(Local, TestDataCloudCLIBase):
     def _test(self):
         url = self.get_url()
 
@@ -413,7 +413,7 @@ class TestRemoteHDFSCLI(HDFS, TestDataCloudCLIBase):
         self._test_cloud(TEST_REMOTE)
 
 
-class TestRemoteS3CLI(S3, TestDataCloudCLIBase):
+class TestS3RemoteCLI(S3, TestDataCloudCLIBase):
     def _test(self):
         url = self.get_url()
 
@@ -422,7 +422,7 @@ class TestRemoteS3CLI(S3, TestDataCloudCLIBase):
         self._test_cloud(TEST_REMOTE)
 
 
-class TestRemoteGDriveCLI(GDrive, TestDataCloudCLIBase):
+class TestGDriveRemoteCLI(GDrive, TestDataCloudCLIBase):
     def _setup_cloud(self):
         setup_gdrive_cloud(self.get_url(), self.dvc)
 
@@ -461,7 +461,7 @@ class TestRemoteGDriveCLI(GDrive, TestDataCloudCLIBase):
         self._test_cloud(TEST_REMOTE)
 
 
-class TestRemoteGSCLI(GCP, TestDataCloudCLIBase):
+class TestGSRemoteCLI(GCP, TestDataCloudCLIBase):
     def _test(self):
         url = self.get_url()
 
@@ -479,7 +479,7 @@ class TestRemoteGSCLI(GCP, TestDataCloudCLIBase):
         self._test_cloud(TEST_REMOTE)
 
 
-class TestRemoteAZURECLI(Azure, TestDataCloudCLIBase):
+class TestAzureRemoteCLI(Azure, TestDataCloudCLIBase):
     def _test(self):
         url = self.get_url()
 
@@ -488,7 +488,7 @@ class TestRemoteAZURECLI(Azure, TestDataCloudCLIBase):
         self._test_cloud(TEST_REMOTE)
 
 
-class TestRemoteOSSCLI(OSS, TestDataCloudCLIBase):
+class TestOSSRemoteCLI(OSS, TestDataCloudCLIBase):
     def _test(self):
         url = self.get_url()
 
@@ -548,7 +548,7 @@ class TestRecursiveSyncOperations(Local, TestDataCloudBase):
         self.assertEqual(ret, 0)
 
     def _get_cloud_class(self):
-        return RemoteLOCAL
+        return LocalRemote
 
     def _prepare_repo(self):
         remote = self.cloud.get_remote()
@@ -619,7 +619,7 @@ class TestRecursiveSyncOperations(Local, TestDataCloudBase):
 
 def test_checksum_recalculation(mocker, dvc, tmp_dir):
     tmp_dir.gen({"foo": "foo"})
-    test_get_file_checksum = mocker.spy(RemoteLOCAL, "get_file_checksum")
+    test_get_file_checksum = mocker.spy(LocalRemote, "get_file_checksum")
     url = Local.get_url()
     ret = main(["remote", "add", "-d", TEST_REMOTE, url])
     assert ret == 0

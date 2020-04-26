@@ -12,7 +12,7 @@ from dvc.exceptions import CheckoutErrorSuggestGit
 from dvc.exceptions import ConfirmRemoveError
 from dvc.exceptions import DvcException
 from dvc.main import main
-from dvc.remote.local import RemoteLOCAL
+from dvc.remote.local import LocalRemote
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.dvcfile import Dvcfile, DVC_FILE_SUFFIX
@@ -25,7 +25,7 @@ from dvc.utils import relpath
 from dvc.utils.fs import walk_files
 from dvc.utils.stage import dump_stage_file
 from dvc.utils.stage import load_stage_file
-from dvc.remote import RemoteS3
+from dvc.remote import S3Remote
 from tests.remotes import S3
 from tests.basic_env import TestDvc
 from tests.basic_env import TestDvcGit
@@ -306,8 +306,8 @@ class TestGitIgnoreWhenCheckout(CheckoutBase):
 class TestCheckoutMissingMd5InStageFile(TestRepro):
     def test(self):
         d = load_stage_file(self.file1_stage)
-        del d[Stage.PARAM_OUTS][0][RemoteLOCAL.PARAM_CHECKSUM]
-        del d[Stage.PARAM_DEPS][0][RemoteLOCAL.PARAM_CHECKSUM]
+        del d[Stage.PARAM_OUTS][0][LocalRemote.PARAM_CHECKSUM]
+        del d[Stage.PARAM_DEPS][0][LocalRemote.PARAM_CHECKSUM]
         dump_stage_file(self.file1_stage, d)
 
         with pytest.raises(CheckoutError):
@@ -738,9 +738,9 @@ def test_checkout_recursive(tmp_dir, dvc):
     not S3.should_test(), reason="Only run with S3 credentials"
 )
 def test_checkout_for_external_outputs(tmp_dir, dvc):
-    dvc.cache.s3 = RemoteS3(dvc, {"url": S3.get_url()})
+    dvc.cache.s3 = S3Remote(dvc, {"url": S3.get_url()})
 
-    remote = RemoteS3(dvc, {"url": S3.get_url()})
+    remote = S3Remote(dvc, {"url": S3.get_url()})
     file_path = remote.path_info / "foo"
     remote.s3.put_object(
         Bucket=remote.path_info.bucket, Key=file_path.path, Body="foo"

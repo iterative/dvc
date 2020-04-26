@@ -8,7 +8,7 @@ from collections import deque
 from contextlib import closing, contextmanager
 from urllib.parse import urlparse
 
-from .base import RemoteBASE, RemoteCmdError
+from .base import BaseRemote, RemoteCmdError
 from .pool import get_connection
 from dvc.scheme import Schemes
 from dvc.utils import fix_env, tmp_fname
@@ -16,7 +16,7 @@ from dvc.utils import fix_env, tmp_fname
 logger = logging.getLogger(__name__)
 
 
-class RemoteHDFS(RemoteBASE):
+class HDFSRemote(BaseRemote):
     scheme = Schemes.HDFS
     REGEX = r"^hdfs://((?P<user>.*)@)?.*$"
     PARAM_CHECKSUM = "checksum"
