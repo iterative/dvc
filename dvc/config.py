@@ -305,7 +305,7 @@ class Config(dict):
         conf = _load_config(self.files[level])
         conf = self._load_paths(conf, self.files[level])
 
-        # Autovivify sections
+        # Auto-verify sections
         for key in COMPILED_SCHEMA.schema:
             conf.setdefault(key, {})
 
@@ -341,7 +341,12 @@ class Config(dict):
 
     @staticmethod
     def _map_dirs(conf, func):
-        dirs_schema = {"cache": {"dir": func}, "remote": {str: {"url": func}}}
+        dirs_schema = {
+            "cache": {"dir": func},
+            "remote": {
+                str: {"url": func, "gdrive_user_credentials_file": func}
+            },
+        }
         return Schema(dirs_schema, extra=ALLOW_EXTRA)(conf)
 
     def _load_config_to_level(self, level=None):
