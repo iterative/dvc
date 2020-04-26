@@ -104,7 +104,14 @@ class _URLPathParents(object):
 
 
 class URLInfo(_BasePath):
-    DEFAULT_PORTS = {"http": 80, "https": 443, "ssh": 22, "hdfs": 0}
+    DEFAULT_PORTS = {
+        "http": 80,
+        "https": 443,
+        "ssh": 22,
+        "hdfs": 0,
+        "webdav": 80,
+        "webdavs": 443,
+    }
 
     def __init__(self, url):
         p = urlparse(url)
