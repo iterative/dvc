@@ -183,9 +183,8 @@ class GDriveRemote(BaseRemote):
     def _credentials_location(self):
         if os.getenv(GDriveRemote.GDRIVE_CREDENTIALS_DATA):
             return GDriveRemote.GDRIVE_CREDENTIALS_DATA
-        else:
-            if os.path.exists(self._gdrive_user_credentials_path):
-                return self._gdrive_user_credentials_path
+        if os.path.exists(self._gdrive_user_credentials_path):
+            return self._gdrive_user_credentials_path
         return None
 
     # Detects discrepancy in DVC config and cached credentials file.
