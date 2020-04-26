@@ -7,9 +7,9 @@ from contextlib import contextmanager
 from subprocess import CalledProcessError, check_output, Popen
 
 from dvc.utils import env2bool
-from dvc.remote import RemoteGDrive
-from dvc.remote.gs import RemoteGS
-from dvc.remote.s3 import RemoteS3
+from dvc.remote import GDriveRemote
+from dvc.remote.gs import GSRemote
+from dvc.remote.s3 import S3Remote
 from tests.basic_env import TestDvc
 
 from moto.s3 import mock_s3
@@ -80,7 +80,7 @@ class S3Mocked(S3):
     @contextmanager
     def remote(cls, repo):
         with mock_s3():
-            yield RemoteS3(repo, {"url": cls.get_url()})
+            yield S3Remote(repo, {"url": cls.get_url()})
 
     @staticmethod
     def put_objects(remote, objects):
@@ -128,7 +128,7 @@ class GCP:
     @classmethod
     @contextmanager
     def remote(cls, repo):
-        yield RemoteGS(repo, {"url": cls.get_url()})
+        yield GSRemote(repo, {"url": cls.get_url()})
 
     @staticmethod
     def put_objects(remote, objects):
@@ -141,7 +141,7 @@ class GCP:
 class GDrive:
     @staticmethod
     def should_test():
-        return os.getenv(RemoteGDrive.GDRIVE_CREDENTIALS_DATA) is not None
+        return os.getenv(GDriveRemote.GDRIVE_CREDENTIALS_DATA) is not None
 
     def get_url(self):
         if not getattr(self, "_remote_url", None):

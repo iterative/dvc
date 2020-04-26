@@ -12,7 +12,7 @@ from funcy.py3 import cat
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 from dvc.path_info import CloudURLInfo
-from dvc.remote.base import RemoteBASE
+from dvc.remote.base import BaseRemote
 from dvc.exceptions import DvcException
 from dvc.utils import tmp_fname, format_link
 
@@ -94,7 +94,7 @@ class GDriveURLInfo(CloudURLInfo):
         self._spath = re.sub("/{2,}", "/", self._spath.rstrip("/"))
 
 
-class RemoteGDrive(RemoteBASE):
+class GDriveRemote(BaseRemote):
     scheme = Schemes.GDRIVE
     path_cls = GDriveURLInfo
     REQUIRES = {"pydrive2": "pydrive2"}
@@ -139,7 +139,7 @@ class RemoteGDrive(RemoteBASE):
         self._validate_config()
         self._gdrive_user_credentials_path = (
             tmp_fname(os.path.join(self.repo.tmp_dir, ""))
-            if os.getenv(RemoteGDrive.GDRIVE_CREDENTIALS_DATA)
+            if os.getenv(GDriveRemote.GDRIVE_CREDENTIALS_DATA)
             else config.get(
                 "gdrive_user_credentials_file",
                 os.path.join(
@@ -183,12 +183,12 @@ class RemoteGDrive(RemoteBASE):
         from pydrive2.auth import GoogleAuth
         from pydrive2.drive import GoogleDrive
 
-        if os.getenv(RemoteGDrive.GDRIVE_CREDENTIALS_DATA):
+        if os.getenv(GDriveRemote.GDRIVE_CREDENTIALS_DATA):
             with open(
                 self._gdrive_user_credentials_path, "w"
             ) as credentials_file:
                 credentials_file.write(
-                    os.getenv(RemoteGDrive.GDRIVE_CREDENTIALS_DATA)
+                    os.getenv(GDriveRemote.GDRIVE_CREDENTIALS_DATA)
                 )
 
         GoogleAuth.DEFAULT_SETTINGS["client_config_backend"] = "settings"
@@ -237,7 +237,7 @@ class RemoteGDrive(RemoteBASE):
         except Exception as exc:
             raise DvcException("Google Drive authentication failed") from exc
         finally:
-            if os.getenv(RemoteGDrive.GDRIVE_CREDENTIALS_DATA):
+            if os.getenv(GDriveRemote.GDRIVE_CREDENTIALS_DATA):
                 os.remove(self._gdrive_user_credentials_path)
 
         return GoogleDrive(gauth)

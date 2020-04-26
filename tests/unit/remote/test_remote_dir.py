@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import pytest
 import os
-from dvc.remote.s3 import RemoteS3
+from dvc.remote.s3 import S3Remote
 from dvc.utils.fs import walk_files
 from dvc.path_info import PathInfo
 from tests.remotes import GCP, S3Mocked
@@ -90,15 +90,15 @@ def test_copy_preserve_etag_across_buckets(remote, dvc):
     s3 = remote.s3
     s3.create_bucket(Bucket="another")
 
-    another = RemoteS3(dvc, {"url": "s3://another", "region": "us-east-1"})
+    another = S3Remote(dvc, {"url": "s3://another", "region": "us-east-1"})
 
     from_info = remote.path_info / "foo"
     to_info = another.path_info / "foo"
 
     remote.copy(from_info, to_info)
 
-    from_etag = RemoteS3.get_etag(s3, from_info.bucket, from_info.path)
-    to_etag = RemoteS3.get_etag(s3, "another", "foo")
+    from_etag = S3Remote.get_etag(s3, from_info.bucket, from_info.path)
+    to_etag = S3Remote.get_etag(s3, "another", "foo")
 
     assert from_etag == to_etag
 

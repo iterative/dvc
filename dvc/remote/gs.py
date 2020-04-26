@@ -11,7 +11,7 @@ from funcy import cached_property, wrap_prop
 from dvc.exceptions import DvcException
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import RemoteBASE
+from dvc.remote.base import BaseRemote
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
@@ -66,7 +66,7 @@ def _upload_to_bucket(
             blob.upload_from_file(wrapped)
 
 
-class RemoteGS(RemoteBASE):
+class GSRemote(BaseRemote):
     scheme = Schemes.GS
     path_cls = CloudURLInfo
     REQUIRES = {"google-cloud-storage": "google.cloud.storage"}

@@ -1,6 +1,6 @@
 from .http import DependencyHTTP
-from dvc.remote.https import RemoteHTTPS
+from dvc.remote.https import HTTPSRemote
 
 
 class DependencyHTTPS(DependencyHTTP):
-    REMOTE = RemoteHTTPS
+    REMOTE = HTTPSRemote

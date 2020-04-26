@@ -8,7 +8,7 @@ from dvc.path_info import HTTPURLInfo
 import dvc.prompt as prompt
 from dvc.exceptions import DvcException, HTTPError
 from dvc.progress import Tqdm
-from dvc.remote.base import RemoteBASE
+from dvc.remote.base import BaseRemote
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ def ask_password(host, user):
     )
 
 
-class RemoteHTTP(RemoteBASE):
+class HTTPRemote(BaseRemote):
     scheme = Schemes.HTTP
     path_cls = HTTPURLInfo
     SESSION_RETRIES = 5

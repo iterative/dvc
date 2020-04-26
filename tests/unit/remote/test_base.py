@@ -3,7 +3,7 @@ import mock
 import pytest
 
 from dvc.path_info import PathInfo
-from dvc.remote.base import RemoteBASE
+from dvc.remote.base import BaseRemote
 from dvc.remote.base import RemoteCmdError
 from dvc.remote.base import RemoteMissingDepsError
 
@@ -16,7 +16,7 @@ class _CallableOrNone(object):
 
 
 CallableOrNone = _CallableOrNone()
-REMOTE_CLS = RemoteBASE
+REMOTE_CLS = BaseRemote
 
 
 def test_missing_deps(dvc):
@@ -42,10 +42,10 @@ def test_cmd_error(dvc):
             REMOTE_CLS(dvc, config).remove("file")
 
 
-@mock.patch.object(RemoteBASE, "_cache_checksums_traverse")
-@mock.patch.object(RemoteBASE, "_cache_object_exists")
+@mock.patch.object(BaseRemote, "_cache_checksums_traverse")
+@mock.patch.object(BaseRemote, "_cache_object_exists")
 def test_cache_exists(object_exists, traverse, dvc):
-    remote = RemoteBASE(dvc, {})
+    remote = BaseRemote(dvc, {})
 
     # remote does not support traverse
     remote.CAN_TRAVERSE = False
@@ -98,13 +98,13 @@ def test_cache_exists(object_exists, traverse, dvc):
 
 
 @mock.patch.object(
-    RemoteBASE, "cache_checksums", return_value=[],
+    BaseRemote, "cache_checksums", return_value=[],
 )
 @mock.patch.object(
-    RemoteBASE, "path_to_checksum", side_effect=lambda x: x,
+    BaseRemote, "path_to_checksum", side_effect=lambda x: x,
 )
 def test_cache_checksums_traverse(path_to_checksum, cache_checksums, dvc):
-    remote = RemoteBASE(dvc, {})
+    remote = BaseRemote(dvc, {})
     remote.path_info = PathInfo("foo")
 
     # parallel traverse
@@ -129,7 +129,7 @@ def test_cache_checksums_traverse(path_to_checksum, cache_checksums, dvc):
 
 
 def test_cache_checksums(dvc):
-    remote = RemoteBASE(dvc, {})
+    remote = BaseRemote(dvc, {})
     remote.path_info = PathInfo("foo")
 
     with mock.patch.object(

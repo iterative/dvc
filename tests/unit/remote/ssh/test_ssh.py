@@ -6,7 +6,7 @@ import pytest
 from mock import mock_open
 from mock import patch
 
-from dvc.remote.ssh import RemoteSSH
+from dvc.remote.ssh import SSHRemote
 from dvc.system import System
 from tests.remotes import SSHMocked
 
@@ -21,20 +21,20 @@ def test_url(dvc):
     url = "ssh://{}@{}:{}{}".format(user, host, port, path)
     config = {"url": url}
 
-    remote = RemoteSSH(dvc, config)
+    remote = SSHRemote(dvc, config)
     assert remote.path_info == url
 
     # SCP-like URL ssh://[user@]host.xz:/absolute/path
     url = "ssh://{}@{}:{}".format(user, host, path)
     config = {"url": url}
 
-    remote = RemoteSSH(dvc, config)
+    remote = SSHRemote(dvc, config)
     assert remote.path_info == url
 
 
 def test_no_path(dvc):
     config = {"url": "ssh://127.0.0.1"}
-    remote = RemoteSSH(dvc, config)
+    remote = SSHRemote(dvc, config)
     assert remote.path_info.path == ""
 
 
@@ -68,10 +68,10 @@ else:
 def test_ssh_host_override_from_config(
     mock_file, mock_exists, dvc, config, expected_host
 ):
-    remote = RemoteSSH(dvc, config)
+    remote = SSHRemote(dvc, config)
 
-    mock_exists.assert_called_with(RemoteSSH.ssh_config_filename())
-    mock_file.assert_called_with(RemoteSSH.ssh_config_filename())
+    mock_exists.assert_called_with(SSHRemote.ssh_config_filename())
+    mock_file.assert_called_with(SSHRemote.ssh_config_filename())
     assert remote.path_info.host == expected_host
 
 
@@ -96,10 +96,10 @@ def test_ssh_host_override_from_config(
     read_data=mock_ssh_config,
 )
 def test_ssh_user(mock_file, mock_exists, dvc, config, expected_user):
-    remote = RemoteSSH(dvc, config)
+    remote = SSHRemote(dvc, config)
 
-    mock_exists.assert_called_with(RemoteSSH.ssh_config_filename())
-    mock_file.assert_called_with(RemoteSSH.ssh_config_filename())
+    mock_exists.assert_called_with(SSHRemote.ssh_config_filename())
+    mock_file.assert_called_with(SSHRemote.ssh_config_filename())
     assert remote.path_info.user == expected_user
 
 
@@ -109,7 +109,7 @@ def test_ssh_user(mock_file, mock_exists, dvc, config, expected_user):
         ({"url": "ssh://example.com:2222"}, 2222),
         ({"url": "ssh://example.com"}, 1234),
         ({"url": "ssh://example.com", "port": 4321}, 4321),
-        ({"url": "ssh://not_in_ssh_config.com"}, RemoteSSH.DEFAULT_PORT),
+        ({"url": "ssh://not_in_ssh_config.com"}, SSHRemote.DEFAULT_PORT),
         ({"url": "ssh://not_in_ssh_config.com:2222"}, 2222),
         ({"url": "ssh://not_in_ssh_config.com:2222", "port": 4321}, 4321),
     ],
@@ -121,10 +121,10 @@ def test_ssh_user(mock_file, mock_exists, dvc, config, expected_user):
     read_data=mock_ssh_config,
 )
 def test_ssh_port(mock_file, mock_exists, dvc, config, expected_port):
-    remote = RemoteSSH(dvc, config)
+    remote = SSHRemote(dvc, config)
 
-    mock_exists.assert_called_with(RemoteSSH.ssh_config_filename())
-    mock_file.assert_called_with(RemoteSSH.ssh_config_filename())
+    mock_exists.assert_called_with(SSHRemote.ssh_config_filename())
+    mock_file.assert_called_with(SSHRemote.ssh_config_filename())
     assert remote.path_info.port == expected_port
 
 
@@ -156,10 +156,10 @@ def test_ssh_port(mock_file, mock_exists, dvc, config, expected_port):
     read_data=mock_ssh_config,
 )
 def test_ssh_keyfile(mock_file, mock_exists, dvc, config, expected_keyfile):
-    remote = RemoteSSH(dvc, config)
+    remote = SSHRemote(dvc, config)
 
-    mock_exists.assert_called_with(RemoteSSH.ssh_config_filename())
-    mock_file.assert_called_with(RemoteSSH.ssh_config_filename())
+    mock_exists.assert_called_with(SSHRemote.ssh_config_filename())
+    mock_file.assert_called_with(SSHRemote.ssh_config_filename())
     assert remote.keyfile == expected_keyfile
 
 
@@ -178,10 +178,10 @@ def test_ssh_keyfile(mock_file, mock_exists, dvc, config, expected_keyfile):
     read_data=mock_ssh_config,
 )
 def test_ssh_gss_auth(mock_file, mock_exists, dvc, config, expected_gss_auth):
-    remote = RemoteSSH(dvc, config)
+    remote = SSHRemote(dvc, config)
 
-    mock_exists.assert_called_with(RemoteSSH.ssh_config_filename())
-    mock_file.assert_called_with(RemoteSSH.ssh_config_filename())
+    mock_exists.assert_called_with(SSHRemote.ssh_config_filename())
+    mock_file.assert_called_with(SSHRemote.ssh_config_filename())
     assert remote.gss_auth == expected_gss_auth
 
 
@@ -195,7 +195,7 @@ def test_hardlink_optimization(dvc, tmp_dir, ssh_server):
         "user": user,
         "keyfile": ssh_server.test_creds["key_filename"],
     }
-    remote = RemoteSSH(dvc, config)
+    remote = SSHRemote(dvc, config)
 
     from_info = remote.path_info / "empty"
     to_info = remote.path_info / "link"

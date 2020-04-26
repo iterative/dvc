@@ -8,9 +8,9 @@ from dvc.output.local import OutputLOCAL
 from dvc.output.s3 import OutputS3
 from dvc.output.ssh import OutputSSH
 from dvc.remote import Remote
-from dvc.remote.hdfs import RemoteHDFS
-from dvc.remote.local import RemoteLOCAL
-from dvc.remote.s3 import RemoteS3
+from dvc.remote.hdfs import HDFSRemote
+from dvc.remote.local import LocalRemote
+from dvc.remote.s3 import S3Remote
 from dvc.scheme import Schemes
 
 OUTS = [
@@ -44,9 +44,9 @@ CHECKSUM_SCHEMA = Any(
 # so when a few types of outputs share the same name, we only need
 # specify it once.
 CHECKSUMS_SCHEMA = {
-    RemoteLOCAL.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
-    RemoteS3.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
-    RemoteHDFS.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    LocalRemote.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    S3Remote.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    HDFSRemote.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
 }
 
 TAGS_SCHEMA = {str: CHECKSUMS_SCHEMA}

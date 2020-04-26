@@ -15,7 +15,7 @@ from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
 from dvc.remote.base import (
     index_locked,
-    RemoteBASE,
+    BaseRemote,
     STATUS_MAP,
     STATUS_DELETED,
     STATUS_MISSING,
@@ -31,7 +31,7 @@ from dvc.utils.fs import copyfile, move, makedirs, remove, walk_files
 logger = logging.getLogger(__name__)
 
 
-class RemoteLOCAL(RemoteBASE):
+class LocalRemote(BaseRemote):
     scheme = Schemes.LOCAL
     path_cls = PathInfo
     PARAM_CHECKSUM = "md5"

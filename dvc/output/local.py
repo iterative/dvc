@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 from dvc.exceptions import DvcException
 from dvc.istextfile import istextfile
 from dvc.output.base import OutputBase
-from dvc.remote.local import RemoteLOCAL
+from dvc.remote.local import LocalRemote
 from dvc.utils import relpath
 from dvc.compat import fspath_py35
 from dvc.utils.fs import path_isin
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class OutputLOCAL(OutputBase):
-    REMOTE = RemoteLOCAL
+    REMOTE = LocalRemote
     sep = os.sep
 
     def __init__(self, stage, path, *args, **kwargs):

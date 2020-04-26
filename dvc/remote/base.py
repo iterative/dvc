@@ -82,7 +82,7 @@ def index_locked(f):
     return wrapper
 
 
-class RemoteBASE(object):
+class BaseRemote(object):
     scheme = "base"
     path_cls = URLInfo
     REQUIRES = {}

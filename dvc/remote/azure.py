@@ -10,14 +10,14 @@ from funcy import cached_property, wrap_prop
 
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import RemoteBASE
+from dvc.remote.base import BaseRemote
 from dvc.scheme import Schemes
 
 
 logger = logging.getLogger(__name__)
 
 
-class RemoteAZURE(RemoteBASE):
+class AzureRemote(BaseRemote):
     scheme = Schemes.AZURE
     path_cls = CloudURLInfo
     REGEX = (

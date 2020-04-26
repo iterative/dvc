@@ -9,7 +9,7 @@ from dvc.compat import fspath
 from dvc.exceptions import CollectCacheError
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
-from dvc.remote.local import RemoteLOCAL
+from dvc.remote.local import LocalRemote
 from dvc.utils.fs import remove
 from tests.basic_env import TestDir, TestDvcGit
 
@@ -216,7 +216,7 @@ def test_gc_no_unpacked_dir(tmp_dir, dvc):
 
     os.remove("dir.dvc")
     unpackeddir = (
-        dir_stages[0].outs[0].cache_path + RemoteLOCAL.UNPACKED_DIR_SUFFIX
+        dir_stages[0].outs[0].cache_path + LocalRemote.UNPACKED_DIR_SUFFIX
     )
 
     assert os.path.exists(unpackeddir)
@@ -324,7 +324,7 @@ def test_gc_cloud_remove_order(tmp_dir, scm, dvc, tmp_path_factory, mocker):
     dvc.remove(dir2.relpath)
     dvc.gc(workspace=True)
 
-    mocked_remove = mocker.patch.object(RemoteLOCAL, "remove", autospec=True)
+    mocked_remove = mocker.patch.object(LocalRemote, "remove", autospec=True)
     dvc.gc(workspace=True, cloud=True)
     assert len(mocked_remove.mock_calls) == 8
     # dir (and unpacked dir) should be first 4 checksums removed from

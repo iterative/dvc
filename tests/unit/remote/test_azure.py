@@ -1,4 +1,4 @@
-from dvc.remote.azure import RemoteAZURE
+from dvc.remote.azure import AzureRemote
 
 
 container_name = "container-name"
@@ -17,7 +17,7 @@ def test_init_compat(dvc):
         container_name=container_name, connection_string=connection_string,
     )
     config = {"url": url}
-    remote = RemoteAZURE(dvc, config)
+    remote = AzureRemote(dvc, config)
     assert remote.path_info == "azure://" + container_name
     assert remote.connection_string == connection_string
 
@@ -26,6 +26,6 @@ def test_init(dvc):
     prefix = "some/prefix"
     url = "azure://{}/{}".format(container_name, prefix)
     config = {"url": url, "connection_string": connection_string}
-    remote = RemoteAZURE(dvc, config)
+    remote = AzureRemote(dvc, config)
     assert remote.path_info == url
     assert remote.connection_string == connection_string
