@@ -17,13 +17,13 @@ class TestRemove(TestDvc):
         self.assertEqual(len(stages), 1)
         stage = stages[0]
         self.assertTrue(stage is not None)
-        stage_removed = self.dvc.remove(stage.path, outs_only=True)
+        (stage_removed,) = self.dvc.remove(stage.path, outs_only=True)
 
         self.assertIsInstance(stage_removed, Stage)
         self.assertEqual(stage.path, stage_removed.path)
         self.assertFalse(os.path.isfile(self.FOO))
 
-        stage_removed = self.dvc.remove(stage.path)
+        (stage_removed,) = self.dvc.remove(stage.path)
         self.assertIsInstance(stage_removed, Stage)
         self.assertEqual(stage.path, stage_removed.path)
         self.assertFalse(os.path.isfile(self.FOO))
@@ -60,7 +60,7 @@ class TestRemoveDirectory(TestDvc):
         self.assertEqual(len(stages), 1)
         stage_add = stages[0]
         self.assertTrue(stage_add is not None)
-        stage_removed = self.dvc.remove(stage_add.path)
+        (stage_removed,) = self.dvc.remove(stage_add.path)
         self.assertEqual(stage_add.path, stage_removed.path)
         self.assertFalse(os.path.exists(self.DATA_DIR))
         self.assertFalse(os.path.exists(stage_removed.path))

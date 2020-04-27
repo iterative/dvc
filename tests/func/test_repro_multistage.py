@@ -228,7 +228,7 @@ def test_downstream(tmp_dir, dvc):
 
 
 def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy):
-    from dvc.dvcfile import PipelineFile
+    from dvc.dvcfile import PipelineFile, PIPELINE_FILE
 
     tmp_dir.gen("foo", "foo")
     stage = run_copy("foo", "bar", name="copy-file")
@@ -238,6 +238,9 @@ def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy):
     stage.cmd = "  ".join(stage.cmd.split())  # change cmd spacing by two
     PipelineFile(dvc, PIPELINE_FILE)._dump_pipeline_file(stage)
 
+    assert dvc.status([target]) == {
+        PIPELINE_FILE + target: ["changed command"]
+    }
     assert dvc.reproduce(target)[0] == stage
 
 

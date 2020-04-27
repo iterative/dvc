@@ -8,6 +8,7 @@ from dvc.dvcfile import Dvcfile, is_dvc_file
 from ..exceptions import (
     RecursiveAddingWhileUsingFilename,
     OverlappingOutputPathsError,
+    OutputDuplicationError,
 )
 from ..output.base import OutputDoesNotExistError
 from ..progress import Tqdm
@@ -67,6 +68,10 @@ def add(repo, targets, recursive=False, no_commit=False, fname=None):
                 )
                 raise OverlappingOutputPathsError(
                     exc.parent, exc.overlapping_out, msg
+                )
+            except OutputDuplicationError as exc:
+                raise OutputDuplicationError(
+                    exc.output, set(exc.stages) - set(stages)
                 )
 
             with Tqdm(

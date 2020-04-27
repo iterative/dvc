@@ -158,7 +158,7 @@ def test_md5_ignores_comments(tmp_dir, dvc):
         f.write("# End comment\n")
 
     new_stage = SingleStageFile(dvc, stage.path).stage
-    assert not new_stage.changed_md5()
+    assert not new_stage.stage_changed()
 
 
 def test_meta_is_preserved(tmp_dir, dvc):
@@ -192,3 +192,18 @@ def test_parent_repo_collect_stages(tmp_dir, scm, dvc):
 
     assert stages == []
     assert subrepo_stages != []
+
+
+def test_stage_addressing(tmp_dir, dvc, run_copy):
+    tmp_dir.dvc_gen("foo", "foo")
+    stage1 = run_copy("foo", "bar")
+    assert stage1.addressing == "bar.dvc"
+
+    stage2 = run_copy("bar", "baz", name="copy-bar-baz")
+    assert stage2.addressing == "pipelines.yaml:copy-bar-baz"
+
+    folder = tmp_dir / "dir"
+    folder.mkdir()
+    with folder.chdir():
+        assert stage1.addressing == "../bar.dvc"
+        assert stage2.addressing == "../pipelines.yaml:copy-bar-baz"

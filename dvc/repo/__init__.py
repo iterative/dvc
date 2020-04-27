@@ -211,8 +211,8 @@ class Repo(object):
                 os.path.abspath(target), graph or self.graph
             )
 
-        file, name, = parse_target(target)
-        dvcfile = Dvcfile(self, file)
+        file, name, tag = parse_target(target)
+        dvcfile = Dvcfile(self, file, tag=tag)
         stages = list(dvcfile.stages.filter(name).values())
         if not with_deps:
             return stages
@@ -229,10 +229,10 @@ class Repo(object):
         if not target:
             return [(stage, None) for stage in self.stages]
 
-        file, name = parse_target(target)
+        file, name, tag = parse_target(target)
         if is_valid_filename(file) and not kwargs.get("with_deps"):
             # Optimization: do not collect the graph for a specific .dvc target
-            stages = Dvcfile(self, file).stages.filter(name)
+            stages = Dvcfile(self, file, tag=tag).stages.filter(name)
             return [(stage, None) for stage in stages.values()]
 
         try:

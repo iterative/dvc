@@ -12,11 +12,15 @@ from mock import patch, call
 import dvc as dvc_module
 from dvc.cache import Cache
 from dvc.dvcfile import DVC_FILE_SUFFIX
-from dvc.exceptions import DvcException, OverlappingOutputPathsError
-from dvc.exceptions import RecursiveAddingWhileUsingFilename
-from dvc.exceptions import StageFileCorruptedError
+from dvc.exceptions import (
+    DvcException,
+    OverlappingOutputPathsError,
+    OutputDuplicationError,
+    RecursiveAddingWhileUsingFilename,
+    StageFileCorruptedError,
+)
 from dvc.main import main
-from dvc.output.base import OutputAlreadyTrackedError
+from dvc.output.base import OutputAlreadyTrackedError, OutputIsStageFileError
 from dvc.remote import LocalRemote
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
@@ -703,3 +707,20 @@ def test_add_optimization_for_hardlink_on_empty_files(tmp_dir, dvc, mocker):
     for stage in stages:
         assert os.path.exists(stage.path)
         assert os.path.exists(stage.outs[0].cache_path)
+
+
+def test_output_duplication_for_pipeline_tracked(tmp_dir, dvc, run_copy):
+    tmp_dir.dvc_gen("foo", "foo")
+    run_copy("foo", "bar", name="copy-foo-bar")
+    with pytest.raises(OutputDuplicationError):
+        dvc.add("bar")
+
+
+def test_add_pipeline_file(tmp_dir, dvc, run_copy):
+    from dvc.dvcfile import PIPELINE_FILE
+
+    tmp_dir.dvc_gen("foo", "foo")
+    run_copy("foo", "bar", name="copy-foo-bar")
+
+    with pytest.raises(OutputIsStageFileError):
+        dvc.add(PIPELINE_FILE)

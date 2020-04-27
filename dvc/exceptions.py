@@ -31,6 +31,8 @@ class OutputDuplicationError(DvcException):
             output, "\n".join("\t{}".format(s.addressing) for s in stages)
         )
         super().__init__(msg)
+        self.stages = stages
+        self.output = output
 
 
 class OutputNotFoundError(DvcException):

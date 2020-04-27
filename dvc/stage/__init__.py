@@ -186,9 +186,6 @@ class Stage(params.StageParams):
         """Whether the DVC-file was created with `dvc add` or `dvc import`"""
         return self.cmd is None
 
-    def changed_md5(self):
-        return self.md5 != self._compute_md5()
-
     @property
     def is_callback(self):
         """
@@ -251,11 +248,11 @@ class Stage(params.StageParams):
 
         return False
 
-    def _changed_md5(self):
-        if self.changed_md5():
+    def stage_changed(self, warn=False):
+        changed = self.md5 != self._compute_md5()
+        if changed and warn:
             logger.warning("DVC-file '{}' changed.".format(self.relpath))
-            return True
-        return False
+        return changed
 
     @rwlocked(read=["deps", "outs"])
     def changed(self):
@@ -269,7 +266,9 @@ class Stage(params.StageParams):
     def _changed(self):
         # Short-circuit order: stage md5 is fast, deps are expected to change
         return (
-            self._changed_md5() or self._changed_deps() or self._changed_outs()
+            self.stage_changed(warn=True)
+            or self._changed_deps()
+            or self._changed_outs()
         )
 
     @rwlocked(write=["outs"])
@@ -280,8 +279,8 @@ class Stage(params.StageParams):
                 out.unprotect()
             else:
                 logger.debug(
-                    "Removing output '{out}' of '{stage}'.".format(
-                        out=out, stage=self.relpath
+                    "Removing output '{out}' of {stage}.".format(
+                        out=out, stage=self
                     )
                 )
                 out.remove(ignore_remove=ignore_remove)
@@ -296,7 +295,7 @@ class Stage(params.StageParams):
             self.remove_outs(ignore_remove=True, force=force)
         else:
             self.unprotect_outs()
-        os.unlink(self.path)
+        self.dvcfile.remove()
 
     @rwlocked(read=["deps"], write=["outs"])
     def reproduce(self, interactive=False, **kwargs):
@@ -507,14 +506,14 @@ class Stage(params.StageParams):
         changed_deps = self._changed_entries(self.deps)
         changed_outs = self._changed_entries(self.outs)
 
-        if changed_deps or changed_outs or self.changed_md5():
+        if changed_deps or changed_outs or self.stage_changed():
             msg = (
                 "dependencies {}".format(changed_deps) if changed_deps else ""
             )
             msg += " and " if (changed_deps and changed_outs) else ""
             msg += "outputs {}".format(changed_outs) if changed_outs else ""
             msg += "md5" if not (changed_deps or changed_outs) else ""
-            msg += " of '{}' changed. ".format(self.relpath)
+            msg += " of {} changed. ".format(self)
             msg += "Are you sure you want to commit it?"
             if not force and not prompt.confirm(msg):
                 raise StageCommitError(
@@ -641,7 +640,7 @@ class Stage(params.StageParams):
             if not dry:
                 if (
                     not force
-                    and not self._changed_md5()
+                    and not self.stage_changed(warn=True)
                     and self._already_cached()
                 ):
                     self.outs[0].checkout()
@@ -719,6 +718,9 @@ class Stage(params.StageParams):
 
         return ret
 
+    def stage_status(self):
+        return ["changed checksum"] if self.stage_changed() else []
+
     @rwlocked(read=["deps", "outs"])
     def status(self, check_updates=False):
         ret = []
@@ -734,14 +736,12 @@ class Stage(params.StageParams):
         if outs_status:
             ret.append({"changed outs": outs_status})
 
-        if self.changed_md5():
-            ret.append("changed checksum")
-
+        ret.extend(self.stage_status())
         if self.is_callback or self.always_changed:
             ret.append("always changed")
 
         if ret:
-            return {self.relpath: ret}
+            return {self.addressing: ret}
 
         return {}
 
@@ -795,14 +795,17 @@ class PipelineStage(Stage):
     def addressing(self):
         return super().addressing + ":" + self.name
 
-    def _changed(self):
-        if self.cmd_changed:
-            logger.warning("'cmd' of {} has changed.".format(self))
-        return self.cmd_changed or self._changed_deps() or self._changed_outs()
-
     def reload(self):
         return self.dvcfile.stages[self.name]
 
     @property
     def is_cached(self):
         return self.name in self.dvcfile.stages and super().is_cached
+
+    def stage_status(self):
+        return ["changed command"] if self.cmd_changed else []
+
+    def stage_changed(self, warn=False):
+        if self.cmd_changed and warn:
+            logger.warning("'cmd' of {} has changed.".format(self))
+        return self.cmd_changed

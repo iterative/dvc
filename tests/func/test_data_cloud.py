@@ -764,3 +764,38 @@ def test_pull_external_dvc_imports(tmp_dir, dvc, scm, erepo_dir):
 
     assert (tmp_dir / "new_dir").exists()
     assert (tmp_dir / "new_dir" / "bar").read_text() == "bar"
+
+
+def test_dvc_pull_pipeline_stages(tmp_dir, dvc, local_remote, run_copy):
+    (stage0,) = tmp_dir.dvc_gen("foo", "foo")
+    stage1 = run_copy("foo", "bar")
+    stage2 = run_copy("bar", "foobar", name="copy-bar-foobar")
+    outs = ["foo", "bar", "foobar"]
+
+    def clean():
+        for path in [*outs, dvc.cache.local.cache_dir]:
+            remove(path)
+        os.makedirs(dvc.cache.local.cache_dir, exist_ok=True)
+
+    dvc.push()
+    clean()
+    dvc.pull()
+    assert all((tmp_dir / file).exists() for file in outs)
+
+    for out, stage in zip(outs, [stage0, stage1, stage2]):
+        for target in [stage.addressing, out]:
+            clean()
+            stats = dvc.pull([target])
+            assert stats["downloaded"] == 1
+            assert stats["added"] == [out]
+            assert os.path.exists(out)
+            assert not any(os.path.exists(out) for out in set(outs) - {out})
+
+    clean()
+    stats = dvc.pull([stage2.addressing], with_deps=True)
+    assert len(stats["added"]) == 3
+    assert set(stats["added"]) == set(outs)
+
+    clean()
+    stats = dvc.pull([os.curdir], recursive=True)
+    assert set(stats["added"]) == set(outs)

@@ -1,6 +1,8 @@
 import pytest
 import os
 
+from dvc.stage.exceptions import InvalidStageName, DuplicateStageName
+
 
 def test_run_with_name(tmp_dir, dvc, run_copy):
     from dvc.stage import PipelineStage
@@ -155,3 +157,16 @@ def test_run_dump_on_multistage(tmp_dir, dvc):
             **data["stages"],
         }
     }
+
+
+def test_run_with_invalid_stage_name(tmp_dir, dvc, run_copy):
+    tmp_dir.dvc_gen("foo", "foo")
+    with pytest.raises(InvalidStageName):
+        run_copy("foo", "bar", name="email@https://dvc.org")
+
+
+def test_run_already_exists(tmp_dir, dvc, run_copy):
+    tmp_dir.dvc_gen("foo", "foo")
+    run_copy("foo", "bar", name="copy")
+    with pytest.raises(DuplicateStageName):
+        run_copy("bar", "foobar", name="copy")

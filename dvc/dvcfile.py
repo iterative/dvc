@@ -1,5 +1,5 @@
+import contextlib
 import os
-import re
 import logging
 
 import dvc.prompt as prompt
@@ -7,7 +7,7 @@ import dvc.prompt as prompt
 from voluptuous import MultipleInvalid
 from dvc import serialize
 from dvc.exceptions import DvcException
-from dvc.loader import SingleStageLoader, StageLoader
+from dvc.stage.loader import SingleStageLoader, StageLoader
 from dvc.stage.exceptions import (
     StageFileBadNameError,
     StageFileDoesNotExistError,
@@ -16,6 +16,7 @@ from dvc.stage.exceptions import (
     StageFileAlreadyExistsError,
 )
 from dvc.utils import relpath
+from dvc.utils.collections import apply_diff
 from dvc.utils.stage import (
     dump_stage_file,
     parse_stage,
@@ -28,7 +29,6 @@ DVC_FILE = "Dvcfile"
 DVC_FILE_SUFFIX = ".dvc"
 PIPELINE_FILE = "pipelines.yaml"
 PIPELINE_LOCK = "pipelines.lock"
-TAG_REGEX = r"^(?P<path>.*)@(?P<tag>[^\\/@:]*)$"
 
 
 def is_valid_filename(path):
@@ -39,7 +39,9 @@ def is_valid_filename(path):
 
 
 def is_dvc_file(path):
-    return os.path.isfile(path) and is_valid_filename(path)
+    return os.path.isfile(path) and (
+        is_valid_filename(path) or os.path.basename(path) == PIPELINE_LOCK
+    )
 
 
 def check_dvc_filename(path):
@@ -52,59 +54,46 @@ def check_dvc_filename(path):
         )
 
 
-def _get_path_tag(s):
-    regex = re.compile(TAG_REGEX)
-    match = regex.match(s)
-    if not match:
-        return s, None
-    return match.group("path"), match.group("tag")
-
-
-class MultiStageFileLoadError(DvcException):
-    def __init__(self, file):
-        super().__init__("Cannot load multi-stage file: '{}'".format(file))
-
-
 class FileMixin:
     SCHEMA = None
 
-    def __init__(self, repo, path):
+    def __init__(self, repo, path, **kwargs):
         self.repo = repo
-        self.path, self.tag = _get_path_tag(path)
+        self.path = path
 
     def __repr__(self):
         return "{}: {}".format(
-            DVC_FILE, relpath(self.path, self.repo.root_dir)
+            self.__class__.__name__, relpath(self.path, self.repo.root_dir)
         )
 
-    def __str__(self):
-        return "{}: {}".format(DVC_FILE, self.relpath)
+    def __hash__(self):
+        return hash(self.path)
 
+    def __eq__(self, other):
+        return self.repo == other.repo and os.path.abspath(
+            self.path
+        ) == os.path.abspath(other.path)
+
+    def __str__(self):
+        return "{}: {}".format(self.__class__.__name__, self.relpath)
+
+    @property
     def relpath(self):
         return relpath(self.path)
 
     def exists(self):
         return self.repo.tree.exists(self.path)
 
-    def check_file_exists(self):
-        if not self.exists():
-            raise StageFileDoesNotExistError(self.path)
-
-    def check_isfile(self):
-        if not self.repo.tree.isfile(self.path):
-            raise StageFileIsNotDvcFileError(self.path)
-
-    def check_filename(self):
-        raise NotImplementedError
-
     def _load(self):
         # it raises the proper exceptions by priority:
         # 1. when the file doesn't exists
         # 2. filename is not a DVC-file
         # 3. path doesn't represent a regular file
-        self.check_file_exists()
+        if not self.exists():
+            raise StageFileDoesNotExistError(self.path)
         check_dvc_filename(self.path)
-        self.check_isfile()
+        if not self.repo.tree.isfile(self.path):
+            raise StageFileIsNotDvcFileError(self.path)
 
         with self.repo.tree.open(self.path) as fd:
             stage_text = fd.read()
@@ -121,31 +110,28 @@ class FileMixin:
             raise StageFileFormatError(fname, exc)
 
     def remove_with_prompt(self, force=False):
-        if not self.exists():
-            return
+        raise NotImplementedError
 
-        msg = (
-            "'{}' already exists. Do you wish to run the command and "
-            "overwrite it?".format(relpath(self.path))
-        )
-        if not (force or prompt.confirm(msg)):
-            raise StageFileAlreadyExistsError(self.path)
-
-        os.unlink(self.path)
+    def remove(self):
+        raise NotImplementedError
 
 
 class SingleStageFile(FileMixin):
     from dvc.schema import COMPILED_SINGLE_STAGE_SCHEMA as SCHEMA
 
+    def __init__(self, repo, path, tag=None):
+        super().__init__(repo, path)
+        self.tag = tag
+
     @property
     def stage(self):
         data, raw = self._load()
-        return SingleStageLoader.load_stage(self, data, raw)
+        return SingleStageLoader.load_stage(self, data, raw, tag=self.tag)
 
     @property
     def stages(self):
         data, raw = self._load()
-        return SingleStageLoader(self, data, raw)
+        return SingleStageLoader(self, data, raw, tag=self.tag)
 
     def dump(self, stage, **kwargs):
         """Dumps given stage appropriately in the dvcfile."""
@@ -159,8 +145,27 @@ class SingleStageFile(FileMixin):
         dump_stage_file(self.path, serialize.to_single_stage_file(stage))
         self.repo.scm.track_file(relpath(self.path))
 
+    def remove_with_prompt(self, force=False):
+        if not self.exists():
+            return
+
+        msg = (
+            "'{}' already exists. Do you wish to run the command and "
+            "overwrite it?".format(relpath(self.path))
+        )
+        if not (force or prompt.confirm(msg)):
+            raise StageFileAlreadyExistsError(self.path)
+
+        self.remove()
+
+    def remove(self, force=False):
+        with contextlib.suppress(FileNotFoundError):
+            os.unlink(self.path)
+
 
 class PipelineFile(FileMixin):
+    """Abstraction for pipelines file, .yaml + .lock combined."""
+
     from dvc.schema import COMPILED_MULTI_STAGE_SCHEMA as SCHEMA
 
     @property
@@ -172,6 +177,7 @@ class PipelineFile(FileMixin):
         from dvc.stage import PipelineStage
 
         assert isinstance(stage, PipelineStage)
+        check_dvc_filename(self.path)
         self._dump_lockfile(stage)
         if update_pipeline and not stage.is_data_source:
             self._dump_pipeline_file(stage)
@@ -191,14 +197,21 @@ class PipelineFile(FileMixin):
             open(self.path, "w+").close()
 
         data["stages"] = data.get("stages", {})
-        data["stages"].update(serialize.to_dvcfile(stage))
+        stage_data = serialize.to_dvcfile(stage)
+        if data["stages"].get(stage.name):
+            orig_stage_data = data["stages"][stage.name]
+            apply_diff(stage_data[stage.name], orig_stage_data)
+        else:
+            data["stages"].update(stage_data)
 
-        dump_stage_file(self.path, self.SCHEMA(data))
+        dump_stage_file(self.path, data)
         self.repo.scm.track_file(relpath(self.path))
 
     @property
     def stage(self):
-        raise MultiStageFileLoadError(self.path)
+        raise DvcException(
+            "PipelineFile has multiple stages. Please specify it's name."
+        )
 
     @property
     def stages(self):
@@ -208,16 +221,23 @@ class PipelineFile(FileMixin):
         lockfile_data = lockfile.load(self.repo, self._lockfile)
         return StageLoader(self, data.get("stages", {}), lockfile_data)
 
+    def remove(self, force=False):
+        if not force:
+            logger.warning("Cannot remove pipeline file.")
+            return
+
+        for file in [self.path, self._lockfile]:
+            with contextlib.suppress(FileNotFoundError):
+                os.unlink(file)
+
 
 class Dvcfile:
-    def __new__(cls, repo, path):
+    def __new__(cls, repo, path, **kwargs):
         assert path
         assert repo
 
-        file, _ = _get_path_tag(path)
-        _, ext = os.path.splitext(file)
-        assert not ext or ext in [".yml", ".yaml", ".dvc"]
-
-        if not ext or ext == DVC_FILE_SUFFIX:
-            return SingleStageFile(repo, path)
-        return PipelineFile(repo, path)
+        _, ext = os.path.splitext(path)
+        if ext in [".yaml", ".yml"]:
+            return PipelineFile(repo, path, **kwargs)
+        # fallback to single stage file for better error messages
+        return SingleStageFile(repo, path, **kwargs)

@@ -92,3 +92,39 @@ class MissingDataSource(DvcException):
 
         msg = "missing data '{}': {}".format(source, ", ".join(missing_files))
         super().__init__(msg)
+
+
+class StageNotFound(KeyError, DvcException):
+    def __init__(self, file, name):
+        super().__init__(
+            "Stage with '{}' name not found inside '{}' file".format(
+                name, file.relpath
+            )
+        )
+
+
+class StageNameUnspecified(DvcException):
+    def __init__(self, file):
+        super().__init__(
+            "Stage name not provided. "
+            "\nPlease specify the name as: `{0}:stage_name`".format(
+                file.relpath
+            )
+        )
+
+
+class DuplicateStageName(DvcException):
+    def __init__(self, name, file):
+        super().__init__(
+            "Stage with name '{name}' already exists in '{relpath}'.".format(
+                name=name, relpath=file.relpath
+            )
+        )
+
+
+class InvalidStageName(DvcException):
+    def __init__(self,):
+        super().__init__(
+            "Stage name cannot contain invalid characters: "
+            "'\\', '/', '@' and ':'."
+        )

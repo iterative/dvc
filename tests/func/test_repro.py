@@ -560,7 +560,13 @@ class TestReproLocked(TestReproChangedData):
 
     def test_non_existing(self):
         with self.assertRaises(StageFileDoesNotExistError):
-            self.dvc.lock_stage("non-existing-stage")
+            self.dvc.lock_stage("Dvcfile")
+            self.dvc.lock_stage("pipelines.yaml")
+            self.dvc.lock_stage("pipelines.yaml:name")
+            self.dvc.lock_stage("Dvcfile:name")
+            self.dvc.lock_stage("stage.dvc")
+            self.dvc.lock_stage("stage.dvc:name")
+            self.dvc.lock_stage("not-existing-stage.json")
 
         ret = main(["lock", "non-existing-stage"])
         self.assertNotEqual(ret, 0)

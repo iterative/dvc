@@ -76,12 +76,12 @@ def reproduce(
     active_graph = _get_active_graph(self.graph)
     active_pipelines = get_pipelines(active_graph)
 
-    path, name = parse_target(target)
+    path, name, tag = parse_target(target)
     if pipeline or all_pipelines:
         if all_pipelines:
             pipelines = active_pipelines
         else:
-            dvcfile = Dvcfile(self, path)
+            dvcfile = Dvcfile(self, path, tag=tag)
             stage = dvcfile.stages[name]
             pipelines = [get_pipeline(active_pipelines, stage)]
 

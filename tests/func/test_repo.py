@@ -1,6 +1,5 @@
 import os
 
-from dvc.scm.git.tree import GitTree
 from dvc.cache import Cache
 from dvc.repo import Repo
 from dvc.system import System
@@ -49,11 +48,26 @@ def test_collect(tmp_dir, scm, dvc, run_copy):
     scm.commit("Add buzz")
 
     assert collect_outs("bar.dvc", with_deps=True) == {"foo", "bar"}
-
-    dvc.tree = GitTree(scm.repo, "new-branch")
-
     assert collect_outs("buzz.dvc", with_deps=True) == {"foo", "bar", "buzz"}
     assert collect_outs("buzz.dvc", with_deps=False) == {"buzz"}
+
+    run_copy("foo", "foobar", name="copy-foo-foobar")
+    assert collect_outs(":copy-foo-foobar") == {"foobar"}
+    assert collect_outs(":copy-foo-foobar", with_deps=True) == {
+        "foobar",
+        "foo",
+    }
+    assert collect_outs("pipelines.yaml:copy-foo-foobar", recursive=True) == {
+        "foobar"
+    }
+
+    run_copy("foobar", "baz", name="copy-foobar-baz")
+    assert collect_outs("pipelines.yaml") == {"foobar", "baz"}
+    assert collect_outs("pipelines.yaml", with_deps=True) == {
+        "foobar",
+        "baz",
+        "foo",
+    }
 
 
 def test_stages(tmp_dir, dvc):
