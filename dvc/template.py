@@ -167,12 +167,19 @@ class PlotTemplates:
         if os.path.exists(t_path):
             return t_path
 
-        regex = re.compile(re.escape(t_path) + ".*")
-        for root, _, files in os.walk(self.templates_dir):
-            for file in files:
-                full_file = os.path.join(root, file)
-                if regex.findall(full_file):
-                    return full_file
+        all_templates = [
+            os.path.join(root, file)
+            for root, _, files in os.walk(self.templates_dir)
+            for file in files
+        ]
+        matches = [
+            template
+            for template in all_templates
+            if os.path.splitext(template)[0] == t_path
+        ]
+        if matches:
+            assert len(matches) == 1
+            return matches[0]
 
         raise TemplateNotFound(path)
 

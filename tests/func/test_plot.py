@@ -122,7 +122,7 @@ def test_plot_confusion(tmp_dir, dvc):
     _write_json(tmp_dir, confusion_matrix, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "first run")
 
-    plot_string = dvc.plot(datafile="metric.json", template="confusion")
+    plot_string = dvc.plot(datafile="metric.json", template="confusion_matrix")
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
