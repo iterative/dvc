@@ -719,6 +719,10 @@ class BaseRemote(object):
     def checksum_to_path_info(self, checksum):
         return self.path_info / checksum[0:2] / checksum[2:]
 
+    # Return path as a string instead of PathInfo for remotes which support
+    # string paths (see local)
+    checksum_to_path = checksum_to_path_info
+
     def list_cache_paths(self, prefix=None, progress_callback=None):
         raise NotImplementedError
 
@@ -784,7 +788,7 @@ class BaseRemote(object):
     def is_protected(self, path_info):
         return False
 
-    def changed_cache_file(self, checksum, path_info=None):
+    def changed_cache_file(self, checksum):
         """Compare the given checksum with the (corresponding) actual one.
 
         - Use `State` as a cache for computed checksums
@@ -796,10 +800,8 @@ class BaseRemote(object):
 
         - Remove the file from cache if it doesn't match the actual checksum
         """
-        if path_info:
-            cache_info = path_info
-        else:
-            cache_info = self.checksum_to_path_info(checksum)
+        # Prefer string path over PathInfo when possible due to performance
+        cache_info = self.checksum_to_path(checksum)
         if self.is_protected(cache_info):
             logger.debug(
                 "Assuming '%s' is unchanged since it is read-only", cache_info

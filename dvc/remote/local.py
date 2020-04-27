@@ -67,6 +67,9 @@ class LocalRemote(BaseRemote):
     def supported(cls, config):
         return True
 
+    def checksum_to_path(self, checksum):
+        return os.path.join(self.path_info.fspath, checksum[0:2], checksum[2:])
+
     def list_cache_paths(self, prefix=None, progress_callback=None):
         assert self.path_info is not None
         if prefix:
@@ -229,11 +232,6 @@ class LocalRemote(BaseRemote):
         os.rename(fspath_py35(tmp_info), fspath_py35(to_info))
 
     def cache_exists(self, checksums, jobs=None, name=None):
-        base_path = str(self.path_info)
-
-        def checksum_to_path(checksum):
-            return os.path.join(base_path, checksum[0:2], checksum[2:])
-
         return [
             checksum
             for checksum in Tqdm(
@@ -242,9 +240,7 @@ class LocalRemote(BaseRemote):
                 desc="Querying "
                 + ("cache in " + name if name else "local cache"),
             )
-            if not self.changed_cache_file(
-                checksum, path_info=checksum_to_path(checksum)
-            )
+            if not self.changed_cache_file(checksum)
         ]
 
     def _upload(
