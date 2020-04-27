@@ -51,11 +51,8 @@ class NoMetricOnRevisionError(DvcException):
 
 
 class NoMetricInHistoryError(DvcException):
-    def __init__(self, path, revisions):
-        super().__init__(
-            "Could not find '{}' on any of the revisions "
-            "'{}'".format(path, ", ".join(revisions))
-        )
+    def __init__(self, path):
+        super().__init__("Could not find '{}'.".format(path))
 
 
 def plot_data(filename, revision, content):
@@ -254,7 +251,7 @@ def _load_from_revisions(repo, datafile, revisions):
             raise
 
     if not data and exceptions:
-        raise NoMetricInHistoryError(datafile, revisions)
+        raise NoMetricInHistoryError(datafile)
     else:
         for e in exceptions:
             logger.warning(

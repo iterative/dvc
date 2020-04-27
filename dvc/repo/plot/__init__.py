@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 PAGE_HTML = """<html>
 <head>
-    <title>dvc plot</title>
+    <title>DVC plot</title>
     <script src="https://cdn.jsdelivr.net/npm/vega@5.10.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-lite@4.8.1"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.5.1"></script>
@@ -158,27 +158,6 @@ def plot(
         plot_content = PAGE_HTML.format(divs=div)
 
     return plot_content
-
-
-def infer_result_file(datafile, template_path, embed):
-    if datafile:
-        tmp = datafile
-    else:
-        tmp = "plot"
-
-    if not embed:
-        extension = os.path.splitext(template_path)[1]
-    else:
-        extension = ".html"
-
-    result_file = os.path.splitext(tmp)[0] + extension
-
-    if result_file == datafile or result_file == template_path:
-        raise DvcException(
-            "Cannot create '{}': file already exists, use -r to redefine "
-            "it".format(result_file)
-        )
-    return result_file
 
 
 def _parse_template(template_path, datafile):

@@ -16,7 +16,6 @@ from dvc.exceptions import (
     OutputNotFoundError,
 )
 from dvc.path_info import PathInfo
-from dvc.template import PlotTemplates
 from dvc.remote.base import RemoteActionNotImplemented
 from dvc.utils.fs import path_isin
 from .graph import check_acyclic, get_pipeline, get_pipelines
@@ -113,8 +112,6 @@ class Repo(object):
         self.params = Params(self)
 
         self._ignore()
-
-        self.plot_templates = PlotTemplates(self.dvc_dir)
 
     @property
     def tree(self):
@@ -429,6 +426,12 @@ class Repo(object):
               operation. Consider using some memoization.
         """
         return self._collect_stages()
+
+    @cached_property
+    def plot_templates(self):
+        from dvc.template import PlotTemplates
+
+        return PlotTemplates(self.dvc_dir)
 
     def _collect_stages(self):
         from dvc.dvcfile import Dvcfile, is_valid_filename

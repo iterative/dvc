@@ -5,7 +5,6 @@ import os
 from dvc.command.base import append_doc_link, CmdBase, fix_subparsers
 from dvc.exceptions import DvcException
 from dvc.repo.plot.data import WORKSPACE_REVISION_NAME
-from dvc.utils import format_link
 
 logger = logging.getLogger(__name__)
 
@@ -97,8 +96,8 @@ class CmdPlotDiff(CmdPLot):
 
 def add_parser(subparsers, parent_parser):
     PLOT_HELP = (
-        "For visualisation of metrics stored in structured files ("
-        "json, csv, tsv)."
+        "Generating plots for metrics stored in structured files "
+        "(json, csv, tsv)."
     )
 
     plot_parser = subparsers.add_parser(
@@ -115,9 +114,7 @@ def add_parser(subparsers, parent_parser):
 
     fix_subparsers(plot_subparsers)
 
-    SHOW_HELP = "Visualize target dvct file using {}.".format(
-        format_link("https://vega.github.io")
-    )
+    SHOW_HELP = "Plot data from a file."
     plot_show_parser = plot_subparsers.add_parser(
         "show",
         parents=[parent_parser],
@@ -155,19 +152,19 @@ def add_parser(subparsers, parent_parser):
         "--stdout",
         action="store_true",
         default=False,
-        help="Print plot content to stdout",
+        help="Print output to stdout.",
     )
     plot_show_parser.add_argument(
         "--no-csv-header",
         action="store_true",
         default=False,
-        help="Provided csv datafile does not have a header.",
+        help="Provided CSV ot TSV datafile does not have a header.",
     )
     plot_show_parser.set_defaults(func=CmdPlotShow)
 
     PLOT_DIFF_HELP = (
-        "Plot changes in metrics between commits"
-        " in the DVC repository, or between a commit and the workspace."
+        "Plot changes between commits in the DVC repository, "
+        "or between the last commit and the workspace."
     )
     plot_diff_parser = plot_subparsers.add_parser(
         "diff",
@@ -217,12 +214,12 @@ def add_parser(subparsers, parent_parser):
         "--stdout",
         action="store_true",
         default=False,
-        help="Print plot content to stdout",
+        help="Print output to stdout.",
     )
     plot_diff_parser.add_argument(
         "--no-csv-header",
         action="store_true",
         default=False,
-        help="Provided csv datafile does not have a header.",
+        help="Provided CSV ot TSV datafile does not have a header.",
     )
     plot_diff_parser.set_defaults(func=CmdPlotDiff)

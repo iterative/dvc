@@ -231,10 +231,7 @@ def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc, caplog):
         # do not warn if none found
         assert len(caplog.messages) == 0
 
-    assert (
-        str(error.value)
-        == "Could not find 'metric.json' on any of the revisions 'v1'"
-    )
+    assert str(error.value) == "Could not find 'metric.json'."
 
 
 @pytest.fixture()
