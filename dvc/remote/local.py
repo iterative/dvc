@@ -69,7 +69,7 @@ class LocalRemote(BaseRemote):
 
     @cached_property
     def cache_path(self):
-        return str(self.cache_dir)
+        return os.path.abspath(self.cache_dir)
 
     def checksum_to_path(self, checksum):
         return os.path.join(self.cache_path, checksum[0:2], checksum[2:])
