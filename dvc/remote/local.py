@@ -5,7 +5,7 @@ import stat
 from concurrent.futures import as_completed, ThreadPoolExecutor
 from functools import partial
 
-from funcy import concat
+from funcy import cached_property, concat
 
 from shortuuid import uuid
 
@@ -67,8 +67,12 @@ class LocalRemote(BaseRemote):
     def supported(cls, config):
         return True
 
+    @cached_property
+    def cache_path(self):
+        return str(self.cache_dir)
+
     def checksum_to_path(self, checksum):
-        return os.path.join(self.path_info.fspath, checksum[0:2], checksum[2:])
+        return os.path.join(self.cache_path, checksum[0:2], checksum[2:])
 
     def list_cache_paths(self, prefix=None, progress_callback=None):
         assert self.path_info is not None
