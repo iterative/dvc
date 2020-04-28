@@ -160,9 +160,9 @@ class GDriveRemote(BaseRemote):
             or not self._service_account_p12_file_path
         ):
             raise DvcException(
-                "To use service account set 'gdrive_service_account_email',\n"
-                "'gdrive_service_account_p12_file_path', and optionally "
-                "'gdrive_service_account_user_email'\nin DVC config. "
+                "To use service account, set `gdrive_service_account_email`,\n"
+                "`gdrive_service_account_p12_file_path`, and optionally "
+                "`gdrive_service_account_user_email`\nin DVC config. "
                 "Learn more at {}".format(
                     format_link("https://man.dvc.org/remote/modify")
                 )
