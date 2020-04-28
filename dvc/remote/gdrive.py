@@ -340,10 +340,10 @@ class GDriveRemote(BaseRemote):
             if error_code == 404:
                 raise DvcException(
                     "'{}' for '{}':\n\n"
-                    "1. Check that directory exists and you can access it.\n"
+                    "1. Check that the directory exists and you can access it.\n"
                     "2. Make sure that credentials in '{}'\n"
-                    "   are the right ones to use with this remote storage, "
-                    "e.g. use 'gdrive_user_credentials_file' config\n"
+                    "   are correct for this remote e.g. "
+                    "use the `gdrive_user_credentials_file` config\n"
                     "   option if you use multiple GDrive remotes with "
                     "different email accounts.\n\nDetails".format(
                         item_id, self.path_info, self._credentials_location
