@@ -1,7 +1,7 @@
-from dvc.output.gs import OutputGS
-from tests.unit.output.test_local import TestOutputLOCAL
+from dvc.output.gs import GSOutput
+from tests.unit.output.test_local import TestLocalOutput
 
 
-class TestOutputGS(TestOutputLOCAL):
+class TestGSOutput(TestLocalOutput):
     def _get_cls(self):
-        return OutputGS
+        return GSOutput

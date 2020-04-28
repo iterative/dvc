@@ -1,6 +1,6 @@
-from dvc.output.base import OutputBase
+from dvc.output.base import BaseOutput
 from dvc.remote.s3 import S3Remote
 
 
-class OutputS3(OutputBase):
+class S3Output(BaseOutput):
     REMOTE = S3Remote

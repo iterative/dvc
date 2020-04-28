@@ -1,6 +1,6 @@
-from dvc.output.base import OutputBase
+from dvc.output.base import BaseOutput
 from dvc.remote.hdfs import HDFSRemote
 
 
-class OutputHDFS(OutputBase):
+class HDFSOutput(BaseOutput):
     REMOTE = HDFSRemote

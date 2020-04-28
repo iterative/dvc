@@ -3,7 +3,7 @@ import tempfile
 import pytest
 
 from dvc.main import main
-from dvc.output.local import OutputLOCAL
+from dvc.output.local import LocalOutput
 from dvc.remote.local import LocalRemote
 from dvc.repo import Repo
 from dvc.stage import Stage
@@ -54,15 +54,15 @@ def test_empty_list():
 
 def test_list():
     lst = [
-        {OutputLOCAL.PARAM_PATH: "foo", LocalRemote.PARAM_CHECKSUM: "123"},
-        {OutputLOCAL.PARAM_PATH: "bar", LocalRemote.PARAM_CHECKSUM: None},
-        {OutputLOCAL.PARAM_PATH: "baz"},
+        {LocalOutput.PARAM_PATH: "foo", LocalRemote.PARAM_CHECKSUM: "123"},
+        {LocalOutput.PARAM_PATH: "bar", LocalRemote.PARAM_CHECKSUM: None},
+        {LocalOutput.PARAM_PATH: "baz"},
     ]
     d = {Stage.PARAM_DEPS: lst}
     SingleStageFile.validate(d)
 
-    lst[0][OutputLOCAL.PARAM_CACHE] = True
-    lst[1][OutputLOCAL.PARAM_CACHE] = False
+    lst[0][LocalOutput.PARAM_CACHE] = True
+    lst[1][LocalOutput.PARAM_CACHE] = False
     d = {Stage.PARAM_OUTS: lst}
     SingleStageFile.validate(d)
 

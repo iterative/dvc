@@ -1,16 +1,16 @@
 import os
 
 from mock import patch
-from dvc.output import OutputLOCAL
+from dvc.output import LocalOutput
 from dvc.remote.local import LocalRemote
 from dvc.stage import Stage
 from dvc.utils import relpath
 from tests.basic_env import TestDvc
 
 
-class TestOutputLOCAL(TestDvc):
+class TestLocalOutput(TestDvc):
     def _get_cls(self):
-        return OutputLOCAL
+        return LocalOutput
 
     def _get_output(self):
         stage = Stage(self.dvc)
@@ -25,19 +25,19 @@ class TestOutputLOCAL(TestDvc):
 
 def test_str_workdir_outside_repo(erepo_dir):
     stage = Stage(erepo_dir.dvc)
-    output = OutputLOCAL(stage, "path", cache=False)
+    output = LocalOutput(stage, "path", cache=False)
 
     assert relpath("path", erepo_dir.dvc.root_dir) == str(output)
 
 
 def test_str_workdir_inside_repo(dvc):
     stage = Stage(dvc)
-    output = OutputLOCAL(stage, "path", cache=False)
+    output = LocalOutput(stage, "path", cache=False)
 
     assert "path" == str(output)
 
     stage = Stage(dvc, wdir="some_folder")
-    output = OutputLOCAL(stage, "path", cache=False)
+    output = LocalOutput(stage, "path", cache=False)
 
     assert os.path.join("some_folder", "path") == str(output)
 
@@ -47,7 +47,7 @@ def test_str_on_local_absolute_path(dvc):
 
     rel_path = os.path.join("path", "to", "file")
     abs_path = os.path.abspath(rel_path)
-    output = OutputLOCAL(stage, abs_path, cache=False)
+    output = LocalOutput(stage, abs_path, cache=False)
 
     assert output.def_path == rel_path
     assert output.path_info.fspath == abs_path
@@ -59,7 +59,7 @@ def test_str_on_external_absolute_path(dvc):
 
     rel_path = os.path.join("..", "path", "to", "file")
     abs_path = os.path.abspath(rel_path)
-    output = OutputLOCAL(stage, abs_path, cache=False)
+    output = LocalOutput(stage, abs_path, cache=False)
 
     assert output.def_path == abs_path
     assert output.path_info.fspath == abs_path
@@ -69,14 +69,14 @@ def test_str_on_external_absolute_path(dvc):
 class TestGetFilesNumber(TestDvc):
     def _get_output(self):
         stage = Stage(self.dvc)
-        return OutputLOCAL(stage, "path")
+        return LocalOutput(stage, "path")
 
     def test_return_0_on_no_cache(self):
         o = self._get_output()
         o.use_cache = False
         self.assertEqual(0, o.get_files_number())
 
-    @patch.object(OutputLOCAL, "checksum", "12345678.dir")
+    @patch.object(LocalOutput, "checksum", "12345678.dir")
     @patch.object(
         LocalRemote,
         "get_dir_cache",
@@ -87,8 +87,8 @@ class TestGetFilesNumber(TestDvc):
 
         self.assertEqual(2, o.get_files_number())
 
-    @patch.object(OutputLOCAL, "checksum", "12345678")
-    @patch.object(OutputLOCAL, "is_dir_checksum", False)
+    @patch.object(LocalOutput, "checksum", "12345678")
+    @patch.object(LocalOutput, "is_dir_checksum", False)
     def test_return_1_on_single_file_cache(self):
         o = self._get_output()
 

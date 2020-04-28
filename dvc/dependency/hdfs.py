@@ -1,6 +1,6 @@
 from dvc.dependency.base import BaseDependency
-from dvc.output.hdfs import OutputHDFS
+from dvc.output.hdfs import HDFSOutput
 
 
-class HDFSDependency(BaseDependency, OutputHDFS):
+class HDFSDependency(BaseDependency, HDFSOutput):
     pass
