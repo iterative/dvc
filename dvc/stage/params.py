@@ -10,6 +10,7 @@ class StageParams:
     PARAM_LOCKED = "locked"
     PARAM_META = "meta"
     PARAM_ALWAYS_CHANGED = "always_changed"
+    PARAM_PARAMS = "params"
 
 
 class OutputParams(Enum):

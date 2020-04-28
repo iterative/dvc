@@ -5,8 +5,11 @@ import os
 from copy import deepcopy
 from itertools import chain
 
+from funcy import merge, first
+
 from dvc import dependency, output
 from .exceptions import StageNameUnspecified, StageNotFound
+from ..dependency import ParamsDependency
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +58,29 @@ class StageLoader(collections.abc.Mapping):
             )
 
     @classmethod
+    def _fill_params(cls, stage, pipeline_params, lock_params):
+        res = {}
+        default_file = ParamsDependency.DEFAULT_PARAMS_FILE
+
+        def get_value(file, k):
+            return lock_params.get(file, {}).get(k)
+
+        for key in pipeline_params:
+            if isinstance(key, str):
+                res.setdefault(default_file, {}).update(
+                    {key: get_value(default_file, key)}
+                )
+            elif isinstance(key, dict):
+                path = first(key)
+                res.setdefault(path, {}).update(
+                    {k: get_value(path, k) for k in key[path]}
+                )
+        return dependency.loadd_from(
+            stage,
+            [{"path": key, "params": params} for key, params in res.items()],
+        )
+
+    @classmethod
     def load_stage(cls, dvcfile, name, stage_data, lock_data):
         from . import PipelineStage, Stage, loads_from
 
@@ -63,8 +89,12 @@ class StageLoader(collections.abc.Mapping):
         )
         stage = loads_from(PipelineStage, dvcfile.repo, path, wdir, stage_data)
         stage.name = name
+        params = stage_data.pop("params", {})
         stage._fill_stage_dependencies(**stage_data)
         stage._fill_stage_outputs(**stage_data)
+        stage.deps += cls._fill_params(
+            stage, params, merge(*lock_data.get("params", [{}]))
+        )
         if lock_data:
             stage.cmd_changed = lock_data.get(
                 Stage.PARAM_CMD

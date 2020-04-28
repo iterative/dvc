@@ -1,5 +1,8 @@
 from typing import TYPE_CHECKING
 
+from funcy import rpartial, lsplit_by
+
+from dvc.dependency import ParamsDependency
 from dvc.utils.collections import apply_diff
 from dvc.utils.stage import parse_stage_for_update
 
@@ -21,14 +24,34 @@ def _get_outs(stage: "PipelineStage"):
     return outs_bucket
 
 
+def get_params_deps(stage):
+    params, deps = lsplit_by(
+        rpartial(isinstance, ParamsDependency), stage.deps
+    )
+    params_keys = []
+    params_ = []
+    for param in params:
+        dump = param.dumpd()
+        path, param_ = dump["path"], dump[stage.PARAM_PARAMS]
+        param_keys = list(param_.keys())
+        if path == ParamsDependency.DEFAULT_PARAMS_FILE:
+            params_keys += param_keys
+        else:
+            params_keys += [{path: param_keys}] if param_keys else []
+        params_ += [{path: dump[stage.PARAM_PARAMS]}]
+    return params_keys, params_, deps
+
+
 def to_pipeline_file(stage: "PipelineStage"):
+    params, _, deps = get_params_deps(stage)
     return {
         stage.name: {
             key: value
             for key, value in {
                 stage.PARAM_CMD: stage.cmd,
                 stage.PARAM_WDIR: stage.resolve_wdir(),
-                stage.PARAM_DEPS: [d.def_path for d in stage.deps],
+                stage.PARAM_DEPS: deps,
+                stage.PARAM_PARAMS: params,
                 **_get_outs(stage),
                 stage.PARAM_LOCKED: stage.locked,
                 stage.PARAM_ALWAYS_CHANGED: stage.always_changed,
@@ -43,17 +66,20 @@ def to_lockfile(stage: "PipelineStage") -> dict:
     assert stage.name
 
     res = {"cmd": stage.cmd}
+    _, params, deps = get_params_deps(stage)
     deps = [
         {"path": dep.def_path, dep.checksum_type: dep.get_checksum()}
-        for dep in stage.deps
+        for dep in deps
     ]
     outs = [
         {"path": out.def_path, out.checksum_type: out.get_checksum()}
         for out in stage.outs
     ]
-    if stage.deps:
+    if deps:
         res["deps"] = deps
-    if stage.outs:
+    if params:
+        res["params"] = params
+    if outs:
         res["outs"] = outs
 
     return {stage.name: res}
