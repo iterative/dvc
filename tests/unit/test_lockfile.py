@@ -1,13 +1,14 @@
 from dvc.stage import PipelineStage
-from dvc import lockfile, serialize
+from dvc.dvcfile import Lockfile, LockfileCorruptedError
 import json
 import pytest
 
 
 def test_stage_dump_no_outs_deps(tmp_dir, dvc):
     stage = PipelineStage(name="s1", repo=dvc, path="path", cmd="command")
-    lockfile.dump(dvc, "path.lock", serialize.to_lockfile(stage))
-    assert lockfile.load(dvc, "path.lock") == {"s1": {"cmd": "command"}}
+    lockfile = Lockfile(dvc, "path.lock")
+    lockfile.dump(stage)
+    assert lockfile.load() == {"s1": {"cmd": "command"}}
 
 
 def test_stage_dump_when_already_exists(tmp_dir, dvc):
@@ -15,9 +16,9 @@ def test_stage_dump_when_already_exists(tmp_dir, dvc):
     with open("path.lock", "w+") as f:
         json.dump(data, f)
     stage = PipelineStage(name="s2", repo=dvc, path="path", cmd="command2")
-
-    lockfile.dump(dvc, "path.lock", serialize.to_lockfile(stage))
-    assert lockfile.load(dvc, "path.lock") == {
+    lockfile = Lockfile(dvc, "path.lock")
+    lockfile.dump(stage)
+    assert lockfile.load() == {
         **data,
         "s2": {"cmd": "command2"},
     }
@@ -34,26 +35,28 @@ def test_stage_dump_with_deps_and_outs(tmp_dir, dvc):
     with open("path.lock", "w+") as f:
         json.dump(data, f)
 
+    lockfile = Lockfile(dvc, "path.lock")
     stage = PipelineStage(name="s2", repo=dvc, path="path", cmd="command2")
-    lockfile.dump(dvc, "path.lock", serialize.to_lockfile(stage))
-    assert lockfile.load(dvc, "path.lock") == {
+    lockfile.dump(stage)
+    assert lockfile.load() == {
         **data,
         "s2": {"cmd": "command2"},
     }
 
 
 def test_stage_overwrites_if_already_exists(tmp_dir, dvc):
+    lockfile = Lockfile(dvc, "path.lock",)
     stage = PipelineStage(name="s2", repo=dvc, path="path", cmd="command2")
-    lockfile.dump(dvc, "path.lock", serialize.to_lockfile(stage))
+    lockfile.dump(stage)
     stage = PipelineStage(name="s2", repo=dvc, path="path", cmd="command3")
-    lockfile.dump(dvc, "path.lock", serialize.to_lockfile(stage))
-    assert lockfile.load(dvc, "path.lock") == {
+    lockfile.dump(stage)
+    assert lockfile.load() == {
         "s2": {"cmd": "command3"},
     }
 
 
 def test_load_when_lockfile_does_not_exist(tmp_dir, dvc):
-    assert {} == lockfile.load(dvc, "pipelines.lock")
+    assert {} == Lockfile(dvc, "pipelines.lock").load()
 
 
 @pytest.mark.parametrize(
@@ -75,6 +78,7 @@ def test_load_when_lockfile_does_not_exist(tmp_dir, dvc):
 def test_load_when_lockfile_is_corrupted(tmp_dir, dvc, corrupt_data):
     with open("Dvcfile.lock", "w+") as f:
         json.dump(corrupt_data, f)
-    with pytest.raises(lockfile.LockfileCorruptedError) as exc_info:
-        lockfile.load(dvc, "Dvcfile.lock")
+    lockfile = Lockfile(dvc, "Dvcfile.lock")
+    with pytest.raises(LockfileCorruptedError) as exc_info:
+        lockfile.load()
     assert "Dvcfile.lock" in str(exc_info.value)

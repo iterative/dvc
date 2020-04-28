@@ -7,7 +7,7 @@ from unittest import SkipTest
 
 import pytest
 
-from dvc.compat import fspath
+from dvc.compat import fspath, fspath_py35
 from dvc.cache import NamedCache
 from dvc.data_cloud import DataCloud
 from dvc.main import main
@@ -827,7 +827,7 @@ def test_pipeline_file_target_ops(tmp_dir, dvc, local_remote, run_copy):
 
     dvc.push()
     # each one's a copy of other, hence 3
-    assert len(recurse_list_dir(local_remote)) == 3
+    assert len(recurse_list_dir(fspath_py35(local_remote))) == 3
 
     clean(outs, dvc)
     assert set(dvc.pull(["pipelines.yaml"])["added"]) == {"lorem2", "baz"}
@@ -838,11 +838,11 @@ def test_pipeline_file_target_ops(tmp_dir, dvc, local_remote, run_copy):
     # clean everything in remote and push
     clean(local_remote.iterdir())
     dvc.push(["pipelines.yaml:copy-ipsum-baz"])
-    assert len(recurse_list_dir(local_remote)) == 1
+    assert len(recurse_list_dir(fspath_py35(local_remote))) == 1
 
     clean(os.listdir(local_remote))
     dvc.push(["pipelines.yaml"])
-    assert len(recurse_list_dir(local_remote)) == 2
+    assert len(recurse_list_dir(fspath_py35(local_remote))) == 2
 
     with pytest.raises(StageNotFound):
         dvc.push(["pipelines.yaml:StageThatDoesNotExist"])

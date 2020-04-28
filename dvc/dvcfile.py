@@ -31,6 +31,11 @@ PIPELINE_FILE = "pipelines.yaml"
 PIPELINE_LOCK = "pipelines.lock"
 
 
+class LockfileCorruptedError(DvcException):
+    def __init__(self, path):
+        super().__init__("Lockfile '{}' is corrupted.".format(path))
+
+
 def is_valid_filename(path):
     return path.endswith(DVC_FILE_SUFFIX) or os.path.basename(path) in [
         DVC_FILE,
@@ -112,7 +117,11 @@ class FileMixin:
     def remove_with_prompt(self, force=False):
         raise NotImplementedError
 
-    def remove(self):
+    def remove(self, force=False):
+        with contextlib.suppress(FileNotFoundError):
+            os.unlink(self.path)
+
+    def dump(self, stage, **kwargs):
         raise NotImplementedError
 
 
@@ -158,10 +167,6 @@ class SingleStageFile(FileMixin):
 
         self.remove()
 
-    def remove(self, force=False):
-        with contextlib.suppress(FileNotFoundError):
-            os.unlink(self.path)
-
 
 class PipelineFile(FileMixin):
     """Abstraction for pipelines file, .yaml + .lock combined."""
@@ -170,7 +175,7 @@ class PipelineFile(FileMixin):
 
     @property
     def _lockfile(self):
-        return os.path.splitext(self.path)[0] + ".lock"
+        return Lockfile(self.repo, os.path.splitext(self.path)[0] + ".lock")
 
     def dump(self, stage, update_pipeline=False):
         """Dumps given stage appropriately in the dvcfile."""
@@ -183,10 +188,7 @@ class PipelineFile(FileMixin):
             self._dump_pipeline_file(stage)
 
     def _dump_lockfile(self, stage):
-        from . import lockfile
-
-        lockfile.dump(self.repo, self._lockfile, serialize.to_lockfile(stage))
-        self.repo.scm.track_file(relpath(self._lockfile))
+        self._lockfile.dump(stage)
 
     def _dump_pipeline_file(self, stage):
         data = {}
@@ -197,7 +199,7 @@ class PipelineFile(FileMixin):
             open(self.path, "w+").close()
 
         data["stages"] = data.get("stages", {})
-        stage_data = serialize.to_dvcfile(stage)
+        stage_data = serialize.to_pipeline_file(stage)
         if data["stages"].get(stage.name):
             orig_stage_data = data["stages"][stage.name]
             apply_diff(stage_data[stage.name], orig_stage_data)
@@ -215,10 +217,8 @@ class PipelineFile(FileMixin):
 
     @property
     def stages(self):
-        from . import lockfile
-
         data, raw = self._load()
-        lockfile_data = lockfile.load(self.repo, self._lockfile)
+        lockfile_data = self._lockfile.load()
         return StageLoader(self, data.get("stages", {}), lockfile_data)
 
     def remove(self, force=False):
@@ -226,9 +226,36 @@ class PipelineFile(FileMixin):
             logger.warning("Cannot remove pipeline file.")
             return
 
-        for file in [self.path, self._lockfile]:
-            with contextlib.suppress(FileNotFoundError):
-                os.unlink(file)
+        super().remove()
+        self._lockfile.remove()
+
+
+class Lockfile(FileMixin):
+    from dvc.schema import COMPILED_LOCKFILE_SCHEMA as SCHEMA
+
+    def load(self):
+        if not self.exists():
+            return {}
+        with self.repo.tree.open(self.path) as fd:
+            data = parse_stage(fd.read(), self.path)
+        try:
+            self.validate(data, fname=self.path)
+        except StageFileFormatError:
+            raise LockfileCorruptedError(self.path)
+        return data
+
+    def dump(self, stage, **kwargs):
+        stage_data = serialize.to_lockfile(stage)
+        if not self.exists():
+            data = stage_data
+            open(self.path, "w+").close()
+        else:
+            with self.repo.tree.open(self.path, "r") as fd:
+                data = parse_stage_for_update(fd.read(), self.path)
+            data.update(stage_data)
+
+        dump_stage_file(self.path, data)
+        self.repo.scm.track_file(relpath(self.path))
 
 
 class Dvcfile:

@@ -21,7 +21,7 @@ def _get_outs(stage: "PipelineStage"):
     return outs_bucket
 
 
-def to_dvcfile(stage: "PipelineStage"):
+def to_pipeline_file(stage: "PipelineStage"):
     return {
         stage.name: {
             key: value
@@ -44,11 +44,11 @@ def to_lockfile(stage: "PipelineStage") -> dict:
 
     res = {"cmd": stage.cmd}
     deps = [
-        {"path": dep.def_path, "md5": dep.remote.get_checksum(dep.path_info)}
+        {"path": dep.def_path, dep.checksum_type: dep.get_checksum()}
         for dep in stage.deps
     ]
     outs = [
-        {"path": out.def_path, "md5": out.remote.get_checksum(out.path_info)}
+        {"path": out.def_path, out.checksum_type: out.get_checksum()}
         for out in stage.outs
     ]
     if stage.deps:
