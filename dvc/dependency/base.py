@@ -20,7 +20,7 @@ class DependencyIsStageFileError(DvcException):
         )
 
 
-class DependencyBase(object):
+class BaseDependency(object):
     IS_DEPENDENCY = True
 
     DoesNotExistError = DependencyDoesNotExistError

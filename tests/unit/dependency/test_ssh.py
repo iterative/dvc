@@ -1,7 +1,7 @@
-from dvc.dependency.ssh import DependencySSH
-from tests.unit.dependency.test_local import TestDependencyLOCAL
+from dvc.dependency.ssh import SSHDependency
+from tests.unit.dependency.test_local import TestLocalDependency
 
 
-class TestDependencySSH(TestDependencyLOCAL):
+class TestSSHDependency(TestLocalDependency):
     def _get_cls(self):
-        return DependencySSH
+        return SSHDependency

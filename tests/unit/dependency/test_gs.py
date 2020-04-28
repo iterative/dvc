@@ -1,7 +1,7 @@
-from dvc.dependency.gs import DependencyGS
-from tests.unit.dependency.test_local import TestDependencyLOCAL
+from dvc.dependency.gs import GSDependency
+from tests.unit.dependency.test_local import TestLocalDependency
 
 
-class TestDependencyGS(TestDependencyLOCAL):
+class TestGSDependency(TestLocalDependency):
     def _get_cls(self):
-        return DependencyGS
+        return GSDependency

@@ -194,7 +194,7 @@ class Stage(params.StageParams):
         if not self.is_import:
             return False
 
-        return isinstance(self.deps[0], dependency.DependencyREPO)
+        return isinstance(self.deps[0], dependency.RepoDependency)
 
     def _changed_deps(self):
         if self.locked:

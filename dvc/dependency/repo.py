@@ -2,12 +2,12 @@ import os
 
 from voluptuous import Required
 
-from .local import DependencyLOCAL
+from .local import LocalDependency
 from dvc.exceptions import OutputNotFoundError
 from dvc.path_info import PathInfo
 
 
-class DependencyREPO(DependencyLOCAL):
+class RepoDependency(LocalDependency):
     PARAM_REPO = "repo"
     PARAM_URL = "url"
     PARAM_REV = "rev"

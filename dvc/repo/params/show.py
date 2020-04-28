@@ -5,7 +5,7 @@ from dvc.repo import locked
 from dvc.path_info import PathInfo
 from dvc.compat import fspath_py35
 from dvc.exceptions import DvcException
-from dvc.dependency.param import DependencyPARAMS
+from dvc.dependency.param import ParamsDependency
 
 
 logger = logging.getLogger(__name__)
@@ -17,10 +17,10 @@ class NoParamsError(DvcException):
 
 def _collect_configs(repo):
     configs = set()
-    configs.add(PathInfo(repo.root_dir) / DependencyPARAMS.DEFAULT_PARAMS_FILE)
+    configs.add(PathInfo(repo.root_dir) / ParamsDependency.DEFAULT_PARAMS_FILE)
     for stage in repo.stages:
         for dep in stage.deps:
-            if not isinstance(dep, DependencyPARAMS):
+            if not isinstance(dep, ParamsDependency):
                 continue
 
             configs.add(dep.path_info)

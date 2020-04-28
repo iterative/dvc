@@ -2,38 +2,38 @@ from urllib.parse import urlparse
 from collections import defaultdict
 
 import dvc.output as output
-from dvc.dependency.gs import DependencyGS
-from dvc.dependency.hdfs import DependencyHDFS
-from dvc.dependency.http import DependencyHTTP
-from dvc.dependency.https import DependencyHTTPS
-from dvc.dependency.local import DependencyLOCAL
-from dvc.dependency.s3 import DependencyS3
-from dvc.dependency.ssh import DependencySSH
-from dvc.dependency.param import DependencyPARAMS
+from dvc.dependency.gs import GSDependency
+from dvc.dependency.hdfs import HDFSDependency
+from dvc.dependency.http import HTTPDependency
+from dvc.dependency.https import HTTPSDependency
+from dvc.dependency.local import LocalDependency
+from dvc.dependency.s3 import S3Dependency
+from dvc.dependency.ssh import SSHDependency
+from dvc.dependency.param import ParamsDependency
 from dvc.output.base import OutputBase
 from dvc.remote import Remote
 from dvc.scheme import Schemes
-from .repo import DependencyREPO
+from .repo import RepoDependency
 
 
 DEPS = [
-    DependencyGS,
-    DependencyHDFS,
-    DependencyHTTP,
-    DependencyHTTPS,
-    DependencyS3,
-    DependencySSH,
-    # NOTE: DependencyLOCAL is the default choice
+    GSDependency,
+    HDFSDependency,
+    HTTPDependency,
+    HTTPSDependency,
+    S3Dependency,
+    SSHDependency,
+    # NOTE: LocalDependency is the default choice
 ]
 
 DEP_MAP = {
-    Schemes.LOCAL: DependencyLOCAL,
-    Schemes.SSH: DependencySSH,
-    Schemes.S3: DependencyS3,
-    Schemes.GS: DependencyGS,
-    Schemes.HDFS: DependencyHDFS,
-    Schemes.HTTP: DependencyHTTP,
-    Schemes.HTTPS: DependencyHTTPS,
+    Schemes.LOCAL: LocalDependency,
+    Schemes.SSH: SSHDependency,
+    Schemes.S3: S3Dependency,
+    Schemes.GS: GSDependency,
+    Schemes.HDFS: HDFSDependency,
+    Schemes.HTTP: HTTPDependency,
+    Schemes.HTTPS: HTTPSDependency,
 }
 
 
@@ -44,8 +44,8 @@ DEP_MAP = {
 SCHEMA = output.SCHEMA.copy()
 del SCHEMA[OutputBase.PARAM_CACHE]
 del SCHEMA[OutputBase.PARAM_METRIC]
-SCHEMA.update(DependencyREPO.REPO_SCHEMA)
-SCHEMA.update(DependencyPARAMS.PARAM_SCHEMA)
+SCHEMA.update(RepoDependency.REPO_SCHEMA)
+SCHEMA.update(ParamsDependency.PARAM_SCHEMA)
 
 
 def _get(stage, p, info):
@@ -54,18 +54,18 @@ def _get(stage, p, info):
         remote = Remote(stage.repo, name=parsed.netloc)
         return DEP_MAP[remote.scheme](stage, p, info, remote=remote)
 
-    if info and info.get(DependencyREPO.PARAM_REPO):
-        repo = info.pop(DependencyREPO.PARAM_REPO)
-        return DependencyREPO(repo, stage, p, info)
+    if info and info.get(RepoDependency.PARAM_REPO):
+        repo = info.pop(RepoDependency.PARAM_REPO)
+        return RepoDependency(repo, stage, p, info)
 
-    if info and info.get(DependencyPARAMS.PARAM_PARAMS):
-        params = info.pop(DependencyPARAMS.PARAM_PARAMS)
-        return DependencyPARAMS(stage, p, params)
+    if info and info.get(ParamsDependency.PARAM_PARAMS):
+        params = info.pop(ParamsDependency.PARAM_PARAMS)
+        return ParamsDependency(stage, p, params)
 
     for d in DEPS:
         if d.supported(p):
             return d(stage, p, info)
-    return DependencyLOCAL(stage, p, info)
+    return LocalDependency(stage, p, info)
 
 
 def loadd_from(stage, d_list):
@@ -79,7 +79,7 @@ def loadd_from(stage, d_list):
 def loads_from(stage, s_list, erepo=None):
     ret = []
     for s in s_list:
-        info = {DependencyREPO.PARAM_REPO: erepo} if erepo else {}
+        info = {RepoDependency.PARAM_REPO: erepo} if erepo else {}
         ret.append(_get(stage, s, info))
     return ret
 
@@ -102,7 +102,7 @@ def loads_params(stage, s_list):
         d_list.append(
             {
                 OutputBase.PARAM_PATH: path,
-                DependencyPARAMS.PARAM_PARAMS: params,
+                ParamsDependency.PARAM_PARAMS: params,
             }
         )
 

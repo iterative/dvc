@@ -6,7 +6,7 @@ from unittest import TestCase
 import mock
 import pytest
 
-from dvc.dependency.repo import DependencyREPO
+from dvc.dependency.repo import RepoDependency
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageUpdateError
 
@@ -60,7 +60,7 @@ class TestPathConversion(TestCase):
 
 
 def test_stage_update(mocker):
-    dep = DependencyREPO({"url": "example.com"}, None, "dep_path")
+    dep = RepoDependency({"url": "example.com"}, None, "dep_path")
     mocker.patch.object(dep, "update", return_value=None)
 
     stage = Stage(None, "path", deps=[dep])

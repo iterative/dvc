@@ -1,6 +1,6 @@
-from dvc.dependency.base import DependencyBase
+from dvc.dependency.base import BaseDependency
 from dvc.output.local import OutputLOCAL
 
 
-class DependencyLOCAL(DependencyBase, OutputLOCAL):
+class LocalDependency(BaseDependency, OutputLOCAL):
     pass

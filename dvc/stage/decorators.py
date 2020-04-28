@@ -6,7 +6,7 @@ from functools import wraps
 def rwlocked(call, read=None, write=None):
     import sys
     from dvc.rwlock import rwlock
-    from dvc.dependency.repo import DependencyREPO
+    from dvc.dependency.repo import RepoDependency
 
     if read is None:
         read = []
@@ -23,9 +23,9 @@ def rwlocked(call, read=None, write=None):
             item.path_info
             for attr in names
             for item in getattr(stage, attr)
-            # There is no need to lock DependencyREPO deps, as there is no
+            # There is no need to lock RepoDependency deps, as there is no
             # corresponding OutputREPO, so we can't even write it.
-            if not isinstance(item, DependencyREPO)
+            if not isinstance(item, RepoDependency)
         ]
 
     cmd = " ".join(sys.argv)
