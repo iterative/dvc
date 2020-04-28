@@ -1,6 +1,6 @@
 from dvc.stage import PipelineStage
 from dvc.dvcfile import Lockfile, LockfileCorruptedError
-import json
+import yaml
 import pytest
 
 
@@ -14,7 +14,7 @@ def test_stage_dump_no_outs_deps(tmp_dir, dvc):
 def test_stage_dump_when_already_exists(tmp_dir, dvc):
     data = {"s1": {"cmd": "command", "deps": [], "outs": []}}
     with open("path.lock", "w+") as f:
-        json.dump(data, f)
+        yaml.dump(data, f)
     stage = PipelineStage(name="s2", repo=dvc, path="path", cmd="command2")
     lockfile = Lockfile(dvc, "path.lock")
     lockfile.dump(stage)
@@ -33,7 +33,7 @@ def test_stage_dump_with_deps_and_outs(tmp_dir, dvc):
         }
     }
     with open("path.lock", "w+") as f:
-        json.dump(data, f)
+        yaml.dump(data, f)
 
     lockfile = Lockfile(dvc, "path.lock")
     stage = PipelineStage(name="s2", repo=dvc, path="path", cmd="command2")
@@ -77,7 +77,7 @@ def test_load_when_lockfile_does_not_exist(tmp_dir, dvc):
 )
 def test_load_when_lockfile_is_corrupted(tmp_dir, dvc, corrupt_data):
     with open("Dvcfile.lock", "w+") as f:
-        json.dump(corrupt_data, f)
+        yaml.dump(corrupt_data, f)
     lockfile = Lockfile(dvc, "Dvcfile.lock")
     with pytest.raises(LockfileCorruptedError) as exc_info:
         lockfile.load()
