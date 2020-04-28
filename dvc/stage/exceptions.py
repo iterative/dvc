@@ -107,9 +107,7 @@ class StageNameUnspecified(DvcException):
     def __init__(self, file):
         super().__init__(
             "Stage name not provided."
-            "Please specify the name as: `{0}:stage_name`".format(
-                file.relpath
-            )
+            "Please specify the name as: `{0}:stage_name`".format(file.relpath)
         )
 
 
