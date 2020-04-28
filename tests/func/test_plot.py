@@ -10,7 +10,7 @@ from funcy import first
 
 from dvc.compat import fspath
 from dvc.repo.plot.data import NoMetricInHistoryError, PlotMetricTypeError
-from dvc.template import (
+from dvc.repo.plot.template import (
     DefaultLinearTemplate,
     TemplateNotFound,
     NoDataForTemplateError,

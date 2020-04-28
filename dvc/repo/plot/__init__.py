@@ -6,7 +6,7 @@ from funcy import first, last
 
 from dvc.exceptions import DvcException
 from dvc.repo.plot.data import PlotData
-from dvc.template import Template, NoDataForTemplateError
+from dvc.repo.plot.template import Template, NoDataForTemplateError
 from dvc.repo import locked
 
 logger = logging.getLogger(__name__)
@@ -61,6 +61,8 @@ def fill_template(
     template_path,
     revisions,
     fields=None,
+    x_field=None,
+    y_field=None,
     path=None,
     csv_header=True,
 ):
@@ -135,6 +137,8 @@ def plot(
     template=None,
     revisions=None,
     fields=None,
+    x_field=None,
+    y_field=None,
     path=None,
     embed=False,
     csv_header=True,
@@ -150,7 +154,15 @@ def plot(
     template_path = _evaluate_templatepath(repo, template)
 
     plot_content = fill_template(
-        repo, datafile, template_path, revisions, fields, path, csv_header
+        repo,
+        datafile,
+        template_path,
+        revisions,
+        fields,
+        x_field,
+        y_field,
+        path,
+        csv_header,
     )
 
     if embed:

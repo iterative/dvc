@@ -429,7 +429,7 @@ class Repo(object):
 
     @cached_property
     def plot_templates(self):
-        from dvc.template import PlotTemplates
+        from dvc.repo.plot.template import PlotTemplates
 
         return PlotTemplates(self.dvc_dir)
 

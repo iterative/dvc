@@ -54,6 +54,8 @@ class CmdPLot(CmdBase):
                 template=self.args.template,
                 revisions=self._revisions(),
                 fields=fields,
+                x_field=self.args.x,
+                y_field=self.args.y,
                 path=jsonpath,
                 embed=not self.args.no_html,
                 csv_header=not self.args.no_csv_header,
@@ -148,6 +150,12 @@ def add_parser(subparsers, parent_parser):
         help="Choose which fileds or jsonpath to put into plot.",
     )
     plot_show_parser.add_argument(
+        "-x", default=None, help="Field name that will be on x axis of plot."
+    )
+    plot_show_parser.add_argument(
+        "-y", default=None, help="Field name that will be on y axis of plot."
+    )
+    plot_show_parser.add_argument(
         "-o",
         "--stdout",
         action="store_true",
@@ -208,6 +216,12 @@ def add_parser(subparsers, parent_parser):
         "--fields",
         default=None,
         help="Choose which filed(s) or jsonpath to put into plot.",
+    )
+    plot_diff_parser.add_argument(
+        "-x", default=None, help="Field name that will be on x axis of plot."
+    )
+    plot_diff_parser.add_argument(
+        "-y", default=None, help="Field name that will be on y axis of plot."
     )
     plot_diff_parser.add_argument(
         "-o",
