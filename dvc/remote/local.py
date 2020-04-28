@@ -5,7 +5,7 @@ import stat
 from concurrent.futures import as_completed, ThreadPoolExecutor
 from functools import partial
 
-from funcy import concat
+from funcy import cached_property, concat
 
 from shortuuid import uuid
 
@@ -67,6 +67,13 @@ class LocalRemote(BaseRemote):
     def supported(cls, config):
         return True
 
+    @cached_property
+    def cache_path(self):
+        return os.path.abspath(self.cache_dir)
+
+    def checksum_to_path(self, checksum):
+        return os.path.join(self.cache_path, checksum[0:2], checksum[2:])
+
     def list_cache_paths(self, prefix=None, progress_callback=None):
         assert self.path_info is not None
         if prefix:
@@ -88,7 +95,7 @@ class LocalRemote(BaseRemote):
 
     def exists(self, path_info):
         assert is_working_tree(self.repo.tree)
-        assert path_info.scheme == "local"
+        assert isinstance(path_info, str) or path_info.scheme == "local"
         return self.repo.tree.exists(fspath_py35(path_info))
 
     def makedirs(self, path_info):
@@ -148,11 +155,15 @@ class LocalRemote(BaseRemote):
         return file_md5(path_info)[0]
 
     def remove(self, path_info):
-        if path_info.scheme != "local":
-            raise NotImplementedError
+        if isinstance(path_info, PathInfo):
+            if path_info.scheme != "local":
+                raise NotImplementedError
+            path = path_info.fspath
+        else:
+            path = path_info
 
-        if self.exists(path_info):
-            remove(path_info.fspath)
+        if self.exists(path):
+            remove(path)
 
     def move(self, from_info, to_info, mode=None):
         if from_info.scheme != "local" or to_info.scheme != "local":
@@ -285,11 +296,11 @@ class LocalRemote(BaseRemote):
         show_checksums=False,
         download=False,
     ):
-        """Return a tuple of (dir_status_info, file_status_info, dir_mapping).
+        """Return a tuple of (dir_status_info, file_status_info, dir_contents).
 
         dir_status_info contains status for .dir files, file_status_info
-        contains status for all other files, and dir_mapping is a dict of
-        {dir_path_info: set(file_path_info...)} which can be used to map
+        contains status for all other files, and dir_contents is a dict of
+        {dir_checksum: set(file_checksum, ...)} which can be used to map
         a .dir file to its file contents.
         """
         logger.debug(
@@ -324,30 +335,27 @@ class LocalRemote(BaseRemote):
                     )
                 )
         return self._make_status(
-            named_cache, remote, show_checksums, local_exists, remote_exists
+            named_cache, show_checksums, local_exists, remote_exists
         )
 
     def _make_status(
-        self, named_cache, remote, show_checksums, local_exists, remote_exists
+        self, named_cache, show_checksums, local_exists, remote_exists
     ):
         def make_names(checksum, names):
             return {"name": checksum if show_checksums else " ".join(names)}
 
         dir_status = {}
         file_status = {}
-        dir_paths = {}
+        dir_contents = {}
         for checksum, item in named_cache[self.scheme].items():
             if item.children:
                 dir_status[checksum] = make_names(checksum, item.names)
-                file_status.update(
-                    {
-                        child_checksum: make_names(child_checksum, child.names)
-                        for child_checksum, child in item.children.items()
-                    }
-                )
-                dir_paths[remote.checksum_to_path_info(checksum)] = frozenset(
-                    map(remote.checksum_to_path_info, item.child_keys())
-                )
+                dir_contents[checksum] = set()
+                for child_checksum, child in item.children.items():
+                    file_status[child_checksum] = make_names(
+                        child_checksum, child.names
+                    )
+                    dir_contents[checksum].add(child_checksum)
             else:
                 file_status[checksum] = make_names(checksum, item.names)
 
@@ -356,7 +364,7 @@ class LocalRemote(BaseRemote):
 
         self._log_missing_caches(dict(dir_status, **file_status))
 
-        return dir_status, file_status, dir_paths
+        return dir_status, file_status, dir_contents
 
     def _indexed_dir_checksums(self, named_cache, remote, dir_md5s):
         # Validate our index by verifying all indexed .dir checksums
@@ -409,6 +417,7 @@ class LocalRemote(BaseRemote):
         cache = []
         path_infos = []
         names = []
+        checksums = []
         for md5, info in Tqdm(
             status_info.items(), desc="Analysing status", unit="file"
         ):
@@ -416,6 +425,7 @@ class LocalRemote(BaseRemote):
                 cache.append(self.checksum_to_path_info(md5))
                 path_infos.append(remote.checksum_to_path_info(md5))
                 names.append(info["name"])
+                checksums.append(md5)
 
         if download:
             to_infos = cache
@@ -424,7 +434,7 @@ class LocalRemote(BaseRemote):
             to_infos = path_infos
             from_infos = cache
 
-        return from_infos, to_infos, names
+        return from_infos, to_infos, names, checksums
 
     def _process(
         self,
@@ -457,7 +467,7 @@ class LocalRemote(BaseRemote):
         if jobs is None:
             jobs = remote.JOBS
 
-        dir_status, file_status, dir_paths = self._status(
+        dir_status, file_status, dir_contents = self._status(
             named_cache,
             remote,
             jobs=jobs,
@@ -482,18 +492,20 @@ class LocalRemote(BaseRemote):
                     # for uploads, push files first, and any .dir files last
 
                     file_futures = {}
-                    for from_info, to_info, name in zip(*file_plans):
-                        file_futures[to_info] = executor.submit(
+                    for from_info, to_info, name, checksum in zip(*file_plans):
+                        file_futures[checksum] = executor.submit(
                             func, from_info, to_info, name
                         )
                     dir_futures = {}
-                    for from_info, to_info, name in zip(*dir_plans):
+                    for from_info, to_info, name, dir_checksum in zip(
+                        *dir_plans
+                    ):
                         wait_futures = {
                             future
-                            for file_path, future in file_futures.items()
-                            if file_path in dir_paths[to_info]
+                            for file_checksum, future in file_futures.items()
+                            if file_checksum in dir_contents[dir_checksum]
                         }
-                        dir_futures[to_info] = executor.submit(
+                        dir_futures[dir_checksum] = executor.submit(
                             self._dir_upload,
                             func,
                             wait_futures,
@@ -516,12 +528,9 @@ class LocalRemote(BaseRemote):
 
         if not download:
             # index successfully pushed dirs
-            for to_info, future in dir_futures.items():
+            for dir_checksum, future in dir_futures.items():
                 if future.result() == 0:
-                    dir_checksum = remote.path_to_checksum(str(to_info))
-                    file_checksums = list(
-                        named_cache.child_keys(self.scheme, dir_checksum)
-                    )
+                    file_checksums = dir_contents[dir_checksum]
                     logger.debug(
                         "Indexing pushed dir '{}' with "
                         "'{}' nested files".format(

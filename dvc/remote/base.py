@@ -322,7 +322,7 @@ class BaseRemote(object):
         return checksum.endswith(cls.CHECKSUM_DIR_SUFFIX)
 
     def get_checksum(self, path_info):
-        assert path_info.scheme == self.scheme
+        assert isinstance(path_info, str) or path_info.scheme == self.scheme
 
         if not self.exists(path_info):
             return None
@@ -719,6 +719,10 @@ class BaseRemote(object):
     def checksum_to_path_info(self, checksum):
         return self.path_info / checksum[0:2] / checksum[2:]
 
+    # Return path as a string instead of PathInfo for remotes which support
+    # string paths (see local)
+    checksum_to_path = checksum_to_path_info
+
     def list_cache_paths(self, prefix=None, progress_callback=None):
         raise NotImplementedError
 
@@ -796,8 +800,8 @@ class BaseRemote(object):
 
         - Remove the file from cache if it doesn't match the actual checksum
         """
-
-        cache_info = self.checksum_to_path_info(checksum)
+        # Prefer string path over PathInfo when possible due to performance
+        cache_info = self.checksum_to_path(checksum)
         if self.is_protected(cache_info):
             logger.debug(
                 "Assuming '%s' is unchanged since it is read-only", cache_info
