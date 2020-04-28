@@ -202,10 +202,10 @@ class GDriveRemote(BaseRemote):
                 != auth.credentials.client_secret
             ):
                 logger.warning(
-                    "Client secret and id from the DVC config do not match "
-                    "actual ones used\nto access the remote storage. Do you "
+                    "Client ID and secret configured do not match the "
+                    "actual ones used\nto access the remote. Do you "
                     "use multiple GDrive remotes and forgot to\nset "
-                    "'gdrive_user_credentials_file' for one or more of them? "
+                    "`gdrive_user_credentials_file` for one or more of them? "
                     "Learn more at\n{}.\n".format(
                         format_link("https://man.dvc.org/remote/modify")
                     )
