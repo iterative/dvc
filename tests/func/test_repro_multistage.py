@@ -259,6 +259,36 @@ def test_downstream(tmp_dir, dvc):
         and evaluation[2].relpath == "E.dvc"
     )
 
+    # B, C should be run (in any order) before D
+    # See https://github.com/iterative/dvc/issues/3602
+    evaluation = dvc.reproduce(
+        PIPELINE_FILE + ":A-gen", downstream=True, force=True
+    )
+
+    assert len(evaluation) == 5
+    assert (
+        isinstance(evaluation[0], PipelineStage)
+        and evaluation[0].relpath == PIPELINE_FILE
+        and evaluation[0].name == "A-gen"
+    )
+    names = set()
+    for stage in evaluation[1:3]:
+        if isinstance(stage, PipelineStage):
+            assert stage.relpath == PIPELINE_FILE
+            names.add(stage.name)
+        else:
+            names.add(stage.relpath)
+    assert names == {"B-gen", "C.dvc"}
+    assert (
+        isinstance(evaluation[3], PipelineStage)
+        and evaluation[3].relpath == PIPELINE_FILE
+        and evaluation[3].name == "D-gen"
+    )
+    assert (
+        not isinstance(evaluation[4], PipelineStage)
+        and evaluation[4].relpath == "E.dvc"
+    )
+
 
 def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy):
     from dvc.dvcfile import PipelineFile

@@ -1586,40 +1586,49 @@ def _hide_md5(text):
     return re.sub(r"\b[a-f0-9]{32}\b", "<md5>", text)
 
 
-class TestReproDownstream(TestDvc):
-    def test(self):
-        # The dependency graph should look like this:
-        #
-        #       E
-        #      / \
-        #     D   F
-        #    / \   \
-        #   B   C   G
-        #    \ /
-        #     A
-        #
-        assert main(["run", "-o", "A", "echo A>A"]) == 0
-        assert main(["run", "-d", "A", "-o", "B", "echo B>B"]) == 0
-        assert main(["run", "-d", "A", "-o", "C", "echo C>C"]) == 0
-        assert main(["run", "-d", "B", "-d", "C", "-o", "D", "echo D>D"]) == 0
-        assert main(["run", "-o", "G", "echo G>G"]) == 0
-        assert main(["run", "-d", "G", "-o", "F", "echo F>F"]) == 0
-        assert main(["run", "-d", "D", "-d", "F", "-o", "E", "echo E>E"]) == 0
+def test_downstream(dvc):
+    # The dependency graph should look like this:
+    #
+    #       E
+    #      / \
+    #     D   F
+    #    / \   \
+    #   B   C   G
+    #    \ /
+    #     A
+    #
+    assert main(["run", "-o", "A", "echo A>A"]) == 0
+    assert main(["run", "-d", "A", "-o", "B", "echo B>B"]) == 0
+    assert main(["run", "-d", "A", "-o", "C", "echo C>C"]) == 0
+    assert main(["run", "-d", "B", "-d", "C", "-o", "D", "echo D>D"]) == 0
+    assert main(["run", "-o", "G", "echo G>G"]) == 0
+    assert main(["run", "-d", "G", "-o", "F", "echo F>F"]) == 0
+    assert main(["run", "-d", "D", "-d", "F", "-o", "E", "echo E>E"]) == 0
 
-        # We want the evaluation to move from B to E
-        #
-        #       E
-        #      /
-        #     D
-        #    /
-        #   B
-        #
-        evaluation = self.dvc.reproduce("B.dvc", downstream=True, force=True)
+    # We want the evaluation to move from B to E
+    #
+    #       E
+    #      /
+    #     D
+    #    /
+    #   B
+    #
+    evaluation = dvc.reproduce("B.dvc", downstream=True, force=True)
 
-        assert len(evaluation) == 3
-        assert evaluation[0].relpath == "B.dvc"
-        assert evaluation[1].relpath == "D.dvc"
-        assert evaluation[2].relpath == "E.dvc"
+    assert len(evaluation) == 3
+    assert evaluation[0].relpath == "B.dvc"
+    assert evaluation[1].relpath == "D.dvc"
+    assert evaluation[2].relpath == "E.dvc"
+
+    # B, C should be run (in any order) before D
+    # See https://github.com/iterative/dvc/issues/3602
+    evaluation = dvc.reproduce("A.dvc", downstream=True, force=True)
+
+    assert len(evaluation) == 5
+    assert evaluation[0].relpath == "A.dvc"
+    assert {evaluation[1].relpath, evaluation[2].relpath} == {"B.dvc", "C.dvc"}
+    assert evaluation[3].relpath == "D.dvc"
+    assert evaluation[4].relpath == "E.dvc"
 
 
 @pytest.mark.skipif(
