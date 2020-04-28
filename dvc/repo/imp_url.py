@@ -4,6 +4,7 @@ from . import locked as locked_repo
 from dvc.repo.scm_context import scm_context
 from dvc.utils import resolve_output, resolve_paths, relpath
 from dvc.utils.fs import path_isin
+from ..exceptions import OutputDuplicationError
 
 
 @locked_repo
@@ -35,7 +36,10 @@ def imp_url(self, url, out=None, fname=None, erepo=None, locked=True):
     dvcfile = Dvcfile(self, stage.path)
     dvcfile.remove_with_prompt(force=True)
 
-    self.check_modified_graph([stage])
+    try:
+        self.check_modified_graph([stage])
+    except OutputDuplicationError as exc:
+        raise OutputDuplicationError(exc.output, set(exc.stages) - {stage})
 
     stage.run()
 

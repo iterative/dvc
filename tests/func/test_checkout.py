@@ -758,3 +758,29 @@ def test_checkout_for_external_outputs(tmp_dir, dvc):
     )
     stats = dvc.checkout(force=True)
     assert stats == {**empty_checkout, "modified": [str(file_path)]}
+
+
+def test_checkouts_for_pipeline_tracked_outs(tmp_dir, dvc, scm, run_copy):
+    from dvc.dvcfile import PIPELINE_FILE
+
+    tmp_dir.gen("foo", "foo")
+    stage1 = run_copy("foo", "bar", name="copy-foo-bar")
+    tmp_dir.gen("lorem", "lorem")
+    stage2 = run_copy("lorem", "ipsum", name="copy-lorem-ipsum")
+
+    for out in ["bar", "ipsum"]:
+        (tmp_dir / out).unlink()
+    assert dvc.checkout(["bar"])["added"] == ["bar"]
+
+    (tmp_dir / "bar").unlink()
+    assert set(dvc.checkout([PIPELINE_FILE])["added"]) == {"bar", "ipsum"}
+
+    for out in ["bar", "ipsum"]:
+        (tmp_dir / out).unlink()
+    assert set(dvc.checkout([stage1.addressing])["added"]) == {"bar"}
+
+    (tmp_dir / "bar").unlink()
+    assert set(dvc.checkout([stage2.addressing])["added"]) == {"ipsum"}
+
+    (tmp_dir / "ipsum").unlink()
+    assert set(dvc.checkout()["added"]) == {"bar", "ipsum"}

@@ -22,11 +22,11 @@ class GetDVCFileError(DvcException):
 @staticmethod
 def get(url, path, out=None, rev=None):
     from dvc.external_repo import external_repo
-    from dvc.dvcfile import Dvcfile
+    from dvc.dvcfile import is_valid_filename
 
     out = resolve_output(path, out)
 
-    if Dvcfile.is_valid_filename(out):
+    if is_valid_filename(out):
         raise GetDVCFileError()
 
     # Creating a directory right beside the output to make sure that they

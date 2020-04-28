@@ -191,7 +191,7 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
 
         # NOTE: os.walk() walks in a sorted order and we need dir2 subdirs to
         # be processed before dir1 to load error.dvc first.
-        self.dvc.pipeline_stages = [
+        self.dvc.stages = [
             nested_stage,
             Dvcfile(self.dvc, error_stage_path).stage,
         ]
@@ -223,9 +223,6 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
             self.dvc.reproduce(stage)
         except StagePathAsOutputError:
             self.fail("should not raise StagePathAsOutputError")
-
-
-# TODO: Test ^ for multistage
 
 
 class TestReproDepUnderDir(SingleStageRun, TestDvc):
@@ -560,7 +557,13 @@ class TestReproLocked(TestReproChangedData):
 
     def test_non_existing(self):
         with self.assertRaises(StageFileDoesNotExistError):
-            self.dvc.lock_stage("non-existing-stage")
+            self.dvc.lock_stage("Dvcfile")
+            self.dvc.lock_stage("pipelines.yaml")
+            self.dvc.lock_stage("pipelines.yaml:name")
+            self.dvc.lock_stage("Dvcfile:name")
+            self.dvc.lock_stage("stage.dvc")
+            self.dvc.lock_stage("stage.dvc:name")
+            self.dvc.lock_stage("not-existing-stage.json")
 
         ret = main(["lock", "non-existing-stage"])
         self.assertNotEqual(ret, 0)
@@ -808,7 +811,7 @@ class TestCmdReproChdir(TestDvc):
         self.assertTrue(filecmp.cmp(foo, bar, shallow=False))
 
 
-class TestReproExternalBase(TestDvc):
+class TestReproExternalBase(SingleStageRun, TestDvc):
     cache_type = None
 
     @staticmethod
@@ -923,13 +926,14 @@ class TestReproExternalBase(TestDvc):
         )
         self.assertEqual(self.dvc.status([import_remote_stage.path]), {})
 
-        cmd_stage = self.dvc.run(
+        cmd_stage = self._run(
             outs=[out_bar_path],
             deps=[out_foo_path],
             cmd=self.cmd(foo_path, bar_path),
+            name="external-base",
         )
 
-        self.assertEqual(self.dvc.status([cmd_stage.path]), {})
+        self.assertEqual(self.dvc.status([cmd_stage.addressing]), {})
         self.assertEqual(self.dvc.status(), {})
         self.check_already_cached(cmd_stage)
 
@@ -945,19 +949,19 @@ class TestReproExternalBase(TestDvc):
         self.dvc.update(import_remote_stage.path)
         self.assertEqual(self.dvc.status([import_remote_stage.path]), {})
 
-        stages = self.dvc.reproduce(cmd_stage.path)
+        stages = self.dvc.reproduce(cmd_stage.addressing)
         self.assertEqual(len(stages), 1)
-        self.assertEqual(self.dvc.status([cmd_stage.path]), {})
+        self.assertEqual(self.dvc.status([cmd_stage.addressing]), {})
 
         self.assertEqual(self.dvc.status(), {})
         self.dvc.gc(workspace=True)
         self.assertEqual(self.dvc.status(), {})
 
         self.dvc.remove(cmd_stage.path, outs_only=True)
-        self.assertNotEqual(self.dvc.status([cmd_stage.path]), {})
+        self.assertNotEqual(self.dvc.status([cmd_stage.addressing]), {})
 
         self.dvc.checkout([cmd_stage.path], force=True)
-        self.assertEqual(self.dvc.status([cmd_stage.path]), {})
+        self.assertEqual(self.dvc.status([cmd_stage.addressing]), {})
 
 
 @pytest.mark.skipif(os.name == "nt", reason="temporarily disabled on windows")
@@ -1196,10 +1200,11 @@ class TestReproExternalHTTP(TestReproExternalBase):
             with open("create-output.py", "w") as fd:
                 fd.write(cmd)
 
-            run_stage = self.dvc.run(
+            run_stage = self._run(
                 deps=[run_dependency],
                 outs=[run_output],
                 cmd="python create-output.py",
+                name="http_run",
             )
             self.assertTrue(run_stage is not None)
 

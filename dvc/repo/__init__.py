@@ -18,6 +18,7 @@ from dvc.path_info import PathInfo
 from dvc.remote.base import RemoteActionNotImplemented
 from dvc.utils.fs import path_isin
 from .graph import check_acyclic, get_pipeline, get_pipelines
+from ..utils import parse_target
 
 
 def locked(f):
@@ -175,7 +176,7 @@ class Repo(object):
 
         self.scm.ignore_list(flist)
 
-    def check_modified_graph(self, new_stages, old_stages=None):
+    def check_modified_graph(self, new_stages):
         """Generate graph including the new stage to check for errors"""
         # Building graph might be costly for the ones with many DVC-files,
         # so we provide this undocumented hack to skip it. See [1] for
@@ -190,29 +191,13 @@ class Repo(object):
         #
         # [1] https://github.com/iterative/dvc/issues/2671
         if not getattr(self, "_skip_graph_checks", False):
-            self._collect_graph((old_stages or self.stages) + new_stages)
+            self._collect_graph(self.stages + new_stages)
 
     def _collect_inside(self, path, graph):
         import networkx as nx
 
-        stages = nx.dfs_postorder_nodes(graph or self.pipeline_graph)
+        stages = nx.dfs_postorder_nodes(graph)
         return [stage for stage in stages if path_isin(stage.path, path)]
-
-    def collect_for_pipelines(
-        self, path=None, name=None, recursive=False, graph=None
-    ):
-        from ..dvcfile import Dvcfile
-
-        if not path:
-            return list(graph) if graph else self.pipeline_stages
-
-        path = os.path.abspath(path)
-        if recursive and os.path.isdir(path):
-            return self._collect_inside(path, graph or self.pipeline_graph)
-
-        dvcfile = Dvcfile(self, path)
-        dvcfile.check_file_exists()
-        return [dvcfile.stages[name]]
 
     def collect(self, target, with_deps=False, recursive=False, graph=None):
         import networkx as nx
@@ -221,33 +206,38 @@ class Repo(object):
         if not target:
             return list(graph) if graph else self.stages
 
-        target = os.path.abspath(target)
-
         if recursive and os.path.isdir(target):
-            return self._collect_inside(target, graph or self.graph)
+            return self._collect_inside(
+                os.path.abspath(target), graph or self.graph
+            )
 
-        stage = Dvcfile(self, target).stage
-
-        # Optimization: do not collect the graph for a specific target
+        file, name, tag = parse_target(target)
+        dvcfile = Dvcfile(self, file, tag=tag)
+        stages = list(dvcfile.stages.filter(name).values())
         if not with_deps:
-            return [stage]
+            return stages
 
-        pipeline = get_pipeline(get_pipelines(graph or self.graph), stage)
-        return list(nx.dfs_postorder_nodes(pipeline, stage))
+        res = set()
+        for stage in stages:
+            pipeline = get_pipeline(get_pipelines(graph or self.graph), stage)
+            res.update(nx.dfs_postorder_nodes(pipeline, stage))
+        return res
 
     def collect_granular(self, target, *args, **kwargs):
-        from ..dvcfile import Dvcfile
+        from ..dvcfile import Dvcfile, is_valid_filename
 
         if not target:
             return [(stage, None) for stage in self.stages]
 
-        # Optimization: do not collect the graph for a specific .dvc target
-        if Dvcfile.is_valid_filename(target) and not kwargs.get("with_deps"):
-            return [(Dvcfile(self, target).stage, None)]
+        file, name, tag = parse_target(target)
+        if is_valid_filename(file) and not kwargs.get("with_deps"):
+            # Optimization: do not collect the graph for a specific .dvc target
+            stages = Dvcfile(self, file, tag=tag).stages.filter(name)
+            return [(stage, None) for stage in stages.values()]
 
         try:
-            (out,) = self.find_outs_by_path(target, strict=False)
-            filter_info = PathInfo(os.path.abspath(target))
+            (out,) = self.find_outs_by_path(file, strict=False)
+            filter_info = PathInfo(os.path.abspath(file))
             return [(out.stage, filter_info)]
         except OutputNotFoundError:
             stages = self.collect(target, *args, **kwargs)
@@ -383,9 +373,9 @@ class Repo(object):
                         "rerun command with non overlapping outs paths."
                     ).format(
                         str(parent),
-                        parent.stage.relpath,
+                        parent.stage.addressing,
                         str(overlapping),
-                        overlapping.stage.relpath,
+                        overlapping.stage.addressing,
                     )
                     raise OverlappingOutputPathsError(parent, overlapping, msg)
 
@@ -419,7 +409,7 @@ class Repo(object):
 
     @cached_property
     def pipelines(self):
-        return get_pipelines(self.pipeline_graph)
+        return get_pipelines(self.graph)
 
     @cached_property
     def stages(self):
@@ -432,60 +422,27 @@ class Repo(object):
         NOTE: For large repos, this could be an expensive
               operation. Consider using some memoization.
         """
-        return self._collect_stages()[0]
-
-    @cached_property
-    def pipeline_stages(self):
-        return self._collect_stages()[1]
-
-    @cached_property
-    def pipeline_graph(self):
-        return self._collect_graph(self.pipeline_stages)
+        return self._collect_stages()
 
     def _collect_stages(self):
-        from dvc.dvcfile import Dvcfile
-        from dvc.stage import PipelineStage
+        from dvc.dvcfile import Dvcfile, is_valid_filename
 
-        pipeline_stages = []
-        output_stages = []
-        ignored_outs = set()
+        stages = []
         outs = set()
 
         for root, dirs, files in self.tree.walk(self.root_dir):
-            for fname in files:
-                path = os.path.join(root, fname)
-                if not Dvcfile.is_valid_filename(path):
-                    continue
-                dvcfile = Dvcfile(self, path)
-                for stage in dvcfile.stages.values():
-                    if isinstance(stage, PipelineStage):
-                        ignored_outs.update(
-                            out.path_info for out in stage.outs
-                        )
-                        pipeline_stages.append(stage)
-                    else:
-                        # Old single-stages are used for both
-                        # outputs and pipelines.
-                        output_stages.append(stage)
-
-                    outs.update(
-                        out.fspath
-                        for out in stage.outs
-                        if out.scheme == "local"
+            for file_name in filter(is_valid_filename, files):
+                path = os.path.join(root, file_name)
+                stages.extend(list(Dvcfile(self, path).stages.values()))
+                outs.update(
+                    out.fspath
+                    for stage in stages
+                    for out in (
+                        out for out in stage.outs if out.scheme == "local"
                     )
-
+                )
             dirs[:] = [d for d in dirs if os.path.join(root, d) not in outs]
-
-        # DVC files are generated by multi-stage for data management.
-        # We need to ignore those stages for pipelines_stages, but still
-        # should be collected for output stages.
-        pipeline_stages.extend(
-            stage
-            for stage in output_stages
-            if not stage.outs
-            or all(out.path_info not in ignored_outs for out in stage.outs)
-        )
-        return output_stages, pipeline_stages
+        return stages
 
     def find_outs_by_path(self, path, outs=None, recursive=False, strict=True):
         if not outs:
@@ -582,5 +539,3 @@ class Repo(object):
         self.__dict__.pop("stages", None)
         self.__dict__.pop("pipelines", None)
         self.__dict__.pop("dvcignore", None)
-        self.__dict__.pop("pipeline_graph", None)
-        self.__dict__.pop("pipeline_stages", None)

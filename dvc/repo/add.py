@@ -4,10 +4,11 @@ import os
 import colorama
 
 from . import locked
-from ..dvcfile import Dvcfile
+from dvc.dvcfile import Dvcfile, is_dvc_file
 from ..exceptions import (
     RecursiveAddingWhileUsingFilename,
     OverlappingOutputPathsError,
+    OutputDuplicationError,
 )
 from ..output.base import OutputDoesNotExistError
 from ..progress import Tqdm
@@ -63,10 +64,14 @@ def add(repo, targets, recursive=False, no_commit=False, fname=None):
                 ).format(
                     out=exc.overlapping_out.path_info,
                     parent=exc.parent.path_info,
-                    parent_stage=exc.parent.stage.relpath,
+                    parent_stage=exc.parent.stage.addressing,
                 )
                 raise OverlappingOutputPathsError(
                     exc.parent, exc.overlapping_out, msg
+                )
+            except OutputDuplicationError as exc:
+                raise OutputDuplicationError(
+                    exc.output, set(exc.stages) - set(stages)
                 )
 
             with Tqdm(
@@ -107,7 +112,7 @@ def _find_all_targets(repo, target, recursive):
                 unit="file",
             )
             if not repo.is_dvc_internal(fname)
-            if not Dvcfile.is_stage_file(fname)
+            if not is_dvc_file(fname)
             if not repo.scm.belongs_to_scm(fname)
             if not repo.scm.is_tracked(fname)
         ]

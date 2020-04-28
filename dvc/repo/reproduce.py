@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 def _reproduce_stage(stage, **kwargs):
     if stage.locked:
         logger.warning(
-            "DVC-file '{path}' is locked. Its dependencies are"
-            " not going to be reproduced.".format(path=stage.relpath)
+            "{} is locked. Its dependencies are"
+            " not going to be reproduced.".format(stage)
         )
 
     stage = stage.reproduce(**kwargs)
@@ -73,15 +73,15 @@ def reproduce(
     if not interactive:
         kwargs["interactive"] = self.config["core"].get("interactive", False)
 
-    active_graph = _get_active_graph(self.pipeline_graph)
+    active_graph = _get_active_graph(self.graph)
     active_pipelines = get_pipelines(active_graph)
 
-    path, name = parse_target(target)
+    path, name, tag = parse_target(target)
     if pipeline or all_pipelines:
         if all_pipelines:
             pipelines = active_pipelines
         else:
-            dvcfile = Dvcfile(self, path)
+            dvcfile = Dvcfile(self, path, tag=tag)
             stage = dvcfile.stages[name]
             pipelines = [get_pipeline(active_pipelines, stage)]
 
@@ -91,9 +91,7 @@ def reproduce(
                 if pipeline.in_degree(stage) == 0:
                     targets.append(stage)
     else:
-        targets = self.collect_for_pipelines(
-            path, name=name, recursive=recursive, graph=active_graph
-        )
+        targets = self.collect(target, recursive=recursive, graph=active_graph)
 
     return _reproduce_stages(active_graph, targets, **kwargs)
 

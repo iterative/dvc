@@ -149,12 +149,19 @@ class OutputBase(object):
         return self.cache.checksum_to_path_info(self.checksum).url
 
     @property
+    def checksum_type(self):
+        return self.remote.PARAM_CHECKSUM
+
+    @property
     def checksum(self):
         return self.info.get(self.remote.PARAM_CHECKSUM)
 
     @checksum.setter
     def checksum(self, checksum):
         self.info[self.remote.PARAM_CHECKSUM] = checksum
+
+    def get_checksum(self):
+        return self.remote.get_checksum(self.path_info)
 
     @property
     def is_dir_checksum(self):
@@ -168,7 +175,7 @@ class OutputBase(object):
         return self.remote.save_info(self.path_info)
 
     def changed_checksum(self):
-        return self.checksum != self.remote.get_checksum(self.path_info)
+        return self.checksum != self.get_checksum()
 
     def changed_cache(self, filter_info=None):
         if not self.use_cache or not self.checksum:
@@ -438,9 +445,9 @@ class OutputBase(object):
             if self.exists:
                 msg += (
                     "\n"
-                    "You can also use `dvc commit {stage}` to associate "
-                    "existing '{out}' with '{stage}'.".format(
-                        out=self, stage=self.stage.relpath
+                    "You can also use `dvc commit {stage.addressing}` "
+                    "to associate existing '{out}' with {stage}.".format(
+                        out=self, stage=self.stage
                     )
                 )
             logger.warning(msg)
@@ -459,7 +466,7 @@ class OutputBase(object):
 
     @classmethod
     def _validate_output_path(cls, path):
-        from dvc.dvcfile import Dvcfile
+        from dvc.dvcfile import is_valid_filename
 
-        if Dvcfile.is_valid_filename(path):
+        if is_valid_filename(path):
             raise cls.IsStageFileError(path)

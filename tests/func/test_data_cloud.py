@@ -7,7 +7,7 @@ from unittest import SkipTest
 
 import pytest
 
-from dvc.compat import fspath
+from dvc.compat import fspath, fspath_py35
 from dvc.cache import NamedCache
 from dvc.data_cloud import DataCloud
 from dvc.main import main
@@ -21,6 +21,7 @@ from dvc.remote import OSSRemote
 from dvc.remote import S3Remote
 from dvc.remote import SSHRemote
 from dvc.remote.base import STATUS_DELETED, STATUS_NEW, STATUS_OK
+from dvc.stage.exceptions import StageNotFound
 from dvc.utils import file_md5
 from dvc.utils.fs import remove
 from dvc.utils.stage import dump_stage_file, load_stage_file
@@ -531,7 +532,7 @@ class TestWarnOnOutdatedStage(TestDvc):
             self._caplog.clear()
             self.main(["status", "-c"])
             expected_warning = (
-                "Output 'bar'(Stage: 'bar.dvc') is missing version info. "
+                "Output 'bar'(stage: 'bar.dvc') is missing version info. "
                 "Cache for it will not be collected. "
                 "Use `dvc repro` to get your pipeline up to date."
             )
@@ -752,10 +753,7 @@ def test_pull_external_dvc_imports(tmp_dir, dvc, scm, erepo_dir):
 
     assert dvc.pull()["downloaded"] == 0
 
-    for item in ["foo", "new_dir", dvc.cache.local.cache_dir]:
-        remove(item)
-    os.makedirs(dvc.cache.local.cache_dir, exist_ok=True)
-    clean_repos()
+    clean(["foo", "new_dir"], dvc)
 
     assert dvc.pull(force=True)["downloaded"] == 2
 
@@ -764,3 +762,88 @@ def test_pull_external_dvc_imports(tmp_dir, dvc, scm, erepo_dir):
 
     assert (tmp_dir / "new_dir").exists()
     assert (tmp_dir / "new_dir" / "bar").read_text() == "bar"
+
+
+def clean(outs, dvc=None):
+    if dvc:
+        outs = outs + [dvc.cache.local.cache_dir]
+    for path in outs:
+        print(path)
+        remove(path)
+    if dvc:
+        os.makedirs(dvc.cache.local.cache_dir, exist_ok=True)
+        clean_repos()
+
+
+def recurse_list_dir(d):
+    return [
+        os.path.join(d, f) for _, _, filenames in os.walk(d) for f in filenames
+    ]
+
+
+def test_dvc_pull_pipeline_stages(tmp_dir, dvc, local_remote, run_copy):
+    (stage0,) = tmp_dir.dvc_gen("foo", "foo")
+    stage1 = run_copy("foo", "bar")
+    stage2 = run_copy("bar", "foobar", name="copy-bar-foobar")
+    outs = ["foo", "bar", "foobar"]
+
+    dvc.push()
+    clean(outs, dvc)
+    dvc.pull()
+    assert all((tmp_dir / file).exists() for file in outs)
+
+    for out, stage in zip(outs, [stage0, stage1, stage2]):
+        for target in [stage.addressing, out]:
+            clean(outs, dvc)
+            stats = dvc.pull([target])
+            assert stats["downloaded"] == 1
+            assert stats["added"] == [out]
+            assert os.path.exists(out)
+            assert not any(os.path.exists(out) for out in set(outs) - {out})
+
+    clean(outs, dvc)
+    stats = dvc.pull([stage2.addressing], with_deps=True)
+    assert len(stats["added"]) == 3
+    assert set(stats["added"]) == set(outs)
+
+    clean(outs, dvc)
+    stats = dvc.pull([os.curdir], recursive=True)
+    assert set(stats["added"]) == set(outs)
+
+
+def test_pipeline_file_target_ops(tmp_dir, dvc, local_remote, run_copy):
+    tmp_dir.dvc_gen("foo", "foo")
+    run_copy("foo", "bar")
+
+    tmp_dir.dvc_gen("lorem", "lorem")
+    run_copy("lorem", "lorem2", name="copy-lorem-lorem2")
+
+    tmp_dir.dvc_gen("ipsum", "ipsum")
+    run_copy("ipsum", "baz", name="copy-ipsum-baz")
+
+    outs = ["foo", "bar", "lorem", "ipsum", "baz", "lorem2"]
+
+    dvc.push()
+    # each one's a copy of other, hence 3
+    assert len(recurse_list_dir(fspath_py35(local_remote))) == 3
+
+    clean(outs, dvc)
+    assert set(dvc.pull(["pipelines.yaml"])["added"]) == {"lorem2", "baz"}
+
+    clean(outs, dvc)
+    assert set(dvc.pull()["added"]) == set(outs)
+
+    # clean everything in remote and push
+    clean(local_remote.iterdir())
+    dvc.push(["pipelines.yaml:copy-ipsum-baz"])
+    assert len(recurse_list_dir(fspath_py35(local_remote))) == 1
+
+    clean(local_remote.iterdir())
+    dvc.push(["pipelines.yaml"])
+    assert len(recurse_list_dir(fspath_py35(local_remote))) == 2
+
+    with pytest.raises(StageNotFound):
+        dvc.push(["pipelines.yaml:StageThatDoesNotExist"])
+
+    with pytest.raises(StageNotFound):
+        dvc.pull(["pipelines.yaml:StageThatDoesNotExist"])

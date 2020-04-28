@@ -1,4 +1,5 @@
 from dvc.stage.params import StageParams, OutputParams
+from dvc.output import CHECKSUMS_SCHEMA
 from dvc import dependency, output
 
 from voluptuous import Any, Schema, Optional, Required
@@ -16,10 +17,11 @@ SINGLE_STAGE_SCHEMA = {
     StageParams.PARAM_ALWAYS_CHANGED: bool,
 }
 
+DATA_SCHEMA = {**CHECKSUMS_SCHEMA, Required("path"): str}
 LOCK_FILE_STAGE_SCHEMA = {
     Required(StageParams.PARAM_CMD): str,
-    Required(StageParams.PARAM_DEPS): {str: output.CHECKSUM_SCHEMA},
-    Required(StageParams.PARAM_OUTS): {str: output.CHECKSUM_SCHEMA},
+    StageParams.PARAM_DEPS: [DATA_SCHEMA],
+    StageParams.PARAM_OUTS: [DATA_SCHEMA],
 }
 LOCKFILE_SCHEMA = {str: LOCK_FILE_STAGE_SCHEMA}
 

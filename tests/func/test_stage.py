@@ -7,7 +7,7 @@ from dvc.output.local import OutputLOCAL
 from dvc.remote.local import LocalRemote
 from dvc.repo import Repo
 from dvc.stage import Stage
-from dvc.dvcfile import Dvcfile
+from dvc.dvcfile import SingleStageFile
 from dvc.stage.exceptions import StageFileFormatError
 from dvc.utils.stage import dump_stage_file
 from dvc.utils.stage import load_stage_file
@@ -16,40 +16,40 @@ from tests.basic_env import TestDvc
 
 def test_cmd_obj():
     with pytest.raises(StageFileFormatError):
-        Dvcfile.validate_single_stage({Stage.PARAM_CMD: {}})
+        SingleStageFile.validate({Stage.PARAM_CMD: {}})
 
 
 def test_cmd_none():
-    Dvcfile.validate_single_stage({Stage.PARAM_CMD: None})
+    SingleStageFile.validate({Stage.PARAM_CMD: None})
 
 
 def test_no_cmd():
-    Dvcfile.validate_single_stage({})
+    SingleStageFile.validate({})
 
 
 def test_cmd_str():
-    Dvcfile.validate_single_stage({Stage.PARAM_CMD: "cmd"})
+    SingleStageFile.validate({Stage.PARAM_CMD: "cmd"})
 
 
 def test_object():
     with pytest.raises(StageFileFormatError):
-        Dvcfile.validate_single_stage({Stage.PARAM_DEPS: {}})
+        SingleStageFile.validate({Stage.PARAM_DEPS: {}})
 
     with pytest.raises(StageFileFormatError):
-        Dvcfile.validate_single_stage({Stage.PARAM_OUTS: {}})
+        SingleStageFile.validate({Stage.PARAM_OUTS: {}})
 
 
 def test_none():
-    Dvcfile.validate_single_stage({Stage.PARAM_DEPS: None})
-    Dvcfile.validate_single_stage({Stage.PARAM_OUTS: None})
+    SingleStageFile.validate({Stage.PARAM_DEPS: None})
+    SingleStageFile.validate({Stage.PARAM_OUTS: None})
 
 
 def test_empty_list():
     d = {Stage.PARAM_DEPS: []}
-    Dvcfile.validate_single_stage(d)
+    SingleStageFile.validate(d)
 
     d = {Stage.PARAM_OUTS: []}
-    Dvcfile.validate_single_stage(d)
+    SingleStageFile.validate(d)
 
 
 def test_list():
@@ -59,12 +59,12 @@ def test_list():
         {OutputLOCAL.PARAM_PATH: "baz"},
     ]
     d = {Stage.PARAM_DEPS: lst}
-    Dvcfile.validate_single_stage(d)
+    SingleStageFile.validate(d)
 
     lst[0][OutputLOCAL.PARAM_CACHE] = True
     lst[1][OutputLOCAL.PARAM_CACHE] = False
     d = {Stage.PARAM_OUTS: lst}
-    Dvcfile.validate_single_stage(d)
+    SingleStageFile.validate(d)
 
 
 class TestReload(TestDvc):
@@ -81,7 +81,7 @@ class TestReload(TestDvc):
         d[stage.PARAM_MD5] = md5
         dump_stage_file(stage.relpath, d)
 
-        dvcfile = Dvcfile(self.dvc, stage.relpath)
+        dvcfile = SingleStageFile(self.dvc, stage.relpath)
         stage = dvcfile.stage
 
         self.assertTrue(stage is not None)
@@ -106,7 +106,7 @@ class TestDefaultWorkingDirectory(TestDvc):
         self.assertNotIn(Stage.PARAM_WDIR, d.keys())
 
         with self.dvc.lock, self.dvc.state:
-            stage = Dvcfile(self.dvc, stage.relpath).stage
+            stage = SingleStageFile(self.dvc, stage.relpath).stage
             self.assertFalse(stage.changed())
 
 
@@ -157,8 +157,8 @@ def test_md5_ignores_comments(tmp_dir, dvc):
     with open(stage.path, "a") as f:
         f.write("# End comment\n")
 
-    new_stage = Dvcfile(dvc, stage.path).stage
-    assert not new_stage.changed_md5()
+    new_stage = SingleStageFile(dvc, stage.path).stage
+    assert not new_stage.stage_changed()
 
 
 def test_meta_is_preserved(tmp_dir, dvc):
@@ -170,7 +170,7 @@ def test_meta_is_preserved(tmp_dir, dvc):
     dump_stage_file(stage.path, data)
 
     # Loading and dumping to test that it works and meta is retained
-    dvcfile = Dvcfile(dvc, stage.path)
+    dvcfile = SingleStageFile(dvc, stage.path)
     new_stage = dvcfile.stage
     dvcfile.dump(new_stage)
 
@@ -192,3 +192,21 @@ def test_parent_repo_collect_stages(tmp_dir, scm, dvc):
 
     assert stages == []
     assert subrepo_stages != []
+
+
+def test_stage_addressing(tmp_dir, dvc, run_copy):
+    tmp_dir.dvc_gen("foo", "foo")
+    stage1 = run_copy("foo", "bar")
+    assert stage1.addressing == "bar.dvc"
+
+    stage2 = run_copy("bar", "baz", name="copy-bar-baz")
+    assert stage2.addressing == "pipelines.yaml:copy-bar-baz"
+
+    folder = tmp_dir / "dir"
+    folder.mkdir()
+    with folder.chdir():
+        assert stage1.addressing == os.path.relpath(stage1.path)
+        assert (
+            stage2.addressing
+            == os.path.relpath(stage2.path) + ":" + stage2.name
+        )

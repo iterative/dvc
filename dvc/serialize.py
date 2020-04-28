@@ -1,4 +1,3 @@
-from collections import OrderedDict
 from typing import TYPE_CHECKING
 
 from dvc.utils.collections import apply_diff
@@ -22,7 +21,7 @@ def _get_outs(stage: "PipelineStage"):
     return outs_bucket
 
 
-def to_dvcfile(stage: "PipelineStage"):
+def to_pipeline_file(stage: "PipelineStage"):
     return {
         stage.name: {
             key: value
@@ -39,34 +38,25 @@ def to_dvcfile(stage: "PipelineStage"):
     }
 
 
-def to_lockfile(stage: "PipelineStage") -> OrderedDict:
+def to_lockfile(stage: "PipelineStage") -> dict:
     assert stage.cmd
     assert stage.name
 
-    deps = OrderedDict(
-        [
-            (dep.def_path, dep.remote.get_checksum(dep.path_info),)
-            for dep in stage.deps
-            if dep.remote.get_checksum(dep.path_info)
-        ]
-    )
-    outs = OrderedDict(
-        [
-            (out.def_path, out.remote.get_checksum(out.path_info),)
-            for out in stage.outs
-            if out.remote.get_checksum(out.path_info)
-        ]
-    )
-    return OrderedDict(
-        [
-            (
-                stage.name,
-                OrderedDict(
-                    [("cmd", stage.cmd), ("deps", deps,), ("outs", outs)]
-                ),
-            )
-        ]
-    )
+    res = {"cmd": stage.cmd}
+    deps = [
+        {"path": dep.def_path, dep.checksum_type: dep.get_checksum()}
+        for dep in stage.deps
+    ]
+    outs = [
+        {"path": out.def_path, out.checksum_type: out.get_checksum()}
+        for out in stage.outs
+    ]
+    if stage.deps:
+        res["deps"] = deps
+    if stage.outs:
+        res["outs"] = outs
+
+    return {stage.name: res}
 
 
 def to_single_stage_file(stage: "Stage"):

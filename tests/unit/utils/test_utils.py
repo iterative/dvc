@@ -4,11 +4,15 @@ import os
 import pytest
 
 from dvc.path_info import PathInfo
-from dvc.utils import file_md5, resolve_output
-from dvc.utils import fix_env
-from dvc.utils import relpath
-from dvc.utils import to_chunks
-from dvc.utils import tmp_fname
+from dvc.utils import (
+    file_md5,
+    resolve_output,
+    fix_env,
+    relpath,
+    to_chunks,
+    tmp_fname,
+    parse_target,
+)
 
 
 @pytest.mark.parametrize(
@@ -128,3 +132,26 @@ def test_resolve_output(inp, out, is_dir, expected, mocker):
     mocker.patch("os.path.isdir", return_value=is_dir)
     result = resolve_output(inp, out)
     assert result == expected
+
+
+@pytest.mark.parametrize(
+    "inp,out, default",
+    [
+        ["pipelines.yaml", ("pipelines.yaml", None, None), None],
+        ["pipelines.yaml:name", ("pipelines.yaml", "name", None), None],
+        [":name", ("pipelines.yaml", "name", None), None],
+        ["stage.dvc", ("stage.dvc", None, None), None],
+        ["pipelines.yaml:name@v1", ("pipelines.yaml", "name", "v1"), None],
+        ["../models/stage.dvc", ("../models/stage.dvc", None, None), "def"],
+        [":name", ("default", "name", None), "default"],
+        [":name@v2", ("default", "name", "v2"), "default"],
+    ],
+)
+def test_parse_target(inp, out, default):
+    assert parse_target(inp, default) == out
+
+
+def test_hint_on_lockfile():
+    with pytest.raises(Exception) as exc:
+        assert parse_target("pipelines.lock:name@v223")
+    assert "pipelines.yaml:name@v223" in str(exc.value)

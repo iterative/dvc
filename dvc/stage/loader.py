@@ -6,19 +6,9 @@ from copy import deepcopy
 from itertools import chain
 
 from dvc import dependency, output
-from dvc.exceptions import DvcException
-from dvc.utils import relpath
+from .exceptions import StageNameUnspecified, StageNotFound
 
 logger = logging.getLogger(__name__)
-
-
-class StageNotFound(KeyError, DvcException):
-    def __init__(self, file, name):
-        super().__init__(
-            "Stage with '{}' name not found inside '{}' file".format(
-                name, relpath(file)
-            )
-        )
 
 
 def resolve_paths(path, wdir=None):
@@ -34,21 +24,39 @@ class StageLoader(collections.abc.Mapping):
         self.stages_data = stages_data or {}
         self.lockfile_data = lockfile_data or {}
 
+    def filter(self, item=None):
+        if not item:
+            return self
+
+        if item not in self:
+            raise StageNotFound(self.dvcfile, item)
+
+        data = {item: self.stages_data[item]} if item in self else {}
+        return self.__class__(self.dvcfile, data, self.lockfile_data)
+
     @staticmethod
     def _fill_lock_checksums(stage, lock_data):
-        from .stage import Stage
+        from .params import StageParams
 
-        outs = stage.outs if not stage.cmd_changed else []
         items = chain(
-            ((Stage.PARAM_DEPS, dep) for dep in stage.deps),
-            ((Stage.PARAM_OUTS, out) for out in outs),
+            ((StageParams.PARAM_DEPS, dep) for dep in stage.deps),
+            ((StageParams.PARAM_OUTS, out) for out in stage.outs),
         )
+
+        checksums = {
+            key: {item["path"]: item for item in lock_data.get(key, {})}
+            for key in [StageParams.PARAM_DEPS, StageParams.PARAM_OUTS]
+        }
         for key, item in items:
-            item.checksum = lock_data.get(key, {}).get(item.def_path)
+            item.checksum = (
+                checksums.get(key, {})
+                .get(item.def_path, {})
+                .get(item.checksum_type)
+            )
 
     @classmethod
     def load_stage(cls, dvcfile, name, stage_data, lock_data):
-        from .stage import PipelineStage, Stage, loads_from
+        from . import PipelineStage, Stage, loads_from
 
         path, wdir = resolve_paths(
             dvcfile.path, stage_data.get(Stage.PARAM_WDIR)
@@ -66,13 +74,17 @@ class StageLoader(collections.abc.Mapping):
         return stage
 
     def __getitem__(self, name):
+        if not name:
+            raise StageNameUnspecified(self.dvcfile)
+
         if name not in self:
-            raise StageNotFound(self.dvcfile.path, name)
+            raise StageNotFound(self.dvcfile, name)
 
         if not self.lockfile_data.get(name):
             logger.warning(
                 "No lock entry found for '%s:%s'", self.dvcfile.relpath, name
             )
+
         return self.load_stage(
             self.dvcfile,
             name,
@@ -91,10 +103,14 @@ class StageLoader(collections.abc.Mapping):
 
 
 class SingleStageLoader(collections.abc.Mapping):
-    def __init__(self, dvcfile, stage_data, stage_text=None):
+    def __init__(self, dvcfile, stage_data, stage_text=None, tag=None):
         self.dvcfile = dvcfile
         self.stage_data = stage_data or {}
         self.stage_text = stage_text
+        self.tag = tag
+
+    def filter(self, item=None):
+        return self
 
     def __getitem__(self, item):
         if item:
@@ -106,16 +122,16 @@ class SingleStageLoader(collections.abc.Mapping):
         # during `load`, we remove attributes from stage data, so as to
         # not duplicate, therefore, for MappingView, we need to deepcopy.
         return self.load_stage(
-            self.dvcfile, deepcopy(self.stage_data), self.stage_text
+            self.dvcfile, deepcopy(self.stage_data), self.stage_text, self.tag
         )
 
     @classmethod
-    def load_stage(cls, dvcfile, d, stage_text):
+    def load_stage(cls, dvcfile, d, stage_text, tag=None):
         from dvc.stage import Stage, loads_from
 
         path, wdir = resolve_paths(dvcfile.path, d.get(Stage.PARAM_WDIR))
         stage = loads_from(Stage, dvcfile.repo, path, wdir, d)
-        stage._stage_text, stage.tag = stage_text, dvcfile.tag
+        stage._stage_text, stage.tag = stage_text, tag
         stage.deps = dependency.loadd_from(
             stage, d.get(Stage.PARAM_DEPS) or []
         )

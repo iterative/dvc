@@ -3,9 +3,11 @@ from textwrap import dedent
 
 import pytest
 
+from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
 from dvc.exceptions import CyclicGraphError
 from dvc.stage import PipelineStage
-from dvc.utils.stage import dump_stage_file
+from dvc.utils.stage import dump_stage_file, parse_stage
+
 from tests.func import test_repro
 
 from dvc.main import main
@@ -157,6 +159,42 @@ class TestReproChangedDirDataMultiStage(
     pass
 
 
+class TestReproExternalS3MultiStage(
+    MultiStageRun, test_repro.TestReproExternalS3
+):
+    pass
+
+
+class TestReproExternalGSMultiStage(
+    MultiStageRun, test_repro.TestReproExternalGS
+):
+    pass
+
+
+class TestReproExternalHDFSMultiStage(
+    MultiStageRun, test_repro.TestReproExternalHDFS
+):
+    pass
+
+
+class TestReproExternalHTTPMultiStage(
+    MultiStageRun, test_repro.TestReproExternalHTTP
+):
+    pass
+
+
+class TestReproExternalLOCALMultiStage(
+    MultiStageRun, test_repro.TestReproExternalLOCAL
+):
+    pass
+
+
+class TestReproExternalSSHMultiStage(
+    MultiStageRun, test_repro.TestReproExternalSSH
+):
+    pass
+
+
 def test_non_existing_stage_name(tmp_dir, dvc, run_copy):
     from dvc.exceptions import DvcException
 
@@ -167,9 +205,6 @@ def test_non_existing_stage_name(tmp_dir, dvc, run_copy):
         dvc.lock_stage(":copy-file1-file3")
 
     assert main(["lock", ":copy-file1-file3"]) != 0
-
-
-# TODO: TestReproWorkingDirectoryAsOutput
 
 
 def test_downstream(tmp_dir, dvc):
@@ -204,17 +239,19 @@ def test_downstream(tmp_dir, dvc):
     #    /
     #   B
     #
-    evaluation = dvc.reproduce("Dvcfile:B-gen", downstream=True, force=True)
+    evaluation = dvc.reproduce(
+        PIPELINE_FILE + ":B-gen", downstream=True, force=True
+    )
 
     assert len(evaluation) == 3
     assert (
         isinstance(evaluation[0], PipelineStage)
-        and evaluation[0].relpath == "Dvcfile"
+        and evaluation[0].relpath == PIPELINE_FILE
         and evaluation[0].name == "B-gen"
     )
     assert (
         isinstance(evaluation[1], PipelineStage)
-        and evaluation[1].relpath == "Dvcfile"
+        and evaluation[1].relpath == PIPELINE_FILE
         and evaluation[1].name == "D-gen"
     )
     assert (
@@ -224,16 +261,19 @@ def test_downstream(tmp_dir, dvc):
 
 
 def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy):
-    from dvc.dvcfile import Dvcfile
+    from dvc.dvcfile import PipelineFile
 
     tmp_dir.gen("foo", "foo")
-    stage = run_copy("foo", "bar", fname="copy-process.dvc", name="copy-file")
-    target = "copy-process.dvc:copy-file"
+    stage = run_copy("foo", "bar", name="copy-file")
+    target = ":copy-file"
     assert not dvc.reproduce(target)
 
     stage.cmd = "  ".join(stage.cmd.split())  # change cmd spacing by two
-    Dvcfile(dvc, "copy-process.dvc").dump_multistage_dvcfile(stage)
+    PipelineFile(dvc, PIPELINE_FILE)._dump_pipeline_file(stage)
 
+    assert dvc.status([target]) == {
+        PIPELINE_FILE + target: ["changed command"]
+    }
     assert dvc.reproduce(target)[0] == stage
 
 
@@ -246,10 +286,9 @@ def test_repro_when_new_deps_is_added_in_dvcfile(tmp_dir, dvc, run_copy):
         cmd="python copy.py {} {}".format("foo", "foobar"),
         outs=["foobar"],
         deps=["foo"],
-        fname="copy-process.dvc",
         name="copy-file",
     )
-    target = "copy-process.dvc:copy-file"
+    target = PIPELINE_FILE + ":copy-file"
     assert not dvc.reproduce(target)
 
     dvcfile = Dvcfile(dvc, stage.path)
@@ -269,10 +308,9 @@ def test_repro_when_new_outs_is_added_in_dvcfile(tmp_dir, dvc):
         cmd="python copy.py {} {}".format("foo", "foobar"),
         outs=[],  # scenario where user forgot to add
         deps=["foo"],
-        fname="copy-process.dvc",
         name="copy-file",
     )
-    target = "copy-process.dvc:copy-file"
+    target = ":copy-file"
     assert not dvc.reproduce(target)
 
     dvcfile = Dvcfile(dvc, stage.path)
@@ -292,10 +330,9 @@ def test_repro_when_new_deps_is_moved(tmp_dir, dvc):
         cmd="python copy.py {} {}".format("foo", "foobar"),
         outs=["foobar"],
         deps=["foo"],
-        fname="copy-process.dvc",
         name="copy-file",
     )
-    target = "copy-process.dvc:copy-file"
+    target = ":copy-file"
     assert not dvc.reproduce(target)
 
     tmp_dir.gen("copy.py", COPY_SCRIPT_FORMAT.format("'bar'", "'foobar'"))
@@ -317,7 +354,7 @@ def test_repro_when_new_out_overlaps_others_stage_outs(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"file1": "file1"}, "foo": "foo"})
     dvc.add("dir")
     dump_stage_file(
-        "Dvcfile",
+        PIPELINE_FILE,
         {
             "stages": {
                 "run-copy": {
@@ -338,7 +375,7 @@ def test_repro_when_new_deps_added_does_not_exist(tmp_dir, dvc):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("foo", "foo")
     dump_stage_file(
-        "Dvcfile",
+        PIPELINE_FILE,
         {
             "stages": {
                 "run-copy": {
@@ -359,7 +396,7 @@ def test_repro_when_new_outs_added_does_not_exist(tmp_dir, dvc):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("foo", "foo")
     dump_stage_file(
-        "Dvcfile",
+        PIPELINE_FILE,
         {
             "stages": {
                 "run-copy": {
@@ -378,7 +415,7 @@ def test_repro_when_lockfile_gets_deleted(tmp_dir, dvc):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("foo", "foo")
     dump_stage_file(
-        "Dvcfile",
+        PIPELINE_FILE,
         {
             "stages": {
                 "run-copy": {
@@ -390,19 +427,16 @@ def test_repro_when_lockfile_gets_deleted(tmp_dir, dvc):
         },
     )
     assert dvc.reproduce(":run-copy")
-    assert os.path.exists("Dvcfile.lock")
-    assert os.path.exists("foobar.dvc")
+    assert os.path.exists(PIPELINE_LOCK)
 
     assert not dvc.reproduce(":run-copy")
-    os.unlink("Dvcfile.lock")
+    os.unlink(PIPELINE_LOCK)
     stages = dvc.reproduce(":run-copy")
     assert (
         stages
-        and stages[0].relpath == "Dvcfile"
+        and stages[0].relpath == PIPELINE_FILE
         and stages[0].name == "run-copy"
     )
-
-    assert os.path.exists("foobar.dvc")
 
 
 def test_cyclic_graph_error(tmp_dir, dvc, run_copy):
@@ -411,16 +445,13 @@ def test_cyclic_graph_error(tmp_dir, dvc, run_copy):
     run_copy("bar", "baz", name="copy-bar-baz")
     run_copy("baz", "foobar", name="copy-baz-foobar")
 
-    stage_dump = {
-        "stages": {
-            "copy-baz-foo": {
-                "cmd": "echo baz > foo",
-                "deps": ["baz"],
-                "outs": ["foo"],
-            }
+    with open(PIPELINE_FILE, "r") as f:
+        data = parse_stage(f.read(), PIPELINE_FILE)
+        data["stages"]["copy-baz-foo"] = {
+            "cmd": "echo baz > foo",
+            "deps": ["baz"],
+            "outs": ["foo"],
         }
-    }
-    dump_stage_file("cycle.dvc", stage_dump)
-
+    dump_stage_file(PIPELINE_FILE, data)
     with pytest.raises(CyclicGraphError):
-        dvc.reproduce("cycle.dvc:copy-baz-foo")
+        dvc.reproduce(":copy-baz-foo")

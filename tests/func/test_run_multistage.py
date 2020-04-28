@@ -1,19 +1,20 @@
 import pytest
 import os
 
+from dvc.stage.exceptions import InvalidStageName, DuplicateStageName
+
 
 def test_run_with_name(tmp_dir, dvc, run_copy):
     from dvc.stage import PipelineStage
-    from dvc.dvcfile import DVC_FILE, DVC_FILE_SUFFIX
+    from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
 
     tmp_dir.dvc_gen("foo", "foo")
-    assert not os.path.exists(DVC_FILE)
+    assert not os.path.exists(PIPELINE_FILE)
     stage = run_copy("foo", "bar", name="copy-foo-to-bar")
     assert isinstance(stage, PipelineStage)
     assert stage.name == "copy-foo-to-bar"
-    assert os.path.exists(DVC_FILE)
-    assert os.path.exists(DVC_FILE + ".lock")
-    assert os.path.exists("foo" + DVC_FILE_SUFFIX)
+    assert os.path.exists(PIPELINE_FILE)
+    assert os.path.exists(PIPELINE_LOCK)
 
 
 def test_run_with_multistage_and_single_stage(tmp_dir, dvc, run_copy):
@@ -32,40 +33,20 @@ def test_run_with_multistage_and_single_stage(tmp_dir, dvc, run_copy):
 
 def test_run_multi_stage_repeat(tmp_dir, dvc, run_copy):
     from dvc.stage import PipelineStage
-    from dvc.dvcfile import Dvcfile, DVC_FILE, DVC_FILE_SUFFIX
+    from dvc.dvcfile import Dvcfile, PIPELINE_FILE
 
     tmp_dir.dvc_gen("foo", "foo")
     run_copy("foo", "foo1", name="copy-foo-foo1")
     run_copy("foo1", "foo2", name="copy-foo1-foo2")
     run_copy("foo2", "foo3")
 
-    stages = list(Dvcfile(dvc, DVC_FILE).stages.values())
+    stages = list(Dvcfile(dvc, PIPELINE_FILE).stages.values())
     assert len(stages) == 2
     assert all(isinstance(stage, PipelineStage) for stage in stages)
     assert set(stage.name for stage in stages) == {
         "copy-foo-foo1",
         "copy-foo1-foo2",
     }
-    assert all(
-        os.path.exists(file + DVC_FILE_SUFFIX)
-        for file in ["foo1", "foo2", "foo3"]
-    )
-
-
-def test_multi_stage_try_writing_on_single_stage_file(tmp_dir, dvc, run_copy):
-    from dvc.exceptions import DvcException
-    from dvc.dvcfile import MultiStageFileLoadError
-
-    tmp_dir.dvc_gen("foo")
-    dvc.run(cmd="echo foo", deps=["foo"])
-
-    with pytest.raises(DvcException):
-        run_copy("foo", "foo2", name="copy-foo1-foo2")
-
-    run_copy("foo", "foo2", name="copy-foo1-foo2", fname="DIFFERENT-FILE.dvc")
-
-    with pytest.raises(MultiStageFileLoadError):
-        run_copy("foo2", "foo3", fname="DIFFERENT-FILE.dvc")
 
 
 def test_multi_stage_run_cached(tmp_dir, dvc, run_copy):
@@ -78,8 +59,6 @@ def test_multi_stage_run_cached(tmp_dir, dvc, run_copy):
 
 
 def test_multistage_dump_on_non_cached_outputs(tmp_dir, dvc):
-    from dvc.dvcfile import DVC_FILE_SUFFIX
-
     tmp_dir.dvc_gen("foo")
     dvc.run(
         cmd="cp foo foo1",
@@ -87,7 +66,6 @@ def test_multistage_dump_on_non_cached_outputs(tmp_dir, dvc):
         name="copy-foo1-foo2",
         outs_no_cache=["foo1"],
     )
-    assert not os.path.exists("foo1" + DVC_FILE_SUFFIX)
 
 
 def test_multistage_with_wdir(tmp_dir, dvc):
@@ -136,7 +114,7 @@ def test_graph(tmp_dir, dvc):
 
 
 def test_run_dump_on_multistage(tmp_dir, dvc):
-    from dvc.dvcfile import Dvcfile
+    from dvc.dvcfile import Dvcfile, PIPELINE_FILE
 
     tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
     dvc.run(
@@ -146,7 +124,7 @@ def test_run_dump_on_multistage(tmp_dir, dvc):
         outs=["foo1"],
         wdir="dir",
     )
-    data, _ = Dvcfile(dvc, "Dvcfile")._load()
+    data, _ = Dvcfile(dvc, PIPELINE_FILE)._load()
     assert data == {
         "stages": {
             "copy-foo-foo1": {
@@ -166,7 +144,7 @@ def test_run_dump_on_multistage(tmp_dir, dvc):
         outs_persist=["foo2"],
         always_changed=True,
     )
-    assert Dvcfile(dvc, "Dvcfile")._load()[0] == {
+    assert Dvcfile(dvc, PIPELINE_FILE)._load()[0] == {
         "stages": {
             "copy-foo-foo2": {
                 "cmd": "cp foo foo2",
@@ -178,3 +156,16 @@ def test_run_dump_on_multistage(tmp_dir, dvc):
             **data["stages"],
         }
     }
+
+
+def test_run_with_invalid_stage_name(tmp_dir, dvc, run_copy):
+    tmp_dir.dvc_gen("foo", "foo")
+    with pytest.raises(InvalidStageName):
+        run_copy("foo", "bar", name="email@https://dvc.org")
+
+
+def test_run_already_exists(tmp_dir, dvc, run_copy):
+    tmp_dir.dvc_gen("foo", "foo")
+    run_copy("foo", "bar", name="copy")
+    with pytest.raises(DuplicateStageName):
+        run_copy("bar", "foobar", name="copy")

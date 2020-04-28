@@ -60,6 +60,7 @@ __all__ = [
     "tmp_dir",
     "scm",
     "dvc",
+    "local_remote",
     "run_copy",
     "erepo_dir",
     "git_dir",
@@ -254,6 +255,17 @@ def _git_init(path):
     #        OSError('[Errno 35] Resource temporarily unavailable')
     git = retry(5, GitCommandNotFound)(Repo.init)(path)
     git.close()
+
+
+@pytest.fixture
+def local_remote(request, tmp_dir, dvc, make_tmp_dir):
+    path = make_tmp_dir("local-remote")
+    with dvc.config.edit() as conf:
+        conf["remote"]["upstream"] = {"url": fspath(path)}
+        conf["core"]["remote"] = "upstream"
+    if "scm" in request.fixturenames:
+        tmp_dir.scm_add([dvc.config.files["repo"]], commit="add remote")
+    return path
 
 
 @pytest.fixture

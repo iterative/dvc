@@ -429,3 +429,15 @@ def test_ls_not_existed_url():
     dirname = "__{}_{}".format("not_existed", time())
     with pytest.raises(CloneError):
         Repo.ls(dirname, recursive=True)
+
+
+def test_ls_shows_pipeline_tracked_outs(tmp_dir, dvc, scm, run_copy):
+    from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
+
+    tmp_dir.gen("foo", "foo")
+    run_copy("foo", "bar", name="copy-foo-bar")
+    dvc.scm.add([PIPELINE_FILE, PIPELINE_LOCK])
+    dvc.scm.commit("add pipeline stage")
+
+    files = Repo.ls(os.curdir, outs_only=True)
+    match_files(files, ((("bar",), True),))

@@ -66,3 +66,30 @@ def test_status_before_and_after_dvc_init(tmp_dir, dvc, git_dir):
             "file ({})".format(fspath(git_dir)): "update available"
         }
     }
+
+
+def test_status_on_pipeline_stages(tmp_dir, dvc, run_copy):
+    tmp_dir.dvc_gen("foo", "foo")
+    stage = run_copy("foo", "bar", name="copy-foo-bar")
+
+    stage.cmd = "  ".join(stage.cmd.split())
+    stage.dvcfile._dump_pipeline_file(stage)
+    assert dvc.status() == {"pipelines.yaml:copy-foo-bar": ["changed command"]}
+
+    # delete outputs
+    (tmp_dir / "bar").unlink()
+    assert dvc.status() == {
+        "pipelines.yaml:copy-foo-bar": [
+            {"changed outs": {"bar": "deleted"}},
+            "changed command",
+        ]
+    }
+    (tmp_dir / "foo").unlink()
+    assert dvc.status() == {
+        "foo.dvc": [{"changed outs": {"foo": "deleted"}}],
+        "pipelines.yaml:copy-foo-bar": [
+            {"changed deps": {"foo": "deleted"}},
+            {"changed outs": {"bar": "deleted"}},
+            "changed command",
+        ],
+    }

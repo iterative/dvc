@@ -17,13 +17,13 @@ class TestRemove(TestDvc):
         self.assertEqual(len(stages), 1)
         stage = stages[0]
         self.assertTrue(stage is not None)
-        stage_removed = self.dvc.remove(stage.path, outs_only=True)
+        (stage_removed,) = self.dvc.remove(stage.path, outs_only=True)
 
         self.assertIsInstance(stage_removed, Stage)
         self.assertEqual(stage.path, stage_removed.path)
         self.assertFalse(os.path.isfile(self.FOO))
 
-        stage_removed = self.dvc.remove(stage.path)
+        (stage_removed,) = self.dvc.remove(stage.path)
         self.assertIsInstance(stage_removed, Stage)
         self.assertEqual(stage.path, stage_removed.path)
         self.assertFalse(os.path.isfile(self.FOO))
@@ -60,7 +60,7 @@ class TestRemoveDirectory(TestDvc):
         self.assertEqual(len(stages), 1)
         stage_add = stages[0]
         self.assertTrue(stage_add is not None)
-        stage_removed = self.dvc.remove(stage_add.path)
+        (stage_removed,) = self.dvc.remove(stage_add.path)
         self.assertEqual(stage_add.path, stage_removed.path)
         self.assertFalse(os.path.exists(self.DATA_DIR))
         self.assertFalse(os.path.exists(stage_removed.path))
@@ -96,3 +96,34 @@ class TestRemovePurge(TestDvc):
         mock_prompt.assert_called()
         self.assertEqual(ret, 1)
         self.assertRaises(DvcException)
+
+
+def test_remove_pipeline_outs(tmp_dir, dvc, run_copy):
+    from dvc.dvcfile import PIPELINE_FILE
+
+    tmp_dir.gen("foo", "foo")
+    stage = run_copy("foo", "bar", name="copy-foo-bar")
+
+    assert main(["remove", stage.path]) == 0
+    assert not (tmp_dir / "bar").exists()
+    assert (tmp_dir / PIPELINE_FILE).exists()
+
+    stage = run_copy("foo", "foobar", name="copy-foo-foobar")
+
+    assert main(["remove", stage.addressing]) == 0
+    assert not (tmp_dir / "foobar").exists()
+    assert (tmp_dir / "foo").exists()
+
+    stage = run_copy("foo", "baz", name="copy-foo-baz")
+    assert main(["remove", "--purge", "-f", stage.addressing]) == 0
+    assert not (tmp_dir / "baz").exists()
+    assert (tmp_dir / "foo").exists()
+    assert (tmp_dir / PIPELINE_FILE).exists()
+
+    dvc.reproduce(PIPELINE_FILE)
+    assert main(["remove", PIPELINE_FILE]) == 0
+    for file in ["bar", "foobar", "baz"]:
+        assert not (tmp_dir / file).exists()
+
+    assert (tmp_dir / "foo").exists()
+    assert (tmp_dir / PIPELINE_FILE).exists()

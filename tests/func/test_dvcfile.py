@@ -1,9 +1,11 @@
 import pytest
 
-from dvc.dvcfile import Dvcfile
-from dvc.stage import Stage
-from dvc.loader import StageNotFound
-from dvc.stage.exceptions import StageFileDoesNotExistError
+from dvc.dvcfile import Dvcfile, PIPELINE_FILE
+from dvc.stage.loader import StageNotFound
+from dvc.stage.exceptions import (
+    StageFileDoesNotExistError,
+    StageNameUnspecified,
+)
 
 
 def test_run_load_one_for_multistage(tmp_dir, dvc):
@@ -15,7 +17,7 @@ def test_run_load_one_for_multistage(tmp_dir, dvc):
         outs_persist_no_cache=["foo2"],
         always_changed=True,
     )
-    stage2 = Dvcfile(dvc, "Dvcfile").stages["copy-foo-foo2"]
+    stage2 = Dvcfile(dvc, PIPELINE_FILE).stages["copy-foo-foo2"]
     assert stage1 == stage2
     foo_out = stage2.outs[0]
     assert stage2.cmd == "cp foo foo2"
@@ -29,7 +31,7 @@ def test_run_load_one_for_multistage(tmp_dir, dvc):
 
 def test_run_load_one_for_multistage_non_existing(tmp_dir, dvc):
     with pytest.raises(StageFileDoesNotExistError):
-        assert Dvcfile(dvc, "Dvcfile").stages.get("copy-foo-foo2")
+        assert Dvcfile(dvc, PIPELINE_FILE).stages.get("copy-foo-foo2")
 
 
 def test_run_load_one_for_multistage_non_existing_stage_name(tmp_dir, dvc):
@@ -63,7 +65,7 @@ def test_has_stage_with_name(tmp_dir, dvc):
         metrics=["foo2"],
         always_changed=True,
     )
-    dvcfile = Dvcfile(dvc, "Dvcfile")
+    dvcfile = Dvcfile(dvc, PIPELINE_FILE)
     assert "copy-foo-foo2" in dvcfile.stages
     assert "copy" not in dvcfile.stages
 
@@ -77,7 +79,7 @@ def test_load_all_multistage(tmp_dir, dvc):
         metrics=["foo2"],
         always_changed=True,
     )
-    stages = Dvcfile(dvc, "Dvcfile").stages.values()
+    stages = Dvcfile(dvc, PIPELINE_FILE).stages.values()
     assert len(stages) == 1
     assert list(stages) == [stage1]
 
@@ -89,7 +91,7 @@ def test_load_all_multistage(tmp_dir, dvc):
         metrics=["bar2"],
         always_changed=True,
     )
-    assert set(Dvcfile(dvc, "Dvcfile").stages.values()) == {stage2, stage1}
+    assert set(Dvcfile(dvc, PIPELINE_FILE).stages.values()) == {stage2, stage1}
 
 
 def test_load_all_singlestage(tmp_dir, dvc):
@@ -110,8 +112,8 @@ def test_load_singlestage(tmp_dir, dvc):
     assert Dvcfile(dvc, "foo2.dvc").stage == stage1
 
 
-def test_load_multistage(tmp_dir, dvc):
-    from dvc.dvcfile import MultiStageFileLoadError
+def test_try_get_single_stage_from_pipeline_file(tmp_dir, dvc):
+    from dvc.dvcfile import DvcException
 
     tmp_dir.gen("foo", "foo")
     dvc.run(
@@ -121,24 +123,8 @@ def test_load_multistage(tmp_dir, dvc):
         metrics=["foo2"],
         always_changed=True,
     )
-    with pytest.raises(MultiStageFileLoadError):
-        Dvcfile(dvc, "Dvcfile").stage
-
-
-def test_is_multistage(tmp_dir, dvc):
-    tmp_dir.gen({"foo": "foo", "bar": "bar"})
-    stage1 = dvc.run(
-        cmd="cp foo foo2",
-        deps=["foo"],
-        name="copy-foo-foo2",
-        metrics=["foo2"],
-        always_changed=True,
-    )
-    assert Dvcfile(dvc, stage1.path).is_multi_stage()
-    stage2 = dvc.run(
-        cmd="cp bar bar2", deps=["bar"], metrics=["bar2"], always_changed=True,
-    )
-    assert not Dvcfile(dvc, stage2.path).is_multi_stage()
+    with pytest.raises(DvcException):
+        assert Dvcfile(dvc, PIPELINE_FILE).stage
 
 
 def test_stage_collection(tmp_dir, dvc):
@@ -160,5 +146,38 @@ def test_stage_collection(tmp_dir, dvc):
     stage3 = dvc.run(
         cmd="cp bar bar2", deps=["bar"], metrics=["bar2"], always_changed=True,
     )
-    assert {s for s in dvc.pipeline_stages} == {stage3, stage2, stage1}
-    assert {s for s in dvc.stages} == {Stage(dvc, "foo2.dvc"), stage1, stage3}
+    assert {s for s in dvc.stages} == {stage1, stage3, stage2}
+
+
+def test_stage_filter(tmp_dir, dvc, run_copy):
+    tmp_dir.gen("foo", "foo")
+    stage1 = run_copy("foo", "bar", name="copy-foo-bar")
+    stage2 = run_copy("bar", "bax", name="copy-bar-bax")
+    stage3 = run_copy("bax", "baz", name="copy-bax-baz")
+    stages = Dvcfile(dvc, PIPELINE_FILE).stages
+    assert set(stages.filter(None).values()) == {
+        stage1,
+        stage2,
+        stage3,
+    }
+    assert set(stages.filter("copy-bar-bax").values()) == {stage2}
+    assert stages.filter("copy-bar-bax").get("copy-bar-bax") == stage2
+    with pytest.raises(StageNameUnspecified):
+        stages.get(None)
+
+    with pytest.raises(StageNotFound):
+        assert stages["unknown"]
+
+    with pytest.raises(StageNotFound):
+        assert stages.filter("unknown")
+
+
+def test_stage_filter_in_singlestage_file(tmp_dir, dvc, run_copy):
+    tmp_dir.gen("foo", "foo")
+    stage = run_copy("foo", "bar")
+    dvcfile = Dvcfile(dvc, stage.path)
+    assert set(dvcfile.stages.filter(None).values()) == {stage}
+    assert dvcfile.stages.filter(None).get(None) == stage
+    assert dvcfile.stages.filter("copy-bar-bax").get("copy-bar-bax") == stage
+    assert dvcfile.stages.filter("copy-bar-bax").get(None) == stage
+    assert set(dvcfile.stages.filter("unknown").values()) == {stage}
