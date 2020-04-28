@@ -455,7 +455,7 @@ class Stage(params.StageParams):
         }
 
     def _compute_md5(self):
-        from dvc.output.base import OutputBase
+        from dvc.output.base import BaseOutput
 
         d = self.dumpd()
 
@@ -471,15 +471,15 @@ class Stage(params.StageParams):
             del d[self.PARAM_WDIR]
 
         # NOTE: excluding parameters that don't affect the state of the
-        # pipeline. Not excluding `OutputLOCAL.PARAM_CACHE`, because if
+        # pipeline. Not excluding `LocalOutput.PARAM_CACHE`, because if
         # it has changed, we might not have that output in our cache.
         m = dict_md5(
             d,
             exclude=[
                 self.PARAM_LOCKED,
-                OutputBase.PARAM_METRIC,
-                OutputBase.PARAM_TAGS,
-                OutputBase.PARAM_PERSIST,
+                BaseOutput.PARAM_METRIC,
+                BaseOutput.PARAM_TAGS,
+                BaseOutput.PARAM_PERSIST,
             ],
         )
         logger.debug("Computed {} md5: '{}'".format(self, m))

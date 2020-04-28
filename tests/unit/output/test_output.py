@@ -6,7 +6,7 @@ from funcy import first
 from voluptuous import Schema, MultipleInvalid
 
 from dvc.cache import NamedCache
-from dvc.output import CHECKSUM_SCHEMA, OutputBase
+from dvc.output import CHECKSUM_SCHEMA, BaseOutput
 
 
 @pytest.mark.parametrize(
@@ -74,15 +74,15 @@ def test_get_used_cache(exists, expected_message, mocker, caplog):
     mocker.patch.object(stage, "__str__", return_value="stage: 'stage.dvc'")
     mocker.patch.object(stage, "addressing", "stage.dvc")
 
-    output = OutputBase(stage, "path")
+    output = BaseOutput(stage, "path")
 
     mocker.patch.object(output, "use_cache", True)
     mocker.patch.object(stage, "is_repo_import", False)
     mocker.patch.object(
-        OutputBase, "checksum", new_callable=mocker.PropertyMock
+        BaseOutput, "checksum", new_callable=mocker.PropertyMock
     ).return_value = None
     mocker.patch.object(
-        OutputBase, "exists", new_callable=mocker.PropertyMock
+        BaseOutput, "exists", new_callable=mocker.PropertyMock
     ).return_value = exists
 
     with caplog.at_level(logging.WARNING, logger="dvc"):

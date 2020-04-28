@@ -10,7 +10,7 @@ from dvc.dependency.local import LocalDependency
 from dvc.dependency.s3 import S3Dependency
 from dvc.dependency.ssh import SSHDependency
 from dvc.dependency.param import ParamsDependency
-from dvc.output.base import OutputBase
+from dvc.output.base import BaseOutput
 from dvc.remote import Remote
 from dvc.scheme import Schemes
 from .repo import RepoDependency
@@ -42,8 +42,8 @@ DEP_MAP = {
 # cached, see -o and -O flags for `dvc run`) and 'metric' (whether or not
 # output is a metric file and how to parse it, see `-M` flag for `dvc run`).
 SCHEMA = output.SCHEMA.copy()
-del SCHEMA[OutputBase.PARAM_CACHE]
-del SCHEMA[OutputBase.PARAM_METRIC]
+del SCHEMA[BaseOutput.PARAM_CACHE]
+del SCHEMA[BaseOutput.PARAM_METRIC]
 SCHEMA.update(RepoDependency.REPO_SCHEMA)
 SCHEMA.update(ParamsDependency.PARAM_SCHEMA)
 
@@ -71,7 +71,7 @@ def _get(stage, p, info):
 def loadd_from(stage, d_list):
     ret = []
     for d in d_list:
-        p = d.pop(OutputBase.PARAM_PATH, None)
+        p = d.pop(BaseOutput.PARAM_PATH, None)
         ret.append(_get(stage, p, d))
     return ret
 
@@ -101,7 +101,7 @@ def loads_params(stage, s_list):
     for path, params in params_by_path.items():
         d_list.append(
             {
-                OutputBase.PARAM_PATH: path,
+                BaseOutput.PARAM_PATH: path,
                 ParamsDependency.PARAM_PARAMS: params,
             }
         )

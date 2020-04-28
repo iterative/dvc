@@ -16,7 +16,7 @@ from dvc.exceptions import OverlappingOutputPathsError
 from dvc.exceptions import StagePathAsOutputError
 from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.main import main
-from dvc.output import OutputBase
+from dvc.output import BaseOutput
 from dvc.output.base import OutputIsStageFileError
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
@@ -667,7 +667,7 @@ class TestRunPersist(TestDvc):
     def stage_should_contain_persist_flag(self, stage_file):
         stage_file_content = load_stage_file(stage_file)
         self.assertEqual(
-            True, stage_file_content["outs"][0][OutputBase.PARAM_PERSIST]
+            True, stage_file_content["outs"][0][BaseOutput.PARAM_PERSIST]
         )
 
     def should_append_upon_repro(self, file, stage_file):

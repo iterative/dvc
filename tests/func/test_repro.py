@@ -23,7 +23,7 @@ from dvc.exceptions import CyclicGraphError
 from dvc.exceptions import ReproductionError
 from dvc.exceptions import StagePathAsOutputError
 from dvc.main import main
-from dvc.output.base import OutputBase
+from dvc.output.base import BaseOutput
 from dvc.path_info import URLInfo
 from dvc.remote.local import LocalRemote
 from dvc.repo import Repo as DvcRepo
@@ -1341,9 +1341,9 @@ class TestReproAlreadyCached(TestRepro):
         )
 
         patch_checkout = patch.object(
-            OutputBase,
+            BaseOutput,
             "checkout",
-            side_effect=OutputBase.checkout,
+            side_effect=BaseOutput.checkout,
             autospec=True,
         )
 

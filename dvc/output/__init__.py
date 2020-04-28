@@ -1,12 +1,12 @@
 from urllib.parse import urlparse
 from voluptuous import Any, Required, Lower, Length, Coerce, And, SetTo
 
-from dvc.output.base import OutputBase
-from dvc.output.gs import OutputGS
-from dvc.output.hdfs import OutputHDFS
-from dvc.output.local import OutputLOCAL
-from dvc.output.s3 import OutputS3
-from dvc.output.ssh import OutputSSH
+from dvc.output.base import BaseOutput
+from dvc.output.gs import GSOutput
+from dvc.output.hdfs import HDFSOutput
+from dvc.output.local import LocalOutput
+from dvc.output.s3 import S3Output
+from dvc.output.ssh import SSHOutput
 from dvc.remote import Remote
 from dvc.remote.hdfs import HDFSRemote
 from dvc.remote.local import LocalRemote
@@ -14,19 +14,19 @@ from dvc.remote.s3 import S3Remote
 from dvc.scheme import Schemes
 
 OUTS = [
-    OutputHDFS,
-    OutputS3,
-    OutputGS,
-    OutputSSH,
-    # NOTE: OutputLOCAL is the default choice
+    HDFSOutput,
+    S3Output,
+    GSOutput,
+    SSHOutput,
+    # NOTE: LocalOutput is the default choice
 ]
 
 OUTS_MAP = {
-    Schemes.HDFS: OutputHDFS,
-    Schemes.S3: OutputS3,
-    Schemes.GS: OutputGS,
-    Schemes.SSH: OutputSSH,
-    Schemes.LOCAL: OutputLOCAL,
+    Schemes.HDFS: HDFSOutput,
+    Schemes.S3: S3Output,
+    Schemes.GS: GSOutput,
+    Schemes.SSH: SSHOutput,
+    Schemes.LOCAL: LocalOutput,
 }
 
 CHECKSUM_SCHEMA = Any(
@@ -52,11 +52,11 @@ CHECKSUMS_SCHEMA = {
 TAGS_SCHEMA = {str: CHECKSUMS_SCHEMA}
 
 SCHEMA = CHECKSUMS_SCHEMA.copy()
-SCHEMA[Required(OutputBase.PARAM_PATH)] = str
-SCHEMA[OutputBase.PARAM_CACHE] = bool
-SCHEMA[OutputBase.PARAM_METRIC] = OutputBase.METRIC_SCHEMA
-SCHEMA[OutputBase.PARAM_TAGS] = TAGS_SCHEMA
-SCHEMA[OutputBase.PARAM_PERSIST] = bool
+SCHEMA[Required(BaseOutput.PARAM_PATH)] = str
+SCHEMA[BaseOutput.PARAM_CACHE] = bool
+SCHEMA[BaseOutput.PARAM_METRIC] = BaseOutput.METRIC_SCHEMA
+SCHEMA[BaseOutput.PARAM_TAGS] = TAGS_SCHEMA
+SCHEMA[BaseOutput.PARAM_PERSIST] = bool
 
 
 def _get(stage, p, info, cache, metric, persist=False, tags=None):
@@ -87,7 +87,7 @@ def _get(stage, p, info, cache, metric, persist=False, tags=None):
                 persist=persist,
                 tags=tags,
             )
-    return OutputLOCAL(
+    return LocalOutput(
         stage,
         p,
         info,
@@ -102,11 +102,11 @@ def _get(stage, p, info, cache, metric, persist=False, tags=None):
 def loadd_from(stage, d_list):
     ret = []
     for d in d_list:
-        p = d.pop(OutputBase.PARAM_PATH)
-        cache = d.pop(OutputBase.PARAM_CACHE, True)
-        metric = d.pop(OutputBase.PARAM_METRIC, False)
-        persist = d.pop(OutputBase.PARAM_PERSIST, False)
-        tags = d.pop(OutputBase.PARAM_TAGS, None)
+        p = d.pop(BaseOutput.PARAM_PATH)
+        cache = d.pop(BaseOutput.PARAM_CACHE, True)
+        metric = d.pop(BaseOutput.PARAM_METRIC, False)
+        persist = d.pop(BaseOutput.PARAM_PERSIST, False)
+        tags = d.pop(BaseOutput.PARAM_TAGS, None)
         ret.append(
             _get(
                 stage,

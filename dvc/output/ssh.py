@@ -1,6 +1,6 @@
-from dvc.output.base import OutputBase
+from dvc.output.base import BaseOutput
 from dvc.remote.ssh import SSHRemote
 
 
-class OutputSSH(OutputBase):
+class SSHOutput(BaseOutput):
     REMOTE = SSHRemote

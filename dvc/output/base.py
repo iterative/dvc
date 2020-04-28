@@ -38,7 +38,7 @@ class OutputIsStageFileError(DvcException):
         super().__init__("Stage file '{}' cannot be an output.".format(path))
 
 
-class OutputBase(object):
+class BaseOutput(object):
     IS_DEPENDENCY = False
 
     REMOTE = BaseRemote
