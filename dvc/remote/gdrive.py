@@ -172,8 +172,8 @@ class GDriveRemote(BaseRemote):
         if not self._use_service_account:
             if bool(self._client_id) != bool(self._client_secret):
                 raise DvcException(
-                    "Please specify GDrive's client id and secret in "
-                    "DVC config or omit both to use defaults.\n"
+                    "Please specify GDrive's client ID and secret in "
+                    "DVC config or omit both to use the defaults.\n"
                     "Learn more at {}".format(
                         format_link("https://man.dvc.org/remote/modify")
                     )
