@@ -126,7 +126,8 @@ def _reproduce_stages(
     is to derive the evaluation starting from the given stage up to the
     ancestors. However, the `networkx.ancestors` returns a set, without
     any guarantee of any order, so we are going to reverse the graph and
-    use a pre-ordered search using the given stage as a starting point.
+    use a reverse post-ordered search using the given stage as a starting
+    point.
 
                    E                                   A
                   / \                                 / \
@@ -154,9 +155,10 @@ def _reproduce_stages(
                 # itself, and then reverse it, instead of using
                 # graph.reverse() directly because it calls `deepcopy`
                 # underneath -- unless copy=False is specified.
-                all_pipelines += nx.dfs_preorder_nodes(
+                nodes = nx.dfs_postorder_nodes(
                     G.copy().reverse(copy=False), stage
                 )
+                all_pipelines += reversed(list(nodes))
             else:
                 all_pipelines += nx.dfs_postorder_nodes(G, stage)
 
