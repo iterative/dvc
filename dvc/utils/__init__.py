@@ -381,6 +381,7 @@ def format_link(link):
 
 def parse_target(target, default=None):
     from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
+    from dvc.exceptions import DvcException
 
     if not target:
         return None, None, None
@@ -399,7 +400,7 @@ def parse_target(target, default=None):
         logger.warning("Assuming file to be '%s'", path)
 
     if os.path.basename(path) == PIPELINE_LOCK:
-        raise Exception(
+        raise DvcException(
             "Did you mean: `{}`?".format(target.replace(".lock", ".yaml", 1))
         )
 
