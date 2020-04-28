@@ -108,11 +108,7 @@ def test_always_changed(dvc):
 
 def test_stage_cache(tmp_dir, dvc, mocker):
     tmp_dir.gen("dep", "dep")
-    stage = dvc.run(
-        deps=["dep"],
-        outs=["out"],
-        cmd="echo content > out",
-    )
+    stage = dvc.run(deps=["dep"], outs=["out"], cmd="echo content > out",)
 
     with dvc.lock, dvc.state:
         stage.remove(remove_outs=True, force=True)
@@ -123,11 +119,11 @@ def test_stage_cache(tmp_dir, dvc, mocker):
     cache_dir = os.path.join(
         dvc.stage_cache.cache_dir,
         "dc",
-        "dc512ad947c7fd4df1037dc9c46efd83d8d5f88297a1c71baad81081cd216c34"
+        "dc512ad947c7fd4df1037dc9c46efd83d8d5f88297a1c71baad81081cd216c34",
     )
     cache_file = os.path.join(
         cache_dir,
-        "fcbbdb34bfa75a1f821931b4714baf50e88d272a35c866597200bb2aac79621b"
+        "fcbbdb34bfa75a1f821931b4714baf50e88d272a35c866597200bb2aac79621b",
     )
 
     assert os.path.isdir(cache_dir)
