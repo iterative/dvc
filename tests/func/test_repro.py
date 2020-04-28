@@ -1586,7 +1586,7 @@ def _hide_md5(text):
     return re.sub(r"\b[a-f0-9]{32}\b", "<md5>", text)
 
 
-def test_repro_downstream(dvc):
+def test_downstream(dvc):
     # The dependency graph should look like this:
     #
     #       E
