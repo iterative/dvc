@@ -1,7 +1,7 @@
-from dvc.dependency.s3 import DependencyS3
-from tests.unit.dependency.test_local import TestDependencyLOCAL
+from dvc.dependency.s3 import S3Dependency
+from tests.unit.dependency.test_local import TestLocalDependency
 
 
-class TestDependencyS3(TestDependencyLOCAL):
+class TestS3Dependency(TestLocalDependency):
     def _get_cls(self):
-        return DependencyS3
+        return S3Dependency

@@ -6,7 +6,7 @@ import dpath.util
 from voluptuous import Any
 
 from dvc.compat import fspath_py35
-from dvc.dependency.local import DependencyLOCAL
+from dvc.dependency.local import LocalDependency
 from dvc.exceptions import DvcException
 
 
@@ -18,7 +18,7 @@ class BadParamFileError(DvcException):
     pass
 
 
-class DependencyPARAMS(DependencyLOCAL):
+class ParamsDependency(LocalDependency):
     PARAM_PARAMS = "params"
     PARAM_SCHEMA = {PARAM_PARAMS: Any(dict, list, None)}
     DEFAULT_PARAMS_FILE = "params.yaml"

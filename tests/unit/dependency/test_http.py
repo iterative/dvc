@@ -1,7 +1,7 @@
-from dvc.dependency.http import DependencyHTTP
-from tests.unit.dependency.test_local import TestDependencyLOCAL
+from dvc.dependency.http import HTTPDependency
+from tests.unit.dependency.test_local import TestLocalDependency
 
 
-class TestDependencyHTTP(TestDependencyLOCAL):
+class TestHTTPDependency(TestLocalDependency):
     def _get_cls(self):
-        return DependencyHTTP
+        return HTTPDependency

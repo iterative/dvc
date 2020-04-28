@@ -1,13 +1,13 @@
 import mock
 
-from dvc.dependency import DependencyLOCAL
+from dvc.dependency import LocalDependency
 from dvc.stage import Stage
 from tests.basic_env import TestDvc
 
 
-class TestDependencyLOCAL(TestDvc):
+class TestLocalDependency(TestDvc):
     def _get_cls(self):
-        return DependencyLOCAL
+        return LocalDependency
 
     def _get_dependency(self):
         stage = Stage(self.dvc)

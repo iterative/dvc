@@ -1,7 +1,7 @@
-from dvc.dependency.hdfs import DependencyHDFS
-from tests.unit.dependency.test_local import TestDependencyLOCAL
+from dvc.dependency.hdfs import HDFSDependency
+from tests.unit.dependency.test_local import TestLocalDependency
 
 
-class TestDependencyHDFS(TestDependencyLOCAL):
+class TestHDFSDependency(TestLocalDependency):
     def _get_cls(self):
-        return DependencyHDFS
+        return HDFSDependency
