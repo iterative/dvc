@@ -168,7 +168,8 @@ def test_stage_filter(tmp_dir, dvc, run_copy):
     with pytest.raises(StageNotFound):
         assert stages["unknown"]
 
-    assert not stages.filter("unknown").values()
+    with pytest.raises(StageNotFound):
+        assert stages.filter("unknown")
 
 
 def test_stage_filter_in_singlestage_file(tmp_dir, dvc, run_copy):

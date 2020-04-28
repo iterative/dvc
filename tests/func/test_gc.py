@@ -332,3 +332,20 @@ def test_gc_cloud_remove_order(tmp_dir, scm, dvc, tmp_path_factory, mocker):
     for args in mocked_remove.call_args_list[:4]:
         checksum = str(args[0][1])
         assert checksum.endswith(".dir") or checksum.endswith(".dir.unpacked")
+
+
+def test_gc_not_collect_pipeline_tracked_files(tmp_dir, dvc, run_copy):
+    from dvc.dvcfile import PIPELINE_FILE, Dvcfile
+
+    tmp_dir.gen("foo", "foo")
+    tmp_dir.gen("bar", "bar")
+
+    run_copy("foo", "foo2", name="copy")
+    assert _count_files(dvc.cache.local.cache_dir) == 1
+    dvc.gc(workspace=True, force=True)
+    assert _count_files(dvc.cache.local.cache_dir) == 1
+
+    # remove pipeline file and lockfile and check
+    Dvcfile(dvc, PIPELINE_FILE).remove(force=True)
+    dvc.gc(workspace=True, force=True)
+    assert _count_files(dvc.cache.local.cache_dir) == 0

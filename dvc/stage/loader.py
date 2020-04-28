@@ -28,6 +28,9 @@ class StageLoader(collections.abc.Mapping):
         if not item:
             return self
 
+        if item not in self:
+            raise StageNotFound(self.dvcfile, item)
+
         data = {item: self.stages_data[item]} if item in self else {}
         return self.__class__(self.dvcfile, data, self.lockfile_data)
 

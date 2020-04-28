@@ -38,13 +38,14 @@ def test_commit_force(tmp_dir, dvc):
     assert dvc.status([stage.path]) == {}
 
 
-def test_commit_with_deps(tmp_dir, dvc, run_copy):
+@pytest.mark.parametrize("run_kw", [{}, {"name": "copy"}])
+def test_commit_with_deps(tmp_dir, dvc, run_copy, run_kw):
     tmp_dir.gen("foo", "foo")
     (foo_stage,) = dvc.add("foo", no_commit=True)
     assert foo_stage is not None
     assert len(foo_stage.outs) == 1
 
-    stage = run_copy("foo", "file", no_commit=True)
+    stage = run_copy("foo", "file", no_commit=True, **run_kw)
     assert stage is not None
     assert len(stage.outs) == 1
 

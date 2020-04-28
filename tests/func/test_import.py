@@ -322,3 +322,21 @@ def test_import_from_bare_git_repo(tmp_dir, make_tmp_dir, erepo_dir):
     dvc_repo = make_tmp_dir("dvc-repo", scm=True, dvc=True)
     with dvc_repo.chdir():
         dvc_repo.dvc.imp(fspath(tmp_dir), "foo")
+
+
+def test_import_pipeline_tracked_outs(
+    tmp_dir, dvc, scm, erepo_dir, local_remote, run_copy
+):
+    from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
+
+    tmp_dir.gen("foo", "foo")
+    run_copy("foo", "bar", name="copy-foo-bar")
+    dvc.scm.add([PIPELINE_FILE, PIPELINE_LOCK])
+    dvc.scm.commit("add pipeline stage")
+    dvc.push()
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc.imp(
+            "file:///{}".format(fspath(tmp_dir)), "bar", out="baz"
+        )
+        assert (erepo_dir / "baz").read_text() == "foo"

@@ -220,3 +220,19 @@ def test_get_url_git_only_repo(tmp_dir, scm, caplog):
     with caplog.at_level(logging.ERROR):
         assert main(["get", fspath(tmp_dir), "foo", "--show-url"]) == 1
         assert "failed to show URL" in caplog.text
+
+
+def test_get_pipeline_tracked_outs(
+    tmp_dir, dvc, scm, git_dir, local_remote, run_copy
+):
+    from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
+
+    tmp_dir.gen("foo", "foo")
+    run_copy("foo", "bar", name="copy-foo-bar")
+    dvc.scm.add([PIPELINE_FILE, PIPELINE_LOCK])
+    dvc.scm.commit("add pipeline stage")
+    dvc.push()
+
+    with git_dir.chdir():
+        Repo.get("file:///{}".format(fspath(tmp_dir)), "bar", out="baz")
+        assert (git_dir / "baz").read_text() == "foo"
