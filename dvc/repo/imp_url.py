@@ -39,9 +39,7 @@ def imp_url(self, url, out=None, fname=None, erepo=None, locked=True):
     try:
         self.check_modified_graph([stage])
     except OutputDuplicationError as exc:
-        raise OutputDuplicationError(
-            exc.output, set(exc.stages) - set([stage])
-        )
+        raise OutputDuplicationError(exc.output, set(exc.stages) - {stage})
 
     stage.run()
 

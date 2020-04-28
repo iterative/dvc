@@ -207,9 +207,6 @@ def test_non_existing_stage_name(tmp_dir, dvc, run_copy):
     assert main(["lock", ":copy-file1-file3"]) != 0
 
 
-# TODO: TestReproWorkingDirectoryAsOutput
-
-
 def test_downstream(tmp_dir, dvc):
     # The dependency graph should look like this:
     #
@@ -264,7 +261,7 @@ def test_downstream(tmp_dir, dvc):
 
 
 def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy):
-    from dvc.dvcfile import PipelineFile, PIPELINE_FILE
+    from dvc.dvcfile import PipelineFile
 
     tmp_dir.gen("foo", "foo")
     stage = run_copy("foo", "bar", name="copy-file")

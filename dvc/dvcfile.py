@@ -177,7 +177,7 @@ class PipelineFile(FileMixin):
     def _lockfile(self):
         return Lockfile(self.repo, os.path.splitext(self.path)[0] + ".lock")
 
-    def dump(self, stage, update_pipeline=False):
+    def dump(self, stage, update_pipeline=False, **kwargs):
         """Dumps given stage appropriately in the dvcfile."""
         from dvc.stage import PipelineStage
 
@@ -217,7 +217,7 @@ class PipelineFile(FileMixin):
 
     @property
     def stages(self):
-        data, raw = self._load()
+        data, _ = self._load()
         lockfile_data = self._lockfile.load()
         return StageLoader(self, data.get("stages", {}), lockfile_data)
 

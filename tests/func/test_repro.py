@@ -225,9 +225,6 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
             self.fail("should not raise StagePathAsOutputError")
 
 
-# TODO: Test ^ for multistage
-
-
 class TestReproDepUnderDir(SingleStageRun, TestDvc):
     def test(self):
         stages = self.dvc.add(self.DATA_DIR)

@@ -63,9 +63,7 @@ def run(self, fname=None, no_exec=False, **kwargs):
     try:
         self.check_modified_graph([stage])
     except OutputDuplicationError as exc:
-        raise OutputDuplicationError(
-            exc.output, set(exc.stages) - set([stage])
-        )
+        raise OutputDuplicationError(exc.output, set(exc.stages) - {stage})
 
     if not no_exec:
         stage.run(no_commit=kwargs.get("no_commit", False))

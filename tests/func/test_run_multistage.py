@@ -66,7 +66,6 @@ def test_multistage_dump_on_non_cached_outputs(tmp_dir, dvc):
         name="copy-foo1-foo2",
         outs_no_cache=["foo1"],
     )
-    # TODO: test `outs_no_cache` in PIPELINE_FILE and `outs` entry in lockfile.
 
 
 def test_multistage_with_wdir(tmp_dir, dvc):

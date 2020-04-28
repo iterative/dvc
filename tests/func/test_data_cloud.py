@@ -775,11 +775,9 @@ def clean(outs, dvc=None):
         clean_repos()
 
 
-def recurse_list_dir(dir):
+def recurse_list_dir(d):
     return [
-        os.path.join(dp, f)
-        for dp, _, filenames in os.walk(dir)
-        for f in filenames
+        os.path.join(d, f) for _, _, filenames in os.walk(d) for f in filenames
     ]
 
 
