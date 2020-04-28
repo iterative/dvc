@@ -34,7 +34,7 @@ class GDriveAuthError(DvcException):
         if cred_location:
             message = (
                 "GDrive remote auth failed with credentials in '{}'.\n"
-                "Backup first, remove of fix them, and run the command.\n"
+                "Backup first, remove of fix them, and run DVC again.\n"
                 "It should do auth again and refresh the credentials.\n\n"
                 "Details:".format(cred_location)
             )
@@ -294,7 +294,7 @@ class GDriveRemote(BaseRemote):
             "root_id": self._get_item_id(
                 self.path_info,
                 use_cache=False,
-                hint="Check remote directory exists and you can access it.",
+                hint="Confirm the directory exists and you can access it.",
             ),
         }
 
@@ -344,7 +344,7 @@ class GDriveRemote(BaseRemote):
             if error_code == 404:
                 raise DvcException(
                     "'{}' for '{}':\n\n"
-                    "1. Check the directory exists and you can access it.\n"
+                    "1. Confirm the directory exists and you can access it.\n"
                     "2. Make sure that credentials in '{}'\n"
                     "   are correct for this remote e.g. "
                     "use the `gdrive_user_credentials_file` config\n"
