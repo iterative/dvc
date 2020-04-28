@@ -40,11 +40,13 @@ def run(self, fname=None, no_exec=False, **kwargs):
     from dvc.stage import PipelineStage, Stage, create_stage
     from dvc.dvcfile import Dvcfile, PIPELINE_FILE
 
-    stage_cls, path = PipelineStage, PIPELINE_FILE
+    stage_cls = PipelineStage
+    path = PIPELINE_FILE
     stage_name = kwargs.get("name")
     if not stage_name:
         kwargs.pop("name", None)
-        stage_cls, path = Stage, fname or _get_file_path(kwargs)
+        stage_cls = Stage
+        path = fname or _get_file_path(kwargs)
     else:
         if not is_valid_name(stage_name):
             raise InvalidStageName
