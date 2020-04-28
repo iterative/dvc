@@ -179,8 +179,12 @@ class GDriveRemote(BaseRemote):
                     )
                 )
 
+    # Helper to determine where will it read credentials from.
+    # Mostly useful for tests, exception messages, etc
+    # Returns either env variable name if it's set or actual path to the
+    # credentials file
     @cached_property
-    def _credentials_location(self):
+    def credentials_location(self):
         if os.getenv(GDriveRemote.GDRIVE_CREDENTIALS_DATA):
             return GDriveRemote.GDRIVE_CREDENTIALS_DATA
         if os.path.exists(self._gdrive_user_credentials_path):
@@ -274,7 +278,7 @@ class GDriveRemote(BaseRemote):
         # a lot of different errors - broken credentials file, refresh token
         # expired, flow failed, etc.
         except Exception as exc:
-            raise GDriveAuthError(self._credentials_location) from exc
+            raise GDriveAuthError(self.credentials_location) from exc
         finally:
             if os.getenv(GDriveRemote.GDRIVE_CREDENTIALS_DATA):
                 os.remove(self._gdrive_user_credentials_path)
