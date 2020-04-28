@@ -840,7 +840,7 @@ def test_pipeline_file_target_ops(tmp_dir, dvc, local_remote, run_copy):
     dvc.push(["pipelines.yaml:copy-ipsum-baz"])
     assert len(recurse_list_dir(fspath_py35(local_remote))) == 1
 
-    clean(os.listdir(local_remote))
+    clean(local_remote.iterdir())
     dvc.push(["pipelines.yaml"])
     assert len(recurse_list_dir(fspath_py35(local_remote))) == 2
 
