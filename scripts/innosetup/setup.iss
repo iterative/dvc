@@ -1,4 +1,4 @@
-#define MyAppName "Data Version Control"
+#define MyAppName "DVC (Data Version Control)"
 #define MyAppVersion ReadIni(".\scripts\innosetup\config.ini", "Version", "version", "unknown")
 #define MyAppPublisher "Dmitry Petrov"
 #define MyAppURL "https://dataversioncontrol.com/"
