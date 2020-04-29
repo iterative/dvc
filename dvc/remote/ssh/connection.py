@@ -41,6 +41,14 @@ class SSHConnection:
         self.timeout = kwargs.get("timeout", 1800)
 
         self._ssh = paramiko.SSHClient()
+
+        # Explicitly disable paramiko logger. Due to how paramiko dynamically
+        # loads loggers, it is not disabled by DVC disable_other_loggers().
+        # See https://github.com/iterative/dvc/issues/3482
+        self._ssh.set_log_channel("dvc.paramiko")
+        logging.getLogger("dvc.paramiko").disabled = True
+        logging.getLogger("dvc.paramiko.sftp").disabled = True
+
         self._ssh.load_system_host_keys()
         self._ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
