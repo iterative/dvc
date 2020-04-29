@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from funcy import rpartial, lsplit_by
+from funcy import rpartial, lsplit
 
 from dvc.dependency import ParamsDependency
 from dvc.utils.collections import apply_diff
@@ -30,7 +30,7 @@ def _get_outs(stage: "PipelineStage"):
 
 
 def get_params_deps(stage: "PipelineStage"):
-    return lsplit_by(rpartial(isinstance, ParamsDependency), stage.deps)
+    return lsplit(rpartial(isinstance, ParamsDependency), stage.deps)
 
 
 def _serialize_params(params: List[ParamsDependency]):
