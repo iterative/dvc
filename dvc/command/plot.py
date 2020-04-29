@@ -132,7 +132,10 @@ def add_parser(subparsers, parent_parser):
         help="File to be injected with data.",
     )
     plot_show_parser.add_argument(
-        "datafile", nargs="?", default=None, help="Data to be visualized."
+        "datafile",
+        nargs="?",
+        default=None,
+        help="Continuous metrics file to visualize.",
     )
     plot_show_parser.add_argument(
         "-r", "--result", help="Name of the generated file."
@@ -171,8 +174,8 @@ def add_parser(subparsers, parent_parser):
     plot_show_parser.set_defaults(func=CmdPlotShow)
 
     PLOT_DIFF_HELP = (
-        "Plot changes between commits in the DVC repository, "
-        "or between the last commit and the workspace."
+        "Plot continuous metrics differences between commits in the DVC "
+        "repository, or between the last commit and the workspace."
     )
     plot_diff_parser = plot_subparsers.add_parser(
         "diff",
@@ -193,7 +196,7 @@ def add_parser(subparsers, parent_parser):
         "--datafile",
         nargs="?",
         default=None,
-        help="Data to be visualized.",
+        help="Continuous metrics file to visualize.",
     )
     plot_diff_parser.add_argument(
         "-r", "--result", help="Name of the generated file."

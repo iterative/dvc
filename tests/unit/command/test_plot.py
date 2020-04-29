@@ -19,6 +19,10 @@ def test_metrics_diff(mocker):
             "column1,column2",
             "--no-html",
             "--stdout",
+            "-x",
+            "x_field",
+            "-y",
+            "y_field",
             "HEAD",
             "tag1",
             "tag2",
@@ -41,6 +45,8 @@ def test_metrics_diff(mocker):
         fields={"column1", "column2"},
         path=None,
         embed=False,
+        x_field="x_field",
+        y_field="y_field",
         csv_header=True,
     )
 
@@ -79,6 +85,8 @@ def test_metrics_show(mocker):
         fields=None,
         path="$.data",
         embed=False,
+        x_field=None,
+        y_field=None,
         csv_header=False,
     )
 

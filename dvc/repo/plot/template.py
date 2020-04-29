@@ -29,6 +29,8 @@ class Template:
     SEPARATORS = (",", ": ")
     EXTENSION = ".json"
     METRIC_DATA_STRING = "<DVC_METRIC_DATA>"
+    X_AXIS_STRING = "<DVC_METRIC_X>"
+    Y_AXIS_STRING = "<DVC_METRIC_Y>"
 
     def __init__(self, templates_dir):
         self.plot_templates_dir = templates_dir
@@ -66,17 +68,15 @@ class Template:
                 raise DvcException("Not in repo nor in defaults")
 
     @staticmethod
-    def get_data_placeholders(template_path):
+    def get_data_placeholders(template_content):
         regex = re.compile('"<DVC_METRIC_DATA[^>"]*>"')
-        with open(template_path, "r") as fobj:
-            template_content = fobj.read()
         return regex.findall(template_content)
 
     @staticmethod
-    def parse_data_placeholders(template_path):
+    def parse_data_placeholders(template_content):
         data_files = {
             Template.get_datafile(m)
-            for m in Template.get_data_placeholders(template_path)
+            for m in Template.get_data_placeholders(template_content)
         }
         return {df for df in data_files if df}
 
@@ -91,11 +91,13 @@ class Template:
         )
 
     @staticmethod
-    def fill(template_path, data, priority_datafile=None):
+    def fill(
+        template_path, data, priority_datafile=None, x_field=None, y_field=None
+    ):
         with open(template_path, "r") as fobj:
             result_content = fobj.read()
 
-        for placeholder in Template.get_data_placeholders(template_path):
+        for placeholder in Template.get_data_placeholders(result_content):
             file = Template.get_datafile(placeholder)
 
             if not file or priority_datafile:
@@ -113,6 +115,15 @@ class Template:
                 ),
             )
 
+        if Template.X_AXIS_STRING in result_content and x_field:
+            result_content = result_content.replace(
+                Template.X_AXIS_STRING, x_field
+            )
+        if Template.Y_AXIS_STRING in result_content and y_field:
+            result_content = result_content.replace(
+                Template.Y_AXIS_STRING, y_field
+            )
+
         return result_content
 
 
@@ -124,8 +135,8 @@ class DefaultLinearTemplate(Template):
         "data": {"values": Template.METRIC_DATA_STRING},
         "mark": {"type": "line"},
         "encoding": {
-            "x": {"field": "x", "type": "quantitative"},
-            "y": {"field": "y", "type": "quantitative"},
+            "x": {"field": Template.X_AXIS_STRING, "type": "quantitative"},
+            "y": {"field": Template.Y_AXIS_STRING, "type": "quantitative"},
             "color": {"field": "rev", "type": "nominal"},
         },
     }
@@ -139,11 +150,15 @@ class DefaultConfusionTemplate(Template):
         "mark": "rect",
         "encoding": {
             "x": {
-                "field": "predicted",
+                "field": Template.X_AXIS_STRING,
                 "type": "nominal",
                 "sort": "ascending",
             },
-            "y": {"field": "actual", "type": "nominal", "sort": "ascending"},
+            "y": {
+                "field": Template.Y_AXIS_STRING,
+                "type": "nominal",
+                "sort": "ascending",
+            },
             "color": {"aggregate": "count", "type": "quantitative"},
             "facet": {"field": "rev", "type": "nominal"},
         },

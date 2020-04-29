@@ -9,9 +9,12 @@ from bs4 import BeautifulSoup
 from funcy import first
 
 from dvc.compat import fspath
-from dvc.repo.plot.data import NoMetricInHistoryError, PlotMetricTypeError
+from dvc.repo.plot.data import (
+    NoMetricInHistoryError,
+    PlotMetricTypeError,
+    PlotData,
+)
 from dvc.repo.plot.template import (
-    DefaultLinearTemplate,
     TemplateNotFound,
     NoDataForTemplateError,
 )
@@ -32,9 +35,9 @@ def _run_with_metric(tmp_dir, metric_filename, commit=None, tag=None):
             tmp_dir.dvc.scm.tag(tag)
 
 
-def _write_csv(metric, filename):
+def _write_csv(metric, filename, header=True):
     with open(filename, "w", newline="") as csvobj:
-        if all([len(e) > 1 for e in metric]):
+        if header:
             writer = csv.DictWriter(
                 csvobj, fieldnames=list(first(metric).keys())
             )
@@ -54,16 +57,18 @@ def _write_json(tmp_dir, metric, filename):
 def test_plot_csv_one_column(tmp_dir, scm, dvc):
     # for single column write with no header, hence `value` in result
     metric = [{"val": 2}, {"val": 3}]
-    _write_csv(metric, "metric.csv")
+    _write_csv(metric, "metric.csv", header=False)
     _run_with_metric(tmp_dir, metric_filename="metric.csv")
 
     plot_string = dvc.plot("metric.csv", csv_header=False)
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"0": "2", "x": 0, "rev": "workspace"},
-        {"0": "3", "x": 1, "rev": "workspace"},
+        {"0": "2", PlotData.INDEX_FIELD: 0, "rev": "workspace"},
+        {"0": "3", PlotData.INDEX_FIELD: 1, "rev": "workspace"},
     ]
+    assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
+    assert plot_content["encoding"]["y"]["field"] == "0"
 
 
 def test_plot_csv_multiple_columns(tmp_dir, scm, dvc):
@@ -78,9 +83,54 @@ def test_plot_csv_multiple_columns(tmp_dir, scm, dvc):
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"val": "2", "x": 0, "rev": "workspace"},
-        {"val": "3", "x": 1, "rev": "workspace"},
+        {
+            "val": "2",
+            PlotData.INDEX_FIELD: 0,
+            "rev": "workspace",
+            "first_val": "100",
+            "second_val": "100",
+        },
+        {
+            "val": "3",
+            PlotData.INDEX_FIELD: 1,
+            "rev": "workspace",
+            "first_val": "200",
+            "second_val": "300",
+        },
     ]
+    assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
+    assert plot_content["encoding"]["y"]["field"] == "val"
+
+
+def test_plot_csv_choose_axes(tmp_dir, scm, dvc):
+    metric = [
+        OrderedDict([("first_val", 100), ("second_val", 100), ("val", 2)]),
+        OrderedDict([("first_val", 200), ("second_val", 300), ("val", 3)]),
+    ]
+    _write_csv(metric, "metric.csv")
+    _run_with_metric(tmp_dir, metric_filename="metric.csv")
+
+    plot_string = dvc.plot(
+        "metric.csv", x_field="first_val", y_field="second_val"
+    )
+
+    plot_content = json.loads(plot_string)
+    assert plot_content["data"]["values"] == [
+        {
+            "val": "2",
+            "rev": "workspace",
+            "first_val": "100",
+            "second_val": "100",
+        },
+        {
+            "val": "3",
+            "rev": "workspace",
+            "first_val": "200",
+            "second_val": "300",
+        },
+    ]
+    assert plot_content["encoding"]["x"]["field"] == "first_val"
+    assert plot_content["encoding"]["y"]["field"] == "second_val"
 
 
 def test_plot_json_single_val(tmp_dir, scm, dvc):
@@ -92,9 +142,11 @@ def test_plot_json_single_val(tmp_dir, scm, dvc):
 
     plot_json = json.loads(plot_string)
     assert plot_json["data"]["values"] == [
-        {"val": 2, "x": 0, "rev": "workspace"},
-        {"val": 3, "x": 1, "rev": "workspace"},
+        {"val": 2, PlotData.INDEX_FIELD: 0, "rev": "workspace"},
+        {"val": 3, PlotData.INDEX_FIELD: 1, "rev": "workspace"},
     ]
+    assert plot_json["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
+    assert plot_json["encoding"]["y"]["field"] == "val"
 
 
 def test_plot_json_multiple_val(tmp_dir, scm, dvc):
@@ -109,9 +161,21 @@ def test_plot_json_multiple_val(tmp_dir, scm, dvc):
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"val": 2, "x": 0, "rev": "workspace"},
-        {"val": 3, "x": 1, "rev": "workspace"},
+        {
+            "val": 2,
+            PlotData.INDEX_FIELD: 0,
+            "first_val": 100,
+            "rev": "workspace",
+        },
+        {
+            "val": 3,
+            PlotData.INDEX_FIELD: 1,
+            "first_val": 200,
+            "rev": "workspace",
+        },
     ]
+    assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
+    assert plot_content["encoding"]["y"]["field"] == "val"
 
 
 def test_plot_confusion(tmp_dir, dvc):
@@ -122,25 +186,32 @@ def test_plot_confusion(tmp_dir, dvc):
     _write_json(tmp_dir, confusion_matrix, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "first run")
 
-    plot_string = dvc.plot(datafile="metric.json", template="confusion_matrix")
+    plot_string = dvc.plot(
+        datafile="metric.json",
+        template="confusion_matrix",
+        x_field="predicted",
+        y_field="actual",
+    )
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
         {"predicted": "B", "actual": "A", "rev": "workspace"},
         {"predicted": "A", "actual": "A", "rev": "workspace"},
     ]
+    assert plot_content["encoding"]["x"]["field"] == "predicted"
+    assert plot_content["encoding"]["y"]["field"] == "actual"
 
 
 def test_plot_multiple_revs_default(tmp_dir, scm, dvc):
-    metric_1 = [{"x": 1, "y": 2}, {"x": 2, "y": 3}]
+    metric_1 = [{"y": 2}, {"y": 3}]
     _write_json(tmp_dir, metric_1, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "init", "v1")
 
-    metric_2 = [{"x": 1, "y": 3}, {"x": 2, "y": 5}]
+    metric_2 = [{"y": 3}, {"y": 5}]
     _write_json(tmp_dir, metric_2, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "second", "v2")
 
-    metric_3 = [{"x": 1, "y": 5}, {"x": 2, "y": 6}]
+    metric_3 = [{"y": 5}, {"y": 6}]
     _write_json(tmp_dir, metric_3, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "third")
 
@@ -150,13 +221,15 @@ def test_plot_multiple_revs_default(tmp_dir, scm, dvc):
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"y": 5, "x": 0, "rev": "HEAD"},
-        {"y": 6, "x": 1, "rev": "HEAD"},
-        {"y": 3, "x": 0, "rev": "v2"},
-        {"y": 5, "x": 1, "rev": "v2"},
-        {"y": 2, "x": 0, "rev": "v1"},
-        {"y": 3, "x": 1, "rev": "v1"},
+        {"y": 5, PlotData.INDEX_FIELD: 0, "rev": "HEAD"},
+        {"y": 6, PlotData.INDEX_FIELD: 1, "rev": "HEAD"},
+        {"y": 3, PlotData.INDEX_FIELD: 0, "rev": "v2"},
+        {"y": 5, PlotData.INDEX_FIELD: 1, "rev": "v2"},
+        {"y": 2, PlotData.INDEX_FIELD: 0, "rev": "v1"},
+        {"y": 3, PlotData.INDEX_FIELD: 1, "rev": "v1"},
     ]
+    assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
+    assert plot_content["encoding"]["y"]["field"] == "y"
 
 
 def test_plot_multiple_revs(tmp_dir, scm, dvc):
@@ -164,15 +237,15 @@ def test_plot_multiple_revs(tmp_dir, scm, dvc):
         fspath(tmp_dir / ".dvc" / "plot" / "default.json"), "template.json"
     )
 
-    metric_1 = [{"x": 1, "y": 2}, {"x": 2, "y": 3}]
+    metric_1 = [{"y": 2}, {"y": 3}]
     _write_json(tmp_dir, metric_1, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "init", "v1")
 
-    metric_2 = [{"x": 1, "y": 3}, {"x": 2, "y": 5}]
+    metric_2 = [{"y": 3}, {"y": 5}]
     _write_json(tmp_dir, metric_2, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "second", "v2")
 
-    metric_3 = [{"x": 1, "y": 5}, {"x": 2, "y": 6}]
+    metric_3 = [{"y": 5}, {"y": 6}]
     _write_json(tmp_dir, metric_3, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "third")
 
@@ -184,13 +257,15 @@ def test_plot_multiple_revs(tmp_dir, scm, dvc):
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"y": 5, "x": 1, "rev": "HEAD"},
-        {"y": 6, "x": 2, "rev": "HEAD"},
-        {"y": 3, "x": 1, "rev": "v2"},
-        {"y": 5, "x": 2, "rev": "v2"},
-        {"y": 2, "x": 1, "rev": "v1"},
-        {"y": 3, "x": 2, "rev": "v1"},
+        {"y": 5, PlotData.INDEX_FIELD: 0, "rev": "HEAD"},
+        {"y": 6, PlotData.INDEX_FIELD: 1, "rev": "HEAD"},
+        {"y": 3, PlotData.INDEX_FIELD: 0, "rev": "v2"},
+        {"y": 5, PlotData.INDEX_FIELD: 1, "rev": "v2"},
+        {"y": 2, PlotData.INDEX_FIELD: 0, "rev": "v1"},
+        {"y": 3, PlotData.INDEX_FIELD: 1, "rev": "v1"},
     ]
+    assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
+    assert plot_content["encoding"]["y"]["field"] == "y"
 
 
 def test_plot_even_if_metric_missing(tmp_dir, scm, dvc, caplog):
@@ -211,9 +286,11 @@ def test_plot_even_if_metric_missing(tmp_dir, scm, dvc, caplog):
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"y": 2, "x": 0, "rev": "v2"},
-        {"y": 3, "x": 1, "rev": "v2"},
+        {"y": 2, PlotData.INDEX_FIELD: 0, "rev": "v2"},
+        {"y": 3, PlotData.INDEX_FIELD: 1, "rev": "v2"},
     ]
+    assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
+    assert plot_content["encoding"]["y"]["field"] == "y"
 
 
 def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc, caplog):
@@ -249,13 +326,17 @@ def test_custom_template(tmp_dir, scm, dvc, custom_template):
     _write_json(tmp_dir, metric, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "init", "v1")
 
-    plot_string = dvc.plot("metric.json", fspath(custom_template))
+    plot_string = dvc.plot(
+        "metric.json", fspath(custom_template), x_field="a", y_field="b"
+    )
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
         {"a": 1, "b": 2, "rev": "workspace"},
         {"a": 2, "b": 3, "rev": "workspace"},
     ]
+    assert plot_content["encoding"]["x"]["field"] == "a"
+    assert plot_content["encoding"]["y"]["field"] == "b"
 
 
 def _replace(path, src, dst):
@@ -273,13 +354,20 @@ def test_custom_template_with_specified_data(
     _write_json(tmp_dir, metric, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "init", "v1")
 
-    plot_string = dvc.plot(datafile=None, template=fspath(custom_template))
+    plot_string = dvc.plot(
+        datafile=None,
+        template=fspath(custom_template),
+        x_field="a",
+        y_field="b",
+    )
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
         {"a": 1, "b": 2, "rev": "workspace"},
         {"a": 2, "b": 3, "rev": "workspace"},
     ]
+    assert plot_content["encoding"]["x"]["field"] == "a"
+    assert plot_content["encoding"]["y"]["field"] == "b"
 
 
 def test_plot_override_specified_data_source(tmp_dir, scm, dvc):
@@ -298,7 +386,7 @@ def test_plot_override_specified_data_source(tmp_dir, scm, dvc):
     _run_with_metric(tmp_dir, "metric2.json", "init", "v1")
 
     plot_string = dvc.plot(
-        datafile="metric2.json", template="newtemplate.json",
+        datafile="metric2.json", template="newtemplate.json", x_field="a"
     )
 
     plot_content = json.loads(plot_string)
@@ -306,25 +394,8 @@ def test_plot_override_specified_data_source(tmp_dir, scm, dvc):
         {"a": 1, "b": 2, "rev": "workspace"},
         {"a": 2, "b": 3, "rev": "workspace"},
     ]
-
-
-def test_should_embed_vega_json_template(tmp_dir, scm, dvc):
-    template = DefaultLinearTemplate.DEFAULT_CONTENT
-    template["data"] = {"values": "<DVC_METRIC_DATA>"}
-
-    (tmp_dir / "template.json").write_text(json.dumps(template))
-
-    metric = [{"x": 1, "y": 2}, {"x": 2, "y": 3}]
-    _write_json(tmp_dir, metric, "metric.json")
-    _run_with_metric(tmp_dir, "metric.json", "init", "v1")
-
-    plot_string = dvc.plot("metric.json", "template.json", embed=False)
-
-    plot_content = json.loads(plot_string)
-    assert [
-        {"x": 1, "y": 2, "rev": "workspace"},
-        {"x": 2, "y": 3, "rev": "workspace"},
-    ] == plot_content["data"]["values"]
+    assert plot_content["encoding"]["x"]["field"] == "a"
+    assert plot_content["encoding"]["y"]["field"] == "b"
 
 
 def test_should_raise_on_no_template_and_datafile(tmp_dir, dvc):
@@ -354,7 +425,11 @@ def test_plot_choose_columns(tmp_dir, scm, dvc, custom_template):
     _run_with_metric(tmp_dir, "metric.json", "init", "v1")
 
     plot_string = dvc.plot(
-        "metric.json", fspath(custom_template), fields={"b", "c"},
+        "metric.json",
+        fspath(custom_template),
+        fields={"b", "c"},
+        x_field="b",
+        y_field="c",
     )
 
     plot_content = json.loads(plot_string)
@@ -362,6 +437,8 @@ def test_plot_choose_columns(tmp_dir, scm, dvc, custom_template):
         {"b": 2, "c": 3, "rev": "workspace"},
         {"b": 3, "c": 4, "rev": "workspace"},
     ]
+    assert plot_content["encoding"]["x"]["field"] == "b"
+    assert plot_content["encoding"]["y"]["field"] == "c"
 
 
 def test_plot_default_choose_column(tmp_dir, scm, dvc):
@@ -373,9 +450,11 @@ def test_plot_default_choose_column(tmp_dir, scm, dvc):
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"x": 0, "b": 2, "rev": "workspace"},
-        {"x": 1, "b": 3, "rev": "workspace"},
+        {PlotData.INDEX_FIELD: 0, "b": 2, "rev": "workspace"},
+        {PlotData.INDEX_FIELD: 1, "b": 3, "rev": "workspace"},
     ]
+    assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
+    assert plot_content["encoding"]["y"]["field"] == "b"
 
 
 def test_plot_embed(tmp_dir, scm, dvc):
@@ -383,13 +462,13 @@ def test_plot_embed(tmp_dir, scm, dvc):
     _write_json(tmp_dir, metric, "metric.json")
     _run_with_metric(tmp_dir, "metric.json", "first run")
 
-    plot_string = dvc.plot("metric.json", embed=True)
+    plot_string = dvc.plot("metric.json", embed=True, y_field="val")
 
     page_content = BeautifulSoup(plot_string)
     data_dump = json.dumps(
         [
-            {"val": 2, "x": 0, "rev": "workspace"},
-            {"val": 3, "x": 1, "rev": "workspace"},
+            {"val": 2, PlotData.INDEX_FIELD: 0, "rev": "workspace"},
+            {"val": 3, PlotData.INDEX_FIELD: 1, "rev": "workspace"},
         ],
         sort_keys=True,
     )

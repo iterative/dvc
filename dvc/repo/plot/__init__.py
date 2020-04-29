@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 
@@ -66,23 +65,34 @@ def fill_template(
     path=None,
     csv_header=True,
 ):
-    default_plot = template_path == repo.plot_templates.default_template
 
-    template_datafiles = _parse_template(template_path, datafile)
+    template_datafiles, x_anchor, y_anchor = _parse_template(
+        template_path, datafile
+    )
+    append_index = x_anchor and not x_field
+    if append_index:
+        x_field = PlotData.INDEX_FIELD
 
     template_data = {}
     for datafile in template_datafiles:
         from dvc.repo.plot.data import _load_from_revisions
 
         plot_datas = _load_from_revisions(repo, datafile, revisions)
-
         tmp_data = []
         for pd in plot_datas:
             rev_data_points = pd.to_datapoints(
-                fields=fields, path=path, csv_header=csv_header
+                fields=fields,
+                path=path,
+                csv_header=csv_header,
+                append_index=append_index,
             )
-            if default_plot:
-                rev_data_points = _to_default_data(rev_data_points)
+
+            if y_anchor and not y_field:
+                all_fields = list(first(rev_data_points).keys())
+                all_fields.remove(PlotData.REVISION_FIELD)
+                if x_field and x_field in all_fields:
+                    all_fields.remove(x_field)
+                y_field = last(all_fields)
             tmp_data.extend(rev_data_points)
 
         template_data[datafile] = tmp_data
@@ -90,44 +100,8 @@ def fill_template(
     if len(template_data) == 0:
         raise NoDataForTemplateError(template_path)
 
-    filled_template = Template.fill(template_path, template_data, datafile)
-
-    if default_plot:
-        return _fix_default_template(template_data, filled_template)
-
-    return filled_template
-
-
-def _to_default_data(data_points):
-    keys = list(first(data_points).keys())
-    keys.remove(PlotData.REVISION_FIELD)
-    data_field = last(keys)
-    new_data = []
-    for index, data_point in enumerate(data_points):
-        new_data.append(
-            {
-                "x": index,
-                data_field: data_point[data_field],
-                PlotData.REVISION_FIELD: data_point[PlotData.REVISION_FIELD],
-            }
-        )
-    return new_data
-
-
-def _fix_default_template(template_data, plot_json):
-    assert len(template_data) == 1
-    datafile, data = first(template_data.items())
-
-    keys = list(first(data).keys())
-    keys.remove(PlotData.REVISION_FIELD)
-    keys.remove("x")
-    data_field = first(keys)
-
-    tmp_plot = json.loads(plot_json)
-    tmp_plot["title"] = datafile
-    tmp_plot["encoding"]["y"]["field"] = data_field
-    return json.dumps(
-        tmp_plot, indent=4, separators=(",", ": "), sort_keys=True
+    return Template.fill(
+        template_path, template_data, datafile, x_field, y_field
     )
 
 
@@ -172,10 +146,20 @@ def plot(
     return plot_content
 
 
-def _parse_template(template_path, datafile):
-    template_datafiles = Template.parse_data_placeholders(template_path)
-    if datafile:
+def _parse_template(template_path, priority_datafile):
+    with open(template_path, "r") as fobj:
+        tempalte_content = fobj.read()
+
+    template_datafiles = Template.parse_data_placeholders(tempalte_content)
+    if priority_datafile:
         if len(template_datafiles) > 1:
-            raise TooManyDataSourcesError(datafile, template_datafiles)
-        template_datafiles = {datafile}
-    return template_datafiles
+            raise TooManyDataSourcesError(
+                priority_datafile, template_datafiles
+            )
+        template_datafiles = {priority_datafile}
+
+    return (
+        template_datafiles,
+        Template.X_AXIS_STRING in tempalte_content,
+        Template.Y_AXIS_STRING in tempalte_content,
+    )
