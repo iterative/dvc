@@ -4,6 +4,7 @@ from textwrap import dedent
 
 import pytest
 import yaml
+from funcy import lsplit
 
 from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
 from dvc.exceptions import CyclicGraphError
@@ -531,12 +532,11 @@ def test_repro_multiple_params(tmp_dir, dvc):
         },
     }
     data, _ = stage.dvcfile._load()
-    assert data["stages"]["read_params"]["params"] == [
-        {"params2.yaml": ["lists", "floats", "name"]},
-        "answer",
-        "floats",
-        "nested.nested1",
-    ]
+    params = data["stages"]["read_params"]["params"]
+
+    custom, defaults = lsplit(lambda v: isinstance(v, dict), params)
+    assert set(custom[0]["params2.yaml"]) == {"name", "lists", "floats"}
+    assert set(defaults) == {"answer", "floats", "nested.nested1"}
 
     assert not dvc.reproduce(stage.addressing)
     with (tmp_dir / "params.yaml").open("w+") as f:
