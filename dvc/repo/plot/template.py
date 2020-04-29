@@ -165,9 +165,27 @@ class DefaultConfusionTemplate(Template):
     }
 
 
+class DefaultScatterTemplate(Template):
+    TEMPLATE_NAME = "scatter"
+    DEFAULT_CONTENT = {
+        "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
+        "data": {"values": Template.METRIC_DATA_STRING},
+        "mark": "point",
+        "encoding": {
+            "x": {"field": Template.X_AXIS_STRING, "type": "quantitative"},
+            "y": {"field": Template.Y_AXIS_STRING, "type": "quantitative"},
+            "color": {"field": "rev", "type": "nominal"},
+        },
+    }
+
+
 class PlotTemplates:
     TEMPLATES_DIR = "plot"
-    TEMPLATES = [DefaultLinearTemplate, DefaultConfusionTemplate]
+    TEMPLATES = [
+        DefaultLinearTemplate,
+        DefaultConfusionTemplate,
+        DefaultScatterTemplate,
+    ]
 
     @cached_property
     def templates_dir(self):
