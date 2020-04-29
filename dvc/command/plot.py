@@ -141,12 +141,6 @@ def add_parser(subparsers, parent_parser):
         "-r", "--result", help="Name of the generated file."
     )
     plot_show_parser.add_argument(
-        "--no-html",
-        action="store_true",
-        default=False,
-        help="Do not wrap vega plot json with HTML.",
-    )
-    plot_show_parser.add_argument(
         "-f",
         "--fields",
         default=None,
@@ -170,6 +164,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Provided CSV ot TSV datafile does not have a header.",
+    )
+    plot_show_parser.add_argument(
+        "--no-html",
+        action="store_true",
+        default=False,
+        help="Do not wrap vega plot json with HTML.",
     )
     plot_show_parser.set_defaults(func=CmdPlotShow)
 
@@ -207,13 +207,6 @@ def add_parser(subparsers, parent_parser):
         default=None,
         help="Git revisions to plot from",
     )
-
-    plot_diff_parser.add_argument(
-        "--no-html",
-        action="store_true",
-        default=False,
-        help="Do not wrap vega plot json with HTML.",
-    )
     plot_diff_parser.add_argument(
         "-f",
         "--fields",
@@ -238,5 +231,11 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Provided CSV ot TSV datafile does not have a header.",
+    )
+    plot_diff_parser.add_argument(
+        "--no-html",
+        action="store_true",
+        default=False,
+        help="Do not wrap vega plot json with HTML.",
     )
     plot_diff_parser.set_defaults(func=CmdPlotDiff)
