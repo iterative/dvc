@@ -23,9 +23,7 @@ logger = logging.getLogger(__name__)
 LOCAL_CHUNK_SIZE = 2 ** 20  # 1 MB
 LARGE_FILE_SIZE = 2 ** 30  # 1 GB
 LARGE_DIR_SIZE = 100
-TARGET_REGEX = re.compile(
-    r"(?P<path>.*?)(:(?P<name>[^\\/@:]*))??(@(?P<tag>[^\\/@:]*))??$"
-)
+TARGET_REGEX = re.compile(r"(?P<path>.*?)(:(?P<name>[^\\/:]*))??$")
 
 
 def dos2unix(data):
@@ -384,24 +382,23 @@ def parse_target(target, default=None):
     from dvc.exceptions import DvcException
 
     if not target:
-        return None, None, None
+        return None, None
 
     match = TARGET_REGEX.match(target)
     if not match:
-        return target, None, None
+        return target, None
 
-    path, name, tag = (
+    path, name = (
         match.group("path"),
         match.group("name"),
-        match.group("tag"),
     )
     if not path:
         path = default or PIPELINE_FILE
-        logger.warning("Assuming file to be '%s'", path)
+        logger.debug("Assuming file to be '%s'", path)
 
     if os.path.basename(path) == PIPELINE_LOCK:
         raise DvcException(
             "Did you mean: `{}`?".format(target.replace(".lock", ".yaml", 1))
         )
 
-    return path, name, tag
+    return path, name

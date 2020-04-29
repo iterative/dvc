@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 def remove(self, target, outs_only=False):
     from ..dvcfile import Dvcfile
 
-    path, name, _ = parse_target(target)
+    path, name = parse_target(target)
     dvcfile = Dvcfile(self, path)
     stages = list(dvcfile.stages.filter(name).values())
     for stage in stages:

@@ -49,17 +49,14 @@ CHECKSUMS_SCHEMA = {
     HDFSRemote.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
 }
 
-TAGS_SCHEMA = {str: CHECKSUMS_SCHEMA}
-
 SCHEMA = CHECKSUMS_SCHEMA.copy()
 SCHEMA[Required(BaseOutput.PARAM_PATH)] = str
 SCHEMA[BaseOutput.PARAM_CACHE] = bool
 SCHEMA[BaseOutput.PARAM_METRIC] = BaseOutput.METRIC_SCHEMA
-SCHEMA[BaseOutput.PARAM_TAGS] = TAGS_SCHEMA
 SCHEMA[BaseOutput.PARAM_PERSIST] = bool
 
 
-def _get(stage, p, info, cache, metric, persist=False, tags=None):
+def _get(stage, p, info, cache, metric, persist=False):
     parsed = urlparse(p)
 
     if parsed.scheme == "remote":
@@ -72,7 +69,6 @@ def _get(stage, p, info, cache, metric, persist=False, tags=None):
             remote=remote,
             metric=metric,
             persist=persist,
-            tags=tags,
         )
 
     for o in OUTS:
@@ -85,7 +81,6 @@ def _get(stage, p, info, cache, metric, persist=False, tags=None):
                 remote=None,
                 metric=metric,
                 persist=persist,
-                tags=tags,
             )
     return LocalOutput(
         stage,
@@ -95,7 +90,6 @@ def _get(stage, p, info, cache, metric, persist=False, tags=None):
         remote=None,
         metric=metric,
         persist=persist,
-        tags=tags,
     )
 
 
@@ -106,16 +100,9 @@ def loadd_from(stage, d_list):
         cache = d.pop(BaseOutput.PARAM_CACHE, True)
         metric = d.pop(BaseOutput.PARAM_METRIC, False)
         persist = d.pop(BaseOutput.PARAM_PERSIST, False)
-        tags = d.pop(BaseOutput.PARAM_TAGS, None)
         ret.append(
             _get(
-                stage,
-                p,
-                info=d,
-                cache=cache,
-                metric=metric,
-                persist=persist,
-                tags=tags,
+                stage, p, info=d, cache=cache, metric=metric, persist=persist,
             )
         )
     return ret

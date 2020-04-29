@@ -94,7 +94,6 @@ class Stage(params.StageParams):
         outs=None,
         md5=None,
         locked=False,
-        tag=None,
         always_changed=False,
         stage_text=None,
         dvcfile=None,
@@ -112,7 +111,6 @@ class Stage(params.StageParams):
         self.deps = deps
         self.md5 = md5
         self.locked = locked
-        self.tag = tag
         self.always_changed = always_changed
         self._stage_text = stage_text
         self._dvcfile = dvcfile
@@ -478,7 +476,6 @@ class Stage(params.StageParams):
             exclude=[
                 self.PARAM_LOCKED,
                 BaseOutput.PARAM_METRIC,
-                BaseOutput.PARAM_TAGS,
                 BaseOutput.PARAM_PERSIST,
             ],
         )
@@ -694,7 +691,6 @@ class Stage(params.StageParams):
             try:
                 result = out.checkout(
                     force=force,
-                    tag=self.tag,
                     progress_callback=progress_callback,
                     relink=relink,
                     filter_info=filter_info,

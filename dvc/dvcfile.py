@@ -128,19 +128,18 @@ class FileMixin:
 class SingleStageFile(FileMixin):
     from dvc.schema import COMPILED_SINGLE_STAGE_SCHEMA as SCHEMA
 
-    def __init__(self, repo, path, tag=None):
+    def __init__(self, repo, path):
         super().__init__(repo, path)
-        self.tag = tag
 
     @property
     def stage(self):
         data, raw = self._load()
-        return SingleStageLoader.load_stage(self, data, raw, tag=self.tag)
+        return SingleStageLoader.load_stage(self, data, raw)
 
     @property
     def stages(self):
         data, raw = self._load()
-        return SingleStageLoader(self, data, raw, tag=self.tag)
+        return SingleStageLoader(self, data, raw)
 
     def dump(self, stage, **kwargs):
         """Dumps given stage appropriately in the dvcfile."""
