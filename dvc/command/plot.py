@@ -153,10 +153,10 @@ def add_parser(subparsers, parent_parser):
         help="Choose which fileds or jsonpath to put into plot.",
     )
     plot_show_parser.add_argument(
-        "-x", default=None, help="Field name that will be on x axis of plot."
+        "-x", default=None, help="Field that will be on x axis of plot."
     )
     plot_show_parser.add_argument(
-        "-y", default=None, help="Field name that will be on y axis of plot."
+        "-y", default=None, help="Field that will be on y axis of plot."
     )
     plot_show_parser.add_argument(
         "-o",
@@ -221,10 +221,10 @@ def add_parser(subparsers, parent_parser):
         help="Choose which filed(s) or jsonpath to put into plot.",
     )
     plot_diff_parser.add_argument(
-        "-x", default=None, help="Field name that will be on x axis of plot."
+        "-x", default=None, help="Field that will be on x axis of plot."
     )
     plot_diff_parser.add_argument(
-        "-y", default=None, help="Field name that will be on y axis of plot."
+        "-y", default=None, help="Field that will be on y axis of plot."
     )
     plot_diff_parser.add_argument(
         "-o",
