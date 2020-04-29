@@ -6,6 +6,7 @@ import pytest
 from dvc.path_info import PathInfo
 from dvc.utils import (
     file_md5,
+    dict_sha256,
     resolve_output,
     fix_env,
     relpath,
@@ -155,3 +156,28 @@ def test_hint_on_lockfile():
     with pytest.raises(Exception) as exc:
         assert parse_target("pipelines.lock:name")
     assert "pipelines.yaml:name" in str(exc.value)
+
+
+@pytest.mark.parametrize(
+    "d,sha",
+    [
+        (
+            {
+                "cmd": "echo content > out",
+                "deps": {"dep": "2254342becceafbd04538e0a38696791"},
+                "outs": {"out": "f75b8179e4bbe7e2b4a074dcef62de95"},
+            },
+            "f472eda60f09660a4750e8b3208cf90b3a3b24e5f42e0371d829710e9464d74a",
+        ),
+        (
+            {
+                "cmd": "echo content > out",
+                "deps": {"dep": "2254342becceafbd04538e0a38696791"},
+                "outs": ["out"],
+            },
+            "a239b67073bd58affcdb81fff3305d1726c6e7f9c86f3d4fca0e92e8147dc7b0",
+        ),
+    ],
+)
+def test_dict_sha256(d, sha):
+    assert dict_sha256(d) == sha

@@ -1,4 +1,5 @@
 import logging
+import shutil
 import os
 
 import configobj
@@ -341,6 +342,7 @@ def test_gc_not_collect_pipeline_tracked_files(tmp_dir, dvc, run_copy):
     tmp_dir.gen("bar", "bar")
 
     run_copy("foo", "foo2", name="copy")
+    shutil.rmtree(dvc.stage_cache.cache_dir)
     assert _count_files(dvc.cache.local.cache_dir) == 1
     dvc.gc(workspace=True, force=True)
     assert _count_files(dvc.cache.local.cache_dir) == 1

@@ -76,8 +76,8 @@ def file_md5(fname):
     return (None, None)
 
 
-def bytes_md5(byts):
-    hasher = hashlib.md5()
+def bytes_hash(byts, typ):
+    hasher = getattr(hashlib, typ)()
     hasher.update(byts)
     return hasher.hexdigest()
 
@@ -100,10 +100,18 @@ def dict_filter(d, exclude=()):
     return d
 
 
-def dict_md5(d, exclude=()):
+def dict_hash(d, typ, exclude=()):
     filtered = dict_filter(d, exclude)
     byts = json.dumps(filtered, sort_keys=True).encode("utf-8")
-    return bytes_md5(byts)
+    return bytes_hash(byts, typ)
+
+
+def dict_md5(d, **kwargs):
+    return dict_hash(d, "md5", **kwargs)
+
+
+def dict_sha256(d, **kwargs):
+    return dict_hash(d, "sha256", **kwargs)
 
 
 def _split(list_to_split, chunk_size):
