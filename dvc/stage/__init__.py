@@ -94,7 +94,6 @@ class Stage(params.StageParams):
         outs=None,
         md5=None,
         locked=False,
-        tag=None,
         always_changed=False,
         stage_text=None,
         dvcfile=None,
