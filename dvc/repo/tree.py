@@ -1,6 +1,9 @@
 import errno
 import os
 
+from funcy import first
+
+from dvc.dvcfile import is_valid_filename
 from dvc.exceptions import OutputNotFoundError
 from dvc.path_info import PathInfo
 from dvc.scm.tree import BaseTree, WorkingTree
@@ -139,3 +142,42 @@ class RepoTree(BaseTree):
 
     def exists(self, path):
         return self.repo.tree.exists(path) or self.dvctree.exists(path)
+
+    def isdir(self, path):
+        return self.repo.tree.isdir(path) or self.dvctree.isdir(path)
+
+    def isfile(self, path):
+        return self.repo.tree.isfile(path) or self.dvctree.isfile(path)
+
+    def walk(self, top, topdown=True):
+        assert topdown
+
+        if not self.repo.tree.isdir(top):
+            return self.dvctree.walk(top, topdown=topdown)
+        if not self.dvctree.isdir(top):
+            return self.repo.tree.walk(top, topdown=topdown)
+
+        repo_root, repo_dirs, repo_files = first(
+            self.repo.tree.walk(top, topdown=topdown)
+        )
+        dvc_root, dvc_dirs, dvc_files = first(
+            self.dvctree.walk(top, topdown=topdown)
+        )
+        dirs = list(set(repo_dirs) | set(dvc_dirs))
+        files = set(dvc_files)
+        for filename in repo_files:
+            if is_valid_filename(filename):
+                name, _ = os.path.splitext(filename)
+                if not self.dvctree.exists(os.path.join(repo_root, name)):
+                    files.add(filename)
+            else:
+                files.add(filename)
+        yield repo_root, dirs, list(files)
+
+        for dirname in dirs:
+            yield from self.walk(
+                os.path.join(repo_root, dirname), topdown=topdown
+            )
+
+    def isdvc(self, path):
+        return self.dvctree.isdvc(path)
