@@ -59,8 +59,6 @@ class BaseOutput(object):
         },
     )
 
-    PARAM_TAGS = "tags"
-
     DoesNotExistError = OutputDoesNotExistError
     IsNotFileOrDirError = OutputIsNotFileOrDirError
     IsStageFileError = OutputIsStageFileError
@@ -76,7 +74,6 @@ class BaseOutput(object):
         cache=True,
         metric=False,
         persist=False,
-        tags=None,
     ):
         self._validate_output_path(path)
         # This output (and dependency) objects have too many paths/urls
@@ -97,7 +94,6 @@ class BaseOutput(object):
         self.use_cache = False if self.IS_DEPENDENCY else cache
         self.metric = False if self.IS_DEPENDENCY else metric
         self.persist = persist
-        self.tags = None if self.IS_DEPENDENCY else (tags or {})
 
         self.path_info = self._parse_path(remote, path)
         if self.use_cache and self.cache is None:
@@ -274,9 +270,6 @@ class BaseOutput(object):
         ret[self.PARAM_METRIC] = self.metric
         ret[self.PARAM_PERSIST] = self.persist
 
-        if self.tags:
-            ret[self.PARAM_TAGS] = self.tags
-
         return ret
 
     def verify_metric(self):
@@ -291,7 +284,6 @@ class BaseOutput(object):
         self,
         force=False,
         progress_callback=None,
-        tag=None,
         relink=False,
         filter_info=None,
     ):
@@ -302,14 +294,9 @@ class BaseOutput(object):
                 )
             return None
 
-        if tag:
-            info = self.tags[tag]
-        else:
-            info = self.info
-
         return self.cache.checkout(
             self.path_info,
-            info,
+            self.info,
             force=force,
             progress_callback=progress_callback,
             relink=relink,

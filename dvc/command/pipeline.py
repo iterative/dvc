@@ -14,8 +14,8 @@ class CmdPipelineShow(CmdBase):
         from dvc import dvcfile
         from dvc.utils import parse_target
 
-        path, name, tag = parse_target(target)
-        stage = dvcfile.Dvcfile(self.repo, path, tag=tag).stages[name]
+        path, name = parse_target(target)
+        stage = dvcfile.Dvcfile(self.repo, path).stages[name]
         G = self.repo.graph
         stages = networkx.dfs_postorder_nodes(G, stage)
         if locked:
@@ -38,8 +38,8 @@ class CmdPipelineShow(CmdBase):
         from dvc.repo.graph import get_pipeline
         from dvc.utils import parse_target
 
-        path, name, tag = parse_target(target)
-        target_stage = dvcfile.Dvcfile(self.repo, path, tag=tag).stages[name]
+        path, name = parse_target(target)
+        target_stage = dvcfile.Dvcfile(self.repo, path).stages[name]
         G = get_pipeline(self.repo.pipelines, target_stage)
 
         nodes = set()

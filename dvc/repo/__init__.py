@@ -1,3 +1,4 @@
+import logging
 import os
 from contextlib import contextmanager
 from functools import wraps
@@ -70,7 +71,6 @@ class Repo(object):
         from dvc.repo.metrics import Metrics
         from dvc.repo.params import Params
         from dvc.scm.tree import WorkingTree
-        from dvc.repo.tag import Tag
         from dvc.utils.fs import makedirs
 
         root_dir = self.find_root(root_dir)
@@ -106,7 +106,6 @@ class Repo(object):
 
         self.metrics = Metrics(self)
         self.params = Params(self)
-        self.tag = Tag(self)
 
         self._ignore()
 
@@ -211,8 +210,8 @@ class Repo(object):
                 os.path.abspath(target), graph or self.graph
             )
 
-        file, name, tag = parse_target(target)
-        dvcfile = Dvcfile(self, file, tag=tag)
+        path, name = parse_target(target)
+        dvcfile = Dvcfile(self, path)
         stages = list(dvcfile.stages.filter(name).values())
         if not with_deps:
             return stages
@@ -229,10 +228,10 @@ class Repo(object):
         if not target:
             return [(stage, None) for stage in self.stages]
 
-        file, name, tag = parse_target(target)
+        file, name = parse_target(target)
         if is_valid_filename(file) and not kwargs.get("with_deps"):
             # Optimization: do not collect the graph for a specific .dvc target
-            stages = Dvcfile(self, file, tag=tag).stages.filter(name)
+            stages = Dvcfile(self, file).stages.filter(name)
             return [(stage, None) for stage in stages.values()]
 
         try:
@@ -433,7 +432,9 @@ class Repo(object):
         for root, dirs, files in self.tree.walk(self.root_dir):
             for file_name in filter(is_valid_filename, files):
                 path = os.path.join(root, file_name)
-                stages.extend(list(Dvcfile(self, path).stages.values()))
+                stage_loader = Dvcfile(self, path).stages
+                with stage_loader.log_level(at=logging.DEBUG):
+                    stages.extend(stage_loader.values())
                 outs.update(
                     out.fspath
                     for stage in stages

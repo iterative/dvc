@@ -1,5 +1,6 @@
 import logging
 import os
+from contextlib import contextmanager
 
 from copy import deepcopy
 from collections import defaultdict, Mapping
@@ -29,6 +30,14 @@ class StageLoader(Mapping):
         self.dvcfile = dvcfile
         self.stages_data = stages_data or {}
         self.lockfile_data = lockfile_data or {}
+        self._log_level = logging.WARNING
+
+    @contextmanager
+    def log_level(self, at):
+        """Change log_level temporarily for StageLoader."""
+        self._log_level, level = at, self._log_level
+        yield
+        self._log_level = level
 
     def filter(self, item=None):
         if not item:
@@ -147,8 +156,11 @@ class StageLoader(Mapping):
             raise StageNotFound(self.dvcfile, name)
 
         if not self.lockfile_data.get(name):
-            logger.warning(
-                "No lock entry found for '%s:%s'", self.dvcfile.relpath, name
+            logger.log(
+                self._log_level,
+                "No lock entry found for '%s:%s'",
+                self.dvcfile.relpath,
+                name,
             )
 
         return self.load_stage(
@@ -169,14 +181,18 @@ class StageLoader(Mapping):
 
 
 class SingleStageLoader(Mapping):
-    def __init__(self, dvcfile, stage_data, stage_text=None, tag=None):
+    def __init__(self, dvcfile, stage_data, stage_text=None):
         self.dvcfile = dvcfile
         self.stage_data = stage_data or {}
         self.stage_text = stage_text
-        self.tag = tag
 
     def filter(self, item=None):
         return self
+
+    @contextmanager
+    def log_level(self, *args, **kwargs):
+        """No-op context manager."""
+        yield
 
     def __getitem__(self, item):
         if item:
@@ -188,16 +204,16 @@ class SingleStageLoader(Mapping):
         # during `load`, we remove attributes from stage data, so as to
         # not duplicate, therefore, for MappingView, we need to deepcopy.
         return self.load_stage(
-            self.dvcfile, deepcopy(self.stage_data), self.stage_text, self.tag
+            self.dvcfile, deepcopy(self.stage_data), self.stage_text
         )
 
     @classmethod
-    def load_stage(cls, dvcfile, d, stage_text, tag=None):
+    def load_stage(cls, dvcfile, d, stage_text):
         from dvc.stage import Stage, loads_from
 
         path, wdir = resolve_paths(dvcfile.path, d.get(Stage.PARAM_WDIR))
         stage = loads_from(Stage, dvcfile.repo, path, wdir, d)
-        stage._stage_text, stage.tag = stage_text, tag
+        stage._stage_text = stage_text
         stage.deps = dependency.loadd_from(
             stage, d.get(Stage.PARAM_DEPS) or []
         )
