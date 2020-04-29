@@ -1,17 +1,20 @@
-import collections
 import logging
 import os
 
 from copy import deepcopy
+from collections import defaultdict, Mapping
 from itertools import chain
 
-from funcy import merge, first
+from funcy import first
 
 from dvc import dependency, output
 from .exceptions import StageNameUnspecified, StageNotFound
 from ..dependency import ParamsDependency
 
 logger = logging.getLogger(__name__)
+
+
+DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
 
 
 def resolve_paths(path, wdir=None):
@@ -21,7 +24,7 @@ def resolve_paths(path, wdir=None):
     return path, wdir
 
 
-class StageLoader(collections.abc.Mapping):
+class StageLoader(Mapping):
     def __init__(self, dvcfile, stages_data, lockfile_data=None):
         self.dvcfile = dvcfile
         self.stages_data = stages_data or {}
@@ -58,24 +61,59 @@ class StageLoader(collections.abc.Mapping):
             )
 
     @classmethod
-    def _fill_params(cls, stage, pipeline_params, lock_params):
-        res = {}
-        default_file = ParamsDependency.DEFAULT_PARAMS_FILE
+    def _load_params(cls, stage, pipeline_params, lock_params=None):
+        """
+        File in pipeline file is expected to be in following format:
+        ```
+        params:
+            - lr
+            - train.epochs
+            - params2.yaml:  # notice the filename
+                - process.threshold
+                - process.bow
+        ```
 
-        def get_value(file, k):
-            return lock_params.get(file, {}).get(k)
+        and, in lockfile, we keep it as following format:
+        ```
+        params:
+          params.yaml:
+            lr: 0.0041
+            train.epochs: 100
+          params2.yaml:
+            process.threshold: 0.98
+            process.bow:
+            - 15000
+            - 123
+        ```
+
+        So, here, we merge these two formats into one (ignoring one's only
+        specified on lockfile but missing on pipeline file), and load the
+        `ParamsDependency` for the given stage.
+
+        In the list of `params` inside pipeline file, if any of the item is
+        dict-like, the key will be treated as separate params file and it's
+        values to be part of that params file, else, the item is considered
+        as part of the `params.yaml` which is a default file.
+
+        (From example above: `lr` is considered to be part of `params.yaml`
+        whereas `process.bow` to be part of `params2.yaml`.)
+        """
+        res = defaultdict(lambda: defaultdict(dict))
+        lock_params = lock_params or {}
+
+        def get_value(file, param):
+            return lock_params.get(file, {}).get(param)
 
         for key in pipeline_params:
             if isinstance(key, str):
-                res.setdefault(default_file, {}).update(
-                    {key: get_value(default_file, key)}
-                )
+                path = DEFAULT_PARAMS_FILE
+                res[path][key] = get_value(path, key)
             elif isinstance(key, dict):
                 path = first(key)
-                res.setdefault(path, {}).update(
-                    {k: get_value(path, k) for k in key[path]}
-                )
-        return dependency.loadd_from(
+                for k in key[path]:
+                    res[path][k] = get_value(path, k)
+
+        stage.deps += dependency.loadd_from(
             stage,
             [{"path": key, "params": params} for key, params in res.items()],
         )
@@ -92,9 +130,7 @@ class StageLoader(collections.abc.Mapping):
         params = stage_data.pop("params", {})
         stage._fill_stage_dependencies(**stage_data)
         stage._fill_stage_outputs(**stage_data)
-        stage.deps += cls._fill_params(
-            stage, params, merge(*lock_data.get("params", [{}]))
-        )
+        cls._load_params(stage, params, lock_data.get("params"))
         if lock_data:
             stage.cmd_changed = lock_data.get(
                 Stage.PARAM_CMD
@@ -132,7 +168,7 @@ class StageLoader(collections.abc.Mapping):
         return name in self.stages_data
 
 
-class SingleStageLoader(collections.abc.Mapping):
+class SingleStageLoader(Mapping):
     def __init__(self, dvcfile, stage_data, stage_text=None, tag=None):
         self.dvcfile = dvcfile
         self.stage_data = stage_data or {}

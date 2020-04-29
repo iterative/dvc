@@ -5,9 +5,14 @@ from funcy import rpartial, lsplit_by
 from dvc.dependency import ParamsDependency
 from dvc.utils.collections import apply_diff
 from dvc.utils.stage import parse_stage_for_update
+from typing import List
 
 if TYPE_CHECKING:
     from dvc.stage import PipelineStage, Stage
+
+PARAM_PATH = ParamsDependency.PARAM_PATH
+PARAM_PARAMS = ParamsDependency.PARAM_PARAMS
+DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
 
 
 def _get_outs(stage: "PipelineStage"):
@@ -24,34 +29,50 @@ def _get_outs(stage: "PipelineStage"):
     return outs_bucket
 
 
-def get_params_deps(stage):
-    params, deps = lsplit_by(
-        rpartial(isinstance, ParamsDependency), stage.deps
-    )
-    params_keys = []
-    params_ = []
-    for param in params:
-        dump = param.dumpd()
-        path, param_ = dump["path"], dump[stage.PARAM_PARAMS]
-        param_keys = list(param_.keys())
-        if path == ParamsDependency.DEFAULT_PARAMS_FILE:
-            params_keys += param_keys
-        else:
-            params_keys += [{path: param_keys}] if param_keys else []
-        params_ += [{path: dump[stage.PARAM_PARAMS]}]
-    return params_keys, params_, deps
+def get_params_deps(stage: "PipelineStage"):
+    return lsplit_by(rpartial(isinstance, ParamsDependency), stage.deps)
+
+
+def _serialize_params(params: List[ParamsDependency]):
+    """Return two types of values from stage:
+
+    `keys` - which is list of params without values, used in a pipeline file
+
+    which is in the shape of:
+        ['lr', 'train', {'params2.yaml': ['lr']}]
+    `key_vals` - which is list of params with values, used in a lockfile
+    which is in the shape of:
+        {'params.yaml': {'lr': '1', 'train': 2}, {'params2.yaml': {'lr': '1'}}
+    """
+    keys = []
+    key_vals = {}
+
+    for param_dep in params:
+        dump = param_dep.dumpd()
+        path, params = dump[PARAM_PATH], dump[PARAM_PARAMS]
+        k = list(params.keys())
+        if not k:
+            continue
+        # if it's not a default file, change the shape
+        # to: {path: k}
+        keys.extend(k if path == DEFAULT_PARAMS_FILE else [{path: k}])
+        key_vals.update({path: params})
+
+    return keys, key_vals
 
 
 def to_pipeline_file(stage: "PipelineStage"):
-    params, _, deps = get_params_deps(stage)
+    params, deps = get_params_deps(stage)
+    serialized_params, _ = _serialize_params(params)
+
     return {
         stage.name: {
             key: value
             for key, value in {
                 stage.PARAM_CMD: stage.cmd,
                 stage.PARAM_WDIR: stage.resolve_wdir(),
-                stage.PARAM_DEPS: deps,
-                stage.PARAM_PARAMS: params,
+                stage.PARAM_DEPS: [d.def_path for d in deps],
+                stage.PARAM_PARAMS: serialized_params,
                 **_get_outs(stage),
                 stage.PARAM_LOCKED: stage.locked,
                 stage.PARAM_ALWAYS_CHANGED: stage.always_changed,
@@ -66,7 +87,7 @@ def to_lockfile(stage: "PipelineStage") -> dict:
     assert stage.name
 
     res = {"cmd": stage.cmd}
-    _, params, deps = get_params_deps(stage)
+    params, deps = get_params_deps(stage)
     deps = [
         {"path": dep.def_path, dep.checksum_type: dep.get_checksum()}
         for dep in deps
@@ -78,7 +99,7 @@ def to_lockfile(stage: "PipelineStage") -> dict:
     if deps:
         res["deps"] = deps
     if params:
-        res["params"] = params
+        _, res["params"] = _serialize_params(params)
     if outs:
         res["outs"] = outs
 

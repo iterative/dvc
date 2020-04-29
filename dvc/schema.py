@@ -21,7 +21,7 @@ DATA_SCHEMA = {**CHECKSUMS_SCHEMA, Required("path"): str}
 LOCK_FILE_STAGE_SCHEMA = {
     Required(StageParams.PARAM_CMD): str,
     StageParams.PARAM_DEPS: [DATA_SCHEMA],
-    StageParams.PARAM_PARAMS: [{str: object}],
+    StageParams.PARAM_PARAMS: {str: {str: object}},
     StageParams.PARAM_OUTS: [DATA_SCHEMA],
 }
 LOCKFILE_SCHEMA = {str: LOCK_FILE_STAGE_SCHEMA}
