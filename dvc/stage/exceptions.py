@@ -124,5 +124,5 @@ class InvalidStageName(DvcException):
     def __init__(self,):
         super().__init__(
             "Stage name cannot contain invalid characters: "
-            "'\\', '/', and ':'."
+            "'\\', '/', '@' and ':'."
         )
