@@ -48,16 +48,15 @@ class CmdRemoteRemove(CmdRemote):
     def run(self):
         with self.config.edit(self.args.level) as conf:
             self._check_exists(conf)
-            del conf["remote"][self.args.name]
 
         # Remove core.remote refs to this remote in any shadowing configs
         for level in reversed(self.config.LEVELS):
             with self.config.edit(level) as conf:
                 if conf["core"].get("remote") == self.args.name:
                     del conf["core"]["remote"]
-
-            if level == self.args.level:
-                break
+                if level == self.args.level:
+                    del conf["remote"][self.args.name]
+                    break
 
         return 0
 

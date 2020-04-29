@@ -121,6 +121,7 @@ class TestRemoteDefault(TestDvc):
 
 
 def test_show_default(dvc, capsys):
+    assert main(["remote", "add", "foo", "s3://bucket/name"]) == 0
     assert main(["remote", "default", "foo"]) == 0
     assert main(["remote", "default"]) == 0
     out, _ = capsys.readouterr()
@@ -270,3 +271,12 @@ def test_remote_modify_validation(dvc):
     )
     config = configobj.ConfigObj(dvc.config.files["repo"])
     assert unsupported_config not in config['remote "{}"'.format(remote_name)]
+
+
+def test_remote_default_modify(dvc):
+    remote_name = "my_remote"
+    wrong_remote_name = "anything"
+    assert main(["remote", "add", remote_name, "s3://bucket/name"]) == 0
+
+    assert main(["remote", "default", remote_name]) == 0
+    assert main(["remote", "default", wrong_remote_name]) == 251

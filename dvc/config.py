@@ -359,6 +359,14 @@ class Config(dict):
     @staticmethod
     def validate(data):
         try:
+            if (
+                "remote" in data["core"]
+                and data["core"]["remote"] not in data["remote"]
+            ):
+                print(data)
+                print(data["core"]["remote"])
+                print(data["remote"])
+                raise ConfigError("")
             return COMPILED_SCHEMA(data)
         except Invalid as exc:
             raise ConfigError(str(exc)) from None
