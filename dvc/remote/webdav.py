@@ -50,8 +50,13 @@ class RemoteWEBDAV(RemoteHTTP):
                     continue
                 raise HTTPError(response.status_code, response.reason)
 
+    def remove(self, path_info):
+        response = self._request("DELETE", path_info.url)
+        if response.status_code not in (200, 201, 204):
+            raise HTTPError(response.status_code, response.reason)
+
     def gc(self):
-        raise NotImplementedError
+        return super(RemoteHTTP, self).gc()
 
     def list_cache_paths(self, prefix=None, progress_callback=None):
         raise NotImplementedError
