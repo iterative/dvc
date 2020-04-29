@@ -1,6 +1,8 @@
 import pytest
 import os
 
+import yaml
+
 from dvc.stage.exceptions import InvalidStageName, DuplicateStageName
 
 
@@ -169,3 +171,62 @@ def test_run_already_exists(tmp_dir, dvc, run_copy):
     run_copy("foo", "bar", name="copy")
     with pytest.raises(DuplicateStageName):
         run_copy("bar", "foobar", name="copy")
+
+
+supported_params = {
+    "name": "Answer",
+    "answer": 42,
+    "floats": 42.0,
+    "lists": [42, 42.0, "42"],
+    "nested": {"nested1": {"nested2": "42", "nested2-2": 41.99999}},
+}
+
+
+def test_run_params_default(tmp_dir, dvc):
+    from dvc.dependency import ParamsDependency
+
+    with (tmp_dir / "params.yaml").open("w+") as f:
+        yaml.dump(supported_params, f)
+
+    stage = dvc.run(
+        name="read_params",
+        params=["nested.nested1.nested2"],
+        cmd="cat params.yaml",
+    )
+    isinstance(stage.deps[0], ParamsDependency)
+    assert stage.deps[0].params == ["nested.nested1.nested2"]
+
+    lockfile = stage.dvcfile._lockfile
+    assert lockfile.load()["read_params"]["params"] == {
+        "params.yaml": {"nested.nested1.nested2": "42"}
+    }
+
+    data, _ = stage.dvcfile._load()
+    assert data["stages"]["read_params"]["params"] == [
+        "nested.nested1.nested2"
+    ]
+
+
+def test_run_params_custom_file(tmp_dir, dvc):
+    from dvc.dependency import ParamsDependency
+
+    with (tmp_dir / "params2.yaml").open("w+") as f:
+        yaml.dump(supported_params, f)
+
+    stage = dvc.run(
+        name="read_params",
+        params=["params2.yaml:lists"],
+        cmd="cat params2.yaml",
+    )
+
+    isinstance(stage.deps[0], ParamsDependency)
+    assert stage.deps[0].params == ["lists"]
+    lockfile = stage.dvcfile._lockfile
+    assert lockfile.load()["read_params"]["params"] == {
+        "params2.yaml": {"lists": [42, 42.0, "42"]}
+    }
+
+    data, _ = stage.dvcfile._load()
+    assert data["stages"]["read_params"]["params"] == [
+        {"params2.yaml": ["lists"]}
+    ]

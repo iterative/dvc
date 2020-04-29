@@ -21,6 +21,7 @@ DATA_SCHEMA = {**CHECKSUMS_SCHEMA, Required("path"): str}
 LOCK_FILE_STAGE_SCHEMA = {
     Required(StageParams.PARAM_CMD): str,
     StageParams.PARAM_DEPS: [DATA_SCHEMA],
+    StageParams.PARAM_PARAMS: {str: {str: object}},
     StageParams.PARAM_OUTS: [DATA_SCHEMA],
 }
 LOCKFILE_SCHEMA = {str: LOCK_FILE_STAGE_SCHEMA}
@@ -30,6 +31,7 @@ SINGLE_PIPELINE_STAGE_SCHEMA = {
         StageParams.PARAM_CMD: str,
         Optional(StageParams.PARAM_WDIR): str,
         Optional(StageParams.PARAM_DEPS): [str],
+        Optional(StageParams.PARAM_PARAMS): [Any(str, {str: [str]})],
         Optional(StageParams.PARAM_LOCKED): bool,
         Optional(StageParams.PARAM_META): object,
         Optional(StageParams.PARAM_ALWAYS_CHANGED): bool,

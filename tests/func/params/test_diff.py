@@ -102,3 +102,20 @@ def test_diff_with_unchanged(tmp_dir, scm, dvc):
             "xyz": {"old": "val", "new": "val"},
         }
     }
+
+
+def test_pipeline_tracked_params(tmp_dir, scm, dvc, run_copy):
+    from dvc.dvcfile import PIPELINE_FILE
+
+    tmp_dir.gen({"foo": "foo", "params.yaml": "foo: bar\nxyz: val"})
+    run_copy("foo", "bar", name="copy-foo-bar", params=["foo,xyz"])
+
+    scm.add(["params.yaml", PIPELINE_FILE])
+    scm.commit("add stage")
+
+    tmp_dir.scm_gen("params.yaml", "foo: baz\nxyz: val", commit="baz")
+    tmp_dir.scm_gen("params.yaml", "foo: qux\nxyz: val", commit="qux")
+
+    assert dvc.params.diff(a_rev="HEAD~2") == {
+        "params.yaml": {"foo": {"old": "bar", "new": "qux"}}
+    }

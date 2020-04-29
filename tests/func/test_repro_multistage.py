@@ -1,7 +1,10 @@
 import os
+from copy import deepcopy
 from textwrap import dedent
 
 import pytest
+import yaml
+from funcy import lsplit
 
 from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
 from dvc.exceptions import CyclicGraphError
@@ -485,3 +488,60 @@ def test_cyclic_graph_error(tmp_dir, dvc, run_copy):
     dump_stage_file(PIPELINE_FILE, data)
     with pytest.raises(CyclicGraphError):
         dvc.reproduce(":copy-baz-foo")
+
+
+def test_repro_multiple_params(tmp_dir, dvc):
+    from tests.func.test_run_multistage import supported_params
+
+    from dvc.serialize import get_params_deps
+
+    with (tmp_dir / "params2.yaml").open("w+") as f:
+        yaml.dump(supported_params, f)
+
+    with (tmp_dir / "params.yaml").open("w+") as f:
+        yaml.dump(supported_params, f)
+
+    (tmp_dir / "foo").write_text("foo")
+    stage = dvc.run(
+        name="read_params",
+        deps=["foo"],
+        outs=["bar"],
+        params=[
+            "params2.yaml:lists,floats,name",
+            "answer,floats,nested.nested1",
+        ],
+        cmd="cat params2.yaml params.yaml > bar",
+    )
+
+    params, deps = get_params_deps(stage)
+    assert len(params) == 2
+    assert len(deps) == 1
+    assert len(stage.outs) == 1
+
+    lockfile = stage.dvcfile._lockfile
+    assert lockfile.load()["read_params"]["params"] == {
+        "params2.yaml": {
+            "lists": [42, 42.0, "42"],
+            "floats": 42.0,
+            "name": "Answer",
+        },
+        "params.yaml": {
+            "answer": 42,
+            "floats": 42.0,
+            "nested.nested1": {"nested2": "42", "nested2-2": 41.99999},
+        },
+    }
+    data, _ = stage.dvcfile._load()
+    params = data["stages"]["read_params"]["params"]
+
+    custom, defaults = lsplit(lambda v: isinstance(v, dict), params)
+    assert set(custom[0]["params2.yaml"]) == {"name", "lists", "floats"}
+    assert set(defaults) == {"answer", "floats", "nested.nested1"}
+
+    assert not dvc.reproduce(stage.addressing)
+    with (tmp_dir / "params.yaml").open("w+") as f:
+        params = deepcopy(supported_params)
+        params["answer"] = 43
+        yaml.dump(params, f)
+
+    assert dvc.reproduce(stage.addressing) == [stage]
