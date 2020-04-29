@@ -179,25 +179,28 @@ class GDriveRemote(BaseRemote):
                     )
                 )
 
-    # Helper to determine where will it read credentials from.
-    # Mostly useful for tests, exception messages, etc
-    # Returns either env variable name if it's set or actual path to the
-    # credentials file
     @cached_property
     def credentials_location(self):
+        """
+        Helper to determine where will GDrive remote read credentials from.
+        Useful for tests, exception messages, etc. Returns either env variable
+        name if it's set or actual path to the credentials file.
+        """
         if os.getenv(GDriveRemote.GDRIVE_CREDENTIALS_DATA):
             return GDriveRemote.GDRIVE_CREDENTIALS_DATA
         if os.path.exists(self._gdrive_user_credentials_path):
             return self._gdrive_user_credentials_path
         return None
 
-    # Detects discrepancy in DVC config and cached credentials file.
-    # Usually happens when a second remote is added and it is using
-    # the same credentials default file. Or when someones decides to change
-    # DVC config client id or secret but forgets to remove the cached
-    # credentials file.
     @staticmethod
     def _validate_credentials(auth, settings):
+        """
+        Detects discrepancy in DVC config and cached credentials file.
+        Usually happens when a second remote is added and it is using
+        the same credentials default file. Or when someones decides to change
+        DVC config client id or secret but forgets to remove the cached
+        credentials file.
+        """
         if not os.getenv(GDriveRemote.GDRIVE_CREDENTIALS_DATA):
             if (
                 settings["client_config"]["client_id"]
