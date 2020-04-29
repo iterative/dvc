@@ -10,7 +10,7 @@ from ..exceptions import OutputDuplicationError
 
 
 def is_valid_name(name: str):
-    return not {"\\", "/", "@", ":"} & set(name)
+    return not {"\\", "/", ":"} & set(name)
 
 
 def _get_file_path(kwargs):

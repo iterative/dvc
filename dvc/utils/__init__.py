@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 LOCAL_CHUNK_SIZE = 2 ** 20  # 1 MB
 LARGE_FILE_SIZE = 2 ** 30  # 1 GB
 LARGE_DIR_SIZE = 100
-TARGET_REGEX = re.compile(r"(?P<path>.*?)(:(?P<name>[^\\/@:]*))??$")
+TARGET_REGEX = re.compile(r"(?P<path>.*?)(:(?P<name>[^\\/:]*))??$")
 
 
 def dos2unix(data):

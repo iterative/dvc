@@ -153,5 +153,5 @@ def test_parse_target(inp, out, default):
 
 def test_hint_on_lockfile():
     with pytest.raises(Exception) as exc:
-        assert parse_target("pipelines.lock:name@v223")
-    assert "pipelines.yaml:name@v223" in str(exc.value)
+        assert parse_target("pipelines.lock:name")
+    assert "pipelines.yaml:name" in str(exc.value)
