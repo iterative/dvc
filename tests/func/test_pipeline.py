@@ -278,20 +278,20 @@ def test_pipeline_list_show_multistage(tmp_dir, dvc, run_copy, caplog):
     with caplog.at_level(logging.INFO, "dvc"):
         command._show("foobar.dvc", False, False, False)
         output = caplog.text.splitlines()
-        assert "pipelines.yaml:copy-foo-bar" in output[0]
+        assert "dvc.yaml:copy-foo-bar" in output[0]
         assert "foobar.dvc" in output[1]
 
     caplog.clear()
     with caplog.at_level(logging.INFO, "dvc"):
-        command._show("pipelines.yaml:copy-foo-bar", False, False, False)
-        assert "pipelines.yaml:copy-foo-bar" in caplog.text
+        command._show("dvc.yaml:copy-foo-bar", False, False, False)
+        assert "dvc.yaml:copy-foo-bar" in caplog.text
         assert "foobar.dvc" not in caplog.text
 
     command = CmdPipelineList([])
     caplog.clear()
     with caplog.at_level(logging.INFO, "dvc"):
         command.run()
-        assert "pipelines.yaml:copy-foo-bar" in caplog.text
+        assert "dvc.yaml:copy-foo-bar" in caplog.text
         assert "foobar.dvc" in caplog.text
         assert "1 pipelines in total"
 
@@ -302,10 +302,10 @@ def test_pipeline_ascii_multistage(tmp_dir, dvc, run_copy):
     run_copy("bar", "foobar")
     command = CmdPipelineShow([])
     nodes, edges, is_tree = command._build_graph("foobar.dvc")
-    assert set(nodes) == {"pipelines.yaml:copy-foo-bar", "foobar.dvc"}
+    assert set(nodes) == {"dvc.yaml:copy-foo-bar", "foobar.dvc"}
     assert set(edges) == {
-        ("foobar.dvc", "pipelines.yaml:copy-foo-bar"),
+        ("foobar.dvc", "dvc.yaml:copy-foo-bar"),
     }
 
-    nodes, edges, is_tree = command._build_graph("pipelines.yaml:copy-foo-bar")
-    assert set(nodes) == {"pipelines.yaml:copy-foo-bar"}
+    nodes, edges, is_tree = command._build_graph("dvc.yaml:copy-foo-bar")
+    assert set(nodes) == {"dvc.yaml:copy-foo-bar"}

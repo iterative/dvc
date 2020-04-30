@@ -200,7 +200,7 @@ def test_stage_addressing(tmp_dir, dvc, run_copy):
     assert stage1.addressing == "bar.dvc"
 
     stage2 = run_copy("bar", "baz", name="copy-bar-baz")
-    assert stage2.addressing == "pipelines.yaml:copy-bar-baz"
+    assert stage2.addressing == "dvc.yaml:copy-bar-baz"
 
     folder = tmp_dir / "dir"
     folder.mkdir()

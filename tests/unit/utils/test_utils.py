@@ -138,11 +138,11 @@ def test_resolve_output(inp, out, is_dir, expected, mocker):
 @pytest.mark.parametrize(
     "inp,out, default",
     [
-        ["pipelines.yaml", ("pipelines.yaml", None), None],
-        ["pipelines.yaml:name", ("pipelines.yaml", "name"), None],
-        [":name", ("pipelines.yaml", "name"), None],
+        ["dvc.yaml", ("dvc.yaml", None), None],
+        ["dvc.yaml:name", ("dvc.yaml", "name"), None],
+        [":name", ("dvc.yaml", "name"), None],
         ["stage.dvc", ("stage.dvc", None), None],
-        ["pipelines.yaml:name", ("pipelines.yaml", "name"), None],
+        ["dvc.yaml:name", ("dvc.yaml", "name"), None],
         ["../models/stage.dvc", ("../models/stage.dvc", None), "def"],
         [":name", ("default", "name"), "default"],
         [":name", ("default", "name"), "default"],
@@ -154,8 +154,8 @@ def test_parse_target(inp, out, default):
 
 def test_hint_on_lockfile():
     with pytest.raises(Exception) as exc:
-        assert parse_target("pipelines.lock:name")
-    assert "pipelines.yaml:name" in str(exc.value)
+        assert parse_target("dvc.lock:name")
+    assert "dvc.yaml:name" in str(exc.value)
 
 
 @pytest.mark.parametrize(

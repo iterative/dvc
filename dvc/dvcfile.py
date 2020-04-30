@@ -27,8 +27,8 @@ logger = logging.getLogger(__name__)
 
 DVC_FILE = "Dvcfile"
 DVC_FILE_SUFFIX = ".dvc"
-PIPELINE_FILE = "pipelines.yaml"
-PIPELINE_LOCK = "pipelines.lock"
+PIPELINE_FILE = "dvc.yaml"
+PIPELINE_LOCK = "dvc.lock"
 
 
 class LockfileCorruptedError(DvcException):
