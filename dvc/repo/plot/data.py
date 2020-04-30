@@ -21,7 +21,7 @@ class PlotMetricTypeError(DvcException):
     def __init__(self, file):
         super().__init__(
             "'{}' - file type error\n"
-            "Only json, yaml, csv and tsv types are supported.".format(file)
+            "Only JSON, YAML, CSV and TSV formats are supported.".format(file)
         )
 
 
@@ -37,7 +37,7 @@ class JsonParsingError(DvcException):
     def __init__(self, file):
         super().__init__(
             "Failed to infer data structure from '{}'. Did you forget "
-            "to specify jsonpath?".format(file)
+            "to specify JSONpath?".format(file)
         )
 
 
@@ -46,7 +46,7 @@ class NoMetricOnRevisionError(DvcException):
         self.path = path
         self.revision = revision
         super().__init__(
-            "Could not find '{}' on revision " "'{}'".format(path, revision)
+            "Could not find '{}' on revision '{}'".format(path, revision)
         )
 
 

@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 PAGE_HTML = """<html>
 <head>
-    <title>DVC plot</title>
+    <title>DVC Plot</title>
     <script src="https://cdn.jsdelivr.net/npm/vega@5.10.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-lite@4.8.1"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.5.1"></script>
@@ -32,8 +32,8 @@ DIV_HTML = """<div id = "{id}"></div>
 class TooManyDataSourcesError(DvcException):
     def __init__(self, datafile, template_datafiles):
         super().__init__(
-            "Unable to reason which of possible data sources: '{}' "
-            "should be replaced with '{}'".format(
+            "Unable to infer which of possible data sources: '{}' "
+            "should be replaced with '{}'.".format(
                 ", ".join(template_datafiles), datafile
             )
         )

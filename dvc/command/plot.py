@@ -93,8 +93,8 @@ class CmdPlotDiff(CmdPLot):
 
 def add_parser(subparsers, parent_parser):
     PLOT_HELP = (
-        "Generating plots for metrics stored in structured files "
-        "(json, csv, tsv)."
+        "Generating plots for continuous metrics stored in structured files "
+        "(JSON, CSV, TSV)."
     )
 
     plot_parser = subparsers.add_parser(
@@ -111,7 +111,7 @@ def add_parser(subparsers, parent_parser):
 
     fix_subparsers(plot_subparsers)
 
-    SHOW_HELP = "Plot data from a file."
+    SHOW_HELP = "Generate a plot image file from a continuous metrics file."
     plot_show_parser = plot_subparsers.add_parser(
         "show",
         parents=[parent_parser],
@@ -139,7 +139,7 @@ def add_parser(subparsers, parent_parser):
         "-f",
         "--filter",
         default=None,
-        help="Choose which fileds or jsonpath to put into plot.",
+        help="Choose which field(s) or JSONPath to include in the plot.",
     )
     plot_show_parser.add_argument(
         "-x", default=None, help="Field name for x axis."
@@ -152,19 +152,19 @@ def add_parser(subparsers, parent_parser):
         "--stdout",
         action="store_true",
         default=False,
-        help="Print result to stdout.",
+        help="Print plot specification to stdout.",
     )
     plot_show_parser.add_argument(
         "--no-csv-header",
         action="store_true",
         default=False,
-        help="Provided CSV ot TSV datafile does not have a header.",
+        help="Required when CSV or TSV datafile does not have a header.",
     )
     plot_show_parser.add_argument(
         "--no-html",
         action="store_true",
         default=False,
-        help="Do not wrap vega plot json with HTML.",
+        help="Do not wrap Vega plot JSON with HTML.",
     )
     plot_show_parser.set_defaults(func=CmdPlotShow)
 
@@ -184,7 +184,7 @@ def add_parser(subparsers, parent_parser):
         "--template",
         nargs="?",
         default=None,
-        help=("File to be injected with data."),
+        help="File to be injected with data.",
     )
     plot_diff_parser.add_argument(
         "-d",
@@ -206,7 +206,7 @@ def add_parser(subparsers, parent_parser):
         "-f",
         "--filter",
         default=None,
-        help="Choose which filed(s) or jsonpath to put into plot.",
+        help="Choose which field(s) or JSONPath to include in the plot.",
     )
     plot_diff_parser.add_argument(
         "-x", default=None, help="Field name for x axis."
@@ -219,7 +219,7 @@ def add_parser(subparsers, parent_parser):
         "--stdout",
         action="store_true",
         default=False,
-        help="Print result to stdout.",
+        help="Print plot specification to stdout.",
     )
     plot_diff_parser.add_argument(
         "--no-csv-header",
@@ -231,6 +231,6 @@ def add_parser(subparsers, parent_parser):
         "--no-html",
         action="store_true",
         default=False,
-        help="Do not wrap vega plot json with HTML.",
+        help="Do not wrap Vega plot JSON with HTML.",
     )
     plot_diff_parser.set_defaults(func=CmdPlotDiff)
