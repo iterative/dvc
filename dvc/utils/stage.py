@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 import yaml
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
@@ -42,4 +44,9 @@ def dump_stage_file(path, data):
     with open(path, "w", encoding="utf-8") as fd:
         yaml = YAML()
         yaml.default_flow_style = False
+        # tell Dumper to represent OrderedDict as
+        # normal dict
+        yaml.Representer.add_representer(
+            OrderedDict, yaml.Representer.represent_dict
+        )
         yaml.dump(data, fd)

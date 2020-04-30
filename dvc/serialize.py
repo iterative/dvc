@@ -1,3 +1,6 @@
+from collections import OrderedDict
+from functools import partial
+from operator import attrgetter
 from typing import TYPE_CHECKING
 
 from funcy import rpartial, lsplit
@@ -15,6 +18,9 @@ PARAM_PARAMS = ParamsDependency.PARAM_PARAMS
 DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
 
 
+sort_by_path = partial(sorted, key=attrgetter("def_path"))
+
+
 def _get_outs(stage: "PipelineStage"):
     outs_bucket = {}
     for o in stage.outs:
@@ -26,7 +32,7 @@ def _get_outs(stage: "PipelineStage"):
             bucket_key += ["no_cache"]
         key = "_".join(bucket_key)
         outs_bucket[key] = outs_bucket.get(key, []) + [o.def_path]
-    return outs_bucket
+    return [(key, outs_bucket[key]) for key in outs_bucket.keys()]
 
 
 def get_params_deps(stage: "PipelineStage"):
@@ -40,24 +46,29 @@ def _serialize_params(params: List[ParamsDependency]):
 
     which is in the shape of:
         ['lr', 'train', {'params2.yaml': ['lr']}]
+
     `key_vals` - which is list of params with values, used in a lockfile
     which is in the shape of:
         {'params.yaml': {'lr': '1', 'train': 2}, {'params2.yaml': {'lr': '1'}}
     """
     keys = []
-    key_vals = {}
+    key_vals = OrderedDict()
 
-    for param_dep in params:
+    for param_dep in sort_by_path(params):
         dump = param_dep.dumpd()
         path, params = dump[PARAM_PATH], dump[PARAM_PARAMS]
         k = list(params.keys())
         if not k:
             continue
-        # if it's not a default file, change the shape
-        # to: {path: k}
-        keys.extend(k if path == DEFAULT_PARAMS_FILE else [{path: k}])
-        key_vals.update({path: params})
-
+        key_vals[path] = OrderedDict([(key, params[key]) for key in sorted(k)])
+        # params from default file is always kept at the start of the `params:`
+        if path == DEFAULT_PARAMS_FILE:
+            keys = k + keys
+            key_vals.move_to_end(path, last=False)
+        else:
+            # if it's not a default file, change the shape
+            # to: {path: k}
+            keys.append({path: k})
     return keys, key_vals
 
 
@@ -65,35 +76,34 @@ def to_pipeline_file(stage: "PipelineStage"):
     params, deps = get_params_deps(stage)
     serialized_params, _ = _serialize_params(params)
 
+    res = [
+        (stage.PARAM_CMD, stage.cmd),
+        (stage.PARAM_WDIR, stage.resolve_wdir()),
+        (stage.PARAM_DEPS, [d.def_path for d in deps]),
+        (stage.PARAM_PARAMS, serialized_params),
+        *_get_outs(stage),
+        (stage.PARAM_LOCKED, stage.locked),
+        (stage.PARAM_ALWAYS_CHANGED, stage.always_changed),
+    ]
     return {
-        stage.name: {
-            key: value
-            for key, value in {
-                stage.PARAM_CMD: stage.cmd,
-                stage.PARAM_WDIR: stage.resolve_wdir(),
-                stage.PARAM_DEPS: [d.def_path for d in deps],
-                stage.PARAM_PARAMS: serialized_params,
-                **_get_outs(stage),
-                stage.PARAM_LOCKED: stage.locked,
-                stage.PARAM_ALWAYS_CHANGED: stage.always_changed,
-            }.items()
-            if value
-        }
+        stage.name: OrderedDict([(key, value) for key, value in res if value])
     }
 
 
-def to_lockfile(stage: "PipelineStage") -> dict:
+def to_lockfile(stage: "PipelineStage"):
     assert stage.cmd
     assert stage.name
 
-    res = {"cmd": stage.cmd}
+    res = OrderedDict([("cmd", stage.cmd)])
     params, deps = get_params_deps(stage)
-    deps = [
-        {"path": dep.def_path, dep.checksum_type: dep.checksum} for dep in deps
-    ]
-    outs = [
-        {"path": out.def_path, out.checksum_type: out.checksum}
-        for out in stage.outs
+    deps, outs = [
+        [
+            OrderedDict(
+                [("path", item.def_path), (item.checksum_type, item.checksum)]
+            )
+            for item in sort_by_path(items)
+        ]
+        for items in [deps, stage.outs]
     ]
     if deps:
         res["deps"] = deps
