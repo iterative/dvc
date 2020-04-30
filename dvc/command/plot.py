@@ -55,8 +55,8 @@ class CmdPLot(CmdBase):
                 embed=not self.args.no_html,
                 csv_header=not self.args.no_csv_header,
                 title=self.args.title,
-                x_title=self.args.x_title,
-                y_title=self.args.y_title,
+                x_title=self.args.xlab,
+                y_title=self.args.ylab,
             )
 
             if self.args.stdout:
@@ -170,12 +170,8 @@ def add_parser(subparsers, parent_parser):
         help="Do not wrap Vega plot JSON with HTML.",
     )
     plot_show_parser.add_argument("--title", default=None, help="Plot title.")
-    plot_show_parser.add_argument(
-        "--x-title", default=None, help="X axis " "title."
-    )
-    plot_show_parser.add_argument(
-        "--y-title", default=None, help="Y axis " "title."
-    )
+    plot_show_parser.add_argument("--xlab", default=None, help="X axis title.")
+    plot_show_parser.add_argument("--ylab", default=None, help="Y axis title.")
     plot_show_parser.set_defaults(func=CmdPlotShow)
 
     PLOT_DIFF_HELP = (
@@ -244,10 +240,6 @@ def add_parser(subparsers, parent_parser):
         help="Do not wrap Vega plot JSON with HTML.",
     )
     plot_diff_parser.add_argument("--title", default=None, help="Plot title.")
-    plot_diff_parser.add_argument(
-        "--x-title", default=None, help="X axis " "title."
-    )
-    plot_diff_parser.add_argument(
-        "--y-title", default=None, help="Y axis " "title."
-    )
+    plot_diff_parser.add_argument("--xlab", default=None, help="X axis title.")
+    plot_diff_parser.add_argument("--ylab", default=None, help="Y axis title.")
     plot_diff_parser.set_defaults(func=CmdPlotDiff)
