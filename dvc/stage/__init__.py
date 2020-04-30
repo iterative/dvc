@@ -21,7 +21,6 @@ from .exceptions import (
     StagePathNotDirectoryError,
     StageCommitError,
     StageUpdateError,
-    MissingDep,
     MissingDataSource,
 )
 from . import params
@@ -374,8 +373,7 @@ class Stage(params.StageParams):
 
         # NOTE: need to save checksums for deps in order to compare them
         # with what is written in the old stage.
-        for dep in self.deps:
-            dep.save()
+        self._save_deps()
 
         old_d = old.dumpd()
         new_d = self.dumpd()
@@ -482,9 +480,12 @@ class Stage(params.StageParams):
         logger.debug("Computed {} md5: '{}'".format(self, m))
         return m
 
-    def save(self):
+    def _save_deps(self):
         for dep in self.deps:
             dep.save()
+
+    def save(self):
+        self._save_deps()
 
         for out in self.outs:
             out.save()
@@ -526,12 +527,6 @@ class Stage(params.StageParams):
         for out in self.outs:
             out.commit()
 
-    def _check_missing_deps(self):
-        missing = [dep for dep in self.deps if not dep.exists]
-
-        if any(missing):
-            raise MissingDep(missing)
-
     @staticmethod
     def _warn_if_fish(executable):  # pragma: no cover
         if (
@@ -570,8 +565,6 @@ class Stage(params.StageParams):
 
     @unlocked_repo
     def _run(self):
-        self._check_missing_deps()
-
         kwargs = {"cwd": self.wdir, "env": fix_env(None), "close_fds": True}
 
         if os.name == "nt":
@@ -667,6 +660,7 @@ class Stage(params.StageParams):
                     logger.info("Stage is cached, skipping.")
                     self.checkout()
                 else:
+                    self._save_deps()
                     logger.info("Running command:\n\t{}".format(self.cmd))
                     self._run()
 

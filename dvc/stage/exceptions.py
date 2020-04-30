@@ -73,15 +73,6 @@ class StageUpdateError(DvcException):
         )
 
 
-class MissingDep(DvcException):
-    def __init__(self, deps):
-        assert len(deps) > 0
-
-        dep = "dependencies" if len(deps) > 1 else "dependency"
-        msg = "missing '{}': {}".format(dep, ", ".join(map(str, deps)))
-        super().__init__(msg)
-
-
 class MissingDataSource(DvcException):
     def __init__(self, missing_files):
         assert len(missing_files) > 0
