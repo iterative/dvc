@@ -15,7 +15,7 @@ def test_metrics_diff(mocker):
             "template",
             "-d",
             "datafile",
-            "--field",
+            "--filter",
             "column1,column2",
             "--no-html",
             "--stdout",

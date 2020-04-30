@@ -188,7 +188,7 @@ def test_plot_confusion(tmp_dir, dvc):
 
     plot_string = dvc.plot(
         datafile="metric.json",
-        template="confusion_matrix",
+        template="confusion",
         x_field="predicted",
         y_field="actual",
     )

@@ -65,6 +65,11 @@ def fill_template(
     path=None,
     csv_header=True,
 ):
+    if x_field and fields:
+        fields.add(x_field)
+
+    if y_field and fields:
+        fields.add(y_field)
 
     template_datafiles, x_anchor, y_anchor = _parse_template(
         template_path, datafile
@@ -160,6 +165,6 @@ def _parse_template(template_path, priority_datafile):
 
     return (
         template_datafiles,
-        Template.X_AXIS_STRING in tempalte_content,
-        Template.Y_AXIS_STRING in tempalte_content,
+        Template.X_AXIS_ANCHOR in tempalte_content,
+        Template.Y_AXIS_ANCHOR in tempalte_content,
     )

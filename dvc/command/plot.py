@@ -21,16 +21,11 @@ class CmdPLot(CmdBase):
         base = self._result_basename()
 
         result_file = base + extension
-        if os.path.exists(result_file):
-            raise DvcException(
-                "Cannot create '{}': file already exists, use -r to redefine "
-                "it".format(result_file)
-            )
         return result_file
 
     def _result_basename(self):
         if self.args.datafile:
-            return os.path.splitext(self.args.datafile)[0]
+            return self.args.datafile
         return "plot"
 
     def _result_extension(self):
@@ -43,11 +38,11 @@ class CmdPLot(CmdBase):
     def run(self):
         fields = None
         jsonpath = None
-        if self.args.fields:
-            if self.args.fields.startswith("$"):
-                jsonpath = self.args.fields
+        if self.args.filter:
+            if self.args.filter.startswith("$"):
+                jsonpath = self.args.filter
             else:
-                fields = set(self.args.fields.split(","))
+                fields = set(self.args.filter.split(","))
         try:
             plot_string = self.repo.plot(
                 datafile=self.args.datafile,
@@ -142,15 +137,15 @@ def add_parser(subparsers, parent_parser):
     )
     plot_show_parser.add_argument(
         "-f",
-        "--fields",
+        "--filter",
         default=None,
         help="Choose which fileds or jsonpath to put into plot.",
     )
     plot_show_parser.add_argument(
-        "-x", default=None, help="Field that will be on x axis of plot."
+        "-x", default=None, help="Field name for x axis."
     )
     plot_show_parser.add_argument(
-        "-y", default=None, help="Field that will be on y axis of plot."
+        "-y", default=None, help="Field name for y axis."
     )
     plot_show_parser.add_argument(
         "-o",
@@ -209,15 +204,15 @@ def add_parser(subparsers, parent_parser):
     )
     plot_diff_parser.add_argument(
         "-f",
-        "--fields",
+        "--filter",
         default=None,
         help="Choose which filed(s) or jsonpath to put into plot.",
     )
     plot_diff_parser.add_argument(
-        "-x", default=None, help="Field that will be on x axis of plot."
+        "-x", default=None, help="Field name for x axis."
     )
     plot_diff_parser.add_argument(
-        "-y", default=None, help="Field that will be on y axis of plot."
+        "-y", default=None, help="Field name for y axis."
     )
     plot_diff_parser.add_argument(
         "-o",

@@ -28,9 +28,9 @@ class Template:
     INDENT = 4
     SEPARATORS = (",", ": ")
     EXTENSION = ".json"
-    METRIC_DATA_STRING = "<DVC_METRIC_DATA>"
-    X_AXIS_STRING = "<DVC_METRIC_X>"
-    Y_AXIS_STRING = "<DVC_METRIC_Y>"
+    METRIC_DATA_ANCHOR = "<DVC_METRIC_DATA>"
+    X_AXIS_ANCHOR = "<DVC_METRIC_X>"
+    Y_AXIS_ANCHOR = "<DVC_METRIC_Y>"
 
     def __init__(self, templates_dir):
         self.plot_templates_dir = templates_dir
@@ -115,13 +115,13 @@ class Template:
                 ),
             )
 
-        if Template.X_AXIS_STRING in result_content and x_field:
+        if Template.X_AXIS_ANCHOR in result_content and x_field:
             result_content = result_content.replace(
-                Template.X_AXIS_STRING, x_field
+                Template.X_AXIS_ANCHOR, x_field
             )
-        if Template.Y_AXIS_STRING in result_content and y_field:
+        if Template.Y_AXIS_ANCHOR in result_content and y_field:
             result_content = result_content.replace(
-                Template.Y_AXIS_STRING, y_field
+                Template.Y_AXIS_ANCHOR, y_field
             )
 
         return result_content
@@ -132,30 +132,30 @@ class DefaultLinearTemplate(Template):
 
     DEFAULT_CONTENT = {
         "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
-        "data": {"values": Template.METRIC_DATA_STRING},
+        "data": {"values": Template.METRIC_DATA_ANCHOR},
         "mark": {"type": "line"},
         "encoding": {
-            "x": {"field": Template.X_AXIS_STRING, "type": "quantitative"},
-            "y": {"field": Template.Y_AXIS_STRING, "type": "quantitative"},
+            "x": {"field": Template.X_AXIS_ANCHOR, "type": "quantitative"},
+            "y": {"field": Template.Y_AXIS_ANCHOR, "type": "quantitative"},
             "color": {"field": "rev", "type": "nominal"},
         },
     }
 
 
 class DefaultConfusionTemplate(Template):
-    TEMPLATE_NAME = "confusion_matrix"
+    TEMPLATE_NAME = "confusion"
     DEFAULT_CONTENT = {
         "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
-        "data": {"values": Template.METRIC_DATA_STRING},
+        "data": {"values": Template.METRIC_DATA_ANCHOR},
         "mark": "rect",
         "encoding": {
             "x": {
-                "field": Template.X_AXIS_STRING,
+                "field": Template.X_AXIS_ANCHOR,
                 "type": "nominal",
                 "sort": "ascending",
             },
             "y": {
-                "field": Template.Y_AXIS_STRING,
+                "field": Template.Y_AXIS_ANCHOR,
                 "type": "nominal",
                 "sort": "ascending",
             },
@@ -169,11 +169,11 @@ class DefaultScatterTemplate(Template):
     TEMPLATE_NAME = "scatter"
     DEFAULT_CONTENT = {
         "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
-        "data": {"values": Template.METRIC_DATA_STRING},
+        "data": {"values": Template.METRIC_DATA_ANCHOR},
         "mark": "point",
         "encoding": {
-            "x": {"field": Template.X_AXIS_STRING, "type": "quantitative"},
-            "y": {"field": Template.Y_AXIS_STRING, "type": "quantitative"},
+            "x": {"field": Template.X_AXIS_ANCHOR, "type": "quantitative"},
+            "y": {"field": Template.Y_AXIS_ANCHOR, "type": "quantitative"},
             "color": {"field": "rev", "type": "nominal"},
         },
     }
