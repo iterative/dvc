@@ -89,11 +89,10 @@ def to_lockfile(stage: "PipelineStage") -> dict:
     res = {"cmd": stage.cmd}
     params, deps = get_params_deps(stage)
     deps = [
-        {"path": dep.def_path, dep.checksum_type: dep.get_checksum()}
-        for dep in deps
+        {"path": dep.def_path, dep.checksum_type: dep.checksum} for dep in deps
     ]
     outs = [
-        {"path": out.def_path, out.checksum_type: out.get_checksum()}
+        {"path": out.def_path, out.checksum_type: out.checksum}
         for out in stage.outs
     ]
     if deps:
