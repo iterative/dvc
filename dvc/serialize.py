@@ -99,10 +99,7 @@ def to_lockfile(stage: "PipelineStage"):
     deps, outs = [
         [
             OrderedDict(
-                [
-                    ("path", item.def_path),
-                    (item.checksum_type, item.checksum),
-                ]
+                [("path", item.def_path), (item.checksum_type, item.checksum),]
             )
             for item in sort_by_path(items)
         ]
