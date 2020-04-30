@@ -31,6 +31,7 @@ class Template:
     METRIC_DATA_ANCHOR = "<DVC_METRIC_DATA>"
     X_AXIS_ANCHOR = "<DVC_METRIC_X>"
     Y_AXIS_ANCHOR = "<DVC_METRIC_Y>"
+    TITLE_ANCHOR = "<DVC_METRIC_TITLE>"
 
     def __init__(self, templates_dir):
         self.plot_templates_dir = templates_dir
@@ -105,6 +106,11 @@ class Template:
             else:
                 key = file
 
+            if Template.TITLE_ANCHOR in result_content:
+                result_content = result_content.replace(
+                    Template.TITLE_ANCHOR, key
+                )
+
             result_content = result_content.replace(
                 placeholder,
                 json.dumps(
@@ -133,6 +139,7 @@ class DefaultLinearTemplate(Template):
     DEFAULT_CONTENT = {
         "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
         "data": {"values": Template.METRIC_DATA_ANCHOR},
+        "title": Template.TITLE_ANCHOR,
         "mark": {"type": "line"},
         "encoding": {
             "x": {"field": Template.X_AXIS_ANCHOR, "type": "quantitative"},
@@ -147,6 +154,7 @@ class DefaultConfusionTemplate(Template):
     DEFAULT_CONTENT = {
         "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
         "data": {"values": Template.METRIC_DATA_ANCHOR},
+        "title": Template.TITLE_ANCHOR,
         "mark": "rect",
         "encoding": {
             "x": {
@@ -170,6 +178,7 @@ class DefaultScatterTemplate(Template):
     DEFAULT_CONTENT = {
         "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
         "data": {"values": Template.METRIC_DATA_ANCHOR},
+        "title": Template.TITLE_ANCHOR,
         "mark": "point",
         "encoding": {
             "x": {"field": Template.X_AXIS_ANCHOR, "type": "quantitative"},

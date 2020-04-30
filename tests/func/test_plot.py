@@ -200,6 +200,7 @@ def test_plot_confusion(tmp_dir, dvc):
     ]
     assert plot_content["encoding"]["x"]["field"] == "predicted"
     assert plot_content["encoding"]["y"]["field"] == "actual"
+    assert plot_content["title"] == "metric.json"
 
 
 def test_plot_multiple_revs_default(tmp_dir, scm, dvc):
