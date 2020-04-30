@@ -74,12 +74,12 @@ def test_status_on_pipeline_stages(tmp_dir, dvc, run_copy):
 
     stage.cmd = "  ".join(stage.cmd.split())
     stage.dvcfile._dump_pipeline_file(stage)
-    assert dvc.status() == {"pipelines.yaml:copy-foo-bar": ["changed command"]}
+    assert dvc.status() == {"dvc.yaml:copy-foo-bar": ["changed command"]}
 
     # delete outputs
     (tmp_dir / "bar").unlink()
     assert dvc.status() == {
-        "pipelines.yaml:copy-foo-bar": [
+        "dvc.yaml:copy-foo-bar": [
             {"changed outs": {"bar": "deleted"}},
             "changed command",
         ]
@@ -87,7 +87,7 @@ def test_status_on_pipeline_stages(tmp_dir, dvc, run_copy):
     (tmp_dir / "foo").unlink()
     assert dvc.status() == {
         "foo.dvc": [{"changed outs": {"foo": "deleted"}}],
-        "pipelines.yaml:copy-foo-bar": [
+        "dvc.yaml:copy-foo-bar": [
             {"changed deps": {"foo": "deleted"}},
             {"changed outs": {"bar": "deleted"}},
             "changed command",

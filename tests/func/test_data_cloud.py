@@ -828,22 +828,22 @@ def test_pipeline_file_target_ops(tmp_dir, dvc, local_remote, run_copy):
     assert len(recurse_list_dir(fspath_py35(local_remote))) == 3
 
     clean(outs, dvc)
-    assert set(dvc.pull(["pipelines.yaml"])["added"]) == {"lorem2", "baz"}
+    assert set(dvc.pull(["dvc.yaml"])["added"]) == {"lorem2", "baz"}
 
     clean(outs, dvc)
     assert set(dvc.pull()["added"]) == set(outs)
 
     # clean everything in remote and push
     clean(local_remote.iterdir())
-    dvc.push(["pipelines.yaml:copy-ipsum-baz"])
+    dvc.push(["dvc.yaml:copy-ipsum-baz"])
     assert len(recurse_list_dir(fspath_py35(local_remote))) == 1
 
     clean(local_remote.iterdir())
-    dvc.push(["pipelines.yaml"])
+    dvc.push(["dvc.yaml"])
     assert len(recurse_list_dir(fspath_py35(local_remote))) == 2
 
     with pytest.raises(StageNotFound):
-        dvc.push(["pipelines.yaml:StageThatDoesNotExist"])
+        dvc.push(["dvc.yaml:StageThatDoesNotExist"])
 
     with pytest.raises(StageNotFound):
-        dvc.pull(["pipelines.yaml:StageThatDoesNotExist"])
+        dvc.pull(["dvc.yaml:StageThatDoesNotExist"])

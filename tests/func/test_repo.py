@@ -86,13 +86,13 @@ def test_collect(tmp_dir, scm, dvc, run_copy):
         "foobar",
         "foo",
     }
-    assert collect_outs("pipelines.yaml:copy-foo-foobar", recursive=True) == {
+    assert collect_outs("dvc.yaml:copy-foo-foobar", recursive=True) == {
         "foobar"
     }
 
     run_copy("foobar", "baz", name="copy-foobar-baz")
-    assert collect_outs("pipelines.yaml") == {"foobar", "baz"}
-    assert collect_outs("pipelines.yaml", with_deps=True) == {
+    assert collect_outs("dvc.yaml") == {"foobar", "baz"}
+    assert collect_outs("dvc.yaml", with_deps=True) == {
         "foobar",
         "baz",
         "foo",
