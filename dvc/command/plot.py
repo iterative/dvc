@@ -54,6 +54,9 @@ class CmdPLot(CmdBase):
                 path=jsonpath,
                 embed=not self.args.no_html,
                 csv_header=not self.args.no_csv_header,
+                title=self.args.title,
+                x_title=self.args.x_title,
+                y_title=self.args.y_title,
             )
 
             if self.args.stdout:
@@ -133,7 +136,7 @@ def add_parser(subparsers, parent_parser):
         help="Continuous metrics file to visualize.",
     )
     plot_show_parser.add_argument(
-        "-f", "--file", help="Name of the generated file."
+        "-f", "--file", default=None, help="Name of the generated file."
     )
     plot_show_parser.add_argument(
         "-s",
@@ -166,6 +169,13 @@ def add_parser(subparsers, parent_parser):
         default=False,
         help="Do not wrap Vega plot JSON with HTML.",
     )
+    plot_show_parser.add_argument("--title", default=None, help="Plot title.")
+    plot_show_parser.add_argument(
+        "--x-title", default=None, help="X axis " "title."
+    )
+    plot_show_parser.add_argument(
+        "--y-title", default=None, help="Y axis " "title."
+    )
     plot_show_parser.set_defaults(func=CmdPlotShow)
 
     PLOT_DIFF_HELP = (
@@ -194,7 +204,7 @@ def add_parser(subparsers, parent_parser):
         help="Continuous metrics file to visualize.",
     )
     plot_diff_parser.add_argument(
-        "-f", "--file", help="Name of the generated file."
+        "-f", "--file", default=None, help="Name of the generated file."
     )
     plot_diff_parser.add_argument(
         "revisions",
@@ -232,5 +242,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Do not wrap Vega plot JSON with HTML.",
+    )
+    plot_diff_parser.add_argument("--title", default=None, help="Plot title.")
+    plot_diff_parser.add_argument(
+        "--x-title", default=None, help="X axis " "title."
+    )
+    plot_diff_parser.add_argument(
+        "--y-title", default=None, help="Y axis " "title."
     )
     plot_diff_parser.set_defaults(func=CmdPlotDiff)

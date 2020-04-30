@@ -23,6 +23,12 @@ def test_metrics_diff(mocker):
             "x_field",
             "-y",
             "y_field",
+            "--title",
+            "my_title",
+            "--x-title",
+            "x_title",
+            "--y-title",
+            "y_title",
             "HEAD",
             "tag1",
             "tag2",
@@ -48,6 +54,9 @@ def test_metrics_diff(mocker):
         x_field="x_field",
         y_field="y_field",
         csv_header=True,
+        title="my_title",
+        x_title="x_title",
+        y_title="y_title",
     )
 
 
@@ -88,6 +97,9 @@ def test_metrics_show(mocker):
         x_field=None,
         y_field=None,
         csv_header=False,
+        title=None,
+        x_title=None,
+        y_title=None,
     )
 
 

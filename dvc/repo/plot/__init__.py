@@ -60,10 +60,11 @@ def fill_template(
     template_path,
     revisions,
     fields=None,
-    x_field=None,
-    y_field=None,
     path=None,
     csv_header=True,
+    x_field=None,
+    y_field=None,
+    **kwargs
 ):
     if x_field and fields:
         fields.add(x_field)
@@ -93,11 +94,7 @@ def fill_template(
             )
 
             if y_anchor and not y_field:
-                all_fields = list(first(rev_data_points).keys())
-                all_fields.remove(PlotData.REVISION_FIELD)
-                if x_field and x_field in all_fields:
-                    all_fields.remove(x_field)
-                y_field = last(all_fields)
+                y_field = _infer_y_field(rev_data_points, x_field)
             tmp_data.extend(rev_data_points)
 
         template_data[datafile] = tmp_data
@@ -106,21 +103,26 @@ def fill_template(
         raise NoDataForTemplateError(template_path)
 
     return Template.fill(
-        template_path, template_data, datafile, x_field, y_field
+        template_path,
+        template_data,
+        priority_datafile=datafile,
+        x_field=x_field,
+        y_field=y_field,
+        **kwargs
     )
 
 
+def _infer_y_field(rev_data_points, x_field):
+    all_fields = list(first(rev_data_points).keys())
+    all_fields.remove(PlotData.REVISION_FIELD)
+    if x_field and x_field in all_fields:
+        all_fields.remove(x_field)
+    y_field = last(all_fields)
+    return y_field
+
+
 def plot(
-    repo,
-    datafile=None,
-    template=None,
-    revisions=None,
-    fields=None,
-    x_field=None,
-    y_field=None,
-    path=None,
-    embed=False,
-    csv_header=True,
+    repo, datafile=None, template=None, revisions=None, embed=False, **kwargs
 ):
     if revisions is None:
         from dvc.repo.plot.data import WORKSPACE_REVISION_NAME
@@ -133,15 +135,7 @@ def plot(
     template_path = _evaluate_templatepath(repo, template)
 
     plot_content = fill_template(
-        repo,
-        datafile,
-        template_path,
-        revisions,
-        fields,
-        x_field,
-        y_field,
-        path,
-        csv_header,
+        repo, datafile, template_path, revisions, **kwargs
     )
 
     if embed:
@@ -155,7 +149,7 @@ def _parse_template(template_path, priority_datafile):
     with open(template_path, "r") as fobj:
         tempalte_content = fobj.read()
 
-    template_datafiles = Template.parse_data_placeholders(tempalte_content)
+    template_datafiles = Template.parse_data_anchors(tempalte_content)
     if priority_datafile:
         if len(template_datafiles) > 1:
             raise TooManyDataSourcesError(
@@ -165,6 +159,6 @@ def _parse_template(template_path, priority_datafile):
 
     return (
         template_datafiles,
-        Template.X_AXIS_ANCHOR in tempalte_content,
-        Template.Y_AXIS_ANCHOR in tempalte_content,
+        Template.X_ANCHOR in tempalte_content,
+        Template.Y_ANCHOR in tempalte_content,
     )

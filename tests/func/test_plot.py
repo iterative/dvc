@@ -55,20 +55,29 @@ def _write_json(tmp_dir, metric, filename):
 
 
 def test_plot_csv_one_column(tmp_dir, scm, dvc):
-    # for single column write with no header, hence `value` in result
+    # no header
     metric = [{"val": 2}, {"val": 3}]
     _write_csv(metric, "metric.csv", header=False)
     _run_with_metric(tmp_dir, metric_filename="metric.csv")
 
-    plot_string = dvc.plot("metric.csv", csv_header=False)
+    plot_string = dvc.plot(
+        "metric.csv",
+        csv_header=False,
+        x_title="x_title",
+        y_title="y_title",
+        title="mytitle",
+    )
 
     plot_content = json.loads(plot_string)
+    assert plot_content["title"] == "mytitle"
     assert plot_content["data"]["values"] == [
         {"0": "2", PlotData.INDEX_FIELD: 0, "rev": "workspace"},
         {"0": "3", PlotData.INDEX_FIELD: 1, "rev": "workspace"},
     ]
     assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
     assert plot_content["encoding"]["y"]["field"] == "0"
+    assert plot_content["encoding"]["x"]["title"] == "x_title"
+    assert plot_content["encoding"]["y"]["title"] == "y_title"
 
 
 def test_plot_csv_multiple_columns(tmp_dir, scm, dvc):
@@ -200,7 +209,6 @@ def test_plot_confusion(tmp_dir, dvc):
     ]
     assert plot_content["encoding"]["x"]["field"] == "predicted"
     assert plot_content["encoding"]["y"]["field"] == "actual"
-    assert plot_content["title"] == "metric.json"
 
 
 def test_plot_multiple_revs_default(tmp_dir, scm, dvc):

@@ -29,9 +29,11 @@ class Template:
     SEPARATORS = (",", ": ")
     EXTENSION = ".json"
     METRIC_DATA_ANCHOR = "<DVC_METRIC_DATA>"
-    X_AXIS_ANCHOR = "<DVC_METRIC_X>"
-    Y_AXIS_ANCHOR = "<DVC_METRIC_Y>"
+    X_ANCHOR = "<DVC_METRIC_X>"
+    Y_ANCHOR = "<DVC_METRIC_Y>"
     TITLE_ANCHOR = "<DVC_METRIC_TITLE>"
+    X_TITLE_ANCHOR = "<DVC_METRIC_X_TITLE>"
+    Y_TITLE_ANCHOR = "<DVC_METRIC_Y_TITLE>"
 
     def __init__(self, templates_dir):
         self.plot_templates_dir = templates_dir
@@ -69,22 +71,22 @@ class Template:
                 raise DvcException("Not in repo nor in defaults")
 
     @staticmethod
-    def get_data_placeholders(template_content):
+    def get_data_anchor(template_content):
         regex = re.compile('"<DVC_METRIC_DATA[^>"]*>"')
         return regex.findall(template_content)
 
     @staticmethod
-    def parse_data_placeholders(template_content):
+    def parse_data_anchors(template_content):
         data_files = {
             Template.get_datafile(m)
-            for m in Template.get_data_placeholders(template_content)
+            for m in Template.get_data_anchor(template_content)
         }
         return {df for df in data_files if df}
 
     @staticmethod
-    def get_datafile(placeholder_string):
+    def get_datafile(anchor_string):
         return (
-            placeholder_string.replace("<", "")
+            anchor_string.replace("<", "")
             .replace(">", "")
             .replace('"', "")
             .replace("DVC_METRIC_DATA", "")
@@ -93,26 +95,71 @@ class Template:
 
     @staticmethod
     def fill(
-        template_path, data, priority_datafile=None, x_field=None, y_field=None
+        template_path,
+        data,
+        priority_datafile=None,
+        x_field=None,
+        y_field=None,
+        title=None,
+        x_title=None,
+        y_title=None,
     ):
         with open(template_path, "r") as fobj:
             result_content = fobj.read()
 
-        for placeholder in Template.get_data_placeholders(result_content):
-            file = Template.get_datafile(placeholder)
+        result_content = Template._replace_data_anchors(
+            result_content, data, priority_datafile
+        )
+
+        result_content = Template._replace_metadata_anchors(
+            result_content, title, x_field, x_title, y_field, y_title
+        )
+
+        return result_content
+
+    @staticmethod
+    def _replace_metadata_anchors(
+        result_content, title, x_field, x_title, y_field, y_title
+    ):
+        if Template.TITLE_ANCHOR in result_content:
+            if title:
+                result_content = result_content.replace(
+                    Template.TITLE_ANCHOR, title
+                )
+            else:
+                result_content = result_content.replace(
+                    Template.TITLE_ANCHOR, ""
+                )
+        if Template.X_ANCHOR in result_content and x_field:
+            result_content = result_content.replace(Template.X_ANCHOR, x_field)
+        if Template.Y_ANCHOR in result_content and y_field:
+            result_content = result_content.replace(Template.Y_ANCHOR, y_field)
+        if Template.X_TITLE_ANCHOR in result_content:
+            if not x_title and x_field:
+                x_title = x_field
+            result_content = result_content.replace(
+                Template.X_TITLE_ANCHOR, x_title
+            )
+        if Template.Y_TITLE_ANCHOR in result_content:
+            if not y_title and y_field:
+                y_title = y_field
+            result_content = result_content.replace(
+                Template.Y_TITLE_ANCHOR, y_title
+            )
+        return result_content
+
+    @staticmethod
+    def _replace_data_anchors(result_content, data, priority_datafile):
+        for anchor in Template.get_data_anchor(result_content):
+            file = Template.get_datafile(anchor)
 
             if not file or priority_datafile:
                 key = priority_datafile
             else:
                 key = file
 
-            if Template.TITLE_ANCHOR in result_content:
-                result_content = result_content.replace(
-                    Template.TITLE_ANCHOR, key
-                )
-
             result_content = result_content.replace(
-                placeholder,
+                anchor,
                 json.dumps(
                     data[key],
                     indent=Template.INDENT,
@@ -120,16 +167,6 @@ class Template:
                     sort_keys=True,
                 ),
             )
-
-        if Template.X_AXIS_ANCHOR in result_content and x_field:
-            result_content = result_content.replace(
-                Template.X_AXIS_ANCHOR, x_field
-            )
-        if Template.Y_AXIS_ANCHOR in result_content and y_field:
-            result_content = result_content.replace(
-                Template.Y_AXIS_ANCHOR, y_field
-            )
-
         return result_content
 
 
@@ -142,8 +179,16 @@ class DefaultLinearTemplate(Template):
         "title": Template.TITLE_ANCHOR,
         "mark": {"type": "line"},
         "encoding": {
-            "x": {"field": Template.X_AXIS_ANCHOR, "type": "quantitative"},
-            "y": {"field": Template.Y_AXIS_ANCHOR, "type": "quantitative"},
+            "x": {
+                "field": Template.X_ANCHOR,
+                "type": "quantitative",
+                "title": Template.X_TITLE_ANCHOR,
+            },
+            "y": {
+                "field": Template.Y_ANCHOR,
+                "type": "quantitative",
+                "title": Template.Y_TITLE_ANCHOR,
+            },
             "color": {"field": "rev", "type": "nominal"},
         },
     }
@@ -158,14 +203,16 @@ class DefaultConfusionTemplate(Template):
         "mark": "rect",
         "encoding": {
             "x": {
-                "field": Template.X_AXIS_ANCHOR,
+                "field": Template.X_ANCHOR,
                 "type": "nominal",
                 "sort": "ascending",
+                "title": Template.X_TITLE_ANCHOR,
             },
             "y": {
-                "field": Template.Y_AXIS_ANCHOR,
+                "field": Template.Y_ANCHOR,
                 "type": "nominal",
                 "sort": "ascending",
+                "title": Template.Y_TITLE_ANCHOR,
             },
             "color": {"aggregate": "count", "type": "quantitative"},
             "facet": {"field": "rev", "type": "nominal"},
@@ -181,8 +228,16 @@ class DefaultScatterTemplate(Template):
         "title": Template.TITLE_ANCHOR,
         "mark": "point",
         "encoding": {
-            "x": {"field": Template.X_AXIS_ANCHOR, "type": "quantitative"},
-            "y": {"field": Template.Y_AXIS_ANCHOR, "type": "quantitative"},
+            "x": {
+                "field": Template.X_ANCHOR,
+                "type": "quantitative",
+                "title": Template.X_TITLE_ANCHOR,
+            },
+            "y": {
+                "field": Template.Y_ANCHOR,
+                "type": "quantitative",
+                "title": Template.Y_TITLE_ANCHOR,
+            },
             "color": {"field": "rev", "type": "nominal"},
         },
     }
