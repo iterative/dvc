@@ -26,7 +26,6 @@ from dvc.stage.exceptions import (
     StagePathOutsideError,
     StagePathNotFoundError,
     StagePathNotDirectoryError,
-    MissingDep,
 )
 from dvc.system import System
 from dvc.utils import file_md5
@@ -79,7 +78,9 @@ class TestRunEmpty(TestDvc):
 
 class TestRunMissingDep(TestDvc):
     def test(self):
-        with self.assertRaises(MissingDep):
+        from dvc.dependency.base import DependencyDoesNotExistError
+
+        with self.assertRaises(DependencyDoesNotExistError):
             self.dvc.run(
                 cmd="",
                 deps=["non-existing-dep"],
