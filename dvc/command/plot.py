@@ -14,8 +14,8 @@ class CmdPLot(CmdBase):
         raise NotImplementedError
 
     def _result_file(self):
-        if self.args.result:
-            return self.args.result
+        if self.args.file:
+            return self.args.file
 
         extension = self._result_extension()
         base = self._result_basename()
@@ -38,11 +38,11 @@ class CmdPLot(CmdBase):
     def run(self):
         fields = None
         jsonpath = None
-        if self.args.filter:
-            if self.args.filter.startswith("$"):
-                jsonpath = self.args.filter
+        if self.args.select:
+            if self.args.select.startswith("$"):
+                jsonpath = self.args.select
             else:
-                fields = set(self.args.filter.split(","))
+                fields = set(self.args.select.split(","))
         try:
             plot_string = self.repo.plot(
                 datafile=self.args.datafile,
@@ -133,11 +133,11 @@ def add_parser(subparsers, parent_parser):
         help="Continuous metrics file to visualize.",
     )
     plot_show_parser.add_argument(
-        "-r", "--result", help="Name of the generated file."
+        "-f", "--file", help="Name of the generated file."
     )
     plot_show_parser.add_argument(
-        "-f",
-        "--filter",
+        "-s",
+        "--select",
         default=None,
         help="Choose which field(s) or JSONPath to include in the plot.",
     )
@@ -194,7 +194,7 @@ def add_parser(subparsers, parent_parser):
         help="Continuous metrics file to visualize.",
     )
     plot_diff_parser.add_argument(
-        "-r", "--result", help="Name of the generated file."
+        "-f", "--file", help="Name of the generated file."
     )
     plot_diff_parser.add_argument(
         "revisions",
@@ -203,8 +203,8 @@ def add_parser(subparsers, parent_parser):
         help="Git revisions to plot from",
     )
     plot_diff_parser.add_argument(
-        "-f",
-        "--filter",
+        "-s",
+        "--select",
         default=None,
         help="Choose which field(s) or JSONPath to include in the plot.",
     )
