@@ -30,8 +30,7 @@ def run_head(tmp_dir, dvc):
         dedent(
             """
         import sys
-        _, *files = sys.argv
-        for file in files:
+        for file in sys.argv[1:]:
             with open(file) as f, open(file +"-1","w+") as w:
                 w.write(f.readline())
         """
