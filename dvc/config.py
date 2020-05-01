@@ -241,12 +241,9 @@ class Config(dict):
 
         if level == "global":
             return user_config_dir(cls.APPNAME, cls.APPAUTHOR)
-        elif level == "system":
+        if level == "system":
             return site_config_dir(cls.APPNAME, cls.APPAUTHOR)
-        else:
-            raise ConfigError(
-                "This method only used in global or system level."
-            )
+        raise ConfigError("This method only used in global or system level.")
 
     @cached_property
     def files(self):
