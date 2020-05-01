@@ -223,7 +223,7 @@ class ExternalGitRepo(BaseExternalRepo):
         """Opens a specified resource as a file object."""
         try:
             abs_path = os.path.join(self.root_dir, path)
-            with open(abs_path, mode, encoding=encoding) as fd:
+            with self.tree.open(abs_path, mode, encoding=encoding) as fd:
                 yield fd
         except FileNotFoundError:
             raise PathMissingError(path, self.url)
