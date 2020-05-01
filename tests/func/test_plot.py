@@ -5,6 +5,7 @@ import shutil
 from collections import OrderedDict
 
 import pytest
+import yaml
 from bs4 import BeautifulSoup
 from funcy import first
 
@@ -15,7 +16,7 @@ from dvc.repo.plot.data import (
     PlotData,
 )
 from dvc.repo.plot.template import (
-    TemplateNotFound,
+    TemplateNotFoundError,
     NoDataForTemplateError,
 )
 from dvc.repo.plot import NoDataOrTemplateProvided
@@ -413,7 +414,7 @@ def test_should_raise_on_no_template_and_datafile(tmp_dir, dvc):
 
 
 def test_should_raise_on_no_template(tmp_dir, dvc):
-    with pytest.raises(TemplateNotFound):
+    with pytest.raises(TemplateNotFoundError):
         dvc.plot("metric.json", "non_existing_template.json")
 
 
@@ -485,3 +486,19 @@ def test_plot_embed(tmp_dir, scm, dvc):
     assert _remove_whitespace(data_dump) in _remove_whitespace(
         first(page_content.body.script.contents)
     )
+
+
+def test_plot_yaml(tmp_dir, scm, dvc):
+    metric = [{"val": 2}, {"val": 3}]
+    with open("metric.yaml", "w") as fobj:
+        yaml.dump(metric, fobj)
+
+    _run_with_metric(tmp_dir, metric_filename="metric.yaml")
+
+    plot_string = dvc.plot("metric.yaml",)
+
+    plot_content = json.loads(plot_string)
+    assert plot_content["data"]["values"] == [
+        {"val": 2, PlotData.INDEX_FIELD: 0, "rev": "workspace"},
+        {"val": 3, PlotData.INDEX_FIELD: 1, "rev": "workspace"},
+    ]

@@ -151,7 +151,6 @@ def add_parser(subparsers, parent_parser):
         "-y", default=None, help="Field name for y axis."
     )
     plot_show_parser.add_argument(
-        "-o",
         "--stdout",
         action="store_true",
         default=False,
@@ -221,7 +220,6 @@ def add_parser(subparsers, parent_parser):
         "-y", default=None, help="Field name for y axis."
     )
     plot_diff_parser.add_argument(
-        "-o",
         "--stdout",
         action="store_true",
         default=False,

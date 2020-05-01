@@ -6,8 +6,9 @@ import os
 from collections import OrderedDict
 from copy import copy
 
+import yaml
 from funcy import first
-from ruamel import yaml
+from yaml import SafeLoader
 
 from dvc.exceptions import DvcException, PathMissingError
 
@@ -64,7 +65,7 @@ def plot_data(filename, revision, content):
     elif extension == ".tsv":
         return CSVPlotData(filename, revision, content, delimiter="\t")
     elif extension == ".yaml":
-        return YAMLPLotData(filename, revision, content)
+        return YAMLPlotData(filename, revision, content)
     raise PlotMetricTypeError(filename)
 
 
@@ -226,10 +227,20 @@ class CSVPlotData(PlotData):
         ]
 
 
-class YAMLPLotData(PlotData):
+class YAMLPlotData(PlotData):
     def raw(self, **kwargs):
-        # TODO ordered
-        return yaml.parse(io.StringIO(self.content))
+        class OrderedLoader(SafeLoader):
+            pass
+
+        def construct_mapping(loader, node):
+            loader.flatten_mapping(node)
+            return OrderedDict(loader.construct_pairs(node))
+
+        OrderedLoader.add_constructor(
+            yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, construct_mapping
+        )
+
+        return yaml.load(self.content, OrderedLoader)
 
 
 def _load_from_revision(repo, datafile, revision):

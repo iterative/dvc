@@ -54,19 +54,6 @@ class Template:
                 separators=self.SEPARATORS,
             )
 
-    def load_template(self, path):
-        try:
-            with open(path, "r") as fd:
-                return json.load(fd)
-        except FileNotFoundError:
-            try:
-                with open(
-                    os.path.join(self.plot_templates_dir, path), "r"
-                ) as fd:
-                    return json.load(fd)
-            except FileNotFoundError:
-                raise DvcException("Not in repo nor in defaults")
-
     @staticmethod
     def get_data_anchor(template_content):
         regex = re.compile('"<DVC_METRIC_DATA[^>"]*>"')
@@ -256,7 +243,7 @@ class PlotTemplates:
     def default_template(self):
         default_plot_path = os.path.join(self.templates_dir, "default.json")
         if not os.path.exists(default_plot_path):
-            raise TemplateNotFound(os.path.relpath(default_plot_path))
+            raise TemplateNotFoundError(os.path.relpath(default_plot_path))
         return default_plot_path
 
     def get_template(self, path):
@@ -278,7 +265,7 @@ class PlotTemplates:
             assert len(matches) == 1
             return matches[0]
 
-        raise TemplateNotFound(path)
+        raise TemplateNotFoundError(path)
 
     def __init__(self, dvc_dir):
         self.dvc_dir = dvc_dir
