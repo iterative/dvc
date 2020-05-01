@@ -5,7 +5,7 @@ import threading
 from contextlib import contextmanager
 from distutils.dir_util import copy_tree
 
-from funcy import cached_property, retry, suppress, wrap_with
+from funcy import cached_property, retry, wrap_with
 
 from dvc.config import NoRemoteError, NotDvcRepoError
 from dvc.exceptions import (
@@ -18,9 +18,10 @@ from dvc.exceptions import (
 )
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
+from dvc.repo.tree import RepoTree
 from dvc.scm.git import Git
 from dvc.utils import tmp_fname
-from dvc.utils.fs import fs_copy, move, remove
+from dvc.utils.fs import makedirs, move, remove
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,9 @@ def external_repo(url, rev=None, for_write=False):
     try:
         repo = ExternalRepo(path, url)
     except NotDvcRepoError:
-        repo = ExternalGitRepo(path, url)
+        if not rev:
+            rev = "HEAD"
+        repo = ExternalGitRepo(path, url, rev)
 
     try:
         yield repo
@@ -64,12 +67,19 @@ def clean_repos():
         _remove(path)
 
 
-class ExternalRepo(Repo):
-    def __init__(self, root_dir, url):
-        super().__init__(root_dir)
-        self.url = url
-        self._set_cache_dir()
-        self._fix_upstream()
+class BaseExternalRepo:
+    def _pull_cached(self, src, dest):
+        return False
+
+    def _pull_file(self, tree, src, dest):
+        if tree.isdvc(src) and self._pull_cached(src, dest):
+            return
+        tree.copyfile(src, dest)
+
+    def _pull_dir(self, tree, src, dest):
+        if tree.isdvc(src) and self._pull_cached(src, dest):
+            return
+        makedirs(dest)
 
     def pull_to(self, path, to_info):
         """
@@ -79,43 +89,69 @@ class ExternalRepo(Repo):
         It works with files tracked by Git and DVC, and also local files
         outside the repository.
         """
-        out = None
+        logger.debug("pull_to root {} path {}".format(self.root_dir, path))
         path_info = PathInfo(self.root_dir) / path
+        logger.debug("pull_to {} {}".format(path_info, to_info))
+        tree = RepoTree(self)
 
-        with suppress(OutputNotFoundError):
-            (out,) = self.find_outs_by_path(path_info, strict=False)
-
-        try:
-            if out and out.use_cache:
-                self._pull_cached(out, path_info, to_info)
-                return
-
-            # Check if it is handled by Git (it can't have an absolute path)
-            if os.path.isabs(path):
-                raise FileNotFoundError
-
-            fs_copy(path_info, to_info)
-        except FileNotFoundError:
+        if not tree.exists(path_info):
             raise PathMissingError(path, self.url)
 
-    def _pull_cached(self, out, path_info, dest):
-        with self.state:
-            tmp = PathInfo(tmp_fname(dest))
-            src = tmp / path_info.relative_to(out.path_info)
+        if tree.isfile(path_info):
+            logger.debug("tree.isfile")
+            return self._pull_file(tree, path_info, to_info)
 
-            out.path_info = tmp
+        logger.debug("not tree.isfile")
+        self._pull_dir(tree, path_info, to_info)
 
-            # Only pull unless all needed cache is present
-            if out.changed_cache(filter_info=src):
-                self.cloud.pull(out.get_used_cache(filter_info=src))
+        # if path was DVC-only dir, there will be nothing left to recurse into
+        # after _pull_cached, and tree.isdir() will now be false
+        if tree.isdir(path_info):
+            for root, dirs, files in tree.walk(path_info):
+                logger.debug("walk {} {} {}".format(root, dirs, files))
+                root_path = PathInfo(root)
+                rel_root = path_info.relative_to(root_path)
+                for dirname in dirs:
+                    logger.debug("dir {} {}".format(root, dirs))
+                    dir_path = root_path / dirname
+                    dest_path = to_info / rel_root / dirname
+                    self._pull_dir(tree, dir_path, dest_path)
+                for filename in files:
+                    logger.debug("file {} {}".format(root, filename))
+                    file_path = root_path / filename
+                    dest_path = to_info / rel_root / filename
+                    self._pull_file(tree, file_path, dest_path)
 
-            try:
-                out.checkout(filter_info=src)
-            except CheckoutError:
-                raise FileNotFoundError
 
-            move(src, dest)
-            remove(tmp)
+class ExternalRepo(Repo, BaseExternalRepo):
+    def __init__(self, root_dir, url):
+        super().__init__(root_dir)
+        self.url = url
+        self._set_cache_dir()
+        self._fix_upstream()
+
+    def _pull_cached(self, path_info, dest):
+        (out,) = self.find_outs_by_path(path_info, strict=False)
+        if out and out.use_cache:
+            with self.state:
+                tmp = PathInfo(tmp_fname(dest))
+                src = tmp / path_info.relative_to(out.path_info)
+
+                out.path_info = tmp
+
+                # Only pull unless all needed cache is present
+                if out.changed_cache(filter_info=src):
+                    self.cloud.pull(out.get_used_cache(filter_info=src))
+
+                try:
+                    out.checkout(filter_info=src)
+                except CheckoutError:
+                    raise FileNotFoundError
+
+                move(src, dest)
+                remove(tmp)
+            return True
+        return False
 
     @wrap_with(threading.Lock())
     def _set_cache_dir(self):
@@ -180,16 +216,6 @@ class ExternalGitRepo:
 
     def find_out_by_relpath(self, path):
         raise OutputNotFoundError(path, self)
-
-    def pull_to(self, path, to_info):
-        try:
-            # Git handled files can't have absolute path
-            if os.path.isabs(path):
-                raise FileNotFoundError
-
-            fs_copy(os.path.join(self.root_dir, path), to_info)
-        except FileNotFoundError:
-            raise PathMissingError(path, self.url)
 
     @contextmanager
     def open_by_relpath(self, path, mode="r", encoding=None, **kwargs):
