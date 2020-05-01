@@ -35,6 +35,7 @@ from .command import (
     update,
     version,
     git_hook,
+    plot,
 )
 from .command.base import fix_subparsers
 from .exceptions import DvcParserError
@@ -74,6 +75,7 @@ COMMANDS = [
     version,
     update,
     git_hook,
+    plot,
 ]
 
 
