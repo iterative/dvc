@@ -46,17 +46,18 @@ class CmdRemoteAdd(CmdRemote):
 
 class CmdRemoteRemove(CmdRemote):
     def run(self):
-        conf = self.config.load_one(self.args.level)
-        self._check_exists(conf)
+        with self.config.edit(self.args.level) as conf:
+            self._check_exists(conf)
+            del conf["remote"][self.args.name]
 
         # Remove core.remote refs to this remote in any shadowing configs
         for level in reversed(self.config.LEVELS):
             with self.config.edit(level) as conf:
                 if conf["core"].get("remote") == self.args.name:
                     del conf["core"]["remote"]
-                if level == self.args.level:
-                    del conf["remote"][self.args.name]
-                    break
+
+            if level == self.args.level:
+                break
 
         return 0
 
@@ -84,7 +85,18 @@ class CmdRemoteDefault(CmdRemote):
                 if self.args.unset:
                     conf["core"].pop("remote", None)
                 else:
-                    conf["core"]["remote"] = self.args.name
+                    merged_conf = self.config.load_config_to_level(
+                        self.args.level
+                    )
+                    if (
+                        self.args.name in conf["remote"]
+                        or self.args.name in merged_conf["remote"]
+                    ):
+                        conf["core"]["remote"] = self.args.name
+                    else:
+                        raise ConfigError(
+                            "default remote must in remote list."
+                        )
         return 0
 
 
