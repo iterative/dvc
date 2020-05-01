@@ -25,7 +25,7 @@ class TqdmGit(Tqdm):
         if op_code:
             self.set_description_str(op_code, refresh=False)
         if message:
-            self.set_postfix_str(message, refresh=False)
+            self.postfix["info"] = " %s |" % message
         self.update_to(cur_count, max_count)
 
     @staticmethod
