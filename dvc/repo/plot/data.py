@@ -122,7 +122,7 @@ def _apply_path(data, path=None, **kwargs):
 
 
 def _lists(dictionary):
-    for key, value in dictionary.items():
+    for _, value in dictionary.items():
         if isinstance(value, dict):
             yield from (_lists(value))
         elif isinstance(value, list):
@@ -138,7 +138,7 @@ def _find_data(data, fields=None, **kwargs):
         fields = set()
 
     for l in _lists(data):
-        if all([isinstance(dp, dict) for dp in l]):
+        if all(isinstance(dp, dict) for dp in l):
             if set(first(l).keys()) & fields == fields:
                 return l
     raise PlotDataStructureError()

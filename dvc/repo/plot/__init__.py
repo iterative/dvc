@@ -80,10 +80,10 @@ def fill_template(
         x_field = PlotData.INDEX_FIELD
 
     template_data = {}
-    for datafile in template_datafiles:
+    for template_datafile in template_datafiles:
         from dvc.repo.plot.data import _load_from_revisions
 
-        plot_datas = _load_from_revisions(repo, datafile, revisions)
+        plot_datas = _load_from_revisions(repo, template_datafile, revisions)
         tmp_data = []
         for pd in plot_datas:
             rev_data_points = pd.to_datapoints(
@@ -97,7 +97,7 @@ def fill_template(
                 y_field = _infer_y_field(rev_data_points, x_field)
             tmp_data.extend(rev_data_points)
 
-        template_data[datafile] = tmp_data
+        template_data[template_datafile] = tmp_data
 
     if len(template_data) == 0:
         raise NoDataForTemplateError(template_path)
