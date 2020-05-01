@@ -5,7 +5,7 @@
 #   - https://stackoverflow.com/questions/12933362
 
 _dvc_commands='add cache checkout commit config destroy diff fetch get-url get gc \
-  import-url import init install lock list metrics move pipeline pull push \
+  import-url import init install lock list metrics move pipeline plot pull push \
   remote remove repro root run status unlock unprotect update version'
 
 _dvc_options='-h --help -V --version'
@@ -51,6 +51,9 @@ _dvc_pipeline='list show'
 _dvc_pipeline_list=''
 _dvc_pipeline_show='-c --commands -o --outs --ascii --dot --tree -l --locked'
 _dvc_pipeline_show_COMPGEN=_dvc_compgen_DVCFiles
+_dvc_plot='show diff'
+_dvc_plot_show='-t --template -f --file -s --select -x -y --stdout --no-csv-header --no-html --title --xlab --ylab'
+_dvc_plot_diff='-t --template -d --datafile -f --file -s --select -x -y --stdout --no-csv-header --no-html --title --xlab --ylab'
 _dvc_pull='-j --jobs -r --remote -a --all-branches -T --all-tags -f --force -d --with-deps -R --recursive'
 _dvc_pull_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_push='-j --jobs -r --remote -a --all-branches -T --all-tags -d --with-deps -R --recursive'

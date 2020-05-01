@@ -277,7 +277,7 @@ def _load_from_revisions(repo, datafile, revisions):
             exceptions.append(e)
         except PlotMetricTypeError:
             raise
-        except Exception:
+        except (yaml.error.YAMLError, json.decoder.JSONDecodeError, csv.Error):
             logger.error("Failed to parse '{}' at '{}'.".format(datafile, rev))
             raise
 
