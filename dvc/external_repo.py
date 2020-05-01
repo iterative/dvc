@@ -201,10 +201,11 @@ class ExternalRepo(Repo, BaseExternalRepo):
         self.config["core"]["remote"] = "auto-generated-upstream"
 
 
-class ExternalGitRepo:
-    def __init__(self, root_dir, url):
-        self.root_dir = root_dir
+class ExternalGitRepo(BaseExternalRepo):
+    def __init__(self, root_dir, url, rev):
+        self.root_dir = os.path.realpath(root_dir)
         self.url = url
+        self.tree = self.scm.get_tree(rev)
 
     @cached_property
     def scm(self):

@@ -87,7 +87,9 @@ class GitTree(BaseTree):
         import git
 
         path = relpath(os.path.realpath(path), self.git.working_dir)
-        assert path.split(os.sep, 1)[0] != ".."
+        if path.split(os.sep, 1)[0] == "..":
+            # path points outside of git repository
+            return None
 
         try:
             tree = self.git.tree(self.rev)
