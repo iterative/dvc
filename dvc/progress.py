@@ -68,7 +68,6 @@ class Tqdm(tqdm):
             kwargs.setdefault("unit_scale", total > 999 if total else True)
         if file is None:
             file = sys.stderr
-        self.desc_persist = desc
         # auto-disable based on `logger.level`
         if not disable:
             disable = logger.getEffectiveLevel() > level
@@ -102,11 +101,11 @@ class Tqdm(tqdm):
             self.bar_format = bar_format
         self.refresh()
 
-    def update_desc(self, desc, n=1):
+    def update_msg(self, msg, n=1):
         """
-        Calls `set_description_str(desc)` and `update(n)`
+        Calls `set_postfix_str(msg)` and `update(n)`
         """
-        self.set_description_str(desc, refresh=False)
+        self.set_postfix_str(msg, refresh=False)
         self.update(n)
 
     def update_to(self, current, total=None):
@@ -130,8 +129,6 @@ class Tqdm(tqdm):
         return wrapped
 
     def close(self):
-        if self.desc_persist is not None:
-            self.set_description_str(self.desc_persist, refresh=False)
         # unknown/zero ETA
         self.bar_format = self.bar_format.replace("<{remaining}", "")
         # remove completed bar

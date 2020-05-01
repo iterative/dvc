@@ -80,7 +80,7 @@ def _checkout(
         for stage, filter_info in pairs:
             result = stage.checkout(
                 force=force,
-                progress_callback=pbar.update_desc,
+                progress_callback=pbar.update_msg,
                 relink=relink,
                 filter_info=filter_info,
             )

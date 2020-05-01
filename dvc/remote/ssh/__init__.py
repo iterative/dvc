@@ -330,7 +330,7 @@ class SSHRemote(BaseRemote):
         ) as pbar:
 
             def exists_with_progress(chunks):
-                return self.batch_exists(chunks, callback=pbar.update_desc)
+                return self.batch_exists(chunks, callback=pbar.update_msg)
 
             with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
                 path_infos = [self.checksum_to_path_info(x) for x in checksums]

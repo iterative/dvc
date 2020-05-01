@@ -1081,7 +1081,7 @@ class BaseRemote(object):
 
             def exists_with_progress(path_info):
                 ret = self.exists(path_info)
-                pbar.update_desc(str(path_info))
+                pbar.update_msg(str(path_info))
                 return ret
 
             with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:

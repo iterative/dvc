@@ -144,6 +144,6 @@ def _create_stages(repo, targets, fname, pbar=None):
 
         stages.append(stage)
         if pbar is not None:
-            pbar.update_desc(out)
+            pbar.update_msg(out)
 
     return stages
