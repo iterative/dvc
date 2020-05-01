@@ -202,6 +202,13 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
                     fdest_wrapped.write(buf)
 
 
+def copy_obj_to_file(fsrc, dest):
+    """Copy contents of file object to destination path."""
+    dest = fspath_py35(dest)
+    with open(dest, "wb+") as fdest:
+        shutil.copyfileobj(fsrc, fdest)
+
+
 def walk_files(directory):
     for root, _, files in os.walk(directory):
         for f in files:

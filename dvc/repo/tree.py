@@ -6,7 +6,9 @@ from funcy import first
 from dvc.dvcfile import is_valid_filename
 from dvc.exceptions import OutputNotFoundError
 from dvc.path_info import PathInfo
+from dvc.repo import Repo
 from dvc.scm.tree import BaseTree, WorkingTree
+from dvc.utils.fs import copy_obj_to_file
 
 
 class DvcTree(BaseTree):
@@ -130,33 +132,49 @@ class DvcTree(BaseTree):
 class RepoTree(BaseTree):
     def __init__(self, repo):
         self.repo = repo
-        self.dvctree = DvcTree(repo)
+        if isinstance(repo, Repo):
+            self.dvctree = DvcTree(repo)
+        else:
+            # git-only erepo's do not need dvctree
+            self.dvctree = None
 
     def open(self, *args, **kwargs):
-        try:
-            return self.dvctree.open(*args, **kwargs)
-        except FileNotFoundError:
-            pass
+        if self.dvctree:
+            try:
+                return self.dvctree.open(*args, **kwargs)
+            except FileNotFoundError:
+                pass
 
         return self.repo.tree.open(*args, **kwargs)
 
     def exists(self, path):
-        return self.repo.tree.exists(path) or self.dvctree.exists(path)
+        return self.repo.tree.exists(path) or (
+            self.dvctree and self.dvctree.exists(path)
+        )
 
     def isdir(self, path):
-        return self.repo.tree.isdir(path) or self.dvctree.isdir(path)
+        return self.repo.tree.isdir(path) or (
+            self.dvctree and self.dvctree.isdir(path)
+        )
+
+    def isdvc(self, path):
+        return self.dvctree and self.dvctree.isdvc(path)
 
     def isfile(self, path):
-        return self.repo.tree.isfile(path) or self.dvctree.isfile(path)
+        return self.repo.tree.isfile(path) or (
+            self.dvctree and self.dvctree.isfile(path)
+        )
 
-    def walk(self, top, topdown=True):
-        assert topdown
+    def _walk(self, top, topdown=True):
+        if self.dvctree and not self.repo.tree.isdir(top):
+            yield from self.dvctree.walk(top, topdown=topdown)
+            return
+        if not self.dvctree or not self.dvctree.isdir(top):
+            yield from self.repo.tree.walk(top, topdown=topdown)
+            return
 
-        if not self.repo.tree.isdir(top):
-            return self.dvctree.walk(top, topdown=topdown)
-        if not self.dvctree.isdir(top):
-            return self.repo.tree.walk(top, topdown=topdown)
-
+        # walk and merge both trees, ensure that dvcfiles are ignored (handled
+        # as DVC outs, not as git versioned files)
         repo_root, repo_dirs, repo_files = first(
             self.repo.tree.walk(top, topdown=topdown)
         )
@@ -175,9 +193,25 @@ class RepoTree(BaseTree):
         yield repo_root, dirs, list(files)
 
         for dirname in dirs:
-            yield from self.walk(
+            yield from self._walk(
                 os.path.join(repo_root, dirname), topdown=topdown
             )
 
-    def isdvc(self, path):
-        return self.dvctree.isdvc(path)
+    def walk(self, top, topdown=True):
+        assert topdown
+
+        if not self.exists(top):
+            raise FileNotFoundError
+
+        if not self.isdir(top):
+            raise NotADirectoryError
+
+        yield from self._walk(top, topdown=topdown)
+
+    def copyfile(self, src, dest):
+        """Copy specified file from this tree to the destination path."""
+        if not self.isfile(src):
+            raise FileNotFoundError
+
+        with self.open(src, mode="rb", encoding=None) as fobj:
+            copy_obj_to_file(fobj, dest)
