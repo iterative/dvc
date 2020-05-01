@@ -12,7 +12,7 @@ from dvc.utils.fs import makedirs
 logger = logging.getLogger(__name__)
 
 
-class TemplateNotFound(DvcException):
+class TemplateNotFoundError(DvcException):
     def __init__(self, path):
         super().__init__("Template '{}' not found.".format(path))
 
