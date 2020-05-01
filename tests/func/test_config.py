@@ -78,7 +78,7 @@ class TestConfigCLI(TestDvc):
         self.assertEqual(ret, 251)
 
         ret = main(["config", "core.remote", "myremote"])
-        self.assertEqual(ret, 0)
+        self.assertEqual(ret, 251)
 
         ret = main(["config", "core.non_existing_field", "-u"])
         self.assertEqual(ret, 251)
@@ -107,6 +107,36 @@ def test_merging_two_levels(dvc):
         "url": "ssh://example.com",
         "password": "1",
     }
+
+
+def test_remote_default_set(dvc):
+    local_level = "local_remote"
+    repo_level = "repo_remote"
+    with dvc.config.edit() as conf:
+        conf["remote"][repo_level] = {"url": "ssh://example.com"}
+    with dvc.config.edit() as conf:
+        conf["remote"][local_level] = {"url": "ssh://example.com"}
+
+    # repo-level remote repo cannot set default in global level
+    with pytest.raises(ConfigError):
+        with dvc.config.edit("global") as conf:
+            conf["core"]["remote"] = repo_level
+    assert "remote" not in dvc.config["core"]
+
+    # remote default must in remote list
+    with pytest.raises(ConfigError):
+        with dvc.config.edit("local") as conf:
+            conf["core"]["remote"] = "not_in_list"
+    assert "remote" not in dvc.config["core"]
+
+    with dvc.config.edit() as conf:
+        conf["core"]["remote"] = repo_level
+    assert dvc.config["core"]["remote"] == repo_level
+
+    # repo-level remote repo can set default in local level
+    with dvc.config.edit("local") as conf:
+        conf["core"]["remote"] = local_level
+    assert dvc.config["core"]["remote"] == local_level
 
 
 def test_config_loads_without_error_for_non_dvc_repo(tmp_dir):

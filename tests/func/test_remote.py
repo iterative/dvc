@@ -273,10 +273,19 @@ def test_remote_modify_validation(dvc):
     assert unsupported_config not in config['remote "{}"'.format(remote_name)]
 
 
-def test_remote_default_modify(dvc):
-    remote_name = "my_remote"
-    wrong_remote_name = "anything"
-    assert main(["remote", "add", remote_name, "s3://bucket/name"]) == 0
+def test_remote_modify_default(dvc):
+    remote_repo = "repo_level"
+    remote_local = "local_level"
+    wrong_name = "anything"
+    assert main(["remote", "add", remote_repo, "s3://bucket/repo"]) == 0
+    assert main(["remote", "add", remote_local, "s3://bucket/local"]) == 0
 
-    assert main(["remote", "default", remote_name]) == 0
-    assert main(["remote", "default", wrong_remote_name]) == 251
+    assert main(["remote", "default", wrong_name]) == 251
+    assert main(["remote", "default", remote_repo]) == 0
+    assert main(["remote", "default", "--local", remote_local]) == 0
+
+    repo_config = configobj.ConfigObj(dvc.config.files["repo"])
+    local_config = configobj.ConfigObj(dvc.config.files["local"])
+
+    assert repo_config["core"]["remote"] == remote_repo
+    assert local_config["core"]["remote"] == remote_local

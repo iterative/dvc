@@ -46,8 +46,8 @@ class CmdRemoteAdd(CmdRemote):
 
 class CmdRemoteRemove(CmdRemote):
     def run(self):
-        with self.config.edit(self.args.level) as conf:
-            self._check_exists(conf)
+        conf = self.config.load_one(self.args.level)
+        self._check_exists(conf)
 
         # Remove core.remote refs to this remote in any shadowing configs
         for level in reversed(self.config.LEVELS):

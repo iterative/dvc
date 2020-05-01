@@ -363,10 +363,7 @@ class Config(dict):
                 "remote" in data["core"]
                 and data["core"]["remote"] not in data["remote"]
             ):
-                print(data)
-                print(data["core"]["remote"])
-                print(data["remote"])
-                raise ConfigError("")
+                raise ConfigError("Default remote not in the remote list.")
             return COMPILED_SCHEMA(data)
         except Invalid as exc:
             raise ConfigError(str(exc)) from None
