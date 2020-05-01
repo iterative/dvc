@@ -90,9 +90,8 @@ def to_pipeline_file(stage: "PipelineStage"):
     }
 
 
-def to_lockfile(stage: "PipelineStage"):
+def to_single_stage_lockfile(stage: "Stage") -> dict:
     assert stage.cmd
-    assert stage.name
 
     res = OrderedDict([("cmd", stage.cmd)])
     params, deps = get_params_deps(stage)
@@ -112,7 +111,12 @@ def to_lockfile(stage: "PipelineStage"):
     if outs:
         res["outs"] = outs
 
-    return {stage.name: res}
+    return res
+
+
+def to_lockfile(stage: "PipelineStage") -> dict:
+    assert stage.name
+    return {stage.name: to_single_stage_lockfile(stage)}
 
 
 def to_single_stage_file(stage: "Stage"):

@@ -41,6 +41,15 @@ class ParamsDependency(LocalDependency):
             info=info,
         )
 
+    def _dyn_load(self, values=None):
+        """Load params values dynamically."""
+        if not values:
+            return
+        for param in self.params:
+            value = values.get(param)
+            if value:
+                self.info[param] = value
+
     def save(self):
         super().save()
         self.info = self.save_info()

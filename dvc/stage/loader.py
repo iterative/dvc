@@ -50,7 +50,7 @@ class StageLoader(Mapping):
         return self.__class__(self.dvcfile, data, self.lockfile_data)
 
     @staticmethod
-    def _fill_lock_checksums(stage, lock_data):
+    def fill_from_lock(stage, lock_data):
         from .params import StageParams
 
         items = chain(
@@ -63,6 +63,12 @@ class StageLoader(Mapping):
             for key in [StageParams.PARAM_DEPS, StageParams.PARAM_OUTS]
         }
         for key, item in items:
+            if isinstance(item, ParamsDependency):
+                # load the params with values inside lock dynamically
+                params = lock_data.get("params", {}).get(item.def_path, {})
+                item._dyn_load(params)
+                continue
+
             item.checksum = (
                 checksums.get(key, {})
                 .get(item.def_path, {})
@@ -70,7 +76,7 @@ class StageLoader(Mapping):
             )
 
     @classmethod
-    def _load_params(cls, stage, pipeline_params, lock_params=None):
+    def _load_params(cls, stage, pipeline_params):
         """
         File in pipeline file is expected to be in following format:
         ```
@@ -94,11 +100,6 @@ class StageLoader(Mapping):
             - 15000
             - 123
         ```
-
-        So, here, we merge these two formats into one (ignoring one's only
-        specified on lockfile but missing on pipeline file), and load the
-        `ParamsDependency` for the given stage.
-
         In the list of `params` inside pipeline file, if any of the item is
         dict-like, the key will be treated as separate params file and it's
         values to be part of that params file, else, the item is considered
@@ -106,21 +107,18 @@ class StageLoader(Mapping):
 
         (From example above: `lr` is considered to be part of `params.yaml`
         whereas `process.bow` to be part of `params2.yaml`.)
+
+        We only load the keys here, lockfile bears the values which are used
+        to compare between the actual params from the file in the workspace.
         """
-        res = defaultdict(lambda: defaultdict(dict))
-        lock_params = lock_params or {}
-
-        def get_value(file, param):
-            return lock_params.get(file, {}).get(param)
-
+        res = defaultdict(list)
         for key in pipeline_params:
             if isinstance(key, str):
                 path = DEFAULT_PARAMS_FILE
-                res[path][key] = get_value(path, key)
+                res[path].append(key)
             elif isinstance(key, dict):
                 path = first(key)
-                for k in key[path]:
-                    res[path][k] = get_value(path, k)
+                res[path].extend(key[path])
 
         stage.deps += dependency.loadd_from(
             stage,
@@ -139,12 +137,12 @@ class StageLoader(Mapping):
         params = stage_data.pop("params", {})
         stage._fill_stage_dependencies(**stage_data)
         stage._fill_stage_outputs(**stage_data)
-        cls._load_params(stage, params, lock_data.get("params"))
+        cls._load_params(stage, params)
         if lock_data:
             stage.cmd_changed = lock_data.get(
                 Stage.PARAM_CMD
             ) != stage_data.get(Stage.PARAM_CMD)
-            cls._fill_lock_checksums(stage, lock_data)
+            cls.fill_from_lock(stage, lock_data)
 
         return stage
 

@@ -1,4 +1,3 @@
-import os
 from collections import OrderedDict
 from operator import itemgetter
 from textwrap import dedent
@@ -175,8 +174,11 @@ def test_params_dump(tmp_dir, dvc, run_head):
     assert not dvc.reproduce(stage.addressing)
 
     (tmp_dir / PIPELINE_LOCK).unlink()
-    # XXX: temporary workaround due to lack of params support in build cache
-    remove(os.path.join(dvc.cache.local.cache_dir, "stages"))
+    assert dvc.reproduce(stage.addressing) == [stage]
+    assert_eq_lockfile(initial_content, read_lock_file())
 
+    # remove build-cache and check if the same structure is built
+    for item in [dvc.stage_cache.cache_dir, PIPELINE_LOCK]:
+        remove(item)
     assert dvc.reproduce(stage.addressing) == [stage]
     assert_eq_lockfile(initial_content, read_lock_file())
