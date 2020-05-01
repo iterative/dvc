@@ -2,29 +2,24 @@ import os
 import yaml
 import logging
 
-from voluptuous import Schema, Required, Invalid
+from voluptuous import Invalid
 
+from dvc.schema import COMPILED_LOCK_FILE_STAGE_SCHEMA
+from dvc.serialize import to_single_stage_lockfile
 from dvc.utils.fs import makedirs
 from dvc.utils import relpath, dict_sha256
+from dvc.utils.stage import dump_stage_file
 
 logger = logging.getLogger(__name__)
 
-SCHEMA = Schema(
-    {
-        Required("cmd"): str,
-        Required("deps"): {str: str},
-        Required("outs"): {str: str},
-    }
-)
-
 
 def _get_cache_hash(cache, key=False):
+    if key:
+        outs = [out["path"] for out in cache["outs"]]
+    else:
+        outs = cache["outs"]
     return dict_sha256(
-        {
-            "cmd": cache["cmd"],
-            "deps": cache["deps"],
-            "outs": list(cache["outs"].keys()) if key else cache["outs"],
-        }
+        {"cmd": cache["cmd"], "deps": cache["deps"], "outs": outs}
     )
 
 
@@ -40,15 +35,7 @@ def _get_stage_hash(stage):
         if out.scheme != "local" or not out.def_path or out.persist:
             return None
 
-    return _get_cache_hash(_create_cache(stage), key=True)
-
-
-def _create_cache(stage):
-    return {
-        "cmd": stage.cmd,
-        "deps": {dep.def_path: dep.get_checksum() for dep in stage.deps},
-        "outs": {out.def_path: out.get_checksum() for out in stage.outs},
-    }
+    return _get_cache_hash(to_single_stage_lockfile(stage), key=True)
 
 
 class StageCache:
@@ -66,7 +53,7 @@ class StageCache:
 
         try:
             with open(path, "r") as fobj:
-                return SCHEMA(yaml.safe_load(fobj))
+                return COMPILED_LOCK_FILE_STAGE_SCHEMA(yaml.safe_load(fobj))
         except FileNotFoundError:
             return None
         except (yaml.error.YAMLError, Invalid):
@@ -95,20 +82,22 @@ class StageCache:
         if not cache_key:
             return
 
-        cache = _create_cache(stage)
+        cache = to_single_stage_lockfile(stage)
         cache_value = _get_cache_hash(cache)
 
         if self._load_cache(cache_key, cache_value):
             return
 
         # sanity check
-        SCHEMA(cache)
+        COMPILED_LOCK_FILE_STAGE_SCHEMA(cache)
 
         path = self._get_cache_path(cache_key, cache_value)
         dpath = os.path.dirname(path)
         makedirs(dpath, exist_ok=True)
-        with open(path, "w+") as fobj:
-            yaml.dump(cache, fobj)
+        dump_stage_file(path, cache)
+
+    def is_cached(self, stage):
+        return bool(self._load(stage))
 
     def restore(self, stage):
         cache = self._load(stage)
@@ -116,9 +105,11 @@ class StageCache:
             return
 
         deps = {dep.def_path: dep for dep in stage.deps}
-        for def_path, checksum in cache["deps"].items():
-            deps[def_path].checksum = checksum
+        for entry in cache["deps"]:
+            dep = deps[entry["path"]]
+            dep.checksum = entry[dep.checksum_type]
 
         outs = {out.def_path: out for out in stage.outs}
-        for def_path, checksum in cache["outs"].items():
-            outs[def_path].checksum = checksum
+        for entry in cache["outs"]:
+            out = outs[entry["path"]]
+            out.checksum = entry[out.checksum_type]

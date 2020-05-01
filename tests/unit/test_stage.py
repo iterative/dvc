@@ -116,12 +116,12 @@ def test_stage_cache(tmp_dir, dvc, run_copy, mocker):
 
     cache_dir = os.path.join(
         dvc.stage_cache.cache_dir,
-        "ec",
-        "ec5b6d8dea9136dbb62d93a95c777f87e6c54b0a6bee839554acb99fdf23d2b1",
+        "75",
+        "75f8a9097d76293ff4b3684d52e4ad0e83686d31196f27eb0b2ea9fd5085565e",
     )
     cache_file = os.path.join(
         cache_dir,
-        "09f9eb17fdb1ee7f8566b3c57394cee060eaf28075244bc6058612ac91fdf04a",
+        "c1747e52065bc7801262fdaed4d63f5775e5da304008bd35e2fea4e6b1ccb272",
     )
 
     assert os.path.isdir(cache_dir)

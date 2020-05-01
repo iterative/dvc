@@ -648,9 +648,6 @@ class Stage(params.StageParams):
 
         else:
             if not dry:
-                if not force and not ignore_build_cache:
-                    self.repo.stage_cache.restore(self)
-
                 if (
                     not force
                     and not self.is_callback
@@ -661,8 +658,28 @@ class Stage(params.StageParams):
                     self.checkout()
                 else:
                     self._save_deps()
-                    logger.info("Running command:\n\t{}".format(self.cmd))
-                    self._run()
+                    if (
+                        not force
+                        and not ignore_build_cache
+                        and self.repo.stage_cache.is_cached(self)
+                    ):
+                        logger.info("Stage is cached, skipping.")
+                        self.repo.stage_cache.restore(self)
+                        if all(
+                            not out.changed_cache()
+                            if out.use_cache
+                            else not out.changed()
+                            for out in self.outs
+                        ):
+                            self.checkout()
+                        else:
+                            logger.info(
+                                "Running command:\n\t{}".format(self.cmd)
+                            )
+                            self._run()
+                    else:
+                        logger.info("Running command:\n\t{}".format(self.cmd))
+                        self._run()
 
         if not dry:
             self.save()
