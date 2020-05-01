@@ -41,9 +41,6 @@ class Template:
     def dump(self):
         makedirs(self.plot_templates_dir, exist_ok=True)
 
-        if not os.path.exists(self.plot_templates_dir):
-            makedirs(self.plot_templates_dir)
-
         with open(
             os.path.join(
                 self.plot_templates_dir, self.TEMPLATE_NAME + self.EXTENSION
