@@ -6,6 +6,7 @@ from voluptuous import Invalid
 
 from dvc.schema import COMPILED_LOCK_FILE_STAGE_SCHEMA
 from dvc.serialize import to_single_stage_lockfile
+from dvc.stage.loader import StageLoader
 from dvc.utils.fs import makedirs
 from dvc.utils import relpath, dict_sha256
 from dvc.utils.stage import dump_stage_file
@@ -15,20 +16,16 @@ logger = logging.getLogger(__name__)
 
 def _get_cache_hash(cache, key=False):
     if key:
-        outs = [out["path"] for out in cache["outs"]]
-    else:
-        outs = cache["outs"]
-    return dict_sha256(
-        {"cmd": cache["cmd"], "deps": cache["deps"], "outs": outs}
-    )
+        cache["outs"] = [out["path"] for out in cache.get("outs", [])]
+    return dict_sha256(cache)
 
 
 def _get_stage_hash(stage):
-    if not stage.cmd or not stage.deps or not stage.outs:
+    if not (stage.cmd and stage.deps and stage.outs):
         return None
 
     for dep in stage.deps:
-        if dep.scheme != "local" or not dep.def_path or not dep.get_checksum():
+        if not (dep.scheme == "local" and dep.def_path and dep.get_checksum()):
             return None
 
     for out in stage.outs:
@@ -103,13 +100,4 @@ class StageCache:
         cache = self._load(stage)
         if not cache:
             return
-
-        deps = {dep.def_path: dep for dep in stage.deps}
-        for entry in cache["deps"]:
-            dep = deps[entry["path"]]
-            dep.checksum = entry[dep.checksum_type]
-
-        outs = {out.def_path: out for out in stage.outs}
-        for entry in cache["outs"]:
-            out = outs[entry["path"]]
-            out.checksum = entry[out.checksum_type]
+        StageLoader.fill_from_lock(stage, cache)

@@ -50,7 +50,7 @@ class StageLoader(Mapping):
         return self.__class__(self.dvcfile, data, self.lockfile_data)
 
     @staticmethod
-    def _fill_lock_checksums(stage, lock_data):
+    def fill_from_lock(stage, lock_data):
         from .params import StageParams
 
         items = chain(
@@ -144,7 +144,7 @@ class StageLoader(Mapping):
             stage.cmd_changed = lock_data.get(
                 Stage.PARAM_CMD
             ) != stage_data.get(Stage.PARAM_CMD)
-            cls._fill_lock_checksums(stage, lock_data)
+            cls.fill_from_lock(stage, lock_data)
 
         return stage
 
