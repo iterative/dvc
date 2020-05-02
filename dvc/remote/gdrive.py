@@ -403,7 +403,7 @@ class GDriveRemote(BaseRemote):
         with Tqdm(
             bar_format=bar_format, desc=progress_desc, disable=no_progress_bar
         ):
-            gdrive_file.GetContentFile(to_file)
+            gdrive_file.GetContentFile(to_file)  # TODO: actually use pbar
 
     @_gdrive_retry
     def _gdrive_delete_file(self, item_id):
