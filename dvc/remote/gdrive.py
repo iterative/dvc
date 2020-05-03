@@ -397,33 +397,13 @@ class GDriveRemote(BaseRemote):
         # it does not create a file on the remote
         gdrive_file = self._drive.CreateFile(param)
 
-        import httplib2
-
-        OrigClass = httplib2.HTTPConnectionWithTimeout.response_class
-
-        class Custom(OrigClass):
-            def _readall_chunked(self):
-                assert self.chunked != "UNKNOWN"
-                value = []
-                with Tqdm(
-                    total=int(gdrive_file["fileSize"]),
-                    desc=progress_desc,
-                    disable=no_progress_bar,
-                    bytes=True,
-                ) as pbar:
-                    while True:
-                        chunk_left = self._get_chunk_left()
-                        if chunk_left is None:
-                            break
-                        chunk = self._safe_read(chunk_left)
-                        value.append(chunk)
-                        pbar.update(len(chunk))
-                        self.chunk_left = 0
-                return b"".join(value)
-
-        httplib2.HTTPConnectionWithTimeout.response_class = Custom
-        gdrive_file.GetContentFile(to_file)
-        httplib2.HTTPConnectionWithTimeout.response_class = OrigClass
+        with Tqdm(
+            total=int(gdrive_file["fileSize"]),
+            desc=progress_desc,
+            disable=no_progress_bar,
+            bytes=True,
+        ) as pbar:
+            gdrive_file.GetContentFile(to_file, callback=pbar.update_to)
 
     @_gdrive_retry
     def _gdrive_delete_file(self, item_id):
