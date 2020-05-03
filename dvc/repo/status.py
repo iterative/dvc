@@ -25,11 +25,14 @@ def _joint_status(stages):
     return status
 
 
-def _local_status(self, targets=None, with_deps=False):
+def _local_status(self, targets=None, with_deps=False, recursive=False):
     if targets:
-        stages = cat(self.collect(t, with_deps=with_deps) for t in targets)
+        stages = cat(
+            self.collect(t, with_deps=with_deps, recursive=recursive)
+            for t in targets
+        )
     else:
-        stages = self.collect(None, with_deps=with_deps)
+        stages = self.collect(None, with_deps=with_deps, recursive=recursive)
 
     return _joint_status(stages)
 
@@ -42,6 +45,7 @@ def _cloud_status(
     all_branches=False,
     with_deps=False,
     all_tags=False,
+    recursive=False,
     all_commits=False,
 ):
     """Returns a dictionary with the files that are new or deleted.
@@ -81,6 +85,7 @@ def _cloud_status(
         force=True,
         remote=remote,
         jobs=jobs,
+        recursive=recursive,
     )
 
     ret = {}
@@ -109,6 +114,7 @@ def status(
     with_deps=False,
     all_tags=False,
     all_commits=False,
+    recursive=False,
 ):
     if cloud or remote:
         return _cloud_status(
@@ -120,6 +126,7 @@ def status(
             remote=remote,
             all_tags=all_tags,
             all_commits=all_commits,
+            recursive=True,
         )
 
     ignored = list(
@@ -132,4 +139,6 @@ def status(
         msg = "The following options are meaningless for local status: {}"
         raise InvalidArgumentError(msg.format(", ".join(ignored)))
 
-    return _local_status(self, targets, with_deps=with_deps)
+    return _local_status(
+        self, targets, with_deps=with_deps, recursive=recursive
+    )

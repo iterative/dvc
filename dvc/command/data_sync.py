@@ -334,4 +334,12 @@ def add_parser(subparsers, _parent_parser):
         default=False,
         help="Show status for all dependencies of the specified target.",
     )
+    status_parser.add_argument(
+        "-R",
+        "--recursive",
+        action="store_true",
+        default=False,
+        help="Show status of all stages in the specified directory.",
+    )
+
     status_parser.set_defaults(func=CmdDataStatus)
