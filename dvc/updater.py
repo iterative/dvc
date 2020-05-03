@@ -21,12 +21,11 @@ class Updater(object):  # pragma: no cover
     TIMEOUT = 24 * 60 * 60  # every day
     TIMEOUT_GET = 10
 
-    def __init__(self, dvc_dir, friendly=False, hardlink_lock=False):
-        self.dvc_dir = dvc_dir
-        self.updater_file = os.path.join(dvc_dir, self.UPDATER_FILE)
+    def __init__(self, tmp_dir, friendly=False, hardlink_lock=False):
+        self.updater_file = os.path.join(tmp_dir, self.UPDATER_FILE)
         self.lock = make_lock(
             self.updater_file + ".lock",
-            tmp_dir=os.path.join(dvc_dir, "tmp"),
+            tmp_dir=tmp_dir,
             friendly=friendly,
             hardlink_lock=hardlink_lock,
         )

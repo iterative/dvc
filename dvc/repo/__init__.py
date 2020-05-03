@@ -93,8 +93,8 @@ class Repo(object):
 
         hardlink_lock = self.config["core"].get("hardlink_lock", False)
         self.lock = make_lock(
-            os.path.join(self.dvc_dir, "lock"),
-            tmp_dir=os.path.join(self.dvc_dir, "tmp"),
+            os.path.join(self.tmp_dir, "lock"),
+            tmp_dir=self.tmp_dir,
             hardlink_lock=hardlink_lock,
             friendly=True,
         )
@@ -164,15 +164,7 @@ class Repo(object):
         return self.cache.local.unprotect(PathInfo(target))
 
     def _ignore(self):
-        from dvc.updater import Updater
-
-        updater = Updater(self.dvc_dir)
-
-        flist = (
-            [self.config.files["local"], updater.updater_file]
-            + [self.lock.lockfile, updater.lock.lockfile, self.tmp_dir]
-            + self.state.files
-        )
+        flist = [self.config.files["local"], self.tmp_dir]
 
         if path_isin(self.cache.local.cache_dir, self.root_dir):
             flist += [self.cache.local.cache_dir]

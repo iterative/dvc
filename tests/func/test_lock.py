@@ -8,7 +8,7 @@ from tests.basic_env import TestDvc
 
 class TestLock(TestDvc):
     def test_with(self):
-        lockfile = os.path.join(self.dvc.dvc_dir, "lock")
+        lockfile = os.path.join(self.dvc.dvc_dir, "tmp", "lock")
         lock = Lock(lockfile)
         with lock:
             with self.assertRaises(LockError):
@@ -17,7 +17,7 @@ class TestLock(TestDvc):
                     self.assertTrue(False)
 
     def test_cli(self):
-        lockfile = os.path.join(self.dvc.dvc_dir, "lock")
+        lockfile = os.path.join(self.dvc.dvc_dir, "tmp", "lock")
         lock = Lock(lockfile)
         with lock:
             ret = main(["add", self.FOO])

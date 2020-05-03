@@ -39,7 +39,7 @@ def test_no_cache_entry(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("file", "second")
 
     remove(fspath(tmp_dir / ".dvc" / "cache"))
-    (tmp_dir / ".dvc" / "state").unlink()
+    (tmp_dir / ".dvc" / "tmp" / "state").unlink()
 
     dir_checksum = "5fb6b29836c388e093ca0715c872fe2a.dir"
 
