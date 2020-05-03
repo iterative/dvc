@@ -209,6 +209,15 @@ class BaseOutput(object):
     def isfile(self):
         return self.remote.isfile(self.path_info)
 
+    def ignore(self):
+        if not self.use_scm_ignore:
+            return
+
+        if self.repo.scm.is_tracked(self.fspath):
+            raise OutputAlreadyTrackedError(self)
+
+        self.repo.scm.ignore(self.fspath)
+
     def save(self):
         if not self.exists:
             raise self.DoesNotExistError(self)
@@ -219,11 +228,7 @@ class BaseOutput(object):
         if self.is_empty:
             logger.warning("'{}' is empty.".format(self))
 
-        if self.use_scm_ignore:
-            if self.repo.scm.is_tracked(self.fspath):
-                raise OutputAlreadyTrackedError(self)
-
-            self.repo.scm.ignore(self.fspath)
+        self.ignore()
 
         if not self.use_cache:
             self.info = self.save_info()
