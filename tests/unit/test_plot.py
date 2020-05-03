@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 import pytest
 
 from dvc.repo.plot.data import _apply_path, _lists, _find_data
@@ -26,7 +28,7 @@ def test_parse_json(path, expected_result):
         ({}, []),
         ({"x": ["a", "b", "c"]}, [["a", "b", "c"]]),
         (
-            {"x": {"y": ["a", "b"]}, "z": {"w": ["c", "d"]}},
+            OrderedDict([("x", {"y": ["a", "b"]}), ("z", {"w": ["c", "d"]})]),
             [["a", "b"], ["c", "d"]],
         ),
     ],
