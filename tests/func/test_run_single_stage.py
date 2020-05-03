@@ -30,7 +30,7 @@ from dvc.stage.exceptions import (
 from dvc.system import System
 from dvc.utils import file_md5
 from dvc.utils.stage import load_stage_file
-from tests.basic_env import TestDvc
+from tests.basic_env import TestDvc, TestDvcGit
 
 
 class TestRun(TestDvc):
@@ -90,13 +90,17 @@ class TestRunMissingDep(TestDvc):
             )
 
 
-class TestRunNoExec(TestDvc):
+class TestRunNoExec(TestDvcGit):
     def test(self):
         self.dvc.run(
             cmd="python {} {} {}".format(self.CODE, self.FOO, "out"),
+            deps=[self.CODE, self.FOO],
+            outs=["out"],
             no_exec=True,
         )
         self.assertFalse(os.path.exists("out"))
+        with open(".gitignore", "r") as fobj:
+            self.assertEqual(fobj.read(), "/out\n")
 
 
 class TestRunCircularDependency(TestDvc):
