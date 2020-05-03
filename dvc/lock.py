@@ -17,7 +17,7 @@ DEFAULT_TIMEOUT = 5
 FAILED_TO_LOCK_MESSAGE = (
     "cannot perform the command because another DVC process seems to be "
     "running on this project. If that is not the case, manually remove "
-    "`.dvc/lock` and try again."
+    "`.dvc/tmp/lock` and try again."
 )
 
 
