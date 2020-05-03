@@ -17,6 +17,7 @@ def test_cloud_status(mocker):
             "--all-tags",
             "--all-commits",
             "--with-deps",
+            "--recursive",
         ]
     )
     assert cli_args.func == CmdDataStatus
@@ -35,4 +36,5 @@ def test_cloud_status(mocker):
         all_tags=True,
         all_commits=True,
         with_deps=True,
+        recursive=True,
     )

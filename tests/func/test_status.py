@@ -93,3 +93,23 @@ def test_status_on_pipeline_stages(tmp_dir, dvc, run_copy):
             "changed command",
         ],
     }
+
+
+def test_status_recursive(tmp_dir, dvc):
+    tmp_dir.gen({"dir": {"file": "text1", "subdir": {"file2": "text2"}}})
+    stages = dvc.add("dir", recursive=True, no_commit=True)
+
+    assert len(stages) == 2
+
+    assert dvc.status(targets=["dir"], recursive=True) == {
+        os.path.join("dir", "file.dvc"): [
+            {"changed outs": {os.path.join("dir", "file"): "not in cache"}}
+        ],
+        os.path.join("dir", "subdir", "file2.dvc"): [
+            {
+                "changed outs": {
+                    os.path.join("dir", "subdir", "file2"): "not in cache"
+                }
+            }
+        ],
+    }

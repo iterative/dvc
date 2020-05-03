@@ -49,6 +49,7 @@ class CmdDataStatus(CmdDataBase):
                 all_tags=self.args.all_tags,
                 all_commits=self.args.all_commits,
                 with_deps=self.args.with_deps,
+                recursive=self.args.recursive,
             )
             if st:
                 if self.args.quiet:
