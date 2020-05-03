@@ -97,20 +97,15 @@ class CmdDiff(CmdBase):
         try:
             diff = self.repo.diff(self.args.a_rev, self.args.b_rev)
 
-            if not any(diff.values()):
-                return 0
-
             if not self.args.show_hash:
                 for _, entries in diff.items():
                     for entry in entries:
                         del entry["hash"]
 
             if self.args.show_json:
-                res = json.dumps(diff)
-            else:
-                res = self._format(diff)
-
-            logger.info(res)
+                logger.info(json.dumps(diff))
+            elif diff:
+                logger.info(self._format(diff))
 
         except DvcException:
             logger.exception("failed to get diff")
