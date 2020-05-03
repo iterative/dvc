@@ -5,7 +5,7 @@ from dvc import dependency, output
 from voluptuous import Any, Schema, Optional, Required
 
 
-STAGES = "stages"
+PIPELINE = "pipeline"
 SINGLE_STAGE_SCHEMA = {
     StageParams.PARAM_MD5: output.CHECKSUM_SCHEMA,
     StageParams.PARAM_CMD: Any(str, None),
@@ -38,7 +38,7 @@ SINGLE_PIPELINE_STAGE_SCHEMA = {
         **{Optional(p.value): [str] for p in OutputParams},
     }
 }
-MULTI_STAGE_SCHEMA = {STAGES: SINGLE_PIPELINE_STAGE_SCHEMA}
+MULTI_STAGE_SCHEMA = {PIPELINE: SINGLE_PIPELINE_STAGE_SCHEMA}
 
 COMPILED_SINGLE_STAGE_SCHEMA = Schema(SINGLE_STAGE_SCHEMA)
 COMPILED_MULTI_STAGE_SCHEMA = Schema(MULTI_STAGE_SCHEMA)

@@ -197,13 +197,13 @@ class PipelineFile(FileMixin):
         else:
             open(self.path, "w+").close()
 
-        data["stages"] = data.get("stages", {})
+        data["pipeline"] = data.get("pipeline", {})
         stage_data = serialize.to_pipeline_file(stage)
-        if data["stages"].get(stage.name):
-            orig_stage_data = data["stages"][stage.name]
+        if data["pipeline"].get(stage.name):
+            orig_stage_data = data["pipeline"][stage.name]
             apply_diff(stage_data[stage.name], orig_stage_data)
         else:
-            data["stages"].update(stage_data)
+            data["pipeline"].update(stage_data)
 
         dump_stage_file(self.path, data)
         self.repo.scm.track_file(relpath(self.path))
@@ -218,7 +218,7 @@ class PipelineFile(FileMixin):
     def stages(self):
         data, _ = self._load()
         lockfile_data = self._lockfile.load()
-        return StageLoader(self, data.get("stages", {}), lockfile_data)
+        return StageLoader(self, data.get("pipeline", {}), lockfile_data)
 
     def remove(self, force=False):
         if not force:
