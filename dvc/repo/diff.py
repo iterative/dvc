@@ -71,7 +71,7 @@ def diff(self, a_rev="HEAD", b_rev=None):
     deleted = sorted(set(old) - set(new))
     modified = sorted(set(old) & set(new))
 
-    return {
+    ret = {
         "added": [{"path": path, "hash": new[path]} for path in added],
         "deleted": [{"path": path, "hash": old[path]} for path in deleted],
         "modified": [
@@ -80,3 +80,5 @@ def diff(self, a_rev="HEAD", b_rev=None):
             if old[path] != new[path]
         ],
     }
+
+    return ret if any(ret.values()) else {}

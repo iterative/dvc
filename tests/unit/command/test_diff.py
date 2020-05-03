@@ -1,5 +1,6 @@
 import collections
 import os
+import logging
 
 from dvc.cli import parse_args
 
@@ -86,3 +87,26 @@ def test_show_json_and_hash(mocker, caplog):
     assert '"added": [{"path": "file", "hash": "00000000"}]' in caplog.text
     assert '"deleted": []' in caplog.text
     assert '"modified": []' in caplog.text
+
+
+def test_no_changes(mocker, caplog):
+    args = parse_args(["diff", "--show-json"])
+    cmd = args.func(args)
+    mocker.patch("dvc.repo.Repo.diff", return_value={})
+
+    def info():
+        return [
+            msg
+            for name, level, msg in caplog.record_tuples
+            if name.startswith("dvc") and level == logging.INFO
+        ]
+
+    assert 0 == cmd.run()
+    assert ["{}"] == info()
+
+    caplog.clear()
+
+    args = parse_args(["diff"])
+    cmd = args.func(args)
+    assert 0 == cmd.run()
+    assert not info()

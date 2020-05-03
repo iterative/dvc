@@ -209,3 +209,8 @@ def test_diff_dirty(tmp_dir, scm, dvc):
             }
         ],
     }
+
+
+def test_no_changes(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen("file", "first", commit="add a file")
+    assert dvc.diff() == {}
