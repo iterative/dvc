@@ -102,8 +102,14 @@ def test_status_recursive(tmp_dir, dvc):
     assert len(stages) == 2
 
     assert dvc.status(targets=["dir"], recursive=True) == {
-        "dir/file.dvc": [{"changed outs": {"dir/file": "not in cache"}}],
-        "dir/subdir/file2.dvc": [
-            {"changed outs": {"dir/subdir/file2": "not in cache"}}
+        os.path.join("dir", "file.dvc"): [
+            {"changed outs": {os.path.join("dir", "file"): "not in cache"}}
+        ],
+        os.path.join("dir", "subdir", "file2.dvc"): [
+            {
+                "changed outs": {
+                    os.path.join("dir", "subdir", "file2"): "not in cache"
+                }
+            }
         ],
     }
