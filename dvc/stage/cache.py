@@ -37,7 +37,7 @@ def _get_stage_hash(stage):
 
 class StageCache:
     def __init__(self, cache_dir):
-        self.cache_dir = os.path.join(cache_dir, "stages")
+        self.cache_dir = os.path.join(cache_dir, "run")
 
     def _get_cache_dir(self, key):
         return os.path.join(self.cache_dir, key[:2], key)
