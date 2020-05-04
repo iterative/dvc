@@ -29,11 +29,11 @@ class OutputDuplicationError(DvcException):
         assert isinstance(output, str)
         assert all(hasattr(stage, "relpath") for stage in stages)
         if len(stages) == 1:
-            msg = "output '{}' is already specified on {}.".format(
+            msg = "output '{}' is already specified in {}.".format(
                 output, first(stages)
             )
         else:
-            msg = "output '{}' is already specified on stages:\n{}".format(
+            msg = "output '{}' is already specified in stages:\n{}".format(
                 output,
                 "\n".join("\t- {}".format(s.addressing) for s in stages),
             )

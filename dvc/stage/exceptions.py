@@ -3,11 +3,9 @@ from dvc.exceptions import DvcException
 
 class StageCmdFailedError(DvcException):
     def __init__(self, stage, status=None):
-        period = "."
         msg = "failed to run: {}".format(stage.cmd)
         if status is not None:
             msg += ", exited with {}".format(status)
-        msg += period
         super().__init__(msg)
 
 
