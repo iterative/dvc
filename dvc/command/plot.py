@@ -96,7 +96,7 @@ class CmdPlotDiff(CmdPLot):
 
 def add_parser(subparsers, parent_parser):
     PLOT_HELP = (
-        "Generating plots for continuous metrics stored in structured files "
+        "Generating plots for metrics stored in structured files "
         "(JSON, CSV, TSV)."
     )
 
@@ -114,7 +114,7 @@ def add_parser(subparsers, parent_parser):
 
     fix_subparsers(plot_subparsers)
 
-    SHOW_HELP = "Generate a plot image file from a continuous metrics file."
+    SHOW_HELP = "Generate a plot image file from a metrics file."
     plot_show_parser = plot_subparsers.add_parser(
         "show",
         parents=[parent_parser],
@@ -166,15 +166,12 @@ def add_parser(subparsers, parent_parser):
     plot_show_parser.add_argument("--xlab", default=None, help="X axis title.")
     plot_show_parser.add_argument("--ylab", default=None, help="Y axis title.")
     plot_show_parser.add_argument(
-        "datafile",
-        nargs="?",
-        default=None,
-        help="Continuous metrics file to visualize.",
+        "datafile", nargs="?", default=None, help="Metrics file to visualize.",
     )
     plot_show_parser.set_defaults(func=CmdPlotShow)
 
     PLOT_DIFF_HELP = (
-        "Plot continuous metrics differences between commits in the DVC "
+        "Plot metrics differences between commits in the DVC "
         "repository, or between the last commit and the workspace."
     )
     plot_diff_parser = plot_subparsers.add_parser(
@@ -196,7 +193,7 @@ def add_parser(subparsers, parent_parser):
         "--datafile",
         nargs="?",
         default=None,
-        help="Continuous metrics file to visualize.",
+        help="Metrics file to visualize.",
     )
     plot_diff_parser.add_argument(
         "-f", "--file", default=None, help="Name of the generated file."
