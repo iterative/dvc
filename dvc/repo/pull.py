@@ -33,5 +33,5 @@ def pull(
         targets=targets, with_deps=with_deps, force=force, recursive=recursive
     )
 
-    stats["downloaded"] = processed_files_count
+    stats["fetched"] = processed_files_count
     return stats
