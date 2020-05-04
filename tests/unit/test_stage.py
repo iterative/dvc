@@ -88,7 +88,7 @@ def test_stage_run_ignore_sigint(dvc, mocker):
     popen = mocker.patch.object(subprocess, "Popen", return_value=proc)
     signal_mock = mocker.patch("signal.signal")
 
-    dvc.run(cmd="path")
+    dvc.run(cmd="path", single_stage=True)
 
     assert popen.called_once()
     assert communicate.called_once_with()
@@ -106,7 +106,7 @@ def test_always_changed(dvc):
 
 def test_stage_cache(tmp_dir, dvc, run_copy, mocker):
     tmp_dir.gen("dep", "dep")
-    stage = run_copy("dep", "out")
+    stage = run_copy("dep", "out", single_stage=True)
 
     with dvc.lock, dvc.state:
         stage.remove(remove_outs=True, force=True)

@@ -43,6 +43,7 @@ def create_dvc_pipeline(tmp_dir, dvc):
             "outs": [os.path.join("out", "file")],
             "deps": ["dep"],
             "fname": "out.dvc",
+            "single_stage": True,
         }
     )
     tmp_dir.scm_add(["out.dvc"], commit="run")

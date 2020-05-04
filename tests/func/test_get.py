@@ -114,7 +114,9 @@ def test_non_cached_output(tmp_dir, erepo_dir):
 
     with erepo_dir.chdir():
         erepo_dir.dvc.run(
-            outs_no_cache=[src], cmd="echo hello > non_cached_file"
+            outs_no_cache=[src],
+            cmd="echo hello > non_cached_file",
+            single_stage=True,
         )
         erepo_dir.scm_add([src, src + ".dvc"], commit="add non-cached output")
 

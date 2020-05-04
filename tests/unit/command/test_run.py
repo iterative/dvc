@@ -63,6 +63,7 @@ def test_run(mocker, dvc):
         always_changed=True,
         cmd="command",
         name="nam",
+        single_stage=False,
     )
 
 
@@ -89,6 +90,7 @@ def test_run_args_from_cli(mocker, dvc):
         always_changed=False,
         cmd="echo foo",
         name=None,
+        single_stage=False,
     )
 
 
@@ -115,4 +117,5 @@ def test_run_args_with_spaces(mocker, dvc):
         always_changed=False,
         cmd='echo "foo bar"',
         name=None,
+        single_stage=False,
     )

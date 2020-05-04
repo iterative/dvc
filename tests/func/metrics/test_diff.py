@@ -5,7 +5,7 @@ import yaml
 def test_metrics_diff_simple(tmp_dir, scm, dvc):
     def _gen(val):
         tmp_dir.gen({"m.yaml": str(val)})
-        dvc.run(cmd="", metrics=["m.yaml"])
+        dvc.run(cmd="", metrics=["m.yaml"], single_stage=True)
         dvc.scm.add(["m.yaml.dvc"])
         dvc.scm.commit(str(val))
 
@@ -22,7 +22,7 @@ def test_metrics_diff_yaml(tmp_dir, scm, dvc):
     def _gen(val):
         metrics = {"a": {"b": {"c": val, "d": 1, "e": str(val)}}}
         tmp_dir.gen({"m.yaml": yaml.dump(metrics)})
-        dvc.run(cmd="", metrics=["m.yaml"])
+        dvc.run(cmd="", metrics=["m.yaml"], single_stage=True)
         dvc.scm.add(["m.yaml.dvc"])
         dvc.scm.commit(str(val))
 
@@ -39,7 +39,7 @@ def test_metrics_diff_json(tmp_dir, scm, dvc):
     def _gen(val):
         metrics = {"a": {"b": {"c": val, "d": 1, "e": str(val)}}}
         tmp_dir.gen({"m.json": json.dumps(metrics)})
-        dvc.run(cmd="", metrics=["m.json"])
+        dvc.run(cmd="", metrics=["m.json"], single_stage=True)
         dvc.scm.add(["m.json.dvc"])
         dvc.scm.commit(str(val))
 
@@ -55,7 +55,7 @@ def test_metrics_diff_json_unchanged(tmp_dir, scm, dvc):
     def _gen(val):
         metrics = {"a": {"b": {"c": val, "d": 1, "e": str(val)}}}
         tmp_dir.gen({"m.json": json.dumps(metrics)})
-        dvc.run(cmd="", metrics=["m.json"])
+        dvc.run(cmd="", metrics=["m.json"], single_stage=True)
         dvc.scm.add(["m.json.dvc"])
         dvc.scm.commit(str(val))
 
@@ -69,7 +69,7 @@ def test_metrics_diff_json_unchanged(tmp_dir, scm, dvc):
 def test_metrics_diff_broken_json(tmp_dir, scm, dvc):
     metrics = {"a": {"b": {"c": 1, "d": 1, "e": "3"}}}
     tmp_dir.gen({"m.json": json.dumps(metrics)})
-    dvc.run(cmd="", metrics_no_cache=["m.json"])
+    dvc.run(cmd="", metrics_no_cache=["m.json"], single_stage=True)
     dvc.scm.add(["m.json.dvc", "m.json"])
     dvc.scm.commit("add metrics")
 
@@ -91,7 +91,7 @@ def test_metrics_diff_no_metrics(tmp_dir, scm, dvc):
 def test_metrics_diff_new_metric(tmp_dir, scm, dvc):
     metrics = {"a": {"b": {"c": 1, "d": 1, "e": "3"}}}
     tmp_dir.gen({"m.json": json.dumps(metrics)})
-    dvc.run(cmd="", metrics_no_cache=["m.json"])
+    dvc.run(cmd="", metrics_no_cache=["m.json"], single_stage=True)
 
     assert dvc.metrics.diff() == {
         "m.json": {
@@ -104,7 +104,7 @@ def test_metrics_diff_new_metric(tmp_dir, scm, dvc):
 def test_metrics_diff_deleted_metric(tmp_dir, scm, dvc):
     metrics = {"a": {"b": {"c": 1, "d": 1, "e": "3"}}}
     tmp_dir.gen({"m.json": json.dumps(metrics)})
-    dvc.run(cmd="", metrics_no_cache=["m.json"])
+    dvc.run(cmd="", metrics_no_cache=["m.json"], single_stage=True)
     dvc.scm.add(["m.json.dvc", "m.json"])
     dvc.scm.commit("add metrics")
 
@@ -120,7 +120,7 @@ def test_metrics_diff_deleted_metric(tmp_dir, scm, dvc):
 
 def test_metrics_diff_with_unchanged(tmp_dir, scm, dvc):
     tmp_dir.gen("metrics.yaml", "foo: 1\nxyz: 10")
-    dvc.run(metrics_no_cache=["metrics.yaml"])
+    dvc.run(metrics_no_cache=["metrics.yaml"], single_stage=True)
     scm.add(["metrics.yaml", "metrics.yaml.dvc"])
     scm.commit("1")
 

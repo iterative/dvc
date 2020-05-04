@@ -97,6 +97,7 @@ class TestDefaultWorkingDirectory(TestDvc):
             cmd="echo test > {}".format(self.FOO),
             deps=[self.BAR],
             outs=[self.FOO],
+            single_stage=True,
         )
 
         d = stage.dumpd()
@@ -124,6 +125,7 @@ class TestExternalRemoteResolution(TestDvc):
             main(
                 [
                     "run",
+                    "--single-stage",
                     "-O",
                     "remote://storage/file",
                     "echo file > {path}".format(path=file_path),
@@ -196,7 +198,7 @@ def test_parent_repo_collect_stages(tmp_dir, scm, dvc):
 
 def test_stage_addressing(tmp_dir, dvc, run_copy):
     tmp_dir.dvc_gen("foo", "foo")
-    stage1 = run_copy("foo", "bar")
+    stage1 = run_copy("foo", "bar", single_stage=True)
     assert stage1.addressing == "bar.dvc"
 
     stage2 = run_copy("bar", "baz", name="copy-bar-baz")

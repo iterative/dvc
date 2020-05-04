@@ -10,14 +10,14 @@ def test_show_empty(dvc):
 
 def test_show(tmp_dir, dvc):
     tmp_dir.gen("params.yaml", "foo: bar")
-    dvc.run(params=["foo"])
+    dvc.run(params=["foo"], single_stage=True)
     assert dvc.params.show() == {"": {"params.yaml": {"foo": "bar"}}}
 
 
 def test_show_multiple(tmp_dir, dvc):
     tmp_dir.gen("params.yaml", "foo: bar\nbaz: qux\n")
-    dvc.run(fname="foo.dvc", params=["foo"])
-    dvc.run(fname="baz.dvc", params=["baz"])
+    dvc.run(fname="foo.dvc", params=["foo"], single_stage=True)
+    dvc.run(fname="baz.dvc", params=["baz"], single_stage=True)
     assert dvc.params.show() == {
         "": {"params.yaml": {"foo": "bar", "baz": "qux"}}
     }
@@ -25,13 +25,13 @@ def test_show_multiple(tmp_dir, dvc):
 
 def test_show_list(tmp_dir, dvc):
     tmp_dir.gen("params.yaml", "foo:\n- bar\n- baz\n")
-    dvc.run(params=["foo"])
+    dvc.run(params=["foo"], single_stage=True)
     assert dvc.params.show() == {"": {"params.yaml": {"foo": ["bar", "baz"]}}}
 
 
 def test_show_branch(tmp_dir, scm, dvc):
     tmp_dir.gen("params.yaml", "foo: bar")
-    dvc.run(params=["foo"])
+    dvc.run(params=["foo"], single_stage=True)
     scm.add(["params.yaml", "Dvcfile"])
     scm.commit("init")
 

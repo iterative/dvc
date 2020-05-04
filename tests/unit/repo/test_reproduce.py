@@ -5,9 +5,15 @@ from dvc.repo.reproduce import _get_active_graph
 
 def test_get_active_graph(tmp_dir, dvc):
     (pre_foo_stage,) = tmp_dir.dvc_gen({"pre-foo": "pre-foo"})
-    foo_stage = dvc.run(deps=["pre-foo"], outs=["foo"], cmd="echo foo > foo")
-    bar_stage = dvc.run(deps=["foo"], outs=["bar"], cmd="echo bar > bar")
-    baz_stage = dvc.run(deps=["foo"], outs=["baz"], cmd="echo baz > baz")
+    foo_stage = dvc.run(
+        single_stage=True, deps=["pre-foo"], outs=["foo"], cmd="echo foo > foo"
+    )
+    bar_stage = dvc.run(
+        single_stage=True, deps=["foo"], outs=["bar"], cmd="echo bar > bar"
+    )
+    baz_stage = dvc.run(
+        single_stage=True, deps=["foo"], outs=["baz"], cmd="echo baz > baz"
+    )
 
     dvc.lock_stage("bar.dvc")
 
@@ -31,10 +37,18 @@ def test_get_active_graph(tmp_dir, dvc):
 def test_number_reproduces(reproduce_stage_mock, tmp_dir, dvc):
     tmp_dir.dvc_gen({"pre-foo": "pre-foo"})
 
-    dvc.run(deps=["pre-foo"], outs=["foo"], cmd="echo foo > foo")
-    dvc.run(deps=["foo"], outs=["bar"], cmd="echo bar > bar")
-    dvc.run(deps=["foo"], outs=["baz"], cmd="echo baz > baz")
-    dvc.run(deps=["bar"], outs=["boop"], cmd="echo boop > boop")
+    dvc.run(
+        single_stage=True, deps=["pre-foo"], outs=["foo"], cmd="echo foo > foo"
+    )
+    dvc.run(
+        single_stage=True, deps=["foo"], outs=["bar"], cmd="echo bar > bar"
+    )
+    dvc.run(
+        single_stage=True, deps=["foo"], outs=["baz"], cmd="echo baz > baz"
+    )
+    dvc.run(
+        single_stage=True, deps=["bar"], outs=["boop"], cmd="echo boop > boop"
+    )
 
     reproduce_stage_mock.reset_mock()
 

@@ -27,7 +27,7 @@ def _remove_whitespace(value):
 
 
 def _run_with_metric(tmp_dir, metric_filename, commit=None, tag=None):
-    tmp_dir.dvc.run(metrics_no_cache=[metric_filename])
+    tmp_dir.dvc.run(metrics_no_cache=[metric_filename], single_stage=True)
     if hasattr(tmp_dir.dvc, "scm"):
         tmp_dir.dvc.scm.add([metric_filename, metric_filename + ".dvc"])
         if commit:

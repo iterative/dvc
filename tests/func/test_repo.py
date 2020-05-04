@@ -15,7 +15,7 @@ def test_destroy(tmp_dir, dvc, run_copy):
     tmp_dir.dvc_gen("file", "text")
     tmp_dir.dvc_gen({"dir": {"file": "lorem", "subdir/file": "ipsum"}})
 
-    run_copy("file", "file2")
+    run_copy("file", "file2", single_stage=True)
     run_copy("file2", "file3", name="copy-file2-file3")
     run_copy("file3", "file4", name="copy-file3-file4")
 
@@ -66,13 +66,13 @@ def test_collect(tmp_dir, scm, dvc, run_copy):
         )
 
     tmp_dir.dvc_gen("foo", "foo")
-    run_copy("foo", "bar")
+    run_copy("foo", "bar", single_stage=True)
     scm.add([".gitignore", "foo.dvc", "bar.dvc"])
     scm.commit("Add foo and bar")
 
     scm.checkout("new-branch", create_new=True)
 
-    run_copy("bar", "buzz")
+    run_copy("bar", "buzz", single_stage=True)
     scm.add([".gitignore", "buzz.dvc"])
     scm.commit("Add buzz")
 
