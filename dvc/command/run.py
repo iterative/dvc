@@ -50,6 +50,7 @@ class CmdRun(CmdBase):
                 outs_persist_no_cache=self.args.outs_persist_no_cache,
                 always_changed=self.args.always_changed,
                 name=self.args.name,
+                single_stage=self.args.single_stage,
             )
         except DvcException:
             logger.exception("")
@@ -96,7 +97,9 @@ def add_parser(subparsers, parent_parser):
         help="Declare dependencies for reproducible cmd.",
         metavar="<path>",
     )
-    run_parser.add_argument("-n", "--name", help=argparse.SUPPRESS)
+    run_parser.add_argument(
+        "-n", "--name", help="Stage name.",
+    )
     run_parser.add_argument(
         "-o",
         "--outs",
@@ -197,6 +200,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Always consider this DVC-file as changed.",
+    )
+    run_parser.add_argument(
+        "--single-stage",
+        action="store_true",
+        default=False,
+        help=argparse.SUPPRESS,
     )
     run_parser.add_argument(
         "command", nargs=argparse.REMAINDER, help="Command to execute."

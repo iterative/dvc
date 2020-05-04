@@ -520,7 +520,9 @@ class TestWarnOnOutdatedStage(TestDvc):
         url = Local.get_url()
         self.main(["remote", "add", "-d", TEST_REMOTE, url])
 
-        stage = self.dvc.run(outs=["bar"], cmd="echo bar > bar")
+        stage = self.dvc.run(
+            outs=["bar"], cmd="echo bar > bar", single_stage=True
+        )
         self.main(["push"])
 
         stage_file_path = stage.relpath
@@ -630,7 +632,7 @@ def test_checksum_recalculation(mocker, dvc, tmp_dir):
     assert ret == 0
     ret = main(["push"])
     assert ret == 0
-    ret = main(["run", "-d", "foo", "echo foo"])
+    ret = main(["run", "--single-stage", "-d", "foo", "echo foo"])
     assert ret == 0
     assert test_get_file_checksum.mock.call_count == 1
 
@@ -783,7 +785,7 @@ def recurse_list_dir(d):
 
 def test_dvc_pull_pipeline_stages(tmp_dir, dvc, local_remote, run_copy):
     (stage0,) = tmp_dir.dvc_gen("foo", "foo")
-    stage1 = run_copy("foo", "bar")
+    stage1 = run_copy("foo", "bar", single_stage=True)
     stage2 = run_copy("bar", "foobar", name="copy-bar-foobar")
     outs = ["foo", "bar", "foobar"]
 
@@ -813,7 +815,7 @@ def test_dvc_pull_pipeline_stages(tmp_dir, dvc, local_remote, run_copy):
 
 def test_pipeline_file_target_ops(tmp_dir, dvc, local_remote, run_copy):
     tmp_dir.dvc_gen("foo", "foo")
-    run_copy("foo", "bar")
+    run_copy("foo", "bar", single_stage=True)
 
     tmp_dir.dvc_gen("lorem", "lorem")
     run_copy("lorem", "lorem2", name="copy-lorem-lorem2")

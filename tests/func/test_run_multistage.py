@@ -23,9 +23,9 @@ def test_run_with_multistage_and_single_stage(tmp_dir, dvc, run_copy):
     from dvc.stage import PipelineStage, Stage
 
     tmp_dir.dvc_gen("foo", "foo")
-    stage1 = run_copy("foo", "foo1")
+    stage1 = run_copy("foo", "foo1", single_stage=True)
     stage2 = run_copy("foo1", "foo2", name="copy-foo1-foo2")
-    stage3 = run_copy("foo2", "foo3")
+    stage3 = run_copy("foo2", "foo3", single_stage=True)
 
     assert isinstance(stage2, PipelineStage)
     assert isinstance(stage1, Stage)
@@ -40,7 +40,7 @@ def test_run_multi_stage_repeat(tmp_dir, dvc, run_copy):
     tmp_dir.dvc_gen("foo", "foo")
     run_copy("foo", "foo1", name="copy-foo-foo1")
     run_copy("foo1", "foo2", name="copy-foo1-foo2")
-    run_copy("foo2", "foo3")
+    run_copy("foo2", "foo3", single_stage=True)
 
     stages = list(Dvcfile(dvc, PIPELINE_FILE).stages.values())
     assert len(stages) == 2

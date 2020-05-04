@@ -264,7 +264,7 @@ def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
     assert ret == 0
     assert file_md5_counter.mock.call_count == 1
 
-    ret = main(["run", "-d", "foo", "echo foo"])
+    ret = main(["run", "--single-stage", "-d", "foo", "echo foo"])
     assert ret == 0
     assert file_md5_counter.mock.call_count == 1
 
@@ -297,7 +297,9 @@ def test_should_update_state_entry_for_directory_after_add(
     assert file_md5_counter.mock.call_count == 3
 
     ls = "dir" if os.name == "nt" else "ls"
-    ret = main(["run", "-d", "data", "{} {}".format(ls, "data")])
+    ret = main(
+        ["run", "--single-stage", "-d", "data", "{} {}".format(ls, "data")]
+    )
     assert ret == 0
     assert file_md5_counter.mock.call_count == 3
 

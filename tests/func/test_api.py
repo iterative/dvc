@@ -129,6 +129,7 @@ def test_open_not_cached(dvc):
         metric_file, metric_content
     )
     dvc.run(
+        single_stage=True,
         metrics_no_cache=[metric_file],
         cmd=('python -c "{}"'.format(metric_code)),
     )

@@ -38,7 +38,7 @@ def test_commit_force(tmp_dir, dvc):
     assert dvc.status([stage.path]) == {}
 
 
-@pytest.mark.parametrize("run_kw", [{}, {"name": "copy"}])
+@pytest.mark.parametrize("run_kw", [{"single_stage": True}, {"name": "copy"}])
 def test_commit_with_deps(tmp_dir, dvc, run_copy, run_kw):
     tmp_dir.gen("foo", "foo")
     (foo_stage,) = dvc.add("foo", no_commit=True)

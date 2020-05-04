@@ -50,7 +50,11 @@ def test_run_load_one_for_multistage_non_existing_stage_name(tmp_dir, dvc):
 def test_run_load_one_on_single_stage(tmp_dir, dvc):
     tmp_dir.gen("foo", "foo")
     stage = dvc.run(
-        cmd="cp foo foo2", deps=["foo"], metrics=["foo2"], always_changed=True,
+        cmd="cp foo foo2",
+        deps=["foo"],
+        metrics=["foo2"],
+        always_changed=True,
+        single_stage=True,
     )
     assert Dvcfile(dvc, stage.path).stages.get("random-name")
     assert Dvcfile(dvc, stage.path).stage
@@ -97,7 +101,11 @@ def test_load_all_multistage(tmp_dir, dvc):
 def test_load_all_singlestage(tmp_dir, dvc):
     tmp_dir.gen("foo", "foo")
     stage1 = dvc.run(
-        cmd="cp foo foo2", deps=["foo"], metrics=["foo2"], always_changed=True,
+        cmd="cp foo foo2",
+        deps=["foo"],
+        metrics=["foo2"],
+        always_changed=True,
+        single_stage=True,
     )
     stages = Dvcfile(dvc, "foo2.dvc").stages.values()
     assert len(stages) == 1
@@ -107,7 +115,11 @@ def test_load_all_singlestage(tmp_dir, dvc):
 def test_load_singlestage(tmp_dir, dvc):
     tmp_dir.gen("foo", "foo")
     stage1 = dvc.run(
-        cmd="cp foo foo2", deps=["foo"], metrics=["foo2"], always_changed=True,
+        cmd="cp foo foo2",
+        deps=["foo"],
+        metrics=["foo2"],
+        always_changed=True,
+        single_stage=True,
     )
     assert Dvcfile(dvc, "foo2.dvc").stage == stage1
 
@@ -144,7 +156,11 @@ def test_stage_collection(tmp_dir, dvc):
         always_changed=True,
     )
     stage3 = dvc.run(
-        cmd="cp bar bar2", deps=["bar"], metrics=["bar2"], always_changed=True,
+        cmd="cp bar bar2",
+        deps=["bar"],
+        metrics=["bar2"],
+        always_changed=True,
+        single_stage=True,
     )
     assert {s for s in dvc.stages} == {stage1, stage3, stage2}
 
@@ -174,7 +190,7 @@ def test_stage_filter(tmp_dir, dvc, run_copy):
 
 def test_stage_filter_in_singlestage_file(tmp_dir, dvc, run_copy):
     tmp_dir.gen("foo", "foo")
-    stage = run_copy("foo", "bar")
+    stage = run_copy("foo", "bar", single_stage=True)
     dvcfile = Dvcfile(dvc, stage.path)
     assert set(dvcfile.stages.filter(None).values()) == {stage}
     assert dvcfile.stages.filter(None).get(None) == stage
