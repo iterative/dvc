@@ -2,8 +2,12 @@ from dvc.exceptions import DvcException
 
 
 class StageCmdFailedError(DvcException):
-    def __init__(self, stage):
-        msg = "{} cmd '{}' failed".format(stage, stage.cmd)
+    def __init__(self, stage, status=None):
+        period = "."
+        msg = "failed to run: {}".format(stage.cmd)
+        if status is not None:
+            msg += ", exited with {}".format(status)
+        msg += period
         super().__init__(msg)
 
 
@@ -88,9 +92,7 @@ class MissingDataSource(DvcException):
 class StageNotFound(KeyError, DvcException):
     def __init__(self, file, name):
         super().__init__(
-            "Stage with '{}' name not found inside '{}' file".format(
-                name, file.relpath
-            )
+            "Stage '{}' not found inside '{}' file".format(name, file.relpath)
         )
 
 
@@ -105,7 +107,7 @@ class StageNameUnspecified(DvcException):
 class DuplicateStageName(DvcException):
     def __init__(self, name, file):
         super().__init__(
-            "Stage with name '{name}' already exists in '{relpath}'.".format(
+            "Stage '{name}' already exists in '{relpath}'.".format(
                 name=name, relpath=file.relpath
             )
         )
