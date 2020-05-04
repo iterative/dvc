@@ -3,6 +3,7 @@ import logging
 
 from dvc.command.base import append_doc_link
 from dvc.command.base import CmdBase
+from dvc.command.checkout import log_changes
 from dvc.utils.humanize import get_summary
 from dvc.exceptions import DvcException, CheckoutError
 
@@ -13,19 +14,13 @@ logger = logging.getLogger(__name__)
 class CmdDataBase(CmdBase):
     def log_summary(self, stats):
         default_msg = "Everything is up to date."
-        logger.info(get_summary(stats) or default_msg)
+        logger.info(get_summary(stats.items()) or default_msg)
 
 
 class CmdDataPull(CmdDataBase):
     def log_summary(self, stats):
-        # keeping `pull` stats ordered with `fetch` being always at the start
-        return super().log_summary(
-            [
-                (key, stats[key])
-                for key in ("fetched", "added", "deleted", "modified")
-                if key in stats
-            ]
-        )
+        log_changes(stats)
+        super().log_summary(stats)
 
     def run(self):
         try:
@@ -62,7 +57,7 @@ class CmdDataPush(CmdDataBase):
                 with_deps=self.args.with_deps,
                 recursive=self.args.recursive,
             )
-            self.log_summary([("pushed", processed_files_count)])
+            self.log_summary({"pushed": processed_files_count})
         except DvcException:
             logger.exception("failed to push data to the cloud")
             return 1
@@ -82,7 +77,7 @@ class CmdDataFetch(CmdDataBase):
                 with_deps=self.args.with_deps,
                 recursive=self.args.recursive,
             )
-            self.log_summary([("fetched", processed_files_count)])
+            self.log_summary({"fetched": processed_files_count})
         except DvcException:
             logger.exception("failed to fetch data from the cloud")
             return 1

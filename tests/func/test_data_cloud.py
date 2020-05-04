@@ -891,7 +891,11 @@ def test_pull_stats(tmp_dir, dvc, local_remote, caplog):
     caplog.clear()
     with caplog.at_level(level=logging.INFO, logger="dvc"):
         main(["pull", "--force"])
-    assert "2 files fetched, 1 file added and 1 file modified" in caplog.text
+    assert "M\tbar" in caplog.text
+    assert "A\tfoo" in caplog.text
+    assert "2 files fetched" in caplog.text
+    assert "1 file added" in caplog.text
+    assert "1 file modified" in caplog.text
     with caplog.at_level(level=logging.INFO, logger="dvc"):
         main(["pull"])
     assert "Everything is up to date." in caplog.text
