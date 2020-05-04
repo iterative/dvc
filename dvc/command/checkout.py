@@ -57,7 +57,7 @@ class CmdCheckout(CmdBase):
             msg = get_summary(
                 sorted(stats.items(), key=operator.itemgetter(0))
             )
-            logging.info(msg or default_message)
+            logger.info(msg or default_message)
         else:
             log_changes(stats)
 
