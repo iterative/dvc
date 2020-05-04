@@ -52,6 +52,7 @@ from tests.utils.httpd import StaticFileServer, ContentMD5Handler
 
 class SingleStageRun:
     def _run(self, **kwargs):
+        kwargs["single_stage"] = True
         kwargs.pop("name", None)
         return self.dvc.run(**kwargs)
 
@@ -140,6 +141,7 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
             wdir="dir1",
             outs=[os.path.join("..", "dir2")],
             cmd="mkdir {path}".format(path=os.path.join("..", "dir2")),
+            single_stage=True,
         )
 
         faulty_stage_path = os.path.join("dir2", "something.dvc")
@@ -176,6 +178,7 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
             wdir=dir1,
             outs=[out_dir],  # ../a/nested
             cmd="mkdir {path}".format(path=out_dir),
+            single_stage=True,
         )
 
         os.mkdir(os.path.join(nested_dir, "dir"))
@@ -210,7 +213,9 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
         #          |-- a
         #          |__ a.dvc        (stage.cwd == something-1)
 
-        self.dvc.run(outs=["something"], cmd="mkdir something")
+        self.dvc.run(
+            outs=["something"], cmd="mkdir something", single_stage=True
+        )
 
         os.mkdir("something-1")
 
@@ -262,7 +267,9 @@ class TestReproDepDirWithOutputsUnderIt(SingleStageRun, TestDvc):
         self.assertTrue(stages[0] is not None)
 
         stage = self.dvc.run(
-            fname="dvcfile2.dvc", deps=[self.DATA, self.DATA_SUB]
+            fname="dvcfile2.dvc",
+            deps=[self.DATA, self.DATA_SUB],
+            single_stage=True,
         )
         self.assertTrue(stage is not None)
 
@@ -388,6 +395,7 @@ class TestReproDryNoExec(TestDvc):
                 [
                     "run",
                     "--no-exec",
+                    "--single-stage",
                     "-d",
                     idir,
                     "-o",
@@ -398,7 +406,9 @@ class TestReproDryNoExec(TestDvc):
             )
             self.assertEqual(ret, 0)
 
-        ret = main(["run", "--no-exec", "-f", "Dvcfile"] + deps)
+        ret = main(
+            ["run", "--no-exec", "--single-stage", "-f", "Dvcfile"] + deps
+        )
         self.assertEqual(ret, 0)
 
         ret = main(["repro", "--dry"])
@@ -442,6 +452,7 @@ class TestReproIgnoreBuildCache(TestDvc):
             outs=[file1],
             deps=[self.FOO, code1],
             cmd="python {} {} {}".format(code1, self.FOO, file1),
+            single_stage=True,
         )
         self.assertTrue(file1_stage is not None)
 
@@ -452,6 +463,7 @@ class TestReproIgnoreBuildCache(TestDvc):
             outs=[file2],
             deps=[file1, code2],
             cmd="python {} {} {}".format(code2, file1, file2),
+            single_stage=True,
         )
         self.assertTrue(file2_stage is not None)
 
@@ -462,6 +474,7 @@ class TestReproIgnoreBuildCache(TestDvc):
             outs=[file3],
             deps=[file2, code3],
             cmd="python {} {} {}".format(code3, file2, file3),
+            single_stage=True,
         )
         self.assertTrue(file3_stage is not None)
 
@@ -508,6 +521,7 @@ class TestReproPipelines(SingleStageRun, TestDvc):
             outs=[self.file1],
             deps=[self.FOO, self.CODE],
             cmd="python {} {} {}".format(self.CODE, self.FOO, self.file1),
+            single_stage=True,
         )
 
         self.file2 = "file2"
@@ -626,6 +640,7 @@ class TestReproMetricsAddUnchanged(TestDvc):
             outs_no_cache=[file1],
             deps=[self.FOO, self.CODE],
             cmd="python {} {} {}".format(self.CODE, self.FOO, file1),
+            single_stage=True,
         )
 
         stages = self.dvc.reproduce(file1_stage)
@@ -786,6 +801,7 @@ class TestCmdReproChdir(TestDvc):
         ret = main(
             [
                 "run",
+                "--single-stage",
                 "-f",
                 "{}/Dvcfile".format(dname),
                 "-w",
@@ -1231,7 +1247,10 @@ class TestReproShell(TestDvc):
         stage = fname + ".dvc"
 
         self.dvc.run(
-            fname=stage, outs=[fname], cmd="echo $SHELL > {}".format(fname)
+            fname=stage,
+            outs=[fname],
+            cmd="echo $SHELL > {}".format(fname),
+            single_stage=True,
         )
 
         with open(fname, "r") as fd:
@@ -1320,6 +1339,7 @@ class TestReproAlreadyCached(TestRepro):
             deps=[self.FOO],
             outs=["datetime.txt"],
             cmd='python -c "import time; print(time.time())" > datetime.txt',
+            single_stage=True,
         ).outs[0]
 
         ret = main(["repro", "--force", "datetime.dvc"])
@@ -1363,6 +1383,7 @@ class TestShouldDisplayMetricsOnReproWithMetricsOption(TestDvc):
         ret = main(
             [
                 "run",
+                "--single-stage",
                 "-m",
                 metrics_file,
                 "echo {} >> {}".format(metrics_value, metrics_file),
@@ -1409,7 +1430,7 @@ def repro_dir(tmp_dir, dvc, run_copy):
     stages = {}
 
     origin_copy = tmp_dir / "origin_copy"
-    stage = run_copy("origin_data", fspath(origin_copy))
+    stage = run_copy("origin_data", fspath(origin_copy), single_stage=True)
     assert stage is not None
     assert origin_copy.read_text() == "origin data content"
     stages["origin_copy"] = stage
@@ -1419,6 +1440,7 @@ def repro_dir(tmp_dir, dvc, run_copy):
         fspath(origin_copy),
         fspath(origin_copy_2),
         fname=fspath(origin_copy_2) + ".dvc",
+        single_stage=True,
     )
     assert stage is not None
     assert origin_copy_2.read_text() == "origin data content"
@@ -1430,6 +1452,7 @@ def repro_dir(tmp_dir, dvc, run_copy):
         fspath(dir_file_path),
         fspath(dir_file_copy),
         fname=fspath(dir_file_copy) + ".dvc",
+        single_stage=True,
     )
     assert stage is not None
     assert dir_file_copy.read_text() == "dir file content"
@@ -1439,13 +1462,20 @@ def repro_dir(tmp_dir, dvc, run_copy):
     stage = dvc.run(
         fname=fspath(last_stage),
         deps=[fspath(origin_copy_2), fspath(dir_file_copy)],
+        single_stage=True,
     )
     assert stage is not None
     stages["last_stage"] = stage
 
     # Unrelated are to verify that reproducing `dir` will not trigger them too
-    assert run_copy(fspath(origin_copy), "unrelated1") is not None
-    assert run_copy(fspath(dir_file_path), "unrelated2") is not None
+    assert (
+        run_copy(fspath(origin_copy), "unrelated1", single_stage=True)
+        is not None
+    )
+    assert (
+        run_copy(fspath(dir_file_path), "unrelated2", single_stage=True)
+        is not None
+    )
 
     yield stages
 
@@ -1554,7 +1584,9 @@ def test_recursive_repro_on_stage_file(dvc, repro_dir):
 
 def test_dvc_formatting_retained(tmp_dir, dvc, run_copy):
     tmp_dir.dvc_gen("foo", "foo content")
-    stage = run_copy("foo", "foo_copy", fname="foo_copy.dvc")
+    stage = run_copy(
+        "foo", "foo_copy", fname="foo_copy.dvc", single_stage=True
+    )
     stage_path = tmp_dir / stage.relpath
 
     # Add comments and custom formatting to DVC-file
@@ -1597,13 +1629,49 @@ def test_downstream(dvc):
     #    \ /
     #     A
     #
-    assert main(["run", "-o", "A", "echo A>A"]) == 0
-    assert main(["run", "-d", "A", "-o", "B", "echo B>B"]) == 0
-    assert main(["run", "-d", "A", "-o", "C", "echo C>C"]) == 0
-    assert main(["run", "-d", "B", "-d", "C", "-o", "D", "echo D>D"]) == 0
-    assert main(["run", "-o", "G", "echo G>G"]) == 0
-    assert main(["run", "-d", "G", "-o", "F", "echo F>F"]) == 0
-    assert main(["run", "-d", "D", "-d", "F", "-o", "E", "echo E>E"]) == 0
+    assert main(["run", "--single-stage", "-o", "A", "echo A>A"]) == 0
+    assert (
+        main(["run", "--single-stage", "-d", "A", "-o", "B", "echo B>B"]) == 0
+    )
+    assert (
+        main(["run", "--single-stage", "-d", "A", "-o", "C", "echo C>C"]) == 0
+    )
+    assert (
+        main(
+            [
+                "run",
+                "--single-stage",
+                "-d",
+                "B",
+                "-d",
+                "C",
+                "-o",
+                "D",
+                "echo D>D",
+            ]
+        )
+        == 0
+    )
+    assert main(["run", "--single-stage", "-o", "G", "echo G>G"]) == 0
+    assert (
+        main(["run", "--single-stage", "-d", "G", "-o", "F", "echo F>F"]) == 0
+    )
+    assert (
+        main(
+            [
+                "run",
+                "--single-stage",
+                "-d",
+                "D",
+                "-d",
+                "F",
+                "-o",
+                "E",
+                "echo E>E",
+            ]
+        )
+        == 0
+    )
 
     # We want the evaluation to move from B to E
     #
@@ -1670,6 +1738,7 @@ def test_ssh_dir_out(tmp_dir, dvc, ssh_server):
     url_info = URLInfo(remote_url)
     repo.run(
         cmd="python {} {}".format(tmp_dir / "script.py", url_info.path),
+        single_stage=True,
         outs=["remote://upstream/dir-out"],
         deps=["foo"],  # add a fake dep to not consider this a callback
     )

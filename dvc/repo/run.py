@@ -2,6 +2,7 @@ import os
 
 from . import locked
 from .scm_context import scm_context
+from dvc.exceptions import InvalidArgumentError
 from dvc.stage.exceptions import DuplicateStageName, InvalidStageName
 
 from funcy import first, concat
@@ -36,14 +37,23 @@ def _get_file_path(kwargs):
 
 @locked
 @scm_context
-def run(self, fname=None, no_exec=False, **kwargs):
+def run(self, fname=None, no_exec=False, single_stage=False, **kwargs):
     from dvc.stage import PipelineStage, Stage, create_stage
     from dvc.dvcfile import Dvcfile, PIPELINE_FILE
 
     stage_cls = PipelineStage
     path = PIPELINE_FILE
     stage_name = kwargs.get("name")
-    if not stage_name:
+
+    if stage_name and single_stage:
+        raise InvalidArgumentError(
+            "`-n|--name` is incompatible with `--single-stage`"
+        )
+
+    if not stage_name and not single_stage:
+        raise InvalidArgumentError("`-n|--name` is required")
+
+    if single_stage:
         kwargs.pop("name", None)
         stage_cls = Stage
         path = fname or _get_file_path(kwargs)

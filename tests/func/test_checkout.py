@@ -256,6 +256,7 @@ class TestGitIgnoreBasic(CheckoutBase):
         self.commit_data_file(fname1)
         self.commit_data_file(fname2)
         self.dvc.run(
+            single_stage=True,
             cmd="python {} {} {}".format(self.CODE, self.FOO, fname3),
             deps=[self.CODE, self.FOO],
             outs_no_cache=[fname3],
@@ -341,7 +342,10 @@ class TestCheckoutNotCachedFile(TestDvc):
 
         self.dvc.add(self.FOO)
         stage = self.dvc.run(
-            cmd=cmd, deps=[self.FOO, self.CODE], outs_no_cache=["out"]
+            cmd=cmd,
+            deps=[self.FOO, self.CODE],
+            outs_no_cache=["out"],
+            single_stage=True,
         )
         self.assertTrue(stage is not None)
 
@@ -480,7 +484,9 @@ class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):
 
 def test_checkout_no_checksum(tmp_dir, dvc):
     tmp_dir.gen("file", "file content")
-    stage = dvc.run(outs=["file"], no_exec=True, cmd="somecmd")
+    stage = dvc.run(
+        outs=["file"], no_exec=True, cmd="somecmd", single_stage=True
+    )
 
     with pytest.raises(CheckoutError):
         dvc.checkout([stage.path], force=True)
@@ -706,7 +712,11 @@ def test_checkout_with_relink_existing(tmp_dir, dvc, link):
 def test_checkout_with_deps(tmp_dir, dvc):
     tmp_dir.dvc_gen({"foo": "foo"})
     dvc.run(
-        fname="copy_file.dvc", cmd="echo foo > bar", outs=["bar"], deps=["foo"]
+        fname="copy_file.dvc",
+        cmd="echo foo > bar",
+        outs=["bar"],
+        deps=["foo"],
+        single_stage=True,
     )
 
     (tmp_dir / "bar").unlink()

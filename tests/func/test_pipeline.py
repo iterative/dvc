@@ -103,10 +103,23 @@ def test_disconnected_stage(tmp_dir, dvc):
     tmp_dir.dvc_gen({"base": "base"})
 
     dvc.add("base")
-    dvc.run(deps=["base"], outs=["derived1"], cmd="echo derived1 > derived1")
-    dvc.run(deps=["base"], outs=["derived2"], cmd="echo derived2 > derived2")
+    dvc.run(
+        deps=["base"],
+        outs=["derived1"],
+        cmd="echo derived1 > derived1",
+        single_stage=True,
+    )
+    dvc.run(
+        deps=["base"],
+        outs=["derived2"],
+        cmd="echo derived2 > derived2",
+        single_stage=True,
+    )
     final_stage = dvc.run(
-        deps=["derived1"], outs=["final"], cmd="echo final > final"
+        deps=["derived1"],
+        outs=["final"],
+        cmd="echo final > final",
+        single_stage=True,
     )
 
     command = CmdPipelineShow([])
@@ -134,7 +147,7 @@ def test_print_locked_stages(tmp_dir, dvc, caplog):
 
 def test_dot_outs(tmp_dir, dvc, run_copy):
     tmp_dir.gen("foo", "foo content")
-    run_copy("foo", "file")
+    run_copy("foo", "file", single_stage=True)
     assert main(["pipeline", "show", "--dot", "file.dvc", "--outs"]) == 0
 
 
@@ -208,8 +221,10 @@ class TestDvcRepoPipeline(TestDvc):
 
     def one_pipeline(self):
         self.dvc.add("foo")
-        self.dvc.run(deps=["foo"], outs=["bar"], cmd="")
-        self.dvc.run(deps=["bar"], outs=["baz"], cmd="echo baz > baz")
+        self.dvc.run(deps=["foo"], outs=["bar"], cmd="", single_stage=True)
+        self.dvc.run(
+            deps=["bar"], outs=["baz"], cmd="echo baz > baz", single_stage=True
+        )
         pipelines = self.dvc.pipelines
 
         self.assertEqual(len(pipelines), 1)
@@ -218,8 +233,10 @@ class TestDvcRepoPipeline(TestDvc):
 
     def two_pipelines(self):
         self.dvc.add("foo")
-        self.dvc.run(deps=["foo"], outs=["bar"], cmd="")
-        self.dvc.run(deps=["bar"], outs=["baz"], cmd="echo baz > baz")
+        self.dvc.run(deps=["foo"], outs=["bar"], cmd="", single_stage=True)
+        self.dvc.run(
+            deps=["bar"], outs=["baz"], cmd="echo baz > baz", single_stage=True
+        )
 
         self.dvc.add("code.py")
 
@@ -248,11 +265,13 @@ def test_split_pipeline(tmp_dir, scm, dvc):
         deps=["git_dep1", "data"],
         outs=["data_train", "data_valid"],
         cmd="echo train >> data_train && echo valid >> data_valid",
+        single_stage=True,
     )
     stage = dvc.run(
         deps=["git_dep2", "data_train", "data_valid"],
         outs=["result"],
         cmd="echo result >> result",
+        single_stage=True,
     )
 
     command = CmdPipelineShow([])
@@ -271,7 +290,7 @@ def test_split_pipeline(tmp_dir, scm, dvc):
 def test_pipeline_list_show_multistage(tmp_dir, dvc, run_copy, caplog):
     tmp_dir.gen("foo", "foo")
     run_copy("foo", "bar", name="copy-foo-bar")
-    run_copy("bar", "foobar")
+    run_copy("bar", "foobar", single_stage=True)
     command = CmdPipelineShow([])
 
     caplog.clear()
@@ -299,7 +318,7 @@ def test_pipeline_list_show_multistage(tmp_dir, dvc, run_copy, caplog):
 def test_pipeline_ascii_multistage(tmp_dir, dvc, run_copy):
     tmp_dir.gen("foo", "foo")
     run_copy("foo", "bar", name="copy-foo-bar")
-    run_copy("bar", "foobar")
+    run_copy("bar", "foobar", single_stage=True)
     command = CmdPipelineShow([])
     nodes, edges, is_tree = command._build_graph("foobar.dvc")
     assert set(nodes) == {"dvc.yaml:copy-foo-bar", "foobar.dvc"}

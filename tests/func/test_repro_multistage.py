@@ -223,16 +223,33 @@ def test_downstream(tmp_dir, dvc):
     #
     assert main(["run", "-n", "A-gen", "-o", "A", "echo A>A"]) == 0
     assert main(["run", "-n", "B-gen", "-d", "A", "-o", "B", "echo B>B"]) == 0
-    assert main(["run", "-d", "A", "-o", "C", "echo C>C"]) == 0
+    assert (
+        main(["run", "--single-stage", "-d", "A", "-o", "C", "echo C>C"]) == 0
+    )
     assert (
         main(
             ["run", "-n", "D-gen", "-d", "B", "-d", "C", "-o", "D", "echo D>D"]
         )
         == 0
     )
-    assert main(["run", "-o", "G", "echo G>G"]) == 0
+    assert main(["run", "--single-stage", "-o", "G", "echo G>G"]) == 0
     assert main(["run", "-n", "F-gen", "-d", "G", "-o", "F", "echo F>F"]) == 0
-    assert main(["run", "-d", "D", "-d", "F", "-o", "E", "echo E>E"]) == 0
+    assert (
+        main(
+            [
+                "run",
+                "--single-stage",
+                "-d",
+                "D",
+                "-d",
+                "F",
+                "-o",
+                "E",
+                "echo E>E",
+            ]
+        )
+        == 0
+    )
 
     # We want the evaluation to move from B to E
     #

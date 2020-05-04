@@ -48,6 +48,7 @@ class TestRun(TestDvc):
             outs=outs,
             outs_no_cache=outs_no_cache,
             fname=fname,
+            single_stage=True,
         )
 
         self.assertTrue(filecmp.cmp(self.FOO, "out", shallow=False))
@@ -66,13 +67,19 @@ class TestRun(TestDvc):
                 outs=outs,
                 outs_no_cache=outs_no_cache,
                 fname="duplicate" + fname,
+                single_stage=True,
             )
 
 
 class TestRunEmpty(TestDvc):
     def test(self):
         self.dvc.run(
-            cmd="", deps=[], outs=[], outs_no_cache=[], fname="empty.dvc",
+            cmd="",
+            deps=[],
+            outs=[],
+            outs_no_cache=[],
+            fname="empty.dvc",
+            single_stage=True,
         )
 
 
@@ -87,6 +94,7 @@ class TestRunMissingDep(TestDvc):
                 outs=[],
                 outs_no_cache=[],
                 fname="empty.dvc",
+                single_stage=True,
             )
 
 
@@ -97,6 +105,7 @@ class TestRunNoExec(TestDvcGit):
             deps=[self.CODE, self.FOO],
             outs=["out"],
             no_exec=True,
+            single_stage=True,
         )
         self.assertFalse(os.path.exists("out"))
         with open(".gitignore", "r") as fobj:
@@ -111,6 +120,7 @@ class TestRunCircularDependency(TestDvc):
                 deps=[self.FOO],
                 outs=[self.FOO],
                 fname="circular-dependency.dvc",
+                single_stage=True,
             )
 
     def test_outs_no_cache(self):
@@ -120,6 +130,7 @@ class TestRunCircularDependency(TestDvc):
                 deps=[self.FOO],
                 outs_no_cache=[self.FOO],
                 fname="circular-dependency.dvc",
+                single_stage=True,
             )
 
     def test_non_normalized_paths(self):
@@ -129,20 +140,30 @@ class TestRunCircularDependency(TestDvc):
                 deps=["./foo"],
                 outs=["foo"],
                 fname="circular-dependency.dvc",
+                single_stage=True,
             )
 
     def test_graph(self):
         self.dvc.run(
-            deps=[self.FOO], outs=["bar.txt"], cmd="echo bar > bar.txt"
+            deps=[self.FOO],
+            outs=["bar.txt"],
+            cmd="echo bar > bar.txt",
+            single_stage=True,
         )
 
         self.dvc.run(
-            deps=["bar.txt"], outs=["baz.txt"], cmd="echo baz > baz.txt"
+            deps=["bar.txt"],
+            outs=["baz.txt"],
+            cmd="echo baz > baz.txt",
+            single_stage=True,
         )
 
         with self.assertRaises(CyclicGraphError):
             self.dvc.run(
-                deps=["baz.txt"], outs=[self.FOO], cmd="echo baz > foo"
+                deps=["baz.txt"],
+                outs=[self.FOO],
+                cmd="echo baz > foo",
+                single_stage=True,
             )
 
 
@@ -154,6 +175,7 @@ class TestRunDuplicatedArguments(TestDvc):
                 deps=[],
                 outs=[self.FOO, self.FOO],
                 fname="circular-dependency.dvc",
+                single_stage=True,
             )
 
     def test_outs_no_cache(self):
@@ -163,6 +185,7 @@ class TestRunDuplicatedArguments(TestDvc):
                 outs=[self.FOO],
                 outs_no_cache=[self.FOO],
                 fname="circular-dependency.dvc",
+                single_stage=True,
             )
 
     def test_non_normalized_paths(self):
@@ -172,56 +195,62 @@ class TestRunDuplicatedArguments(TestDvc):
                 deps=[],
                 outs=["foo", "./foo"],
                 fname="circular-dependency.dvc",
+                single_stage=True,
             )
 
 
 class TestRunStageInsideOutput(TestDvc):
     def test_cwd(self):
-        self.dvc.run(cmd="", deps=[], outs=[self.DATA_DIR])
+        self.dvc.run(
+            cmd="", deps=[], outs=[self.DATA_DIR], single_stage=True,
+        )
 
         with self.assertRaises(StagePathAsOutputError):
             self.dvc.run(
-                cmd="", fname=os.path.join(self.DATA_DIR, "inside-cwd.dvc")
+                cmd="",
+                fname=os.path.join(self.DATA_DIR, "inside-cwd.dvc"),
+                single_stage=True,
             )
 
     def test_file_name(self):
-        self.dvc.run(cmd="", deps=[], outs=[self.DATA_DIR])
+        self.dvc.run(cmd="", deps=[], outs=[self.DATA_DIR], single_stage=True)
 
         with self.assertRaises(StagePathAsOutputError):
             self.dvc.run(
                 cmd="",
                 outs=[self.FOO],
                 fname=os.path.join(self.DATA_DIR, "inside-cwd.dvc"),
+                single_stage=True,
             )
 
 
 class TestRunBadCwd(TestDvc):
     def test(self):
         with self.assertRaises(StagePathOutsideError):
-            self.dvc.run(cmd="", wdir=self.mkdtemp())
+            self.dvc.run(cmd="", wdir=self.mkdtemp(), single_stage=True)
 
     def test_same_prefix(self):
         with self.assertRaises(StagePathOutsideError):
             path = "{}-{}".format(self._root_dir, uuid.uuid4())
             os.mkdir(path)
-            self.dvc.run(cmd="", wdir=path)
+            self.dvc.run(cmd="", wdir=path, single_stage=True)
 
 
 class TestRunBadWdir(TestDvc):
     def test(self):
         with self.assertRaises(StagePathOutsideError):
-            self.dvc.run(cmd="", wdir=self.mkdtemp())
+            self.dvc.run(cmd="", wdir=self.mkdtemp(), single_stage=True)
 
     def test_same_prefix(self):
         with self.assertRaises(StagePathOutsideError):
             path = "{}-{}".format(self._root_dir, uuid.uuid4())
             os.mkdir(path)
-            self.dvc.run(cmd="", wdir=path)
+            self.dvc.run(cmd="", wdir=path, single_stage=True)
 
     def test_not_found(self):
         with self.assertRaises(StagePathNotFoundError):
             path = os.path.join(self._root_dir, str(uuid.uuid4()))
-            self.dvc.run(cmd="", wdir=path)
+            self.dvc.run(cmd="", wdir=path, single_stage=True)
 
     def test_not_dir(self):
         with self.assertRaises(StagePathNotDirectoryError):
@@ -229,7 +258,9 @@ class TestRunBadWdir(TestDvc):
             os.mkdir(path)
             path = os.path.join(path, str(uuid.uuid4()))
             open(path, "a").close()
-            self.dvc.run(cmd="", wdir=path)
+            self.dvc.run(
+                cmd="", wdir=path, single_stage=True,
+            )
 
 
 class TestRunBadName(TestDvc):
@@ -238,6 +269,7 @@ class TestRunBadName(TestDvc):
             self.dvc.run(
                 cmd="",
                 fname=os.path.join(self.mkdtemp(), self.FOO + DVC_FILE_SUFFIX),
+                single_stage=True,
             )
 
     def test_same_prefix(self):
@@ -245,14 +277,18 @@ class TestRunBadName(TestDvc):
             path = "{}-{}".format(self._root_dir, uuid.uuid4())
             os.mkdir(path)
             self.dvc.run(
-                cmd="", fname=os.path.join(path, self.FOO + DVC_FILE_SUFFIX),
+                cmd="",
+                fname=os.path.join(path, self.FOO + DVC_FILE_SUFFIX),
+                single_stage=True,
             )
 
     def test_not_found(self):
         with self.assertRaises(StagePathNotFoundError):
             path = os.path.join(self._root_dir, str(uuid.uuid4()))
             self.dvc.run(
-                cmd="", fname=os.path.join(path, self.FOO + DVC_FILE_SUFFIX),
+                cmd="",
+                fname=os.path.join(path, self.FOO + DVC_FILE_SUFFIX),
+                single_stage=True,
             )
 
 
@@ -269,6 +305,7 @@ class TestRunRemoveOuts(TestDvc):
             deps=[self.CODE],
             outs=[self.FOO],
             cmd="python {} {}".format(self.CODE, self.FOO),
+            single_stage=True,
         )
 
 
@@ -289,6 +326,7 @@ class TestRunUnprotectOutsCopy(TestDvc):
                 self.CODE,
                 "-o",
                 self.FOO,
+                "--single-stage",
                 "python",
                 self.CODE,
                 self.FOO,
@@ -304,6 +342,7 @@ class TestRunUnprotectOutsCopy(TestDvc):
                 "run",
                 "--overwrite-dvcfile",
                 "--ignore-build-cache",
+                "--single-stage",
                 "-d",
                 self.CODE,
                 "-o",
@@ -338,6 +377,7 @@ class TestRunUnprotectOutsSymlink(TestDvc):
                 self.CODE,
                 "-o",
                 self.FOO,
+                "--single-stage",
                 "python",
                 self.CODE,
                 self.FOO,
@@ -360,6 +400,7 @@ class TestRunUnprotectOutsSymlink(TestDvc):
                 "run",
                 "--overwrite-dvcfile",
                 "--ignore-build-cache",
+                "--single-stage",
                 "-d",
                 self.CODE,
                 "-o",
@@ -401,6 +442,7 @@ class TestRunUnprotectOutsHardlink(TestDvc):
                 self.CODE,
                 "-o",
                 self.FOO,
+                "--single-stage",
                 "python",
                 self.CODE,
                 self.FOO,
@@ -417,6 +459,7 @@ class TestRunUnprotectOutsHardlink(TestDvc):
                 "run",
                 "--overwrite-dvcfile",
                 "--ignore-build-cache",
+                "--single-stage",
                 "-d",
                 self.CODE,
                 "-o",
@@ -453,6 +496,7 @@ class TestCmdRunOverwrite(TestDvc):
                 "out",
                 "-f",
                 "out.dvc",
+                "--single-stage",
                 "python",
                 self.CODE,
                 self.FOO,
@@ -476,6 +520,7 @@ class TestCmdRunOverwrite(TestDvc):
                 "out",
                 "-f",
                 "out.dvc",
+                "--single-stage",
                 "python",
                 self.CODE,
                 self.FOO,
@@ -499,6 +544,7 @@ class TestCmdRunOverwrite(TestDvc):
                 self.CODE,
                 "--overwrite-dvcfile",
                 "--ignore-build-cache",
+                "--single-stage",
                 "-o",
                 "out",
                 "-f",
@@ -518,7 +564,15 @@ class TestCmdRunOverwrite(TestDvc):
         time.sleep(1)
 
         ret = main(
-            ["run", "--overwrite-dvcfile", "-f", "out.dvc", "-d", self.BAR]
+            [
+                "run",
+                "--overwrite-dvcfile",
+                "--single-stage",
+                "-f",
+                "out.dvc",
+                "-d",
+                self.BAR,
+            ]
         )
         self.assertEqual(ret, 0)
 
@@ -528,13 +582,29 @@ class TestCmdRunOverwrite(TestDvc):
 
 class TestCmdRunCliMetrics(TestDvc):
     def test_cached(self):
-        ret = main(["run", "-m", "metrics.txt", "echo test > metrics.txt"])
+        ret = main(
+            [
+                "run",
+                "-m",
+                "metrics.txt",
+                "--single-stage",
+                "echo test > metrics.txt",
+            ]
+        )
         self.assertEqual(ret, 0)
         with open("metrics.txt", "r") as fd:
             self.assertEqual(fd.read().rstrip(), "test")
 
     def test_not_cached(self):
-        ret = main(["run", "-M", "metrics.txt", "echo test > metrics.txt"])
+        ret = main(
+            [
+                "run",
+                "-M",
+                "metrics.txt",
+                "--single-stage",
+                "echo test > metrics.txt",
+            ]
+        )
         self.assertEqual(ret, 0)
         with open("metrics.txt", "r") as fd:
             self.assertEqual(fd.read().rstrip(), "test")
@@ -543,13 +613,18 @@ class TestCmdRunCliMetrics(TestDvc):
 class TestCmdRunWorkingDirectory(TestDvc):
     def test_default_wdir_is_not_written(self):
         stage = self.dvc.run(
-            cmd="echo test > {}".format(self.FOO), outs=[self.FOO], wdir="."
+            cmd="echo test > {}".format(self.FOO),
+            outs=[self.FOO],
+            wdir=".",
+            single_stage=True,
         )
         d = load_stage_file(stage.relpath)
         self.assertNotIn(Stage.PARAM_WDIR, d.keys())
 
         stage = self.dvc.run(
-            cmd="echo test > {}".format(self.BAR), outs=[self.BAR]
+            cmd="echo test > {}".format(self.BAR),
+            outs=[self.BAR],
+            single_stage=True,
         )
         d = load_stage_file(stage.relpath)
         self.assertNotIn(Stage.PARAM_WDIR, d.keys())
@@ -560,7 +635,10 @@ class TestCmdRunWorkingDirectory(TestDvc):
         foo = os.path.join(dname, self.FOO)
         fname = os.path.join(dname, "stage" + DVC_FILE_SUFFIX)
         stage = self.dvc.run(
-            cmd="echo test > {}".format(foo), outs=[foo], fname=fname
+            cmd="echo test > {}".format(foo),
+            outs=[foo],
+            fname=fname,
+            single_stage=True,
         )
         self.assertEqual(stage.wdir, os.path.realpath(self._root_dir))
         self.assertEqual(
@@ -575,21 +653,28 @@ class TestCmdRunWorkingDirectory(TestDvc):
 def test_rerun_deterministic(tmp_dir, run_copy):
     tmp_dir.gen("foo", "foo content")
 
-    assert run_copy("foo", "out") is not None
-    assert run_copy("foo", "out") is None
+    assert run_copy("foo", "out", single_stage=True) is not None
+    assert run_copy("foo", "out", single_stage=True) is None
 
 
 def test_rerun_deterministic_ignore_cache(tmp_dir, run_copy):
     tmp_dir.gen("foo", "foo content")
 
-    assert run_copy("foo", "out") is not None
-    assert run_copy("foo", "out", ignore_build_cache=True) is not None
+    assert run_copy("foo", "out", single_stage=True) is not None
+    assert (
+        run_copy("foo", "out", ignore_build_cache=True, single_stage=True)
+        is not None
+    )
 
 
 def test_rerun_callback(dvc):
     def run_callback():
         return dvc.run(
-            cmd=("echo content > out"), outs=["out"], deps=[], overwrite=False
+            cmd=("echo content > out"),
+            outs=["out"],
+            deps=[],
+            overwrite=False,
+            single_stage=True,
         )
 
     assert run_callback() is not None
@@ -600,36 +685,46 @@ def test_rerun_callback(dvc):
 
 def test_rerun_changed_dep(tmp_dir, run_copy):
     tmp_dir.gen("foo", "foo content")
-    assert run_copy("foo", "out") is not None
+    assert run_copy("foo", "out", single_stage=True) is not None
 
     tmp_dir.gen("foo", "changed content")
     with pytest.raises(StageFileAlreadyExistsError):
-        run_copy("foo", "out", overwrite=False)
+        run_copy("foo", "out", overwrite=False, single_stage=True)
 
 
 def test_rerun_changed_stage(tmp_dir, run_copy):
     tmp_dir.gen("foo", "foo content")
-    assert run_copy("foo", "out") is not None
+    assert run_copy("foo", "out", single_stage=True) is not None
 
     tmp_dir.gen("bar", "bar content")
     with pytest.raises(StageFileAlreadyExistsError):
-        run_copy("bar", "out", overwrite=False)
+        run_copy("bar", "out", overwrite=False, single_stage=True)
 
 
 def test_rerun_changed_out(tmp_dir, run_copy):
     tmp_dir.gen("foo", "foo content")
-    assert run_copy("foo", "out") is not None
+    assert run_copy("foo", "out", single_stage=True) is not None
 
     Path("out").write_text("modification")
     with pytest.raises(StageFileAlreadyExistsError):
-        run_copy("foo", "out", overwrite=False)
+        run_copy("foo", "out", overwrite=False, single_stage=True)
 
 
 class TestRunCommit(TestDvc):
     def test(self):
         fname = "test"
         ret = main(
-            ["run", "-o", fname, "--no-commit", "echo", "test", ">", fname]
+            [
+                "run",
+                "-o",
+                fname,
+                "--no-commit",
+                "--single-stage",
+                "echo",
+                "test",
+                ">",
+                fname,
+            ]
         )
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(fname))
@@ -662,6 +757,7 @@ class TestRunPersist(TestDvc):
         ret = main(
             [
                 "run",
+                "--single-stage",
                 self.outs_command,
                 file,
                 "echo {} >> {}".format(file_content, file),
@@ -715,7 +811,9 @@ class TestShouldRaiseOnOverlappingOutputPaths(TestDvc):
 
         with self.assertRaises(OverlappingOutputPathsError) as err:
             self.dvc.run(
-                outs=[self.DATA], cmd="echo data >> {}".format(self.DATA)
+                outs=[self.DATA],
+                cmd="echo data >> {}".format(self.DATA),
+                single_stage=True,
             )
         error_output = str(err.exception)
 
@@ -750,6 +848,7 @@ class TestRerunWithSameOutputs(TestDvc):
         ret = main(
             [
                 "run",
+                "--single-stage",
                 "--outs",
                 self.FOO,
                 "echo {} > {}".format(self.FOO_CONTENTS, self.FOO),
@@ -766,6 +865,7 @@ class TestRerunWithSameOutputs(TestDvc):
                 self._outs_command,
                 self.FOO,
                 "--overwrite-dvcfile",
+                "--single-stage",
                 "echo {} >> {}".format(self.BAR_CONTENTS, self.FOO),
             ]
         )
@@ -807,7 +907,9 @@ class TestShouldNotCheckoutUponCorruptedLocalHardlinkCache(TestDvc):
 
     def test(self):
         cmd = "python {} {} {}".format(self.CODE, self.FOO, self.BAR)
-        stage = self.dvc.run(deps=[self.FOO], outs=[self.BAR], cmd=cmd)
+        stage = self.dvc.run(
+            deps=[self.FOO], outs=[self.BAR], cmd=cmd, single_stage=True
+        )
 
         os.chmod(self.BAR, 0o644)
         with open(self.BAR, "w") as fd:
@@ -837,6 +939,7 @@ class TestPersistentOutput(TestDvc):
         cmd = [
             "run",
             "--overwrite-dvcfile",
+            "--single-stage",
             "--deps",
             "immutable",
             "--outs-persist",
@@ -862,7 +965,7 @@ def test_bad_stage_fname(tmp_dir, dvc, run_copy):
 
     with pytest.raises(StageFileBadNameError):
         # fname should end with .dvc
-        run_copy("foo", "foo_copy", fname="out_stage")
+        run_copy("foo", "foo_copy", fname="out_stage", single_stage=True)
 
     # Check that command hasn't been run
     assert not (tmp_dir / "foo_copy").exists()
@@ -870,11 +973,11 @@ def test_bad_stage_fname(tmp_dir, dvc, run_copy):
 
 def test_should_raise_on_stage_dependency(run_copy):
     with pytest.raises(DependencyIsStageFileError):
-        run_copy("name.dvc", "stage_copy")
+        run_copy("name.dvc", "stage_copy", single_stage=True)
 
 
 def test_should_raise_on_stage_output(tmp_dir, dvc, run_copy):
     tmp_dir.dvc_gen("foo", "foo content")
 
     with pytest.raises(OutputIsStageFileError):
-        run_copy("foo", "name.dvc")
+        run_copy("foo", "name.dvc", single_stage=True)
