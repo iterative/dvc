@@ -97,6 +97,7 @@ def test_push(mocker):
 
     cmd = cli_args.func(cli_args)
     m = mocker.patch.object(cmd.repo, "push", autospec=True, return_value=0)
+
     assert cmd.run() == 0
 
     m.assert_called_once_with(
