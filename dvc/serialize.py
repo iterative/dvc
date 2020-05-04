@@ -23,7 +23,7 @@ sort_by_path = partial(sorted, key=attrgetter("def_path"))
 
 def _get_outs(stage: "PipelineStage"):
     outs_bucket = {}
-    for o in stage.outs:
+    for o in sort_by_path(stage.outs):
         bucket_key = ["metrics"] if o.metric else ["outs"]
 
         if not o.metric and o.persist:
@@ -32,7 +32,7 @@ def _get_outs(stage: "PipelineStage"):
             bucket_key += ["no_cache"]
         key = "_".join(bucket_key)
         outs_bucket[key] = outs_bucket.get(key, []) + [o.def_path]
-    return [(key, outs_bucket[key]) for key in outs_bucket.keys()]
+    return [(key, outs_bucket[key]) for key in sorted(outs_bucket.keys())]
 
 
 def get_params_deps(stage: "PipelineStage"):
@@ -79,7 +79,7 @@ def to_pipeline_file(stage: "PipelineStage"):
     res = [
         (stage.PARAM_CMD, stage.cmd),
         (stage.PARAM_WDIR, stage.resolve_wdir()),
-        (stage.PARAM_DEPS, [d.def_path for d in deps]),
+        (stage.PARAM_DEPS, sorted([d.def_path for d in deps])),
         (stage.PARAM_PARAMS, serialized_params),
         *_get_outs(stage),
         (stage.PARAM_LOCKED, stage.locked),

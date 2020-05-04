@@ -5,7 +5,7 @@ import signal
 import subprocess
 import threading
 
-from itertools import chain
+from itertools import chain, product
 
 from funcy import project
 
@@ -386,6 +386,15 @@ class Stage(params.StageParams):
         for out in outs:
             out.pop(LocalRemote.PARAM_CHECKSUM, None)
             out.pop(S3Remote.PARAM_CHECKSUM, None)
+
+        # outs and deps are lists of dicts. To check equality, we need to make
+        # them independent of the order, so, we convert them to dicts.
+        combination = product(
+            [old_d, new_d], [self.PARAM_DEPS, self.PARAM_OUTS]
+        )
+        for coll, key in combination:
+            if coll.get(key):
+                coll[key] = {item["path"]: item for item in coll[key]}
 
         if old_d != new_d:
             return False
