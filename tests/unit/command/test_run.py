@@ -23,7 +23,6 @@ def test_run(mocker, dvc):
             "--wdir",
             "wdir",
             "--no-exec",
-            "--yes",
             "--overwrite-dvcfile",
             "--ignore-build-cache",
             "--no-commit",

@@ -11,8 +11,6 @@ logger = logging.getLogger(__name__)
 
 class CmdRun(CmdBase):
     def run(self):
-        overwrite = self.args.yes or self.args.overwrite_dvcfile
-
         if not any(
             [
                 self.args.deps,
@@ -45,7 +43,7 @@ class CmdRun(CmdBase):
                 fname=self.args.file,
                 wdir=self.args.wdir,
                 no_exec=self.args.no_exec,
-                overwrite=overwrite,
+                overwrite=self.args.overwrite_dvcfile,
                 ignore_build_cache=self.args.ignore_build_cache,
                 no_commit=self.args.no_commit,
                 outs_persist=self.args.outs_persist,
@@ -158,13 +156,6 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Only create stage file without actually running it.",
-    )
-    run_parser.add_argument(
-        "-y",
-        "--yes",
-        action="store_true",
-        default=False,
-        help="Deprecated, use --overwrite-dvcfile instead",
     )
     run_parser.add_argument(
         "--overwrite-dvcfile",
