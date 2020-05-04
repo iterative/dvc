@@ -77,8 +77,6 @@ class BaseExternalRepo:
         tree.copyfile(src, dest)
 
     def _pull_dir(self, tree, src, dest):
-        if tree.isdvc(src) and self._pull_cached(src, dest):
-            return
         makedirs(dest)
 
     def pull_to(self, path, to_info):
@@ -89,38 +87,27 @@ class BaseExternalRepo:
         It works with files tracked by Git and DVC, and also local files
         outside the repository.
         """
-        logger.debug("pull_to root {} path {}".format(self.root_dir, path))
         path_info = PathInfo(self.root_dir) / path
-        logger.debug("pull_to {} {}".format(path_info, to_info))
         tree = RepoTree(self)
 
         if not tree.exists(path_info):
             raise PathMissingError(path, self.url)
 
+        if tree.isdvc(path_info) and self._pull_cached(path_info, to_info):
+            return
+
         if tree.isfile(path_info):
-            logger.debug("tree.isfile")
-            return self._pull_file(tree, path_info, to_info)
+            self._pull_file(tree, path_info, to_info)
+            return
 
-        logger.debug("not tree.isfile")
-        self._pull_dir(tree, path_info, to_info)
-
-        # if path was DVC-only dir, there will be nothing left to recurse into
-        # after _pull_cached, and tree.isdir() will now be false
-        if tree.isdir(path_info):
-            for root, dirs, files in tree.walk(path_info):
-                logger.debug("walk {} {} {}".format(root, dirs, files))
-                root_path = PathInfo(root)
-                rel_root = path_info.relative_to(root_path)
-                for dirname in dirs:
-                    logger.debug("dir {} {}".format(root, dirs))
-                    dir_path = root_path / dirname
-                    dest_path = to_info / rel_root / dirname
-                    self._pull_dir(tree, dir_path, dest_path)
-                for filename in files:
-                    logger.debug("file {} {}".format(root, filename))
-                    file_path = root_path / filename
-                    dest_path = to_info / rel_root / filename
-                    self._pull_file(tree, file_path, dest_path)
+        for root, dirs, files in tree.walk(path_info):
+            root_path = PathInfo(root)
+            rel_root = path_info.relative_to(root_path)
+            makedirs(to_info / rel_root)
+            for filename in files:
+                file_path = root_path / filename
+                dest_path = to_info / rel_root / filename
+                tree.copyfile(file_path, dest_path)
 
 
 class ExternalRepo(Repo, BaseExternalRepo):
