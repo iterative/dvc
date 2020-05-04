@@ -617,8 +617,9 @@ class Stage(params.StageParams):
             if old_handler:
                 signal.signal(signal.SIGINT, old_handler)
 
-        if (p is None) or (p.returncode != 0):
-            raise StageCmdFailedError(self)
+        retcode = None if not p else p.returncode
+        if retcode != 0:
+            raise StageCmdFailedError(self, retcode)
 
     @rwlocked(read=["deps"], write=["outs"])
     def run(

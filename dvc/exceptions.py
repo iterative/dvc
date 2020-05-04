@@ -1,10 +1,15 @@
 """Exceptions raised by the dvc."""
+from funcy import first
 
 from dvc.utils import relpath, format_link
 
 
 class DvcException(Exception):
     """Base class for all dvc exceptions."""
+
+    def __init__(self, msg, *args):
+        assert msg
+        super().__init__(msg, *args)
 
 
 class InvalidArgumentError(ValueError, DvcException):
@@ -23,13 +28,15 @@ class OutputDuplicationError(DvcException):
     def __init__(self, output, stages):
         assert isinstance(output, str)
         assert all(hasattr(stage, "relpath") for stage in stages)
-        msg = (
-            "file/directory '{}' is specified as an output in more than one "
-            "stage: \n{}\n"
-            "This is not allowed. Consider using a different output name."
-        ).format(
-            output, "\n".join("\t{}".format(s.addressing) for s in stages)
-        )
+        if len(stages) == 1:
+            msg = "output '{}' is already specified in {}.".format(
+                output, first(stages)
+            )
+        else:
+            msg = "output '{}' is already specified in stages:\n{}".format(
+                output,
+                "\n".join("\t- {}".format(s.addressing) for s in stages),
+            )
         super().__init__(msg)
         self.stages = stages
         self.output = output
@@ -81,10 +88,7 @@ class CircularDependencyError(DvcException):
     def __init__(self, dependency):
         assert isinstance(dependency, str)
 
-        msg = (
-            "file/directory '{}' is specified as an output and as a "
-            "dependency."
-        )
+        msg = "'{}' is specified as an output and as a dependency."
         super().__init__(msg.format(dependency))
 
 
@@ -133,14 +137,8 @@ class DvcParserError(DvcException):
 class CyclicGraphError(DvcException):
     def __init__(self, stages):
         assert isinstance(stages, list)
-        stages = "\n".join(
-            "\t- {}".format(stage.addressing) for stage in stages
-        )
-        msg = (
-            "you've introduced a cycle in your pipeline that involves "
-            "the following stages:"
-            "\n"
-            "{stages}".format(stages=stages)
+        msg = "Pipeline has a cycle involving: {}.".format(
+            ", ".join(s.addressing for s in stages)
         )
         super().__init__(msg)
 
@@ -148,7 +146,7 @@ class CyclicGraphError(DvcException):
 class ConfirmRemoveError(DvcException):
     def __init__(self, path):
         super().__init__(
-            "unable to remove '{}' without a confirmation from the user. Use "
+            "unable to remove '{}' without a confirmation. Use "
             "`-f` to force.".format(path)
         )
 

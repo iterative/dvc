@@ -54,7 +54,7 @@ class CmdRun(CmdBase):
                 name=self.args.name,
             )
         except DvcException:
-            logger.exception("failed to run command")
+            logger.exception("")
             return 1
 
         return 0

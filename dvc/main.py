@@ -6,7 +6,7 @@ import logging
 from dvc import analytics
 from dvc.cli import parse_args
 from dvc.config import ConfigError
-from dvc.exceptions import DvcParserError
+from dvc.exceptions import DvcParserError, DvcException
 from dvc.exceptions import NotDvcRepoError
 from dvc.external_repo import clean_repos
 from dvc.logger import disable_other_loggers, FOOTER
@@ -58,6 +58,9 @@ def main(argv=None):
         ret = 253
     except DvcParserError:
         ret = 254
+    except DvcException:
+        ret = 255
+        logger.exception("")
     except Exception as exc:  # pylint: disable=broad-except
         if isinstance(exc, OSError) and exc.errno == errno.EMFILE:
             logger.exception(
