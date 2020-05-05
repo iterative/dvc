@@ -61,7 +61,7 @@ class Repo(object):
     from dvc.repo.update import update
     from dvc.repo.plot import plot
 
-    def __init__(self, root_dir=None):
+    def __init__(self, root_dir=None, find_root=True, tree=None, scm=None):
         from dvc.state import State
         from dvc.lock import make_lock
         from dvc.scm import SCM
@@ -73,17 +73,24 @@ class Repo(object):
         from dvc.utils.fs import makedirs
         from dvc.stage.cache import StageCache
 
-        root_dir = self.find_root(root_dir)
+        if find_root:
+            root_dir = self.find_root(root_dir)
 
         self.root_dir = os.path.abspath(os.path.realpath(root_dir))
         self.dvc_dir = os.path.join(self.root_dir, self.DVC_DIR)
 
         self.config = Config(self.dvc_dir)
 
-        no_scm = self.config["core"].get("no_scm", False)
-        self.scm = SCM(self.root_dir, no_scm=no_scm)
+        if scm:
+            self.scm = scm
+        else:
+            no_scm = self.config["core"].get("no_scm", False)
+            self.scm = SCM(self.root_dir, no_scm=no_scm)
 
-        self.tree = WorkingTree(self.root_dir)
+        if tree:
+            self.tree = tree
+        else:
+            self.tree = WorkingTree(self.root_dir)
 
         self.tmp_dir = os.path.join(self.dvc_dir, "tmp")
         self.index_dir = os.path.join(self.tmp_dir, "index")
