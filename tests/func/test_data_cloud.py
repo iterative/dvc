@@ -826,6 +826,8 @@ def test_pipeline_file_target_ops(tmp_dir, dvc, local_remote, run_copy):
 
     outs = ["foo", "bar", "lorem", "ipsum", "baz", "lorem2"]
 
+    remove(dvc.stage_cache.cache_dir)
+
     dvc.push()
     # each one's a copy of other, hence 3
     assert len(recurse_list_dir(fspath_py35(local_remote))) == 3

@@ -17,6 +17,7 @@ def test_fetch(mocker):
             "--all-commits",
             "--with-deps",
             "--recursive",
+            "--run-cache",
         ]
     )
     assert cli_args.func == CmdDataFetch
@@ -35,6 +36,7 @@ def test_fetch(mocker):
         all_commits=True,
         with_deps=True,
         recursive=True,
+        run_cache=True,
     )
 
 
@@ -54,6 +56,7 @@ def test_pull(mocker):
             "--with-deps",
             "--force",
             "--recursive",
+            "--run-cache",
         ]
     )
     assert cli_args.func == CmdDataPull
@@ -73,6 +76,7 @@ def test_pull(mocker):
         with_deps=True,
         force=True,
         recursive=True,
+        run_cache=True,
     )
 
 
@@ -91,6 +95,7 @@ def test_push(mocker):
             "--all-commits",
             "--with-deps",
             "--recursive",
+            "--run-cache",
         ]
     )
     assert cli_args.func == CmdDataPush
@@ -109,4 +114,5 @@ def test_push(mocker):
         all_commits=True,
         with_deps=True,
         recursive=True,
+        run_cache=True,
     )
