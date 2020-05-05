@@ -29,7 +29,7 @@ parts:
     - git
     override-pull: |
         snapcraftctl pull
-        snapcraftctl set-version `cd $SNAPCRAFT_PART_SRC && git describe --tags`
+        snapcraftctl set-version $(cd $SNAPCRAFT_PART_SRC && git describe --tags)
         git diff --quiet || error_dirty_build
         echo 'PKG = "snap"' > $SNAPCRAFT_PART_SRC/dvc/utils/build.py
         # install all optional extras
