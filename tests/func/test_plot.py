@@ -18,6 +18,7 @@ from dvc.repo.plot.data import (
 from dvc.repo.plot.template import (
     TemplateNotFoundError,
     NoDataForTemplateError,
+    NoFieldInDataError,
 )
 from dvc.repo.plot import NoDataOrTemplateProvided
 
@@ -502,3 +503,15 @@ def test_plot_yaml(tmp_dir, scm, dvc):
         {"val": 2, PlotData.INDEX_FIELD: 0, "rev": "workspace"},
         {"val": 3, PlotData.INDEX_FIELD: 1, "rev": "workspace"},
     ]
+
+
+def test_raise_on_wrong_field(tmp_dir, scm, dvc):
+    metric = [{"val": 2}, {"val": 3}]
+    _write_json(tmp_dir, metric, "metric.json")
+    _run_with_metric(tmp_dir, "metric.json", "first run")
+
+    with pytest.raises(NoFieldInDataError):
+        dvc.plot("metric.json", x_field="no_val")
+
+    with pytest.raises(NoFieldInDataError):
+        dvc.plot("metric.json", y_field="no_val")
