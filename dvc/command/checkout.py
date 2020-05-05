@@ -1,37 +1,15 @@
 import argparse
 import logging
+import operator
 
 import colorama
 
 from dvc.command.base import append_doc_link
 from dvc.command.base import CmdBase
 from dvc.exceptions import CheckoutError
+from dvc.utils.humanize import get_summary
 
 logger = logging.getLogger(__name__)
-
-
-def _human_join(words):
-    words = list(words)
-    if not words:
-        return ""
-
-    return (
-        "{before} and {after}".format(
-            before=", ".join(words[:-1]), after=words[-1],
-        )
-        if len(words) > 1
-        else words[0]
-    )
-
-
-def log_summary(stats):
-    states = ("added", "deleted", "modified")
-    summary = (
-        "{} {}".format(len(stats[state]), state)
-        for state in states
-        if stats.get(state)
-    )
-    logger.info(_human_join(summary) or "No changes.")
 
 
 def log_changes(stats):
@@ -75,7 +53,11 @@ class CmdCheckout(CmdBase):
             stats = exc.stats
 
         if self.args.summary:
-            log_summary(stats)
+            default_message = "No changes."
+            msg = get_summary(
+                sorted(stats.items(), key=operator.itemgetter(0))
+            )
+            logger.info(msg or default_message)
         else:
             log_changes(stats)
 

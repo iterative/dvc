@@ -3,7 +3,8 @@ import logging
 
 from dvc.command.base import append_doc_link
 from dvc.command.base import CmdBase
-from dvc.command.checkout import log_summary
+from dvc.command.checkout import log_changes
+from dvc.utils.humanize import get_summary
 from dvc.exceptions import DvcException, CheckoutError
 
 
@@ -11,13 +12,16 @@ logger = logging.getLogger(__name__)
 
 
 class CmdDataBase(CmdBase):
-    @classmethod
-    def check_up_to_date(cls, processed_files_count):
-        if processed_files_count == 0:
-            logger.info("Everything is up to date.")
+    def log_summary(self, stats):
+        default_msg = "Everything is up to date."
+        logger.info(get_summary(stats.items()) or default_msg)
 
 
 class CmdDataPull(CmdDataBase):
+    def log_summary(self, stats):
+        log_changes(stats)
+        super().log_summary(stats)
+
     def run(self):
         try:
             stats = self.repo.pull(
@@ -31,13 +35,12 @@ class CmdDataPull(CmdDataBase):
                 force=self.args.force,
                 recursive=self.args.recursive,
             )
-            log_summary(stats)
+            self.log_summary(stats)
         except (CheckoutError, DvcException) as exc:
-            log_summary(getattr(exc, "stats", {}))
+            self.log_summary(getattr(exc, "stats", {}))
             logger.exception("failed to pull data from the cloud")
             return 1
 
-        self.check_up_to_date(stats["downloaded"])
         return 0
 
 
@@ -54,10 +57,10 @@ class CmdDataPush(CmdDataBase):
                 with_deps=self.args.with_deps,
                 recursive=self.args.recursive,
             )
+            self.log_summary({"pushed": processed_files_count})
         except DvcException:
             logger.exception("failed to push data to the cloud")
             return 1
-        self.check_up_to_date(processed_files_count)
         return 0
 
 
@@ -74,10 +77,10 @@ class CmdDataFetch(CmdDataBase):
                 with_deps=self.args.with_deps,
                 recursive=self.args.recursive,
             )
+            self.log_summary({"fetched": processed_files_count})
         except DvcException:
             logger.exception("failed to fetch data from the cloud")
             return 1
-        self.check_up_to_date(processed_files_count)
         return 0
 
 

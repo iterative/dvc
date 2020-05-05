@@ -692,7 +692,7 @@ def test_stats_does_not_show_changes_by_default(tmp_dir, dvc, scm, caplog):
     with caplog.at_level(logging.INFO, logger="dvc"):
         caplog.clear()
         assert main(["checkout", "--summary"]) == 0
-        assert "2 deleted" in caplog.text
+        assert "2 files deleted" in caplog.text
         assert "dir" not in caplog.text
         assert "other" not in caplog.text
 

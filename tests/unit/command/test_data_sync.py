@@ -22,7 +22,7 @@ def test_fetch(mocker):
     assert cli_args.func == CmdDataFetch
 
     cmd = cli_args.func(cli_args)
-    m = mocker.patch.object(cmd.repo, "fetch", autospec=True)
+    m = mocker.patch.object(cmd.repo, "fetch", autospec=True, return_value=0)
 
     assert cmd.run() == 0
 
@@ -96,7 +96,7 @@ def test_push(mocker):
     assert cli_args.func == CmdDataPush
 
     cmd = cli_args.func(cli_args)
-    m = mocker.patch.object(cmd.repo, "push", autospec=True)
+    m = mocker.patch.object(cmd.repo, "push", autospec=True, return_value=0)
 
     assert cmd.run() == 0
 

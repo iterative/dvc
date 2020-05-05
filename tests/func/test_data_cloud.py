@@ -726,14 +726,14 @@ def test_pull_git_imports(request, tmp_dir, dvc, scm, erepo):
     dvc.imp(fspath(erepo), "foo")
     dvc.imp(fspath(erepo), "dir", out="new_dir", rev="HEAD~")
 
-    assert dvc.pull()["downloaded"] == 0
+    assert dvc.pull()["fetched"] == 0
 
     for item in ["foo", "new_dir", dvc.cache.local.cache_dir]:
         remove(item)
     os.makedirs(dvc.cache.local.cache_dir, exist_ok=True)
     clean_repos()
 
-    assert dvc.pull(force=True)["downloaded"] == 2
+    assert dvc.pull(force=True)["fetched"] == 2
 
     assert (tmp_dir / "foo").exists()
     assert (tmp_dir / "foo").read_text() == "foo"
@@ -753,11 +753,11 @@ def test_pull_external_dvc_imports(tmp_dir, dvc, scm, erepo_dir):
     dvc.imp(fspath(erepo_dir), "foo")
     dvc.imp(fspath(erepo_dir), "dir", out="new_dir", rev="HEAD~")
 
-    assert dvc.pull()["downloaded"] == 0
+    assert dvc.pull()["fetched"] == 0
 
     clean(["foo", "new_dir"], dvc)
 
-    assert dvc.pull(force=True)["downloaded"] == 2
+    assert dvc.pull(force=True)["fetched"] == 2
 
     assert (tmp_dir / "foo").exists()
     assert (tmp_dir / "foo").read_text() == "foo"
@@ -798,7 +798,7 @@ def test_dvc_pull_pipeline_stages(tmp_dir, dvc, local_remote, run_copy):
         for target in [stage.addressing, out]:
             clean(outs, dvc)
             stats = dvc.pull([target])
-            assert stats["downloaded"] == 1
+            assert stats["fetched"] == 1
             assert stats["added"] == [out]
             assert os.path.exists(out)
             assert not any(os.path.exists(out) for out in set(outs) - {out})
@@ -849,3 +849,55 @@ def test_pipeline_file_target_ops(tmp_dir, dvc, local_remote, run_copy):
 
     with pytest.raises(StageNotFound):
         dvc.pull(["dvc.yaml:StageThatDoesNotExist"])
+
+
+@pytest.mark.parametrize(
+    "fs, msg",
+    [
+        ({"foo": "foo", "bar": "bar"}, "2 files pushed"),
+        ({"foo": "foo"}, "1 file pushed"),
+        ({}, "Everything is up to date"),
+    ],
+)
+def test_push_stats(tmp_dir, dvc, fs, msg, local_remote, caplog):
+    tmp_dir.dvc_gen(fs)
+    caplog.clear()
+    with caplog.at_level(level=logging.INFO, logger="dvc"):
+        main(["push"])
+    assert msg in caplog.text
+
+
+@pytest.mark.parametrize(
+    "fs, msg",
+    [
+        ({"foo": "foo", "bar": "bar"}, "2 files fetched"),
+        ({"foo": "foo"}, "1 file fetched"),
+        ({}, "Everything is up to date."),
+    ],
+)
+def test_fetch_stats(tmp_dir, dvc, fs, msg, local_remote, caplog):
+    tmp_dir.dvc_gen(fs)
+    dvc.push()
+    clean(list(fs.keys()), dvc)
+    caplog.clear()
+    with caplog.at_level(level=logging.INFO, logger="dvc"):
+        main(["fetch"])
+    assert msg in caplog.text
+
+
+def test_pull_stats(tmp_dir, dvc, local_remote, caplog):
+    tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
+    dvc.push()
+    clean(["foo", "bar"], dvc)
+    (tmp_dir / "bar").write_text("foobar")
+    caplog.clear()
+    with caplog.at_level(level=logging.INFO, logger="dvc"):
+        main(["pull", "--force"])
+    assert "M\tbar" in caplog.text
+    assert "A\tfoo" in caplog.text
+    assert "2 files fetched" in caplog.text
+    assert "1 file added" in caplog.text
+    assert "1 file modified" in caplog.text
+    with caplog.at_level(level=logging.INFO, logger="dvc"):
+        main(["pull"])
+    assert "Everything is up to date." in caplog.text
