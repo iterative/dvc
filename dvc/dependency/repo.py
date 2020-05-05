@@ -42,12 +42,12 @@ class RepoDependency(LocalDependency):
     def __str__(self):
         return "{} ({})".format(self.def_path, self.def_repo[self.PARAM_URL])
 
-    def _make_repo(self, *, locked=True):
+    def _make_repo(self, *, locked=True, cache_dir=None):
         from dvc.external_repo import external_repo
 
         d = self.def_repo
         rev = (d.get("rev_lock") if locked else None) or d.get("rev")
-        return external_repo(d["url"], rev=rev)
+        return external_repo(d["url"], rev=rev, cache_dir=cache_dir)
 
     def _get_checksum(self, locked=True):
         with self._make_repo(locked=locked) as repo:
@@ -74,14 +74,13 @@ class RepoDependency(LocalDependency):
         return {self.PARAM_PATH: self.def_path, self.PARAM_REPO: self.def_repo}
 
     def download(self, to):
-        with self._make_repo() as repo:
+        with self._make_repo(
+            cache_dir=self.repo.cache.local.cache_dir
+        ) as repo:
             if self.def_repo.get(self.PARAM_REV_LOCK) is None:
                 self.def_repo[self.PARAM_REV_LOCK] = repo.scm.get_rev()
 
-            if hasattr(repo, "cache"):
-                repo.cache.local.cache_dir = self.repo.cache.local.cache_dir
-
-            repo.pull_to(self.def_path, to.path_info)
+            repo.get_external(self.def_path, to.path_info)
 
     def update(self, rev=None):
         if rev:
