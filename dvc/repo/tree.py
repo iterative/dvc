@@ -7,7 +7,7 @@ from dvc.dvcfile import is_valid_filename
 from dvc.exceptions import OutputNotFoundError
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
-from dvc.scm.tree import BaseTree
+from dvc.scm.tree import BaseTree, WorkingTree
 from dvc.utils.fs import copy_obj_to_file
 
 
@@ -37,9 +37,15 @@ class DvcTree(BaseTree):
             raise IOError(errno.EISDIR)
 
         out = outs[0]
-
-        if out.changed_cache():
-            raise FileNotFoundError
+        # temporary hack to make cache use WorkingTree and not GitTree, because
+        # cache dir doesn't exist in the latter.
+        saved_tree = self.repo.tree
+        self.repo.tree = WorkingTree(self.repo.root_dir)
+        try:
+            if out.changed_cache():
+                raise FileNotFoundError
+        finally:
+            self.repo.tree = saved_tree
 
         return open(out.cache_path, mode=mode, encoding=encoding)
 
@@ -134,14 +140,14 @@ class RepoTree(BaseTree):
             # git-only erepo's do not need dvctree
             self.dvctree = None
 
-    def open(self, *args, **kwargs):
-        if self.dvctree:
+    def open(self, path, **kwargs):
+        if self.dvctree and self.dvctree.exists(path):
             try:
-                return self.dvctree.open(*args, **kwargs)
+                return self.dvctree.open(path, **kwargs)
             except FileNotFoundError:
                 pass
 
-        return self.repo.tree.open(*args, **kwargs)
+        return self.repo.tree.open(path, **kwargs)
 
     def exists(self, path):
         return self.repo.tree.exists(path) or (
@@ -206,7 +212,7 @@ class RepoTree(BaseTree):
 
     def copyfile(self, src, dest):
         """Copy specified file from this tree to the destination path."""
-        if not self.isfile(src):
+        if not self.exists(src):
             raise FileNotFoundError
 
         with self.open(src, mode="rb", encoding=None) as fobj:
