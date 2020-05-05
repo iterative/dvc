@@ -559,6 +559,17 @@ class BaseRemote(object):
             return
         self._save_file(path_info, checksum, save_link)
 
+    def save_obj(self, fobj, checksum_info):
+        """Save contents of opened file object to checksum_info."""
+        checksum = checksum_info[self.PARAM_CHECKSUM]
+        self._save_obj(fobj, checksum)
+
+    def _save_obj(self, fobj, checksum):
+        cache_info = self.checksum_to_path_info(checksum)
+        logger.debug("Saving file object to '{}'.".format(cache_info))
+        self.copyobj(fobj, cache_info)
+        self.state.save(cache_info, checksum)
+
     def _handle_transfer_exception(
         self, from_info, to_info, exception, operation
     ):
@@ -695,6 +706,9 @@ class BaseRemote(object):
 
     def copy(self, from_info, to_info):
         raise RemoteActionNotImplemented("copy", self.scheme)
+
+    def copyobj(self, from_obj, to_info):
+        raise RemoteActionNotImplemented("copyobj", self.scheme)
 
     def symlink(self, from_info, to_info):
         raise RemoteActionNotImplemented("symlink", self.scheme)
