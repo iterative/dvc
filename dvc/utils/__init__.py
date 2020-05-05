@@ -27,6 +27,22 @@ def dos2unix(data):
     return data.replace(b"\r\n", b"\n")
 
 
+def _fobj_md5(fobj, hash_md5, binary, progress_func=None):
+    while True:
+        data = fobj.read(LOCAL_CHUNK_SIZE)
+        if not data:
+            break
+
+        if binary:
+            chunk = data
+        else:
+            chunk = dos2unix(data)
+
+        hash_md5.update(chunk)
+        if progress_func:
+            progress_func(len(data))
+
+
 def file_md5(fname):
     """ get the (md5 hexdigest, md5 digest) of a file """
     from dvc.progress import Tqdm
@@ -53,21 +69,24 @@ def file_md5(fname):
             leave=False,
         ) as pbar:
             with open(fname, "rb") as fobj:
-                while True:
-                    data = fobj.read(LOCAL_CHUNK_SIZE)
-                    if not data:
-                        break
-
-                    if binary:
-                        chunk = data
-                    else:
-                        chunk = dos2unix(data)
-
-                    hash_md5.update(chunk)
-                    pbar.update(len(data))
+                _fobj_md5(fobj, hash_md5, binary, pbar.update)
 
         return (hash_md5.hexdigest(), hash_md5.digest())
 
+    return (None, None)
+
+
+def tree_md5(tree, fname):
+    from dvc.istextfile import istextfile
+
+    if tree.exists(fname):
+        hash_md5 = hashlib.md5()
+        binary = not istextfile(fname)
+
+        with tree.open(fname, "rb", encoding=None) as fobj:
+            _fobj_md5(fobj, hash_md5, binary)
+
+        return (hash_md5.hexdigest(), hash_md5.digest())
     return (None, None)
 
 

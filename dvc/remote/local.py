@@ -23,7 +23,7 @@ from dvc.remote.index import RemoteIndexNoop
 from dvc.scheme import Schemes
 from dvc.scm.tree import is_working_tree
 from dvc.system import System
-from dvc.utils import file_md5, relpath, tmp_fname
+from dvc.utils import file_md5, relpath, tmp_fname, tree_md5
 from dvc.utils.fs import (
     copyfile,
     copy_obj_to_file,
@@ -99,7 +99,6 @@ class LocalRemote(BaseRemote):
         return self.checksum_to_path_info(md5).url
 
     def exists(self, path_info):
-        assert is_working_tree(self.repo.tree)
         assert isinstance(path_info, str) or path_info.scheme == "local"
         return self.repo.tree.exists(path_info)
 
@@ -157,7 +156,9 @@ class LocalRemote(BaseRemote):
             yield PathInfo(fname)
 
     def get_file_checksum(self, path_info):
-        return file_md5(path_info)[0]
+        if is_working_tree(self.repo.tree):
+            return file_md5(path_info)[0]
+        return tree_md5(self.repo.tree, path_info)[0]
 
     def remove(self, path_info):
         if isinstance(path_info, PathInfo):
