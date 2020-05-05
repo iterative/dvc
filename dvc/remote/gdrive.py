@@ -387,10 +387,7 @@ class GDriveRemote(BaseRemote):
         gdrive_file = self._drive.CreateFile(param)
 
         with Tqdm(
-            total=int(gdrive_file["fileSize"]),
-            desc=progress_desc,
-            disable=no_progress_bar,
-            bytes=True,
+            desc=progress_desc, disable=no_progress_bar, bytes=True,
         ) as pbar:
             gdrive_file.GetContentFile(to_file, callback=pbar.update_to)
 
