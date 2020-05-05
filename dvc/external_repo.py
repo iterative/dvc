@@ -2,7 +2,7 @@ import logging
 import os
 import tempfile
 import threading
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from distutils.dir_util import copy_tree
 
 from funcy import cached_property, retry, wrap_with
@@ -10,6 +10,7 @@ from funcy import cached_property, retry, wrap_with
 from dvc.config import NoRemoteError, NotDvcRepoError
 from dvc.exceptions import (
     CheckoutError,
+    DownloadError,
     FileMissingError,
     NoOutputInExternalRepoError,
     NoRemoteInExternalRepoError,
@@ -20,6 +21,7 @@ from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.repo.tree import RepoTree
 from dvc.scm.git import Git
+from dvc.scm.tree import WorkingTree
 from dvc.utils import tmp_fname
 from dvc.utils.fs import makedirs, move, remove
 
@@ -27,14 +29,18 @@ logger = logging.getLogger(__name__)
 
 
 @contextmanager
-def external_repo(url, rev=None, for_write=False):
+def external_repo(
+    url, rev=None, for_write=False, cache_dir=None, cache_types=None
+):
     logger.debug("Creating external repo %s@%s", url, rev)
     path = _cached_clone(url, rev, for_write=for_write)
+    if not rev:
+        rev = "HEAD"
     try:
-        repo = ExternalRepo(path, url)
+        repo = ExternalRepo(
+            path, url, rev, cache_dir=cache_dir, cache_types=cache_types
+        )
     except NotDvcRepoError:
-        if not rev:
-            rev = "HEAD"
         repo = ExternalGitRepo(path, url, rev)
 
     try:
@@ -68,18 +74,20 @@ def clean_repos():
 
 
 class BaseExternalRepo:
-    def _pull_cached(self, src, dest):
-        return False
+    @cached_property
+    def repo_tree(self):
+        return RepoTree(self)
 
-    def _pull_file(self, tree, src, dest):
-        if tree.isdvc(src) and self._pull_cached(src, dest):
-            return
-        tree.copyfile(src, dest)
+    # temporary hack to make cache use WorkingTree and not GitTree, because
+    # cache dir doesn't exist in the latter.
+    @contextmanager
+    def fix_cache_tree(self):
+        saved_tree = self.tree
+        self.tree = WorkingTree(self.root_dir)
+        yield
+        self.tree = saved_tree
 
-    def _pull_dir(self, tree, src, dest):
-        makedirs(dest)
-
-    def pull_to(self, path, to_info):
+    def get_external(self, path, to_info, jobs=None):
         """
         Pull the corresponding file or directory specified by `path` and
         checkout it into `to_info`.
@@ -88,66 +96,162 @@ class BaseExternalRepo:
         outside the repository.
         """
         path_info = PathInfo(self.root_dir) / path
-        tree = RepoTree(self)
 
-        if not tree.exists(path_info):
+        if not self.repo_tree.exists(path_info):
             raise PathMissingError(path, self.url)
 
-        if tree.isdvc(path_info) and self._pull_cached(path_info, to_info):
+        if self.repo_tree.isdvc(path_info):
+            try:
+                self._checkout_to(path_info, to_info)
+                return
+            except FileNotFoundError:
+                pass
+
+        if self.repo_tree.isfile(path_info):
+            self.repo_tree.copyfile(path_info, to_info)
             return
 
-        if tree.isfile(path_info):
-            self._pull_file(tree, path_info, to_info)
-            return
+        self._get_external_dir(path_info, to_info, jobs=jobs)
 
-        for root, dirs, files in tree.walk(path_info):
+    def _get_external_dir(self, path_info, to_info, jobs=None):
+        """Walk erepo tree and get target dirs+files."""
+        rel_root = None
+        dest_dir = None
+        for root, dirs, files in self.repo_tree.walk(path_info):
             root_path = PathInfo(root)
-            rel_root = path_info.relative_to(root_path)
-            makedirs(to_info / rel_root)
+
+            if root_path == path_info:
+                # root_path is target directory, save all nested content
+                rel_root = root_path
+                dest_dir = root_path.relative_to(rel_root)
+
+            if rel_root:
+                makedirs(to_info / dest_dir)
+            else:
+                # only recurse into subdir containing path_info
+                dirs[:] = [
+                    dirname
+                    for dirname in dirs
+                    if path_info.overlaps(root_path / dirname)
+                ]
+
             for filename in files:
                 file_path = root_path / filename
-                dest_path = to_info / rel_root / filename
-                tree.copyfile(file_path, dest_path)
+                if rel_root:
+                    self.repo_tree.copyfile(
+                        file_path, to_info / dest_dir / filename
+                    )
+                elif path_info == file_path:
+                    # file_path is target file
+                    self.repo_tree.copyfile(file_path, to_info)
+                    return
 
+    def fetch_external(self, files, jobs=None):
+        """Fetch specified erepo files into cache.
 
-class ExternalRepo(Repo, BaseExternalRepo):
-    def __init__(self, root_dir, url):
-        super().__init__(root_dir)
-        self.url = url
-        self._set_cache_dir()
-        self._fix_upstream()
+        Works with files tracked by Git and DVC.
+        """
+        downloaded, failed = 0, 0
 
-    def _pull_cached(self, path_info, dest):
-        (out,) = self.find_outs_by_path(path_info, strict=False)
-        if out and out.use_cache:
-            with self.state:
-                tmp = PathInfo(tmp_fname(dest))
-                src = tmp / path_info.relative_to(out.path_info)
+        with self.state:
+            for name in files:
+                path_info = PathInfo(self.root_dir) / name
+                if self.repo_tree.isdvc(path_info):
+                    out = self.find_out_by_relpath(name)
+                    with self.fix_cache_tree():
+                        d, f = self._fetch_out(out, name, jobs=jobs)
+                else:
+                    d, f = self._fetch_git(name, path_info)
+                downloaded += d
+                failed += f
 
-                out.path_info = tmp
+        if failed:
+            logger.exception(
+                "failed to fetch '{}' from '{}' repo".format(
+                    ", ".join(failed), self.url
+                )
+            )
+        return downloaded, failed
 
-                # Only pull unless all needed cache is present
-                if out.changed_cache(filter_info=src):
-                    self.cloud.pull(out.get_used_cache(filter_info=src))
+    def _checkout_to(self, path_info, dest, jobs=None):
+        """Fetch path_info and checkout to dest."""
+        try:
+            (out,) = self.find_outs_by_path(path_info, strict=False)
+        except OutputNotFoundError:
+            raise FileNotFoundError
 
+        with self.state:
+            tmp = PathInfo(tmp_fname(dest))
+            src = tmp / path_info.relative_to(out.path_info)
+            out.path_info = tmp
+
+            with self.fix_cache_tree():
+                self._fetch_out(out, path_info, filter_info=src, jobs=jobs)
                 try:
                     out.checkout(filter_info=src)
                 except CheckoutError:
                     raise FileNotFoundError
 
-                move(src, dest)
-                remove(tmp)
-            return True
-        return False
+            move(src, dest)
+            remove(tmp)
+
+    def _fetch_out(self, out, name, filter_info=None, jobs=None):
+        """Fetch specified erepo out."""
+        downloaded, failed = 0, 0
+        if out.changed_cache(filter_info=filter_info):
+            used_cache = out.get_used_cache()
+            try:
+                downloaded += self.cloud.pull(used_cache, jobs=jobs)
+            except DownloadError as exc:
+                failed += exc.amount
+        return downloaded, failed
+
+    def _fetch_git(self, name, path_info):
+        """Copy git tracked file into cache."""
+        local_cache = self.cache.local
+        downloaded, failed = 0, 0
+        info = local_cache.save_info(path_info)
+        if info.get(local_cache.PARAM_CHECKSUM) is None:
+            logger.exception(
+                "failed to fetch '{}' from '{}' repo".format(name, self.url)
+            )
+            failed += 1
+        elif local_cache.changed_cache(info[local_cache.PARAM_CHECKSUM]):
+            with self.repo_tree.open(path_info, "rb") as fobj:
+                local_cache.save_obj(fobj, info)
+            logger.debug("fetched '{}' from '{}' repo", name, self.url)
+            downloaded += 1
+        return downloaded, failed
+
+
+class ExternalRepo(Repo, BaseExternalRepo):
+    def __init__(self, root_dir, url, rev, cache_dir=None, cache_types=None):
+        root_dir = os.path.realpath(root_dir)
+        scm = Git(root_dir)
+        tree = scm.get_tree(rev)
+
+        if not tree.isdir(os.path.join(root_dir, self.DVC_DIR)):
+            raise NotDvcRepoError
+
+        super().__init__(root_dir, find_root=False, scm=scm, tree=tree)
+
+        self.url = url
+        self._set_cache_dir(cache_dir=cache_dir, cache_types=None)
+        self._fix_upstream()
 
     @wrap_with(threading.Lock())
-    def _set_cache_dir(self):
-        try:
-            cache_dir = CACHE_DIRS[self.url]
-        except KeyError:
-            cache_dir = CACHE_DIRS[self.url] = tempfile.mkdtemp("dvc-cache")
-
+    def _set_cache_dir(self, cache_dir=None, cache_types=None):
+        if not cache_dir:
+            try:
+                cache_dir = CACHE_DIRS[self.url]
+            except KeyError:
+                cache_dir = CACHE_DIRS[self.url] = tempfile.mkdtemp(
+                    "dvc-cache"
+                )
         self.cache.local.cache_dir = cache_dir
+
+        if cache_types:
+            self.cache.local.cache_types = cache_types
 
     def _fix_upstream(self):
         if not os.path.isdir(self.url):
@@ -198,6 +302,10 @@ class ExternalGitRepo(BaseExternalRepo):
     def scm(self):
         return Git(self.root_dir)
 
+    @cached_property
+    def state(self):
+        return suppress()
+
     def close(self):
         if "scm" in self.__dict__:
             self.scm.close()
@@ -210,7 +318,7 @@ class ExternalGitRepo(BaseExternalRepo):
         """Opens a specified resource as a file object."""
         try:
             abs_path = os.path.join(self.root_dir, path)
-            with self.tree.open(abs_path, mode, encoding=encoding) as fd:
+            with self.repo_tree.open(abs_path, mode, encoding=encoding) as fd:
                 yield fd
         except FileNotFoundError:
             raise PathMissingError(path, self.url)
@@ -236,10 +344,6 @@ def _cached_clone(url, rev, for_write=False):
     repo_path = tempfile.mkdtemp("dvc-erepo")
     logger.debug("erepo: making a copy of %s clone", url)
     copy_tree(clone_path, repo_path)
-
-    # Check out the specified revision
-    if rev is not None:
-        _git_checkout(repo_path, rev)
 
     if not for_write:
         CLONES[url, rev_sha] = repo_path
@@ -272,15 +376,6 @@ def _clone_default_branch(url, rev):
             git.close()
 
     return clone_path
-
-
-def _git_checkout(repo_path, rev):
-    logger.debug("erepo: git checkout %s@%s", repo_path, rev)
-    git = Git(repo_path)
-    try:
-        git.checkout(rev)
-    finally:
-        git.close()
 
 
 def _remove(path):
