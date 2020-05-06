@@ -91,8 +91,8 @@ def test_pull_subdir_file(tmp_dir, erepo_dir):
         erepo_dir.dvc_add(subdir / "file", commit="create file")
 
     dest = tmp_dir / "file"
-    with external_repo(os.fspath(erepo_dir)) as repo:
-        repo.pull_to(os.path.join("subdir", "file"), dest)
+    with external_repo(erepo_dir) as repo:
+        repo.get_external(os.path.join("subdir", "file"), dest)
 
     assert dest.is_file()
     assert dest.read_text() == "contents"
