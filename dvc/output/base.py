@@ -392,6 +392,12 @@ class BaseOutput(object):
             else:
                 return cache
 
+        for checksum, entry_path in self.filter_dir_cache(filter_info):
+            cache.add(self.scheme, checksum, entry_path)
+
+        return cache
+
+    def filter_dir_cache(self, filter_info=None):
         path = str(self.path_info)
         filter_path = str(filter_info) if filter_info else None
         is_win = os.name == "nt"
@@ -406,9 +412,7 @@ class BaseOutput(object):
                 or entry_path == filter_path
                 or entry_path.startswith(filter_path + os.sep)
             ):
-                cache.add(self.scheme, checksum, entry_path)
-
-        return cache
+                yield checksum, entry_path
 
     def get_used_cache(self, **kwargs):
         """Get a dumpd of the given `out`, with an entry including the branch.

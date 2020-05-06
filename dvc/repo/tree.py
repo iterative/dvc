@@ -1,14 +1,15 @@
 import errno
+import logging
 import os
-
-from funcy import first
 
 from dvc.dvcfile import is_valid_filename
 from dvc.exceptions import OutputNotFoundError
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.scm.tree import BaseTree
-from dvc.utils.fs import copy_obj_to_file
+from dvc.utils.fs import copyfile, copy_obj_to_file, makedirs
+
+logger = logging.getLogger(__name__)
 
 
 class DvcTree(BaseTree):
@@ -83,7 +84,8 @@ class DvcTree(BaseTree):
             files.append(name)
 
         if topdown:
-            yield root.fspath, list(dirs), files
+            dirs = list(dirs)
+            yield root.fspath, dirs, files
 
             for dname in dirs:
                 yield from self._walk(root / dname, trie)
@@ -160,23 +162,25 @@ class RepoTree(BaseTree):
             self.dvctree and self.dvctree.isfile(path)
         )
 
-    def _walk(self, top, topdown=True):
-        if self.dvctree and not self.repo.tree.isdir(top):
-            yield from self.dvctree.walk(top, topdown=topdown)
-            return
-        if not self.dvctree or not self.dvctree.isdir(top):
-            yield from self.repo.tree.walk(top, topdown=topdown)
-            return
+    def _walk(self, dvc_walk, repo_walk):
+        """Walk and merge both trees.
 
-        # walk and merge both trees, ensure that dvcfiles are ignored (handled
-        # as DVC outs, not as git versioned files)
-        repo_root, repo_dirs, repo_files = first(
-            self.repo.tree.walk(top, topdown=topdown)
-        )
-        dvc_root, dvc_dirs, dvc_files = first(
-            self.dvctree.walk(top, topdown=topdown)
-        )
-        dirs = list(set(repo_dirs) | set(dvc_dirs))
+        Ensure that dvcfiles are handled as DVC outs and not as git versioned
+        files.
+        """
+
+        dvc_root, dvc_dirs, dvc_files = next(dvc_walk)
+        repo_root, repo_dirs, repo_files = next(repo_walk)
+        assert dvc_root == repo_root
+
+        # separate subdirs into shared dirs, dvc-only dirs, repo-only dirs
+        dvc_set = set(dvc_dirs)
+        repo_set = set(repo_dirs)
+        dvc_only = list(dvc_set - repo_set)
+        repo_only = list(repo_set - dvc_set)
+        shared = list(dvc_set & repo_set)
+        dirs = shared + dvc_only + repo_only
+
         files = set(dvc_files)
         for filename in repo_files:
             if is_valid_filename(filename):
@@ -187,21 +191,35 @@ class RepoTree(BaseTree):
                 files.add(filename)
         yield repo_root, dirs, list(files)
 
-        for dirname in dirs:
-            yield from self._walk(
-                os.path.join(repo_root, dirname), topdown=topdown
-            )
+        dvc_dirs[:] = [dirname for dirname in dirs if dirname in dvc_set]
+        repo_dirs[:] = [dirname for dirname in dirs if dirname in repo_set]
+        if not repo_dirs:
+            yield from dvc_walk
+        elif not dvc_dirs:
+            yield from repo_walk
+        else:
+            yield from self._walk_both(dvc_walk, repo_walk)
 
     def walk(self, top, topdown=True):
         assert topdown
 
-        if not self.exists(top):
+        dvc_exists = self.dvctree and self.dvctree.exists(top)
+        repo_exists = self.repo.tree.exists(top)
+        if dvc_exists and not repo_exists:
+            yield from self.dvctree.walk(top, topdown=topdown)
+            return
+        if repo_exists and not dvc_exists:
+            yield from self.repo.tree.walk(top, topdown=topdown)
+            return
+        if not dvc_exists and not repo_exists:
             raise FileNotFoundError
 
         if not self.isdir(top):
             raise NotADirectoryError
 
-        yield from self._walk(top, topdown=topdown)
+        dvc_walk = self.dvctree.walk(top, topdown=topdown)
+        repo_walk = self.repo.tree.walk(top, topdown=topdown)
+        yield from self._walk_both(dvc_walk, repo_walk)
 
     def copyfile(self, src, dest):
         """Copy specified file from this tree to the destination path."""
@@ -210,3 +228,50 @@ class RepoTree(BaseTree):
 
         with self.open(src, mode="rb", encoding=None) as fobj:
             copy_obj_to_file(fobj, dest)
+
+    def copytree(self, top, dest):
+        """Copy directory/file tree to dest, starting from top."""
+        if not self.exists(top):
+            raise FileNotFoundError
+
+        top = PathInfo(top)
+        dest = PathInfo(dest)
+
+        if self.isfile(top):
+            return self.copyfile(top, dest)
+
+        if self.isdvc(top):
+            return self._copytree_dvc(top, dest)
+
+        for root, dirs, files in self.walk(top):
+            root_path = PathInfo(root)
+            dest_dir = dest / root_path.relative_to(top)
+            if not os.path.exists(dest_dir):
+                makedirs(dest_dir)
+            for filename in files:
+                self.copyfile(root_path / filename, dest_dir / filename)
+
+    def _copytree_dvc(self, top, dest):
+        """Copy contents of DVC dir out from local cache to dest.
+
+        Only dir cache contents starting from top will be copied.
+        """
+        try:
+            (out,) = self.repo.find_outs_by_path(top, strict=False)
+        except OutputNotFoundError:
+            raise FileNotFoundError
+
+        filter_info = PathInfo(os.path.abspath(top))
+        for checksum, entry_path in out.filter_dir_cache(filter_info):
+            entry_info = self.repo.cache.local.checksum_to_path_info(checksum)
+            entry_path = PathInfo(os.path.abspath(entry_path))
+            if top == entry_path:
+                if not os.path.exists(dest.parent):
+                    makedirs(dest.parent)
+                copyfile(entry_info, dest)
+                return
+            elif top.overlaps(entry_path):
+                dest_path = dest / entry_path.relative_to(top)
+                if not os.path.exists(dest_path.parent):
+                    makedirs(dest_path.parent)
+                copyfile(entry_info, dest_path)
