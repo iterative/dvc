@@ -33,7 +33,7 @@ def external_repo(url, rev=None, for_write=False):
     if not rev:
         rev = "HEAD"
     try:
-        repo = ExternalRepo(path, url, rev)
+        repo = ExternalRepo(path, url, rev, for_write=for_write)
     except NotDvcRepoError:
         repo = ExternalGitRepo(path, url, rev)
 
@@ -183,15 +183,19 @@ class BaseExternalRepo:
 
 
 class ExternalRepo(Repo, BaseExternalRepo):
-    def __init__(self, root_dir, url, rev):
-        root_dir = os.path.realpath(root_dir)
-        scm = Git(root_dir)
-        tree = scm.get_tree(rev)
+    def __init__(self, root_dir, url, rev, for_write=False):
+        if for_write:
+            super().__init__(root_dir)
+        else:
+            # use GitTree instead of WorkingTree
+            root_dir = os.path.realpath(root_dir)
+            scm = Git(root_dir)
+            tree = scm.get_tree(rev)
 
-        if not tree.isdir(os.path.join(root_dir, self.DVC_DIR)):
-            raise NotDvcRepoError("'{}' is not a DVC repo".format(url))
+            if not tree.isdir(os.path.join(root_dir, self.DVC_DIR)):
+                raise NotDvcRepoError("'{}' is not a DVC repo".format(url))
 
-        super().__init__(root_dir, find_root=False, scm=scm, tree=tree)
+            super().__init__(root_dir, find_root=False, scm=scm, tree=tree)
 
         self.url = url
         self._set_cache_dir()
