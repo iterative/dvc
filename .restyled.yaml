@@ -9,3 +9,12 @@ restylers:
     - "**/*.py"
     interpreters:
     - python
+  - name: isort
+    image: restyled/restyler-isort:v4.3.21
+    command:
+    - isort
+    arguments: []
+    include:
+    - "**/*.py"
+    interpreters:
+    - python
