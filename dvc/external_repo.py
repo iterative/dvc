@@ -282,22 +282,20 @@ def _cached_clone(url, rev, for_write=False):
     revision checked out. If for_write is set prevents reusing this dir via
     cache.
     """
-    if not for_write and Git.is_sha(rev) and (url, rev) in CLONES:
-        return CLONES[url, rev]
-
     clone_path = _clone_default_branch(url, rev)
-    rev_sha = Git(clone_path).resolve_rev(rev or "HEAD")
 
-    if not for_write and (url, rev_sha) in CLONES:
-        return CLONES[url, rev_sha]
+    if not for_write and (url) in CLONES:
+        return CLONES[url]
 
     # Copy to a new dir to keep the clone clean
     repo_path = tempfile.mkdtemp("dvc-erepo")
     logger.debug("erepo: making a copy of %s clone", url)
     copy_tree(clone_path, repo_path)
 
-    if not for_write:
-        CLONES[url, rev_sha] = repo_path
+    if for_write:
+        _git_checkout(repo_path, rev)
+    else:
+        CLONES[url] = repo_path
     return repo_path
 
 
@@ -327,6 +325,15 @@ def _clone_default_branch(url, rev):
             git.close()
 
     return clone_path
+
+
+def _git_checkout(repo_path, rev):
+    logger.debug("erepo: git checkout %s@%s", repo_path, rev)
+    git = Git(repo_path)
+    try:
+        git.checkout(rev)
+    finally:
+        git.close()
 
 
 def _remove(path):

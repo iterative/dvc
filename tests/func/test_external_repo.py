@@ -5,6 +5,7 @@ from mock import patch
 from dvc.external_repo import external_repo
 from dvc.remote import LocalRemote
 from dvc.scm.git import Git
+from dvc.scm.git.tree import GitTree
 from dvc.utils import relpath
 from dvc.utils.fs import remove
 
@@ -32,12 +33,14 @@ def test_external_repo(erepo_dir):
 def test_source_change(erepo_dir):
     url = os.fspath(erepo_dir)
     with external_repo(url) as repo:
-        old_rev = repo.scm.get_rev()
+        # repo.tree will be CleanTree for DVC erepo
+        assert isinstance(repo.tree.tree, GitTree)
+        old_rev = repo.tree.tree.rev
 
     erepo_dir.scm_gen("file", "text", commit="a change")
 
     with external_repo(url) as repo:
-        new_rev = repo.scm.get_rev()
+        new_rev = repo.tree.tree.rev
 
     assert old_rev != new_rev
 
