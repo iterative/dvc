@@ -1,12 +1,8 @@
 import argparse
 import logging
 
-from dvc.command.base import append_doc_link
-from dvc.command.base import CmdBase
-from dvc.command.base import fix_subparsers
-from dvc.exceptions import BadMetricError
-from dvc.exceptions import DvcException
-
+from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
+from dvc.exceptions import BadMetricError, DvcException
 
 logger = logging.getLogger(__name__)
 

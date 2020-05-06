@@ -5,8 +5,8 @@ import pytest
 
 from dvc.remote.ssh.connection import SSHConnection
 from tests.utils.httpd import PushRequestHandler, StaticFileServer
-from .dir_helpers import *  # noqa
 
+from .dir_helpers import *  # noqa
 
 # Prevent updater and analytics from running their processes
 os.environ["DVC_TEST"] = "true"

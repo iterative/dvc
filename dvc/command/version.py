@@ -2,22 +2,23 @@ import argparse
 import itertools
 import logging
 import os
+import pathlib
 import platform
 import uuid
-import pathlib
+
+from dvc.command.base import CmdBaseNoRepo, append_doc_link
+from dvc.exceptions import DvcException, NotDvcRepoError
+from dvc.scm.base import SCMError
+from dvc.system import System
+from dvc.utils import is_binary, relpath
+from dvc.utils.pkg import PKG
+from dvc.version import __version__
 
 try:
     import psutil
 except ImportError:
     psutil = None
 
-from dvc.utils import is_binary, relpath
-from dvc.command.base import CmdBaseNoRepo, append_doc_link
-from dvc.version import __version__
-from dvc.exceptions import DvcException, NotDvcRepoError
-from dvc.scm.base import SCMError
-from dvc.system import System
-from dvc.utils.pkg import PKG
 
 logger = logging.getLogger(__name__)
 

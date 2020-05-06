@@ -7,40 +7,41 @@ from unittest import SkipTest
 
 import pytest
 
-from dvc.compat import fspath, fspath_py35
 from dvc.cache import NamedCache
+from dvc.compat import fspath, fspath_py35
 from dvc.data_cloud import DataCloud
+from dvc.external_repo import clean_repos
 from dvc.main import main
-from dvc.remote import AzureRemote
-from dvc.remote import GDriveRemote
-from dvc.remote import GSRemote
-from dvc.remote import HDFSRemote
-from dvc.remote import HTTPRemote
-from dvc.remote import LocalRemote
-from dvc.remote import OSSRemote
-from dvc.remote import S3Remote
-from dvc.remote import SSHRemote
+from dvc.remote import (
+    AzureRemote,
+    GDriveRemote,
+    GSRemote,
+    HDFSRemote,
+    HTTPRemote,
+    LocalRemote,
+    OSSRemote,
+    S3Remote,
+    SSHRemote,
+)
 from dvc.remote.base import STATUS_DELETED, STATUS_NEW, STATUS_OK
 from dvc.stage.exceptions import StageNotFound
 from dvc.utils import file_md5
 from dvc.utils.fs import remove
 from dvc.utils.stage import dump_stage_file, load_stage_file
-from dvc.external_repo import clean_repos
 from tests.basic_env import TestDvc
-
 from tests.remotes import (
-    Azure,
     GCP,
-    GDrive,
     HDFS,
     HTTP,
-    Local,
-    S3,
-    SSHMocked,
     OSS,
+    S3,
     TEST_CONFIG,
     TEST_GCP_CREDS_FILE,
     TEST_REMOTE,
+    Azure,
+    GDrive,
+    Local,
+    SSHMocked,
 )
 
 

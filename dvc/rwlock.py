@@ -1,10 +1,9 @@
-import os
 import json
-
+import os
 from collections import defaultdict
 from contextlib import contextmanager
 
-from voluptuous import Schema, Invalid, Required, Optional
+from voluptuous import Invalid, Optional, Required, Schema
 
 from .exceptions import DvcException
 from .lock import LockError

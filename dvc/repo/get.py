@@ -4,9 +4,9 @@ import os
 import shortuuid
 
 from dvc.exceptions import DvcException
+from dvc.path_info import PathInfo
 from dvc.utils import resolve_output
 from dvc.utils.fs import remove
-from dvc.path_info import PathInfo
 
 logger = logging.getLogger(__name__)
 

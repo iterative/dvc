@@ -3,7 +3,6 @@ import pytest
 from dvc.config import ConfigError
 from dvc.remote.s3 import S3Remote
 
-
 bucket_name = "bucket-name"
 prefix = "some/prefix"
 url = "s3://{}/{}".format(bucket_name, prefix)

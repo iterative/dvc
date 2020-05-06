@@ -1,5 +1,6 @@
-from dvc.utils.diff import format_dict, diff as _diff
 from dvc.exceptions import NoMetricsError
+from dvc.utils.diff import diff as _diff
+from dvc.utils.diff import format_dict
 
 
 def _get_metrics(repo, *args, rev=None, **kwargs):

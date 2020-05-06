@@ -6,10 +6,9 @@ import re
 import shutil
 import uuid
 from pathlib import Path
-from subprocess import PIPE
-from subprocess import Popen
-from urllib.parse import urljoin
+from subprocess import PIPE, Popen
 from unittest import SkipTest
+from urllib.parse import urljoin
 
 import boto3
 import paramiko
@@ -19,35 +18,35 @@ from google.cloud import storage as gc
 from mock import patch
 
 from dvc.compat import fspath
-from dvc.exceptions import CyclicGraphError
-from dvc.exceptions import ReproductionError
-from dvc.exceptions import StagePathAsOutputError
+from dvc.dvcfile import DVC_FILE, Dvcfile
+from dvc.exceptions import (
+    CyclicGraphError,
+    ReproductionError,
+    StagePathAsOutputError,
+)
 from dvc.main import main
 from dvc.output.base import BaseOutput
 from dvc.path_info import URLInfo
 from dvc.remote.local import LocalRemote
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
-from dvc.dvcfile import Dvcfile, DVC_FILE
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
-from dvc.utils import file_md5
-from dvc.utils import relpath
-from dvc.utils.stage import dump_stage_file
-from dvc.utils.stage import load_stage_file
+from dvc.utils import file_md5, relpath
 from dvc.utils.fs import remove
+from dvc.utils.stage import dump_stage_file, load_stage_file
 from tests.basic_env import TestDvc
 from tests.remotes import (
     GCP,
     HDFS,
-    Local,
     S3,
     SSH,
-    SSHMocked,
     TEST_AWS_REPO_BUCKET,
     TEST_GCP_REPO_BUCKET,
+    Local,
+    SSHMocked,
 )
-from tests.utils.httpd import StaticFileServer, ContentMD5Handler
+from tests.utils.httpd import ContentMD5Handler, StaticFileServer
 
 
 class SingleStageRun:

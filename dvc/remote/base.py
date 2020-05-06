@@ -4,20 +4,20 @@ import itertools
 import json
 import logging
 import tempfile
-from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from functools import partial, wraps
 from multiprocessing import cpu_count
 from operator import itemgetter
+from urllib.parse import urlparse
 
 from shortuuid import uuid
 
 import dvc.prompt as prompt
 from dvc.exceptions import (
     CheckoutError,
-    DvcException,
     ConfirmRemoveError,
+    DvcException,
     DvcIgnoreInCollectedDirError,
     RemoteCacheRequiredError,
 )
@@ -28,7 +28,7 @@ from dvc.remote.index import RemoteIndex, RemoteIndexNoop
 from dvc.remote.slow_link_detection import slow_link_guard
 from dvc.state import StateNoop
 from dvc.utils import tmp_fname
-from dvc.utils.fs import move, makedirs
+from dvc.utils.fs import makedirs, move
 from dvc.utils.http import open_url
 
 logger = logging.getLogger(__name__)

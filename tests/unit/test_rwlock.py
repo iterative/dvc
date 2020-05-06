@@ -2,15 +2,15 @@ import os
 
 import pytest
 
-from dvc.rwlock import (
-    rwlock,
-    _edit_rwlock,
-    RWLockFileFormatError,
-    RWLockFileCorruptedError,
-)
-from dvc.lock import LockError
 from dvc.compat import fspath
+from dvc.lock import LockError
 from dvc.path_info import PathInfo
+from dvc.rwlock import (
+    RWLockFileCorruptedError,
+    RWLockFileFormatError,
+    _edit_rwlock,
+    rwlock,
+)
 
 
 def test_rwlock(tmp_path):

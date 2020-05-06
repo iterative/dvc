@@ -6,12 +6,9 @@ import os
 import pydoc
 import sys
 
-from grandalf.graphs import Edge
-from grandalf.graphs import Graph
-from grandalf.graphs import Vertex
+from grandalf.graphs import Edge, Graph, Vertex
 from grandalf.layouts import SugiyamaLayout
-from grandalf.routing import EdgeViewer
-from grandalf.routing import route_with_lines
+from grandalf.routing import EdgeViewer, route_with_lines
 
 from dvc.env import DVC_PAGER
 from dvc.utils import format_link

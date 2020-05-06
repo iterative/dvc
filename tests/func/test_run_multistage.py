@@ -1,9 +1,9 @@
-import pytest
 import os
 
+import pytest
 import yaml
 
-from dvc.stage.exceptions import InvalidStageName, DuplicateStageName
+from dvc.stage.exceptions import DuplicateStageName, InvalidStageName
 
 
 def test_run_with_name(tmp_dir, dvc, run_copy):

@@ -1,11 +1,11 @@
 import os
 
 from mock import patch
-from dvc.compat import fspath
 
+from dvc.compat import fspath
 from dvc.external_repo import external_repo
-from dvc.scm.git import Git
 from dvc.remote import LocalRemote
+from dvc.scm.git import Git
 from dvc.utils import relpath
 from dvc.utils.fs import remove
 

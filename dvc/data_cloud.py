@@ -5,7 +5,6 @@ import logging
 from dvc.config import NoRemoteError
 from dvc.remote import Remote
 
-
 logger = logging.getLogger(__name__)
 
 

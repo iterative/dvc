@@ -3,11 +3,9 @@ import os
 from contextlib import contextmanager
 from functools import wraps
 
-from dvc.ignore import CleanTree
-from dvc.compat import fspath_py35
-
 from funcy import cached_property, cat, first
 
+from dvc.compat import fspath_py35
 from dvc.config import Config
 from dvc.exceptions import (
     FileMissingError,
@@ -15,11 +13,13 @@ from dvc.exceptions import (
     NotDvcRepoError,
     OutputNotFoundError,
 )
+from dvc.ignore import CleanTree
 from dvc.path_info import PathInfo
 from dvc.remote.base import RemoteActionNotImplemented
 from dvc.utils.fs import path_isin
-from .graph import check_acyclic, get_pipeline, get_pipelines
+
 from ..utils import parse_target
+from .graph import check_acyclic, get_pipeline, get_pipelines
 
 
 def locked(f):

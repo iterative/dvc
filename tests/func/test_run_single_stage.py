@@ -8,13 +8,15 @@ import mock
 import pytest
 
 from dvc.dependency.base import DependencyIsStageFileError
-from dvc.exceptions import ArgumentDuplicationError
-from dvc.exceptions import CircularDependencyError
-from dvc.exceptions import CyclicGraphError
-from dvc.exceptions import OutputDuplicationError
-from dvc.exceptions import OverlappingOutputPathsError
-from dvc.exceptions import StagePathAsOutputError
 from dvc.dvcfile import DVC_FILE_SUFFIX
+from dvc.exceptions import (
+    ArgumentDuplicationError,
+    CircularDependencyError,
+    CyclicGraphError,
+    OutputDuplicationError,
+    OverlappingOutputPathsError,
+    StagePathAsOutputError,
+)
 from dvc.main import main
 from dvc.output import BaseOutput
 from dvc.output.base import OutputIsStageFileError
@@ -23,9 +25,9 @@ from dvc.stage import Stage
 from dvc.stage.exceptions import (
     StageFileAlreadyExistsError,
     StageFileBadNameError,
-    StagePathOutsideError,
-    StagePathNotFoundError,
     StagePathNotDirectoryError,
+    StagePathNotFoundError,
+    StagePathOutsideError,
 )
 from dvc.system import System
 from dvc.utils import file_md5

@@ -1,14 +1,14 @@
-import os
-import yaml
 import logging
+import os
 
+import yaml
 from voluptuous import Invalid
 
 from dvc.schema import COMPILED_LOCK_FILE_STAGE_SCHEMA
 from dvc.serialize import to_single_stage_lockfile
 from dvc.stage.loader import StageLoader
+from dvc.utils import dict_sha256, relpath
 from dvc.utils.fs import makedirs
-from dvc.utils import relpath, dict_sha256
 from dvc.utils.stage import dump_stage_file
 
 logger = logging.getLogger(__name__)

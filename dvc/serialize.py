@@ -1,14 +1,13 @@
 from collections import OrderedDict
 from functools import partial
 from operator import attrgetter
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
-from funcy import rpartial, lsplit
+from funcy import lsplit, rpartial
 
 from dvc.dependency import ParamsDependency
 from dvc.utils.collections import apply_diff
 from dvc.utils.stage import parse_stage_for_update
-from typing import List
 
 if TYPE_CHECKING:
     from dvc.stage import PipelineStage, Stage

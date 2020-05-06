@@ -2,7 +2,6 @@ import os
 import sys
 from subprocess import check_call
 
-
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(REPO_ROOT)
 

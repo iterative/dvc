@@ -7,9 +7,7 @@ import sys
 from subprocess import Popen
 
 from dvc.env import DVC_DAEMON
-from dvc.utils import fix_env
-from dvc.utils import is_binary
-
+from dvc.utils import fix_env, is_binary
 
 logger = logging.getLogger(__name__)
 

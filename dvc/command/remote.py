@@ -1,9 +1,9 @@
 import argparse
 import logging
 
-from dvc.config import ConfigError
 from dvc.command.base import append_doc_link, fix_subparsers
 from dvc.command.config import CmdConfig
+from dvc.config import ConfigError
 from dvc.utils import format_link
 
 logger = logging.getLogger(__name__)

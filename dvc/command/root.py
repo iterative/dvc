@@ -1,8 +1,7 @@
 import argparse
 import logging
 
-from dvc.command.base import append_doc_link
-from dvc.command.base import CmdBaseNoRepo
+from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)

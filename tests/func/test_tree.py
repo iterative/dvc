@@ -6,9 +6,7 @@ from dvc.ignore import CleanTree
 from dvc.scm import SCM
 from dvc.scm.git import GitTree
 from dvc.scm.tree import WorkingTree
-from tests.basic_env import TestDir
-from tests.basic_env import TestGit
-from tests.basic_env import TestGitSubmodule
+from tests.basic_env import TestDir, TestGit, TestGitSubmodule
 
 
 class TestWorkingTree(TestDir):

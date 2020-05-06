@@ -3,17 +3,18 @@ import os
 
 import colorama
 
-from . import locked
 from dvc.dvcfile import Dvcfile, is_dvc_file
+
 from ..exceptions import (
-    RecursiveAddingWhileUsingFilename,
-    OverlappingOutputPathsError,
     OutputDuplicationError,
+    OverlappingOutputPathsError,
+    RecursiveAddingWhileUsingFilename,
 )
 from ..output.base import OutputDoesNotExistError
 from ..progress import Tqdm
 from ..repo.scm_context import scm_context
 from ..utils import LARGE_DIR_SIZE, resolve_paths
+from . import locked
 
 logger = logging.getLogger(__name__)
 

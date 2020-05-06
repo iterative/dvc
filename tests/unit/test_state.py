@@ -1,4 +1,5 @@
 import pytest
+
 from dvc.state import _build_sqlite_uri
 
 

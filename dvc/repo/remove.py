@@ -1,7 +1,7 @@
 import logging
 
-from . import locked
 from ..utils import parse_target
+from . import locked
 
 logger = logging.getLogger(__name__)
 

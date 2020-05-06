@@ -1,5 +1,6 @@
-from . import locked
 from dvc.dvcfile import Dvcfile
+
+from . import locked
 
 
 @locked

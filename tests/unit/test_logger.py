@@ -1,15 +1,13 @@
 import logging
+import time
 import traceback
+from datetime import datetime
 
 import colorama
-
-import dvc.logger
-import time
-from datetime import datetime
 import pytest
 
+import dvc.logger
 from dvc.exceptions import DvcException
-
 
 logger = logging.getLogger("dvc")
 formatter = dvc.logger.ColorFormatter()

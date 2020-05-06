@@ -7,29 +7,29 @@ import shutil
 import pytest
 from mock import patch
 
-from dvc.exceptions import CheckoutError
-from dvc.exceptions import CheckoutErrorSuggestGit
-from dvc.exceptions import ConfirmRemoveError
-from dvc.exceptions import DvcException
+from dvc.dvcfile import DVC_FILE_SUFFIX, Dvcfile
+from dvc.exceptions import (
+    CheckoutError,
+    CheckoutErrorSuggestGit,
+    ConfirmRemoveError,
+    DvcException,
+)
 from dvc.main import main
+from dvc.remote import S3Remote
 from dvc.remote.local import LocalRemote
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
-from dvc.dvcfile import Dvcfile, DVC_FILE_SUFFIX
 from dvc.stage.exceptions import (
-    StageFileDoesNotExistError,
     StageFileBadNameError,
+    StageFileDoesNotExistError,
 )
 from dvc.system import System
 from dvc.utils import relpath
 from dvc.utils.fs import walk_files
-from dvc.utils.stage import dump_stage_file
-from dvc.utils.stage import load_stage_file
-from dvc.remote import S3Remote
-from tests.remotes import S3
-from tests.basic_env import TestDvc
-from tests.basic_env import TestDvcGit
+from dvc.utils.stage import dump_stage_file, load_stage_file
+from tests.basic_env import TestDvc, TestDvcGit
 from tests.func.test_repro import TestRepro
+from tests.remotes import S3
 
 logger = logging.getLogger("dvc")
 

@@ -1,10 +1,10 @@
 import logging
 
-from dvc.exceptions import ReproductionError, InvalidArgumentError
+from dvc.exceptions import InvalidArgumentError, ReproductionError
 from dvc.repo.scm_context import scm_context
+
 from . import locked
 from .graph import get_pipeline, get_pipelines
-
 
 logger = logging.getLogger(__name__)
 

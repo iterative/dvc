@@ -6,8 +6,7 @@ from dvc.config import Config
 from dvc.exceptions import InitError
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
-from tests.basic_env import TestDir
-from tests.basic_env import TestGit
+from tests.basic_env import TestDir, TestGit
 
 
 class TestInit(TestGit):

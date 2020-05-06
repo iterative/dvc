@@ -1,5 +1,6 @@
-import mock
 import os
+
+import mock
 
 from dvc.path_info import PathInfo
 from dvc.state import State

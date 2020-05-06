@@ -8,10 +8,11 @@ from collections import deque
 from contextlib import closing, contextmanager
 from urllib.parse import urlparse
 
-from .base import BaseRemote, RemoteCmdError
-from .pool import get_connection
 from dvc.scheme import Schemes
 from dvc.utils import fix_env, tmp_fname
+
+from .base import BaseRemote, RemoteCmdError
+from .pool import get_connection
 
 logger = logging.getLogger(__name__)
 

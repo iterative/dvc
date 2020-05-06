@@ -1,8 +1,10 @@
 # encoding: utf-8
 import os
 import shutil
+
 import pytest
 
+from dvc.compat import fspath, fspath_py35
 from dvc.exceptions import DvcIgnoreInCollectedDirError
 from dvc.ignore import (
     DvcIgnore,
@@ -10,12 +12,10 @@ from dvc.ignore import (
     DvcIgnorePatterns,
     DvcIgnoreRepo,
 )
+from dvc.remote import LocalRemote
 from dvc.scm.tree import WorkingTree
 from dvc.utils import relpath
-from dvc.compat import fspath_py35, fspath
 from dvc.utils.fs import get_mtime_and_size
-from dvc.remote import LocalRemote
-
 from tests.dir_helpers import TmpDir
 from tests.utils import to_posixpath
 

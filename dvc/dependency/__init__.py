@@ -1,5 +1,5 @@
-from urllib.parse import urlparse
 from collections import defaultdict
+from urllib.parse import urlparse
 
 import dvc.output as output
 from dvc.dependency.gs import GSDependency
@@ -7,14 +7,14 @@ from dvc.dependency.hdfs import HDFSDependency
 from dvc.dependency.http import HTTPDependency
 from dvc.dependency.https import HTTPSDependency
 from dvc.dependency.local import LocalDependency
+from dvc.dependency.param import ParamsDependency
 from dvc.dependency.s3 import S3Dependency
 from dvc.dependency.ssh import SSHDependency
-from dvc.dependency.param import ParamsDependency
 from dvc.output.base import BaseOutput
 from dvc.remote import Remote
 from dvc.scheme import Schemes
-from .repo import RepoDependency
 
+from .repo import RepoDependency
 
 DEPS = [
     GSDependency,

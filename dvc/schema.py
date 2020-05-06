@@ -1,9 +1,8 @@
-from dvc.stage.params import StageParams, OutputParams
-from dvc.output import CHECKSUMS_SCHEMA
+from voluptuous import Any, Optional, Required, Schema
+
 from dvc import dependency, output
-
-from voluptuous import Any, Schema, Optional, Required
-
+from dvc.output import CHECKSUMS_SCHEMA
+from dvc.stage.params import OutputParams, StageParams
 
 STAGES = "stages"
 SINGLE_STAGE_SCHEMA = {

@@ -2,11 +2,9 @@ import argparse
 import logging
 import sys
 
-from dvc.command.base import append_doc_link
-from dvc.command.base import CmdBaseNoRepo
+from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.command.ls.ls_colors import LsColors
 from dvc.exceptions import DvcException
-
 
 logger = logging.getLogger(__name__)
 

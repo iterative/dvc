@@ -1,6 +1,6 @@
+import threading
 from collections import deque
 from contextlib import contextmanager
-import threading
 
 from funcy import memoize, wrap_with
 

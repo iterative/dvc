@@ -7,7 +7,6 @@ import colorama
 
 from dvc.progress import Tqdm
 
-
 FOOTER = (
     "\n{yellow}Having any troubles?{nc}"
     " Hit us up at {blue}https://dvc.org/support{nc},"

@@ -7,15 +7,15 @@ from contextlib import suppress
 
 from funcy import cached_property
 
+from dvc.exceptions import DvcException
+from dvc.progress import Tqdm
+from dvc.remote.base import RemoteCmdError
+from dvc.utils import tmp_fname
+
 try:
     import paramiko
 except ImportError:
     paramiko = None
-
-from dvc.utils import tmp_fname
-from dvc.progress import Tqdm
-from dvc.exceptions import DvcException
-from dvc.remote.base import RemoteCmdError
 
 
 logger = logging.getLogger(__name__)

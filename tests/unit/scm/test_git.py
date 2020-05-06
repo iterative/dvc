@@ -1,7 +1,6 @@
 import os
 
 from dvc.compat import fspath
-
 from tests.basic_env import TestDvcGit
 
 

@@ -6,21 +6,21 @@ from collections import OrderedDict
 
 import pytest
 import yaml
-from bs4 import BeautifulSoup
 from funcy import first
 
+from bs4 import BeautifulSoup
 from dvc.compat import fspath
+from dvc.repo.plot import NoDataOrTemplateProvided
 from dvc.repo.plot.data import (
     NoMetricInHistoryError,
-    PlotMetricTypeError,
     PlotData,
+    PlotMetricTypeError,
 )
 from dvc.repo.plot.template import (
-    TemplateNotFoundError,
     NoDataForTemplateError,
     NoFieldInDataError,
+    TemplateNotFoundError,
 )
-from dvc.repo.plot import NoDataOrTemplateProvided
 
 
 def _remove_whitespace(value):

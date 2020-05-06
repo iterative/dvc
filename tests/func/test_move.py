@@ -1,12 +1,10 @@
 import os
 
 from dvc.dvcfile import DVC_FILE_SUFFIX
-from dvc.exceptions import DvcException
-from dvc.exceptions import MoveNotDataSourceError
+from dvc.exceptions import DvcException, MoveNotDataSourceError
 from dvc.main import main
 from dvc.utils.stage import load_stage_file
-from tests.basic_env import TestDvc
-from tests.basic_env import TestDvcGit
+from tests.basic_env import TestDvc, TestDvcGit
 from tests.func.test_repro import TestRepro
 from tests.utils import cd
 

@@ -50,10 +50,9 @@ from contextlib import contextmanager
 import pytest
 from funcy import lmap, retry
 
+from dvc.compat import fspath, fspath_py35
 from dvc.logger import disable_other_loggers
 from dvc.utils.fs import makedirs
-from dvc.compat import fspath, fspath_py35
-
 
 __all__ = [
     "make_tmp_dir",

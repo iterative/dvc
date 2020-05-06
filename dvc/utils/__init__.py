@@ -1,6 +1,7 @@
 """Helpers for other modules."""
 
 import hashlib
+import io
 import json
 import logging
 import math
@@ -8,7 +9,6 @@ import os
 import re
 import sys
 import time
-import io
 
 import colorama
 import nanotime
@@ -16,7 +16,6 @@ from ruamel.yaml import YAML
 from shortuuid import uuid
 
 from dvc.compat import fspath, fspath_py35
-
 
 logger = logging.getLogger(__name__)
 

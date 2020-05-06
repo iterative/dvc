@@ -1,10 +1,10 @@
-import logging
-from datetime import timedelta
-from functools import wraps
 import io
+import logging
 import os.path
 import posixpath
 import threading
+from datetime import timedelta
+from functools import wraps
 
 from funcy import cached_property, wrap_prop
 

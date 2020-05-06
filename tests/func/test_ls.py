@@ -1,11 +1,12 @@
 import os
 import shutil
+
 import pytest
 
 from dvc.compat import fspath
 from dvc.exceptions import PathMissingError
-from dvc.scm.base import CloneError
 from dvc.repo import Repo
+from dvc.scm.base import CloneError
 
 FS_STRUCTURE = {
     "README.md": "content",

@@ -1,7 +1,7 @@
 import os
 
-from funcy import raiser
 import pytest
+from funcy import raiser
 
 from dvc.repo import locked
 

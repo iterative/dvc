@@ -1,5 +1,6 @@
-from .http import HTTPDependency
 from dvc.remote.https import HTTPSRemote
+
+from .http import HTTPDependency
 
 
 class HTTPSDependency(HTTPDependency):

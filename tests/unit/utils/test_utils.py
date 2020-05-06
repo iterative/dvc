@@ -1,18 +1,18 @@
-import re
 import os
+import re
 
 import pytest
 
 from dvc.path_info import PathInfo
 from dvc.utils import (
-    file_md5,
     dict_sha256,
-    resolve_output,
+    file_md5,
     fix_env,
-    relpath,
-    to_chunks,
-    tmp_fname,
     parse_target,
+    relpath,
+    resolve_output,
+    tmp_fname,
+    to_chunks,
 )
 
 

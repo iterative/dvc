@@ -1,13 +1,13 @@
 import os
 
-from . import locked
-from .scm_context import scm_context
+from funcy import concat, first
+
 from dvc.exceptions import InvalidArgumentError
 from dvc.stage.exceptions import DuplicateStageName, InvalidStageName
 
-from funcy import first, concat
-
 from ..exceptions import OutputDuplicationError
+from . import locked
+from .scm_context import scm_context
 
 
 def is_valid_name(name: str):

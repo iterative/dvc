@@ -3,7 +3,7 @@ import stat
 
 import pytest
 
-from dvc.utils.fs import makedirs, copyfile
+from dvc.utils.fs import copyfile, makedirs
 
 
 @pytest.mark.skipif(os.name == "nt", reason="Not supported for Windows.")

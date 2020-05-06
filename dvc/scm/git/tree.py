@@ -1,11 +1,10 @@
-import io
 import errno
+import io
 import os
 
 from dvc.exceptions import DvcException
 from dvc.scm.tree import BaseTree
 from dvc.utils import relpath
-
 
 # see git-fast-import(1)
 GIT_MODE_DIR = 0o40000

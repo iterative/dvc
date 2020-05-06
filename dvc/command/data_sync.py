@@ -1,12 +1,10 @@
 import argparse
 import logging
 
-from dvc.command.base import append_doc_link
-from dvc.command.base import CmdBase
+from dvc.command.base import CmdBase, append_doc_link
 from dvc.command.checkout import log_changes
+from dvc.exceptions import CheckoutError, DvcException
 from dvc.utils.humanize import get_summary
-from dvc.exceptions import DvcException, CheckoutError
-
 
 logger = logging.getLogger(__name__)
 
@@ -88,24 +86,24 @@ def shared_parent_parser():
     from dvc.cli import get_parent_parser
 
     # Parent parser used in pull/push/status
-    shared_parent_parser = argparse.ArgumentParser(
+    parent_parser = argparse.ArgumentParser(
         add_help=False, parents=[get_parent_parser()]
     )
-    shared_parent_parser.add_argument(
+    parent_parser.add_argument(
         "-j",
         "--jobs",
         type=int,
         help="Number of jobs to run simultaneously.",
         metavar="<number>",
     )
-    shared_parent_parser.add_argument(
+    parent_parser.add_argument(
         "targets",
         nargs="*",
         help="Limit command scope to these DVC-files. "
         "Using -R, directories to search DVC-files in can also be given.",
     )
 
-    return shared_parent_parser
+    return parent_parser
 
 
 def add_parser(subparsers, _parent_parser):

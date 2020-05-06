@@ -1,9 +1,9 @@
-import sys
 import errno
 import logging
 import os
 import shutil
 import stat
+import sys
 
 import nanotime
 from shortuuid import uuid
@@ -11,10 +11,7 @@ from shortuuid import uuid
 from dvc.exceptions import DvcException
 from dvc.scm.tree import is_working_tree
 from dvc.system import System
-from dvc.utils import dict_md5
-from dvc.utils import fspath
-from dvc.utils import fspath_py35
-
+from dvc.utils import dict_md5, fspath, fspath_py35
 
 logger = logging.getLogger(__name__)
 
@@ -43,14 +40,14 @@ def get_mtime_and_size(path, tree):
         files_mtimes = {}
         for file_path in tree.walk_files(path):
             try:
-                stat = os.stat(file_path)
+                stats = os.stat(file_path)
             except OSError as exc:
                 # NOTE: broken symlink case.
                 if exc.errno != errno.ENOENT:
                     raise
                 continue
-            size += stat.st_size
-            files_mtimes[file_path] = stat.st_mtime
+            size += stats.st_size
+            files_mtimes[file_path] = stats.st_mtime
 
         # We track file changes and moves, which cannot be detected with simply
         # max(mtime(f) for f in non_ignored_files)

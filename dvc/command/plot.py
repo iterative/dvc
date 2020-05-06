@@ -2,7 +2,7 @@ import argparse
 import logging
 import os
 
-from dvc.command.base import append_doc_link, CmdBase, fix_subparsers
+from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
 from dvc.repo.plot.data import WORKSPACE_REVISION_NAME
 

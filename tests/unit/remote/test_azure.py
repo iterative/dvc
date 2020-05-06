@@ -1,6 +1,5 @@
 from dvc.remote.azure import AzureRemote
 
-
 container_name = "container-name"
 connection_string = (
     "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;"

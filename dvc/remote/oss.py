@@ -10,7 +10,6 @@ from dvc.progress import Tqdm
 from dvc.remote.base import BaseRemote
 from dvc.scheme import Schemes
 
-
 logger = logging.getLogger(__name__)
 
 
