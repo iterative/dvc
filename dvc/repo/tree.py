@@ -7,7 +7,7 @@ from dvc.dvcfile import is_valid_filename
 from dvc.exceptions import OutputNotFoundError
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
-from dvc.scm.tree import BaseTree, WorkingTree
+from dvc.scm.tree import BaseTree
 from dvc.utils.fs import copy_obj_to_file
 
 
@@ -37,15 +37,8 @@ class DvcTree(BaseTree):
             raise IOError(errno.EISDIR)
 
         out = outs[0]
-        # temporary hack to make cache use WorkingTree and not GitTree, because
-        # cache dir doesn't exist in the latter.
-        saved_tree = self.repo.tree
-        self.repo.tree = WorkingTree(self.repo.root_dir)
-        try:
-            if out.changed_cache():
-                raise FileNotFoundError
-        finally:
-            self.repo.tree = saved_tree
+        if out.changed_cache():
+            raise FileNotFoundError
 
         return open(out.cache_path, mode=mode, encoding=encoding)
 

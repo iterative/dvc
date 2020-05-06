@@ -9,6 +9,7 @@ from funcy import cached_property, concat
 from shortuuid import uuid
 
 from dvc.exceptions import DownloadError, DvcException, UploadError
+from dvc.ignore import CleanTree
 from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
 from dvc.remote.base import (
@@ -21,7 +22,7 @@ from dvc.remote.base import (
 )
 from dvc.remote.index import RemoteIndexNoop
 from dvc.scheme import Schemes
-from dvc.scm.tree import is_working_tree
+from dvc.scm.tree import is_working_tree, WorkingTree
 from dvc.system import System
 from dvc.utils import file_md5, relpath, tmp_fname, tree_md5
 from dvc.utils.fs import (
@@ -76,6 +77,19 @@ class LocalRemote(BaseRemote):
     def cache_path(self):
         return os.path.abspath(self.cache_dir)
 
+    @cached_property
+    def tree(self):
+        # repo.tree can be WorkingTree or GitTree, but GitTree does not contain
+        # cache directory
+        if is_working_tree(self.repo.tree):
+            self._tree = self.repo.tree
+        else:
+            tree = WorkingTree(self.repo.root_dir)
+            if isinstance(self.repo.tree, CleanTree):
+                tree = CleanTree(tree)
+            self._tree = tree
+        return self._tree
+
     def checksum_to_path(self, checksum):
         return os.path.join(self.cache_path, checksum[0:2], checksum[2:])
 
@@ -100,7 +114,7 @@ class LocalRemote(BaseRemote):
 
     def exists(self, path_info):
         assert isinstance(path_info, str) or path_info.scheme == "local"
-        return self.repo.tree.exists(path_info)
+        return self.tree.exists(path_info)
 
     def makedirs(self, path_info):
         makedirs(path_info, exist_ok=True, mode=self._dir_mode)
@@ -150,15 +164,15 @@ class LocalRemote(BaseRemote):
         return os.path.getsize(path_info)
 
     def walk_files(self, path_info):
-        assert is_working_tree(self.repo.tree)
+        assert is_working_tree(self.tree)
 
-        for fname in self.repo.tree.walk_files(path_info):
+        for fname in self.tree.walk_files(path_info):
             yield PathInfo(fname)
 
     def get_file_checksum(self, path_info):
-        if is_working_tree(self.repo.tree):
+        if is_working_tree(self.tree):
             return file_md5(path_info)[0]
-        return tree_md5(self.repo.tree, path_info)[0]
+        return tree_md5(self.tree, path_info)[0]
 
     def remove(self, path_info):
         if isinstance(path_info, PathInfo):
@@ -199,8 +213,8 @@ class LocalRemote(BaseRemote):
         tmp_info = to_info.parent / tmp_fname(to_info.name)
         try:
             copy_obj_to_file(from_obj, to_info)
-            os.chmod(fspath_py35(tmp_info), self._file_mode)
-            os.rename(fspath_py35(tmp_info), fspath_py35(to_info))
+            os.chmod(tmp_info, self._file_mode)
+            os.rename(tmp_info, to_info)
         except Exception:
             self.remove(tmp_info)
             raise
@@ -634,9 +648,9 @@ class LocalRemote(BaseRemote):
         os.chmod(path, self._file_mode)
 
     def _unprotect_dir(self, path):
-        assert is_working_tree(self.repo.tree)
+        assert is_working_tree(self.tree)
 
-        for fname in self.repo.tree.walk_files(path):
+        for fname in self.tree.walk_files(path):
             self._unprotect_file(fname)
 
     def unprotect(self, path_info):

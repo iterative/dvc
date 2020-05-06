@@ -21,7 +21,6 @@ from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.repo.tree import RepoTree
 from dvc.scm.git import Git
-from dvc.scm.tree import WorkingTree
 from dvc.utils import tmp_fname
 from dvc.utils.fs import makedirs, move, remove
 
@@ -77,15 +76,6 @@ class BaseExternalRepo:
     @cached_property
     def repo_tree(self):
         return RepoTree(self)
-
-    # temporary hack to make cache use WorkingTree and not GitTree, because
-    # cache dir doesn't exist in the latter.
-    @contextmanager
-    def fix_cache_tree(self):
-        saved_tree = self.tree
-        self.tree = WorkingTree(self.root_dir)
-        yield
-        self.tree = saved_tree
 
     def get_external(self, path, to_info, jobs=None):
         """
@@ -158,8 +148,7 @@ class BaseExternalRepo:
                 path_info = PathInfo(self.root_dir) / name
                 if self.repo_tree.isdvc(path_info):
                     out = self.find_out_by_relpath(name)
-                    with self.fix_cache_tree():
-                        d, f = self._fetch_out(out, name, jobs=jobs)
+                    d, f = self._fetch_out(out, name, jobs=jobs)
                 else:
                     d, f = self._fetch_git(name, path_info)
                 downloaded += d
@@ -185,12 +174,11 @@ class BaseExternalRepo:
             src = tmp / path_info.relative_to(out.path_info)
             out.path_info = tmp
 
-            with self.fix_cache_tree():
-                self._fetch_out(out, path_info, filter_info=src, jobs=jobs)
-                try:
-                    out.checkout(filter_info=src)
-                except CheckoutError:
-                    raise FileNotFoundError
+            self._fetch_out(out, path_info, filter_info=src, jobs=jobs)
+            try:
+                out.checkout(filter_info=src)
+            except CheckoutError:
+                raise FileNotFoundError
 
             move(src, dest)
             remove(tmp)
@@ -231,7 +219,7 @@ class ExternalRepo(Repo, BaseExternalRepo):
         tree = scm.get_tree(rev)
 
         if not tree.isdir(os.path.join(root_dir, self.DVC_DIR)):
-            raise NotDvcRepoError
+            raise NotDvcRepoError("'{}' is not a DVC repo".format(url))
 
         super().__init__(root_dir, find_root=False, scm=scm, tree=tree)
 

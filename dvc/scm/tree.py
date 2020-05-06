@@ -29,6 +29,11 @@ class BaseTree(object):
         - it could raise exceptions, there is no onerror argument
         """
 
+    def walk_files(self, top):
+        for root, _, files in self.walk(top):
+            for file in files:
+                yield os.path.join(root, file)
+
 
 class WorkingTree(BaseTree):
     """Proxies the repo file access methods to working tree files"""
