@@ -28,7 +28,7 @@ from dvc.path_info import URLInfo
 from dvc.remote.local import LocalRemote
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
-from dvc.dvcfile import Dvcfile
+from dvc.dvcfile import Dvcfile, DVC_FILE
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
 from dvc.utils import file_md5
@@ -407,11 +407,11 @@ class TestReproDryNoExec(TestDvc):
             self.assertEqual(ret, 0)
 
         ret = main(
-            ["run", "--no-exec", "--single-stage", "-f", "Dvcfile"] + deps
+            ["run", "--no-exec", "--single-stage", "-f", DVC_FILE] + deps
         )
         self.assertEqual(ret, 0)
 
-        ret = main(["repro", "--dry"])
+        ret = main(["repro", "--dry", DVC_FILE])
         self.assertEqual(ret, 0)
 
 
@@ -820,7 +820,7 @@ class TestCmdReproChdir(TestDvc):
 
         os.unlink(bar)
 
-        ret = main(["repro", "-c", dname])
+        ret = main(["repro", "-c", dname, DVC_FILE])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(foo))
         self.assertTrue(os.path.isfile(bar))
@@ -1458,7 +1458,7 @@ def repro_dir(tmp_dir, dvc, run_copy):
     assert dir_file_copy.read_text() == "dir file content"
     stages["dir_file_copy"] = stage
 
-    last_stage = tmp_dir / "dir" / "Dvcfile"
+    last_stage = tmp_dir / "dir" / DVC_FILE
     stage = dvc.run(
         fname=fspath(last_stage),
         deps=[fspath(origin_copy_2), fspath(dir_file_copy)],
