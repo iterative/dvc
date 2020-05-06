@@ -162,6 +162,12 @@ class RepoTree(BaseTree):
             self.dvctree and self.dvctree.isfile(path)
         )
 
+    def _walk_one(self, walk):
+        root, dirs, files = next(walk)
+        yield root, dirs, files
+        for dirname in dirs:
+            yield from self._walk_one(walk)
+
     def _walk(self, dvc_walk, repo_walk):
         """Walk and merge both trees.
 
@@ -181,6 +187,7 @@ class RepoTree(BaseTree):
         shared = list(dvc_set & repo_set)
         dirs = shared + dvc_only + repo_only
 
+        # merge file lists, handle dvcfiles from repo tree as DVC outs
         files = set(dvc_files)
         for filename in repo_files:
             if is_valid_filename(filename):
@@ -189,16 +196,19 @@ class RepoTree(BaseTree):
                     files.add(filename)
             else:
                 files.add(filename)
+
         yield repo_root, dirs, list(files)
 
         dvc_dirs[:] = [dirname for dirname in dirs if dirname in dvc_set]
         repo_dirs[:] = [dirname for dirname in dirs if dirname in repo_set]
-        if not repo_dirs:
-            yield from dvc_walk
-        elif not dvc_dirs:
-            yield from repo_walk
-        else:
-            yield from self._walk_both(dvc_walk, repo_walk)
+
+        for dirname in dirs:
+            if dirname in shared:
+                yield from self._walk(dvc_walk, repo_walk)
+            elif dirname in dvc_set:
+                yield from self._walk_one(dvc_walk)
+            elif dirname in repo_set:
+                yield from self._walk_one(repo_walk)
 
     def walk(self, top, topdown=True):
         assert topdown
