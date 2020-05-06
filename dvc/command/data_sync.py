@@ -86,24 +86,24 @@ def shared_parent_parser():
     from dvc.cli import get_parent_parser
 
     # Parent parser used in pull/push/status
-    shared_parent_parser = argparse.ArgumentParser(
+    parent_parser = argparse.ArgumentParser(
         add_help=False, parents=[get_parent_parser()]
     )
-    shared_parent_parser.add_argument(
+    parent_parser.add_argument(
         "-j",
         "--jobs",
         type=int,
         help="Number of jobs to run simultaneously.",
         metavar="<number>",
     )
-    shared_parent_parser.add_argument(
+    parent_parser.add_argument(
         "targets",
         nargs="*",
         help="Limit command scope to these DVC-files. "
         "Using -R, directories to search DVC-files in can also be given.",
     )
 
-    return shared_parent_parser
+    return parent_parser
 
 
 def add_parser(subparsers, _parent_parser):
