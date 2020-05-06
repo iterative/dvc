@@ -64,7 +64,7 @@ def _fetch(
         failed += exc.amount
 
     for (repo_url, repo_rev), files in used.external.items():
-        d, f = _fetch_external(self, repo_url, repo_rev, files, jobs)
+        d, f = _fetch_external(self, repo_url, repo_rev, files, jobs=jobs)
         downloaded += d
         failed += f
 
@@ -74,10 +74,8 @@ def _fetch(
     return downloaded
 
 
-def _fetch_external(self, repo_url, repo_rev, files, jobs):
+def _fetch_external(self, repo_url, repo_rev, files, **kwargs):
     from dvc.external_repo import external_repo
 
-    with external_repo(
-        repo_url, repo_rev, cache_dir=self.cache.local.cache_dir
-    ) as repo:
-        return repo.fetch_external(files, jobs=jobs)
+    with external_repo(repo_url, repo_rev) as repo:
+        return repo.fetch_external(files, self.cache.local, **kwargs)
