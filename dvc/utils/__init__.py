@@ -12,10 +12,9 @@ import time
 
 import colorama
 import nanotime
+from dvc.compat import fspath, fspath_py35
 from ruamel.yaml import YAML
 from shortuuid import uuid
-
-from dvc.compat import fspath, fspath_py35
 
 logger = logging.getLogger(__name__)
 

@@ -1,11 +1,10 @@
 import os
 
-from mock import patch
-
 from dvc.output import LocalOutput
 from dvc.remote.local import LocalRemote
 from dvc.stage import Stage
 from dvc.utils import relpath
+from mock import patch
 from tests.basic_env import TestDvc
 
 

@@ -6,10 +6,8 @@ import shutil
 import time
 
 import colorama
-import pytest
-from mock import call, patch
-
 import dvc as dvc_module
+import pytest
 from dvc.cache import Cache
 from dvc.compat import fspath
 from dvc.dvcfile import DVC_FILE_SUFFIX
@@ -29,6 +27,7 @@ from dvc.system import System
 from dvc.utils import LARGE_DIR_SIZE, file_md5, relpath
 from dvc.utils.fs import path_isin
 from dvc.utils.stage import load_stage_file
+from mock import call, patch
 from tests.basic_env import TestDvc
 from tests.utils import get_gitignore_content
 

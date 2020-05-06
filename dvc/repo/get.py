@@ -2,7 +2,6 @@ import logging
 import os
 
 import shortuuid
-
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 from dvc.utils import resolve_output

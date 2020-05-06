@@ -5,8 +5,6 @@ import os
 import shutil
 
 import pytest
-from mock import patch
-
 from dvc.dvcfile import DVC_FILE_SUFFIX, Dvcfile
 from dvc.exceptions import (
     CheckoutError,
@@ -27,6 +25,7 @@ from dvc.system import System
 from dvc.utils import relpath
 from dvc.utils.fs import walk_files
 from dvc.utils.stage import dump_stage_file, load_stage_file
+from mock import patch
 from tests.basic_env import TestDvc, TestDvcGit
 from tests.func.test_repro import TestRepro
 from tests.remotes import S3

@@ -2,7 +2,6 @@ import logging
 import os
 
 import pytest
-
 from dvc.cache import Cache
 from dvc.compat import fspath
 from dvc.exceptions import PathMissingError

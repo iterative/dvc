@@ -4,7 +4,6 @@ from textwrap import dedent
 
 import pytest
 import yaml
-
 from dvc.dvcfile import PIPELINE_LOCK
 from dvc.serialize import get_params_deps
 from dvc.utils.fs import remove

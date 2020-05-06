@@ -1,7 +1,6 @@
 import logging
 
 import yaml
-
 from dvc.compat import fspath_py35
 from dvc.dependency.param import ParamsDependency
 from dvc.exceptions import DvcException

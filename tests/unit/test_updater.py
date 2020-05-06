@@ -3,7 +3,6 @@ import os
 
 import mock
 import pytest
-
 from dvc import __version__
 from dvc.updater import Updater
 

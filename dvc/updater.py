@@ -4,12 +4,11 @@ import sys
 import time
 
 import colorama
-from packaging import version
-
 from dvc import __version__
 from dvc.lock import LockError, make_lock
 from dvc.utils import boxify, env2bool
 from dvc.utils.pkg import PKG
+from packaging import version
 
 logger = logging.getLogger(__name__)
 

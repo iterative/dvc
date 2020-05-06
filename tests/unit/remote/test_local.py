@@ -2,7 +2,6 @@ import errno
 import os
 
 import pytest
-
 from dvc.cache import NamedCache
 from dvc.path_info import PathInfo
 from dvc.remote.local import LocalRemote

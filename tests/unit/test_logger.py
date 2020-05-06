@@ -4,9 +4,8 @@ import traceback
 from datetime import datetime
 
 import colorama
-import pytest
-
 import dvc.logger
+import pytest
 from dvc.exceptions import DvcException
 
 logger = logging.getLogger("dvc")

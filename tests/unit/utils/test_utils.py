@@ -2,7 +2,6 @@ import os
 import re
 
 import pytest
-
 from dvc.path_info import PathInfo
 from dvc.utils import (
     dict_sha256,

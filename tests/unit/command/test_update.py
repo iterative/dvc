@@ -1,5 +1,4 @@
 import pytest
-
 from dvc.cli import parse_args
 from dvc.command.update import CmdUpdate
 

@@ -1,6 +1,5 @@
 import pytest
 import yaml
-
 from dvc.dependency import ParamsDependency, loadd_from, loads_params
 from dvc.dependency.param import BadParamFileError, MissingParamsError
 from dvc.stage import Stage

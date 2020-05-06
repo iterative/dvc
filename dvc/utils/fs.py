@@ -6,12 +6,11 @@ import stat
 import sys
 
 import nanotime
-from shortuuid import uuid
-
 from dvc.exceptions import DvcException
 from dvc.scm.tree import is_working_tree
 from dvc.system import System
 from dvc.utils import dict_md5, fspath, fspath_py35
+from shortuuid import uuid
 
 logger = logging.getLogger(__name__)
 

@@ -1,9 +1,8 @@
 import os
 
-from funcy import concat, first
-
 from dvc.exceptions import InvalidArgumentError
 from dvc.stage.exceptions import DuplicateStageName, InvalidStageName
+from funcy import concat, first
 
 from ..exceptions import OutputDuplicationError
 from . import locked

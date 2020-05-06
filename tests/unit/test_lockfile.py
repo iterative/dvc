@@ -1,6 +1,5 @@
 import pytest
 import yaml
-
 from dvc.dvcfile import Lockfile, LockfileCorruptedError
 from dvc.stage import PipelineStage
 

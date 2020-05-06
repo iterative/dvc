@@ -6,12 +6,11 @@ import os
 import pydoc
 import sys
 
+from dvc.env import DVC_PAGER
+from dvc.utils import format_link
 from grandalf.graphs import Edge, Graph, Vertex
 from grandalf.layouts import SugiyamaLayout
 from grandalf.routing import EdgeViewer, route_with_lines
-
-from dvc.env import DVC_PAGER
-from dvc.utils import format_link
 
 logger = logging.getLogger(__name__)
 

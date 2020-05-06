@@ -2,10 +2,8 @@ import filecmp
 import os
 from unittest import TestCase
 
-import pytest
-from mock import patch
-
 import dvc
+import pytest
 from dvc.compat import fspath
 from dvc.ignore import CleanTree
 from dvc.path_info import PathInfo
@@ -24,6 +22,7 @@ from dvc.utils.fs import (
     remove,
     walk_files,
 )
+from mock import patch
 from tests.basic_env import TestDir
 
 

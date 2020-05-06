@@ -3,9 +3,8 @@ import pathlib
 import posixpath
 from urllib.parse import urlparse
 
-from funcy import cached_property
-
 from dvc.utils import relpath
+from funcy import cached_property
 
 
 class _BasePath(object):

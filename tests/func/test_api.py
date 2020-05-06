@@ -1,7 +1,6 @@
 import os
 
 import pytest
-
 from dvc import api
 from dvc.api import UrlNotDvcRepoError
 from dvc.compat import fspath

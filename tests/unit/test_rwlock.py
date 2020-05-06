@@ -1,7 +1,6 @@
 import os
 
 import pytest
-
 from dvc.compat import fspath
 from dvc.lock import LockError
 from dvc.path_info import PathInfo

@@ -1,9 +1,8 @@
 import os
 
 import pytest
-from funcy import raiser
-
 from dvc.repo import locked
+from funcy import raiser
 
 
 def test_is_dvc_internal(dvc):

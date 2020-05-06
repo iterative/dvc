@@ -6,14 +6,13 @@ import subprocess
 import threading
 from itertools import chain, product
 
-from funcy import project
-
 import dvc.dependency as dependency
 import dvc.output as output
 import dvc.prompt as prompt
 from dvc.exceptions import CheckoutError, DvcException
 from dvc.utils import dict_md5, fix_env, relpath
 from dvc.utils.fs import path_isin
+from funcy import project
 
 from . import params
 from .decorators import rwlocked, unlocked_repo

@@ -5,9 +5,8 @@ from contextlib import contextmanager
 from copy import deepcopy
 from itertools import chain
 
-from funcy import first
-
 from dvc import dependency, output
+from funcy import first
 
 from ..dependency import ParamsDependency
 from .exceptions import StageNameUnspecified, StageNotFound

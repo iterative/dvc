@@ -5,8 +5,6 @@ import threading
 from contextlib import contextmanager
 from distutils.dir_util import copy_tree
 
-from funcy import cached_property, retry, suppress, wrap_with
-
 from dvc.compat import fspath
 from dvc.config import NoRemoteError, NotDvcRepoError
 from dvc.exceptions import (
@@ -22,6 +20,7 @@ from dvc.repo import Repo
 from dvc.scm.git import Git
 from dvc.utils import tmp_fname
 from dvc.utils.fs import fs_copy, move, remove
+from funcy import cached_property, retry, suppress, wrap_with
 
 logger = logging.getLogger(__name__)
 

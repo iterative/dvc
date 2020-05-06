@@ -3,11 +3,10 @@ from functools import partial
 from operator import attrgetter
 from typing import TYPE_CHECKING, List
 
-from funcy import lsplit, rpartial
-
 from dvc.dependency import ParamsDependency
 from dvc.utils.collections import apply_diff
 from dvc.utils.stage import parse_stage_for_update
+from funcy import lsplit, rpartial
 
 if TYPE_CHECKING:
     from dvc.stage import PipelineStage, Stage

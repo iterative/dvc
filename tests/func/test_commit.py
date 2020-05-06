@@ -1,5 +1,4 @@
 import pytest
-
 from dvc.stage.exceptions import StageCommitError
 from dvc.utils.stage import dump_stage_file, load_stage_file
 

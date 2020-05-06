@@ -1,5 +1,4 @@
 import mock
-
 from dvc.analytics import _scm_in_use
 from dvc.compat import fspath
 from dvc.main import main

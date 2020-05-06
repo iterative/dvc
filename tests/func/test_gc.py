@@ -4,14 +4,13 @@ import shutil
 
 import configobj
 import pytest
-from git import Repo
-
 from dvc.compat import fspath
 from dvc.exceptions import CollectCacheError
 from dvc.main import main
 from dvc.remote.local import LocalRemote
 from dvc.repo import Repo as DvcRepo
 from dvc.utils.fs import remove
+from git import Repo
 from tests.basic_env import TestDir, TestDvcGit
 
 

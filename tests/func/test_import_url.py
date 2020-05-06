@@ -2,7 +2,6 @@ import os
 from uuid import uuid4
 
 import pytest
-
 from dvc.compat import fspath
 from dvc.main import main
 from dvc.stage import Stage

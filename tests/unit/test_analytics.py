@@ -3,10 +3,9 @@ import platform
 
 import mock
 import pytest
-from voluptuous import Any, Schema
-
 from dvc import analytics
 from dvc.cli import parse_args
+from voluptuous import Any, Schema
 
 
 @pytest.fixture

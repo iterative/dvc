@@ -3,11 +3,10 @@ from collections import defaultdict
 
 import dpath.util
 import yaml
-from voluptuous import Any
-
 from dvc.compat import fspath_py35
 from dvc.dependency.local import LocalDependency
 from dvc.exceptions import DvcException
+from voluptuous import Any
 
 
 class MissingParamsError(DvcException):

@@ -2,7 +2,6 @@ import os
 
 import mockssh
 import pytest
-
 from dvc.remote.ssh.connection import SSHConnection
 from tests.utils.httpd import PushRequestHandler, StaticFileServer
 

@@ -6,13 +6,12 @@ import threading
 from datetime import timedelta
 from functools import wraps
 
-from funcy import cached_property, wrap_prop
-
 from dvc.exceptions import DvcException
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.remote.base import BaseRemote
 from dvc.scheme import Schemes
+from funcy import cached_property, wrap_prop
 
 logger = logging.getLogger(__name__)
 

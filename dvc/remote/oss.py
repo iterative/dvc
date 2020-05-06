@@ -3,12 +3,11 @@ import os
 import posixpath
 import threading
 
-from funcy import cached_property, wrap_prop
-
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.remote.base import BaseRemote
 from dvc.scheme import Schemes
+from funcy import cached_property, wrap_prop
 
 logger = logging.getLogger(__name__)
 

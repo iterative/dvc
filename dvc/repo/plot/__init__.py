@@ -1,12 +1,11 @@
 import logging
 import os
 
-from funcy import first, last
-
 from dvc.exceptions import DvcException
 from dvc.repo import locked
 from dvc.repo.plot.data import PlotData
 from dvc.repo.plot.template import NoDataForTemplateError, Template
+from funcy import first, last
 
 logger = logging.getLogger(__name__)
 

@@ -2,7 +2,6 @@ import logging
 import os
 
 import colorama
-
 from dvc.dvcfile import Dvcfile, is_dvc_file
 
 from ..exceptions import (

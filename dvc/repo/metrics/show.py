@@ -2,7 +2,6 @@ import logging
 import os
 
 import yaml
-
 from dvc.compat import fspath_py35
 from dvc.exceptions import NoMetricsError
 from dvc.path_info import PathInfo

@@ -3,8 +3,6 @@ import os
 from copy import copy
 from urllib.parse import urlparse
 
-from voluptuous import Any
-
 import dvc.prompt as prompt
 from dvc.cache import NamedCache
 from dvc.exceptions import (
@@ -13,6 +11,7 @@ from dvc.exceptions import (
     RemoteCacheRequiredError,
 )
 from dvc.remote.base import BaseRemote
+from voluptuous import Any
 
 logger = logging.getLogger(__name__)
 

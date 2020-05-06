@@ -3,8 +3,6 @@ import os
 
 import configobj
 import pytest
-from mock import patch
-
 from dvc.compat import fspath
 from dvc.config import Config
 from dvc.exceptions import DownloadError, UploadError
@@ -13,6 +11,7 @@ from dvc.path_info import PathInfo
 from dvc.remote import LocalRemote
 from dvc.remote.base import BaseRemote, RemoteCacheRequiredError
 from dvc.utils.fs import remove
+from mock import patch
 from tests.basic_env import TestDvc
 from tests.remotes import Local
 

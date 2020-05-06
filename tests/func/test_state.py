@@ -1,7 +1,6 @@
 import os
 
 import mock
-
 from dvc.path_info import PathInfo
 from dvc.state import State
 from dvc.utils import file_md5

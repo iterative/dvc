@@ -8,11 +8,10 @@ from unittest import TestCase
 
 import pytest
 import shortuuid
-from git import Repo
-from git.exc import GitCommandNotFound
-
 from dvc.repo import Repo as DvcRepo
 from dvc.utils.fs import remove
+from git import Repo
+from git.exc import GitCommandNotFound
 
 logger = logging.getLogger("dvc")
 

@@ -3,7 +3,6 @@ import os
 import shutil
 
 import pytest
-
 from dvc.compat import fspath, fspath_py35
 from dvc.exceptions import DvcIgnoreInCollectedDirError
 from dvc.ignore import (

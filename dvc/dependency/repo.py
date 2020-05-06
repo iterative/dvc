@@ -1,9 +1,8 @@
 import os
 
-from voluptuous import Required
-
 from dvc.exceptions import OutputNotFoundError
 from dvc.path_info import PathInfo
+from voluptuous import Required
 
 from .local import LocalDependency
 

@@ -13,10 +13,6 @@ from urllib.parse import urljoin
 import boto3
 import paramiko
 import pytest
-from flaky.flaky_decorator import flaky
-from google.cloud import storage as gc
-from mock import patch
-
 from dvc.compat import fspath
 from dvc.dvcfile import DVC_FILE, Dvcfile
 from dvc.exceptions import (
@@ -35,6 +31,9 @@ from dvc.system import System
 from dvc.utils import file_md5, relpath
 from dvc.utils.fs import remove
 from dvc.utils.stage import dump_stage_file, load_stage_file
+from flaky.flaky_decorator import flaky
+from google.cloud import storage as gc
+from mock import patch
 from tests.basic_env import TestDvc
 from tests.remotes import (
     GCP,

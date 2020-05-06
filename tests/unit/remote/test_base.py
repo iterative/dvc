@@ -2,7 +2,6 @@ import math
 
 import mock
 import pytest
-
 from dvc.path_info import PathInfo
 from dvc.remote.base import BaseRemote, RemoteCmdError, RemoteMissingDepsError
 

@@ -7,7 +7,6 @@ from datetime import timedelta
 
 import flufl.lock
 import zc.lockfile
-
 from dvc.exceptions import DvcException
 from dvc.progress import Tqdm
 from dvc.utils import format_link

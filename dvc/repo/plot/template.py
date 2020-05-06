@@ -3,10 +3,9 @@ import logging
 import os
 import re
 
-from funcy import cached_property
-
 from dvc.exceptions import DvcException
 from dvc.utils.fs import makedirs
+from funcy import cached_property
 
 logger = logging.getLogger(__name__)
 

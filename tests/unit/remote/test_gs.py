@@ -1,7 +1,6 @@
 import mock
 import pytest
 import requests
-
 from dvc.remote.gs import GSRemote, dynamic_chunk_size
 
 BUCKET = "bucket"

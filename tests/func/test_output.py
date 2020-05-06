@@ -1,5 +1,4 @@
 import pytest
-
 from dvc.output import OUTS_MAP, _get
 from dvc.stage import Stage
 

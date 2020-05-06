@@ -8,7 +8,6 @@ import uuid
 
 import distro
 import requests
-
 from dvc import __version__
 from dvc.config import Config, to_bool
 from dvc.daemon import daemon

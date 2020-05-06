@@ -1,9 +1,8 @@
 from functools import wraps
 
 import boto3
-import pytest
-
 import moto.s3.models as s3model
+import pytest
 from dvc.remote.s3 import S3Remote
 from moto import mock_s3
 from tests.remotes import S3

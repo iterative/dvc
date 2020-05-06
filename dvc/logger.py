@@ -4,7 +4,6 @@ import logging.config
 import logging.handlers
 
 import colorama
-
 from dvc.progress import Tqdm
 
 FOOTER = (

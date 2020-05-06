@@ -5,7 +5,6 @@ import posixpath
 import tempfile
 
 import pytest
-
 from dvc.command.version import CmdVersion
 from dvc.system import System
 

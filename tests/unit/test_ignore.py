@@ -1,9 +1,8 @@
 import os
 
 import pytest
-from mock import MagicMock, mock_open, patch
-
 from dvc.ignore import DvcIgnoreDirs, DvcIgnorePatterns
+from mock import MagicMock, mock_open, patch
 
 
 def mock_dvcignore(dvcignore_path, patterns):

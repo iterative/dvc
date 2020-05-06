@@ -2,7 +2,6 @@ import os
 
 import pytest
 import yaml
-
 from dvc.stage.exceptions import DuplicateStageName, InvalidStageName
 
 

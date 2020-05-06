@@ -5,9 +5,6 @@ import os
 import shlex
 
 import yaml
-from funcy import cached_property
-from pathspec.patterns import GitWildMatchPattern
-
 from dvc.exceptions import GitHookAlreadyExistsError
 from dvc.progress import Tqdm
 from dvc.scm.base import (
@@ -20,6 +17,8 @@ from dvc.scm.base import (
 from dvc.scm.git.tree import GitTree
 from dvc.utils import fix_env, is_binary, relpath
 from dvc.utils.fs import path_isin
+from funcy import cached_property
+from pathspec.patterns import GitWildMatchPattern
 
 logger = logging.getLogger(__name__)
 

@@ -11,8 +11,6 @@ from multiprocessing import cpu_count
 from operator import itemgetter
 from urllib.parse import urlparse
 
-from shortuuid import uuid
-
 import dvc.prompt as prompt
 from dvc.exceptions import (
     CheckoutError,
@@ -30,6 +28,7 @@ from dvc.state import StateNoop
 from dvc.utils import tmp_fname
 from dvc.utils.fs import makedirs, move
 from dvc.utils.http import open_url
+from shortuuid import uuid
 
 logger = logging.getLogger(__name__)
 

@@ -6,7 +6,6 @@ import uuid
 from unittest import SkipTest
 
 import pytest
-
 from dvc.cache import NamedCache
 from dvc.compat import fspath, fspath_py35
 from dvc.data_cloud import DataCloud

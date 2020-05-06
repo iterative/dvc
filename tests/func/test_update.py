@@ -1,7 +1,6 @@
 import os
 
 import pytest
-
 from dvc.compat import fspath, fspath_py35
 from dvc.dvcfile import Dvcfile
 

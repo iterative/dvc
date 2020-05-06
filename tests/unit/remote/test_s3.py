@@ -1,5 +1,4 @@
 import pytest
-
 from dvc.config import ConfigError
 from dvc.remote.s3 import S3Remote
 

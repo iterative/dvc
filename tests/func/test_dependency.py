@@ -1,7 +1,6 @@
 import copy
 
 import pytest
-
 from dvc.dependency import DEP_MAP, _get
 from dvc.stage import Stage
 from tests.func.test_output import TESTS as OUT_TESTS

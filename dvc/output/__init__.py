@@ -1,7 +1,5 @@
 from urllib.parse import urlparse
 
-from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
-
 from dvc.output.base import BaseOutput
 from dvc.output.gs import GSOutput
 from dvc.output.hdfs import HDFSOutput
@@ -13,6 +11,7 @@ from dvc.remote.hdfs import HDFSRemote
 from dvc.remote.local import LocalRemote
 from dvc.remote.s3 import S3Remote
 from dvc.scheme import Schemes
+from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
 
 OUTS = [
     HDFSOutput,

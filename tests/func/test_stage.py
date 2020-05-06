@@ -2,7 +2,6 @@ import os
 import tempfile
 
 import pytest
-
 from dvc.dvcfile import SingleStageFile
 from dvc.main import main
 from dvc.output.local import LocalOutput

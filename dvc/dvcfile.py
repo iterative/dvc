@@ -2,8 +2,6 @@ import contextlib
 import logging
 import os
 
-from voluptuous import MultipleInvalid
-
 import dvc.prompt as prompt
 from dvc import serialize
 from dvc.exceptions import DvcException
@@ -22,6 +20,7 @@ from dvc.utils.stage import (
     parse_stage,
     parse_stage_for_update,
 )
+from voluptuous import MultipleInvalid
 
 logger = logging.getLogger(__name__)
 

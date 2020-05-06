@@ -2,7 +2,6 @@ import os
 import shutil
 
 import pytest
-
 from dvc.compat import fspath
 from dvc.exceptions import PathMissingError
 from dvc.repo import Repo

@@ -6,7 +6,6 @@ from pathlib import Path
 
 import mock
 import pytest
-
 from dvc.dependency.base import DependencyIsStageFileError
 from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import (

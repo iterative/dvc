@@ -2,7 +2,6 @@ import logging
 import os
 
 import colorama
-
 from dvc import analytics
 from dvc.config import Config
 from dvc.exceptions import InitError, InvalidArgumentError

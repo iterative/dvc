@@ -7,10 +7,9 @@ from collections import OrderedDict
 from copy import copy
 
 import yaml
+from dvc.exceptions import DvcException, PathMissingError
 from funcy import first
 from yaml import SafeLoader
-
-from dvc.exceptions import DvcException, PathMissingError
 
 logger = logging.getLogger(__name__)
 

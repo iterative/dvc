@@ -1,12 +1,11 @@
 import os
 
 import pytest
-from git import Repo
-
 from dvc.compat import fspath
 from dvc.scm import SCM, Git, NoSCM
 from dvc.scm.base import SCMError
 from dvc.system import System
+from git import Repo
 from tests.basic_env import TestGit, TestGitSubmodule
 from tests.utils import get_gitignore_content
 

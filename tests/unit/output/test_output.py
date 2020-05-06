@@ -1,11 +1,10 @@
 import logging
 
 import pytest
-from funcy import first
-from voluptuous import MultipleInvalid, Schema
-
 from dvc.cache import NamedCache
 from dvc.output import CHECKSUM_SCHEMA, BaseOutput
+from funcy import first
+from voluptuous import MultipleInvalid, Schema
 
 
 @pytest.mark.parametrize(

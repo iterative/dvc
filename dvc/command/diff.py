@@ -4,7 +4,6 @@ import logging
 import os
 
 import colorama
-
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
 

@@ -1,9 +1,8 @@
 import os
 
-from mock import patch
-
 from dvc.compat import fspath
 from dvc.main import main
+from mock import patch
 from tests.basic_env import TestDvc
 
 

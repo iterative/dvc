@@ -1,5 +1,4 @@
 import pytest
-
 from dvc.dvcfile import PIPELINE_FILE, Dvcfile
 from dvc.stage.exceptions import (
     StageFileDoesNotExistError,

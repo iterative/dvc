@@ -10,14 +10,13 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing, contextmanager
 from urllib.parse import urlparse
 
-from funcy import first, memoize, silent, wrap_with
-
 import dvc.prompt as prompt
 from dvc.progress import Tqdm
 from dvc.remote.base import BaseRemote
 from dvc.remote.pool import get_connection
 from dvc.scheme import Schemes
 from dvc.utils import to_chunks
+from funcy import first, memoize, silent, wrap_with
 
 logger = logging.getLogger(__name__)
 

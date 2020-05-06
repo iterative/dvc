@@ -3,10 +3,9 @@ import os
 import sys
 
 import pytest
-from mock import mock_open, patch
-
 from dvc.remote.ssh import SSHRemote
 from dvc.system import System
+from mock import mock_open, patch
 from tests.remotes import SSHMocked
 
 

@@ -1,10 +1,9 @@
 from collections import OrderedDict
 
 import yaml
+from dvc.exceptions import StageFileCorruptedError
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
-
-from dvc.exceptions import StageFileCorruptedError
 
 try:
     from yaml import CSafeLoader as SafeLoader
