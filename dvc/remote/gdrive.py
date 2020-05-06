@@ -1,20 +1,20 @@
-from collections import defaultdict
+import logging
 import os
 import posixpath
-import logging
 import re
 import threading
+from collections import defaultdict
 from urllib.parse import urlparse
 
-from funcy import retry, wrap_with, wrap_prop, cached_property
+from funcy import cached_property, retry, wrap_prop, wrap_with
 from funcy.py3 import cat
 
-from dvc.progress import Tqdm
-from dvc.scheme import Schemes
-from dvc.path_info import CloudURLInfo
-from dvc.remote.base import BaseRemote
 from dvc.exceptions import DvcException
-from dvc.utils import tmp_fname, format_link
+from dvc.path_info import CloudURLInfo
+from dvc.progress import Tqdm
+from dvc.remote.base import BaseRemote
+from dvc.scheme import Schemes
+from dvc.utils import format_link, tmp_fname
 
 logger = logging.getLogger(__name__)
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"

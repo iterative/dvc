@@ -1,23 +1,27 @@
 import logging
 import os
 import tempfile
+import threading
 from contextlib import contextmanager
 from distutils.dir_util import copy_tree
-import threading
 
-from funcy import retry, suppress, wrap_with, cached_property
+from funcy import cached_property, retry, suppress, wrap_with
 
-from dvc.path_info import PathInfo
 from dvc.compat import fspath
-from dvc.repo import Repo
 from dvc.config import NoRemoteError, NotDvcRepoError
-from dvc.exceptions import NoRemoteInExternalRepoError, CheckoutError
-from dvc.exceptions import OutputNotFoundError, NoOutputInExternalRepoError
-from dvc.exceptions import FileMissingError, PathMissingError
-from dvc.utils.fs import remove, fs_copy, move
-from dvc.utils import tmp_fname
+from dvc.exceptions import (
+    CheckoutError,
+    FileMissingError,
+    NoOutputInExternalRepoError,
+    NoRemoteInExternalRepoError,
+    OutputNotFoundError,
+    PathMissingError,
+)
+from dvc.path_info import PathInfo
+from dvc.repo import Repo
 from dvc.scm.git import Git
-
+from dvc.utils import tmp_fname
+from dvc.utils.fs import fs_copy, move, remove
 
 logger = logging.getLogger(__name__)
 
