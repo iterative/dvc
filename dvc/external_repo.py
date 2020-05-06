@@ -9,7 +9,6 @@ from funcy import cached_property, retry, wrap_with
 
 from dvc.config import NoRemoteError, NotDvcRepoError
 from dvc.exceptions import (
-    CheckoutError,
     DownloadError,
     FileMissingError,
     NoOutputInExternalRepoError,
@@ -22,7 +21,7 @@ from dvc.repo import Repo
 from dvc.repo.tree import RepoTree
 from dvc.scm.git import Git
 from dvc.utils import tmp_fname
-from dvc.utils.fs import makedirs, move, remove
+from dvc.utils.fs import remove
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +79,7 @@ class BaseExternalRepo:
     def get_external(self, path, to_info, jobs=None):
         """
         Pull the corresponding file or directory specified by `path` and
-        checkout it into `to_info`.
+        into `to_info`.
 
         It works with files tracked by Git and DVC, and also local files
         outside the repository.
@@ -90,51 +89,15 @@ class BaseExternalRepo:
         if not self.repo_tree.exists(path_info):
             raise PathMissingError(path, self.url)
 
+        # fetch any needed and uncached DVC outs
         if self.repo_tree.isdvc(path_info):
             try:
-                self._checkout_to(path_info, to_info)
-                return
+                self._fetch_dvc_path(path_info, to_info)
             except FileNotFoundError:
                 pass
 
-        if self.repo_tree.isfile(path_info):
-            self.repo_tree.copyfile(path_info, to_info)
-            return
-
-        self._get_external_dir(path_info, to_info, jobs=jobs)
-
-    def _get_external_dir(self, path_info, to_info, jobs=None):
-        """Walk erepo tree and get target dirs+files."""
-        rel_root = None
-        dest_dir = None
-        for root, dirs, files in self.repo_tree.walk(path_info):
-            root_path = PathInfo(root)
-
-            if root_path == path_info:
-                # root_path is target directory, save all nested content
-                rel_root = root_path
-                dest_dir = root_path.relative_to(rel_root)
-
-            if rel_root:
-                makedirs(to_info / dest_dir)
-            else:
-                # only recurse into subdir containing path_info
-                dirs[:] = [
-                    dirname
-                    for dirname in dirs
-                    if path_info.overlaps(root_path / dirname)
-                ]
-
-            for filename in files:
-                file_path = root_path / filename
-                if rel_root:
-                    self.repo_tree.copyfile(
-                        file_path, to_info / dest_dir / filename
-                    )
-                elif path_info == file_path:
-                    # file_path is target file
-                    self.repo_tree.copyfile(file_path, to_info)
-                    return
+        with self.state:
+            self.repo_tree.copytree(path_info, to_info)
 
     def fetch_external(self, files, jobs=None):
         """Fetch specified erepo files into cache.
@@ -156,14 +119,13 @@ class BaseExternalRepo:
 
         if failed:
             logger.exception(
-                "failed to fetch '{}' from '{}' repo".format(
-                    ", ".join(failed), self.url
+                "failed to fetch '{}' files from '{}' repo".format(
+                    failed, self.url
                 )
             )
         return downloaded, failed
 
-    def _checkout_to(self, path_info, dest, jobs=None):
-        """Fetch path_info and checkout to dest."""
+    def _fetch_dvc_path(self, path_info, dest, jobs=None):
         try:
             (out,) = self.find_outs_by_path(path_info, strict=False)
         except OutputNotFoundError:
@@ -172,16 +134,17 @@ class BaseExternalRepo:
         with self.state:
             tmp = PathInfo(tmp_fname(dest))
             src = tmp / path_info.relative_to(out.path_info)
-            out.path_info = tmp
 
-            self._fetch_out(out, path_info, filter_info=src, jobs=jobs)
-            try:
-                out.checkout(filter_info=src)
-            except CheckoutError:
-                raise FileNotFoundError
-
-            move(src, dest)
-            remove(tmp)
+            downloaded, failed = self._fetch_out(
+                out, path_info, filter_info=src, jobs=jobs
+            )
+            if failed:
+                logger.exception(
+                    "failed to fetch '{}' files from '{}' repo".format(
+                        failed, self.url
+                    )
+                )
+            return downloaded, failed
 
     def _fetch_out(self, out, name, filter_info=None, jobs=None):
         """Fetch specified erepo out."""
