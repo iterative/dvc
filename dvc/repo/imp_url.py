@@ -1,10 +1,11 @@
 import os
 
-from . import locked as locked_repo
 from dvc.repo.scm_context import scm_context
-from dvc.utils import resolve_output, resolve_paths, relpath
+from dvc.utils import relpath, resolve_output, resolve_paths
 from dvc.utils.fs import path_isin
+
 from ..exceptions import OutputDuplicationError
+from . import locked as locked_repo
 
 
 @locked_repo

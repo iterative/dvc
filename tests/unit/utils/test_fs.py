@@ -12,15 +12,18 @@ from dvc.path_info import PathInfo
 from dvc.scm.tree import WorkingTree
 from dvc.system import System
 from dvc.utils import relpath
-from dvc.utils.fs import BasePathNotInCheckedPathException
-from dvc.utils.fs import copyfile
-from dvc.utils.fs import contains_symlink_up_to
-from dvc.utils.fs import get_inode
-from dvc.utils.fs import get_mtime_and_size
-from dvc.utils.fs import move
-from dvc.utils.fs import path_isin, remove
-from dvc.utils.fs import makedirs
-from dvc.utils.fs import walk_files
+from dvc.utils.fs import (
+    BasePathNotInCheckedPathException,
+    contains_symlink_up_to,
+    copyfile,
+    get_inode,
+    get_mtime_and_size,
+    makedirs,
+    move,
+    path_isin,
+    remove,
+    walk_files,
+)
 from tests.basic_env import TestDir
 
 

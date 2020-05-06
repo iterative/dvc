@@ -2,7 +2,6 @@ import logging
 
 from dvc.command.data_sync import CmdDataBase
 
-
 logger = logging.getLogger(__name__)
 
 

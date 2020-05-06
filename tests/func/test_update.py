@@ -1,8 +1,9 @@
-import pytest
 import os
 
-from dvc.dvcfile import Dvcfile
+import pytest
+
 from dvc.compat import fspath, fspath_py35
+from dvc.dvcfile import Dvcfile
 
 
 @pytest.mark.parametrize("cached", [True, False])

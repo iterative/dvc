@@ -7,9 +7,8 @@ import colorama
 from packaging import version
 
 from dvc import __version__
-from dvc.lock import make_lock, LockError
-from dvc.utils import boxify
-from dvc.utils import env2bool
+from dvc.lock import LockError, make_lock
+from dvc.utils import boxify, env2bool
 from dvc.utils.pkg import PKG
 
 logger = logging.getLogger(__name__)

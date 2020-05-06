@@ -1,12 +1,12 @@
-import yaml
 import logging
 
-from dvc.repo import locked
-from dvc.path_info import PathInfo
-from dvc.compat import fspath_py35
-from dvc.exceptions import DvcException
-from dvc.dependency.param import ParamsDependency
+import yaml
 
+from dvc.compat import fspath_py35
+from dvc.dependency.param import ParamsDependency
+from dvc.exceptions import DvcException
+from dvc.path_info import PathInfo
+from dvc.repo import locked
 
 logger = logging.getLogger(__name__)
 

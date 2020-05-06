@@ -1,5 +1,5 @@
-from dvc.path_info import PathInfo
 from dvc.exceptions import PathMissingError
+from dvc.path_info import PathInfo
 
 
 @staticmethod

@@ -1,6 +1,5 @@
 from dvc.remote.oss import OSSRemote
 
-
 bucket_name = "bucket-name"
 endpoint = "endpoint"
 key_id = "Fq2UVErCz4I6tq"

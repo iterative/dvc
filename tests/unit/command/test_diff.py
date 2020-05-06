@@ -1,6 +1,6 @@
 import collections
-import os
 import logging
+import os
 
 from dvc.cli import parse_args
 

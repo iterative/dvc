@@ -1,17 +1,17 @@
 import filecmp
 import os
-from dvc.compat import fspath
 
 import pytest
 from mock import patch
 
+import dvc.data_cloud as cloud
 from dvc.cache import Cache
-from dvc.exceptions import DownloadError, PathMissingError
+from dvc.compat import fspath
 from dvc.config import NoRemoteError
 from dvc.dvcfile import Dvcfile
+from dvc.exceptions import DownloadError, PathMissingError
 from dvc.system import System
 from dvc.utils.fs import makedirs, remove
-import dvc.data_cloud as cloud
 from tests.utils import trees_equal
 
 

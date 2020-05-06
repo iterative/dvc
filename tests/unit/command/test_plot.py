@@ -1,7 +1,7 @@
 import pytest
 
 from dvc.cli import parse_args
-from dvc.command.plot import CmdPlotShow, CmdPlotDiff
+from dvc.command.plot import CmdPlotDiff, CmdPlotShow
 
 
 def test_metrics_diff(mocker):

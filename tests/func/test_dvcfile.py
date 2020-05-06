@@ -1,11 +1,11 @@
 import pytest
 
-from dvc.dvcfile import Dvcfile, PIPELINE_FILE
-from dvc.stage.loader import StageNotFound
+from dvc.dvcfile import PIPELINE_FILE, Dvcfile
 from dvc.stage.exceptions import (
     StageFileDoesNotExistError,
     StageNameUnspecified,
 )
+from dvc.stage.loader import StageNotFound
 
 
 def test_run_load_one_for_multistage(tmp_dir, dvc):

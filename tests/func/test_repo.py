@@ -1,9 +1,9 @@
 import os
 
 from dvc.cache import Cache
+from dvc.compat import fspath
 from dvc.repo import Repo
 from dvc.system import System
-from dvc.compat import fspath
 
 
 def test_destroy(tmp_dir, dvc, run_copy):

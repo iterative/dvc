@@ -12,7 +12,6 @@ from dvc.remote.oss import OSSRemote
 from dvc.remote.s3 import S3Remote
 from dvc.remote.ssh import SSHRemote
 
-
 REMOTES = [
     AzureRemote,
     GDriveRemote,

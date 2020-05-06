@@ -1,6 +1,6 @@
 import os
-import posixpath
 import pathlib
+import posixpath
 from urllib.parse import urlparse
 
 from funcy import cached_property

@@ -4,9 +4,9 @@ import threading
 
 from funcy import cached_property, memoize, wrap_prop, wrap_with
 
-from dvc.path_info import HTTPURLInfo
 import dvc.prompt as prompt
 from dvc.exceptions import DvcException, HTTPError
+from dvc.path_info import HTTPURLInfo
 from dvc.progress import Tqdm
 from dvc.remote.base import BaseRemote
 from dvc.scheme import Schemes

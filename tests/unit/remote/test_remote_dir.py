@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
-import pytest
 import os
+
+import pytest
+
+from dvc.path_info import PathInfo
 from dvc.remote.s3 import S3Remote
 from dvc.utils.fs import walk_files
-from dvc.path_info import PathInfo
 from tests.remotes import GCP, S3Mocked
 
 remotes = [GCP, S3Mocked]

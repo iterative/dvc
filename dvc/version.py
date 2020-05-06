@@ -6,7 +6,6 @@
 import os
 import subprocess
 
-
 _BASE_VERSION = "1.0.0a0"
 
 

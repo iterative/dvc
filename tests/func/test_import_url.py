@@ -3,10 +3,10 @@ from uuid import uuid4
 
 import pytest
 
-from dvc.stage import Stage
-from dvc.main import main
-from dvc.utils.fs import makedirs
 from dvc.compat import fspath
+from dvc.main import main
+from dvc.stage import Stage
+from dvc.utils.fs import makedirs
 from tests.basic_env import TestDvc
 
 

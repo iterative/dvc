@@ -1,8 +1,8 @@
 import os
-import yaml
 from collections import defaultdict
 
 import dpath.util
+import yaml
 from voluptuous import Any
 
 from dvc.compat import fspath_py35

@@ -2,12 +2,12 @@ import json
 import logging
 import os
 import platform
-import requests
 import sys
 import tempfile
 import uuid
 
 import distro
+import requests
 
 from dvc import __version__
 from dvc.config import Config, to_bool
@@ -19,7 +19,6 @@ from dvc.scm import SCM, NoSCM
 from dvc.scm.base import SCMError
 from dvc.utils import env2bool, is_binary
 from dvc.utils.fs import makedirs
-
 
 logger = logging.getLogger(__name__)
 

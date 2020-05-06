@@ -4,12 +4,12 @@ import yaml
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
 
+from dvc.exceptions import StageFileCorruptedError
+
 try:
     from yaml import CSafeLoader as SafeLoader
 except ImportError:
     from yaml import SafeLoader
-
-from dvc.exceptions import StageFileCorruptedError
 
 
 def load_stage_file(path):

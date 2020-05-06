@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing, contextmanager
 from urllib.parse import urlparse
 
-from funcy import memoize, wrap_with, silent, first
+from funcy import first, memoize, silent, wrap_with
 
 import dvc.prompt as prompt
 from dvc.progress import Tqdm

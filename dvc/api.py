@@ -1,9 +1,10 @@
 import os
-from contextlib import contextmanager, _GeneratorContextManager as GCM
+from contextlib import _GeneratorContextManager as GCM
+from contextlib import contextmanager
 
-from dvc.repo import Repo
 from dvc.exceptions import DvcException, NotDvcRepoError
 from dvc.external_repo import external_repo
+from dvc.repo import Repo
 
 
 class UrlNotDvcRepoError(DvcException):

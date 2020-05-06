@@ -1,5 +1,6 @@
-from .http import HTTPRemote
 from dvc.scheme import Schemes
+
+from .http import HTTPRemote
 
 
 class HTTPSRemote(HTTPRemote):

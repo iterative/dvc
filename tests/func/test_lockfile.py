@@ -4,13 +4,12 @@ from textwrap import dedent
 
 import pytest
 import yaml
+
 from dvc.dvcfile import PIPELINE_LOCK
 from dvc.serialize import get_params_deps
 from dvc.utils.fs import remove
 from dvc.utils.stage import parse_stage_for_update
-
 from tests.func.test_run_multistage import supported_params
-
 
 FS_STRUCTURE = {
     "foo": "bar\nfoobar",

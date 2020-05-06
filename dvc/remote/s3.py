@@ -8,8 +8,7 @@ import threading
 from funcy import cached_property, wrap_prop
 
 from dvc.config import ConfigError
-from dvc.exceptions import DvcException
-from dvc.exceptions import ETagMismatchError
+from dvc.exceptions import DvcException, ETagMismatchError
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.remote.base import BaseRemote

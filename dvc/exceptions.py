@@ -1,7 +1,7 @@
 """Exceptions raised by the dvc."""
 from funcy import first
 
-from dvc.utils import relpath, format_link
+from dvc.utils import format_link, relpath
 
 
 class DvcException(Exception):

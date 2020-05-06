@@ -4,17 +4,12 @@ import logging
 import os
 import re
 import sqlite3
-from urllib.parse import urlunparse, urlencode
+from urllib.parse import urlencode, urlunparse
 
-from dvc.exceptions import DvcException
-from dvc.utils import current_timestamp
-from dvc.utils import relpath
-from dvc.utils import to_chunks
 from dvc.compat import fspath_py35
-from dvc.utils.fs import get_inode
-from dvc.utils.fs import get_mtime_and_size
-from dvc.utils.fs import remove
-
+from dvc.exceptions import DvcException
+from dvc.utils import current_timestamp, relpath, to_chunks
+from dvc.utils.fs import get_inode, get_mtime_and_size, remove
 
 SQLITE_MAX_VARIABLES_NUMBER = 999
 

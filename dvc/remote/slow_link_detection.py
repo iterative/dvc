@@ -1,10 +1,9 @@
 import logging
 import sys
 import time
-
 from functools import wraps
-import colorama
 
+import colorama
 
 logger = logging.getLogger(__name__)
 this = sys.modules[__name__]

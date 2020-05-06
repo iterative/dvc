@@ -1,8 +1,9 @@
 import os
 
-from . import locked
 from dvc.exceptions import MoveNotDataSourceError
 from dvc.repo.scm_context import scm_context
+
+from . import locked
 
 
 def _expand_target_path(from_path, to_path):

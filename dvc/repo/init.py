@@ -9,8 +9,7 @@ from dvc.exceptions import InitError, InvalidArgumentError
 from dvc.repo import Repo
 from dvc.scm import SCM
 from dvc.scm.base import SCMError
-from dvc.utils import boxify
-from dvc.utils import relpath
+from dvc.utils import boxify, relpath
 from dvc.utils.fs import remove
 
 logger = logging.getLogger(__name__)

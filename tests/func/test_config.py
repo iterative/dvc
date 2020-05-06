@@ -1,8 +1,8 @@
-import pytest
 import configobj
+import pytest
 
-from dvc.main import main
 from dvc.config import Config, ConfigError
+from dvc.main import main
 from tests.basic_env import TestDvc
 
 

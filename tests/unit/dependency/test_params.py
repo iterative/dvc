@@ -1,11 +1,9 @@
+import pytest
 import yaml
 
-import pytest
-
-from dvc.dependency import ParamsDependency, loads_params, loadd_from
+from dvc.dependency import ParamsDependency, loadd_from, loads_params
 from dvc.dependency.param import BadParamFileError, MissingParamsError
 from dvc.stage import Stage
-
 
 PARAMS = {
     "foo": 1,

@@ -1,4 +1,6 @@
-from dvc.utils.diff import format_dict, diff as _diff
+from dvc.utils.diff import diff as _diff
+from dvc.utils.diff import format_dict
+
 from .show import NoParamsError
 
 

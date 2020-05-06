@@ -1,7 +1,7 @@
 import argparse
 import logging
 
-from dvc.command.base import append_doc_link, CmdBaseNoRepo
+from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.config import Config, ConfigError
 
 logger = logging.getLogger(__name__)

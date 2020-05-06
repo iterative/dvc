@@ -1,12 +1,12 @@
 import hashlib
 import os
-import pytest
 
+import pytest
 from funcy import first
 
 from dvc.compat import fspath
-from dvc.utils.fs import remove
 from dvc.exceptions import DvcException
+from dvc.utils.fs import remove
 
 
 def digest(text):

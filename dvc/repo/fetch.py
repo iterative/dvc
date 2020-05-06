@@ -3,8 +3,8 @@ import logging
 from dvc.cache import NamedCache
 from dvc.config import NoRemoteError
 from dvc.exceptions import DownloadError, OutputNotFoundError
-from dvc.scm.base import CloneError
 from dvc.path_info import PathInfo
+from dvc.scm.base import CloneError
 
 logger = logging.getLogger(__name__)
 

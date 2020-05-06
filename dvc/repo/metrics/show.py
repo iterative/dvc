@@ -1,13 +1,13 @@
-import yaml
 import logging
 import os
 
-from dvc.path_info import PathInfo
+import yaml
+
 from dvc.compat import fspath_py35
 from dvc.exceptions import NoMetricsError
+from dvc.path_info import PathInfo
 from dvc.repo import locked
 from dvc.repo.tree import RepoTree
-
 
 logger = logging.getLogger(__name__)
 

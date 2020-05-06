@@ -1,16 +1,16 @@
 import os
 import tempfile
+
 import pytest
 
+from dvc.dvcfile import SingleStageFile
 from dvc.main import main
 from dvc.output.local import LocalOutput
 from dvc.remote.local import LocalRemote
 from dvc.repo import Repo
 from dvc.stage import Stage
-from dvc.dvcfile import SingleStageFile
 from dvc.stage.exceptions import StageFileFormatError
-from dvc.utils.stage import dump_stage_file
-from dvc.utils.stage import load_stage_file
+from dvc.utils.stage import dump_stage_file, load_stage_file
 from tests.basic_env import TestDvc
 
 

@@ -12,7 +12,6 @@ from yaml import SafeLoader
 
 from dvc.exceptions import DvcException, PathMissingError
 
-
 logger = logging.getLogger(__name__)
 
 WORKSPACE_REVISION_NAME = "workspace"

@@ -1,16 +1,18 @@
 import logging
 import os
-from urllib.parse import urlparse
 from copy import copy
+from urllib.parse import urlparse
 
 from voluptuous import Any
 
 import dvc.prompt as prompt
 from dvc.cache import NamedCache
-from dvc.exceptions import CollectCacheError, RemoteCacheRequiredError
-from dvc.exceptions import DvcException
+from dvc.exceptions import (
+    CollectCacheError,
+    DvcException,
+    RemoteCacheRequiredError,
+)
 from dvc.remote.base import BaseRemote
-
 
 logger = logging.getLogger(__name__)
 

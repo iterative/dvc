@@ -14,7 +14,6 @@ from git.exc import GitCommandNotFound
 from dvc.repo import Repo as DvcRepo
 from dvc.utils.fs import remove
 
-
 logger = logging.getLogger("dvc")
 
 

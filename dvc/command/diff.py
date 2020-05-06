@@ -8,7 +8,6 @@ import colorama
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
 
-
 logger = logging.getLogger(__name__)
 
 

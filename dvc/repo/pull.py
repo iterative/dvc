@@ -2,7 +2,6 @@ import logging
 
 from dvc.repo import locked
 
-
 logger = logging.getLogger(__name__)
 
 

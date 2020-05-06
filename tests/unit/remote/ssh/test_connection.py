@@ -9,7 +9,6 @@ import pytest
 from dvc.command.version import CmdVersion
 from dvc.system import System
 
-
 here = os.path.abspath(os.path.dirname(__file__))
 
 

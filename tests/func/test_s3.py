@@ -1,13 +1,12 @@
 from functools import wraps
 
 import boto3
-import moto.s3.models as s3model
 import pytest
-from moto import mock_s3
 
+import moto.s3.models as s3model
 from dvc.remote.s3 import S3Remote
+from moto import mock_s3
 from tests.remotes import S3
-
 
 # from https://github.com/spulec/moto/blob/v1.3.5/tests/test_s3/test_s3.py#L40
 REDUCED_PART_SIZE = 256

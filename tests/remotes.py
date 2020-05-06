@@ -1,19 +1,16 @@
+import getpass
 import os
 import platform
 import uuid
-import getpass
-
 from contextlib import contextmanager
-from subprocess import CalledProcessError, check_output, Popen
+from subprocess import CalledProcessError, Popen, check_output
 
-from dvc.utils import env2bool
 from dvc.remote import GDriveRemote
 from dvc.remote.gs import GSRemote
 from dvc.remote.s3 import S3Remote
-from tests.basic_env import TestDvc
-
+from dvc.utils import env2bool
 from moto.s3 import mock_s3
-
+from tests.basic_env import TestDvc
 
 TEST_REMOTE = "upstream"
 TEST_CONFIG = {

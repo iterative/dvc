@@ -1,5 +1,6 @@
 from urllib.parse import urlparse
-from voluptuous import Any, Required, Lower, Length, Coerce, And, SetTo
+
+from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
 
 from dvc.output.base import BaseOutput
 from dvc.output.gs import GSOutput

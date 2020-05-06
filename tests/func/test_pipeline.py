@@ -1,10 +1,9 @@
 import logging
 
+from dvc.command.pipeline import CmdPipelineList, CmdPipelineShow
 from dvc.main import main
-from dvc.command.pipeline import CmdPipelineShow, CmdPipelineList
 from tests.basic_env import TestDvc
-from tests.func.test_repro import TestRepro
-from tests.func.test_repro import TestReproChangedDeepData
+from tests.func.test_repro import TestRepro, TestReproChangedDeepData
 
 
 class TestPipelineShowSingle(TestDvc):

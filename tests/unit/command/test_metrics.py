@@ -1,5 +1,5 @@
 from dvc.cli import parse_args
-from dvc.command.metrics import CmdMetricsDiff, _show_diff, CmdMetricsShow
+from dvc.command.metrics import CmdMetricsDiff, CmdMetricsShow, _show_diff
 
 
 def test_metrics_diff(dvc, mocker):

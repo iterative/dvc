@@ -1,9 +1,9 @@
-import pytest
-import mock
-import platform
 import json
+import platform
 
-from voluptuous import Schema, Any
+import mock
+import pytest
+from voluptuous import Any, Schema
 
 from dvc import analytics
 from dvc.cli import parse_args

@@ -1,9 +1,9 @@
-import os
 import errno
+import os
 
-from dvc.scm.tree import BaseTree, WorkingTree
-from dvc.path_info import PathInfo
 from dvc.exceptions import OutputNotFoundError
+from dvc.path_info import PathInfo
+from dvc.scm.tree import BaseTree, WorkingTree
 
 
 class DvcTree(BaseTree):

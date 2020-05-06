@@ -2,11 +2,9 @@ import copy
 
 import pytest
 
-from dvc.dependency import _get
-from dvc.dependency import DEP_MAP
+from dvc.dependency import DEP_MAP, _get
 from dvc.stage import Stage
 from tests.func.test_output import TESTS as OUT_TESTS
-
 
 TESTS = copy.copy(OUT_TESTS)
 TESTS.append(("http://example.com/path/to/file", "http"))

@@ -8,7 +8,6 @@ from funcy import cached_property
 from dvc.exceptions import DvcException
 from dvc.utils.fs import makedirs
 
-
 logger = logging.getLogger(__name__)
 
 

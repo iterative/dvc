@@ -9,9 +9,7 @@ from dvc.exceptions import FileMissingError
 from dvc.main import main
 from dvc.path_info import URLInfo
 from dvc.utils.fs import remove
-
-from tests.remotes import Azure, GCP, HDFS, Local, OSS, S3, SSH
-
+from tests.remotes import GCP, HDFS, OSS, S3, SSH, Azure, Local
 
 remote_params = [S3, GCP, Azure, OSS, SSH, HDFS]
 all_remote_params = [Local] + remote_params

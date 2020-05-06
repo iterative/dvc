@@ -1,9 +1,9 @@
-import sys
 import errno
 import logging
 import os
 import shutil
 import stat
+import sys
 
 import nanotime
 from shortuuid import uuid
@@ -11,10 +11,7 @@ from shortuuid import uuid
 from dvc.exceptions import DvcException
 from dvc.scm.tree import is_working_tree
 from dvc.system import System
-from dvc.utils import dict_md5
-from dvc.utils import fspath
-from dvc.utils import fspath_py35
-
+from dvc.utils import dict_md5, fspath, fspath_py35
 
 logger = logging.getLogger(__name__)
 

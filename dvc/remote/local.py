@@ -2,31 +2,30 @@ import errno
 import logging
 import os
 import stat
-from concurrent.futures import as_completed, ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partial
 
 from funcy import cached_property, concat
-
 from shortuuid import uuid
 
 from dvc.compat import fspath_py35
-from dvc.exceptions import DvcException, DownloadError, UploadError
+from dvc.exceptions import DownloadError, DvcException, UploadError
 from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
 from dvc.remote.base import (
-    index_locked,
-    BaseRemote,
-    STATUS_MAP,
     STATUS_DELETED,
+    STATUS_MAP,
     STATUS_MISSING,
     STATUS_NEW,
+    BaseRemote,
+    index_locked,
 )
 from dvc.remote.index import RemoteIndexNoop
 from dvc.scheme import Schemes
 from dvc.scm.tree import is_working_tree
 from dvc.system import System
 from dvc.utils import file_md5, relpath, tmp_fname
-from dvc.utils.fs import copyfile, move, makedirs, remove, walk_files
+from dvc.utils.fs import copyfile, makedirs, move, remove, walk_files
 
 logger = logging.getLogger(__name__)
 

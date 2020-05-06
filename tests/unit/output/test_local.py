@@ -1,6 +1,7 @@
 import os
 
 from mock import patch
+
 from dvc.output import LocalOutput
 from dvc.remote.local import LocalRemote
 from dvc.stage import Stage

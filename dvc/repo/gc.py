@@ -1,9 +1,9 @@
 import logging
 
-from . import locked
 from dvc.cache import NamedCache
 from dvc.exceptions import InvalidArgumentError
 
+from . import locked
 
 logger = logging.getLogger(__name__)
 

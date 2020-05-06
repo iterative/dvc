@@ -1,7 +1,8 @@
-from dvc.stage import PipelineStage
-from dvc.dvcfile import Lockfile, LockfileCorruptedError
-import yaml
 import pytest
+import yaml
+
+from dvc.dvcfile import Lockfile, LockfileCorruptedError
+from dvc.stage import PipelineStage
 
 
 def test_stage_dump_no_outs_deps(tmp_dir, dvc):

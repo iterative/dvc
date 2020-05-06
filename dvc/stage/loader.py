@@ -1,16 +1,16 @@
 import logging
 import os
+from collections import Mapping, defaultdict
 from contextlib import contextmanager
-
 from copy import deepcopy
-from collections import defaultdict, Mapping
 from itertools import chain
 
 from funcy import first
 
 from dvc import dependency, output
-from .exceptions import StageNameUnspecified, StageNotFound
+
 from ..dependency import ParamsDependency
+from .exceptions import StageNameUnspecified, StageNotFound
 
 logger = logging.getLogger(__name__)
 

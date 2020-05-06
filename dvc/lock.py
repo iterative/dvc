@@ -5,12 +5,12 @@ import os
 import time
 from datetime import timedelta
 
-import zc.lockfile
 import flufl.lock
+import zc.lockfile
 
 from dvc.exceptions import DvcException
-from dvc.utils import format_link
 from dvc.progress import Tqdm
+from dvc.utils import format_link
 
 DEFAULT_TIMEOUT = 5
 

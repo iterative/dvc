@@ -1,11 +1,10 @@
 import math
+
 import mock
 import pytest
 
 from dvc.path_info import PathInfo
-from dvc.remote.base import BaseRemote
-from dvc.remote.base import RemoteCmdError
-from dvc.remote.base import RemoteMissingDepsError
+from dvc.remote.base import BaseRemote, RemoteCmdError, RemoteMissingDepsError
 
 
 class _CallableOrNone(object):

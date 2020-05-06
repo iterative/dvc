@@ -2,14 +2,13 @@ import logging
 import os
 from urllib.parse import urlparse
 
+from dvc.compat import fspath_py35
 from dvc.exceptions import DvcException
 from dvc.istextfile import istextfile
 from dvc.output.base import BaseOutput
 from dvc.remote.local import LocalRemote
 from dvc.utils import relpath
-from dvc.compat import fspath_py35
 from dvc.utils.fs import path_isin
-
 
 logger = logging.getLogger(__name__)
 

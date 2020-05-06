@@ -4,13 +4,13 @@ import os
 import pytest
 
 from dvc.cache import Cache
-from dvc.main import main
+from dvc.compat import fspath
 from dvc.exceptions import PathMissingError
-from dvc.repo.get import GetDVCFileError
+from dvc.main import main
 from dvc.repo import Repo
+from dvc.repo.get import GetDVCFileError
 from dvc.system import System
 from dvc.utils.fs import makedirs
-from dvc.compat import fspath
 from tests.utils import trees_equal
 
 

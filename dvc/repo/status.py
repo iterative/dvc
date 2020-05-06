@@ -4,8 +4,8 @@ from itertools import compress
 from funcy.py3 import cat
 
 from dvc.exceptions import InvalidArgumentError
-from . import locked
 
+from . import locked
 
 logger = logging.getLogger(__name__)
 

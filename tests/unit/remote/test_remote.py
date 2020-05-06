@@ -1,6 +1,6 @@
 import pytest
 
-from dvc.remote import Remote, S3Remote, GSRemote
+from dvc.remote import GSRemote, Remote, S3Remote
 
 
 def test_remote_with_checksum_jobs(dvc):

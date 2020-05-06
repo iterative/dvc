@@ -7,15 +7,16 @@ import time
 
 import colorama
 import pytest
-from mock import patch, call
+from mock import call, patch
 
 import dvc as dvc_module
 from dvc.cache import Cache
+from dvc.compat import fspath
 from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import (
     DvcException,
-    OverlappingOutputPathsError,
     OutputDuplicationError,
+    OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
     StageFileCorruptedError,
 )
@@ -25,10 +26,7 @@ from dvc.remote import LocalRemote
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.system import System
-from dvc.utils import file_md5
-from dvc.utils import LARGE_DIR_SIZE
-from dvc.utils import relpath
-from dvc.compat import fspath
+from dvc.utils import LARGE_DIR_SIZE, file_md5, relpath
 from dvc.utils.fs import path_isin
 from dvc.utils.stage import load_stage_file
 from tests.basic_env import TestDvc

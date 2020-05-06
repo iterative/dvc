@@ -1,9 +1,7 @@
 import pytest
 
-from dvc.output import _get
-from dvc.output import OUTS_MAP
+from dvc.output import OUTS_MAP, _get
 from dvc.stage import Stage
-
 
 TESTS = [
     ("s3://bucket/path", "s3"),

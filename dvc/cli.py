@@ -16,16 +16,18 @@ from .command import (
     gc,
     get,
     get_url,
+    git_hook,
     imp,
     imp_url,
     init,
     install,
-    ls,
     lock,
+    ls,
     metrics,
-    params,
     move,
+    params,
     pipeline,
+    plot,
     remote,
     remove,
     repro,
@@ -34,12 +36,9 @@ from .command import (
     unprotect,
     update,
     version,
-    git_hook,
-    plot,
 )
 from .command.base import fix_subparsers
 from .exceptions import DvcParserError
-
 
 logger = logging.getLogger(__name__)
 

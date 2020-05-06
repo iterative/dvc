@@ -1,20 +1,20 @@
 import contextlib
-import os
 import logging
-
-import dvc.prompt as prompt
+import os
 
 from voluptuous import MultipleInvalid
+
+import dvc.prompt as prompt
 from dvc import serialize
 from dvc.exceptions import DvcException
-from dvc.stage.loader import SingleStageLoader, StageLoader
 from dvc.stage.exceptions import (
+    StageFileAlreadyExistsError,
     StageFileBadNameError,
     StageFileDoesNotExistError,
-    StageFileIsNotDvcFileError,
     StageFileFormatError,
-    StageFileAlreadyExistsError,
+    StageFileIsNotDvcFileError,
 )
+from dvc.stage.loader import SingleStageLoader, StageLoader
 from dvc.utils import relpath
 from dvc.utils.collections import apply_diff
 from dvc.utils.stage import (

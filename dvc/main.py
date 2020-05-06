@@ -6,12 +6,11 @@ import logging
 from dvc import analytics
 from dvc.cli import parse_args
 from dvc.config import ConfigError
-from dvc.exceptions import DvcParserError, DvcException
-from dvc.exceptions import NotDvcRepoError
+from dvc.exceptions import DvcException, DvcParserError, NotDvcRepoError
 from dvc.external_repo import clean_repos
-from dvc.logger import disable_other_loggers, FOOTER
-from dvc.utils import format_link
+from dvc.logger import FOOTER, disable_other_loggers
 from dvc.remote.pool import close_pools
+from dvc.utils import format_link
 
 # Workaround for CPython bug. See [1] and [2] for more info.
 # [1] https://github.com/aws/aws-cli/blob/1.16.277/awscli/clidriver.py#L55
