@@ -189,7 +189,8 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
     dest = fspath_py35(dest)
 
     name = name if name else os.path.basename(dest)
-    total = os.stat(src).st_size
+    src_stat = os.stat(src)
+    total = src_stat.st_size
 
     if os.path.isdir(dest):
         dest = os.path.join(dest, os.path.basename(src))
@@ -211,6 +212,7 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
                     if not buf:
                         break
                     fdest_wrapped.write(buf)
+        os.chmod(dest, src_stat.st_mode)
 
 
 def walk_files(directory):

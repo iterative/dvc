@@ -6,6 +6,7 @@ import uuid
 from unittest import SkipTest
 
 import pytest
+from funcy import first
 
 from dvc.compat import fspath, fspath_py35
 from dvc.cache import NamedCache
@@ -900,3 +901,16 @@ def test_pull_stats(tmp_dir, dvc, caplog):
     with caplog.at_level(level=logging.INFO, logger="dvc"):
         main(["pull"])
     assert "Everything is up to date." in caplog.text
+
+
+def test_local_remote_should_retain_cache_mode(tmp_dir, dvc):
+    tmp_dir.setup_remote()
+    remote = dvc.cloud.get_remote("upstream")
+
+    (stage,) = tmp_dir.dvc_gen("file", "file content")
+    out = first(stage.outs)
+
+    dvc.push()
+
+    remote_path = remote.checksum_to_path(out.checksum)
+    assert os.stat(remote_path).st_mode == os.stat(out.cache_path).st_mode
