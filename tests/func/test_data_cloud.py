@@ -8,7 +8,7 @@ from unittest import SkipTest
 import pytest
 
 from dvc.cache import NamedCache
-from dvc.compat import fspath, fspath_py35
+from dvc.compat import fspath
 from dvc.data_cloud import DataCloud
 from dvc.external_repo import clean_repos
 from dvc.main import main
@@ -688,14 +688,13 @@ class TestShouldWarnOnNoChecksumInLocalAndRemoteCache(TestDvc):
         assert self.message_bar_part in self._caplog.text
 
 
-def test_verify_checksums(tmp_dir, scm, dvc, mocker, tmp_path_factory):
+def test_verify_checksums(
+    tmp_dir, scm, dvc, mocker, tmp_path_factory, setup_remote
+):
+
+    setup_remote(dvc, name="upstream")
     tmp_dir.dvc_gen({"file": "file1 content"}, commit="add file")
     tmp_dir.dvc_gen({"dir": {"subfile": "file2 content"}}, commit="add dir")
-
-    dvc.config["remote"]["local_remote"] = {
-        "url": fspath(tmp_path_factory.mktemp("local_remote"))
-    }
-    dvc.config["core"]["remote"] = "local_remote"
     dvc.push()
 
     # remove artifacts and cache to trigger fetching
@@ -711,7 +710,7 @@ def test_verify_checksums(tmp_dir, scm, dvc, mocker, tmp_path_factory):
     # Removing cache will invalidate existing state entries
     remove(dvc.cache.local.cache_dir)
 
-    dvc.config["remote"]["local_remote"]["verify"] = True
+    dvc.config["remote"]["upstream"]["verify"] = True
 
     dvc.pull()
     assert checksum_spy.call_count == 3
@@ -784,13 +783,15 @@ def recurse_list_dir(d):
     ]
 
 
-def test_dvc_pull_pipeline_stages(tmp_dir, dvc, local_remote, run_copy):
+def test_dvc_pull_pipeline_stages(tmp_dir, dvc, run_copy, setup_remote):
+    setup_remote(dvc)
     (stage0,) = tmp_dir.dvc_gen("foo", "foo")
     stage1 = run_copy("foo", "bar", single_stage=True)
     stage2 = run_copy("bar", "foobar", name="copy-bar-foobar")
+    dvc.push()
+
     outs = ["foo", "bar", "foobar"]
 
-    dvc.push()
     clean(outs, dvc)
     dvc.pull()
     assert all((tmp_dir / file).exists() for file in outs)
@@ -814,7 +815,8 @@ def test_dvc_pull_pipeline_stages(tmp_dir, dvc, local_remote, run_copy):
     assert set(stats["added"]) == set(outs)
 
 
-def test_pipeline_file_target_ops(tmp_dir, dvc, local_remote, run_copy):
+def test_pipeline_file_target_ops(tmp_dir, dvc, run_copy, setup_remote):
+    remote_path = setup_remote(dvc)
     tmp_dir.dvc_gen("foo", "foo")
     run_copy("foo", "bar", single_stage=True)
 
@@ -829,8 +831,11 @@ def test_pipeline_file_target_ops(tmp_dir, dvc, local_remote, run_copy):
     remove(dvc.stage_cache.cache_dir)
 
     dvc.push()
+
+    outs = ["foo", "bar", "lorem", "ipsum", "baz", "lorem2"]
+
     # each one's a copy of other, hence 3
-    assert len(recurse_list_dir(fspath_py35(local_remote))) == 3
+    assert len(recurse_list_dir(remote_path)) == 3
 
     clean(outs, dvc)
     assert set(dvc.pull(["dvc.yaml"])["added"]) == {"lorem2", "baz"}
@@ -839,13 +844,15 @@ def test_pipeline_file_target_ops(tmp_dir, dvc, local_remote, run_copy):
     assert set(dvc.pull()["added"]) == set(outs)
 
     # clean everything in remote and push
-    clean(local_remote.iterdir())
-    dvc.push(["dvc.yaml:copy-ipsum-baz"])
-    assert len(recurse_list_dir(fspath_py35(local_remote))) == 1
+    from tests.dir_helpers import TmpDir
 
-    clean(local_remote.iterdir())
+    clean(TmpDir(remote_path).iterdir())
+    dvc.push(["dvc.yaml:copy-ipsum-baz"])
+    assert len(recurse_list_dir(remote_path)) == 1
+
+    clean(TmpDir(remote_path).iterdir())
     dvc.push(["dvc.yaml"])
-    assert len(recurse_list_dir(fspath_py35(local_remote))) == 2
+    assert len(recurse_list_dir(remote_path)) == 2
 
     with pytest.raises(StageNotFound):
         dvc.push(["dvc.yaml:StageThatDoesNotExist"])
@@ -862,8 +869,10 @@ def test_pipeline_file_target_ops(tmp_dir, dvc, local_remote, run_copy):
         ({}, "Everything is up to date"),
     ],
 )
-def test_push_stats(tmp_dir, dvc, fs, msg, local_remote, caplog):
+def test_push_stats(tmp_dir, dvc, fs, msg, caplog, setup_remote):
+    setup_remote(dvc)
     tmp_dir.dvc_gen(fs)
+
     caplog.clear()
     with caplog.at_level(level=logging.INFO, logger="dvc"):
         main(["push"])
@@ -878,7 +887,8 @@ def test_push_stats(tmp_dir, dvc, fs, msg, local_remote, caplog):
         ({}, "Everything is up to date."),
     ],
 )
-def test_fetch_stats(tmp_dir, dvc, fs, msg, local_remote, caplog):
+def test_fetch_stats(tmp_dir, dvc, fs, msg, caplog, setup_remote):
+    setup_remote(dvc)
     tmp_dir.dvc_gen(fs)
     dvc.push()
     clean(list(fs.keys()), dvc)
@@ -888,7 +898,8 @@ def test_fetch_stats(tmp_dir, dvc, fs, msg, local_remote, caplog):
     assert msg in caplog.text
 
 
-def test_pull_stats(tmp_dir, dvc, local_remote, caplog):
+def test_pull_stats(tmp_dir, dvc, caplog, setup_remote):
+    setup_remote(dvc)
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
     dvc.push()
     clean(["foo", "bar"], dvc)

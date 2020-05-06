@@ -36,8 +36,8 @@ def test_get_url(tmp_dir, dvc, remote_url):
 
 
 @pytest.mark.parametrize("remote_url", remote_params, indirect=True)
-def test_get_url_external(erepo_dir, remote_url):
-    _set_remote_url_and_commit(erepo_dir.dvc, remote_url)
+def test_get_url_external(erepo_dir, remote_url, setup_remote):
+    setup_remote(erepo_dir.dvc, url=remote_url)
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo", commit="add foo")
 
@@ -71,8 +71,8 @@ def test_open(remote_url, tmp_dir, dvc):
 
 
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
-def test_open_external(remote_url, erepo_dir):
-    _set_remote_url_and_commit(erepo_dir.dvc, remote_url)
+def test_open_external(remote_url, erepo_dir, setup_remote):
+    setup_remote(erepo_dir.dvc, url=remote_url)
 
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("version", "master", commit="add version")
@@ -104,13 +104,6 @@ def test_missing(remote_url, tmp_dir, dvc):
 
     with pytest.raises(FileMissingError):
         api.read("foo")
-
-
-def _set_remote_url_and_commit(repo, remote_url):
-    with repo.config.edit() as conf:
-        conf["remote"]["upstream"]["url"] = remote_url
-    repo.scm.add([repo.config.files["repo"]])
-    repo.scm.commit("modify remote")
 
 
 def test_open_scm_controlled(tmp_dir, erepo_dir):

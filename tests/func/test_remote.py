@@ -173,10 +173,8 @@ def test_dir_checksum_should_be_key_order_agnostic(tmp_dir, dvc):
     assert checksum1 == checksum2
 
 
-def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory):
-    url = fspath(tmp_path_factory.mktemp("upstream"))
-    dvc.config["remote"]["upstream"] = {"url": url}
-    dvc.config["core"]["remote"] = "upstream"
+def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, setup_remote):
+    setup_remote(dvc, name="upstream")
 
     foo = tmp_dir.dvc_gen({"foo": "foo content"})[0].outs[0]
     bar = tmp_dir.dvc_gen({"bar": "bar content"})[0].outs[0]
@@ -212,11 +210,10 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory):
         assert download_error_info.value.amount == 3
 
 
-def test_raise_on_too_many_open_files(tmp_dir, dvc, tmp_path_factory, mocker):
-    storage = fspath(tmp_path_factory.mktemp("test_remote_base"))
-    dvc.config["remote"]["local_remote"] = {"url": storage}
-    dvc.config["core"]["remote"] = "local_remote"
-
+def test_raise_on_too_many_open_files(
+    tmp_dir, dvc, tmp_path_factory, mocker, setup_remote
+):
+    setup_remote(dvc)
     tmp_dir.dvc_gen({"file": "file content"})
 
     mocker.patch.object(
@@ -245,11 +242,8 @@ def test_external_dir_resource_on_no_cache(tmp_dir, dvc, tmp_path_factory):
         dvc.run(deps=[fspath(external_dir)], single_stage=True)
 
 
-def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker):
-    url = fspath(tmp_path_factory.mktemp("upstream"))
-    dvc.config["remote"]["upstream"] = {"url": url}
-    dvc.config["core"]["remote"] = "upstream"
-
+def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, setup_remote):
+    setup_remote(dvc)
     tmp_dir.dvc_gen({"foo": {"bar": "bar content"}})
     tmp_dir.dvc_gen({"baz": "baz content"})
 

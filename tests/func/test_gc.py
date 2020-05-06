@@ -238,18 +238,18 @@ def test_gc_without_workspace_raises_error(tmp_dir, dvc):
         dvc.gc(force=True, workspace=False)
 
 
-def test_gc_cloud_with_or_without_specifier(tmp_dir, erepo_dir):
+def test_gc_cloud_with_or_without_specifier(tmp_dir, erepo_dir, setup_remote):
     dvc = erepo_dir.dvc
-    with erepo_dir.chdir():
-        from dvc.exceptions import InvalidArgumentError
+    setup_remote(dvc)
+    from dvc.exceptions import InvalidArgumentError
 
-        with pytest.raises(InvalidArgumentError):
-            dvc.gc(force=True, cloud=True)
+    with pytest.raises(InvalidArgumentError):
+        dvc.gc(force=True, cloud=True)
 
-        dvc.gc(cloud=True, all_tags=True)
-        dvc.gc(cloud=True, all_commits=True)
-        dvc.gc(cloud=True, all_branches=True)
-        dvc.gc(cloud=True, all_commits=False, all_branches=True, all_tags=True)
+    dvc.gc(cloud=True, all_tags=True)
+    dvc.gc(cloud=True, all_commits=True)
+    dvc.gc(cloud=True, all_branches=True)
+    dvc.gc(cloud=True, all_commits=False, all_branches=True, all_tags=True)
 
 
 def test_gc_without_workspace_on_tags_branches_commits(tmp_dir, dvc):
@@ -295,13 +295,8 @@ def test_gc_with_possible_args_positive(tmp_dir, dvc):
         assert main(["gc", "-vf", flag]) == 0
 
 
-def test_gc_cloud_positive(tmp_dir, dvc, tmp_path_factory):
-    with dvc.config.edit() as conf:
-        storage = fspath(tmp_path_factory.mktemp("test_remote_base"))
-        conf["remote"]["local_remote"] = {"url": storage}
-        conf["core"]["remote"] = "local_remote"
-
-    dvc.push()
+def test_gc_cloud_positive(tmp_dir, dvc, tmp_path_factory, setup_remote):
+    setup_remote(dvc)
 
     for flag in ["-cw", "-ca", "-cT", "-caT", "-cwT"]:
         assert main(["gc", "-vf", flag]) == 0
