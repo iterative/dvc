@@ -240,7 +240,7 @@ def test_gc_without_workspace_raises_error(tmp_dir, dvc):
 
 def test_gc_cloud_with_or_without_specifier(tmp_dir, erepo_dir):
     dvc = erepo_dir.dvc
-    with erepo_dir.chdir():
+    with erepo_dir.local_remote_context():
         from dvc.exceptions import InvalidArgumentError
 
         with pytest.raises(InvalidArgumentError):
@@ -296,12 +296,7 @@ def test_gc_with_possible_args_positive(tmp_dir, dvc):
 
 
 def test_gc_cloud_positive(tmp_dir, dvc, tmp_path_factory):
-    with dvc.config.edit() as conf:
-        storage = fspath(tmp_path_factory.mktemp("test_remote_base"))
-        conf["remote"]["local_remote"] = {"url": storage}
-        conf["core"]["remote"] = "local_remote"
-
-    dvc.push()
+    tmp_dir.setup_remote()
 
     for flag in ["-cw", "-ca", "-cT", "-caT", "-cwT"]:
         assert main(["gc", "-vf", flag]) == 0

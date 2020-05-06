@@ -44,7 +44,7 @@ def test_source_change(erepo_dir):
 
 
 def test_cache_reused(erepo_dir, mocker):
-    with erepo_dir.chdir():
+    with erepo_dir.local_remote_context():
         erepo_dir.dvc_gen("file", "text", commit="add file")
 
     download_spy = mocker.spy(LocalRemote, "download")
@@ -63,6 +63,8 @@ def test_cache_reused(erepo_dir, mocker):
 
 
 def test_known_sha(erepo_dir):
+    erepo_dir.scm.commit("init")
+
     url = "file://{}".format(erepo_dir)
     with external_repo(url) as repo:
         rev = repo.scm.get_rev()
@@ -100,9 +102,7 @@ def test_relative_remote(erepo_dir, tmp_dir):
 
     upstream_dir = tmp_dir
     upstream_url = relpath(upstream_dir, erepo_dir)
-    with erepo_dir.dvc.config.edit() as conf:
-        conf["remote"]["upstream"] = {"url": upstream_url}
-        conf["core"]["remote"] = "upstream"
+    erepo_dir.setup_remote(upstream_url)
 
     erepo_dir.scm_add(
         erepo_dir.dvc.config.files["repo"], commit="Update dvc config"

@@ -60,7 +60,6 @@ __all__ = [
     "tmp_dir",
     "scm",
     "dvc",
-    "local_remote",
     "run_copy",
     "erepo_dir",
     "git_dir",
@@ -200,6 +199,31 @@ class TmpDir(pathlib.Path):
         finally:
             self.scm.checkout(old)
 
+    @property
+    def local_remote_path(self):
+        return self.parent / (self.name + "_local_remote")
+
+    @contextmanager
+    def local_remote_context(self):
+        self._require("dvc")
+        self.setup_remote()
+        with self.chdir():
+            yield
+            self.dvc.push()
+
+    def setup_remote(self, remote_url=None):
+        self._require("dvc")
+
+        if not remote_url:
+            # local by default
+            remote_url = fspath(self.local_remote_path)
+        with self.dvc.config.edit() as conf:
+            conf["remote"]["upstream"] = {"url": remote_url}
+            conf["core"]["remote"] = "upstream"
+        if hasattr(self, "scm"):
+            self.scm_add([self.dvc.config.files["repo"]], commit="add remote")
+        return remote_url
+
 
 def _coerce_filenames(filenames):
     if isinstance(filenames, (str, bytes, pathlib.PurePath)):
@@ -258,17 +282,6 @@ def _git_init(path):
 
 
 @pytest.fixture
-def local_remote(request, tmp_dir, dvc, make_tmp_dir):
-    path = make_tmp_dir("local-remote")
-    with dvc.config.edit() as conf:
-        conf["remote"]["upstream"] = {"url": fspath(path)}
-        conf["core"]["remote"] = "upstream"
-    if "scm" in request.fixturenames:
-        tmp_dir.scm_add([dvc.config.files["repo"]], commit="add remote")
-    return path
-
-
-@pytest.fixture
 def run_copy(tmp_dir, dvc):
     tmp_dir.gen(
         "copy.py",
@@ -288,17 +301,7 @@ def run_copy(tmp_dir, dvc):
 
 @pytest.fixture
 def erepo_dir(make_tmp_dir):
-    path = make_tmp_dir("erepo", scm=True, dvc=True)
-
-    # Chdir for git and dvc to work locally
-    with path.chdir():
-        with path.dvc.config.edit() as conf:
-            cache_dir = path.dvc.cache.local.cache_dir
-            conf["remote"]["upstream"] = {"url": cache_dir}
-            conf["core"]["remote"] = "upstream"
-        path.scm_add([path.dvc.config.files["repo"]], commit="add remote")
-
-    return path
+    return make_tmp_dir("erepo", scm=True, dvc=True)
 
 
 @pytest.fixture

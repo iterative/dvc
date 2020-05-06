@@ -198,7 +198,7 @@ def test_get_file_from_dir(tmp_dir, erepo_dir):
 
 
 def test_get_url_positive(tmp_dir, erepo_dir, caplog):
-    with erepo_dir.chdir():
+    with erepo_dir.local_remote_context():
         erepo_dir.dvc_gen("foo", "foo")
 
     caplog.clear()
@@ -224,16 +224,14 @@ def test_get_url_git_only_repo(tmp_dir, scm, caplog):
         assert "failed to show URL" in caplog.text
 
 
-def test_get_pipeline_tracked_outs(
-    tmp_dir, dvc, scm, git_dir, local_remote, run_copy
-):
+def test_get_pipeline_tracked_outs(tmp_dir, dvc, scm, git_dir, run_copy):
     from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
 
-    tmp_dir.gen("foo", "foo")
-    run_copy("foo", "bar", name="copy-foo-bar")
+    with tmp_dir.local_remote_context():
+        tmp_dir.gen("foo", "foo")
+        run_copy("foo", "bar", name="copy-foo-bar")
     dvc.scm.add([PIPELINE_FILE, PIPELINE_LOCK])
     dvc.scm.commit("add pipeline stage")
-    dvc.push()
 
     with git_dir.chdir():
         Repo.get("file:///{}".format(fspath(tmp_dir)), "bar", out="baz")

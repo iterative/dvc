@@ -314,28 +314,25 @@ def test_import_from_bare_git_repo(tmp_dir, make_tmp_dir, erepo_dir):
 
     git.Repo.init(fspath(tmp_dir), bare=True)
 
-    with erepo_dir.chdir():
+    with erepo_dir.local_remote_context():
         erepo_dir.dvc_gen({"foo": "foo"}, commit="initial")
-        erepo_dir.dvc.push()
 
-        erepo_dir.scm.repo.create_remote("origin", fspath(tmp_dir))
-        erepo_dir.scm.repo.remote("origin").push("master")
+    erepo_dir.scm.repo.create_remote("origin", fspath(tmp_dir))
+    erepo_dir.scm.repo.remote("origin").push("master")
 
     dvc_repo = make_tmp_dir("dvc-repo", scm=True, dvc=True)
     with dvc_repo.chdir():
         dvc_repo.dvc.imp(fspath(tmp_dir), "foo")
 
 
-def test_import_pipeline_tracked_outs(
-    tmp_dir, dvc, scm, erepo_dir, local_remote, run_copy
-):
+def test_import_pipeline_tracked_outs(tmp_dir, dvc, scm, erepo_dir, run_copy):
     from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
 
-    tmp_dir.gen("foo", "foo")
-    run_copy("foo", "bar", name="copy-foo-bar")
+    with tmp_dir.local_remote_context():
+        tmp_dir.gen("foo", "foo")
+        run_copy("foo", "bar", name="copy-foo-bar")
     dvc.scm.add([PIPELINE_FILE, PIPELINE_LOCK])
     dvc.scm.commit("add pipeline stage")
-    dvc.push()
 
     with erepo_dir.chdir():
         erepo_dir.dvc.imp(
