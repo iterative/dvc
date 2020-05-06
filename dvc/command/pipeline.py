@@ -119,8 +119,10 @@ class CmdPipelineShow(CmdBase):
         logger.info(dot_file.getvalue())
 
     def run(self):
+        from dvc.dvcfile import DVC_FILE
+
         if not self.args.targets:
-            self.args.targets = self.default_targets
+            self.args.targets = [DVC_FILE]
 
         for target in self.args.targets:
             try:
