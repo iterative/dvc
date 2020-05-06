@@ -44,17 +44,6 @@ class GDriveAuthError(DvcException):
         super().__init__(message)
 
 
-def _extract(exc, field):
-    from pydrive2.files import ApiRequestError
-
-    assert isinstance(exc, ApiRequestError)
-
-    # https://cloud.google.com/storage/docs/json_api/v1/status-codes#errorformat
-    return (
-        exc.error["errors"][0].get(field, "") if "errors" in exc.error else ""
-    )
-
-
 def _gdrive_retry(func):
     def should_retry(exc):
         from pydrive2.files import ApiRequestError
@@ -68,7 +57,7 @@ def _gdrive_retry(func):
             result = True
 
         if error_code == 403:
-            result = _extract(exc, "reason") in [
+            result = exc.GetField("reason") in [
                 "userRateLimitExceeded",
                 "rateLimitExceeded",
             ]
@@ -396,14 +385,15 @@ class GDriveRemote(BaseRemote):
         param = {"id": item_id}
         # it does not create a file on the remote
         gdrive_file = self._drive.CreateFile(param)
-        bar_format = (
-            "Downloading {desc:{ncols_desc}.{ncols_desc}}... "
-            + Tqdm.format_sizeof(int(gdrive_file["fileSize"]), "B", 1024)
-        )
+
         with Tqdm(
-            bar_format=bar_format, desc=progress_desc, disable=no_progress_bar
-        ):
-            gdrive_file.GetContentFile(to_file)
+            desc=progress_desc,
+            disable=no_progress_bar,
+            bytes=True,
+            # explicit `bar_format` as `total` will be set by `update_to`
+            bar_format=Tqdm.BAR_FMT_DEFAULT,
+        ) as pbar:
+            gdrive_file.GetContentFile(to_file, callback=pbar.update_to)
 
     @_gdrive_retry
     def _gdrive_delete_file(self, item_id):
@@ -420,7 +410,7 @@ class GDriveRemote(BaseRemote):
             if (
                 http_error_code == 403
                 and self._list_params["corpora"] == "drive"
-                and _extract(exc, "location") == "file.permissions"
+                and exc.GetField("location") == "file.permissions"
             ):
                 raise DvcException(
                     "Insufficient permissions to {}. You should have {} "

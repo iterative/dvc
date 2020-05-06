@@ -23,6 +23,13 @@ class NoDataForTemplateError(DvcException):
         )
 
 
+class NoFieldInDataError(DvcException):
+    def __init__(self, field_name):
+        super().__init__(
+            "Field '{}' does not exist in provided data.".format(field_name)
+        )
+
+
 class Template:
     INDENT = 4
     SEPARATORS = (",", ": ")
@@ -90,6 +97,11 @@ class Template:
         with open(template_path, "r") as fobj:
             result_content = fobj.read()
 
+        if x_field:
+            Template._check_field_exists(data, x_field)
+        if y_field:
+            Template._check_field_exists(data, y_field)
+
         result_content = Template._replace_data_anchors(
             result_content, data, priority_datafile
         )
@@ -99,6 +111,14 @@ class Template:
         )
 
         return result_content
+
+    @staticmethod
+    def _check_field_exists(data, field):
+        for file, data_points in data.items():
+            if not any(
+                field in data_point.keys() for data_point in data_points
+            ):
+                raise NoFieldInDataError(field)
 
     @staticmethod
     def _replace_metadata_anchors(
