@@ -28,22 +28,13 @@ def ls(
         }
     """
     from dvc.external_repo import external_repo
-    from dvc.repo import Repo
 
     with external_repo(url, rev) as repo:
         path_info = PathInfo(repo.root_dir)
         if path:
             path_info /= path
 
-        ret = {}
-        if isinstance(repo, Repo):
-            ret = _ls(repo, path_info, recursive, True)
-
-        nondvc = {}
-        if not outs_only:
-            nondvc = _ls(repo, path_info, recursive, False)
-
-        ret.update(nondvc)
+        ret = _ls(repo, path_info, recursive, outs_only)
 
         if path and not ret:
             raise PathMissingError(path, repo, output_only=outs_only)
@@ -56,46 +47,48 @@ def ls(
         return ret_list
 
 
-def _ls(repo, path_info, recursive=None, dvc=False):
-    from dvc.ignore import CleanTree
-    from dvc.repo.tree import DvcTree
-    from dvc.scm.tree import WorkingTree
+def _ls(repo, path_info, recursive=None, outs_only=False):
 
-    if dvc:
-        tree = DvcTree(repo)
-    else:
-        tree = CleanTree(WorkingTree(repo.root_dir))
+    tree = repo.repo_tree
 
     ret = {}
     try:
-        for root, dirs, files in tree.walk(path_info.fspath):
+        for root, dirs, files in tree.walk(
+            path_info.fspath, dvcfiles=not outs_only
+        ):
             for fname in files:
                 info = PathInfo(root) / fname
                 path = str(info.relative_to(path_info))
-                ret[path] = {
-                    "isout": dvc,
-                    "isdir": False,
-                    "isexec": False if dvc else tree.isexec(info.fspath),
-                }
+                is_out = tree.isdvc(info)
+                if is_out or not outs_only:
+                    ret[path] = {
+                        "isout": is_out,
+                        "isdir": False,
+                        "isexec": tree.isexec(info),
+                    }
 
             if not recursive:
                 for dname in dirs:
                     info = PathInfo(root) / dname
                     path = str(info.relative_to(path_info))
-                    ret[path] = {
-                        "isout": tree.isdvc(info.fspath) if dvc else False,
-                        "isdir": True,
-                        "isexec": False if dvc else tree.isexec(info.fspath),
-                    }
+                    is_out = tree.isdvc(info)
+                    if is_out or not outs_only:
+                        ret[path] = {
+                            "isout": is_out if recursive else False,
+                            "isdir": True,
+                            "isexec": tree.isexec(info),
+                        }
                 break
     except NotADirectoryError:
-        return {
-            path_info.name: {
-                "isout": dvc,
-                "isdir": False,
-                "isexec": False if dvc else tree.isexec(path_info.fspath),
+        is_out = tree.isdvc(path_info)
+        if is_out or not outs_only:
+            return {
+                path_info.name: {
+                    "isout": is_out,
+                    "isdir": False,
+                    "isexec": tree.isexec(path_info.fspath),
+                }
             }
-        }
     except FileNotFoundError:
         return {}
 
