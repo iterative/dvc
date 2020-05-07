@@ -1,14 +1,20 @@
 from . import locked
+from ..dvcfile import Dvcfile
 
 
 @locked
-def update(self, target, rev=None):
-    from ..dvcfile import Dvcfile
+def update(self, targets=None, rev=None, recursive=False):
+    if not targets:
+        stages = self.collect(targets, recursive=recursive)
+    else:
+        stages = set()
+        for target in targets:
+            stages.update(self.collect(target, recursive=recursive))
 
-    dvcfile = Dvcfile(self, target)
-    stage = dvcfile.stage
-    stage.update(rev)
+    for stage in stages:
+        stage.update(rev)
+        dvcfile = Dvcfile(self, stage.path)
+        dvcfile.dump(stage)
+        stages.add(stage)
 
-    dvcfile.dump(stage)
-
-    return stage
+    return list(stages)

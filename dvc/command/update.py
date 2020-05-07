@@ -10,12 +10,15 @@ logger = logging.getLogger(__name__)
 class CmdUpdate(CmdBase):
     def run(self):
         ret = 0
-        for target in self.args.targets:
-            try:
-                self.repo.update(target, self.args.rev)
-            except DvcException:
-                logger.exception("failed to update '{}'.".format(target))
-                ret = 1
+        try:
+            self.repo.update(
+                targets=self.args.targets,
+                rev=self.args.rev,
+                recursive=self.args.recursive,
+            )
+        except DvcException:
+            logger.exception("failed update data")
+            ret = 1
         return ret
 
 
@@ -36,5 +39,12 @@ def add_parser(subparsers, parent_parser):
         nargs="?",
         help="Git revision (e.g. SHA, branch, tag)",
         metavar="<commit>",
+    )
+    update_parser.add_argument(
+        "-R",
+        "--recursive",
+        action="store_true",
+        default=False,
+        help="Update all stages in the specified directory.",
     )
     update_parser.set_defaults(func=CmdUpdate)
