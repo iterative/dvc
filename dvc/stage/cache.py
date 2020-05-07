@@ -2,6 +2,7 @@ import logging
 import os
 
 import yaml
+from funcy import first
 from voluptuous import Invalid
 
 from dvc.schema import COMPILED_LOCK_FILE_STAGE_SCHEMA
@@ -36,8 +37,9 @@ def _get_stage_hash(stage):
 
 
 class StageCache:
-    def __init__(self, cache_dir):
-        self.cache_dir = os.path.join(cache_dir, "runs")
+    def __init__(self, repo):
+        self.repo = repo
+        self.cache_dir = os.path.join(repo.cache.local.cache_dir, "runs")
 
     def _get_cache_dir(self, key):
         return os.path.join(self.cache_dir, key[:2], key)
@@ -101,3 +103,24 @@ class StageCache:
         if not cache:
             return
         StageLoader.fill_from_lock(stage, cache)
+
+    @staticmethod
+    def _transfer(func, from_remote, to_remote):
+        runs = from_remote.path_info / "runs"
+        if not from_remote.exists(runs):
+            return
+
+        for src in from_remote.walk_files(runs):
+            rel = src.relative_to(from_remote.path_info)
+            dst = to_remote.path_info / rel
+            key = dst.parent
+            # check if any build cache already exists for this key
+            if to_remote.exists(key) and first(to_remote.walk_files(key)):
+                continue
+            func(src, dst)
+
+    def push(self, remote):
+        return self._transfer(remote.upload, self.repo.cache.local, remote)
+
+    def pull(self, remote):
+        return self._transfer(remote.download, remote, self.repo.cache.local)

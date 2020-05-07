@@ -32,6 +32,7 @@ class CmdDataPull(CmdDataBase):
                 with_deps=self.args.with_deps,
                 force=self.args.force,
                 recursive=self.args.recursive,
+                run_cache=self.args.run_cache,
             )
             self.log_summary(stats)
         except (CheckoutError, DvcException) as exc:
@@ -54,6 +55,7 @@ class CmdDataPush(CmdDataBase):
                 all_commits=self.args.all_commits,
                 with_deps=self.args.with_deps,
                 recursive=self.args.recursive,
+                run_cache=self.args.run_cache,
             )
             self.log_summary({"pushed": processed_files_count})
         except DvcException:
@@ -74,6 +76,7 @@ class CmdDataFetch(CmdDataBase):
                 all_commits=self.args.all_commits,
                 with_deps=self.args.with_deps,
                 recursive=self.args.recursive,
+                run_cache=self.args.run_cache,
             )
             self.log_summary({"fetched": processed_files_count})
         except DvcException:
@@ -163,6 +166,12 @@ def add_parser(subparsers, _parent_parser):
         default=False,
         help="Pull cache for subdirectories of the specified directory.",
     )
+    pull_parser.add_argument(
+        "--run-cache",
+        action="store_true",
+        default=False,
+        help=argparse.SUPPRESS,
+    )
     pull_parser.set_defaults(func=CmdDataPull)
 
     # Push
@@ -211,6 +220,12 @@ def add_parser(subparsers, _parent_parser):
         action="store_true",
         default=False,
         help="Push cache for subdirectories of specified directory.",
+    )
+    push_parser.add_argument(
+        "--run-cache",
+        action="store_true",
+        default=False,
+        help=argparse.SUPPRESS,
     )
     push_parser.set_defaults(func=CmdDataPush)
 
@@ -266,6 +281,12 @@ def add_parser(subparsers, _parent_parser):
         action="store_true",
         default=False,
         help="Fetch cache for subdirectories of specified directory.",
+    )
+    fetch_parser.add_argument(
+        "--run-cache",
+        action="store_true",
+        default=False,
+        help=argparse.SUPPRESS,
     )
     fetch_parser.set_defaults(func=CmdDataFetch)
 
