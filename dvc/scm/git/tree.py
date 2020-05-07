@@ -143,6 +143,9 @@ class GitTree(BaseTree):
         yield from self._walk(tree, topdown=topdown)
 
     def isexec(self, path):
+        if not self.exists(path):
+            return False
+
         mode = self.stat(path).st_mode
         return mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 

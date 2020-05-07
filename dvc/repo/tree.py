@@ -155,12 +155,15 @@ class RepoTree(BaseTree):
         )
 
     def isdvc(self, path):
-        return self.dvctree and self.dvctree.isdvc(path)
+        return self.dvctree is not None and self.dvctree.isdvc(path)
 
     def isfile(self, path):
         return self.repo.tree.isfile(path) or (
             self.dvctree and self.dvctree.isfile(path)
         )
+
+    def isexec(self, path):
+        return self.repo.tree.isexec(path)
 
     def _walk_one(self, walk):
         root, dirs, files = next(walk)
@@ -168,15 +171,10 @@ class RepoTree(BaseTree):
         for dirname in dirs:
             yield from self._walk_one(walk)
 
-    def _walk(self, dvc_walk, repo_walk):
-        """Walk and merge both trees.
+    def _walk(self, dvc_walk, repo_walk, dvcfiles=False):
 
-        Ensure that dvcfiles are handled as DVC outs and not as git versioned
-        files.
-        """
-
-        dvc_root, dvc_dirs, dvc_files = next(dvc_walk)
-        repo_root, repo_dirs, repo_files = next(repo_walk)
+        dvc_root, dvc_dirs, dvc_fnames = next(dvc_walk)
+        repo_root, repo_dirs, repo_fnames = next(repo_walk)
         assert dvc_root == repo_root
 
         # separate subdirs into shared dirs, dvc-only dirs, repo-only dirs
@@ -188,14 +186,14 @@ class RepoTree(BaseTree):
         dirs = shared + dvc_only + repo_only
 
         # merge file lists, handle dvcfiles from repo tree as DVC outs
-        files = set(dvc_files)
-        for filename in repo_files:
-            if is_valid_filename(filename):
+        files = set(dvc_fnames)
+        for filename in repo_fnames:
+            if dvcfiles and is_valid_filename(filename):
+                files.add(filename)
+            else:
                 name, _ = os.path.splitext(filename)
                 if not self.dvctree.exists(os.path.join(repo_root, name)):
                     files.add(filename)
-            else:
-                files.add(filename)
 
         yield repo_root, dirs, list(files)
 
@@ -204,14 +202,26 @@ class RepoTree(BaseTree):
 
         for dirname in dirs:
             if dirname in shared:
-                yield from self._walk(dvc_walk, repo_walk)
+                yield from self._walk(dvc_walk, repo_walk, dvcfiles)
             elif dirname in dvc_set:
                 yield from self._walk_one(dvc_walk)
             elif dirname in repo_set:
                 yield from self._walk_one(repo_walk)
 
-    def walk(self, top, topdown=True):
+    def walk(self, top, topdown=True, dvcfiles=False):
+        """Walk and merge both DVC and repo trees.
+
+        If dvcfiles is False, dvcfiles will not be included in the
+        output, will only be handled as DVC outs and not as git versioned
+        files.
+        """
         assert topdown
+
+        if not self.exists(top):
+            raise FileNotFoundError
+
+        if not self.isdir(top):
+            raise NotADirectoryError
 
         dvc_exists = self.dvctree and self.dvctree.exists(top)
         repo_exists = self.repo.tree.exists(top)
@@ -224,12 +234,9 @@ class RepoTree(BaseTree):
         if not dvc_exists and not repo_exists:
             raise FileNotFoundError
 
-        if not self.isdir(top):
-            raise NotADirectoryError
-
         dvc_walk = self.dvctree.walk(top, topdown=topdown)
         repo_walk = self.repo.tree.walk(top, topdown=topdown)
-        yield from self._walk_both(dvc_walk, repo_walk)
+        yield from self._walk(dvc_walk, repo_walk, dvcfiles)
 
     def copyfile(self, src, dest):
         """Copy specified file from this tree to the destination path."""
