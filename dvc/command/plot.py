@@ -148,7 +148,7 @@ def add_parser(subparsers, parent_parser):
         "--stdout",
         action="store_true",
         default=False,
-        help="Print plot specification to stdout.",
+        help="Print plot location to stdout.",
     )
     plot_show_parser.add_argument(
         "--no-csv-header",
@@ -214,7 +214,7 @@ def add_parser(subparsers, parent_parser):
         "--stdout",
         action="store_true",
         default=False,
-        help="Print plot specification to stdout.",
+        help="Print plot location to stdout.",
     )
     plot_diff_parser.add_argument(
         "--no-csv-header",
