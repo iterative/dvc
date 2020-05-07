@@ -46,6 +46,10 @@ class S3Remote(BaseRemote):
         if self.sse:
             self.extra_args["ServerSideEncryption"] = self.sse
 
+        self.sse_kms_key_id = config.get("sse_kms_key_id")
+        if self.sse_kms_key_id:
+            self.extra_args["SSEKMSKeyId"] = self.sse_kms_key_id
+
         self.acl = config.get("acl")
         if self.acl:
             self.extra_args["ACL"] = self.acl
