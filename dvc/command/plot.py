@@ -166,7 +166,7 @@ def add_parser(subparsers, parent_parser):
     plot_show_parser.add_argument("--xlab", default=None, help="X axis title.")
     plot_show_parser.add_argument("--ylab", default=None, help="Y axis title.")
     plot_show_parser.add_argument(
-        "datafile", nargs="?", default=None, help="Metrics file to visualize.",
+        "datafile", nargs="?", default=None, help="Metrics file to visualize",
     )
     plot_show_parser.set_defaults(func=CmdPlotShow)
 
@@ -193,7 +193,7 @@ def add_parser(subparsers, parent_parser):
         "--datafile",
         nargs="?",
         default=None,
-        help="Metrics file to visualize.",
+        help="Metrics file to visualize",
     )
     plot_diff_parser.add_argument(
         "-f", "--file", default=None, help="Name of the generated file."
