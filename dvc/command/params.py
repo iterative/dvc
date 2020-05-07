@@ -8,16 +8,23 @@ from dvc.exceptions import DvcException
 logger = logging.getLogger(__name__)
 
 
-def _show_diff(diff):
+def _show_diff(diff, markdown):
     from dvc.utils.diff import table
 
     rows = []
     for fname, pdiff in diff.items():
         sorted_pdiff = OrderedDict(sorted(pdiff.items()))
         for param, change in sorted_pdiff.items():
-            rows.append([fname, param, change["old"], change["new"]])
+            rows.append(
+                [
+                    fname,
+                    param,
+                    change["old"] or "None",
+                    change["new"] or "None",
+                ]
+            )
 
-    return table(["Path", "Param", "Old", "New"], rows)
+    return table(["Path", "Param", "Old", "New"], rows, markdown)
 
 
 class CmdParamsDiff(CmdBase):
@@ -34,7 +41,7 @@ class CmdParamsDiff(CmdBase):
 
                 logger.info(json.dumps(diff))
             else:
-                table = _show_diff(diff)
+                table = _show_diff(diff, self.args.show_md)
                 if table:
                     logger.info(table)
 
@@ -93,5 +100,11 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Show output in JSON format.",
+    )
+    params_diff_parser.add_argument(
+        "--show-md",
+        action="store_true",
+        default=False,
+        help="Show tabulated output in the Markdown format (GFM).",
     )
     params_diff_parser.set_defaults(func=CmdParamsDiff)
