@@ -135,14 +135,13 @@ class RepoTree(BaseTree):
             # git-only erepo's do not need dvctree
             self.dvctree = None
 
-    def open(self, path, **kwargs):
+    def open(self, path, mode="r", encoding="utf-8"):
         if self.dvctree and self.dvctree.exists(path):
             try:
-                return self.dvctree.open(path, **kwargs)
+                return self.dvctree.open(path, mode=mode, encoding=encoding)
             except FileNotFoundError:
                 pass
-
-        return self.repo.tree.open(path, **kwargs)
+        return self.repo.tree.open(path, mode=mode, encoding=encoding)
 
     def exists(self, path):
         return self.repo.tree.exists(path) or (
@@ -172,10 +171,8 @@ class RepoTree(BaseTree):
             yield from self._walk_one(walk)
 
     def _walk(self, dvc_walk, repo_walk, dvcfiles=False):
-
         dvc_root, dvc_dirs, dvc_fnames = next(dvc_walk)
         repo_root, repo_dirs, repo_fnames = next(repo_walk)
-        assert dvc_root == repo_root
 
         # separate subdirs into shared dirs, dvc-only dirs, repo-only dirs
         dvc_set = set(dvc_dirs)
@@ -192,7 +189,7 @@ class RepoTree(BaseTree):
                 files.add(filename)
             else:
                 name, _ = os.path.splitext(filename)
-                if not self.dvctree.exists(os.path.join(repo_root, name)):
+                if not self.dvctree.exists(PathInfo(repo_root) / name):
                     files.add(filename)
 
         yield repo_root, dirs, list(files)

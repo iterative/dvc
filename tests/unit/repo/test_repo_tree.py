@@ -48,10 +48,12 @@ def test_isdir_isfile(tmp_dir, dvc):
     tmp_dir.gen({"datafile": "data", "datadir": {"foo": "foo", "bar": "bar"}})
 
     tree = RepoTree(dvc)
-    assert not tree.isdir("datadir")
+    assert tree.isdir("datadir")
     assert not tree.isfile("datadir")
+    assert not tree.isdvc("datadir")
     assert not tree.isdir("datafile")
-    assert not tree.isfile("datafile")
+    assert tree.isfile("datafile")
+    assert not tree.isdvc("datafile")
 
     dvc.add(["datadir", "datafile"])
     shutil.rmtree(fspath_py35(tmp_dir / "datadir"))
@@ -59,8 +61,10 @@ def test_isdir_isfile(tmp_dir, dvc):
 
     assert tree.isdir("datadir")
     assert not tree.isfile("datadir")
+    assert tree.isdvc("datadir")
     assert not tree.isdir("datafile")
     assert tree.isfile("datafile")
+    assert tree.isdvc("datafile")
 
 
 def test_isdir_mixed(tmp_dir, dvc):
