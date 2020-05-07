@@ -7,7 +7,7 @@ from dvc.exceptions import OutputNotFoundError
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.scm.tree import BaseTree
-from dvc.utils.fs import copyfile, copy_obj_to_file, makedirs
+from dvc.utils.fs import copy_obj_to_file, copyfile, makedirs
 
 logger = logging.getLogger(__name__)
 

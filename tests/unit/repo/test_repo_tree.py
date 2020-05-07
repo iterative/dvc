@@ -1,8 +1,8 @@
 import os
 import shutil
 
-from dvc.repo.tree import RepoTree
 from dvc.compat import fspath_py35
+from dvc.repo.tree import RepoTree
 
 
 def test_exists(tmp_dir, dvc):

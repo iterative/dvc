@@ -22,14 +22,14 @@ from dvc.remote.base import (
 )
 from dvc.remote.index import RemoteIndexNoop
 from dvc.scheme import Schemes
-from dvc.scm.tree import is_working_tree, WorkingTree
+from dvc.scm.tree import WorkingTree, is_working_tree
 from dvc.system import System
 from dvc.utils import file_md5, relpath, tmp_fname, tree_md5
 from dvc.utils.fs import (
-    copyfile,
     copy_obj_to_file,
-    move,
+    copyfile,
     makedirs,
+    move,
     remove,
     walk_files,
 )
