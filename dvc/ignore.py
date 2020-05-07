@@ -138,3 +138,6 @@ class CleanTree(BaseTree):
             dirs[:], files[:] = self.dvcignore(root, dirs, files)
 
             yield root, dirs, files
+
+    def stat(self, path):
+        return self.tree.stat(path)

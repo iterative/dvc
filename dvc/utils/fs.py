@@ -9,7 +9,6 @@ import nanotime
 from shortuuid import uuid
 
 from dvc.exceptions import DvcException
-from dvc.scm.tree import is_working_tree
 from dvc.system import System
 from dvc.utils import dict_md5
 
@@ -34,13 +33,13 @@ def get_inode(path):
 def get_mtime_and_size(path, tree):
 
     if os.path.isdir(path):
-        assert is_working_tree(tree)
+        assert hasattr(tree, "stat")
 
         size = 0
         files_mtimes = {}
         for file_path in tree.walk_files(path):
             try:
-                stats = os.stat(file_path)
+                stats = tree.stat(file_path)
             except OSError as exc:
                 # NOTE: broken symlink case.
                 if exc.errno != errno.ENOENT:
@@ -53,7 +52,11 @@ def get_mtime_and_size(path, tree):
         # max(mtime(f) for f in non_ignored_files)
         mtime = dict_md5(files_mtimes)
     else:
+<<<<<<< HEAD
         base_stat = os.stat(path)
+=======
+        base_stat = tree.stat(fspath_py35(path))
+>>>>>>> 03f92d78... GitTree: add stat()
         size = base_stat.st_size
         mtime = base_stat.st_mtime
         mtime = int(nanotime.timestamp(mtime))

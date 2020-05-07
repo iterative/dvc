@@ -1,6 +1,7 @@
 import errno
 import io
 import os
+import stat
 
 from dvc.exceptions import DvcException
 from dvc.scm.tree import BaseTree
@@ -140,3 +141,31 @@ class GitTree(BaseTree):
             raise IOError(errno.ENOENT, "No such file")
 
         yield from self._walk(tree, topdown=topdown)
+
+    def isexec(self, path):
+        mode = self.stat(path).st_mode
+        return mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+    def stat(self, path):
+        import git
+
+        obj = self.git_object_by_path(path)
+        entry = git.index.IndexEntry.from_blob(obj)
+
+        # os.stat_result takes a tuple in the form:
+        #   (mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime)
+        return os.stat_result(
+            (
+                entry.mode,
+                entry.inode,
+                entry.dev,
+                0,
+                entry.uid,
+                entry.gid,
+                entry.size,
+                # git index has no atime equivalent, use mtime
+                entry.mtime,
+                entry.mtime,
+                entry.ctime,
+            )
+        )

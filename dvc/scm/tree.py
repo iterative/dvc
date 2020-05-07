@@ -81,6 +81,9 @@ class WorkingTree(BaseTree):
         mode = os.stat(path).st_mode
         return mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
+    def stat(self, path):
+        return os.stat(path)
+
 
 def is_working_tree(tree):
     return isinstance(tree, WorkingTree) or isinstance(
