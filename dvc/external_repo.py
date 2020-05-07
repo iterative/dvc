@@ -166,17 +166,7 @@ class BaseExternalRepo:
             )
             failed += 1
         elif local_cache.changed_cache(info[local_cache.PARAM_CHECKSUM]):
-            if self.repo_tree.isfile(path_info):
-                with self.repo_tree.open(
-                    path_info, mode="rb", encoding=None
-                ) as fobj:
-                    local_cache.save_obj(fobj, info)
-            else:
-                for filename in self.repo_tree.walk_files(path_info):
-                    with self.repo_tree.open(
-                        filename, mode="rb", encoding=None
-                    ) as fobj:
-                        local_cache.save_obj(fobj, info)
+            local_cache.save_tree(self.repo_tree, path_info, info)
             logger.debug("fetched '{}' from '{}' repo".format(name, self.url))
             downloaded += 1
         return downloaded, failed

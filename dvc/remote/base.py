@@ -559,14 +559,37 @@ class BaseRemote(object):
             return
         self._save_file(path_info, checksum, save_link)
 
-    def save_obj(self, fobj, checksum_info):
-        """Save contents of opened file object to checksum_info."""
+    def save_tree(self, tree, path_info, checksum_info):
+        """Save tree path to checksum_info."""
         checksum = checksum_info[self.PARAM_CHECKSUM]
-        self._save_obj(fobj, checksum)
+        logger.debug(
+            "Saving '%s' from tree to '%s'.", path_info, checksum_info
+        )
+        if tree.isdir(path_info):
+            self._save_tree_dir(tree, path_info, checksum)
+            return
+        self._save_tree_file(tree, path_info, checksum)
+
+    def _save_tree_dir(self, tree, path_info, checksum):
+        cache_info = self.checksum_to_path_info(checksum)
+        dir_info = self.get_dir_cache(checksum)
+        for entry in Tqdm(
+            dir_info, desc="Saving " + path_info.name, unit="file"
+        ):
+            entry_info = path_info / entry[self.PARAM_RELPATH]
+            entry_checksum = entry[self.PARAM_CHECKSUM]
+            self._save_tree_file(tree, entry_info, entry_checksum)
+
+        self.state.save(cache_info, checksum)
+        self.state.save(path_info, checksum)
+
+    def _save_tree_file(self, tree, path_info, checksum):
+        with tree.open(path_info, mode="rb", encoding=None) as fobj:
+            self._save_obj(fobj, checksum)
+            return
 
     def _save_obj(self, fobj, checksum):
         cache_info = self.checksum_to_path_info(checksum)
-        logger.debug("Saving file object to '{}'.".format(cache_info))
         self.copyobj(fobj, cache_info)
         self.state.save(cache_info, checksum)
 

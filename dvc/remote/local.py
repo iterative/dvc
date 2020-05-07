@@ -210,9 +210,11 @@ class LocalRemote(BaseRemote):
             raise
 
     def copyobj(self, from_obj, to_info):
+        self.makedirs(to_info.parent)
+
         tmp_info = to_info.parent / tmp_fname(to_info.name)
         try:
-            copy_obj_to_file(from_obj, to_info)
+            copy_obj_to_file(from_obj, tmp_info)
             os.chmod(tmp_info, self._file_mode)
             os.rename(tmp_info, to_info)
         except Exception:
