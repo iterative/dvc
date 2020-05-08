@@ -1,4 +1,3 @@
-import logging
 import os
 from contextlib import contextmanager
 from functools import wraps
@@ -435,8 +434,7 @@ class Repo(object):
             for file_name in filter(is_valid_filename, files):
                 path = os.path.join(root, file_name)
                 stage_loader = Dvcfile(self, path).stages
-                with stage_loader.log_level(at=logging.DEBUG):
-                    stages.extend(stage_loader.values())
+                stages.extend(stage_loader.values())
                 outs.update(
                     out.fspath
                     for stage in stages
