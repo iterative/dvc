@@ -3,10 +3,13 @@ from . import locked
 
 
 @locked
-def update(self, targets=None, rev=None, recursive=False):
+def update(self, targets, rev=None, recursive=False):
     if not targets:
         stages = self.collect(targets, recursive=recursive)
     else:
+        if isinstance(targets, str):
+            targets = [targets]
+
         stages = set()
         for target in targets:
             stages.update(self.collect(target, recursive=recursive))
