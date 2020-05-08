@@ -1,4 +1,5 @@
 import logging
+import textwrap
 
 from dvc.cli import parse_args
 from dvc.command.params import CmdParamsDiff, _show_diff
@@ -21,25 +22,32 @@ def test_params_diff(dvc, mocker):
 
 
 def test_params_diff_changed():
-    assert _show_diff({"params.yaml": {"a.b.c": {"old": 1, "new": 2}}}) == (
-        "   Path       Param   Old   New\n" "params.yaml   a.b.c   1     2  "
+    assert _show_diff(
+        {"params.yaml": {"a.b.c": {"old": 1, "new": 2}}}
+    ) == textwrap.dedent(
+        """\
+        Path         Param    Old    New
+        params.yaml  a.b.c    1      2"""
     )
 
 
 def test_params_diff_list():
     assert _show_diff(
         {"params.yaml": {"a.b.c": {"old": 1, "new": [2, 3]}}}
-    ) == (
-        "   Path       Param   Old    New  \n"
-        "params.yaml   a.b.c   1     [2, 3]"
+    ) == textwrap.dedent(
+        """\
+        Path         Param    Old    New
+        params.yaml  a.b.c    1      [2, 3]"""
     )
 
 
 def test_params_diff_unchanged():
     assert _show_diff(
         {"params.yaml": {"a.b.d": {"old": "old", "new": "new"}}}
-    ) == (
-        "   Path       Param   Old   New\n" "params.yaml   a.b.d   old   new"
+    ) == textwrap.dedent(
+        """\
+        Path         Param    Old    New
+        params.yaml  a.b.d    old    new"""
     )
 
 
@@ -50,25 +58,30 @@ def test_params_diff_no_changes():
 def test_params_diff_new():
     assert _show_diff(
         {"params.yaml": {"a.b.d": {"old": None, "new": "new"}}}
-    ) == (
-        "   Path       Param   Old    New\n" "params.yaml   a.b.d   None   new"
+    ) == textwrap.dedent(
+        """\
+        Path         Param    Old    New
+        params.yaml  a.b.d    None   new"""
     )
 
 
 def test_params_diff_deleted():
     assert _show_diff(
         {"params.yaml": {"a.b.d": {"old": "old", "new": None}}}
-    ) == (
-        "   Path       Param   Old   New \n" "params.yaml   a.b.d   old   None"
+    ) == textwrap.dedent(
+        """\
+        Path         Param    Old    New
+        params.yaml  a.b.d    old    None"""
     )
 
 
 def test_params_diff_prec():
     assert _show_diff(
         {"params.yaml": {"train.lr": {"old": 0.0042, "new": 0.0043}}}
-    ) == (
-        "   Path        Param      Old      New  \n"
-        "params.yaml   train.lr   0.0042   0.0043"
+    ) == textwrap.dedent(
+        """\
+        Path         Param     Old     New
+        params.yaml  train.lr  0.0042  0.0043"""
     )
 
 
@@ -94,9 +107,38 @@ def test_params_diff_sorted():
                 "a.b.c": {"old": 1, "new": 2},
             }
         }
-    ) == (
-        "   Path       Param   Old   New\n"
-        "params.yaml   a.b.c   1     2  \n"
-        "params.yaml   a.d.e   3     4  \n"
-        "params.yaml   x.b     5     6  "
+    ) == textwrap.dedent(
+        """\
+        Path         Param    Old    New
+        params.yaml  a.b.c    1      2
+        params.yaml  a.d.e    3      4
+        params.yaml  x.b      5      6"""
+    )
+
+
+def test_params_diff_markdown_empty():
+    assert _show_diff({}, markdown=True) == textwrap.dedent(
+        """\
+        | Path   | Param   | Old   | New   |
+        |--------|---------|-------|-------|"""
+    )
+
+
+def test_params_diff_markdown():
+    assert _show_diff(
+        {
+            "params.yaml": {
+                "x.b": {"old": 5, "new": 6},
+                "a.d.e": {"old": None, "new": 4},
+                "a.b.c": {"old": 1, "new": None},
+            }
+        },
+        markdown=True,
+    ) == textwrap.dedent(
+        """\
+        | Path        | Param   | Old   | New   |
+        |-------------|---------|-------|-------|
+        | params.yaml | a.b.c   | 1     | None  |
+        | params.yaml | a.d.e   | None  | 4     |
+        | params.yaml | x.b     | 5     | 6     |"""
     )
