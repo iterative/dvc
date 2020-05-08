@@ -58,13 +58,16 @@ class LocalRemote(BaseRemote):
         self._dir_info = {}
         # repo.tree can be WorkingTree or GitTree, but GitTree does not contain
         # cache directory
-        if is_working_tree(self.repo.tree):
-            self._tree = self.repo.tree
+        if self.repo:
+            if is_working_tree(self.repo.tree):
+                self._tree = self.repo.tree
+            else:
+                tree = WorkingTree(self.repo.root_dir)
+                if isinstance(self.repo.tree, CleanTree):
+                    tree = CleanTree(tree)
+                self._tree = tree
         else:
-            tree = WorkingTree(self.repo.root_dir)
-            if isinstance(self.repo.tree, CleanTree):
-                tree = CleanTree(tree)
-            self._tree = tree
+            self._tree = None
 
     @property
     def state(self):
@@ -152,6 +155,8 @@ class LocalRemote(BaseRemote):
         return False
 
     def isfile(self, path_info):
+        if not self.repo:
+            return os.path.isfile(path_info)
         if self.tree.isfile(path_info):
             return True
         if not is_working_tree(self.repo.tree):
@@ -159,6 +164,8 @@ class LocalRemote(BaseRemote):
         return False
 
     def isdir(self, path_info):
+        if not self.repo:
+            return os.path.isdir(path_info)
         if self.tree.isdir(path_info):
             return True
         if not is_working_tree(self.repo.tree):
@@ -172,7 +179,7 @@ class LocalRemote(BaseRemote):
         )
 
     def getsize(self, path_info):
-        if self.tree.exists(path_info):
+        if not self.repo or self.tree.exists(path_info):
             return os.path.getsize(path_info)
         return self.repo.tree.stat(path_info).st_size
 
