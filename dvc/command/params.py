@@ -8,21 +8,14 @@ from dvc.exceptions import DvcException
 logger = logging.getLogger(__name__)
 
 
-def _show_diff(diff, markdown):
+def _show_diff(diff, markdown=False):
     from dvc.utils.diff import table
 
     rows = []
     for fname, pdiff in diff.items():
         sorted_pdiff = OrderedDict(sorted(pdiff.items()))
         for param, change in sorted_pdiff.items():
-            rows.append(
-                [
-                    fname,
-                    param,
-                    change["old"] or "None",
-                    change["new"] or "None",
-                ]
-            )
+            rows.append([fname, param, change["old"], change["new"]])
 
     return table(["Path", "Param", "Old", "New"], rows, markdown)
 

@@ -96,6 +96,8 @@ def table(header, rows, markdown=False):
         header,
         tablefmt="github" if markdown else "plain",
         disable_numparse=True,
+        # None will be shown as "" by default, overriding
+        missingval="None",
     )
 
 

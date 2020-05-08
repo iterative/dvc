@@ -87,7 +87,7 @@ class CmdMetricsRemove(CmdBase):
         return 0
 
 
-def _show_diff(diff, markdown):
+def _show_diff(diff, markdown=False):
     from collections import OrderedDict
 
     from dvc.utils.diff import table
