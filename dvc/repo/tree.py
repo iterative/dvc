@@ -173,7 +173,7 @@ class RepoTree(BaseTree):
         for _ in dirs:
             yield from self._walk_one(walk)
 
-    def _walk(self, dvc_walk, repo_walk, dvcfiles=False):
+    def _walk(self, dvc_walk, repo_walk):
         try:
             _, dvc_dirs, dvc_fnames = next(dvc_walk)
             repo_root, repo_dirs, repo_fnames = next(repo_walk)
@@ -191,12 +191,7 @@ class RepoTree(BaseTree):
         # merge file lists, handle dvcfiles from repo tree as DVC outs
         files = set(dvc_fnames)
         for filename in repo_fnames:
-            if dvcfiles and is_valid_filename(filename):
-                files.add(filename)
-            else:
-                name, _ = os.path.splitext(filename)
-                if not self.dvctree.exists(PathInfo(repo_root) / name):
-                    files.add(filename)
+            files.add(filename)
 
         yield repo_root, dirs, list(files)
 
@@ -205,19 +200,14 @@ class RepoTree(BaseTree):
 
         for dirname in dirs:
             if dirname in shared:
-                yield from self._walk(dvc_walk, repo_walk, dvcfiles)
+                yield from self._walk(dvc_walk, repo_walk)
             elif dirname in dvc_set:
                 yield from self._walk_one(dvc_walk)
             elif dirname in repo_set:
                 yield from self._walk_one(repo_walk)
 
-    def walk(self, top, topdown=True, dvcfiles=False):
-        """Walk and merge both DVC and repo trees.
-
-        If dvcfiles is False, dvcfiles will not be included in the
-        output, will only be handled as DVC outs and not as git versioned
-        files.
-        """
+    def walk(self, top, topdown=True):
+        """Walk and merge both DVC and repo trees."""
         assert topdown
 
         if not self.exists(top):
@@ -239,7 +229,7 @@ class RepoTree(BaseTree):
 
         dvc_walk = self.dvctree.walk(top, topdown=topdown)
         repo_walk = self.repo.tree.walk(top, topdown=topdown)
-        yield from self._walk(dvc_walk, repo_walk, dvcfiles)
+        yield from self._walk(dvc_walk, repo_walk)
 
     def copyfile(self, src, dest):
         """Copy specified file from this tree to the destination path."""
@@ -249,8 +239,12 @@ class RepoTree(BaseTree):
         with self.open(src, mode="rb", encoding=None) as fobj:
             copy_obj_to_file(fobj, dest)
 
-    def copytree(self, top, dest):
-        """Copy directory/file tree to dest, starting from top."""
+    def copytree(self, top, dest, dvcfiles=False):
+        """Copy directory/file tree to dest, starting from top.
+
+        If dvcfiles is False, dvcfiles will not be copied
+        (only the associated DVC outs will be copied).
+        """
         if not self.exists(top):
             raise FileNotFoundError
 
@@ -271,7 +265,14 @@ class RepoTree(BaseTree):
             if not os.path.exists(dest_dir):
                 makedirs(dest_dir)
             for filename in files:
-                self.copyfile(root_path / filename, dest_dir / filename)
+                src_file = root_path / filename
+                dest_file = dest_dir / filename
+                if dvcfiles or not is_valid_filename(filename):
+                    self.copyfile(src_file, dest_file)
+                else:
+                    name, _ = os.path.splitext(filename)
+                    if not self.dvctree.exists(root_path / name):
+                        self.copyfile(src_file, dest_file)
 
     def _copytree_dvc(self, top, dest):
         """Copy contents of DVC dir out from local cache to dest.

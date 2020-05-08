@@ -5,7 +5,7 @@ import stat
 
 from dvc.exceptions import DvcException
 from dvc.scm.tree import BaseTree
-from dvc.utils import relpath
+from dvc.utils import fspath_py35, relpath
 
 # see git-fast-import(1)
 GIT_MODE_DIR = 0o40000
@@ -87,7 +87,9 @@ class GitTree(BaseTree):
     def git_object_by_path(self, path):
         import git
 
-        path = relpath(os.path.realpath(path), self.git.working_dir)
+        path = relpath(
+            fspath_py35(os.path.realpath(path)), self.git.working_dir
+        )
         if path.split(os.sep, 1)[0] == "..":
             # path points outside of git repository
             return None

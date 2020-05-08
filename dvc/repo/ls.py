@@ -53,9 +53,7 @@ def _ls(repo, path_info, recursive=None, outs_only=False):
 
     ret = {}
     try:
-        for root, dirs, files in tree.walk(
-            path_info.fspath, dvcfiles=not outs_only
-        ):
+        for root, dirs, files in tree.walk(path_info.fspath):
             for fname in files:
                 info = PathInfo(root) / fname
                 path = str(info.relative_to(path_info))
@@ -74,7 +72,7 @@ def _ls(repo, path_info, recursive=None, outs_only=False):
                     is_out = tree.isdvc(info)
                     if is_out or not outs_only:
                         ret[path] = {
-                            "isout": is_out if recursive else False,
+                            "isout": False,
                             "isdir": True,
                             "isexec": tree.isexec(info),
                         }
