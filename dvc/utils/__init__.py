@@ -77,14 +77,27 @@ def file_md5(fname):
 
 
 def tree_md5(tree, fname):
+    from dvc.progress import Tqdm
     from dvc.istextfile import istextfile
 
     if tree.exists(fname):
         hash_md5 = hashlib.md5()
         binary = not istextfile(fname)
+        size = tree.stat(fname).st_size
+        no_progress_bar = True
+        if size >= LARGE_FILE_SIZE:
+            no_progress_bar = False
+        name = relpath(fname)
 
-        with tree.open(fname, "rb", encoding=None) as fobj:
-            _fobj_md5(fobj, hash_md5, binary)
+        with Tqdm(
+            desc=name,
+            disable=no_progress_bar,
+            total=size,
+            bytes=True,
+            leave=False,
+        ) as pbar:
+            with tree.open(fname, "rb", encoding=None) as fobj:
+                _fobj_md5(fobj, hash_md5, binary, pbar.update)
 
         return (hash_md5.hexdigest(), hash_md5.digest())
     return (None, None)
