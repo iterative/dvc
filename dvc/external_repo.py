@@ -20,6 +20,7 @@ from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.repo.tree import RepoTree
 from dvc.scm.git import Git
+from dvc.scm.tree import is_working_tree
 from dvc.utils import tmp_fname
 from dvc.utils.fs import remove
 
@@ -79,6 +80,24 @@ class BaseExternalRepo:
         if self._tree_rev:
             return self._tree_rev
         return self.scm.get_rev()
+
+    @contextmanager
+    def fix_cache_tree(self, cache):
+        if is_working_tree(self.tree):
+            yield cache
+        else:
+            # cache.repo.tree will point to a WorkingTree, but we need
+            # it to point to our GitTree instead
+            save_tree = cache.repo.tree
+            cache.repo.tree = self.tree
+            try:
+                yield cache
+            finally:
+                cache.repo.tree = save_tree
+
+    def get_checksum(self, path, cache):
+        with self.fix_cache_tree(cache):
+            return cache.get_checksum(path)
 
     def get_external(self, path, to_info, **kwargs):
         """
@@ -280,6 +299,10 @@ class ExternalGitRepo(BaseExternalRepo):
                 yield fd
         except FileNotFoundError:
             raise PathMissingError(path, self.url)
+
+    def fetch_external(self, files, cache, **kwargs):
+        with self.fix_cache_tree(cache) as cache:
+            return self._fetch_external(files, cache, **kwargs)
 
 
 def _cached_clone(url, rev, for_write=False):

@@ -56,7 +56,7 @@ class RepoDependency(LocalDependency):
             except OutputNotFoundError:
                 path = PathInfo(os.path.join(repo.root_dir, self.def_path))
                 # We are polluting our repo cache with some dir listing here
-                return self.repo.cache.local.get_checksum(path)
+                return repo.get_checksum(path, self.repo.cache.local)
 
     def status(self):
         current_checksum = self._get_checksum(locked=True)
