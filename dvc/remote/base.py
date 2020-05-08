@@ -26,6 +26,7 @@ from dvc.path_info import PathInfo, URLInfo, WindowsPathInfo
 from dvc.progress import Tqdm
 from dvc.remote.index import RemoteIndex, RemoteIndexNoop
 from dvc.remote.slow_link_detection import slow_link_guard
+from dvc.scm.tree import is_working_tree
 from dvc.state import StateNoop
 from dvc.utils import tmp_fname
 from dvc.utils.fs import makedirs, move
@@ -259,8 +260,9 @@ class BaseRemote(object):
             self.cache.makedirs(new_info.parent)
             self.cache.move(tmp_info, new_info, mode=self.CACHE_MODE)
 
-        self.state.save(path_info, checksum)
-        self.state.save(new_info, checksum)
+        if is_working_tree(self.repo.tree):
+            self.state.save(path_info, checksum)
+        self.state.save(new_info, checksum, tree=self.cache.tree)
 
         return checksum
 
@@ -347,7 +349,7 @@ class BaseRemote(object):
         else:
             checksum = self.get_file_checksum(path_info)
 
-        if checksum:
+        if checksum and is_working_tree(self.repo.tree):
             self.state.save(path_info, checksum)
 
         return checksum
@@ -473,7 +475,7 @@ class BaseRemote(object):
         # or copy cache type moving original file results in updates on
         # next executed command, which causes md5 recalculation
         self.state.save(path_info, checksum)
-        self.state.save(cache_info, checksum)
+        self.state.save(cache_info, checksum, tree=self.cache.tree)
 
     def _cache_is_copy(self, path_info):
         """Checks whether cache uses copies."""
@@ -511,7 +513,7 @@ class BaseRemote(object):
         if save_link:
             self.state.save_link(path_info)
 
-        self.state.save(cache_info, checksum)
+        self.state.save(cache_info, checksum, tree=self.cache.tree)
         self.state.save(path_info, checksum)
 
     def is_empty(self, path_info):
@@ -580,8 +582,9 @@ class BaseRemote(object):
             entry_checksum = entry[self.PARAM_CHECKSUM]
             self._save_tree_file(tree, entry_info, entry_checksum)
 
-        self.state.save(cache_info, checksum)
-        self.state.save(path_info, checksum)
+        self.state.save(cache_info, checksum, tree=self.cache.tree)
+        if is_working_tree(tree):
+            self.state.save(path_info, checksum)
 
     def _save_tree_file(self, tree, path_info, checksum):
         with tree.open(path_info, mode="rb", encoding=None) as fobj:
@@ -591,7 +594,7 @@ class BaseRemote(object):
     def _save_obj(self, fobj, checksum):
         cache_info = self.checksum_to_path_info(checksum)
         self.copyobj(fobj, cache_info)
-        self.state.save(cache_info, checksum)
+        self.state.save(cache_info, checksum, tree=self.cache.tree)
 
     def _handle_transfer_exception(
         self, from_info, to_info, exception, operation

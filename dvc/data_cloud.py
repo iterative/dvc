@@ -98,7 +98,8 @@ class DataCloud(object):
                 # be removed upon status, while files corrupted during
                 # download will not be moved from tmp_file
                 # (see `RemoteBASE.download()`)
-                self.repo.state.save(cache_file, checksum)
+                tree = self.repo.cache.local.tree
+                self.repo.state.save(cache_file, checksum, tree=tree)
 
     def status(self, cache, jobs=None, remote=None, show_checksums=False):
         """Check status of data items in a cloud-agnostic way.

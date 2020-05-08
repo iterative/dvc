@@ -733,7 +733,7 @@ class LocalRemote(BaseRemote):
                 entry_cache_info, unpacked_dir_info / relative_path, link_types
             )
 
-        self.state.save(unpacked_dir_info, checksum)
+        self.state.save(unpacked_dir_info, checksum, tree=self.tree)
 
     def _changed_unpacked_dir(self, checksum):
         status_unpacked_dir_info = self._get_unpacked_dir_path_info(checksum)
