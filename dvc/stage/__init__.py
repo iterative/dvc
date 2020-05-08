@@ -246,13 +246,13 @@ class Stage(params.StageParams):
     def stage_changed(self, warn=False):
         changed = self.md5 != self._compute_md5()
         if changed and warn:
-            logger.warning("DVC-file '{}' changed.".format(self.relpath))
+            logger.debug("DVC-file '{}' changed.".format(self.relpath))
         return changed
 
     @rwlocked(read=["deps", "outs"])
     def changed(self):
         if self._changed():
-            logger.warning("{} changed.".format(self))
+            logger.debug("{} changed.".format(self))
             return True
 
         logger.debug("{} didn't change.".format(self))
@@ -831,5 +831,5 @@ class PipelineStage(Stage):
 
     def stage_changed(self, warn=False):
         if self.cmd_changed and warn:
-            logger.warning("'cmd' of {} has changed.".format(self))
+            logger.debug("'cmd' of {} has changed.".format(self))
         return self.cmd_changed

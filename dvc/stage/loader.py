@@ -1,7 +1,6 @@
 import logging
 import os
 from collections import Mapping, defaultdict
-from contextlib import contextmanager
 from copy import deepcopy
 from itertools import chain
 
@@ -30,14 +29,6 @@ class StageLoader(Mapping):
         self.dvcfile = dvcfile
         self.stages_data = stages_data or {}
         self.lockfile_data = lockfile_data or {}
-        self._log_level = logging.WARNING
-
-    @contextmanager
-    def log_level(self, at):
-        """Change log_level temporarily for StageLoader."""
-        self._log_level, level = at, self._log_level
-        yield
-        self._log_level = level
 
     def filter(self, item=None):
         if not item:
@@ -154,11 +145,8 @@ class StageLoader(Mapping):
             raise StageNotFound(self.dvcfile, name)
 
         if not self.lockfile_data.get(name):
-            logger.log(
-                self._log_level,
-                "No lock entry found for '%s:%s'",
-                self.dvcfile.relpath,
-                name,
+            logger.debug(
+                "No lock entry found for '%s:%s'", self.dvcfile.relpath, name,
             )
 
         return self.load_stage(
@@ -186,11 +174,6 @@ class SingleStageLoader(Mapping):
 
     def filter(self, item=None):
         return self
-
-    @contextmanager
-    def log_level(self, *args, **kwargs):
-        """No-op context manager."""
-        yield
 
     def __getitem__(self, item):
         if item:
