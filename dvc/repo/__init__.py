@@ -248,6 +248,7 @@ class Repo(object):
         force=False,
         jobs=None,
         recursive=False,
+        used_run_cache=None,
     ):
         """Get the stages related to the given target and collect
         the `info` of its outputs.
@@ -290,6 +291,12 @@ class Repo(object):
                     filter_info=filter_info,
                 )
                 cache.update(used_cache, suffix=suffix)
+
+        if used_run_cache:
+            used_cache = self.stage_cache.get_used_cache(
+                used_run_cache, remote=remote, force=force, jobs=jobs,
+            )
+            cache.update(used_cache)
 
         return cache
 

@@ -48,12 +48,7 @@ class DataCloud(object):
         return Remote(self.repo, name=name)
 
     def push(
-        self,
-        cache,
-        jobs=None,
-        remote=None,
-        show_checksums=False,
-        run_cache=False,
+        self, cache, jobs=None, remote=None, show_checksums=False,
     ):
         """Push data items in a cloud-agnostic way.
 
@@ -67,20 +62,12 @@ class DataCloud(object):
         """
         remote = self.get_remote(remote, "push")
 
-        if run_cache:
-            self.repo.stage_cache.push(remote)
-
         return self.repo.cache.local.push(
             cache, jobs=jobs, remote=remote, show_checksums=show_checksums,
         )
 
     def pull(
-        self,
-        cache,
-        jobs=None,
-        remote=None,
-        show_checksums=False,
-        run_cache=False,
+        self, cache, jobs=None, remote=None, show_checksums=False,
     ):
         """Pull data items in a cloud-agnostic way.
 
@@ -93,9 +80,6 @@ class DataCloud(object):
                 information messages.
         """
         remote = self.get_remote(remote, "pull")
-
-        if run_cache:
-            self.repo.stage_cache.pull(remote)
 
         downloaded_items_num = self.repo.cache.local.pull(
             cache, jobs=jobs, remote=remote, show_checksums=show_checksums

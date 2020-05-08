@@ -34,6 +34,9 @@ def _fetch(
         config.NoRemoteError: thrown when downloading only local files and no
             remote is configured
     """
+
+    used_run_cache = self.stage_cache.pull(remote) if run_cache else []
+
     used = self.used_cache(
         targets,
         all_branches=all_branches,
@@ -44,6 +47,7 @@ def _fetch(
         remote=remote,
         jobs=jobs,
         recursive=recursive,
+        used_run_cache=used_run_cache,
     )
 
     downloaded = 0
@@ -51,11 +55,7 @@ def _fetch(
 
     try:
         downloaded += self.cloud.pull(
-            used,
-            jobs,
-            remote=remote,
-            show_checksums=show_checksums,
-            run_cache=run_cache,
+            used, jobs, remote=remote, show_checksums=show_checksums,
         )
     except NoRemoteError:
         if not used.external and used["local"]:
