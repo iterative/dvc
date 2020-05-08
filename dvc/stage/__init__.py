@@ -2,6 +2,7 @@ import logging
 import os
 import pathlib
 import signal
+import string
 import subprocess
 import threading
 from itertools import chain, product
@@ -29,6 +30,8 @@ from .exceptions import (
 from .params import OutputParams
 
 logger = logging.getLogger(__name__)
+# Disallow all punctuation characters except hyphen and underscore
+INVALID_STAGENAME_CHARS = set(string.punctuation) - {"_", "-"}
 
 
 def loads_from(cls, repo, path, wdir, data):
