@@ -239,7 +239,7 @@ class ExternalRepo(Repo, BaseExternalRepo):
 
     def fetch_external(self, files, cache, **kwargs):
         self.cache.local.cache_dir = cache.cache_dir
-        self._fetch_external(files, self.cache.local, **kwargs)
+        return self._fetch_external(files, self.cache.local, **kwargs)
 
 
 class ExternalGitRepo(BaseExternalRepo):
