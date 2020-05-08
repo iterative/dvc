@@ -81,7 +81,8 @@ class WorkingTree(BaseTree):
         mode = os.stat(path).st_mode
         return mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
-    def stat(self, path):
+    @staticmethod
+    def stat(path):
         return os.stat(path)
 
 

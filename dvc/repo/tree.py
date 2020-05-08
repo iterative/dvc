@@ -165,14 +165,20 @@ class RepoTree(BaseTree):
         return self.repo.tree.isexec(path)
 
     def _walk_one(self, walk):
-        root, dirs, files = next(walk)
+        try:
+            root, dirs, files = next(walk)
+        except StopIteration:
+            return
         yield root, dirs, files
-        for dirname in dirs:
+        for _ in dirs:
             yield from self._walk_one(walk)
 
     def _walk(self, dvc_walk, repo_walk, dvcfiles=False):
-        dvc_root, dvc_dirs, dvc_fnames = next(dvc_walk)
-        repo_root, repo_dirs, repo_fnames = next(repo_walk)
+        try:
+            _, dvc_dirs, dvc_fnames = next(dvc_walk)
+            repo_root, repo_dirs, repo_fnames = next(repo_walk)
+        except StopIteration:
+            return
 
         # separate subdirs into shared dirs, dvc-only dirs, repo-only dirs
         dvc_set = set(dvc_dirs)
@@ -252,12 +258,14 @@ class RepoTree(BaseTree):
         dest = PathInfo(dest)
 
         if self.isfile(top):
-            return self.copyfile(top, dest)
+            self.copyfile(top, dest)
+            return
 
         if self.isdvc(top):
-            return self._copytree_dvc(top, dest)
+            self._copytree_dvc(top, dest)
+            return
 
-        for root, dirs, files in self.walk(top):
+        for root, _, files in self.walk(top):
             root_path = PathInfo(root)
             dest_dir = dest / root_path.relative_to(top)
             if not os.path.exists(dest_dir):
@@ -284,7 +292,7 @@ class RepoTree(BaseTree):
                     makedirs(dest.parent)
                 copyfile(entry_info, dest)
                 return
-            elif top.overlaps(entry_path):
+            if top.overlaps(entry_path):
                 dest_path = dest / entry_path.relative_to(top)
                 if not os.path.exists(dest_path.parent):
                     makedirs(dest_path.parent)

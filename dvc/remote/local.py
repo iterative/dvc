@@ -57,6 +57,16 @@ class LocalRemote(BaseRemote):
         self.cache_dir = config.get("url")
         self._dir_info = {}
 
+        # repo.tree can be WorkingTree or GitTree, but GitTree does not contain
+        # cache directory
+        if is_working_tree(self.repo.tree):
+            self._tree = self.repo.tree
+        else:
+            tree = WorkingTree(self.repo.root_dir)
+            if isinstance(self.repo.tree, CleanTree):
+                tree = CleanTree(tree)
+            self._tree = tree
+
     @property
     def state(self):
         return self.repo.state
@@ -77,17 +87,8 @@ class LocalRemote(BaseRemote):
     def cache_path(self):
         return os.path.abspath(self.cache_dir)
 
-    @cached_property
+    @property
     def tree(self):
-        # repo.tree can be WorkingTree or GitTree, but GitTree does not contain
-        # cache directory
-        if is_working_tree(self.repo.tree):
-            self._tree = self.repo.tree
-        else:
-            tree = WorkingTree(self.repo.root_dir)
-            if isinstance(self.repo.tree, CleanTree):
-                tree = CleanTree(tree)
-            self._tree = tree
         return self._tree
 
     def checksum_to_path(self, checksum):

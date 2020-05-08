@@ -118,7 +118,7 @@ class BaseExternalRepo:
                 path_info = PathInfo(self.root_dir) / name
                 if self.repo_tree.isdvc(path_info):
                     out = self.find_out_by_relpath(name)
-                    d, f = self._fetch_out(out, name, **kwargs)
+                    d, f = self._fetch_out(out, **kwargs)
                 else:
                     d, f = self._fetch_git(name, path_info, cache)
                 downloaded += d
@@ -143,7 +143,7 @@ class BaseExternalRepo:
             src = tmp / path_info.relative_to(out.path_info)
 
             downloaded, failed = self._fetch_out(
-                out, path_info, filter_info=src, jobs=jobs
+                out, filter_info=src, jobs=jobs
             )
             if failed:
                 logger.exception(
@@ -153,7 +153,7 @@ class BaseExternalRepo:
                 )
             return downloaded, failed
 
-    def _fetch_out(self, out, name, filter_info=None, **kwargs):
+    def _fetch_out(self, out, filter_info=None, **kwargs):
         """Fetch specified erepo out."""
         downloaded, failed = 0, 0
         if out.changed_cache(filter_info=filter_info):
@@ -252,6 +252,8 @@ class ExternalRepo(Repo, BaseExternalRepo):
 
 
 class ExternalGitRepo(BaseExternalRepo):
+    state = suppress()
+
     def __init__(self, root_dir, url, rev):
         self.root_dir = os.path.realpath(root_dir)
         self.url = url
@@ -261,10 +263,6 @@ class ExternalGitRepo(BaseExternalRepo):
     @cached_property
     def scm(self):
         return Git(self.root_dir)
-
-    @cached_property
-    def state(self):
-        return suppress()
 
     def close(self):
         if "scm" in self.__dict__:

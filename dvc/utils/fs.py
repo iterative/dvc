@@ -178,7 +178,6 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
     """Copy file with progress bar"""
     from dvc.exceptions import DvcException
     from dvc.progress import Tqdm
-    from dvc.system import System
 
     name = name if name else os.path.basename(dest)
     total = os.stat(src).st_size
