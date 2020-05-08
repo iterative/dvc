@@ -78,11 +78,11 @@ def file_md5(fname):
 
 def tree_md5(tree, fname):
     from dvc.progress import Tqdm
-    from dvc.istextfile import istextfile
 
     if tree.exists(fname):
         hash_md5 = hashlib.md5()
-        binary = not istextfile(fname)
+        # assume we don't need to run dos2unix when comparing git blobs
+        binary = True
         size = tree.stat(fname).st_size
         no_progress_bar = True
         if size >= LARGE_FILE_SIZE:

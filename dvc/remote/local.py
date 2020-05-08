@@ -56,7 +56,6 @@ class LocalRemote(BaseRemote):
         super().__init__(repo, config)
         self.cache_dir = config.get("url")
         self._dir_info = {}
-
         # repo.tree can be WorkingTree or GitTree, but GitTree does not contain
         # cache directory
         if is_working_tree(self.repo.tree):
@@ -115,7 +114,11 @@ class LocalRemote(BaseRemote):
 
     def exists(self, path_info):
         assert isinstance(path_info, str) or path_info.scheme == "local"
-        return self.tree.exists(path_info)
+        if self.repo.tree.exists(path_info):
+            return True
+        if not is_working_tree(self.repo.tree):
+            return self.tree.exists(path_info)
+        return False
 
     def makedirs(self, path_info):
         makedirs(path_info, exist_ok=True, mode=self._dir_mode)
@@ -137,6 +140,7 @@ class LocalRemote(BaseRemote):
         super()._verify_link(path_info, link_type)
 
     def is_empty(self, path_info):
+        assert is_working_tree(self.repo.tree)
         path = path_info.fspath
 
         if self.isfile(path_info) and os.path.getsize(path) == 0:
@@ -147,33 +151,44 @@ class LocalRemote(BaseRemote):
 
         return False
 
-    @staticmethod
-    def isfile(path_info):
-        return os.path.isfile(path_info)
+    def isfile(self, path_info):
+        if self.tree.isfile(path_info):
+            return True
+        if not is_working_tree(self.repo.tree):
+            return self.repo.tree.isfile(path_info)
+        return False
 
-    @staticmethod
-    def isdir(path_info):
-        return os.path.isdir(path_info)
+    def isdir(self, path_info):
+        if self.tree.isdir(path_info):
+            return True
+        if not is_working_tree(self.repo.tree):
+            return self.repo.tree.isdir(path_info)
+        return False
 
     def iscopy(self, path_info):
+        assert is_working_tree(self.repo.tree)
         return not (
             System.is_symlink(path_info) or System.is_hardlink(path_info)
         )
 
-    @staticmethod
-    def getsize(path_info):
-        return os.path.getsize(path_info)
+    def getsize(self, path_info):
+        if self.tree.exists(path_info):
+            return os.path.getsize(path_info)
+        return self.repo.tree.stat(path_info).st_size
 
     def walk_files(self, path_info):
-        assert is_working_tree(self.tree)
+        if self.tree.exists(path_info):
+            tree = self.tree
+        else:
+            tree = self.repo.tree
 
-        for fname in self.tree.walk_files(path_info):
+        for fname in tree.walk_files(path_info):
             yield PathInfo(fname)
 
     def get_file_checksum(self, path_info):
-        if is_working_tree(self.tree):
+        if self.tree.exists(path_info):
             return file_md5(path_info)[0]
-        return tree_md5(self.tree, path_info)[0]
+        return tree_md5(self.repo.tree, path_info)[0]
 
     def remove(self, path_info):
         if isinstance(path_info, PathInfo):
