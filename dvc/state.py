@@ -33,7 +33,7 @@ class StateVersionTooNewError(DvcException):
 class StateNoop(object):
     files = []
 
-    def save(self, path_info, checksum):
+    def save(self, path_info, checksum, tree=None):
         pass
 
     def get(self, path_info):

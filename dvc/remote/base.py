@@ -194,6 +194,10 @@ class BaseRemote(object):
     def cache(self):
         return getattr(self.repo.cache, self.scheme)
 
+    @property
+    def tree(self):
+        return self.repo.tree
+
     def get_file_checksum(self, path_info):
         raise NotImplementedError
 
