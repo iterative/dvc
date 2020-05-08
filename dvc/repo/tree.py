@@ -188,13 +188,15 @@ class RepoTree(BaseTree):
         shared = list(dvc_set & repo_set)
         dirs = shared + dvc_only + repo_only
 
-        # merge file lists, handle dvcfiles from repo tree as DVC outs
+        # merge file lists
         files = set(dvc_fnames)
         for filename in repo_fnames:
             files.add(filename)
 
         yield repo_root, dirs, list(files)
 
+        # set dir order for next recursion level - shared dirs first so that
+        # next() for both generators recurses into the same shared directory
         dvc_dirs[:] = [dirname for dirname in dirs if dirname in dvc_set]
         repo_dirs[:] = [dirname for dirname in dirs if dirname in repo_set]
 
