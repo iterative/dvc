@@ -68,9 +68,17 @@ def clean_repos():
 
 
 class BaseExternalRepo:
+    _tree_rev = None
+
     @cached_property
     def repo_tree(self):
         return RepoTree(self)
+
+    def get_rev(self):
+        """Return current SCM revision"""
+        if self._tree_rev:
+            return self._tree_rev
+        return self.scm.get_rev()
 
     def get_external(self, path, to_info, **kwargs):
         """
@@ -181,6 +189,7 @@ class ExternalRepo(Repo, BaseExternalRepo):
             root_dir = os.path.realpath(root_dir)
             scm = Git(root_dir)
             tree = scm.get_tree(rev)
+            self._tree_rev = tree.rev
 
             if not tree.isdir(os.path.join(root_dir, self.DVC_DIR)):
                 raise NotDvcRepoError("'{}' is not a DVC repo".format(url))
@@ -247,6 +256,7 @@ class ExternalGitRepo(BaseExternalRepo):
         self.root_dir = os.path.realpath(root_dir)
         self.url = url
         self.tree = self.scm.get_tree(rev)
+        self._tree_rev = self.tree.rev
 
     @cached_property
     def scm(self):

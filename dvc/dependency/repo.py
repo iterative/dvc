@@ -76,7 +76,7 @@ class RepoDependency(LocalDependency):
     def download(self, to):
         with self._make_repo() as repo:
             if self.def_repo.get(self.PARAM_REV_LOCK) is None:
-                self.def_repo[self.PARAM_REV_LOCK] = repo.scm.get_rev()
+                self.def_repo[self.PARAM_REV_LOCK] = repo.get_rev()
 
             if hasattr(repo, "cache"):
                 repo.cache.local.cache_dir = self.repo.cache.local.cache_dir
@@ -88,4 +88,4 @@ class RepoDependency(LocalDependency):
             self.def_repo[self.PARAM_REV] = rev
 
         with self._make_repo(locked=False) as repo:
-            self.def_repo[self.PARAM_REV_LOCK] = repo.scm.get_rev()
+            self.def_repo[self.PARAM_REV_LOCK] = repo.get_rev()
