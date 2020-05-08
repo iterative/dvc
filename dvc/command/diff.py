@@ -11,6 +11,21 @@ from dvc.exceptions import DvcException
 logger = logging.getLogger(__name__)
 
 
+def _show_md(diff):
+    from dvc.utils.diff import table
+
+    rows = []
+    for status in ["added", "deleted", "modified"]:
+        entries = diff.get(status, [])
+        if not entries:
+            continue
+        paths = sorted([entry["path"] for entry in entries])
+        for path in paths:
+            rows.append([status, path])
+
+    return table(["Status", "Path"], rows, True)
+
+
 class CmdDiff(CmdBase):
     @staticmethod
     def _format(diff):
@@ -103,6 +118,8 @@ class CmdDiff(CmdBase):
 
             if self.args.show_json:
                 logger.info(json.dumps(diff))
+            elif self.args.show_md:
+                logger.info(_show_md(diff))
             elif diff:
                 logger.info(self._format(diff))
 
@@ -144,6 +161,12 @@ def add_parser(subparsers, parent_parser):
     diff_parser.add_argument(
         "--show-hash",
         help="Display hash value for each entry",
+        action="store_true",
+        default=False,
+    )
+    diff_parser.add_argument(
+        "--show-md",
+        help="Show tabulated output in the Markdown format (GFM).",
         action="store_true",
         default=False,
     )
