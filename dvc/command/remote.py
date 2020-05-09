@@ -95,7 +95,7 @@ class CmdRemoteDefault(CmdRemote):
                         conf["core"]["remote"] = self.args.name
                     else:
                         raise ConfigError(
-                            "default remote must in remote list."
+                            "default remote must be present in remote list."
                         )
         return 0
 
