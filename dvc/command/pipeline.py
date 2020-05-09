@@ -4,7 +4,6 @@ import logging
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -32,22 +31,29 @@ class CmdPipelineShow(CmdBase):
             else:
                 logger.info(stage.addressing)
 
-    def _build_output_graph(self, G, target_stage):
+    @staticmethod
+    def _build_output_graph(G, target_stage):
         import networkx
+        from itertools import product
 
-        nodes = set()
+        nodes = {str(out) for out in target_stage.outs}
         edges = []
+
         for from_stage, to_stage in networkx.edge_dfs(G, target_stage):
             from_stage_deps = {dep.path_info.parts for dep in from_stage.deps}
-            for from_out in from_stage.outs:
-                if from_stage != target_stage and str(from_out) not in nodes:
-                    continue
-                for to_out in to_stage.outs:
-                    if to_out.path_info.parts not in from_stage_deps:
-                        continue
-                    nodes.add(str(from_out))
-                    nodes.add(str(to_out))
-                    edges.append((str(from_out), str(to_out)))
+            to_outs = {
+                to_out
+                for to_out in to_stage.outs
+                if to_out.path_info.parts in from_stage_deps
+            }
+            from_outs = {
+                from_out
+                for from_out in from_stage.outs
+                if str(from_out) in nodes
+            }
+            nodes |= {str(to_out) for to_out in to_outs}
+            for from_out, to_out in product(from_outs, to_outs):
+                edges.append((str(from_out), str(to_out)))
         return nodes, edges
 
     def _build_graph(self, target, commands=False, outs=False):
