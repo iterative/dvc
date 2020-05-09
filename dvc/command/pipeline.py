@@ -42,30 +42,35 @@ class CmdPipelineShow(CmdBase):
         target_stage = dvcfile.Dvcfile(self.repo, path).stages[name]
         G = get_pipeline(self.repo.pipelines, target_stage)
 
+        out_nodes = set()
+        if outs:
+            for stage in networkx.dfs_preorder_nodes(G, target_stage):
+                for out in stage.outs:
+                    out_nodes.add(str(out))
+
         nodes = set()
+        edges = []
         for stage in networkx.dfs_preorder_nodes(G, target_stage):
             if commands:
                 if stage.cmd is None:
                     continue
                 nodes.add(stage.cmd)
+                for to_stage in G.neighbors(stage):
+                    if to_stage.cmd:
+                        edges.append((stage.cmd, to_stage.cmd))
             elif outs:
                 for out in stage.outs:
-                    nodes.add(str(out))
+                    if stage == target_stage:
+                        nodes.add(str(out))
+                    if str(out) in nodes:
+                        for dep in stage.deps:
+                            if str(dep) in out_nodes:
+                                nodes.add(str(dep))
+                                edges.append((str(out), str(dep)))
             else:
                 nodes.add(stage.addressing)
-
-        edges = []
-        for from_stage, to_stage in networkx.edge_dfs(G, target_stage):
-            if commands:
-                if to_stage.cmd is None:
-                    continue
-                edges.append((from_stage.cmd, to_stage.cmd))
-            elif outs:
-                for from_out in from_stage.outs:
-                    for to_out in to_stage.outs:
-                        edges.append((str(from_out), str(to_out)))
-            else:
-                edges.append((from_stage.addressing, to_stage.addressing))
+                for to_stage in G.neighbors(stage):
+                    edges.append((stage.addressing, to_stage.addressing))
 
         return list(nodes), edges, networkx.is_tree(G)
 
