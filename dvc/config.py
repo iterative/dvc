@@ -289,7 +289,7 @@ class Config(dict):
         Raises:
             ConfigError: thrown if config has an invalid format.
         """
-        conf = self._load_config_to_level()
+        conf = self.load_config_to_level()
 
         if validate:
             conf = self.validate(conf)
@@ -349,7 +349,7 @@ class Config(dict):
         }
         return Schema(dirs_schema, extra=ALLOW_EXTRA)(conf)
 
-    def _load_config_to_level(self, level=None):
+    def load_config_to_level(self, level=None):
         merged_conf = {}
         for merge_level in self.LEVELS:
             if merge_level == level:
@@ -368,7 +368,7 @@ class Config(dict):
 
         conf = self._save_paths(conf, self.files[level])
 
-        merged_conf = self._load_config_to_level(level)
+        merged_conf = self.load_config_to_level(level)
         _merge(merged_conf, conf)
         self.validate(merged_conf)
 

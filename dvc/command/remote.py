@@ -85,7 +85,18 @@ class CmdRemoteDefault(CmdRemote):
                 if self.args.unset:
                     conf["core"].pop("remote", None)
                 else:
-                    conf["core"]["remote"] = self.args.name
+                    merged_conf = self.config.load_config_to_level(
+                        self.args.level
+                    )
+                    if (
+                        self.args.name in conf["remote"]
+                        or self.args.name in merged_conf["remote"]
+                    ):
+                        conf["core"]["remote"] = self.args.name
+                    else:
+                        raise ConfigError(
+                            "default remote must be present in remote list."
+                        )
         return 0
 
 
