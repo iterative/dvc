@@ -42,35 +42,38 @@ class CmdPipelineShow(CmdBase):
         target_stage = dvcfile.Dvcfile(self.repo, path).stages[name]
         G = get_pipeline(self.repo.pipelines, target_stage)
 
-        out_nodes = set()
-        if outs:
-            for stage in networkx.dfs_preorder_nodes(G, target_stage):
-                for out in stage.outs:
-                    out_nodes.add(str(out))
-
         nodes = set()
-        edges = []
         for stage in networkx.dfs_preorder_nodes(G, target_stage):
             if commands:
                 if stage.cmd is None:
                     continue
                 nodes.add(stage.cmd)
-                for to_stage in G.neighbors(stage):
-                    if to_stage.cmd:
-                        edges.append((stage.cmd, to_stage.cmd))
-            elif outs:
-                for out in stage.outs:
-                    if stage == target_stage:
-                        nodes.add(str(out))
-                    if str(out) in nodes:
-                        for dep in stage.deps:
-                            if str(dep) in out_nodes:
-                                nodes.add(str(dep))
-                                edges.append((str(out), str(dep)))
-            else:
+            elif not outs:
                 nodes.add(stage.addressing)
-                for to_stage in G.neighbors(stage):
-                    edges.append((stage.addressing, to_stage.addressing))
+
+        edges = []
+        for from_stage, to_stage in networkx.edge_dfs(G, target_stage):
+            if commands:
+                if to_stage.cmd is None:
+                    continue
+                edges.append((from_stage.cmd, to_stage.cmd))
+            elif outs:
+                from_stage_deps = set(
+                    [dep.path_info.parts for dep in from_stage.deps]
+                )
+                for from_out in from_stage.outs:
+                    if (
+                        from_stage != target_stage
+                        and str(from_out) not in nodes
+                    ):
+                        continue
+                    for to_out in to_stage.outs:
+                        if to_out.path_info.parts in from_stage_deps:
+                            nodes.add(str(from_out))
+                            nodes.add(str(to_out))
+                            edges.append((str(from_out), str(to_out)))
+            else:
+                edges.append((from_stage.addressing, to_stage.addressing))
 
         return list(nodes), edges, networkx.is_tree(G)
 
