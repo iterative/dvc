@@ -31,6 +31,31 @@ class CmdPipelineShow(CmdBase):
             else:
                 logger.info(stage.addressing)
 
+    @staticmethod
+    def _build_output_graph(G, target_stage):
+        import networkx
+        from itertools import product
+
+        nodes = {str(out) for out in target_stage.outs}
+        edges = []
+
+        for from_stage, to_stage in networkx.edge_dfs(G, target_stage):
+            from_stage_deps = {dep.path_info.parts for dep in from_stage.deps}
+            to_outs = {
+                to_out
+                for to_out in to_stage.outs
+                if to_out.path_info.parts in from_stage_deps
+            }
+            from_outs = {
+                from_out
+                for from_out in from_stage.outs
+                if str(from_out) in nodes
+            }
+            nodes |= {str(to_out) for to_out in to_outs}
+            for from_out, to_out in product(from_outs, to_outs):
+                edges.append((str(from_out), str(to_out)))
+        return nodes, edges
+
     def _build_graph(self, target, commands=False, outs=False):
         import networkx
         from dvc import dvcfile
@@ -47,10 +72,7 @@ class CmdPipelineShow(CmdBase):
                 if stage.cmd is None:
                     continue
                 nodes.add(stage.cmd)
-            elif outs:
-                for out in stage.outs:
-                    nodes.add(str(out))
-            else:
+            elif not outs:
                 nodes.add(stage.addressing)
 
         edges = []
@@ -59,12 +81,11 @@ class CmdPipelineShow(CmdBase):
                 if to_stage.cmd is None:
                     continue
                 edges.append((from_stage.cmd, to_stage.cmd))
-            elif outs:
-                for from_out in from_stage.outs:
-                    for to_out in to_stage.outs:
-                        edges.append((str(from_out), str(to_out)))
-            else:
+            elif not outs:
                 edges.append((from_stage.addressing, to_stage.addressing))
+
+        if outs:
+            nodes, edges = self._build_output_graph(G, target_stage)
 
         return list(nodes), edges, networkx.is_tree(G)
 
