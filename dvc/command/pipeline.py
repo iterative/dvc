@@ -58,9 +58,9 @@ class CmdPipelineShow(CmdBase):
                     continue
                 edges.append((from_stage.cmd, to_stage.cmd))
             elif outs:
-                from_stage_deps = set(
-                    [dep.path_info.parts for dep in from_stage.deps]
-                )
+                from_stage_deps = {
+                    dep.path_info.parts for dep in from_stage.deps
+                }
                 for from_out in from_stage.outs:
                     if (
                         from_stage != target_stage
