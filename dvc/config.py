@@ -219,8 +219,7 @@ class Config(dict):
     CONFIG = "config"
     CONFIG_LOCAL = "config.local"
 
-    def __init__(self, dvc_dir=None, validate=True, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, dvc_dir=None, validate=True):
         self.dvc_dir = dvc_dir
 
         if not dvc_dir:
@@ -239,14 +238,12 @@ class Config(dict):
     def get_dir(cls, level):
         from appdirs import user_config_dir, site_config_dir
 
+        assert level in ("global", "system")
+
         if level == "global":
             return user_config_dir(cls.APPNAME, cls.APPAUTHOR)
-        elif level == "system":
+        if level == "system":
             return site_config_dir(cls.APPNAME, cls.APPAUTHOR)
-        else:
-            raise ConfigError(
-                "This method only used in global or system level."
-            )
 
     @cached_property
     def files(self):
