@@ -274,7 +274,7 @@ def test_split_pipeline(tmp_dir, scm, dvc):
     )
 
     command = CmdPipelineShow([])
-    nodes, edges, is_tree = command._build_graph(
+    nodes, edges, _ = command._build_graph(
         stage.path, commands=False, outs=True
     )
     assert set(nodes) == {"data", "data_train", "data_valid", "result"}
@@ -319,11 +319,36 @@ def test_pipeline_ascii_multistage(tmp_dir, dvc, run_copy):
     run_copy("foo", "bar", name="copy-foo-bar")
     run_copy("bar", "foobar", single_stage=True)
     command = CmdPipelineShow([])
-    nodes, edges, is_tree = command._build_graph("foobar.dvc")
+    nodes, edges, _ = command._build_graph("foobar.dvc")
     assert set(nodes) == {"dvc.yaml:copy-foo-bar", "foobar.dvc"}
     assert set(edges) == {
         ("foobar.dvc", "dvc.yaml:copy-foo-bar"),
     }
 
-    nodes, edges, is_tree = command._build_graph("dvc.yaml:copy-foo-bar")
+    nodes, *_ = command._build_graph("dvc.yaml:copy-foo-bar")
     assert set(nodes) == {"dvc.yaml:copy-foo-bar"}
+
+
+def test_pipeline_multi_outputs_stages(dvc):
+    dvc.run(
+        outs=["alice", "bob"],
+        cmd="echo alice>alice && echo bob>bob",
+        single_stage=True,
+    )
+    dvc.run(
+        deps=["alice"],
+        outs=["mary", "mike"],
+        cmd="echo mary>mary && echo mike>mike",
+        single_stage=True,
+    )
+    stage = dvc.run(
+        deps=["mary"],
+        outs=["carol"],
+        cmd="echo carol>carol",
+        single_stage=True,
+    )
+
+    command = CmdPipelineShow([])
+    nodes, edges, _ = command._build_graph(stage.path, outs=True)
+    assert set(nodes) == {"alice", "mary", "carol"}
+    assert set(edges) == {("carol", "mary"), ("mary", "alice")}

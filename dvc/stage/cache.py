@@ -106,9 +106,11 @@ class StageCache:
 
     @staticmethod
     def _transfer(func, from_remote, to_remote):
+        ret = []
+
         runs = from_remote.path_info / "runs"
         if not from_remote.exists(runs):
-            return
+            return []
 
         for src in from_remote.walk_files(runs):
             rel = src.relative_to(from_remote.path_info)
@@ -118,9 +120,36 @@ class StageCache:
             if to_remote.exists(key) and first(to_remote.walk_files(key)):
                 continue
             func(src, dst)
+            ret.append((src.parent.name, src.name))
+
+        return ret
 
     def push(self, remote):
+        remote = self.repo.cloud.get_remote(remote)
         return self._transfer(remote.upload, self.repo.cache.local, remote)
 
     def pull(self, remote):
+        remote = self.repo.cloud.get_remote(remote)
         return self._transfer(remote.download, remote, self.repo.cache.local)
+
+    def get_used_cache(self, used_run_cache, *args, **kwargs):
+        from dvc.cache import NamedCache
+        from dvc.stage import create_stage, PipelineStage
+
+        cache = NamedCache()
+
+        for key, value in used_run_cache:
+            entry = self._load_cache(key, value)
+            if not entry:
+                continue
+            stage = create_stage(
+                PipelineStage,
+                repo=self.repo,
+                path="dvc.yaml",
+                cmd=entry["cmd"],
+                deps=[dep["path"] for dep in entry["deps"]],
+                outs=[out["path"] for out in entry["outs"]],
+            )
+            StageLoader.fill_from_lock(stage, entry)
+            cache.update(stage.get_used_cache(*args, **kwargs))
+        return cache
