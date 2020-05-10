@@ -85,24 +85,20 @@ def diff(old, new, with_unchanged=False):
     return dict(res)
 
 
-def table(header, rows):
-    from texttable import Texttable
+def table(header, rows, markdown=False):
+    from tabulate import tabulate
 
-    if not rows:
+    if not rows and not markdown:
         return ""
 
-    t = Texttable()
-
-    # disable automatic formatting
-    t.set_cols_dtype(["t"] * len(header))
-
-    # remove borders to make it easier for users to copy stuff
-    t.set_chars([""] * len(header))
-    t.set_deco(0)
-
-    t.add_rows([header] + rows)
-
-    return t.draw()
+    return tabulate(
+        rows,
+        header,
+        tablefmt="github" if markdown else "plain",
+        disable_numparse=True,
+        # None will be shown as "" by default, overriding
+        missingval="None",
+    )
 
 
 def format_dict(d):

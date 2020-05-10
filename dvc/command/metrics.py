@@ -87,7 +87,7 @@ class CmdMetricsRemove(CmdBase):
         return 0
 
 
-def _show_diff(diff):
+def _show_diff(diff, markdown=False):
     from collections import OrderedDict
 
     from dvc.utils.diff import table
@@ -105,7 +105,7 @@ def _show_diff(diff):
                 ]
             )
 
-    return table(["Path", "Metric", "Value", "Change"], rows)
+    return table(["Path", "Metric", "Value", "Change"], rows, markdown)
 
 
 class CmdMetricsDiff(CmdBase):
@@ -124,7 +124,7 @@ class CmdMetricsDiff(CmdBase):
 
                 logger.info(json.dumps(diff))
             else:
-                table = _show_diff(diff)
+                table = _show_diff(diff, self.args.show_md)
                 if table:
                     logger.info(table)
 
@@ -262,6 +262,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Show output in JSON format.",
+    )
+    metrics_diff_parser.add_argument(
+        "--show-md",
+        action="store_true",
+        default=False,
+        help="Show tabulated output in the Markdown format (GFM).",
     )
     metrics_diff_parser.set_defaults(func=CmdMetricsDiff)
 
