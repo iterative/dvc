@@ -37,6 +37,9 @@ def _fetch(
 
     used_run_cache = self.stage_cache.pull(remote) if run_cache else []
 
+    if isinstance(targets, str):
+        targets = [targets]
+
     used = self.used_cache(
         targets,
         all_branches=all_branches,

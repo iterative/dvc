@@ -19,6 +19,9 @@ def pull(
     all_commits=False,
     run_cache=False,
 ):
+    if isinstance(targets, str):
+        targets = [targets]
+
     processed_files_count = self._fetch(
         targets,
         jobs,

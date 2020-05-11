@@ -116,6 +116,9 @@ def status(
     all_commits=False,
     recursive=False,
 ):
+    if isinstance(targets, str):
+        targets = [targets]
+
     if cloud or remote:
         return _cloud_status(
             self,
