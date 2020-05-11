@@ -27,6 +27,7 @@ from dvc.path_info import PathInfo, URLInfo, WindowsPathInfo
 from dvc.progress import Tqdm
 from dvc.remote.index import RemoteIndex, RemoteIndexNoop
 from dvc.remote.slow_link_detection import slow_link_guard
+from dvc.scm.tree import is_working_tree
 from dvc.state import StateNoop
 from dvc.utils import tmp_fname
 from dvc.utils.fs import makedirs, move
@@ -600,12 +601,14 @@ class BaseRemote(object):
             self._save_tree_file(tree, entry_info, entry_checksum)
 
         self.state.save(cache_info, checksum)
-        self.state.save(path_info, checksum)
+        if is_working_tree(tree):
+            self.state.save(path_info, checksum)
 
     def _save_tree_file(self, tree, path_info, checksum):
         with tree.open(path_info, mode="rb", encoding=None) as fobj:
             self._save_obj(fobj, checksum)
-            self.state.save(path_info, checksum)
+            if is_working_tree(tree):
+                self.state.save(path_info, checksum)
             return
 
     def _save_obj(self, fobj, checksum):
