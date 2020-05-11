@@ -20,7 +20,6 @@ from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.repo.tree import RepoTree
 from dvc.scm.git import Git
-from dvc.utils import tmp_fname
 from dvc.utils.fs import remove
 
 logger = logging.getLogger(__name__)
@@ -97,12 +96,17 @@ class BaseExternalRepo:
         if not self.repo_tree.exists(path_info):
             raise PathMissingError(path, self.url)
 
-        # fetch any needed and uncached DVC outs
         if self.repo_tree.isdvc(path_info):
-            try:
-                self._fetch_dvc_path(path_info, to_info)
-            except FileNotFoundError:
-                pass
+            local_cache = self.cache.local
+        else:
+            local_cache = None
+
+        if self.repo_tree.isdvc(path_info):
+            (out,) = self.find_outs_by_path(path_info, strict=False)
+            filter_info = path_info.relative_to(out.path_info)
+            self._fetch_external(
+                [path_info], local_cache, filter_info=filter_info, **kwargs
+            )
 
         with self.state:
             self.repo_tree.copytree(path_info, to_info)
@@ -114,17 +118,16 @@ class BaseExternalRepo:
         """
         raise NotImplementedError
 
-    def _fetch_external(self, files, cache, **kwargs):
+    def _fetch_external(self, path_infos, cache, **kwargs):
         downloaded, failed = 0, 0
 
         with self.state:
-            for name in files:
-                path_info = PathInfo(self.root_dir) / name
+            for path_info in path_infos:
                 if self.repo_tree.isdvc(path_info):
-                    out = self.find_out_by_relpath(name)
+                    (out,) = self.find_outs_by_path(path_info, strict=False)
                     d, f = self._fetch_out(out, **kwargs)
                 else:
-                    d, f = self._fetch_git(name, path_info, cache)
+                    d, f = self._fetch_git(path_info, cache)
                 downloaded += d
                 failed += f
 
@@ -135,27 +138,6 @@ class BaseExternalRepo:
                 )
             )
         return downloaded, failed
-
-    def _fetch_dvc_path(self, path_info, dest, jobs=None):
-        try:
-            (out,) = self.find_outs_by_path(path_info, strict=False)
-        except OutputNotFoundError:
-            raise FileNotFoundError
-
-        with self.state:
-            tmp = PathInfo(tmp_fname(dest))
-            src = tmp / path_info.relative_to(out.path_info)
-
-            downloaded, failed = self._fetch_out(
-                out, filter_info=src, jobs=jobs
-            )
-            if failed:
-                logger.exception(
-                    "failed to fetch '{}' files from '{}' repo".format(
-                        failed, self.url
-                    )
-                )
-            return downloaded, failed
 
     def _fetch_out(self, out, filter_info=None, **kwargs):
         """Fetch specified erepo out."""
@@ -168,18 +150,22 @@ class BaseExternalRepo:
                 failed += exc.amount
         return downloaded, failed
 
-    def _fetch_git(self, name, path_info, local_cache):
+    def _fetch_git(self, path_info, local_cache):
         """Copy git tracked file into specified cache."""
         downloaded, failed = 0, 0
         info = local_cache.save_info(path_info)
         if info.get(local_cache.PARAM_CHECKSUM) is None:
             logger.exception(
-                "failed to fetch '{}' from '{}' repo".format(name, self.url)
+                "failed to fetch '{}' from '{}' repo".format(
+                    path_info, self.url
+                )
             )
             failed += 1
         elif local_cache.changed_cache(info[local_cache.PARAM_CHECKSUM]):
             local_cache.save_tree(self.repo_tree, path_info, info)
-            logger.debug("fetched '{}' from '{}' repo".format(name, self.url))
+            logger.debug(
+                "fetched '{}' from '{}' repo".format(path_info, self.url)
+            )
             downloaded += 1
         return downloaded, failed
 
@@ -252,6 +238,7 @@ class ExternalRepo(Repo, BaseExternalRepo):
 
     def fetch_external(self, files, cache, **kwargs):
         self.cache.local.cache_dir = cache.cache_dir
+        files = [PathInfo(self.root_dir) / name for name in files]
         return self._fetch_external(files, self.cache.local, **kwargs)
 
 
@@ -286,6 +273,7 @@ class ExternalGitRepo(BaseExternalRepo):
             raise PathMissingError(path, self.url)
 
     def fetch_external(self, files, cache, **kwargs):
+        files = [PathInfo(self.root_dir) / name for name in files]
         with cache.erepo_tree(self.tree):
             return self._fetch_external(files, cache, **kwargs)
 
