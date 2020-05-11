@@ -53,3 +53,8 @@ def test_grants_mutually_exclusive_acl_error(dvc, grants):
 
         with pytest.raises(ConfigError):
             S3Remote(dvc, config)
+
+
+def test_sse_kms_key_id(dvc):
+    remote = S3Remote(dvc, {"url": url, "sse_kms_key_id": "key"})
+    assert remote.extra_args["SSEKMSKeyId"] == "key"
