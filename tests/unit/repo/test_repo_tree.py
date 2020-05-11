@@ -94,8 +94,11 @@ def test_walk(tmp_dir, dvc):
         os.path.join("dir", "subdir1"),
         os.path.join("dir", "subdir2"),
         os.path.join("dir", "subdir1", "foo1"),
+        os.path.join("dir", "subdir1", "foo1.dvc"),
         os.path.join("dir", "subdir1", "bar1"),
+        os.path.join("dir", "subdir1", "bar1.dvc"),
         os.path.join("dir", "subdir2", "foo2"),
+        os.path.join("dir", "subdir2", "foo2.dvc"),
         os.path.join("dir", "foo"),
         os.path.join("dir", "bar"),
     ]
