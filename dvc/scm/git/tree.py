@@ -154,6 +154,10 @@ class GitTree(BaseTree):
     def stat(self, path):
         import git
 
+        def to_ctime(git_time):
+            sec, nano_sec = git_time
+            return sec + nano_sec / 1000000000
+
         obj = self.git_object_by_path(path)
         entry = git.index.IndexEntry.from_blob(obj)
 
@@ -169,8 +173,8 @@ class GitTree(BaseTree):
                 entry.gid,
                 entry.size,
                 # git index has no atime equivalent, use mtime
-                entry.mtime,
-                entry.mtime,
-                entry.ctime,
+                to_ctime(entry.mtime),
+                to_ctime(entry.mtime),
+                to_ctime(entry.ctime),
             )
         )
