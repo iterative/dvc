@@ -60,6 +60,9 @@ def _checkout(
     stats["deleted"] = [_fspath_dir(u, self.root_dir) for u in unused]
     self.state.remove_links(unused)
 
+    if isinstance(targets, str):
+        targets = [targets]
+
     pairs = set()
     for target in targets:
         try:
