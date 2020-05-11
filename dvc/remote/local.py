@@ -70,7 +70,7 @@ class LocalRemote(BaseRemote):
         else:
             self._tree = None
 
-    @cached_property
+    @property
     def state(self):
         if is_working_tree(self.repo.tree):
             return self.repo.state
@@ -122,8 +122,10 @@ class LocalRemote(BaseRemote):
         assert isinstance(path_info, str) or path_info.scheme == "local"
         if self.repo.tree.exists(path_info):
             return True
-        if not is_working_tree(self.repo.tree):
-            return self.tree.exists(path_info)
+        if not is_working_tree(self.repo.tree) and self.tree.exists(path_info):
+            return True
+        if self._erepo_tree and self._erepo_tree.exists(path_info):
+            return True
         return False
 
     def makedirs(self, path_info):
@@ -162,8 +164,12 @@ class LocalRemote(BaseRemote):
             return os.path.isfile(path_info)
         if self.tree.isfile(path_info):
             return True
-        if not is_working_tree(self.repo.tree):
-            return self.repo.tree.isfile(path_info)
+        if not is_working_tree(self.repo.tree) and self.repo.tree.isfile(
+            path_info
+        ):
+            return True
+        if self._erepo_tree:
+            return self._erepo_tree.isfile(path_info)
         return False
 
     def isdir(self, path_info):
@@ -171,8 +177,12 @@ class LocalRemote(BaseRemote):
             return os.path.isdir(path_info)
         if self.tree.isdir(path_info):
             return True
-        if not is_working_tree(self.repo.tree):
-            return self.repo.tree.isdir(path_info)
+        if not is_working_tree(self.repo.tree) and self.repo.tree.isdir(
+            path_info
+        ):
+            return True
+        if self._erepo_tree:
+            return self._erepo_tree.isdir(path_info)
         return False
 
     def iscopy(self, path_info):
@@ -189,6 +199,8 @@ class LocalRemote(BaseRemote):
     def walk_files(self, path_info):
         if self.tree.exists(path_info):
             tree = self.tree
+        elif self._erepo_tree and self._erepo_tree.exists(path_info):
+            tree = self._erepo_tree
         else:
             tree = self.repo.tree
 
@@ -198,6 +210,8 @@ class LocalRemote(BaseRemote):
     def get_file_checksum(self, path_info):
         if self.tree.exists(path_info):
             return file_md5(path_info)[0]
+        if self._erepo_tree and self._erepo_tree.exists(path_info):
+            return tree_md5(self._erepo_tree, path_info)[0]
         return tree_md5(self.repo.tree, path_info)[0]
 
     def remove(self, path_info):

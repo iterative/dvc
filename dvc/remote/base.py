@@ -5,6 +5,7 @@ import json
 import logging
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from copy import copy
 from functools import partial, wraps
 from multiprocessing import cpu_count
@@ -133,6 +134,8 @@ class BaseRemote(object):
         else:
             self.index = RemoteIndexNoop()
 
+        self._erepo_tree = None
+
     @classmethod
     def get_missing_deps(cls):
         import importlib
@@ -196,6 +199,15 @@ class BaseRemote(object):
     @property
     def tree(self):
         return self.repo.tree
+
+    @contextmanager
+    def erepo_tree(self, tree):
+        # when dealing with erepos, get_checksum() needs to be aware of both
+        # self.repo.tree and erepo.tree
+        if tree != self.repo.tree:
+            self._erepo_tree = tree
+        yield
+        self._erepo_tree = None
 
     def get_file_checksum(self, path_info):
         raise NotImplementedError
@@ -351,7 +363,10 @@ class BaseRemote(object):
         else:
             checksum = self.get_file_checksum(path_info)
 
-        if checksum:
+        # don't try to save checksum for external-only path
+        if checksum and not (
+            self._erepo_tree and self._erepo_tree.exists(path_info)
+        ):
             self.state.save(path_info, checksum)
 
         return checksum

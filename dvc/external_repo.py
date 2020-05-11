@@ -20,7 +20,6 @@ from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.repo.tree import RepoTree
 from dvc.scm.git import Git
-from dvc.scm.tree import is_working_tree
 from dvc.utils import tmp_fname
 from dvc.utils.fs import remove
 
@@ -81,22 +80,8 @@ class BaseExternalRepo:
             return self._tree_rev
         return self.scm.get_rev()
 
-    @contextmanager
-    def fix_cache_tree(self, cache):
-        if is_working_tree(self.tree):
-            yield cache
-        else:
-            # cache.repo.tree will point to a WorkingTree, but we need
-            # it to point to our GitTree instead
-            save_tree = cache.repo.tree
-            cache.repo.tree = self.tree
-            try:
-                yield cache
-            finally:
-                cache.repo.tree = save_tree
-
     def get_checksum(self, path, cache):
-        with self.fix_cache_tree(cache):
+        with cache.erepo_tree(self.tree):
             return cache.get_checksum(path)
 
     def get_external(self, path, to_info, **kwargs):
@@ -127,7 +112,7 @@ class BaseExternalRepo:
 
         Works with files tracked by Git and DVC.
         """
-        return self._fetch_external(files, cache, **kwargs)
+        raise NotImplementedError
 
     def _fetch_external(self, files, cache, **kwargs):
         downloaded, failed = 0, 0
@@ -301,7 +286,7 @@ class ExternalGitRepo(BaseExternalRepo):
             raise PathMissingError(path, self.url)
 
     def fetch_external(self, files, cache, **kwargs):
-        with self.fix_cache_tree(cache) as cache:
+        with cache.erepo_tree(self.tree):
             return self._fetch_external(files, cache, **kwargs)
 
 
