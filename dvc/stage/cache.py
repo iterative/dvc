@@ -1,5 +1,6 @@
 import logging
 import os
+from contextlib import contextmanager
 
 import yaml
 from funcy import first
@@ -76,6 +77,45 @@ class StageCache:
 
         return None
 
+    def _create_stage(self, cache):
+        from dvc.stage import create_stage, PipelineStage
+
+        stage = create_stage(
+            PipelineStage,
+            repo=self.repo,
+            path="dvc.yaml",
+            cmd=cache["cmd"],
+            deps=[dep["path"] for dep in cache["deps"]],
+            outs=[out["path"] for out in cache["outs"]],
+        )
+        StageLoader.fill_from_lock(stage, cache)
+        return stage
+
+    @contextmanager
+    def _cache_type_copy(self):
+        cache_types = self.repo.cache.local.cache_types
+        self.repo.cache.local.cache_types = ["copy"]
+        try:
+            yield
+        finally:
+            self.repo.cache.local.cache_types = cache_types
+
+    def _uncached_outs(self, stage, cache):
+        # NOTE: using temporary stage to avoid accidentally modifying original
+        # stage and to workaround `commit/checkout` not working for uncached
+        # outputs.
+        cached_stage = self._create_stage(cache)
+
+        outs_no_cache = [
+            out.def_path for out in stage.outs if not out.use_cache
+        ]
+
+        # NOTE: using copy link to make it look like a git-tracked file
+        with self._cache_type_copy():
+            for out in cached_stage.outs:
+                if out.def_path in outs_no_cache:
+                    yield out
+
     def save(self, stage):
         cache_key = _get_stage_hash(stage)
         if not cache_key:
@@ -84,7 +124,13 @@ class StageCache:
         cache = to_single_stage_lockfile(stage)
         cache_value = _get_cache_hash(cache)
 
-        if self._load_cache(cache_key, cache_value):
+        existing_cache = self._load_cache(cache_key, cache_value)
+        cache = existing_cache or cache
+
+        for out in self._uncached_outs(stage, cache):
+            out.commit()
+
+        if existing_cache:
             return
 
         # sanity check
@@ -103,6 +149,9 @@ class StageCache:
         if not cache:
             return
         StageLoader.fill_from_lock(stage, cache)
+
+        for out in self._uncached_outs(stage, cache):
+            out.checkout()
 
     @staticmethod
     def _transfer(func, from_remote, to_remote):
@@ -134,7 +183,6 @@ class StageCache:
 
     def get_used_cache(self, used_run_cache, *args, **kwargs):
         from dvc.cache import NamedCache
-        from dvc.stage import create_stage, PipelineStage
 
         cache = NamedCache()
 
@@ -142,14 +190,6 @@ class StageCache:
             entry = self._load_cache(key, value)
             if not entry:
                 continue
-            stage = create_stage(
-                PipelineStage,
-                repo=self.repo,
-                path="dvc.yaml",
-                cmd=entry["cmd"],
-                deps=[dep["path"] for dep in entry["deps"]],
-                outs=[out["path"] for out in entry["outs"]],
-            )
-            StageLoader.fill_from_lock(stage, entry)
+            stage = self._create_stage(entry)
             cache.update(stage.get_used_cache(*args, **kwargs))
         return cache
