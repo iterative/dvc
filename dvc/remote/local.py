@@ -23,6 +23,7 @@ from dvc.remote.base import (
 from dvc.remote.index import RemoteIndexNoop
 from dvc.scheme import Schemes
 from dvc.scm.tree import WorkingTree, is_working_tree
+from dvc.state import StateNoop
 from dvc.system import System
 from dvc.utils import file_md5, relpath, tmp_fname, tree_md5
 from dvc.utils.fs import (
@@ -69,9 +70,11 @@ class LocalRemote(BaseRemote):
         else:
             self._tree = None
 
-    @property
+    @cached_property
     def state(self):
-        return self.repo.state
+        if is_working_tree(self.repo.tree):
+            return self.repo.state
+        return StateNoop()
 
     @property
     def cache_dir(self):
@@ -756,7 +759,7 @@ class LocalRemote(BaseRemote):
                 entry_cache_info, unpacked_dir_info / relative_path, link_types
             )
 
-        self.state.save(unpacked_dir_info, checksum, tree=self.tree)
+        self.state.save(unpacked_dir_info, checksum)
 
     def _changed_unpacked_dir(self, checksum):
         status_unpacked_dir_info = self._get_unpacked_dir_path_info(checksum)

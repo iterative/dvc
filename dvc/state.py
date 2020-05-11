@@ -7,7 +7,6 @@ import sqlite3
 from urllib.parse import urlencode, urlunparse
 
 from dvc.exceptions import DvcException
-from dvc.scm.tree import is_working_tree
 from dvc.utils import current_timestamp, relpath, to_chunks
 from dvc.utils.fs import get_inode, get_mtime_and_size, remove
 
@@ -33,7 +32,7 @@ class StateVersionTooNewError(DvcException):
 class StateNoop(object):
     files = []
 
-    def save(self, path_info, checksum, tree=None):
+    def save(self, path_info, checksum):
         pass
 
     def get(self, path_info):
@@ -354,20 +353,20 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             return results[0]
         return None
 
-    def save(self, path_info, checksum, tree=None):
+    def save(self, path_info, checksum):
         """Save checksum for the specified path info.
 
         Args:
             path_info (dict): path_info to save checksum for.
             checksum (str): checksum to save.
         """
-        if tree is None:
-            tree = self.repo.tree
         assert isinstance(path_info, str) or path_info.scheme == "local"
         assert checksum is not None
-        assert is_working_tree(tree) and tree.exists(path_info)
+        assert os.path.exists(path_info)
 
-        actual_mtime, actual_size = get_mtime_and_size(path_info, tree)
+        actual_mtime, actual_size = get_mtime_and_size(
+            path_info, self.repo.tree
+        )
         actual_inode = get_inode(path_info)
 
         existing_record = self.get_state_record_for_inode(actual_inode)
@@ -395,7 +394,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         assert isinstance(path_info, str) or path_info.scheme == "local"
         path = os.fspath(path_info)
 
-        if not is_working_tree(self.repo.tree) or not os.path.exists(path):
+        if not os.path.exists(path):
             return None
 
         actual_mtime, actual_size = get_mtime_and_size(path, self.repo.tree)
