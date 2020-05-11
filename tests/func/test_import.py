@@ -342,3 +342,9 @@ def test_import_pipeline_tracked_outs(
             "file:///{}".format(fspath(tmp_dir)), "bar", out="baz"
         )
         assert (erepo_dir / "baz").read_text() == "foo"
+
+
+def test_local_import(tmp_dir, dvc, scm):
+    tmp_dir.dvc_gen("foo", "foo", commit="init")
+    (tmp_dir / "outdir").mkdir()
+    dvc.imp(".", "foo", out="outdir")
