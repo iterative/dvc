@@ -3,11 +3,12 @@ import logging
 import os
 
 from dvc.dvcfile import is_valid_filename
-from dvc.exceptions import OutputNotFoundError
+from dvc.exceptions import CheckoutError, OutputNotFoundError
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.scm.tree import BaseTree
-from dvc.utils.fs import copy_obj_to_file, copyfile, makedirs
+from dvc.utils import tmp_fname
+from dvc.utils.fs import copy_obj_to_file, makedirs, move, remove
 
 logger = logging.getLogger(__name__)
 
@@ -286,17 +287,18 @@ class RepoTree(BaseTree):
         except OutputNotFoundError:
             raise FileNotFoundError
 
-        filter_info = PathInfo(os.path.abspath(top))
-        for checksum, entry_path in out.filter_dir_cache(filter_info):
-            entry_info = self.repo.cache.local.checksum_to_path_info(checksum)
-            entry_path = PathInfo(os.path.abspath(entry_path))
-            if top == entry_path:
-                if not os.path.exists(dest.parent):
-                    makedirs(dest.parent)
-                copyfile(entry_info, dest)
-                return
-            if top.overlaps(entry_path):
-                dest_path = dest / entry_path.relative_to(top)
-                if not os.path.exists(dest_path.parent):
-                    makedirs(dest_path.parent)
-                copyfile(entry_info, dest_path)
+        # checkout out to tmp dir, move contents to dest, cleanup tmp dir
+        tmp = PathInfo(tmp_fname(dest))
+        src = tmp / top.relative_to(out.path_info)
+        out.path_info = tmp
+
+        if out.changed_cache(filter_info=src):
+            raise FileNotFoundError
+
+        try:
+            out.checkout(filter_info=src)
+            move(src, dest)
+        except CheckoutError:
+            raise FileNotFoundError
+        finally:
+            remove(tmp)
