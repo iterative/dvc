@@ -17,8 +17,12 @@ def imp_url(self, url, out=None, fname=None, erepo=None, locked=True):
     out = resolve_output(url, out)
     path, wdir, out = resolve_paths(self, out)
 
-    # NOTE: when user is importing something from within his own repository
-    if os.path.exists(url) and path_isin(os.path.abspath(url), self.root_dir):
+    # NOTE: when user is importing something from within their own repository
+    if (
+        erepo is None
+        and os.path.exists(url)
+        and path_isin(os.path.abspath(url), self.root_dir)
+    ):
         url = relpath(url, wdir)
 
     stage = create_stage(
