@@ -43,9 +43,11 @@ def test_source_change(erepo_dir):
     assert old_rev != new_rev
 
 
-def test_cache_reused(erepo_dir, mocker):
+def test_cache_reused(erepo_dir, mocker, setup_remote):
+    setup_remote(erepo_dir.dvc)
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("file", "text", commit="add file")
+    erepo_dir.dvc.push()
 
     download_spy = mocker.spy(LocalRemote, "download")
 
@@ -63,6 +65,8 @@ def test_cache_reused(erepo_dir, mocker):
 
 
 def test_known_sha(erepo_dir):
+    erepo_dir.scm.commit("init")
+
     url = "file://{}".format(erepo_dir)
     with external_repo(url) as repo:
         rev = repo.scm.get_rev()
@@ -92,7 +96,7 @@ def test_pull_subdir_file(tmp_dir, erepo_dir):
     assert dest.read_text() == "contents"
 
 
-def test_relative_remote(erepo_dir, tmp_dir):
+def test_relative_remote(erepo_dir, tmp_dir, setup_remote):
     # these steps reproduce the script on this issue:
     # https://github.com/iterative/dvc/issues/2756
     with erepo_dir.chdir():
@@ -100,13 +104,8 @@ def test_relative_remote(erepo_dir, tmp_dir):
 
     upstream_dir = tmp_dir
     upstream_url = relpath(upstream_dir, erepo_dir)
-    with erepo_dir.dvc.config.edit() as conf:
-        conf["remote"]["upstream"] = {"url": upstream_url}
-        conf["core"]["remote"] = "upstream"
+    setup_remote(erepo_dir.dvc, url=upstream_url, name="upstream")
 
-    erepo_dir.scm_add(
-        erepo_dir.dvc.config.files["repo"], commit="Update dvc config"
-    )
     erepo_dir.dvc.push()
 
     (erepo_dir / "file").unlink()
