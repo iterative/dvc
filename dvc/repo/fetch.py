@@ -78,4 +78,5 @@ def _fetch_external(self, repo_url, repo_rev, files, **kwargs):
     from dvc.external_repo import external_repo
 
     with external_repo(repo_url, repo_rev) as repo:
-        return repo.fetch_external(files, self.cache.local, **kwargs)
+        with repo.use_cache(self.cache.local):
+            return repo.fetch_external(files, **kwargs)

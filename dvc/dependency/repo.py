@@ -56,7 +56,8 @@ class RepoDependency(LocalDependency):
             except OutputNotFoundError:
                 path = PathInfo(os.path.join(repo.root_dir, self.def_path))
                 # We are polluting our repo cache with some dir listing here
-                return repo.get_checksum(path, self.repo.cache.local)
+                with repo.use_cache(self.repo.cache.local):
+                    return repo.get_checksum(path)
 
     def status(self):
         current_checksum = self._get_checksum(locked=True)
@@ -78,10 +79,8 @@ class RepoDependency(LocalDependency):
             if self.def_repo.get(self.PARAM_REV_LOCK) is None:
                 self.def_repo[self.PARAM_REV_LOCK] = repo.get_rev()
 
-            if hasattr(repo, "cache"):
-                repo.cache.local.cache_dir = self.repo.cache.local.cache_dir
-
-            repo.get_external(self.def_path, to.path_info)
+            with repo.use_cache(self.repo.cache.local):
+                repo.get_external(self.def_path, to.path_info)
 
     def update(self, rev=None):
         if rev:

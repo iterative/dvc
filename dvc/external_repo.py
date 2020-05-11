@@ -68,6 +68,21 @@ def clean_repos():
 
 class BaseExternalRepo:
     _tree_rev = None
+    _local_cache = None
+
+    @contextmanager
+    def use_cache(self, cache):
+        """Use specified cache instead of erepo tmpdir cache."""
+        self._local_cache = cache
+        if hasattr(self, "cache"):
+            save_cache = self.cache.local
+            self.cache.local = cache
+        # make cache aware of our repo tree
+        with cache.erepo_tree(self.tree):
+            yield
+        if hasattr(self, "cache"):
+            self.cache.local = save_cache
+        self._local_cache = None
 
     @cached_property
     def repo_tree(self):
@@ -79,9 +94,8 @@ class BaseExternalRepo:
             return self._tree_rev
         return self.scm.get_rev()
 
-    def get_checksum(self, path, cache):
-        with cache.erepo_tree(self.tree):
-            return cache.get_checksum(path)
+    def get_checksum(self, path):
+        raise NotImplementedError
 
     def get_external(self, path, to_info, **kwargs):
         """
@@ -97,28 +111,25 @@ class BaseExternalRepo:
             raise PathMissingError(path, self.url)
 
         if self.repo_tree.isdvc(path_info):
-            local_cache = self.cache.local
-        else:
-            local_cache = None
-
-        if self.repo_tree.isdvc(path_info):
             (out,) = self.find_outs_by_path(path_info, strict=False)
             filter_info = path_info.relative_to(out.path_info)
-            self._fetch_external(
-                [path_info], local_cache, filter_info=filter_info, **kwargs
-            )
+        else:
+            filter_info = None
+
+        self._fetch_external([path_info], filter_info=filter_info, **kwargs)
 
         with self.state:
             self.repo_tree.copytree(path_info, to_info)
 
-    def fetch_external(self, files, cache, **kwargs):
+    def fetch_external(self, files, **kwargs):
         """Fetch erepo files into the specified cache.
 
         Works with files tracked by Git and DVC.
         """
-        raise NotImplementedError
+        files = [PathInfo(self.root_dir) / name for name in files]
+        return self._fetch_external(files, **kwargs)
 
-    def _fetch_external(self, path_infos, cache, **kwargs):
+    def _fetch_external(self, path_infos, **kwargs):
         downloaded, failed = 0, 0
 
         with self.state:
@@ -127,7 +138,7 @@ class BaseExternalRepo:
                     (out,) = self.find_outs_by_path(path_info, strict=False)
                     d, f = self._fetch_out(out, **kwargs)
                 else:
-                    d, f = self._fetch_git(path_info, cache)
+                    d, f = self._fetch_git(path_info)
                 downloaded += d
                 failed += f
 
@@ -150,9 +161,16 @@ class BaseExternalRepo:
                 failed += exc.amount
         return downloaded, failed
 
-    def _fetch_git(self, path_info, local_cache):
+    def _fetch_git(self, path_info):
         """Copy git tracked file into specified cache."""
         downloaded, failed = 0, 0
+        if hasattr(self, "cache"):
+            local_cache = self.cache.local
+        elif self._local_cache:
+            local_cache = self._local_cache
+        else:
+            return downloaded, failed
+
         info = local_cache.save_info(path_info)
         if info.get(local_cache.PARAM_CHECKSUM) is None:
             logger.exception(
@@ -236,10 +254,8 @@ class ExternalRepo(Repo, BaseExternalRepo):
         self.config["remote"]["auto-generated-upstream"] = {"url": cache_dir}
         self.config["core"]["remote"] = "auto-generated-upstream"
 
-    def fetch_external(self, files, cache, **kwargs):
-        self.cache.local.cache_dir = cache.cache_dir
-        files = [PathInfo(self.root_dir) / name for name in files]
-        return self._fetch_external(files, self.cache.local, **kwargs)
+    def get_checksum(self, path):
+        return self.cache.local.get_checksum(path)
 
 
 class ExternalGitRepo(BaseExternalRepo):
@@ -272,10 +288,8 @@ class ExternalGitRepo(BaseExternalRepo):
         except FileNotFoundError:
             raise PathMissingError(path, self.url)
 
-    def fetch_external(self, files, cache, **kwargs):
-        files = [PathInfo(self.root_dir) / name for name in files]
-        with cache.erepo_tree(self.tree):
-            return self._fetch_external(files, cache, **kwargs)
+    def get_checksum(self, path):
+        return self._local_cache.get_checksum(path)
 
 
 def _cached_clone(url, rev, for_write=False):
