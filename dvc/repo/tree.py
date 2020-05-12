@@ -2,6 +2,7 @@ import errno
 import logging
 import os
 
+from dvc.compat import fspath_py35
 from dvc.dvcfile import is_valid_filename
 from dvc.exceptions import CheckoutError, OutputNotFoundError
 from dvc.path_info import PathInfo
@@ -55,7 +56,7 @@ class DvcTree(BaseTree):
         if not self.exists(path):
             return False
 
-        path_info = PathInfo(os.path.abspath(path))
+        path_info = PathInfo(os.path.abspath(fspath_py35(path)))
         outs = self._find_outs(path, strict=False, recursive=True)
         if len(outs) != 1 or outs[0].path_info != path_info:
             return True
@@ -97,6 +98,8 @@ class DvcTree(BaseTree):
         from pygtrie import Trie
 
         assert topdown
+
+        top = fspath_py35(top)
 
         if not self.exists(top):
             raise FileNotFoundError
@@ -265,7 +268,7 @@ class RepoTree(BaseTree):
         for root, _, files in self.walk(top):
             root_path = PathInfo(root)
             dest_dir = dest / root_path.relative_to(top)
-            if not os.path.exists(dest_dir):
+            if not os.path.exists(fspath_py35(dest_dir)):
                 makedirs(dest_dir)
             for filename in files:
                 src_file = root_path / filename
