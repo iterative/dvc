@@ -37,16 +37,16 @@ class RemoteWEBDAV(RemoteHTTP):
             raise HTTPError(response.status_code, response.reason)
 
     def _create_collections(self, to_info):
-        url_cols = to_info.get_collections()
+        url_cols = [x.url + "/" for x in to_info.parents][:-1]
         from_idx = 0
-        for idx in reversed(range(len(url_cols) + 1)):
+        for idx, url in enumerate(url_cols):
             from_idx = idx
-            if bool(self._request("HEAD", url_cols[idx - 1])):
+            if bool(self._request("HEAD", url)):
                 break
-        for idx in range(from_idx, len(url_cols)):
-            response = self._request("MKCOL", url_cols[idx])
+        for url in reversed(url_cols[:from_idx]):
+            response = self._request("MKCOL", url)
             if response.status_code not in (200, 201):
-                if bool(self._request("HEAD", url_cols[idx])):
+                if bool(self._request("HEAD", url)):
                     continue
                 raise HTTPError(response.status_code, response.reason)
 

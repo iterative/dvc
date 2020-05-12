@@ -97,26 +97,3 @@ def test_webdav_url_info_str():
     u2 = WebdavURLInfo("webdavs://test.com/t1")
     assert u1.url == "http://test.com/t1"
     assert u2.url == "https://test.com/t1"
-
-
-def test_webdav_collections_path():
-    u = WebdavURLInfo("webdav://test.com/t1")
-    assert u.get_collections() == []
-
-    u = WebdavURLInfo("webdav://test.com/")
-    assert u.get_collections() == []
-
-    u = WebdavURLInfo("webdav://test.com")
-    assert u.get_collections() == []
-
-    u = WebdavURLInfo("webdav://test.com/t1/")
-    assert u.get_collections() == ["http://test.com/t1/"]
-
-    u = WebdavURLInfo("webdav://test.com/t1/check")
-    assert u.get_collections() == ["http://test.com/t1/"]
-
-    u = WebdavURLInfo("webdav://test.com/t1/t2/check")
-    assert u.get_collections() == [
-        "http://test.com/t1/",
-        "http://test.com/t1/t2/",
-    ]
