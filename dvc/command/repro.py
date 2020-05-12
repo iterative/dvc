@@ -33,10 +33,11 @@ class CmdRepro(CmdBase):
                     interactive=self.args.interactive,
                     pipeline=self.args.pipeline,
                     all_pipelines=self.args.all_pipelines,
-                    ignore_build_cache=self.args.ignore_build_cache,
+                    run_cache=not self.args.no_run_cache,
                     no_commit=self.args.no_commit,
                     downstream=self.args.downstream,
                     recursive=self.args.recursive,
+                    force_downstream=self.args.force_downstream,
                 )
 
                 if len(stages) == 0:
@@ -136,7 +137,16 @@ def add_parser(subparsers, parent_parser):
         help="Reproduce all stages in the specified directory.",
     )
     repro_parser.add_argument(
-        "--ignore-build-cache",
+        "--no-run-cache",
+        action="store_true",
+        default=False,
+        help=(
+            "Execute stage commands even if they have already been run with "
+            "the same command/dependencies/outputs/etc before."
+        ),
+    )
+    repro_parser.add_argument(
+        "--force-downstream",
         action="store_true",
         default=False,
         help="Reproduce all descendants of a changed stage even if their "

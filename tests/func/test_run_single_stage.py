@@ -343,7 +343,7 @@ class TestRunUnprotectOutsCopy(TestDvc):
             [
                 "run",
                 "--overwrite-dvcfile",
-                "--ignore-build-cache",
+                "--no-run-cache",
                 "--single-stage",
                 "-d",
                 self.CODE,
@@ -401,7 +401,7 @@ class TestRunUnprotectOutsSymlink(TestDvc):
             [
                 "run",
                 "--overwrite-dvcfile",
-                "--ignore-build-cache",
+                "--no-run-cache",
                 "--single-stage",
                 "-d",
                 self.CODE,
@@ -460,7 +460,7 @@ class TestRunUnprotectOutsHardlink(TestDvc):
             [
                 "run",
                 "--overwrite-dvcfile",
-                "--ignore-build-cache",
+                "--no-run-cache",
                 "--single-stage",
                 "-d",
                 self.CODE,
@@ -545,7 +545,7 @@ class TestCmdRunOverwrite(TestDvc):
                 "-d",
                 self.CODE,
                 "--overwrite-dvcfile",
-                "--ignore-build-cache",
+                "--no-run-cache",
                 "--single-stage",
                 "-o",
                 "out",
@@ -664,8 +664,7 @@ def test_rerun_deterministic_ignore_cache(tmp_dir, run_copy):
 
     assert run_copy("foo", "out", single_stage=True) is not None
     assert (
-        run_copy("foo", "out", ignore_build_cache=True, single_stage=True)
-        is not None
+        run_copy("foo", "out", run_cache=False, single_stage=True) is not None
     )
 
 
@@ -932,7 +931,7 @@ class TestShouldNotCheckoutUponCorruptedLocalHardlinkCache(TestDvc):
 
 
 class TestPersistentOutput(TestDvc):
-    def test_ignore_build_cache(self):
+    def test_ignore_run_cache(self):
         warning = "Build cache is ignored when persisting outputs."
 
         with open("immutable", "w") as fobj:

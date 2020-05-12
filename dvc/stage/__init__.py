@@ -70,13 +70,13 @@ def create_stage(cls, repo, path, **kwargs):
 
     if stage and stage.dvcfile.exists():
         has_persist_outs = any(out.persist for out in stage.outs)
-        ignore_build_cache = (
-            kwargs.get("ignore_build_cache", False) or has_persist_outs
+        ignore_run_cache = (
+            not kwargs.get("run_cache", True) or has_persist_outs
         )
         if has_persist_outs:
             logger.warning("Build cache is ignored when persisting outputs.")
 
-        if not ignore_build_cache and stage.can_be_skipped:
+        if not ignore_run_cache and stage.can_be_skipped:
             logger.info("Stage is cached, skipping.")
             return None
 
@@ -623,9 +623,7 @@ class Stage(params.StageParams):
             raise StageCmdFailedError(self, retcode)
 
     @rwlocked(read=["deps"], write=["outs"])
-    def run(
-        self, dry=False, no_commit=False, force=False, ignore_build_cache=False
-    ):
+    def run(self, dry=False, no_commit=False, force=False, run_cache=True):
         if (self.cmd or self.is_import) and not self.locked and not dry:
             self.remove_outs(ignore_remove=False, force=False)
 
@@ -670,9 +668,7 @@ class Stage(params.StageParams):
                 if not stage_cached:
                     self._save_deps()
                     use_build_cache = (
-                        not force
-                        and not ignore_build_cache
-                        and stage_cache.is_cached(self)
+                        not force and run_cache and stage_cache.is_cached(self)
                     )
 
                 if use_build_cache:

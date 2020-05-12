@@ -162,12 +162,13 @@ def _reproduce_stages(
         if stage not in pipeline:
             pipeline.append(stage)
 
+    force_downstream = kwargs.pop("force_downstream", False)
     result = []
     for stage in pipeline:
         try:
             ret = _reproduce_stage(stage, **kwargs)
 
-            if len(ret) != 0 and kwargs.get("ignore_build_cache", False):
+            if len(ret) != 0 and force_downstream:
                 # NOTE: we are walking our pipeline from the top to the
                 # bottom. If one stage is changed, it will be reproduced,
                 # which tells us that we should force reproducing all of
