@@ -277,7 +277,9 @@ class RepoTree(BaseTree):
                     self.copyfile(src_file, dest_file)
                 else:
                     name, _ = os.path.splitext(filename)
-                    if not self.dvctree.exists(root_path / name):
+                    if self.dvctree and not self.dvctree.exists(
+                        root_path / name
+                    ):
                         self.copyfile(src_file, dest_file)
 
     def _copytree_dvc(self, top, dest):

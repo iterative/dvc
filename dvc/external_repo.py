@@ -132,6 +132,11 @@ class BaseExternalRepo:
         for root, dirs, files in self.repo_tree.walk(path_info):
             root_path = PathInfo(root)
             for name in dirs + files:
+                if name == Repo.DVC_DIR:
+                    # import from subrepos currently unsupported
+                    raise RecursiveImportError(
+                        path_info.relative_to(self.root_dir), subrepo=True
+                    )
                 if self.repo_tree.isdvc(root_path / name):
                     if recursive:
                         fetch_infos.append(self._fetch_info(root_path / name))

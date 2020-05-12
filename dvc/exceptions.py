@@ -336,10 +336,16 @@ class IsADirectoryError(DvcException):
 
 
 class RecursiveImportError(DvcException):
-    def __init__(self, path_info):
-        super().__init__(
-            (
-                "Cannot import path '{}' because it contains recursively "
-                "added DVC outputs."
-            ).format(path_info)
-        )
+    default_msg = (
+        "Cannot import path '{}' because it contains recursively "
+        "added DVC outputs."
+    )
+    default_msg_subrepo = (
+        "Cannot import path '{}' because it contains a DVC subrepo."
+    )
+
+    def __init__(self, path_info, subrepo=False):
+        msg = (
+            self.default_msg_subrepo if subrepo else self.default_msg
+        ).format(path_info)
+        super().__init__(msg)
