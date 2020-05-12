@@ -166,12 +166,12 @@ def add_parser(subparsers, parent_parser):
     plot_show_parser.add_argument("--xlab", default=None, help="X axis title.")
     plot_show_parser.add_argument("--ylab", default=None, help="Y axis title.")
     plot_show_parser.add_argument(
-        "datafile", nargs="?", default=None, help="Metrics file to visualize.",
+        "datafile", nargs="?", default=None, help="Metrics file to visualize",
     )
     plot_show_parser.set_defaults(func=CmdPlotShow)
 
     PLOT_DIFF_HELP = (
-        "Plot metrics differences between commits in the DVC "
+        "Plot differences in metrics between commits in the DVC "
         "repository, or between the last commit and the workspace."
     )
     plot_diff_parser = plot_subparsers.add_parser(
@@ -193,7 +193,7 @@ def add_parser(subparsers, parent_parser):
         "--datafile",
         nargs="?",
         default=None,
-        help="Metrics file to visualize.",
+        help="Metrics file to visualize",
     )
     plot_diff_parser.add_argument(
         "-f", "--file", default=None, help="Name of the generated file."
@@ -232,9 +232,6 @@ def add_parser(subparsers, parent_parser):
     plot_diff_parser.add_argument("--xlab", default=None, help="X axis title.")
     plot_diff_parser.add_argument("--ylab", default=None, help="Y axis title.")
     plot_diff_parser.add_argument(
-        "revisions",
-        nargs="*",
-        default=None,
-        help="Git revisions to plot from",
+        "revisions", nargs="*", default=None, help="Git commits to plot from",
     )
     plot_diff_parser.set_defaults(func=CmdPlotDiff)
