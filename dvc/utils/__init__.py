@@ -43,15 +43,28 @@ def _fobj_md5(fobj, hash_md5, binary, progress_func=None):
             progress_func(len(data))
 
 
-def file_md5(fname):
+def file_md5(fname, tree=None):
     """ get the (md5 hexdigest, md5 digest) of a file """
     from dvc.progress import Tqdm
     from dvc.istextfile import istextfile
 
-    if os.path.exists(fname):
+    if tree:
+        exists_func = tree.exists
+        stat_func = tree.stat
+        open_func = tree.open
+        # assume we don't need to run dos2unix when comparing git blobs
+        binary = True
+    else:
+        exists_func = os.path.exists
+        stat_func = os.stat
+        open_func = open
+        binary = False
+
+    if exists_func(fname):
         hash_md5 = hashlib.md5()
-        binary = not istextfile(fname)
-        size = os.path.getsize(fname)
+        if not binary:
+            binary = not istextfile(fname)
+        size = stat_func(fname).st_size
         no_progress_bar = True
         if size >= LARGE_FILE_SIZE:
             no_progress_bar = False
@@ -68,38 +81,11 @@ def file_md5(fname):
             bytes=True,
             leave=False,
         ) as pbar:
-            with open(fname, "rb") as fobj:
+            with open_func(fname, "rb") as fobj:
                 _fobj_md5(fobj, hash_md5, binary, pbar.update)
 
         return (hash_md5.hexdigest(), hash_md5.digest())
 
-    return (None, None)
-
-
-def tree_md5(tree, fname):
-    from dvc.progress import Tqdm
-
-    if tree.exists(fname):
-        hash_md5 = hashlib.md5()
-        # assume we don't need to run dos2unix when comparing git blobs
-        binary = True
-        size = tree.stat(fname).st_size
-        no_progress_bar = True
-        if size >= LARGE_FILE_SIZE:
-            no_progress_bar = False
-        name = relpath(fname)
-
-        with Tqdm(
-            desc=name,
-            disable=no_progress_bar,
-            total=size,
-            bytes=True,
-            leave=False,
-        ) as pbar:
-            with tree.open(fname, "rb", encoding=None) as fobj:
-                _fobj_md5(fobj, hash_md5, binary, pbar.update)
-
-        return (hash_md5.hexdigest(), hash_md5.digest())
     return (None, None)
 
 

@@ -25,7 +25,7 @@ from dvc.scheme import Schemes
 from dvc.scm.tree import WorkingTree, is_working_tree
 from dvc.state import StateNoop
 from dvc.system import System
-from dvc.utils import file_md5, relpath, tmp_fname, tree_md5
+from dvc.utils import file_md5, relpath, tmp_fname
 from dvc.utils.fs import (
     copy_obj_to_file,
     copyfile,
@@ -211,8 +211,8 @@ class LocalRemote(BaseRemote):
         if self.tree.exists(path_info):
             return file_md5(path_info)[0]
         if self._erepo_tree and self._erepo_tree.exists(path_info):
-            return tree_md5(self._erepo_tree, path_info)[0]
-        return tree_md5(self.repo.tree, path_info)[0]
+            return file_md5(path_info, self._erepo_tree)[0]
+        return file_md5(path_info, self.repo.tree)[0]
 
     def remove(self, path_info):
         if isinstance(path_info, PathInfo):
