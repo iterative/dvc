@@ -3,6 +3,7 @@ import logging
 import os
 
 from dvc.cli import parse_args
+from dvc.command.diff import _show_md
 
 
 def test_default(mocker, caplog):
@@ -110,3 +111,32 @@ def test_no_changes(mocker, caplog):
     cmd = args.func(args)
     assert 0 == cmd.run()
     assert not info()
+
+
+def test_show_md_empty():
+    assert _show_md({}) == ("| Status   | Path   |\n" "|----------|--------|")
+
+
+def test_show_md():
+    diff = {
+        "deleted": [
+            {"path": "zoo", "hash": "22222"},
+            {"path": os.path.join("data", ""), "hash": "XXXXXXXX.dir"},
+            {"path": os.path.join("data", "foo"), "hash": "11111111"},
+            {"path": os.path.join("data", "bar"), "hash": "00000000"},
+        ],
+        "modified": [
+            {"path": "file", "hash": {"old": "AAAAAAAA", "new": "BBBBBBBB"}}
+        ],
+        "added": [{"path": "file", "hash": "00000000"}],
+    }
+    assert _show_md(diff) == (
+        "| Status   | Path     |\n"
+        "|----------|----------|\n"
+        "| added    | file     |\n"
+        "| deleted  | data{sep}    |\n"
+        "| deleted  | data{sep}bar |\n"
+        "| deleted  | data{sep}foo |\n"
+        "| deleted  | zoo      |\n"
+        "| modified | file     |"
+    ).format(sep=os.path.sep)

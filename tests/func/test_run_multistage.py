@@ -160,10 +160,17 @@ def test_run_dump_on_multistage(tmp_dir, dvc):
     }
 
 
-def test_run_with_invalid_stage_name(tmp_dir, dvc, run_copy):
-    tmp_dir.dvc_gen("foo", "foo")
+@pytest.mark.parametrize(
+    "char", ["@:", "#", "$", ":", "/", "\\", ".", ";", ","]
+)
+def test_run_with_invalid_stage_name(run_copy, char):
     with pytest.raises(InvalidStageName):
-        run_copy("foo", "bar", name="email@https://dvc.org")
+        run_copy("foo", "bar", name="copy_name-{}".format(char))
+
+
+def test_run_with_name_having_hyphen_underscore(tmp_dir, dvc, run_copy):
+    tmp_dir.dvc_gen("foo", "foo")
+    run_copy("foo", "bar", name="copy-foo_bar")
 
 
 def test_run_already_exists(tmp_dir, dvc, run_copy):

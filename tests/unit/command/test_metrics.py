@@ -1,3 +1,5 @@
+import textwrap
+
 from dvc.cli import parse_args
 from dvc.command.metrics import CmdMetricsDiff, CmdMetricsShow, _show_diff
 
@@ -37,25 +39,30 @@ def test_metrics_diff(dvc, mocker):
 def test_metrics_show_json_diff():
     assert _show_diff(
         {"metrics.json": {"a.b.c": {"old": 1, "new": 2, "diff": 3}}}
-    ) == (
-        "    Path       Metric   Value   Change\n"
-        "metrics.json   a.b.c    2       3     "
+    ) == textwrap.dedent(
+        """\
+        Path          Metric    Value    Change
+        metrics.json  a.b.c     2        3"""
     )
 
 
 def test_metrics_show_raw_diff():
-    assert _show_diff({"metrics": {"": {"old": "1", "new": "2"}}}) == (
-        " Path     Metric   Value         Change      \n"
-        "metrics            2       diff not supported"
+    assert _show_diff(
+        {"metrics": {"": {"old": "1", "new": "2"}}}
+    ) == textwrap.dedent(
+        """\
+        Path     Metric    Value    Change
+        metrics            2        diff not supported"""
     )
 
 
 def test_metrics_diff_no_diff():
     assert _show_diff(
         {"other.json": {"a.b.d": {"old": "old", "new": "new"}}}
-    ) == (
-        "   Path      Metric   Value         Change      \n"
-        "other.json   a.b.d    new     diff not supported"
+    ) == textwrap.dedent(
+        """\
+        Path        Metric    Value    Change
+        other.json  a.b.d     new      diff not supported"""
     )
 
 
@@ -66,18 +73,20 @@ def test_metrics_diff_no_changes():
 def test_metrics_diff_new_metric():
     assert _show_diff(
         {"other.json": {"a.b.d": {"old": None, "new": "new"}}}
-    ) == (
-        "   Path      Metric   Value         Change      \n"
-        "other.json   a.b.d    new     diff not supported"
+    ) == textwrap.dedent(
+        """\
+        Path        Metric    Value    Change
+        other.json  a.b.d     new      diff not supported"""
     )
 
 
 def test_metrics_diff_deleted_metric():
     assert _show_diff(
         {"other.json": {"a.b.d": {"old": "old", "new": None}}}
-    ) == (
-        "   Path      Metric   Value         Change      \n"
-        "other.json   a.b.d    None    diff not supported"
+    ) == textwrap.dedent(
+        """\
+        Path        Metric    Value    Change
+        other.json  a.b.d     None     diff not supported"""
     )
 
 
@@ -114,9 +123,10 @@ def test_metrics_show(dvc, mocker):
 def test_metrics_diff_prec():
     assert _show_diff(
         {"other.json": {"a.b": {"old": 0.0042, "new": 0.0043, "diff": 0.0001}}}
-    ) == (
-        "   Path      Metric   Value    Change\n"
-        "other.json   a.b      0.0043   0.0001"
+    ) == textwrap.dedent(
+        """\
+        Path        Metric    Value    Change
+        other.json  a.b       0.0043   0.0001"""
     )
 
 
@@ -129,9 +139,38 @@ def test_metrics_diff_sorted():
                 "a.b.c": {"old": 1, "new": 2, "diff": 1},
             }
         }
-    ) == (
-        "    Path       Metric   Value   Change\n"
-        "metrics.yaml   a.b.c    2       1     \n"
-        "metrics.yaml   a.d.e    4       1     \n"
-        "metrics.yaml   x.b      6       1     "
+    ) == textwrap.dedent(
+        """\
+        Path          Metric    Value    Change
+        metrics.yaml  a.b.c     2        1
+        metrics.yaml  a.d.e     4        1
+        metrics.yaml  x.b       6        1"""
+    )
+
+
+def test_metrics_diff_markdown_empty():
+    assert _show_diff({}, markdown=True) == textwrap.dedent(
+        """\
+        | Path   | Metric   | Value   | Change   |
+        |--------|----------|---------|----------|"""
+    )
+
+
+def test_metrics_diff_markdown():
+    assert _show_diff(
+        {
+            "metrics.yaml": {
+                "x.b": {"old": 5, "new": 6},
+                "a.d.e": {"old": 3, "new": 4, "diff": 1},
+                "a.b.c": {"old": 1, "new": 2, "diff": 1},
+            }
+        },
+        markdown=True,
+    ) == textwrap.dedent(
+        """\
+        | Path         | Metric   | Value   | Change             |
+        |--------------|----------|---------|--------------------|
+        | metrics.yaml | a.b.c    | 2       | 1                  |
+        | metrics.yaml | a.d.e    | 4       | 1                  |
+        | metrics.yaml | x.b      | 6       | diff not supported |"""
     )

@@ -94,14 +94,14 @@ class TestReproCyclicGraph(SingleStageRun, TestDvc):
             deps=[self.FOO],
             outs=["bar.txt"],
             cmd="echo bar > bar.txt",
-            name="copybarbar.txt",
+            name="copybarbar-txt",
         )
 
         self._run(
             deps=["bar.txt"],
             outs=["baz.txt"],
             cmd="echo baz > baz.txt",
-            name="copybazbaz.txt",
+            name="copybazbaz-txt",
         )
 
         stage_dump = {
@@ -657,7 +657,7 @@ class TestReproMetricsAddUnchanged(TestDvc):
 class TestReproPhony(TestReproChangedData):
     def test(self):
         stage = self._run(
-            cmd="cat " + self.file1, deps=[self.file1], name="no_cmd?"
+            cmd="cat " + self.file1, deps=[self.file1], name="no_cmd"
         )
 
         self.swap_foo_with_bar()

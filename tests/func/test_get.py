@@ -197,9 +197,11 @@ def test_get_file_from_dir(tmp_dir, erepo_dir):
     assert (tmp_dir / "X").read_text() == "foo"
 
 
-def test_get_url_positive(tmp_dir, erepo_dir, caplog):
+def test_get_url_positive(tmp_dir, erepo_dir, caplog, setup_remote):
+    setup_remote(erepo_dir.dvc)
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo")
+    erepo_dir.dvc.push()
 
     caplog.clear()
     with caplog.at_level(logging.ERROR, logger="dvc"):
@@ -225,15 +227,17 @@ def test_get_url_git_only_repo(tmp_dir, scm, caplog):
 
 
 def test_get_pipeline_tracked_outs(
-    tmp_dir, dvc, scm, git_dir, local_remote, run_copy
+    tmp_dir, dvc, scm, git_dir, run_copy, setup_remote
 ):
     from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
 
+    setup_remote(dvc)
     tmp_dir.gen("foo", "foo")
     run_copy("foo", "bar", name="copy-foo-bar")
+    dvc.push()
+
     dvc.scm.add([PIPELINE_FILE, PIPELINE_LOCK])
     dvc.scm.commit("add pipeline stage")
-    dvc.push()
 
     with git_dir.chdir():
         Repo.get("file:///{}".format(fspath(tmp_dir)), "bar", out="baz")

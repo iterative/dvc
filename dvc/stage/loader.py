@@ -1,6 +1,7 @@
 import logging
 import os
-from collections import Mapping, defaultdict
+from collections import defaultdict
+from collections.abc import Mapping
 from copy import deepcopy
 from itertools import chain
 

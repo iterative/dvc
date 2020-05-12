@@ -11,7 +11,9 @@ from .scm_context import scm_context
 
 
 def is_valid_name(name: str):
-    return not {"\\", "/", "@", ":"} & set(name)
+    from ..stage import INVALID_STAGENAME_CHARS
+
+    return not INVALID_STAGENAME_CHARS & set(name)
 
 
 def _get_file_path(kwargs):

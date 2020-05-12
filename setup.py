@@ -78,7 +78,7 @@ install_requires = [
     "pydot>=1.2.4",
     "speedcopy>=2.0.1; python_version < '3.8' and sys_platform == 'win32'",
     "flatten_json>=0.1.6",
-    "texttable>=0.5.2",
+    "tabulate>=0.8.7",
     "pygtrie==2.3.2",
     "dpath>=2.0.1,<3",
 ]

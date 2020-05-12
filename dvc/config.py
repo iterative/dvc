@@ -151,6 +151,7 @@ SCHEMA = {
                     Optional("listobjects", default=False): Bool,
                     Optional("use_ssl", default=True): Bool,
                     "sse": str,
+                    "sse_kms_key_id": str,
                     "acl": str,
                     "grant_read": str,
                     "grant_read_acp": str,
