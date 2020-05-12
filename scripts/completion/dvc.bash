@@ -5,7 +5,7 @@
 #   - https://stackoverflow.com/questions/12933362
 
 _dvc_commands='add cache checkout commit config destroy diff fetch get-url get gc \
-  import-url import init install lock list metrics move pipeline plot pull push \
+  import-url import init install lock list metrics move params pipeline plot pull push \
   remote remove repro root run status unlock unprotect update version'
 
 _dvc_options='-h --help -V --version'
@@ -21,7 +21,7 @@ _dvc_commit='-f --force -d --with-deps -R --recursive'
 _dvc_commit_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_config='-u --unset --local --system --global'
 _dvc_destroy='-f --force'
-_dvc_diff='-t --show-json --show-hash'
+_dvc_diff='-t --show-json --show-hash --show-md'
 _dvc_fetch='-j --jobs -r --remote -a --all-branches -T --all-tags -d --with-deps -R --recursive'
 _dvc_fetch_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_gc='-a --all-branches --all-commits -T --all-tags -w --workspace -c --cloud -r --remote -f --force -p --projects -j --jobs'
@@ -38,7 +38,7 @@ _dvc_lock_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_metrics='add diff modify remove show'
 _dvc_metrics_add='-t --type -x --xpath'
 _dvc_metrics_add_COMPGEN=_dvc_compgen_files
-_dvc_metrics_diff='--targets -t --type -x --xpath -R --show-json'
+_dvc_metrics_diff='--targets -t --type -x --xpath -R --show-json --show-md'
 _dvc_metrics_modify='-t --type -x --xpath'
 _dvc_metrics_modify_COMPGEN=_dvc_compgen_files
 _dvc_metrics_remove=''
@@ -47,6 +47,8 @@ _dvc_metrics_show='-t --type -x --xpath -a --all-branches -T --all-tags -R --rec
 _dvc_metrics_show_COMPGEN=_dvc_compgen_files
 _dvc_move=''
 _dvc_move_COMPGEN=_dvc_compgen_files
+_dvc_params='diff'
+_dvc_params_diff='--all --show-json --show-md'
 _dvc_pipeline='list show'
 _dvc_pipeline_list=''
 _dvc_pipeline_show='-c --commands -o --outs --ascii --dot --tree -l --locked'
