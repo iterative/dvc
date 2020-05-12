@@ -47,19 +47,21 @@ class WorkingTree(BaseTree):
 
     def open(self, path, mode="r", encoding="utf-8"):
         """Open file and return a stream."""
+        if "b" in mode:
+            encoding = None
         return open(path, mode=mode, encoding=encoding)
 
     def exists(self, path):
         """Test whether a path exists."""
-        return os.path.lexists(fspath(path))
+        return os.path.lexists(path)
 
     def isdir(self, path):
         """Return true if the pathname refers to an existing directory."""
-        return os.path.isdir(fspath(path))
+        return os.path.isdir(path)
 
     def isfile(self, path):
         """Test whether a path is a regular file"""
-        return os.path.isfile(fspath(path))
+        return os.path.isfile(path)
 
     def walk(self, top, topdown=True):
         """Directory tree generator.
@@ -78,12 +80,12 @@ class WorkingTree(BaseTree):
             yield os.path.normpath(root), dirs, files
 
     def isexec(self, path):
-        mode = os.stat(fspath(path)).st_mode
+        mode = os.stat(path).st_mode
         return mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
     @staticmethod
     def stat(path):
-        return os.stat(fspath(path))
+        return os.stat(path)
 
 
 def is_working_tree(tree):

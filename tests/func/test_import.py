@@ -372,4 +372,4 @@ def test_import_recursive_add(tmp_dir, dvc, erepo_dir):
     erepo_dir.scm.commit("add dir")
 
     with pytest.raises(RecursiveImportError):
-        dvc.imp(fspath(erepo_dir), "dir", "dir_imported")
+        dvc.imp(os.fspath(erepo_dir), "dir", "dir_imported")

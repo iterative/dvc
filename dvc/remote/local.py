@@ -9,7 +9,6 @@ from funcy import cached_property, concat
 from shortuuid import uuid
 
 from dvc.exceptions import DownloadError, DvcException, UploadError
-from dvc.ignore import CleanTree
 from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
 from dvc.remote.base import (
@@ -63,10 +62,7 @@ class LocalRemote(BaseRemote):
             if is_working_tree(self.repo.tree):
                 self._tree = self.repo.tree
             else:
-                tree = WorkingTree(self.repo.root_dir)
-                if isinstance(self.repo.tree, CleanTree):
-                    tree = CleanTree(tree)
-                self._tree = tree
+                self._tree = WorkingTree(self.repo.root_dir)
         else:
             self._tree = None
 

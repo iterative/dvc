@@ -52,11 +52,7 @@ def get_mtime_and_size(path, tree):
         # max(mtime(f) for f in non_ignored_files)
         mtime = dict_md5(files_mtimes)
     else:
-<<<<<<< HEAD
-        base_stat = os.stat(path)
-=======
-        base_stat = tree.stat(fspath_py35(path))
->>>>>>> 03f92d78... GitTree: add stat()
+        base_stat = tree.stat(path)
         size = base_stat.st_size
         mtime = base_stat.st_mtime
         mtime = int(nanotime.timestamp(mtime))
@@ -206,7 +202,6 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
 
 def copy_obj_to_file(fsrc, dest):
     """Copy contents of file object to destination path."""
-    dest = fspath_py35(dest)
     with open(dest, "wb+") as fdest:
         shutil.copyfileobj(fsrc, fdest)
 

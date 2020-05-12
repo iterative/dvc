@@ -462,7 +462,7 @@ class Repo(object):
         if not outs:
             outs = [out for stage in self.stages for out in stage.outs]
 
-        abs_path = os.path.abspath(fspath_py35(path))
+        abs_path = os.path.abspath(path)
         path_info = PathInfo(abs_path)
         match = path_info.__eq__ if strict else path_info.isin_or_eq
 
