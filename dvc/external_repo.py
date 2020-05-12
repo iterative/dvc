@@ -21,6 +21,7 @@ from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.repo.tree import RepoTree
 from dvc.scm.git import Git
+from dvc.scm.tree import is_working_tree
 from dvc.utils.fs import remove
 
 logger = logging.getLogger(__name__)
@@ -94,6 +95,25 @@ class BaseExternalRepo:
         if self._tree_rev:
             return self._tree_rev
         return self.scm.get_rev()
+
+    @contextmanager
+    def _open_by_repo_tree_relpath(
+        self, path, mode="r", encoding=None, **kwargs
+    ):
+        try:
+            if (
+                encoding is None
+                and "b" not in mode
+                and not is_working_tree(self.tree)
+            ):
+                # GitTree requires text encoding be set for non-binary mode
+                encoding = "utf-8"
+            with self.repo_tree.open(
+                PathInfo(self.root_dir) / path, mode, encoding=encoding
+            ) as fd:
+                yield fd
+        except FileNotFoundError:
+            raise PathMissingError(path, self.url)
 
     def get_checksum(self, path):
         raise NotImplementedError
@@ -291,6 +311,25 @@ class ExternalRepo(Repo, BaseExternalRepo):
     def get_checksum(self, path):
         return self.cache.local.get_checksum(path)
 
+    @contextmanager
+    def open_by_relpath(self, path, remote=None, mode="r", encoding=None):
+        """Opens a specified resource as a file object."""
+        path_info = PathInfo(self.root_dir) / path
+        if self.repo_tree.isdvc(path_info):
+            (out,) = self.find_outs_by_path(path_info, strict=False)
+            if out.use_cache:
+                try:
+                    with self._open_cached(out, remote, mode, encoding) as fd:
+                        yield fd
+                    return
+                except FileNotFoundError as exc:
+                    raise FileMissingError(path) from exc
+
+        with self._open_by_repo_tree_relpath(
+            path, mode=mode, encoding=encoding
+        ) as fobj:
+            yield fobj
+
 
 class ExternalGitRepo(BaseExternalRepo):
     state = suppress()
@@ -314,13 +353,10 @@ class ExternalGitRepo(BaseExternalRepo):
 
     @contextmanager
     def open_by_relpath(self, path, mode="r", encoding=None, **kwargs):
-        """Opens a specified resource as a file object."""
-        try:
-            abs_path = os.path.join(self.root_dir, path)
-            with self.repo_tree.open(abs_path, mode, encoding=encoding) as fd:
-                yield fd
-        except FileNotFoundError:
-            raise PathMissingError(path, self.url)
+        with self._open_by_repo_tree_relpath(
+            path, mode=mode, encoding=encoding, **kwargs
+        ) as fobj:
+            yield fobj
 
     def get_checksum(self, path):
         return self._local_cache.get_checksum(path)
