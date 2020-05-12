@@ -333,3 +333,13 @@ class RemoteCacheRequiredError(DvcException):
 
 class IsADirectoryError(DvcException):
     """Raised when a file operation is requested on a directory."""
+
+
+class RecursiveImportError(DvcException):
+    def __init__(self, path_info):
+        super().__init__(
+            (
+                "Cannot import path '{}' because it contains recursively "
+                "added DVC outputs."
+            ).format(path_info)
+        )

@@ -15,6 +15,7 @@ from dvc.exceptions import (
     NoRemoteInExternalRepoError,
     OutputNotFoundError,
     PathMissingError,
+    RecursiveImportError,
 )
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
@@ -97,7 +98,38 @@ class BaseExternalRepo:
     def get_checksum(self, path):
         raise NotImplementedError
 
-    def get_external(self, path, to_info, **kwargs):
+    def check_recursive_imports(self, path):
+        """Raise RecursiveImportError if path_info contains recursively added
+        DVC outs.
+        """
+        path_info = PathInfo(self.root_dir) / path
+        self._recursive_outputs(path_info)
+
+    def _recursive_outputs(self, path_info, recursive=False):
+        # if path_info is a non-dvc directory, we need to check for
+        # recursively added dvc files
+        fetch_infos = []
+        for root, dirs, files in self.repo_tree.walk(path_info):
+            root_path = PathInfo(root)
+            for name in dirs + files:
+                if self.repo_tree.isdvc(root_path / name):
+                    if recursive:
+                        fetch_infos.append(self._fetch_info(root_path / name))
+                    else:
+                        raise RecursiveImportError(
+                            path_info.relative_to(self.root_dir)
+                        )
+        return fetch_infos
+
+    def _fetch_info(self, path_info):
+        if self.repo_tree.isdvc(path_info):
+            (out,) = self.find_outs_by_path(path_info, strict=False)
+            filter_info = path_info.relative_to(out.path_info)
+        else:
+            filter_info = None
+        return path_info, filter_info
+
+    def get_external(self, path, to_info, recursive=False, **kwargs):
         """
         Pull the corresponding file or directory specified by `path` and
         into `to_info`.
@@ -110,13 +142,13 @@ class BaseExternalRepo:
         if not self.repo_tree.exists(path_info):
             raise PathMissingError(path, self.url)
 
-        if self.repo_tree.isdvc(path_info):
-            (out,) = self.find_outs_by_path(path_info, strict=False)
-            filter_info = path_info.relative_to(out.path_info)
-        else:
-            filter_info = None
+        fetch_infos = [self._fetch_info(path_info)]
+        if self.repo_tree.isdir(path_info) and not self.repo_tree.isdvc(
+            path_info
+        ):
+            fetch_infos.extend(self._recursive_outputs(path_info, recursive))
 
-        self._fetch_external([path_info], filter_info=filter_info, **kwargs)
+        self._fetch_external(fetch_infos, **kwargs)
 
         with self.state:
             self.repo_tree.copytree(path_info, to_info)
@@ -126,17 +158,19 @@ class BaseExternalRepo:
 
         Works with files tracked by Git and DVC.
         """
-        files = [PathInfo(self.root_dir) / name for name in files]
+        files = [(PathInfo(self.root_dir) / name, None) for name in files]
         return self._fetch_external(files, **kwargs)
 
-    def _fetch_external(self, path_infos, **kwargs):
+    def _fetch_external(self, fetch_infos, **kwargs):
         downloaded, failed = 0, 0
 
         with self.state:
-            for path_info in path_infos:
+            for path_info, filter_info in fetch_infos:
                 if self.repo_tree.isdvc(path_info):
                     (out,) = self.find_outs_by_path(path_info, strict=False)
-                    d, f = self._fetch_out(out, **kwargs)
+                    d, f = self._fetch_out(
+                        out, filter_info=filter_info, **kwargs
+                    )
                 else:
                     d, f = self._fetch_git(path_info)
                 downloaded += d
