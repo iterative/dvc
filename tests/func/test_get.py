@@ -4,7 +4,7 @@ import os
 import pytest
 
 from dvc.cache import Cache
-from dvc.exceptions import PathMissingError
+from dvc.exceptions import PathMissingError, RecursiveImportError
 from dvc.main import main
 from dvc.repo import Repo
 from dvc.repo.get import GetDVCFileError
@@ -248,3 +248,20 @@ def test_get_pipeline_tracked_outs(
     with git_dir.chdir():
         Repo.get("file:///{}".format(os.fspath(tmp_dir)), "bar", out="baz")
         assert (git_dir / "baz").read_text() == "foo"
+
+
+def test_get_recursive_add(tmp_dir, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.gen({"dir": {"foo": "foo content", "bar": "bar content"}})
+    erepo_dir.dvc.add(str(erepo_dir / "dir"), recursive=True)
+    erepo_dir.scm.add(
+        [
+            str(erepo_dir / "dir" / "foo.dvc"),
+            str(erepo_dir / "dir" / "bar.dvc"),
+            str(erepo_dir / "dir" / ".gitignore"),
+        ]
+    )
+    erepo_dir.scm.commit("add dir")
+
+    with pytest.raises(RecursiveImportError):
+        Repo.get(erepo_dir, "dir", "dir_imported")

@@ -8,7 +8,11 @@ import dvc.data_cloud as cloud
 from dvc.cache import Cache
 from dvc.config import NoRemoteError
 from dvc.dvcfile import Dvcfile
-from dvc.exceptions import DownloadError, PathMissingError
+from dvc.exceptions import (
+    DownloadError,
+    PathMissingError,
+    RecursiveImportError,
+)
 from dvc.system import System
 from dvc.utils.fs import makedirs, remove
 from tests.utils import trees_equal
@@ -352,3 +356,20 @@ def test_local_import(tmp_dir, dvc, scm):
     tmp_dir.dvc_gen("foo", "foo", commit="init")
     (tmp_dir / "outdir").mkdir()
     dvc.imp(".", "foo", out="outdir")
+
+
+def test_import_recursive_add(tmp_dir, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.gen({"dir": {"foo": "foo content", "bar": "bar content"}})
+    erepo_dir.dvc.add(str(erepo_dir / "dir"), recursive=True)
+    erepo_dir.scm.add(
+        [
+            str(erepo_dir / "dir" / "foo.dvc"),
+            str(erepo_dir / "dir" / "bar.dvc"),
+            str(erepo_dir / "dir" / ".gitignore"),
+        ]
+    )
+    erepo_dir.scm.commit("add dir")
+
+    with pytest.raises(RecursiveImportError):
+        dvc.imp(fspath(erepo_dir), "dir", "dir_imported")
