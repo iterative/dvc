@@ -12,6 +12,12 @@ from .exceptions import StageCmdFailedError
 logger = logging.getLogger(__name__)
 
 
+def _nix_cmd(executable, cmd):
+    opts = {"zsh": ["--no-rcs"], "bash": ["--noprofile", "--norc"]}
+    name = os.path.basename(executable).lower()
+    return [executable] + opts.get(name, []) + ["-c", cmd]
+
+
 def warn_if_fish(executable):
     if (
         executable is None
@@ -51,12 +57,8 @@ def cmd_run(stage, *args, **kwargs):
         #                                           #issuecomment-535396799
         kwargs["shell"] = False
         executable = os.getenv("SHELL") or "/bin/sh"
-
         warn_if_fish(executable)
-
-        opts = {"zsh": ["--no-rcs"], "bash": ["--noprofile", "--norc"]}
-        name = os.path.basename(executable).lower()
-        cmd = [executable] + opts.get(name, []) + ["-c", stage.cmd]
+        cmd = _nix_cmd(executable, stage.cmd)
 
     main_thread = isinstance(threading.current_thread(), threading._MainThread)
     old_handler = None
