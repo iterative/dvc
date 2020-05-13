@@ -253,20 +253,18 @@ class Stage(params.StageParams):
 
     @rwlocked(read=["deps", "outs"])
     def changed(self):
-        if self._changed():
-            logger.debug("{} changed.".format(self))
-            return True
-
-        logger.debug("{} didn't change.".format(self))
-        return False
-
-    def _changed(self):
-        # Short-circuit order: stage md5 is fast, deps are expected to change
-        return (
+        is_changed = (
+            # Short-circuit order: stage md5 is fast,
+            # deps are expected to change
             self.changed_stage(warn=True)
             or self.changed_deps()
             or self.changed_outs()
         )
+        if is_changed:
+            logger.info("%s changed.", self)
+        else:
+            logger.info("%s didn't change.", self)
+        return is_changed
 
     @rwlocked(write=["outs"])
     def remove_outs(self, ignore_remove=False, force=False):
