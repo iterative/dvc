@@ -60,9 +60,9 @@ def fill_stage_dependencies(stage, deps=None, erepo=None, params=None):
 def check_circular_dependency(stage):
     from dvc.exceptions import CircularDependencyError
 
-    circular_dependencies = set(d.path_info for d in stage.deps) & set(
+    circular_dependencies = {d.path_info for d in stage.deps} & {
         o.path_info for o in stage.outs
-    )
+    }
 
     if circular_dependencies:
         raise CircularDependencyError(str(circular_dependencies.pop()))

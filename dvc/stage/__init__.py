@@ -218,6 +218,9 @@ class Stage(params.StageParams):
         if self.always_changed:
             return True
 
+        return self._changed_deps()
+
+    def _changed_deps(self):
         for dep in self.deps:
             status = dep.status()
             if status:
@@ -228,7 +231,6 @@ class Stage(params.StageParams):
                     )
                 )
                 return True
-
         return False
 
     def changed_outs(self):
