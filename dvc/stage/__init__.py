@@ -386,7 +386,9 @@ class Stage(params.StageParams):
     def changed_entries(self):
         changed_deps = self._changed_entries(self.deps)
         changed_outs = self._changed_entries(self.outs)
-        return changed_deps, changed_outs, self.changed_stage()
+        ret = []
+        self._status_stage(ret)
+        return changed_deps, changed_outs, next(iter(ret), None)
 
     @rwlocked(write=["outs"])
     def commit(self):
