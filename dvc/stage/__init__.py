@@ -272,13 +272,10 @@ class Stage(params.StageParams):
         for out in self.outs:
             if out.persist and not force:
                 out.unprotect()
-            else:
-                logger.debug(
-                    "Removing output '{out}' of {stage}.".format(
-                        out=out, stage=self
-                    )
-                )
-                out.remove(ignore_remove=ignore_remove)
+                continue
+
+            logger.debug("Removing output '{}' of {}.".format(out, self))
+            out.remove(ignore_remove=ignore_remove)
 
     def unprotect_outs(self):
         for out in self.outs:
