@@ -20,7 +20,7 @@ from .utils import (
     compute_md5,
     fill_stage_dependencies,
     fill_stage_outputs,
-    resolve_wdir,
+    get_dump,
     stage_dump_eq,
 )
 
@@ -357,19 +357,7 @@ class Stage(params.StageParams):
         return True
 
     def dumpd(self):
-        return {
-            key: value
-            for key, value in {
-                Stage.PARAM_MD5: self.md5,
-                Stage.PARAM_CMD: self.cmd,
-                Stage.PARAM_WDIR: resolve_wdir(self.wdir, self.path),
-                Stage.PARAM_LOCKED: self.locked,
-                Stage.PARAM_DEPS: [d.dumpd() for d in self.deps],
-                Stage.PARAM_OUTS: [o.dumpd() for o in self.outs],
-                Stage.PARAM_ALWAYS_CHANGED: self.always_changed,
-            }.items()
-            if value
-        }
+        return get_dump(self)
 
     def compute_md5(self):
         m = compute_md5(self)
