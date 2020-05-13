@@ -10,7 +10,8 @@ from dvc.repo.plot.template import NoDataForTemplateError, Template
 
 logger = logging.getLogger(__name__)
 
-PAGE_HTML = """<html>
+PAGE_HTML = """<!DOCTYPE html>
+<html>
 <head>
     <title>DVC Plot</title>
     <script src="https://cdn.jsdelivr.net/npm/vega@5.10.0"></script>

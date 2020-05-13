@@ -31,6 +31,7 @@ _dvc_commands() {
     "lock:Lock DVC-file."
     "metrics:Commands to add, manage, collect and display metrics."
     "move:Rename or move a DVC controlled data file or a directory."
+    "params:Commands to display params."
     "pipeline:Manage pipelines."
     "pull:Pull data files from a DVC remote storage."
     "push:Push data files to a DVC remote storage."
@@ -102,6 +103,7 @@ _dvc_destroy=(
 _dvc_diff=(
   "--show-json[Format the output into a JSON]"
   "--show-hash[Display hash value for each entry]"
+  "--show-md[Format the output into a Markdown table]"
   "1:Old Git commit to compare (defaults to HEAD):"
   "2:New Git commit to compare (defaults to the current workspace):"
 )
@@ -180,6 +182,10 @@ _dvc_metrics=(
 _dvc_move=(
   "1:Source:_files"
   "2:Destination:"
+)
+
+_dvc_params=(
+  "1:Sub command:(diff)"
 )
 
 _dvc_pipeline=(
@@ -312,6 +318,7 @@ case $words[1] in
   list) _arguments $_dvc_global_options $_dvc_list ;;
   metrics) _arguments $_dvc_global_options $_dvc_metrics ;;
   move) _arguments $_dvc_global_options $_dvc_move ;;
+  params) _arguments $_dvc_global_options $_dvc_params ;;
   pipeline) _arguments $_dvc_global_options $_dvc_pipeline ;;
   pull) _arguments $_dvc_global_options $_dvc_pull ;;
   push) _arguments $_dvc_global_options $_dvc_push ;;
