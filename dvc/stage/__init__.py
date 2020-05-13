@@ -1,6 +1,5 @@
 import logging
 import os
-import pathlib
 import string
 
 from funcy import project
@@ -21,6 +20,7 @@ from .utils import (
     compute_md5,
     fill_stage_dependencies,
     fill_stage_outputs,
+    resolve_wdir,
     stage_dump_eq,
 )
 
@@ -361,19 +361,13 @@ class Stage(params.StageParams):
 
         return True
 
-    def resolve_wdir(self):
-        rel_wdir = relpath(self.wdir, os.path.dirname(self.path))
-        return (
-            pathlib.PurePath(rel_wdir).as_posix() if rel_wdir != "." else None
-        )
-
     def dumpd(self):
         return {
             key: value
             for key, value in {
                 Stage.PARAM_MD5: self.md5,
                 Stage.PARAM_CMD: self.cmd,
-                Stage.PARAM_WDIR: self.resolve_wdir(),
+                Stage.PARAM_WDIR: resolve_wdir(self.wdir, self.path),
                 Stage.PARAM_LOCKED: self.locked,
                 Stage.PARAM_DEPS: [d.dumpd() for d in self.deps],
                 Stage.PARAM_OUTS: [o.dumpd() for o in self.outs],
