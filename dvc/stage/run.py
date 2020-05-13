@@ -105,4 +105,4 @@ def run_stage(stage, dry=False, force=False, run_cache=False):
         stage.checkout()
     else:
         logger.info("Running command:\n\t{}".format(stage.cmd))
-        stage.cmd_run(stage.cmd, stage.wdir)
+        cmd_run(stage)
