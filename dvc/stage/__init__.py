@@ -387,19 +387,20 @@ class Stage(params.StageParams):
         logger.debug("Computed {} md5: '{}'".format(self, m))
         return m
 
+    def save(self):
+        self.save_deps()
+        self.save_outs()
+        self.md5 = self.compute_md5()
+
+        self.repo.stage_cache.save(self)
+
     def save_deps(self):
         for dep in self.deps:
             dep.save()
 
-    def save(self):
-        self.save_deps()
-
+    def save_outs(self):
         for out in self.outs:
             out.save()
-
-        self.md5 = self.compute_md5()
-
-        self.repo.stage_cache.save(self)
 
     @staticmethod
     def _changed_entries(entries):
