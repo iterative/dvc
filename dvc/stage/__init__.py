@@ -1,26 +1,19 @@
 import logging
 import os
 import pathlib
-import signal
 import string
-import subprocess
-import threading
 
 from funcy import project
 
 import dvc.dependency as dependency
 import dvc.prompt as prompt
 from dvc.exceptions import CheckoutError, DvcException
-from dvc.utils import fix_env, relpath
+from dvc.utils import relpath
 
 from . import params
-from .decorators import rwlocked, unlocked_repo
-from .exceptions import (
-    MissingDataSource,
-    StageCmdFailedError,
-    StageCommitError,
-    StageUpdateError,
-)
+from .decorators import rwlocked
+from .exceptions import MissingDataSource, StageCommitError, StageUpdateError
+from .run import run_stage
 from .utils import (
     check_circular_dependency,
     check_duplicated_arguments,
@@ -439,136 +432,47 @@ class Stage(params.StageParams):
         for out in self.outs:
             out.commit()
 
-    @staticmethod
-    def _warn_if_fish(executable):  # pragma: no cover
-        if (
-            executable is None
-            or os.path.basename(os.path.realpath(executable)) != "fish"
-        ):
-            return
-
-        logger.warning(
-            "DVC detected that you are using fish as your default "
-            "shell. Be aware that it might cause problems by overwriting "
-            "your current environment variables with values defined "
-            "in '.fishrc', which might affect your command. See "
-            "https://github.com/iterative/dvc/issues/1307. "
+    def _import_run(self, dry=False, force=False):
+        logger.info(
+            "Importing '{dep}' -> '{out}'".format(
+                dep=self.deps[0], out=self.outs[0]
+            )
         )
-
-    @unlocked_repo
-    def _run(self):
-        kwargs = {"cwd": self.wdir, "env": fix_env(None), "close_fds": True}
-
-        if os.name == "nt":
-            kwargs["shell"] = True
-            cmd = self.cmd
-        else:
-            # NOTE: when you specify `shell=True`, `Popen` [1] will default to
-            # `/bin/sh` on *nix and will add ["/bin/sh", "-c"] to your command.
-            # But we actually want to run the same shell that we are running
-            # from right now, which is usually determined by the `SHELL` env
-            # var. So instead, we compose our command on our own, making sure
-            # to include special flags to prevent shell from reading any
-            # configs and modifying env, which may change the behavior or the
-            # command we are running. See [2] for more info.
-            #
-            # [1] https://github.com/python/cpython/blob/3.7/Lib/subprocess.py
-            #                                                            #L1426
-            # [2] https://github.com/iterative/dvc/issues/2506
-            #                                           #issuecomment-535396799
-            kwargs["shell"] = False
-            executable = os.getenv("SHELL") or "/bin/sh"
-
-            self._warn_if_fish(executable)
-
-            opts = {"zsh": ["--no-rcs"], "bash": ["--noprofile", "--norc"]}
-            name = os.path.basename(executable).lower()
-            cmd = [executable] + opts.get(name, []) + ["-c", self.cmd]
-
-        main_thread = isinstance(
-            threading.current_thread(), threading._MainThread
-        )
-        old_handler = None
-        p = None
-
-        try:
-            p = subprocess.Popen(cmd, **kwargs)
-            if main_thread:
-                old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
-            p.communicate()
-        finally:
-            if old_handler:
-                signal.signal(signal.SIGINT, old_handler)
-
-        retcode = None if not p else p.returncode
-        if retcode != 0:
-            raise StageCmdFailedError(self, retcode)
+        if not dry:
+            if (
+                not force
+                and not self.changed_stage(warn=True)
+                and self.already_cached()
+            ):
+                self.outs[0].checkout()
+            else:
+                self.deps[0].download(self.outs[0])
 
     @rwlocked(read=["deps"], write=["outs"])
     def run(self, dry=False, no_commit=False, force=False, run_cache=True):
         if (self.cmd or self.is_import) and not self.locked and not dry:
             self.remove_outs(ignore_remove=False, force=False)
 
-        if self.locked:
-            logger.info(
-                "Verifying outputs in locked {stage}".format(stage=self)
+        if self.locked or self.is_data_source:
+            msg = "Verifying {} in {}{}".format(
+                "outputs" if self.locked else "data sources",
+                "locked " if self.locked else "",
+                self,
             )
-            if not dry:
-                self.check_missing_outputs()
-
-        elif self.is_import:
-            logger.info(
-                "Importing '{dep}' -> '{out}'".format(
-                    dep=self.deps[0], out=self.outs[0]
-                )
-            )
-            if not dry:
-                if (
-                    not force
-                    and not self.changed_stage(warn=True)
-                    and self.already_cached()
-                ):
-                    self.outs[0].checkout()
-                else:
-                    self.deps[0].download(self.outs[0])
-        elif self.is_data_source:
-            msg = "Verifying data sources in {}".format(self)
             logger.info(msg)
             if not dry:
                 self.check_missing_outputs()
-
+        elif self.is_import:
+            self._import_run(dry, force)
         else:
-            if not dry:
-                stage_cache = self.repo.stage_cache
-                stage_cached = (
-                    not force
-                    and not self.is_callback
-                    and not self.always_changed
-                    and self.already_cached()
-                )
-                use_build_cache = False
-                if not stage_cached:
-                    self.save_deps()
-                    use_build_cache = (
-                        not force and run_cache and stage_cache.is_cached(self)
-                    )
+            run_stage(self, dry, force, run_cache)
 
-                if use_build_cache:
-                    # restore stage from build cache
-                    self.repo.stage_cache.restore(self)
-                    stage_cached = self.outs_cached()
+        if dry:
+            return
 
-                if stage_cached:
-                    logger.info("Stage is cached, skipping.")
-                    self.checkout()
-                else:
-                    logger.info("Running command:\n\t{}".format(self.cmd))
-                    self._run()
-
-        if not dry:
-            self.save()
-            if not no_commit:
-                self.commit()
+        self.save()
+        if not no_commit:
+            self.commit()
 
     def check_missing_outputs(self):
         paths = [str(out) for out in self.outs if not out.exists]

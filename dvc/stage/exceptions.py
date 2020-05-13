@@ -2,8 +2,8 @@ from dvc.exceptions import DvcException
 
 
 class StageCmdFailedError(DvcException):
-    def __init__(self, stage, status=None):
-        msg = "failed to run: {}".format(stage.cmd)
+    def __init__(self, cmd, status=None):
+        msg = "failed to run: {}".format(cmd)
         if status is not None:
             msg += ", exited with {}".format(status)
         super().__init__(msg)
