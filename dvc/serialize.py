@@ -6,11 +6,12 @@ from typing import TYPE_CHECKING, List
 from funcy import lsplit, rpartial
 
 from dvc.dependency import ParamsDependency
+from dvc.stage.utils import resolve_wdir
 from dvc.utils.collections import apply_diff
 from dvc.utils.stage import parse_stage_for_update
 
 if TYPE_CHECKING:
-    from dvc.stage import PipelineStage, Stage, resolve_wdir
+    from dvc.stage import PipelineStage, Stage
 
 PARAM_PATH = ParamsDependency.PARAM_PATH
 PARAM_PARAMS = ParamsDependency.PARAM_PARAMS
