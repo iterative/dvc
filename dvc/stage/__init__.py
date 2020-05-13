@@ -12,7 +12,7 @@ from dvc.utils import relpath
 
 from . import params
 from .decorators import rwlocked
-from .exceptions import StageCommitError, StageUpdateError
+from .exceptions import StageUpdateError
 from .imports import sync_import, update_import
 from .run import run_stage
 from .utils import (
@@ -383,25 +383,10 @@ class Stage(params.StageParams):
             if entry.checksum and entry.changed_checksum()
         ]
 
-    def check_can_commit(self, force):
+    def changed_entries(self):
         changed_deps = self._changed_entries(self.deps)
         changed_outs = self._changed_entries(self.outs)
-
-        if changed_deps or changed_outs or self.changed_stage():
-            msg = (
-                "dependencies {}".format(changed_deps) if changed_deps else ""
-            )
-            msg += " and " if (changed_deps and changed_outs) else ""
-            msg += "outputs {}".format(changed_outs) if changed_outs else ""
-            msg += "md5" if not (changed_deps or changed_outs) else ""
-            msg += " of {} changed. ".format(self)
-            msg += "Are you sure you want to commit it?"
-            if not (force or prompt.confirm(msg)):
-                raise StageCommitError(
-                    "unable to commit changed {}. Use `-f|--force` to "
-                    "force.".format(self)
-                )
-            self.save()
+        return changed_deps, changed_outs, self.changed_stage()
 
     @rwlocked(write=["outs"])
     def commit(self):
