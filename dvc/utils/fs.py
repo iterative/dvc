@@ -72,8 +72,8 @@ class BasePathNotInCheckedPathException(DvcException):
 
 
 def contains_symlink_up_to(path, base_path):
-    base_path = fspath(base_path)
-    path = fspath(path)
+    base_path = os.fspath(base_path)
+    path = os.fspath(path)
 
     if base_path not in path:
         raise BasePathNotInCheckedPathException(path, base_path)

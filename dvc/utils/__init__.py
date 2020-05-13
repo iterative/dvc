@@ -216,7 +216,7 @@ def fix_env(env=None):
 
 def tmp_fname(fname):
     """ Temporary name for a partial download """
-    return fspath(fname) + "." + uuid() + ".tmp"
+    return os.fspath(fname) + "." + uuid() + ".tmp"
 
 
 def current_timestamp():

@@ -74,7 +74,7 @@ class LocalOutput(BaseOutput):
         if not self.metric:
             return
 
-        path = fspath_py35(self.path_info)
+        path = os.fspath(self.path_info)
         if not os.path.exists(path):
             return
 

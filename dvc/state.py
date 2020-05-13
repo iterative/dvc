@@ -392,7 +392,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             doesn't exist in the state database.
         """
         assert isinstance(path_info, str) or path_info.scheme == "local"
-        path = fspath_py35(path_info)
+        path = os.fspath(path_info)
 
         if not os.path.exists(path):
             return None

@@ -99,7 +99,7 @@ class System(object):
 
     @staticmethod
     def reflink(source, link_name):
-        source, link_name = fspath(source), fspath(link_name)
+        source, link_name = os.fspath(source), os.fspath(link_name)
 
         system = platform.system()
         try:
@@ -159,7 +159,7 @@ class System(object):
 
     @staticmethod
     def inode(path):
-        path = fspath(path)
+        path = os.fspath(path)
 
         if System.is_unix():
             import ctypes
@@ -187,7 +187,7 @@ class System(object):
 
     @staticmethod
     def is_symlink(path):
-        path = fspath(path)
+        path = os.fspath(path)
 
         if System.is_unix():
             return os.path.islink(path)
@@ -203,7 +203,7 @@ class System(object):
 
     @staticmethod
     def is_hardlink(path):
-        path = fspath(path)
+        path = os.fspath(path)
 
         if System.is_unix():
             return os.stat(path).st_nlink > 1
