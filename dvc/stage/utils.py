@@ -1,8 +1,10 @@
 import os
+from itertools import product
 
 from dvc import dependency, output
 from dvc.utils.fs import path_isin
 
+from ..remote import LocalRemote, S3Remote
 from .exceptions import (
     StagePathNotDirectoryError,
     StagePathNotFoundError,
@@ -72,3 +74,24 @@ def check_duplicated_arguments(stage):
     for path, occurrence in path_counts.items():
         if occurrence > 1:
             raise ArgumentDuplicationError(str(path))
+
+
+def stage_dump_eq(stage_cls, old_d, new_d):
+    # NOTE: need to remove checksums from old dict in order to compare
+    # it to the new one, since the new one doesn't have checksums yet.
+    old_d.pop(stage_cls.PARAM_MD5, None)
+    new_d.pop(stage_cls.PARAM_MD5, None)
+    outs = old_d.get(stage_cls.PARAM_OUTS, [])
+    for out in outs:
+        out.pop(LocalRemote.PARAM_CHECKSUM, None)
+        out.pop(S3Remote.PARAM_CHECKSUM, None)
+
+    # outs and deps are lists of dicts. To check equality, we need to make
+    # them independent of the order, so, we convert them to dicts.
+    combination = product(
+        [old_d, new_d], [stage_cls.PARAM_DEPS, stage_cls.PARAM_OUTS]
+    )
+    for coll, key in combination:
+        if coll.get(key):
+            coll[key] = {item["path"]: item for item in coll[key]}
+    return old_d == new_d

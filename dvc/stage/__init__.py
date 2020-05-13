@@ -5,7 +5,6 @@ import signal
 import string
 import subprocess
 import threading
-from itertools import product
 
 from funcy import project
 
@@ -28,6 +27,7 @@ from .utils import (
     check_stage_path,
     fill_stage_dependencies,
     fill_stage_outputs,
+    stage_dump_eq,
 )
 
 logger = logging.getLogger(__name__)
@@ -341,12 +341,7 @@ class Stage(params.StageParams):
 
     @property
     def is_cached(self):
-        """
-        Checks if this stage has been already ran and stored
-        """
-        from dvc.remote.local import LocalRemote
-        from dvc.remote.s3 import S3Remote
-
+        """Checks if this stage has been already ran and stored"""
         old = self.reload()
         if old.changed_outs():
             return False
@@ -354,29 +349,7 @@ class Stage(params.StageParams):
         # NOTE: need to save checksums for deps in order to compare them
         # with what is written in the old stage.
         self.save_deps()
-
-        old_d = old.dumpd()
-        new_d = self.dumpd()
-
-        # NOTE: need to remove checksums from old dict in order to compare
-        # it to the new one, since the new one doesn't have checksums yet.
-        old_d.pop(self.PARAM_MD5, None)
-        new_d.pop(self.PARAM_MD5, None)
-        outs = old_d.get(self.PARAM_OUTS, [])
-        for out in outs:
-            out.pop(LocalRemote.PARAM_CHECKSUM, None)
-            out.pop(S3Remote.PARAM_CHECKSUM, None)
-
-        # outs and deps are lists of dicts. To check equality, we need to make
-        # them independent of the order, so, we convert them to dicts.
-        combination = product(
-            [old_d, new_d], [self.PARAM_DEPS, self.PARAM_OUTS]
-        )
-        for coll, key in combination:
-            if coll.get(key):
-                coll[key] = {item["path"]: item for item in coll[key]}
-
-        if old_d != new_d:
+        if not stage_dump_eq(Stage, old.dumpd(), self.dumpd()):
             return False
 
         # NOTE: committing to prevent potential data duplication. For example
