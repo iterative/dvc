@@ -859,7 +859,7 @@ class TestReproExternalBase(SingleStageRun, TestDvc):
             stage.outs[0], "checkout", wraps=stage.outs[0].checkout
         )
 
-        patch_run = patch.object(stage, "_run", wraps=stage._run)
+        patch_run = patch.object(stage, "cmd_run", wraps=stage.cmd_run)
 
         with self.dvc.lock, self.dvc.state:
             with patch_download as mock_download:

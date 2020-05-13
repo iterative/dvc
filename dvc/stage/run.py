@@ -3,22 +3,13 @@ import os
 import signal
 import subprocess
 import threading
-from contextlib import contextmanager
 
-from dvc.stage.exceptions import StageCmdFailedError
 from dvc.utils import fix_env
 
+from .decorators import unlocked_repo
+from .exceptions import StageCmdFailedError
+
 logger = logging.getLogger(__name__)
-
-
-@contextmanager
-def unlocked_repo(repo):
-    repo.state.dump()
-    repo.lock.unlock()
-    repo._reset()
-    yield
-    repo.lock.lock()
-    repo.state.load()
 
 
 def warn_if_fish(executable):
@@ -37,12 +28,13 @@ def warn_if_fish(executable):
     )
 
 
-def _cmd_run(cmd, wdir):
-    kwargs = {"cwd": wdir, "env": fix_env(None), "close_fds": True}
+@unlocked_repo
+def cmd_run(stage, *args, **kwargs):
+    kwargs = {"cwd": stage.wdir, "env": fix_env(None), "close_fds": True}
 
     if os.name == "nt":
         kwargs["shell"] = True
-        _cmd = cmd
+        cmd = stage.cmd
     else:
         # NOTE: when you specify `shell=True`, `Popen` [1] will default to
         # `/bin/sh` on *nix and will add ["/bin/sh", "-c"] to your command.
@@ -64,14 +56,14 @@ def _cmd_run(cmd, wdir):
 
         opts = {"zsh": ["--no-rcs"], "bash": ["--noprofile", "--norc"]}
         name = os.path.basename(executable).lower()
-        _cmd = [executable] + opts.get(name, []) + ["-c", cmd]
+        cmd = [executable] + opts.get(name, []) + ["-c", stage.cmd]
 
     main_thread = isinstance(threading.current_thread(), threading._MainThread)
     old_handler = None
     p = None
 
     try:
-        p = subprocess.Popen(_cmd, **kwargs)
+        p = subprocess.Popen(cmd, **kwargs)
         if main_thread:
             old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
         p.communicate()
@@ -111,5 +103,4 @@ def run_stage(stage, dry=False, force=False, run_cache=False):
         stage.checkout()
     else:
         logger.info("Running command:\n\t{}".format(stage.cmd))
-        with unlocked_repo(stage.repo):
-            _cmd_run(stage.cmd, stage.wdir)
+        stage.cmd_run(stage.cmd, stage.wdir)
