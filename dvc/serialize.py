@@ -10,7 +10,7 @@ from dvc.utils.collections import apply_diff
 from dvc.utils.stage import parse_stage_for_update
 
 if TYPE_CHECKING:
-    from dvc.stage import PipelineStage, Stage
+    from dvc.stage import PipelineStage, Stage, resolve_wdir
 
 PARAM_PATH = ParamsDependency.PARAM_PATH
 PARAM_PARAMS = ParamsDependency.PARAM_PARAMS
@@ -77,7 +77,7 @@ def to_pipeline_file(stage: "PipelineStage"):
 
     res = [
         (stage.PARAM_CMD, stage.cmd),
-        (stage.PARAM_WDIR, stage.resolve_wdir()),
+        (stage.PARAM_WDIR, resolve_wdir(stage.wdir, stage.path)),
         (stage.PARAM_DEPS, sorted([d.def_path for d in deps])),
         (stage.PARAM_PARAMS, serialized_params),
         *_get_outs(stage),

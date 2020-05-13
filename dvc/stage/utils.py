@@ -1,11 +1,12 @@
 import os
+import pathlib
 from itertools import product
 
 from dvc import dependency, output
 from dvc.utils.fs import path_isin
 
 from ..remote import LocalRemote, S3Remote
-from ..utils import dict_md5
+from ..utils import dict_md5, relpath
 from .exceptions import (
     MissingDataSource,
     StagePathNotDirectoryError,
@@ -129,3 +130,8 @@ def compute_md5(stage):
             BaseOutput.PARAM_PERSIST,
         ],
     )
+
+
+def resolve_wdir(wdir, path):
+    rel_wdir = relpath(wdir, os.path.dirname(path))
+    return pathlib.PurePath(rel_wdir).as_posix() if rel_wdir != "." else None
