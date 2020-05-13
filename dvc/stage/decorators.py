@@ -1,4 +1,6 @@
-from funcy import decorator, wraps
+from functools import wraps
+
+from funcy import decorator
 
 
 @decorator
