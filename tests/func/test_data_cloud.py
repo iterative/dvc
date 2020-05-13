@@ -9,7 +9,6 @@ import pytest
 from flaky.flaky_decorator import flaky
 
 from dvc.cache import NamedCache
-from dvc.compat import fspath
 from dvc.data_cloud import DataCloud
 from dvc.external_repo import clean_repos
 from dvc.main import main
@@ -725,8 +724,8 @@ def test_pull_git_imports(request, tmp_dir, dvc, scm, erepo):
         erepo.scm_gen({"dir": {"bar": "bar"}}, commit="second")
         erepo.scm_gen("foo", "foo", commit="first")
 
-    dvc.imp(fspath(erepo), "foo")
-    dvc.imp(fspath(erepo), "dir", out="new_dir", rev="HEAD~")
+    dvc.imp(os.fspath(erepo), "foo")
+    dvc.imp(os.fspath(erepo), "dir", out="new_dir", rev="HEAD~")
 
     assert dvc.pull()["fetched"] == 0
 
@@ -752,8 +751,8 @@ def test_pull_external_dvc_imports(tmp_dir, dvc, scm, erepo_dir):
         os.remove("foo")
         shutil.rmtree("dir")
 
-    dvc.imp(fspath(erepo_dir), "foo")
-    dvc.imp(fspath(erepo_dir), "dir", out="new_dir", rev="HEAD~")
+    dvc.imp(os.fspath(erepo_dir), "foo")
+    dvc.imp(os.fspath(erepo_dir), "dir", out="new_dir", rev="HEAD~")
 
     assert dvc.pull()["fetched"] == 0
 

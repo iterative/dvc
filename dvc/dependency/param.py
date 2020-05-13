@@ -5,7 +5,6 @@ import dpath.util
 import yaml
 from voluptuous import Any
 
-from dvc.compat import fspath_py35
 from dvc.dependency.local import LocalDependency
 from dvc.exceptions import DvcException
 
@@ -87,7 +86,7 @@ class ParamsDependency(LocalDependency):
         if not self.exists:
             return {}
 
-        with self.repo.tree.open(fspath_py35(self.path_info), "r") as fobj:
+        with self.repo.tree.open(self.path_info, "r") as fobj:
             try:
                 config = yaml.safe_load(fobj)
             except yaml.YAMLError as exc:

@@ -50,7 +50,6 @@ class PathInfo(pathlib.PurePath, _BasePath):
         return "{}: '{}'".format(type(self).__name__, self)
 
     # This permits passing it to file utils directly in Python 3.6+
-    # With Python 2.7, Python 3.5+ we are stuck with path_info.fspath for now
     def __fspath__(self):
         return pathlib.PurePath.__str__(self)
 

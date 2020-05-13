@@ -15,8 +15,6 @@ import nanotime
 from ruamel.yaml import YAML
 from shortuuid import uuid
 
-from dvc.compat import fspath, fspath_py35
-
 logger = logging.getLogger(__name__)
 
 LOCAL_CHUNK_SIZE = 2 ** 20  # 1 MB
@@ -33,8 +31,6 @@ def file_md5(fname):
     """ get the (md5 hexdigest, md5 digest) of a file """
     from dvc.progress import Tqdm
     from dvc.istextfile import istextfile
-
-    fname = fspath_py35(fname)
 
     if os.path.exists(fname):
         hash_md5 = hashlib.md5()
@@ -220,7 +216,7 @@ def fix_env(env=None):
 
 def tmp_fname(fname):
     """ Temporary name for a partial download """
-    return fspath(fname) + "." + uuid() + ".tmp"
+    return os.fspath(fname) + "." + uuid() + ".tmp"
 
 
 def current_timestamp():
@@ -320,8 +316,8 @@ def _visual_center(line, width):
 
 
 def relpath(path, start=os.curdir):
-    path = fspath(path)
-    start = os.path.abspath(fspath(start))
+    path = os.fspath(path)
+    start = os.path.abspath(os.fspath(start))
 
     # Windows path on different drive than curdir doesn't have relpath
     if os.name == "nt" and not os.path.commonprefix(

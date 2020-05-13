@@ -3,7 +3,6 @@ import os
 
 import yaml
 
-from dvc.compat import fspath_py35
 from dvc.exceptions import NoMetricsError
 from dvc.path_info import PathInfo
 from dvc.repo import locked
@@ -58,10 +57,10 @@ def _read_metrics(repo, metrics, rev):
 
     res = {}
     for metric in metrics:
-        if not tree.exists(fspath_py35(metric)):
+        if not tree.exists(metric):
             continue
 
-        with tree.open(fspath_py35(metric), "r") as fobj:
+        with tree.open(metric, "r") as fobj:
             try:
                 # NOTE this also supports JSON
                 val = yaml.safe_load(fobj)

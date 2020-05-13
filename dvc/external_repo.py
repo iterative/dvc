@@ -7,7 +7,6 @@ from distutils.dir_util import copy_tree
 
 from funcy import cached_property, retry, suppress, wrap_with
 
-from dvc.compat import fspath
 from dvc.config import NoRemoteError, NotDvcRepoError
 from dvc.exceptions import (
     CheckoutError,
@@ -84,7 +83,7 @@ class ExternalRepo(Repo):
         path_info = PathInfo(self.root_dir) / path
 
         with suppress(OutputNotFoundError):
-            (out,) = self.find_outs_by_path(fspath(path_info), strict=False)
+            (out,) = self.find_outs_by_path(path_info, strict=False)
 
         try:
             if out and out.use_cache:
@@ -95,7 +94,7 @@ class ExternalRepo(Repo):
             if os.path.isabs(path):
                 raise FileNotFoundError
 
-            fs_copy(fspath(path_info), fspath(to_info))
+            fs_copy(path_info, to_info)
         except FileNotFoundError:
             raise PathMissingError(path, self.url)
 
@@ -188,7 +187,7 @@ class ExternalGitRepo:
             if os.path.isabs(path):
                 raise FileNotFoundError
 
-            fs_copy(os.path.join(self.root_dir, path), fspath(to_info))
+            fs_copy(os.path.join(self.root_dir, path), to_info)
         except FileNotFoundError:
             raise PathMissingError(path, self.url)
 

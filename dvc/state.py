@@ -6,7 +6,6 @@ import re
 import sqlite3
 from urllib.parse import urlencode, urlunparse
 
-from dvc.compat import fspath_py35
 from dvc.exceptions import DvcException
 from dvc.utils import current_timestamp, relpath, to_chunks
 from dvc.utils.fs import get_inode, get_mtime_and_size, remove
@@ -363,7 +362,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         """
         assert isinstance(path_info, str) or path_info.scheme == "local"
         assert checksum is not None
-        assert os.path.exists(fspath_py35(path_info))
+        assert os.path.exists(path_info)
 
         actual_mtime, actual_size = get_mtime_and_size(
             path_info, self.repo.tree
@@ -393,7 +392,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             doesn't exist in the state database.
         """
         assert isinstance(path_info, str) or path_info.scheme == "local"
-        path = fspath_py35(path_info)
+        path = os.fspath(path_info)
 
         if not os.path.exists(path):
             return None
@@ -421,7 +420,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         """
         assert isinstance(path_info, str) or path_info.scheme == "local"
 
-        if not os.path.exists(fspath_py35(path_info)):
+        if not os.path.exists(path_info):
             return
 
         mtime, _ = get_mtime_and_size(path_info, self.repo.tree)

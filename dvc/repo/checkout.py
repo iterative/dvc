@@ -1,7 +1,6 @@
 import logging
 import os
 
-from dvc.compat import fspath
 from dvc.exceptions import CheckoutError, CheckoutErrorSuggestGit
 from dvc.progress import Tqdm
 from dvc.utils import relpath
@@ -23,7 +22,7 @@ def _fspath_dir(path, root):
     if not os.path.exists(str(path)):
         return str(path)
 
-    path = relpath(fspath(path), root)
+    path = relpath(path, root)
     return os.path.join(path, "") if os.path.isdir(path) else path
 
 

@@ -4,7 +4,6 @@ import pytest
 
 from dvc import api
 from dvc.api import UrlNotDvcRepoError
-from dvc.compat import fspath
 from dvc.exceptions import FileMissingError
 from dvc.main import main
 from dvc.path_info import URLInfo
@@ -51,7 +50,7 @@ def test_get_url_requires_dvc(tmp_dir, scm):
     tmp_dir.scm_gen({"foo": "foo"}, commit="initial")
 
     with pytest.raises(UrlNotDvcRepoError, match="not a DVC repository"):
-        api.get_url("foo", repo=fspath(tmp_dir))
+        api.get_url("foo", repo=os.fspath(tmp_dir))
 
     with pytest.raises(UrlNotDvcRepoError):
         api.get_url("foo", repo="file://{}".format(tmp_dir))
@@ -109,7 +108,7 @@ def test_missing(remote_url, tmp_dir, dvc):
 def test_open_scm_controlled(tmp_dir, erepo_dir):
     erepo_dir.scm_gen({"scm_controlled": "file content"}, commit="create file")
 
-    with api.open("scm_controlled", repo=fspath(erepo_dir)) as fd:
+    with api.open("scm_controlled", repo=os.fspath(erepo_dir)) as fd:
         assert fd.read() == "file content"
 
 

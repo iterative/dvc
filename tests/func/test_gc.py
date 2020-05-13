@@ -6,7 +6,6 @@ import configobj
 import pytest
 from git import Repo
 
-from dvc.compat import fspath
 from dvc.exceptions import CollectCacheError
 from dvc.main import main
 from dvc.remote.local import LocalRemote
@@ -303,7 +302,7 @@ def test_gc_cloud_positive(tmp_dir, dvc, tmp_path_factory, setup_remote):
 
 
 def test_gc_cloud_remove_order(tmp_dir, scm, dvc, tmp_path_factory, mocker):
-    storage = fspath(tmp_path_factory.mktemp("test_remote_base"))
+    storage = os.fspath(tmp_path_factory.mktemp("test_remote_base"))
     dvc.config["remote"]["local_remote"] = {"url": storage}
     dvc.config["core"]["remote"] = "local_remote"
 

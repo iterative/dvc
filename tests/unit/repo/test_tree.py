@@ -1,7 +1,6 @@
 import os
 import shutil
 
-from dvc.compat import fspath_py35
 from dvc.repo.tree import DvcTree
 
 
@@ -54,7 +53,7 @@ def test_isdir_isfile(tmp_dir, dvc):
     assert not tree.isfile("datafile")
 
     dvc.add(["datadir", "datafile"])
-    shutil.rmtree(fspath_py35(tmp_dir / "datadir"))
+    shutil.rmtree(tmp_dir / "datadir")
     (tmp_dir / "datafile").unlink()
 
     assert tree.isdir("datadir")

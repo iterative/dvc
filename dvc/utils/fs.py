@@ -11,7 +11,7 @@ from shortuuid import uuid
 from dvc.exceptions import DvcException
 from dvc.scm.tree import is_working_tree
 from dvc.system import System
-from dvc.utils import dict_md5, fspath, fspath_py35
+from dvc.utils import dict_md5
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ def get_inode(path):
 
 def get_mtime_and_size(path, tree):
 
-    if os.path.isdir(fspath_py35(path)):
+    if os.path.isdir(path):
         assert is_working_tree(tree)
 
         size = 0
@@ -53,7 +53,7 @@ def get_mtime_and_size(path, tree):
         # max(mtime(f) for f in non_ignored_files)
         mtime = dict_md5(files_mtimes)
     else:
-        base_stat = os.stat(fspath_py35(path))
+        base_stat = os.stat(path)
         size = base_stat.st_size
         mtime = base_stat.st_mtime
         mtime = int(nanotime.timestamp(mtime))
@@ -72,8 +72,8 @@ class BasePathNotInCheckedPathException(DvcException):
 
 
 def contains_symlink_up_to(path, base_path):
-    base_path = fspath(base_path)
-    path = fspath(path)
+    base_path = os.fspath(base_path)
+    path = os.fspath(path)
 
     if base_path not in path:
         raise BasePathNotInCheckedPathException(path, base_path)
@@ -95,14 +95,12 @@ def move(src, dst, mode=None):
     of data is happening.
     """
 
-    src = fspath(src)
-    dst = fspath(dst)
-
     dst = os.path.abspath(dst)
     tmp = "{}.{}".format(dst, uuid())
 
     if os.path.islink(src):
-        shutil.copy(os.readlink(src), tmp)
+        # readlink does not accept path-like obj for Windows in Python <3.8
+        shutil.copy(os.readlink(os.fspath(src)), tmp)
         os.unlink(src)
     else:
         shutil.move(src, tmp)
@@ -137,7 +135,6 @@ def _unlink(path, onerror):
 def remove(path):
     logger.debug("Removing '%s'", path)
 
-    path = fspath_py35(path)
     try:
         if os.path.isdir(path):
             shutil.rmtree(path, onerror=_chmod)
@@ -152,7 +149,7 @@ def path_isin(child, parent):
     """Check if given `child` path is inside `parent`."""
 
     def normalize_path(path):
-        return os.path.normpath(fspath_py35(path))
+        return os.path.normpath(path)
 
     parent = os.path.join(normalize_path(parent), "")
     child = normalize_path(child)
@@ -160,8 +157,6 @@ def path_isin(child, parent):
 
 
 def makedirs(path, exist_ok=False, mode=None):
-    path = fspath_py35(path)
-
     if mode is None:
         os.makedirs(path, exist_ok=exist_ok)
         return
@@ -181,9 +176,6 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
     from dvc.exceptions import DvcException
     from dvc.progress import Tqdm
     from dvc.system import System
-
-    src = fspath_py35(src)
-    dest = fspath_py35(dest)
 
     name = name if name else os.path.basename(dest)
     total = os.stat(src).st_size
@@ -211,6 +203,6 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
 
 
 def walk_files(directory):
-    for root, _, files in os.walk(fspath(directory)):
+    for root, _, files in os.walk(directory):
         for f in files:
             yield os.path.join(root, f)

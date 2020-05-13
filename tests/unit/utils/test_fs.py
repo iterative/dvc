@@ -6,7 +6,6 @@ import pytest
 from mock import patch
 
 import dvc
-from dvc.compat import fspath
 from dvc.ignore import CleanTree
 from dvc.path_info import PathInfo
 from dvc.scm.tree import WorkingTree
@@ -156,11 +155,11 @@ def test_move(tmp_dir):
     assert not os.path.isfile(src)
     assert len(os.listdir(dest)) == 1
 
-    os.makedirs(dest_info.fspath)
-    assert len(os.listdir(dest_info.fspath)) == 0
+    os.makedirs(dest_info)
+    assert len(os.listdir(dest_info)) == 0
     move(src_info, dest_info)
-    assert not os.path.isfile(src_info.fspath)
-    assert len(os.listdir(dest_info.fspath)) == 1
+    assert not os.path.isfile(src_info)
+    assert len(os.listdir(dest_info)) == 1
 
 
 def test_remove(tmp_dir):
@@ -172,7 +171,7 @@ def test_remove(tmp_dir):
     assert not os.path.isfile(path)
 
     remove(path_info)
-    assert not os.path.isfile(path_info.fspath)
+    assert not os.path.isfile(path_info)
 
 
 def test_path_isin_positive():
@@ -217,14 +216,14 @@ def test_path_isin_with_absolute_path():
 
 
 def test_makedirs(tmp_dir):
-    path = os.path.join(fspath(tmp_dir), "directory")
-    path_info = PathInfo(os.path.join(fspath(tmp_dir), "another", "directory"))
+    path = os.path.join(tmp_dir, "directory")
+    path_info = PathInfo(os.path.join(tmp_dir, "another", "directory"))
 
     makedirs(path)
     assert os.path.isdir(path)
 
     makedirs(path_info)
-    assert os.path.isdir(path_info.fspath)
+    assert os.path.isdir(path_info)
 
 
 @pytest.mark.parametrize("path", ["file", "dir"])
@@ -251,14 +250,14 @@ def test_copyfile(path, tmp_dir):
         assert filecmp.cmp(src, dest, shallow=False)
 
     copyfile(src_info, dest_info)
-    if os.path.isdir(dest_info.fspath):
+    if os.path.isdir(dest_info):
         assert filecmp.cmp(
-            src_info.fspath,
-            os.path.join(dest_info.fspath, os.path.basename(src_info.fspath)),
+            src_info,
+            os.path.join(dest_info, os.path.basename(src_info)),
             shallow=False,
         )
     else:
-        assert filecmp.cmp(src_info.fspath, dest_info.fspath, shallow=False)
+        assert filecmp.cmp(src_info, dest_info, shallow=False)
 
 
 def test_walk_files(tmp_dir):

@@ -1,6 +1,7 @@
 import csv
 import json
 import logging
+import os
 import shutil
 from collections import OrderedDict
 
@@ -9,7 +10,6 @@ import yaml
 from bs4 import BeautifulSoup
 from funcy import first
 
-from dvc.compat import fspath
 from dvc.repo.plot import NoDataOrTemplateProvided
 from dvc.repo.plot.data import (
     NoMetricInHistoryError,
@@ -244,9 +244,7 @@ def test_plot_multiple_revs_default(tmp_dir, scm, dvc):
 
 
 def test_plot_multiple_revs(tmp_dir, scm, dvc):
-    shutil.copy(
-        fspath(tmp_dir / ".dvc" / "plot" / "default.json"), "template.json"
-    )
+    shutil.copy(tmp_dir / ".dvc" / "plot" / "default.json", "template.json")
 
     metric_1 = [{"y": 2}, {"y": 3}]
     _write_json(tmp_dir, metric_1, "metric.json")
@@ -326,8 +324,7 @@ def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc, caplog):
 def custom_template(tmp_dir, dvc):
     custom_template = tmp_dir / "custom_template.json"
     shutil.copy(
-        fspath(tmp_dir / ".dvc" / "plot" / "default.json"),
-        fspath(custom_template),
+        tmp_dir / ".dvc" / "plot" / "default.json", custom_template,
     )
     return custom_template
 
@@ -338,7 +335,7 @@ def test_custom_template(tmp_dir, scm, dvc, custom_template):
     _run_with_metric(tmp_dir, "metric.json", "init", "v1")
 
     plot_string = dvc.plot(
-        "metric.json", fspath(custom_template), x_field="a", y_field="b"
+        "metric.json", os.fspath(custom_template), x_field="a", y_field="b"
     )
 
     plot_content = json.loads(plot_string)
@@ -367,7 +364,7 @@ def test_custom_template_with_specified_data(
 
     plot_string = dvc.plot(
         datafile=None,
-        template=fspath(custom_template),
+        template=os.fspath(custom_template),
         x_field="a",
         y_field="b",
     )
@@ -383,8 +380,8 @@ def test_custom_template_with_specified_data(
 
 def test_plot_override_specified_data_source(tmp_dir, scm, dvc):
     shutil.copy(
-        fspath(tmp_dir / ".dvc" / "plot" / "default.json"),
-        fspath(tmp_dir / "newtemplate.json"),
+        tmp_dir / ".dvc" / "plot" / "default.json",
+        tmp_dir / "newtemplate.json",
     )
     _replace(
         tmp_dir / "newtemplate.json",
@@ -437,7 +434,7 @@ def test_plot_choose_columns(tmp_dir, scm, dvc, custom_template):
 
     plot_string = dvc.plot(
         "metric.json",
-        fspath(custom_template),
+        os.fspath(custom_template),
         fields={"b", "c"},
         x_field="b",
         y_field="c",

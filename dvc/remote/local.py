@@ -8,7 +8,6 @@ from functools import partial
 from funcy import cached_property, concat
 from shortuuid import uuid
 
-from dvc.compat import fspath_py35
 from dvc.exceptions import DownloadError, DvcException, UploadError
 from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
@@ -95,7 +94,7 @@ class LocalRemote(BaseRemote):
     def exists(self, path_info):
         assert is_working_tree(self.repo.tree)
         assert isinstance(path_info, str) or path_info.scheme == "local"
-        return self.repo.tree.exists(fspath_py35(path_info))
+        return self.repo.tree.exists(path_info)
 
     def makedirs(self, path_info):
         makedirs(path_info, exist_ok=True, mode=self._dir_mode)
@@ -129,11 +128,11 @@ class LocalRemote(BaseRemote):
 
     @staticmethod
     def isfile(path_info):
-        return os.path.isfile(fspath_py35(path_info))
+        return os.path.isfile(path_info)
 
     @staticmethod
     def isdir(path_info):
-        return os.path.isdir(fspath_py35(path_info))
+        return os.path.isdir(path_info)
 
     def iscopy(self, path_info):
         return not (
@@ -142,7 +141,7 @@ class LocalRemote(BaseRemote):
 
     @staticmethod
     def getsize(path_info):
-        return os.path.getsize(fspath_py35(path_info))
+        return os.path.getsize(path_info)
 
     def walk_files(self, path_info):
         assert is_working_tree(self.repo.tree)
@@ -182,8 +181,8 @@ class LocalRemote(BaseRemote):
         tmp_info = to_info.parent / tmp_fname(to_info.name)
         try:
             System.copy(from_info, tmp_info)
-            os.chmod(fspath_py35(tmp_info), self._file_mode)
-            os.rename(fspath_py35(tmp_info), fspath_py35(to_info))
+            os.chmod(tmp_info, self._file_mode)
+            os.rename(tmp_info, to_info)
         except Exception:
             self.remove(tmp_info)
             raise
@@ -231,8 +230,8 @@ class LocalRemote(BaseRemote):
         System.reflink(from_info, tmp_info)
         # NOTE: reflink has its own separate inode, so you can set permissions
         # that are different from the source.
-        os.chmod(fspath_py35(tmp_info), self._file_mode)
-        os.rename(fspath_py35(tmp_info), fspath_py35(to_info))
+        os.chmod(tmp_info, self._file_mode)
+        os.rename(tmp_info, to_info)
 
     def cache_exists(self, checksums, jobs=None, name=None):
         return [
@@ -255,7 +254,7 @@ class LocalRemote(BaseRemote):
         copyfile(
             from_file, tmp_file, name=name, no_progress_bar=no_progress_bar
         )
-        os.rename(tmp_file, fspath_py35(to_info))
+        os.rename(tmp_file, to_info)
 
     def _download(
         self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
@@ -266,7 +265,7 @@ class LocalRemote(BaseRemote):
 
     @staticmethod
     def open(path_info, mode="r", encoding=None):
-        return open(fspath_py35(path_info), mode=mode, encoding=encoding)
+        return open(path_info, mode=mode, encoding=encoding)
 
     @index_locked
     def status(
@@ -635,7 +634,7 @@ class LocalRemote(BaseRemote):
             self._unprotect_file(path)
 
     def protect(self, path_info):
-        path = fspath_py35(path_info)
+        path = os.fspath(path_info)
         mode = self.CACHE_MODE
 
         try:
@@ -718,6 +717,6 @@ class LocalRemote(BaseRemote):
         if not self.exists(path_info):
             return False
 
-        mode = os.stat(fspath_py35(path_info)).st_mode
+        mode = os.stat(path_info).st_mode
 
         return stat.S_IMODE(mode) == self.CACHE_MODE

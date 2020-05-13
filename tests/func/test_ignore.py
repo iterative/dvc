@@ -4,7 +4,6 @@ import shutil
 
 import pytest
 
-from dvc.compat import fspath, fspath_py35
 from dvc.exceptions import DvcIgnoreInCollectedDirError
 from dvc.ignore import (
     DvcIgnore,
@@ -101,7 +100,9 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
     assert len(dvc.tree.dvcignore.ignores) == 3
     assert DvcIgnoreDirs([".git", ".hg", ".dvc"]) in dvc.tree.dvcignore.ignores
     assert (
-        DvcIgnorePatterns(fspath(top_ignore_file), WorkingTree(dvc.root_dir))
+        DvcIgnorePatterns(
+            os.fspath(top_ignore_file), WorkingTree(dvc.root_dir)
+        )
         in dvc.tree.dvcignore.ignores
     )
     assert any(
@@ -139,13 +140,13 @@ def test_match_nested(tmp_dir, dvc):
     )
 
     remote = LocalRemote(dvc, {})
-    result = {fspath(f) for f in remote.walk_files(".")}
+    result = {os.fspath(f) for f in remote.walk_files(".")}
     assert result == {".dvcignore", "foo"}
 
 
 def test_ignore_external(tmp_dir, scm, dvc, tmp_path_factory):
     tmp_dir.gen(".dvcignore", "*.backup\ntmp")
-    ext_dir = TmpDir(fspath_py35(tmp_path_factory.mktemp("external_dir")))
+    ext_dir = TmpDir(os.fspath(tmp_path_factory.mktemp("external_dir")))
     ext_dir.gen({"y.backup": "y", "tmp": "ext tmp"})
 
     remote = LocalRemote(dvc, {})

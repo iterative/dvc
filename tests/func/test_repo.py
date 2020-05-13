@@ -1,7 +1,6 @@
 import os
 
 from dvc.cache import Cache
-from dvc.compat import fspath
 from dvc.repo import Repo
 from dvc.system import System
 
@@ -54,7 +53,7 @@ def test_destroy(tmp_dir, dvc, run_copy):
         "dir/subdir",
         "dir/subdir/file",
     ]:
-        assert not System.is_symlink(fspath(tmp_dir / path))
+        assert not System.is_symlink(tmp_dir / path)
 
 
 def test_collect(tmp_dir, scm, dvc, run_copy):
@@ -101,7 +100,7 @@ def test_collect(tmp_dir, scm, dvc, run_copy):
 
 def test_stages(tmp_dir, dvc):
     def stages():
-        return set(stage.relpath for stage in Repo(fspath(tmp_dir)).stages)
+        return set(stage.relpath for stage in Repo(os.fspath(tmp_dir)).stages)
 
     tmp_dir.dvc_gen({"file": "a", "dir/file": "b", "dir/subdir/file": "c"})
 
