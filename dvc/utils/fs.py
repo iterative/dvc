@@ -99,7 +99,8 @@ def move(src, dst, mode=None):
     tmp = "{}.{}".format(dst, uuid())
 
     if os.path.islink(src):
-        shutil.copy(os.readlink(src), tmp)
+        # readlink does not accept path-like obj for Windows in Python <3.8
+        shutil.copy(os.readlink(os.fspath(src)), tmp)
         os.unlink(src)
     else:
         shutil.move(src, tmp)
