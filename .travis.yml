@@ -46,9 +46,6 @@ jobs:
     env:
       - PYTHON_VERSION=3.8.0
       - PATH=/c/Python38:/c/Python38/Scripts:$PATH
-  - name: "3.5 on Linux"
-    language: python
-    python: 3.5
   - name: "3.6 on Linux"
     language: python
     python: 3.6
