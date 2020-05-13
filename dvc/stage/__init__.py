@@ -13,6 +13,7 @@ from . import params
 from .decorators import rwlocked
 from .exceptions import StageCommitError, StageUpdateError
 from .imports import sync_import, update_import
+from .run import run_stage
 from .utils import (
     check_circular_dependency,
     check_duplicated_arguments,
@@ -82,8 +83,6 @@ def create_stage(cls, repo, path, **kwargs):
 
 
 class Stage(params.StageParams):
-    from .run import run_stage, cmd_run
-
     def __init__(
         self,
         repo,
@@ -414,7 +413,7 @@ class Stage(params.StageParams):
         if not self.locked and self.is_import:
             sync_import(self, dry, force)
         elif not self.locked and self.cmd:
-            self.run_stage(dry, force, run_cache)
+            run_stage(self, dry, force, run_cache)
         else:
             args = (
                 ("outputs", "locked ") if self.locked else ("data sources", "")
