@@ -316,7 +316,8 @@ def _visual_center(line, width):
 
 
 def relpath(path, start=os.curdir):
-    start = os.path.abspath(start)
+    path = os.fspath(path)
+    start = os.path.abspath(os.fspath(start))
 
     # Windows path on different drive than curdir doesn't have relpath
     if os.name == "nt" and not os.path.commonprefix(
