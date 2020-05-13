@@ -15,7 +15,6 @@ from .utils import fill_stage_dependencies, fill_stage_outputs
 
 logger = logging.getLogger(__name__)
 
-
 DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
 
 

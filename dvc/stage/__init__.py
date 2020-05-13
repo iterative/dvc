@@ -297,7 +297,7 @@ class Stage(params.StageParams):
     @rwlocked(read=["deps"], write=["outs"])
     def reproduce(self, interactive=False, **kwargs):
 
-        if not kwargs.get("force", False) and not self.changed():
+        if not (kwargs.get("force", False) or self.changed()):
             return None
 
         msg = (
@@ -315,7 +315,7 @@ class Stage(params.StageParams):
         return self
 
     def update(self, rev=None):
-        if not self.is_repo_import and not self.is_import:
+        if not (self.is_repo_import or self.is_import):
             raise StageUpdateError(self.relpath)
 
         self.deps[0].update(rev=rev)
@@ -422,7 +422,7 @@ class Stage(params.StageParams):
             msg += "md5" if not (changed_deps or changed_outs) else ""
             msg += " of {} changed. ".format(self)
             msg += "Are you sure you want to commit it?"
-            if not force and not prompt.confirm(msg):
+            if not (force or prompt.confirm(msg)):
                 raise StageCommitError(
                     "unable to commit changed {}. Use `-f|--force` to "
                     "force.".format(self)
