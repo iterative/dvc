@@ -4,7 +4,6 @@ from functools import wraps
 
 from funcy import cached_property, cat, first
 
-from dvc.compat import fspath_py35
 from dvc.config import Config
 from dvc.exceptions import (
     FileMissingError,
@@ -515,7 +514,6 @@ class Repo(object):
             raise IsADirectoryError("Can't open a dir")
 
         cache_file = self.cache.local.checksum_to_path_info(out.checksum)
-        cache_file = fspath_py35(cache_file)
 
         if os.path.exists(cache_file):
             return open(cache_file, mode=mode, encoding=encoding)

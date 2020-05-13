@@ -2,7 +2,6 @@ import logging
 
 import yaml
 
-from dvc.compat import fspath_py35
 from dvc.dependency.param import ParamsDependency
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
@@ -30,10 +29,10 @@ def _collect_configs(repo):
 def _read_params(repo, configs, rev):
     res = {}
     for config in configs:
-        if not repo.tree.exists(fspath_py35(config)):
+        if not repo.tree.exists(config):
             continue
 
-        with repo.tree.open(fspath_py35(config), "r") as fobj:
+        with repo.tree.open(config, "r") as fobj:
             try:
                 res[str(config)] = yaml.safe_load(fobj)
             except yaml.YAMLError:

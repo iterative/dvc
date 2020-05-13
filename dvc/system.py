@@ -5,7 +5,6 @@ import platform
 import shutil
 import sys
 
-from dvc.compat import fspath
 from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
@@ -30,12 +29,10 @@ class System(object):
 
     @staticmethod
     def copy(src, dest):
-        src, dest = fspath(src), fspath(dest)
         return shutil.copyfile(src, dest)
 
     @staticmethod
     def hardlink(source, link_name):
-        source, link_name = fspath(source), fspath(link_name)
         try:
             os.link(source, link_name)
         except OSError as exc:
@@ -43,7 +40,6 @@ class System(object):
 
     @staticmethod
     def symlink(source, link_name):
-        source, link_name = fspath(source), fspath(link_name)
         try:
             os.symlink(source, link_name)
         except OSError as exc:
