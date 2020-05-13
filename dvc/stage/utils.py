@@ -135,3 +135,19 @@ def compute_md5(stage):
 def resolve_wdir(wdir, path):
     rel_wdir = relpath(wdir, os.path.dirname(path))
     return pathlib.PurePath(rel_wdir).as_posix() if rel_wdir != "." else None
+
+
+def get_dump(stage):
+    return {
+        key: value
+        for key, value in {
+            stage.PARAM_MD5: stage.md5,
+            stage.PARAM_CMD: stage.cmd,
+            stage.PARAM_WDIR: resolve_wdir(stage.wdir, stage.path),
+            stage.PARAM_LOCKED: stage.locked,
+            stage.PARAM_DEPS: [d.dumpd() for d in stage.deps],
+            stage.PARAM_OUTS: [o.dumpd() for o in stage.outs],
+            stage.PARAM_ALWAYS_CHANGED: stage.always_changed,
+        }.items()
+        if value
+    }
