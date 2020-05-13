@@ -12,6 +12,7 @@ from dvc.utils import relpath
 from . import params
 from .decorators import rwlocked
 from .exceptions import StageCommitError, StageUpdateError
+from .imports import sync_import, update_import
 from .utils import (
     check_circular_dependency,
     check_duplicated_arguments,
@@ -312,14 +313,7 @@ class Stage(params.StageParams):
     def update(self, rev=None):
         if not (self.is_repo_import or self.is_import):
             raise StageUpdateError(self.relpath)
-
-        self.deps[0].update(rev=rev)
-        locked = self.locked
-        self.locked = False
-        try:
-            self.reproduce()
-        finally:
-            self.locked = locked
+        update_import(self, rev=rev)
 
     @property
     def can_be_skipped(self):
@@ -412,50 +406,27 @@ class Stage(params.StageParams):
         for out in self.outs:
             out.commit()
 
-    def _import_sync(self, dry=False, force=False):
-        """Synchronize import's outs to the workspace."""
-        logger.info(
-            "Importing '{dep}' -> '{out}'".format(
-                dep=self.deps[0], out=self.outs[0]
-            )
-        )
-        if dry:
-            return
-
-        if (
-            not force
-            and not self.changed_stage(warn=True)
-            and self.already_cached()
-        ):
-            self.outs[0].checkout()
-        else:
-            self.deps[0].download(self.outs[0])
-
     @rwlocked(read=["deps"], write=["outs"])
     def run(self, dry=False, no_commit=False, force=False, run_cache=True):
         if (self.cmd or self.is_import) and not self.locked and not dry:
             self.remove_outs(ignore_remove=False, force=False)
 
         if not self.locked and self.is_import:
-            self._import_sync(dry, force)
+            sync_import(self, dry, force)
         elif not self.locked and self.cmd:
             self.run_stage(dry, force, run_cache)
         else:
-            logger.info(
-                "Verifying %s in %s%s",
-                "outputs" if self.locked else "data sources",
-                "locked " if self.locked else "",
-                self,
+            args = (
+                ("outputs", "locked ") if self.locked else ("data sources", "")
             )
+            logger.info("Verifying %s in %s%s", *args, self)
             if not dry:
                 check_missing_outputs(self)
 
-        if dry:
-            return
-
-        self.save()
-        if not no_commit:
-            self.commit()
+        if not dry:
+            self.save()
+            if not no_commit:
+                self.commit()
 
     def _filter_outs(self, path_info):
         def _func(o):
