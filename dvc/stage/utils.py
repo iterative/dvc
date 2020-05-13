@@ -5,6 +5,7 @@ from dvc import dependency, output
 from dvc.utils.fs import path_isin
 
 from ..remote import LocalRemote, S3Remote
+from ..utils import dict_md5
 from .exceptions import (
     StagePathNotDirectoryError,
     StagePathNotFoundError,
@@ -95,3 +96,29 @@ def stage_dump_eq(stage_cls, old_d, new_d):
         if coll.get(key):
             coll[key] = {item["path"]: item for item in coll[key]}
     return old_d == new_d
+
+
+def compute_md5(stage):
+    from dvc.output.base import BaseOutput
+
+    d = stage.dumpd()
+
+    # Remove md5 and meta, these should not affect stage md5
+    d.pop(stage.PARAM_MD5, None)
+    d.pop(stage.PARAM_META, None)
+
+    # Ignore the wdir default value. In this case DVC-file w/o
+    # wdir has the same md5 as a file with the default value specified.
+    # It's important for backward compatibility with pipelines that
+    # didn't have WDIR in their DVC-files.
+    if d.get(stage.PARAM_WDIR) == ".":
+        del d[stage.PARAM_WDIR]
+
+    return dict_md5(
+        d,
+        exclude=[
+            stage.PARAM_LOCKED,
+            BaseOutput.PARAM_METRIC,
+            BaseOutput.PARAM_PERSIST,
+        ],
+    )

@@ -11,7 +11,7 @@ from funcy import project
 import dvc.dependency as dependency
 import dvc.prompt as prompt
 from dvc.exceptions import CheckoutError, DvcException
-from dvc.utils import dict_md5, fix_env, relpath
+from dvc.utils import fix_env, relpath
 
 from . import params
 from .decorators import rwlocked, unlocked_repo
@@ -25,6 +25,7 @@ from .utils import (
     check_circular_dependency,
     check_duplicated_arguments,
     check_stage_path,
+    compute_md5,
     fill_stage_dependencies,
     fill_stage_outputs,
     stage_dump_eq,
@@ -250,7 +251,7 @@ class Stage(params.StageParams):
         return False
 
     def changed_stage(self, warn=False):
-        changed = self.md5 != self._compute_md5()
+        changed = self.md5 != self.compute_md5()
         if changed and warn:
             logger.debug("DVC-file '{}' changed.".format(self.relpath))
         return changed
@@ -386,33 +387,8 @@ class Stage(params.StageParams):
             if value
         }
 
-    def _compute_md5(self):
-        from dvc.output.base import BaseOutput
-
-        d = self.dumpd()
-
-        # Remove md5 and meta, these should not affect stage md5
-        d.pop(self.PARAM_MD5, None)
-        d.pop(self.PARAM_META, None)
-
-        # Ignore the wdir default value. In this case DVC-file w/o
-        # wdir has the same md5 as a file with the default value specified.
-        # It's important for backward compatibility with pipelines that
-        # didn't have WDIR in their DVC-files.
-        if d.get(self.PARAM_WDIR) == ".":
-            del d[self.PARAM_WDIR]
-
-        # NOTE: excluding parameters that don't affect the state of the
-        # pipeline. Not excluding `LocalOutput.PARAM_CACHE`, because if
-        # it has changed, we might not have that output in our cache.
-        m = dict_md5(
-            d,
-            exclude=[
-                self.PARAM_LOCKED,
-                BaseOutput.PARAM_METRIC,
-                BaseOutput.PARAM_PERSIST,
-            ],
-        )
+    def compute_md5(self):
+        m = compute_md5(self)
         logger.debug("Computed {} md5: '{}'".format(self, m))
         return m
 
@@ -426,7 +402,7 @@ class Stage(params.StageParams):
         for out in self.outs:
             out.save()
 
-        self.md5 = self._compute_md5()
+        self.md5 = self.compute_md5()
 
         self.repo.stage_cache.save(self)
 
