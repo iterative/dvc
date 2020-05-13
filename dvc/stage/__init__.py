@@ -207,7 +207,7 @@ class Stage(params.StageParams):
 
         return isinstance(self.deps[0], dependency.RepoDependency)
 
-    def _changed_deps(self):
+    def changed_deps(self):
         if self.locked:
             return False
 
@@ -235,7 +235,7 @@ class Stage(params.StageParams):
 
         return False
 
-    def _changed_outs(self):
+    def changed_outs(self):
         for out in self.outs:
             status = out.status()
             if status:
@@ -249,7 +249,7 @@ class Stage(params.StageParams):
 
         return False
 
-    def stage_changed(self, warn=False):
+    def changed_stage(self, warn=False):
         changed = self.md5 != self._compute_md5()
         if changed and warn:
             logger.debug("DVC-file '{}' changed.".format(self.relpath))
@@ -267,9 +267,9 @@ class Stage(params.StageParams):
     def _changed(self):
         # Short-circuit order: stage md5 is fast, deps are expected to change
         return (
-            self.stage_changed(warn=True)
-            or self._changed_deps()
-            or self._changed_outs()
+            self.changed_stage(warn=True)
+            or self.changed_deps()
+            or self.changed_outs()
         )
 
     @rwlocked(write=["outs"])
@@ -348,12 +348,12 @@ class Stage(params.StageParams):
         from dvc.remote.s3 import S3Remote
 
         old = self.reload()
-        if old._changed_outs():
+        if old.changed_outs():
             return False
 
         # NOTE: need to save checksums for deps in order to compare them
         # with what is written in the old stage.
-        self._save_deps()
+        self.save_deps()
 
         old_d = old.dumpd()
         new_d = self.dumpd()
@@ -443,12 +443,12 @@ class Stage(params.StageParams):
         logger.debug("Computed {} md5: '{}'".format(self, m))
         return m
 
-    def _save_deps(self):
+    def save_deps(self):
         for dep in self.deps:
             dep.save()
 
     def save(self):
-        self._save_deps()
+        self.save_deps()
 
         for out in self.outs:
             out.save()
@@ -469,7 +469,7 @@ class Stage(params.StageParams):
         changed_deps = self._changed_entries(self.deps)
         changed_outs = self._changed_entries(self.outs)
 
-        if changed_deps or changed_outs or self.stage_changed():
+        if changed_deps or changed_outs or self.changed_stage():
             msg = (
                 "dependencies {}".format(changed_deps) if changed_deps else ""
             )
@@ -576,8 +576,8 @@ class Stage(params.StageParams):
             if not dry:
                 if (
                     not force
-                    and not self.stage_changed(warn=True)
-                    and self._already_cached()
+                    and not self.changed_stage(warn=True)
+                    and self.already_cached()
                 ):
                     self.outs[0].checkout()
                 else:
@@ -595,11 +595,11 @@ class Stage(params.StageParams):
                     not force
                     and not self.is_callback
                     and not self.always_changed
-                    and self._already_cached()
+                    and self.already_cached()
                 )
                 use_build_cache = False
                 if not stage_cached:
-                    self._save_deps()
+                    self.save_deps()
                     use_build_cache = (
                         not force and run_cache and stage_cache.is_cached(self)
                     )
@@ -607,7 +607,7 @@ class Stage(params.StageParams):
                 if use_build_cache:
                     # restore stage from build cache
                     self.repo.stage_cache.restore(self)
-                    stage_cached = self._outs_cached()
+                    stage_cached = self.outs_cached()
 
                 if stage_cached:
                     logger.info("Stage is cached, skipping.")
@@ -668,8 +668,8 @@ class Stage(params.StageParams):
 
         return ret
 
-    def stage_status(self):
-        return ["changed checksum"] if self.stage_changed() else []
+    def status_stage(self):
+        return ["changed checksum"] if self.changed_stage() else []
 
     @rwlocked(read=["deps", "outs"])
     def status(self, check_updates=False):
@@ -686,7 +686,7 @@ class Stage(params.StageParams):
         if outs_status:
             ret.append({"changed outs": outs_status})
 
-        ret.extend(self.stage_status())
+        ret.extend(self.status_stage())
         if self.is_callback or self.always_changed:
             ret.append("always changed")
 
@@ -695,13 +695,13 @@ class Stage(params.StageParams):
 
         return {}
 
-    def _already_cached(self):
-        return self._deps_cached() and self._outs_cached()
+    def already_cached(self):
+        return self.deps_cached() and self.outs_cached()
 
-    def _deps_cached(self):
+    def deps_cached(self):
         return all(not dep.changed() for dep in self.deps)
 
-    def _outs_cached(self):
+    def outs_cached(self):
         return all(
             not out.changed_cache() if out.use_cache else not out.changed()
             for out in self.outs
@@ -758,10 +758,10 @@ class PipelineStage(Stage):
     def is_cached(self):
         return self.name in self.dvcfile.stages and super().is_cached
 
-    def stage_status(self):
+    def status_stage(self):
         return ["changed command"] if self.cmd_changed else []
 
-    def stage_changed(self, warn=False):
+    def changed_stage(self, warn=False):
         if self.cmd_changed and warn:
             logger.debug("'cmd' of {} has changed.".format(self))
         return self.cmd_changed

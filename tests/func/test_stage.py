@@ -160,7 +160,7 @@ def test_md5_ignores_comments(tmp_dir, dvc):
         f.write("# End comment\n")
 
     new_stage = SingleStageFile(dvc, stage.path).stage
-    assert not new_stage.stage_changed()
+    assert not new_stage.changed_stage()
 
 
 def test_meta_is_preserved(tmp_dir, dvc):
