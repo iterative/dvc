@@ -1,6 +1,7 @@
 import logging
 import os
 import string
+from collections import defaultdict
 
 from funcy import project
 
@@ -436,31 +437,24 @@ class Stage(params.StageParams):
         return filter(_func, self.outs) if path_info else self.outs
 
     @rwlocked(write=["outs"])
-    def checkout(
-        self,
-        force=False,
-        progress_callback=None,
-        relink=False,
-        filter_info=None,
-    ):
-        checkouts = {"failed": [], "added": [], "modified": []}
-        for out in self._filter_outs(filter_info):
-            try:
-                result = out.checkout(
-                    force=force,
-                    progress_callback=progress_callback,
-                    relink=relink,
-                    filter_info=filter_info,
-                )
-                added, modified = result or (None, None)
-                if modified:
-                    checkouts["modified"].append(out.path_info)
-                elif added:
-                    checkouts["added"].append(out.path_info)
-            except CheckoutError as exc:
-                checkouts["failed"].extend(exc.target_infos)
+    def checkout(self, **kwargs):
+        stats = defaultdict(list)
+        for out in self._filter_outs(kwargs.get("filter_info")):
+            key, outs = self._checkout(out, **kwargs)
+            if key:
+                stats[key].extend(outs)
+        return stats
 
-        return checkouts
+    @staticmethod
+    def _checkout(out, **kwargs):
+        try:
+            result = out.checkout(**kwargs)
+            added, modified = result or (None, None)
+            if not (added or modified):
+                return None, []
+            return "modified" if modified else "added", [out.path_info]
+        except CheckoutError as exc:
+            return "failed", exc.target_infos
 
     @rwlocked(read=["deps", "outs"])
     def status(self, check_updates=False):
