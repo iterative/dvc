@@ -529,12 +529,10 @@ class Stage(params.StageParams):
 
 
 class PipelineStage(Stage):
-    def __init__(self, *args, name=None, meta=None, **kwargs):
+    def __init__(self, *args, name=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
         self.cmd_changed = False
-        # This is how the Stage will discover any discrepancies
-        self.meta = meta or {}
 
     def __eq__(self, other):
         return super().__eq__(other) and self.name == other.name
