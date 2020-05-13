@@ -112,5 +112,5 @@ class DuplicateStageName(DvcException):
 
 
 class InvalidStageName(DvcException):
-    def __init__(self,):
+    def __init__(self):
         super().__init__("Stage name cannot contain punctuation characters.")
