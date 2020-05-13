@@ -5,7 +5,6 @@ import configobj
 import pytest
 from mock import patch
 
-from dvc.compat import fspath
 from dvc.config import Config
 from dvc.exceptions import DownloadError, UploadError
 from dvc.main import main
@@ -239,7 +238,7 @@ def test_external_dir_resource_on_no_cache(tmp_dir, dvc, tmp_path_factory):
 
     dvc.cache.local = None
     with pytest.raises(RemoteCacheRequiredError):
-        dvc.run(deps=[fspath(external_dir)], single_stage=True)
+        dvc.run(deps=[os.fspath(external_dir)], single_stage=True)
 
 
 def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, setup_remote):

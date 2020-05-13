@@ -17,7 +17,6 @@ from flaky.flaky_decorator import flaky
 from google.cloud import storage as gc
 from mock import patch
 
-from dvc.compat import fspath
 from dvc.dvcfile import DVC_FILE, Dvcfile
 from dvc.exceptions import (
     CyclicGraphError,
@@ -1429,16 +1428,16 @@ def repro_dir(tmp_dir, dvc, run_copy):
     stages = {}
 
     origin_copy = tmp_dir / "origin_copy"
-    stage = run_copy("origin_data", fspath(origin_copy), single_stage=True)
+    stage = run_copy("origin_data", os.fspath(origin_copy), single_stage=True)
     assert stage is not None
     assert origin_copy.read_text() == "origin data content"
     stages["origin_copy"] = stage
 
     origin_copy_2 = tmp_dir / "dir" / "origin_copy_2"
     stage = run_copy(
-        fspath(origin_copy),
-        fspath(origin_copy_2),
-        fname=fspath(origin_copy_2) + ".dvc",
+        os.fspath(origin_copy),
+        os.fspath(origin_copy_2),
+        fname=os.fspath(origin_copy_2) + ".dvc",
         single_stage=True,
     )
     assert stage is not None
@@ -1448,9 +1447,9 @@ def repro_dir(tmp_dir, dvc, run_copy):
     dir_file_path = tmp_dir / "data_dir" / "dir_file"
     dir_file_copy = tmp_dir / "dir" / "subdir" / "dir_file_copy"
     stage = run_copy(
-        fspath(dir_file_path),
-        fspath(dir_file_copy),
-        fname=fspath(dir_file_copy) + ".dvc",
+        os.fspath(dir_file_path),
+        os.fspath(dir_file_copy),
+        fname=os.fspath(dir_file_copy) + ".dvc",
         single_stage=True,
     )
     assert stage is not None
@@ -1459,8 +1458,8 @@ def repro_dir(tmp_dir, dvc, run_copy):
 
     last_stage = tmp_dir / "dir" / DVC_FILE
     stage = dvc.run(
-        fname=fspath(last_stage),
-        deps=[fspath(origin_copy_2), fspath(dir_file_copy)],
+        fname=os.fspath(last_stage),
+        deps=[os.fspath(origin_copy_2), os.fspath(dir_file_copy)],
         single_stage=True,
     )
     assert stage is not None
@@ -1468,11 +1467,11 @@ def repro_dir(tmp_dir, dvc, run_copy):
 
     # Unrelated are to verify that reproducing `dir` will not trigger them too
     assert (
-        run_copy(fspath(origin_copy), "unrelated1", single_stage=True)
+        run_copy(os.fspath(origin_copy), "unrelated1", single_stage=True)
         is not None
     )
     assert (
-        run_copy(fspath(dir_file_path), "unrelated2", single_stage=True)
+        run_copy(os.fspath(dir_file_path), "unrelated2", single_stage=True)
         is not None
     )
 

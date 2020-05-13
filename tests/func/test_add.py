@@ -11,7 +11,6 @@ from mock import call, patch
 
 import dvc as dvc_module
 from dvc.cache import Cache
-from dvc.compat import fspath
 from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import (
     DvcException,
@@ -531,7 +530,7 @@ def temporary_windows_drive(tmp_path_factory):
     target_path = tmp_path_factory.mktemp("tmp_windows_drive")
 
     set_up_result = windll.kernel32.DefineDosDeviceW(
-        0, new_drive, fspath(target_path)
+        0, new_drive, os.fspath(target_path)
     )
     if set_up_result == 0:
         raise RuntimeError("Failed to mount windows drive!")
@@ -541,7 +540,7 @@ def temporary_windows_drive(tmp_path_factory):
     yield os.path.join(new_drive, os.sep)
 
     tear_down_result = windll.kernel32.DefineDosDeviceW(
-        DDD_REMOVE_DEFINITION, new_drive, fspath(target_path)
+        DDD_REMOVE_DEFINITION, new_drive, os.fspath(target_path)
     )
     if tear_down_result == 0:
         raise RuntimeError("Could not unmount windows drive!")

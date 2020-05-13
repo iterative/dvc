@@ -4,7 +4,6 @@ import os
 import pytest
 from funcy import first
 
-from dvc.compat import fspath
 from dvc.exceptions import DvcException
 from dvc.utils.fs import remove
 
@@ -38,7 +37,7 @@ def test_no_cache_entry(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen({"dir": {"1": "1", "2": "2"}})
     tmp_dir.dvc_gen("file", "second")
 
-    remove(fspath(tmp_dir / ".dvc" / "cache"))
+    remove(tmp_dir / ".dvc" / "cache")
     (tmp_dir / ".dvc" / "tmp" / "state").unlink()
 
     dir_checksum = "5fb6b29836c388e093ca0715c872fe2a.dir"

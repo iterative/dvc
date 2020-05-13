@@ -50,7 +50,6 @@ from contextlib import contextmanager
 import pytest
 from funcy import lmap, retry
 
-from dvc.compat import fspath, fspath_py35
 from dvc.logger import disable_other_loggers
 from dvc.utils.fs import makedirs
 
@@ -82,10 +81,6 @@ class TmpDir(pathlib.Path):
         self._init()
         return self
 
-    # Not needed in Python 3.6+
-    def __fspath__(self):
-        return str(self)
-
     def init(self, *, scm=False, dvc=False):
         from dvc.repo import Repo
         from dvc.scm.git import Git
@@ -93,7 +88,7 @@ class TmpDir(pathlib.Path):
         assert not scm or not hasattr(self, "scm")
         assert not dvc or not hasattr(self, "dvc")
 
-        str_path = fspath(self)
+        str_path = os.fspath(self)
 
         if scm:
             _git_init(str_path)
@@ -184,7 +179,7 @@ class TmpDir(pathlib.Path):
     def chdir(self):
         old = os.getcwd()
         try:
-            os.chdir(fspath_py35(self))
+            os.chdir(self)
             yield
         finally:
             os.chdir(old)
@@ -203,7 +198,7 @@ class TmpDir(pathlib.Path):
 def _coerce_filenames(filenames):
     if isinstance(filenames, (str, bytes, pathlib.PurePath)):
         filenames = [filenames]
-    return lmap(fspath, filenames)
+    return lmap(os.fspath, filenames)
 
 
 class WindowsTmpDir(TmpDir, pathlib.PureWindowsPath):
@@ -218,7 +213,7 @@ class PosixTmpDir(TmpDir, pathlib.PurePosixPath):
 def make_tmp_dir(tmp_path_factory, request):
     def make(name, *, scm=False, dvc=False):
         path = tmp_path_factory.mktemp(name) if isinstance(name, str) else name
-        new_dir = TmpDir(fspath_py35(path))
+        new_dir = TmpDir(path)
         new_dir.init(scm=scm, dvc=dvc)
         request.addfinalizer(new_dir.close)
         return new_dir
@@ -290,7 +285,7 @@ def git_dir(make_tmp_dir):
 def setup_remote(make_tmp_dir):
     def create(repo, url=None, name="upstream", default=True):
         if not url:
-            url = fspath(make_tmp_dir("local_remote"))
+            url = os.fspath(make_tmp_dir("local_remote"))
         with repo.config.edit() as conf:
             conf["remote"][name] = {"url": url}
             if default:

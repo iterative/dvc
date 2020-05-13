@@ -1,6 +1,7 @@
+import os
+
 import pytest
 
-from dvc.compat import fspath
 from dvc.exceptions import DownloadError, UploadError
 from dvc.remote.base import BaseRemote
 from dvc.remote.index import RemoteIndex
@@ -10,7 +11,7 @@ from dvc.utils.fs import remove
 
 @pytest.fixture(scope="function")
 def remote(tmp_dir, dvc, tmp_path_factory, mocker):
-    url = fspath(tmp_path_factory.mktemp("upstream"))
+    url = os.fspath(tmp_path_factory.mktemp("upstream"))
     dvc.config["remote"]["upstream"] = {"url": url}
     dvc.config["core"]["remote"] = "upstream"
 

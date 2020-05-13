@@ -2,7 +2,6 @@ import os
 
 from mock import patch
 
-from dvc.compat import fspath
 from dvc.main import main
 from tests.basic_env import TestDvc
 
@@ -30,7 +29,7 @@ def test_status_non_dvc_repo_import(tmp_dir, dvc, git_dir):
     with git_dir.branch("branch", new=True):
         git_dir.scm_gen("file", "first version", commit="first version")
 
-    dvc.imp(fspath(git_dir), "file", "file", rev="branch")
+    dvc.imp(os.fspath(git_dir), "file", "file", rev="branch")
 
     assert dvc.status(["file.dvc"]) == {}
 
@@ -47,7 +46,7 @@ def test_status_before_and_after_dvc_init(tmp_dir, dvc, git_dir):
     git_dir.scm_gen("file", "first version", commit="first verison")
     old_rev = git_dir.scm.get_rev()
 
-    dvc.imp(fspath(git_dir), "file", "file")
+    dvc.imp(os.fspath(git_dir), "file", "file")
 
     assert dvc.status(["file.dvc"]) == {}
 
@@ -63,7 +62,7 @@ def test_status_before_and_after_dvc_init(tmp_dir, dvc, git_dir):
     (status,) = dvc.status(["file.dvc"])["file.dvc"]
     assert status == {
         "changed deps": {
-            "file ({})".format(fspath(git_dir)): "update available"
+            "file ({})".format(os.fspath(git_dir)): "update available"
         }
     }
 
