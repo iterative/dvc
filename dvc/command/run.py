@@ -42,7 +42,7 @@ class CmdRun(CmdBase):
                 wdir=self.args.wdir,
                 no_exec=self.args.no_exec,
                 overwrite=self.args.overwrite_dvcfile,
-                ignore_build_cache=self.args.ignore_build_cache,
+                run_cache=not self.args.no_run_cache,
                 no_commit=self.args.no_commit,
                 outs_persist=self.args.outs_persist,
                 outs_persist_no_cache=self.args.outs_persist_no_cache,
@@ -165,11 +165,13 @@ def add_parser(subparsers, parent_parser):
         help="Overwrite existing DVC-file without asking for confirmation.",
     )
     run_parser.add_argument(
-        "--ignore-build-cache",
+        "--no-run-cache",
         action="store_true",
         default=False,
-        help="Run this stage even if it has been already ran with the same "
-        "command/dependencies/outputs/etc before.",
+        help=(
+            "Execute the command even if this stage has already been run "
+            "with the same command/dependencies/outputs/etc before."
+        ),
     )
     run_parser.add_argument(
         "--no-commit",

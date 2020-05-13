@@ -436,7 +436,7 @@ class TestReproChangedDeepData(TestReproChangedData):
         self.assertEqual(len(stages), 3)
 
 
-class TestReproIgnoreBuildCache(TestDvc):
+class TestReproForceDownstream(TestDvc):
     def test(self):
         stages = self.dvc.add(self.FOO)
         self.assertEqual(len(stages), 1)
@@ -479,7 +479,7 @@ class TestReproIgnoreBuildCache(TestDvc):
         with open(code2, "a") as fobj:
             fobj.write("\n\n")
 
-        stages = self.dvc.reproduce(file3_stage.path, ignore_build_cache=True)
+        stages = self.dvc.reproduce(file3_stage.path, force_downstream=True)
         self.assertEqual(len(stages), 2)
         self.assertEqual(stages[0].path, file2_stage.path)
         self.assertEqual(stages[1].path, file3_stage.path)

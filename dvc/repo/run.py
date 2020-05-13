@@ -85,7 +85,7 @@ def run(self, fname=None, no_exec=False, single_stage=False, **kwargs):
     else:
         stage.run(
             no_commit=kwargs.get("no_commit", False),
-            ignore_build_cache=kwargs.get("ignore_build_cache", False),
+            run_cache=kwargs.get("run_cache", True),
         )
 
     dvcfile.dump(stage, update_pipeline=True)

@@ -7,12 +7,13 @@ default_arguments = {
     "downstream": False,
     "dry": False,
     "force": False,
-    "ignore_build_cache": False,
+    "run_cache": True,
     "interactive": False,
     "no_commit": False,
     "pipeline": False,
     "single_item": False,
     "recursive": False,
+    "force_downstream": False,
 }
 
 
