@@ -6,6 +6,7 @@ import uuid
 from unittest import SkipTest
 
 import pytest
+from flaky.flaky_decorator import flaky
 
 from dvc.cache import NamedCache
 from dvc.compat import fspath
@@ -716,6 +717,7 @@ def test_verify_checksums(
     assert checksum_spy.call_count == 3
 
 
+@flaky(max_runs=3, min_passes=1)
 @pytest.mark.parametrize("erepo", ["git_dir", "erepo_dir"])
 def test_pull_git_imports(request, tmp_dir, dvc, scm, erepo):
     erepo = request.getfixturevalue(erepo)
