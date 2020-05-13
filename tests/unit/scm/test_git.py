@@ -69,3 +69,17 @@ def test_is_tracked_unicode(tmp_dir, scm):
     tmp_dir.gen("ṳṋṭṝḁḉḵḗḋ", "untracked")
     assert scm.is_tracked("ṭṝḁḉḵḗḋ")
     assert not scm.is_tracked("ṳṋṭṝḁḉḵḗḋ")
+
+
+def test_no_commits(tmp_dir):
+    from tests.dir_helpers import git_init
+    from dvc.scm.git import Git
+
+    git_init(".")
+    assert Git().no_commits
+
+    tmp_dir.gen("foo", "foo")
+    Git().add(["foo"])
+    Git().commit("foo")
+
+    assert not Git().no_commits

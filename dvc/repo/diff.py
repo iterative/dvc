@@ -52,6 +52,9 @@ def diff(self, a_rev="HEAD", b_rev=None):
             if _exists(output)
         }
 
+    if self.scm.no_commits:
+        return {}
+
     working_tree = self.tree
     a_tree = self.scm.get_tree(a_rev)
     b_tree = self.scm.get_tree(b_rev) if b_rev else working_tree

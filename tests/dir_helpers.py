@@ -62,6 +62,7 @@ __all__ = [
     "erepo_dir",
     "git_dir",
     "setup_remote",
+    "git_init",
 ]
 
 
@@ -91,7 +92,7 @@ class TmpDir(pathlib.Path):
         str_path = os.fspath(self)
 
         if scm:
-            _git_init(str_path)
+            git_init(str_path)
         if dvc:
             self.dvc = Repo.init(
                 str_path, no_scm=not scm and not hasattr(self, "scm")
@@ -238,7 +239,7 @@ def dvc(tmp_dir):
     return tmp_dir.dvc
 
 
-def _git_init(path):
+def git_init(path):
     from git import Repo
     from git.exc import GitCommandNotFound
 

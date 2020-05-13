@@ -134,3 +134,14 @@ def test_metrics_diff_with_unchanged(tmp_dir, scm, dvc):
             "xyz": {"old": 10, "new": 10, "diff": 0},
         }
     }
+
+
+def test_no_commits(tmp_dir):
+    from dvc.repo import Repo
+    from dvc.scm.git import Git
+    from tests.dir_helpers import git_init
+
+    git_init(".")
+    assert Git().no_commits
+
+    assert Repo.init().metrics.diff() == {}

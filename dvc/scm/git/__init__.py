@@ -439,3 +439,7 @@ class Git(Base):
         self._verify_hook("post-checkout")
         self._verify_hook("pre-commit")
         self._verify_hook("pre-push")
+
+    @property
+    def no_commits(self):
+        return not self.list_all_commits()

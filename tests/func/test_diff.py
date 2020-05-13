@@ -213,3 +213,14 @@ def test_diff_dirty(tmp_dir, scm, dvc):
 def test_no_changes(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("file", "first", commit="add a file")
     assert dvc.diff() == {}
+
+
+def test_no_commits(tmp_dir):
+    from dvc.repo import Repo
+    from dvc.scm.git import Git
+    from tests.dir_helpers import git_init
+
+    git_init(".")
+    assert Git().no_commits
+
+    assert Repo.init().diff() == {}
