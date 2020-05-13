@@ -1,4 +1,4 @@
-from funcy import decorator
+from funcy import decorator, wraps
 
 
 @decorator
@@ -31,3 +31,19 @@ def rwlocked(call, read=None, write=None):
 
     with rwlock(stage.repo.tmp_dir, cmd, _chain(read), _chain(write)):
         return call()
+
+
+def unlocked_repo(f):
+    @wraps(f)
+    def wrapper(stage, *args, **kwargs):
+        stage.repo.state.dump()
+        stage.repo.lock.unlock()
+        stage.repo._reset()
+        try:
+            ret = f(stage, *args, **kwargs)
+        finally:
+            stage.repo.lock.lock()
+            stage.repo.state.load()
+        return ret
+
+    return wrapper

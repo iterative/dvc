@@ -142,7 +142,7 @@ def test_stage_cache(tmp_dir, dvc, run_copy, mocker):
     assert os.listdir(cache_dir) == [os.path.basename(cache_file)]
     assert os.path.isfile(cache_file)
 
-    run_spy = mocker.spy(stage, "_run")
+    run_spy = mocker.spy(stage, "cmd_run")
     checkout_spy = mocker.spy(stage, "checkout")
     with dvc.lock, dvc.state:
         stage.run()

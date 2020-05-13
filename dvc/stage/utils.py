@@ -7,6 +7,7 @@ from dvc.utils.fs import path_isin
 from ..remote import LocalRemote, S3Remote
 from ..utils import dict_md5
 from .exceptions import (
+    MissingDataSource,
     StagePathNotDirectoryError,
     StagePathNotFoundError,
     StagePathOutsideError,
@@ -75,6 +76,12 @@ def check_duplicated_arguments(stage):
     for path, occurrence in path_counts.items():
         if occurrence > 1:
             raise ArgumentDuplicationError(str(path))
+
+
+def check_missing_outputs(stage):
+    paths = [str(out) for out in stage.outs if not out.exists]
+    if paths:
+        raise MissingDataSource(paths)
 
 
 def stage_dump_eq(stage_cls, old_d, new_d):
