@@ -5,16 +5,14 @@ import signal
 import string
 import subprocess
 import threading
-from itertools import chain, product
+from itertools import product
 
 from funcy import project
 
 import dvc.dependency as dependency
-import dvc.output as output
 import dvc.prompt as prompt
 from dvc.exceptions import CheckoutError, DvcException
 from dvc.utils import dict_md5, fix_env, relpath
-from dvc.utils.fs import path_isin
 
 from . import params
 from .decorators import rwlocked, unlocked_repo
@@ -22,12 +20,15 @@ from .exceptions import (
     MissingDataSource,
     StageCmdFailedError,
     StageCommitError,
-    StagePathNotDirectoryError,
-    StagePathNotFoundError,
-    StagePathOutsideError,
     StageUpdateError,
 )
-from .params import OutputParams
+from .utils import (
+    check_circular_dependency,
+    check_duplicated_arguments,
+    check_stage_path,
+    fill_stage_dependencies,
+    fill_stage_outputs,
+)
 
 logger = logging.getLogger(__name__)
 # Disallow all punctuation characters except hyphen and underscore
@@ -59,14 +60,16 @@ def create_stage(cls, repo, path, **kwargs):
     wdir = os.path.abspath(kwargs.get("wdir", None) or os.curdir)
     path = os.path.abspath(path)
     check_dvc_filename(path)
-    cls._check_stage_path(repo, wdir, is_wdir=kwargs.get("wdir"))
-    cls._check_stage_path(repo, os.path.dirname(path))
+    check_stage_path(repo, wdir, is_wdir=kwargs.get("wdir"))
+    check_stage_path(repo, os.path.dirname(path))
 
     stage = loads_from(cls, repo, path, wdir, kwargs)
-    stage._fill_stage_outputs(**kwargs)
-    stage._fill_stage_dependencies(**kwargs)
-    stage._check_circular_dependency()
-    stage._check_duplicated_arguments()
+    fill_stage_outputs(stage, **kwargs)
+    fill_stage_dependencies(
+        stage, **project(kwargs, ["deps", "erepo", "params"])
+    )
+    check_circular_dependency(stage)
+    check_duplicated_arguments(stage)
 
     if stage and stage.dvcfile.exists():
         has_persist_outs = any(out.persist for out in stage.outs)
@@ -327,30 +330,6 @@ class Stage(params.StageParams):
         finally:
             self.locked = locked
 
-    @staticmethod
-    def _check_stage_path(repo, path, is_wdir=False):
-        assert repo is not None
-
-        error_msg = "{wdir_or_path} '{path}' {{}}".format(
-            wdir_or_path="stage working dir" if is_wdir else "file path",
-            path=path,
-        )
-
-        real_path = os.path.realpath(path)
-        if not os.path.exists(real_path):
-            raise StagePathNotFoundError(error_msg.format("does not exist"))
-
-        if not os.path.isdir(real_path):
-            raise StagePathNotDirectoryError(
-                error_msg.format("is not directory")
-            )
-
-        proj_dir = os.path.realpath(repo.root_dir)
-        if real_path != proj_dir and not path_isin(real_path, proj_dir):
-            raise StagePathOutsideError(
-                error_msg.format("is outside of DVC repo")
-            )
-
     @property
     def can_be_skipped(self):
         return (
@@ -412,32 +391,6 @@ class Stage(params.StageParams):
         old.commit()
 
         return True
-
-    def _fill_stage_outputs(self, **kwargs):
-        assert not self.outs
-
-        self.outs = []
-        for key in (p.value for p in OutputParams):
-            self.outs += output.loads_from(
-                self,
-                kwargs.get(key, []),
-                use_cache="no_cache" not in key,
-                persist="persist" in key,
-                metric="metrics" in key,
-            )
-
-    def _fill_stage_dependencies(self, **kwargs):
-        assert not self.deps
-        self.deps = []
-        self.deps += dependency.loads_from(
-            self, kwargs.get("deps", []), erepo=kwargs.get("erepo", None)
-        )
-        self.deps += dependency.loads_params(self, kwargs.get("params", []))
-
-    def _fix_outs_deps_path(self, wdir):
-        for out in chain(self.outs, self.deps):
-            if out.is_in_repo:
-                out.def_path = relpath(out.path_info, wdir)
 
     def resolve_wdir(self):
         rel_wdir = relpath(self.wdir, os.path.dirname(self.path))
@@ -552,26 +505,6 @@ class Stage(params.StageParams):
             "in '.fishrc', which might affect your command. See "
             "https://github.com/iterative/dvc/issues/1307. "
         )
-
-    def _check_circular_dependency(self):
-        from dvc.exceptions import CircularDependencyError
-
-        circular_dependencies = set(d.path_info for d in self.deps) & set(
-            o.path_info for o in self.outs
-        )
-
-        if circular_dependencies:
-            raise CircularDependencyError(str(circular_dependencies.pop()))
-
-    def _check_duplicated_arguments(self):
-        from dvc.exceptions import ArgumentDuplicationError
-        from collections import Counter
-
-        path_counts = Counter(edge.path_info for edge in self.deps + self.outs)
-
-        for path, occurrence in path_counts.items():
-            if occurrence > 1:
-                raise ArgumentDuplicationError(str(path))
 
     @unlocked_repo
     def _run(self):
