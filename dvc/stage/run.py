@@ -73,7 +73,7 @@ def cmd_run(stage, *args, **kwargs):
 
     retcode = None if not p else p.returncode
     if retcode != 0:
-        raise StageCmdFailedError(cmd, retcode)
+        raise StageCmdFailedError(stage.cmd, retcode)
 
 
 def run_stage(stage, dry=False, force=False, run_cache=False):
