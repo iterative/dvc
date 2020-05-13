@@ -513,6 +513,18 @@ class Stage(params.StageParams):
 
         return checkouts
 
+    @rwlocked(read=["deps", "outs"])
+    def status(self, check_updates=False):
+        ret = []
+        show_import = self.is_repo_import and check_updates
+
+        if not self.locked or show_import:
+            self._status_deps(ret)
+        self._status_outs(ret)
+        self._status_always_changed(ret)
+        self._status_stage(ret)
+        return {self.addressing: ret} if ret else {}
+
     @staticmethod
     def _status(entries):
         ret = {}
@@ -522,32 +534,23 @@ class Stage(params.StageParams):
 
         return ret
 
-    def status_stage(self):
-        return ["changed checksum"] if self.changed_stage() else []
+    def _status_deps(self, ret):
+        deps_status = self._status(self.deps)
+        if deps_status:
+            ret.append({"changed deps": deps_status})
 
-    @rwlocked(read=["deps", "outs"])
-    def status(self, check_updates=False):
-        ret = []
-
-        show_import = self.is_repo_import and check_updates
-
-        if not self.locked or show_import:
-            deps_status = self._status(self.deps)
-            if deps_status:
-                ret.append({"changed deps": deps_status})
-
+    def _status_outs(self, ret):
         outs_status = self._status(self.outs)
         if outs_status:
             ret.append({"changed outs": outs_status})
 
-        ret.extend(self.status_stage())
+    def _status_always_changed(self, ret):
         if self.is_callback or self.always_changed:
             ret.append("always changed")
 
-        if ret:
-            return {self.addressing: ret}
-
-        return {}
+    def _status_stage(self, ret):
+        if self.changed_stage():
+            ret.append("changed checksum")
 
     def already_cached(self):
         return self.deps_cached() and self.outs_cached()
@@ -612,8 +615,9 @@ class PipelineStage(Stage):
     def is_cached(self):
         return self.name in self.dvcfile.stages and super().is_cached
 
-    def status_stage(self):
-        return ["changed command"] if self.cmd_changed else []
+    def _status_stage(self, ret):
+        if self.cmd_changed:
+            ret.append("changed command")
 
     def changed_stage(self, warn=False):
         if self.cmd_changed and warn:
