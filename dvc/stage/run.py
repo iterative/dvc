@@ -78,6 +78,7 @@ def cmd_run(stage, *args, **kwargs):
 
 def run_stage(stage, dry=False, force=False, run_cache=False):
     if dry:
+        logger.info("Running command:\n\t{}".format(stage.cmd))
         return
     stage_cache = stage.repo.stage_cache
     stage_cached = (
