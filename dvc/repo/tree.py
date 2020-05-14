@@ -261,7 +261,6 @@ class RepoTree(BaseTree):
 
         if self.isdvc(path):
             used = self._get_used_cache(path)
-            logger.debug("got used '{}'".format(used))
         elif self.isfile(path):
             # git file
             if save_git:
@@ -279,7 +278,6 @@ class RepoTree(BaseTree):
                 used.update(recursive_used)
 
         if used:
-            logger.debug("fetching used '{}'".format(used))
             try:
                 # pull using the specified cache (not necessarily the default
                 # erepo tmpdir cache)
@@ -317,7 +315,6 @@ class RepoTree(BaseTree):
         downloaded, failed = 0, 0
 
         info = {cache.PARAM_CHECKSUM: self.get_checksum(path, cache)}
-        logger.debug("generated save checksum '{}'")
         if info.get(cache.PARAM_CHECKSUM) is None:
             logger.exception(
                 "failed to fetch '{}' from '{}' repo".format(

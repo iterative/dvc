@@ -182,10 +182,8 @@ class LocalRemote(BaseRemote):
     def walk_files(self, path_info):
         if self.tree and self.tree.exists(path_info):
             tree = self.tree
-            logger.debug("walk_files using working tree")
         else:
             tree = self.repo.tree
-            logger.debug("walk_files using repo tree")
 
         for fname in tree.walk_files(path_info):
             yield PathInfo(fname)
