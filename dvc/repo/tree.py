@@ -2,13 +2,17 @@ import errno
 import logging
 import os
 
-from dvc.compat import fspath_py35
 from dvc.dvcfile import is_valid_filename
-from dvc.exceptions import CheckoutError, OutputNotFoundError
+from dvc.exceptions import (
+    CheckoutError,
+    DownloadError,
+    OutputNotFoundError,
+    RecursiveImportError,
+)
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.scm.tree import BaseTree
-from dvc.utils import tmp_fname
+from dvc.utils import file_md5, tmp_fname
 from dvc.utils.fs import copy_obj_to_file, makedirs, move, remove
 
 logger = logging.getLogger(__name__)
@@ -18,7 +22,7 @@ class DvcTree(BaseTree):
     def __init__(self, repo):
         self.repo = repo
 
-    def _find_outs(self, path, *args, **kwargs):
+    def find_outs(self, path, *args, **kwargs):
         outs = self.repo.find_outs_by_path(path, *args, **kwargs)
 
         def _is_cached(out):
@@ -32,7 +36,7 @@ class DvcTree(BaseTree):
 
     def open(self, path, mode="r", encoding="utf-8"):
         try:
-            outs = self._find_outs(path, strict=False)
+            outs = self.find_outs(path, strict=False)
         except OutputNotFoundError as exc:
             raise FileNotFoundError from exc
 
@@ -47,7 +51,7 @@ class DvcTree(BaseTree):
 
     def exists(self, path):
         try:
-            self._find_outs(path, strict=False, recursive=True)
+            self.find_outs(path, strict=False, recursive=True)
             return True
         except OutputNotFoundError:
             return False
@@ -56,8 +60,8 @@ class DvcTree(BaseTree):
         if not self.exists(path):
             return False
 
-        path_info = PathInfo(os.path.abspath(fspath_py35(path)))
-        outs = self._find_outs(path, strict=False, recursive=True)
+        path_info = PathInfo(os.path.abspath(path))
+        outs = self.find_outs(path, strict=False, recursive=True)
         if len(outs) != 1 or outs[0].path_info != path_info:
             return True
 
@@ -99,8 +103,6 @@ class DvcTree(BaseTree):
 
         assert topdown
 
-        top = fspath_py35(top)
-
         if not self.exists(top):
             raise FileNotFoundError
 
@@ -108,7 +110,7 @@ class DvcTree(BaseTree):
             raise NotADirectoryError
 
         root = PathInfo(os.path.abspath(top))
-        outs = self._find_outs(top, recursive=True, strict=False)
+        outs = self.find_outs(top, recursive=True, strict=False)
 
         trie = Trie()
 
@@ -119,9 +121,7 @@ class DvcTree(BaseTree):
 
     def isdvc(self, path):
         try:
-            return (
-                len(self._find_outs(path, recursive=True, strict=False)) == 1
-            )
+            return len(self.find_outs(path, recursive=True, strict=False)) == 1
         except OutputNotFoundError:
             pass
         return False
@@ -237,6 +237,116 @@ class RepoTree(BaseTree):
         repo_walk = self.repo.tree.walk(top, topdown=topdown)
         yield from self._walk(dvc_walk, repo_walk)
 
+    def _get_used_cache(self, path_info):
+        try:
+            (out,) = self.dvctree.find_outs(path_info, strict=False)
+            filter_info = path_info.relative_to(out.path_info)
+            if out.changed_cache(filter_info=filter_info):
+                return out.get_used_cache()
+        except OutputNotFoundError:
+            pass
+        return None
+
+    def fetch(self, path, cache, save_git=False, recursive=False, **kwargs):
+        """Fetch contents of path into the specified cache.
+
+        If save_git is True, git-only files will be saved to the cache.
+        """
+        if not self.exists(path):
+            raise FileNotFoundError
+
+        path = PathInfo(path)
+        downloaded, failed = 0, 0
+        used = None
+
+        if self.isdvc(path):
+            used = self._get_used_cache(path)
+            logger.debug("got used '{}'".format(used))
+        elif self.isfile(path):
+            # git file
+            if save_git:
+                d, f = self._save_git(path, cache)
+                downloaded += d
+                failed += f
+        else:
+            # git dir
+            d, f, recursive_used = self._fetch_dir(
+                path, cache, save_git, recursive
+            )
+            downloaded += d
+            failed += f
+            if recursive_used:
+                used.update(recursive_used)
+
+        if used:
+            logger.debug("fetching used '{}'".format(used))
+            try:
+                # pull using the specified cache (not necessarily the default
+                # erepo tmpdir cache)
+                remote = self.repo.cloud.get_remote(None, "pull")
+                downloaded += cache.pull(used, remote=remote, **kwargs)
+            except DownloadError as exc:
+                failed += exc.amount
+
+        return downloaded, failed
+
+    def _fetch_dir(self, path, cache, save_git, recursive):
+        downloaded, failed = 0, 0
+
+        for root, dirs, files in self.walk(path):
+            root_path = PathInfo(root)
+            for name in dirs + files:
+                if name == Repo.DVC_DIR:
+                    # import from subrepos currently unsupported
+                    raise RecursiveImportError(
+                        path.relative_to(self.repo.root_dir), subrepo=True
+                    )
+                if self.isdvc(root_path / name) and not recursive:
+                    raise RecursiveImportError(
+                        path.relative_to(self.repo.root_dir)
+                    )
+
+        if save_git:
+            d, f = self._save_git(path, cache)
+            downloaded += d
+            failed += f
+
+        return downloaded, failed, None
+
+    def _save_git(self, path, cache):
+        downloaded, failed = 0, 0
+
+        info = {cache.PARAM_CHECKSUM: self.get_checksum(path, cache)}
+        logger.debug("generated save checksum '{}'")
+        if info.get(cache.PARAM_CHECKSUM) is None:
+            logger.exception(
+                "failed to fetch '{}' from '{}' repo".format(
+                    path, self.repo.url
+                )
+            )
+            failed += 1
+        elif cache.changed_cache(info[cache.PARAM_CHECKSUM]):
+            cache.save(path, info, save_link=False, tree=self)
+            logger.debug(
+                "fetched '{}' from '{}' repo".format(path, self.repo.url)
+            )
+            downloaded += 1
+
+        return downloaded, failed
+
+    def get_checksum(self, path, cache):
+        if self.isfile(path):
+            return self._file_checksum(path)
+        return self._dir_checksum(path, cache)
+
+    def _dir_checksum(self, path, cache):
+        return cache.get_dir_checksum(
+            path, tree=self, checksum_func=self._file_checksum
+        )
+
+    def _file_checksum(self, path):
+        return file_md5(path, self.repo.tree)[0]
+
     def copyfile(self, src, dest):
         """Copy specified file from this tree to the destination path."""
         if not self.exists(src):
@@ -245,63 +355,64 @@ class RepoTree(BaseTree):
         with self.open(src, mode="rb", encoding=None) as fobj:
             copy_obj_to_file(fobj, dest)
 
-    def copytree(self, top, dest, dvcfiles=False):
-        """Copy directory/file tree to dest, starting from top.
+    def checkout(self, path, dest, cache):
+        """Checkout the specified path to dest.
 
-        If dvcfiles is False, dvcfiles will not be copied
-        (only the associated DVC outs will be copied).
+        If path is a DVC out, it will be checkout-ed from the specified cache
+        to dest. Git only files will be copied directly from tree.
         """
-        if not self.exists(top):
+        if not self.exists(path):
             raise FileNotFoundError
 
-        top = PathInfo(top)
+        path = PathInfo(path)
         dest = PathInfo(dest)
 
-        if self.isfile(top):
-            self.copyfile(top, dest)
+        if self.isdvc(path):
+            self._checkout_dvc(path, dest, cache)
             return
 
-        if self.isdvc(top):
-            self._copytree_dvc(top, dest)
+        if self.isfile(path):
+            self.copyfile(path, dest)
             return
 
-        for root, _, files in self.walk(top):
+        for root, _, files in self.walk(path):
             root_path = PathInfo(root)
-            dest_dir = dest / root_path.relative_to(top)
-            if not os.path.exists(fspath_py35(dest_dir)):
+            dest_dir = dest / root_path.relative_to(path)
+            if not os.path.exists(dest_dir):
                 makedirs(dest_dir)
             for filename in files:
                 src_file = root_path / filename
                 dest_file = dest_dir / filename
-                if dvcfiles or not is_valid_filename(filename):
-                    self.copyfile(src_file, dest_file)
-                else:
+                if is_valid_filename(filename):
                     name, _ = os.path.splitext(filename)
                     if self.dvctree and not self.dvctree.exists(
                         root_path / name
                     ):
                         self.copyfile(src_file, dest_file)
+                else:
+                    self.copyfile(src_file, dest_file)
 
-    def _copytree_dvc(self, top, dest):
-        """Copy contents of DVC dir out from local cache to dest.
-
-        Only dir cache contents starting from top will be copied.
-        """
+    def _checkout_dvc(self, path, dest, cache):
+        """Checkout specified DVC out to dest."""
         try:
-            (out,) = self.repo.find_outs_by_path(top, strict=False)
+            (out,) = self.dvctree.find_outs(path, strict=False)
         except OutputNotFoundError:
             raise FileNotFoundError
 
         # checkout out to tmp dir, move contents to dest, cleanup tmp dir
         tmp = PathInfo(tmp_fname(dest))
-        src = tmp / top.relative_to(out.path_info)
+        src = tmp / path.relative_to(out.path_info)
         out.path_info = tmp
 
-        if out.changed_cache(filter_info=src):
+        if cache.changed_cache(
+            out.info[cache.PARAM_CHECKSUM], filter_info=src
+        ):
             raise FileNotFoundError
 
         try:
-            out.checkout(filter_info=src)
+            cache.checkout(
+                tmp, out.info, filter_info=src,
+            )
             move(src, dest)
         except CheckoutError:
             raise FileNotFoundError
