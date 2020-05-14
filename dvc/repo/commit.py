@@ -18,8 +18,9 @@ def prompt_to_commit(stage, changes, force=False):
         kw["outs"] = changed_outs
         msg = "outputs {outs} of {stage} changed. "
     else:
-        kw["stage_change"] = changed_stage
-        msg = "{stage_change} of {stage}. "
+        del kw["stage"]
+        msg = "{} ".format(changed_stage)
+
     msg += "Are you sure you want to commit it?"
 
     if not (force or prompt.confirm(msg.format_map(kw))):

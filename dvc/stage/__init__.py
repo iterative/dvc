@@ -383,12 +383,17 @@ class Stage(params.StageParams):
             if entry.checksum and entry.changed_checksum()
         ]
 
+    def _changed_stage_entry(self):
+        return "'md5' of {} changed.".format(self)
+
     def changed_entries(self):
         changed_deps = self._changed_entries(self.deps)
         changed_outs = self._changed_entries(self.outs)
-        ret = []
-        self._status_stage(ret)
-        return changed_deps, changed_outs, next(iter(ret), None)
+        return (
+            changed_deps,
+            changed_outs,
+            self._changed_stage_entry() if self.changed_stage() else None,
+        )
 
     @rwlocked(write=["outs"])
     def commit(self):
@@ -549,5 +554,8 @@ class PipelineStage(Stage):
 
     def changed_stage(self, warn=False):
         if self.cmd_changed and warn:
-            logger.debug("'cmd' of {} has changed.".format(self))
+            logger.debug(self._changed_stage_entry())
         return self.cmd_changed
+
+    def _changed_stage_entry(self):
+        return "'cmd' of {} has changed.".format(self)
