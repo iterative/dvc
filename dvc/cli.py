@@ -27,7 +27,7 @@ from .command import (
     move,
     params,
     pipeline,
-    plot,
+    plots,
     remote,
     remove,
     repro,
@@ -74,7 +74,7 @@ COMMANDS = [
     version,
     update,
     git_hook,
-    plot,
+    plots,
 ]
 
 
