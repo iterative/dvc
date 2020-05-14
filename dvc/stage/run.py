@@ -78,32 +78,34 @@ def cmd_run(stage, *args, **kwargs):
         raise StageCmdFailedError(stage.cmd, retcode)
 
 
-def run_stage(stage, dry=False, force=False, run_cache=False):
-    if dry:
-        logger.info("Running command:\n\t{}".format(stage.cmd))
-        return
-    stage_cache = stage.repo.stage_cache
-    stage_cached = (
-        not force
-        and not stage.is_callback
+def _is_cached(stage):
+    return (
+        not stage.is_callback
         and not stage.always_changed
         and stage.already_cached()
     )
-    use_build_cache = False
-    if not stage_cached:
-        stage.save_deps()
-        use_build_cache = (
-            not force and run_cache and stage_cache.is_cached(stage)
-        )
 
-    if use_build_cache:
-        # restore stage from build cache
-        stage.repo.stage_cache.restore(stage)
-        stage_cached = stage.outs_cached()
 
-    if stage_cached:
-        logger.info("Stage is cached, skipping.")
-        stage.checkout()
-    else:
-        logger.info("Running command:\n\t{}".format(stage.cmd))
+def _try_with_run_cache(stage, force, run_cache):
+    stage_cache = stage.repo.stage_cache
+    stage.save_deps()
+    use_build_cache = not force and run_cache and stage_cache.is_cached(stage)
+    if not use_build_cache:
+        return False
+
+    # restore stage from build cache
+    stage_cache.restore(stage)
+    return stage.outs_cached()
+
+
+def run_stage(stage, dry=False, force=False, run_cache=False):
+    if not dry:
+        stage_cached = not force and _is_cached(stage)
+        if stage_cached or _try_with_run_cache(stage, force, run_cache):
+            logger.info("Stage is cached, skipping.")
+            stage.checkout()
+            return
+
+    logger.info("Running command:\n\t%s", stage.cmd)
+    if not dry:
         cmd_run(stage)
