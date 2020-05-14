@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, List
 from funcy import lsplit, rpartial
 
 from dvc.dependency import ParamsDependency
+from dvc.stage.utils import resolve_wdir
 from dvc.utils.collections import apply_diff
 from dvc.utils.stage import parse_stage_for_update
 
@@ -77,7 +78,7 @@ def to_pipeline_file(stage: "PipelineStage"):
 
     res = [
         (stage.PARAM_CMD, stage.cmd),
-        (stage.PARAM_WDIR, stage.resolve_wdir()),
+        (stage.PARAM_WDIR, resolve_wdir(stage.wdir, stage.path)),
         (stage.PARAM_DEPS, sorted([d.def_path for d in deps])),
         (stage.PARAM_PARAMS, serialized_params),
         *_get_outs(stage),
