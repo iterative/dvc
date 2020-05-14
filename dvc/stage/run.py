@@ -90,9 +90,7 @@ def run_stage(stage, dry=False, force=False, run_cache=False):
     if not stage_cached:
         stage.save_deps()
         use_build_cache = (
-            not force
-            and not run_cache
-            and stage_cache.is_cached(stage)
+            not force and not run_cache and stage_cache.is_cached(stage)
         )
 
     if use_build_cache:
