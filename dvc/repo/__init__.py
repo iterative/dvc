@@ -59,7 +59,7 @@ class Repo(object):
     from dvc.repo.get import get
     from dvc.repo.get_url import get_url
     from dvc.repo.update import update
-    from dvc.repo.plot import plot
+    from dvc.repo.plots import plot
 
     def __init__(self, root_dir=None):
         from dvc.state import State
@@ -426,7 +426,7 @@ class Repo(object):
 
     @cached_property
     def plot_templates(self):
-        from dvc.repo.plot.template import PlotTemplates
+        from .plots.template import PlotTemplates
 
         return PlotTemplates(self.dvc_dir)
 

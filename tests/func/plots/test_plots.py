@@ -10,13 +10,13 @@ import yaml
 from bs4 import BeautifulSoup
 from funcy import first
 
-from dvc.repo.plot import NoDataOrTemplateProvided
-from dvc.repo.plot.data import (
+from dvc.repo.plots import NoDataOrTemplateProvided
+from dvc.repo.plots.data import (
     NoMetricInHistoryError,
     PlotData,
     PlotMetricTypeError,
 )
-from dvc.repo.plot.template import (
+from dvc.repo.plots.template import (
     NoDataForTemplateError,
     NoFieldInDataError,
     TemplateNotFoundError,
@@ -244,7 +244,7 @@ def test_plot_multiple_revs_default(tmp_dir, scm, dvc):
 
 
 def test_plot_multiple_revs(tmp_dir, scm, dvc):
-    shutil.copy(tmp_dir / ".dvc" / "plot" / "default.json", "template.json")
+    shutil.copy(tmp_dir / ".dvc" / "plots" / "default.json", "template.json")
 
     metric_1 = [{"y": 2}, {"y": 3}]
     _write_json(tmp_dir, metric_1, "metric.json")
@@ -324,7 +324,7 @@ def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc, caplog):
 def custom_template(tmp_dir, dvc):
     custom_template = tmp_dir / "custom_template.json"
     shutil.copy(
-        tmp_dir / ".dvc" / "plot" / "default.json", custom_template,
+        tmp_dir / ".dvc" / "plots" / "default.json", custom_template,
     )
     return custom_template
 
@@ -380,7 +380,7 @@ def test_custom_template_with_specified_data(
 
 def test_plot_override_specified_data_source(tmp_dir, scm, dvc):
     shutil.copy(
-        tmp_dir / ".dvc" / "plot" / "default.json",
+        tmp_dir / ".dvc" / "plots" / "default.json",
         tmp_dir / "newtemplate.json",
     )
     _replace(
