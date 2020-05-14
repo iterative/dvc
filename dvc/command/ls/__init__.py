@@ -62,7 +62,7 @@ def add_parser(subparsers, parent_parser):
         help="Recursively list files.",
     )
     list_parser.add_argument(
-        "--outs-only", action="store_true", help="Show only DVC outputs."
+        "--dvc-only", action="store_true", help="Show only DVC outputs."
     )
     list_parser.add_argument(
         "--rev",
