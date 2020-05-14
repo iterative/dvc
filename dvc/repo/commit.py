@@ -7,22 +7,23 @@ from . import locked
 
 def prompt_to_commit(stage, changes, force=False):
     changed_deps, changed_outs, changed_stage = changes
-    kw = {"stage": stage}
     if changed_deps and changed_outs:
-        kw.update({"deps": changed_deps, "outs": changed_outs})
-        msg = "dependencies {deps} and outputs {outs} of {stage} changed. "
+        msg = "dependencies {deps} and outputs {outs} of {stage} changed."
     elif changed_deps:
-        kw["deps"] = changed_deps
-        msg = "dependencies {deps} of {stage} changed. "
+        msg = "dependencies {deps} of {stage} changed."
     elif changed_outs:
-        kw["outs"] = changed_outs
-        msg = "outputs {outs} of {stage} changed. "
+        msg = "outputs {outs} of {stage} changed."
     else:
-        del kw["stage"]
-        msg = "{} ".format(changed_stage)
+        msg = "{stage_changed}"
 
-    msg += "Are you sure you want to commit it?"
+    msg += " Are you sure you want to commit it?"
 
+    kw = {
+        "stage": stage,
+        "deps": changed_deps,
+        "outs": changed_outs,
+        "stage_changed": changed_stage,
+    }
     if not (force or prompt.confirm(msg.format_map(kw))):
         raise StageCommitError(
             "unable to commit changed {}. Use `-f|--force` to "
