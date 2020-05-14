@@ -330,7 +330,12 @@ class RepoTree(BaseTree):
             logger.debug(
                 "fetched '{}' from '{}' repo".format(path, self.repo.url)
             )
-            downloaded += 1
+            if self.isdir(path):
+                downloaded += len(
+                    [name for name in self.repo.tree.walk_files(path)]
+                )
+            else:
+                downloaded += 1
 
         return downloaded, failed
 
