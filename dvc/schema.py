@@ -2,7 +2,8 @@ from voluptuous import Any, Optional, Required, Schema
 
 from dvc import dependency, output
 from dvc.output import CHECKSUMS_SCHEMA
-from dvc.stage.params import OutputParams, StageParams
+from dvc.output.base import BaseOutput
+from dvc.stage.params import StageParams
 
 STAGES = "stages"
 SINGLE_STAGE_SCHEMA = {
@@ -34,7 +35,24 @@ SINGLE_PIPELINE_STAGE_SCHEMA = {
         Optional(StageParams.PARAM_LOCKED): bool,
         Optional(StageParams.PARAM_META): object,
         Optional(StageParams.PARAM_ALWAYS_CHANGED): bool,
-        **{Optional(p.value): [str] for p in OutputParams},
+        Optional(StageParams.PARAM_OUTS): [
+            Any(
+                str,
+                {
+                    str: {
+                        Optional(BaseOutput.PARAM_CACHE): bool,
+                        Optional(BaseOutput.PARAM_PERSIST): bool,
+                    }
+                },
+            )
+        ],
+        Optional(StageParams.PARAM_OUTS_NO_CACHE): [str],
+        Optional(StageParams.PARAM_METRICS): [
+            Any(str, {str: {Optional(BaseOutput.PARAM_CACHE): bool}})
+        ],
+        Optional(StageParams.PARAM_METRICS_NO_CACHE): [str],
+        Optional(StageParams.PARAM_OUTS_PERSIST): [str],
+        Optional(StageParams.PARAM_OUTS_PERSIST_NO_CACHE): [str],
     }
 }
 MULTI_STAGE_SCHEMA = {STAGES: SINGLE_PIPELINE_STAGE_SCHEMA}

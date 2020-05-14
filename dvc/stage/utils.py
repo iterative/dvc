@@ -13,7 +13,6 @@ from .exceptions import (
     StagePathNotFoundError,
     StagePathOutsideError,
 )
-from .params import OutputParams
 
 
 def check_stage_path(repo, path, is_wdir=False):
@@ -39,15 +38,33 @@ def check_stage_path(repo, path, is_wdir=False):
 def fill_stage_outputs(stage, **kwargs):
     assert not stage.outs
 
+    keys = [
+        "outs_persist",
+        "outs_persist_no_cache",
+        "metrics_no_cache",
+        "metrics",
+        "outs_no_cache",
+        "outs",
+    ]
+
     stage.outs = []
-    for key in (p.value for p in OutputParams):
-        stage.outs += output.loads_from(
-            stage,
-            kwargs.get(key, []),
-            use_cache="no_cache" not in key,
-            persist="persist" in key,
-            metric="metrics" in key,
-        )
+    for key in keys:
+        for entry in kwargs.get(key, []):
+            if isinstance(entry, dict):
+                assert len(entry) == 1
+                path, extra = list(entry.items())[0]
+                stage.outs += output.loadd_from(
+                    stage, [{"path": path, **extra}]
+                )
+                continue
+
+            stage.outs += output.loads_from(
+                stage,
+                [entry],
+                use_cache="no_cache" not in key,
+                persist="persist" in key,
+                metric="metrics" in key,
+            )
 
 
 def fill_stage_dependencies(stage, deps=None, erepo=None, params=None):

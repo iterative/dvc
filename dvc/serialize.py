@@ -24,14 +24,17 @@ sort_by_path = partial(sorted, key=attrgetter("def_path"))
 def _get_outs(stage: "PipelineStage"):
     outs_bucket = {}
     for o in sort_by_path(stage.outs):
-        bucket_key = ["metrics"] if o.metric else ["outs"]
+        key = "metrics" if o.metric else "outs"
 
-        if not o.metric and o.persist:
-            bucket_key += ["persist"]
+        extra = {}
+        if o.persist:
+            extra["persist"] = True
         if not o.use_cache:
-            bucket_key += ["no_cache"]
-        key = "_".join(bucket_key)
-        outs_bucket[key] = outs_bucket.get(key, []) + [o.def_path]
+            extra["cache"] = False
+
+        value = {o.def_path: extra} if extra else o.def_path
+
+        outs_bucket[key] = outs_bucket.get(key, []) + [value]
     return [(key, outs_bucket[key]) for key in sorted(outs_bucket.keys())]
 
 

@@ -151,7 +151,7 @@ def test_run_dump_on_multistage(tmp_dir, dvc):
             "copy-foo-foo2": {
                 "cmd": "cp foo foo2",
                 "deps": ["foo"],
-                "outs_persist": ["foo2"],
+                "outs": [{"foo2": {"persist": True}}],
                 "always_changed": True,
                 "wdir": "dir",
             },
