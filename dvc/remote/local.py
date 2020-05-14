@@ -58,15 +58,12 @@ class LocalRemote(BaseRemote):
         self._dir_info = {}
         # repo.tree can be WorkingTree or GitTree, but GitTree does not contain
         # cache directory
-        if self.repo:
-            if is_working_tree(self.repo.tree):
-                self._tree = self.repo.tree
-            else:
-                self._tree = WorkingTree(self.repo.root_dir)
+        if self.repo and not is_working_tree(self.repo.tree):
+            self._tree = WorkingTree(self.repo.root_dir)
         else:
             self._tree = None
 
-    @property
+    @cached_property
     def state(self):
         if is_working_tree(self.repo.tree):
             return self.repo.state
@@ -116,13 +113,11 @@ class LocalRemote(BaseRemote):
 
     def exists(self, path_info):
         assert isinstance(path_info, str) or path_info.scheme == "local"
-        if self.repo.tree.exists(path_info):
-            return True
-        if not is_working_tree(self.repo.tree) and self.tree.exists(path_info):
-            return True
-        if self._erepo_tree and self._erepo_tree.exists(path_info):
-            return True
-        return False
+        if not self.repo:
+            return os.path.isfile(path_info)
+        return self.repo.tree.exists(path_info) or (
+            self.tree and self.tree.exists(path_info)
+        )
 
     def makedirs(self, path_info):
         makedirs(path_info, exist_ok=True, mode=self._dir_mode)
@@ -158,28 +153,16 @@ class LocalRemote(BaseRemote):
     def isfile(self, path_info):
         if not self.repo:
             return os.path.isfile(path_info)
-        if self.tree.isfile(path_info):
-            return True
-        if not is_working_tree(self.repo.tree) and self.repo.tree.isfile(
-            path_info
-        ):
-            return True
-        if self._erepo_tree:
-            return self._erepo_tree.isfile(path_info)
-        return False
+        return self.repo.tree.isfile(path_info) or (
+            self.tree and self.tree.isfile(path_info)
+        )
 
     def isdir(self, path_info):
         if not self.repo:
             return os.path.isdir(path_info)
-        if self.tree.isdir(path_info):
-            return True
-        if not is_working_tree(self.repo.tree) and self.repo.tree.isdir(
-            path_info
-        ):
-            return True
-        if self._erepo_tree:
-            return self._erepo_tree.isdir(path_info)
-        return False
+        return self.repo.tree.isdir(path_info) or (
+            self.tree and self.tree.isdir(path_info)
+        )
 
     def iscopy(self, path_info):
         assert is_working_tree(self.repo.tree)
@@ -188,27 +171,32 @@ class LocalRemote(BaseRemote):
         )
 
     def getsize(self, path_info):
-        if not self.repo or self.tree.exists(path_info):
+        if not self.repo:
             return os.path.getsize(path_info)
-        return self.repo.tree.stat(path_info).st_size
+        if self.repo.tree.exists(path_info):
+            tree = self.repo.tree
+        else:
+            tree = self.tree
+        return tree.stat(path_info).st_size
 
     def walk_files(self, path_info):
-        if self.tree.exists(path_info):
+        if self.tree and self.tree.exists(path_info):
             tree = self.tree
-        elif self._erepo_tree and self._erepo_tree.exists(path_info):
-            tree = self._erepo_tree
+            logger.debug("walk_files using working tree")
         else:
             tree = self.repo.tree
+            logger.debug("walk_files using repo tree")
 
         for fname in tree.walk_files(path_info):
             yield PathInfo(fname)
 
     def get_file_checksum(self, path_info):
-        if self.tree.exists(path_info):
-            return file_md5(path_info)[0]
-        if self._erepo_tree and self._erepo_tree.exists(path_info):
-            return file_md5(path_info, self._erepo_tree)[0]
-        return file_md5(path_info, self.repo.tree)[0]
+        if self.tree and self.tree.exists(path_info):
+            tree = self.tree
+        else:
+            tree = self.repo.tree
+
+        return file_md5(path_info, tree)[0]
 
     def remove(self, path_info):
         if isinstance(path_info, PathInfo):
@@ -686,9 +674,9 @@ class LocalRemote(BaseRemote):
         os.chmod(path, self._file_mode)
 
     def _unprotect_dir(self, path):
-        assert is_working_tree(self.tree)
+        assert is_working_tree(self.repo.tree)
 
-        for fname in self.tree.walk_files(path):
+        for fname in self.repo.tree.walk_files(path):
             self._unprotect_file(fname)
 
     def unprotect(self, path_info):
