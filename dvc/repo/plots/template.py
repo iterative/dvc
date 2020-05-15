@@ -247,7 +247,7 @@ class DefaultScatterTemplate(Template):
 
 
 class PlotTemplates:
-    TEMPLATES_DIR = "plot"
+    TEMPLATES_DIR = "plots"
     TEMPLATES = [
         DefaultLinearTemplate,
         DefaultConfusionTemplate,

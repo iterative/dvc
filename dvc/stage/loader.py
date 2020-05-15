@@ -11,9 +11,9 @@ from dvc import dependency, output
 
 from ..dependency import ParamsDependency
 from .exceptions import StageNameUnspecified, StageNotFound
+from .utils import fill_stage_dependencies, fill_stage_outputs
 
 logger = logging.getLogger(__name__)
-
 
 DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
 
@@ -126,10 +126,9 @@ class StageLoader(Mapping):
         )
         stage = loads_from(PipelineStage, dvcfile.repo, path, wdir, stage_data)
         stage.name = name
-        params = stage_data.pop("params", {})
-        stage._fill_stage_dependencies(**stage_data)
-        stage._fill_stage_outputs(**stage_data)
-        cls._load_params(stage, params)
+        fill_stage_dependencies(stage, deps=stage_data.get("deps", []))
+        fill_stage_outputs(stage, **stage_data)
+        cls._load_params(stage, stage_data.get("params", []))
         if lock_data:
             stage.cmd_changed = lock_data.get(
                 Stage.PARAM_CMD

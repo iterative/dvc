@@ -2,7 +2,7 @@ from collections import OrderedDict
 
 import pytest
 
-from dvc.repo.plot.data import _apply_path, _find_data, _lists
+from dvc.repo.plots.data import _apply_path, _find_data, _lists
 
 
 @pytest.mark.parametrize(

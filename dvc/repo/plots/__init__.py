@@ -5,8 +5,9 @@ from funcy import first, last
 
 from dvc.exceptions import DvcException
 from dvc.repo import locked
-from dvc.repo.plot.data import PlotData
-from dvc.repo.plot.template import NoDataForTemplateError, Template
+
+from .data import PlotData
+from .template import NoDataForTemplateError, Template
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +83,7 @@ def fill_template(
 
     template_data = {}
     for template_datafile in template_datafiles:
-        from dvc.repo.plot.data import _load_from_revisions
+        from .data import _load_from_revisions
 
         plot_datas = _load_from_revisions(repo, template_datafile, revisions)
         tmp_data = []
@@ -126,7 +127,7 @@ def plot(
     repo, datafile=None, template=None, revisions=None, embed=False, **kwargs
 ):
     if revisions is None:
-        from dvc.repo.plot.data import WORKSPACE_REVISION_NAME
+        from .data import WORKSPACE_REVISION_NAME
 
         revisions = [WORKSPACE_REVISION_NAME]
 
