@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, List
 from funcy import lsplit, rpartial
 
 from dvc.dependency import ParamsDependency
+from dvc.output import BaseOutput
+from dvc.stage.params import StageParams
 from dvc.stage.utils import resolve_wdir
 from dvc.utils.collections import apply_diff
 from dvc.utils.stage import parse_stage_for_update
@@ -13,26 +15,35 @@ from dvc.utils.stage import parse_stage_for_update
 if TYPE_CHECKING:
     from dvc.stage import PipelineStage, Stage
 
-PARAM_PATH = ParamsDependency.PARAM_PATH
 PARAM_PARAMS = ParamsDependency.PARAM_PARAMS
+PARAM_PATH = ParamsDependency.PARAM_PATH
+
+PARAM_DEPS = StageParams.PARAM_DEPS
+PARAM_OUTS = StageParams.PARAM_OUTS
+
+PARAM_CACHE = BaseOutput.PARAM_CACHE
+PARAM_METRIC = BaseOutput.PARAM_METRIC
+PARAM_PERSIST = BaseOutput.PARAM_PERSIST
+
 DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
 
 
 sort_by_path = partial(sorted, key=attrgetter("def_path"))
 
 
-def _get_outs(stage: "PipelineStage"):
-    outs_bucket = {}
-    for o in sort_by_path(stage.outs):
-        bucket_key = ["metrics"] if o.metric else ["outs"]
+def _get_out(out):
+    res = OrderedDict()
+    if not out.use_cache:
+        res[PARAM_CACHE] = False
+    if out.metric:
+        res[PARAM_METRIC] = True
+    elif out.persist:
+        res[PARAM_PERSIST] = True
+    return out.def_path if not res else {out.def_path: res}
 
-        if not o.metric and o.persist:
-            bucket_key += ["persist"]
-        if not o.use_cache:
-            bucket_key += ["no_cache"]
-        key = "_".join(bucket_key)
-        outs_bucket[key] = outs_bucket.get(key, []) + [o.def_path]
-    return [(key, outs_bucket[key]) for key in sorted(outs_bucket.keys())]
+
+def _get_outs(outs):
+    return [_get_out(out) for out in sort_by_path(outs)]
 
 
 def get_params_deps(stage: "PipelineStage"):
@@ -81,7 +92,7 @@ def to_pipeline_file(stage: "PipelineStage"):
         (stage.PARAM_WDIR, resolve_wdir(stage.wdir, stage.path)),
         (stage.PARAM_DEPS, sorted([d.def_path for d in deps])),
         (stage.PARAM_PARAMS, serialized_params),
-        *_get_outs(stage),
+        (PARAM_OUTS, _get_outs(stage.outs)),
         (stage.PARAM_LOCKED, stage.locked),
         (stage.PARAM_ALWAYS_CHANGED, stage.always_changed),
     ]
@@ -98,18 +109,21 @@ def to_single_stage_lockfile(stage: "Stage") -> dict:
     deps, outs = [
         [
             OrderedDict(
-                [("path", item.def_path), (item.checksum_type, item.checksum)]
+                [
+                    (PARAM_PATH, item.def_path),
+                    (item.checksum_type, item.checksum),
+                ]
             )
             for item in sort_by_path(items)
         ]
         for items in [deps, stage.outs]
     ]
     if deps:
-        res["deps"] = deps
+        res[PARAM_DEPS] = deps
     if params:
-        _, res["params"] = _serialize_params(params)
+        _, res[PARAM_PARAMS] = _serialize_params(params)
     if outs:
-        res["outs"] = outs
+        res[PARAM_OUTS] = outs
 
     return res
 

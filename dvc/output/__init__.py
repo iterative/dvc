@@ -110,16 +110,9 @@ def loadd_from(stage, d_list):
 
 
 def loads_from(stage, s_list, use_cache=True, metric=False, persist=False):
-    ret = []
-    for s in s_list:
-        ret.append(
-            _get(
-                stage,
-                s,
-                info={},
-                cache=use_cache,
-                metric=metric,
-                persist=persist,
-            )
+    return [
+        _get(
+            stage, s, info={}, cache=use_cache, metric=metric, persist=persist,
         )
-    return ret
+        for s in s_list
+    ]

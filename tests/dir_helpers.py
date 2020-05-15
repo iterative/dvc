@@ -46,6 +46,7 @@ from global repo template to creating everything inplace, which:
 import os
 import pathlib
 from contextlib import contextmanager
+from textwrap import dedent
 
 import pytest
 from funcy import lmap, retry
@@ -59,6 +60,7 @@ __all__ = [
     "scm",
     "dvc",
     "run_copy",
+    "run_head",
     "erepo_dir",
     "git_dir",
     "setup_remote",
@@ -268,6 +270,39 @@ def run_copy(tmp_dir, dvc):
         )
 
     return run_copy
+
+
+@pytest.fixture
+def run_head(tmp_dir, dvc):
+    """Output first line of each file to different file with '-1' appended.
+    Useful for tracking multiple outputs/dependencies which are not a copy
+    of each others.
+    """
+    tmp_dir.gen(
+        {
+            "head.py": dedent(
+                """
+        import sys
+        for file in sys.argv[1:]:
+            with open(file) as f, open(file +"-1","w+") as w:
+                w.write(f.readline())
+        """
+            )
+        }
+    )
+    script = os.path.abspath(tmp_dir / "head.py")
+
+    def run(*args, **run_kwargs):
+        return dvc.run(
+            **{
+                "cmd": "python {} {}".format(script, " ".join(args)),
+                "outs": [dep + "-1" for dep in args],
+                "deps": list(args),
+                **run_kwargs,
+            }
+        )
+
+    return run
 
 
 @pytest.fixture
