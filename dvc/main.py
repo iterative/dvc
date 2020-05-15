@@ -39,7 +39,7 @@ def main(argv=None):
 
         logger.setLevel(
             {
-                -2: logging.FATAL,
+                -2: logging.CRITICAL,
                 -1: logging.ERROR,
                 0: logging.INFO,
                 1: logging.DEBUG,
