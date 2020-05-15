@@ -37,15 +37,16 @@ def main(argv=None):
     try:
         args = parse_args(argv)
 
-        logger.setLevel(
-            {
-                -2: logging.CRITICAL,
-                -1: logging.ERROR,
-                0: logging.INFO,
-                1: logging.DEBUG,
-                2: logging.TRACE,
-            }[max(-2, min(args.verbose - args.quiet, 2))]
-        )
+        verbosity = args.verbose - args.quiet
+        if verbosity:
+            logger.setLevel(
+                {
+                    -2: logging.CRITICAL,
+                    -1: logging.ERROR,
+                    1: logging.DEBUG,
+                    2: logging.TRACE,
+                }[max(-2, min(verbosity, 2))]
+            )
         logger.trace(args)
 
         cmd = args.func(args)
