@@ -8,7 +8,7 @@ from dvc.cli import parse_args
 from dvc.config import ConfigError
 from dvc.exceptions import DvcException, DvcParserError, NotDvcRepoError
 from dvc.external_repo import clean_repos
-from dvc.logger import FOOTER, disable_other_loggers
+from dvc.logger import DATABASE, FOOTER, disable_other_loggers
 from dvc.remote.pool import close_pools
 from dvc.utils import format_link
 
@@ -38,11 +38,15 @@ def main(argv=None):
     try:
         args = parse_args(argv)
 
-        if args.quiet:
-            logger.setLevel(logging.CRITICAL)
-
-        elif args.verbose:
-            logger.setLevel(logging.DEBUG)
+        logger.setLevel(
+            {
+                -2: logging.FATAL,
+                -1: logging.ERROR,
+                0: logging.INFO,
+                1: logging.DEBUG,
+                2: DATABASE,
+            }[max(-2, min(args.verbose - args.quiet, 2))]
+        )
 
         cmd = args.func(args)
         ret = cmd.run()

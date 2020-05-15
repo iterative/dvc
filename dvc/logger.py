@@ -7,6 +7,7 @@ import colorama
 
 from dvc.progress import Tqdm
 
+DATABASE = 5  # logging level
 FOOTER = (
     "\n{yellow}Having any troubles?{nc}"
     " Hit us up at {blue}https://dvc.org/support{nc},"
@@ -116,7 +117,11 @@ class LoggerHandler(logging.StreamHandler):
 
 
 def _is_verbose():
-    return logging.getLogger("dvc").getEffectiveLevel() == logging.DEBUG
+    return (
+        logging.NOTSET
+        < logging.getLogger("dvc").getEffectiveLevel()
+        <= logging.DEBUG
+    )
 
 
 def _iter_causes(exc):
