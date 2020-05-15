@@ -5,7 +5,7 @@ from dvc.stage.exceptions import StageCommitError
 from . import locked
 
 
-def prompt_to_commit(stage, changes, force=False):
+def _prepare_message(stage, changes):
     changed_deps, changed_outs, changed_stage = changes
     if changed_deps and changed_outs:
         msg = "dependencies {deps} and outputs {outs} of {stage} changed."
@@ -24,7 +24,11 @@ def prompt_to_commit(stage, changes, force=False):
         "outs": changed_outs,
         "stage_changed": changed_stage,
     }
-    if not (force or prompt.confirm(msg.format_map(kw))):
+    return msg.format_map(kw)
+
+
+def prompt_to_commit(stage, changes):
+    if not prompt.confirm(_prepare_message(stage, changes)):
         raise StageCommitError(
             "unable to commit changed {}. Use `-f|--force` to "
             "force.".format(stage)
@@ -37,7 +41,8 @@ def commit(self, target, with_deps=False, recursive=False, force=False):
     for stage in stages:
         changes = stage.changed_entries()
         if any(changes):
-            prompt_to_commit(stage, changes, force=force)
+            if not force:
+                prompt_to_commit(stage, changes)
             stage.save()
         stage.commit()
 
