@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class TemplateNotFoundError(DvcException):
     def __init__(self, path):
-        super().__init__("Template '{}' not found.".format(path))
+        super().__init__(f"Template '{path}' not found.")
 
 
 class NoDataForTemplateError(DvcException):
@@ -26,7 +26,7 @@ class NoDataForTemplateError(DvcException):
 class NoFieldInDataError(DvcException):
     def __init__(self, field_name):
         super().__init__(
-            "Field '{}' does not exist in provided data.".format(field_name)
+            f"Field '{field_name}' does not exist in provided data."
         )
 
 
@@ -94,7 +94,7 @@ class Template:
         x_title=None,
         y_title=None,
     ):
-        with open(template_path, "r") as fobj:
+        with open(template_path) as fobj:
             result_content = fobj.read()
 
         if x_field:

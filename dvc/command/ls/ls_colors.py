@@ -1,7 +1,7 @@
 import os
 
 
-class LsColors(object):
+class LsColors:
     default = "rs=0:di=01;34:ex=01;32"
 
     def __init__(self, lscolors=None):
@@ -45,4 +45,4 @@ class LsColors(object):
         if not val:
             return text
         rs = self._codes.get("rs", 0)
-        return "\033[{}m{}\033[{}m".format(val, text, rs)
+        return f"\033[{val}m{text}\033[{rs}m"

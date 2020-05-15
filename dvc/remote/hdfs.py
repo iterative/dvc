@@ -55,7 +55,7 @@ class HDFSRemote(BaseRemote):
     def hadoop_fs(self, cmd, user=None):
         cmd = "hadoop fs -" + cmd
         if user:
-            cmd = "HADOOP_USER_NAME={} ".format(user) + cmd
+            cmd = f"HADOOP_USER_NAME={user} " + cmd
 
         # NOTE: close_fds doesn't work with redirected stdin/stdout/stderr.
         # See https://github.com/iterative/dvc/issues/1197.
@@ -87,7 +87,7 @@ class HDFSRemote(BaseRemote):
         # NOTE: pyarrow doesn't support checksum, so we need to use hadoop
         regex = r".*\t.*\t(?P<checksum>.*)"
         stdout = self.hadoop_fs(
-            "checksum {}".format(path_info.path), user=path_info.user
+            f"checksum {path_info.path}", user=path_info.user
         )
         return self._group(regex, stdout, "checksum")
 
@@ -112,7 +112,7 @@ class HDFSRemote(BaseRemote):
             raise NotImplementedError
 
         if self.exists(path_info):
-            logger.debug("Removing {}".format(path_info.path))
+            logger.debug(f"Removing {path_info.path}")
             with self.hdfs(path_info) as hdfs:
                 hdfs.rm(path_info.path)
 
@@ -147,7 +147,7 @@ class HDFSRemote(BaseRemote):
                     yield fd
                 else:
                     yield io.TextIOWrapper(fd, encoding=encoding)
-        except IOError as e:
+        except OSError as e:
             # Empty .errno and not specific enough error class in pyarrow,
             # see https://issues.apache.org/jira/browse/ARROW-6248
             if "file does not exist" in str(e):
@@ -175,7 +175,7 @@ class HDFSRemote(BaseRemote):
                             if progress_callback:
                                 progress_callback()
                             yield urlparse(entry["name"]).path
-                except IOError as e:
+                except OSError as e:
                     # When searching for a specific prefix pyarrow raises an
                     # exception if the specified cache dir does not exist
                     if not prefix:

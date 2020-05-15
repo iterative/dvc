@@ -301,9 +301,7 @@ class LocalRemote(BaseRemote):
         {dir_checksum: set(file_checksum, ...)} which can be used to map
         a .dir file to its file contents.
         """
-        logger.debug(
-            "Preparing to collect status from {}".format(remote.path_info)
-        )
+        logger.debug(f"Preparing to collect status from {remote.path_info}")
         md5s = set(named_cache.scheme_keys(self.scheme))
 
         logger.debug("Collecting information from local cache...")
@@ -549,9 +547,7 @@ class LocalRemote(BaseRemote):
                     "failed to upload full contents of '{}', "
                     "aborting .dir file upload".format(name)
                 )
-                logger.error(
-                    "failed to upload '{}' to '{}'".format(from_info, to_info)
-                )
+                logger.error(f"failed to upload '{from_info}' to '{to_info}'")
                 return 1
         return func(from_info, to_info, name)
 
@@ -595,7 +591,7 @@ class LocalRemote(BaseRemote):
 
     def _unprotect_file(self, path):
         if System.is_symlink(path) or System.is_hardlink(path):
-            logger.debug("Unprotecting '{}'".format(path))
+            logger.debug(f"Unprotecting '{path}'")
             tmp = os.path.join(os.path.dirname(path), "." + uuid())
 
             # The operations order is important here - if some application
@@ -624,9 +620,7 @@ class LocalRemote(BaseRemote):
     def unprotect(self, path_info):
         path = path_info.fspath
         if not os.path.exists(path):
-            raise DvcException(
-                "can't unprotect non-existing data '{}'".format(path)
-            )
+            raise DvcException(f"can't unprotect non-existing data '{path}'")
 
         if os.path.isdir(path):
             self._unprotect_dir(path)
@@ -678,7 +672,7 @@ class LocalRemote(BaseRemote):
             dir_info = self.get_dir_cache(checksum)
             self._create_unpacked_dir(checksum, dir_info, unpacked_dir_info)
         except DvcException:
-            logger.warning("Could not create '{}'".format(unpacked_dir_info))
+            logger.warning(f"Could not create '{unpacked_dir_info}'")
 
             self.remove(unpacked_dir_info)
 

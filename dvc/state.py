@@ -29,7 +29,7 @@ class StateVersionTooNewError(DvcException):
         )
 
 
-class StateNoop(object):
+class StateNoop:
     files = []
 
     def save(self, path_info, checksum):
@@ -48,7 +48,7 @@ class StateNoop(object):
         pass
 
 
-class State(object):  # pylint: disable=too-many-instance-attributes
+class State:  # pylint: disable=too-many-instance-attributes
     """Class for the state database.
 
     Args:
@@ -440,7 +440,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         """
         unused = []
 
-        self._execute("SELECT * FROM {}".format(self.LINK_STATE_TABLE))
+        self._execute(f"SELECT * FROM {self.LINK_STATE_TABLE}")
         for row in self.cursor:
             relpath, inode, mtime = row
             inode = self._from_sqlite(inode)

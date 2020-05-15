@@ -38,7 +38,7 @@ class RWLockFileFormatError(DvcException):
 def _edit_rwlock(lock_dir):
     path = os.path.join(lock_dir, "rwlock")
     try:
-        with open(path, "r") as fobj:
+        with open(path) as fobj:
             lock = SCHEMA(json.load(fobj))
     except FileNotFoundError:
         lock = SCHEMA({})

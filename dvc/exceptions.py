@@ -34,8 +34,7 @@ class OutputDuplicationError(DvcException):
             )
         else:
             msg = "output '{}' is already specified in stages:\n{}".format(
-                output,
-                "\n".join("\t- {}".format(s.addressing) for s in stages),
+                output, "\n".join(f"\t- {s.addressing}" for s in stages),
             )
         super().__init__(msg)
         self.stages = stages
@@ -102,7 +101,7 @@ class ArgumentDuplicationError(DvcException):
 
     def __init__(self, path):
         assert isinstance(path, str)
-        super().__init__("file '{}' is specified more than once.".format(path))
+        super().__init__(f"file '{path}' is specified more than once.")
 
 
 class MoveNotDataSourceError(DvcException):
@@ -158,7 +157,7 @@ class InitError(DvcException):
 class ReproductionError(DvcException):
     def __init__(self, dvc_file_name):
         self.path = dvc_file_name
-        super().__init__("failed to reproduce '{}'".format(dvc_file_name))
+        super().__init__(f"failed to reproduce '{dvc_file_name}'")
 
 
 class BadMetricError(DvcException):
@@ -166,7 +165,7 @@ class BadMetricError(DvcException):
         super().__init__(
             "the following metrics do not exist, "
             "are not metric files or are malformed: {paths}".format(
-                paths=", ".join("'{}'".format(path) for path in paths)
+                paths=", ".join(f"'{path}'" for path in paths)
             )
         )
 
@@ -204,7 +203,7 @@ class OverlappingOutputPathsError(DvcException):
 
 class CheckoutErrorSuggestGit(DvcException):
     def __init__(self, target):
-        super().__init__("Did you mean `git checkout {}`?".format(target))
+        super().__init__(f"Did you mean `git checkout {target}`?")
 
 
 class ETagMismatchError(DvcException):
@@ -218,9 +217,7 @@ class ETagMismatchError(DvcException):
 class FileMissingError(DvcException):
     def __init__(self, path):
         self.path = path
-        super().__init__(
-            "Can't find '{}' neither locally nor on remote".format(path)
-        )
+        super().__init__(f"Can't find '{path}' neither locally nor on remote")
 
 
 class DvcIgnoreInCollectedDirError(DvcException):
@@ -245,18 +242,14 @@ class DownloadError(DvcException):
     def __init__(self, amount):
         self.amount = amount
 
-        super().__init__(
-            "{amount} files failed to download".format(amount=amount)
-        )
+        super().__init__(f"{amount} files failed to download")
 
 
 class UploadError(DvcException):
     def __init__(self, amount):
         self.amount = amount
 
-        super().__init__(
-            "{amount} files failed to upload".format(amount=amount)
-        )
+        super().__init__(f"{amount} files failed to upload")
 
 
 class CheckoutError(DvcException):
@@ -278,7 +271,7 @@ class CollectCacheError(DvcException):
 class NoRemoteInExternalRepoError(DvcException):
     def __init__(self, url):
         super().__init__(
-            "No DVC remote is specified in target repository '{}'.".format(url)
+            f"No DVC remote is specified in target repository '{url}'."
         )
 
 
@@ -293,7 +286,7 @@ class NoOutputInExternalRepoError(DvcException):
 
 class HTTPError(DvcException):
     def __init__(self, code, reason):
-        super().__init__("'{} {}'".format(code, reason))
+        super().__init__(f"'{code} {reason}'")
 
 
 class PathMissingError(DvcException):

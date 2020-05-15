@@ -2,7 +2,7 @@ import os
 import stat
 
 
-class BaseTree(object):
+class BaseTree:
     """Abstract class to represent access to files"""
 
     @property

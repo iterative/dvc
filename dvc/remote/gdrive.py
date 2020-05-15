@@ -22,10 +22,8 @@ FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 
 class GDrivePathNotFound(DvcException):
     def __init__(self, path_info, hint):
-        hint = "" if hint is None else " {}".format(hint)
-        super().__init__(
-            "GDrive path '{}' not found.{}".format(path_info, hint)
-        )
+        hint = "" if hint is None else f" {hint}"
+        super().__init__(f"GDrive path '{path_info}' not found.{hint}")
 
 
 class GDriveAuthError(DvcException):
@@ -62,7 +60,7 @@ def _gdrive_retry(func):
                 "rateLimitExceeded",
             ]
         if result:
-            logger.debug("Retrying GDrive API call, error: {}.".format(exc))
+            logger.debug(f"Retrying GDrive API call, error: {exc}.")
 
         return result
 
@@ -465,7 +463,7 @@ class GDriveRemote(BaseRemote):
             return None
         query = "trashed=false and ({})".format(
             " or ".join(
-                "'{}' in parents".format(parent_id) for parent_id in parent_ids
+                f"'{parent_id}' in parents" for parent_id in parent_ids
             )
         )
         query += " and title='{}'".format(title.replace("'", "\\'"))
@@ -542,9 +540,9 @@ class GDriveRemote(BaseRemote):
         else:
             dir_ids = self._ids_cache["ids"]
         parents_query = " or ".join(
-            "'{}' in parents".format(dir_id) for dir_id in dir_ids
+            f"'{dir_id}' in parents" for dir_id in dir_ids
         )
-        query = "({}) and trashed=false".format(parents_query)
+        query = f"({parents_query}) and trashed=false"
 
         for item in self._gdrive_list(query):
             if progress_callback:

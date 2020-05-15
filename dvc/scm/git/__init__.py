@@ -30,7 +30,7 @@ class TqdmGit(Tqdm):
         if op_code:
             message = (op_code + " | " + message) if message else op_code
         if message:
-            self.postfix["info"] = " {} | ".format(message)
+            self.postfix["info"] = f" {message} | "
         self.update_to(cur_count, max_count)
 
     @staticmethod
@@ -211,7 +211,7 @@ class Git(Base):
                 fobj.seek(fobj.tell() - 1, os.SEEK_SET)
                 last = fobj.read(1)
                 prefix = "" if last == "\n" else "\n"
-            fobj.write("{}{}\n".format(prefix, entry))
+            fobj.write(f"{prefix}{entry}\n")
 
     def ignore_remove(self, path):
         entry, gitignore = self._get_gitignore(path)
@@ -219,7 +219,7 @@ class Git(Base):
         if not os.path.exists(gitignore):
             return
 
-        with open(gitignore, "r") as fobj:
+        with open(gitignore) as fobj:
             lines = fobj.readlines()
 
         filtered = list(filter(lambda x: x.strip() != entry.strip(), lines))
@@ -257,13 +257,13 @@ class Git(Base):
         infos = self.repo.remote().pull()
         for info in infos:
             if info.flags & info.ERROR:
-                raise SCMError("pull failed: {}".format(info.note))
+                raise SCMError(f"pull failed: {info.note}")
 
     def push(self):
         infos = self.repo.remote().push()
         for info in infos:
             if info.flags & info.ERROR:
-                raise SCMError("push failed: {}".format(info.summary))
+                raise SCMError(f"push failed: {info.summary}")
 
     def branch(self, branch):
         self.repo.git.branch(branch)
@@ -296,7 +296,7 @@ class Git(Base):
     def _install_hook(self, name):
         hook = self._hook_path(name)
         with open(hook, "w+") as fobj:
-            fobj.write("#!/bin/sh\nexec dvc git-hook {} $@\n".format(name))
+            fobj.write(f"#!/bin/sh\nexec dvc git-hook {name} $@\n")
 
         os.chmod(hook, 0o777)
 
@@ -312,7 +312,7 @@ class Git(Base):
 
         config = {}
         if os.path.exists(config_path):
-            with open(config_path, "r") as fobj:
+            with open(config_path) as fobj:
                 config = yaml.safe_load(fobj)
 
         entry = {
@@ -404,15 +404,15 @@ class Git(Base):
         # Try all the remotes and if it resolves unambiguously then take it
         if not Git.is_sha(rev):
             shas = {
-                _resolve_rev("{}/{}".format(remote.name, rev))
+                _resolve_rev(f"{remote.name}/{rev}")
                 for remote in self.repo.remotes
             } - {None}
             if len(shas) > 1:
-                raise RevError("ambiguous Git revision '{}'".format(rev))
+                raise RevError(f"ambiguous Git revision '{rev}'")
             if len(shas) == 1:
                 return shas.pop()
 
-        raise RevError("unknown Git revision '{}'".format(rev))
+        raise RevError(f"unknown Git revision '{rev}'")
 
     def has_rev(self, rev):
         try:

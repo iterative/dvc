@@ -18,17 +18,13 @@ class CmdRemote(CmdConfig):
 
     def _check_exists(self, conf):
         if self.args.name not in conf["remote"]:
-            raise ConfigError(
-                "remote '{}' doesn't exists.".format(self.args.name)
-            )
+            raise ConfigError(f"remote '{self.args.name}' doesn't exists.")
 
 
 class CmdRemoteAdd(CmdRemote):
     def run(self):
         if self.args.default:
-            logger.info(
-                "Setting '{}' as a default remote.".format(self.args.name)
-            )
+            logger.info(f"Setting '{self.args.name}' as a default remote.")
 
         with self.config.edit(self.args.level) as conf:
             if self.args.name in conf["remote"] and not self.args.force:

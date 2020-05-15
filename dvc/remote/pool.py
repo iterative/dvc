@@ -30,7 +30,7 @@ def close_pools():
     get_pool.memory.clear()
 
 
-class Pool(object):
+class Pool:
     def __init__(self, conn_func, *conn_args, **conn_kwargs):
         self._conn_func = conn_func
         self._conn_args = conn_args

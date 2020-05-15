@@ -17,7 +17,7 @@ class FileNotInRepoError(SCMError):
 
 class CloneError(SCMError):
     def __init__(self, url, path):
-        super().__init__("Failed to clone repo '{}' to '{}'".format(url, path))
+        super().__init__(f"Failed to clone repo '{url}' to '{path}'")
 
 
 class RevError(SCMError):
@@ -34,7 +34,7 @@ class NoSCMError(SCMError):
         super().__init__(msg)
 
 
-class Base(object):
+class Base:
     """Base class for source control management driver implementations."""
 
     def __init__(self, root_dir=os.curdir):

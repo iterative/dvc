@@ -277,7 +277,7 @@ class Stage(params.StageParams):
                 out.unprotect()
                 continue
 
-            logger.debug("Removing output '{}' of {}.".format(out, self))
+            logger.debug(f"Removing output '{out}' of {self}.")
             out.remove(ignore_remove=ignore_remove)
 
     def unprotect_outs(self):
@@ -308,7 +308,7 @@ class Stage(params.StageParams):
 
         self.run(**kwargs)
 
-        logger.debug("{stage} was reproduced".format(stage=self))
+        logger.debug(f"{self} was reproduced")
 
         return self
 
@@ -357,7 +357,7 @@ class Stage(params.StageParams):
 
     def compute_md5(self):
         m = compute_md5(self)
-        logger.debug("Computed {} md5: '{}'".format(self, m))
+        logger.debug(f"Computed {self} md5: '{m}'")
         return m
 
     def save(self):
@@ -384,7 +384,7 @@ class Stage(params.StageParams):
         ]
 
     def _changed_stage_entry(self):
-        return "'md5' of {} changed.".format(self)
+        return f"'md5' of {self} changed."
 
     def changed_entries(self):
         changed_deps = self._changed_entries(self.deps)
@@ -558,4 +558,4 @@ class PipelineStage(Stage):
         return self.cmd_changed
 
     def _changed_stage_entry(self):
-        return "'cmd' of {} has changed.".format(self)
+        return f"'cmd' of {self} has changed."

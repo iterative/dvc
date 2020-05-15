@@ -96,7 +96,7 @@ def move(src, dst, mode=None):
     """
 
     dst = os.path.abspath(dst)
-    tmp = "{}.{}".format(dst, uuid())
+    tmp = f"{dst}.{uuid()}"
 
     if os.path.islink(src):
         # readlink does not accept path-like obj for Windows in Python <3.8

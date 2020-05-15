@@ -3,9 +3,9 @@ from dvc.exceptions import DvcException
 
 class StageCmdFailedError(DvcException):
     def __init__(self, cmd, status=None):
-        msg = "failed to run: {}".format(cmd)
+        msg = f"failed to run: {cmd}"
         if status is not None:
-            msg += ", exited with {}".format(status)
+            msg += f", exited with {status}"
         super().__init__(msg)
 
 
@@ -19,18 +19,18 @@ class StageFileDoesNotExistError(DvcException):
     def __init__(self, fname):
         from dvc.dvcfile import DVC_FILE_SUFFIX, is_dvc_file
 
-        msg = "'{}' does not exist.".format(fname)
+        msg = f"'{fname}' does not exist."
 
         sname = fname + DVC_FILE_SUFFIX
         if is_dvc_file(sname):
-            msg += " Do you mean '{}'?".format(sname)
+            msg += f" Do you mean '{sname}'?"
 
         super().__init__(msg)
 
 
 class StageFileAlreadyExistsError(DvcException):
     def __init__(self, relpath):
-        msg = "not overwriting '{}'".format(relpath)
+        msg = f"not overwriting '{relpath}'"
         super().__init__(msg)
 
 
@@ -38,11 +38,11 @@ class StageFileIsNotDvcFileError(DvcException):
     def __init__(self, fname):
         from dvc.dvcfile import DVC_FILE_SUFFIX, is_dvc_file
 
-        msg = "'{}' is not a DVC-file".format(fname)
+        msg = f"'{fname}' is not a DVC-file"
 
         sname = fname + DVC_FILE_SUFFIX
         if is_dvc_file(sname):
-            msg += " Do you mean '{}'?".format(sname)
+            msg += f" Do you mean '{sname}'?"
 
         super().__init__(msg)
 
@@ -90,7 +90,7 @@ class MissingDataSource(DvcException):
 class StageNotFound(KeyError, DvcException):
     def __init__(self, file, name):
         super().__init__(
-            "Stage '{}' not found inside '{}' file".format(name, file.relpath)
+            f"Stage '{name}' not found inside '{file.relpath}' file"
         )
 
 
@@ -98,7 +98,7 @@ class StageNameUnspecified(DvcException):
     def __init__(self, file):
         super().__init__(
             "Stage name not provided."
-            "Please specify the name as: `{0}:stage_name`".format(file.relpath)
+            "Please specify the name as: `{}:stage_name`".format(file.relpath)
         )
 
 

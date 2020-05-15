@@ -67,12 +67,12 @@ class AzureRemote(BaseRemote):
         from azure.storage.blob import BlockBlobService
         from azure.common import AzureMissingResourceHttpError
 
-        logger.debug("URL {}".format(self.path_info))
-        logger.debug("Connection string {}".format(self.connection_string))
+        logger.debug(f"URL {self.path_info}")
+        logger.debug(f"Connection string {self.connection_string}")
         blob_service = BlockBlobService(
             connection_string=self.connection_string
         )
-        logger.debug("Container name {}".format(self.path_info.bucket))
+        logger.debug(f"Container name {self.path_info.bucket}")
         try:  # verify that container exists
             blob_service.list_blobs(
                 self.path_info.bucket, delimiter="/", num_results=1
@@ -85,7 +85,7 @@ class AzureRemote(BaseRemote):
         if path_info.scheme != self.scheme:
             raise NotImplementedError
 
-        logger.debug("Removing {}".format(path_info))
+        logger.debug(f"Removing {path_info}")
         self.blob_service.delete_blob(path_info.bucket, path_info.path)
 
     def _list_paths(self, bucket, prefix, progress_callback=None):
