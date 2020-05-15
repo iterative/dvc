@@ -7,7 +7,7 @@ import colorama
 
 from dvc.progress import Tqdm
 
-DATABASE = 5  # logging level
+TRACE = 5  # logging level
 FOOTER = (
     "\n{yellow}Having any troubles?{nc}"
     " Hit us up at {blue}https://dvc.org/support{nc},"

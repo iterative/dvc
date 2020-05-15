@@ -8,7 +8,7 @@ from dvc.cli import parse_args
 from dvc.config import ConfigError
 from dvc.exceptions import DvcException, DvcParserError, NotDvcRepoError
 from dvc.external_repo import clean_repos
-from dvc.logger import DATABASE, FOOTER, disable_other_loggers
+from dvc.logger import FOOTER, TRACE, disable_other_loggers
 from dvc.remote.pool import close_pools
 from dvc.utils import format_link
 
@@ -44,7 +44,7 @@ def main(argv=None):
                 -1: logging.ERROR,
                 0: logging.INFO,
                 1: logging.DEBUG,
-                2: DATABASE,
+                2: TRACE,
             }[max(-2, min(args.verbose - args.quiet, 2))]
         )
 
