@@ -8,7 +8,7 @@ from tests.utils.httpd import StaticFileServer
 
 def test_download_fails_on_error_code(dvc):
     with StaticFileServer() as httpd:
-        url = "http://localhost:{}/".format(httpd.server_port)
+        url = f"http://localhost:{httpd.server_port}/"
         config = {"url": url}
 
         remote = HTTPRemote(dvc, config)

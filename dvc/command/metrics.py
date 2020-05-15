@@ -19,16 +19,16 @@ def show_metrics(
 
     for branch, val in metrics.items():
         if all_branches or all_tags or all_commits:
-            logger.info("{branch}:".format(branch=branch))
+            logger.info(f"{branch}:")
 
         for fname, metric in val.items():
             if not isinstance(metric, dict):
                 logger.info("\t{}: {}".format(fname, str(metric)))
                 continue
 
-            logger.info("\t{}:".format(fname))
+            logger.info(f"\t{fname}:")
             for key, value in flatten(format_dict(metric), ".").items():
-                logger.info("\t\t{}: {}".format(key, value))
+                logger.info(f"\t\t{key}: {value}")
 
     if missing:
         raise BadMetricError(missing)
@@ -68,7 +68,7 @@ class CmdMetricsAdd(CmdBase):
         try:
             self.repo.metrics.add(self.args.path)
         except DvcException:
-            msg = "failed to add metric file '{}'".format(self.args.path)
+            msg = f"failed to add metric file '{self.args.path}'"
             logger.exception(msg)
             return 1
 
@@ -80,7 +80,7 @@ class CmdMetricsRemove(CmdBase):
         try:
             self.repo.metrics.remove(self.args.path)
         except DvcException:
-            msg = "failed to remove metric file '{}'".format(self.args.path)
+            msg = f"failed to remove metric file '{self.args.path}'"
             logger.exception(msg)
             return 1
 

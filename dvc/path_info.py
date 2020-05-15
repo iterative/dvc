@@ -8,7 +8,7 @@ from funcy import cached_property
 from dvc.utils import relpath
 
 
-class _BasePath(object):
+class _BasePath:
     def overlaps(self, other):
         if isinstance(other, (str, bytes)):
             other = self.__class__(other)
@@ -87,7 +87,7 @@ class _URLPathInfo(PosixPathInfo):
     __unicode__ = __str__
 
 
-class _URLPathParents(object):
+class _URLPathParents:
     def __init__(self, src):
         self.src = src
         self._parents = self.src._path.parents
@@ -99,7 +99,7 @@ class _URLPathParents(object):
         return self.src.replace(path=self._parents[idx])
 
     def __repr__(self):
-        return "<{}.parents>".format(self.src)
+        return f"<{self.src}.parents>"
 
 
 class URLInfo(_BasePath):
@@ -119,7 +119,7 @@ class URLInfo(_BasePath):
         assert bool(host) ^ bool(netloc)
 
         if netloc is not None:
-            return cls("{}://{}{}".format(scheme, netloc, path))
+            return cls(f"{scheme}://{netloc}{path}")
 
         obj = cls.__new__(cls)
         obj._fill_parts(scheme, host, user, port, path)
@@ -153,7 +153,7 @@ class URLInfo(_BasePath):
 
     @cached_property
     def url(self):
-        return "{}://{}{}".format(self.scheme, self.netloc, self._spath)
+        return f"{self.scheme}://{self.netloc}{self._spath}"
 
     def __str__(self):
         return self.url
@@ -215,10 +215,10 @@ class URLInfo(_BasePath):
         if isinstance(other, (str, bytes)):
             other = self.__class__(other)
         if self.__class__ != other.__class__:
-            msg = "'{}' has incompatible class with '{}'".format(self, other)
+            msg = f"'{self}' has incompatible class with '{other}'"
             raise ValueError(msg)
         if self._base_parts != other._base_parts:
-            msg = "'{}' does not start with '{}'".format(self, other)
+            msg = f"'{self}' does not start with '{other}'"
             raise ValueError(msg)
         return self._path.relative_to(other._path)
 

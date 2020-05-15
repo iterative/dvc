@@ -69,9 +69,7 @@ class RemoteIndex:
     INDEX_TABLE_LAYOUT = "checksum TEXT PRIMARY KEY, " "dir INTEGER NOT NULL"
 
     def __init__(self, repo, name, dir_suffix=".dir"):
-        self.path = os.path.join(
-            repo.index_dir, "{}{}".format(name, self.INDEX_SUFFIX)
-        )
+        self.path = os.path.join(repo.index_dir, f"{name}{self.INDEX_SUFFIX}")
 
         self.dir_suffix = dir_suffix
         self.database = None
@@ -80,7 +78,7 @@ class RemoteIndex:
         self.lock = threading.Lock()
 
     def __iter__(self):
-        cmd = "SELECT checksum FROM {}".format(self.INDEX_TABLE)
+        cmd = f"SELECT checksum FROM {self.INDEX_TABLE}"
         for (checksum,) in self._execute(cmd):
             yield checksum
 
@@ -105,7 +103,7 @@ class RemoteIndex:
 
     def dir_checksums(self):
         """Iterate over .dir checksums stored in the index."""
-        cmd = "SELECT checksum FROM {} WHERE dir = 1".format(self.INDEX_TABLE)
+        cmd = f"SELECT checksum FROM {self.INDEX_TABLE} WHERE dir = 1"
         for (checksum,) in self._execute(cmd):
             yield checksum
 
@@ -184,7 +182,7 @@ class RemoteIndex:
 
         Changes to the index will not committed until dump() is called.
         """
-        cmd = "DELETE FROM {}".format(self.INDEX_TABLE)
+        cmd = f"DELETE FROM {self.INDEX_TABLE}"
         self._execute(cmd)
 
     def update(self, dir_checksums, file_checksums):

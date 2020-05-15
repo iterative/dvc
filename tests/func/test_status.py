@@ -38,7 +38,7 @@ def test_status_non_dvc_repo_import(tmp_dir, dvc, git_dir):
 
     (status,) = dvc.status(["file.dvc"])["file.dvc"]
     assert status == {
-        "changed deps": {"file ({})".format(git_dir): "update available"}
+        "changed deps": {f"file ({git_dir})": "update available"}
     }
 
 

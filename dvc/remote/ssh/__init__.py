@@ -290,7 +290,7 @@ class SSHRemote(BaseRemote):
                 try:
                     channel.stat(path)
                     ret.append(True)
-                except IOError as exc:
+                except OSError as exc:
                     if exc.errno != errno.ENOENT:
                         raise
                     ret.append(False)

@@ -140,7 +140,7 @@ class TestMoveDirectoryShouldNotOverwriteExisting(TestDvcGit):
         self.assertTrue(os.path.exists(dir_name))
         self.assertEqual(
             set(os.listdir(dir_name)),
-            set([".gitignore", data_dir_stage, self.DATA_DIR]),
+            {".gitignore", data_dir_stage, self.DATA_DIR},
         )
 
         self.assertTrue(os.path.exists(new_dir_name))

@@ -29,7 +29,7 @@ def test_open_url(tmp_path, monkeypatch):
     (tmp_path / "sample.txt").write_text(text * 2)
 
     with StaticFileServer() as httpd:
-        url = "http://localhost:{}/sample.txt".format(httpd.server_port)
+        url = f"http://localhost:{httpd.server_port}/sample.txt"
         with open_url(url) as fd:
             # Test various .read() variants
             assert fd.read(len(text)) == text

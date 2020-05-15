@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 def _do_gc(typ, func, clist, jobs=None):
     removed = func(clist, jobs=jobs)
     if not removed:
-        logger.info("No unused '{}' cache to remove.".format(typ))
+        logger.info(f"No unused '{typ}' cache to remove.")
 
 
 def _raise_error_if_all_disabled(**kwargs):

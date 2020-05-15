@@ -31,7 +31,7 @@ class ConfigError(DvcException):
     """DVC config exception."""
 
     def __init__(self, msg):
-        super().__init__("config file error: {}".format(msg))
+        super().__init__(f"config file error: {msg}")
 
 
 class NoRemoteError(ConfigError):
@@ -89,7 +89,7 @@ def ByUrl(mapping):
         if os.name == "nt" and len(parsed.scheme) == 1 and parsed.netloc == "":
             return schemas[""](data)
         if parsed.scheme not in schemas:
-            raise Invalid("Unsupported URL type {}://".format(parsed.scheme))
+            raise Invalid(f"Unsupported URL type {parsed.scheme}://")
 
         return schemas[parsed.scheme](data)
 
@@ -390,7 +390,7 @@ def _load_config(filename):
 
 
 def _save_config(filename, conf_dict):
-    logger.debug("Writing '{}'.".format(filename))
+    logger.debug(f"Writing '{filename}'.")
     os.makedirs(os.path.dirname(filename), exist_ok=True)
 
     config = configobj.ConfigObj(_pack_remotes(conf_dict))
@@ -417,7 +417,7 @@ def _pack_remotes(conf):
 
     # Transform remote.name -> 'remote "name"'
     for name, val in conf["remote"].items():
-        result['remote "{}"'.format(name)] = val
+        result[f'remote "{name}"'] = val
     result.pop("remote", None)
 
     return result

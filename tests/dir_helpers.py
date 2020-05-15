@@ -79,7 +79,7 @@ class TmpDir(pathlib.Path):
         self = cls._from_parts(args, init=False)
         if not self._flavour.is_supported:
             raise NotImplementedError(
-                "cannot instantiate %r on your system" % (cls.__name__,)
+                f"cannot instantiate {cls.__name__!r} on your system"
             )
         self._init()
         return self
@@ -263,10 +263,10 @@ def run_copy(tmp_dir, dvc):
 
     def run_copy(src, dst, **run_kwargs):
         return dvc.run(
-            cmd="python copy.py {} {}".format(src, dst),
+            cmd=f"python copy.py {src} {dst}",
             outs=[dst],
             deps=[src, "copy.py"],
-            **run_kwargs
+            **run_kwargs,
         )
 
     return run_copy
@@ -328,7 +328,7 @@ def setup_remote(make_tmp_dir):
                 conf["core"]["remote"] = name
 
         repo.scm.add(repo.config.files["repo"])
-        repo.scm.commit("add '{}' remote".format(name))
+        repo.scm.commit(f"add '{name}' remote")
         return url
 
     return create

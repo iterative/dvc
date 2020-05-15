@@ -22,7 +22,7 @@ if (
         pass
 
 
-class System(object):
+class System:
     @staticmethod
     def is_unix():
         return os.name != "nt"
@@ -89,7 +89,7 @@ class System(object):
 
         try:
             ret = 255
-            with open(src, "r") as s, open(dst, "w+") as d:
+            with open(src) as s, open(dst, "w+") as d:
                 ret = fcntl.ioctl(d.fileno(), FICLONE, s.fileno())
         finally:
             if ret != 0:
@@ -111,7 +111,7 @@ class System(object):
                 ret = System._reflink_linux(source, link_name)
             else:
                 ret = -1
-        except IOError:
+        except OSError:
             ret = -1
 
         if ret != 0:

@@ -37,7 +37,7 @@ def find_pager():
     if env_pager:
         return make_pager(env_pager)
 
-    if os.system("({}) 2>{}".format(DEFAULT_PAGER, os.devnull)) == 0:
+    if os.system(f"({DEFAULT_PAGER}) 2>{os.devnull}") == 0:
         return make_pager(DEFAULT_PAGER_FORMATTED)
 
     logger.warning(
@@ -49,7 +49,7 @@ def find_pager():
     return pydoc.plainpager
 
 
-class VertexViewer(object):
+class VertexViewer:
     """Class to define vertex box boundaries that will be accounted for during
     graph building by grandalf.
 
@@ -75,7 +75,7 @@ class VertexViewer(object):
         return self._w
 
 
-class AsciiCanvas(object):
+class AsciiCanvas:
     """Class for drawing in ASCII.
 
     Args:
@@ -145,21 +145,21 @@ class AsciiCanvas(object):
                 if dx == 0:
                     y = y0
                 else:
-                    y = y0 + int(round((x - x0) * dy / float((dx))))
+                    y = y0 + int(round((x - x0) * dy / float(dx)))
                 self.point(x, y, char)
         elif y0 < y1:
             for y in range(y0, y1 + 1):
                 if dy == 0:
                     x = x0
                 else:
-                    x = x0 + int(round((y - y0) * dx / float((dy))))
+                    x = x0 + int(round((y - y0) * dx / float(dy)))
                 self.point(x, y, char)
         else:
             for y in range(y1, y0 + 1):
                 if dy == 0:
                     x = x0
                 else:
-                    x = x1 + int(round((y - y1) * dx / float((dy))))
+                    x = x1 + int(round((y - y1) * dx / float(dy)))
                 self.point(x, y, char)
 
     def text(self, x, y, text):
@@ -213,7 +213,7 @@ def _build_sugiyama_layout(vertexes, edges):
     # Y
     #
 
-    vertexes = {v: Vertex(" {} ".format(v)) for v in vertexes}
+    vertexes = {v: Vertex(f" {v} ") for v in vertexes}
     # NOTE: reverting edges to correctly orientate the graph
     edges = [Edge(vertexes[e], vertexes[s]) for s, e in edges]
     vertexes = vertexes.values()

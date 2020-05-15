@@ -11,7 +11,7 @@ from dvc.utils import file_md5
 @pytest.mark.skipif(
     sys.platform == "win32", reason="Git hooks aren't supported on Windows"
 )
-class TestInstall(object):
+class TestInstall:
     def _hook(self, name):
         return pathlib.Path(".git") / "hooks" / name
 

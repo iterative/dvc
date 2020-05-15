@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import logging
 import os
 import posixpath
@@ -88,9 +86,7 @@ class S3Remote(BaseRemote):
         try:
             obj = s3.head_object(Bucket=bucket, Key=path, *args, **kwargs)
         except Exception as exc:
-            raise DvcException(
-                "s3://{}/{} does not exist".format(bucket, path)
-            ) from exc
+            raise DvcException(f"s3://{bucket}/{path} does not exist") from exc
         return obj
 
     @classmethod
@@ -113,7 +109,7 @@ class S3Remote(BaseRemote):
             if lastbyte > size:
                 lastbyte = size - 1
 
-            srange = "bytes={}-{}".format(byte_position, lastbyte)
+            srange = f"bytes={byte_position}-{lastbyte}"
 
             part = s3.upload_part_copy(
                 Bucket=to_info.bucket,
@@ -191,7 +187,7 @@ class S3Remote(BaseRemote):
         if path_info.scheme != "s3":
             raise NotImplementedError
 
-        logger.debug("Removing {}".format(path_info))
+        logger.debug(f"Removing {path_info}")
         self.s3.delete_object(Bucket=path_info.bucket, Key=path_info.path)
 
     def _list_objects(

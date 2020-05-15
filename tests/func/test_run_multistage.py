@@ -45,7 +45,7 @@ def test_run_multi_stage_repeat(tmp_dir, dvc, run_copy):
     stages = list(Dvcfile(dvc, PIPELINE_FILE).stages.values())
     assert len(stages) == 2
     assert all(isinstance(stage, PipelineStage) for stage in stages)
-    assert set(stage.name for stage in stages) == {
+    assert {stage.name for stage in stages} == {
         "copy-foo-foo1",
         "copy-foo1-foo2",
     }
@@ -183,7 +183,7 @@ def test_run_dump_on_multistage(tmp_dir, dvc, run_head):
 )
 def test_run_with_invalid_stage_name(run_copy, char):
     with pytest.raises(InvalidStageName):
-        run_copy("foo", "bar", name="copy_name-{}".format(char))
+        run_copy("foo", "bar", name=f"copy_name-{char}")
 
 
 def test_run_with_name_having_hyphen_underscore(tmp_dir, dvc, run_copy):

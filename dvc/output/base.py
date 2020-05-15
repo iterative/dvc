@@ -19,28 +19,28 @@ logger = logging.getLogger(__name__)
 
 class OutputDoesNotExistError(DvcException):
     def __init__(self, path):
-        msg = "output '{}' does not exist".format(path)
+        msg = f"output '{path}' does not exist"
         super().__init__(msg)
 
 
 class OutputIsNotFileOrDirError(DvcException):
     def __init__(self, path):
-        msg = "output '{}' is not a file or directory".format(path)
+        msg = f"output '{path}' is not a file or directory"
         super().__init__(msg)
 
 
 class OutputAlreadyTrackedError(DvcException):
     def __init__(self, path):
-        msg = "output '{}' is already tracked by SCM (e.g. Git)".format(path)
+        msg = f"output '{path}' is already tracked by SCM (e.g. Git)"
         super().__init__(msg)
 
 
 class OutputIsStageFileError(DvcException):
     def __init__(self, path):
-        super().__init__("Stage file '{}' cannot be an output.".format(path))
+        super().__init__(f"Stage file '{path}' cannot be an output.")
 
 
-class BaseOutput(object):
+class BaseOutput:
     IS_DEPENDENCY = False
 
     REMOTE = BaseRemote
@@ -228,7 +228,7 @@ class BaseOutput(object):
             raise self.IsNotFileOrDirError(self)
 
         if self.is_empty:
-            logger.warning("'{}' is empty.".format(self))
+            logger.warning(f"'{self}' is empty.")
 
         self.ignore()
 
@@ -247,9 +247,7 @@ class BaseOutput(object):
         assert not self.IS_DEPENDENCY
 
         if not self.changed():
-            logger.info(
-                "Output '{}' didn't change. Skipping saving.".format(self)
-            )
+            logger.info(f"Output '{self}' didn't change. Skipping saving.")
             return
 
         self.info = self.save_info()
@@ -280,9 +278,7 @@ class BaseOutput(object):
         return ret
 
     def verify_metric(self):
-        raise DvcException(
-            "verify metric is not supported for {}".format(self.scheme)
-        )
+        raise DvcException(f"verify metric is not supported for {self.scheme}")
 
     def download(self, to):
         self.remote.download(self.path_info, to.path_info)
@@ -376,7 +372,7 @@ class BaseOutput(object):
                     show_checksums=False,
                 )
             except DvcException:
-                logger.debug("failed to pull cache for '{}'".format(self))
+                logger.debug(f"failed to pull cache for '{self}'")
 
         if self.cache.changed_cache_file(self.checksum):
             msg = (

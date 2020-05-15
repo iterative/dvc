@@ -52,7 +52,7 @@ class StageCache:
         path = self._get_cache_path(key, value)
 
         try:
-            with open(path, "r") as fobj:
+            with open(path) as fobj:
                 return COMPILED_LOCK_FILE_STAGE_SCHEMA(yaml.safe_load(fobj))
         except FileNotFoundError:
             return None

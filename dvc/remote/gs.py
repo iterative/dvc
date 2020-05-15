@@ -1,4 +1,3 @@
-import io
 import logging
 import os.path
 import posixpath
@@ -55,7 +54,7 @@ def _upload_to_bucket(
     no_progress_bar=False,
 ):
     blob = bucket.blob(to_info.path, chunk_size=chunk_size)
-    with io.open(from_file, mode="rb") as fobj:
+    with open(from_file, mode="rb") as fobj:
         with Tqdm.wrapattr(
             fobj,
             "read",
@@ -110,7 +109,7 @@ class GSRemote(BaseRemote):
         from_bucket = self.gs.bucket(from_info.bucket)
         blob = from_bucket.get_blob(from_info.path)
         if not blob:
-            msg = "'{}' doesn't exist in the cloud".format(from_info.path)
+            msg = f"'{from_info.path}' doesn't exist in the cloud"
             raise DvcException(msg)
 
         to_bucket = self.gs.bucket(to_info.bucket)
@@ -120,7 +119,7 @@ class GSRemote(BaseRemote):
         if path_info.scheme != "gs":
             raise NotImplementedError
 
-        logger.debug("Removing gs://{}".format(path_info))
+        logger.debug(f"Removing gs://{path_info}")
         blob = self.gs.bucket(path_info.bucket).get_blob(path_info.path)
         if not blob:
             return
@@ -193,7 +192,7 @@ class GSRemote(BaseRemote):
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         bucket = self.gs.bucket(from_info.bucket)
         blob = bucket.get_blob(from_info.path)
-        with io.open(to_file, mode="wb") as fobj:
+        with open(to_file, mode="wb") as fobj:
             with Tqdm.wrapattr(
                 fobj,
                 "write",

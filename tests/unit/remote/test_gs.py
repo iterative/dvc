@@ -6,7 +6,7 @@ from dvc.remote.gs import GSRemote, dynamic_chunk_size
 
 BUCKET = "bucket"
 PREFIX = "prefix"
-URL = "gs://{}/{}".format(BUCKET, PREFIX)
+URL = f"gs://{BUCKET}/{PREFIX}"
 CREDENTIALPATH = "/path/to/gcp_credentials.json"
 PROJECT = "PROJECT"
 CONFIG = {

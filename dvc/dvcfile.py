@@ -33,7 +33,7 @@ PIPELINE_LOCK = "dvc.lock"
 
 class LockfileCorruptedError(DvcException):
     def __init__(self, path):
-        super().__init__("Lockfile '{}' is corrupted.".format(path))
+        super().__init__(f"Lockfile '{path}' is corrupted.")
 
 
 def is_valid_filename(path):
@@ -80,7 +80,7 @@ class FileMixin:
         ) == os.path.abspath(other.path)
 
     def __str__(self):
-        return "{}: {}".format(self.__class__.__name__, self.relpath)
+        return f"{self.__class__.__name__}: {self.relpath}"
 
     @property
     def relpath(self):
@@ -192,7 +192,7 @@ class PipelineFile(FileMixin):
     def _dump_pipeline_file(self, stage):
         data = {}
         if self.exists():
-            with open(self.path, "r") as fd:
+            with open(self.path) as fd:
                 data = parse_stage_for_update(fd.read(), self.path)
         else:
             open(self.path, "w+").close()
