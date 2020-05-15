@@ -86,22 +86,22 @@ def _is_cached(stage):
     )
 
 
-def restored_from_cache(stage, force, run_cache):
-    stage_cache = stage.repo.stage_cache
+def restored_from_cache(stage):
     stage.save_deps()
-    use_build_cache = not force and run_cache and stage_cache.is_cached(stage)
-    if not use_build_cache:
+    stage_cache = stage.repo.stage_cache
+    if not stage_cache.is_cached(stage):
         return False
-
     # restore stage from build cache
     stage_cache.restore(stage)
     return stage.outs_cached()
 
 
 def run_stage(stage, dry=False, force=False, run_cache=False):
-    if not dry:
-        stage_cached = not force and _is_cached(stage)
-        if stage_cached or restored_from_cache(stage, force, run_cache):
+    if not (dry or force):
+        stage_cached = _is_cached(stage) or (
+            run_cache and restored_from_cache(stage)
+        )
+        if stage_cached:
             logger.info("Stage is cached, skipping.")
             stage.checkout()
             return
