@@ -110,7 +110,7 @@ class TestRunNoExec(TestDvcGit):
             single_stage=True,
         )
         self.assertFalse(os.path.exists("out"))
-        with open(".gitignore", "r") as fobj:
+        with open(".gitignore") as fobj:
             self.assertEqual(fobj.read(), "/out\n")
 
 
@@ -233,7 +233,7 @@ class TestRunBadCwd(TestDvc):
 
     def test_same_prefix(self):
         with self.assertRaises(StagePathOutsideError):
-            path = "{}-{}".format(self._root_dir, uuid.uuid4())
+            path = f"{self._root_dir}-{uuid.uuid4()}"
             os.mkdir(path)
             self.dvc.run(cmd="", wdir=path, single_stage=True)
 
@@ -245,7 +245,7 @@ class TestRunBadWdir(TestDvc):
 
     def test_same_prefix(self):
         with self.assertRaises(StagePathOutsideError):
-            path = "{}-{}".format(self._root_dir, uuid.uuid4())
+            path = f"{self._root_dir}-{uuid.uuid4()}"
             os.mkdir(path)
             self.dvc.run(cmd="", wdir=path, single_stage=True)
 
@@ -276,7 +276,7 @@ class TestRunBadName(TestDvc):
 
     def test_same_prefix(self):
         with self.assertRaises(StagePathOutsideError):
-            path = "{}-{}".format(self._root_dir, uuid.uuid4())
+            path = f"{self._root_dir}-{uuid.uuid4()}"
             os.mkdir(path)
             self.dvc.run(
                 cmd="",
@@ -306,7 +306,7 @@ class TestRunRemoveOuts(TestDvc):
         self.dvc.run(
             deps=[self.CODE],
             outs=[self.FOO],
-            cmd="python {} {}".format(self.CODE, self.FOO),
+            cmd=f"python {self.CODE} {self.FOO}",
             single_stage=True,
         )
 
@@ -336,7 +336,7 @@ class TestRunUnprotectOutsCopy(TestDvc):
         )
         self.assertEqual(ret, 0)
         self.assertTrue(os.access(self.FOO, os.W_OK))
-        with open(self.FOO, "r") as fd:
+        with open(self.FOO) as fd:
             self.assertEqual(fd.read(), "foo")
 
         ret = main(
@@ -356,7 +356,7 @@ class TestRunUnprotectOutsCopy(TestDvc):
         )
         self.assertEqual(ret, 0)
         self.assertTrue(os.access(self.FOO, os.W_OK))
-        with open(self.FOO, "r") as fd:
+        with open(self.FOO) as fd:
             self.assertEqual(fd.read(), "foo")
 
 
@@ -394,7 +394,7 @@ class TestRunUnprotectOutsSymlink(TestDvc):
             self.assertFalse(os.access(self.FOO, os.W_OK))
 
         self.assertTrue(System.is_symlink(self.FOO))
-        with open(self.FOO, "r") as fd:
+        with open(self.FOO) as fd:
             self.assertEqual(fd.read(), "foo")
 
         ret = main(
@@ -421,7 +421,7 @@ class TestRunUnprotectOutsSymlink(TestDvc):
             self.assertFalse(os.access(self.FOO, os.W_OK))
 
         self.assertTrue(System.is_symlink(self.FOO))
-        with open(self.FOO, "r") as fd:
+        with open(self.FOO) as fd:
             self.assertEqual(fd.read(), "foo")
 
 
@@ -453,7 +453,7 @@ class TestRunUnprotectOutsHardlink(TestDvc):
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
         self.assertTrue(System.is_hardlink(self.FOO))
-        with open(self.FOO, "r") as fd:
+        with open(self.FOO) as fd:
             self.assertEqual(fd.read(), "foo")
 
         ret = main(
@@ -474,7 +474,7 @@ class TestRunUnprotectOutsHardlink(TestDvc):
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
         self.assertTrue(System.is_hardlink(self.FOO))
-        with open(self.FOO, "r") as fd:
+        with open(self.FOO) as fd:
             self.assertEqual(fd.read(), "foo")
 
 
@@ -594,7 +594,7 @@ class TestCmdRunCliMetrics(TestDvc):
             ]
         )
         self.assertEqual(ret, 0)
-        with open("metrics.txt", "r") as fd:
+        with open("metrics.txt") as fd:
             self.assertEqual(fd.read().rstrip(), "test")
 
     def test_not_cached(self):
@@ -608,14 +608,14 @@ class TestCmdRunCliMetrics(TestDvc):
             ]
         )
         self.assertEqual(ret, 0)
-        with open("metrics.txt", "r") as fd:
+        with open("metrics.txt") as fd:
             self.assertEqual(fd.read().rstrip(), "test")
 
 
 class TestCmdRunWorkingDirectory(TestDvc):
     def test_default_wdir_is_not_written(self):
         stage = self.dvc.run(
-            cmd="echo test > {}".format(self.FOO),
+            cmd=f"echo test > {self.FOO}",
             outs=[self.FOO],
             wdir=".",
             single_stage=True,
@@ -624,9 +624,7 @@ class TestCmdRunWorkingDirectory(TestDvc):
         self.assertNotIn(Stage.PARAM_WDIR, d.keys())
 
         stage = self.dvc.run(
-            cmd="echo test > {}".format(self.BAR),
-            outs=[self.BAR],
-            single_stage=True,
+            cmd=f"echo test > {self.BAR}", outs=[self.BAR], single_stage=True,
         )
         d = load_stage_file(stage.relpath)
         self.assertNotIn(Stage.PARAM_WDIR, d.keys())
@@ -637,7 +635,7 @@ class TestCmdRunWorkingDirectory(TestDvc):
         foo = os.path.join(dname, self.FOO)
         fname = os.path.join(dname, "stage" + DVC_FILE_SUFFIX)
         stage = self.dvc.run(
-            cmd="echo test > {}".format(foo),
+            cmd=f"echo test > {foo}",
             outs=[foo],
             fname=fname,
             single_stage=True,
@@ -761,7 +759,7 @@ class TestRunPersist(TestDvc):
                 "--single-stage",
                 self.outs_command,
                 file,
-                "echo {} >> {}".format(file_content, file),
+                f"echo {file_content} >> {file}",
             ]
         )
         self.assertEqual(0, ret)
@@ -776,7 +774,7 @@ class TestRunPersist(TestDvc):
         ret = main(["repro", stage_file])
         self.assertEqual(0, ret)
 
-        with open(file, "r") as fobj:
+        with open(file) as fobj:
             lines = fobj.readlines()
         self.assertEqual(2, len(lines))
 
@@ -813,7 +811,7 @@ class TestShouldRaiseOnOverlappingOutputPaths(TestDvc):
         with self.assertRaises(OverlappingOutputPathsError) as err:
             self.dvc.run(
                 outs=[self.DATA],
-                cmd="echo data >> {}".format(self.DATA),
+                cmd=f"echo data >> {self.DATA}",
                 single_stage=True,
             )
         error_output = str(err.exception)
@@ -823,12 +821,9 @@ class TestShouldRaiseOnOverlappingOutputPaths(TestDvc):
 
         self.assertIn("Paths for outs:\n", error_output)
         self.assertIn(
-            "\n'{}'('{}')\n".format(self.DATA_DIR, data_dir_stage),
-            error_output,
+            f"\n'{self.DATA_DIR}'('{data_dir_stage}')\n", error_output,
         )
-        self.assertIn(
-            "\n'{}'('{}')\n".format(self.DATA, data_stage), error_output
-        )
+        self.assertIn(f"\n'{self.DATA}'('{data_stage}')\n", error_output)
         self.assertIn(
             "\noverlap. To avoid unpredictable behaviour, rerun "
             "command with non overlapping outs paths.",
@@ -838,7 +833,7 @@ class TestShouldRaiseOnOverlappingOutputPaths(TestDvc):
 
 class TestRerunWithSameOutputs(TestDvc):
     def _read_content_only(self, path):
-        with open(path, "r") as fobj:
+        with open(path) as fobj:
             return [line.rstrip() for line in fobj]
 
     @property
@@ -852,7 +847,7 @@ class TestRerunWithSameOutputs(TestDvc):
                 "--single-stage",
                 "--outs",
                 self.FOO,
-                "echo {} > {}".format(self.FOO_CONTENTS, self.FOO),
+                f"echo {self.FOO_CONTENTS} > {self.FOO}",
             ]
         )
         self.assertEqual(0, ret)
@@ -867,7 +862,7 @@ class TestRerunWithSameOutputs(TestDvc):
                 self.FOO,
                 "--overwrite-dvcfile",
                 "--single-stage",
-                "echo {} >> {}".format(self.BAR_CONTENTS, self.FOO),
+                f"echo {self.BAR_CONTENTS} >> {self.FOO}",
             ]
         )
         self.assertEqual(0, ret)
@@ -907,7 +902,7 @@ class TestShouldNotCheckoutUponCorruptedLocalHardlinkCache(TestDvc):
         self.dvc = DvcRepo(".")
 
     def test(self):
-        cmd = "python {} {} {}".format(self.CODE, self.FOO, self.BAR)
+        cmd = f"python {self.CODE} {self.FOO} {self.BAR}"
         stage = self.dvc.run(
             deps=[self.FOO], outs=[self.BAR], cmd=cmd, single_stage=True
         )
@@ -959,7 +954,7 @@ class TestPersistentOutput(TestDvc):
 
         # Even if the "immutable" dependency didn't change
         # it should run the command again, as it is "ignoring build cache"
-        with open("greetings", "r") as fobj:
+        with open("greetings") as fobj:
             assert "hello\nhello\n" == fobj.read()
 
 

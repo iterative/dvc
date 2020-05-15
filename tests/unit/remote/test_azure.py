@@ -23,7 +23,7 @@ def test_init_compat(dvc):
 
 def test_init(dvc):
     prefix = "some/prefix"
-    url = "azure://{}/{}".format(container_name, prefix)
+    url = f"azure://{container_name}/{prefix}"
     config = {"url": url, "connection_string": connection_string}
     remote = AzureRemote(dvc, config)
     assert remote.path_info == url

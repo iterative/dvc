@@ -6,7 +6,7 @@ from dvc.scm import Git
 
 
 def get_gitignore_content():
-    with open(Git.GITIGNORE, "r") as gitignore:
+    with open(Git.GITIGNORE) as gitignore:
         return gitignore.read().splitlines()
 
 

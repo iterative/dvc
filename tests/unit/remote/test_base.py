@@ -7,7 +7,7 @@ from dvc.path_info import PathInfo
 from dvc.remote.base import BaseRemote, RemoteCmdError, RemoteMissingDepsError
 
 
-class _CallableOrNone(object):
+class _CallableOrNone:
     """Helper for testing if object is callable() or None."""
 
     def __eq__(self, other):
@@ -111,11 +111,11 @@ def test_cache_checksums_traverse(path_to_checksum, cache_checksums, dvc):
     list(remote._cache_checksums_traverse(size, {0}))
     for i in range(1, 16):
         cache_checksums.assert_any_call(
-            prefix="{:03x}".format(i), progress_callback=CallableOrNone
+            prefix=f"{i:03x}", progress_callback=CallableOrNone
         )
     for i in range(1, 256):
         cache_checksums.assert_any_call(
-            prefix="{:02x}".format(i), progress_callback=CallableOrNone
+            prefix=f"{i:02x}", progress_callback=CallableOrNone
         )
 
     # default traverse (small remote)

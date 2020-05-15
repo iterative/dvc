@@ -17,14 +17,14 @@ def test_url(dvc):
     path = "/path/to/dir"
 
     # URL ssh://[user@]host.xz[:port]/path
-    url = "ssh://{}@{}:{}{}".format(user, host, port, path)
+    url = f"ssh://{user}@{host}:{port}{path}"
     config = {"url": url}
 
     remote = SSHRemote(dvc, config)
     assert remote.path_info == url
 
     # SCP-like URL ssh://[user@]host.xz:/absolute/path
-    url = "ssh://{}@{}:{}".format(user, host, path)
+    url = f"ssh://{user}@{host}:{path}"
     config = {"url": url}
 
     remote = SSHRemote(dvc, config)
@@ -60,7 +60,7 @@ else:
 )
 @patch("os.path.exists", return_value=True)
 @patch(
-    "{}.open".format(builtin_module_name),
+    f"{builtin_module_name}.open",
     new_callable=mock_open,
     read_data=mock_ssh_config,
 )
@@ -90,7 +90,7 @@ def test_ssh_host_override_from_config(
 )
 @patch("os.path.exists", return_value=True)
 @patch(
-    "{}.open".format(builtin_module_name),
+    f"{builtin_module_name}.open",
     new_callable=mock_open,
     read_data=mock_ssh_config,
 )
@@ -115,7 +115,7 @@ def test_ssh_user(mock_file, mock_exists, dvc, config, expected_user):
 )
 @patch("os.path.exists", return_value=True)
 @patch(
-    "{}.open".format(builtin_module_name),
+    f"{builtin_module_name}.open",
     new_callable=mock_open,
     read_data=mock_ssh_config,
 )
@@ -150,7 +150,7 @@ def test_ssh_port(mock_file, mock_exists, dvc, config, expected_port):
 )
 @patch("os.path.exists", return_value=True)
 @patch(
-    "{}.open".format(builtin_module_name),
+    f"{builtin_module_name}.open",
     new_callable=mock_open,
     read_data=mock_ssh_config,
 )
@@ -172,7 +172,7 @@ def test_ssh_keyfile(mock_file, mock_exists, dvc, config, expected_keyfile):
 )
 @patch("os.path.exists", return_value=True)
 @patch(
-    "{}.open".format(builtin_module_name),
+    f"{builtin_module_name}.open",
     new_callable=mock_open,
     read_data=mock_ssh_config,
 )

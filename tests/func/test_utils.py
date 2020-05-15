@@ -1,5 +1,3 @@
-# encoding: utf-8
-
 from dvc import utils
 
 

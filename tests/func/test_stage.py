@@ -94,7 +94,7 @@ class TestReload(TestDvc):
 class TestDefaultWorkingDirectory(TestDvc):
     def test_ignored_in_checksum(self):
         stage = self.dvc.run(
-            cmd="echo test > {}".format(self.FOO),
+            cmd=f"echo test > {self.FOO}",
             deps=[self.BAR],
             outs=[self.FOO],
             single_stage=True,
@@ -128,7 +128,7 @@ class TestExternalRemoteResolution(TestDvc):
                     "--single-stage",
                     "-O",
                     "remote://storage/file",
-                    "echo file > {path}".format(path=file_path),
+                    f"echo file > {file_path}",
                 ]
             )
             == 0

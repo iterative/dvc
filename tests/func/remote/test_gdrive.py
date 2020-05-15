@@ -44,7 +44,7 @@ def test_relative_user_credentials_file_config_setting(tmp_dir, dvc):
     # Check that in config we got the path relative to the config file itself
     # Also, we store posix path even on Windows
     config = configobj.ConfigObj(repo.config.files["repo"])
-    assert config['remote "{}"'.format(remote_name)][
+    assert config[f'remote "{remote_name}"'][
         "gdrive_user_credentials_file"
     ] == posixpath.join("..", "secrets", "credentials.json")
 

@@ -25,7 +25,7 @@ def test_fetch(mock_get, updater):
     mock_get.assert_called_once_with(Updater.URL, timeout=Updater.TIMEOUT_GET)
     assert os.path.isfile(updater.updater_file)
 
-    with open(updater.updater_file, "r") as fobj:
+    with open(updater.updater_file) as fobj:
         info = json.load(fobj)
 
     assert info["version"] == __version__

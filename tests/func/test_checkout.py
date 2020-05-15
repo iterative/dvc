@@ -257,7 +257,7 @@ class TestGitIgnoreBasic(CheckoutBase):
         self.commit_data_file(fname2)
         self.dvc.run(
             single_stage=True,
-            cmd="python {} {} {}".format(self.CODE, self.FOO, fname3),
+            cmd=f"python {self.CODE} {self.FOO} {fname3}",
             deps=[self.CODE, self.FOO],
             outs_no_cache=[fname3],
         )

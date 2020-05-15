@@ -9,7 +9,7 @@ USER_CREDS_TOKEN_REFRESH_ERROR = '{"access_token": "", "client_id": "", "client_
 USER_CREDS_MISSED_KEY_ERROR = "{}"
 
 
-class TestRemoteGDrive(object):
+class TestRemoteGDrive:
     CONFIG = {
         "url": "gdrive://root/data",
         "gdrive_client_id": "client",

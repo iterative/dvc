@@ -58,11 +58,11 @@ def test_destroy(tmp_dir, dvc, run_copy):
 
 def test_collect(tmp_dir, scm, dvc, run_copy):
     def collect_outs(*args, **kwargs):
-        return set(
+        return {
             str(out)
             for stage in dvc.collect(*args, **kwargs)
             for out in stage.outs
-        )
+        }
 
     tmp_dir.dvc_gen("foo", "foo")
     run_copy("foo", "bar", single_stage=True)
@@ -100,7 +100,7 @@ def test_collect(tmp_dir, scm, dvc, run_copy):
 
 def test_stages(tmp_dir, dvc):
     def stages():
-        return set(stage.relpath for stage in Repo(os.fspath(tmp_dir)).stages)
+        return {stage.relpath for stage in Repo(os.fspath(tmp_dir)).stages}
 
     tmp_dir.dvc_gen({"file": "a", "dir/file": "b", "dir/subdir/file": "c"})
 

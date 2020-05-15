@@ -31,7 +31,7 @@ def reset_loglevel(request, caplog):
 here = os.path.abspath(os.path.dirname(__file__))
 
 user = "user"
-key_path = os.path.join(here, "{0}.key".format(user))
+key_path = os.path.join(here, f"{user}.key")
 
 
 @pytest.fixture
