@@ -1,10 +1,8 @@
-import pytest
-
 from dvc.cli import parse_args
 from dvc.command.plots import CmdPlotsDiff, CmdPlotsShow
 
 
-def test_metrics_diff(mocker):
+def test_metrics_diff(dvc, mocker):
     cli_args = parse_args(
         [
             "plots",
@@ -37,14 +35,12 @@ def test_metrics_diff(mocker):
     assert cli_args.func == CmdPlotsDiff
 
     cmd = cli_args.func(cli_args)
-
-    m = mocker.patch.object(cmd.repo, "plot", autospec=True)
-    mocker.patch("builtins.open")
-    mocker.patch("os.path.join")
+    m = mocker.patch("dvc.repo.plots.diff.diff", return_value={})
 
     assert cmd.run() == 0
 
     m.assert_called_once_with(
+        cmd.repo,
         datafile="datafile",
         template="template",
         revisions=["HEAD", "tag1", "tag2"],
@@ -60,7 +56,7 @@ def test_metrics_diff(mocker):
     )
 
 
-def test_metrics_show(mocker):
+def test_metrics_show(dvc, mocker):
     cli_args = parse_args(
         [
             "plots",
@@ -81,16 +77,14 @@ def test_metrics_show(mocker):
 
     cmd = cli_args.func(cli_args)
 
-    m = mocker.patch.object(cmd.repo, "plot", autospec=True)
-    mocker.patch("builtins.open")
-    mocker.patch("os.path.join")
+    m = mocker.patch("dvc.repo.plots.show.show", return_value={})
 
     assert cmd.run() == 0
 
     m.assert_called_once_with(
+        cmd.repo,
         datafile="datafile",
         template="template",
-        revisions=None,
         fields=None,
         path="$.data",
         embed=False,
@@ -101,22 +95,3 @@ def test_metrics_show(mocker):
         x_title=None,
         y_title=None,
     )
-
-
-@pytest.mark.parametrize(
-    "arg_revisions,is_dirty,expected_revisions",
-    [
-        ([], False, ["workspace"]),
-        ([], True, ["HEAD", "workspace"]),
-        (["v1", "v2", "workspace"], False, ["v1", "v2", "workspace"]),
-        (["v1", "v2", "workspace"], True, ["v1", "v2", "workspace"]),
-    ],
-)
-def test_revisions(mocker, arg_revisions, is_dirty, expected_revisions):
-    args = mocker.MagicMock()
-
-    cmd = CmdPlotsDiff(args)
-    mocker.patch.object(args, "revisions", arg_revisions)
-    mocker.patch.object(cmd.repo.scm, "is_dirty", return_value=is_dirty)
-
-    assert cmd._revisions() == expected_revisions

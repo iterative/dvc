@@ -4,13 +4,12 @@ import os
 
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
-from dvc.repo.plots.data import WORKSPACE_REVISION_NAME
 
 logger = logging.getLogger(__name__)
 
 
 class CmdPlots(CmdBase):
-    def _revisions(self):
+    def _func(self, *args, **kwargs):
         raise NotImplementedError
 
     def _result_file(self):
@@ -44,10 +43,9 @@ class CmdPlots(CmdBase):
             else:
                 fields = set(self.args.select.split(","))
         try:
-            plot_string = self.repo.plot(
+            plot_string = self._func(
                 datafile=self.args.datafile,
                 template=self.args.template,
-                revisions=self._revisions(),
                 fields=fields,
                 x_field=self.args.x,
                 y_field=self.args.y,
@@ -80,18 +78,13 @@ class CmdPlots(CmdBase):
 
 
 class CmdPlotsShow(CmdPlots):
-    def _revisions(self):
-        return None
+    def _func(self, *args, **kwargs):
+        return self.repo.plots.show(*args, **kwargs)
 
 
 class CmdPlotsDiff(CmdPlots):
-    def _revisions(self):
-        revisions = self.args.revisions or []
-        if len(revisions) <= 1:
-            if len(revisions) == 0 and self.repo.scm.is_dirty():
-                revisions.append("HEAD")
-            revisions.append(WORKSPACE_REVISION_NAME)
-        return revisions
+    def _func(self, *args, **kwargs):
+        return self.repo.plots.diff(*args, revs=self.args.revisions, **kwargs)
 
 
 def add_parser(subparsers, parent_parser):
