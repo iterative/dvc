@@ -27,8 +27,8 @@ def _prepare_message(stage, changes):
     return msg.format_map(kw)
 
 
-def prompt_to_commit(stage, changes):
-    if not prompt.confirm(_prepare_message(stage, changes)):
+def prompt_to_commit(stage, changes, force=False):
+    if not (force or prompt.confirm(_prepare_message(stage, changes))):
         raise StageCommitError(
             "unable to commit changed {}. Use `-f|--force` to "
             "force.".format(stage)
@@ -41,8 +41,7 @@ def commit(self, target, with_deps=False, recursive=False, force=False):
     for stage in stages:
         changes = stage.changed_entries()
         if any(changes):
-            if not force:
-                prompt_to_commit(stage, changes)
+            prompt_to_commit(stage, changes, force=force)
             stage.save()
         stage.commit()
 
