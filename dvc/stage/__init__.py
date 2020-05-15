@@ -251,7 +251,7 @@ class Stage(params.StageParams):
     def changed_stage(self, warn=False):
         changed = self.md5 != self.compute_md5()
         if changed and warn:
-            logger.debug("DVC-file '{}' changed.".format(self.relpath))
+            logger.debug(self._changed_stage_entry())
         return changed
 
     @rwlocked(read=["deps", "outs"])
