@@ -115,28 +115,18 @@ def test_graph(tmp_dir, dvc):
         dvc.run(deps=["baz"], outs=["foo"], cmd="echo baz > foo", name="3")
 
 
-def test_run_dump_on_multistage(tmp_dir, dvc):
+def test_run_dump_on_multistage(tmp_dir, dvc, run_head):
     from dvc.dvcfile import Dvcfile, PIPELINE_FILE
 
-    tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
-    dvc.run(
-        cmd="cp foo foo1",
-        deps=["foo"],
-        name="copy-foo-foo1",
-        outs=["foo1"],
-        wdir="dir",
-    )
-    data, _ = Dvcfile(dvc, PIPELINE_FILE)._load()
-    assert data == {
-        "stages": {
-            "copy-foo-foo1": {
-                "cmd": "cp foo foo1",
-                "wdir": "dir",
-                "deps": ["foo"],
-                "outs": ["foo1"],
+    tmp_dir.gen(
+        {
+            "dir": {
+                "foo": "foo\nfoo",
+                "bar": "bar\nbar",
+                "foobar": "foobar\foobar",
             }
         }
-    }
+    )
 
     dvc.run(
         cmd="cp foo foo2",
@@ -146,14 +136,42 @@ def test_run_dump_on_multistage(tmp_dir, dvc):
         outs_persist=["foo2"],
         always_changed=True,
     )
-    assert Dvcfile(dvc, PIPELINE_FILE)._load()[0] == {
+    data = Dvcfile(dvc, PIPELINE_FILE)._load()[0]
+    assert data == {
         "stages": {
             "copy-foo-foo2": {
                 "cmd": "cp foo foo2",
                 "deps": ["foo"],
-                "outs_persist": ["foo2"],
+                "outs": [{"foo2": {"persist": True}}],
                 "always_changed": True,
                 "wdir": "dir",
+            },
+        }
+    }
+
+    run_head(
+        "foo",
+        "bar",
+        "foobar",
+        name="head-files",
+        outs=["bar-1"],
+        outs_persist=["foo-1"],
+        metrics_no_cache=["foobar-1"],
+        wdir="dir",
+    )
+    assert Dvcfile(dvc, PIPELINE_FILE)._load()[0] == {
+        "stages": {
+            "head-files": {
+                "cmd": "python {} foo bar foobar".format(
+                    (tmp_dir / "head.py").resolve()
+                ),
+                "wdir": "dir",
+                "deps": ["bar", "foo", "foobar"],
+                "outs": [
+                    "bar-1",
+                    {"foo-1": {"persist": True}},
+                    {"foobar-1": {"metric": True, "cache": False}},
+                ],
             },
             **data["stages"],
         }

@@ -1,8 +1,6 @@
 from collections import OrderedDict
 from operator import itemgetter
-from textwrap import dedent
 
-import pytest
 import yaml
 
 from dvc.dvcfile import PIPELINE_LOCK
@@ -18,32 +16,6 @@ FS_STRUCTURE = {
     "params.yaml": yaml.dump(supported_params),
     "params2.yaml": yaml.dump(supported_params),
 }
-
-
-@pytest.fixture
-def run_head(tmp_dir, dvc):
-    """Output first line of each file to different file with '-1' appended."""
-    tmp_dir.gen(
-        "head.py",
-        dedent(
-            """
-        import sys
-        for file in sys.argv[1:]:
-            with open(file) as f, open(file +"-1","w+") as w:
-                w.write(f.readline())
-        """
-        ),
-    )
-
-    def run(*args, **run_kwargs):
-        return dvc.run(
-            cmd="python head.py {}".format(" ".join(args)),
-            outs=[dep + "-1" for dep in args],
-            deps=args,
-            **run_kwargs
-        )
-
-    return run
 
 
 def read_lock_file(file=PIPELINE_LOCK):

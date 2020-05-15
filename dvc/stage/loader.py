@@ -11,7 +11,6 @@ from dvc import dependency, output
 
 from ..dependency import ParamsDependency
 from .exceptions import StageNameUnspecified, StageNotFound
-from .utils import fill_stage_dependencies, fill_stage_outputs
 
 logger = logging.getLogger(__name__)
 
@@ -112,10 +111,34 @@ class StageLoader(Mapping):
                 path = first(key)
                 res[path].extend(key[path])
 
-        stage.deps += dependency.loadd_from(
-            stage,
-            [{"path": key, "params": params} for key, params in res.items()],
+        stage.deps.extend(
+            dependency.loadd_from(
+                stage,
+                [
+                    {"path": key, "params": params}
+                    for key, params in res.items()
+                ],
+            )
         )
+
+    @classmethod
+    def _load_outs(cls, stage, data):
+        d = []
+        for key in data:
+            extra_kwargs = {}
+            if isinstance(key, str):
+                path = key
+            elif isinstance(key, dict):
+                path = first(key)
+                extra_kwargs = key[path]
+            else:
+                continue
+            d.append({"path": path, **extra_kwargs})
+        stage.outs.extend(output.loadd_from(stage, d))
+
+    @classmethod
+    def _load_deps(cls, stage, data):
+        stage.deps.extend(dependency.loads_from(stage, data))
 
     @classmethod
     def load_stage(cls, dvcfile, name, stage_data, lock_data):
@@ -126,9 +149,12 @@ class StageLoader(Mapping):
         )
         stage = loads_from(PipelineStage, dvcfile.repo, path, wdir, stage_data)
         stage.name = name
-        fill_stage_dependencies(stage, deps=stage_data.get("deps", []))
-        fill_stage_outputs(stage, **stage_data)
+        stage.deps, stage.outs = [], []
+
+        cls._load_outs(stage, stage_data.get("outs", []))
+        cls._load_deps(stage, stage_data.get("deps", []))
         cls._load_params(stage, stage_data.get("params", []))
+
         if lock_data:
             stage.cmd_changed = lock_data.get(
                 Stage.PARAM_CMD
