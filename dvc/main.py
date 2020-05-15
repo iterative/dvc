@@ -8,7 +8,7 @@ from dvc.cli import parse_args
 from dvc.config import ConfigError
 from dvc.exceptions import DvcException, DvcParserError, NotDvcRepoError
 from dvc.external_repo import clean_repos
-from dvc.logger import FOOTER, TRACE, disable_other_loggers
+from dvc.logger import FOOTER, disable_other_loggers
 from dvc.remote.pool import close_pools
 from dvc.utils import format_link
 
@@ -17,7 +17,6 @@ from dvc.utils import format_link
 # [2] https://bugs.python.org/issue29288
 
 "".encode("idna")
-
 
 logger = logging.getLogger("dvc")
 
@@ -44,9 +43,10 @@ def main(argv=None):
                 -1: logging.ERROR,
                 0: logging.INFO,
                 1: logging.DEBUG,
-                2: TRACE,
+                2: logging.TRACE,
             }[max(-2, min(args.verbose - args.quiet, 2))]
         )
+        logger.trace(args)
 
         cmd = args.func(args)
         ret = cmd.run()
