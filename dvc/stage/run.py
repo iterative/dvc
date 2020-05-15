@@ -12,6 +12,12 @@ from .exceptions import StageCmdFailedError
 logger = logging.getLogger(__name__)
 
 
+def _nix_cmd(executable, cmd):
+    opts = {"zsh": ["--no-rcs"], "bash": ["--noprofile", "--norc"]}
+    name = os.path.basename(executable).lower()
+    return [executable] + opts.get(name, []) + ["-c", cmd]
+
+
 def warn_if_fish(executable):
     if (
         executable is None
@@ -51,12 +57,8 @@ def cmd_run(stage, *args, **kwargs):
         #                                           #issuecomment-535396799
         kwargs["shell"] = False
         executable = os.getenv("SHELL") or "/bin/sh"
-
         warn_if_fish(executable)
-
-        opts = {"zsh": ["--no-rcs"], "bash": ["--noprofile", "--norc"]}
-        name = os.path.basename(executable).lower()
-        cmd = [executable] + opts.get(name, []) + ["-c", stage.cmd]
+        cmd = _nix_cmd(executable, stage.cmd)
 
     main_thread = isinstance(threading.current_thread(), threading._MainThread)
     old_handler = None
@@ -76,32 +78,34 @@ def cmd_run(stage, *args, **kwargs):
         raise StageCmdFailedError(stage.cmd, retcode)
 
 
-def run_stage(stage, dry=False, force=False, run_cache=False):
-    if dry:
-        logger.info("Running command:\n\t{}".format(stage.cmd))
-        return
-    stage_cache = stage.repo.stage_cache
-    stage_cached = (
-        not force
-        and not stage.is_callback
+def _is_cached(stage):
+    return (
+        not stage.is_callback
         and not stage.always_changed
         and stage.already_cached()
     )
-    use_build_cache = False
-    if not stage_cached:
-        stage.save_deps()
-        use_build_cache = (
-            not force and run_cache and stage_cache.is_cached(stage)
+
+
+def restored_from_cache(stage):
+    stage.save_deps()
+    stage_cache = stage.repo.stage_cache
+    if not stage_cache.is_cached(stage):
+        return False
+    # restore stage from build cache
+    stage_cache.restore(stage)
+    return stage.outs_cached()
+
+
+def run_stage(stage, dry=False, force=False, run_cache=False):
+    if not (dry or force):
+        stage_cached = _is_cached(stage) or (
+            run_cache and restored_from_cache(stage)
         )
+        if stage_cached:
+            logger.info("Stage is cached, skipping.")
+            stage.checkout()
+            return
 
-    if use_build_cache:
-        # restore stage from build cache
-        stage.repo.stage_cache.restore(stage)
-        stage_cached = stage.outs_cached()
-
-    if stage_cached:
-        logger.info("Stage is cached, skipping.")
-        stage.checkout()
-    else:
-        logger.info("Running command:\n\t{}".format(stage.cmd))
+    logger.info("Running command:\n\t%s", stage.cmd)
+    if not dry:
         cmd_run(stage)

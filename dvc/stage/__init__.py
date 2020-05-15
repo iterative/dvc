@@ -1,6 +1,7 @@
 import logging
 import os
 import string
+from collections import defaultdict
 
 from funcy import project
 
@@ -11,7 +12,7 @@ from dvc.utils import relpath
 
 from . import params
 from .decorators import rwlocked
-from .exceptions import StageCommitError, StageUpdateError
+from .exceptions import StageUpdateError
 from .imports import sync_import, update_import
 from .run import run_stage
 from .utils import (
@@ -250,7 +251,7 @@ class Stage(params.StageParams):
     def changed_stage(self, warn=False):
         changed = self.md5 != self.compute_md5()
         if changed and warn:
-            logger.debug("DVC-file '{}' changed.".format(self.relpath))
+            logger.debug(self._changed_stage_entry())
         return changed
 
     @rwlocked(read=["deps", "outs"])
@@ -382,25 +383,17 @@ class Stage(params.StageParams):
             if entry.checksum and entry.changed_checksum()
         ]
 
-    def check_can_commit(self, force):
+    def _changed_stage_entry(self):
+        return "'md5' of {} changed.".format(self)
+
+    def changed_entries(self):
         changed_deps = self._changed_entries(self.deps)
         changed_outs = self._changed_entries(self.outs)
-
-        if changed_deps or changed_outs or self.changed_stage():
-            msg = (
-                "dependencies {}".format(changed_deps) if changed_deps else ""
-            )
-            msg += " and " if (changed_deps and changed_outs) else ""
-            msg += "outputs {}".format(changed_outs) if changed_outs else ""
-            msg += "md5" if not (changed_deps or changed_outs) else ""
-            msg += " of {} changed. ".format(self)
-            msg += "Are you sure you want to commit it?"
-            if not (force or prompt.confirm(msg)):
-                raise StageCommitError(
-                    "unable to commit changed {}. Use `-f|--force` to "
-                    "force.".format(self)
-                )
-            self.save()
+        return (
+            changed_deps,
+            changed_outs,
+            self._changed_stage_entry() if self.changed_stage() else None,
+        )
 
     @rwlocked(write=["outs"])
     def commit(self):
@@ -436,31 +429,24 @@ class Stage(params.StageParams):
         return filter(_func, self.outs) if path_info else self.outs
 
     @rwlocked(write=["outs"])
-    def checkout(
-        self,
-        force=False,
-        progress_callback=None,
-        relink=False,
-        filter_info=None,
-    ):
-        checkouts = {"failed": [], "added": [], "modified": []}
-        for out in self._filter_outs(filter_info):
-            try:
-                result = out.checkout(
-                    force=force,
-                    progress_callback=progress_callback,
-                    relink=relink,
-                    filter_info=filter_info,
-                )
-                added, modified = result or (None, None)
-                if modified:
-                    checkouts["modified"].append(out.path_info)
-                elif added:
-                    checkouts["added"].append(out.path_info)
-            except CheckoutError as exc:
-                checkouts["failed"].extend(exc.target_infos)
+    def checkout(self, **kwargs):
+        stats = defaultdict(list)
+        for out in self._filter_outs(kwargs.get("filter_info")):
+            key, outs = self._checkout(out, **kwargs)
+            if key:
+                stats[key].extend(outs)
+        return stats
 
-        return checkouts
+    @staticmethod
+    def _checkout(out, **kwargs):
+        try:
+            result = out.checkout(**kwargs)
+            added, modified = result or (None, None)
+            if not (added or modified):
+                return None, []
+            return "modified" if modified else "added", [out.path_info]
+        except CheckoutError as exc:
+            return "failed", exc.target_infos
 
     @rwlocked(read=["deps", "outs"])
     def status(self, check_updates=False):
@@ -568,5 +554,8 @@ class PipelineStage(Stage):
 
     def changed_stage(self, warn=False):
         if self.cmd_changed and warn:
-            logger.debug("'cmd' of {} has changed.".format(self))
+            logger.debug(self._changed_stage_entry())
         return self.cmd_changed
+
+    def _changed_stage_entry(self):
+        return "'cmd' of {} has changed.".format(self)
