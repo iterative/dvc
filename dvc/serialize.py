@@ -23,6 +23,7 @@ PARAM_OUTS = StageParams.PARAM_OUTS
 
 PARAM_CACHE = BaseOutput.PARAM_CACHE
 PARAM_METRIC = BaseOutput.PARAM_METRIC
+PARAM_PLOT = BaseOutput.PARAM_PLOT
 PARAM_PERSIST = BaseOutput.PARAM_PERSIST
 
 DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
@@ -37,6 +38,8 @@ def _get_out(out):
         res[PARAM_CACHE] = False
     if out.metric:
         res[PARAM_METRIC] = True
+    elif out.plot:
+        res[PARAM_PLOT] = True
     elif out.persist:
         res[PARAM_PERSIST] = True
     return out.def_path if not res else {out.def_path: res}

@@ -30,6 +30,7 @@ OUT_PSTAGE_DETAILED_SCHEMA = {
         BaseOutput.PARAM_CACHE: bool,
         BaseOutput.PARAM_PERSIST: bool,
         BaseOutput.PARAM_METRIC: bool,
+        BaseOutput.PARAM_PLOT: bool,
     }
 }
 PARAM_PSTAGE_NON_DEFAULT_SCHEMA = {str: [str]}

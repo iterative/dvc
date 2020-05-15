@@ -47,6 +47,7 @@ def fill_stage_outputs(stage, **kwargs):
             use_cache="no_cache" not in key,
             persist="persist" in key,
             metric="metrics" in key,
+            plot="plots" in key,
         )
 
 
