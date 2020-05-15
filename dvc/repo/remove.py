@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 @locked
-def remove(self, target, outs_only=False):
+def remove(self, target, dvc_only=False):
     from ..dvcfile import Dvcfile
 
     path, name = parse_target(target)
@@ -16,7 +16,7 @@ def remove(self, target, outs_only=False):
     for stage in stages:
         stage.remove_outs(force=True)
 
-    if not outs_only:
+    if not dvc_only:
         dvcfile.remove()
 
     return stages

@@ -31,7 +31,7 @@ class CmdList(CmdBaseNoRepo):
                 self.args.path,
                 rev=self.args.rev,
                 recursive=self.args.recursive,
-                outs_only=self.args.outs_only,
+                dvc_only=self.args.dvc_only,
             )
             if entries:
                 entries = _prettify(entries, sys.stdout.isatty())
