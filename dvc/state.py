@@ -125,7 +125,7 @@ class State:  # pylint: disable=too-many-instance-attributes
         self.dump()
 
     def _execute(self, cmd, parameters=()):
-        logger.debug(cmd)
+        logger.trace(cmd)
         return self.cursor.execute(cmd, parameters)
 
     def _fetchall(self):
