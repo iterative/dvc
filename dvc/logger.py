@@ -51,14 +51,12 @@ class LoggingException(Exception):
         super().__init__(msg)
 
 
-class ExcludeErrorsFilter(logging.Filter):
-    def filter(self, record):
-        return record.levelno < logging.WARNING
+def excludeFilter(level):
+    class ExcludeLevelFilter(logging.Filter):
+        def filter(self, record):
+            return record.levelno < level
 
-
-class ExcludeInfoFilter(logging.Filter):
-    def filter(self, record):
-        return record.levelno < logging.INFO
+    return ExcludeLevelFilter
 
 
 class ColorFormatter(logging.Formatter):
@@ -189,8 +187,9 @@ def setup(level=logging.INFO):
         {
             "version": 1,
             "filters": {
-                "exclude_errors": {"()": ExcludeErrorsFilter},
-                "exclude_info": {"()": ExcludeInfoFilter},
+                "exclude_errors": {"()": excludeFilter(logging.WARNING)},
+                "exclude_info": {"()": excludeFilter(logging.INFO)},
+                "exclude_debug": {"()": excludeFilter(logging.DEBUG)},
             },
             "formatters": {"color": {"()": ColorFormatter}},
             "handlers": {
@@ -213,7 +212,7 @@ def setup(level=logging.INFO):
                     "level": "TRACE",
                     "formatter": "color",
                     "stream": "ext://sys.stdout",
-                    "filters": ["exclude_info"],
+                    "filters": ["exclude_debug"],
                 },
                 "console_errors": {
                     "class": "dvc.logger.LoggerHandler",
