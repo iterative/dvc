@@ -25,9 +25,9 @@ def sizeof_fmt(num, suffix="B"):
     """ Convert number of bytes to human-readable string """
     for unit in ["", "K", "M", "G", "T", "P", "E", "Z"]:
         if abs(num) < 1024.0:
-            return "%3.1f%s%s" % (num, unit, suffix)
+            return f"{num:3.1f}{unit}{suffix}"
         num /= 1024.0
-    return "%.1f%s%s" % (num, "Y", suffix)
+    return "{:.1f}{}{}".format(num, "Y", suffix)
 
 
 class SSHConnection:
@@ -100,7 +100,7 @@ class SSHConnection:
 
         if stat.S_ISREG(st_mode) or stat.S_ISLNK(st_mode):
             raise DvcException(
-                "a file with the same name '{}' already exists".format(path)
+                f"a file with the same name '{path}' already exists"
             )
 
         head, tail = posixpath.split(path)
@@ -111,12 +111,12 @@ class SSHConnection:
         if tail:
             try:
                 self.sftp.mkdir(path)
-            except IOError as exc:
+            except OSError as exc:
                 # Since paramiko errors are very vague we need to recheck
                 # whether it's because path already exists or something else
                 if exc.errno == errno.EACCES or not self.exists(path):
                     raise DvcException(
-                        "unable to create remote directory '{}'".format(path)
+                        f"unable to create remote directory '{path}'"
                     ) from exc
 
     def walk(self, directory, topdown=True):
@@ -126,7 +126,7 @@ class SSHConnection:
         # [1] https://github.com/python/cpython/blob/master/Lib/os.py
         try:
             dir_entries = self.sftp.listdir_attr(directory)
-        except IOError as exc:
+        except OSError as exc:
             raise DvcException(
                 "couldn't get the '{}' remote directory files list".format(
                     directory
@@ -292,14 +292,14 @@ class SSHConnection:
             md5 = self.execute("md5 " + path).split()[-1]
         else:
             raise DvcException(
-                "'{}' is not supported as a SSH remote".format(self.uname)
+                f"'{self.uname}' is not supported as a SSH remote"
             )
 
         assert len(md5) == 32
         return md5
 
     def copy(self, src, dest):
-        self.execute("cp {} {}".format(src, dest))
+        self.execute(f"cp {src} {dest}")
 
     def open_max_sftp_channels(self):
         # If there are more than 1 it means we've already opened max amount
@@ -321,14 +321,12 @@ class SSHConnection:
 
     def reflink(self, src, dest):
         if self.uname == "Linux":
-            return self.execute("cp --reflink {} {}".format(src, dest))
+            return self.execute(f"cp --reflink {src} {dest}")
 
         if self.uname == "Darwin":
-            return self.execute("cp -c {} {}".format(src, dest))
+            return self.execute(f"cp -c {src} {dest}")
 
-        raise DvcException(
-            "'{}' is not supported as a SSH remote".format(self.uname)
-        )
+        raise DvcException(f"'{self.uname}' is not supported as a SSH remote")
 
     def hardlink(self, src, dest):
-        self.execute("ln {} {}".format(src, dest))
+        self.execute(f"ln {src} {dest}")

@@ -11,7 +11,6 @@ from mock import call, patch
 
 import dvc as dvc_module
 from dvc.cache import Cache
-from dvc.compat import fspath
 from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import (
     DvcException,
@@ -50,7 +49,7 @@ def test_add(tmp_dir, dvc):
 
 def test_add_unicode(tmp_dir, dvc):
     with open("\xe1", "wb") as fd:
-        fd.write("something".encode("utf-8"))
+        fd.write(b"something")
 
     (stage,) = dvc.add("\xe1")
 
@@ -207,7 +206,7 @@ class TestAddLocalRemoteFile(TestDvc):
 
         self.dvc = DvcRepo()
 
-        foo = "remote://{}/{}".format(remote, self.FOO)
+        foo = f"remote://{remote}/{self.FOO}"
         ret = main(["add", foo])
         self.assertEqual(ret, 0)
 
@@ -526,12 +525,12 @@ def temporary_windows_drive(tmp_path_factory):
     new_drive_name = [
         letter for letter in string.ascii_uppercase if letter not in drives
     ][0]
-    new_drive = "{}:".format(new_drive_name)
+    new_drive = f"{new_drive_name}:"
 
     target_path = tmp_path_factory.mktemp("tmp_windows_drive")
 
     set_up_result = windll.kernel32.DefineDosDeviceW(
-        0, new_drive, fspath(target_path)
+        0, new_drive, os.fspath(target_path)
     )
     if set_up_result == 0:
         raise RuntimeError("Failed to mount windows drive!")
@@ -541,7 +540,7 @@ def temporary_windows_drive(tmp_path_factory):
     yield os.path.join(new_drive, os.sep)
 
     tear_down_result = windll.kernel32.DefineDosDeviceW(
-        DDD_REMOVE_DEFINITION, new_drive, fspath(target_path)
+        DDD_REMOVE_DEFINITION, new_drive, os.fspath(target_path)
     )
     if tear_down_result == 0:
         raise RuntimeError("Could not unmount windows drive!")

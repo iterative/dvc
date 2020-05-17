@@ -1,6 +1,5 @@
 import os
 
-from dvc.compat import fspath
 from tests.basic_env import TestDvcGit
 
 
@@ -23,7 +22,7 @@ def test_walk_with_submodules(tmp_dir, scm, git_dir):
         {"foo": "foo", "bar": "bar", "dir": {"data": "data"}},
         commit="add dir and files",
     )
-    scm.repo.create_submodule("submodule", "submodule", url=fspath(git_dir))
+    scm.repo.create_submodule("submodule", "submodule", url=os.fspath(git_dir))
     scm.commit("added submodule")
 
     files = []
@@ -70,3 +69,17 @@ def test_is_tracked_unicode(tmp_dir, scm):
     tmp_dir.gen("ṳṋṭṝḁḉḵḗḋ", "untracked")
     assert scm.is_tracked("ṭṝḁḉḵḗḋ")
     assert not scm.is_tracked("ṳṋṭṝḁḉḵḗḋ")
+
+
+def test_no_commits(tmp_dir):
+    from tests.dir_helpers import git_init
+    from dvc.scm.git import Git
+
+    git_init(".")
+    assert Git().no_commits
+
+    tmp_dir.gen("foo", "foo")
+    Git().add(["foo"])
+    Git().commit("foo")
+
+    assert not Git().no_commits

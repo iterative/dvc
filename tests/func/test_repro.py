@@ -17,7 +17,6 @@ from flaky.flaky_decorator import flaky
 from google.cloud import storage as gc
 from mock import patch
 
-from dvc.compat import fspath
 from dvc.dvcfile import DVC_FILE, Dvcfile
 from dvc.exceptions import (
     CyclicGraphError,
@@ -75,7 +74,7 @@ class TestRepro(SingleStageRun, TestDvc):
             fname=self.file1_stage,
             outs=[self.file1],
             deps=[self.FOO, self.CODE],
-            cmd="python {} {} {}".format(self.CODE, self.FOO, self.file1),
+            cmd=f"python {self.CODE} {self.FOO} {self.file1}",
             name="run1",
         )
 
@@ -147,7 +146,7 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
 
         output = os.path.join("..", "something")
         stage_dump = {
-            "cmd": "echo something > {}".format(output),
+            "cmd": f"echo something > {output}",
             "outs": [{"path": output}],
         }
         dump_stage_file(faulty_stage_path, stage_dump)
@@ -176,7 +175,7 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
             fname=os.path.join(dir1, "b.dvc"),
             wdir=dir1,
             outs=[out_dir],  # ../a/nested
-            cmd="mkdir {path}".format(path=out_dir),
+            cmd=f"mkdir {out_dir}",
             single_stage=True,
         )
 
@@ -186,7 +185,7 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
 
         output = os.path.join("..", "..", "something")
         stage_dump = {
-            "cmd": "echo something > {}".format(output),
+            "cmd": f"echo something > {output}",
             "outs": [{"path": output}],
         }
         dump_stage_file(error_stage_path, stage_dump)
@@ -241,7 +240,7 @@ class TestReproDepUnderDir(SingleStageRun, TestDvc):
             fname=self.file1 + ".dvc",
             outs=[self.file1],
             deps=[self.DATA, self.CODE],
-            cmd="python {} {} {}".format(self.CODE, self.DATA, self.file1),
+            cmd=f"python {self.CODE} {self.DATA} {self.file1}",
             name="copy-data-file1",
         )
 
@@ -278,7 +277,7 @@ class TestReproDepDirWithOutputsUnderIt(SingleStageRun, TestDvc):
             fname=file1_stage,
             deps=[self.DATA_DIR],
             outs=[file1],
-            cmd="python {} {} {}".format(self.CODE, self.DATA, file1),
+            cmd=f"python {self.CODE} {self.DATA} {file1}",
             name="copy-data-file1",
         )
         self.assertTrue(stage is not None)
@@ -304,7 +303,7 @@ class TestReproNoDeps(TestRepro):
         stage = self._run(
             fname=stage_file,
             outs=[out],
-            cmd="python {}".format(code_file),
+            cmd=f"python {code_file}",
             name="uuid",
         )
 
@@ -378,8 +377,8 @@ class TestReproDryNoExec(TestDvc):
     def test(self):
         deps = []
         for d in range(3):
-            idir = "idir{}".format(d)
-            odir = "odir{}".format(d)
+            idir = f"idir{d}"
+            odir = f"odir{d}"
 
             deps.append("-d")
             deps.append(odir)
@@ -423,7 +422,7 @@ class TestReproChangedDeepData(TestReproChangedData):
             fname=self.file2 + ".dvc",
             outs=[self.file2],
             deps=[self.file1, self.CODE],
-            cmd="python {} {} {}".format(self.CODE, self.file1, self.file2),
+            cmd=f"python {self.CODE} {self.file1} {self.file2}",
             name="copy-file-file2",
         )
 
@@ -437,7 +436,7 @@ class TestReproChangedDeepData(TestReproChangedData):
         self.assertEqual(len(stages), 3)
 
 
-class TestReproIgnoreBuildCache(TestDvc):
+class TestReproForceDownstream(TestDvc):
     def test(self):
         stages = self.dvc.add(self.FOO)
         self.assertEqual(len(stages), 1)
@@ -450,7 +449,7 @@ class TestReproIgnoreBuildCache(TestDvc):
         file1_stage = self.dvc.run(
             outs=[file1],
             deps=[self.FOO, code1],
-            cmd="python {} {} {}".format(code1, self.FOO, file1),
+            cmd=f"python {code1} {self.FOO} {file1}",
             single_stage=True,
         )
         self.assertTrue(file1_stage is not None)
@@ -461,7 +460,7 @@ class TestReproIgnoreBuildCache(TestDvc):
         file2_stage = self.dvc.run(
             outs=[file2],
             deps=[file1, code2],
-            cmd="python {} {} {}".format(code2, file1, file2),
+            cmd=f"python {code2} {file1} {file2}",
             single_stage=True,
         )
         self.assertTrue(file2_stage is not None)
@@ -472,7 +471,7 @@ class TestReproIgnoreBuildCache(TestDvc):
         file3_stage = self.dvc.run(
             outs=[file3],
             deps=[file2, code3],
-            cmd="python {} {} {}".format(code3, file2, file3),
+            cmd=f"python {code3} {file2} {file3}",
             single_stage=True,
         )
         self.assertTrue(file3_stage is not None)
@@ -480,7 +479,7 @@ class TestReproIgnoreBuildCache(TestDvc):
         with open(code2, "a") as fobj:
             fobj.write("\n\n")
 
-        stages = self.dvc.reproduce(file3_stage.path, ignore_build_cache=True)
+        stages = self.dvc.reproduce(file3_stage.path, force_downstream=True)
         self.assertEqual(len(stages), 2)
         self.assertEqual(stages[0].path, file2_stage.path)
         self.assertEqual(stages[1].path, file3_stage.path)
@@ -519,7 +518,7 @@ class TestReproPipelines(SingleStageRun, TestDvc):
             fname=self.file1 + ".dvc",
             outs=[self.file1],
             deps=[self.FOO, self.CODE],
-            cmd="python {} {} {}".format(self.CODE, self.FOO, self.file1),
+            cmd=f"python {self.CODE} {self.FOO} {self.file1}",
             single_stage=True,
         )
 
@@ -528,7 +527,7 @@ class TestReproPipelines(SingleStageRun, TestDvc):
             fname=self.file2 + ".dvc",
             outs=[self.file2],
             deps=[self.BAR, self.CODE],
-            cmd="python {} {} {}".format(self.CODE, self.BAR, self.file2),
+            cmd=f"python {self.CODE} {self.BAR} {self.file2}",
             name="copy-BAR-file2",
         )
 
@@ -550,7 +549,7 @@ class TestReproLocked(TestReproChangedData):
             fname=file2 + ".dvc",
             outs=[file2],
             deps=[self.file1, self.CODE],
-            cmd="python {} {} {}".format(self.CODE, self.file1, file2),
+            cmd=f"python {self.CODE} {self.file1} {file2}",
             name="copy-file1-file2",
         )
 
@@ -591,7 +590,7 @@ class TestReproLockedCallback(SingleStageRun, TestDvc):
         stage = self._run(
             fname=file1_stage,
             outs=[file1],
-            cmd="python {} {} {}".format(self.CODE, self.FOO, file1),
+            cmd=f"python {self.CODE} {self.FOO} {file1}",
             name="copy-FOO-file1",
         )
         self.assertTrue(stage is not None)
@@ -638,7 +637,7 @@ class TestReproMetricsAddUnchanged(TestDvc):
             fname=file1_stage,
             outs_no_cache=[file1],
             deps=[self.FOO, self.CODE],
-            cmd="python {} {} {}".format(self.CODE, self.FOO, file1),
+            cmd=f"python {self.CODE} {self.FOO} {file1}",
             single_stage=True,
         )
 
@@ -703,7 +702,7 @@ class TestReproChangedDir(SingleStageRun, TestDvc):
         stage = self._run(
             outs=[dir_name],
             deps=[file_name, dir_code],
-            cmd="python {}".format(dir_code),
+            cmd=f"python {dir_code}",
             name="copy-in-dir",
         )
         target = self._get_stage_target(stage)
@@ -732,7 +731,7 @@ class TestReproChangedDirData(SingleStageRun, TestDvc):
         stage = self._run(
             outs=[dir_name],
             deps=[self.DATA_DIR, dir_code],
-            cmd="python {} {} {}".format(dir_code, self.DATA_DIR, dir_name),
+            cmd=f"python {dir_code} {self.DATA_DIR} {dir_name}",
             name="copy-dir",
         )
         target = self._get_stage_target(stage)
@@ -802,14 +801,14 @@ class TestCmdReproChdir(TestDvc):
                 "run",
                 "--single-stage",
                 "-f",
-                "{}/Dvcfile".format(dname),
+                f"{dname}/Dvcfile",
                 "-w",
-                "{}".format(dname),
+                f"{dname}",
                 "-d",
                 self.FOO,
                 "-o",
                 self.BAR,
-                "python {} {} {}".format(self.CODE, self.FOO, self.BAR),
+                f"python {self.CODE} {self.FOO} {self.BAR}",
             ]
         )
         self.assertEqual(ret, 0)
@@ -860,7 +859,9 @@ class TestReproExternalBase(SingleStageRun, TestDvc):
             stage.outs[0], "checkout", wraps=stage.outs[0].checkout
         )
 
-        patch_run = patch.object(stage, "_run", wraps=stage._run)
+        from dvc.stage.run import cmd_run
+
+        patch_run = patch("dvc.stage.run.cmd_run", wraps=cmd_run)
 
         with self.dvc.lock, self.dvc.state:
             with patch_download as mock_download:
@@ -877,9 +878,7 @@ class TestReproExternalBase(SingleStageRun, TestDvc):
     @patch("dvc.prompt.confirm", return_value=True)
     def test(self, mock_prompt):
         if not self.should_test():
-            raise SkipTest(
-                "Test {} is disabled".format(self.__class__.__name__)
-            )
+            raise SkipTest(f"Test {self.__class__.__name__} is disabled")
 
         cache = (
             self.scheme
@@ -990,7 +989,7 @@ class TestReproExternalS3(S3, TestReproExternalBase):
         return TEST_AWS_REPO_BUCKET
 
     def cmd(self, i, o):
-        return "aws s3 cp {} {}".format(i, o)
+        return f"aws s3 cp {i} {o}"
 
     def write(self, bucket, key, body):
         s3 = boto3.client("s3")
@@ -1007,7 +1006,7 @@ class TestReproExternalGS(GCP, TestReproExternalBase):
         return TEST_GCP_REPO_BUCKET
 
     def cmd(self, i, o):
-        return "gsutil cp {} {}".format(i, o)
+        return f"gsutil cp {i} {o}"
 
     def write(self, bucket, key, body):
         client = gc.Client()
@@ -1022,15 +1021,15 @@ class TestReproExternalHDFS(HDFS, TestReproExternalBase):
 
     @property
     def bucket(self):
-        return "{}@127.0.0.1".format(getpass.getuser())
+        return f"{getpass.getuser()}@127.0.0.1"
 
     def cmd(self, i, o):
-        return "hadoop fs -cp {} {}".format(i, o)
+        return f"hadoop fs -cp {i} {o}"
 
     def write(self, bucket, key, body):
         url = self.scheme + "://" + bucket + "/" + key
         p = Popen(
-            "hadoop fs -rm -f {}".format(url),
+            f"hadoop fs -rm -f {url}",
             shell=True,
             executable=os.getenv("SHELL"),
             stdin=PIPE,
@@ -1084,14 +1083,14 @@ class TestReproExternalSSH(SSH, TestReproExternalBase):
     def bucket(self):
         if not self._dir:
             self._dir = self.mkdtemp()
-        return "{}@127.0.0.1:{}".format(getpass.getuser(), self._dir)
+        return f"{getpass.getuser()}@127.0.0.1:{self._dir}"
 
     def cmd(self, i, o):
         prefix = "ssh://"
         assert i.startswith(prefix) and o.startswith(prefix)
         i = i[len(prefix) :]
         o = o[len(prefix) :]
-        return "scp {} {}".format(i, o)
+        return f"scp {i} {o}"
 
     def write(self, bucket, key, body):
         path = posixpath.join(self._dir, key)
@@ -1105,12 +1104,10 @@ class TestReproExternalSSH(SSH, TestReproExternalBase):
         try:
             sftp.stat(path)
             sftp.remove(path)
-        except IOError:
+        except OSError:
             pass
 
-        stdin, stdout, stderr = ssh.exec_command(
-            "mkdir -p $(dirname {})".format(path)
-        )
+        stdin, stdout, stderr = ssh.exec_command(f"mkdir -p $(dirname {path})")
         self.assertEqual(stdout.channel.recv_exit_status(), 0)
 
         with sftp.open(path, "w+") as fobj:
@@ -1149,8 +1146,8 @@ class TestReproExternalLOCAL(Local, TestReproExternalBase):
 
     def cmd(self, i, o):
         if os.name == "nt":
-            return "copy {} {}".format(i, o)
-        return "cp {} {}".format(i, o)
+            return f"copy {i} {o}"
+        return f"cp {i} {o}"
 
     def write(self, bucket, key, body):
         path = os.path.join(bucket, key)
@@ -1168,7 +1165,7 @@ class TestReproExternalHTTP(TestReproExternalBase):
 
     @staticmethod
     def get_remote(port):
-        return "http://localhost:{}/".format(port)
+        return f"http://localhost:{port}/"
 
     @property
     def local_cache(self):
@@ -1210,7 +1207,7 @@ class TestReproExternalHTTP(TestReproExternalBase):
 
             run_dependency = urljoin(remote, self.BAR)
             run_output = "remote_file"
-            cmd = 'open("{}", "w+")'.format(run_output)
+            cmd = f'open("{run_output}", "w+")'
 
             with open("create-output.py", "w") as fd:
                 fd.write(cmd)
@@ -1248,18 +1245,18 @@ class TestReproShell(TestDvc):
         self.dvc.run(
             fname=stage,
             outs=[fname],
-            cmd="echo $SHELL > {}".format(fname),
+            cmd=f"echo $SHELL > {fname}",
             single_stage=True,
         )
 
-        with open(fname, "r") as fd:
+        with open(fname) as fd:
             self.assertEqual(os.getenv("SHELL"), fd.read().strip())
 
         os.unlink(fname)
 
         self.dvc.reproduce(stage)
 
-        with open(fname, "r") as fd:
+        with open(fname) as fd:
             self.assertEqual(os.getenv("SHELL"), fd.read().strip())
 
 
@@ -1385,7 +1382,7 @@ class TestShouldDisplayMetricsOnReproWithMetricsOption(TestDvc):
                 "--single-stage",
                 "-m",
                 metrics_file,
-                "echo {} >> {}".format(metrics_value, metrics_file),
+                f"echo {metrics_value} >> {metrics_file}",
             ]
         )
         self.assertEqual(0, ret)
@@ -1399,7 +1396,7 @@ class TestShouldDisplayMetricsOnReproWithMetricsOption(TestDvc):
         )
         self.assertEqual(0, ret)
 
-        expected_metrics_display = "{}: {}".format(metrics_file, metrics_value)
+        expected_metrics_display = f"{metrics_file}: {metrics_value}"
         self.assertIn(expected_metrics_display, self._caplog.text)
 
 
@@ -1429,16 +1426,16 @@ def repro_dir(tmp_dir, dvc, run_copy):
     stages = {}
 
     origin_copy = tmp_dir / "origin_copy"
-    stage = run_copy("origin_data", fspath(origin_copy), single_stage=True)
+    stage = run_copy("origin_data", os.fspath(origin_copy), single_stage=True)
     assert stage is not None
     assert origin_copy.read_text() == "origin data content"
     stages["origin_copy"] = stage
 
     origin_copy_2 = tmp_dir / "dir" / "origin_copy_2"
     stage = run_copy(
-        fspath(origin_copy),
-        fspath(origin_copy_2),
-        fname=fspath(origin_copy_2) + ".dvc",
+        os.fspath(origin_copy),
+        os.fspath(origin_copy_2),
+        fname=os.fspath(origin_copy_2) + ".dvc",
         single_stage=True,
     )
     assert stage is not None
@@ -1448,9 +1445,9 @@ def repro_dir(tmp_dir, dvc, run_copy):
     dir_file_path = tmp_dir / "data_dir" / "dir_file"
     dir_file_copy = tmp_dir / "dir" / "subdir" / "dir_file_copy"
     stage = run_copy(
-        fspath(dir_file_path),
-        fspath(dir_file_copy),
-        fname=fspath(dir_file_copy) + ".dvc",
+        os.fspath(dir_file_path),
+        os.fspath(dir_file_copy),
+        fname=os.fspath(dir_file_copy) + ".dvc",
         single_stage=True,
     )
     assert stage is not None
@@ -1459,8 +1456,8 @@ def repro_dir(tmp_dir, dvc, run_copy):
 
     last_stage = tmp_dir / "dir" / DVC_FILE
     stage = dvc.run(
-        fname=fspath(last_stage),
-        deps=[fspath(origin_copy_2), fspath(dir_file_copy)],
+        fname=os.fspath(last_stage),
+        deps=[os.fspath(origin_copy_2), os.fspath(dir_file_copy)],
         single_stage=True,
     )
     assert stage is not None
@@ -1468,11 +1465,11 @@ def repro_dir(tmp_dir, dvc, run_copy):
 
     # Unrelated are to verify that reproducing `dir` will not trigger them too
     assert (
-        run_copy(fspath(origin_copy), "unrelated1", single_stage=True)
+        run_copy(os.fspath(origin_copy), "unrelated1", single_stage=True)
         is not None
     )
     assert (
-        run_copy(fspath(dir_file_path), "unrelated2", single_stage=True)
+        run_copy(os.fspath(dir_file_path), "unrelated2", single_stage=True)
         is not None
     )
 

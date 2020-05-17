@@ -2,7 +2,6 @@ import logging
 import os
 from urllib.parse import urlparse
 
-from dvc.compat import fspath_py35
 from dvc.exceptions import DvcException
 from dvc.istextfile import istextfile
 from dvc.output.base import BaseOutput
@@ -38,7 +37,7 @@ class LocalOutput(BaseOutput):
             if not p.is_absolute():
                 p = self.stage.wdir / p
 
-        abs_p = os.path.abspath(os.path.normpath(fspath_py35(p)))
+        abs_p = os.path.abspath(os.path.normpath(p))
         return self.REMOTE.path_cls(abs_p)
 
     def __str__(self):
@@ -75,7 +74,7 @@ class LocalOutput(BaseOutput):
         if not self.metric:
             return
 
-        path = fspath_py35(self.path_info)
+        path = os.fspath(self.path_info)
         if not os.path.exists(path):
             return
 

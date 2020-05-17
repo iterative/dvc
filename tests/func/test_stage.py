@@ -94,7 +94,7 @@ class TestReload(TestDvc):
 class TestDefaultWorkingDirectory(TestDvc):
     def test_ignored_in_checksum(self):
         stage = self.dvc.run(
-            cmd="echo test > {}".format(self.FOO),
+            cmd=f"echo test > {self.FOO}",
             deps=[self.BAR],
             outs=[self.FOO],
             single_stage=True,
@@ -128,7 +128,7 @@ class TestExternalRemoteResolution(TestDvc):
                     "--single-stage",
                     "-O",
                     "remote://storage/file",
-                    "echo file > {path}".format(path=file_path),
+                    f"echo file > {file_path}",
                 ]
             )
             == 0
@@ -160,7 +160,7 @@ def test_md5_ignores_comments(tmp_dir, dvc):
         f.write("# End comment\n")
 
     new_stage = SingleStageFile(dvc, stage.path).stage
-    assert not new_stage.stage_changed()
+    assert not new_stage.changed_stage()
 
 
 def test_meta_is_preserved(tmp_dir, dvc):

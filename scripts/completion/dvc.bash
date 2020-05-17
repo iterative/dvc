@@ -5,7 +5,7 @@
 #   - https://stackoverflow.com/questions/12933362
 
 _dvc_commands='add cache checkout commit config destroy diff fetch get-url get gc \
-  import-url import init install lock list metrics move params pipeline plot pull push \
+  import-url import init install lock list metrics move params pipeline plots pull push \
   remote remove repro root run status unlock unprotect update version'
 
 _dvc_options='-h --help -V --version'
@@ -53,9 +53,9 @@ _dvc_pipeline='list show'
 _dvc_pipeline_list=''
 _dvc_pipeline_show='-c --commands -o --outs --ascii --dot --tree -l --locked'
 _dvc_pipeline_show_COMPGEN=_dvc_compgen_DVCFiles
-_dvc_plot='show diff'
-_dvc_plot_show='-t --template -f --file -s --select -x -y --stdout --no-csv-header --no-html --title --xlab --ylab'
-_dvc_plot_diff='-t --template -d --datafile -f --file -s --select -x -y --stdout --no-csv-header --no-html --title --xlab --ylab'
+_dvc_plots='show diff'
+_dvc_plots_show='-t --template -f --file -s --select -x -y --stdout --no-csv-header --no-html --title --xlab --ylab'
+_dvc_plots_diff='-t --template -d --datafile -f --file -s --select -x -y --stdout --no-csv-header --no-html --title --xlab --ylab'
 _dvc_pull='-j --jobs -r --remote -a --all-branches -T --all-tags -f --force -d --with-deps -R --recursive'
 _dvc_pull_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_push='-j --jobs -r --remote -a --all-branches -T --all-tags -d --with-deps -R --recursive'
@@ -68,10 +68,10 @@ _dvc_remote_modify='--global --system --local -u --unset'
 _dvc_remote_remove='--global --system --local'
 _dvc_remove='-o --outs -p --purge -f --force'
 _dvc_remove_COMPGEN=_dvc_compgen_DVCFiles
-_dvc_repro='-f --force -s --single-item -c --cwd -m --metrics --dry -i --interactive -p --pipeline -P --all-pipelines --ignore-build-cache --no-commit -R --recursive --downstream'
+_dvc_repro='-f --force -s --single-item -c --cwd -m --metrics --dry -i --interactive -p --pipeline -P --all-pipelines --no-run-cache --force-downstream --no-commit -R --recursive --downstream'
 _dvc_repro_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_root=''
-_dvc_run='--no-exec -f --file -d --deps -o --outs -O --outs-no-cache --outs-persist --outs-persist-no-cache -m --metrics -M --metrics-no-cache --overwrite-dvcfile --ignore-build-cache --no-commit -w --wdir'
+_dvc_run='--no-exec -f --file -d --deps -o --outs -O --outs-no-cache --outs-persist --outs-persist-no-cache -m --metrics -M --metrics-no-cache --overwrite-dvcfile --no-run-cache --no-commit -w --wdir'
 _dvc_run_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_status='-j --jobs -r --remote -a --all-branches -T --all-tags -d --with-deps -c --cloud'
 _dvc_status_COMPGEN=_dvc_compgen_DVCFiles

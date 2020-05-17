@@ -1,14 +1,15 @@
+import os
+
 import mock
 
 from dvc.analytics import _scm_in_use
-from dvc.compat import fspath
 from dvc.main import main
 from dvc.repo import Repo
 
 
 @mock.patch("dvc.analytics.send")
 def test_daemon_analytics(mock_send, tmp_path):
-    report = fspath(tmp_path)
+    report = os.fspath(tmp_path)
     assert 0 == main(["daemon", "analytics", report])
 
     mock_send.assert_called_with(report)

@@ -40,7 +40,7 @@ def _make_remote_property(name):
     return cached_property(getter)
 
 
-class Cache(object):
+class Cache:
     """Class that manages cache locations of a DVC repo.
 
     Args:
@@ -101,7 +101,7 @@ class NamedCacheItem:
             self.children[checksum].update(child_item)
 
 
-class NamedCache(object):
+class NamedCache:
     def __init__(self):
         self._items = defaultdict(lambda: defaultdict(NamedCacheItem))
         self.external = defaultdict(set)

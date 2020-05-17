@@ -4,7 +4,6 @@ import pytest
 
 from dvc import api
 from dvc.api import UrlNotDvcRepoError
-from dvc.compat import fspath
 from dvc.exceptions import FileMissingError
 from dvc.main import main
 from dvc.path_info import URLInfo
@@ -42,7 +41,7 @@ def test_get_url_external(erepo_dir, remote_url, setup_remote):
         erepo_dir.dvc_gen("foo", "foo", commit="add foo")
 
     # Using file url to force clone to tmp repo
-    repo_url = "file://{}".format(erepo_dir)
+    repo_url = f"file://{erepo_dir}"
     expected_url = URLInfo(remote_url) / "ac/bd18db4cc2f85cedef654fccc4a4d8"
     assert api.get_url("foo", repo=repo_url) == expected_url
 
@@ -51,10 +50,10 @@ def test_get_url_requires_dvc(tmp_dir, scm):
     tmp_dir.scm_gen({"foo": "foo"}, commit="initial")
 
     with pytest.raises(UrlNotDvcRepoError, match="not a DVC repository"):
-        api.get_url("foo", repo=fspath(tmp_dir))
+        api.get_url("foo", repo=os.fspath(tmp_dir))
 
     with pytest.raises(UrlNotDvcRepoError):
-        api.get_url("foo", repo="file://{}".format(tmp_dir))
+        api.get_url("foo", repo=f"file://{tmp_dir}")
 
 
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
@@ -87,7 +86,7 @@ def test_open_external(remote_url, erepo_dir, setup_remote):
     remove(erepo_dir.dvc.cache.local.cache_dir)
 
     # Using file url to force clone to tmp repo
-    repo_url = "file://{}".format(erepo_dir)
+    repo_url = f"file://{erepo_dir}"
     with api.open("version", repo=repo_url) as fd:
         assert fd.read() == "master"
 
@@ -109,7 +108,7 @@ def test_missing(remote_url, tmp_dir, dvc):
 def test_open_scm_controlled(tmp_dir, erepo_dir):
     erepo_dir.scm_gen({"scm_controlled": "file content"}, commit="create file")
 
-    with api.open("scm_controlled", repo=fspath(erepo_dir)) as fd:
+    with api.open("scm_controlled", repo=os.fspath(erepo_dir)) as fd:
         assert fd.read() == "file content"
 
 
@@ -122,7 +121,7 @@ def test_open_not_cached(dvc):
     dvc.run(
         single_stage=True,
         metrics_no_cache=[metric_file],
-        cmd=('python -c "{}"'.format(metric_code)),
+        cmd=(f'python -c "{metric_code}"'),
     )
 
     with api.open(metric_file) as fd:

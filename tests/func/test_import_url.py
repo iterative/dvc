@@ -3,7 +3,6 @@ from uuid import uuid4
 
 import pytest
 
-from dvc.compat import fspath
 from dvc.main import main
 from dvc.stage import Stage
 from dvc.utils.fs import makedirs
@@ -44,7 +43,7 @@ def test_should_remove_outs_before_import(tmp_dir, dvc, mocker, erepo_dir):
     erepo_dir.gen({"foo": "foo"})
 
     remove_outs_call_counter = mocker.spy(Stage, "remove_outs")
-    ret = main(["import-url", fspath(erepo_dir / "foo")])
+    ret = main(["import-url", os.fspath(erepo_dir / "foo")])
 
     assert ret == 0
     assert remove_outs_call_counter.mock.call_count == 1
@@ -99,7 +98,7 @@ def test_import_stage_accompanies_target(tmp_dir, dvc, erepo_dir):
         erepo_dir.dvc_gen("file1", "file1 content", commit="commit file")
 
     tmp_dir.gen({"dir": {}})
-    erepo = {"url": fspath(erepo_dir)}
+    erepo = {"url": os.fspath(erepo_dir)}
     dvc.imp_url("file1", out=os.path.join("dir", "imported_file"), erepo=erepo)
 
     assert (tmp_dir / "dir" / "imported_file").exists()

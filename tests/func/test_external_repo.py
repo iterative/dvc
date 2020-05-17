@@ -2,7 +2,6 @@ import os
 
 from mock import patch
 
-from dvc.compat import fspath
 from dvc.external_repo import external_repo
 from dvc.remote import LocalRemote
 from dvc.scm.git import Git
@@ -16,7 +15,7 @@ def test_external_repo(erepo_dir):
             erepo_dir.dvc_gen("file", "branch", commit="create file on branch")
         erepo_dir.dvc_gen("file", "master", commit="create file on master")
 
-    url = fspath(erepo_dir)
+    url = os.fspath(erepo_dir)
 
     with patch.object(Git, "clone", wraps=Git.clone) as mock:
         with external_repo(url) as repo:
@@ -31,7 +30,7 @@ def test_external_repo(erepo_dir):
 
 
 def test_source_change(erepo_dir):
-    url = fspath(erepo_dir)
+    url = os.fspath(erepo_dir)
     with external_repo(url) as repo:
         old_rev = repo.scm.get_rev()
 
@@ -52,7 +51,7 @@ def test_cache_reused(erepo_dir, mocker, setup_remote):
     download_spy = mocker.spy(LocalRemote, "download")
 
     # Use URL to prevent any fishy optimizations
-    url = "file://{}".format(erepo_dir)
+    url = f"file://{erepo_dir}"
     with external_repo(url) as repo:
         repo.fetch()
         assert download_spy.mock.call_count == 1
@@ -67,7 +66,7 @@ def test_cache_reused(erepo_dir, mocker, setup_remote):
 def test_known_sha(erepo_dir):
     erepo_dir.scm.commit("init")
 
-    url = "file://{}".format(erepo_dir)
+    url = f"file://{erepo_dir}"
     with external_repo(url) as repo:
         rev = repo.scm.get_rev()
         prev_rev = repo.scm.resolve_rev("HEAD^")
@@ -89,7 +88,7 @@ def test_pull_subdir_file(tmp_dir, erepo_dir):
         erepo_dir.dvc_add(subdir / "file", commit="create file")
 
     dest = tmp_dir / "file"
-    with external_repo(fspath(erepo_dir)) as repo:
+    with external_repo(os.fspath(erepo_dir)) as repo:
         repo.pull_to(os.path.join("subdir", "file"), dest)
 
     assert dest.is_file()
@@ -111,7 +110,7 @@ def test_relative_remote(erepo_dir, tmp_dir, setup_remote):
     (erepo_dir / "file").unlink()
     remove(erepo_dir.dvc.cache.local.cache_dir)
 
-    url = fspath(erepo_dir)
+    url = os.fspath(erepo_dir)
 
     with external_repo(url) as repo:
         assert os.path.isabs(repo.config["remote"]["upstream"]["url"])

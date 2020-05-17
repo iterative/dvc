@@ -35,7 +35,7 @@ _dvc_commands() {
     "pipeline:Manage pipelines."
     "pull:Pull data files from a DVC remote storage."
     "push:Push data files to a DVC remote storage."
-    "plot:Generate plot for metrics structured as JSON, CSV or TSV."
+    "plots:Generate plot for metrics structured as JSON, CSV or TSV."
     "remote:Manage remote storage configuration."
     "remove:Remove outputs of DVC-file."
     "repro:Check for changes and reproduce DVC-file and dependencies."
@@ -213,7 +213,7 @@ _dvc_push=(
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
 )
 
-_dvc_plot=(
+_dvc_plots=(
   "1:Sub command:(show diff)"
 )
 
@@ -239,7 +239,8 @@ _dvc_repro=(
   {-p,--pipeline}"[Reproduce the whole pipeline that the specified stage file belongs to.]"
   {-P,--all-pipelines}"[Reproduce all pipelines in the repo.]"
   {-R,--recursive}"[Reproduce all stages in the specified directory.]"
-  "--ignore-build-cache[Reproduce all descendants of a changed stage even if their direct dependencies didn't change.]"
+  "--force-downstream[Reproduce all descendants of a changed stage even if their direct dependencies didn't change.]"
+  "--no-run-cache[Run changed stage even if it has been already ran with the same command/dependencies/outputs/etc before.]"
   "--no-commit[Don't put files/directories into cache.]"
   "--downstream[Start from the specified stages when reproducing pipelines.]"
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
@@ -259,7 +260,7 @@ _dvc_run=(
   "--no-exec[Only create stage file without actually running it.]"
   {-y,--yes}"[Deprecated, use --overwrite-dvcfile instead]"
   "--overwrite-dvcfile[Overwrite existing DVC-file without asking for confirmation.]"
-  "--ignore-build-cache[Run this stage even if it has been already ran with the same command/dependencies/outputs/etc before.]"
+  "--no-run-cache[Run this stage even if it has been already ran with the same command/dependencies/outputs/etc before.]"
   "--remove-outs[Deprecated, this is now the default behavior]"
   "--no-commit[Don't put files/directories into cache.]"
   "--outs-persist[Declare output file or directory that will not be removed upon repro.]:Output persistent:_files"
@@ -322,7 +323,7 @@ case $words[1] in
   pipeline) _arguments $_dvc_global_options $_dvc_pipeline ;;
   pull) _arguments $_dvc_global_options $_dvc_pull ;;
   push) _arguments $_dvc_global_options $_dvc_push ;;
-  plot) _arguments $_dvc_global_options $_dvc_plot ;;
+  plots) _arguments $_dvc_global_options $_dvc_plots ;;
   remote) _arguments $_dvc_global_options $_dvc_remote ;;
   remove) _arguments $_dvc_global_options $_dvc_remove ;;
   repro) _arguments $_dvc_global_options $_dvc_repro ;;

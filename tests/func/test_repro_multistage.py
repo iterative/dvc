@@ -492,7 +492,7 @@ def test_cyclic_graph_error(tmp_dir, dvc, run_copy):
     run_copy("bar", "baz", name="copy-bar-baz")
     run_copy("baz", "foobar", name="copy-baz-foobar")
 
-    with open(PIPELINE_FILE, "r") as f:
+    with open(PIPELINE_FILE) as f:
         data = parse_stage(f.read(), PIPELINE_FILE)
         data["stages"]["copy-baz-foo"] = {
             "cmd": "echo baz > foo",

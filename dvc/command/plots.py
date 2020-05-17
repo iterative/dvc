@@ -4,12 +4,12 @@ import os
 
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
-from dvc.repo.plot.data import WORKSPACE_REVISION_NAME
+from dvc.repo.plots.data import WORKSPACE_REVISION_NAME
 
 logger = logging.getLogger(__name__)
 
 
-class CmdPLot(CmdBase):
+class CmdPlots(CmdBase):
     def _revisions(self):
         raise NotImplementedError
 
@@ -79,12 +79,12 @@ class CmdPLot(CmdBase):
         return 0
 
 
-class CmdPlotShow(CmdPLot):
+class CmdPlotsShow(CmdPlots):
     def _revisions(self):
         return None
 
 
-class CmdPlotDiff(CmdPLot):
+class CmdPlotsDiff(CmdPlots):
     def _revisions(self):
         revisions = self.args.revisions or []
         if len(revisions) <= 1:
@@ -95,143 +95,151 @@ class CmdPlotDiff(CmdPLot):
 
 
 def add_parser(subparsers, parent_parser):
-    PLOT_HELP = (
+    PLOTS_HELP = (
         "Generating plots for metrics stored in structured files "
         "(JSON, CSV, TSV)."
     )
 
-    plot_parser = subparsers.add_parser(
-        "plot",
+    plots_parser = subparsers.add_parser(
+        "plots",
         parents=[parent_parser],
-        description=append_doc_link(PLOT_HELP, "plot"),
-        help=PLOT_HELP,
+        description=append_doc_link(PLOTS_HELP, "plots"),
+        help=PLOTS_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    plot_subparsers = plot_parser.add_subparsers(
+    plots_subparsers = plots_parser.add_subparsers(
         dest="cmd",
-        help="Use `dvc plot CMD --help` to display command-specific help.",
+        help="Use `dvc plots CMD --help` to display command-specific help.",
     )
 
-    fix_subparsers(plot_subparsers)
+    fix_subparsers(plots_subparsers)
 
-    SHOW_HELP = "Generate a plot image file from a metrics file."
-    plot_show_parser = plot_subparsers.add_parser(
+    SHOW_HELP = "Generate a plots image file from a metrics file."
+    plots_show_parser = plots_subparsers.add_parser(
         "show",
         parents=[parent_parser],
-        description=append_doc_link(SHOW_HELP, "plot/show"),
+        description=append_doc_link(SHOW_HELP, "plots/show"),
         help=SHOW_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    plot_show_parser.add_argument(
+    plots_show_parser.add_argument(
         "-t",
         "--template",
         nargs="?",
         default=None,
         help="File to be injected with data.",
     )
-    plot_show_parser.add_argument(
+    plots_show_parser.add_argument(
         "-f", "--file", default=None, help="Name of the generated file."
     )
-    plot_show_parser.add_argument(
+    plots_show_parser.add_argument(
         "-s",
         "--select",
         default=None,
-        help="Choose which field(s) or JSONPath to include in the plot.",
+        help="Choose which field(s) or JSONPath to include in the plots.",
     )
-    plot_show_parser.add_argument(
+    plots_show_parser.add_argument(
         "-x", default=None, help="Field name for x axis."
     )
-    plot_show_parser.add_argument(
+    plots_show_parser.add_argument(
         "-y", default=None, help="Field name for y axis."
     )
-    plot_show_parser.add_argument(
+    plots_show_parser.add_argument(
         "--stdout",
         action="store_true",
         default=False,
-        help="Print plot specification to stdout.",
+        help="Print plots specification to stdout.",
     )
-    plot_show_parser.add_argument(
+    plots_show_parser.add_argument(
         "--no-csv-header",
         action="store_true",
         default=False,
         help="Required when CSV or TSV datafile does not have a header.",
     )
-    plot_show_parser.add_argument(
+    plots_show_parser.add_argument(
         "--no-html",
         action="store_true",
         default=False,
         help="Do not wrap Vega plot JSON with HTML.",
     )
-    plot_show_parser.add_argument("--title", default=None, help="Plot title.")
-    plot_show_parser.add_argument("--xlab", default=None, help="X axis title.")
-    plot_show_parser.add_argument("--ylab", default=None, help="Y axis title.")
-    plot_show_parser.add_argument(
+    plots_show_parser.add_argument("--title", default=None, help="Plot title.")
+    plots_show_parser.add_argument(
+        "--xlab", default=None, help="X axis title."
+    )
+    plots_show_parser.add_argument(
+        "--ylab", default=None, help="Y axis title."
+    )
+    plots_show_parser.add_argument(
         "datafile", nargs="?", default=None, help="Metrics file to visualize",
     )
-    plot_show_parser.set_defaults(func=CmdPlotShow)
+    plots_show_parser.set_defaults(func=CmdPlotsShow)
 
-    PLOT_DIFF_HELP = (
+    PLOTS_DIFF_HELP = (
         "Plot differences in metrics between commits in the DVC "
         "repository, or between the last commit and the workspace."
     )
-    plot_diff_parser = plot_subparsers.add_parser(
+    plots_diff_parser = plots_subparsers.add_parser(
         "diff",
         parents=[parent_parser],
-        description=append_doc_link(PLOT_DIFF_HELP, "plot/diff"),
-        help=PLOT_DIFF_HELP,
+        description=append_doc_link(PLOTS_DIFF_HELP, "plots/diff"),
+        help=PLOTS_DIFF_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    plot_diff_parser.add_argument(
+    plots_diff_parser.add_argument(
         "-t",
         "--template",
         nargs="?",
         default=None,
         help="File to be injected with data.",
     )
-    plot_diff_parser.add_argument(
+    plots_diff_parser.add_argument(
         "-d",
         "--datafile",
         nargs="?",
         default=None,
         help="Metrics file to visualize",
     )
-    plot_diff_parser.add_argument(
+    plots_diff_parser.add_argument(
         "-f", "--file", default=None, help="Name of the generated file."
     )
-    plot_diff_parser.add_argument(
+    plots_diff_parser.add_argument(
         "-s",
         "--select",
         default=None,
         help="Choose which field(s) or JSONPath to include in the plot.",
     )
-    plot_diff_parser.add_argument(
+    plots_diff_parser.add_argument(
         "-x", default=None, help="Field name for x axis."
     )
-    plot_diff_parser.add_argument(
+    plots_diff_parser.add_argument(
         "-y", default=None, help="Field name for y axis."
     )
-    plot_diff_parser.add_argument(
+    plots_diff_parser.add_argument(
         "--stdout",
         action="store_true",
         default=False,
         help="Print plot specification to stdout.",
     )
-    plot_diff_parser.add_argument(
+    plots_diff_parser.add_argument(
         "--no-csv-header",
         action="store_true",
         default=False,
         help="Provided CSV ot TSV datafile does not have a header.",
     )
-    plot_diff_parser.add_argument(
+    plots_diff_parser.add_argument(
         "--no-html",
         action="store_true",
         default=False,
         help="Do not wrap Vega plot JSON with HTML.",
     )
-    plot_diff_parser.add_argument("--title", default=None, help="Plot title.")
-    plot_diff_parser.add_argument("--xlab", default=None, help="X axis title.")
-    plot_diff_parser.add_argument("--ylab", default=None, help="Y axis title.")
-    plot_diff_parser.add_argument(
+    plots_diff_parser.add_argument("--title", default=None, help="Plot title.")
+    plots_diff_parser.add_argument(
+        "--xlab", default=None, help="X axis title."
+    )
+    plots_diff_parser.add_argument(
+        "--ylab", default=None, help="Y axis title."
+    )
+    plots_diff_parser.add_argument(
         "revisions", nargs="*", default=None, help="Git commits to plot from",
     )
-    plot_diff_parser.set_defaults(func=CmdPlotDiff)
+    plots_diff_parser.set_defaults(func=CmdPlotsDiff)

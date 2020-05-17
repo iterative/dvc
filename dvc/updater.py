@@ -14,7 +14,7 @@ from dvc.utils.pkg import PKG
 logger = logging.getLogger(__name__)
 
 
-class Updater(object):  # pragma: no cover
+class Updater:  # pragma: no cover
     URL = "https://updater.dvc.org"
     UPDATER_FILE = "updater"
     TIMEOUT = 24 * 60 * 60  # every day
@@ -34,7 +34,7 @@ class Updater(object):  # pragma: no cover
         ctime = os.path.getmtime(self.updater_file)
         outdated = time.time() - ctime >= self.TIMEOUT
         if outdated:
-            logger.debug("'{}' is outdated(".format(self.updater_file))
+            logger.debug(f"'{self.updater_file}' is outdated(")
         return outdated
 
     def _with_lock(self, func, action):
@@ -56,7 +56,7 @@ class Updater(object):  # pragma: no cover
             self.fetch()
             return
 
-        with open(self.updater_file, "r") as fobj:
+        with open(self.updater_file) as fobj:
             import json
 
             try:

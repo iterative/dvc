@@ -13,7 +13,7 @@ class CmdUnprotect(CmdBase):
             try:
                 self.repo.unprotect(target)
             except DvcException:
-                msg = "failed to unprotect '{}'".format(target)
+                msg = f"failed to unprotect '{target}'"
                 logger.exception(msg)
                 return 1
         return 0

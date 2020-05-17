@@ -31,7 +31,7 @@ def test_remote_without_checksum_jobs_default(dvc):
 
 @pytest.mark.parametrize("remote_cls", [GSRemote, S3Remote])
 def test_makedirs_not_create_for_top_level_path(remote_cls, dvc, mocker):
-    url = "{.scheme}://bucket/".format(remote_cls)
+    url = f"{remote_cls.scheme}://bucket/"
     remote = remote_cls(dvc, {"url": url})
     mocked_client = mocker.PropertyMock()
     # we use remote clients with same name as scheme to interact with remote

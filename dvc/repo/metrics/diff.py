@@ -14,6 +14,9 @@ def _get_metrics(repo, *args, rev=None, **kwargs):
 
 
 def diff(repo, *args, a_rev=None, b_rev=None, **kwargs):
+    if repo.scm.no_commits:
+        return {}
+
     with_unchanged = kwargs.pop("all", False)
 
     old = _get_metrics(repo, *args, **kwargs, rev=(a_rev or "HEAD"))

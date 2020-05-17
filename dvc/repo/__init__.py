@@ -4,7 +4,6 @@ from functools import wraps
 
 from funcy import cached_property, cat, first
 
-from dvc.compat import fspath_py35
 from dvc.config import Config
 from dvc.exceptions import (
     FileMissingError,
@@ -34,7 +33,7 @@ def locked(f):
     return wrapper
 
 
-class Repo(object):
+class Repo:
     DVC_DIR = ".dvc"
 
     from dvc.repo.destroy import destroy
@@ -60,7 +59,7 @@ class Repo(object):
     from dvc.repo.get import get
     from dvc.repo.get_url import get_url
     from dvc.repo.update import update
-    from dvc.repo.plot import plot
+    from dvc.repo.plots import plot
 
     def __init__(self, root_dir=None):
         from dvc.state import State
@@ -124,14 +123,14 @@ class Repo(object):
         self._reset()
 
     def __repr__(self):
-        return "{}: '{}'".format(self.__class__.__name__, self.root_dir)
+        return f"{self.__class__.__name__}: '{self.root_dir}'"
 
     @classmethod
     def find_root(cls, root=None):
         root_dir = os.path.realpath(root or os.curdir)
 
         if not os.path.isdir(root_dir):
-            raise NotDvcRepoError("directory '{}' does not exist".format(root))
+            raise NotDvcRepoError(f"directory '{root}' does not exist")
 
         while True:
             dvc_dir = os.path.join(root_dir, cls.DVC_DIR)
@@ -282,7 +281,7 @@ class Repo(object):
                 for target in targets
             )
 
-            suffix = "({})".format(branch) if branch else ""
+            suffix = f"({branch})" if branch else ""
             for stage, filter_info in pairs:
                 used_cache = stage.get_used_cache(
                     remote=remote,
@@ -427,7 +426,7 @@ class Repo(object):
 
     @cached_property
     def plot_templates(self):
-        from dvc.repo.plot.template import PlotTemplates
+        from .plots.template import PlotTemplates
 
         return PlotTemplates(self.dvc_dir)
 
@@ -515,7 +514,6 @@ class Repo(object):
             raise IsADirectoryError("Can't open a dir")
 
         cache_file = self.cache.local.checksum_to_path_info(out.checksum)
-        cache_file = fspath_py35(cache_file)
 
         if os.path.exists(cache_file):
             return open(cache_file, mode=mode, encoding=encoding)

@@ -5,7 +5,7 @@ from dvc.remote.s3 import S3Remote
 
 bucket_name = "bucket-name"
 prefix = "some/prefix"
-url = "s3://{}/{}".format(bucket_name, prefix)
+url = f"s3://{bucket_name}/{prefix}"
 
 
 @pytest.fixture(autouse=True)

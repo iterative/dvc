@@ -1,5 +1,3 @@
-# encoding: utf-8
-
 from os.path import join
 
 from dvc.ignore import CleanTree
@@ -36,7 +34,7 @@ class TestWorkingTree(TestDir):
         self.assertFalse(self.tree.isfile("not-existing-file"))
 
 
-class GitTreeTests(object):
+class GitTreeTests:
     def test_open(self):
         self.scm.add([self.FOO, self.UNICODE, self.DATA_DIR])
         self.scm.commit("add")
@@ -90,7 +88,7 @@ class TestGitSubmoduleTree(TestGitSubmodule, GitTreeTests):
         self._pushd(self._root_dir)
 
 
-class AssertWalkEqualMixin(object):
+class AssertWalkEqualMixin:
     def assertWalkEqual(self, actual, expected, msg=None):
         def convert_to_sets(walk_results):
             return [

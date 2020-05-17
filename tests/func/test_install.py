@@ -5,13 +5,13 @@ import sys
 import pytest
 
 from dvc.exceptions import GitHookAlreadyExistsError
-from dvc.utils import file_md5, fspath
+from dvc.utils import file_md5
 
 
 @pytest.mark.skipif(
     sys.platform == "win32", reason="Git hooks aren't supported on Windows"
 )
-class TestInstall(object):
+class TestInstall:
     def _hook(self, name):
         return pathlib.Path(".git") / "hooks" / name
 
@@ -52,7 +52,7 @@ class TestInstall(object):
         storage_path = temp / "dvc_storage"
 
         with dvc.config.edit() as conf:
-            conf["remote"]["store"] = {"url": fspath(storage_path)}
+            conf["remote"]["store"] = {"url": os.fspath(storage_path)}
             conf["core"]["remote"] = "store"
         tmp_dir.dvc_gen("file", "file_content", "commit message")
 
@@ -61,8 +61,8 @@ class TestInstall(object):
             storage_path / file_checksum[:2] / file_checksum[2:]
         )
 
-        scm.repo.clone(fspath(git_remote))
-        scm.repo.create_remote("origin", fspath(git_remote))
+        scm.repo.clone(os.fspath(git_remote))
+        scm.repo.create_remote("origin", os.fspath(git_remote))
 
         assert not expected_storage_path.is_file()
         scm.repo.git.push("origin", "master")

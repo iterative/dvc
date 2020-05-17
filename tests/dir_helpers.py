@@ -46,11 +46,11 @@ from global repo template to creating everything inplace, which:
 import os
 import pathlib
 from contextlib import contextmanager
+from textwrap import dedent
 
 import pytest
 from funcy import lmap, retry
 
-from dvc.compat import fspath, fspath_py35
 from dvc.logger import disable_other_loggers
 from dvc.utils.fs import makedirs
 
@@ -60,9 +60,11 @@ __all__ = [
     "scm",
     "dvc",
     "run_copy",
+    "run_head",
     "erepo_dir",
     "git_dir",
     "setup_remote",
+    "git_init",
 ]
 
 
@@ -77,14 +79,10 @@ class TmpDir(pathlib.Path):
         self = cls._from_parts(args, init=False)
         if not self._flavour.is_supported:
             raise NotImplementedError(
-                "cannot instantiate %r on your system" % (cls.__name__,)
+                f"cannot instantiate {cls.__name__!r} on your system"
             )
         self._init()
         return self
-
-    # Not needed in Python 3.6+
-    def __fspath__(self):
-        return str(self)
 
     def init(self, *, scm=False, dvc=False):
         from dvc.repo import Repo
@@ -93,10 +91,10 @@ class TmpDir(pathlib.Path):
         assert not scm or not hasattr(self, "scm")
         assert not dvc or not hasattr(self, "dvc")
 
-        str_path = fspath(self)
+        str_path = os.fspath(self)
 
         if scm:
-            _git_init(str_path)
+            git_init(str_path)
         if dvc:
             self.dvc = Repo.init(
                 str_path, no_scm=not scm and not hasattr(self, "scm")
@@ -184,7 +182,7 @@ class TmpDir(pathlib.Path):
     def chdir(self):
         old = os.getcwd()
         try:
-            os.chdir(fspath_py35(self))
+            os.chdir(self)
             yield
         finally:
             os.chdir(old)
@@ -203,7 +201,7 @@ class TmpDir(pathlib.Path):
 def _coerce_filenames(filenames):
     if isinstance(filenames, (str, bytes, pathlib.PurePath)):
         filenames = [filenames]
-    return lmap(fspath, filenames)
+    return lmap(os.fspath, filenames)
 
 
 class WindowsTmpDir(TmpDir, pathlib.PureWindowsPath):
@@ -218,7 +216,7 @@ class PosixTmpDir(TmpDir, pathlib.PurePosixPath):
 def make_tmp_dir(tmp_path_factory, request):
     def make(name, *, scm=False, dvc=False):
         path = tmp_path_factory.mktemp(name) if isinstance(name, str) else name
-        new_dir = TmpDir(fspath_py35(path))
+        new_dir = TmpDir(path)
         new_dir.init(scm=scm, dvc=dvc)
         request.addfinalizer(new_dir.close)
         return new_dir
@@ -243,7 +241,7 @@ def dvc(tmp_dir):
     return tmp_dir.dvc
 
 
-def _git_init(path):
+def git_init(path):
     from git import Repo
     from git.exc import GitCommandNotFound
 
@@ -265,13 +263,46 @@ def run_copy(tmp_dir, dvc):
 
     def run_copy(src, dst, **run_kwargs):
         return dvc.run(
-            cmd="python copy.py {} {}".format(src, dst),
+            cmd=f"python copy.py {src} {dst}",
             outs=[dst],
             deps=[src, "copy.py"],
-            **run_kwargs
+            **run_kwargs,
         )
 
     return run_copy
+
+
+@pytest.fixture
+def run_head(tmp_dir, dvc):
+    """Output first line of each file to different file with '-1' appended.
+    Useful for tracking multiple outputs/dependencies which are not a copy
+    of each others.
+    """
+    tmp_dir.gen(
+        {
+            "head.py": dedent(
+                """
+        import sys
+        for file in sys.argv[1:]:
+            with open(file) as f, open(file +"-1","w+") as w:
+                w.write(f.readline())
+        """
+            )
+        }
+    )
+    script = os.path.abspath(tmp_dir / "head.py")
+
+    def run(*args, **run_kwargs):
+        return dvc.run(
+            **{
+                "cmd": "python {} {}".format(script, " ".join(args)),
+                "outs": [dep + "-1" for dep in args],
+                "deps": list(args),
+                **run_kwargs,
+            }
+        )
+
+    return run
 
 
 @pytest.fixture
@@ -290,14 +321,14 @@ def git_dir(make_tmp_dir):
 def setup_remote(make_tmp_dir):
     def create(repo, url=None, name="upstream", default=True):
         if not url:
-            url = fspath(make_tmp_dir("local_remote"))
+            url = os.fspath(make_tmp_dir("local_remote"))
         with repo.config.edit() as conf:
             conf["remote"][name] = {"url": url}
             if default:
                 conf["core"]["remote"] = name
 
         repo.scm.add(repo.config.files["repo"])
-        repo.scm.commit("add '{}' remote".format(name))
+        repo.scm.commit(f"add '{name}' remote")
         return url
 
     return create

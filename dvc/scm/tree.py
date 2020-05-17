@@ -1,10 +1,8 @@
 import os
 import stat
 
-from dvc.compat import fspath
 
-
-class BaseTree(object):
+class BaseTree:
     """Abstract class to represent access to files"""
 
     @property
@@ -65,8 +63,6 @@ class WorkingTree(BaseTree):
         - no support for symlinks
         - it could raise exceptions, there is no onerror argument
         """
-
-        top = fspath(top)
 
         def onerror(e):
             raise e

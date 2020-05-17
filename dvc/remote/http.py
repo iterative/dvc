@@ -185,7 +185,7 @@ class HTTPRemote(BaseRemote):
             return res
 
         except requests.exceptions.RequestException:
-            raise DvcException("could not perform a {} request".format(method))
+            raise DvcException(f"could not perform a {method} request")
 
     def gc(self):
         raise NotImplementedError

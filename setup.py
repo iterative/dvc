@@ -93,7 +93,7 @@ azure = ["azure-storage-blob==2.1.0"]
 oss = ["oss2==2.6.1"]
 ssh = ["paramiko>=2.5.0"]
 hdfs = [
-    # pyarrow-0.16.0 import fails on 3.5 and 3.7 (works on 3.6 though)
+    # pyarrow-0.16.0 import fails on 3.7 (works on 3.6 though)
     # due to: https://issues.apache.org/jira/browse/ARROW-7852
     "pyarrow==0.15.1; python_version < '3.8'",
     "pyarrow==0.16.0; python_version == '3.8'",
@@ -159,11 +159,10 @@ setup(
     },
     keywords="data-science data-version-control machine-learning git"
     " developer-tools reproducibility collaboration ai",
-    python_requires=">=3.5",
+    python_requires=">=3.6",
     classifiers=[
         "Development Status :: 4 - Beta",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",

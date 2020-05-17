@@ -3,7 +3,6 @@ import posixpath
 
 import configobj
 
-from dvc.compat import fspath
 from dvc.main import main
 from dvc.remote import GDriveRemote
 from dvc.repo import Repo
@@ -39,13 +38,13 @@ def test_relative_user_credentials_file_config_setting(tmp_dir, dvc):
     )
 
     # We need to load repo again to test updates to the config
-    str_path = fspath(tmp_dir)
+    str_path = os.fspath(tmp_dir)
     repo = Repo(str_path)
 
     # Check that in config we got the path relative to the config file itself
     # Also, we store posix path even on Windows
     config = configobj.ConfigObj(repo.config.files["repo"])
-    assert config['remote "{}"'.format(remote_name)][
+    assert config[f'remote "{remote_name}"'][
         "gdrive_user_credentials_file"
     ] == posixpath.join("..", "secrets", "credentials.json")
 

@@ -34,7 +34,7 @@ class TestConfigCLI(TestDvc):
     def _do_test(self, local=False):
         section = "core"
         field = "analytics"
-        section_field = "{}.{}".format(section, field)
+        section_field = f"{section}.{field}"
         value = "True"
         newvalue = "False"
 

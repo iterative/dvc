@@ -29,7 +29,7 @@ class DvcTree(BaseTree):
             raise FileNotFoundError from exc
 
         if len(outs) != 1 or outs[0].is_dir_checksum:
-            raise IOError(errno.EISDIR)
+            raise OSError(errno.EISDIR)
 
         out = outs[0]
         # temporary hack to make cache use WorkingTree and not GitTree, because

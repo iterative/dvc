@@ -9,7 +9,6 @@ import pytest
 from flaky.flaky_decorator import flaky
 
 from dvc.cache import NamedCache
-from dvc.compat import fspath
 from dvc.data_cloud import DataCloud
 from dvc.external_repo import clean_repos
 from dvc.main import main
@@ -88,9 +87,7 @@ class TestDataCloudBase(TestDvc):
 
     def _ensure_should_run(self):
         if not self.should_test():
-            raise SkipTest(
-                "Test {} is disabled".format(self.__class__.__name__)
-            )
+            raise SkipTest(f"Test {self.__class__.__name__} is disabled")
 
     def _setup_cloud(self):
         self._ensure_should_run()
@@ -168,7 +165,7 @@ class TestDataCloudBase(TestDvc):
             self.cloud.pull(info)
             self.assertTrue(os.path.exists(cache))
             self.assertTrue(os.path.isfile(cache))
-            with open(cache, "r") as fd:
+            with open(cache) as fd:
                 self.assertEqual(fd.read(), self.FOO_CONTENTS)
 
             self.cloud.pull(info_dir)
@@ -367,7 +364,7 @@ class TestDataCloudCLIBase(TestDvc):
         self.assertTrue(os.path.isfile(self.FOO))
         self.assertTrue(os.path.isdir(self.DATA_DIR))
 
-        with open(cache, "r") as fd:
+        with open(cache) as fd:
             self.assertEqual(fd.read(), self.FOO_CONTENTS)
         self.assertTrue(os.path.isfile(cache_dir))
 
@@ -392,9 +389,7 @@ class TestDataCloudCLIBase(TestDvc):
 
     def test(self):
         if not self.should_test():
-            raise SkipTest(
-                "Test {} is disabled".format(self.__class__.__name__)
-            )
+            raise SkipTest(f"Test {self.__class__.__name__} is disabled")
         self._test()
 
 
@@ -725,8 +720,8 @@ def test_pull_git_imports(request, tmp_dir, dvc, scm, erepo):
         erepo.scm_gen({"dir": {"bar": "bar"}}, commit="second")
         erepo.scm_gen("foo", "foo", commit="first")
 
-    dvc.imp(fspath(erepo), "foo")
-    dvc.imp(fspath(erepo), "dir", out="new_dir", rev="HEAD~")
+    dvc.imp(os.fspath(erepo), "foo")
+    dvc.imp(os.fspath(erepo), "dir", out="new_dir", rev="HEAD~")
 
     assert dvc.pull()["fetched"] == 0
 
@@ -752,8 +747,8 @@ def test_pull_external_dvc_imports(tmp_dir, dvc, scm, erepo_dir):
         os.remove("foo")
         shutil.rmtree("dir")
 
-    dvc.imp(fspath(erepo_dir), "foo")
-    dvc.imp(fspath(erepo_dir), "dir", out="new_dir", rev="HEAD~")
+    dvc.imp(os.fspath(erepo_dir), "foo")
+    dvc.imp(os.fspath(erepo_dir), "dir", out="new_dir", rev="HEAD~")
 
     assert dvc.pull()["fetched"] == 0
 

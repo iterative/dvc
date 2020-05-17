@@ -2,7 +2,6 @@ import os
 
 import pytest
 
-from dvc.compat import fspath, fspath_py35
 from dvc.dvcfile import Dvcfile
 
 
@@ -14,7 +13,7 @@ def test_update_import(tmp_dir, dvc, erepo_dir, cached):
         gen("version", "branch", "add version file")
         old_rev = erepo_dir.scm.get_rev()
 
-    stage = dvc.imp(fspath(erepo_dir), "version", "version", rev="branch")
+    stage = dvc.imp(os.fspath(erepo_dir), "version", "version", rev="branch")
 
     assert (tmp_dir / "version").read_text() == "branch"
     assert stage.deps[0].def_repo["rev_lock"] == old_rev
@@ -39,13 +38,13 @@ def test_update_import_after_remote_updates_to_dvc(tmp_dir, dvc, erepo_dir):
         erepo_dir.scm_gen("version", "branch", commit="add version file")
         old_rev = erepo_dir.scm.get_rev()
 
-    stage = dvc.imp(fspath(erepo_dir), "version", "version", rev="branch")
+    stage = dvc.imp(os.fspath(erepo_dir), "version", "version", rev="branch")
 
     imported = tmp_dir / "version"
     assert imported.is_file()
     assert imported.read_text() == "branch"
     assert stage.deps[0].def_repo == {
-        "url": fspath(erepo_dir),
+        "url": os.fspath(erepo_dir),
         "rev": "branch",
         "rev_lock": old_rev,
     }
@@ -74,7 +73,7 @@ def test_update_import_after_remote_updates_to_dvc(tmp_dir, dvc, erepo_dir):
 
     stage = Dvcfile(dvc, stage.path).stage
     assert stage.deps[0].def_repo == {
-        "url": fspath(erepo_dir),
+        "url": os.fspath(erepo_dir),
         "rev": "branch",
         "rev_lock": new_rev,
     }
@@ -85,7 +84,7 @@ def test_update_before_and_after_dvc_init(tmp_dir, dvc, git_dir):
         git_dir.scm_gen("file", "first version", commit="first version")
         old_rev = git_dir.scm.get_rev()
 
-    stage = dvc.imp(fspath(git_dir), "file", "file")
+    stage = dvc.imp(os.fspath(git_dir), "file", "file")
 
     with git_dir.chdir():
         git_dir.init(dvc=True)
@@ -100,7 +99,7 @@ def test_update_before_and_after_dvc_init(tmp_dir, dvc, git_dir):
         "file.dvc": [
             {
                 "changed deps": {
-                    "file ({})".format(fspath(git_dir)): "update available"
+                    "file ({})".format(os.fspath(git_dir)): "update available"
                 }
             }
         ]
@@ -118,7 +117,7 @@ def test_update_import_url(tmp_dir, dvc, tmp_path_factory):
     src.write_text("file content")
 
     dst = tmp_dir / "imported_file"
-    stage = dvc.imp_url(fspath(src), fspath(dst))
+    stage = dvc.imp_url(os.fspath(src), os.fspath(dst))
 
     assert dst.is_file()
     assert dst.read_text() == "file content"
@@ -138,7 +137,7 @@ def test_update_rev(tmp_dir, dvc, scm, git_dir):
     with git_dir.chdir():
         git_dir.scm_gen({"foo": "foo"}, commit="first")
 
-    dvc.imp(fspath(git_dir), "foo")
+    dvc.imp(os.fspath(git_dir), "foo")
     assert (tmp_dir / "foo.dvc").exists()
 
     with git_dir.chdir(), git_dir.branch("branch1", new=True):
@@ -151,20 +150,20 @@ def test_update_rev(tmp_dir, dvc, scm, git_dir):
 
     stage = dvc.update(["foo.dvc"], rev="branch1")[0]
     assert stage.deps[0].def_repo == {
-        "url": fspath(git_dir),
+        "url": os.fspath(git_dir),
         "rev": "branch1",
         "rev_lock": branch1_head,
     }
-    with open(fspath_py35(tmp_dir / "foo")) as f:
+    with open(tmp_dir / "foo") as f:
         assert "foobar" == f.read()
 
     stage = dvc.update(["foo.dvc"], rev="branch2")[0]
     assert stage.deps[0].def_repo == {
-        "url": fspath(git_dir),
+        "url": os.fspath(git_dir),
         "rev": "branch2",
         "rev_lock": branch2_head,
     }
-    with open(fspath_py35(tmp_dir / "foo")) as f:
+    with open(tmp_dir / "foo") as f:
         assert "foobar foo" == f.read()
 
 
@@ -178,16 +177,19 @@ def test_update_recursive(tmp_dir, dvc, erepo_dir):
 
     tmp_dir.gen({"dir": {"subdir": {}}})
     stage1 = dvc.imp(
-        fspath(erepo_dir), "foo1", os.path.join("dir", "foo1"), rev="branch",
+        os.fspath(erepo_dir),
+        "foo1",
+        os.path.join("dir", "foo1"),
+        rev="branch",
     )
     stage2 = dvc.imp(
-        fspath(erepo_dir),
+        os.fspath(erepo_dir),
         "foo2",
         os.path.join("dir", "subdir", "foo2"),
         rev="branch",
     )
     stage3 = dvc.imp(
-        fspath(erepo_dir),
+        os.fspath(erepo_dir),
         "foo3",
         os.path.join("dir", "subdir", "foo3"),
         rev="branch",

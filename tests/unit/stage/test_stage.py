@@ -23,7 +23,7 @@ def test_stage_checksum():
     stage = Stage(None, "path")
 
     with mock.patch.object(stage, "dumpd", return_value=TEST_STAGE_DICT):
-        assert stage._compute_md5() == "e9521a22111493406ea64a88cda63e0b"
+        assert stage.compute_md5() == "e9521a22111493406ea64a88cda63e0b"
 
 
 def test_wdir_default_ignored():
@@ -31,7 +31,7 @@ def test_wdir_default_ignored():
     d = dict(TEST_STAGE_DICT, wdir=".")
 
     with mock.patch.object(stage, "dumpd", return_value=d):
-        assert stage._compute_md5() == "e9521a22111493406ea64a88cda63e0b"
+        assert stage.compute_md5() == "e9521a22111493406ea64a88cda63e0b"
 
 
 def test_wdir_non_default_is_not_ignored():
@@ -39,7 +39,7 @@ def test_wdir_non_default_is_not_ignored():
     d = dict(TEST_STAGE_DICT, wdir="..")
 
     with mock.patch.object(stage, "dumpd", return_value=d):
-        assert stage._compute_md5() == "2ceba15e87f6848aa756502c1e6d24e9"
+        assert stage.compute_md5() == "2ceba15e87f6848aa756502c1e6d24e9"
 
 
 def test_meta_ignored():
@@ -47,7 +47,7 @@ def test_meta_ignored():
     d = dict(TEST_STAGE_DICT, meta={"author": "Suor"})
 
     with mock.patch.object(stage, "dumpd", return_value=d):
-        assert stage._compute_md5() == "e9521a22111493406ea64a88cda63e0b"
+        assert stage.compute_md5() == "e9521a22111493406ea64a88cda63e0b"
 
 
 class TestPathConversion(TestCase):
@@ -142,7 +142,7 @@ def test_stage_cache(tmp_dir, dvc, run_copy, mocker):
     assert os.listdir(cache_dir) == [os.path.basename(cache_file)]
     assert os.path.isfile(cache_file)
 
-    run_spy = mocker.spy(stage, "_run")
+    run_spy = mocker.patch("dvc.stage.run.cmd_run")
     checkout_spy = mocker.spy(stage, "checkout")
     with dvc.lock, dvc.state:
         stage.run()
