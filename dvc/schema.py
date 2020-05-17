@@ -48,7 +48,15 @@ SINGLE_PIPELINE_STAGE_SCHEMA = {
             Any(str, {str: {BaseOutput.PARAM_CACHE: bool}})
         ],
         Optional(StageParams.PARAM_PLOTS): [
-            Any(str, {str: {BaseOutput.PARAM_CACHE: bool}})
+            Any(
+                str,
+                {
+                    str: {
+                        BaseOutput.PARAM_CACHE: bool,
+                        BaseOutput.PARAM_PLOT_TEMPLATE: str,
+                    }
+                },
+            )
         ],
     }
 }

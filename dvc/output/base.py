@@ -51,6 +51,7 @@ class BaseOutput:
     PARAM_METRIC_TYPE = "type"
     PARAM_METRIC_XPATH = "xpath"
     PARAM_PLOT = "plot"
+    PARAM_PLOT_TEMPLATE = "template"
     PARAM_PERSIST = "persist"
 
     METRIC_SCHEMA = Any(

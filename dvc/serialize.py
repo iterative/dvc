@@ -36,8 +36,10 @@ def _get_out(out):
     res = OrderedDict()
     if not out.use_cache:
         res[PARAM_CACHE] = False
-    elif out.persist:
+    if out.persist:
         res[PARAM_PERSIST] = True
+    if out.plot and isinstance(out.plot, dict):
+        res.update(out.plot)
     return out.def_path if not res else {out.def_path: res}
 
 
