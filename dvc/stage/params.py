@@ -11,6 +11,8 @@ class StageParams:
     PARAM_META = "meta"
     PARAM_ALWAYS_CHANGED = "always_changed"
     PARAM_PARAMS = "params"
+    PARAM_METRICS = "metrics"
+    PARAM_PLOTS = "plots"
 
 
 class OutputParams(Enum):

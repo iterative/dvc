@@ -36,10 +36,6 @@ def _get_out(out):
     res = OrderedDict()
     if not out.use_cache:
         res[PARAM_CACHE] = False
-    if out.metric:
-        res[PARAM_METRIC] = True
-    elif out.plot:
-        res[PARAM_PLOT] = True
     elif out.persist:
         res[PARAM_PERSIST] = True
     return out.def_path if not res else {out.def_path: res}
@@ -95,7 +91,20 @@ def to_pipeline_file(stage: "PipelineStage"):
         (stage.PARAM_WDIR, resolve_wdir(stage.wdir, stage.path)),
         (stage.PARAM_DEPS, sorted([d.def_path for d in deps])),
         (stage.PARAM_PARAMS, serialized_params),
-        (PARAM_OUTS, _get_outs(stage.outs)),
+        (
+            PARAM_OUTS,
+            _get_outs(
+                [out for out in stage.outs if not (out.metric or out.plot)]
+            ),
+        ),
+        (
+            stage.PARAM_METRICS,
+            _get_outs([out for out in stage.outs if out.metric]),
+        ),
+        (
+            stage.PARAM_PLOTS,
+            _get_outs([out for out in stage.outs if out.plot]),
+        ),
         (stage.PARAM_LOCKED, stage.locked),
         (stage.PARAM_ALWAYS_CHANGED, stage.always_changed),
     ]

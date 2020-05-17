@@ -122,7 +122,7 @@ class StageLoader(Mapping):
         )
 
     @classmethod
-    def _load_outs(cls, stage, data):
+    def _load_outs(cls, stage, data, **kwargs):
         d = []
         for key in data:
             extra_kwargs = {}
@@ -133,7 +133,7 @@ class StageLoader(Mapping):
                 extra_kwargs = key[path]
             else:
                 continue
-            d.append({"path": path, **extra_kwargs})
+            d.append({"path": path, **extra_kwargs, **kwargs})
         stage.outs.extend(output.loadd_from(stage, d))
 
     @classmethod
@@ -152,6 +152,8 @@ class StageLoader(Mapping):
         stage.deps, stage.outs = [], []
 
         cls._load_outs(stage, stage_data.get("outs", []))
+        cls._load_outs(stage, stage_data.get("metrics", []), metric=True)
+        cls._load_outs(stage, stage_data.get("plots", []), plot=True)
         cls._load_deps(stage, stage_data.get("deps", []))
         cls._load_params(stage, stage_data.get("params", []))
 
