@@ -27,10 +27,14 @@ def _remove_whitespace(value):
     return value.replace(" ", "").replace("\n", "")
 
 
-def _run_with_metric(tmp_dir, metric_filename, commit=None, tag=None):
-    tmp_dir.dvc.run(metrics_no_cache=[metric_filename], single_stage=True)
+def _run_with(tmp_dir, commit=None, tag=None, **kwargs):
+    stage = tmp_dir.dvc.run(single_stage=True, **kwargs)
     if hasattr(tmp_dir.dvc, "scm"):
-        tmp_dir.dvc.scm.add([metric_filename, metric_filename + ".dvc"])
+        files = [stage.path]
+        files += [
+            os.fspath(out.path_info) for out in stage.outs if not out.use_cache
+        ]
+        tmp_dir.dvc.scm.add(files)
         if commit:
             tmp_dir.dvc.scm.commit(commit)
         if tag:
@@ -60,15 +64,14 @@ def test_plot_csv_one_column(tmp_dir, scm, dvc):
     # no header
     metric = [{"val": 2}, {"val": 3}]
     _write_csv(metric, "metric.csv", header=False)
-    _run_with_metric(tmp_dir, metric_filename="metric.csv")
+    _run_with(tmp_dir, plots_no_cache=["metric.csv"])
 
     plot_string = dvc.plots.show(
-        "metric.csv",
         csv_header=False,
         x_title="x_title",
         y_title="y_title",
         title="mytitle",
-    )
+    )["metric.csv"]
 
     plot_content = json.loads(plot_string)
     assert plot_content["title"] == "mytitle"
@@ -88,9 +91,9 @@ def test_plot_csv_multiple_columns(tmp_dir, scm, dvc):
         OrderedDict([("first_val", 200), ("second_val", 300), ("val", 3)]),
     ]
     _write_csv(metric, "metric.csv")
-    _run_with_metric(tmp_dir, metric_filename="metric.csv")
+    _run_with(tmp_dir, plots_no_cache=["metric.csv"])
 
-    plot_string = dvc.plots.show("metric.csv")
+    plot_string = dvc.plots.show()["metric.csv"]
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
@@ -119,11 +122,11 @@ def test_plot_csv_choose_axes(tmp_dir, scm, dvc):
         OrderedDict([("first_val", 200), ("second_val", 300), ("val", 3)]),
     ]
     _write_csv(metric, "metric.csv")
-    _run_with_metric(tmp_dir, metric_filename="metric.csv")
+    _run_with(tmp_dir, plots_no_cache=["metric.csv"])
 
-    plot_string = dvc.plots.show(
-        "metric.csv", x_field="first_val", y_field="second_val"
-    )
+    plot_string = dvc.plots.show(x_field="first_val", y_field="second_val")[
+        "metric.csv"
+    ]
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
@@ -147,9 +150,9 @@ def test_plot_csv_choose_axes(tmp_dir, scm, dvc):
 def test_plot_json_single_val(tmp_dir, scm, dvc):
     metric = [{"val": 2}, {"val": 3}]
     _write_json(tmp_dir, metric, "metric.json")
-    _run_with_metric(tmp_dir, "metric.json", "first run")
+    _run_with(tmp_dir, plots_no_cache=["metric.json"], commit="first run")
 
-    plot_string = dvc.plots.show("metric.json")
+    plot_string = dvc.plots.show()["metric.json"]
 
     plot_json = json.loads(plot_string)
     assert plot_json["data"]["values"] == [
@@ -166,9 +169,9 @@ def test_plot_json_multiple_val(tmp_dir, scm, dvc):
         {"first_val": 200, "val": 3},
     ]
     _write_json(tmp_dir, metric, "metric.json")
-    _run_with_metric(tmp_dir, "metric.json", "first run")
+    _run_with(tmp_dir, plots_no_cache=["metric.json"], commit="first run")
 
-    plot_string = dvc.plots.show("metric.json")
+    plot_string = dvc.plots.show()["metric.json"]
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
@@ -195,14 +198,11 @@ def test_plot_confusion(tmp_dir, dvc):
         {"predicted": "A", "actual": "A"},
     ]
     _write_json(tmp_dir, confusion_matrix, "metric.json")
-    _run_with_metric(tmp_dir, "metric.json", "first run")
+    _run_with(tmp_dir, plots_no_cache=["metric.json"], commit="first run")
 
     plot_string = dvc.plots.show(
-        datafile="metric.json",
-        template="confusion",
-        x_field="predicted",
-        y_field="actual",
-    )
+        template="confusion", x_field="predicted", y_field="actual",
+    )["metric.json"]
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
@@ -216,19 +216,21 @@ def test_plot_confusion(tmp_dir, dvc):
 def test_plot_multiple_revs_default(tmp_dir, scm, dvc):
     metric_1 = [{"y": 2}, {"y": 3}]
     _write_json(tmp_dir, metric_1, "metric.json")
-    _run_with_metric(tmp_dir, "metric.json", "init", "v1")
+    _run_with(tmp_dir, plots_no_cache=["metric.json"], commit="init", tag="v1")
 
     metric_2 = [{"y": 3}, {"y": 5}]
     _write_json(tmp_dir, metric_2, "metric.json")
-    _run_with_metric(tmp_dir, "metric.json", "second", "v2")
+    _run_with(
+        tmp_dir, plots_no_cache=["metric.json"], commit="second", tag="v2"
+    )
 
     metric_3 = [{"y": 5}, {"y": 6}]
     _write_json(tmp_dir, metric_3, "metric.json")
-    _run_with_metric(tmp_dir, "metric.json", "third")
+    _run_with(tmp_dir, plots_no_cache=["metric.json"], commit="third")
 
-    plot_string = dvc.plots.show(
-        "metric.json", fields={"y"}, revisions=["HEAD", "v2", "v1"],
-    )
+    plot_string = dvc.plots.show(fields={"y"}, revs=["HEAD", "v2", "v1"],)[
+        "metric.json"
+    ]
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
@@ -248,21 +250,21 @@ def test_plot_multiple_revs(tmp_dir, scm, dvc):
 
     metric_1 = [{"y": 2}, {"y": 3}]
     _write_json(tmp_dir, metric_1, "metric.json")
-    _run_with_metric(tmp_dir, "metric.json", "init", "v1")
+    _run_with(tmp_dir, plots_no_cache=["metric.json"], commit="init", tag="v1")
 
     metric_2 = [{"y": 3}, {"y": 5}]
     _write_json(tmp_dir, metric_2, "metric.json")
-    _run_with_metric(tmp_dir, "metric.json", "second", "v2")
+    _run_with(
+        tmp_dir, plots_no_cache=["metric.json"], commit="second", tag="v2"
+    )
 
     metric_3 = [{"y": 5}, {"y": 6}]
     _write_json(tmp_dir, metric_3, "metric.json")
-    _run_with_metric(tmp_dir, "metric.json", "third")
+    _run_with(tmp_dir, plots_no_cache=["metric.json"], commit="third")
 
     plot_string = dvc.plots.show(
-        "metric.json",
-        template="template.json",
-        revisions=["HEAD", "v2", "v1"],
-    )
+        template="template.json", revs=["HEAD", "v2", "v1"],
+    )["metric.json"]
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
@@ -283,11 +285,16 @@ def test_plot_even_if_metric_missing(tmp_dir, scm, dvc, caplog):
 
     metric = [{"y": 2}, {"y": 3}]
     _write_json(tmp_dir, metric, "metric.json")
-    _run_with_metric(tmp_dir, "metric.json", "there is metric", "v2")
+    _run_with(
+        tmp_dir,
+        plots_no_cache=["metric.json"],
+        commit="there is metric",
+        tag="v2",
+    )
 
     caplog.clear()
     with caplog.at_level(logging.WARNING, "dvc"):
-        plot_string = dvc.plots.show("metric.json", revisions=["v1", "v2"])
+        plot_string = dvc.plots.show(revs=["v1", "v2"])["metric.json"]
         assert (
             "File 'metric.json' was not found at: 'v1'. "
             "It will not be plotted." in caplog.text
@@ -312,7 +319,7 @@ def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc, caplog):
     with pytest.raises(NoMetricInHistoryError) as error, caplog.at_level(
         logging.WARNING, "dvc"
     ):
-        dvc.plots.show("metric.json", revisions=["v1"])
+        dvc.plots.show(datafile="metric.json", revs=["v1"])
 
         # do not warn if none found
         assert len(caplog.messages) == 0
@@ -332,11 +339,11 @@ def custom_template(tmp_dir, dvc):
 def test_custom_template(tmp_dir, scm, dvc, custom_template):
     metric = [{"a": 1, "b": 2}, {"a": 2, "b": 3}]
     _write_json(tmp_dir, metric, "metric.json")
-    _run_with_metric(tmp_dir, "metric.json", "init", "v1")
+    _run_with(tmp_dir, plots_no_cache=["metric.json"], commit="init", tag="v1")
 
     plot_string = dvc.plots.show(
-        "metric.json", os.fspath(custom_template), x_field="a", y_field="b"
-    )
+        template=os.fspath(custom_template), x_field="a", y_field="b"
+    )["metric.json"]
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
@@ -360,14 +367,14 @@ def test_custom_template_with_specified_data(
 
     metric = [{"a": 1, "b": 2}, {"a": 2, "b": 3}]
     _write_json(tmp_dir, metric, "metric.json")
-    _run_with_metric(tmp_dir, "metric.json", "init", "v1")
+    _run_with(tmp_dir, outs_no_cache=["metric.json"], commit="init", tag="v1")
 
     plot_string = dvc.plots.show(
         datafile=None,
         template=os.fspath(custom_template),
         x_field="a",
         y_field="b",
-    )
+    )["metric.json"]
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
@@ -391,11 +398,11 @@ def test_plot_override_specified_data_source(tmp_dir, scm, dvc):
 
     metric = [{"a": 1, "b": 2}, {"a": 2, "b": 3}]
     _write_json(tmp_dir, metric, "metric2.json")
-    _run_with_metric(tmp_dir, "metric2.json", "init", "v1")
+    _run_with(tmp_dir, outs_no_cache=["metric2.json"], commit="init", tag="v1")
 
     plot_string = dvc.plots.show(
         datafile="metric2.json", template="newtemplate.json", x_field="a"
-    )
+    )["metric2.json"]
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
@@ -413,7 +420,7 @@ def test_should_raise_on_no_template_and_datafile(tmp_dir, dvc):
 
 def test_should_raise_on_no_template(tmp_dir, dvc):
     with pytest.raises(TemplateNotFoundError):
-        dvc.plots.show("metric.json", "non_existing_template.json")
+        dvc.plots.show("metric.json", template="non_existing_template.json")
 
 
 def test_plot_no_data(tmp_dir, dvc):
@@ -430,15 +437,14 @@ def test_plot_wrong_metric_type(tmp_dir, scm, dvc):
 def test_plot_choose_columns(tmp_dir, scm, dvc, custom_template):
     metric = [{"a": 1, "b": 2, "c": 3}, {"a": 2, "b": 3, "c": 4}]
     _write_json(tmp_dir, metric, "metric.json")
-    _run_with_metric(tmp_dir, "metric.json", "init", "v1")
+    _run_with(tmp_dir, plots_no_cache=["metric.json"], commit="init", tag="v1")
 
     plot_string = dvc.plots.show(
-        "metric.json",
-        os.fspath(custom_template),
+        template=os.fspath(custom_template),
         fields={"b", "c"},
         x_field="b",
         y_field="c",
-    )
+    )["metric.json"]
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
@@ -452,9 +458,9 @@ def test_plot_choose_columns(tmp_dir, scm, dvc, custom_template):
 def test_plot_default_choose_column(tmp_dir, scm, dvc):
     metric = [{"a": 1, "b": 2, "c": 3}, {"a": 2, "b": 3, "c": 4}]
     _write_json(tmp_dir, metric, "metric.json")
-    _run_with_metric(tmp_dir, "metric.json", "init", "v1")
+    _run_with(tmp_dir, plots_no_cache=["metric.json"], commit="init", tag="v1")
 
-    plot_string = dvc.plots.show("metric.json", fields={"b"})
+    plot_string = dvc.plots.show(fields={"b"})["metric.json"]
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
@@ -468,9 +474,9 @@ def test_plot_default_choose_column(tmp_dir, scm, dvc):
 def test_plot_embed(tmp_dir, scm, dvc):
     metric = [{"val": 2}, {"val": 3}]
     _write_json(tmp_dir, metric, "metric.json")
-    _run_with_metric(tmp_dir, "metric.json", "first run")
+    _run_with(tmp_dir, plots_no_cache=["metric.json"], commit="first run")
 
-    plot_string = dvc.plots.show("metric.json", embed=True, y_field="val")
+    plot_string = dvc.plots.show(embed=True, y_field="val")["metric.json"]
 
     page_content = BeautifulSoup(plot_string)
     data_dump = json.dumps(
@@ -491,9 +497,9 @@ def test_plot_yaml(tmp_dir, scm, dvc):
     with open("metric.yaml", "w") as fobj:
         yaml.dump(metric, fobj)
 
-    _run_with_metric(tmp_dir, metric_filename="metric.yaml")
+    _run_with(tmp_dir, plots_no_cache=["metric.yaml"])
 
-    plot_string = dvc.plots.show("metric.yaml",)
+    plot_string = dvc.plots.show()["metric.yaml"]
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
@@ -505,7 +511,7 @@ def test_plot_yaml(tmp_dir, scm, dvc):
 def test_raise_on_wrong_field(tmp_dir, scm, dvc):
     metric = [{"val": 2}, {"val": 3}]
     _write_json(tmp_dir, metric, "metric.json")
-    _run_with_metric(tmp_dir, "metric.json", "first run")
+    _run_with(tmp_dir, plots_no_cache=["metric.json"], commit="first run")
 
     with pytest.raises(NoFieldInDataError):
         dvc.plots.show("metric.json", x_field="no_val")

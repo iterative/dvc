@@ -43,7 +43,7 @@ def test_metrics_diff(dvc, mocker):
         cmd.repo,
         datafile="datafile",
         template="template",
-        revisions=["HEAD", "tag1", "tag2"],
+        revs=["HEAD", "tag1", "tag2"],
         fields={"column1", "column2"},
         path=None,
         embed=False,

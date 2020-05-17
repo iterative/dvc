@@ -104,7 +104,7 @@ def fill_template(
     if len(template_data) == 0:
         raise NoDataForTemplateError(template_path)
 
-    return Template.fill(
+    content = Template.fill(
         template_path,
         template_data,
         priority_datafile=datafile,
@@ -112,6 +112,10 @@ def fill_template(
         y_field=y_field,
         **kwargs
     )
+
+    path = datafile or ",".join(template_datafiles)
+
+    return path, content
 
 
 def _infer_y_field(rev_data_points, x_field):
@@ -123,28 +127,28 @@ def _infer_y_field(rev_data_points, x_field):
     return y_field
 
 
-def show(
-    repo, datafile=None, template=None, revisions=None, embed=False, **kwargs
+def _show(
+    repo, datafile=None, template=None, revs=None, embed=False, **kwargs
 ):
-    if revisions is None:
+    if revs is None:
         from .data import WORKSPACE_REVISION_NAME
 
-        revisions = [WORKSPACE_REVISION_NAME]
+        revs = [WORKSPACE_REVISION_NAME]
 
     if not datafile and not template:
         raise NoDataOrTemplateProvided()
 
     template_path = _evaluate_templatepath(repo, template)
 
-    plot_content = fill_template(
-        repo, datafile, template_path, revisions, **kwargs
+    plot_datafile, plot_content = fill_template(
+        repo, datafile, template_path, revs, **kwargs
     )
 
     if embed:
         div = DIV_HTML.format(id="plot", vega_json=plot_content)
         plot_content = PAGE_HTML.format(divs=div)
 
-    return plot_content
+    return plot_datafile, plot_content
 
 
 def _parse_template(template_path, priority_datafile):
@@ -164,3 +168,38 @@ def _parse_template(template_path, priority_datafile):
         Template.X_ANCHOR in tempalte_content,
         Template.Y_ANCHOR in tempalte_content,
     )
+
+
+def _collect_plots(repo):
+    plots = []
+
+    for stage in repo.stages:
+        for out in stage.outs:
+            if out.plot:
+                plots.append(str(out))
+
+    return plots
+
+
+def show(repo, datafile=None, revs=None, **kwargs) -> dict:
+    if datafile:
+        return {
+            datafile: _show(repo, datafile=datafile, revs=revs, **kwargs)[1]
+        }
+
+    if not revs:
+        plots = _collect_plots(repo)
+    else:
+        plots = set()
+        for rev in repo.brancher(revs=revs):
+            plots.update(_collect_plots(repo))
+
+    if not plots:
+        datafile, plot = _show(repo, datafile=None, revs=revs, **kwargs)
+        return {datafile: plot}
+
+    ret = {}
+    for plot in plots:
+        ret[plot] = _show(repo, datafile=plot, revs=revs, **kwargs)[1]
+
+    return ret
