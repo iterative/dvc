@@ -1,14 +1,34 @@
 import errno
+import logging
 import os
 
 from dvc.exceptions import OutputNotFoundError
 from dvc.path_info import PathInfo
+from dvc.remote.base import RemoteActionNotImplemented
+from dvc.repo import Repo
 from dvc.scm.tree import BaseTree, WorkingTree
+
+logger = logging.getLogger(__name__)
 
 
 class DvcTree(BaseTree):
-    def __init__(self, repo):
+    """DVC repo tree.
+
+    Args:
+        repo: DVC repo.
+        fetch: if True, uncached DVC outs will be fetched on `open()`.
+        stream: if True, uncached DVC outs will be streamed directly from
+            remote on `open()`.
+
+    `stream` takes precedence over `fetch`. If `stream` is enabled and
+    a remote does not support streaming, uncached DVC outs will be fetched
+    as a fallback.
+    """
+
+    def __init__(self, repo: Repo, fetch=False, stream=False):
         self.repo = repo
+        self.fetch = fetch
+        self.stream = stream
 
     def _find_outs(self, path, *args, **kwargs):
         outs = self.repo.find_outs_by_path(path, *args, **kwargs)
@@ -22,7 +42,7 @@ class DvcTree(BaseTree):
 
         return outs
 
-    def open(self, path, mode="r", encoding="utf-8"):
+    def open(self, path, mode="r", encoding="utf-8", remote=None):
         try:
             outs = self._find_outs(path, strict=False)
         except OutputNotFoundError as exc:
@@ -38,7 +58,22 @@ class DvcTree(BaseTree):
         self.repo.tree = WorkingTree(self.repo.root_dir)
         try:
             if out.changed_cache():
-                raise FileNotFoundError
+                if not self.fetch and not self.stream:
+                    raise FileNotFoundError
+
+                remote_obj = self.repo.cloud.get_remote(remote)
+                if self.stream:
+                    try:
+                        remote_info = remote_obj.checksum_to_path_info(
+                            out.checksum
+                        )
+                        return remote_obj.open(
+                            remote_info, mode=mode, encoding=encoding
+                        )
+                    except RemoteActionNotImplemented:
+                        pass
+                cache_info = out.get_used_cache(remote=remote)
+                self.repo.cloud.pull(cache_info, remote=remote)
         finally:
             self.repo.tree = saved_tree
 
@@ -78,14 +113,15 @@ class DvcTree(BaseTree):
                 continue
 
             name = key[root_len]
-            if len(key) > root_len + 1 or out.is_dir_checksum:
+            if len(key) > root_len + 1 or (out and out.is_dir_checksum):
                 dirs.add(name)
                 continue
 
             files.append(name)
 
         if topdown:
-            yield root.fspath, list(dirs), files
+            dirs = list(dirs)
+            yield root.fspath, dirs, files
 
             for dname in dirs:
                 yield from self._walk(root / dname, trie)
@@ -110,6 +146,14 @@ class DvcTree(BaseTree):
 
         for out in outs:
             trie[out.path_info.parts] = out
+
+            if out.is_dir_checksum and (self.fetch or self.stream):
+                # will pull dir cache if needed
+                cache = out.collect_used_dir_cache()
+                for _, names in cache.scheme_names(out.scheme):
+                    for name in names:
+                        path_info = out.path_info.parent / name
+                        trie[path_info.parts] = None
 
         yield from self._walk(root, trie, topdown=topdown)
 
