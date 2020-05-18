@@ -482,9 +482,9 @@ class Repo:
 
     @contextmanager
     def open_by_relpath(self, path, remote=None, mode="r", encoding=None):
-        tree = RepoTree(self, stream=True)
-
         """Opens a specified resource as a file descriptor"""
+
+        tree = RepoTree(self, stream=True)
         path = os.path.join(self.root_dir, path)
         try:
             with tree.open(
