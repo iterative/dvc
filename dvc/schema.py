@@ -28,6 +28,10 @@ LOCKFILE_SCHEMA = {str: LOCK_FILE_STAGE_SCHEMA}
 OUT_PSTAGE_DETAILED_SCHEMA = {
     str: {BaseOutput.PARAM_CACHE: bool, BaseOutput.PARAM_PERSIST: bool}
 }
+
+PLOT_PSTAGE_SCHEMA = OUT_PSTAGE_DETAILED_SCHEMA.copy()
+PLOT_PSTAGE_SCHEMA[str][BaseOutput.PARAM_PLOT_TEMPLATE] = str
+
 PARAM_PSTAGE_NON_DEFAULT_SCHEMA = {str: [str]}
 
 SINGLE_PIPELINE_STAGE_SCHEMA = {
@@ -45,19 +49,9 @@ SINGLE_PIPELINE_STAGE_SCHEMA = {
             Any(str, OUT_PSTAGE_DETAILED_SCHEMA)
         ],
         Optional(StageParams.PARAM_METRICS): [
-            Any(str, {str: {BaseOutput.PARAM_CACHE: bool}})
+            Any(str, OUT_PSTAGE_DETAILED_SCHEMA)
         ],
-        Optional(StageParams.PARAM_PLOTS): [
-            Any(
-                str,
-                {
-                    str: {
-                        BaseOutput.PARAM_CACHE: bool,
-                        BaseOutput.PARAM_PLOT_TEMPLATE: str,
-                    }
-                },
-            )
-        ],
+        Optional(StageParams.PARAM_PLOTS): [Any(str, PLOT_PSTAGE_SCHEMA)],
     }
 }
 MULTI_STAGE_SCHEMA = {STAGES: SINGLE_PIPELINE_STAGE_SCHEMA}
