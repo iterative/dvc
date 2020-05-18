@@ -14,8 +14,6 @@ from dvc.exceptions import DvcException, PathMissingError
 
 logger = logging.getLogger(__name__)
 
-WORKSPACE_REVISION_NAME = "workspace"
-
 
 class PlotMetricTypeError(DvcException):
     def __init__(self, file):
@@ -241,7 +239,7 @@ class YAMLPlotData(PlotData):
 
 
 def _load_from_revision(repo, datafile, revision):
-    if revision is WORKSPACE_REVISION_NAME:
+    if revision == "working tree":
 
         def open_datafile():
             return repo.tree.open(datafile, "r")

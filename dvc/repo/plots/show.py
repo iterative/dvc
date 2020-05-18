@@ -115,9 +115,7 @@ def _infer_y_field(rev_data_points, x_field):
 
 def _show(repo, datafile=None, template=None, revs=None, **kwargs):
     if revs is None:
-        from .data import WORKSPACE_REVISION_NAME
-
-        revs = [WORKSPACE_REVISION_NAME]
+        revs = ["working tree"]
 
     if not datafile and not template:
         raise NoDataOrTemplateProvided()
