@@ -5,15 +5,12 @@ from functools import wraps
 from funcy import cached_property, cat, first
 
 from dvc.config import Config
-from dvc.exceptions import (
-    FileMissingError,
-    IsADirectoryError,
-    NotDvcRepoError,
-    OutputNotFoundError,
-)
+from dvc.exceptions import FileMissingError
+from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
+from dvc.exceptions import NotDvcRepoError, OutputNotFoundError
 from dvc.ignore import CleanTree
 from dvc.path_info import PathInfo
-from dvc.remote.base import RemoteActionNotImplemented
+from dvc.repo.tree import RepoTree
 from dvc.utils.fs import path_isin
 
 from ..utils import parse_target
@@ -121,6 +118,10 @@ class Repo:
         # Our graph cache is no longer valid, as it was based on the previous
         # tree.
         self._reset()
+
+    @cached_property
+    def repo_tree(self):
+        return RepoTree(self, stream=True)
 
     def __repr__(self):
         return f"{self.__class__.__name__}: '{self.root_dir}'"
@@ -486,48 +487,19 @@ class Repo:
     @contextmanager
     def open_by_relpath(self, path, remote=None, mode="r", encoding=None):
         """Opens a specified resource as a file descriptor"""
-        cause = None
+        path = os.path.join(self.root_dir, path)
         try:
-            out = self.find_out_by_relpath(path)
-        except OutputNotFoundError as exc:
-            out = None
-            cause = exc
-
-        if out and out.use_cache:
-            try:
-                with self._open_cached(out, remote, mode, encoding) as fd:
-                    yield fd
-                return
-            except FileNotFoundError as exc:
-                raise FileMissingError(path) from exc
-
-        abs_path = os.path.join(self.root_dir, path)
-        if os.path.exists(abs_path):
-            with open(abs_path, mode=mode, encoding=encoding) as fd:
-                yield fd
-            return
-
-        raise FileMissingError(path) from cause
-
-    def _open_cached(self, out, remote=None, mode="r", encoding=None):
-        if out.isdir():
-            raise IsADirectoryError("Can't open a dir")
-
-        cache_file = self.cache.local.checksum_to_path_info(out.checksum)
-
-        if os.path.exists(cache_file):
-            return open(cache_file, mode=mode, encoding=encoding)
-
-        try:
-            remote_obj = self.cloud.get_remote(remote)
-            remote_info = remote_obj.checksum_to_path_info(out.checksum)
-            return remote_obj.open(remote_info, mode=mode, encoding=encoding)
-        except RemoteActionNotImplemented:
-            with self.state:
-                cache_info = out.get_used_cache(remote=remote)
-                self.cloud.pull(cache_info, remote=remote)
-
-            return open(cache_file, mode=mode, encoding=encoding)
+            with self.repo_tree.open(
+                os.path.join(self.root_dir, path),
+                mode=mode,
+                encoding=encoding,
+                remote=remote,
+            ) as fobj:
+                yield fobj
+        except FileNotFoundError as exc:
+            raise FileMissingError(path) from exc
+        except IsADirectoryError as exc:
+            raise DvcIsADirectoryError from exc
 
     def close(self):
         self.scm.close()

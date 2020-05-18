@@ -1,11 +1,9 @@
-import errno
 import logging
 import os
 
 from dvc.exceptions import OutputNotFoundError
 from dvc.path_info import PathInfo
 from dvc.remote.base import RemoteActionNotImplemented
-from dvc.repo import Repo
 from dvc.scm.tree import BaseTree, WorkingTree
 
 logger = logging.getLogger(__name__)
@@ -25,7 +23,7 @@ class DvcTree(BaseTree):
     as a fallback.
     """
 
-    def __init__(self, repo: Repo, fetch=False, stream=False):
+    def __init__(self, repo, fetch=False, stream=False):
         self.repo = repo
         self.fetch = fetch
         self.stream = stream
@@ -49,7 +47,7 @@ class DvcTree(BaseTree):
             raise FileNotFoundError from exc
 
         if len(outs) != 1 or outs[0].is_dir_checksum:
-            raise OSError(errno.EISDIR)
+            raise IsADirectoryError
 
         out = outs[0]
         # temporary hack to make cache use WorkingTree and not GitTree, because
@@ -72,8 +70,9 @@ class DvcTree(BaseTree):
                         )
                     except RemoteActionNotImplemented:
                         pass
-                cache_info = out.get_used_cache(remote=remote)
-                self.repo.cloud.pull(cache_info, remote=remote)
+                with self.repo.state:
+                    cache_info = out.get_used_cache(remote=remote)
+                    self.repo.cloud.pull(cache_info, remote=remote)
         finally:
             self.repo.tree = saved_tree
 
@@ -149,7 +148,8 @@ class DvcTree(BaseTree):
 
             if out.is_dir_checksum and (self.fetch or self.stream):
                 # will pull dir cache if needed
-                cache = out.collect_used_dir_cache()
+                with self.repo.state:
+                    cache = out.collect_used_dir_cache()
                 for _, names in cache.scheme_names(out.scheme):
                     for name in names:
                         path_info = out.path_info.parent / name
@@ -179,16 +179,18 @@ class RepoTree(BaseTree):
 
     def __init__(self, repo, **kwargs):
         self.repo = repo
-        if isinstance(repo, Repo):
+        if hasattr(repo, "dvc_dir"):
             self.dvctree = DvcTree(repo, **kwargs)
         else:
             # git-only erepo's do not need dvctree
             self.dvctree = None
 
-    def open(self, path, mode="r", encoding="utf-8"):
+    def open(self, path, mode="r", encoding="utf-8", **kwargs):
         if self.dvctree and self.dvctree.exists(path):
             try:
-                return self.dvctree.open(path, mode=mode, encoding=encoding)
+                return self.dvctree.open(
+                    path, mode=mode, encoding=encoding, **kwargs
+                )
             except FileNotFoundError:
                 pass
         return self.repo.tree.open(path, mode=mode, encoding=encoding)
