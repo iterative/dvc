@@ -64,7 +64,7 @@ class CmdPlots(CmdBase):
                 for i, plot in enumerate(plots.values())
             ]
             html = PAGE_HTML.format(divs="\n".join(divs))
-            path = self.args.file or "plots.html"
+            path = self.args.out or "plots.html"
 
             with open(path, "w") as fobj:
                 fobj.write(html)
@@ -126,7 +126,7 @@ def add_parser(subparsers, parent_parser):
         help="File to be injected with data.",
     )
     plots_show_parser.add_argument(
-        "-f", "--file", default=None, help="Name of the generated file."
+        "-o", "--out", default=None, help="Destination path to save plots to.",
     )
     plots_show_parser.add_argument(
         "-s",
@@ -190,7 +190,7 @@ def add_parser(subparsers, parent_parser):
         help="Metrics file to visualize",
     )
     plots_diff_parser.add_argument(
-        "-f", "--file", default=None, help="Name of the generated file."
+        "-o", "--out", default=None, help="Destination path to save plots to.",
     )
     plots_diff_parser.add_argument(
         "-s",

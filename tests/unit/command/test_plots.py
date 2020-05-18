@@ -7,7 +7,7 @@ def test_metrics_diff(dvc, mocker):
         [
             "plots",
             "diff",
-            "--file",
+            "--out",
             "result.extension",
             "-t",
             "template",
@@ -59,7 +59,7 @@ def test_metrics_show(dvc, mocker):
         [
             "plots",
             "show",
-            "-f",
+            "-o",
             "result.extension",
             "-t",
             "template",
