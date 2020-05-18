@@ -1,5 +1,6 @@
 import logging
 import os
+from collections import defaultdict
 
 from funcy import first, last
 
@@ -46,6 +47,10 @@ class NoDataOrTemplateProvided(DvcException):
         super().__init__("Datafile or template is not specified.")
 
 
+class TooManyTemplatesError(DvcException):
+    pass
+
+
 def _evaluate_templatepath(repo, template=None):
     if not template:
         return repo.plot_templates.default_template
@@ -66,7 +71,7 @@ def fill_template(
     csv_header=True,
     x_field=None,
     y_field=None,
-    **kwargs
+    **kwargs,
 ):
     if x_field and fields:
         fields.add(x_field)
@@ -110,7 +115,7 @@ def fill_template(
         priority_datafile=datafile,
         x_field=x_field,
         y_field=y_field,
-        **kwargs
+        **kwargs,
     )
 
     path = datafile or ",".join(template_datafiles)
@@ -171,35 +176,58 @@ def _parse_template(template_path, priority_datafile):
 
 
 def _collect_plots(repo):
-    plots = []
+    plots = defaultdict(set)
 
     for stage in repo.stages:
         for out in stage.outs:
-            if out.plot:
-                plots.append(str(out))
+            if not out.plot:
+                continue
+
+            if isinstance(out.plot, dict):
+                template = out.plot[out.PARAM_PLOT_TEMPLATE]
+            else:
+                template = None
+
+            plots[str(out)].add(template)
 
     return plots
 
 
-def show(repo, datafile=None, revs=None, **kwargs) -> dict:
+def show(repo, datafile=None, template=None, revs=None, **kwargs) -> dict:
     if datafile:
         return {
-            datafile: _show(repo, datafile=datafile, revs=revs, **kwargs)[1]
+            datafile: _show(
+                repo, datafile=datafile, template=template, revs=revs, **kwargs
+            )[1]
         }
 
     if not revs:
         plots = _collect_plots(repo)
     else:
-        plots = set()
+        plots = defaultdict(set)
         for rev in repo.brancher(revs=revs):
-            plots.update(_collect_plots(repo))
+            for plot, templates in _collect_plots(repo).items():
+                plots[plot].update(templates)
 
     if not plots:
-        datafile, plot = _show(repo, datafile=None, revs=revs, **kwargs)
+        datafile, plot = _show(
+            repo, datafile=None, template=template, revs=revs, **kwargs
+        )
         return {datafile: plot}
 
     ret = {}
-    for plot in plots:
-        ret[plot] = _show(repo, datafile=plot, revs=revs, **kwargs)[1]
+    for plot, templates in plots.items():
+        tmplt = template
+        if len(templates) == 1:
+            tmplt = list(templates)[0]
+        elif not template:
+            raise TooManyTemplatesError(
+                f"'{plot}' uses multiple templates '{templates}'. "
+                "Use `-t|--template` to specify the template to use. "
+            )
+
+        ret[plot] = _show(
+            repo, datafile=plot, template=tmplt, revs=revs, **kwargs
+        )[1]
 
     return ret
