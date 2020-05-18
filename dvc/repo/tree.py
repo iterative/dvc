@@ -192,7 +192,8 @@ class RepoTree(BaseTree):
                     path, mode=mode, encoding=encoding, **kwargs
                 )
             except FileNotFoundError:
-                pass
+                if self.isdvc(path):
+                    raise
         return self.repo.tree.open(path, mode=mode, encoding=encoding)
 
     def exists(self, path):
