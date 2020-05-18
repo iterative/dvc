@@ -12,25 +12,6 @@ from .template import NoDataForTemplateError, Template
 
 logger = logging.getLogger(__name__)
 
-PAGE_HTML = """<!DOCTYPE html>
-<html>
-<head>
-    <title>DVC Plot</title>
-    <script src="https://cdn.jsdelivr.net/npm/vega@5.10.0"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-lite@4.8.1"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.5.1"></script>
-</head>
-<body>
-    {divs}
-</body>
-</html>"""
-
-DIV_HTML = """<div id = "{id}"></div>
-<script type = "text/javascript">
-    var spec = {vega_json};
-    vegaEmbed('#{id}', spec);
-</script>"""
-
 
 class TooManyDataSourcesError(DvcException):
     def __init__(self, datafile, template_datafiles):
@@ -132,9 +113,7 @@ def _infer_y_field(rev_data_points, x_field):
     return y_field
 
 
-def _show(
-    repo, datafile=None, template=None, revs=None, embed=False, **kwargs
-):
+def _show(repo, datafile=None, template=None, revs=None, **kwargs):
     if revs is None:
         from .data import WORKSPACE_REVISION_NAME
 
@@ -148,10 +127,6 @@ def _show(
     plot_datafile, plot_content = fill_template(
         repo, datafile, template_path, revs, **kwargs
     )
-
-    if embed:
-        div = DIV_HTML.format(id="plot", vega_json=plot_content)
-        plot_content = PAGE_HTML.format(divs=div)
 
     return plot_datafile, plot_content
 

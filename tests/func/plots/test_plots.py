@@ -7,7 +7,6 @@ from collections import OrderedDict
 
 import pytest
 import yaml
-from bs4 import BeautifulSoup
 from funcy import first
 
 from dvc.repo.plots.data import (
@@ -469,27 +468,6 @@ def test_plot_default_choose_column(tmp_dir, scm, dvc):
     ]
     assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
     assert plot_content["encoding"]["y"]["field"] == "b"
-
-
-def test_plot_embed(tmp_dir, scm, dvc):
-    metric = [{"val": 2}, {"val": 3}]
-    _write_json(tmp_dir, metric, "metric.json")
-    _run_with(tmp_dir, plots_no_cache=["metric.json"], commit="first run")
-
-    plot_string = dvc.plots.show(embed=True, y_field="val")["metric.json"]
-
-    page_content = BeautifulSoup(plot_string)
-    data_dump = json.dumps(
-        [
-            {"val": 2, PlotData.INDEX_FIELD: 0, "rev": "workspace"},
-            {"val": 3, PlotData.INDEX_FIELD: 1, "rev": "workspace"},
-        ],
-        sort_keys=True,
-    )
-
-    assert _remove_whitespace(data_dump) in _remove_whitespace(
-        first(page_content.body.script.contents)
-    )
 
 
 def test_plot_yaml(tmp_dir, scm, dvc):
