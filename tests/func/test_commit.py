@@ -70,3 +70,13 @@ def test_commit_changed_md5(tmp_dir, dvc):
         dvc.commit(stage.path)
 
     dvc.commit(stage.path, force=True)
+
+
+def test_commit_no_exec(tmp_dir, dvc):
+    tmp_dir.gen({"dep": "dep", "out": "out"})
+    stage = dvc.run(
+        name="my", cmd="mycmd", deps=["dep"], outs=["out"], no_exec=True
+    )
+    assert dvc.status(stage.path)
+    dvc.commit(stage.path, force=True)
+    assert dvc.status(stage.path) == {}
