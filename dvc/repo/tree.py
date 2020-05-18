@@ -214,6 +214,8 @@ class RepoTree(BaseTree):
         )
 
     def isexec(self, path):
+        if self.dvctree and self.dvctree.exists(path):
+            return self.dvctree.isexec(path)
         return self.repo.tree.isexec(path)
 
     def _walk_one(self, walk):

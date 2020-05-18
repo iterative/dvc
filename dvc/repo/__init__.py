@@ -119,10 +119,6 @@ class Repo:
         # tree.
         self._reset()
 
-    @cached_property
-    def repo_tree(self):
-        return RepoTree(self, stream=True)
-
     def __repr__(self):
         return f"{self.__class__.__name__}: '{self.root_dir}'"
 
@@ -486,10 +482,12 @@ class Repo:
 
     @contextmanager
     def open_by_relpath(self, path, remote=None, mode="r", encoding=None):
+        tree = RepoTree(self, stream=True)
+
         """Opens a specified resource as a file descriptor"""
         path = os.path.join(self.root_dir, path)
         try:
-            with self.repo_tree.open(
+            with tree.open(
                 os.path.join(self.root_dir, path),
                 mode=mode,
                 encoding=encoding,
