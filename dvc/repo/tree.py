@@ -169,17 +169,116 @@ class DvcTree(BaseTree):
 
 
 class RepoTree(BaseTree):
-    def __init__(self, repo):
+    """DVC + git-tracked files tree.
+
+    Args:
+        repo: DVC or git repo.
+
+    Any kwargs will be passed to `DvcTree()`.
+    """
+
+    def __init__(self, repo, **kwargs):
         self.repo = repo
-        self.dvctree = DvcTree(repo)
+        if isinstance(repo, Repo):
+            self.dvctree = DvcTree(repo, **kwargs)
+        else:
+            # git-only erepo's do not need dvctree
+            self.dvctree = None
 
-    def open(self, *args, **kwargs):
-        try:
-            return self.dvctree.open(*args, **kwargs)
-        except FileNotFoundError:
-            pass
-
-        return self.repo.tree.open(*args, **kwargs)
+    def open(self, path, mode="r", encoding="utf-8"):
+        if self.dvctree and self.dvctree.exists(path):
+            try:
+                return self.dvctree.open(path, mode=mode, encoding=encoding)
+            except FileNotFoundError:
+                pass
+        return self.repo.tree.open(path, mode=mode, encoding=encoding)
 
     def exists(self, path):
-        return self.repo.tree.exists(path) or self.dvctree.exists(path)
+        return self.repo.tree.exists(path) or (
+            self.dvctree and self.dvctree.exists(path)
+        )
+
+    def isdir(self, path):
+        return self.repo.tree.isdir(path) or (
+            self.dvctree and self.dvctree.isdir(path)
+        )
+
+    def isdvc(self, path):
+        return self.dvctree is not None and self.dvctree.isdvc(path)
+
+    def isfile(self, path):
+        return self.repo.tree.isfile(path) or (
+            self.dvctree and self.dvctree.isfile(path)
+        )
+
+    def isexec(self, path):
+        return self.repo.tree.isexec(path)
+
+    def _walk_one(self, walk):
+        try:
+            root, dirs, files = next(walk)
+        except StopIteration:
+            return
+        yield root, dirs, files
+        for _ in dirs:
+            yield from self._walk_one(walk)
+
+    def _walk(self, dvc_walk, repo_walk):
+        try:
+            _, dvc_dirs, dvc_fnames = next(dvc_walk)
+            repo_root, repo_dirs, repo_fnames = next(repo_walk)
+        except StopIteration:
+            return
+
+        # separate subdirs into shared dirs, dvc-only dirs, repo-only dirs
+        dvc_set = set(dvc_dirs)
+        repo_set = set(repo_dirs)
+        dvc_only = list(dvc_set - repo_set)
+        repo_only = list(repo_set - dvc_set)
+        shared = list(dvc_set & repo_set)
+        dirs = shared + dvc_only + repo_only
+
+        # merge file lists
+        files = set(dvc_fnames)
+        for filename in repo_fnames:
+            files.add(filename)
+
+        yield repo_root, dirs, list(files)
+
+        # set dir order for next recursion level - shared dirs first so that
+        # next() for both generators recurses into the same shared directory
+        dvc_dirs[:] = [dirname for dirname in dirs if dirname in dvc_set]
+        repo_dirs[:] = [dirname for dirname in dirs if dirname in repo_set]
+
+        for dirname in dirs:
+            if dirname in shared:
+                yield from self._walk(dvc_walk, repo_walk)
+            elif dirname in dvc_set:
+                yield from self._walk_one(dvc_walk)
+            elif dirname in repo_set:
+                yield from self._walk_one(repo_walk)
+
+    def walk(self, top, topdown=True):
+        """Walk and merge both DVC and repo trees."""
+        assert topdown
+
+        if not self.exists(top):
+            raise FileNotFoundError
+
+        if not self.isdir(top):
+            raise NotADirectoryError
+
+        dvc_exists = self.dvctree and self.dvctree.exists(top)
+        repo_exists = self.repo.tree.exists(top)
+        if dvc_exists and not repo_exists:
+            yield from self.dvctree.walk(top, topdown=topdown)
+            return
+        if repo_exists and not dvc_exists:
+            yield from self.repo.tree.walk(top, topdown=topdown)
+            return
+        if not dvc_exists and not repo_exists:
+            raise FileNotFoundError
+
+        dvc_walk = self.dvctree.walk(top, topdown=topdown)
+        repo_walk = self.repo.tree.walk(top, topdown=topdown)
+        yield from self._walk(dvc_walk, repo_walk)
