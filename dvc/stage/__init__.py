@@ -377,11 +377,7 @@ class Stage(params.StageParams):
 
     @staticmethod
     def _changed_entries(entries):
-        return [
-            str(entry)
-            for entry in entries
-            if entry.checksum and entry.changed_checksum()
-        ]
+        return [str(entry) for entry in entries if entry.changed_checksum()]
 
     def _changed_stage_entry(self):
         return f"'md5' of {self} changed."

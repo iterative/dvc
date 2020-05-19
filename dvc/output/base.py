@@ -339,7 +339,7 @@ class BaseOutput:
         if self.exists:
             self.remote.unprotect(self.path_info)
 
-    def _collect_used_dir_cache(
+    def collect_used_dir_cache(
         self, remote=None, force=False, jobs=None, filter_info=None
     ):
         """Get a list of `info`s related to the given directory.
@@ -449,7 +449,7 @@ class BaseOutput:
             return ret
 
         ret.add_child_cache(
-            self.checksum, self._collect_used_dir_cache(**kwargs),
+            self.checksum, self.collect_used_dir_cache(**kwargs),
         )
 
         return ret
