@@ -125,8 +125,12 @@ def test_walk(tmp_dir, dvc, dvcfiles, extra_expected):
 
 
 def test_isdvc(tmp_dir, dvc):
-    tmp_dir.gen({"foo": "foo", "bar": "bar"})
+    tmp_dir.gen({"foo": "foo", "bar": "bar", "dir": {"baz": "baz"}})
     dvc.add("foo")
+    dvc.add("dir")
     tree = RepoTree(dvc)
     assert tree.isdvc("foo")
     assert not tree.isdvc("bar")
+    assert tree.isdvc("dir")
+    assert not tree.isdvc("dir/baz")
+    assert tree.isdvc("dir/baz", recursive=True, strict=False)

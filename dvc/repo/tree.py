@@ -159,9 +159,9 @@ class DvcTree(BaseTree):
 
         yield from self._walk(root, trie, topdown=topdown)
 
-    def isdvc(self, path):
+    def isdvc(self, path, **kwargs):
         try:
-            return len(self._find_outs(path)) == 1
+            return len(self._find_outs(path, **kwargs)) == 1
         except OutputNotFoundError:
             pass
         return False
@@ -208,8 +208,8 @@ class RepoTree(BaseTree):
             self.dvctree and self.dvctree.isdir(path)
         )
 
-    def isdvc(self, path):
-        return self.dvctree is not None and self.dvctree.isdvc(path)
+    def isdvc(self, path, **kwargs):
+        return self.dvctree is not None and self.dvctree.isdvc(path, **kwargs)
 
     def isfile(self, path):
         return self.repo.tree.isfile(path) or (
