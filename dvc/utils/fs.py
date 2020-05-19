@@ -9,7 +9,6 @@ import nanotime
 from shortuuid import uuid
 
 from dvc.exceptions import DvcException
-from dvc.scm.tree import is_working_tree
 from dvc.system import System
 from dvc.utils import dict_md5
 
@@ -33,14 +32,12 @@ def get_inode(path):
 
 def get_mtime_and_size(path, tree):
 
-    if os.path.isdir(path):
-        assert is_working_tree(tree)
-
+    if tree.isdir(path):
         size = 0
         files_mtimes = {}
         for file_path in tree.walk_files(path):
             try:
-                stats = os.stat(file_path)
+                stats = tree.stat(file_path)
             except OSError as exc:
                 # NOTE: broken symlink case.
                 if exc.errno != errno.ENOENT:
@@ -53,7 +50,7 @@ def get_mtime_and_size(path, tree):
         # max(mtime(f) for f in non_ignored_files)
         mtime = dict_md5(files_mtimes)
     else:
-        base_stat = os.stat(path)
+        base_stat = tree.stat(path)
         size = base_stat.st_size
         mtime = base_stat.st_mtime
         mtime = int(nanotime.timestamp(mtime))
@@ -175,7 +172,6 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
     """Copy file with progress bar"""
     from dvc.exceptions import DvcException
     from dvc.progress import Tqdm
-    from dvc.system import System
 
     name = name if name else os.path.basename(dest)
     total = os.stat(src).st_size
@@ -200,6 +196,12 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
                     if not buf:
                         break
                     fdest_wrapped.write(buf)
+
+
+def copy_fobj_to_file(fsrc, dest):
+    """Copy contents of open file object to destination path."""
+    with open(dest, "wb+") as fdest:
+        shutil.copyfileobj(fsrc, fdest)
 
 
 def walk_files(directory):

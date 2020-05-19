@@ -139,7 +139,5 @@ class CleanTree(BaseTree):
 
             yield root, dirs, files
 
-    def walk_files(self, top):
-        for root, _, files in self.walk(top):
-            for file in files:
-                yield os.path.join(root, file)
+    def stat(self, path):
+        return self.tree.stat(path)
