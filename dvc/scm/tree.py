@@ -47,6 +47,8 @@ class WorkingTree(BaseTree):
 
     def open(self, path, mode="r", encoding="utf-8"):
         """Open file and return a stream."""
+        if "b" in mode:
+            encoding = None
         return open(path, mode=mode, encoding=encoding)
 
     def exists(self, path):
@@ -80,6 +82,10 @@ class WorkingTree(BaseTree):
     def isexec(self, path):
         mode = os.stat(path).st_mode
         return mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+    @staticmethod
+    def stat(path):
+        return os.stat(path)
 
 
 def is_working_tree(tree):
