@@ -27,15 +27,44 @@ def dos2unix(data):
     return data.replace(b"\r\n", b"\n")
 
 
-def file_md5(fname):
+def _fobj_md5(fobj, hash_md5, binary, progress_func=None):
+    while True:
+        data = fobj.read(LOCAL_CHUNK_SIZE)
+        if not data:
+            break
+
+        if binary:
+            chunk = data
+        else:
+            chunk = dos2unix(data)
+
+        hash_md5.update(chunk)
+        if progress_func:
+            progress_func(len(data))
+
+
+def file_md5(fname, tree=None):
     """ get the (md5 hexdigest, md5 digest) of a file """
     from dvc.progress import Tqdm
     from dvc.istextfile import istextfile
 
-    if os.path.exists(fname):
+    if tree:
+        exists_func = tree.exists
+        stat_func = tree.stat
+        open_func = tree.open
+        # assume we don't need to run dos2unix when comparing git blobs
+        binary = True
+    else:
+        exists_func = os.path.exists
+        stat_func = os.stat
+        open_func = open
+        binary = False
+
+    if exists_func(fname):
         hash_md5 = hashlib.md5()
-        binary = not istextfile(fname)
-        size = os.path.getsize(fname)
+        if not binary:
+            binary = not istextfile(fname)
+        size = stat_func(fname).st_size
         no_progress_bar = True
         if size >= LARGE_FILE_SIZE:
             no_progress_bar = False
@@ -52,19 +81,8 @@ def file_md5(fname):
             bytes=True,
             leave=False,
         ) as pbar:
-            with open(fname, "rb") as fobj:
-                while True:
-                    data = fobj.read(LOCAL_CHUNK_SIZE)
-                    if not data:
-                        break
-
-                    if binary:
-                        chunk = data
-                    else:
-                        chunk = dos2unix(data)
-
-                    hash_md5.update(chunk)
-                    pbar.update(len(data))
+            with open_func(fname, "rb") as fobj:
+                _fobj_md5(fobj, hash_md5, binary, pbar.update)
 
         return (hash_md5.hexdigest(), hash_md5.digest())
 
