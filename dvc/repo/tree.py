@@ -128,7 +128,7 @@ class DvcTree(BaseTree):
         else:
             assert False
 
-    def walk(self, top, topdown=True):
+    def walk(self, top, topdown=True, **kwargs):
         from pygtrie import Trie
 
         assert topdown
@@ -148,11 +148,15 @@ class DvcTree(BaseTree):
             trie[out.path_info.parts] = out
 
             if out.is_dir_checksum and (self.fetch or self.stream):
-                # will pull dir cache if needed
                 with self.repo.state:
-                    cache = out.get_dir_cache()
+                    # pull dir contents if needed
+                    if self.fetch:
+                        used_cache = out.get_used_cache()
+                        self.repo.cloud.pull(used_cache, **kwargs)
+                    # pull dir cache if needed
+                    dir_cache = out.get_dir_cache(**kwargs)
 
-                for entry in cache:
+                for entry in dir_cache:
                     entry_relpath = entry[out.remote.PARAM_RELPATH]
                     path_info = out.path_info / entry_relpath
                     trie[path_info.parts] = None
@@ -267,7 +271,7 @@ class RepoTree(BaseTree):
             elif dirname in repo_set:
                 yield from self._walk_one(repo_walk)
 
-    def walk(self, top, topdown=True, dvcfiles=False):
+    def walk(self, top, topdown=True, dvcfiles=False, **kwargs):
         """Walk and merge both DVC and repo trees."""
         assert topdown
 
@@ -280,7 +284,7 @@ class RepoTree(BaseTree):
         dvc_exists = self.dvctree and self.dvctree.exists(top)
         repo_exists = self.repo.tree.exists(top)
         if dvc_exists and not repo_exists:
-            yield from self.dvctree.walk(top, topdown=topdown)
+            yield from self.dvctree.walk(top, topdown=topdown, **kwargs)
             return
         if repo_exists and not dvc_exists:
             yield from self.repo.tree.walk(top, topdown=topdown)
@@ -288,6 +292,6 @@ class RepoTree(BaseTree):
         if not dvc_exists and not repo_exists:
             raise FileNotFoundError
 
-        dvc_walk = self.dvctree.walk(top, topdown=topdown)
+        dvc_walk = self.dvctree.walk(top, topdown=topdown, **kwargs)
         repo_walk = self.repo.tree.walk(top, topdown=topdown)
         yield from self._walk(dvc_walk, repo_walk, dvcfiles=dvcfiles)
