@@ -1,9 +1,12 @@
+import os
 from os.path import join
 
 from dvc.ignore import CleanTree
+from dvc.repo.tree import RepoTree
 from dvc.scm import SCM
 from dvc.scm.git import GitTree
 from dvc.scm.tree import WorkingTree
+from dvc.utils.fs import remove
 from tests.basic_env import TestDir, TestGit, TestGitSubmodule
 
 
@@ -172,3 +175,19 @@ class TestWalkInGit(AssertWalkEqualMixin, TestGit):
                 )
             ],
         )
+
+
+def test_repotree_walk_fetch(tmp_dir, dvc, scm, setup_remote):
+    setup_remote(dvc)
+    out = tmp_dir.dvc_gen({"dir": {"foo": "foo"}}, commit="init")[0].outs[0]
+    dvc.push()
+    remove(dvc.cache.local.cache_dir)
+
+    tree = RepoTree(dvc, fetch=True)
+    for _, _, _ in tree.walk("dir"):
+        pass
+
+    assert os.path.exists(out.cache_path)
+    for entry in out.dir_cache:
+        checksum = entry[out.remote.PARAM_CHECKSUM]
+        assert os.path.exists(dvc.cache.local.checksum_to_path_info(checksum))
