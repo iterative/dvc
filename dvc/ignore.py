@@ -138,8 +138,3 @@ class CleanTree(BaseTree):
             dirs[:], files[:] = self.dvcignore(root, dirs, files)
 
             yield root, dirs, files
-
-    def walk_files(self, top):
-        for root, _, files in self.walk(top):
-            for file in files:
-                yield os.path.join(root, file)
