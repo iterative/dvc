@@ -14,6 +14,7 @@ from dvc.utils import relpath
 from dvc.utils.fs import (
     BasePathNotInCheckedPathException,
     contains_symlink_up_to,
+    copy_fobj_to_file,
     copyfile,
     get_inode,
     get_mtime_and_size,
@@ -258,6 +259,16 @@ def test_copyfile(path, tmp_dir):
         )
     else:
         assert filecmp.cmp(src_info, dest_info, shallow=False)
+
+
+def test_copy_fobj_to_file(tmp_dir):
+    tmp_dir.gen({"foo": "foo content"})
+    src = tmp_dir / "foo"
+    dest = "path"
+
+    with open(src, "rb") as fobj:
+        copy_fobj_to_file(fobj, dest)
+    assert filecmp.cmp(src, dest)
 
 
 def test_walk_files(tmp_dir):
