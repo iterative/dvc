@@ -110,10 +110,7 @@ class CmdRemoteList(CmdRemote):
 
 class CmdRemoteRename(CmdRemote):
     def run(self):
-        conf = self.config.load_one(self.args.level)
-        self._check_exists(conf)
-
-        all_config = self.config.load_config_to_level("all")
+        all_config = self.config.load_config_to_level(None)
         if self.args.new in all_config.get("remote", {}):
             raise ConfigError(
                 "Rename failed.Remote name {} already exists.".format(
@@ -122,16 +119,18 @@ class CmdRemoteRename(CmdRemote):
             )
 
         with self.config.edit(self.args.level) as conf:
+            self._check_exists(conf)
             conf["remote"][self.args.new] = conf["remote"][self.args.name]
             del conf["remote"][self.args.name]
+            if conf["core"].get("remote") == self.args.name:
+                conf["core"]["remote"] = self.args.new
 
         for level in reversed(self.config.LEVELS):
+            if level == self.args.level:
+                break
             with self.config.edit(level) as conf:
                 if conf["core"].get("remote") == self.args.name:
                     conf["core"]["remote"] = self.args.new
-
-            if level == self.args.level:
-                break
 
         return 0
 
