@@ -149,11 +149,12 @@ class DvcTree(BaseTree):
             if out.is_dir_checksum and (self.fetch or self.stream):
                 # will pull dir cache if needed
                 with self.repo.state:
-                    cache = out.collect_used_dir_cache()
-                for _, names in cache.scheme_names(out.scheme):
-                    for name in names:
-                        path_info = out.path_info.parent / name
-                        trie[path_info.parts] = None
+                    cache = out.get_dir_cache()
+
+                for entry in cache:
+                    entry_relpath = entry[out.remote.PARAM_RELPATH]
+                    path_info = out.path_info / entry_relpath
+                    trie[path_info.parts] = None
 
         yield from self._walk(root, trie, topdown=topdown)
 

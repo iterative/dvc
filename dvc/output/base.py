@@ -347,6 +347,17 @@ class BaseOutput:
         if self.exists:
             self.remote.unprotect(self.path_info)
 
+    def get_dir_cache(self, **kwargs):
+        if not self.is_dir_checksum:
+            raise DvcException("cannot get dir cache for file checksum")
+        if self.cache.changed_cache_file(self.checksum):
+            self.repo.cloud.pull(
+                NamedCache.make("local", self.checksum, str(self)),
+                show_checksums=False,
+                **kwargs,
+            )
+        return self.dir_cache
+
     def collect_used_dir_cache(
         self, remote=None, force=False, jobs=None, filter_info=None
     ):
@@ -371,16 +382,10 @@ class BaseOutput:
 
         cache = NamedCache()
 
-        if self.cache.changed_cache_file(self.checksum):
-            try:
-                self.repo.cloud.pull(
-                    NamedCache.make("local", self.checksum, str(self)),
-                    jobs=jobs,
-                    remote=remote,
-                    show_checksums=False,
-                )
-            except DvcException:
-                logger.debug(f"failed to pull cache for '{self}'")
+        try:
+            self.get_dir_cache(jobs=jobs, remote=remote)
+        except DvcException:
+            logger.debug(f"failed to pull cache for '{self}'")
 
         if self.cache.changed_cache_file(self.checksum):
             msg = (
