@@ -43,8 +43,7 @@ class CmdBase:
         """Default targets for `dvc repro`."""
         from dvc.dvcfile import PIPELINE_FILE
 
-        msg = f"assuming default target '{PIPELINE_FILE}'."
-        logger.warning(msg)
+        logger.debug(f"assuming default target '{PIPELINE_FILE}'.")
         return [PIPELINE_FILE]
 
     # Abstract methods that have to be implemented by any inheritance class
