@@ -75,7 +75,7 @@ class CmdRun(CmdBase):
         if " " not in argument or '"' in argument:
             return argument
 
-        return '"{}"'.format(argument)
+        return f'"{argument}"'
 
 
 def add_parser(subparsers, parent_parser):

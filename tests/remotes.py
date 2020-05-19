@@ -180,11 +180,11 @@ class OSS:
 
     @staticmethod
     def get_storagepath():
-        return "{}/{}".format(TEST_OSS_REPO_BUCKET, (uuid.uuid4()))
+        return f"{TEST_OSS_REPO_BUCKET}/{uuid.uuid4()}"
 
     @staticmethod
     def get_url():
-        return "oss://{}".format(OSS.get_storagepath())
+        return f"oss://{OSS.get_storagepath()}"
 
 
 class SSH:
@@ -200,7 +200,7 @@ class SSH:
 
         try:
             check_output(["ssh", "-o", "BatchMode=yes", "127.0.0.1", "ls"])
-        except (CalledProcessError, IOError):
+        except (CalledProcessError, OSError):
             return False
 
         return True
@@ -233,7 +233,7 @@ class SSHMocked:
             drive, path = os.path.splitdrive(path)
             assert drive.lower() == "c:"
             path = path.replace("\\", "/")
-        url = "ssh://{}@127.0.0.1:{}{}".format(user, port, path)
+        url = f"ssh://{user}@127.0.0.1:{port}{path}"
         return url
 
 
@@ -249,7 +249,7 @@ class HDFS:
                 shell=True,
                 executable=os.getenv("SHELL"),
             )
-        except (CalledProcessError, IOError):
+        except (CalledProcessError, OSError):
             return False
 
         p = Popen(
@@ -275,4 +275,4 @@ class HTTP:
 
     @staticmethod
     def get_url(port):
-        return "http://127.0.0.1:{}".format(port)
+        return f"http://127.0.0.1:{port}"

@@ -8,7 +8,7 @@ from dvc.remote import Remote
 logger = logging.getLogger(__name__)
 
 
-class DataCloud(object):
+class DataCloud:
     """Class that manages dvc remotes.
 
     Args:

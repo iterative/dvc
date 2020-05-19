@@ -148,7 +148,7 @@ def plot(
 
 
 def _parse_template(template_path, priority_datafile):
-    with open(template_path, "r") as fobj:
+    with open(template_path) as fobj:
         tempalte_content = fobj.read()
 
     template_datafiles = Template.parse_data_anchors(tempalte_content)

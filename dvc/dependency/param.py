@@ -91,7 +91,7 @@ class ParamsDependency(LocalDependency):
                 config = yaml.safe_load(fobj)
             except yaml.YAMLError as exc:
                 raise BadParamFileError(
-                    "Unable to read parameters from '{}'".format(self)
+                    f"Unable to read parameters from '{self}'"
                 ) from exc
 
         ret = {}

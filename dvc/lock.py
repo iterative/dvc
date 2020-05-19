@@ -25,7 +25,7 @@ class LockError(DvcException):
     """Thrown when unable to acquire the lock for DVC repo."""
 
 
-class Lock(object):
+class Lock:
     """Class for DVC repo lock.
 
     Uses zc.lockfile as backend.

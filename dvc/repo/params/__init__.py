@@ -1,4 +1,4 @@
-class Params(object):
+class Params:
     def __init__(self, repo):
         self.repo = repo
 

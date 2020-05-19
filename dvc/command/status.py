@@ -19,7 +19,7 @@ class CmdDataStatus(CmdDataBase):
         ind = indent * self.STATUS_INDENT
 
         if isinstance(status, str):
-            logger.info("{}{}".format(ind, status))
+            logger.info(f"{ind}{status}")
             return
 
         if isinstance(status, list):
@@ -33,7 +33,7 @@ class CmdDataStatus(CmdDataBase):
             if isinstance(value, str):
                 logger.info("{}{}{}".format(ind, self._normalize(value), key))
             elif value:
-                logger.info("{}{}:".format(ind, key))
+                logger.info(f"{ind}{key}:")
                 self._show(value, indent + 1)
 
     def run(self):

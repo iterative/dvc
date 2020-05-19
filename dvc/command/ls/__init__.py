@@ -38,7 +38,7 @@ class CmdList(CmdBaseNoRepo):
                 logger.info("\n".join(entries))
             return 0
         except DvcException:
-            logger.exception("failed to list '{}'".format(self.args.url))
+            logger.exception(f"failed to list '{self.args.url}'")
             return 1
 
 

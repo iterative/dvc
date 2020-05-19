@@ -38,7 +38,7 @@ def confirm(statement):
     Returns:
         bool: whether or not specified statement was confirmed.
     """
-    prompt = "{statement} [y/n]".format(statement=statement)
+    prompt = f"{statement} [y/n]"
     answer = _ask(prompt, limited_to=["yes", "no", "y", "n"])
     return answer and answer.startswith("y")
 
@@ -52,5 +52,5 @@ def password(statement):
     Returns:
         str: password entered by the user.
     """
-    logger.info("{statement}: ".format(statement=statement))
+    logger.info(f"{statement}: ")
     return getpass("")

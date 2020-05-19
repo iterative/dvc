@@ -45,14 +45,12 @@ class NoMetricOnRevisionError(DvcException):
     def __init__(self, path, revision):
         self.path = path
         self.revision = revision
-        super().__init__(
-            "Could not find '{}' on revision '{}'".format(path, revision)
-        )
+        super().__init__(f"Could not find '{path}' on revision '{revision}'")
 
 
 class NoMetricInHistoryError(DvcException):
     def __init__(self, path):
-        super().__init__("Could not find '{}'.".format(path))
+        super().__init__(f"Could not find '{path}'.")
 
 
 def plot_data(filename, revision, content):
@@ -194,13 +192,13 @@ class JSONPlotData(PlotData):
         return json.loads(self.content, object_pairs_hook=OrderedDict)
 
     def _processors(self):
-        parent_processors = super(JSONPlotData, self)._processors()
+        parent_processors = super()._processors()
         return [_apply_path, _find_data] + parent_processors
 
 
 class CSVPlotData(PlotData):
     def __init__(self, filename, revision, content, delimiter=","):
-        super(CSVPlotData, self).__init__(filename, revision, content)
+        super().__init__(filename, revision, content)
         self.delimiter = delimiter
 
     def raw(self, csv_header=True, **kwargs):
@@ -277,7 +275,7 @@ def _load_from_revisions(repo, datafile, revisions):
         except PlotMetricTypeError:
             raise
         except (yaml.error.YAMLError, json.decoder.JSONDecodeError, csv.Error):
-            logger.error("Failed to parse '{}' at '{}'.".format(datafile, rev))
+            logger.error(f"Failed to parse '{datafile}' at '{rev}'.")
             raise
 
     if not data and exceptions:

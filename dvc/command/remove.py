@@ -34,7 +34,7 @@ class CmdRemove(CmdBase):
                 dvc_only = self._is_dvc_only(target)
                 self.repo.remove(target, dvc_only=dvc_only)
             except DvcException:
-                logger.exception("failed to remove '{}'".format(target))
+                logger.exception(f"failed to remove '{target}'")
                 return 1
         return 0
 

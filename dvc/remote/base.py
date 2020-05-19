@@ -57,7 +57,7 @@ class RemoteCmdError(DvcException):
 
 class RemoteActionNotImplemented(DvcException):
     def __init__(self, action, scheme):
-        m = "{} is not supported for {} remotes".format(action, scheme)
+        m = f"{action} is not supported for {scheme} remotes"
         super().__init__(m)
 
 
@@ -68,7 +68,7 @@ class RemoteMissingDepsError(DvcException):
 class DirCacheError(DvcException):
     def __init__(self, checksum):
         super().__init__(
-            "Failed to load dir cache for hash value: '{}'.".format(checksum)
+            f"Failed to load dir cache for hash value: '{checksum}'."
         )
 
 
@@ -82,7 +82,7 @@ def index_locked(f):
     return wrapper
 
 
-class BaseRemote(object):
+class BaseRemote:
     scheme = "base"
     path_cls = URLInfo
     REQUIRES = {}
@@ -151,7 +151,7 @@ class BaseRemote(object):
         if not missing:
             return
 
-        url = config.get("url", "{}://".format(self.scheme))
+        url = config.get("url", f"{self.scheme}://")
         msg = (
             "URL '{}' is supported but requires these missing "
             "dependencies: {}. If you have installed dvc using pip, "
@@ -418,10 +418,10 @@ class BaseRemote(object):
         if self.cache_type_confirmed:
             return
 
-        is_link = getattr(self, "is_{}".format(link_type), None)
+        is_link = getattr(self, f"is_{link_type}", None)
         if is_link and not is_link(path_info):
             self.remove(path_info)
-            raise DvcException("failed to verify {}".format(link_type))
+            raise DvcException(f"failed to verify {link_type}")
 
         self.cache_type_confirmed = True
 
@@ -444,7 +444,7 @@ class BaseRemote(object):
 
     def _do_link(self, from_info, to_info, link_method):
         if self.exists(to_info):
-            raise DvcException("Link '{}' already exists!".format(to_info))
+            raise DvcException(f"Link '{to_info}' already exists!")
 
         link_method(from_info, to_info)
 
@@ -544,8 +544,7 @@ class BaseRemote(object):
     def save(self, path_info, checksum_info, save_link=True):
         if path_info.scheme != self.scheme:
             raise RemoteActionNotImplemented(
-                "save {} -> {}".format(path_info.scheme, self.scheme),
-                self.scheme,
+                f"save {path_info.scheme} -> {self.scheme}", self.scheme,
             )
 
         checksum = checksum_info[self.PARAM_CHECKSUM]
@@ -712,7 +711,7 @@ class BaseRemote(object):
         parts = self.path_cls(path).parts[-2:]
 
         if not (len(parts) == 2 and parts[0] and len(parts[0]) == 2):
-            raise ValueError("Bad cache file path '{}'".format(path))
+            raise ValueError(f"Bad cache file path '{path}'")
 
         return "".join(parts)
 
@@ -991,7 +990,7 @@ class BaseRemote(object):
 
         with Tqdm(
             desc="Estimating size of "
-            + ("cache in '{}'".format(name) if name else "remote cache"),
+            + (f"cache in '{name}'" if name else "remote cache"),
             unit="file",
         ) as pbar:
 
@@ -1010,7 +1009,7 @@ class BaseRemote(object):
                 remote_size = total_prefixes * len(remote_checksums)
             else:
                 remote_size = total_prefixes
-            logger.debug("Estimated remote size: {} files".format(remote_size))
+            logger.debug(f"Estimated remote size: {remote_size} files")
         return remote_size, remote_checksums
 
     def _cache_checksums_traverse(
@@ -1043,7 +1042,7 @@ class BaseRemote(object):
         else:
             yield from remote_checksums
             initial = len(remote_checksums)
-            traverse_prefixes = ["{:02x}".format(i) for i in range(1, 256)]
+            traverse_prefixes = [f"{i:02x}" for i in range(1, 256)]
             if self.TRAVERSE_PREFIX_LEN > 2:
                 traverse_prefixes += [
                     "{0:0{1}x}".format(i, self.TRAVERSE_PREFIX_LEN)
@@ -1051,7 +1050,7 @@ class BaseRemote(object):
                 ]
         with Tqdm(
             desc="Querying "
-            + ("cache in '{}'".format(name) if name else "remote cache"),
+            + (f"cache in '{name}'" if name else "remote cache"),
             total=remote_size,
             initial=initial,
             unit="file",

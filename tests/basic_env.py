@@ -1,5 +1,3 @@
-# encoding: utf-8
-
 import logging
 import os
 import tempfile
@@ -17,7 +15,7 @@ from dvc.utils.fs import remove
 logger = logging.getLogger("dvc")
 
 
-class TestDirFixture(object):
+class TestDirFixture:
     DATA_DIR = "data_dir"
     DATA_SUB_DIR = os.path.join(DATA_DIR, "data_sub_dir")
     DATA = os.path.join(DATA_DIR, "data")
@@ -76,8 +74,8 @@ class TestDirFixture(object):
 
     @staticmethod
     def mkdtemp(base_directory=None):
-        prefix = "dvc-test.{}.".format(os.getpid())
-        suffix = ".{}".format(shortuuid.uuid())
+        prefix = f"dvc-test.{os.getpid()}."
+        suffix = f".{shortuuid.uuid()}"
         return tempfile.mkdtemp(
             prefix=prefix, suffix=suffix, dir=base_directory
         )

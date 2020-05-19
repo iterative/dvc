@@ -30,7 +30,7 @@ def iter_url(url, chunk_size=io.DEFAULT_BUFFER_SIZE):
         the_url = url() if callable(url) else url
         response = requests.get(the_url, stream=True, headers=headers)
         if response.status_code == 404:
-            raise FileNotFoundError("Can't open {}".format(the_url))
+            raise FileNotFoundError(f"Can't open {the_url}")
         response.raise_for_status()
         return response
 
@@ -49,7 +49,7 @@ def iter_url(url, chunk_size=io.DEFAULT_BUFFER_SIZE):
                         raise
 
                     # Reopen request from where we stopped
-                    headers = {"Range": "bytes={}-".format(pos)}
+                    headers = {"Range": f"bytes={pos}-"}
                     response = request(headers)
         finally:
             response.close()

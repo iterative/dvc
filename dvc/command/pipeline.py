@@ -164,7 +164,7 @@ class CmdPipelineShow(CmdBase):
                         self.args.locked,
                     )
             except DvcException:
-                msg = "failed to show pipeline for '{}'".format(target)
+                msg = f"failed to show pipeline for '{target}'"
                 logger.exception(msg)
                 return 1
         return 0

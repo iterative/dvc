@@ -28,12 +28,12 @@ class CmdVersion(CmdBaseNoRepo):
         from dvc.repo import Repo
 
         info = [
-            "DVC version: {}".format(__version__),
-            "Python version: {}".format(platform.python_version()),
-            "Platform: {}".format(platform.platform()),
-            "Binary: {}".format(is_binary()),
-            "Package: {}".format(PKG),
-            "Supported remotes: {}".format(self.get_supported_remotes()),
+            f"DVC version: {__version__}",
+            f"Python version: {platform.python_version()}",
+            f"Platform: {platform.platform()}",
+            f"Binary: {is_binary()}",
+            f"Package: {PKG}",
+            f"Supported remotes: {self.get_supported_remotes()}",
         ]
 
         try:
@@ -51,7 +51,7 @@ class CmdVersion(CmdBaseNoRepo):
                 if psutil:
                     fs_type = self.get_fs_type(repo.cache.local.cache_dir)
                     info.append(
-                        "Filesystem type (cache directory): {}".format(fs_type)
+                        f"Filesystem type (cache directory): {fs_type}"
                     )
             else:
                 logger.warning(
@@ -72,7 +72,7 @@ class CmdVersion(CmdBaseNoRepo):
 
         if psutil:
             fs_root = self.get_fs_type(os.path.abspath(root_directory))
-            info.append("Filesystem type (workspace): {}".format(fs_root))
+            info.append(f"Filesystem type (workspace): {fs_root}")
 
         logger.info("\n".join(info))
         return 0
@@ -115,7 +115,7 @@ class CmdVersion(CmdBaseNoRepo):
                 os.unlink(dst)
             except DvcException:
                 status = "not supported"
-            cache.append("{name} - {status}".format(name=name, status=status))
+            cache.append(f"{name} - {status}")
         os.remove(src)
 
         return ", ".join(cache)

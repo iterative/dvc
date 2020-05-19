@@ -87,9 +87,7 @@ class TestDataCloudBase(TestDvc):
 
     def _ensure_should_run(self):
         if not self.should_test():
-            raise SkipTest(
-                "Test {} is disabled".format(self.__class__.__name__)
-            )
+            raise SkipTest(f"Test {self.__class__.__name__} is disabled")
 
     def _setup_cloud(self):
         self._ensure_should_run()
@@ -167,7 +165,7 @@ class TestDataCloudBase(TestDvc):
             self.cloud.pull(info)
             self.assertTrue(os.path.exists(cache))
             self.assertTrue(os.path.isfile(cache))
-            with open(cache, "r") as fd:
+            with open(cache) as fd:
                 self.assertEqual(fd.read(), self.FOO_CONTENTS)
 
             self.cloud.pull(info_dir)
@@ -366,7 +364,7 @@ class TestDataCloudCLIBase(TestDvc):
         self.assertTrue(os.path.isfile(self.FOO))
         self.assertTrue(os.path.isdir(self.DATA_DIR))
 
-        with open(cache, "r") as fd:
+        with open(cache) as fd:
             self.assertEqual(fd.read(), self.FOO_CONTENTS)
         self.assertTrue(os.path.isfile(cache_dir))
 
@@ -391,9 +389,7 @@ class TestDataCloudCLIBase(TestDvc):
 
     def test(self):
         if not self.should_test():
-            raise SkipTest(
-                "Test {} is disabled".format(self.__class__.__name__)
-            )
+            raise SkipTest(f"Test {self.__class__.__name__} is disabled")
         self._test()
 
 

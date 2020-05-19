@@ -86,9 +86,9 @@ def _checkout(
                 relink=relink,
                 filter_info=filter_info,
             )
-            for data in ["failed", "added", "modified"]:
-                stats[data].extend(
-                    _fspath_dir(path, self.root_dir) for path in result[data]
+            for key, items in result.items():
+                stats[key].extend(
+                    _fspath_dir(path, self.root_dir) for path in items
                 )
 
     if stats.get("failed"):

@@ -26,7 +26,7 @@ def append_doc_link(help_message, path):
     )
 
 
-class CmdBase(object):
+class CmdBase:
     def __init__(self, args):
         from dvc.repo import Repo
         from dvc.updater import Updater
@@ -43,7 +43,7 @@ class CmdBase(object):
         """Default targets for `dvc repro`."""
         from dvc.dvcfile import PIPELINE_FILE
 
-        msg = "assuming default target '{}'.".format(PIPELINE_FILE)
+        msg = f"assuming default target '{PIPELINE_FILE}'."
         logger.warning(msg)
         return [PIPELINE_FILE]
 

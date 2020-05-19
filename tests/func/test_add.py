@@ -49,7 +49,7 @@ def test_add(tmp_dir, dvc):
 
 def test_add_unicode(tmp_dir, dvc):
     with open("\xe1", "wb") as fd:
-        fd.write("something".encode("utf-8"))
+        fd.write(b"something")
 
     (stage,) = dvc.add("\xe1")
 
@@ -206,7 +206,7 @@ class TestAddLocalRemoteFile(TestDvc):
 
         self.dvc = DvcRepo()
 
-        foo = "remote://{}/{}".format(remote, self.FOO)
+        foo = f"remote://{remote}/{self.FOO}"
         ret = main(["add", foo])
         self.assertEqual(ret, 0)
 
@@ -525,7 +525,7 @@ def temporary_windows_drive(tmp_path_factory):
     new_drive_name = [
         letter for letter in string.ascii_uppercase if letter not in drives
     ][0]
-    new_drive = "{}:".format(new_drive_name)
+    new_drive = f"{new_drive_name}:"
 
     target_path = tmp_path_factory.mktemp("tmp_windows_drive")
 

@@ -265,7 +265,7 @@ def test_remote_modify_validation(dvc):
         == 251
     )
     config = configobj.ConfigObj(dvc.config.files["repo"])
-    assert unsupported_config not in config['remote "{}"'.format(remote_name)]
+    assert unsupported_config not in config[f'remote "{remote_name}"']
 
 
 def test_remote_modify_default(dvc):

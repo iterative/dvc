@@ -72,7 +72,7 @@ def send(path):
     url = "https://analytics.dvc.org"
     headers = {"content-type": "application/json"}
 
-    with open(path, "r") as fobj:
+    with open(path) as fobj:
         report = json.load(fobj)
 
     report.update(_runtime_info())
@@ -158,7 +158,7 @@ def _find_or_create_user_id():
     try:
         with Lock(lockfile):
             try:
-                with open(fname, "r") as fobj:
+                with open(fname) as fobj:
                     user_id = json.load(fobj)["user_id"]
 
             except (FileNotFoundError, ValueError, KeyError):
@@ -170,6 +170,4 @@ def _find_or_create_user_id():
             return user_id
 
     except LockError:
-        logger.debug(
-            "Failed to acquire '{lockfile}'".format(lockfile=lockfile)
-        )
+        logger.debug(f"Failed to acquire '{lockfile}'")

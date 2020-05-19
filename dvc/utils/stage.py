@@ -13,7 +13,7 @@ except ImportError:
 
 
 def load_stage_file(path):
-    with open(path, "r", encoding="utf-8") as fd:
+    with open(path, encoding="utf-8") as fd:
         return parse_stage(fd.read(), path)
 
 

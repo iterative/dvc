@@ -8,7 +8,7 @@ key_secret = "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsu"
 
 def test_init(dvc):
     prefix = "some/prefix"
-    url = "oss://{}/{}".format(bucket_name, prefix)
+    url = f"oss://{bucket_name}/{prefix}"
     config = {
         "url": url,
         "oss_key_id": key_id,

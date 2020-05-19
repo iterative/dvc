@@ -11,7 +11,7 @@ from dvc.utils import relpath
 logger = logging.getLogger(__name__)
 
 
-class DvcIgnore(object):
+class DvcIgnore:
     DVCIGNORE_FILE = ".dvcignore"
 
     def __call__(self, root, dirs, files):
@@ -83,7 +83,7 @@ class DvcIgnoreRepo(DvcIgnore):
         return dirs, files
 
 
-class DvcIgnoreFilter(object):
+class DvcIgnoreFilter:
     def __init__(self, tree):
         self.tree = tree
         self.ignores = {
