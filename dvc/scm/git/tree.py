@@ -1,6 +1,7 @@
 import errno
 import io
 import os
+import stat
 
 from dvc.exceptions import DvcException
 from dvc.scm.tree import BaseTree
@@ -87,7 +88,9 @@ class GitTree(BaseTree):
         import git
 
         path = relpath(os.path.realpath(path), self.git.working_dir)
-        assert path.split(os.sep, 1)[0] != ".."
+        if path.split(os.sep, 1)[0] == "..":
+            # path points outside of git repository
+            return None
 
         try:
             tree = self.git.tree(self.rev)
@@ -138,3 +141,40 @@ class GitTree(BaseTree):
             raise OSError(errno.ENOENT, "No such file")
 
         yield from self._walk(tree, topdown=topdown)
+
+    def isexec(self, path):
+        if not self.exists(path):
+            return False
+
+        mode = self.stat(path).st_mode
+        return mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+    def stat(self, path):
+        import git
+
+        def to_ctime(git_time):
+            sec, nano_sec = git_time
+            return sec + nano_sec / 1000000000
+
+        obj = self.git_object_by_path(path)
+        if obj is None:
+            raise OSError(errno.ENOENT, "No such file")
+        entry = git.index.IndexEntry.from_blob(obj)
+
+        # os.stat_result takes a tuple in the form:
+        #   (mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime)
+        return os.stat_result(
+            (
+                entry.mode,
+                entry.inode,
+                entry.dev,
+                0,
+                entry.uid,
+                entry.gid,
+                entry.size,
+                # git index has no atime equivalent, use mtime
+                to_ctime(entry.mtime),
+                to_ctime(entry.mtime),
+                to_ctime(entry.ctime),
+            )
+        )
