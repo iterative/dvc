@@ -300,11 +300,7 @@ class PathMissingError(DvcException):
     )
 
     def __init__(self, path, repo, dvc_only=False):
-        msg = (
-            self.default_msg
-            if not dvc_only
-            else self.default_msg_dvc_only
-        )
+        msg = self.default_msg if not dvc_only else self.default_msg_dvc_only
         super().__init__(msg.format(path, repo))
         self.dvc_only = dvc_only
 
