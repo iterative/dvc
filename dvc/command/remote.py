@@ -116,7 +116,7 @@ class CmdRemoteRename(CmdRemote):
         all_config = self.config.load_config_to_level("all")
         if self.args.new in all_config.get("remote", {}):
             raise ConfigError(
-                "Rename failed.Remote name {} already exists.".format(
+                "Rename failed. Remote name '{}' already exists.".format(
                     {self.args.new}
                 )
             )
