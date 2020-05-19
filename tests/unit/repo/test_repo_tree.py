@@ -1,6 +1,8 @@
 import os
 import shutil
 
+import pytest
+
 from dvc.repo.tree import RepoTree
 
 
@@ -76,7 +78,21 @@ def test_isdir_mixed(tmp_dir, dvc):
     assert not tree.isfile("dir")
 
 
-def test_walk(tmp_dir, dvc):
+@pytest.mark.parametrize(
+    "dvcfiles,extra_expected",
+    [
+        (False, []),
+        (
+            True,
+            [
+                "dir/subdir1/foo1.dvc",
+                "dir/subdir1/bar1.dvc",
+                "dir/subdir2/foo2.dvc",
+            ],
+        ),
+    ],
+)
+def test_walk(tmp_dir, dvc, dvcfiles, extra_expected):
     tmp_dir.gen(
         {
             "dir": {
@@ -90,25 +106,22 @@ def test_walk(tmp_dir, dvc):
     tree = RepoTree(dvc)
 
     expected = [
-        os.path.join("dir", "subdir1"),
-        os.path.join("dir", "subdir2"),
-        os.path.join("dir", "subdir1", "foo1"),
-        os.path.join("dir", "subdir1", "foo1.dvc"),
-        os.path.join("dir", "subdir1", "bar1"),
-        os.path.join("dir", "subdir1", "bar1.dvc"),
-        os.path.join("dir", "subdir2", "foo2"),
-        os.path.join("dir", "subdir2", "foo2.dvc"),
-        os.path.join("dir", "foo"),
-        os.path.join("dir", "bar"),
+        "dir/subdir1",
+        "dir/subdir2",
+        "dir/subdir1/foo1",
+        "dir/subdir1/bar1",
+        "dir/subdir2/foo2",
+        "dir/foo",
+        "dir/bar",
     ]
 
     actual = []
-    for root, dirs, files in tree.walk("dir"):
+    for root, dirs, files in tree.walk("dir", dvcfiles=dvcfiles):
         for entry in dirs + files:
             actual.append(os.path.join(root, entry))
 
-    assert set(actual) == set(expected)
-    assert len(actual) == len(expected)
+    assert set(actual) == set(expected + extra_expected)
+    assert len(actual) == len(expected + extra_expected)
 
 
 def test_isdvc(tmp_dir, dvc):

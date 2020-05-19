@@ -1,6 +1,7 @@
 import logging
 import os
 
+from dvc.dvcfile import is_valid_filename
 from dvc.exceptions import OutputNotFoundError
 from dvc.path_info import PathInfo
 from dvc.remote.base import RemoteActionNotImplemented
@@ -229,7 +230,7 @@ class RepoTree(BaseTree):
         for _ in dirs:
             yield from self._walk_one(walk)
 
-    def _walk(self, dvc_walk, repo_walk):
+    def _walk(self, dvc_walk, repo_walk, dvcfiles=False):
         try:
             _, dvc_dirs, dvc_fnames = next(dvc_walk)
             repo_root, repo_dirs, repo_fnames = next(repo_walk)
@@ -245,9 +246,11 @@ class RepoTree(BaseTree):
         dirs = shared + dvc_only + repo_only
 
         # merge file lists
-        files = set(dvc_fnames)
-        for filename in repo_fnames:
-            files.add(filename)
+        files = {
+            fname
+            for fname in dvc_fnames + repo_fnames
+            if dvcfiles or not is_valid_filename(fname)
+        }
 
         yield repo_root, dirs, list(files)
 
@@ -258,13 +261,13 @@ class RepoTree(BaseTree):
 
         for dirname in dirs:
             if dirname in shared:
-                yield from self._walk(dvc_walk, repo_walk)
+                yield from self._walk(dvc_walk, repo_walk, dvcfiles=dvcfiles)
             elif dirname in dvc_set:
                 yield from self._walk_one(dvc_walk)
             elif dirname in repo_set:
                 yield from self._walk_one(repo_walk)
 
-    def walk(self, top, topdown=True):
+    def walk(self, top, topdown=True, dvcfiles=False):
         """Walk and merge both DVC and repo trees."""
         assert topdown
 
@@ -287,4 +290,4 @@ class RepoTree(BaseTree):
 
         dvc_walk = self.dvctree.walk(top, topdown=topdown)
         repo_walk = self.repo.tree.walk(top, topdown=topdown)
-        yield from self._walk(dvc_walk, repo_walk)
+        yield from self._walk(dvc_walk, repo_walk, dvcfiles=dvcfiles)
