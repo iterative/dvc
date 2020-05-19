@@ -109,6 +109,10 @@ class CmdRemoteList(CmdRemote):
 
 
 class CmdRemoteRename(CmdRemote):
+    def _rename_default(self, conf):
+        if conf["core"].get("remote") == self.args.name:
+            conf["core"]["remote"] = self.args.new
+
     def run(self):
         all_config = self.config.load_config_to_level(None)
         if self.args.new in all_config.get("remote", {}):
@@ -122,15 +126,13 @@ class CmdRemoteRename(CmdRemote):
             self._check_exists(conf)
             conf["remote"][self.args.new] = conf["remote"][self.args.name]
             del conf["remote"][self.args.name]
-            if conf["core"].get("remote") == self.args.name:
-                conf["core"]["remote"] = self.args.new
+            self._rename_default(conf)
 
         for level in reversed(self.config.LEVELS):
             if level == self.args.level:
                 break
-            with self.config.edit(level) as conf:
-                if conf["core"].get("remote") == self.args.name:
-                    conf["core"]["remote"] = self.args.new
+            with self.config.edit(level) as level_conf:
+                self._rename_default(level_conf)
 
         return 0
 
