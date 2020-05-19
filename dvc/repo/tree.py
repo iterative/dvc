@@ -6,6 +6,7 @@ from dvc.exceptions import OutputNotFoundError
 from dvc.path_info import PathInfo
 from dvc.remote.base import RemoteActionNotImplemented
 from dvc.scm.tree import BaseTree, WorkingTree
+from dvc.utils import file_md5
 
 logger = logging.getLogger(__name__)
 
@@ -295,3 +296,8 @@ class RepoTree(BaseTree):
         dvc_walk = self.dvctree.walk(top, topdown=topdown, **kwargs)
         repo_walk = self.repo.tree.walk(top, topdown=topdown)
         yield from self._walk(dvc_walk, repo_walk, dvcfiles=dvcfiles)
+
+    def get_file_checksum(self, path_info):
+        if not self.exists(path_info):
+            raise FileNotFoundError
+        return file_md5(path_info, self)[0]

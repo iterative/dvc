@@ -26,6 +26,7 @@ from dvc.path_info import PathInfo, URLInfo, WindowsPathInfo
 from dvc.progress import Tqdm
 from dvc.remote.index import RemoteIndex, RemoteIndexNoop
 from dvc.remote.slow_link_detection import slow_link_guard
+from dvc.scm.tree import is_working_tree
 from dvc.state import StateNoop
 from dvc.utils import tmp_fname
 from dvc.utils.fs import makedirs, move
@@ -193,17 +194,23 @@ class BaseRemote:
     def cache(self):
         return getattr(self.repo.cache, self.scheme)
 
-    def get_file_checksum(self, path_info):
+    def get_file_checksum(self, path_info, **kwargs):
         raise NotImplementedError
 
-    def _calculate_checksums(self, file_infos):
+    def _calculate_checksums(self, file_infos, tree=None):
         file_infos = list(file_infos)
+
+        if tree:
+            checksum_func = tree.get_file_checksum
+        else:
+            checksum_func = self.get_file_checksum
+
         with Tqdm(
             total=len(file_infos),
             unit="md5",
             desc="Computing file/dir hashes (only done once)",
         ) as pbar:
-            worker = pbar.wrap_fn(self.get_file_checksum)
+            worker = pbar.wrap_fn(checksum_func)
             with ThreadPoolExecutor(
                 max_workers=self.checksum_jobs
             ) as executor:
@@ -211,10 +218,15 @@ class BaseRemote:
                 checksums = dict(zip(file_infos, tasks))
         return checksums
 
-    def _collect_dir(self, path_info):
+    def _collect_dir(self, path_info, tree=None):
         file_infos = set()
 
-        for fname in self.walk_files(path_info):
+        if tree:
+            walk_files = tree.walk_files
+        else:
+            walk_files = self.walk_files
+
+        for fname in walk_files(path_info):
             if DvcIgnore.DVCIGNORE_FILE == fname.name:
                 raise DvcIgnoreInCollectedDirError(fname.parent)
 
@@ -225,7 +237,7 @@ class BaseRemote:
             fi for fi, checksum in checksums.items() if checksum is None
         }
 
-        new_checksums = self._calculate_checksums(not_in_state)
+        new_checksums = self._calculate_checksums(not_in_state, tree=tree)
 
         checksums.update(new_checksums)
 
@@ -248,18 +260,19 @@ class BaseRemote:
         # Sorting the list by path to ensure reproducibility
         return sorted(result, key=itemgetter(self.PARAM_RELPATH))
 
-    def get_dir_checksum(self, path_info):
+    def get_dir_checksum(self, path_info, tree=None):
         if not self.cache:
             raise RemoteCacheRequiredError(path_info)
 
-        dir_info = self._collect_dir(path_info)
+        dir_info = self._collect_dir(path_info, tree=tree)
         checksum, tmp_info = self._get_dir_info_checksum(dir_info)
         new_info = self.cache.checksum_to_path_info(checksum)
         if self.cache.changed_cache_file(checksum):
             self.cache.makedirs(new_info.parent)
             self.cache.move(tmp_info, new_info, mode=self.CACHE_MODE)
 
-        self.state.save(path_info, checksum)
+        if not tree or is_working_tree(tree):
+            self.state.save(path_info, checksum)
         self.state.save(new_info, checksum)
 
         return checksum
@@ -321,10 +334,16 @@ class BaseRemote:
     def is_dir_checksum(cls, checksum):
         return checksum.endswith(cls.CHECKSUM_DIR_SUFFIX)
 
-    def get_checksum(self, path_info):
+    def get_checksum(self, path_info, tree=None):
         assert isinstance(path_info, str) or path_info.scheme == self.scheme
 
-        if not self.exists(path_info):
+        if tree:
+            exists = tree.exists
+            isdir = tree.isdir
+        else:
+            exists = self.exists
+            isdir = self.isdir
+        if not exists(path_info):
             return None
 
         checksum = self.state.get(path_info)
@@ -342,18 +361,20 @@ class BaseRemote:
         if checksum:
             return checksum
 
-        if self.isdir(path_info):
-            checksum = self.get_dir_checksum(path_info)
+        if isdir(path_info):
+            checksum = self.get_dir_checksum(path_info, tree=tree)
+        elif tree:
+            checksum = tree.get_file_checksum(path_info)
         else:
             checksum = self.get_file_checksum(path_info)
 
-        if checksum:
+        if checksum and (not tree or is_working_tree(tree)):
             self.state.save(path_info, checksum)
 
         return checksum
 
-    def save_info(self, path_info):
-        return {self.PARAM_CHECKSUM: self.get_checksum(path_info)}
+    def save_info(self, path_info, tree=None):
+        return {self.PARAM_CHECKSUM: self.get_checksum(path_info, tree=tree)}
 
     def changed(self, path_info, checksum_info):
         """Checks if data has changed.
