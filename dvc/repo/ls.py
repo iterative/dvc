@@ -46,7 +46,7 @@ def ls(
         ret.update(nondvc)
 
         if path and not ret:
-            raise PathMissingError(path, repo, output_only=dvc_only)
+            raise PathMissingError(path, repo, dvc_only=dvc_only)
 
         ret_list = []
         for path, info in ret.items():
