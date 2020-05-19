@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def _reproduce_stage(stage, **kwargs):
-    if stage.locked:
+    if stage.locked and not stage.is_import:
         logger.warning(
             "{} is locked. Its dependencies are"
             " not going to be reproduced.".format(stage)
