@@ -91,3 +91,15 @@ def test_metrics_show(dvc, mocker):
         x_title=None,
         y_title=None,
     )
+
+
+def test_plots_show_json(dvc, mocker, caplog):
+    cli_args = parse_args(
+        ["plots", "diff", "HEAD~10", "HEAD~1", "--show-json"]
+    )
+    cmd = cli_args.func(cli_args)
+    mocker.patch(
+        "dvc.repo.plots.diff.diff", return_value={"plots.csv": "plothtml"}
+    )
+    assert cmd.run() == 0
+    assert '{"plots.csv": "plothtml"}\n' in caplog.text
