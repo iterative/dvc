@@ -59,6 +59,7 @@ class Template:
                 indent=self.INDENT,
                 separators=self.SEPARATORS,
             )
+            fobj.write("\n")
 
     @staticmethod
     def get_data_anchor(template_content):
