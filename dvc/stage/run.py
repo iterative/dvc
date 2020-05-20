@@ -4,7 +4,7 @@ import signal
 import subprocess
 import threading
 
-from dvc.utils import fix_env
+from dvc.utils import fix_env, styled
 
 from .decorators import unlocked_repo
 from .exceptions import StageCmdFailedError
@@ -85,7 +85,9 @@ def _is_cached(stage):
         and stage.already_cached()
     )
     if cached:
-        logger.info("Stage '%s' is cached, skipping…", stage.addressing)
+        logger.info(
+            "Stage %s is cached, skipping…", styled(stage.addressing, "bold"),
+        )
     return cached
 
 
@@ -99,7 +101,8 @@ def restored_from_cache(stage):
     restored = stage.outs_cached()
     if restored:
         logger.info(
-            "Restored stage '%s' from run-cache, skipping…", stage.addressing
+            "Restored stage %s from run-cache, skipping…",
+            styled(stage.addressing, "bold"),
         )
     return restored
 
@@ -113,11 +116,13 @@ def run_stage(stage, dry=False, force=False, run_cache=False):
             stage.checkout()
             return
 
-    callback_str = "callback " if stage.is_callback else ""
+    callback_str = (
+        "{} ".format(styled("callback", "bold")) if stage.is_callback else ""
+    )
     logger.info(
-        "Running %s" "stage '%s' with command:",
+        "Running %s" "stage %s with command:",
         callback_str,
-        stage.addressing,
+        styled(stage.addressing, "bold"),
     )
     logger.info("\t%s", stage.cmd)
     if not dry:

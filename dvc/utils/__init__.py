@@ -270,6 +270,17 @@ def colorize(message, color=None):
     )
 
 
+def styled(message, style=None):
+    if not style:
+        return message
+    styles = {
+        "bold": colorama.Style.BRIGHT,
+        "normal": colorama.Style.NORMAL,
+        "dim": colorama.Style.DIM,
+    }
+    return f"{styles[style]}{message}{styles['normal']}"
+
+
 def boxify(message, border_color=None):
     """Put a message inside a box.
 

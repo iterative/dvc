@@ -8,7 +8,7 @@ from funcy import project
 import dvc.dependency as dependency
 import dvc.prompt as prompt
 from dvc.exceptions import CheckoutError, DvcException
-from dvc.utils import relpath
+from dvc.utils import relpath, styled
 
 from . import params
 from .decorators import rwlocked
@@ -294,7 +294,10 @@ class Stage(params.StageParams):
     @rwlocked(read=["deps"], write=["outs"])
     def reproduce(self, interactive=False, **kwargs):
         if not (kwargs.get("force", False) or self.changed()):
-            logger.info("Stage '%s' didn't change, skipping…", self.addressing)
+            logger.info(
+                "Stage '%s' didn't change, skipping…",
+                styled(self.addressing, "bold"),
+            )
             return None
 
         msg = (
