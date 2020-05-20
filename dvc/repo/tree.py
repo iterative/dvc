@@ -161,13 +161,14 @@ class DvcTree(BaseTree):
             trie[out.path_info.parts] = out
 
             if out.is_dir_checksum and (self.fetch or self.stream):
-                with self.repo.state:
-                    # pull dir contents if needed
-                    if self.fetch:
-                        used_cache = out.get_used_cache()
+                # pull dir cache if needed
+                dir_cache = out.get_dir_cache(**kwargs)
+
+                # pull dir contents if needed
+                if self.fetch:
+                    if out.changed_cache(filter_info=top):
+                        used_cache = out.get_used_cache(filter_info=top)
                         self.repo.cloud.pull(used_cache, **kwargs)
-                    # pull dir cache if needed
-                    dir_cache = out.get_dir_cache(**kwargs)
 
                 for entry in dir_cache:
                     entry_relpath = entry[out.remote.PARAM_RELPATH]
