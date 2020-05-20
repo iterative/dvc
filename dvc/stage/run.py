@@ -115,7 +115,9 @@ def run_stage(stage, dry=False, force=False, run_cache=False):
 
     callback_str = "callback " if stage.is_callback else ""
     logger.info(
-        "Running %s" "stage %s with command:", callback_str, stage.addressing,
+        "Running %s" "stage '%s' with command:",
+        callback_str,
+        stage.addressing,
     )
     logger.info("\t%s", stage.cmd)
     if not dry:
