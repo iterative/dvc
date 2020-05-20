@@ -5,6 +5,7 @@ import os
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.command.metrics import show_metrics
 from dvc.command.status import CmdDataStatus
+from dvc.dvcfile import PIPELINE_FILE
 from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
@@ -69,7 +70,7 @@ def add_parser(subparsers, parent_parser):
     repro_parser.add_argument(
         "targets",
         nargs="*",
-        help="DVC-file to reproduce. 'Dvcfile' by default.",
+        help=f"Stages to reproduce. '{PIPELINE_FILE}' by default.",
     )
     repro_parser.add_argument(
         "-f",
