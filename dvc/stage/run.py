@@ -99,7 +99,7 @@ def restored_from_cache(stage):
     restored = stage.outs_cached()
     if restored:
         logger.info(
-            "Restored stage %s from run-cache, skipping…", stage.addressing
+            "Restored stage '%s' from run-cache, skipping…", stage.addressing
         )
     return restored
 
