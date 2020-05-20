@@ -5,7 +5,7 @@ from dvc.dvcfile import is_valid_filename
 from dvc.exceptions import OutputNotFoundError
 from dvc.path_info import PathInfo
 from dvc.remote.base import RemoteActionNotImplemented
-from dvc.scm.tree import BaseTree, WorkingTree
+from dvc.scm.tree import BaseTree
 from dvc.utils import file_md5
 
 logger = logging.getLogger(__name__)
@@ -42,43 +42,58 @@ class DvcTree(BaseTree):
 
         return outs
 
+    def _get_granular_checksum(self, path, out, remote=None):
+        if not self.fetch and not self.stream:
+            raise FileNotFoundError
+        dir_cache = out.get_dir_cache(remote=remote)
+        for entry in dir_cache:
+            if path == out.path_info / entry[out.remote.PARAM_RELPATH]:
+                return entry[out.remote.PARAM_CHECKSUM]
+        raise FileNotFoundError
+
     def open(self, path, mode="r", encoding="utf-8", remote=None):
         try:
             outs = self._find_outs(path, strict=False)
         except OutputNotFoundError as exc:
             raise FileNotFoundError from exc
 
-        if len(outs) != 1 or outs[0].is_dir_checksum:
+        if len(outs) != 1 or (
+            outs[0].is_dir_checksum and path == outs[0].path_info
+        ):
             raise IsADirectoryError
 
         out = outs[0]
-        # temporary hack to make cache use WorkingTree and not GitTree, because
-        # cache dir doesn't exist in the latter.
-        saved_tree = self.repo.tree
-        self.repo.tree = WorkingTree(self.repo.root_dir)
-        try:
-            if out.changed_cache():
+        with self.repo.state:
+            if out.changed_cache(filter_info=path):
                 if not self.fetch and not self.stream:
                     raise FileNotFoundError
 
                 remote_obj = self.repo.cloud.get_remote(remote)
                 if self.stream:
+                    if out.is_dir_checksum:
+                        checksum = self._get_granular_checksum(path, out)
+                    else:
+                        checksum = out.checksum
                     try:
                         remote_info = remote_obj.checksum_to_path_info(
-                            out.checksum
+                            checksum
                         )
                         return remote_obj.open(
                             remote_info, mode=mode, encoding=encoding
                         )
                     except RemoteActionNotImplemented:
                         pass
-                with self.repo.state:
-                    cache_info = out.get_used_cache(remote=remote)
+                    cache_info = out.get_used_cache(
+                        filter_info=path, remote=remote
+                    )
                     self.repo.cloud.pull(cache_info, remote=remote)
-        finally:
-            self.repo.tree = saved_tree
 
-        return open(out.cache_path, mode=mode, encoding=encoding)
+        if out.is_dir_checksum:
+            checksum = self._get_granular_checksum(path, out)
+            cache_path = out.cache.checksum_to_path_info(checksum).url
+        else:
+            cache_path = out.cache_path
+        return open(cache_path, mode=mode, encoding=encoding)
 
     def exists(self, path):
         try:
@@ -193,6 +208,9 @@ class RepoTree(BaseTree):
             self.dvctree = None
 
     def open(self, path, mode="r", encoding="utf-8", **kwargs):
+        if "b" in mode:
+            encoding = None
+
         if self.dvctree and self.dvctree.exists(path):
             try:
                 return self.dvctree.open(

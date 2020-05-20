@@ -94,6 +94,19 @@ def test_open_external(remote_url, erepo_dir, setup_remote):
 
 
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
+def test_open_granular(remote_url, tmp_dir, dvc):
+    run_dvc("remote", "add", "-d", "upstream", remote_url)
+    tmp_dir.dvc_gen({"dir": {"foo": "foo-text"}})
+    run_dvc("push")
+
+    # Remove cache to force download
+    remove(dvc.cache.local.cache_dir)
+
+    with api.open("dir/foo") as fd:
+        assert fd.read() == "foo-text"
+
+
+@pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
 def test_missing(remote_url, tmp_dir, dvc):
     tmp_dir.dvc_gen("foo", "foo")
     run_dvc("remote", "add", "-d", "upstream", remote_url)

@@ -498,7 +498,7 @@ class Repo:
         except FileNotFoundError as exc:
             raise FileMissingError(path) from exc
         except IsADirectoryError as exc:
-            raise DvcIsADirectoryError from exc
+            raise DvcIsADirectoryError(f"'{path}' is a directory") from exc
 
     def close(self):
         self.scm.close()
