@@ -164,7 +164,11 @@ def _reproduce_stages(
 
     force_downstream = kwargs.pop("force_downstream", False)
     result = []
-    for stage in pipeline:
+    for idx, stage in enumerate(pipeline):
+        if idx != 0:
+            # Cosmetic newline
+            logger.info("")
+
         try:
             ret = _reproduce_stage(stage, **kwargs)
 
