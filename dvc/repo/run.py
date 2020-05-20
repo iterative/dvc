@@ -82,8 +82,7 @@ def run(self, fname=None, no_exec=False, single_stage=False, **kwargs):
         raise OutputDuplicationError(exc.output, set(exc.stages) - {stage})
 
     if no_exec:
-        for out in stage.outs:
-            out.ignore()
+        stage.ignore_outs()
     else:
         stage.run(
             no_commit=kwargs.get("no_commit", False),
