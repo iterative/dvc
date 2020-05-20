@@ -284,3 +284,74 @@ def test_remote_modify_default(dvc):
 
     assert repo_config["core"]["remote"] == remote_repo
     assert local_config["core"]["remote"] == remote_local
+
+
+def test_remote_rename(dvc):
+    remote_name = "drive"
+    remote_url = "gdrive://test/test"
+    new_name = "new"
+    other_name = "other"
+    # prepare
+    assert main(["remote", "add", remote_name, remote_url]) == 0
+    config = dvc.config.load_one("repo")
+    assert config["remote"][remote_name]["url"] == remote_url
+    assert new_name not in config.get("remote", {})
+
+    # rename failed
+    assert main(["remote", "rename", remote_name]) == 254
+    assert main(["remote", "rename", new_name, other_name]) == 251
+    config = dvc.config.load_one("repo")
+    assert config["remote"][remote_name]["url"] == remote_url
+    assert new_name not in config.get("remote", {})
+
+    # rename success
+    assert main(["remote", "rename", remote_name, new_name]) == 0
+    config = dvc.config.load_one("repo")
+    assert remote_name not in config.get("remote", {})
+    assert config["remote"][new_name]["url"] == remote_url
+
+
+def test_remote_duplicated(dvc):
+    remote_name = "drive"
+    remote_url = "gdrive://test/test"
+    used_name = "overlap"
+    another_url = "gdrive://test/test1"
+    # prepare
+    assert main(["remote", "add", remote_name, remote_url]) == 0
+    assert main(["remote", "add", "--local", used_name, another_url]) == 0
+    config = dvc.config.load_one("repo")
+    assert config["remote"][remote_name]["url"] == remote_url
+    local_config = dvc.config.load_one("local")
+    assert local_config["remote"][used_name]["url"] == another_url
+
+    # rename duplicated
+    assert main(["remote", "rename", remote_name, used_name]) == 251
+    config = dvc.config.load_one("repo")
+    assert config["remote"][remote_name]["url"] == remote_url
+    local_config = dvc.config.load_one("local")
+    assert local_config["remote"][used_name]["url"] == another_url
+
+
+def test_remote_default(dvc):
+    remote_name = "drive"
+    remote_url = "gdrive://test/test"
+    new_name = "new"
+    # prepare
+    assert main(["remote", "add", "-d", remote_name, remote_url]) == 0
+    assert main(["remote", "default", "--local", remote_name]) == 0
+    config = dvc.config.load_one("repo")
+    assert config["core"]["remote"] == remote_name
+    assert config["remote"][remote_name]["url"] == remote_url
+    assert new_name not in config.get("remote", {})
+    local_config = dvc.config.load_one("local")
+    assert local_config["core"]["remote"] == remote_name
+
+    # rename success
+    assert main(["remote", "rename", remote_name, new_name]) == 0
+    config = dvc.config.load_one("repo")
+    assert remote_name not in config.get("remote", {})
+    assert config["core"]["remote"] == new_name
+    assert config["remote"][new_name]["url"] == remote_url
+    assert remote_name not in config.get("remote", {})
+    local_config = dvc.config.load_one("local")
+    assert local_config["core"]["remote"] == new_name
