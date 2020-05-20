@@ -4,7 +4,7 @@ from dvc.path_info import PathInfo
 
 @staticmethod
 def ls(
-    url, path=None, rev=None, recursive=None, outs_only=False,
+    url, path=None, rev=None, recursive=None, dvc_only=False,
 ):
     """Methods for getting files and outputs for the repo.
 
@@ -13,7 +13,7 @@ def ls(
         path (str, optional): relative path into the repo
         rev (str, optional): SHA commit, branch or tag name
         recursive (bool, optional): recursively walk the repo
-        outs_only (bool, optional): show only DVC-artifacts
+        dvc_only (bool, optional): show only DVC-artifacts
 
     Returns:
         list of `entry`
@@ -40,13 +40,13 @@ def ls(
             ret = _ls(repo, path_info, recursive, True)
 
         nondvc = {}
-        if not outs_only:
+        if not dvc_only:
             nondvc = _ls(repo, path_info, recursive, False)
 
         ret.update(nondvc)
 
         if path and not ret:
-            raise PathMissingError(path, repo, output_only=outs_only)
+            raise PathMissingError(path, repo, dvc_only=dvc_only)
 
         ret_list = []
         for path, info in ret.items():

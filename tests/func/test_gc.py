@@ -68,7 +68,7 @@ class TestGCBranchesTags(TestDvcGit):
         self.dvc.scm.tag("v1.0")
 
         self.dvc.scm.checkout("test", create_new=True)
-        self.dvc.remove(stages[0].relpath, outs_only=True)
+        self.dvc.remove(stages[0].relpath, dvc_only=True)
         with open(fname, "w+") as fobj:
             fobj.write("test")
         stages = self.dvc.add(fname)
@@ -77,7 +77,7 @@ class TestGCBranchesTags(TestDvcGit):
         self.dvc.scm.commit("test")
 
         self.dvc.scm.checkout("master")
-        self.dvc.remove(stages[0].relpath, outs_only=True)
+        self.dvc.remove(stages[0].relpath, dvc_only=True)
         with open(fname, "w+") as fobj:
             fobj.write("trash")
         stages = self.dvc.add(fname)
@@ -85,7 +85,7 @@ class TestGCBranchesTags(TestDvcGit):
         self.dvc.scm.add([".gitignore", stages[0].relpath])
         self.dvc.scm.commit("trash")
 
-        self.dvc.remove(stages[0].relpath, outs_only=True)
+        self.dvc.remove(stages[0].relpath, dvc_only=True)
         with open(fname, "w+") as fobj:
             fobj.write("master")
         stages = self.dvc.add(fname)

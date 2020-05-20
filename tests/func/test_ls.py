@@ -123,11 +123,11 @@ def test_ls_repo_recursive(tmp_dir, dvc, scm):
     )
 
 
-def test_ls_repo_outs_only_recursive(tmp_dir, dvc, scm):
+def test_ls_repo_dvc_only_recursive(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
     tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
-    files = Repo.ls(os.fspath(tmp_dir), recursive=True, outs_only=True)
+    files = Repo.ls(os.fspath(tmp_dir), recursive=True, dvc_only=True)
     match_files(
         files,
         (
@@ -156,13 +156,13 @@ def test_ls_repo_with_path_dir(tmp_dir, dvc, scm):
     )
 
 
-def test_ls_repo_with_path_dir_outs_only_empty(tmp_dir, dvc, scm):
+def test_ls_repo_with_path_dir_dvc_only_empty(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
     tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
     tmp_dir.scm_gen({"folder/.keep": "content"}, commit="add .keep")
 
     with pytest.raises(PathMissingError):
-        Repo.ls(os.fspath(tmp_dir), path="folder", outs_only=True)
+        Repo.ls(os.fspath(tmp_dir), path="folder", dvc_only=True)
 
 
 def test_ls_repo_with_path_subdir(tmp_dir, dvc, scm):
@@ -182,21 +182,21 @@ def test_ls_repo_with_path_subdir(tmp_dir, dvc, scm):
     )
 
 
-def test_ls_repo_with_path_subdir_outs_only(tmp_dir, dvc, scm):
+def test_ls_repo_with_path_subdir_dvc_only(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
     tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
     path = os.path.join("data", "subcontent")
-    files = Repo.ls(os.fspath(tmp_dir), path, outs_only=True)
+    files = Repo.ls(os.fspath(tmp_dir), path, dvc_only=True)
     match_files(files, ((("data.xml",), True), (("statistics",), False),))
 
 
-def test_ls_repo_with_path_subdir_outs_only_recursive(tmp_dir, dvc, scm):
+def test_ls_repo_with_path_subdir_dvc_only_recursive(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
     tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
     path = os.path.join("data", "subcontent")
-    files = Repo.ls(os.fspath(tmp_dir), path, outs_only=True, recursive=True)
+    files = Repo.ls(os.fspath(tmp_dir), path, dvc_only=True, recursive=True)
     match_files(
         files, ((("data.xml",), True), (("statistics", "data.csv"), True),)
     )
@@ -226,10 +226,10 @@ def test_ls_repo_with_missed_path(tmp_dir, dvc, scm):
 
     with pytest.raises(PathMissingError) as exc_info:
         Repo.ls(os.fspath(tmp_dir), path="missed_path")
-    assert not exc_info.value.output_only
+    assert not exc_info.value.dvc_only
 
 
-def test_ls_repo_with_missed_path_outs_only(tmp_dir, dvc, scm):
+def test_ls_repo_with_missed_path_dvc_only(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
     tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
@@ -238,9 +238,9 @@ def test_ls_repo_with_missed_path_outs_only(tmp_dir, dvc, scm):
             os.fspath(tmp_dir),
             path="missed_path",
             recursive=True,
-            outs_only=True,
+            dvc_only=True,
         )
-    assert exc_info.value.output_only
+    assert exc_info.value.dvc_only
 
 
 def test_ls_repo_with_removed_dvc_dir(tmp_dir, dvc, scm):
@@ -440,5 +440,5 @@ def test_ls_shows_pipeline_tracked_outs(tmp_dir, dvc, scm, run_copy):
     dvc.scm.add([PIPELINE_FILE, PIPELINE_LOCK])
     dvc.scm.commit("add pipeline stage")
 
-    files = Repo.ls(os.curdir, outs_only=True)
+    files = Repo.ls(os.curdir, dvc_only=True)
     match_files(files, ((("bar",), True),))
