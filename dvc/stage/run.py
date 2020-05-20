@@ -85,7 +85,7 @@ def _is_cached(stage):
         and stage.already_cached()
     )
     if cached:
-        logger.info("Stage '%s' is cached, skipping run…", stage.addressing)
+        logger.info("Stage '%s' is cached, skipping…", stage.addressing)
     return cached
 
 
