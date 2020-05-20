@@ -63,30 +63,27 @@ class DvcTree(BaseTree):
             raise IsADirectoryError
 
         out = outs[0]
-        with self.repo.state:
-            if out.changed_cache(filter_info=path):
-                if not self.fetch and not self.stream:
-                    raise FileNotFoundError
+        if out.changed_cache(filter_info=path):
+            if not self.fetch and not self.stream:
+                raise FileNotFoundError
 
-                remote_obj = self.repo.cloud.get_remote(remote)
-                if self.stream:
-                    if out.is_dir_checksum:
-                        checksum = self._get_granular_checksum(path, out)
-                    else:
-                        checksum = out.checksum
-                    try:
-                        remote_info = remote_obj.checksum_to_path_info(
-                            checksum
-                        )
-                        return remote_obj.open(
-                            remote_info, mode=mode, encoding=encoding
-                        )
-                    except RemoteActionNotImplemented:
-                        pass
-                    cache_info = out.get_used_cache(
-                        filter_info=path, remote=remote
+            remote_obj = self.repo.cloud.get_remote(remote)
+            if self.stream:
+                if out.is_dir_checksum:
+                    checksum = self._get_granular_checksum(path, out)
+                else:
+                    checksum = out.checksum
+                try:
+                    remote_info = remote_obj.checksum_to_path_info(checksum)
+                    return remote_obj.open(
+                        remote_info, mode=mode, encoding=encoding
                     )
-                    self.repo.cloud.pull(cache_info, remote=remote)
+                except RemoteActionNotImplemented:
+                    pass
+                cache_info = out.get_used_cache(
+                    filter_info=path, remote=remote
+                )
+                self.repo.cloud.pull(cache_info, remote=remote)
 
         if out.is_dir_checksum:
             checksum = self._get_granular_checksum(path, out)

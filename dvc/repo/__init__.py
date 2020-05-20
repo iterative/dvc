@@ -488,13 +488,14 @@ class Repo:
         tree = RepoTree(self, stream=True)
         path = os.path.join(self.root_dir, path)
         try:
-            with tree.open(
-                os.path.join(self.root_dir, path),
-                mode=mode,
-                encoding=encoding,
-                remote=remote,
-            ) as fobj:
-                yield fobj
+            with self.state:
+                with tree.open(
+                    os.path.join(self.root_dir, path),
+                    mode=mode,
+                    encoding=encoding,
+                    remote=remote,
+                ) as fobj:
+                    yield fobj
         except FileNotFoundError as exc:
             raise FileMissingError(path) from exc
         except IsADirectoryError as exc:
