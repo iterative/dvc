@@ -41,7 +41,7 @@ class CmdPlots(CmdBase):
                 fields = set(self.args.select.split(","))
         try:
             plots = self._func(
-                datafile=self.args.datafile,
+                targets=self.args.targets,
                 template=self.args.template,
                 fields=fields,
                 x_field=self.args.x,
@@ -160,7 +160,9 @@ def add_parser(subparsers, parent_parser):
         "--ylab", default=None, help="Y axis title."
     )
     plots_show_parser.add_argument(
-        "datafile", nargs="?", default=None, help="Metrics file to visualize",
+        "targets",
+        nargs="*",
+        help="Metrics files to visualize. Shows all plots by default.",
     )
     plots_show_parser.set_defaults(func=CmdPlotsShow)
 
@@ -183,11 +185,9 @@ def add_parser(subparsers, parent_parser):
         help="File to be injected with data.",
     )
     plots_diff_parser.add_argument(
-        "-d",
-        "--datafile",
-        nargs="?",
-        default=None,
-        help="Metrics file to visualize",
+        "--targets",
+        nargs="*",
+        help="Metrics file to visualize. Shows all plots by default.",
     )
     plots_diff_parser.add_argument(
         "-o", "--out", default=None, help="Destination path to save plots to.",

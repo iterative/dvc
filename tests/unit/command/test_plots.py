@@ -11,7 +11,7 @@ def test_metrics_diff(dvc, mocker):
             "result.extension",
             "-t",
             "template",
-            "-d",
+            "--targets",
             "datafile",
             "--select",
             "column1,column2",
@@ -40,7 +40,7 @@ def test_metrics_diff(dvc, mocker):
 
     m.assert_called_once_with(
         cmd.repo,
-        datafile="datafile",
+        targets=["datafile"],
         template="template",
         revs=["HEAD", "tag1", "tag2"],
         fields={"column1", "column2"},
@@ -80,7 +80,7 @@ def test_metrics_show(dvc, mocker):
 
     m.assert_called_once_with(
         cmd.repo,
-        datafile="datafile",
+        targets=["datafile"],
         template="template",
         fields=None,
         path="$.data",

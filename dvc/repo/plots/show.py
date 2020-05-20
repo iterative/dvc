@@ -166,13 +166,21 @@ def _collect_plots(repo):
     return plots
 
 
-def show(repo, datafile=None, template=None, revs=None, **kwargs) -> dict:
-    if datafile:
-        return {
-            datafile: _show(
-                repo, datafile=datafile, template=template, revs=revs, **kwargs
-            )[1]
-        }
+def show(repo, targets=None, template=None, revs=None, **kwargs) -> dict:
+    if isinstance(targets, str):
+        targets = [targets]
+
+    if targets:
+        for target in targets:
+            return {
+                target: _show(
+                    repo,
+                    datafile=target,
+                    template=template,
+                    revs=revs,
+                    **kwargs,
+                )[1]
+            }
 
     if not revs:
         plots = _collect_plots(repo)

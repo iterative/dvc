@@ -318,7 +318,7 @@ def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc, caplog):
     with pytest.raises(NoMetricInHistoryError) as error, caplog.at_level(
         logging.WARNING, "dvc"
     ):
-        dvc.plots.show(datafile="metric.json", revs=["v1"])
+        dvc.plots.show(targets="metric.json", revs=["v1"])
 
         # do not warn if none found
         assert len(caplog.messages) == 0
@@ -369,10 +369,7 @@ def test_custom_template_with_specified_data(
     _run_with(tmp_dir, outs_no_cache=["metric.json"], commit="init", tag="v1")
 
     plot_string = dvc.plots.show(
-        datafile=None,
-        template=os.fspath(custom_template),
-        x_field="a",
-        y_field="b",
+        template=os.fspath(custom_template), x_field="a", y_field="b",
     )["metric.json"]
 
     plot_content = json.loads(plot_string)
@@ -400,7 +397,7 @@ def test_plot_override_specified_data_source(tmp_dir, scm, dvc):
     _run_with(tmp_dir, outs_no_cache=["metric2.json"], commit="init", tag="v1")
 
     plot_string = dvc.plots.show(
-        datafile="metric2.json", template="newtemplate.json", x_field="a"
+        targets=["metric2.json"], template="newtemplate.json", x_field="a"
     )["metric2.json"]
 
     plot_content = json.loads(plot_string)
@@ -430,7 +427,7 @@ def test_plot_no_data(tmp_dir, dvc):
 def test_plot_wrong_metric_type(tmp_dir, scm, dvc):
     tmp_dir.scm_gen("metric.txt", "content", commit="initial")
     with pytest.raises(PlotMetricTypeError):
-        dvc.plots.show(datafile="metric.txt")
+        dvc.plots.show(targets=["metric.txt"])
 
 
 def test_plot_choose_columns(tmp_dir, scm, dvc, custom_template):
