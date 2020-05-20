@@ -136,3 +136,11 @@ def test_cache_checksums(dvc):
     ):
         checksums = list(remote.cache_checksums())
         assert checksums == ["123456"]
+
+
+@pytest.mark.parametrize(
+    "checksum, result",
+    [(None, False), ("", False), ("3456.dir", True), ("3456", False)],
+)
+def test_is_dir_checksum(checksum, result):
+    assert BaseRemote.is_dir_checksum(checksum) == result

@@ -319,6 +319,8 @@ class BaseRemote:
 
     @classmethod
     def is_dir_checksum(cls, checksum):
+        if not checksum:
+            return False
         return checksum.endswith(cls.CHECKSUM_DIR_SUFFIX)
 
     def get_checksum(self, path_info):
