@@ -143,10 +143,11 @@ def test_walk_dir(tmp_dir, dvc, fetch, expected):
 
     expected = [str(tmp_dir / path) for path in expected]
 
-    actual = []
-    for root, dirs, files in tree.walk("dir"):
-        for entry in dirs + files:
-            actual.append(os.path.join(root, entry))
+    with dvc.state:
+        actual = []
+        for root, dirs, files in tree.walk("dir"):
+            for entry in dirs + files:
+                actual.append(os.path.join(root, entry))
 
     assert set(actual) == set(expected)
     assert len(actual) == len(expected)

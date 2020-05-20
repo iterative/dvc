@@ -185,8 +185,9 @@ def test_repotree_walk_fetch(tmp_dir, dvc, scm, setup_remote):
     remove(dvc.cache.local.cache_dir)
 
     tree = RepoTree(dvc, fetch=True)
-    for _, _, _ in tree.walk("dir"):
-        pass
+    with dvc.state:
+        for _, _, _ in tree.walk("dir"):
+            pass
 
     assert os.path.exists(out.cache_path)
     for entry in out.dir_cache:
@@ -213,8 +214,9 @@ def test_repotree_cache_save(tmp_dir, dvc, scm, erepo_dir, setup_remote):
         for path in ("dir/bar", "dir/subdir/foo")
     ]
 
-    cache = dvc.cache.local
-    with cache.state:
-        cache.save(PathInfo(erepo_dir / "dir"), None, tree=tree)
+    with erepo_dir.dvc.state:
+        cache = dvc.cache.local
+        with cache.state:
+            cache.save(PathInfo(erepo_dir / "dir"), None, tree=tree)
     for checksum in expected:
         assert os.path.exists(cache.checksum_to_path_info(checksum))
