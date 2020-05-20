@@ -70,7 +70,7 @@ def add_parser(subparsers, parent_parser):
     repro_parser.add_argument(
         "targets",
         nargs="*",
-        help=f"Stages to reproduce. '{PIPELINE_FILE}' by default."
+        help=f"Stages to reproduce. '{PIPELINE_FILE}' by default.",
     )
     repro_parser.add_argument(
         "-f",
