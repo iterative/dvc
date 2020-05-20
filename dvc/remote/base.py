@@ -458,27 +458,33 @@ class BaseRemote:
             "Created '%s': %s -> %s", self.cache_types[0], from_info, to_info,
         )
 
-    def _save_file(self, path_info, checksum, save_link=True):
+    def _save_file(self, path_info, checksum, save_link=True, tree=None):
         assert checksum
 
         cache_info = self.checksum_to_path_info(checksum)
-        if self.changed_cache(checksum):
-            self.move(path_info, cache_info, mode=self.CACHE_MODE)
-            self.link(cache_info, path_info)
-        elif self.iscopy(path_info) and self._cache_is_copy(path_info):
-            # Default relink procedure involves unneeded copy
-            self.unprotect(path_info)
+        if tree:
+            if self.changed_cache(checksum):
+                with tree.open(path_info, mode="rb") as fobj:
+                    self.copy_fobj(fobj, cache_info)
         else:
-            self.remove(path_info)
-            self.link(cache_info, path_info)
+            if self.changed_cache(checksum):
+                self.move(path_info, cache_info, mode=self.CACHE_MODE)
+                self.link(cache_info, path_info)
+            elif self.iscopy(path_info) and self._cache_is_copy(path_info):
+                # Default relink procedure involves unneeded copy
+                self.unprotect(path_info)
+            else:
+                self.remove(path_info)
+                self.link(cache_info, path_info)
 
-        if save_link:
-            self.state.save_link(path_info)
+            if save_link:
+                self.state.save_link(path_info)
 
         # we need to update path and cache, since in case of reflink,
         # or copy cache type moving original file results in updates on
         # next executed command, which causes md5 recalculation
-        self.state.save(path_info, checksum)
+        if not tree or is_working_tree(tree):
+            self.state.save(path_info, checksum)
         self.state.save(cache_info, checksum)
 
     def _cache_is_copy(self, path_info):
@@ -503,22 +509,43 @@ class BaseRemote:
         self.cache_type_confirmed = True
         return self.cache_types[0] == "copy"
 
-    def _save_dir(self, path_info, checksum, save_link=True):
+    def _save_dir(self, path_info, checksum, save_link=True, tree=None):
+        if tree:
+            checksum = self._save_tree(path_info, tree)
+        else:
+            dir_info = self.get_dir_cache(checksum)
+
+            for entry in Tqdm(
+                dir_info, desc="Saving " + path_info.name, unit="file"
+            ):
+                entry_info = path_info / entry[self.PARAM_RELPATH]
+                entry_checksum = entry[self.PARAM_CHECKSUM]
+                self._save_file(entry_info, entry_checksum, save_link=False)
+
+            if save_link:
+                self.state.save_link(path_info)
+
         cache_info = self.checksum_to_path_info(checksum)
-        dir_info = self.get_dir_cache(checksum)
-
-        for entry in Tqdm(
-            dir_info, desc="Saving " + path_info.name, unit="file"
-        ):
-            entry_info = path_info / entry[self.PARAM_RELPATH]
-            entry_checksum = entry[self.PARAM_CHECKSUM]
-            self._save_file(entry_info, entry_checksum, save_link=False)
-
-        if save_link:
-            self.state.save_link(path_info)
-
         self.state.save(cache_info, checksum)
-        self.state.save(path_info, checksum)
+        if not tree or is_working_tree(tree):
+            self.state.save(path_info, checksum)
+
+    def _save_tree(self, path_info, tree):
+        # save tree directory to cache, collect dir cache during walk and
+        # return the resulting dir checksum
+        dir_info = []
+        for fname in tree.walk_files(path_info):
+            checksum = tree.get_file_checksum(fname)
+            file_info = {
+                self.PARAM_CHECKSUM: checksum,
+                self.PARAM_RELPATH: fname.relative_to(path_info).as_posix(),
+            }
+            self._save_file(fname, checksum, tree=tree)
+            dir_info.append(file_info)
+
+        return self._save_dir_info(
+            sorted(dir_info, key=itemgetter(self.PARAM_RELPATH))
+        )
 
     def is_empty(self, path_info):
         return False
@@ -547,22 +574,36 @@ class BaseRemote:
     def protect(path_info):
         pass
 
-    def save(self, path_info, checksum_info, save_link=True):
+    def save(self, path_info, checksum_info, save_link=True, tree=None):
         if path_info.scheme != self.scheme:
             raise RemoteActionNotImplemented(
                 f"save {path_info.scheme} -> {self.scheme}", self.scheme,
             )
 
-        checksum = checksum_info[self.PARAM_CHECKSUM]
-        self._save(path_info, checksum, save_link)
+        if tree:
+            # save checksum will be computed during tree walk
+            checksum = None
+        else:
+            checksum = checksum_info[self.PARAM_CHECKSUM]
+        self._save(path_info, checksum, save_link, tree)
 
-    def _save(self, path_info, checksum, save_link=True):
-        to_info = self.checksum_to_path_info(checksum)
-        logger.debug("Saving '%s' to '%s'.", path_info, to_info)
-        if self.isdir(path_info):
-            self._save_dir(path_info, checksum, save_link)
+    def _save(self, path_info, checksum, save_link=True, tree=None):
+        if tree:
+            logger.debug("Saving tree path '%s' to cache.", path_info)
+        else:
+            to_info = self.checksum_to_path_info(checksum)
+            logger.debug("Saving '%s' to '%s'.", path_info, to_info)
+
+        if tree:
+            isdir = tree.isdir
+            save_link = False
+        else:
+            isdir = self.isdir
+
+        if isdir(path_info):
+            self._save_dir(path_info, checksum, save_link, tree)
             return
-        self._save_file(path_info, checksum, save_link)
+        self._save_file(path_info, checksum, save_link, tree)
 
     def _handle_transfer_exception(
         self, from_info, to_info, exception, operation
@@ -700,6 +741,9 @@ class BaseRemote:
 
     def copy(self, from_info, to_info):
         raise RemoteActionNotImplemented("copy", self.scheme)
+
+    def copy_fobj(self, fobj, to_info):
+        raise RemoteActionNotImplemented("copy_fobj", self.scheme)
 
     def symlink(self, from_info, to_info):
         raise RemoteActionNotImplemented("symlink", self.scheme)

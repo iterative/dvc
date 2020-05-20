@@ -24,7 +24,14 @@ from dvc.scheme import Schemes
 from dvc.scm.tree import is_working_tree
 from dvc.system import System
 from dvc.utils import file_md5, relpath, tmp_fname
-from dvc.utils.fs import copyfile, makedirs, move, remove, walk_files
+from dvc.utils.fs import (
+    copy_fobj_to_file,
+    copyfile,
+    makedirs,
+    move,
+    remove,
+    walk_files,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -181,6 +188,17 @@ class LocalRemote(BaseRemote):
         tmp_info = to_info.parent / tmp_fname(to_info.name)
         try:
             System.copy(from_info, tmp_info)
+            os.chmod(tmp_info, self._file_mode)
+            os.rename(tmp_info, to_info)
+        except Exception:
+            self.remove(tmp_info)
+            raise
+
+    def copy_fobj(self, fobj, to_info):
+        self.makedirs(to_info.parent)
+        tmp_info = to_info.parent / tmp_fname(to_info.name)
+        try:
+            copy_fobj_to_file(fobj, tmp_info)
             os.chmod(tmp_info, self._file_mode)
             os.rename(tmp_info, to_info)
         except Exception:
