@@ -197,20 +197,15 @@ class BaseRemote:
     def get_file_checksum(self, path_info, **kwargs):
         raise NotImplementedError
 
-    def _calculate_checksums(self, file_infos, tree=None):
+    def _calculate_checksums(self, file_infos):
         file_infos = list(file_infos)
-
-        if tree:
-            checksum_func = tree.get_file_checksum
-        else:
-            checksum_func = self.get_file_checksum
 
         with Tqdm(
             total=len(file_infos),
             unit="md5",
             desc="Computing file/dir hashes (only done once)",
         ) as pbar:
-            worker = pbar.wrap_fn(checksum_func)
+            worker = pbar.wrap_fn(self.get_file_checksum)
             with ThreadPoolExecutor(
                 max_workers=self.checksum_jobs
             ) as executor:
@@ -218,15 +213,10 @@ class BaseRemote:
                 checksums = dict(zip(file_infos, tasks))
         return checksums
 
-    def _collect_dir(self, path_info, tree=None):
+    def _collect_dir(self, path_info):
         file_infos = set()
 
-        if tree:
-            walk_files = tree.walk_files
-        else:
-            walk_files = self.walk_files
-
-        for fname in walk_files(path_info):
+        for fname in self.walk_files(path_info):
             if DvcIgnore.DVCIGNORE_FILE == fname.name:
                 raise DvcIgnoreInCollectedDirError(fname.parent)
 
@@ -237,7 +227,7 @@ class BaseRemote:
             fi for fi, checksum in checksums.items() if checksum is None
         }
 
-        new_checksums = self._calculate_checksums(not_in_state, tree=tree)
+        new_checksums = self._calculate_checksums(not_in_state)
 
         checksums.update(new_checksums)
 
@@ -260,18 +250,21 @@ class BaseRemote:
         # Sorting the list by path to ensure reproducibility
         return sorted(result, key=itemgetter(self.PARAM_RELPATH))
 
-    def get_dir_checksum(self, path_info, tree=None):
+    def get_dir_checksum(self, path_info):
         if not self.cache:
             raise RemoteCacheRequiredError(path_info)
 
-        dir_info = self._collect_dir(path_info, tree=tree)
+        dir_info = self._collect_dir(path_info)
+        return self._save_dir_info(dir_info, path_info)
+
+    def _save_dir_info(self, dir_info, path_info=None):
         checksum, tmp_info = self._get_dir_info_checksum(dir_info)
         new_info = self.cache.checksum_to_path_info(checksum)
         if self.cache.changed_cache_file(checksum):
             self.cache.makedirs(new_info.parent)
             self.cache.move(tmp_info, new_info, mode=self.CACHE_MODE)
 
-        if not tree or is_working_tree(tree):
+        if path_info:
             self.state.save(path_info, checksum)
         self.state.save(new_info, checksum)
 
@@ -337,13 +330,7 @@ class BaseRemote:
     def get_checksum(self, path_info, tree=None):
         assert isinstance(path_info, str) or path_info.scheme == self.scheme
 
-        if tree:
-            exists = tree.exists
-            isdir = tree.isdir
-        else:
-            exists = self.exists
-            isdir = self.isdir
-        if not exists(path_info):
+        if not self.exists(path_info):
             return None
 
         checksum = self.state.get(path_info)
@@ -361,20 +348,18 @@ class BaseRemote:
         if checksum:
             return checksum
 
-        if isdir(path_info):
-            checksum = self.get_dir_checksum(path_info, tree=tree)
-        elif tree:
-            checksum = tree.get_file_checksum(path_info)
+        if self.isdir(path_info):
+            checksum = self.get_dir_checksum(path_info)
         else:
             checksum = self.get_file_checksum(path_info)
 
-        if checksum and (not tree or is_working_tree(tree)):
+        if checksum:
             self.state.save(path_info, checksum)
 
         return checksum
 
-    def save_info(self, path_info, tree=None):
-        return {self.PARAM_CHECKSUM: self.get_checksum(path_info, tree=tree)}
+    def save_info(self, path_info):
+        return {self.PARAM_CHECKSUM: self.get_checksum(path_info)}
 
     def changed(self, path_info, checksum_info):
         """Checks if data has changed.
