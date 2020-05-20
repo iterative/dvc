@@ -56,7 +56,6 @@ class Repo:
     from dvc.repo.get import get
     from dvc.repo.get_url import get_url
     from dvc.repo.update import update
-    from dvc.repo.plots import plot
 
     def __init__(self, root_dir=None):
         from dvc.state import State
@@ -65,6 +64,7 @@ class Repo:
         from dvc.cache import Cache
         from dvc.data_cloud import DataCloud
         from dvc.repo.metrics import Metrics
+        from dvc.repo.plots import Plots
         from dvc.repo.params import Params
         from dvc.scm.tree import WorkingTree
         from dvc.utils.fs import makedirs
@@ -104,6 +104,7 @@ class Repo:
         self.stage_cache = StageCache(self)
 
         self.metrics = Metrics(self)
+        self.plots = Plots(self)
         self.params = Params(self)
 
         self._ignore()

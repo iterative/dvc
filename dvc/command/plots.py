@@ -4,36 +4,32 @@ import os
 
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
-from dvc.repo.plots.data import WORKSPACE_REVISION_NAME
 
 logger = logging.getLogger(__name__)
 
+PAGE_HTML = """<!DOCTYPE html>
+<html>
+<head>
+    <title>DVC Plot</title>
+    <script src="https://cdn.jsdelivr.net/npm/vega@5.10.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@4.8.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.5.1"></script>
+</head>
+<body>
+    {divs}
+</body>
+</html>"""
+
+DIV_HTML = """<div id = "{id}"></div>
+<script type = "text/javascript">
+    var spec = {vega_json};
+    vegaEmbed('#{id}', spec);
+</script>"""
+
 
 class CmdPlots(CmdBase):
-    def _revisions(self):
+    def _func(self, *args, **kwargs):
         raise NotImplementedError
-
-    def _result_file(self):
-        if self.args.file:
-            return self.args.file
-
-        extension = self._result_extension()
-        base = self._result_basename()
-
-        result_file = base + extension
-        return result_file
-
-    def _result_basename(self):
-        if self.args.datafile:
-            return self.args.datafile
-        return "plot"
-
-    def _result_extension(self):
-        if not self.args.no_html:
-            return ".html"
-        elif self.args.template:
-            return os.path.splitext(self.args.template)[-1]
-        return ".json"
 
     def run(self):
         fields = None
@@ -44,33 +40,38 @@ class CmdPlots(CmdBase):
             else:
                 fields = set(self.args.select.split(","))
         try:
-            plot_string = self.repo.plot(
-                datafile=self.args.datafile,
+            plots = self._func(
+                targets=self.args.targets,
                 template=self.args.template,
-                revisions=self._revisions(),
                 fields=fields,
                 x_field=self.args.x,
                 y_field=self.args.y,
                 path=jsonpath,
-                embed=not self.args.no_html,
                 csv_header=not self.args.no_csv_header,
                 title=self.args.title,
                 x_title=self.args.xlab,
                 y_title=self.args.ylab,
             )
 
-            if self.args.stdout:
-                logger.info(plot_string)
-            else:
-                result_path = self._result_file()
-                with open(result_path, "w") as fobj:
-                    fobj.write(plot_string)
+            if self.args.show_json:
+                import json
 
-                logger.info(
-                    "file://{}".format(
-                        os.path.join(self.repo.root_dir, result_path)
-                    )
-                )
+                logger.info(json.dumps(plots))
+                return 0
+
+            divs = [
+                DIV_HTML.format(id=f"plot{i}", vega_json=plot)
+                for i, plot in enumerate(plots.values())
+            ]
+            html = PAGE_HTML.format(divs="\n".join(divs))
+            path = self.args.out or "plots.html"
+
+            with open(path, "w") as fobj:
+                fobj.write(html)
+
+            logger.info(
+                "file://{}".format(os.path.join(self.repo.root_dir, path))
+            )
 
         except DvcException:
             logger.exception("")
@@ -80,18 +81,13 @@ class CmdPlots(CmdBase):
 
 
 class CmdPlotsShow(CmdPlots):
-    def _revisions(self):
-        return None
+    def _func(self, *args, **kwargs):
+        return self.repo.plots.show(*args, **kwargs)
 
 
 class CmdPlotsDiff(CmdPlots):
-    def _revisions(self):
-        revisions = self.args.revisions or []
-        if len(revisions) <= 1:
-            if len(revisions) == 0 and self.repo.scm.is_dirty():
-                revisions.append("HEAD")
-            revisions.append(WORKSPACE_REVISION_NAME)
-        return revisions
+    def _func(self, *args, **kwargs):
+        return self.repo.plots.diff(*args, revs=self.args.revisions, **kwargs)
 
 
 def add_parser(subparsers, parent_parser):
@@ -130,7 +126,7 @@ def add_parser(subparsers, parent_parser):
         help="File to be injected with data.",
     )
     plots_show_parser.add_argument(
-        "-f", "--file", default=None, help="Name of the generated file."
+        "-o", "--out", default=None, help="Destination path to save plots to.",
     )
     plots_show_parser.add_argument(
         "-s",
@@ -145,22 +141,16 @@ def add_parser(subparsers, parent_parser):
         "-y", default=None, help="Field name for y axis."
     )
     plots_show_parser.add_argument(
-        "--stdout",
-        action="store_true",
-        default=False,
-        help="Print plots specification to stdout.",
-    )
-    plots_show_parser.add_argument(
         "--no-csv-header",
         action="store_true",
         default=False,
         help="Required when CSV or TSV datafile does not have a header.",
     )
     plots_show_parser.add_argument(
-        "--no-html",
+        "--show-json",
         action="store_true",
         default=False,
-        help="Do not wrap Vega plot JSON with HTML.",
+        help="Show output in JSON format.",
     )
     plots_show_parser.add_argument("--title", default=None, help="Plot title.")
     plots_show_parser.add_argument(
@@ -170,7 +160,9 @@ def add_parser(subparsers, parent_parser):
         "--ylab", default=None, help="Y axis title."
     )
     plots_show_parser.add_argument(
-        "datafile", nargs="?", default=None, help="Metrics file to visualize",
+        "targets",
+        nargs="*",
+        help="Metrics files to visualize. Shows all plots by default.",
     )
     plots_show_parser.set_defaults(func=CmdPlotsShow)
 
@@ -193,14 +185,12 @@ def add_parser(subparsers, parent_parser):
         help="File to be injected with data.",
     )
     plots_diff_parser.add_argument(
-        "-d",
-        "--datafile",
-        nargs="?",
-        default=None,
-        help="Metrics file to visualize",
+        "--targets",
+        nargs="*",
+        help="Metrics file to visualize. Shows all plots by default.",
     )
     plots_diff_parser.add_argument(
-        "-f", "--file", default=None, help="Name of the generated file."
+        "-o", "--out", default=None, help="Destination path to save plots to.",
     )
     plots_diff_parser.add_argument(
         "-s",
@@ -215,22 +205,16 @@ def add_parser(subparsers, parent_parser):
         "-y", default=None, help="Field name for y axis."
     )
     plots_diff_parser.add_argument(
-        "--stdout",
-        action="store_true",
-        default=False,
-        help="Print plot specification to stdout.",
-    )
-    plots_diff_parser.add_argument(
         "--no-csv-header",
         action="store_true",
         default=False,
         help="Provided CSV ot TSV datafile does not have a header.",
     )
     plots_diff_parser.add_argument(
-        "--no-html",
+        "--show-json",
         action="store_true",
         default=False,
-        help="Do not wrap Vega plot JSON with HTML.",
+        help="Show output in JSON format.",
     )
     plots_diff_parser.add_argument("--title", default=None, help="Plot title.")
     plots_diff_parser.add_argument(

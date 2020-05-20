@@ -32,8 +32,7 @@ PIPELINE_LOCK = "dvc.lock"
 
 
 class LockfileCorruptedError(DvcException):
-    def __init__(self, path):
-        super().__init__(f"Lockfile '{path}' is corrupted.")
+    pass
 
 
 def is_valid_filename(path):
@@ -103,7 +102,7 @@ class FileMixin:
         with self.repo.tree.open(self.path) as fd:
             stage_text = fd.read()
         d = parse_stage(stage_text, self.path)
-        self.validate(d, self.path)
+        self.validate(d, self.relpath)
         return d, stage_text
 
     @classmethod
@@ -112,7 +111,7 @@ class FileMixin:
         try:
             cls.SCHEMA(d)
         except MultipleInvalid as exc:
-            raise StageFileFormatError(fname, exc)
+            raise StageFileFormatError(f"'{fname}' format error: {exc}")
 
     def remove_with_prompt(self, force=False):
         raise NotImplementedError
@@ -238,9 +237,11 @@ class Lockfile(FileMixin):
         with self.repo.tree.open(self.path) as fd:
             data = parse_stage(fd.read(), self.path)
         try:
-            self.validate(data, fname=self.path)
+            self.validate(data, fname=self.relpath)
         except StageFileFormatError:
-            raise LockfileCorruptedError(self.path)
+            raise LockfileCorruptedError(
+                f"Lockfile '{self.relpath}' is corrupted."
+            )
         return data
 
     def dump(self, stage, **kwargs):

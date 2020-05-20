@@ -25,6 +25,8 @@ def _get_file_path(kwargs):
             kwargs.get("outs_no_cache", []),
             kwargs.get("metrics", []),
             kwargs.get("metrics_no_cache", []),
+            kwargs.get("plots", []),
+            kwargs.get("plots_no_cache", []),
             kwargs.get("outs_persist", []),
             kwargs.get("outs_persist_no_cache", []),
         )

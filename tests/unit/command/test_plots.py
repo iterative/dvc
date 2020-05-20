@@ -1,24 +1,21 @@
-import pytest
-
 from dvc.cli import parse_args
 from dvc.command.plots import CmdPlotsDiff, CmdPlotsShow
 
 
-def test_metrics_diff(mocker):
+def test_metrics_diff(dvc, mocker):
     cli_args = parse_args(
         [
             "plots",
             "diff",
-            "--file",
+            "--out",
             "result.extension",
             "-t",
             "template",
-            "-d",
+            "--targets",
             "datafile",
             "--select",
             "column1,column2",
-            "--no-html",
-            "--stdout",
+            "--show-json",
             "-x",
             "x_field",
             "-y",
@@ -37,20 +34,17 @@ def test_metrics_diff(mocker):
     assert cli_args.func == CmdPlotsDiff
 
     cmd = cli_args.func(cli_args)
-
-    m = mocker.patch.object(cmd.repo, "plot", autospec=True)
-    mocker.patch("builtins.open")
-    mocker.patch("os.path.join")
+    m = mocker.patch("dvc.repo.plots.diff.diff", return_value={})
 
     assert cmd.run() == 0
 
     m.assert_called_once_with(
-        datafile="datafile",
+        cmd.repo,
+        targets=["datafile"],
         template="template",
-        revisions=["HEAD", "tag1", "tag2"],
+        revs=["HEAD", "tag1", "tag2"],
         fields={"column1", "column2"},
         path=None,
-        embed=False,
         x_field="x_field",
         y_field="y_field",
         csv_header=True,
@@ -60,19 +54,18 @@ def test_metrics_diff(mocker):
     )
 
 
-def test_metrics_show(mocker):
+def test_metrics_show(dvc, mocker):
     cli_args = parse_args(
         [
             "plots",
             "show",
-            "-f",
+            "-o",
             "result.extension",
             "-t",
             "template",
             "-s",
             "$.data",
-            "--no-html",
-            "--stdout",
+            "--show-json",
             "--no-csv-header",
             "datafile",
         ]
@@ -81,19 +74,16 @@ def test_metrics_show(mocker):
 
     cmd = cli_args.func(cli_args)
 
-    m = mocker.patch.object(cmd.repo, "plot", autospec=True)
-    mocker.patch("builtins.open")
-    mocker.patch("os.path.join")
+    m = mocker.patch("dvc.repo.plots.show.show", return_value={})
 
     assert cmd.run() == 0
 
     m.assert_called_once_with(
-        datafile="datafile",
+        cmd.repo,
+        targets=["datafile"],
         template="template",
-        revisions=None,
         fields=None,
         path="$.data",
-        embed=False,
         x_field=None,
         y_field=None,
         csv_header=False,
@@ -103,20 +93,13 @@ def test_metrics_show(mocker):
     )
 
 
-@pytest.mark.parametrize(
-    "arg_revisions,is_dirty,expected_revisions",
-    [
-        ([], False, ["workspace"]),
-        ([], True, ["HEAD", "workspace"]),
-        (["v1", "v2", "workspace"], False, ["v1", "v2", "workspace"]),
-        (["v1", "v2", "workspace"], True, ["v1", "v2", "workspace"]),
-    ],
-)
-def test_revisions(mocker, arg_revisions, is_dirty, expected_revisions):
-    args = mocker.MagicMock()
-
-    cmd = CmdPlotsDiff(args)
-    mocker.patch.object(args, "revisions", arg_revisions)
-    mocker.patch.object(cmd.repo.scm, "is_dirty", return_value=is_dirty)
-
-    assert cmd._revisions() == expected_revisions
+def test_plots_show_json(dvc, mocker, caplog):
+    cli_args = parse_args(
+        ["plots", "diff", "HEAD~10", "HEAD~1", "--show-json"]
+    )
+    cmd = cli_args.func(cli_args)
+    mocker.patch(
+        "dvc.repo.plots.diff.diff", return_value={"plots.csv": "plothtml"}
+    )
+    assert cmd.run() == 0
+    assert '{"plots.csv": "plothtml"}\n' in caplog.text

@@ -71,17 +71,18 @@ class LocalOutput(BaseOutput):
         return ret
 
     def verify_metric(self):
-        if not self.metric:
+        if not self.metric or self.plot:
             return
 
         path = os.fspath(self.path_info)
         if not os.path.exists(path):
             return
 
+        name = "metrics" if self.metric else "plot"
         if os.path.isdir(path):
-            msg = "directory '{}' cannot be used as metrics."
-            raise DvcException(msg.format(self.path_info))
+            msg = "directory '{}' cannot be used as {}."
+            raise DvcException(msg.format(self.path_info, name))
 
         if not istextfile(path):
-            msg = "binary file '{}' cannot be used as metrics."
-            raise DvcException(msg.format(self.path_info))
+            msg = "binary file '{}' cannot be used as {}."
+            raise DvcException(msg.format(self.path_info, name))

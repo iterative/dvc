@@ -50,6 +50,8 @@ class BaseOutput:
     PARAM_METRIC = "metric"
     PARAM_METRIC_TYPE = "type"
     PARAM_METRIC_XPATH = "xpath"
+    PARAM_PLOT = "plot"
+    PARAM_PLOT_TEMPLATE = "template"
     PARAM_PERSIST = "persist"
 
     METRIC_SCHEMA = Any(
@@ -75,6 +77,7 @@ class BaseOutput:
         remote=None,
         cache=True,
         metric=False,
+        plot=False,
         persist=False,
     ):
         self._validate_output_path(path)
@@ -95,6 +98,7 @@ class BaseOutput:
         self.remote = remote or self.REMOTE(self.repo, {})
         self.use_cache = False if self.IS_DEPENDENCY else cache
         self.metric = False if self.IS_DEPENDENCY else metric
+        self.plot = False if self.IS_DEPENDENCY else plot
         self.persist = persist
 
         self.path_info = self._parse_path(remote, path)
@@ -234,7 +238,7 @@ class BaseOutput:
 
         if not self.use_cache:
             self.info = self.save_info()
-            if self.metric:
+            if self.metric or self.plot:
                 self.verify_metric()
             if not self.IS_DEPENDENCY:
                 logger.info(
@@ -273,6 +277,10 @@ class BaseOutput:
                 del self.metric[self.PARAM_METRIC_XPATH]
 
         ret[self.PARAM_METRIC] = self.metric
+
+        if self.plot:
+            ret[self.PARAM_PLOT] = self.plot
+
         ret[self.PARAM_PERSIST] = self.persist
 
         return ret

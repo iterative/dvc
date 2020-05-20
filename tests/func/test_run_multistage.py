@@ -167,11 +167,8 @@ def test_run_dump_on_multistage(tmp_dir, dvc, run_head):
                 ),
                 "wdir": "dir",
                 "deps": ["bar", "foo", "foobar"],
-                "outs": [
-                    "bar-1",
-                    {"foo-1": {"persist": True}},
-                    {"foobar-1": {"metric": True, "cache": False}},
-                ],
+                "outs": ["bar-1", {"foo-1": {"persist": True}}],
+                "metrics": [{"foobar-1": {"cache": False}}],
             },
             **data["stages"],
         }

@@ -25,12 +25,15 @@ def brancher(  # noqa: E302
         return
 
     saved_tree = self.tree
-    revs = revs or []
+    revs = revs.copy() if revs else []
 
     scm = self.scm
 
     self.tree = WorkingTree(self.root_dir)
     yield "working tree"
+
+    if revs and "working tree" in revs:
+        revs.remove("working tree")
 
     if all_commits:
         revs = scm.list_all_commits()

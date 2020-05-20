@@ -54,10 +54,11 @@ SCHEMA = CHECKSUMS_SCHEMA.copy()
 SCHEMA[Required(BaseOutput.PARAM_PATH)] = str
 SCHEMA[BaseOutput.PARAM_CACHE] = bool
 SCHEMA[BaseOutput.PARAM_METRIC] = BaseOutput.METRIC_SCHEMA
+SCHEMA[BaseOutput.PARAM_PLOT] = bool
 SCHEMA[BaseOutput.PARAM_PERSIST] = bool
 
 
-def _get(stage, p, info, cache, metric, persist=False):
+def _get(stage, p, info, cache, metric, plot=False, persist=False):
     parsed = urlparse(p)
 
     if parsed.scheme == "remote":
@@ -69,6 +70,7 @@ def _get(stage, p, info, cache, metric, persist=False):
             cache=cache,
             remote=remote,
             metric=metric,
+            plot=plot,
             persist=persist,
         )
 
@@ -81,6 +83,7 @@ def _get(stage, p, info, cache, metric, persist=False):
                 cache=cache,
                 remote=None,
                 metric=metric,
+                plot=plot,
                 persist=persist,
             )
     return LocalOutput(
@@ -90,6 +93,7 @@ def _get(stage, p, info, cache, metric, persist=False):
         cache=cache,
         remote=None,
         metric=metric,
+        plot=plot,
         persist=persist,
     )
 
@@ -100,19 +104,34 @@ def loadd_from(stage, d_list):
         p = d.pop(BaseOutput.PARAM_PATH)
         cache = d.pop(BaseOutput.PARAM_CACHE, True)
         metric = d.pop(BaseOutput.PARAM_METRIC, False)
+        plot = d.pop(BaseOutput.PARAM_PLOT, False)
         persist = d.pop(BaseOutput.PARAM_PERSIST, False)
         ret.append(
             _get(
-                stage, p, info=d, cache=cache, metric=metric, persist=persist,
+                stage,
+                p,
+                info=d,
+                cache=cache,
+                metric=metric,
+                plot=plot,
+                persist=persist,
             )
         )
     return ret
 
 
-def loads_from(stage, s_list, use_cache=True, metric=False, persist=False):
+def loads_from(
+    stage, s_list, use_cache=True, metric=False, plot=False, persist=False
+):
     return [
         _get(
-            stage, s, info={}, cache=use_cache, metric=metric, persist=persist,
+            stage,
+            s,
+            info={},
+            cache=use_cache,
+            metric=metric,
+            plot=plot,
+            persist=persist,
         )
         for s in s_list
     ]
