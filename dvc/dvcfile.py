@@ -32,8 +32,7 @@ PIPELINE_LOCK = "dvc.lock"
 
 
 class LockfileCorruptedError(DvcException):
-    def __init__(self, path):
-        super().__init__(f"Lockfile '{path}' is corrupted.")
+    pass
 
 
 def is_valid_filename(path):
@@ -240,7 +239,9 @@ class Lockfile(FileMixin):
         try:
             self.validate(data, fname=self.relpath)
         except StageFileFormatError:
-            raise LockfileCorruptedError(self.path)
+            raise LockfileCorruptedError(
+                f"Lockfile '{self.relpath}' is corrupted."
+            )
         return data
 
     def dump(self, stage, **kwargs):
