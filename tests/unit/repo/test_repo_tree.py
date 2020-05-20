@@ -3,6 +3,7 @@ import shutil
 
 import pytest
 
+from dvc.path_info import PathInfo
 from dvc.repo.tree import RepoTree
 
 
@@ -85,9 +86,9 @@ def test_isdir_mixed(tmp_dir, dvc):
         (
             True,
             [
-                "dir/subdir1/foo1.dvc",
-                "dir/subdir1/bar1.dvc",
-                "dir/subdir2/foo2.dvc",
+                PathInfo("dir") / "subdir1" / "foo1.dvc",
+                PathInfo("dir") / "subdir1" / "bar1.dvc",
+                PathInfo("dir") / "subdir2" / "foo2.dvc",
             ],
         ),
     ],
@@ -106,13 +107,13 @@ def test_walk(tmp_dir, dvc, dvcfiles, extra_expected):
     tree = RepoTree(dvc)
 
     expected = [
-        "dir/subdir1",
-        "dir/subdir2",
-        "dir/subdir1/foo1",
-        "dir/subdir1/bar1",
-        "dir/subdir2/foo2",
-        "dir/foo",
-        "dir/bar",
+        PathInfo("dir") / "subdir1",
+        PathInfo("dir") / "subdir2",
+        PathInfo("dir") / "subdir1" / "foo1",
+        PathInfo("dir") / "subdir1" / "bar1",
+        PathInfo("dir") / "subdir2" / "foo2",
+        PathInfo("dir") / "foo",
+        PathInfo("dir") / "bar",
     ]
 
     actual = []
@@ -120,8 +121,9 @@ def test_walk(tmp_dir, dvc, dvcfiles, extra_expected):
         for entry in dirs + files:
             actual.append(os.path.join(root, entry))
 
-    assert set(actual) == set(expected + extra_expected)
-    assert len(actual) == len(expected + extra_expected)
+    expected = [str(path) for path in expected + extra_expected]
+    assert set(actual) == set(expected)
+    assert len(actual) == len(expected)
 
 
 def test_isdvc(tmp_dir, dvc):

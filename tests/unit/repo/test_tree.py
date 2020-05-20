@@ -3,6 +3,7 @@ import shutil
 
 import pytest
 
+from dvc.path_info import PathInfo
 from dvc.repo.tree import DvcTree
 
 
@@ -115,13 +116,13 @@ def test_walk(tmp_dir, dvc):
         (
             True,
             [
-                "dir/subdir1",
-                "dir/subdir2",
-                "dir/subdir1/foo1",
-                "dir/subdir1/bar1",
-                "dir/subdir2/foo2",
-                "dir/foo",
-                "dir/bar",
+                PathInfo("dir") / "subdir1",
+                PathInfo("dir") / "subdir2",
+                PathInfo("dir") / "subdir1" / "foo1",
+                PathInfo("dir") / "subdir1" / "bar1",
+                PathInfo("dir") / "subdir2" / "foo2",
+                PathInfo("dir") / "foo",
+                PathInfo("dir") / "bar",
             ],
         ),
     ],
