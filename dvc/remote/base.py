@@ -194,12 +194,11 @@ class BaseRemote:
     def cache(self):
         return getattr(self.repo.cache, self.scheme)
 
-    def get_file_checksum(self, path_info, **kwargs):
+    def get_file_checksum(self, path_info):
         raise NotImplementedError
 
     def _calculate_checksums(self, file_infos):
         file_infos = list(file_infos)
-
         with Tqdm(
             total=len(file_infos),
             unit="md5",
@@ -327,7 +326,7 @@ class BaseRemote:
     def is_dir_checksum(cls, checksum):
         return checksum.endswith(cls.CHECKSUM_DIR_SUFFIX)
 
-    def get_checksum(self, path_info, tree=None):
+    def get_checksum(self, path_info):
         assert isinstance(path_info, str) or path_info.scheme == self.scheme
 
         if not self.exists(path_info):

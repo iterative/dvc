@@ -301,7 +301,17 @@ class RepoTree(BaseTree):
                 yield from self._walk_one(repo_walk)
 
     def walk(self, top, topdown=True, dvcfiles=False, **kwargs):
-        """Walk and merge both DVC and repo trees."""
+        """Walk and merge both DVC and repo trees.
+
+        Args:
+            top: path to walk from
+            topdown: if True, tree will be walked from top down.
+            dvcfiles: if True, dvcfiles will be included in the files list
+                for walked directories.
+
+        Any kwargs will be passed into methods used for fetching and/or
+        streaming DVC outs from remotes.
+        """
         assert topdown
 
         if not self.exists(top):
