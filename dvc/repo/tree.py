@@ -189,6 +189,15 @@ class DvcTree(BaseTree):
     def isexec(self, path):
         return False
 
+    def get_file_checksum(self, path_info):
+        outs = self._find_outs(path_info, strict=False)
+        if len(outs) != 1:
+            raise OutputNotFoundError
+        out = outs[0]
+        if out.is_dir_checksum:
+            return self._get_granular_checksum(path_info, out)
+        return out.checksum
+
 
 class RepoTree(BaseTree):
     """DVC + git-tracked files tree.
@@ -243,6 +252,9 @@ class RepoTree(BaseTree):
         if self.dvctree and self.dvctree.exists(path):
             return self.dvctree.isexec(path)
         return self.repo.tree.isexec(path)
+
+    def stat(self, path):
+        return self.repo.tree.stat(path)
 
     def _walk_one(self, walk):
         try:
@@ -315,7 +327,23 @@ class RepoTree(BaseTree):
         repo_walk = self.repo.tree.walk(top, topdown=topdown)
         yield from self._walk(dvc_walk, repo_walk, dvcfiles=dvcfiles)
 
+    def walk_files(self, top, **kwargs):
+        for root, _, files in self.walk(top, **kwargs):
+            for fname in files:
+                yield PathInfo(root) / fname
+
     def get_file_checksum(self, path_info):
+        """Return file checksum for specified path.
+
+        If path_info is a DVC out, the pre-computed checksum for the file
+        will be used. If path_info is a git file, MD5 will be computed for
+        the git object.
+        """
         if not self.exists(path_info):
             raise FileNotFoundError
+        if self.dvctree and self.dvctree.exists(path_info):
+            try:
+                return self.dvctree.get_file_checksum(path_info)
+            except OutputNotFoundError:
+                pass
         return file_md5(path_info, self)[0]
