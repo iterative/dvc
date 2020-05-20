@@ -47,7 +47,7 @@ class Lock:
                 disable=not self._friendly,
                 desc=(
                     "If DVC froze, see `hardlink_lock` in {}".format(
-                        format_link("man.dvc.org/config#core")
+                        format_link("https://man.dvc.org/config#core")
                     )
                 ),
             ):
