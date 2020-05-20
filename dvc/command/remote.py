@@ -253,7 +253,7 @@ def add_parser(subparsers, parent_parser):
         "name", help="Name of the remote to remove."
     )
     remote_remove_parser.set_defaults(func=CmdRemoteRemove)
-    REMOTE_RENAME_HELP = "Rename a data remote"
+    REMOTE_RENAME_HELP = "Rename a DVC remote"
     remote_rename_parser = remote_subparsers.add_parser(
         "rename",
         parents=[parent_config_parser, parent_parser],
