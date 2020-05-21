@@ -85,7 +85,7 @@ def _is_cached(stage):
         and stage.already_cached()
     )
     if cached:
-        logger.info("Stage '%s' is cached, skipping…", stage.addressing)
+        logger.info("Stage '%s' is cached", stage.addressing)
     return cached
 
 
@@ -98,9 +98,7 @@ def restored_from_cache(stage):
     stage_cache.restore(stage)
     restored = stage.outs_cached()
     if restored:
-        logger.info(
-            "Restored stage '%s' from run-cache, skipping…", stage.addressing
-        )
+        logger.info("Restored stage '%s' from run-cache", stage.addressing)
     return restored
 
 
@@ -110,6 +108,7 @@ def run_stage(stage, dry=False, force=False, run_cache=False):
             run_cache and restored_from_cache(stage)
         )
         if stage_cached:
+            logger.info("Skipping run, checking out outputs")
             stage.checkout()
             return
 

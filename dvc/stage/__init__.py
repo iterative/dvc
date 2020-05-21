@@ -77,7 +77,7 @@ def create_stage(cls, repo, path, **kwargs):
             logger.warning("Build cache is ignored when persisting outputs.")
 
         if not ignore_run_cache and stage.can_be_skipped:
-            logger.info("Stage is cached, skipping…")
+            logger.info("Stage is cached, skipping")
             return None
 
     return stage
@@ -294,7 +294,7 @@ class Stage(params.StageParams):
     @rwlocked(read=["deps"], write=["outs"])
     def reproduce(self, interactive=False, **kwargs):
         if not (kwargs.get("force", False) or self.changed()):
-            logger.info("Stage '%s' didn't change, skipping…", self.addressing)
+            logger.info("Stage '%s' didn't change, skipping", self.addressing)
             return None
 
         msg = (

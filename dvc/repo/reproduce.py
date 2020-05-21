@@ -164,9 +164,10 @@ def _reproduce_stages(
 
     force_downstream = kwargs.pop("force_downstream", False)
     result = []
-    for idx, stage in enumerate(pipeline):
-        if idx != 0:
-            # Cosmetic newline
+    # `ret` is used to add a cosmetic newline.
+    ret = []
+    for stage in pipeline:
+        if ret:
             logger.info("")
 
         try:

@@ -197,7 +197,7 @@ class PipelineFile(FileMixin):
             with open(self.path) as fd:
                 data = parse_stage_for_update(fd.read(), self.path)
         else:
-            logger.info("'%s' does not exist, creating…", self.relpath)
+            logger.info("Creating '%s'", self.relpath)
             open(self.path, "w+").close()
 
         data["stages"] = data.get("stages", {})
@@ -209,7 +209,7 @@ class PipelineFile(FileMixin):
             data["stages"].update(stage_data)
 
         logger.info(
-            "Adding stage '%s' to '%s'…", stage.name, self.relpath,
+            "Adding stage '%s' to '%s'", stage.name, self.relpath,
         )
         dump_stage_file(self.path, data)
         self.repo.scm.track_file(relpath(self.path))
@@ -255,7 +255,7 @@ class Lockfile(FileMixin):
         stage_data = serialize.to_lockfile(stage)
         if not self.exists():
             modified = True
-            logger.info("Generating lock file…")
+            logger.info("Generating lock file '%s'", self.relpath)
             data = stage_data
             open(self.path, "w+").close()
         else:
@@ -265,7 +265,7 @@ class Lockfile(FileMixin):
                 stage.name, {}
             )
             if modified:
-                logger.info("Updating lock file…")
+                logger.info("Updating lock file '%s'", self.relpath)
             data.update(stage_data)
         dump_stage_file(self.path, data)
         if modified:
