@@ -80,10 +80,8 @@ class DvcTree(BaseTree):
                     )
                 except RemoteActionNotImplemented:
                     pass
-                cache_info = out.get_used_cache(
-                    filter_info=path, remote=remote
-                )
-                self.repo.cloud.pull(cache_info, remote=remote)
+            cache_info = out.get_used_cache(filter_info=path, remote=remote)
+            self.repo.cloud.pull(cache_info, remote=remote)
 
         if out.is_dir_checksum:
             checksum = self._get_granular_checksum(path, out)
