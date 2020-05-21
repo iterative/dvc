@@ -57,7 +57,7 @@ class Repo:
     from dvc.repo.get_url import get_url
     from dvc.repo.update import update
 
-    def __init__(self, root_dir=None):
+    def __init__(self, root_dir=None, scm=None, rev=None):
         from dvc.state import State
         from dvc.lock import make_lock
         from dvc.scm import SCM
@@ -70,17 +70,23 @@ class Repo:
         from dvc.utils.fs import makedirs
         from dvc.stage.cache import StageCache
 
-        root_dir = self.find_root(root_dir)
+        if scm:
+            # use GitTree instead of WorkingTree as default repo tree instance
+            tree = scm.get_tree(rev)
+            self.root_dir = self.find_root(root_dir, tree)
+            self.scm = scm
+            self.tree = tree
+        else:
+            root_dir = self.find_root(root_dir)
+            self.root_dir = os.path.abspath(os.path.realpath(root_dir))
 
-        self.root_dir = os.path.abspath(os.path.realpath(root_dir))
         self.dvc_dir = os.path.join(self.root_dir, self.DVC_DIR)
-
         self.config = Config(self.dvc_dir)
 
-        no_scm = self.config["core"].get("no_scm", False)
-        self.scm = SCM(self.root_dir, no_scm=no_scm)
-
-        self.tree = WorkingTree(self.root_dir)
+        if not scm:
+            no_scm = self.config["core"].get("no_scm", False)
+            self.scm = SCM(self.root_dir, no_scm=no_scm)
+            self.tree = WorkingTree(self.root_dir)
 
         self.tmp_dir = os.path.join(self.dvc_dir, "tmp")
         self.index_dir = os.path.join(self.tmp_dir, "index")
@@ -124,8 +130,13 @@ class Repo:
         return f"{self.__class__.__name__}: '{self.root_dir}'"
 
     @classmethod
-    def find_root(cls, root=None):
+    def find_root(cls, root=None, tree=None):
         root_dir = os.path.realpath(root or os.curdir)
+
+        if tree:
+            if tree.isdir(os.path.join(root_dir, cls.DVC_DIR)):
+                return root_dir
+            raise NotDvcRepoError(f"'{root}' does not contain DVC directory")
 
         if not os.path.isdir(root_dir):
             raise NotDvcRepoError(f"directory '{root}' does not exist")

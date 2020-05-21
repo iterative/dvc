@@ -29,10 +29,12 @@ logger = logging.getLogger(__name__)
 def external_repo(url, rev=None, for_write=False):
     logger.debug("Creating external repo %s@%s", url, rev)
     path = _cached_clone(url, rev, for_write=for_write)
+    if not rev:
+        rev = "HEAD"
     try:
-        repo = ExternalRepo(path, url)
+        repo = ExternalRepo(path, url, rev, for_write=for_write)
     except NotDvcRepoError:
-        repo = ExternalGitRepo(path, url)
+        repo = ExternalGitRepo(path, url, rev)
 
     try:
         yield repo
@@ -65,8 +67,12 @@ def clean_repos():
 
 
 class ExternalRepo(Repo):
-    def __init__(self, root_dir, url):
-        super().__init__(root_dir)
+    def __init__(self, root_dir, url, rev, for_write=False):
+        if for_write:
+            super().__init__(root_dir)
+        else:
+            root_dir = os.path.realpath(root_dir)
+            super().__init__(root_dir, scm=Git(root_dir), rev=rev)
         self.url = url
         self._set_cache_dir()
         self._fix_upstream()
@@ -166,9 +172,10 @@ class ExternalRepo(Repo):
 
 
 class ExternalGitRepo:
-    def __init__(self, root_dir, url):
-        self.root_dir = root_dir
+    def __init__(self, root_dir, url, rev):
+        self.root_dir = os.path.realpath(root_dir)
         self.url = url
+        self.tree = self.scm.get_tree(rev)
 
     @cached_property
     def scm(self):
@@ -209,14 +216,12 @@ def _cached_clone(url, rev, for_write=False):
     revision checked out. If for_write is set prevents reusing this dir via
     cache.
     """
-    if not for_write and Git.is_sha(rev) and (url, rev) in CLONES:
-        return CLONES[url, rev]
-
+    # even if we have already cloned this repo, we may need to
+    # fetch/fast-forward to get specified rev
     clone_path = _clone_default_branch(url, rev)
-    rev_sha = Git(clone_path).resolve_rev(rev or "HEAD")
 
-    if not for_write and (url, rev_sha) in CLONES:
-        return CLONES[url, rev_sha]
+    if not for_write and (url) in CLONES:
+        return CLONES[url]
 
     # Copy to a new dir to keep the clone clean
     repo_path = tempfile.mkdtemp("dvc-erepo")
@@ -224,11 +229,10 @@ def _cached_clone(url, rev, for_write=False):
     copy_tree(clone_path, repo_path)
 
     # Check out the specified revision
-    if rev is not None:
+    if for_write:
         _git_checkout(repo_path, rev)
-
-    if not for_write:
-        CLONES[url, rev_sha] = repo_path
+    else:
+        CLONES[url] = repo_path
     return repo_path
 
 
