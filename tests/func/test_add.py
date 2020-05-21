@@ -124,10 +124,16 @@ class TestAddDirectoryWithForwardSlash(TestDvc):
 
 
 def test_add_tracked_file(tmp_dir, scm, dvc):
-    tmp_dir.scm_gen("tracked_file", "...", commit="add tracked file")
+    path = "tracked_file"
+    tmp_dir.scm_gen(path, "...", commit="add tracked file")
+    msg = f""" output '{path}' is already tracked by SCM \\(e.g. Git\\).
+    You can remove it from git, then add to DVC.
+        To stop tracking from git:
+            git rm -r --cached '{path}'
+            git commit -m "stop tracking {path}" """
 
-    with pytest.raises(OutputAlreadyTrackedError):
-        dvc.add("tracked_file")
+    with pytest.raises(OutputAlreadyTrackedError, match=msg):
+        dvc.add(path)
 
 
 class TestAddDirWithExistingCache(TestDvc):
