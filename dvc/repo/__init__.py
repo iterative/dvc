@@ -1,3 +1,4 @@
+import logging
 import os
 from contextlib import contextmanager
 from functools import wraps
@@ -5,6 +6,7 @@ from functools import wraps
 from funcy import cached_property, cat, first
 
 from dvc.config import Config
+from dvc.dvcfile import PIPELINE_FILE, Dvcfile
 from dvc.exceptions import FileMissingError
 from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
 from dvc.exceptions import NotDvcRepoError, OutputNotFoundError
@@ -15,6 +17,8 @@ from dvc.utils.fs import path_isin
 
 from ..utils import parse_target
 from .graph import check_acyclic, get_pipeline, get_pipelines
+
+logger = logging.getLogger(__name__)
 
 
 def locked(f):
@@ -181,6 +185,25 @@ class Repo:
 
         self.scm.ignore_list(flist)
 
+    def get_stage(self, path=None, name=None):
+        if not path:
+            path = PIPELINE_FILE
+            logger.debug("Assuming '%s' to be a stage inside '%s'", name, path)
+
+        dvcfile = Dvcfile(self, path)
+        return dvcfile.stages[name]
+
+    def get_stages(self, path=None, name=None):
+        if not path:
+            path = PIPELINE_FILE
+            logger.debug("Assuming '%s' to be a stage inside '%s'", name, path)
+
+        if name:
+            return [self.get_stage(path, name)]
+
+        dvcfile = Dvcfile(self, path)
+        return list(dvcfile.stages.values())
+
     def check_modified_graph(self, new_stages):
         """Generate graph including the new stage to check for errors"""
         # Building graph might be costly for the ones with many DVC-files,
@@ -206,7 +229,6 @@ class Repo:
 
     def collect(self, target, with_deps=False, recursive=False, graph=None):
         import networkx as nx
-        from ..dvcfile import Dvcfile
 
         if not target:
             return list(graph) if graph else self.stages
@@ -217,10 +239,9 @@ class Repo:
             )
 
         path, name = parse_target(target)
-        dvcfile = Dvcfile(self, path)
-        stages = list(dvcfile.stages.filter(name).values())
+        stages = self.get_stages(path, name)
         if not with_deps:
-            return stages
+            return list(stages)
 
         res = set()
         for stage in stages:
@@ -229,20 +250,29 @@ class Repo:
         return res
 
     def collect_granular(self, target, *args, **kwargs):
-        from ..dvcfile import Dvcfile, is_valid_filename
+        from ..dvcfile import Dvcfile, is_valid_filename, PIPELINE_FILE
 
         if not target:
             return [(stage, None) for stage in self.stages]
 
         file, name = parse_target(target)
-        if is_valid_filename(file) and not kwargs.get("with_deps"):
-            # Optimization: do not collect the graph for a specific .dvc target
-            stages = Dvcfile(self, file).stages.filter(name)
-            return [(stage, None) for stage in stages.values()]
+        # Optimization: do not collect the graph for a specific target
+        if not kwargs.get("with_deps") and not file:
+            # parsing is ambiguous when it does not have a colon
+            # or if it's not a dvcfile, as it can be a stage name
+            # in `dvc.yaml` or, an output in a stage.
+            logger.debug(
+                "Checking if stage '%s' is in '%s'", target, PIPELINE_FILE
+            )
+            dvcfile = Dvcfile(self, PIPELINE_FILE)
+            if dvcfile.exists() and name in dvcfile.stages:
+                return [(self.get_stage(PIPELINE_FILE, name), None)]
+        elif not kwargs.get("with_deps") and is_valid_filename(file):
+            return [(stage, None) for stage in self.get_stages(file, name)]
 
         try:
-            (out,) = self.find_outs_by_path(file, strict=False)
-            filter_info = PathInfo(os.path.abspath(file))
+            (out,) = self.find_outs_by_path(target, strict=False)
+            filter_info = PathInfo(os.path.abspath(target))
             return [(out.stage, filter_info)]
         except OutputNotFoundError:
             stages = self.collect(target, *args, **kwargs)
@@ -443,7 +473,7 @@ class Repo:
         return PlotTemplates(self.dvc_dir)
 
     def _collect_stages(self):
-        from dvc.dvcfile import Dvcfile, is_valid_filename
+        from dvc.dvcfile import is_valid_filename
 
         stages = []
         outs = set()
@@ -451,8 +481,7 @@ class Repo:
         for root, dirs, files in self.tree.walk(self.root_dir):
             for file_name in filter(is_valid_filename, files):
                 path = os.path.join(root, file_name)
-                stage_loader = Dvcfile(self, path).stages
-                stages.extend(stage_loader.values())
+                stages.extend(self.get_stages(path))
                 outs.update(
                     out.fspath
                     for stage in stages
