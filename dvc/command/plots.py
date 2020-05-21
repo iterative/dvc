@@ -4,6 +4,7 @@ import os
 
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
+from dvc.utils import format_link
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +115,12 @@ def add_parser(subparsers, parent_parser):
         "--template",
         nargs="?",
         default=None,
-        help="File to be injected with data.",
+        help=(
+            "Special JSON or HTML schema file to inject with the data. "
+            "See {}".format(
+                format_link("https://man.dvc.org/plots#plot-templates")
+            )
+        ),
     )
     plots_show_parser.add_argument(
         "-o", "--out", default=None, help="Destination path to save plots to.",
@@ -167,7 +173,12 @@ def add_parser(subparsers, parent_parser):
         "--template",
         nargs="?",
         default=None,
-        help="File to be injected with data.",
+        help=(
+            "Special JSON or HTML schema to inject with the data. "
+            "See {}".format(
+                format_link("https://man.dvc.org/plots#plot-templates")
+            )
+        ),
     )
     plots_diff_parser.add_argument(
         "--targets",
