@@ -7,6 +7,7 @@ from dvc.path_info import PathInfo
 from dvc.remote.base import RemoteActionNotImplemented
 from dvc.scm.tree import BaseTree
 from dvc.utils import file_md5
+from dvc.utils.fs import copy_fobj_to_file, makedirs
 
 logger = logging.getLogger(__name__)
 
@@ -370,3 +371,26 @@ class RepoTree(BaseTree):
             except OutputNotFoundError:
                 pass
         return file_md5(path_info, self)[0]
+
+    def copytree(self, top, dest):
+        top = PathInfo(top)
+        dest = PathInfo(dest)
+
+        if not self.exists(top):
+            raise FileNotFoundError
+
+        if self.isfile(top):
+            makedirs(dest.parent, exist_ok=True)
+            with self.open(top, mode="rb") as fobj:
+                copy_fobj_to_file(fobj, dest)
+            return
+
+        for root, _, files in self.walk(top):
+            root = PathInfo(root)
+            dest_dir = root.relative_to(top)
+            makedirs(dest_dir, exist_ok=True)
+            for fname in files:
+                src = root / fname
+                dest = dest_dir / fname
+                with self.open(src, mode="rb") as fobj:
+                    copy_fobj_to_file(fobj, dest)
