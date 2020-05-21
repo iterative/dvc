@@ -114,19 +114,31 @@ class BaseExternalRepo:
 
         save_infos = []
         for path in paths:
-            if self.repo_tree.exists(path):
-                save_info = self.local_cache.save(
-                    path,
-                    None,
-                    tree=self.repo_tree,
-                    download_callback=download_update,
-                )
-            else:
-                failed += 1
-                save_info = {}
+            if not self.repo_tree.exists(path):
+                raise PathMissingError(path, self.url)
+            save_info = self.local_cache.save(
+                path,
+                None,
+                tree=self.repo_tree,
+                download_callback=download_update,
+            )
             save_infos.append(save_info)
 
         return sum(download_results), failed, save_infos
+
+    def get_external(self, path, dest):
+        """Convenience wrapper for fetch_external and checkout."""
+        if self.local_cache:
+            # fetch DVC and git files to tmpdir cache, then checkout
+            _, _, save_infos = self.fetch_external([path])
+            self.local_cache.checkout(PathInfo(dest), save_infos[0])
+        else:
+            # git-only erepo with no cache, just copy files directly
+            # to dest
+            path = PathInfo(self.root_dir) / path
+            if not self.repo_tree.exists(path):
+                raise PathMissingError(path, self.url)
+            self.repo_tree.copytree(path, dest)
 
 
 class ExternalRepo(Repo, BaseExternalRepo):
