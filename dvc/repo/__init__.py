@@ -58,7 +58,7 @@ class Repo:
     from dvc.repo.update import update
 
     def __init__(self, root_dir=None, scm=None, rev=None):
-        from dvc.state import State
+        from dvc.state import State, StateNoop
         from dvc.lock import make_lock
         from dvc.scm import SCM
         from dvc.cache import Cache
@@ -76,6 +76,7 @@ class Repo:
             self.root_dir = self.find_root(root_dir, tree)
             self.scm = scm
             self.tree = tree
+            self.state = StateNoop()
         else:
             root_dir = self.find_root(root_dir)
             self.root_dir = os.path.abspath(os.path.realpath(root_dir))
@@ -100,9 +101,11 @@ class Repo:
             friendly=True,
         )
 
-        # NOTE: storing state and link_state in the repository itself to avoid
-        # any possible state corruption in 'shared cache dir' scenario.
-        self.state = State(self)
+        if not scm:
+            # NOTE: storing state and link_state in the repository itself to
+            # avoid any possible state corruption in 'shared cache dir'
+            # scenario.
+            self.state = State(self)
 
         self.cache = Cache(self)
         self.cloud = DataCloud(self)
