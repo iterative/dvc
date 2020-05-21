@@ -18,6 +18,7 @@ from dvc.exceptions import (
 )
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
+from dvc.repo.tree import RepoTree
 from dvc.scm.git import Git
 from dvc.utils import tmp_fname
 from dvc.utils.fs import fs_copy, move, remove
@@ -66,7 +67,61 @@ def clean_repos():
         _remove(path)
 
 
-class ExternalRepo(Repo):
+class BaseExternalRepo:
+
+    _local_cache = None
+
+    @property
+    def local_cache(self):
+        if hasattr(self, "cache"):
+            return self.cache.local
+        return self._local_cache
+
+    @contextmanager
+    def use_cache(self, cache):
+        """Use the specified cache in place of default tmpdir cache for
+        download operations.
+        """
+        if hasattr(self, "cache"):
+            save_cache = self.cache.local
+            self.cache.local = cache
+        self._local_cache = cache
+
+        yield
+
+        if hasattr(self, "cache"):
+            self.cache.local = save_cache
+        self._local_cache = None
+
+    @cached_property
+    def repo_tree(self):
+        return RepoTree(self, fetch=True)
+
+    def fetch_external(self, paths, **kwargs):
+        download_results = []
+        failed = 0
+
+        paths = [PathInfo(self.root_dir) / path for path in paths]
+
+        def download_update(result):
+            download_results.append(result)
+
+        for path in paths:
+            if not self.repo_tree.exists(path):
+                logger.exception(f"'{path}' does not exist in '{self.url}'")
+                failed += 1
+                continue
+            self.local_cache.save(
+                path,
+                None,
+                tree=self.repo_tree,
+                download_callback=download_results,
+            )
+
+        return sum(download_results), failed
+
+
+class ExternalRepo(Repo, BaseExternalRepo):
     def __init__(self, root_dir, url, rev, for_write=False):
         if for_write:
             super().__init__(root_dir)
@@ -131,6 +186,7 @@ class ExternalRepo(Repo):
             cache_dir = CACHE_DIRS[self.url] = tempfile.mkdtemp("dvc-cache")
 
         self.cache.local.cache_dir = cache_dir
+        self._local_cache = self.cache.local
 
     def _fix_upstream(self):
         if not os.path.isdir(self.url):
@@ -171,7 +227,7 @@ class ExternalRepo(Repo):
         self.config["core"]["remote"] = "auto-generated-upstream"
 
 
-class ExternalGitRepo:
+class ExternalGitRepo(BaseExternalRepo):
     def __init__(self, root_dir, url, rev):
         self.root_dir = os.path.realpath(root_dir)
         self.url = url
@@ -201,10 +257,12 @@ class ExternalGitRepo:
     @contextmanager
     def open_by_relpath(self, path, mode="r", encoding=None, **kwargs):
         """Opens a specified resource as a file object."""
+        tree = RepoTree(self)
         try:
-            abs_path = os.path.join(self.root_dir, path)
-            with open(abs_path, mode, encoding=encoding) as fd:
-                yield fd
+            with tree.open(
+                path, mode=mode, encoding=encoding, **kwargs
+            ) as fobj:
+                yield fobj
         except FileNotFoundError:
             raise PathMissingError(path, self.url)
 
