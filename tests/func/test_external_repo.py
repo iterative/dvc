@@ -3,6 +3,7 @@ import os
 from mock import patch
 
 from dvc.external_repo import external_repo
+from dvc.path_info import PathInfo
 from dvc.remote import LocalRemote
 from dvc.scm.git import Git
 from dvc.utils import relpath
@@ -92,7 +93,7 @@ def test_pull_subdir_file(tmp_dir, erepo_dir):
         _, _, save_infos = repo.fetch_external(
             [os.path.join("subdir", "file")]
         )
-        repo.cache.local.checkout(dest, save_infos[0])
+        repo.cache.local.checkout(PathInfo(dest), save_infos[0])
 
     assert dest.is_file()
     assert dest.read_text() == "contents"
