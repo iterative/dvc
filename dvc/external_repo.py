@@ -20,6 +20,7 @@ from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.repo.tree import RepoTree
 from dvc.scm.git import Git
+from dvc.scm.tree import is_working_tree
 from dvc.utils.fs import remove
 
 logger = logging.getLogger(__name__)
@@ -95,6 +96,13 @@ class BaseExternalRepo:
     @cached_property
     def repo_tree(self):
         return RepoTree(self, fetch=True)
+
+    def get_rev(self):
+        if is_working_tree(self.tree):
+            return self.scm.get_rev()
+        if hasattr(self.tree, "tree"):
+            return self.tree.tree.rev
+        return self.tree.rev
 
     def fetch_external(self, paths: Iterable, **kwargs):
         """Fetch specified external repo paths into cache.
