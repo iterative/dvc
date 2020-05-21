@@ -141,7 +141,7 @@ class DvcTree(BaseTree):
         else:
             assert False
 
-    def walk(self, top, topdown=True, **kwargs):
+    def walk(self, top, topdown=True, download_callback=None, **kwargs):
         from pygtrie import Trie
 
         assert topdown
@@ -168,7 +168,9 @@ class DvcTree(BaseTree):
                 if self.fetch:
                     if out.changed_cache(filter_info=top):
                         used_cache = out.get_used_cache(filter_info=top)
-                        self.repo.cloud.pull(used_cache, **kwargs)
+                        downloaded = self.repo.cloud.pull(used_cache, **kwargs)
+                        if download_callback:
+                            download_callback(downloaded)
 
                 for entry in dir_cache:
                     entry_relpath = entry[out.remote.PARAM_RELPATH]
