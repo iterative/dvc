@@ -44,10 +44,9 @@ def test_add(tmp_dir, dvc):
     assert len(stage.deps) == 0
     assert stage.cmd is None
     assert stage.outs[0].info["md5"] == md5
-    assert stage.md5 == "411854a9fc55b3cebda28704e41b23b3"
+    assert stage.md5 is None
 
     assert load_stage_file("foo.dvc") == {
-        "md5": "411854a9fc55b3cebda28704e41b23b3",
         "outs": [{"md5": "acbd18db4cc2f85cedef654fccc4a4d8", "path": "foo"}],
     }
 
