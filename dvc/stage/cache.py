@@ -80,12 +80,26 @@ class StageCache:
     def _create_stage(self, cache):
         from dvc.stage import create_stage, PipelineStage
 
+        params = []
+        for param in cache.get("params", []):
+            if isinstance(param, str):
+                params.append(param)
+                continue
+
+            assert isinstance(param, dict)
+            assert len(param) == 1
+            path = list(param.keys())[0]
+            params_list = param[path]
+            assert isinstance(params_list, list)
+            params.append(f"{path}:" + ",".join(params_list))
+
         stage = create_stage(
             PipelineStage,
             repo=self.repo,
             path="dvc.yaml",
             cmd=cache["cmd"],
-            deps=[dep["path"] for dep in cache["deps"]],
+            params=params,
+            deps=[dep["path"] for dep in cache.get("deps", [])],
             outs=[out["path"] for out in cache["outs"]],
         )
         StageLoader.fill_from_lock(stage, cache)
