@@ -21,10 +21,17 @@ from dvc.remote.base import (
 )
 from dvc.remote.index import RemoteIndexNoop
 from dvc.scheme import Schemes
-from dvc.scm.tree import is_working_tree
+from dvc.scm.tree import WorkingTree, is_working_tree
 from dvc.system import System
 from dvc.utils import file_md5, relpath, tmp_fname
-from dvc.utils.fs import copyfile, makedirs, move, remove, walk_files
+from dvc.utils.fs import (
+    copy_fobj_to_file,
+    copyfile,
+    makedirs,
+    move,
+    remove,
+    walk_files,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +68,21 @@ class LocalRemote(BaseRemote):
     def cache_dir(self, value):
         self.path_info = PathInfo(value) if value else None
 
+    @cached_property
+    def _work_tree(self):
+        if self.repo:
+            return WorkingTree(self.repo.root_dir)
+        return None
+
+    @property
+    def work_tree(self):
+        # When using repo.brancher, repo.tree may change to/from WorkingTree to
+        # GitTree arbitarily. When repo.tree is GitTree, local cache needs to
+        # use its own WorkingTree instance.
+        if self.repo and not is_working_tree(self.repo.tree):
+            return self._work_tree
+        return None
+
     @classmethod
     def supported(cls, config):
         return True
@@ -92,8 +114,11 @@ class LocalRemote(BaseRemote):
         return self.checksum_to_path_info(md5).url
 
     def exists(self, path_info):
-        assert is_working_tree(self.repo.tree)
         assert isinstance(path_info, str) or path_info.scheme == "local"
+        if not self.repo:
+            return os.path.exists(path_info)
+        if self.work_tree and self.work_tree.exists(path_info):
+            return True
         return self.repo.tree.exists(path_info)
 
     def makedirs(self, path_info):
@@ -126,13 +151,19 @@ class LocalRemote(BaseRemote):
 
         return False
 
-    @staticmethod
-    def isfile(path_info):
-        return os.path.isfile(path_info)
+    def isfile(self, path_info):
+        if not self.repo:
+            return os.path.isfile(path_info)
+        if self.work_tree and self.work_tree.isfile(path_info):
+            return True
+        return self.repo.tree.isfile(path_info)
 
-    @staticmethod
-    def isdir(path_info):
-        return os.path.isdir(path_info)
+    def isdir(self, path_info):
+        if not self.repo:
+            return os.path.isdir(path_info)
+        if self.work_tree and self.work_tree.isdir(path_info):
+            return True
+        return self.repo.tree.isdir(path_info)
 
     def iscopy(self, path_info):
         return not (
@@ -181,6 +212,17 @@ class LocalRemote(BaseRemote):
         tmp_info = to_info.parent / tmp_fname(to_info.name)
         try:
             System.copy(from_info, tmp_info)
+            os.chmod(tmp_info, self._file_mode)
+            os.rename(tmp_info, to_info)
+        except Exception:
+            self.remove(tmp_info)
+            raise
+
+    def copy_fobj(self, fobj, to_info):
+        self.makedirs(to_info.parent)
+        tmp_info = to_info.parent / tmp_fname(to_info.name)
+        try:
+            copy_fobj_to_file(fobj, tmp_info)
             os.chmod(tmp_info, self._file_mode)
             os.rename(tmp_info, to_info)
         except Exception:

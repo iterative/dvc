@@ -1,9 +1,13 @@
+import os
 from os.path import join
 
 from dvc.ignore import CleanTree
+from dvc.path_info import PathInfo
+from dvc.repo.tree import RepoTree
 from dvc.scm import SCM
 from dvc.scm.git import GitTree
 from dvc.scm.tree import WorkingTree
+from dvc.utils.fs import remove
 from tests.basic_env import TestDir, TestGit, TestGitSubmodule
 
 
@@ -172,3 +176,47 @@ class TestWalkInGit(AssertWalkEqualMixin, TestGit):
                 )
             ],
         )
+
+
+def test_repotree_walk_fetch(tmp_dir, dvc, scm, setup_remote):
+    setup_remote(dvc)
+    out = tmp_dir.dvc_gen({"dir": {"foo": "foo"}}, commit="init")[0].outs[0]
+    dvc.push()
+    remove(dvc.cache.local.cache_dir)
+
+    tree = RepoTree(dvc, fetch=True)
+    with dvc.state:
+        for _, _, _ in tree.walk("dir"):
+            pass
+
+    assert os.path.exists(out.cache_path)
+    for entry in out.dir_cache:
+        checksum = entry[out.remote.PARAM_CHECKSUM]
+        assert os.path.exists(dvc.cache.local.checksum_to_path_info(checksum))
+
+
+def test_repotree_cache_save(tmp_dir, dvc, scm, erepo_dir, setup_remote):
+    with erepo_dir.chdir():
+        erepo_dir.gen({"dir": {"subdir": {"foo": "foo"}, "bar": "bar"}})
+        erepo_dir.dvc_add("dir/subdir", commit="subdir")
+        erepo_dir.scm_add("dir", commit="dir")
+        setup_remote(erepo_dir.dvc)
+        erepo_dir.dvc.push()
+
+    # test only cares that either fetch or stream are set so that DVC dirs are
+    # walked.
+    #
+    # for this test, all file objects are being opened() and copied from tree
+    # into dvc.cache, not fetched or streamed from a remote
+    tree = RepoTree(erepo_dir.dvc, stream=True)
+    expected = [
+        tree.get_file_checksum(erepo_dir / path)
+        for path in ("dir/bar", "dir/subdir/foo")
+    ]
+
+    with erepo_dir.dvc.state:
+        cache = dvc.cache.local
+        with cache.state:
+            cache.save(PathInfo(erepo_dir / "dir"), None, tree=tree)
+    for checksum in expected:
+        assert os.path.exists(cache.checksum_to_path_info(checksum))

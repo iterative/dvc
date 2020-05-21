@@ -3,6 +3,7 @@ import shutil
 
 import pytest
 
+from dvc.path_info import PathInfo
 from dvc.repo.tree import DvcTree
 
 
@@ -115,13 +116,13 @@ def test_walk(tmp_dir, dvc):
         (
             True,
             [
-                "dir/subdir1",
-                "dir/subdir2",
-                "dir/subdir1/foo1",
-                "dir/subdir1/bar1",
-                "dir/subdir2/foo2",
-                "dir/foo",
-                "dir/bar",
+                PathInfo("dir") / "subdir1",
+                PathInfo("dir") / "subdir2",
+                PathInfo("dir") / "subdir1" / "foo1",
+                PathInfo("dir") / "subdir1" / "bar1",
+                PathInfo("dir") / "subdir2" / "foo2",
+                PathInfo("dir") / "foo",
+                PathInfo("dir") / "bar",
             ],
         ),
     ],
@@ -143,10 +144,11 @@ def test_walk_dir(tmp_dir, dvc, fetch, expected):
 
     expected = [str(tmp_dir / path) for path in expected]
 
-    actual = []
-    for root, dirs, files in tree.walk("dir"):
-        for entry in dirs + files:
-            actual.append(os.path.join(root, entry))
+    with dvc.state:
+        actual = []
+        for root, dirs, files in tree.walk("dir"):
+            for entry in dirs + files:
+                actual.append(os.path.join(root, entry))
 
     assert set(actual) == set(expected)
     assert len(actual) == len(expected)
