@@ -32,8 +32,8 @@ class OutputIsNotFileOrDirError(DvcException):
 class OutputAlreadyTrackedError(DvcException):
     def __init__(self, path):
         msg = f""" output '{path}' is already tracked by SCM (e.g. Git).
-    You can remove it from git, then add to DVC.
-        To stop tracking from git:
+    You can remove it from Git, then add to DVC.
+        To stop tracking from Git:
             git rm -r --cached '{path}'
             git commit -m "stop tracking {path}" """
         super().__init__(msg)
