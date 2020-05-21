@@ -492,6 +492,7 @@ class BaseRemote:
         if not tree or is_working_tree(tree):
             self.state.save(path_info, checksum)
         self.state.save(cache_info, checksum)
+        return {self.PARAM_CHECKSUM: checksum}
 
     def _cache_is_copy(self, path_info):
         """Checks whether cache uses copies."""
@@ -537,6 +538,7 @@ class BaseRemote:
         self.state.save(cache_info, checksum)
         if not tree or is_working_tree(tree):
             self.state.save(path_info, checksum)
+        return {self.PARAM_CHECKSUM: checksum}
 
     def _save_tree(self, path_info, tree, **kwargs):
         # save tree directory to cache, collect dir cache during walk and
@@ -598,7 +600,7 @@ class BaseRemote:
                 checksum = tree.get_file_checksum(path_info)
         else:
             checksum = checksum_info[self.PARAM_CHECKSUM]
-        self._save(path_info, checksum, save_link, tree, **kwargs)
+        return self._save(path_info, checksum, save_link, tree, **kwargs)
 
     def _save(self, path_info, checksum, save_link=True, tree=None, **kwargs):
         if tree:
@@ -614,9 +616,10 @@ class BaseRemote:
             isdir = self.isdir
 
         if isdir(path_info):
-            self._save_dir(path_info, checksum, save_link, tree, **kwargs)
-            return
-        self._save_file(path_info, checksum, save_link, tree, **kwargs)
+            return self._save_dir(
+                path_info, checksum, save_link, tree, **kwargs
+            )
+        return self._save_file(path_info, checksum, save_link, tree, **kwargs)
 
     def _handle_transfer_exception(
         self, from_info, to_info, exception, operation

@@ -4,6 +4,7 @@ import tempfile
 import threading
 from contextlib import contextmanager
 from distutils.dir_util import copy_tree
+from typing import Iterable
 
 from funcy import cached_property, retry, suppress, wrap_with
 
@@ -97,7 +98,14 @@ class BaseExternalRepo:
     def repo_tree(self):
         return RepoTree(self, fetch=True)
 
-    def fetch_external(self, paths, **kwargs):
+    def fetch_external(self, paths: Iterable, **kwargs):
+        """Fetch specified external repo paths into cache.
+
+        Returns 3-tuple in the form
+            (downloaded, failed, list(cache_infos))
+        where cache_infos can be used as checkout targets for the
+        fetched paths.
+        """
         download_results = []
         failed = 0
 
@@ -106,19 +114,21 @@ class BaseExternalRepo:
         def download_update(result):
             download_results.append(result)
 
+        save_infos = []
         for path in paths:
-            if not self.repo_tree.exists(path):
-                logger.exception(f"'{path}' does not exist in '{self.url}'")
+            if self.repo_tree.exists(path):
+                save_info = self.local_cache.save(
+                    path,
+                    None,
+                    tree=self.repo_tree,
+                    download_callback=download_update,
+                )
+            else:
                 failed += 1
-                continue
-            self.local_cache.save(
-                path,
-                None,
-                tree=self.repo_tree,
-                download_callback=download_results,
-            )
+                save_info = {}
+            save_infos.append(save_info)
 
-        return sum(download_results), failed
+        return sum(download_results), failed, save_infos
 
 
 class ExternalRepo(Repo, BaseExternalRepo):
