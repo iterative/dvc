@@ -175,9 +175,11 @@ class LocalRemote(BaseRemote):
         return os.path.getsize(path_info)
 
     def walk_files(self, path_info):
-        assert is_working_tree(self.repo.tree)
-
-        for fname in self.repo.tree.walk_files(path_info):
+        if self.work_tree:
+            tree = self.work_tree
+        else:
+            tree = self.repo.tree
+        for fname in tree.walk_files(path_info):
             yield PathInfo(fname)
 
     def get_file_checksum(self, path_info):
