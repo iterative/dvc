@@ -78,10 +78,10 @@ class RepoDependency(LocalDependency):
             if self.def_repo.get(self.PARAM_REV_LOCK) is None:
                 self.def_repo[self.PARAM_REV_LOCK] = repo.scm.get_rev()
 
-            if hasattr(repo, "cache"):
-                repo.cache.local.cache_dir = self.repo.cache.local.cache_dir
-
-            repo.pull_to(self.def_path, to.path_info)
+            cache = self.repo.cache.local
+            with repo.use_cache(cache):
+                _, _, cache_infos = repo.fetch_external([self.def_path])
+            cache.checkout(to.path_info, cache_infos[0])
 
     def update(self, rev=None):
         if rev:
