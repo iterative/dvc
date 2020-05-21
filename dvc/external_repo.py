@@ -6,11 +6,10 @@ from contextlib import contextmanager
 from distutils.dir_util import copy_tree
 from typing import Iterable
 
-from funcy import cached_property, retry, suppress, wrap_with
+from funcy import cached_property, retry, wrap_with
 
 from dvc.config import NoRemoteError, NotDvcRepoError
 from dvc.exceptions import (
-    CheckoutError,
     FileMissingError,
     NoOutputInExternalRepoError,
     NoRemoteInExternalRepoError,
@@ -21,8 +20,7 @@ from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.repo.tree import RepoTree
 from dvc.scm.git import Git
-from dvc.utils import tmp_fname
-from dvc.utils.fs import fs_copy, move, remove
+from dvc.utils.fs import remove
 
 logger = logging.getLogger(__name__)
 
@@ -142,52 +140,6 @@ class ExternalRepo(Repo, BaseExternalRepo):
         self._set_cache_dir()
         self._fix_upstream()
 
-    def pull_to(self, path, to_info):
-        """
-        Pull the corresponding file or directory specified by `path` and
-        checkout it into `to_info`.
-
-        It works with files tracked by Git and DVC, and also local files
-        outside the repository.
-        """
-        out = None
-        path_info = PathInfo(self.root_dir) / path
-
-        with suppress(OutputNotFoundError):
-            (out,) = self.find_outs_by_path(path_info, strict=False)
-
-        try:
-            if out and out.use_cache:
-                self._pull_cached(out, path_info, to_info)
-                return
-
-            # Check if it is handled by Git (it can't have an absolute path)
-            if os.path.isabs(path):
-                raise FileNotFoundError
-
-            fs_copy(path_info, to_info)
-        except FileNotFoundError:
-            raise PathMissingError(path, self.url)
-
-    def _pull_cached(self, out, path_info, dest):
-        with self.state:
-            tmp = PathInfo(tmp_fname(dest))
-            src = tmp / path_info.relative_to(out.path_info)
-
-            out.path_info = tmp
-
-            # Only pull unless all needed cache is present
-            if out.changed_cache(filter_info=src):
-                self.cloud.pull(out.get_used_cache(filter_info=src))
-
-            try:
-                out.checkout(filter_info=src)
-            except CheckoutError:
-                raise FileNotFoundError
-
-            move(src, dest)
-            remove(tmp)
-
     @wrap_with(threading.Lock())
     def _set_cache_dir(self):
         try:
@@ -253,16 +205,6 @@ class ExternalGitRepo(BaseExternalRepo):
 
     def find_out_by_relpath(self, path):
         raise OutputNotFoundError(path, self)
-
-    def pull_to(self, path, to_info):
-        try:
-            # Git handled files can't have absolute path
-            if os.path.isabs(path):
-                raise FileNotFoundError
-
-            fs_copy(os.path.join(self.root_dir, path), to_info)
-        except FileNotFoundError:
-            raise PathMissingError(path, self.url)
 
     @contextmanager
     def open_by_relpath(self, path, mode="r", encoding=None, **kwargs):
