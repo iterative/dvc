@@ -105,10 +105,25 @@ class DvcTree(BaseTree):
 
         path_info = PathInfo(os.path.abspath(path))
         outs = self._find_outs(path, strict=False, recursive=True)
-        if len(outs) != 1 or outs[0].path_info != path_info:
+        if len(outs) != 1:
             return True
 
-        return outs[0].is_dir_checksum
+        out = outs[0]
+        if not out.is_dir_checksum:
+            if out.path_info != path_info:
+                return True
+            return False
+
+        if out.path_info == path_info:
+            return True
+
+        # for dir checksum, we need to check if this is a file inside the
+        # directory
+        try:
+            self._get_granular_checksum(path, out)
+            return False
+        except FileNotFoundError:
+            return True
 
     def isfile(self, path):
         if not self.exists(path):
