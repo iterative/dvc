@@ -32,21 +32,12 @@ class CmdPlots(CmdBase):
         raise NotImplementedError
 
     def run(self):
-        fields = None
-        jsonpath = None
-        if self.args.select:
-            if self.args.select.startswith("$"):
-                jsonpath = self.args.select
-            else:
-                fields = set(self.args.select.split(","))
         try:
             plots = self._func(
                 targets=self.args.targets,
                 template=self.args.template,
-                fields=fields,
                 x_field=self.args.x,
                 y_field=self.args.y,
-                path=jsonpath,
                 csv_header=not self.args.no_csv_header,
                 title=self.args.title,
                 x_title=self.args.xlab,
@@ -129,12 +120,6 @@ def add_parser(subparsers, parent_parser):
         "-o", "--out", default=None, help="Destination path to save plots to.",
     )
     plots_show_parser.add_argument(
-        "-s",
-        "--select",
-        default=None,
-        help="Choose which field(s) or JSONPath to include in the plots.",
-    )
-    plots_show_parser.add_argument(
         "-x", default=None, help="Field name for x axis."
     )
     plots_show_parser.add_argument(
@@ -191,12 +176,6 @@ def add_parser(subparsers, parent_parser):
     )
     plots_diff_parser.add_argument(
         "-o", "--out", default=None, help="Destination path to save plots to.",
-    )
-    plots_diff_parser.add_argument(
-        "-s",
-        "--select",
-        default=None,
-        help="Choose which field(s) or JSONPath to include in the plot.",
     )
     plots_diff_parser.add_argument(
         "-x", default=None, help="Field name for x axis."
