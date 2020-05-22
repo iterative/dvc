@@ -356,7 +356,11 @@ class Stage(params.StageParams):
         return get_dump(self)
 
     def compute_md5(self):
-        m = compute_md5(self)
+        # `dvc add`ed files don't need stage md5
+        if self.is_data_source and not (self.is_import or self.is_repo_import):
+            m = None
+        else:
+            m = compute_md5(self)
         logger.debug(f"Computed {self} md5: '{m}'")
         return m
 

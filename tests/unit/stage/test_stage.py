@@ -20,14 +20,14 @@ TEST_STAGE_DICT = {
 
 
 def test_stage_checksum():
-    stage = Stage(None, "path")
+    stage = Stage(None, "path", cmd="mycmd")
 
     with mock.patch.object(stage, "dumpd", return_value=TEST_STAGE_DICT):
         assert stage.compute_md5() == "e9521a22111493406ea64a88cda63e0b"
 
 
 def test_wdir_default_ignored():
-    stage = Stage(None, "path")
+    stage = Stage(None, "path", cmd="mycmd")
     d = dict(TEST_STAGE_DICT, wdir=".")
 
     with mock.patch.object(stage, "dumpd", return_value=d):
@@ -35,7 +35,7 @@ def test_wdir_default_ignored():
 
 
 def test_wdir_non_default_is_not_ignored():
-    stage = Stage(None, "path")
+    stage = Stage(None, "path", cmd="mycmd")
     d = dict(TEST_STAGE_DICT, wdir="..")
 
     with mock.patch.object(stage, "dumpd", return_value=d):
@@ -43,7 +43,7 @@ def test_wdir_non_default_is_not_ignored():
 
 
 def test_meta_ignored():
-    stage = Stage(None, "path")
+    stage = Stage(None, "path", cmd="mycmd")
     d = dict(TEST_STAGE_DICT, meta={"author": "Suor"})
 
     with mock.patch.object(stage, "dumpd", return_value=d):
