@@ -2,6 +2,7 @@ from collections import defaultdict
 from urllib.parse import urlparse
 
 import dvc.output as output
+from dvc.dependency.azure import AzureDependency
 from dvc.dependency.gs import GSDependency
 from dvc.dependency.hdfs import HDFSDependency
 from dvc.dependency.http import HTTPDependency
@@ -17,6 +18,7 @@ from dvc.scheme import Schemes
 from .repo import RepoDependency
 
 DEPS = [
+    AzureDependency,
     GSDependency,
     HDFSDependency,
     HTTPDependency,
@@ -30,6 +32,7 @@ DEP_MAP = {
     Schemes.LOCAL: LocalDependency,
     Schemes.SSH: SSHDependency,
     Schemes.S3: S3Dependency,
+    Schemes.AZURE: AzureDependency,
     Schemes.GS: GSDependency,
     Schemes.HDFS: HDFSDependency,
     Schemes.HTTP: HTTPDependency,
