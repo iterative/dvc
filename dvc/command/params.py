@@ -8,16 +8,25 @@ from dvc.exceptions import DvcException
 logger = logging.getLogger(__name__)
 
 
-def _show_diff(diff, markdown=False):
+def _show_diff(diff, markdown=False, no_path=False):
     from dvc.utils.diff import table
 
     rows = []
     for fname, pdiff in diff.items():
         sorted_pdiff = OrderedDict(sorted(pdiff.items()))
         for param, change in sorted_pdiff.items():
-            rows.append([fname, param, change["old"], change["new"]])
+            row = [] if no_path else [fname]
+            row.append(param)
+            row.append(change["old"])
+            row.append(change["new"])
+            rows.append(row)
 
-    return table(["Path", "Param", "Old", "New"], rows, markdown)
+    header = [] if no_path else ["Path"]
+    header.append("Param")
+    header.append("Old")
+    header.append("New")
+
+    return table(header, rows, markdown)
 
 
 class CmdParamsDiff(CmdBase):
@@ -34,7 +43,7 @@ class CmdParamsDiff(CmdBase):
 
                 logger.info(json.dumps(diff))
             else:
-                table = _show_diff(diff, self.args.show_md)
+                table = _show_diff(diff, self.args.show_md, self.args.no_path)
                 if table:
                     logger.info(table)
 
@@ -99,5 +108,11 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Show tabulated output in the Markdown format (GFM).",
+    )
+    params_diff_parser.add_argument(
+        "--no-path",
+        action="store_true",
+        default=False,
+        help="Don't show params path.",
     )
     params_diff_parser.set_defaults(func=CmdParamsDiff)

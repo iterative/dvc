@@ -7,7 +7,16 @@ from dvc.command.params import CmdParamsDiff, _show_diff
 
 def test_params_diff(dvc, mocker):
     cli_args = parse_args(
-        ["params", "diff", "HEAD~10", "HEAD~1", "--all", "--show-json"]
+        [
+            "params",
+            "diff",
+            "HEAD~10",
+            "HEAD~1",
+            "--all",
+            "--show-json",
+            "--show-md",
+            "--no-path",
+        ]
     )
     assert cli_args.func == CmdParamsDiff
 
@@ -141,4 +150,23 @@ def test_params_diff_markdown():
         | params.yaml | a.b.c   | 1     | None  |
         | params.yaml | a.d.e   | None  | 4     |
         | params.yaml | x.b     | 5     | 6     |"""
+    )
+
+
+def test_params_diff_no_path():
+    assert _show_diff(
+        {
+            "params.yaml": {
+                "x.b": {"old": 5, "new": 6},
+                "a.d.e": {"old": 3, "new": 4},
+                "a.b.c": {"old": 1, "new": 2},
+            }
+        },
+        no_path=True,
+    ) == textwrap.dedent(
+        """\
+        Param    Old    New
+        a.b.c    1      2
+        a.d.e    3      4
+        x.b      5      6"""
     )
