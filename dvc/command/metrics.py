@@ -87,7 +87,7 @@ class CmdMetricsRemove(CmdBase):
         return 0
 
 
-def _show_diff(diff, markdown=False):
+def _show_diff(diff, markdown=False, no_path=False, old=False):
     from collections import OrderedDict
 
     from dvc.utils.diff import table
@@ -96,16 +96,23 @@ def _show_diff(diff, markdown=False):
     for fname, mdiff in diff.items():
         sorted_mdiff = OrderedDict(sorted(mdiff.items()))
         for metric, change in sorted_mdiff.items():
-            rows.append(
-                [
-                    fname,
-                    metric,
-                    change["new"],
-                    change.get("diff", "diff not supported"),
-                ]
-            )
+            row = [] if no_path else [fname]
+            row.append(metric)
+            if old:
+                row.append(change.get("old"))
+            row.append(change["new"])
+            row.append(change.get("diff", "diff not supported"))
+            rows.append(row)
 
-    return table(["Path", "Metric", "Value", "Change"], rows, markdown)
+    header = [] if no_path else ["Path"]
+    header.append("Metric")
+    if old:
+        header.extend(["Old", "New"])
+    else:
+        header.append("Value")
+    header.append("Change")
+
+    return table(header, rows, markdown)
 
 
 class CmdMetricsDiff(CmdBase):
@@ -124,7 +131,9 @@ class CmdMetricsDiff(CmdBase):
 
                 logger.info(json.dumps(diff))
             else:
-                table = _show_diff(diff, self.args.show_md)
+                table = _show_diff(
+                    diff, self.args.show_md, self.args.no_path, self.args.old
+                )
                 if table:
                     logger.info(table)
 
@@ -268,6 +277,18 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Show tabulated output in the Markdown format (GFM).",
+    )
+    metrics_diff_parser.add_argument(
+        "--no-path",
+        action="store_true",
+        default=False,
+        help="Don't show metric path.",
+    )
+    metrics_diff_parser.add_argument(
+        "--old",
+        action="store_true",
+        default=False,
+        help="Show old metric value.",
     )
     metrics_diff_parser.set_defaults(func=CmdMetricsDiff)
 
