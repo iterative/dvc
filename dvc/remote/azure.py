@@ -1,10 +1,8 @@
 import logging
 import os
 import posixpath
-import re
 import threading
 from datetime import datetime, timedelta
-from urllib.parse import urlparse
 
 from funcy import cached_property, wrap_prop
 
@@ -19,12 +17,6 @@ logger = logging.getLogger(__name__)
 class AzureRemote(BaseRemote):
     scheme = Schemes.AZURE
     path_cls = CloudURLInfo
-    REGEX = (
-        r"azure://((?P<path>[^=;]*)?|("
-        # backward compatibility
-        r"(ContainerName=(?P<container_name>[^;]+);?)?"
-        r"(?P<connection_string>.+)?)?)$"
-    )
     REQUIRES = {"azure-storage-blob": "azure.storage.blob"}
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
@@ -34,31 +26,16 @@ class AzureRemote(BaseRemote):
         super().__init__(repo, config)
 
         url = config.get("url", "azure://")
+        self.path_info = self.path_cls(url)
 
-        match = re.match(self.REGEX, url)  # backward compatibility
-        path = match.group("path")
-        bucket = (
-            urlparse(url if path else "").netloc
-            or match.group("container_name")  # backward compatibility
-            or os.getenv("AZURE_STORAGE_CONTAINER_NAME")
-        )
+        if not self.path_info.bucket:
+            self.path_info = self.path_cls.from_parts(
+                scheme=self.scheme,
+                netloc=os.getenv("AZURE_STORAGE_CONTAINER_NAME"),
+            )
 
-        self.connection_string = (
-            config.get("connection_string")
-            or match.group("connection_string")  # backward compatibility
-            or os.getenv("AZURE_STORAGE_CONNECTION_STRING")
-        )
-
-        if not bucket:
-            raise ValueError("azure storage container name missing")
-
-        if not self.connection_string:
-            raise ValueError("azure storage connection string missing")
-
-        self.path_info = (
-            self.path_cls(url)
-            if path
-            else self.path_cls.from_parts(scheme=self.scheme, netloc=bucket)
+        self.connection_string = config.get("connection_string") or os.getenv(
+            "AZURE_STORAGE_CONNECTION_STRING"
         )
 
     @wrap_prop(threading.Lock())

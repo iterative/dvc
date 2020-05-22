@@ -9,13 +9,11 @@ connection_string = (
 )
 
 
-def test_init_compat(dvc):
-    url = (
-        "azure://ContainerName={container_name};{connection_string}"
-    ).format(
-        container_name=container_name, connection_string=connection_string,
-    )
-    config = {"url": url}
+def test_init_env_var(monkeypatch, dvc):
+    monkeypatch.setenv("AZURE_STORAGE_CONTAINER_NAME", container_name)
+    monkeypatch.setenv("AZURE_STORAGE_CONNECTION_STRING", connection_string)
+
+    config = {"url": "azure://"}
     remote = AzureRemote(dvc, config)
     assert remote.path_info == "azure://" + container_name
     assert remote.connection_string == connection_string
