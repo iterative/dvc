@@ -19,6 +19,7 @@ def test_metrics_diff(dvc, mocker):
             "target2",
             "--show-md",
             "--no-path",
+            "--old",
         ]
     )
     assert cli_args.func == CmdMetricsDiff
@@ -194,4 +195,23 @@ def test_metrics_diff_no_path():
         a.b.c     2        1
         a.d.e     4        1
         x.b       6        1"""
+    )
+
+
+def test_metrics_diff_with_old():
+    assert _show_diff(
+        {
+            "metrics.yaml": {
+                "x.b": {"old": 5, "new": 6, "diff": 1},
+                "a.d.e": {"old": 3, "new": 4, "diff": 1},
+                "a.b.c": {"old": 1, "new": 2, "diff": 1},
+            }
+        },
+        old=True,
+    ) == textwrap.dedent(
+        """\
+        Path          Metric    Old    New    Change
+        metrics.yaml  a.b.c     1      2      1
+        metrics.yaml  a.d.e     3      4      1
+        metrics.yaml  x.b       5      6      1"""
     )
