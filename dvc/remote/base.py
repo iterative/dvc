@@ -481,7 +481,12 @@ class BaseRemote:
         if tree:
             if self.changed_cache(checksum):
                 with tree.open(path_info, mode="rb") as fobj:
-                    self.copy_fobj(fobj, cache_info)
+                    # if tree has fetch enabled, DVC out will be fetched on
+                    # open and we do not need to read/copy any data
+                    if not (
+                        tree.isdvc(path_info, strict=False) and tree.fetch
+                    ):
+                        self.copy_fobj(fobj, cache_info)
                 callback = kwargs.get("download_callback")
                 if callback:
                     callback(1)

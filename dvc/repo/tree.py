@@ -235,6 +235,18 @@ class RepoTree(BaseTree):
             # git-only erepo's do not need dvctree
             self.dvctree = None
 
+    @property
+    def fetch(self):
+        if self.dvctree:
+            return self.dvctree.fetch
+        return False
+
+    @property
+    def stream(self):
+        if self.dvctree:
+            return self.dvctree.stream
+        return False
+
     def open(self, path, mode="r", encoding="utf-8", **kwargs):
         if "b" in mode:
             encoding = None
