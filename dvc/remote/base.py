@@ -227,7 +227,7 @@ class BaseRemote:
             file_infos.add(fname)
 
         if tree:
-            checksums = {fi: tree.get_checksum(fi) for fi in file_infos}
+            checksums = {fi: tree.get_file_checksum(fi) for fi in file_infos}
             if save_tree:
                 for fi, checksum in checksums.items():
                     self._save_file(fi, checksum, tree=tree, **kwargs)
@@ -259,11 +259,14 @@ class BaseRemote:
         # Sorting the list by path to ensure reproducibility
         return sorted(result, key=itemgetter(self.PARAM_RELPATH))
 
-    def get_dir_checksum(self, path_info):
+    def get_dir_checksum(self, path_info, tree=None):
         if not self.cache:
             raise RemoteCacheRequiredError(path_info)
 
-        dir_info = self._collect_dir(path_info)
+        dir_info = self._collect_dir(path_info, tree=None)
+        if tree:
+            # don't save state entry for path_info if it is a tree path
+            path_info = None
         return self._save_dir_info(dir_info, path_info)
 
     def _save_dir_info(self, dir_info, path_info=None):
