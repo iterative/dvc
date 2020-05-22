@@ -276,3 +276,26 @@ def test_run_params_custom_file(tmp_dir, dvc):
     assert data["stages"]["read_params"]["params"] == [
         {"params2.yaml": ["lists"]}
     ]
+
+
+def test_run_params_no_exec(tmp_dir, dvc):
+    from dvc.dependency import ParamsDependency
+
+    with (tmp_dir / "params2.yaml").open("w+") as f:
+        yaml.dump(supported_params, f)
+
+    stage = dvc.run(
+        name="read_params",
+        params=["params2.yaml:lists"],
+        cmd="cat params2.yaml",
+        no_exec=True,
+    )
+
+    isinstance(stage.deps[0], ParamsDependency)
+    assert stage.deps[0].params == ["lists"]
+    assert not stage.dvcfile._lockfile.exists()
+
+    data, _ = stage.dvcfile._load()
+    assert data["stages"]["read_params"]["params"] == [
+        {"params2.yaml": ["lists"]}
+    ]

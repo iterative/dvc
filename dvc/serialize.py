@@ -69,14 +69,22 @@ def _serialize_params(params: List[ParamsDependency]):
     for param_dep in sort_by_path(params):
         dump = param_dep.dumpd()
         path, params = dump[PARAM_PATH], dump[PARAM_PARAMS]
-        k = list(params.keys())
-        if not k:
-            continue
-        key_vals[path] = OrderedDict([(key, params[key]) for key in sorted(k)])
+        if isinstance(params, dict):
+            k = list(params.keys())
+            if not k:
+                continue
+            key_vals[path] = OrderedDict(
+                [(key, params[key]) for key in sorted(k)]
+            )
+        else:
+            assert isinstance(params, list)
+            k = params
+            key_vals = OrderedDict()
         # params from default file is always kept at the start of the `params:`
         if path == DEFAULT_PARAMS_FILE:
             keys = k + keys
-            key_vals.move_to_end(path, last=False)
+            if key_vals:
+                key_vals.move_to_end(path, last=False)
         else:
             # if it's not a default file, change the shape
             # to: {path: k}
