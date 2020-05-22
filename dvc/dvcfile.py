@@ -175,13 +175,16 @@ class PipelineFile(FileMixin):
     def _lockfile(self):
         return Lockfile(self.repo, os.path.splitext(self.path)[0] + ".lock")
 
-    def dump(self, stage, update_pipeline=False, **kwargs):
+    def dump(self, stage, update_pipeline=False, no_lock=False):
         """Dumps given stage appropriately in the dvcfile."""
         from dvc.stage import PipelineStage
 
         assert isinstance(stage, PipelineStage)
         check_dvc_filename(self.path)
-        self._dump_lockfile(stage)
+
+        if not no_lock:
+            self._dump_lockfile(stage)
+
         if update_pipeline and not stage.is_data_source:
             self._dump_pipeline_file(stage)
 

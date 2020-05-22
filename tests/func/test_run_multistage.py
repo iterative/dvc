@@ -19,6 +19,30 @@ def test_run_with_name(tmp_dir, dvc, run_copy):
     assert os.path.exists(PIPELINE_LOCK)
 
 
+def test_run_no_exec(tmp_dir, dvc, run_copy):
+    from dvc.stage import PipelineStage
+    from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
+
+    tmp_dir.dvc_gen("foo", "foo")
+    assert not os.path.exists(PIPELINE_FILE)
+    stage = run_copy("foo", "bar", name="copy-foo-to-bar", no_exec=True)
+    assert isinstance(stage, PipelineStage)
+    assert stage.name == "copy-foo-to-bar"
+    assert os.path.exists(PIPELINE_FILE)
+    assert not os.path.exists(PIPELINE_LOCK)
+
+    data, _ = stage.dvcfile._load()
+    assert data == {
+        "stages": {
+            "copy-foo-to-bar": {
+                "cmd": "python copy.py foo bar",
+                "deps": ["copy.py", "foo"],
+                "outs": ["bar"],
+            }
+        }
+    }
+
+
 def test_run_with_multistage_and_single_stage(tmp_dir, dvc, run_copy):
     from dvc.stage import PipelineStage, Stage
 
