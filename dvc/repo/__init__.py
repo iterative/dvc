@@ -6,7 +6,7 @@ from functools import wraps
 from funcy import cached_property, cat, first
 
 from dvc.config import Config
-from dvc.dvcfile import PIPELINE_FILE, Dvcfile
+from dvc.dvcfile import PIPELINE_FILE, Dvcfile, is_valid_filename
 from dvc.exceptions import FileMissingError
 from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
 from dvc.exceptions import NotDvcRepoError, OutputNotFoundError
@@ -250,8 +250,6 @@ class Repo:
         return res
 
     def collect_granular(self, target, *args, **kwargs):
-        from ..dvcfile import Dvcfile, is_valid_filename, PIPELINE_FILE
-
         if not target:
             return [(stage, None) for stage in self.stages]
 
@@ -473,8 +471,6 @@ class Repo:
         return PlotTemplates(self.dvc_dir)
 
     def _collect_stages(self):
-        from dvc.dvcfile import is_valid_filename
-
         stages = []
         outs = set()
 
