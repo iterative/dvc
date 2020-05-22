@@ -18,7 +18,7 @@ class AzureRemote(BaseRemote):
     scheme = Schemes.AZURE
     path_cls = CloudURLInfo
     REQUIRES = {"azure-storage-blob": "azure.storage.blob"}
-    PARAM_CHECKSUM = "etag"
+    PARAM_CHECKSUM = "md5"
     COPY_POLL_SECONDS = 5
     LIST_OBJECT_PAGE_SIZE = 5000
 
@@ -58,14 +58,14 @@ class AzureRemote(BaseRemote):
             blob_service.create_container(self.path_info.bucket)
         return blob_service
 
-    def get_etag(self, path_info):
-        etag = self.blob_service.get_blob_properties(
+    def get_content_md5(self, path_info):
+        content_md5 = self.blob_service.get_blob_properties(
             path_info.bucket, path_info.path
-        ).properties.etag
-        return etag.strip('"')
+        ).properties.content_settings.content_md5
+        return content_md5.strip('"')
 
     def get_file_checksum(self, path_info):
-        return self.get_etag(path_info)
+        return self.get_content_md5(path_info)
 
     def remove(self, path_info):
         if path_info.scheme != self.scheme:
