@@ -1,5 +1,6 @@
 import errno
 import os
+import stat
 
 import configobj
 import pytest
@@ -355,3 +356,15 @@ def test_remote_default(dvc):
     assert remote_name not in config.get("remote", {})
     local_config = dvc.config.load_one("local")
     assert local_config["core"]["remote"] == new_name
+
+
+def test_protect_local_remote(tmp_dir, dvc, setup_remote):
+    setup_remote(dvc, name="upstream")
+    (stage,) = tmp_dir.dvc_gen("file", "file content")
+
+    dvc.push()
+    remote = dvc.cloud.get_remote("upstream")
+    remote_cache_file = remote.checksum_to_path_info(stage.outs[0].checksum)
+
+    assert os.path.exists(remote_cache_file)
+    assert stat.S_IMODE(os.stat(remote_cache_file).st_mode) == 0o444

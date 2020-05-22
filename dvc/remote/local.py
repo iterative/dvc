@@ -298,6 +298,8 @@ class LocalRemote(BaseRemote):
         copyfile(
             from_file, tmp_file, name=name, no_progress_bar=no_progress_bar
         )
+
+        self.protect(tmp_file)
         os.rename(tmp_file, to_info)
 
     def _download(
