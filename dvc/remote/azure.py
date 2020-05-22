@@ -82,7 +82,9 @@ class AzureRemote(BaseRemote):
         return blob_service
 
     def get_etag(cls, path_info):
-        etag = self.blob_service.get_blob_properties(path_info.bucket, path_info.path).properties.etag
+        etag = self.blob_service.get_blob_properties(
+            path_info.bucket, path_info.path
+        ).properties.etag
         return etag.strip('"')
 
     def get_file_checksum(self, path_info):
