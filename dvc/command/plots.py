@@ -174,7 +174,7 @@ def add_parser(subparsers, parent_parser):
         nargs="?",
         default=None,
         help=(
-            "Special JSON or HTML schema to inject with the data. "
+            "Special JSON or HTML schema file to inject with the data. "
             "See {}".format(
                 format_link("https://man.dvc.org/plots#plot-templates")
             )
