@@ -48,7 +48,10 @@ class DvcTree(BaseTree):
             raise FileNotFoundError
         dir_cache = out.get_dir_cache(remote=remote)
         for entry in dir_cache:
-            if path == out.path_info / entry[out.remote.PARAM_RELPATH]:
+            entry_relpath = entry[out.remote.PARAM_RELPATH]
+            if os.name == "nt":
+                entry_relpath = entry_relpath.replace("/", os.sep)
+            if path == out.path_info / entry_relpath:
                 return entry[out.remote.PARAM_CHECKSUM]
         raise FileNotFoundError
 
@@ -188,6 +191,8 @@ class DvcTree(BaseTree):
 
                 for entry in dir_cache:
                     entry_relpath = entry[out.remote.PARAM_RELPATH]
+                    if os.name == "nt":
+                        entry_relpath = entry_relpath.replace("/", os.sep)
                     path_info = out.path_info / entry_relpath
                     trie[path_info.parts] = None
 
