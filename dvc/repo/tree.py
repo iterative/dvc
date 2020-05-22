@@ -7,6 +7,7 @@ from dvc.path_info import PathInfo
 from dvc.remote.base import RemoteActionNotImplemented
 from dvc.scm.tree import BaseTree
 from dvc.utils import file_md5
+from dvc.utils.fs import copy_fobj_to_file, makedirs
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,10 @@ class DvcTree(BaseTree):
             raise FileNotFoundError
         dir_cache = out.get_dir_cache(remote=remote)
         for entry in dir_cache:
-            if path == out.path_info / entry[out.remote.PARAM_RELPATH]:
+            entry_relpath = entry[out.remote.PARAM_RELPATH]
+            if os.name == "nt":
+                entry_relpath = entry_relpath.replace("/", os.sep)
+            if path == out.path_info / entry_relpath:
                 return entry[out.remote.PARAM_CHECKSUM]
         raise FileNotFoundError
 
@@ -80,10 +84,8 @@ class DvcTree(BaseTree):
                     )
                 except RemoteActionNotImplemented:
                     pass
-                cache_info = out.get_used_cache(
-                    filter_info=path, remote=remote
-                )
-                self.repo.cloud.pull(cache_info, remote=remote)
+            cache_info = out.get_used_cache(filter_info=path, remote=remote)
+            self.repo.cloud.pull(cache_info, remote=remote)
 
         if out.is_dir_checksum:
             checksum = self._get_granular_checksum(path, out)
@@ -105,10 +107,25 @@ class DvcTree(BaseTree):
 
         path_info = PathInfo(os.path.abspath(path))
         outs = self._find_outs(path, strict=False, recursive=True)
-        if len(outs) != 1 or outs[0].path_info != path_info:
+        if len(outs) != 1:
             return True
 
-        return outs[0].is_dir_checksum
+        out = outs[0]
+        if not out.is_dir_checksum:
+            if out.path_info != path_info:
+                return True
+            return False
+
+        if out.path_info == path_info:
+            return True
+
+        # for dir checksum, we need to check if this is a file inside the
+        # directory
+        try:
+            self._get_granular_checksum(path, out)
+            return False
+        except FileNotFoundError:
+            return True
 
     def isfile(self, path):
         if not self.exists(path):
@@ -141,7 +158,7 @@ class DvcTree(BaseTree):
         else:
             assert False
 
-    def walk(self, top, topdown=True, **kwargs):
+    def walk(self, top, topdown=True, download_callback=None, **kwargs):
         from pygtrie import Trie
 
         assert topdown
@@ -168,10 +185,14 @@ class DvcTree(BaseTree):
                 if self.fetch:
                     if out.changed_cache(filter_info=top):
                         used_cache = out.get_used_cache(filter_info=top)
-                        self.repo.cloud.pull(used_cache, **kwargs)
+                        downloaded = self.repo.cloud.pull(used_cache, **kwargs)
+                        if download_callback:
+                            download_callback(downloaded)
 
                 for entry in dir_cache:
                     entry_relpath = entry[out.remote.PARAM_RELPATH]
+                    if os.name == "nt":
+                        entry_relpath = entry_relpath.replace("/", os.sep)
                     path_info = out.path_info / entry_relpath
                     trie[path_info.parts] = None
 
@@ -213,6 +234,18 @@ class RepoTree(BaseTree):
         else:
             # git-only erepo's do not need dvctree
             self.dvctree = None
+
+    @property
+    def fetch(self):
+        if self.dvctree:
+            return self.dvctree.fetch
+        return False
+
+    @property
+    def stream(self):
+        if self.dvctree:
+            return self.dvctree.stream
+        return False
 
     def open(self, path, mode="r", encoding="utf-8", **kwargs):
         if "b" in mode:
@@ -355,3 +388,26 @@ class RepoTree(BaseTree):
             except OutputNotFoundError:
                 pass
         return file_md5(path_info, self)[0]
+
+    def copytree(self, top, dest):
+        top = PathInfo(top)
+        dest = PathInfo(dest)
+
+        if not self.exists(top):
+            raise FileNotFoundError
+
+        if self.isfile(top):
+            makedirs(dest.parent, exist_ok=True)
+            with self.open(top, mode="rb") as fobj:
+                copy_fobj_to_file(fobj, dest)
+            return
+
+        for root, _, files in self.walk(top):
+            root = PathInfo(root)
+            dest_dir = root.relative_to(top)
+            makedirs(dest_dir, exist_ok=True)
+            for fname in files:
+                src = root / fname
+                dest = dest_dir / fname
+                with self.open(src, mode="rb") as fobj:
+                    copy_fobj_to_file(fobj, dest)

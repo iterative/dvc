@@ -4,7 +4,6 @@ import os
 import shortuuid
 
 from dvc.exceptions import DvcException
-from dvc.path_info import PathInfo
 from dvc.utils import resolve_output
 from dvc.utils.fs import remove
 
@@ -51,7 +50,6 @@ def get(url, path, out=None, rev=None):
                 # Also, we can't use theoretical "move" link type here, because
                 # the same cache file might be used a few times in a directory.
                 repo.cache.local.cache_types = ["reflink", "hardlink", "copy"]
-
-            repo.pull_to(path, PathInfo(out))
+            repo.get_external(path, out)
     finally:
         remove(tmp_dir)

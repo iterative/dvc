@@ -4,12 +4,12 @@ import tempfile
 import threading
 from contextlib import contextmanager
 from distutils.dir_util import copy_tree
+from typing import Iterable
 
-from funcy import cached_property, retry, suppress, wrap_with
+from funcy import cached_property, retry, wrap_with
 
 from dvc.config import NoRemoteError, NotDvcRepoError
 from dvc.exceptions import (
-    CheckoutError,
     FileMissingError,
     NoOutputInExternalRepoError,
     NoRemoteInExternalRepoError,
@@ -18,9 +18,10 @@ from dvc.exceptions import (
 )
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
+from dvc.repo.tree import RepoTree
 from dvc.scm.git import Git
-from dvc.utils import tmp_fname
-from dvc.utils.fs import fs_copy, move, remove
+from dvc.scm.tree import is_working_tree
+from dvc.utils.fs import remove
 
 logger = logging.getLogger(__name__)
 
@@ -29,10 +30,12 @@ logger = logging.getLogger(__name__)
 def external_repo(url, rev=None, for_write=False):
     logger.debug("Creating external repo %s@%s", url, rev)
     path = _cached_clone(url, rev, for_write=for_write)
+    if not rev:
+        rev = "HEAD"
     try:
-        repo = ExternalRepo(path, url)
+        repo = ExternalRepo(path, url, rev, for_write=for_write)
     except NotDvcRepoError:
-        repo = ExternalGitRepo(path, url)
+        repo = ExternalGitRepo(path, url, rev)
 
     try:
         yield repo
@@ -64,58 +67,98 @@ def clean_repos():
         _remove(path)
 
 
-class ExternalRepo(Repo):
-    def __init__(self, root_dir, url):
-        super().__init__(root_dir)
+class BaseExternalRepo:
+
+    _local_cache = None
+
+    @property
+    def local_cache(self):
+        if hasattr(self, "cache"):
+            return self.cache.local
+        return self._local_cache
+
+    @contextmanager
+    def use_cache(self, cache):
+        """Use the specified cache in place of default tmpdir cache for
+        download operations.
+        """
+        if hasattr(self, "cache"):
+            save_cache = self.cache.local
+            self.cache.local = cache
+        self._local_cache = cache
+
+        yield
+
+        if hasattr(self, "cache"):
+            self.cache.local = save_cache
+        self._local_cache = None
+
+    @cached_property
+    def repo_tree(self):
+        return RepoTree(self, fetch=True)
+
+    def get_rev(self):
+        if is_working_tree(self.tree):
+            return self.scm.get_rev()
+        if hasattr(self.tree, "tree"):
+            return self.tree.tree.rev
+        return self.tree.rev
+
+    def fetch_external(self, paths: Iterable, **kwargs):
+        """Fetch specified external repo paths into cache.
+
+        Returns 3-tuple in the form
+            (downloaded, failed, list(cache_infos))
+        where cache_infos can be used as checkout targets for the
+        fetched paths.
+        """
+        download_results = []
+        failed = 0
+
+        paths = [PathInfo(self.root_dir) / path for path in paths]
+
+        def download_update(result):
+            download_results.append(result)
+
+        save_infos = []
+        for path in paths:
+            if not self.repo_tree.exists(path):
+                raise PathMissingError(path, self.url)
+            save_info = self.local_cache.save(
+                path,
+                None,
+                tree=self.repo_tree,
+                download_callback=download_update,
+            )
+            save_infos.append(save_info)
+
+        return sum(download_results), failed, save_infos
+
+    def get_external(self, path, dest):
+        """Convenience wrapper for fetch_external and checkout."""
+        if self.local_cache:
+            # fetch DVC and git files to tmpdir cache, then checkout
+            _, _, save_infos = self.fetch_external([path])
+            self.local_cache.checkout(PathInfo(dest), save_infos[0])
+        else:
+            # git-only erepo with no cache, just copy files directly
+            # to dest
+            path = PathInfo(self.root_dir) / path
+            if not self.repo_tree.exists(path):
+                raise PathMissingError(path, self.url)
+            self.repo_tree.copytree(path, dest)
+
+
+class ExternalRepo(Repo, BaseExternalRepo):
+    def __init__(self, root_dir, url, rev, for_write=False):
+        if for_write:
+            super().__init__(root_dir)
+        else:
+            root_dir = os.path.realpath(root_dir)
+            super().__init__(root_dir, scm=Git(root_dir), rev=rev)
         self.url = url
         self._set_cache_dir()
         self._fix_upstream()
-
-    def pull_to(self, path, to_info):
-        """
-        Pull the corresponding file or directory specified by `path` and
-        checkout it into `to_info`.
-
-        It works with files tracked by Git and DVC, and also local files
-        outside the repository.
-        """
-        out = None
-        path_info = PathInfo(self.root_dir) / path
-
-        with suppress(OutputNotFoundError):
-            (out,) = self.find_outs_by_path(path_info, strict=False)
-
-        try:
-            if out and out.use_cache:
-                self._pull_cached(out, path_info, to_info)
-                return
-
-            # Check if it is handled by Git (it can't have an absolute path)
-            if os.path.isabs(path):
-                raise FileNotFoundError
-
-            fs_copy(path_info, to_info)
-        except FileNotFoundError:
-            raise PathMissingError(path, self.url)
-
-    def _pull_cached(self, out, path_info, dest):
-        with self.state:
-            tmp = PathInfo(tmp_fname(dest))
-            src = tmp / path_info.relative_to(out.path_info)
-
-            out.path_info = tmp
-
-            # Only pull unless all needed cache is present
-            if out.changed_cache(filter_info=src):
-                self.cloud.pull(out.get_used_cache(filter_info=src))
-
-            try:
-                out.checkout(filter_info=src)
-            except CheckoutError:
-                raise FileNotFoundError
-
-            move(src, dest)
-            remove(tmp)
 
     @wrap_with(threading.Lock())
     def _set_cache_dir(self):
@@ -125,6 +168,7 @@ class ExternalRepo(Repo):
             cache_dir = CACHE_DIRS[self.url] = tempfile.mkdtemp("dvc-cache")
 
         self.cache.local.cache_dir = cache_dir
+        self._local_cache = self.cache.local
 
     def _fix_upstream(self):
         if not os.path.isdir(self.url):
@@ -165,10 +209,11 @@ class ExternalRepo(Repo):
         self.config["core"]["remote"] = "auto-generated-upstream"
 
 
-class ExternalGitRepo:
-    def __init__(self, root_dir, url):
-        self.root_dir = root_dir
+class ExternalGitRepo(BaseExternalRepo):
+    def __init__(self, root_dir, url, rev):
+        self.root_dir = os.path.realpath(root_dir)
         self.url = url
+        self.tree = self.scm.get_tree(rev)
 
     @cached_property
     def scm(self):
@@ -181,23 +226,15 @@ class ExternalGitRepo:
     def find_out_by_relpath(self, path):
         raise OutputNotFoundError(path, self)
 
-    def pull_to(self, path, to_info):
-        try:
-            # Git handled files can't have absolute path
-            if os.path.isabs(path):
-                raise FileNotFoundError
-
-            fs_copy(os.path.join(self.root_dir, path), to_info)
-        except FileNotFoundError:
-            raise PathMissingError(path, self.url)
-
     @contextmanager
     def open_by_relpath(self, path, mode="r", encoding=None, **kwargs):
         """Opens a specified resource as a file object."""
+        tree = RepoTree(self)
         try:
-            abs_path = os.path.join(self.root_dir, path)
-            with open(abs_path, mode, encoding=encoding) as fd:
-                yield fd
+            with tree.open(
+                path, mode=mode, encoding=encoding, **kwargs
+            ) as fobj:
+                yield fobj
         except FileNotFoundError:
             raise PathMissingError(path, self.url)
 
@@ -209,14 +246,12 @@ def _cached_clone(url, rev, for_write=False):
     revision checked out. If for_write is set prevents reusing this dir via
     cache.
     """
-    if not for_write and Git.is_sha(rev) and (url, rev) in CLONES:
-        return CLONES[url, rev]
-
+    # even if we have already cloned this repo, we may need to
+    # fetch/fast-forward to get specified rev
     clone_path = _clone_default_branch(url, rev)
-    rev_sha = Git(clone_path).resolve_rev(rev or "HEAD")
 
-    if not for_write and (url, rev_sha) in CLONES:
-        return CLONES[url, rev_sha]
+    if not for_write and (url) in CLONES:
+        return CLONES[url]
 
     # Copy to a new dir to keep the clone clean
     repo_path = tempfile.mkdtemp("dvc-erepo")
@@ -224,11 +259,10 @@ def _cached_clone(url, rev, for_write=False):
     copy_tree(clone_path, repo_path)
 
     # Check out the specified revision
-    if rev is not None:
+    if for_write:
         _git_checkout(repo_path, rev)
-
-    if not for_write:
-        CLONES[url, rev_sha] = repo_path
+    else:
+        CLONES[url] = repo_path
     return repo_path
 
 

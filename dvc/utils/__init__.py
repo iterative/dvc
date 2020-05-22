@@ -52,18 +52,14 @@ def file_md5(fname, tree=None):
         exists_func = tree.exists
         stat_func = tree.stat
         open_func = tree.open
-        # assume we don't need to run dos2unix when comparing git blobs
-        binary = True
     else:
         exists_func = os.path.exists
         stat_func = os.stat
         open_func = open
-        binary = False
 
     if exists_func(fname):
         hash_md5 = hashlib.md5()
-        if not binary:
-            binary = not istextfile(fname)
+        binary = not istextfile(fname, tree=tree)
         size = stat_func(fname).st_size
         no_progress_bar = True
         if size >= LARGE_FILE_SIZE:
