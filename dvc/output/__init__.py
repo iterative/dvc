@@ -2,7 +2,6 @@ from urllib.parse import urlparse
 
 from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
 
-from dvc.output.azure import AzureOutput
 from dvc.output.base import BaseOutput
 from dvc.output.gs import GSOutput
 from dvc.output.hdfs import HDFSOutput
@@ -10,14 +9,12 @@ from dvc.output.local import LocalOutput
 from dvc.output.s3 import S3Output
 from dvc.output.ssh import SSHOutput
 from dvc.remote import Remote
-from dvc.remote.azure import AzureRemote
 from dvc.remote.hdfs import HDFSRemote
 from dvc.remote.local import LocalRemote
 from dvc.remote.s3 import S3Remote
 from dvc.scheme import Schemes
 
 OUTS = [
-    AzureOutput,
     HDFSOutput,
     S3Output,
     GSOutput,
@@ -26,7 +23,6 @@ OUTS = [
 ]
 
 OUTS_MAP = {
-    Schemes.AZURE: AzureOutput,
     Schemes.HDFS: HDFSOutput,
     Schemes.S3: S3Output,
     Schemes.GS: GSOutput,
@@ -49,7 +45,6 @@ CHECKSUM_SCHEMA = Any(
 # so when a few types of outputs share the same name, we only need
 # specify it once.
 CHECKSUMS_SCHEMA = {
-    AzureRemote.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
     LocalRemote.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
     S3Remote.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
     HDFSRemote.PARAM_CHECKSUM: CHECKSUM_SCHEMA,

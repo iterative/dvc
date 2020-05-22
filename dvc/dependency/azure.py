@@ -1,6 +1,7 @@
 from dvc.dependency.base import BaseDependency
-from dvc.output.azure import AzureOutput
+from dvc.output.base import BaseOutput
+from dvc.remote.azure import AzureRemote
 
 
-class AzureDependency(BaseDependency, AzureOutput):
-    pass
+class AzureDependency(BaseDependency, BaseOutput):
+    REMOTE = AzureRemote
