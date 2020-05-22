@@ -2,8 +2,8 @@ from urllib.parse import urlparse
 
 from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
 
-from dvc.output.base import BaseOutput
 from dvc.output.azure import AzureOutput
+from dvc.output.base import BaseOutput
 from dvc.output.gs import GSOutput
 from dvc.output.hdfs import HDFSOutput
 from dvc.output.local import LocalOutput
