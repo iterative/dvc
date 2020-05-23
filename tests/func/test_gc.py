@@ -219,6 +219,8 @@ def test_gc_no_unpacked_dir(tmp_dir, dvc):
         dir_stages[0].outs[0].cache_path + LocalRemote.UNPACKED_DIR_SUFFIX
     )
 
+    # older (pre 1.0) versions of dvc used to generate this dir
+    shutil.copytree("dir", unpackeddir)
     assert os.path.exists(unpackeddir)
 
     dvc.gc(force=True, workspace=True)
