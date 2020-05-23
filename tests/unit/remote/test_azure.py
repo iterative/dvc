@@ -1,4 +1,8 @@
+import pytest
+
+from dvc.path_info import PathInfo
 from dvc.remote.azure import AzureRemote
+from tests.remotes import Azure
 
 container_name = "container-name"
 connection_string = (
@@ -26,3 +30,17 @@ def test_init(dvc):
     remote = AzureRemote(dvc, config)
     assert remote.path_info == url
     assert remote.connection_string == connection_string
+
+
+def test_get_file_checksum(tmp_dir):
+    if not Azure.should_test():
+        pytest.skip("no azurite running")
+
+    tmp_dir.gen("foo", "foo")
+
+    remote = AzureRemote(None, {})
+    to_info = remote.path_cls(Azure.get_url())
+    remote.upload(PathInfo("foo"), to_info)
+    assert remote.exists(to_info)
+    # make sure the checksum is a hex number
+    int(remote.get_file_checksum(to_info), 16)
