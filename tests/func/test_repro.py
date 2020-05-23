@@ -1070,7 +1070,7 @@ class TestReproExternalHDFS(HDFS, TestReproExternalBase):
         self.assertEqual(p.returncode, 0)
 
 
-@flaky(max_runs=3, min_passes=1)
+@flaky(max_runs=5, min_passes=1)
 class TestReproExternalSSH(SSH, TestReproExternalBase):
     _dir = None
     cache_type = "copy"
