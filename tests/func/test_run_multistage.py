@@ -19,6 +19,30 @@ def test_run_with_name(tmp_dir, dvc, run_copy):
     assert os.path.exists(PIPELINE_LOCK)
 
 
+def test_run_no_exec(tmp_dir, dvc, run_copy):
+    from dvc.stage import PipelineStage
+    from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
+
+    tmp_dir.dvc_gen("foo", "foo")
+    assert not os.path.exists(PIPELINE_FILE)
+    stage = run_copy("foo", "bar", name="copy-foo-to-bar", no_exec=True)
+    assert isinstance(stage, PipelineStage)
+    assert stage.name == "copy-foo-to-bar"
+    assert os.path.exists(PIPELINE_FILE)
+    assert not os.path.exists(PIPELINE_LOCK)
+
+    data, _ = stage.dvcfile._load()
+    assert data == {
+        "stages": {
+            "copy-foo-to-bar": {
+                "cmd": "python copy.py foo bar",
+                "deps": ["copy.py", "foo"],
+                "outs": ["bar"],
+            }
+        }
+    }
+
+
 def test_run_with_multistage_and_single_stage(tmp_dir, dvc, run_copy):
     from dvc.stage import PipelineStage, Stage
 
@@ -247,6 +271,29 @@ def test_run_params_custom_file(tmp_dir, dvc):
     assert lockfile.load()["read_params"]["params"] == {
         "params2.yaml": {"lists": [42, 42.0, "42"]}
     }
+
+    data, _ = stage.dvcfile._load()
+    assert data["stages"]["read_params"]["params"] == [
+        {"params2.yaml": ["lists"]}
+    ]
+
+
+def test_run_params_no_exec(tmp_dir, dvc):
+    from dvc.dependency import ParamsDependency
+
+    with (tmp_dir / "params2.yaml").open("w+") as f:
+        yaml.dump(supported_params, f)
+
+    stage = dvc.run(
+        name="read_params",
+        params=["params2.yaml:lists"],
+        cmd="cat params2.yaml",
+        no_exec=True,
+    )
+
+    isinstance(stage.deps[0], ParamsDependency)
+    assert stage.deps[0].params == ["lists"]
+    assert not stage.dvcfile._lockfile.exists()
 
     data, _ = stage.dvcfile._load()
     assert data["stages"]["read_params"]["params"] == [
