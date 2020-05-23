@@ -92,7 +92,12 @@ class LocalRemote(BaseRemote):
         return os.path.abspath(self.cache_dir)
 
     def checksum_to_path(self, checksum):
-        return os.path.join(self.cache_path, checksum[0:2], checksum[2:])
+        # NOTE: `self.cache_path` is already normalized so we can simply use
+        # `os.sep` instead of `os.path.join`. This results in this helper
+        # being ~5.5 times faster.
+        return (
+            f"{self.cache_path}{os.sep}{checksum[0:2]}{os.sep}{checksum[2:]}"
+        )
 
     def list_cache_paths(self, prefix=None, progress_callback=None):
         assert self.path_info is not None
