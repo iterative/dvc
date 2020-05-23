@@ -15,7 +15,7 @@ fi
 
 echo >env.sh
 
-if [[ "$TRAVIS_BUILD_STAGE_NAME" == "Test" ]]; then
+if [[ "$TRAVIS_BUILD_STAGE_NAME" == "test" ]]; then
   if [[ "$TRAVIS_OS_NAME" != "windows" ]]; then
     # NOTE: ssh keys for ssh test to be able to ssh to the localhost
     ssh-keygen -t rsa -N "" -f mykey
