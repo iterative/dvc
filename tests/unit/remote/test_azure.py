@@ -1,7 +1,7 @@
 import pytest
 
-from tests.remotes import Azure
 from dvc.remote.azure import AzureRemote
+from tests.remotes import Azure
 
 container_name = "container-name"
 connection_string = (
