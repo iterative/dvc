@@ -29,10 +29,8 @@ class AzureRemote(BaseRemote):
         self.path_info = self.path_cls(url)
 
         if not self.path_info.bucket:
-            self.path_info = self.path_cls.from_parts(
-                scheme=self.scheme,
-                netloc=os.getenv("AZURE_STORAGE_CONTAINER_NAME"),
-            )
+            container = os.getenv("AZURE_STORAGE_CONTAINER_NAME")
+            self.path_info = self.path_cls(f"azure://{container}")
 
         self.connection_string = config.get("connection_string") or os.getenv(
             "AZURE_STORAGE_CONNECTION_STRING"
@@ -57,6 +55,15 @@ class AzureRemote(BaseRemote):
         except AzureMissingResourceHttpError:
             blob_service.create_container(self.path_info.bucket)
         return blob_service
+
+    def get_etag(self, path_info):
+        etag = self.blob_service.get_blob_properties(
+            path_info.bucket, path_info.path
+        ).properties.etag
+        return etag.strip('"')
+
+    def get_file_checksum(self, path_info):
+        return self.get_etag(path_info)
 
     def remove(self, path_info):
         if path_info.scheme != self.scheme:
