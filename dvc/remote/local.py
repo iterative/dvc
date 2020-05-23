@@ -701,9 +701,9 @@ class LocalRemote(BaseRemote):
         self.remove(path_info)
 
     def is_protected(self, path_info):
-        if not self.exists(path_info):
+        try:
+            mode = os.stat(path_info).st_mode
+        except FileNotFoundError:
             return False
-
-        mode = os.stat(path_info).st_mode
 
         return stat.S_IMODE(mode) == self.CACHE_MODE
