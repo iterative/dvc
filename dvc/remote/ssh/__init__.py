@@ -265,6 +265,8 @@ class SSHRemote(BaseRemote):
         else:
             root = self.path_info.path
         with self.ssh(self.path_info) as ssh:
+            if prefix and not ssh.exists(root):
+                return
             # If we simply return an iterator then with above closes instantly
             if progress_callback:
                 for path in ssh.walk_files(root):

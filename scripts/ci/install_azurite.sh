@@ -3,13 +3,6 @@
 set -e
 set -x
 
-# install docker
-export DEBIAN_FRONTEND=noninteractive
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-sudo apt-get update
-sudo apt-get install -y docker-ce
-
 # run azurite
 sudo docker run -d --restart always -e executable=blob -p 10000:10000 \
   --tmpfs /opt/azurite/folder \

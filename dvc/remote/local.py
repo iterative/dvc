@@ -98,6 +98,8 @@ class LocalRemote(BaseRemote):
         assert self.path_info is not None
         if prefix:
             path_info = self.path_info / prefix[:2]
+            if not self.exists(path_info):
+                return
         else:
             path_info = self.path_info
         if progress_callback:

@@ -42,5 +42,7 @@ def test_get_file_checksum(tmp_dir):
     to_info = remote.path_cls(Azure.get_url())
     remote.upload(PathInfo("foo"), to_info)
     assert remote.exists(to_info)
-    # make sure the checksum is a hex number
-    int(remote.get_file_checksum(to_info), 16)
+    checksum = remote.get_file_checksum(to_info)
+    assert checksum
+    assert isinstance(checksum, str)
+    assert checksum.strip("'").strip('"') == checksum
