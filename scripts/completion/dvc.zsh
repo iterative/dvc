@@ -218,7 +218,7 @@ _dvc_plots=(
 )
 
 _dvc_remote=(
-  "1:Sub command:(add default remove modify list)"
+  "1:Sub command:(add default remove modify list rename)"
 )
 
 _dvc_remove=(
