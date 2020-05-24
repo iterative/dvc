@@ -6,7 +6,6 @@ from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 
 from dvc.scm.tree import BaseTree
-from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
 
@@ -35,12 +34,19 @@ class DvcIgnorePatterns(DvcIgnore):
         return dirs, files
 
     def matches(self, dirname, basename):
-        abs_path = os.path.join(dirname, basename)
-        rel_path = relpath(abs_path, self.dirname)
-
-        if os.pardir + os.sep in rel_path:
+        # NOTE: `relpath` is too slow, so we have to assume that both
+        # `dirname` and `self.dirname` are relative or absolute together.
+        prefix = self.dirname + os.sep
+        if dirname == self.dirname:
+            path = basename
+        elif dirname.startswith(prefix):
+            rel = dirname[len(prefix) :]
+            # NOTE: `os.path.join` is ~x5.5 slower
+            path = f"{rel}{os.sep}{basename}"
+        else:
             return False
-        return self.ignore_spec.match_file(rel_path)
+
+        return self.ignore_spec.match_file(path)
 
     def __hash__(self):
         return hash(self.ignore_file_path)
@@ -135,7 +141,9 @@ class CleanTree(BaseTree):
 
     def walk(self, top, topdown=True):
         for root, dirs, files in self.tree.walk(top, topdown):
-            dirs[:], files[:] = self.dvcignore(root, dirs, files)
+            dirs[:], files[:] = self.dvcignore(
+                os.path.abspath(root), dirs, files
+            )
 
             yield root, dirs, files
 

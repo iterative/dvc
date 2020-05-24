@@ -69,7 +69,6 @@ def test_ignore_from_file_should_filter_dirs_and_files():
         ),
         ("dont_ignore.txt", ["dont_ignore"], False),
         ("dont_ignore.txt", ["dont*", "!dont_ignore.txt"], False),
-        ("../../../something.txt", ["**/something.txt"], False),
     ],
 )
 def test_match_ignore_from_file(
