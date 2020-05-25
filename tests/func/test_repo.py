@@ -283,7 +283,7 @@ def test_collect_granular_priority_on_collision(tmp_dir, dvc, run_copy):
 def test_collect_granular_collision_output_dir_stage_name(
     tmp_dir, dvc, run_copy
 ):
-    (stage1,) = tmp_dir.dvc_gen({"dir": {"foo": "foo"}, "foo": "foo"})
+    stage1, *_ = tmp_dir.dvc_gen({"dir": {"foo": "foo"}, "foo": "foo"})
     stage3 = run_copy("foo", "bar", name="dir")
 
     assert dvc.collect_granular("dir") == [(stage3, None)]
