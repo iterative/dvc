@@ -4,7 +4,7 @@ from operator import itemgetter
 import pytest
 
 from dvc.cache import Cache
-from dvc.dvcfile import PIPELINE_FILE
+from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
 from dvc.exceptions import NoOutputOrStage
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
@@ -19,8 +19,6 @@ from dvc.utils.fs import remove
 
 
 def test_destroy(tmp_dir, dvc, run_copy):
-    from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
-
     dvc.config["cache"]["type"] = ["symlink"]
     dvc.cache = Cache(dvc)
 
@@ -285,7 +283,7 @@ def test_collect_granular_priority_on_collision(tmp_dir, dvc, run_copy):
 def test_collect_granular_collision_output_dir_stage_name(
     tmp_dir, dvc, run_copy
 ):
-    stage1, stage2, = tmp_dir.dvc_gen({"dir": {"foo": "foo"}, "foo": "foo"})
+    (stage1,) = tmp_dir.dvc_gen({"dir": {"foo": "foo"}, "foo": "foo"})
     stage3 = run_copy("foo", "bar", name="dir")
 
     assert dvc.collect_granular("dir") == [(stage3, None)]
