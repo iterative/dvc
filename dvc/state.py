@@ -7,6 +7,7 @@ import sqlite3
 from urllib.parse import urlencode, urlunparse
 
 from dvc.exceptions import DvcException
+from dvc.scm.tree import WorkingTree
 from dvc.utils import current_timestamp, relpath, to_chunks
 from dvc.utils.fs import get_inode, get_mtime_and_size, remove
 
@@ -91,6 +92,7 @@ class State:  # pylint: disable=too-many-instance-attributes
     def __init__(self, repo):
         self.repo = repo
         self.root_dir = repo.root_dir
+        self.tree = WorkingTree(self.root_dir)
 
         state_config = repo.config.get("state", {})
         self.row_limit = state_config.get("row_limit", self.STATE_ROW_LIMIT)
@@ -364,9 +366,7 @@ class State:  # pylint: disable=too-many-instance-attributes
         assert checksum is not None
         assert os.path.exists(path_info)
 
-        actual_mtime, actual_size = get_mtime_and_size(
-            path_info, self.repo.tree
-        )
+        actual_mtime, actual_size = get_mtime_and_size(path_info, self.tree)
         actual_inode = get_inode(path_info)
 
         existing_record = self.get_state_record_for_inode(actual_inode)
@@ -397,7 +397,7 @@ class State:  # pylint: disable=too-many-instance-attributes
         if not os.path.exists(path):
             return None
 
-        actual_mtime, actual_size = get_mtime_and_size(path, self.repo.tree)
+        actual_mtime, actual_size = get_mtime_and_size(path, self.tree)
         actual_inode = get_inode(path)
 
         existing_record = self.get_state_record_for_inode(actual_inode)
@@ -423,7 +423,7 @@ class State:  # pylint: disable=too-many-instance-attributes
         if not os.path.exists(path_info):
             return
 
-        mtime, _ = get_mtime_and_size(path_info, self.repo.tree)
+        mtime, _ = get_mtime_and_size(path_info, self.tree)
         inode = get_inode(path_info)
         relative_path = relpath(path_info, self.root_dir)
 
@@ -450,7 +450,7 @@ class State:  # pylint: disable=too-many-instance-attributes
                 continue
 
             actual_inode = get_inode(path)
-            actual_mtime, _ = get_mtime_and_size(path, self.repo.tree)
+            actual_mtime, _ = get_mtime_and_size(path, self.tree)
 
             if (inode, mtime) == (actual_inode, actual_mtime):
                 logger.debug("Removing '%s' as unused link.", path)
