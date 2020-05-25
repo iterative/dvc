@@ -30,16 +30,6 @@ class StageLoader(Mapping):
         self.stages_data = stages_data or {}
         self.lockfile_data = lockfile_data or {}
 
-    def filter(self, item=None):
-        if not item:
-            return self
-
-        if item not in self:
-            raise StageNotFound(self.dvcfile, item)
-
-        data = {item: self.stages_data[item]} if item in self else {}
-        return self.__class__(self.dvcfile, data, self.lockfile_data)
-
     @staticmethod
     def fill_from_lock(stage, lock_data):
         from .params import StageParams
@@ -223,9 +213,6 @@ class SingleStageLoader(Mapping):
         self.dvcfile = dvcfile
         self.stage_data = stage_data or {}
         self.stage_text = stage_text
-
-    def filter(self, item=None):
-        return self
 
     def __getitem__(self, item):
         if item:

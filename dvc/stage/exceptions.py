@@ -15,15 +15,8 @@ class StageFileFormatError(DvcException):
 
 class StageFileDoesNotExistError(DvcException):
     def __init__(self, fname):
-        from dvc.dvcfile import DVC_FILE_SUFFIX, is_dvc_file
-
-        msg = f"'{fname}' does not exist."
-
-        sname = fname + DVC_FILE_SUFFIX
-        if is_dvc_file(sname):
-            msg += f" Do you mean '{sname}'?"
-
-        super().__init__(msg)
+        self.file = fname
+        super().__init__(f"'{self.file}' does not exist.")
 
 
 class StageFileAlreadyExistsError(DvcException):
@@ -87,8 +80,10 @@ class MissingDataSource(DvcException):
 
 class StageNotFound(KeyError, DvcException):
     def __init__(self, file, name):
+        self.file = file.relpath
+        self.name = name
         super().__init__(
-            f"Stage '{name}' not found inside '{file.relpath}' file"
+            f"Stage '{self.name}' not found inside '{self.file}' file"
         )
 
 

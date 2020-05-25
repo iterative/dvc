@@ -9,12 +9,17 @@ from dvc.config import Config
 from dvc.dvcfile import PIPELINE_FILE, Dvcfile, is_valid_filename
 from dvc.exceptions import FileMissingError
 from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
-from dvc.exceptions import NotDvcRepoError, OutputNotFoundError
+from dvc.exceptions import (
+    NoOutputOrStage,
+    NotDvcRepoError,
+    OutputNotFoundError,
+)
 from dvc.ignore import CleanTree
 from dvc.path_info import PathInfo
 from dvc.repo.tree import RepoTree
 from dvc.utils.fs import path_isin
 
+from ..stage.exceptions import StageFileDoesNotExistError, StageNotFound
 from ..utils import parse_target
 from .graph import check_acyclic, get_pipeline, get_pipelines
 
@@ -227,9 +232,9 @@ class Repo:
         stages = nx.dfs_postorder_nodes(graph)
         return [stage for stage in stages if path_isin(stage.path, path)]
 
-    def collect(self, target, with_deps=False, recursive=False, graph=None):
-        import networkx as nx
-
+    def collect(
+        self, target=None, with_deps=False, recursive=False, graph=None
+    ):
         if not target:
             return list(graph) if graph else self.stages
 
@@ -241,40 +246,79 @@ class Repo:
         path, name = parse_target(target)
         stages = self.get_stages(path, name)
         if not with_deps:
-            return list(stages)
+            return stages
 
         res = set()
         for stage in stages:
-            pipeline = get_pipeline(get_pipelines(graph or self.graph), stage)
-            res.update(nx.dfs_postorder_nodes(pipeline, stage))
+            res.update(self._collect_pipeline(stage, graph=graph))
         return res
 
-    def collect_granular(self, target, *args, **kwargs):
+    def _collect_pipeline(self, stage, graph=None):
+        import networkx as nx
+
+        pipeline = get_pipeline(get_pipelines(graph or self.graph), stage)
+        return nx.dfs_postorder_nodes(pipeline, stage)
+
+    def _collect_from_default_dvcfile(self, target):
+        dvcfile = Dvcfile(self, PIPELINE_FILE)
+        if dvcfile.exists():
+            return dvcfile.stages.get(target)
+
+    def collect_granular(
+        self, target=None, with_deps=False, recursive=False, graph=None
+    ):
+        """
+        Priority is in the order of following in case of ambiguity:
+            - .dvc file or .yaml file
+            - dir if recursive and directory exists
+            - stage_name
+            - output file
+        """
         if not target:
             return [(stage, None) for stage in self.stages]
 
         file, name = parse_target(target)
+        stages = []
+
         # Optimization: do not collect the graph for a specific target
-        if not kwargs.get("with_deps") and not file:
+        if not file:
             # parsing is ambiguous when it does not have a colon
             # or if it's not a dvcfile, as it can be a stage name
             # in `dvc.yaml` or, an output in a stage.
             logger.debug(
                 "Checking if stage '%s' is in '%s'", target, PIPELINE_FILE
             )
-            dvcfile = Dvcfile(self, PIPELINE_FILE)
-            if dvcfile.exists() and name in dvcfile.stages:
-                return [(self.get_stage(PIPELINE_FILE, name), None)]
-        elif not kwargs.get("with_deps") and is_valid_filename(file):
-            return [(stage, None) for stage in self.get_stages(file, name)]
+            if not (recursive and os.path.isdir(target)):
+                stage = self._collect_from_default_dvcfile(target)
+                if stage:
+                    stages = (
+                        self._collect_pipeline(stage) if with_deps else [stage]
+                    )
+        elif not with_deps and is_valid_filename(file):
+            stages = self.get_stages(file, name)
 
-        try:
-            (out,) = self.find_outs_by_path(target, strict=False)
-            filter_info = PathInfo(os.path.abspath(target))
-            return [(out.stage, filter_info)]
-        except OutputNotFoundError:
-            stages = self.collect(target, *args, **kwargs)
-            return [(stage, None) for stage in stages]
+        if not stages:
+            if not (recursive and os.path.isdir(target)):
+                try:
+                    (out,) = self.find_outs_by_path(target, strict=False)
+                    filter_info = PathInfo(os.path.abspath(target))
+                    return [(out.stage, filter_info)]
+                except OutputNotFoundError:
+                    pass
+
+            try:
+                stages = self.collect(target, with_deps, recursive, graph)
+            except StageFileDoesNotExistError as exc:
+                # collect() might try to use `target` as a stage name
+                # and throw error that dvc.yaml does not exist, whereas it
+                # should say that both stage name and file does not exist.
+                if file and is_valid_filename(file):
+                    raise
+                raise NoOutputOrStage(target, exc.file) from exc
+            except StageNotFound as exc:
+                raise NoOutputOrStage(target, exc.file) from exc
+
+        return [(stage, None) for stage in stages]
 
     def used_cache(
         self,

@@ -322,3 +322,9 @@ class RemoteCacheRequiredError(DvcException):
 
 class IsADirectoryError(DvcException):
     """Raised when a file operation is requested on a directory."""
+
+
+class NoOutputOrStage(DvcException):
+    """
+    Raised when the target is neither an output nor a stage name in dvc.yaml
+    """
