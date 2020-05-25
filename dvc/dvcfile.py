@@ -182,11 +182,11 @@ class PipelineFile(FileMixin):
         assert isinstance(stage, PipelineStage)
         check_dvc_filename(self.path)
 
-        if not no_lock:
-            self._dump_lockfile(stage)
-
         if update_pipeline and not stage.is_data_source:
             self._dump_pipeline_file(stage)
+
+        if not no_lock:
+            self._dump_lockfile(stage)
 
     def _dump_lockfile(self, stage):
         self._lockfile.dump(stage)
@@ -197,6 +197,7 @@ class PipelineFile(FileMixin):
             with open(self.path) as fd:
                 data = parse_stage_for_update(fd.read(), self.path)
         else:
+            logger.info("Creating '%s'", self.relpath)
             open(self.path, "w+").close()
 
         data["stages"] = data.get("stages", {})
@@ -207,6 +208,9 @@ class PipelineFile(FileMixin):
         else:
             data["stages"].update(stage_data)
 
+        logger.info(
+            "Adding stage '%s' to '%s'", stage.name, self.relpath,
+        )
         dump_stage_file(self.path, data)
         self.repo.scm.track_file(relpath(self.path))
 
@@ -250,15 +254,22 @@ class Lockfile(FileMixin):
     def dump(self, stage, **kwargs):
         stage_data = serialize.to_lockfile(stage)
         if not self.exists():
+            modified = True
+            logger.info("Generating lock file '%s'", self.relpath)
             data = stage_data
             open(self.path, "w+").close()
         else:
             with self.repo.tree.open(self.path, "r") as fd:
                 data = parse_stage_for_update(fd.read(), self.path)
+            modified = data.get(stage.name, {}) != stage_data.get(
+                stage.name, {}
+            )
+            if modified:
+                logger.info("Updating lock file '%s'", self.relpath)
             data.update(stage_data)
-
         dump_stage_file(self.path, data)
-        self.repo.scm.track_file(relpath(self.path))
+        if modified:
+            self.repo.scm.track_file(self.relpath)
 
 
 class Dvcfile:

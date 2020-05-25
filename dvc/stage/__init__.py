@@ -77,7 +77,7 @@ def create_stage(cls, repo, path, **kwargs):
             logger.warning("Build cache is ignored when persisting outputs.")
 
         if not ignore_run_cache and stage.can_be_skipped:
-            logger.info("Stage is cached, skipping.")
+            logger.info("Stage is cached, skipping")
             return None
 
     return stage
@@ -209,10 +209,11 @@ class Stage(params.StageParams):
             return False
 
         if self.is_callback:
-            logger.warning(
-                '{stage} is a "callback" stage '
+            logger.debug(
+                '%s is a "callback" stage '
                 "(has a command and no dependencies) and thus always "
-                "considered as changed.".format(stage=self)
+                "considered as changed.",
+                self,
             )
             return True
 
@@ -248,9 +249,9 @@ class Stage(params.StageParams):
 
         return False
 
-    def changed_stage(self, warn=False):
+    def changed_stage(self):
         changed = self.md5 != self.compute_md5()
-        if changed and warn:
+        if changed:
             logger.debug(self._changed_stage_entry())
         return changed
 
@@ -259,14 +260,12 @@ class Stage(params.StageParams):
         is_changed = (
             # Short-circuit order: stage md5 is fast,
             # deps are expected to change
-            self.changed_stage(warn=True)
+            self.changed_stage()
             or self.changed_deps()
             or self.changed_outs()
         )
         if is_changed:
-            logger.info("%s changed.", self)
-        else:
-            logger.info("%s didn't change.", self)
+            logger.debug("%s changed.", self)
         return is_changed
 
     @rwlocked(write=["outs"])
@@ -294,8 +293,8 @@ class Stage(params.StageParams):
 
     @rwlocked(read=["deps"], write=["outs"])
     def reproduce(self, interactive=False, **kwargs):
-
         if not (kwargs.get("force", False) or self.changed()):
+            logger.info("Stage '%s' didn't change, skipping", self.addressing)
             return None
 
         msg = (
@@ -378,6 +377,10 @@ class Stage(params.StageParams):
     def save_outs(self):
         for out in self.outs:
             out.save()
+
+    def ignore_outs(self):
+        for out in self.outs:
+            out.ignore()
 
     @staticmethod
     def _changed_entries(entries):
@@ -552,8 +555,8 @@ class PipelineStage(Stage):
         if self.cmd_changed:
             ret.append("changed command")
 
-    def changed_stage(self, warn=False):
-        if self.cmd_changed and warn:
+    def changed_stage(self):
+        if self.cmd_changed:
             logger.debug(self._changed_stage_entry())
         return self.cmd_changed
 

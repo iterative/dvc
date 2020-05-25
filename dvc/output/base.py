@@ -245,17 +245,15 @@ class BaseOutput:
             if self.metric or self.plot:
                 self.verify_metric()
             if not self.IS_DEPENDENCY:
-                logger.info(
-                    "Output '{}' doesn't use cache. Skipping saving.".format(
-                        self
-                    )
+                logger.debug(
+                    "Output '%s' doesn't use cache. Skipping saving.", self
                 )
             return
 
         assert not self.IS_DEPENDENCY
 
         if not self.changed():
-            logger.info(f"Output '{self}' didn't change. Skipping saving.")
+            logger.debug("Output '%s' didn't change. Skipping saving.", self)
             return
 
         self.info = self.save_info()
