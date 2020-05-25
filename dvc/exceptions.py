@@ -328,3 +328,9 @@ class NoOutputOrStage(DvcException):
     """
     Raised when the target is neither an output nor a stage name in dvc.yaml
     """
+
+    def __init__(self, target, file):
+        super().__init__(
+            f"'{target}' "
+            f"does not exist as an output or a stage name in '{file}'"
+        )

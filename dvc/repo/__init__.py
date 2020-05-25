@@ -314,9 +314,9 @@ class Repo:
                 # should say that both stage name and file does not exist.
                 if file and is_valid_filename(file):
                     raise
-                raise NoOutputOrStage(target, exc.file) from exc
+                raise NoOutputOrStage(target, exc.file)
             except StageNotFound as exc:
-                raise NoOutputOrStage(target, exc.file) from exc
+                raise NoOutputOrStage(target, exc.file)
 
         return [(stage, None) for stage in stages]
 
