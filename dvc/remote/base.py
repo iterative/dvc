@@ -26,6 +26,7 @@ from dvc.path_info import PathInfo, URLInfo, WindowsPathInfo
 from dvc.progress import Tqdm
 from dvc.remote.index import RemoteIndex, RemoteIndexNoop
 from dvc.remote.slow_link_detection import slow_link_guard
+from dvc.scm.tree import is_working_tree
 from dvc.state import StateNoop
 from dvc.utils import tmp_fname
 from dvc.utils.fs import makedirs, move
@@ -211,23 +212,33 @@ class BaseRemote:
                 checksums = dict(zip(file_infos, tasks))
         return checksums
 
-    def _collect_dir(self, path_info):
+    def _collect_dir(self, path_info, tree=None, save_tree=False, **kwargs):
         file_infos = set()
 
-        for fname in self.walk_files(path_info):
+        if tree:
+            walk_files = tree.walk_files
+        else:
+            walk_files = self.walk_files
+
+        for fname in walk_files(path_info, **kwargs):
             if DvcIgnore.DVCIGNORE_FILE == fname.name:
                 raise DvcIgnoreInCollectedDirError(fname.parent)
 
             file_infos.add(fname)
 
-        checksums = {fi: self.state.get(fi) for fi in file_infos}
-        not_in_state = {
-            fi for fi, checksum in checksums.items() if checksum is None
-        }
+        if tree:
+            checksums = {fi: tree.get_file_checksum(fi) for fi in file_infos}
+            if save_tree:
+                for fi, checksum in checksums.items():
+                    self._save_file(fi, checksum, tree=tree, **kwargs)
+        else:
+            checksums = {fi: self.state.get(fi) for fi in file_infos}
+            not_in_state = {
+                fi for fi, checksum in checksums.items() if checksum is None
+            }
 
-        new_checksums = self._calculate_checksums(not_in_state)
-
-        checksums.update(new_checksums)
+            new_checksums = self._calculate_checksums(not_in_state)
+            checksums.update(new_checksums)
 
         result = [
             {
@@ -248,18 +259,25 @@ class BaseRemote:
         # Sorting the list by path to ensure reproducibility
         return sorted(result, key=itemgetter(self.PARAM_RELPATH))
 
-    def get_dir_checksum(self, path_info):
+    def get_dir_checksum(self, path_info, tree=None):
         if not self.cache:
             raise RemoteCacheRequiredError(path_info)
 
-        dir_info = self._collect_dir(path_info)
+        dir_info = self._collect_dir(path_info, tree=None)
+        if tree:
+            # don't save state entry for path_info if it is a tree path
+            path_info = None
+        return self._save_dir_info(dir_info, path_info)
+
+    def _save_dir_info(self, dir_info, path_info=None):
         checksum, tmp_info = self._get_dir_info_checksum(dir_info)
         new_info = self.cache.checksum_to_path_info(checksum)
         if self.cache.changed_cache_file(checksum):
             self.cache.makedirs(new_info.parent)
             self.cache.move(tmp_info, new_info, mode=self.CACHE_MODE)
 
-        self.state.save(path_info, checksum)
+        if path_info:
+            self.state.save(path_info, checksum)
         self.state.save(new_info, checksum)
 
         return checksum
@@ -319,6 +337,8 @@ class BaseRemote:
 
     @classmethod
     def is_dir_checksum(cls, checksum):
+        if not checksum:
+            return False
         return checksum.endswith(cls.CHECKSUM_DIR_SUFFIX)
 
     def get_checksum(self, path_info):
@@ -452,28 +472,45 @@ class BaseRemote:
             "Created '%s': %s -> %s", self.cache_types[0], from_info, to_info,
         )
 
-    def _save_file(self, path_info, checksum, save_link=True):
+    def _save_file(
+        self, path_info, checksum, save_link=True, tree=None, **kwargs
+    ):
         assert checksum
 
         cache_info = self.checksum_to_path_info(checksum)
-        if self.changed_cache(checksum):
-            self.move(path_info, cache_info, mode=self.CACHE_MODE)
-            self.link(cache_info, path_info)
-        elif self.iscopy(path_info) and self._cache_is_copy(path_info):
-            # Default relink procedure involves unneeded copy
-            self.unprotect(path_info)
+        if tree:
+            if self.changed_cache(checksum):
+                with tree.open(path_info, mode="rb") as fobj:
+                    # if tree has fetch enabled, DVC out will be fetched on
+                    # open and we do not need to read/copy any data
+                    if not (
+                        tree.isdvc(path_info, strict=False) and tree.fetch
+                    ):
+                        self.copy_fobj(fobj, cache_info)
+                callback = kwargs.get("download_callback")
+                if callback:
+                    callback(1)
         else:
-            self.remove(path_info)
-            self.link(cache_info, path_info)
+            if self.changed_cache(checksum):
+                self.move(path_info, cache_info, mode=self.CACHE_MODE)
+                self.link(cache_info, path_info)
+            elif self.iscopy(path_info) and self._cache_is_copy(path_info):
+                # Default relink procedure involves unneeded copy
+                self.unprotect(path_info)
+            else:
+                self.remove(path_info)
+                self.link(cache_info, path_info)
 
-        if save_link:
-            self.state.save_link(path_info)
+            if save_link:
+                self.state.save_link(path_info)
 
         # we need to update path and cache, since in case of reflink,
         # or copy cache type moving original file results in updates on
         # next executed command, which causes md5 recalculation
-        self.state.save(path_info, checksum)
+        if not tree or is_working_tree(tree):
+            self.state.save(path_info, checksum)
         self.state.save(cache_info, checksum)
+        return {self.PARAM_CHECKSUM: checksum}
 
     def _cache_is_copy(self, path_info):
         """Checks whether cache uses copies."""
@@ -497,22 +534,32 @@ class BaseRemote:
         self.cache_type_confirmed = True
         return self.cache_types[0] == "copy"
 
-    def _save_dir(self, path_info, checksum, save_link=True):
+    def _save_dir(
+        self, path_info, checksum, save_link=True, tree=None, **kwargs
+    ):
+        if tree:
+            dir_info = self._collect_dir(
+                path_info, tree=tree, save_tree=True, **kwargs
+            )
+            checksum = self._save_dir_info(dir_info)
+        else:
+            dir_info = self.get_dir_cache(checksum)
+
+            for entry in Tqdm(
+                dir_info, desc="Saving " + path_info.name, unit="file"
+            ):
+                entry_info = path_info / entry[self.PARAM_RELPATH]
+                entry_checksum = entry[self.PARAM_CHECKSUM]
+                self._save_file(entry_info, entry_checksum, save_link=False)
+
+            if save_link:
+                self.state.save_link(path_info)
+
         cache_info = self.checksum_to_path_info(checksum)
-        dir_info = self.get_dir_cache(checksum)
-
-        for entry in Tqdm(
-            dir_info, desc="Saving " + path_info.name, unit="file"
-        ):
-            entry_info = path_info / entry[self.PARAM_RELPATH]
-            entry_checksum = entry[self.PARAM_CHECKSUM]
-            self._save_file(entry_info, entry_checksum, save_link=False)
-
-        if save_link:
-            self.state.save_link(path_info)
-
         self.state.save(cache_info, checksum)
-        self.state.save(path_info, checksum)
+        if not tree or is_working_tree(tree):
+            self.state.save(path_info, checksum)
+        return {self.PARAM_CHECKSUM: checksum}
 
     def is_empty(self, path_info):
         return False
@@ -541,22 +588,42 @@ class BaseRemote:
     def protect(path_info):
         pass
 
-    def save(self, path_info, checksum_info, save_link=True):
+    def save(
+        self, path_info, checksum_info, save_link=True, tree=None, **kwargs
+    ):
         if path_info.scheme != self.scheme:
             raise RemoteActionNotImplemented(
                 f"save {path_info.scheme} -> {self.scheme}", self.scheme,
             )
 
-        checksum = checksum_info[self.PARAM_CHECKSUM]
-        self._save(path_info, checksum, save_link)
+        if tree:
+            if tree.isdir(path_info):
+                # save checksum will be computed during tree walk
+                checksum = None
+            else:
+                checksum = tree.get_file_checksum(path_info)
+        else:
+            checksum = checksum_info[self.PARAM_CHECKSUM]
+        return self._save(path_info, checksum, save_link, tree, **kwargs)
 
-    def _save(self, path_info, checksum, save_link=True):
-        to_info = self.checksum_to_path_info(checksum)
-        logger.debug("Saving '%s' to '%s'.", path_info, to_info)
-        if self.isdir(path_info):
-            self._save_dir(path_info, checksum, save_link)
-            return
-        self._save_file(path_info, checksum, save_link)
+    def _save(self, path_info, checksum, save_link=True, tree=None, **kwargs):
+        if tree:
+            logger.debug("Saving tree path '%s' to cache.", path_info)
+        else:
+            to_info = self.checksum_to_path_info(checksum)
+            logger.debug("Saving '%s' to '%s'.", path_info, to_info)
+
+        if tree:
+            isdir = tree.isdir
+            save_link = False
+        else:
+            isdir = self.isdir
+
+        if isdir(path_info):
+            return self._save_dir(
+                path_info, checksum, save_link, tree, **kwargs
+            )
+        return self._save_file(path_info, checksum, save_link, tree, **kwargs)
 
     def _handle_transfer_exception(
         self, from_info, to_info, exception, operation
@@ -695,6 +762,9 @@ class BaseRemote:
     def copy(self, from_info, to_info):
         raise RemoteActionNotImplemented("copy", self.scheme)
 
+    def copy_fobj(self, fobj, to_info):
+        raise RemoteActionNotImplemented("copy_fobj", self.scheme)
+
     def symlink(self, from_info, to_info):
         raise RemoteActionNotImplemented("symlink", self.scheme)
 
@@ -761,7 +831,7 @@ class BaseRemote:
 
     @index_locked
     def gc(self, named_cache, jobs=None):
-        used = self.extract_used_local_checksums(named_cache)
+        used = set(named_cache.scheme_keys("local"))
 
         if self.scheme != "":
             used.update(named_cache.scheme_keys(self.scheme))
@@ -777,6 +847,7 @@ class BaseRemote:
                 continue
             path_info = self.checksum_to_path_info(checksum)
             if self.is_dir_checksum(checksum):
+                # backward compatibility
                 self._remove_unpacked_dir(checksum)
             self.remove(path_info)
             removed = True
@@ -835,11 +906,6 @@ class BaseRemote:
         if self.changed_cache_file(checksum):
             return True
 
-        if not (path_info and filter_info) and not self._changed_unpacked_dir(
-            checksum
-        ):
-            return False
-
         for entry in self.get_dir_cache(checksum):
             entry_checksum = entry[self.PARAM_CHECKSUM]
 
@@ -850,9 +916,6 @@ class BaseRemote:
 
             if self.changed_cache_file(entry_checksum):
                 return True
-
-        if not (path_info and filter_info):
-            self._update_unpacked_dir(checksum)
 
         return False
 
@@ -1290,20 +1353,6 @@ class BaseRemote:
 
     @staticmethod
     def unprotect(path_info):
-        pass
-
-    def _get_unpacked_dir_names(self, checksums):
-        return set()
-
-    def extract_used_local_checksums(self, named_cache):
-        used = set(named_cache.scheme_keys("local"))
-        unpacked = self._get_unpacked_dir_names(used)
-        return used | unpacked
-
-    def _changed_unpacked_dir(self, checksum):
-        return True
-
-    def _update_unpacked_dir(self, checksum):
         pass
 
     def _remove_unpacked_dir(self, checksum):

@@ -23,6 +23,7 @@ PARAM_OUTS = StageParams.PARAM_OUTS
 
 PARAM_CACHE = BaseOutput.PARAM_CACHE
 PARAM_METRIC = BaseOutput.PARAM_METRIC
+PARAM_PLOT = BaseOutput.PARAM_PLOT
 PARAM_PERSIST = BaseOutput.PARAM_PERSIST
 
 DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
@@ -35,10 +36,10 @@ def _get_out(out):
     res = OrderedDict()
     if not out.use_cache:
         res[PARAM_CACHE] = False
-    if out.metric:
-        res[PARAM_METRIC] = True
-    elif out.persist:
+    if out.persist:
         res[PARAM_PERSIST] = True
+    if out.plot and isinstance(out.plot, dict):
+        res.update(out.plot)
     return out.def_path if not res else {out.def_path: res}
 
 
@@ -68,14 +69,22 @@ def _serialize_params(params: List[ParamsDependency]):
     for param_dep in sort_by_path(params):
         dump = param_dep.dumpd()
         path, params = dump[PARAM_PATH], dump[PARAM_PARAMS]
-        k = list(params.keys())
-        if not k:
-            continue
-        key_vals[path] = OrderedDict([(key, params[key]) for key in sorted(k)])
+        if isinstance(params, dict):
+            k = list(params.keys())
+            if not k:
+                continue
+            key_vals[path] = OrderedDict(
+                [(key, params[key]) for key in sorted(k)]
+            )
+        else:
+            assert isinstance(params, list)
+            k = params
+            key_vals = OrderedDict()
         # params from default file is always kept at the start of the `params:`
         if path == DEFAULT_PARAMS_FILE:
             keys = k + keys
-            key_vals.move_to_end(path, last=False)
+            if key_vals:
+                key_vals.move_to_end(path, last=False)
         else:
             # if it's not a default file, change the shape
             # to: {path: k}
@@ -92,7 +101,20 @@ def to_pipeline_file(stage: "PipelineStage"):
         (stage.PARAM_WDIR, resolve_wdir(stage.wdir, stage.path)),
         (stage.PARAM_DEPS, sorted([d.def_path for d in deps])),
         (stage.PARAM_PARAMS, serialized_params),
-        (PARAM_OUTS, _get_outs(stage.outs)),
+        (
+            PARAM_OUTS,
+            _get_outs(
+                [out for out in stage.outs if not (out.metric or out.plot)]
+            ),
+        ),
+        (
+            stage.PARAM_METRICS,
+            _get_outs([out for out in stage.outs if out.metric]),
+        ),
+        (
+            stage.PARAM_PLOTS,
+            _get_outs([out for out in stage.outs if out.plot]),
+        ),
         (stage.PARAM_LOCKED, stage.locked),
         (stage.PARAM_ALWAYS_CHANGED, stage.always_changed),
     ]

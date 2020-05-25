@@ -16,6 +16,8 @@ class CmdRun(CmdBase):
                 self.args.outs_no_cache,
                 self.args.metrics,
                 self.args.metrics_no_cache,
+                self.args.plots,
+                self.args.plots_no_cache,
                 self.args.outs_persist,
                 self.args.outs_persist_no_cache,
                 self.args.params,
@@ -24,8 +26,8 @@ class CmdRun(CmdBase):
         ):  # pragma: no cover
             logger.error(
                 "too few arguments. Specify at least one: `-d`, `-o`, `-O`, "
-                "`-m`, `-M`, `-p`, `--outs-persist`, "
-                "`--outs-persist-no-cache`, `command`."
+                "`-m`, `-M`, `-p`, `--plots`, `--plots-no-cache`, "
+                "`--outs-persist`, `--outs-persist-no-cache`, `command`."
             )
             return 1
 
@@ -36,6 +38,8 @@ class CmdRun(CmdBase):
                 outs_no_cache=self.args.outs_no_cache,
                 metrics=self.args.metrics,
                 metrics_no_cache=self.args.metrics_no_cache,
+                plots=self.args.plots,
+                plots_no_cache=self.args.plots_no_cache,
                 deps=self.args.deps,
                 params=self.args.params,
                 fname=self.args.file,
@@ -138,6 +142,20 @@ def add_parser(subparsers, parent_parser):
         default=[],
         help="Declare output metric file or directory "
         "(do not put into DVC cache).",
+        metavar="<path>",
+    )
+    run_parser.add_argument(
+        "--plots",
+        action="append",
+        default=[],
+        help="Declare output plot file.",
+        metavar="<path>",
+    )
+    run_parser.add_argument(
+        "--plots-no-cache",
+        action="append",
+        default=[],
+        help="Declare output plot file (do not put into DVC cache).",
         metavar="<path>",
     )
     run_parser.add_argument(

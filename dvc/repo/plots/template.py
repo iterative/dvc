@@ -59,6 +59,7 @@ class Template:
                 indent=self.INDENT,
                 separators=self.SEPARATORS,
             )
+            fobj.write("\n")
 
     @staticmethod
     def get_data_anchor(template_content):
@@ -191,6 +192,7 @@ class DefaultLinearTemplate(Template):
                 "field": Template.Y_ANCHOR,
                 "type": "quantitative",
                 "title": Template.Y_TITLE_ANCHOR,
+                "scale": {"zero": False},
             },
             "color": {"field": "rev", "type": "nominal"},
         },
@@ -240,6 +242,7 @@ class DefaultScatterTemplate(Template):
                 "field": Template.Y_ANCHOR,
                 "type": "quantitative",
                 "title": Template.Y_TITLE_ANCHOR,
+                "scale": {"zero": False},
             },
             "color": {"field": "rev", "type": "nominal"},
         },

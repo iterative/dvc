@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class CmdRemove(CmdBase):
-    def _is_outs_only(self, target):
+    def _is_dvc_only(self, target):
         if not self.args.purge:
             return True
 
@@ -31,8 +31,8 @@ class CmdRemove(CmdBase):
     def run(self):
         for target in self.args.targets:
             try:
-                outs_only = self._is_outs_only(target)
-                self.repo.remove(target, outs_only=outs_only)
+                dvc_only = self._is_dvc_only(target)
+                self.repo.remove(target, dvc_only=dvc_only)
             except DvcException:
                 logger.exception(f"failed to remove '{target}'")
                 return 1

@@ -912,3 +912,23 @@ def test_pull_stats(tmp_dir, dvc, caplog, setup_remote):
     with caplog.at_level(level=logging.INFO, logger="dvc"):
         main(["pull"])
     assert "Everything is up to date." in caplog.text
+
+
+@pytest.mark.parametrize(
+    "key,expected", [("all_tags", 2), ("all_branches", 3), ("all_commits", 3)]
+)
+def test_push_pull_all(tmp_dir, scm, dvc, setup_remote, key, expected):
+    setup_remote(dvc)
+    tmp_dir.dvc_gen({"foo": "foo"}, commit="first")
+    scm.tag("v1")
+    dvc.remove("foo.dvc")
+    tmp_dir.dvc_gen({"bar": "bar"}, commit="second")
+    scm.tag("v2")
+    with tmp_dir.branch("branch", new=True):
+        dvc.remove("bar.dvc")
+        tmp_dir.dvc_gen({"baz": "baz"}, commit="branch")
+
+    assert dvc.push(**{key: True}) == expected
+
+    clean(["foo", "bar", "baz"], dvc)
+    assert dvc.pull(**{key: True})["fetched"] == expected

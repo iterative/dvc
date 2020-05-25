@@ -122,18 +122,42 @@ class StageLoader(Mapping):
         )
 
     @classmethod
-    def _load_outs(cls, stage, data):
+    def _load_outs(cls, stage, data, typ=None):
+        from dvc.output.base import BaseOutput
+
         d = []
         for key in data:
-            extra_kwargs = {}
             if isinstance(key, str):
-                path = key
-            elif isinstance(key, dict):
-                path = first(key)
-                extra_kwargs = key[path]
-            else:
+                entry = {BaseOutput.PARAM_PATH: key}
+                if typ:
+                    entry[typ] = True
+                d.append(entry)
                 continue
-            d.append({"path": path, **extra_kwargs})
+
+            assert isinstance(key, dict)
+            assert len(key) == 1
+
+            path = first(key)
+            extra = key[path]
+
+            if not typ:
+                d.append({BaseOutput.PARAM_PATH: path, **extra})
+                continue
+
+            entry = {BaseOutput.PARAM_PATH: path}
+
+            persist = extra.pop(BaseOutput.PARAM_PERSIST, False)
+            if persist:
+                entry[BaseOutput.PARAM_PERSIST] = persist
+
+            cache = extra.pop(BaseOutput.PARAM_CACHE, True)
+            if not cache:
+                entry[BaseOutput.PARAM_CACHE] = cache
+
+            entry[typ] = extra or True
+
+            d.append(entry)
+
         stage.outs.extend(output.loadd_from(stage, d))
 
     @classmethod
@@ -152,6 +176,8 @@ class StageLoader(Mapping):
         stage.deps, stage.outs = [], []
 
         cls._load_outs(stage, stage_data.get("outs", []))
+        cls._load_outs(stage, stage_data.get("metrics", []), "metric")
+        cls._load_outs(stage, stage_data.get("plots", []), "plot")
         cls._load_deps(stage, stage_data.get("deps", []))
         cls._load_params(stage, stage_data.get("params", []))
 

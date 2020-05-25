@@ -222,10 +222,11 @@ class TestColorFormatter:
 
 
 def test_handlers():
-    out, deb, err = logger.handlers
+    out, deb, vrb, err = logger.handlers
 
     assert out.level == logging.INFO
     assert deb.level == logging.DEBUG
+    assert vrb.level == logging.TRACE
     assert err.level == logging.WARNING
 
 
@@ -233,6 +234,7 @@ def test_logging_debug_with_datetime(caplog, dt):
     with caplog.at_level(logging.DEBUG, logger="dvc"):
         logger.warning("WARNING")
         logger.debug("DEBUG")
+        logger.trace("TRACE")
         logger.error("ERROR")
 
         for record in caplog.records:

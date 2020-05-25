@@ -77,15 +77,30 @@ class StageCache:
 
         return None
 
-    def _create_stage(self, cache):
+    def _create_stage(self, cache, wdir=None):
         from dvc.stage import create_stage, PipelineStage
+
+        params = []
+        for param in cache.get("params", []):
+            if isinstance(param, str):
+                params.append(param)
+                continue
+
+            assert isinstance(param, dict)
+            assert len(param) == 1
+            path = list(param.keys())[0]
+            params_list = param[path]
+            assert isinstance(params_list, list)
+            params.append(f"{path}:" + ",".join(params_list))
 
         stage = create_stage(
             PipelineStage,
             repo=self.repo,
             path="dvc.yaml",
             cmd=cache["cmd"],
-            deps=[dep["path"] for dep in cache["deps"]],
+            wdir=wdir,
+            params=params,
+            deps=[dep["path"] for dep in cache.get("deps", [])],
             outs=[out["path"] for out in cache["outs"]],
         )
         StageLoader.fill_from_lock(stage, cache)
@@ -104,7 +119,7 @@ class StageCache:
         # NOTE: using temporary stage to avoid accidentally modifying original
         # stage and to workaround `commit/checkout` not working for uncached
         # outputs.
-        cached_stage = self._create_stage(cache)
+        cached_stage = self._create_stage(cache, wdir=stage.wdir)
 
         outs_no_cache = [
             out.def_path for out in stage.outs if not out.use_cache

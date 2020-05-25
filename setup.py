@@ -92,12 +92,7 @@ s3 = ["boto3>=1.9.201"]
 azure = ["azure-storage-blob==2.1.0"]
 oss = ["oss2==2.6.1"]
 ssh = ["paramiko>=2.5.0"]
-hdfs = [
-    # pyarrow-0.16.0 import fails on 3.7 (works on 3.6 though)
-    # due to: https://issues.apache.org/jira/browse/ARROW-7852
-    "pyarrow==0.15.1; python_version < '3.8'",
-    "pyarrow==0.16.0; python_version == '3.8'",
-]
+hdfs = ["pyarrow>=0.17.0"]
 # gssapi should not be included in all_remotes, because it doesn't have wheels
 # for linux and mac, so it will fail to compile if user doesn't have all the
 # requirements, including kerberos itself. Once all the wheels are available,

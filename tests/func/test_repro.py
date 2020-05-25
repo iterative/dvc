@@ -971,7 +971,7 @@ class TestReproExternalBase(SingleStageRun, TestDvc):
         self.dvc.gc(workspace=True)
         self.assertEqual(self.dvc.status(), {})
 
-        self.dvc.remove(cmd_stage.path, outs_only=True)
+        self.dvc.remove(cmd_stage.path, dvc_only=True)
         self.assertNotEqual(self.dvc.status([cmd_stage.addressing]), {})
 
         self.dvc.checkout([cmd_stage.path], force=True)
@@ -1070,7 +1070,7 @@ class TestReproExternalHDFS(HDFS, TestReproExternalBase):
         self.assertEqual(p.returncode, 0)
 
 
-@flaky(max_runs=3, min_passes=1)
+@flaky(max_runs=5, min_passes=1)
 class TestReproExternalSSH(SSH, TestReproExternalBase):
     _dir = None
     cache_type = "copy"
@@ -1095,23 +1095,33 @@ class TestReproExternalSSH(SSH, TestReproExternalBase):
     def write(self, bucket, key, body):
         path = posixpath.join(self._dir, key)
 
-        ssh = paramiko.SSHClient()
-        ssh.load_system_host_keys()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect("127.0.0.1")
-
-        sftp = ssh.open_sftp()
+        ssh = None
+        sftp = None
         try:
-            sftp.stat(path)
-            sftp.remove(path)
-        except OSError:
-            pass
+            ssh = paramiko.SSHClient()
+            ssh.load_system_host_keys()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect("127.0.0.1")
 
-        stdin, stdout, stderr = ssh.exec_command(f"mkdir -p $(dirname {path})")
-        self.assertEqual(stdout.channel.recv_exit_status(), 0)
+            sftp = ssh.open_sftp()
+            try:
+                sftp.stat(path)
+                sftp.remove(path)
+            except OSError:
+                pass
 
-        with sftp.open(path, "w+") as fobj:
-            fobj.write(body)
+            stdin, stdout, stderr = ssh.exec_command(
+                f"mkdir -p $(dirname {path})"
+            )
+            self.assertEqual(stdout.channel.recv_exit_status(), 0)
+
+            with sftp.open(path, "w+") as fobj:
+                fobj.write(body)
+        finally:
+            if sftp:
+                sftp.close()
+            if ssh:
+                ssh.close()
 
 
 class TestReproExternalLOCAL(Local, TestReproExternalBase):
@@ -1223,7 +1233,7 @@ class TestReproExternalHTTP(TestReproExternalBase):
             self.assertTrue(os.path.exists(run_output))
 
             # Pull
-            self.dvc.remove(import_stage.path, outs_only=True)
+            self.dvc.remove(import_stage.path, dvc_only=True)
             self.assertFalse(os.path.exists(import_output))
 
             shutil.move(self.local_cache, cache_id)

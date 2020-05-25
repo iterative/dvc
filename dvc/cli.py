@@ -116,14 +116,10 @@ def get_parent_parser():
 
     log_level_group = parent_parser.add_mutually_exclusive_group()
     log_level_group.add_argument(
-        "-q", "--quiet", action="store_true", default=False, help="Be quiet."
+        "-q", "--quiet", action="count", default=0, help="Be quiet."
     )
     log_level_group.add_argument(
-        "-v",
-        "--verbose",
-        action="store_true",
-        default=False,
-        help="Be verbose.",
+        "-v", "--verbose", action="count", default=0, help="Be verbose."
     )
 
     return parent_parser

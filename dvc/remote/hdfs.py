@@ -165,6 +165,8 @@ class HDFSRemote(BaseRemote):
         dirs = deque([root])
 
         with self.hdfs(self.path_info) as hdfs:
+            if prefix and not hdfs.exists(root):
+                return
             while dirs:
                 try:
                     entries = hdfs.ls(dirs.pop(), detail=True)

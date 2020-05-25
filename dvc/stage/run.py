@@ -79,11 +79,14 @@ def cmd_run(stage, *args, **kwargs):
 
 
 def _is_cached(stage):
-    return (
+    cached = (
         not stage.is_callback
         and not stage.always_changed
         and stage.already_cached()
     )
+    if cached:
+        logger.info("Stage '%s' is cached", stage.addressing)
+    return cached
 
 
 def restored_from_cache(stage):
@@ -93,7 +96,10 @@ def restored_from_cache(stage):
         return False
     # restore stage from build cache
     stage_cache.restore(stage)
-    return stage.outs_cached()
+    restored = stage.outs_cached()
+    if restored:
+        logger.info("Restored stage '%s' from run-cache", stage.addressing)
+    return restored
 
 
 def run_stage(stage, dry=False, force=False, run_cache=False):
@@ -102,10 +108,16 @@ def run_stage(stage, dry=False, force=False, run_cache=False):
             run_cache and restored_from_cache(stage)
         )
         if stage_cached:
-            logger.info("Stage is cached, skipping.")
+            logger.info("Skipping run, checking out outputs")
             stage.checkout()
             return
 
-    logger.info("Running command:\n\t%s", stage.cmd)
+    callback_str = "callback " if stage.is_callback else ""
+    logger.info(
+        "Running %s" "stage '%s' with command:",
+        callback_str,
+        stage.addressing,
+    )
+    logger.info("\t%s", stage.cmd)
     if not dry:
         cmd_run(stage)

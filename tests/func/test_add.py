@@ -44,7 +44,11 @@ def test_add(tmp_dir, dvc):
     assert len(stage.deps) == 0
     assert stage.cmd is None
     assert stage.outs[0].info["md5"] == md5
-    assert stage.md5 == "ee343f2482f53efffc109be83cc976ac"
+    assert stage.md5 is None
+
+    assert load_stage_file("foo.dvc") == {
+        "outs": [{"md5": "acbd18db4cc2f85cedef654fccc4a4d8", "path": "foo"}],
+    }
 
 
 def test_add_unicode(tmp_dir, dvc):
@@ -124,10 +128,16 @@ class TestAddDirectoryWithForwardSlash(TestDvc):
 
 
 def test_add_tracked_file(tmp_dir, scm, dvc):
-    tmp_dir.scm_gen("tracked_file", "...", commit="add tracked file")
+    path = "tracked_file"
+    tmp_dir.scm_gen(path, "...", commit="add tracked file")
+    msg = f""" output '{path}' is already tracked by SCM \\(e.g. Git\\).
+    You can remove it from Git, then add to DVC.
+        To stop tracking from Git:
+            git rm -r --cached '{path}'
+            git commit -m "stop tracking {path}" """
 
-    with pytest.raises(OutputAlreadyTrackedError):
-        dvc.add("tracked_file")
+    with pytest.raises(OutputAlreadyTrackedError, match=msg):
+        dvc.add(path)
 
 
 class TestAddDirWithExistingCache(TestDvc):

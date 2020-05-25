@@ -56,31 +56,38 @@ class Repo:
     from dvc.repo.get import get
     from dvc.repo.get_url import get_url
     from dvc.repo.update import update
-    from dvc.repo.plots import plot
 
-    def __init__(self, root_dir=None):
-        from dvc.state import State
+    def __init__(self, root_dir=None, scm=None, rev=None):
+        from dvc.state import State, StateNoop
         from dvc.lock import make_lock
         from dvc.scm import SCM
         from dvc.cache import Cache
         from dvc.data_cloud import DataCloud
         from dvc.repo.metrics import Metrics
+        from dvc.repo.plots import Plots
         from dvc.repo.params import Params
         from dvc.scm.tree import WorkingTree
         from dvc.utils.fs import makedirs
         from dvc.stage.cache import StageCache
 
-        root_dir = self.find_root(root_dir)
+        if scm:
+            # use GitTree instead of WorkingTree as default repo tree instance
+            tree = scm.get_tree(rev)
+            self.root_dir = self.find_root(root_dir, tree)
+            self.scm = scm
+            self.tree = tree
+            self.state = StateNoop()
+        else:
+            root_dir = self.find_root(root_dir)
+            self.root_dir = os.path.abspath(os.path.realpath(root_dir))
 
-        self.root_dir = os.path.abspath(os.path.realpath(root_dir))
         self.dvc_dir = os.path.join(self.root_dir, self.DVC_DIR)
-
         self.config = Config(self.dvc_dir)
 
-        no_scm = self.config["core"].get("no_scm", False)
-        self.scm = SCM(self.root_dir, no_scm=no_scm)
-
-        self.tree = WorkingTree(self.root_dir)
+        if not scm:
+            no_scm = self.config["core"].get("no_scm", False)
+            self.scm = SCM(self.root_dir, no_scm=no_scm)
+            self.tree = WorkingTree(self.root_dir)
 
         self.tmp_dir = os.path.join(self.dvc_dir, "tmp")
         self.index_dir = os.path.join(self.tmp_dir, "index")
@@ -94,9 +101,11 @@ class Repo:
             friendly=True,
         )
 
-        # NOTE: storing state and link_state in the repository itself to avoid
-        # any possible state corruption in 'shared cache dir' scenario.
-        self.state = State(self)
+        if not scm:
+            # NOTE: storing state and link_state in the repository itself to
+            # avoid any possible state corruption in 'shared cache dir'
+            # scenario.
+            self.state = State(self)
 
         self.cache = Cache(self)
         self.cloud = DataCloud(self)
@@ -104,6 +113,7 @@ class Repo:
         self.stage_cache = StageCache(self)
 
         self.metrics = Metrics(self)
+        self.plots = Plots(self)
         self.params = Params(self)
 
         self._ignore()
@@ -123,8 +133,13 @@ class Repo:
         return f"{self.__class__.__name__}: '{self.root_dir}'"
 
     @classmethod
-    def find_root(cls, root=None):
+    def find_root(cls, root=None, tree=None):
         root_dir = os.path.realpath(root or os.curdir)
+
+        if tree:
+            if tree.isdir(os.path.join(root_dir, cls.DVC_DIR)):
+                return root_dir
+            raise NotDvcRepoError(f"'{root}' does not contain DVC directory")
 
         if not os.path.isdir(root_dir):
             raise NotDvcRepoError(f"directory '{root}' does not exist")
@@ -487,17 +502,18 @@ class Repo:
         tree = RepoTree(self, stream=True)
         path = os.path.join(self.root_dir, path)
         try:
-            with tree.open(
-                os.path.join(self.root_dir, path),
-                mode=mode,
-                encoding=encoding,
-                remote=remote,
-            ) as fobj:
-                yield fobj
+            with self.state:
+                with tree.open(
+                    os.path.join(self.root_dir, path),
+                    mode=mode,
+                    encoding=encoding,
+                    remote=remote,
+                ) as fobj:
+                    yield fobj
         except FileNotFoundError as exc:
             raise FileMissingError(path) from exc
         except IsADirectoryError as exc:
-            raise DvcIsADirectoryError from exc
+            raise DvcIsADirectoryError(f"'{path}' is a directory") from exc
 
     def close(self):
         self.scm.close()

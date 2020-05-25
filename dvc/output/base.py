@@ -31,7 +31,11 @@ class OutputIsNotFileOrDirError(DvcException):
 
 class OutputAlreadyTrackedError(DvcException):
     def __init__(self, path):
-        msg = f"output '{path}' is already tracked by SCM (e.g. Git)"
+        msg = f""" output '{path}' is already tracked by SCM (e.g. Git).
+    You can remove it from Git, then add to DVC.
+        To stop tracking from Git:
+            git rm -r --cached '{path}'
+            git commit -m "stop tracking {path}" """
         super().__init__(msg)
 
 
@@ -50,6 +54,8 @@ class BaseOutput:
     PARAM_METRIC = "metric"
     PARAM_METRIC_TYPE = "type"
     PARAM_METRIC_XPATH = "xpath"
+    PARAM_PLOT = "plot"
+    PARAM_PLOT_TEMPLATE = "template"
     PARAM_PERSIST = "persist"
 
     METRIC_SCHEMA = Any(
@@ -75,6 +81,7 @@ class BaseOutput:
         remote=None,
         cache=True,
         metric=False,
+        plot=False,
         persist=False,
     ):
         self._validate_output_path(path)
@@ -95,6 +102,7 @@ class BaseOutput:
         self.remote = remote or self.REMOTE(self.repo, {})
         self.use_cache = False if self.IS_DEPENDENCY else cache
         self.metric = False if self.IS_DEPENDENCY else metric
+        self.plot = False if self.IS_DEPENDENCY else plot
         self.persist = persist
 
         self.path_info = self._parse_path(remote, path)
@@ -234,20 +242,18 @@ class BaseOutput:
 
         if not self.use_cache:
             self.info = self.save_info()
-            if self.metric:
+            if self.metric or self.plot:
                 self.verify_metric()
             if not self.IS_DEPENDENCY:
-                logger.info(
-                    "Output '{}' doesn't use cache. Skipping saving.".format(
-                        self
-                    )
+                logger.debug(
+                    "Output '%s' doesn't use cache. Skipping saving.", self
                 )
             return
 
         assert not self.IS_DEPENDENCY
 
         if not self.changed():
-            logger.info(f"Output '{self}' didn't change. Skipping saving.")
+            logger.debug("Output '%s' didn't change. Skipping saving.", self)
             return
 
         self.info = self.save_info()
@@ -263,7 +269,8 @@ class BaseOutput:
         if self.IS_DEPENDENCY:
             return ret
 
-        ret[self.PARAM_CACHE] = self.use_cache
+        if not self.use_cache:
+            ret[self.PARAM_CACHE] = self.use_cache
 
         if isinstance(self.metric, dict):
             if (
@@ -272,8 +279,14 @@ class BaseOutput:
             ):
                 del self.metric[self.PARAM_METRIC_XPATH]
 
-        ret[self.PARAM_METRIC] = self.metric
-        ret[self.PARAM_PERSIST] = self.persist
+        if self.metric:
+            ret[self.PARAM_METRIC] = self.metric
+
+        if self.plot:
+            ret[self.PARAM_PLOT] = self.plot
+
+        if self.persist:
+            ret[self.PARAM_PERSIST] = self.persist
 
         return ret
 
@@ -339,6 +352,17 @@ class BaseOutput:
         if self.exists:
             self.remote.unprotect(self.path_info)
 
+    def get_dir_cache(self, **kwargs):
+        if not self.is_dir_checksum:
+            raise DvcException("cannot get dir cache for file checksum")
+        if self.cache.changed_cache_file(self.checksum):
+            self.repo.cloud.pull(
+                NamedCache.make("local", self.checksum, str(self)),
+                show_checksums=False,
+                **kwargs,
+            )
+        return self.dir_cache
+
     def collect_used_dir_cache(
         self, remote=None, force=False, jobs=None, filter_info=None
     ):
@@ -363,16 +387,10 @@ class BaseOutput:
 
         cache = NamedCache()
 
-        if self.cache.changed_cache_file(self.checksum):
-            try:
-                self.repo.cloud.pull(
-                    NamedCache.make("local", self.checksum, str(self)),
-                    jobs=jobs,
-                    remote=remote,
-                    show_checksums=False,
-                )
-            except DvcException:
-                logger.debug(f"failed to pull cache for '{self}'")
+        try:
+            self.get_dir_cache(jobs=jobs, remote=remote)
+        except DvcException:
+            logger.debug(f"failed to pull cache for '{self}'")
 
         if self.cache.changed_cache_file(self.checksum):
             msg = (

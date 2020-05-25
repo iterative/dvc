@@ -70,6 +70,7 @@ def test_commit_changed_md5(tmp_dir, dvc):
         dvc.commit(stage.path)
 
     dvc.commit(stage.path, force=True)
+    assert "md5" not in load_stage_file(stage.path)
 
 
 def test_commit_no_exec(tmp_dir, dvc):

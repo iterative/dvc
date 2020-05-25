@@ -101,7 +101,8 @@ Snap (Snapcraft/Linux)
    snap install dvc --classic
 
 This corresponds to the latest tagged release.
-Add ``--edge`` for the latest ``master`` version.
+Add ``--beta`` for the latest tagged release candidate,
+or ``--edge`` for the latest ``master`` version.
 
 Choco (Chocolatey/Windows)
 --------------------------

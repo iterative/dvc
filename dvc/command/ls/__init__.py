@@ -31,7 +31,7 @@ class CmdList(CmdBaseNoRepo):
                 self.args.path,
                 rev=self.args.rev,
                 recursive=self.args.recursive,
-                outs_only=self.args.outs_only,
+                dvc_only=self.args.dvc_only,
             )
             if entries:
                 entries = _prettify(entries, sys.stdout.isatty())
@@ -62,7 +62,7 @@ def add_parser(subparsers, parent_parser):
         help="Recursively list files.",
     )
     list_parser.add_argument(
-        "--outs-only", action="store_true", help="Show only DVC outputs."
+        "--dvc-only", action="store_true", help="Show only DVC outputs."
     )
     list_parser.add_argument(
         "--rev",

@@ -1,6 +1,9 @@
 import os
 import shutil
 
+import pytest
+
+from dvc.path_info import PathInfo
 from dvc.repo.tree import RepoTree
 
 
@@ -76,7 +79,21 @@ def test_isdir_mixed(tmp_dir, dvc):
     assert not tree.isfile("dir")
 
 
-def test_walk(tmp_dir, dvc):
+@pytest.mark.parametrize(
+    "dvcfiles,extra_expected",
+    [
+        (False, []),
+        (
+            True,
+            [
+                PathInfo("dir") / "subdir1" / "foo1.dvc",
+                PathInfo("dir") / "subdir1" / "bar1.dvc",
+                PathInfo("dir") / "subdir2" / "foo2.dvc",
+            ],
+        ),
+    ],
+)
+def test_walk(tmp_dir, dvc, dvcfiles, extra_expected):
     tmp_dir.gen(
         {
             "dir": {
@@ -90,30 +107,32 @@ def test_walk(tmp_dir, dvc):
     tree = RepoTree(dvc)
 
     expected = [
-        os.path.join("dir", "subdir1"),
-        os.path.join("dir", "subdir2"),
-        os.path.join("dir", "subdir1", "foo1"),
-        os.path.join("dir", "subdir1", "foo1.dvc"),
-        os.path.join("dir", "subdir1", "bar1"),
-        os.path.join("dir", "subdir1", "bar1.dvc"),
-        os.path.join("dir", "subdir2", "foo2"),
-        os.path.join("dir", "subdir2", "foo2.dvc"),
-        os.path.join("dir", "foo"),
-        os.path.join("dir", "bar"),
+        PathInfo("dir") / "subdir1",
+        PathInfo("dir") / "subdir2",
+        PathInfo("dir") / "subdir1" / "foo1",
+        PathInfo("dir") / "subdir1" / "bar1",
+        PathInfo("dir") / "subdir2" / "foo2",
+        PathInfo("dir") / "foo",
+        PathInfo("dir") / "bar",
     ]
 
     actual = []
-    for root, dirs, files in tree.walk("dir"):
+    for root, dirs, files in tree.walk("dir", dvcfiles=dvcfiles):
         for entry in dirs + files:
             actual.append(os.path.join(root, entry))
 
+    expected = [str(path) for path in expected + extra_expected]
     assert set(actual) == set(expected)
     assert len(actual) == len(expected)
 
 
 def test_isdvc(tmp_dir, dvc):
-    tmp_dir.gen({"foo": "foo", "bar": "bar"})
+    tmp_dir.gen({"foo": "foo", "bar": "bar", "dir": {"baz": "baz"}})
     dvc.add("foo")
+    dvc.add("dir")
     tree = RepoTree(dvc)
     assert tree.isdvc("foo")
     assert not tree.isdvc("bar")
+    assert tree.isdvc("dir")
+    assert not tree.isdvc("dir/baz")
+    assert tree.isdvc("dir/baz", recursive=True, strict=False)

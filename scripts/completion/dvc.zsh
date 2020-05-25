@@ -170,7 +170,7 @@ _dvc_lock=(
 _dvc_list=(
   "--rev[Git revision (e.g. branch, tag, SHA)]:Revision:"
   {-R,--recursive}"[Recursively add each file under the directory.]"
-  "--outs-only[Only outputs DVC-outs.]"
+  "--dvc-only[Only outputs DVC-outs.]"
   "1:URL:"
   "2:Path:"
 )
@@ -218,7 +218,7 @@ _dvc_plots=(
 )
 
 _dvc_remote=(
-  "1:Sub command:(add default remove modify list)"
+  "1:Sub command:(add default remove modify list rename)"
 )
 
 _dvc_remove=(

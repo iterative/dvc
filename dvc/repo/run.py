@@ -25,6 +25,8 @@ def _get_file_path(kwargs):
             kwargs.get("outs_no_cache", []),
             kwargs.get("metrics", []),
             kwargs.get("metrics_no_cache", []),
+            kwargs.get("plots", []),
+            kwargs.get("plots_no_cache", []),
             kwargs.get("outs_persist", []),
             kwargs.get("outs_persist_no_cache", []),
         )
@@ -80,13 +82,12 @@ def run(self, fname=None, no_exec=False, single_stage=False, **kwargs):
         raise OutputDuplicationError(exc.output, set(exc.stages) - {stage})
 
     if no_exec:
-        for out in stage.outs:
-            out.ignore()
+        stage.ignore_outs()
     else:
         stage.run(
             no_commit=kwargs.get("no_commit", False),
             run_cache=kwargs.get("run_cache", True),
         )
 
-    dvcfile.dump(stage, update_pipeline=True)
+    dvcfile.dump(stage, update_pipeline=True, no_lock=no_exec)
     return stage

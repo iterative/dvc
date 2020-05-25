@@ -157,17 +157,13 @@ def test_get_to_dir(tmp_dir, erepo_dir, dname):
     assert (tmp_dir / dname / "file").read_text() == "contents"
 
 
-def test_get_from_non_dvc_master(tmp_dir, git_dir, caplog):
+def test_get_from_non_dvc_master(tmp_dir, git_dir):
     with git_dir.chdir(), git_dir.branch("branch", new=True):
         git_dir.init(dvc=True)
         git_dir.dvc_gen("some_file", "some text", commit="create some file")
 
-    caplog.clear()
+    Repo.get(os.fspath(git_dir), "some_file", out="some_dst", rev="branch")
 
-    with caplog.at_level(logging.INFO, logger="dvc"):
-        Repo.get(os.fspath(git_dir), "some_file", out="some_dst", rev="branch")
-
-    assert caplog.text == ""
     assert (tmp_dir / "some_dst").read_text() == "some text"
 
 

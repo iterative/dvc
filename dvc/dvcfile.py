@@ -32,8 +32,7 @@ PIPELINE_LOCK = "dvc.lock"
 
 
 class LockfileCorruptedError(DvcException):
-    def __init__(self, path):
-        super().__init__(f"Lockfile '{path}' is corrupted.")
+    pass
 
 
 def is_valid_filename(path):
@@ -103,7 +102,7 @@ class FileMixin:
         with self.repo.tree.open(self.path) as fd:
             stage_text = fd.read()
         d = parse_stage(stage_text, self.path)
-        self.validate(d, self.path)
+        self.validate(d, self.relpath)
         return d, stage_text
 
     @classmethod
@@ -112,7 +111,7 @@ class FileMixin:
         try:
             cls.SCHEMA(d)
         except MultipleInvalid as exc:
-            raise StageFileFormatError(fname, exc)
+            raise StageFileFormatError(f"'{fname}' format error: {exc}")
 
     def remove_with_prompt(self, force=False):
         raise NotImplementedError
@@ -176,15 +175,18 @@ class PipelineFile(FileMixin):
     def _lockfile(self):
         return Lockfile(self.repo, os.path.splitext(self.path)[0] + ".lock")
 
-    def dump(self, stage, update_pipeline=False, **kwargs):
+    def dump(self, stage, update_pipeline=False, no_lock=False):
         """Dumps given stage appropriately in the dvcfile."""
         from dvc.stage import PipelineStage
 
         assert isinstance(stage, PipelineStage)
         check_dvc_filename(self.path)
-        self._dump_lockfile(stage)
+
         if update_pipeline and not stage.is_data_source:
             self._dump_pipeline_file(stage)
+
+        if not no_lock:
+            self._dump_lockfile(stage)
 
     def _dump_lockfile(self, stage):
         self._lockfile.dump(stage)
@@ -195,6 +197,7 @@ class PipelineFile(FileMixin):
             with open(self.path) as fd:
                 data = parse_stage_for_update(fd.read(), self.path)
         else:
+            logger.info("Creating '%s'", self.relpath)
             open(self.path, "w+").close()
 
         data["stages"] = data.get("stages", {})
@@ -205,6 +208,9 @@ class PipelineFile(FileMixin):
         else:
             data["stages"].update(stage_data)
 
+        logger.info(
+            "Adding stage '%s' to '%s'", stage.name, self.relpath,
+        )
         dump_stage_file(self.path, data)
         self.repo.scm.track_file(relpath(self.path))
 
@@ -238,23 +244,32 @@ class Lockfile(FileMixin):
         with self.repo.tree.open(self.path) as fd:
             data = parse_stage(fd.read(), self.path)
         try:
-            self.validate(data, fname=self.path)
+            self.validate(data, fname=self.relpath)
         except StageFileFormatError:
-            raise LockfileCorruptedError(self.path)
+            raise LockfileCorruptedError(
+                f"Lockfile '{self.relpath}' is corrupted."
+            )
         return data
 
     def dump(self, stage, **kwargs):
         stage_data = serialize.to_lockfile(stage)
         if not self.exists():
+            modified = True
+            logger.info("Generating lock file '%s'", self.relpath)
             data = stage_data
             open(self.path, "w+").close()
         else:
             with self.repo.tree.open(self.path, "r") as fd:
                 data = parse_stage_for_update(fd.read(), self.path)
+            modified = data.get(stage.name, {}) != stage_data.get(
+                stage.name, {}
+            )
+            if modified:
+                logger.info("Updating lock file '%s'", self.relpath)
             data.update(stage_data)
-
         dump_stage_file(self.path, data)
-        self.repo.scm.track_file(relpath(self.path))
+        if modified:
+            self.repo.scm.track_file(self.relpath)
 
 
 class Dvcfile:

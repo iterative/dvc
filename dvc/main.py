@@ -18,7 +18,6 @@ from dvc.utils import format_link
 
 "".encode("idna")
 
-
 logger = logging.getLogger("dvc")
 
 
@@ -38,11 +37,17 @@ def main(argv=None):
     try:
         args = parse_args(argv)
 
-        if args.quiet:
-            logger.setLevel(logging.CRITICAL)
-
-        elif args.verbose:
-            logger.setLevel(logging.DEBUG)
+        verbosity = args.verbose - args.quiet
+        if verbosity:
+            logger.setLevel(
+                {
+                    -2: logging.CRITICAL,
+                    -1: logging.ERROR,
+                    1: logging.DEBUG,
+                    2: logging.TRACE,
+                }[max(-2, min(verbosity, 2))]
+            )
+        logger.trace(args)
 
         cmd = args.func(args)
         ret = cmd.run()
