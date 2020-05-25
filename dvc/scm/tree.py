@@ -32,7 +32,8 @@ class BaseTree:
     def walk_files(self, top):
         for root, _, files in self.walk(top):
             for file in files:
-                yield os.path.join(root, file)
+                # NOTE: os.path.join is ~5.5 times slower
+                yield f"{root}{os.sep}{file}"
 
 
 class WorkingTree(BaseTree):

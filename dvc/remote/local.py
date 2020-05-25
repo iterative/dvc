@@ -92,7 +92,12 @@ class LocalRemote(BaseRemote):
         return os.path.abspath(self.cache_dir)
 
     def checksum_to_path(self, checksum):
-        return os.path.join(self.cache_path, checksum[0:2], checksum[2:])
+        # NOTE: `self.cache_path` is already normalized so we can simply use
+        # `os.sep` instead of `os.path.join`. This results in this helper
+        # being ~5.5 times faster.
+        return (
+            f"{self.cache_path}{os.sep}{checksum[0:2]}{os.sep}{checksum[2:]}"
+        )
 
     def list_cache_paths(self, prefix=None, progress_callback=None):
         assert self.path_info is not None
@@ -695,70 +700,15 @@ class LocalRemote(BaseRemote):
             if actual != mode:
                 raise
 
-    def _get_unpacked_dir_path_info(self, checksum):
-        info = self.checksum_to_path_info(checksum)
-        return info.with_name(info.name + self.UNPACKED_DIR_SUFFIX)
-
     def _remove_unpacked_dir(self, checksum):
-        path_info = self._get_unpacked_dir_path_info(checksum)
+        info = self.checksum_to_path_info(checksum)
+        path_info = info.with_name(info.name + self.UNPACKED_DIR_SUFFIX)
         self.remove(path_info)
 
-    def _path_info_changed(self, path_info):
-        if self.exists(path_info) and self.state.get(path_info):
-            return False
-        return True
-
-    def _update_unpacked_dir(self, checksum):
-        unpacked_dir_info = self._get_unpacked_dir_path_info(checksum)
-
-        if not self._path_info_changed(unpacked_dir_info):
-            return
-
-        self.remove(unpacked_dir_info)
-
-        try:
-            dir_info = self.get_dir_cache(checksum)
-            self._create_unpacked_dir(checksum, dir_info, unpacked_dir_info)
-        except DvcException:
-            logger.warning(f"Could not create '{unpacked_dir_info}'")
-
-            self.remove(unpacked_dir_info)
-
-    def _create_unpacked_dir(self, checksum, dir_info, unpacked_dir_info):
-        self.makedirs(unpacked_dir_info)
-
-        for entry in Tqdm(dir_info, desc="Creating unpacked dir", unit="file"):
-            entry_cache_info = self.checksum_to_path_info(
-                entry[self.PARAM_CHECKSUM]
-            )
-            relative_path = entry[self.PARAM_RELPATH]
-            # In shared cache mode some cache files might not be owned by the
-            # user, so we need to use symlinks because, unless
-            # /proc/sys/fs/protected_hardlinks is disabled, the user is not
-            # allowed to create hardlinks to files that he doesn't own.
-            link_types = ["hardlink", "symlink"]
-            self._link(
-                entry_cache_info, unpacked_dir_info / relative_path, link_types
-            )
-
-        self.state.save(unpacked_dir_info, checksum)
-
-    def _changed_unpacked_dir(self, checksum):
-        status_unpacked_dir_info = self._get_unpacked_dir_path_info(checksum)
-
-        return not self.state.get(status_unpacked_dir_info)
-
-    def _get_unpacked_dir_names(self, checksums):
-        unpacked = set()
-        for c in checksums:
-            if self.is_dir_checksum(c):
-                unpacked.add(c + self.UNPACKED_DIR_SUFFIX)
-        return unpacked
-
     def is_protected(self, path_info):
-        if not self.exists(path_info):
+        try:
+            mode = os.stat(path_info).st_mode
+        except FileNotFoundError:
             return False
-
-        mode = os.stat(path_info).st_mode
 
         return stat.S_IMODE(mode) == self.CACHE_MODE

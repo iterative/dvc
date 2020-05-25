@@ -831,7 +831,7 @@ class BaseRemote:
 
     @index_locked
     def gc(self, named_cache, jobs=None):
-        used = self.extract_used_local_checksums(named_cache)
+        used = set(named_cache.scheme_keys("local"))
 
         if self.scheme != "":
             used.update(named_cache.scheme_keys(self.scheme))
@@ -847,6 +847,7 @@ class BaseRemote:
                 continue
             path_info = self.checksum_to_path_info(checksum)
             if self.is_dir_checksum(checksum):
+                # backward compatibility
                 self._remove_unpacked_dir(checksum)
             self.remove(path_info)
             removed = True
@@ -905,11 +906,6 @@ class BaseRemote:
         if self.changed_cache_file(checksum):
             return True
 
-        if not (path_info and filter_info) and not self._changed_unpacked_dir(
-            checksum
-        ):
-            return False
-
         for entry in self.get_dir_cache(checksum):
             entry_checksum = entry[self.PARAM_CHECKSUM]
 
@@ -920,9 +916,6 @@ class BaseRemote:
 
             if self.changed_cache_file(entry_checksum):
                 return True
-
-        if not (path_info and filter_info):
-            self._update_unpacked_dir(checksum)
 
         return False
 
@@ -1360,20 +1353,6 @@ class BaseRemote:
 
     @staticmethod
     def unprotect(path_info):
-        pass
-
-    def _get_unpacked_dir_names(self, checksums):
-        return set()
-
-    def extract_used_local_checksums(self, named_cache):
-        used = set(named_cache.scheme_keys("local"))
-        unpacked = self._get_unpacked_dir_names(used)
-        return used | unpacked
-
-    def _changed_unpacked_dir(self, checksum):
-        return True
-
-    def _update_unpacked_dir(self, checksum):
         pass
 
     def _remove_unpacked_dir(self, checksum):
