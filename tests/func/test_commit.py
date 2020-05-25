@@ -1,5 +1,6 @@
 import pytest
 
+from dvc.dvcfile import PIPELINE_FILE
 from dvc.stage.exceptions import StageCommitError
 from dvc.utils.stage import dump_stage_file, load_stage_file
 
@@ -81,3 +82,16 @@ def test_commit_no_exec(tmp_dir, dvc):
     assert dvc.status(stage.path)
     dvc.commit(stage.path, force=True)
     assert dvc.status(stage.path) == {}
+
+
+def test_commit_pipeline_stage(tmp_dir, dvc, run_copy):
+    tmp_dir.gen("foo", "foo")
+    stage = run_copy("foo", "bar", no_commit=True, name="copy-foo-bar")
+    assert dvc.status(stage.addressing)
+    assert dvc.commit(stage.addressing, force=True) == [stage]
+    assert not dvc.status(stage.addressing)
+
+    # just to confirm different variants work
+    assert dvc.commit(f":{stage.addressing}") == [stage]
+    assert dvc.commit(f"{PIPELINE_FILE}:{stage.addressing}") == [stage]
+    assert dvc.commit(PIPELINE_FILE) == [stage]

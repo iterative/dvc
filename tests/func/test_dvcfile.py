@@ -1,10 +1,7 @@
 import pytest
 
 from dvc.dvcfile import PIPELINE_FILE, Dvcfile
-from dvc.stage.exceptions import (
-    StageFileDoesNotExistError,
-    StageNameUnspecified,
-)
+from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.stage.loader import StageNotFound
 
 
@@ -163,37 +160,3 @@ def test_stage_collection(tmp_dir, dvc):
         single_stage=True,
     )
     assert {s for s in dvc.stages} == {stage1, stage3, stage2}
-
-
-def test_stage_filter(tmp_dir, dvc, run_copy):
-    tmp_dir.gen("foo", "foo")
-    stage1 = run_copy("foo", "bar", name="copy-foo-bar")
-    stage2 = run_copy("bar", "bax", name="copy-bar-bax")
-    stage3 = run_copy("bax", "baz", name="copy-bax-baz")
-    stages = Dvcfile(dvc, PIPELINE_FILE).stages
-    assert set(stages.filter(None).values()) == {
-        stage1,
-        stage2,
-        stage3,
-    }
-    assert set(stages.filter("copy-bar-bax").values()) == {stage2}
-    assert stages.filter("copy-bar-bax").get("copy-bar-bax") == stage2
-    with pytest.raises(StageNameUnspecified):
-        stages.get(None)
-
-    with pytest.raises(StageNotFound):
-        assert stages["unknown"]
-
-    with pytest.raises(StageNotFound):
-        assert stages.filter("unknown")
-
-
-def test_stage_filter_in_singlestage_file(tmp_dir, dvc, run_copy):
-    tmp_dir.gen("foo", "foo")
-    stage = run_copy("foo", "bar", single_stage=True)
-    dvcfile = Dvcfile(dvc, stage.path)
-    assert set(dvcfile.stages.filter(None).values()) == {stage}
-    assert dvcfile.stages.filter(None).get(None) == stage
-    assert dvcfile.stages.filter("copy-bar-bax").get("copy-bar-bax") == stage
-    assert dvcfile.stages.filter("copy-bar-bax").get(None) == stage
-    assert set(dvcfile.stages.filter("unknown").values()) == {stage}

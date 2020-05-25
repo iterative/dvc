@@ -73,7 +73,7 @@ def test_status_on_pipeline_stages(tmp_dir, dvc, run_copy):
 
     stage.cmd = "  ".join(stage.cmd.split())
     stage.dvcfile._dump_pipeline_file(stage)
-    assert dvc.status() == {"copy-foo-bar": ["changed command"]}
+    assert dvc.status("copy-foo-bar") == {"copy-foo-bar": ["changed command"]}
 
     # delete outputs
     (tmp_dir / "bar").unlink()

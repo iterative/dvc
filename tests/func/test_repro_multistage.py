@@ -32,7 +32,7 @@ class MultiStageRun:
 
     @staticmethod
     def _get_stage_target(stage):
-        return stage.path + ":" + stage.name
+        return stage.addressing
 
 
 class TestReproFailMultiStage(MultiStageRun, test_repro.TestReproFail):
