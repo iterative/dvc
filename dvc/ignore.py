@@ -5,7 +5,9 @@ from funcy import cached_property
 from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 
+from dvc.path_info import PathInfo
 from dvc.scm.tree import BaseTree
+from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
 
@@ -125,19 +127,63 @@ class CleanTree(BaseTree):
         return self.tree.tree_root
 
     def open(self, path, mode="r", encoding="utf-8"):
-        return self.tree.open(path, mode, encoding)
+        if self.isfile(path):
+            return self.tree.open(path, mode, encoding)
+        raise FileNotFoundError
 
     def exists(self, path):
-        return self.tree.exists(path)
+        return self._parents_exist(path) and (
+            self._isdir(path) or self._isfile(path)
+        )
 
     def isdir(self, path):
-        return self.tree.isdir(path)
+        return self._parents_exist(path) and self._isdir(path)
+
+    def _isdir(self, path: PathInfo):
+        if self.tree.isdir(path):
+            dirname, basename = os.path.split(os.path.normpath(path))
+            dirs, _ = self.dvcignore(os.path.abspath(dirname), [basename], [])
+            if dirs:
+                return True
+        return False
 
     def isfile(self, path):
-        return self.tree.isfile(path)
+        return self._parents_exist(path) and self._isfile(path)
+
+    def _isfile(self, path: PathInfo):
+        if self.tree.isfile(path):
+            dirname, basename = os.path.split(os.path.normpath(path))
+            _, files = self.dvcignore(os.path.abspath(dirname), [], [basename])
+            if files:
+                return True
+        return False
 
     def isexec(self, path):
-        return self.tree.isexec(path)
+        return self.exists(path) and self.tree.isexec(path)
+
+    def _parents_exist(self, path):
+        from dvc.repo import Repo
+
+        path = PathInfo(path)
+
+        # if parent is tree_root or in tree_root/.dvc we can skip this check
+        if path.parent == self.tree_root or path.parent.overlaps(
+            os.path.join(self.tree_root, Repo.DVC_DIR)
+        ):
+            return True
+
+        # check if parent directories are in our ignores, starting from
+        # tree_root
+        path = relpath(path, self.tree_root)
+        for parent_dir in reversed(PathInfo(path).parents):
+            dirname, basename = os.path.split(parent_dir)
+            if basename == ".":
+                # parent_dir == tree_root
+                continue
+            dirs, _ = self.dvcignore(os.path.abspath(dirname), [basename], [])
+            if not dirs:
+                return False
+        return True
 
     def walk(self, top, topdown=True):
         for root, dirs, files in self.tree.walk(top, topdown):
@@ -148,4 +194,6 @@ class CleanTree(BaseTree):
             yield root, dirs, files
 
     def stat(self, path):
-        return self.tree.stat(path)
+        if self.exists(path):
+            return self.tree.stat(path)
+        raise FileNotFoundError
