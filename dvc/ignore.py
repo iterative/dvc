@@ -132,30 +132,38 @@ class CleanTree(BaseTree):
         raise FileNotFoundError
 
     def exists(self, path):
-        return self._parents_exist(path) and (
-            self._isdir(path) or self._isfile(path)
-        )
+        if self.tree.exists(path) and self._parents_exist(path):
+            if self.tree.isdir(path):
+                return self._valid_dirname(path)
+            return self._valid_filename(path)
+        return False
 
     def isdir(self, path):
-        return self._parents_exist(path) and self._isdir(path)
+        return (
+            self.tree.isdir(path)
+            and self._parents_exist(path)
+            and self._valid_dirname(path)
+        )
 
-    def _isdir(self, path: PathInfo):
-        if self.tree.isdir(path):
-            dirname, basename = os.path.split(os.path.normpath(path))
-            dirs, _ = self.dvcignore(os.path.abspath(dirname), [basename], [])
-            if dirs:
-                return True
+    def _valid_dirname(self, path):
+        dirname, basename = os.path.split(os.path.normpath(path))
+        dirs, _ = self.dvcignore(os.path.abspath(dirname), [basename], [])
+        if dirs:
+            return True
         return False
 
     def isfile(self, path):
-        return self._parents_exist(path) and self._isfile(path)
+        return (
+            self.tree.isfile(path)
+            and self._parents_exist(path)
+            and self._valid_filename(path)
+        )
 
-    def _isfile(self, path: PathInfo):
-        if self.tree.isfile(path):
-            dirname, basename = os.path.split(os.path.normpath(path))
-            _, files = self.dvcignore(os.path.abspath(dirname), [], [basename])
-            if files:
-                return True
+    def _valid_filename(self, path):
+        dirname, basename = os.path.split(os.path.normpath(path))
+        _, files = self.dvcignore(os.path.abspath(dirname), [], [basename])
+        if files:
+            return True
         return False
 
     def isexec(self, path):
