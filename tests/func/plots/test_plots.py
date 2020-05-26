@@ -26,33 +26,6 @@ def _remove_whitespace(value):
     return value.replace(" ", "").replace("\n", "")
 
 
-@pytest.fixture
-def run_copy_metrics(tmp_dir, run_copy):
-    def run(file1, file2, commit=None, tag=None, **kwargs):
-        stage = tmp_dir.dvc.run(
-            cmd=f"python copy.py {file1} {file2}",
-            deps=[file1],
-            single_stage=True,
-            **kwargs,
-        )
-
-        if hasattr(tmp_dir.dvc, "scm"):
-            files = [stage.path]
-            files += [
-                os.fspath(out.path_info)
-                for out in stage.outs
-                if not out.use_cache
-            ]
-            tmp_dir.dvc.scm.add(files)
-            if commit:
-                tmp_dir.dvc.scm.commit(commit)
-            if tag:
-                tmp_dir.dvc.scm.tag(tag)
-        return stage
-
-    return run
-
-
 def _write_csv(metric, filename, header=True):
     with open(filename, "w", newline="") as csvobj:
         if header:

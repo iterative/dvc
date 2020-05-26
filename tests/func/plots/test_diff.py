@@ -1,9 +1,9 @@
 import json
 
-from .test_plots import PlotData, _write_json, run_copy_metrics  # noqa: F401
+from .test_plots import PlotData, _write_json
 
 
-def test_diff_dirty(tmp_dir, scm, dvc, run_copy_metrics):  # noqa: F811
+def test_diff_dirty(tmp_dir, scm, dvc, run_copy_metrics):
     metric_1 = [{"y": 2}, {"y": 3}]
     _write_json(tmp_dir, metric_1, "metric_t.json")
     run_copy_metrics(
