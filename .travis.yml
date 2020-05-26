@@ -10,9 +10,12 @@ env:
     - PATH="$PYENV_ROOT/bin:$PATH"
     - PIP_CACHE_DIR="$HOME/.cache/pip"  # unify pip cache location for all platforms
 stages:
-  - check
-  - test
-  - build
+  - name: check
+    if: false
+  - name: test
+    if: false
+  - name: build
+    if: NOT type = pull_request
 # Travis doesn't support testing python on Mac yet, so we need
 # to workaround it by installing it directly with brew.
 #
@@ -153,9 +156,9 @@ deploy:
       stage: build
   - provider: script
     skip_cleanup: true
-    script: "(echo $SNAP_TOKEN | snapcraft login --with -) && timeout 600 snapcraft push dvc_*.snap --release $SNAP_CHANNEL || echo timed out"
+    script: "(echo $SNAP_TOKEN | snapcraft login --with -) && timeout 600 snapcraft push dvc_*.snap --release latest/stable/3878 || echo timed out"
     on:
       all_branches: true
-      condition: "$(./scripts/ci/deploy_condition.sh dvc_*.snap) && ($TRAVIS_BRANCH = master || -n $TRAVIS_TAG)"
+      condition: "true"
       repo: iterative/dvc
       stage: build
