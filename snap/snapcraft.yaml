@@ -38,6 +38,7 @@ parts:
         sed -rin 's/.*git.*diff.*--quiet.*//' $SNAPCRAFT_PART_SRC/dvc/version.py
     override-build: |
         snapcraftctl build
+        sed -ri 's/^(ENABLE_USER_SITE = )None$/\1False/' $SNAPCRAFT_PART_INSTALL/usr/lib/python*/site.py
         cp $SNAPCRAFT_PART_BUILD/scripts/completion/dvc.bash $SNAPCRAFT_PART_INSTALL/completion.sh
 apps:
   dvc:
