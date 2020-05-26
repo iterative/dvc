@@ -174,10 +174,8 @@ class CleanTree(BaseTree):
 
         path = PathInfo(path)
 
-        # if parent is tree_root or in tree_root/.dvc we can skip this check
-        if path.parent == self.tree_root or path.parent.overlaps(
-            os.path.join(self.tree_root, Repo.DVC_DIR)
-        ):
+        # if parent is tree_root or inside a .dvc dir we can skip this check
+        if path.parent == self.tree_root or Repo.DVC_DIR in path.parts:
             return True
 
         # check if parent directories are in our ignores, starting from
