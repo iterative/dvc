@@ -146,6 +146,9 @@ def test_resolve_output(inp, out, is_dir, expected, mocker):
         ["../models/stage.dvc", ("../models/stage.dvc", None), "def"],
         [":name", ("default", "name"), "default"],
         [":name", ("default", "name"), "default"],
+        ["something.dvc:name", ("something.dvc", "name"), None],
+        ["../something.dvc:name", ("../something.dvc", "name"), None],
+        ["file", (None, "file"), None],
     ],
 )
 def test_parse_target(inp, out, default):

@@ -1,7 +1,11 @@
 import logging
 import os
 
-from dvc.exceptions import CheckoutError, CheckoutErrorSuggestGit
+from dvc.exceptions import (
+    CheckoutError,
+    CheckoutErrorSuggestGit,
+    NoOutputOrStageError,
+)
 from dvc.progress import Tqdm
 from dvc.utils import relpath
 
@@ -18,11 +22,11 @@ def _get_unused_links(repo):
     return repo.state.get_unused_links(used)
 
 
-def _fspath_dir(path, root):
+def _fspath_dir(path):
     if not os.path.exists(str(path)):
         return str(path)
 
-    path = relpath(path, root)
+    path = relpath(path)
     return os.path.join(path, "") if os.path.isdir(path) else path
 
 
@@ -56,7 +60,7 @@ def _checkout(
         targets = [None]
         unused = _get_unused_links(self)
 
-    stats["deleted"] = [_fspath_dir(u, self.root_dir) for u in unused]
+    stats["deleted"] = [_fspath_dir(u) for u in unused]
     self.state.remove_links(unused)
 
     if isinstance(targets, str):
@@ -70,7 +74,11 @@ def _checkout(
                     target, with_deps=with_deps, recursive=recursive
                 )
             )
-        except (StageFileDoesNotExistError, StageFileBadNameError) as exc:
+        except (
+            StageFileDoesNotExistError,
+            StageFileBadNameError,
+            NoOutputOrStageError,
+        ) as exc:
             if not target:
                 raise
             raise CheckoutErrorSuggestGit(target) from exc
@@ -87,9 +95,7 @@ def _checkout(
                 filter_info=filter_info,
             )
             for key, items in result.items():
-                stats[key].extend(
-                    _fspath_dir(path, self.root_dir) for path in items
-                )
+                stats[key].extend(_fspath_dir(path) for path in items)
 
     if stats.get("failed"):
         raise CheckoutError(stats["failed"], stats)

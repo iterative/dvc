@@ -932,3 +932,24 @@ def test_push_pull_all(tmp_dir, scm, dvc, setup_remote, key, expected):
 
     clean(["foo", "bar", "baz"], dvc)
     assert dvc.pull(**{key: True})["fetched"] == expected
+
+
+def test_push_pull_fetch_pipeline_stages(tmp_dir, dvc, run_copy, setup_remote):
+    remote_path = setup_remote(dvc)
+    tmp_dir.dvc_gen("foo", "foo")
+    run_copy("foo", "bar", no_commit=True, name="copy-foo-bar")
+
+    dvc.push("copy-foo-bar")
+    assert len(recurse_list_dir(remote_path)) == 1
+    # pushing everything so as we can check pull/fetch only downloads
+    # from specified targets
+    dvc.push()
+    clean(["foo", "bar"], dvc)
+
+    dvc.pull("copy-foo-bar")
+    assert (tmp_dir / "bar").exists()
+    assert len(recurse_list_dir(dvc.cache.local.cache_dir)) == 1
+    clean(["bar"], dvc)
+
+    dvc.fetch("copy-foo-bar")
+    assert len(recurse_list_dir(dvc.cache.local.cache_dir)) == 1

@@ -32,7 +32,7 @@ class MultiStageRun:
 
     @staticmethod
     def _get_stage_target(stage):
-        return stage.path + ":" + stage.name
+        return stage.addressing
 
 
 class TestReproFailMultiStage(MultiStageRun, test_repro.TestReproFail):
@@ -312,15 +312,13 @@ def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy):
 
     tmp_dir.gen("foo", "foo")
     stage = run_copy("foo", "bar", name="copy-file")
-    target = ":copy-file"
+    target = "copy-file"
     assert not dvc.reproduce(target)
 
     stage.cmd = "  ".join(stage.cmd.split())  # change cmd spacing by two
     PipelineFile(dvc, PIPELINE_FILE)._dump_pipeline_file(stage)
 
-    assert dvc.status([target]) == {
-        PIPELINE_FILE + target: ["changed command"]
-    }
+    assert dvc.status([target]) == {target: ["changed command"]}
     assert dvc.reproduce(target)[0] == stage
 
 

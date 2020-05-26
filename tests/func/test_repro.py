@@ -56,7 +56,7 @@ class SingleStageRun:
 
     @staticmethod
     def _get_stage_target(stage):
-        return stage.path
+        return stage.addressing
 
 
 class TestRepro(SingleStageRun, TestDvc):

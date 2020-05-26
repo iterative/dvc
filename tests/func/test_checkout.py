@@ -7,22 +7,20 @@ import shutil
 import pytest
 from mock import patch
 
-from dvc.dvcfile import DVC_FILE_SUFFIX, Dvcfile
+from dvc.dvcfile import DVC_FILE_SUFFIX, PIPELINE_FILE, Dvcfile
 from dvc.exceptions import (
     CheckoutError,
     CheckoutErrorSuggestGit,
     ConfirmRemoveError,
     DvcException,
+    NoOutputOrStageError,
 )
 from dvc.main import main
 from dvc.remote import S3Remote
 from dvc.remote.local import LocalRemote
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
-from dvc.stage.exceptions import (
-    StageFileBadNameError,
-    StageFileDoesNotExistError,
-)
+from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
 from dvc.utils import relpath
 from dvc.utils.fs import walk_files
@@ -403,17 +401,26 @@ class TestCheckoutSuggestGit(TestRepro):
     def test(self):
 
         try:
-            self.dvc.checkout(targets=["gitbranch"])
+            self.dvc.checkout(targets="gitbranch")
         except DvcException as exc:
             self.assertIsInstance(exc, CheckoutErrorSuggestGit)
-            self.assertIsInstance(exc.__cause__, StageFileDoesNotExistError)
+            self.assertIsInstance(exc.__cause__, NoOutputOrStageError)
+            self.assertIsInstance(
+                exc.__cause__.__cause__, StageFileDoesNotExistError
+            )
+
+        try:
+            self.dvc.checkout(targets=self.FOO)
+        except DvcException as exc:
+            self.assertIsInstance(exc, CheckoutErrorSuggestGit)
+            self.assertIsInstance(exc.__cause__, NoOutputOrStageError)
             self.assertIsNone(exc.__cause__.__cause__)
 
         try:
-            self.dvc.checkout(targets=[self.FOO])
+            self.dvc.checkout(targets="looks-like-dvcfile.dvc")
         except DvcException as exc:
             self.assertIsInstance(exc, CheckoutErrorSuggestGit)
-            self.assertIsInstance(exc.__cause__, StageFileBadNameError)
+            self.assertIsInstance(exc.__cause__, StageFileDoesNotExistError)
             self.assertIsNone(exc.__cause__.__cause__)
 
 
@@ -770,9 +777,51 @@ def test_checkout_for_external_outputs(tmp_dir, dvc):
     assert stats == {**empty_checkout, "modified": [str(file_path)]}
 
 
-def test_checkouts_for_pipeline_tracked_outs(tmp_dir, dvc, scm, run_copy):
-    from dvc.dvcfile import PIPELINE_FILE
+def test_checkouts_with_different_addressing(tmp_dir, dvc, run_copy):
+    tmp_dir.gen({"foo": "foo", "lorem": "lorem"})
+    run_copy("foo", "bar", name="copy-foo-bar")
+    run_copy("lorem", "ipsum", name="copy-lorem-ipsum")
 
+    (tmp_dir / "bar").unlink()
+    (tmp_dir / "ipsum").unlink()
+    assert set(dvc.checkout(PIPELINE_FILE)["added"]) == {"bar", "ipsum"}
+
+    (tmp_dir / "bar").unlink()
+    (tmp_dir / "ipsum").unlink()
+    assert set(dvc.checkout(":")["added"]) == {"bar", "ipsum"}
+
+    (tmp_dir / "bar").unlink()
+    assert dvc.checkout("copy-foo-bar")["added"] == ["bar"]
+
+    (tmp_dir / "bar").unlink()
+    assert dvc.checkout("dvc.yaml:copy-foo-bar")["added"] == ["bar"]
+
+    (tmp_dir / "bar").unlink()
+    assert dvc.checkout(":copy-foo-bar")["added"] == ["bar"]
+
+    (tmp_dir / "bar").unlink()
+    (tmp_dir / "data").mkdir()
+    with (tmp_dir / "data").chdir():
+        assert dvc.checkout(relpath(tmp_dir / "dvc.yaml") + ":copy-foo-bar")[
+            "added"
+        ] == [relpath(tmp_dir / "bar")]
+
+    (tmp_dir / "bar").unlink()
+    assert dvc.checkout("bar")["added"] == ["bar"]
+
+
+def test_checkouts_on_same_stage_name_and_output_name(tmp_dir, dvc, run_copy):
+    tmp_dir.gen("foo", "foo")
+    run_copy("foo", "bar", name="copy-foo-bar")
+    run_copy("foo", "copy-foo-bar", name="make_collision")
+
+    (tmp_dir / "bar").unlink()
+    (tmp_dir / "copy-foo-bar").unlink()
+    assert dvc.checkout("copy-foo-bar")["added"] == ["bar"]
+    assert dvc.checkout("./copy-foo-bar")["added"] == ["copy-foo-bar"]
+
+
+def test_checkouts_for_pipeline_tracked_outs(tmp_dir, dvc, scm, run_copy):
     tmp_dir.gen("foo", "foo")
     stage1 = run_copy("foo", "bar", name="copy-foo-bar")
     tmp_dir.gen("lorem", "lorem")
