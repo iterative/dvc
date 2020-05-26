@@ -10,7 +10,7 @@ from dvc.dvcfile import PIPELINE_FILE, Dvcfile, is_valid_filename
 from dvc.exceptions import FileMissingError
 from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
 from dvc.exceptions import (
-    NoOutputOrStage,
+    NoOutputOrStageError,
     NotDvcRepoError,
     OutputNotFoundError,
 )
@@ -314,9 +314,9 @@ class Repo:
                 # should say that both stage name and file does not exist.
                 if file and is_valid_filename(file):
                     raise
-                raise NoOutputOrStage(target, exc.file)
+                raise NoOutputOrStageError(target, exc.file) from exc
             except StageNotFound as exc:
-                raise NoOutputOrStage(target, exc.file)
+                raise NoOutputOrStageError(target, exc.file) from exc
 
         return [(stage, None) for stage in stages]
 

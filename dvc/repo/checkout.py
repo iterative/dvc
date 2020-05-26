@@ -4,7 +4,7 @@ import os
 from dvc.exceptions import (
     CheckoutError,
     CheckoutErrorSuggestGit,
-    NoOutputOrStage,
+    NoOutputOrStageError,
 )
 from dvc.progress import Tqdm
 from dvc.utils import relpath
@@ -77,7 +77,7 @@ def _checkout(
         except (
             StageFileDoesNotExistError,
             StageFileBadNameError,
-            NoOutputOrStage,
+            NoOutputOrStageError,
         ) as exc:
             if not target:
                 raise

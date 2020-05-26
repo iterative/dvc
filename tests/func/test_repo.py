@@ -5,7 +5,7 @@ import pytest
 
 from dvc.cache import Cache
 from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
-from dvc.exceptions import NoOutputOrStage
+from dvc.exceptions import NoOutputOrStageError
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.stage.exceptions import (
@@ -220,9 +220,9 @@ def test_collect_with_not_existing_dvcfile(tmp_dir, dvc, target):
 
 
 def test_collect_granular_with_not_existing_output_or_stage_name(tmp_dir, dvc):
-    with pytest.raises(NoOutputOrStage):
+    with pytest.raises(NoOutputOrStageError):
         dvc.collect_granular("some_file")
-    with pytest.raises(NoOutputOrStage):
+    with pytest.raises(NoOutputOrStageError):
         dvc.collect_granular("some_file", recursive=True)
 
 

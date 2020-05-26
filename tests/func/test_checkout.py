@@ -13,7 +13,7 @@ from dvc.exceptions import (
     CheckoutErrorSuggestGit,
     ConfirmRemoveError,
     DvcException,
-    NoOutputOrStage,
+    NoOutputOrStageError,
 )
 from dvc.main import main
 from dvc.remote import S3Remote
@@ -404,7 +404,7 @@ class TestCheckoutSuggestGit(TestRepro):
             self.dvc.checkout(targets="gitbranch")
         except DvcException as exc:
             self.assertIsInstance(exc, CheckoutErrorSuggestGit)
-            self.assertIsInstance(exc.__cause__, NoOutputOrStage)
+            self.assertIsInstance(exc.__cause__, NoOutputOrStageError)
             self.assertIsInstance(
                 exc.__cause__.__cause__, StageFileDoesNotExistError
             )
@@ -413,7 +413,7 @@ class TestCheckoutSuggestGit(TestRepro):
             self.dvc.checkout(targets=self.FOO)
         except DvcException as exc:
             self.assertIsInstance(exc, CheckoutErrorSuggestGit)
-            self.assertIsInstance(exc.__cause__, NoOutputOrStage)
+            self.assertIsInstance(exc.__cause__, NoOutputOrStageError)
             self.assertIsNone(exc.__cause__.__cause__)
 
         try:
