@@ -178,9 +178,19 @@ class CleanTree(BaseTree):
         if path.parent == self.tree_root or Repo.DVC_DIR in path.parts:
             return True
 
+        # if path is outside of tree, assume this is a local remote/local cache
+        # link/move operation where we do not need to filter ignores
+        path = relpath(path, self.tree_root)
+        if path.startswith("..") or (
+            os.name == "nt"
+            and not os.path.commonprefix(
+                [os.path.abspath(path), self.tree_root]
+            )
+        ):
+            return True
+
         # check if parent directories are in our ignores, starting from
         # tree_root
-        path = relpath(path, self.tree_root)
         for parent_dir in reversed(PathInfo(path).parents):
             dirname, basename = os.path.split(parent_dir)
             if basename == ".":
