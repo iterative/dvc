@@ -264,9 +264,11 @@ class TestReproDepDirWithOutputsUnderIt(SingleStageRun, TestDvc):
         self.assertEqual(len(stages), 1)
         self.assertTrue(stages[0] is not None)
 
+        deps = [self.DATA, self.DATA_SUB]
         stage = self.dvc.run(
+            cmd="ls {}".format(" ".join(deps)),
             fname="dvcfile2.dvc",
-            deps=[self.DATA, self.DATA_SUB],
+            deps=deps,
             single_stage=True,
         )
         self.assertTrue(stage is not None)
@@ -405,7 +407,17 @@ class TestReproDryNoExec(TestDvc):
             self.assertEqual(ret, 0)
 
         ret = main(
-            ["run", "--no-exec", "--single-stage", "-f", DVC_FILE] + deps
+            [
+                "run",
+                "--no-exec",
+                "--single-stage",
+                "-f",
+                DVC_FILE,
+                *deps,
+                "ls {}".format(
+                    " ".join(dep for i, dep in enumerate(deps) if i % 2)
+                ),
+            ]
         )
         self.assertEqual(ret, 0)
 
@@ -1465,9 +1477,11 @@ def repro_dir(tmp_dir, dvc, run_copy):
     stages["dir_file_copy"] = stage
 
     last_stage = tmp_dir / "dir" / DVC_FILE
+    deps = [os.fspath(origin_copy_2), os.fspath(dir_file_copy)]
     stage = dvc.run(
+        cmd="echo {}".format(" ".join(deps)),
         fname=os.fspath(last_stage),
-        deps=[os.fspath(origin_copy_2), os.fspath(dir_file_copy)],
+        deps=deps,
         single_stage=True,
     )
     assert stage is not None
