@@ -45,6 +45,9 @@ def run(self, fname=None, no_exec=False, single_stage=False, **kwargs):
     from dvc.stage import PipelineStage, Stage, create_stage
     from dvc.dvcfile import Dvcfile, PIPELINE_FILE
 
+    if not kwargs.get("cmd"):
+        raise InvalidArgumentError("command is not specified")
+
     stage_cls = PipelineStage
     path = PIPELINE_FILE
     stage_name = kwargs.get("name")

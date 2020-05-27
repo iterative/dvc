@@ -1,20 +1,32 @@
 import json
 
-from .test_plots import PlotData, _run_with, _write_json
+from .test_plots import PlotData, _write_json
 
 
-def test_diff_dirty(tmp_dir, scm, dvc):
+def test_diff_dirty(tmp_dir, scm, dvc, run_copy_metrics):
     metric_1 = [{"y": 2}, {"y": 3}]
-    _write_json(tmp_dir, metric_1, "metric.json")
-    _run_with(tmp_dir, plots_no_cache=["metric.json"], commit="init")
+    _write_json(tmp_dir, metric_1, "metric_t.json")
+    run_copy_metrics(
+        "metric_t.json",
+        "metric.json",
+        plots_no_cache=["metric.json"],
+        commit="init",
+    )
 
     metric_2 = [{"y": 3}, {"y": 5}]
-    _write_json(tmp_dir, metric_2, "metric.json")
-    _run_with(tmp_dir, plots_no_cache=["metric.json"], commit="second")
+    _write_json(tmp_dir, metric_2, "metric_t.json")
+    run_copy_metrics(
+        "metric_t.json",
+        "metric.json",
+        plots_no_cache=["metric.json"],
+        commit="second",
+    )
 
     metric_3 = [{"y": 5}, {"y": 6}]
-    _write_json(tmp_dir, metric_3, "metric.json")
-    _run_with(tmp_dir, plots_no_cache=["metric.json"])
+    _write_json(tmp_dir, metric_3, "metric_t.json")
+    run_copy_metrics(
+        "metric_t.json", "metric.json", plots_no_cache=["metric.json"]
+    )
 
     plot_string = dvc.plots.diff(fields={"y"})["metric.json"]
 

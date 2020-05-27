@@ -46,3 +46,4 @@ def commit(self, target, with_deps=False, recursive=False, force=False):
         stage.commit()
 
         Dvcfile(self, stage.path).dump(stage)
+    return stages

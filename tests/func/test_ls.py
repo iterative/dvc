@@ -1,5 +1,6 @@
 import os
 import shutil
+import textwrap
 
 import pytest
 
@@ -29,17 +30,19 @@ def match_files(files, expected_files):
 
 
 def create_dvc_pipeline(tmp_dir, dvc):
-    script = os.linesep.join(
-        [
-            "from pathlib import Path",
-            "Path({}).touch()".format(os.path.join("out", "file")),
-        ]
+    script = textwrap.dedent(
+        """\
+        import os, sys
+        f = sys.argv[1]
+        os.makedirs(os.path.dirname(f))
+        open(f, "w+").close()
+    """
     )
     tmp_dir.scm_gen({"script.py": script}, commit="init")
     tmp_dir.dvc_gen({"dep": "content"}, commit="init dvc")
     dvc.run(
         **{
-            "command": "python script.py",
+            "cmd": "python script.py {}".format(os.path.join("out", "file")),
             "outs": [os.path.join("out", "file")],
             "deps": ["dep"],
             "fname": "out.dvc",

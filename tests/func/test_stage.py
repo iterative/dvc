@@ -8,7 +8,7 @@ from dvc.main import main
 from dvc.output.local import LocalOutput
 from dvc.remote.local import LocalRemote
 from dvc.repo import Repo
-from dvc.stage import Stage
+from dvc.stage import PipelineStage, Stage
 from dvc.stage.exceptions import StageFileFormatError
 from dvc.utils.stage import dump_stage_file, load_stage_file
 from tests.basic_env import TestDvc
@@ -182,33 +182,62 @@ def test_meta_is_preserved(tmp_dir, dvc):
 
 def test_parent_repo_collect_stages(tmp_dir, scm, dvc):
     tmp_dir.gen({"subdir": {}})
+    tmp_dir.gen({"deep": {"dir": {}}})
     subrepo_dir = tmp_dir / "subdir"
+    deep_subrepo_dir = tmp_dir / "deep" / "dir"
 
     with subrepo_dir.chdir():
         subrepo = Repo.init(subdir=True)
         subrepo_dir.gen("subrepo_file", "subrepo file content")
         subrepo.add("subrepo_file")
 
+    with deep_subrepo_dir.chdir():
+        deep_subrepo = Repo.init(subdir=True)
+        deep_subrepo_dir.gen("subrepo_file", "subrepo file content")
+        deep_subrepo.add("subrepo_file")
+
     stages = dvc.collect(None)
     subrepo_stages = subrepo.collect(None)
+    deep_subrepo_stages = deep_subrepo.collect(None)
 
     assert stages == []
     assert subrepo_stages != []
+    assert deep_subrepo_stages != []
 
 
-def test_stage_addressing(tmp_dir, dvc, run_copy):
+def test_stage_strings_representation(tmp_dir, dvc, run_copy):
     tmp_dir.dvc_gen("foo", "foo")
     stage1 = run_copy("foo", "bar", single_stage=True)
     assert stage1.addressing == "bar.dvc"
+    assert repr(stage1) == "Stage: 'bar.dvc'"
+    assert str(stage1) == "stage: 'bar.dvc'"
 
     stage2 = run_copy("bar", "baz", name="copy-bar-baz")
-    assert stage2.addressing == "dvc.yaml:copy-bar-baz"
+    assert stage2.addressing == "copy-bar-baz"
+    assert repr(stage2) == "Stage: 'copy-bar-baz'"
+    assert str(stage2) == "stage: 'copy-bar-baz'"
 
     folder = tmp_dir / "dir"
     folder.mkdir()
     with folder.chdir():
-        assert stage1.addressing == os.path.relpath(stage1.path)
-        assert (
-            stage2.addressing
-            == os.path.relpath(stage2.path) + ":" + stage2.name
-        )
+        rel_path = os.path.relpath(stage1.path)
+        assert stage1.addressing == rel_path
+        assert repr(stage1) == f"Stage: '{rel_path}'"
+        assert str(stage1) == f"stage: '{rel_path}'"
+
+        rel_path = os.path.relpath(stage2.path)
+        assert stage2.addressing == f"{rel_path}:{stage2.name}"
+        assert repr(stage2) == f"Stage: '{rel_path}:{stage2.name}'"
+        assert str(stage2) == f"stage: '{rel_path}:{stage2.name}'"
+
+
+def test_stage_on_no_path_string_repr(tmp_dir, dvc):
+    s = Stage(dvc)
+    assert s.addressing == "No path"
+    assert repr(s) == "Stage: 'No path'"
+    assert str(s) == "stage: 'No path'"
+
+    p = PipelineStage(dvc, name="stage_name")
+    assert p.addressing == "No path:stage_name"
+    assert repr(p) == "Stage: 'No path:stage_name'"
+    assert str(p) == "stage: 'No path:stage_name'"

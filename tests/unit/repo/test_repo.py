@@ -87,6 +87,21 @@ def test_collect_optimization(tmp_dir, dvc, mocker):
     dvc.collect_granular(stage.path)
 
 
+def test_collect_optimization_on_stage_name(tmp_dir, dvc, mocker, run_copy):
+    tmp_dir.dvc_gen("foo", "foo")
+    stage = run_copy("foo", "bar", name="copy-foo-bar")
+    # Forget cached stages and graph and error out on collection
+    dvc._reset()
+    mocker.patch(
+        "dvc.repo.Repo.stages",
+        property(raiser(Exception("Should not collect"))),
+    )
+
+    # Should read stage directly instead of collecting the whole graph
+    assert dvc.collect("copy-foo-bar") == [stage]
+    assert dvc.collect_granular("copy-foo-bar") == [(stage, None)]
+
+
 def test_skip_graph_checks(tmp_dir, dvc, mocker, run_copy):
     # See https://github.com/iterative/dvc/issues/2671 for more info
     mock_collect_graph = mocker.patch("dvc.repo.Repo._collect_graph")

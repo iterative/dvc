@@ -144,14 +144,10 @@ class Stage(params.StageParams):
         self._dvcfile = dvcfile
 
     def __repr__(self):
-        return "Stage: '{path}'".format(
-            path=self.path_in_repo if self.path else "No path"
-        )
+        return f"Stage: '{self.addressing}'"
 
     def __str__(self):
-        return "stage: '{path}'".format(
-            path=self.relpath if self.path else "No path"
-        )
+        return f"stage: '{self.addressing}'"
 
     @property
     def addressing(self):
@@ -159,7 +155,7 @@ class Stage(params.StageParams):
         Useful for alternative presentations where we don't need
         `Stage:` prefix.
         """
-        return self.relpath
+        return self.relpath if self.path else "No path"
 
     def __hash__(self):
         return hash(self.path_in_repo)
@@ -530,19 +526,13 @@ class PipelineStage(Stage):
     def __hash__(self):
         return hash((self.path_in_repo, self.name))
 
-    def __repr__(self):
-        return "Stage: '{path}:{name}'".format(
-            path=self.relpath if self.path else "No path", name=self.name
-        )
-
-    def __str__(self):
-        return "stage: '{path}:{name}'".format(
-            path=self.relpath if self.path else "No path", name=self.name
-        )
-
     @property
     def addressing(self):
-        return super().addressing + ":" + self.name
+        from dvc.dvcfile import PIPELINE_FILE
+
+        if self.path and self.relpath == PIPELINE_FILE:
+            return self.name
+        return f"{super().addressing}:{self.name}"
 
     def reload(self):
         return self.dvcfile.stages[self.name]

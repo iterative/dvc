@@ -61,7 +61,6 @@ def reproduce(
     all_pipelines=False,
     **kwargs
 ):
-    from ..dvcfile import Dvcfile
     from dvc.utils import parse_target
 
     if not target and not all_pipelines:
@@ -81,8 +80,7 @@ def reproduce(
         if all_pipelines:
             pipelines = active_pipelines
         else:
-            dvcfile = Dvcfile(self, path)
-            stage = dvcfile.stages[name]
+            stage = self.get_stage(path, name)
             pipelines = [get_pipeline(active_pipelines, stage)]
 
         targets = []
