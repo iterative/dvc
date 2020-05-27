@@ -133,7 +133,13 @@ class Repo:
 
     @tree.setter
     def tree(self, tree):
-        self._tree = tree if isinstance(tree, CleanTree) else CleanTree(tree)
+        if tree.tree_root == self.root_dir:
+            root = None
+        else:
+            root = self.root_dir
+        self._tree = (
+            tree if isinstance(tree, CleanTree) else CleanTree(tree, root)
+        )
         # Our graph cache is no longer valid, as it was based on the previous
         # tree.
         self._reset()
