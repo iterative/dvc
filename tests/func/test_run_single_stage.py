@@ -350,7 +350,7 @@ class TestRunUnprotectOutsCopy(TestDvc):
         ret = main(
             [
                 "run",
-                "--overwrite-dvcfile",
+                "--overwrite",
                 "--no-run-cache",
                 "--single-stage",
                 "-d",
@@ -408,7 +408,7 @@ class TestRunUnprotectOutsSymlink(TestDvc):
         ret = main(
             [
                 "run",
-                "--overwrite-dvcfile",
+                "--overwrite",
                 "--no-run-cache",
                 "--single-stage",
                 "-d",
@@ -467,7 +467,7 @@ class TestRunUnprotectOutsHardlink(TestDvc):
         ret = main(
             [
                 "run",
-                "--overwrite-dvcfile",
+                "--overwrite",
                 "--no-run-cache",
                 "--single-stage",
                 "-d",
@@ -552,7 +552,7 @@ class TestCmdRunOverwrite(TestDvc):
                 self.FOO,
                 "-d",
                 self.CODE,
-                "--overwrite-dvcfile",
+                "--overwrite",
                 "--no-run-cache",
                 "--single-stage",
                 "-o",
@@ -576,7 +576,7 @@ class TestCmdRunOverwrite(TestDvc):
         ret = main(
             [
                 "run",
-                "--overwrite-dvcfile",
+                "--overwrite",
                 "--single-stage",
                 "-f",
                 "out.dvc",
@@ -676,19 +676,19 @@ def test_rerun_deterministic_ignore_cache(tmp_dir, run_copy):
 
 
 def test_rerun_callback(dvc):
-    def run_callback():
+    def run_callback(overwrite=False):
         return dvc.run(
-            cmd=("echo content > out"),
+            cmd="echo content > out",
             outs=["out"],
             deps=[],
-            overwrite=False,
+            overwrite=overwrite,
             single_stage=True,
         )
 
     assert run_callback() is not None
-
-    with mock.patch("dvc.prompt.confirm", return_value=True):
+    with pytest.raises(StageFileAlreadyExistsError):
         assert run_callback() is not None
+    assert run_callback(overwrite=True) is not None
 
 
 def test_rerun_changed_dep(tmp_dir, run_copy):
@@ -698,6 +698,7 @@ def test_rerun_changed_dep(tmp_dir, run_copy):
     tmp_dir.gen("foo", "changed content")
     with pytest.raises(StageFileAlreadyExistsError):
         run_copy("foo", "out", overwrite=False, single_stage=True)
+    assert run_copy("foo", "out", overwrite=True, single_stage=True)
 
 
 def test_rerun_changed_stage(tmp_dir, run_copy):
@@ -788,7 +789,7 @@ class TestRunPersist(TestDvc):
         self.assertEqual(2, len(lines))
 
     def should_remove_persistent_outs(self, file, stage_file):
-        ret = main(["remove", stage_file])
+        ret = main(["remove", stage_file, "--outs"])
         self.assertEqual(0, ret)
 
         self.assertFalse(os.path.exists(file))
@@ -869,7 +870,7 @@ class TestRerunWithSameOutputs(TestDvc):
                 "run",
                 self._outs_command,
                 self.FOO,
-                "--overwrite-dvcfile",
+                "--overwrite",
                 "--single-stage",
                 f"echo {self.BAR_CONTENTS} >> {self.FOO}",
             ]
@@ -945,7 +946,7 @@ class TestPersistentOutput(TestDvc):
 
         cmd = [
             "run",
-            "--overwrite-dvcfile",
+            "--overwrite",
             "--single-stage",
             "--deps",
             "immutable",

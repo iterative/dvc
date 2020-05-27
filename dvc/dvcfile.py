@@ -150,7 +150,7 @@ class SingleStageFile(FileMixin):
             "Saving information to '{file}'.".format(file=relpath(self.path))
         )
         dump_stage_file(self.path, serialize.to_single_stage_file(stage))
-        self.repo.scm.track_file(relpath(self.path))
+        self.repo.scm.track_file(self.relpath)
 
     def remove_with_prompt(self, force=False):
         if not self.exists():
@@ -163,6 +163,9 @@ class SingleStageFile(FileMixin):
         if not (force or prompt.confirm(msg)):
             raise StageFileAlreadyExistsError(self.path)
 
+        self.remove()
+
+    def remove_stage(self, stage):
         self.remove()
 
 
@@ -212,7 +215,7 @@ class PipelineFile(FileMixin):
             "Adding stage '%s' to '%s'", stage.name, self.relpath,
         )
         dump_stage_file(self.path, data)
-        self.repo.scm.track_file(relpath(self.path))
+        self.repo.scm.track_file(self.relpath)
 
     @property
     def stage(self):
@@ -233,6 +236,22 @@ class PipelineFile(FileMixin):
 
         super().remove()
         self._lockfile.remove()
+
+    def remove_stage(self, stage):
+        self._lockfile.remove_stage(stage)
+        if not self.exists():
+            return
+
+        with open(self.path, "r") as f:
+            d = parse_stage_for_update(f.read(), self.path)
+
+        self.validate(d, self.path)
+        if stage.name not in d.get("stages", {}):
+            return
+
+        logger.debug("Removing '%s' from '%s'", stage.name, self.path)
+        del d["stages"][stage.name]
+        dump_stage_file(self.path, d)
 
 
 class Lockfile(FileMixin):
@@ -270,6 +289,22 @@ class Lockfile(FileMixin):
         dump_stage_file(self.path, data)
         if modified:
             self.repo.scm.track_file(self.relpath)
+
+    def remove_stage(self, stage):
+        if not self.exists():
+            return
+
+        with open(self.path) as f:
+            d = parse_stage_for_update(f.read(), self.path)
+        self.validate(d, self.path)
+
+        if stage.name not in d:
+            return
+
+        logger.debug("Removing '%s' from '%s'", stage.name, self.path)
+        del d[stage.name]
+
+        dump_stage_file(self.path, d)
 
 
 class Dvcfile:
