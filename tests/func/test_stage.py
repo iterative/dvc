@@ -182,18 +182,27 @@ def test_meta_is_preserved(tmp_dir, dvc):
 
 def test_parent_repo_collect_stages(tmp_dir, scm, dvc):
     tmp_dir.gen({"subdir": {}})
+    tmp_dir.gen({"deep": {"dir": {}}})
     subrepo_dir = tmp_dir / "subdir"
+    deep_subrepo_dir = tmp_dir / "deep" / "dir"
 
     with subrepo_dir.chdir():
         subrepo = Repo.init(subdir=True)
         subrepo_dir.gen("subrepo_file", "subrepo file content")
         subrepo.add("subrepo_file")
 
+    with deep_subrepo_dir.chdir():
+        deep_subrepo = Repo.init(subdir=True)
+        deep_subrepo_dir.gen("subrepo_file", "subrepo file content")
+        deep_subrepo.add("subrepo_file")
+
     stages = dvc.collect(None)
     subrepo_stages = subrepo.collect(None)
+    deep_subrepo_stages = deep_subrepo.collect(None)
 
     assert stages == []
     assert subrepo_stages != []
+    assert deep_subrepo_stages != []
 
 
 def test_stage_strings_representation(tmp_dir, dvc, run_copy):

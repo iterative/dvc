@@ -84,7 +84,7 @@ class DvcIgnoreRepo(DvcIgnore):
         def is_dvc_repo(directory):
             from dvc.repo import Repo
 
-            return os.path.isdir(os.path.join(directory, Repo.DVC_DIR))
+            return os.path.isdir(os.path.join(root, directory, Repo.DVC_DIR))
 
         dirs = [d for d in dirs if not is_dvc_repo(d)]
 
