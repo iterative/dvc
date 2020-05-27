@@ -32,9 +32,10 @@ def match_files(files, expected_files):
 def create_dvc_pipeline(tmp_dir, dvc):
     script = textwrap.dedent(
         """\
-        import pathlib, sys
-        p = pathlib.Path(sys.argv[1])
-        p.parent.mkdir(exist_ok=True); p.touch()
+        import os, sys
+        f = sys.argv[1]
+        os.makedirs(os.path.dirname(f))
+        open(f, "w+").close()
     """
     )
     tmp_dir.scm_gen({"script.py": script}, commit="init")
