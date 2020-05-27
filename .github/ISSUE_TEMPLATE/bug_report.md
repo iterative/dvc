@@ -1,10 +1,17 @@
 ---
-name: Bug report
-about: Create a report to help us improve
-
+name: "\U0001F41B Bug Report"
+about: Create a bug report to help us improve dvc
+labels: bug, triage
 ---
 
+## Bug Report
 
-**Please provide information about your setup**
-DVC version(i.e. `dvc --version`), Platform and method of installation (pip, homebrew, pkg Mac, exe (Windows), DEB(Linux), RPM(Linux))
+### Please provide information about your setup
+**Output of `dvc version`:**
+```sh
+$ dvc version
+```
 
+**Additional Information (if any):**
+
+If applicable, please also provide a `--verbose` output of the command, eg: `dvc add --verbose`.
