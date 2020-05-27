@@ -3,6 +3,8 @@ import os
 import pytest
 import yaml
 
+from dvc.exceptions import InvalidArgumentError
+from dvc.repo import Repo
 from dvc.stage.exceptions import DuplicateStageName, InvalidStageName
 
 
@@ -299,3 +301,16 @@ def test_run_params_no_exec(tmp_dir, dvc):
     assert data["stages"]["read_params"]["params"] == [
         {"params2.yaml": ["lists"]}
     ]
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"outs": ["foo"], "deps": ["bar"]},
+        {"outs": ["foo"], "deps": ["bar"], "name": "copy-foo-bar"},
+    ],
+)
+def test_run_without_cmd(kwargs):
+    with pytest.raises(InvalidArgumentError) as exc:
+        Repo().run(**kwargs)
+    assert "command is not specified" == str(exc.value)

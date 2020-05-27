@@ -76,7 +76,7 @@ class TestRun(TestDvc):
 class TestRunEmpty(TestDvc):
     def test(self):
         self.dvc.run(
-            cmd="",
+            cmd="echo hello world",
             deps=[],
             outs=[],
             outs_no_cache=[],
@@ -91,7 +91,7 @@ class TestRunMissingDep(TestDvc):
 
         with self.assertRaises(DependencyDoesNotExistError):
             self.dvc.run(
-                cmd="",
+                cmd="command",
                 deps=["non-existing-dep"],
                 outs=[],
                 outs_no_cache=[],
@@ -118,7 +118,7 @@ class TestRunCircularDependency(TestDvc):
     def test(self):
         with self.assertRaises(CircularDependencyError):
             self.dvc.run(
-                cmd="",
+                cmd="command",
                 deps=[self.FOO],
                 outs=[self.FOO],
                 fname="circular-dependency.dvc",
@@ -128,7 +128,7 @@ class TestRunCircularDependency(TestDvc):
     def test_outs_no_cache(self):
         with self.assertRaises(CircularDependencyError):
             self.dvc.run(
-                cmd="",
+                cmd="command",
                 deps=[self.FOO],
                 outs_no_cache=[self.FOO],
                 fname="circular-dependency.dvc",
@@ -138,7 +138,7 @@ class TestRunCircularDependency(TestDvc):
     def test_non_normalized_paths(self):
         with self.assertRaises(CircularDependencyError):
             self.dvc.run(
-                cmd="",
+                cmd="command",
                 deps=["./foo"],
                 outs=["foo"],
                 fname="circular-dependency.dvc",
@@ -173,7 +173,7 @@ class TestRunDuplicatedArguments(TestDvc):
     def test(self):
         with self.assertRaises(ArgumentDuplicationError):
             self.dvc.run(
-                cmd="",
+                cmd="command",
                 deps=[],
                 outs=[self.FOO, self.FOO],
                 fname="circular-dependency.dvc",
@@ -183,7 +183,7 @@ class TestRunDuplicatedArguments(TestDvc):
     def test_outs_no_cache(self):
         with self.assertRaises(ArgumentDuplicationError):
             self.dvc.run(
-                cmd="",
+                cmd="command",
                 outs=[self.FOO],
                 outs_no_cache=[self.FOO],
                 fname="circular-dependency.dvc",
@@ -193,7 +193,7 @@ class TestRunDuplicatedArguments(TestDvc):
     def test_non_normalized_paths(self):
         with self.assertRaises(ArgumentDuplicationError):
             self.dvc.run(
-                cmd="",
+                cmd="command",
                 deps=[],
                 outs=["foo", "./foo"],
                 fname="circular-dependency.dvc",
@@ -204,22 +204,30 @@ class TestRunDuplicatedArguments(TestDvc):
 class TestRunStageInsideOutput(TestDvc):
     def test_cwd(self):
         self.dvc.run(
-            cmd="", deps=[], outs=[self.DATA_DIR], single_stage=True,
+            cmd=f"mkdir {self.DATA_DIR}",
+            deps=[],
+            outs=[self.DATA_DIR],
+            single_stage=True,
         )
 
         with self.assertRaises(StagePathAsOutputError):
             self.dvc.run(
-                cmd="",
+                cmd="command",
                 fname=os.path.join(self.DATA_DIR, "inside-cwd.dvc"),
                 single_stage=True,
             )
 
     def test_file_name(self):
-        self.dvc.run(cmd="", deps=[], outs=[self.DATA_DIR], single_stage=True)
+        self.dvc.run(
+            cmd=f"mkdir {self.DATA_DIR}",
+            deps=[],
+            outs=[self.DATA_DIR],
+            single_stage=True,
+        )
 
         with self.assertRaises(StagePathAsOutputError):
             self.dvc.run(
-                cmd="",
+                cmd="command",
                 outs=[self.FOO],
                 fname=os.path.join(self.DATA_DIR, "inside-cwd.dvc"),
                 single_stage=True,
@@ -229,30 +237,30 @@ class TestRunStageInsideOutput(TestDvc):
 class TestRunBadCwd(TestDvc):
     def test(self):
         with self.assertRaises(StagePathOutsideError):
-            self.dvc.run(cmd="", wdir=self.mkdtemp(), single_stage=True)
+            self.dvc.run(cmd="command", wdir=self.mkdtemp(), single_stage=True)
 
     def test_same_prefix(self):
         with self.assertRaises(StagePathOutsideError):
             path = f"{self._root_dir}-{uuid.uuid4()}"
             os.mkdir(path)
-            self.dvc.run(cmd="", wdir=path, single_stage=True)
+            self.dvc.run(cmd="command", wdir=path, single_stage=True)
 
 
 class TestRunBadWdir(TestDvc):
     def test(self):
         with self.assertRaises(StagePathOutsideError):
-            self.dvc.run(cmd="", wdir=self.mkdtemp(), single_stage=True)
+            self.dvc.run(cmd="command", wdir=self.mkdtemp(), single_stage=True)
 
     def test_same_prefix(self):
         with self.assertRaises(StagePathOutsideError):
             path = f"{self._root_dir}-{uuid.uuid4()}"
             os.mkdir(path)
-            self.dvc.run(cmd="", wdir=path, single_stage=True)
+            self.dvc.run(cmd="command", wdir=path, single_stage=True)
 
     def test_not_found(self):
         with self.assertRaises(StagePathNotFoundError):
             path = os.path.join(self._root_dir, str(uuid.uuid4()))
-            self.dvc.run(cmd="", wdir=path, single_stage=True)
+            self.dvc.run(cmd="command", wdir=path, single_stage=True)
 
     def test_not_dir(self):
         with self.assertRaises(StagePathNotDirectoryError):
@@ -261,7 +269,7 @@ class TestRunBadWdir(TestDvc):
             path = os.path.join(path, str(uuid.uuid4()))
             open(path, "a").close()
             self.dvc.run(
-                cmd="", wdir=path, single_stage=True,
+                cmd="command", wdir=path, single_stage=True,
             )
 
 
@@ -269,7 +277,7 @@ class TestRunBadName(TestDvc):
     def test(self):
         with self.assertRaises(StagePathOutsideError):
             self.dvc.run(
-                cmd="",
+                cmd="command",
                 fname=os.path.join(self.mkdtemp(), self.FOO + DVC_FILE_SUFFIX),
                 single_stage=True,
             )
@@ -279,7 +287,7 @@ class TestRunBadName(TestDvc):
             path = f"{self._root_dir}-{uuid.uuid4()}"
             os.mkdir(path)
             self.dvc.run(
-                cmd="",
+                cmd="command",
                 fname=os.path.join(path, self.FOO + DVC_FILE_SUFFIX),
                 single_stage=True,
             )
@@ -288,7 +296,7 @@ class TestRunBadName(TestDvc):
         with self.assertRaises(StagePathNotFoundError):
             path = os.path.join(self._root_dir, str(uuid.uuid4()))
             self.dvc.run(
-                cmd="",
+                cmd="command",
                 fname=os.path.join(path, self.FOO + DVC_FILE_SUFFIX),
                 single_stage=True,
             )
@@ -574,6 +582,7 @@ class TestCmdRunOverwrite(TestDvc):
                 "out.dvc",
                 "-d",
                 self.BAR,
+                f"cat {self.BAR}",
             ]
         )
         self.assertEqual(ret, 0)
