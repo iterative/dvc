@@ -74,7 +74,7 @@ def test_show_subrepo_with_preexisting_tags(tmp_dir, scm):
         scm.commit("init dvc")
 
         dvc.run(
-            cmd="echo 'foo: 1' > metrics.yaml",
+            cmd="echo foo: 1 > metrics.yaml",
             metrics=["metrics.yaml"],
             single_stage=True,
         )
