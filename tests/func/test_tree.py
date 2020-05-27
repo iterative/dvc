@@ -3,6 +3,7 @@ from os.path import join
 
 from dvc.ignore import CleanTree
 from dvc.path_info import PathInfo
+from dvc.repo import Repo
 from dvc.repo.tree import RepoTree
 from dvc.scm import SCM
 from dvc.scm.git import GitTree
@@ -220,3 +221,23 @@ def test_repotree_cache_save(tmp_dir, dvc, scm, erepo_dir, setup_remote):
             cache.save(PathInfo(erepo_dir / "dir"), None, tree=tree)
     for checksum in expected:
         assert os.path.exists(cache.checksum_to_path_info(checksum))
+
+
+def test_cleantree_subrepo(tmp_dir, dvc, scm, monkeypatch):
+    tmp_dir.gen({"subdir": {}})
+    subrepo_dir = tmp_dir / "subdir"
+    with subrepo_dir.chdir():
+        subrepo = Repo.init(subdir=True)
+        subrepo_dir.gen({"foo": "foo", "dir": {"bar": "bar"}})
+
+    assert isinstance(dvc.tree, CleanTree)
+    assert not dvc.tree.exists(subrepo_dir / "foo")
+    assert not dvc.tree.isfile(subrepo_dir / "foo")
+    assert not dvc.tree.exists(subrepo_dir / "dir")
+    assert not dvc.tree.isdir(subrepo_dir / "dir")
+
+    assert isinstance(subrepo.tree, CleanTree)
+    assert subrepo.tree.exists(subrepo_dir / "foo")
+    assert subrepo.tree.isfile(subrepo_dir / "foo")
+    assert subrepo.tree.exists(subrepo_dir / "dir")
+    assert subrepo.tree.isdir(subrepo_dir / "dir")
