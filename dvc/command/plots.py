@@ -33,6 +33,16 @@ class CmdPlots(CmdBase):
         raise NotImplementedError
 
     def run(self):
+        if self.args.show_vega:
+            if not self.args.targets:
+                logger.error("please specify a target for `--show-vega`")
+                return 1
+            if len(self.args.targets) > 1:
+                logger.error(
+                    "you can only specify one target for `--show-vega`"
+                )
+                return 1
+
         try:
             plots = self._func(
                 targets=self.args.targets,
@@ -45,10 +55,9 @@ class CmdPlots(CmdBase):
                 y_title=self.args.ylab,
             )
 
-            if self.args.show_json:
-                import json
-
-                logger.info(json.dumps(plots))
+            if self.args.show_vega:
+                target = self.args.targets[0]
+                logger.info(plots[target])
                 return 0
 
             divs = [
@@ -138,10 +147,10 @@ def add_parser(subparsers, parent_parser):
         help="Required when CSV or TSV datafile does not have a header.",
     )
     plots_show_parser.add_argument(
-        "--show-json",
+        "--show-vega",
         action="store_true",
         default=False,
-        help="Show output in JSON format.",
+        help="Show output in VEGA format.",
     )
     plots_show_parser.add_argument("--title", default=None, help="Plot title.")
     plots_show_parser.add_argument(
@@ -201,10 +210,10 @@ def add_parser(subparsers, parent_parser):
         help="Provided CSV ot TSV datafile does not have a header.",
     )
     plots_diff_parser.add_argument(
-        "--show-json",
+        "--show-vega",
         action="store_true",
         default=False,
-        help="Show output in JSON format.",
+        help="Show output in VEGA format.",
     )
     plots_diff_parser.add_argument("--title", default=None, help="Plot title.")
     plots_diff_parser.add_argument(
