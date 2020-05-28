@@ -34,7 +34,7 @@ user = "user"
 key_path = os.path.join(here, f"{user}.key")
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def ssh_server():
     users = {user: key_path}
     with mockssh.Server(users) as s:
