@@ -237,11 +237,15 @@ class SSHConnection:
             or channel.recv_ready()
             or channel.recv_stderr_ready()
         ):
-            import select
+            import selectors
+
+            selector = selectors.DefaultSelector()
+            selector.register(stdout.channel, selectors.EVENT_READ)
 
             got_chunk = False
-            readq, _, _ = select.select([stdout.channel], [], [], self.timeout)
-            for c in readq:
+            events = selector.select(self.timeout)
+            for key, _ in events:
+                c = key.fileobj
                 if c.recv_ready():
                     stdout_chunks.append(stdout.channel.recv(len(c.in_buffer)))
                     got_chunk = True
