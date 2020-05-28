@@ -17,6 +17,7 @@ _dvc_commands() {
     "checkout:Checkout data files from cache."
     "commit:Save changed data to cache and update DVC-files."
     "config:Get or set config settings."
+    "dag:Visualize DVC project DAG."
     "destroy:Remove DVC-files, local DVC config and data cache."
     "diff:Show added, modified, or deleted data between commits in the DVC repository, or between a commit and the workspace."
     "fetch:Get files or directories tracked by DVC from remote storage into the cache."
@@ -32,7 +33,6 @@ _dvc_commands() {
     "metrics:Commands to add, manage, collect and display metrics."
     "move:Rename or move a DVC controlled data file or a directory."
     "params:Commands to display params."
-    "pipeline:Manage pipelines."
     "pull:Pull data files from a DVC remote storage."
     "push:Push data files to a DVC remote storage."
     "plots:Generate plot for metrics structured as JSON, CSV or TSV."
@@ -94,6 +94,12 @@ _dvc_config=(
   "--system[Use system config.]"
   "--local[Use local config.]"
   {-u,--unset}"[Unset option.]"
+)
+
+_dvc_dag=(
+  "--dot[Print DAG in DOT format.]"
+  "--full[Show full DAG that the target belongs too, instead of showing DAG consisting only of ancestors.]"
+  "1:Stage:"
 )
 
 _dvc_destroy=(
@@ -186,10 +192,6 @@ _dvc_move=(
 
 _dvc_params=(
   "1:Sub command:(diff)"
-)
-
-_dvc_pipeline=(
-  "1:Sub command:(show list)"
 )
 
 _dvc_pull=(
@@ -305,6 +307,7 @@ case $words[1] in
   checkout) _arguments $_dvc_global_options $_dvc_checkout ;;
   commit) _arguments $_dvc_global_options $_dvc_commit ;;
   config) _arguments $_dvc_global_options $_dvc_config ;;
+  dag) _arguments $_dvc_global_options $_dvc_dag ;;
   destroy) _arguments $_dvc_global_options $_dvc_destroy ;;
   diff) _arguments $_dvc_global_options $_dvc_diff ;;
   fetch) _arguments $_dvc_global_options $_dvc_fetch ;;
@@ -320,7 +323,6 @@ case $words[1] in
   metrics) _arguments $_dvc_global_options $_dvc_metrics ;;
   move) _arguments $_dvc_global_options $_dvc_move ;;
   params) _arguments $_dvc_global_options $_dvc_params ;;
-  pipeline) _arguments $_dvc_global_options $_dvc_pipeline ;;
   pull) _arguments $_dvc_global_options $_dvc_pull ;;
   push) _arguments $_dvc_global_options $_dvc_push ;;
   plots) _arguments $_dvc_global_options $_dvc_plots ;;
