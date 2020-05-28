@@ -13,7 +13,7 @@ def test_metrics_diff(dvc, mocker):
             "template",
             "--targets",
             "datafile",
-            "--show-json",
+            "--show-vega",
             "-x",
             "x_field",
             "-y",
@@ -32,7 +32,9 @@ def test_metrics_diff(dvc, mocker):
     assert cli_args.func == CmdPlotsDiff
 
     cmd = cli_args.func(cli_args)
-    m = mocker.patch("dvc.repo.plots.diff.diff", return_value={})
+    m = mocker.patch(
+        "dvc.repo.plots.diff.diff", return_value={"datafile": "filledtemplate"}
+    )
 
     assert cmd.run() == 0
 
@@ -59,7 +61,7 @@ def test_metrics_show(dvc, mocker):
             "result.extension",
             "-t",
             "template",
-            "--show-json",
+            "--show-vega",
             "--no-csv-header",
             "datafile",
         ]
@@ -68,7 +70,9 @@ def test_metrics_show(dvc, mocker):
 
     cmd = cli_args.func(cli_args)
 
-    m = mocker.patch("dvc.repo.plots.show.show", return_value={})
+    m = mocker.patch(
+        "dvc.repo.plots.show.show", return_value={"datafile": "filledtemplate"}
+    )
 
     assert cmd.run() == 0
 
@@ -85,13 +89,21 @@ def test_metrics_show(dvc, mocker):
     )
 
 
-def test_plots_show_json(dvc, mocker, caplog):
+def test_plots_show_vega(dvc, mocker, caplog):
     cli_args = parse_args(
-        ["plots", "diff", "HEAD~10", "HEAD~1", "--show-json"]
+        [
+            "plots",
+            "diff",
+            "HEAD~10",
+            "HEAD~1",
+            "--show-vega",
+            "--targets",
+            "plots.csv",
+        ]
     )
     cmd = cli_args.func(cli_args)
     mocker.patch(
         "dvc.repo.plots.diff.diff", return_value={"plots.csv": "plothtml"}
     )
     assert cmd.run() == 0
-    assert '{"plots.csv": "plothtml"}\n' in caplog.text
+    assert "plothtml" in caplog.text
