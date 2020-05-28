@@ -1,6 +1,6 @@
 ---
 name: "\U0001F41B Bug Report"
-about: Create a bug report to help us improve dvc
+about: Create a bug report to help us improve DVC
 labels: bug, triage
 ---
 
