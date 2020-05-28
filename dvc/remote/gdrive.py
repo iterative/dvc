@@ -340,7 +340,7 @@ class GDriveRemote(BaseRemote):
                     "use the `gdrive_user_credentials_file` config\n"
                     "   option if you use multiple GDrive remotes with "
                     "different email accounts.\n\nDetails".format(
-                        item_id, self.path_info, self._credentials_location
+                        item_id, self.path_info, self.credentials_location
                     )
                 ) from exc
             raise
