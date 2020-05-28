@@ -48,6 +48,9 @@ def brancher(  # noqa: E302
         if revs:
             for sha, names in group_by(scm.resolve_rev, revs).items():
                 self.tree = scm.get_tree(sha)
-                yield ", ".join(names)
+                # ignore revs that don't contain repo root
+                # (i.e. revs from before a subdir=True repo was init'ed)
+                if self.tree.exists(self.root_dir):
+                    yield ", ".join(names)
     finally:
         self.tree = saved_tree

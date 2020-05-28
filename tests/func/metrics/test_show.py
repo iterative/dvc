@@ -1,5 +1,8 @@
+import os
+
 import pytest
 
+from dvc.repo import Repo
 from dvc.repo.metrics.show import NoMetricsError
 
 
@@ -55,4 +58,38 @@ def test_show_branch(tmp_dir, scm, dvc, run_copy_metrics):
     assert dvc.metrics.show(revs=["branch"]) == {
         "working tree": {"metrics.yaml": {"foo": 1}},
         "branch": {"metrics.yaml": {"foo": 2}},
+    }
+
+
+def test_show_subrepo_with_preexisting_tags(tmp_dir, scm):
+    tmp_dir.gen("foo", "foo")
+    scm.add("foo")
+    scm.commit("init")
+    scm.tag("no-metrics")
+
+    tmp_dir.gen({"subdir": {}})
+    subrepo_dir = tmp_dir / "subdir"
+    with subrepo_dir.chdir():
+        dvc = Repo.init(subdir=True)
+        scm.commit("init dvc")
+
+        dvc.run(
+            cmd="echo foo: 1 > metrics.yaml",
+            metrics=["metrics.yaml"],
+            single_stage=True,
+        )
+
+    scm.add(
+        [
+            str(subrepo_dir / "metrics.yaml"),
+            str(subrepo_dir / "metrics.yaml.dvc"),
+        ]
+    )
+    scm.commit("init metrics")
+    scm.tag("v1")
+
+    expected_path = os.path.join("subdir", "metrics.yaml")
+    assert dvc.metrics.show(all_tags=True) == {
+        "working tree": {expected_path: {"foo": 1}},
+        "v1": {expected_path: {"foo": 1}},
     }

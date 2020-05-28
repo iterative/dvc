@@ -17,6 +17,7 @@ from dvc.exceptions import (
 from dvc.ignore import CleanTree
 from dvc.path_info import PathInfo
 from dvc.repo.tree import RepoTree
+from dvc.scm.tree import is_working_tree
 from dvc.utils.fs import path_isin
 
 from ..stage.exceptions import StageFileDoesNotExistError, StageNotFound
@@ -133,7 +134,13 @@ class Repo:
 
     @tree.setter
     def tree(self, tree):
-        self._tree = tree if isinstance(tree, CleanTree) else CleanTree(tree)
+        if is_working_tree(tree) or tree.tree_root == self.root_dir:
+            root = None
+        else:
+            root = self.root_dir
+        self._tree = (
+            tree if isinstance(tree, CleanTree) else CleanTree(tree, root)
+        )
         # Our graph cache is no longer valid, as it was based on the previous
         # tree.
         self._reset()
