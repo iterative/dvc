@@ -92,13 +92,14 @@ class DvcIgnoreRepo(DvcIgnore):
 
 
 class DvcIgnoreFilter:
-    def __init__(self, tree):
+    def __init__(self, tree, root_dir):
         self.tree = tree
+        self.root_dir = root_dir
         self.ignores = {
             DvcIgnoreDirs([".git", ".hg", ".dvc"]),
             DvcIgnoreRepo(),
         }
-        for root, dirs, files in self.tree.walk(self.tree.tree_root):
+        for root, dirs, files in self.tree.walk(self.root_dir):
             self._update(root)
             dirs[:], files[:] = self(root, dirs, files)
 
@@ -124,7 +125,7 @@ class CleanTree(BaseTree):
 
     @cached_property
     def dvcignore(self):
-        return DvcIgnoreFilter(self.tree)
+        return DvcIgnoreFilter(self.tree, self.tree_root)
 
     @property
     def tree_root(self):
