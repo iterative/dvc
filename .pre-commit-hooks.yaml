@@ -6,6 +6,7 @@
   language: python
   language_version: python3
   name: DVC pre-commit
+  require_serial: true
   stages:
   - commit
   verbose: true
@@ -17,6 +18,7 @@
   language: python
   language_version: python3
   name: DVC pre-push
+  require_serial: true
   stages:
   - push
 - always_run: true
@@ -29,5 +31,6 @@
   language_version: python3
   minimum_pre_commit_version: 2.2.0
   name: DVC post-checkout
+  require_serial: true
   stages:
   - post-checkout
