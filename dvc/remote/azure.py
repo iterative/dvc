@@ -8,10 +8,36 @@ from funcy import cached_property, wrap_prop
 
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemote
+from dvc.remote.base import BaseRemote, BaseRemoteTree
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
+
+
+class AzureRemoteTree(BaseRemoteTree):
+    @property
+    def blob_service(self):
+        return self.remote.blob_service
+
+    def _generate_download_url(self, path_info, expires=3600):
+        from azure.storage.blob import BlobPermissions
+
+        expires_at = datetime.utcnow() + timedelta(seconds=expires)
+
+        sas_token = self.blob_service.generate_blob_shared_access_signature(
+            path_info.bucket,
+            path_info.path,
+            permission=BlobPermissions.READ,
+            expiry=expires_at,
+        )
+        download_url = self.blob_service.make_blob_url(
+            path_info.bucket, path_info.path, sas_token=sas_token
+        )
+        return download_url
+
+    def exists(self, path_info):
+        paths = self.remote._list_paths(path_info.bucket, path_info.path)
+        return any(path_info.path == path for path in paths)
 
 
 class AzureRemote(BaseRemote):
@@ -21,6 +47,7 @@ class AzureRemote(BaseRemote):
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
     LIST_OBJECT_PAGE_SIZE = 5000
+    TREE_CLS = AzureRemoteTree
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
@@ -122,23 +149,3 @@ class AzureRemote(BaseRemote):
                 to_file,
                 progress_callback=pbar.update_to,
             )
-
-    def exists(self, path_info):
-        paths = self._list_paths(path_info.bucket, path_info.path)
-        return any(path_info.path == path for path in paths)
-
-    def _generate_download_url(self, path_info, expires=3600):
-        from azure.storage.blob import BlobPermissions
-
-        expires_at = datetime.utcnow() + timedelta(seconds=expires)
-
-        sas_token = self.blob_service.generate_blob_shared_access_signature(
-            path_info.bucket,
-            path_info.path,
-            permission=BlobPermissions.READ,
-            expiry=expires_at,
-        )
-        download_url = self.blob_service.make_blob_url(
-            path_info.bucket, path_info.path, sas_token=sas_token
-        )
-        return download_url

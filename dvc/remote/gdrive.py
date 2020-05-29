@@ -12,7 +12,7 @@ from funcy.py3 import cat
 from dvc.exceptions import DvcException
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemote
+from dvc.remote.base import BaseRemote, BaseRemoteTree
 from dvc.scheme import Schemes
 from dvc.utils import format_link, tmp_fname
 
@@ -87,6 +87,16 @@ class GDriveURLInfo(CloudURLInfo):
         self._spath = re.sub("/{2,}", "/", self._spath.rstrip("/"))
 
 
+class GDriveRemoteTree(BaseRemoteTree):
+    def exists(self, path_info):
+        try:
+            self.remote._get_item_id(path_info)
+        except GDrivePathNotFound:
+            return False
+        else:
+            return True
+
+
 class GDriveRemote(BaseRemote):
     scheme = Schemes.GDRIVE
     path_cls = GDriveURLInfo
@@ -95,6 +105,7 @@ class GDriveRemote(BaseRemote):
     # Always prefer traverse for GDrive since API usage quotas are a concern.
     TRAVERSE_WEIGHT_MULTIPLIER = 1
     TRAVERSE_PREFIX_LEN = 2
+    TREE_CLS = GDriveRemoteTree
 
     GDRIVE_CREDENTIALS_DATA = "GDRIVE_CREDENTIALS_DATA"
     DEFAULT_USER_CREDENTIALS_FILE = "gdrive-user-credentials.json"
@@ -508,14 +519,6 @@ class GDriveRemote(BaseRemote):
         assert not create
         raise GDrivePathNotFound(path_info, hint)
 
-    def exists(self, path_info):
-        try:
-            self._get_item_id(path_info)
-        except GDrivePathNotFound:
-            return False
-        else:
-            return True
-
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         dirname = to_info.parent
         assert dirname
@@ -557,7 +560,4 @@ class GDriveRemote(BaseRemote):
         self._gdrive_delete_file(item_id)
 
     def get_file_checksum(self, path_info):
-        raise NotImplementedError
-
-    def walk_files(self, path_info):
         raise NotImplementedError

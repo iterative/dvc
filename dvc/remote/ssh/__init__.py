@@ -14,7 +14,7 @@ from funcy import first, memoize, silent, wrap_with
 
 import dvc.prompt as prompt
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemote
+from dvc.remote.base import BaseRemote, BaseRemoteTree
 from dvc.remote.pool import get_connection
 from dvc.scheme import Schemes
 from dvc.utils import to_chunks
@@ -33,6 +33,41 @@ def ask_password(host, user, port):
     )
 
 
+class SSHRemoteTree(BaseRemoteTree):
+    @property
+    def ssh(self):
+        return self.remote.ssh
+
+    @contextmanager
+    def open(self, path_info, mode="r", encoding=None):
+        assert mode in {"r", "rt", "rb", "wb"}
+
+        with self.ssh(path_info) as ssh, closing(
+            ssh.sftp.open(path_info.path, mode)
+        ) as fd:
+            if "b" in mode:
+                yield fd
+            else:
+                yield io.TextIOWrapper(fd, encoding=encoding)
+
+    def exists(self, path_info):
+        with self.ssh(path_info) as ssh:
+            return ssh.exists(path_info.path)
+
+    def isdir(self, path_info):
+        with self.ssh(path_info) as ssh:
+            return ssh.isdir(path_info.path)
+
+    def isfile(self, path_info):
+        with self.ssh(path_info) as ssh:
+            return ssh.isfile(path_info.path)
+
+    def walk_files(self, path_info):
+        with self.ssh(path_info) as ssh:
+            for fname in ssh.walk_files(path_info.path):
+                yield path_info.replace(path=fname)
+
+
 class SSHRemote(BaseRemote):
     scheme = Schemes.SSH
     REQUIRES = {"paramiko": "paramiko"}
@@ -46,6 +81,7 @@ class SSHRemote(BaseRemote):
     # We use conservative setting of 4 instead to not exhaust max sessions.
     CHECKSUM_JOBS = 4
     TRAVERSE_PREFIX_LEN = 2
+    TREE_CLS = SSHRemoteTree
 
     DEFAULT_CACHE_TYPES = ["copy"]
 
@@ -148,24 +184,12 @@ class SSHRemote(BaseRemote):
             sock=self.sock,
         )
 
-    def exists(self, path_info):
-        with self.ssh(path_info) as ssh:
-            return ssh.exists(path_info.path)
-
     def get_file_checksum(self, path_info):
         if path_info.scheme != self.scheme:
             raise NotImplementedError
 
         with self.ssh(path_info) as ssh:
             return ssh.md5(path_info.path)
-
-    def isdir(self, path_info):
-        with self.ssh(path_info) as ssh:
-            return ssh.isdir(path_info.path)
-
-    def isfile(self, path_info):
-        with self.ssh(path_info) as ssh:
-            return ssh.isfile(path_info.path)
 
     def getsize(self, path_info):
         with self.ssh(path_info) as ssh:
@@ -247,18 +271,6 @@ class SSHRemote(BaseRemote):
                 no_progress_bar=no_progress_bar,
             )
 
-    @contextmanager
-    def open(self, path_info, mode="r", encoding=None):
-        assert mode in {"r", "rt", "rb", "wb"}
-
-        with self.ssh(path_info) as ssh, closing(
-            ssh.sftp.open(path_info.path, mode)
-        ) as fd:
-            if "b" in mode:
-                yield fd
-            else:
-                yield io.TextIOWrapper(fd, encoding=encoding)
-
     def list_cache_paths(self, prefix=None, progress_callback=None):
         if prefix:
             root = posixpath.join(self.path_info.path, prefix[:2])
@@ -274,11 +286,6 @@ class SSHRemote(BaseRemote):
                     yield path
             else:
                 yield from ssh.walk_files(root)
-
-    def walk_files(self, path_info):
-        with self.ssh(path_info) as ssh:
-            for fname in ssh.walk_files(path_info.path):
-                yield path_info.replace(path=fname)
 
     def makedirs(self, path_info):
         with self.ssh(path_info) as ssh:

@@ -9,10 +9,76 @@ from dvc.config import ConfigError
 from dvc.exceptions import DvcException, ETagMismatchError
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemote
+from dvc.remote.base import BaseRemote, BaseRemoteTree
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
+
+
+class S3RemoteTree(BaseRemoteTree):
+    @property
+    def s3(self):
+        return self.remote.s3
+
+    def _generate_download_url(self, path_info, expires=3600):
+        params = {"Bucket": path_info.bucket, "Key": path_info.path}
+        return self.s3.generate_presigned_url(
+            ClientMethod="get_object", Params=params, ExpiresIn=int(expires)
+        )
+
+    def exists(self, path_info):
+        """Check if the blob exists. If it does not exist,
+        it could be a part of a directory path.
+
+        eg: if `data/file.txt` exists, check for `data` should return True
+        """
+        return self.isfile(path_info) or self.isdir(path_info)
+
+    def isdir(self, path_info):
+        # S3 doesn't have a concept for directories.
+        #
+        # Using `head_object` with a path pointing to a directory
+        # will throw a 404 error.
+        #
+        # A reliable way to know if a given path is a directory is by
+        # checking if there are more files sharing the same prefix
+        # with a `list_objects` call.
+        #
+        # We need to make sure that the path ends with a forward slash,
+        # since we can end with false-positives like the following example:
+        #
+        #       bucket
+        #       └── data
+        #          ├── alice
+        #          └── alpha
+        #
+        # Using `data/al` as prefix will return `[data/alice, data/alpha]`,
+        # While `data/al/` will return nothing.
+        #
+        dir_path = path_info / ""
+        return bool(list(self.remote._list_paths(dir_path, max_items=1)))
+
+    def isfile(self, path_info):
+        from botocore.exceptions import ClientError
+
+        if path_info.path.endswith("/"):
+            return False
+
+        try:
+            self.s3.head_object(Bucket=path_info.bucket, Key=path_info.path)
+        except ClientError as exc:
+            if exc.response["Error"]["Code"] != "404":
+                raise
+            return False
+
+        return True
+
+    def walk_files(self, path_info, max_items=None):
+        for fname in self.remote._list_paths(path_info / "", max_items):
+            if fname.endswith("/"):
+                continue
+
+            yield path_info.replace(path=fname)
 
 
 class S3Remote(BaseRemote):
@@ -20,6 +86,7 @@ class S3Remote(BaseRemote):
     path_cls = CloudURLInfo
     REQUIRES = {"boto3": "boto3"}
     PARAM_CHECKSUM = "etag"
+    TREE_CLS = S3RemoteTree
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
@@ -226,29 +293,6 @@ class S3Remote(BaseRemote):
             self.path_info, prefix=prefix, progress_callback=progress_callback
         )
 
-    def isfile(self, path_info):
-        from botocore.exceptions import ClientError
-
-        if path_info.path.endswith("/"):
-            return False
-
-        try:
-            self.s3.head_object(Bucket=path_info.bucket, Key=path_info.path)
-        except ClientError as exc:
-            if exc.response["Error"]["Code"] != "404":
-                raise
-            return False
-
-        return True
-
-    def exists(self, path_info):
-        """Check if the blob exists. If it does not exist,
-        it could be a part of a directory path.
-
-        eg: if `data/file.txt` exists, check for `data` should return True
-        """
-        return self.isfile(path_info) or self.isdir(path_info)
-
     def makedirs(self, path_info):
         # We need to support creating empty directories, which means
         # creating an object with an empty body and a trailing slash `/`.
@@ -260,30 +304,6 @@ class S3Remote(BaseRemote):
 
         dir_path = path_info / ""
         self.s3.put_object(Bucket=path_info.bucket, Key=dir_path.path, Body="")
-
-    def isdir(self, path_info):
-        # S3 doesn't have a concept for directories.
-        #
-        # Using `head_object` with a path pointing to a directory
-        # will throw a 404 error.
-        #
-        # A reliable way to know if a given path is a directory is by
-        # checking if there are more files sharing the same prefix
-        # with a `list_objects` call.
-        #
-        # We need to make sure that the path ends with a forward slash,
-        # since we can end with false-positives like the following example:
-        #
-        #       bucket
-        #       └── data
-        #          ├── alice
-        #          └── alpha
-        #
-        # Using `data/al` as prefix will return `[data/alice, data/alpha]`,
-        # While `data/al/` will return nothing.
-        #
-        dir_path = path_info / ""
-        return bool(list(self._list_paths(dir_path, max_items=1)))
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         total = os.path.getsize(from_file)
@@ -311,19 +331,6 @@ class S3Remote(BaseRemote):
             self.s3.download_file(
                 from_info.bucket, from_info.path, to_file, Callback=pbar.update
             )
-
-    def _generate_download_url(self, path_info, expires=3600):
-        params = {"Bucket": path_info.bucket, "Key": path_info.path}
-        return self.s3.generate_presigned_url(
-            ClientMethod="get_object", Params=params, ExpiresIn=int(expires)
-        )
-
-    def walk_files(self, path_info, max_items=None):
-        for fname in self._list_paths(path_info / "", max_items):
-            if fname.endswith("/"):
-                continue
-
-            yield path_info.replace(path=fname)
 
     def _append_aws_grants_to_extra_args(self, config):
         # Keys for extra_args can be one of the following list:

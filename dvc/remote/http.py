@@ -8,7 +8,7 @@ import dvc.prompt as prompt
 from dvc.exceptions import DvcException, HTTPError
 from dvc.path_info import HTTPURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemote
+from dvc.remote.base import BaseRemote, BaseRemoteTree
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
@@ -23,6 +23,11 @@ def ask_password(host, user):
     )
 
 
+class HTTPRemoteTree(BaseRemoteTree):
+    def exists(self, path_info):
+        return bool(self.remote._request("HEAD", path_info.url))
+
+
 class HTTPRemote(BaseRemote):
     scheme = Schemes.HTTP
     path_cls = HTTPURLInfo
@@ -32,6 +37,7 @@ class HTTPRemote(BaseRemote):
     CHUNK_SIZE = 2 ** 16
     PARAM_CHECKSUM = "etag"
     CAN_TRAVERSE = False
+    TREE_CLS = HTTPRemoteTree
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
@@ -91,9 +97,6 @@ class HTTPRemote(BaseRemote):
         response = self._request("POST", to_info.url, data=chunks())
         if response.status_code not in (200, 201):
             raise HTTPError(response.status_code, response.reason)
-
-    def exists(self, path_info):
-        return bool(self._request("HEAD", path_info.url))
 
     def _content_length(self, response):
         res = response.headers.get("Content-Length")

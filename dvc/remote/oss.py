@@ -7,10 +7,25 @@ from funcy import cached_property, wrap_prop
 
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemote
+from dvc.remote.base import BaseRemote, BaseRemoteTree
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
+
+
+class OSSRemoteTree(BaseRemoteTree):
+    @property
+    def oss_service(self):
+        return self.remote.oss_service
+
+    def _generate_download_url(self, path_info, expires=3600):
+        assert path_info.bucket == self.path_info.bucket
+
+        return self.oss_service.sign_url("GET", path_info.path, expires)
+
+    def exists(self, path_info):
+        paths = self.remote._list_paths(path_info.path)
+        return any(path_info.path == path for path in paths)
 
 
 class OSSRemote(BaseRemote):
@@ -38,6 +53,7 @@ class OSSRemote(BaseRemote):
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
     LIST_OBJECT_PAGE_SIZE = 100
+    TREE_CLS = OSSRemoteTree
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
@@ -122,12 +138,3 @@ class OSSRemote(BaseRemote):
             self.oss_service.get_object_to_file(
                 from_info.path, to_file, progress_callback=pbar.update_to
             )
-
-    def _generate_download_url(self, path_info, expires=3600):
-        assert path_info.bucket == self.path_info.bucket
-
-        return self.oss_service.sign_url("GET", path_info.path, expires)
-
-    def exists(self, path_info):
-        paths = self._list_paths(path_info.path)
-        return any(path_info.path == path for path in paths)
