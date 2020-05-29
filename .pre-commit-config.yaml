@@ -37,6 +37,7 @@ repos:
     stages:
     - commit
     verbose: true
+    require_serial: true
   - args:
     - git-hook
     - pre-push
@@ -46,6 +47,7 @@ repos:
     name: DVC pre-push
     stages:
     - push
+    require_serial: true
   - always_run: true
     args:
     - git-hook
@@ -57,4 +59,5 @@ repos:
     name: DVC post-checkout
     stages:
     - post-checkout
+    require_serial: true
   repo: local
