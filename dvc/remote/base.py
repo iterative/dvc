@@ -83,12 +83,59 @@ def index_locked(f):
     return wrapper
 
 
+class BaseRemoteTree:
+    def __init__(self, remote):
+        self.remote = remote
+
+    @property
+    def scheme(self):
+        return self.remote.scheme
+
+    @property
+    def path_cls(self):
+        return self.remote.path_cls
+
+    def open(self, path_info, mode="r", encoding=None):
+        if hasattr(self, "_generate_download_url"):
+            get_url = partial(self._generate_download_url, path_info)
+            return open_url(get_url, mode=mode, encoding=encoding)
+
+        raise RemoteActionNotImplemented("open", self.scheme)
+
+    def exists(self, path_info):
+        raise NotImplementedError
+
+    def isdir(self, path_info):
+        """Optional: Overwrite only if the remote has a way to distinguish
+        between a directory and a file.
+        """
+        return False
+
+    def isfile(self, path_info):
+        """Optional: Overwrite only if the remote has a way to distinguish
+        between a directory and a file.
+        """
+        return True
+
+    def iscopy(self, path_info):
+        """Check if this file is an independent copy."""
+        return False  # We can't be sure by default
+
+    def walk_files(self, path_info):
+        """Return a generator with `PathInfo`s to all the files"""
+        raise NotImplementedError
+
+    def is_empty(self, path_info):
+        return False
+
+
 class BaseRemote:
     scheme = "base"
     path_cls = URLInfo
     REQUIRES = {}
     JOBS = 4 * cpu_count()
     INDEX_CLS = RemoteIndex
+    TREE_CLS = BaseRemoteTree
 
     PARAM_RELPATH = "relpath"
     CHECKSUM_DIR_SUFFIX = ".dir"
@@ -133,6 +180,8 @@ class BaseRemote:
             )
         else:
             self.index = RemoteIndexNoop()
+
+        self.tree = self.TREE_CLS(self)
 
     @classmethod
     def get_missing_deps(cls):
@@ -218,7 +267,7 @@ class BaseRemote:
         if tree:
             walk_files = tree.walk_files
         else:
-            walk_files = self.walk_files
+            walk_files = self.tree.walk_files
 
         for fname in walk_files(path_info, **kwargs):
             if DvcIgnore.DVCIGNORE_FILE == fname.name:
@@ -344,7 +393,7 @@ class BaseRemote:
     def get_checksum(self, path_info):
         assert isinstance(path_info, str) or path_info.scheme == self.scheme
 
-        if not self.exists(path_info):
+        if not self.tree.exists(path_info):
             return None
 
         checksum = self.state.get(path_info)
@@ -355,14 +404,16 @@ class BaseRemote:
         if (
             checksum
             and self.is_dir_checksum(checksum)
-            and not self.exists(self.cache.checksum_to_path_info(checksum))
+            and not self.tree.exists(
+                self.cache.checksum_to_path_info(checksum)
+            )
         ):
             checksum = None
 
         if checksum:
             return checksum
 
-        if self.isdir(path_info):
+        if self.tree.isdir(path_info):
             checksum = self.get_dir_checksum(path_info)
         else:
             checksum = self.get_file_checksum(path_info)
@@ -396,7 +447,7 @@ class BaseRemote:
             "checking if '%s'('%s') has changed.", path_info, checksum_info
         )
 
-        if not self.exists(path_info):
+        if not self.tree.exists(path_info):
             logger.debug("'%s' doesn't exist.", path_info)
             return True
 
@@ -428,7 +479,7 @@ class BaseRemote:
         self._link(from_info, to_info, self.cache_types)
 
     def _link(self, from_info, to_info, link_types):
-        assert self.isfile(from_info)
+        assert self.tree.isfile(from_info)
 
         self.makedirs(to_info.parent)
 
@@ -463,7 +514,7 @@ class BaseRemote:
         raise DvcException("no possible cache types left to try out.")
 
     def _do_link(self, from_info, to_info, link_method):
-        if self.exists(to_info):
+        if self.tree.exists(to_info):
             raise DvcException(f"Link '{to_info}' already exists!")
 
         link_method(from_info, to_info)
@@ -494,7 +545,9 @@ class BaseRemote:
             if self.changed_cache(checksum):
                 self.move(path_info, cache_info, mode=self.CACHE_MODE)
                 self.link(cache_info, path_info)
-            elif self.iscopy(path_info) and self._cache_is_copy(path_info):
+            elif self.tree.iscopy(path_info) and self._cache_is_copy(
+                path_info
+            ):
                 # Default relink procedure involves unneeded copy
                 self.unprotect(path_info)
             else:
@@ -522,8 +575,8 @@ class BaseRemote:
 
         workspace_file = path_info.with_name("." + uuid())
         test_cache_file = self.path_info / ".cache_type_test_file"
-        if not self.exists(test_cache_file):
-            with self.open(test_cache_file, "wb") as fobj:
+        if not self.tree.exists(test_cache_file):
+            with self.tree.open(test_cache_file, "wb") as fobj:
                 fobj.write(bytes(1))
         try:
             self.link(test_cache_file, workspace_file)
@@ -561,29 +614,6 @@ class BaseRemote:
             self.state.save(path_info, checksum)
         return {self.PARAM_CHECKSUM: checksum}
 
-    def is_empty(self, path_info):
-        return False
-
-    def isfile(self, path_info):
-        """Optional: Overwrite only if the remote has a way to distinguish
-        between a directory and a file.
-        """
-        return True
-
-    def isdir(self, path_info):
-        """Optional: Overwrite only if the remote has a way to distinguish
-        between a directory and a file.
-        """
-        return False
-
-    def iscopy(self, path_info):
-        """Check if this file is an independent copy."""
-        return False  # We can't be sure by default
-
-    def walk_files(self, path_info):
-        """Return a generator with `PathInfo`s to all the files"""
-        raise NotImplementedError
-
     @staticmethod
     def protect(path_info):
         pass
@@ -617,7 +647,7 @@ class BaseRemote:
             isdir = tree.isdir
             save_link = False
         else:
-            isdir = self.isdir
+            isdir = self.tree.isdir
 
         if isdir(path_info):
             return self._save_dir(
@@ -686,7 +716,7 @@ class BaseRemote:
         if to_info.scheme != "local":
             raise NotImplementedError
 
-        if self.isdir(from_info):
+        if self.tree.isdir(from_info):
             return self._download_dir(
                 from_info, to_info, name, no_progress_bar, file_mode, dir_mode
             )
@@ -697,7 +727,7 @@ class BaseRemote:
     def _download_dir(
         self, from_info, to_info, name, no_progress_bar, file_mode, dir_mode
     ):
-        from_infos = list(self.walk_files(from_info))
+        from_infos = list(self.tree.walk_files(from_info))
         to_infos = (
             to_info / info.relative_to(from_info) for info in from_infos
         )
@@ -744,13 +774,6 @@ class BaseRemote:
 
         return 0
 
-    def open(self, path_info, mode="r", encoding=None):
-        if hasattr(self, "_generate_download_url"):
-            get_url = partial(self._generate_download_url, path_info)
-            return open_url(get_url, mode=mode, encoding=encoding)
-
-        raise RemoteActionNotImplemented("open", self.scheme)
-
     def remove(self, path_info):
         raise RemoteActionNotImplemented("remove", self.scheme)
 
@@ -773,9 +796,6 @@ class BaseRemote:
 
     def reflink(self, from_info, to_info):
         raise RemoteActionNotImplemented("reflink", self.scheme)
-
-    def exists(self, path_info):
-        raise NotImplementedError
 
     def path_to_checksum(self, path):
         parts = self.path_cls(path).parts[-2:]
@@ -896,7 +916,7 @@ class BaseRemote:
             self.protect(cache_info)
             return False
 
-        if self.exists(cache_info):
+        if self.tree.exists(cache_info):
             logger.warning("corrupted cache file '%s'.", cache_info)
             self.remove(cache_info)
 
@@ -1142,7 +1162,7 @@ class BaseRemote:
         ) as pbar:
 
             def exists_with_progress(path_info):
-                ret = self.exists(path_info)
+                ret = self.tree.exists(path_info)
                 pbar.update_msg(str(path_info))
                 return ret
 
@@ -1161,7 +1181,7 @@ class BaseRemote:
         return not self.changed_cache(current)
 
     def safe_remove(self, path_info, force=False):
-        if not self.exists(path_info):
+        if not self.tree.exists(path_info):
             return
 
         if not force and not self.already_cached(path_info):
@@ -1181,7 +1201,7 @@ class BaseRemote:
         """The file is changed we need to checkout a new copy"""
         added, modified = True, False
         cache_info = self.checksum_to_path_info(checksum)
-        if self.exists(path_info):
+        if self.tree.exists(path_info):
             logger.debug("data '%s' will be replaced.", path_info)
             self.safe_remove(path_info, force=force)
             added, modified = False, True
@@ -1211,7 +1231,7 @@ class BaseRemote:
         added, modified = False, False
         # Create dir separately so that dir is created
         # even if there are no files in it
-        if not self.exists(path_info):
+        if not self.tree.exists(path_info):
             added = True
             self.makedirs(path_info)
 
@@ -1249,7 +1269,7 @@ class BaseRemote:
         return added, not added and modified and not relink
 
     def _remove_redundant_files(self, path_info, dir_info, force):
-        existing_files = set(self.walk_files(path_info))
+        existing_files = set(self.tree.walk_files(path_info))
 
         needed_files = {
             path_info / entry[self.PARAM_RELPATH] for entry in dir_info
