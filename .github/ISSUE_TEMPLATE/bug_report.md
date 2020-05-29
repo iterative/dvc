@@ -7,8 +7,10 @@ labels: bug, triage
 ## Bug Report
 
 ### Please provide information about your setup
+
 **Output of `dvc version`:**
-```sh
+
+```console
 $ dvc version
 ```
 
