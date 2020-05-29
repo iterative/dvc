@@ -17,6 +17,7 @@ from dvc.remote.base import (
     STATUS_MISSING,
     STATUS_NEW,
     BaseRemote,
+    BaseRemoteTree,
     index_locked,
 )
 from dvc.remote.index import RemoteIndexNoop
@@ -36,6 +37,77 @@ from dvc.utils.fs import (
 logger = logging.getLogger(__name__)
 
 
+class LocalRemoteTree(BaseRemoteTree):
+    @property
+    def repo(self):
+        return self.remote.repo
+
+    @cached_property
+    def _work_tree(self):
+        if self.repo:
+            return WorkingTree(self.repo.root_dir)
+        return None
+
+    @property
+    def work_tree(self):
+        # When using repo.brancher, repo.tree may change to/from WorkingTree to
+        # GitTree arbitarily. When repo.tree is GitTree, local cache needs to
+        # use its own WorkingTree instance.
+        if self.repo and not is_working_tree(self.repo.tree):
+            return self._work_tree
+        return None
+
+    @staticmethod
+    def open(path_info, mode="r", encoding=None):
+        return open(path_info, mode=mode, encoding=encoding)
+
+    def exists(self, path_info):
+        assert isinstance(path_info, str) or path_info.scheme == "local"
+        if not self.repo:
+            return os.path.exists(path_info)
+        if self.work_tree and self.work_tree.exists(path_info):
+            return True
+        return self.repo.tree.exists(path_info)
+
+    def isfile(self, path_info):
+        if not self.repo:
+            return os.path.isfile(path_info)
+        if self.work_tree and self.work_tree.isfile(path_info):
+            return True
+        return self.repo.tree.isfile(path_info)
+
+    def isdir(self, path_info):
+        if not self.repo:
+            return os.path.isdir(path_info)
+        if self.work_tree and self.work_tree.isdir(path_info):
+            return True
+        return self.repo.tree.isdir(path_info)
+
+    def iscopy(self, path_info):
+        return not (
+            System.is_symlink(path_info) or System.is_hardlink(path_info)
+        )
+
+    def walk_files(self, path_info):
+        if self.work_tree:
+            tree = self.work_tree
+        else:
+            tree = self.repo.tree
+        for fname in tree.walk_files(path_info):
+            yield PathInfo(fname)
+
+    def is_empty(self, path_info):
+        path = path_info.fspath
+
+        if self.isfile(path_info) and os.path.getsize(path) == 0:
+            return True
+
+        if self.isdir(path_info) and len(os.listdir(path)) == 0:
+            return True
+
+        return False
+
+
 class LocalRemote(BaseRemote):
     scheme = Schemes.LOCAL
     path_cls = PathInfo
@@ -43,6 +115,7 @@ class LocalRemote(BaseRemote):
     PARAM_PATH = "path"
     TRAVERSE_PREFIX_LEN = 2
     INDEX_CLS = RemoteIndexNoop
+    TREE_CLS = LocalRemoteTree
 
     UNPACKED_DIR_SUFFIX = ".unpacked"
 
@@ -68,21 +141,6 @@ class LocalRemote(BaseRemote):
     def cache_dir(self, value):
         self.path_info = PathInfo(value) if value else None
 
-    @cached_property
-    def _work_tree(self):
-        if self.repo:
-            return WorkingTree(self.repo.root_dir)
-        return None
-
-    @property
-    def work_tree(self):
-        # When using repo.brancher, repo.tree may change to/from WorkingTree to
-        # GitTree arbitarily. When repo.tree is GitTree, local cache needs to
-        # use its own WorkingTree instance.
-        if self.repo and not is_working_tree(self.repo.tree):
-            return self._work_tree
-        return None
-
     @classmethod
     def supported(cls, config):
         return True
@@ -103,7 +161,7 @@ class LocalRemote(BaseRemote):
         assert self.path_info is not None
         if prefix:
             path_info = self.path_info / prefix[:2]
-            if not self.exists(path_info):
+            if not self.tree.exists(path_info):
                 return
         else:
             path_info = self.path_info
@@ -119,14 +177,6 @@ class LocalRemote(BaseRemote):
             return None
 
         return self.checksum_to_path_info(md5).url
-
-    def exists(self, path_info):
-        assert isinstance(path_info, str) or path_info.scheme == "local"
-        if not self.repo:
-            return os.path.exists(path_info)
-        if self.work_tree and self.work_tree.exists(path_info):
-            return True
-        return self.repo.tree.exists(path_info)
 
     def makedirs(self, path_info):
         makedirs(path_info, exist_ok=True, mode=self._dir_mode)
@@ -147,47 +197,9 @@ class LocalRemote(BaseRemote):
 
         super()._verify_link(path_info, link_type)
 
-    def is_empty(self, path_info):
-        path = path_info.fspath
-
-        if self.isfile(path_info) and os.path.getsize(path) == 0:
-            return True
-
-        if self.isdir(path_info) and len(os.listdir(path)) == 0:
-            return True
-
-        return False
-
-    def isfile(self, path_info):
-        if not self.repo:
-            return os.path.isfile(path_info)
-        if self.work_tree and self.work_tree.isfile(path_info):
-            return True
-        return self.repo.tree.isfile(path_info)
-
-    def isdir(self, path_info):
-        if not self.repo:
-            return os.path.isdir(path_info)
-        if self.work_tree and self.work_tree.isdir(path_info):
-            return True
-        return self.repo.tree.isdir(path_info)
-
-    def iscopy(self, path_info):
-        return not (
-            System.is_symlink(path_info) or System.is_hardlink(path_info)
-        )
-
     @staticmethod
     def getsize(path_info):
         return os.path.getsize(path_info)
-
-    def walk_files(self, path_info):
-        if self.work_tree:
-            tree = self.work_tree
-        else:
-            tree = self.repo.tree
-        for fname in tree.walk_files(path_info):
-            yield PathInfo(fname)
 
     def get_file_checksum(self, path_info):
         return file_md5(path_info)[0]
@@ -200,7 +212,7 @@ class LocalRemote(BaseRemote):
         else:
             path = path_info
 
-        if self.exists(path):
+        if self.tree.exists(path):
             remove(path)
 
     def move(self, from_info, to_info, mode=None):
@@ -210,7 +222,7 @@ class LocalRemote(BaseRemote):
         self.makedirs(to_info.parent)
 
         if mode is None:
-            if self.isfile(from_info):
+            if self.tree.isfile(from_info):
                 mode = self._file_mode
             else:
                 mode = self._dir_mode
@@ -261,7 +273,7 @@ class LocalRemote(BaseRemote):
         #
         # That's why we simply create an empty file rather than a link.
         if self.getsize(from_info) == 0:
-            self.open(to_info, "w").close()
+            self.tree.open(to_info, "w").close()
 
             logger.debug(
                 "Created empty file: {src} -> {dest}".format(
@@ -315,10 +327,6 @@ class LocalRemote(BaseRemote):
         copyfile(
             from_info, to_file, no_progress_bar=no_progress_bar, name=name
         )
-
-    @staticmethod
-    def open(path_info, mode="r", encoding=None):
-        return open(path_info, mode=mode, encoding=encoding)
 
     @index_locked
     def status(
