@@ -56,7 +56,7 @@ def test_show_branch(tmp_dir, scm, dvc, run_copy_metrics):
         tmp_dir.scm_gen("metrics.yaml", "foo: 2", commit="branch")
 
     assert dvc.metrics.show(revs=["branch"]) == {
-        "working tree": {"metrics.yaml": {"foo": 1}},
+        "workspace": {"metrics.yaml": {"foo": 1}},
         "branch": {"metrics.yaml": {"foo": 2}},
     }
 
@@ -90,6 +90,6 @@ def test_show_subrepo_with_preexisting_tags(tmp_dir, scm):
 
     expected_path = os.path.join("subdir", "metrics.yaml")
     assert dvc.metrics.show(all_tags=True) == {
-        "working tree": {expected_path: {"foo": 1}},
+        "workspace": {expected_path: {"foo": 1}},
         "v1": {expected_path: {"foo": 1}},
     }

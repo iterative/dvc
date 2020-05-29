@@ -132,7 +132,7 @@ _dvc_get=(
 )
 
 _dvc_gc=(
-  {-w,--workspace}"[Keep data files used in the current workspace (working tree).]"
+  {-w,--workspace}"[Keep data files used in the current workspace.]"
   {-a,--all-branches}"[Keep data files for the tips of all Git branches.]"
   "--all-commits[Keep data files for all Git commits.]"
   {-T,--all-tags}"[Keep data files for all Git tags.]"
