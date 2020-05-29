@@ -93,6 +93,7 @@ class CmdPlotsModify(CmdPlots):
         self.repo.plots.modify(
             self.args.target, props=self._props(), unset=self.args.unset,
         )
+        return 0
 
 
 def add_parser(subparsers, parent_parser):
