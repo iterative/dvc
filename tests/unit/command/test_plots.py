@@ -41,14 +41,15 @@ def test_metrics_diff(dvc, mocker):
     m.assert_called_once_with(
         cmd.repo,
         targets=["datafile"],
-        template="template",
         revs=["HEAD", "tag1", "tag2"],
-        x_field="x_field",
-        y_field="y_field",
-        csv_header=True,
-        title="my_title",
-        x_title="x_title",
-        y_title="y_title",
+        props={
+            "template": "template",
+            "x": "x_field",
+            "y": "y_field",
+            "title": "my_title",
+            "xlab": "x_title",
+            "ylab": "y_title",
+        },
     )
 
 
@@ -79,13 +80,7 @@ def test_metrics_show(dvc, mocker):
     m.assert_called_once_with(
         cmd.repo,
         targets=["datafile"],
-        template="template",
-        x_field=None,
-        y_field=None,
-        csv_header=False,
-        title=None,
-        x_title=None,
-        y_title=None,
+        props={"template": "template", "csv_header": False},
     )
 
 

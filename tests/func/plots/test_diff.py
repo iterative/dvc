@@ -28,7 +28,7 @@ def test_diff_dirty(tmp_dir, scm, dvc, run_copy_metrics):
         "metric_t.json", "metric.json", plots_no_cache=["metric.json"]
     )
 
-    plot_string = dvc.plots.diff(fields={"y"})["metric.json"]
+    plot_string = dvc.plots.diff(props={"fields": {"y"}})["metric.json"]
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [

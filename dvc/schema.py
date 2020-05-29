@@ -29,8 +29,20 @@ OUT_PSTAGE_DETAILED_SCHEMA = {
     str: {BaseOutput.PARAM_CACHE: bool, BaseOutput.PARAM_PERSIST: bool}
 }
 
-PLOT_PSTAGE_SCHEMA = OUT_PSTAGE_DETAILED_SCHEMA.copy()
-PLOT_PSTAGE_SCHEMA[str][BaseOutput.PARAM_PLOT_TEMPLATE] = str
+PLOT_PROPS = {
+    BaseOutput.PARAM_PLOT_TEMPLATE: str,
+    BaseOutput.PARAM_PLOT_X: str,
+    BaseOutput.PARAM_PLOT_Y: str,
+    BaseOutput.PARAM_PLOT_XLAB: str,
+    BaseOutput.PARAM_PLOT_YLAB: str,
+    BaseOutput.PARAM_PLOT_TITLE: str,
+    BaseOutput.PARAM_PLOT_CSV_HEADER: bool,
+}
+PLOT_PROPS_SCHEMA = {
+    **OUT_PSTAGE_DETAILED_SCHEMA[str],
+    **PLOT_PROPS,
+}
+PLOT_PSTAGE_SCHEMA = {str: Any(PLOT_PROPS_SCHEMA, [PLOT_PROPS_SCHEMA])}
 
 PARAM_PSTAGE_NON_DEFAULT_SCHEMA = {str: [str]}
 

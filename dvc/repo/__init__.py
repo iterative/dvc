@@ -441,7 +441,7 @@ class Repo:
         stages = stages or self.stages
         outs = Trie()  # Use trie to efficiently find overlapping outs and deps
 
-        for stage in filter(bool, stages):
+        for stage in filter(bool, stages):  # bug? not using it later
             for out in stage.outs:
                 out_key = out.path_info.parts
 
