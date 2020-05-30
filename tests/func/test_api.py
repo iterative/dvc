@@ -56,7 +56,9 @@ def test_get_url_requires_dvc(tmp_dir, scm):
         api.get_url("foo", repo=f"file://{tmp_dir}")
 
 
-@pytest.mark.parametrize("remote_url", all_remote_params + [GDrive], indirect=True)
+@pytest.mark.parametrize(
+    "remote_url", all_remote_params + [GDrive], indirect=True
+)
 def test_open(remote_url, tmp_dir, dvc):
     run_dvc("remote", "add", "-d", "upstream", remote_url)
     tmp_dir.dvc_gen("foo", "foo-text")
