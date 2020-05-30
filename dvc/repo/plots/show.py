@@ -160,9 +160,7 @@ def _collect_plots(repo, targets=None):
 def _plot_props(out):
     if not out.plot:
         raise DvcException(
-            "{} is not a plot. Use `dvc plots modify` to change that.".format(
-                out
-            )
+            f"'{out}' is not a plot. Use `dvc plots modify` to change that."
         )
     elif isinstance(out.plot, list):
         raise DvcException("Multiple plots per data file not supported yet.")
