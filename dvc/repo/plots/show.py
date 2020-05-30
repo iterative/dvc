@@ -166,8 +166,8 @@ def _plot_props(out):
         raise DvcException("Multiple plots per data file not supported yet.")
     if isinstance(out.plot, bool):
         return {}
-    else:
-        return project(out.plot, PLOT_PROPS)
+
+    return project(out.plot, PLOT_PROPS)
 
 
 def show(repo, targets=None, revs=None, props=None) -> dict:
