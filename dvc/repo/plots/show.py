@@ -162,7 +162,7 @@ def _plot_props(out):
         raise DvcException(
             f"'{out}' is not a plot. Use `dvc plots modify` to change that."
         )
-    elif isinstance(out.plot, list):
+    if isinstance(out.plot, list):
         raise DvcException("Multiple plots per data file not supported yet.")
     if isinstance(out.plot, bool):
         return {}
