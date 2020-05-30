@@ -8,7 +8,7 @@ from dvc.exceptions import FileMissingError
 from dvc.main import main
 from dvc.path_info import URLInfo
 from dvc.utils.fs import remove
-from tests.remotes import GCP, HDFS, OSS, S3, SSH, Azure, Local
+from tests.remotes import GCP, HDFS, OSS, S3, SSH, Azure, GDrive, Local
 
 remote_params = [S3, GCP, Azure, OSS, SSH, HDFS]
 all_remote_params = [Local] + remote_params
@@ -56,7 +56,9 @@ def test_get_url_requires_dvc(tmp_dir, scm):
         api.get_url("foo", repo=f"file://{tmp_dir}")
 
 
-@pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
+@pytest.mark.parametrize(
+    "remote_url", all_remote_params + [GDrive], indirect=True
+)
 def test_open(remote_url, tmp_dir, dvc):
     run_dvc("remote", "add", "-d", "upstream", remote_url)
     tmp_dir.dvc_gen("foo", "foo-text")
