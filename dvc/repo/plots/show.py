@@ -164,7 +164,7 @@ def _plot_props(out):
         )
     elif isinstance(out.plot, list):
         raise DvcException("Multiple plots per data file not supported yet.")
-    elif isinstance(out.plot, bool):
+    if isinstance(out.plot, bool):
         return {}
     else:
         return project(out.plot, PLOT_PROPS)
