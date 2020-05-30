@@ -1,9 +1,11 @@
+import io
 import logging
 import os
 import posixpath
 import re
 import threading
 from collections import defaultdict
+from contextlib import contextmanager
 from urllib.parse import urlparse
 
 from funcy import cached_property, retry, wrap_prop, wrap_with
@@ -15,6 +17,7 @@ from dvc.progress import Tqdm
 from dvc.remote.base import BaseRemote, BaseRemoteTree
 from dvc.scheme import Schemes
 from dvc.utils import format_link, tmp_fname
+from dvc.utils.stream import IterStream
 
 logger = logging.getLogger(__name__)
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
@@ -388,6 +391,23 @@ class GDriveRemoteTree(BaseRemoteTree):
             bar_format=Tqdm.BAR_FMT_DEFAULT,
         ) as pbar:
             gdrive_file.GetContentFile(to_file, callback=pbar.update_to)
+
+    @contextmanager
+    @_gdrive_retry
+    def open(self, path_info, mode="r", encoding=None):
+        assert mode in {"r", "rt", "rb"}
+
+        item_id = self._get_item_id(path_info)
+        param = {"id": item_id}
+        # it does not create a file on the remote
+        gdrive_file = self._drive.CreateFile(param)
+        fd = gdrive_file.GetContentIOBuffer()
+        stream = IterStream(iter(fd))
+
+        if mode != "rb":
+            stream = io.TextIOWrapper(stream, encoding=encoding)
+
+        yield stream
 
     @_gdrive_retry
     def gdrive_delete_file(self, item_id):
