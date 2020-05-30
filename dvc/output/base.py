@@ -56,6 +56,12 @@ class BaseOutput:
     PARAM_METRIC_XPATH = "xpath"
     PARAM_PLOT = "plot"
     PARAM_PLOT_TEMPLATE = "template"
+    PARAM_PLOT_X = "x"
+    PARAM_PLOT_Y = "y"
+    PARAM_PLOT_XLAB = "xlab"
+    PARAM_PLOT_YLAB = "ylab"
+    PARAM_PLOT_TITLE = "title"
+    PARAM_PLOT_CSV_HEADER = "csv_header"
     PARAM_PERSIST = "persist"
 
     METRIC_SCHEMA = Any(

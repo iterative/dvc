@@ -1,13 +1,14 @@
+import copy
 import logging
 import os
-from collections import defaultdict
 
-from funcy import first, last
+from funcy import first, last, project
 
 from dvc.exceptions import DvcException
 from dvc.repo import locked
+from dvc.schema import PLOT_PROPS
 
-from .data import PlotData
+from .data import NoMetricInHistoryError, PlotData
 from .template import NoDataForTemplateError, Template
 
 logger = logging.getLogger(__name__)
@@ -43,29 +44,24 @@ def _evaluate_templatepath(repo, template=None):
 
 @locked
 def fill_template(
-    repo,
-    datafile,
-    template_path,
-    revisions,
-    fields=None,
-    path=None,
-    csv_header=True,
-    x_field=None,
-    y_field=None,
-    **kwargs,
+    repo, datafile, template_path, revisions, props,
 ):
-    if x_field and fields:
-        fields.add(x_field)
+    # Copy things to not modify passed values
+    props = props.copy()
+    fields = copy.copy(props.get("fields"))
 
-    if y_field and fields:
-        fields.add(y_field)
+    if props.get("x") and fields:
+        fields.add(props.get("x"))
+
+    if props.get("y") and fields:
+        fields.add(props.get("y"))
 
     template_datafiles, x_anchor, y_anchor = _parse_template(
         template_path, datafile
     )
-    append_index = x_anchor and not x_field
+    append_index = x_anchor and not props.get("x")
     if append_index:
-        x_field = PlotData.INDEX_FIELD
+        props["x"] = PlotData.INDEX_FIELD
 
     template_data = {}
     for template_datafile in template_datafiles:
@@ -76,13 +72,13 @@ def fill_template(
         for pd in plot_datas:
             rev_data_points = pd.to_datapoints(
                 fields=fields,
-                path=path,
-                csv_header=csv_header,
+                path=props.get("path"),
+                csv_header=props.get("csv_header", True),
                 append_index=append_index,
             )
 
-            if y_anchor and not y_field:
-                y_field = _infer_y_field(rev_data_points, x_field)
+            if y_anchor and not props.get("y"):
+                props["y"] = _infer_y_field(rev_data_points, props.get("x"))
             tmp_data.extend(rev_data_points)
 
         template_data[template_datafile] = tmp_data
@@ -91,12 +87,7 @@ def fill_template(
         raise NoDataForTemplateError(template_path)
 
     content = Template.fill(
-        template_path,
-        template_data,
-        priority_datafile=datafile,
-        x_field=x_field,
-        y_field=y_field,
-        **kwargs,
+        template_path, template_data, priority_datafile=datafile, props=props,
     )
 
     path = datafile or ",".join(template_datafiles)
@@ -113,17 +104,17 @@ def _infer_y_field(rev_data_points, x_field):
     return y_field
 
 
-def _show(repo, datafile=None, template=None, revs=None, **kwargs):
+def _show(repo, datafile=None, revs=None, props=None):
     if revs is None:
         revs = ["working tree"]
 
-    if not datafile and not template:
+    if not datafile and not props.get("template"):
         raise NoDataOrTemplateProvided()
 
-    template_path = _evaluate_templatepath(repo, template)
+    template_path = _evaluate_templatepath(repo, props.get("template"))
 
     plot_datafile, plot_content = fill_template(
-        repo, datafile, template_path, revs, **kwargs
+        repo, datafile, template_path, revs, props
     )
 
     return plot_datafile, plot_content
@@ -148,67 +139,72 @@ def _parse_template(template_path, priority_datafile):
     )
 
 
-def _collect_plots(repo):
-    plots = defaultdict(set)
+def _collect_plots(repo, targets=None):
+    from dvc.exceptions import OutputNotFoundError
+    from contextlib import suppress
 
-    for stage in repo.stages:
-        for out in stage.outs:
-            if not out.plot:
-                continue
-
-            if isinstance(out.plot, dict):
-                template = out.plot[out.PARAM_PLOT_TEMPLATE]
-            else:
-                template = None
-
-            plots[str(out)].add(template)
-
-    return plots
-
-
-def show(repo, targets=None, template=None, revs=None, **kwargs) -> dict:
-    if isinstance(targets, str):
-        targets = [targets]
+    def _targets_to_outs(targets):
+        for t in targets:
+            with suppress(OutputNotFoundError):
+                (out,) = repo.find_outs_by_path(t)
+                yield out
 
     if targets:
-        for target in targets:
-            return {
-                target: _show(
-                    repo,
-                    datafile=target,
-                    template=template,
-                    revs=revs,
-                    **kwargs,
-                )[1]
-            }
-
-    if not revs:
-        plots = _collect_plots(repo)
+        outs = _targets_to_outs(targets)
     else:
-        plots = defaultdict(set)
-        for rev in repo.brancher(revs=revs):
-            for plot, templates in _collect_plots(repo).items():
-                plots[plot].update(templates)
+        outs = (out for stage in repo.stages for out in stage.outs if out.plot)
+
+    return {str(out): _plot_props(out) for out in outs}
+
+
+def _plot_props(out):
+    if not out.plot:
+        raise DvcException(
+            f"'{out}' is not a plot. Use `dvc plots modify` to change that."
+        )
+    if isinstance(out.plot, list):
+        raise DvcException("Multiple plots per data file not supported yet.")
+    if isinstance(out.plot, bool):
+        return {}
+
+    return project(out.plot, PLOT_PROPS)
+
+
+def show(repo, targets=None, revs=None, props=None) -> dict:
+    if isinstance(targets, str):
+        targets = [targets]
+    if props is None:
+        props = {}
+
+    # Collect plot data files with associated props
+    plots = {}
+    for rev in repo.brancher(revs=revs):
+        if revs is not None and rev not in revs:
+            continue
+
+        for datafile, file_props in _collect_plots(repo, targets).items():
+            # props from command line overwrite plot props from out definition
+            full_props = {**file_props, **props}
+
+            if datafile in plots:
+                saved_rev, saved_props = plots[datafile]
+                if saved_props != props:
+                    logger.warning(
+                        f"Inconsistent plot props for '{datafile}' in "
+                        f"'{saved_rev}' and '{rev}'. "
+                        f"Going to use ones from '{saved_rev}'"
+                    )
+            else:
+                plots[datafile] = rev, full_props
 
     if not plots:
-        datafile, plot = _show(
-            repo, datafile=None, template=template, revs=revs, **kwargs
-        )
+        if targets:
+            raise NoMetricInHistoryError(", ".join(targets))
+
+        datafile, plot = _show(repo, datafile=None, revs=revs, props=props)
         return {datafile: plot}
 
-    ret = {}
-    for plot, templates in plots.items():
-        tmplt = template
-        if len(templates) == 1:
-            tmplt = list(templates)[0]
-        elif not template:
-            raise TooManyTemplatesError(
-                f"'{plot}' uses multiple templates '{templates}'. "
-                "Use `-t|--template` to specify the template to use. "
-            )
-
-        ret[plot] = _show(
-            repo, datafile=plot, template=tmplt, revs=revs, **kwargs
-        )[1]
-
-    return ret
+    return {
+        datafile: _show(repo, datafile=datafile, revs=revs, props=props)[1]
+        for datafile, (_, props) in plots.items()
+    }

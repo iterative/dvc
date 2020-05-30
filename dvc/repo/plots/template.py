@@ -86,29 +86,24 @@ class Template:
 
     @staticmethod
     def fill(
-        template_path,
-        data,
-        priority_datafile=None,
-        x_field=None,
-        y_field=None,
-        title=None,
-        x_title=None,
-        y_title=None,
+        template_path, data, priority_datafile=None, props=None,
     ):
+        props = props or {}
+
         with open(template_path) as fobj:
             result_content = fobj.read()
 
-        if x_field:
-            Template._check_field_exists(data, x_field)
-        if y_field:
-            Template._check_field_exists(data, y_field)
+        if props.get("x"):
+            Template._check_field_exists(data, props.get("x"))
+        if props.get("y"):
+            Template._check_field_exists(data, props.get("y"))
 
         result_content = Template._replace_data_anchors(
             result_content, data, priority_datafile
         )
 
         result_content = Template._replace_metadata_anchors(
-            result_content, title, x_field, x_title, y_field, y_title
+            result_content, props
         )
 
         return result_content
@@ -122,34 +117,23 @@ class Template:
                 raise NoFieldInDataError(field)
 
     @staticmethod
-    def _replace_metadata_anchors(
-        result_content, title, x_field, x_title, y_field, y_title
-    ):
-        if Template.TITLE_ANCHOR in result_content:
-            if title:
-                result_content = result_content.replace(
-                    Template.TITLE_ANCHOR, title
-                )
-            else:
-                result_content = result_content.replace(
-                    Template.TITLE_ANCHOR, ""
-                )
-        if Template.X_ANCHOR in result_content and x_field:
-            result_content = result_content.replace(Template.X_ANCHOR, x_field)
-        if Template.Y_ANCHOR in result_content and y_field:
-            result_content = result_content.replace(Template.Y_ANCHOR, y_field)
-        if Template.X_TITLE_ANCHOR in result_content:
-            if not x_title and x_field:
-                x_title = x_field
-            result_content = result_content.replace(
-                Template.X_TITLE_ANCHOR, x_title
-            )
-        if Template.Y_TITLE_ANCHOR in result_content:
-            if not y_title and y_field:
-                y_title = y_field
-            result_content = result_content.replace(
-                Template.Y_TITLE_ANCHOR, y_title
-            )
+    def _replace_metadata_anchors(result_content, props):
+        props.setdefault("title", "")
+        props.setdefault("xlab", props.get("x"))
+        props.setdefault("ylab", props.get("y"))
+
+        replace_pairs = [
+            (Template.TITLE_ANCHOR, "title"),
+            (Template.X_ANCHOR, "x"),
+            (Template.Y_ANCHOR, "y"),
+            (Template.X_TITLE_ANCHOR, "xlab"),
+            (Template.Y_TITLE_ANCHOR, "ylab"),
+        ]
+        for anchor, key in replace_pairs:
+            value = props.get(key)
+            if anchor in result_content and value is not None:
+                result_content = result_content.replace(anchor, value)
+
         return result_content
 
     @staticmethod

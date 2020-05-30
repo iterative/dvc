@@ -4,6 +4,7 @@ import os
 
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
+from dvc.schema import PLOT_PROPS
 from dvc.utils import format_link
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,11 @@ class CmdPlots(CmdBase):
     def _func(self, *args, **kwargs):
         raise NotImplementedError
 
+    def _props(self):
+        # Pass only props specified by user, to not shadow ones from plot def
+        props = {p: getattr(self.args, p) for p in PLOT_PROPS}
+        return {k: v for k, v in props.items() if v is not None}
+
     def run(self):
         if self.args.show_vega:
             if not self.args.targets:
@@ -44,16 +50,7 @@ class CmdPlots(CmdBase):
                 return 1
 
         try:
-            plots = self._func(
-                targets=self.args.targets,
-                template=self.args.template,
-                x_field=self.args.x,
-                y_field=self.args.y,
-                csv_header=not self.args.no_csv_header,
-                title=self.args.title,
-                x_title=self.args.xlab,
-                y_title=self.args.ylab,
-            )
+            plots = self._func(targets=self.args.targets, props=self._props())
 
             if self.args.show_vega:
                 target = self.args.targets[0]
@@ -91,6 +88,14 @@ class CmdPlotsDiff(CmdPlots):
         return self.repo.plots.diff(*args, revs=self.args.revisions, **kwargs)
 
 
+class CmdPlotsModify(CmdPlots):
+    def run(self):
+        self.repo.plots.modify(
+            self.args.target, props=self._props(), unset=self.args.unset,
+        )
+        return 0
+
+
 def add_parser(subparsers, parent_parser):
     PLOTS_HELP = (
         "Generating plots for metrics stored in structured files "
@@ -120,50 +125,12 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     plots_show_parser.add_argument(
-        "-t",
-        "--template",
-        nargs="?",
-        default=None,
-        help=(
-            "Special JSON or HTML schema file to inject with the data. "
-            "See {}".format(
-                format_link("https://man.dvc.org/plots#plot-templates")
-            )
-        ),
-    )
-    plots_show_parser.add_argument(
-        "-o", "--out", default=None, help="Destination path to save plots to.",
-    )
-    plots_show_parser.add_argument(
-        "-x", default=None, help="Field name for x axis."
-    )
-    plots_show_parser.add_argument(
-        "-y", default=None, help="Field name for y axis."
-    )
-    plots_show_parser.add_argument(
-        "--no-csv-header",
-        action="store_true",
-        default=False,
-        help="Required when CSV or TSV datafile does not have a header.",
-    )
-    plots_show_parser.add_argument(
-        "--show-vega",
-        action="store_true",
-        default=False,
-        help="Show output in VEGA format.",
-    )
-    plots_show_parser.add_argument("--title", default=None, help="Plot title.")
-    plots_show_parser.add_argument(
-        "--xlab", default=None, help="X axis title."
-    )
-    plots_show_parser.add_argument(
-        "--ylab", default=None, help="Y axis title."
-    )
-    plots_show_parser.add_argument(
         "targets",
         nargs="*",
-        help="Metrics files to visualize. Shows all plots by default.",
+        help="Plots files to visualize. Shows all plots by default.",
     )
+    _add_props_arguments(plots_show_parser)
+    _add_output_arguments(plots_show_parser)
     plots_show_parser.set_defaults(func=CmdPlotsShow)
 
     PLOTS_DIFF_HELP = (
@@ -178,6 +145,37 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     plots_diff_parser.add_argument(
+        "--targets",
+        nargs="*",
+        help="Plots file to visualize. Shows all plots by default.",
+    )
+    plots_diff_parser.add_argument(
+        "revisions", nargs="*", default=None, help="Git commits to plot from",
+    )
+    _add_props_arguments(plots_diff_parser)
+    _add_output_arguments(plots_diff_parser)
+    plots_diff_parser.set_defaults(func=CmdPlotsDiff)
+
+    PLOTS_MODIFY_HELP = "Modify plot props associated with a target file."
+    plots_modify_parser = plots_subparsers.add_parser(
+        "modify",
+        parents=[parent_parser],
+        description=append_doc_link(PLOTS_MODIFY_HELP, "plots/modify"),
+        help=PLOTS_MODIFY_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    plots_modify_parser.add_argument(
+        "target", help="Plot file to set props to.",
+    )
+    _add_props_arguments(plots_modify_parser)
+    plots_modify_parser.add_argument(
+        "--unset", nargs="*", help="Props to unset.",
+    )
+    plots_modify_parser.set_defaults(func=CmdPlotsModify)
+
+
+def _add_props_arguments(parser):
+    parser.add_argument(
         "-t",
         "--template",
         nargs="?",
@@ -189,40 +187,27 @@ def add_parser(subparsers, parent_parser):
             )
         ),
     )
-    plots_diff_parser.add_argument(
-        "--targets",
-        nargs="*",
-        help="Metrics file to visualize. Shows all plots by default.",
-    )
-    plots_diff_parser.add_argument(
-        "-o", "--out", default=None, help="Destination path to save plots to.",
-    )
-    plots_diff_parser.add_argument(
-        "-x", default=None, help="Field name for x axis."
-    )
-    plots_diff_parser.add_argument(
-        "-y", default=None, help="Field name for y axis."
-    )
-    plots_diff_parser.add_argument(
+    parser.add_argument("-x", default=None, help="Field name for x axis.")
+    parser.add_argument("-y", default=None, help="Field name for y axis.")
+    parser.add_argument(
         "--no-csv-header",
-        action="store_true",
-        default=False,
+        action="store_false",
+        dest="csv_header",
+        default=None,  # Use default None to distinguish when it's not used
         help="Provided CSV ot TSV datafile does not have a header.",
     )
-    plots_diff_parser.add_argument(
+    parser.add_argument("--title", default=None, help="Plot title.")
+    parser.add_argument("--xlab", default=None, help="X axis title.")
+    parser.add_argument("--ylab", default=None, help="Y axis title.")
+
+
+def _add_output_arguments(parser):
+    parser.add_argument(
+        "-o", "--out", default=None, help="Destination path to save plots to.",
+    )
+    parser.add_argument(
         "--show-vega",
         action="store_true",
         default=False,
         help="Show output in VEGA format.",
     )
-    plots_diff_parser.add_argument("--title", default=None, help="Plot title.")
-    plots_diff_parser.add_argument(
-        "--xlab", default=None, help="X axis title."
-    )
-    plots_diff_parser.add_argument(
-        "--ylab", default=None, help="Y axis title."
-    )
-    plots_diff_parser.add_argument(
-        "revisions", nargs="*", default=None, help="Git commits to plot from",
-    )
-    plots_diff_parser.set_defaults(func=CmdPlotsDiff)
