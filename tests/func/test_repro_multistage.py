@@ -101,18 +101,18 @@ class TestReproPipelinesMultiStage(
     pass
 
 
-class TestReproLockedMultiStage(MultiStageRun, test_repro.TestReproLocked):
+class TestReproFrozenMultiStage(MultiStageRun, test_repro.TestReproFrozen):
     pass
 
 
-class TestReproLockedCallbackMultiStage(
-    MultiStageRun, test_repro.TestReproLockedCallback
+class TestReproFrozenCallbackMultiStage(
+    MultiStageRun, test_repro.TestReproFrozenCallback
 ):
     pass
 
 
-class TestReproLockedUnchangedMultiStage(
-    MultiStageRun, test_repro.TestReproLockedUnchanged
+class TestReproFrozenUnchangedMultiStage(
+    MultiStageRun, test_repro.TestReproFrozenUnchanged
 ):
     pass
 
@@ -202,9 +202,9 @@ def test_non_existing_stage_name(tmp_dir, dvc, run_copy):
     run_copy("file1", "file2", name="copy-file1-file2")
 
     with pytest.raises(DvcException):
-        dvc.lock_stage(":copy-file1-file3")
+        dvc.freeze(":copy-file1-file3")
 
-    assert main(["lock", ":copy-file1-file3"]) != 0
+    assert main(["freeze", ":copy-file1-file3"]) != 0
 
 
 def test_downstream(tmp_dir, dvc):

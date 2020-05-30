@@ -5,12 +5,12 @@ logger = logging.getLogger(__name__)
 
 def update_import(stage, rev=None):
     stage.deps[0].update(rev=rev)
-    locked = stage.locked
-    stage.locked = False
+    frozen = stage.frozen
+    stage.frozen = False
     try:
         stage.reproduce()
     finally:
-        stage.locked = locked
+        stage.frozen = frozen
 
 
 def sync_import(stage, dry=False, force=False):

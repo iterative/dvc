@@ -136,7 +136,8 @@ def compute_md5(stage):
     return dict_md5(
         d,
         exclude=[
-            stage.PARAM_LOCKED,
+            stage.PARAM_LOCKED,  # backward compatibility
+            stage.PARAM_FROZEN,
             BaseOutput.PARAM_METRIC,
             BaseOutput.PARAM_PERSIST,
         ],
@@ -155,7 +156,7 @@ def get_dump(stage):
             stage.PARAM_MD5: stage.md5,
             stage.PARAM_CMD: stage.cmd,
             stage.PARAM_WDIR: resolve_wdir(stage.wdir, stage.path),
-            stage.PARAM_LOCKED: stage.locked,
+            stage.PARAM_FROZEN: stage.frozen,
             stage.PARAM_DEPS: [d.dumpd() for d in stage.deps],
             stage.PARAM_OUTS: [o.dumpd() for o in stage.outs],
             stage.PARAM_ALWAYS_CHANGED: stage.always_changed,

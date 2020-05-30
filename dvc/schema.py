@@ -11,7 +11,8 @@ SINGLE_STAGE_SCHEMA = {
     StageParams.PARAM_WDIR: Any(str, None),
     StageParams.PARAM_DEPS: Any([dependency.SCHEMA], None),
     StageParams.PARAM_OUTS: Any([output.SCHEMA], None),
-    StageParams.PARAM_LOCKED: bool,
+    StageParams.PARAM_LOCKED: bool,  # backard compatibility
+    StageParams.PARAM_FROZEN: bool,
     StageParams.PARAM_META: object,
     StageParams.PARAM_ALWAYS_CHANGED: bool,
 }
@@ -54,7 +55,7 @@ SINGLE_PIPELINE_STAGE_SCHEMA = {
         Optional(StageParams.PARAM_PARAMS): [
             Any(str, PARAM_PSTAGE_NON_DEFAULT_SCHEMA)
         ],
-        Optional(StageParams.PARAM_LOCKED): bool,
+        Optional(StageParams.PARAM_FROZEN): bool,
         Optional(StageParams.PARAM_META): object,
         Optional(StageParams.PARAM_ALWAYS_CHANGED): bool,
         Optional(StageParams.PARAM_OUTS): [

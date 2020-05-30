@@ -554,7 +554,7 @@ class TestReproPipelines(SingleStageRun, TestDvc):
         self.assertEqual(ret, 0)
 
 
-class TestReproLocked(TestReproChangedData):
+class TestReproFrozen(TestReproChangedData):
     def test(self):
         file2 = "file2"
         file2_stage = self._run(
@@ -567,12 +567,12 @@ class TestReproLocked(TestReproChangedData):
 
         self.swap_foo_with_bar()
 
-        ret = main(["lock", self._get_stage_target(file2_stage)])
+        ret = main(["freeze", self._get_stage_target(file2_stage)])
         self.assertEqual(ret, 0)
         stages = self.dvc.reproduce(self._get_stage_target(file2_stage))
         self.assertEqual(len(stages), 0)
 
-        ret = main(["unlock", self._get_stage_target(file2_stage)])
+        ret = main(["unfreeze", self._get_stage_target(file2_stage)])
         self.assertEqual(ret, 0)
         stages = self.dvc.reproduce(self._get_stage_target(file2_stage))
         self.assertTrue(filecmp.cmp(self.file1, self.BAR, shallow=False))
@@ -581,19 +581,19 @@ class TestReproLocked(TestReproChangedData):
 
     def test_non_existing(self):
         with self.assertRaises(StageFileDoesNotExistError):
-            self.dvc.lock_stage("Dvcfile")
-            self.dvc.lock_stage("pipelines.yaml")
-            self.dvc.lock_stage("pipelines.yaml:name")
-            self.dvc.lock_stage("Dvcfile:name")
-            self.dvc.lock_stage("stage.dvc")
-            self.dvc.lock_stage("stage.dvc:name")
-            self.dvc.lock_stage("not-existing-stage.json")
+            self.dvc.freeze("Dvcfile")
+            self.dvc.freeze("pipelines.yaml")
+            self.dvc.freeze("pipelines.yaml:name")
+            self.dvc.freeze("Dvcfile:name")
+            self.dvc.freeze("stage.dvc")
+            self.dvc.freeze("stage.dvc:name")
+            self.dvc.freeze("not-existing-stage.json")
 
-        ret = main(["lock", "non-existing-stage"])
+        ret = main(["freeze", "non-existing-stage"])
         self.assertNotEqual(ret, 0)
 
 
-class TestReproLockedCallback(SingleStageRun, TestDvc):
+class TestReproFrozenCallback(SingleStageRun, TestDvc):
     def test(self):
         file1 = "file1"
         file1_stage = file1 + ".dvc"
@@ -610,26 +610,26 @@ class TestReproLockedCallback(SingleStageRun, TestDvc):
         stages = self.dvc.reproduce(self._get_stage_target(stage))
         self.assertEqual(len(stages), 1)
 
-        self.dvc.lock_stage(self._get_stage_target(stage))
+        self.dvc.freeze(self._get_stage_target(stage))
         stages = self.dvc.reproduce(self._get_stage_target(stage))
         self.assertEqual(len(stages), 0)
 
-        self.dvc.lock_stage(self._get_stage_target(stage), unlock=True)
+        self.dvc.unfreeze(self._get_stage_target(stage))
         stages = self.dvc.reproduce(self._get_stage_target(stage))
         self.assertEqual(len(stages), 1)
 
 
-class TestReproLockedUnchanged(TestRepro):
+class TestReproFrozenUnchanged(TestRepro):
     def test(self):
         """
-        Check that locking/unlocking doesn't affect stage state
+        Check that freezing/unfreezing doesn't affect stage state
         """
         target = self._get_stage_target(self.stage)
-        self.dvc.lock_stage(target)
+        self.dvc.freeze(target)
         stages = self.dvc.reproduce(target)
         self.assertEqual(len(stages), 0)
 
-        self.dvc.lock_stage(target, unlock=True)
+        self.dvc.unfreeze(target)
         stages = self.dvc.reproduce(target)
         self.assertEqual(len(stages), 0)
 
@@ -879,9 +879,9 @@ class TestReproExternalBase(SingleStageRun, TestDvc):
             with patch_download as mock_download:
                 with patch_checkout as mock_checkout:
                     with patch_run as mock_run:
-                        stage.locked = False
+                        stage.frozen = False
                         stage.run()
-                        stage.locked = True
+                        stage.frozen = True
 
                         mock_run.assert_not_called()
                         mock_download.assert_not_called()
@@ -1387,7 +1387,7 @@ class TestReproAlreadyCached(TestRepro):
 
         with patch_download as mock_download:
             with patch_checkout as mock_checkout:
-                assert main(["unlock", "bar.dvc"]) == 0
+                assert main(["unfreeze", "bar.dvc"]) == 0
                 ret = main(["repro", "--force", "bar.dvc"])
                 self.assertEqual(ret, 0)
                 self.assertEqual(mock_download.call_count, 1)

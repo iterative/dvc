@@ -134,7 +134,7 @@ def test_disconnected_stage(tmp_dir, dvc):
 
 def test_print_locked_stages(tmp_dir, dvc, caplog):
     tmp_dir.dvc_gen({"foo": "foo content", "bar": "bar content"})
-    dvc.lock_stage("foo.dvc")
+    dvc.freeze("foo.dvc")
 
     caplog.clear()
     with caplog.at_level(logging.INFO, logger="dvc"):
@@ -249,7 +249,7 @@ class TestDvcRepoPipeline(TestDvc):
 
     def locked_stage(self):
         self.dvc.add("foo")
-        self.dvc.lock_stage("foo.dvc")
+        self.dvc.freeze("foo.dvc")
 
         pipelines = self.dvc.pipelines
         self.assertEqual(len(pipelines), 0)
