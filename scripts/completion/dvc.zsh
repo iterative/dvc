@@ -163,7 +163,7 @@ _dvc_init=(
 
 _dvc_install=()
 
-_dvc_lock=(
+_dvc_freeze=(
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
 )
 
@@ -278,7 +278,7 @@ _dvc_status=(
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
 )
 
-_dvc_unlock=(
+_dvc_unfreeze=(
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
 )
 
@@ -308,6 +308,7 @@ case $words[1] in
   destroy) _arguments $_dvc_global_options $_dvc_destroy ;;
   diff) _arguments $_dvc_global_options $_dvc_diff ;;
   fetch) _arguments $_dvc_global_options $_dvc_fetch ;;
+  freeze) _arguments $_dvc_global_options $_dvc_freeze ;;
   get-url) _arguments $_dvc_global_options $_dvc_geturl ;;
   get) _arguments $_dvc_global_options $_dvc_get ;;
   gc) _arguments $_dvc_global_options $_dvc_gc ;;
@@ -315,7 +316,6 @@ case $words[1] in
   import) _arguments $_dvc_global_options $_dvc_import ;;
   init) _arguments $_dvc_global_options $_dvc_init ;;
   install) _arguments $_dvc_global_options $_dvc_install ;;
-  lock) _arguments $_dvc_global_options $_dvc_lock ;;
   list) _arguments $_dvc_global_options $_dvc_list ;;
   metrics) _arguments $_dvc_global_options $_dvc_metrics ;;
   move) _arguments $_dvc_global_options $_dvc_move ;;
@@ -330,7 +330,7 @@ case $words[1] in
   root) _arguments $_dvc_global_options $_dvc_root ;;
   run) _arguments $_dvc_global_options $_dvc_run ;;
   status) _arguments $_dvc_global_options $_dvc_status ;;
-  unlock) _arguments $_dvc_global_options $_dvc_unlock ;;
+  unfreeze) _arguments $_dvc_global_options $_dvc_unfreeze ;;
   unprotect) _arguments $_dvc_global_options $_dvc_unprotect ;;
   update) _arguments $_dvc_global_options $_dvc_update ;;
 esac

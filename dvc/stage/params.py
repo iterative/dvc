@@ -4,7 +4,8 @@ class StageParams:
     PARAM_WDIR = "wdir"
     PARAM_DEPS = "deps"
     PARAM_OUTS = "outs"
-    PARAM_LOCKED = "locked"
+    PARAM_LOCKED = "locked"  # backward compatibility
+    PARAM_FROZEN = "frozen"
     PARAM_META = "meta"
     PARAM_ALWAYS_CHANGED = "always_changed"
     PARAM_PARAMS = "params"

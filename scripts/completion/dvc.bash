@@ -4,9 +4,9 @@
 #   - https://opensource.com/article/18/3/creating-bash-completion-script
 #   - https://stackoverflow.com/questions/12933362
 
-_dvc_commands='add cache checkout commit config destroy diff fetch get-url get gc \
-  import-url import init install lock list metrics move params pipeline plots pull push \
-  remote remove repro root run status unlock unprotect update version'
+_dvc_commands='add cache checkout commit config destroy diff fetch freeze get-url get gc \
+  import-url import init install list metrics move params pipeline plots pull push \
+  remote remove repro root run status unfreeze unprotect update version'
 
 _dvc_options='-h --help -V --version'
 _dvc_global_options='-h --help -q --quiet -v --verbose'
@@ -33,8 +33,8 @@ _dvc_init='--no-scm -f --force'
 _dvc_install=''
 _dvc_list='-R --recursive --dvc-only --rev'
 _dvc_list_COMPGEN=_dvc_compgen_files
-_dvc_lock=''
-_dvc_lock_COMPGEN=_dvc_compgen_DVCFiles
+_dvc_freeze=''
+_dvc_freeze_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_metrics='add diff modify remove show'
 _dvc_metrics_add='-t --type -x --xpath'
 _dvc_metrics_add_COMPGEN=_dvc_compgen_files
@@ -76,7 +76,7 @@ _dvc_run='--no-exec -f --file -d --deps -o --outs -O --outs-no-cache --outs-pers
 _dvc_run_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_status='-j --jobs -r --remote -a --all-branches -T --all-tags -d --with-deps -c --cloud'
 _dvc_status_COMPGEN=_dvc_compgen_DVCFiles
-_dvc_unlock_COMPGEN=_dvc_compgen_DVCFiles
+_dvc_unfreeze_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_unprotect_COMPGEN=_dvc_compgen_files
 _dvc_update='--rev'
 _dvc_update_COMPGEN=_dvc_compgen_DVCFiles

@@ -115,7 +115,7 @@ def to_pipeline_file(stage: "PipelineStage"):
             stage.PARAM_PLOTS,
             _get_outs([out for out in stage.outs if out.plot]),
         ),
-        (stage.PARAM_LOCKED, stage.locked),
+        (stage.PARAM_FROZEN, stage.frozen),
         (stage.PARAM_ALWAYS_CHANGED, stage.always_changed),
     ]
     return {

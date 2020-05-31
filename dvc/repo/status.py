@@ -14,9 +14,9 @@ def _joint_status(stages):
     status = {}
 
     for stage in stages:
-        if stage.locked and not stage.is_repo_import:
+        if stage.frozen and not stage.is_repo_import:
             logger.warning(
-                "{} is locked. Its dependencies are"
+                "{} is frozen. Its dependencies are"
                 " not going to be shown in the status output.".format(stage)
             )
 

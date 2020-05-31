@@ -15,7 +15,7 @@ def test_get_active_graph(tmp_dir, dvc):
         single_stage=True, deps=["foo"], outs=["baz"], cmd="echo baz > baz"
     )
 
-    dvc.lock_stage("bar.dvc")
+    dvc.freeze("bar.dvc")
 
     graph = dvc.graph
     active_graph = _get_active_graph(graph)
@@ -25,7 +25,7 @@ def test_get_active_graph(tmp_dir, dvc):
         (baz_stage, foo_stage),
     }
 
-    dvc.lock_stage("baz.dvc")
+    dvc.freeze("baz.dvc")
 
     graph = dvc.graph
     active_graph = _get_active_graph(graph)

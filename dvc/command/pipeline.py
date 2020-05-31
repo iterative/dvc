@@ -17,7 +17,7 @@ class CmdPipelineShow(CmdBase):
         G = self.repo.graph
         stages = networkx.dfs_postorder_nodes(G, stage)
         if locked:
-            stages = [s for s in stages if s.locked]
+            stages = [s for s in stages if s.frozen]
 
         for stage in stages:
             if commands:
