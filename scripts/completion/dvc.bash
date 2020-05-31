@@ -9,16 +9,16 @@ _dvc_commands='add cache checkout commit config daemon destroy diff fetch freeze
 _dvc_options='-h --help -V --version'
 _dvc_global_options='-h --help -q --quiet -v --verbose'
 
-_dvc_add='-R --recursive -f --file --no-commit'
+_dvc_add='-R --recursive --no-commit -f --file'
 _dvc_add_COMPGEN=_dvc_compgen_files
 _dvc_cache='dir'
 _dvc_cache_dir='--global --system --local -u --unset'
 _dvc_cache_dir_COMPGEN=_dvc_compgen_files
-_dvc_checkout='-d --with-deps -R --recursive -f --force --relink --summary'
+_dvc_checkout='--summary -d --with-deps -R --recursive -f --force --relink'
 _dvc_checkout_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_commit='-f --force -d --with-deps -R --recursive'
 _dvc_commit_COMPGEN=_dvc_compgen_DVCFiles
-_dvc_config='-u --unset --local --system --global'
+_dvc_config='--global --system --local -u --unset'
 _dvc_daemon='updater analytics'
 _dvc_daemon_analytics=''
 _dvc_daemon_analytics_COMPGEN=_dvc_compgen_DVCFiles #?
@@ -29,7 +29,7 @@ _dvc_fetch='-j --jobs -r --remote -a --all-branches -T --all-tags --all-commits 
 _dvc_fetch_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_freeze=''
 _dvc_freeze_COMPGEN=_dvc_compgen_DVCFiles
-_dvc_gc='-a --all-branches --all-commits -T --all-tags -w --workspace -c --cloud -r --remote -f --force -p --projects -j --jobs'
+_dvc_gc='-w --workspace -a --all-branches -T --all-tags --all-commits -c --cloud -r --remote -f --force -j --jobs -p --projects'
 _dvc_get='-o --out --rev --show-url'
 _dvc_get_COMPGEN=_dvc_compgen_files
 _dvc_get_url=''
@@ -60,19 +60,19 @@ _dvc_params='diff'
 _dvc_params_diff='--all --show-json --show-md --no-path'
 _dvc_pipeline='list show'
 _dvc_pipeline_list=''
-_dvc_pipeline_show='-c --commands -o --outs --ascii --dot --tree -l --locked'
+_dvc_pipeline_show='-c --commands -o --outs -l --locked --ascii --dot --tree'
 _dvc_pipeline_show_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_plots='show diff modify'
-_dvc_plots_show='-t --template -o --out -x -y --show-json --no-csv-header --title --xlab --ylab'
-_dvc_plots_show_COMPGEN=_dvc_compgen_DVCFiles #?
-_dvc_plots_diff='-t --template --targets -o --out -x -y --show-json --no-csv-header --title --xlab --ylab'
+_dvc_plots_diff='--targets -t --template -x -y --no-csv-header --title --xlab --ylab -o --out --show-vega'
 _dvc_plots_modify='-t --template -x -y --no-csv-header --title --xlab --ylab --unset'
 _dvc_plots_modify_COMPGEN=_dvc_compgen_DVCFiles #?
+_dvc_plots_show='-t --template -x -y --no-csv-header --title --xlab --ylab -o --out --show-vega'
+_dvc_plots_show_COMPGEN=_dvc_compgen_DVCFiles #?
 _dvc_pull='-j --jobs -r --remote -a --all-branches -T --all-tags --all-commits -f --force -d --with-deps -R --recursive --run-cache'
 _dvc_pull_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_push='-j --jobs -r --remote -a --all-branches -T --all-tags --all-commits -d --with-deps -R --recursive --run-cache'
 _dvc_push_COMPGEN=_dvc_compgen_DVCFiles
-_dvc_remote='add default list modify remove rename'
+_dvc_remote='add default modify list remove rename'
 _dvc_remote_add='--global --system --local -d --default -f --force'
 _dvc_remote_default='--global --system --local -u --unset'
 _dvc_remote_list='--global --system --local'
@@ -81,7 +81,7 @@ _dvc_remote_remove='--global --system --local'
 _dvc_remote_rename='--global --system --local'
 _dvc_remove='-o --outs -p --purge -f --force'
 _dvc_remove_COMPGEN=_dvc_compgen_DVCFiles
-_dvc_repro='-f --force -s --single-item -c --cwd -m --metrics --dry -i --interactive -p --pipeline -P --all-pipelines --no-run-cache --force-downstream --no-commit -R --recursive --downstream'
+_dvc_repro='-f --force -s --single-item -c --cwd -m --metrics --dry -i --interactive -p --pipeline -P --all-pipelines -R --recursive --no-run-cache --force-downstream --no-commit --downstream'
 _dvc_repro_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_root=''
 _dvc_run='-d --deps -n --name -o --outs -O --outs-no-cache -p --params -m --metrics -M --metrics-no-cache --plots --plots-no-cache -f --file -w --wdir --no-exec --overwrite-dvcfile --no-run-cache --no-commit --outs-persist --outs-persist-no-cache --always-changed --single-stage'
@@ -139,7 +139,8 @@ _dvc_compgen_subcommand() {
 # Notes:
 # `COMPREPLY` contains what will be rendered after completion is triggered
 # `word` refers to the current typed word
-# `${!var}` is to evaluate the content of `var` and expand its content as a variable
+# `${!var}` is to evaluate the content of `var`
+# and expand its content as a variable
 #       hello="world"
 #       x="hello"
 #       ${!x} ->  ${hello} ->  "world"
