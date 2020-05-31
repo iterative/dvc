@@ -22,6 +22,7 @@ TEST_CONFIG = {
 
 TEST_AWS_REPO_BUCKET = os.environ.get("DVC_TEST_AWS_REPO_BUCKET", "dvc-temp")
 TEST_GCP_REPO_BUCKET = os.environ.get("DVC_TEST_GCP_REPO_BUCKET", "dvc-test")
+TEST_GDRIVE_REPO_BUCKET = "root"
 TEST_OSS_REPO_BUCKET = "dvc-test"
 
 TEST_GCP_CREDS_FILE = os.path.abspath(
@@ -153,9 +154,13 @@ class GDrive:
         remote.tree._gdrive_create_dir("root", remote.path_info.path)
 
     @staticmethod
+    def get_storagepath():
+        return TEST_GDRIVE_REPO_BUCKET + "/" + str(uuid.uuid4())
+
+    @staticmethod
     def get_url():
         # NOTE: `get_url` should always return new random url
-        return "gdrive://root/" + str(uuid.uuid4())
+        return "gdrive://" + GDrive.get_storagepath()
 
 
 class Azure:
