@@ -176,23 +176,6 @@ def get_main_parser():
     return parser
 
 
-def print_parser(parser, level=0):
-    """
-    >>> print_parser(get_main_parser())
-    """
-    opts = sum(
-        (opt.option_strings for opt in parser._get_optional_actions()), []
-    )
-    print(" " * level, " ".join(opts))
-    for sub in parser._get_positional_actions():
-        if sub.choices:
-            for opt, child in sub.choices.items():
-                print(" " * level, opt)
-                print_parser(child, level + 1)
-        else:
-            print(" " * level, "<" + sub.dest + ">")
-
-
 def parse_args(argv=None):
     """Parses CLI arguments.
 
