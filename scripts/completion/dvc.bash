@@ -4,9 +4,10 @@
 #   - https://opensource.com/article/18/3/creating-bash-completion-script
 #   - https://stackoverflow.com/questions/12933362
 
-_dvc_commands='add cache checkout commit config destroy diff fetch freeze get-url get gc \
-  import-url import init install list metrics move params pipeline plots pull push \
-  remote remove repro root run status unfreeze unprotect update version'
+_dvc_commands='add cache checkout commit config dag destroy diff fetch freeze \
+  get-url get gc import-url import init install list metrics move params \
+  plots pull push remote remove repro root run status unfreeze unprotect \
+  update version'
 
 _dvc_options='-h --help -V --version'
 _dvc_global_options='-h --help -q --quiet -v --verbose'
@@ -20,6 +21,8 @@ _dvc_checkout_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_commit='-f --force -d --with-deps -R --recursive'
 _dvc_commit_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_config='-u --unset --local --system --global'
+_dvc_dag='--dot --full'
+_dvc_dag_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_destroy='-f --force'
 _dvc_diff='-t --show-json --show-hash --show-md'
 _dvc_fetch='-j --jobs -r --remote -a --all-branches -T --all-tags -d --with-deps -R --recursive'
@@ -49,10 +52,6 @@ _dvc_move=''
 _dvc_move_COMPGEN=_dvc_compgen_files
 _dvc_params='diff'
 _dvc_params_diff='--all --show-json --show-md --no-path'
-_dvc_pipeline='list show'
-_dvc_pipeline_list=''
-_dvc_pipeline_show='-c --commands -o --outs --ascii --dot --tree -l --locked'
-_dvc_pipeline_show_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_plots='show diff'
 _dvc_plots_show='-t --template -o --out -x -y --show-json --no-csv-header --title --xlab --ylab'
 _dvc_plots_diff='-t --template --targets -o --out -x -y --show-json --no-csv-header --title --xlab --ylab'
