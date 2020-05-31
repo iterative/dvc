@@ -3,7 +3,6 @@ from urllib.parse import urlparse
 
 import dvc.output as output
 from dvc.dependency.azure import AzureDependency
-from dvc.dependency.gdrive import GDriveDependency
 from dvc.dependency.gs import GSDependency
 from dvc.dependency.hdfs import HDFSDependency
 from dvc.dependency.http import HTTPDependency
@@ -20,7 +19,6 @@ from .repo import RepoDependency
 
 DEPS = [
     AzureDependency,
-    GDriveDependency,
     GSDependency,
     HDFSDependency,
     HTTPDependency,
@@ -35,7 +33,6 @@ DEP_MAP = {
     Schemes.SSH: SSHDependency,
     Schemes.S3: S3Dependency,
     Schemes.AZURE: AzureDependency,
-    Schemes.GDRIVE: GDriveDependency,
     Schemes.GS: GSDependency,
     Schemes.HDFS: HDFSDependency,
     Schemes.HTTP: HTTPDependency,
