@@ -29,16 +29,15 @@ def print_parser(parser, prefix=ROOT_PREFIX, file=None):
     dest = []
     for sub in positionals:
         if sub.choices:
-            for opt in sorted(sub.choices):
-                if prefix == ROOT_PREFIX:
-                    commands.append(opt)
+            for cmd in sorted(sub.choices):
+                commands.append(cmd)
                 print_parser(
-                    sub.choices[opt], f"{prefix}_{opt.replace('-', '_')}", file
+                    sub.choices[cmd], f"{prefix}_{cmd.replace('-', '_')}", file
                 )
         elif not any(
             i in sub.dest.lower()
             for i in ("rev", "url", "args", "name", "command")
-        ):  # "commit", "sha", "hash"
+        ):
             dest.append(sub.dest)
     if dest:
         if "targets" in dest or "target" in dest:
@@ -60,6 +59,7 @@ if __name__ == "__main__":
     print(
         """\
 #!/usr/bin/env bash
+# AUTOMATCALLY GENERATED from dvc/scripts/completion/bash.py
 # References:
 #   - https://www.gnu.org/software/bash/manual/html_node/\
 Programmable-Completion.html
@@ -67,7 +67,7 @@ Programmable-Completion.html
 #   - https://stackoverflow.com/questions/12933362
 
 _dvc_commands='"""
-        + " ".join(sorted(commands))
+        + " ".join(commands)
         + """'
 
 _dvc_options='-h --help -V --version'

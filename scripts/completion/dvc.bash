@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# AUTOMATCALLY GENERATED from dvc/scripts/completion/bash.py
 # References:
 #   - https://www.gnu.org/software/bash/manual/html_node/Programmable-Completion.html
 #   - https://opensource.com/article/18/3/creating-bash-completion-script
