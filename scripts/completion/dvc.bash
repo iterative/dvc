@@ -4,9 +4,7 @@
 #   - https://opensource.com/article/18/3/creating-bash-completion-script
 #   - https://stackoverflow.com/questions/12933362
 
-_dvc_commands='add cache checkout commit config destroy diff fetch freeze get-url get gc \
-  import-url import init install list metrics move params pipeline plots pull push \
-  remote remove repro root run status unfreeze unprotect update version'
+_dvc_commands='add cache checkout commit config daemon destroy diff fetch freeze gc get get-url git-hook import import-url init install list metrics move params pipeline plots pull push remote remove repro root run status unfreeze unprotect update version'
 
 _dvc_options='-h --help -V --version'
 _dvc_global_options='-h --help -q --quiet -v --verbose'
