@@ -106,7 +106,7 @@ def _infer_y_field(rev_data_points, x_field):
 
 def _show(repo, datafile=None, revs=None, props=None):
     if revs is None:
-        revs = ["working tree"]
+        revs = ["workspace"]
 
     if not datafile and not props.get("template"):
         raise NoDataOrTemplateProvided()

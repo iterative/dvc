@@ -258,7 +258,7 @@ def _load_from_revisions(repo, datafile, revisions):
     exceptions = []
 
     for rev in repo.brancher(revs=revisions):
-        if rev == "working tree" and rev not in revisions:
+        if rev == "workspace" and rev not in revisions:
             continue
 
         try:

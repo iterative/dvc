@@ -60,8 +60,8 @@ def test_plot_csv_one_column(tmp_dir, scm, dvc, run_copy_metrics):
     plot_content = json.loads(plot_string)
     assert plot_content["title"] == "mytitle"
     assert plot_content["data"]["values"] == [
-        {"0": "2", PlotData.INDEX_FIELD: 0, "rev": "working tree"},
-        {"0": "3", PlotData.INDEX_FIELD: 1, "rev": "working tree"},
+        {"0": "2", PlotData.INDEX_FIELD: 0, "rev": "workspace"},
+        {"0": "3", PlotData.INDEX_FIELD: 1, "rev": "workspace"},
     ]
     assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
     assert plot_content["encoding"]["y"]["field"] == "0"
@@ -86,14 +86,14 @@ def test_plot_csv_multiple_columns(tmp_dir, scm, dvc, run_copy_metrics):
         {
             "val": "2",
             PlotData.INDEX_FIELD: 0,
-            "rev": "working tree",
+            "rev": "workspace",
             "first_val": "100",
             "second_val": "100",
         },
         {
             "val": "3",
             PlotData.INDEX_FIELD: 1,
-            "rev": "working tree",
+            "rev": "workspace",
             "first_val": "200",
             "second_val": "300",
         },
@@ -119,13 +119,13 @@ def test_plot_csv_choose_axes(tmp_dir, scm, dvc, run_copy_metrics):
     assert plot_content["data"]["values"] == [
         {
             "val": "2",
-            "rev": "working tree",
+            "rev": "workspace",
             "first_val": "100",
             "second_val": "100",
         },
         {
             "val": "3",
-            "rev": "working tree",
+            "rev": "workspace",
             "first_val": "200",
             "second_val": "300",
         },
@@ -148,8 +148,8 @@ def test_plot_json_single_val(tmp_dir, scm, dvc, run_copy_metrics):
 
     plot_json = json.loads(plot_string)
     assert plot_json["data"]["values"] == [
-        {"val": 2, PlotData.INDEX_FIELD: 0, "rev": "working tree"},
-        {"val": 3, PlotData.INDEX_FIELD: 1, "rev": "working tree"},
+        {"val": 2, PlotData.INDEX_FIELD: 0, "rev": "workspace"},
+        {"val": 3, PlotData.INDEX_FIELD: 1, "rev": "workspace"},
     ]
     assert plot_json["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
     assert plot_json["encoding"]["y"]["field"] == "val"
@@ -176,13 +176,13 @@ def test_plot_json_multiple_val(tmp_dir, scm, dvc, run_copy_metrics):
             "val": 2,
             PlotData.INDEX_FIELD: 0,
             "first_val": 100,
-            "rev": "working tree",
+            "rev": "workspace",
         },
         {
             "val": 3,
             PlotData.INDEX_FIELD: 1,
             "first_val": 200,
-            "rev": "working tree",
+            "rev": "workspace",
         },
     ]
     assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
@@ -207,8 +207,8 @@ def test_plot_confusion(tmp_dir, dvc, run_copy_metrics):
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"predicted": "B", "actual": "A", "rev": "working tree"},
-        {"predicted": "A", "actual": "A", "rev": "working tree"},
+        {"predicted": "B", "actual": "A", "rev": "workspace"},
+        {"predicted": "A", "actual": "A", "rev": "workspace"},
     ]
     assert plot_content["encoding"]["x"]["field"] == "predicted"
     assert plot_content["encoding"]["y"]["field"] == "actual"
@@ -380,8 +380,8 @@ def test_custom_template(tmp_dir, scm, dvc, custom_template, run_copy_metrics):
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"a": 1, "b": 2, "rev": "working tree"},
-        {"a": 2, "b": 3, "rev": "working tree"},
+        {"a": 1, "b": 2, "rev": "workspace"},
+        {"a": 2, "b": 3, "rev": "workspace"},
     ]
     assert plot_content["encoding"]["x"]["field"] == "a"
     assert plot_content["encoding"]["y"]["field"] == "b"
@@ -413,8 +413,8 @@ def test_custom_template_with_specified_data(
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"a": 1, "b": 2, "rev": "working tree"},
-        {"a": 2, "b": 3, "rev": "working tree"},
+        {"a": 1, "b": 2, "rev": "workspace"},
+        {"a": 2, "b": 3, "rev": "workspace"},
     ]
     assert plot_content["encoding"]["x"]["field"] == "a"
     assert plot_content["encoding"]["y"]["field"] == "b"
@@ -450,8 +450,8 @@ def test_plot_override_specified_data_source(
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"a": 1, "b": 2, "rev": "working tree"},
-        {"a": 2, "b": 3, "rev": "working tree"},
+        {"a": 1, "b": 2, "rev": "workspace"},
+        {"a": 2, "b": 3, "rev": "workspace"},
     ]
     assert plot_content["encoding"]["x"]["field"] == "a"
     assert plot_content["encoding"]["y"]["field"] == "b"
@@ -518,8 +518,8 @@ def test_plot_choose_columns(
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"b": 2, "c": 3, "rev": "working tree"},
-        {"b": 3, "c": 4, "rev": "working tree"},
+        {"b": 2, "c": 3, "rev": "workspace"},
+        {"b": 3, "c": 4, "rev": "workspace"},
     ]
     assert plot_content["encoding"]["x"]["field"] == "b"
     assert plot_content["encoding"]["y"]["field"] == "c"
@@ -540,8 +540,8 @@ def test_plot_default_choose_column(tmp_dir, scm, dvc, run_copy_metrics):
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {PlotData.INDEX_FIELD: 0, "b": 2, "rev": "working tree"},
-        {PlotData.INDEX_FIELD: 1, "b": 3, "rev": "working tree"},
+        {PlotData.INDEX_FIELD: 0, "b": 2, "rev": "workspace"},
+        {PlotData.INDEX_FIELD: 1, "b": 3, "rev": "workspace"},
     ]
     assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
     assert plot_content["encoding"]["y"]["field"] == "b"
@@ -560,8 +560,8 @@ def test_plot_yaml(tmp_dir, scm, dvc, run_copy_metrics):
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"val": 2, PlotData.INDEX_FIELD: 0, "rev": "working tree"},
-        {"val": 3, PlotData.INDEX_FIELD: 1, "rev": "working tree"},
+        {"val": 2, PlotData.INDEX_FIELD: 0, "rev": "workspace"},
+        {"val": 3, PlotData.INDEX_FIELD: 1, "rev": "workspace"},
     ]
 
 
