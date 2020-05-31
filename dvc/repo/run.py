@@ -3,7 +3,11 @@ import os
 from funcy import concat, first
 
 from dvc.exceptions import InvalidArgumentError
-from dvc.stage.exceptions import DuplicateStageName, InvalidStageName
+from dvc.stage.exceptions import (
+    DuplicateStageName,
+    InvalidStageName,
+    StageFileAlreadyExistsError,
+)
 
 from ..exceptions import OutputDuplicationError
 from . import locked
@@ -74,10 +78,12 @@ def run(self, fname=None, no_exec=False, single_stage=False, **kwargs):
 
     dvcfile = Dvcfile(self, stage.path)
     if dvcfile.exists():
-        if stage_name and stage_name in dvcfile.stages:
+        if kwargs.get("overwrite", True):
+            dvcfile.remove_stage(stage)
+        elif stage_cls != PipelineStage:
+            raise StageFileAlreadyExistsError(dvcfile.relpath)
+        elif stage_name and stage_name in dvcfile.stages:
             raise DuplicateStageName(stage_name, dvcfile)
-        if stage_cls != PipelineStage:
-            dvcfile.remove_with_prompt(force=kwargs.get("overwrite", True))
 
     try:
         self.check_modified_graph([stage])

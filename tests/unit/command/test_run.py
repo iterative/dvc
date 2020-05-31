@@ -27,7 +27,7 @@ def test_run(mocker, dvc):
             "--wdir",
             "wdir",
             "--no-exec",
-            "--overwrite-dvcfile",
+            "--overwrite",
             "--no-run-cache",
             "--no-commit",
             "--outs-persist",

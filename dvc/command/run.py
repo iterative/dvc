@@ -45,7 +45,7 @@ class CmdRun(CmdBase):
                 fname=self.args.file,
                 wdir=self.args.wdir,
                 no_exec=self.args.no_exec,
-                overwrite=self.args.overwrite_dvcfile,
+                overwrite=self.args.overwrite,
                 run_cache=not self.args.no_run_cache,
                 no_commit=self.args.no_commit,
                 outs_persist=self.args.outs_persist,
@@ -177,10 +177,10 @@ def add_parser(subparsers, parent_parser):
         help="Only create stage file without actually running it.",
     )
     run_parser.add_argument(
-        "--overwrite-dvcfile",
+        "--overwrite",
         action="store_true",
         default=False,
-        help="Overwrite existing DVC-file without asking for confirmation.",
+        help="Overwrite existing stage",
     )
     run_parser.add_argument(
         "--no-run-cache",

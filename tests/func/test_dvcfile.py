@@ -1,8 +1,14 @@
+import textwrap
+
 import pytest
 
-from dvc.dvcfile import PIPELINE_FILE, Dvcfile
-from dvc.stage.exceptions import StageFileDoesNotExistError
+from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK, Dvcfile
+from dvc.stage.exceptions import (
+    StageFileDoesNotExistError,
+    StageFileFormatError,
+)
 from dvc.stage.loader import StageNotFound
+from dvc.utils.stage import dump_stage_file
 
 
 def test_run_load_one_for_multistage(tmp_dir, dvc):
@@ -160,3 +166,127 @@ def test_stage_collection(tmp_dir, dvc):
         single_stage=True,
     )
     assert {s for s in dvc.stages} == {stage1, stage3, stage2}
+
+
+def test_remove_stage(tmp_dir, dvc, run_copy):
+    tmp_dir.gen("foo", "foo")
+    stage = run_copy("foo", "bar", name="copy-foo-bar")
+    stage2 = run_copy("bar", "foobar", name="copy-bar-foobar")
+
+    dvc_file = Dvcfile(dvc, PIPELINE_FILE)
+    assert dvc_file.exists()
+    assert {"copy-bar-foobar", "copy-foo-bar"} == set(
+        dvc_file._load()[0]["stages"].keys()
+    )
+
+    dvc_file.remove_stage(stage)
+
+    assert ["copy-bar-foobar"] == list(dvc_file._load()[0]["stages"].keys())
+
+    # sanity check
+    stage2.reload()
+
+    # re-check to see if it fails if there's no stage entry
+    dvc_file.remove_stage(stage)
+    dvc_file.remove(force=True)
+    # should not fail when there's no file at all.
+    dvc_file.remove_stage(stage)
+
+
+def test_remove_stage_lockfile(tmp_dir, dvc, run_copy):
+    tmp_dir.gen("foo", "foo")
+    stage = run_copy("foo", "bar", name="copy-foo-bar")
+    stage2 = run_copy("bar", "foobar", name="copy-bar-foobar")
+
+    dvc_file = Dvcfile(dvc, PIPELINE_FILE)
+    lock_file = dvc_file._lockfile
+    assert dvc_file.exists()
+    assert lock_file.exists()
+    assert {"copy-bar-foobar", "copy-foo-bar"} == set(lock_file.load().keys())
+    lock_file.remove_stage(stage)
+
+    assert ["copy-bar-foobar"] == list(lock_file.load().keys())
+
+    # sanity check
+    stage2.reload()
+
+    # re-check to see if it fails if there's no stage entry
+    lock_file.remove_stage(stage)
+    lock_file.remove()
+    # should not fail when there's no file at all.
+    lock_file.remove_stage(stage)
+
+
+def test_remove_stage_dvcfiles(tmp_dir, dvc, run_copy):
+    tmp_dir.gen("foo", "foo")
+    stage = run_copy("foo", "bar", single_stage=True)
+
+    dvc_file = Dvcfile(dvc, stage.path)
+    assert dvc_file.exists()
+    dvc_file.remove_stage(stage)
+    assert not dvc_file.exists()
+
+    # re-check to see if it fails if there's no stage entry
+    dvc_file.remove_stage(stage)
+    dvc_file.remove(force=True)
+
+    # should not fail when there's no file at all.
+    dvc_file.remove_stage(stage)
+
+
+def test_remove_stage_on_lockfile_format_error(tmp_dir, dvc, run_copy):
+    tmp_dir.gen("foo", "foo")
+    stage = run_copy("foo", "bar", name="copy-foo-bar")
+    dvc_file = Dvcfile(dvc, stage.path)
+    lock_file = dvc_file._lockfile
+
+    data = dvc_file._load()[0]
+    lock_data = lock_file.load()
+    lock_data["gibberish"] = True
+    data["gibberish"] = True
+    dump_stage_file(lock_file.relpath, lock_data)
+    with pytest.raises(StageFileFormatError):
+        dvc_file.remove_stage(stage)
+
+    lock_file.remove()
+    dvc_file.dump(stage)
+
+    dump_stage_file(dvc_file.relpath, data)
+    with pytest.raises(StageFileFormatError):
+        dvc_file.remove_stage(stage)
+
+
+def test_remove_stage_preserves_comment(tmp_dir, dvc, run_copy):
+    tmp_dir.gen(
+        "dvc.yaml",
+        textwrap.dedent(
+            """\
+            stages:
+                generate-foo:
+                    cmd: "echo foo > foo"
+                    # This copies 'foo' text to 'foo' file.
+                    outs:
+                    - foo
+                copy-foo-bar:
+                    cmd: "python copy.py foo bar"
+                    deps:
+                    - foo
+                    outs:
+                    - bar"""
+        ),
+    )
+
+    dvc.reproduce(PIPELINE_FILE)
+
+    dvc_file = Dvcfile(dvc, PIPELINE_FILE)
+
+    assert dvc_file.exists()
+    assert (tmp_dir / PIPELINE_LOCK).exists()
+    assert (tmp_dir / "foo").exists()
+    assert (tmp_dir / "bar").exists()
+
+    dvc_file.remove_stage(dvc_file.stages["copy-foo-bar"])
+    assert (
+        "# This copies 'foo' text to 'foo' file."
+        in (tmp_dir / PIPELINE_FILE).read_text()
+    )

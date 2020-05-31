@@ -983,7 +983,8 @@ class TestReproExternalBase(SingleStageRun, TestDvc):
         self.dvc.gc(workspace=True)
         self.assertEqual(self.dvc.status(), {})
 
-        self.dvc.remove(cmd_stage.path, dvc_only=True)
+        with self.dvc.lock:
+            cmd_stage.remove_outs(force=True)
         self.assertNotEqual(self.dvc.status([cmd_stage.addressing]), {})
 
         self.dvc.checkout([cmd_stage.path], force=True)
@@ -1203,12 +1204,13 @@ class TestReproExternalHTTP(TestReproExternalBase):
         self.assertTrue(os.path.exists(import_output))
         self.assertTrue(filecmp.cmp(import_output, self.FOO, shallow=False))
 
-        self.dvc.remove("imported_file.dvc")
+        self.dvc.remove("imported_file.dvc", outs=True)
 
         with StaticFileServer(handler_class=ContentMD5Handler) as httpd:
             import_url = urljoin(self.get_remote(httpd.server_port), self.FOO)
             import_output = "imported_file"
             import_stage = self.dvc.imp_url(import_url, import_output)
+            assert import_stage.repo == self.dvc
 
         self.assertTrue(os.path.exists(import_output))
         self.assertTrue(filecmp.cmp(import_output, self.FOO, shallow=False))
@@ -1225,7 +1227,7 @@ class TestReproExternalHTTP(TestReproExternalBase):
             self.assertEqual(ret1, 0)
             self.assertEqual(ret2, 0)
 
-            self.dvc = DvcRepo(".")
+            self.dvc = import_stage.repo = DvcRepo(".")
 
             run_dependency = urljoin(remote, self.BAR)
             run_output = "remote_file"
@@ -1245,7 +1247,10 @@ class TestReproExternalHTTP(TestReproExternalBase):
             self.assertTrue(os.path.exists(run_output))
 
             # Pull
-            self.dvc.remove(import_stage.path, dvc_only=True)
+            with self.dvc.lock:
+                self.assertEqual(import_stage.repo.lock.is_locked, True)
+                self.assertEqual(self.dvc.lock.is_locked, True)
+                import_stage.remove_outs(force=True)
             self.assertFalse(os.path.exists(import_output))
 
             shutil.move(self.local_cache, cache_id)

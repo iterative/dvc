@@ -241,3 +241,32 @@ def test_stage_on_no_path_string_repr(tmp_dir, dvc):
     assert p.addressing == "No path:stage_name"
     assert repr(p) == "Stage: 'No path:stage_name'"
     assert str(p) == "stage: 'No path:stage_name'"
+
+
+def test_stage_remove_pipeline_stage(tmp_dir, dvc, run_copy):
+    tmp_dir.gen("foo", "foo")
+    stage = run_copy("foo", "bar", name="copy-foo-bar")
+    run_copy("bar", "foobar", name="copy-bar-foobar")
+
+    dvc_file = stage.dvcfile
+    with dvc.lock:
+        stage.remove(purge=False)
+    assert stage.name in dvc_file.stages
+
+    with dvc.lock:
+        stage.remove()
+    assert stage.name not in dvc_file.stages
+    assert "copy-bar-foobar" in dvc_file.stages
+
+
+def test_stage_remove_pointer_stage(tmp_dir, dvc, run_copy):
+    (stage,) = tmp_dir.dvc_gen("foo", "foo")
+
+    with dvc.lock:
+        stage.remove(purge=False)
+    assert not (tmp_dir / "foo").exists()
+    assert (tmp_dir / stage.relpath).exists()
+
+    with dvc.lock:
+        stage.remove()
+    assert not (tmp_dir / stage.relpath).exists()
