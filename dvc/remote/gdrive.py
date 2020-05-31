@@ -35,7 +35,7 @@ class GDriveAuthError(DvcException):
         if cred_location:
             message = (
                 "GDrive remote auth failed with credentials in '{}'.\n"
-                "Backup first, remove of fix them, and run DVC again.\n"
+                "Backup first, remove or fix them, and run DVC again.\n"
                 "It should do auth again and refresh the credentials.\n\n"
                 "Details:".format(cred_location)
             )
