@@ -1770,3 +1770,25 @@ def test_ssh_dir_out(tmp_dir, dvc, ssh_server):
 
     repo.reproduce("dir-out.dvc")
     repo.reproduce("dir-out.dvc", force=True)
+
+
+def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy, mocker):
+    from dvc.dvcfile import SingleStageFile
+
+    tmp_dir.gen("foo", "foo")
+    stage = run_copy("foo", "bar", single_stage=True)
+    assert not dvc.reproduce(stage.addressing)
+
+    from dvc.stage.run import cmd_run
+
+    m = mocker.patch("dvc.stage.run.cmd_run", wraps=cmd_run)
+
+    data = SingleStageFile(dvc, stage.path)._load()[0]
+    data["cmd"] = "  ".join(stage.cmd.split())  # change cmd spacing by two
+    dump_stage_file(stage.path, data)
+
+    assert dvc.status([stage.addressing]) == {
+        stage.addressing: ["changed checksum"]
+    }
+    assert dvc.reproduce(stage.addressing)[0] == stage
+    m.assert_called_once_with(stage)

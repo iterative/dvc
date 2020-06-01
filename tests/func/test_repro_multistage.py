@@ -307,7 +307,7 @@ def test_downstream(tmp_dir, dvc):
     )
 
 
-def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy):
+def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy, mocker):
     from dvc.dvcfile import PipelineFile
 
     tmp_dir.gen("foo", "foo")
@@ -315,11 +315,15 @@ def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy):
     target = "copy-file"
     assert not dvc.reproduce(target)
 
+    from dvc.stage.run import cmd_run
+
+    m = mocker.patch("dvc.stage.run.cmd_run", wraps=cmd_run)
     stage.cmd = "  ".join(stage.cmd.split())  # change cmd spacing by two
     PipelineFile(dvc, PIPELINE_FILE)._dump_pipeline_file(stage)
 
     assert dvc.status([target]) == {target: ["changed command"]}
     assert dvc.reproduce(target)[0] == stage
+    m.assert_called_once_with(stage)
 
 
 def test_repro_when_new_deps_is_added_in_dvcfile(tmp_dir, dvc, run_copy):
