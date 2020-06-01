@@ -4,7 +4,7 @@ import yaml
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
 
-from dvc.exceptions import StageFileCorruptedError
+from dvc.exceptions import YAMLFileCorruptedError
 
 try:
     from yaml import CSafeLoader as SafeLoader
@@ -12,35 +12,35 @@ except ImportError:
     from yaml import SafeLoader
 
 
-def load_stage_file(path):
+def load_yaml(path):
     with open(path, encoding="utf-8") as fd:
-        return parse_stage(fd.read(), path)
+        return parse_yaml(fd.read(), path)
 
 
-def parse_stage(text, path):
+def parse_yaml(text, path):
     try:
         return yaml.load(text, Loader=SafeLoader) or {}
     except yaml.error.YAMLError as exc:
-        raise StageFileCorruptedError(path) from exc
+        raise YAMLFileCorruptedError(path) from exc
 
 
-def parse_stage_for_update(text, path):
+def parse_yaml_for_update(text, path):
     """Parses text into Python structure.
 
-    Unlike `parse_stage()` this returns ordered dicts, values have special
+    Unlike `parse_yaml()` this returns ordered dicts, values have special
     attributes to store comments and line breaks. This allows us to preserve
     all of those upon dump.
 
-    This one is, however, several times slower than simple `parse_stage()`.
+    This one is, however, several times slower than simple `parse_yaml()`.
     """
     try:
         yaml = YAML()
         return yaml.load(text) or {}
     except YAMLError as exc:
-        raise StageFileCorruptedError(path) from exc
+        raise YAMLFileCorruptedError(path) from exc
 
 
-def dump_stage_file(path, data):
+def dump_yaml(path, data):
     with open(path, "w", encoding="utf-8") as fd:
         yaml = YAML()
         yaml.default_flow_style = False

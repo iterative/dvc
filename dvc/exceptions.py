@@ -178,12 +178,11 @@ class NoMetricsError(DvcException):
         )
 
 
-class StageFileCorruptedError(DvcException):
+class YAMLFileCorruptedError(DvcException):
     def __init__(self, path):
         path = relpath(path)
         super().__init__(
-            "unable to read DVC-file: {} "
-            "YAML file structure is corrupted".format(path)
+            f"unable to read: '{path}', YAML file structure is corrupted"
         )
 
 

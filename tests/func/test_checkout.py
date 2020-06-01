@@ -24,7 +24,7 @@ from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
 from dvc.utils import relpath
 from dvc.utils.fs import walk_files
-from dvc.utils.stage import dump_stage_file, load_stage_file
+from dvc.utils.yaml import dump_yaml, load_yaml
 from tests.basic_env import TestDvc, TestDvcGit
 from tests.func.test_repro import TestRepro
 from tests.remotes import S3
@@ -221,7 +221,7 @@ class TestCheckoutSelectiveRemove(CheckoutBase):
         self.assertEqual(0, ret)
 
         stage_path = self.DATA_DIR + DVC_FILE_SUFFIX
-        stage = load_stage_file(stage_path)
+        stage = load_yaml(stage_path)
         staged_files = self.outs_info(stage)
 
         # move instead of remove, to lock inode assigned to stage_files[0].path
@@ -304,10 +304,10 @@ class TestGitIgnoreWhenCheckout(CheckoutBase):
 
 class TestCheckoutMissingMd5InStageFile(TestRepro):
     def test(self):
-        d = load_stage_file(self.file1_stage)
+        d = load_yaml(self.file1_stage)
         del d[Stage.PARAM_OUTS][0][LocalRemote.PARAM_CHECKSUM]
         del d[Stage.PARAM_DEPS][0][LocalRemote.PARAM_CHECKSUM]
-        dump_stage_file(self.file1_stage, d)
+        dump_yaml(self.file1_stage, d)
 
         with pytest.raises(CheckoutError):
             self.dvc.checkout(force=True)

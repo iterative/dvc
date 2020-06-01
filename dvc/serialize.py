@@ -10,7 +10,7 @@ from dvc.output import BaseOutput
 from dvc.stage.params import StageParams
 from dvc.stage.utils import resolve_wdir
 from dvc.utils.collections import apply_diff
-from dvc.utils.stage import parse_stage_for_update
+from dvc.utils.yaml import parse_yaml_for_update
 
 if TYPE_CHECKING:
     from dvc.stage import PipelineStage, Stage
@@ -165,7 +165,7 @@ def to_single_stage_file(stage: "Stage"):
     # - apply changes to a returned structure
     # - serialize it
     if stage._stage_text is not None:
-        saved_state = parse_stage_for_update(stage._stage_text, stage.path)
+        saved_state = parse_yaml_for_update(stage._stage_text, stage.path)
         # Stage doesn't work with meta in any way, so .dumpd() doesn't
         # have it. We simply copy it over.
         if "meta" in saved_state:

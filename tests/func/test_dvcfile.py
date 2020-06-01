@@ -8,7 +8,7 @@ from dvc.stage.exceptions import (
     StageFileFormatError,
 )
 from dvc.stage.loader import StageNotFound
-from dvc.utils.stage import dump_stage_file
+from dvc.utils.yaml import dump_yaml
 
 
 def test_run_load_one_for_multistage(tmp_dir, dvc):
@@ -244,14 +244,14 @@ def test_remove_stage_on_lockfile_format_error(tmp_dir, dvc, run_copy):
     lock_data = lock_file.load()
     lock_data["gibberish"] = True
     data["gibberish"] = True
-    dump_stage_file(lock_file.relpath, lock_data)
+    dump_yaml(lock_file.relpath, lock_data)
     with pytest.raises(StageFileFormatError):
         dvc_file.remove_stage(stage)
 
     lock_file.remove()
     dvc_file.dump(stage)
 
-    dump_stage_file(dvc_file.relpath, data)
+    dump_yaml(dvc_file.relpath, data)
     with pytest.raises(StageFileFormatError):
         dvc_file.remove_stage(stage)
 

@@ -2,7 +2,7 @@ import pytest
 
 from dvc.dvcfile import PIPELINE_FILE
 from dvc.stage.exceptions import StageCommitError
-from dvc.utils.stage import dump_stage_file, load_stage_file
+from dvc.utils.yaml import dump_yaml, load_yaml
 
 
 def test_commit_recursive(tmp_dir, dvc):
@@ -63,15 +63,15 @@ def test_commit_changed_md5(tmp_dir, dvc):
     tmp_dir.gen({"file": "file content"})
     (stage,) = dvc.add("file", no_commit=True)
 
-    stage_file_content = load_stage_file(stage.path)
+    stage_file_content = load_yaml(stage.path)
     stage_file_content["md5"] = "1111111111"
-    dump_stage_file(stage.path, stage_file_content)
+    dump_yaml(stage.path, stage_file_content)
 
     with pytest.raises(StageCommitError):
         dvc.commit(stage.path)
 
     dvc.commit(stage.path, force=True)
-    assert "md5" not in load_stage_file(stage.path)
+    assert "md5" not in load_yaml(stage.path)
 
 
 def test_commit_no_exec(tmp_dir, dvc):

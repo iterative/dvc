@@ -27,7 +27,7 @@ from dvc.remote.base import STATUS_DELETED, STATUS_NEW, STATUS_OK
 from dvc.stage.exceptions import StageNotFound
 from dvc.utils import file_md5
 from dvc.utils.fs import remove
-from dvc.utils.stage import dump_stage_file, load_stage_file
+from dvc.utils.yaml import dump_yaml, load_yaml
 from tests.basic_env import TestDvc
 from tests.remotes import (
     GCP,
@@ -523,9 +523,9 @@ class TestWarnOnOutdatedStage(TestDvc):
         self.main(["push"])
 
         stage_file_path = stage.relpath
-        content = load_stage_file(stage_file_path)
+        content = load_yaml(stage_file_path)
         del content["outs"][0]["md5"]
-        dump_stage_file(stage_file_path, content)
+        dump_yaml(stage_file_path, content)
 
         with self._caplog.at_level(logging.WARNING, logger="dvc"):
             self._caplog.clear()

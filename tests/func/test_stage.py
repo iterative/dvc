@@ -10,7 +10,7 @@ from dvc.remote.local import LocalRemote
 from dvc.repo import Repo
 from dvc.stage import PipelineStage, Stage
 from dvc.stage.exceptions import StageFileFormatError
-from dvc.utils.stage import dump_stage_file, load_stage_file
+from dvc.utils.yaml import dump_yaml, load_yaml
 from tests.basic_env import TestDvc
 
 
@@ -74,12 +74,12 @@ class TestReload(TestDvc):
         stage = stages[0]
         self.assertTrue(stage is not None)
 
-        d = load_stage_file(stage.relpath)
+        d = load_yaml(stage.relpath)
 
         # NOTE: checking that reloaded stage didn't change its checksum
         md5 = "11111111111111111111111111111111"
         d[stage.PARAM_MD5] = md5
-        dump_stage_file(stage.relpath, d)
+        dump_yaml(stage.relpath, d)
 
         dvcfile = SingleStageFile(self.dvc, stage.relpath)
         stage = dvcfile.stage
@@ -87,7 +87,7 @@ class TestReload(TestDvc):
         self.assertTrue(stage is not None)
         dvcfile.dump(stage)
 
-        d = load_stage_file(stage.relpath)
+        d = load_yaml(stage.relpath)
         self.assertEqual(d[stage.PARAM_MD5], md5)
 
 
@@ -103,7 +103,7 @@ class TestDefaultWorkingDirectory(TestDvc):
         d = stage.dumpd()
         self.assertNotIn(Stage.PARAM_WDIR, d.keys())
 
-        d = load_stage_file(stage.relpath)
+        d = load_yaml(stage.relpath)
         self.assertNotIn(Stage.PARAM_WDIR, d.keys())
 
         with self.dvc.lock, self.dvc.state:
@@ -167,16 +167,16 @@ def test_meta_is_preserved(tmp_dir, dvc):
     (stage,) = tmp_dir.dvc_gen("foo", "foo content")
 
     # Add meta to DVC-file
-    data = load_stage_file(stage.path)
+    data = load_yaml(stage.path)
     data["meta"] = {"custom_key": 42}
-    dump_stage_file(stage.path, data)
+    dump_yaml(stage.path, data)
 
     # Loading and dumping to test that it works and meta is retained
     dvcfile = SingleStageFile(dvc, stage.path)
     new_stage = dvcfile.stage
     dvcfile.dump(new_stage)
 
-    new_data = load_stage_file(stage.path)
+    new_data = load_yaml(stage.path)
     assert new_data["meta"] == data["meta"]
 
 
