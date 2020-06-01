@@ -656,11 +656,17 @@ class TestReproMetricsAddUnchanged(TestDvc):
         stages = self.dvc.reproduce(file1_stage)
         self.assertEqual(len(stages), 0)
 
-        self.dvc.metrics.add(file1)
+        d = load_yaml(file1_stage)
+        d["outs"][0]["metric"] = True
+        dump_yaml(file1_stage, d)
+
         stages = self.dvc.reproduce(file1_stage)
         self.assertEqual(len(stages), 0)
 
-        self.dvc.metrics.remove(file1)
+        d = load_yaml(file1_stage)
+        d["outs"][0]["metric"] = False
+        dump_yaml(file1_stage, d)
+
         stages = self.dvc.reproduce(file1_stage)
         self.assertEqual(len(stages), 0)
 

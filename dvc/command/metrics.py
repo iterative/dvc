@@ -63,30 +63,6 @@ class CmdMetricsShow(CmdBase):
         return 0
 
 
-class CmdMetricsAdd(CmdBase):
-    def run(self):
-        try:
-            self.repo.metrics.add(self.args.path)
-        except DvcException:
-            msg = f"failed to add metric file '{self.args.path}'"
-            logger.exception(msg)
-            return 1
-
-        return 0
-
-
-class CmdMetricsRemove(CmdBase):
-    def run(self):
-        try:
-            self.repo.metrics.remove(self.args.path)
-        except DvcException:
-            msg = f"failed to remove metric file '{self.args.path}'"
-            logger.exception(msg)
-            return 1
-
-        return 0
-
-
 def _show_diff(diff, markdown=False, no_path=False, old=False):
     from collections import OrderedDict
 
@@ -145,7 +121,7 @@ class CmdMetricsDiff(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    METRICS_HELP = "Commands to add, manage, collect, and display metrics."
+    METRICS_HELP = "Commands to display and compare metrics."
 
     metrics_parser = subparsers.add_parser(
         "metrics",
@@ -161,17 +137,6 @@ def add_parser(subparsers, parent_parser):
     )
 
     fix_subparsers(metrics_subparsers)
-
-    METRICS_ADD_HELP = "Mark a DVC-tracked file as a metric."
-    metrics_add_parser = metrics_subparsers.add_parser(
-        "add",
-        parents=[parent_parser],
-        description=append_doc_link(METRICS_ADD_HELP, "metrics/add"),
-        help=METRICS_ADD_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    metrics_add_parser.add_argument("path", help="Path to a metric file.")
-    metrics_add_parser.set_defaults(func=CmdMetricsAdd)
 
     METRICS_SHOW_HELP = "Print metrics, with optional formatting."
     metrics_show_parser = metrics_subparsers.add_parser(
@@ -291,14 +256,3 @@ def add_parser(subparsers, parent_parser):
         help="Show old metric value.",
     )
     metrics_diff_parser.set_defaults(func=CmdMetricsDiff)
-
-    METRICS_REMOVE_HELP = "Remove metric mark on a DVC-tracked file."
-    metrics_remove_parser = metrics_subparsers.add_parser(
-        "remove",
-        parents=[parent_parser],
-        description=append_doc_link(METRICS_REMOVE_HELP, "metrics/remove"),
-        help=METRICS_REMOVE_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    metrics_remove_parser.add_argument("path", help="Path to a metric file.")
-    metrics_remove_parser.set_defaults(func=CmdMetricsRemove)

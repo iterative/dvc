@@ -30,7 +30,7 @@ _dvc_commands() {
     "install:Install DVC git hooks into the repository."
     "list:List repository contents, including files and directories tracked by DVC and by Git."
     "lock:Lock DVC-file."
-    "metrics:Commands to add, manage, collect and display metrics."
+    "metrics:Commands to display and compare metrics."
     "move:Rename or move a DVC controlled data file or a directory."
     "params:Commands to display params."
     "pull:Pull data files from a DVC remote storage."
@@ -182,7 +182,7 @@ _dvc_list=(
 )
 
 _dvc_metrics=(
-  "1:Sub command:(add show diff modify remove)"
+  "1:Sub command:(show diff)"
 )
 
 _dvc_move=(
