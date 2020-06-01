@@ -1,9 +1,11 @@
 """Automatically generate bash completion script"""
 import io
+import logging
 from os import path
 
 from dvc.cli import get_main_parser
 
+logger = logging.getLogger("bash")
 GLOBAL_OPTIONS = ["-h", "--help", "-q", "--quiet", "-v", "--verbose"]
 ROOT_PREFIX = "_dvc"
 UNCOMPLETABLE_POSITIONALS = {
@@ -46,16 +48,21 @@ def print_bash(parser, prefix=ROOT_PREFIX, file=None):
                 )
         elif not any(i in sub.dest for i in UNCOMPLETABLE_POSITIONALS):
             dest.append(sub.dest)
+        else:
+            logger.debug(f"uncompletable:{prefix}:{dest}")
     if dest:
         if not {"targets", "target"}.intersection(dest):
             print(f"{prefix}_COMPGEN=_dvc_compgen_files", file=file)
+            logger.debug(f"file:{prefix}:{dest}")
         else:
             print(f"{prefix}_COMPGEN=_dvc_compgen_DVCFiles", file=file)
+            logger.debug(f"DVCFile:{prefix}:{dest}")
 
     return commands
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     parser = get_main_parser()
     bash = io.StringIO()
     commands = print_bash(parser, file=bash)
