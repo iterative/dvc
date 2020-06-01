@@ -31,7 +31,7 @@ from dvc.stage.exceptions import (
 )
 from dvc.system import System
 from dvc.utils import file_md5
-from dvc.utils.stage import load_stage_file
+from dvc.utils.yaml import load_yaml
 from tests.basic_env import TestDvc, TestDvcGit
 
 
@@ -629,13 +629,13 @@ class TestCmdRunWorkingDirectory(TestDvc):
             wdir=".",
             single_stage=True,
         )
-        d = load_stage_file(stage.relpath)
+        d = load_yaml(stage.relpath)
         self.assertNotIn(Stage.PARAM_WDIR, d.keys())
 
         stage = self.dvc.run(
             cmd=f"echo test > {self.BAR}", outs=[self.BAR], single_stage=True,
         )
-        d = load_stage_file(stage.relpath)
+        d = load_yaml(stage.relpath)
         self.assertNotIn(Stage.PARAM_WDIR, d.keys())
 
     def test_fname_changes_path_and_wdir(self):
@@ -655,7 +655,7 @@ class TestCmdRunWorkingDirectory(TestDvc):
         )
 
         # Check that it is dumped properly (relative to fname)
-        d = load_stage_file(stage.relpath)
+        d = load_yaml(stage.relpath)
         self.assertEqual(d[Stage.PARAM_WDIR], "..")
 
 
@@ -775,7 +775,7 @@ class TestRunPersist(TestDvc):
         self.assertEqual(0, ret)
 
     def stage_should_contain_persist_flag(self, stage_file):
-        stage_file_content = load_stage_file(stage_file)
+        stage_file_content = load_yaml(stage_file)
         self.assertEqual(
             True, stage_file_content["outs"][0][BaseOutput.PARAM_PERSIST]
         )

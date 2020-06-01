@@ -33,7 +33,7 @@ from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
 from dvc.utils import file_md5, relpath
 from dvc.utils.fs import remove
-from dvc.utils.stage import dump_stage_file, load_stage_file
+from dvc.utils.yaml import dump_yaml, load_yaml
 from tests.basic_env import TestDvc
 from tests.remotes import (
     GCP,
@@ -108,7 +108,7 @@ class TestReproCyclicGraph(SingleStageRun, TestDvc):
             "deps": [{"path": "baz.txt"}],
             "outs": [{"path": self.FOO}],
         }
-        dump_stage_file("cycle.dvc", stage_dump)
+        dump_yaml("cycle.dvc", stage_dump)
 
         with self.assertRaises(CyclicGraphError):
             self.dvc.reproduce("cycle.dvc")
@@ -149,7 +149,7 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
             "cmd": f"echo something > {output}",
             "outs": [{"path": output}],
         }
-        dump_stage_file(faulty_stage_path, stage_dump)
+        dump_yaml(faulty_stage_path, stage_dump)
 
         with self.assertRaises(StagePathAsOutputError):
             self.dvc.reproduce(faulty_stage_path)
@@ -188,7 +188,7 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
             "cmd": f"echo something > {output}",
             "outs": [{"path": output}],
         }
-        dump_stage_file(error_stage_path, stage_dump)
+        dump_yaml(error_stage_path, stage_dump)
 
         # NOTE: os.walk() walks in a sorted order and we need dir2 subdirs to
         # be processed before dir1 to load error.dvc first.
@@ -220,7 +220,7 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
         stage = os.path.join("something-1", "a.dvc")
 
         stage_dump = {"cmd": "echo a > a", "outs": [{"path": "a"}]}
-        dump_stage_file(stage, stage_dump)
+        dump_yaml(stage, stage_dump)
 
         try:
             self.dvc.reproduce(stage)
@@ -775,10 +775,10 @@ class TestReproChangedDirData(SingleStageRun, TestDvc):
 
 class TestReproMissingMd5InStageFile(TestRepro):
     def test(self):
-        d = load_stage_file(self.file1_stage)
+        d = load_yaml(self.file1_stage)
         del d[Stage.PARAM_OUTS][0][LocalRemote.PARAM_CHECKSUM]
         del d[Stage.PARAM_DEPS][0][LocalRemote.PARAM_CHECKSUM]
-        dump_stage_file(self.file1_stage, d)
+        dump_yaml(self.file1_stage, d)
 
         stages = self.dvc.reproduce(self.file1_stage)
         self.assertEqual(len(stages), 1)
@@ -1785,7 +1785,7 @@ def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy, mocker):
 
     data = SingleStageFile(dvc, stage.path)._load()[0]
     data["cmd"] = "  ".join(stage.cmd.split())  # change cmd spacing by two
-    dump_stage_file(stage.path, data)
+    dump_yaml(stage.path, data)
 
     assert dvc.status([stage.addressing]) == {
         stage.addressing: ["changed checksum"]

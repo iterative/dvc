@@ -17,11 +17,7 @@ from dvc.stage.exceptions import (
 from dvc.stage.loader import SingleStageLoader, StageLoader
 from dvc.utils import relpath
 from dvc.utils.collections import apply_diff
-from dvc.utils.stage import (
-    dump_stage_file,
-    parse_stage,
-    parse_stage_for_update,
-)
+from dvc.utils.yaml import dump_yaml, parse_yaml, parse_yaml_for_update
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +97,7 @@ class FileMixin:
 
         with self.repo.tree.open(self.path) as fd:
             stage_text = fd.read()
-        d = parse_stage(stage_text, self.path)
+        d = parse_yaml(stage_text, self.path)
         self.validate(d, self.relpath)
         return d, stage_text
 
@@ -149,7 +145,7 @@ class SingleStageFile(FileMixin):
         logger.debug(
             "Saving information to '{file}'.".format(file=relpath(self.path))
         )
-        dump_stage_file(self.path, serialize.to_single_stage_file(stage))
+        dump_yaml(self.path, serialize.to_single_stage_file(stage))
         self.repo.scm.track_file(self.relpath)
 
     def remove_with_prompt(self, force=False):
@@ -198,7 +194,7 @@ class PipelineFile(FileMixin):
         data = {}
         if self.exists():
             with open(self.path) as fd:
-                data = parse_stage_for_update(fd.read(), self.path)
+                data = parse_yaml_for_update(fd.read(), self.path)
         else:
             logger.info("Creating '%s'", self.relpath)
             open(self.path, "w+").close()
@@ -214,7 +210,7 @@ class PipelineFile(FileMixin):
         logger.info(
             "Adding stage '%s' to '%s'", stage.name, self.relpath,
         )
-        dump_stage_file(self.path, data)
+        dump_yaml(self.path, data)
         self.repo.scm.track_file(self.relpath)
 
     @property
@@ -243,7 +239,7 @@ class PipelineFile(FileMixin):
             return
 
         with open(self.path, "r") as f:
-            d = parse_stage_for_update(f.read(), self.path)
+            d = parse_yaml_for_update(f.read(), self.path)
 
         self.validate(d, self.path)
         if stage.name not in d.get("stages", {}):
@@ -251,7 +247,7 @@ class PipelineFile(FileMixin):
 
         logger.debug("Removing '%s' from '%s'", stage.name, self.path)
         del d["stages"][stage.name]
-        dump_stage_file(self.path, d)
+        dump_yaml(self.path, d)
 
 
 class Lockfile(FileMixin):
@@ -261,7 +257,7 @@ class Lockfile(FileMixin):
         if not self.exists():
             return {}
         with self.repo.tree.open(self.path) as fd:
-            data = parse_stage(fd.read(), self.path)
+            data = parse_yaml(fd.read(), self.path)
         try:
             self.validate(data, fname=self.relpath)
         except StageFileFormatError:
@@ -279,14 +275,14 @@ class Lockfile(FileMixin):
             open(self.path, "w+").close()
         else:
             with self.repo.tree.open(self.path, "r") as fd:
-                data = parse_stage_for_update(fd.read(), self.path)
+                data = parse_yaml_for_update(fd.read(), self.path)
             modified = data.get(stage.name, {}) != stage_data.get(
                 stage.name, {}
             )
             if modified:
                 logger.info("Updating lock file '%s'", self.relpath)
             data.update(stage_data)
-        dump_stage_file(self.path, data)
+        dump_yaml(self.path, data)
         if modified:
             self.repo.scm.track_file(self.relpath)
 
@@ -295,7 +291,7 @@ class Lockfile(FileMixin):
             return
 
         with open(self.path) as f:
-            d = parse_stage_for_update(f.read(), self.path)
+            d = parse_yaml_for_update(f.read(), self.path)
         self.validate(d, self.path)
 
         if stage.name not in d:
@@ -304,7 +300,7 @@ class Lockfile(FileMixin):
         logger.debug("Removing '%s' from '%s'", stage.name, self.path)
         del d[stage.name]
 
-        dump_stage_file(self.path, d)
+        dump_yaml(self.path, d)
 
 
 class Dvcfile:
