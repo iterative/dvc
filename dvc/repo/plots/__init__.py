@@ -18,12 +18,16 @@ class Plots:
         (out,) = self.repo.find_outs_by_path(path)
 
         # This out will become a plot unless it is one already
-        if not out.plot:
+        if not isinstance(out.plot, dict):
             out.plot = {}
 
         for field in unset or ():
             out.plot.pop(field, None)
         out.plot.update(props or {})
+
+        # Empty dict will move it to non-plots
+        if not out.plot:
+            out.plot = True
 
         out.verify_metric()
 
