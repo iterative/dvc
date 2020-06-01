@@ -13,7 +13,7 @@ class CmdGetUrl(CmdBaseNoRepo):
         from dvc.repo import Repo
 
         try:
-            Repo.get_url(self.args.url, out=self.args.out)
+            Repo.get_url(self.args.url, out=self.args.path)
             return 0
         except DvcException:
             logger.exception(f"failed to get '{self.args.url}'")
@@ -33,6 +33,6 @@ def add_parser(subparsers, parent_parser):
         "url", help="See `dvc import-url -h` for full list of supported URLs."
     )
     get_parser.add_argument(
-        "out", nargs="?", help="Destination path to put data to."
+        "path", nargs="?", help="Destination path to put data to."
     )
     get_parser.set_defaults(func=CmdGetUrl)

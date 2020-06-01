@@ -6,9 +6,19 @@ from dvc.cli import get_main_parser
 
 GLOBAL_OPTIONS = ["-h", "--help", "-q", "--quiet", "-v", "--verbose"]
 ROOT_PREFIX = "_dvc"
+UNCOMPLETABLE_POSITIONALS = {
+    "rev",
+    "url",
+    "args",
+    "name",
+    "option",
+    "value",
+    "command",
+}
 
 
-def print_parser(parser, prefix=ROOT_PREFIX, file=None):
+def print_bash(parser, prefix=ROOT_PREFIX, file=None):
+    """Prints definitions in bash syntax for use in autocompletion scripts."""
     positionals = parser._get_positional_actions()
     commands = []
 
@@ -31,30 +41,24 @@ def print_parser(parser, prefix=ROOT_PREFIX, file=None):
         if sub.choices:
             for cmd in sorted(sub.choices):
                 commands.append(cmd)
-                print_parser(
+                print_bash(
                     sub.choices[cmd], f"{prefix}_{cmd.replace('-', '_')}", file
                 )
-        elif not any(
-            i in sub.dest.lower()
-            for i in ("rev", "url", "args", "name", "command")
-        ):
+        elif not any(i in sub.dest for i in UNCOMPLETABLE_POSITIONALS):
             dest.append(sub.dest)
     if dest:
-        if "targets" in dest or "target" in dest:
-            print(f"{prefix}_COMPGEN=_dvc_compgen_DVCFiles", file=file)
-        elif prefix not in (
-            "_dvc_config",
-            "_dvc_remote_modify",
-            "_dvc_remote_rename",
-        ):
+        if not {"targets", "target"}.intersection(dest):
             print(f"{prefix}_COMPGEN=_dvc_compgen_files", file=file)
+        else:
+            print(f"{prefix}_COMPGEN=_dvc_compgen_DVCFiles", file=file)
 
     return commands
 
 
 if __name__ == "__main__":
-    output = io.StringIO()
-    commands = print_parser(get_main_parser(), file=output)
+    parser = get_main_parser()
+    bash = io.StringIO()
+    commands = print_bash(parser, file=bash)
 
     print(
         """\
@@ -76,7 +80,7 @@ _dvc_global_options='"""
         + """'
 
 """
-        + output.getvalue()
+        + bash.getvalue()
         + """
 # $1=COMP_WORDS[1]
 _dvc_compgen_DVCFiles() {

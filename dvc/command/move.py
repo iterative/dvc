@@ -10,10 +10,10 @@ logger = logging.getLogger(__name__)
 class CmdMove(CmdBase):
     def run(self):
         try:
-            self.repo.move(self.args.src, self.args.dst)
+            self.repo.move(self.args.src_path, self.args.dst_path)
         except DvcException:
             msg = "failed to move '{}' -> '{}'".format(
-                self.args.src, self.args.dst
+                self.args.src_path, self.args.dst_path
             )
             logger.exception(msg)
             return 1
@@ -36,7 +36,7 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     move_parser.add_argument(
-        "src", help="Source path to a data file or directory."
+        "src_path", help="Source path to a data file or directory."
     )
-    move_parser.add_argument("dst", help="Destination path.")
+    move_parser.add_argument("dst_path", help="Destination path.")
     move_parser.set_defaults(func=CmdMove)

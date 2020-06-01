@@ -11,7 +11,7 @@ class CmdImportUrl(CmdBase):
     def run(self):
         try:
             self.repo.imp_url(
-                self.args.url, out=self.args.out, fname=self.args.file
+                self.args.url, out=self.args.path, fname=self.args.file
             )
         except DvcException:
             logger.exception(
@@ -54,7 +54,7 @@ def add_parser(subparsers, parent_parser):
         "remote://myremote/path/to/file (see `dvc remote`)",
     )
     import_parser.add_argument(
-        "out", nargs="?", help="Destination path to put files to."
+        "path", nargs="?", help="Destination path to put files to."
     )
     import_parser.add_argument(
         "-f",
