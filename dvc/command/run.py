@@ -140,7 +140,7 @@ def add_parser(subparsers, parent_parser):
         "--metrics-no-cache",
         action="append",
         default=[],
-        help="Declare output metric file " "(do not put into DVC cache).",
+        help="Declare output metric file (do not put into DVC cache).",
         metavar="<path>",
     )
     run_parser.add_argument(
