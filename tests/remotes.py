@@ -141,10 +141,21 @@ class GDrive:
     def should_test():
         return os.getenv(GDriveRemote.GDRIVE_CREDENTIALS_DATA) is not None
 
-    def get_url(self):
-        if not getattr(self, "_remote_url", None):
-            self._remote_url = "gdrive://root/" + str(uuid.uuid4())
-        return self._remote_url
+    @staticmethod
+    def create_dir(dvc, url):
+        config = {
+            "url": url,
+            "gdrive_service_account_email": "test",
+            "gdrive_service_account_p12_file_path": "test.p12",
+            "gdrive_use_service_account": True,
+        }
+        remote = GDriveRemote(dvc, config)
+        remote._gdrive_create_dir("root", remote.path_info.path)
+
+    @staticmethod
+    def get_url():
+        # NOTE: `get_url` should always return new random url
+        return "gdrive://root/" + str(uuid.uuid4())
 
 
 class Azure:

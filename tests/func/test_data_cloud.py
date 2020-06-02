@@ -189,26 +189,22 @@ class TestS3Remote(S3, TestDataCloudBase):
         return S3Remote
 
 
-def setup_gdrive_cloud(remote_url, dvc):
-    config = copy.deepcopy(TEST_CONFIG)
-    config["remote"][TEST_REMOTE] = {
-        "url": remote_url,
-        "gdrive_service_account_email": "test",
-        "gdrive_service_account_p12_file_path": "test.p12",
-        "gdrive_use_service_account": True,
-    }
-
-    dvc.config = config
-    remote = DataCloud(dvc).get_remote()
-    remote._gdrive_create_dir("root", remote.path_info.path)
-
-
 class TestGDriveRemote(GDrive, TestDataCloudBase):
     def _setup_cloud(self):
         self._ensure_should_run()
 
-        setup_gdrive_cloud(self.get_url(), self.dvc)
+        url = self.get_url()
+        self.create_dir(self.dvc, url)
 
+        config = copy.deepcopy(TEST_CONFIG)
+        config["remote"][TEST_REMOTE] = {
+            "url": url,
+            "gdrive_service_account_email": "test",
+            "gdrive_service_account_p12_file_path": "test.p12",
+            "gdrive_use_service_account": True,
+        }
+
+        self.dvc.config = config
         self.cloud = DataCloud(self.dvc)
         remote = self.cloud.get_remote()
         self.assertIsInstance(remote, self._get_cloud_class())
@@ -421,11 +417,10 @@ class TestS3RemoteCLI(S3, TestDataCloudCLIBase):
 
 
 class TestGDriveRemoteCLI(GDrive, TestDataCloudCLIBase):
-    def _setup_cloud(self):
-        setup_gdrive_cloud(self.get_url(), self.dvc)
-
     def _test(self):
         url = self.get_url()
+
+        self.create_dir(self.dvc, url)
 
         self.main(["remote", "add", TEST_REMOTE, url])
         self.main(
@@ -434,7 +429,7 @@ class TestGDriveRemoteCLI(GDrive, TestDataCloudCLIBase):
                 "modify",
                 TEST_REMOTE,
                 "gdrive_service_account_email",
-                "modified",
+                "test",
             ]
         )
         self.main(
@@ -443,7 +438,7 @@ class TestGDriveRemoteCLI(GDrive, TestDataCloudCLIBase):
                 "modify",
                 TEST_REMOTE,
                 "gdrive_service_account_p12_file_path",
-                "modified.p12",
+                "test.p12",
             ]
         )
         self.main(
