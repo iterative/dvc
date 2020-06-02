@@ -62,7 +62,11 @@ class CmdRemoteModify(CmdRemote):
     def run(self):
         with self.config.edit(self.args.level) as conf:
             self._check_exists(conf)
-            conf["remote"][self.args.name][self.args.option] = self.args.value
+            section = conf["remote"][self.args.name]
+            if self.args.unset:
+                section.pop(self.args.option, None)
+            else:
+                section[self.args.option] = self.args.value
         return 0
 
 
