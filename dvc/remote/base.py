@@ -136,6 +136,26 @@ class BaseRemoteTree:
         directories before copying/linking/moving data
         """
 
+    def move(self, from_info, to_info, mode=None):
+        assert mode is None
+        self.copy(from_info, to_info)
+        self.remove(from_info)
+
+    def copy(self, from_info, to_info):
+        raise RemoteActionNotImplemented("copy", self.scheme)
+
+    def copy_fobj(self, fobj, to_info):
+        raise RemoteActionNotImplemented("copy_fobj", self.scheme)
+
+    def symlink(self, from_info, to_info):
+        raise RemoteActionNotImplemented("symlink", self.scheme)
+
+    def hardlink(self, from_info, to_info):
+        raise RemoteActionNotImplemented("hardlink", self.scheme)
+
+    def reflink(self, from_info, to_info):
+        raise RemoteActionNotImplemented("reflink", self.scheme)
+
 
 class BaseRemote:
     scheme = "base"
@@ -507,7 +527,7 @@ class BaseRemote:
     @slow_link_guard
     def _try_links(self, from_info, to_info, link_types):
         while link_types:
-            link_method = getattr(self, link_types[0])
+            link_method = getattr(self.tree, link_types[0])
             try:
                 self._do_link(from_info, to_info, link_method)
                 self._verify_link(to_info, link_types[0])
@@ -545,13 +565,13 @@ class BaseRemote:
                     if not (
                         tree.isdvc(path_info, strict=False) and tree.fetch
                     ):
-                        self.copy_fobj(fobj, cache_info)
+                        self.tree.copy_fobj(fobj, cache_info)
                 callback = kwargs.get("download_callback")
                 if callback:
                     callback(1)
         else:
             if self.changed_cache(checksum):
-                self.move(path_info, cache_info, mode=self.CACHE_MODE)
+                self.tree.move(path_info, cache_info, mode=self.CACHE_MODE)
                 self.link(cache_info, path_info)
             elif self.tree.iscopy(path_info) and self._cache_is_copy(
                 path_info
@@ -718,7 +738,7 @@ class BaseRemote:
             raise NotImplementedError
 
         if to_info.scheme == self.scheme != "local":
-            self.copy(from_info, to_info)
+            self.tree.copy(from_info, to_info)
             return 0
 
         if to_info.scheme != "local":
@@ -781,26 +801,6 @@ class BaseRemote:
         move(tmp_file, to_info, mode=file_mode)
 
         return 0
-
-    def move(self, from_info, to_info, mode=None):
-        assert mode is None
-        self.copy(from_info, to_info)
-        self.tree.remove(from_info)
-
-    def copy(self, from_info, to_info):
-        raise RemoteActionNotImplemented("copy", self.scheme)
-
-    def copy_fobj(self, fobj, to_info):
-        raise RemoteActionNotImplemented("copy_fobj", self.scheme)
-
-    def symlink(self, from_info, to_info):
-        raise RemoteActionNotImplemented("symlink", self.scheme)
-
-    def hardlink(self, from_info, to_info):
-        raise RemoteActionNotImplemented("hardlink", self.scheme)
-
-    def reflink(self, from_info, to_info):
-        raise RemoteActionNotImplemented("reflink", self.scheme)
 
     def path_to_checksum(self, path):
         parts = self.path_cls(path).parts[-2:]

@@ -78,6 +78,59 @@ class SSHRemoteTree(BaseRemoteTree):
         with self.ssh(path_info) as ssh:
             ssh.makedirs(path_info.path)
 
+    def move(self, from_info, to_info, mode=None):
+        assert mode is None
+        if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
+            raise NotImplementedError
+
+        with self.ssh(from_info) as ssh:
+            ssh.move(from_info.path, to_info.path)
+
+    def copy(self, from_info, to_info):
+        if not from_info.scheme == to_info.scheme == self.scheme:
+            raise NotImplementedError
+
+        with self.ssh(from_info) as ssh:
+            ssh.atomic_copy(from_info.path, to_info.path)
+
+    def symlink(self, from_info, to_info):
+        if not from_info.scheme == to_info.scheme == self.scheme:
+            raise NotImplementedError
+
+        with self.ssh(from_info) as ssh:
+            ssh.symlink(from_info.path, to_info.path)
+
+    def hardlink(self, from_info, to_info):
+        if not from_info.scheme == to_info.scheme == self.scheme:
+            raise NotImplementedError
+
+        # See dvc/remote/local/__init__.py - hardlink()
+        if self.getsize(from_info) == 0:
+
+            with self.ssh(to_info) as ssh:
+                ssh.sftp.open(to_info.path, "w").close()
+
+            logger.debug(
+                "Created empty file: {src} -> {dest}".format(
+                    src=str(from_info), dest=str(to_info)
+                )
+            )
+            return
+
+        with self.ssh(from_info) as ssh:
+            ssh.hardlink(from_info.path, to_info.path)
+
+    def reflink(self, from_info, to_info):
+        if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
+            raise NotImplementedError
+
+        with self.ssh(from_info) as ssh:
+            ssh.reflink(from_info.path, to_info.path)
+
+    def getsize(self, path_info):
+        with self.ssh(path_info) as ssh:
+            return ssh.getsize(path_info.path)
+
 
 class SSHRemote(BaseRemote):
     scheme = Schemes.SSH
@@ -201,59 +254,6 @@ class SSHRemote(BaseRemote):
 
         with self.ssh(path_info) as ssh:
             return ssh.md5(path_info.path)
-
-    def getsize(self, path_info):
-        with self.ssh(path_info) as ssh:
-            return ssh.getsize(path_info.path)
-
-    def copy(self, from_info, to_info):
-        if not from_info.scheme == to_info.scheme == self.scheme:
-            raise NotImplementedError
-
-        with self.ssh(from_info) as ssh:
-            ssh.atomic_copy(from_info.path, to_info.path)
-
-    def symlink(self, from_info, to_info):
-        if not from_info.scheme == to_info.scheme == self.scheme:
-            raise NotImplementedError
-
-        with self.ssh(from_info) as ssh:
-            ssh.symlink(from_info.path, to_info.path)
-
-    def hardlink(self, from_info, to_info):
-        if not from_info.scheme == to_info.scheme == self.scheme:
-            raise NotImplementedError
-
-        # See dvc/remote/local/__init__.py - hardlink()
-        if self.getsize(from_info) == 0:
-
-            with self.ssh(to_info) as ssh:
-                ssh.sftp.open(to_info.path, "w").close()
-
-            logger.debug(
-                "Created empty file: {src} -> {dest}".format(
-                    src=str(from_info), dest=str(to_info)
-                )
-            )
-            return
-
-        with self.ssh(from_info) as ssh:
-            ssh.hardlink(from_info.path, to_info.path)
-
-    def reflink(self, from_info, to_info):
-        if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
-            raise NotImplementedError
-
-        with self.ssh(from_info) as ssh:
-            ssh.reflink(from_info.path, to_info.path)
-
-    def move(self, from_info, to_info, mode=None):
-        assert mode is None
-        if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
-            raise NotImplementedError
-
-        with self.ssh(from_info) as ssh:
-            ssh.move(from_info.path, to_info.path)
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         assert from_info.isin(self.path_info)

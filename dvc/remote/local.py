@@ -121,6 +121,91 @@ class LocalRemoteTree(BaseRemoteTree):
     def makedirs(self, path_info):
         makedirs(path_info, exist_ok=True, mode=self._dir_mode)
 
+    def move(self, from_info, to_info, mode=None):
+        if from_info.scheme != "local" or to_info.scheme != "local":
+            raise NotImplementedError
+
+        self.makedirs(to_info.parent)
+
+        if mode is None:
+            if self.isfile(from_info):
+                mode = self._file_mode
+            else:
+                mode = self._dir_mode
+
+        move(from_info, to_info, mode=mode)
+
+    def copy(self, from_info, to_info):
+        tmp_info = to_info.parent / tmp_fname(to_info.name)
+        try:
+            System.copy(from_info, tmp_info)
+            os.chmod(tmp_info, self._file_mode)
+            os.rename(tmp_info, to_info)
+        except Exception:
+            self.remove(tmp_info)
+            raise
+
+    def copy_fobj(self, fobj, to_info):
+        self.makedirs(to_info.parent)
+        tmp_info = to_info.parent / tmp_fname(to_info.name)
+        try:
+            copy_fobj_to_file(fobj, tmp_info)
+            os.chmod(tmp_info, self._file_mode)
+            os.rename(tmp_info, to_info)
+        except Exception:
+            self.remove(tmp_info)
+            raise
+
+    @staticmethod
+    def symlink(from_info, to_info):
+        System.symlink(from_info, to_info)
+
+    @staticmethod
+    def is_symlink(path_info):
+        return System.is_symlink(path_info)
+
+    def hardlink(self, from_info, to_info):
+        # If there are a lot of empty files (which happens a lot in datasets),
+        # and the cache type is `hardlink`, we might reach link limits and
+        # will get something like: `too many links error`
+        #
+        # This is because all those empty files will have the same checksum
+        # (i.e. 68b329da9893e34099c7d8ad5cb9c940), therefore, they will be
+        # linked to the same file in the cache.
+        #
+        # From https://en.wikipedia.org/wiki/Hard_link
+        #   * ext4 limits the number of hard links on a file to 65,000
+        #   * Windows with NTFS has a limit of 1024 hard links on a file
+        #
+        # That's why we simply create an empty file rather than a link.
+        if self.getsize(from_info) == 0:
+            self.open(to_info, "w").close()
+
+            logger.debug(
+                "Created empty file: {src} -> {dest}".format(
+                    src=str(from_info), dest=str(to_info)
+                )
+            )
+            return
+
+        System.hardlink(from_info, to_info)
+
+    @staticmethod
+    def is_hardlink(path_info):
+        return System.is_hardlink(path_info)
+
+    def reflink(self, from_info, to_info):
+        tmp_info = to_info.parent / tmp_fname(to_info.name)
+        System.reflink(from_info, tmp_info)
+        # NOTE: reflink has its own separate inode, so you can set permissions
+        # that are different from the source.
+        os.chmod(tmp_info, self._file_mode)
+        os.rename(tmp_info, to_info)
+
+    @staticmethod
+    def getsize(path_info):
+        return os.path.getsize(path_info)
+
 
 class LocalRemote(BaseRemote):
     scheme = Schemes.LOCAL
@@ -203,98 +288,13 @@ class LocalRemote(BaseRemote):
         return not self.changed_cache(current_md5)
 
     def _verify_link(self, path_info, link_type):
-        if link_type == "hardlink" and self.getsize(path_info) == 0:
+        if link_type == "hardlink" and self.tree.getsize(path_info) == 0:
             return
 
         super()._verify_link(path_info, link_type)
 
-    @staticmethod
-    def getsize(path_info):
-        return os.path.getsize(path_info)
-
     def get_file_checksum(self, path_info):
         return file_md5(path_info)[0]
-
-    def move(self, from_info, to_info, mode=None):
-        if from_info.scheme != "local" or to_info.scheme != "local":
-            raise NotImplementedError
-
-        self.makedirs(to_info.parent)
-
-        if mode is None:
-            if self.tree.isfile(from_info):
-                mode = self._file_mode
-            else:
-                mode = self._dir_mode
-
-        move(from_info, to_info, mode=mode)
-
-    def copy(self, from_info, to_info):
-        tmp_info = to_info.parent / tmp_fname(to_info.name)
-        try:
-            System.copy(from_info, tmp_info)
-            os.chmod(tmp_info, self._file_mode)
-            os.rename(tmp_info, to_info)
-        except Exception:
-            self.remove(tmp_info)
-            raise
-
-    def copy_fobj(self, fobj, to_info):
-        self.makedirs(to_info.parent)
-        tmp_info = to_info.parent / tmp_fname(to_info.name)
-        try:
-            copy_fobj_to_file(fobj, tmp_info)
-            os.chmod(tmp_info, self._file_mode)
-            os.rename(tmp_info, to_info)
-        except Exception:
-            self.remove(tmp_info)
-            raise
-
-    @staticmethod
-    def symlink(from_info, to_info):
-        System.symlink(from_info, to_info)
-
-    @staticmethod
-    def is_symlink(path_info):
-        return System.is_symlink(path_info)
-
-    def hardlink(self, from_info, to_info):
-        # If there are a lot of empty files (which happens a lot in datasets),
-        # and the cache type is `hardlink`, we might reach link limits and
-        # will get something like: `too many links error`
-        #
-        # This is because all those empty files will have the same checksum
-        # (i.e. 68b329da9893e34099c7d8ad5cb9c940), therefore, they will be
-        # linked to the same file in the cache.
-        #
-        # From https://en.wikipedia.org/wiki/Hard_link
-        #   * ext4 limits the number of hard links on a file to 65,000
-        #   * Windows with NTFS has a limit of 1024 hard links on a file
-        #
-        # That's why we simply create an empty file rather than a link.
-        if self.getsize(from_info) == 0:
-            self.tree.open(to_info, "w").close()
-
-            logger.debug(
-                "Created empty file: {src} -> {dest}".format(
-                    src=str(from_info), dest=str(to_info)
-                )
-            )
-            return
-
-        System.hardlink(from_info, to_info)
-
-    @staticmethod
-    def is_hardlink(path_info):
-        return System.is_hardlink(path_info)
-
-    def reflink(self, from_info, to_info):
-        tmp_info = to_info.parent / tmp_fname(to_info.name)
-        System.reflink(from_info, tmp_info)
-        # NOTE: reflink has its own separate inode, so you can set permissions
-        # that are different from the source.
-        os.chmod(tmp_info, self._file_mode)
-        os.rename(tmp_info, to_info)
 
     def cache_exists(self, checksums, jobs=None, name=None):
         return [

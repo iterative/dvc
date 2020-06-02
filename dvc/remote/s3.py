@@ -99,6 +99,9 @@ class S3RemoteTree(BaseRemoteTree):
         dir_path = path_info / ""
         self.s3.put_object(Bucket=path_info.bucket, Key=dir_path.path, Body="")
 
+    def copy(self, from_info, to_info):
+        self.remote._copy(self.s3, from_info, to_info, self.extra_args)
+
 
 class S3Remote(BaseRemote):
     scheme = Schemes.S3
@@ -265,9 +268,6 @@ class S3Remote(BaseRemote):
         cached_etag = cls.get_etag(s3, to_info.bucket, to_info.path)
         if etag != cached_etag:
             raise ETagMismatchError(etag, cached_etag)
-
-    def copy(self, from_info, to_info):
-        self._copy(self.s3, from_info, to_info, self.extra_args)
 
     def _list_objects(
         self, path_info, max_items=None, prefix=None, progress_callback=None

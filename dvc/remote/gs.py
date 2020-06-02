@@ -124,6 +124,16 @@ class GSRemoteTree(BaseRemoteTree):
             (path_info / "").path
         ).upload_from_string("")
 
+    def copy(self, from_info, to_info):
+        from_bucket = self.gs.bucket(from_info.bucket)
+        blob = from_bucket.get_blob(from_info.path)
+        if not blob:
+            msg = f"'{from_info.path}' doesn't exist in the cloud"
+            raise DvcException(msg)
+
+        to_bucket = self.gs.bucket(to_info.bucket)
+        from_bucket.copy_blob(blob, to_bucket, new_name=to_info.path)
+
 
 class GSRemote(BaseRemote):
     scheme = Schemes.GS
@@ -165,16 +175,6 @@ class GSRemote(BaseRemote):
         b64_md5 = blob.md5_hash
         md5 = base64.b64decode(b64_md5)
         return codecs.getencoder("hex")(md5)[0].decode("utf-8")
-
-    def copy(self, from_info, to_info):
-        from_bucket = self.gs.bucket(from_info.bucket)
-        blob = from_bucket.get_blob(from_info.path)
-        if not blob:
-            msg = f"'{from_info.path}' doesn't exist in the cloud"
-            raise DvcException(msg)
-
-        to_bucket = self.gs.bucket(to_info.bucket)
-        from_bucket.copy_blob(blob, to_bucket, new_name=to_info.path)
 
     def _list_paths(
         self, path_info, max_items=None, prefix=None, progress_callback=None

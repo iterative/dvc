@@ -56,6 +56,22 @@ class HDFSRemoteTree(BaseRemoteTree):
             with self.hdfs(path_info) as hdfs:
                 hdfs.rm(path_info.path)
 
+    def copy(self, from_info, to_info, **_kwargs):
+        dname = posixpath.dirname(to_info.path)
+        with self.hdfs(to_info) as hdfs:
+            hdfs.mkdir(dname)
+            # NOTE: this is how `hadoop fs -cp` works too: it copies through
+            # your local machine.
+            with hdfs.open(from_info.path, "rb") as from_fobj:
+                tmp_info = to_info.parent / tmp_fname(to_info.name)
+                try:
+                    with hdfs.open(tmp_info.path, "wb") as tmp_fobj:
+                        tmp_fobj.upload(from_fobj)
+                    hdfs.rename(tmp_info.path, to_info.path)
+                except Exception:
+                    self.remove(tmp_info)
+                    raise
+
 
 class HDFSRemote(BaseRemote):
     scheme = Schemes.HDFS
@@ -131,22 +147,6 @@ class HDFSRemote(BaseRemote):
             f"checksum {path_info.path}", user=path_info.user
         )
         return self._group(regex, stdout, "checksum")
-
-    def copy(self, from_info, to_info, **_kwargs):
-        dname = posixpath.dirname(to_info.path)
-        with self.hdfs(to_info) as hdfs:
-            hdfs.mkdir(dname)
-            # NOTE: this is how `hadoop fs -cp` works too: it copies through
-            # your local machine.
-            with hdfs.open(from_info.path, "rb") as from_fobj:
-                tmp_info = to_info.parent / tmp_fname(to_info.name)
-                try:
-                    with hdfs.open(tmp_info.path, "wb") as tmp_fobj:
-                        tmp_fobj.upload(from_fobj)
-                    hdfs.rename(tmp_info.path, to_info.path)
-                except Exception:
-                    self.remove(tmp_info)
-                    raise
 
     def _upload(self, from_file, to_info, **_kwargs):
         with self.hdfs(to_info) as hdfs:
