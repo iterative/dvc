@@ -33,12 +33,12 @@ def test_cmd_error(dvc):
     err = "sed: expression #1, char 2: extra characters after command"
 
     with mock.patch.object(
-        REMOTE_CLS,
+        REMOTE_CLS.TREE_CLS,
         "remove",
         side_effect=RemoteCmdError("base", cmd, ret, err),
     ):
         with pytest.raises(RemoteCmdError):
-            REMOTE_CLS(dvc, config).remove("file")
+            REMOTE_CLS(dvc, config).tree.remove("file")
 
 
 @mock.patch.object(BaseRemote, "_cache_checksums_traverse")
