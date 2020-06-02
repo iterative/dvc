@@ -1,11 +1,11 @@
-"""Automatically generate bash completion script"""
+import argparse
 import io
 import logging
-from os import path
+import sys
 
-from dvc.cli import get_main_parser
+from dvc.command.base import CmdBase, append_doc_link
 
-logger = logging.getLogger("bash")
+logger = logging.getLogger(__name__)
 GLOBAL_OPTIONS = ["-h", "--help", "-q", "--quiet", "-v", "--verbose"]
 ROOT_PREFIX = "_dvc"
 UNCOMPLETABLE_POSITIONALS = {
@@ -19,8 +19,8 @@ UNCOMPLETABLE_POSITIONALS = {
 }
 
 
-def print_bash(parser, prefix=ROOT_PREFIX, file=None):
-    """Prints definitions in bash syntax for use in autocompletion scripts."""
+def print_bash_commands(parser, prefix=ROOT_PREFIX, fd=None):
+    """Recursive parser traversal, printing bash helper syntax."""
     positionals = parser._get_positional_actions()
     commands = []
 
@@ -36,15 +36,15 @@ def print_bash(parser, prefix=ROOT_PREFIX, file=None):
         # use list rather than set to maintain order
         opts = [i for i in opts if i not in GLOBAL_OPTIONS]
         opts = " ".join(opts)
-        print(f"{prefix}='{opts}'", file=file)
+        print(f"{prefix}='{opts}'", file=fd)
 
     dest = []
     for sub in positionals:
         if sub.choices:
             for cmd in sorted(sub.choices):
                 commands.append(cmd)
-                print_bash(
-                    sub.choices[cmd], f"{prefix}_{cmd.replace('-', '_')}", file
+                print_bash_commands(
+                    sub.choices[cmd], f"{prefix}_{cmd.replace('-', '_')}", fd
                 )
         elif not any(i in sub.dest for i in UNCOMPLETABLE_POSITIONALS):
             dest.append(sub.dest)
@@ -52,20 +52,19 @@ def print_bash(parser, prefix=ROOT_PREFIX, file=None):
             logger.debug(f"uncompletable:{prefix}:{dest}")
     if dest:
         if not {"targets", "target"}.intersection(dest):
-            print(f"{prefix}_COMPGEN=_dvc_compgen_files", file=file)
+            print(f"{prefix}_COMPGEN=_dvc_compgen_files", file=fd)
             logger.debug(f"file:{prefix}:{dest}")
         else:
-            print(f"{prefix}_COMPGEN=_dvc_compgen_DVCFiles", file=file)
+            print(f"{prefix}_COMPGEN=_dvc_compgen_DVCFiles", file=fd)
             logger.debug(f"DVCFile:{prefix}:{dest}")
 
     return commands
 
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    parser = get_main_parser()
+def print_bash(parser, fd=None):
+    """Prints definitions in bash syntax for use in autocompletion scripts."""
     bash = io.StringIO()
-    commands = print_bash(parser, file=bash)
+    commands = print_bash_commands(parser, fd=bash)
 
     print(
         """\
@@ -160,5 +159,41 @@ _dvc() {
 }
 
 complete -o nospace -F _dvc dvc""",
-        file=open(path.join(path.dirname(__file__), "dvc.bash"), mode="w"),
+        file=fd,
     )
+
+
+class CmdCompletion(CmdBase):
+    def run(self):
+        from dvc.cli import get_main_parser
+
+        fd = (
+            sys.stdout
+            if self.args.output == "-"
+            else open(self.args.output, "w")
+        )
+        parser = get_main_parser()
+        print_bash(parser, fd)
+        return 0
+
+
+def add_parser(subparsers, parent_parser):
+    COMPLETION_HELP = "Enable shell tab completion."
+    COMPLETION_DESCRIPTION = (
+        "Automatically generates shell tab completion script."
+    )
+    completion_parser = subparsers.add_parser(
+        "completion",
+        parents=[parent_parser],
+        description=append_doc_link(COMPLETION_DESCRIPTION, "completion"),
+        help=COMPLETION_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    completion_parser.add_argument(
+        "-o",
+        "--output",
+        help="Output filename for completion script. Use - for stdout.",
+        metavar="<path>",
+        default="-",
+    )
+    completion_parser.set_defaults(func=CmdCompletion)

@@ -5,7 +5,7 @@
 #   - https://opensource.com/article/18/3/creating-bash-completion-script
 #   - https://stackoverflow.com/questions/12933362
 
-_dvc_commands='add cache checkout commit config daemon destroy diff fetch freeze gc get get-url git-hook import import-url init install list metrics move params pipeline plots pull push remote remove repro root run status unfreeze unprotect update version'
+_dvc_commands='add cache checkout commit completion config daemon destroy diff fetch freeze gc get get-url git-hook import import-url init install list metrics move params pipeline plots pull push remote remove repro root run status unfreeze unprotect update version'
 
 _dvc_options='-h --help -V --version'
 _dvc_global_options='-h --help -q --quiet -v --verbose'
@@ -19,6 +19,7 @@ _dvc_checkout='--summary -d --with-deps -R --recursive -f --force --relink'
 _dvc_checkout_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_commit='-f --force -d --with-deps -R --recursive'
 _dvc_commit_COMPGEN=_dvc_compgen_DVCFiles
+_dvc_completion='-o --output'
 _dvc_config='--global --system --local -u --unset'
 _dvc_daemon='updater analytics'
 _dvc_daemon_analytics=''
