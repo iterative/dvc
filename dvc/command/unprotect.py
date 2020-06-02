@@ -9,11 +9,11 @@ logger = logging.getLogger(__name__)
 
 class CmdUnprotect(CmdBase):
     def run(self):
-        for target in self.args.paths:
+        for out in self.args.paths:
             try:
-                self.repo.unprotect(target)
+                self.repo.unprotect(out)
             except DvcException:
-                msg = f"failed to unprotect '{target}'"
+                msg = f"failed to unprotect '{out}'"
                 logger.exception(msg)
                 return 1
         return 0

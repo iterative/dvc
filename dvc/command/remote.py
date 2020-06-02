@@ -120,9 +120,9 @@ class CmdRemoteRename(CmdRemote):
 
         with self.config.edit(self.args.level) as conf:
             self._check_exists(conf)
-            conf["remote"][self.args.new_name] = conf["remote"][
+            conf["remote"][self.args.new_name] = conf["remote"].pop(
                 self.args.old_name
-            ]
+            )
             del conf["remote"][self.args.old_name]
             self._rename_default(conf)
 

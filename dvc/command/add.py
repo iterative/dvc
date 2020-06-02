@@ -41,7 +41,7 @@ def add_parser(subparsers, parent_parser):
         "--recursive",
         action="store_true",
         default=False,
-        help="Recursively add files under directory targets.",
+        help="Recursively add files under directory paths.",
     )
     parser.add_argument(
         "--no-commit",
