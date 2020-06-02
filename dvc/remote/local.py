@@ -712,7 +712,7 @@ class LocalRemote(BaseRemote):
     def _remove_unpacked_dir(self, checksum):
         info = self.checksum_to_path_info(checksum)
         path_info = info.with_name(info.name + self.UNPACKED_DIR_SUFFIX)
-        self.remove(path_info)
+        self.tree.remove(path_info)
 
     def is_protected(self, path_info):
         try:
