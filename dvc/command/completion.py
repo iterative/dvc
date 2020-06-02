@@ -58,6 +58,8 @@ def print_bash_commands(parser, prefix=ROOT_PREFIX, fd=None):
             print(f"{prefix}_COMPGEN=_dvc_compgen_DVCFiles", file=fd)
             logger.debug(f"DVCFile:{prefix}:{dest}")
 
+    if commands:
+        logger.debug(f"subcommands:{prefix}:{commands}")
     return commands
 
 

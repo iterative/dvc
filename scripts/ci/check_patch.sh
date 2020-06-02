@@ -12,5 +12,5 @@ python setup.py checkdocs
 pre-commit run --all-files
 
 # check bash completio
-python -m dvc completion -o scripts/completion/dvc.bash
+python -m dvc completion -v -o scripts/completion/dvc.bash
 [[ -z "$(git diff -U0 -- scripts/completion/dvc.bash)" ]] || exit 1
