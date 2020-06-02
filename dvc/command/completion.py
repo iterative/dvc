@@ -167,13 +167,15 @@ class CmdCompletion(CmdBase):
     def run(self):
         from dvc.cli import get_main_parser
 
-        fd = (
-            sys.stdout
-            if self.args.output == "-"
-            else open(self.args.output, "w")
-        )
+        if self.args.output == "-":
+            logger.debug("Writing bash completion to stdout")
+            fd = sys.stdout
+        else:
+            logger.info(f"Writing bash completion to {self.args.output}")
+            fd = open(self.args.output, "w")
         parser = get_main_parser()
         print_bash(parser, fd)
+        del fd
         return 0
 
 
