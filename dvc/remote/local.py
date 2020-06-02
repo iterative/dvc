@@ -107,6 +107,20 @@ class LocalRemoteTree(BaseRemoteTree):
 
         return False
 
+    def remove(self, path_info):
+        if isinstance(path_info, PathInfo):
+            if path_info.scheme != "local":
+                raise NotImplementedError
+            path = path_info.fspath
+        else:
+            path = path_info
+
+        if self.exists(path):
+            remove(path)
+
+    def makedirs(self, path_info):
+        makedirs(path_info, exist_ok=True, mode=self._dir_mode)
+
 
 class LocalRemote(BaseRemote):
     scheme = Schemes.LOCAL
@@ -178,9 +192,6 @@ class LocalRemote(BaseRemote):
 
         return self.checksum_to_path_info(md5).url
 
-    def makedirs(self, path_info):
-        makedirs(path_info, exist_ok=True, mode=self._dir_mode)
-
     def already_cached(self, path_info):
         assert path_info.scheme in ["", "local"]
 
@@ -203,17 +214,6 @@ class LocalRemote(BaseRemote):
 
     def get_file_checksum(self, path_info):
         return file_md5(path_info)[0]
-
-    def remove(self, path_info):
-        if isinstance(path_info, PathInfo):
-            if path_info.scheme != "local":
-                raise NotImplementedError
-            path = path_info.fspath
-        else:
-            path = path_info
-
-        if self.tree.exists(path):
-            remove(path)
 
     def move(self, from_info, to_info, mode=None):
         if from_info.scheme != "local" or to_info.scheme != "local":

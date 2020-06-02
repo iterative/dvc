@@ -80,6 +80,25 @@ class S3RemoteTree(BaseRemoteTree):
 
             yield path_info.replace(path=fname)
 
+    def remove(self, path_info):
+        if path_info.scheme != "s3":
+            raise NotImplementedError
+
+        logger.debug(f"Removing {path_info}")
+        self.s3.delete_object(Bucket=path_info.bucket, Key=path_info.path)
+
+    def makedirs(self, path_info):
+        # We need to support creating empty directories, which means
+        # creating an object with an empty body and a trailing slash `/`.
+        #
+        # We are not creating directory objects for every parent prefix,
+        # as it is not required.
+        if not path_info.path:
+            return
+
+        dir_path = path_info / ""
+        self.s3.put_object(Bucket=path_info.bucket, Key=dir_path.path, Body="")
+
 
 class S3Remote(BaseRemote):
     scheme = Schemes.S3
@@ -250,13 +269,6 @@ class S3Remote(BaseRemote):
     def copy(self, from_info, to_info):
         self._copy(self.s3, from_info, to_info, self.extra_args)
 
-    def remove(self, path_info):
-        if path_info.scheme != "s3":
-            raise NotImplementedError
-
-        logger.debug(f"Removing {path_info}")
-        self.s3.delete_object(Bucket=path_info.bucket, Key=path_info.path)
-
     def _list_objects(
         self, path_info, max_items=None, prefix=None, progress_callback=None
     ):
@@ -292,18 +304,6 @@ class S3Remote(BaseRemote):
         return self._list_paths(
             self.path_info, prefix=prefix, progress_callback=progress_callback
         )
-
-    def makedirs(self, path_info):
-        # We need to support creating empty directories, which means
-        # creating an object with an empty body and a trailing slash `/`.
-        #
-        # We are not creating directory objects for every parent prefix,
-        # as it is not required.
-        if not path_info.path:
-            return
-
-        dir_path = path_info / ""
-        self.s3.put_object(Bucket=path_info.bucket, Key=dir_path.path, Body="")
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         total = os.path.getsize(from_file)

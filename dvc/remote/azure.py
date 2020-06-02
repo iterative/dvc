@@ -39,6 +39,13 @@ class AzureRemoteTree(BaseRemoteTree):
         paths = self.remote._list_paths(path_info.bucket, path_info.path)
         return any(path_info.path == path for path in paths)
 
+    def remove(self, path_info):
+        if path_info.scheme != self.scheme:
+            raise NotImplementedError
+
+        logger.debug(f"Removing {path_info}")
+        self.blob_service.delete_blob(path_info.bucket, path_info.path)
+
 
 class AzureRemote(BaseRemote):
     scheme = Schemes.AZURE
@@ -91,13 +98,6 @@ class AzureRemote(BaseRemote):
 
     def get_file_checksum(self, path_info):
         return self.get_etag(path_info)
-
-    def remove(self, path_info):
-        if path_info.scheme != self.scheme:
-            raise NotImplementedError
-
-        logger.debug(f"Removing {path_info}")
-        self.blob_service.delete_blob(path_info.bucket, path_info.path)
 
     def _list_paths(self, bucket, prefix, progress_callback=None):
         blob_service = self.blob_service

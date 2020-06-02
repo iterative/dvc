@@ -105,6 +105,25 @@ class GSRemoteTree(BaseRemoteTree):
                 continue
             yield path_info.replace(fname)
 
+    def remove(self, path_info):
+        if path_info.scheme != "gs":
+            raise NotImplementedError
+
+        logger.debug(f"Removing gs://{path_info}")
+        blob = self.gs.bucket(path_info.bucket).get_blob(path_info.path)
+        if not blob:
+            return
+
+        blob.delete()
+
+    def makedirs(self, path_info):
+        if not path_info.path:
+            return
+
+        self.gs.bucket(path_info.bucket).blob(
+            (path_info / "").path
+        ).upload_from_string("")
+
 
 class GSRemote(BaseRemote):
     scheme = Schemes.GS
@@ -157,17 +176,6 @@ class GSRemote(BaseRemote):
         to_bucket = self.gs.bucket(to_info.bucket)
         from_bucket.copy_blob(blob, to_bucket, new_name=to_info.path)
 
-    def remove(self, path_info):
-        if path_info.scheme != "gs":
-            raise NotImplementedError
-
-        logger.debug(f"Removing gs://{path_info}")
-        blob = self.gs.bucket(path_info.bucket).get_blob(path_info.path)
-        if not blob:
-            return
-
-        blob.delete()
-
     def _list_paths(
         self, path_info, max_items=None, prefix=None, progress_callback=None
     ):
@@ -186,14 +194,6 @@ class GSRemote(BaseRemote):
         return self._list_paths(
             self.path_info, prefix=prefix, progress_callback=progress_callback
         )
-
-    def makedirs(self, path_info):
-        if not path_info.path:
-            return
-
-        self.gs.bucket(path_info.bucket).blob(
-            (path_info / "").path
-        ).upload_from_string("")
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         bucket = self.gs.bucket(to_info.bucket)

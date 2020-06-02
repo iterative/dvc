@@ -96,6 +96,10 @@ class GDriveRemoteTree(BaseRemoteTree):
         else:
             return True
 
+    def remove(self, path_info):
+        item_id = self.remote._get_item_id(path_info)
+        self.remote._gdrive_delete_file(item_id)
+
 
 class GDriveRemote(BaseRemote):
     scheme = Schemes.GDRIVE
@@ -554,10 +558,6 @@ class GDriveRemote(BaseRemote):
             yield posixpath.join(
                 self._ids_cache["ids"][parent_id], item["title"]
             )
-
-    def remove(self, path_info):
-        item_id = self._get_item_id(path_info)
-        self._gdrive_delete_file(item_id)
 
     def get_file_checksum(self, path_info):
         raise NotImplementedError

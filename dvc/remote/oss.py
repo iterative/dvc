@@ -27,6 +27,13 @@ class OSSRemoteTree(BaseRemoteTree):
         paths = self.remote._list_paths(path_info.path)
         return any(path_info.path == path for path in paths)
 
+    def remove(self, path_info):
+        if path_info.scheme != self.scheme:
+            raise NotImplementedError
+
+        logger.debug(f"Removing oss://{path_info}")
+        self.oss_service.delete_object(path_info.path)
+
 
 class OSSRemote(BaseRemote):
     """
@@ -98,13 +105,6 @@ class OSSRemote(BaseRemote):
                 ),
             )
         return bucket
-
-    def remove(self, path_info):
-        if path_info.scheme != self.scheme:
-            raise NotImplementedError
-
-        logger.debug(f"Removing oss://{path_info}")
-        self.oss_service.delete_object(path_info.path)
 
     def _list_paths(self, prefix, progress_callback=None):
         import oss2

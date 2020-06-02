@@ -67,6 +67,17 @@ class SSHRemoteTree(BaseRemoteTree):
             for fname in ssh.walk_files(path_info.path):
                 yield path_info.replace(path=fname)
 
+    def remove(self, path_info):
+        if path_info.scheme != self.scheme:
+            raise NotImplementedError
+
+        with self.ssh(path_info) as ssh:
+            ssh.remove(path_info.path)
+
+    def makedirs(self, path_info):
+        with self.ssh(path_info) as ssh:
+            ssh.makedirs(path_info.path)
+
 
 class SSHRemote(BaseRemote):
     scheme = Schemes.SSH
@@ -236,13 +247,6 @@ class SSHRemote(BaseRemote):
         with self.ssh(from_info) as ssh:
             ssh.reflink(from_info.path, to_info.path)
 
-    def remove(self, path_info):
-        if path_info.scheme != self.scheme:
-            raise NotImplementedError
-
-        with self.ssh(path_info) as ssh:
-            ssh.remove(path_info.path)
-
     def move(self, from_info, to_info, mode=None):
         assert mode is None
         if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
@@ -286,10 +290,6 @@ class SSHRemote(BaseRemote):
                     yield path
             else:
                 yield from ssh.walk_files(root)
-
-    def makedirs(self, path_info):
-        with self.ssh(path_info) as ssh:
-            ssh.makedirs(path_info.path)
 
     def batch_exists(self, path_infos, callback):
         def _exists(chunk_and_channel):

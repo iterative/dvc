@@ -47,6 +47,15 @@ class HDFSRemoteTree(BaseRemoteTree):
         with self.hdfs(path_info) as hdfs:
             return hdfs.exists(path_info.path)
 
+    def remove(self, path_info):
+        if path_info.scheme != "hdfs":
+            raise NotImplementedError
+
+        if self.exists(path_info):
+            logger.debug(f"Removing {path_info.path}")
+            with self.hdfs(path_info) as hdfs:
+                hdfs.rm(path_info.path)
+
 
 class HDFSRemote(BaseRemote):
     scheme = Schemes.HDFS
@@ -139,15 +148,6 @@ class HDFSRemote(BaseRemote):
                     self.remove(tmp_info)
                     raise
 
-    def remove(self, path_info):
-        if path_info.scheme != "hdfs":
-            raise NotImplementedError
-
-        if self.exists(path_info):
-            logger.debug(f"Removing {path_info.path}")
-            with self.hdfs(path_info) as hdfs:
-                hdfs.rm(path_info.path)
-
     def _upload(self, from_file, to_info, **_kwargs):
         with self.hdfs(to_info) as hdfs:
             hdfs.mkdir(posixpath.dirname(to_info.path))
@@ -162,7 +162,7 @@ class HDFSRemote(BaseRemote):
                 hdfs.download(from_info.path, fobj)
 
     def list_cache_paths(self, prefix=None, progress_callback=None):
-        if not self.exists(self.path_info):
+        if not self.tree.exists(self.path_info):
             return
 
         if prefix:

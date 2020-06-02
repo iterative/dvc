@@ -128,6 +128,14 @@ class BaseRemoteTree:
     def is_empty(self, path_info):
         return False
 
+    def remove(self, path_info):
+        raise RemoteActionNotImplemented("remove", self.scheme)
+
+    def makedirs(self, path_info):
+        """Optional: Implement only if the remote needs to create
+        directories before copying/linking/moving data
+        """
+
 
 class BaseRemote:
     scheme = "base"
@@ -481,7 +489,7 @@ class BaseRemote:
     def _link(self, from_info, to_info, link_types):
         assert self.tree.isfile(from_info)
 
-        self.makedirs(to_info.parent)
+        self.tree.makedirs(to_info.parent)
 
         self._try_links(from_info, to_info, link_types)
 
@@ -491,7 +499,7 @@ class BaseRemote:
 
         is_link = getattr(self, f"is_{link_type}", None)
         if is_link and not is_link(path_info):
-            self.remove(path_info)
+            self.tree.remove(path_info)
             raise DvcException(f"failed to verify {link_type}")
 
         self.cache_type_confirmed = True
@@ -551,7 +559,7 @@ class BaseRemote:
                 # Default relink procedure involves unneeded copy
                 self.unprotect(path_info)
             else:
-                self.remove(path_info)
+                self.tree.remove(path_info)
                 self.link(cache_info, path_info)
 
             if save_link:
@@ -581,8 +589,8 @@ class BaseRemote:
         try:
             self.link(test_cache_file, workspace_file)
         finally:
-            self.remove(workspace_file)
-            self.remove(test_cache_file)
+            self.tree.remove(workspace_file)
+            self.tree.remove(test_cache_file)
 
         self.cache_type_confirmed = True
         return self.cache_types[0] == "copy"
@@ -774,13 +782,10 @@ class BaseRemote:
 
         return 0
 
-    def remove(self, path_info):
-        raise RemoteActionNotImplemented("remove", self.scheme)
-
     def move(self, from_info, to_info, mode=None):
         assert mode is None
         self.copy(from_info, to_info)
-        self.remove(from_info)
+        self.tree.remove(from_info)
 
     def copy(self, from_info, to_info):
         raise RemoteActionNotImplemented("copy", self.scheme)
@@ -869,7 +874,7 @@ class BaseRemote:
             if self.is_dir_checksum(checksum):
                 # backward compatibility
                 self._remove_unpacked_dir(checksum)
-            self.remove(path_info)
+            self.tree.remove(path_info)
             removed = True
         if removed:
             self.index.clear()
@@ -918,7 +923,7 @@ class BaseRemote:
 
         if self.tree.exists(cache_info):
             logger.warning("corrupted cache file '%s'.", cache_info)
-            self.remove(cache_info)
+            self.tree.remove(cache_info)
 
         return True
 
@@ -1193,7 +1198,7 @@ class BaseRemote:
             if not prompt.confirm(msg):
                 raise ConfirmRemoveError(str(path_info))
 
-        self.remove(path_info)
+        self.tree.remove(path_info)
 
     def _checkout_file(
         self, path_info, checksum, force, progress_callback=None, relink=False
@@ -1214,11 +1219,6 @@ class BaseRemote:
 
         return added, modified and not relink
 
-    def makedirs(self, path_info):
-        """Optional: Implement only if the remote needs to create
-        directories before copying/linking/moving data
-        """
-
     def _checkout_dir(
         self,
         path_info,
@@ -1233,7 +1233,7 @@ class BaseRemote:
         # even if there are no files in it
         if not self.tree.exists(path_info):
             added = True
-            self.makedirs(path_info)
+            self.tree.makedirs(path_info)
 
         dir_info = self.get_dir_cache(checksum)
 
