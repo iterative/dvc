@@ -58,15 +58,15 @@ def test_link_created_on_non_nested_path(base_info, tmp_dir, dvc, scm):
     )
     remote.link(base_info / "from", base_info / "to")
 
-    assert remote.exists(base_info / "from")
-    assert remote.exists(base_info / "to")
+    assert remote.tree.exists(base_info / "from")
+    assert remote.tree.exists(base_info / "to")
 
 
 @mock_s3
 def test_makedirs_doesnot_try_on_top_level_paths(tmp_dir, dvc, scm):
     base_info = S3Remote.path_cls("s3://bucket/")
     remote = S3Remote(dvc, {"url": str(base_info)})
-    remote.makedirs(base_info)
+    remote.tree.makedirs(base_info)
 
 
 def _upload_multipart(s3, Bucket, Key):
