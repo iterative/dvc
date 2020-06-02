@@ -256,6 +256,9 @@ class BaseOutput:
                 )
             return
 
+        if self.metric:
+            self.verify_metric()
+
         assert not self.IS_DEPENDENCY
 
         if not self.changed():
