@@ -11,6 +11,6 @@ python setup.py checkdocs
 # stop the build if there are any formatting errors
 pre-commit run --all-files
 
-# check bash completion
-python scripts/completion/bash.py
+# check bash completio
+python -m dvc completion -o scripts/completion/dvc.bash
 [[ -z "$(git diff -U0 -- scripts/completion/dvc.bash)" ]] || exit 1
