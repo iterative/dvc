@@ -102,3 +102,21 @@ def test_always_changed(dvc):
     with dvc.lock:
         assert stage.changed()
         assert stage.status()["path"] == ["always changed"]
+
+
+def test_external_outs(tmp_path_factory, dvc):
+    from dvc.stage import create_stage
+    from dvc.stage.exceptions import StageExternalOutputsError
+
+    tmp_path = tmp_path_factory.mktemp("external-outs")
+    foo = tmp_path / "foo"
+    foo.write_text("foo")
+
+    with pytest.raises(StageExternalOutputsError):
+        create_stage(Stage, dvc, "path.dvc", outs=[os.fspath(foo)])
+
+    with dvc.config.edit() as conf:
+        conf["remote"]["myremote"] = {"url": os.fspath(tmp_path)}
+
+    create_stage(Stage, dvc, "path.dvc", outs=["remote://myremote/foo"])
+    create_stage(Stage, dvc, "path.dvc", outs=[os.fspath(foo)], external=True)

@@ -39,6 +39,7 @@ def test_run(mocker, dvc):
             "file:param1,param2",
             "--params",
             "param3",
+            "--external",
             "command",
         ]
     )
@@ -70,6 +71,7 @@ def test_run(mocker, dvc):
         cmd="command",
         name="nam",
         single_stage=False,
+        external=True,
     )
 
 
@@ -99,6 +101,7 @@ def test_run_args_from_cli(mocker, dvc):
         cmd="echo foo",
         name=None,
         single_stage=False,
+        external=False,
     )
 
 
@@ -128,4 +131,5 @@ def test_run_args_with_spaces(mocker, dvc):
         cmd='echo "foo bar"',
         name=None,
         single_stage=False,
+        external=False,
     )
