@@ -178,6 +178,14 @@ class NoMetricsError(DvcException):
         )
 
 
+class NoPlotsError(DvcException):
+    def __init__(self):
+        super().__init__(
+            "no plots in this repository. Use `--plots/--plots-no-cache` "
+            "options for `dvc run` to mark stage outputs as plots."
+        )
+
+
 class YAMLFileCorruptedError(DvcException):
     def __init__(self, path):
         path = relpath(path)

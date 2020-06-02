@@ -14,7 +14,6 @@ from dvc.repo.plots.data import (
     PlotData,
     PlotMetricTypeError,
 )
-from dvc.repo.plots.show import NoDataOrTemplateProvided
 from dvc.repo.plots.template import (
     NoDataForTemplateError,
     NoFieldInDataError,
@@ -457,8 +456,10 @@ def test_plot_override_specified_data_source(
     assert plot_content["encoding"]["y"]["field"] == "b"
 
 
-def test_should_raise_on_no_template_and_datafile(tmp_dir, dvc):
-    with pytest.raises(NoDataOrTemplateProvided):
+def test_no_plots(tmp_dir, dvc):
+    from dvc.exceptions import NoPlotsError
+
+    with pytest.raises(NoPlotsError):
         dvc.plots.show()
 
 
