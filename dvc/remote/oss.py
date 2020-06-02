@@ -24,7 +24,7 @@ class OSSRemoteTree(BaseRemoteTree):
         return self.oss_service.sign_url("GET", path_info.path, expires)
 
     def exists(self, path_info):
-        paths = self.remote._list_paths(path_info.path)
+        paths = self.remote.list_paths(path_info.path)
         return any(path_info.path == path for path in paths)
 
     def remove(self, path_info):
@@ -106,7 +106,7 @@ class OSSRemote(BaseRemote):
             )
         return bucket
 
-    def _list_paths(self, prefix, progress_callback=None):
+    def list_paths(self, prefix, progress_callback=None):
         import oss2
 
         for blob in oss2.ObjectIterator(self.oss_service, prefix=prefix):
@@ -121,7 +121,7 @@ class OSSRemote(BaseRemote):
             )
         else:
             prefix = self.path_info.path
-        return self._list_paths(prefix, progress_callback)
+        return self.list_paths(prefix, progress_callback)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs

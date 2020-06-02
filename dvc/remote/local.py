@@ -121,7 +121,7 @@ class LocalRemoteTree(BaseRemoteTree):
             remove(path)
 
     def makedirs(self, path_info):
-        makedirs(path_info, exist_ok=True, mode=self._dir_mode)
+        makedirs(path_info, exist_ok=True, mode=self.dir_mode)
 
     def move(self, from_info, to_info, mode=None):
         if from_info.scheme != "local" or to_info.scheme != "local":
@@ -131,9 +131,9 @@ class LocalRemoteTree(BaseRemoteTree):
 
         if mode is None:
             if self.isfile(from_info):
-                mode = self._file_mode
+                mode = self.file_mode
             else:
-                mode = self._dir_mode
+                mode = self.dir_mode
 
         move(from_info, to_info, mode=mode)
 
@@ -141,7 +141,7 @@ class LocalRemoteTree(BaseRemoteTree):
         tmp_info = to_info.parent / tmp_fname(to_info.name)
         try:
             System.copy(from_info, tmp_info)
-            os.chmod(tmp_info, self._file_mode)
+            os.chmod(tmp_info, self.file_mode)
             os.rename(tmp_info, to_info)
         except Exception:
             self.remove(tmp_info)
@@ -152,7 +152,7 @@ class LocalRemoteTree(BaseRemoteTree):
         tmp_info = to_info.parent / tmp_fname(to_info.name)
         try:
             copy_fobj_to_file(fobj, tmp_info)
-            os.chmod(tmp_info, self._file_mode)
+            os.chmod(tmp_info, self.file_mode)
             os.rename(tmp_info, to_info)
         except Exception:
             self.remove(tmp_info)
@@ -201,7 +201,7 @@ class LocalRemoteTree(BaseRemoteTree):
         System.reflink(from_info, tmp_info)
         # NOTE: reflink has its own separate inode, so you can set permissions
         # that are different from the source.
-        os.chmod(tmp_info, self._file_mode)
+        os.chmod(tmp_info, self.file_mode)
         os.rename(tmp_info, to_info)
 
     @staticmethod
@@ -512,8 +512,8 @@ class LocalRemote(BaseRemote):
         if download:
             func = partial(
                 remote.download,
-                dir_mode=self.tree._dir_mode,
-                file_mode=self.tree._file_mode,
+                dir_mode=self.tree.dir_mode,
+                file_mode=self.tree.file_mode,
             )
             status = STATUS_DELETED
             desc = "Downloading"
@@ -671,7 +671,7 @@ class LocalRemote(BaseRemote):
                 "a symlink or a hardlink.".format(path)
             )
 
-        os.chmod(path, self.tree._file_mode)
+        os.chmod(path, self.tree.file_mode)
 
     def _unprotect_dir(self, path):
         assert is_working_tree(self.repo.tree)

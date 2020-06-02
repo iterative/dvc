@@ -92,6 +92,14 @@ class BaseRemoteTree:
         self._file_mode, self._dir_mode = self.SHARED_MODE_MAP[shared]
 
     @property
+    def file_mode(self):
+        return self._file_mode
+
+    @property
+    def dir_mode(self):
+        return self._dir_mode
+
+    @property
     def scheme(self):
         return self.remote.scheme
 

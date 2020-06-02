@@ -25,7 +25,7 @@ def ask_password(host, user):
 
 class HTTPRemoteTree(BaseRemoteTree):
     def exists(self, path_info):
-        return bool(self.remote._request("HEAD", path_info.url))
+        return bool(self.remote.request("HEAD", path_info.url))
 
 
 class HTTPRemote(BaseRemote):
@@ -58,7 +58,7 @@ class HTTPRemote(BaseRemote):
         self.headers = {}
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
-        response = self._request("GET", from_info.url, stream=True)
+        response = self.request("GET", from_info.url, stream=True)
         if response.status_code != 200:
             raise HTTPError(response.status_code, response.reason)
         with open(to_file, "wb") as fd:
@@ -94,7 +94,7 @@ class HTTPRemote(BaseRemote):
                             break
                         yield chunk
 
-        response = self._request("POST", to_info.url, data=chunks())
+        response = self.request("POST", to_info.url, data=chunks())
         if response.status_code not in (200, 201):
             raise HTTPError(response.status_code, response.reason)
 
@@ -104,7 +104,7 @@ class HTTPRemote(BaseRemote):
 
     def get_file_checksum(self, path_info):
         url = path_info.url
-        headers = self._request("HEAD", url).headers
+        headers = self.request("HEAD", url).headers
         etag = headers.get("ETag") or headers.get("Content-MD5")
 
         if not etag:
@@ -158,7 +158,7 @@ class HTTPRemote(BaseRemote):
 
         return session
 
-    def _request(self, method, url, **kwargs):
+    def request(self, method, url, **kwargs):
         import requests
 
         kwargs.setdefault("allow_redirects", True)

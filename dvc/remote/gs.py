@@ -89,7 +89,7 @@ class GSRemoteTree(BaseRemoteTree):
 
     def isdir(self, path_info):
         dir_path = path_info / ""
-        return bool(list(self.remote._list_paths(dir_path, max_items=1)))
+        return bool(list(self.remote.list_paths(dir_path, max_items=1)))
 
     def isfile(self, path_info):
         if path_info.path.endswith("/"):
@@ -99,7 +99,7 @@ class GSRemoteTree(BaseRemoteTree):
         return blob.exists()
 
     def walk_files(self, path_info):
-        for fname in self.remote._list_paths(path_info / ""):
+        for fname in self.remote.list_paths(path_info / ""):
             # skip nested empty directories
             if fname.endswith("/"):
                 continue
@@ -176,7 +176,7 @@ class GSRemote(BaseRemote):
         md5 = base64.b64decode(b64_md5)
         return codecs.getencoder("hex")(md5)[0].decode("utf-8")
 
-    def _list_paths(
+    def list_paths(
         self, path_info, max_items=None, prefix=None, progress_callback=None
     ):
         if prefix:
@@ -191,7 +191,7 @@ class GSRemote(BaseRemote):
             yield blob.name
 
     def list_cache_paths(self, prefix=None, progress_callback=None):
-        return self._list_paths(
+        return self.list_paths(
             self.path_info, prefix=prefix, progress_callback=progress_callback
         )
 

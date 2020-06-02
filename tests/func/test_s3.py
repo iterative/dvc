@@ -5,7 +5,7 @@ import moto.s3.models as s3model
 import pytest
 from moto import mock_s3
 
-from dvc.remote.s3 import S3Remote
+from dvc.remote.s3 import S3Remote, S3RemoteTree
 from tests.remotes import S3
 
 # from https://github.com/spulec/moto/blob/v1.3.5/tests/test_s3/test_s3.py#L40
@@ -42,7 +42,7 @@ def test_copy_singlepart_preserve_etag():
     s3.create_bucket(Bucket=from_info.bucket)
     s3.put_object(Bucket=from_info.bucket, Key=from_info.path, Body="data")
 
-    S3Remote._copy(s3, from_info, to_info, {})
+    S3RemoteTree._copy(s3, from_info, to_info, {})
 
 
 @mock_s3
@@ -107,4 +107,4 @@ def test_copy_multipart_preserve_etag():
     s3 = boto3.client("s3")
     s3.create_bucket(Bucket=from_info.bucket)
     _upload_multipart(s3, from_info.bucket, from_info.path)
-    S3Remote._copy(s3, from_info, to_info, {})
+    S3RemoteTree._copy(s3, from_info, to_info, {})

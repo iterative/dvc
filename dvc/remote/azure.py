@@ -36,7 +36,7 @@ class AzureRemoteTree(BaseRemoteTree):
         return download_url
 
     def exists(self, path_info):
-        paths = self.remote._list_paths(path_info.bucket, path_info.path)
+        paths = self.remote.list_paths(path_info.bucket, path_info.path)
         return any(path_info.path == path for path in paths)
 
     def remove(self, path_info):
@@ -99,7 +99,7 @@ class AzureRemote(BaseRemote):
     def get_file_checksum(self, path_info):
         return self.get_etag(path_info)
 
-    def _list_paths(self, bucket, prefix, progress_callback=None):
+    def list_paths(self, bucket, prefix, progress_callback=None):
         blob_service = self.blob_service
         next_marker = None
         while True:
@@ -124,7 +124,7 @@ class AzureRemote(BaseRemote):
             )
         else:
             prefix = self.path_info.path
-        return self._list_paths(
+        return self.list_paths(
             self.path_info.bucket, prefix, progress_callback
         )
 
