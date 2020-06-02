@@ -273,6 +273,29 @@ def test_remote_modify_validation(dvc):
     assert unsupported_config not in config[f'remote "{remote_name}"']
 
 
+def test_remote_modify_unset(dvc):
+    assert main(["remote", "add", "-d", "myremote", "gdrive://test/test"]) == 0
+    config = configobj.ConfigObj(dvc.config.files["repo"])
+    assert config['remote "myremote"'] == {"url": "gdrive://test/test"}
+
+    assert (
+        main(["remote", "modify", "myremote", "gdrive_client_id", "something"])
+        == 0
+    )
+    config = configobj.ConfigObj(dvc.config.files["repo"])
+    assert config['remote "myremote"'] == {
+        "url": "gdrive://test/test",
+        "gdrive_client_id": "something",
+    }
+
+    assert (
+        main(["remote", "modify", "myremote", "gdrive_client_id", "--unset"])
+        == 0
+    )
+    config = configobj.ConfigObj(dvc.config.files["repo"])
+    assert config['remote "myremote"'] == {"url": "gdrive://test/test"}
+
+
 def test_remote_modify_default(dvc):
     remote_repo = "repo_level"
     remote_local = "local_level"
