@@ -421,11 +421,10 @@ class TestS3RemoteCLI(S3, TestDataCloudCLIBase):
 
 
 class TestGDriveRemoteCLI(GDrive, TestDataCloudCLIBase):
-    def _setup_cloud(self):
-        setup_gdrive_cloud(self.get_url(), self.dvc)
-
     def _test(self):
         url = self.get_url()
+
+        setup_gdrive_cloud(url, self.dvc)
 
         self.main(["remote", "add", TEST_REMOTE, url])
         self.main(
@@ -434,7 +433,7 @@ class TestGDriveRemoteCLI(GDrive, TestDataCloudCLIBase):
                 "modify",
                 TEST_REMOTE,
                 "gdrive_service_account_email",
-                "modified",
+                "test",
             ]
         )
         self.main(
@@ -443,7 +442,7 @@ class TestGDriveRemoteCLI(GDrive, TestDataCloudCLIBase):
                 "modify",
                 TEST_REMOTE,
                 "gdrive_service_account_p12_file_path",
-                "modified.p12",
+                "test.p12",
             ]
         )
         self.main(

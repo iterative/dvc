@@ -141,10 +141,9 @@ class GDrive:
     def should_test():
         return os.getenv(GDriveRemote.GDRIVE_CREDENTIALS_DATA) is not None
 
-    def get_url(self):
-        if not getattr(self, "_remote_url", None):
-            self._remote_url = "gdrive://root/" + str(uuid.uuid4())
-        return self._remote_url
+    @staticmethod
+    def get_url():
+        return "gdrive://root/" + str(uuid.uuid4())
 
 
 class Azure:
