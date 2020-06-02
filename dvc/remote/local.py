@@ -38,6 +38,8 @@ logger = logging.getLogger(__name__)
 
 
 class LocalRemoteTree(BaseRemoteTree):
+    SHARED_MODE_MAP = {None: (0o644, 0o755), "group": (0o664, 0o775)}
+
     @property
     def repo(self):
         return self.remote.repo
@@ -221,7 +223,6 @@ class LocalRemote(BaseRemote):
     DEFAULT_CACHE_TYPES = ["reflink", "copy"]
 
     CACHE_MODE = 0o444
-    SHARED_MODE_MAP = {None: (0o644, 0o755), "group": (0o664, 0o775)}
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
@@ -511,8 +512,8 @@ class LocalRemote(BaseRemote):
         if download:
             func = partial(
                 remote.download,
-                dir_mode=self._dir_mode,
-                file_mode=self._file_mode,
+                dir_mode=self.tree._dir_mode,
+                file_mode=self.tree._file_mode,
             )
             status = STATUS_DELETED
             desc = "Downloading"
@@ -670,7 +671,7 @@ class LocalRemote(BaseRemote):
                 "a symlink or a hardlink.".format(path)
             )
 
-        os.chmod(path, self._file_mode)
+        os.chmod(path, self.tree._file_mode)
 
     def _unprotect_dir(self, path):
         assert is_working_tree(self.repo.tree)

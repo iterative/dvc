@@ -84,8 +84,12 @@ def index_locked(f):
 
 
 class BaseRemoteTree:
-    def __init__(self, remote):
+    SHARED_MODE_MAP = {None: (None, None), "group": (None, None)}
+
+    def __init__(self, remote, config):
         self.remote = remote
+        shared = config.get("shared")
+        self._file_mode, self._dir_mode = self.SHARED_MODE_MAP[shared]
 
     @property
     def scheme(self):
@@ -177,7 +181,6 @@ class BaseRemote:
     CAN_TRAVERSE = True
 
     CACHE_MODE = None
-    SHARED_MODE_MAP = {None: (None, None), "group": (None, None)}
 
     state = StateNoop()
 
@@ -185,9 +188,6 @@ class BaseRemote:
         self.repo = repo
 
         self._check_requires(config)
-
-        shared = config.get("shared")
-        self._file_mode, self._dir_mode = self.SHARED_MODE_MAP[shared]
 
         self.checksum_jobs = (
             config.get("checksum_jobs")
@@ -209,7 +209,7 @@ class BaseRemote:
         else:
             self.index = RemoteIndexNoop()
 
-        self.tree = self.TREE_CLS(self)
+        self.tree = self.TREE_CLS(self, config)
 
     @classmethod
     def get_missing_deps(cls):
@@ -350,8 +350,8 @@ class BaseRemote:
         checksum, tmp_info = self._get_dir_info_checksum(dir_info)
         new_info = self.cache.checksum_to_path_info(checksum)
         if self.cache.changed_cache_file(checksum):
-            self.cache.makedirs(new_info.parent)
-            self.cache.move(tmp_info, new_info, mode=self.CACHE_MODE)
+            self.cache.tree.makedirs(new_info.parent)
+            self.cache.tree.move(tmp_info, new_info, mode=self.CACHE_MODE)
 
         if path_info:
             self.state.save(path_info, checksum)
@@ -682,6 +682,9 @@ class BaseRemote:
                 path_info, checksum, save_link, tree, **kwargs
             )
         return self._save_file(path_info, checksum, save_link, tree, **kwargs)
+
+    def open(self, *args, **kwargs):
+        return self.tree.open(*args, **kwargs)
 
     def _handle_transfer_exception(
         self, from_info, to_info, exception, operation

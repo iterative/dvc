@@ -100,7 +100,7 @@ class S3RemoteTree(BaseRemoteTree):
         self.s3.put_object(Bucket=path_info.bucket, Key=dir_path.path, Body="")
 
     def copy(self, from_info, to_info):
-        self.remote._copy(self.s3, from_info, to_info, self.extra_args)
+        self.remote._copy(self.s3, from_info, to_info, self.remote.extra_args)
 
 
 class S3Remote(BaseRemote):
