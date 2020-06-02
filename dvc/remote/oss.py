@@ -19,7 +19,7 @@ class OSSRemoteTree(BaseRemoteTree):
         return self.remote.oss_service
 
     def _generate_download_url(self, path_info, expires=3600):
-        assert path_info.bucket == self.path_info.bucket
+        assert path_info.bucket == self.remote.path_info.bucket
 
         return self.oss_service.sign_url("GET", path_info.path, expires)
 

@@ -21,7 +21,7 @@ from dvc.exceptions import (
 )
 from dvc.main import main
 from dvc.output.base import OutputAlreadyTrackedError, OutputIsStageFileError
-from dvc.remote import LocalRemote, LocalRemoteTree
+from dvc.remote.local import LocalRemote, LocalRemoteTree
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.system import System
@@ -592,7 +592,7 @@ def test_should_not_checkout_when_adding_cached_copy(tmp_dir, dvc, mocker):
 
     shutil.copy("bar", "foo")
 
-    copy_spy = mocker.spy(dvc.cache.local, "copy")
+    copy_spy = mocker.spy(dvc.cache.local.tree, "copy")
 
     dvc.add("foo")
 

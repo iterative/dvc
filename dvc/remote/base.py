@@ -517,7 +517,7 @@ class BaseRemote:
         if self.cache_type_confirmed:
             return
 
-        is_link = getattr(self, f"is_{link_type}", None)
+        is_link = getattr(self.tree, f"is_{link_type}", None)
         if is_link and not is_link(path_info):
             self.tree.remove(path_info)
             raise DvcException(f"failed to verify {link_type}")
