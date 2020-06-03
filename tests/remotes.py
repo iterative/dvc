@@ -143,19 +143,19 @@ class GDrive:
 
     @staticmethod
     def get_url():
-	url = "gdrive://root/" + str(uuid.uuid4())
+        url = "gdrive://root/" + str(uuid.uuid4())
 
-	config = {                       
-	    "url": url,                                  
-	    "gdrive_service_account_email": "test",             
-	    "gdrive_service_account_p12_file_path": "test.p12", 
-	    "gdrive_use_service_account": True,                 
-	}                                                       
+        config = {
+            "url": url,
+            "gdrive_service_account_email": "test",
+            "gdrive_service_account_p12_file_path": "test.p12",
+            "gdrive_use_service_account": True,
+        }
 
-	remote = GDriveRemote(None, config)				
-	remote._gdrive_create_dir("root", remote.path_info.path)
+        remote = GDriveRemote(None, config)
+        remote._gdrive_create_dir("root", remote.path_info.path)
 
-        return "gdrive://root/" + str(uuid.uuid4())
+        return url
 
 
 class Azure:
