@@ -763,7 +763,7 @@ def test_checkout_for_external_outputs(tmp_dir, dvc):
         Bucket=remote.path_info.bucket, Key=file_path.path, Body="foo"
     )
 
-    dvc.add(str(remote.path_info / "foo"))
+    dvc.add(str(remote.path_info / "foo"), external=True)
 
     remote.tree.remove(file_path)
     stats = dvc.checkout(force=True)
