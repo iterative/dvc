@@ -76,7 +76,7 @@ def test_load_remote_files_from_pipeline(dvc):
 @pytest.mark.parametrize("typ", [None, "", "illegal"])
 def test_load_from_pipeline_error_on_typ(dvc, typ):
     with pytest.raises(ValueError):
-        output.load_from_pipeline(Stage(dvc), typ, None)
+        output.load_from_pipeline(Stage(dvc), ["file1"], typ)
 
 
 @pytest.mark.parametrize("key", [3, "list".split()])
