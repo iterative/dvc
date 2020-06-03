@@ -197,8 +197,8 @@ def _add_props_arguments(parser):
         help="Provided CSV ot TSV datafile does not have a header.",
     )
     parser.add_argument("--title", default=None, help="Plot title.")
-    parser.add_argument("--xlab", default=None, help="X axis title.")
-    parser.add_argument("--ylab", default=None, help="Y axis title.")
+    parser.add_argument("--x-label", default=None, help="X axis label.")
+    parser.add_argument("--y-label", default=None, help="Y axis lebel.")
 
 
 def _add_output_arguments(parser):

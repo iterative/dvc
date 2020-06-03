@@ -217,7 +217,7 @@ _dvc_push=(
 )
 
 _dvc_plots=(
-  "1:Sub command:(show diff)"
+  "1:Sub command:(show diff modify)"
 )
 
 _dvc_remote=(

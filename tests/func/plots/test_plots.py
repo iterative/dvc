@@ -50,8 +50,8 @@ def test_plot_csv_one_column(tmp_dir, scm, dvc, run_copy_metrics):
 
     props = {
         "csv_header": False,
-        "xlab": "x_title",
-        "ylab": "y_title",
+        "x_label": "x_title",
+        "y_label": "y_title",
         "title": "mytitle",
     }
     plot_string = dvc.plots.show(props=props)["metric.csv"]

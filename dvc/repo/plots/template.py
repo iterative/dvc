@@ -38,8 +38,8 @@ class Template:
     X_ANCHOR = "<DVC_METRIC_X>"
     Y_ANCHOR = "<DVC_METRIC_Y>"
     TITLE_ANCHOR = "<DVC_METRIC_TITLE>"
-    X_TITLE_ANCHOR = "<DVC_METRIC_X_TITLE>"
-    Y_TITLE_ANCHOR = "<DVC_METRIC_Y_TITLE>"
+    X_LABEL_ANCHOR = "<DVC_METRIC_X_LABEL>"
+    Y_LABEL_ANCHOR = "<DVC_METRIC_Y_LABEL>"
 
     def __init__(self, templates_dir):
         self.plot_templates_dir = templates_dir
@@ -119,15 +119,15 @@ class Template:
     @staticmethod
     def _replace_metadata_anchors(result_content, props):
         props.setdefault("title", "")
-        props.setdefault("xlab", props.get("x"))
-        props.setdefault("ylab", props.get("y"))
+        props.setdefault("x_label", props.get("x"))
+        props.setdefault("y_label", props.get("y"))
 
         replace_pairs = [
             (Template.TITLE_ANCHOR, "title"),
             (Template.X_ANCHOR, "x"),
             (Template.Y_ANCHOR, "y"),
-            (Template.X_TITLE_ANCHOR, "xlab"),
-            (Template.Y_TITLE_ANCHOR, "ylab"),
+            (Template.X_LABEL_ANCHOR, "x_label"),
+            (Template.Y_LABEL_ANCHOR, "y_label"),
         ]
         for anchor, key in replace_pairs:
             value = props.get(key)
@@ -170,12 +170,12 @@ class DefaultLinearTemplate(Template):
             "x": {
                 "field": Template.X_ANCHOR,
                 "type": "quantitative",
-                "title": Template.X_TITLE_ANCHOR,
+                "title": Template.X_LABEL_ANCHOR,
             },
             "y": {
                 "field": Template.Y_ANCHOR,
                 "type": "quantitative",
-                "title": Template.Y_TITLE_ANCHOR,
+                "title": Template.Y_LABEL_ANCHOR,
                 "scale": {"zero": False},
             },
             "color": {"field": "rev", "type": "nominal"},
@@ -195,13 +195,13 @@ class DefaultConfusionTemplate(Template):
                 "field": Template.X_ANCHOR,
                 "type": "nominal",
                 "sort": "ascending",
-                "title": Template.X_TITLE_ANCHOR,
+                "title": Template.X_LABEL_ANCHOR,
             },
             "y": {
                 "field": Template.Y_ANCHOR,
                 "type": "nominal",
                 "sort": "ascending",
-                "title": Template.Y_TITLE_ANCHOR,
+                "title": Template.Y_LABEL_ANCHOR,
             },
             "color": {"aggregate": "count", "type": "quantitative"},
             "facet": {"field": "rev", "type": "nominal"},
@@ -220,12 +220,12 @@ class DefaultScatterTemplate(Template):
             "x": {
                 "field": Template.X_ANCHOR,
                 "type": "quantitative",
-                "title": Template.X_TITLE_ANCHOR,
+                "title": Template.X_LABEL_ANCHOR,
             },
             "y": {
                 "field": Template.Y_ANCHOR,
                 "type": "quantitative",
-                "title": Template.Y_TITLE_ANCHOR,
+                "title": Template.Y_LABEL_ANCHOR,
                 "scale": {"zero": False},
             },
             "color": {"field": "rev", "type": "nominal"},
@@ -275,6 +275,7 @@ class PlotTemplates:
 
     def __init__(self, dvc_dir):
         self.dvc_dir = dvc_dir
+        print("PlotTemplates.__init__")
 
         if not os.path.exists(self.templates_dir):
             makedirs(self.templates_dir, exist_ok=True)
