@@ -22,7 +22,7 @@ def test_init(dvc):
     config = {"url": url}
     remote = S3Remote(dvc, config)
 
-    assert remote.path_info == url
+    assert remote.tree.path_info == url
 
 
 def test_grants(dvc):
@@ -34,16 +34,16 @@ def test_grants(dvc):
         "grant_full_control": "id=full-control-permission-id",
     }
     remote = S3Remote(dvc, config)
+    tree = remote.tree
 
     assert (
-        remote.extra_args["GrantRead"]
+        tree.extra_args["GrantRead"]
         == "id=read-permission-id,id=other-read-permission-id"
     )
-    assert remote.extra_args["GrantReadACP"] == "id=read-acp-permission-id"
-    assert remote.extra_args["GrantWriteACP"] == "id=write-acp-permission-id"
+    assert tree.extra_args["GrantReadACP"] == "id=read-acp-permission-id"
+    assert tree.extra_args["GrantWriteACP"] == "id=write-acp-permission-id"
     assert (
-        remote.extra_args["GrantFullControl"]
-        == "id=full-control-permission-id"
+        tree.extra_args["GrantFullControl"] == "id=full-control-permission-id"
     )
 
 
@@ -57,4 +57,4 @@ def test_grants_mutually_exclusive_acl_error(dvc, grants):
 
 def test_sse_kms_key_id(dvc):
     remote = S3Remote(dvc, {"url": url, "sse_kms_key_id": "key"})
-    assert remote.extra_args["SSEKMSKeyId"] == "key"
+    assert remote.tree.extra_args["SSEKMSKeyId"] == "key"
