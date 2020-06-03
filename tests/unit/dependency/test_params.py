@@ -15,18 +15,39 @@ PARAMS = {
 
 def test_loads_params(dvc):
     stage = Stage(dvc)
-    deps = loads_params(stage, ["foo", "bar,baz", "a_file:qux"])
-    assert len(deps) == 2
+    deps = loads_params(
+        stage,
+        [
+            "foo",
+            "bar",
+            {"a_file": ["baz", "bat"]},
+            {"b_file": ["cat"]},
+            {},
+            {"a_file": ["foobar"]},
+        ],
+    )
+    assert len(deps) == 3
 
     assert isinstance(deps[0], ParamsDependency)
     assert deps[0].def_path == ParamsDependency.DEFAULT_PARAMS_FILE
-    assert deps[0].params == ["foo", "bar", "baz"]
+    assert deps[0].params == ["foo", "bar"]
     assert deps[0].info == {}
 
     assert isinstance(deps[1], ParamsDependency)
     assert deps[1].def_path == "a_file"
-    assert deps[1].params == ["qux"]
+    assert deps[1].params == ["baz", "bat", "foobar"]
     assert deps[1].info == {}
+
+    assert isinstance(deps[2], ParamsDependency)
+    assert deps[2].def_path == "b_file"
+    assert deps[2].params == ["cat"]
+    assert deps[2].info == {}
+
+
+@pytest.mark.parametrize("params", [[3], [{"b_file": "cat"}]])
+def test_params_error(dvc, params):
+    with pytest.raises(ValueError):
+        loads_params(Stage(dvc), params)
 
 
 def test_loadd_from(dvc):

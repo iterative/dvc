@@ -96,12 +96,18 @@ def loads_params(stage, s_list):
             path = ParamsDependency.DEFAULT_PARAMS_FILE
             params = [key]
         else:
-            assert isinstance(key, dict)
+            if not isinstance(key, dict):
+                msg = "Only list of str/dict is supported. Got: "
+                msg += f"'{type(key).__name__}'."
+                raise ValueError(msg)
             path = first(key)
             if not path:
                 continue
             params = key[path]
-            assert isinstance(params, list)
+            if not isinstance(params, list):
+                msg = "Expected list of params for custom params file "
+                msg += f"'{path}', got '{type(params).__name__}'."
+                raise ValueError(msg)
         d[path].extend(params)
 
     return [

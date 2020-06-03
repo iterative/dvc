@@ -1,6 +1,6 @@
 import os
 
-from funcy import concat, first
+from funcy import concat, first, lfilter
 
 from dvc.exceptions import InvalidArgumentError
 from dvc.stage.exceptions import (
@@ -24,7 +24,8 @@ def parse_params(path_params):
     ret = []
     for path_param in path_params:
         path, _, params_str = path_param.rpartition(":")
-        params = params_str.split(",")
+        # remove empty strings from params, on condition such as `-p "file1:"`
+        params = lfilter(bool, params_str.split(","))
         if not path:
             ret.extend(params)
         else:
