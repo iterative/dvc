@@ -88,7 +88,7 @@ def test_load_from_pipeline_illegal_type(dvc, key):
         output.load_from_pipeline(stage, [{"key": key}], "outs")
 
 
-def test_params_load_from_pipeline(dvc):
+def test_plots_load_from_pipeline(dvc):
     outs = output.load_from_pipeline(
         Stage(dvc),
         [
