@@ -38,7 +38,7 @@ def test_open_in_history(tmp_dir, scm, dvc):
     dvc.scm.commit("foofoo")
 
     for rev in dvc.brancher(revs=["HEAD~1"]):
-        if rev == "working tree":
+        if rev == "workspace":
             continue
 
         tree = RepoTree(dvc)

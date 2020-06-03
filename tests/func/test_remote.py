@@ -194,9 +194,13 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, setup_remote):
         assert upload_error_info.value.amount == 3
 
         remote = dvc.cloud.get_remote("upstream")
-        assert not remote.exists(remote.checksum_to_path_info(foo.checksum))
-        assert remote.exists(remote.checksum_to_path_info(bar.checksum))
-        assert not remote.exists(remote.checksum_to_path_info(baz.checksum))
+        assert not remote.tree.exists(
+            remote.checksum_to_path_info(foo.checksum)
+        )
+        assert remote.tree.exists(remote.checksum_to_path_info(bar.checksum))
+        assert not remote.tree.exists(
+            remote.checksum_to_path_info(baz.checksum)
+        )
 
     # Push everything and delete local cache
     dvc.push()
@@ -271,6 +275,29 @@ def test_remote_modify_validation(dvc):
     )
     config = configobj.ConfigObj(dvc.config.files["repo"])
     assert unsupported_config not in config[f'remote "{remote_name}"']
+
+
+def test_remote_modify_unset(dvc):
+    assert main(["remote", "add", "-d", "myremote", "gdrive://test/test"]) == 0
+    config = configobj.ConfigObj(dvc.config.files["repo"])
+    assert config['remote "myremote"'] == {"url": "gdrive://test/test"}
+
+    assert (
+        main(["remote", "modify", "myremote", "gdrive_client_id", "something"])
+        == 0
+    )
+    config = configobj.ConfigObj(dvc.config.files["repo"])
+    assert config['remote "myremote"'] == {
+        "url": "gdrive://test/test",
+        "gdrive_client_id": "something",
+    }
+
+    assert (
+        main(["remote", "modify", "myremote", "gdrive_client_id", "--unset"])
+        == 0
+    )
+    config = configobj.ConfigObj(dvc.config.files["repo"])
+    assert config['remote "myremote"'] == {"url": "gdrive://test/test"}
 
 
 def test_remote_modify_default(dvc):

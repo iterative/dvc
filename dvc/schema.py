@@ -11,7 +11,8 @@ SINGLE_STAGE_SCHEMA = {
     StageParams.PARAM_WDIR: Any(str, None),
     StageParams.PARAM_DEPS: Any([dependency.SCHEMA], None),
     StageParams.PARAM_OUTS: Any([output.SCHEMA], None),
-    StageParams.PARAM_LOCKED: bool,
+    StageParams.PARAM_LOCKED: bool,  # backard compatibility
+    StageParams.PARAM_FROZEN: bool,
     StageParams.PARAM_META: object,
     StageParams.PARAM_ALWAYS_CHANGED: bool,
 }
@@ -29,8 +30,20 @@ OUT_PSTAGE_DETAILED_SCHEMA = {
     str: {BaseOutput.PARAM_CACHE: bool, BaseOutput.PARAM_PERSIST: bool}
 }
 
-PLOT_PSTAGE_SCHEMA = OUT_PSTAGE_DETAILED_SCHEMA.copy()
-PLOT_PSTAGE_SCHEMA[str][BaseOutput.PARAM_PLOT_TEMPLATE] = str
+PLOT_PROPS = {
+    BaseOutput.PARAM_PLOT_TEMPLATE: str,
+    BaseOutput.PARAM_PLOT_X: str,
+    BaseOutput.PARAM_PLOT_Y: str,
+    BaseOutput.PARAM_PLOT_X_LABEL: str,
+    BaseOutput.PARAM_PLOT_Y_LABEL: str,
+    BaseOutput.PARAM_PLOT_TITLE: str,
+    BaseOutput.PARAM_PLOT_CSV_HEADER: bool,
+}
+PLOT_PROPS_SCHEMA = {
+    **OUT_PSTAGE_DETAILED_SCHEMA[str],
+    **PLOT_PROPS,
+}
+PLOT_PSTAGE_SCHEMA = {str: Any(PLOT_PROPS_SCHEMA, [PLOT_PROPS_SCHEMA])}
 
 PARAM_PSTAGE_NON_DEFAULT_SCHEMA = {str: [str]}
 
@@ -42,7 +55,7 @@ SINGLE_PIPELINE_STAGE_SCHEMA = {
         Optional(StageParams.PARAM_PARAMS): [
             Any(str, PARAM_PSTAGE_NON_DEFAULT_SCHEMA)
         ],
-        Optional(StageParams.PARAM_LOCKED): bool,
+        Optional(StageParams.PARAM_FROZEN): bool,
         Optional(StageParams.PARAM_META): object,
         Optional(StageParams.PARAM_ALWAYS_CHANGED): bool,
         Optional(StageParams.PARAM_OUTS): [

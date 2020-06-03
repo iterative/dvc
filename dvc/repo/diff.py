@@ -7,7 +7,7 @@ from dvc.scm.tree import is_working_tree
 @locked
 def diff(self, a_rev="HEAD", b_rev=None):
     """
-    By default, it compares the working tree with the last commit's tree.
+    By default, it compares the workspace with the last commit's tree.
 
     This implementation differs from `git diff` since DVC doesn't have
     the concept of `index`, but it keeps the same interface, thus,

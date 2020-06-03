@@ -11,6 +11,7 @@ from dvc.ignore import (
     DvcIgnoreRepo,
 )
 from dvc.remote import LocalRemote
+from dvc.repo import Repo
 from dvc.scm.tree import WorkingTree
 from dvc.utils import relpath
 from dvc.utils.fs import get_mtime_and_size
@@ -139,7 +140,7 @@ def test_match_nested(tmp_dir, dvc):
     )
 
     remote = LocalRemote(dvc, {})
-    result = {os.fspath(f) for f in remote.walk_files(".")}
+    result = {os.fspath(f) for f in remote.tree.walk_files(".")}
     assert result == {".dvcignore", "foo"}
 
 
@@ -149,5 +150,22 @@ def test_ignore_external(tmp_dir, scm, dvc, tmp_path_factory):
     ext_dir.gen({"y.backup": "y", "tmp": "ext tmp"})
 
     remote = LocalRemote(dvc, {})
-    result = {relpath(f, ext_dir) for f in remote.walk_files(ext_dir)}
+    result = {relpath(f, ext_dir) for f in remote.tree.walk_files(ext_dir)}
     assert result == {"y.backup", "tmp"}
+
+
+def test_ignore_subrepo(tmp_dir, scm, dvc):
+    tmp_dir.gen({".dvcignore": "foo", "subdir": {"foo": "foo"}})
+    scm.add([".dvcignore"])
+    scm.commit("init parent dvcignore")
+
+    subrepo_dir = tmp_dir / "subdir"
+    assert not dvc.tree.exists(subrepo_dir / "foo")
+
+    with subrepo_dir.chdir():
+        subrepo = Repo.init(subdir=True)
+        scm.add(str(subrepo_dir / "foo"))
+        scm.commit("subrepo init")
+
+    for _ in subrepo.brancher(all_commits=True):
+        assert subrepo.tree.exists(subrepo_dir / "foo")

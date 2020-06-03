@@ -19,6 +19,7 @@ from .utils import (
     check_circular_dependency,
     check_duplicated_arguments,
     check_missing_outputs,
+    check_no_externals,
     check_stage_path,
     compute_md5,
     fill_stage_dependencies,
@@ -42,6 +43,7 @@ def loads_from(cls, repo, path, wdir, data):
             [
                 Stage.PARAM_CMD,
                 Stage.PARAM_LOCKED,
+                Stage.PARAM_FROZEN,
                 Stage.PARAM_ALWAYS_CHANGED,
                 Stage.PARAM_MD5,
                 "name",
@@ -51,7 +53,7 @@ def loads_from(cls, repo, path, wdir, data):
     return cls(**kw)
 
 
-def create_stage(cls, repo, path, **kwargs):
+def create_stage(cls, repo, path, external=False, **kwargs):
     from dvc.dvcfile import check_dvc_filename
 
     wdir = os.path.abspath(kwargs.get("wdir", None) or os.curdir)
@@ -62,6 +64,8 @@ def create_stage(cls, repo, path, **kwargs):
 
     stage = loads_from(cls, repo, path, wdir, kwargs)
     fill_stage_outputs(stage, **kwargs)
+    if not external:
+        check_no_externals(stage)
     fill_stage_dependencies(
         stage, **project(kwargs, ["deps", "erepo", "params"])
     )
@@ -93,7 +97,8 @@ class Stage(params.StageParams):
         deps=None,
         outs=None,
         md5=None,
-        locked=False,
+        locked=False,  # backward compatibility
+        frozen=False,
         always_changed=False,
         stage_text=None,
         dvcfile=None,
@@ -110,7 +115,7 @@ class Stage(params.StageParams):
         self.outs = outs
         self.deps = deps
         self.md5 = md5
-        self.locked = locked
+        self.frozen = locked or frozen
         self.always_changed = always_changed
         self._stage_text = stage_text
         self._dvcfile = dvcfile
@@ -201,7 +206,7 @@ class Stage(params.StageParams):
         return isinstance(self.deps[0], dependency.RepoDependency)
 
     def changed_deps(self):
-        if self.locked:
+        if self.frozen:
             return False
 
         if self.is_callback:
@@ -280,12 +285,13 @@ class Stage(params.StageParams):
             out.unprotect()
 
     @rwlocked(write=["outs"])
-    def remove(self, force=False, remove_outs=True):
+    def remove(self, force=False, remove_outs=True, purge=True):
         if remove_outs:
             self.remove_outs(ignore_remove=True, force=force)
         else:
             self.unprotect_outs()
-        self.dvcfile.remove()
+        if purge:
+            self.dvcfile.remove_stage(self)
 
     @rwlocked(read=["deps"], write=["outs"])
     def reproduce(self, interactive=False, **kwargs):
@@ -401,16 +407,16 @@ class Stage(params.StageParams):
 
     @rwlocked(read=["deps"], write=["outs"])
     def run(self, dry=False, no_commit=False, force=False, run_cache=True):
-        if (self.cmd or self.is_import) and not self.locked and not dry:
+        if (self.cmd or self.is_import) and not self.frozen and not dry:
             self.remove_outs(ignore_remove=False, force=False)
 
-        if not self.locked and self.is_import:
+        if not self.frozen and self.is_import:
             sync_import(self, dry, force)
-        elif not self.locked and self.cmd:
+        elif not self.frozen and self.cmd:
             run_stage(self, dry, force, run_cache)
         else:
             args = (
-                ("outputs", "locked ") if self.locked else ("data sources", "")
+                ("outputs", "frozen ") if self.frozen else ("data sources", "")
             )
             logger.info("Verifying %s in %s%s", *args, self)
             if not dry:
@@ -452,7 +458,7 @@ class Stage(params.StageParams):
         ret = []
         show_import = self.is_repo_import and check_updates
 
-        if not self.locked or show_import:
+        if not self.frozen or show_import:
             self._status_deps(ret)
         self._status_outs(ret)
         self._status_always_changed(ret)

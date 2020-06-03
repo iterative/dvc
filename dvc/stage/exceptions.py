@@ -58,6 +58,10 @@ class StageCommitError(DvcException):
     pass
 
 
+class StageExternalOutputsError(DvcException):
+    pass
+
+
 class StageUpdateError(DvcException):
     def __init__(self, path):
         super().__init__(

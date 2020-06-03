@@ -4,14 +4,15 @@
 #   - https://opensource.com/article/18/3/creating-bash-completion-script
 #   - https://stackoverflow.com/questions/12933362
 
-_dvc_commands='add cache checkout commit config destroy diff fetch get-url get gc \
-  import-url import init install lock list metrics move params pipeline plots pull push \
-  remote remove repro root run status unlock unprotect update version'
+_dvc_commands='add cache checkout commit config dag destroy diff fetch freeze \
+  get-url get gc import-url import init install list metrics move params \
+  plots pull push remote remove repro root run status unfreeze unprotect \
+  update version'
 
 _dvc_options='-h --help -V --version'
 _dvc_global_options='-h --help -q --quiet -v --verbose'
 
-_dvc_add='-R --recursive -f --file --no-commit'
+_dvc_add='-R --recursive -f --file --no-commit --external'
 _dvc_add_COMPGEN=_dvc_compgen_files
 _dvc_cache='dir'
 _dvc_cache_dir=' --global --system --local -u --unset'
@@ -20,6 +21,8 @@ _dvc_checkout_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_commit='-f --force -d --with-deps -R --recursive'
 _dvc_commit_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_config='-u --unset --local --system --global'
+_dvc_dag='--dot --full'
+_dvc_dag_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_destroy='-f --force'
 _dvc_diff='-t --show-json --show-hash --show-md'
 _dvc_fetch='-j --jobs -r --remote -a --all-branches -T --all-tags -d --with-deps -R --recursive'
@@ -33,29 +36,20 @@ _dvc_init='--no-scm -f --force'
 _dvc_install=''
 _dvc_list='-R --recursive --dvc-only --rev'
 _dvc_list_COMPGEN=_dvc_compgen_files
-_dvc_lock=''
-_dvc_lock_COMPGEN=_dvc_compgen_DVCFiles
-_dvc_metrics='add diff modify remove show'
-_dvc_metrics_add='-t --type -x --xpath'
-_dvc_metrics_add_COMPGEN=_dvc_compgen_files
+_dvc_freeze=''
+_dvc_freeze_COMPGEN=_dvc_compgen_DVCFiles
+_dvc_metrics='diff show'
 _dvc_metrics_diff='--targets -t --type -x --xpath -R --show-json --show-md --no-path --old'
-_dvc_metrics_modify='-t --type -x --xpath'
-_dvc_metrics_modify_COMPGEN=_dvc_compgen_files
-_dvc_metrics_remove=''
-_dvc_metrics_remove_COMPGEN=_dvc_compgen_files
 _dvc_metrics_show='-t --type -x --xpath -a --all-branches -T --all-tags -R --recursive'
 _dvc_metrics_show_COMPGEN=_dvc_compgen_files
 _dvc_move=''
 _dvc_move_COMPGEN=_dvc_compgen_files
 _dvc_params='diff'
 _dvc_params_diff='--all --show-json --show-md --no-path'
-_dvc_pipeline='list show'
-_dvc_pipeline_list=''
-_dvc_pipeline_show='-c --commands -o --outs --ascii --dot --tree -l --locked'
-_dvc_pipeline_show_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_plots='show diff'
-_dvc_plots_show='-t --template -o --out -x -y --show-json --no-csv-header --title --xlab --ylab'
-_dvc_plots_diff='-t --template --targets -o --out -x -y --show-json --no-csv-header --title --xlab --ylab'
+_dvc_plots_show='-t --template -o --out -x -y --show-json --no-csv-header --title --x-label --y-label'
+_dvc_plots_diff='-t --template --targets -o --out -x -y --show-json --no-csv-header --title --x-label --y-label'
+_dvc_plots_modify='-t --template -x -y --no-csv-header --title --x-label --y-label'
 _dvc_pull='-j --jobs -r --remote -a --all-branches -T --all-tags -f --force -d --with-deps -R --recursive'
 _dvc_pull_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_push='-j --jobs -r --remote -a --all-branches -T --all-tags -d --with-deps -R --recursive'
@@ -72,11 +66,11 @@ _dvc_remove_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_repro='-f --force -s --single-item -c --cwd -m --metrics --dry -i --interactive -p --pipeline -P --all-pipelines --no-run-cache --force-downstream --no-commit -R --recursive --downstream'
 _dvc_repro_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_root=''
-_dvc_run='--no-exec -f --file -d --deps -o --outs -O --outs-no-cache --outs-persist --outs-persist-no-cache -m --metrics -M --metrics-no-cache --overwrite-dvcfile --no-run-cache --no-commit -w --wdir'
+_dvc_run='--no-exec -f --file -d --deps -o --outs -O --outs-no-cache --outs-persist --outs-persist-no-cache -m --metrics -M --metrics-no-cache --overwrite-dvcfile --no-run-cache --no-commit -w --wdir --external'
 _dvc_run_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_status='-j --jobs -r --remote -a --all-branches -T --all-tags -d --with-deps -c --cloud'
 _dvc_status_COMPGEN=_dvc_compgen_DVCFiles
-_dvc_unlock_COMPGEN=_dvc_compgen_DVCFiles
+_dvc_unfreeze_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_unprotect_COMPGEN=_dvc_compgen_files
 _dvc_update='--rev'
 _dvc_update_COMPGEN=_dvc_compgen_DVCFiles

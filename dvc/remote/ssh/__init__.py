@@ -14,7 +14,7 @@ from funcy import first, memoize, silent, wrap_with
 
 import dvc.prompt as prompt
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemote
+from dvc.remote.base import BaseRemote, BaseRemoteTree
 from dvc.remote.pool import get_connection
 from dvc.scheme import Schemes
 from dvc.utils import to_chunks
@@ -33,6 +33,105 @@ def ask_password(host, user, port):
     )
 
 
+class SSHRemoteTree(BaseRemoteTree):
+    @property
+    def ssh(self):
+        return self.remote.ssh
+
+    @contextmanager
+    def open(self, path_info, mode="r", encoding=None):
+        assert mode in {"r", "rt", "rb", "wb"}
+
+        with self.ssh(path_info) as ssh, closing(
+            ssh.sftp.open(path_info.path, mode)
+        ) as fd:
+            if "b" in mode:
+                yield fd
+            else:
+                yield io.TextIOWrapper(fd, encoding=encoding)
+
+    def exists(self, path_info):
+        with self.ssh(path_info) as ssh:
+            return ssh.exists(path_info.path)
+
+    def isdir(self, path_info):
+        with self.ssh(path_info) as ssh:
+            return ssh.isdir(path_info.path)
+
+    def isfile(self, path_info):
+        with self.ssh(path_info) as ssh:
+            return ssh.isfile(path_info.path)
+
+    def walk_files(self, path_info):
+        with self.ssh(path_info) as ssh:
+            for fname in ssh.walk_files(path_info.path):
+                yield path_info.replace(path=fname)
+
+    def remove(self, path_info):
+        if path_info.scheme != self.scheme:
+            raise NotImplementedError
+
+        with self.ssh(path_info) as ssh:
+            ssh.remove(path_info.path)
+
+    def makedirs(self, path_info):
+        with self.ssh(path_info) as ssh:
+            ssh.makedirs(path_info.path)
+
+    def move(self, from_info, to_info, mode=None):
+        assert mode is None
+        if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
+            raise NotImplementedError
+
+        with self.ssh(from_info) as ssh:
+            ssh.move(from_info.path, to_info.path)
+
+    def copy(self, from_info, to_info):
+        if not from_info.scheme == to_info.scheme == self.scheme:
+            raise NotImplementedError
+
+        with self.ssh(from_info) as ssh:
+            ssh.atomic_copy(from_info.path, to_info.path)
+
+    def symlink(self, from_info, to_info):
+        if not from_info.scheme == to_info.scheme == self.scheme:
+            raise NotImplementedError
+
+        with self.ssh(from_info) as ssh:
+            ssh.symlink(from_info.path, to_info.path)
+
+    def hardlink(self, from_info, to_info):
+        if not from_info.scheme == to_info.scheme == self.scheme:
+            raise NotImplementedError
+
+        # See dvc/remote/local/__init__.py - hardlink()
+        if self.getsize(from_info) == 0:
+
+            with self.ssh(to_info) as ssh:
+                ssh.sftp.open(to_info.path, "w").close()
+
+            logger.debug(
+                "Created empty file: {src} -> {dest}".format(
+                    src=str(from_info), dest=str(to_info)
+                )
+            )
+            return
+
+        with self.ssh(from_info) as ssh:
+            ssh.hardlink(from_info.path, to_info.path)
+
+    def reflink(self, from_info, to_info):
+        if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
+            raise NotImplementedError
+
+        with self.ssh(from_info) as ssh:
+            ssh.reflink(from_info.path, to_info.path)
+
+    def getsize(self, path_info):
+        with self.ssh(path_info) as ssh:
+            return ssh.getsize(path_info.path)
+
+
 class SSHRemote(BaseRemote):
     scheme = Schemes.SSH
     REQUIRES = {"paramiko": "paramiko"}
@@ -46,6 +145,7 @@ class SSHRemote(BaseRemote):
     # We use conservative setting of 4 instead to not exhaust max sessions.
     CHECKSUM_JOBS = 4
     TRAVERSE_PREFIX_LEN = 2
+    TREE_CLS = SSHRemoteTree
 
     DEFAULT_CACHE_TYPES = ["copy"]
 
@@ -148,84 +248,12 @@ class SSHRemote(BaseRemote):
             sock=self.sock,
         )
 
-    def exists(self, path_info):
-        with self.ssh(path_info) as ssh:
-            return ssh.exists(path_info.path)
-
     def get_file_checksum(self, path_info):
         if path_info.scheme != self.scheme:
             raise NotImplementedError
 
         with self.ssh(path_info) as ssh:
             return ssh.md5(path_info.path)
-
-    def isdir(self, path_info):
-        with self.ssh(path_info) as ssh:
-            return ssh.isdir(path_info.path)
-
-    def isfile(self, path_info):
-        with self.ssh(path_info) as ssh:
-            return ssh.isfile(path_info.path)
-
-    def getsize(self, path_info):
-        with self.ssh(path_info) as ssh:
-            return ssh.getsize(path_info.path)
-
-    def copy(self, from_info, to_info):
-        if not from_info.scheme == to_info.scheme == self.scheme:
-            raise NotImplementedError
-
-        with self.ssh(from_info) as ssh:
-            ssh.atomic_copy(from_info.path, to_info.path)
-
-    def symlink(self, from_info, to_info):
-        if not from_info.scheme == to_info.scheme == self.scheme:
-            raise NotImplementedError
-
-        with self.ssh(from_info) as ssh:
-            ssh.symlink(from_info.path, to_info.path)
-
-    def hardlink(self, from_info, to_info):
-        if not from_info.scheme == to_info.scheme == self.scheme:
-            raise NotImplementedError
-
-        # See dvc/remote/local/__init__.py - hardlink()
-        if self.getsize(from_info) == 0:
-
-            with self.ssh(to_info) as ssh:
-                ssh.sftp.open(to_info.path, "w").close()
-
-            logger.debug(
-                "Created empty file: {src} -> {dest}".format(
-                    src=str(from_info), dest=str(to_info)
-                )
-            )
-            return
-
-        with self.ssh(from_info) as ssh:
-            ssh.hardlink(from_info.path, to_info.path)
-
-    def reflink(self, from_info, to_info):
-        if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
-            raise NotImplementedError
-
-        with self.ssh(from_info) as ssh:
-            ssh.reflink(from_info.path, to_info.path)
-
-    def remove(self, path_info):
-        if path_info.scheme != self.scheme:
-            raise NotImplementedError
-
-        with self.ssh(path_info) as ssh:
-            ssh.remove(path_info.path)
-
-    def move(self, from_info, to_info, mode=None):
-        assert mode is None
-        if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
-            raise NotImplementedError
-
-        with self.ssh(from_info) as ssh:
-            ssh.move(from_info.path, to_info.path)
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         assert from_info.isin(self.path_info)
@@ -247,18 +275,6 @@ class SSHRemote(BaseRemote):
                 no_progress_bar=no_progress_bar,
             )
 
-    @contextmanager
-    def open(self, path_info, mode="r", encoding=None):
-        assert mode in {"r", "rt", "rb", "wb"}
-
-        with self.ssh(path_info) as ssh, closing(
-            ssh.sftp.open(path_info.path, mode)
-        ) as fd:
-            if "b" in mode:
-                yield fd
-            else:
-                yield io.TextIOWrapper(fd, encoding=encoding)
-
     def list_cache_paths(self, prefix=None, progress_callback=None):
         if prefix:
             root = posixpath.join(self.path_info.path, prefix[:2])
@@ -274,15 +290,6 @@ class SSHRemote(BaseRemote):
                     yield path
             else:
                 yield from ssh.walk_files(root)
-
-    def walk_files(self, path_info):
-        with self.ssh(path_info) as ssh:
-            for fname in ssh.walk_files(path_info.path):
-                yield path_info.replace(path=fname)
-
-    def makedirs(self, path_info):
-        with self.ssh(path_info) as ssh:
-            ssh.makedirs(path_info.path)
 
     def batch_exists(self, path_infos, callback):
         def _exists(chunk_and_channel):

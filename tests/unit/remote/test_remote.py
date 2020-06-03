@@ -37,5 +37,5 @@ def test_makedirs_not_create_for_top_level_path(remote_cls, dvc, mocker):
     # we use remote clients with same name as scheme to interact with remote
     mocker.patch.object(remote_cls, remote.scheme, mocked_client)
 
-    remote.makedirs(remote.path_info)
+    remote.tree.makedirs(remote.path_info)
     assert not mocked_client.called

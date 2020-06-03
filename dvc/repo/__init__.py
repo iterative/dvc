@@ -17,6 +17,7 @@ from dvc.exceptions import (
 from dvc.ignore import CleanTree
 from dvc.path_info import PathInfo
 from dvc.repo.tree import RepoTree
+from dvc.scm.tree import is_working_tree
 from dvc.utils.fs import path_isin
 
 from ..stage.exceptions import StageFileDoesNotExistError, StageNotFound
@@ -47,7 +48,7 @@ class Repo:
     from dvc.repo.add import add
     from dvc.repo.remove import remove
     from dvc.repo.ls import ls
-    from dvc.repo.lock import lock as lock_stage
+    from dvc.repo.freeze import freeze, unfreeze
     from dvc.repo.move import move
     from dvc.repo.run import run
     from dvc.repo.imp import imp
@@ -133,7 +134,13 @@ class Repo:
 
     @tree.setter
     def tree(self, tree):
-        self._tree = tree if isinstance(tree, CleanTree) else CleanTree(tree)
+        if is_working_tree(tree) or tree.tree_root == self.root_dir:
+            root = None
+        else:
+            root = self.root_dir
+        self._tree = (
+            tree if isinstance(tree, CleanTree) else CleanTree(tree, root)
+        )
         # Our graph cache is no longer valid, as it was based on the previous
         # tree.
         self._reset()
@@ -434,7 +441,7 @@ class Repo:
         stages = stages or self.stages
         outs = Trie()  # Use trie to efficiently find overlapping outs and deps
 
-        for stage in filter(bool, stages):
+        for stage in filter(bool, stages):  # bug? not using it later
             for out in stage.outs:
                 out_key = out.path_info.parts
 
@@ -520,14 +527,13 @@ class Repo:
 
         for root, dirs, files in self.tree.walk(self.root_dir):
             for file_name in filter(is_valid_filename, files):
-                path = os.path.join(root, file_name)
-                stages.extend(self.get_stages(path))
+                new_stages = self.get_stages(os.path.join(root, file_name))
+                stages.extend(new_stages)
                 outs.update(
                     out.fspath
-                    for stage in stages
-                    for out in (
-                        out for out in stage.outs if out.scheme == "local"
-                    )
+                    for stage in new_stages
+                    for out in stage.outs
+                    if out.scheme == "local"
                 )
             dirs[:] = [d for d in dirs if os.path.join(root, d) not in outs]
         return stages

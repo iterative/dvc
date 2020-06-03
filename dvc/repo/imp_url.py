@@ -5,12 +5,12 @@ from dvc.utils import relpath, resolve_output, resolve_paths
 from dvc.utils.fs import path_isin
 
 from ..exceptions import OutputDuplicationError
-from . import locked as locked_repo
+from . import locked
 
 
-@locked_repo
+@locked
 @scm_context
-def imp_url(self, url, out=None, fname=None, erepo=None, locked=True):
+def imp_url(self, url, out=None, fname=None, erepo=None, frozen=True):
     from dvc.dvcfile import Dvcfile
     from dvc.stage import Stage, create_stage
 
@@ -48,7 +48,7 @@ def imp_url(self, url, out=None, fname=None, erepo=None, locked=True):
 
     stage.run()
 
-    stage.locked = locked
+    stage.frozen = frozen
 
     dvcfile.dump(stage)
 

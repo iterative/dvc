@@ -17,6 +17,7 @@ from dvc.remote.base import (
     STATUS_MISSING,
     STATUS_NEW,
     BaseRemote,
+    BaseRemoteTree,
     index_locked,
 )
 from dvc.remote.index import RemoteIndexNoop
@@ -36,37 +37,12 @@ from dvc.utils.fs import (
 logger = logging.getLogger(__name__)
 
 
-class LocalRemote(BaseRemote):
-    scheme = Schemes.LOCAL
-    path_cls = PathInfo
-    PARAM_CHECKSUM = "md5"
-    PARAM_PATH = "path"
-    TRAVERSE_PREFIX_LEN = 2
-    INDEX_CLS = RemoteIndexNoop
-
-    UNPACKED_DIR_SUFFIX = ".unpacked"
-
-    DEFAULT_CACHE_TYPES = ["reflink", "copy"]
-
-    CACHE_MODE = 0o444
+class LocalRemoteTree(BaseRemoteTree):
     SHARED_MODE_MAP = {None: (0o644, 0o755), "group": (0o664, 0o775)}
 
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
-        self.cache_dir = config.get("url")
-        self._dir_info = {}
-
     @property
-    def state(self):
-        return self.repo.state
-
-    @property
-    def cache_dir(self):
-        return self.path_info.fspath if self.path_info else None
-
-    @cache_dir.setter
-    def cache_dir(self, value):
-        self.path_info = PathInfo(value) if value else None
+    def repo(self):
+        return self.remote.repo
 
     @cached_property
     def _work_tree(self):
@@ -83,42 +59,9 @@ class LocalRemote(BaseRemote):
             return self._work_tree
         return None
 
-    @classmethod
-    def supported(cls, config):
-        return True
-
-    @cached_property
-    def cache_path(self):
-        return os.path.abspath(self.cache_dir)
-
-    def checksum_to_path(self, checksum):
-        # NOTE: `self.cache_path` is already normalized so we can simply use
-        # `os.sep` instead of `os.path.join`. This results in this helper
-        # being ~5.5 times faster.
-        return (
-            f"{self.cache_path}{os.sep}{checksum[0:2]}{os.sep}{checksum[2:]}"
-        )
-
-    def list_cache_paths(self, prefix=None, progress_callback=None):
-        assert self.path_info is not None
-        if prefix:
-            path_info = self.path_info / prefix[:2]
-            if not self.exists(path_info):
-                return
-        else:
-            path_info = self.path_info
-        if progress_callback:
-            for path in walk_files(path_info):
-                progress_callback()
-                yield path
-        else:
-            yield from walk_files(path_info)
-
-    def get(self, md5):
-        if not md5:
-            return None
-
-        return self.checksum_to_path_info(md5).url
+    @staticmethod
+    def open(path_info, mode="r", encoding=None):
+        return open(path_info, mode=mode, encoding=encoding)
 
     def exists(self, path_info):
         assert isinstance(path_info, str) or path_info.scheme == "local"
@@ -127,36 +70,6 @@ class LocalRemote(BaseRemote):
         if self.work_tree and self.work_tree.exists(path_info):
             return True
         return self.repo.tree.exists(path_info)
-
-    def makedirs(self, path_info):
-        makedirs(path_info, exist_ok=True, mode=self._dir_mode)
-
-    def already_cached(self, path_info):
-        assert path_info.scheme in ["", "local"]
-
-        current_md5 = self.get_checksum(path_info)
-
-        if not current_md5:
-            return False
-
-        return not self.changed_cache(current_md5)
-
-    def _verify_link(self, path_info, link_type):
-        if link_type == "hardlink" and self.getsize(path_info) == 0:
-            return
-
-        super()._verify_link(path_info, link_type)
-
-    def is_empty(self, path_info):
-        path = path_info.fspath
-
-        if self.isfile(path_info) and os.path.getsize(path) == 0:
-            return True
-
-        if self.isdir(path_info) and len(os.listdir(path)) == 0:
-            return True
-
-        return False
 
     def isfile(self, path_info):
         if not self.repo:
@@ -177,10 +90,6 @@ class LocalRemote(BaseRemote):
             System.is_symlink(path_info) or System.is_hardlink(path_info)
         )
 
-    @staticmethod
-    def getsize(path_info):
-        return os.path.getsize(path_info)
-
     def walk_files(self, path_info):
         if self.work_tree:
             tree = self.work_tree
@@ -189,8 +98,16 @@ class LocalRemote(BaseRemote):
         for fname in tree.walk_files(path_info):
             yield PathInfo(fname)
 
-    def get_file_checksum(self, path_info):
-        return file_md5(path_info)[0]
+    def is_empty(self, path_info):
+        path = path_info.fspath
+
+        if self.isfile(path_info) and os.path.getsize(path) == 0:
+            return True
+
+        if self.isdir(path_info) and len(os.listdir(path)) == 0:
+            return True
+
+        return False
 
     def remove(self, path_info):
         if isinstance(path_info, PathInfo):
@@ -203,6 +120,9 @@ class LocalRemote(BaseRemote):
         if self.exists(path):
             remove(path)
 
+    def makedirs(self, path_info):
+        makedirs(path_info, exist_ok=True, mode=self.dir_mode)
+
     def move(self, from_info, to_info, mode=None):
         if from_info.scheme != "local" or to_info.scheme != "local":
             raise NotImplementedError
@@ -211,9 +131,9 @@ class LocalRemote(BaseRemote):
 
         if mode is None:
             if self.isfile(from_info):
-                mode = self._file_mode
+                mode = self.file_mode
             else:
-                mode = self._dir_mode
+                mode = self.dir_mode
 
         move(from_info, to_info, mode=mode)
 
@@ -221,7 +141,7 @@ class LocalRemote(BaseRemote):
         tmp_info = to_info.parent / tmp_fname(to_info.name)
         try:
             System.copy(from_info, tmp_info)
-            os.chmod(tmp_info, self._file_mode)
+            os.chmod(tmp_info, self.file_mode)
             os.rename(tmp_info, to_info)
         except Exception:
             self.remove(tmp_info)
@@ -232,7 +152,7 @@ class LocalRemote(BaseRemote):
         tmp_info = to_info.parent / tmp_fname(to_info.name)
         try:
             copy_fobj_to_file(fobj, tmp_info)
-            os.chmod(tmp_info, self._file_mode)
+            os.chmod(tmp_info, self.file_mode)
             os.rename(tmp_info, to_info)
         except Exception:
             self.remove(tmp_info)
@@ -281,8 +201,101 @@ class LocalRemote(BaseRemote):
         System.reflink(from_info, tmp_info)
         # NOTE: reflink has its own separate inode, so you can set permissions
         # that are different from the source.
-        os.chmod(tmp_info, self._file_mode)
+        os.chmod(tmp_info, self.file_mode)
         os.rename(tmp_info, to_info)
+
+    @staticmethod
+    def getsize(path_info):
+        return os.path.getsize(path_info)
+
+
+class LocalRemote(BaseRemote):
+    scheme = Schemes.LOCAL
+    path_cls = PathInfo
+    PARAM_CHECKSUM = "md5"
+    PARAM_PATH = "path"
+    TRAVERSE_PREFIX_LEN = 2
+    INDEX_CLS = RemoteIndexNoop
+    TREE_CLS = LocalRemoteTree
+
+    UNPACKED_DIR_SUFFIX = ".unpacked"
+
+    DEFAULT_CACHE_TYPES = ["reflink", "copy"]
+
+    CACHE_MODE = 0o444
+
+    def __init__(self, repo, config):
+        super().__init__(repo, config)
+        self.cache_dir = config.get("url")
+        self._dir_info = {}
+
+    @property
+    def state(self):
+        return self.repo.state
+
+    @property
+    def cache_dir(self):
+        return self.path_info.fspath if self.path_info else None
+
+    @cache_dir.setter
+    def cache_dir(self, value):
+        self.path_info = PathInfo(value) if value else None
+
+    @classmethod
+    def supported(cls, config):
+        return True
+
+    @cached_property
+    def cache_path(self):
+        return os.path.abspath(self.cache_dir)
+
+    def checksum_to_path(self, checksum):
+        # NOTE: `self.cache_path` is already normalized so we can simply use
+        # `os.sep` instead of `os.path.join`. This results in this helper
+        # being ~5.5 times faster.
+        return (
+            f"{self.cache_path}{os.sep}{checksum[0:2]}{os.sep}{checksum[2:]}"
+        )
+
+    def list_cache_paths(self, prefix=None, progress_callback=None):
+        assert self.path_info is not None
+        if prefix:
+            path_info = self.path_info / prefix[:2]
+            if not self.tree.exists(path_info):
+                return
+        else:
+            path_info = self.path_info
+        if progress_callback:
+            for path in walk_files(path_info):
+                progress_callback()
+                yield path
+        else:
+            yield from walk_files(path_info)
+
+    def get(self, md5):
+        if not md5:
+            return None
+
+        return self.checksum_to_path_info(md5).url
+
+    def already_cached(self, path_info):
+        assert path_info.scheme in ["", "local"]
+
+        current_md5 = self.get_checksum(path_info)
+
+        if not current_md5:
+            return False
+
+        return not self.changed_cache(current_md5)
+
+    def _verify_link(self, path_info, link_type):
+        if link_type == "hardlink" and self.tree.getsize(path_info) == 0:
+            return
+
+        super()._verify_link(path_info, link_type)
+
+    def get_file_checksum(self, path_info):
+        return file_md5(path_info)[0]
 
     def cache_exists(self, checksums, jobs=None, name=None):
         return [
@@ -315,10 +328,6 @@ class LocalRemote(BaseRemote):
         copyfile(
             from_info, to_file, no_progress_bar=no_progress_bar, name=name
         )
-
-    @staticmethod
-    def open(path_info, mode="r", encoding=None):
-        return open(path_info, mode=mode, encoding=encoding)
 
     @index_locked
     def status(
@@ -503,8 +512,8 @@ class LocalRemote(BaseRemote):
         if download:
             func = partial(
                 remote.download,
-                dir_mode=self._dir_mode,
-                file_mode=self._file_mode,
+                dir_mode=self.tree.dir_mode,
+                file_mode=self.tree.file_mode,
             )
             status = STATUS_DELETED
             desc = "Downloading"
@@ -662,7 +671,7 @@ class LocalRemote(BaseRemote):
                 "a symlink or a hardlink.".format(path)
             )
 
-        os.chmod(path, self._file_mode)
+        os.chmod(path, self.tree.file_mode)
 
     def _unprotect_dir(self, path):
         assert is_working_tree(self.repo.tree)
@@ -703,7 +712,7 @@ class LocalRemote(BaseRemote):
     def _remove_unpacked_dir(self, checksum):
         info = self.checksum_to_path_info(checksum)
         path_info = info.with_name(info.name + self.UNPACKED_DIR_SUFFIX)
-        self.remove(path_info)
+        self.tree.remove(path_info)
 
     def is_protected(self, path_info):
         try:

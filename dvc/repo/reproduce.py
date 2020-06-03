@@ -10,9 +10,9 @@ logger = logging.getLogger(__name__)
 
 
 def _reproduce_stage(stage, **kwargs):
-    if stage.locked and not stage.is_import:
+    if stage.frozen and not stage.is_import:
         logger.warning(
-            "{} is locked. Its dependencies are"
+            "{} is frozen. Its dependencies are"
             " not going to be reproduced.".format(stage)
         )
 
@@ -34,7 +34,7 @@ def _get_active_graph(G):
 
     active = G.copy()
     for stage in G:
-        if not stage.locked:
+        if not stage.frozen:
             continue
         active.remove_edges_from(G.out_edges(stage))
         for edge in G.out_edges(stage):

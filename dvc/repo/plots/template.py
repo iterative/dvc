@@ -38,8 +38,8 @@ class Template:
     X_ANCHOR = "<DVC_METRIC_X>"
     Y_ANCHOR = "<DVC_METRIC_Y>"
     TITLE_ANCHOR = "<DVC_METRIC_TITLE>"
-    X_TITLE_ANCHOR = "<DVC_METRIC_X_TITLE>"
-    Y_TITLE_ANCHOR = "<DVC_METRIC_Y_TITLE>"
+    X_LABEL_ANCHOR = "<DVC_METRIC_X_LABEL>"
+    Y_LABEL_ANCHOR = "<DVC_METRIC_Y_LABEL>"
 
     def __init__(self, templates_dir):
         self.plot_templates_dir = templates_dir
@@ -86,29 +86,24 @@ class Template:
 
     @staticmethod
     def fill(
-        template_path,
-        data,
-        priority_datafile=None,
-        x_field=None,
-        y_field=None,
-        title=None,
-        x_title=None,
-        y_title=None,
+        template_path, data, priority_datafile=None, props=None,
     ):
+        props = props or {}
+
         with open(template_path) as fobj:
             result_content = fobj.read()
 
-        if x_field:
-            Template._check_field_exists(data, x_field)
-        if y_field:
-            Template._check_field_exists(data, y_field)
+        if props.get("x"):
+            Template._check_field_exists(data, props.get("x"))
+        if props.get("y"):
+            Template._check_field_exists(data, props.get("y"))
 
         result_content = Template._replace_data_anchors(
             result_content, data, priority_datafile
         )
 
         result_content = Template._replace_metadata_anchors(
-            result_content, title, x_field, x_title, y_field, y_title
+            result_content, props
         )
 
         return result_content
@@ -122,34 +117,23 @@ class Template:
                 raise NoFieldInDataError(field)
 
     @staticmethod
-    def _replace_metadata_anchors(
-        result_content, title, x_field, x_title, y_field, y_title
-    ):
-        if Template.TITLE_ANCHOR in result_content:
-            if title:
-                result_content = result_content.replace(
-                    Template.TITLE_ANCHOR, title
-                )
-            else:
-                result_content = result_content.replace(
-                    Template.TITLE_ANCHOR, ""
-                )
-        if Template.X_ANCHOR in result_content and x_field:
-            result_content = result_content.replace(Template.X_ANCHOR, x_field)
-        if Template.Y_ANCHOR in result_content and y_field:
-            result_content = result_content.replace(Template.Y_ANCHOR, y_field)
-        if Template.X_TITLE_ANCHOR in result_content:
-            if not x_title and x_field:
-                x_title = x_field
-            result_content = result_content.replace(
-                Template.X_TITLE_ANCHOR, x_title
-            )
-        if Template.Y_TITLE_ANCHOR in result_content:
-            if not y_title and y_field:
-                y_title = y_field
-            result_content = result_content.replace(
-                Template.Y_TITLE_ANCHOR, y_title
-            )
+    def _replace_metadata_anchors(result_content, props):
+        props.setdefault("title", "")
+        props.setdefault("x_label", props.get("x"))
+        props.setdefault("y_label", props.get("y"))
+
+        replace_pairs = [
+            (Template.TITLE_ANCHOR, "title"),
+            (Template.X_ANCHOR, "x"),
+            (Template.Y_ANCHOR, "y"),
+            (Template.X_LABEL_ANCHOR, "x_label"),
+            (Template.Y_LABEL_ANCHOR, "y_label"),
+        ]
+        for anchor, key in replace_pairs:
+            value = props.get(key)
+            if anchor in result_content and value is not None:
+                result_content = result_content.replace(anchor, value)
+
         return result_content
 
     @staticmethod
@@ -186,12 +170,12 @@ class DefaultLinearTemplate(Template):
             "x": {
                 "field": Template.X_ANCHOR,
                 "type": "quantitative",
-                "title": Template.X_TITLE_ANCHOR,
+                "title": Template.X_LABEL_ANCHOR,
             },
             "y": {
                 "field": Template.Y_ANCHOR,
                 "type": "quantitative",
-                "title": Template.Y_TITLE_ANCHOR,
+                "title": Template.Y_LABEL_ANCHOR,
                 "scale": {"zero": False},
             },
             "color": {"field": "rev", "type": "nominal"},
@@ -211,13 +195,13 @@ class DefaultConfusionTemplate(Template):
                 "field": Template.X_ANCHOR,
                 "type": "nominal",
                 "sort": "ascending",
-                "title": Template.X_TITLE_ANCHOR,
+                "title": Template.X_LABEL_ANCHOR,
             },
             "y": {
                 "field": Template.Y_ANCHOR,
                 "type": "nominal",
                 "sort": "ascending",
-                "title": Template.Y_TITLE_ANCHOR,
+                "title": Template.Y_LABEL_ANCHOR,
             },
             "color": {"aggregate": "count", "type": "quantitative"},
             "facet": {"field": "rev", "type": "nominal"},
@@ -236,12 +220,12 @@ class DefaultScatterTemplate(Template):
             "x": {
                 "field": Template.X_ANCHOR,
                 "type": "quantitative",
-                "title": Template.X_TITLE_ANCHOR,
+                "title": Template.X_LABEL_ANCHOR,
             },
             "y": {
                 "field": Template.Y_ANCHOR,
                 "type": "quantitative",
-                "title": Template.Y_TITLE_ANCHOR,
+                "title": Template.Y_LABEL_ANCHOR,
                 "scale": {"zero": False},
             },
             "color": {"field": "rev", "type": "nominal"},
@@ -291,6 +275,7 @@ class PlotTemplates:
 
     def __init__(self, dvc_dir):
         self.dvc_dir = dvc_dir
+        print("PlotTemplates.__init__")
 
         if not os.path.exists(self.templates_dir):
             makedirs(self.templates_dir, exist_ok=True)

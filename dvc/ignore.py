@@ -92,13 +92,14 @@ class DvcIgnoreRepo(DvcIgnore):
 
 
 class DvcIgnoreFilter:
-    def __init__(self, tree):
+    def __init__(self, tree, root_dir):
         self.tree = tree
+        self.root_dir = root_dir
         self.ignores = {
             DvcIgnoreDirs([".git", ".hg", ".dvc"]),
             DvcIgnoreRepo(),
         }
-        for root, dirs, files in self.tree.walk(self.tree.tree_root):
+        for root, dirs, files in self.tree.walk(self.root_dir):
             self._update(root)
             dirs[:], files[:] = self(root, dirs, files)
 
@@ -115,16 +116,20 @@ class DvcIgnoreFilter:
 
 
 class CleanTree(BaseTree):
-    def __init__(self, tree):
+    def __init__(self, tree, tree_root=None):
         self.tree = tree
+        if tree_root:
+            self._tree_root = tree_root
+        else:
+            self._tree_root = self.tree.tree_root
 
     @cached_property
     def dvcignore(self):
-        return DvcIgnoreFilter(self.tree)
+        return DvcIgnoreFilter(self.tree, self.tree_root)
 
     @property
     def tree_root(self):
-        return self.tree.tree_root
+        return self._tree_root
 
     def open(self, path, mode="r", encoding="utf-8"):
         if self.isfile(path):
@@ -146,8 +151,11 @@ class CleanTree(BaseTree):
         )
 
     def _valid_dirname(self, path):
-        dirname, basename = os.path.split(os.path.normpath(path))
-        dirs, _ = self.dvcignore(os.path.abspath(dirname), [basename], [])
+        path = os.path.abspath(path)
+        if path == self.tree_root:
+            return True
+        dirname, basename = os.path.split(path)
+        dirs, _ = self.dvcignore(dirname, [basename], [])
         if dirs:
             return True
         return False

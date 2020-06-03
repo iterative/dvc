@@ -96,10 +96,9 @@ class AsciiCanvas:
 
     def draw(self):
         """Draws ASCII canvas on the screen."""
-        pager = find_pager()
         lines = map("".join, self.canvas)
         joined_lines = os.linesep.join(lines)
-        pager(joined_lines)
+        return joined_lines
 
     def point(self, x, y, char):
         """Create a point on ASCII canvas.
@@ -316,4 +315,4 @@ def draw(vertexes, edges):
             int(round(x - minx)) + 1, int(round(y - miny)) + 1, vertex.data
         )
 
-    canvas.draw()
+    return canvas.draw()

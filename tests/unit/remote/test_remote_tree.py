@@ -48,7 +48,7 @@ def test_isdir(remote):
     ]
 
     for expected, path in test_cases:
-        assert remote.isdir(remote.path_info / path) == expected
+        assert remote.tree.isdir(remote.path_info / path) == expected
 
 
 @pytest.mark.parametrize("remote", remotes, indirect=True)
@@ -68,7 +68,7 @@ def test_exists(remote):
     ]
 
     for expected, path in test_cases:
-        assert remote.exists(remote.path_info / path) == expected
+        assert remote.tree.exists(remote.path_info / path) == expected
 
 
 @pytest.mark.parametrize("remote", remotes, indirect=True)
@@ -83,7 +83,7 @@ def test_walk_files(remote):
         remote.path_info / "data/subdir/empty_file",
     ]
 
-    assert list(remote.walk_files(remote.path_info / "data")) == files
+    assert list(remote.tree.walk_files(remote.path_info / "data")) == files
 
 
 @pytest.mark.parametrize("remote", [S3Mocked], indirect=True)
@@ -96,7 +96,7 @@ def test_copy_preserve_etag_across_buckets(remote, dvc):
     from_info = remote.path_info / "foo"
     to_info = another.path_info / "foo"
 
-    remote.copy(from_info, to_info)
+    remote.tree.copy(from_info, to_info)
 
     from_etag = S3Remote.get_etag(s3, from_info.bucket, from_info.path)
     to_etag = S3Remote.get_etag(s3, "another", "foo")
@@ -106,12 +106,13 @@ def test_copy_preserve_etag_across_buckets(remote, dvc):
 
 @pytest.mark.parametrize("remote", remotes, indirect=True)
 def test_makedirs(remote):
+    tree = remote.tree
     empty_dir = remote.path_info / "empty_dir" / ""
-    remote.remove(empty_dir)
-    assert not remote.exists(empty_dir)
-    remote.makedirs(empty_dir)
-    assert remote.exists(empty_dir)
-    assert remote.isdir(empty_dir)
+    tree.remove(empty_dir)
+    assert not tree.exists(empty_dir)
+    tree.makedirs(empty_dir)
+    assert tree.exists(empty_dir)
+    assert tree.isdir(empty_dir)
 
 
 @pytest.mark.parametrize("remote", [GCP, S3Mocked], indirect=True)
@@ -133,7 +134,7 @@ def test_isfile(remote):
     ]
 
     for expected, path in test_cases:
-        assert remote.isfile(remote.path_info / path) == expected
+        assert remote.tree.isfile(remote.path_info / path) == expected
 
 
 @pytest.mark.parametrize("remote", remotes, indirect=True)

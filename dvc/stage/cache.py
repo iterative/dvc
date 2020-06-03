@@ -11,7 +11,7 @@ from dvc.serialize import to_single_stage_lockfile
 from dvc.stage.loader import StageLoader
 from dvc.utils import dict_sha256, relpath
 from dvc.utils.fs import makedirs
-from dvc.utils.stage import dump_stage_file
+from dvc.utils.yaml import dump_yaml
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +102,7 @@ class StageCache:
             params=params,
             deps=[dep["path"] for dep in cache.get("deps", [])],
             outs=[out["path"] for out in cache["outs"]],
+            external=True,
         )
         StageLoader.fill_from_lock(stage, cache)
         return stage
@@ -154,7 +155,7 @@ class StageCache:
         path = self._get_cache_path(cache_key, cache_value)
         dpath = os.path.dirname(path)
         makedirs(dpath, exist_ok=True)
-        dump_stage_file(path, cache)
+        dump_yaml(path, cache)
 
     def is_cached(self, stage):
         return bool(self._load(stage))

@@ -8,7 +8,7 @@ from git import Repo
 
 from dvc.exceptions import CollectCacheError
 from dvc.main import main
-from dvc.remote.local import LocalRemote
+from dvc.remote.local import LocalRemote, LocalRemoteTree
 from dvc.repo import Repo as DvcRepo
 from dvc.utils.fs import remove
 from tests.basic_env import TestDir, TestDvcGit
@@ -68,7 +68,7 @@ class TestGCBranchesTags(TestDvcGit):
         self.dvc.scm.tag("v1.0")
 
         self.dvc.scm.checkout("test", create_new=True)
-        self.dvc.remove(stages[0].relpath, dvc_only=True)
+        self.dvc.remove(stages[0].relpath)
         with open(fname, "w+") as fobj:
             fobj.write("test")
         stages = self.dvc.add(fname)
@@ -77,7 +77,7 @@ class TestGCBranchesTags(TestDvcGit):
         self.dvc.scm.commit("test")
 
         self.dvc.scm.checkout("master")
-        self.dvc.remove(stages[0].relpath, dvc_only=True)
+        self.dvc.remove(stages[0].relpath)
         with open(fname, "w+") as fobj:
             fobj.write("trash")
         stages = self.dvc.add(fname)
@@ -85,7 +85,7 @@ class TestGCBranchesTags(TestDvcGit):
         self.dvc.scm.add([".gitignore", stages[0].relpath])
         self.dvc.scm.commit("trash")
 
-        self.dvc.remove(stages[0].relpath, dvc_only=True)
+        self.dvc.remove(stages[0].relpath)
         with open(fname, "w+") as fobj:
             fobj.write("master")
         stages = self.dvc.add(fname)
@@ -153,7 +153,7 @@ class TestGCMultipleDvcRepos(TestDvcGit):
         cwd = os.getcwd()
         os.chdir(self.additional_path)
         # ADD FILE ONLY IN SECOND PROJECT
-        fname = os.path.join(self.additional_path, "only_in_second")
+        fname = "only_in_second"
         with open(fname, "w+") as fobj:
             fobj.write("only in additional repo")
 
@@ -161,7 +161,7 @@ class TestGCMultipleDvcRepos(TestDvcGit):
         self.assertEqual(len(stages), 1)
 
         # ADD FILE IN SECOND PROJECT THAT IS ALSO IN MAIN PROJECT
-        fname = os.path.join(self.additional_path, "in_both")
+        fname = "in_both"
         with open(fname, "w+") as fobj:
             fobj.write("in both repos")
 
@@ -321,7 +321,9 @@ def test_gc_cloud_remove_order(tmp_dir, scm, dvc, tmp_path_factory, mocker):
     dvc.remove(dir2.relpath)
     dvc.gc(workspace=True)
 
-    mocked_remove = mocker.patch.object(LocalRemote, "remove", autospec=True)
+    mocked_remove = mocker.patch.object(
+        LocalRemoteTree, "remove", autospec=True
+    )
     dvc.gc(workspace=True, cloud=True)
     assert len(mocked_remove.mock_calls) == 8
     # dir (and unpacked dir) should be first 4 checksums removed from

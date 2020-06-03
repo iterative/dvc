@@ -17,17 +17,17 @@ from dvc.exceptions import (
     OutputDuplicationError,
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
-    StageFileCorruptedError,
+    YAMLFileCorruptedError,
 )
 from dvc.main import main
 from dvc.output.base import OutputAlreadyTrackedError, OutputIsStageFileError
-from dvc.remote import LocalRemote
+from dvc.remote.local import LocalRemote, LocalRemoteTree
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.system import System
 from dvc.utils import LARGE_DIR_SIZE, file_md5, relpath
 from dvc.utils.fs import path_isin
-from dvc.utils.stage import load_stage_file
+from dvc.utils.yaml import load_yaml
 from tests.basic_env import TestDvc
 from tests.utils import get_gitignore_content
 
@@ -46,7 +46,7 @@ def test_add(tmp_dir, dvc):
     assert stage.outs[0].info["md5"] == md5
     assert stage.md5 is None
 
-    assert load_stage_file("foo.dvc") == {
+    assert load_yaml("foo.dvc") == {
         "outs": [{"md5": "acbd18db4cc2f85cedef654fccc4a4d8", "path": "foo"}],
     }
 
@@ -187,11 +187,16 @@ def test_add_file_in_dir(tmp_dir, dvc):
 
 class TestAddExternalLocalFile(TestDvc):
     def test(self):
+        from dvc.stage.exceptions import StageExternalOutputsError
+
         dname = TestDvc.mkdtemp()
         fname = os.path.join(dname, "foo")
         shutil.copyfile(self.FOO, fname)
 
-        stages = self.dvc.add(fname)
+        with self.assertRaises(StageExternalOutputsError):
+            self.dvc.add(fname)
+
+        stages = self.dvc.add(fname, external=True)
         self.assertEqual(len(stages), 1)
         stage = stages[0]
         self.assertNotEqual(stage, None)
@@ -220,14 +225,14 @@ class TestAddLocalRemoteFile(TestDvc):
         ret = main(["add", foo])
         self.assertEqual(ret, 0)
 
-        d = load_stage_file("foo.dvc")
+        d = load_yaml("foo.dvc")
         self.assertEqual(d["outs"][0]["path"], foo)
 
         bar = os.path.join(cwd, self.BAR)
         ret = main(["add", bar])
         self.assertEqual(ret, 0)
 
-        d = load_stage_file("bar.dvc")
+        d = load_yaml("bar.dvc")
         self.assertEqual(d["outs"][0]["path"], self.BAR)
 
 
@@ -371,7 +376,7 @@ class SymlinkAddTestBase(TestDvc):
         stage_file = self.data_file_name + DVC_FILE_SUFFIX
         self.assertTrue(os.path.exists(stage_file))
 
-        d = load_stage_file(stage_file)
+        d = load_yaml(stage_file)
         relative_data_path = posixpath.join(
             self.link_name, self.data_file_name
         )
@@ -436,8 +441,7 @@ class TestShouldThrowProperExceptionOnCorruptedStageFile(TestDvc):
         assert 1 == ret
 
         expected_error = (
-            "unable to read DVC-file: {} "
-            "YAML file structure is corrupted".format(foo_stage)
+            f"unable to read: '{foo_stage}', YAML file structure is corrupted"
         )
 
         assert expected_error in self._caplog.text
@@ -478,7 +482,7 @@ def test_failed_add_cleanup(tmp_dir, scm, dvc):
     dvc.add("foo")
     tmp_dir.gen("foo.dvc", "- broken\nyaml")
 
-    with pytest.raises(StageFileCorruptedError):
+    with pytest.raises(YAMLFileCorruptedError):
         dvc.add("bar")
 
     assert not os.path.exists("bar.dvc")
@@ -593,7 +597,7 @@ def test_should_not_checkout_when_adding_cached_copy(tmp_dir, dvc, mocker):
 
     shutil.copy("bar", "foo")
 
-    copy_spy = mocker.spy(dvc.cache.local, "copy")
+    copy_spy = mocker.spy(dvc.cache.local.tree, "copy")
 
     dvc.add("foo")
 
@@ -619,7 +623,7 @@ def test_should_relink_on_repeated_add(
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
 
     os.remove("foo")
-    getattr(dvc.cache.local, link)(PathInfo("bar"), PathInfo("foo"))
+    getattr(dvc.cache.local.tree, link)(PathInfo("bar"), PathInfo("foo"))
 
     dvc.cache.local.cache_types = [new_link]
 
@@ -699,7 +703,7 @@ def test_add_empty_files(tmp_dir, dvc, link):
 def test_add_optimization_for_hardlink_on_empty_files(tmp_dir, dvc, mocker):
     dvc.cache.local.cache_types = ["hardlink"]
     tmp_dir.gen({"foo": "", "bar": "", "lorem": "lorem", "ipsum": "ipsum"})
-    m = mocker.spy(LocalRemote, "is_hardlink")
+    m = mocker.spy(LocalRemoteTree, "is_hardlink")
     stages = dvc.add(["foo", "bar", "lorem", "ipsum"])
 
     assert m.call_count == 1

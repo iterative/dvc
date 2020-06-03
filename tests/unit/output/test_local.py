@@ -19,7 +19,7 @@ class TestLocalOutput(TestDvc):
 
     def test_save_missing(self):
         o = self._get_output()
-        with patch.object(o.remote, "exists", return_value=False):
+        with patch.object(o.remote.tree, "exists", return_value=False):
             with self.assertRaises(o.DoesNotExistError):
                 o.save()
 

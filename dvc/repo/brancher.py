@@ -18,7 +18,7 @@ def brancher(  # noqa: E302
         str: the display name for the currently selected tree, it could be:
             - a git revision identifier
             - empty string it there is no branches to iterate over
-            - "Working Tree" if there are uncommitted changes in the SCM repo
+            - "workspace" if there are uncommitted changes in the SCM repo
     """
     if not any([revs, all_branches, all_tags, all_commits]):
         yield ""
@@ -30,10 +30,10 @@ def brancher(  # noqa: E302
     scm = self.scm
 
     self.tree = WorkingTree(self.root_dir)
-    yield "working tree"
+    yield "workspace"
 
-    if revs and "working tree" in revs:
-        revs.remove("working tree")
+    if revs and "workspace" in revs:
+        revs.remove("workspace")
 
     if all_commits:
         revs = scm.list_all_commits()
@@ -48,6 +48,9 @@ def brancher(  # noqa: E302
         if revs:
             for sha, names in group_by(scm.resolve_rev, revs).items():
                 self.tree = scm.get_tree(sha)
-                yield ", ".join(names)
+                # ignore revs that don't contain repo root
+                # (i.e. revs from before a subdir=True repo was init'ed)
+                if self.tree.exists(self.root_dir):
+                    yield ", ".join(names)
     finally:
         self.tree = saved_tree

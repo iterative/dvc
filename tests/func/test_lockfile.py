@@ -6,7 +6,7 @@ import yaml
 from dvc.dvcfile import PIPELINE_LOCK
 from dvc.serialize import get_params_deps
 from dvc.utils.fs import remove
-from dvc.utils.stage import parse_stage_for_update
+from dvc.utils.yaml import parse_yaml_for_update
 from tests.func.test_run_multistage import supported_params
 
 FS_STRUCTURE = {
@@ -20,7 +20,7 @@ FS_STRUCTURE = {
 
 def read_lock_file(file=PIPELINE_LOCK):
     with open(file) as f:
-        data = parse_stage_for_update(f.read(), file)
+        data = parse_yaml_for_update(f.read(), file)
     assert isinstance(data, OrderedDict)
     return data
 

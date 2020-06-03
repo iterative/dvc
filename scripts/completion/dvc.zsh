@@ -17,6 +17,7 @@ _dvc_commands() {
     "checkout:Checkout data files from cache."
     "commit:Save changed data to cache and update DVC-files."
     "config:Get or set config settings."
+    "dag:Visualize DVC project DAG."
     "destroy:Remove DVC-files, local DVC config and data cache."
     "diff:Show added, modified, or deleted data between commits in the DVC repository, or between a commit and the workspace."
     "fetch:Get files or directories tracked by DVC from remote storage into the cache."
@@ -29,10 +30,9 @@ _dvc_commands() {
     "install:Install DVC git hooks into the repository."
     "list:List repository contents, including files and directories tracked by DVC and by Git."
     "lock:Lock DVC-file."
-    "metrics:Commands to add, manage, collect and display metrics."
+    "metrics:Commands to display and compare metrics."
     "move:Rename or move a DVC controlled data file or a directory."
     "params:Commands to display params."
-    "pipeline:Manage pipelines."
     "pull:Pull data files from a DVC remote storage."
     "push:Push data files to a DVC remote storage."
     "plots:Generate plot for metrics structured as JSON, CSV or TSV."
@@ -66,6 +66,7 @@ _dvc_add=(
   {-R,--recursive}"[Recursively add each file under the directory.]"
   "--no-commit[Don't put files/directories into cache.]"
   {-f,--file}"[Specify name of the DVC-file it generates.]:File:_files"
+  "--external[Allow targets that are outside of the DVC project.]"
   "1:File:_files"
 )
 
@@ -94,6 +95,12 @@ _dvc_config=(
   "--system[Use system config.]"
   "--local[Use local config.]"
   {-u,--unset}"[Unset option.]"
+)
+
+_dvc_dag=(
+  "--dot[Print DAG in DOT format.]"
+  "--full[Show full DAG that the target belongs too, instead of showing DAG consisting only of ancestors.]"
+  "1:Stage:"
 )
 
 _dvc_destroy=(
@@ -132,7 +139,7 @@ _dvc_get=(
 )
 
 _dvc_gc=(
-  {-w,--workspace}"[Keep data files used in the current workspace (working tree).]"
+  {-w,--workspace}"[Keep data files used in the current workspace.]"
   {-a,--all-branches}"[Keep data files for the tips of all Git branches.]"
   "--all-commits[Keep data files for all Git commits.]"
   {-T,--all-tags}"[Keep data files for all Git tags.]"
@@ -163,7 +170,7 @@ _dvc_init=(
 
 _dvc_install=()
 
-_dvc_lock=(
+_dvc_freeze=(
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
 )
 
@@ -176,7 +183,7 @@ _dvc_list=(
 )
 
 _dvc_metrics=(
-  "1:Sub command:(add show diff modify remove)"
+  "1:Sub command:(show diff)"
 )
 
 _dvc_move=(
@@ -186,10 +193,6 @@ _dvc_move=(
 
 _dvc_params=(
   "1:Sub command:(diff)"
-)
-
-_dvc_pipeline=(
-  "1:Sub command:(show list)"
 )
 
 _dvc_pull=(
@@ -214,7 +217,7 @@ _dvc_push=(
 )
 
 _dvc_plots=(
-  "1:Sub command:(show diff)"
+  "1:Sub command:(show diff modify)"
 )
 
 _dvc_remote=(
@@ -265,6 +268,7 @@ _dvc_run=(
   "--no-commit[Don't put files/directories into cache.]"
   "--outs-persist[Declare output file or directory that will not be removed upon repro.]:Output persistent:_files"
   "--outs-persist-no-cache[Declare output file or directory that will not be removed upon repro (do not put into DVC cache).]:Output persistent regular:_files"
+  "--external[Allow outputs that are outside of the DVC project.]"
 )
 
 _dvc_status=(
@@ -278,7 +282,7 @@ _dvc_status=(
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
 )
 
-_dvc_unlock=(
+_dvc_unfreeze=(
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
 )
 
@@ -305,9 +309,11 @@ case $words[1] in
   checkout) _arguments $_dvc_global_options $_dvc_checkout ;;
   commit) _arguments $_dvc_global_options $_dvc_commit ;;
   config) _arguments $_dvc_global_options $_dvc_config ;;
+  dag) _arguments $_dvc_global_options $_dvc_dag ;;
   destroy) _arguments $_dvc_global_options $_dvc_destroy ;;
   diff) _arguments $_dvc_global_options $_dvc_diff ;;
   fetch) _arguments $_dvc_global_options $_dvc_fetch ;;
+  freeze) _arguments $_dvc_global_options $_dvc_freeze ;;
   get-url) _arguments $_dvc_global_options $_dvc_geturl ;;
   get) _arguments $_dvc_global_options $_dvc_get ;;
   gc) _arguments $_dvc_global_options $_dvc_gc ;;
@@ -315,12 +321,10 @@ case $words[1] in
   import) _arguments $_dvc_global_options $_dvc_import ;;
   init) _arguments $_dvc_global_options $_dvc_init ;;
   install) _arguments $_dvc_global_options $_dvc_install ;;
-  lock) _arguments $_dvc_global_options $_dvc_lock ;;
   list) _arguments $_dvc_global_options $_dvc_list ;;
   metrics) _arguments $_dvc_global_options $_dvc_metrics ;;
   move) _arguments $_dvc_global_options $_dvc_move ;;
   params) _arguments $_dvc_global_options $_dvc_params ;;
-  pipeline) _arguments $_dvc_global_options $_dvc_pipeline ;;
   pull) _arguments $_dvc_global_options $_dvc_pull ;;
   push) _arguments $_dvc_global_options $_dvc_push ;;
   plots) _arguments $_dvc_global_options $_dvc_plots ;;
@@ -330,7 +334,7 @@ case $words[1] in
   root) _arguments $_dvc_global_options $_dvc_root ;;
   run) _arguments $_dvc_global_options $_dvc_run ;;
   status) _arguments $_dvc_global_options $_dvc_status ;;
-  unlock) _arguments $_dvc_global_options $_dvc_unlock ;;
+  unfreeze) _arguments $_dvc_global_options $_dvc_unfreeze ;;
   unprotect) _arguments $_dvc_global_options $_dvc_unprotect ;;
   update) _arguments $_dvc_global_options $_dvc_update ;;
 esac

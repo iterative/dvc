@@ -49,7 +49,7 @@ def test_show_branch(tmp_dir, scm, dvc):
         tmp_dir.scm_gen("params.yaml", "foo: baz", commit="branch")
 
     assert dvc.params.show(revs=["branch"]) == {
-        "working tree": {"params.yaml": {"foo": "bar"}},
+        "workspace": {"params.yaml": {"foo": "bar"}},
         "branch": {"params.yaml": {"foo": "baz"}},
     }
 
