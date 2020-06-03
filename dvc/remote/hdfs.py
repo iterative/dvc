@@ -18,9 +18,34 @@ logger = logging.getLogger(__name__)
 
 
 class HDFSRemoteTree(BaseRemoteTree):
-    @property
-    def hdfs(self):
-        return self.remote.hdfs
+    def __init__(self, remote, config):
+        super().__init__(remote, config)
+
+        self.path_info = None
+        url = config.get("url")
+        if not url:
+            return
+
+        parsed = urlparse(url)
+        user = parsed.username or config.get("user")
+
+        self.path_info = self.PATH_CLS.from_parts(
+            scheme=self.scheme,
+            host=parsed.hostname,
+            user=user,
+            port=parsed.port,
+            path=parsed.path,
+        )
+
+    def hdfs(self, path_info):
+        import pyarrow
+
+        return get_connection(
+            pyarrow.hdfs.connect,
+            path_info.host,
+            path_info.port,
+            user=path_info.user,
+        )
 
     @contextmanager
     def open(self, path_info, mode="r", encoding=None):
@@ -46,6 +71,31 @@ class HDFSRemoteTree(BaseRemoteTree):
         assert path_info.scheme == "hdfs"
         with self.hdfs(path_info) as hdfs:
             return hdfs.exists(path_info.path)
+
+    def walk_files(self, path_info, progress_callback=None, **kwargs):
+        if not self.exists(path_info):
+            return
+
+        root = path_info.path
+        dirs = deque([root])
+
+        with self.hdfs(self.path_info) as hdfs:
+            if not hdfs.exists(root):
+                return
+            while dirs:
+                try:
+                    entries = hdfs.ls(dirs.pop(), detail=True)
+                    for entry in entries:
+                        if entry["kind"] == "directory":
+                            dirs.append(urlparse(entry["name"]).path)
+                        elif entry["kind"] == "file":
+                            if progress_callback:
+                                progress_callback()
+                            yield urlparse(entry["name"]).path
+                except OSError:
+                    # When searching for a specific prefix pyarrow raises an
+                    # exception if the specified cache dir does not exist
+                    pass
 
     def remove(self, path_info):
         if path_info.scheme != "hdfs":
@@ -94,34 +144,6 @@ class HDFSRemote(BaseRemote):
     TRAVERSE_PREFIX_LEN = 2
     TREE_CLS = HDFSRemoteTree
 
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
-        self.path_info = None
-        url = config.get("url")
-        if not url:
-            return
-
-        parsed = urlparse(url)
-        user = parsed.username or config.get("user")
-
-        self.path_info = self.path_cls.from_parts(
-            scheme=self.scheme,
-            host=parsed.hostname,
-            user=user,
-            port=parsed.port,
-            path=parsed.path,
-        )
-
-    def hdfs(self, path_info):
-        import pyarrow
-
-        return get_connection(
-            pyarrow.hdfs.connect,
-            path_info.host,
-            path_info.port,
-            user=path_info.user,
-        )
-
     def hadoop_fs(self, cmd, user=None):
         cmd = "hadoop fs -" + cmd
         if user:
@@ -162,30 +184,10 @@ class HDFSRemote(BaseRemote):
         return self._group(regex, stdout, "checksum")
 
     def list_cache_paths(self, prefix=None, progress_callback=None):
-        if not self.tree.exists(self.path_info):
-            return
-
         if prefix:
-            root = posixpath.join(self.path_info.path, prefix[:2])
+            path_info = self.path_info / prefix[:2]
         else:
-            root = self.path_info.path
-        dirs = deque([root])
-
-        with self.hdfs(self.path_info) as hdfs:
-            if prefix and not hdfs.exists(root):
-                return
-            while dirs:
-                try:
-                    entries = hdfs.ls(dirs.pop(), detail=True)
-                    for entry in entries:
-                        if entry["kind"] == "directory":
-                            dirs.append(urlparse(entry["name"]).path)
-                        elif entry["kind"] == "file":
-                            if progress_callback:
-                                progress_callback()
-                            yield urlparse(entry["name"]).path
-                except OSError as e:
-                    # When searching for a specific prefix pyarrow raises an
-                    # exception if the specified cache dir does not exist
-                    if not prefix:
-                        raise e
+            path_info = self.path_info
+        return self.tree.walk_files(
+            path_info, progress_callback=progress_callback
+        )
