@@ -1,6 +1,5 @@
 import logging
 import os
-import posixpath
 import threading
 
 from funcy import cached_property, wrap_prop
@@ -14,18 +13,77 @@ logger = logging.getLogger(__name__)
 
 
 class OSSRemoteTree(BaseRemoteTree):
-    @property
+    PATH_CLS = CloudURLInfo
+
+    def __init__(self, repo, config):
+        super().__init__(repo, config)
+
+        url = config.get("url")
+        self.path_info = self.PATH_CLS(url) if url else None
+
+        self.endpoint = config.get("oss_endpoint") or os.getenv("OSS_ENDPOINT")
+
+        self.key_id = (
+            config.get("oss_key_id")
+            or os.getenv("OSS_ACCESS_KEY_ID")
+            or "defaultId"
+        )
+
+        self.key_secret = (
+            config.get("oss_key_secret")
+            or os.getenv("OSS_ACCESS_KEY_SECRET")
+            or "defaultSecret"
+        )
+
+    @wrap_prop(threading.Lock())
+    @cached_property
     def oss_service(self):
-        return self.remote.oss_service
+        import oss2
+
+        logger.debug(f"URL: {self.path_info}")
+        logger.debug(f"key id: {self.key_id}")
+        logger.debug(f"key secret: {self.key_secret}")
+
+        auth = oss2.Auth(self.key_id, self.key_secret)
+        bucket = oss2.Bucket(auth, self.endpoint, self.path_info.bucket)
+
+        # Ensure bucket exists
+        try:
+            bucket.get_bucket_info()
+        except oss2.exceptions.NoSuchBucket:
+            bucket.create_bucket(
+                oss2.BUCKET_ACL_PUBLIC_READ,
+                oss2.models.BucketCreateConfig(
+                    oss2.BUCKET_STORAGE_CLASS_STANDARD
+                ),
+            )
+        return bucket
 
     def _generate_download_url(self, path_info, expires=3600):
-        assert path_info.bucket == self.remote.path_info.bucket
+        assert path_info.bucket == self.path_info.bucket
 
         return self.oss_service.sign_url("GET", path_info.path, expires)
 
     def exists(self, path_info):
-        paths = self.remote.list_paths(path_info.path)
+        paths = self.list_paths(path_info.path)
         return any(path_info.path == path for path in paths)
+
+    def _list_files(self, path_info, progress_callback=None):
+        import oss2
+
+        for blob in oss2.ObjectIterator(
+            self.oss_service, prefix=path_info.path
+        ):
+            if progress_callback:
+                progress_callback()
+            yield blob.key
+
+    def walk_files(self, path_info, **kwargs):
+        for fname in self._list_paths(path_info, **kwargs):
+            if fname.endswith("/"):
+                continue
+
+            yield path_info.replace(path=fname)
 
     def remove(self, path_info):
         if path_info.scheme != self.scheme:
@@ -71,70 +129,17 @@ class OSSRemote(BaseRemote):
     """
 
     scheme = Schemes.OSS
-    path_cls = CloudURLInfo
     REQUIRES = {"oss2": "oss2"}
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
     LIST_OBJECT_PAGE_SIZE = 100
     TREE_CLS = OSSRemoteTree
 
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
-
-        url = config.get("url")
-        self.path_info = self.path_cls(url) if url else None
-
-        self.endpoint = config.get("oss_endpoint") or os.getenv("OSS_ENDPOINT")
-
-        self.key_id = (
-            config.get("oss_key_id")
-            or os.getenv("OSS_ACCESS_KEY_ID")
-            or "defaultId"
-        )
-
-        self.key_secret = (
-            config.get("oss_key_secret")
-            or os.getenv("OSS_ACCESS_KEY_SECRET")
-            or "defaultSecret"
-        )
-
-    @wrap_prop(threading.Lock())
-    @cached_property
-    def oss_service(self):
-        import oss2
-
-        logger.debug(f"URL: {self.path_info}")
-        logger.debug(f"key id: {self.key_id}")
-        logger.debug(f"key secret: {self.key_secret}")
-
-        auth = oss2.Auth(self.key_id, self.key_secret)
-        bucket = oss2.Bucket(auth, self.endpoint, self.path_info.bucket)
-
-        # Ensure bucket exists
-        try:
-            bucket.get_bucket_info()
-        except oss2.exceptions.NoSuchBucket:
-            bucket.create_bucket(
-                oss2.BUCKET_ACL_PUBLIC_READ,
-                oss2.models.BucketCreateConfig(
-                    oss2.BUCKET_STORAGE_CLASS_STANDARD
-                ),
-            )
-        return bucket
-
-    def list_paths(self, prefix, progress_callback=None):
-        import oss2
-
-        for blob in oss2.ObjectIterator(self.oss_service, prefix=prefix):
-            if progress_callback:
-                progress_callback()
-            yield blob.key
-
     def list_cache_paths(self, prefix=None, progress_callback=None):
         if prefix:
-            prefix = posixpath.join(
-                self.path_info.path, prefix[:2], prefix[2:]
-            )
+            path_info = self.path_info / prefix[:2], prefix[2:]
         else:
-            prefix = self.path_info.path
-        return self.list_paths(prefix, progress_callback)
+            path_info = self.path_info
+        return self.tree.walk_files(
+            path_info, progress_callback=progress_callback
+        )
