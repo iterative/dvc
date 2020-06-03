@@ -21,7 +21,9 @@ logger = logging.getLogger(__name__)
 
 @locked
 @scm_context
-def add(repo, targets, recursive=False, no_commit=False, fname=None):
+def add(
+    repo, targets, recursive=False, no_commit=False, fname=None, external=False
+):
     if recursive and fname:
         raise RecursiveAddingWhileUsingFilename()
 
@@ -52,7 +54,9 @@ def add(repo, targets, recursive=False, no_commit=False, fname=None):
                     )
                 )
 
-            stages = _create_stages(repo, sub_targets, fname, pbar=pbar)
+            stages = _create_stages(
+                repo, sub_targets, fname, pbar=pbar, external=external
+            )
 
             try:
                 repo.check_modified_graph(stages)
@@ -120,7 +124,7 @@ def _find_all_targets(repo, target, recursive):
     return [target]
 
 
-def _create_stages(repo, targets, fname, pbar=None):
+def _create_stages(repo, targets, fname, pbar=None, external=False):
     from dvc.stage import Stage, create_stage
 
     stages = []
@@ -132,7 +136,14 @@ def _create_stages(repo, targets, fname, pbar=None):
         unit="file",
     ):
         path, wdir, out = resolve_paths(repo, out)
-        stage = create_stage(Stage, repo, fname or path, wdir=wdir, outs=[out])
+        stage = create_stage(
+            Stage,
+            repo,
+            fname or path,
+            wdir=wdir,
+            outs=[out],
+            external=external,
+        )
         if stage:
             Dvcfile(repo, stage.path).remove_with_prompt(force=True)
 

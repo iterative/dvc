@@ -53,6 +53,7 @@ class CmdRun(CmdBase):
                 always_changed=self.args.always_changed,
                 name=self.args.name,
                 single_stage=self.args.single_stage,
+                external=self.args.external,
             )
         except DvcException:
             logger.exception("")
@@ -224,6 +225,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help=argparse.SUPPRESS,
+    )
+    run_parser.add_argument(
+        "--external",
+        action="store_true",
+        default=False,
+        help="Allow outputs that are outside of the DVC repository.",
     )
     run_parser.add_argument(
         "command", nargs=argparse.REMAINDER, help="Command to execute."

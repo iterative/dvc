@@ -101,7 +101,8 @@ def test_get_full_dvc_path(tmp_dir, erepo_dir, tmp_path_factory):
     external_data.write_text("ext_data")
 
     with erepo_dir.chdir():
-        erepo_dir.dvc_add(os.fspath(external_data), commit="add external data")
+        erepo_dir.dvc.add(os.fspath(external_data), external=True)
+        erepo_dir.scm_add("ext_data.dvc", commit="add external data")
 
     Repo.get(
         os.fspath(erepo_dir), os.fspath(external_data), "ext_data_imported"

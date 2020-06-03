@@ -66,6 +66,7 @@ _dvc_add=(
   {-R,--recursive}"[Recursively add each file under the directory.]"
   "--no-commit[Don't put files/directories into cache.]"
   {-f,--file}"[Specify name of the DVC-file it generates.]:File:_files"
+  "--external[Allow targets that are outside of the DVC project.]"
   "1:File:_files"
 )
 
@@ -267,6 +268,7 @@ _dvc_run=(
   "--no-commit[Don't put files/directories into cache.]"
   "--outs-persist[Declare output file or directory that will not be removed upon repro.]:Output persistent:_files"
   "--outs-persist-no-cache[Declare output file or directory that will not be removed upon repro (do not put into DVC cache).]:Output persistent regular:_files"
+  "--external[Allow outputs that are outside of the DVC project.]"
 )
 
 _dvc_status=(

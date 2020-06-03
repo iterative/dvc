@@ -18,6 +18,7 @@ class CmdAdd(CmdBase):
                 recursive=self.args.recursive,
                 no_commit=self.args.no_commit,
                 fname=self.args.file,
+                external=self.args.external,
             )
 
         except DvcException:
@@ -48,6 +49,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Don't put files/directories into cache.",
+    )
+    parser.add_argument(
+        "--external",
+        action="store_true",
+        default=False,
+        help="Allow targets that are outside of the DVC repository.",
     )
     parser.add_argument(
         "-f",

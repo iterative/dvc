@@ -19,6 +19,7 @@ from .utils import (
     check_circular_dependency,
     check_duplicated_arguments,
     check_missing_outputs,
+    check_no_externals,
     check_stage_path,
     compute_md5,
     fill_stage_dependencies,
@@ -52,7 +53,7 @@ def loads_from(cls, repo, path, wdir, data):
     return cls(**kw)
 
 
-def create_stage(cls, repo, path, **kwargs):
+def create_stage(cls, repo, path, external=False, **kwargs):
     from dvc.dvcfile import check_dvc_filename
 
     wdir = os.path.abspath(kwargs.get("wdir", None) or os.curdir)
@@ -63,6 +64,8 @@ def create_stage(cls, repo, path, **kwargs):
 
     stage = loads_from(cls, repo, path, wdir, kwargs)
     fill_stage_outputs(stage, **kwargs)
+    if not external:
+        check_no_externals(stage)
     fill_stage_dependencies(
         stage, **project(kwargs, ["deps", "erepo", "params"])
     )

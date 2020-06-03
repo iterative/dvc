@@ -187,11 +187,16 @@ def test_add_file_in_dir(tmp_dir, dvc):
 
 class TestAddExternalLocalFile(TestDvc):
     def test(self):
+        from dvc.stage.exceptions import StageExternalOutputsError
+
         dname = TestDvc.mkdtemp()
         fname = os.path.join(dname, "foo")
         shutil.copyfile(self.FOO, fname)
 
-        stages = self.dvc.add(fname)
+        with self.assertRaises(StageExternalOutputsError):
+            self.dvc.add(fname)
+
+        stages = self.dvc.add(fname, external=True)
         self.assertEqual(len(stages), 1)
         stage = stages[0]
         self.assertNotEqual(stage, None)

@@ -153,7 +153,7 @@ class TestGCMultipleDvcRepos(TestDvcGit):
         cwd = os.getcwd()
         os.chdir(self.additional_path)
         # ADD FILE ONLY IN SECOND PROJECT
-        fname = os.path.join(self.additional_path, "only_in_second")
+        fname = "only_in_second"
         with open(fname, "w+") as fobj:
             fobj.write("only in additional repo")
 
@@ -161,7 +161,7 @@ class TestGCMultipleDvcRepos(TestDvcGit):
         self.assertEqual(len(stages), 1)
 
         # ADD FILE IN SECOND PROJECT THAT IS ALSO IN MAIN PROJECT
-        fname = os.path.join(self.additional_path, "in_both")
+        fname = "in_both"
         with open(fname, "w+") as fobj:
             fobj.write("in both repos")
 
