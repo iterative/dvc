@@ -20,9 +20,9 @@ def test_metrics_diff(dvc, mocker):
             "y_field",
             "--title",
             "my_title",
-            "--xlab",
+            "--x-label",
             "x_title",
-            "--ylab",
+            "--y-label",
             "y_title",
             "HEAD",
             "tag1",
@@ -47,8 +47,8 @@ def test_metrics_diff(dvc, mocker):
             "x": "x_field",
             "y": "y_field",
             "title": "my_title",
-            "xlab": "x_title",
-            "ylab": "y_title",
+            "x_label": "x_title",
+            "y_label": "y_title",
         },
     )
 
