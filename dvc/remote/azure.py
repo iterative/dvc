@@ -1,6 +1,5 @@
 import logging
 import os
-import posixpath
 import threading
 from datetime import datetime, timedelta
 
@@ -15,9 +14,47 @@ logger = logging.getLogger(__name__)
 
 
 class AzureRemoteTree(BaseRemoteTree):
-    @property
+    PATH_CLS = CloudURLInfo
+
+    def __init__(self, remote, config):
+        super().__init__(remote, config)
+
+        url = config.get("url", "azure://")
+        self.path_info = self.PATH_CLS(url)
+
+        if not self.path_info.bucket:
+            container = os.getenv("AZURE_STORAGE_CONTAINER_NAME")
+            self.path_info = self.PATH_CLS(f"azure://{container}")
+
+        self.connection_string = config.get("connection_string") or os.getenv(
+            "AZURE_STORAGE_CONNECTION_STRING"
+        )
+
+    @wrap_prop(threading.Lock())
+    @cached_property
     def blob_service(self):
-        return self.remote.blob_service
+        from azure.storage.blob import BlockBlobService
+        from azure.common import AzureMissingResourceHttpError
+
+        logger.debug(f"URL {self.path_info}")
+        logger.debug(f"Connection string {self.connection_string}")
+        blob_service = BlockBlobService(
+            connection_string=self.connection_string
+        )
+        logger.debug(f"Container name {self.path_info.bucket}")
+        try:  # verify that container exists
+            blob_service.list_blobs(
+                self.path_info.bucket, delimiter="/", num_results=1
+            )
+        except AzureMissingResourceHttpError:
+            blob_service.create_container(self.path_info.bucket)
+        return blob_service
+
+    def get_etag(self, path_info):
+        etag = self.blob_service.get_blob_properties(
+            path_info.bucket, path_info.path
+        ).properties.etag
+        return etag.strip('"')
 
     def _generate_download_url(self, path_info, expires=3600):
         from azure.storage.blob import BlobPermissions
@@ -36,8 +73,35 @@ class AzureRemoteTree(BaseRemoteTree):
         return download_url
 
     def exists(self, path_info):
-        paths = self.remote.list_paths(path_info.bucket, path_info.path)
+        paths = self._list_paths(path_info.bucket, path_info.path)
         return any(path_info.path == path for path in paths)
+
+    def _list_paths(self, bucket, prefix, progress_callback=None):
+        blob_service = self.blob_service
+        next_marker = None
+        while True:
+            blobs = blob_service.list_blobs(
+                bucket, prefix=prefix, marker=next_marker
+            )
+
+            for blob in blobs:
+                if progress_callback:
+                    progress_callback()
+                yield blob.name
+
+            if not blobs.next_marker:
+                break
+
+            next_marker = blobs.next_marker
+
+    def walk_files(self, path_info, **kwargs):
+        for fname in self._list_paths(
+            path_info.bucket, path_info.path, **kwargs
+        ):
+            if fname.endswith("/"):
+                continue
+
+            yield path_info.replace(path=fname)
 
     def remove(self, path_info):
         if path_info.scheme != self.scheme:
@@ -71,81 +135,20 @@ class AzureRemoteTree(BaseRemoteTree):
 
 class AzureRemote(BaseRemote):
     scheme = Schemes.AZURE
-    path_cls = CloudURLInfo
     REQUIRES = {"azure-storage-blob": "azure.storage.blob"}
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
     LIST_OBJECT_PAGE_SIZE = 5000
     TREE_CLS = AzureRemoteTree
 
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
-
-        url = config.get("url", "azure://")
-        self.path_info = self.path_cls(url)
-
-        if not self.path_info.bucket:
-            container = os.getenv("AZURE_STORAGE_CONTAINER_NAME")
-            self.path_info = self.path_cls(f"azure://{container}")
-
-        self.connection_string = config.get("connection_string") or os.getenv(
-            "AZURE_STORAGE_CONNECTION_STRING"
-        )
-
-    @wrap_prop(threading.Lock())
-    @cached_property
-    def blob_service(self):
-        from azure.storage.blob import BlockBlobService
-        from azure.common import AzureMissingResourceHttpError
-
-        logger.debug(f"URL {self.path_info}")
-        logger.debug(f"Connection string {self.connection_string}")
-        blob_service = BlockBlobService(
-            connection_string=self.connection_string
-        )
-        logger.debug(f"Container name {self.path_info.bucket}")
-        try:  # verify that container exists
-            blob_service.list_blobs(
-                self.path_info.bucket, delimiter="/", num_results=1
-            )
-        except AzureMissingResourceHttpError:
-            blob_service.create_container(self.path_info.bucket)
-        return blob_service
-
-    def get_etag(self, path_info):
-        etag = self.blob_service.get_blob_properties(
-            path_info.bucket, path_info.path
-        ).properties.etag
-        return etag.strip('"')
-
     def get_file_checksum(self, path_info):
-        return self.get_etag(path_info)
-
-    def list_paths(self, bucket, prefix, progress_callback=None):
-        blob_service = self.blob_service
-        next_marker = None
-        while True:
-            blobs = blob_service.list_blobs(
-                bucket, prefix=prefix, marker=next_marker
-            )
-
-            for blob in blobs:
-                if progress_callback:
-                    progress_callback()
-                yield blob.name
-
-            if not blobs.next_marker:
-                break
-
-            next_marker = blobs.next_marker
+        return self.tree.get_etag(path_info)
 
     def list_cache_paths(self, prefix=None, progress_callback=None):
         if prefix:
-            prefix = posixpath.join(
-                self.path_info.path, prefix[:2], prefix[2:]
-            )
+            path_info = self.path_info / prefix[:2] / prefix[2:]
         else:
-            prefix = self.path_info.path
-        return self.list_paths(
-            self.path_info.bucket, prefix, progress_callback
+            path_info = self.path_info
+        return self.tree.walk_files(
+            path_info, progress_callback=progress_callback
         )
