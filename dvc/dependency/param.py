@@ -40,7 +40,7 @@ class ParamsDependency(LocalDependency):
             info=info,
         )
 
-    def _dyn_load(self, values=None):
+    def inject_values(self, values=None):
         """Load params values dynamically."""
         if not values:
             return

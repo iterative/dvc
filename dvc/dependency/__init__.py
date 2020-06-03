@@ -1,6 +1,8 @@
 from collections import defaultdict
 from urllib.parse import urlparse
 
+from funcy import first
+
 import dvc.output as output
 from dvc.dependency.azure import AzureDependency
 from dvc.dependency.gs import GSDependency
@@ -87,26 +89,21 @@ def loads_from(stage, s_list, erepo=None):
     return ret
 
 
-def _parse_params(path_params):
-    path, _, params_str = path_params.rpartition(":")
-    params = params_str.split(",")
-    return path, params
-
-
 def loads_params(stage, s_list):
-    # Creates an object for each unique file that is referenced in the list
-    params_by_path = defaultdict(list)
-    for s in s_list:
-        path, params = _parse_params(s)
-        params_by_path[path].extend(params)
+    d = defaultdict(list)
+    for key in s_list:
+        if isinstance(key, str):
+            path = ParamsDependency.DEFAULT_PARAMS_FILE
+            params = [key]
+        else:
+            assert isinstance(key, dict)
+            path = first(key)
+            if not path:
+                continue
+            params = key[path]
+            assert isinstance(params, list)
+        d[path].extend(params)
 
-    d_list = []
-    for path, params in params_by_path.items():
-        d_list.append(
-            {
-                BaseOutput.PARAM_PATH: path,
-                ParamsDependency.PARAM_PARAMS: params,
-            }
-        )
-
-    return loadd_from(stage, d_list)
+    return [
+        ParamsDependency(stage, path, params) for path, params in d.items()
+    ]

@@ -20,6 +20,18 @@ def is_valid_name(name: str):
     return not INVALID_STAGENAME_CHARS & set(name)
 
 
+def parse_params(path_params):
+    ret = []
+    for path_param in path_params:
+        path, _, params_str = path_param.rpartition(":")
+        params = params_str.split(",")
+        if not path:
+            ret.extend(params)
+        else:
+            ret.append({path: params})
+    return ret
+
+
 def _get_file_path(kwargs):
     from dvc.dvcfile import DVC_FILE_SUFFIX, DVC_FILE
 
@@ -72,7 +84,10 @@ def run(self, fname=None, no_exec=False, single_stage=False, **kwargs):
         if not is_valid_name(stage_name):
             raise InvalidStageName
 
-    stage = create_stage(stage_cls, repo=self, path=path, **kwargs)
+    params = parse_params(kwargs.pop("params", []))
+    stage = create_stage(
+        stage_cls, repo=self, path=path, params=params, **kwargs
+    )
     if stage is None:
         return None
 

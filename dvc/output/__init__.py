@@ -1,5 +1,7 @@
+from collections import defaultdict
 from urllib.parse import urlparse
 
+from funcy import first
 from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
 
 from dvc.output.base import BaseOutput
@@ -58,7 +60,9 @@ SCHEMA[BaseOutput.PARAM_PLOT] = bool
 SCHEMA[BaseOutput.PARAM_PERSIST] = bool
 
 
-def _get(stage, p, info, cache, metric, plot=False, persist=False):
+def _get(
+    stage, p, info=None, cache=True, metric=False, plot=False, persist=False
+):
     parsed = urlparse(p)
 
     if parsed.scheme == "remote":
@@ -134,4 +138,31 @@ def loads_from(
             persist=persist,
         )
         for s in s_list
+    ]
+
+
+def load_from_pipeline(stage, s_list, typ):
+    out_types = {
+        stage.PARAM_OUTS: {},
+        stage.PARAM_METRICS: {"metric": True},
+        stage.PARAM_PARAMS: {"param": True},
+    }
+    extra = out_types[typ]
+    d = defaultdict(dict)
+    for key in s_list:
+        flags = {}
+        if isinstance(key, str):
+            path = key
+        else:
+            assert isinstance(key, dict)
+            path = first(key)
+            if not path:
+                continue
+            flags = key[path]
+            assert isinstance(flags, dict)
+        d[path].update(flags)
+
+    return [
+        _get(stage, path, info={}, **flags, **extra)
+        for path, flags in d.items()
     ]
