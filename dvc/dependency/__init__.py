@@ -89,7 +89,7 @@ def loads_from(stage, s_list, erepo=None):
     return ret
 
 
-def loads_params(stage, s_list):
+def _merge_params(s_list):
     d = defaultdict(list)
     for key in s_list:
         if isinstance(key, str):
@@ -109,7 +109,11 @@ def loads_params(stage, s_list):
                 msg += f"'{path}', got '{type(params).__name__}'."
                 raise ValueError(msg)
         d[path].extend(params)
+    return d
 
+
+def loads_params(stage, s_list):
+    d = _merge_params(s_list)
     return [
         ParamsDependency(stage, path, params) for path, params in d.items()
     ]
