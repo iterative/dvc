@@ -168,6 +168,125 @@ class BaseRemoteTree:
     def reflink(self, from_info, to_info):
         raise RemoteActionNotImplemented("reflink", self.scheme)
 
+    def _handle_transfer_exception(
+        self, from_info, to_info, exception, operation
+    ):
+        if isinstance(exception, OSError) and exception.errno == errno.EMFILE:
+            raise exception
+
+        logger.exception(
+            "failed to %s '%s' to '%s'", operation, from_info, to_info
+        )
+        return 1
+
+    def upload(self, from_info, to_info, name=None, no_progress_bar=False):
+        if not hasattr(self, "_upload"):
+            raise RemoteActionNotImplemented("upload", self.scheme)
+
+        if to_info.scheme != self.scheme:
+            raise NotImplementedError
+
+        if from_info.scheme != "local":
+            raise NotImplementedError
+
+        logger.debug("Uploading '%s' to '%s'", from_info, to_info)
+
+        name = name or from_info.name
+
+        try:
+            self._upload(
+                from_info.fspath,
+                to_info,
+                name=name,
+                no_progress_bar=no_progress_bar,
+            )
+        except Exception as e:
+            return self._handle_transfer_exception(
+                from_info, to_info, e, "upload"
+            )
+
+        return 0
+
+    def download(
+        self,
+        from_info,
+        to_info,
+        name=None,
+        no_progress_bar=False,
+        file_mode=None,
+        dir_mode=None,
+    ):
+        if not hasattr(self, "_download"):
+            raise RemoteActionNotImplemented("download", self.scheme)
+
+        if from_info.scheme != self.scheme:
+            raise NotImplementedError
+
+        if to_info.scheme == self.scheme != "local":
+            self.copy(from_info, to_info)
+            return 0
+
+        if to_info.scheme != "local":
+            raise NotImplementedError
+
+        if self.isdir(from_info):
+            return self._download_dir(
+                from_info, to_info, name, no_progress_bar, file_mode, dir_mode
+            )
+        return self._download_file(
+            from_info, to_info, name, no_progress_bar, file_mode, dir_mode
+        )
+
+    def _download_dir(
+        self, from_info, to_info, name, no_progress_bar, file_mode, dir_mode
+    ):
+        from_infos = list(self.walk_files(from_info))
+        to_infos = (
+            to_info / info.relative_to(from_info) for info in from_infos
+        )
+
+        with Tqdm(
+            total=len(from_infos),
+            desc="Downloading directory",
+            unit="Files",
+            disable=no_progress_bar,
+        ) as pbar:
+            download_files = pbar.wrap_fn(
+                partial(
+                    self._download_file,
+                    name=name,
+                    no_progress_bar=True,
+                    file_mode=file_mode,
+                    dir_mode=dir_mode,
+                )
+            )
+            with ThreadPoolExecutor(max_workers=self.JOBS) as executor:
+                futures = executor.map(download_files, from_infos, to_infos)
+                return sum(futures)
+
+    def _download_file(
+        self, from_info, to_info, name, no_progress_bar, file_mode, dir_mode
+    ):
+        makedirs(to_info.parent, exist_ok=True, mode=dir_mode)
+
+        logger.debug("Downloading '%s' to '%s'", from_info, to_info)
+        name = name or to_info.name
+
+        tmp_file = tmp_fname(to_info)
+
+        try:
+            self._download(
+                from_info, tmp_file, name=name, no_progress_bar=no_progress_bar
+            )
+        except Exception as e:
+            return self._handle_transfer_exception(
+                from_info, to_info, e, "download"
+            )
+
+        move(tmp_file, to_info, mode=file_mode)
+
+        return 0
+
 
 class BaseRemote:
     scheme = "base"
@@ -374,7 +493,7 @@ class BaseRemote:
 
         from_info = PathInfo(tmp)
         to_info = self.cache.path_info / tmp_fname("")
-        self.cache.upload(from_info, to_info, no_progress_bar=True)
+        self.cache.tree.upload(from_info, to_info, no_progress_bar=True)
 
         checksum = self.get_file_checksum(to_info) + self.CHECKSUM_DIR_SUFFIX
         return checksum, to_info
@@ -693,125 +812,6 @@ class BaseRemote:
 
     def open(self, *args, **kwargs):
         return self.tree.open(*args, **kwargs)
-
-    def _handle_transfer_exception(
-        self, from_info, to_info, exception, operation
-    ):
-        if isinstance(exception, OSError) and exception.errno == errno.EMFILE:
-            raise exception
-
-        logger.exception(
-            "failed to %s '%s' to '%s'", operation, from_info, to_info
-        )
-        return 1
-
-    def upload(self, from_info, to_info, name=None, no_progress_bar=False):
-        if not hasattr(self, "_upload"):
-            raise RemoteActionNotImplemented("upload", self.scheme)
-
-        if to_info.scheme != self.scheme:
-            raise NotImplementedError
-
-        if from_info.scheme != "local":
-            raise NotImplementedError
-
-        logger.debug("Uploading '%s' to '%s'", from_info, to_info)
-
-        name = name or from_info.name
-
-        try:
-            self._upload(
-                from_info.fspath,
-                to_info,
-                name=name,
-                no_progress_bar=no_progress_bar,
-            )
-        except Exception as e:
-            return self._handle_transfer_exception(
-                from_info, to_info, e, "upload"
-            )
-
-        return 0
-
-    def download(
-        self,
-        from_info,
-        to_info,
-        name=None,
-        no_progress_bar=False,
-        file_mode=None,
-        dir_mode=None,
-    ):
-        if not hasattr(self, "_download"):
-            raise RemoteActionNotImplemented("download", self.scheme)
-
-        if from_info.scheme != self.scheme:
-            raise NotImplementedError
-
-        if to_info.scheme == self.scheme != "local":
-            self.tree.copy(from_info, to_info)
-            return 0
-
-        if to_info.scheme != "local":
-            raise NotImplementedError
-
-        if self.tree.isdir(from_info):
-            return self._download_dir(
-                from_info, to_info, name, no_progress_bar, file_mode, dir_mode
-            )
-        return self._download_file(
-            from_info, to_info, name, no_progress_bar, file_mode, dir_mode
-        )
-
-    def _download_dir(
-        self, from_info, to_info, name, no_progress_bar, file_mode, dir_mode
-    ):
-        from_infos = list(self.tree.walk_files(from_info))
-        to_infos = (
-            to_info / info.relative_to(from_info) for info in from_infos
-        )
-
-        with Tqdm(
-            total=len(from_infos),
-            desc="Downloading directory",
-            unit="Files",
-            disable=no_progress_bar,
-        ) as pbar:
-            download_files = pbar.wrap_fn(
-                partial(
-                    self._download_file,
-                    name=name,
-                    no_progress_bar=True,
-                    file_mode=file_mode,
-                    dir_mode=dir_mode,
-                )
-            )
-            with ThreadPoolExecutor(max_workers=self.JOBS) as executor:
-                futures = executor.map(download_files, from_infos, to_infos)
-                return sum(futures)
-
-    def _download_file(
-        self, from_info, to_info, name, no_progress_bar, file_mode, dir_mode
-    ):
-        makedirs(to_info.parent, exist_ok=True, mode=dir_mode)
-
-        logger.debug("Downloading '%s' to '%s'", from_info, to_info)
-        name = name or to_info.name
-
-        tmp_file = tmp_fname(to_info)
-
-        try:
-            self._download(
-                from_info, tmp_file, name=name, no_progress_bar=no_progress_bar
-            )
-        except Exception as e:
-            return self._handle_transfer_exception(
-                from_info, to_info, e, "download"
-            )
-
-        move(tmp_file, to_info, mode=file_mode)
-
-        return 0
 
     def path_to_checksum(self, path):
         parts = self.path_cls(path).parts[-2:]

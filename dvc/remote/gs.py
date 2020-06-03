@@ -134,6 +134,29 @@ class GSRemoteTree(BaseRemoteTree):
         to_bucket = self.gs.bucket(to_info.bucket)
         from_bucket.copy_blob(blob, to_bucket, new_name=to_info.path)
 
+    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
+        bucket = self.gs.bucket(to_info.bucket)
+        _upload_to_bucket(
+            bucket,
+            from_file,
+            to_info,
+            name=name,
+            no_progress_bar=no_progress_bar,
+        )
+
+    def _download(self, from_info, to_file, name=None, no_progress_bar=False):
+        bucket = self.gs.bucket(from_info.bucket)
+        blob = bucket.get_blob(from_info.path)
+        with open(to_file, mode="wb") as fobj:
+            with Tqdm.wrapattr(
+                fobj,
+                "write",
+                desc=name or from_info.path,
+                total=blob.size,
+                disable=no_progress_bar,
+            ) as wrapped:
+                blob.download_to_file(wrapped)
+
 
 class GSRemote(BaseRemote):
     scheme = Schemes.GS
@@ -194,26 +217,3 @@ class GSRemote(BaseRemote):
         return self.list_paths(
             self.path_info, prefix=prefix, progress_callback=progress_callback
         )
-
-    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
-        bucket = self.gs.bucket(to_info.bucket)
-        _upload_to_bucket(
-            bucket,
-            from_file,
-            to_info,
-            name=name,
-            no_progress_bar=no_progress_bar,
-        )
-
-    def _download(self, from_info, to_file, name=None, no_progress_bar=False):
-        bucket = self.gs.bucket(from_info.bucket)
-        blob = bucket.get_blob(from_info.path)
-        with open(to_file, mode="wb") as fobj:
-            with Tqdm.wrapattr(
-                fobj,
-                "write",
-                desc=name or from_info.path,
-                total=blob.size,
-                disable=no_progress_bar,
-            ) as wrapped:
-                blob.download_to_file(wrapped)

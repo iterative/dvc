@@ -208,6 +208,26 @@ class LocalRemoteTree(BaseRemoteTree):
     def getsize(path_info):
         return os.path.getsize(path_info)
 
+    def _upload(
+        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
+    ):
+        makedirs(to_info.parent, exist_ok=True)
+
+        tmp_file = tmp_fname(to_info)
+        copyfile(
+            from_file, tmp_file, name=name, no_progress_bar=no_progress_bar
+        )
+
+        self.remote.protect(tmp_file)
+        os.rename(tmp_file, to_info)
+
+    def _download(
+        self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
+    ):
+        copyfile(
+            from_info, to_file, no_progress_bar=no_progress_bar, name=name
+        )
+
 
 class LocalRemote(BaseRemote):
     scheme = Schemes.LOCAL
@@ -308,26 +328,6 @@ class LocalRemote(BaseRemote):
             )
             if not self.changed_cache_file(checksum)
         ]
-
-    def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
-    ):
-        makedirs(to_info.parent, exist_ok=True)
-
-        tmp_file = tmp_fname(to_info)
-        copyfile(
-            from_file, tmp_file, name=name, no_progress_bar=no_progress_bar
-        )
-
-        self.protect(tmp_file)
-        os.rename(tmp_file, to_info)
-
-    def _download(
-        self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
-    ):
-        copyfile(
-            from_info, to_file, no_progress_bar=no_progress_bar, name=name
-        )
 
     @index_locked
     def status(
@@ -511,14 +511,14 @@ class LocalRemote(BaseRemote):
 
         if download:
             func = partial(
-                remote.download,
+                remote.tree.download,
                 dir_mode=self.tree.dir_mode,
                 file_mode=self.tree.file_mode,
             )
             status = STATUS_DELETED
             desc = "Downloading"
         else:
-            func = remote.upload
+            func = remote.tree.upload
             status = STATUS_NEW
             desc = "Uploading"
 

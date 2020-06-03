@@ -27,38 +27,8 @@ class HTTPRemoteTree(BaseRemoteTree):
     def exists(self, path_info):
         return bool(self.remote.request("HEAD", path_info.url))
 
-
-class HTTPRemote(BaseRemote):
-    scheme = Schemes.HTTP
-    path_cls = HTTPURLInfo
-    SESSION_RETRIES = 5
-    SESSION_BACKOFF_FACTOR = 0.1
-    REQUEST_TIMEOUT = 10
-    CHUNK_SIZE = 2 ** 16
-    PARAM_CHECKSUM = "etag"
-    CAN_TRAVERSE = False
-    TREE_CLS = HTTPRemoteTree
-
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
-
-        url = config.get("url")
-        if url:
-            self.path_info = self.path_cls(url)
-            user = config.get("user", None)
-            if user:
-                self.path_info.user = user
-        else:
-            self.path_info = None
-
-        self.auth = config.get("auth", None)
-        self.custom_auth_header = config.get("custom_auth_header", None)
-        self.password = config.get("password", None)
-        self.ask_password = config.get("ask_password", False)
-        self.headers = {}
-
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
-        response = self.request("GET", from_info.url, stream=True)
+        response = self.remote.request("GET", from_info.url, stream=True)
         if response.status_code != 200:
             raise HTTPError(response.status_code, response.reason)
         with open(to_file, "wb") as fd:
@@ -94,13 +64,43 @@ class HTTPRemote(BaseRemote):
                             break
                         yield chunk
 
-        response = self.request("POST", to_info.url, data=chunks())
+        response = self.remote.request("POST", to_info.url, data=chunks())
         if response.status_code not in (200, 201):
             raise HTTPError(response.status_code, response.reason)
 
     def _content_length(self, response):
         res = response.headers.get("Content-Length")
         return int(res) if res else None
+
+
+class HTTPRemote(BaseRemote):
+    scheme = Schemes.HTTP
+    path_cls = HTTPURLInfo
+    SESSION_RETRIES = 5
+    SESSION_BACKOFF_FACTOR = 0.1
+    REQUEST_TIMEOUT = 10
+    CHUNK_SIZE = 2 ** 16
+    PARAM_CHECKSUM = "etag"
+    CAN_TRAVERSE = False
+    TREE_CLS = HTTPRemoteTree
+
+    def __init__(self, repo, config):
+        super().__init__(repo, config)
+
+        url = config.get("url")
+        if url:
+            self.path_info = self.path_cls(url)
+            user = config.get("user", None)
+            if user:
+                self.path_info.user = user
+        else:
+            self.path_info = None
+
+        self.auth = config.get("auth", None)
+        self.custom_auth_header = config.get("custom_auth_header", None)
+        self.password = config.get("password", None)
+        self.ask_password = config.get("ask_password", False)
+        self.headers = {}
 
     def get_file_checksum(self, path_info):
         url = path_info.url

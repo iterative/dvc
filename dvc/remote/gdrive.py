@@ -100,6 +100,21 @@ class GDriveRemoteTree(BaseRemoteTree):
         item_id = self.remote.get_item_id(path_info)
         self.remote.gdrive_delete_file(item_id)
 
+    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
+        dirname = to_info.parent
+        assert dirname
+        parent_id = self.get_item_id(dirname, True)
+
+        self._gdrive_upload_file(
+            parent_id, to_info.name, no_progress_bar, from_file, name
+        )
+
+    def _download(self, from_info, to_file, name=None, no_progress_bar=False):
+        item_id = self.remote.get_item_id(from_info)
+        self.remote._gdrive_download_file(
+            item_id, to_file, name, no_progress_bar
+        )
+
 
 class GDriveRemote(BaseRemote):
     scheme = Schemes.GDRIVE
@@ -522,19 +537,6 @@ class GDriveRemote(BaseRemote):
 
         assert not create
         raise GDrivePathNotFound(path_info, hint)
-
-    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
-        dirname = to_info.parent
-        assert dirname
-        parent_id = self.get_item_id(dirname, True)
-
-        self._gdrive_upload_file(
-            parent_id, to_info.name, no_progress_bar, from_file, name
-        )
-
-    def _download(self, from_info, to_file, name=None, no_progress_bar=False):
-        item_id = self.get_item_id(from_info)
-        self._gdrive_download_file(item_id, to_file, name, no_progress_bar)
 
     def list_cache_paths(self, prefix=None, progress_callback=None):
         if not self._ids_cache["ids"]:

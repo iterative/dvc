@@ -34,6 +34,22 @@ class OSSRemoteTree(BaseRemoteTree):
         logger.debug(f"Removing oss://{path_info}")
         self.oss_service.delete_object(path_info.path)
 
+    def _upload(
+        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
+    ):
+        with Tqdm(desc=name, disable=no_progress_bar, bytes=True) as pbar:
+            self.oss_service.put_object_from_file(
+                to_info.path, from_file, progress_callback=pbar.update_to
+            )
+
+    def _download(
+        self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
+    ):
+        with Tqdm(desc=name, disable=no_progress_bar, bytes=True) as pbar:
+            self.oss_service.get_object_to_file(
+                from_info.path, to_file, progress_callback=pbar.update_to
+            )
+
 
 class OSSRemote(BaseRemote):
     """
@@ -122,19 +138,3 @@ class OSSRemote(BaseRemote):
         else:
             prefix = self.path_info.path
         return self.list_paths(prefix, progress_callback)
-
-    def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
-    ):
-        with Tqdm(desc=name, disable=no_progress_bar, bytes=True) as pbar:
-            self.oss_service.put_object_from_file(
-                to_info.path, from_file, progress_callback=pbar.update_to
-            )
-
-    def _download(
-        self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
-    ):
-        with Tqdm(desc=name, disable=no_progress_bar, bytes=True) as pbar:
-            self.oss_service.get_object_to_file(
-                from_info.path, to_file, progress_callback=pbar.update_to
-            )

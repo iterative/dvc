@@ -193,6 +193,33 @@ class S3RemoteTree(BaseRemoteTree):
         if etag != cached_etag:
             raise ETagMismatchError(etag, cached_etag)
 
+    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
+        total = os.path.getsize(from_file)
+        with Tqdm(
+            disable=no_progress_bar, total=total, bytes=True, desc=name
+        ) as pbar:
+            self.s3.upload_file(
+                from_file,
+                to_info.bucket,
+                to_info.path,
+                Callback=pbar.update,
+                ExtraArgs=self.extra_args,
+            )
+
+    def _download(self, from_info, to_file, name=None, no_progress_bar=False):
+        if no_progress_bar:
+            total = None
+        else:
+            total = self.s3.head_object(
+                Bucket=from_info.bucket, Key=from_info.path
+            )["ContentLength"]
+        with Tqdm(
+            disable=no_progress_bar, total=total, bytes=True, desc=name
+        ) as pbar:
+            self.s3.download_file(
+                from_info.bucket, from_info.path, to_file, Callback=pbar.update
+            )
+
 
 class S3Remote(BaseRemote):
     scheme = Schemes.S3
@@ -304,33 +331,6 @@ class S3Remote(BaseRemote):
         return self.list_paths(
             self.path_info, prefix=prefix, progress_callback=progress_callback
         )
-
-    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
-        total = os.path.getsize(from_file)
-        with Tqdm(
-            disable=no_progress_bar, total=total, bytes=True, desc=name
-        ) as pbar:
-            self.s3.upload_file(
-                from_file,
-                to_info.bucket,
-                to_info.path,
-                Callback=pbar.update,
-                ExtraArgs=self.extra_args,
-            )
-
-    def _download(self, from_info, to_file, name=None, no_progress_bar=False):
-        if no_progress_bar:
-            total = None
-        else:
-            total = self.s3.head_object(
-                Bucket=from_info.bucket, Key=from_info.path
-            )["ContentLength"]
-        with Tqdm(
-            disable=no_progress_bar, total=total, bytes=True, desc=name
-        ) as pbar:
-            self.s3.download_file(
-                from_info.bucket, from_info.path, to_file, Callback=pbar.update
-            )
 
     def _append_aws_grants_to_extra_args(self, config):
         # Keys for extra_args can be one of the following list:

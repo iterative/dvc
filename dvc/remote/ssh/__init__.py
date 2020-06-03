@@ -131,6 +131,26 @@ class SSHRemoteTree(BaseRemoteTree):
         with self.ssh(path_info) as ssh:
             return ssh.getsize(path_info.path)
 
+    def _download(self, from_info, to_file, name=None, no_progress_bar=False):
+        assert from_info.isin(self.path_info)
+        with self.ssh(self.path_info) as ssh:
+            ssh.download(
+                from_info.path,
+                to_file,
+                progress_title=name,
+                no_progress_bar=no_progress_bar,
+            )
+
+    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
+        assert to_info.isin(self.path_info)
+        with self.ssh(self.path_info) as ssh:
+            ssh.upload(
+                from_file,
+                to_info.path,
+                progress_title=name,
+                no_progress_bar=no_progress_bar,
+            )
+
 
 class SSHRemote(BaseRemote):
     scheme = Schemes.SSH
@@ -254,26 +274,6 @@ class SSHRemote(BaseRemote):
 
         with self.ssh(path_info) as ssh:
             return ssh.md5(path_info.path)
-
-    def _download(self, from_info, to_file, name=None, no_progress_bar=False):
-        assert from_info.isin(self.path_info)
-        with self.ssh(self.path_info) as ssh:
-            ssh.download(
-                from_info.path,
-                to_file,
-                progress_title=name,
-                no_progress_bar=no_progress_bar,
-            )
-
-    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
-        assert to_info.isin(self.path_info)
-        with self.ssh(self.path_info) as ssh:
-            ssh.upload(
-                from_file,
-                to_info.path,
-                progress_title=name,
-                no_progress_bar=no_progress_bar,
-            )
 
     def list_cache_paths(self, prefix=None, progress_callback=None):
         if prefix:
