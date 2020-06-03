@@ -39,6 +39,11 @@ logger = logging.getLogger(__name__)
 
 class LocalRemoteTree(BaseRemoteTree):
     SHARED_MODE_MAP = {None: (0o644, 0o755), "group": (0o664, 0o775)}
+    PATH_CLS = PathInfo
+
+    def __init__(self, remote, config):
+        super().__init__(remote, config)
+        self.path_info = config.get("url")
 
     @property
     def repo(self):
@@ -231,7 +236,6 @@ class LocalRemoteTree(BaseRemoteTree):
 
 class LocalRemote(BaseRemote):
     scheme = Schemes.LOCAL
-    path_cls = PathInfo
     PARAM_CHECKSUM = "md5"
     PARAM_PATH = "path"
     TRAVERSE_PREFIX_LEN = 2
@@ -247,7 +251,6 @@ class LocalRemote(BaseRemote):
     def __init__(self, repo, config):
         super().__init__(repo, config)
         self.cache_dir = config.get("url")
-        self._dir_info = {}
 
     @property
     def state(self):
@@ -255,11 +258,11 @@ class LocalRemote(BaseRemote):
 
     @property
     def cache_dir(self):
-        return self.path_info.fspath if self.path_info else None
+        return self.tree.path_info.fspath if self.tree.path_info else None
 
     @cache_dir.setter
     def cache_dir(self, value):
-        self.path_info = PathInfo(value) if value else None
+        self.tree.path_info = PathInfo(value) if value else None
 
     @classmethod
     def supported(cls, config):

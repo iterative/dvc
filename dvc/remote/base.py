@@ -85,6 +85,7 @@ def index_locked(f):
 
 class BaseRemoteTree:
     SHARED_MODE_MAP = {None: (None, None), "group": (None, None)}
+    PATH_CLS = URLInfo
 
     def __init__(self, remote, config):
         self.remote = remote
@@ -102,10 +103,6 @@ class BaseRemoteTree:
     @property
     def scheme(self):
         return self.remote.scheme
-
-    @property
-    def path_cls(self):
-        return self.remote.path_cls
 
     def open(self, path_info, mode="r", encoding=None):
         if hasattr(self, "_generate_download_url"):
@@ -133,7 +130,7 @@ class BaseRemoteTree:
         """Check if this file is an independent copy."""
         return False  # We can't be sure by default
 
-    def walk_files(self, path_info):
+    def walk_files(self, path_info, **kwargs):
         """Return a generator with `PathInfo`s to all the files"""
         raise NotImplementedError
 
@@ -260,7 +257,7 @@ class BaseRemoteTree:
                     dir_mode=dir_mode,
                 )
             )
-            with ThreadPoolExecutor(max_workers=self.JOBS) as executor:
+            with ThreadPoolExecutor(max_workers=self.remote.JOBS) as executor:
                 futures = executor.map(download_files, from_infos, to_infos)
                 return sum(futures)
 
@@ -290,7 +287,6 @@ class BaseRemoteTree:
 
 class BaseRemote:
     scheme = "base"
-    path_cls = URLInfo
     REQUIRES = {}
     JOBS = 4 * cpu_count()
     INDEX_CLS = RemoteIndex
@@ -337,6 +333,10 @@ class BaseRemote:
             self.index = RemoteIndexNoop()
 
         self.tree = self.TREE_CLS(self, config)
+
+    @property
+    def path_info(self):
+        return self.tree.path_info
 
     @classmethod
     def get_missing_deps(cls):
@@ -529,12 +529,12 @@ class BaseRemote:
             )
             return []
 
-        if self.path_cls == WindowsPathInfo:
+        if self.tree.PATH_CLS == WindowsPathInfo:
             # only need to convert it for Windows
             for info in d:
                 # NOTE: here is a BUG, see comment to .as_posix() below
                 info[self.PARAM_RELPATH] = info[self.PARAM_RELPATH].replace(
-                    "/", self.path_cls.sep
+                    "/", self.tree.PATH_CLS.sep
                 )
 
         return d
@@ -814,7 +814,7 @@ class BaseRemote:
         return self.tree.open(*args, **kwargs)
 
     def path_to_checksum(self, path):
-        parts = self.path_cls(path).parts[-2:]
+        parts = self.tree.PATH_CLS(path).parts[-2:]
 
         if not (len(parts) == 2 and parts[0] and len(parts[0]) == 2):
             raise ValueError(f"Bad cache file path '{path}'")

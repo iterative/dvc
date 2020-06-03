@@ -119,7 +119,7 @@ class BaseOutput:
         if remote:
             parsed = urlparse(path)
             return remote.path_info / parsed.path.lstrip("/")
-        return self.REMOTE.path_cls(path)
+        return self.REMOTE.TREE_CLS.PATH_CLS(path)
 
     def __repr__(self):
         return "{class_name}: '{def_path}'".format(
