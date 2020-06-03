@@ -1,7 +1,7 @@
 from collections import defaultdict
 from urllib.parse import urlparse
 
-from funcy import first
+from funcy import collecting, first, project
 from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
 
 from dvc.output.base import BaseOutput
@@ -141,28 +141,54 @@ def loads_from(
     ]
 
 
-def load_from_pipeline(stage, s_list, typ):
-    out_types = {
-        stage.PARAM_OUTS: {},
-        stage.PARAM_METRICS: {"metric": True},
-        stage.PARAM_PARAMS: {"param": True},
-    }
-    extra = out_types[typ]
+def _split_plot_data_and_flags(flags):
+    from dvc.schema import PLOT_PROPS
+
+    plot_data = project(flags, PLOT_PROPS)
+    flags = project(flags, flags.keys() - PLOT_PROPS.keys())
+    return plot_data if plot_data else True, flags
+
+
+def _merge_data(s_list):
     d = defaultdict(dict)
     for key in s_list:
         flags = {}
         if isinstance(key, str):
             path = key
         else:
-            assert isinstance(key, dict)
+            if not isinstance(key, dict):
+                raise ValueError(f"'{type(key).__name__}' not supported.")
             path = first(key)
             if not path:
                 continue
             flags = key[path]
-            assert isinstance(flags, dict)
+        if not isinstance(flags, dict):
+            raise ValueError(
+                f"Expected dict for '{path}', got: '{type(key).__name__}'"
+            )
         d[path].update(flags)
+    return d
 
-    return [
-        _get(stage, path, info={}, **flags, **extra)
-        for path, flags in d.items()
-    ]
+
+@collecting
+def load_from_pipeline(stage, s_list, typ="outs"):
+    out_types = {
+        stage.PARAM_OUTS: {},
+        stage.PARAM_METRICS: {BaseOutput.PARAM_METRIC: True},
+        stage.PARAM_PLOTS: {BaseOutput.PARAM_PLOT: True},
+    }
+    if typ not in out_types:
+        raise ValueError(f"'{typ}' key is not allowed for pipeline files.")
+
+    d = _merge_data(s_list)
+    for path, flags in d.items():
+        if typ == stage.PARAM_PLOTS:
+            plot_data, flags = _split_plot_data_and_flags(flags)
+            out_types[typ][BaseOutput.PARAM_PLOT] = plot_data
+        yield _get(
+            stage,
+            path,
+            info={},
+            **project(flags, ["cache", "persist"]),
+            **out_types[typ],
+        )
