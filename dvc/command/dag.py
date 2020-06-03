@@ -109,7 +109,7 @@ def add_parser(subparsers, parent_parser):
     dag_parser.add_argument(
         "target",
         nargs="?",
-        help="Stage or output to show pipeline for. Optional. "
-        "(Finds all stages in the workspace by default.)",
+        help="Stage or output to show pipeline for (optional). "
+        "Finds all stages in the workspace by default.",
     )
     dag_parser.set_defaults(func=CmdDAG)
