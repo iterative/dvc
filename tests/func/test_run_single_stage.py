@@ -989,3 +989,32 @@ def test_should_raise_on_stage_output(tmp_dir, dvc, run_copy):
 
     with pytest.raises(OutputIsStageFileError):
         run_copy("foo", "name.dvc", single_stage=True)
+
+
+class TestRunDirMetrics(TestDvc):
+    def setUp(self):
+        super().setUp()
+        with open(self.CODE, "w+") as fobj:
+            fobj.write("import sys\n")
+            fobj.write("import os\n")
+            fobj.write("os.makedirs(sys.argv[1])\n")
+            fobj.write(
+                "with open(os.path.join(sys.argv[1], 'metrics.json'), 'a+') as fobj:\n"
+            )
+            fobj.write("    fobj.write('foo')\n")
+
+    def test_metrics_dir_cached(self):
+        with self.assertRaises(IsADirectoryError):
+            self.dvc.run(
+                cmd=f"python {self.CODE} {self.DATA_DIR}",
+                metrics=[self.DATA_DIR],
+                single_stage=True,
+            )
+
+    def test_metrics_dir_not_cached(self):
+        with self.assertRaises(IsADirectoryError):
+            self.dvc.run(
+                cmd=f"python {self.CODE} {self.DATA_DIR}",
+                metrics_no_cache=[self.DATA_DIR],
+                single_stage=True,
+            )
