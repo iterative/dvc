@@ -7,7 +7,7 @@ from subprocess import CalledProcessError, Popen, check_output
 
 from moto.s3 import mock_s3
 
-from dvc.remote.gdrive import GDriveRemoteTree
+from dvc.remote.gdrive import GDriveRemote, GDriveRemoteTree
 from dvc.remote.gs import GSRemote
 from dvc.remote.s3 import S3Remote
 from dvc.utils import env2bool
