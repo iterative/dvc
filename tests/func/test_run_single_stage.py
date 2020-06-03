@@ -999,7 +999,8 @@ class TestRunDirMetrics(TestDvc):
             fobj.write("import os\n")
             fobj.write("os.makedirs(sys.argv[1])\n")
             fobj.write(
-                "with open(os.path.join(sys.argv[1], 'metrics.json'), 'a+') as fobj:\n"
+                "with open(os.path.join(sys.argv[1], "
+                "'metrics.json'), 'a+') as fobj:\n"
             )
             fobj.write("    fobj.write('foo')\n")
 
