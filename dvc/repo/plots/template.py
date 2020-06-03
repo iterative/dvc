@@ -275,7 +275,6 @@ class PlotTemplates:
 
     def __init__(self, dvc_dir):
         self.dvc_dir = dvc_dir
-        print("PlotTemplates.__init__")
 
         if not os.path.exists(self.templates_dir):
             makedirs(self.templates_dir, exist_ok=True)
