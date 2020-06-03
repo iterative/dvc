@@ -21,7 +21,7 @@ from dvc.exceptions import (
 )
 from dvc.main import main
 from dvc.output.base import OutputAlreadyTrackedError, OutputIsStageFileError
-from dvc.remote import LocalRemote
+from dvc.remote.local import LocalRemote, LocalRemoteTree
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.system import System
@@ -592,7 +592,7 @@ def test_should_not_checkout_when_adding_cached_copy(tmp_dir, dvc, mocker):
 
     shutil.copy("bar", "foo")
 
-    copy_spy = mocker.spy(dvc.cache.local, "copy")
+    copy_spy = mocker.spy(dvc.cache.local.tree, "copy")
 
     dvc.add("foo")
 
@@ -618,7 +618,7 @@ def test_should_relink_on_repeated_add(
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
 
     os.remove("foo")
-    getattr(dvc.cache.local, link)(PathInfo("bar"), PathInfo("foo"))
+    getattr(dvc.cache.local.tree, link)(PathInfo("bar"), PathInfo("foo"))
 
     dvc.cache.local.cache_types = [new_link]
 
@@ -698,7 +698,7 @@ def test_add_empty_files(tmp_dir, dvc, link):
 def test_add_optimization_for_hardlink_on_empty_files(tmp_dir, dvc, mocker):
     dvc.cache.local.cache_types = ["hardlink"]
     tmp_dir.gen({"foo": "", "bar": "", "lorem": "lorem", "ipsum": "ipsum"})
-    m = mocker.spy(LocalRemote, "is_hardlink")
+    m = mocker.spy(LocalRemoteTree, "is_hardlink")
     stages = dvc.add(["foo", "bar", "lorem", "ipsum"])
 
     assert m.call_count == 1

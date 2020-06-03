@@ -181,7 +181,7 @@ class BaseOutput:
 
     @property
     def exists(self):
-        return self.remote.exists(self.path_info)
+        return self.remote.tree.exists(self.path_info)
 
     def save_info(self):
         return self.remote.save_info(self.path_info)
@@ -217,13 +217,13 @@ class BaseOutput:
 
     @property
     def is_empty(self):
-        return self.remote.is_empty(self.path_info)
+        return self.remote.tree.is_empty(self.path_info)
 
     def isdir(self):
-        return self.remote.isdir(self.path_info)
+        return self.remote.tree.isdir(self.path_info)
 
     def isfile(self):
-        return self.remote.isfile(self.path_info)
+        return self.remote.tree.isfile(self.path_info)
 
     def ignore(self):
         if not self.use_scm_ignore:
@@ -326,7 +326,7 @@ class BaseOutput:
         )
 
     def remove(self, ignore_remove=False):
-        self.remote.remove(self.path_info)
+        self.remote.tree.remove(self.path_info)
         if self.scheme != "local":
             return
 
@@ -337,7 +337,7 @@ class BaseOutput:
         if self.scheme == "local" and self.use_scm_ignore:
             self.repo.scm.ignore_remove(self.fspath)
 
-        self.remote.move(self.path_info, out.path_info)
+        self.remote.tree.move(self.path_info, out.path_info)
         self.def_path = out.def_path
         self.path_info = out.path_info
         self.save()

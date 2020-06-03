@@ -12,7 +12,7 @@ from funcy.py3 import cat
 from dvc.exceptions import DvcException
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemote
+from dvc.remote.base import BaseRemote, BaseRemoteTree
 from dvc.scheme import Schemes
 from dvc.utils import format_link, tmp_fname
 
@@ -87,6 +87,20 @@ class GDriveURLInfo(CloudURLInfo):
         self._spath = re.sub("/{2,}", "/", self._spath.rstrip("/"))
 
 
+class GDriveRemoteTree(BaseRemoteTree):
+    def exists(self, path_info):
+        try:
+            self.remote.get_item_id(path_info)
+        except GDrivePathNotFound:
+            return False
+        else:
+            return True
+
+    def remove(self, path_info):
+        item_id = self.remote.get_item_id(path_info)
+        self.remote.gdrive_delete_file(item_id)
+
+
 class GDriveRemote(BaseRemote):
     scheme = Schemes.GDRIVE
     path_cls = GDriveURLInfo
@@ -95,6 +109,7 @@ class GDriveRemote(BaseRemote):
     # Always prefer traverse for GDrive since API usage quotas are a concern.
     TRAVERSE_WEIGHT_MULTIPLIER = 1
     TRAVERSE_PREFIX_LEN = 2
+    TREE_CLS = GDriveRemoteTree
 
     GDRIVE_CREDENTIALS_DATA = "GDRIVE_CREDENTIALS_DATA"
     DEFAULT_USER_CREDENTIALS_FILE = "gdrive-user-credentials.json"
@@ -281,7 +296,7 @@ class GDriveRemote(BaseRemote):
         cache = {
             "dirs": defaultdict(list),
             "ids": {},
-            "root_id": self._get_item_id(
+            "root_id": self.get_item_id(
                 self.path_info,
                 use_cache=False,
                 hint="Confirm the directory exists and you can access it.",
@@ -394,7 +409,7 @@ class GDriveRemote(BaseRemote):
             gdrive_file.GetContentFile(to_file, callback=pbar.update_to)
 
     @_gdrive_retry
-    def _gdrive_delete_file(self, item_id):
+    def gdrive_delete_file(self, item_id):
         from pydrive2.files import ApiRequestError
 
         param = {"id": item_id}
@@ -498,7 +513,7 @@ class GDriveRemote(BaseRemote):
             [self._create_dir(min(parent_ids), title, path)] if create else []
         )
 
-    def _get_item_id(self, path_info, create=False, use_cache=True, hint=None):
+    def get_item_id(self, path_info, create=False, use_cache=True, hint=None):
         assert path_info.bucket == self._bucket
 
         item_ids = self._path_to_item_ids(path_info.path, create, use_cache)
@@ -508,25 +523,17 @@ class GDriveRemote(BaseRemote):
         assert not create
         raise GDrivePathNotFound(path_info, hint)
 
-    def exists(self, path_info):
-        try:
-            self._get_item_id(path_info)
-        except GDrivePathNotFound:
-            return False
-        else:
-            return True
-
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         dirname = to_info.parent
         assert dirname
-        parent_id = self._get_item_id(dirname, True)
+        parent_id = self.get_item_id(dirname, True)
 
         self._gdrive_upload_file(
             parent_id, to_info.name, no_progress_bar, from_file, name
         )
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
-        item_id = self._get_item_id(from_info)
+        item_id = self.get_item_id(from_info)
         self._gdrive_download_file(item_id, to_file, name, no_progress_bar)
 
     def list_cache_paths(self, prefix=None, progress_callback=None):
@@ -552,12 +559,5 @@ class GDriveRemote(BaseRemote):
                 self._ids_cache["ids"][parent_id], item["title"]
             )
 
-    def remove(self, path_info):
-        item_id = self._get_item_id(path_info)
-        self._gdrive_delete_file(item_id)
-
     def get_file_checksum(self, path_info):
-        raise NotImplementedError
-
-    def walk_files(self, path_info):
         raise NotImplementedError

@@ -194,9 +194,13 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, setup_remote):
         assert upload_error_info.value.amount == 3
 
         remote = dvc.cloud.get_remote("upstream")
-        assert not remote.exists(remote.checksum_to_path_info(foo.checksum))
-        assert remote.exists(remote.checksum_to_path_info(bar.checksum))
-        assert not remote.exists(remote.checksum_to_path_info(baz.checksum))
+        assert not remote.tree.exists(
+            remote.checksum_to_path_info(foo.checksum)
+        )
+        assert remote.tree.exists(remote.checksum_to_path_info(bar.checksum))
+        assert not remote.tree.exists(
+            remote.checksum_to_path_info(baz.checksum)
+        )
 
     # Push everything and delete local cache
     dvc.push()
