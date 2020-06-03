@@ -83,12 +83,99 @@ def index_locked(f):
     return wrapper
 
 
+class BaseRemoteTree:
+    SHARED_MODE_MAP = {None: (None, None), "group": (None, None)}
+
+    def __init__(self, remote, config):
+        self.remote = remote
+        shared = config.get("shared")
+        self._file_mode, self._dir_mode = self.SHARED_MODE_MAP[shared]
+
+    @property
+    def file_mode(self):
+        return self._file_mode
+
+    @property
+    def dir_mode(self):
+        return self._dir_mode
+
+    @property
+    def scheme(self):
+        return self.remote.scheme
+
+    @property
+    def path_cls(self):
+        return self.remote.path_cls
+
+    def open(self, path_info, mode="r", encoding=None):
+        if hasattr(self, "_generate_download_url"):
+            get_url = partial(self._generate_download_url, path_info)
+            return open_url(get_url, mode=mode, encoding=encoding)
+
+        raise RemoteActionNotImplemented("open", self.scheme)
+
+    def exists(self, path_info):
+        raise NotImplementedError
+
+    def isdir(self, path_info):
+        """Optional: Overwrite only if the remote has a way to distinguish
+        between a directory and a file.
+        """
+        return False
+
+    def isfile(self, path_info):
+        """Optional: Overwrite only if the remote has a way to distinguish
+        between a directory and a file.
+        """
+        return True
+
+    def iscopy(self, path_info):
+        """Check if this file is an independent copy."""
+        return False  # We can't be sure by default
+
+    def walk_files(self, path_info):
+        """Return a generator with `PathInfo`s to all the files"""
+        raise NotImplementedError
+
+    def is_empty(self, path_info):
+        return False
+
+    def remove(self, path_info):
+        raise RemoteActionNotImplemented("remove", self.scheme)
+
+    def makedirs(self, path_info):
+        """Optional: Implement only if the remote needs to create
+        directories before copying/linking/moving data
+        """
+
+    def move(self, from_info, to_info, mode=None):
+        assert mode is None
+        self.copy(from_info, to_info)
+        self.remove(from_info)
+
+    def copy(self, from_info, to_info):
+        raise RemoteActionNotImplemented("copy", self.scheme)
+
+    def copy_fobj(self, fobj, to_info):
+        raise RemoteActionNotImplemented("copy_fobj", self.scheme)
+
+    def symlink(self, from_info, to_info):
+        raise RemoteActionNotImplemented("symlink", self.scheme)
+
+    def hardlink(self, from_info, to_info):
+        raise RemoteActionNotImplemented("hardlink", self.scheme)
+
+    def reflink(self, from_info, to_info):
+        raise RemoteActionNotImplemented("reflink", self.scheme)
+
+
 class BaseRemote:
     scheme = "base"
     path_cls = URLInfo
     REQUIRES = {}
     JOBS = 4 * cpu_count()
     INDEX_CLS = RemoteIndex
+    TREE_CLS = BaseRemoteTree
 
     PARAM_RELPATH = "relpath"
     CHECKSUM_DIR_SUFFIX = ".dir"
@@ -102,7 +189,6 @@ class BaseRemote:
     CAN_TRAVERSE = True
 
     CACHE_MODE = None
-    SHARED_MODE_MAP = {None: (None, None), "group": (None, None)}
 
     state = StateNoop()
 
@@ -110,9 +196,6 @@ class BaseRemote:
         self.repo = repo
 
         self._check_requires(config)
-
-        shared = config.get("shared")
-        self._file_mode, self._dir_mode = self.SHARED_MODE_MAP[shared]
 
         self.checksum_jobs = (
             config.get("checksum_jobs")
@@ -133,6 +216,8 @@ class BaseRemote:
             )
         else:
             self.index = RemoteIndexNoop()
+
+        self.tree = self.TREE_CLS(self, config)
 
     @classmethod
     def get_missing_deps(cls):
@@ -218,7 +303,7 @@ class BaseRemote:
         if tree:
             walk_files = tree.walk_files
         else:
-            walk_files = self.walk_files
+            walk_files = self.tree.walk_files
 
         for fname in walk_files(path_info, **kwargs):
             if DvcIgnore.DVCIGNORE_FILE == fname.name:
@@ -273,8 +358,8 @@ class BaseRemote:
         checksum, tmp_info = self._get_dir_info_checksum(dir_info)
         new_info = self.cache.checksum_to_path_info(checksum)
         if self.cache.changed_cache_file(checksum):
-            self.cache.makedirs(new_info.parent)
-            self.cache.move(tmp_info, new_info, mode=self.CACHE_MODE)
+            self.cache.tree.makedirs(new_info.parent)
+            self.cache.tree.move(tmp_info, new_info, mode=self.CACHE_MODE)
 
         if path_info:
             self.state.save(path_info, checksum)
@@ -344,7 +429,7 @@ class BaseRemote:
     def get_checksum(self, path_info):
         assert isinstance(path_info, str) or path_info.scheme == self.scheme
 
-        if not self.exists(path_info):
+        if not self.tree.exists(path_info):
             return None
 
         checksum = self.state.get(path_info)
@@ -355,14 +440,16 @@ class BaseRemote:
         if (
             checksum
             and self.is_dir_checksum(checksum)
-            and not self.exists(self.cache.checksum_to_path_info(checksum))
+            and not self.tree.exists(
+                self.cache.checksum_to_path_info(checksum)
+            )
         ):
             checksum = None
 
         if checksum:
             return checksum
 
-        if self.isdir(path_info):
+        if self.tree.isdir(path_info):
             checksum = self.get_dir_checksum(path_info)
         else:
             checksum = self.get_file_checksum(path_info)
@@ -396,7 +483,7 @@ class BaseRemote:
             "checking if '%s'('%s') has changed.", path_info, checksum_info
         )
 
-        if not self.exists(path_info):
+        if not self.tree.exists(path_info):
             logger.debug("'%s' doesn't exist.", path_info)
             return True
 
@@ -428,9 +515,9 @@ class BaseRemote:
         self._link(from_info, to_info, self.cache_types)
 
     def _link(self, from_info, to_info, link_types):
-        assert self.isfile(from_info)
+        assert self.tree.isfile(from_info)
 
-        self.makedirs(to_info.parent)
+        self.tree.makedirs(to_info.parent)
 
         self._try_links(from_info, to_info, link_types)
 
@@ -438,9 +525,9 @@ class BaseRemote:
         if self.cache_type_confirmed:
             return
 
-        is_link = getattr(self, f"is_{link_type}", None)
+        is_link = getattr(self.tree, f"is_{link_type}", None)
         if is_link and not is_link(path_info):
-            self.remove(path_info)
+            self.tree.remove(path_info)
             raise DvcException(f"failed to verify {link_type}")
 
         self.cache_type_confirmed = True
@@ -448,7 +535,7 @@ class BaseRemote:
     @slow_link_guard
     def _try_links(self, from_info, to_info, link_types):
         while link_types:
-            link_method = getattr(self, link_types[0])
+            link_method = getattr(self.tree, link_types[0])
             try:
                 self._do_link(from_info, to_info, link_method)
                 self._verify_link(to_info, link_types[0])
@@ -463,7 +550,7 @@ class BaseRemote:
         raise DvcException("no possible cache types left to try out.")
 
     def _do_link(self, from_info, to_info, link_method):
-        if self.exists(to_info):
+        if self.tree.exists(to_info):
             raise DvcException(f"Link '{to_info}' already exists!")
 
         link_method(from_info, to_info)
@@ -486,19 +573,21 @@ class BaseRemote:
                     if not (
                         tree.isdvc(path_info, strict=False) and tree.fetch
                     ):
-                        self.copy_fobj(fobj, cache_info)
+                        self.tree.copy_fobj(fobj, cache_info)
                 callback = kwargs.get("download_callback")
                 if callback:
                     callback(1)
         else:
             if self.changed_cache(checksum):
-                self.move(path_info, cache_info, mode=self.CACHE_MODE)
+                self.tree.move(path_info, cache_info, mode=self.CACHE_MODE)
                 self.link(cache_info, path_info)
-            elif self.iscopy(path_info) and self._cache_is_copy(path_info):
+            elif self.tree.iscopy(path_info) and self._cache_is_copy(
+                path_info
+            ):
                 # Default relink procedure involves unneeded copy
                 self.unprotect(path_info)
             else:
-                self.remove(path_info)
+                self.tree.remove(path_info)
                 self.link(cache_info, path_info)
 
             if save_link:
@@ -522,14 +611,14 @@ class BaseRemote:
 
         workspace_file = path_info.with_name("." + uuid())
         test_cache_file = self.path_info / ".cache_type_test_file"
-        if not self.exists(test_cache_file):
-            with self.open(test_cache_file, "wb") as fobj:
+        if not self.tree.exists(test_cache_file):
+            with self.tree.open(test_cache_file, "wb") as fobj:
                 fobj.write(bytes(1))
         try:
             self.link(test_cache_file, workspace_file)
         finally:
-            self.remove(workspace_file)
-            self.remove(test_cache_file)
+            self.tree.remove(workspace_file)
+            self.tree.remove(test_cache_file)
 
         self.cache_type_confirmed = True
         return self.cache_types[0] == "copy"
@@ -560,29 +649,6 @@ class BaseRemote:
         if not tree or is_working_tree(tree):
             self.state.save(path_info, checksum)
         return {self.PARAM_CHECKSUM: checksum}
-
-    def is_empty(self, path_info):
-        return False
-
-    def isfile(self, path_info):
-        """Optional: Overwrite only if the remote has a way to distinguish
-        between a directory and a file.
-        """
-        return True
-
-    def isdir(self, path_info):
-        """Optional: Overwrite only if the remote has a way to distinguish
-        between a directory and a file.
-        """
-        return False
-
-    def iscopy(self, path_info):
-        """Check if this file is an independent copy."""
-        return False  # We can't be sure by default
-
-    def walk_files(self, path_info):
-        """Return a generator with `PathInfo`s to all the files"""
-        raise NotImplementedError
 
     @staticmethod
     def protect(path_info):
@@ -617,13 +683,16 @@ class BaseRemote:
             isdir = tree.isdir
             save_link = False
         else:
-            isdir = self.isdir
+            isdir = self.tree.isdir
 
         if isdir(path_info):
             return self._save_dir(
                 path_info, checksum, save_link, tree, **kwargs
             )
         return self._save_file(path_info, checksum, save_link, tree, **kwargs)
+
+    def open(self, *args, **kwargs):
+        return self.tree.open(*args, **kwargs)
 
     def _handle_transfer_exception(
         self, from_info, to_info, exception, operation
@@ -680,13 +749,13 @@ class BaseRemote:
             raise NotImplementedError
 
         if to_info.scheme == self.scheme != "local":
-            self.copy(from_info, to_info)
+            self.tree.copy(from_info, to_info)
             return 0
 
         if to_info.scheme != "local":
             raise NotImplementedError
 
-        if self.isdir(from_info):
+        if self.tree.isdir(from_info):
             return self._download_dir(
                 from_info, to_info, name, no_progress_bar, file_mode, dir_mode
             )
@@ -697,7 +766,7 @@ class BaseRemote:
     def _download_dir(
         self, from_info, to_info, name, no_progress_bar, file_mode, dir_mode
     ):
-        from_infos = list(self.walk_files(from_info))
+        from_infos = list(self.tree.walk_files(from_info))
         to_infos = (
             to_info / info.relative_to(from_info) for info in from_infos
         )
@@ -743,39 +812,6 @@ class BaseRemote:
         move(tmp_file, to_info, mode=file_mode)
 
         return 0
-
-    def open(self, path_info, mode="r", encoding=None):
-        if hasattr(self, "_generate_download_url"):
-            get_url = partial(self._generate_download_url, path_info)
-            return open_url(get_url, mode=mode, encoding=encoding)
-
-        raise RemoteActionNotImplemented("open", self.scheme)
-
-    def remove(self, path_info):
-        raise RemoteActionNotImplemented("remove", self.scheme)
-
-    def move(self, from_info, to_info, mode=None):
-        assert mode is None
-        self.copy(from_info, to_info)
-        self.remove(from_info)
-
-    def copy(self, from_info, to_info):
-        raise RemoteActionNotImplemented("copy", self.scheme)
-
-    def copy_fobj(self, fobj, to_info):
-        raise RemoteActionNotImplemented("copy_fobj", self.scheme)
-
-    def symlink(self, from_info, to_info):
-        raise RemoteActionNotImplemented("symlink", self.scheme)
-
-    def hardlink(self, from_info, to_info):
-        raise RemoteActionNotImplemented("hardlink", self.scheme)
-
-    def reflink(self, from_info, to_info):
-        raise RemoteActionNotImplemented("reflink", self.scheme)
-
-    def exists(self, path_info):
-        raise NotImplementedError
 
     def path_to_checksum(self, path):
         parts = self.path_cls(path).parts[-2:]
@@ -849,7 +885,7 @@ class BaseRemote:
             if self.is_dir_checksum(checksum):
                 # backward compatibility
                 self._remove_unpacked_dir(checksum)
-            self.remove(path_info)
+            self.tree.remove(path_info)
             removed = True
         if removed:
             self.index.clear()
@@ -896,9 +932,9 @@ class BaseRemote:
             self.protect(cache_info)
             return False
 
-        if self.exists(cache_info):
+        if self.tree.exists(cache_info):
             logger.warning("corrupted cache file '%s'.", cache_info)
-            self.remove(cache_info)
+            self.tree.remove(cache_info)
 
         return True
 
@@ -1142,7 +1178,7 @@ class BaseRemote:
         ) as pbar:
 
             def exists_with_progress(path_info):
-                ret = self.exists(path_info)
+                ret = self.tree.exists(path_info)
                 pbar.update_msg(str(path_info))
                 return ret
 
@@ -1161,7 +1197,7 @@ class BaseRemote:
         return not self.changed_cache(current)
 
     def safe_remove(self, path_info, force=False):
-        if not self.exists(path_info):
+        if not self.tree.exists(path_info):
             return
 
         if not force and not self.already_cached(path_info):
@@ -1173,7 +1209,7 @@ class BaseRemote:
             if not prompt.confirm(msg):
                 raise ConfirmRemoveError(str(path_info))
 
-        self.remove(path_info)
+        self.tree.remove(path_info)
 
     def _checkout_file(
         self, path_info, checksum, force, progress_callback=None, relink=False
@@ -1181,7 +1217,7 @@ class BaseRemote:
         """The file is changed we need to checkout a new copy"""
         added, modified = True, False
         cache_info = self.checksum_to_path_info(checksum)
-        if self.exists(path_info):
+        if self.tree.exists(path_info):
             logger.debug("data '%s' will be replaced.", path_info)
             self.safe_remove(path_info, force=force)
             added, modified = False, True
@@ -1193,11 +1229,6 @@ class BaseRemote:
             progress_callback(str(path_info))
 
         return added, modified and not relink
-
-    def makedirs(self, path_info):
-        """Optional: Implement only if the remote needs to create
-        directories before copying/linking/moving data
-        """
 
     def _checkout_dir(
         self,
@@ -1211,9 +1242,9 @@ class BaseRemote:
         added, modified = False, False
         # Create dir separately so that dir is created
         # even if there are no files in it
-        if not self.exists(path_info):
+        if not self.tree.exists(path_info):
             added = True
-            self.makedirs(path_info)
+            self.tree.makedirs(path_info)
 
         dir_info = self.get_dir_cache(checksum)
 
@@ -1249,7 +1280,7 @@ class BaseRemote:
         return added, not added and modified and not relink
 
     def _remove_redundant_files(self, path_info, dir_info, force):
-        existing_files = set(self.walk_files(path_info))
+        existing_files = set(self.tree.walk_files(path_info))
 
         needed_files = {
             path_info / entry[self.PARAM_RELPATH] for entry in dir_info

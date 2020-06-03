@@ -140,7 +140,7 @@ def test_match_nested(tmp_dir, dvc):
     )
 
     remote = LocalRemote(dvc, {})
-    result = {os.fspath(f) for f in remote.walk_files(".")}
+    result = {os.fspath(f) for f in remote.tree.walk_files(".")}
     assert result == {".dvcignore", "foo"}
 
 
@@ -150,7 +150,7 @@ def test_ignore_external(tmp_dir, scm, dvc, tmp_path_factory):
     ext_dir.gen({"y.backup": "y", "tmp": "ext tmp"})
 
     remote = LocalRemote(dvc, {})
-    result = {relpath(f, ext_dir) for f in remote.walk_files(ext_dir)}
+    result = {relpath(f, ext_dir) for f in remote.tree.walk_files(ext_dir)}
     assert result == {"y.backup", "tmp"}
 
 

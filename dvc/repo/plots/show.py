@@ -4,7 +4,7 @@ import os
 
 from funcy import first, last, project
 
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, NoPlotsError
 from dvc.repo import locked
 from dvc.schema import PLOT_PROPS
 
@@ -108,6 +108,9 @@ def _show(repo, datafile=None, revs=None, props=None):
     if revs is None:
         revs = ["workspace"]
 
+    if props is None:
+        props = {}
+
     if not datafile and not props.get("template"):
         raise NoDataOrTemplateProvided()
 
@@ -201,7 +204,11 @@ def show(repo, targets=None, revs=None, props=None) -> dict:
         if targets:
             raise NoMetricInHistoryError(", ".join(targets))
 
-        datafile, plot = _show(repo, datafile=None, revs=revs, props=props)
+        try:
+            datafile, plot = _show(repo, datafile=None, revs=revs, props=props)
+        except NoDataOrTemplateProvided:
+            raise NoPlotsError()
+
         return {datafile: plot}
 
     return {

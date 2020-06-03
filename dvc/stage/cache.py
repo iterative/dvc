@@ -102,6 +102,7 @@ class StageCache:
             params=params,
             deps=[dep["path"] for dep in cache.get("deps", [])],
             outs=[out["path"] for out in cache["outs"]],
+            external=True,
         )
         StageLoader.fill_from_lock(stage, cache)
         return stage

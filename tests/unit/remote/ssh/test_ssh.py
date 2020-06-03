@@ -207,5 +207,5 @@ def test_hardlink_optimization(dvc, tmp_dir, ssh_server):
     else:
         link_path = to_info.path
 
-    remote.hardlink(from_info, to_info)
+    remote.tree.hardlink(from_info, to_info)
     assert not System.is_hardlink(link_path)

@@ -6,9 +6,10 @@ from dvc import dependency, output
 from dvc.utils.fs import path_isin
 
 from ..remote import LocalRemote, S3Remote
-from ..utils import dict_md5, relpath
+from ..utils import dict_md5, format_link, relpath
 from .exceptions import (
     MissingDataSource,
+    StageExternalOutputsError,
     StagePathNotDirectoryError,
     StagePathNotFoundError,
     StagePathOutsideError,
@@ -66,6 +67,31 @@ def fill_stage_dependencies(stage, deps=None, erepo=None, params=None):
     stage.deps = []
     stage.deps += dependency.loads_from(stage, deps or [], erepo=erepo)
     stage.deps += dependency.loads_params(stage, params or [])
+
+
+def check_no_externals(stage):
+    from urllib.parse import urlparse
+
+    # NOTE: preventing users from accidentally using external outputs. See
+    # https://github.com/iterative/dvc/issues/1545 for more details.
+
+    def _is_external(out):
+        # NOTE: in case of `remote://` notation, the user clearly knows that
+        # this is an advanced feature and so we shouldn't error-out.
+        if out.is_in_repo or urlparse(out.def_path).scheme == "remote":
+            return False
+        return True
+
+    outs = [str(out) for out in stage.outs if _is_external(out)]
+    if not outs:
+        return
+
+    str_outs = ", ".join(outs)
+    link = format_link("https://dvc.org/doc/user-guide/managing-external-data")
+    raise StageExternalOutputsError(
+        f"Output(s) outside of DVC project: {str_outs}. "
+        f"See {link} for more info."
+    )
 
 
 def check_circular_dependency(stage):

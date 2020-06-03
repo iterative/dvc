@@ -12,7 +12,7 @@ _dvc_commands='add cache checkout commit config dag destroy diff fetch freeze \
 _dvc_options='-h --help -V --version'
 _dvc_global_options='-h --help -q --quiet -v --verbose'
 
-_dvc_add='-R --recursive -f --file --no-commit'
+_dvc_add='-R --recursive -f --file --no-commit --external'
 _dvc_add_COMPGEN=_dvc_compgen_files
 _dvc_cache='dir'
 _dvc_cache_dir=' --global --system --local -u --unset'
@@ -65,7 +65,7 @@ _dvc_remove_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_repro='-f --force -s --single-item -c --cwd -m --metrics --dry -i --interactive -p --pipeline -P --all-pipelines --no-run-cache --force-downstream --no-commit -R --recursive --downstream'
 _dvc_repro_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_root=''
-_dvc_run='--no-exec -f --file -d --deps -o --outs -O --outs-no-cache --outs-persist --outs-persist-no-cache -m --metrics -M --metrics-no-cache --overwrite-dvcfile --no-run-cache --no-commit -w --wdir'
+_dvc_run='--no-exec -f --file -d --deps -o --outs -O --outs-no-cache --outs-persist --outs-persist-no-cache -m --metrics -M --metrics-no-cache --overwrite-dvcfile --no-run-cache --no-commit -w --wdir --external'
 _dvc_run_COMPGEN=_dvc_compgen_DVCFiles
 _dvc_status='-j --jobs -r --remote -a --all-branches -T --all-tags -d --with-deps -c --cloud'
 _dvc_status_COMPGEN=_dvc_compgen_DVCFiles

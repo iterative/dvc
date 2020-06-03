@@ -10,7 +10,7 @@ from funcy import cached_property, wrap_prop
 from dvc.exceptions import DvcException
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemote
+from dvc.remote.base import BaseRemote, BaseRemoteTree
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
@@ -65,11 +65,82 @@ def _upload_to_bucket(
             blob.upload_from_file(wrapped)
 
 
+class GSRemoteTree(BaseRemoteTree):
+    @property
+    def gs(self):
+        return self.remote.gs
+
+    def _generate_download_url(self, path_info, expires=3600):
+        expiration = timedelta(seconds=int(expires))
+
+        bucket = self.gs.bucket(path_info.bucket)
+        blob = bucket.get_blob(path_info.path)
+        if blob is None:
+            raise FileNotFoundError
+        return blob.generate_signed_url(expiration=expiration)
+
+    def exists(self, path_info):
+        """Check if the blob exists. If it does not exist,
+        it could be a part of a directory path.
+
+        eg: if `data/file.txt` exists, check for `data` should return True
+        """
+        return self.isfile(path_info) or self.isdir(path_info)
+
+    def isdir(self, path_info):
+        dir_path = path_info / ""
+        return bool(list(self.remote.list_paths(dir_path, max_items=1)))
+
+    def isfile(self, path_info):
+        if path_info.path.endswith("/"):
+            return False
+
+        blob = self.gs.bucket(path_info.bucket).blob(path_info.path)
+        return blob.exists()
+
+    def walk_files(self, path_info):
+        for fname in self.remote.list_paths(path_info / ""):
+            # skip nested empty directories
+            if fname.endswith("/"):
+                continue
+            yield path_info.replace(fname)
+
+    def remove(self, path_info):
+        if path_info.scheme != "gs":
+            raise NotImplementedError
+
+        logger.debug(f"Removing gs://{path_info}")
+        blob = self.gs.bucket(path_info.bucket).get_blob(path_info.path)
+        if not blob:
+            return
+
+        blob.delete()
+
+    def makedirs(self, path_info):
+        if not path_info.path:
+            return
+
+        self.gs.bucket(path_info.bucket).blob(
+            (path_info / "").path
+        ).upload_from_string("")
+
+    def copy(self, from_info, to_info):
+        from_bucket = self.gs.bucket(from_info.bucket)
+        blob = from_bucket.get_blob(from_info.path)
+        if not blob:
+            msg = f"'{from_info.path}' doesn't exist in the cloud"
+            raise DvcException(msg)
+
+        to_bucket = self.gs.bucket(to_info.bucket)
+        from_bucket.copy_blob(blob, to_bucket, new_name=to_info.path)
+
+
 class GSRemote(BaseRemote):
     scheme = Schemes.GS
     path_cls = CloudURLInfo
     REQUIRES = {"google-cloud-storage": "google.cloud.storage"}
     PARAM_CHECKSUM = "md5"
+    TREE_CLS = GSRemoteTree
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
@@ -105,28 +176,7 @@ class GSRemote(BaseRemote):
         md5 = base64.b64decode(b64_md5)
         return codecs.getencoder("hex")(md5)[0].decode("utf-8")
 
-    def copy(self, from_info, to_info):
-        from_bucket = self.gs.bucket(from_info.bucket)
-        blob = from_bucket.get_blob(from_info.path)
-        if not blob:
-            msg = f"'{from_info.path}' doesn't exist in the cloud"
-            raise DvcException(msg)
-
-        to_bucket = self.gs.bucket(to_info.bucket)
-        from_bucket.copy_blob(blob, to_bucket, new_name=to_info.path)
-
-    def remove(self, path_info):
-        if path_info.scheme != "gs":
-            raise NotImplementedError
-
-        logger.debug(f"Removing gs://{path_info}")
-        blob = self.gs.bucket(path_info.bucket).get_blob(path_info.path)
-        if not blob:
-            return
-
-        blob.delete()
-
-    def _list_paths(
+    def list_paths(
         self, path_info, max_items=None, prefix=None, progress_callback=None
     ):
         if prefix:
@@ -141,43 +191,9 @@ class GSRemote(BaseRemote):
             yield blob.name
 
     def list_cache_paths(self, prefix=None, progress_callback=None):
-        return self._list_paths(
+        return self.list_paths(
             self.path_info, prefix=prefix, progress_callback=progress_callback
         )
-
-    def walk_files(self, path_info):
-        for fname in self._list_paths(path_info / ""):
-            # skip nested empty directories
-            if fname.endswith("/"):
-                continue
-            yield path_info.replace(fname)
-
-    def makedirs(self, path_info):
-        if not path_info.path:
-            return
-
-        self.gs.bucket(path_info.bucket).blob(
-            (path_info / "").path
-        ).upload_from_string("")
-
-    def isdir(self, path_info):
-        dir_path = path_info / ""
-        return bool(list(self._list_paths(dir_path, max_items=1)))
-
-    def isfile(self, path_info):
-        if path_info.path.endswith("/"):
-            return False
-
-        blob = self.gs.bucket(path_info.bucket).blob(path_info.path)
-        return blob.exists()
-
-    def exists(self, path_info):
-        """Check if the blob exists. If it does not exist,
-        it could be a part of a directory path.
-
-        eg: if `data/file.txt` exists, check for `data` should return True
-        """
-        return self.isfile(path_info) or self.isdir(path_info)
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         bucket = self.gs.bucket(to_info.bucket)
@@ -201,12 +217,3 @@ class GSRemote(BaseRemote):
                 disable=no_progress_bar,
             ) as wrapped:
                 blob.download_to_file(wrapped)
-
-    def _generate_download_url(self, path_info, expires=3600):
-        expiration = timedelta(seconds=int(expires))
-
-        bucket = self.gs.bucket(path_info.bucket)
-        blob = bucket.get_blob(path_info.path)
-        if blob is None:
-            raise FileNotFoundError
-        return blob.generate_signed_url(expiration=expiration)

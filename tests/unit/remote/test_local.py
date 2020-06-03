@@ -34,7 +34,7 @@ def test_status_download_optimization(mocker, dvc):
 @pytest.mark.parametrize("link_name", ["hardlink", "symlink"])
 def test_is_protected(tmp_dir, dvc, link_name):
     remote = LocalRemote(dvc, {})
-    link_method = getattr(remote, link_name)
+    link_method = getattr(remote.tree, link_name)
 
     (tmp_dir / "foo").write_text("foo")
 

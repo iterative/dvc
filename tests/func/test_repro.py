@@ -963,6 +963,7 @@ class TestReproExternalBase(SingleStageRun, TestDvc):
             deps=[out_foo_path],
             cmd=self.cmd(foo_path, bar_path),
             name="external-base",
+            external=True,
         )
 
         self.assertEqual(self.dvc.status([cmd_stage.addressing]), {})

@@ -763,12 +763,12 @@ def test_checkout_for_external_outputs(tmp_dir, dvc):
         Bucket=remote.path_info.bucket, Key=file_path.path, Body="foo"
     )
 
-    dvc.add(str(remote.path_info / "foo"))
+    dvc.add(str(remote.path_info / "foo"), external=True)
 
-    remote.remove(file_path)
+    remote.tree.remove(file_path)
     stats = dvc.checkout(force=True)
     assert stats == {**empty_checkout, "added": [str(file_path)]}
-    assert remote.exists(file_path)
+    assert remote.tree.exists(file_path)
 
     remote.s3.put_object(
         Bucket=remote.path_info.bucket, Key=file_path.path, Body="foo\nfoo"
