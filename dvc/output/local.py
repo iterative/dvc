@@ -81,7 +81,7 @@ class LocalOutput(BaseOutput):
         name = "metrics" if self.metric else "plot"
         if os.path.isdir(path):
             msg = "directory '{}' cannot be used as {}."
-            raise DvcException(msg.format(self.path_info, name))
+            raise IsADirectoryError(msg.format(self.path_info, name))
 
         if not istextfile(path):
             msg = "binary file '{}' cannot be used as {}."

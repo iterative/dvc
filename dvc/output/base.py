@@ -246,10 +246,11 @@ class BaseOutput:
 
         self.ignore()
 
+        if self.metric or self.plot:
+            self.verify_metric()
+
         if not self.use_cache:
             self.info = self.save_info()
-            if self.metric or self.plot:
-                self.verify_metric()
             if not self.IS_DEPENDENCY:
                 logger.debug(
                     "Output '%s' doesn't use cache. Skipping saving.", self
