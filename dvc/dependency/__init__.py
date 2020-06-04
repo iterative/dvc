@@ -1,8 +1,6 @@
 from collections import defaultdict
 from urllib.parse import urlparse
 
-from funcy import first
-
 import dvc.output as output
 from dvc.dependency.azure import AzureDependency
 from dvc.dependency.gs import GSDependency
@@ -91,24 +89,22 @@ def loads_from(stage, s_list, erepo=None):
 
 def _merge_params(s_list):
     d = defaultdict(list)
+    default_file = ParamsDependency.DEFAULT_PARAMS_FILE
     for key in s_list:
         if isinstance(key, str):
-            path = ParamsDependency.DEFAULT_PARAMS_FILE
-            params = [key]
-        else:
-            if not isinstance(key, dict):
-                msg = "Only list of str/dict is supported. Got: "
-                msg += f"'{type(key).__name__}'."
-                raise ValueError(msg)
-            path = first(key)
-            if not path:
-                continue
-            params = key[path]
+            d[default_file].append(key)
+            continue
+        if not isinstance(key, dict):
+            msg = "Only list of str/dict is supported. Got: "
+            msg += f"'{type(key).__name__}'."
+            raise ValueError(msg)
+
+        for k, params in key.items():
             if not isinstance(params, list):
                 msg = "Expected list of params for custom params file "
-                msg += f"'{path}', got '{type(params).__name__}'."
+                msg += f"'{k}', got '{type(params).__name__}'."
                 raise ValueError(msg)
-        d[path].extend(params)
+            d[k].extend(params)
     return d
 
 
