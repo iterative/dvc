@@ -90,7 +90,8 @@ class HDFSRemoteTree(BaseRemoteTree):
                         if entry["kind"] == "directory":
                             dirs.append(urlparse(entry["name"]).path)
                         elif entry["kind"] == "file":
-                            yield urlparse(entry["name"]).path
+                            path = urlparse(entry["name"]).path
+                            yield path_info.replace(path=path)
                 except OSError:
                     # When searching for a specific prefix pyarrow raises an
                     # exception if the specified cache dir does not exist

@@ -326,7 +326,7 @@ class SSHRemote(BaseRemote):
             return list(set(checksums) & set(self.all()))
 
         # possibly prompt for credentials before "Querying" progress output
-        self.ensure_credentials()
+        self.tree.ensure_credentials()
 
         with Tqdm(
             desc="Querying "

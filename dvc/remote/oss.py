@@ -65,10 +65,10 @@ class OSSRemoteTree(BaseRemoteTree):
         return self.oss_service.sign_url("GET", path_info.path, expires)
 
     def exists(self, path_info):
-        paths = self.list_paths(path_info.path)
+        paths = self._list_paths(path_info)
         return any(path_info.path == path for path in paths)
 
-    def _list_files(self, path_info):
+    def _list_paths(self, path_info):
         import oss2
 
         for blob in oss2.ObjectIterator(
@@ -77,7 +77,7 @@ class OSSRemoteTree(BaseRemoteTree):
             yield blob.key
 
     def walk_files(self, path_info, **kwargs):
-        for fname in self._list_paths(path_info, **kwargs):
+        for fname in self._list_paths(path_info):
             if fname.endswith("/"):
                 continue
 
