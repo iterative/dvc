@@ -121,7 +121,7 @@ tests_requirements = [
     "flake8-docstrings",
     "pydocstyle<4.0",
     "jaraco.windows==3.9.2",
-    "mock-ssh-server@git+https://github.com/iterative/mock-ssh-server.git",
+    "mock-ssh-server",
     "moto==1.3.14.dev464",
     "rangehttpserver==1.2.0",
     "beautifulsoup4==4.4.0",
