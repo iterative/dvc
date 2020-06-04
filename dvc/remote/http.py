@@ -24,27 +24,19 @@ def ask_password(host, user):
 
 
 class HTTPRemoteTree(BaseRemoteTree):
-    def exists(self, path_info):
-        return bool(self.remote.request("HEAD", path_info.url))
+    PATH_CLS = HTTPURLInfo
 
-
-class HTTPRemote(BaseRemote):
-    scheme = Schemes.HTTP
-    path_cls = HTTPURLInfo
     SESSION_RETRIES = 5
     SESSION_BACKOFF_FACTOR = 0.1
     REQUEST_TIMEOUT = 10
     CHUNK_SIZE = 2 ** 16
-    PARAM_CHECKSUM = "etag"
-    CAN_TRAVERSE = False
-    TREE_CLS = HTTPRemoteTree
 
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
+    def __init__(self, remote, config):
+        super().__init__(remote, config)
 
         url = config.get("url")
         if url:
-            self.path_info = self.path_cls(url)
+            self.path_info = self.PATH_CLS(url)
             user = config.get("user", None)
             if user:
                 self.path_info.user = user
@@ -57,71 +49,7 @@ class HTTPRemote(BaseRemote):
         self.ask_password = config.get("ask_password", False)
         self.headers = {}
 
-    def _download(self, from_info, to_file, name=None, no_progress_bar=False):
-        response = self.request("GET", from_info.url, stream=True)
-        if response.status_code != 200:
-            raise HTTPError(response.status_code, response.reason)
-        with open(to_file, "wb") as fd:
-            with Tqdm.wrapattr(
-                fd,
-                "write",
-                total=None
-                if no_progress_bar
-                else self._content_length(response),
-                leave=False,
-                desc=from_info.url if name is None else name,
-                disable=no_progress_bar,
-            ) as fd_wrapped:
-                for chunk in response.iter_content(chunk_size=self.CHUNK_SIZE):
-                    fd_wrapped.write(chunk)
-
-    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
-        def chunks():
-            with open(from_file, "rb") as fd:
-                with Tqdm.wrapattr(
-                    fd,
-                    "read",
-                    total=None
-                    if no_progress_bar
-                    else os.path.getsize(from_file),
-                    leave=False,
-                    desc=to_info.url if name is None else name,
-                    disable=no_progress_bar,
-                ) as fd_wrapped:
-                    while True:
-                        chunk = fd_wrapped.read(self.CHUNK_SIZE)
-                        if not chunk:
-                            break
-                        yield chunk
-
-        response = self.request("POST", to_info.url, data=chunks())
-        if response.status_code not in (200, 201):
-            raise HTTPError(response.status_code, response.reason)
-
-    def _content_length(self, response):
-        res = response.headers.get("Content-Length")
-        return int(res) if res else None
-
-    def get_file_checksum(self, path_info):
-        url = path_info.url
-        headers = self.request("HEAD", url).headers
-        etag = headers.get("ETag") or headers.get("Content-MD5")
-
-        if not etag:
-            raise DvcException(
-                "could not find an ETag or "
-                "Content-MD5 header for '{url}'".format(url=url)
-            )
-
-        if etag.startswith("W/"):
-            raise DvcException(
-                "Weak ETags are not supported."
-                " (Etag: '{etag}', URL: '{url}')".format(etag=etag, url=url)
-            )
-
-        return etag
-
-    def auth_method(self, path_info=None):
+    def _auth_method(self, path_info=None):
         from requests.auth import HTTPBasicAuth, HTTPDigestAuth
 
         if path_info is None:
@@ -168,7 +96,7 @@ class HTTPRemote(BaseRemote):
             res = self._session.request(
                 method,
                 url,
-                auth=self.auth_method(),
+                auth=self._auth_method(),
                 headers=self.headers,
                 **kwargs,
             )
@@ -189,6 +117,84 @@ class HTTPRemote(BaseRemote):
 
         except requests.exceptions.RequestException:
             raise DvcException(f"could not perform a {method} request")
+
+    def exists(self, path_info):
+        return bool(self.request("HEAD", path_info.url))
+
+    def _download(self, from_info, to_file, name=None, no_progress_bar=False):
+        response = self.request("GET", from_info.url, stream=True)
+        if response.status_code != 200:
+            raise HTTPError(response.status_code, response.reason)
+        with open(to_file, "wb") as fd:
+            with Tqdm.wrapattr(
+                fd,
+                "write",
+                total=None
+                if no_progress_bar
+                else self._content_length(response),
+                leave=False,
+                desc=from_info.url if name is None else name,
+                disable=no_progress_bar,
+            ) as fd_wrapped:
+                for chunk in response.iter_content(chunk_size=self.CHUNK_SIZE):
+                    fd_wrapped.write(chunk)
+
+    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
+        def chunks():
+            with open(from_file, "rb") as fd:
+                with Tqdm.wrapattr(
+                    fd,
+                    "read",
+                    total=None
+                    if no_progress_bar
+                    else os.path.getsize(from_file),
+                    leave=False,
+                    desc=to_info.url if name is None else name,
+                    disable=no_progress_bar,
+                ) as fd_wrapped:
+                    while True:
+                        chunk = fd_wrapped.read(self.CHUNK_SIZE)
+                        if not chunk:
+                            break
+                        yield chunk
+
+        response = self.request("POST", to_info.url, data=chunks())
+        if response.status_code not in (200, 201):
+            raise HTTPError(response.status_code, response.reason)
+
+    @staticmethod
+    def _content_length(response):
+        res = response.headers.get("Content-Length")
+        return int(res) if res else None
+
+
+class HTTPRemote(BaseRemote):
+    scheme = Schemes.HTTP
+    PARAM_CHECKSUM = "etag"
+    CAN_TRAVERSE = False
+    TREE_CLS = HTTPRemoteTree
+
+    def get_file_checksum(self, path_info):
+        url = path_info.url
+        headers = self.tree.request("HEAD", url).headers
+        etag = headers.get("ETag") or headers.get("Content-MD5")
+
+        if not etag:
+            raise DvcException(
+                "could not find an ETag or "
+                "Content-MD5 header for '{url}'".format(url=url)
+            )
+
+        if etag.startswith("W/"):
+            raise DvcException(
+                "Weak ETags are not supported."
+                " (Etag: '{etag}', URL: '{url}')".format(etag=etag, url=url)
+            )
+
+        return etag
+
+    def list_cache_paths(self, prefix=None, progress_callback=None):
+        raise NotImplementedError
 
     def gc(self):
         raise NotImplementedError

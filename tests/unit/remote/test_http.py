@@ -14,7 +14,7 @@ def test_download_fails_on_error_code(dvc):
         remote = HTTPRemote(dvc, config)
 
         with pytest.raises(HTTPError):
-            remote._download(URLInfo(url) / "missing.txt", "missing.txt")
+            remote.tree._download(URLInfo(url) / "missing.txt", "missing.txt")
 
 
 def test_public_auth_method(dvc):
@@ -27,7 +27,7 @@ def test_public_auth_method(dvc):
 
     remote = HTTPRemote(dvc, config)
 
-    assert remote.auth_method() is None
+    assert remote.tree._auth_method() is None
 
 
 def test_basic_auth_method(dvc):
@@ -46,8 +46,8 @@ def test_basic_auth_method(dvc):
 
     remote = HTTPRemote(dvc, config)
 
-    assert remote.auth_method() == auth
-    assert isinstance(remote.auth_method(), HTTPBasicAuth)
+    assert remote.tree._auth_method() == auth
+    assert isinstance(remote.tree._auth_method(), HTTPBasicAuth)
 
 
 def test_digest_auth_method(dvc):
@@ -66,8 +66,8 @@ def test_digest_auth_method(dvc):
 
     remote = HTTPRemote(dvc, config)
 
-    assert remote.auth_method() == auth
-    assert isinstance(remote.auth_method(), HTTPDigestAuth)
+    assert remote.tree._auth_method() == auth
+    assert isinstance(remote.tree._auth_method(), HTTPDigestAuth)
 
 
 def test_custom_auth_method(dvc):
@@ -83,6 +83,6 @@ def test_custom_auth_method(dvc):
 
     remote = HTTPRemote(dvc, config)
 
-    assert remote.auth_method() is None
-    assert header in remote.headers
-    assert remote.headers[header] == password
+    assert remote.tree._auth_method() is None
+    assert header in remote.tree.headers
+    assert remote.tree.headers[header] == password

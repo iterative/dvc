@@ -16,7 +16,7 @@ def test_init(dvc):
         "oss_endpoint": endpoint,
     }
     remote = OSSRemote(dvc, config)
-    assert remote.path_info == url
-    assert remote.endpoint == endpoint
-    assert remote.key_id == key_id
-    assert remote.key_secret == key_secret
+    assert remote.tree.path_info == url
+    assert remote.tree.endpoint == endpoint
+    assert remote.tree.key_id == key_id
+    assert remote.tree.key_secret == key_secret

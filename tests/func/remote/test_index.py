@@ -5,7 +5,7 @@ import pytest
 from dvc.exceptions import DownloadError, UploadError
 from dvc.remote.base import BaseRemote
 from dvc.remote.index import RemoteIndex
-from dvc.remote.local import LocalRemote
+from dvc.remote.local import LocalRemote, LocalRemoteTree
 from dvc.utils.fs import remove
 
 
@@ -80,7 +80,7 @@ def test_clear_on_download_err(tmp_dir, dvc, tmp_path_factory, remote, mocker):
     remove(dvc.cache.local.cache_dir)
 
     mocked_clear = mocker.patch.object(remote.INDEX_CLS, "clear")
-    mocker.patch.object(LocalRemote, "_download", side_effect=Exception)
+    mocker.patch.object(LocalRemoteTree, "_download", side_effect=Exception)
     with pytest.raises(DownloadError):
         dvc.pull()
     mocked_clear.assert_called_once_with()
@@ -90,14 +90,14 @@ def test_partial_upload(tmp_dir, dvc, tmp_path_factory, remote, mocker):
     tmp_dir.dvc_gen({"foo": "foo content"})
     tmp_dir.dvc_gen({"bar": {"baz": "baz content"}})
 
-    original = LocalRemote._upload
+    original = LocalRemoteTree._upload
 
     def unreliable_upload(self, from_file, to_info, name=None, **kwargs):
         if "baz" in name:
             raise Exception("stop baz")
         return original(self, from_file, to_info, name, **kwargs)
 
-    mocker.patch.object(LocalRemote, "_upload", unreliable_upload)
+    mocker.patch.object(LocalRemoteTree, "_upload", unreliable_upload)
     with pytest.raises(UploadError):
         dvc.push()
     with remote.index:

@@ -119,7 +119,7 @@ class BaseOutput:
         if remote:
             parsed = urlparse(path)
             return remote.path_info / parsed.path.lstrip("/")
-        return self.REMOTE.path_cls(path)
+        return self.REMOTE.TREE_CLS.PATH_CLS(path)
 
     def __repr__(self):
         return "{class_name}: '{def_path}'".format(
@@ -300,7 +300,7 @@ class BaseOutput:
         raise DvcException(f"verify metric is not supported for {self.scheme}")
 
     def download(self, to):
-        self.remote.download(self.path_info, to.path_info)
+        self.remote.tree.download(self.path_info, to.path_info)
 
     def checkout(
         self,

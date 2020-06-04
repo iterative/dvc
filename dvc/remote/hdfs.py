@@ -18,9 +18,35 @@ logger = logging.getLogger(__name__)
 
 
 class HDFSRemoteTree(BaseRemoteTree):
-    @property
-    def hdfs(self):
-        return self.remote.hdfs
+    def __init__(self, remote, config):
+        super().__init__(remote, config)
+
+        self.path_info = None
+        url = config.get("url")
+        if not url:
+            return
+
+        parsed = urlparse(url)
+        user = parsed.username or config.get("user")
+
+        self.path_info = self.PATH_CLS.from_parts(
+            scheme=self.scheme,
+            host=parsed.hostname,
+            user=user,
+            port=parsed.port,
+            path=parsed.path,
+        )
+
+    @staticmethod
+    def hdfs(path_info):
+        import pyarrow
+
+        return get_connection(
+            pyarrow.hdfs.connect,
+            path_info.host,
+            path_info.port,
+            user=path_info.user,
+        )
 
     @contextmanager
     def open(self, path_info, mode="r", encoding=None):
@@ -47,6 +73,30 @@ class HDFSRemoteTree(BaseRemoteTree):
         with self.hdfs(path_info) as hdfs:
             return hdfs.exists(path_info.path)
 
+    def walk_files(self, path_info, **kwargs):
+        if not self.exists(path_info):
+            return
+
+        root = path_info.path
+        dirs = deque([root])
+
+        with self.hdfs(self.path_info) as hdfs:
+            if not hdfs.exists(root):
+                return
+            while dirs:
+                try:
+                    entries = hdfs.ls(dirs.pop(), detail=True)
+                    for entry in entries:
+                        if entry["kind"] == "directory":
+                            dirs.append(urlparse(entry["name"]).path)
+                        elif entry["kind"] == "file":
+                            path = urlparse(entry["name"]).path
+                            yield path_info.replace(path=path)
+                except OSError:
+                    # When searching for a specific prefix pyarrow raises an
+                    # exception if the specified cache dir does not exist
+                    pass
+
     def remove(self, path_info):
         if path_info.scheme != "hdfs":
             raise NotImplementedError
@@ -72,6 +122,19 @@ class HDFSRemoteTree(BaseRemoteTree):
                     self.remove(tmp_info)
                     raise
 
+    def _upload(self, from_file, to_info, **_kwargs):
+        with self.hdfs(to_info) as hdfs:
+            hdfs.mkdir(posixpath.dirname(to_info.path))
+            tmp_file = tmp_fname(to_info.path)
+            with open(from_file, "rb") as fobj:
+                hdfs.upload(tmp_file, fobj)
+            hdfs.rename(tmp_file, to_info.path)
+
+    def _download(self, from_info, to_file, **_kwargs):
+        with self.hdfs(from_info) as hdfs:
+            with open(to_file, "wb+") as fobj:
+                hdfs.download(from_info.path, fobj)
+
 
 class HDFSRemote(BaseRemote):
     scheme = Schemes.HDFS
@@ -80,34 +143,6 @@ class HDFSRemote(BaseRemote):
     REQUIRES = {"pyarrow": "pyarrow"}
     TRAVERSE_PREFIX_LEN = 2
     TREE_CLS = HDFSRemoteTree
-
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
-        self.path_info = None
-        url = config.get("url")
-        if not url:
-            return
-
-        parsed = urlparse(url)
-        user = parsed.username or config.get("user")
-
-        self.path_info = self.path_cls.from_parts(
-            scheme=self.scheme,
-            host=parsed.hostname,
-            user=user,
-            port=parsed.port,
-            path=parsed.path,
-        )
-
-    def hdfs(self, path_info):
-        import pyarrow
-
-        return get_connection(
-            pyarrow.hdfs.connect,
-            path_info.host,
-            path_info.port,
-            user=path_info.user,
-        )
 
     def hadoop_fs(self, cmd, user=None):
         cmd = "hadoop fs -" + cmd
@@ -147,45 +182,3 @@ class HDFSRemote(BaseRemote):
             f"checksum {path_info.path}", user=path_info.user
         )
         return self._group(regex, stdout, "checksum")
-
-    def _upload(self, from_file, to_info, **_kwargs):
-        with self.hdfs(to_info) as hdfs:
-            hdfs.mkdir(posixpath.dirname(to_info.path))
-            tmp_file = tmp_fname(to_info.path)
-            with open(from_file, "rb") as fobj:
-                hdfs.upload(tmp_file, fobj)
-            hdfs.rename(tmp_file, to_info.path)
-
-    def _download(self, from_info, to_file, **_kwargs):
-        with self.hdfs(from_info) as hdfs:
-            with open(to_file, "wb+") as fobj:
-                hdfs.download(from_info.path, fobj)
-
-    def list_cache_paths(self, prefix=None, progress_callback=None):
-        if not self.tree.exists(self.path_info):
-            return
-
-        if prefix:
-            root = posixpath.join(self.path_info.path, prefix[:2])
-        else:
-            root = self.path_info.path
-        dirs = deque([root])
-
-        with self.hdfs(self.path_info) as hdfs:
-            if prefix and not hdfs.exists(root):
-                return
-            while dirs:
-                try:
-                    entries = hdfs.ls(dirs.pop(), detail=True)
-                    for entry in entries:
-                        if entry["kind"] == "directory":
-                            dirs.append(urlparse(entry["name"]).path)
-                        elif entry["kind"] == "file":
-                            if progress_callback:
-                                progress_callback()
-                            yield urlparse(entry["name"]).path
-                except OSError as e:
-                    # When searching for a specific prefix pyarrow raises an
-                    # exception if the specified cache dir does not exist
-                    if not prefix:
-                        raise e

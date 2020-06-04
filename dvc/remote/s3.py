@@ -1,6 +1,5 @@
 import logging
 import os
-import posixpath
 import threading
 
 from funcy import cached_property, wrap_prop
@@ -16,9 +15,103 @@ logger = logging.getLogger(__name__)
 
 
 class S3RemoteTree(BaseRemoteTree):
-    @property
+    PATH_CLS = CloudURLInfo
+
+    def __init__(self, repo, config):
+        super().__init__(repo, config)
+
+        url = config.get("url", "s3://")
+        self.path_info = self.PATH_CLS(url)
+
+        self.region = config.get("region")
+        self.profile = config.get("profile")
+        self.endpoint_url = config.get("endpointurl")
+
+        if config.get("listobjects"):
+            self.list_objects_api = "list_objects"
+        else:
+            self.list_objects_api = "list_objects_v2"
+
+        self.use_ssl = config.get("use_ssl", True)
+
+        self.extra_args = {}
+
+        self.sse = config.get("sse")
+        if self.sse:
+            self.extra_args["ServerSideEncryption"] = self.sse
+
+        self.sse_kms_key_id = config.get("sse_kms_key_id")
+        if self.sse_kms_key_id:
+            self.extra_args["SSEKMSKeyId"] = self.sse_kms_key_id
+
+        self.acl = config.get("acl")
+        if self.acl:
+            self.extra_args["ACL"] = self.acl
+
+        self._append_aws_grants_to_extra_args(config)
+
+        shared_creds = config.get("credentialpath")
+        if shared_creds:
+            os.environ.setdefault("AWS_SHARED_CREDENTIALS_FILE", shared_creds)
+
+    @wrap_prop(threading.Lock())
+    @cached_property
     def s3(self):
-        return self.remote.s3
+        import boto3
+
+        session = boto3.session.Session(
+            profile_name=self.profile, region_name=self.region
+        )
+
+        return session.client(
+            "s3", endpoint_url=self.endpoint_url, use_ssl=self.use_ssl
+        )
+
+    @classmethod
+    def get_etag(cls, s3, bucket, path):
+        obj = cls.get_head_object(s3, bucket, path)
+
+        return obj["ETag"].strip('"')
+
+    @staticmethod
+    def get_head_object(s3, bucket, path, *args, **kwargs):
+
+        try:
+            obj = s3.head_object(Bucket=bucket, Key=path, *args, **kwargs)
+        except Exception as exc:
+            raise DvcException(f"s3://{bucket}/{path} does not exist") from exc
+        return obj
+
+    def _append_aws_grants_to_extra_args(self, config):
+        # Keys for extra_args can be one of the following list:
+        # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/customizations/s3.html#boto3.s3.transfer.S3Transfer.ALLOWED_UPLOAD_ARGS
+        """
+          ALLOWED_UPLOAD_ARGS = [
+            'ACL', 'CacheControl', 'ContentDisposition', 'ContentEncoding',
+            'ContentLanguage', 'ContentType', 'Expires', 'GrantFullControl',
+            'GrantRead', 'GrantReadACP', 'GrantWriteACP', 'Metadata',
+            'RequestPayer', 'ServerSideEncryption', 'StorageClass',
+            'SSECustomerAlgorithm', 'SSECustomerKey', 'SSECustomerKeyMD5',
+            'SSEKMSKeyId', 'WebsiteRedirectLocation'
+          ]
+        """
+
+        grants = {
+            "grant_full_control": "GrantFullControl",
+            "grant_read": "GrantRead",
+            "grant_read_acp": "GrantReadACP",
+            "grant_write_acp": "GrantWriteACP",
+        }
+
+        for grant_option, extra_args_key in grants.items():
+            if config.get(grant_option):
+                if self.acl:
+                    raise ConfigError(
+                        "`acl` and `grant_*` AWS S3 config options "
+                        "are mutually exclusive"
+                    )
+
+                self.extra_args[extra_args_key] = config.get(grant_option)
 
     def _generate_download_url(self, path_info, expires=3600):
         params = {"Bucket": path_info.bucket, "Key": path_info.path}
@@ -56,7 +149,7 @@ class S3RemoteTree(BaseRemoteTree):
         # While `data/al/` will return nothing.
         #
         dir_path = path_info / ""
-        return bool(list(self.remote.list_paths(dir_path, max_items=1)))
+        return bool(list(self._list_paths(dir_path, max_items=1)))
 
     def isfile(self, path_info):
         from botocore.exceptions import ClientError
@@ -73,8 +166,25 @@ class S3RemoteTree(BaseRemoteTree):
 
         return True
 
-    def walk_files(self, path_info, max_items=None):
-        for fname in self.remote.list_paths(path_info / "", max_items):
+    def _list_objects(self, path_info, max_items=None):
+        """ Read config for list object api, paginate through list objects."""
+        kwargs = {
+            "Bucket": path_info.bucket,
+            "Prefix": path_info.path,
+            "PaginationConfig": {"MaxItems": max_items},
+        }
+        paginator = self.s3.get_paginator(self.list_objects_api)
+        for page in paginator.paginate(**kwargs):
+            contents = page.get("Contents", ())
+            yield from contents
+
+    def _list_paths(self, path_info, max_items=None):
+        return (
+            item["Key"] for item in self._list_objects(path_info, max_items)
+        )
+
+    def walk_files(self, path_info, **kwargs):
+        for fname in self._list_paths(path_info / "", **kwargs):
             if fname.endswith("/"):
                 continue
 
@@ -100,7 +210,7 @@ class S3RemoteTree(BaseRemoteTree):
         self.s3.put_object(Bucket=path_info.bucket, Key=dir_path.path, Body="")
 
     def copy(self, from_info, to_info):
-        self._copy(self.s3, from_info, to_info, self.remote.extra_args)
+        self._copy(self.s3, from_info, to_info, self.extra_args)
 
     @classmethod
     def _copy_multipart(
@@ -114,7 +224,7 @@ class S3RemoteTree(BaseRemoteTree):
         parts = []
         byte_position = 0
         for i in range(1, n_parts + 1):
-            obj = S3Remote.get_head_object(
+            obj = S3RemoteTree.get_head_object(
                 s3, from_info.bucket, from_info.path, PartNumber=i
             )
             part_size = obj["ContentLength"]
@@ -169,7 +279,9 @@ class S3RemoteTree(BaseRemoteTree):
         # object is transfered in the same chunks as it was originally.
         from boto3.s3.transfer import TransferConfig
 
-        obj = S3Remote.get_head_object(s3, from_info.bucket, from_info.path)
+        obj = S3RemoteTree.get_head_object(
+            s3, from_info.bucket, from_info.path
+        )
         etag = obj["ETag"].strip('"')
         size = obj["ContentLength"]
 
@@ -189,121 +301,9 @@ class S3RemoteTree(BaseRemoteTree):
                 Config=TransferConfig(multipart_threshold=size + 1),
             )
 
-        cached_etag = S3Remote.get_etag(s3, to_info.bucket, to_info.path)
+        cached_etag = S3RemoteTree.get_etag(s3, to_info.bucket, to_info.path)
         if etag != cached_etag:
             raise ETagMismatchError(etag, cached_etag)
-
-
-class S3Remote(BaseRemote):
-    scheme = Schemes.S3
-    path_cls = CloudURLInfo
-    REQUIRES = {"boto3": "boto3"}
-    PARAM_CHECKSUM = "etag"
-    TREE_CLS = S3RemoteTree
-
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
-
-        url = config.get("url", "s3://")
-        self.path_info = self.path_cls(url)
-
-        self.region = config.get("region")
-        self.profile = config.get("profile")
-        self.endpoint_url = config.get("endpointurl")
-
-        if config.get("listobjects"):
-            self.list_objects_api = "list_objects"
-        else:
-            self.list_objects_api = "list_objects_v2"
-
-        self.use_ssl = config.get("use_ssl", True)
-
-        self.extra_args = {}
-
-        self.sse = config.get("sse")
-        if self.sse:
-            self.extra_args["ServerSideEncryption"] = self.sse
-
-        self.sse_kms_key_id = config.get("sse_kms_key_id")
-        if self.sse_kms_key_id:
-            self.extra_args["SSEKMSKeyId"] = self.sse_kms_key_id
-
-        self.acl = config.get("acl")
-        if self.acl:
-            self.extra_args["ACL"] = self.acl
-
-        self._append_aws_grants_to_extra_args(config)
-
-        shared_creds = config.get("credentialpath")
-        if shared_creds:
-            os.environ.setdefault("AWS_SHARED_CREDENTIALS_FILE", shared_creds)
-
-    @wrap_prop(threading.Lock())
-    @cached_property
-    def s3(self):
-        import boto3
-
-        session = boto3.session.Session(
-            profile_name=self.profile, region_name=self.region
-        )
-
-        return session.client(
-            "s3", endpoint_url=self.endpoint_url, use_ssl=self.use_ssl
-        )
-
-    @classmethod
-    def get_etag(cls, s3, bucket, path):
-        obj = cls.get_head_object(s3, bucket, path)
-
-        return obj["ETag"].strip('"')
-
-    def get_file_checksum(self, path_info):
-        return self.get_etag(self.s3, path_info.bucket, path_info.path)
-
-    @staticmethod
-    def get_head_object(s3, bucket, path, *args, **kwargs):
-
-        try:
-            obj = s3.head_object(Bucket=bucket, Key=path, *args, **kwargs)
-        except Exception as exc:
-            raise DvcException(f"s3://{bucket}/{path} does not exist") from exc
-        return obj
-
-    def _list_objects(
-        self, path_info, max_items=None, prefix=None, progress_callback=None
-    ):
-        """ Read config for list object api, paginate through list objects."""
-        kwargs = {
-            "Bucket": path_info.bucket,
-            "Prefix": path_info.path,
-            "PaginationConfig": {"MaxItems": max_items},
-        }
-        if prefix:
-            kwargs["Prefix"] = posixpath.join(path_info.path, prefix[:2])
-        paginator = self.s3.get_paginator(self.list_objects_api)
-        for page in paginator.paginate(**kwargs):
-            contents = page.get("Contents", ())
-            if progress_callback:
-                for item in contents:
-                    progress_callback()
-                    yield item
-            else:
-                yield from contents
-
-    def list_paths(
-        self, path_info, max_items=None, prefix=None, progress_callback=None
-    ):
-        return (
-            item["Key"]
-            for item in self._list_objects(
-                path_info, max_items, prefix, progress_callback
-            )
-        )
-
-    def list_cache_paths(self, prefix=None, progress_callback=None):
-        return self.list_paths(
-            self.path_info, prefix=prefix, progress_callback=progress_callback
-        )
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         total = os.path.getsize(from_file)
@@ -332,33 +332,14 @@ class S3Remote(BaseRemote):
                 from_info.bucket, from_info.path, to_file, Callback=pbar.update
             )
 
-    def _append_aws_grants_to_extra_args(self, config):
-        # Keys for extra_args can be one of the following list:
-        # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/customizations/s3.html#boto3.s3.transfer.S3Transfer.ALLOWED_UPLOAD_ARGS
-        """
-          ALLOWED_UPLOAD_ARGS = [
-            'ACL', 'CacheControl', 'ContentDisposition', 'ContentEncoding',
-            'ContentLanguage', 'ContentType', 'Expires', 'GrantFullControl',
-            'GrantRead', 'GrantReadACP', 'GrantWriteACP', 'Metadata',
-            'RequestPayer', 'ServerSideEncryption', 'StorageClass',
-            'SSECustomerAlgorithm', 'SSECustomerKey', 'SSECustomerKeyMD5',
-            'SSEKMSKeyId', 'WebsiteRedirectLocation'
-          ]
-        """
 
-        grants = {
-            "grant_full_control": "GrantFullControl",
-            "grant_read": "GrantRead",
-            "grant_read_acp": "GrantReadACP",
-            "grant_write_acp": "GrantWriteACP",
-        }
+class S3Remote(BaseRemote):
+    scheme = Schemes.S3
+    REQUIRES = {"boto3": "boto3"}
+    PARAM_CHECKSUM = "etag"
+    TREE_CLS = S3RemoteTree
 
-        for grant_option, extra_args_key in grants.items():
-            if config.get(grant_option):
-                if self.acl:
-                    raise ConfigError(
-                        "`acl` and `grant_*` AWS S3 config options "
-                        "are mutually exclusive"
-                    )
-
-                self.extra_args[extra_args_key] = config.get(grant_option)
+    def get_file_checksum(self, path_info):
+        return self.tree.get_etag(
+            self.tree.s3, path_info.bucket, path_info.path
+        )

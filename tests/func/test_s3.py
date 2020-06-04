@@ -30,7 +30,7 @@ def reduced_min_part_size(f):
 
 
 def _get_src_dst():
-    base_info = S3Remote.path_cls(S3.get_url())
+    base_info = S3RemoteTree.PATH_CLS(S3.get_url())
     return base_info / "from", base_info / "to"
 
 
@@ -48,12 +48,16 @@ def test_copy_singlepart_preserve_etag():
 @mock_s3
 @pytest.mark.parametrize(
     "base_info",
-    [S3Remote.path_cls("s3://bucket/"), S3Remote.path_cls("s3://bucket/ns/")],
+    [
+        S3RemoteTree.PATH_CLS("s3://bucket/"),
+        S3RemoteTree.PATH_CLS("s3://bucket/ns/"),
+    ],
 )
 def test_link_created_on_non_nested_path(base_info, tmp_dir, dvc, scm):
     remote = S3Remote(dvc, {"url": str(base_info.parent)})
-    remote.s3.create_bucket(Bucket=base_info.bucket)
-    remote.s3.put_object(
+    s3 = remote.tree.s3
+    s3.create_bucket(Bucket=base_info.bucket)
+    s3.put_object(
         Bucket=base_info.bucket, Key=(base_info / "from").path, Body="data"
     )
     remote.link(base_info / "from", base_info / "to")
@@ -64,7 +68,7 @@ def test_link_created_on_non_nested_path(base_info, tmp_dir, dvc, scm):
 
 @mock_s3
 def test_makedirs_doesnot_try_on_top_level_paths(tmp_dir, dvc, scm):
-    base_info = S3Remote.path_cls("s3://bucket/")
+    base_info = S3RemoteTree.PATH_CLS("s3://bucket/")
     remote = S3Remote(dvc, {"url": str(base_info)})
     remote.tree.makedirs(base_info)
 

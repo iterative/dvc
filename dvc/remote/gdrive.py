@@ -88,28 +88,7 @@ class GDriveURLInfo(CloudURLInfo):
 
 
 class GDriveRemoteTree(BaseRemoteTree):
-    def exists(self, path_info):
-        try:
-            self.remote.get_item_id(path_info)
-        except GDrivePathNotFound:
-            return False
-        else:
-            return True
-
-    def remove(self, path_info):
-        item_id = self.remote.get_item_id(path_info)
-        self.remote.gdrive_delete_file(item_id)
-
-
-class GDriveRemote(BaseRemote):
-    scheme = Schemes.GDRIVE
-    path_cls = GDriveURLInfo
-    REQUIRES = {"pydrive2": "pydrive2"}
-    DEFAULT_VERIFY = True
-    # Always prefer traverse for GDrive since API usage quotas are a concern.
-    TRAVERSE_WEIGHT_MULTIPLIER = 1
-    TRAVERSE_PREFIX_LEN = 2
-    TREE_CLS = GDriveRemoteTree
+    PATH_CLS = GDriveURLInfo
 
     GDRIVE_CREDENTIALS_DATA = "GDRIVE_CREDENTIALS_DATA"
     DEFAULT_USER_CREDENTIALS_FILE = "gdrive-user-credentials.json"
@@ -117,9 +96,10 @@ class GDriveRemote(BaseRemote):
     DEFAULT_GDRIVE_CLIENT_ID = "710796635688-iivsgbgsb6uv1fap6635dhvuei09o66c.apps.googleusercontent.com"  # noqa: E501
     DEFAULT_GDRIVE_CLIENT_SECRET = "a1Fz59uTpVNeG_VGuSKDLJXv"
 
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
-        self.path_info = self.path_cls(config["url"])
+    def __init__(self, remote, config):
+        super().__init__(remote, config)
+
+        self.path_info = self.PATH_CLS(config["url"])
 
         if not self.path_info.bucket:
             raise DvcException(
@@ -146,11 +126,12 @@ class GDriveRemote(BaseRemote):
         self._validate_config()
         self._gdrive_user_credentials_path = (
             tmp_fname(os.path.join(self.repo.tmp_dir, ""))
-            if os.getenv(GDriveRemote.GDRIVE_CREDENTIALS_DATA)
+            if os.getenv(GDriveRemoteTree.GDRIVE_CREDENTIALS_DATA)
             else config.get(
                 "gdrive_user_credentials_file",
                 os.path.join(
-                    self.repo.tmp_dir, self.DEFAULT_USER_CREDENTIALS_FILE
+                    self.remote.repo.tmp_dir,
+                    self.DEFAULT_USER_CREDENTIALS_FILE,
                 ),
             )
         )
@@ -188,8 +169,8 @@ class GDriveRemote(BaseRemote):
         Useful for tests, exception messages, etc. Returns either env variable
         name if it's set or actual path to the credentials file.
         """
-        if os.getenv(GDriveRemote.GDRIVE_CREDENTIALS_DATA):
-            return GDriveRemote.GDRIVE_CREDENTIALS_DATA
+        if os.getenv(GDriveRemoteTree.GDRIVE_CREDENTIALS_DATA):
+            return GDriveRemoteTree.GDRIVE_CREDENTIALS_DATA
         if os.path.exists(self._gdrive_user_credentials_path):
             return self._gdrive_user_credentials_path
         return None
@@ -203,7 +184,7 @@ class GDriveRemote(BaseRemote):
         DVC config client id or secret but forgets to remove the cached
         credentials file.
         """
-        if not os.getenv(GDriveRemote.GDRIVE_CREDENTIALS_DATA):
+        if not os.getenv(GDriveRemoteTree.GDRIVE_CREDENTIALS_DATA):
             if (
                 settings["client_config"]["client_id"]
                 != auth.credentials.client_id
@@ -226,10 +207,10 @@ class GDriveRemote(BaseRemote):
         from pydrive2.auth import GoogleAuth
         from pydrive2.drive import GoogleDrive
 
-        if os.getenv(GDriveRemote.GDRIVE_CREDENTIALS_DATA):
+        if os.getenv(GDriveRemoteTree.GDRIVE_CREDENTIALS_DATA):
             with open(self._gdrive_user_credentials_path, "w") as cred_file:
                 cred_file.write(
-                    os.getenv(GDriveRemote.GDRIVE_CREDENTIALS_DATA)
+                    os.getenv(GDriveRemoteTree.GDRIVE_CREDENTIALS_DATA)
                 )
 
         auth_settings = {
@@ -276,7 +257,7 @@ class GDriveRemote(BaseRemote):
                 gauth.ServiceAuth()
             else:
                 gauth.CommandLineAuth()
-                GDriveRemote._validate_credentials(gauth, auth_settings)
+                GDriveRemoteTree._validate_credentials(gauth, auth_settings)
 
         # Handle AuthenticationError, RefreshError and other auth failures
         # It's hard to come up with a narrow exception, since PyDrive throws
@@ -285,7 +266,7 @@ class GDriveRemote(BaseRemote):
         except Exception as exc:
             raise GDriveAuthError(self.credentials_location) from exc
         finally:
-            if os.getenv(GDriveRemote.GDRIVE_CREDENTIALS_DATA):
+            if os.getenv(GDriveRemoteTree.GDRIVE_CREDENTIALS_DATA):
                 os.remove(self._gdrive_user_credentials_path)
 
         return GoogleDrive(gauth)
@@ -296,7 +277,7 @@ class GDriveRemote(BaseRemote):
         cache = {
             "dirs": defaultdict(list),
             "ids": {},
-            "root_id": self.get_item_id(
+            "root_id": self._get_item_id(
                 self.path_info,
                 use_cache=False,
                 hint="Confirm the directory exists and you can access it.",
@@ -513,7 +494,7 @@ class GDriveRemote(BaseRemote):
             [self._create_dir(min(parent_ids), title, path)] if create else []
         )
 
-    def get_item_id(self, path_info, create=False, use_cache=True, hint=None):
+    def _get_item_id(self, path_info, create=False, use_cache=True, hint=None):
         assert path_info.bucket == self._bucket
 
         item_ids = self._path_to_item_ids(path_info.path, create, use_cache)
@@ -523,20 +504,15 @@ class GDriveRemote(BaseRemote):
         assert not create
         raise GDrivePathNotFound(path_info, hint)
 
-    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
-        dirname = to_info.parent
-        assert dirname
-        parent_id = self.get_item_id(dirname, True)
+    def exists(self, path_info):
+        try:
+            self._get_item_id(path_info)
+        except GDrivePathNotFound:
+            return False
+        else:
+            return True
 
-        self._gdrive_upload_file(
-            parent_id, to_info.name, no_progress_bar, from_file, name
-        )
-
-    def _download(self, from_info, to_file, name=None, no_progress_bar=False):
-        item_id = self.get_item_id(from_info)
-        self._gdrive_download_file(item_id, to_file, name, no_progress_bar)
-
-    def list_cache_paths(self, prefix=None, progress_callback=None):
+    def _list_paths(self, prefix=None):
         if not self._ids_cache["ids"]:
             return
 
@@ -552,12 +528,44 @@ class GDriveRemote(BaseRemote):
         query = f"({parents_query}) and trashed=false"
 
         for item in self._gdrive_list(query):
-            if progress_callback:
-                progress_callback()
             parent_id = item["parents"][0]["id"]
             yield posixpath.join(
                 self._ids_cache["ids"][parent_id], item["title"]
             )
+
+    def walk_files(self, path_info, **kwargs):
+        if path_info == self.path_info:
+            prefix = None
+        else:
+            prefix = path_info.relative_to(self.path_info).path
+        return self._list_paths(prefix=prefix, **kwargs)
+
+    def remove(self, path_info):
+        item_id = self._get_item_id(path_info)
+        self.gdrive_delete_file(item_id)
+
+    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
+        dirname = to_info.parent
+        assert dirname
+        parent_id = self._get_item_id(dirname, True)
+
+        self._gdrive_upload_file(
+            parent_id, to_info.name, no_progress_bar, from_file, name
+        )
+
+    def _download(self, from_info, to_file, name=None, no_progress_bar=False):
+        item_id = self._get_item_id(from_info)
+        self._gdrive_download_file(item_id, to_file, name, no_progress_bar)
+
+
+class GDriveRemote(BaseRemote):
+    scheme = Schemes.GDRIVE
+    REQUIRES = {"pydrive2": "pydrive2"}
+    DEFAULT_VERIFY = True
+    # Always prefer traverse for GDrive since API usage quotas are a concern.
+    TRAVERSE_WEIGHT_MULTIPLIER = 1
+    TRAVERSE_PREFIX_LEN = 2
+    TREE_CLS = GDriveRemoteTree
 
     def get_file_checksum(self, path_info):
         raise NotImplementedError

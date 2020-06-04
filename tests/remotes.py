@@ -7,7 +7,7 @@ from subprocess import CalledProcessError, Popen, check_output
 
 from moto.s3 import mock_s3
 
-from dvc.remote import GDriveRemote
+from dvc.remote.gdrive import GDriveRemote, GDriveRemoteTree
 from dvc.remote.gs import GSRemote
 from dvc.remote.s3 import S3Remote
 from dvc.utils import env2bool
@@ -82,7 +82,7 @@ class S3Mocked(S3):
 
     @staticmethod
     def put_objects(remote, objects):
-        s3 = remote.s3
+        s3 = remote.tree.s3
         bucket = remote.path_info.bucket
         s3.create_bucket(Bucket=bucket)
         for key, body in objects.items():
@@ -130,7 +130,7 @@ class GCP:
 
     @staticmethod
     def put_objects(remote, objects):
-        client = remote.gs
+        client = remote.tree.gs
         bucket = client.get_bucket(remote.path_info.bucket)
         for key, body in objects.items():
             bucket.blob((remote.path_info / key).path).upload_from_string(body)
@@ -139,7 +139,7 @@ class GCP:
 class GDrive:
     @staticmethod
     def should_test():
-        return os.getenv(GDriveRemote.GDRIVE_CREDENTIALS_DATA) is not None
+        return os.getenv(GDriveRemoteTree.GDRIVE_CREDENTIALS_DATA) is not None
 
     @staticmethod
     def create_dir(dvc, url):

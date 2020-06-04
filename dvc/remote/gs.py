@@ -1,6 +1,5 @@
 import logging
 import os.path
-import posixpath
 import threading
 from datetime import timedelta
 from functools import wraps
@@ -66,9 +65,27 @@ def _upload_to_bucket(
 
 
 class GSRemoteTree(BaseRemoteTree):
-    @property
+    PATH_CLS = CloudURLInfo
+
+    def __init__(self, remote, config):
+        super().__init__(remote, config)
+
+        url = config.get("url", "gs:///")
+        self.path_info = self.PATH_CLS(url)
+
+        self.projectname = config.get("projectname", None)
+        self.credentialpath = config.get("credentialpath")
+
+    @wrap_prop(threading.Lock())
+    @cached_property
     def gs(self):
-        return self.remote.gs
+        from google.cloud.storage import Client
+
+        return (
+            Client.from_service_account_json(self.credentialpath)
+            if self.credentialpath
+            else Client(self.projectname)
+        )
 
     def _generate_download_url(self, path_info, expires=3600):
         expiration = timedelta(seconds=int(expires))
@@ -89,7 +106,7 @@ class GSRemoteTree(BaseRemoteTree):
 
     def isdir(self, path_info):
         dir_path = path_info / ""
-        return bool(list(self.remote.list_paths(dir_path, max_items=1)))
+        return bool(list(self._list_paths(dir_path, max_items=1)))
 
     def isfile(self, path_info):
         if path_info.path.endswith("/"):
@@ -98,8 +115,14 @@ class GSRemoteTree(BaseRemoteTree):
         blob = self.gs.bucket(path_info.bucket).blob(path_info.path)
         return blob.exists()
 
-    def walk_files(self, path_info):
-        for fname in self.remote.list_paths(path_info / ""):
+    def _list_paths(self, path_info, max_items=None):
+        for blob in self.gs.bucket(path_info.bucket).list_blobs(
+            prefix=path_info.path, max_results=max_items
+        ):
+            yield blob.name
+
+    def walk_files(self, path_info, **kwargs):
+        for fname in self._list_paths(path_info / "", **kwargs):
             # skip nested empty directories
             if fname.endswith("/"):
                 continue
@@ -134,67 +157,6 @@ class GSRemoteTree(BaseRemoteTree):
         to_bucket = self.gs.bucket(to_info.bucket)
         from_bucket.copy_blob(blob, to_bucket, new_name=to_info.path)
 
-
-class GSRemote(BaseRemote):
-    scheme = Schemes.GS
-    path_cls = CloudURLInfo
-    REQUIRES = {"google-cloud-storage": "google.cloud.storage"}
-    PARAM_CHECKSUM = "md5"
-    TREE_CLS = GSRemoteTree
-
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
-
-        url = config.get("url", "gs:///")
-        self.path_info = self.path_cls(url)
-
-        self.projectname = config.get("projectname", None)
-        self.credentialpath = config.get("credentialpath")
-
-    @wrap_prop(threading.Lock())
-    @cached_property
-    def gs(self):
-        from google.cloud.storage import Client
-
-        return (
-            Client.from_service_account_json(self.credentialpath)
-            if self.credentialpath
-            else Client(self.projectname)
-        )
-
-    def get_file_checksum(self, path_info):
-        import base64
-        import codecs
-
-        bucket = path_info.bucket
-        path = path_info.path
-        blob = self.gs.bucket(bucket).get_blob(path)
-        if not blob:
-            return None
-
-        b64_md5 = blob.md5_hash
-        md5 = base64.b64decode(b64_md5)
-        return codecs.getencoder("hex")(md5)[0].decode("utf-8")
-
-    def list_paths(
-        self, path_info, max_items=None, prefix=None, progress_callback=None
-    ):
-        if prefix:
-            prefix = posixpath.join(path_info.path, prefix[:2], prefix[2:])
-        else:
-            prefix = path_info.path
-        for blob in self.gs.bucket(path_info.bucket).list_blobs(
-            prefix=path_info.path, max_results=max_items
-        ):
-            if progress_callback:
-                progress_callback()
-            yield blob.name
-
-    def list_cache_paths(self, prefix=None, progress_callback=None):
-        return self.list_paths(
-            self.path_info, prefix=prefix, progress_callback=progress_callback
-        )
-
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         bucket = self.gs.bucket(to_info.bucket)
         _upload_to_bucket(
@@ -217,3 +179,24 @@ class GSRemote(BaseRemote):
                 disable=no_progress_bar,
             ) as wrapped:
                 blob.download_to_file(wrapped)
+
+
+class GSRemote(BaseRemote):
+    scheme = Schemes.GS
+    REQUIRES = {"google-cloud-storage": "google.cloud.storage"}
+    PARAM_CHECKSUM = "md5"
+    TREE_CLS = GSRemoteTree
+
+    def get_file_checksum(self, path_info):
+        import base64
+        import codecs
+
+        bucket = path_info.bucket
+        path = path_info.path
+        blob = self.gs.bucket(bucket).get_blob(path)
+        if not blob:
+            return None
+
+        b64_md5 = blob.md5_hash
+        md5 = base64.b64decode(b64_md5)
+        return codecs.getencoder("hex")(md5)[0].decode("utf-8")

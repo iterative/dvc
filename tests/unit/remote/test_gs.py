@@ -18,16 +18,16 @@ CONFIG = {
 
 def test_init(dvc):
     remote = GSRemote(dvc, CONFIG)
-    assert remote.path_info == URL
-    assert remote.projectname == PROJECT
-    assert remote.credentialpath == CREDENTIALPATH
+    assert remote.tree.path_info == URL
+    assert remote.tree.projectname == PROJECT
+    assert remote.tree.credentialpath == CREDENTIALPATH
 
 
 @mock.patch("google.cloud.storage.Client.from_service_account_json")
 def test_gs(mock_client, dvc):
     remote = GSRemote(dvc, CONFIG)
-    assert remote.credentialpath
-    remote.gs()
+    assert remote.tree.credentialpath
+    remote.tree.gs()
     mock_client.assert_called_once_with(CREDENTIALPATH)
 
 
@@ -36,7 +36,7 @@ def test_gs_no_credspath(mock_client, dvc):
     config = CONFIG.copy()
     del config["credentialpath"]
     remote = GSRemote(dvc, config)
-    remote.gs()
+    remote.tree.gs()
     mock_client.assert_called_with(PROJECT)
 
 

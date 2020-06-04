@@ -3,7 +3,7 @@ import os
 import pytest
 
 from dvc.path_info import PathInfo
-from dvc.remote.s3 import S3Remote
+from dvc.remote.s3 import S3Remote, S3RemoteTree
 from dvc.utils.fs import walk_files
 from tests.remotes import GCP, S3Mocked
 
@@ -88,7 +88,7 @@ def test_walk_files(remote):
 
 @pytest.mark.parametrize("remote", [S3Mocked], indirect=True)
 def test_copy_preserve_etag_across_buckets(remote, dvc):
-    s3 = remote.s3
+    s3 = remote.tree.s3
     s3.create_bucket(Bucket="another")
 
     another = S3Remote(dvc, {"url": "s3://another", "region": "us-east-1"})
@@ -98,8 +98,8 @@ def test_copy_preserve_etag_across_buckets(remote, dvc):
 
     remote.tree.copy(from_info, to_info)
 
-    from_etag = S3Remote.get_etag(s3, from_info.bucket, from_info.path)
-    to_etag = S3Remote.get_etag(s3, "another", "foo")
+    from_etag = S3RemoteTree.get_etag(s3, from_info.bucket, from_info.path)
+    to_etag = S3RemoteTree.get_etag(s3, "another", "foo")
 
     assert from_etag == to_etag
 
@@ -141,7 +141,7 @@ def test_isfile(remote):
 def test_download_dir(remote, tmpdir):
     path = str(tmpdir / "data")
     to_info = PathInfo(path)
-    remote.download(remote.path_info / "data", to_info)
+    remote.tree.download(remote.path_info / "data", to_info)
     assert os.path.isdir(path)
     data_dir = tmpdir / "data"
     assert len(list(walk_files(path))) == 7
