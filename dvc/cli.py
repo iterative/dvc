@@ -86,7 +86,7 @@ class DvcParser(argparse.ArgumentParser):
         """Custom error method.
         Args:
             message (str): error message.
-            command (str): subcommand name to display subcommand help message
+            command (str): subcommand name for help message
         Raises:
             dvc.exceptions.DvcParser: dvc parser exception.
 
