@@ -26,7 +26,7 @@ def test_parse_params():
     ]
 
 
-@pytest.mark.parametrize("name", ["copy_name", "copy-name", "copy-name", "12"])
+@pytest.mark.parametrize("name", ["copy_name", "copy-name", "copyName", "12"])
 def test_valid_stage_names(name):
     assert is_valid_name(name)
 

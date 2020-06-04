@@ -48,18 +48,17 @@ def test_load_from_pipeline_accumulates_flag(dvc):
             "file1",
             {"file2": {"cache": False}},
             {"file1": {"persist": False}},
-            {"file2": {"persist": False}},
+            {"file2": {"persist": True}},
         ],
         "outs",
     )
     for out in outs:
         assert isinstance(out, LocalOutput)
         assert not out.plot and not out.metric
-        assert not out.persist
         assert out.info == {}
 
-    assert outs[0].use_cache
-    assert not outs[1].use_cache
+    assert outs[0].use_cache and not outs[0].persist
+    assert not outs[1].use_cache and outs[1].persist
 
 
 def test_load_remote_files_from_pipeline(dvc):
