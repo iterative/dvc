@@ -48,7 +48,7 @@ class StageLoader(Mapping):
             if isinstance(item, ParamsDependency):
                 # load the params with values inside lock dynamically
                 lock_params = lock_data.get(stage.PARAM_PARAMS, {})
-                item.inject_values(lock_params.get(item.def_path, {}))
+                item.fill_values(lock_params.get(item.def_path, {}))
                 continue
 
             item.checksum = (
