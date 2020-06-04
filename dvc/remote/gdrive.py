@@ -512,7 +512,7 @@ class GDriveRemoteTree(BaseRemoteTree):
         else:
             return True
 
-    def _list_paths(self, prefix=None, progress_callback=None):
+    def _list_paths(self, prefix=None):
         if not self._ids_cache["ids"]:
             return
 
@@ -528,8 +528,6 @@ class GDriveRemoteTree(BaseRemoteTree):
         query = f"({parents_query}) and trashed=false"
 
         for item in self._gdrive_list(query):
-            if progress_callback:
-                progress_callback()
             parent_id = item["parents"][0]["id"]
             yield posixpath.join(
                 self._ids_cache["ids"][parent_id], item["title"]
@@ -571,12 +569,3 @@ class GDriveRemote(BaseRemote):
 
     def get_file_checksum(self, path_info):
         raise NotImplementedError
-
-    def list_cache_paths(self, prefix=None, progress_callback=None):
-        if prefix:
-            path_info = self.path_info / prefix[2:]
-        else:
-            path_info = self.path_info
-        return self.tree.walk_files(
-            path_info, progress_callback=progress_callback
-        )

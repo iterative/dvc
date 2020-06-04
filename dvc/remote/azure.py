@@ -76,7 +76,7 @@ class AzureRemoteTree(BaseRemoteTree):
         paths = self._list_paths(path_info.bucket, path_info.path)
         return any(path_info.path == path for path in paths)
 
-    def _list_paths(self, bucket, prefix, progress_callback=None):
+    def _list_paths(self, bucket, prefix):
         blob_service = self.blob_service
         next_marker = None
         while True:
@@ -85,8 +85,6 @@ class AzureRemoteTree(BaseRemoteTree):
             )
 
             for blob in blobs:
-                if progress_callback:
-                    progress_callback()
                 yield blob.name
 
             if not blobs.next_marker:
@@ -143,12 +141,3 @@ class AzureRemote(BaseRemote):
 
     def get_file_checksum(self, path_info):
         return self.tree.get_etag(path_info)
-
-    def list_cache_paths(self, prefix=None, progress_callback=None):
-        if prefix:
-            path_info = self.path_info / prefix[:2] / prefix[2:]
-        else:
-            path_info = self.path_info
-        return self.tree.walk_files(
-            path_info, progress_callback=progress_callback
-        )

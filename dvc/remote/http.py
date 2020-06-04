@@ -192,5 +192,8 @@ class HTTPRemote(BaseRemote):
 
         return etag
 
+    def list_cache_paths(self, prefix=None, progress_callback=None):
+        raise NotImplementedError
+
     def gc(self):
         raise NotImplementedError

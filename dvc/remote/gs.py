@@ -115,12 +115,10 @@ class GSRemoteTree(BaseRemoteTree):
         blob = self.gs.bucket(path_info.bucket).blob(path_info.path)
         return blob.exists()
 
-    def _list_paths(self, path_info, max_items=None, progress_callback=None):
+    def _list_paths(self, path_info, max_items=None):
         for blob in self.gs.bucket(path_info.bucket).list_blobs(
             prefix=path_info.path, max_results=max_items
         ):
-            if progress_callback:
-                progress_callback()
             yield blob.name
 
     def walk_files(self, path_info, **kwargs):
@@ -202,12 +200,3 @@ class GSRemote(BaseRemote):
         b64_md5 = blob.md5_hash
         md5 = base64.b64decode(b64_md5)
         return codecs.getencoder("hex")(md5)[0].decode("utf-8")
-
-    def list_cache_paths(self, prefix=None, progress_callback=None):
-        if prefix:
-            path_info = self.path_info / prefix[:2] / prefix[2:]
-        else:
-            path_info = self.path_info
-        return self.tree.walk_files(
-            path_info, progress_callback=progress_callback
-        )

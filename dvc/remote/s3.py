@@ -166,7 +166,7 @@ class S3RemoteTree(BaseRemoteTree):
 
         return True
 
-    def _list_objects(self, path_info, max_items=None, progress_callback=None):
+    def _list_objects(self, path_info, max_items=None):
         """ Read config for list object api, paginate through list objects."""
         kwargs = {
             "Bucket": path_info.bucket,
@@ -176,19 +176,11 @@ class S3RemoteTree(BaseRemoteTree):
         paginator = self.s3.get_paginator(self.list_objects_api)
         for page in paginator.paginate(**kwargs):
             contents = page.get("Contents", ())
-            if progress_callback:
-                for item in contents:
-                    progress_callback()
-                    yield item
-            else:
-                yield from contents
+            yield from contents
 
-    def _list_paths(self, path_info, max_items=None, progress_callback=None):
+    def _list_paths(self, path_info, max_items=None):
         return (
-            item["Key"]
-            for item in self._list_objects(
-                path_info, max_items, progress_callback
-            )
+            item["Key"] for item in self._list_objects(path_info, max_items)
         )
 
     def walk_files(self, path_info, max_items=None, **kwargs):
@@ -352,13 +344,4 @@ class S3Remote(BaseRemote):
     def get_file_checksum(self, path_info):
         return self.tree.get_etag(
             self.tree.s3, path_info.bucket, path_info.path
-        )
-
-    def list_cache_paths(self, prefix=None, progress_callback=None):
-        if prefix:
-            path_info = self.path_info / prefix[:2] / prefix[2:]
-        else:
-            path_info = self.path_info
-        return self.tree.walk_files(
-            path_info, progress_callback=progress_callback
         )

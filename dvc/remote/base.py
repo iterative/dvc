@@ -829,7 +829,19 @@ class BaseRemote:
     checksum_to_path = checksum_to_path_info
 
     def list_cache_paths(self, prefix=None, progress_callback=None):
-        raise NotImplementedError
+        if prefix:
+            if len(prefix) > 2:
+                path_info = self.path_info / prefix[:2] / prefix[2:]
+            else:
+                path_info = self.path_info / prefix[:2]
+        else:
+            path_info = self.path_info
+        if progress_callback:
+            for file_info in self.tree.walk_files(path_info):
+                progress_callback()
+                yield file_info.path
+        else:
+            yield from self.tree.walk_files(path_info)
 
     def cache_checksums(self, prefix=None, progress_callback=None):
         """Iterate over remote cache checksums.

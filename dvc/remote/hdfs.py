@@ -72,7 +72,7 @@ class HDFSRemoteTree(BaseRemoteTree):
         with self.hdfs(path_info) as hdfs:
             return hdfs.exists(path_info.path)
 
-    def walk_files(self, path_info, progress_callback=None, **kwargs):
+    def walk_files(self, path_info, **kwargs):
         if not self.exists(path_info):
             return
 
@@ -89,8 +89,6 @@ class HDFSRemoteTree(BaseRemoteTree):
                         if entry["kind"] == "directory":
                             dirs.append(urlparse(entry["name"]).path)
                         elif entry["kind"] == "file":
-                            if progress_callback:
-                                progress_callback()
                             yield urlparse(entry["name"]).path
                 except OSError:
                     # When searching for a specific prefix pyarrow raises an
@@ -182,12 +180,3 @@ class HDFSRemote(BaseRemote):
             f"checksum {path_info.path}", user=path_info.user
         )
         return self._group(regex, stdout, "checksum")
-
-    def list_cache_paths(self, prefix=None, progress_callback=None):
-        if prefix:
-            path_info = self.path_info / prefix[:2]
-        else:
-            path_info = self.path_info
-        return self.tree.walk_files(
-            path_info, progress_callback=progress_callback
-        )

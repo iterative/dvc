@@ -68,14 +68,12 @@ class OSSRemoteTree(BaseRemoteTree):
         paths = self.list_paths(path_info.path)
         return any(path_info.path == path for path in paths)
 
-    def _list_files(self, path_info, progress_callback=None):
+    def _list_files(self, path_info):
         import oss2
 
         for blob in oss2.ObjectIterator(
             self.oss_service, prefix=path_info.path
         ):
-            if progress_callback:
-                progress_callback()
             yield blob.key
 
     def walk_files(self, path_info, **kwargs):
@@ -134,12 +132,3 @@ class OSSRemote(BaseRemote):
     COPY_POLL_SECONDS = 5
     LIST_OBJECT_PAGE_SIZE = 100
     TREE_CLS = OSSRemoteTree
-
-    def list_cache_paths(self, prefix=None, progress_callback=None):
-        if prefix:
-            path_info = self.path_info / prefix[:2], prefix[2:]
-        else:
-            path_info = self.path_info
-        return self.tree.walk_files(
-            path_info, progress_callback=progress_callback
-        )
