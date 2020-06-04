@@ -160,7 +160,7 @@ class SSHRemoteTree(BaseRemoteTree):
         with self.ssh(path_info) as ssh:
             return ssh.isfile(path_info.path)
 
-    def walk_files(self, path_info):
+    def walk_files(self, path_info, **kwargs):
         with self.ssh(path_info) as ssh:
             for fname in ssh.walk_files(path_info.path):
                 yield path_info.replace(path=fname)

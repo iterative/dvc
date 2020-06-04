@@ -162,7 +162,8 @@ class HTTPRemoteTree(BaseRemoteTree):
         if response.status_code not in (200, 201):
             raise HTTPError(response.status_code, response.reason)
 
-    def _content_length(self, response):
+    @staticmethod
+    def _content_length(response):
         res = response.headers.get("Content-Length")
         return int(res) if res else None
 

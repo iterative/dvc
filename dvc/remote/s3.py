@@ -183,10 +183,8 @@ class S3RemoteTree(BaseRemoteTree):
             item["Key"] for item in self._list_objects(path_info, max_items)
         )
 
-    def walk_files(self, path_info, max_items=None, **kwargs):
-        for fname in self._list_paths(
-            path_info / "", max_items=max_items, **kwargs
-        ):
+    def walk_files(self, path_info, **kwargs):
+        for fname in self._list_paths(path_info / "", **kwargs):
             if fname.endswith("/"):
                 continue
 

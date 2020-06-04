@@ -37,7 +37,8 @@ class HDFSRemoteTree(BaseRemoteTree):
             path=parsed.path,
         )
 
-    def hdfs(self, path_info):
+    @staticmethod
+    def hdfs(path_info):
         import pyarrow
 
         return get_connection(

@@ -95,7 +95,7 @@ class LocalRemoteTree(BaseRemoteTree):
             System.is_symlink(path_info) or System.is_hardlink(path_info)
         )
 
-    def walk_files(self, path_info):
+    def walk_files(self, path_info, **kwargs):
         if self.work_tree:
             tree = self.work_tree
         else:
@@ -226,8 +226,9 @@ class LocalRemoteTree(BaseRemoteTree):
         self.remote.protect(tmp_file)
         os.rename(tmp_file, to_info)
 
+    @staticmethod
     def _download(
-        self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
+        from_info, to_file, name=None, no_progress_bar=False, **_kwargs
     ):
         copyfile(
             from_info, to_file, no_progress_bar=no_progress_bar, name=name
