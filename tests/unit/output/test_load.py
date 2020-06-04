@@ -109,7 +109,7 @@ def test_plots_load_from_pipeline(dvc):
     assert outs[0].plot is True and not outs[0].metric
     assert not outs[0].persist
 
-    assert isinstance(outs[0], LocalOutput)
+    assert isinstance(outs[1], LocalOutput)
     assert not outs[1].use_cache
-    assert outs[1].plot == {"x": 3} and not outs[0].metric
+    assert outs[1].plot == {"x": 3} and not outs[1].metric
     assert outs[1].persist
