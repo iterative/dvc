@@ -87,26 +87,29 @@ def loads_from(stage, s_list, erepo=None):
     return ret
 
 
-def _parse_params(path_params):
-    path, _, params_str = path_params.rpartition(":")
-    params = params_str.split(",")
-    return path, params
+def _merge_params(s_list):
+    d = defaultdict(list)
+    default_file = ParamsDependency.DEFAULT_PARAMS_FILE
+    for key in s_list:
+        if isinstance(key, str):
+            d[default_file].append(key)
+            continue
+        if not isinstance(key, dict):
+            msg = "Only list of str/dict is supported. Got: "
+            msg += f"'{type(key).__name__}'."
+            raise ValueError(msg)
+
+        for k, params in key.items():
+            if not isinstance(params, list):
+                msg = "Expected list of params for custom params file "
+                msg += f"'{k}', got '{type(params).__name__}'."
+                raise ValueError(msg)
+            d[k].extend(params)
+    return d
 
 
 def loads_params(stage, s_list):
-    # Creates an object for each unique file that is referenced in the list
-    params_by_path = defaultdict(list)
-    for s in s_list:
-        path, params = _parse_params(s)
-        params_by_path[path].extend(params)
-
-    d_list = []
-    for path, params in params_by_path.items():
-        d_list.append(
-            {
-                BaseOutput.PARAM_PATH: path,
-                ParamsDependency.PARAM_PARAMS: params,
-            }
-        )
-
-    return loadd_from(stage, d_list)
+    d = _merge_params(s_list)
+    return [
+        ParamsDependency(stage, path, params) for path, params in d.items()
+    ]
