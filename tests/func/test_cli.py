@@ -1,4 +1,6 @@
+import io
 import os
+from contextlib import redirect_stdout
 
 from dvc.cli import parse_args
 from dvc.command.add import CmdAdd
@@ -12,7 +14,7 @@ from dvc.command.remove import CmdRemove
 from dvc.command.repro import CmdRepro
 from dvc.command.run import CmdRun
 from dvc.command.status import CmdDataStatus
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, DvcParserError
 from tests.basic_env import TestDvc
 
 
@@ -171,3 +173,38 @@ class TestFindRoot(TestDvc):
         args = A()
         with self.assertRaises(DvcException):
             CmdBase(args)
+
+
+class TestUnknownCommandHelp(TestDvc):
+    def test(self):
+        with io.StringIO() as buf, redirect_stdout(buf):
+            try:
+                _ = parse_args(["unknown"])
+            except DvcParserError:
+                pass
+            output = buf.getvalue()
+        with io.StringIO() as buf, redirect_stdout(buf):
+            try:
+                _ = parse_args(["--help"])
+            except SystemExit:
+                pass
+            help_out = buf.getvalue()
+        self.assertEqual(output, help_out)
+
+
+class TestUnknownSubCommandHelp(TestDvc):
+    def test(self):
+        sample_subcommand = "push"
+        with io.StringIO() as buf, redirect_stdout(buf):
+            try:
+                _ = parse_args([sample_subcommand, "--unknown"])
+            except DvcParserError:
+                pass
+            output = buf.getvalue()
+        with io.StringIO() as buf, redirect_stdout(buf):
+            try:
+                _ = parse_args([sample_subcommand, "--help"])
+            except SystemExit:
+                pass
+            help_out = buf.getvalue()
+        self.assertEqual(output, help_out)
