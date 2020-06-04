@@ -2,6 +2,7 @@
 import argparse
 import logging
 import sys
+from gettext import gettext as _
 
 from .command import (
     add,
@@ -81,7 +82,7 @@ COMMANDS = [
 class DvcParser(argparse.ArgumentParser):
     """Custom parser class for dvc CLI."""
 
-    def error(self, message):
+    def error(self, message, command=None):
         """Custom error method.
         Args:
             message (str): error message.
@@ -90,8 +91,21 @@ class DvcParser(argparse.ArgumentParser):
             dvc.exceptions.DvcParser: dvc parser exception.
         """
         logger.error(message)
+        if command is not None:
+            for action in self._actions:
+                if action.dest == "cmd" and command in action.choices:
+                    subparser = action.choices[command]
+                    subparser.print_help()
+                    raise DvcParserError()
         self.print_help()
         raise DvcParserError()
+
+    def parse_args(self, args=None, namespace=None):
+        args, argv = self.parse_known_args(args, namespace)
+        if argv:
+            msg = _("unrecognized arguments: %s")
+            self.error(msg % " ".join(argv), args.cmd)
+        return args
 
 
 class VersionAction(argparse.Action):  # pragma: no cover
