@@ -86,9 +86,10 @@ class DvcParser(argparse.ArgumentParser):
         """Custom error method.
         Args:
             message (str): error message.
-
+            command (str): subcommand name to display subcommand help message
         Raises:
             dvc.exceptions.DvcParser: dvc parser exception.
+
         """
         logger.error(message)
         if command is not None:
@@ -100,6 +101,7 @@ class DvcParser(argparse.ArgumentParser):
         self.print_help()
         raise DvcParserError()
 
+    # override this to send subcommand name to error method
     def parse_args(self, args=None, namespace=None):
         args, argv = self.parse_known_args(args, namespace)
         if argv:
