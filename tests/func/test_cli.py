@@ -1,6 +1,4 @@
-import io
 import os
-from contextlib import redirect_stdout
 
 from dvc.cli import parse_args
 from dvc.command.add import CmdAdd
@@ -175,36 +173,34 @@ class TestFindRoot(TestDvc):
             CmdBase(args)
 
 
-class TestUnknownCommandHelp(TestDvc):
-    def test(self):
-        with io.StringIO() as buf, redirect_stdout(buf):
-            try:
-                _ = parse_args(["unknown"])
-            except DvcParserError:
-                pass
-            output = buf.getvalue()
-        with io.StringIO() as buf, redirect_stdout(buf):
-            try:
-                _ = parse_args(["--help"])
-            except SystemExit:
-                pass
-            help_out = buf.getvalue()
-        self.assertEqual(output, help_out)
+def test_unknown_command_help(capsys):
+    try:
+        _ = parse_args(["unknown"])
+    except DvcParserError:
+        pass
+    captured = capsys.readouterr()
+    output = captured.out
+    try:
+        _ = parse_args(["--help"])
+    except SystemExit:
+        pass
+    captured = capsys.readouterr()
+    help_output = captured.out
+    assert output == help_output
 
 
-class TestUnknownSubCommandHelp(TestDvc):
-    def test(self):
-        sample_subcommand = "push"
-        with io.StringIO() as buf, redirect_stdout(buf):
-            try:
-                _ = parse_args([sample_subcommand, "--unknown"])
-            except DvcParserError:
-                pass
-            output = buf.getvalue()
-        with io.StringIO() as buf, redirect_stdout(buf):
-            try:
-                _ = parse_args([sample_subcommand, "--help"])
-            except SystemExit:
-                pass
-            help_out = buf.getvalue()
-        self.assertEqual(output, help_out)
+def test_unknown_subcommand_help(capsys):
+    sample_subcommand = "push"
+    try:
+        _ = parse_args([sample_subcommand, "--unknown"])
+    except DvcParserError:
+        pass
+    captured = capsys.readouterr()
+    output = captured.out
+    try:
+        _ = parse_args([sample_subcommand, "--help"])
+    except SystemExit:
+        pass
+    captured = capsys.readouterr()
+    help_output = captured.out
+    assert output == help_output
