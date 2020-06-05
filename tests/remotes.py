@@ -150,7 +150,7 @@ class GDrive:
             "gdrive_use_service_account": True,
         }
         remote = GDriveRemote(dvc, config)
-        remote._gdrive_create_dir("root", remote.path_info.path)
+        remote.tree._gdrive_create_dir("root", remote.path_info.path)
 
     @staticmethod
     def get_url():
