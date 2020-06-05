@@ -125,7 +125,7 @@ class GDriveRemoteTree(BaseRemoteTree):
         self._client_secret = config.get("gdrive_client_secret")
         self._validate_config()
         self._gdrive_user_credentials_path = (
-            tmp_fname(os.path.join(self.repo.tmp_dir, ""))
+            tmp_fname(os.path.join(self.remote.repo.tmp_dir, ""))
             if os.getenv(GDriveRemoteTree.GDRIVE_CREDENTIALS_DATA)
             else config.get(
                 "gdrive_user_credentials_file",

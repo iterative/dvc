@@ -193,7 +193,7 @@ class GSRemote(BaseRemote):
 
         bucket = path_info.bucket
         path = path_info.path
-        blob = self.gs.bucket(bucket).get_blob(path)
+        blob = self.tree.gs.bucket(bucket).get_blob(path)
         if not blob:
             return None
 
