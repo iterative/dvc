@@ -2,7 +2,6 @@
 import argparse
 import logging
 import sys
-from gettext import gettext as _
 
 from .command import (
     add,
@@ -105,7 +104,7 @@ class DvcParser(argparse.ArgumentParser):
     def parse_args(self, args=None, namespace=None):
         args, argv = self.parse_known_args(args, namespace)
         if argv:
-            msg = _("unrecognized arguments: %s")
+            msg = "unrecognized arguments: %s"
             self.error(msg % " ".join(argv), args.cmd)
         return args
 
