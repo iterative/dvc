@@ -98,7 +98,7 @@ class CmdPlotsModify(CmdPlots):
 
 def add_parser(subparsers, parent_parser):
     PLOTS_HELP = (
-        "Generating plots for metrics stored in structured files "
+        "Commands to visualize and compare plot metrics in structured files "
         "(JSON, CSV, TSV)."
     )
 
@@ -116,7 +116,7 @@ def add_parser(subparsers, parent_parser):
 
     fix_subparsers(plots_subparsers)
 
-    SHOW_HELP = "Generate a plots image file from a metrics file."
+    SHOW_HELP = "Generate plot from a metrics file."
     plots_show_parser = plots_subparsers.add_parser(
         "show",
         parents=[parent_parser],
@@ -133,10 +133,7 @@ def add_parser(subparsers, parent_parser):
     _add_output_arguments(plots_show_parser)
     plots_show_parser.set_defaults(func=CmdPlotsShow)
 
-    PLOTS_DIFF_HELP = (
-        "Plot differences in metrics between commits in the DVC "
-        "repository, or between the last commit and the workspace."
-    )
+    PLOTS_DIFF_HELP = "Plot differences in metrics between commits."
     plots_diff_parser = plots_subparsers.add_parser(
         "diff",
         parents=[parent_parser],
@@ -148,9 +145,13 @@ def add_parser(subparsers, parent_parser):
         "--targets",
         nargs="*",
         help="Plots file to visualize. Shows all plots by default.",
+        metavar="<path>",
     )
     plots_diff_parser.add_argument(
-        "revisions", nargs="*", default=None, help="Git commits to plot from",
+        "revisions",
+        nargs="*",
+        default=None,
+        help="Git commits to plot from/to",
     )
     _add_props_arguments(plots_diff_parser)
     _add_output_arguments(plots_diff_parser)
@@ -186,9 +187,14 @@ def _add_props_arguments(parser):
                 format_link("https://man.dvc.org/plots#plot-templates")
             )
         ),
+        metavar="<path>",
     )
-    parser.add_argument("-x", default=None, help="Field name for x axis.")
-    parser.add_argument("-y", default=None, help="Field name for y axis.")
+    parser.add_argument(
+        "-x", default=None, help="Field name for x axis.", metavar="<field>"
+    )
+    parser.add_argument(
+        "-y", default=None, help="Field name for y axis.", metavar="<field>"
+    )
     parser.add_argument(
         "--no-csv-header",
         action="store_false",
@@ -197,13 +203,21 @@ def _add_props_arguments(parser):
         help="Provided CSV ot TSV datafile does not have a header.",
     )
     parser.add_argument("--title", default=None, help="Plot title.")
-    parser.add_argument("--x-label", default=None, help="X axis label.")
-    parser.add_argument("--y-label", default=None, help="Y axis lebel.")
+    parser.add_argument(
+        "--x-label", default=None, help="X axis label.", metavar="<text>"
+    )
+    parser.add_argument(
+        "--y-label", default=None, help="Y axis label.", metavar="<text>"
+    )
 
 
 def _add_output_arguments(parser):
     parser.add_argument(
-        "-o", "--out", default=None, help="Destination path to save plots to.",
+        "-o",
+        "--out",
+        default=None,
+        help="Destination path to save plots to.",
+        metavar="<path>",
     )
     parser.add_argument(
         "--show-vega",

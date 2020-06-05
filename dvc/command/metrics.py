@@ -147,9 +147,7 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     metrics_show_parser.add_argument(
-        "targets",
-        nargs="*",
-        help="Metric files or directories (see -R) to show",
+        "targets", nargs="*", help="Metric files to show",
     )
     metrics_show_parser.add_argument(
         "-a",
@@ -189,8 +187,7 @@ def add_parser(subparsers, parent_parser):
     )
     metrics_show_parser.set_defaults(func=CmdMetricsShow)
 
-    METRICS_DIFF_HELP = "Show changes in metrics between commits"
-    " in the DVC repository, or between a commit and the workspace."
+    METRICS_DIFF_HELP = "Show changes in metrics between commits."
     metrics_diff_parser = metrics_subparsers.add_parser(
         "diff",
         parents=[parent_parser],
@@ -210,7 +207,7 @@ def add_parser(subparsers, parent_parser):
         "--targets",
         nargs="*",
         help=(
-            "Metric files or directories (see -R) to show diff for. "
+            "Metric files to show diff for. "
             "Shows diff for all metric files by default."
         ),
         metavar="<paths>",
