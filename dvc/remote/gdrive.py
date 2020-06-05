@@ -537,8 +537,9 @@ class GDriveRemoteTree(BaseRemoteTree):
         if path_info == self.path_info:
             prefix = None
         else:
-            prefix = path_info.relative_to(self.path_info).path
-        return self._list_paths(prefix=prefix, **kwargs)
+            prefix = path_info.path
+        for fname in self._list_paths(prefix=prefix, **kwargs):
+            yield path_info.replace(fname)
 
     def remove(self, path_info):
         item_id = self._get_item_id(path_info)
