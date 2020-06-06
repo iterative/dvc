@@ -207,8 +207,8 @@ def add_parser(subparsers, parent_parser):
         "--targets",
         nargs="*",
         help=(
-            "Metric files to show diff for. "
-            "Shows diff for all metric files by default."
+            "Limit command scope to these metric files. Using -R, "
+            "directories to search metric files in can also be given."
         ),
         metavar="<paths>",
     )

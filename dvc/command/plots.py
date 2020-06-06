@@ -116,7 +116,7 @@ def add_parser(subparsers, parent_parser):
 
     fix_subparsers(plots_subparsers)
 
-    SHOW_HELP = "Generate plot from a metrics file."
+    SHOW_HELP = "Generate plots from metric files."
     plots_show_parser = plots_subparsers.add_parser(
         "show",
         parents=[parent_parser],
