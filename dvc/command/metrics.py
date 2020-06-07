@@ -175,6 +175,12 @@ def add_parser(subparsers, parent_parser):
         help="Show metrics for all commits.",
     )
     metrics_show_parser.add_argument(
+        "--show-json",
+        action="store_true",
+        default=False,
+        help="Show output in JSON format.",
+    )
+    metrics_show_parser.add_argument(
         "-R",
         "--recursive",
         action="store_true",
@@ -183,12 +189,6 @@ def add_parser(subparsers, parent_parser):
             "If any target is a directory, recursively search and process "
             "metric files."
         ),
-    )
-    metrics_show_parser.add_argument(
-        "--show-json",
-        action="store_true",
-        default=False,
-        help="Show output in JSON format.",
     )
     metrics_show_parser.set_defaults(func=CmdMetricsShow)
 
@@ -246,15 +246,15 @@ def add_parser(subparsers, parent_parser):
         help="Show tabulated output in the Markdown format (GFM).",
     )
     metrics_diff_parser.add_argument(
-        "--no-path",
-        action="store_true",
-        default=False,
-        help="Don't show metric path.",
-    )
-    metrics_diff_parser.add_argument(
         "--old",
         action="store_true",
         default=False,
         help="Show old metric value.",
+    )
+    metrics_diff_parser.add_argument(
+        "--no-path",
+        action="store_true",
+        default=False,
+        help="Don't show metric path.",
     )
     metrics_diff_parser.set_defaults(func=CmdMetricsDiff)
