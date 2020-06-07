@@ -33,12 +33,12 @@ class LocalOutput(BaseOutput):
             #
             # FIXME: if we have Windows path containing / or posix one with \
             # then we have #2059 bug and can't really handle that.
-            p = self.REMOTE.path_cls(path)
+            p = self.REMOTE.TREE_CLS.PATH_CLS(path)
             if not p.is_absolute():
                 p = self.stage.wdir / p
 
         abs_p = os.path.abspath(os.path.normpath(p))
-        return self.REMOTE.path_cls(abs_p)
+        return self.REMOTE.TREE_CLS.PATH_CLS(abs_p)
 
     def __str__(self):
         if not self.is_in_repo:
@@ -81,7 +81,7 @@ class LocalOutput(BaseOutput):
         name = "metrics" if self.metric else "plot"
         if os.path.isdir(path):
             msg = "directory '{}' cannot be used as {}."
-            raise DvcException(msg.format(self.path_info, name))
+            raise IsADirectoryError(msg.format(self.path_info, name))
 
         if not istextfile(path):
             msg = "binary file '{}' cannot be used as {}."

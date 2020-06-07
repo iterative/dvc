@@ -12,7 +12,7 @@ from dvc.command.remove import CmdRemove
 from dvc.command.repro import CmdRepro
 from dvc.command.run import CmdRun
 from dvc.command.status import CmdDataStatus
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, DvcParserError
 from tests.basic_env import TestDvc
 
 
@@ -171,3 +171,36 @@ class TestFindRoot(TestDvc):
         args = A()
         with self.assertRaises(DvcException):
             CmdBase(args)
+
+
+def test_unknown_command_help(capsys):
+    try:
+        _ = parse_args(["unknown"])
+    except DvcParserError:
+        pass
+    captured = capsys.readouterr()
+    output = captured.out
+    try:
+        _ = parse_args(["--help"])
+    except SystemExit:
+        pass
+    captured = capsys.readouterr()
+    help_output = captured.out
+    assert output == help_output
+
+
+def test_unknown_subcommand_help(capsys):
+    sample_subcommand = "push"
+    try:
+        _ = parse_args([sample_subcommand, "--unknown"])
+    except DvcParserError:
+        pass
+    captured = capsys.readouterr()
+    output = captured.out
+    try:
+        _ = parse_args([sample_subcommand, "--help"])
+    except SystemExit:
+        pass
+    captured = capsys.readouterr()
+    help_output = captured.out
+    assert output == help_output

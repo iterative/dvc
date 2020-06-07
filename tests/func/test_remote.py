@@ -10,8 +10,8 @@ from dvc.config import Config
 from dvc.exceptions import DownloadError, UploadError
 from dvc.main import main
 from dvc.path_info import PathInfo
-from dvc.remote import LocalRemote
 from dvc.remote.base import BaseRemote, RemoteCacheRequiredError
+from dvc.remote.local import LocalRemoteTree
 from dvc.utils.fs import remove
 from tests.basic_env import TestDvc
 from tests.remotes import Local
@@ -181,14 +181,14 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, setup_remote):
     baz = tmp_dir.dvc_gen({"baz": {"foo": "baz content"}})[0].outs[0]
 
     # Faulty upload version, failing on foo
-    original = LocalRemote._upload
+    original = LocalRemoteTree._upload
 
     def unreliable_upload(self, from_file, to_info, name=None, **kwargs):
         if "foo" in name:
             raise Exception("stop foo")
         return original(self, from_file, to_info, name, **kwargs)
 
-    with patch.object(LocalRemote, "_upload", unreliable_upload):
+    with patch.object(LocalRemoteTree, "_upload", unreliable_upload):
         with pytest.raises(UploadError) as upload_error_info:
             dvc.push()
         assert upload_error_info.value.amount == 3
@@ -206,7 +206,7 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, setup_remote):
     dvc.push()
     remove(dvc.cache.local.cache_dir)
 
-    with patch.object(LocalRemote, "_download", side_effect=Exception):
+    with patch.object(LocalRemoteTree, "_download", side_effect=Exception):
         with pytest.raises(DownloadError) as download_error_info:
             dvc.pull()
         # error count should be len(.dir + standalone file checksums)
@@ -221,7 +221,7 @@ def test_raise_on_too_many_open_files(
     tmp_dir.dvc_gen({"file": "file content"})
 
     mocker.patch.object(
-        LocalRemote,
+        LocalRemoteTree,
         "_upload",
         side_effect=OSError(errno.EMFILE, "Too many open files"),
     )
@@ -255,7 +255,9 @@ def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, setup_remote):
     tmp_dir.dvc_gen({"foo": {"bar": "bar content"}})
     tmp_dir.dvc_gen({"baz": "baz content"})
 
-    mocked_upload = mocker.patch.object(LocalRemote, "_upload", return_value=0)
+    mocked_upload = mocker.patch.object(
+        LocalRemoteTree, "_upload", return_value=0
+    )
     dvc.push()
     # last uploaded file should be dir checksum
     assert mocked_upload.call_args[0][0].endswith(".dir")

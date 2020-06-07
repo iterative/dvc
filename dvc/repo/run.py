@@ -1,6 +1,6 @@
 import os
 
-from funcy import concat, first
+from funcy import concat, first, lfilter
 
 from dvc.exceptions import InvalidArgumentError
 from dvc.stage.exceptions import (
@@ -18,6 +18,19 @@ def is_valid_name(name: str):
     from ..stage import INVALID_STAGENAME_CHARS
 
     return not INVALID_STAGENAME_CHARS & set(name)
+
+
+def parse_params(path_params):
+    ret = []
+    for path_param in path_params:
+        path, _, params_str = path_param.rpartition(":")
+        # remove empty strings from params, on condition such as `-p "file1:"`
+        params = lfilter(bool, params_str.split(","))
+        if not path:
+            ret.extend(params)
+        else:
+            ret.append({path: params})
+    return ret
 
 
 def _get_file_path(kwargs):
@@ -72,7 +85,10 @@ def run(self, fname=None, no_exec=False, single_stage=False, **kwargs):
         if not is_valid_name(stage_name):
             raise InvalidStageName
 
-    stage = create_stage(stage_cls, repo=self, path=path, **kwargs)
+    params = parse_params(kwargs.pop("params", []))
+    stage = create_stage(
+        stage_cls, repo=self, path=path, params=params, **kwargs
+    )
     if stage is None:
         return None
 

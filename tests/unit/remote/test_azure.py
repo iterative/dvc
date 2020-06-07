@@ -19,8 +19,8 @@ def test_init_env_var(monkeypatch, dvc):
 
     config = {"url": "azure://"}
     remote = AzureRemote(dvc, config)
-    assert remote.path_info == "azure://" + container_name
-    assert remote.connection_string == connection_string
+    assert remote.tree.path_info == "azure://" + container_name
+    assert remote.tree.connection_string == connection_string
 
 
 def test_init(dvc):
@@ -28,8 +28,8 @@ def test_init(dvc):
     url = f"azure://{container_name}/{prefix}"
     config = {"url": url, "connection_string": connection_string}
     remote = AzureRemote(dvc, config)
-    assert remote.path_info == url
-    assert remote.connection_string == connection_string
+    assert remote.tree.path_info == url
+    assert remote.tree.connection_string == connection_string
 
 
 def test_get_file_checksum(tmp_dir):
@@ -39,8 +39,8 @@ def test_get_file_checksum(tmp_dir):
     tmp_dir.gen("foo", "foo")
 
     remote = AzureRemote(None, {})
-    to_info = remote.path_cls(Azure.get_url())
-    remote.upload(PathInfo("foo"), to_info)
+    to_info = remote.tree.PATH_CLS(Azure.get_url())
+    remote.tree.upload(PathInfo("foo"), to_info)
     assert remote.tree.exists(to_info)
     checksum = remote.get_file_checksum(to_info)
     assert checksum

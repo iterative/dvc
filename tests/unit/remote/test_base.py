@@ -104,7 +104,7 @@ def test_cache_exists(object_exists, traverse, dvc):
 )
 def test_cache_checksums_traverse(path_to_checksum, cache_checksums, dvc):
     remote = BaseRemote(dvc, {})
-    remote.path_info = PathInfo("foo")
+    remote.tree.path_info = PathInfo("foo")
 
     # parallel traverse
     size = 256 / remote.JOBS * remote.LIST_OBJECT_PAGE_SIZE
@@ -129,7 +129,7 @@ def test_cache_checksums_traverse(path_to_checksum, cache_checksums, dvc):
 
 def test_cache_checksums(dvc):
     remote = BaseRemote(dvc, {})
-    remote.path_info = PathInfo("foo")
+    remote.tree.path_info = PathInfo("foo")
 
     with mock.patch.object(
         remote, "list_cache_paths", return_value=["12/3456", "bar"]

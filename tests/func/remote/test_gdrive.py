@@ -4,19 +4,19 @@ import posixpath
 import configobj
 
 from dvc.main import main
-from dvc.remote import GDriveRemote
+from dvc.remote.gdrive import GDriveRemoteTree
 from dvc.repo import Repo
 
 
 def test_relative_user_credentials_file_config_setting(tmp_dir, dvc):
     # CI sets it to test GDrive, here we want to test the work with file system
     # based, regular credentials
-    if os.getenv(GDriveRemote.GDRIVE_CREDENTIALS_DATA):
-        del os.environ[GDriveRemote.GDRIVE_CREDENTIALS_DATA]
+    if os.getenv(GDriveRemoteTree.GDRIVE_CREDENTIALS_DATA):
+        del os.environ[GDriveRemoteTree.GDRIVE_CREDENTIALS_DATA]
 
     credentials = os.path.join("secrets", "credentials.json")
 
-    # GDriveRemote.credentials_location helper checks for file existence,
+    # GDriveRemoteTree.credentials_location helper checks for file existence,
     # create the file
     tmp_dir.gen(credentials, "{'token': 'test'}")
 
@@ -50,6 +50,6 @@ def test_relative_user_credentials_file_config_setting(tmp_dir, dvc):
 
     # Check that in the remote itself we got an absolute path
     remote = repo.cloud.get_remote(remote_name)
-    assert os.path.normpath(remote.credentials_location) == os.path.join(
+    assert os.path.normpath(remote.tree.credentials_location) == os.path.join(
         str_path, credentials
     )

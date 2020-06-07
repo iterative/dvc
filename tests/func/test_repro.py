@@ -26,7 +26,7 @@ from dvc.exceptions import (
 from dvc.main import main
 from dvc.output.base import BaseOutput
 from dvc.path_info import URLInfo
-from dvc.remote.local import LocalRemote
+from dvc.remote.local import LocalRemote, LocalRemoteTree
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
@@ -1384,9 +1384,9 @@ class TestReproAlreadyCached(TestRepro):
         self.assertEqual(ret, 0)
 
         patch_download = patch.object(
-            LocalRemote,
+            LocalRemoteTree,
             "download",
-            side_effect=LocalRemote.download,
+            side_effect=LocalRemoteTree.download,
             autospec=True,
         )
 

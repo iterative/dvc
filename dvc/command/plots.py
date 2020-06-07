@@ -209,5 +209,5 @@ def _add_output_arguments(parser):
         "--show-vega",
         action="store_true",
         default=False,
-        help="Show output in VEGA format.",
+        help="Show output in Vega format.",
     )

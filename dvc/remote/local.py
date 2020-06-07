@@ -39,6 +39,11 @@ logger = logging.getLogger(__name__)
 
 class LocalRemoteTree(BaseRemoteTree):
     SHARED_MODE_MAP = {None: (0o644, 0o755), "group": (0o664, 0o775)}
+    PATH_CLS = PathInfo
+
+    def __init__(self, remote, config):
+        super().__init__(remote, config)
+        self.path_info = config.get("url")
 
     @property
     def repo(self):
@@ -90,7 +95,7 @@ class LocalRemoteTree(BaseRemoteTree):
             System.is_symlink(path_info) or System.is_hardlink(path_info)
         )
 
-    def walk_files(self, path_info):
+    def walk_files(self, path_info, **kwargs):
         if self.work_tree:
             tree = self.work_tree
         else:
@@ -208,10 +213,30 @@ class LocalRemoteTree(BaseRemoteTree):
     def getsize(path_info):
         return os.path.getsize(path_info)
 
+    def _upload(
+        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
+    ):
+        makedirs(to_info.parent, exist_ok=True)
+
+        tmp_file = tmp_fname(to_info)
+        copyfile(
+            from_file, tmp_file, name=name, no_progress_bar=no_progress_bar
+        )
+
+        self.remote.protect(tmp_file)
+        os.rename(tmp_file, to_info)
+
+    @staticmethod
+    def _download(
+        from_info, to_file, name=None, no_progress_bar=False, **_kwargs
+    ):
+        copyfile(
+            from_info, to_file, no_progress_bar=no_progress_bar, name=name
+        )
+
 
 class LocalRemote(BaseRemote):
     scheme = Schemes.LOCAL
-    path_cls = PathInfo
     PARAM_CHECKSUM = "md5"
     PARAM_PATH = "path"
     TRAVERSE_PREFIX_LEN = 2
@@ -227,7 +252,6 @@ class LocalRemote(BaseRemote):
     def __init__(self, repo, config):
         super().__init__(repo, config)
         self.cache_dir = config.get("url")
-        self._dir_info = {}
 
     @property
     def state(self):
@@ -235,11 +259,11 @@ class LocalRemote(BaseRemote):
 
     @property
     def cache_dir(self):
-        return self.path_info.fspath if self.path_info else None
+        return self.tree.path_info.fspath if self.tree.path_info else None
 
     @cache_dir.setter
     def cache_dir(self, value):
-        self.path_info = PathInfo(value) if value else None
+        self.tree.path_info = PathInfo(value) if value else None
 
     @classmethod
     def supported(cls, config):
@@ -308,26 +332,6 @@ class LocalRemote(BaseRemote):
             )
             if not self.changed_cache_file(checksum)
         ]
-
-    def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
-    ):
-        makedirs(to_info.parent, exist_ok=True)
-
-        tmp_file = tmp_fname(to_info)
-        copyfile(
-            from_file, tmp_file, name=name, no_progress_bar=no_progress_bar
-        )
-
-        self.protect(tmp_file)
-        os.rename(tmp_file, to_info)
-
-    def _download(
-        self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
-    ):
-        copyfile(
-            from_info, to_file, no_progress_bar=no_progress_bar, name=name
-        )
 
     @index_locked
     def status(
@@ -511,14 +515,14 @@ class LocalRemote(BaseRemote):
 
         if download:
             func = partial(
-                remote.download,
+                remote.tree.download,
                 dir_mode=self.tree.dir_mode,
                 file_mode=self.tree.file_mode,
             )
             status = STATUS_DELETED
             desc = "Downloading"
         else:
-            func = remote.upload
+            func = remote.tree.upload
             status = STATUS_NEW
             desc = "Uploading"
 

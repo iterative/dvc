@@ -1,6 +1,5 @@
 import logging
 import os
-import posixpath
 import threading
 from datetime import datetime, timedelta
 
@@ -15,56 +14,17 @@ logger = logging.getLogger(__name__)
 
 
 class AzureRemoteTree(BaseRemoteTree):
-    @property
-    def blob_service(self):
-        return self.remote.blob_service
+    PATH_CLS = CloudURLInfo
 
-    def _generate_download_url(self, path_info, expires=3600):
-        from azure.storage.blob import BlobPermissions
-
-        expires_at = datetime.utcnow() + timedelta(seconds=expires)
-
-        sas_token = self.blob_service.generate_blob_shared_access_signature(
-            path_info.bucket,
-            path_info.path,
-            permission=BlobPermissions.READ,
-            expiry=expires_at,
-        )
-        download_url = self.blob_service.make_blob_url(
-            path_info.bucket, path_info.path, sas_token=sas_token
-        )
-        return download_url
-
-    def exists(self, path_info):
-        paths = self.remote.list_paths(path_info.bucket, path_info.path)
-        return any(path_info.path == path for path in paths)
-
-    def remove(self, path_info):
-        if path_info.scheme != self.scheme:
-            raise NotImplementedError
-
-        logger.debug(f"Removing {path_info}")
-        self.blob_service.delete_blob(path_info.bucket, path_info.path)
-
-
-class AzureRemote(BaseRemote):
-    scheme = Schemes.AZURE
-    path_cls = CloudURLInfo
-    REQUIRES = {"azure-storage-blob": "azure.storage.blob"}
-    PARAM_CHECKSUM = "etag"
-    COPY_POLL_SECONDS = 5
-    LIST_OBJECT_PAGE_SIZE = 5000
-    TREE_CLS = AzureRemoteTree
-
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
+    def __init__(self, remote, config):
+        super().__init__(remote, config)
 
         url = config.get("url", "azure://")
-        self.path_info = self.path_cls(url)
+        self.path_info = self.PATH_CLS(url)
 
         if not self.path_info.bucket:
             container = os.getenv("AZURE_STORAGE_CONTAINER_NAME")
-            self.path_info = self.path_cls(f"azure://{container}")
+            self.path_info = self.PATH_CLS(f"azure://{container}")
 
         self.connection_string = config.get("connection_string") or os.getenv(
             "AZURE_STORAGE_CONNECTION_STRING"
@@ -96,10 +56,27 @@ class AzureRemote(BaseRemote):
         ).properties.etag
         return etag.strip('"')
 
-    def get_file_checksum(self, path_info):
-        return self.get_etag(path_info)
+    def _generate_download_url(self, path_info, expires=3600):
+        from azure.storage.blob import BlobPermissions
 
-    def list_paths(self, bucket, prefix, progress_callback=None):
+        expires_at = datetime.utcnow() + timedelta(seconds=expires)
+
+        sas_token = self.blob_service.generate_blob_shared_access_signature(
+            path_info.bucket,
+            path_info.path,
+            permission=BlobPermissions.READ,
+            expiry=expires_at,
+        )
+        download_url = self.blob_service.make_blob_url(
+            path_info.bucket, path_info.path, sas_token=sas_token
+        )
+        return download_url
+
+    def exists(self, path_info):
+        paths = self._list_paths(path_info.bucket, path_info.path)
+        return any(path_info.path == path for path in paths)
+
+    def _list_paths(self, bucket, prefix):
         blob_service = self.blob_service
         next_marker = None
         while True:
@@ -108,8 +85,6 @@ class AzureRemote(BaseRemote):
             )
 
             for blob in blobs:
-                if progress_callback:
-                    progress_callback()
                 yield blob.name
 
             if not blobs.next_marker:
@@ -117,16 +92,21 @@ class AzureRemote(BaseRemote):
 
             next_marker = blobs.next_marker
 
-    def list_cache_paths(self, prefix=None, progress_callback=None):
-        if prefix:
-            prefix = posixpath.join(
-                self.path_info.path, prefix[:2], prefix[2:]
-            )
-        else:
-            prefix = self.path_info.path
-        return self.list_paths(
-            self.path_info.bucket, prefix, progress_callback
-        )
+    def walk_files(self, path_info, **kwargs):
+        for fname in self._list_paths(
+            path_info.bucket, path_info.path, **kwargs
+        ):
+            if fname.endswith("/"):
+                continue
+
+            yield path_info.replace(path=fname)
+
+    def remove(self, path_info):
+        if path_info.scheme != self.scheme:
+            raise NotImplementedError
+
+        logger.debug(f"Removing {path_info}")
+        self.blob_service.delete_blob(path_info.bucket, path_info.path)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
@@ -149,3 +129,15 @@ class AzureRemote(BaseRemote):
                 to_file,
                 progress_callback=pbar.update_to,
             )
+
+
+class AzureRemote(BaseRemote):
+    scheme = Schemes.AZURE
+    REQUIRES = {"azure-storage-blob": "azure.storage.blob"}
+    PARAM_CHECKSUM = "etag"
+    COPY_POLL_SECONDS = 5
+    LIST_OBJECT_PAGE_SIZE = 5000
+    TREE_CLS = AzureRemoteTree
+
+    def get_file_checksum(self, path_info):
+        return self.tree.get_etag(path_info)

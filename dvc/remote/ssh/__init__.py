@@ -34,9 +34,107 @@ def ask_password(host, user, port):
 
 
 class SSHRemoteTree(BaseRemoteTree):
-    @property
-    def ssh(self):
-        return self.remote.ssh
+    DEFAULT_PORT = 22
+    TIMEOUT = 1800
+
+    def __init__(self, repo, config):
+        super().__init__(repo, config)
+        url = config.get("url")
+        if url:
+            parsed = urlparse(url)
+            user_ssh_config = self._load_user_ssh_config(parsed.hostname)
+
+            host = user_ssh_config.get("hostname", parsed.hostname)
+            user = (
+                config.get("user")
+                or parsed.username
+                or user_ssh_config.get("user")
+                or getpass.getuser()
+            )
+            port = (
+                config.get("port")
+                or parsed.port
+                or self._try_get_ssh_config_port(user_ssh_config)
+                or self.DEFAULT_PORT
+            )
+            self.path_info = self.PATH_CLS.from_parts(
+                scheme=self.scheme,
+                host=host,
+                user=user,
+                port=port,
+                path=parsed.path,
+            )
+        else:
+            self.path_info = None
+            user_ssh_config = {}
+
+        self.keyfile = config.get(
+            "keyfile"
+        ) or self._try_get_ssh_config_keyfile(user_ssh_config)
+        self.timeout = config.get("timeout", self.TIMEOUT)
+        self.password = config.get("password", None)
+        self.ask_password = config.get("ask_password", False)
+        self.gss_auth = config.get("gss_auth", False)
+        proxy_command = user_ssh_config.get("proxycommand", False)
+        if proxy_command:
+            import paramiko
+
+            self.sock = paramiko.ProxyCommand(proxy_command)
+        else:
+            self.sock = None
+
+    @staticmethod
+    def ssh_config_filename():
+        return os.path.expanduser(os.path.join("~", ".ssh", "config"))
+
+    @staticmethod
+    def _load_user_ssh_config(hostname):
+        import paramiko
+
+        user_config_file = SSHRemoteTree.ssh_config_filename()
+        user_ssh_config = {}
+        if hostname and os.path.exists(user_config_file):
+            ssh_config = paramiko.SSHConfig()
+            with open(user_config_file) as f:
+                # For whatever reason parsing directly from f is unreliable
+                f_copy = io.StringIO(f.read())
+                ssh_config.parse(f_copy)
+            user_ssh_config = ssh_config.lookup(hostname)
+        return user_ssh_config
+
+    @staticmethod
+    def _try_get_ssh_config_port(user_ssh_config):
+        return silent(int)(user_ssh_config.get("port"))
+
+    @staticmethod
+    def _try_get_ssh_config_keyfile(user_ssh_config):
+        return first(user_ssh_config.get("identityfile") or ())
+
+    def ensure_credentials(self, path_info=None):
+        if path_info is None:
+            path_info = self.path_info
+
+        # NOTE: we use the same password regardless of the server :(
+        if self.ask_password and self.password is None:
+            host, user, port = path_info.host, path_info.user, path_info.port
+            self.password = ask_password(host, user, port)
+
+    def ssh(self, path_info):
+        self.ensure_credentials(path_info)
+
+        from .connection import SSHConnection
+
+        return get_connection(
+            SSHConnection,
+            path_info.host,
+            username=path_info.user,
+            port=path_info.port,
+            key_filename=self.keyfile,
+            timeout=self.timeout,
+            password=self.password,
+            gss_auth=self.gss_auth,
+            sock=self.sock,
+        )
 
     @contextmanager
     def open(self, path_info, mode="r", encoding=None):
@@ -62,7 +160,7 @@ class SSHRemoteTree(BaseRemoteTree):
         with self.ssh(path_info) as ssh:
             return ssh.isfile(path_info.path)
 
-    def walk_files(self, path_info):
+    def walk_files(self, path_info, **kwargs):
         with self.ssh(path_info) as ssh:
             for fname in ssh.walk_files(path_info.path):
                 yield path_info.replace(path=fname)
@@ -131,130 +229,6 @@ class SSHRemoteTree(BaseRemoteTree):
         with self.ssh(path_info) as ssh:
             return ssh.getsize(path_info.path)
 
-
-class SSHRemote(BaseRemote):
-    scheme = Schemes.SSH
-    REQUIRES = {"paramiko": "paramiko"}
-
-    JOBS = 4
-    PARAM_CHECKSUM = "md5"
-    DEFAULT_PORT = 22
-    TIMEOUT = 1800
-    # At any given time some of the connections will go over network and
-    # paramiko stuff, so we would ideally have it double of server processors.
-    # We use conservative setting of 4 instead to not exhaust max sessions.
-    CHECKSUM_JOBS = 4
-    TRAVERSE_PREFIX_LEN = 2
-    TREE_CLS = SSHRemoteTree
-
-    DEFAULT_CACHE_TYPES = ["copy"]
-
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
-        url = config.get("url")
-        if url:
-            parsed = urlparse(url)
-            user_ssh_config = self._load_user_ssh_config(parsed.hostname)
-
-            host = user_ssh_config.get("hostname", parsed.hostname)
-            user = (
-                config.get("user")
-                or parsed.username
-                or user_ssh_config.get("user")
-                or getpass.getuser()
-            )
-            port = (
-                config.get("port")
-                or parsed.port
-                or self._try_get_ssh_config_port(user_ssh_config)
-                or self.DEFAULT_PORT
-            )
-            self.path_info = self.path_cls.from_parts(
-                scheme=self.scheme,
-                host=host,
-                user=user,
-                port=port,
-                path=parsed.path,
-            )
-        else:
-            self.path_info = None
-            user_ssh_config = {}
-
-        self.keyfile = config.get(
-            "keyfile"
-        ) or self._try_get_ssh_config_keyfile(user_ssh_config)
-        self.timeout = config.get("timeout", self.TIMEOUT)
-        self.password = config.get("password", None)
-        self.ask_password = config.get("ask_password", False)
-        self.gss_auth = config.get("gss_auth", False)
-        proxy_command = user_ssh_config.get("proxycommand", False)
-        if proxy_command:
-            import paramiko
-
-            self.sock = paramiko.ProxyCommand(proxy_command)
-        else:
-            self.sock = None
-
-    @staticmethod
-    def ssh_config_filename():
-        return os.path.expanduser(os.path.join("~", ".ssh", "config"))
-
-    @staticmethod
-    def _load_user_ssh_config(hostname):
-        import paramiko
-
-        user_config_file = SSHRemote.ssh_config_filename()
-        user_ssh_config = {}
-        if hostname and os.path.exists(user_config_file):
-            ssh_config = paramiko.SSHConfig()
-            with open(user_config_file) as f:
-                # For whatever reason parsing directly from f is unreliable
-                f_copy = io.StringIO(f.read())
-                ssh_config.parse(f_copy)
-            user_ssh_config = ssh_config.lookup(hostname)
-        return user_ssh_config
-
-    @staticmethod
-    def _try_get_ssh_config_port(user_ssh_config):
-        return silent(int)(user_ssh_config.get("port"))
-
-    @staticmethod
-    def _try_get_ssh_config_keyfile(user_ssh_config):
-        return first(user_ssh_config.get("identityfile") or ())
-
-    def ensure_credentials(self, path_info=None):
-        if path_info is None:
-            path_info = self.path_info
-
-        # NOTE: we use the same password regardless of the server :(
-        if self.ask_password and self.password is None:
-            host, user, port = path_info.host, path_info.user, path_info.port
-            self.password = ask_password(host, user, port)
-
-    def ssh(self, path_info):
-        self.ensure_credentials(path_info)
-
-        from .connection import SSHConnection
-
-        return get_connection(
-            SSHConnection,
-            path_info.host,
-            username=path_info.user,
-            port=path_info.port,
-            key_filename=self.keyfile,
-            timeout=self.timeout,
-            password=self.password,
-            gss_auth=self.gss_auth,
-            sock=self.sock,
-        )
-
-    def get_file_checksum(self, path_info):
-        if path_info.scheme != self.scheme:
-            raise NotImplementedError
-
-        with self.ssh(path_info) as ssh:
-            return ssh.md5(path_info.path)
-
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         assert from_info.isin(self.path_info)
         with self.ssh(self.path_info) as ssh:
@@ -275,12 +249,35 @@ class SSHRemote(BaseRemote):
                 no_progress_bar=no_progress_bar,
             )
 
+
+class SSHRemote(BaseRemote):
+    scheme = Schemes.SSH
+    REQUIRES = {"paramiko": "paramiko"}
+
+    JOBS = 4
+    PARAM_CHECKSUM = "md5"
+    # At any given time some of the connections will go over network and
+    # paramiko stuff, so we would ideally have it double of server processors.
+    # We use conservative setting of 4 instead to not exhaust max sessions.
+    CHECKSUM_JOBS = 4
+    TRAVERSE_PREFIX_LEN = 2
+    TREE_CLS = SSHRemoteTree
+
+    DEFAULT_CACHE_TYPES = ["copy"]
+
+    def get_file_checksum(self, path_info):
+        if path_info.scheme != self.scheme:
+            raise NotImplementedError
+
+        with self.tree.ssh(path_info) as ssh:
+            return ssh.md5(path_info.path)
+
     def list_cache_paths(self, prefix=None, progress_callback=None):
         if prefix:
             root = posixpath.join(self.path_info.path, prefix[:2])
         else:
             root = self.path_info.path
-        with self.ssh(self.path_info) as ssh:
+        with self.tree.ssh(self.path_info) as ssh:
             if prefix and not ssh.exists(root):
                 return
             # If we simply return an iterator then with above closes instantly
@@ -306,7 +303,7 @@ class SSHRemote(BaseRemote):
                 callback(path)
             return ret
 
-        with self.ssh(path_infos[0]) as ssh:
+        with self.tree.ssh(path_infos[0]) as ssh:
             channels = ssh.open_max_sftp_channels()
             max_workers = len(channels)
 
@@ -329,7 +326,7 @@ class SSHRemote(BaseRemote):
             return list(set(checksums) & set(self.all()))
 
         # possibly prompt for credentials before "Querying" progress output
-        self.ensure_credentials()
+        self.tree.ensure_credentials()
 
         with Tqdm(
             desc="Querying "

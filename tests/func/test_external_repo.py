@@ -4,7 +4,7 @@ from mock import patch
 
 from dvc.external_repo import external_repo
 from dvc.path_info import PathInfo
-from dvc.remote import LocalRemote
+from dvc.remote.local import LocalRemoteTree
 from dvc.scm.git import Git
 from dvc.utils import relpath
 from dvc.utils.fs import remove
@@ -49,7 +49,7 @@ def test_cache_reused(erepo_dir, mocker, setup_remote):
         erepo_dir.dvc_gen("file", "text", commit="add file")
     erepo_dir.dvc.push()
 
-    download_spy = mocker.spy(LocalRemote, "download")
+    download_spy = mocker.spy(LocalRemoteTree, "download")
 
     # Use URL to prevent any fishy optimizations
     url = f"file://{erepo_dir}"
