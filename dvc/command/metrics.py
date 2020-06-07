@@ -201,7 +201,7 @@ def add_parser(subparsers, parent_parser):
     metrics_diff_parser.add_argument(
         "b_rev",
         nargs="?",
-        help=("New Git commit to compare (defaults to the current workspace)"),
+        help="New Git commit to compare (defaults to the current workspace)",
     )
     metrics_diff_parser.add_argument(
         "--targets",
