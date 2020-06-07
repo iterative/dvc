@@ -1,8 +1,8 @@
 import logging
 import os
+import re
 
 from funcy import cached_property
-from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 
 from dvc.scm.tree import BaseTree
@@ -26,7 +26,22 @@ class DvcIgnorePatterns(DvcIgnore):
         self.dirname = os.path.normpath(os.path.dirname(ignore_file_path))
 
         with tree.open(ignore_file_path, encoding="utf-8") as fobj:
-            self.ignore_spec = PathSpec.from_lines(GitWildMatchPattern, fobj)
+            path_spec_lines = fobj.readlines()
+            regex_pattern_list = list(
+                map(GitWildMatchPattern.pattern_to_regex, path_spec_lines)
+            )
+        ignore_pattern_list = [i for i, j in regex_pattern_list if j is True]
+        include_pattern_list = [i for i, j in regex_pattern_list if j is False]
+        self.ignore_spec = (
+            re.compile("|".join(ignore_pattern_list))
+            if ignore_pattern_list
+            else None
+        )
+        self.include_spec = (
+            re.compile("|".join(include_pattern_list))
+            if include_pattern_list
+            else None
+        )
 
     def __call__(self, root, dirs, files):
         files = [f for f in files if not self.matches(root, f)]
@@ -40,7 +55,17 @@ class DvcIgnorePatterns(DvcIgnore):
 
         if os.pardir + os.sep in rel_path:
             return False
-        return self.ignore_spec.match_file(rel_path)
+        return self.ignore(rel_path) and not self.include(rel_path)
+
+    def ignore(self, path):
+        if self.ignore_spec and self.ignore_spec.match(path):
+            return True
+        return False
+
+    def include(self, path):
+        if self.include_spec and self.include_spec.match(path):
+            return True
+        return False
 
     def __hash__(self):
         return hash(self.ignore_file_path)
