@@ -157,7 +157,7 @@ def add_parser(subparsers, parent_parser):
     _add_output_arguments(plots_diff_parser)
     plots_diff_parser.set_defaults(func=CmdPlotsDiff)
 
-    PLOTS_MODIFY_HELP = "Modify plot props associated with a target file."
+    PLOTS_MODIFY_HELP = "Modify display properties of plot metric files."
     plots_modify_parser = plots_subparsers.add_parser(
         "modify",
         parents=[parent_parser],
@@ -166,11 +166,11 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     plots_modify_parser.add_argument(
-        "target", help="Plot file to set props to.",
+        "target", help="Metric file to set props to",
     )
     _add_props_arguments(plots_modify_parser)
     plots_modify_parser.add_argument(
-        "--unset", nargs="*", help="Props to unset.",
+        "--unset", nargs="*", help="Unset one or more display properties.",
     )
     plots_modify_parser.set_defaults(func=CmdPlotsModify)
 
