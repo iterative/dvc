@@ -147,7 +147,12 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     metrics_show_parser.add_argument(
-        "targets", nargs="*", help="Metric files to show",
+        "targets",
+        nargs="*",
+        help=(
+            "Limit command scope to these metric files. Using -R, "
+            "directories to search metric files in can also be given."
+        ),
     )
     metrics_show_parser.add_argument(
         "-a",
