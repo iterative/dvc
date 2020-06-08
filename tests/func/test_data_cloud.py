@@ -24,6 +24,7 @@ from dvc.remote import (
     SSHRemote,
 )
 from dvc.remote.base import STATUS_DELETED, STATUS_NEW, STATUS_OK
+from dvc.remote.local import LocalRemoteTree
 from dvc.stage.exceptions import StageNotFound
 from dvc.utils import file_md5
 from dvc.utils.fs import remove
@@ -614,7 +615,7 @@ class TestRecursiveSyncOperations(Local, TestDataCloudBase):
 
 def test_checksum_recalculation(mocker, dvc, tmp_dir):
     tmp_dir.gen({"foo": "foo"})
-    test_get_file_checksum = mocker.spy(LocalRemote, "get_file_checksum")
+    test_get_file_checksum = mocker.spy(LocalRemoteTree, "get_file_checksum")
     url = Local.get_url()
     ret = main(["remote", "add", "-d", TEST_REMOTE, url])
     assert ret == 0
@@ -693,7 +694,7 @@ def test_verify_checksums(
     remove("dir")
     remove(dvc.cache.local.cache_dir)
 
-    checksum_spy = mocker.spy(dvc.cache.local, "get_file_checksum")
+    checksum_spy = mocker.spy(dvc.cache.local.tree, "get_file_checksum")
 
     dvc.pull()
     assert checksum_spy.call_count == 0
