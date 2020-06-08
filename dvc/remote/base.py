@@ -165,6 +165,9 @@ class BaseRemoteTree:
     def reflink(self, from_info, to_info):
         raise RemoteActionNotImplemented("reflink", self.scheme)
 
+    def get_file_checksum(self, path_info):
+        raise NotImplementedError
+
     @staticmethod
     def _handle_transfer_exception(from_info, to_info, exception, operation):
         if isinstance(exception, OSError) and exception.errno == errno.EMFILE:
