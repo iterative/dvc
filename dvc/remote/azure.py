@@ -108,6 +108,9 @@ class AzureRemoteTree(BaseRemoteTree):
         logger.debug(f"Removing {path_info}")
         self.blob_service.delete_blob(path_info.bucket, path_info.path)
 
+    def get_file_checksum(self, path_info):
+        return self.get_etag(path_info)
+
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):
@@ -138,6 +141,3 @@ class AzureRemote(BaseRemote):
     COPY_POLL_SECONDS = 5
     LIST_OBJECT_PAGE_SIZE = 5000
     TREE_CLS = AzureRemoteTree
-
-    def get_file_checksum(self, path_info):
-        return self.tree.get_etag(path_info)

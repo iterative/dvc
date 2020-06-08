@@ -225,6 +225,13 @@ class SSHRemoteTree(BaseRemoteTree):
         with self.ssh(from_info) as ssh:
             ssh.reflink(from_info.path, to_info.path)
 
+    def get_file_checksum(self, path_info):
+        if path_info.scheme != self.scheme:
+            raise NotImplementedError
+
+        with self.ssh(path_info) as ssh:
+            return ssh.md5(path_info.path)
+
     def getsize(self, path_info):
         with self.ssh(path_info) as ssh:
             return ssh.getsize(path_info.path)
@@ -264,13 +271,6 @@ class SSHRemote(BaseRemote):
     TREE_CLS = SSHRemoteTree
 
     DEFAULT_CACHE_TYPES = ["copy"]
-
-    def get_file_checksum(self, path_info):
-        if path_info.scheme != self.scheme:
-            raise NotImplementedError
-
-        with self.tree.ssh(path_info) as ssh:
-            return ssh.md5(path_info.path)
 
     def list_cache_paths(self, prefix=None, progress_callback=None):
         if prefix:

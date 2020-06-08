@@ -193,6 +193,9 @@ class LocalRemoteTree(BaseRemoteTree):
         os.chmod(tmp_info, self.file_mode)
         os.rename(tmp_info, to_info)
 
+    def get_file_checksum(self, path_info):
+        return file_md5(path_info)[0]
+
     @staticmethod
     def getsize(path_info):
         return os.path.getsize(path_info)
@@ -321,9 +324,6 @@ class LocalRemote(BaseRemote):
             return
 
         super()._verify_link(path_info, link_type)
-
-    def get_file_checksum(self, path_info):
-        return file_md5(path_info)[0]
 
     def cache_exists(self, checksums, jobs=None, name=None):
         return [
