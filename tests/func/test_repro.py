@@ -999,6 +999,7 @@ class TestReproExternalBase(SingleStageRun, TestDvc):
 
 
 @pytest.mark.skipif(os.name == "nt", reason="temporarily disabled on windows")
+@flaky(max_runs=3, min_passes=1)
 class TestReproExternalS3(S3, TestReproExternalBase):
     @property
     def scheme(self):
