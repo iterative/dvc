@@ -42,7 +42,7 @@ def test_get_file_checksum(tmp_dir):
     to_info = remote.tree.PATH_CLS(Azure.get_url())
     remote.tree.upload(PathInfo("foo"), to_info)
     assert remote.tree.exists(to_info)
-    checksum = remote.get_file_checksum(to_info)
+    checksum = remote.tree.get_file_checksum(to_info)
     assert checksum
     assert isinstance(checksum, str)
     assert checksum.strip("'").strip('"') == checksum

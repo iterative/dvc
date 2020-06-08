@@ -218,7 +218,7 @@ def test_repotree_cache_save(tmp_dir, dvc, scm, erepo_dir, setup_remote):
     with erepo_dir.dvc.state:
         cache = dvc.cache.local
         with cache.state:
-            cache.save(PathInfo(erepo_dir / "dir"), None, tree=tree)
+            cache.save(PathInfo(erepo_dir / "dir"), tree, None)
     for checksum in expected:
         assert os.path.exists(cache.checksum_to_path_info(checksum))
 
