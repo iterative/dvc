@@ -201,15 +201,17 @@ class PipelineFile(FileMixin):
 
         data["stages"] = data.get("stages", {})
         stage_data = serialize.to_pipeline_file(stage)
-        if data["stages"].get(stage.name):
+        existing_entry = stage.name in data["stages"]
+
+        action = "Modifying" if existing_entry else "Adding"
+        logger.info("%s stage '%s' in '%s'", action, stage.name, self.relpath)
+
+        if existing_entry:
             orig_stage_data = data["stages"][stage.name]
             apply_diff(stage_data[stage.name], orig_stage_data)
         else:
             data["stages"].update(stage_data)
 
-        logger.info(
-            "Adding stage '%s' to '%s'", stage.name, self.relpath,
-        )
         dump_yaml(self.path, data)
         self.repo.scm.track_file(self.relpath)
 
