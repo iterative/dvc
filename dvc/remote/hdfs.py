@@ -122,28 +122,6 @@ class HDFSRemoteTree(BaseRemoteTree):
                     self.remove(tmp_info)
                     raise
 
-    def _upload(self, from_file, to_info, **_kwargs):
-        with self.hdfs(to_info) as hdfs:
-            hdfs.mkdir(posixpath.dirname(to_info.path))
-            tmp_file = tmp_fname(to_info.path)
-            with open(from_file, "rb") as fobj:
-                hdfs.upload(tmp_file, fobj)
-            hdfs.rename(tmp_file, to_info.path)
-
-    def _download(self, from_info, to_file, **_kwargs):
-        with self.hdfs(from_info) as hdfs:
-            with open(to_file, "wb+") as fobj:
-                hdfs.download(from_info.path, fobj)
-
-
-class HDFSRemote(BaseRemote):
-    scheme = Schemes.HDFS
-    REGEX = r"^hdfs://((?P<user>.*)@)?.*$"
-    PARAM_CHECKSUM = "checksum"
-    REQUIRES = {"pyarrow": "pyarrow"}
-    TRAVERSE_PREFIX_LEN = 2
-    TREE_CLS = HDFSRemoteTree
-
     def hadoop_fs(self, cmd, user=None):
         cmd = "hadoop fs -" + cmd
         if user:
@@ -182,3 +160,25 @@ class HDFSRemote(BaseRemote):
             f"checksum {path_info.path}", user=path_info.user
         )
         return self._group(regex, stdout, "checksum")
+
+    def _upload(self, from_file, to_info, **_kwargs):
+        with self.hdfs(to_info) as hdfs:
+            hdfs.mkdir(posixpath.dirname(to_info.path))
+            tmp_file = tmp_fname(to_info.path)
+            with open(from_file, "rb") as fobj:
+                hdfs.upload(tmp_file, fobj)
+            hdfs.rename(tmp_file, to_info.path)
+
+    def _download(self, from_info, to_file, **_kwargs):
+        with self.hdfs(from_info) as hdfs:
+            with open(to_file, "wb+") as fobj:
+                hdfs.download(from_info.path, fobj)
+
+
+class HDFSRemote(BaseRemote):
+    scheme = Schemes.HDFS
+    REGEX = r"^hdfs://((?P<user>.*)@)?.*$"
+    PARAM_CHECKSUM = "checksum"
+    REQUIRES = {"pyarrow": "pyarrow"}
+    TRAVERSE_PREFIX_LEN = 2
+    TREE_CLS = HDFSRemoteTree

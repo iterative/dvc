@@ -164,6 +164,9 @@ class BaseRemoteTree:
     def reflink(self, from_info, to_info):
         raise RemoteActionNotImplemented("reflink", self.scheme)
 
+    def get_file_checksum(self, path_info):
+        raise NotImplementedError
+
     def upload(self, from_info, to_info, name=None, no_progress_bar=False):
         if not hasattr(self, "_upload"):
             raise RemoteActionNotImplemented("upload", self.scheme)
