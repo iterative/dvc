@@ -175,6 +175,13 @@ def resolve_wdir(wdir, path):
     return pathlib.PurePath(rel_wdir).as_posix() if rel_wdir != "." else None
 
 
+def resolve_paths(path, wdir=None):
+    path = os.path.abspath(path)
+    wdir = wdir or os.curdir
+    wdir = os.path.abspath(os.path.join(os.path.dirname(path), wdir))
+    return path, wdir
+
+
 def get_dump(stage):
     return {
         key: value

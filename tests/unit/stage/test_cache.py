@@ -1,7 +1,7 @@
 import os
 
 
-def test_stage_cache(tmp_dir, dvc, run_copy, mocker):
+def test_stage_cache(tmp_dir, dvc, mocker):
     tmp_dir.gen("dep", "dep")
     tmp_dir.gen(
         "script.py",
@@ -53,7 +53,7 @@ def test_stage_cache(tmp_dir, dvc, run_copy, mocker):
     assert (tmp_dir / "out_no_cache").read_text() == "out_no_cache"
 
 
-def test_stage_cache_params(tmp_dir, dvc, run_copy, mocker):
+def test_stage_cache_params(tmp_dir, dvc, mocker):
     tmp_dir.gen("params.yaml", "foo: 1\nbar: 2")
     tmp_dir.gen("myparams.yaml", "baz: 3\nqux: 4")
     tmp_dir.gen(
@@ -106,7 +106,7 @@ def test_stage_cache_params(tmp_dir, dvc, run_copy, mocker):
     assert (tmp_dir / "out_no_cache").read_text() == "out_no_cache"
 
 
-def test_stage_cache_wdir(tmp_dir, dvc, run_copy, mocker):
+def test_stage_cache_wdir(tmp_dir, dvc, mocker):
     tmp_dir.gen("dep", "dep")
     tmp_dir.gen(
         "script.py",
