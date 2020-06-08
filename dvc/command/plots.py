@@ -91,7 +91,7 @@ class CmdPlotsDiff(CmdPlots):
 class CmdPlotsModify(CmdPlots):
     def run(self):
         self.repo.plots.modify(
-            self.args.target, props=self._props(), unset=self.args.unset,
+            self.args.file, props=self._props(), unset=self.args.unset,
         )
         return 0
 
@@ -125,7 +125,7 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     plots_show_parser.add_argument(
-        "targets",
+        "files",
         nargs="*",
         help="Plots files to visualize. Shows all plots by default.",
     )
@@ -165,7 +165,7 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     plots_modify_parser.add_argument(
-        "target", help="Plot file to set props to.",
+        "file", help="Plot file to set props to.",
     )
     _add_props_arguments(plots_modify_parser)
     plots_modify_parser.add_argument(

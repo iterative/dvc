@@ -27,7 +27,7 @@ class CmdDaemonAnalytics(CmdDaemonBase):
     def run(self):
         from dvc import analytics
 
-        analytics.send(self.args.target)
+        analytics.send(self.args.path)
 
         return 0
 
@@ -64,5 +64,5 @@ def add_parser(subparsers, parent_parser):
         description=DAEMON_ANALYTICS_HELP,
         help=DAEMON_ANALYTICS_HELP,
     )
-    daemon_analytics_parser.add_argument("target", help="Analytics file.")
+    daemon_analytics_parser.add_argument("path", help="Analytics file.")
     daemon_analytics_parser.set_defaults(func=CmdDaemonAnalytics)
