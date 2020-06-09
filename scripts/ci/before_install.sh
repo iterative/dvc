@@ -51,9 +51,12 @@ elif [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
   ln -s -f /usr/local/bin/pip3 /usr/local/bin/pip
 fi
 
-# can't rely on $TRAVIS_TAG for `edge` releases so fetch tags for git-describe
+# fetch tags for `git-describe`, since
+# - can't rely on $TRAVIS_TAG for `edge` (master) releases, and
+# - `snapcraft` also uses `git-describe` for version detection
 git fetch --tags
 TAG_MAJOR="$(git describe --tags | sed -r 's/^v?([0-9]+)\.[0-9]+\.[0-9]+.*/\1/')"
+[[ -n "$TAG_MAJOR" ]] || exit 1  # failed to detect major version
 if [[ -n "$TRAVIS_TAG" ]]; then
   if [[ $(echo "$TRAVIS_TAG" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$') ]]; then
     echo "export SNAP_CHANNEL=stable,v$TAG_MAJOR/stable" >>env.sh
