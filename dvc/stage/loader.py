@@ -1,27 +1,18 @@
 import logging
-import os
 from collections.abc import Mapping
 from copy import deepcopy
 from itertools import chain
 
-from funcy import lcat, project
+from funcy import get_in, lcat, project
 
 from dvc import dependency, output
 
-from ..dependency import ParamsDependency
-from . import fill_stage_dependencies
+from . import PipelineStage, Stage, loads_from
 from .exceptions import StageNameUnspecified, StageNotFound
+from .params import StageParams
+from .utils import fill_stage_dependencies, resolve_paths
 
 logger = logging.getLogger(__name__)
-
-DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
-
-
-def resolve_paths(path, wdir=None):
-    path = os.path.abspath(path)
-    wdir = wdir or os.curdir
-    wdir = os.path.abspath(os.path.join(os.path.dirname(path), wdir))
-    return path, wdir
 
 
 class StageLoader(Mapping):
@@ -31,10 +22,12 @@ class StageLoader(Mapping):
         self.lockfile_data = lockfile_data or {}
 
     @staticmethod
-    def fill_from_lock(stage, lock_data):
+    def fill_from_lock(stage, lock_data=None):
         """Fill values for params, checksums for outs and deps from lock."""
-        from .params import StageParams
+        if not lock_data:
+            return
 
+        assert isinstance(lock_data, dict)
         items = chain(
             ((StageParams.PARAM_DEPS, dep) for dep in stage.deps),
             ((StageParams.PARAM_OUTS, out) for out in stage.outs),
@@ -45,21 +38,16 @@ class StageLoader(Mapping):
             for key in [StageParams.PARAM_DEPS, StageParams.PARAM_OUTS]
         }
         for key, item in items:
-            if isinstance(item, ParamsDependency):
-                # load the params with values inside lock dynamically
-                lock_params = lock_data.get(stage.PARAM_PARAMS, {})
-                item.fill_values(lock_params.get(item.def_path, {}))
+            path = item.def_path
+            if isinstance(item, dependency.ParamsDependency):
+                item.fill_values(get_in(lock_data, [stage.PARAM_PARAMS, path]))
                 continue
-
-            item.checksum = (
-                checksums.get(key, {})
-                .get(item.def_path, {})
-                .get(item.checksum_type)
-            )
+            item.checksum = get_in(checksums, [key, path, item.checksum_type])
 
     @classmethod
-    def load_stage(cls, dvcfile, name, stage_data, lock_data):
-        from . import PipelineStage, Stage, loads_from
+    def load_stage(cls, dvcfile, name, stage_data, lock_data=None):
+        assert all([name, dvcfile, dvcfile.repo, dvcfile.path])
+        assert stage_data and isinstance(stage_data, dict)
 
         path, wdir = resolve_paths(
             dvcfile.path, stage_data.get(Stage.PARAM_WDIR)
@@ -80,11 +68,9 @@ class StageLoader(Mapping):
         )
 
         if lock_data:
-            stage.cmd_changed = lock_data.get(
-                Stage.PARAM_CMD
-            ) != stage_data.get(Stage.PARAM_CMD)
-            cls.fill_from_lock(stage, lock_data)
+            stage.cmd_changed = lock_data.get(Stage.PARAM_CMD) != stage.cmd
 
+        cls.fill_from_lock(stage, lock_data)
         return stage
 
     def __getitem__(self, name):
@@ -137,8 +123,6 @@ class SingleStageLoader(Mapping):
 
     @classmethod
     def load_stage(cls, dvcfile, d, stage_text):
-        from dvc.stage import Stage, loads_from
-
         path, wdir = resolve_paths(dvcfile.path, d.get(Stage.PARAM_WDIR))
         stage = loads_from(Stage, dvcfile.repo, path, wdir, d)
         stage._stage_text = stage_text

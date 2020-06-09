@@ -10,9 +10,11 @@ import yaml
 from funcy import first
 
 from dvc.repo.plots.data import (
+    JSONPlotData,
     NoMetricInHistoryError,
     PlotData,
     PlotMetricTypeError,
+    YAMLPlotData,
 )
 from dvc.repo.plots.template import (
     NoDataForTemplateError,
@@ -581,3 +583,29 @@ def test_raise_on_wrong_field(tmp_dir, scm, dvc, run_copy_metrics):
 
     with pytest.raises(NoFieldInDataError):
         dvc.plots.show("metric.json", props={"y": "no_val"})
+
+
+def test_load_metric_from_dict_json(tmp_dir):
+    metric = [{"acccuracy": 1, "loss": 2}, {"accuracy": 3, "loss": 4}]
+    dmetric = {"train": metric}
+
+    plot_data = JSONPlotData("-", "revision", json.dumps(dmetric))
+
+    expected = metric
+    for d in expected:
+        d["rev"] = "revision"
+
+    assert list(map(dict, plot_data.to_datapoints())) == expected
+
+
+def test_load_metric_from_dict_yaml(tmp_dir):
+    metric = [{"acccuracy": 1, "loss": 2}, {"accuracy": 3, "loss": 4}]
+    dmetric = {"train": metric}
+
+    plot_data = YAMLPlotData("-", "revision", yaml.dump(dmetric))
+
+    expected = metric
+    for d in expected:
+        d["rev"] = "revision"
+
+    assert list(map(dict, plot_data.to_datapoints())) == expected

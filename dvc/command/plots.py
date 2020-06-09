@@ -170,7 +170,10 @@ def add_parser(subparsers, parent_parser):
     )
     _add_props_arguments(plots_modify_parser)
     plots_modify_parser.add_argument(
-        "--unset", nargs="*", help="Unset one or more display properties.",
+        "--unset",
+        nargs="*",
+        metavar="<property>",
+        help="Unset one or more display properties.",
     )
     plots_modify_parser.set_defaults(func=CmdPlotsModify)
 
@@ -202,7 +205,9 @@ def _add_props_arguments(parser):
         default=None,  # Use default None to distinguish when it's not used
         help="Provided CSV ot TSV datafile does not have a header.",
     )
-    parser.add_argument("--title", default=None, help="Plot title.")
+    parser.add_argument(
+        "--title", default=None, metavar="<text>", help="Plot title."
+    )
     parser.add_argument(
         "--x-label", default=None, help="X axis label.", metavar="<text>"
     )

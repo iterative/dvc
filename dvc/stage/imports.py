@@ -23,7 +23,7 @@ def sync_import(stage, dry=False, force=False):
     if dry:
         return
 
-    if not force and not stage.changed_stage() and stage.already_cached():
+    if not force and stage.already_cached():
         stage.outs[0].checkout()
     else:
         stage.deps[0].download(stage.outs[0])

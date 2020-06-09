@@ -1,10 +1,9 @@
-import errno
 import hashlib
 import itertools
 import json
 import logging
 import tempfile
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import copy
 from functools import partial, wraps
 from multiprocessing import cpu_count
@@ -165,16 +164,6 @@ class BaseRemoteTree:
     def reflink(self, from_info, to_info):
         raise RemoteActionNotImplemented("reflink", self.scheme)
 
-    @staticmethod
-    def _handle_transfer_exception(from_info, to_info, exception, operation):
-        if isinstance(exception, OSError) and exception.errno == errno.EMFILE:
-            raise exception
-
-        logger.exception(
-            "failed to %s '%s' to '%s'", operation, from_info, to_info
-        )
-        return 1
-
     def upload(self, from_info, to_info, name=None, no_progress_bar=False):
         if not hasattr(self, "_upload"):
             raise RemoteActionNotImplemented("upload", self.scheme)
@@ -189,19 +178,12 @@ class BaseRemoteTree:
 
         name = name or from_info.name
 
-        try:
-            self._upload(
-                from_info.fspath,
-                to_info,
-                name=name,
-                no_progress_bar=no_progress_bar,
-            )
-        except Exception as e:
-            return self._handle_transfer_exception(
-                from_info, to_info, e, "upload"
-            )
-
-        return 0
+        self._upload(
+            from_info.fspath,
+            to_info,
+            name=name,
+            no_progress_bar=no_progress_bar,
+        )
 
     def download(
         self,
@@ -257,8 +239,25 @@ class BaseRemoteTree:
                 )
             )
             with ThreadPoolExecutor(max_workers=self.remote.JOBS) as executor:
-                futures = executor.map(download_files, from_infos, to_infos)
-                return sum(futures)
+                futures = [
+                    executor.submit(download_files, from_info, to_info)
+                    for from_info, to_info in zip(from_infos, to_infos)
+                ]
+
+                # NOTE: unlike pulling/fetching cache, where we need to
+                # download everything we can, not raising an error here might
+                # turn very ugly, as the user might think that he has
+                # downloaded a complete directory, while having a partial one,
+                # which might cause unexpected results in his pipeline.
+                for future in as_completed(futures):
+                    # NOTE: executor won't let us raise until all futures that
+                    # it has are finished, so we need to cancel them ourselves
+                    # before re-raising.
+                    exc = future.exception()
+                    if exc:
+                        for entry in futures:
+                            entry.cancel()
+                        raise exc
 
     def _download_file(
         self, from_info, to_info, name, no_progress_bar, file_mode, dir_mode
@@ -270,18 +269,11 @@ class BaseRemoteTree:
 
         tmp_file = tmp_fname(to_info)
 
-        try:
-            self._download(
-                from_info, tmp_file, name=name, no_progress_bar=no_progress_bar
-            )
-        except Exception as e:
-            return self._handle_transfer_exception(
-                from_info, to_info, e, "download"
-            )
+        self._download(
+            from_info, tmp_file, name=name, no_progress_bar=no_progress_bar
+        )
 
         move(tmp_file, to_info, mode=file_mode)
-
-        return 0
 
 
 class BaseRemote:

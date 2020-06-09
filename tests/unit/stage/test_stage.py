@@ -2,7 +2,6 @@ import os
 import signal
 import subprocess
 import threading
-from unittest import TestCase
 
 import mock
 import pytest
@@ -50,12 +49,11 @@ def test_meta_ignored():
         assert stage.compute_md5() == "e9521a22111493406ea64a88cda63e0b"
 
 
-class TestPathConversion(TestCase):
-    def test(self):
-        stage = Stage(None, "path")
+def test_path_conversion(dvc):
+    stage = Stage(dvc, "path")
 
-        stage.wdir = os.path.join("..", "..")
-        self.assertEqual(stage.dumpd()["wdir"], "../..")
+    stage.wdir = os.path.join("..", "..")
+    assert stage.dumpd()["wdir"] == "../.."
 
 
 def test_stage_update(mocker):

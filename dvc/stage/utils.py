@@ -2,9 +2,12 @@ import os
 import pathlib
 from itertools import product
 
+from funcy import lsplit, rpartial
+
 from dvc import dependency, output
 from dvc.utils.fs import path_isin
 
+from ..dependency import ParamsDependency
 from ..remote import LocalRemote, S3Remote
 from ..utils import dict_md5, format_link, relpath
 from .exceptions import (
@@ -175,6 +178,13 @@ def resolve_wdir(wdir, path):
     return pathlib.PurePath(rel_wdir).as_posix() if rel_wdir != "." else None
 
 
+def resolve_paths(path, wdir=None):
+    path = os.path.abspath(path)
+    wdir = wdir or os.curdir
+    wdir = os.path.abspath(os.path.join(os.path.dirname(path), wdir))
+    return path, wdir
+
+
 def get_dump(stage):
     return {
         key: value
@@ -189,3 +199,7 @@ def get_dump(stage):
         }.items()
         if value
     }
+
+
+def split_params_deps(stage):
+    return lsplit(rpartial(isinstance, ParamsDependency), stage.deps)

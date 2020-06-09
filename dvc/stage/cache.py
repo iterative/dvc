@@ -7,11 +7,12 @@ from funcy import first
 from voluptuous import Invalid
 
 from dvc.schema import COMPILED_LOCK_FILE_STAGE_SCHEMA
-from dvc.serialize import to_single_stage_lockfile
-from dvc.stage.loader import StageLoader
 from dvc.utils import dict_sha256, relpath
 from dvc.utils.fs import makedirs
 from dvc.utils.yaml import dump_yaml
+
+from .loader import StageLoader
+from .serialize import to_single_stage_lockfile
 
 logger = logging.getLogger(__name__)
 
@@ -78,20 +79,7 @@ class StageCache:
         return None
 
     def _create_stage(self, cache, wdir=None):
-        from dvc.stage import create_stage, PipelineStage
-
-        params = []
-        for param in cache.get("params", []):
-            if isinstance(param, str):
-                params.append(param)
-                continue
-
-            assert isinstance(param, dict)
-            assert len(param) == 1
-            path = list(param.keys())[0]
-            params_list = param[path]
-            assert isinstance(params_list, list)
-            params.append(f"{path}:" + ",".join(params_list))
+        from . import create_stage, PipelineStage
 
         stage = create_stage(
             PipelineStage,
@@ -99,8 +87,6 @@ class StageCache:
             path="dvc.yaml",
             cmd=cache["cmd"],
             wdir=wdir,
-            params=params,
-            deps=[dep["path"] for dep in cache.get("deps", [])],
             outs=[out["path"] for out in cache["outs"]],
             external=True,
         )
