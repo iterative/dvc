@@ -48,7 +48,35 @@ class Updater(object):  # pragma: no cover
             logger.debug(msg.format(self.lock.lockfile, action))
 
     def check(self):
-        if os.getenv("CI") or env2bool("DVC_TEST") or PKG == "snap":
+        if os.getenv("CI") or env2bool("DVC_TEST"):
+            return
+
+        if PKG == "snap":
+            # Ideally need to check if SNAP_CHANNEL.startswith(self.current),
+            # where SNAP_CHANNEL is:
+            #   snap info dvc | grep -E '^tracking:' | awk '{print $2}'
+            # However a quicker way is to skip if a user-configurable variable
+            # `skip_update_check` is set
+            import subprocess
+
+            kwargs = {"close_fds": True}
+            if os.name == "nt":
+                kwargs["shell"] = True
+                cmd = []
+            else:
+                kwargs["shell"] = False
+                cmd = ["/bin/sh", "-c"]
+            p = subprocess.Popen(
+                cmd + ["snapctl", "get", "skip_update_check"], **kwargs
+            )
+            skip_update_check = p.communicate()[0]
+            if skip_update_check not in ("", "0", "false", "False"):
+                # frozen on current version so suppress notification
+                return
+
+            self.current = f"v{version.parse(self.current).major}"
+            self.latest = f"v{version.parse(self.current).major + 1}"
+            self._notify()
             return
 
         self._with_lock(self._check, "checking")
@@ -138,6 +166,19 @@ class Updater(object):  # pragma: no cover
             ),
             "conda": "Run `{yellow}conda{reset} update dvc`",
             "choco": "Run `{yellow}choco{reset} upgrade dvc`",
+            "snap": (
+                "To upgrade to the latest major release,\n"
+                "run `{yellow}snap{reset} refresh --channel=latest/beta`, or\n"
+                "to stay on the current major release track,\n"
+                "run `{yellow}snap{reset} refresh"
+                " --channel={current}/stable`\n"
+                "and `{yellow}snap{reset} set dvc skip_update_check=1`.\n"
+                "\n"
+                "{red}WARNING{reset}: ignoring this message will result in\n"
+                "snap automatically performing an upgrade soon.\n"
+                "More information can be found at\n"
+                "{blue}https://github.com/iterative/dvc/issues/3872{reset}"
+            ),
             None: (
                 "Find the latest release at\n"
                 "{blue}https://github.com/iterative/dvc/releases/latest{reset}"

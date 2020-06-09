@@ -1,0 +1,2 @@
+#!/bin/sh -e
+snapctl get skip_update_check || snapctl set skip_update_check=false
