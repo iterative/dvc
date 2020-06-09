@@ -42,17 +42,6 @@ parts:
         # https://github.com/snapcore/snapcraft/blob/19393ef36cd773a28131cec10cc0bfb3bf9c7e77/tools/snapcraft-override-build.sh#L18
         sed -ri 's/^(ENABLE_USER_SITE = )None$/\1False/' $SNAPCRAFT_PART_INSTALL/usr/lib/python*/site.py
         cp $SNAPCRAFT_PART_BUILD/scripts/completion/dvc.bash $SNAPCRAFT_PART_INSTALL/completion.sh
-  # remove files already available at runtime from the base snap - reference:
-  # https://forum.snapcraft.io/t/reducing-the-size-of-desktop-snaps/17280
-  cleanup:
-    after:
-    - dvc
-    plugin: nil
-    build-snaps:
-    - core18
-    override-prime: |
-      set -eux
-      cd "/snap/core18/current" && find . -type f,l -exec rm -f "$SNAPCRAFT_PRIME/{}" \;
 apps:
   dvc:
     command: bin/dvc
