@@ -10,10 +10,8 @@ env:
     - PATH="$PYENV_ROOT/bin:$PATH"
     - PIP_CACHE_DIR="$HOME/.cache/pip"  # unify pip cache location for all platforms
 stages:
-  - name: check
-    if: false
-  - name: test
-    if: false
+  - check
+  - test
   - build
 # Travis doesn't support testing python on Mac yet, so we need
 # to workaround it by installing it directly with brew.
