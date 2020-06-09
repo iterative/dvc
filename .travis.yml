@@ -110,7 +110,6 @@ jobs:
     - sudo /snap/bin/lxd.migrate -yes
     - sudo /snap/bin/lxd waitready
     - sudo /snap/bin/lxd init --auto
-    - git fetch --tags
     script:
     - ./scripts/build_snap.sh
     after_failure:

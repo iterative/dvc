@@ -51,12 +51,15 @@ elif [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
   ln -s -f /usr/local/bin/pip3 /usr/local/bin/pip
 fi
 
+# can't rely on $TRAVIS_TAG for `edge` releases so fetch tags for git-describe
+git fetch --tags
+TAG_MAJOR="$(git describe --tags | sed -r 's/^v?([0-9]+)\.[0-9]+\.[0-9]+.*/\1/')"
 if [[ -n "$TRAVIS_TAG" ]]; then
   if [[ $(echo "$TRAVIS_TAG" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$') ]]; then
-    echo "export SNAP_CHANNEL=stable,v0/stable" >>env.sh
+    echo "export SNAP_CHANNEL=stable,v$TAG_MAJOR/stable" >>env.sh
   else
-    echo "export SNAP_CHANNEL=beta,v0/beta" >>env.sh
+    echo "export SNAP_CHANNEL=beta,v$TAG_MAJOR/beta" >>env.sh
   fi
 else
-  echo "export SNAP_CHANNEL=edge,v0/edge" >>env.sh
+  echo "export SNAP_CHANNEL=edge,v$TAG_MAJOR/edge" >>env.sh
 fi
