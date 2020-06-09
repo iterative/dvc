@@ -80,6 +80,7 @@ def loadd_from(stage, d_list):
 
 
 def loads_from(stage, s_list, erepo=None):
+    assert isinstance(s_list, list)
     ret = []
     for s in s_list:
         info = {RepoDependency.PARAM_REPO: erepo} if erepo else {}
