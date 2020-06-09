@@ -82,7 +82,6 @@ def _is_cached(stage):
     cached = (
         not stage.is_callback
         and not stage.always_changed
-        and not stage.changed_stage()
         and stage.already_cached()
     )
     if cached:

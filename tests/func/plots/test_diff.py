@@ -32,10 +32,10 @@ def test_diff_dirty(tmp_dir, scm, dvc, run_copy_metrics):
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"y": 5, PlotData.INDEX_FIELD: 0, "rev": "workspace"},
-        {"y": 6, PlotData.INDEX_FIELD: 1, "rev": "workspace"},
         {"y": 3, PlotData.INDEX_FIELD: 0, "rev": "HEAD"},
         {"y": 5, PlotData.INDEX_FIELD: 1, "rev": "HEAD"},
+        {"y": 5, PlotData.INDEX_FIELD: 0, "rev": "workspace"},
+        {"y": 6, PlotData.INDEX_FIELD: 1, "rev": "workspace"},
     ]
     assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
     assert plot_content["encoding"]["y"]["field"] == "y"

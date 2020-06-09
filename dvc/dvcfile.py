@@ -5,8 +5,8 @@ import os
 from voluptuous import MultipleInvalid
 
 import dvc.prompt as prompt
-from dvc import serialize
 from dvc.exceptions import DvcException
+from dvc.stage import serialize
 from dvc.stage.exceptions import (
     StageFileAlreadyExistsError,
     StageFileBadNameError,

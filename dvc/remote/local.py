@@ -3,7 +3,7 @@ import logging
 import os
 import stat
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from functools import partial
+from functools import partial, wraps
 
 from funcy import cached_property, concat
 from shortuuid import uuid
@@ -233,6 +233,26 @@ class LocalRemoteTree(BaseRemoteTree):
         copyfile(
             from_info, to_file, no_progress_bar=no_progress_bar, name=name
         )
+
+
+def _log_exceptions(func, operation):
+    @wraps(func)
+    def wrapper(from_info, to_info, *args, **kwargs):
+        try:
+            func(from_info, to_info, *args, **kwargs)
+            return 0
+        except Exception as exc:
+            # NOTE: this means we ran out of file descriptors and there is no
+            # reason to try to proceed, as we will hit this error anyways.
+            if isinstance(exc, OSError) and exc.errno == errno.EMFILE:
+                raise
+
+            logger.exception(
+                "failed to %s '%s' to '%s'", operation, from_info, to_info
+            )
+            return 1
+
+    return wrapper
 
 
 class LocalRemote(BaseRemote):
@@ -515,14 +535,14 @@ class LocalRemote(BaseRemote):
 
         if download:
             func = partial(
-                remote.tree.download,
+                _log_exceptions(remote.tree.download, "download"),
                 dir_mode=self.tree.dir_mode,
                 file_mode=self.tree.file_mode,
             )
             status = STATUS_DELETED
             desc = "Downloading"
         else:
-            func = remote.tree.upload
+            func = _log_exceptions(remote.tree.upload, "upload")
             status = STATUS_NEW
             desc = "Uploading"
 
