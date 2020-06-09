@@ -61,7 +61,7 @@ class BaseOutput:
     PARAM_PLOT_X_LABEL = "x_label"
     PARAM_PLOT_Y_LABEL = "y_label"
     PARAM_PLOT_TITLE = "title"
-    PARAM_PLOT_CSV_HEADER = "csv_header"
+    PARAM_PLOT_HEADER = "header"
     PARAM_PERSIST = "persist"
 
     METRIC_SCHEMA = Any(
