@@ -63,51 +63,56 @@ def _serialize_outs(outputs: List[BaseOutput]):
     return outs, metrics, plots
 
 
-def _serialize_params(params: List[ParamsDependency]):
-    """Return two types of values from stage:
+def _serialize_params_keys(params):
+    """
+    Returns the following format of data:
+     ['lr', 'train', {'params2.yaml': ['lr']}]
 
-    `keys` - which is list of params without values, used in a pipeline file
-
-    which is in the shape of:
-        ['lr', 'train', {'params2.yaml': ['lr']}]
-
-    `key_vals` - which is list of params with values, used in a lockfile
-    which is in the shape of:
-        {'params.yaml': {'lr': '1', 'train': 2}, {'params2.yaml': {'lr': '1'}}
+    The output is sorted, with keys of params from default params file being
+    at the first, and then followed by entry of other files in lexicographic
+    order. The keys of those custom files are also sorted in the same order.
     """
     keys = []
-    key_vals = OrderedDict()
+    for param_dep in sort_by_path(params):
+        dump = param_dep.dumpd()
+        path, params = dump[PARAM_PATH], dump[PARAM_PARAMS]
+        assert isinstance(params, (dict, list))
+        # when on no_exec, params are not filled and are saved as list
+        k = sorted(params.keys() if isinstance(params, dict) else params)
+        if not k:
+            continue
 
+        if path == DEFAULT_PARAMS_FILE:
+            keys = k + keys
+        else:
+            keys.append({path: k})
+    return keys
+
+
+def _serialize_params_values(params: List[ParamsDependency]):
+    """Returns output of following format, used for lockfile:
+        {'params.yaml': {'lr': '1', 'train': 2}, {'params2.yaml': {'lr': '1'}}
+
+    Default params file are always kept at the start, followed by others in
+    alphabetical order. The param values are sorted too(not recursively though)
+    """
+    key_vals = OrderedDict()
     for param_dep in sort_by_path(params):
         dump = param_dep.dumpd()
         path, params = dump[PARAM_PATH], dump[PARAM_PARAMS]
         if isinstance(params, dict):
-            k = sorted(params.keys())
-            if not k:
-                continue
-            key_vals[path] = OrderedDict([(key, params[key]) for key in k])
-        else:
-            assert isinstance(params, list)
-            # no params values available here, entry will be skipped for lock
-            k = sorted(params)
-
-        # params from default file is always kept at the start of the `params:`
-        if path == DEFAULT_PARAMS_FILE:
-            keys = k + keys
-            if key_vals:
+            kv = [(key, params[key]) for key in sorted(params.keys())]
+            key_vals[path] = OrderedDict(kv)
+            if path == DEFAULT_PARAMS_FILE:
                 key_vals.move_to_end(path, last=False)
-        else:
-            # if it's not a default file, change the shape
-            # to: {path: k}
-            keys.append({path: k})
-    return keys, key_vals
+    return key_vals
 
 
 def to_pipeline_file(stage: "PipelineStage"):
     wdir = resolve_wdir(stage.wdir, stage.path)
     params, deps = split_params_deps(stage)
     deps = sorted([d.def_path for d in deps])
-    params, _ = _serialize_params(params)
+    params = _serialize_params_keys(params)
 
     outs, metrics, plots = _serialize_outs(stage.outs)
     res = [
@@ -143,10 +148,11 @@ def to_single_stage_lockfile(stage: "Stage") -> dict:
         ]
         for items in [deps, stage.outs]
     ]
+    params = _serialize_params_values(params)
     if deps:
         res[PARAM_DEPS] = deps
     if params:
-        _, res[PARAM_PARAMS] = _serialize_params(params)
+        res[PARAM_PARAMS] = params
     if outs:
         res[PARAM_OUTS] = outs
 
