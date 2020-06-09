@@ -10,8 +10,6 @@ scriptdir="$(dirname $0)"
 # work or not.
 $scriptdir/retry.sh pip install .[all,tests]
 
-$scriptdir/retry.sh pip install git+https://github.com/iterative/mock-ssh-server.git
-
 git config --global user.email "dvctester@example.com"
 git config --global user.name "DVC Tester"
 
