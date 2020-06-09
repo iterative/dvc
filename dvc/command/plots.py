@@ -156,7 +156,7 @@ def add_parser(subparsers, parent_parser):
     _add_output_arguments(plots_diff_parser)
     plots_diff_parser.set_defaults(func=CmdPlotsDiff)
 
-    PLOTS_MODIFY_HELP = "Modify plot props associated with a target file."
+    PLOTS_MODIFY_HELP = "Modify plot properties associated with a target file."
     plots_modify_parser = plots_subparsers.add_parser(
         "modify",
         parents=[parent_parser],
@@ -165,11 +165,14 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     plots_modify_parser.add_argument(
-        "target", help="Plot file to set props to.",
+        "target", help="Plot file to set properties to.",
     )
     _add_props_arguments(plots_modify_parser)
     plots_modify_parser.add_argument(
-        "--unset", nargs="*", help="Props to unset.",
+        "--unset",
+        nargs="*",
+        metavar="<property>",
+        help="Properties to unset.",
     )
     plots_modify_parser.set_defaults(func=CmdPlotsModify)
 
@@ -196,9 +199,15 @@ def _add_props_arguments(parser):
         default=None,  # Use default None to distinguish when it's not used
         help="Provided CSV ot TSV datafile does not have a header.",
     )
-    parser.add_argument("--title", default=None, help="Plot title.")
-    parser.add_argument("--x-label", default=None, help="X axis label.")
-    parser.add_argument("--y-label", default=None, help="Y axis lebel.")
+    parser.add_argument(
+        "--title", default=None, metavar="<text>", help="Plot title."
+    )
+    parser.add_argument(
+        "--x-label", default=None, metavar="<text>", help="X axis label."
+    )
+    parser.add_argument(
+        "--y-label", default=None, metavar="<text>", help="Y axis lebel."
+    )
 
 
 def _add_output_arguments(parser):
