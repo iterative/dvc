@@ -363,5 +363,11 @@ def add_parser(subparsers, _parent_parser):
         default=False,
         help="Show status of all stages in the specified directory.",
     )
+    status_parser.add_argument(
+        "--show-json",
+        action="store_true",
+        default=False,
+        help="Show status in JSON format.",
+    )
 
     status_parser.set_defaults(func=CmdDataStatus)
