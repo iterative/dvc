@@ -60,9 +60,6 @@ install_requires = [
     "grandalf==0.6",
     "distro>=1.3.0",
     "appdirs>=1.4.3",
-    "treelib>=1.5.5",
-    "inflect>=2.1.0,<4",
-    "humanize>=0.5.1",
     "PyYAML>=5.1.2,<5.4",  # Compatibility with awscli
     "ruamel.yaml>=0.16.1",
     "funcy>=1.14",
