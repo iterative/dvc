@@ -5,9 +5,9 @@ from itertools import chain
 import pytest
 
 from dvc.dvcfile import PIPELINE_FILE, Dvcfile
-from dvc.serialize import get_params_deps
 from dvc.stage import PipelineStage, create_stage
 from dvc.stage.loader import StageLoader
+from dvc.stage.serialize import split_params_deps
 
 
 @pytest.fixture
@@ -61,7 +61,7 @@ def test_fill_from_lock_params(dvc, lock_data):
             "ipsum": "ipsum"
         },
     }
-    params_deps = get_params_deps(stage)[0]
+    params_deps = split_params_deps(stage)[0]
     assert set(params_deps[0].params) == {"lorem", "lorem.ipsum"}
     assert set(params_deps[1].params) == {"ipsum", "foobar"}
     assert not params_deps[0].info
@@ -81,7 +81,7 @@ def test_fill_from_lock_missing_params_section(dvc, lock_data):
         outs=["bar"],
         params=["lorem", "lorem.ipsum", {"myparams.yaml": ["ipsum"]}],
     )
-    params_deps = get_params_deps(stage)[0]
+    params_deps = split_params_deps(stage)[0]
     StageLoader.fill_from_lock(stage, lock_data)
     assert not params_deps[0].info and not params_deps[1].info
 
@@ -180,7 +180,7 @@ def test_load_stage_with_params(dvc, stage_data, lock_data):
     dvcfile = Dvcfile(dvc, PIPELINE_FILE)
     stage = StageLoader.load_stage(dvcfile, "stage-1", stage_data, lock_data)
 
-    params, deps = get_params_deps(stage)
+    params, deps = split_params_deps(stage)
     assert deps[0].def_path == "foo" and stage.outs[0].def_path == "bar"
     assert params[0].def_path == "params.yaml"
     assert params[0].info == {"lorem": "ipsum"}

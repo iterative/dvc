@@ -3,14 +3,15 @@ from functools import partial
 from operator import attrgetter
 from typing import TYPE_CHECKING, List
 
-from funcy import lsplit, rpartial
+from funcy import post_processing
 
 from dvc.dependency import ParamsDependency
 from dvc.output import BaseOutput
-from dvc.stage.params import StageParams
-from dvc.stage.utils import resolve_wdir
 from dvc.utils.collections import apply_diff
 from dvc.utils.yaml import parse_yaml_for_update
+
+from .params import StageParams
+from .utils import resolve_wdir, split_params_deps
 
 if TYPE_CHECKING:
     from dvc.stage import PipelineStage, Stage
@@ -32,23 +33,34 @@ DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
 sort_by_path = partial(sorted, key=attrgetter("def_path"))
 
 
-def _get_out(out):
-    res = OrderedDict()
+@post_processing(OrderedDict)
+def _get_flags(out):
     if not out.use_cache:
-        res[PARAM_CACHE] = False
+        yield PARAM_CACHE, False
     if out.persist:
-        res[PARAM_PERSIST] = True
+        yield PARAM_PERSIST, True
     if out.plot and isinstance(out.plot, dict):
-        res.update(out.plot)
-    return out.def_path if not res else {out.def_path: res}
+        # notice `out.plot` is not sorted
+        # `out.plot` is in the same order as is in the file when read
+        # and, should be dumped as-is without any sorting
+        yield from out.plot.items()
 
 
-def _get_outs(outs):
-    return [_get_out(out) for out in sort_by_path(outs)]
+def _serialize_out(out):
+    flags = _get_flags(out)
+    return out.def_path if not flags else {out.def_path: flags}
 
 
-def get_params_deps(stage: "PipelineStage"):
-    return lsplit(rpartial(isinstance, ParamsDependency), stage.deps)
+def _serialize_outs(outputs: List[BaseOutput]):
+    outs, metrics, plots = [], [], []
+    for out in sort_by_path(outputs):
+        bucket = outs
+        if out.plot:
+            bucket = plots
+        elif out.metric:
+            bucket = metrics
+        bucket.append(_serialize_out(out))
+    return outs, metrics, plots
 
 
 def _serialize_params(params: List[ParamsDependency]):
@@ -70,16 +82,15 @@ def _serialize_params(params: List[ParamsDependency]):
         dump = param_dep.dumpd()
         path, params = dump[PARAM_PATH], dump[PARAM_PARAMS]
         if isinstance(params, dict):
-            k = list(params.keys())
+            k = sorted(params.keys())
             if not k:
                 continue
-            key_vals[path] = OrderedDict(
-                [(key, params[key]) for key in sorted(k)]
-            )
+            key_vals[path] = OrderedDict([(key, params[key]) for key in k])
         else:
             assert isinstance(params, list)
-            k = params
-            key_vals = OrderedDict()
+            # no params values available here, entry will be skipped for lock
+            k = sorted(params)
+
         # params from default file is always kept at the start of the `params:`
         if path == DEFAULT_PARAMS_FILE:
             keys = k + keys
@@ -93,28 +104,20 @@ def _serialize_params(params: List[ParamsDependency]):
 
 
 def to_pipeline_file(stage: "PipelineStage"):
-    params, deps = get_params_deps(stage)
-    serialized_params, _ = _serialize_params(params)
+    wdir = resolve_wdir(stage.wdir, stage.path)
+    params, deps = split_params_deps(stage)
+    deps = sorted([d.def_path for d in deps])
+    params, _ = _serialize_params(params)
 
+    outs, metrics, plots = _serialize_outs(stage.outs)
     res = [
         (stage.PARAM_CMD, stage.cmd),
-        (stage.PARAM_WDIR, resolve_wdir(stage.wdir, stage.path)),
-        (stage.PARAM_DEPS, sorted([d.def_path for d in deps])),
-        (stage.PARAM_PARAMS, serialized_params),
-        (
-            PARAM_OUTS,
-            _get_outs(
-                [out for out in stage.outs if not (out.metric or out.plot)]
-            ),
-        ),
-        (
-            stage.PARAM_METRICS,
-            _get_outs([out for out in stage.outs if out.metric]),
-        ),
-        (
-            stage.PARAM_PLOTS,
-            _get_outs([out for out in stage.outs if out.plot]),
-        ),
+        (stage.PARAM_WDIR, wdir),
+        (stage.PARAM_DEPS, deps),
+        (stage.PARAM_PARAMS, params),
+        (stage.PARAM_OUTS, outs),
+        (stage.PARAM_METRICS, metrics),
+        (stage.PARAM_PLOTS, plots),
         (stage.PARAM_FROZEN, stage.frozen),
         (stage.PARAM_ALWAYS_CHANGED, stage.always_changed),
     ]
@@ -127,7 +130,7 @@ def to_single_stage_lockfile(stage: "Stage") -> dict:
     assert stage.cmd
 
     res = OrderedDict([("cmd", stage.cmd)])
-    params, deps = get_params_deps(stage)
+    params, deps = split_params_deps(stage)
     deps, outs = [
         [
             OrderedDict(
