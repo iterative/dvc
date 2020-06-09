@@ -493,7 +493,11 @@ class Stage(params.StageParams):
             ret.append("changed checksum")
 
     def already_cached(self):
-        return self.deps_cached() and self.outs_cached()
+        return (
+            not self.changed_stage()
+            and self.deps_cached()
+            and self.outs_cached()
+        )
 
     def deps_cached(self):
         return all(not dep.changed() for dep in self.deps)
