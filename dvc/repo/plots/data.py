@@ -1,7 +1,6 @@
 import csv
 import io
 import json
-import logging
 import os
 from collections import OrderedDict
 from copy import copy
@@ -10,9 +9,7 @@ import yaml
 from funcy import first
 from yaml import SafeLoader
 
-from dvc.exceptions import DvcException, PathMissingError
-
-logger = logging.getLogger(__name__)
+from dvc.exceptions import DvcException
 
 
 class PlotMetricTypeError(DvcException):
@@ -29,21 +26,6 @@ class PlotDataStructureError(DvcException):
             "Plot data extraction failed. Please see "
             "https://man.dvc.org/plot for supported data formats."
         )
-
-
-class JsonParsingError(DvcException):
-    def __init__(self, file):
-        super().__init__(
-            "Failed to infer data structure from '{}'. Did you forget "
-            "to specify JSONpath?".format(file)
-        )
-
-
-class NoMetricOnRevisionError(DvcException):
-    def __init__(self, path, revision):
-        self.path = path
-        self.revision = revision
-        super().__init__(f"Could not find '{path}' on revision '{revision}'")
 
 
 class NoMetricInHistoryError(DvcException):
@@ -77,7 +59,7 @@ def _filter_fields(data_points, filename, revision, fields=None, **kwargs):
         if keys & fields != fields:
             raise DvcException(
                 "Could not find fields: '{}' for '{}' at '{}'.".format(
-                    ", " "".join(fields), filename, revision
+                    ", ".join(fields), filename, revision
                 )
             )
 
@@ -240,47 +222,3 @@ class YAMLPlotData(PlotData):
     def _processors(self):
         parent_processors = super()._processors()
         return [_find_data] + parent_processors
-
-
-def _load_from_revision(repo, datafile, revision):
-    from dvc.repo.tree import RepoTree
-
-    tree = RepoTree(repo)
-
-    try:
-        with tree.open(datafile) as fobj:
-            datafile_content = fobj.read()
-
-    except (FileNotFoundError, PathMissingError):
-        raise NoMetricOnRevisionError(datafile, revision)
-
-    return plot_data(datafile, revision, datafile_content)
-
-
-def _load_from_revisions(repo, datafile, revisions):
-    data = []
-    exceptions = []
-
-    for rev in repo.brancher(revs=revisions):
-        if rev == "workspace" and rev not in revisions:
-            continue
-
-        try:
-            data.append(_load_from_revision(repo, datafile, rev))
-        except NoMetricOnRevisionError as e:
-            exceptions.append(e)
-        except PlotMetricTypeError:
-            raise
-        except (yaml.error.YAMLError, json.decoder.JSONDecodeError, csv.Error):
-            logger.error(f"Failed to parse '{datafile}' at '{rev}'.")
-            raise
-
-    if not data and exceptions:
-        raise NoMetricInHistoryError(datafile)
-    else:
-        for e in exceptions:
-            logger.warning(
-                "File '{}' was not found at: '{}'. It will not be "
-                "plotted.".format(e.path, e.revision)
-            )
-    return data
