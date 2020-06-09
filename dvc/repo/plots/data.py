@@ -237,6 +237,10 @@ class YAMLPlotData(PlotData):
 
         return yaml.load(self.content, OrderedLoader)
 
+    def _processors(self):
+        parent_processors = super()._processors()
+        return [_find_data] + parent_processors
+
 
 def _load_from_revision(repo, datafile, revision):
     from dvc.repo.tree import RepoTree
