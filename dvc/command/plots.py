@@ -133,7 +133,10 @@ def add_parser(subparsers, parent_parser):
     _add_output_arguments(plots_show_parser)
     plots_show_parser.set_defaults(func=CmdPlotsShow)
 
-    PLOTS_DIFF_HELP = "Plot differences in metrics between commits."
+    PLOTS_DIFF_HELP = (
+        "Show multiple versions of plot metrics "
+        "by plotting them in a single image."
+    )
     plots_diff_parser = plots_subparsers.add_parser(
         "diff",
         parents=[parent_parser],
@@ -148,10 +151,7 @@ def add_parser(subparsers, parent_parser):
         metavar="<path>",
     )
     plots_diff_parser.add_argument(
-        "revisions",
-        nargs="*",
-        default=None,
-        help="Git commits to plot from/to",
+        "revisions", nargs="*", default=None, help="Git commits to plot from",
     )
     _add_props_arguments(plots_diff_parser)
     _add_output_arguments(plots_diff_parser)
