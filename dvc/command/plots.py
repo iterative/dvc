@@ -197,7 +197,7 @@ def _add_props_arguments(parser):
         action="store_false",
         dest="header",
         default=None,  # Use default None to distinguish when it's not used
-        help="Provided CSV ot TSV datafile does not have a header.",
+        help="Provided CSV or TSV datafile does not have a header.",
     )
     parser.add_argument(
         "--title", default=None, metavar="<text>", help="Plot title."
