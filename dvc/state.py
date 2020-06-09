@@ -7,7 +7,6 @@ import sqlite3
 from urllib.parse import urlencode, urlunparse
 
 from dvc.exceptions import DvcException
-from dvc.scm.tree import WorkingTree
 from dvc.utils import current_timestamp, relpath, to_chunks
 from dvc.utils.fs import get_inode, get_mtime_and_size, remove
 
@@ -89,10 +88,11 @@ class State:  # pylint: disable=too-many-instance-attributes
     MAX_INT = 2 ** 63 - 1
     MAX_UINT = 2 ** 64 - 2
 
-    def __init__(self, repo):
+    def __init__(self, local_cache):
+        repo = local_cache.repo
         self.repo = repo
         self.root_dir = repo.root_dir
-        self.tree = WorkingTree(self.root_dir)
+        self.tree = local_cache.tree.work_tree
 
         state_config = repo.config.get("state", {})
         self.row_limit = state_config.get("row_limit", self.STATE_ROW_LIMIT)
@@ -364,7 +364,7 @@ class State:  # pylint: disable=too-many-instance-attributes
         """
         assert isinstance(path_info, str) or path_info.scheme == "local"
         assert checksum is not None
-        assert os.path.exists(path_info)
+        assert self.tree.exists(path_info)
 
         actual_mtime, actual_size = get_mtime_and_size(path_info, self.tree)
         actual_inode = get_inode(path_info)
@@ -394,7 +394,7 @@ class State:  # pylint: disable=too-many-instance-attributes
         assert isinstance(path_info, str) or path_info.scheme == "local"
         path = os.fspath(path_info)
 
-        if not os.path.exists(path):
+        if not self.tree.exists(path):
             return None
 
         actual_mtime, actual_size = get_mtime_and_size(path, self.tree)
@@ -420,7 +420,7 @@ class State:  # pylint: disable=too-many-instance-attributes
         """
         assert isinstance(path_info, str) or path_info.scheme == "local"
 
-        if not os.path.exists(path_info):
+        if not self.tree.exists(path_info):
             return
 
         mtime, _ = get_mtime_and_size(path_info, self.tree)
@@ -446,7 +446,7 @@ class State:  # pylint: disable=too-many-instance-attributes
             inode = self._from_sqlite(inode)
             path = os.path.join(self.root_dir, relpath)
 
-            if path in used or not os.path.exists(path):
+            if path in used or not self.tree.exists(path):
                 continue
 
             actual_inode = get_inode(path)
