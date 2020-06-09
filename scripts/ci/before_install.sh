@@ -53,10 +53,10 @@ fi
 
 if [[ -n "$TRAVIS_TAG" ]]; then
   if [[ $(echo "$TRAVIS_TAG" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$') ]]; then
-    echo "export SNAP_CHANNEL=stable" >>env.sh
+    echo "export SNAP_CHANNEL=stable,v1/stable" >>env.sh
   else
-    echo "export SNAP_CHANNEL=beta" >>env.sh
+    echo "export SNAP_CHANNEL=beta,v1/beta" >>env.sh
   fi
 else
-  echo "export SNAP_CHANNEL=edge" >>env.sh
+  echo "export SNAP_CHANNEL=edge,v1/edge" >>env.sh
 fi
