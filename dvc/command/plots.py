@@ -166,7 +166,7 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     plots_modify_parser.add_argument(
-        "target", help="Metric file to set props to",
+        "target", help="Metric file to set properties to",
     )
     _add_props_arguments(plots_modify_parser)
     plots_modify_parser.add_argument(
