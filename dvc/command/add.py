@@ -57,7 +57,6 @@ def add_parser(subparsers, parent_parser):
         help="Allow targets that are outside of the DVC repository.",
     )
     parser.add_argument(
-        "-f",
         "--file",
         help="Specify name of the DVC-file this command will generate.",
         metavar="<filename>",

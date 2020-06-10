@@ -53,8 +53,6 @@ class TestRun(TestDvc):
                 out_no_cache1,
                 "--outs-no-cache",
                 out_no_cache2,
-                "-f",
-                fname,
                 "--file",
                 fname,
                 cmd,

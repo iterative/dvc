@@ -411,7 +411,7 @@ class TestReproDryNoExec(TestDvc):
                 "run",
                 "--no-exec",
                 "--single-stage",
-                "-f",
+                "--file",
                 DVC_FILE,
                 *deps,
                 "ls {}".format(
@@ -818,7 +818,7 @@ class TestCmdReproChdir(TestDvc):
             [
                 "run",
                 "--single-stage",
-                "-f",
+                "--file",
                 f"{dname}/Dvcfile",
                 "-w",
                 f"{dname}",
