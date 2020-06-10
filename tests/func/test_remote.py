@@ -10,7 +10,7 @@ from dvc.config import Config
 from dvc.exceptions import DownloadError, UploadError
 from dvc.main import main
 from dvc.path_info import PathInfo
-from dvc.remote.base import BaseRemote, RemoteCacheRequiredError
+from dvc.remote.base import BaseRemoteTree, RemoteCacheRequiredError
 from dvc.remote.local import LocalRemoteTree
 from dvc.utils.fs import remove
 from tests.basic_env import TestDvc
@@ -151,24 +151,24 @@ def test_dir_checksum_should_be_key_order_agnostic(tmp_dir, dvc):
     path_info = PathInfo("data")
     with dvc.state:
         with patch.object(
-            BaseRemote,
+            BaseRemoteTree,
             "_collect_dir",
             return_value=[
                 {"relpath": "1", "md5": "1"},
                 {"relpath": "2", "md5": "2"},
             ],
         ):
-            checksum1 = dvc.cache.local.get_dir_checksum(path_info)
+            checksum1 = dvc.cache.local.get_checksum(path_info)
 
         with patch.object(
-            BaseRemote,
+            BaseRemoteTree,
             "_collect_dir",
             return_value=[
                 {"md5": "1", "relpath": "1"},
                 {"md5": "2", "relpath": "2"},
             ],
         ):
-            checksum2 = dvc.cache.local.get_dir_checksum(path_info)
+            checksum2 = dvc.cache.local.get_checksum(path_info)
 
     assert checksum1 == checksum2
 
