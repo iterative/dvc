@@ -84,6 +84,11 @@ class Plots:
     def modify(self, path, props=None, unset=None):
         from dvc.dvcfile import Dvcfile
 
+        props = props or {}
+        template = props.get("template")
+        if template:
+            self.repo.plot_templates.get_template(template)
+
         (out,) = self.repo.find_outs_by_path(path)
 
         # This out will become a plot unless it is one already
@@ -92,7 +97,7 @@ class Plots:
 
         for field in unset or ():
             out.plot.pop(field, None)
-        out.plot.update(props or {})
+        out.plot.update(props)
 
         # Empty dict will move it to non-plots
         if not out.plot:
@@ -101,7 +106,7 @@ class Plots:
         out.verify_metric()
 
         dvcfile = Dvcfile(self.repo, out.stage.path)
-        dvcfile.dump(out.stage, update_pipeline=True)
+        dvcfile.dump(out.stage, update_pipeline=True, no_lock=True)
 
 
 def _collect_plots(repo, targets=None, rev=None):
