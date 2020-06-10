@@ -221,7 +221,7 @@ def _add_output_arguments(parser):
         "-o",
         "--out",
         default=None,
-        help="Destination path to save plots to.",
+        help="Destination path to save plots to",
         metavar="<path>",
     )
     parser.add_argument(
