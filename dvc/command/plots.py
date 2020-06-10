@@ -99,7 +99,7 @@ class CmdPlotsModify(CmdPlots):
 def add_parser(subparsers, parent_parser):
     PLOTS_HELP = (
         "Commands to visualize and compare plot metrics in structured files "
-        "(JSON, CSV, TSV)."
+        "(JSON, YAML, CSV, TSV)"
     )
 
     plots_parser = subparsers.add_parser(
