@@ -7,7 +7,7 @@ if [ ! -d "dvc" ]; then
   exit 1
 fi
 
-sudo snapcraft --use-lxd
+sg lxd -c snapcraft
 
 pip uninstall -y dvc
 if which dvc; then

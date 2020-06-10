@@ -47,7 +47,7 @@ def test_plot_csv_one_column(tmp_dir, scm, dvc, run_copy_metrics):
     )
 
     props = {
-        "csv_header": False,
+        "header": False,
         "x_label": "x_title",
         "y_label": "y_title",
         "title": "mytitle",
