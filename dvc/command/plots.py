@@ -212,7 +212,7 @@ def _add_props_arguments(parser):
         "--x-label", default=None, help="X axis label", metavar="<text>"
     )
     parser.add_argument(
-        "--y-label", default=None, help="Y axis label.", metavar="<text>"
+        "--y-label", default=None, help="Y axis label", metavar="<text>"
     )
 
 
