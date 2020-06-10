@@ -449,20 +449,20 @@ class TestShouldThrowProperExceptionOnCorruptedStageFile(TestDvc):
 
 class TestAddFilename(TestDvc):
     def test(self):
-        ret = main(["add", self.FOO, self.BAR, "-f", "error.dvc"])
+        ret = main(["add", self.FOO, self.BAR, "--file", "error.dvc"])
         self.assertNotEqual(0, ret)
 
-        ret = main(["add", "-R", self.DATA_DIR, "-f", "error.dvc"])
+        ret = main(["add", "-R", self.DATA_DIR, "--file", "error.dvc"])
         self.assertNotEqual(0, ret)
 
         with self.assertRaises(RecursiveAddingWhileUsingFilename):
             self.dvc.add(self.DATA_DIR, recursive=True, fname="error.dvc")
 
-        ret = main(["add", self.DATA_DIR, "-f", "data_directory.dvc"])
+        ret = main(["add", self.DATA_DIR, "--file", "data_directory.dvc"])
         self.assertEqual(0, ret)
         self.assertTrue(os.path.exists("data_directory.dvc"))
 
-        ret = main(["add", self.FOO, "-f", "bar.dvc"])
+        ret = main(["add", self.FOO, "--file", "bar.dvc"])
         self.assertEqual(0, ret)
         self.assertTrue(os.path.exists("bar.dvc"))
         self.assertFalse(os.path.exists("foo.dvc"))
