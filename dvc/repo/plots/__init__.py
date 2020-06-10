@@ -9,6 +9,13 @@ from dvc.schema import PLOT_PROPS
 logger = logging.getLogger(__name__)
 
 
+class NotAPlotError(DvcException):
+    def __init__(self, out):
+        super().__init__(
+            f"'{out}' is not a plot. Use `dvc plots modify` to change that."
+        )
+
+
 class Plots:
     def __init__(self, repo):
         self.repo = repo
@@ -90,6 +97,8 @@ class Plots:
             self.repo.plot_templates.get_template(template)
 
         (out,) = self.repo.find_outs_by_path(path)
+        if not out.plot and unset is not None:
+            raise NotAPlotError(out)
 
         # This out will become a plot unless it is one already
         if not isinstance(out.plot, dict):
@@ -131,9 +140,7 @@ def _collect_plots(repo, targets=None, rev=None):
 
 def _plot_props(out):
     if not out.plot:
-        raise DvcException(
-            f"'{out}' is not a plot. Use `dvc plots modify` to change that."
-        )
+        raise NotAPlotError(out)
     if isinstance(out.plot, list):
         raise DvcException("Multiple plots per data file not supported.")
     if isinstance(out.plot, bool):
