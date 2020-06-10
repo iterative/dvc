@@ -114,6 +114,10 @@ def test_missing(remote_url, tmp_dir, dvc):
     # Remove cache to make foo missing
     remove(dvc.cache.local.cache_dir)
 
+    api.read("foo")
+
+    remove("foo")
+
     with pytest.raises(FileMissingError):
         api.read("foo")
 
