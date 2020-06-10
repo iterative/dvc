@@ -145,7 +145,7 @@ def _create_stages(repo, targets, fname, pbar=None, external=False):
             external=external,
         )
         if stage:
-            Dvcfile(repo, stage.path).remove_with_prompt(force=True)
+            Dvcfile(repo, stage.path).remove()
 
         repo._reset()
 

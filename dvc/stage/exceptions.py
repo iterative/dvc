@@ -20,9 +20,7 @@ class StageFileDoesNotExistError(DvcException):
 
 
 class StageFileAlreadyExistsError(DvcException):
-    def __init__(self, relpath):
-        msg = f"not overwriting '{relpath}'"
-        super().__init__(msg)
+    pass
 
 
 class StageFileIsNotDvcFileError(DvcException):
@@ -100,12 +98,7 @@ class StageNameUnspecified(DvcException):
 
 
 class DuplicateStageName(DvcException):
-    def __init__(self, name, file):
-        super().__init__(
-            "Stage '{name}' already exists in '{relpath}'.".format(
-                name=name, relpath=file.relpath
-            )
-        )
+    pass
 
 
 class InvalidStageName(DvcException):
