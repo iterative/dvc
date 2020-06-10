@@ -193,10 +193,10 @@ def _add_props_arguments(parser):
         metavar="<path>",
     )
     parser.add_argument(
-        "-x", default=None, help="Field name for x axis.", metavar="<field>"
+        "-x", default=None, help="Field name for X axis.", metavar="<field>"
     )
     parser.add_argument(
-        "-y", default=None, help="Field name for y axis.", metavar="<field>"
+        "-y", default=None, help="Field name for Y axis.", metavar="<field>"
     )
     parser.add_argument(
         "--no-csv-header",
