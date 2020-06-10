@@ -181,10 +181,10 @@ class CSVPlotData(PlotData):
         super().__init__(filename, revision, content)
         self.delimiter = delimiter
 
-    def raw(self, csv_header=True, **kwargs):
+    def raw(self, header=True, **kwargs):
         first_row = first(csv.reader(io.StringIO(self.content)))
 
-        if csv_header:
+        if header:
             reader = csv.DictReader(
                 io.StringIO(self.content), delimiter=self.delimiter,
             )

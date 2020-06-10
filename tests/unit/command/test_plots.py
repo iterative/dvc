@@ -63,7 +63,7 @@ def test_metrics_show(dvc, mocker):
             "-t",
             "template",
             "--show-vega",
-            "--no-csv-header",
+            "--no-header",
             "datafile",
         ]
     )
@@ -79,8 +79,7 @@ def test_metrics_show(dvc, mocker):
     assert cmd.run() == 0
 
     m.assert_called_once_with(
-        targets=["datafile"],
-        props={"template": "template", "csv_header": False},
+        targets=["datafile"], props={"template": "template", "header": False},
     )
 
 

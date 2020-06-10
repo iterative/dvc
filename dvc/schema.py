@@ -37,7 +37,7 @@ PLOT_PROPS = {
     BaseOutput.PARAM_PLOT_X_LABEL: str,
     BaseOutput.PARAM_PLOT_Y_LABEL: str,
     BaseOutput.PARAM_PLOT_TITLE: str,
-    BaseOutput.PARAM_PLOT_CSV_HEADER: bool,
+    BaseOutput.PARAM_PLOT_HEADER: bool,
 }
 PLOT_PROPS_SCHEMA = {
     **OUT_PSTAGE_DETAILED_SCHEMA[str],

@@ -18,7 +18,7 @@ class Plots:
 
         Returns a structure like:
             {rev: {plots.csv: {
-                props: {x: ..., "csv_header": ..., ...},
+                props: {x: ..., "header": ..., ...},
                 data: "...data as a string...",
             }}}
         Data parsing is postponed, since it's affected by props.
@@ -200,7 +200,7 @@ def _render(datafile, datas, props, templates):
         rev_data = plot_data(datafile, rev, datablob).to_datapoints(
             fields=fields,
             path=props.get("path"),
-            csv_header=props.get("csv_header", True),
+            header=props.get("header", True),
             append_index=props.get("append_index", False),
         )
         data.extend(rev_data)
