@@ -290,3 +290,37 @@ def test_remove_stage_preserves_comment(tmp_dir, dvc, run_copy):
         "# This copies 'foo' text to 'foo' file."
         in (tmp_dir / PIPELINE_FILE).read_text()
     )
+
+
+def test_dvcfile_dump_preserves_meta(tmp_dir, dvc, run_copy):
+    tmp_dir.gen("foo", "foo")
+    stage = run_copy("foo", "bar", name="run_copy")
+    dvcfile = stage.dvcfile
+
+    data = dvcfile._load()[0]
+    metadata = {"name": "copy-file"}
+    data["stages"]["run_copy"]["meta"] = metadata
+    dump_yaml(dvcfile.path, data)
+
+    dvcfile.dump(stage, update_pipeline=True)
+    assert dvcfile._load()[0] == data
+    assert dvcfile._load()[0]["stages"]["run_copy"]["meta"] == metadata
+
+
+def test_dvcfile_dump_preserves_comments(tmp_dir, dvc):
+    text = textwrap.dedent(
+        """\
+        stages:
+          generate-foo:
+            cmd: echo foo > foo
+            # This copies 'foo' text to 'foo' file.
+            outs:
+            - foo"""
+    )
+    tmp_dir.gen("dvc.yaml", text)
+    stage = dvc.get_stage(name="generate-foo")
+    stage.outs[0].use_cache = False
+    dvcfile = stage.dvcfile
+
+    dvcfile.dump(stage, update_pipeline=True)
+    assert dvcfile._load()[1] == (text + ":\n\tcache: false\n".expandtabs())
