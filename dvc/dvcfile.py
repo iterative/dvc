@@ -4,11 +4,9 @@ import os
 
 from voluptuous import MultipleInvalid
 
-import dvc.prompt as prompt
 from dvc.exceptions import DvcException
 from dvc.stage import serialize
 from dvc.stage.exceptions import (
-    StageFileAlreadyExistsError,
     StageFileBadNameError,
     StageFileDoesNotExistError,
     StageFileFormatError,
@@ -109,9 +107,6 @@ class FileMixin:
         except MultipleInvalid as exc:
             raise StageFileFormatError(f"'{fname}' format error: {exc}")
 
-    def remove_with_prompt(self, force=False):
-        raise NotImplementedError
-
     def remove(self, force=False):
         with contextlib.suppress(FileNotFoundError):
             os.unlink(self.path)
@@ -147,19 +142,6 @@ class SingleStageFile(FileMixin):
         )
         dump_yaml(self.path, serialize.to_single_stage_file(stage))
         self.repo.scm.track_file(self.relpath)
-
-    def remove_with_prompt(self, force=False):
-        if not self.exists():
-            return
-
-        msg = (
-            "'{}' already exists. Do you wish to run the command and "
-            "overwrite it?".format(relpath(self.path))
-        )
-        if not (force or prompt.confirm(msg)):
-            raise StageFileAlreadyExistsError(self.path)
-
-        self.remove()
 
     def remove_stage(self, stage):
         self.remove()

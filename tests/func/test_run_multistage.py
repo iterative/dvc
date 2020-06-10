@@ -218,8 +218,8 @@ def test_run_already_exists(tmp_dir, dvc, run_copy):
     tmp_dir.dvc_gen("foo", "foo")
     run_copy("foo", "bar", name="copy")
     with pytest.raises(DuplicateStageName):
-        run_copy("bar", "foobar", name="copy", overwrite=False)
-    run_copy("bar", "foobar", name="copy", overwrite=True)
+        run_copy("bar", "foobar", name="copy", force=False)
+    run_copy("bar", "foobar", name="copy", force=True)
 
 
 supported_params = {

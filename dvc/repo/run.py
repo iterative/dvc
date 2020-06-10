@@ -3,6 +3,7 @@ import os
 from funcy import concat, first, lfilter
 
 from dvc.exceptions import InvalidArgumentError
+from dvc.stage import PipelineStage
 from dvc.stage.exceptions import (
     DuplicateStageName,
     InvalidStageName,
@@ -56,10 +57,25 @@ def _get_file_path(kwargs):
     )
 
 
+def _check_stage_exists(dvcfile, stage):
+    if not dvcfile.exists():
+        return
+
+    hint = "Use '--force' to overwrite."
+    if stage.__class__ != PipelineStage:
+        raise StageFileAlreadyExistsError(
+            f"'{stage.relpath}' already exists. {hint}"
+        )
+    elif stage.name and stage.name in dvcfile.stages:
+        raise DuplicateStageName(
+            f"Stage '{stage.name}' already exists in '{stage.relpath}'. {hint}"
+        )
+
+
 @locked
 @scm_context
 def run(self, fname=None, no_exec=False, single_stage=False, **kwargs):
-    from dvc.stage import PipelineStage, Stage, create_stage
+    from dvc.stage import Stage, create_stage
     from dvc.dvcfile import Dvcfile, PIPELINE_FILE
 
     if not kwargs.get("cmd"):
@@ -93,13 +109,10 @@ def run(self, fname=None, no_exec=False, single_stage=False, **kwargs):
         return None
 
     dvcfile = Dvcfile(self, stage.path)
-    if dvcfile.exists():
-        if kwargs.get("overwrite", True):
-            dvcfile.remove_stage(stage)
-        elif stage_cls != PipelineStage:
-            raise StageFileAlreadyExistsError(dvcfile.relpath)
-        elif stage_name and stage_name in dvcfile.stages:
-            raise DuplicateStageName(stage_name, dvcfile)
+    if kwargs.get("force", True):
+        dvcfile.remove_stage(stage)
+    else:
+        _check_stage_exists(dvcfile, stage)
 
     try:
         self.check_modified_graph([stage])

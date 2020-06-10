@@ -39,7 +39,7 @@ def imp_url(self, url, out=None, fname=None, erepo=None, frozen=True):
         return None
 
     dvcfile = Dvcfile(self, stage.path)
-    dvcfile.remove_with_prompt(force=True)
+    dvcfile.remove()
 
     try:
         self.check_modified_graph([stage])
