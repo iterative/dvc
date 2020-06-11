@@ -63,6 +63,7 @@ def reproduce(
 ):
     from dvc.utils import parse_target
 
+    assert target is None or isinstance(target, str)
     if not target and not all_pipelines:
         raise InvalidArgumentError(
             "Neither `target` nor `--all-pipelines` are specified."
