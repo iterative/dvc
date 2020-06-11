@@ -4,9 +4,11 @@ import re
 
 from funcy import cached_property
 from pathspec.patterns import GitWildMatchPattern
+from pathspec.util import normalize_file
 
 from dvc.path_info import PathInfo
 from dvc.scm.tree import BaseTree
+from dvc.system import System
 from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
@@ -63,6 +65,8 @@ class DvcIgnorePatterns(DvcIgnore):
         else:
             return False
 
+        if not System.is_unix():
+            path = normalize_file(path)
         return self.ignore(path) and not self.include(path)
 
     def ignore(self, path):
