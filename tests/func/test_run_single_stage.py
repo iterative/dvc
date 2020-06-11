@@ -1,6 +1,7 @@
 import filecmp
 import logging
 import os
+import textwrap
 import uuid
 from pathlib import Path
 
@@ -1017,3 +1018,32 @@ class TestRunDirMetrics:
                 metrics_no_cache=["dir"],
                 single_stage=True,
             )
+
+
+def test_run_force_doesnot_preserve_comments_and_meta(tmp_dir, dvc, run_copy):
+    """Depends on loading of stage on `run` where we don't check the file
+    for stage already exists, so we don't copy `stage_text` over due to which
+    `meta` and `comments` don't get preserved."""
+    tmp_dir.gen({"foo": "foo", "foo1": "foo1"})
+    text = textwrap.dedent(
+        """\
+      cmd: python copy.py foo bar
+      deps:
+      - path: copy.py
+      - path: foo
+      outs:
+      # comment not preserved
+      - path: bar
+      meta:
+        name: copy-foo-bar
+    """
+    )
+    (tmp_dir / "bar.dvc").write_text(text)
+    dvc.reproduce("bar.dvc")
+    assert "comment" in (tmp_dir / "bar.dvc").read_text()
+    assert "meta" in (tmp_dir / "bar.dvc").read_text()
+
+    run_copy("foo1", "bar1", single_stage=True, force=True, fname="bar.dvc")
+
+    assert "comment" not in (tmp_dir / "bar.dvc").read_text()
+    assert "meta" not in (tmp_dir / "bar.dvc").read_text()

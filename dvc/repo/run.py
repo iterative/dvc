@@ -1,4 +1,5 @@
 import os
+from contextlib import suppress
 
 from funcy import concat, first, lfilter
 
@@ -109,12 +110,12 @@ def run(self, fname=None, no_exec=False, single_stage=False, **kwargs):
         return None
 
     dvcfile = Dvcfile(self, stage.path)
-    if kwargs.get("force", True):
-        dvcfile.remove_stage(stage)
-    else:
-        _check_stage_exists(dvcfile, stage)
-
     try:
+        if kwargs.get("force", True):
+            with suppress(ValueError):
+                self.stages.remove(stage)
+        else:
+            _check_stage_exists(dvcfile, stage)
         self.check_modified_graph([stage])
     except OutputDuplicationError as exc:
         raise OutputDuplicationError(exc.output, set(exc.stages) - {stage})
