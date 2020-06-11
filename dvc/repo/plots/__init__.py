@@ -5,6 +5,7 @@ from funcy import first, project
 from dvc.exceptions import DvcException, NoPlotsError, OutputNotFoundError
 from dvc.repo.tree import RepoTree
 from dvc.schema import PLOT_PROPS
+from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
 
@@ -40,23 +41,25 @@ class Plots:
 
             tree = RepoTree(self.repo)
             plots = _collect_plots(self.repo, targets, rev)
-            for datafile, props in plots.items():
+            for path_info, props in plots.items():
+                datafile = relpath(path_info, self.repo.root_dir)
                 data[rev] = {datafile: {"props": props}}
 
                 # Load data from git or dvc cache
                 try:
-                    with tree.open(datafile) as fd:
+                    with tree.open(path_info) as fd:
                         data[rev][datafile]["data"] = fd.read()
-                except FileNotFoundError:
+                except FileNotFoundError as e:
                     # This might happen simply because cache is absent
+                    print(e)
                     pass
 
         return data
 
-    def render(self, data, revs=None, props=None, templates=None):
+    @staticmethod
+    def render(data, revs=None, props=None, templates=None):
         """Renders plots"""
         props = props or {}
-        templates = templates or self.repo.plot_templates
 
         # Merge data by plot file and apply overriding props
         plots = _prepare_plots(data, revs, props)
@@ -81,7 +84,7 @@ class Plots:
         if not data:
             raise NoPlotsError()
 
-        return self.render(data, revs, props)
+        return self.render(data, revs, props, self.repo.plot_templates)
 
     def diff(self, *args, **kwargs):
         from .diff import diff
@@ -135,7 +138,7 @@ def _collect_plots(repo, targets=None, rev=None):
     else:
         outs = (out for stage in repo.stages for out in stage.outs if out.plot)
 
-    return {str(out): _plot_props(out) for out in outs}
+    return {out.path_info: _plot_props(out) for out in outs}
 
 
 def _plot_props(out):
