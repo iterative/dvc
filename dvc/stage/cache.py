@@ -177,11 +177,15 @@ class StageCache:
 
     def push(self, remote):
         remote = self.repo.cloud.get_remote(remote)
-        return self._transfer(remote.upload, self.repo.cache.local, remote)
+        return self._transfer(
+            remote.tree.upload, self.repo.cache.local.tree, remote.tree
+        )
 
     def pull(self, remote):
         remote = self.repo.cloud.get_remote(remote)
-        return self._transfer(remote.download, remote, self.repo.cache.local)
+        return self._transfer(
+            remote.tree.download, remote.tree, self.repo.cache.local.tree
+        )
 
     def get_used_cache(self, used_run_cache, *args, **kwargs):
         from dvc.cache import NamedCache
