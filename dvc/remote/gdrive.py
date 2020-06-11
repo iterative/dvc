@@ -565,8 +565,8 @@ class GDriveRemoteTree(BaseRemoteTree):
 class GDriveRemote(BaseRemote):
     scheme = Schemes.GDRIVE
     REQUIRES = {"pydrive2": "pydrive2"}
+    TREE_CLS = GDriveRemoteTree
     DEFAULT_VERIFY = True
     # Always prefer traverse for GDrive since API usage quotas are a concern.
     TRAVERSE_WEIGHT_MULTIPLIER = 1
     TRAVERSE_PREFIX_LEN = 2
-    TREE_CLS = GDriveRemoteTree

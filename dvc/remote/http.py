@@ -193,7 +193,7 @@ class HTTPRemote(BaseRemote):
     CAN_TRAVERSE = False
     TREE_CLS = HTTPRemoteTree
 
-    def list_cache_paths(self, prefix=None, progress_callback=None):
+    def list_paths(self, prefix=None, progress_callback=None):
         raise NotImplementedError
 
     def gc(self):

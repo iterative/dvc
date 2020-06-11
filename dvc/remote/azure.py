@@ -7,7 +7,7 @@ from funcy import cached_property, wrap_prop
 
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemote, BaseRemoteTree
+from dvc.remote.base import BaseCloud, BaseRemoteTree, CacheMixin, RemoteMixin
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
@@ -134,10 +134,18 @@ class AzureRemoteTree(BaseRemoteTree):
             )
 
 
-class AzureRemote(BaseRemote):
+class AzureCloud(BaseCloud):
     scheme = Schemes.AZURE
     REQUIRES = {"azure-storage-blob": "azure.storage.blob"}
+    TREE_CLS = AzureRemoteTree
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
     LIST_OBJECT_PAGE_SIZE = 5000
-    TREE_CLS = AzureRemoteTree
+
+
+class AzureCache(AzureCloud, CacheMixin):
+    pass
+
+
+class AzureRemote(AzureCloud, RemoteMixin):
+    pass
