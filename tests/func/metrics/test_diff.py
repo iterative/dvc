@@ -153,3 +153,20 @@ def test_no_commits(tmp_dir):
     assert Git().no_commits
 
     assert Repo.init().metrics.diff() == {}
+
+
+def test_metrics_diff_dirty(tmp_dir, scm, dvc, run_copy_metrics):
+    def _gen(val):
+        tmp_dir.gen({"m_temp.yaml": str(val)})
+        run_copy_metrics("m_temp.yaml", "m.yaml", metrics=["m.yaml"])
+        dvc.scm.commit(str(val))
+
+    _gen(1)
+    _gen(2)
+    _gen(3)
+
+    tmp_dir.gen({"m.yaml": "4"})
+
+    expected = {"m.yaml": {"": {"old": 3, "new": 4, "diff": 1}}}
+
+    assert dvc.metrics.diff() == expected
