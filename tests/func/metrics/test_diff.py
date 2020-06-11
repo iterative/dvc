@@ -1,6 +1,9 @@
 import json
+import logging
 
 import yaml
+
+from dvc.main import main
 
 
 def test_metrics_diff_simple(tmp_dir, scm, dvc, run_copy_metrics):
@@ -170,3 +173,26 @@ def test_metrics_diff_dirty(tmp_dir, scm, dvc, run_copy_metrics):
     expected = {"m.yaml": {"": {"old": 3, "new": 4, "diff": 1}}}
 
     assert dvc.metrics.diff() == expected
+
+
+def test_metrics_diff_cli(tmp_dir, scm, dvc, run_copy_metrics, caplog, capsys):
+    def _gen(val):
+        tmp_dir.gen({"m_temp.yaml": f"foo: {val}"})
+        run_copy_metrics("m_temp.yaml", "m.yaml", metrics=["m.yaml"])
+        dvc.scm.commit(str(val))
+
+    _gen(1.23456789)
+    _gen(2.34567891011)
+    _gen(3.45678910111213)
+
+    caplog.clear()
+    assert main(["metrics", "diff", "HEAD~2", "--old"]) == 0
+    (info,) = [
+        msg
+        for name, level, msg in caplog.record_tuples
+        if name.startswith("dvc") and level == logging.INFO
+    ]
+    assert info == (
+        "Path    Metric    Old      New      Change\n"
+        "m.yaml  foo       1.23457  3.45679  2.22222"
+    )
