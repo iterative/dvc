@@ -196,7 +196,7 @@
             "frozen": {
               "type": "boolean",
               "description": "Assume stage as unchanged",
-              "default": true
+              "default": false
             },
             "locked": {
               "type": "boolean",
