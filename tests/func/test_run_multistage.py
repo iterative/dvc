@@ -1,4 +1,5 @@
 import os
+import textwrap
 
 import pytest
 import yaml
@@ -6,6 +7,7 @@ import yaml
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo import Repo
 from dvc.stage.exceptions import DuplicateStageName, InvalidStageName
+from dvc.utils.yaml import parse_yaml_for_update
 
 
 def test_run_with_name(tmp_dir, dvc, run_copy):
@@ -315,3 +317,47 @@ def test_run_without_cmd(kwargs):
     with pytest.raises(InvalidArgumentError) as exc:
         Repo().run(**kwargs)
     assert "command is not specified" == str(exc.value)
+
+
+def test_run_overwrite_order(tmp_dir, dvc, run_copy):
+    from dvc.dvcfile import PIPELINE_FILE
+
+    tmp_dir.gen({"foo": "foo", "foo1": "foo1"})
+    run_copy("foo", "bar", name="copy-foo-bar")
+    run_copy("bar", "foobar", name="copy-bar-foobar")
+
+    run_copy("foo1", "bar1", name="copy-foo-bar", force=True)
+
+    data = parse_yaml_for_update(
+        (tmp_dir / PIPELINE_FILE).read_text(), PIPELINE_FILE
+    )
+    assert list(data["stages"].keys()) == ["copy-foo-bar", "copy-bar-foobar"]
+
+
+def test_run_overwrite_preserves_meta_and_comment(tmp_dir, dvc, run_copy):
+    from dvc.dvcfile import PIPELINE_FILE
+
+    tmp_dir.gen({"foo": "foo", "foo1": "foo1"})
+    text = textwrap.dedent(
+        """\
+        stages:
+          copy-foo-bar:
+            cmd: python copy.py {src} {dest}
+            deps:
+            - copy.py
+            - {src}
+            outs:
+            # comments are preserved
+            - {dest}
+            meta:
+              name: meta is preserved too
+    """
+    )
+    (tmp_dir / PIPELINE_FILE).write_text(text.format(src="foo", dest="bar"))
+    assert dvc.reproduce(PIPELINE_FILE)
+
+    assert run_copy("foo1", "bar1", name="copy-foo-bar", force=True)
+
+    assert (tmp_dir / PIPELINE_FILE).read_text() == text.format(
+        src="foo1", dest="bar1"
+    )
