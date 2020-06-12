@@ -57,6 +57,8 @@ fi
 git fetch --tags
 TAG_MAJOR="$(git describe --tags | sed -r 's/^v?([0-9]+)\.[0-9]+\.[0-9]+.*/\1/')"
 [[ -n "$TAG_MAJOR" ]] || exit 1  # failed to detect major version
+# NOTE: after deprecating major releses, remove `CHANNEL,` prefixes
+# (e.g. `stable,v$TAG_MAJOR/stable` => `v$TAG_MAJOR/stable`)
 if [[ -n "$TRAVIS_TAG" ]]; then
   if [[ $(echo "$TRAVIS_TAG" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$') ]]; then
     echo "export SNAP_CHANNEL=stable,v$TAG_MAJOR/stable" >>env.sh
