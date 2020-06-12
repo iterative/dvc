@@ -9,7 +9,7 @@ from funcy import cached_property, wrap_prop
 from dvc.exceptions import DvcException
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseCloud, BaseRemoteTree, CacheMixin, RemoteMixin
+from dvc.remote.base import BaseRemote, BaseRemoteTree, CacheMixin
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
@@ -195,16 +195,12 @@ class GSRemoteTree(BaseRemoteTree):
                 blob.download_to_file(wrapped)
 
 
-class GSCloud(BaseCloud):
+class GSRemote(BaseRemote):
     scheme = Schemes.GS
     REQUIRES = {"google-cloud-storage": "google.cloud.storage"}
     TREE_CLS = GSRemoteTree
     PARAM_CHECKSUM = "md5"
 
 
-class GSCache(GSCloud, CacheMixin):
-    pass
-
-
-class GSRemote(GSCloud, RemoteMixin):
+class GSCache(GSRemote, CacheMixin):
     pass

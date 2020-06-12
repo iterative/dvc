@@ -16,10 +16,9 @@ from dvc.remote.base import (
     STATUS_MAP,
     STATUS_MISSING,
     STATUS_NEW,
-    BaseCloud,
+    BaseRemote,
     BaseRemoteTree,
     CacheMixin,
-    RemoteMixin,
     index_locked,
 )
 from dvc.remote.index import RemoteIndexNoop
@@ -261,7 +260,7 @@ def _log_exceptions(func, operation):
     return wrapper
 
 
-class LocalCloud(BaseCloud):
+class LocalRemote(BaseRemote):
     scheme = Schemes.LOCAL
     INDEX_CLS = RemoteIndexNoop
     TREE_CLS = LocalRemoteTree
@@ -344,8 +343,6 @@ class LocalCloud(BaseCloud):
 
         return stat.S_IMODE(mode) == self.CACHE_MODE
 
-
-class LocalRemote(LocalCloud, RemoteMixin):
     def list_paths(self, prefix=None, progress_callback=None):
         assert self.path_info is not None
         if prefix:
@@ -367,9 +364,6 @@ class LocalRemote(LocalCloud, RemoteMixin):
         self.tree.remove(path_info)
 
 
-# NOTE: extends LocalRemote since local cache needs to implement the Remote
-# `checksums_exist` functions for status/push/pull syncing between local cache
-# and other remotes
 class LocalCache(LocalRemote, CacheMixin):
     def __init__(self, repo, config):
         super().__init__(repo, config)

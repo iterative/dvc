@@ -11,13 +11,7 @@ from urllib.parse import urlparse
 from dvc.scheme import Schemes
 from dvc.utils import fix_env, tmp_fname
 
-from .base import (
-    BaseCloud,
-    BaseRemoteTree,
-    CacheMixin,
-    RemoteCmdError,
-    RemoteMixin,
-)
+from .base import BaseRemote, BaseRemoteTree, CacheMixin, RemoteCmdError
 from .pool import get_connection
 
 logger = logging.getLogger(__name__)
@@ -181,7 +175,7 @@ class HDFSRemoteTree(BaseRemoteTree):
                 hdfs.download(from_info.path, fobj)
 
 
-class HDFSCloud(BaseCloud):
+class HDFSRemote(BaseRemote):
     scheme = Schemes.HDFS
     REGEX = r"^hdfs://((?P<user>.*)@)?.*$"
     PARAM_CHECKSUM = "checksum"
@@ -190,9 +184,5 @@ class HDFSCloud(BaseCloud):
     TRAVERSE_PREFIX_LEN = 2
 
 
-class HDFSCache(HDFSCloud, CacheMixin):
-    pass
-
-
-class HDFSRemote(HDFSCloud, RemoteMixin):
+class HDFSCache(HDFSRemote, CacheMixin):
     pass
