@@ -50,18 +50,12 @@ class LocalRemoteTree(BaseRemoteTree):
         return self.remote.repo
 
     @cached_property
-    def _work_tree(self):
-        if self.repo:
-            return WorkingTree(self.repo.root_dir)
-        return None
-
-    @property
     def work_tree(self):
         # When using repo.brancher, repo.tree may change to/from WorkingTree to
         # GitTree arbitarily. When repo.tree is GitTree, local cache needs to
         # use its own WorkingTree instance.
-        if self.repo and not is_working_tree(self.repo.tree):
-            return self._work_tree
+        if self.repo:
+            return WorkingTree(self.repo.root_dir)
         return None
 
     @staticmethod
@@ -72,23 +66,17 @@ class LocalRemoteTree(BaseRemoteTree):
         assert isinstance(path_info, str) or path_info.scheme == "local"
         if not self.repo:
             return os.path.exists(path_info)
-        if self.work_tree and self.work_tree.exists(path_info):
-            return True
-        return self.repo.tree.exists(path_info)
+        return self.work_tree.exists(path_info)
 
     def isfile(self, path_info):
         if not self.repo:
             return os.path.isfile(path_info)
-        if self.work_tree and self.work_tree.isfile(path_info):
-            return True
-        return self.repo.tree.isfile(path_info)
+        return self.work_tree.isfile(path_info)
 
     def isdir(self, path_info):
         if not self.repo:
             return os.path.isdir(path_info)
-        if self.work_tree and self.work_tree.isdir(path_info):
-            return True
-        return self.repo.tree.isdir(path_info)
+        return self.work_tree.isdir(path_info)
 
     def iscopy(self, path_info):
         return not (
@@ -96,11 +84,7 @@ class LocalRemoteTree(BaseRemoteTree):
         )
 
     def walk_files(self, path_info, **kwargs):
-        if self.work_tree:
-            tree = self.work_tree
-        else:
-            tree = self.repo.tree
-        for fname in tree.walk_files(path_info):
+        for fname in self.work_tree.walk_files(path_info):
             yield PathInfo(fname)
 
     def is_empty(self, path_info):

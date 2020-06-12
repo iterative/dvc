@@ -10,7 +10,6 @@ from dvc.ignore import (
     DvcIgnorePatterns,
     DvcIgnoreRepo,
 )
-from dvc.remote import LocalRemote
 from dvc.repo import Repo
 from dvc.scm.tree import WorkingTree
 from dvc.utils import relpath
@@ -139,8 +138,7 @@ def test_match_nested(tmp_dir, dvc):
         }
     )
 
-    remote = LocalRemote(dvc, {})
-    result = {os.fspath(f) for f in remote.tree.walk_files(".")}
+    result = {os.fspath(os.path.normpath(f)) for f in dvc.tree.walk_files(".")}
     assert result == {".dvcignore", "foo"}
 
 
@@ -149,8 +147,7 @@ def test_ignore_external(tmp_dir, scm, dvc, tmp_path_factory):
     ext_dir = TmpDir(os.fspath(tmp_path_factory.mktemp("external_dir")))
     ext_dir.gen({"y.backup": "y", "tmp": "ext tmp"})
 
-    remote = LocalRemote(dvc, {})
-    result = {relpath(f, ext_dir) for f in remote.tree.walk_files(ext_dir)}
+    result = {relpath(f, ext_dir) for f in dvc.tree.walk_files(ext_dir)}
     assert result == {"y.backup", "tmp"}
 
 

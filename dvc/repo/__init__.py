@@ -111,14 +111,14 @@ class Repo:
             friendly=True,
         )
 
+        self.cache = Cache(self)
+        self.cloud = DataCloud(self)
+
         if not scm:
             # NOTE: storing state and link_state in the repository itself to
             # avoid any possible state corruption in 'shared cache dir'
             # scenario.
-            self.state = State(self)
-
-        self.cache = Cache(self)
-        self.cloud = DataCloud(self)
+            self.state = State(self.cache.local)
 
         self.stage_cache = StageCache(self)
 
