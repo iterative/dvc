@@ -43,7 +43,9 @@ class Plots:
             plots = _collect_plots(self.repo, targets, rev)
             for path_info, props in plots.items():
                 datafile = relpath(path_info, self.repo.root_dir)
-                data[rev] = {datafile: {"props": props}}
+                if rev not in data:
+                    data[rev] = {}
+                data[rev].update({datafile: {"props": props}})
 
                 # Load data from git or dvc cache
                 try:

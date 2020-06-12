@@ -585,3 +585,24 @@ def test_plots_modify_not_existing_template(dvc):
         dvc.plots.modify(
             "metric.json", props={"template": "not-existing-template.json"}
         )
+
+
+def test_multiple_plots(tmp_dir, scm, dvc, run_copy_metrics):
+    metric1 = [
+        OrderedDict([("first_val", 100), ("second_val", 100), ("val", 2)]),
+        OrderedDict([("first_val", 200), ("second_val", 300), ("val", 3)]),
+    ]
+    metric2 = [
+        OrderedDict([("first_val", 100), ("second_val", 100), ("val", 2)]),
+        OrderedDict([("first_val", 200), ("second_val", 300), ("val", 3)]),
+    ]
+    _write_csv(metric1, "metric_t1.csv")
+    _write_json(tmp_dir, metric2, "metric_t2.json")
+    run_copy_metrics(
+        "metric_t1.csv", "metric1.csv", plots_no_cache=["metric1.csv"]
+    )
+    run_copy_metrics(
+        "metric_t2.json", "metric2.json", plots_no_cache=["metric2.json"]
+    )
+
+    assert len(dvc.plots.show().keys()) == 2
