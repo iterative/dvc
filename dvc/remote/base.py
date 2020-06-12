@@ -187,7 +187,10 @@ class BaseRemoteTree:
         if not tree.exists(path_info):
             return None
 
-        checksum = self.state.get(path_info)
+        if tree == self:
+            checksum = self.state.get(path_info)
+        else:
+            checksum = None
 
         # If we have dir checksum in state db, but dir cache file is lost,
         # then we need to recollect the dir via .get_dir_checksum() call below,
