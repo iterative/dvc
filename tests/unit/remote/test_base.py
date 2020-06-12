@@ -41,18 +41,18 @@ def test_cmd_error(dvc):
             REMOTE_CLS(dvc, config).tree.remove("file")
 
 
-@mock.patch.object(BaseRemote, "_cache_checksums_traverse")
-@mock.patch.object(BaseRemote, "_cache_object_exists")
-def test_cache_exists(object_exists, traverse, dvc):
+@mock.patch.object(BaseRemote, "_list_checksums_traverse")
+@mock.patch.object(BaseRemote, "_list_checksums_exists")
+def test_checksums_exist(object_exists, traverse, dvc):
     remote = BaseRemote(dvc, {})
 
     # remote does not support traverse
     remote.CAN_TRAVERSE = False
     with mock.patch.object(
-        remote, "cache_checksums", return_value=list(range(256))
+        remote, "list_checksums", return_value=list(range(256))
     ):
         checksums = set(range(1000))
-        remote.cache_exists(checksums)
+        remote.checksums_exist(checksums)
         object_exists.assert_called_with(checksums, None, None)
         traverse.assert_not_called()
 
@@ -62,10 +62,10 @@ def test_cache_exists(object_exists, traverse, dvc):
     object_exists.reset_mock()
     traverse.reset_mock()
     with mock.patch.object(
-        remote, "cache_checksums", return_value=list(range(256))
+        remote, "list_checksums", return_value=list(range(256))
     ):
         checksums = list(range(1000))
-        remote.cache_exists(checksums)
+        remote.checksums_exist(checksums)
         # verify that _cache_paths_with_max() short circuits
         # before returning all 256 remote checksums
         max_checksums = math.ceil(
@@ -83,10 +83,10 @@ def test_cache_exists(object_exists, traverse, dvc):
     traverse.reset_mock()
     remote.JOBS = 16
     with mock.patch.object(
-        remote, "cache_checksums", return_value=list(range(256))
+        remote, "list_checksums", return_value=list(range(256))
     ):
         checksums = list(range(1000000))
-        remote.cache_exists(checksums)
+        remote.checksums_exist(checksums)
         object_exists.assert_not_called()
         traverse.assert_called_with(
             256 * pow(16, remote.TRAVERSE_PREFIX_LEN),
@@ -97,44 +97,44 @@ def test_cache_exists(object_exists, traverse, dvc):
 
 
 @mock.patch.object(
-    BaseRemote, "cache_checksums", return_value=[],
+    BaseRemote, "list_checksums", return_value=[],
 )
 @mock.patch.object(
     BaseRemote, "path_to_checksum", side_effect=lambda x: x,
 )
-def test_cache_checksums_traverse(path_to_checksum, cache_checksums, dvc):
+def test_list_checksums_traverse(path_to_checksum, list_checksums, dvc):
     remote = BaseRemote(dvc, {})
     remote.tree.path_info = PathInfo("foo")
 
     # parallel traverse
     size = 256 / remote.JOBS * remote.LIST_OBJECT_PAGE_SIZE
-    list(remote._cache_checksums_traverse(size, {0}))
+    list(remote._list_checksums_traverse(size, {0}))
     for i in range(1, 16):
-        cache_checksums.assert_any_call(
+        list_checksums.assert_any_call(
             prefix=f"{i:03x}", progress_callback=CallableOrNone
         )
     for i in range(1, 256):
-        cache_checksums.assert_any_call(
+        list_checksums.assert_any_call(
             prefix=f"{i:02x}", progress_callback=CallableOrNone
         )
 
     # default traverse (small remote)
     size -= 1
-    cache_checksums.reset_mock()
-    list(remote._cache_checksums_traverse(size - 1, {0}))
-    cache_checksums.assert_called_with(
+    list_checksums.reset_mock()
+    list(remote._list_checksums_traverse(size - 1, {0}))
+    list_checksums.assert_called_with(
         prefix=None, progress_callback=CallableOrNone
     )
 
 
-def test_cache_checksums(dvc):
+def test_list_checksums(dvc):
     remote = BaseRemote(dvc, {})
     remote.tree.path_info = PathInfo("foo")
 
     with mock.patch.object(
-        remote, "list_cache_paths", return_value=["12/3456", "bar"]
+        remote, "list_paths", return_value=["12/3456", "bar"]
     ):
-        checksums = list(remote.cache_checksums())
+        checksums = list(remote.list_checksums())
         assert checksums == ["123456"]
 
 
