@@ -33,7 +33,9 @@ def test_get_repo_dir(tmp_dir, erepo_dir):
     trees_equal(erepo_dir / "dir", "dir_imported")
 
 
-def test_get_git_file(tmp_dir, erepo_dir):
+@pytest.mark.parametrize("repo_type", ["git_dir", "erepo_dir"])
+def test_get_git_file(request, tmp_dir, repo_type):
+    erepo_dir = request.getfixturevalue(repo_type)
     src = "some_file"
     dst = "some_file_imported"
 
@@ -45,7 +47,9 @@ def test_get_git_file(tmp_dir, erepo_dir):
     assert (tmp_dir / dst).read_text() == "hello"
 
 
-def test_get_git_dir(tmp_dir, erepo_dir):
+@pytest.mark.parametrize("repo_type", ["git_dir", "erepo_dir"])
+def test_get_git_dir(request, tmp_dir, repo_type):
+    erepo_dir = request.getfixturevalue(repo_type)
     src = "some_directory"
     dst = "some_directory_imported"
 

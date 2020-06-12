@@ -404,10 +404,8 @@ class RepoTree(BaseTree):
 
         for root, _, files in self.walk(top):
             root = PathInfo(root)
-            dest_dir = root.relative_to(top)
-            makedirs(dest_dir, exist_ok=True)
+            makedirs(dest, exist_ok=True)
             for fname in files:
                 src = root / fname
-                dest = dest_dir / fname
                 with self.open(src, mode="rb") as fobj:
-                    copy_fobj_to_file(fobj, dest)
+                    copy_fobj_to_file(fobj, dest / fname)
