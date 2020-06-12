@@ -548,7 +548,9 @@ class TestRecursiveSyncOperations(Local, TestDataCloudBase):
 
     def _prepare_repo(self):
         remote = self.cloud.get_remote()
-        self.main(["remote", "add", "-d", TEST_REMOTE, remote.cache_dir])
+        self.main(
+            ["remote", "add", "-d", TEST_REMOTE, remote.path_info.fspath]
+        )
 
         self.dvc.add(self.DATA)
         self.dvc.add(self.DATA_SUB)

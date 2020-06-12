@@ -16,7 +16,7 @@ from dvc.exceptions import (
     NoOutputOrStageError,
 )
 from dvc.main import main
-from dvc.remote import S3Remote
+from dvc.remote import S3Cache, S3Remote
 from dvc.remote.local import LocalRemote
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
@@ -755,7 +755,7 @@ def test_checkout_recursive(tmp_dir, dvc):
     not S3.should_test(), reason="Only run with S3 credentials"
 )
 def test_checkout_for_external_outputs(tmp_dir, dvc):
-    dvc.cache.s3 = S3Remote(dvc, {"url": S3.get_url()})
+    dvc.cache.s3 = S3Cache(dvc, {"url": S3.get_url()})
 
     remote = S3Remote(dvc, {"url": S3.get_url()})
     file_path = remote.path_info / "foo"
