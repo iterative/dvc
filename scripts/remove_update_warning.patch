@@ -1,8 +1,8 @@
 diff --git a/dvc/updater.py b/dvc/updater.py
-index 3a4cfd9..cfa416f 100644
+index 3ecb3ca..cfa416f 100644
 --- a/dvc/updater.py
 +++ b/dvc/updater.py
-@@ -48,17 +48,7 @@ class Updater(object):  # pragma: no cover
+@@ -48,14 +48,7 @@ class Updater(object):  # pragma: no cover
              logger.debug(msg.format(self.lock.lockfile, action))
  
      def check(self):
@@ -10,10 +10,7 @@ index 3a4cfd9..cfa416f 100644
 -            return
 -
 -        if PKG == "snap":
--            # Ideally `if SNAP_CHANNEL.startswith(self.current): return`
--            # where `SNAP_CHANNEL` is:
--            #   snap info dvc | grep -E '^tracking:' | awk '{print $2}'
--            # However that's too slow to check
+-            # hardcoded transition message
 -            self.current = f"v{version.parse(self.current).major}"
 -            self.latest = f"v{version.parse(self.current).major + 1}"
 -            self._notify()
@@ -21,7 +18,7 @@ index 3a4cfd9..cfa416f 100644
              return
  
          self._with_lock(self._check, "checking")
-@@ -148,17 +138,6 @@ class Updater(object):  # pragma: no cover
+@@ -145,17 +138,6 @@ class Updater(object):  # pragma: no cover
              ),
              "conda": "Run `{yellow}conda{reset} update dvc`",
              "choco": "Run `{yellow}choco{reset} upgrade dvc`",

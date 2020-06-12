@@ -52,10 +52,7 @@ class Updater(object):  # pragma: no cover
             return
 
         if PKG == "snap":
-            # Ideally `if SNAP_CHANNEL.startswith(self.current): return`
-            # where `SNAP_CHANNEL` is:
-            #   snap info dvc | grep -E '^tracking:' | awk '{print $2}'
-            # However that's too slow to check
+            # hardcoded transition message
             self.current = f"v{version.parse(self.current).major}"
             self.latest = f"v{version.parse(self.current).major + 1}"
             self._notify()
