@@ -53,8 +53,9 @@ class Updater(object):  # pragma: no cover
 
         if PKG == "snap":
             # hardcoded transition message
-            self.current = f"v{version.parse(self.current).major}"
-            self.latest = f"v{version.parse(self.current).major + 1}"
+            version_major = version.parse(self.current).major
+            self.current = "v{}".format(version_major)
+            self.latest = "v{}".format(version_major + 1)
             self._notify()
             return
 

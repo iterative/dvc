@@ -1,8 +1,8 @@
 diff --git a/dvc/updater.py b/dvc/updater.py
-index 3ecb3ca..cfa416f 100644
+index d6dc372..cfa416f 100644
 --- a/dvc/updater.py
 +++ b/dvc/updater.py
-@@ -48,14 +48,7 @@ class Updater(object):  # pragma: no cover
+@@ -48,15 +48,7 @@ class Updater(object):  # pragma: no cover
              logger.debug(msg.format(self.lock.lockfile, action))
  
      def check(self):
@@ -11,14 +11,15 @@ index 3ecb3ca..cfa416f 100644
 -
 -        if PKG == "snap":
 -            # hardcoded transition message
--            self.current = f"v{version.parse(self.current).major}"
--            self.latest = f"v{version.parse(self.current).major + 1}"
+-            version_major = version.parse(self.current).major
+-            self.current = "v{}".format(version_major)
+-            self.latest = "v{}".format(version_major + 1)
 -            self._notify()
 +        if os.getenv("CI") or env2bool("DVC_TEST") or PKG == "snap":
              return
  
          self._with_lock(self._check, "checking")
-@@ -145,17 +138,6 @@ class Updater(object):  # pragma: no cover
+@@ -146,17 +138,6 @@ class Updater(object):  # pragma: no cover
              ),
              "conda": "Run `{yellow}conda{reset} update dvc`",
              "choco": "Run `{yellow}choco{reset} upgrade dvc`",
