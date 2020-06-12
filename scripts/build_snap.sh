@@ -8,6 +8,13 @@ if [ ! -d "dvc" ]; then
 fi
 
 sg lxd -c snapcraft
+original_snap_name="$(ls dvc_*.snap)"
+mv "$original_snap_name" original.snap
+
+git apply scripts/remove_update_warning.patch
+sg lxd -c snapcraft
+mv dvc_*.snap nowarn_update_"$original_snap_name".snap
+mv original.snap "$original_snap_name"
 
 pip uninstall -y dvc
 if which dvc; then

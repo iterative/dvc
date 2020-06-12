@@ -57,14 +57,19 @@ fi
 git fetch --tags
 TAG_MAJOR="$(git describe --tags | sed -r 's/^v?([0-9]+)\.[0-9]+\.[0-9]+.*/\1/')"
 [[ -n "$TAG_MAJOR" ]] || exit 1  # failed to detect major version
-# NOTE: after deprecating major releses, remove `CHANNEL,` prefixes
-# (e.g. `stable,v$TAG_MAJOR/stable` => `v$TAG_MAJOR/stable`)
+
 if [[ -n "$TRAVIS_TAG" ]]; then
   if [[ $(echo "$TRAVIS_TAG" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$') ]]; then
-    echo "export SNAP_CHANNEL=stable,v$TAG_MAJOR/stable" >>env.sh
+    echo "export SNAP_CHANNEL=stable" >>env.sh
+    echo "export SNAP_CHANNEL_MAJOR=v$TAG_MAJOR/stable" >>env.sh
   else
-    echo "export SNAP_CHANNEL=beta,v$TAG_MAJOR/beta" >>env.sh
+    echo "export SNAP_CHANNEL=beta" >>env.sh
+    echo "export SNAP_CHANNEL_MAJOR=v$TAG_MAJOR/beta" >>env.sh
   fi
 else
-  echo "export SNAP_CHANNEL=edge,v$TAG_MAJOR/edge" >>env.sh
+  echo "export SNAP_CHANNEL=edge" >>env.sh
+  echo "export SNAP_CHANNEL_MAJOR=v$TAG_MAJOR/edge" >>env.sh
 fi
+
+# NOTE: after deprecating this branch, uncomment this line
+# echo "unset SNAP_CHANNEL" >>env.sh
