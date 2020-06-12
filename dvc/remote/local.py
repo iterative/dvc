@@ -18,6 +18,7 @@ from dvc.remote.base import (
     STATUS_NEW,
     BaseRemote,
     BaseRemoteTree,
+    CacheMixin,
     index_locked,
 )
 from dvc.remote.index import RemoteIndexNoop
@@ -43,7 +44,8 @@ class LocalRemoteTree(BaseRemoteTree):
 
     def __init__(self, remote, config):
         super().__init__(remote, config)
-        self.path_info = config.get("url")
+        url = config.get("url")
+        self.path_info = self.PATH_CLS(url) if url else None
 
     @property
     def repo(self):
@@ -193,6 +195,9 @@ class LocalRemoteTree(BaseRemoteTree):
         os.chmod(tmp_info, self.file_mode)
         os.rename(tmp_info, to_info)
 
+    def get_file_checksum(self, path_info):
+        return file_md5(path_info)[0]
+
     @staticmethod
     def getsize(path_info):
         return os.path.getsize(path_info)
@@ -241,25 +246,118 @@ def _log_exceptions(func, operation):
 
 class LocalRemote(BaseRemote):
     scheme = Schemes.LOCAL
-    PARAM_CHECKSUM = "md5"
-    PARAM_PATH = "path"
-    TRAVERSE_PREFIX_LEN = 2
     INDEX_CLS = RemoteIndexNoop
     TREE_CLS = LocalRemoteTree
 
+    PARAM_CHECKSUM = "md5"
+    PARAM_PATH = "path"
+    DEFAULT_CACHE_TYPES = ["reflink", "copy"]
+    TRAVERSE_PREFIX_LEN = 2
     UNPACKED_DIR_SUFFIX = ".unpacked"
 
-    DEFAULT_CACHE_TYPES = ["reflink", "copy"]
-
     CACHE_MODE = 0o444
-
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
-        self.cache_dir = config.get("url")
 
     @property
     def state(self):
         return self.repo.state
+
+    def get(self, md5):
+        if not md5:
+            return None
+
+        return self.checksum_to_path_info(md5).url
+
+    def _unprotect_file(self, path):
+        if System.is_symlink(path) or System.is_hardlink(path):
+            logger.debug(f"Unprotecting '{path}'")
+            tmp = os.path.join(os.path.dirname(path), "." + uuid())
+
+            # The operations order is important here - if some application
+            # would access the file during the process of copyfile then it
+            # would get only the part of file. So, at first, the file should be
+            # copied with the temporary name, and then original file should be
+            # replaced by new.
+            copyfile(path, tmp, name="Unprotecting '{}'".format(relpath(path)))
+            remove(path)
+            os.rename(tmp, path)
+
+        else:
+            logger.debug(
+                "Skipping copying for '{}', since it is not "
+                "a symlink or a hardlink.".format(path)
+            )
+
+        os.chmod(path, self.tree.file_mode)
+
+    def _unprotect_dir(self, path):
+        assert is_working_tree(self.repo.tree)
+
+        for fname in self.repo.tree.walk_files(path):
+            self._unprotect_file(fname)
+
+    def unprotect(self, path_info):
+        path = path_info.fspath
+        if not os.path.exists(path):
+            raise DvcException(f"can't unprotect non-existing data '{path}'")
+
+        if os.path.isdir(path):
+            self._unprotect_dir(path)
+        else:
+            self._unprotect_file(path)
+
+    def protect(self, path_info):
+        path = os.fspath(path_info)
+        mode = self.CACHE_MODE
+
+        try:
+            os.chmod(path, mode)
+        except OSError as exc:
+            # There is nothing we need to do in case of a read-only file system
+            if exc.errno == errno.EROFS:
+                return
+
+            # In shared cache scenario, we might not own the cache file, so we
+            # need to check if cache file is already protected.
+            if exc.errno not in [errno.EPERM, errno.EACCES]:
+                raise
+
+            actual = stat.S_IMODE(os.stat(path).st_mode)
+            if actual != mode:
+                raise
+
+    def is_protected(self, path_info):
+        try:
+            mode = os.stat(path_info).st_mode
+        except FileNotFoundError:
+            return False
+
+        return stat.S_IMODE(mode) == self.CACHE_MODE
+
+    def list_paths(self, prefix=None, progress_callback=None):
+        assert self.path_info is not None
+        if prefix:
+            path_info = self.path_info / prefix[:2]
+            if not self.tree.exists(path_info):
+                return
+        else:
+            path_info = self.path_info
+        if progress_callback:
+            for path in walk_files(path_info):
+                progress_callback()
+                yield path
+        else:
+            yield from walk_files(path_info)
+
+    def _remove_unpacked_dir(self, checksum):
+        info = self.checksum_to_path_info(checksum)
+        path_info = info.with_name(info.name + self.UNPACKED_DIR_SUFFIX)
+        self.tree.remove(path_info)
+
+
+class LocalCache(LocalRemote, CacheMixin):
+    def __init__(self, repo, config):
+        super().__init__(repo, config)
+        self.cache_dir = config.get("url")
 
     @property
     def cache_dir(self):
@@ -285,26 +383,17 @@ class LocalRemote(BaseRemote):
             f"{self.cache_path}{os.sep}{checksum[0:2]}{os.sep}{checksum[2:]}"
         )
 
-    def list_cache_paths(self, prefix=None, progress_callback=None):
-        assert self.path_info is not None
-        if prefix:
-            path_info = self.path_info / prefix[:2]
-            if not self.tree.exists(path_info):
-                return
-        else:
-            path_info = self.path_info
-        if progress_callback:
-            for path in walk_files(path_info):
-                progress_callback()
-                yield path
-        else:
-            yield from walk_files(path_info)
-
-    def get(self, md5):
-        if not md5:
-            return None
-
-        return self.checksum_to_path_info(md5).url
+    def checksums_exist(self, checksums, jobs=None, name=None):
+        return [
+            checksum
+            for checksum in Tqdm(
+                checksums,
+                unit="file",
+                desc="Querying "
+                + ("cache in " + name if name else "local cache"),
+            )
+            if not self.changed_cache_file(checksum)
+        ]
 
     def already_cached(self, path_info):
         assert path_info.scheme in ["", "local"]
@@ -321,21 +410,6 @@ class LocalRemote(BaseRemote):
             return
 
         super()._verify_link(path_info, link_type)
-
-    def get_file_checksum(self, path_info):
-        return file_md5(path_info)[0]
-
-    def cache_exists(self, checksums, jobs=None, name=None):
-        return [
-            checksum
-            for checksum in Tqdm(
-                checksums,
-                unit="file",
-                desc="Querying "
-                + ("cache in " + name if name else "local cache"),
-            )
-            if not self.changed_cache_file(checksum)
-        ]
 
     @index_locked
     def status(
@@ -376,7 +450,7 @@ class LocalRemote(BaseRemote):
 
         logger.debug("Collecting information from local cache...")
         local_exists = frozenset(
-            self.cache_exists(md5s, jobs=jobs, name=self.cache_dir)
+            self.checksums_exist(md5s, jobs=jobs, name=self.cache_dir)
         )
 
         # This is a performance optimization. We can safely assume that,
@@ -396,7 +470,7 @@ class LocalRemote(BaseRemote):
                 md5s.difference_update(remote_exists)
             if md5s:
                 remote_exists.update(
-                    remote.cache_exists(
+                    remote.checksums_exist(
                         md5s, jobs=jobs, name=str(remote.path_info)
                     )
                 )
@@ -439,7 +513,7 @@ class LocalRemote(BaseRemote):
         indexed_dir_exists = set()
         if indexed_dirs:
             indexed_dir_exists.update(
-                remote._cache_object_exists(indexed_dirs)
+                remote._list_checksums_exists(indexed_dirs)
             )
             missing_dirs = indexed_dirs.difference(indexed_dir_exists)
             if missing_dirs:
@@ -451,7 +525,7 @@ class LocalRemote(BaseRemote):
 
         # Check if non-indexed (new) dir checksums exist on remote
         dir_exists = dir_md5s.intersection(indexed_dir_exists)
-        dir_exists.update(remote._cache_object_exists(dir_md5s - dir_exists))
+        dir_exists.update(remote._list_checksums_exists(dir_md5s - dir_exists))
 
         # If .dir checksum exists on the remote, assume directory contents
         # still exists on the remote
@@ -658,74 +732,3 @@ class LocalRemote(BaseRemote):
                 "nor on remote. Missing cache files: {}".format(missing_desc)
             )
             logger.warning(msg)
-
-    def _unprotect_file(self, path):
-        if System.is_symlink(path) or System.is_hardlink(path):
-            logger.debug(f"Unprotecting '{path}'")
-            tmp = os.path.join(os.path.dirname(path), "." + uuid())
-
-            # The operations order is important here - if some application
-            # would access the file during the process of copyfile then it
-            # would get only the part of file. So, at first, the file should be
-            # copied with the temporary name, and then original file should be
-            # replaced by new.
-            copyfile(path, tmp, name="Unprotecting '{}'".format(relpath(path)))
-            remove(path)
-            os.rename(tmp, path)
-
-        else:
-            logger.debug(
-                "Skipping copying for '{}', since it is not "
-                "a symlink or a hardlink.".format(path)
-            )
-
-        os.chmod(path, self.tree.file_mode)
-
-    def _unprotect_dir(self, path):
-        assert is_working_tree(self.repo.tree)
-
-        for fname in self.repo.tree.walk_files(path):
-            self._unprotect_file(fname)
-
-    def unprotect(self, path_info):
-        path = path_info.fspath
-        if not os.path.exists(path):
-            raise DvcException(f"can't unprotect non-existing data '{path}'")
-
-        if os.path.isdir(path):
-            self._unprotect_dir(path)
-        else:
-            self._unprotect_file(path)
-
-    def protect(self, path_info):
-        path = os.fspath(path_info)
-        mode = self.CACHE_MODE
-
-        try:
-            os.chmod(path, mode)
-        except OSError as exc:
-            # There is nothing we need to do in case of a read-only file system
-            if exc.errno == errno.EROFS:
-                return
-
-            # In shared cache scenario, we might not own the cache file, so we
-            # need to check if cache file is already protected.
-            if exc.errno not in [errno.EPERM, errno.EACCES]:
-                raise
-
-            actual = stat.S_IMODE(os.stat(path).st_mode)
-            if actual != mode:
-                raise
-
-    def _remove_unpacked_dir(self, checksum):
-        info = self.checksum_to_path_info(checksum)
-        path_info = info.with_name(info.name + self.UNPACKED_DIR_SUFFIX)
-        self.tree.remove(path_info)
-
-    def is_protected(self, path_info):
-        try:
-            mode = os.stat(path_info).st_mode
-        except FileNotFoundError:
-            return False
-
-        return stat.S_IMODE(mode) == self.CACHE_MODE

@@ -7,7 +7,7 @@ from funcy import cached_property, wrap_prop
 
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemote, BaseRemoteTree
+from dvc.remote.base import BaseRemote, BaseRemoteTree, CacheMixin
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
@@ -108,6 +108,9 @@ class AzureRemoteTree(BaseRemoteTree):
         logger.debug(f"Removing {path_info}")
         self.blob_service.delete_blob(path_info.bucket, path_info.path)
 
+    def get_file_checksum(self, path_info):
+        return self.get_etag(path_info)
+
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):
@@ -134,10 +137,11 @@ class AzureRemoteTree(BaseRemoteTree):
 class AzureRemote(BaseRemote):
     scheme = Schemes.AZURE
     REQUIRES = {"azure-storage-blob": "azure.storage.blob"}
+    TREE_CLS = AzureRemoteTree
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
     LIST_OBJECT_PAGE_SIZE = 5000
-    TREE_CLS = AzureRemoteTree
 
-    def get_file_checksum(self, path_info):
-        return self.tree.get_etag(path_info)
+
+class AzureCache(AzureRemote, CacheMixin):
+    pass

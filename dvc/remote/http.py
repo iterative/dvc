@@ -121,6 +121,25 @@ class HTTPRemoteTree(BaseRemoteTree):
     def exists(self, path_info):
         return bool(self.request("HEAD", path_info.url))
 
+    def get_file_checksum(self, path_info):
+        url = path_info.url
+        headers = self.request("HEAD", url).headers
+        etag = headers.get("ETag") or headers.get("Content-MD5")
+
+        if not etag:
+            raise DvcException(
+                "could not find an ETag or "
+                "Content-MD5 header for '{url}'".format(url=url)
+            )
+
+        if etag.startswith("W/"):
+            raise DvcException(
+                "Weak ETags are not supported."
+                " (Etag: '{etag}', URL: '{url}')".format(etag=etag, url=url)
+            )
+
+        return etag
+
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         response = self.request("GET", from_info.url, stream=True)
         if response.status_code != 200:
@@ -174,26 +193,7 @@ class HTTPRemote(BaseRemote):
     CAN_TRAVERSE = False
     TREE_CLS = HTTPRemoteTree
 
-    def get_file_checksum(self, path_info):
-        url = path_info.url
-        headers = self.tree.request("HEAD", url).headers
-        etag = headers.get("ETag") or headers.get("Content-MD5")
-
-        if not etag:
-            raise DvcException(
-                "could not find an ETag or "
-                "Content-MD5 header for '{url}'".format(url=url)
-            )
-
-        if etag.startswith("W/"):
-            raise DvcException(
-                "Weak ETags are not supported."
-                " (Etag: '{etag}', URL: '{url}')".format(etag=etag, url=url)
-            )
-
-        return etag
-
-    def list_cache_paths(self, prefix=None, progress_callback=None):
+    def list_paths(self, prefix=None, progress_callback=None):
         raise NotImplementedError
 
     def gc(self):

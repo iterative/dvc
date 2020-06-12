@@ -1,16 +1,25 @@
 import posixpath
 from urllib.parse import urlparse
 
-from dvc.remote.azure import AzureRemote
+from dvc.remote.azure import AzureCache, AzureRemote
 from dvc.remote.gdrive import GDriveRemote
-from dvc.remote.gs import GSRemote
-from dvc.remote.hdfs import HDFSRemote
+from dvc.remote.gs import GSCache, GSRemote
+from dvc.remote.hdfs import HDFSCache, HDFSRemote
 from dvc.remote.http import HTTPRemote
 from dvc.remote.https import HTTPSRemote
-from dvc.remote.local import LocalRemote
+from dvc.remote.local import LocalCache, LocalRemote
 from dvc.remote.oss import OSSRemote
-from dvc.remote.s3 import S3Remote
-from dvc.remote.ssh import SSHRemote
+from dvc.remote.s3 import S3Cache, S3Remote
+from dvc.remote.ssh import SSHCache, SSHRemote
+
+CACHES = [
+    AzureCache,
+    GSCache,
+    HDFSCache,
+    S3Cache,
+    SSHCache,
+    # LocalCache is the default
+]
 
 REMOTES = [
     AzureRemote,
@@ -26,21 +35,30 @@ REMOTES = [
 ]
 
 
-def _get(remote_conf):
-    for remote in REMOTES:
+def _get(remote_conf, remotes, default):
+    for remote in remotes:
         if remote.supported(remote_conf):
             return remote
-    return LocalRemote
+    return default
 
 
-def Remote(repo, **kwargs):
+def _get_conf(repo, **kwargs):
     name = kwargs.get("name")
     if name:
         remote_conf = repo.config["remote"][name.lower()]
     else:
         remote_conf = kwargs
-    remote_conf = _resolve_remote_refs(repo.config, remote_conf)
-    return _get(remote_conf)(repo, remote_conf)
+    return _resolve_remote_refs(repo.config, remote_conf)
+
+
+def Remote(repo, **kwargs):
+    remote_conf = _get_conf(repo, **kwargs)
+    return _get(remote_conf, REMOTES, LocalRemote)(repo, remote_conf)
+
+
+def Cache(repo, **kwargs):
+    remote_conf = _get_conf(repo, **kwargs)
+    return _get(remote_conf, CACHES, LocalCache)(repo, remote_conf)
 
 
 def _resolve_remote_refs(config, remote_conf):

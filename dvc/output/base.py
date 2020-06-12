@@ -267,7 +267,7 @@ class BaseOutput:
 
     def commit(self):
         if self.use_cache:
-            self.cache.save(self.path_info, self.info)
+            self.cache.save(self.path_info, self.cache.tree, self.info)
 
     def dumpd(self):
         ret = copy(self.info)

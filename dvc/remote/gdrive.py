@@ -545,6 +545,9 @@ class GDriveRemoteTree(BaseRemoteTree):
         item_id = self._get_item_id(path_info)
         self.gdrive_delete_file(item_id)
 
+    def get_file_checksum(self, path_info):
+        raise NotImplementedError
+
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         dirname = to_info.parent
         assert dirname
@@ -562,11 +565,8 @@ class GDriveRemoteTree(BaseRemoteTree):
 class GDriveRemote(BaseRemote):
     scheme = Schemes.GDRIVE
     REQUIRES = {"pydrive2": "pydrive2"}
+    TREE_CLS = GDriveRemoteTree
     DEFAULT_VERIFY = True
     # Always prefer traverse for GDrive since API usage quotas are a concern.
     TRAVERSE_WEIGHT_MULTIPLIER = 1
     TRAVERSE_PREFIX_LEN = 2
-    TREE_CLS = GDriveRemoteTree
-
-    def get_file_checksum(self, path_info):
-        raise NotImplementedError

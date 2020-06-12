@@ -14,7 +14,7 @@ from funcy import first, memoize, silent, wrap_with
 
 import dvc.prompt as prompt
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemote, BaseRemoteTree
+from dvc.remote.base import BaseRemote, BaseRemoteTree, CacheMixin
 from dvc.remote.pool import get_connection
 from dvc.scheme import Schemes
 from dvc.utils import to_chunks
@@ -225,6 +225,13 @@ class SSHRemoteTree(BaseRemoteTree):
         with self.ssh(from_info) as ssh:
             ssh.reflink(from_info.path, to_info.path)
 
+    def get_file_checksum(self, path_info):
+        if path_info.scheme != self.scheme:
+            raise NotImplementedError
+
+        with self.ssh(path_info) as ssh:
+            return ssh.md5(path_info.path)
+
     def getsize(self, path_info):
         with self.ssh(path_info) as ssh:
             return ssh.getsize(path_info.path)
@@ -253,26 +260,18 @@ class SSHRemoteTree(BaseRemoteTree):
 class SSHRemote(BaseRemote):
     scheme = Schemes.SSH
     REQUIRES = {"paramiko": "paramiko"}
-
     JOBS = 4
+    TREE_CLS = SSHRemoteTree
+
     PARAM_CHECKSUM = "md5"
     # At any given time some of the connections will go over network and
     # paramiko stuff, so we would ideally have it double of server processors.
     # We use conservative setting of 4 instead to not exhaust max sessions.
     CHECKSUM_JOBS = 4
-    TRAVERSE_PREFIX_LEN = 2
-    TREE_CLS = SSHRemoteTree
-
     DEFAULT_CACHE_TYPES = ["copy"]
+    TRAVERSE_PREFIX_LEN = 2
 
-    def get_file_checksum(self, path_info):
-        if path_info.scheme != self.scheme:
-            raise NotImplementedError
-
-        with self.tree.ssh(path_info) as ssh:
-            return ssh.md5(path_info.path)
-
-    def list_cache_paths(self, prefix=None, progress_callback=None):
+    def list_paths(self, prefix=None, progress_callback=None):
         if prefix:
             root = posixpath.join(self.path_info.path, prefix[:2])
         else:
@@ -316,7 +315,7 @@ class SSHRemote(BaseRemote):
 
             return results
 
-    def cache_exists(self, checksums, jobs=None, name=None):
+    def checksums_exist(self, checksums, jobs=None, name=None):
         """This is older implementation used in remote/base.py
         We are reusing it in RemoteSSH, because SSH's batch_exists proved to be
         faster than current approach (relying on exists(path_info)) applied in
@@ -345,3 +344,7 @@ class SSHRemote(BaseRemote):
                 in_remote = itertools.chain.from_iterable(results)
                 ret = list(itertools.compress(checksums, in_remote))
                 return ret
+
+
+class SSHCache(SSHRemote, CacheMixin):
+    pass
