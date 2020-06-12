@@ -8,7 +8,7 @@ from dvc.config import ConfigError
 from dvc.exceptions import DvcException, ETagMismatchError
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseCloud, BaseRemoteTree, CacheMixin, RemoteMixin
+from dvc.remote.base import BaseRemote, BaseRemoteTree, CacheMixin
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
@@ -336,16 +336,12 @@ class S3RemoteTree(BaseRemoteTree):
             )
 
 
-class S3Cloud(BaseCloud):
+class S3Remote(BaseRemote):
     scheme = Schemes.S3
     REQUIRES = {"boto3": "boto3"}
     PARAM_CHECKSUM = "etag"
     TREE_CLS = S3RemoteTree
 
 
-class S3Cache(S3Cloud, CacheMixin):
-    pass
-
-
-class S3Remote(S3Cloud, RemoteMixin):
+class S3Cache(S3Remote, CacheMixin):
     pass

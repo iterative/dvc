@@ -14,7 +14,7 @@ from funcy import first, memoize, silent, wrap_with
 
 import dvc.prompt as prompt
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseCloud, BaseRemoteTree, CacheMixin, RemoteMixin
+from dvc.remote.base import BaseRemote, BaseRemoteTree, CacheMixin
 from dvc.remote.pool import get_connection
 from dvc.scheme import Schemes
 from dvc.utils import to_chunks
@@ -257,7 +257,7 @@ class SSHRemoteTree(BaseRemoteTree):
             )
 
 
-class SSHCloud(BaseCloud):
+class SSHRemote(BaseRemote):
     scheme = Schemes.SSH
     REQUIRES = {"paramiko": "paramiko"}
     JOBS = 4
@@ -271,12 +271,6 @@ class SSHCloud(BaseCloud):
     DEFAULT_CACHE_TYPES = ["copy"]
     TRAVERSE_PREFIX_LEN = 2
 
-
-class SSHCache(SSHCloud, CacheMixin):
-    pass
-
-
-class SSHRemote(SSHCloud, RemoteMixin):
     def list_paths(self, prefix=None, progress_callback=None):
         if prefix:
             root = posixpath.join(self.path_info.path, prefix[:2])
@@ -350,3 +344,7 @@ class SSHRemote(SSHCloud, RemoteMixin):
                 in_remote = itertools.chain.from_iterable(results)
                 ret = list(itertools.compress(checksums, in_remote))
                 return ret
+
+
+class SSHCache(SSHRemote, CacheMixin):
+    pass
