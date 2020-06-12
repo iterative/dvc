@@ -364,7 +364,7 @@ class State:  # pylint: disable=too-many-instance-attributes
         """
         assert isinstance(path_info, str) or path_info.scheme == "local"
         assert checksum is not None
-        assert self.tree.exists(path_info)
+        assert os.path.exists(path_info)
 
         actual_mtime, actual_size = get_mtime_and_size(path_info, self.tree)
         actual_inode = get_inode(path_info)
@@ -394,7 +394,10 @@ class State:  # pylint: disable=too-many-instance-attributes
         assert isinstance(path_info, str) or path_info.scheme == "local"
         path = os.fspath(path_info)
 
-        if not self.tree.exists(path):
+        # NOTE: use os.path.exists instead of WorkingTree.exists
+        # WorkingTree.exists uses lexists() and will return True for broken
+        # symlinks that we cannot stat() in get_mtime_and_size
+        if not os.path.exists(path):
             return None
 
         actual_mtime, actual_size = get_mtime_and_size(path, self.tree)
