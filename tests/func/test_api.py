@@ -21,6 +21,11 @@ def remote_url(request):
     return request.param.get_url()
 
 
+def ensure_dir(dvc, url):
+    if url.startswith("gdrive://"):
+        GDrive.create_dir(dvc, url)
+
+
 def run_dvc(*argv):
     assert main(argv) == 0
 
@@ -58,6 +63,7 @@ def test_get_url_requires_dvc(tmp_dir, scm):
 
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
 def test_open(remote_url, tmp_dir, dvc):
+    ensure_dir(dvc, remote_url)
     run_dvc("remote", "add", "-d", "upstream", remote_url)
     tmp_dir.dvc_gen("foo", "foo-text")
     run_dvc("push")
@@ -71,6 +77,7 @@ def test_open(remote_url, tmp_dir, dvc):
 
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
 def test_open_external(remote_url, erepo_dir, setup_remote):
+    ensure_dir(erepo_dir.dvc, remote_url)
     setup_remote(erepo_dir.dvc, url=remote_url)
 
     with erepo_dir.chdir():
@@ -95,6 +102,7 @@ def test_open_external(remote_url, erepo_dir, setup_remote):
 
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
 def test_open_granular(remote_url, tmp_dir, dvc):
+    ensure_dir(dvc, remote_url)
     run_dvc("remote", "add", "-d", "upstream", remote_url)
     tmp_dir.dvc_gen({"dir": {"foo": "foo-text"}})
     run_dvc("push")
@@ -108,6 +116,7 @@ def test_open_granular(remote_url, tmp_dir, dvc):
 
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
 def test_missing(remote_url, tmp_dir, dvc):
+    ensure_dir(dvc, remote_url)
     tmp_dir.dvc_gen("foo", "foo")
     run_dvc("remote", "add", "-d", "upstream", remote_url)
 
