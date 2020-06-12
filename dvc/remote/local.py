@@ -261,6 +261,12 @@ class LocalRemote(BaseRemote):
     def state(self):
         return self.repo.state
 
+    def get(self, md5):
+        if not md5:
+            return None
+
+        return self.checksum_to_path_info(md5).url
+
     def _unprotect_file(self, path):
         if System.is_symlink(path) or System.is_hardlink(path):
             logger.debug(f"Unprotecting '{path}'")
@@ -388,12 +394,6 @@ class LocalCache(LocalRemote, CacheMixin):
             )
             if not self.changed_cache_file(checksum)
         ]
-
-    def get(self, md5):
-        if not md5:
-            return None
-
-        return self.checksum_to_path_info(md5).url
 
     def already_cached(self, path_info):
         assert path_info.scheme in ["", "local"]
