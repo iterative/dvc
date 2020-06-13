@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+from itertools import groupby
 
 from funcy import cached_property
 from pathspec.patterns import GitWildMatchPattern
@@ -30,21 +31,15 @@ class DvcIgnorePatterns(DvcIgnore):
 
         with tree.open(ignore_file_path, encoding="utf-8") as fobj:
             path_spec_lines = fobj.readlines()
-            regex_pattern_list = list(
-                map(GitWildMatchPattern.pattern_to_regex, path_spec_lines)
+            regex_pattern_list = map(
+                GitWildMatchPattern.pattern_to_regex, path_spec_lines
             )
-        ignore_pattern_list = [i for i, j in regex_pattern_list if j is True]
-        include_pattern_list = [i for i, j in regex_pattern_list if j is False]
-        self.ignore_spec = (
-            re.compile("|".join(ignore_pattern_list))
-            if ignore_pattern_list
-            else None
-        )
-        self.include_spec = (
-            re.compile("|".join(include_pattern_list))
-            if include_pattern_list
-            else None
-        )
+            self.ignore_spec = [
+                (ignore, re.compile("|".join([item[0] for item in group])))
+                for ignore, group in groupby(
+                    regex_pattern_list, lambda x: x[1]
+                )
+            ]
 
     def __call__(self, root, dirs, files):
         files = [f for f in files if not self.matches(root, f)]
@@ -67,17 +62,14 @@ class DvcIgnorePatterns(DvcIgnore):
 
         if not System.is_unix():
             path = normalize_file(path)
-        return self.ignore(path) and not self.include(path)
+        return self.ignore(path)
 
     def ignore(self, path):
-        if self.ignore_spec and self.ignore_spec.match(path):
-            return True
-        return False
-
-    def include(self, path):
-        if self.include_spec and self.include_spec.match(path):
-            return True
-        return False
+        result = False
+        for ignore, pattern in self.ignore_spec:
+            if pattern.match(path):
+                result = ignore
+        return result
 
     def __hash__(self):
         return hash(self.ignore_file_path)
