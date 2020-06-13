@@ -51,25 +51,27 @@ elif [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
   ln -s -f /usr/local/bin/pip3 /usr/local/bin/pip
 fi
 
-# fetch tags for `git-describe`, since
-# - can't rely on $TRAVIS_TAG for `edge` (master) releases, and
-# - `snapcraft` also uses `git-describe` for version detection
-git fetch --tags
-TAG_MAJOR="$(git describe --tags | sed -r 's/^v?([0-9]+)\.[0-9]+\.[0-9]+.*/\1/')"
-[[ -n "$TAG_MAJOR" ]] || exit 1  # failed to detect major version
+if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+  # fetch tags for `git-describe`, since
+  # - can't rely on $TRAVIS_TAG for snapcraft `edge` (master) releases, and
+  # - `snapcraft` also uses `git-describe` for version detection
+  git fetch --tags
+  TAG_MAJOR="$(git describe --tags | sed -r 's/^v?([0-9]+)\.[0-9]+\.[0-9]+.*/\1/')"
+  [[ -n "$TAG_MAJOR" ]] || exit 1  # failed to detect major version
 
-if [[ -n "$TRAVIS_TAG" ]]; then
-  if [[ $(echo "$TRAVIS_TAG" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$') ]]; then
-    echo "export SNAP_CHANNEL=stable" >>env.sh
-    echo "export SNAP_CHANNEL_MAJOR=v$TAG_MAJOR/stable" >>env.sh
+  if [[ -n "$TRAVIS_TAG" ]]; then
+    if [[ $(echo "$TRAVIS_TAG" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$') ]]; then
+      echo "export SNAP_CHANNEL=stable" >>env.sh
+      echo "export SNAP_CHANNEL_MAJOR=v$TAG_MAJOR/stable" >>env.sh
+    else
+      echo "export SNAP_CHANNEL=beta" >>env.sh
+      echo "export SNAP_CHANNEL_MAJOR=v$TAG_MAJOR/beta" >>env.sh
+    fi
   else
-    echo "export SNAP_CHANNEL=beta" >>env.sh
-    echo "export SNAP_CHANNEL_MAJOR=v$TAG_MAJOR/beta" >>env.sh
+    echo "export SNAP_CHANNEL=edge" >>env.sh
+    echo "export SNAP_CHANNEL_MAJOR=v$TAG_MAJOR/edge" >>env.sh
   fi
-else
-  echo "export SNAP_CHANNEL=edge" >>env.sh
-  echo "export SNAP_CHANNEL_MAJOR=v$TAG_MAJOR/edge" >>env.sh
-fi
 
-# NOTE: after deprecating this branch, uncomment this line
-# echo "unset SNAP_CHANNEL" >>env.sh
+  # NOTE: after deprecating this branch, uncomment this line
+  # echo "unset SNAP_CHANNEL" >>env.sh
+fi
