@@ -109,6 +109,7 @@ def test_open(remote_url, tmp_dir, dvc):
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
 def test_open_external(remote_url, erepo_dir, setup_remote):
     setup_remote(erepo_dir.dvc, url=remote_url)
+    run_dvc("remote", "add", TEST_REMOTE, remote_url)
     ensure_dir(erepo_dir.dvc, remote_url)
 
     with erepo_dir.chdir():
