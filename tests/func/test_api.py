@@ -61,6 +61,19 @@ def ensure_dir(dvc, url):
         )
 
 
+def ensure_dir_scm(dvc, url):
+    if url.startswith("gdrive://"):
+        GDrive.create_dir(dvc, url)
+        with dvc.config.edit() as conf:
+            conf["remote"][TEST_REMOTE].update(
+                gdrive_service_account_email="test",
+                gdrive_service_account_p12_file_path="test.p12",
+                gdrive_use_service_account=True,
+            )
+        dvc.scm.add(dvc.config.files["repo"])
+        dvc.scm.commit(f"modify '{TEST_REMOTE}' remote")
+
+
 @pytest.mark.parametrize("remote_url", remote_params, indirect=True)
 def test_get_url(tmp_dir, dvc, remote_url):
     run_dvc("remote", "add", "-d", TEST_REMOTE, remote_url)
@@ -109,8 +122,7 @@ def test_open(remote_url, tmp_dir, dvc):
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
 def test_open_external(remote_url, erepo_dir, setup_remote):
     setup_remote(erepo_dir.dvc, url=remote_url)
-    run_dvc("remote", "add", TEST_REMOTE, remote_url)
-    ensure_dir(erepo_dir.dvc, remote_url)
+    ensure_dir_scm(erepo_dir.dvc, remote_url)
 
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("version", "master", commit="add version")
