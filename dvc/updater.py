@@ -48,7 +48,15 @@ class Updater(object):  # pragma: no cover
             logger.debug(msg.format(self.lock.lockfile, action))
 
     def check(self):
-        if os.getenv("CI") or env2bool("DVC_TEST") or PKG == "snap":
+        if os.getenv("CI") or env2bool("DVC_TEST"):
+            return
+
+        if PKG == "snap":
+            # hardcoded transition message
+            version_major = version.parse(self.current).major
+            self.current = "v{}".format(version_major)
+            self.latest = "v{}".format(version_major + 1)
+            self._notify()
             return
 
         self._with_lock(self._check, "checking")
@@ -138,6 +146,17 @@ class Updater(object):  # pragma: no cover
             ),
             "conda": "Run `{yellow}conda{reset} update dvc`",
             "choco": "Run `{yellow}choco{reset} upgrade dvc`",
+            "snap": (
+                "To upgrade to the latest major release,\n"
+                "run `{yellow}snap{reset} refresh --channel=latest/beta`, or\n"
+                "to stay on the current major release track,\n"
+                "run `{yellow}snap{reset} refresh --channel={current}/stable`"
+                "\n\n"
+                "{red}WARNING{reset}: ignoring this message will result in\n"
+                "snap automatically performing an upgrade soon.\n"
+                "More information can be found at\n"
+                "{blue}https://github.com/iterative/dvc/issues/3872{reset}"
+            ),
             None: (
                 "Find the latest release at\n"
                 "{blue}https://github.com/iterative/dvc/releases/latest{reset}"

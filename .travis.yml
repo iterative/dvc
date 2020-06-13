@@ -101,12 +101,15 @@ jobs:
      - name: lxd
        channel: stable
     env:
-    - SNAPCRAFT_IMAGE_INFO: '{"build_url": "$TRAVIS_BUILD_URL"}'
+    - SNAPCRAFT_IMAGE_INFO: |
+        '{"build_url": "$TRAVIS_JOB_WEB_URL"}'
+    - SNAPCRAFT_BUILD_ENVIRONMENT: lxd
+    - SNAPCRAFT_BUILD_INFO: 1  # https://snapcraft.io/blog/introducing-developer-notifications-for-snap-security-updates
     install:
+    - sudo usermod --append --groups lxd $USER
     - sudo /snap/bin/lxd.migrate -yes
     - sudo /snap/bin/lxd waitready
     - sudo /snap/bin/lxd init --auto
-    - git fetch --tags
     script:
     - ./scripts/build_snap.sh
     after_failure:
@@ -157,6 +160,14 @@ deploy:
     script: "(echo $SNAP_TOKEN | snapcraft login --with -) && timeout 600 snapcraft push dvc_*.snap --release $SNAP_CHANNEL || echo timed out"
     on:
       all_branches: true
-      condition: "$(./scripts/ci/deploy_condition.sh dvc_*.snap) && ($TRAVIS_BRANCH = master || -n $TRAVIS_TAG)"
+      condition: "$(./scripts/ci/deploy_condition.sh dvc_*.snap) && ($TRAVIS_BRANCH = master || -n $TRAVIS_TAG) && -n $SNAP_CHANNEL"
+      repo: iterative/dvc
+      stage: build
+  - provider: script
+    skip_cleanup: true
+    script: "(echo $SNAP_TOKEN | snapcraft login --with -) && timeout 600 snapcraft push nowarn_update_dvc_*.snap --release $SNAP_CHANNEL_MAJOR || echo timed out"
+    on:
+      all_branches: true
+      condition: "$(./scripts/ci/deploy_condition.sh nowarn_update_dvc_*.snap) && ($TRAVIS_BRANCH = master || -n $TRAVIS_TAG) && -n $SNAP_CHANNEL_MAJOR"
       repo: iterative/dvc
       stage: build
