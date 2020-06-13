@@ -224,7 +224,7 @@ class ETagMismatchError(DvcException):
 class FileMissingError(DvcException):
     def __init__(self, path, hint=None):
         self.path = path
-        self.hint = "" if hint is None else f". {hint}"
+        hint = "" if hint is None else f". {hint}"
         super().__init__(
             f"Can't find '{path}' neither locally nor on remote{hint}"
         )
