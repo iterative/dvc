@@ -8,9 +8,19 @@ from dvc.exceptions import FileMissingError
 from dvc.main import main
 from dvc.path_info import URLInfo
 from dvc.utils.fs import remove
-from tests.remotes import GCP, HDFS, OSS, S3, SSH, Azure, Local
+from tests.remotes import (
+    GCP,
+    HDFS,
+    OSS,
+    S3,
+    SSH,
+    TEST_REMOTE,
+    Azure,
+    GDrive,
+    Local,
+)
 
-remote_params = [S3, GCP, Azure, OSS, SSH, HDFS]
+remote_params = [S3, GCP, Azure, GDrive, OSS, SSH, HDFS]
 all_remote_params = [Local] + remote_params
 
 
@@ -25,9 +35,48 @@ def run_dvc(*argv):
     assert main(argv) == 0
 
 
+def ensure_dir(dvc, url):
+    if url.startswith("gdrive://"):
+        GDrive.create_dir(dvc, url)
+        run_dvc(
+            "remote",
+            "modify",
+            TEST_REMOTE,
+            "gdrive_service_account_email",
+            "test",
+        )
+        run_dvc(
+            "remote",
+            "modify",
+            TEST_REMOTE,
+            "gdrive_service_account_p12_file_path",
+            "test.p12",
+        )
+        run_dvc(
+            "remote",
+            "modify",
+            TEST_REMOTE,
+            "gdrive_use_service_account",
+            "True",
+        )
+
+
+def ensure_dir_scm(dvc, url):
+    if url.startswith("gdrive://"):
+        GDrive.create_dir(dvc, url)
+        with dvc.config.edit() as conf:
+            conf["remote"][TEST_REMOTE].update(
+                gdrive_service_account_email="test",
+                gdrive_service_account_p12_file_path="test.p12",
+                gdrive_use_service_account=True,
+            )
+        dvc.scm.add(dvc.config.files["repo"])
+        dvc.scm.commit(f"modify '{TEST_REMOTE}' remote")
+
+
 @pytest.mark.parametrize("remote_url", remote_params, indirect=True)
 def test_get_url(tmp_dir, dvc, remote_url):
-    run_dvc("remote", "add", "-d", "upstream", remote_url)
+    run_dvc("remote", "add", "-d", TEST_REMOTE, remote_url)
     tmp_dir.dvc_gen("foo", "foo")
 
     expected_url = URLInfo(remote_url) / "ac/bd18db4cc2f85cedef654fccc4a4d8"
@@ -58,7 +107,8 @@ def test_get_url_requires_dvc(tmp_dir, scm):
 
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
 def test_open(remote_url, tmp_dir, dvc):
-    run_dvc("remote", "add", "-d", "upstream", remote_url)
+    run_dvc("remote", "add", "-d", TEST_REMOTE, remote_url)
+    ensure_dir(dvc, remote_url)
     tmp_dir.dvc_gen("foo", "foo-text")
     run_dvc("push")
 
@@ -72,6 +122,7 @@ def test_open(remote_url, tmp_dir, dvc):
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
 def test_open_external(remote_url, erepo_dir, setup_remote):
     setup_remote(erepo_dir.dvc, url=remote_url)
+    ensure_dir_scm(erepo_dir.dvc, remote_url)
 
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("version", "master", commit="add version")
@@ -95,7 +146,8 @@ def test_open_external(remote_url, erepo_dir, setup_remote):
 
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
 def test_open_granular(remote_url, tmp_dir, dvc):
-    run_dvc("remote", "add", "-d", "upstream", remote_url)
+    run_dvc("remote", "add", "-d", TEST_REMOTE, remote_url)
+    ensure_dir(dvc, remote_url)
     tmp_dir.dvc_gen({"dir": {"foo": "foo-text"}})
     run_dvc("push")
 
@@ -109,7 +161,8 @@ def test_open_granular(remote_url, tmp_dir, dvc):
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
 def test_missing(remote_url, tmp_dir, dvc):
     tmp_dir.dvc_gen("foo", "foo")
-    run_dvc("remote", "add", "-d", "upstream", remote_url)
+    run_dvc("remote", "add", "-d", TEST_REMOTE, remote_url)
+    ensure_dir(dvc, remote_url)
 
     # Remove cache to make foo missing
     remove(dvc.cache.local.cache_dir)
