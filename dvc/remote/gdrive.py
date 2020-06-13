@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 from funcy import cached_property, retry, wrap_prop, wrap_with
 from funcy.py3 import cat
 
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, FileMissingError
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.remote.base import BaseRemote, BaseRemoteTree
@@ -21,12 +21,6 @@ from dvc.utils.stream import IterStream
 
 logger = logging.getLogger(__name__)
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
-
-
-class GDrivePathNotFound(DvcException):
-    def __init__(self, path_info, hint):
-        hint = "" if hint is None else f" {hint}"
-        super().__init__(f"GDrive path '{path_info}' not found.{hint}")
 
 
 class GDriveAuthError(DvcException):
@@ -522,12 +516,12 @@ class GDriveRemoteTree(BaseRemoteTree):
             return min(item_ids)
 
         assert not create
-        raise GDrivePathNotFound(path_info, hint)
+        raise FileMissingError(path_info, hint)
 
     def exists(self, path_info):
         try:
             self._get_item_id(path_info)
-        except GDrivePathNotFound:
+        except FileMissingError:
             return False
         else:
             return True
