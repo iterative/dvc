@@ -35,7 +35,7 @@ class DvcIgnorePatterns(DvcIgnore):
                 GitWildMatchPattern.pattern_to_regex, path_spec_lines
             )
             self.ignore_spec = [
-                (ignore, re.compile("|".join([item[0] for item in group])))
+                (ignore, re.compile("|".join(item[0] for item in group)))
                 for ignore, group in groupby(
                     regex_pattern_list, lambda x: x[1]
                 )
