@@ -626,8 +626,12 @@ class LocalCache(LocalRemote, CacheMixin):
             func = pbar.wrap_fn(func)
             with ThreadPoolExecutor(max_workers=jobs) as executor:
                 if download:
-                    fails = sum(executor.map(func, *dir_plans))
-                    fails += sum(executor.map(func, *file_plans))
+                    from_infos, to_infos, names, _ = (
+                        d + f for d, f in zip(dir_plans, file_plans)
+                    )
+                    fails = sum(
+                        executor.map(func, from_infos, to_infos, names)
+                    )
                 else:
                     # for uploads, push files first, and any .dir files last
 
