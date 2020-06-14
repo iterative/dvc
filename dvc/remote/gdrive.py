@@ -1,29 +1,26 @@
+import io
 import logging
 import os
 import posixpath
 import re
 import threading
 from collections import defaultdict
+from contextlib import contextmanager
 from urllib.parse import urlparse
 
 from funcy import cached_property, retry, wrap_prop, wrap_with
 from funcy.py3 import cat
 
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, FileMissingError
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.remote.base import BaseRemote, BaseRemoteTree
 from dvc.scheme import Schemes
 from dvc.utils import format_link, tmp_fname
+from dvc.utils.stream import IterStream
 
 logger = logging.getLogger(__name__)
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
-
-
-class GDrivePathNotFound(DvcException):
-    def __init__(self, path_info, hint):
-        hint = "" if hint is None else f" {hint}"
-        super().__init__(f"GDrive path '{path_info}' not found.{hint}")
 
 
 class GDriveAuthError(DvcException):
@@ -32,7 +29,7 @@ class GDriveAuthError(DvcException):
         if cred_location:
             message = (
                 "GDrive remote auth failed with credentials in '{}'.\n"
-                "Backup first, remove of fix them, and run DVC again.\n"
+                "Backup first, remove or fix them, and run DVC again.\n"
                 "It should do auth again and refresh the credentials.\n\n"
                 "Details:".format(cred_location)
             )
@@ -389,6 +386,23 @@ class GDriveRemoteTree(BaseRemoteTree):
         ) as pbar:
             gdrive_file.GetContentFile(to_file, callback=pbar.update_to)
 
+    @contextmanager
+    @_gdrive_retry
+    def open(self, path_info, mode="r", encoding=None):
+        assert mode in {"r", "rt", "rb"}
+
+        item_id = self._get_item_id(path_info)
+        param = {"id": item_id}
+        # it does not create a file on the remote
+        gdrive_file = self._drive.CreateFile(param)
+        fd = gdrive_file.GetContentIOBuffer()
+        stream = IterStream(iter(fd))
+
+        if mode != "rb":
+            stream = io.TextIOWrapper(stream, encoding=encoding)
+
+        yield stream
+
     @_gdrive_retry
     def gdrive_delete_file(self, item_id):
         from pydrive2.files import ApiRequestError
@@ -502,12 +516,12 @@ class GDriveRemoteTree(BaseRemoteTree):
             return min(item_ids)
 
         assert not create
-        raise GDrivePathNotFound(path_info, hint)
+        raise FileMissingError(path_info, hint)
 
     def exists(self, path_info):
         try:
             self._get_item_id(path_info)
-        except GDrivePathNotFound:
+        except FileMissingError:
             return False
         else:
             return True
@@ -545,6 +559,9 @@ class GDriveRemoteTree(BaseRemoteTree):
         item_id = self._get_item_id(path_info)
         self.gdrive_delete_file(item_id)
 
+    def get_file_checksum(self, path_info):
+        raise NotImplementedError
+
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         dirname = to_info.parent
         assert dirname
@@ -562,11 +579,8 @@ class GDriveRemoteTree(BaseRemoteTree):
 class GDriveRemote(BaseRemote):
     scheme = Schemes.GDRIVE
     REQUIRES = {"pydrive2": "pydrive2"}
+    TREE_CLS = GDriveRemoteTree
     DEFAULT_VERIFY = True
     # Always prefer traverse for GDrive since API usage quotas are a concern.
     TRAVERSE_WEIGHT_MULTIPLIER = 1
     TRAVERSE_PREFIX_LEN = 2
-    TREE_CLS = GDriveRemoteTree
-
-    def get_file_checksum(self, path_info):
-        raise NotImplementedError

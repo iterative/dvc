@@ -8,7 +8,7 @@ from dvc.config import ConfigError
 from dvc.exceptions import DvcException, ETagMismatchError
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemote, BaseRemoteTree
+from dvc.remote.base import BaseRemote, BaseRemoteTree, CacheMixin
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
@@ -305,6 +305,9 @@ class S3RemoteTree(BaseRemoteTree):
         if etag != cached_etag:
             raise ETagMismatchError(etag, cached_etag)
 
+    def get_file_checksum(self, path_info):
+        return self.get_etag(self.s3, path_info.bucket, path_info.path)
+
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         total = os.path.getsize(from_file)
         with Tqdm(
@@ -339,7 +342,6 @@ class S3Remote(BaseRemote):
     PARAM_CHECKSUM = "etag"
     TREE_CLS = S3RemoteTree
 
-    def get_file_checksum(self, path_info):
-        return self.tree.get_etag(
-            self.tree.s3, path_info.bucket, path_info.path
-        )
+
+class S3Cache(S3Remote, CacheMixin):
+    pass

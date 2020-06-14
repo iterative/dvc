@@ -72,7 +72,7 @@ def _fetch(
     if failed:
         raise DownloadError(failed)
 
-    return downloaded
+    return downloaded + len(used_run_cache)
 
 
 def _fetch_external(self, repo_url, repo_rev, files, jobs):

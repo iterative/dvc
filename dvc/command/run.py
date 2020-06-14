@@ -45,7 +45,7 @@ class CmdRun(CmdBase):
                 fname=self.args.file,
                 wdir=self.args.wdir,
                 no_exec=self.args.no_exec,
-                overwrite=self.args.overwrite,
+                force=self.args.force,
                 run_cache=not self.args.no_run_cache,
                 no_commit=self.args.no_commit,
                 outs_persist=self.args.outs_persist,
@@ -159,7 +159,6 @@ def add_parser(subparsers, parent_parser):
         metavar="<path>",
     )
     run_parser.add_argument(
-        "-f",
         "--file",
         help="Specify name of the DVC-file this command will generate.",
         metavar="<filename>",
@@ -177,7 +176,8 @@ def add_parser(subparsers, parent_parser):
         help="Only create stage file without actually running it.",
     )
     run_parser.add_argument(
-        "--overwrite",
+        "-f",
+        "--force",
         action="store_true",
         default=False,
         help="Overwrite existing stage",

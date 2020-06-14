@@ -61,7 +61,7 @@ class BaseOutput:
     PARAM_PLOT_X_LABEL = "x_label"
     PARAM_PLOT_Y_LABEL = "y_label"
     PARAM_PLOT_TITLE = "title"
-    PARAM_PLOT_CSV_HEADER = "csv_header"
+    PARAM_PLOT_HEADER = "header"
     PARAM_PERSIST = "persist"
 
     METRIC_SCHEMA = Any(
@@ -267,7 +267,7 @@ class BaseOutput:
 
     def commit(self):
         if self.use_cache:
-            self.cache.save(self.path_info, self.info)
+            self.cache.save(self.path_info, self.cache.tree, self.info)
 
     def dumpd(self):
         ret = copy(self.info)

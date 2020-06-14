@@ -9,6 +9,7 @@ import pytest
 import yaml
 from funcy import first
 
+from dvc.dvcfile import PIPELINE_LOCK
 from dvc.repo.plots.data import (
     JSONPlotData,
     NoMetricInHistoryError,
@@ -16,11 +17,8 @@ from dvc.repo.plots.data import (
     PlotMetricTypeError,
     YAMLPlotData,
 )
-from dvc.repo.plots.template import (
-    NoDataForTemplateError,
-    NoFieldInDataError,
-    TemplateNotFoundError,
-)
+from dvc.repo.plots.template import NoFieldInDataError, TemplateNotFoundError
+from dvc.utils import relpath
 
 
 def _write_csv(metric, filename, header=True):
@@ -51,7 +49,7 @@ def test_plot_csv_one_column(tmp_dir, scm, dvc, run_copy_metrics):
     )
 
     props = {
-        "csv_header": False,
+        "header": False,
         "x_label": "x_title",
         "y_label": "y_title",
         "title": "mytitle",
@@ -262,7 +260,11 @@ def test_plot_multiple_revs_default(tmp_dir, scm, dvc, run_copy_metrics):
 
 
 def test_plot_multiple_revs(tmp_dir, scm, dvc, run_copy_metrics):
-    shutil.copy(tmp_dir / ".dvc" / "plots" / "default.json", "template.json")
+    templates_dir = dvc.plot_templates.templates_dir
+    shutil.copy(
+        os.path.join(templates_dir, "default.json"),
+        os.path.join(templates_dir, "template.json"),
+    )
 
     metric_1 = [{"y": 2}, {"y": 3}]
     _write_json(tmp_dir, metric_1, "metric_t.json")
@@ -323,13 +325,13 @@ def test_plot_even_if_metric_missing(
 
     caplog.clear()
     with caplog.at_level(logging.WARNING, "dvc"):
-        plot_string = dvc.plots.show(revs=["v1", "v2"])["metric.json"]
+        plots = dvc.plots.show(revs=["v1", "v2"], targets=["metric.json"])
         assert (
             "File 'metric.json' was not found at: 'v1'. "
             "It will not be plotted." in caplog.text
         )
 
-    plot_content = json.loads(plot_string)
+    plot_content = json.loads(plots["metric.json"])
     assert plot_content["data"]["values"] == [
         {"y": 2, PlotData.INDEX_FIELD: 0, "rev": "v2"},
         {"y": 3, PlotData.INDEX_FIELD: 1, "rev": "v2"},
@@ -392,72 +394,6 @@ def _replace(path, src, dst):
     path.write_text(path.read_text().replace(src, dst))
 
 
-def test_custom_template_with_specified_data(
-    tmp_dir, scm, dvc, custom_template, run_copy_metrics
-):
-    _replace(
-        custom_template, "DVC_METRIC_DATA", "DVC_METRIC_DATA,metric.json",
-    )
-
-    metric = [{"a": 1, "b": 2}, {"a": 2, "b": 3}]
-    _write_json(tmp_dir, metric, "metric_t.json")
-    run_copy_metrics(
-        "metric_t.json",
-        "metric.json",
-        outs_no_cache=["metric.json"],
-        commit="init",
-        tag="v1",
-    )
-
-    props = {"template": os.fspath(custom_template), "x": "a", "y": "b"}
-    plot_string = dvc.plots.show(props=props)["metric.json"]
-
-    plot_content = json.loads(plot_string)
-    assert plot_content["data"]["values"] == [
-        {"a": 1, "b": 2, "rev": "workspace"},
-        {"a": 2, "b": 3, "rev": "workspace"},
-    ]
-    assert plot_content["encoding"]["x"]["field"] == "a"
-    assert plot_content["encoding"]["y"]["field"] == "b"
-
-
-def test_plot_override_specified_data_source(
-    tmp_dir, scm, dvc, run_copy_metrics
-):
-    shutil.copy(
-        tmp_dir / ".dvc" / "plots" / "default.json",
-        tmp_dir / "newtemplate.json",
-    )
-    _replace(
-        tmp_dir / "newtemplate.json",
-        "DVC_METRIC_DATA",
-        "DVC_METRIC_DATA,metric.json",
-    )
-
-    metric = [{"a": 1, "b": 2}, {"a": 2, "b": 3}]
-    _write_json(tmp_dir, metric, "metric1.json")
-    run_copy_metrics(
-        "metric1.json",
-        "metric2.json",
-        plots_no_cache=["metric2.json"],
-        commit="init",
-        tag="v1",
-    )
-
-    props = {"template": "newtemplate.json", "x": "a"}
-    plot_string = dvc.plots.show(targets=["metric2.json"], props=props)[
-        "metric2.json"
-    ]
-
-    plot_content = json.loads(plot_string)
-    assert plot_content["data"]["values"] == [
-        {"a": 1, "b": 2, "rev": "workspace"},
-        {"a": 2, "b": 3, "rev": "workspace"},
-    ]
-    assert plot_content["encoding"]["x"]["field"] == "a"
-    assert plot_content["encoding"]["y"]["field"] == "b"
-
-
 def test_no_plots(tmp_dir, dvc):
     from dvc.exceptions import NoPlotsError
 
@@ -478,11 +414,6 @@ def test_should_raise_on_no_template(tmp_dir, dvc, run_copy_metrics):
     with pytest.raises(TemplateNotFoundError):
         props = {"template": "non_existing_template.json"}
         dvc.plots.show("metric.json", props=props)
-
-
-def test_plot_no_data(tmp_dir, dvc):
-    with pytest.raises(NoDataForTemplateError):
-        dvc.plots.show(props={"template": "default"})
 
 
 def test_plot_wrong_metric_type(tmp_dir, scm, dvc, run_copy_metrics):
@@ -609,3 +540,69 @@ def test_load_metric_from_dict_yaml(tmp_dir):
         d["rev"] = "revision"
 
     assert list(map(dict, plot_data.to_datapoints())) == expected
+
+
+def test_plots_modify_existing_template(
+    tmp_dir, dvc, run_copy_metrics, custom_template
+):
+    metric = [{"a": 1, "b": 2}, {"a": 2, "b": 3}]
+    _write_json(tmp_dir, metric, "metric_t.json")
+    stage = run_copy_metrics(
+        "metric_t.json",
+        "metric.json",
+        plots_no_cache=["metric.json"],
+        name="copy-metrics",
+        single_stage=False,
+    )
+    dvc.plots.modify(
+        "metric.json", props={"template": relpath(custom_template)}
+    )
+    stage = stage.reload()
+    assert stage.outs[0].plot == {"template": relpath(custom_template)}
+
+
+def test_plots_modify_should_not_change_lockfile(
+    tmp_dir, dvc, run_copy_metrics, custom_template
+):
+    _write_json(tmp_dir, [{"a": 1, "b": 2}], "metric_t.json")
+    run_copy_metrics(
+        "metric_t.json",
+        "metric.json",
+        plots_no_cache=["metric.json"],
+        name="copy-metrics",
+        single_stage=False,
+    )
+
+    (tmp_dir / PIPELINE_LOCK).unlink()
+    dvc.plots.modify(
+        "metric.json", props={"template": relpath(custom_template)}
+    )
+    assert not (tmp_dir / PIPELINE_LOCK).exists()
+
+
+def test_plots_modify_not_existing_template(dvc):
+    with pytest.raises(TemplateNotFoundError):
+        dvc.plots.modify(
+            "metric.json", props={"template": "not-existing-template.json"}
+        )
+
+
+def test_multiple_plots(tmp_dir, scm, dvc, run_copy_metrics):
+    metric1 = [
+        OrderedDict([("first_val", 100), ("second_val", 100), ("val", 2)]),
+        OrderedDict([("first_val", 200), ("second_val", 300), ("val", 3)]),
+    ]
+    metric2 = [
+        OrderedDict([("first_val", 100), ("second_val", 100), ("val", 2)]),
+        OrderedDict([("first_val", 200), ("second_val", 300), ("val", 3)]),
+    ]
+    _write_csv(metric1, "metric_t1.csv")
+    _write_json(tmp_dir, metric2, "metric_t2.json")
+    run_copy_metrics(
+        "metric_t1.csv", "metric1.csv", plots_no_cache=["metric1.csv"]
+    )
+    run_copy_metrics(
+        "metric_t2.json", "metric2.json", plots_no_cache=["metric2.json"]
+    )
+
+    assert len(dvc.plots.show().keys()) == 2

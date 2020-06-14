@@ -3,7 +3,7 @@ import os
 from mock import patch
 
 from dvc.output import LocalOutput
-from dvc.remote.local import LocalRemote
+from dvc.remote.local import LocalCache
 from dvc.stage import Stage
 from dvc.utils import relpath
 from tests.basic_env import TestDvc
@@ -79,7 +79,7 @@ class TestGetFilesNumber(TestDvc):
 
     @patch.object(LocalOutput, "checksum", "12345678.dir")
     @patch.object(
-        LocalRemote,
+        LocalCache,
         "get_dir_cache",
         return_value=[{"md5": "asdf"}, {"md5": "qwe"}],
     )

@@ -58,12 +58,6 @@ class TestImportFilename(TestDvc):
             fobj.write("content")
 
     def test(self):
-        ret = main(["import-url", "-f", "bar.dvc", self.external_source])
-        self.assertEqual(0, ret)
-        self.assertTrue(os.path.exists("bar.dvc"))
-
-        os.remove("bar.dvc")
-
         ret = main(["import-url", "--file", "bar.dvc", self.external_source])
         self.assertEqual(0, ret)
         self.assertTrue(os.path.exists("bar.dvc"))

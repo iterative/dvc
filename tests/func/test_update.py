@@ -52,9 +52,9 @@ def test_update_import_after_remote_updates_to_dvc(tmp_dir, dvc, erepo_dir):
     new_rev = None
     with erepo_dir.branch("branch", new=False), erepo_dir.chdir():
         erepo_dir.scm.repo.index.remove(["version"])
-        erepo_dir.dvc_gen("version", "updated")
-        erepo_dir.scm.add(["version", "version.dvc"])
-        erepo_dir.scm.commit("upgrade to DVC tracking")
+        erepo_dir.dvc_gen(
+            "version", "updated", commit="upgrade to DVC tracking"
+        )
         new_rev = erepo_dir.scm.get_rev()
 
     assert old_rev != new_rev

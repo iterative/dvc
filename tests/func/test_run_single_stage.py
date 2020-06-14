@@ -1,6 +1,7 @@
 import filecmp
 import logging
 import os
+import textwrap
 import uuid
 from pathlib import Path
 
@@ -350,7 +351,7 @@ class TestRunUnprotectOutsCopy(TestDvc):
         ret = main(
             [
                 "run",
-                "--overwrite",
+                "--force",
                 "--no-run-cache",
                 "--single-stage",
                 "-d",
@@ -408,7 +409,7 @@ class TestRunUnprotectOutsSymlink(TestDvc):
         ret = main(
             [
                 "run",
-                "--overwrite",
+                "--force",
                 "--no-run-cache",
                 "--single-stage",
                 "-d",
@@ -467,7 +468,7 @@ class TestRunUnprotectOutsHardlink(TestDvc):
         ret = main(
             [
                 "run",
-                "--overwrite",
+                "--force",
                 "--no-run-cache",
                 "--single-stage",
                 "-d",
@@ -504,7 +505,7 @@ class TestCmdRunOverwrite(TestDvc):
                 self.CODE,
                 "-o",
                 "out",
-                "-f",
+                "--file",
                 "out.dvc",
                 "--single-stage",
                 "python",
@@ -528,7 +529,7 @@ class TestCmdRunOverwrite(TestDvc):
                 self.CODE,
                 "-o",
                 "out",
-                "-f",
+                "--file",
                 "out.dvc",
                 "--single-stage",
                 "python",
@@ -552,12 +553,12 @@ class TestCmdRunOverwrite(TestDvc):
                 self.FOO,
                 "-d",
                 self.CODE,
-                "--overwrite",
+                "--force",
                 "--no-run-cache",
                 "--single-stage",
                 "-o",
                 "out",
-                "-f",
+                "--file",
                 "out.dvc",
                 "python",
                 self.CODE,
@@ -576,9 +577,9 @@ class TestCmdRunOverwrite(TestDvc):
         ret = main(
             [
                 "run",
-                "--overwrite",
+                "--force",
                 "--single-stage",
-                "-f",
+                "--file",
                 "out.dvc",
                 "-d",
                 self.BAR,
@@ -676,19 +677,19 @@ def test_rerun_deterministic_ignore_cache(tmp_dir, run_copy):
 
 
 def test_rerun_callback(dvc):
-    def run_callback(overwrite=False):
+    def run_callback(force=False):
         return dvc.run(
             cmd="echo content > out",
             outs=["out"],
             deps=[],
-            overwrite=overwrite,
+            force=force,
             single_stage=True,
         )
 
     assert run_callback() is not None
     with pytest.raises(StageFileAlreadyExistsError):
         assert run_callback() is not None
-    assert run_callback(overwrite=True) is not None
+    assert run_callback(force=True) is not None
 
 
 def test_rerun_changed_dep(tmp_dir, run_copy):
@@ -697,8 +698,8 @@ def test_rerun_changed_dep(tmp_dir, run_copy):
 
     tmp_dir.gen("foo", "changed content")
     with pytest.raises(StageFileAlreadyExistsError):
-        run_copy("foo", "out", overwrite=False, single_stage=True)
-    assert run_copy("foo", "out", overwrite=True, single_stage=True)
+        run_copy("foo", "out", force=False, single_stage=True)
+    assert run_copy("foo", "out", force=True, single_stage=True)
 
 
 def test_rerun_changed_stage(tmp_dir, run_copy):
@@ -707,7 +708,7 @@ def test_rerun_changed_stage(tmp_dir, run_copy):
 
     tmp_dir.gen("bar", "bar content")
     with pytest.raises(StageFileAlreadyExistsError):
-        run_copy("bar", "out", overwrite=False, single_stage=True)
+        run_copy("bar", "out", force=False, single_stage=True)
 
 
 def test_rerun_changed_out(tmp_dir, run_copy):
@@ -716,7 +717,7 @@ def test_rerun_changed_out(tmp_dir, run_copy):
 
     Path("out").write_text("modification")
     with pytest.raises(StageFileAlreadyExistsError):
-        run_copy("foo", "out", overwrite=False, single_stage=True)
+        run_copy("foo", "out", force=False, single_stage=True)
 
 
 class TestRunCommit(TestDvc):
@@ -870,7 +871,7 @@ class TestRerunWithSameOutputs(TestDvc):
                 "run",
                 self._outs_command,
                 self.FOO,
-                "--overwrite",
+                "--force",
                 "--single-stage",
                 f"echo {self.BAR_CONTENTS} >> {self.FOO}",
             ]
@@ -946,7 +947,7 @@ class TestPersistentOutput(TestDvc):
 
         cmd = [
             "run",
-            "--overwrite",
+            "--force",
             "--single-stage",
             "--deps",
             "immutable",
@@ -1017,3 +1018,32 @@ class TestRunDirMetrics:
                 metrics_no_cache=["dir"],
                 single_stage=True,
             )
+
+
+def test_run_force_doesnot_preserve_comments_and_meta(tmp_dir, dvc, run_copy):
+    """Depends on loading of stage on `run` where we don't check the file
+    for stage already exists, so we don't copy `stage_text` over due to which
+    `meta` and `comments` don't get preserved."""
+    tmp_dir.gen({"foo": "foo", "foo1": "foo1"})
+    text = textwrap.dedent(
+        """\
+      cmd: python copy.py foo bar
+      deps:
+      - path: copy.py
+      - path: foo
+      outs:
+      # comment not preserved
+      - path: bar
+      meta:
+        name: copy-foo-bar
+    """
+    )
+    (tmp_dir / "bar.dvc").write_text(text)
+    dvc.reproduce("bar.dvc")
+    assert "comment" in (tmp_dir / "bar.dvc").read_text()
+    assert "meta" in (tmp_dir / "bar.dvc").read_text()
+
+    run_copy("foo1", "bar1", single_stage=True, force=True, fname="bar.dvc")
+
+    assert "comment" not in (tmp_dir / "bar.dvc").read_text()
+    assert "meta" not in (tmp_dir / "bar.dvc").read_text()

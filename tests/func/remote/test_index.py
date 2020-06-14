@@ -15,14 +15,14 @@ def remote(tmp_dir, dvc, tmp_path_factory, mocker):
     dvc.config["remote"]["upstream"] = {"url": url}
     dvc.config["core"]["remote"] = "upstream"
 
-    # patch cache_exists since the RemoteLOCAL normally overrides
-    # RemoteBASE.cache_exists.
-    def cache_exists(self, *args, **kwargs):
-        return BaseRemote.cache_exists(self, *args, **kwargs)
+    # patch checksums_exist since the LocalRemote normally overrides
+    # BaseRemote.checksums_exist.
+    def checksums_exist(self, *args, **kwargs):
+        return BaseRemote.checksums_exist(self, *args, **kwargs)
 
-    mocker.patch.object(LocalRemote, "cache_exists", cache_exists)
+    mocker.patch.object(LocalRemote, "checksums_exist", checksums_exist)
 
-    # patch index class since RemoteLOCAL normally overrides index class
+    # patch index class since LocalRemote normally overrides index class
     mocker.patch.object(LocalRemote, "INDEX_CLS", RemoteIndex)
 
     return dvc.cloud.get_remote("upstream")

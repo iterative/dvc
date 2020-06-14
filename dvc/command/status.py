@@ -50,11 +50,16 @@ class CmdDataStatus(CmdDataBase):
                 with_deps=self.args.with_deps,
                 recursive=self.args.recursive,
             )
-            if st:
-                if self.args.quiet:
-                    return 1
-                else:
-                    self._show(st, indent)
+
+            if self.args.quiet:
+                return bool(st)
+
+            if self.args.show_json:
+                import json
+
+                logger.info(json.dumps(st))
+            elif st:
+                self._show(st, indent)
             else:
                 logger.info(self.UP_TO_DATE_MSG)
 

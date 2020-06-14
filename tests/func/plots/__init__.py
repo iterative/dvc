@@ -5,11 +5,11 @@ import pytest
 
 @pytest.fixture
 def run_copy_metrics(tmp_dir, run_copy):
-    def run(file1, file2, commit=None, tag=None, **kwargs):
+    def run(file1, file2, commit=None, tag=None, single_stage=True, **kwargs):
         stage = tmp_dir.dvc.run(
             cmd=f"python copy.py {file1} {file2}",
             deps=[file1],
-            single_stage=True,
+            single_stage=single_stage,
             **kwargs,
         )
 

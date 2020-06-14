@@ -20,6 +20,8 @@ def test_metrics_diff(dvc, mocker):
             "--show-md",
             "--no-path",
             "--old",
+            "--precision",
+            "10",
         ]
     )
     assert cli_args.func == CmdMetricsDiff
@@ -123,13 +125,27 @@ def test_metrics_show(dvc, mocker):
     )
 
 
-def test_metrics_diff_prec():
-    assert _show_diff(
-        {"other.json": {"a.b": {"old": 0.0042, "new": 0.0043, "diff": 0.0001}}}
-    ) == textwrap.dedent(
+def test_metrics_diff_precision():
+    diff = {
+        "other.json": {
+            "a.b": {
+                "old": 0.1234567,
+                "new": 0.765432101234567,
+                "diff": 0.641975401234567,
+            }
+        }
+    }
+
+    assert _show_diff(diff) == textwrap.dedent(
         """\
         Path        Metric    Value    Change
-        other.json  a.b       0.0043   0.0001"""
+        other.json  a.b       0.76543  0.64198"""
+    )
+
+    assert _show_diff(diff, precision=10) == textwrap.dedent(
+        """\
+        Path        Metric    Value         Change
+        other.json  a.b       0.7654321012  0.6419754012"""
     )
 
 
