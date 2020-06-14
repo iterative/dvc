@@ -1,6 +1,7 @@
 import argparse
 import logging
 
+from dvc.command import choices
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
 
@@ -261,5 +262,6 @@ def add_parser(subparsers, parent_parser):
         nargs="*",
         help="DVC-files to show pipeline for. Optional. "
         "(Finds all DVC-files in the workspace by default.)",
+        choices=choices.Optional.DVC_FILE,
     )
     pipeline_show_parser.set_defaults(func=CmdPipelineShow)

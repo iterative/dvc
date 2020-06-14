@@ -1,6 +1,7 @@
 import argparse
 import logging
 
+from dvc.command import choices
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
 
@@ -36,7 +37,11 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     move_parser.add_argument(
-        "src_path", help="Source path to a data file or directory."
+        "src_path",
+        help="Source path to a data file or directory.",
+        choices=choices.Required.FILE,
     )
-    move_parser.add_argument("dst_path", help="Destination path.")
+    move_parser.add_argument(
+        "dst_path", help="Destination path.", choices=choices.Required.FILE,
+    )
     move_parser.set_defaults(func=CmdMove)

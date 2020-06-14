@@ -3,6 +3,7 @@ import logging
 
 from dvc.exceptions import DvcException
 
+from . import choices
 from .base import CmdBaseNoRepo, append_doc_link
 
 logger = logging.getLogger(__name__)
@@ -33,6 +34,9 @@ def add_parser(subparsers, parent_parser):
         "url", help="See `dvc import-url -h` for full list of supported URLs."
     )
     get_parser.add_argument(
-        "path", nargs="?", help="Destination path to put data to."
+        "path",
+        nargs="?",
+        help="Destination path to put data to.",
+        choices=choices.Optional.DIR,
     )
     get_parser.set_defaults(func=CmdGetUrl)

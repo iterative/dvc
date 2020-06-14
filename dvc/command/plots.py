@@ -2,6 +2,7 @@ import argparse
 import logging
 import os
 
+from dvc.command import choices
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
 from dvc.schema import PLOT_PROPS
@@ -128,6 +129,7 @@ def add_parser(subparsers, parent_parser):
         "files",
         nargs="*",
         help="Plots files to visualize. Shows all plots by default.",
+        choices=choices.Optional.FILE,
     )
     _add_props_arguments(plots_show_parser)
     _add_output_arguments(plots_show_parser)
@@ -148,6 +150,7 @@ def add_parser(subparsers, parent_parser):
         "--targets",
         nargs="*",
         help="Plots file to visualize. Shows all plots by default.",
+        choices=choices.Optional.FILE,
     )
     plots_diff_parser.add_argument(
         "revisions", nargs="*", default=None, help="Git commits to plot from",
@@ -165,7 +168,9 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     plots_modify_parser.add_argument(
-        "file", help="Plot file to set props to.",
+        "file",
+        help="Plot file to set props to.",
+        choices=choices.Required.FILE,
     )
     _add_props_arguments(plots_modify_parser)
     plots_modify_parser.add_argument(
@@ -186,6 +191,7 @@ def _add_props_arguments(parser):
                 format_link("https://man.dvc.org/plots#plot-templates")
             )
         ),
+        choices=choices.Optional.FILE,
     )
     parser.add_argument("-x", default=None, help="Field name for x axis.")
     parser.add_argument("-y", default=None, help="Field name for y axis.")
@@ -203,7 +209,11 @@ def _add_props_arguments(parser):
 
 def _add_output_arguments(parser):
     parser.add_argument(
-        "-o", "--out", default=None, help="Destination path to save plots to.",
+        "-o",
+        "--out",
+        default=None,
+        help="Destination path to save plots to.",
+        choices=choices.Optional.DIR,
     )
     parser.add_argument(
         "--show-vega",

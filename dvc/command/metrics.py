@@ -1,6 +1,7 @@
 import argparse
 import logging
 
+from dvc.command import choices
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import BadMetricError, DvcException
 
@@ -170,7 +171,9 @@ def add_parser(subparsers, parent_parser):
         help=METRICS_ADD_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    metrics_add_parser.add_argument("path", help="Path to a metric file.")
+    metrics_add_parser.add_argument(
+        "path", help="Path to a metric file.", choices=choices.Required.FILE
+    )
     metrics_add_parser.set_defaults(func=CmdMetricsAdd)
 
     METRICS_SHOW_HELP = "Print metrics, with optional formatting."
@@ -185,6 +188,7 @@ def add_parser(subparsers, parent_parser):
         "targets",
         nargs="*",
         help="Metric files or directories (see -R) to show",
+        choices=choices.Optional.DVC_FILE,  # TODO: FILE?
     )
     metrics_show_parser.add_argument(
         "-a",
@@ -249,6 +253,7 @@ def add_parser(subparsers, parent_parser):
             "Shows diff for all metric files by default."
         ),
         metavar="<paths>",
+        choices=choices.Optional.FILE,
     )
     metrics_diff_parser.add_argument(
         "-R",
@@ -300,5 +305,7 @@ def add_parser(subparsers, parent_parser):
         help=METRICS_REMOVE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    metrics_remove_parser.add_argument("path", help="Path to a metric file.")
+    metrics_remove_parser.add_argument(
+        "path", help="Path to a metric file.", choices=choices.Required.FILE
+    )
     metrics_remove_parser.set_defaults(func=CmdMetricsRemove)

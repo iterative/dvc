@@ -2,6 +2,7 @@ import argparse
 import logging
 
 import dvc.prompt as prompt
+from dvc.command import choices
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
 
@@ -71,6 +72,9 @@ def add_parser(subparsers, parent_parser):
         help="Force purge.",
     )
     remove_parser.add_argument(
-        "targets", nargs="+", help="DVC-files to remove."
+        "targets",
+        nargs="+",
+        help="DVC-files to remove.",
+        choices=choices.Required.DVC_FILE,
     )
     remove_parser.set_defaults(func=CmdRemove)
