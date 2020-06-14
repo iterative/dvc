@@ -154,6 +154,7 @@ _dvc_importurl=(
   {-f,--file}"[Specify name of the DVC-file it generates.]:File:_files"
   "1:URL:"
   "2:Output:"
+  "--no-exec[Only create stage file without actually running it.]"
 )
 
 _dvc_import=(

@@ -14,7 +14,7 @@ def test_import_url(mocker):
 
     assert cmd.run() == 0
 
-    m.assert_called_once_with("src", out="out", fname="file")
+    m.assert_called_once_with("src", out="out", fname="file", no_exec=False)
 
 
 def test_failed_import_url(mocker, caplog):
@@ -31,3 +31,16 @@ def test_failed_import_url(mocker, caplog):
             "adding it with `dvc add`."
         )
         assert expected_error in caplog.text
+
+
+def test_import_url_no_exec(mocker):
+    cli_args = parse_args(
+        ["import-url", "--no-exec", "src", "out", "--file", "file"]
+    )
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch.object(cmd.repo, "imp_url", autospec=True)
+
+    assert cmd.run() == 0
+
+    m.assert_called_once_with("src", out="out", fname="file", no_exec=True)

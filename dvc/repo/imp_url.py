@@ -10,7 +10,9 @@ from . import locked
 
 @locked
 @scm_context
-def imp_url(self, url, out=None, fname=None, erepo=None, frozen=True):
+def imp_url(
+    self, url, out=None, fname=None, erepo=None, frozen=True, no_exec=False
+):
     from dvc.dvcfile import Dvcfile
     from dvc.stage import Stage, create_stage
 
@@ -46,7 +48,10 @@ def imp_url(self, url, out=None, fname=None, erepo=None, frozen=True):
     except OutputDuplicationError as exc:
         raise OutputDuplicationError(exc.output, set(exc.stages) - {stage})
 
-    stage.run()
+    if no_exec:
+        stage.ignore_outs()
+    else:
+        stage.run()
 
     stage.frozen = frozen
 
