@@ -273,7 +273,7 @@ class SSHRemoteTree(BaseRemoteTree):
             root = posixpath.join(self.path_info.path, prefix[:2])
         else:
             root = self.path_info.path
-        with self.tree.ssh(self.path_info) as ssh:
+        with self.ssh(self.path_info) as ssh:
             if prefix and not ssh.exists(root):
                 return
             # If we simply return an iterator then with above closes instantly
@@ -320,8 +320,8 @@ class SSHRemote(Remote):
         faster than current approach (relying on exists(path_info)) applied in
         remote/base.
         """
-        if not self.CAN_TRAVERSE:
-            return list(set(checksums) & set(self.all()))
+        if not self.tree.CAN_TRAVERSE:
+            return list(set(checksums) & set(self.tree.all()))
 
         # possibly prompt for credentials before "Querying" progress output
         self.tree.ensure_credentials()
@@ -336,9 +336,11 @@ class SSHRemote(Remote):
             def exists_with_progress(chunks):
                 return self.batch_exists(chunks, callback=pbar.update_msg)
 
-            with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
+            with ThreadPoolExecutor(
+                max_workers=jobs or self.tree.JOBS
+            ) as executor:
                 path_infos = [self.checksum_to_path_info(x) for x in checksums]
-                chunks = to_chunks(path_infos, num_chunks=self.JOBS)
+                chunks = to_chunks(path_infos, num_chunks=self.tree.JOBS)
                 results = executor.map(exists_with_progress, chunks)
                 in_remote = itertools.chain.from_iterable(results)
                 ret = list(itertools.compress(checksums, in_remote))

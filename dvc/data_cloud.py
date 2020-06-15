@@ -85,7 +85,7 @@ class DataCloud:
             cache, jobs=jobs, remote=remote, show_checksums=show_checksums
         )
 
-        if not remote.verify:
+        if not remote.tree.verify:
             self._save_pulled_checksums(cache)
 
         return downloaded_items_num

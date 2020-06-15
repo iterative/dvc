@@ -904,6 +904,10 @@ class CloudCache:
         self._dir_info = {}
 
     @property
+    def path_info(self):
+        return self.tree.path_info
+
+    @property
     def cache(self):
         return getattr(self.repo.cache, self.scheme)
 
@@ -999,7 +1003,7 @@ class CloudCache:
             logger.debug("'%s' doesn't exist.", path_info)
             return True
 
-        checksum = checksum_info.get(self.PARAM_CHECKSUM)
+        checksum = checksum_info.get(self.tree.PARAM_CHECKSUM)
         if checksum is None:
             logger.debug("hash value for '%s' is missing.", path_info)
             return True
@@ -1159,7 +1163,7 @@ class CloudCache:
             )
 
         if not checksum_info:
-            checksum_info = self.save_info(path_info, tree=tree, **kwargs)
+            checksum_info = self.tree.save_info(path_info, tree=tree, **kwargs)
         checksum = checksum_info[self.tree.PARAM_CHECKSUM]
         return self._save(path_info, tree, checksum, save_link, **kwargs)
 
