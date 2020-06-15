@@ -19,7 +19,6 @@ from dvc.remote.base import (
     BaseRemoteTree,
     CloudCache,
     Remote,
-    index_locked,
 )
 from dvc.scheme import Schemes
 from dvc.scm.tree import WorkingTree, is_working_tree
@@ -222,7 +221,7 @@ class LocalRemoteTree(BaseRemoteTree):
                 "a symlink or a hardlink.".format(path)
             )
 
-        os.chmod(path, self.tree.file_mode)
+        os.chmod(path, self.file_mode)
 
     def _unprotect_dir(self, path):
         assert is_working_tree(self.repo.tree)
@@ -341,6 +340,15 @@ class LocalRemote(Remote):
         self.tree.remove(path_info)
 
 
+def sync_index_locked(f):
+    @wraps(f)
+    def wrapper(cache_obj, named_cache, remote, *args, **kwargs):
+        with remote.index:
+            return f(cache_obj, named_cache, remote, *args, **kwargs)
+
+    return wrapper
+
+
 class LocalCache(CloudCache):
     def __init__(self, tree):
         super().__init__(tree)
@@ -398,7 +406,7 @@ class LocalCache(CloudCache):
 
         super()._verify_link(path_info, link_type)
 
-    @index_locked
+    @sync_index_locked
     def status(
         self,
         named_cache,
@@ -686,7 +694,7 @@ class LocalCache(CloudCache):
                 return 1
         return func(from_info, to_info, name)
 
-    @index_locked
+    @sync_index_locked
     def push(self, named_cache, remote, jobs=None, show_checksums=False):
         return self._process(
             named_cache,
@@ -696,7 +704,7 @@ class LocalCache(CloudCache):
             download=False,
         )
 
-    @index_locked
+    @sync_index_locked
     def pull(self, named_cache, remote, jobs=None, show_checksums=False):
         return self._process(
             named_cache,
