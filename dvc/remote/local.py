@@ -16,9 +16,9 @@ from dvc.remote.base import (
     STATUS_MAP,
     STATUS_MISSING,
     STATUS_NEW,
-    BaseRemote,
     BaseRemoteTree,
-    CacheMixin,
+    CloudCache,
+    Remote,
     index_locked,
 )
 from dvc.remote.index import RemoteIndexNoop
@@ -39,17 +39,24 @@ logger = logging.getLogger(__name__)
 
 
 class LocalRemoteTree(BaseRemoteTree):
-    SHARED_MODE_MAP = {None: (0o644, 0o755), "group": (0o664, 0o775)}
+    scheme = Schemes.LOCAL
     PATH_CLS = PathInfo
+    PARAM_CHECKSUM = "md5"
+    PARAM_PATH = "path"
+    TRAVERSE_PREFIX_LEN = 2
+    UNPACKED_DIR_SUFFIX = ".unpacked"
 
-    def __init__(self, remote, config):
-        super().__init__(remote, config)
+    CACHE_MODE = 0o444
+    SHARED_MODE_MAP = {None: (0o644, 0o755), "group": (0o664, 0o775)}
+
+    def __init__(self, repo, config):
+        super().__init__(repo, config)
         url = config.get("url")
         self.path_info = self.PATH_CLS(url) if url else None
 
     @property
-    def repo(self):
-        return self.remote.repo
+    def state(self):
+        return self.repo.state
 
     @cached_property
     def work_tree(self):
@@ -195,78 +202,6 @@ class LocalRemoteTree(BaseRemoteTree):
         os.chmod(tmp_info, self.file_mode)
         os.rename(tmp_info, to_info)
 
-    def get_file_checksum(self, path_info):
-        return file_md5(path_info)[0]
-
-    @staticmethod
-    def getsize(path_info):
-        return os.path.getsize(path_info)
-
-    def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
-    ):
-        makedirs(to_info.parent, exist_ok=True)
-
-        tmp_file = tmp_fname(to_info)
-        copyfile(
-            from_file, tmp_file, name=name, no_progress_bar=no_progress_bar
-        )
-
-        self.remote.protect(tmp_file)
-        os.rename(tmp_file, to_info)
-
-    @staticmethod
-    def _download(
-        from_info, to_file, name=None, no_progress_bar=False, **_kwargs
-    ):
-        copyfile(
-            from_info, to_file, no_progress_bar=no_progress_bar, name=name
-        )
-
-
-def _log_exceptions(func, operation):
-    @wraps(func)
-    def wrapper(from_info, to_info, *args, **kwargs):
-        try:
-            func(from_info, to_info, *args, **kwargs)
-            return 0
-        except Exception as exc:
-            # NOTE: this means we ran out of file descriptors and there is no
-            # reason to try to proceed, as we will hit this error anyways.
-            if isinstance(exc, OSError) and exc.errno == errno.EMFILE:
-                raise
-
-            logger.exception(
-                "failed to %s '%s' to '%s'", operation, from_info, to_info
-            )
-            return 1
-
-    return wrapper
-
-
-class LocalRemote(BaseRemote):
-    scheme = Schemes.LOCAL
-    INDEX_CLS = RemoteIndexNoop
-    TREE_CLS = LocalRemoteTree
-
-    PARAM_CHECKSUM = "md5"
-    PARAM_PATH = "path"
-    DEFAULT_CACHE_TYPES = ["reflink", "copy"]
-    TRAVERSE_PREFIX_LEN = 2
-    UNPACKED_DIR_SUFFIX = ".unpacked"
-
-    CACHE_MODE = 0o444
-
-    @property
-    def state(self):
-        return self.repo.state
-
-    def get(self, md5):
-        if not md5:
-            return None
-
-        return self.checksum_to_path_info(md5).url
-
     def _unprotect_file(self, path):
         if System.is_symlink(path) or System.is_hardlink(path):
             logger.debug(f"Unprotecting '{path}'")
@@ -287,7 +222,7 @@ class LocalRemote(BaseRemote):
                 "a symlink or a hardlink.".format(path)
             )
 
-        os.chmod(path, self.tree.file_mode)
+        os.chmod(path, self.file_mode)
 
     def _unprotect_dir(self, path):
         assert is_working_tree(self.repo.tree)
@@ -333,14 +268,44 @@ class LocalRemote(BaseRemote):
 
         return stat.S_IMODE(mode) == self.CACHE_MODE
 
+    def get_file_checksum(self, path_info):
+        return file_md5(path_info)[0]
+
+    @staticmethod
+    def getsize(path_info):
+        return os.path.getsize(path_info)
+
+    def _upload(
+        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
+    ):
+        makedirs(to_info.parent, exist_ok=True)
+
+        tmp_file = tmp_fname(to_info)
+        copyfile(
+            from_file, tmp_file, name=name, no_progress_bar=no_progress_bar
+        )
+
+        self.protect(tmp_file)
+        os.rename(tmp_file, to_info)
+
+    @staticmethod
+    def _download(
+        from_info, to_file, name=None, no_progress_bar=False, **_kwargs
+    ):
+        copyfile(
+            from_info, to_file, no_progress_bar=no_progress_bar, name=name
+        )
+
     def list_paths(self, prefix=None, progress_callback=None):
         assert self.path_info is not None
         if prefix:
             path_info = self.path_info / prefix[:2]
-            if not self.tree.exists(path_info):
+            if not self.exists(path_info):
                 return
         else:
             path_info = self.path_info
+        # NOTE: use utils.fs walk_files since tree.walk_files will not follow
+        # symlinks
         if progress_callback:
             for path in walk_files(path_info):
                 progress_callback()
@@ -351,13 +316,40 @@ class LocalRemote(BaseRemote):
     def _remove_unpacked_dir(self, checksum):
         info = self.checksum_to_path_info(checksum)
         path_info = info.with_name(info.name + self.UNPACKED_DIR_SUFFIX)
-        self.tree.remove(path_info)
+        self.remove(path_info)
 
 
-class LocalCache(LocalRemote, CacheMixin):
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
-        self.cache_dir = config.get("url")
+def _log_exceptions(func, operation):
+    @wraps(func)
+    def wrapper(from_info, to_info, *args, **kwargs):
+        try:
+            func(from_info, to_info, *args, **kwargs)
+            return 0
+        except Exception as exc:
+            # NOTE: this means we ran out of file descriptors and there is no
+            # reason to try to proceed, as we will hit this error anyways.
+            if isinstance(exc, OSError) and exc.errno == errno.EMFILE:
+                raise
+
+            logger.exception(
+                "failed to %s '%s' to '%s'", operation, from_info, to_info
+            )
+            return 1
+
+    return wrapper
+
+
+class LocalRemote(Remote):
+    INDEX_CLS = RemoteIndexNoop
+
+
+class LocalCache(CloudCache):
+    DEFAULT_CACHE_TYPES = ["reflink", "copy"]
+    CACHE_MODE = LocalRemoteTree.CACHE_MODE
+
+    def __init__(self, tree):
+        super().__init__(tree)
+        self.cache_dir = tree.config.get("url")
 
     @property
     def cache_dir(self):
@@ -513,7 +505,7 @@ class LocalCache(LocalRemote, CacheMixin):
         indexed_dir_exists = set()
         if indexed_dirs:
             indexed_dir_exists.update(
-                remote._list_checksums_exists(indexed_dirs)
+                remote.tree.list_checksums_exists(indexed_dirs)
             )
             missing_dirs = indexed_dirs.difference(indexed_dir_exists)
             if missing_dirs:
@@ -525,7 +517,9 @@ class LocalCache(LocalRemote, CacheMixin):
 
         # Check if non-indexed (new) dir checksums exist on remote
         dir_exists = dir_md5s.intersection(indexed_dir_exists)
-        dir_exists.update(remote._list_checksums_exists(dir_md5s - dir_exists))
+        dir_exists.update(
+            remote.tree.list_checksums_exists(dir_md5s - dir_exists)
+        )
 
         # If .dir checksum exists on the remote, assume directory contents
         # still exists on the remote
@@ -605,7 +599,7 @@ class LocalCache(LocalRemote, CacheMixin):
             desc = "Uploading"
 
         if jobs is None:
-            jobs = remote.JOBS
+            jobs = remote.tree.JOBS
 
         dir_status, file_status, dir_contents = self._status(
             named_cache,

@@ -11,15 +11,21 @@ from urllib.parse import urlparse
 from dvc.scheme import Schemes
 from dvc.utils import fix_env, tmp_fname
 
-from .base import BaseRemote, BaseRemoteTree, CacheMixin, RemoteCmdError
+from .base import BaseRemoteTree, RemoteCmdError
 from .pool import get_connection
 
 logger = logging.getLogger(__name__)
 
 
 class HDFSRemoteTree(BaseRemoteTree):
-    def __init__(self, remote, config):
-        super().__init__(remote, config)
+    scheme = Schemes.HDFS
+    REQUIRES = {"pyarrow": "pyarrow"}
+    REGEX = r"^hdfs://((?P<user>.*)@)?.*$"
+    PARAM_CHECKSUM = "checksum"
+    TRAVERSE_PREFIX_LEN = 2
+
+    def __init__(self, repo, config):
+        super().__init__(repo, config)
 
         self.path_info = None
         url = config.get("url")
@@ -173,16 +179,3 @@ class HDFSRemoteTree(BaseRemoteTree):
         with self.hdfs(from_info) as hdfs:
             with open(to_file, "wb+") as fobj:
                 hdfs.download(from_info.path, fobj)
-
-
-class HDFSRemote(BaseRemote):
-    scheme = Schemes.HDFS
-    REGEX = r"^hdfs://((?P<user>.*)@)?.*$"
-    PARAM_CHECKSUM = "checksum"
-    REQUIRES = {"pyarrow": "pyarrow"}
-    TREE_CLS = HDFSRemoteTree
-    TRAVERSE_PREFIX_LEN = 2
-
-
-class HDFSCache(HDFSRemote, CacheMixin):
-    pass

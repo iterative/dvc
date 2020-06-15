@@ -16,8 +16,9 @@ from dvc.exceptions import (
     NoOutputOrStageError,
 )
 from dvc.main import main
-from dvc.remote import S3Cache, S3Remote
-from dvc.remote.local import LocalRemote
+from dvc.remote.base import CloudCache, Remote
+from dvc.remote.local import LocalRemoteTree
+from dvc.remote.s3 import S3RemoteTree
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
@@ -99,8 +100,8 @@ class TestCheckoutCorruptedCacheDir(TestDvc):
         # NOTE: modifying cache file for one of the files inside the directory
         # to check if dvc will detect that the cache is corrupted.
         entry = self.dvc.cache.local.load_dir_cache(out.checksum)[0]
-        checksum = entry[self.dvc.cache.local.PARAM_CHECKSUM]
-        cache = self.dvc.cache.local.get(checksum)
+        checksum = entry[self.dvc.cache.local.tree.PARAM_CHECKSUM]
+        cache = os.fspath(self.dvc.cache.local.checksum_to_path_info(checksum))
 
         os.chmod(cache, 0o644)
         with open(cache, "w+") as fobj:
@@ -305,8 +306,8 @@ class TestGitIgnoreWhenCheckout(CheckoutBase):
 class TestCheckoutMissingMd5InStageFile(TestRepro):
     def test(self):
         d = load_yaml(self.file1_stage)
-        del d[Stage.PARAM_OUTS][0][LocalRemote.PARAM_CHECKSUM]
-        del d[Stage.PARAM_DEPS][0][LocalRemote.PARAM_CHECKSUM]
+        del d[Stage.PARAM_OUTS][0][LocalRemoteTree.PARAM_CHECKSUM]
+        del d[Stage.PARAM_DEPS][0][LocalRemoteTree.PARAM_CHECKSUM]
         dump_yaml(self.file1_stage, d)
 
         with pytest.raises(CheckoutError):
@@ -755,9 +756,9 @@ def test_checkout_recursive(tmp_dir, dvc):
     not S3.should_test(), reason="Only run with S3 credentials"
 )
 def test_checkout_for_external_outputs(tmp_dir, dvc):
-    dvc.cache.s3 = S3Cache(dvc, {"url": S3.get_url()})
+    dvc.cache.s3 = CloudCache(S3RemoteTree(dvc, {"url": S3.get_url()}))
 
-    remote = S3Remote(dvc, {"url": S3.get_url()})
+    remote = Remote(S3RemoteTree(dvc, {"url": S3.get_url()}))
     file_path = remote.path_info / "foo"
     remote.tree.s3.put_object(
         Bucket=remote.path_info.bucket, Key=file_path.path, Body="foo"

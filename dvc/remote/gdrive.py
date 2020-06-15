@@ -14,7 +14,7 @@ from funcy.py3 import cat
 from dvc.exceptions import DvcException, FileMissingError
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemote, BaseRemoteTree
+from dvc.remote.base import BaseRemoteTree
 from dvc.scheme import Schemes
 from dvc.utils import format_link, tmp_fname
 from dvc.utils.stream import IterStream
@@ -85,7 +85,13 @@ class GDriveURLInfo(CloudURLInfo):
 
 
 class GDriveRemoteTree(BaseRemoteTree):
+    scheme = Schemes.GDRIVE
     PATH_CLS = GDriveURLInfo
+    REQUIRES = {"pydrive2": "pydrive2"}
+    DEFAULT_VERIFY = True
+    # Always prefer traverse for GDrive since API usage quotas are a concern.
+    TRAVERSE_WEIGHT_MULTIPLIER = 1
+    TRAVERSE_PREFIX_LEN = 2
 
     GDRIVE_CREDENTIALS_DATA = "GDRIVE_CREDENTIALS_DATA"
     DEFAULT_USER_CREDENTIALS_FILE = "gdrive-user-credentials.json"
@@ -93,8 +99,8 @@ class GDriveRemoteTree(BaseRemoteTree):
     DEFAULT_GDRIVE_CLIENT_ID = "710796635688-iivsgbgsb6uv1fap6635dhvuei09o66c.apps.googleusercontent.com"  # noqa: E501
     DEFAULT_GDRIVE_CLIENT_SECRET = "a1Fz59uTpVNeG_VGuSKDLJXv"
 
-    def __init__(self, remote, config):
-        super().__init__(remote, config)
+    def __init__(self, repo, config):
+        super().__init__(repo, config)
 
         self.path_info = self.PATH_CLS(config["url"])
 
@@ -122,13 +128,12 @@ class GDriveRemoteTree(BaseRemoteTree):
         self._client_secret = config.get("gdrive_client_secret")
         self._validate_config()
         self._gdrive_user_credentials_path = (
-            tmp_fname(os.path.join(self.remote.repo.tmp_dir, ""))
+            tmp_fname(os.path.join(self.repo.tmp_dir, ""))
             if os.getenv(GDriveRemoteTree.GDRIVE_CREDENTIALS_DATA)
             else config.get(
                 "gdrive_user_credentials_file",
                 os.path.join(
-                    self.remote.repo.tmp_dir,
-                    self.DEFAULT_USER_CREDENTIALS_FILE,
+                    self.repo.tmp_dir, self.DEFAULT_USER_CREDENTIALS_FILE,
                 ),
             )
         )
@@ -574,13 +579,3 @@ class GDriveRemoteTree(BaseRemoteTree):
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         item_id = self._get_item_id(from_info)
         self._gdrive_download_file(item_id, to_file, name, no_progress_bar)
-
-
-class GDriveRemote(BaseRemote):
-    scheme = Schemes.GDRIVE
-    REQUIRES = {"pydrive2": "pydrive2"}
-    TREE_CLS = GDriveRemoteTree
-    DEFAULT_VERIFY = True
-    # Always prefer traverse for GDrive since API usage quotas are a concern.
-    TRAVERSE_WEIGHT_MULTIPLIER = 1
-    TRAVERSE_PREFIX_LEN = 2

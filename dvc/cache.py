@@ -28,13 +28,15 @@ def _make_remote_property(name):
     """
 
     def getter(self):
-        from dvc.remote import Cache as CloudCache
+        from dvc.remote import get_cloud_tree
+        from dvc.remote.base import CloudCache
 
         remote = self.config.get(name)
         if not remote:
             return None
 
-        return CloudCache(self.repo, name=remote)
+        tree = get_cloud_tree(self.repo, name=remote)
+        return CloudCache(tree)
 
     getter.__name__ = name
     return cached_property(getter)
@@ -50,7 +52,8 @@ class Cache:
     CACHE_DIR = "cache"
 
     def __init__(self, repo):
-        from dvc.remote import Cache as CloudCache
+        from dvc.remote import get_cloud_tree
+        from dvc.remote.local import LocalCache
 
         self.repo = repo
         self.config = config = repo.config["cache"]
@@ -62,7 +65,8 @@ class Cache:
         else:
             settings = {**config, "url": config["dir"]}
 
-        self.local = CloudCache(repo, **settings)
+        tree = get_cloud_tree(repo, **settings)
+        self.local = LocalCache(tree)
 
     s3 = _make_remote_property("s3")
     gs = _make_remote_property("gs")

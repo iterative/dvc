@@ -22,8 +22,9 @@ def test_open(tmp_dir, dvc):
     (tmp_dir / "foo").unlink()
 
     tree = DvcTree(dvc)
-    with tree.open("foo", "r") as fobj:
-        assert fobj.read() == "foo"
+    with dvc.state:
+        with tree.open("foo", "r") as fobj:
+            assert fobj.read() == "foo"
 
 
 def test_open_dirty_hash(tmp_dir, dvc):

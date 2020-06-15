@@ -3,7 +3,7 @@ import os
 import pytest
 
 from dvc.exceptions import DownloadError, UploadError
-from dvc.remote.base import BaseRemote
+from dvc.remote.base import Remote
 from dvc.remote.index import RemoteIndex
 from dvc.remote.local import LocalRemote, LocalRemoteTree
 from dvc.utils.fs import remove
@@ -16,9 +16,9 @@ def remote(tmp_dir, dvc, tmp_path_factory, mocker):
     dvc.config["core"]["remote"] = "upstream"
 
     # patch checksums_exist since the LocalRemote normally overrides
-    # BaseRemote.checksums_exist.
+    # BaseRemoteTree.checksums_exist.
     def checksums_exist(self, *args, **kwargs):
-        return BaseRemote.checksums_exist(self, *args, **kwargs)
+        return Remote.checksums_exist(self, *args, **kwargs)
 
     mocker.patch.object(LocalRemote, "checksums_exist", checksums_exist)
 

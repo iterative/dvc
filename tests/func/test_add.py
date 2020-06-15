@@ -21,7 +21,7 @@ from dvc.exceptions import (
 )
 from dvc.main import main
 from dvc.output.base import OutputAlreadyTrackedError, OutputIsStageFileError
-from dvc.remote.local import LocalRemote, LocalRemoteTree
+from dvc.remote.local import LocalRemoteTree
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.system import System
@@ -583,7 +583,7 @@ def test_readding_dir_should_not_unprotect_all(tmp_dir, dvc, mocker):
     dvc.add("dir")
     tmp_dir.gen("dir/new_file", "new_file_content")
 
-    unprotect_spy = mocker.spy(LocalRemote, "unprotect")
+    unprotect_spy = mocker.spy(LocalRemoteTree, "unprotect")
     dvc.add("dir")
 
     assert not unprotect_spy.mock.called
