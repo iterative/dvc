@@ -17,6 +17,10 @@ class NotAPlotError(DvcException):
         )
 
 
+class PropsNotFoundError(DvcException):
+    pass
+
+
 class Plots:
     def __init__(self, repo):
         self.repo = repo
@@ -93,6 +97,17 @@ class Plots:
 
         return diff(self.repo, *args, **kwargs)
 
+    @staticmethod
+    def _unset(out, props):
+        missing = list(set(props) - set(out.plot.keys()))
+        if missing:
+            raise PropsNotFoundError(
+                f"display properties {missing} not found in plot '{out}'"
+            )
+
+        for prop in props:
+            out.plot.pop(prop)
+
     def modify(self, path, props=None, unset=None):
         from dvc.dvcfile import Dvcfile
 
@@ -109,8 +124,9 @@ class Plots:
         if not isinstance(out.plot, dict):
             out.plot = {}
 
-        for field in unset or ():
-            out.plot.pop(field, None)
+        if unset:
+            self._unset(out, unset)
+
         out.plot.update(props)
 
         # Empty dict will move it to non-plots
