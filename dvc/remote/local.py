@@ -19,7 +19,9 @@ from dvc.remote.base import (
     BaseRemoteTree,
     CloudCache,
     Remote,
+    index_locked,
 )
+from dvc.remote.index import RemoteIndexNoop
 from dvc.scheme import Schemes
 from dvc.scm.tree import WorkingTree, is_working_tree
 from dvc.system import System
@@ -299,7 +301,7 @@ class LocalRemoteTree(BaseRemoteTree):
         assert self.path_info is not None
         if prefix:
             path_info = self.path_info / prefix[:2]
-            if not self.tree.exists(path_info):
+            if not self.exists(path_info):
                 return
         else:
             path_info = self.path_info
@@ -311,6 +313,11 @@ class LocalRemoteTree(BaseRemoteTree):
                 yield path
         else:
             yield from walk_files(path_info)
+
+    def _remove_unpacked_dir(self, checksum):
+        info = self.checksum_to_path_info(checksum)
+        path_info = info.with_name(info.name + self.UNPACKED_DIR_SUFFIX)
+        self.remove(path_info)
 
 
 def _log_exceptions(func, operation):
@@ -334,19 +341,7 @@ def _log_exceptions(func, operation):
 
 
 class LocalRemote(Remote):
-    def _remove_unpacked_dir(self, checksum):
-        info = self.checksum_to_path_info(checksum)
-        path_info = info.with_name(info.name + self.UNPACKED_DIR_SUFFIX)
-        self.tree.remove(path_info)
-
-
-def sync_index_locked(f):
-    @wraps(f)
-    def wrapper(cache_obj, named_cache, remote, *args, **kwargs):
-        with remote.index:
-            return f(cache_obj, named_cache, remote, *args, **kwargs)
-
-    return wrapper
+    INDEX_CLS = RemoteIndexNoop
 
 
 class LocalCache(CloudCache):
@@ -406,7 +401,7 @@ class LocalCache(CloudCache):
 
         super()._verify_link(path_info, link_type)
 
-    @sync_index_locked
+    @index_locked
     def status(
         self,
         named_cache,
@@ -508,7 +503,7 @@ class LocalCache(CloudCache):
         indexed_dir_exists = set()
         if indexed_dirs:
             indexed_dir_exists.update(
-                remote._list_checksums_exists(indexed_dirs)
+                remote.tree.list_checksums_exists(indexed_dirs)
             )
             missing_dirs = indexed_dirs.difference(indexed_dir_exists)
             if missing_dirs:
@@ -520,7 +515,9 @@ class LocalCache(CloudCache):
 
         # Check if non-indexed (new) dir checksums exist on remote
         dir_exists = dir_md5s.intersection(indexed_dir_exists)
-        dir_exists.update(remote._list_checksums_exists(dir_md5s - dir_exists))
+        dir_exists.update(
+            remote.tree.list_checksums_exists(dir_md5s - dir_exists)
+        )
 
         # If .dir checksum exists on the remote, assume directory contents
         # still exists on the remote
@@ -600,7 +597,7 @@ class LocalCache(CloudCache):
             desc = "Uploading"
 
         if jobs is None:
-            jobs = remote.JOBS
+            jobs = remote.tree.JOBS
 
         dir_status, file_status, dir_contents = self._status(
             named_cache,
@@ -694,7 +691,7 @@ class LocalCache(CloudCache):
                 return 1
         return func(from_info, to_info, name)
 
-    @sync_index_locked
+    @index_locked
     def push(self, named_cache, remote, jobs=None, show_checksums=False):
         return self._process(
             named_cache,
@@ -704,7 +701,7 @@ class LocalCache(CloudCache):
             download=False,
         )
 
-    @sync_index_locked
+    @index_locked
     def pull(self, named_cache, remote, jobs=None, show_checksums=False):
         return self._process(
             named_cache,

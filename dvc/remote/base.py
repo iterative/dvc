@@ -73,10 +73,11 @@ class DirCacheError(DvcException):
 
 def index_locked(f):
     @wraps(f)
-    def wrapper(remote_obj, *args, **kwargs):
-        remote = kwargs.get("remote", remote_obj)
-        with remote.index:
-            return f(remote_obj, *args, **kwargs)
+    def wrapper(obj, named_cache, remote, *args, **kwargs):
+        if hasattr(remote, "index"):
+            with remote.index:
+                return f(obj, named_cache, remote, *args, **kwargs)
+        return f(obj, named_cache, remote, *args, **kwargs)
 
     return wrapper
 
@@ -698,6 +699,9 @@ class BaseRemoteTree:
                 ret = list(itertools.compress(checksums, in_remote))
                 return ret
 
+    def _remove_unpacked_dir(self, checksum):
+        pass
+
 
 class Remote:
     """Cloud remote class.
@@ -706,15 +710,17 @@ class Remote:
     DVC remotes.
     """
 
+    INDEX_CLS = RemoteIndex
+
     def __init__(self, tree):
         self.tree = tree
         self.repo = tree.repo
 
         config = tree.config
         url = config.get("url")
-        if self.scheme != "local" and url:
+        if url:
             index_name = hashlib.sha256(url.encode("utf-8")).hexdigest()
-            self.index = RemoteIndex(
+            self.index = self.INDEX_CLS(
                 self.repo, index_name, dir_suffix=self.tree.CHECKSUM_DIR_SUFFIX
             )
         else:
@@ -851,34 +857,34 @@ class Remote:
             checksums & set(remote_checksums)
         )
 
+    @classmethod
     @index_locked
-    def gc(self, named_cache, jobs=None):
+    def gc(cls, named_cache, remote, jobs=None):
+        tree = remote.tree
         used = set(named_cache.scheme_keys("local"))
 
-        if self.scheme != "":
-            used.update(named_cache.scheme_keys(self.scheme))
+        if tree.scheme != "":
+            used.update(named_cache.scheme_keys(tree.scheme))
 
         removed = False
         # checksums must be sorted to ensure we always remove .dir files first
         for checksum in sorted(
-            self.all(jobs, str(self.path_info)),
-            key=self.is_dir_checksum,
+            tree.all(jobs, str(tree.path_info)),
+            key=tree.is_dir_checksum,
             reverse=True,
         ):
             if checksum in used:
                 continue
-            path_info = self.checksum_to_path_info(checksum)
-            if self.is_dir_checksum(checksum):
+            path_info = tree.checksum_to_path_info(checksum)
+            if tree.is_dir_checksum(checksum):
                 # backward compatibility
-                self._remove_unpacked_dir(checksum)
-            self.tree.remove(path_info)
+                tree._remove_unpacked_dir(checksum)
+            tree.remove(path_info)
             removed = True
-        if removed:
-            self.index.clear()
-        return removed
 
-    def _remove_unpacked_dir(self, checksum):
-        pass
+        if removed and hasattr(remote, "index"):
+            remote.index.clear()
+        return removed
 
 
 class CloudCache:
