@@ -168,12 +168,46 @@ class DefaultScatterTemplate(Template):
     }
 
 
+class SmoothLinearTemplate(Template):
+    DEFAULT_NAME = "smooth"
+
+    DEFAULT_CONTENT = {
+        "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
+        "data": {"values": Template.METRIC_DATA_ANCHOR},
+        "title": Template.TITLE_ANCHOR,
+        "mark": {"type": "line"},
+        "encoding": {
+            "x": {
+                "field": Template.X_ANCHOR,
+                "type": "quantitative",
+                "title": Template.X_LABEL_ANCHOR,
+            },
+            "y": {
+                "field": Template.Y_ANCHOR,
+                "type": "quantitative",
+                "title": Template.Y_LABEL_ANCHOR,
+                "scale": {"zero": False},
+            },
+            "color": {"field": "rev", "type": "nominal"},
+        },
+        "transform": [
+            {
+                "loess": Template.Y_ANCHOR,
+                "on": Template.X_ANCHOR,
+                "groupby": ["rev"],
+                "bandwidth": 0.3,
+            }
+        ],
+    }
+
+
 class PlotTemplates:
     TEMPLATES_DIR = "plots"
     TEMPLATES = [
         DefaultLinearTemplate,
         DefaultConfusionTemplate,
         DefaultScatterTemplate,
+        SmoothLinearTemplate,
     ]
 
     @cached_property
