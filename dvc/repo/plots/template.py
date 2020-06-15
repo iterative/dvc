@@ -12,6 +12,10 @@ class TemplateNotFoundError(DvcException):
         super().__init__(f"Template '{path}' not found.")
 
 
+class BadTemplateError(DvcException):
+    pass
+
+
 class NoFieldInDataError(DvcException):
     def __init__(self, field_name):
         super().__init__(
@@ -38,6 +42,12 @@ class Template:
 
     def render(self, data, props=None):
         props = props or {}
+
+        if self.METRIC_DATA_ANCHOR not in self.content:
+            raise BadTemplateError(
+                f"Template '{self.filename}' is not using "
+                f"'{self.METRIC_DATA_ANCHOR}' anchor"
+            )
 
         if props.get("x"):
             Template._check_field_exists(data, props.get("x"))

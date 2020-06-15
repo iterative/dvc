@@ -16,7 +16,11 @@ from dvc.repo.plots.data import (
     PlotMetricTypeError,
     YAMLPlotData,
 )
-from dvc.repo.plots.template import NoFieldInDataError, TemplateNotFoundError
+from dvc.repo.plots.template import (
+    BadTemplateError,
+    NoFieldInDataError,
+    TemplateNotFoundError,
+)
 
 
 def _write_csv(metric, filename, header=True):
@@ -402,6 +406,23 @@ def test_should_raise_on_no_template(tmp_dir, dvc, run_copy_metrics):
 
     with pytest.raises(TemplateNotFoundError):
         props = {"template": "non_existing_template.json"}
+        dvc.plots.show("metric.json", props=props)
+
+
+def test_bad_template(tmp_dir, dvc, run_copy_metrics):
+    metric = [{"val": 2}, {"val": 3}]
+    _write_json(tmp_dir, metric, "metric_t.json")
+    run_copy_metrics(
+        "metric_t.json",
+        "metric.json",
+        plots_no_cache=["metric.json"],
+        commit="first run",
+    )
+
+    tmp_dir.gen("template.json", json.dumps({"a": "b", "c": "d"}))
+
+    with pytest.raises(BadTemplateError):
+        props = {"template": "template.json"}
         dvc.plots.show("metric.json", props=props)
 
 
