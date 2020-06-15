@@ -305,6 +305,17 @@ class BaseRemoteTree:
         dir_info = self._collect_dir(path_info, tree, **kwargs)
         return self._save_dir_info(dir_info, path_info)
 
+    def checksum_to_path_info(self, checksum):
+        return self.path_info / checksum[0:2] / checksum[2:]
+
+    def path_to_checksum(self, path):
+        parts = self.PATH_CLS(path).parts[-2:]
+
+        if not (len(parts) == 2 and parts[0] and len(parts[0]) == 2):
+            raise ValueError(f"Bad cache file path '{path}'")
+
+        return "".join(parts)
+
     def save_info(self, path_info, tree=None, **kwargs):
         return {
             self.PARAM_CHECKSUM: self.get_checksum(
@@ -463,7 +474,7 @@ class BaseRemoteTree:
                     dir_mode=dir_mode,
                 )
             )
-            with ThreadPoolExecutor(max_workers=self.remote.JOBS) as executor:
+            with ThreadPoolExecutor(max_workers=self.JOBS) as executor:
                 futures = [
                     executor.submit(download_files, from_info, to_info)
                     for from_info, to_info in zip(from_infos, to_infos)
@@ -500,69 +511,6 @@ class BaseRemoteTree:
 
         move(tmp_file, to_info, mode=file_mode)
 
-
-class Remote:
-    """Cloud remote class.
-
-    Provides methods for indexing and garbage collecting trees which contain
-    DVC remotes.
-    """
-
-    def __init__(self, tree):
-        self.tree = tree
-        self.repo = tree.repo
-
-        config = tree.config
-        url = config.get("url")
-        if self.scheme != "local" and url:
-            index_name = hashlib.sha256(url.encode("utf-8")).hexdigest()
-            self.index = RemoteIndex(
-                self.repo, index_name, dir_suffix=self.CHECKSUM_DIR_SUFFIX
-            )
-        else:
-            self.index = RemoteIndexNoop()
-
-    @property
-    def path_info(self):
-        return self.tree.path_info
-
-    def __repr__(self):
-        return "{class_name}: '{path_info}'".format(
-            class_name=type(self).__name__,
-            path_info=self.path_info or "No path",
-        )
-
-    @property
-    def cache(self):
-        return getattr(self.repo.cache, self.scheme)
-
-    @property
-    def scheme(self):
-        return self.tree.scheme
-
-    def is_dir_checksum(self, checksum):
-        return self.tree.is_dir_checksum(checksum)
-
-    def get_checksum(self, path_info, **kwargs):
-        return self.tree.get_checksum(path_info, **kwargs)
-
-    def checksum_to_path_info(self, checksum):
-        return self.path_info / checksum[0:2] / checksum[2:]
-
-    def path_to_checksum(self, path):
-        parts = self.tree.PATH_CLS(path).parts[-2:]
-
-        if not (len(parts) == 2 and parts[0] and len(parts[0]) == 2):
-            raise ValueError(f"Bad cache file path '{path}'")
-
-        return "".join(parts)
-
-    def save_info(self, path_info, **kwargs):
-        return self.tree.save_info(path_info, **kwargs)
-
-    def open(self, *args, **kwargs):
-        return self.tree.open(*args, **kwargs)
-
     def list_paths(self, prefix=None, progress_callback=None):
         if prefix:
             if len(prefix) > 2:
@@ -572,14 +520,14 @@ class Remote:
         else:
             path_info = self.path_info
         if progress_callback:
-            for file_info in self.tree.walk_files(path_info):
+            for file_info in self.walk_files(path_info):
                 progress_callback()
                 yield file_info.path
         else:
-            yield from self.tree.walk_files(path_info)
+            yield from self.walk_files(path_info)
 
     def list_checksums(self, prefix=None, progress_callback=None):
-        """Iterate over remote checksums.
+        """Iterate over checksums in this tree.
 
         If `prefix` is specified, only checksums which begin with `prefix`
         will be returned.
@@ -593,7 +541,7 @@ class Remote:
                 )
 
     def all(self, jobs=None, name=None):
-        """Iterate over all checksums in the remote.
+        """Iterate over all checksums in this tree.
 
         Checksums will be fetched in parallel threads according to prefix
         (except for small remotes) and a progress bar will be displayed.
@@ -604,105 +552,12 @@ class Remote:
             )
         )
 
-        if not self.tree.CAN_TRAVERSE:
+        if not self.CAN_TRAVERSE:
             return self.list_checksums()
 
-        remote_size, remote_checksums = self._estimate_remote_size(name=name)
-        return self._list_checksums_traverse(
+        remote_size, remote_checksums = self.estimate_remote_size(name=name)
+        return self.list_checksums_traverse(
             remote_size, remote_checksums, jobs, name
-        )
-
-    def checksums_exist(self, checksums, jobs=None, name=None):
-        """Check if the given checksums are stored in the remote.
-
-        There are two ways of performing this check:
-
-        - Traverse method: Get a list of all the files in the remote
-            (traversing the cache directory) and compare it with
-            the given checksums. Cache entries will be retrieved in parallel
-            threads according to prefix (i.e. entries starting with, "00...",
-            "01...", and so on) and a progress bar will be displayed.
-
-        - Exists method: For each given checksum, run the `exists`
-            method and filter the checksums that aren't on the remote.
-            This is done in parallel threads.
-            It also shows a progress bar when performing the check.
-
-        The reason for such an odd logic is that most of the remotes
-        take much shorter time to just retrieve everything they have under
-        a certain prefix (e.g. s3, gs, ssh, hdfs). Other remotes that can
-        check if particular file exists much quicker, use their own
-        implementation of checksums_exist (see ssh, local).
-
-        Which method to use will be automatically determined after estimating
-        the size of the remote cache, and comparing the estimated size with
-        len(checksums). To estimate the size of the remote cache, we fetch
-        a small subset of cache entries (i.e. entries starting with "00...").
-        Based on the number of entries in that subset, the size of the full
-        cache can be estimated, since the cache is evenly distributed according
-        to checksum.
-
-        Returns:
-            A list with checksums that were found in the remote
-        """
-        # Remotes which do not use traverse prefix should override
-        # checksums_exist() (see ssh, local)
-        assert self.TRAVERSE_PREFIX_LEN >= 2
-
-        checksums = set(checksums)
-        indexed_checksums = set(self.index.intersection(checksums))
-        checksums -= indexed_checksums
-        logger.debug(
-            "Matched '{}' indexed checksums".format(len(indexed_checksums))
-        )
-        if not checksums:
-            return indexed_checksums
-
-        if len(checksums) == 1 or not self.tree.CAN_TRAVERSE:
-            remote_checksums = self._list_checksums_exists(
-                checksums, jobs, name
-            )
-            return list(indexed_checksums) + remote_checksums
-
-        # Max remote size allowed for us to use traverse method
-        remote_size, remote_checksums = self._estimate_remote_size(
-            checksums, name
-        )
-
-        traverse_pages = remote_size / self.LIST_OBJECT_PAGE_SIZE
-        # For sufficiently large remotes, traverse must be weighted to account
-        # for performance overhead from large lists/sets.
-        # From testing with S3, for remotes with 1M+ files, object_exists is
-        # faster until len(checksums) is at least 10k~100k
-        if remote_size > self.TRAVERSE_THRESHOLD_SIZE:
-            traverse_weight = traverse_pages * self.TRAVERSE_WEIGHT_MULTIPLIER
-        else:
-            traverse_weight = traverse_pages
-        if len(checksums) < traverse_weight:
-            logger.debug(
-                "Large remote ('{}' checksums < '{}' traverse weight), "
-                "using object_exists for remaining checksums".format(
-                    len(checksums), traverse_weight
-                )
-            )
-            return (
-                list(indexed_checksums)
-                + list(checksums & remote_checksums)
-                + self._list_checksums_exists(
-                    checksums - remote_checksums, jobs, name
-                )
-            )
-
-        logger.debug(
-            "Querying '{}' checksums via traverse".format(len(checksums))
-        )
-        remote_checksums = set(
-            self._list_checksums_traverse(
-                remote_size, remote_checksums, jobs, name
-            )
-        )
-        return list(indexed_checksums) + list(
-            checksums & set(remote_checksums)
         )
 
     def _checksums_with_limit(
@@ -728,8 +583,8 @@ class Remote:
             * self.LIST_OBJECT_PAGE_SIZE,
         )
 
-    def _estimate_remote_size(self, checksums=None, name=None):
-        """Estimate remote cache size based on number of entries beginning with
+    def estimate_remote_size(self, checksums=None, name=None):
+        """Estimate tree size based on number of entries beginning with
         "00..." prefix.
         """
         prefix = "0" * self.TRAVERSE_PREFIX_LEN
@@ -763,10 +618,10 @@ class Remote:
             logger.debug(f"Estimated remote size: {remote_size} files")
         return remote_size, remote_checksums
 
-    def _list_checksums_traverse(
+    def list_checksums_traverse(
         self, remote_size, remote_checksums, jobs=None, name=None
     ):
-        """Iterate over all checksums in the remote cache.
+        """Iterate over all checksums found in this tree.
         Checksums are fetched in parallel according to prefix, except in
         cases where the remote size is very small.
 
@@ -818,7 +673,10 @@ class Remote:
                 in_remote = executor.map(list_with_update, traverse_prefixes,)
                 yield from itertools.chain.from_iterable(in_remote)
 
-    def _list_checksums_exists(self, checksums, jobs=None, name=None):
+    def list_checksums_exists(self, checksums, jobs=None, name=None):
+        """Return list of the specified checksums which exist in this tree.
+        Checksums will be queried individually.
+        """
         logger.debug(
             "Querying {} checksums via object_exists".format(len(checksums))
         )
@@ -830,7 +688,7 @@ class Remote:
         ) as pbar:
 
             def exists_with_progress(path_info):
-                ret = self.tree.exists(path_info)
+                ret = self.exists(path_info)
                 pbar.update_msg(str(path_info))
                 return ret
 
@@ -839,6 +697,159 @@ class Remote:
                 in_remote = executor.map(exists_with_progress, path_infos)
                 ret = list(itertools.compress(checksums, in_remote))
                 return ret
+
+
+class Remote:
+    """Cloud remote class.
+
+    Provides methods for indexing and garbage collecting trees which contain
+    DVC remotes.
+    """
+
+    def __init__(self, tree):
+        self.tree = tree
+        self.repo = tree.repo
+
+        config = tree.config
+        url = config.get("url")
+        if self.scheme != "local" and url:
+            index_name = hashlib.sha256(url.encode("utf-8")).hexdigest()
+            self.index = RemoteIndex(
+                self.repo, index_name, dir_suffix=self.tree.CHECKSUM_DIR_SUFFIX
+            )
+        else:
+            self.index = RemoteIndexNoop()
+
+    @property
+    def path_info(self):
+        return self.tree.path_info
+
+    def __repr__(self):
+        return "{class_name}: '{path_info}'".format(
+            class_name=type(self).__name__,
+            path_info=self.path_info or "No path",
+        )
+
+    @property
+    def cache(self):
+        return getattr(self.repo.cache, self.scheme)
+
+    @property
+    def scheme(self):
+        return self.tree.scheme
+
+    def is_dir_checksum(self, checksum):
+        return self.tree.is_dir_checksum(checksum)
+
+    def get_checksum(self, path_info, **kwargs):
+        return self.tree.get_checksum(path_info, **kwargs)
+
+    def checksum_to_path_info(self, checksum):
+        return self.tree.checksum_to_path_info(checksum)
+
+    def path_to_checksum(self, path):
+        return self.tree.path_to_checksum(path)
+
+    def save_info(self, path_info, **kwargs):
+        return self.tree.save_info(path_info, **kwargs)
+
+    def open(self, *args, **kwargs):
+        return self.tree.open(*args, **kwargs)
+
+    def checksums_exist(self, checksums, jobs=None, name=None):
+        """Check if the given checksums are stored in the remote.
+
+        There are two ways of performing this check:
+
+        - Traverse method: Get a list of all the files in the remote
+            (traversing the cache directory) and compare it with
+            the given checksums. Cache entries will be retrieved in parallel
+            threads according to prefix (i.e. entries starting with, "00...",
+            "01...", and so on) and a progress bar will be displayed.
+
+        - Exists method: For each given checksum, run the `exists`
+            method and filter the checksums that aren't on the remote.
+            This is done in parallel threads.
+            It also shows a progress bar when performing the check.
+
+        The reason for such an odd logic is that most of the remotes
+        take much shorter time to just retrieve everything they have under
+        a certain prefix (e.g. s3, gs, ssh, hdfs). Other remotes that can
+        check if particular file exists much quicker, use their own
+        implementation of checksums_exist (see ssh, local).
+
+        Which method to use will be automatically determined after estimating
+        the size of the remote cache, and comparing the estimated size with
+        len(checksums). To estimate the size of the remote cache, we fetch
+        a small subset of cache entries (i.e. entries starting with "00...").
+        Based on the number of entries in that subset, the size of the full
+        cache can be estimated, since the cache is evenly distributed according
+        to checksum.
+
+        Returns:
+            A list with checksums that were found in the remote
+        """
+        # Remotes which do not use traverse prefix should override
+        # checksums_exist() (see ssh, local)
+        assert self.tree.TRAVERSE_PREFIX_LEN >= 2
+
+        checksums = set(checksums)
+        indexed_checksums = set(self.index.intersection(checksums))
+        checksums -= indexed_checksums
+        logger.debug(
+            "Matched '{}' indexed checksums".format(len(indexed_checksums))
+        )
+        if not checksums:
+            return indexed_checksums
+
+        if len(checksums) == 1 or not self.tree.CAN_TRAVERSE:
+            remote_checksums = self.tree.list_checksums_exists(
+                checksums, jobs, name
+            )
+            return list(indexed_checksums) + remote_checksums
+
+        # Max remote size allowed for us to use traverse method
+        remote_size, remote_checksums = self.tree.estimate_remote_size(
+            checksums, name
+        )
+
+        traverse_pages = remote_size / self.tree.LIST_OBJECT_PAGE_SIZE
+        # For sufficiently large remotes, traverse must be weighted to account
+        # for performance overhead from large lists/sets.
+        # From testing with S3, for remotes with 1M+ files, object_exists is
+        # faster until len(checksums) is at least 10k~100k
+        if remote_size > self.tree.TRAVERSE_THRESHOLD_SIZE:
+            traverse_weight = (
+                traverse_pages * self.tree.TRAVERSE_WEIGHT_MULTIPLIER
+            )
+        else:
+            traverse_weight = traverse_pages
+        if len(checksums) < traverse_weight:
+            logger.debug(
+                "Large remote ('{}' checksums < '{}' traverse weight), "
+                "using object_exists for remaining checksums".format(
+                    len(checksums), traverse_weight
+                )
+            )
+            return (
+                list(indexed_checksums)
+                + list(checksums & remote_checksums)
+                + self.tree.list_checksums_exists(
+                    checksums - remote_checksums, jobs, name
+                )
+            )
+
+        logger.debug(
+            "Querying '{}' checksums via traverse".format(len(checksums))
+        )
+        remote_checksums = set(
+            self.tree.list_checksums_traverse(
+                remote_size, remote_checksums, jobs, name
+            )
+        )
+        return list(indexed_checksums) + list(
+            checksums & set(remote_checksums)
+        )
 
     @index_locked
     def gc(self, named_cache, jobs=None):

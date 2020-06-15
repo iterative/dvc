@@ -296,6 +296,23 @@ class LocalRemoteTree(BaseRemoteTree):
             from_info, to_file, no_progress_bar=no_progress_bar, name=name
         )
 
+    def list_paths(self, prefix=None, progress_callback=None):
+        assert self.path_info is not None
+        if prefix:
+            path_info = self.path_info / prefix[:2]
+            if not self.tree.exists(path_info):
+                return
+        else:
+            path_info = self.path_info
+        # NOTE: use utils.fs walk_files since tree.walk_files will not follow
+        # symlinks
+        if progress_callback:
+            for path in walk_files(path_info):
+                progress_callback()
+                yield path
+        else:
+            yield from walk_files(path_info)
+
 
 def _log_exceptions(func, operation):
     @wraps(func)
@@ -318,21 +335,6 @@ def _log_exceptions(func, operation):
 
 
 class LocalRemote(Remote):
-    def list_paths(self, prefix=None, progress_callback=None):
-        assert self.path_info is not None
-        if prefix:
-            path_info = self.path_info / prefix[:2]
-            if not self.tree.exists(path_info):
-                return
-        else:
-            path_info = self.path_info
-        if progress_callback:
-            for path in walk_files(path_info):
-                progress_callback()
-                yield path
-        else:
-            yield from walk_files(path_info)
-
     def _remove_unpacked_dir(self, checksum):
         info = self.checksum_to_path_info(checksum)
         path_info = info.with_name(info.name + self.UNPACKED_DIR_SUFFIX)

@@ -268,8 +268,6 @@ class SSHRemoteTree(BaseRemoteTree):
                 no_progress_bar=no_progress_bar,
             )
 
-
-class SSHRemote(Remote):
     def list_paths(self, prefix=None, progress_callback=None):
         if prefix:
             root = posixpath.join(self.path_info.path, prefix[:2])
@@ -286,6 +284,8 @@ class SSHRemote(Remote):
             else:
                 yield from ssh.walk_files(root)
 
+
+class SSHRemote(Remote):
     def batch_exists(self, path_infos, callback):
         def _exists(chunk_and_channel):
             chunk, channel = chunk_and_channel
