@@ -8,7 +8,7 @@ import dvc.prompt as prompt
 from dvc.exceptions import DvcException, HTTPError
 from dvc.path_info import HTTPURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemote, BaseRemoteTree
+from dvc.remote.base import BaseRemoteTree
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
@@ -24,15 +24,18 @@ def ask_password(host, user):
 
 
 class HTTPRemoteTree(BaseRemoteTree):
+    scheme = Schemes.HTTP
     PATH_CLS = HTTPURLInfo
+    PARAM_CHECKSUM = "etag"
+    CAN_TRAVERSE = False
 
     SESSION_RETRIES = 5
     SESSION_BACKOFF_FACTOR = 0.1
     REQUEST_TIMEOUT = 10
     CHUNK_SIZE = 2 ** 16
 
-    def __init__(self, remote, config):
-        super().__init__(remote, config)
+    def __init__(self, repo, config):
+        super().__init__(repo, config)
 
         url = config.get("url")
         if url:
@@ -185,16 +188,3 @@ class HTTPRemoteTree(BaseRemoteTree):
     def _content_length(response):
         res = response.headers.get("Content-Length")
         return int(res) if res else None
-
-
-class HTTPRemote(BaseRemote):
-    scheme = Schemes.HTTP
-    PARAM_CHECKSUM = "etag"
-    CAN_TRAVERSE = False
-    TREE_CLS = HTTPRemoteTree
-
-    def list_paths(self, prefix=None, progress_callback=None):
-        raise NotImplementedError
-
-    def gc(self):
-        raise NotImplementedError

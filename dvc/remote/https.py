@@ -1,7 +1,7 @@
 from dvc.scheme import Schemes
 
-from .http import HTTPRemote
+from .http import HTTPRemoteTree
 
 
-class HTTPSRemote(HTTPRemote):
+class HTTPSRemoteTree(HTTPRemoteTree):
     scheme = Schemes.HTTPS

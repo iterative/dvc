@@ -82,14 +82,89 @@ def index_locked(f):
 
 
 class BaseRemoteTree:
-    SHARED_MODE_MAP = {None: (None, None), "group": (None, None)}
+    scheme = "base"
+    REQUIRES = {}
     PATH_CLS = URLInfo
+    JOBS = 4 * cpu_count()
+
+    PARAM_RELPATH = "relpath"
+    CHECKSUM_DIR_SUFFIX = ".dir"
+    CHECKSUM_JOBS = max(1, min(4, cpu_count() // 2))
+    DEFAULT_VERIFY = False
+    LIST_OBJECT_PAGE_SIZE = 1000
+    TRAVERSE_WEIGHT_MULTIPLIER = 5
+    TRAVERSE_PREFIX_LEN = 3
+    TRAVERSE_THRESHOLD_SIZE = 500000
+    CAN_TRAVERSE = True
+
+    SHARED_MODE_MAP = {None: (None, None), "group": (None, None)}
     CHECKSUM_DIR_SUFFIX = ".dir"
 
-    def __init__(self, remote, config):
-        self.remote = remote
+    state = StateNoop()
+
+    def __init__(self, repo, config):
+        self.repo = repo
+        self._check_requires(config)
+
         shared = config.get("shared")
         self._file_mode, self._dir_mode = self.SHARED_MODE_MAP[shared]
+
+        self.checksum_jobs = (
+            config.get("checksum_jobs")
+            or (self.repo and self.repo.config["core"].get("checksum_jobs"))
+            or self.CHECKSUM_JOBS
+        )
+        self.verify = config.get("verify", self.DEFAULT_VERIFY)
+
+    @classmethod
+    def get_missing_deps(cls):
+        import importlib
+
+        missing = []
+        for package, module in cls.REQUIRES.items():
+            try:
+                importlib.import_module(module)
+            except ImportError:
+                missing.append(package)
+
+        return missing
+
+    def _check_requires(self, config):
+        missing = self.get_missing_deps()
+        if not missing:
+            return
+
+        url = config.get("url", f"{self.scheme}://")
+        msg = (
+            "URL '{}' is supported but requires these missing "
+            "dependencies: {}. If you have installed dvc using pip, "
+            "choose one of these options to proceed: \n"
+            "\n"
+            "    1) Install specific missing dependencies:\n"
+            "        pip install {}\n"
+            "    2) Install dvc package that includes those missing "
+            "dependencies: \n"
+            "        pip install 'dvc[{}]'\n"
+            "    3) Install dvc package with all possible "
+            "dependencies included: \n"
+            "        pip install 'dvc[all]'\n"
+            "\n"
+            "If you have installed dvc from a binary package and you "
+            "are still seeing this message, please report it to us "
+            "using https://github.com/iterative/dvc/issues. Thank you!"
+        ).format(url, missing, " ".join(missing), self.scheme)
+        raise RemoteMissingDepsError(msg)
+
+    @classmethod
+    def supported(cls, config):
+        if isinstance(config, (str, bytes)):
+            url = config
+        else:
+            url = config["url"]
+
+        # NOTE: silently skipping remote, calling code should handle that
+        parsed = urlparse(url)
+        return parsed.scheme == cls.scheme
 
     @property
     def file_mode(self):
@@ -100,16 +175,8 @@ class BaseRemoteTree:
         return self._dir_mode
 
     @property
-    def scheme(self):
-        return self.remote.scheme
-
-    @property
-    def state(self):
-        return self.remote.state
-
-    @property
     def cache(self):
-        return self.remote.cache
+        return getattr(self.repo.cache, self.scheme)
 
     def open(self, path_info, mode="r", encoding=None):
         if hasattr(self, "_generate_download_url"):
@@ -171,6 +238,17 @@ class BaseRemoteTree:
 
     def reflink(self, from_info, to_info):
         raise RemoteActionNotImplemented("reflink", self.scheme)
+
+    @staticmethod
+    def protect(path_info):
+        pass
+
+    def is_protected(self, path_info):
+        return False
+
+    @staticmethod
+    def unprotect(path_info):
+        pass
 
     @classmethod
     def is_dir_checksum(cls, checksum):
@@ -234,7 +312,7 @@ class BaseRemoteTree:
         ) as pbar:
             worker = pbar.wrap_fn(tree.get_file_checksum)
             with ThreadPoolExecutor(
-                max_workers=self.remote.checksum_jobs
+                max_workers=self.checksum_jobs
             ) as executor:
                 tasks = executor.map(worker, file_infos)
                 checksums = dict(zip(file_infos, tasks))
@@ -259,7 +337,7 @@ class BaseRemoteTree:
 
         result = [
             {
-                self.remote.PARAM_CHECKSUM: checksums[fi],
+                self.PARAM_CHECKSUM: checksums[fi],
                 # NOTE: this is lossy transformation:
                 #   "hey\there" -> "hey/there"
                 #   "hey/there" -> "hey/there"
@@ -268,24 +346,20 @@ class BaseRemoteTree:
                 #
                 # Yes, this is a BUG, as long as we permit "/" in
                 # filenames on Windows and "\" on Unix
-                self.remote.PARAM_RELPATH: fi.relative_to(
-                    path_info
-                ).as_posix(),
+                self.PARAM_RELPATH: fi.relative_to(path_info).as_posix(),
             }
             for fi in file_infos
         ]
 
         # Sorting the list by path to ensure reproducibility
-        return sorted(result, key=itemgetter(self.remote.PARAM_RELPATH))
+        return sorted(result, key=itemgetter(self.PARAM_RELPATH))
 
     def _save_dir_info(self, dir_info, path_info):
         checksum, tmp_info = self._get_dir_info_checksum(dir_info)
         new_info = self.cache.checksum_to_path_info(checksum)
         if self.cache.changed_cache_file(checksum):
             self.cache.tree.makedirs(new_info.parent)
-            self.cache.tree.move(
-                tmp_info, new_info, mode=self.remote.CACHE_MODE
-            )
+            self.cache.tree.move(tmp_info, new_info, mode=self.CACHE_MODE)
 
         if self.exists(path_info):
             self.state.save(path_info, checksum)
@@ -418,99 +492,27 @@ class BaseRemoteTree:
         move(tmp_file, to_info, mode=file_mode)
 
 
-class BaseRemote:
-    """Base cloud remote class."""
+class Remote:
+    """Cloud remote class."""
 
-    scheme = "base"
-    REQUIRES = {}
-    JOBS = 4 * cpu_count()
     INDEX_CLS = RemoteIndex
-    TREE_CLS = BaseRemoteTree
 
-    PARAM_RELPATH = "relpath"
-    CHECKSUM_DIR_SUFFIX = ".dir"
-    CHECKSUM_JOBS = max(1, min(4, cpu_count() // 2))
-    DEFAULT_CACHE_TYPES = ["copy"]
-    DEFAULT_VERIFY = False
-    LIST_OBJECT_PAGE_SIZE = 1000
-    TRAVERSE_WEIGHT_MULTIPLIER = 5
-    TRAVERSE_PREFIX_LEN = 3
-    TRAVERSE_THRESHOLD_SIZE = 500000
-    CAN_TRAVERSE = True
-
-    CACHE_MODE = None
-
-    state = StateNoop()
-
-    def __init__(self, repo, config):
+    def __init__(self, repo, config, tree):
         self.repo = repo
-
-        self._check_requires(config)
-
-        self.checksum_jobs = (
-            config.get("checksum_jobs")
-            or (self.repo and self.repo.config["core"].get("checksum_jobs"))
-            or self.CHECKSUM_JOBS
-        )
-        self.verify = config.get("verify", self.DEFAULT_VERIFY)
-        self._dir_info = {}
-
-        self.cache_types = config.get("type") or copy(self.DEFAULT_CACHE_TYPES)
-        self.cache_type_confirmed = False
+        self.tree = tree
 
         url = config.get("url")
-        if url:
+        if self.scheme != "local" and url:
             index_name = hashlib.sha256(url.encode("utf-8")).hexdigest()
-            self.index = self.INDEX_CLS(
+            self.index = self.RemoteIndex(
                 self.repo, index_name, dir_suffix=self.CHECKSUM_DIR_SUFFIX
             )
         else:
             self.index = RemoteIndexNoop()
 
-        self.tree = self.TREE_CLS(self, config)
-
     @property
     def path_info(self):
         return self.tree.path_info
-
-    @classmethod
-    def get_missing_deps(cls):
-        import importlib
-
-        missing = []
-        for package, module in cls.REQUIRES.items():
-            try:
-                importlib.import_module(module)
-            except ImportError:
-                missing.append(package)
-
-        return missing
-
-    def _check_requires(self, config):
-        missing = self.get_missing_deps()
-        if not missing:
-            return
-
-        url = config.get("url", f"{self.scheme}://")
-        msg = (
-            "URL '{}' is supported but requires these missing "
-            "dependencies: {}. If you have installed dvc using pip, "
-            "choose one of these options to proceed: \n"
-            "\n"
-            "    1) Install specific missing dependencies:\n"
-            "        pip install {}\n"
-            "    2) Install dvc package that includes those missing "
-            "dependencies: \n"
-            "        pip install 'dvc[{}]'\n"
-            "    3) Install dvc package with all possible "
-            "dependencies included: \n"
-            "        pip install 'dvc[all]'\n"
-            "\n"
-            "If you have installed dvc from a binary package and you "
-            "are still seeing this message, please report it to us "
-            "using https://github.com/iterative/dvc/issues. Thank you!"
-        ).format(url, missing, " ".join(missing), self.scheme)
-        raise RemoteMissingDepsError(msg)
 
     def __repr__(self):
         return "{class_name}: '{path_info}'".format(
@@ -518,24 +520,16 @@ class BaseRemote:
             path_info=self.path_info or "No path",
         )
 
-    @classmethod
-    def supported(cls, config):
-        if isinstance(config, (str, bytes)):
-            url = config
-        else:
-            url = config["url"]
-
-        # NOTE: silently skipping remote, calling code should handle that
-        parsed = urlparse(url)
-        return parsed.scheme == cls.scheme
-
     @property
     def cache(self):
         return getattr(self.repo.cache, self.scheme)
 
-    @classmethod
-    def is_dir_checksum(cls, checksum):
-        return cls.TREE_CLS.is_dir_checksum(checksum)
+    @property
+    def scheme(self):
+        return self.tree.scheme
+
+    def is_dir_checksum(self, checksum):
+        return self.tree.is_dir_checksum(checksum)
 
     def get_checksum(self, path_info, **kwargs):
         return self.tree.get_checksum(path_info, **kwargs)
@@ -560,17 +554,6 @@ class BaseRemote:
 
     def open(self, *args, **kwargs):
         return self.tree.open(*args, **kwargs)
-
-    @staticmethod
-    def protect(path_info):
-        pass
-
-    def is_protected(self, path_info):
-        return False
-
-    @staticmethod
-    def unprotect(path_info):
-        pass
 
     def list_paths(self, prefix=None, progress_callback=None):
         if prefix:
@@ -613,7 +596,7 @@ class BaseRemote:
             )
         )
 
-        if not self.CAN_TRAVERSE:
+        if not self.tree.CAN_TRAVERSE:
             return self.list_checksums()
 
         remote_size, remote_checksums = self._estimate_remote_size(name=name)
@@ -667,7 +650,7 @@ class BaseRemote:
         if not checksums:
             return indexed_checksums
 
-        if len(checksums) == 1 or not self.CAN_TRAVERSE:
+        if len(checksums) == 1 or not self.tree.CAN_TRAVERSE:
             remote_checksums = self._list_checksums_exists(
                 checksums, jobs, name
             )
@@ -879,8 +862,35 @@ class BaseRemote:
         pass
 
 
-class CacheMixin:
-    """BaseRemote extensions for cache link/checkout operations."""
+class CloudCache:
+    """Cloud cache class."""
+
+    DEFAULT_CACHE_TYPES = ["copy"]
+    CACHE_MODE = None
+
+    def __init__(self, repo, config, tree):
+        self.repo = repo
+        self.tree = tree
+
+        self.cache_types = tree.config.get("type") or copy(
+            self.DEFAULT_CACHE_TYPES
+        )
+        self.cache_type_confirmed = False
+        self._dir_info = {}
+
+    @property
+    def cache(self):
+        return getattr(self.repo.cache, self.scheme)
+
+    @property
+    def scheme(self):
+        return self.tree.scheme
+
+    def is_dir_checksum(self, checksum):
+        return self.tree.is_dir_checksum(checksum)
+
+    def get_checksum(self, path_info, **kwargs):
+        return self.tree.get_checksum(path_info, **kwargs)
 
     # Override to return path as a string instead of PathInfo for clouds
     # which support string paths (see local)
@@ -1037,7 +1047,7 @@ class CacheMixin:
                 path_info
             ):
                 # Default relink procedure involves unneeded copy
-                self.unprotect(path_info)
+                self.tree.unprotect(path_info)
             else:
                 self.tree.remove(path_info)
                 self.link(cache_info, path_info)
@@ -1141,7 +1151,7 @@ class CacheMixin:
         """
         # Prefer string path over PathInfo when possible due to performance
         cache_info = self.checksum_to_path(checksum)
-        if self.is_protected(cache_info):
+        if self.tree.is_protected(cache_info):
             logger.debug(
                 "Assuming '%s' is unchanged since it is read-only", cache_info
             )
@@ -1162,7 +1172,7 @@ class CacheMixin:
         if actual.split(".")[0] == checksum.split(".")[0]:
             # making cache file read-only so we don't need to check it
             # next time
-            self.protect(cache_info)
+            self.tree.protect(cache_info)
             return False
 
         if self.tree.exists(cache_info):

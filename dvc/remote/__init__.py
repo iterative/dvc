@@ -1,45 +1,36 @@
 import posixpath
 from urllib.parse import urlparse
 
-from dvc.remote.azure import AzureCache, AzureRemote
-from dvc.remote.gdrive import GDriveRemote
-from dvc.remote.gs import GSCache, GSRemote
-from dvc.remote.hdfs import HDFSCache, HDFSRemote
-from dvc.remote.http import HTTPRemote
-from dvc.remote.https import HTTPSRemote
-from dvc.remote.local import LocalCache, LocalRemote
-from dvc.remote.oss import OSSRemote
-from dvc.remote.s3 import S3Cache, S3Remote
-from dvc.remote.ssh import SSHCache, SSHRemote
+from dvc.remote.azure import AzureRemoteTree
+from dvc.remote.gdrive import GDriveRemoteTree
+from dvc.remote.gs import GSRemoteTree
+from dvc.remote.hdfs import HDFSRemoteTree
+from dvc.remote.http import HTTPRemoteTree
+from dvc.remote.https import HTTPSRemoteTree
+from dvc.remote.local import LocalRemoteTree
+from dvc.remote.oss import OSSRemoteTree
+from dvc.remote.s3 import S3RemoteTree
+from dvc.remote.ssh import SSHRemoteTree
 
-CACHES = [
-    AzureCache,
-    GSCache,
-    HDFSCache,
-    S3Cache,
-    SSHCache,
-    # LocalCache is the default
-]
-
-REMOTES = [
-    AzureRemote,
-    GDriveRemote,
-    GSRemote,
-    HDFSRemote,
-    HTTPRemote,
-    HTTPSRemote,
-    S3Remote,
-    SSHRemote,
-    OSSRemote,
-    # NOTE: LocalRemote is the default
+TREES = [
+    AzureRemoteTree,
+    GDriveRemoteTree,
+    GSRemoteTree,
+    HDFSRemoteTree,
+    HTTPRemoteTree,
+    HTTPSRemoteTree,
+    S3RemoteTree,
+    SSHRemoteTree,
+    OSSRemoteTree,
+    # NOTE: LocalRemoteTree is the default
 ]
 
 
-def _get(remote_conf, remotes, default):
-    for remote in remotes:
-        if remote.supported(remote_conf):
-            return remote
-    return default
+def get_cloud_tree(remote_conf, remotes):
+    for tree_cls in TREES:
+        if tree_cls.supported(remote_conf):
+            return tree_cls
+    return LocalRemoteTree
 
 
 def _get_conf(repo, **kwargs):
@@ -49,16 +40,6 @@ def _get_conf(repo, **kwargs):
     else:
         remote_conf = kwargs
     return _resolve_remote_refs(repo.config, remote_conf)
-
-
-def Remote(repo, **kwargs):
-    remote_conf = _get_conf(repo, **kwargs)
-    return _get(remote_conf, REMOTES, LocalRemote)(repo, remote_conf)
-
-
-def Cache(repo, **kwargs):
-    remote_conf = _get_conf(repo, **kwargs)
-    return _get(remote_conf, CACHES, LocalCache)(repo, remote_conf)
 
 
 def _resolve_remote_refs(config, remote_conf):

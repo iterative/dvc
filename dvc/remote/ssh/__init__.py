@@ -14,7 +14,7 @@ from funcy import first, memoize, silent, wrap_with
 
 import dvc.prompt as prompt
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemote, BaseRemoteTree, CacheMixin
+from dvc.remote.base import BaseRemoteTree, Remote
 from dvc.remote.pool import get_connection
 from dvc.scheme import Schemes
 from dvc.utils import to_chunks
@@ -34,6 +34,18 @@ def ask_password(host, user, port):
 
 
 class SSHRemoteTree(BaseRemoteTree):
+    scheme = Schemes.SSH
+    REQUIRES = {"paramiko": "paramiko"}
+    JOBS = 4
+
+    PARAM_CHECKSUM = "md5"
+    # At any given time some of the connections will go over network and
+    # paramiko stuff, so we would ideally have it double of server processors.
+    # We use conservative setting of 4 instead to not exhaust max sessions.
+    CHECKSUM_JOBS = 4
+    DEFAULT_CACHE_TYPES = ["copy"]
+    TRAVERSE_PREFIX_LEN = 2
+
     DEFAULT_PORT = 22
     TIMEOUT = 1800
 
@@ -257,20 +269,7 @@ class SSHRemoteTree(BaseRemoteTree):
             )
 
 
-class SSHRemote(BaseRemote):
-    scheme = Schemes.SSH
-    REQUIRES = {"paramiko": "paramiko"}
-    JOBS = 4
-    TREE_CLS = SSHRemoteTree
-
-    PARAM_CHECKSUM = "md5"
-    # At any given time some of the connections will go over network and
-    # paramiko stuff, so we would ideally have it double of server processors.
-    # We use conservative setting of 4 instead to not exhaust max sessions.
-    CHECKSUM_JOBS = 4
-    DEFAULT_CACHE_TYPES = ["copy"]
-    TRAVERSE_PREFIX_LEN = 2
-
+class SSHRemote(Remote):
     def list_paths(self, prefix=None, progress_callback=None):
         if prefix:
             root = posixpath.join(self.path_info.path, prefix[:2])
@@ -344,7 +343,3 @@ class SSHRemote(BaseRemote):
                 in_remote = itertools.chain.from_iterable(results)
                 ret = list(itertools.compress(checksums, in_remote))
                 return ret
-
-
-class SSHCache(SSHRemote, CacheMixin):
-    pass

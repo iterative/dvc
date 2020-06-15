@@ -7,17 +7,22 @@ from funcy import cached_property, wrap_prop
 
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemote, BaseRemoteTree, CacheMixin
+from dvc.remote.base import BaseRemoteTree
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
 
 
 class AzureRemoteTree(BaseRemoteTree):
+    scheme = Schemes.AZURE
     PATH_CLS = CloudURLInfo
+    REQUIRES = {"azure-storage-blob": "azure.storage.blob"}
+    PARAM_CHECKSUM = "etag"
+    COPY_POLL_SECONDS = 5
+    LIST_OBJECT_PAGE_SIZE = 5000
 
-    def __init__(self, remote, config):
-        super().__init__(remote, config)
+    def __init__(self, repo, config):
+        super().__init__(repo, config)
 
         url = config.get("url", "azure://")
         self.path_info = self.PATH_CLS(url)
@@ -132,16 +137,3 @@ class AzureRemoteTree(BaseRemoteTree):
                 to_file,
                 progress_callback=pbar.update_to,
             )
-
-
-class AzureRemote(BaseRemote):
-    scheme = Schemes.AZURE
-    REQUIRES = {"azure-storage-blob": "azure.storage.blob"}
-    TREE_CLS = AzureRemoteTree
-    PARAM_CHECKSUM = "etag"
-    COPY_POLL_SECONDS = 5
-    LIST_OBJECT_PAGE_SIZE = 5000
-
-
-class AzureCache(AzureRemote, CacheMixin):
-    pass

@@ -9,7 +9,7 @@ from funcy import cached_property, wrap_prop
 from dvc.exceptions import DvcException
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemote, BaseRemoteTree, CacheMixin
+from dvc.remote.base import BaseRemoteTree
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
@@ -65,10 +65,13 @@ def _upload_to_bucket(
 
 
 class GSRemoteTree(BaseRemoteTree):
+    scheme = Schemes.GS
     PATH_CLS = CloudURLInfo
+    REQUIRES = {"google-cloud-storage": "google.cloud.storage"}
+    PARAM_CHECKSUM = "md5"
 
-    def __init__(self, remote, config):
-        super().__init__(remote, config)
+    def __init__(self, repo, config):
+        super().__init__(repo, config)
 
         url = config.get("url", "gs:///")
         self.path_info = self.PATH_CLS(url)
@@ -193,14 +196,3 @@ class GSRemoteTree(BaseRemoteTree):
                 disable=no_progress_bar,
             ) as wrapped:
                 blob.download_to_file(wrapped)
-
-
-class GSRemote(BaseRemote):
-    scheme = Schemes.GS
-    REQUIRES = {"google-cloud-storage": "google.cloud.storage"}
-    TREE_CLS = GSRemoteTree
-    PARAM_CHECKSUM = "md5"
-
-
-class GSCache(GSRemote, CacheMixin):
-    pass
