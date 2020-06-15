@@ -43,7 +43,6 @@ class LocalRemoteTree(BaseRemoteTree):
     PATH_CLS = PathInfo
     PARAM_CHECKSUM = "md5"
     PARAM_PATH = "path"
-    DEFAULT_CACHE_TYPES = ["reflink", "copy"]
     TRAVERSE_PREFIX_LEN = 2
     UNPACKED_DIR_SUFFIX = ".unpacked"
 
@@ -345,6 +344,9 @@ class LocalRemote(Remote):
 
 
 class LocalCache(CloudCache):
+    DEFAULT_CACHE_TYPES = ["reflink", "copy"]
+    CACHE_MODE = LocalRemoteTree.CACHE_MODE
+
     def __init__(self, tree):
         super().__init__(tree)
         self.cache_dir = tree.config.get("url")

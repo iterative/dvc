@@ -3,4 +3,4 @@ from dvc.remote.hdfs import HDFSRemoteTree
 
 
 class HDFSOutput(BaseOutput):
-    REMOTE = HDFSRemoteTree
+    TREE_CLS = HDFSRemoteTree

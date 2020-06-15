@@ -98,6 +98,7 @@ class BaseRemoteTree:
     TRAVERSE_THRESHOLD_SIZE = 500000
     CAN_TRAVERSE = True
 
+    CACHE_MODE = None
     SHARED_MODE_MAP = {None: (None, None), "group": (None, None)}
     CHECKSUM_DIR_SUFFIX = ".dir"
 
@@ -380,7 +381,9 @@ class BaseRemoteTree:
         new_info = self.cache.checksum_to_path_info(checksum)
         if self.cache.changed_cache_file(checksum):
             self.cache.tree.makedirs(new_info.parent)
-            self.cache.tree.move(tmp_info, new_info, mode=self.CACHE_MODE)
+            self.cache.tree.move(
+                tmp_info, new_info, mode=self.cache.CACHE_MODE
+            )
 
         if self.exists(path_info):
             self.state.save(path_info, checksum)
@@ -891,7 +894,7 @@ class CloudCache:
     """Cloud cache class."""
 
     DEFAULT_CACHE_TYPES = ["copy"]
-    CACHE_MODE = None
+    CACHE_MODE = BaseRemoteTree.CACHE_MODE
 
     def __init__(self, tree):
         self.tree = tree
