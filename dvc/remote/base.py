@@ -905,6 +905,13 @@ class CloudCache:
     def scheme(self):
         return self.tree.scheme
 
+    @property
+    def state(self):
+        return self.tree.state
+
+    def open(self, *args, **kwargs):
+        return self.tree.open(*args, **kwargs)
+
     def is_dir_checksum(self, checksum):
         return self.tree.is_dir_checksum(checksum)
 
@@ -915,6 +922,9 @@ class CloudCache:
     # which support string paths (see local)
     def checksum_to_path(self, checksum):
         return self.checksum_to_path_info(checksum)
+
+    def checksum_to_path_info(self, checksum):
+        return self.tree.checksum_to_path_info(checksum)
 
     def get_dir_cache(self, checksum):
         assert checksum
@@ -951,7 +961,8 @@ class CloudCache:
             # only need to convert it for Windows
             for info in d:
                 # NOTE: here is a BUG, see comment to .as_posix() below
-                info[self.PARAM_RELPATH] = info[self.PARAM_RELPATH].replace(
+                relpath = info[self.tree.PARAM_RELPATH]
+                info[self.tree.PARAM_RELPATH] = relpath.replace(
                     "/", self.tree.PATH_CLS.sep
                 )
 
@@ -1091,7 +1102,7 @@ class CloudCache:
                     callback(1)
 
         self.state.save(cache_info, checksum)
-        return {self.PARAM_CHECKSUM: checksum}
+        return {self.tree.PARAM_CHECKSUM: checksum}
 
     def _cache_is_copy(self, path_info):
         """Checks whether cache uses copies."""
@@ -1120,8 +1131,8 @@ class CloudCache:
         for entry in Tqdm(
             dir_info, desc="Saving " + path_info.name, unit="file"
         ):
-            entry_info = path_info / entry[self.PARAM_RELPATH]
-            entry_checksum = entry[self.PARAM_CHECKSUM]
+            entry_info = path_info / entry[self.tree.PARAM_RELPATH]
+            entry_checksum = entry[self.tree.PARAM_CHECKSUM]
             self._save_file(
                 entry_info, tree, entry_checksum, save_link=False, **kwargs
             )
@@ -1133,7 +1144,7 @@ class CloudCache:
 
         cache_info = self.checksum_to_path_info(checksum)
         self.state.save(cache_info, checksum)
-        return {self.PARAM_CHECKSUM: checksum}
+        return {self.tree.PARAM_CHECKSUM: checksum}
 
     def save(self, path_info, tree, checksum_info, save_link=True, **kwargs):
         if path_info.scheme != self.scheme:
@@ -1143,7 +1154,7 @@ class CloudCache:
 
         if not checksum_info:
             checksum_info = self.save_info(path_info, tree=tree, **kwargs)
-        checksum = checksum_info[self.PARAM_CHECKSUM]
+        checksum = checksum_info[self.tree.PARAM_CHECKSUM]
         return self._save(path_info, tree, checksum, save_link, **kwargs)
 
     def _save(self, path_info, tree, checksum, save_link=True, **kwargs):
@@ -1205,10 +1216,10 @@ class CloudCache:
             return True
 
         for entry in self.get_dir_cache(checksum):
-            entry_checksum = entry[self.PARAM_CHECKSUM]
+            entry_checksum = entry[self.tree.PARAM_CHECKSUM]
 
             if path_info and filter_info:
-                entry_info = path_info / entry[self.PARAM_RELPATH]
+                entry_info = path_info / entry[self.tree.PARAM_RELPATH]
                 if not entry_info.isin_or_eq(filter_info):
                     continue
 
@@ -1287,15 +1298,15 @@ class CloudCache:
         logger.debug("Linking directory '%s'.", path_info)
 
         for entry in dir_info:
-            relative_path = entry[self.PARAM_RELPATH]
-            entry_checksum = entry[self.PARAM_CHECKSUM]
+            relative_path = entry[self.tree.PARAM_RELPATH]
+            entry_checksum = entry[self.tree.PARAM_CHECKSUM]
             entry_cache_info = self.checksum_to_path_info(entry_checksum)
             entry_info = path_info / relative_path
 
             if filter_info and not entry_info.isin_or_eq(filter_info):
                 continue
 
-            entry_checksum_info = {self.PARAM_CHECKSUM: entry_checksum}
+            entry_checksum_info = {self.tree.PARAM_CHECKSUM: entry_checksum}
             if relink or self.changed(entry_info, entry_checksum_info):
                 modified = True
                 self.safe_remove(entry_info, force=force)
@@ -1319,7 +1330,7 @@ class CloudCache:
         existing_files = set(self.tree.walk_files(path_info))
 
         needed_files = {
-            path_info / entry[self.PARAM_RELPATH] for entry in dir_info
+            path_info / entry[self.tree.PARAM_RELPATH] for entry in dir_info
         }
         redundant_files = existing_files - needed_files
         for path in redundant_files:
@@ -1339,7 +1350,7 @@ class CloudCache:
         if path_info.scheme not in ["local", self.scheme]:
             raise NotImplementedError
 
-        checksum = checksum_info.get(self.PARAM_CHECKSUM)
+        checksum = checksum_info.get(self.tree.PARAM_CHECKSUM)
         failed = None
         skip = False
         if not checksum:
@@ -1414,6 +1425,6 @@ class CloudCache:
             return len(self.get_dir_cache(checksum))
 
         return ilen(
-            filter_info.isin_or_eq(path_info / entry[self.PARAM_CHECKSUM])
+            filter_info.isin_or_eq(path_info / entry[self.tree.PARAM_CHECKSUM])
             for entry in self.get_dir_cache(checksum)
         )
