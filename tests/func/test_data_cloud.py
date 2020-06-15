@@ -12,19 +12,16 @@ from dvc.cache import NamedCache
 from dvc.data_cloud import DataCloud
 from dvc.external_repo import clean_repos
 from dvc.main import main
-from dvc.remote import (
-    AzureRemote,
-    GDriveRemote,
-    GSRemote,
-    HDFSRemote,
-    HTTPRemote,
-    LocalRemote,
-    OSSRemote,
-    S3Remote,
-    SSHRemote,
-)
+from dvc.remote.azure import AzureRemoteTree
 from dvc.remote.base import STATUS_DELETED, STATUS_NEW, STATUS_OK
+from dvc.remote.gdrive import GDriveRemoteTree
+from dvc.remote.gs import GSRemoteTree
+from dvc.remote.hdfs import HDFSRemoteTree
+from dvc.remote.http import HTTPRemoteTree
 from dvc.remote.local import LocalRemoteTree
+from dvc.remote.oss import OSSRemoteTree
+from dvc.remote.s3 import S3RemoteTree
+from dvc.remote.ssh import SSHRemoteTree
 from dvc.stage.exceptions import StageNotFound
 from dvc.utils import file_md5
 from dvc.utils.fs import remove
@@ -50,19 +47,19 @@ class TestDataCloud(TestDvc):
     def _test_cloud(self, config, cl):
         self.dvc.config = config
         cloud = DataCloud(self.dvc)
-        self.assertIsInstance(cloud.get_remote(), cl)
+        self.assertIsInstance(cloud.get_remote().tree, cl)
 
     def test(self):
         config = copy.deepcopy(TEST_CONFIG)
 
         clist = [
-            ("s3://mybucket/", S3Remote),
-            ("gs://mybucket/", GSRemote),
-            ("ssh://user@localhost:/", SSHRemote),
-            ("http://localhost:8000/", HTTPRemote),
-            ("azure://ContainerName=mybucket;conn_string;", AzureRemote),
-            ("oss://mybucket/", OSSRemote),
-            (TestDvc.mkdtemp(), LocalRemote),
+            ("s3://mybucket/", S3RemoteTree),
+            ("gs://mybucket/", GSRemoteTree),
+            ("ssh://user@localhost:/", SSHRemoteTree),
+            ("http://localhost:8000/", HTTPRemoteTree),
+            ("azure://ContainerName=mybucket;conn_string;", AzureRemoteTree),
+            ("oss://mybucket/", OSSRemoteTree),
+            (TestDvc.mkdtemp(), LocalRemoteTree),
         ]
 
         for scheme, cl in clist:
@@ -101,7 +98,9 @@ class TestDataCloudBase(TestDvc):
         self.dvc.config = config
         self.cloud = DataCloud(self.dvc)
 
-        self.assertIsInstance(self.cloud.get_remote(), self._get_cloud_class())
+        self.assertIsInstance(
+            self.cloud.get_remote().tree, self._get_cloud_class()
+        )
 
     def _test_cloud(self):
         self._setup_cloud()
@@ -187,7 +186,7 @@ class TestDataCloudBase(TestDvc):
 
 class TestS3Remote(S3, TestDataCloudBase):
     def _get_cloud_class(self):
-        return S3Remote
+        return S3RemoteTree
 
 
 class TestGDriveRemote(GDrive, TestDataCloudBase):
@@ -208,10 +207,10 @@ class TestGDriveRemote(GDrive, TestDataCloudBase):
         self.dvc.config = config
         self.cloud = DataCloud(self.dvc)
         remote = self.cloud.get_remote()
-        self.assertIsInstance(remote, self._get_cloud_class())
+        self.assertIsInstance(remote.tree, self._get_cloud_class())
 
     def _get_cloud_class(self):
-        return GDriveRemote
+        return GDriveRemoteTree
 
 
 class TestGSRemote(GCP, TestDataCloudBase):
@@ -228,25 +227,27 @@ class TestGSRemote(GCP, TestDataCloudBase):
         self.dvc.config = config
         self.cloud = DataCloud(self.dvc)
 
-        self.assertIsInstance(self.cloud.get_remote(), self._get_cloud_class())
+        self.assertIsInstance(
+            self.cloud.get_remote().tree, self._get_cloud_class()
+        )
 
     def _get_cloud_class(self):
-        return GSRemote
+        return GSRemoteTree
 
 
 class TestAzureRemote(Azure, TestDataCloudBase):
     def _get_cloud_class(self):
-        return AzureRemote
+        return AzureRemoteTree
 
 
 class TestOSSRemote(OSS, TestDataCloudBase):
     def _get_cloud_class(self):
-        return OSSRemote
+        return OSSRemoteTree
 
 
 class TestLocalRemote(Local, TestDataCloudBase):
     def _get_cloud_class(self):
-        return LocalRemote
+        return LocalRemoteTree
 
 
 @pytest.mark.usefixtures("ssh_server")
@@ -271,7 +272,9 @@ class TestSSHRemoteMocked(SSHMocked, TestDataCloudBase):
         self.dvc.config = config
         self.cloud = DataCloud(self.dvc)
 
-        self.assertIsInstance(self.cloud.get_remote(), self._get_cloud_class())
+        self.assertIsInstance(
+            self.cloud.get_remote().tree, self._get_cloud_class()
+        )
 
     def get_url(self):
         user = self.ssh_server.test_creds["username"]
@@ -281,12 +284,12 @@ class TestSSHRemoteMocked(SSHMocked, TestDataCloudBase):
         return self.ssh_server.test_creds["key_filename"]
 
     def _get_cloud_class(self):
-        return SSHRemote
+        return SSHRemoteTree
 
 
 class TestHDFSRemote(HDFS, TestDataCloudBase):
     def _get_cloud_class(self):
-        return HDFSRemote
+        return HDFSRemoteTree
 
 
 @pytest.mark.usefixtures("http_server")
@@ -300,7 +303,7 @@ class TestHTTPRemote(HTTP, TestDataCloudBase):
         return super().get_url(self.http_server.server_port)
 
     def _get_cloud_class(self):
-        return HTTPRemote
+        return HTTPRemoteTree
 
 
 class TestDataCloudCLIBase(TestDvc):
@@ -544,7 +547,7 @@ class TestRecursiveSyncOperations(Local, TestDataCloudBase):
         self.assertEqual(ret, 0)
 
     def _get_cloud_class(self):
-        return LocalRemote
+        return LocalRemoteTree
 
     def _prepare_repo(self):
         remote = self.cloud.get_remote()
@@ -577,8 +580,11 @@ class TestRecursiveSyncOperations(Local, TestDataCloudBase):
     def _test_recursive_fetch(self, data_md5, data_sub_md5):
         self._clear_local_cache()
 
-        local_cache_data_path = self.dvc.cache.local.get(data_md5)
-        local_cache_data_sub_path = self.dvc.cache.local.get(data_sub_md5)
+        local_cache = self.dvc.cache.local
+        local_cache_data_path = local_cache.checksum_to_path_info(data_md5)
+        local_cache_data_sub_path = local_cache.checksum_to_path_info(
+            data_sub_md5
+        )
 
         self.assertFalse(os.path.exists(local_cache_data_path))
         self.assertFalse(os.path.exists(local_cache_data_sub_path))
@@ -590,8 +596,8 @@ class TestRecursiveSyncOperations(Local, TestDataCloudBase):
 
     def _test_recursive_push(self, data_md5, data_sub_md5):
         remote = self.cloud.get_remote()
-        cloud_data_path = remote.get(data_md5)
-        cloud_data_sub_path = remote.get(data_sub_md5)
+        cloud_data_path = remote.checksum_to_path_info(data_md5)
+        cloud_data_sub_path = remote.checksum_to_path_info(data_sub_md5)
 
         self.assertFalse(os.path.exists(cloud_data_path))
         self.assertFalse(os.path.exists(cloud_data_sub_path))
