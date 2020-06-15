@@ -1,7 +1,7 @@
 import pytest
 
 from dvc.path_info import PathInfo
-from dvc.remote.azure import AzureRemote
+from dvc.remote.azure import AzureRemoteTree
 from tests.remotes import Azure
 
 container_name = "container-name"
@@ -18,18 +18,18 @@ def test_init_env_var(monkeypatch, dvc):
     monkeypatch.setenv("AZURE_STORAGE_CONNECTION_STRING", connection_string)
 
     config = {"url": "azure://"}
-    remote = AzureRemote(dvc, config)
-    assert remote.tree.path_info == "azure://" + container_name
-    assert remote.tree.connection_string == connection_string
+    tree = AzureRemoteTree(dvc, config)
+    assert tree.path_info == "azure://" + container_name
+    assert tree.connection_string == connection_string
 
 
 def test_init(dvc):
     prefix = "some/prefix"
     url = f"azure://{container_name}/{prefix}"
     config = {"url": url, "connection_string": connection_string}
-    remote = AzureRemote(dvc, config)
-    assert remote.tree.path_info == url
-    assert remote.tree.connection_string == connection_string
+    tree = AzureRemoteTree(dvc, config)
+    assert tree.path_info == url
+    assert tree.connection_string == connection_string
 
 
 def test_get_file_checksum(tmp_dir):
@@ -38,11 +38,11 @@ def test_get_file_checksum(tmp_dir):
 
     tmp_dir.gen("foo", "foo")
 
-    remote = AzureRemote(None, {})
-    to_info = remote.tree.PATH_CLS(Azure.get_url())
-    remote.tree.upload(PathInfo("foo"), to_info)
-    assert remote.tree.exists(to_info)
-    checksum = remote.tree.get_file_checksum(to_info)
+    tree = AzureRemoteTree(None, {})
+    to_info = tree.PATH_CLS(Azure.get_url())
+    tree.upload(PathInfo("foo"), to_info)
+    assert tree.exists(to_info)
+    checksum = tree.get_file_checksum(to_info)
     assert checksum
     assert isinstance(checksum, str)
     assert checksum.strip("'").strip('"') == checksum

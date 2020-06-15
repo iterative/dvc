@@ -3,7 +3,7 @@ import os
 import pytest
 
 from dvc.path_info import PathInfo
-from dvc.remote.s3 import S3Remote, S3RemoteTree
+from dvc.remote.s3 import S3RemoteTree
 from dvc.utils.fs import walk_files
 from tests.remotes import GCP, S3Mocked
 
@@ -91,7 +91,7 @@ def test_copy_preserve_etag_across_buckets(remote, dvc):
     s3 = remote.tree.s3
     s3.create_bucket(Bucket="another")
 
-    another = S3Remote(dvc, {"url": "s3://another", "region": "us-east-1"})
+    another = S3RemoteTree(dvc, {"url": "s3://another", "region": "us-east-1"})
 
     from_info = remote.path_info / "foo"
     to_info = another.path_info / "foo"

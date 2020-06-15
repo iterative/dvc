@@ -1,4 +1,4 @@
-from dvc.remote.oss import OSSRemote
+from dvc.remote.oss import OSSRemoteTree
 
 bucket_name = "bucket-name"
 endpoint = "endpoint"
@@ -15,8 +15,8 @@ def test_init(dvc):
         "oss_key_secret": key_secret,
         "oss_endpoint": endpoint,
     }
-    remote = OSSRemote(dvc, config)
-    assert remote.tree.path_info == url
-    assert remote.tree.endpoint == endpoint
-    assert remote.tree.key_id == key_id
-    assert remote.tree.key_secret == key_secret
+    tree = OSSRemoteTree(dvc, config)
+    assert tree.path_info == url
+    assert tree.endpoint == endpoint
+    assert tree.key_id == key_id
+    assert tree.key_secret == key_secret
