@@ -318,12 +318,6 @@ def _log_exceptions(func, operation):
 
 
 class LocalRemote(Remote):
-    def get(self, md5):
-        if not md5:
-            return None
-
-        return self.checksum_to_path_info(md5).url
-
     def list_paths(self, prefix=None, progress_callback=None):
         assert self.path_info is not None
         if prefix:

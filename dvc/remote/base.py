@@ -104,6 +104,8 @@ class BaseRemoteTree:
 
     def __init__(self, repo, config):
         self.repo = repo
+        self.config = config
+
         self._check_requires(config)
 
         shared = config.get("shared")
@@ -303,6 +305,13 @@ class BaseRemoteTree:
         dir_info = self._collect_dir(path_info, tree, **kwargs)
         return self._save_dir_info(dir_info, path_info)
 
+    def save_info(self, path_info, tree=None, **kwargs):
+        return {
+            self.PARAM_CHECKSUM: self.get_checksum(
+                path_info, tree=tree, **kwargs
+            )
+        }
+
     def _calculate_checksums(self, file_infos, tree):
         file_infos = list(file_infos)
         with Tqdm(
@@ -493,18 +502,21 @@ class BaseRemoteTree:
 
 
 class Remote:
-    """Cloud remote class."""
+    """Cloud remote class.
 
-    INDEX_CLS = RemoteIndex
+    Provides methods for indexing and garbage collecting trees which contain
+    DVC remotes.
+    """
 
-    def __init__(self, repo, config, tree):
-        self.repo = repo
+    def __init__(self, tree):
         self.tree = tree
+        self.repo = tree.repo
 
+        config = tree.config
         url = config.get("url")
         if self.scheme != "local" and url:
             index_name = hashlib.sha256(url.encode("utf-8")).hexdigest()
-            self.index = self.RemoteIndex(
+            self.index = RemoteIndex(
                 self.repo, index_name, dir_suffix=self.CHECKSUM_DIR_SUFFIX
             )
         else:
@@ -545,12 +557,8 @@ class Remote:
 
         return "".join(parts)
 
-    def save_info(self, path_info, tree=None, **kwargs):
-        return {
-            self.PARAM_CHECKSUM: self.tree.get_checksum(
-                path_info, tree=tree, **kwargs
-            )
-        }
+    def save_info(self, path_info, **kwargs):
+        return self.tree.save_info(path_info, **kwargs)
 
     def open(self, *args, **kwargs):
         return self.tree.open(*args, **kwargs)
@@ -868,9 +876,9 @@ class CloudCache:
     DEFAULT_CACHE_TYPES = ["copy"]
     CACHE_MODE = None
 
-    def __init__(self, repo, config, tree):
-        self.repo = repo
+    def __init__(self, tree):
         self.tree = tree
+        self.repo = tree.repo
 
         self.cache_types = tree.config.get("type") or copy(
             self.DEFAULT_CACHE_TYPES
