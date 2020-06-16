@@ -104,9 +104,9 @@ def test_checksums_exist(object_exists, traverse, dvc):
     BaseRemoteTree, "list_checksums", return_value=[],
 )
 @mock.patch.object(
-    BaseRemoteTree, "path_to_checksum", side_effect=lambda x: x,
+    BaseRemoteTree, "path_to_hash", side_effect=lambda x: x,
 )
-def test_list_checksums_traverse(path_to_checksum, list_checksums, dvc):
+def test_list_checksums_traverse(path_to_hash, list_checksums, dvc):
     tree = BaseRemoteTree(dvc, {})
     tree.path_info = PathInfo("foo")
 

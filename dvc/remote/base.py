@@ -310,7 +310,7 @@ class BaseRemoteTree:
     def hash_to_path_info(self, checksum):
         return self.path_info / checksum[0:2] / checksum[2:]
 
-    def path_to_checksum(self, path):
+    def path_to_hash(self, path):
         parts = self.PATH_CLS(path).parts[-2:]
 
         if not (len(parts) == 2 and parts[0] and len(parts[0]) == 2):
@@ -536,7 +536,7 @@ class BaseRemoteTree:
         """
         for path in self.list_paths(prefix, progress_callback):
             try:
-                yield self.path_to_checksum(path)
+                yield self.path_to_hash(path)
             except ValueError:
                 logger.debug(
                     "'%s' doesn't look like a cache file, skipping", path
@@ -754,8 +754,8 @@ class Remote:
     def hash_to_path_info(self, checksum):
         return self.tree.hash_to_path_info(checksum)
 
-    def path_to_checksum(self, path):
-        return self.tree.path_to_checksum(path)
+    def path_to_hash(self, path):
+        return self.tree.path_to_hash(path)
 
     def save_info(self, path_info, **kwargs):
         return self.tree.save_info(path_info, **kwargs)
