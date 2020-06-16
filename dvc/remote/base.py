@@ -275,7 +275,7 @@ class BaseRemoteTree:
             checksum = None
 
         # If we have dir checksum in state db, but dir cache file is lost,
-        # then we need to recollect the dir via .get_dir_checksum() call below,
+        # then we need to recollect the dir via .get_dir_hash() call below,
         # see https://github.com/iterative/dvc/issues/2219 for context
         if (
             checksum
@@ -288,7 +288,7 @@ class BaseRemoteTree:
             return checksum
 
         if tree.isdir(path_info):
-            checksum = self.get_dir_checksum(path_info, tree, **kwargs)
+            checksum = self.get_dir_hash(path_info, tree, **kwargs)
         else:
             checksum = tree.get_file_hash(path_info)
 
@@ -300,7 +300,7 @@ class BaseRemoteTree:
     def get_file_hash(self, path_info):
         raise NotImplementedError
 
-    def get_dir_checksum(self, path_info, tree, **kwargs):
+    def get_dir_hash(self, path_info, tree, **kwargs):
         if not self.cache:
             raise RemoteCacheRequiredError(path_info)
 
