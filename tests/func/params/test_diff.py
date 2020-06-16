@@ -24,6 +24,20 @@ def test_diff(tmp_dir, scm, dvc):
     }
 
 
+def test_diff_dirty(tmp_dir, scm, dvc):
+    tmp_dir.gen("params.yaml", "foo: bar")
+    dvc.run(cmd="echo params.yaml", params=["foo"], single_stage=True)
+    scm.add(["params.yaml", "Dvcfile"])
+    scm.commit("bar")
+
+    tmp_dir.scm_gen("params.yaml", "foo: baz", commit="baz")
+    tmp_dir.gen("params.yaml", "foo: qux")
+
+    assert dvc.params.diff() == {
+        "params.yaml": {"foo": {"old": "baz", "new": "qux"}}
+    }
+
+
 def test_diff_new(tmp_dir, scm, dvc):
     tmp_dir.gen("params.yaml", "foo: bar")
     dvc.run(cmd="echo params.yaml", params=["foo"], single_stage=True)

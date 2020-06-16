@@ -9,7 +9,7 @@ from funcy import cached_property, wrap_prop
 from dvc.exceptions import DvcException
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemote, BaseRemoteTree
+from dvc.remote.base import BaseRemoteTree
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
@@ -65,10 +65,13 @@ def _upload_to_bucket(
 
 
 class GSRemoteTree(BaseRemoteTree):
+    scheme = Schemes.GS
     PATH_CLS = CloudURLInfo
+    REQUIRES = {"google-cloud-storage": "google.cloud.storage"}
+    PARAM_CHECKSUM = "md5"
 
-    def __init__(self, remote, config):
-        super().__init__(remote, config)
+    def __init__(self, repo, config):
+        super().__init__(repo, config)
 
         url = config.get("url", "gs:///")
         self.path_info = self.PATH_CLS(url)
@@ -157,6 +160,20 @@ class GSRemoteTree(BaseRemoteTree):
         to_bucket = self.gs.bucket(to_info.bucket)
         from_bucket.copy_blob(blob, to_bucket, new_name=to_info.path)
 
+    def get_file_checksum(self, path_info):
+        import base64
+        import codecs
+
+        bucket = path_info.bucket
+        path = path_info.path
+        blob = self.gs.bucket(bucket).get_blob(path)
+        if not blob:
+            return None
+
+        b64_md5 = blob.md5_hash
+        md5 = base64.b64decode(b64_md5)
+        return codecs.getencoder("hex")(md5)[0].decode("utf-8")
+
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         bucket = self.gs.bucket(to_info.bucket)
         _upload_to_bucket(
@@ -179,24 +196,3 @@ class GSRemoteTree(BaseRemoteTree):
                 disable=no_progress_bar,
             ) as wrapped:
                 blob.download_to_file(wrapped)
-
-
-class GSRemote(BaseRemote):
-    scheme = Schemes.GS
-    REQUIRES = {"google-cloud-storage": "google.cloud.storage"}
-    PARAM_CHECKSUM = "md5"
-    TREE_CLS = GSRemoteTree
-
-    def get_file_checksum(self, path_info):
-        import base64
-        import codecs
-
-        bucket = path_info.bucket
-        path = path_info.path
-        blob = self.tree.gs.bucket(bucket).get_blob(path)
-        if not blob:
-            return None
-
-        b64_md5 = blob.md5_hash
-        md5 = base64.b64decode(b64_md5)
-        return codecs.getencoder("hex")(md5)[0].decode("utf-8")

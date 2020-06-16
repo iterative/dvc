@@ -12,7 +12,7 @@ from dvc.dependency.param import ParamsDependency
 from dvc.dependency.s3 import S3Dependency
 from dvc.dependency.ssh import SSHDependency
 from dvc.output.base import BaseOutput
-from dvc.remote import Remote
+from dvc.remote import get_remote
 from dvc.scheme import Schemes
 
 from .repo import RepoDependency
@@ -54,7 +54,7 @@ SCHEMA.update(ParamsDependency.PARAM_SCHEMA)
 def _get(stage, p, info):
     parsed = urlparse(p) if p else None
     if parsed and parsed.scheme == "remote":
-        remote = Remote(stage.repo, name=parsed.netloc)
+        remote = get_remote(stage.repo, name=parsed.netloc)
         return DEP_MAP[remote.scheme](stage, p, info, remote=remote)
 
     if info and info.get(RepoDependency.PARAM_REPO):

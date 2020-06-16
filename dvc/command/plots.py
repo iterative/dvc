@@ -98,8 +98,8 @@ class CmdPlotsModify(CmdPlots):
 
 def add_parser(subparsers, parent_parser):
     PLOTS_HELP = (
-        "Generating plots for metrics stored in structured files "
-        "(JSON, CSV, TSV)."
+        "Commands to visualize and compare plot metrics in structured files "
+        "(JSON, YAML, CSV, TSV)"
     )
 
     plots_parser = subparsers.add_parser(
@@ -116,7 +116,7 @@ def add_parser(subparsers, parent_parser):
 
     fix_subparsers(plots_subparsers)
 
-    SHOW_HELP = "Generate a plots image file from a metrics file."
+    SHOW_HELP = "Generate plots from metric files."
     plots_show_parser = plots_subparsers.add_parser(
         "show",
         parents=[parent_parser],
@@ -134,8 +134,8 @@ def add_parser(subparsers, parent_parser):
     plots_show_parser.set_defaults(func=CmdPlotsShow)
 
     PLOTS_DIFF_HELP = (
-        "Plot differences in metrics between commits in the DVC "
-        "repository, or between the last commit and the workspace."
+        "Show multiple versions of plot metrics "
+        "by plotting them in a single image."
     )
     plots_diff_parser = plots_subparsers.add_parser(
         "diff",
@@ -148,6 +148,7 @@ def add_parser(subparsers, parent_parser):
         "--targets",
         nargs="*",
         help="Plots file to visualize. Shows all plots by default.",
+        metavar="<path>",
     )
     plots_diff_parser.add_argument(
         "revisions", nargs="*", default=None, help="Git commits to plot from",
@@ -156,7 +157,7 @@ def add_parser(subparsers, parent_parser):
     _add_output_arguments(plots_diff_parser)
     plots_diff_parser.set_defaults(func=CmdPlotsDiff)
 
-    PLOTS_MODIFY_HELP = "Modify plot properties associated with a target file."
+    PLOTS_MODIFY_HELP = "Modify display properties of plot metric files."
     plots_modify_parser = plots_subparsers.add_parser(
         "modify",
         parents=[parent_parser],
@@ -165,14 +166,14 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     plots_modify_parser.add_argument(
-        "target", help="Plot file to set properties to.",
+        "target", help="Metric file to set properties to",
     )
     _add_props_arguments(plots_modify_parser)
     plots_modify_parser.add_argument(
         "--unset",
         nargs="*",
         metavar="<property>",
-        help="Properties to unset.",
+        help="Unset one or more display properties.",
     )
     plots_modify_parser.set_defaults(func=CmdPlotsModify)
 
@@ -189,9 +190,14 @@ def _add_props_arguments(parser):
                 format_link("https://man.dvc.org/plots#plot-templates")
             )
         ),
+        metavar="<path>",
     )
-    parser.add_argument("-x", default=None, help="Field name for x axis.")
-    parser.add_argument("-y", default=None, help="Field name for y axis.")
+    parser.add_argument(
+        "-x", default=None, help="Field name for X axis.", metavar="<field>"
+    )
+    parser.add_argument(
+        "-y", default=None, help="Field name for Y axis.", metavar="<field>"
+    )
     parser.add_argument(
         "--no-header",
         action="store_false",
@@ -203,16 +209,20 @@ def _add_props_arguments(parser):
         "--title", default=None, metavar="<text>", help="Plot title."
     )
     parser.add_argument(
-        "--x-label", default=None, metavar="<text>", help="X axis label."
+        "--x-label", default=None, help="X axis label", metavar="<text>"
     )
     parser.add_argument(
-        "--y-label", default=None, metavar="<text>", help="Y axis lebel."
+        "--y-label", default=None, help="Y axis label", metavar="<text>"
     )
 
 
 def _add_output_arguments(parser):
     parser.add_argument(
-        "-o", "--out", default=None, help="Destination path to save plots to.",
+        "-o",
+        "--out",
+        default=None,
+        help="Destination path to save plots to",
+        metavar="<path>",
     )
     parser.add_argument(
         "--show-vega",

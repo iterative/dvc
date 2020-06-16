@@ -8,8 +8,10 @@ from . import locked
 logger = logging.getLogger(__name__)
 
 
-def _do_gc(typ, func, clist, jobs=None):
-    removed = func(clist, jobs=jobs)
+def _do_gc(typ, remote, clist, jobs=None):
+    from dvc.remote.base import Remote
+
+    removed = Remote.gc(clist, remote, jobs=jobs)
     if not removed:
         logger.info(f"No unused '{typ}' cache to remove.")
 
@@ -74,22 +76,23 @@ def gc(
                 )
             )
 
-    _do_gc("local", self.cache.local.gc, used, jobs)
+    # treat caches as remotes for garbage collection
+    _do_gc("local", self.cache.local, used, jobs)
 
     if self.cache.s3:
-        _do_gc("s3", self.cache.s3.gc, used, jobs)
+        _do_gc("s3", self.cache.s3, used, jobs)
 
     if self.cache.gs:
-        _do_gc("gs", self.cache.gs.gc, used, jobs)
+        _do_gc("gs", self.cache.gs, used, jobs)
 
     if self.cache.ssh:
-        _do_gc("ssh", self.cache.ssh.gc, used, jobs)
+        _do_gc("ssh", self.cache.ssh, used, jobs)
 
     if self.cache.hdfs:
-        _do_gc("hdfs", self.cache.hdfs.gc, used, jobs)
+        _do_gc("hdfs", self.cache.hdfs, used, jobs)
 
     if self.cache.azure:
-        _do_gc("azure", self.cache.azure.gc, used, jobs)
+        _do_gc("azure", self.cache.azure, used, jobs)
 
     if cloud:
-        _do_gc("remote", self.cloud.get_remote(remote, "gc -c").gc, used, jobs)
+        _do_gc("remote", self.cloud.get_remote(remote, "gc -c"), used, jobs)

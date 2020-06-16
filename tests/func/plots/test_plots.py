@@ -16,7 +16,11 @@ from dvc.repo.plots.data import (
     PlotMetricTypeError,
     YAMLPlotData,
 )
-from dvc.repo.plots.template import NoFieldInDataError, TemplateNotFoundError
+from dvc.repo.plots.template import (
+    BadTemplateError,
+    NoFieldInDataError,
+    TemplateNotFoundError,
+)
 
 
 def _write_csv(metric, filename, header=True):
@@ -356,15 +360,6 @@ def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc, caplog):
     assert str(error.value) == "Could not find 'metric.json'."
 
 
-@pytest.fixture()
-def custom_template(tmp_dir, dvc):
-    custom_template = tmp_dir / "custom_template.json"
-    shutil.copy(
-        tmp_dir / ".dvc" / "plots" / "default.json", custom_template,
-    )
-    return custom_template
-
-
 def test_custom_template(tmp_dir, scm, dvc, custom_template, run_copy_metrics):
     metric = [{"a": 1, "b": 2}, {"a": 2, "b": 3}]
     _write_json(tmp_dir, metric, "metric_t.json")
@@ -411,6 +406,23 @@ def test_should_raise_on_no_template(tmp_dir, dvc, run_copy_metrics):
 
     with pytest.raises(TemplateNotFoundError):
         props = {"template": "non_existing_template.json"}
+        dvc.plots.show("metric.json", props=props)
+
+
+def test_bad_template(tmp_dir, dvc, run_copy_metrics):
+    metric = [{"val": 2}, {"val": 3}]
+    _write_json(tmp_dir, metric, "metric_t.json")
+    run_copy_metrics(
+        "metric_t.json",
+        "metric.json",
+        plots_no_cache=["metric.json"],
+        commit="first run",
+    )
+
+    tmp_dir.gen("template.json", json.dumps({"a": "b", "c": "d"}))
+
+    with pytest.raises(BadTemplateError):
+        props = {"template": "template.json"}
         dvc.plots.show("metric.json", props=props)
 
 
@@ -538,3 +550,24 @@ def test_load_metric_from_dict_yaml(tmp_dir):
         d["rev"] = "revision"
 
     assert list(map(dict, plot_data.to_datapoints())) == expected
+
+
+def test_multiple_plots(tmp_dir, scm, dvc, run_copy_metrics):
+    metric1 = [
+        OrderedDict([("first_val", 100), ("second_val", 100), ("val", 2)]),
+        OrderedDict([("first_val", 200), ("second_val", 300), ("val", 3)]),
+    ]
+    metric2 = [
+        OrderedDict([("first_val", 100), ("second_val", 100), ("val", 2)]),
+        OrderedDict([("first_val", 200), ("second_val", 300), ("val", 3)]),
+    ]
+    _write_csv(metric1, "metric_t1.csv")
+    _write_json(tmp_dir, metric2, "metric_t2.json")
+    run_copy_metrics(
+        "metric_t1.csv", "metric1.csv", plots_no_cache=["metric1.csv"]
+    )
+    run_copy_metrics(
+        "metric_t2.json", "metric2.json", plots_no_cache=["metric2.json"]
+    )
+
+    assert len(dvc.plots.show().keys()) == 2

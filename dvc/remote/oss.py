@@ -6,14 +6,37 @@ from funcy import cached_property, wrap_prop
 
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemote, BaseRemoteTree
+from dvc.remote.base import BaseRemoteTree
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
 
 
 class OSSRemoteTree(BaseRemoteTree):
+    """
+    oss2 document:
+    https://www.alibabacloud.com/help/doc-detail/32026.htm
+
+
+    Examples
+    ----------
+    $ dvc remote add myremote oss://my-bucket/path
+    Set key id, key secret and endpoint using modify command
+    $ dvc remote modify myremote oss_key_id my-key-id
+    $ dvc remote modify myremote oss_key_secret my-key-secret
+    $ dvc remote modify myremote oss_endpoint endpoint
+    or environment variables
+    $ export OSS_ACCESS_KEY_ID="my-key-id"
+    $ export OSS_ACCESS_KEY_SECRET="my-key-secret"
+    $ export OSS_ENDPOINT="endpoint"
+    """
+
+    scheme = Schemes.OSS
     PATH_CLS = CloudURLInfo
+    REQUIRES = {"oss2": "oss2"}
+    PARAM_CHECKSUM = "etag"
+    COPY_POLL_SECONDS = 5
+    LIST_OBJECT_PAGE_SIZE = 100
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
@@ -105,30 +128,3 @@ class OSSRemoteTree(BaseRemoteTree):
             self.oss_service.get_object_to_file(
                 from_info.path, to_file, progress_callback=pbar.update_to
             )
-
-
-class OSSRemote(BaseRemote):
-    """
-    oss2 document:
-    https://www.alibabacloud.com/help/doc-detail/32026.htm
-
-
-    Examples
-    ----------
-    $ dvc remote add myremote oss://my-bucket/path
-    Set key id, key secret and endpoint using modify command
-    $ dvc remote modify myremote oss_key_id my-key-id
-    $ dvc remote modify myremote oss_key_secret my-key-secret
-    $ dvc remote modify myremote oss_endpoint endpoint
-    or environment variables
-    $ export OSS_ACCESS_KEY_ID="my-key-id"
-    $ export OSS_ACCESS_KEY_SECRET="my-key-secret"
-    $ export OSS_ENDPOINT="endpoint"
-    """
-
-    scheme = Schemes.OSS
-    REQUIRES = {"oss2": "oss2"}
-    PARAM_CHECKSUM = "etag"
-    COPY_POLL_SECONDS = 5
-    LIST_OBJECT_PAGE_SIZE = 100
-    TREE_CLS = OSSRemoteTree

@@ -5,8 +5,20 @@ from funcy import first, project
 from dvc.exceptions import DvcException, NoPlotsError, OutputNotFoundError
 from dvc.repo.tree import RepoTree
 from dvc.schema import PLOT_PROPS
+from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
+
+
+class NotAPlotError(DvcException):
+    def __init__(self, out):
+        super().__init__(
+            f"'{out}' is not a plot. Use `dvc plots modify` to change that."
+        )
+
+
+class PropsNotFoundError(DvcException):
+    pass
 
 
 class Plots:
@@ -33,23 +45,27 @@ class Plots:
 
             tree = RepoTree(self.repo)
             plots = _collect_plots(self.repo, targets, rev)
-            for datafile, props in plots.items():
-                data[rev] = {datafile: {"props": props}}
+            for path_info, props in plots.items():
+                datafile = relpath(path_info, self.repo.root_dir)
+                if rev not in data:
+                    data[rev] = {}
+                data[rev].update({datafile: {"props": props}})
 
                 # Load data from git or dvc cache
                 try:
-                    with tree.open(datafile) as fd:
+                    with tree.open(path_info) as fd:
                         data[rev][datafile]["data"] = fd.read()
-                except FileNotFoundError:
+                except FileNotFoundError as e:
                     # This might happen simply because cache is absent
+                    print(e)
                     pass
 
         return data
 
-    def render(self, data, revs=None, props=None, templates=None):
+    @staticmethod
+    def render(data, revs=None, props=None, templates=None):
         """Renders plots"""
         props = props or {}
-        templates = templates or self.repo.plot_templates
 
         # Merge data by plot file and apply overriding props
         plots = _prepare_plots(data, revs, props)
@@ -74,25 +90,44 @@ class Plots:
         if not data:
             raise NoPlotsError()
 
-        return self.render(data, revs, props)
+        return self.render(data, revs, props, self.repo.plot_templates)
 
     def diff(self, *args, **kwargs):
         from .diff import diff
 
         return diff(self.repo, *args, **kwargs)
 
+    @staticmethod
+    def _unset(out, props):
+        missing = list(set(props) - set(out.plot.keys()))
+        if missing:
+            raise PropsNotFoundError(
+                f"display properties {missing} not found in plot '{out}'"
+            )
+
+        for prop in props:
+            out.plot.pop(prop)
+
     def modify(self, path, props=None, unset=None):
         from dvc.dvcfile import Dvcfile
 
+        props = props or {}
+        template = props.get("template")
+        if template:
+            self.repo.plot_templates.get_template(template)
+
         (out,) = self.repo.find_outs_by_path(path)
+        if not out.plot and unset is not None:
+            raise NotAPlotError(out)
 
         # This out will become a plot unless it is one already
         if not isinstance(out.plot, dict):
             out.plot = {}
 
-        for field in unset or ():
-            out.plot.pop(field, None)
-        out.plot.update(props or {})
+        if unset:
+            self._unset(out, unset)
+
+        out.plot.update(props)
 
         # Empty dict will move it to non-plots
         if not out.plot:
@@ -101,7 +136,7 @@ class Plots:
         out.verify_metric()
 
         dvcfile = Dvcfile(self.repo, out.stage.path)
-        dvcfile.dump(out.stage, update_pipeline=True)
+        dvcfile.dump(out.stage, update_pipeline=True, no_lock=True)
 
 
 def _collect_plots(repo, targets=None, rev=None):
@@ -121,14 +156,12 @@ def _collect_plots(repo, targets=None, rev=None):
     else:
         outs = (out for stage in repo.stages for out in stage.outs if out.plot)
 
-    return {str(out): _plot_props(out) for out in outs}
+    return {out.path_info: _plot_props(out) for out in outs}
 
 
 def _plot_props(out):
     if not out.plot:
-        raise DvcException(
-            f"'{out}' is not a plot. Use `dvc plots modify` to change that."
-        )
+        raise NotAPlotError(out)
     if isinstance(out.plot, list):
         raise DvcException("Multiple plots per data file not supported.")
     if isinstance(out.plot, bool):

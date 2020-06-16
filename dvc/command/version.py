@@ -122,12 +122,12 @@ class CmdVersion(CmdBaseNoRepo):
 
     @staticmethod
     def get_supported_remotes():
-        from dvc.remote import REMOTES
+        from dvc.remote import TREES
 
         supported_remotes = []
-        for remote in REMOTES:
-            if not remote.get_missing_deps():
-                supported_remotes.append(remote.scheme)
+        for tree_cls in TREES:
+            if not tree_cls.get_missing_deps():
+                supported_remotes.append(tree_cls.scheme)
 
         return ", ".join(supported_remotes)
 

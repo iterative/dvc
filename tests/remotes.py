@@ -7,9 +7,10 @@ from subprocess import CalledProcessError, Popen, check_output
 
 from moto.s3 import mock_s3
 
-from dvc.remote.gdrive import GDriveRemote, GDriveRemoteTree
-from dvc.remote.gs import GSRemote
-from dvc.remote.s3 import S3Remote
+from dvc.remote.base import Remote
+from dvc.remote.gdrive import GDriveRemoteTree
+from dvc.remote.gs import GSRemoteTree
+from dvc.remote.s3 import S3RemoteTree
 from dvc.utils import env2bool
 from tests.basic_env import TestDvc
 
@@ -22,6 +23,7 @@ TEST_CONFIG = {
 
 TEST_AWS_REPO_BUCKET = os.environ.get("DVC_TEST_AWS_REPO_BUCKET", "dvc-temp")
 TEST_GCP_REPO_BUCKET = os.environ.get("DVC_TEST_GCP_REPO_BUCKET", "dvc-test")
+TEST_GDRIVE_REPO_BUCKET = "root"
 TEST_OSS_REPO_BUCKET = "dvc-test"
 
 TEST_GCP_CREDS_FILE = os.path.abspath(
@@ -78,7 +80,7 @@ class S3Mocked(S3):
     @contextmanager
     def remote(cls, repo):
         with mock_s3():
-            yield S3Remote(repo, {"url": cls.get_url()})
+            yield Remote(S3RemoteTree(repo, {"url": cls.get_url()}))
 
     @staticmethod
     def put_objects(remote, objects):
@@ -126,7 +128,7 @@ class GCP:
     @classmethod
     @contextmanager
     def remote(cls, repo):
-        yield GSRemote(repo, {"url": cls.get_url()})
+        yield Remote(GSRemoteTree(repo, {"url": cls.get_url()}))
 
     @staticmethod
     def put_objects(remote, objects):
@@ -149,13 +151,17 @@ class GDrive:
             "gdrive_service_account_p12_file_path": "test.p12",
             "gdrive_use_service_account": True,
         }
-        remote = GDriveRemote(dvc, config)
-        remote.tree._gdrive_create_dir("root", remote.path_info.path)
+        tree = GDriveRemoteTree(dvc, config)
+        tree._gdrive_create_dir("root", tree.path_info.path)
+
+    @staticmethod
+    def get_storagepath():
+        return TEST_GDRIVE_REPO_BUCKET + "/" + str(uuid.uuid4())
 
     @staticmethod
     def get_url():
         # NOTE: `get_url` should always return new random url
-        return "gdrive://root/" + str(uuid.uuid4())
+        return "gdrive://" + GDrive.get_storagepath()
 
 
 class Azure:

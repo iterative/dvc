@@ -32,4 +32,4 @@ def push(
         used_run_cache=used_run_cache,
     )
 
-    return self.cloud.push(used, jobs, remote=remote)
+    return len(used_run_cache) + self.cloud.push(used, jobs, remote=remote)

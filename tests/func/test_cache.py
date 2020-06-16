@@ -30,14 +30,14 @@ class TestCache(TestDvc):
         self.create(self.cache2, "2")
 
     def test_all(self):
-        md5_list = list(Cache(self.dvc).local.all())
+        md5_list = list(Cache(self.dvc).local.tree.all())
         self.assertEqual(len(md5_list), 2)
         self.assertIn(self.cache1_md5, md5_list)
         self.assertIn(self.cache2_md5, md5_list)
 
     def test_get(self):
-        cache = Cache(self.dvc).local.get(self.cache1_md5)
-        self.assertEqual(cache, self.cache1)
+        cache = Cache(self.dvc).local.checksum_to_path_info(self.cache1_md5)
+        self.assertEqual(os.fspath(cache), self.cache1)
 
 
 class TestCacheLoadBadDirCache(TestDvc):
@@ -47,13 +47,13 @@ class TestCacheLoadBadDirCache(TestDvc):
 
     def test(self):
         checksum = "123.dir"
-        fname = self.dvc.cache.local.get(checksum)
+        fname = os.fspath(self.dvc.cache.local.checksum_to_path_info(checksum))
         self.create(fname, "<clearly>not,json")
         with pytest.raises(DirCacheError):
             self.dvc.cache.local.load_dir_cache(checksum)
 
         checksum = "234.dir"
-        fname = self.dvc.cache.local.get(checksum)
+        fname = os.fspath(self.dvc.cache.local.checksum_to_path_info(checksum))
         self.create(fname, '{"a": "b"}')
         self._do_test(self.dvc.cache.local.load_dir_cache(checksum))
 

@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 from dvc.exceptions import DvcException
 from dvc.istextfile import istextfile
 from dvc.output.base import BaseOutput
-from dvc.remote.local import LocalRemote
+from dvc.remote.local import LocalRemote, LocalRemoteTree
 from dvc.utils import relpath
 from dvc.utils.fs import path_isin
 
@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 class LocalOutput(BaseOutput):
-    REMOTE = LocalRemote
+    REMOTE_CLS = LocalRemote
+    TREE_CLS = LocalRemoteTree
     sep = os.sep
 
     def __init__(self, stage, path, *args, **kwargs):
@@ -33,12 +34,12 @@ class LocalOutput(BaseOutput):
             #
             # FIXME: if we have Windows path containing / or posix one with \
             # then we have #2059 bug and can't really handle that.
-            p = self.REMOTE.TREE_CLS.PATH_CLS(path)
+            p = self.TREE_CLS.PATH_CLS(path)
             if not p.is_absolute():
                 p = self.stage.wdir / p
 
         abs_p = os.path.abspath(os.path.normpath(p))
-        return self.REMOTE.TREE_CLS.PATH_CLS(abs_p)
+        return self.TREE_CLS.PATH_CLS(abs_p)
 
     def __str__(self):
         if not self.is_in_repo:

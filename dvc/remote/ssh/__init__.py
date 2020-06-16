@@ -14,7 +14,7 @@ from funcy import first, memoize, silent, wrap_with
 
 import dvc.prompt as prompt
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemote, BaseRemoteTree
+from dvc.remote.base import BaseRemoteTree, Remote
 from dvc.remote.pool import get_connection
 from dvc.scheme import Schemes
 from dvc.utils import to_chunks
@@ -34,6 +34,18 @@ def ask_password(host, user, port):
 
 
 class SSHRemoteTree(BaseRemoteTree):
+    scheme = Schemes.SSH
+    REQUIRES = {"paramiko": "paramiko"}
+    JOBS = 4
+
+    PARAM_CHECKSUM = "md5"
+    # At any given time some of the connections will go over network and
+    # paramiko stuff, so we would ideally have it double of server processors.
+    # We use conservative setting of 4 instead to not exhaust max sessions.
+    CHECKSUM_JOBS = 4
+    DEFAULT_CACHE_TYPES = ["copy"]
+    TRAVERSE_PREFIX_LEN = 2
+
     DEFAULT_PORT = 22
     TIMEOUT = 1800
 
@@ -225,6 +237,13 @@ class SSHRemoteTree(BaseRemoteTree):
         with self.ssh(from_info) as ssh:
             ssh.reflink(from_info.path, to_info.path)
 
+    def get_file_checksum(self, path_info):
+        if path_info.scheme != self.scheme:
+            raise NotImplementedError
+
+        with self.ssh(path_info) as ssh:
+            return ssh.md5(path_info.path)
+
     def getsize(self, path_info):
         with self.ssh(path_info) as ssh:
             return ssh.getsize(path_info.path)
@@ -249,35 +268,12 @@ class SSHRemoteTree(BaseRemoteTree):
                 no_progress_bar=no_progress_bar,
             )
 
-
-class SSHRemote(BaseRemote):
-    scheme = Schemes.SSH
-    REQUIRES = {"paramiko": "paramiko"}
-
-    JOBS = 4
-    PARAM_CHECKSUM = "md5"
-    # At any given time some of the connections will go over network and
-    # paramiko stuff, so we would ideally have it double of server processors.
-    # We use conservative setting of 4 instead to not exhaust max sessions.
-    CHECKSUM_JOBS = 4
-    TRAVERSE_PREFIX_LEN = 2
-    TREE_CLS = SSHRemoteTree
-
-    DEFAULT_CACHE_TYPES = ["copy"]
-
-    def get_file_checksum(self, path_info):
-        if path_info.scheme != self.scheme:
-            raise NotImplementedError
-
-        with self.tree.ssh(path_info) as ssh:
-            return ssh.md5(path_info.path)
-
-    def list_cache_paths(self, prefix=None, progress_callback=None):
+    def list_paths(self, prefix=None, progress_callback=None):
         if prefix:
             root = posixpath.join(self.path_info.path, prefix[:2])
         else:
             root = self.path_info.path
-        with self.tree.ssh(self.path_info) as ssh:
+        with self.ssh(self.path_info) as ssh:
             if prefix and not ssh.exists(root):
                 return
             # If we simply return an iterator then with above closes instantly
@@ -288,6 +284,8 @@ class SSHRemote(BaseRemote):
             else:
                 yield from ssh.walk_files(root)
 
+
+class SSHRemote(Remote):
     def batch_exists(self, path_infos, callback):
         def _exists(chunk_and_channel):
             chunk, channel = chunk_and_channel
@@ -316,14 +314,14 @@ class SSHRemote(BaseRemote):
 
             return results
 
-    def cache_exists(self, checksums, jobs=None, name=None):
+    def checksums_exist(self, checksums, jobs=None, name=None):
         """This is older implementation used in remote/base.py
         We are reusing it in RemoteSSH, because SSH's batch_exists proved to be
         faster than current approach (relying on exists(path_info)) applied in
         remote/base.
         """
-        if not self.CAN_TRAVERSE:
-            return list(set(checksums) & set(self.all()))
+        if not self.tree.CAN_TRAVERSE:
+            return list(set(checksums) & set(self.tree.all()))
 
         # possibly prompt for credentials before "Querying" progress output
         self.tree.ensure_credentials()
@@ -338,9 +336,11 @@ class SSHRemote(BaseRemote):
             def exists_with_progress(chunks):
                 return self.batch_exists(chunks, callback=pbar.update_msg)
 
-            with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
+            with ThreadPoolExecutor(
+                max_workers=jobs or self.tree.JOBS
+            ) as executor:
                 path_infos = [self.checksum_to_path_info(x) for x in checksums]
-                chunks = to_chunks(path_infos, num_chunks=self.JOBS)
+                chunks = to_chunks(path_infos, num_chunks=self.tree.JOBS)
                 results = executor.map(exists_with_progress, chunks)
                 in_remote = itertools.chain.from_iterable(results)
                 ret = list(itertools.compress(checksums, in_remote))

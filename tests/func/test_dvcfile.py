@@ -2,7 +2,7 @@ import textwrap
 
 import pytest
 
-from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK, Dvcfile
+from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK, Dvcfile, SingleStageFile
 from dvc.stage.exceptions import (
     StageFileDoesNotExistError,
     StageFileFormatError,
@@ -59,8 +59,9 @@ def test_run_load_one_on_single_stage(tmp_dir, dvc):
         always_changed=True,
         single_stage=True,
     )
-    assert Dvcfile(dvc, stage.path).stages.get("random-name")
-    assert Dvcfile(dvc, stage.path).stage
+    assert isinstance(Dvcfile(dvc, stage.path), SingleStageFile)
+    assert Dvcfile(dvc, stage.path).stages.get("random-name") == stage
+    assert Dvcfile(dvc, stage.path).stage == stage
 
 
 def test_has_stage_with_name(tmp_dir, dvc):
@@ -110,21 +111,12 @@ def test_load_all_singlestage(tmp_dir, dvc):
         always_changed=True,
         single_stage=True,
     )
-    stages = Dvcfile(dvc, "foo2.dvc").stages.values()
+    dvcfile = Dvcfile(dvc, "foo2.dvc")
+    assert isinstance(dvcfile, SingleStageFile)
+    assert len(dvcfile.stages) == 1
+    stages = dvcfile.stages.values()
     assert len(stages) == 1
     assert list(stages) == [stage1]
-
-
-def test_load_singlestage(tmp_dir, dvc):
-    tmp_dir.gen("foo", "foo")
-    stage1 = dvc.run(
-        cmd="cp foo foo2",
-        deps=["foo"],
-        metrics=["foo2"],
-        always_changed=True,
-        single_stage=True,
-    )
-    assert Dvcfile(dvc, "foo2.dvc").stage == stage1
 
 
 def test_try_get_single_stage_from_pipeline_file(tmp_dir, dvc):
@@ -290,3 +282,37 @@ def test_remove_stage_preserves_comment(tmp_dir, dvc, run_copy):
         "# This copies 'foo' text to 'foo' file."
         in (tmp_dir / PIPELINE_FILE).read_text()
     )
+
+
+def test_dvcfile_dump_preserves_meta(tmp_dir, dvc, run_copy):
+    tmp_dir.gen("foo", "foo")
+    stage = run_copy("foo", "bar", name="run_copy")
+    dvcfile = stage.dvcfile
+
+    data = dvcfile._load()[0]
+    metadata = {"name": "copy-file"}
+    data["stages"]["run_copy"]["meta"] = metadata
+    dump_yaml(dvcfile.path, data)
+
+    dvcfile.dump(stage, update_pipeline=True)
+    assert dvcfile._load()[0] == data
+    assert dvcfile._load()[0]["stages"]["run_copy"]["meta"] == metadata
+
+
+def test_dvcfile_dump_preserves_comments(tmp_dir, dvc):
+    text = textwrap.dedent(
+        """\
+        stages:
+          generate-foo:
+            cmd: echo foo > foo
+            # This copies 'foo' text to 'foo' file.
+            outs:
+            - foo"""
+    )
+    tmp_dir.gen("dvc.yaml", text)
+    stage = dvc.get_stage(name="generate-foo")
+    stage.outs[0].use_cache = False
+    dvcfile = stage.dvcfile
+
+    dvcfile.dump(stage, update_pipeline=True)
+    assert dvcfile._load()[1] == (text + ":\n\tcache: false\n".expandtabs())

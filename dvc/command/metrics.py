@@ -7,6 +7,9 @@ from dvc.exceptions import BadMetricError, DvcException
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_PRECISION = 5
+
+
 def show_metrics(
     metrics, all_branches=False, all_tags=False, all_commits=False
 ):
@@ -63,10 +66,19 @@ class CmdMetricsShow(CmdBase):
         return 0
 
 
-def _show_diff(diff, markdown=False, no_path=False, old=False):
+def _show_diff(diff, markdown=False, no_path=False, old=False, precision=None):
     from collections import OrderedDict
 
     from dvc.utils.diff import table
+
+    if precision is None:
+        precision = DEFAULT_PRECISION
+
+    def _round(val):
+        if isinstance(val, float):
+            return round(val, precision)
+
+        return val
 
     rows = []
     for fname, mdiff in diff.items():
@@ -75,9 +87,9 @@ def _show_diff(diff, markdown=False, no_path=False, old=False):
             row = [] if no_path else [fname]
             row.append(metric)
             if old:
-                row.append(change.get("old"))
-            row.append(change["new"])
-            row.append(change.get("diff", "diff not supported"))
+                row.append(_round(change.get("old")))
+            row.append(_round(change["new"]))
+            row.append(_round(change.get("diff", "diff not supported")))
             rows.append(row)
 
     header = [] if no_path else ["Path"]
@@ -108,7 +120,11 @@ class CmdMetricsDiff(CmdBase):
                 logger.info(json.dumps(diff))
             else:
                 table = _show_diff(
-                    diff, self.args.show_md, self.args.no_path, self.args.old
+                    diff,
+                    self.args.show_md,
+                    self.args.no_path,
+                    self.args.old,
+                    precision=self.args.precision,
                 )
                 if table:
                     logger.info(table)
@@ -149,7 +165,10 @@ def add_parser(subparsers, parent_parser):
     metrics_show_parser.add_argument(
         "targets",
         nargs="*",
-        help="Metric files or directories (see -R) to show",
+        help=(
+            "Limit command scope to these metric files. Using -R, "
+            "directories to search metric files in can also be given."
+        ),
     )
     metrics_show_parser.add_argument(
         "-a",
@@ -172,6 +191,12 @@ def add_parser(subparsers, parent_parser):
         help="Show metrics for all commits.",
     )
     metrics_show_parser.add_argument(
+        "--show-json",
+        action="store_true",
+        default=False,
+        help="Show output in JSON format.",
+    )
+    metrics_show_parser.add_argument(
         "-R",
         "--recursive",
         action="store_true",
@@ -181,16 +206,12 @@ def add_parser(subparsers, parent_parser):
             "metric files."
         ),
     )
-    metrics_show_parser.add_argument(
-        "--show-json",
-        action="store_true",
-        default=False,
-        help="Show output in JSON format.",
-    )
     metrics_show_parser.set_defaults(func=CmdMetricsShow)
 
-    METRICS_DIFF_HELP = "Show changes in metrics between commits"
-    " in the DVC repository, or between a commit and the workspace."
+    METRICS_DIFF_HELP = (
+        "Show changes in metrics between commits in the DVC repository, or "
+        "between a commit and the workspace."
+    )
     metrics_diff_parser = metrics_subparsers.add_parser(
         "diff",
         parents=[parent_parser],
@@ -204,14 +225,14 @@ def add_parser(subparsers, parent_parser):
     metrics_diff_parser.add_argument(
         "b_rev",
         nargs="?",
-        help=("New Git commit to compare (defaults to the current workspace)"),
+        help="New Git commit to compare (defaults to the current workspace)",
     )
     metrics_diff_parser.add_argument(
         "--targets",
         nargs="*",
         help=(
-            "Metric files or directories (see -R) to show diff for. "
-            "Shows diff for all metric files by default."
+            "Limit command scope to these metric files. Using -R, "
+            "directories to search metric files in can also be given."
         ),
         metavar="<paths>",
     )
@@ -244,15 +265,24 @@ def add_parser(subparsers, parent_parser):
         help="Show tabulated output in the Markdown format (GFM).",
     )
     metrics_diff_parser.add_argument(
+        "--old",
+        action="store_true",
+        default=False,
+        help="Show old metric value.",
+    )
+    metrics_diff_parser.add_argument(
         "--no-path",
         action="store_true",
         default=False,
         help="Don't show metric path.",
     )
     metrics_diff_parser.add_argument(
-        "--old",
-        action="store_true",
-        default=False,
-        help="Show old metric value.",
+        "--precision",
+        type=int,
+        help=(
+            "Round metrics to `n` digits precision after the decimal point. "
+            f"Rounds to {DEFAULT_PRECISION} digits by default."
+        ),
+        metavar="<n>",
     )
     metrics_diff_parser.set_defaults(func=CmdMetricsDiff)

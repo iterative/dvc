@@ -1,6 +1,6 @@
 from dvc.output.base import BaseOutput
-from dvc.remote.hdfs import HDFSRemote
+from dvc.remote.hdfs import HDFSRemoteTree
 
 
 class HDFSOutput(BaseOutput):
-    REMOTE = HDFSRemote
+    TREE_CLS = HDFSRemoteTree

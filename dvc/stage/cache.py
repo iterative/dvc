@@ -6,6 +6,7 @@ import yaml
 from funcy import first
 from voluptuous import Invalid
 
+from dvc.remote.local import _log_exceptions
 from dvc.schema import COMPILED_LOCK_FILE_STAGE_SCHEMA
 from dvc.utils import dict_sha256, relpath
 from dvc.utils.fs import makedirs
@@ -177,11 +178,19 @@ class StageCache:
 
     def push(self, remote):
         remote = self.repo.cloud.get_remote(remote)
-        return self._transfer(remote.upload, self.repo.cache.local, remote)
+        return self._transfer(
+            _log_exceptions(remote.tree.upload, "upload"),
+            self.repo.cache.local.tree,
+            remote.tree,
+        )
 
     def pull(self, remote):
         remote = self.repo.cloud.get_remote(remote)
-        return self._transfer(remote.download, remote, self.repo.cache.local)
+        return self._transfer(
+            _log_exceptions(remote.tree.download, "download"),
+            remote.tree,
+            self.repo.cache.local.tree,
+        )
 
     def get_used_cache(self, used_run_cache, *args, **kwargs):
         from dvc.cache import NamedCache

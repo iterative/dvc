@@ -73,7 +73,7 @@ class CmdDAG(CmdBase):
 
             return 0
         except DvcException:
-            msg = "failed to show"
+            msg = "failed to show "
             if self.args.target:
                 msg += f"a pipeline for '{target}'"
             else:

@@ -22,8 +22,27 @@ def test_open(tmp_dir, dvc):
     (tmp_dir / "foo").unlink()
 
     tree = DvcTree(dvc)
-    with tree.open("foo", "r") as fobj:
-        assert fobj.read() == "foo"
+    with dvc.state:
+        with tree.open("foo", "r") as fobj:
+            assert fobj.read() == "foo"
+
+
+def test_open_dirty_hash(tmp_dir, dvc):
+    tmp_dir.dvc_gen("file", "file")
+    (tmp_dir / "file").write_text("something")
+
+    tree = DvcTree(dvc)
+    with tree.open("file", "r") as fobj:
+        assert fobj.read() == "something"
+
+
+def test_open_dirty_no_hash(tmp_dir, dvc):
+    tmp_dir.gen("file", "file")
+    (tmp_dir / "file.dvc").write_text("outs:\n- path: file\n")
+
+    tree = DvcTree(dvc)
+    with tree.open("file", "r") as fobj:
+        assert fobj.read() == "file"
 
 
 def test_open_in_history(tmp_dir, scm, dvc):

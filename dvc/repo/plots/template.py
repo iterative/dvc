@@ -12,6 +12,10 @@ class TemplateNotFoundError(DvcException):
         super().__init__(f"Template '{path}' not found.")
 
 
+class BadTemplateError(DvcException):
+    pass
+
+
 class NoFieldInDataError(DvcException):
     def __init__(self, field_name):
         super().__init__(
@@ -38,6 +42,12 @@ class Template:
 
     def render(self, data, props=None):
         props = props or {}
+
+        if self.METRIC_DATA_ANCHOR not in self.content:
+            raise BadTemplateError(
+                f"Template '{self.filename}' is not using "
+                f"'{self.METRIC_DATA_ANCHOR}' anchor"
+            )
 
         if props.get("x"):
             Template._check_field_exists(data, props.get("x"))
@@ -158,12 +168,46 @@ class DefaultScatterTemplate(Template):
     }
 
 
+class SmoothLinearTemplate(Template):
+    DEFAULT_NAME = "smooth"
+
+    DEFAULT_CONTENT = {
+        "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
+        "data": {"values": Template.METRIC_DATA_ANCHOR},
+        "title": Template.TITLE_ANCHOR,
+        "mark": {"type": "line"},
+        "encoding": {
+            "x": {
+                "field": Template.X_ANCHOR,
+                "type": "quantitative",
+                "title": Template.X_LABEL_ANCHOR,
+            },
+            "y": {
+                "field": Template.Y_ANCHOR,
+                "type": "quantitative",
+                "title": Template.Y_LABEL_ANCHOR,
+                "scale": {"zero": False},
+            },
+            "color": {"field": "rev", "type": "nominal"},
+        },
+        "transform": [
+            {
+                "loess": Template.Y_ANCHOR,
+                "on": Template.X_ANCHOR,
+                "groupby": ["rev"],
+                "bandwidth": 0.3,
+            }
+        ],
+    }
+
+
 class PlotTemplates:
     TEMPLATES_DIR = "plots"
     TEMPLATES = [
         DefaultLinearTemplate,
         DefaultConfusionTemplate,
         DefaultScatterTemplate,
+        SmoothLinearTemplate,
     ]
 
     @cached_property

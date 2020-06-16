@@ -126,8 +126,9 @@ class BaseExternalRepo:
                 raise PathMissingError(path, self.url)
             save_info = self.local_cache.save(
                 path,
+                self.repo_tree,
                 None,
-                tree=self.repo_tree,
+                save_link=False,
                 download_callback=download_update,
             )
             save_infos.append(save_info)
