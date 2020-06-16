@@ -449,7 +449,7 @@ def test_repro_when_new_outs_added_does_not_exist(tmp_dir, dvc):
         {
             "stages": {
                 "run-copy": {
-                    "cmd": "python copy {} {}".format("foo", "foobar"),
+                    "cmd": "python copy.py {} {}".format("foo", "foobar"),
                     "deps": ["foo"],
                     "outs": ["foobar", "bar"],
                 }

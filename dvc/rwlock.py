@@ -51,9 +51,6 @@ def _edit_rwlock(lock_dir):
     yield lock
     with open(path, "w+") as fobj:
         json.dump(lock, fobj)
-        # NOTE: flush and fsync to ensure that rwlock contents are saved
-        fobj.flush()
-        os.fsync(fobj.fileno())
 
 
 def _infos_to_str(infos):
