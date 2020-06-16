@@ -64,8 +64,8 @@ class RepoDependency(LocalDependency):
 
                 # We are polluting our repo cache with some dir listing here
                 if tree.isdir(path):
-                    return self.repo.cache.local.get_checksum(path, tree)
-                return tree.get_file_checksum(path)
+                    return self.repo.cache.local.get_hash(path, tree)
+                return tree.get_file_hash(path)
 
     def status(self):
         current_checksum = self._get_checksum(locked=True)

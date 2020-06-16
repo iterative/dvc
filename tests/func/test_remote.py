@@ -145,7 +145,7 @@ class TestRemoteShouldHandleUppercaseRemoteName(TestDvc):
         self.assertEqual(ret, 0)
 
 
-def test_dir_checksum_should_be_key_order_agnostic(tmp_dir, dvc):
+def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
     tmp_dir.gen({"data": {"1": "1 content", "2": "2 content"}})
 
     path_info = PathInfo("data")
@@ -158,7 +158,7 @@ def test_dir_checksum_should_be_key_order_agnostic(tmp_dir, dvc):
                 {"relpath": "2", "md5": "2"},
             ],
         ):
-            checksum1 = dvc.cache.local.get_checksum(path_info)
+            hash1 = dvc.cache.local.get_hash(path_info)
 
         with patch.object(
             BaseRemoteTree,
@@ -168,9 +168,9 @@ def test_dir_checksum_should_be_key_order_agnostic(tmp_dir, dvc):
                 {"md5": "2", "relpath": "2"},
             ],
         ):
-            checksum2 = dvc.cache.local.get_checksum(path_info)
+            hash2 = dvc.cache.local.get_hash(path_info)
 
-    assert checksum1 == checksum2
+    assert hash1 == hash2
 
 
 def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, setup_remote):

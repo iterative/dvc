@@ -255,12 +255,12 @@ class BaseRemoteTree:
         pass
 
     @classmethod
-    def is_dir_checksum(cls, checksum):
+    def is_dir_hash(cls, checksum):
         if not checksum:
             return False
         return checksum.endswith(cls.CHECKSUM_DIR_SUFFIX)
 
-    def get_checksum(self, path_info, tree=None, **kwargs):
+    def get_hash(self, path_info, tree=None, **kwargs):
         assert isinstance(path_info, str) or path_info.scheme == self.scheme
 
         if not tree:
@@ -279,7 +279,7 @@ class BaseRemoteTree:
         # see https://github.com/iterative/dvc/issues/2219 for context
         if (
             checksum
-            and self.is_dir_checksum(checksum)
+            and self.is_dir_hash(checksum)
             and not tree.exists(self.cache.checksum_to_path_info(checksum))
         ):
             checksum = None
@@ -320,9 +320,7 @@ class BaseRemoteTree:
 
     def save_info(self, path_info, tree=None, **kwargs):
         return {
-            self.PARAM_CHECKSUM: self.get_checksum(
-                path_info, tree=tree, **kwargs
-            )
+            self.PARAM_CHECKSUM: self.get_hash(path_info, tree=tree, **kwargs)
         }
 
     def _calculate_checksums(self, file_infos, tree):
@@ -747,11 +745,11 @@ class Remote:
     def scheme(self):
         return self.tree.scheme
 
-    def is_dir_checksum(self, checksum):
-        return self.tree.is_dir_checksum(checksum)
+    def is_dir_hash(self, checksum):
+        return self.tree.is_dir_hash(checksum)
 
-    def get_checksum(self, path_info, **kwargs):
-        return self.tree.get_checksum(path_info, **kwargs)
+    def get_hash(self, path_info, **kwargs):
+        return self.tree.get_hash(path_info, **kwargs)
 
     def checksum_to_path_info(self, checksum):
         return self.tree.checksum_to_path_info(checksum)
@@ -873,13 +871,13 @@ class Remote:
         # checksums must be sorted to ensure we always remove .dir files first
         for checksum in sorted(
             tree.all(jobs, str(tree.path_info)),
-            key=tree.is_dir_checksum,
+            key=tree.is_dir_hash,
             reverse=True,
         ):
             if checksum in used:
                 continue
             path_info = tree.checksum_to_path_info(checksum)
-            if tree.is_dir_checksum(checksum):
+            if tree.is_dir_hash(checksum):
                 # backward compatibility
                 tree._remove_unpacked_dir(checksum)
             tree.remove(path_info)
@@ -925,11 +923,11 @@ class CloudCache:
     def open(self, *args, **kwargs):
         return self.tree.open(*args, **kwargs)
 
-    def is_dir_checksum(self, checksum):
-        return self.tree.is_dir_checksum(checksum)
+    def is_dir_hash(self, checksum):
+        return self.tree.is_dir_hash(checksum)
 
-    def get_checksum(self, path_info, **kwargs):
-        return self.tree.get_checksum(path_info, **kwargs)
+    def get_hash(self, path_info, **kwargs):
+        return self.tree.get_hash(path_info, **kwargs)
 
     # Override to return path as a string instead of PathInfo for clouds
     # which support string paths (see local)
@@ -1017,7 +1015,7 @@ class CloudCache:
             )
             return True
 
-        actual = self.get_checksum(path_info)
+        actual = self.get_hash(path_info)
         if checksum != actual:
             logger.debug(
                 "hash value '%s' for '%s' has changed (actual '%s').",
@@ -1200,7 +1198,7 @@ class CloudCache:
             )
             return False
 
-        actual = self.get_checksum(cache_info)
+        actual = self.get_hash(cache_info)
 
         logger.debug(
             "cache '%s' expected '%s' actual '%s'",
@@ -1242,14 +1240,14 @@ class CloudCache:
         return False
 
     def changed_cache(self, checksum, path_info=None, filter_info=None):
-        if self.is_dir_checksum(checksum):
+        if self.is_dir_hash(checksum):
             return self._changed_dir_cache(
                 checksum, path_info=path_info, filter_info=filter_info
             )
         return self.changed_cache_file(checksum)
 
     def already_cached(self, path_info):
-        current = self.get_checksum(path_info)
+        current = self.get_hash(path_info)
 
         if not current:
             return False
@@ -1416,7 +1414,7 @@ class CloudCache:
         relink=False,
         filter_info=None,
     ):
-        if not self.is_dir_checksum(checksum):
+        if not self.is_dir_hash(checksum):
             return self._checkout_file(
                 path_info, checksum, force, progress_callback, relink
             )
@@ -1431,7 +1429,7 @@ class CloudCache:
         if not checksum:
             return 0
 
-        if not self.is_dir_checksum(checksum):
+        if not self.is_dir_hash(checksum):
             return 1
 
         if not filter_info:

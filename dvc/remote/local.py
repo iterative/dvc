@@ -390,7 +390,7 @@ class LocalCache(CloudCache):
     def already_cached(self, path_info):
         assert path_info.scheme in ["", "local"]
 
-        current_md5 = self.get_checksum(path_info)
+        current_md5 = self.get_hash(path_info)
 
         if not current_md5:
             return False

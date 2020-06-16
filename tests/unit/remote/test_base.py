@@ -146,5 +146,5 @@ def test_list_checksums(dvc):
     "checksum, result",
     [(None, False), ("", False), ("3456.dir", True), ("3456", False)],
 )
-def test_is_dir_checksum(checksum, result):
-    assert BaseRemoteTree.is_dir_checksum(checksum) == result
+def test_is_dir_hash(checksum, result):
+    assert BaseRemoteTree.is_dir_hash(checksum) == result

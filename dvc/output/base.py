@@ -178,11 +178,11 @@ class BaseOutput:
         self.info[self.remote.tree.PARAM_CHECKSUM] = checksum
 
     def get_checksum(self):
-        return self.remote.get_checksum(self.path_info)
+        return self.remote.get_hash(self.path_info)
 
     @property
     def is_dir_checksum(self):
-        return self.remote.is_dir_checksum(self.checksum)
+        return self.remote.is_dir_hash(self.checksum)
 
     @property
     def exists(self):
