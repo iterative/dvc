@@ -43,7 +43,7 @@ class DvcTree(BaseTree):
 
         return outs
 
-    def _get_granular_checksum(self, path, out, remote=None):
+    def _get_granular_hash(self, path, out, remote=None):
         if not self.fetch and not self.stream:
             raise FileNotFoundError
         dir_cache = out.get_dir_cache(remote=remote)
@@ -78,7 +78,7 @@ class DvcTree(BaseTree):
             remote_obj = self.repo.cloud.get_remote(remote)
             if self.stream:
                 if out.is_dir_checksum:
-                    checksum = self._get_granular_checksum(path, out)
+                    checksum = self._get_granular_hash(path, out)
                 else:
                     checksum = out.checksum
                 try:
@@ -212,7 +212,7 @@ class DvcTree(BaseTree):
     def isexec(self, path):
         return False
 
-    def get_file_checksum(self, path_info):
+    def get_file_hash(self, path_info):
         outs = self._find_outs(path_info, strict=False)
         if len(outs) != 1:
             raise OutputNotFoundError
@@ -373,7 +373,7 @@ class RepoTree(BaseTree):
             for fname in files:
                 yield PathInfo(root) / fname
 
-    def get_file_checksum(self, path_info):
+    def get_file_hash(self, path_info):
         """Return file checksum for specified path.
 
         If path_info is a DVC out, the pre-computed checksum for the file
@@ -384,7 +384,7 @@ class RepoTree(BaseTree):
             raise FileNotFoundError
         if self.dvctree and self.dvctree.exists(path_info):
             try:
-                return self.dvctree.get_file_checksum(path_info)
+                return self.dvctree.get_file_hash(path_info)
             except OutputNotFoundError:
                 pass
         return file_md5(path_info, self)[0]

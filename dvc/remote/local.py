@@ -268,7 +268,7 @@ class LocalRemoteTree(BaseRemoteTree):
 
         return stat.S_IMODE(mode) == self.CACHE_MODE
 
-    def get_file_checksum(self, path_info):
+    def get_file_hash(self, path_info):
         return file_md5(path_info)[0]
 
     @staticmethod

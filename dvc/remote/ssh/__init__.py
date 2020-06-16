@@ -237,7 +237,7 @@ class SSHRemoteTree(BaseRemoteTree):
         with self.ssh(from_info) as ssh:
             ssh.reflink(from_info.path, to_info.path)
 
-    def get_file_checksum(self, path_info):
+    def get_file_hash(self, path_info):
         if path_info.scheme != self.scheme:
             raise NotImplementedError
 

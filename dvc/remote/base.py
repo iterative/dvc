@@ -290,14 +290,14 @@ class BaseRemoteTree:
         if tree.isdir(path_info):
             checksum = self.get_dir_checksum(path_info, tree, **kwargs)
         else:
-            checksum = tree.get_file_checksum(path_info)
+            checksum = tree.get_file_hash(path_info)
 
         if checksum and self.exists(path_info):
             self.state.save(path_info, checksum)
 
         return checksum
 
-    def get_file_checksum(self, path_info):
+    def get_file_hash(self, path_info):
         raise NotImplementedError
 
     def get_dir_checksum(self, path_info, tree, **kwargs):
@@ -330,7 +330,7 @@ class BaseRemoteTree:
             unit="md5",
             desc="Computing file/dir hashes (only done once)",
         ) as pbar:
-            worker = pbar.wrap_fn(tree.get_file_checksum)
+            worker = pbar.wrap_fn(tree.get_file_hash)
             with ThreadPoolExecutor(
                 max_workers=self.checksum_jobs
             ) as executor:
@@ -399,7 +399,7 @@ class BaseRemoteTree:
         to_info = tree.path_info / tmp_fname("")
         tree.upload(from_info, to_info, no_progress_bar=True)
 
-        checksum = tree.get_file_checksum(to_info) + self.CHECKSUM_DIR_SUFFIX
+        checksum = tree.get_file_hash(to_info) + self.CHECKSUM_DIR_SUFFIX
         return checksum, to_info
 
     def upload(self, from_info, to_info, name=None, no_progress_bar=False):
