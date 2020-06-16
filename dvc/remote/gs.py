@@ -160,7 +160,7 @@ class GSRemoteTree(BaseRemoteTree):
         to_bucket = self.gs.bucket(to_info.bucket)
         from_bucket.copy_blob(blob, to_bucket, new_name=to_info.path)
 
-    def get_file_checksum(self, path_info):
+    def get_file_hash(self, path_info):
         import base64
         import codecs
 

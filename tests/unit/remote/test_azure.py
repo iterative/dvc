@@ -32,7 +32,7 @@ def test_init(dvc):
     assert tree.connection_string == connection_string
 
 
-def test_get_file_checksum(tmp_dir):
+def test_get_file_hash(tmp_dir):
     if not Azure.should_test():
         pytest.skip("no azurite running")
 
@@ -42,7 +42,7 @@ def test_get_file_checksum(tmp_dir):
     to_info = tree.PATH_CLS(Azure.get_url())
     tree.upload(PathInfo("foo"), to_info)
     assert tree.exists(to_info)
-    checksum = tree.get_file_checksum(to_info)
-    assert checksum
-    assert isinstance(checksum, str)
-    assert checksum.strip("'").strip('"') == checksum
+    hash_ = tree.get_file_hash(to_info)
+    assert hash_
+    assert isinstance(hash_, str)
+    assert hash_.strip("'").strip('"') == hash_

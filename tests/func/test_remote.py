@@ -145,7 +145,7 @@ class TestRemoteShouldHandleUppercaseRemoteName(TestDvc):
         self.assertEqual(ret, 0)
 
 
-def test_dir_checksum_should_be_key_order_agnostic(tmp_dir, dvc):
+def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
     tmp_dir.gen({"data": {"1": "1 content", "2": "2 content"}})
 
     path_info = PathInfo("data")
@@ -158,7 +158,7 @@ def test_dir_checksum_should_be_key_order_agnostic(tmp_dir, dvc):
                 {"relpath": "2", "md5": "2"},
             ],
         ):
-            checksum1 = dvc.cache.local.get_checksum(path_info)
+            hash1 = dvc.cache.local.get_hash(path_info)
 
         with patch.object(
             BaseRemoteTree,
@@ -168,9 +168,9 @@ def test_dir_checksum_should_be_key_order_agnostic(tmp_dir, dvc):
                 {"md5": "2", "relpath": "2"},
             ],
         ):
-            checksum2 = dvc.cache.local.get_checksum(path_info)
+            hash2 = dvc.cache.local.get_hash(path_info)
 
-    assert checksum1 == checksum2
+    assert hash1 == hash2
 
 
 def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, setup_remote):
@@ -194,13 +194,9 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, setup_remote):
         assert upload_error_info.value.amount == 3
 
         remote = dvc.cloud.get_remote("upstream")
-        assert not remote.tree.exists(
-            remote.checksum_to_path_info(foo.checksum)
-        )
-        assert remote.tree.exists(remote.checksum_to_path_info(bar.checksum))
-        assert not remote.tree.exists(
-            remote.checksum_to_path_info(baz.checksum)
-        )
+        assert not remote.tree.exists(remote.hash_to_path_info(foo.checksum))
+        assert remote.tree.exists(remote.hash_to_path_info(bar.checksum))
+        assert not remote.tree.exists(remote.hash_to_path_info(baz.checksum))
 
     # Push everything and delete local cache
     dvc.push()
@@ -397,7 +393,7 @@ def test_protect_local_remote(tmp_dir, dvc, setup_remote):
 
     dvc.push()
     remote = dvc.cloud.get_remote("upstream")
-    remote_cache_file = remote.checksum_to_path_info(stage.outs[0].checksum)
+    remote_cache_file = remote.hash_to_path_info(stage.outs[0].checksum)
 
     assert os.path.exists(remote_cache_file)
     assert stat.S_IMODE(os.stat(remote_cache_file).st_mode) == 0o444

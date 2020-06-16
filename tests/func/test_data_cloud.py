@@ -581,10 +581,8 @@ class TestRecursiveSyncOperations(Local, TestDataCloudBase):
         self._clear_local_cache()
 
         local_cache = self.dvc.cache.local
-        local_cache_data_path = local_cache.checksum_to_path_info(data_md5)
-        local_cache_data_sub_path = local_cache.checksum_to_path_info(
-            data_sub_md5
-        )
+        local_cache_data_path = local_cache.hash_to_path_info(data_md5)
+        local_cache_data_sub_path = local_cache.hash_to_path_info(data_sub_md5)
 
         self.assertFalse(os.path.exists(local_cache_data_path))
         self.assertFalse(os.path.exists(local_cache_data_sub_path))
@@ -596,8 +594,8 @@ class TestRecursiveSyncOperations(Local, TestDataCloudBase):
 
     def _test_recursive_push(self, data_md5, data_sub_md5):
         remote = self.cloud.get_remote()
-        cloud_data_path = remote.checksum_to_path_info(data_md5)
-        cloud_data_sub_path = remote.checksum_to_path_info(data_sub_md5)
+        cloud_data_path = remote.hash_to_path_info(data_md5)
+        cloud_data_sub_path = remote.hash_to_path_info(data_sub_md5)
 
         self.assertFalse(os.path.exists(cloud_data_path))
         self.assertFalse(os.path.exists(cloud_data_sub_path))
@@ -621,9 +619,9 @@ class TestRecursiveSyncOperations(Local, TestDataCloudBase):
         self._test_recursive_pull()
 
 
-def test_checksum_recalculation(mocker, dvc, tmp_dir):
+def test_hash_recalculation(mocker, dvc, tmp_dir):
     tmp_dir.gen({"foo": "foo"})
-    test_get_file_checksum = mocker.spy(LocalRemoteTree, "get_file_checksum")
+    test_get_file_hash = mocker.spy(LocalRemoteTree, "get_file_hash")
     url = Local.get_url()
     ret = main(["remote", "add", "-d", TEST_REMOTE, url])
     assert ret == 0
@@ -635,7 +633,7 @@ def test_checksum_recalculation(mocker, dvc, tmp_dir):
     assert ret == 0
     ret = main(["run", "--single-stage", "-d", "foo", "echo foo"])
     assert ret == 0
-    assert test_get_file_checksum.mock.call_count == 1
+    assert test_get_file_hash.mock.call_count == 1
 
 
 class TestShouldWarnOnNoChecksumInLocalAndRemoteCache(TestDvc):
@@ -688,7 +686,7 @@ class TestShouldWarnOnNoChecksumInLocalAndRemoteCache(TestDvc):
         assert self.message_bar_part in self._caplog.text
 
 
-def test_verify_checksums(
+def test_verify_hashes(
     tmp_dir, scm, dvc, mocker, tmp_path_factory, setup_remote
 ):
 
@@ -702,10 +700,10 @@ def test_verify_checksums(
     remove("dir")
     remove(dvc.cache.local.cache_dir)
 
-    checksum_spy = mocker.spy(dvc.cache.local.tree, "get_file_checksum")
+    hash_spy = mocker.spy(dvc.cache.local.tree, "get_file_hash")
 
     dvc.pull()
-    assert checksum_spy.call_count == 0
+    assert hash_spy.call_count == 0
 
     # Removing cache will invalidate existing state entries
     remove(dvc.cache.local.cache_dir)
@@ -713,7 +711,7 @@ def test_verify_checksums(
     dvc.config["remote"]["upstream"]["verify"] = True
 
     dvc.pull()
-    assert checksum_spy.call_count == 3
+    assert hash_spy.call_count == 3
 
 
 @flaky(max_runs=3, min_passes=1)
