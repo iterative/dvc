@@ -581,10 +581,8 @@ class TestRecursiveSyncOperations(Local, TestDataCloudBase):
         self._clear_local_cache()
 
         local_cache = self.dvc.cache.local
-        local_cache_data_path = local_cache.checksum_to_path_info(data_md5)
-        local_cache_data_sub_path = local_cache.checksum_to_path_info(
-            data_sub_md5
-        )
+        local_cache_data_path = local_cache.hash_to_path_info(data_md5)
+        local_cache_data_sub_path = local_cache.hash_to_path_info(data_sub_md5)
 
         self.assertFalse(os.path.exists(local_cache_data_path))
         self.assertFalse(os.path.exists(local_cache_data_sub_path))
@@ -596,8 +594,8 @@ class TestRecursiveSyncOperations(Local, TestDataCloudBase):
 
     def _test_recursive_push(self, data_md5, data_sub_md5):
         remote = self.cloud.get_remote()
-        cloud_data_path = remote.checksum_to_path_info(data_md5)
-        cloud_data_sub_path = remote.checksum_to_path_info(data_sub_md5)
+        cloud_data_path = remote.hash_to_path_info(data_md5)
+        cloud_data_sub_path = remote.hash_to_path_info(data_sub_md5)
 
         self.assertFalse(os.path.exists(cloud_data_path))
         self.assertFalse(os.path.exists(cloud_data_sub_path))

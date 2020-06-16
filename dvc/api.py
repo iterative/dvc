@@ -30,7 +30,7 @@ def get_url(path, repo=None, rev=None, remote=None):
             raise UrlNotDvcRepoError(_repo.url)
         out = _repo.find_out_by_relpath(path)
         remote_obj = _repo.cloud.get_remote(remote)
-        return str(remote_obj.checksum_to_path_info(out.checksum))
+        return str(remote_obj.hash_to_path_info(out.checksum))
 
 
 def open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):

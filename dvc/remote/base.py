@@ -280,7 +280,7 @@ class BaseRemoteTree:
         if (
             checksum
             and self.is_dir_hash(checksum)
-            and not tree.exists(self.cache.checksum_to_path_info(checksum))
+            and not tree.exists(self.cache.hash_to_path_info(checksum))
         ):
             checksum = None
 
@@ -307,7 +307,7 @@ class BaseRemoteTree:
         dir_info = self._collect_dir(path_info, tree, **kwargs)
         return self._save_dir_info(dir_info, path_info)
 
-    def checksum_to_path_info(self, checksum):
+    def hash_to_path_info(self, checksum):
         return self.path_info / checksum[0:2] / checksum[2:]
 
     def path_to_checksum(self, path):
@@ -376,7 +376,7 @@ class BaseRemoteTree:
 
     def _save_dir_info(self, dir_info, path_info):
         checksum, tmp_info = self._get_dir_info_checksum(dir_info)
-        new_info = self.cache.checksum_to_path_info(checksum)
+        new_info = self.cache.hash_to_path_info(checksum)
         if self.cache.changed_cache_file(checksum):
             self.cache.tree.makedirs(new_info.parent)
             self.cache.tree.move(
@@ -695,7 +695,7 @@ class BaseRemoteTree:
                 return ret
 
             with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
-                path_infos = map(self.checksum_to_path_info, checksums)
+                path_infos = map(self.hash_to_path_info, checksums)
                 in_remote = executor.map(exists_with_progress, path_infos)
                 ret = list(itertools.compress(checksums, in_remote))
                 return ret
@@ -751,8 +751,8 @@ class Remote:
     def get_hash(self, path_info, **kwargs):
         return self.tree.get_hash(path_info, **kwargs)
 
-    def checksum_to_path_info(self, checksum):
-        return self.tree.checksum_to_path_info(checksum)
+    def hash_to_path_info(self, checksum):
+        return self.tree.hash_to_path_info(checksum)
 
     def path_to_checksum(self, path):
         return self.tree.path_to_checksum(path)
@@ -876,7 +876,7 @@ class Remote:
         ):
             if checksum in used:
                 continue
-            path_info = tree.checksum_to_path_info(checksum)
+            path_info = tree.hash_to_path_info(checksum)
             if tree.is_dir_hash(checksum):
                 # backward compatibility
                 tree._remove_unpacked_dir(checksum)
@@ -931,11 +931,11 @@ class CloudCache:
 
     # Override to return path as a string instead of PathInfo for clouds
     # which support string paths (see local)
-    def checksum_to_path(self, checksum):
-        return self.checksum_to_path_info(checksum)
+    def hash_to_path(self, checksum):
+        return self.hash_to_path_info(checksum)
 
-    def checksum_to_path_info(self, checksum):
-        return self.tree.checksum_to_path_info(checksum)
+    def hash_to_path_info(self, checksum):
+        return self.tree.hash_to_path_info(checksum)
 
     def get_dir_cache(self, checksum):
         assert checksum
@@ -953,7 +953,7 @@ class CloudCache:
         return dir_info
 
     def load_dir_cache(self, checksum):
-        path_info = self.checksum_to_path_info(checksum)
+        path_info = self.hash_to_path_info(checksum)
 
         try:
             with self.cache.open(path_info, "r") as fobj:
@@ -1079,7 +1079,7 @@ class CloudCache:
     def _save_file(self, path_info, tree, checksum, save_link=True, **kwargs):
         assert checksum
 
-        cache_info = self.checksum_to_path_info(checksum)
+        cache_info = self.hash_to_path_info(checksum)
         if tree == self.tree:
             if self.changed_cache(checksum):
                 self.tree.move(path_info, cache_info, mode=self.CACHE_MODE)
@@ -1153,7 +1153,7 @@ class CloudCache:
         if self.tree.exists(path_info):
             self.state.save(path_info, checksum)
 
-        cache_info = self.checksum_to_path_info(checksum)
+        cache_info = self.hash_to_path_info(checksum)
         self.state.save(cache_info, checksum)
         return {self.tree.PARAM_CHECKSUM: checksum}
 
@@ -1169,7 +1169,7 @@ class CloudCache:
         return self._save(path_info, tree, checksum, save_link, **kwargs)
 
     def _save(self, path_info, tree, checksum, save_link=True, **kwargs):
-        to_info = self.checksum_to_path_info(checksum)
+        to_info = self.hash_to_path_info(checksum)
         logger.debug("Saving '%s' to '%s'.", path_info, to_info)
 
         if tree.isdir(path_info):
@@ -1191,7 +1191,7 @@ class CloudCache:
         - Remove the file from cache if it doesn't match the actual checksum
         """
         # Prefer string path over PathInfo when possible due to performance
-        cache_info = self.checksum_to_path(checksum)
+        cache_info = self.hash_to_path(checksum)
         if self.tree.is_protected(cache_info):
             logger.debug(
                 "Assuming '%s' is unchanged since it is read-only", cache_info
@@ -1274,7 +1274,7 @@ class CloudCache:
     ):
         """The file is changed we need to checkout a new copy"""
         added, modified = True, False
-        cache_info = self.checksum_to_path_info(checksum)
+        cache_info = self.hash_to_path_info(checksum)
         if self.tree.exists(path_info):
             logger.debug("data '%s' will be replaced.", path_info)
             self.safe_remove(path_info, force=force)
@@ -1311,7 +1311,7 @@ class CloudCache:
         for entry in dir_info:
             relative_path = entry[self.tree.PARAM_RELPATH]
             entry_checksum = entry[self.tree.PARAM_CHECKSUM]
-            entry_cache_info = self.checksum_to_path_info(entry_checksum)
+            entry_cache_info = self.hash_to_path_info(entry_checksum)
             entry_info = path_info / relative_path
 
             if filter_info and not entry_info.isin_or_eq(filter_info):

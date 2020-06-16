@@ -339,7 +339,7 @@ class SSHRemote(Remote):
             with ThreadPoolExecutor(
                 max_workers=jobs or self.tree.JOBS
             ) as executor:
-                path_infos = [self.checksum_to_path_info(x) for x in checksums]
+                path_infos = [self.hash_to_path_info(x) for x in checksums]
                 chunks = to_chunks(path_infos, num_chunks=self.tree.JOBS)
                 results = executor.map(exists_with_progress, chunks)
                 in_remote = itertools.chain.from_iterable(results)

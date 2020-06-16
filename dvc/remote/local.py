@@ -314,7 +314,7 @@ class LocalRemoteTree(BaseRemoteTree):
             yield from walk_files(path_info)
 
     def _remove_unpacked_dir(self, checksum):
-        info = self.checksum_to_path_info(checksum)
+        info = self.hash_to_path_info(checksum)
         path_info = info.with_name(info.name + self.UNPACKED_DIR_SUFFIX)
         self.remove(path_info)
 
@@ -367,7 +367,7 @@ class LocalCache(CloudCache):
     def cache_path(self):
         return os.path.abspath(self.cache_dir)
 
-    def checksum_to_path(self, checksum):
+    def hash_to_path(self, checksum):
         # NOTE: `self.cache_path` is already normalized so we can simply use
         # `os.sep` instead of `os.path.join`. This results in this helper
         # being ~5.5 times faster.
@@ -556,8 +556,8 @@ class LocalCache(CloudCache):
             status_info.items(), desc="Analysing status", unit="file"
         ):
             if info["status"] == status:
-                cache.append(self.checksum_to_path_info(md5))
-                path_infos.append(remote.checksum_to_path_info(md5))
+                cache.append(self.hash_to_path_info(md5))
+                path_infos.append(remote.hash_to_path_info(md5))
                 names.append(info["name"])
                 checksums.append(md5)
 

@@ -194,13 +194,9 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, setup_remote):
         assert upload_error_info.value.amount == 3
 
         remote = dvc.cloud.get_remote("upstream")
-        assert not remote.tree.exists(
-            remote.checksum_to_path_info(foo.checksum)
-        )
-        assert remote.tree.exists(remote.checksum_to_path_info(bar.checksum))
-        assert not remote.tree.exists(
-            remote.checksum_to_path_info(baz.checksum)
-        )
+        assert not remote.tree.exists(remote.hash_to_path_info(foo.checksum))
+        assert remote.tree.exists(remote.hash_to_path_info(bar.checksum))
+        assert not remote.tree.exists(remote.hash_to_path_info(baz.checksum))
 
     # Push everything and delete local cache
     dvc.push()
@@ -397,7 +393,7 @@ def test_protect_local_remote(tmp_dir, dvc, setup_remote):
 
     dvc.push()
     remote = dvc.cloud.get_remote("upstream")
-    remote_cache_file = remote.checksum_to_path_info(stage.outs[0].checksum)
+    remote_cache_file = remote.hash_to_path_info(stage.outs[0].checksum)
 
     assert os.path.exists(remote_cache_file)
     assert stat.S_IMODE(os.stat(remote_cache_file).st_mode) == 0o444
