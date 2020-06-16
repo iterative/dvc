@@ -499,7 +499,7 @@ class LocalCache(CloudCache):
     def _indexed_dir_hashes(self, named_cache, remote, dir_md5s):
         # Validate our index by verifying all indexed .dir hashes
         # still exist on the remote
-        indexed_dirs = set(remote.index.dir_checksums())
+        indexed_dirs = set(remote.index.dir_hashes())
         indexed_dir_exists = set()
         if indexed_dirs:
             indexed_dir_exists.update(

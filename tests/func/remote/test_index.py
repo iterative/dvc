@@ -15,12 +15,12 @@ def remote(tmp_dir, dvc, tmp_path_factory, mocker):
     dvc.config["remote"]["upstream"] = {"url": url}
     dvc.config["core"]["remote"] = "upstream"
 
-    # patch checksums_exist since the LocalRemote normally overrides
-    # BaseRemoteTree.checksums_exist.
-    def checksums_exist(self, *args, **kwargs):
-        return Remote.checksums_exist(self, *args, **kwargs)
+    # patch hashes_exist since the LocalRemote normally overrides
+    # BaseRemoteTree.hashes_exist.
+    def hashes_exist(self, *args, **kwargs):
+        return Remote.hashes_exist(self, *args, **kwargs)
 
-    mocker.patch.object(LocalRemote, "checksums_exist", checksums_exist)
+    mocker.patch.object(LocalRemote, "hashes_exist", hashes_exist)
 
     # patch index class since LocalRemote normally overrides index class
     mocker.patch.object(LocalRemote, "INDEX_CLS", RemoteIndex)
@@ -38,9 +38,9 @@ def test_indexed_on_status(tmp_dir, dvc, tmp_path_factory, remote):
 
     dvc.status(cloud=True)
     with remote.index:
-        assert {bar.checksum, baz["md5"]} == set(remote.index.checksums())
-        assert [bar.checksum] == list(remote.index.dir_checksums())
-        assert foo.checksum not in remote.index.checksums()
+        assert {bar.checksum, baz["md5"]} == set(remote.index.hashes())
+        assert [bar.checksum] == list(remote.index.dir_hashes())
+        assert foo.checksum not in remote.index.hashes()
 
 
 def test_indexed_on_push(tmp_dir, dvc, tmp_path_factory, remote):
@@ -50,9 +50,9 @@ def test_indexed_on_push(tmp_dir, dvc, tmp_path_factory, remote):
 
     dvc.push()
     with remote.index:
-        assert {bar.checksum, baz["md5"]} == set(remote.index.checksums())
-        assert [bar.checksum] == list(remote.index.dir_checksums())
-        assert foo.checksum not in remote.index.checksums()
+        assert {bar.checksum, baz["md5"]} == set(remote.index.hashes())
+        assert [bar.checksum] == list(remote.index.dir_hashes())
+        assert foo.checksum not in remote.index.hashes()
 
 
 def test_indexed_dir_missing(tmp_dir, dvc, tmp_path_factory, remote):
@@ -61,7 +61,7 @@ def test_indexed_dir_missing(tmp_dir, dvc, tmp_path_factory, remote):
         remote.index.update([bar.checksum], [])
     dvc.status(cloud=True)
     with remote.index:
-        assert not list(remote.index.checksums())
+        assert not list(remote.index.hashes())
 
 
 def test_clear_on_gc(tmp_dir, dvc, tmp_path_factory, remote, mocker):
@@ -101,4 +101,4 @@ def test_partial_upload(tmp_dir, dvc, tmp_path_factory, remote, mocker):
     with pytest.raises(UploadError):
         dvc.push()
     with remote.index:
-        assert not list(remote.index.checksums())
+        assert not list(remote.index.hashes())

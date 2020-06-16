@@ -25,15 +25,15 @@ class RemoteIndexNoop:
     def __iter__(self):
         return iter([])
 
-    def __contains__(self, checksum):
+    def __contains__(self, hash_):
         return False
 
     @staticmethod
-    def checksums():
+    def hashes():
         return []
 
     @staticmethod
-    def dir_checksums():
+    def dir_hashes():
         return []
 
     def load(self):
@@ -54,13 +54,13 @@ class RemoteIndexNoop:
 
 
 class RemoteIndex:
-    """Class for indexing remote checksums in a sqlite3 database.
+    """Class for indexing remote hashes in a sqlite3 database.
 
     Args:
         repo: repo for this remote index.
         name: name for this index. Index db will be loaded from and saved to
             ``.dvc/tmp/index/{name}.idx``.
-        dir_suffix: suffix used for naming directory checksums
+        dir_suffix: suffix used for naming directory hashes
     """
 
     INDEX_SUFFIX = ".idx"
@@ -79,8 +79,8 @@ class RemoteIndex:
 
     def __iter__(self):
         cmd = f"SELECT checksum FROM {self.INDEX_TABLE}"
-        for (checksum,) in self._execute(cmd):
-            yield checksum
+        for (hash_,) in self._execute(cmd):
+            yield hash_
 
     def __enter__(self):
         self.lock.acquire()
@@ -90,25 +90,25 @@ class RemoteIndex:
         self.dump()
         self.lock.release()
 
-    def __contains__(self, checksum):
+    def __contains__(self, hash_):
         cmd = "SELECT checksum FROM {} WHERE checksum = (?)".format(
             self.INDEX_TABLE
         )
-        self._execute(cmd, (checksum,))
+        self._execute(cmd, (hash_,))
         return self.cursor.fetchone() is not None
 
-    def checksums(self):
-        """Iterate over checksums stored in the index."""
+    def hashes(self):
+        """Iterate over hashes stored in the index."""
         return iter(self)
 
-    def dir_checksums(self):
-        """Iterate over .dir checksums stored in the index."""
+    def dir_hashes(self):
+        """Iterate over .dir hashes stored in the index."""
         cmd = f"SELECT checksum FROM {self.INDEX_TABLE} WHERE dir = 1"
-        for (checksum,) in self._execute(cmd):
-            yield checksum
+        for (hash_,) in self._execute(cmd):
+            yield hash_
 
-    def is_dir_checksum(self, checksum):
-        return checksum.endswith(self.dir_suffix)
+    def is_dir_hash(self, hash_):
+        return hash_.endswith(self.dir_suffix)
 
     def _execute(self, cmd, parameters=()):
         return self.cursor.execute(cmd, parameters)
@@ -185,28 +185,24 @@ class RemoteIndex:
         cmd = f"DELETE FROM {self.INDEX_TABLE}"
         self._execute(cmd)
 
-    def update(self, dir_checksums, file_checksums):
-        """Update this index, adding the specified checksums.
+    def update(self, dir_hashes, file_hashes):
+        """Update this index, adding the specified hashes.
 
         Changes to the index will not committed until dump() is called.
         """
         cmd = "INSERT OR IGNORE INTO {} (checksum, dir) VALUES (?, ?)".format(
             self.INDEX_TABLE
         )
-        self._executemany(
-            cmd, ((checksum, True) for checksum in dir_checksums)
-        )
-        self._executemany(
-            cmd, ((checksum, False) for checksum in file_checksums)
-        )
+        self._executemany(cmd, ((hash_, True) for hash_ in dir_hashes))
+        self._executemany(cmd, ((hash_, False) for hash_ in file_hashes))
 
-    def intersection(self, checksums):
-        """Iterate over values from `checksums` which exist in the index."""
+    def intersection(self, hashes):
+        """Iterate over values from `hashes` which exist in the index."""
         # sqlite has a compile time limit of 999, see:
         # https://www.sqlite.org/c3ref/c_limit_attached.html#sqlitelimitvariablenumber
-        for chunk in lchunks(999, checksums):
+        for chunk in lchunks(999, hashes):
             cmd = "SELECT checksum FROM {} WHERE checksum IN ({})".format(
-                self.INDEX_TABLE, ",".join("?" for checksum in chunk)
+                self.INDEX_TABLE, ",".join("?" for hash_ in chunk)
             )
-            for (checksum,) in self._execute(cmd, chunk):
-                yield checksum
+            for (hash_,) in self._execute(cmd, chunk):
+                yield hash_
