@@ -56,7 +56,9 @@ class LocalRemoteTree(BaseRemoteTree):
 
     @property
     def state(self):
-        return self.repo.state
+        from dvc.state import StateNoop
+
+        return self.repo.state if self.repo else StateNoop()
 
     @cached_property
     def work_tree(self):
