@@ -179,8 +179,7 @@ class TestWalkInGit(AssertWalkEqualMixin, TestGit):
         )
 
 
-def test_repotree_walk_fetch(tmp_dir, dvc, scm, setup_remote):
-    setup_remote(dvc)
+def test_repotree_walk_fetch(tmp_dir, dvc, scm, local_remote):
     out = tmp_dir.dvc_gen({"dir": {"foo": "foo"}}, commit="init")[0].outs[0]
     dvc.push()
     remove(dvc.cache.local.cache_dir)
@@ -196,12 +195,12 @@ def test_repotree_walk_fetch(tmp_dir, dvc, scm, setup_remote):
         assert os.path.exists(dvc.cache.local.hash_to_path_info(hash_))
 
 
-def test_repotree_cache_save(tmp_dir, dvc, scm, erepo_dir, setup_remote):
+def test_repotree_cache_save(tmp_dir, dvc, scm, erepo_dir, local_cloud):
     with erepo_dir.chdir():
         erepo_dir.gen({"dir": {"subdir": {"foo": "foo"}, "bar": "bar"}})
         erepo_dir.dvc_add("dir/subdir", commit="subdir")
         erepo_dir.scm_add("dir", commit="dir")
-        setup_remote(erepo_dir.dvc)
+        erepo_dir.add_remote(config=local_cloud.config)
         erepo_dir.dvc.push()
 
     # test only cares that either fetch or stream are set so that DVC dirs are

@@ -1,497 +1,163 @@
-import copy
 import logging
 import os
 import shutil
-import uuid
-from unittest import SkipTest
 
 import pytest
 from flaky.flaky_decorator import flaky
 
 from dvc.cache import NamedCache
-from dvc.data_cloud import DataCloud
 from dvc.external_repo import clean_repos
 from dvc.main import main
-from dvc.remote.azure import AzureRemoteTree
 from dvc.remote.base import STATUS_DELETED, STATUS_NEW, STATUS_OK
-from dvc.remote.gdrive import GDriveRemoteTree
-from dvc.remote.gs import GSRemoteTree
-from dvc.remote.hdfs import HDFSRemoteTree
-from dvc.remote.http import HTTPRemoteTree
 from dvc.remote.local import LocalRemoteTree
-from dvc.remote.oss import OSSRemoteTree
-from dvc.remote.s3 import S3RemoteTree
-from dvc.remote.ssh import SSHRemoteTree
 from dvc.stage.exceptions import StageNotFound
 from dvc.utils import file_md5
 from dvc.utils.fs import remove
 from dvc.utils.yaml import dump_yaml, load_yaml
 from tests.basic_env import TestDvc
-from tests.remotes import (
-    GCP,
-    HDFS,
-    HTTP,
-    OSS,
-    S3,
-    TEST_CONFIG,
-    TEST_GCP_CREDS_FILE,
-    TEST_REMOTE,
-    Azure,
-    GDrive,
-    Local,
-    SSHMocked,
-)
+
+from .test_api import all_remotes
 
 
-class TestDataCloud(TestDvc):
-    def _test_cloud(self, config, cl):
-        self.dvc.config = config
-        cloud = DataCloud(self.dvc)
-        self.assertIsInstance(cloud.get_remote().tree, cl)
+@pytest.mark.parametrize("remote", all_remotes)
+def test_cloud(tmp_dir, dvc, remote):
+    (stage,) = tmp_dir.dvc_gen("foo", "foo")
+    out = stage.outs[0]
+    cache = out.cache_path
+    md5 = out.checksum
+    info = out.get_used_cache()
 
-    def test(self):
-        config = copy.deepcopy(TEST_CONFIG)
-
-        clist = [
-            ("s3://mybucket/", S3RemoteTree),
-            ("gs://mybucket/", GSRemoteTree),
-            ("ssh://user@localhost:/", SSHRemoteTree),
-            ("http://localhost:8000/", HTTPRemoteTree),
-            ("azure://ContainerName=mybucket;conn_string;", AzureRemoteTree),
-            ("oss://mybucket/", OSSRemoteTree),
-            (TestDvc.mkdtemp(), LocalRemoteTree),
-        ]
-
-        for scheme, cl in clist:
-            remote_url = scheme + str(uuid.uuid4())
-            config["remote"][TEST_REMOTE]["url"] = remote_url
-            self._test_cloud(config, cl)
-
-
-class TestDataCloudBase(TestDvc):
-    def _get_cloud_class(self):
-        return None
-
-    @staticmethod
-    def should_test():
-        return False
-
-    @staticmethod
-    def get_url():
-        return NotImplementedError
-
-    def _get_keyfile(self):
-        return None
-
-    def _ensure_should_run(self):
-        if not self.should_test():
-            raise SkipTest(f"Test {self.__class__.__name__} is disabled")
-
-    def _setup_cloud(self):
-        self._ensure_should_run()
-
-        repo = self.get_url()
-        keyfile = self._get_keyfile()
-
-        config = copy.deepcopy(TEST_CONFIG)
-        config["remote"][TEST_REMOTE] = {"url": repo, "keyfile": keyfile}
-        self.dvc.config = config
-        self.cloud = DataCloud(self.dvc)
-
-        self.assertIsInstance(
-            self.cloud.get_remote().tree, self._get_cloud_class()
-        )
-
-    def _test_cloud(self):
-        self._setup_cloud()
-
-        stages = self.dvc.add(self.FOO)
-        self.assertEqual(len(stages), 1)
-        stage = stages[0]
-        self.assertTrue(stage is not None)
-        out = stage.outs[0]
-        cache = out.cache_path
-        md5 = out.checksum
-        info = out.get_used_cache()
-
-        stages = self.dvc.add(self.DATA_DIR)
-        self.assertEqual(len(stages), 1)
-        stage_dir = stages[0]
-        self.assertTrue(stage_dir is not None)
-        out_dir = stage_dir.outs[0]
-        cache_dir = out_dir.cache_path
-        name_dir = str(out_dir)
-        md5_dir = out_dir.checksum
-        info_dir = NamedCache.make(out_dir.scheme, md5_dir, name_dir)
-
-        with self.cloud.repo.state:
-            # Check status
-            status = self.cloud.status(info, show_checksums=True)
-            expected = {md5: {"name": md5, "status": STATUS_NEW}}
-            self.assertEqual(status, expected)
-
-            status_dir = self.cloud.status(info_dir, show_checksums=True)
-            expected = {md5_dir: {"name": md5_dir, "status": STATUS_NEW}}
-            self.assertEqual(status_dir, expected)
-
-            # Push and check status
-            self.cloud.push(info)
-            self.assertTrue(os.path.exists(cache))
-            self.assertTrue(os.path.isfile(cache))
-
-            self.cloud.push(info_dir)
-            self.assertTrue(os.path.isfile(cache_dir))
-
-            status = self.cloud.status(info, show_checksums=True)
-            expected = {md5: {"name": md5, "status": STATUS_OK}}
-            self.assertEqual(status, expected)
-
-            status_dir = self.cloud.status(info_dir, show_checksums=True)
-            expected = {md5_dir: {"name": md5_dir, "status": STATUS_OK}}
-            self.assertEqual(status_dir, expected)
-
-            # Remove and check status
-            remove(self.dvc.cache.local.cache_dir)
-
-            status = self.cloud.status(info, show_checksums=True)
-            expected = {md5: {"name": md5, "status": STATUS_DELETED}}
-            self.assertEqual(status, expected)
-
-            status_dir = self.cloud.status(info_dir, show_checksums=True)
-            expected = {md5_dir: {"name": md5_dir, "status": STATUS_DELETED}}
-            self.assertEqual(status_dir, expected)
-
-            # Pull and check status
-            self.cloud.pull(info)
-            self.assertTrue(os.path.exists(cache))
-            self.assertTrue(os.path.isfile(cache))
-            with open(cache) as fd:
-                self.assertEqual(fd.read(), self.FOO_CONTENTS)
-
-            self.cloud.pull(info_dir)
-            self.assertTrue(os.path.isfile(cache_dir))
-
-            status = self.cloud.status(info, show_checksums=True)
-            expected = {md5: {"name": md5, "status": STATUS_OK}}
-            self.assertEqual(status, expected)
-
-            status_dir = self.cloud.status(info_dir, show_checksums=True)
-            expected = {md5_dir: {"name": md5_dir, "status": STATUS_OK}}
-            self.assertTrue(status_dir, expected)
-
-    def test(self):
-        self._ensure_should_run()
-        self._test_cloud()
-
-
-class TestS3Remote(S3, TestDataCloudBase):
-    def _get_cloud_class(self):
-        return S3RemoteTree
-
-
-class TestGDriveRemote(GDrive, TestDataCloudBase):
-    def _setup_cloud(self):
-        self._ensure_should_run()
-
-        url = self.get_url()
-        self.create_dir(self.dvc, url)
-
-        config = copy.deepcopy(TEST_CONFIG)
-        config["remote"][TEST_REMOTE] = {
-            "url": url,
-            "gdrive_service_account_email": "test",
-            "gdrive_service_account_p12_file_path": "test.p12",
-            "gdrive_use_service_account": True,
+    (stage_dir,) = tmp_dir.dvc_gen(
+        {
+            "data_dir": {
+                "data_sub_dir": {"data_sub": "data_sub"},
+                "data": "data",
+            }
         }
+    )
+    out_dir = stage_dir.outs[0]
+    cache_dir = out_dir.cache_path
+    name_dir = str(out_dir)
+    md5_dir = out_dir.checksum
+    info_dir = NamedCache.make(out_dir.scheme, md5_dir, name_dir)
 
-        self.dvc.config = config
-        self.cloud = DataCloud(self.dvc)
-        remote = self.cloud.get_remote()
-        self.assertIsInstance(remote.tree, self._get_cloud_class())
+    with dvc.state:
+        # Check status
+        status = dvc.cloud.status(info, show_checksums=True)
+        expected = {md5: {"name": md5, "status": STATUS_NEW}}
+        assert status == expected
 
-    def _get_cloud_class(self):
-        return GDriveRemoteTree
+        status_dir = dvc.cloud.status(info_dir, show_checksums=True)
+        expected = {md5_dir: {"name": md5_dir, "status": STATUS_NEW}}
+        assert status_dir == expected
 
+        # Push and check status
+        dvc.cloud.push(info)
+        assert os.path.exists(cache)
+        assert os.path.isfile(cache)
 
-class TestGSRemote(GCP, TestDataCloudBase):
-    def _setup_cloud(self):
-        self._ensure_should_run()
+        dvc.cloud.push(info_dir)
+        assert os.path.isfile(cache_dir)
 
-        repo = self.get_url()
+        status = dvc.cloud.status(info, show_checksums=True)
+        expected = {md5: {"name": md5, "status": STATUS_OK}}
+        assert status == expected
 
-        config = copy.deepcopy(TEST_CONFIG)
-        config["remote"][TEST_REMOTE] = {
-            "url": repo,
-            "credentialpath": TEST_GCP_CREDS_FILE,
-        }
-        self.dvc.config = config
-        self.cloud = DataCloud(self.dvc)
+        status_dir = dvc.cloud.status(info_dir, show_checksums=True)
+        expected = {md5_dir: {"name": md5_dir, "status": STATUS_OK}}
+        assert status_dir == expected
 
-        self.assertIsInstance(
-            self.cloud.get_remote().tree, self._get_cloud_class()
-        )
+        # Remove and check status
+        remove(dvc.cache.local.cache_dir)
 
-    def _get_cloud_class(self):
-        return GSRemoteTree
+        status = dvc.cloud.status(info, show_checksums=True)
+        expected = {md5: {"name": md5, "status": STATUS_DELETED}}
+        assert status == expected
 
+        status_dir = dvc.cloud.status(info_dir, show_checksums=True)
+        expected = {md5_dir: {"name": md5_dir, "status": STATUS_DELETED}}
+        assert status_dir == expected
 
-class TestAzureRemote(Azure, TestDataCloudBase):
-    def _get_cloud_class(self):
-        return AzureRemoteTree
-
-
-class TestOSSRemote(OSS, TestDataCloudBase):
-    def _get_cloud_class(self):
-        return OSSRemoteTree
-
-
-class TestLocalRemote(Local, TestDataCloudBase):
-    def _get_cloud_class(self):
-        return LocalRemoteTree
-
-
-@pytest.mark.usefixtures("ssh_server")
-class TestSSHRemoteMocked(SSHMocked, TestDataCloudBase):
-    @pytest.fixture(autouse=True)
-    def setup_method_fixture(self, request, ssh_server):
-        self.ssh_server = ssh_server
-        self.method_name = request.function.__name__
-
-    def _setup_cloud(self):
-        self._ensure_should_run()
-
-        repo = self.get_url()
-        keyfile = self._get_keyfile()
-
-        self._get_cloud_class().CAN_TRAVERSE = False
-        config = copy.deepcopy(TEST_CONFIG)
-        config["remote"][TEST_REMOTE] = {
-            "url": repo,
-            "keyfile": keyfile,
-        }
-        self.dvc.config = config
-        self.cloud = DataCloud(self.dvc)
-
-        self.assertIsInstance(
-            self.cloud.get_remote().tree, self._get_cloud_class()
-        )
-
-    def get_url(self):
-        user = self.ssh_server.test_creds["username"]
-        return super().get_url(user, self.ssh_server.port)
-
-    def _get_keyfile(self):
-        return self.ssh_server.test_creds["key_filename"]
-
-    def _get_cloud_class(self):
-        return SSHRemoteTree
-
-
-class TestHDFSRemote(HDFS, TestDataCloudBase):
-    def _get_cloud_class(self):
-        return HDFSRemoteTree
-
-
-@pytest.mark.usefixtures("http_server")
-class TestHTTPRemote(HTTP, TestDataCloudBase):
-    @pytest.fixture(autouse=True)
-    def setup_method_fixture(self, request, http_server):
-        self.http_server = http_server
-        self.method_name = request.function.__name__
-
-    def get_url(self):
-        return super().get_url(self.http_server.server_port)
-
-    def _get_cloud_class(self):
-        return HTTPRemoteTree
-
-
-class TestDataCloudCLIBase(TestDvc):
-    def main(self, args):
-        ret = main(args)
-        self.assertEqual(ret, 0)
-
-    @staticmethod
-    def should_test():
-        return False
-
-    @staticmethod
-    def get_url():
-        raise NotImplementedError
-
-    def _setup_cloud(self):
-        pass
-
-    def _test_cloud(self, remote=None):
-        self._setup_cloud()
-
-        args = ["-v", "-j", "2"]
-        if remote:
-            args += ["-r", remote]
-        else:
-            args += []
-
-        stages = self.dvc.add(self.FOO)
-        self.assertEqual(len(stages), 1)
-        stage = stages[0]
-        self.assertTrue(stage is not None)
-        cache = stage.outs[0].cache_path
-
-        stages = self.dvc.add(self.DATA_DIR)
-        self.assertEqual(len(stages), 1)
-        stage_dir = stages[0]
-        self.assertTrue(stage_dir is not None)
-        cache_dir = stage_dir.outs[0].cache_path
-
-        # FIXME check status output
-
-        self.main(["push"] + args)
-        self.assertTrue(os.path.exists(cache))
-        self.assertTrue(os.path.isfile(cache))
-        self.assertTrue(os.path.isfile(cache_dir))
-
-        remove(self.dvc.cache.local.cache_dir)
-
-        self.main(["fetch"] + args)
-        self.assertTrue(os.path.exists(cache))
-        self.assertTrue(os.path.isfile(cache))
-        self.assertTrue(os.path.isfile(cache_dir))
-
-        self.main(["pull"] + args)
-        self.assertTrue(os.path.exists(cache))
-        self.assertTrue(os.path.isfile(cache))
-        self.assertTrue(os.path.isfile(cache_dir))
-        self.assertTrue(os.path.isfile(self.FOO))
-        self.assertTrue(os.path.isdir(self.DATA_DIR))
-
+        # Pull and check status
+        dvc.cloud.pull(info)
+        assert os.path.exists(cache)
+        assert os.path.isfile(cache)
         with open(cache) as fd:
-            self.assertEqual(fd.read(), self.FOO_CONTENTS)
-        self.assertTrue(os.path.isfile(cache_dir))
+            assert fd.read() == "foo"
 
-        # NOTE: check if remote gc works correctly on directories
-        self.main(["gc", "-cw", "-f"] + args)
-        shutil.move(
-            self.dvc.cache.local.cache_dir,
-            self.dvc.cache.local.cache_dir + ".back",
-        )
+        dvc.cloud.pull(info_dir)
+        assert os.path.isfile(cache_dir)
 
-        self.main(["fetch"] + args)
+        status = dvc.cloud.status(info, show_checksums=True)
+        expected = {md5: {"name": md5, "status": STATUS_OK}}
+        assert status == expected
 
-        self.main(["pull", "-f"] + args)
-        self.assertTrue(os.path.exists(cache))
-        self.assertTrue(os.path.isfile(cache))
-        self.assertTrue(os.path.isfile(cache_dir))
-        self.assertTrue(os.path.isfile(self.FOO))
-        self.assertTrue(os.path.isdir(self.DATA_DIR))
-
-    def _test(self):
-        pass
-
-    def test(self):
-        if not self.should_test():
-            raise SkipTest(f"Test {self.__class__.__name__} is disabled")
-        self._test()
+        status_dir = dvc.cloud.status(info_dir, show_checksums=True)
+        expected = {md5_dir: {"name": md5_dir, "status": STATUS_OK}}
+        assert status_dir == expected
 
 
-class TestLocalRemoteCLI(Local, TestDataCloudCLIBase):
-    def _test(self):
-        url = self.get_url()
+@pytest.mark.parametrize("remote", all_remotes)
+def test_cloud_cli(tmp_dir, dvc, remote):
+    args = ["-v", "-j", "2"]
 
-        self.main(["remote", "add", TEST_REMOTE, url])
+    (stage,) = tmp_dir.dvc_gen("foo", "foo")
+    cache = stage.outs[0].cache_path
 
-        self._test_cloud(TEST_REMOTE)
+    (stage_dir,) = tmp_dir.dvc_gen(
+        {
+            "data_dir": {
+                "data_sub_dir": {"data_sub": "data_sub"},
+                "data": "data",
+            }
+        }
+    )
+    assert stage_dir is not None
+    cache_dir = stage_dir.outs[0].cache_path
 
+    # FIXME check status output
 
-class TestRemoteHDFSCLI(HDFS, TestDataCloudCLIBase):
-    def _test(self):
-        url = self.get_url()
+    assert main(["push"] + args) == 0
+    assert os.path.exists(cache)
+    assert os.path.isfile(cache)
+    assert os.path.isfile(cache_dir)
 
-        self.main(["remote", "add", TEST_REMOTE, url])
+    remove(dvc.cache.local.cache_dir)
 
-        self._test_cloud(TEST_REMOTE)
+    assert main(["fetch"] + args) == 0
+    assert os.path.exists(cache)
+    assert os.path.isfile(cache)
+    assert os.path.isfile(cache_dir)
 
+    assert main(["pull"] + args) == 0
+    assert os.path.exists(cache)
+    assert os.path.isfile(cache)
+    assert os.path.isfile(cache_dir)
+    assert os.path.isfile("foo")
+    assert os.path.isdir("data_dir")
 
-class TestS3RemoteCLI(S3, TestDataCloudCLIBase):
-    def _test(self):
-        url = self.get_url()
+    with open(cache) as fd:
+        assert fd.read() == "foo"
+    assert os.path.isfile(cache_dir)
 
-        self.main(["remote", "add", TEST_REMOTE, url])
+    # NOTE: http doesn't support gc yet
+    if remote.url.startswith("http"):
+        return
 
-        self._test_cloud(TEST_REMOTE)
+    # NOTE: check if remote gc works correctly on directories
+    assert main(["gc", "-cw", "-f"] + args) == 0
+    shutil.move(
+        dvc.cache.local.cache_dir, dvc.cache.local.cache_dir + ".back",
+    )
 
+    assert main(["fetch"] + args) == 0
 
-class TestGDriveRemoteCLI(GDrive, TestDataCloudCLIBase):
-    def _test(self):
-        url = self.get_url()
-
-        self.create_dir(self.dvc, url)
-
-        self.main(["remote", "add", TEST_REMOTE, url])
-        self.main(
-            [
-                "remote",
-                "modify",
-                TEST_REMOTE,
-                "gdrive_service_account_email",
-                "test",
-            ]
-        )
-        self.main(
-            [
-                "remote",
-                "modify",
-                TEST_REMOTE,
-                "gdrive_service_account_p12_file_path",
-                "test.p12",
-            ]
-        )
-        self.main(
-            [
-                "remote",
-                "modify",
-                TEST_REMOTE,
-                "gdrive_use_service_account",
-                "True",
-            ]
-        )
-
-        self._test_cloud(TEST_REMOTE)
-
-
-class TestGSRemoteCLI(GCP, TestDataCloudCLIBase):
-    def _test(self):
-        url = self.get_url()
-
-        self.main(["remote", "add", TEST_REMOTE, url])
-        self.main(
-            [
-                "remote",
-                "modify",
-                TEST_REMOTE,
-                "credentialpath",
-                TEST_GCP_CREDS_FILE,
-            ]
-        )
-
-        self._test_cloud(TEST_REMOTE)
-
-
-class TestAzureRemoteCLI(Azure, TestDataCloudCLIBase):
-    def _test(self):
-        url = self.get_url()
-
-        self.main(["remote", "add", TEST_REMOTE, url])
-
-        self._test_cloud(TEST_REMOTE)
-
-
-class TestOSSRemoteCLI(OSS, TestDataCloudCLIBase):
-    def _test(self):
-        url = self.get_url()
-
-        self.main(["remote", "add", TEST_REMOTE, url])
-
-        self._test_cloud(TEST_REMOTE)
+    assert main(["pull", "-f"] + args) == 0
+    assert os.path.exists(cache)
+    assert os.path.isfile(cache)
+    assert os.path.isfile(cache_dir)
+    assert os.path.isfile("foo")
+    assert os.path.isdir("data_dir")
 
 
 class TestDataCloudErrorCLI(TestDvc):
@@ -507,124 +173,30 @@ class TestDataCloudErrorCLI(TestDvc):
         self.main_fail(["fetch", f])
 
 
-class TestWarnOnOutdatedStage(TestDvc):
-    def main(self, args):
-        ret = main(args)
-        self.assertEqual(ret, 0)
+def test_warn_on_outdated_stage(tmp_dir, dvc, local_remote, caplog):
+    stage = dvc.run(outs=["bar"], cmd="echo bar > bar", single_stage=True)
+    assert main(["push"]) == 0
 
-    def _test(self):
-        url = Local.get_url()
-        self.main(["remote", "add", "-d", TEST_REMOTE, url])
+    stage_file_path = stage.relpath
+    content = load_yaml(stage_file_path)
+    del content["outs"][0]["md5"]
+    dump_yaml(stage_file_path, content)
 
-        stage = self.dvc.run(
-            outs=["bar"], cmd="echo bar > bar", single_stage=True
-        )
-        self.main(["push"])
-
-        stage_file_path = stage.relpath
-        content = load_yaml(stage_file_path)
-        del content["outs"][0]["md5"]
-        dump_yaml(stage_file_path, content)
-
-        with self._caplog.at_level(logging.WARNING, logger="dvc"):
-            self._caplog.clear()
-            self.main(["status", "-c"])
-            expected_warning = (
-                "Output 'bar'(stage: 'bar.dvc') is missing version info. "
-                "Cache for it will not be collected. "
-                "Use `dvc repro` to get your pipeline up to date."
-            )
-
-            assert expected_warning in self._caplog.text
-
-    def test(self):
-        self._test()
-
-
-class TestRecursiveSyncOperations(Local, TestDataCloudBase):
-    def main(self, args):
-        ret = main(args)
-        self.assertEqual(ret, 0)
-
-    def _get_cloud_class(self):
-        return LocalRemoteTree
-
-    def _prepare_repo(self):
-        remote = self.cloud.get_remote()
-        self.main(
-            ["remote", "add", "-d", TEST_REMOTE, remote.path_info.fspath]
+    with caplog.at_level(logging.WARNING, logger="dvc"):
+        caplog.clear()
+        assert main(["status", "-c"]) == 0
+        expected_warning = (
+            "Output 'bar'(stage: 'bar.dvc') is missing version info. "
+            "Cache for it will not be collected. "
+            "Use `dvc repro` to get your pipeline up to date."
         )
 
-        self.dvc.add(self.DATA)
-        self.dvc.add(self.DATA_SUB)
-
-    def _remove_local_data_files(self):
-        os.remove(self.DATA)
-        os.remove(self.DATA_SUB)
-
-    def _test_recursive_pull(self):
-        self._remove_local_data_files()
-        self._clear_local_cache()
-
-        self.assertFalse(os.path.exists(self.DATA))
-        self.assertFalse(os.path.exists(self.DATA_SUB))
-
-        self.main(["pull", "-R", self.DATA_DIR])
-
-        self.assertTrue(os.path.exists(self.DATA))
-        self.assertTrue(os.path.exists(self.DATA_SUB))
-
-    def _clear_local_cache(self):
-        remove(self.dvc.cache.local.cache_dir)
-
-    def _test_recursive_fetch(self, data_md5, data_sub_md5):
-        self._clear_local_cache()
-
-        local_cache = self.dvc.cache.local
-        local_cache_data_path = local_cache.hash_to_path_info(data_md5)
-        local_cache_data_sub_path = local_cache.hash_to_path_info(data_sub_md5)
-
-        self.assertFalse(os.path.exists(local_cache_data_path))
-        self.assertFalse(os.path.exists(local_cache_data_sub_path))
-
-        self.main(["fetch", "-R", self.DATA_DIR])
-
-        self.assertTrue(os.path.exists(local_cache_data_path))
-        self.assertTrue(os.path.exists(local_cache_data_sub_path))
-
-    def _test_recursive_push(self, data_md5, data_sub_md5):
-        remote = self.cloud.get_remote()
-        cloud_data_path = remote.hash_to_path_info(data_md5)
-        cloud_data_sub_path = remote.hash_to_path_info(data_sub_md5)
-
-        self.assertFalse(os.path.exists(cloud_data_path))
-        self.assertFalse(os.path.exists(cloud_data_sub_path))
-
-        self.main(["push", "-R", self.DATA_DIR])
-
-        self.assertTrue(os.path.exists(cloud_data_path))
-        self.assertTrue(os.path.exists(cloud_data_sub_path))
-
-    def test(self):
-        self._setup_cloud()
-        self._prepare_repo()
-
-        data_md5 = file_md5(self.DATA)[0]
-        data_sub_md5 = file_md5(self.DATA_SUB)[0]
-
-        self._test_recursive_push(data_md5, data_sub_md5)
-
-        self._test_recursive_fetch(data_md5, data_sub_md5)
-
-        self._test_recursive_pull()
+        assert expected_warning in caplog.text
 
 
-def test_hash_recalculation(mocker, dvc, tmp_dir):
+def test_hash_recalculation(mocker, dvc, tmp_dir, local_remote):
     tmp_dir.gen({"foo": "foo"})
     test_get_file_hash = mocker.spy(LocalRemoteTree, "get_file_hash")
-    url = Local.get_url()
-    ret = main(["remote", "add", "-d", TEST_REMOTE, url])
-    assert ret == 0
     ret = main(["config", "cache.type", "hardlink"])
     assert ret == 0
     ret = main(["add", "foo"])
@@ -687,10 +259,8 @@ class TestShouldWarnOnNoChecksumInLocalAndRemoteCache(TestDvc):
 
 
 def test_verify_hashes(
-    tmp_dir, scm, dvc, mocker, tmp_path_factory, setup_remote
+    tmp_dir, scm, dvc, mocker, tmp_path_factory, local_remote
 ):
-
-    setup_remote(dvc, name="upstream")
     tmp_dir.dvc_gen({"file": "file1 content"}, commit="add file")
     tmp_dir.dvc_gen({"dir": {"subfile": "file2 content"}}, commit="add dir")
     dvc.push()
@@ -782,8 +352,7 @@ def recurse_list_dir(d):
     ]
 
 
-def test_dvc_pull_pipeline_stages(tmp_dir, dvc, run_copy, setup_remote):
-    setup_remote(dvc)
+def test_dvc_pull_pipeline_stages(tmp_dir, dvc, run_copy, local_remote):
     (stage0,) = tmp_dir.dvc_gen("foo", "foo")
     stage1 = run_copy("foo", "bar", single_stage=True)
     stage2 = run_copy("bar", "foobar", name="copy-bar-foobar")
@@ -814,8 +383,8 @@ def test_dvc_pull_pipeline_stages(tmp_dir, dvc, run_copy, setup_remote):
     assert set(stats["added"]) == set(outs)
 
 
-def test_pipeline_file_target_ops(tmp_dir, dvc, run_copy, setup_remote):
-    remote_path = setup_remote(dvc)
+def test_pipeline_file_target_ops(tmp_dir, dvc, run_copy, local_remote):
+    path = local_remote.url
     tmp_dir.dvc_gen("foo", "foo")
     run_copy("foo", "bar", single_stage=True)
 
@@ -834,7 +403,7 @@ def test_pipeline_file_target_ops(tmp_dir, dvc, run_copy, setup_remote):
     outs = ["foo", "bar", "lorem", "ipsum", "baz", "lorem2"]
 
     # each one's a copy of other, hence 3
-    assert len(recurse_list_dir(remote_path)) == 3
+    assert len(recurse_list_dir(path)) == 3
 
     clean(outs, dvc)
     assert set(dvc.pull(["dvc.yaml"])["added"]) == {"lorem2", "baz"}
@@ -845,13 +414,13 @@ def test_pipeline_file_target_ops(tmp_dir, dvc, run_copy, setup_remote):
     # clean everything in remote and push
     from tests.dir_helpers import TmpDir
 
-    clean(TmpDir(remote_path).iterdir())
+    clean(TmpDir(path).iterdir())
     dvc.push(["dvc.yaml:copy-ipsum-baz"])
-    assert len(recurse_list_dir(remote_path)) == 1
+    assert len(recurse_list_dir(path)) == 1
 
-    clean(TmpDir(remote_path).iterdir())
+    clean(TmpDir(path).iterdir())
     dvc.push(["dvc.yaml"])
-    assert len(recurse_list_dir(remote_path)) == 2
+    assert len(recurse_list_dir(path)) == 2
 
     with pytest.raises(StageNotFound):
         dvc.push(["dvc.yaml:StageThatDoesNotExist"])
@@ -868,8 +437,7 @@ def test_pipeline_file_target_ops(tmp_dir, dvc, run_copy, setup_remote):
         ({}, "Everything is up to date"),
     ],
 )
-def test_push_stats(tmp_dir, dvc, fs, msg, caplog, setup_remote):
-    setup_remote(dvc)
+def test_push_stats(tmp_dir, dvc, fs, msg, caplog, local_remote):
     tmp_dir.dvc_gen(fs)
 
     caplog.clear()
@@ -886,8 +454,7 @@ def test_push_stats(tmp_dir, dvc, fs, msg, caplog, setup_remote):
         ({}, "Everything is up to date."),
     ],
 )
-def test_fetch_stats(tmp_dir, dvc, fs, msg, caplog, setup_remote):
-    setup_remote(dvc)
+def test_fetch_stats(tmp_dir, dvc, fs, msg, caplog, local_remote):
     tmp_dir.dvc_gen(fs)
     dvc.push()
     clean(list(fs.keys()), dvc)
@@ -897,8 +464,7 @@ def test_fetch_stats(tmp_dir, dvc, fs, msg, caplog, setup_remote):
     assert msg in caplog.text
 
 
-def test_pull_stats(tmp_dir, dvc, caplog, setup_remote):
-    setup_remote(dvc)
+def test_pull_stats(tmp_dir, dvc, caplog, local_remote):
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
     dvc.push()
     clean(["foo", "bar"], dvc)
@@ -919,8 +485,7 @@ def test_pull_stats(tmp_dir, dvc, caplog, setup_remote):
 @pytest.mark.parametrize(
     "key,expected", [("all_tags", 2), ("all_branches", 3), ("all_commits", 3)]
 )
-def test_push_pull_all(tmp_dir, scm, dvc, setup_remote, key, expected):
-    setup_remote(dvc)
+def test_push_pull_all(tmp_dir, scm, dvc, local_remote, key, expected):
     tmp_dir.dvc_gen({"foo": "foo"}, commit="first")
     scm.tag("v1")
     dvc.remove("foo.dvc")
@@ -936,13 +501,12 @@ def test_push_pull_all(tmp_dir, scm, dvc, setup_remote, key, expected):
     assert dvc.pull(**{key: True})["fetched"] == expected
 
 
-def test_push_pull_fetch_pipeline_stages(tmp_dir, dvc, run_copy, setup_remote):
-    remote_path = setup_remote(dvc)
+def test_push_pull_fetch_pipeline_stages(tmp_dir, dvc, run_copy, local_remote):
     tmp_dir.dvc_gen("foo", "foo")
     run_copy("foo", "bar", no_commit=True, name="copy-foo-bar")
 
     dvc.push("copy-foo-bar")
-    assert len(recurse_list_dir(remote_path)) == 1
+    assert len(recurse_list_dir(local_remote.url)) == 1
     # pushing everything so as we can check pull/fetch only downloads
     # from specified targets
     dvc.push()
