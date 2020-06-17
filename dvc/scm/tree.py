@@ -21,12 +21,11 @@ class BaseTree:
     def isfile(self, path):
         """Test whether a path is a regular file"""
 
-    def walk(self, top, topdown=True):
+    def walk(self, top, topdown=True, onerror=None):
         """Directory tree generator.
 
         See `os.walk` for the docs. Differences:
         - no support for symlinks
-        - it could raise exceptions, there is no onerror argument
         """
 
     def walk_files(self, top):
@@ -64,17 +63,12 @@ class WorkingTree(BaseTree):
         """Test whether a path is a regular file"""
         return os.path.isfile(path)
 
-    def walk(self, top, topdown=True):
+    def walk(self, top, topdown=True, onerror=None):
         """Directory tree generator.
 
         See `os.walk` for the docs. Differences:
         - no support for symlinks
-        - it could raise exceptions, there is no onerror argument
         """
-
-        def onerror(e):
-            raise e
-
         for root, dirs, files in os.walk(
             top, topdown=topdown, onerror=onerror
         ):
