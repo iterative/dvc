@@ -229,8 +229,10 @@ class CleanTree(BaseTree):
                 return False
         return True
 
-    def walk(self, top, topdown=True):
-        for root, dirs, files in self.tree.walk(top, topdown):
+    def walk(self, top, topdown=True, onerror=None):
+        for root, dirs, files in self.tree.walk(
+            top, topdown=topdown, onerror=onerror
+        ):
             dirs[:], files[:] = self.dvcignore(
                 os.path.abspath(root), dirs, files
             )

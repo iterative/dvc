@@ -145,6 +145,28 @@ def test_walk(tmp_dir, dvc, dvcfiles, extra_expected):
     assert len(actual) == len(expected)
 
 
+def test_walk_onerror(tmp_dir, dvc):
+    def onerror(exc):
+        raise exc
+
+    tmp_dir.dvc_gen("foo", "foo")
+    tree = RepoTree(dvc)
+
+    # path does not exist
+    for _ in tree.walk("dir"):
+        pass
+    with pytest.raises(OSError):
+        for _ in tree.walk("dir", onerror=onerror):
+            pass
+
+    # path is not a directory
+    for _ in tree.walk("foo"):
+        pass
+    with pytest.raises(OSError):
+        for _ in tree.walk("foo", onerror=onerror):
+            pass
+
+
 def test_isdvc(tmp_dir, dvc):
     tmp_dir.gen({"foo": "foo", "bar": "bar", "dir": {"baz": "baz"}})
     dvc.add("foo")

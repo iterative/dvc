@@ -1,5 +1,7 @@
 import os
 
+import pytest
+
 from tests.basic_env import TestDvcGit
 
 
@@ -35,6 +37,30 @@ def test_walk_with_submodules(tmp_dir, scm, git_dir):
     # currently we don't walk through submodules
     assert not dirs
     assert set(files) == {".gitmodules", "submodule"}
+
+
+def test_walk_onerror(tmp_dir, scm):
+    def onerror(exc):
+        raise exc
+
+    tmp_dir.scm_gen(
+        {"foo": "foo"}, commit="init",
+    )
+    tree = scm.get_tree("HEAD")
+
+    # path does not exist
+    for _ in tree.walk("dir"):
+        pass
+    with pytest.raises(OSError):
+        for _ in tree.walk("dir", onerror=onerror):
+            pass
+
+    # path is not a directory
+    for _ in tree.walk("foo"):
+        pass
+    with pytest.raises(OSError):
+        for _ in tree.walk("foo", onerror=onerror):
+            pass
 
 
 def test_is_tracked(tmp_dir, scm):

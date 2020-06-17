@@ -162,16 +162,22 @@ class DvcTree(BaseTree):
         else:
             assert False
 
-    def walk(self, top, topdown=True, download_callback=None, **kwargs):
+    def walk(
+        self, top, topdown=True, onerror=None, download_callback=None, **kwargs
+    ):
         from pygtrie import Trie
 
         assert topdown
 
         if not self.exists(top):
-            raise FileNotFoundError
+            if onerror is not None:
+                onerror(FileNotFoundError(top))
+            return
 
         if not self.isdir(top):
-            raise NotADirectoryError
+            if onerror is not None:
+                onerror(NotADirectoryError(top))
+            return
 
         root = PathInfo(os.path.abspath(top))
         outs = self._find_outs(top, recursive=True, strict=False)
@@ -333,12 +339,14 @@ class RepoTree(BaseTree):
             elif dirname in repo_set:
                 yield from self._walk_one(repo_walk)
 
-    def walk(self, top, topdown=True, dvcfiles=False, **kwargs):
+    def walk(self, top, topdown=True, onerror=None, dvcfiles=False, **kwargs):
         """Walk and merge both DVC and repo trees.
 
         Args:
             top: path to walk from
             topdown: if True, tree will be walked from top down.
+            onerror: if set, onerror function will be called if an error
+                occurs (by default errors are ignored).
             dvcfiles: if True, dvcfiles will be included in the files list
                 for walked directories.
 
@@ -348,21 +356,27 @@ class RepoTree(BaseTree):
         assert topdown
 
         if not self.exists(top):
-            raise FileNotFoundError
+            if onerror is not None:
+                onerror(FileNotFoundError(top))
+            return
 
         if not self.isdir(top):
-            raise NotADirectoryError
+            if onerror is not None:
+                onerror(NotADirectoryError(top))
+            return
 
         dvc_exists = self.dvctree and self.dvctree.exists(top)
         repo_exists = self.repo.tree.exists(top)
         if dvc_exists and not repo_exists:
-            yield from self.dvctree.walk(top, topdown=topdown, **kwargs)
+            yield from self.dvctree.walk(
+                top, topdown=topdown, onerror=onerror, **kwargs
+            )
             return
         if repo_exists and not dvc_exists:
-            yield from self.repo.tree.walk(top, topdown=topdown)
+            yield from self.repo.tree.walk(
+                top, topdown=topdown, onerror=onerror
+            )
             return
-        if not dvc_exists and not repo_exists:
-            raise FileNotFoundError
 
         dvc_walk = self.dvctree.walk(top, topdown=topdown, **kwargs)
         repo_walk = self.repo.tree.walk(top, topdown=topdown)
