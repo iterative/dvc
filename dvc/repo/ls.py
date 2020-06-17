@@ -50,13 +50,18 @@ def ls(
 def _ls(repo, path_info, recursive=None, dvc_only=False):
     from dvc.repo.tree import RepoTree
 
+    def onerror(exc):
+        raise exc
+
     # use our own RepoTree instance instead of repo.repo_tree since we do not
     # want fetch/stream enabled for ls
     tree = RepoTree(repo)
 
     ret = {}
     try:
-        for root, dirs, files in tree.walk(path_info.fspath, dvcfiles=True):
+        for root, dirs, files in tree.walk(
+            path_info.fspath, onerror=onerror, dvcfiles=True
+        ):
             for fname in files:
                 info = PathInfo(root) / fname
                 dvc = tree.isdvc(info)
