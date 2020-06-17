@@ -185,14 +185,14 @@ def test_ssh_gss_auth(mock_file, mock_exists, dvc, config, expected_gss_auth):
 
 
 def test_hardlink_optimization(dvc, tmp_dir, ssh_server):
-    port = ssh_server.test_creds["port"]
-    user = ssh_server.test_creds["username"]
+    port = ssh_server["port"]
+    user = ssh_server["username"]
 
     config = {
         "url": SSHMocked.get_url(user, port),
         "port": port,
         "user": user,
-        "keyfile": ssh_server.test_creds["key_filename"],
+        "keyfile": ssh_server["key_filename"],
     }
     tree = SSHRemoteTree(dvc, config)
 

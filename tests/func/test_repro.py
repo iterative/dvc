@@ -1740,9 +1740,9 @@ def test_ssh_dir_out(tmp_dir, dvc, ssh_server):
     tmp_dir.gen({"foo": "foo content"})
 
     # Set up remote and cache
-    user = ssh_server.test_creds["username"]
-    port = ssh_server.port
-    keyfile = ssh_server.test_creds["key_filename"]
+    user = ssh_server["username"]
+    port = ssh_server["port"]
+    keyfile = ssh_server["key_filename"]
 
     remote_url = SSHMocked.get_url(user, port)
     assert main(["remote", "add", "upstream", remote_url]) == 0

@@ -1,12 +1,11 @@
 import os
 
-import mockssh
 import pytest
 
-from dvc.remote.ssh.connection import SSHConnection
 from tests.utils.httpd import PushRequestHandler, StaticFileServer
 
 from .dir_helpers import *  # noqa
+from .remotes import *  # noqa
 
 # Prevent updater and analytics from running their processes
 os.environ["DVC_TEST"] = "true"
@@ -26,30 +25,6 @@ def reset_loglevel(request, caplog):
             yield
     else:
         yield
-
-
-here = os.path.abspath(os.path.dirname(__file__))
-
-user = "user"
-key_path = os.path.join(here, f"{user}.key")
-
-
-@pytest.fixture(scope="session")
-def ssh_server():
-    users = {user: key_path}
-    with mockssh.Server(users) as s:
-        s.test_creds = {
-            "host": s.host,
-            "port": s.port,
-            "username": user,
-            "key_filename": key_path,
-        }
-        yield s
-
-
-@pytest.fixture
-def ssh(ssh_server):
-    yield SSHConnection(**ssh_server.test_creds)
 
 
 @pytest.fixture(scope="session", autouse=True)

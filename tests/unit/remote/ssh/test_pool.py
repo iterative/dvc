@@ -8,7 +8,5 @@ def test_doesnt_swallow_errors(ssh_server):
     class MyError(Exception):
         pass
 
-    with pytest.raises(MyError), get_connection(
-        SSHConnection, **ssh_server.test_creds
-    ):
+    with pytest.raises(MyError), get_connection(SSHConnection, **ssh_server):
         raise MyError

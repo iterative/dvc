@@ -106,6 +106,7 @@ tests_requirements = [
     "pytest-cov>=2.6.1",
     "pytest-xdist>=1.26.1",
     "pytest-mock==1.11.2",
+    "pytest-lazy-fixture",
     "flaky>=3.5.3",
     "mock>=3.0.0",
     "xmltodict>=0.11.0",

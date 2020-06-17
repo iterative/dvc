@@ -63,7 +63,6 @@ __all__ = [
     "run_head",
     "erepo_dir",
     "git_dir",
-    "setup_remote",
     "git_init",
 ]
 
@@ -176,6 +175,27 @@ class TmpDir(pathlib.Path):
         self.scm.add(filenames)
         if commit:
             self.scm.commit(commit)
+
+    def add_remote(
+        self, *, url=None, config=None, name="upstream", default=True
+    ):
+        self._require("dvc")
+
+        assert bool(url) ^ bool(config)
+
+        if url:
+            config = {"url": url}
+
+        with self.dvc.config.edit() as conf:
+            conf["remote"][name] = config
+            if default:
+                conf["core"]["remote"] = name
+
+        if hasattr(self, "scm"):
+            self.scm.add(self.dvc.config.files["repo"])
+            self.scm.commit(f"add '{name}' remote")
+
+        return url or config["url"]
 
     # contexts
     @contextmanager
@@ -315,20 +335,3 @@ def git_dir(make_tmp_dir):
     path = make_tmp_dir("git-erepo", scm=True)
     path.scm.commit("init repo")
     return path
-
-
-@pytest.fixture
-def setup_remote(make_tmp_dir):
-    def create(repo, url=None, name="upstream", default=True):
-        if not url:
-            url = os.fspath(make_tmp_dir("local_remote"))
-        with repo.config.edit() as conf:
-            conf["remote"][name] = {"url": url}
-            if default:
-                conf["core"]["remote"] = name
-
-        repo.scm.add(repo.config.files["repo"])
-        repo.scm.commit(f"add '{name}' remote")
-        return url
-
-    return create

@@ -277,11 +277,11 @@ class TestSSHRemoteMocked(SSHMocked, TestDataCloudBase):
         )
 
     def get_url(self):
-        user = self.ssh_server.test_creds["username"]
-        return super().get_url(user, self.ssh_server.port)
+        user = self.ssh_server["username"]
+        return super().get_url(user, self.ssh_server["port"])
 
     def _get_keyfile(self):
-        return self.ssh_server.test_creds["key_filename"]
+        return self.ssh_server["key_filename"]
 
     def _get_cloud_class(self):
         return SSHRemoteTree
@@ -687,10 +687,8 @@ class TestShouldWarnOnNoChecksumInLocalAndRemoteCache(TestDvc):
 
 
 def test_verify_hashes(
-    tmp_dir, scm, dvc, mocker, tmp_path_factory, setup_remote
+    tmp_dir, scm, dvc, mocker, tmp_path_factory, local_remote
 ):
-
-    setup_remote(dvc, name="upstream")
     tmp_dir.dvc_gen({"file": "file1 content"}, commit="add file")
     tmp_dir.dvc_gen({"dir": {"subfile": "file2 content"}}, commit="add dir")
     dvc.push()
@@ -782,8 +780,7 @@ def recurse_list_dir(d):
     ]
 
 
-def test_dvc_pull_pipeline_stages(tmp_dir, dvc, run_copy, setup_remote):
-    setup_remote(dvc)
+def test_dvc_pull_pipeline_stages(tmp_dir, dvc, run_copy, local_remote):
     (stage0,) = tmp_dir.dvc_gen("foo", "foo")
     stage1 = run_copy("foo", "bar", single_stage=True)
     stage2 = run_copy("bar", "foobar", name="copy-bar-foobar")
@@ -814,8 +811,8 @@ def test_dvc_pull_pipeline_stages(tmp_dir, dvc, run_copy, setup_remote):
     assert set(stats["added"]) == set(outs)
 
 
-def test_pipeline_file_target_ops(tmp_dir, dvc, run_copy, setup_remote):
-    remote_path = setup_remote(dvc)
+def test_pipeline_file_target_ops(tmp_dir, dvc, run_copy, local_remote):
+    path = local_remote["url"]
     tmp_dir.dvc_gen("foo", "foo")
     run_copy("foo", "bar", single_stage=True)
 
@@ -834,7 +831,7 @@ def test_pipeline_file_target_ops(tmp_dir, dvc, run_copy, setup_remote):
     outs = ["foo", "bar", "lorem", "ipsum", "baz", "lorem2"]
 
     # each one's a copy of other, hence 3
-    assert len(recurse_list_dir(remote_path)) == 3
+    assert len(recurse_list_dir(path)) == 3
 
     clean(outs, dvc)
     assert set(dvc.pull(["dvc.yaml"])["added"]) == {"lorem2", "baz"}
@@ -845,13 +842,13 @@ def test_pipeline_file_target_ops(tmp_dir, dvc, run_copy, setup_remote):
     # clean everything in remote and push
     from tests.dir_helpers import TmpDir
 
-    clean(TmpDir(remote_path).iterdir())
+    clean(TmpDir(path).iterdir())
     dvc.push(["dvc.yaml:copy-ipsum-baz"])
-    assert len(recurse_list_dir(remote_path)) == 1
+    assert len(recurse_list_dir(path)) == 1
 
-    clean(TmpDir(remote_path).iterdir())
+    clean(TmpDir(path).iterdir())
     dvc.push(["dvc.yaml"])
-    assert len(recurse_list_dir(remote_path)) == 2
+    assert len(recurse_list_dir(path)) == 2
 
     with pytest.raises(StageNotFound):
         dvc.push(["dvc.yaml:StageThatDoesNotExist"])
@@ -868,8 +865,7 @@ def test_pipeline_file_target_ops(tmp_dir, dvc, run_copy, setup_remote):
         ({}, "Everything is up to date"),
     ],
 )
-def test_push_stats(tmp_dir, dvc, fs, msg, caplog, setup_remote):
-    setup_remote(dvc)
+def test_push_stats(tmp_dir, dvc, fs, msg, caplog, local_remote):
     tmp_dir.dvc_gen(fs)
 
     caplog.clear()
@@ -886,8 +882,7 @@ def test_push_stats(tmp_dir, dvc, fs, msg, caplog, setup_remote):
         ({}, "Everything is up to date."),
     ],
 )
-def test_fetch_stats(tmp_dir, dvc, fs, msg, caplog, setup_remote):
-    setup_remote(dvc)
+def test_fetch_stats(tmp_dir, dvc, fs, msg, caplog, local_remote):
     tmp_dir.dvc_gen(fs)
     dvc.push()
     clean(list(fs.keys()), dvc)
@@ -897,8 +892,7 @@ def test_fetch_stats(tmp_dir, dvc, fs, msg, caplog, setup_remote):
     assert msg in caplog.text
 
 
-def test_pull_stats(tmp_dir, dvc, caplog, setup_remote):
-    setup_remote(dvc)
+def test_pull_stats(tmp_dir, dvc, caplog, local_remote):
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
     dvc.push()
     clean(["foo", "bar"], dvc)
@@ -919,8 +913,7 @@ def test_pull_stats(tmp_dir, dvc, caplog, setup_remote):
 @pytest.mark.parametrize(
     "key,expected", [("all_tags", 2), ("all_branches", 3), ("all_commits", 3)]
 )
-def test_push_pull_all(tmp_dir, scm, dvc, setup_remote, key, expected):
-    setup_remote(dvc)
+def test_push_pull_all(tmp_dir, scm, dvc, local_remote, key, expected):
     tmp_dir.dvc_gen({"foo": "foo"}, commit="first")
     scm.tag("v1")
     dvc.remove("foo.dvc")
@@ -936,13 +929,12 @@ def test_push_pull_all(tmp_dir, scm, dvc, setup_remote, key, expected):
     assert dvc.pull(**{key: True})["fetched"] == expected
 
 
-def test_push_pull_fetch_pipeline_stages(tmp_dir, dvc, run_copy, setup_remote):
-    remote_path = setup_remote(dvc)
+def test_push_pull_fetch_pipeline_stages(tmp_dir, dvc, run_copy, local_remote):
     tmp_dir.dvc_gen("foo", "foo")
     run_copy("foo", "bar", no_commit=True, name="copy-foo-bar")
 
     dvc.push("copy-foo-bar")
-    assert len(recurse_list_dir(remote_path)) == 1
+    assert len(recurse_list_dir(local_remote["url"])) == 1
     # pushing everything so as we can check pull/fetch only downloads
     # from specified targets
     dvc.push()

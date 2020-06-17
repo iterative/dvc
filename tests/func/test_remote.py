@@ -173,9 +173,7 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
     assert hash1 == hash2
 
 
-def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, setup_remote):
-    setup_remote(dvc, name="upstream")
-
+def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
     foo = tmp_dir.dvc_gen({"foo": "foo content"})[0].outs[0]
     bar = tmp_dir.dvc_gen({"bar": "bar content"})[0].outs[0]
     baz = tmp_dir.dvc_gen({"baz": {"foo": "baz content"}})[0].outs[0]
@@ -211,9 +209,8 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, setup_remote):
 
 
 def test_raise_on_too_many_open_files(
-    tmp_dir, dvc, tmp_path_factory, mocker, setup_remote
+    tmp_dir, dvc, tmp_path_factory, mocker, local_remote
 ):
-    setup_remote(dvc)
     tmp_dir.dvc_gen({"file": "file content"})
 
     mocker.patch.object(
@@ -246,8 +243,7 @@ def test_external_dir_resource_on_no_cache(tmp_dir, dvc, tmp_path_factory):
         )
 
 
-def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, setup_remote):
-    setup_remote(dvc)
+def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, local_remote):
     tmp_dir.dvc_gen({"foo": {"bar": "bar content"}})
     tmp_dir.dvc_gen({"baz": "baz content"})
 
@@ -387,8 +383,7 @@ def test_remote_default(dvc):
     assert local_config["core"]["remote"] == new_name
 
 
-def test_protect_local_remote(tmp_dir, dvc, setup_remote):
-    setup_remote(dvc, name="upstream")
+def test_protect_local_remote(tmp_dir, dvc, local_remote):
     (stage,) = tmp_dir.dvc_gen("file", "file content")
 
     dvc.push()
