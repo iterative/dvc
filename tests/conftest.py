@@ -2,8 +2,6 @@ import os
 
 import pytest
 
-from tests.utils.httpd import PushRequestHandler, StaticFileServer
-
 from .dir_helpers import *  # noqa
 from .remotes import *  # noqa
 
@@ -33,9 +31,3 @@ def _close_pools():
 
     yield
     close_pools()
-
-
-@pytest.fixture
-def http_server(tmp_dir):
-    with StaticFileServer(handler_class=PushRequestHandler) as httpd:
-        yield httpd

@@ -7,7 +7,7 @@ TEST_CONFIG = {
 
 from .azure import Azure, azure, azure_remote  # noqa: F401
 from .hdfs import HDFS, hdfs, hdfs_remote  # noqa: F401
-from .http import HTTP  # noqa: F401
+from .http import HTTP, http, http_remote, http_server  # noqa: F401
 from .local import Local, local_cloud, local_remote  # noqa: F401
 from .oss import OSS, TEST_OSS_REPO_BUCKET, oss, oss_remote  # noqa: F401
 from .s3 import S3, TEST_AWS_REPO_BUCKET, S3Mocked, s3, s3_remote  # noqa: F401

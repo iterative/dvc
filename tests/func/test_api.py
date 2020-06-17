@@ -16,6 +16,7 @@ cloud_names = [
     "oss",
     "ssh",
     "hdfs",
+    "http",
 ]
 clouds = [pytest.lazy_fixture(cloud) for cloud in cloud_names]
 all_clouds = [pytest.lazy_fixture("local")] + clouds
