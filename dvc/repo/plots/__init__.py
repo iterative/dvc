@@ -55,9 +55,8 @@ class Plots:
                 try:
                     with tree.open(path_info) as fd:
                         data[rev][datafile]["data"] = fd.read()
-                except FileNotFoundError as e:
+                except FileNotFoundError:
                     # This might happen simply because cache is absent
-                    print(e)
                     pass
 
         return data
