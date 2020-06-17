@@ -25,15 +25,8 @@ class GDrive(Base):
             "gdrive_use_service_account": True,
         }
 
-    @staticmethod
-    def create_dir(dvc, url):
-        config = {
-            "url": url,
-            "gdrive_service_account_email": "test",
-            "gdrive_service_account_p12_file_path": "test.p12",
-            "gdrive_use_service_account": True,
-        }
-        tree = GDriveRemoteTree(dvc, config)
+    def __init__(self, dvc):
+        tree = GDriveRemoteTree(dvc, self.config)
         tree._gdrive_create_dir("root", tree.path_info.path)
 
     @staticmethod
@@ -53,12 +46,10 @@ def gdrive(make_tmp_dir):
 
     # NOTE: temporary workaround
     tmp_dir = make_tmp_dir("gdrive", dvc=True)
-    config = GDrive().config
-    GDrive.create_dir(tmp_dir.dvc, config["url"])
-    yield config
+    return GDrive(tmp_dir.dvc)
 
 
 @pytest.fixture
 def gdrive_remote(tmp_dir, dvc, gdrive):
-    tmp_dir.add_remote(config=gdrive)
-    yield gdrive
+    tmp_dir.add_remote(config=gdrive.config)
+    return gdrive

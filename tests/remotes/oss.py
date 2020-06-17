@@ -36,10 +36,10 @@ class OSS(Base):
 def oss():
     if not OSS.should_test():
         pytest.skip("no oss running")
-    yield OSS().config
+    yield OSS()
 
 
 @pytest.fixture
 def oss_remote(tmp_dir, dvc, oss):
-    tmp_dir.add_remote(config=oss)
+    tmp_dir.add_remote(config=oss.config)
     yield oss

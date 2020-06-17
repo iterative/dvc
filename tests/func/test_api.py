@@ -28,19 +28,19 @@ all_remotes = [pytest.lazy_fixture("local_remote")] + remotes
 def test_get_url(tmp_dir, dvc, request, remote):
     tmp_dir.dvc_gen("foo", "foo")
 
-    expected_url = URLInfo(remote["url"]) / "ac/bd18db4cc2f85cedef654fccc4a4d8"
+    expected_url = URLInfo(remote.url) / "ac/bd18db4cc2f85cedef654fccc4a4d8"
     assert api.get_url("foo") == expected_url
 
 
 @pytest.mark.parametrize("cloud", clouds)
 def test_get_url_external(erepo_dir, cloud):
-    erepo_dir.add_remote(config=cloud)
+    erepo_dir.add_remote(config=cloud.config)
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo", commit="add foo")
 
     # Using file url to force clone to tmp repo
     repo_url = f"file://{erepo_dir}"
-    expected_url = URLInfo(cloud["url"]) / "ac/bd18db4cc2f85cedef654fccc4a4d8"
+    expected_url = URLInfo(cloud.url) / "ac/bd18db4cc2f85cedef654fccc4a4d8"
     assert api.get_url("foo", repo=repo_url) == expected_url
 
 
@@ -68,7 +68,7 @@ def test_open(tmp_dir, dvc, remote):
 
 @pytest.mark.parametrize("cloud", clouds)
 def test_open_external(erepo_dir, cloud):
-    erepo_dir.add_remote(config=cloud)
+    erepo_dir.add_remote(config=cloud.config)
 
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("version", "master", commit="add version")

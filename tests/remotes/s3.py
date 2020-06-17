@@ -41,12 +41,12 @@ class S3(Base):
 def s3():
     if not S3.should_test():
         pytest.skip("no s3")
-    yield S3().config
+    yield S3()
 
 
 @pytest.fixture
 def s3_remote(tmp_dir, dvc, s3):
-    tmp_dir.add_remote(config=s3)
+    tmp_dir.add_remote(config=s3.config)
     yield s3
 
 

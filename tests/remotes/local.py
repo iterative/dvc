@@ -17,10 +17,10 @@ class Local(Base):
 
 @pytest.fixture
 def local_cloud():
-    yield Local().config
+    yield Local()
 
 
 @pytest.fixture
 def local_remote(tmp_dir, dvc, local_cloud):
-    tmp_dir.add_remote(config=local_cloud)
+    tmp_dir.add_remote(config=local_cloud.config)
     yield local_cloud

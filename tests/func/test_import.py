@@ -313,7 +313,7 @@ def test_import_from_bare_git_repo(
 
     git.Repo.init(os.fspath(tmp_dir), bare=True)
 
-    erepo_dir.add_remote(config=local_cloud)
+    erepo_dir.add_remote(config=local_cloud.config)
     with erepo_dir.chdir():
         erepo_dir.dvc_gen({"foo": "foo"}, commit="initial")
     erepo_dir.dvc.push()

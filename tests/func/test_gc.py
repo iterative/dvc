@@ -241,7 +241,7 @@ def test_gc_without_workspace_raises_error(tmp_dir, dvc):
 
 
 def test_gc_cloud_with_or_without_specifier(tmp_dir, erepo_dir, local_cloud):
-    erepo_dir.add_remote(config=local_cloud)
+    erepo_dir.add_remote(config=local_cloud.config)
     dvc = erepo_dir.dvc
     from dvc.exceptions import InvalidArgumentError
 

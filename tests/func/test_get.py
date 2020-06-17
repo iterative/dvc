@@ -202,7 +202,7 @@ def test_get_file_from_dir(tmp_dir, erepo_dir):
 
 
 def test_get_url_positive(tmp_dir, erepo_dir, caplog, local_cloud):
-    erepo_dir.add_remote(config=local_cloud)
+    erepo_dir.add_remote(config=local_cloud.config)
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo")
     erepo_dir.dvc.push()

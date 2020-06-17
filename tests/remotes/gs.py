@@ -3,6 +3,7 @@ import uuid
 from contextlib import contextmanager
 
 import pytest
+from funcy import cached_property
 
 from dvc.remote.base import Remote
 from dvc.remote.gs import GSRemoteTree
@@ -25,12 +26,30 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = TEST_GCP_CREDS_FILE
 class GCP(Base):
     @staticmethod
     def should_test():
+        from subprocess import CalledProcessError, check_output
+
         do_test = env2bool("DVC_TEST_GCP", undefined=None)
         if do_test is not None:
             return do_test
 
-        return os.path.exists(TEST_GCP_CREDS_FILE)
+        if not os.path.exists(TEST_GCP_CREDS_FILE):
+            return False
 
+        try:
+            check_output(
+                [
+                    "gcloud",
+                    "auth",
+                    "activate-service-account",
+                    "--key-file",
+                    TEST_GCP_CREDS_FILE,
+                ]
+            )
+        except (CalledProcessError, OSError):
+            return False
+        return True
+
+    @cached_property
     def config(self):
         return {
             "url": self.url,
@@ -62,10 +81,10 @@ class GCP(Base):
 def gs():
     if not GCP.should_test():
         pytest.skip("no gs")
-    yield GCP().config
+    yield GCP()
 
 
 @pytest.fixture
 def gs_remote(tmp_dir, dvc, gs):
-    tmp_dir.add_remote(config=gs)
+    tmp_dir.add_remote(config=gs.config)
     yield gs

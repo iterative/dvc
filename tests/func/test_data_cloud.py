@@ -141,7 +141,7 @@ def test_cloud_cli(tmp_dir, dvc, remote):
     assert os.path.isfile(cache_dir)
 
     # NOTE: http doesn't support gc yet
-    if remote["url"].startswith("http"):
+    if remote.url.startswith("http"):
         return
 
     # NOTE: check if remote gc works correctly on directories
@@ -384,7 +384,7 @@ def test_dvc_pull_pipeline_stages(tmp_dir, dvc, run_copy, local_remote):
 
 
 def test_pipeline_file_target_ops(tmp_dir, dvc, run_copy, local_remote):
-    path = local_remote["url"]
+    path = local_remote.url
     tmp_dir.dvc_gen("foo", "foo")
     run_copy("foo", "bar", single_stage=True)
 
@@ -506,7 +506,7 @@ def test_push_pull_fetch_pipeline_stages(tmp_dir, dvc, run_copy, local_remote):
     run_copy("foo", "bar", no_commit=True, name="copy-foo-bar")
 
     dvc.push("copy-foo-bar")
-    assert len(recurse_list_dir(local_remote["url"])) == 1
+    assert len(recurse_list_dir(local_remote.url)) == 1
     # pushing everything so as we can check pull/fetch only downloads
     # from specified targets
     dvc.push()

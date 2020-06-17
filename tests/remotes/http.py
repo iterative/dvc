@@ -8,6 +8,9 @@ class HTTP(Base):
     def get_url(port):
         return f"http://127.0.0.1:{port}"
 
+    def __init__(self, server):
+        self.url = self.get_url(server.server_port)
+
 
 @pytest.fixture
 def http_server(tmp_dir):
@@ -19,10 +22,10 @@ def http_server(tmp_dir):
 
 @pytest.fixture
 def http(http_server):
-    yield {"url": HTTP.get_url(http_server.server_port)}
+    yield HTTP(http_server)
 
 
 @pytest.fixture
 def http_remote(tmp_dir, dvc, http):
-    tmp_dir.add_remote(config=http)
+    tmp_dir.add_remote(config=http.config)
     yield http

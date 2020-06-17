@@ -3,11 +3,17 @@ import os
 from subprocess import CalledProcessError, check_output
 
 import pytest
+from funcy import cached_property
 
 from dvc.utils import env2bool
 
 from .base import Base
 from .local import Local
+
+TEST_SSH_USER = "user"
+TEST_SSH_KEY_PATH = os.path.join(
+    os.path.abspath(os.path.dirname(__file__)), f"{TEST_SSH_USER}.key"
+)
 
 
 class SSH:
@@ -57,29 +63,40 @@ class SSHMocked(Base):
         url = f"ssh://{user}@127.0.0.1:{port}{path}"
         return url
 
+    def __init__(self, server):
+        self.server = server
+
+    @cached_property
+    def url(self):
+        return self.get_url(TEST_SSH_USER, self.server.port)
+
+    @cached_property
+    def config(self):
+        return {
+            "url": self.url,
+            "keyfile": TEST_SSH_KEY_PATH,
+        }
+
 
 @pytest.fixture(scope="session", autouse=True)
 def ssh_server():
     import mockssh
 
-    user = "user"
-    path = os.path.abspath(os.path.dirname(__file__))
-    key_path = os.path.join(path, f"{user}.key")
-    users = {user: key_path}
+    users = {TEST_SSH_USER: TEST_SSH_KEY_PATH}
     with mockssh.Server(users) as s:
-        yield {
-            "host": s.host,
-            "port": s.port,
-            "username": user,
-            "key_filename": key_path,
-        }
+        yield s
 
 
 @pytest.fixture
 def ssh_connection(ssh_server):
     from dvc.remote.ssh.connection import SSHConnection
 
-    yield SSHConnection(**ssh_server)
+    yield SSHConnection(
+        host=ssh_server.host,
+        port=ssh_server.port,
+        username=TEST_SSH_USER,
+        key_filename=TEST_SSH_KEY_PATH,
+    )
 
 
 @pytest.fixture
@@ -89,13 +106,10 @@ def ssh(ssh_server, monkeypatch):
     # NOTE: see http://github.com/iterative/dvc/pull/3501
     monkeypatch.setattr(SSHRemoteTree, "CAN_TRAVERSE", False)
 
-    return {
-        "url": SSHMocked.get_url(ssh_server["username"], ssh_server["port"]),
-        "keyfile": ssh_server["key_filename"],
-    }
+    return SSHMocked(ssh_server)
 
 
 @pytest.fixture
 def ssh_remote(tmp_dir, dvc, ssh):
-    tmp_dir.add_remote(config=ssh)
+    tmp_dir.add_remote(config=ssh.config)
     yield ssh

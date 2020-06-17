@@ -200,7 +200,7 @@ def test_repotree_cache_save(tmp_dir, dvc, scm, erepo_dir, local_cloud):
         erepo_dir.gen({"dir": {"subdir": {"foo": "foo"}, "bar": "bar"}})
         erepo_dir.dvc_add("dir/subdir", commit="subdir")
         erepo_dir.scm_add("dir", commit="dir")
-        erepo_dir.add_remote(config=local_cloud)
+        erepo_dir.add_remote(config=local_cloud.config)
         erepo_dir.dvc.push()
 
     # test only cares that either fetch or stream are set so that DVC dirs are
