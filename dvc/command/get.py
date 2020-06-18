@@ -3,8 +3,8 @@ import logging
 
 from dvc.exceptions import DvcException
 
-from . import choices
 from .base import CmdBaseNoRepo, append_doc_link
+from .completion import choices
 
 logger = logging.getLogger(__name__)
 

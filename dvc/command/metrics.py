@@ -1,8 +1,8 @@
 import argparse
 import logging
 
-from dvc.command import choices
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
+from dvc.command.completion import choices
 from dvc.exceptions import BadMetricError, DvcException
 
 logger = logging.getLogger(__name__)

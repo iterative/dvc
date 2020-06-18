@@ -4,7 +4,6 @@ import os
 
 import shtab
 
-from dvc.command import choices
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
 
 logger = logging.getLogger(__name__)
@@ -25,6 +24,14 @@ _dvc_compgen_DVCFiles() {
 """,
     "zsh": "",
 }
+
+
+class choices:
+    class Optional(shtab.Optional):
+        DVC_FILE = [shtab.Choice("DVCFile", required=False)]
+
+    class Required(shtab.Required):
+        DVC_FILE = [shtab.Choice("DVCFile", required=True)]
 
 
 class CmdCompletion(CmdBaseNoRepo):

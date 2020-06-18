@@ -2,8 +2,8 @@ import argparse
 import logging
 import sys
 
-from dvc.command import choices
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
+from dvc.command.completion import choices
 from dvc.command.ls.ls_colors import LsColors
 from dvc.exceptions import DvcException
 

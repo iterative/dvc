@@ -1,5 +1,5 @@
-from dvc.command import choices
 from dvc.command.base import CmdBaseNoRepo, fix_subparsers
+from dvc.command.completion import choices
 
 
 class CmdDaemonBase(CmdBaseNoRepo):

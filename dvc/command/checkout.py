@@ -4,8 +4,8 @@ import operator
 
 import colorama
 
-from dvc.command import choices
 from dvc.command.base import CmdBase, append_doc_link
+from dvc.command.completion import choices
 from dvc.exceptions import CheckoutError
 from dvc.utils.humanize import get_summary
 
