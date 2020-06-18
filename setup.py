@@ -81,7 +81,7 @@ install_requires = [
     "tabulate>=0.8.7",
     "pygtrie==2.3.2",
     "dpath>=2.0.1,<3",
-    "shtab>=0",
+    "shtab>=0.0.2",
 ]
 
 

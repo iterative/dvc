@@ -3,19 +3,24 @@ import logging
 import os
 
 import shtab
-
 from dvc.command import choices
 from dvc.command.base import CmdBase, append_doc_link
 
 logger = logging.getLogger(__name__)
-choice_functions = {"DVCFile": "_dvc_compgen_DVCFiles"}
-preamble = """
+CHOICE_FUNCTIONS = {
+    "bash": {"DVCFile": "_dvc_compgen_DVCFiles"},
+    "zsh": {"DVCFile": "_files -g '(*.dvc|Dvcfile)'"},
+}
+PREAMBLE = {
+    "bash": """
 # $1=COMP_WORDS[1]
 _dvc_compgen_DVCFiles() {
   compgen -f -X '!*?.dvc' -- $1  # DVC-files
   compgen -d -S '/' -- $1  # recurse into subdirs
 }
-"""
+""",
+    "zsh": "",
+}
 
 
 class CmdCompletion(CmdBase):
@@ -26,8 +31,8 @@ class CmdCompletion(CmdBase):
         script = shtab.complete(
             parser,
             shell=self.args.shell,
-            preamble=preamble,
-            choice_functions=choice_functions,
+            preamble=PREAMBLE[self.args.shell],
+            choice_functions=CHOICE_FUNCTIONS[self.args.shell],
         )
 
         if self.args.dir == "-":
