@@ -28,12 +28,14 @@ def append_doc_link(help_message, path):
 
 class CmdBase:
     def __init__(self, args):
+        self.args = args
+        if args.cmd in ["completion"]:  # headless
+            return
         from dvc.repo import Repo
         from dvc.updater import Updater
 
         self.repo = Repo()
         self.config = self.repo.config
-        self.args = args
         hardlink_lock = self.config["core"].get("hardlink_lock", False)
         updater = Updater(self.repo.tmp_dir, hardlink_lock=hardlink_lock)
         updater.check()

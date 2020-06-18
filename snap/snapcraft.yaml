@@ -41,9 +41,9 @@ parts:
         # prevent user site packages interfering with this snap - reference:
         # https://github.com/snapcore/snapcraft/blob/19393ef36cd773a28131cec10cc0bfb3bf9c7e77/tools/snapcraft-override-build.sh#L18
         sed -ri 's/^(ENABLE_USER_SITE = )None$/\1False/' $SNAPCRAFT_PART_INSTALL/usr/lib/python*/site.py
+        touch $SNAPCRAFT_PART_INSTALL/completion.sh
     override-stage: |
         snapcraftctl stage
-        # cp $SNAPCRAFT_PART_SRC/completion.sh $SNAPCRAFT_PART_INSTALL/
         usr/bin/python3 -m dvc completion -s bash -f completion.sh .
 apps:
   dvc:
