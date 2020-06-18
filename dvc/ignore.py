@@ -39,6 +39,7 @@ class DvcIgnorePatterns(DvcIgnore):
                 for ignore, group in groupby(
                     regex_pattern_list, lambda x: x[1]
                 )
+                if ignore is not None
             ]
 
     def __call__(self, root, dirs, files):
