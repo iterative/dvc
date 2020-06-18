@@ -1,7 +1,7 @@
 import argparse
 
+from dvc.command import completion
 from dvc.command.base import append_doc_link, fix_subparsers
-from dvc.command.completion import choices
 from dvc.command.config import CmdConfig
 
 
@@ -56,6 +56,6 @@ def add_parser(subparsers, parent_parser):
         help="Path to cache directory. Relative paths are resolved relative "
         "to the current directory and saved to config relative to the "
         "config file location.",
-        choices=choices.Required.DIR,
+        choices=completion.Required.DIR,
     )
     cache_dir_parser.set_defaults(func=CmdCacheDir)

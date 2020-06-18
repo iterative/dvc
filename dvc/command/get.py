@@ -3,8 +3,8 @@ import logging
 
 from dvc.exceptions import DvcException
 
+from . import completion
 from .base import CmdBaseNoRepo, append_doc_link
-from .completion import choices
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ def add_parser(subparsers, parent_parser):
     get_parser.add_argument(
         "path",
         help="Path to a file or directory within the repository",
-        choices=choices.Required.FILE,
+        choices=completion.Required.FILE,
     )
     get_parser.add_argument(
         "-o",
@@ -73,7 +73,7 @@ def add_parser(subparsers, parent_parser):
         nargs="?",
         help="Destination path to download files to",
         metavar="<path>",
-        choices=choices.Optional.DIR,
+        choices=completion.Optional.DIR,
     )
     get_parser.add_argument(
         "--rev",

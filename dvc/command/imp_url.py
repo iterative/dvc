@@ -1,8 +1,8 @@
 import argparse
 import logging
 
+from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
-from dvc.command.completion import choices
 from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
@@ -58,12 +58,12 @@ def add_parser(subparsers, parent_parser):
         "out",
         nargs="?",
         help="Destination path to put files to.",
-        choices=choices.Optional.DIR,
+        choices=completion.Optional.DIR,
     )
     import_parser.add_argument(
         "--file",
         help="Specify name of the DVC-file this command will generate.",
         metavar="<filename>",
-        choices=choices.Optional.DIR,
+        choices=completion.Optional.DIR,
     )
     import_parser.set_defaults(func=CmdImportUrl)

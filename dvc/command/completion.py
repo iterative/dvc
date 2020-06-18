@@ -26,12 +26,12 @@ _dvc_compgen_DVCFiles() {
 }
 
 
-class choices:
-    class Optional(shtab.Optional):
-        DVC_FILE = [shtab.Choice("DVCFile", required=False)]
+class Optional(shtab.Optional):
+    DVC_FILE = [shtab.Choice("DVCFile", required=False)]
 
-    class Required(shtab.Required):
-        DVC_FILE = [shtab.Choice("DVCFile", required=True)]
+
+class Required(shtab.Required):
+    DVC_FILE = [shtab.Choice("DVCFile", required=True)]
 
 
 class CmdCompletion(CmdBaseNoRepo):
@@ -95,6 +95,6 @@ def add_parser(subparsers, parent_parser):
         ),
         default="-",
         nargs="?",
-        choices=choices.Required.DIR,
+        choices=Required.DIR,
     )
     completion_parser.set_defaults(func=CmdCompletion)

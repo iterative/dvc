@@ -1,8 +1,8 @@
 import argparse
 import logging
 
+from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
-from dvc.command.completion import choices
 from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
@@ -38,6 +38,6 @@ def add_parser(subparsers, parent_parser):
         "targets",
         nargs="+",
         help="DVC-files to remove.",
-        choices=choices.Required.DVC_FILE,
+        choices=completion.Required.DVC_FILE,
     )
     remove_parser.set_defaults(func=CmdRemove)
