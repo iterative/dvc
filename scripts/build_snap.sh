@@ -8,7 +8,7 @@ if [ ! -d "dvc" ]; then
 fi
 
 # generate bash completion script
-pip install -y .
+pip install .
 dvc completion -s bash -f completion.sh .
 
 sg lxd -c snapcraft
