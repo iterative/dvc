@@ -1,9 +1,6 @@
 import logging
 
-from dvc.exceptions import NotDvcRepoError
-
 logger = logging.getLogger(__name__)
-HEADLESS_COMMANDS = ["completion"]
 
 
 def fix_subparsers(subparsers):
@@ -34,14 +31,9 @@ class CmdBase:
         from dvc.repo import Repo
         from dvc.updater import Updater
 
-        self.args = args
-        try:
-            self.repo = Repo()
-        except NotDvcRepoError:
-            if args.cmd in HEADLESS_COMMANDS:
-                return
-            raise
+        self.repo = Repo()
         self.config = self.repo.config
+        self.args = args
         hardlink_lock = self.config["core"].get("hardlink_lock", False)
         updater = Updater(self.repo.tmp_dir, hardlink_lock=hardlink_lock)
         updater.check()

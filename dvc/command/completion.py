@@ -5,7 +5,7 @@ import os
 import shtab
 
 from dvc.command import choices
-from dvc.command.base import CmdBase, append_doc_link
+from dvc.command.base import CmdBaseNoRepo, append_doc_link
 
 logger = logging.getLogger(__name__)
 DEFAULT_FILENAME = {"bash": "dvc", "zsh": "_dvc"}
@@ -25,7 +25,7 @@ _dvc_compgen_DVCFiles() {
 }
 
 
-class CmdCompletion(CmdBase):
+class CmdCompletion(CmdBaseNoRepo):
     def run(self):
         from dvc.cli import get_main_parser
 
