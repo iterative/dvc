@@ -122,6 +122,10 @@ tests_requirements = [
     "moto==1.3.14.dev464",
     "rangehttpserver==1.2.0",
     "beautifulsoup4==4.4.0",
+    "flake8-bugbear",
+    "flake8-comprehensions",
+    "flake8-string-format",
+    "flake8-debugger",
 ]
 
 if (sys.version_info) >= (3, 6):
