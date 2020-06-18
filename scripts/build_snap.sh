@@ -7,6 +7,10 @@ if [ ! -d "dvc" ]; then
   exit 1
 fi
 
+# generate bash completion script
+pip install -y .
+dvc completion -s bash - > completion.sh
+
 sudo snapcraft --use-lxd
 
 pip uninstall -y dvc

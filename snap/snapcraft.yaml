@@ -29,6 +29,7 @@ parts:
     - git
     override-pull: |
         snapcraftctl pull
+        mv completion.sh $SNAPCRAFT_PART_SRC/
         snapcraftctl set-version $(cd $SNAPCRAFT_PART_SRC && git describe --tags)
         git diff --quiet || error_dirty_build
         echo 'PKG = "snap"' > $SNAPCRAFT_PART_SRC/dvc/utils/build.py
@@ -38,7 +39,7 @@ parts:
         sed -rin 's/.*git.*diff.*--quiet.*//' $SNAPCRAFT_PART_SRC/dvc/version.py
     override-build: |
         snapcraftctl build
-        cp $SNAPCRAFT_PART_BUILD/scripts/completion/dvc.bash $SNAPCRAFT_PART_INSTALL/completion.sh
+        cp $SNAPCRAFT_PART_SRC/completion.sh $SNAPCRAFT_PART_INSTALL/
 apps:
   dvc:
     command: bin/dvc
