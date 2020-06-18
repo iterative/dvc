@@ -125,6 +125,7 @@ tests_requirements = [
     "flake8-bugbear",
     "flake8-comprehensions",
     "flake8-debugger",
+    "flake8-string-format",
 ]
 
 if (sys.version_info) >= (3, 6):
