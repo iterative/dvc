@@ -1,6 +1,3 @@
-md5: 3cc286c534a71504476da009ed174423
 outs:
-- cache: true
-  md5: 90104d9e83cfb825cf45507e90aadd27
-  metric: false
+- md5: 90104d9e83cfb825cf45507e90aadd27
   path: dvc.ico
