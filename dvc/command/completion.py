@@ -3,7 +3,6 @@ import logging
 import os
 
 import shtab
-
 from dvc.command import choices
 from dvc.command.base import CmdBase, append_doc_link
 
