@@ -1,14 +1,10 @@
 import json
-import logging
 import os
-import re
 
 from funcy import cached_property
 
 from dvc.exceptions import DvcException
 from dvc.utils.fs import makedirs
-
-logger = logging.getLogger(__name__)
 
 
 class TemplateNotFoundError(DvcException):
@@ -16,11 +12,8 @@ class TemplateNotFoundError(DvcException):
         super().__init__(f"Template '{path}' not found.")
 
 
-class NoDataForTemplateError(DvcException):
-    def __init__(self, template_path):
-        super().__init__(
-            "No data provided for '{}'.".format(os.path.relpath(template_path))
-        )
+class BadTemplateError(DvcException):
+    pass
 
 
 class NoFieldInDataError(DvcException):
@@ -34,148 +27,88 @@ class Template:
     INDENT = 4
     SEPARATORS = (",", ": ")
     EXTENSION = ".json"
-    METRIC_DATA_ANCHOR = "<DVC_METRIC_DATA>"
-    X_ANCHOR = "<DVC_METRIC_X>"
-    Y_ANCHOR = "<DVC_METRIC_Y>"
-    TITLE_ANCHOR = "<DVC_METRIC_TITLE>"
-    X_TITLE_ANCHOR = "<DVC_METRIC_X_TITLE>"
-    Y_TITLE_ANCHOR = "<DVC_METRIC_Y_TITLE>"
+    ANCHOR = "<DVC_METRIC_{}>"
 
-    def __init__(self, templates_dir):
-        self.plot_templates_dir = templates_dir
+    def __init__(self, content=None, name=None):
+        self.content = self.DEFAULT_CONTENT if content is None else content
+        self.name = name or self.DEFAULT_NAME
+        self.filename = self.name + self.EXTENSION
 
-    def dump(self):
-        makedirs(self.plot_templates_dir, exist_ok=True)
-
-        with open(
-            os.path.join(
-                self.plot_templates_dir, self.TEMPLATE_NAME + self.EXTENSION
-            ),
-            "w",
-        ) as fobj:
-            json.dump(
-                self.DEFAULT_CONTENT,
-                fobj,
-                indent=self.INDENT,
-                separators=self.SEPARATORS,
-            )
-            fobj.write("\n")
-
-    @staticmethod
-    def get_data_anchor(template_content):
-        regex = re.compile('"<DVC_METRIC_DATA[^>"]*>"')
-        return regex.findall(template_content)
-
-    @staticmethod
-    def parse_data_anchors(template_content):
-        data_files = {
-            Template.get_datafile(m)
-            for m in Template.get_data_anchor(template_content)
-        }
-        return {df for df in data_files if df}
-
-    @staticmethod
-    def get_datafile(anchor_string):
-        return (
-            anchor_string.replace("<", "")
-            .replace(">", "")
-            .replace('"', "")
-            .replace("DVC_METRIC_DATA", "")
-            .replace(",", "")
-        )
-
-    @staticmethod
-    def fill(
-        template_path, data, priority_datafile=None, props=None,
-    ):
+    def render(self, data, props=None):
         props = props or {}
 
-        with open(template_path) as fobj:
-            result_content = fobj.read()
+        if self._anchor_str("data") not in self.content:
+            anchor = self.anchor("data")
+            raise BadTemplateError(
+                f"Template '{self.filename}' is not using '{anchor}' anchor"
+            )
 
         if props.get("x"):
             Template._check_field_exists(data, props.get("x"))
         if props.get("y"):
             Template._check_field_exists(data, props.get("y"))
 
-        result_content = Template._replace_data_anchors(
-            result_content, data, priority_datafile
-        )
+        content = self._fill_anchor(self.content, "data", data)
+        content = self._fill_metadata(content, props)
 
-        result_content = Template._replace_metadata_anchors(
-            result_content, props
-        )
+        return content
 
-        return result_content
+    @classmethod
+    def anchor(cls, name):
+        return cls.ANCHOR.format(name.upper())
+
+    def has_anchor(self, name):
+        return self._anchor_str(name) in self.content
+
+    @classmethod
+    def _fill_anchor(cls, content, name, value):
+        value_str = json.dumps(
+            value, indent=cls.INDENT, separators=cls.SEPARATORS, sort_keys=True
+        )
+        return content.replace(cls._anchor_str(name), value_str)
+
+    @classmethod
+    def _anchor_str(cls, name):
+        return '"{}"'.format(cls.anchor(name))
+
+    @classmethod
+    def _fill_metadata(cls, content, props):
+        props.setdefault("title", "")
+        props.setdefault("x_label", props.get("x"))
+        props.setdefault("y_label", props.get("y"))
+
+        names = ["title", "x", "y", "x_label", "y_label"]
+        for name in names:
+            value = props.get(name)
+            if value is not None:
+                content = cls._fill_anchor(content, name, value)
+
+        return content
 
     @staticmethod
     def _check_field_exists(data, field):
-        for file, data_points in data.items():
-            if not any(
-                field in data_point.keys() for data_point in data_points
-            ):
-                raise NoFieldInDataError(field)
-
-    @staticmethod
-    def _replace_metadata_anchors(result_content, props):
-        props.setdefault("title", "")
-        props.setdefault("xlab", props.get("x"))
-        props.setdefault("ylab", props.get("y"))
-
-        replace_pairs = [
-            (Template.TITLE_ANCHOR, "title"),
-            (Template.X_ANCHOR, "x"),
-            (Template.Y_ANCHOR, "y"),
-            (Template.X_TITLE_ANCHOR, "xlab"),
-            (Template.Y_TITLE_ANCHOR, "ylab"),
-        ]
-        for anchor, key in replace_pairs:
-            value = props.get(key)
-            if anchor in result_content and value is not None:
-                result_content = result_content.replace(anchor, value)
-
-        return result_content
-
-    @staticmethod
-    def _replace_data_anchors(result_content, data, priority_datafile):
-        for anchor in Template.get_data_anchor(result_content):
-            file = Template.get_datafile(anchor)
-
-            if not file or priority_datafile:
-                key = priority_datafile
-            else:
-                key = file
-
-            result_content = result_content.replace(
-                anchor,
-                json.dumps(
-                    data[key],
-                    indent=Template.INDENT,
-                    separators=Template.SEPARATORS,
-                    sort_keys=True,
-                ),
-            )
-        return result_content
+        if not any(field in row for row in data):
+            raise NoFieldInDataError(field)
 
 
 class DefaultLinearTemplate(Template):
-    TEMPLATE_NAME = "default"
+    DEFAULT_NAME = "default"
 
     DEFAULT_CONTENT = {
         "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
-        "data": {"values": Template.METRIC_DATA_ANCHOR},
-        "title": Template.TITLE_ANCHOR,
+        "data": {"values": Template.anchor("data")},
+        "title": Template.anchor("title"),
         "mark": {"type": "line"},
         "encoding": {
             "x": {
-                "field": Template.X_ANCHOR,
+                "field": Template.anchor("x"),
                 "type": "quantitative",
-                "title": Template.X_TITLE_ANCHOR,
+                "title": Template.anchor("x_label"),
             },
             "y": {
-                "field": Template.Y_ANCHOR,
+                "field": Template.anchor("y"),
                 "type": "quantitative",
-                "title": Template.Y_TITLE_ANCHOR,
+                "title": Template.anchor("y_label"),
                 "scale": {"zero": False},
             },
             "color": {"field": "rev", "type": "nominal"},
@@ -184,24 +117,24 @@ class DefaultLinearTemplate(Template):
 
 
 class DefaultConfusionTemplate(Template):
-    TEMPLATE_NAME = "confusion"
+    DEFAULT_NAME = "confusion"
     DEFAULT_CONTENT = {
         "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
-        "data": {"values": Template.METRIC_DATA_ANCHOR},
-        "title": Template.TITLE_ANCHOR,
+        "data": {"values": Template.anchor("data")},
+        "title": Template.anchor("title"),
         "mark": "rect",
         "encoding": {
             "x": {
-                "field": Template.X_ANCHOR,
+                "field": Template.anchor("x"),
                 "type": "nominal",
                 "sort": "ascending",
-                "title": Template.X_TITLE_ANCHOR,
+                "title": Template.anchor("x_label"),
             },
             "y": {
-                "field": Template.Y_ANCHOR,
+                "field": Template.anchor("y"),
                 "type": "nominal",
                 "sort": "ascending",
-                "title": Template.Y_TITLE_ANCHOR,
+                "title": Template.anchor("y_label"),
             },
             "color": {"aggregate": "count", "type": "quantitative"},
             "facet": {"field": "rev", "type": "nominal"},
@@ -210,26 +143,59 @@ class DefaultConfusionTemplate(Template):
 
 
 class DefaultScatterTemplate(Template):
-    TEMPLATE_NAME = "scatter"
+    DEFAULT_NAME = "scatter"
     DEFAULT_CONTENT = {
         "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
-        "data": {"values": Template.METRIC_DATA_ANCHOR},
-        "title": Template.TITLE_ANCHOR,
+        "data": {"values": Template.anchor("data")},
+        "title": Template.anchor("title"),
         "mark": "point",
         "encoding": {
             "x": {
-                "field": Template.X_ANCHOR,
+                "field": Template.anchor("x"),
                 "type": "quantitative",
-                "title": Template.X_TITLE_ANCHOR,
+                "title": Template.anchor("x_label"),
             },
             "y": {
-                "field": Template.Y_ANCHOR,
+                "field": Template.anchor("y"),
                 "type": "quantitative",
-                "title": Template.Y_TITLE_ANCHOR,
+                "title": Template.anchor("y_label"),
                 "scale": {"zero": False},
             },
             "color": {"field": "rev", "type": "nominal"},
         },
+    }
+
+
+class SmoothLinearTemplate(Template):
+    DEFAULT_NAME = "smooth"
+
+    DEFAULT_CONTENT = {
+        "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
+        "data": {"values": Template.anchor("data")},
+        "title": Template.anchor("title"),
+        "mark": {"type": "line"},
+        "encoding": {
+            "x": {
+                "field": Template.anchor("x"),
+                "type": "quantitative",
+                "title": Template.anchor("x_label"),
+            },
+            "y": {
+                "field": Template.anchor("y"),
+                "type": "quantitative",
+                "title": Template.anchor("y_label"),
+                "scale": {"zero": False},
+            },
+            "color": {"field": "rev", "type": "nominal"},
+        },
+        "transform": [
+            {
+                "loess": Template.anchor("y"),
+                "on": Template.anchor("x"),
+                "groupby": ["rev"],
+                "bandwidth": 0.3,
+            }
+        ],
     }
 
 
@@ -239,6 +205,7 @@ class PlotTemplates:
         DefaultLinearTemplate,
         DefaultConfusionTemplate,
         DefaultScatterTemplate,
+        SmoothLinearTemplate,
     ]
 
     @cached_property
@@ -253,6 +220,9 @@ class PlotTemplates:
         return default_plot_path
 
     def get_template(self, path):
+        if os.path.exists(path):
+            return path
+
         t_path = os.path.join(self.templates_dir, path)
         if os.path.exists(t_path):
             return t_path
@@ -279,4 +249,23 @@ class PlotTemplates:
         if not os.path.exists(self.templates_dir):
             makedirs(self.templates_dir, exist_ok=True)
             for t in self.TEMPLATES:
-                t(self.templates_dir).dump()
+                self.dump(t())
+
+    def dump(self, template):
+        path = os.path.join(self.templates_dir, template.filename)
+        with open(path, "w") as fd:
+            json.dump(
+                template.content,
+                fd,
+                indent=template.INDENT,
+                separators=template.SEPARATORS,
+            )
+            fd.write("\n")
+
+    def load(self, name):
+        path = self.get_template(name)
+
+        with open(path) as fd:
+            content = fd.read()
+
+        return Template(content, name=name)

@@ -11,7 +11,7 @@ fi
 pip install -y .
 dvc completion -s bash - > completion.sh
 
-sudo snapcraft --use-lxd
+sg lxd -c snapcraft
 
 pip uninstall -y dvc
 if which dvc; then

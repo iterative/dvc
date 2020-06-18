@@ -46,7 +46,6 @@ def _spawn_posix(cmd, env):
         os._exit(1)  # pylint: disable=protected-access
 
     os.setsid()
-    os.umask(0)
 
     try:
         pid = os.fork()

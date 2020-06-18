@@ -104,13 +104,13 @@ def show(
     if not res:
         raise NoMetricsError()
 
-    # Hide working tree metrics if they are the same as in the active branch
+    # Hide workspace metrics if they are the same as in the active branch
     try:
         active_branch = repo.scm.active_branch()
     except TypeError:
         pass  # Detached head
     else:
-        if res.get("working tree") == res.get(active_branch):
-            res.pop("working tree", None)
+        if res.get("workspace") == res.get(active_branch):
+            res.pop("workspace", None)
 
     return res

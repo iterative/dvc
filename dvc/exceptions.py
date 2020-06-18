@@ -173,17 +173,24 @@ class BadMetricError(DvcException):
 class NoMetricsError(DvcException):
     def __init__(self):
         super().__init__(
-            "no metric files in this repository. "
-            "Use `dvc metrics add` to add a metric file to track."
+            "no metric files in this repository. Use `-m/-M` options for "
+            "`dvc run` to mark stage outputs as  metrics."
         )
 
 
-class StageFileCorruptedError(DvcException):
+class NoPlotsError(DvcException):
+    def __init__(self):
+        super().__init__(
+            "no plots in this repository. Use `--plots/--plots-no-cache` "
+            "options for `dvc run` to mark stage outputs as plots."
+        )
+
+
+class YAMLFileCorruptedError(DvcException):
     def __init__(self, path):
         path = relpath(path)
         super().__init__(
-            "unable to read DVC-file: {} "
-            "YAML file structure is corrupted".format(path)
+            f"unable to read: '{path}', YAML file structure is corrupted"
         )
 
 
@@ -215,9 +222,12 @@ class ETagMismatchError(DvcException):
 
 
 class FileMissingError(DvcException):
-    def __init__(self, path):
+    def __init__(self, path, hint=None):
         self.path = path
-        super().__init__(f"Can't find '{path}' neither locally nor on remote")
+        hint = "" if hint is None else f". {hint}"
+        super().__init__(
+            f"Can't find '{path}' neither locally nor on remote{hint}"
+        )
 
 
 class DvcIgnoreInCollectedDirError(DvcException):

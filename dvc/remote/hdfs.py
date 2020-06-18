@@ -11,21 +11,22 @@ from urllib.parse import urlparse
 from dvc.scheme import Schemes
 from dvc.utils import fix_env, tmp_fname
 
-from .base import BaseRemote, RemoteCmdError
+from .base import BaseRemoteTree, RemoteCmdError
 from .pool import get_connection
 
 logger = logging.getLogger(__name__)
 
 
-class HDFSRemote(BaseRemote):
+class HDFSRemoteTree(BaseRemoteTree):
     scheme = Schemes.HDFS
+    REQUIRES = {"pyarrow": "pyarrow"}
     REGEX = r"^hdfs://((?P<user>.*)@)?.*$"
     PARAM_CHECKSUM = "checksum"
-    REQUIRES = {"pyarrow": "pyarrow"}
     TRAVERSE_PREFIX_LEN = 2
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
+
         self.path_info = None
         url = config.get("url")
         if not url:
@@ -34,7 +35,7 @@ class HDFSRemote(BaseRemote):
         parsed = urlparse(url)
         user = parsed.username or config.get("user")
 
-        self.path_info = self.path_cls.from_parts(
+        self.path_info = self.PATH_CLS.from_parts(
             scheme=self.scheme,
             host=parsed.hostname,
             user=user,
@@ -42,7 +43,8 @@ class HDFSRemote(BaseRemote):
             path=parsed.path,
         )
 
-    def hdfs(self, path_info):
+    @staticmethod
+    def hdfs(path_info):
         import pyarrow
 
         return get_connection(
@@ -51,6 +53,80 @@ class HDFSRemote(BaseRemote):
             path_info.port,
             user=path_info.user,
         )
+
+    @contextmanager
+    def open(self, path_info, mode="r", encoding=None):
+        assert mode in {"r", "rt", "rb"}
+
+        try:
+            with self.hdfs(path_info) as hdfs, closing(
+                hdfs.open(path_info.path, mode="rb")
+            ) as fd:
+                if mode == "rb":
+                    yield fd
+                else:
+                    yield io.TextIOWrapper(fd, encoding=encoding)
+        except OSError as e:
+            # Empty .errno and not specific enough error class in pyarrow,
+            # see https://issues.apache.org/jira/browse/ARROW-6248
+            if "file does not exist" in str(e):
+                raise FileNotFoundError(*e.args)
+            raise
+
+    def exists(self, path_info):
+        assert not isinstance(path_info, list)
+        assert path_info.scheme == "hdfs"
+        with self.hdfs(path_info) as hdfs:
+            return hdfs.exists(path_info.path)
+
+    def walk_files(self, path_info, **kwargs):
+        if not self.exists(path_info):
+            return
+
+        root = path_info.path
+        dirs = deque([root])
+
+        with self.hdfs(self.path_info) as hdfs:
+            if not hdfs.exists(root):
+                return
+            while dirs:
+                try:
+                    entries = hdfs.ls(dirs.pop(), detail=True)
+                    for entry in entries:
+                        if entry["kind"] == "directory":
+                            dirs.append(urlparse(entry["name"]).path)
+                        elif entry["kind"] == "file":
+                            path = urlparse(entry["name"]).path
+                            yield path_info.replace(path=path)
+                except OSError:
+                    # When searching for a specific prefix pyarrow raises an
+                    # exception if the specified cache dir does not exist
+                    pass
+
+    def remove(self, path_info):
+        if path_info.scheme != "hdfs":
+            raise NotImplementedError
+
+        if self.exists(path_info):
+            logger.debug(f"Removing {path_info.path}")
+            with self.hdfs(path_info) as hdfs:
+                hdfs.rm(path_info.path)
+
+    def copy(self, from_info, to_info, **_kwargs):
+        dname = posixpath.dirname(to_info.path)
+        with self.hdfs(to_info) as hdfs:
+            hdfs.mkdir(dname)
+            # NOTE: this is how `hadoop fs -cp` works too: it copies through
+            # your local machine.
+            with hdfs.open(from_info.path, "rb") as from_fobj:
+                tmp_info = to_info.parent / tmp_fname(to_info.name)
+                try:
+                    with hdfs.open(tmp_info.path, "wb") as tmp_fobj:
+                        tmp_fobj.upload(from_fobj)
+                    hdfs.rename(tmp_info.path, to_info.path)
+                except Exception:
+                    self.remove(tmp_info)
+                    raise
 
     def hadoop_fs(self, cmd, user=None):
         cmd = "hadoop fs -" + cmd
@@ -83,44 +159,13 @@ class HDFSRemote(BaseRemote):
         assert match is not None
         return match.group(gname)
 
-    def get_file_checksum(self, path_info):
+    def get_file_hash(self, path_info):
         # NOTE: pyarrow doesn't support checksum, so we need to use hadoop
         regex = r".*\t.*\t(?P<checksum>.*)"
         stdout = self.hadoop_fs(
             f"checksum {path_info.path}", user=path_info.user
         )
         return self._group(regex, stdout, "checksum")
-
-    def copy(self, from_info, to_info, **_kwargs):
-        dname = posixpath.dirname(to_info.path)
-        with self.hdfs(to_info) as hdfs:
-            hdfs.mkdir(dname)
-            # NOTE: this is how `hadoop fs -cp` works too: it copies through
-            # your local machine.
-            with hdfs.open(from_info.path, "rb") as from_fobj:
-                tmp_info = to_info.parent / tmp_fname(to_info.name)
-                try:
-                    with hdfs.open(tmp_info.path, "wb") as tmp_fobj:
-                        tmp_fobj.upload(from_fobj)
-                    hdfs.rename(tmp_info.path, to_info.path)
-                except Exception:
-                    self.remove(tmp_info)
-                    raise
-
-    def remove(self, path_info):
-        if path_info.scheme != "hdfs":
-            raise NotImplementedError
-
-        if self.exists(path_info):
-            logger.debug(f"Removing {path_info.path}")
-            with self.hdfs(path_info) as hdfs:
-                hdfs.rm(path_info.path)
-
-    def exists(self, path_info):
-        assert not isinstance(path_info, list)
-        assert path_info.scheme == "hdfs"
-        with self.hdfs(path_info) as hdfs:
-            return hdfs.exists(path_info.path)
 
     def _upload(self, from_file, to_info, **_kwargs):
         with self.hdfs(to_info) as hdfs:
@@ -134,51 +179,3 @@ class HDFSRemote(BaseRemote):
         with self.hdfs(from_info) as hdfs:
             with open(to_file, "wb+") as fobj:
                 hdfs.download(from_info.path, fobj)
-
-    @contextmanager
-    def open(self, path_info, mode="r", encoding=None):
-        assert mode in {"r", "rt", "rb"}
-
-        try:
-            with self.hdfs(path_info) as hdfs, closing(
-                hdfs.open(path_info.path, mode="rb")
-            ) as fd:
-                if mode == "rb":
-                    yield fd
-                else:
-                    yield io.TextIOWrapper(fd, encoding=encoding)
-        except OSError as e:
-            # Empty .errno and not specific enough error class in pyarrow,
-            # see https://issues.apache.org/jira/browse/ARROW-6248
-            if "file does not exist" in str(e):
-                raise FileNotFoundError(*e.args)
-            raise
-
-    def list_cache_paths(self, prefix=None, progress_callback=None):
-        if not self.exists(self.path_info):
-            return
-
-        if prefix:
-            root = posixpath.join(self.path_info.path, prefix[:2])
-        else:
-            root = self.path_info.path
-        dirs = deque([root])
-
-        with self.hdfs(self.path_info) as hdfs:
-            if prefix and not hdfs.exists(root):
-                return
-            while dirs:
-                try:
-                    entries = hdfs.ls(dirs.pop(), detail=True)
-                    for entry in entries:
-                        if entry["kind"] == "directory":
-                            dirs.append(urlparse(entry["name"]).path)
-                        elif entry["kind"] == "file":
-                            if progress_callback:
-                                progress_callback()
-                            yield urlparse(entry["name"]).path
-                except OSError as e:
-                    # When searching for a specific prefix pyarrow raises an
-                    # exception if the specified cache dir does not exist
-                    if not prefix:
-                        raise e

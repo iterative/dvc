@@ -2,13 +2,18 @@ import os
 import pathlib
 from itertools import product
 
+from funcy import lsplit, rpartial
+
 from dvc import dependency, output
 from dvc.utils.fs import path_isin
 
-from ..remote import LocalRemote, S3Remote
-from ..utils import dict_md5, relpath
+from ..dependency import ParamsDependency
+from ..remote.local import LocalRemoteTree
+from ..remote.s3 import S3RemoteTree
+from ..utils import dict_md5, format_link, relpath
 from .exceptions import (
     MissingDataSource,
+    StageExternalOutputsError,
     StagePathNotDirectoryError,
     StagePathNotFoundError,
     StagePathOutsideError,
@@ -68,6 +73,31 @@ def fill_stage_dependencies(stage, deps=None, erepo=None, params=None):
     stage.deps += dependency.loads_params(stage, params or [])
 
 
+def check_no_externals(stage):
+    from urllib.parse import urlparse
+
+    # NOTE: preventing users from accidentally using external outputs. See
+    # https://github.com/iterative/dvc/issues/1545 for more details.
+
+    def _is_external(out):
+        # NOTE: in case of `remote://` notation, the user clearly knows that
+        # this is an advanced feature and so we shouldn't error-out.
+        if out.is_in_repo or urlparse(out.def_path).scheme == "remote":
+            return False
+        return True
+
+    outs = [str(out) for out in stage.outs if _is_external(out)]
+    if not outs:
+        return
+
+    str_outs = ", ".join(outs)
+    link = format_link("https://dvc.org/doc/user-guide/managing-external-data")
+    raise StageExternalOutputsError(
+        f"Output(s) outside of DVC project: {str_outs}. "
+        f"See {link} for more info."
+    )
+
+
 def check_circular_dependency(stage):
     from dvc.exceptions import CircularDependencyError
 
@@ -103,8 +133,8 @@ def stage_dump_eq(stage_cls, old_d, new_d):
     new_d.pop(stage_cls.PARAM_MD5, None)
     outs = old_d.get(stage_cls.PARAM_OUTS, [])
     for out in outs:
-        out.pop(LocalRemote.PARAM_CHECKSUM, None)
-        out.pop(S3Remote.PARAM_CHECKSUM, None)
+        out.pop(LocalRemoteTree.PARAM_CHECKSUM, None)
+        out.pop(S3RemoteTree.PARAM_CHECKSUM, None)
 
     # outs and deps are lists of dicts. To check equality, we need to make
     # them independent of the order, so, we convert them to dicts.
@@ -149,6 +179,13 @@ def resolve_wdir(wdir, path):
     return pathlib.PurePath(rel_wdir).as_posix() if rel_wdir != "." else None
 
 
+def resolve_paths(path, wdir=None):
+    path = os.path.abspath(path)
+    wdir = wdir or os.curdir
+    wdir = os.path.abspath(os.path.join(os.path.dirname(path), wdir))
+    return path, wdir
+
+
 def get_dump(stage):
     return {
         key: value
@@ -163,3 +200,7 @@ def get_dump(stage):
         }.items()
         if value
     }
+
+
+def split_params_deps(stage):
+    return lsplit(rpartial(isinstance, ParamsDependency), stage.deps)

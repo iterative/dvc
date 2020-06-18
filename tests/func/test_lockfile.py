@@ -4,9 +4,9 @@ from operator import itemgetter
 import yaml
 
 from dvc.dvcfile import PIPELINE_LOCK
-from dvc.serialize import get_params_deps
+from dvc.stage.utils import split_params_deps
 from dvc.utils.fs import remove
-from dvc.utils.stage import parse_stage_for_update
+from dvc.utils.yaml import parse_yaml_for_update
 from tests.func.test_run_multistage import supported_params
 
 FS_STRUCTURE = {
@@ -20,7 +20,7 @@ FS_STRUCTURE = {
 
 def read_lock_file(file=PIPELINE_LOCK):
     with open(file) as f:
-        data = parse_stage_for_update(f.read(), file)
+        data = parse_yaml_for_update(f.read(), file)
     assert isinstance(data, OrderedDict)
     return data
 
@@ -137,7 +137,7 @@ def test_params_dump(tmp_dir, dvc, run_head):
     assert not dvc.reproduce(stage.addressing)
 
     # let's change the order of params and dump them in pipeline file
-    params, _ = get_params_deps(stage)
+    params, _ = split_params_deps(stage)
     for param in params:
         param.params.reverse()
 

@@ -20,9 +20,9 @@ def test_metrics_diff(dvc, mocker):
             "y_field",
             "--title",
             "my_title",
-            "--xlab",
+            "--x-label",
             "x_title",
-            "--ylab",
+            "--y-label",
             "y_title",
             "HEAD",
             "tag1",
@@ -47,8 +47,8 @@ def test_metrics_diff(dvc, mocker):
             "x": "x_field",
             "y": "y_field",
             "title": "my_title",
-            "xlab": "x_title",
-            "ylab": "y_title",
+            "x_label": "x_title",
+            "y_label": "y_title",
         },
     )
 
@@ -63,7 +63,7 @@ def test_metrics_show(dvc, mocker):
             "-t",
             "template",
             "--show-vega",
-            "--no-csv-header",
+            "--no-header",
             "datafile",
         ]
     )
@@ -72,15 +72,14 @@ def test_metrics_show(dvc, mocker):
     cmd = cli_args.func(cli_args)
 
     m = mocker.patch(
-        "dvc.repo.plots.show.show", return_value={"datafile": "filledtemplate"}
+        "dvc.repo.plots.Plots.show",
+        return_value={"datafile": "filledtemplate"},
     )
 
     assert cmd.run() == 0
 
     m.assert_called_once_with(
-        cmd.repo,
-        targets=["datafile"],
-        props={"template": "template", "csv_header": False},
+        targets=["datafile"], props={"template": "template", "header": False},
     )
 
 

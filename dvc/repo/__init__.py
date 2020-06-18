@@ -111,14 +111,14 @@ class Repo:
             friendly=True,
         )
 
+        self.cache = Cache(self)
+        self.cloud = DataCloud(self)
+
         if not scm:
             # NOTE: storing state and link_state in the repository itself to
             # avoid any possible state corruption in 'shared cache dir'
             # scenario.
-            self.state = State(self)
-
-        self.cache = Cache(self)
-        self.cloud = DataCloud(self)
+            self.state = State(self.cache.local)
 
         self.stage_cache = StageCache(self)
 
@@ -187,7 +187,7 @@ class Repo:
         return Repo(root_dir)
 
     def unprotect(self, target):
-        return self.cache.local.unprotect(PathInfo(target))
+        return self.cache.local.tree.unprotect(PathInfo(target))
 
     def _ignore(self):
         flist = [self.config.files["local"], self.tmp_dir]
@@ -527,14 +527,13 @@ class Repo:
 
         for root, dirs, files in self.tree.walk(self.root_dir):
             for file_name in filter(is_valid_filename, files):
-                path = os.path.join(root, file_name)
-                stages.extend(self.get_stages(path))
+                new_stages = self.get_stages(os.path.join(root, file_name))
+                stages.extend(new_stages)
                 outs.update(
                     out.fspath
-                    for stage in stages
-                    for out in (
-                        out for out in stage.outs if out.scheme == "local"
-                    )
+                    for stage in new_stages
+                    for out in stage.outs
+                    if out.scheme == "local"
                 )
             dirs[:] = [d for d in dirs if os.path.join(root, d) not in outs]
         return stages

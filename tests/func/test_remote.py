@@ -10,8 +10,8 @@ from dvc.config import Config
 from dvc.exceptions import DownloadError, UploadError
 from dvc.main import main
 from dvc.path_info import PathInfo
-from dvc.remote import LocalRemote
-from dvc.remote.base import BaseRemote, RemoteCacheRequiredError
+from dvc.remote.base import BaseRemoteTree, RemoteCacheRequiredError
+from dvc.remote.local import LocalRemoteTree
 from dvc.utils.fs import remove
 from tests.basic_env import TestDvc
 from tests.remotes import Local
@@ -145,64 +145,62 @@ class TestRemoteShouldHandleUppercaseRemoteName(TestDvc):
         self.assertEqual(ret, 0)
 
 
-def test_dir_checksum_should_be_key_order_agnostic(tmp_dir, dvc):
+def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
     tmp_dir.gen({"data": {"1": "1 content", "2": "2 content"}})
 
     path_info = PathInfo("data")
     with dvc.state:
         with patch.object(
-            BaseRemote,
+            BaseRemoteTree,
             "_collect_dir",
             return_value=[
                 {"relpath": "1", "md5": "1"},
                 {"relpath": "2", "md5": "2"},
             ],
         ):
-            checksum1 = dvc.cache.local.get_dir_checksum(path_info)
+            hash1 = dvc.cache.local.get_hash(path_info)
 
         with patch.object(
-            BaseRemote,
+            BaseRemoteTree,
             "_collect_dir",
             return_value=[
                 {"md5": "1", "relpath": "1"},
                 {"md5": "2", "relpath": "2"},
             ],
         ):
-            checksum2 = dvc.cache.local.get_dir_checksum(path_info)
+            hash2 = dvc.cache.local.get_hash(path_info)
 
-    assert checksum1 == checksum2
+    assert hash1 == hash2
 
 
-def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, setup_remote):
-    setup_remote(dvc, name="upstream")
-
+def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
     foo = tmp_dir.dvc_gen({"foo": "foo content"})[0].outs[0]
     bar = tmp_dir.dvc_gen({"bar": "bar content"})[0].outs[0]
     baz = tmp_dir.dvc_gen({"baz": {"foo": "baz content"}})[0].outs[0]
 
     # Faulty upload version, failing on foo
-    original = LocalRemote._upload
+    original = LocalRemoteTree._upload
 
     def unreliable_upload(self, from_file, to_info, name=None, **kwargs):
         if "foo" in name:
             raise Exception("stop foo")
         return original(self, from_file, to_info, name, **kwargs)
 
-    with patch.object(LocalRemote, "_upload", unreliable_upload):
+    with patch.object(LocalRemoteTree, "_upload", unreliable_upload):
         with pytest.raises(UploadError) as upload_error_info:
             dvc.push()
         assert upload_error_info.value.amount == 3
 
         remote = dvc.cloud.get_remote("upstream")
-        assert not remote.exists(remote.checksum_to_path_info(foo.checksum))
-        assert remote.exists(remote.checksum_to_path_info(bar.checksum))
-        assert not remote.exists(remote.checksum_to_path_info(baz.checksum))
+        assert not remote.tree.exists(remote.hash_to_path_info(foo.checksum))
+        assert remote.tree.exists(remote.hash_to_path_info(bar.checksum))
+        assert not remote.tree.exists(remote.hash_to_path_info(baz.checksum))
 
     # Push everything and delete local cache
     dvc.push()
     remove(dvc.cache.local.cache_dir)
 
-    with patch.object(LocalRemote, "_download", side_effect=Exception):
+    with patch.object(LocalRemoteTree, "_download", side_effect=Exception):
         with pytest.raises(DownloadError) as download_error_info:
             dvc.pull()
         # error count should be len(.dir + standalone file checksums)
@@ -211,13 +209,12 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, setup_remote):
 
 
 def test_raise_on_too_many_open_files(
-    tmp_dir, dvc, tmp_path_factory, mocker, setup_remote
+    tmp_dir, dvc, tmp_path_factory, mocker, local_remote
 ):
-    setup_remote(dvc)
     tmp_dir.dvc_gen({"file": "file content"})
 
     mocker.patch.object(
-        LocalRemote,
+        LocalRemoteTree,
         "_upload",
         side_effect=OSError(errno.EMFILE, "Too many open files"),
     )
@@ -246,12 +243,13 @@ def test_external_dir_resource_on_no_cache(tmp_dir, dvc, tmp_path_factory):
         )
 
 
-def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, setup_remote):
-    setup_remote(dvc)
+def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, local_remote):
     tmp_dir.dvc_gen({"foo": {"bar": "bar content"}})
     tmp_dir.dvc_gen({"baz": "baz content"})
 
-    mocked_upload = mocker.patch.object(LocalRemote, "_upload", return_value=0)
+    mocked_upload = mocker.patch.object(
+        LocalRemoteTree, "_upload", return_value=0
+    )
     dvc.push()
     # last uploaded file should be dir checksum
     assert mocked_upload.call_args[0][0].endswith(".dir")
@@ -271,6 +269,29 @@ def test_remote_modify_validation(dvc):
     )
     config = configobj.ConfigObj(dvc.config.files["repo"])
     assert unsupported_config not in config[f'remote "{remote_name}"']
+
+
+def test_remote_modify_unset(dvc):
+    assert main(["remote", "add", "-d", "myremote", "gdrive://test/test"]) == 0
+    config = configobj.ConfigObj(dvc.config.files["repo"])
+    assert config['remote "myremote"'] == {"url": "gdrive://test/test"}
+
+    assert (
+        main(["remote", "modify", "myremote", "gdrive_client_id", "something"])
+        == 0
+    )
+    config = configobj.ConfigObj(dvc.config.files["repo"])
+    assert config['remote "myremote"'] == {
+        "url": "gdrive://test/test",
+        "gdrive_client_id": "something",
+    }
+
+    assert (
+        main(["remote", "modify", "myremote", "gdrive_client_id", "--unset"])
+        == 0
+    )
+    config = configobj.ConfigObj(dvc.config.files["repo"])
+    assert config['remote "myremote"'] == {"url": "gdrive://test/test"}
 
 
 def test_remote_modify_default(dvc):
@@ -362,13 +383,12 @@ def test_remote_default(dvc):
     assert local_config["core"]["remote"] == new_name
 
 
-def test_protect_local_remote(tmp_dir, dvc, setup_remote):
-    setup_remote(dvc, name="upstream")
+def test_protect_local_remote(tmp_dir, dvc, local_remote):
     (stage,) = tmp_dir.dvc_gen("file", "file content")
 
     dvc.push()
     remote = dvc.cloud.get_remote("upstream")
-    remote_cache_file = remote.checksum_to_path_info(stage.outs[0].checksum)
+    remote_cache_file = remote.hash_to_path_info(stage.outs[0].checksum)
 
     assert os.path.exists(remote_cache_file)
     assert stat.S_IMODE(os.stat(remote_cache_file).st_mode) == 0o444

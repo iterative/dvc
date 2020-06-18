@@ -58,13 +58,13 @@ def show(repo, revs=None):
     if not res:
         raise NoParamsError("no parameter configs files in this repository")
 
-    # Hide working tree params if they are the same as in the active branch
+    # Hide workspace params if they are the same as in the active branch
     try:
         active_branch = repo.scm.active_branch()
     except TypeError:
         pass  # Detached head
     else:
-        if res.get("working tree") == res.get(active_branch):
-            res.pop("working tree", None)
+        if res.get("workspace") == res.get(active_branch):
+            res.pop("workspace", None)
 
     return res

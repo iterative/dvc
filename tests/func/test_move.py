@@ -3,7 +3,7 @@ import os
 from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import DvcException, MoveNotDataSourceError
 from dvc.main import main
-from dvc.utils.stage import load_stage_file
+from dvc.utils.yaml import load_yaml
 from tests.basic_env import TestDvc, TestDvcGit
 from tests.func.test_repro import TestRepro
 from tests.utils import cd
@@ -117,7 +117,7 @@ class TestMoveFileToDirectoryWithoutSpecifiedTargetName(TestDvc):
         self.assertTrue(os.path.exists(target_foo_path))
         self.assertTrue(os.path.exists(target_foo_stage_file_path))
 
-        new_stage = load_stage_file(target_foo_stage_file_path)
+        new_stage = load_yaml(target_foo_stage_file_path)
         self.assertEqual(self.FOO, new_stage["outs"][0]["path"])
 
 
@@ -170,7 +170,7 @@ class TestMoveFileBetweenDirectories(TestDvc):
         self.assertTrue(os.path.exists(new_data_path))
         self.assertTrue(os.path.exists(new_data_stage_file))
 
-        new_stage_file = load_stage_file(new_data_stage_file)
+        new_stage_file = load_yaml(new_data_stage_file)
         self.assertEqual(
             os.path.basename(self.DATA), new_stage_file["outs"][0]["path"]
         )

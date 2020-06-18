@@ -1,7 +1,7 @@
-from dvc.remote.https import HTTPSRemote
+from dvc.remote.https import HTTPSRemoteTree
 
 from .http import HTTPDependency
 
 
 class HTTPSDependency(HTTPDependency):
-    REMOTE = HTTPSRemote
+    TREE_CLS = HTTPSRemoteTree

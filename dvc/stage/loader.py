@@ -1,27 +1,18 @@
 import logging
-import os
-from collections import defaultdict
 from collections.abc import Mapping
 from copy import deepcopy
 from itertools import chain
 
-from funcy import first
+from funcy import get_in, lcat, project
 
 from dvc import dependency, output
 
-from ..dependency import ParamsDependency
+from . import PipelineStage, Stage, loads_from
 from .exceptions import StageNameUnspecified, StageNotFound
+from .params import StageParams
+from .utils import fill_stage_dependencies, resolve_paths
 
 logger = logging.getLogger(__name__)
-
-DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
-
-
-def resolve_paths(path, wdir=None):
-    path = os.path.abspath(path)
-    wdir = wdir or os.curdir
-    wdir = os.path.abspath(os.path.join(os.path.dirname(path), wdir))
-    return path, wdir
 
 
 class StageLoader(Mapping):
@@ -31,9 +22,12 @@ class StageLoader(Mapping):
         self.lockfile_data = lockfile_data or {}
 
     @staticmethod
-    def fill_from_lock(stage, lock_data):
-        from .params import StageParams
+    def fill_from_lock(stage, lock_data=None):
+        """Fill values for params, checksums for outs and deps from lock."""
+        if not lock_data:
+            return
 
+        assert isinstance(lock_data, dict)
         items = chain(
             ((StageParams.PARAM_DEPS, dep) for dep in stage.deps),
             ((StageParams.PARAM_OUTS, out) for out in stage.outs),
@@ -44,139 +38,39 @@ class StageLoader(Mapping):
             for key in [StageParams.PARAM_DEPS, StageParams.PARAM_OUTS]
         }
         for key, item in items:
-            if isinstance(item, ParamsDependency):
-                # load the params with values inside lock dynamically
-                params = lock_data.get("params", {}).get(item.def_path, {})
-                item._dyn_load(params)
+            path = item.def_path
+            if isinstance(item, dependency.ParamsDependency):
+                item.fill_values(get_in(lock_data, [stage.PARAM_PARAMS, path]))
                 continue
-
-            item.checksum = (
-                checksums.get(key, {})
-                .get(item.def_path, {})
-                .get(item.checksum_type)
-            )
+            item.checksum = get_in(checksums, [key, path, item.checksum_type])
 
     @classmethod
-    def _load_params(cls, stage, pipeline_params):
-        """
-        File in pipeline file is expected to be in following format:
-        ```
-        params:
-            - lr
-            - train.epochs
-            - params2.yaml:  # notice the filename
-                - process.threshold
-                - process.bow
-        ```
-
-        and, in lockfile, we keep it as following format:
-        ```
-        params:
-          params.yaml:
-            lr: 0.0041
-            train.epochs: 100
-          params2.yaml:
-            process.threshold: 0.98
-            process.bow:
-            - 15000
-            - 123
-        ```
-        In the list of `params` inside pipeline file, if any of the item is
-        dict-like, the key will be treated as separate params file and it's
-        values to be part of that params file, else, the item is considered
-        as part of the `params.yaml` which is a default file.
-
-        (From example above: `lr` is considered to be part of `params.yaml`
-        whereas `process.bow` to be part of `params2.yaml`.)
-
-        We only load the keys here, lockfile bears the values which are used
-        to compare between the actual params from the file in the workspace.
-        """
-        res = defaultdict(list)
-        for key in pipeline_params:
-            if isinstance(key, str):
-                path = DEFAULT_PARAMS_FILE
-                res[path].append(key)
-            elif isinstance(key, dict):
-                path = first(key)
-                res[path].extend(key[path])
-
-        stage.deps.extend(
-            dependency.loadd_from(
-                stage,
-                [
-                    {"path": key, "params": params}
-                    for key, params in res.items()
-                ],
-            )
-        )
-
-    @classmethod
-    def _load_outs(cls, stage, data, typ=None):
-        from dvc.output.base import BaseOutput
-
-        d = []
-        for key in data:
-            if isinstance(key, str):
-                entry = {BaseOutput.PARAM_PATH: key}
-                if typ:
-                    entry[typ] = True
-                d.append(entry)
-                continue
-
-            assert isinstance(key, dict)
-            assert len(key) == 1
-
-            path = first(key)
-            extra = key[path]
-
-            if not typ:
-                d.append({BaseOutput.PARAM_PATH: path, **extra})
-                continue
-
-            entry = {BaseOutput.PARAM_PATH: path}
-
-            persist = extra.pop(BaseOutput.PARAM_PERSIST, False)
-            if persist:
-                entry[BaseOutput.PARAM_PERSIST] = persist
-
-            cache = extra.pop(BaseOutput.PARAM_CACHE, True)
-            if not cache:
-                entry[BaseOutput.PARAM_CACHE] = cache
-
-            entry[typ] = extra or True
-
-            d.append(entry)
-
-        stage.outs.extend(output.loadd_from(stage, d))
-
-    @classmethod
-    def _load_deps(cls, stage, data):
-        stage.deps.extend(dependency.loads_from(stage, data))
-
-    @classmethod
-    def load_stage(cls, dvcfile, name, stage_data, lock_data):
-        from . import PipelineStage, Stage, loads_from
+    def load_stage(cls, dvcfile, name, stage_data, lock_data=None):
+        assert all([name, dvcfile, dvcfile.repo, dvcfile.path])
+        assert stage_data and isinstance(stage_data, dict)
 
         path, wdir = resolve_paths(
             dvcfile.path, stage_data.get(Stage.PARAM_WDIR)
         )
         stage = loads_from(PipelineStage, dvcfile.repo, path, wdir, stage_data)
         stage.name = name
-        stage.deps, stage.outs = [], []
 
-        cls._load_outs(stage, stage_data.get("outs", []))
-        cls._load_outs(stage, stage_data.get("metrics", []), "metric")
-        cls._load_outs(stage, stage_data.get("plots", []), "plot")
-        cls._load_deps(stage, stage_data.get("deps", []))
-        cls._load_params(stage, stage_data.get("params", []))
+        deps = project(stage_data, [stage.PARAM_DEPS, stage.PARAM_PARAMS])
+        fill_stage_dependencies(stage, **deps)
+
+        outs = project(
+            stage_data,
+            [stage.PARAM_OUTS, stage.PARAM_METRICS, stage.PARAM_PLOTS],
+        )
+        stage.outs = lcat(
+            output.load_from_pipeline(stage, data, typ=key)
+            for key, data in outs.items()
+        )
 
         if lock_data:
-            stage.cmd_changed = lock_data.get(
-                Stage.PARAM_CMD
-            ) != stage_data.get(Stage.PARAM_CMD)
-            cls.fill_from_lock(stage, lock_data)
+            stage.cmd_changed = lock_data.get(Stage.PARAM_CMD) != stage.cmd
 
+        cls.fill_from_lock(stage, lock_data)
         return stage
 
     def __getitem__(self, name):
@@ -229,8 +123,6 @@ class SingleStageLoader(Mapping):
 
     @classmethod
     def load_stage(cls, dvcfile, d, stage_text):
-        from dvc.stage import Stage, loads_from
-
         path, wdir = resolve_paths(dvcfile.path, d.get(Stage.PARAM_WDIR))
         stage = loads_from(Stage, dvcfile.repo, path, wdir, d)
         stage._stage_text = stage_text

@@ -3,7 +3,7 @@ import os
 from mock import patch
 
 from dvc.output import LocalOutput
-from dvc.remote.local import LocalRemote
+from dvc.remote.local import LocalCache
 from dvc.stage import Stage
 from dvc.utils import relpath
 from tests.basic_env import TestDvc
@@ -19,7 +19,7 @@ class TestLocalOutput(TestDvc):
 
     def test_save_missing(self):
         o = self._get_output()
-        with patch.object(o.remote, "exists", return_value=False):
+        with patch.object(o.remote.tree, "exists", return_value=False):
             with self.assertRaises(o.DoesNotExistError):
                 o.save()
 
@@ -79,7 +79,7 @@ class TestGetFilesNumber(TestDvc):
 
     @patch.object(LocalOutput, "checksum", "12345678.dir")
     @patch.object(
-        LocalRemote,
+        LocalCache,
         "get_dir_cache",
         return_value=[{"md5": "asdf"}, {"md5": "qwe"}],
     )

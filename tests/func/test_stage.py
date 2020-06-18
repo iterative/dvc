@@ -6,11 +6,11 @@ import pytest
 from dvc.dvcfile import SingleStageFile
 from dvc.main import main
 from dvc.output.local import LocalOutput
-from dvc.remote.local import LocalRemote
+from dvc.remote.local import LocalRemoteTree
 from dvc.repo import Repo
 from dvc.stage import PipelineStage, Stage
 from dvc.stage.exceptions import StageFileFormatError
-from dvc.utils.stage import dump_stage_file, load_stage_file
+from dvc.utils.yaml import dump_yaml, load_yaml
 from tests.basic_env import TestDvc
 
 
@@ -54,8 +54,8 @@ def test_empty_list():
 
 def test_list():
     lst = [
-        {LocalOutput.PARAM_PATH: "foo", LocalRemote.PARAM_CHECKSUM: "123"},
-        {LocalOutput.PARAM_PATH: "bar", LocalRemote.PARAM_CHECKSUM: None},
+        {LocalOutput.PARAM_PATH: "foo", LocalRemoteTree.PARAM_CHECKSUM: "123"},
+        {LocalOutput.PARAM_PATH: "bar", LocalRemoteTree.PARAM_CHECKSUM: None},
         {LocalOutput.PARAM_PATH: "baz"},
     ]
     d = {Stage.PARAM_DEPS: lst}
@@ -74,12 +74,12 @@ class TestReload(TestDvc):
         stage = stages[0]
         self.assertTrue(stage is not None)
 
-        d = load_stage_file(stage.relpath)
+        d = load_yaml(stage.relpath)
 
         # NOTE: checking that reloaded stage didn't change its checksum
         md5 = "11111111111111111111111111111111"
         d[stage.PARAM_MD5] = md5
-        dump_stage_file(stage.relpath, d)
+        dump_yaml(stage.relpath, d)
 
         dvcfile = SingleStageFile(self.dvc, stage.relpath)
         stage = dvcfile.stage
@@ -87,7 +87,7 @@ class TestReload(TestDvc):
         self.assertTrue(stage is not None)
         dvcfile.dump(stage)
 
-        d = load_stage_file(stage.relpath)
+        d = load_yaml(stage.relpath)
         self.assertEqual(d[stage.PARAM_MD5], md5)
 
 
@@ -103,7 +103,7 @@ class TestDefaultWorkingDirectory(TestDvc):
         d = stage.dumpd()
         self.assertNotIn(Stage.PARAM_WDIR, d.keys())
 
-        d = load_stage_file(stage.relpath)
+        d = load_yaml(stage.relpath)
         self.assertNotIn(Stage.PARAM_WDIR, d.keys())
 
         with self.dvc.lock, self.dvc.state:
@@ -167,16 +167,16 @@ def test_meta_is_preserved(tmp_dir, dvc):
     (stage,) = tmp_dir.dvc_gen("foo", "foo content")
 
     # Add meta to DVC-file
-    data = load_stage_file(stage.path)
+    data = load_yaml(stage.path)
     data["meta"] = {"custom_key": 42}
-    dump_stage_file(stage.path, data)
+    dump_yaml(stage.path, data)
 
     # Loading and dumping to test that it works and meta is retained
     dvcfile = SingleStageFile(dvc, stage.path)
     new_stage = dvcfile.stage
     dvcfile.dump(new_stage)
 
-    new_data = load_stage_file(stage.path)
+    new_data = load_yaml(stage.path)
     assert new_data["meta"] == data["meta"]
 
 
@@ -220,6 +220,10 @@ def test_stage_strings_representation(tmp_dir, dvc, run_copy):
     folder = tmp_dir / "dir"
     folder.mkdir()
     with folder.chdir():
+        # `Stage` caches `relpath` results, forcing it to reset
+        stage1.path = stage1.path
+        stage2.path = stage2.path
+
         rel_path = os.path.relpath(stage1.path)
         assert stage1.addressing == rel_path
         assert repr(stage1) == f"Stage: '{rel_path}'"
@@ -241,3 +245,32 @@ def test_stage_on_no_path_string_repr(tmp_dir, dvc):
     assert p.addressing == "No path:stage_name"
     assert repr(p) == "Stage: 'No path:stage_name'"
     assert str(p) == "stage: 'No path:stage_name'"
+
+
+def test_stage_remove_pipeline_stage(tmp_dir, dvc, run_copy):
+    tmp_dir.gen("foo", "foo")
+    stage = run_copy("foo", "bar", name="copy-foo-bar")
+    run_copy("bar", "foobar", name="copy-bar-foobar")
+
+    dvc_file = stage.dvcfile
+    with dvc.lock:
+        stage.remove(purge=False)
+    assert stage.name in dvc_file.stages
+
+    with dvc.lock:
+        stage.remove()
+    assert stage.name not in dvc_file.stages
+    assert "copy-bar-foobar" in dvc_file.stages
+
+
+def test_stage_remove_pointer_stage(tmp_dir, dvc, run_copy):
+    (stage,) = tmp_dir.dvc_gen("foo", "foo")
+
+    with dvc.lock:
+        stage.remove(purge=False)
+    assert not (tmp_dir / "foo").exists()
+    assert (tmp_dir / stage.relpath).exists()
+
+    with dvc.lock:
+        stage.remove()
+    assert not (tmp_dir / stage.relpath).exists()

@@ -1,46 +1,46 @@
 import posixpath
 from urllib.parse import urlparse
 
-from dvc.remote.azure import AzureRemote
-from dvc.remote.gdrive import GDriveRemote
-from dvc.remote.gs import GSRemote
-from dvc.remote.hdfs import HDFSRemote
-from dvc.remote.http import HTTPRemote
-from dvc.remote.https import HTTPSRemote
-from dvc.remote.local import LocalRemote
-from dvc.remote.oss import OSSRemote
-from dvc.remote.s3 import S3Remote
-from dvc.remote.ssh import SSHRemote
+from dvc.remote.azure import AzureRemoteTree
+from dvc.remote.base import Remote
+from dvc.remote.gdrive import GDriveRemoteTree
+from dvc.remote.gs import GSRemoteTree
+from dvc.remote.hdfs import HDFSRemoteTree
+from dvc.remote.http import HTTPRemoteTree
+from dvc.remote.https import HTTPSRemoteTree
+from dvc.remote.local import LocalRemote, LocalRemoteTree
+from dvc.remote.oss import OSSRemoteTree
+from dvc.remote.s3 import S3RemoteTree
+from dvc.remote.ssh import SSHRemote, SSHRemoteTree
 
-REMOTES = [
-    AzureRemote,
-    GDriveRemote,
-    GSRemote,
-    HDFSRemote,
-    HTTPRemote,
-    HTTPSRemote,
-    S3Remote,
-    SSHRemote,
-    OSSRemote,
-    # NOTE: LocalRemote is the default
+TREES = [
+    AzureRemoteTree,
+    GDriveRemoteTree,
+    GSRemoteTree,
+    HDFSRemoteTree,
+    HTTPRemoteTree,
+    HTTPSRemoteTree,
+    S3RemoteTree,
+    SSHRemoteTree,
+    OSSRemoteTree,
+    # NOTE: LocalRemoteTree is the default
 ]
 
 
-def _get(remote_conf):
-    for remote in REMOTES:
-        if remote.supported(remote_conf):
-            return remote
-    return LocalRemote
+def _get_tree(remote_conf):
+    for tree_cls in TREES:
+        if tree_cls.supported(remote_conf):
+            return tree_cls
+    return LocalRemoteTree
 
 
-def Remote(repo, **kwargs):
+def _get_conf(repo, **kwargs):
     name = kwargs.get("name")
     if name:
         remote_conf = repo.config["remote"][name.lower()]
     else:
         remote_conf = kwargs
-    remote_conf = _resolve_remote_refs(repo.config, remote_conf)
-    return _get(remote_conf)(repo, remote_conf)
+    return _resolve_remote_refs(repo.config, remote_conf)
 
 
 def _resolve_remote_refs(config, remote_conf):
@@ -72,3 +72,17 @@ def _resolve_remote_refs(config, remote_conf):
     base = config["remote"][parsed.netloc]
     url = posixpath.join(base["url"], parsed.path.lstrip("/"))
     return {**base, **remote_conf, "url": url}
+
+
+def get_cloud_tree(repo, **kwargs):
+    remote_conf = _get_conf(repo, **kwargs)
+    return _get_tree(remote_conf)(repo, remote_conf)
+
+
+def get_remote(repo, **kwargs):
+    tree = get_cloud_tree(repo, **kwargs)
+    if tree.scheme == "local":
+        return LocalRemote(tree)
+    if tree.scheme == "ssh":
+        return SSHRemote(tree)
+    return Remote(tree)

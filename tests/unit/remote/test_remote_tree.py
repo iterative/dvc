@@ -3,7 +3,7 @@ import os
 import pytest
 
 from dvc.path_info import PathInfo
-from dvc.remote.s3 import S3Remote
+from dvc.remote.s3 import S3RemoteTree
 from dvc.utils.fs import walk_files
 from tests.remotes import GCP, S3Mocked
 
@@ -48,7 +48,7 @@ def test_isdir(remote):
     ]
 
     for expected, path in test_cases:
-        assert remote.isdir(remote.path_info / path) == expected
+        assert remote.tree.isdir(remote.path_info / path) == expected
 
 
 @pytest.mark.parametrize("remote", remotes, indirect=True)
@@ -68,7 +68,7 @@ def test_exists(remote):
     ]
 
     for expected, path in test_cases:
-        assert remote.exists(remote.path_info / path) == expected
+        assert remote.tree.exists(remote.path_info / path) == expected
 
 
 @pytest.mark.parametrize("remote", remotes, indirect=True)
@@ -83,35 +83,36 @@ def test_walk_files(remote):
         remote.path_info / "data/subdir/empty_file",
     ]
 
-    assert list(remote.walk_files(remote.path_info / "data")) == files
+    assert list(remote.tree.walk_files(remote.path_info / "data")) == files
 
 
 @pytest.mark.parametrize("remote", [S3Mocked], indirect=True)
 def test_copy_preserve_etag_across_buckets(remote, dvc):
-    s3 = remote.s3
+    s3 = remote.tree.s3
     s3.create_bucket(Bucket="another")
 
-    another = S3Remote(dvc, {"url": "s3://another", "region": "us-east-1"})
+    another = S3RemoteTree(dvc, {"url": "s3://another", "region": "us-east-1"})
 
     from_info = remote.path_info / "foo"
     to_info = another.path_info / "foo"
 
-    remote.copy(from_info, to_info)
+    remote.tree.copy(from_info, to_info)
 
-    from_etag = S3Remote.get_etag(s3, from_info.bucket, from_info.path)
-    to_etag = S3Remote.get_etag(s3, "another", "foo")
+    from_etag = S3RemoteTree.get_etag(s3, from_info.bucket, from_info.path)
+    to_etag = S3RemoteTree.get_etag(s3, "another", "foo")
 
     assert from_etag == to_etag
 
 
 @pytest.mark.parametrize("remote", remotes, indirect=True)
 def test_makedirs(remote):
+    tree = remote.tree
     empty_dir = remote.path_info / "empty_dir" / ""
-    remote.remove(empty_dir)
-    assert not remote.exists(empty_dir)
-    remote.makedirs(empty_dir)
-    assert remote.exists(empty_dir)
-    assert remote.isdir(empty_dir)
+    tree.remove(empty_dir)
+    assert not tree.exists(empty_dir)
+    tree.makedirs(empty_dir)
+    assert tree.exists(empty_dir)
+    assert tree.isdir(empty_dir)
 
 
 @pytest.mark.parametrize("remote", [GCP, S3Mocked], indirect=True)
@@ -133,14 +134,14 @@ def test_isfile(remote):
     ]
 
     for expected, path in test_cases:
-        assert remote.isfile(remote.path_info / path) == expected
+        assert remote.tree.isfile(remote.path_info / path) == expected
 
 
 @pytest.mark.parametrize("remote", remotes, indirect=True)
 def test_download_dir(remote, tmpdir):
     path = str(tmpdir / "data")
     to_info = PathInfo(path)
-    remote.download(remote.path_info / "data", to_info)
+    remote.tree.download(remote.path_info / "data", to_info)
     assert os.path.isdir(path)
     data_dir = tmpdir / "data"
     assert len(list(walk_files(path))) == 7

@@ -21,7 +21,7 @@ class CmdGC(CmdBase):
 
         msg = "This will remove all cache except items used in "
 
-        msg += "the working tree"
+        msg += "the workspace"
         if self.args.all_commits:
             msg += " and all git commits"
         elif self.args.all_branches and self.args.all_tags:
@@ -77,7 +77,7 @@ def add_parser(subparsers, parent_parser):
         "--workspace",
         action="store_true",
         default=False,
-        help="Keep data files used in the current workspace (working tree).",
+        help="Keep data files used in the current workspace.",
     )
     gc_parser.add_argument(
         "-a",

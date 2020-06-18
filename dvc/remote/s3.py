@@ -1,6 +1,5 @@
 import logging
 import os
-import posixpath
 import threading
 
 from funcy import cached_property, wrap_prop
@@ -9,15 +8,15 @@ from dvc.config import ConfigError
 from dvc.exceptions import DvcException, ETagMismatchError
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemote
+from dvc.remote.base import BaseRemoteTree
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
 
 
-class S3Remote(BaseRemote):
+class S3RemoteTree(BaseRemoteTree):
     scheme = Schemes.S3
-    path_cls = CloudURLInfo
+    PATH_CLS = CloudURLInfo
     REQUIRES = {"boto3": "boto3"}
     PARAM_CHECKSUM = "etag"
 
@@ -25,7 +24,7 @@ class S3Remote(BaseRemote):
         super().__init__(repo, config)
 
         url = config.get("url", "s3://")
-        self.path_info = self.path_cls(url)
+        self.path_info = self.PATH_CLS(url)
 
         self.region = config.get("region")
         self.profile = config.get("profile")
@@ -77,9 +76,6 @@ class S3Remote(BaseRemote):
 
         return obj["ETag"].strip('"')
 
-    def get_file_checksum(self, path_info):
-        return self.get_etag(self.s3, path_info.bucket, path_info.path)
-
     @staticmethod
     def get_head_object(s3, bucket, path, *args, **kwargs):
 
@@ -88,6 +84,136 @@ class S3Remote(BaseRemote):
         except Exception as exc:
             raise DvcException(f"s3://{bucket}/{path} does not exist") from exc
         return obj
+
+    def _append_aws_grants_to_extra_args(self, config):
+        # Keys for extra_args can be one of the following list:
+        # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/customizations/s3.html#boto3.s3.transfer.S3Transfer.ALLOWED_UPLOAD_ARGS
+        """
+          ALLOWED_UPLOAD_ARGS = [
+            'ACL', 'CacheControl', 'ContentDisposition', 'ContentEncoding',
+            'ContentLanguage', 'ContentType', 'Expires', 'GrantFullControl',
+            'GrantRead', 'GrantReadACP', 'GrantWriteACP', 'Metadata',
+            'RequestPayer', 'ServerSideEncryption', 'StorageClass',
+            'SSECustomerAlgorithm', 'SSECustomerKey', 'SSECustomerKeyMD5',
+            'SSEKMSKeyId', 'WebsiteRedirectLocation'
+          ]
+        """
+
+        grants = {
+            "grant_full_control": "GrantFullControl",
+            "grant_read": "GrantRead",
+            "grant_read_acp": "GrantReadACP",
+            "grant_write_acp": "GrantWriteACP",
+        }
+
+        for grant_option, extra_args_key in grants.items():
+            if config.get(grant_option):
+                if self.acl:
+                    raise ConfigError(
+                        "`acl` and `grant_*` AWS S3 config options "
+                        "are mutually exclusive"
+                    )
+
+                self.extra_args[extra_args_key] = config.get(grant_option)
+
+    def _generate_download_url(self, path_info, expires=3600):
+        params = {"Bucket": path_info.bucket, "Key": path_info.path}
+        return self.s3.generate_presigned_url(
+            ClientMethod="get_object", Params=params, ExpiresIn=int(expires)
+        )
+
+    def exists(self, path_info):
+        """Check if the blob exists. If it does not exist,
+        it could be a part of a directory path.
+
+        eg: if `data/file.txt` exists, check for `data` should return True
+        """
+        return self.isfile(path_info) or self.isdir(path_info)
+
+    def isdir(self, path_info):
+        # S3 doesn't have a concept for directories.
+        #
+        # Using `head_object` with a path pointing to a directory
+        # will throw a 404 error.
+        #
+        # A reliable way to know if a given path is a directory is by
+        # checking if there are more files sharing the same prefix
+        # with a `list_objects` call.
+        #
+        # We need to make sure that the path ends with a forward slash,
+        # since we can end with false-positives like the following example:
+        #
+        #       bucket
+        #       └── data
+        #          ├── alice
+        #          └── alpha
+        #
+        # Using `data/al` as prefix will return `[data/alice, data/alpha]`,
+        # While `data/al/` will return nothing.
+        #
+        dir_path = path_info / ""
+        return bool(list(self._list_paths(dir_path, max_items=1)))
+
+    def isfile(self, path_info):
+        from botocore.exceptions import ClientError
+
+        if path_info.path.endswith("/"):
+            return False
+
+        try:
+            self.s3.head_object(Bucket=path_info.bucket, Key=path_info.path)
+        except ClientError as exc:
+            if exc.response["Error"]["Code"] != "404":
+                raise
+            return False
+
+        return True
+
+    def _list_objects(self, path_info, max_items=None):
+        """ Read config for list object api, paginate through list objects."""
+        kwargs = {
+            "Bucket": path_info.bucket,
+            "Prefix": path_info.path,
+            "PaginationConfig": {"MaxItems": max_items},
+        }
+        paginator = self.s3.get_paginator(self.list_objects_api)
+        for page in paginator.paginate(**kwargs):
+            contents = page.get("Contents", ())
+            yield from contents
+
+    def _list_paths(self, path_info, max_items=None):
+        return (
+            item["Key"] for item in self._list_objects(path_info, max_items)
+        )
+
+    def walk_files(self, path_info, **kwargs):
+        for fname in self._list_paths(path_info / "", **kwargs):
+            if fname.endswith("/"):
+                continue
+
+            yield path_info.replace(path=fname)
+
+    def remove(self, path_info):
+        if path_info.scheme != "s3":
+            raise NotImplementedError
+
+        logger.debug(f"Removing {path_info}")
+        self.s3.delete_object(Bucket=path_info.bucket, Key=path_info.path)
+
+    def makedirs(self, path_info):
+        # We need to support creating empty directories, which means
+        # creating an object with an empty body and a trailing slash `/`.
+        #
+        # We are not creating directory objects for every parent prefix,
+        # as it is not required.
+        if not path_info.path:
+            return
+
+        dir_path = path_info / ""
+        self.s3.put_object(Bucket=path_info.bucket, Key=dir_path.path, Body="")
+
+    def copy(self, from_info, to_info):
+        self._copy(self.s3, from_info, to_info, self.extra_args)
 
     @classmethod
     def _copy_multipart(
@@ -101,7 +227,7 @@ class S3Remote(BaseRemote):
         parts = []
         byte_position = 0
         for i in range(1, n_parts + 1):
-            obj = cls.get_head_object(
+            obj = S3RemoteTree.get_head_object(
                 s3, from_info.bucket, from_info.path, PartNumber=i
             )
             part_size = obj["ContentLength"]
@@ -156,7 +282,9 @@ class S3Remote(BaseRemote):
         # object is transfered in the same chunks as it was originally.
         from boto3.s3.transfer import TransferConfig
 
-        obj = cls.get_head_object(s3, from_info.bucket, from_info.path)
+        obj = S3RemoteTree.get_head_object(
+            s3, from_info.bucket, from_info.path
+        )
         etag = obj["ETag"].strip('"')
         size = obj["ContentLength"]
 
@@ -176,114 +304,12 @@ class S3Remote(BaseRemote):
                 Config=TransferConfig(multipart_threshold=size + 1),
             )
 
-        cached_etag = cls.get_etag(s3, to_info.bucket, to_info.path)
+        cached_etag = S3RemoteTree.get_etag(s3, to_info.bucket, to_info.path)
         if etag != cached_etag:
             raise ETagMismatchError(etag, cached_etag)
 
-    def copy(self, from_info, to_info):
-        self._copy(self.s3, from_info, to_info, self.extra_args)
-
-    def remove(self, path_info):
-        if path_info.scheme != "s3":
-            raise NotImplementedError
-
-        logger.debug(f"Removing {path_info}")
-        self.s3.delete_object(Bucket=path_info.bucket, Key=path_info.path)
-
-    def _list_objects(
-        self, path_info, max_items=None, prefix=None, progress_callback=None
-    ):
-        """ Read config for list object api, paginate through list objects."""
-        kwargs = {
-            "Bucket": path_info.bucket,
-            "Prefix": path_info.path,
-            "PaginationConfig": {"MaxItems": max_items},
-        }
-        if prefix:
-            kwargs["Prefix"] = posixpath.join(path_info.path, prefix[:2])
-        paginator = self.s3.get_paginator(self.list_objects_api)
-        for page in paginator.paginate(**kwargs):
-            contents = page.get("Contents", ())
-            if progress_callback:
-                for item in contents:
-                    progress_callback()
-                    yield item
-            else:
-                yield from contents
-
-    def _list_paths(
-        self, path_info, max_items=None, prefix=None, progress_callback=None
-    ):
-        return (
-            item["Key"]
-            for item in self._list_objects(
-                path_info, max_items, prefix, progress_callback
-            )
-        )
-
-    def list_cache_paths(self, prefix=None, progress_callback=None):
-        return self._list_paths(
-            self.path_info, prefix=prefix, progress_callback=progress_callback
-        )
-
-    def isfile(self, path_info):
-        from botocore.exceptions import ClientError
-
-        if path_info.path.endswith("/"):
-            return False
-
-        try:
-            self.s3.head_object(Bucket=path_info.bucket, Key=path_info.path)
-        except ClientError as exc:
-            if exc.response["Error"]["Code"] != "404":
-                raise
-            return False
-
-        return True
-
-    def exists(self, path_info):
-        """Check if the blob exists. If it does not exist,
-        it could be a part of a directory path.
-
-        eg: if `data/file.txt` exists, check for `data` should return True
-        """
-        return self.isfile(path_info) or self.isdir(path_info)
-
-    def makedirs(self, path_info):
-        # We need to support creating empty directories, which means
-        # creating an object with an empty body and a trailing slash `/`.
-        #
-        # We are not creating directory objects for every parent prefix,
-        # as it is not required.
-        if not path_info.path:
-            return
-
-        dir_path = path_info / ""
-        self.s3.put_object(Bucket=path_info.bucket, Key=dir_path.path, Body="")
-
-    def isdir(self, path_info):
-        # S3 doesn't have a concept for directories.
-        #
-        # Using `head_object` with a path pointing to a directory
-        # will throw a 404 error.
-        #
-        # A reliable way to know if a given path is a directory is by
-        # checking if there are more files sharing the same prefix
-        # with a `list_objects` call.
-        #
-        # We need to make sure that the path ends with a forward slash,
-        # since we can end with false-positives like the following example:
-        #
-        #       bucket
-        #       └── data
-        #          ├── alice
-        #          └── alpha
-        #
-        # Using `data/al` as prefix will return `[data/alice, data/alpha]`,
-        # While `data/al/` will return nothing.
-        #
-        dir_path = path_info / ""
-        return bool(list(self._list_paths(dir_path, max_items=1)))
+    def get_file_hash(self, path_info):
+        return self.get_etag(self.s3, path_info.bucket, path_info.path)
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         total = os.path.getsize(from_file)
@@ -311,47 +337,3 @@ class S3Remote(BaseRemote):
             self.s3.download_file(
                 from_info.bucket, from_info.path, to_file, Callback=pbar.update
             )
-
-    def _generate_download_url(self, path_info, expires=3600):
-        params = {"Bucket": path_info.bucket, "Key": path_info.path}
-        return self.s3.generate_presigned_url(
-            ClientMethod="get_object", Params=params, ExpiresIn=int(expires)
-        )
-
-    def walk_files(self, path_info, max_items=None):
-        for fname in self._list_paths(path_info / "", max_items):
-            if fname.endswith("/"):
-                continue
-
-            yield path_info.replace(path=fname)
-
-    def _append_aws_grants_to_extra_args(self, config):
-        # Keys for extra_args can be one of the following list:
-        # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/customizations/s3.html#boto3.s3.transfer.S3Transfer.ALLOWED_UPLOAD_ARGS
-        """
-          ALLOWED_UPLOAD_ARGS = [
-            'ACL', 'CacheControl', 'ContentDisposition', 'ContentEncoding',
-            'ContentLanguage', 'ContentType', 'Expires', 'GrantFullControl',
-            'GrantRead', 'GrantReadACP', 'GrantWriteACP', 'Metadata',
-            'RequestPayer', 'ServerSideEncryption', 'StorageClass',
-            'SSECustomerAlgorithm', 'SSECustomerKey', 'SSECustomerKeyMD5',
-            'SSEKMSKeyId', 'WebsiteRedirectLocation'
-          ]
-        """
-
-        grants = {
-            "grant_full_control": "GrantFullControl",
-            "grant_read": "GrantRead",
-            "grant_read_acp": "GrantReadACP",
-            "grant_write_acp": "GrantWriteACP",
-        }
-
-        for grant_option, extra_args_key in grants.items():
-            if config.get(grant_option):
-                if self.acl:
-                    raise ConfigError(
-                        "`acl` and `grant_*` AWS S3 config options "
-                        "are mutually exclusive"
-                    )
-
-                self.extra_args[extra_args_key] = config.get(grant_option)

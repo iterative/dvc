@@ -16,15 +16,16 @@ from dvc.exceptions import (
     NoOutputOrStageError,
 )
 from dvc.main import main
-from dvc.remote import S3Remote
-from dvc.remote.local import LocalRemote
+from dvc.remote.base import CloudCache, Remote
+from dvc.remote.local import LocalRemoteTree
+from dvc.remote.s3 import S3RemoteTree
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
 from dvc.utils import relpath
 from dvc.utils.fs import walk_files
-from dvc.utils.stage import dump_stage_file, load_stage_file
+from dvc.utils.yaml import dump_yaml, load_yaml
 from tests.basic_env import TestDvc, TestDvcGit
 from tests.func.test_repro import TestRepro
 from tests.remotes import S3
@@ -99,8 +100,8 @@ class TestCheckoutCorruptedCacheDir(TestDvc):
         # NOTE: modifying cache file for one of the files inside the directory
         # to check if dvc will detect that the cache is corrupted.
         entry = self.dvc.cache.local.load_dir_cache(out.checksum)[0]
-        checksum = entry[self.dvc.cache.local.PARAM_CHECKSUM]
-        cache = self.dvc.cache.local.get(checksum)
+        entry_hash = entry[self.dvc.cache.local.tree.PARAM_CHECKSUM]
+        cache = os.fspath(self.dvc.cache.local.hash_to_path_info(entry_hash))
 
         os.chmod(cache, 0o644)
         with open(cache, "w+") as fobj:
@@ -221,7 +222,7 @@ class TestCheckoutSelectiveRemove(CheckoutBase):
         self.assertEqual(0, ret)
 
         stage_path = self.DATA_DIR + DVC_FILE_SUFFIX
-        stage = load_stage_file(stage_path)
+        stage = load_yaml(stage_path)
         staged_files = self.outs_info(stage)
 
         # move instead of remove, to lock inode assigned to stage_files[0].path
@@ -304,10 +305,10 @@ class TestGitIgnoreWhenCheckout(CheckoutBase):
 
 class TestCheckoutMissingMd5InStageFile(TestRepro):
     def test(self):
-        d = load_stage_file(self.file1_stage)
-        del d[Stage.PARAM_OUTS][0][LocalRemote.PARAM_CHECKSUM]
-        del d[Stage.PARAM_DEPS][0][LocalRemote.PARAM_CHECKSUM]
-        dump_stage_file(self.file1_stage, d)
+        d = load_yaml(self.file1_stage)
+        del d[Stage.PARAM_OUTS][0][LocalRemoteTree.PARAM_CHECKSUM]
+        del d[Stage.PARAM_DEPS][0][LocalRemoteTree.PARAM_CHECKSUM]
+        dump_yaml(self.file1_stage, d)
 
         with pytest.raises(CheckoutError):
             self.dvc.checkout(force=True)
@@ -755,22 +756,22 @@ def test_checkout_recursive(tmp_dir, dvc):
     not S3.should_test(), reason="Only run with S3 credentials"
 )
 def test_checkout_for_external_outputs(tmp_dir, dvc):
-    dvc.cache.s3 = S3Remote(dvc, {"url": S3.get_url()})
+    dvc.cache.s3 = CloudCache(S3RemoteTree(dvc, {"url": S3.get_url()}))
 
-    remote = S3Remote(dvc, {"url": S3.get_url()})
+    remote = Remote(S3RemoteTree(dvc, {"url": S3.get_url()}))
     file_path = remote.path_info / "foo"
-    remote.s3.put_object(
+    remote.tree.s3.put_object(
         Bucket=remote.path_info.bucket, Key=file_path.path, Body="foo"
     )
 
-    dvc.add(str(remote.path_info / "foo"))
+    dvc.add(str(remote.path_info / "foo"), external=True)
 
-    remote.remove(file_path)
+    remote.tree.remove(file_path)
     stats = dvc.checkout(force=True)
     assert stats == {**empty_checkout, "added": [str(file_path)]}
-    assert remote.exists(file_path)
+    assert remote.tree.exists(file_path)
 
-    remote.s3.put_object(
+    remote.tree.s3.put_object(
         Bucket=remote.path_info.bucket, Key=file_path.path, Body="foo\nfoo"
     )
     stats = dvc.checkout(force=True)

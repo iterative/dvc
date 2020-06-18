@@ -6,12 +6,14 @@ import yaml
 from funcy import first
 from voluptuous import Invalid
 
+from dvc.remote.local import _log_exceptions
 from dvc.schema import COMPILED_LOCK_FILE_STAGE_SCHEMA
-from dvc.serialize import to_single_stage_lockfile
-from dvc.stage.loader import StageLoader
 from dvc.utils import dict_sha256, relpath
 from dvc.utils.fs import makedirs
-from dvc.utils.stage import dump_stage_file
+from dvc.utils.yaml import dump_yaml
+
+from .loader import StageLoader
+from .serialize import to_single_stage_lockfile
 
 logger = logging.getLogger(__name__)
 
@@ -78,20 +80,7 @@ class StageCache:
         return None
 
     def _create_stage(self, cache, wdir=None):
-        from dvc.stage import create_stage, PipelineStage
-
-        params = []
-        for param in cache.get("params", []):
-            if isinstance(param, str):
-                params.append(param)
-                continue
-
-            assert isinstance(param, dict)
-            assert len(param) == 1
-            path = list(param.keys())[0]
-            params_list = param[path]
-            assert isinstance(params_list, list)
-            params.append(f"{path}:" + ",".join(params_list))
+        from . import create_stage, PipelineStage
 
         stage = create_stage(
             PipelineStage,
@@ -99,9 +88,8 @@ class StageCache:
             path="dvc.yaml",
             cmd=cache["cmd"],
             wdir=wdir,
-            params=params,
-            deps=[dep["path"] for dep in cache.get("deps", [])],
             outs=[out["path"] for out in cache["outs"]],
+            external=True,
         )
         StageLoader.fill_from_lock(stage, cache)
         return stage
@@ -154,7 +142,7 @@ class StageCache:
         path = self._get_cache_path(cache_key, cache_value)
         dpath = os.path.dirname(path)
         makedirs(dpath, exist_ok=True)
-        dump_stage_file(path, cache)
+        dump_yaml(path, cache)
 
     def is_cached(self, stage):
         return bool(self._load(stage))
@@ -190,11 +178,19 @@ class StageCache:
 
     def push(self, remote):
         remote = self.repo.cloud.get_remote(remote)
-        return self._transfer(remote.upload, self.repo.cache.local, remote)
+        return self._transfer(
+            _log_exceptions(remote.tree.upload, "upload"),
+            self.repo.cache.local.tree,
+            remote.tree,
+        )
 
     def pull(self, remote):
         remote = self.repo.cloud.get_remote(remote)
-        return self._transfer(remote.download, remote, self.repo.cache.local)
+        return self._transfer(
+            _log_exceptions(remote.tree.download, "download"),
+            remote.tree,
+            self.repo.cache.local.tree,
+        )
 
     def get_used_cache(self, used_run_cache, *args, **kwargs):
         from dvc.cache import NamedCache

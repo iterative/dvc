@@ -26,14 +26,14 @@ from dvc.exceptions import (
 from dvc.main import main
 from dvc.output.base import BaseOutput
 from dvc.path_info import URLInfo
-from dvc.remote.local import LocalRemote
+from dvc.remote.local import LocalRemoteTree
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
 from dvc.utils import file_md5, relpath
 from dvc.utils.fs import remove
-from dvc.utils.stage import dump_stage_file, load_stage_file
+from dvc.utils.yaml import dump_yaml, load_yaml
 from tests.basic_env import TestDvc
 from tests.remotes import (
     GCP,
@@ -108,7 +108,7 @@ class TestReproCyclicGraph(SingleStageRun, TestDvc):
             "deps": [{"path": "baz.txt"}],
             "outs": [{"path": self.FOO}],
         }
-        dump_stage_file("cycle.dvc", stage_dump)
+        dump_yaml("cycle.dvc", stage_dump)
 
         with self.assertRaises(CyclicGraphError):
             self.dvc.reproduce("cycle.dvc")
@@ -149,7 +149,7 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
             "cmd": f"echo something > {output}",
             "outs": [{"path": output}],
         }
-        dump_stage_file(faulty_stage_path, stage_dump)
+        dump_yaml(faulty_stage_path, stage_dump)
 
         with self.assertRaises(StagePathAsOutputError):
             self.dvc.reproduce(faulty_stage_path)
@@ -188,7 +188,7 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
             "cmd": f"echo something > {output}",
             "outs": [{"path": output}],
         }
-        dump_stage_file(error_stage_path, stage_dump)
+        dump_yaml(error_stage_path, stage_dump)
 
         # NOTE: os.walk() walks in a sorted order and we need dir2 subdirs to
         # be processed before dir1 to load error.dvc first.
@@ -220,7 +220,7 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
         stage = os.path.join("something-1", "a.dvc")
 
         stage_dump = {"cmd": "echo a > a", "outs": [{"path": "a"}]}
-        dump_stage_file(stage, stage_dump)
+        dump_yaml(stage, stage_dump)
 
         try:
             self.dvc.reproduce(stage)
@@ -411,7 +411,7 @@ class TestReproDryNoExec(TestDvc):
                 "run",
                 "--no-exec",
                 "--single-stage",
-                "-f",
+                "--file",
                 DVC_FILE,
                 *deps,
                 "ls {}".format(
@@ -656,11 +656,17 @@ class TestReproMetricsAddUnchanged(TestDvc):
         stages = self.dvc.reproduce(file1_stage)
         self.assertEqual(len(stages), 0)
 
-        self.dvc.metrics.add(file1)
+        d = load_yaml(file1_stage)
+        d["outs"][0]["metric"] = True
+        dump_yaml(file1_stage, d)
+
         stages = self.dvc.reproduce(file1_stage)
         self.assertEqual(len(stages), 0)
 
-        self.dvc.metrics.remove(file1)
+        d = load_yaml(file1_stage)
+        d["outs"][0]["metric"] = False
+        dump_yaml(file1_stage, d)
+
         stages = self.dvc.reproduce(file1_stage)
         self.assertEqual(len(stages), 0)
 
@@ -775,10 +781,10 @@ class TestReproChangedDirData(SingleStageRun, TestDvc):
 
 class TestReproMissingMd5InStageFile(TestRepro):
     def test(self):
-        d = load_stage_file(self.file1_stage)
-        del d[Stage.PARAM_OUTS][0][LocalRemote.PARAM_CHECKSUM]
-        del d[Stage.PARAM_DEPS][0][LocalRemote.PARAM_CHECKSUM]
-        dump_stage_file(self.file1_stage, d)
+        d = load_yaml(self.file1_stage)
+        del d[Stage.PARAM_OUTS][0][LocalRemoteTree.PARAM_CHECKSUM]
+        del d[Stage.PARAM_DEPS][0][LocalRemoteTree.PARAM_CHECKSUM]
+        dump_yaml(self.file1_stage, d)
 
         stages = self.dvc.reproduce(self.file1_stage)
         self.assertEqual(len(stages), 1)
@@ -812,7 +818,7 @@ class TestCmdReproChdir(TestDvc):
             [
                 "run",
                 "--single-stage",
-                "-f",
+                "--file",
                 f"{dname}/Dvcfile",
                 "-w",
                 f"{dname}",
@@ -957,6 +963,7 @@ class TestReproExternalBase(SingleStageRun, TestDvc):
             deps=[out_foo_path],
             cmd=self.cmd(foo_path, bar_path),
             name="external-base",
+            external=True,
         )
 
         self.assertEqual(self.dvc.status([cmd_stage.addressing]), {})
@@ -983,7 +990,8 @@ class TestReproExternalBase(SingleStageRun, TestDvc):
         self.dvc.gc(workspace=True)
         self.assertEqual(self.dvc.status(), {})
 
-        self.dvc.remove(cmd_stage.path, dvc_only=True)
+        with self.dvc.lock:
+            cmd_stage.remove_outs(force=True)
         self.assertNotEqual(self.dvc.status([cmd_stage.addressing]), {})
 
         self.dvc.checkout([cmd_stage.path], force=True)
@@ -991,6 +999,7 @@ class TestReproExternalBase(SingleStageRun, TestDvc):
 
 
 @pytest.mark.skipif(os.name == "nt", reason="temporarily disabled on windows")
+@flaky(max_runs=3, min_passes=1)
 class TestReproExternalS3(S3, TestReproExternalBase):
     @property
     def scheme(self):
@@ -1203,12 +1212,13 @@ class TestReproExternalHTTP(TestReproExternalBase):
         self.assertTrue(os.path.exists(import_output))
         self.assertTrue(filecmp.cmp(import_output, self.FOO, shallow=False))
 
-        self.dvc.remove("imported_file.dvc")
+        self.dvc.remove("imported_file.dvc", outs=True)
 
         with StaticFileServer(handler_class=ContentMD5Handler) as httpd:
             import_url = urljoin(self.get_remote(httpd.server_port), self.FOO)
             import_output = "imported_file"
             import_stage = self.dvc.imp_url(import_url, import_output)
+            assert import_stage.repo == self.dvc
 
         self.assertTrue(os.path.exists(import_output))
         self.assertTrue(filecmp.cmp(import_output, self.FOO, shallow=False))
@@ -1225,7 +1235,7 @@ class TestReproExternalHTTP(TestReproExternalBase):
             self.assertEqual(ret1, 0)
             self.assertEqual(ret2, 0)
 
-            self.dvc = DvcRepo(".")
+            self.dvc = import_stage.repo = DvcRepo(".")
 
             run_dependency = urljoin(remote, self.BAR)
             run_output = "remote_file"
@@ -1245,7 +1255,10 @@ class TestReproExternalHTTP(TestReproExternalBase):
             self.assertTrue(os.path.exists(run_output))
 
             # Pull
-            self.dvc.remove(import_stage.path, dvc_only=True)
+            with self.dvc.lock:
+                self.assertEqual(import_stage.repo.lock.is_locked, True)
+                self.assertEqual(self.dvc.lock.is_locked, True)
+                import_stage.remove_outs(force=True)
             self.assertFalse(os.path.exists(import_output))
 
             shutil.move(self.local_cache, cache_id)
@@ -1372,9 +1385,9 @@ class TestReproAlreadyCached(TestRepro):
         self.assertEqual(ret, 0)
 
         patch_download = patch.object(
-            LocalRemote,
+            LocalRemoteTree,
             "download",
-            side_effect=LocalRemote.download,
+            side_effect=LocalRemoteTree.download,
             autospec=True,
         )
 
@@ -1724,12 +1737,14 @@ def test_downstream(dvc):
     reason="external output scenario is not supported on Windows",
 )
 def test_ssh_dir_out(tmp_dir, dvc, ssh_server):
+    from tests.remotes.ssh import TEST_SSH_USER, TEST_SSH_KEY_PATH
+
     tmp_dir.gen({"foo": "foo content"})
 
     # Set up remote and cache
-    user = ssh_server.test_creds["username"]
+    user = TEST_SSH_USER
     port = ssh_server.port
-    keyfile = ssh_server.test_creds["key_filename"]
+    keyfile = TEST_SSH_KEY_PATH
 
     remote_url = SSHMocked.get_url(user, port)
     assert main(["remote", "add", "upstream", remote_url]) == 0
@@ -1765,3 +1780,25 @@ def test_ssh_dir_out(tmp_dir, dvc, ssh_server):
 
     repo.reproduce("dir-out.dvc")
     repo.reproduce("dir-out.dvc", force=True)
+
+
+def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy, mocker):
+    from dvc.dvcfile import SingleStageFile
+
+    tmp_dir.gen("foo", "foo")
+    stage = run_copy("foo", "bar", single_stage=True)
+    assert not dvc.reproduce(stage.addressing)
+
+    from dvc.stage.run import cmd_run
+
+    m = mocker.patch("dvc.stage.run.cmd_run", wraps=cmd_run)
+
+    data = SingleStageFile(dvc, stage.path)._load()[0]
+    data["cmd"] = "  ".join(stage.cmd.split())  # change cmd spacing by two
+    dump_yaml(stage.path, data)
+
+    assert dvc.status([stage.addressing]) == {
+        stage.addressing: ["changed checksum"]
+    }
+    assert dvc.reproduce(stage.addressing)[0] == stage
+    m.assert_called_once_with(stage)

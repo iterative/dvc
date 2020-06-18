@@ -10,13 +10,14 @@ import yaml
 from funcy import first
 
 from dvc.repo.plots.data import (
+    JSONPlotData,
     NoMetricInHistoryError,
     PlotData,
     PlotMetricTypeError,
+    YAMLPlotData,
 )
-from dvc.repo.plots.show import NoDataOrTemplateProvided
 from dvc.repo.plots.template import (
-    NoDataForTemplateError,
+    BadTemplateError,
     NoFieldInDataError,
     TemplateNotFoundError,
 )
@@ -50,9 +51,9 @@ def test_plot_csv_one_column(tmp_dir, scm, dvc, run_copy_metrics):
     )
 
     props = {
-        "csv_header": False,
-        "xlab": "x_title",
-        "ylab": "y_title",
+        "header": False,
+        "x_label": "x_title",
+        "y_label": "y_title",
         "title": "mytitle",
     }
     plot_string = dvc.plots.show(props=props)["metric.csv"]
@@ -60,8 +61,8 @@ def test_plot_csv_one_column(tmp_dir, scm, dvc, run_copy_metrics):
     plot_content = json.loads(plot_string)
     assert plot_content["title"] == "mytitle"
     assert plot_content["data"]["values"] == [
-        {"0": "2", PlotData.INDEX_FIELD: 0, "rev": "working tree"},
-        {"0": "3", PlotData.INDEX_FIELD: 1, "rev": "working tree"},
+        {"0": "2", PlotData.INDEX_FIELD: 0, "rev": "workspace"},
+        {"0": "3", PlotData.INDEX_FIELD: 1, "rev": "workspace"},
     ]
     assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
     assert plot_content["encoding"]["y"]["field"] == "0"
@@ -86,14 +87,14 @@ def test_plot_csv_multiple_columns(tmp_dir, scm, dvc, run_copy_metrics):
         {
             "val": "2",
             PlotData.INDEX_FIELD: 0,
-            "rev": "working tree",
+            "rev": "workspace",
             "first_val": "100",
             "second_val": "100",
         },
         {
             "val": "3",
             PlotData.INDEX_FIELD: 1,
-            "rev": "working tree",
+            "rev": "workspace",
             "first_val": "200",
             "second_val": "300",
         },
@@ -119,13 +120,13 @@ def test_plot_csv_choose_axes(tmp_dir, scm, dvc, run_copy_metrics):
     assert plot_content["data"]["values"] == [
         {
             "val": "2",
-            "rev": "working tree",
+            "rev": "workspace",
             "first_val": "100",
             "second_val": "100",
         },
         {
             "val": "3",
-            "rev": "working tree",
+            "rev": "workspace",
             "first_val": "200",
             "second_val": "300",
         },
@@ -148,8 +149,8 @@ def test_plot_json_single_val(tmp_dir, scm, dvc, run_copy_metrics):
 
     plot_json = json.loads(plot_string)
     assert plot_json["data"]["values"] == [
-        {"val": 2, PlotData.INDEX_FIELD: 0, "rev": "working tree"},
-        {"val": 3, PlotData.INDEX_FIELD: 1, "rev": "working tree"},
+        {"val": 2, PlotData.INDEX_FIELD: 0, "rev": "workspace"},
+        {"val": 3, PlotData.INDEX_FIELD: 1, "rev": "workspace"},
     ]
     assert plot_json["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
     assert plot_json["encoding"]["y"]["field"] == "val"
@@ -176,13 +177,13 @@ def test_plot_json_multiple_val(tmp_dir, scm, dvc, run_copy_metrics):
             "val": 2,
             PlotData.INDEX_FIELD: 0,
             "first_val": 100,
-            "rev": "working tree",
+            "rev": "workspace",
         },
         {
             "val": 3,
             PlotData.INDEX_FIELD: 1,
             "first_val": 200,
-            "rev": "working tree",
+            "rev": "workspace",
         },
     ]
     assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
@@ -207,8 +208,8 @@ def test_plot_confusion(tmp_dir, dvc, run_copy_metrics):
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"predicted": "B", "actual": "A", "rev": "working tree"},
-        {"predicted": "A", "actual": "A", "rev": "working tree"},
+        {"predicted": "B", "actual": "A", "rev": "workspace"},
+        {"predicted": "A", "actual": "A", "rev": "workspace"},
     ]
     assert plot_content["encoding"]["x"]["field"] == "predicted"
     assert plot_content["encoding"]["y"]["field"] == "actual"
@@ -261,7 +262,11 @@ def test_plot_multiple_revs_default(tmp_dir, scm, dvc, run_copy_metrics):
 
 
 def test_plot_multiple_revs(tmp_dir, scm, dvc, run_copy_metrics):
-    shutil.copy(tmp_dir / ".dvc" / "plots" / "default.json", "template.json")
+    templates_dir = dvc.plot_templates.templates_dir
+    shutil.copy(
+        os.path.join(templates_dir, "default.json"),
+        os.path.join(templates_dir, "template.json"),
+    )
 
     metric_1 = [{"y": 2}, {"y": 3}]
     _write_json(tmp_dir, metric_1, "metric_t.json")
@@ -322,13 +327,13 @@ def test_plot_even_if_metric_missing(
 
     caplog.clear()
     with caplog.at_level(logging.WARNING, "dvc"):
-        plot_string = dvc.plots.show(revs=["v1", "v2"])["metric.json"]
+        plots = dvc.plots.show(revs=["v1", "v2"], targets=["metric.json"])
         assert (
             "File 'metric.json' was not found at: 'v1'. "
             "It will not be plotted." in caplog.text
         )
 
-    plot_content = json.loads(plot_string)
+    plot_content = json.loads(plots["metric.json"])
     assert plot_content["data"]["values"] == [
         {"y": 2, PlotData.INDEX_FIELD: 0, "rev": "v2"},
         {"y": 3, PlotData.INDEX_FIELD: 1, "rev": "v2"},
@@ -355,15 +360,6 @@ def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc, caplog):
     assert str(error.value) == "Could not find 'metric.json'."
 
 
-@pytest.fixture()
-def custom_template(tmp_dir, dvc):
-    custom_template = tmp_dir / "custom_template.json"
-    shutil.copy(
-        tmp_dir / ".dvc" / "plots" / "default.json", custom_template,
-    )
-    return custom_template
-
-
 def test_custom_template(tmp_dir, scm, dvc, custom_template, run_copy_metrics):
     metric = [{"a": 1, "b": 2}, {"a": 2, "b": 3}]
     _write_json(tmp_dir, metric, "metric_t.json")
@@ -380,8 +376,8 @@ def test_custom_template(tmp_dir, scm, dvc, custom_template, run_copy_metrics):
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"a": 1, "b": 2, "rev": "working tree"},
-        {"a": 2, "b": 3, "rev": "working tree"},
+        {"a": 1, "b": 2, "rev": "workspace"},
+        {"a": 2, "b": 3, "rev": "workspace"},
     ]
     assert plot_content["encoding"]["x"]["field"] == "a"
     assert plot_content["encoding"]["y"]["field"] == "b"
@@ -391,74 +387,10 @@ def _replace(path, src, dst):
     path.write_text(path.read_text().replace(src, dst))
 
 
-def test_custom_template_with_specified_data(
-    tmp_dir, scm, dvc, custom_template, run_copy_metrics
-):
-    _replace(
-        custom_template, "DVC_METRIC_DATA", "DVC_METRIC_DATA,metric.json",
-    )
+def test_no_plots(tmp_dir, dvc):
+    from dvc.exceptions import NoPlotsError
 
-    metric = [{"a": 1, "b": 2}, {"a": 2, "b": 3}]
-    _write_json(tmp_dir, metric, "metric_t.json")
-    run_copy_metrics(
-        "metric_t.json",
-        "metric.json",
-        outs_no_cache=["metric.json"],
-        commit="init",
-        tag="v1",
-    )
-
-    props = {"template": os.fspath(custom_template), "x": "a", "y": "b"}
-    plot_string = dvc.plots.show(props=props)["metric.json"]
-
-    plot_content = json.loads(plot_string)
-    assert plot_content["data"]["values"] == [
-        {"a": 1, "b": 2, "rev": "working tree"},
-        {"a": 2, "b": 3, "rev": "working tree"},
-    ]
-    assert plot_content["encoding"]["x"]["field"] == "a"
-    assert plot_content["encoding"]["y"]["field"] == "b"
-
-
-def test_plot_override_specified_data_source(
-    tmp_dir, scm, dvc, run_copy_metrics
-):
-    shutil.copy(
-        tmp_dir / ".dvc" / "plots" / "default.json",
-        tmp_dir / "newtemplate.json",
-    )
-    _replace(
-        tmp_dir / "newtemplate.json",
-        "DVC_METRIC_DATA",
-        "DVC_METRIC_DATA,metric.json",
-    )
-
-    metric = [{"a": 1, "b": 2}, {"a": 2, "b": 3}]
-    _write_json(tmp_dir, metric, "metric1.json")
-    run_copy_metrics(
-        "metric1.json",
-        "metric2.json",
-        plots_no_cache=["metric2.json"],
-        commit="init",
-        tag="v1",
-    )
-
-    props = {"template": "newtemplate.json", "x": "a"}
-    plot_string = dvc.plots.show(targets=["metric2.json"], props=props)[
-        "metric2.json"
-    ]
-
-    plot_content = json.loads(plot_string)
-    assert plot_content["data"]["values"] == [
-        {"a": 1, "b": 2, "rev": "working tree"},
-        {"a": 2, "b": 3, "rev": "working tree"},
-    ]
-    assert plot_content["encoding"]["x"]["field"] == "a"
-    assert plot_content["encoding"]["y"]["field"] == "b"
-
-
-def test_should_raise_on_no_template_and_datafile(tmp_dir, dvc):
-    with pytest.raises(NoDataOrTemplateProvided):
+    with pytest.raises(NoPlotsError):
         dvc.plots.show()
 
 
@@ -477,9 +409,21 @@ def test_should_raise_on_no_template(tmp_dir, dvc, run_copy_metrics):
         dvc.plots.show("metric.json", props=props)
 
 
-def test_plot_no_data(tmp_dir, dvc):
-    with pytest.raises(NoDataForTemplateError):
-        dvc.plots.show(props={"template": "default"})
+def test_bad_template(tmp_dir, dvc, run_copy_metrics):
+    metric = [{"val": 2}, {"val": 3}]
+    _write_json(tmp_dir, metric, "metric_t.json")
+    run_copy_metrics(
+        "metric_t.json",
+        "metric.json",
+        plots_no_cache=["metric.json"],
+        commit="first run",
+    )
+
+    tmp_dir.gen("template.json", json.dumps({"a": "b", "c": "d"}))
+
+    with pytest.raises(BadTemplateError):
+        props = {"template": "template.json"}
+        dvc.plots.show("metric.json", props=props)
 
 
 def test_plot_wrong_metric_type(tmp_dir, scm, dvc, run_copy_metrics):
@@ -518,8 +462,8 @@ def test_plot_choose_columns(
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"b": 2, "c": 3, "rev": "working tree"},
-        {"b": 3, "c": 4, "rev": "working tree"},
+        {"b": 2, "c": 3, "rev": "workspace"},
+        {"b": 3, "c": 4, "rev": "workspace"},
     ]
     assert plot_content["encoding"]["x"]["field"] == "b"
     assert plot_content["encoding"]["y"]["field"] == "c"
@@ -540,8 +484,8 @@ def test_plot_default_choose_column(tmp_dir, scm, dvc, run_copy_metrics):
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {PlotData.INDEX_FIELD: 0, "b": 2, "rev": "working tree"},
-        {PlotData.INDEX_FIELD: 1, "b": 3, "rev": "working tree"},
+        {PlotData.INDEX_FIELD: 0, "b": 2, "rev": "workspace"},
+        {PlotData.INDEX_FIELD: 1, "b": 3, "rev": "workspace"},
     ]
     assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
     assert plot_content["encoding"]["y"]["field"] == "b"
@@ -560,8 +504,8 @@ def test_plot_yaml(tmp_dir, scm, dvc, run_copy_metrics):
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"val": 2, PlotData.INDEX_FIELD: 0, "rev": "working tree"},
-        {"val": 3, PlotData.INDEX_FIELD: 1, "rev": "working tree"},
+        {"val": 2, PlotData.INDEX_FIELD: 0, "rev": "workspace"},
+        {"val": 3, PlotData.INDEX_FIELD: 1, "rev": "workspace"},
     ]
 
 
@@ -580,3 +524,50 @@ def test_raise_on_wrong_field(tmp_dir, scm, dvc, run_copy_metrics):
 
     with pytest.raises(NoFieldInDataError):
         dvc.plots.show("metric.json", props={"y": "no_val"})
+
+
+def test_load_metric_from_dict_json(tmp_dir):
+    metric = [{"acccuracy": 1, "loss": 2}, {"accuracy": 3, "loss": 4}]
+    dmetric = {"train": metric}
+
+    plot_data = JSONPlotData("-", "revision", json.dumps(dmetric))
+
+    expected = metric
+    for d in expected:
+        d["rev"] = "revision"
+
+    assert list(map(dict, plot_data.to_datapoints())) == expected
+
+
+def test_load_metric_from_dict_yaml(tmp_dir):
+    metric = [{"acccuracy": 1, "loss": 2}, {"accuracy": 3, "loss": 4}]
+    dmetric = {"train": metric}
+
+    plot_data = YAMLPlotData("-", "revision", yaml.dump(dmetric))
+
+    expected = metric
+    for d in expected:
+        d["rev"] = "revision"
+
+    assert list(map(dict, plot_data.to_datapoints())) == expected
+
+
+def test_multiple_plots(tmp_dir, scm, dvc, run_copy_metrics):
+    metric1 = [
+        OrderedDict([("first_val", 100), ("second_val", 100), ("val", 2)]),
+        OrderedDict([("first_val", 200), ("second_val", 300), ("val", 3)]),
+    ]
+    metric2 = [
+        OrderedDict([("first_val", 100), ("second_val", 100), ("val", 2)]),
+        OrderedDict([("first_val", 200), ("second_val", 300), ("val", 3)]),
+    ]
+    _write_csv(metric1, "metric_t1.csv")
+    _write_json(tmp_dir, metric2, "metric_t2.json")
+    run_copy_metrics(
+        "metric_t1.csv", "metric1.csv", plots_no_cache=["metric1.csv"]
+    )
+    run_copy_metrics(
+        "metric_t2.json", "metric2.json", plots_no_cache=["metric2.json"]
+    )
+
+    assert len(dvc.plots.show().keys()) == 2

@@ -3,7 +3,7 @@ import os
 import string
 from collections import defaultdict
 
-from funcy import project
+from funcy import cached_property, project
 
 import dvc.dependency as dependency
 import dvc.prompt as prompt
@@ -19,6 +19,7 @@ from .utils import (
     check_circular_dependency,
     check_duplicated_arguments,
     check_missing_outputs,
+    check_no_externals,
     check_stage_path,
     compute_md5,
     fill_stage_dependencies,
@@ -52,7 +53,7 @@ def loads_from(cls, repo, path, wdir, data):
     return cls(**kw)
 
 
-def create_stage(cls, repo, path, **kwargs):
+def create_stage(cls, repo, path, external=False, **kwargs):
     from dvc.dvcfile import check_dvc_filename
 
     wdir = os.path.abspath(kwargs.get("wdir", None) or os.curdir)
@@ -63,6 +64,8 @@ def create_stage(cls, repo, path, **kwargs):
 
     stage = loads_from(cls, repo, path, wdir, kwargs)
     fill_stage_outputs(stage, **kwargs)
+    if not external:
+        check_no_externals(stage)
     fill_stage_dependencies(
         stage, **project(kwargs, ["deps", "erepo", "params"])
     )
@@ -124,6 +127,8 @@ class Stage(params.StageParams):
     @path.setter
     def path(self, path):
         self._path = path
+        self.__dict__.pop("path_in_repo", None)
+        self.__dict__.pop("relpath", None)
 
     @property
     def dvcfile(self):
@@ -169,11 +174,11 @@ class Stage(params.StageParams):
             and self.path_in_repo == other.path_in_repo
         )
 
-    @property
+    @cached_property
     def path_in_repo(self):
         return relpath(self.path, self.repo.root_dir)
 
-    @property
+    @cached_property
     def relpath(self):
         return relpath(self.path)
 
@@ -282,12 +287,13 @@ class Stage(params.StageParams):
             out.unprotect()
 
     @rwlocked(write=["outs"])
-    def remove(self, force=False, remove_outs=True):
+    def remove(self, force=False, remove_outs=True, purge=True):
         if remove_outs:
             self.remove_outs(ignore_remove=True, force=force)
         else:
             self.unprotect_outs()
-        self.dvcfile.remove()
+        if purge:
+            self.dvcfile.remove_stage(self)
 
     @rwlocked(read=["deps"], write=["outs"])
     def reproduce(self, interactive=False, **kwargs):
@@ -489,7 +495,11 @@ class Stage(params.StageParams):
             ret.append("changed checksum")
 
     def already_cached(self):
-        return self.deps_cached() and self.outs_cached()
+        return (
+            not self.changed_stage()
+            and self.deps_cached()
+            and self.outs_cached()
+        )
 
     def deps_cached(self):
         return all(not dep.changed() for dep in self.deps)

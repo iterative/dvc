@@ -1,19 +1,18 @@
 import logging
 import os
-import posixpath
 import threading
 
 from funcy import cached_property, wrap_prop
 
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemote
+from dvc.remote.base import BaseRemoteTree
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
 
 
-class OSSRemote(BaseRemote):
+class OSSRemoteTree(BaseRemoteTree):
     """
     oss2 document:
     https://www.alibabacloud.com/help/doc-detail/32026.htm
@@ -33,7 +32,7 @@ class OSSRemote(BaseRemote):
     """
 
     scheme = Schemes.OSS
-    path_cls = CloudURLInfo
+    PATH_CLS = CloudURLInfo
     REQUIRES = {"oss2": "oss2"}
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
@@ -43,7 +42,7 @@ class OSSRemote(BaseRemote):
         super().__init__(repo, config)
 
         url = config.get("url")
-        self.path_info = self.path_cls(url) if url else None
+        self.path_info = self.PATH_CLS(url) if url else None
 
         self.endpoint = config.get("oss_endpoint") or os.getenv("OSS_ENDPOINT")
 
@@ -83,29 +82,36 @@ class OSSRemote(BaseRemote):
             )
         return bucket
 
+    def _generate_download_url(self, path_info, expires=3600):
+        assert path_info.bucket == self.path_info.bucket
+
+        return self.oss_service.sign_url("GET", path_info.path, expires)
+
+    def exists(self, path_info):
+        paths = self._list_paths(path_info)
+        return any(path_info.path == path for path in paths)
+
+    def _list_paths(self, path_info):
+        import oss2
+
+        for blob in oss2.ObjectIterator(
+            self.oss_service, prefix=path_info.path
+        ):
+            yield blob.key
+
+    def walk_files(self, path_info, **kwargs):
+        for fname in self._list_paths(path_info):
+            if fname.endswith("/"):
+                continue
+
+            yield path_info.replace(path=fname)
+
     def remove(self, path_info):
         if path_info.scheme != self.scheme:
             raise NotImplementedError
 
         logger.debug(f"Removing oss://{path_info}")
         self.oss_service.delete_object(path_info.path)
-
-    def _list_paths(self, prefix, progress_callback=None):
-        import oss2
-
-        for blob in oss2.ObjectIterator(self.oss_service, prefix=prefix):
-            if progress_callback:
-                progress_callback()
-            yield blob.key
-
-    def list_cache_paths(self, prefix=None, progress_callback=None):
-        if prefix:
-            prefix = posixpath.join(
-                self.path_info.path, prefix[:2], prefix[2:]
-            )
-        else:
-            prefix = self.path_info.path
-        return self._list_paths(prefix, progress_callback)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
@@ -122,12 +128,3 @@ class OSSRemote(BaseRemote):
             self.oss_service.get_object_to_file(
                 from_info.path, to_file, progress_callback=pbar.update_to
             )
-
-    def _generate_download_url(self, path_info, expires=3600):
-        assert path_info.bucket == self.path_info.bucket
-
-        return self.oss_service.sign_url("GET", path_info.path, expires)
-
-    def exists(self, path_info):
-        paths = self._list_paths(path_info.path)
-        return any(path_info.path == path for path in paths)

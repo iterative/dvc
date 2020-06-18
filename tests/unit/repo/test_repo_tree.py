@@ -22,8 +22,27 @@ def test_open(tmp_dir, dvc):
     (tmp_dir / "foo").unlink()
 
     tree = RepoTree(dvc)
-    with tree.open("foo", "r") as fobj:
-        assert fobj.read() == "foo"
+    with dvc.state:
+        with tree.open("foo", "r") as fobj:
+            assert fobj.read() == "foo"
+
+
+def test_open_dirty_hash(tmp_dir, dvc):
+    tmp_dir.dvc_gen("file", "file")
+    (tmp_dir / "file").write_text("something")
+
+    tree = RepoTree(dvc)
+    with tree.open("file", "r") as fobj:
+        assert fobj.read() == "something"
+
+
+def test_open_dirty_no_hash(tmp_dir, dvc):
+    tmp_dir.gen("file", "file")
+    (tmp_dir / "file.dvc").write_text("outs:\n- path: file\n")
+
+    tree = RepoTree(dvc)
+    with tree.open("file", "r") as fobj:
+        assert fobj.read() == "file"
 
 
 def test_open_in_history(tmp_dir, scm, dvc):
@@ -38,7 +57,7 @@ def test_open_in_history(tmp_dir, scm, dvc):
     dvc.scm.commit("foofoo")
 
     for rev in dvc.brancher(revs=["HEAD~1"]):
-        if rev == "working tree":
+        if rev == "workspace":
             continue
 
         tree = RepoTree(dvc)
@@ -124,6 +143,28 @@ def test_walk(tmp_dir, dvc, dvcfiles, extra_expected):
     expected = [str(path) for path in expected + extra_expected]
     assert set(actual) == set(expected)
     assert len(actual) == len(expected)
+
+
+def test_walk_onerror(tmp_dir, dvc):
+    def onerror(exc):
+        raise exc
+
+    tmp_dir.dvc_gen("foo", "foo")
+    tree = RepoTree(dvc)
+
+    # path does not exist
+    for _ in tree.walk("dir"):
+        pass
+    with pytest.raises(OSError):
+        for _ in tree.walk("dir", onerror=onerror):
+            pass
+
+    # path is not a directory
+    for _ in tree.walk("foo"):
+        pass
+    with pytest.raises(OSError):
+        for _ in tree.walk("foo", onerror=onerror):
+            pass
 
 
 def test_isdvc(tmp_dir, dvc):

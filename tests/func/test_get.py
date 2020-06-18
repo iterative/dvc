@@ -33,7 +33,9 @@ def test_get_repo_dir(tmp_dir, erepo_dir):
     trees_equal(erepo_dir / "dir", "dir_imported")
 
 
-def test_get_git_file(tmp_dir, erepo_dir):
+@pytest.mark.parametrize("repo_type", ["git_dir", "erepo_dir"])
+def test_get_git_file(request, tmp_dir, repo_type):
+    erepo_dir = request.getfixturevalue(repo_type)
     src = "some_file"
     dst = "some_file_imported"
 
@@ -45,7 +47,9 @@ def test_get_git_file(tmp_dir, erepo_dir):
     assert (tmp_dir / dst).read_text() == "hello"
 
 
-def test_get_git_dir(tmp_dir, erepo_dir):
+@pytest.mark.parametrize("repo_type", ["git_dir", "erepo_dir"])
+def test_get_git_dir(request, tmp_dir, repo_type):
+    erepo_dir = request.getfixturevalue(repo_type)
     src = "some_directory"
     dst = "some_directory_imported"
 
@@ -101,7 +105,8 @@ def test_get_full_dvc_path(tmp_dir, erepo_dir, tmp_path_factory):
     external_data.write_text("ext_data")
 
     with erepo_dir.chdir():
-        erepo_dir.dvc_add(os.fspath(external_data), commit="add external data")
+        erepo_dir.dvc.add(os.fspath(external_data), external=True)
+        erepo_dir.scm_add("ext_data.dvc", commit="add external data")
 
     Repo.get(
         os.fspath(erepo_dir), os.fspath(external_data), "ext_data_imported"
@@ -196,8 +201,8 @@ def test_get_file_from_dir(tmp_dir, erepo_dir):
     assert (tmp_dir / "X").read_text() == "foo"
 
 
-def test_get_url_positive(tmp_dir, erepo_dir, caplog, setup_remote):
-    setup_remote(erepo_dir.dvc)
+def test_get_url_positive(tmp_dir, erepo_dir, caplog, local_cloud):
+    erepo_dir.add_remote(config=local_cloud.config)
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo")
     erepo_dir.dvc.push()
@@ -233,11 +238,10 @@ def test_get_url_git_only_repo(tmp_dir, scm, caplog):
 
 
 def test_get_pipeline_tracked_outs(
-    tmp_dir, dvc, scm, git_dir, run_copy, setup_remote
+    tmp_dir, dvc, scm, git_dir, run_copy, local_remote
 ):
     from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
 
-    setup_remote(dvc)
     tmp_dir.gen("foo", "foo")
     run_copy("foo", "bar", name="copy-foo-bar")
     dvc.push()

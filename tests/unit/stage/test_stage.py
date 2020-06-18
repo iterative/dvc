@@ -2,7 +2,6 @@ import os
 import signal
 import subprocess
 import threading
-from unittest import TestCase
 
 import mock
 import pytest
@@ -50,12 +49,11 @@ def test_meta_ignored():
         assert stage.compute_md5() == "e9521a22111493406ea64a88cda63e0b"
 
 
-class TestPathConversion(TestCase):
-    def test(self):
-        stage = Stage(None, "path")
+def test_path_conversion(dvc):
+    stage = Stage(dvc, "path")
 
-        stage.wdir = os.path.join("..", "..")
-        self.assertEqual(stage.dumpd()["wdir"], "../..")
+    stage.wdir = os.path.join("..", "..")
+    assert stage.dumpd()["wdir"] == "../.."
 
 
 def test_stage_update(mocker):
@@ -102,3 +100,21 @@ def test_always_changed(dvc):
     with dvc.lock:
         assert stage.changed()
         assert stage.status()["path"] == ["always changed"]
+
+
+def test_external_outs(tmp_path_factory, dvc):
+    from dvc.stage import create_stage
+    from dvc.stage.exceptions import StageExternalOutputsError
+
+    tmp_path = tmp_path_factory.mktemp("external-outs")
+    foo = tmp_path / "foo"
+    foo.write_text("foo")
+
+    with pytest.raises(StageExternalOutputsError):
+        create_stage(Stage, dvc, "path.dvc", outs=[os.fspath(foo)])
+
+    with dvc.config.edit() as conf:
+        conf["remote"]["myremote"] = {"url": os.fspath(tmp_path)}
+
+    create_stage(Stage, dvc, "path.dvc", outs=["remote://myremote/foo"])
+    create_stage(Stage, dvc, "path.dvc", outs=[os.fspath(foo)], external=True)

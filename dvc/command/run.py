@@ -45,7 +45,7 @@ class CmdRun(CmdBase):
                 fname=self.args.file,
                 wdir=self.args.wdir,
                 no_exec=self.args.no_exec,
-                overwrite=self.args.overwrite_dvcfile,
+                force=self.args.force,
                 run_cache=not self.args.no_run_cache,
                 no_commit=self.args.no_commit,
                 outs_persist=self.args.outs_persist,
@@ -53,6 +53,7 @@ class CmdRun(CmdBase):
                 always_changed=self.args.always_changed,
                 name=self.args.name,
                 single_stage=self.args.single_stage,
+                external=self.args.external,
             )
         except DvcException:
             logger.exception("")
@@ -132,7 +133,7 @@ def add_parser(subparsers, parent_parser):
         "--metrics",
         action="append",
         default=[],
-        help="Declare output metric file or directory.",
+        help="Declare output metric file.",
         metavar="<path>",
     )
     run_parser.add_argument(
@@ -140,8 +141,7 @@ def add_parser(subparsers, parent_parser):
         "--metrics-no-cache",
         action="append",
         default=[],
-        help="Declare output metric file or directory "
-        "(do not put into DVC cache).",
+        help="Declare output metric file (do not put into DVC cache).",
         metavar="<path>",
     )
     run_parser.add_argument(
@@ -159,7 +159,6 @@ def add_parser(subparsers, parent_parser):
         metavar="<path>",
     )
     run_parser.add_argument(
-        "-f",
         "--file",
         help="Specify name of the DVC-file this command will generate.",
         metavar="<filename>",
@@ -177,10 +176,11 @@ def add_parser(subparsers, parent_parser):
         help="Only create stage file without actually running it.",
     )
     run_parser.add_argument(
-        "--overwrite-dvcfile",
+        "-f",
+        "--force",
         action="store_true",
         default=False,
-        help="Overwrite existing DVC-file without asking for confirmation.",
+        help="Overwrite existing stage",
     )
     run_parser.add_argument(
         "--no-run-cache",
@@ -224,6 +224,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help=argparse.SUPPRESS,
+    )
+    run_parser.add_argument(
+        "--external",
+        action="store_true",
+        default=False,
+        help="Allow outputs that are outside of the DVC repository.",
     )
     run_parser.add_argument(
         "command", nargs=argparse.REMAINDER, help="Command to execute."

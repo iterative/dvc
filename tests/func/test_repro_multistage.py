@@ -10,7 +10,7 @@ from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
 from dvc.exceptions import CyclicGraphError
 from dvc.main import main
 from dvc.stage import PipelineStage
-from dvc.utils.stage import dump_stage_file, parse_stage
+from dvc.utils.yaml import dump_yaml, parse_yaml
 from tests.func import test_repro
 
 COPY_SCRIPT_FORMAT = dedent(
@@ -307,7 +307,7 @@ def test_downstream(tmp_dir, dvc):
     )
 
 
-def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy):
+def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy, mocker):
     from dvc.dvcfile import PipelineFile
 
     tmp_dir.gen("foo", "foo")
@@ -315,11 +315,15 @@ def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy):
     target = "copy-file"
     assert not dvc.reproduce(target)
 
+    from dvc.stage.run import cmd_run
+
+    m = mocker.patch("dvc.stage.run.cmd_run", wraps=cmd_run)
     stage.cmd = "  ".join(stage.cmd.split())  # change cmd spacing by two
     PipelineFile(dvc, PIPELINE_FILE)._dump_pipeline_file(stage)
 
     assert dvc.status([target]) == {target: ["changed command"]}
     assert dvc.reproduce(target)[0] == stage
+    m.assert_called_once_with(stage)
 
 
 def test_repro_when_new_deps_is_added_in_dvcfile(tmp_dir, dvc, run_copy):
@@ -339,7 +343,7 @@ def test_repro_when_new_deps_is_added_in_dvcfile(tmp_dir, dvc, run_copy):
     dvcfile = Dvcfile(dvc, stage.path)
     data, _ = dvcfile._load()
     data["stages"]["copy-file"]["deps"] += ["copy.py"]
-    dump_stage_file(stage.path, data)
+    dump_yaml(stage.path, data)
 
     assert dvc.reproduce(target)[0] == stage
 
@@ -361,7 +365,7 @@ def test_repro_when_new_outs_is_added_in_dvcfile(tmp_dir, dvc):
     dvcfile = Dvcfile(dvc, stage.path)
     data, _ = dvcfile._load()
     data["stages"]["copy-file"]["outs"] = ["foobar"]
-    dump_stage_file(stage.path, data)
+    dump_yaml(stage.path, data)
 
     assert dvc.reproduce(target)[0] == stage
 
@@ -388,7 +392,7 @@ def test_repro_when_new_deps_is_moved(tmp_dir, dvc):
     dvcfile = Dvcfile(dvc, stage.path)
     data, _ = dvcfile._load()
     data["stages"]["copy-file"]["deps"] = ["bar"]
-    dump_stage_file(stage.path, data)
+    dump_yaml(stage.path, data)
 
     assert dvc.reproduce(target)[0] == stage
 
@@ -398,7 +402,7 @@ def test_repro_when_new_out_overlaps_others_stage_outs(tmp_dir, dvc):
 
     tmp_dir.gen({"dir": {"file1": "file1"}, "foo": "foo"})
     dvc.add("dir")
-    dump_stage_file(
+    dump_yaml(
         PIPELINE_FILE,
         {
             "stages": {
@@ -419,7 +423,7 @@ def test_repro_when_new_deps_added_does_not_exist(tmp_dir, dvc):
 
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("foo", "foo")
-    dump_stage_file(
+    dump_yaml(
         PIPELINE_FILE,
         {
             "stages": {
@@ -440,12 +444,12 @@ def test_repro_when_new_outs_added_does_not_exist(tmp_dir, dvc):
 
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("foo", "foo")
-    dump_stage_file(
+    dump_yaml(
         PIPELINE_FILE,
         {
             "stages": {
                 "run-copy": {
-                    "cmd": "python copy {} {}".format("foo", "foobar"),
+                    "cmd": "python copy.py {} {}".format("foo", "foobar"),
                     "deps": ["foo"],
                     "outs": ["foobar", "bar"],
                 }
@@ -459,7 +463,7 @@ def test_repro_when_new_outs_added_does_not_exist(tmp_dir, dvc):
 def test_repro_when_lockfile_gets_deleted(tmp_dir, dvc):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("foo", "foo")
-    dump_stage_file(
+    dump_yaml(
         PIPELINE_FILE,
         {
             "stages": {
@@ -491,13 +495,13 @@ def test_cyclic_graph_error(tmp_dir, dvc, run_copy):
     run_copy("baz", "foobar", name="copy-baz-foobar")
 
     with open(PIPELINE_FILE) as f:
-        data = parse_stage(f.read(), PIPELINE_FILE)
+        data = parse_yaml(f.read(), PIPELINE_FILE)
         data["stages"]["copy-baz-foo"] = {
             "cmd": "echo baz > foo",
             "deps": ["baz"],
             "outs": ["foo"],
         }
-    dump_stage_file(PIPELINE_FILE, data)
+    dump_yaml(PIPELINE_FILE, data)
     with pytest.raises(CyclicGraphError):
         dvc.reproduce(":copy-baz-foo")
 
@@ -505,7 +509,7 @@ def test_cyclic_graph_error(tmp_dir, dvc, run_copy):
 def test_repro_multiple_params(tmp_dir, dvc):
     from tests.func.test_run_multistage import supported_params
 
-    from dvc.serialize import get_params_deps
+    from dvc.stage.utils import split_params_deps
 
     with (tmp_dir / "params2.yaml").open("w+") as f:
         yaml.dump(supported_params, f)
@@ -525,7 +529,7 @@ def test_repro_multiple_params(tmp_dir, dvc):
         cmd="cat params2.yaml params.yaml > bar",
     )
 
-    params, deps = get_params_deps(stage)
+    params, deps = split_params_deps(stage)
     assert len(params) == 2
     assert len(deps) == 1
     assert len(stage.outs) == 1

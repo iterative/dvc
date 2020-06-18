@@ -3,6 +3,7 @@ from uuid import uuid4
 
 import pytest
 
+from dvc.dependency.base import DependencyDoesNotExistError
 from dvc.main import main
 from dvc.stage import Stage
 from dvc.utils.fs import makedirs
@@ -58,12 +59,6 @@ class TestImportFilename(TestDvc):
             fobj.write("content")
 
     def test(self):
-        ret = main(["import-url", "-f", "bar.dvc", self.external_source])
-        self.assertEqual(0, ret)
-        self.assertTrue(os.path.exists("bar.dvc"))
-
-        os.remove("bar.dvc")
-
         ret = main(["import-url", "--file", "bar.dvc", self.external_source])
         self.assertEqual(0, ret)
         self.assertTrue(os.path.exists("bar.dvc"))
@@ -103,3 +98,8 @@ def test_import_stage_accompanies_target(tmp_dir, dvc, erepo_dir):
 
     assert (tmp_dir / "dir" / "imported_file").exists()
     assert (tmp_dir / "dir" / "imported_file.dvc").exists()
+
+
+def test_import_url_nonexistent(dvc, erepo_dir):
+    with pytest.raises(DependencyDoesNotExistError):
+        dvc.imp_url(os.fspath(erepo_dir / "non-existent"))

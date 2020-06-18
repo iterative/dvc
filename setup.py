@@ -60,9 +60,6 @@ install_requires = [
     "grandalf==0.6",
     "distro>=1.3.0",
     "appdirs>=1.4.3",
-    "treelib>=1.5.5",
-    "inflect>=2.1.0,<4",
-    "humanize>=0.5.1",
     "PyYAML>=5.1.2,<5.4",  # Compatibility with awscli
     "ruamel.yaml>=0.16.1",
     "funcy>=1.14",
@@ -88,7 +85,7 @@ install_requires = [
 # Extra dependencies for remote integrations
 
 gs = ["google-cloud-storage==1.19.0"]
-gdrive = ["pydrive2>=1.4.13"]
+gdrive = ["pydrive2>=1.4.14"]
 s3 = ["boto3>=1.9.201"]
 azure = ["azure-storage-blob==2.1.0"]
 oss = ["oss2==2.6.1"]
@@ -110,6 +107,7 @@ tests_requirements = [
     "pytest-cov>=2.6.1",
     "pytest-xdist>=1.26.1",
     "pytest-mock==1.11.2",
+    "pytest-lazy-fixture",
     "flaky>=3.5.3",
     "mock>=3.0.0",
     "xmltodict>=0.11.0",
@@ -122,7 +120,7 @@ tests_requirements = [
     "flake8-docstrings",
     "pydocstyle<4.0",
     "jaraco.windows==3.9.2",
-    "mock-ssh-server@git+https://github.com/iterative/mock-ssh-server.git",
+    "mock-ssh-server>=0.8.2",
     "moto==1.3.14.dev464",
     "rangehttpserver==1.2.0",
     "beautifulsoup4==4.4.0",

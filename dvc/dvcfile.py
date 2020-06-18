@@ -4,11 +4,9 @@ import os
 
 from voluptuous import MultipleInvalid
 
-import dvc.prompt as prompt
-from dvc import serialize
 from dvc.exceptions import DvcException
+from dvc.stage import serialize
 from dvc.stage.exceptions import (
-    StageFileAlreadyExistsError,
     StageFileBadNameError,
     StageFileDoesNotExistError,
     StageFileFormatError,
@@ -17,11 +15,7 @@ from dvc.stage.exceptions import (
 from dvc.stage.loader import SingleStageLoader, StageLoader
 from dvc.utils import relpath
 from dvc.utils.collections import apply_diff
-from dvc.utils.stage import (
-    dump_stage_file,
-    parse_stage,
-    parse_stage_for_update,
-)
+from dvc.utils.yaml import dump_yaml, parse_yaml, parse_yaml_for_update
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +95,7 @@ class FileMixin:
 
         with self.repo.tree.open(self.path) as fd:
             stage_text = fd.read()
-        d = parse_stage(stage_text, self.path)
+        d = parse_yaml(stage_text, self.path)
         self.validate(d, self.relpath)
         return d, stage_text
 
@@ -112,9 +106,6 @@ class FileMixin:
             cls.SCHEMA(d)
         except MultipleInvalid as exc:
             raise StageFileFormatError(f"'{fname}' format error: {exc}")
-
-    def remove_with_prompt(self, force=False):
-        raise NotImplementedError
 
     def remove(self, force=False):
         with contextlib.suppress(FileNotFoundError):
@@ -149,20 +140,10 @@ class SingleStageFile(FileMixin):
         logger.debug(
             "Saving information to '{file}'.".format(file=relpath(self.path))
         )
-        dump_stage_file(self.path, serialize.to_single_stage_file(stage))
-        self.repo.scm.track_file(relpath(self.path))
+        dump_yaml(self.path, serialize.to_single_stage_file(stage))
+        self.repo.scm.track_file(self.relpath)
 
-    def remove_with_prompt(self, force=False):
-        if not self.exists():
-            return
-
-        msg = (
-            "'{}' already exists. Do you wish to run the command and "
-            "overwrite it?".format(relpath(self.path))
-        )
-        if not (force or prompt.confirm(msg)):
-            raise StageFileAlreadyExistsError(self.path)
-
+    def remove_stage(self, stage):
         self.remove()
 
 
@@ -195,24 +176,28 @@ class PipelineFile(FileMixin):
         data = {}
         if self.exists():
             with open(self.path) as fd:
-                data = parse_stage_for_update(fd.read(), self.path)
+                data = parse_yaml_for_update(fd.read(), self.path)
         else:
             logger.info("Creating '%s'", self.relpath)
             open(self.path, "w+").close()
 
         data["stages"] = data.get("stages", {})
         stage_data = serialize.to_pipeline_file(stage)
-        if data["stages"].get(stage.name):
+        existing_entry = stage.name in data["stages"]
+
+        action = "Modifying" if existing_entry else "Adding"
+        logger.info("%s stage '%s' in '%s'", action, stage.name, self.relpath)
+
+        if existing_entry:
             orig_stage_data = data["stages"][stage.name]
+            if "meta" in orig_stage_data:
+                stage_data[stage.name]["meta"] = orig_stage_data["meta"]
             apply_diff(stage_data[stage.name], orig_stage_data)
         else:
             data["stages"].update(stage_data)
 
-        logger.info(
-            "Adding stage '%s' to '%s'", stage.name, self.relpath,
-        )
-        dump_stage_file(self.path, data)
-        self.repo.scm.track_file(relpath(self.path))
+        dump_yaml(self.path, data)
+        self.repo.scm.track_file(self.relpath)
 
     @property
     def stage(self):
@@ -234,6 +219,22 @@ class PipelineFile(FileMixin):
         super().remove()
         self._lockfile.remove()
 
+    def remove_stage(self, stage):
+        self._lockfile.remove_stage(stage)
+        if not self.exists():
+            return
+
+        with open(self.path, "r") as f:
+            d = parse_yaml_for_update(f.read(), self.path)
+
+        self.validate(d, self.path)
+        if stage.name not in d.get("stages", {}):
+            return
+
+        logger.debug("Removing '%s' from '%s'", stage.name, self.path)
+        del d["stages"][stage.name]
+        dump_yaml(self.path, d)
+
 
 class Lockfile(FileMixin):
     from dvc.schema import COMPILED_LOCKFILE_SCHEMA as SCHEMA
@@ -242,7 +243,7 @@ class Lockfile(FileMixin):
         if not self.exists():
             return {}
         with self.repo.tree.open(self.path) as fd:
-            data = parse_stage(fd.read(), self.path)
+            data = parse_yaml(fd.read(), self.path)
         try:
             self.validate(data, fname=self.relpath)
         except StageFileFormatError:
@@ -260,16 +261,32 @@ class Lockfile(FileMixin):
             open(self.path, "w+").close()
         else:
             with self.repo.tree.open(self.path, "r") as fd:
-                data = parse_stage_for_update(fd.read(), self.path)
+                data = parse_yaml_for_update(fd.read(), self.path)
             modified = data.get(stage.name, {}) != stage_data.get(
                 stage.name, {}
             )
             if modified:
                 logger.info("Updating lock file '%s'", self.relpath)
             data.update(stage_data)
-        dump_stage_file(self.path, data)
+        dump_yaml(self.path, data)
         if modified:
             self.repo.scm.track_file(self.relpath)
+
+    def remove_stage(self, stage):
+        if not self.exists():
+            return
+
+        with open(self.path) as f:
+            d = parse_yaml_for_update(f.read(), self.path)
+        self.validate(d, self.path)
+
+        if stage.name not in d:
+            return
+
+        logger.debug("Removing '%s' from '%s'", stage.name, self.path)
+        del d[stage.name]
+
+        dump_yaml(self.path, d)
 
 
 class Dvcfile:

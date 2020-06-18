@@ -27,7 +27,7 @@ def test_run(mocker, dvc):
             "--wdir",
             "wdir",
             "--no-exec",
-            "--overwrite-dvcfile",
+            "--force",
             "--no-run-cache",
             "--no-commit",
             "--outs-persist",
@@ -39,6 +39,7 @@ def test_run(mocker, dvc):
             "file:param1,param2",
             "--params",
             "param3",
+            "--external",
             "command",
         ]
     )
@@ -63,13 +64,14 @@ def test_run(mocker, dvc):
         fname="file",
         wdir="wdir",
         no_exec=True,
-        overwrite=True,
+        force=True,
         run_cache=False,
         no_commit=True,
         always_changed=True,
         cmd="command",
         name="nam",
         single_stage=False,
+        external=True,
     )
 
 
@@ -92,13 +94,14 @@ def test_run_args_from_cli(mocker, dvc):
         fname=None,
         wdir=None,
         no_exec=False,
-        overwrite=False,
+        force=False,
         run_cache=True,
         no_commit=False,
         always_changed=False,
         cmd="echo foo",
         name=None,
         single_stage=False,
+        external=False,
     )
 
 
@@ -121,11 +124,12 @@ def test_run_args_with_spaces(mocker, dvc):
         fname=None,
         wdir=None,
         no_exec=False,
-        overwrite=False,
+        force=False,
         run_cache=True,
         no_commit=False,
         always_changed=False,
         cmd='echo "foo bar"',
         name=None,
         single_stage=False,
+        external=False,
     )
