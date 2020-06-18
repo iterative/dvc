@@ -11,14 +11,16 @@ logger = logging.getLogger(__name__)
 DEFAULT_FILENAME = {"bash": "dvc", "zsh": "_dvc"}
 CHOICE_FUNCTIONS = {
     "bash": {"DVCFile": "_dvc_compgen_DVCFiles"},
-    "zsh": {"DVCFile": "_files -g '(*.dvc|Dvcfile)'"},
+    "zsh": {"DVCFile": "_files -g '(*?.dvc|Dvcfile|dvc.yaml)'"},
 }
 PREAMBLE = {
     "bash": """
 # $1=COMP_WORDS[1]
 _dvc_compgen_DVCFiles() {
-  compgen -f -X '!*?.dvc' -- $1  # DVC-files
   compgen -d -S '/' -- $1  # recurse into subdirs
+  compgen -f -X '!*?.dvc' -- $1
+  compgen -f -X '!*Dvcfile' -- $1
+  compgen -f -X '!*dvc.yaml' -- $1
 }
 """,
     "zsh": "",
