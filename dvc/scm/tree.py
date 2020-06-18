@@ -38,7 +38,8 @@ class BaseTree:
 class WorkingTree(BaseTree):
     """Proxies the repo file access methods to working tree files"""
 
-    def __init__(self, repo_root=os.getcwd()):
+    def __init__(self, repo_root=None):
+        repo_root = repo_root or os.getcwd()
         self.repo_root = repo_root
 
     @property

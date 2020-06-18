@@ -1,63 +1,68 @@
 repos:
-- hooks:
-  - id: black
-    language_version: python3
-  repo: https://github.com/ambv/black
-  rev: 19.10b0
--   repo: https://github.com/asottile/seed-isort-config
+  - hooks:
+      - id: black
+        language_version: python3
+    repo: https://github.com/ambv/black
+    rev: 19.10b0
+  - repo: https://github.com/asottile/seed-isort-config
     rev: v2.1.1
     hooks:
-    -   id: seed-isort-config
-- hooks:
-  - id: isort
-    language_version: python3
-  repo: https://github.com/timothycrosley/isort
-  rev: 4.3.21
-- hooks:
-  - id: flake8
-    language_version: python3
-  repo: https://gitlab.com/pycqa/flake8
-  rev: 3.7.9
-- hooks:
-  - args:
-    - -i
-    - '2'
-    id: beautysh
-    language_version: python3
-  repo: https://github.com/lovesegfault/beautysh
-  rev: master
-- hooks:
-  - args:
-    - git-hook
-    - pre-commit
-    entry: dvc
-    id: dvc-pre-commit
-    language: system
-    name: DVC pre-commit
-    stages:
-    - commit
-    verbose: true
-    require_serial: true
-  - args:
-    - git-hook
-    - pre-push
-    entry: dvc
-    id: dvc-pre-push
-    language: system
-    name: DVC pre-push
-    stages:
-    - push
-    require_serial: true
-  - always_run: true
-    args:
-    - git-hook
-    - post-checkout
-    entry: dvc
-    id: dvc-post-checkout
-    language: system
-    minimum_pre_commit_version: 2.2.0
-    name: DVC post-checkout
-    stages:
-    - post-checkout
-    require_serial: true
-  repo: local
+      - id: seed-isort-config
+  - hooks:
+      - id: isort
+        language_version: python3
+    repo: https://github.com/timothycrosley/isort
+    rev: 4.3.21
+  - hooks:
+      - id: flake8
+        language_version: python3
+        additional_dependencies:
+          - flake8-bugbear
+          - flake8-comprehensions
+          - flake8-debugger
+          - flake8-string-format
+    repo: https://gitlab.com/pycqa/flake8
+    rev: 3.7.9
+  - hooks:
+      - args:
+          - -i
+          - "2"
+        id: beautysh
+        language_version: python3
+    repo: https://github.com/lovesegfault/beautysh
+    rev: master
+  - hooks:
+      - args:
+          - git-hook
+          - pre-commit
+        entry: dvc
+        id: dvc-pre-commit
+        language: system
+        name: DVC pre-commit
+        stages:
+          - commit
+        verbose: true
+        require_serial: true
+      - args:
+          - git-hook
+          - pre-push
+        entry: dvc
+        id: dvc-pre-push
+        language: system
+        name: DVC pre-push
+        stages:
+          - push
+        require_serial: true
+      - always_run: true
+        args:
+          - git-hook
+          - post-checkout
+        entry: dvc
+        id: dvc-post-checkout
+        language: system
+        minimum_pre_commit_version: 2.2.0
+        name: DVC post-checkout
+        stages:
+          - post-checkout
+        require_serial: true
+    repo: local

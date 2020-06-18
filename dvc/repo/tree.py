@@ -142,7 +142,7 @@ class DvcTree(BaseTree):
         files = []
 
         root_len = len(root.parts)
-        for key, out in trie.iteritems(prefix=root.parts):
+        for key, out in trie.iteritems(prefix=root.parts):  # noqa: B301
             if key == root.parts:
                 continue
 
@@ -153,14 +153,12 @@ class DvcTree(BaseTree):
 
             files.append(name)
 
-        if topdown:
-            dirs = list(dirs)
-            yield root.fspath, dirs, files
+        assert topdown
+        dirs = list(dirs)
+        yield root.fspath, dirs, files
 
-            for dname in dirs:
-                yield from self._walk(root / dname, trie)
-        else:
-            assert False
+        for dname in dirs:
+            yield from self._walk(root / dname, trie)
 
     def walk(
         self, top, topdown=True, onerror=None, download_callback=None, **kwargs

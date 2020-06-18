@@ -485,7 +485,7 @@ class Repo:
                     continue
 
                 dep_key = dep.path_info.parts
-                overlapping = list(n.value for n in outs.prefixes(dep_key))
+                overlapping = [n.value for n in outs.prefixes(dep_key)]
                 if outs.has_subtrie(dep_key):
                     overlapping.extend(outs.values(prefix=dep_key))
 
