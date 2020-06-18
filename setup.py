@@ -124,7 +124,6 @@ tests_requirements = [
     "beautifulsoup4==4.4.0",
     "flake8-bugbear",
     "flake8-comprehensions",
-    "flake8-string-format",
     "flake8-debugger",
 ]
 
