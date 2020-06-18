@@ -11,11 +11,11 @@ logger = logging.getLogger(__name__)
 class CmdAdd(CmdBase):
     def run(self):
         try:
-            if len(self.args.paths) > 1 and self.args.file:
+            if len(self.args.targets) > 1 and self.args.file:
                 raise RecursiveAddingWhileUsingFilename()
 
             self.repo.add(
-                self.args.paths,
+                self.args.targets,
                 recursive=self.args.recursive,
                 no_commit=self.args.no_commit,
                 fname=self.args.file,
@@ -43,7 +43,7 @@ def add_parser(subparsers, parent_parser):
         "--recursive",
         action="store_true",
         default=False,
-        help="Recursively add files under directory paths.",
+        help="Recursively add files under directory targets.",
     )
     parser.add_argument(
         "--no-commit",
@@ -63,7 +63,7 @@ def add_parser(subparsers, parent_parser):
         metavar="<filename>",
     )
     parser.add_argument(
-        "paths",
+        "targets",
         nargs="+",
         help="Input files/directories to add.",
         choices=choices.Required.FILE,

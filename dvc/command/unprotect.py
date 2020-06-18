@@ -10,11 +10,11 @@ logger = logging.getLogger(__name__)
 
 class CmdUnprotect(CmdBase):
     def run(self):
-        for out in self.args.paths:
+        for target in self.args.targets:
             try:
-                self.repo.unprotect(out)
+                self.repo.unprotect(target)
             except DvcException:
-                msg = f"failed to unprotect '{out}'"
+                msg = f"failed to unprotect '{target}'"
                 logger.exception(msg)
                 return 1
         return 0
@@ -33,7 +33,7 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     unprotect_parser.add_argument(
-        "paths",
+        "targets",
         nargs="+",
         help="Data files/directories to unprotect.",
         choices=choices.Required.FILE,

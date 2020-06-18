@@ -110,24 +110,22 @@ class CmdRemoteList(CmdRemote):
 
 class CmdRemoteRename(CmdRemote):
     def _rename_default(self, conf):
-        if conf["core"].get("remote") == self.args.old_name:
-            conf["core"]["remote"] = self.args.new_name
+        if conf["core"].get("remote") == self.args.name:
+            conf["core"]["remote"] = self.args.new
 
     def run(self):
         all_config = self.config.load_config_to_level(None)
-        if self.args.new_name in all_config.get("remote", {}):
+        if self.args.new in all_config.get("remote", {}):
             raise ConfigError(
                 "Rename failed. Remote name '{}' already exists.".format(
-                    {self.args.new_name}
+                    {self.args.new}
                 )
             )
 
         with self.config.edit(self.args.level) as conf:
             self._check_exists(conf)
-            conf["remote"][self.args.new_name] = conf["remote"].pop(
-                self.args.old_name
-            )
-            del conf["remote"][self.args.old_name]
+            conf["remote"][self.args.new] = conf["remote"][self.args.name]
+            del conf["remote"][self.args.name]
             self._rename_default(conf)
 
         for level in reversed(self.config.LEVELS):
@@ -263,8 +261,6 @@ def add_parser(subparsers, parent_parser):
         help=REMOTE_RENAME_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    remote_rename_parser.add_argument("old_name", help="Remote to be renamed")
-    remote_rename_parser.add_argument(
-        "new_name", help="New name of the remote"
-    )
+    remote_rename_parser.add_argument("name", help="Remote to be renamed")
+    remote_rename_parser.add_argument("new", help="New name of the remote")
     remote_rename_parser.set_defaults(func=CmdRemoteRename)
