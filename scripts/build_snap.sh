@@ -9,7 +9,7 @@ fi
 
 # generate bash completion script
 pip install -y .
-dvc completion -s bash - > completion.sh
+dvc completion -s bash -f completion.sh .
 
 sg lxd -c snapcraft
 
