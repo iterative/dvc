@@ -91,13 +91,30 @@ class GSRemoteTree(BaseRemoteTree):
         )
 
     def _generate_download_url(self, path_info, expires=3600):
+        import google.auth
+        from google.auth import compute_engine
+
         expiration = timedelta(seconds=int(expires))
 
         bucket = self.gs.bucket(path_info.bucket)
         blob = bucket.get_blob(path_info.path)
         if blob is None:
             raise FileNotFoundError
-        return blob.generate_signed_url(expiration=expiration)
+
+        if isinstance(
+            blob.client._credentials, google.auth.credentials.Signing
+        ):
+            # sign if we're able to sign with credentials.
+            return blob.generate_signed_url(expiration=expiration)
+
+        auth_request = google.auth.transport.requests.Request()
+        # create signing credentials with the default credentials
+        # for use with Compute Engine and other environments where
+        # Client credentials cannot sign.
+        signing_credentials = compute_engine.IDTokenCredentials(
+            auth_request, ""
+        )
+        return signing_credentials.signer.sign(blob)
 
     def exists(self, path_info):
         """Check if the blob exists. If it does not exist,
@@ -160,7 +177,7 @@ class GSRemoteTree(BaseRemoteTree):
         to_bucket = self.gs.bucket(to_info.bucket)
         from_bucket.copy_blob(blob, to_bucket, new_name=to_info.path)
 
-    def get_file_checksum(self, path_info):
+    def get_file_hash(self, path_info):
         import base64
         import codecs
 

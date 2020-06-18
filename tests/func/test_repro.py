@@ -1737,12 +1737,14 @@ def test_downstream(dvc):
     reason="external output scenario is not supported on Windows",
 )
 def test_ssh_dir_out(tmp_dir, dvc, ssh_server):
+    from tests.remotes.ssh import TEST_SSH_USER, TEST_SSH_KEY_PATH
+
     tmp_dir.gen({"foo": "foo content"})
 
     # Set up remote and cache
-    user = ssh_server.test_creds["username"]
+    user = TEST_SSH_USER
     port = ssh_server.port
-    keyfile = ssh_server.test_creds["key_filename"]
+    keyfile = TEST_SSH_KEY_PATH
 
     remote_url = SSHMocked.get_url(user, port)
     assert main(["remote", "add", "upstream", remote_url]) == 0

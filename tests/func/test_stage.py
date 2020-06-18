@@ -220,6 +220,10 @@ def test_stage_strings_representation(tmp_dir, dvc, run_copy):
     folder = tmp_dir / "dir"
     folder.mkdir()
     with folder.chdir():
+        # `Stage` caches `relpath` results, forcing it to reset
+        stage1.path = stage1.path
+        stage2.path = stage2.path
+
         rel_path = os.path.relpath(stage1.path)
         assert stage1.addressing == rel_path
         assert repr(stage1) == f"Stage: '{rel_path}'"

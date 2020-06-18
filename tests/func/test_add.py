@@ -340,7 +340,7 @@ class TestAddCommit(TestDvc):
 
 def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
     tmp_dir.gen({"data/data": "foo"})
-    get_dir_checksum_counter = mocker.spy(LocalRemoteTree, "get_dir_checksum")
+    get_dir_hash_counter = mocker.spy(LocalRemoteTree, "get_dir_hash")
     ret = main(["add", "data"])
     assert ret == 0
 
@@ -349,7 +349,7 @@ def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
 
     ret = main(["status"])
     assert ret == 0
-    assert get_dir_checksum_counter.mock.call_count == 1
+    assert get_dir_hash_counter.mock.call_count == 1
 
 
 class SymlinkAddTestBase(TestDvc):

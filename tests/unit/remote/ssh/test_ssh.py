@@ -7,7 +7,6 @@ from mock import mock_open, patch
 
 from dvc.remote.ssh import SSHRemoteTree
 from dvc.system import System
-from tests.remotes import SSHMocked
 
 
 def test_url(dvc):
@@ -184,17 +183,8 @@ def test_ssh_gss_auth(mock_file, mock_exists, dvc, config, expected_gss_auth):
     assert tree.gss_auth == expected_gss_auth
 
 
-def test_hardlink_optimization(dvc, tmp_dir, ssh_server):
-    port = ssh_server.test_creds["port"]
-    user = ssh_server.test_creds["username"]
-
-    config = {
-        "url": SSHMocked.get_url(user, port),
-        "port": port,
-        "user": user,
-        "keyfile": ssh_server.test_creds["key_filename"],
-    }
-    tree = SSHRemoteTree(dvc, config)
+def test_hardlink_optimization(dvc, tmp_dir, ssh):
+    tree = SSHRemoteTree(dvc, ssh.config)
 
     from_info = tree.path_info / "empty"
     to_info = tree.path_info / "link"

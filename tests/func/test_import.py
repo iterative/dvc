@@ -307,13 +307,13 @@ def test_pull_no_rev_lock(erepo_dir, tmp_dir, dvc):
 
 
 def test_import_from_bare_git_repo(
-    tmp_dir, make_tmp_dir, erepo_dir, setup_remote
+    tmp_dir, make_tmp_dir, erepo_dir, local_cloud
 ):
     import git
 
     git.Repo.init(os.fspath(tmp_dir), bare=True)
 
-    setup_remote(erepo_dir.dvc)
+    erepo_dir.add_remote(config=local_cloud.config)
     with erepo_dir.chdir():
         erepo_dir.dvc_gen({"foo": "foo"}, commit="initial")
     erepo_dir.dvc.push()
@@ -327,11 +327,10 @@ def test_import_from_bare_git_repo(
 
 
 def test_import_pipeline_tracked_outs(
-    tmp_dir, dvc, scm, erepo_dir, run_copy, setup_remote
+    tmp_dir, dvc, scm, erepo_dir, run_copy, local_remote
 ):
     from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
 
-    setup_remote(dvc)
     tmp_dir.gen("foo", "foo")
     run_copy("foo", "bar", name="copy-foo-bar")
     dvc.push()

@@ -92,7 +92,7 @@ class DataCloud:
 
     def _save_pulled_checksums(self, cache):
         for checksum in cache.scheme_keys("local"):
-            cache_file = self.repo.cache.local.checksum_to_path_info(checksum)
+            cache_file = self.repo.cache.local.hash_to_path_info(checksum)
             if self.repo.cache.local.tree.exists(cache_file):
                 # We can safely save here, as existing corrupted files will
                 # be removed upon status, while files corrupted during

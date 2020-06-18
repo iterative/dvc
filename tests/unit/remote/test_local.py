@@ -21,16 +21,16 @@ def test_status_download_optimization(mocker, dvc):
     infos.add("local", "37b51d194a7513e45b56f6524f2d51f2", "bar")
 
     local_exists = list(infos["local"])
-    mocker.patch.object(cache, "checksums_exist", return_value=local_exists)
+    mocker.patch.object(cache, "hashes_exist", return_value=local_exists)
 
     other_remote = mocker.Mock()
     other_remote.url = "other_remote"
-    other_remote.checksums_exist.return_value = []
+    other_remote.hashes_exist.return_value = []
     other_remote.index = RemoteIndexNoop()
 
     cache.status(infos, other_remote, download=True)
 
-    assert other_remote.checksums_exist.call_count == 0
+    assert other_remote.hashes_exist.call_count == 0
 
 
 @pytest.mark.parametrize("link_name", ["hardlink", "symlink"])

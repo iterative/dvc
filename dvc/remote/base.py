@@ -65,9 +65,9 @@ class RemoteMissingDepsError(DvcException):
 
 
 class DirCacheError(DvcException):
-    def __init__(self, checksum):
+    def __init__(self, hash_):
         super().__init__(
-            f"Failed to load dir cache for hash value: '{checksum}'."
+            f"Failed to load dir cache for hash value: '{hash_}'."
         )
 
 
@@ -90,7 +90,7 @@ class BaseRemoteTree:
 
     PARAM_RELPATH = "relpath"
     CHECKSUM_DIR_SUFFIX = ".dir"
-    CHECKSUM_JOBS = max(1, min(4, cpu_count() // 2))
+    HASH_JOBS = max(1, min(4, cpu_count() // 2))
     DEFAULT_VERIFY = False
     LIST_OBJECT_PAGE_SIZE = 1000
     TRAVERSE_WEIGHT_MULTIPLIER = 5
@@ -113,10 +113,10 @@ class BaseRemoteTree:
         shared = config.get("shared")
         self._file_mode, self._dir_mode = self.SHARED_MODE_MAP[shared]
 
-        self.checksum_jobs = (
-            config.get("checksum_jobs")
-            or (self.repo and self.repo.config["core"].get("checksum_jobs"))
-            or self.CHECKSUM_JOBS
+        self.hash_jobs = (
+            config.get("hash_jobs")
+            or (self.repo and self.repo.config["core"].get("hash_jobs"))
+            or self.HASH_JOBS
         )
         self.verify = config.get("verify", self.DEFAULT_VERIFY)
 
@@ -255,12 +255,12 @@ class BaseRemoteTree:
         pass
 
     @classmethod
-    def is_dir_checksum(cls, checksum):
-        if not checksum:
+    def is_dir_hash(cls, hash_):
+        if not hash_:
             return False
-        return checksum.endswith(cls.CHECKSUM_DIR_SUFFIX)
+        return hash_.endswith(cls.CHECKSUM_DIR_SUFFIX)
 
-    def get_checksum(self, path_info, tree=None, **kwargs):
+    def get_hash(self, path_info, tree=None, **kwargs):
         assert isinstance(path_info, str) or path_info.scheme == self.scheme
 
         if not tree:
@@ -270,47 +270,47 @@ class BaseRemoteTree:
             return None
 
         if tree == self:
-            checksum = self.state.get(path_info)
+            hash_ = self.state.get(path_info)
         else:
-            checksum = None
+            hash_ = None
 
-        # If we have dir checksum in state db, but dir cache file is lost,
-        # then we need to recollect the dir via .get_dir_checksum() call below,
+        # If we have dir hash in state db, but dir cache file is lost,
+        # then we need to recollect the dir via .get_dir_hash() call below,
         # see https://github.com/iterative/dvc/issues/2219 for context
         if (
-            checksum
-            and self.is_dir_checksum(checksum)
-            and not tree.exists(self.cache.checksum_to_path_info(checksum))
+            hash_
+            and self.is_dir_hash(hash_)
+            and not tree.exists(self.cache.hash_to_path_info(hash_))
         ):
-            checksum = None
+            hash_ = None
 
-        if checksum:
-            return checksum
+        if hash_:
+            return hash_
 
         if tree.isdir(path_info):
-            checksum = self.get_dir_checksum(path_info, tree, **kwargs)
+            hash_ = self.get_dir_hash(path_info, tree, **kwargs)
         else:
-            checksum = tree.get_file_checksum(path_info)
+            hash_ = tree.get_file_hash(path_info)
 
-        if checksum and self.exists(path_info):
-            self.state.save(path_info, checksum)
+        if hash_ and self.exists(path_info):
+            self.state.save(path_info, hash_)
 
-        return checksum
+        return hash_
 
-    def get_file_checksum(self, path_info):
+    def get_file_hash(self, path_info):
         raise NotImplementedError
 
-    def get_dir_checksum(self, path_info, tree, **kwargs):
+    def get_dir_hash(self, path_info, tree, **kwargs):
         if not self.cache:
             raise RemoteCacheRequiredError(path_info)
 
         dir_info = self._collect_dir(path_info, tree, **kwargs)
         return self._save_dir_info(dir_info, path_info)
 
-    def checksum_to_path_info(self, checksum):
-        return self.path_info / checksum[0:2] / checksum[2:]
+    def hash_to_path_info(self, hash_):
+        return self.path_info / hash_[0:2] / hash_[2:]
 
-    def path_to_checksum(self, path):
+    def path_to_hash(self, path):
         parts = self.PATH_CLS(path).parts[-2:]
 
         if not (len(parts) == 2 and parts[0] and len(parts[0]) == 2):
@@ -320,25 +320,21 @@ class BaseRemoteTree:
 
     def save_info(self, path_info, tree=None, **kwargs):
         return {
-            self.PARAM_CHECKSUM: self.get_checksum(
-                path_info, tree=tree, **kwargs
-            )
+            self.PARAM_CHECKSUM: self.get_hash(path_info, tree=tree, **kwargs)
         }
 
-    def _calculate_checksums(self, file_infos, tree):
+    def _calculate_hashes(self, file_infos, tree):
         file_infos = list(file_infos)
         with Tqdm(
             total=len(file_infos),
             unit="md5",
             desc="Computing file/dir hashes (only done once)",
         ) as pbar:
-            worker = pbar.wrap_fn(tree.get_file_checksum)
-            with ThreadPoolExecutor(
-                max_workers=self.checksum_jobs
-            ) as executor:
+            worker = pbar.wrap_fn(tree.get_file_hash)
+            with ThreadPoolExecutor(max_workers=self.hash_jobs) as executor:
                 tasks = executor.map(worker, file_infos)
-                checksums = dict(zip(file_infos, tasks))
-        return checksums
+                hashes = dict(zip(file_infos, tasks))
+        return hashes
 
     def _collect_dir(self, path_info, tree, **kwargs):
         file_infos = set()
@@ -349,17 +345,15 @@ class BaseRemoteTree:
 
             file_infos.add(fname)
 
-        checksums = {fi: self.state.get(fi) for fi in file_infos}
-        not_in_state = {
-            fi for fi, checksum in checksums.items() if checksum is None
-        }
+        hashes = {fi: self.state.get(fi) for fi in file_infos}
+        not_in_state = {fi for fi, hash_ in hashes.items() if hash_ is None}
 
-        new_checksums = self._calculate_checksums(not_in_state, tree)
-        checksums.update(new_checksums)
+        new_hashes = self._calculate_hashes(not_in_state, tree)
+        hashes.update(new_hashes)
 
         result = [
             {
-                self.PARAM_CHECKSUM: checksums[fi],
+                self.PARAM_CHECKSUM: hashes[fi],
                 # NOTE: this is lossy transformation:
                 #   "hey\there" -> "hey/there"
                 #   "hey/there" -> "hey/there"
@@ -377,21 +371,21 @@ class BaseRemoteTree:
         return sorted(result, key=itemgetter(self.PARAM_RELPATH))
 
     def _save_dir_info(self, dir_info, path_info):
-        checksum, tmp_info = self._get_dir_info_checksum(dir_info)
-        new_info = self.cache.checksum_to_path_info(checksum)
-        if self.cache.changed_cache_file(checksum):
+        hash_, tmp_info = self._get_dir_info_hash(dir_info)
+        new_info = self.cache.hash_to_path_info(hash_)
+        if self.cache.changed_cache_file(hash_):
             self.cache.tree.makedirs(new_info.parent)
             self.cache.tree.move(
                 tmp_info, new_info, mode=self.cache.CACHE_MODE
             )
 
         if self.exists(path_info):
-            self.state.save(path_info, checksum)
-        self.state.save(new_info, checksum)
+            self.state.save(path_info, hash_)
+        self.state.save(new_info, hash_)
 
-        return checksum
+        return hash_
 
-    def _get_dir_info_checksum(self, dir_info):
+    def _get_dir_info_hash(self, dir_info):
         tmp = tempfile.NamedTemporaryFile(delete=False).name
         with open(tmp, "w+") as fobj:
             json.dump(dir_info, fobj, sort_keys=True)
@@ -401,8 +395,8 @@ class BaseRemoteTree:
         to_info = tree.path_info / tmp_fname("")
         tree.upload(from_info, to_info, no_progress_bar=True)
 
-        checksum = tree.get_file_checksum(to_info) + self.CHECKSUM_DIR_SUFFIX
-        return checksum, to_info
+        hash_ = tree.get_file_hash(to_info) + self.CHECKSUM_DIR_SUFFIX
+        return hash_, to_info
 
     def upload(self, from_info, to_info, name=None, no_progress_bar=False):
         if not hasattr(self, "_upload"):
@@ -530,73 +524,71 @@ class BaseRemoteTree:
         else:
             yield from self.walk_files(path_info)
 
-    def list_checksums(self, prefix=None, progress_callback=None):
-        """Iterate over checksums in this tree.
+    def list_hashes(self, prefix=None, progress_callback=None):
+        """Iterate over hashes in this tree.
 
-        If `prefix` is specified, only checksums which begin with `prefix`
+        If `prefix` is specified, only hashes which begin with `prefix`
         will be returned.
         """
         for path in self.list_paths(prefix, progress_callback):
             try:
-                yield self.path_to_checksum(path)
+                yield self.path_to_hash(path)
             except ValueError:
                 logger.debug(
                     "'%s' doesn't look like a cache file, skipping", path
                 )
 
     def all(self, jobs=None, name=None):
-        """Iterate over all checksums in this tree.
+        """Iterate over all hashes in this tree.
 
-        Checksums will be fetched in parallel threads according to prefix
+        Hashes will be fetched in parallel threads according to prefix
         (except for small remotes) and a progress bar will be displayed.
         """
         logger.debug(
-            "Fetching all checksums from '{}'".format(
+            "Fetching all hashes from '{}'".format(
                 name if name else "remote cache"
             )
         )
 
         if not self.CAN_TRAVERSE:
-            return self.list_checksums()
+            return self.list_hashes()
 
-        remote_size, remote_checksums = self.estimate_remote_size(name=name)
-        return self.list_checksums_traverse(
-            remote_size, remote_checksums, jobs, name
+        remote_size, remote_hashes = self.estimate_remote_size(name=name)
+        return self.list_hashes_traverse(
+            remote_size, remote_hashes, jobs, name
         )
 
-    def _checksums_with_limit(
-        self, limit, prefix=None, progress_callback=None
-    ):
+    def _hashes_with_limit(self, limit, prefix=None, progress_callback=None):
         count = 0
-        for checksum in self.list_checksums(prefix, progress_callback):
-            yield checksum
+        for hash_ in self.list_hashes(prefix, progress_callback):
+            yield hash_
             count += 1
             if count > limit:
                 logger.debug(
-                    "`list_checksums()` returned max '{}' checksums, "
+                    "`list_hashes()` returned max '{}' hashes, "
                     "skipping remaining results".format(limit)
                 )
                 return
 
-    def _max_estimation_size(self, checksums):
+    def _max_estimation_size(self, hashes):
         # Max remote size allowed for us to use traverse method
         return max(
             self.TRAVERSE_THRESHOLD_SIZE,
-            len(checksums)
+            len(hashes)
             / self.TRAVERSE_WEIGHT_MULTIPLIER
             * self.LIST_OBJECT_PAGE_SIZE,
         )
 
-    def estimate_remote_size(self, checksums=None, name=None):
+    def estimate_remote_size(self, hashes=None, name=None):
         """Estimate tree size based on number of entries beginning with
         "00..." prefix.
         """
         prefix = "0" * self.TRAVERSE_PREFIX_LEN
         total_prefixes = pow(16, self.TRAVERSE_PREFIX_LEN)
-        if checksums:
-            max_checksums = self._max_estimation_size(checksums)
+        if hashes:
+            max_hashes = self._max_estimation_size(hashes)
         else:
-            max_checksums = None
+            max_hashes = None
 
         with Tqdm(
             desc="Estimating size of "
@@ -607,33 +599,33 @@ class BaseRemoteTree:
             def update(n=1):
                 pbar.update(n * total_prefixes)
 
-            if max_checksums:
-                checksums = self._checksums_with_limit(
-                    max_checksums / total_prefixes, prefix, update
+            if max_hashes:
+                hashes = self._hashes_with_limit(
+                    max_hashes / total_prefixes, prefix, update
                 )
             else:
-                checksums = self.list_checksums(prefix, update)
+                hashes = self.list_hashes(prefix, update)
 
-            remote_checksums = set(checksums)
-            if remote_checksums:
-                remote_size = total_prefixes * len(remote_checksums)
+            remote_hashes = set(hashes)
+            if remote_hashes:
+                remote_size = total_prefixes * len(remote_hashes)
             else:
                 remote_size = total_prefixes
             logger.debug(f"Estimated remote size: {remote_size} files")
-        return remote_size, remote_checksums
+        return remote_size, remote_hashes
 
-    def list_checksums_traverse(
-        self, remote_size, remote_checksums, jobs=None, name=None
+    def list_hashes_traverse(
+        self, remote_size, remote_hashes, jobs=None, name=None
     ):
-        """Iterate over all checksums found in this tree.
-        Checksums are fetched in parallel according to prefix, except in
+        """Iterate over all hashes found in this tree.
+        Hashes are fetched in parallel according to prefix, except in
         cases where the remote size is very small.
 
-        All checksums from the remote (including any from the size
-        estimation step passed via the `remote_checksums` argument) will be
+        All hashes from the remote (including any from the size
+        estimation step passed via the `remote_hashes` argument) will be
         returned.
 
-        NOTE: For large remotes the list of checksums will be very
+        NOTE: For large remotes the list of hashes will be very
         big(e.g. 100M entries, md5 for each is 32 bytes, so ~3200Mb list)
         and we don't really need all of it at the same time, so it makes
         sense to use a generator to gradually iterate over it, without
@@ -645,13 +637,13 @@ class BaseRemoteTree:
             # requests, for small enough remotes it will be faster to fetch
             # entire cache without splitting it into prefixes.
             #
-            # NOTE: this ends up re-fetching checksums that were already
+            # NOTE: this ends up re-fetching hashes that were already
             # fetched during remote size estimation
             traverse_prefixes = [None]
             initial = 0
         else:
-            yield from remote_checksums
-            initial = len(remote_checksums)
+            yield from remote_hashes
+            initial = len(remote_hashes)
             traverse_prefixes = [f"{i:02x}" for i in range(1, 256)]
             if self.TRAVERSE_PREFIX_LEN > 2:
                 traverse_prefixes += [
@@ -668,7 +660,7 @@ class BaseRemoteTree:
 
             def list_with_update(prefix):
                 return list(
-                    self.list_checksums(
+                    self.list_hashes(
                         prefix=prefix, progress_callback=pbar.update
                     )
                 )
@@ -677,17 +669,17 @@ class BaseRemoteTree:
                 in_remote = executor.map(list_with_update, traverse_prefixes,)
                 yield from itertools.chain.from_iterable(in_remote)
 
-    def list_checksums_exists(self, checksums, jobs=None, name=None):
-        """Return list of the specified checksums which exist in this tree.
-        Checksums will be queried individually.
+    def list_hashes_exists(self, hashes, jobs=None, name=None):
+        """Return list of the specified hashes which exist in this tree.
+        Hashes will be queried individually.
         """
         logger.debug(
-            "Querying {} checksums via object_exists".format(len(checksums))
+            "Querying {} hashes via object_exists".format(len(hashes))
         )
         with Tqdm(
             desc="Querying "
             + ("cache in " + name if name else "remote cache"),
-            total=len(checksums),
+            total=len(hashes),
             unit="file",
         ) as pbar:
 
@@ -697,12 +689,12 @@ class BaseRemoteTree:
                 return ret
 
             with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
-                path_infos = map(self.checksum_to_path_info, checksums)
+                path_infos = map(self.hash_to_path_info, hashes)
                 in_remote = executor.map(exists_with_progress, path_infos)
-                ret = list(itertools.compress(checksums, in_remote))
+                ret = list(itertools.compress(hashes, in_remote))
                 return ret
 
-    def _remove_unpacked_dir(self, checksum):
+    def _remove_unpacked_dir(self, hash_):
         pass
 
 
@@ -747,17 +739,17 @@ class Remote:
     def scheme(self):
         return self.tree.scheme
 
-    def is_dir_checksum(self, checksum):
-        return self.tree.is_dir_checksum(checksum)
+    def is_dir_hash(self, hash_):
+        return self.tree.is_dir_hash(hash_)
 
-    def get_checksum(self, path_info, **kwargs):
-        return self.tree.get_checksum(path_info, **kwargs)
+    def get_hash(self, path_info, **kwargs):
+        return self.tree.get_hash(path_info, **kwargs)
 
-    def checksum_to_path_info(self, checksum):
-        return self.tree.checksum_to_path_info(checksum)
+    def hash_to_path_info(self, hash_):
+        return self.tree.hash_to_path_info(hash_)
 
-    def path_to_checksum(self, path):
-        return self.tree.path_to_checksum(path)
+    def path_to_hash(self, path):
+        return self.tree.path_to_hash(path)
 
     def save_info(self, path_info, **kwargs):
         return self.tree.save_info(path_info, **kwargs)
@@ -765,19 +757,19 @@ class Remote:
     def open(self, *args, **kwargs):
         return self.tree.open(*args, **kwargs)
 
-    def checksums_exist(self, checksums, jobs=None, name=None):
-        """Check if the given checksums are stored in the remote.
+    def hashes_exist(self, hashes, jobs=None, name=None):
+        """Check if the given hashes are stored in the remote.
 
         There are two ways of performing this check:
 
         - Traverse method: Get a list of all the files in the remote
             (traversing the cache directory) and compare it with
-            the given checksums. Cache entries will be retrieved in parallel
+            the given hashes. Cache entries will be retrieved in parallel
             threads according to prefix (i.e. entries starting with, "00...",
             "01...", and so on) and a progress bar will be displayed.
 
-        - Exists method: For each given checksum, run the `exists`
-            method and filter the checksums that aren't on the remote.
+        - Exists method: For each given hash, run the `exists`
+            method and filter the hashes that aren't on the remote.
             This is done in parallel threads.
             It also shows a progress bar when performing the check.
 
@@ -785,80 +777,72 @@ class Remote:
         take much shorter time to just retrieve everything they have under
         a certain prefix (e.g. s3, gs, ssh, hdfs). Other remotes that can
         check if particular file exists much quicker, use their own
-        implementation of checksums_exist (see ssh, local).
+        implementation of hashes_exist (see ssh, local).
 
         Which method to use will be automatically determined after estimating
         the size of the remote cache, and comparing the estimated size with
-        len(checksums). To estimate the size of the remote cache, we fetch
+        len(hashes). To estimate the size of the remote cache, we fetch
         a small subset of cache entries (i.e. entries starting with "00...").
         Based on the number of entries in that subset, the size of the full
         cache can be estimated, since the cache is evenly distributed according
-        to checksum.
+        to hash.
 
         Returns:
-            A list with checksums that were found in the remote
+            A list with hashes that were found in the remote
         """
         # Remotes which do not use traverse prefix should override
-        # checksums_exist() (see ssh, local)
+        # hashes_exist() (see ssh, local)
         assert self.tree.TRAVERSE_PREFIX_LEN >= 2
 
-        checksums = set(checksums)
-        indexed_checksums = set(self.index.intersection(checksums))
-        checksums -= indexed_checksums
-        logger.debug(
-            "Matched '{}' indexed checksums".format(len(indexed_checksums))
-        )
-        if not checksums:
-            return indexed_checksums
+        hashes = set(hashes)
+        indexed_hashes = set(self.index.intersection(hashes))
+        hashes -= indexed_hashes
+        logger.debug("Matched '{}' indexed hashes".format(len(indexed_hashes)))
+        if not hashes:
+            return indexed_hashes
 
-        if len(checksums) == 1 or not self.tree.CAN_TRAVERSE:
-            remote_checksums = self.tree.list_checksums_exists(
-                checksums, jobs, name
-            )
-            return list(indexed_checksums) + remote_checksums
+        if len(hashes) == 1 or not self.tree.CAN_TRAVERSE:
+            remote_hashes = self.tree.list_hashes_exists(hashes, jobs, name)
+            return list(indexed_hashes) + remote_hashes
 
         # Max remote size allowed for us to use traverse method
-        remote_size, remote_checksums = self.tree.estimate_remote_size(
-            checksums, name
+        remote_size, remote_hashes = self.tree.estimate_remote_size(
+            hashes, name
         )
 
         traverse_pages = remote_size / self.tree.LIST_OBJECT_PAGE_SIZE
         # For sufficiently large remotes, traverse must be weighted to account
         # for performance overhead from large lists/sets.
         # From testing with S3, for remotes with 1M+ files, object_exists is
-        # faster until len(checksums) is at least 10k~100k
+        # faster until len(hashes) is at least 10k~100k
         if remote_size > self.tree.TRAVERSE_THRESHOLD_SIZE:
             traverse_weight = (
                 traverse_pages * self.tree.TRAVERSE_WEIGHT_MULTIPLIER
             )
         else:
             traverse_weight = traverse_pages
-        if len(checksums) < traverse_weight:
+        if len(hashes) < traverse_weight:
             logger.debug(
-                "Large remote ('{}' checksums < '{}' traverse weight), "
-                "using object_exists for remaining checksums".format(
-                    len(checksums), traverse_weight
+                "Large remote ('{}' hashes < '{}' traverse weight), "
+                "using object_exists for remaining hashes".format(
+                    len(hashes), traverse_weight
                 )
             )
             return (
-                list(indexed_checksums)
-                + list(checksums & remote_checksums)
-                + self.tree.list_checksums_exists(
-                    checksums - remote_checksums, jobs, name
+                list(indexed_hashes)
+                + list(hashes & remote_hashes)
+                + self.tree.list_hashes_exists(
+                    hashes - remote_hashes, jobs, name
                 )
             )
 
-        logger.debug(
-            "Querying '{}' checksums via traverse".format(len(checksums))
-        )
-        remote_checksums = set(
-            self.tree.list_checksums_traverse(
-                remote_size, remote_checksums, jobs, name
+        logger.debug("Querying '{}' hashes via traverse".format(len(hashes)))
+        remote_hashes = set(
+            self.tree.list_hashes_traverse(
+                remote_size, remote_hashes, jobs, name
             )
         )
-        return list(indexed_checksums) + list(
-            checksums & set(remote_checksums)
-        )
+        return list(indexed_hashes) + list(hashes & set(remote_hashes))
 
     @classmethod
     @index_locked
@@ -870,18 +854,18 @@ class Remote:
             used.update(named_cache.scheme_keys(tree.scheme))
 
         removed = False
-        # checksums must be sorted to ensure we always remove .dir files first
-        for checksum in sorted(
+        # hashes must be sorted to ensure we always remove .dir files first
+        for hash_ in sorted(
             tree.all(jobs, str(tree.path_info)),
-            key=tree.is_dir_checksum,
+            key=tree.is_dir_hash,
             reverse=True,
         ):
-            if checksum in used:
+            if hash_ in used:
                 continue
-            path_info = tree.checksum_to_path_info(checksum)
-            if tree.is_dir_checksum(checksum):
+            path_info = tree.hash_to_path_info(hash_)
+            if tree.is_dir_hash(hash_):
                 # backward compatibility
-                tree._remove_unpacked_dir(checksum)
+                tree._remove_unpacked_dir(hash_)
             tree.remove(path_info)
             removed = True
 
@@ -925,43 +909,43 @@ class CloudCache:
     def open(self, *args, **kwargs):
         return self.tree.open(*args, **kwargs)
 
-    def is_dir_checksum(self, checksum):
-        return self.tree.is_dir_checksum(checksum)
+    def is_dir_hash(self, hash_):
+        return self.tree.is_dir_hash(hash_)
 
-    def get_checksum(self, path_info, **kwargs):
-        return self.tree.get_checksum(path_info, **kwargs)
+    def get_hash(self, path_info, **kwargs):
+        return self.tree.get_hash(path_info, **kwargs)
 
     # Override to return path as a string instead of PathInfo for clouds
     # which support string paths (see local)
-    def checksum_to_path(self, checksum):
-        return self.checksum_to_path_info(checksum)
+    def hash_to_path(self, hash_):
+        return self.hash_to_path_info(hash_)
 
-    def checksum_to_path_info(self, checksum):
-        return self.tree.checksum_to_path_info(checksum)
+    def hash_to_path_info(self, hash_):
+        return self.tree.hash_to_path_info(hash_)
 
-    def get_dir_cache(self, checksum):
-        assert checksum
+    def get_dir_cache(self, hash_):
+        assert hash_
 
-        dir_info = self._dir_info.get(checksum)
+        dir_info = self._dir_info.get(hash_)
         if dir_info:
             return dir_info
 
         try:
-            dir_info = self.load_dir_cache(checksum)
+            dir_info = self.load_dir_cache(hash_)
         except DirCacheError:
             dir_info = []
 
-        self._dir_info[checksum] = dir_info
+        self._dir_info[hash_] = dir_info
         return dir_info
 
-    def load_dir_cache(self, checksum):
-        path_info = self.checksum_to_path_info(checksum)
+    def load_dir_cache(self, hash_):
+        path_info = self.hash_to_path_info(hash_)
 
         try:
             with self.cache.open(path_info, "r") as fobj:
                 d = json.load(fobj)
         except (ValueError, FileNotFoundError) as exc:
-            raise DirCacheError(checksum) from exc
+            raise DirCacheError(hash_) from exc
 
         if not isinstance(d, list):
             logger.error(
@@ -981,7 +965,7 @@ class CloudCache:
 
         return d
 
-    def changed(self, path_info, checksum_info):
+    def changed(self, path_info, hash_info):
         """Checks if data has changed.
 
         A file is considered changed if:
@@ -992,36 +976,34 @@ class CloudCache:
 
         Args:
             path_info: dict with path information.
-            checksum: expected hash value for this data.
+            hash: expected hash value for this data.
 
         Returns:
             bool: True if data has changed, False otherwise.
         """
 
         logger.debug(
-            "checking if '%s'('%s') has changed.", path_info, checksum_info
+            "checking if '%s'('%s') has changed.", path_info, hash_info
         )
 
         if not self.tree.exists(path_info):
             logger.debug("'%s' doesn't exist.", path_info)
             return True
 
-        checksum = checksum_info.get(self.tree.PARAM_CHECKSUM)
-        if checksum is None:
+        hash_ = hash_info.get(self.tree.PARAM_CHECKSUM)
+        if hash_ is None:
             logger.debug("hash value for '%s' is missing.", path_info)
             return True
 
-        if self.changed_cache(checksum):
-            logger.debug(
-                "cache for '%s'('%s') has changed.", path_info, checksum
-            )
+        if self.changed_cache(hash_):
+            logger.debug("cache for '%s'('%s') has changed.", path_info, hash_)
             return True
 
-        actual = self.get_checksum(path_info)
-        if checksum != actual:
+        actual = self.get_hash(path_info)
+        if hash_ != actual:
             logger.debug(
                 "hash value '%s' for '%s' has changed (actual '%s').",
-                checksum,
+                hash_,
                 actual,
                 path_info,
             )
@@ -1078,12 +1060,12 @@ class CloudCache:
             "Created '%s': %s -> %s", self.cache_types[0], from_info, to_info,
         )
 
-    def _save_file(self, path_info, tree, checksum, save_link=True, **kwargs):
-        assert checksum
+    def _save_file(self, path_info, tree, hash_, save_link=True, **kwargs):
+        assert hash_
 
-        cache_info = self.checksum_to_path_info(checksum)
+        cache_info = self.hash_to_path_info(hash_)
         if tree == self.tree:
-            if self.changed_cache(checksum):
+            if self.changed_cache(hash_):
                 self.tree.move(path_info, cache_info, mode=self.CACHE_MODE)
                 self.link(cache_info, path_info)
             elif self.tree.iscopy(path_info) and self._cache_is_copy(
@@ -1100,9 +1082,9 @@ class CloudCache:
             # we need to update path and cache, since in case of reflink,
             # or copy cache type moving original file results in updates on
             # next executed command, which causes md5 recalculation
-            self.state.save(path_info, checksum)
+            self.state.save(path_info, hash_)
         else:
-            if self.changed_cache(checksum):
+            if self.changed_cache(hash_):
                 with tree.open(path_info, mode="rb") as fobj:
                     # if tree has fetch enabled, DVC out will be fetched on
                     # open and we do not need to read/copy any data
@@ -1114,8 +1096,8 @@ class CloudCache:
                 if callback:
                     callback(1)
 
-        self.state.save(cache_info, checksum)
-        return {self.tree.PARAM_CHECKSUM: checksum}
+        self.state.save(cache_info, hash_)
+        return {self.tree.PARAM_CHECKSUM: hash_}
 
     def _cache_is_copy(self, path_info):
         """Checks whether cache uses copies."""
@@ -1139,80 +1121,75 @@ class CloudCache:
         self.cache_type_confirmed = True
         return self.cache_types[0] == "copy"
 
-    def _save_dir(self, path_info, tree, checksum, save_link=True, **kwargs):
-        dir_info = self.get_dir_cache(checksum)
+    def _save_dir(self, path_info, tree, hash_, save_link=True, **kwargs):
+        dir_info = self.get_dir_cache(hash_)
         for entry in Tqdm(
             dir_info, desc="Saving " + path_info.name, unit="file"
         ):
             entry_info = path_info / entry[self.tree.PARAM_RELPATH]
-            entry_checksum = entry[self.tree.PARAM_CHECKSUM]
+            entry_hash = entry[self.tree.PARAM_CHECKSUM]
             self._save_file(
-                entry_info, tree, entry_checksum, save_link=False, **kwargs
+                entry_info, tree, entry_hash, save_link=False, **kwargs
             )
 
         if save_link:
             self.state.save_link(path_info)
         if self.tree.exists(path_info):
-            self.state.save(path_info, checksum)
+            self.state.save(path_info, hash_)
 
-        cache_info = self.checksum_to_path_info(checksum)
-        self.state.save(cache_info, checksum)
-        return {self.tree.PARAM_CHECKSUM: checksum}
+        cache_info = self.hash_to_path_info(hash_)
+        self.state.save(cache_info, hash_)
+        return {self.tree.PARAM_CHECKSUM: hash_}
 
-    def save(self, path_info, tree, checksum_info, save_link=True, **kwargs):
+    def save(self, path_info, tree, hash_info, save_link=True, **kwargs):
         if path_info.scheme != self.scheme:
             raise RemoteActionNotImplemented(
                 f"save {path_info.scheme} -> {self.scheme}", self.scheme,
             )
 
-        if not checksum_info:
-            checksum_info = self.tree.save_info(path_info, tree=tree, **kwargs)
-        checksum = checksum_info[self.tree.PARAM_CHECKSUM]
-        return self._save(path_info, tree, checksum, save_link, **kwargs)
+        if not hash_info:
+            hash_info = self.tree.save_info(path_info, tree=tree, **kwargs)
+        hash_ = hash_info[self.tree.PARAM_CHECKSUM]
+        return self._save(path_info, tree, hash_, save_link, **kwargs)
 
-    def _save(self, path_info, tree, checksum, save_link=True, **kwargs):
-        to_info = self.checksum_to_path_info(checksum)
+    def _save(self, path_info, tree, hash_, save_link=True, **kwargs):
+        to_info = self.hash_to_path_info(hash_)
         logger.debug("Saving '%s' to '%s'.", path_info, to_info)
 
         if tree.isdir(path_info):
-            return self._save_dir(
-                path_info, tree, checksum, save_link, **kwargs
-            )
-        return self._save_file(path_info, tree, checksum, save_link, **kwargs)
+            return self._save_dir(path_info, tree, hash_, save_link, **kwargs)
+        return self._save_file(path_info, tree, hash_, save_link, **kwargs)
 
-    def changed_cache_file(self, checksum):
-        """Compare the given checksum with the (corresponding) actual one.
+    def changed_cache_file(self, hash_):
+        """Compare the given hash with the (corresponding) actual one.
 
-        - Use `State` as a cache for computed checksums
+        - Use `State` as a cache for computed hashes
             + The entries are invalidated by taking into account the following:
                 * mtime
                 * inode
                 * size
-                * checksum
+                * hash
 
-        - Remove the file from cache if it doesn't match the actual checksum
+        - Remove the file from cache if it doesn't match the actual hash
         """
         # Prefer string path over PathInfo when possible due to performance
-        cache_info = self.checksum_to_path(checksum)
+        cache_info = self.hash_to_path(hash_)
         if self.tree.is_protected(cache_info):
             logger.debug(
                 "Assuming '%s' is unchanged since it is read-only", cache_info
             )
             return False
 
-        actual = self.get_checksum(cache_info)
+        actual = self.get_hash(cache_info)
 
         logger.debug(
-            "cache '%s' expected '%s' actual '%s'",
-            cache_info,
-            checksum,
-            actual,
+            "cache '%s' expected '%s' actual '%s'", cache_info, hash_, actual,
         )
 
-        if not checksum or not actual:
+        if not hash_ or not actual:
             return True
 
-        if actual.split(".")[0] == checksum.split(".")[0]:
+        if actual.split(".")[0] == hash_.split(".")[0]:
             # making cache file read-only so we don't need to check it
             # next time
             self.tree.protect(cache_info)
@@ -1224,32 +1201,32 @@ class CloudCache:
 
         return True
 
-    def _changed_dir_cache(self, checksum, path_info=None, filter_info=None):
-        if self.changed_cache_file(checksum):
+    def _changed_dir_cache(self, hash_, path_info=None, filter_info=None):
+        if self.changed_cache_file(hash_):
             return True
 
-        for entry in self.get_dir_cache(checksum):
-            entry_checksum = entry[self.tree.PARAM_CHECKSUM]
+        for entry in self.get_dir_cache(hash_):
+            entry_hash = entry[self.tree.PARAM_CHECKSUM]
 
             if path_info and filter_info:
                 entry_info = path_info / entry[self.tree.PARAM_RELPATH]
                 if not entry_info.isin_or_eq(filter_info):
                     continue
 
-            if self.changed_cache_file(entry_checksum):
+            if self.changed_cache_file(entry_hash):
                 return True
 
         return False
 
-    def changed_cache(self, checksum, path_info=None, filter_info=None):
-        if self.is_dir_checksum(checksum):
+    def changed_cache(self, hash_, path_info=None, filter_info=None):
+        if self.is_dir_hash(hash_):
             return self._changed_dir_cache(
-                checksum, path_info=path_info, filter_info=filter_info
+                hash_, path_info=path_info, filter_info=filter_info
             )
-        return self.changed_cache_file(checksum)
+        return self.changed_cache_file(hash_)
 
     def already_cached(self, path_info):
-        current = self.get_checksum(path_info)
+        current = self.get_hash(path_info)
 
         if not current:
             return False
@@ -1272,11 +1249,11 @@ class CloudCache:
         self.tree.remove(path_info)
 
     def _checkout_file(
-        self, path_info, checksum, force, progress_callback=None, relink=False
+        self, path_info, hash_, force, progress_callback=None, relink=False
     ):
         """The file is changed we need to checkout a new copy"""
         added, modified = True, False
-        cache_info = self.checksum_to_path_info(checksum)
+        cache_info = self.hash_to_path_info(hash_)
         if self.tree.exists(path_info):
             logger.debug("data '%s' will be replaced.", path_info)
             self.safe_remove(path_info, force=force)
@@ -1284,7 +1261,7 @@ class CloudCache:
 
         self.link(cache_info, path_info)
         self.state.save_link(path_info)
-        self.state.save(path_info, checksum)
+        self.state.save(path_info, hash_)
         if progress_callback:
             progress_callback(str(path_info))
 
@@ -1293,7 +1270,7 @@ class CloudCache:
     def _checkout_dir(
         self,
         path_info,
-        checksum,
+        hash_,
         force,
         progress_callback=None,
         relink=False,
@@ -1306,25 +1283,25 @@ class CloudCache:
             added = True
             self.tree.makedirs(path_info)
 
-        dir_info = self.get_dir_cache(checksum)
+        dir_info = self.get_dir_cache(hash_)
 
         logger.debug("Linking directory '%s'.", path_info)
 
         for entry in dir_info:
             relative_path = entry[self.tree.PARAM_RELPATH]
-            entry_checksum = entry[self.tree.PARAM_CHECKSUM]
-            entry_cache_info = self.checksum_to_path_info(entry_checksum)
+            entry_hash = entry[self.tree.PARAM_CHECKSUM]
+            entry_cache_info = self.hash_to_path_info(entry_hash)
             entry_info = path_info / relative_path
 
             if filter_info and not entry_info.isin_or_eq(filter_info):
                 continue
 
-            entry_checksum_info = {self.tree.PARAM_CHECKSUM: entry_checksum}
-            if relink or self.changed(entry_info, entry_checksum_info):
+            entry_hash_info = {self.tree.PARAM_CHECKSUM: entry_hash}
+            if relink or self.changed(entry_info, entry_hash_info):
                 modified = True
                 self.safe_remove(entry_info, force=force)
                 self.link(entry_cache_info, entry_info)
-                self.state.save(entry_info, entry_checksum)
+                self.state.save(entry_info, entry_hash)
             if progress_callback:
                 progress_callback(str(entry_info))
 
@@ -1334,7 +1311,7 @@ class CloudCache:
         )
 
         self.state.save_link(path_info)
-        self.state.save(path_info, checksum)
+        self.state.save(path_info, hash_)
 
         # relink is not modified, assume it as nochange
         return added, not added and modified and not relink
@@ -1354,7 +1331,7 @@ class CloudCache:
     def checkout(
         self,
         path_info,
-        checksum_info,
+        hash_info,
         force=False,
         progress_callback=None,
         relink=False,
@@ -1363,10 +1340,10 @@ class CloudCache:
         if path_info.scheme not in ["local", self.scheme]:
             raise NotImplementedError
 
-        checksum = checksum_info.get(self.tree.PARAM_CHECKSUM)
+        hash_ = hash_info.get(self.tree.PARAM_CHECKSUM)
         failed = None
         skip = False
-        if not checksum:
+        if not hash_:
             logger.warning(
                 "No file hash info found for '%s'. " "It won't be created.",
                 path_info,
@@ -1374,16 +1351,16 @@ class CloudCache:
             self.safe_remove(path_info, force=force)
             failed = path_info
 
-        elif not relink and not self.changed(path_info, checksum_info):
+        elif not relink and not self.changed(path_info, hash_info):
             logger.debug("Data '%s' didn't change.", path_info)
             skip = True
 
         elif self.changed_cache(
-            checksum, path_info=path_info, filter_info=filter_info
+            hash_, path_info=path_info, filter_info=filter_info
         ):
             logger.warning(
                 "Cache '%s' not found. File '%s' won't be created.",
-                checksum,
+                hash_,
                 path_info,
             )
             self.safe_remove(path_info, force=force)
@@ -1393,51 +1370,49 @@ class CloudCache:
             if progress_callback:
                 progress_callback(
                     str(path_info),
-                    self.get_files_number(
-                        self.path_info, checksum, filter_info
-                    ),
+                    self.get_files_number(self.path_info, hash_, filter_info),
                 )
             if failed:
                 raise CheckoutError([failed])
             return
 
-        logger.debug("Checking out '%s' with cache '%s'.", path_info, checksum)
+        logger.debug("Checking out '%s' with cache '%s'.", path_info, hash_)
 
         return self._checkout(
-            path_info, checksum, force, progress_callback, relink, filter_info,
+            path_info, hash_, force, progress_callback, relink, filter_info,
         )
 
     def _checkout(
         self,
         path_info,
-        checksum,
+        hash_,
         force=False,
         progress_callback=None,
         relink=False,
         filter_info=None,
     ):
-        if not self.is_dir_checksum(checksum):
+        if not self.is_dir_hash(hash_):
             return self._checkout_file(
-                path_info, checksum, force, progress_callback, relink
+                path_info, hash_, force, progress_callback, relink
             )
 
         return self._checkout_dir(
-            path_info, checksum, force, progress_callback, relink, filter_info
+            path_info, hash_, force, progress_callback, relink, filter_info
         )
 
-    def get_files_number(self, path_info, checksum, filter_info):
+    def get_files_number(self, path_info, hash_, filter_info):
         from funcy.py3 import ilen
 
-        if not checksum:
+        if not hash_:
             return 0
 
-        if not self.is_dir_checksum(checksum):
+        if not self.is_dir_hash(hash_):
             return 1
 
         if not filter_info:
-            return len(self.get_dir_cache(checksum))
+            return len(self.get_dir_cache(hash_))
 
         return ilen(
             filter_info.isin_or_eq(path_info / entry[self.tree.PARAM_CHECKSUM])
-            for entry in self.get_dir_cache(checksum)
+            for entry in self.get_dir_cache(hash_)
         )

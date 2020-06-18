@@ -36,7 +36,7 @@ class TestCache(TestDvc):
         self.assertIn(self.cache2_md5, md5_list)
 
     def test_get(self):
-        cache = Cache(self.dvc).local.checksum_to_path_info(self.cache1_md5)
+        cache = Cache(self.dvc).local.hash_to_path_info(self.cache1_md5)
         self.assertEqual(os.fspath(cache), self.cache1)
 
 
@@ -46,16 +46,16 @@ class TestCacheLoadBadDirCache(TestDvc):
         self.assertEqual(len(ret), 0)
 
     def test(self):
-        checksum = "123.dir"
-        fname = os.fspath(self.dvc.cache.local.checksum_to_path_info(checksum))
+        dir_hash = "123.dir"
+        fname = os.fspath(self.dvc.cache.local.hash_to_path_info(dir_hash))
         self.create(fname, "<clearly>not,json")
         with pytest.raises(DirCacheError):
-            self.dvc.cache.local.load_dir_cache(checksum)
+            self.dvc.cache.local.load_dir_cache(dir_hash)
 
-        checksum = "234.dir"
-        fname = os.fspath(self.dvc.cache.local.checksum_to_path_info(checksum))
+        dir_hash = "234.dir"
+        fname = os.fspath(self.dvc.cache.local.hash_to_path_info(dir_hash))
         self.create(fname, '{"a": "b"}')
-        self._do_test(self.dvc.cache.local.load_dir_cache(checksum))
+        self._do_test(self.dvc.cache.local.load_dir_cache(dir_hash))
 
 
 class TestExternalCacheDir(TestDvc):

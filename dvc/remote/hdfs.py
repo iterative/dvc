@@ -159,7 +159,7 @@ class HDFSRemoteTree(BaseRemoteTree):
         assert match is not None
         return match.group(gname)
 
-    def get_file_checksum(self, path_info):
+    def get_file_hash(self, path_info):
         # NOTE: pyarrow doesn't support checksum, so we need to use hadoop
         regex = r".*\t.*\t(?P<checksum>.*)"
         stdout = self.hadoop_fs(
