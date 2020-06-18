@@ -1,6 +1,9 @@
 import logging
 
+from dvc.exceptions import NotDvcRepoError
+
 logger = logging.getLogger(__name__)
+HEADLESS_COMMANDS = ["completion"]
 
 
 def fix_subparsers(subparsers):
@@ -28,13 +31,16 @@ def append_doc_link(help_message, path):
 
 class CmdBase:
     def __init__(self, args):
-        self.args = args
-        if args.cmd in ["completion"]:  # headless
-            return
         from dvc.repo import Repo
         from dvc.updater import Updater
 
-        self.repo = Repo()
+        self.args = args
+        try:
+            self.repo = Repo()
+        except NotDvcRepoError:
+            if args.cmd in HEADLESS_COMMANDS:
+                return
+            raise
         self.config = self.repo.config
         hardlink_lock = self.config["core"].get("hardlink_lock", False)
         updater = Updater(self.repo.tmp_dir, hardlink_lock=hardlink_lock)
