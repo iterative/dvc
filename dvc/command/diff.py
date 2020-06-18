@@ -19,7 +19,7 @@ def _show_md(diff):
         entries = diff.get(status, [])
         if not entries:
             continue
-        paths = sorted([entry["path"] for entry in entries])
+        paths = sorted(entry["path"] for entry in entries)
         for path in paths:
             rows.append([status, path])
 
