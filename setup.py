@@ -78,6 +78,7 @@ install_requires = [
     "tabulate>=0.8.7",
     "pygtrie==2.3.2",
     "dpath>=2.0.1,<3",
+    "shtab>=0.0.2",
 ]
 
 
@@ -123,6 +124,9 @@ tests_requirements = [
     "moto==1.3.14.dev464",
     "rangehttpserver==1.2.0",
     "beautifulsoup4==4.4.0",
+    "flake8-bugbear",
+    "flake8-comprehensions",
+    "flake8-string-format",
 ]
 
 if (sys.version_info) >= (3, 6):

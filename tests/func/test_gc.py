@@ -52,7 +52,7 @@ class TestGC(TestDvcGit):
 class TestGCBranchesTags(TestDvcGit):
     def _check_cache(self, num):
         total = 0
-        for root, dirs, files in os.walk(os.path.join(".dvc", "cache")):
+        for _, _, files in os.walk(os.path.join(".dvc", "cache")):
             total += len(files)
         self.assertEqual(total, num)
 
@@ -112,7 +112,7 @@ class TestGCBranchesTags(TestDvcGit):
 class TestGCMultipleDvcRepos(TestDvcGit):
     def _check_cache(self, num):
         total = 0
-        for root, dirs, files in os.walk(os.path.join(".dvc", "cache")):
+        for _, _, files in os.walk(os.path.join(".dvc", "cache")):
             total += len(files)
         self.assertEqual(total, num)
 

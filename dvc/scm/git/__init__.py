@@ -37,24 +37,22 @@ class TqdmGit(Tqdm):
     def code2desc(op_code):
         from git import RootUpdateProgress as OP
 
-        ops = dict(
-            (
-                (OP.COUNTING, "Counting"),
-                (OP.COMPRESSING, "Compressing"),
-                (OP.WRITING, "Writing"),
-                (OP.RECEIVING, "Receiving"),
-                (OP.RESOLVING, "Resolving"),
-                (OP.FINDING_SOURCES, "Finding sources"),
-                (OP.CHECKING_OUT, "Checking out"),
-                (OP.CLONE, "Cloning"),
-                (OP.FETCH, "Fetching"),
-                (OP.UPDWKTREE, "Updating working tree"),
-                (OP.REMOVE, "Removing"),
-                (OP.PATHCHANGE, "Changing path"),
-                (OP.URLCHANGE, "Changing URL"),
-                (OP.BRANCHCHANGE, "Changing branch"),
-            )
-        )
+        ops = {
+            OP.COUNTING: "Counting",
+            OP.COMPRESSING: "Compressing",
+            OP.WRITING: "Writing",
+            OP.RECEIVING: "Receiving",
+            OP.RESOLVING: "Resolving",
+            OP.FINDING_SOURCES: "Finding sources",
+            OP.CHECKING_OUT: "Checking out",
+            OP.CLONE: "Cloning",
+            OP.FETCH: "Fetching",
+            OP.UPDWKTREE: "Updating working tree",
+            OP.REMOVE: "Removing",
+            OP.PATHCHANGE: "Changing path",
+            OP.URLCHANGE: "Changing URL",
+            OP.BRANCHCHANGE: "Changing branch",
+        }
         return ops.get(op_code & OP.OP_MASK, "")
 
 

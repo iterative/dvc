@@ -1,6 +1,7 @@
 import argparse
 import logging
 
+from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException, RecursiveAddingWhileUsingFilename
 
@@ -62,6 +63,9 @@ def add_parser(subparsers, parent_parser):
         metavar="<filename>",
     )
     parser.add_argument(
-        "targets", nargs="+", help="Input files/directories to add."
+        "targets",
+        nargs="+",
+        help="Input files/directories to add.",
+        choices=completion.Required.FILE,
     )
     parser.set_defaults(func=CmdAdd)

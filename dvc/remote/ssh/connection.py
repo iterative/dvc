@@ -153,7 +153,7 @@ class SSHConnection:
             yield directory, dirs, nondirs
 
     def walk_files(self, directory):
-        for root, dirs, files in self.walk(directory):
+        for root, _, files in self.walk(directory):
             for fname in files:
                 yield posixpath.join(root, fname)
 

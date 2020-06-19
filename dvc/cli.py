@@ -8,6 +8,7 @@ from .command import (
     cache,
     checkout,
     commit,
+    completion,
     config,
     daemon,
     dag,
@@ -70,6 +71,7 @@ COMMANDS = [
     dag,
     daemon,
     commit,
+    completion,
     diff,
     version,
     update,
@@ -140,15 +142,7 @@ def get_parent_parser():
     return parent_parser
 
 
-def parse_args(argv=None):
-    """Parses CLI arguments.
-
-    Args:
-        argv: optional list of arguments to parse. sys.argv is used by default.
-
-    Raises:
-        dvc.exceptions.DvcParserError: raised for argument parsing errors.
-    """
+def get_main_parser():
     parent_parser = get_parent_parser()
 
     # Main parser
@@ -196,6 +190,18 @@ def parse_args(argv=None):
     for cmd in COMMANDS:
         cmd.add_parser(subparsers, parent_parser)
 
-    args = parser.parse_args(argv)
+    return parser
 
+
+def parse_args(argv=None):
+    """Parses CLI arguments.
+
+    Args:
+        argv: optional list of arguments to parse. sys.argv is used by default.
+
+    Raises:
+        dvc.exceptions.DvcParserError: raised for argument parsing errors.
+    """
+    parser = get_main_parser()
+    args = parser.parse_args(argv)
     return args

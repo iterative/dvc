@@ -111,7 +111,7 @@ def _serialize_params_values(params: List[ParamsDependency]):
 def to_pipeline_file(stage: "PipelineStage"):
     wdir = resolve_wdir(stage.wdir, stage.path)
     params, deps = split_params_deps(stage)
-    deps = sorted([d.def_path for d in deps])
+    deps = sorted(d.def_path for d in deps)
     params = _serialize_params_keys(params)
 
     outs, metrics, plots = _serialize_outs(stage.outs)

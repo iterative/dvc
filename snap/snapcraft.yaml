@@ -31,17 +31,21 @@ parts:
         snapcraftctl pull
         snapcraftctl set-version $(cd $SNAPCRAFT_PART_SRC && git describe --tags)
         git diff --quiet || error_dirty_build
-        echo 'PKG = "snap"' > $SNAPCRAFT_PART_SRC/dvc/utils/build.py
+        echo 'PKG = "snap"' > dvc/utils/build.py
         # install all optional extras
-        sed -ri 's/(=install_requires)/\1+all_remotes+hdfs/' $SNAPCRAFT_PART_SRC/setup.py
+        sed -ri 's/(=install_requires)/\1+all_remotes+hdfs/' setup.py
         # ensure dvc knows the state isn't really dirty
-        sed -rin 's/.*git.*diff.*--quiet.*//' $SNAPCRAFT_PART_SRC/dvc/version.py
+        sed -rin 's/.*git.*diff.*--quiet.*//' dvc/version.py
     override-build: |
         snapcraftctl build
         # prevent user site packages interfering with this snap - reference:
         # https://github.com/snapcore/snapcraft/blob/19393ef36cd773a28131cec10cc0bfb3bf9c7e77/tools/snapcraft-override-build.sh#L18
         sed -ri 's/^(ENABLE_USER_SITE = )None$/\1False/' $SNAPCRAFT_PART_INSTALL/usr/lib/python*/site.py
-        cp $SNAPCRAFT_PART_BUILD/scripts/completion/dvc.bash $SNAPCRAFT_PART_INSTALL/completion.sh
+        # make plugin aware that a file (generated later) needs to be staged
+        touch $SNAPCRAFT_PART_INSTALL/completion.sh
+    override-stage: |
+        snapcraftctl stage
+        usr/bin/python3 -m dvc completion -s bash > completion.sh
 apps:
   dvc:
     command: bin/dvc

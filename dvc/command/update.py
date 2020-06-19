@@ -1,6 +1,7 @@
 import argparse
 import logging
 
+from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
 
@@ -32,7 +33,10 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     update_parser.add_argument(
-        "targets", nargs="+", help="DVC-files to update."
+        "targets",
+        nargs="+",
+        help="DVC-files to update.",
+        choices=completion.Required.DVC_FILE,
     )
     update_parser.add_argument(
         "--rev",

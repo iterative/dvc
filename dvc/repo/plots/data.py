@@ -196,7 +196,7 @@ class CSVPlotData(PlotData):
             )
 
         fieldnames = reader.fieldnames
-        data = [row for row in reader]
+        data = list(reader)
 
         return [
             OrderedDict([(field, data_point[field]) for field in fieldnames])

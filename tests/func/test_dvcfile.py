@@ -157,7 +157,7 @@ def test_stage_collection(tmp_dir, dvc):
         always_changed=True,
         single_stage=True,
     )
-    assert {s for s in dvc.stages} == {stage1, stage3, stage2}
+    assert set(dvc.stages) == {stage1, stage3, stage2}
 
 
 def test_remove_stage(tmp_dir, dvc, run_copy):

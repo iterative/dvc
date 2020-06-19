@@ -115,10 +115,10 @@ build_dvc() {
   # [1] https://github.com/iterative/dvc/issues/2585
   if [[ "$(uname)" == 'Linux' ]]; then
     mkdir -p $BUILD_DIR/$BASH_CMPLT_DIR
-    cp scripts/completion/dvc.bash $BUILD_DIR/$BASH_CMPLT_DIR/dvc
+    $LIB_DIR/dvc/dvc completion -s bash > $BUILD_DIR/$BASH_CMPLT_DIR/dvc
 
     mkdir -p $BUILD_DIR/$ZSH_CMPLT_DIR
-    cp scripts/completion/dvc.zsh $BUILD_DIR/$ZSH_CMPLT_DIR
+    $LIB_DIR/dvc/dvc completion -s zsh > $BUILD_DIR/$ZSH_CMPLT_DIR/_dvc
   fi
 }
 
