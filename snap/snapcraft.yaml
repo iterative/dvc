@@ -45,7 +45,7 @@ parts:
         touch $SNAPCRAFT_PART_INSTALL/completion.sh
     override-stage: |
         snapcraftctl stage
-        usr/bin/python3 -m dvc completion -s bash -f completion.sh .
+        usr/bin/python3 -m dvc completion -s bash > completion.sh
 apps:
   dvc:
     command: bin/dvc

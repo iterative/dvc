@@ -1,13 +1,11 @@
 import argparse
 import logging
-import os
 
 import shtab
 
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
 
 logger = logging.getLogger(__name__)
-DEFAULT_FILENAME = {"bash": "dvc", "zsh": "_dvc"}
 CHOICE_FUNCTIONS = {
     "bash": {"DVCFile": "_dvc_compgen_DVCFiles"},
     "zsh": {"DVCFile": "_files -g '(*?.dvc|Dvcfile|dvc.yaml)'"},
@@ -46,17 +44,7 @@ class CmdCompletion(CmdBaseNoRepo):
             preamble=PREAMBLE[shell],
             choice_functions=CHOICE_FUNCTIONS[shell],
         )
-
-        if self.args.dir == "-":
-            logger.debug("Writing tab completion to stdout")
-            print(script)
-        else:
-            fname = os.path.join(
-                self.args.dir, self.args.file or DEFAULT_FILENAME[shell],
-            )
-            logger.info(f"Writing tab completion to {fname}")
-            with open(fname, "w") as fd:
-                print(script, file=fd)
+        print(script)
         return 0
 
 
@@ -78,23 +66,5 @@ def add_parser(subparsers, parent_parser):
         help="Shell syntax for completions.",
         default="bash",
         choices=["bash", "zsh"],
-    )
-    completion_parser.add_argument(
-        "-f",
-        "--file",
-        help=(
-            "File name for output. Defaults depending on --shell:"
-            f" {DEFAULT_FILENAME}."
-        ),
-    )
-    completion_parser.add_argument(
-        "dir",
-        help=(
-            "Output directory for completion script."
-            " Defaults to '-' for stdout (ignoring --file)."
-        ),
-        default="-",
-        nargs="?",
-        choices=Required.DIR,
     )
     completion_parser.set_defaults(func=CmdCompletion)
