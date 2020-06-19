@@ -239,6 +239,12 @@ class BaseOutput:
 
         self.repo.scm.ignore(self.fspath)
 
+    def ignore_remove(self):
+        if not self.use_scm_ignore:
+            return
+
+        self.repo.scm.ignore_remove(self.fspath)
+
     def save(self):
         if not self.exists:
             raise self.DoesNotExistError(self)
