@@ -343,7 +343,7 @@ class BaseOutput:
             return
 
         if ignore_remove and self.use_scm_ignore:
-            self.repo.scm.ignore_remove(self.fspath)
+            self.ignore_remove()
 
     def move(self, out):
         if self.scheme == "local" and self.use_scm_ignore:
