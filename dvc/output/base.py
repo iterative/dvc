@@ -342,7 +342,7 @@ class BaseOutput:
         if self.scheme != "local":
             return
 
-        if ignore_remove and self.use_scm_ignore:
+        if ignore_remove:
             self.ignore_remove()
 
     def move(self, out):
