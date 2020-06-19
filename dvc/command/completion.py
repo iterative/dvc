@@ -49,10 +49,8 @@ class CmdCompletion(CmdBaseNoRepo):
 
 
 def add_parser(subparsers, parent_parser):
-    COMPLETION_HELP = "Install shell tab completion."
-    COMPLETION_DESCRIPTION = (
-        "Automatically generates shell tab completion scripts."
-    )
+    COMPLETION_HELP = "Generate shell tab completion."
+    COMPLETION_DESCRIPTION = "Prints out shell tab completion scripts."
     completion_parser = subparsers.add_parser(
         "completion",
         parents=[parent_parser],
