@@ -4,6 +4,7 @@ import operator
 
 import colorama
 
+from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import CheckoutError
 from dvc.utils.humanize import get_summary
@@ -113,5 +114,6 @@ def add_parser(subparsers, parent_parser):
         nargs="*",
         help="DVC-files to checkout. Optional. "
         "(Finds all DVC-files in the workspace by default.)",
+        choices=completion.Optional.DVC_FILE,
     )
     checkout_parser.set_defaults(func=CmdCheckout)

@@ -1,6 +1,7 @@
 import argparse
 import logging
 
+from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import BadMetricError, DvcException
 
@@ -169,6 +170,7 @@ def add_parser(subparsers, parent_parser):
             "Limit command scope to these metric files. Using -R, "
             "directories to search metric files in can also be given."
         ),
+        choices=completion.Optional.FILE,
     )
     metrics_show_parser.add_argument(
         "-a",
@@ -235,6 +237,7 @@ def add_parser(subparsers, parent_parser):
             "directories to search metric files in can also be given."
         ),
         metavar="<paths>",
+        choices=completion.Optional.FILE,
     )
     metrics_diff_parser.add_argument(
         "-R",

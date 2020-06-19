@@ -1,6 +1,7 @@
 import argparse
 import logging
 
+from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.command.checkout import log_changes
 from dvc.exceptions import CheckoutError, DvcException
@@ -104,6 +105,7 @@ def shared_parent_parser():
         nargs="*",
         help="Limit command scope to these DVC-files. "
         "Using -R, directories to search DVC-files in can also be given.",
+        choices=completion.Optional.DVC_FILE,
     )
 
     return parent_parser

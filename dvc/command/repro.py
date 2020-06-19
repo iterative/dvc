@@ -2,6 +2,7 @@ import argparse
 import logging
 import os
 
+from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.command.metrics import show_metrics
 from dvc.command.status import CmdDataStatus
@@ -71,6 +72,7 @@ def add_parser(subparsers, parent_parser):
         "targets",
         nargs="*",
         help=f"Stages to reproduce. '{PIPELINE_FILE}' by default.",
+        choices=completion.Optional.DVC_FILE,
     )
     repro_parser.add_argument(
         "-f",
