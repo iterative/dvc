@@ -73,6 +73,6 @@ def add_parser(subparsers, parent_parser):
         "--no-exec",
         action="store_true",
         default=False,
-        help="Only create stage file without actually download it.",
+        help="Only create DVC-file without actually downloading it.",
     )
     import_parser.set_defaults(func=CmdImportUrl)
