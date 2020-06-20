@@ -43,6 +43,7 @@ def add_parser(subparsers, parent_parser):
         "targets",
         nargs="+",
         help="DVC-files to freeze.",
+        metavar="targets",
         choices=completion.Required.DVC_FILE,
     )
     freeze_parser.set_defaults(func=CmdFreeze)
@@ -59,6 +60,7 @@ def add_parser(subparsers, parent_parser):
         "targets",
         nargs="+",
         help="DVC-files to unfreeze.",
+        metavar="targets",
         choices=completion.Required.DVC_FILE,
     )
     unfreeze_parser.set_defaults(func=CmdUnfreeze)

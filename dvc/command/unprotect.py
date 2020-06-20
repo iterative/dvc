@@ -36,6 +36,7 @@ def add_parser(subparsers, parent_parser):
         "targets",
         nargs="+",
         help="Data files/directories to unprotect.",
+        metavar="targets",
         choices=completion.Required.FILE,
     )
     unprotect_parser.set_defaults(func=CmdUnprotect)

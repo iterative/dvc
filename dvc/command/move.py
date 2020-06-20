@@ -39,9 +39,13 @@ def add_parser(subparsers, parent_parser):
     move_parser.add_argument(
         "src",
         help="Source path to a data file or directory.",
+        metavar="src",
         choices=completion.Required.FILE,
     )
     move_parser.add_argument(
-        "dst", help="Destination path.", choices=completion.Required.FILE,
+        "dst",
+        help="Destination path.",
+        metavar="dst",
+        choices=completion.Required.FILE,
     )
     move_parser.set_defaults(func=CmdMove)

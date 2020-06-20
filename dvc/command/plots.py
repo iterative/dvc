@@ -129,6 +129,7 @@ def add_parser(subparsers, parent_parser):
         "targets",
         nargs="*",
         help="Plots files to visualize. Shows all plots by default.",
+        metavar="targets",
         choices=completion.Optional.FILE,
     )
     _add_props_arguments(plots_show_parser)
@@ -171,6 +172,7 @@ def add_parser(subparsers, parent_parser):
     plots_modify_parser.add_argument(
         "target",
         help="Metric file to set properties to",
+        metavar="target",
         choices=completion.Required.FILE,
     )
     _add_props_arguments(plots_modify_parser)
