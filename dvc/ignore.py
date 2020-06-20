@@ -1,12 +1,15 @@
 import logging
 import os
+import re
+from itertools import groupby
 
 from funcy import cached_property
-from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
+from pathspec.util import normalize_file
 
 from dvc.path_info import PathInfo
 from dvc.scm.tree import BaseTree
+from dvc.system import System
 from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
@@ -27,7 +30,17 @@ class DvcIgnorePatterns(DvcIgnore):
         self.dirname = os.path.normpath(os.path.dirname(ignore_file_path))
 
         with tree.open(ignore_file_path, encoding="utf-8") as fobj:
-            self.ignore_spec = PathSpec.from_lines(GitWildMatchPattern, fobj)
+            path_spec_lines = fobj.readlines()
+            regex_pattern_list = map(
+                GitWildMatchPattern.pattern_to_regex, path_spec_lines
+            )
+            self.ignore_spec = [
+                (ignore, re.compile("|".join(item[0] for item in group)))
+                for ignore, group in groupby(
+                    regex_pattern_list, lambda x: x[1]
+                )
+                if ignore is not None
+            ]
 
     def __call__(self, root, dirs, files):
         files = [f for f in files if not self.matches(root, f)]
@@ -48,7 +61,16 @@ class DvcIgnorePatterns(DvcIgnore):
         else:
             return False
 
-        return self.ignore_spec.match_file(path)
+        if not System.is_unix():
+            path = normalize_file(path)
+        return self.ignore(path)
+
+    def ignore(self, path):
+        result = False
+        for ignore, pattern in self.ignore_spec:
+            if pattern.match(path):
+                result = ignore
+        return result
 
     def __hash__(self):
         return hash(self.ignore_file_path)
@@ -208,8 +230,10 @@ class CleanTree(BaseTree):
                 return False
         return True
 
-    def walk(self, top, topdown=True):
-        for root, dirs, files in self.tree.walk(top, topdown):
+    def walk(self, top, topdown=True, onerror=None):
+        for root, dirs, files in self.tree.walk(
+            top, topdown=topdown, onerror=onerror
+        ):
             dirs[:], files[:] = self.dvcignore(
                 os.path.abspath(root), dirs, files
             )

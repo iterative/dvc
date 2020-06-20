@@ -2,7 +2,7 @@ import pytest
 
 from dvc.exceptions import HTTPError
 from dvc.path_info import URLInfo
-from dvc.remote.http import HTTPRemote
+from dvc.remote.http import HTTPRemoteTree
 from tests.utils.httpd import StaticFileServer
 
 
@@ -11,10 +11,10 @@ def test_download_fails_on_error_code(dvc):
         url = f"http://localhost:{httpd.server_port}/"
         config = {"url": url}
 
-        remote = HTTPRemote(dvc, config)
+        tree = HTTPRemoteTree(dvc, config)
 
         with pytest.raises(HTTPError):
-            remote.tree._download(URLInfo(url) / "missing.txt", "missing.txt")
+            tree._download(URLInfo(url) / "missing.txt", "missing.txt")
 
 
 def test_public_auth_method(dvc):
@@ -25,9 +25,9 @@ def test_public_auth_method(dvc):
         "password": "",
     }
 
-    remote = HTTPRemote(dvc, config)
+    tree = HTTPRemoteTree(dvc, config)
 
-    assert remote.tree._auth_method() is None
+    assert tree._auth_method() is None
 
 
 def test_basic_auth_method(dvc):
@@ -44,10 +44,10 @@ def test_basic_auth_method(dvc):
         "password": password,
     }
 
-    remote = HTTPRemote(dvc, config)
+    tree = HTTPRemoteTree(dvc, config)
 
-    assert remote.tree._auth_method() == auth
-    assert isinstance(remote.tree._auth_method(), HTTPBasicAuth)
+    assert tree._auth_method() == auth
+    assert isinstance(tree._auth_method(), HTTPBasicAuth)
 
 
 def test_digest_auth_method(dvc):
@@ -64,10 +64,10 @@ def test_digest_auth_method(dvc):
         "password": password,
     }
 
-    remote = HTTPRemote(dvc, config)
+    tree = HTTPRemoteTree(dvc, config)
 
-    assert remote.tree._auth_method() == auth
-    assert isinstance(remote.tree._auth_method(), HTTPDigestAuth)
+    assert tree._auth_method() == auth
+    assert isinstance(tree._auth_method(), HTTPDigestAuth)
 
 
 def test_custom_auth_method(dvc):
@@ -81,8 +81,8 @@ def test_custom_auth_method(dvc):
         "password": password,
     }
 
-    remote = HTTPRemote(dvc, config)
+    tree = HTTPRemoteTree(dvc, config)
 
-    assert remote.tree._auth_method() is None
-    assert header in remote.tree.headers
-    assert remote.tree.headers[header] == password
+    assert tree._auth_method() is None
+    assert header in tree.headers
+    assert tree.headers[header] == password

@@ -5,7 +5,8 @@ import moto.s3.models as s3model
 import pytest
 from moto import mock_s3
 
-from dvc.remote.s3 import S3Cache, S3Remote, S3RemoteTree
+from dvc.remote.base import CloudCache
+from dvc.remote.s3 import S3RemoteTree
 from tests.remotes import S3
 
 # from https://github.com/spulec/moto/blob/v1.3.5/tests/test_s3/test_s3.py#L40
@@ -54,7 +55,8 @@ def test_copy_singlepart_preserve_etag():
     ],
 )
 def test_link_created_on_non_nested_path(base_info, tmp_dir, dvc, scm):
-    cache = S3Cache(dvc, {"url": str(base_info.parent)})
+    tree = S3RemoteTree(dvc, {"url": str(base_info.parent)})
+    cache = CloudCache(tree)
     s3 = cache.tree.s3
     s3.create_bucket(Bucket=base_info.bucket)
     s3.put_object(
@@ -69,8 +71,8 @@ def test_link_created_on_non_nested_path(base_info, tmp_dir, dvc, scm):
 @mock_s3
 def test_makedirs_doesnot_try_on_top_level_paths(tmp_dir, dvc, scm):
     base_info = S3RemoteTree.PATH_CLS("s3://bucket/")
-    remote = S3Remote(dvc, {"url": str(base_info)})
-    remote.tree.makedirs(base_info)
+    tree = S3RemoteTree(dvc, {"url": str(base_info)})
+    tree.makedirs(base_info)
 
 
 def _upload_multipart(s3, Bucket, Key):

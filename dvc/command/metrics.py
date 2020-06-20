@@ -1,6 +1,7 @@
 import argparse
 import logging
 
+from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import BadMetricError, DvcException
 
@@ -165,7 +166,11 @@ def add_parser(subparsers, parent_parser):
     metrics_show_parser.add_argument(
         "targets",
         nargs="*",
-        help="Metric files or directories (see -R) to show",
+        help=(
+            "Limit command scope to these metric files. Using -R, "
+            "directories to search metric files in can also be given."
+        ),
+        choices=completion.Optional.FILE,
     )
     metrics_show_parser.add_argument(
         "-a",
@@ -188,6 +193,12 @@ def add_parser(subparsers, parent_parser):
         help="Show metrics for all commits.",
     )
     metrics_show_parser.add_argument(
+        "--show-json",
+        action="store_true",
+        default=False,
+        help="Show output in JSON format.",
+    )
+    metrics_show_parser.add_argument(
         "-R",
         "--recursive",
         action="store_true",
@@ -196,12 +207,6 @@ def add_parser(subparsers, parent_parser):
             "If any target is a directory, recursively search and process "
             "metric files."
         ),
-    )
-    metrics_show_parser.add_argument(
-        "--show-json",
-        action="store_true",
-        default=False,
-        help="Show output in JSON format.",
     )
     metrics_show_parser.set_defaults(func=CmdMetricsShow)
 
@@ -222,16 +227,17 @@ def add_parser(subparsers, parent_parser):
     metrics_diff_parser.add_argument(
         "b_rev",
         nargs="?",
-        help=("New Git commit to compare (defaults to the current workspace)"),
+        help="New Git commit to compare (defaults to the current workspace)",
     )
     metrics_diff_parser.add_argument(
         "--targets",
         nargs="*",
         help=(
-            "Metric files or directories (see -R) to show diff for. "
-            "Shows diff for all metric files by default."
+            "Limit command scope to these metric files. Using -R, "
+            "directories to search metric files in can also be given."
         ),
         metavar="<paths>",
+        choices=completion.Optional.FILE,
     )
     metrics_diff_parser.add_argument(
         "-R",
@@ -262,16 +268,16 @@ def add_parser(subparsers, parent_parser):
         help="Show tabulated output in the Markdown format (GFM).",
     )
     metrics_diff_parser.add_argument(
-        "--no-path",
-        action="store_true",
-        default=False,
-        help="Don't show metric path.",
-    )
-    metrics_diff_parser.add_argument(
         "--old",
         action="store_true",
         default=False,
         help="Show old metric value.",
+    )
+    metrics_diff_parser.add_argument(
+        "--no-path",
+        action="store_true",
+        default=False,
+        help="Don't show metric path.",
     )
     metrics_diff_parser.add_argument(
         "--precision",

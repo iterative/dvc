@@ -26,7 +26,7 @@ from dvc.exceptions import (
 from dvc.main import main
 from dvc.output.base import BaseOutput
 from dvc.path_info import URLInfo
-from dvc.remote.local import LocalRemote, LocalRemoteTree
+from dvc.remote.local import LocalRemoteTree
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
@@ -782,8 +782,8 @@ class TestReproChangedDirData(SingleStageRun, TestDvc):
 class TestReproMissingMd5InStageFile(TestRepro):
     def test(self):
         d = load_yaml(self.file1_stage)
-        del d[Stage.PARAM_OUTS][0][LocalRemote.PARAM_CHECKSUM]
-        del d[Stage.PARAM_DEPS][0][LocalRemote.PARAM_CHECKSUM]
+        del d[Stage.PARAM_OUTS][0][LocalRemoteTree.PARAM_CHECKSUM]
+        del d[Stage.PARAM_DEPS][0][LocalRemoteTree.PARAM_CHECKSUM]
         dump_yaml(self.file1_stage, d)
 
         stages = self.dvc.reproduce(self.file1_stage)
@@ -1737,12 +1737,14 @@ def test_downstream(dvc):
     reason="external output scenario is not supported on Windows",
 )
 def test_ssh_dir_out(tmp_dir, dvc, ssh_server):
+    from tests.remotes.ssh import TEST_SSH_USER, TEST_SSH_KEY_PATH
+
     tmp_dir.gen({"foo": "foo content"})
 
     # Set up remote and cache
-    user = ssh_server.test_creds["username"]
+    user = TEST_SSH_USER
     port = ssh_server.port
-    keyfile = ssh_server.test_creds["key_filename"]
+    keyfile = TEST_SSH_KEY_PATH
 
     remote_url = SSHMocked.get_url(user, port)
     assert main(["remote", "add", "upstream", remote_url]) == 0

@@ -12,7 +12,7 @@ from dvc.exceptions import (
     DvcException,
     RemoteCacheRequiredError,
 )
-from dvc.remote.base import BaseRemote
+from dvc.remote.base import BaseRemoteTree, Remote
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,8 @@ class OutputIsStageFileError(DvcException):
 class BaseOutput:
     IS_DEPENDENCY = False
 
-    REMOTE = BaseRemote
+    REMOTE_CLS = Remote
+    TREE_CLS = BaseRemoteTree
 
     PARAM_PATH = "path"
     PARAM_CACHE = "cache"
@@ -105,7 +106,11 @@ class BaseOutput:
         self.repo = stage.repo if stage else None
         self.def_path = path
         self.info = info
-        self.remote = remote or self.REMOTE(self.repo, {})
+        if remote:
+            self.remote = remote
+        else:
+            tree = self.TREE_CLS(self.repo, {})
+            self.remote = self.REMOTE_CLS(tree)
         self.use_cache = False if self.IS_DEPENDENCY else cache
         self.metric = False if self.IS_DEPENDENCY else metric
         self.plot = False if self.IS_DEPENDENCY else plot
@@ -119,7 +124,7 @@ class BaseOutput:
         if remote:
             parsed = urlparse(path)
             return remote.path_info / parsed.path.lstrip("/")
-        return self.REMOTE.TREE_CLS.PATH_CLS(path)
+        return self.TREE_CLS.PATH_CLS(path)
 
     def __repr__(self):
         return "{class_name}: '{def_path}'".format(
@@ -131,7 +136,7 @@ class BaseOutput:
 
     @property
     def scheme(self):
-        return self.REMOTE.scheme
+        return self.TREE_CLS.scheme
 
     @property
     def is_in_repo(self):
@@ -154,30 +159,30 @@ class BaseOutput:
 
     @classmethod
     def supported(cls, url):
-        return cls.REMOTE.supported(url)
+        return cls.TREE_CLS.supported(url)
 
     @property
     def cache_path(self):
-        return self.cache.checksum_to_path_info(self.checksum).url
+        return self.cache.hash_to_path_info(self.checksum).url
 
     @property
     def checksum_type(self):
-        return self.remote.PARAM_CHECKSUM
+        return self.remote.tree.PARAM_CHECKSUM
 
     @property
     def checksum(self):
-        return self.info.get(self.remote.PARAM_CHECKSUM)
+        return self.info.get(self.remote.tree.PARAM_CHECKSUM)
 
     @checksum.setter
     def checksum(self, checksum):
-        self.info[self.remote.PARAM_CHECKSUM] = checksum
+        self.info[self.remote.tree.PARAM_CHECKSUM] = checksum
 
     def get_checksum(self):
-        return self.remote.get_checksum(self.path_info)
+        return self.remote.get_hash(self.path_info)
 
     @property
     def is_dir_checksum(self):
-        return self.remote.is_dir_checksum(self.checksum)
+        return self.remote.is_dir_hash(self.checksum)
 
     @property
     def exists(self):
@@ -233,6 +238,12 @@ class BaseOutput:
             raise OutputAlreadyTrackedError(self)
 
         self.repo.scm.ignore(self.fspath)
+
+    def ignore_remove(self):
+        if not self.use_scm_ignore:
+            return
+
+        self.repo.scm.ignore_remove(self.fspath)
 
     def save(self):
         if not self.exists:
@@ -331,8 +342,8 @@ class BaseOutput:
         if self.scheme != "local":
             return
 
-        if ignore_remove and self.use_scm_ignore:
-            self.repo.scm.ignore_remove(self.fspath)
+        if ignore_remove:
+            self.ignore_remove()
 
     def move(self, out):
         if self.scheme == "local" and self.use_scm_ignore:
@@ -357,7 +368,7 @@ class BaseOutput:
 
     def unprotect(self):
         if self.exists:
-            self.remote.unprotect(self.path_info)
+            self.remote.tree.unprotect(self.path_info)
 
     def get_dir_cache(self, **kwargs):
         if not self.is_dir_checksum:
@@ -417,8 +428,8 @@ class BaseOutput:
         filter_path = str(filter_info) if filter_info else None
         is_win = os.name == "nt"
         for entry in self.dir_cache:
-            checksum = entry[self.remote.PARAM_CHECKSUM]
-            entry_relpath = entry[self.remote.PARAM_RELPATH]
+            checksum = entry[self.remote.tree.PARAM_CHECKSUM]
+            entry_relpath = entry[self.remote.tree.PARAM_RELPATH]
             if is_win:
                 entry_relpath = entry_relpath.replace("/", os.sep)
             entry_path = os.path.join(path, entry_relpath)

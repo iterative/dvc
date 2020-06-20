@@ -26,4 +26,5 @@ def sync_import(stage, dry=False, force=False):
     if not force and stage.already_cached():
         stage.outs[0].checkout()
     else:
+        stage.save_deps()
         stage.deps[0].download(stage.outs[0])

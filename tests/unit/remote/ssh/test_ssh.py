@@ -5,9 +5,8 @@ import sys
 import pytest
 from mock import mock_open, patch
 
-from dvc.remote.ssh import SSHRemote, SSHRemoteTree
+from dvc.remote.ssh import SSHRemoteTree
 from dvc.system import System
-from tests.remotes import SSHMocked
 
 
 def test_url(dvc):
@@ -20,21 +19,21 @@ def test_url(dvc):
     url = f"ssh://{user}@{host}:{port}{path}"
     config = {"url": url}
 
-    remote = SSHRemote(dvc, config)
-    assert remote.path_info == url
+    tree = SSHRemoteTree(dvc, config)
+    assert tree.path_info == url
 
     # SCP-like URL ssh://[user@]host.xz:/absolute/path
     url = f"ssh://{user}@{host}:{path}"
     config = {"url": url}
 
-    remote = SSHRemote(dvc, config)
-    assert remote.tree.path_info == url
+    tree = SSHRemoteTree(dvc, config)
+    assert tree.path_info == url
 
 
 def test_no_path(dvc):
     config = {"url": "ssh://127.0.0.1"}
-    remote = SSHRemote(dvc, config)
-    assert remote.tree.path_info.path == ""
+    tree = SSHRemoteTree(dvc, config)
+    assert tree.path_info.path == ""
 
 
 mock_ssh_config = """
@@ -67,11 +66,11 @@ else:
 def test_ssh_host_override_from_config(
     mock_file, mock_exists, dvc, config, expected_host
 ):
-    remote = SSHRemote(dvc, config)
+    tree = SSHRemoteTree(dvc, config)
 
     mock_exists.assert_called_with(SSHRemoteTree.ssh_config_filename())
     mock_file.assert_called_with(SSHRemoteTree.ssh_config_filename())
-    assert remote.tree.path_info.host == expected_host
+    assert tree.path_info.host == expected_host
 
 
 @pytest.mark.parametrize(
@@ -95,11 +94,11 @@ def test_ssh_host_override_from_config(
     read_data=mock_ssh_config,
 )
 def test_ssh_user(mock_file, mock_exists, dvc, config, expected_user):
-    remote = SSHRemote(dvc, config)
+    tree = SSHRemoteTree(dvc, config)
 
     mock_exists.assert_called_with(SSHRemoteTree.ssh_config_filename())
     mock_file.assert_called_with(SSHRemoteTree.ssh_config_filename())
-    assert remote.tree.path_info.user == expected_user
+    assert tree.path_info.user == expected_user
 
 
 @pytest.mark.parametrize(
@@ -120,11 +119,11 @@ def test_ssh_user(mock_file, mock_exists, dvc, config, expected_user):
     read_data=mock_ssh_config,
 )
 def test_ssh_port(mock_file, mock_exists, dvc, config, expected_port):
-    remote = SSHRemote(dvc, config)
+    tree = SSHRemoteTree(dvc, config)
 
     mock_exists.assert_called_with(SSHRemoteTree.ssh_config_filename())
     mock_file.assert_called_with(SSHRemoteTree.ssh_config_filename())
-    assert remote.path_info.port == expected_port
+    assert tree.path_info.port == expected_port
 
 
 @pytest.mark.parametrize(
@@ -155,11 +154,11 @@ def test_ssh_port(mock_file, mock_exists, dvc, config, expected_port):
     read_data=mock_ssh_config,
 )
 def test_ssh_keyfile(mock_file, mock_exists, dvc, config, expected_keyfile):
-    remote = SSHRemote(dvc, config)
+    tree = SSHRemoteTree(dvc, config)
 
     mock_exists.assert_called_with(SSHRemoteTree.ssh_config_filename())
     mock_file.assert_called_with(SSHRemoteTree.ssh_config_filename())
-    assert remote.tree.keyfile == expected_keyfile
+    assert tree.keyfile == expected_keyfile
 
 
 @pytest.mark.parametrize(
@@ -177,29 +176,20 @@ def test_ssh_keyfile(mock_file, mock_exists, dvc, config, expected_keyfile):
     read_data=mock_ssh_config,
 )
 def test_ssh_gss_auth(mock_file, mock_exists, dvc, config, expected_gss_auth):
-    remote = SSHRemote(dvc, config)
+    tree = SSHRemoteTree(dvc, config)
 
     mock_exists.assert_called_with(SSHRemoteTree.ssh_config_filename())
     mock_file.assert_called_with(SSHRemoteTree.ssh_config_filename())
-    assert remote.tree.gss_auth == expected_gss_auth
+    assert tree.gss_auth == expected_gss_auth
 
 
-def test_hardlink_optimization(dvc, tmp_dir, ssh_server):
-    port = ssh_server.test_creds["port"]
-    user = ssh_server.test_creds["username"]
+def test_hardlink_optimization(dvc, tmp_dir, ssh):
+    tree = SSHRemoteTree(dvc, ssh.config)
 
-    config = {
-        "url": SSHMocked.get_url(user, port),
-        "port": port,
-        "user": user,
-        "keyfile": ssh_server.test_creds["key_filename"],
-    }
-    remote = SSHRemote(dvc, config)
+    from_info = tree.path_info / "empty"
+    to_info = tree.path_info / "link"
 
-    from_info = remote.path_info / "empty"
-    to_info = remote.path_info / "link"
-
-    with remote.open(from_info, "wb"):
+    with tree.open(from_info, "wb"):
         pass
 
     if os.name == "nt":
@@ -207,5 +197,5 @@ def test_hardlink_optimization(dvc, tmp_dir, ssh_server):
     else:
         link_path = to_info.path
 
-    remote.tree.hardlink(from_info, to_info)
+    tree.hardlink(from_info, to_info)
     assert not System.is_hardlink(link_path)

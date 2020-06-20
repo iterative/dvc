@@ -16,9 +16,9 @@ from dvc.remote.base import (
     STATUS_MAP,
     STATUS_MISSING,
     STATUS_NEW,
-    BaseRemote,
     BaseRemoteTree,
-    CacheMixin,
+    CloudCache,
+    Remote,
     index_locked,
 )
 from dvc.remote.index import RemoteIndexNoop
@@ -39,17 +39,26 @@ logger = logging.getLogger(__name__)
 
 
 class LocalRemoteTree(BaseRemoteTree):
-    SHARED_MODE_MAP = {None: (0o644, 0o755), "group": (0o664, 0o775)}
+    scheme = Schemes.LOCAL
     PATH_CLS = PathInfo
+    PARAM_CHECKSUM = "md5"
+    PARAM_PATH = "path"
+    TRAVERSE_PREFIX_LEN = 2
+    UNPACKED_DIR_SUFFIX = ".unpacked"
 
-    def __init__(self, remote, config):
-        super().__init__(remote, config)
+    CACHE_MODE = 0o444
+    SHARED_MODE_MAP = {None: (0o644, 0o755), "group": (0o664, 0o775)}
+
+    def __init__(self, repo, config):
+        super().__init__(repo, config)
         url = config.get("url")
         self.path_info = self.PATH_CLS(url) if url else None
 
     @property
-    def repo(self):
-        return self.remote.repo
+    def state(self):
+        from dvc.state import StateNoop
+
+        return self.repo.state if self.repo else StateNoop()
 
     @cached_property
     def work_tree(self):
@@ -162,7 +171,7 @@ class LocalRemoteTree(BaseRemoteTree):
         # and the cache type is `hardlink`, we might reach link limits and
         # will get something like: `too many links error`
         #
-        # This is because all those empty files will have the same checksum
+        # This is because all those empty files will have the same hash
         # (i.e. 68b329da9893e34099c7d8ad5cb9c940), therefore, they will be
         # linked to the same file in the cache.
         #
@@ -195,78 +204,6 @@ class LocalRemoteTree(BaseRemoteTree):
         os.chmod(tmp_info, self.file_mode)
         os.rename(tmp_info, to_info)
 
-    def get_file_checksum(self, path_info):
-        return file_md5(path_info)[0]
-
-    @staticmethod
-    def getsize(path_info):
-        return os.path.getsize(path_info)
-
-    def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
-    ):
-        makedirs(to_info.parent, exist_ok=True)
-
-        tmp_file = tmp_fname(to_info)
-        copyfile(
-            from_file, tmp_file, name=name, no_progress_bar=no_progress_bar
-        )
-
-        self.remote.protect(tmp_file)
-        os.rename(tmp_file, to_info)
-
-    @staticmethod
-    def _download(
-        from_info, to_file, name=None, no_progress_bar=False, **_kwargs
-    ):
-        copyfile(
-            from_info, to_file, no_progress_bar=no_progress_bar, name=name
-        )
-
-
-def _log_exceptions(func, operation):
-    @wraps(func)
-    def wrapper(from_info, to_info, *args, **kwargs):
-        try:
-            func(from_info, to_info, *args, **kwargs)
-            return 0
-        except Exception as exc:
-            # NOTE: this means we ran out of file descriptors and there is no
-            # reason to try to proceed, as we will hit this error anyways.
-            if isinstance(exc, OSError) and exc.errno == errno.EMFILE:
-                raise
-
-            logger.exception(
-                "failed to %s '%s' to '%s'", operation, from_info, to_info
-            )
-            return 1
-
-    return wrapper
-
-
-class LocalRemote(BaseRemote):
-    scheme = Schemes.LOCAL
-    INDEX_CLS = RemoteIndexNoop
-    TREE_CLS = LocalRemoteTree
-
-    PARAM_CHECKSUM = "md5"
-    PARAM_PATH = "path"
-    DEFAULT_CACHE_TYPES = ["reflink", "copy"]
-    TRAVERSE_PREFIX_LEN = 2
-    UNPACKED_DIR_SUFFIX = ".unpacked"
-
-    CACHE_MODE = 0o444
-
-    @property
-    def state(self):
-        return self.repo.state
-
-    def get(self, md5):
-        if not md5:
-            return None
-
-        return self.checksum_to_path_info(md5).url
-
     def _unprotect_file(self, path):
         if System.is_symlink(path) or System.is_hardlink(path):
             logger.debug(f"Unprotecting '{path}'")
@@ -287,7 +224,7 @@ class LocalRemote(BaseRemote):
                 "a symlink or a hardlink.".format(path)
             )
 
-        os.chmod(path, self.tree.file_mode)
+        os.chmod(path, self.file_mode)
 
     def _unprotect_dir(self, path):
         assert is_working_tree(self.repo.tree)
@@ -333,14 +270,44 @@ class LocalRemote(BaseRemote):
 
         return stat.S_IMODE(mode) == self.CACHE_MODE
 
+    def get_file_hash(self, path_info):
+        return file_md5(path_info)[0]
+
+    @staticmethod
+    def getsize(path_info):
+        return os.path.getsize(path_info)
+
+    def _upload(
+        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
+    ):
+        makedirs(to_info.parent, exist_ok=True)
+
+        tmp_file = tmp_fname(to_info)
+        copyfile(
+            from_file, tmp_file, name=name, no_progress_bar=no_progress_bar
+        )
+
+        self.protect(tmp_file)
+        os.rename(tmp_file, to_info)
+
+    @staticmethod
+    def _download(
+        from_info, to_file, name=None, no_progress_bar=False, **_kwargs
+    ):
+        copyfile(
+            from_info, to_file, no_progress_bar=no_progress_bar, name=name
+        )
+
     def list_paths(self, prefix=None, progress_callback=None):
         assert self.path_info is not None
         if prefix:
             path_info = self.path_info / prefix[:2]
-            if not self.tree.exists(path_info):
+            if not self.exists(path_info):
                 return
         else:
             path_info = self.path_info
+        # NOTE: use utils.fs walk_files since tree.walk_files will not follow
+        # symlinks
         if progress_callback:
             for path in walk_files(path_info):
                 progress_callback()
@@ -348,16 +315,43 @@ class LocalRemote(BaseRemote):
         else:
             yield from walk_files(path_info)
 
-    def _remove_unpacked_dir(self, checksum):
-        info = self.checksum_to_path_info(checksum)
+    def _remove_unpacked_dir(self, hash_):
+        info = self.hash_to_path_info(hash_)
         path_info = info.with_name(info.name + self.UNPACKED_DIR_SUFFIX)
-        self.tree.remove(path_info)
+        self.remove(path_info)
 
 
-class LocalCache(LocalRemote, CacheMixin):
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
-        self.cache_dir = config.get("url")
+def _log_exceptions(func, operation):
+    @wraps(func)
+    def wrapper(from_info, to_info, *args, **kwargs):
+        try:
+            func(from_info, to_info, *args, **kwargs)
+            return 0
+        except Exception as exc:
+            # NOTE: this means we ran out of file descriptors and there is no
+            # reason to try to proceed, as we will hit this error anyways.
+            if isinstance(exc, OSError) and exc.errno == errno.EMFILE:
+                raise
+
+            logger.exception(
+                "failed to %s '%s' to '%s'", operation, from_info, to_info
+            )
+            return 1
+
+    return wrapper
+
+
+class LocalRemote(Remote):
+    INDEX_CLS = RemoteIndexNoop
+
+
+class LocalCache(CloudCache):
+    DEFAULT_CACHE_TYPES = ["reflink", "copy"]
+    CACHE_MODE = LocalRemoteTree.CACHE_MODE
+
+    def __init__(self, tree):
+        super().__init__(tree)
+        self.cache_dir = tree.config.get("url")
 
     @property
     def cache_dir(self):
@@ -375,30 +369,28 @@ class LocalCache(LocalRemote, CacheMixin):
     def cache_path(self):
         return os.path.abspath(self.cache_dir)
 
-    def checksum_to_path(self, checksum):
+    def hash_to_path(self, hash_):
         # NOTE: `self.cache_path` is already normalized so we can simply use
         # `os.sep` instead of `os.path.join`. This results in this helper
         # being ~5.5 times faster.
-        return (
-            f"{self.cache_path}{os.sep}{checksum[0:2]}{os.sep}{checksum[2:]}"
-        )
+        return f"{self.cache_path}{os.sep}{hash_[0:2]}{os.sep}{hash_[2:]}"
 
-    def checksums_exist(self, checksums, jobs=None, name=None):
+    def hashes_exist(self, hashes, jobs=None, name=None):
         return [
-            checksum
-            for checksum in Tqdm(
-                checksums,
+            hash_
+            for hash_ in Tqdm(
+                hashes,
                 unit="file",
                 desc="Querying "
                 + ("cache in " + name if name else "local cache"),
             )
-            if not self.changed_cache_file(checksum)
+            if not self.changed_cache_file(hash_)
         ]
 
     def already_cached(self, path_info):
         assert path_info.scheme in ["", "local"]
 
-        current_md5 = self.get_checksum(path_info)
+        current_md5 = self.get_hash(path_info)
 
         if not current_md5:
             return False
@@ -442,7 +434,7 @@ class LocalCache(LocalRemote, CacheMixin):
 
         dir_status_info contains status for .dir files, file_status_info
         contains status for all other files, and dir_contents is a dict of
-        {dir_checksum: set(file_checksum, ...)} which can be used to map
+        {dir_hash: set(file_hash, ...)} which can be used to map
         a .dir file to its file contents.
         """
         logger.debug(f"Preparing to collect status from {remote.path_info}")
@@ -450,7 +442,7 @@ class LocalCache(LocalRemote, CacheMixin):
 
         logger.debug("Collecting information from local cache...")
         local_exists = frozenset(
-            self.checksums_exist(md5s, jobs=jobs, name=self.cache_dir)
+            self.hashes_exist(md5s, jobs=jobs, name=self.cache_dir)
         )
 
         # This is a performance optimization. We can safely assume that,
@@ -465,12 +457,12 @@ class LocalCache(LocalRemote, CacheMixin):
             dir_md5s = set(named_cache.dir_keys(self.scheme))
             if dir_md5s:
                 remote_exists.update(
-                    self._indexed_dir_checksums(named_cache, remote, dir_md5s)
+                    self._indexed_dir_hashes(named_cache, remote, dir_md5s)
                 )
                 md5s.difference_update(remote_exists)
             if md5s:
                 remote_exists.update(
-                    remote.checksums_exist(
+                    remote.hashes_exist(
                         md5s, jobs=jobs, name=str(remote.path_info)
                     )
                 )
@@ -481,23 +473,23 @@ class LocalCache(LocalRemote, CacheMixin):
     def _make_status(
         self, named_cache, show_checksums, local_exists, remote_exists
     ):
-        def make_names(checksum, names):
-            return {"name": checksum if show_checksums else " ".join(names)}
+        def make_names(hash_, names):
+            return {"name": hash_ if show_checksums else " ".join(names)}
 
         dir_status = {}
         file_status = {}
         dir_contents = {}
-        for checksum, item in named_cache[self.scheme].items():
+        for hash_, item in named_cache[self.scheme].items():
             if item.children:
-                dir_status[checksum] = make_names(checksum, item.names)
-                dir_contents[checksum] = set()
-                for child_checksum, child in item.children.items():
-                    file_status[child_checksum] = make_names(
-                        child_checksum, child.names
+                dir_status[hash_] = make_names(hash_, item.names)
+                dir_contents[hash_] = set()
+                for child_hash, child in item.children.items():
+                    file_status[child_hash] = make_names(
+                        child_hash, child.names
                     )
-                    dir_contents[checksum].add(child_checksum)
+                    dir_contents[hash_].add(child_hash)
             else:
-                file_status[checksum] = make_names(checksum, item.names)
+                file_status[hash_] = make_names(hash_, item.names)
 
         self._fill_statuses(dir_status, local_exists, remote_exists)
         self._fill_statuses(file_status, local_exists, remote_exists)
@@ -506,50 +498,50 @@ class LocalCache(LocalRemote, CacheMixin):
 
         return dir_status, file_status, dir_contents
 
-    def _indexed_dir_checksums(self, named_cache, remote, dir_md5s):
-        # Validate our index by verifying all indexed .dir checksums
+    def _indexed_dir_hashes(self, named_cache, remote, dir_md5s):
+        # Validate our index by verifying all indexed .dir hashes
         # still exist on the remote
-        indexed_dirs = set(remote.index.dir_checksums())
+        indexed_dirs = set(remote.index.dir_hashes())
         indexed_dir_exists = set()
         if indexed_dirs:
             indexed_dir_exists.update(
-                remote._list_checksums_exists(indexed_dirs)
+                remote.tree.list_hashes_exists(indexed_dirs)
             )
             missing_dirs = indexed_dirs.difference(indexed_dir_exists)
             if missing_dirs:
                 logger.debug(
-                    "Remote cache missing indexed .dir checksums '{}', "
+                    "Remote cache missing indexed .dir hashes '{}', "
                     "clearing remote index".format(", ".join(missing_dirs))
                 )
                 remote.index.clear()
 
-        # Check if non-indexed (new) dir checksums exist on remote
+        # Check if non-indexed (new) dir hashes exist on remote
         dir_exists = dir_md5s.intersection(indexed_dir_exists)
-        dir_exists.update(remote._list_checksums_exists(dir_md5s - dir_exists))
+        dir_exists.update(
+            remote.tree.list_hashes_exists(dir_md5s - dir_exists)
+        )
 
-        # If .dir checksum exists on the remote, assume directory contents
+        # If .dir hash exists on the remote, assume directory contents
         # still exists on the remote
-        for dir_checksum in dir_exists:
-            file_checksums = list(
-                named_cache.child_keys(self.scheme, dir_checksum)
-            )
-            if dir_checksum not in remote.index:
+        for dir_hash in dir_exists:
+            file_hashes = list(named_cache.child_keys(self.scheme, dir_hash))
+            if dir_hash not in remote.index:
                 logger.debug(
                     "Indexing new .dir '{}' with '{}' nested files".format(
-                        dir_checksum, len(file_checksums)
+                        dir_hash, len(file_hashes)
                     )
                 )
-                remote.index.update([dir_checksum], file_checksums)
-            yield dir_checksum
-            yield from file_checksums
+                remote.index.update([dir_hash], file_hashes)
+            yield dir_hash
+            yield from file_hashes
 
     @staticmethod
-    def _fill_statuses(checksum_info_dir, local_exists, remote_exists):
+    def _fill_statuses(hash_info_dir, local_exists, remote_exists):
         # Using sets because they are way faster for lookups
         local = set(local_exists)
         remote = set(remote_exists)
 
-        for md5, info in checksum_info_dir.items():
+        for md5, info in hash_info_dir.items():
             status = STATUS_MAP[(md5 in local, md5 in remote)]
             info["status"] = status
 
@@ -557,15 +549,15 @@ class LocalCache(LocalRemote, CacheMixin):
         cache = []
         path_infos = []
         names = []
-        checksums = []
+        hashes = []
         for md5, info in Tqdm(
             status_info.items(), desc="Analysing status", unit="file"
         ):
             if info["status"] == status:
-                cache.append(self.checksum_to_path_info(md5))
-                path_infos.append(remote.checksum_to_path_info(md5))
+                cache.append(self.hash_to_path_info(md5))
+                path_infos.append(remote.hash_to_path_info(md5))
                 names.append(info["name"])
-                checksums.append(md5)
+                hashes.append(md5)
 
         if download:
             to_infos = cache
@@ -574,7 +566,7 @@ class LocalCache(LocalRemote, CacheMixin):
             to_infos = path_infos
             from_infos = cache
 
-        return from_infos, to_infos, names, checksums
+        return from_infos, to_infos, names, hashes
 
     def _process(
         self,
@@ -605,7 +597,7 @@ class LocalCache(LocalRemote, CacheMixin):
             desc = "Uploading"
 
         if jobs is None:
-            jobs = remote.JOBS
+            jobs = remote.tree.JOBS
 
         dir_status, file_status, dir_contents = self._status(
             named_cache,
@@ -626,26 +618,28 @@ class LocalCache(LocalRemote, CacheMixin):
             func = pbar.wrap_fn(func)
             with ThreadPoolExecutor(max_workers=jobs) as executor:
                 if download:
-                    fails = sum(executor.map(func, *dir_plans))
-                    fails += sum(executor.map(func, *file_plans))
+                    from_infos, to_infos, names, _ = (
+                        d + f for d, f in zip(dir_plans, file_plans)
+                    )
+                    fails = sum(
+                        executor.map(func, from_infos, to_infos, names)
+                    )
                 else:
                     # for uploads, push files first, and any .dir files last
 
                     file_futures = {}
-                    for from_info, to_info, name, checksum in zip(*file_plans):
-                        file_futures[checksum] = executor.submit(
+                    for from_info, to_info, name, hash_ in zip(*file_plans):
+                        file_futures[hash_] = executor.submit(
                             func, from_info, to_info, name
                         )
                     dir_futures = {}
-                    for from_info, to_info, name, dir_checksum in zip(
-                        *dir_plans
-                    ):
+                    for from_info, to_info, name, dir_hash in zip(*dir_plans):
                         wait_futures = {
                             future
-                            for file_checksum, future in file_futures.items()
-                            if file_checksum in dir_contents[dir_checksum]
+                            for file_hash, future in file_futures.items()
+                            if file_hash in dir_contents[dir_hash]
                         }
-                        dir_futures[dir_checksum] = executor.submit(
+                        dir_futures[dir_hash] = executor.submit(
                             self._dir_upload,
                             func,
                             wait_futures,
@@ -668,16 +662,14 @@ class LocalCache(LocalRemote, CacheMixin):
 
         if not download:
             # index successfully pushed dirs
-            for dir_checksum, future in dir_futures.items():
+            for dir_hash, future in dir_futures.items():
                 if future.result() == 0:
-                    file_checksums = dir_contents[dir_checksum]
+                    file_hashes = dir_contents[dir_hash]
                     logger.debug(
                         "Indexing pushed dir '{}' with "
-                        "'{}' nested files".format(
-                            dir_checksum, len(file_checksums)
-                        )
+                        "'{}' nested files".format(dir_hash, len(file_hashes))
                     )
-                    remote.index.update([dir_checksum], file_checksums)
+                    remote.index.update([dir_hash], file_hashes)
 
         return len(dir_plans[0]) + len(file_plans[0])
 
@@ -716,10 +708,10 @@ class LocalCache(LocalRemote, CacheMixin):
         )
 
     @staticmethod
-    def _log_missing_caches(checksum_info_dict):
+    def _log_missing_caches(hash_info_dict):
         missing_caches = [
             (md5, info)
-            for md5, info in checksum_info_dict.items()
+            for md5, info in hash_info_dict.items()
             if info["status"] == STATUS_MISSING
         ]
         if missing_caches:

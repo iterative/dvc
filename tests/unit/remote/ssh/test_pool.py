@@ -2,13 +2,19 @@ import pytest
 
 from dvc.remote.pool import get_connection
 from dvc.remote.ssh.connection import SSHConnection
+from tests.remotes.ssh import TEST_SSH_KEY_PATH, TEST_SSH_USER
 
 
 def test_doesnt_swallow_errors(ssh_server):
     class MyError(Exception):
         pass
 
-    with pytest.raises(MyError), get_connection(
-        SSHConnection, **ssh_server.test_creds
-    ):
-        raise MyError
+    with pytest.raises(MyError):
+        with get_connection(
+            SSHConnection,
+            host=ssh_server.host,
+            port=ssh_server.port,
+            username=TEST_SSH_USER,
+            key_filename=TEST_SSH_KEY_PATH,
+        ):
+            raise MyError

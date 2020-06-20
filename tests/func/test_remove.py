@@ -7,13 +7,18 @@ from dvc.main import main
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
 from dvc.utils.fs import remove
+from tests.utils import get_gitignore_content
 
 
 @pytest.mark.parametrize("remove_outs", [True, False])
-def test_remove(tmp_dir, dvc, run_copy, remove_outs):
+def test_remove(tmp_dir, scm, dvc, run_copy, remove_outs):
     (stage1,) = tmp_dir.dvc_gen("foo", "foo")
     stage2 = run_copy("foo", "bar", single_stage=True)
     stage3 = run_copy("bar", "foobar", name="copy-bar-foobar")
+
+    assert "/foo" in get_gitignore_content()
+    assert "/bar" in get_gitignore_content()
+    assert "/foobar" in get_gitignore_content()
 
     for stage in [stage1, stage2, stage3]:
         dvc.remove(stage.addressing, outs=remove_outs)
@@ -23,6 +28,8 @@ def test_remove(tmp_dir, dvc, run_copy, remove_outs):
             assert not any(out_exists)
         else:
             assert all(out_exists)
+
+        assert not any(out in get_gitignore_content() for out in stage.outs)
 
 
 def test_remove_non_existent_file(tmp_dir, dvc):

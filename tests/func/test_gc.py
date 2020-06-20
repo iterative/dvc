@@ -8,7 +8,7 @@ from git import Repo
 
 from dvc.exceptions import CollectCacheError
 from dvc.main import main
-from dvc.remote.local import LocalRemote, LocalRemoteTree
+from dvc.remote.local import LocalRemoteTree
 from dvc.repo import Repo as DvcRepo
 from dvc.utils.fs import remove
 from tests.basic_env import TestDir, TestDvcGit
@@ -21,7 +21,8 @@ class TestGC(TestDvcGit):
         self.dvc.add(self.FOO)
         self.dvc.add(self.DATA_DIR)
         self.good_cache = [
-            self.dvc.cache.local.get(md5) for md5 in self.dvc.cache.local.all()
+            self.dvc.cache.local.hash_to_path_info(md5)
+            for md5 in self.dvc.cache.local.tree.all()
         ]
 
         self.bad_cache = []
@@ -51,7 +52,7 @@ class TestGC(TestDvcGit):
 class TestGCBranchesTags(TestDvcGit):
     def _check_cache(self, num):
         total = 0
-        for root, dirs, files in os.walk(os.path.join(".dvc", "cache")):
+        for _, _, files in os.walk(os.path.join(".dvc", "cache")):
             total += len(files)
         self.assertEqual(total, num)
 
@@ -111,7 +112,7 @@ class TestGCBranchesTags(TestDvcGit):
 class TestGCMultipleDvcRepos(TestDvcGit):
     def _check_cache(self, num):
         total = 0
-        for root, dirs, files in os.walk(os.path.join(".dvc", "cache")):
+        for _, _, files in os.walk(os.path.join(".dvc", "cache")):
             total += len(files)
         self.assertEqual(total, num)
 
@@ -216,7 +217,7 @@ def test_gc_no_unpacked_dir(tmp_dir, dvc):
 
     os.remove("dir.dvc")
     unpackeddir = (
-        dir_stages[0].outs[0].cache_path + LocalRemote.UNPACKED_DIR_SUFFIX
+        dir_stages[0].outs[0].cache_path + LocalRemoteTree.UNPACKED_DIR_SUFFIX
     )
 
     # older (pre 1.0) versions of dvc used to generate this dir
@@ -239,9 +240,9 @@ def test_gc_without_workspace_raises_error(tmp_dir, dvc):
         dvc.gc(force=True, workspace=False)
 
 
-def test_gc_cloud_with_or_without_specifier(tmp_dir, erepo_dir, setup_remote):
+def test_gc_cloud_with_or_without_specifier(tmp_dir, erepo_dir, local_cloud):
+    erepo_dir.add_remote(config=local_cloud.config)
     dvc = erepo_dir.dvc
-    setup_remote(dvc)
     from dvc.exceptions import InvalidArgumentError
 
     with pytest.raises(InvalidArgumentError):
@@ -296,9 +297,7 @@ def test_gc_with_possible_args_positive(tmp_dir, dvc):
         assert main(["gc", "-vf", flag]) == 0
 
 
-def test_gc_cloud_positive(tmp_dir, dvc, tmp_path_factory, setup_remote):
-    setup_remote(dvc)
-
+def test_gc_cloud_positive(tmp_dir, dvc, tmp_path_factory, local_remote):
     for flag in ["-cw", "-ca", "-cT", "-caT", "-cwT"]:
         assert main(["gc", "-vf", flag]) == 0
 

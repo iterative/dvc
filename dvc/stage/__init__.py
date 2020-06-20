@@ -3,7 +3,7 @@ import os
 import string
 from collections import defaultdict
 
-from funcy import project
+from funcy import cached_property, project
 
 import dvc.dependency as dependency
 import dvc.prompt as prompt
@@ -127,6 +127,8 @@ class Stage(params.StageParams):
     @path.setter
     def path(self, path):
         self._path = path
+        self.__dict__.pop("path_in_repo", None)
+        self.__dict__.pop("relpath", None)
 
     @property
     def dvcfile(self):
@@ -172,11 +174,11 @@ class Stage(params.StageParams):
             and self.path_in_repo == other.path_in_repo
         )
 
-    @property
+    @cached_property
     def path_in_repo(self):
         return relpath(self.path, self.repo.root_dir)
 
-    @property
+    @cached_property
     def relpath(self):
         return relpath(self.path)
 
@@ -284,12 +286,17 @@ class Stage(params.StageParams):
         for out in self.outs:
             out.unprotect()
 
+    def ignore_remove_outs(self):
+        for out in self.outs:
+            out.ignore_remove()
+
     @rwlocked(write=["outs"])
     def remove(self, force=False, remove_outs=True, purge=True):
         if remove_outs:
             self.remove_outs(ignore_remove=True, force=force)
         else:
             self.unprotect_outs()
+            self.ignore_remove_outs()
         if purge:
             self.dvcfile.remove_stage(self)
 

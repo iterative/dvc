@@ -10,10 +10,10 @@ from dvc.output.hdfs import HDFSOutput
 from dvc.output.local import LocalOutput
 from dvc.output.s3 import S3Output
 from dvc.output.ssh import SSHOutput
-from dvc.remote import Remote
-from dvc.remote.hdfs import HDFSRemote
-from dvc.remote.local import LocalRemote
-from dvc.remote.s3 import S3Remote
+from dvc.remote import get_remote
+from dvc.remote.hdfs import HDFSRemoteTree
+from dvc.remote.local import LocalRemoteTree
+from dvc.remote.s3 import S3RemoteTree
 from dvc.scheme import Schemes
 
 OUTS = [
@@ -47,9 +47,9 @@ CHECKSUM_SCHEMA = Any(
 # so when a few types of outputs share the same name, we only need
 # specify it once.
 CHECKSUMS_SCHEMA = {
-    LocalRemote.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
-    S3Remote.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
-    HDFSRemote.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    LocalRemoteTree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    S3RemoteTree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    HDFSRemoteTree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
 }
 
 SCHEMA = CHECKSUMS_SCHEMA.copy()
@@ -66,7 +66,7 @@ def _get(
     parsed = urlparse(p)
 
     if parsed.scheme == "remote":
-        remote = Remote(stage.repo, name=parsed.netloc)
+        remote = get_remote(stage.repo, name=parsed.netloc)
         return OUTS_MAP[remote.scheme](
             stage,
             p,

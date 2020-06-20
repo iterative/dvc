@@ -12,6 +12,10 @@ class TemplateNotFoundError(DvcException):
         super().__init__(f"Template '{path}' not found.")
 
 
+class BadTemplateError(DvcException):
+    pass
+
+
 class NoFieldInDataError(DvcException):
     def __init__(self, field_name):
         super().__init__(
@@ -23,13 +27,7 @@ class Template:
     INDENT = 4
     SEPARATORS = (",", ": ")
     EXTENSION = ".json"
-    ANCHOR = '"<DVC_METRIC_{}>"'
-    METRIC_DATA_ANCHOR = "<DVC_METRIC_DATA>"
-    X_ANCHOR = "<DVC_METRIC_X>"
-    Y_ANCHOR = "<DVC_METRIC_Y>"
-    TITLE_ANCHOR = "<DVC_METRIC_TITLE>"
-    X_LABEL_ANCHOR = "<DVC_METRIC_X_LABEL>"
-    Y_LABEL_ANCHOR = "<DVC_METRIC_Y_LABEL>"
+    ANCHOR = "<DVC_METRIC_{}>"
 
     def __init__(self, content=None, name=None):
         self.content = self.DEFAULT_CONTENT if content is None else content
@@ -38,6 +36,12 @@ class Template:
 
     def render(self, data, props=None):
         props = props or {}
+
+        if self._anchor_str("data") not in self.content:
+            anchor = self.anchor("data")
+            raise BadTemplateError(
+                f"Template '{self.filename}' is not using '{anchor}' anchor"
+            )
 
         if props.get("x"):
             Template._check_field_exists(data, props.get("x"))
@@ -49,19 +53,23 @@ class Template:
 
         return content
 
+    @classmethod
+    def anchor(cls, name):
+        return cls.ANCHOR.format(name.upper())
+
     def has_anchor(self, name):
-        return self._anchor(name) in self.content
+        return self._anchor_str(name) in self.content
 
     @classmethod
     def _fill_anchor(cls, content, name, value):
         value_str = json.dumps(
             value, indent=cls.INDENT, separators=cls.SEPARATORS, sort_keys=True
         )
-        return content.replace(cls._anchor(name), value_str)
+        return content.replace(cls._anchor_str(name), value_str)
 
     @classmethod
-    def _anchor(cls, name):
-        return cls.ANCHOR.format(name.upper())
+    def _anchor_str(cls, name):
+        return '"{}"'.format(cls.anchor(name))
 
     @classmethod
     def _fill_metadata(cls, content, props):
@@ -88,19 +96,19 @@ class DefaultLinearTemplate(Template):
 
     DEFAULT_CONTENT = {
         "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
-        "data": {"values": Template.METRIC_DATA_ANCHOR},
-        "title": Template.TITLE_ANCHOR,
+        "data": {"values": Template.anchor("data")},
+        "title": Template.anchor("title"),
         "mark": {"type": "line"},
         "encoding": {
             "x": {
-                "field": Template.X_ANCHOR,
+                "field": Template.anchor("x"),
                 "type": "quantitative",
-                "title": Template.X_LABEL_ANCHOR,
+                "title": Template.anchor("x_label"),
             },
             "y": {
-                "field": Template.Y_ANCHOR,
+                "field": Template.anchor("y"),
                 "type": "quantitative",
-                "title": Template.Y_LABEL_ANCHOR,
+                "title": Template.anchor("y_label"),
                 "scale": {"zero": False},
             },
             "color": {"field": "rev", "type": "nominal"},
@@ -112,21 +120,21 @@ class DefaultConfusionTemplate(Template):
     DEFAULT_NAME = "confusion"
     DEFAULT_CONTENT = {
         "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
-        "data": {"values": Template.METRIC_DATA_ANCHOR},
-        "title": Template.TITLE_ANCHOR,
+        "data": {"values": Template.anchor("data")},
+        "title": Template.anchor("title"),
         "mark": "rect",
         "encoding": {
             "x": {
-                "field": Template.X_ANCHOR,
+                "field": Template.anchor("x"),
                 "type": "nominal",
                 "sort": "ascending",
-                "title": Template.X_LABEL_ANCHOR,
+                "title": Template.anchor("x_label"),
             },
             "y": {
-                "field": Template.Y_ANCHOR,
+                "field": Template.anchor("y"),
                 "type": "nominal",
                 "sort": "ascending",
-                "title": Template.Y_LABEL_ANCHOR,
+                "title": Template.anchor("y_label"),
             },
             "color": {"aggregate": "count", "type": "quantitative"},
             "facet": {"field": "rev", "type": "nominal"},
@@ -138,23 +146,56 @@ class DefaultScatterTemplate(Template):
     DEFAULT_NAME = "scatter"
     DEFAULT_CONTENT = {
         "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
-        "data": {"values": Template.METRIC_DATA_ANCHOR},
-        "title": Template.TITLE_ANCHOR,
+        "data": {"values": Template.anchor("data")},
+        "title": Template.anchor("title"),
         "mark": "point",
         "encoding": {
             "x": {
-                "field": Template.X_ANCHOR,
+                "field": Template.anchor("x"),
                 "type": "quantitative",
-                "title": Template.X_LABEL_ANCHOR,
+                "title": Template.anchor("x_label"),
             },
             "y": {
-                "field": Template.Y_ANCHOR,
+                "field": Template.anchor("y"),
                 "type": "quantitative",
-                "title": Template.Y_LABEL_ANCHOR,
+                "title": Template.anchor("y_label"),
                 "scale": {"zero": False},
             },
             "color": {"field": "rev", "type": "nominal"},
         },
+    }
+
+
+class SmoothLinearTemplate(Template):
+    DEFAULT_NAME = "smooth"
+
+    DEFAULT_CONTENT = {
+        "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
+        "data": {"values": Template.anchor("data")},
+        "title": Template.anchor("title"),
+        "mark": {"type": "line"},
+        "encoding": {
+            "x": {
+                "field": Template.anchor("x"),
+                "type": "quantitative",
+                "title": Template.anchor("x_label"),
+            },
+            "y": {
+                "field": Template.anchor("y"),
+                "type": "quantitative",
+                "title": Template.anchor("y_label"),
+                "scale": {"zero": False},
+            },
+            "color": {"field": "rev", "type": "nominal"},
+        },
+        "transform": [
+            {
+                "loess": Template.anchor("y"),
+                "on": Template.anchor("x"),
+                "groupby": ["rev"],
+                "bandwidth": 0.3,
+            }
+        ],
     }
 
 
@@ -164,6 +205,7 @@ class PlotTemplates:
         DefaultLinearTemplate,
         DefaultConfusionTemplate,
         DefaultScatterTemplate,
+        SmoothLinearTemplate,
     ]
 
     @cached_property

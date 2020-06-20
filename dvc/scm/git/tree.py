@@ -128,17 +128,22 @@ class GitTree(BaseTree):
         if not topdown:
             yield os.path.normpath(tree.abspath), dirs, nondirs
 
-    def walk(self, top, topdown=True):
+    def walk(self, top, topdown=True, onerror=None):
         """Directory tree generator.
 
         See `os.walk` for the docs. Differences:
         - no support for symlinks
-        - it could raise exceptions, there is no onerror argument
         """
 
         tree = self.git_object_by_path(top)
         if tree is None:
-            raise OSError(errno.ENOENT, "No such file")
+            if onerror is not None:
+                onerror(OSError(errno.ENOENT, "No such file", top))
+            return
+        if tree.mode != GIT_MODE_DIR:
+            if onerror is not None:
+                onerror(NotADirectoryError(top))
+            return
 
         yield from self._walk(tree, topdown=topdown)
 

@@ -43,8 +43,8 @@ def test_source_change(erepo_dir):
     assert old_rev != new_rev
 
 
-def test_cache_reused(erepo_dir, mocker, setup_remote):
-    setup_remote(erepo_dir.dvc)
+def test_cache_reused(erepo_dir, mocker, local_cloud):
+    erepo_dir.add_remote(config=local_cloud.config)
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("file", "text", commit="add file")
     erepo_dir.dvc.push()
@@ -99,7 +99,7 @@ def test_pull_subdir_file(tmp_dir, erepo_dir):
     assert dest.read_text() == "contents"
 
 
-def test_relative_remote(erepo_dir, tmp_dir, setup_remote):
+def test_relative_remote(erepo_dir, tmp_dir):
     # these steps reproduce the script on this issue:
     # https://github.com/iterative/dvc/issues/2756
     with erepo_dir.chdir():
@@ -107,7 +107,7 @@ def test_relative_remote(erepo_dir, tmp_dir, setup_remote):
 
     upstream_dir = tmp_dir
     upstream_url = relpath(upstream_dir, erepo_dir)
-    setup_remote(erepo_dir.dvc, url=upstream_url, name="upstream")
+    erepo_dir.add_remote(url=upstream_url)
 
     erepo_dir.dvc.push()
 

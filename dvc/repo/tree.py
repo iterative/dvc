@@ -48,11 +48,11 @@ class DvcTree(BaseTree):
             raise FileNotFoundError
         dir_cache = out.get_dir_cache(remote=remote)
         for entry in dir_cache:
-            entry_relpath = entry[out.remote.PARAM_RELPATH]
+            entry_relpath = entry[out.remote.tree.PARAM_RELPATH]
             if os.name == "nt":
                 entry_relpath = entry_relpath.replace("/", os.sep)
             if path == out.path_info / entry_relpath:
-                return entry[out.remote.PARAM_CHECKSUM]
+                return entry[out.remote.tree.PARAM_CHECKSUM]
         raise FileNotFoundError
 
     def open(self, path, mode="r", encoding="utf-8", remote=None):
@@ -82,7 +82,7 @@ class DvcTree(BaseTree):
                 else:
                     checksum = out.checksum
                 try:
-                    remote_info = remote_obj.checksum_to_path_info(checksum)
+                    remote_info = remote_obj.hash_to_path_info(checksum)
                     return remote_obj.open(
                         remote_info, mode=mode, encoding=encoding
                     )
@@ -93,7 +93,7 @@ class DvcTree(BaseTree):
 
         if out.is_dir_checksum:
             checksum = self._get_granular_checksum(path, out)
-            cache_path = out.cache.checksum_to_path_info(checksum).url
+            cache_path = out.cache.hash_to_path_info(checksum).url
         else:
             cache_path = out.cache_path
         return open(cache_path, mode=mode, encoding=encoding)
@@ -142,7 +142,7 @@ class DvcTree(BaseTree):
         files = []
 
         root_len = len(root.parts)
-        for key, out in trie.iteritems(prefix=root.parts):
+        for key, out in trie.iteritems(prefix=root.parts):  # noqa: B301
             if key == root.parts:
                 continue
 
@@ -153,25 +153,29 @@ class DvcTree(BaseTree):
 
             files.append(name)
 
-        if topdown:
-            dirs = list(dirs)
-            yield root.fspath, dirs, files
+        assert topdown
+        dirs = list(dirs)
+        yield root.fspath, dirs, files
 
-            for dname in dirs:
-                yield from self._walk(root / dname, trie)
-        else:
-            assert False
+        for dname in dirs:
+            yield from self._walk(root / dname, trie)
 
-    def walk(self, top, topdown=True, download_callback=None, **kwargs):
+    def walk(
+        self, top, topdown=True, onerror=None, download_callback=None, **kwargs
+    ):
         from pygtrie import Trie
 
         assert topdown
 
         if not self.exists(top):
-            raise FileNotFoundError
+            if onerror is not None:
+                onerror(FileNotFoundError(top))
+            return
 
         if not self.isdir(top):
-            raise NotADirectoryError
+            if onerror is not None:
+                onerror(NotADirectoryError(top))
+            return
 
         root = PathInfo(os.path.abspath(top))
         outs = self._find_outs(top, recursive=True, strict=False)
@@ -194,7 +198,7 @@ class DvcTree(BaseTree):
                             download_callback(downloaded)
 
                 for entry in dir_cache:
-                    entry_relpath = entry[out.remote.PARAM_RELPATH]
+                    entry_relpath = entry[out.remote.tree.PARAM_RELPATH]
                     if os.name == "nt":
                         entry_relpath = entry_relpath.replace("/", os.sep)
                     path_info = out.path_info / entry_relpath
@@ -212,7 +216,7 @@ class DvcTree(BaseTree):
     def isexec(self, path):
         return False
 
-    def get_file_checksum(self, path_info):
+    def get_file_hash(self, path_info):
         outs = self._find_outs(path_info, strict=False)
         if len(outs) != 1:
             raise OutputNotFoundError
@@ -333,12 +337,14 @@ class RepoTree(BaseTree):
             elif dirname in repo_set:
                 yield from self._walk_one(repo_walk)
 
-    def walk(self, top, topdown=True, dvcfiles=False, **kwargs):
+    def walk(self, top, topdown=True, onerror=None, dvcfiles=False, **kwargs):
         """Walk and merge both DVC and repo trees.
 
         Args:
             top: path to walk from
             topdown: if True, tree will be walked from top down.
+            onerror: if set, onerror function will be called if an error
+                occurs (by default errors are ignored).
             dvcfiles: if True, dvcfiles will be included in the files list
                 for walked directories.
 
@@ -348,21 +354,27 @@ class RepoTree(BaseTree):
         assert topdown
 
         if not self.exists(top):
-            raise FileNotFoundError
+            if onerror is not None:
+                onerror(FileNotFoundError(top))
+            return
 
         if not self.isdir(top):
-            raise NotADirectoryError
+            if onerror is not None:
+                onerror(NotADirectoryError(top))
+            return
 
         dvc_exists = self.dvctree and self.dvctree.exists(top)
         repo_exists = self.repo.tree.exists(top)
         if dvc_exists and not repo_exists:
-            yield from self.dvctree.walk(top, topdown=topdown, **kwargs)
+            yield from self.dvctree.walk(
+                top, topdown=topdown, onerror=onerror, **kwargs
+            )
             return
         if repo_exists and not dvc_exists:
-            yield from self.repo.tree.walk(top, topdown=topdown)
+            yield from self.repo.tree.walk(
+                top, topdown=topdown, onerror=onerror
+            )
             return
-        if not dvc_exists and not repo_exists:
-            raise FileNotFoundError
 
         dvc_walk = self.dvctree.walk(top, topdown=topdown, **kwargs)
         repo_walk = self.repo.tree.walk(top, topdown=topdown)
@@ -373,7 +385,7 @@ class RepoTree(BaseTree):
             for fname in files:
                 yield PathInfo(root) / fname
 
-    def get_file_checksum(self, path_info):
+    def get_file_hash(self, path_info):
         """Return file checksum for specified path.
 
         If path_info is a DVC out, the pre-computed checksum for the file
@@ -384,7 +396,7 @@ class RepoTree(BaseTree):
             raise FileNotFoundError
         if self.dvctree and self.dvctree.exists(path_info):
             try:
-                return self.dvctree.get_file_checksum(path_info)
+                return self.dvctree.get_file_hash(path_info)
             except OutputNotFoundError:
                 pass
         return file_md5(path_info, self)[0]

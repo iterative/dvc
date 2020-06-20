@@ -16,4 +16,6 @@ def get_url(url, out=None):
 
     (dep,) = dependency.loads_from(None, [url])
     (out,) = output.loads_from(None, [out], use_cache=False)
+    dep.save()
     dep.download(out)
+    out.save()

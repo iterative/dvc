@@ -166,3 +166,10 @@ def test_ignore_subrepo(tmp_dir, scm, dvc):
 
     for _ in subrepo.brancher(all_commits=True):
         assert subrepo.tree.exists(subrepo_dir / "foo")
+
+
+def test_ignore_blank_line(tmp_dir, dvc):
+    tmp_dir.gen({"dir": {"ignored": "text", "other": "text2"}})
+    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "foo\n\ndir/ignored")
+
+    assert _files_set("dir", dvc.tree) == {"dir/other"}
