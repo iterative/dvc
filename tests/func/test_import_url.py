@@ -111,4 +111,4 @@ def test_import_url_with_no_exec(tmp_dir, dvc, erepo_dir):
 
     dvc.imp_url(src, "./", no_exec=True)
     dst = tmp_dir / "file"
-    assert dst.exists() is False
+    assert not dst.exists()
