@@ -109,6 +109,6 @@ def test_import_url_with_no_exec(tmp_dir, dvc, erepo_dir):
     tmp_dir.gen({"data_dir": {"file": "file content"}})
     src = os.path.join("data_dir", "file")
 
-    dvc.imp_url(src, "./", no_exec=True)
+    dvc.imp_url(src, ".", no_exec=True)
     dst = tmp_dir / "file"
     assert not dst.exists()
