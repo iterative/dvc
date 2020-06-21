@@ -61,6 +61,7 @@ def add_parser(subparsers, parent_parser):
         "out",
         nargs="?",
         help="Destination path to put files to.",
+        metavar="out",
         choices=completion.Optional.DIR,
     )
     import_parser.add_argument(

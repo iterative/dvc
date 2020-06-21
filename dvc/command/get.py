@@ -65,6 +65,7 @@ def add_parser(subparsers, parent_parser):
     get_parser.add_argument(
         "path",
         help="Path to a file or directory within the repository",
+        metavar="path",
         choices=completion.Required.FILE,
     )
     get_parser.add_argument(

@@ -36,6 +36,7 @@ def add_parser(subparsers, parent_parser):
         "targets",
         nargs="+",
         help="DVC-files to update.",
+        metavar="targets",
         choices=completion.Required.DVC_FILE,
     )
     update_parser.add_argument(
