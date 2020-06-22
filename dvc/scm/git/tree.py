@@ -41,7 +41,7 @@ class GitTree(BaseTree):
 
         relative_path = relpath(path, self.git.working_dir)
 
-        obj = self.git_object_by_path(path)
+        obj = self._git_object_by_path(path)
         if obj is None:
             msg = f"No such file in branch '{self.rev}'"
             raise OSError(errno.ENOENT, msg, relative_path)
@@ -58,16 +58,16 @@ class GitTree(BaseTree):
         return io.StringIO(data.decode(encoding))
 
     def exists(self, path):
-        return self.git_object_by_path(path) is not None
+        return self._git_object_by_path(path) is not None
 
     def isdir(self, path):
-        obj = self.git_object_by_path(path)
+        obj = self._git_object_by_path(path)
         if obj is None:
             return False
         return obj.mode == GIT_MODE_DIR
 
     def isfile(self, path):
-        obj = self.git_object_by_path(path)
+        obj = self._git_object_by_path(path)
         if obj is None:
             return False
         # according to git-fast-import(1) file mode could be 644 or 755
@@ -84,7 +84,7 @@ class GitTree(BaseTree):
                 return True
         return False
 
-    def git_object_by_path(self, path):
+    def _git_object_by_path(self, path):
         import git
 
         path = relpath(os.path.realpath(path), self.git.working_dir)
@@ -135,7 +135,7 @@ class GitTree(BaseTree):
         - no support for symlinks
         """
 
-        tree = self.git_object_by_path(top)
+        tree = self._git_object_by_path(top)
         if tree is None:
             if onerror is not None:
                 onerror(OSError(errno.ENOENT, "No such file", top))
@@ -161,7 +161,7 @@ class GitTree(BaseTree):
             sec, nano_sec = git_time
             return sec + nano_sec / 1000000000
 
-        obj = self.git_object_by_path(path)
+        obj = self._git_object_by_path(path)
         if obj is None:
             raise OSError(errno.ENOENT, "No such file")
         entry = git.index.IndexEntry.from_blob(obj)
