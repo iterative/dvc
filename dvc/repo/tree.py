@@ -421,3 +421,7 @@ class RepoTree(BaseTree):
                 src = root / fname
                 with self.open(src, mode="rb") as fobj:
                     copy_fobj_to_file(fobj, dest / fname)
+
+    @property
+    def hash_jobs(self):
+        return self.repo.tree.hash_jobs
