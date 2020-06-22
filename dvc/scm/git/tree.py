@@ -183,3 +183,9 @@ class GitTree(BaseTree):
                 to_ctime(entry.ctime),
             )
         )
+
+    @property
+    def hash_jobs(self):
+        # NOTE: gitpython is not threadsafe. See
+        # https://github.com/iterative/dvc/issues/4079
+        return 1

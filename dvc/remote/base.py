@@ -323,7 +323,8 @@ class BaseRemoteTree:
             self.PARAM_CHECKSUM: self.get_hash(path_info, tree=tree, **kwargs)
         }
 
-    def _calculate_hashes(self, file_infos, tree):
+    @staticmethod
+    def _calculate_hashes(file_infos, tree):
         file_infos = list(file_infos)
         with Tqdm(
             total=len(file_infos),
@@ -331,7 +332,7 @@ class BaseRemoteTree:
             desc="Computing file/dir hashes (only done once)",
         ) as pbar:
             worker = pbar.wrap_fn(tree.get_file_hash)
-            with ThreadPoolExecutor(max_workers=self.hash_jobs) as executor:
+            with ThreadPoolExecutor(max_workers=tree.hash_jobs) as executor:
                 tasks = executor.map(worker, file_infos)
                 hashes = dict(zip(file_infos, tasks))
         return hashes
