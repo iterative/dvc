@@ -24,6 +24,10 @@ repos:
     repo: https://gitlab.com/pycqa/flake8
     rev: 3.7.9
   - hooks:
+      - id: pylint
+    repo: https://github.com/PyCQA/pylint
+    rev: pylint-2.5.3
+  - hooks:
       - args:
           - -i
           - "2"

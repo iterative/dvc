@@ -13,7 +13,5 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: 3.8
-    - name: Install Requirements
-      run: bash ./scripts/ci/install.sh
-    - name: Make pylint happy
-      run: pylint dvc tests
+    - name: Check Patch
+      run: ./scripts/ci/check_patch.sh
