@@ -13,5 +13,7 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: 3.8
+    - name: Install requirements
+      run: bash ./scripts/ci/install.sh
     - name: Check Patch
       run: ./scripts/ci/check_patch.sh
