@@ -127,6 +127,7 @@ tests_requirements = [
     "flake8-bugbear",
     "flake8-comprehensions",
     "flake8-string-format",
+    "pylint",
 ]
 
 if (sys.version_info) >= (3, 6):
