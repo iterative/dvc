@@ -33,32 +33,34 @@ def test_get_repo_dir(tmp_dir, erepo_dir):
     trees_equal(erepo_dir / "dir", "dir_imported")
 
 
-@pytest.mark.parametrize("repo_type", ["git_dir", "erepo_dir"])
-def test_get_git_file(request, tmp_dir, repo_type):
-    erepo_dir = request.getfixturevalue(repo_type)
+@pytest.mark.parametrize(
+    "erepo", [pytest.lazy_fixture("git_dir"), pytest.lazy_fixture("erepo_dir")]
+)
+def test_get_git_file(tmp_dir, erepo):
     src = "some_file"
     dst = "some_file_imported"
 
-    erepo_dir.scm_gen({src: "hello"}, commit="add a regular file")
+    erepo.scm_gen({src: "hello"}, commit="add a regular file")
 
-    Repo.get(os.fspath(erepo_dir), src, dst)
+    Repo.get(os.fspath(erepo), src, dst)
 
     assert (tmp_dir / dst).is_file()
     assert (tmp_dir / dst).read_text() == "hello"
 
 
-@pytest.mark.parametrize("repo_type", ["git_dir", "erepo_dir"])
-def test_get_git_dir(request, tmp_dir, repo_type):
-    erepo_dir = request.getfixturevalue(repo_type)
+@pytest.mark.parametrize(
+    "erepo", [pytest.lazy_fixture("git_dir"), pytest.lazy_fixture("erepo_dir")]
+)
+def test_get_git_dir(tmp_dir, erepo):
     src = "some_directory"
     dst = "some_directory_imported"
 
-    erepo_dir.scm_gen({src: {"file.txt": "hello"}}, commit="add a regular dir")
+    erepo.scm_gen({src: {"file.txt": "hello"}}, commit="add a regular dir")
 
-    Repo.get(os.fspath(erepo_dir), src, dst)
+    Repo.get(os.fspath(erepo), src, dst)
 
     assert (tmp_dir / dst).is_dir()
-    trees_equal(erepo_dir / src, tmp_dir / dst)
+    trees_equal(erepo / src, tmp_dir / dst)
 
 
 def test_cache_type_is_properly_overridden(tmp_dir, erepo_dir):
