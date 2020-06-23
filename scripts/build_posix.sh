@@ -100,7 +100,10 @@ build_dvc() {
     --distpath $LIB_DIR \
     --specpath $BUILD_DIR
 
-  $LIB_DIR/dvc/dvc --help
+  $LIB_DIR/dvc/dvc version
+
+  $LIB_DIR/dvc/dvc remote add myssh ssh://127.0.0.1/home/
+  $LIB_DIR/dvc/dvc status -c -r myssh -v
 
   # NOTE: in osxpkg fpm replaces symlinks with actual file that it
   # points to, so we need to use after-install hook. See FPM_FLAGS
@@ -110,7 +113,7 @@ build_dvc() {
     pushd $BIN_DIR
     ln -s ../lib/dvc/dvc dvc
     popd
-    $BIN_DIR/dvc --help
+    $BIN_DIR/dvc version
   fi
 
   # NOTE: temporarily not adding scripts to mac package. See [1]
