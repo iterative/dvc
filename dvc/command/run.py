@@ -159,9 +159,7 @@ def add_parser(subparsers, parent_parser):
         metavar="<path>",
     )
     run_parser.add_argument(
-        "--file",
-        help="Specify name of the DVC-file this command will generate.",
-        metavar="<filename>",
+        "--file", metavar="<filename>", help=argparse.SUPPRESS,
     )
     run_parser.add_argument(
         "-w",
