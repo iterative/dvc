@@ -28,7 +28,7 @@ class CmdPreCommit(CmdHookBase):
 
 
 class CmdPostCheckout(CmdHookBase):
-    def run(self):
+    def _run(self):
         # when we are running from pre-commit tool, it doesn't provide CLI
         # flags, but instead provides respective env vars that we could use.
         flag = os.environ.get("PRE_COMMIT_CHECKOUT_TYPE")
@@ -52,7 +52,7 @@ class CmdPostCheckout(CmdHookBase):
 
 
 class CmdPrePush(CmdHookBase):
-    def run(self):
+    def _run(self):
         from dvc.main import main
 
         return main(["push"])
