@@ -173,7 +173,7 @@ def add_parser(subparsers, _parent_parser):
         "--run-cache",
         action="store_true",
         default=False,
-        help=argparse.SUPPRESS,
+        help="Fetch run history for all stages.",
     )
     pull_parser.set_defaults(func=CmdDataPull)
 
@@ -228,7 +228,7 @@ def add_parser(subparsers, _parent_parser):
         "--run-cache",
         action="store_true",
         default=False,
-        help=argparse.SUPPRESS,
+        help="Push run history for all stages.",
     )
     push_parser.set_defaults(func=CmdDataPush)
 
@@ -289,7 +289,7 @@ def add_parser(subparsers, _parent_parser):
         "--run-cache",
         action="store_true",
         default=False,
-        help=argparse.SUPPRESS,
+        help="Fetch run history for all stages.",
     )
     fetch_parser.set_defaults(func=CmdDataFetch)
 
