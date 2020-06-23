@@ -20,7 +20,9 @@ class CmdRemove(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    REMOVE_HELP = "Remove stage entry and unprotect outputs"
+    REMOVE_HELP = (
+        "Remove stage entry, remove .gitignore entry and unprotect outputs"
+    )
     remove_parser = subparsers.add_parser(
         "remove",
         parents=[parent_parser],
