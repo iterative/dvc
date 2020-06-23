@@ -526,9 +526,9 @@ class TestAddUnprotected(TestDvc):
 @pytest.fixture
 def temporary_windows_drive(tmp_path_factory):
     import string
-    import win32api
+    import win32api  # pylint: disable=import-error
     from ctypes import windll
-    from win32con import DDD_REMOVE_DEFINITION
+    from win32con import DDD_REMOVE_DEFINITION  # pylint: disable=import-error
 
     drives = [
         s[0].upper()
