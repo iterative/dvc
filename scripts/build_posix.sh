@@ -53,6 +53,8 @@ fpm_build() {
     -f \
     -t $1 \
     --description "$DESC" \
+    --url https://dvc.org \
+    --license "Apache License 2.0" \
     $FPM_FLAGS \
     -n dvc \
     -v $VERSION \
