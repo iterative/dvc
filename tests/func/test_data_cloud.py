@@ -285,9 +285,10 @@ def test_verify_hashes(
 
 
 @flaky(max_runs=3, min_passes=1)
-@pytest.mark.parametrize("erepo", ["git_dir", "erepo_dir"])
-def test_pull_git_imports(request, tmp_dir, dvc, scm, erepo):
-    erepo = request.getfixturevalue(erepo)
+@pytest.mark.parametrize(
+    "erepo", [pytest.lazy_fixture("git_dir"), pytest.lazy_fixture("erepo_dir")]
+)
+def test_pull_git_imports(tmp_dir, dvc, scm, erepo):
     with erepo.chdir():
         erepo.scm_gen({"dir": {"bar": "bar"}}, commit="second")
         erepo.scm_gen("foo", "foo", commit="first")
