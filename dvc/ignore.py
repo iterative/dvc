@@ -121,9 +121,9 @@ class DvcIgnoreFilter:
             DvcIgnoreDirs([".git", ".hg", ".dvc"]),
             DvcIgnoreRepo(),
         }
-        for root, dirs, files in self.tree.walk(self.root_dir):
+        for root, dirs, _ in self.tree.walk(self.root_dir):
             self._update(root)
-            dirs[:], files[:] = self(root, dirs, files)
+            dirs[:], _ = self(root, dirs, [])
 
     def _update(self, dirname):
         ignore_file_path = os.path.join(dirname, DvcIgnore.DVCIGNORE_FILE)
