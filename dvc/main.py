@@ -2,6 +2,7 @@
 
 import errno
 import logging
+from typing import TYPE_CHECKING
 
 from dvc import analytics
 from dvc.cli import parse_args
@@ -12,6 +13,10 @@ from dvc.logger import FOOTER, disable_other_loggers
 from dvc.remote.pool import close_pools
 from dvc.utils import format_link
 
+if TYPE_CHECKING:
+    from dvc.command.base import CmdBase
+
+
 # Workaround for CPython bug. See [1] and [2] for more info.
 # [1] https://github.com/aws/aws-cli/blob/1.16.277/awscli/clidriver.py#L55
 # [2] https://bugs.python.org/issue29288
@@ -21,11 +26,12 @@ from dvc.utils import format_link
 logger = logging.getLogger("dvc")
 
 
-def main(argv=None):
+def main(argv=None, disable_analytics=False):
     """Run dvc CLI command.
 
     Args:
         argv: optional list of arguments to parse. sys.argv is used by default.
+        disable_analytics: Do not collect analytics
 
     Returns:
         int: command's return code.
@@ -49,7 +55,10 @@ def main(argv=None):
             )
         logger.trace(args)
 
-        cmd = args.func(args)
+        cmd: "CmdBase" = args.func(args)
+        if not disable_analytics:
+            disable_analytics = not cmd.collect_analytics
+
         ret = cmd.run()
     except ConfigError:
         logger.exception("configuration error")
@@ -93,7 +102,7 @@ def main(argv=None):
     if ret != 0:
         logger.info(FOOTER)
 
-    if analytics.is_enabled():
+    if not disable_analytics and analytics.is_enabled():
         analytics.collect_and_send_report(args, ret)
 
     return ret

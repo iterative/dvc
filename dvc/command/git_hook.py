@@ -1,36 +1,37 @@
-import logging
-import os
-
 from dvc.command.base import CmdBaseNoRepo, fix_subparsers
-from dvc.exceptions import NotDvcRepoError
-
-logger = logging.getLogger(__name__)
 
 
 class CmdHookBase(CmdBaseNoRepo):
+    cmd = None
+    collect_analytics = False
+
     def run(self):
+        from dvc.exceptions import NotDvcRepoError
+        from dvc.main import main
         from dvc.repo import Repo
 
+        assert self.cmd
         try:
             repo = Repo()
             repo.close()
         except NotDvcRepoError:
             return 0
 
-        return self._run()
+        return main([self.cmd], disable_analytics=True)
 
 
 class CmdPreCommit(CmdHookBase):
-    def _run(self):
-        from dvc.main import main
-
-        return main(["status"])
+    cmd = "status"
 
 
 class CmdPostCheckout(CmdHookBase):
-    def _run(self):
+    cmd = "checkout"
+
+    def run(self):
         # when we are running from pre-commit tool, it doesn't provide CLI
         # flags, but instead provides respective env vars that we could use.
+        import os
+
         flag = os.environ.get("PRE_COMMIT_CHECKOUT_TYPE")
         if flag is None and len(self.args.args) >= 3:
             # see https://git-scm.com/docs/githooks#_post_checkout
@@ -46,16 +47,11 @@ class CmdPostCheckout(CmdHookBase):
         if os.path.isdir(os.path.join(".git", "rebase-merge")):
             return 0
 
-        from dvc.main import main
-
-        return main(["checkout"])
+        return super().run()
 
 
 class CmdPrePush(CmdHookBase):
-    def _run(self):
-        from dvc.main import main
-
-        return main(["push"])
+    cmd = "push"
 
 
 def add_parser(subparsers, parent_parser):

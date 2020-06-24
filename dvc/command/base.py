@@ -27,6 +27,9 @@ def append_doc_link(help_message, path):
 
 
 class CmdBase:
+    check_updates = True
+    collect_analytics = True
+
     def __init__(self, args):
         from dvc.repo import Repo
         from dvc.updater import Updater
@@ -35,8 +38,9 @@ class CmdBase:
         self.config = self.repo.config
         self.args = args
         hardlink_lock = self.config["core"].get("hardlink_lock", False)
-        updater = Updater(self.repo.tmp_dir, hardlink_lock=hardlink_lock)
-        updater.check()
+        if self.check_updates:
+            updater = Updater(self.repo.tmp_dir, hardlink_lock=hardlink_lock)
+            updater.check()
 
     @property
     def default_targets(self):
@@ -52,5 +56,7 @@ class CmdBase:
 
 
 class CmdBaseNoRepo(CmdBase):
+    check_updates = False
+
     def __init__(self, args):
         self.args = args
