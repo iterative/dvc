@@ -331,7 +331,7 @@ class S3RemoteTree(BaseRemoteTree):
         if total == 0:
             basedir = os.path.dirname(to_file)
             os.makedirs(basedir, exist_ok=True)
-            open(to_file, 'w').close()
+            open(to_file, "w").close()
             return
 
         with Tqdm(
