@@ -7,7 +7,7 @@ from dvc.exceptions import GitHookAlreadyExistsError
 from dvc.utils import file_md5
 
 pytestmark = pytest.mark.skipif(
-    sys.platform == "wind32", reason="Git hooks aren't supported on Windows"
+    sys.platform == "win32", reason="Git hooks aren't supported on Windows"
 )
 
 
