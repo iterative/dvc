@@ -73,7 +73,23 @@ enable=print-statement,
        reimported,
        deprecated-module,
        wildcard-import,
-       unpacking-non-sequence
+       useless-import-alias,
+       unpacking-in-except,
+       parameter-unpacking,
+       unpacking-non-sequence,
+       invalid-all-object,
+       no-name-in-module,
+       undefined-variable,
+       undefined-all-variable,
+       used-before-assignment,
+       cell-var-from-loop,
+       global-variable-undefined,
+       self-cls-assignment,
+       unbalanced-tuple-unpacking,
+       possibly-unused-variable,
+       redefined-builtin,
+       redefine-in-handler
+
 
 
 [REPORTS]

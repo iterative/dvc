@@ -74,7 +74,9 @@ disable_other_loggers()
 class TmpDir(pathlib.Path):
     def __new__(cls, *args, **kwargs):
         if cls is TmpDir:
-            cls = WindowsTmpDir if os.name == "nt" else PosixTmpDir
+            cls = (  # pylint: disable=self-cls-assignment
+                WindowsTmpDir if os.name == "nt" else PosixTmpDir
+            )
         self = cls._from_parts(args, init=False)
         if not self._flavour.is_supported:
             raise NotImplementedError(

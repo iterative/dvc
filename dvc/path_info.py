@@ -30,7 +30,10 @@ class PathInfo(pathlib.PurePath, _BasePath):
     def __new__(cls, *args):
         # Construct a proper subclass depending on current os
         if cls is PathInfo:
-            cls = WindowsPathInfo if os.name == "nt" else PosixPathInfo
+            cls = (  # pylint: disable=self-cls-assignment
+                WindowsPathInfo if os.name == "nt" else PosixPathInfo
+            )
+
         return cls._from_parts(args)
 
     def as_posix(self):
