@@ -33,7 +33,9 @@ def get_url(path, repo=None, rev=None, remote=None):
         return str(remote_obj.hash_to_path_info(out.checksum))
 
 
-def open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
+def open(  # noqa, pylint: disable=redefined-builtin
+    path, repo=None, rev=None, remote=None, mode="r", encoding=None
+):
     """
     Open file in the supplied path tracked in a repo (both DVC projects and
     plain Git repos are supported). For Git repos, HEAD is used unless a rev

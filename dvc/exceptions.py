@@ -330,7 +330,7 @@ class RemoteCacheRequiredError(DvcException):
         )
 
 
-class IsADirectoryError(DvcException):
+class IsADirectoryError(DvcException):  # noqa,pylint:disable=redefined-builtin
     """Raised when a file operation is requested on a directory."""
 
 

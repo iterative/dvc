@@ -38,6 +38,7 @@ class AzureRemoteTree(BaseRemoteTree):
     @wrap_prop(threading.Lock())
     @cached_property
     def blob_service(self):
+        # pylint: disable=no-name-in-module
         from azure.storage.blob import BlockBlobService
         from azure.common import AzureMissingResourceHttpError
 
@@ -62,7 +63,9 @@ class AzureRemoteTree(BaseRemoteTree):
         return etag.strip('"')
 
     def _generate_download_url(self, path_info, expires=3600):
-        from azure.storage.blob import BlobPermissions
+        from azure.storage.blob import (  # pylint:disable=no-name-in-module
+            BlobPermissions,
+        )
 
         expires_at = datetime.utcnow() + timedelta(seconds=expires)
 

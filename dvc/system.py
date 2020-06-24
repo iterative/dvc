@@ -82,7 +82,6 @@ class System:
 
     @staticmethod
     def _reflink_linux(src, dst):
-        import os
         import fcntl
 
         FICLONE = 0x40049409
@@ -120,7 +119,7 @@ class System:
     @staticmethod
     def _getdirinfo(path):
         from collections import namedtuple
-        from win32file import (
+        from win32file import (  # pylint: disable=import-error
             CreateFileW,
             GetFileInformationByHandle,
             FILE_FLAG_BACKUP_SEMANTICS,
@@ -194,7 +193,9 @@ class System:
 
         # https://docs.microsoft.com/en-us/windows/desktop/fileio/
         # file-attribute-constants
-        from winnt import FILE_ATTRIBUTE_REPARSE_POINT
+        from winnt import (  # pylint: disable=import-error
+            FILE_ATTRIBUTE_REPARSE_POINT,
+        )
 
         if os.path.lexists(path):
             info = System._getdirinfo(path)

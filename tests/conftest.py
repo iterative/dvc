@@ -2,8 +2,8 @@ import os
 
 import pytest
 
-from .dir_helpers import *  # noqa
-from .remotes import *  # noqa
+from .dir_helpers import *  # noqa, pylint:disable=wildcard-import
+from .remotes import *  # noqa, pylint:disable=wildcard-import
 
 # Prevent updater and analytics from running their processes
 os.environ["DVC_TEST"] = "true"
