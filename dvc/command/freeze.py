@@ -59,7 +59,7 @@ def add_parser(subparsers, parent_parser):
     unfreeze_parser.add_argument(
         "targets",
         nargs="+",
-        help="Stages or .dvc files to unfreeze.",
+        help="Stages or .dvc files to unfreeze",
         metavar="targets",
         choices=completion.Required.DVC_FILE,
     )
