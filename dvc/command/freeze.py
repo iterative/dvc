@@ -31,7 +31,7 @@ class CmdUnfreeze(CmdFreezeBase):
 
 
 def add_parser(subparsers, parent_parser):
-    FREEZE_HELP = "Freeze DVC-files."
+    FREEZE_HELP = "Freeze stages or .dvc files."
     freeze_parser = subparsers.add_parser(
         "freeze",
         parents=[parent_parser],
@@ -42,13 +42,13 @@ def add_parser(subparsers, parent_parser):
     freeze_parser.add_argument(
         "targets",
         nargs="+",
-        help="DVC-files to freeze.",
+        help="Stages or .dvc files to freeze",
         metavar="targets",
         choices=completion.Required.DVC_FILE,
     )
     freeze_parser.set_defaults(func=CmdFreeze)
 
-    UNFREEZE_HELP = "Unfreeze DVC-files."
+    UNFREEZE_HELP = "Unfreeze stages or .dvc files."
     unfreeze_parser = subparsers.add_parser(
         "unfreeze",
         parents=[parent_parser],
@@ -59,7 +59,7 @@ def add_parser(subparsers, parent_parser):
     unfreeze_parser.add_argument(
         "targets",
         nargs="+",
-        help="DVC-files to unfreeze.",
+        help="Stages or .dvc files to unfreeze",
         metavar="targets",
         choices=completion.Required.DVC_FILE,
     )
