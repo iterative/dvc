@@ -42,7 +42,7 @@ def add_parser(subparsers, parent_parser):
     freeze_parser.add_argument(
         "targets",
         nargs="+",
-        help="Stages or .dvc files to freeze.",
+        help="Stages or .dvc files to freeze",
         metavar="targets",
         choices=completion.Required.DVC_FILE,
     )
