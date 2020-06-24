@@ -9,7 +9,7 @@ from setuptools.command.build_py import build_py as _build_py
 # see https://github.com/ninjaaron/fast-entry_points.
 # This saves about 200 ms on startup time for non-wheel installs.
 try:
-    import fastentrypoints  # noqa: F401
+    import fastentrypoints  # noqa: F401, pylint: disable=unused-import
 except ImportError:
     pass  # not able to import when installing through pre-commit
 
