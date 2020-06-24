@@ -20,7 +20,9 @@ class CmdRemove(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    REMOVE_HELP = "Remove stage entry and unprotect outputs"
+    REMOVE_HELP = (
+        "Remove stage entry, remove .gitignore entry and unprotect outputs"
+    )
     remove_parser = subparsers.add_parser(
         "remove",
         parents=[parent_parser],
@@ -38,6 +40,7 @@ def add_parser(subparsers, parent_parser):
         "targets",
         nargs="+",
         help="DVC-files to remove.",
+        metavar="targets",
         choices=completion.Required.DVC_FILE,
     )
     remove_parser.set_defaults(func=CmdRemove)

@@ -91,6 +91,12 @@ def run(self, fname=None, no_exec=False, single_stage=False, **kwargs):
             "`-n|--name` is incompatible with `--single-stage`"
         )
 
+    if stage_name and fname:
+        raise InvalidArgumentError(
+            "`--file` is currently incompatible with `-n|--name` "
+            "and requires `--single-stage`"
+        )
+
     if not stage_name and not single_stage:
         raise InvalidArgumentError("`-n|--name` is required")
 

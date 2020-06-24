@@ -105,6 +105,7 @@ def shared_parent_parser():
         nargs="*",
         help="Limit command scope to these DVC-files. "
         "Using -R, directories to search DVC-files in can also be given.",
+        metavar="targets",
         choices=completion.Optional.DVC_FILE,
     )
 
@@ -172,7 +173,7 @@ def add_parser(subparsers, _parent_parser):
         "--run-cache",
         action="store_true",
         default=False,
-        help=argparse.SUPPRESS,
+        help="Fetch run history for all stages.",
     )
     pull_parser.set_defaults(func=CmdDataPull)
 
@@ -227,7 +228,7 @@ def add_parser(subparsers, _parent_parser):
         "--run-cache",
         action="store_true",
         default=False,
-        help=argparse.SUPPRESS,
+        help="Push run history for all stages.",
     )
     push_parser.set_defaults(func=CmdDataPush)
 
@@ -288,7 +289,7 @@ def add_parser(subparsers, _parent_parser):
         "--run-cache",
         action="store_true",
         default=False,
-        help=argparse.SUPPRESS,
+        help="Fetch run history for all stages.",
     )
     fetch_parser.set_defaults(func=CmdDataFetch)
 

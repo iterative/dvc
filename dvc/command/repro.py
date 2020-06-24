@@ -72,6 +72,7 @@ def add_parser(subparsers, parent_parser):
         "targets",
         nargs="*",
         help=f"Stages to reproduce. '{PIPELINE_FILE}' by default.",
+        metavar="targets",
         choices=completion.Optional.DVC_FILE,
     )
     repro_parser.add_argument(

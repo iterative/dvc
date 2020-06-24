@@ -244,3 +244,7 @@ class CleanTree(BaseTree):
         if self.exists(path):
             return self.tree.stat(path)
         raise FileNotFoundError
+
+    @property
+    def hash_jobs(self):
+        return self.tree.hash_jobs

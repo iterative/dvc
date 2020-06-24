@@ -286,12 +286,17 @@ class Stage(params.StageParams):
         for out in self.outs:
             out.unprotect()
 
+    def ignore_remove_outs(self):
+        for out in self.outs:
+            out.ignore_remove()
+
     @rwlocked(write=["outs"])
     def remove(self, force=False, remove_outs=True, purge=True):
         if remove_outs:
             self.remove_outs(ignore_remove=True, force=force)
         else:
             self.unprotect_outs()
+            self.ignore_remove_outs()
         if purge:
             self.dvcfile.remove_stage(self)
 

@@ -4,10 +4,6 @@ test_patterns = [
   'tests/**'
 ]
 
-exclude_patterns = [
-  'dvc/utils/compat.py'
-]
-
 [[analyzers]]
 name = 'python'
 enabled = true

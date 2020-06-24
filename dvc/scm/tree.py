@@ -1,5 +1,8 @@
 import os
 import stat
+from multiprocessing import cpu_count
+
+from funcy import cached_property
 
 
 class BaseTree:
@@ -82,6 +85,10 @@ class WorkingTree(BaseTree):
     @staticmethod
     def stat(path):
         return os.stat(path)
+
+    @cached_property
+    def hash_jobs(self):
+        return max(1, min(4, cpu_count() // 2))
 
 
 def is_working_tree(tree):

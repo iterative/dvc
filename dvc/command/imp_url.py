@@ -12,7 +12,10 @@ class CmdImportUrl(CmdBase):
     def run(self):
         try:
             self.repo.imp_url(
-                self.args.url, out=self.args.out, fname=self.args.file
+                self.args.url,
+                out=self.args.out,
+                fname=self.args.file,
+                no_exec=self.args.no_exec,
             )
         except DvcException:
             logger.exception(
@@ -58,6 +61,7 @@ def add_parser(subparsers, parent_parser):
         "out",
         nargs="?",
         help="Destination path to put files to.",
+        metavar="out",
         choices=completion.Optional.DIR,
     )
     import_parser.add_argument(
@@ -65,5 +69,11 @@ def add_parser(subparsers, parent_parser):
         help="Specify name of the DVC-file this command will generate.",
         metavar="<filename>",
         choices=completion.Optional.DIR,
+    )
+    import_parser.add_argument(
+        "--no-exec",
+        action="store_true",
+        default=False,
+        help="Only create DVC-file without actually downloading it.",
     )
     import_parser.set_defaults(func=CmdImportUrl)

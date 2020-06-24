@@ -170,6 +170,7 @@ def add_parser(subparsers, parent_parser):
             "Limit command scope to these metric files. Using -R, "
             "directories to search metric files in can also be given."
         ),
+        metavar="targets",
         choices=completion.Optional.FILE,
     )
     metrics_show_parser.add_argument(
