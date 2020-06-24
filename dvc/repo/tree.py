@@ -137,9 +137,35 @@ class DvcTree(BaseTree):
 
         return not self.isdir(path)
 
-    def _walk(self, root, trie, topdown=True):
+    def _add_dir(self, top, trie, out, download_callback=None, **kwargs):
+        if not self.fetch and not self.stream:
+            return
+
+        # pull dir cache if needed
+        dir_cache = out.get_dir_cache(**kwargs)
+
+        # pull dir contents if needed
+        if self.fetch:
+            if out.changed_cache(filter_info=top):
+                used_cache = out.get_used_cache(filter_info=top)
+                downloaded = self.repo.cloud.pull(used_cache, **kwargs)
+                if download_callback:
+                    download_callback(downloaded)
+
+        for entry in dir_cache:
+            entry_relpath = entry[out.remote.tree.PARAM_RELPATH]
+            if os.name == "nt":
+                entry_relpath = entry_relpath.replace("/", os.sep)
+            path_info = out.path_info / entry_relpath
+            trie[path_info.parts] = None
+
+    def _walk(self, root, trie, topdown=True, **kwargs):
         dirs = set()
         files = []
+
+        out = trie.get(root.parts)
+        if out and out.is_dir_checksum:
+            self._add_dir(root, trie, out, **kwargs)
 
         root_len = len(root.parts)
         for key, out in trie.iteritems(prefix=root.parts):  # noqa: B301
@@ -160,9 +186,7 @@ class DvcTree(BaseTree):
         for dname in dirs:
             yield from self._walk(root / dname, trie)
 
-    def walk(
-        self, top, topdown=True, onerror=None, download_callback=None, **kwargs
-    ):
+    def walk(self, top, topdown=True, onerror=None, **kwargs):
         from pygtrie import Trie
 
         assert topdown
@@ -185,26 +209,10 @@ class DvcTree(BaseTree):
         for out in outs:
             trie[out.path_info.parts] = out
 
-            if out.is_dir_checksum and (self.fetch or self.stream):
-                # pull dir cache if needed
-                dir_cache = out.get_dir_cache(**kwargs)
+            if out.is_dir_checksum and root.isin_or_eq(out.path_info):
+                self._add_dir(top, trie, out, **kwargs)
 
-                # pull dir contents if needed
-                if self.fetch:
-                    if out.changed_cache(filter_info=top):
-                        used_cache = out.get_used_cache(filter_info=top)
-                        downloaded = self.repo.cloud.pull(used_cache, **kwargs)
-                        if download_callback:
-                            download_callback(downloaded)
-
-                for entry in dir_cache:
-                    entry_relpath = entry[out.remote.tree.PARAM_RELPATH]
-                    if os.name == "nt":
-                        entry_relpath = entry_relpath.replace("/", os.sep)
-                    path_info = out.path_info / entry_relpath
-                    trie[path_info.parts] = None
-
-        yield from self._walk(root, trie, topdown=topdown)
+        yield from self._walk(root, trie, topdown=topdown, **kwargs)
 
     def isdvc(self, path, **kwargs):
         try:
