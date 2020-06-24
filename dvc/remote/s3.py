@@ -325,12 +325,15 @@ class S3RemoteTree(BaseRemoteTree):
             )
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
-        if no_progress_bar:
-            total = None
-        else:
-            total = self.s3.head_object(
-                Bucket=from_info.bucket, Key=from_info.path
-            )["ContentLength"]
+        total = self.s3.head_object(
+            Bucket=from_info.bucket, Key=from_info.path
+        ).get("ContentLength", 0)
+        if total == 0:
+            basedir = os.path.dirname(to_file)
+            os.makedirs(basedir, exist_ok=True)
+            open(to_file, 'w').close()
+            return
+
         with Tqdm(
             disable=no_progress_bar, total=total, bytes=True, desc=name
         ) as pbar:
