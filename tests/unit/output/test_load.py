@@ -1,3 +1,5 @@
+# pylint: disable=unsubscriptable-object
+
 import pytest
 
 from dvc import output

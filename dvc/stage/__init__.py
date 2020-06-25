@@ -88,6 +88,9 @@ def create_stage(cls, repo, path, external=False, **kwargs):
 
 
 class Stage(params.StageParams):
+    # pylint:disable=no-value-for-parameter
+    # rwlocked() confuses pylint
+
     def __init__(
         self,
         repo,

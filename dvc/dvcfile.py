@@ -1,3 +1,4 @@
+import collections
 import contextlib
 import logging
 import os
@@ -101,9 +102,9 @@ class FileMixin:
 
     @classmethod
     def validate(cls, d, fname=None):
-        assert cls.SCHEMA
+        assert isinstance(cls.SCHEMA, collections.abc.Callable)
         try:
-            cls.SCHEMA(d)
+            cls.SCHEMA(d)  # pylint: disable=not-callable
         except MultipleInvalid as exc:
             raise StageFileFormatError(f"'{fname}' format error: {exc}")
 
@@ -117,9 +118,6 @@ class FileMixin:
 
 class SingleStageFile(FileMixin):
     from dvc.schema import COMPILED_SINGLE_STAGE_SCHEMA as SCHEMA
-
-    def __init__(self, repo, path):
-        super().__init__(repo, path)
 
     @property
     def stage(self):

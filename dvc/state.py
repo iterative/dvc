@@ -445,9 +445,9 @@ class State:  # pylint: disable=too-many-instance-attributes
 
         self._execute(f"SELECT * FROM {self.LINK_STATE_TABLE}")
         for row in self.cursor:
-            relpath, inode, mtime = row
+            relative_path, inode, mtime = row
             inode = self._from_sqlite(inode)
-            path = os.path.join(self.root_dir, relpath)
+            path = os.path.join(self.root_dir, relative_path)
 
             if path in used or not self.tree.exists(path):
                 continue
@@ -457,7 +457,7 @@ class State:  # pylint: disable=too-many-instance-attributes
 
             if (inode, mtime) == (actual_inode, actual_mtime):
                 logger.debug("Removing '%s' as unused link.", path)
-                unused.append(relpath)
+                unused.append(relative_path)
 
         return unused
 

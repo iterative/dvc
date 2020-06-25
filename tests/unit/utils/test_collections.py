@@ -1,3 +1,4 @@
+# pylint: disable=unidiomatic-typecheck
 from dvc.utils.collections import apply_diff
 
 

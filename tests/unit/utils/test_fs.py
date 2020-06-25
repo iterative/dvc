@@ -206,6 +206,7 @@ def test_path_isin_accepts_pathinfo():
     parent = PathInfo(child) / ".."
 
     assert path_isin(child, parent)
+    # pylint: disable=arguments-out-of-order
     assert not path_isin(parent, child)
 
 

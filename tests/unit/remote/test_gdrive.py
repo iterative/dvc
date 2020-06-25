@@ -26,7 +26,7 @@ class TestRemoteGDrive:
             GDriveRemoteTree.GDRIVE_CREDENTIALS_DATA
         ] = USER_CREDS_TOKEN_REFRESH_ERROR
         with pytest.raises(GDriveAuthError):
-            tree._drive
+            assert tree._drive
 
         os.environ[GDriveRemoteTree.GDRIVE_CREDENTIALS_DATA] = ""
         tree = GDriveRemoteTree(dvc, self.CONFIG)
@@ -34,4 +34,4 @@ class TestRemoteGDrive:
             GDriveRemoteTree.GDRIVE_CREDENTIALS_DATA
         ] = USER_CREDS_MISSED_KEY_ERROR
         with pytest.raises(GDriveAuthError):
-            tree._drive
+            assert tree._drive

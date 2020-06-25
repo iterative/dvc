@@ -327,7 +327,7 @@ def _log_exceptions(func, operation):
         try:
             func(from_info, to_info, *args, **kwargs)
             return 0
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-except
             # NOTE: this means we ran out of file descriptors and there is no
             # reason to try to proceed, as we will hit this error anyways.
             if isinstance(exc, OSError) and exc.errno == errno.EMFILE:

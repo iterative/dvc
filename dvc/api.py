@@ -60,7 +60,9 @@ def open(  # noqa, pylint: disable=redefined-builtin
 
 
 class _OpenContextManager(GCM):
-    def __init__(self, func, args, kwds):
+    def __init__(
+        self, func, args, kwds
+    ):  # pylint: disable=super-init-not-called
         self.gen = func(*args, **kwds)
         self.func, self.args, self.kwds = func, args, kwds
 

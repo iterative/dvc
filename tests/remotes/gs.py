@@ -57,12 +57,12 @@ class GCP(Base):
         }
 
     @staticmethod
-    def get_storagepath():
+    def _get_storagepath():
         return TEST_GCP_REPO_BUCKET + "/" + str(uuid.uuid4())
 
     @staticmethod
     def get_url():
-        return "gs://" + GCP.get_storagepath()
+        return "gs://" + GCP._get_storagepath()
 
     @classmethod
     @contextmanager

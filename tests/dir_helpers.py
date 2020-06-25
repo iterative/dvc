@@ -43,6 +43,8 @@ from global repo template to creating everything inplace, which:
     - does not create unnecessary files
 """
 
+# pylint: disable=redefined-outer-name
+
 import os
 import pathlib
 from contextlib import contextmanager

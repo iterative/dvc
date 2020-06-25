@@ -56,7 +56,7 @@ class CmdDiff(CmdBase):
         """
 
         def _digest(checksum):
-            if type(checksum) is str:
+            if isinstance(checksum, str):
                 return checksum[0:8]
             return "{}..{}".format(checksum["old"][0:8], checksum["new"][0:8])
 

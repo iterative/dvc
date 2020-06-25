@@ -137,7 +137,7 @@ class LoggerHandler(logging.StreamHandler):
             self.flush()
         except RecursionError:
             raise
-        except Exception:
+        except Exception:  # noqa, pylint: disable=broad-except
             self.handleError(record)
 
 
