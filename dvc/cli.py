@@ -1,8 +1,8 @@
 """DVC command line interface"""
 import argparse
 import logging
-import sys
 import os
+import sys
 
 from .command import (
     add,
