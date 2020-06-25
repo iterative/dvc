@@ -1,3 +1,4 @@
+import os
 import logging
 from abc import ABC, abstractmethod
 
@@ -32,6 +33,7 @@ class CmdBase(ABC):
         from dvc.repo import Repo
         from dvc.updater import Updater
 
+        os.chdir(args.cwd)
         self.repo = Repo()
         self.config = self.repo.config
         self.args = args

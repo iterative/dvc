@@ -91,13 +91,6 @@ def add_parser(subparsers, parent_parser):
         "check.",
     )
     repro_parser.add_argument(
-        "-c",
-        "--cwd",
-        default=os.path.curdir,
-        help="Directory within your repo to reproduce from.",
-        metavar="<path>",
-    )
-    repro_parser.add_argument(
         "-m",
         "--metrics",
         action="store_true",

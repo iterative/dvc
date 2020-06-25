@@ -1,5 +1,8 @@
+import filecmp
 import os
+import shutil
 
+from dvc.main import main
 from dvc.cli import parse_args
 from dvc.command.add import CmdAdd
 from dvc.command.base import CmdBase
@@ -14,7 +17,6 @@ from dvc.command.run import CmdRun
 from dvc.command.status import CmdDataStatus
 from dvc.exceptions import DvcException, DvcParserError
 from tests.basic_env import TestDvc
-
 
 class TestArgParse(TestDvc):
     def test(self):
@@ -169,6 +171,7 @@ class TestFindRoot(TestDvc):
         class A:
             quiet = False
             verbose = True
+            cwd = os.path.curdir
 
         args = A()
         with self.assertRaises(DvcException):
@@ -206,3 +209,23 @@ def test_unknown_subcommand_help(capsys):
     captured = capsys.readouterr()
     help_output = captured.out
     assert output == help_output
+
+
+class test_chdir(TestDvc):
+    def test_chdir(self):
+        dname = "dir"
+        os.mkdir(dname)
+        foo = os.path.join(dname, self.FOO)
+        bar = os.path.join(dname, self.BAR)
+        code = os.path.join(dname, self.CODE)
+        shutil.copyfile(self.FOO, foo)
+        shutil.copyfile(self.CODE, code)
+        shutil.copyfile(self.BAR, bar)
+        self.assertTrue(os.path.isfile(foo))
+        self.assertTrue(os.path.isfile(bar))
+        self.assertTrue(os.path.isfile(code))
+        self.assertTrue(filecmp.cmp(foo, self.FOO, shallow=False))
+        self.assertTrue(filecmp.cmp(bar, self.BAR, shallow=False))
+        self.assertTrue(filecmp.cmp(code, self.CODE, shallow=False))
+
+
