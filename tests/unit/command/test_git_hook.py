@@ -14,7 +14,7 @@ from dvc.command.git_hook import CmdPostCheckout, CmdPreCommit, CmdPrePush
 )
 def test_out_of_repo(tmp_dir, hook, cls, mocker):
     cli_args = parse_args(["git-hook", hook])
-    cli_args.func == cls
+    assert cli_args.func == cls
     cmd = cli_args.func(cli_args)
     mock_main = mocker.patch("dvc.main.main")
     assert cmd.run() == 0

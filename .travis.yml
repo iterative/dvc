@@ -29,7 +29,7 @@ jobs:
     os: linux
     language: python
     python: 3.7
-    before_install:
+    before_install: bash ./scripts/ci/install.sh
     install:
     script: ./scripts/ci/check_patch.sh
   # test jobs

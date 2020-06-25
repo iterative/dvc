@@ -24,12 +24,12 @@ class OSS(Base):
         )
 
     @staticmethod
-    def get_storagepath():
+    def _get_storagepath():
         return f"{TEST_OSS_REPO_BUCKET}/{uuid.uuid4()}"
 
     @staticmethod
     def get_url():
-        return f"oss://{OSS.get_storagepath()}"
+        return f"oss://{OSS._get_storagepath()}"
 
 
 @pytest.fixture

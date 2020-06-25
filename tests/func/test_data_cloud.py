@@ -11,10 +11,8 @@ from dvc.main import main
 from dvc.remote.base import STATUS_DELETED, STATUS_NEW, STATUS_OK
 from dvc.remote.local import LocalRemoteTree
 from dvc.stage.exceptions import StageNotFound
-from dvc.utils import file_md5
 from dvc.utils.fs import remove
 from dvc.utils.yaml import dump_yaml, load_yaml
-from tests.basic_env import TestDvc
 
 from .test_api import all_remotes
 
@@ -160,17 +158,12 @@ def test_cloud_cli(tmp_dir, dvc, remote):
     assert os.path.isdir("data_dir")
 
 
-class TestDataCloudErrorCLI(TestDvc):
-    def main_fail(self, args):
-        ret = main(args)
-        self.assertNotEqual(ret, 0)
-
-    def test_error(self):
-        f = "non-existing-file"
-        self.main_fail(["status", "-c", f])
-        self.main_fail(["push", f])
-        self.main_fail(["pull", f])
-        self.main_fail(["fetch", f])
+def test_data_cloud_error_cli(dvc):
+    f = "non-existing-file"
+    assert main(["status", "-c", f])
+    assert main(["push", f])
+    assert main(["pull", f])
+    assert main(["fetch", f])
 
 
 def test_warn_on_outdated_stage(tmp_dir, dvc, local_remote, caplog):
@@ -208,54 +201,36 @@ def test_hash_recalculation(mocker, dvc, tmp_dir, local_remote):
     assert test_get_file_hash.mock.call_count == 1
 
 
-class TestShouldWarnOnNoChecksumInLocalAndRemoteCache(TestDvc):
-    def setUp(self):
-        super().setUp()
+def test_missing_cache(tmp_dir, dvc, local_remote, caplog):
+    tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
 
-        cache_dir = self.mkdtemp()
-        ret = main(["add", self.FOO])
-        self.assertEqual(0, ret)
+    # purge cache
+    remove(dvc.cache.local.cache_dir)
 
-        ret = main(["add", self.BAR])
-        self.assertEqual(0, ret)
+    header = (
+        "Some of the cache files do not exist "
+        "neither locally nor on remote. Missing cache files:\n"
+    )
+    foo = "name: bar, md5: 37b51d194a7513e45b56f6524f2d51f2\n"
+    bar = "name: foo, md5: acbd18db4cc2f85cedef654fccc4a4d8\n"
 
-        # purge cache
-        remove(self.dvc.cache.local.cache_dir)
+    caplog.clear()
+    dvc.push()
+    assert header in caplog.text
+    assert foo in caplog.text
+    assert bar in caplog.text
 
-        ret = main(["remote", "add", "remote_name", "-d", cache_dir])
-        self.assertEqual(0, ret)
+    caplog.clear()
+    dvc.fetch()
+    assert header in caplog.text
+    assert foo in caplog.text
+    assert bar in caplog.text
 
-        checksum_foo = file_md5(self.FOO)[0]
-        checksum_bar = file_md5(self.BAR)[0]
-        self.message_header = (
-            "Some of the cache files do not exist neither locally "
-            "nor on remote. Missing cache files: "
-        )
-        self.message_bar_part = "name: {}, md5: {}".format(
-            self.BAR, checksum_bar
-        )
-        self.message_foo_part = "name: {}, md5: {}".format(
-            self.FOO, checksum_foo
-        )
-
-    def test(self):
-        self._caplog.clear()
-        main(["push"])
-        assert self.message_header in self._caplog.text
-        assert self.message_foo_part in self._caplog.text
-        assert self.message_bar_part in self._caplog.text
-
-        self._caplog.clear()
-        main(["pull"])
-        assert self.message_header in self._caplog.text
-        assert self.message_foo_part in self._caplog.text
-        assert self.message_bar_part in self._caplog.text
-
-        self._caplog.clear()
-        main(["status", "-c"])
-        assert self.message_header in self._caplog.text
-        assert self.message_foo_part in self._caplog.text
-        assert self.message_bar_part in self._caplog.text
+    caplog.clear()
+    dvc.status(cloud=True)
+    assert header in caplog.text
+    assert foo in caplog.text
+    assert bar in caplog.text
 
 
 def test_verify_hashes(

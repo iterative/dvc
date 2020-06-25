@@ -1,4 +1,5 @@
 import logging
+from abc import ABC, abstractmethod
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ def append_doc_link(help_message, path):
     )
 
 
-class CmdBase:
+class CmdBase(ABC):
     def __init__(self, args):
         from dvc.repo import Repo
         from dvc.updater import Updater
@@ -46,11 +47,11 @@ class CmdBase:
         logger.debug(f"assuming default target '{PIPELINE_FILE}'.")
         return [PIPELINE_FILE]
 
-    # Abstract methods that have to be implemented by any inheritance class
+    @abstractmethod
     def run(self):
-        raise NotImplementedError
+        pass
 
 
 class CmdBaseNoRepo(CmdBase):
-    def __init__(self, args):
+    def __init__(self, args):  # pylint: disable=super-init-not-called
         self.args = args

@@ -12,7 +12,7 @@ from dvc.scheme import Schemes
 logger = logging.getLogger(__name__)
 
 
-class OSSRemoteTree(BaseRemoteTree):
+class OSSRemoteTree(BaseRemoteTree):  # pylint:disable=abstract-method
     """
     oss2 document:
     https://www.alibabacloud.com/help/doc-detail/32026.htm

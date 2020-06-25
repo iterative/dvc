@@ -91,7 +91,6 @@ easy_install.ScriptWriter.get_args = get_args
 
 def main():
     import os
-    import re
     import shutil
     import sys
 

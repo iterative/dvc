@@ -30,13 +30,13 @@ class GDrive(Base):
         tree._gdrive_create_dir("root", tree.path_info.path)
 
     @staticmethod
-    def get_storagepath():
+    def _get_storagepath():
         return TEST_GDRIVE_REPO_BUCKET + "/" + str(uuid.uuid4())
 
     @staticmethod
     def get_url():
         # NOTE: `get_url` should always return new random url
-        return "gdrive://" + GDrive.get_storagepath()
+        return "gdrive://" + GDrive._get_storagepath()
 
 
 @pytest.fixture

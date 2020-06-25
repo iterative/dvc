@@ -7,10 +7,6 @@ class Base:
         return True
 
     @staticmethod
-    def get_storagepath():
-        raise NotImplementedError
-
-    @staticmethod
     def get_url():
         raise NotImplementedError
 

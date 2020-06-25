@@ -62,7 +62,7 @@ class Updater:  # pragma: no cover
             try:
                 info = json.load(fobj)
                 self.latest = info["version"]
-            except Exception as exc:
+            except Exception as exc:  # pylint: disable=broad-except
                 msg = "'{}' is not a valid json: {}"
                 logger.debug(msg.format(self.updater_file, exc))
                 self.fetch()

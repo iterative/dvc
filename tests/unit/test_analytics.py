@@ -24,11 +24,8 @@ def test_collect_and_send_report(mock_json, mock_daemon, tmp_global_dir):
     analytics.collect_and_send_report()
     report = mock_json.call_args[0][0]
 
-    with pytest.raises(KeyError):
-        report["cmd_class"]
-
-    with pytest.raises(KeyError):
-        report["cmd_return_code"]
+    assert not report.get("cmd_class")
+    assert not report.get("cmd_return_code")
 
     args = parse_args(["add", "foo"])
     return_code = 0

@@ -88,7 +88,9 @@ class HardlinkLock(flufl.lock.Lock):
         tmp_dir (str): a directory to store claim files.
     """
 
-    def __init__(self, lockfile, tmp_dir=None, **kwargs):
+    def __init__(
+        self, lockfile, tmp_dir=None, **kwargs
+    ):  # pylint: disable=super-init-not-called
         import socket
 
         self._tmp_dir = tmp_dir

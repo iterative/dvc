@@ -53,9 +53,9 @@ def _ls(repo, path_info, recursive=None, dvc_only=False):
     def onerror(exc):
         raise exc
 
-    # use our own RepoTree instance instead of repo.repo_tree since we do not
-    # want fetch/stream enabled for ls
-    tree = RepoTree(repo)
+    # use our own RepoTree instance instead of repo.repo_tree since we want to
+    # fetch directory listings, but don't want to fetch file contents.
+    tree = RepoTree(repo, stream=True)
 
     ret = {}
     try:

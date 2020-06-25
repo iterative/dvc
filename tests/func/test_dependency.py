@@ -17,4 +17,5 @@ def _get_dep(dvc, path):
 
 @pytest.mark.parametrize("url,scheme", TESTS)
 def test_scheme(dvc, url, scheme):
+    # pylint: disable=unidiomatic-typecheck
     assert type(_get_dep(dvc, url)) == DEP_MAP[scheme]

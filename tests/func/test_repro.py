@@ -1131,9 +1131,7 @@ class TestReproExternalSSH(SSH, TestReproExternalBase):
             except OSError:
                 pass
 
-            stdin, stdout, stderr = ssh.exec_command(
-                f"mkdir -p $(dirname {path})"
-            )
+            _, stdout, _ = ssh.exec_command(f"mkdir -p $(dirname {path})")
             self.assertEqual(stdout.channel.recv_exit_status(), 0)
 
             with sftp.open(path, "w+") as fobj:

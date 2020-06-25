@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 def _joint_status(stages):
-    status = {}
+    status_info = {}
 
     for stage in stages:
         if stage.frozen and not stage.is_repo_import:
@@ -20,9 +20,9 @@ def _joint_status(stages):
                 " not going to be shown in the status output.".format(stage)
             )
 
-        status.update(stage.status(check_updates=True))
+        status_info.update(stage.status(check_updates=True))
 
-    return status
+    return status_info
 
 
 def _local_status(self, targets=None, with_deps=False, recursive=False):
@@ -92,13 +92,13 @@ def _cloud_status(
     status_info = self.cloud.status(used, jobs, remote=remote)
     for info in status_info.values():
         name = info["name"]
-        status = info["status"]
-        if status in [cloud.STATUS_OK, cloud.STATUS_MISSING]:
+        status_ = info["status"]
+        if status_ in [cloud.STATUS_OK, cloud.STATUS_MISSING]:
             continue
 
         prefix_map = {cloud.STATUS_DELETED: "deleted", cloud.STATUS_NEW: "new"}
 
-        ret[name] = prefix_map[status]
+        ret[name] = prefix_map[status_]
 
     return ret
 
