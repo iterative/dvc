@@ -715,12 +715,12 @@ class LocalCache(CloudCache):
             if info["status"] == STATUS_MISSING
         ]
         if missing_caches:
-            missing_desc = "".join(
-                "\nname: {}, md5: {}".format(info["name"], md5)
+            missing_desc = "\n".join(
+                "name: {}, md5: {}".format(info["name"], md5)
                 for md5, info in missing_caches
             )
             msg = (
                 "Some of the cache files do not exist neither locally "
-                "nor on remote. Missing cache files: {}".format(missing_desc)
+                "nor on remote. Missing cache files:\n{}".format(missing_desc)
             )
             logger.warning(msg)
