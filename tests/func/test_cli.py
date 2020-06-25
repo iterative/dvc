@@ -2,7 +2,6 @@ import filecmp
 import os
 import shutil
 
-from dvc.main import main
 from dvc.cli import parse_args
 from dvc.command.add import CmdAdd
 from dvc.command.base import CmdBase
@@ -227,5 +226,3 @@ class test_chdir(TestDvc):
         self.assertTrue(filecmp.cmp(foo, self.FOO, shallow=False))
         self.assertTrue(filecmp.cmp(bar, self.BAR, shallow=False))
         self.assertTrue(filecmp.cmp(code, self.CODE, shallow=False))
-
-

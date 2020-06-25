@@ -803,6 +803,7 @@ class TestCmdRepro(TestReproChangedData):
         ret = main(["repro", "non-existing-file"])
         self.assertNotEqual(ret, 0)
 
+
 class TestReproExternalBase(SingleStageRun, TestDvc):
     cache_type = None
 
