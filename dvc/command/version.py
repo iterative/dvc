@@ -29,11 +29,9 @@ class CmdVersion(CmdBaseNoRepo):
 
         info = [
             f"DVC version: {__version__}",
-            f"Python version: {platform.python_version()}",
-            f"Platform: {platform.platform()}",
-            f"Binary: {is_binary()}",
-            f"Package: {PKG}",
-            f"Supported remotes: {self.get_supported_remotes()}",
+            "--------------------------------- \n",
+            f"Build Info: Python {platform.python_version()} on {platform.platform()} installed via {PKG}",
+            f"Supports: {self.get_supported_remotes()}",
         ]
 
         try:
@@ -46,13 +44,11 @@ class CmdVersion(CmdBaseNoRepo):
             # `dvc config cache.shared group`.
             if os.path.exists(repo.cache.local.cache_dir):
                 info.append(
-                    "Cache: {}".format(self.get_linktype_support_info(repo))
+                    "Cache types: " + self.get_linktype_support_info(repo)
                 )
                 if psutil:
                     fs_type = self.get_fs_type(repo.cache.local.cache_dir)
-                    info.append(
-                        f"Filesystem type (cache directory): {fs_type}"
-                    )
+                    info.append(f"Directory cache: {fs_type}")
             else:
                 logger.warning(
                     "Unable to detect supported link types, as cache "
@@ -72,7 +68,7 @@ class CmdVersion(CmdBaseNoRepo):
 
         if psutil:
             fs_root = self.get_fs_type(os.path.abspath(root_directory))
-            info.append(f"Filesystem type (workspace): {fs_root}")
+            info.append(f"Workspace with {fs_root}")
 
         logger.info("\n".join(info))
         return 0
@@ -80,7 +76,7 @@ class CmdVersion(CmdBaseNoRepo):
     @staticmethod
     def get_fs_type(path):
         partition = {
-            pathlib.Path(part.mountpoint): (part.fstype, part.device)
+            pathlib.Path(part.mountpoint): (part.fstype + " on " + part.device)
             for part in psutil.disk_partitions(all=True)
         }
 
@@ -115,10 +111,12 @@ class CmdVersion(CmdBaseNoRepo):
                 os.unlink(dst)
             except DvcException:
                 status = "not supported"
-            cache.append(f"{name} - {status}")
+
+            if status == "supported":
+                cache.append(f"{name}")
         os.remove(src)
 
-        return ", ".join(cache)
+        return "/".join(cache)
 
     @staticmethod
     def get_supported_remotes():
@@ -129,7 +127,12 @@ class CmdVersion(CmdBaseNoRepo):
             if not tree_cls.get_missing_deps():
                 supported_remotes.append(tree_cls.scheme)
 
-        return ", ".join(supported_remotes)
+        if supported_remotes.__len__() == 9:
+            return "All remotes"
+        elif supported_remotes.__len__() == 1:
+            return supported_remotes
+        else:
+            return ", ".join(supported_remotes)
 
 
 def _get_dvc_repo_info(repo):
@@ -139,7 +142,7 @@ def _get_dvc_repo_info(repo):
     if repo.root_dir != repo.scm.root_dir:
         return "dvc (subdir), git"
 
-    return "dvc, git"
+    return "dvc + git"
 
 
 def add_parser(subparsers, parent_parser):
