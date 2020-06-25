@@ -14,7 +14,7 @@ class NotAPlotError(DvcException):
     def __init__(self, out):
         super().__init__(
             f"'{out}' is not a known plot. Use `dvc plots modify` to turn it "
-            f"into one."
+            "into one."
         )
 
 
