@@ -66,7 +66,7 @@ class RemoteIndex:
     INDEX_SUFFIX = ".idx"
     VERSION = 1
     INDEX_TABLE = "remote_index"
-    INDEX_TABLE_LAYOUT = "checksum TEXT PRIMARY KEY, " "dir INTEGER NOT NULL"
+    INDEX_TABLE_LAYOUT = "checksum TEXT PRIMARY KEY, dir INTEGER NOT NULL"
 
     def __init__(self, repo, name, dir_suffix=".dir"):
         self.path = os.path.join(repo.index_dir, f"{name}{self.INDEX_SUFFIX}")

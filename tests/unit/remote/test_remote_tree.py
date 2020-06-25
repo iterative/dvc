@@ -29,9 +29,9 @@ FILE_WITH_CONTENTS = {
 def remote(request, dvc):
     if not request.param.should_test():
         raise pytest.skip()
-    with request.param.remote(dvc) as remote:
-        request.param.put_objects(remote, FILE_WITH_CONTENTS)
-        yield remote
+    with request.param.remote(dvc) as _remote:
+        request.param.put_objects(_remote, FILE_WITH_CONTENTS)
+        yield _remote
 
 
 @pytest.mark.parametrize("remote", remotes, indirect=True)

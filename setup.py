@@ -128,6 +128,7 @@ tests_requirements = [
     "flake8-comprehensions",
     "flake8-string-format",
     "pylint",
+    "pylint-pytest",
 ]
 
 if (sys.version_info) >= (3, 6):

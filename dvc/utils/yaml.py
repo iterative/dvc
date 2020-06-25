@@ -1,6 +1,5 @@
 from collections import OrderedDict
 
-import yaml
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
 
@@ -19,6 +18,8 @@ def load_yaml(path):
 
 def parse_yaml(text, path):
     try:
+        import yaml
+
         return yaml.load(text, Loader=SafeLoader) or {}
     except yaml.error.YAMLError as exc:
         raise YAMLFileCorruptedError(path) from exc

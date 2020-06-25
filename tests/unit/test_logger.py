@@ -29,6 +29,7 @@ def dt(mocker):
 
 
 class TestColorFormatter:
+    # pylint: disable=broad-except
     def test_debug(self, caplog, dt):
         with caplog.at_level(logging.DEBUG, logger="dvc"):
             logger.debug("message")

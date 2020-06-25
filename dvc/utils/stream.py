@@ -4,7 +4,7 @@ import io
 class IterStream(io.RawIOBase):
     """Wraps an iterator yielding bytes as a file object"""
 
-    def __init__(self, iterator):
+    def __init__(self, iterator):  # pylint: disable=super-init-not-called
         self.iterator = iterator
         self.leftover = None
 

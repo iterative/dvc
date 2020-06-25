@@ -8,11 +8,11 @@ from dvc.remote.index import RemoteIndex
 
 @pytest.fixture(scope="function")
 def index(dvc):
-    index = RemoteIndex(dvc, "foo")
-    index.load()
-    yield index
-    index.dump()
-    os.unlink(index.path)
+    idx = RemoteIndex(dvc, "foo")
+    idx.load()
+    yield idx
+    idx.dump()
+    os.unlink(idx.path)
 
 
 def test_init(dvc, index):

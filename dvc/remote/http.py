@@ -23,7 +23,7 @@ def ask_password(host, user):
     )
 
 
-class HTTPRemoteTree(BaseRemoteTree):
+class HTTPRemoteTree(BaseRemoteTree):  # pylint:disable=abstract-method
     scheme = Schemes.HTTP
     PATH_CLS = HTTPURLInfo
     PARAM_CHECKSUM = "etag"

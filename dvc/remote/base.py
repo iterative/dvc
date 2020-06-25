@@ -270,10 +270,10 @@ class BaseRemoteTree:
             return None
 
         if tree == self:
+            # pylint: disable=assignment-from-none
             hash_ = self.state.get(path_info)
         else:
             hash_ = None
-
         # If we have dir hash in state db, but dir cache file is lost,
         # then we need to recollect the dir via .get_dir_hash() call below,
         # see https://github.com/iterative/dvc/issues/2219 for context

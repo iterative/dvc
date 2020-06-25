@@ -16,6 +16,8 @@ class HDFS(Base):
             return False
 
         try:
+            # pylint: disable=unexpected-keyword-arg
+            # see: https://github.com/PyCQA/pylint/issues/3645
             check_output(
                 ["hadoop", "version"],
                 shell=True,

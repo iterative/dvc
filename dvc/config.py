@@ -231,7 +231,9 @@ class Config(dict):
     CONFIG = "config"
     CONFIG_LOCAL = "config.local"
 
-    def __init__(self, dvc_dir=None, validate=True):
+    def __init__(
+        self, dvc_dir=None, validate=True
+    ):  # pylint: disable=super-init-not-called
         self.dvc_dir = dvc_dir
 
         if not dvc_dir:

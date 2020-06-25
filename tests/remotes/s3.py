@@ -29,12 +29,12 @@ class S3(Base):
         return False
 
     @staticmethod
-    def get_storagepath():
+    def _get_storagepath():
         return TEST_AWS_REPO_BUCKET + "/" + str(uuid.uuid4())
 
     @staticmethod
     def get_url():
-        return "s3://" + S3.get_storagepath()
+        return "s3://" + S3._get_storagepath()
 
 
 @pytest.fixture
@@ -59,10 +59,10 @@ class S3Mocked(S3):
 
     @staticmethod
     def put_objects(remote, objects):
-        s3 = remote.tree.s3
+        client = remote.tree.s3
         bucket = remote.path_info.bucket
-        s3.create_bucket(Bucket=bucket)
+        client.create_bucket(Bucket=bucket)
         for key, body in objects.items():
-            s3.put_object(
+            client.put_object(
                 Bucket=bucket, Key=(remote.path_info / key).path, Body=body
             )

@@ -27,7 +27,7 @@ def test_init(dvc):
 def test_gs(mock_client, dvc):
     tree = GSRemoteTree(dvc, CONFIG)
     assert tree.credentialpath
-    tree.gs()
+    assert tree.gs
     mock_client.assert_called_once_with(CREDENTIALPATH)
 
 
@@ -36,7 +36,7 @@ def test_gs_no_credspath(mock_client, dvc):
     config = CONFIG.copy()
     del config["credentialpath"]
     tree = GSRemoteTree(dvc, config)
-    tree.gs()
+    assert tree.gs
     mock_client.assert_called_with(PROJECT)
 
 
