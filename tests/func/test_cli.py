@@ -17,6 +17,7 @@ from dvc.command.status import CmdDataStatus
 from dvc.exceptions import DvcException, DvcParserError
 from tests.basic_env import TestDvc
 
+
 class TestArgParse(TestDvc):
     def test(self):
         args = parse_args(["init"])

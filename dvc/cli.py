@@ -140,8 +140,12 @@ def get_parent_parser():
         "-v", "--verbose", action="count", default=0, help="Be verbose."
     )
     parent_parser.add_argument(
-        "-C", "--cwd", default=os.path.curdir, metavar="<path>",
-        help="Directory to execute command from.")
+        "-C",
+        "--cwd",
+        default=os.path.curdir,
+        metavar="<path>",
+        help="Directory to execute command from.",
+    )
     return parent_parser
 
 
