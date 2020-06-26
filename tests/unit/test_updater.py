@@ -68,19 +68,21 @@ def test_check_updates(mock_tty, updater, caplog, current, latest, notify):
         assert not caplog.text
 
 
-@mock.patch("time.time", return_value=time.time() + 24 * 60 * 60 + 10)
-def test_check_refetches_each_day(
-    mock_time, mock_tty, updater, caplog, mocker
-):
+def test_check_refetches_each_day(mock_tty, updater, caplog, mocker):
     updater.current = "0.0.8"
     with open(updater.updater_file, "w+") as f:
         json.dump({"version": "0.0.9"}, f)
     fetch = mocker.patch.object(updater, "fetch")
+
+    time_value = time.time() + 24 * 60 * 60 + 10
+    mock_time = mocker.patch("time.time", return_value=time_value)
+
     caplog.clear()
     with caplog.at_level(logging.INFO, logger="dvc.updater"):
         updater.check()
     assert not caplog.text
     fetch.assert_called_once()
+    mock_time.assert_called()
 
 
 def test_check_fetches_on_invalid_data_format(
