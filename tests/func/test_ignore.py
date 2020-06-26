@@ -8,6 +8,7 @@ from dvc.ignore import (
     DvcIgnore,
     DvcIgnoreDirs,
     DvcIgnorePatterns,
+    DvcIgnorePatternsTrie,
     DvcIgnoreRepo,
 )
 from dvc.repo import Repo
@@ -98,12 +99,22 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
 
     assert len(dvc.tree.dvcignore.ignores) == 3
     assert DvcIgnoreDirs([".git", ".hg", ".dvc"]) in dvc.tree.dvcignore.ignores
+    ignore_pattern_trie = None
+    for ignore in dvc.tree.dvcignore.ignores:
+        if isinstance(ignore, DvcIgnorePatternsTrie):
+            ignore_pattern_trie = ignore
+
+    print(os.fspath(top_ignore_file))
+    print(os.fspath(ignore_file))
+
+    assert ignore_pattern_trie is not None
     assert (
-        DvcIgnorePatterns(
+        DvcIgnorePatterns.from_files(
             os.fspath(top_ignore_file), WorkingTree(dvc.root_dir)
         )
-        in dvc.tree.dvcignore.ignores
+        == ignore_pattern_trie[os.fspath(ignore_file)]
     )
+
     assert any(
         i for i in dvc.tree.dvcignore.ignores if isinstance(i, DvcIgnoreRepo)
     )
