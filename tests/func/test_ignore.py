@@ -184,3 +184,14 @@ def test_ignore_blank_line(tmp_dir, dvc):
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "foo\n\ndir/ignored")
 
     assert _files_set("dir", dvc.tree) == {"dir/other"}
+
+
+def test_multi_ignore_file(tmp_dir, dvc, monkeypatch):
+    tmp_dir.gen({"dir": {"subdir": {"should_ignore": "1", "not_ignore": "1"}}})
+    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir/subdir/*_ignore")
+    tmp_dir.gen({"dir": {DvcIgnore.DVCIGNORE_FILE: "!subdir/not_ignore"}})
+
+    assert _files_set("dir", dvc.tree) == {
+        "dir/subdir/not_ignore",
+        "dir/{}".format(DvcIgnore.DVCIGNORE_FILE),
+    }
