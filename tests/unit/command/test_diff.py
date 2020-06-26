@@ -114,7 +114,7 @@ def test_no_changes(mocker, caplog):
 
 
 def test_show_md_empty():
-    assert _show_md({}) == ("| Status   | Path   |\n" "|----------|--------|")
+    assert _show_md({}) == ("| Status   | Path   |\n|----------|--------|\n")
 
 
 def test_show_md():
@@ -138,5 +138,5 @@ def test_show_md():
         "| deleted  | data{sep}bar |\n"
         "| deleted  | data{sep}foo |\n"
         "| deleted  | zoo      |\n"
-        "| modified | file     |"
+        "| modified | file     |\n"
     ).format(sep=os.path.sep)

@@ -171,7 +171,8 @@ def test_metrics_diff_markdown_empty():
     assert _show_diff({}, markdown=True) == textwrap.dedent(
         """\
         | Path   | Metric   | Value   | Change   |
-        |--------|----------|---------|----------|"""
+        |--------|----------|---------|----------|
+        """
     )
 
 
@@ -191,7 +192,8 @@ def test_metrics_diff_markdown():
         |--------------|----------|---------|--------------------|
         | metrics.yaml | a.b.c    | 2       | 1                  |
         | metrics.yaml | a.d.e    | 4       | 1                  |
-        | metrics.yaml | x.b      | 6       | diff not supported |"""
+        | metrics.yaml | x.b      | 6       | diff not supported |
+        """
     )
 
 
