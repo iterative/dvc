@@ -78,7 +78,7 @@ class SSHMocked(Base):
         }
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture
 def ssh_server():
     import mockssh
 

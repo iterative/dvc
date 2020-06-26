@@ -47,9 +47,9 @@ def test_fetch(mock_get, updater):
 @pytest.mark.parametrize(
     "current,latest,notify",
     [
-        ("1.0.1", "1.0.1", False),
-        ("1.0.1", "1.0.2", True),
-        ("1.0.1", "1.0.0", False),
+        ("0.0.2", "0.0.2", False),
+        ("0.0.2", "0.0.3", True),
+        ("0.0.2", "0.0.1", False),
     ],
     ids=["uptodate", "behind", "ahead"],
 )
@@ -68,14 +68,15 @@ def test_check_updates(mock_tty, updater, caplog, current, latest, notify):
         assert not caplog.text
 
 
-@mock.patch("time.time", return_value=time.time() + 24 * 60 * 60 + 1)
+@mock.patch("time.time", return_value=time.time() + 24 * 60 * 60 + 10)
 def test_check_refetches_each_day(
     mock_time, mock_tty, updater, caplog, mocker
 ):
-    updater.current = "1.0.1"
+    updater.current = "0.0.8"
     with open(updater.updater_file, "w+") as f:
-        json.dump({"version": "1.0.2"}, f)
+        json.dump({"version": "0.0.9"}, f)
     fetch = mocker.patch.object(updater, "fetch")
+    caplog.clear()
     with caplog.at_level(logging.INFO, logger="dvc.updater"):
         updater.check()
     assert not caplog.text
@@ -85,10 +86,11 @@ def test_check_refetches_each_day(
 def test_check_fetches_on_invalid_data_format(
     mock_tty, updater, caplog, mocker
 ):
-    updater.current = "1.0.1"
+    updater.current = "0.0.5"
     with open(updater.updater_file, "w+") as f:
-        f.write('"{"version: "1.0.2"')
+        f.write('"{"version: "0.0.6"')
     fetch = mocker.patch.object(updater, "fetch")
+    caplog.clear()
     with caplog.at_level(logging.INFO, logger="dvc.updater"):
         updater.check()
     assert not caplog.text
