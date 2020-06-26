@@ -61,15 +61,15 @@ class Updater:  # pragma: no cover
 
             try:
                 info = json.load(fobj)
-                self.latest = info["version"]
+                latest = info["version"]
             except Exception as exc:  # pylint: disable=broad-except
                 msg = "'{}' is not a valid json: {}"
                 logger.debug(msg.format(self.updater_file, exc))
                 self.fetch()
                 return
 
-        if self._is_outdated():
-            self._notify()
+        if version.parse(self.current) < version.parse(latest):
+            self._notify(latest)
 
     def fetch(self, detach=True):
         from dvc.daemon import daemon
@@ -85,8 +85,8 @@ class Updater:  # pragma: no cover
         import requests
 
         try:
-            r = requests.get(self.URL, timeout=self.TIMEOUT_GET)
-            info = r.json()
+            resp = requests.get(self.URL, timeout=self.TIMEOUT_GET)
+            info = resp.json()
         except requests.exceptions.RequestException as exc:
             msg = "Failed to retrieve latest version: {}"
             logger.debug(msg.format(exc))
@@ -95,10 +95,7 @@ class Updater:  # pragma: no cover
         with open(self.updater_file, "w+") as fobj:
             json.dump(info, fobj)
 
-    def _is_outdated(self):
-        return version.parse(self.current) < version.parse(self.latest)
-
-    def _notify(self):
+    def _notify(self, latest):
         if not sys.stdout.isatty():
             return
 
@@ -113,7 +110,7 @@ class Updater:  # pragma: no cover
             yellow=colorama.Fore.YELLOW,
             blue=colorama.Fore.BLUE,
             current=self.current,
-            latest=self.latest,
+            latest=latest,
         )
 
         logger.info(boxify(message, border_color="yellow"))
