@@ -10,7 +10,6 @@ from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.exceptions import DvcException, NotDvcRepoError
 from dvc.scm.base import SCMError
 from dvc.system import System
-from dvc.utils import is_binary, relpath
 from dvc.utils.pkg import PKG
 from dvc.version import __version__
 
@@ -30,7 +29,8 @@ class CmdVersion(CmdBaseNoRepo):
         info = [
             f"DVC version: {__version__}",
             "--------------------------------- \n",
-            f"Build Info: Python {platform.python_version()} on {platform.platform()} installed via {PKG}",
+            f"Build Info: Python {platform.python_version()} on "
+            f"{platform.platform()} installed via {PKG}",
             f"Supports: {self.get_supported_remotes()}",
         ]
 
@@ -113,7 +113,7 @@ class CmdVersion(CmdBaseNoRepo):
                 status = "not supported"
 
             if status == "supported":
-                cache.append(f"{name}")
+                cache.append(name)
         os.remove(src)
 
         return "/".join(cache)
@@ -127,9 +127,9 @@ class CmdVersion(CmdBaseNoRepo):
             if not tree_cls.get_missing_deps():
                 supported_remotes.append(tree_cls.scheme)
 
-        if supported_remotes.__len__() == 9:
+        if len(supported_remotes) == len(TREES):
             return "All remotes"
-        elif supported_remotes.__len__() == 1:
+        elif len(supported_remotes) == 1:
             return supported_remotes
         else:
             return ", ".join(supported_remotes)
