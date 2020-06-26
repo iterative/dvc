@@ -129,7 +129,8 @@ def test_params_diff_markdown_empty():
     assert _show_diff({}, markdown=True) == textwrap.dedent(
         """\
         | Path   | Param   | Old   | New   |
-        |--------|---------|-------|-------|"""
+        |--------|---------|-------|-------|
+        """
     )
 
 
@@ -149,7 +150,8 @@ def test_params_diff_markdown():
         |-------------|---------|-------|-------|
         | params.yaml | a.b.c   | 1     | None  |
         | params.yaml | a.d.e   | None  | 4     |
-        | params.yaml | x.b     | 5     | 6     |"""
+        | params.yaml | x.b     | 5     | 6     |
+        """
     )
 
 

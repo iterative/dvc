@@ -91,7 +91,7 @@ def table(header, rows, markdown=False):
     if not rows and not markdown:
         return ""
 
-    return tabulate(
+    ret = tabulate(
         rows,
         header,
         tablefmt="github" if markdown else "plain",
@@ -99,6 +99,12 @@ def table(header, rows, markdown=False):
         # None will be shown as "" by default, overriding
         missingval="None",
     )
+
+    if markdown:
+        # NOTE: md table is incomplete without the trailing newline
+        ret += "\n"
+
+    return ret
 
 
 def format_dict(d):
