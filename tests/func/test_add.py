@@ -359,27 +359,26 @@ class SymlinkAddTestBase(TestDvc):
     def _prepare_external_data(self):
         data_dir = self._get_data_dir()
 
-        self.data_file_name = "data_file"
-        external_data_path = os.path.join(data_dir, self.data_file_name)
+        data_file_name = "data_file"
+        external_data_path = os.path.join(data_dir, data_file_name)
         with open(external_data_path, "w+") as f:
             f.write("data")
 
-        self.link_name = "data_link"
-        System.symlink(data_dir, self.link_name)
+        link_name = "data_link"
+        System.symlink(data_dir, link_name)
+        return data_file_name, link_name
 
     def _test(self):
-        self._prepare_external_data()
+        data_file_name, link_name = self._prepare_external_data()
 
-        ret = main(["add", os.path.join(self.link_name, self.data_file_name)])
+        ret = main(["add", os.path.join(link_name, data_file_name)])
         self.assertEqual(0, ret)
 
-        stage_file = self.data_file_name + DVC_FILE_SUFFIX
+        stage_file = data_file_name + DVC_FILE_SUFFIX
         self.assertTrue(os.path.exists(stage_file))
 
         d = load_yaml(stage_file)
-        relative_data_path = posixpath.join(
-            self.link_name, self.data_file_name
-        )
+        relative_data_path = posixpath.join(link_name, data_file_name)
         self.assertEqual(relative_data_path, d["outs"][0]["path"])
 
 

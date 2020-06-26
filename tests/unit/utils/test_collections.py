@@ -12,7 +12,7 @@ class MyInt(int):
 
 def test_apply_diff_is_inplace():
     dest = MyDict()
-    dest.attr = 42
+    dest.attr = 42  # pylint: disable=attribute-defined-outside-init
     apply_diff({}, dest)
 
     assert type(dest) is MyDict, "Preserves class"

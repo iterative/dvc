@@ -1,3 +1,4 @@
+# pylint: disable=cyclic-import
 import pytest
 
 from tests.basic_env import TestDvc

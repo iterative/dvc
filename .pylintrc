@@ -149,8 +149,11 @@ disable=format,
         exception-escape,
         comprehension-escape,
         # custom disables start here
+        protected-access,  # needs-refactor
+        no-self-use,
         invalid-name,
         blacklisted-name,
+        # already a check enabled for `wildcard-import`
         unused-wildcard-import,
         misplaced-comparison-constant,
         # probably soon: https://github.com/iterative/dvc/issues/1843
@@ -162,21 +165,21 @@ disable=format,
         missing-module-docstring,
         missing-class-docstring,
         duplicate-code,
+        # too noisy, and detects issues even when import is inside a function
+        # see: https://github.com/PyCQA/pylint/issues/850
         cyclic-import,
-        wrong-import-order,  # using isort
-        wrong-import-position, # using isort
-        ungrouped-imports, # using isort
-        multiple-imports,  # isort
-        import-outside-toplevel, # we use it to speedup/optimize
+        # isort should cover these:
+        wrong-import-order,
+        wrong-import-position,
+        ungrouped-imports,
+        multiple-imports,
+        # we use it to speedup/optimize
+        import-outside-toplevel,
         fixme,
-        # Enabling these soon:
-        attribute-defined-outside-init,  # needs-refactor
-        # Enabling someday:
-        no-member,  # needs-refactor
-        unused-argument, # need to cleanup
-        protected-access,  # needs-refactor
+        # Enabling soon:
+        no-member,
+        unused-argument,
         arguments-differ,
-        no-self-use,
 
 
 # Enable the message, report, category or checker with the given id(s). You can

@@ -46,13 +46,14 @@ class TestDirFixture:
     def __init__(self):
         root_dir = self.mkdtemp()
         self._root_dir = os.path.realpath(root_dir)
+        self._saved_dir = None
 
     @property
     def root_dir(self):
         return self._root_dir
 
     def _pushd(self, d):
-        if not hasattr(self, "_saved_dir"):
+        if not self._saved_dir:
             self._saved_dir = os.path.realpath(os.curdir)
         os.chdir(d)
 
@@ -96,6 +97,7 @@ class TestDirFixture:
         try:
             remove(self._root_dir)
         except OSError as exc:
+            # pylint: disable=no-member
             # We ignore this under Windows with a warning because it happened
             # to be really hard to trace all not properly closed files.
             #
@@ -189,6 +191,7 @@ class TestDvc(TestDvcFixture, TestCase):
     def __init__(self, methodName):
         TestDvcFixture.__init__(self)
         TestCase.__init__(self, methodName)
+        self._caplog = None
 
     @pytest.fixture(autouse=True)
     def inject_fixtures(self, caplog):
@@ -199,6 +202,7 @@ class TestDvcGit(TestDvcGitFixture, TestCase):
     def __init__(self, methodName):
         TestDvcGitFixture.__init__(self)
         TestCase.__init__(self, methodName)
+        self._caplog = None
 
     @pytest.fixture(autouse=True)
     def inject_fixtures(self, caplog):

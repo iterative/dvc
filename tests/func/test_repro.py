@@ -231,27 +231,25 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
 class TestReproDepUnderDir(SingleStageRun, TestDvc):
     def test(self):
         stages = self.dvc.add(self.DATA_DIR)
-        self.assertEqual(len(stages), 1)
-        self.dir_stage = stages[0]
-        self.assertTrue(self.dir_stage is not None)
+        self.assertTrue(stages and stages[0] is not None)
 
-        self.file1 = "file1"
+        file1 = "file1"
         stage = self._run(
-            fname=self.file1 + ".dvc",
-            outs=[self.file1],
+            fname=file1 + ".dvc",
+            outs=[file1],
             deps=[self.DATA, self.CODE],
-            cmd=f"python {self.CODE} {self.DATA} {self.file1}",
+            cmd=f"python {self.CODE} {self.DATA} {file1}",
             name="copy-data-file1",
         )
 
-        self.assertTrue(filecmp.cmp(self.file1, self.DATA, shallow=False))
+        self.assertTrue(filecmp.cmp(file1, self.DATA, shallow=False))
 
         os.unlink(self.DATA)
         shutil.copyfile(self.FOO, self.DATA)
 
         stages = self.dvc.reproduce(self._get_stage_target(stage))
         self.assertEqual(len(stages), 2)
-        self.assertTrue(filecmp.cmp(self.file1, self.FOO, shallow=False))
+        self.assertTrue(filecmp.cmp(file1, self.FOO, shallow=False))
 
 
 class TestReproDepDirWithOutputsUnderIt(SingleStageRun, TestDvc):
