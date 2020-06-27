@@ -30,9 +30,10 @@ class DvcIgnorePatterns(DvcIgnore):
         self.dirname = dirname
         self.prefix = self.dirname + os.sep
 
-        regex_pattern_list = map(
-            GitWildMatchPattern.pattern_to_regex, pattern_list
+        regex_pattern_list = list(
+            map(GitWildMatchPattern.pattern_to_regex, pattern_list)
         )
+        self.regex_pattern_list = regex_pattern_list
 
         self.ignore_spec = [
             (ignore, re.compile("|".join(item[0] for item in group)))
@@ -45,7 +46,10 @@ class DvcIgnorePatterns(DvcIgnore):
         assert os.path.isabs(ignore_file_path)
         dirname = os.path.normpath(os.path.dirname(ignore_file_path))
         with tree.open(ignore_file_path, encoding="utf-8") as fobj:
-            path_spec_lines = list(map(str.strip, fobj.readlines()))
+            path_spec_lines = [
+                line for line in map(str.strip, fobj.readlines()) if line
+            ]
+
         return cls(path_spec_lines, dirname)
 
     def __call__(self, root, dirs, files):
@@ -87,6 +91,22 @@ class DvcIgnorePatterns(DvcIgnore):
             self.pattern_list == other.pattern_list
         )
 
+    def change_dirname(self, new_dirname):
+        prefix = new_dirname + os.sep
+        if new_dirname == self.dirname:
+            return self
+        if not self.dirname.startswith(prefix):
+            raise ValueError("change dirname can only change to parent path")
+        rel = self.dirname[len(prefix) :]
+        new_pattern_list = []
+        for rule in self.pattern_list:
+            if rule.startswith("!"):
+                rule = f"!{rel}{os.sep}{rule[1:]}"
+            else:
+                rule = f"{rel}{os.sep}{rule}"
+            new_pattern_list.append(rule)
+        return DvcIgnorePatterns(new_pattern_list, new_dirname)
+
     def __add__(self, other):
         if not other:
             return self
@@ -94,21 +114,27 @@ class DvcIgnorePatterns(DvcIgnore):
             return NotImplemented
         if self.prefix.startswith(other.prefix):
             return DvcIgnorePatterns(
-                self.dirname, other.pattern_list + self.pattern_list
+                other.pattern_list
+                + self.change_dirname(other.dirname).pattern_list,
+                other.dirname,
             )
-        elif other.prefix.startswith(self.prefix):
+        if other.prefix.startswith(self.prefix):
             return DvcIgnorePatterns(
-                other.dirname, self.pattern_list + other.pattern_list
+                self.pattern_list
+                + other.change_dirname(self.dirname).pattern_list,
+                self.dirname,
             )
-        else:
-            return NotImplemented
+        return NotImplemented
 
     __radd__ = __add__
 
 
 class DvcIgnorePatternsTrie(DvcIgnore):
+    trie = None
+
     def __init__(self):
-        self.trie = StringTrie(separator=os.sep)
+        if self.trie is None:
+            self.trie = StringTrie(separator=os.sep)
 
     def __new__(cls, *args, **kwargs):
         if not hasattr(DvcIgnorePatterns, "_instance"):
@@ -120,8 +146,7 @@ class DvcIgnorePatternsTrie(DvcIgnore):
         ignore_pattern = self[root]
         if ignore_pattern:
             return ignore_pattern(root, dirs, files)
-        else:
-            return dirs, files
+        return dirs, files
 
     def __setitem__(self, root, ignore_pattern):
         base_pattern = self[root]
@@ -131,8 +156,7 @@ class DvcIgnorePatternsTrie(DvcIgnore):
         ignore_pattern = self.trie.longest_prefix(root)
         if ignore_pattern:
             return ignore_pattern.value
-        else:
-            return None
+        return None
 
 
 class DvcIgnoreDirs(DvcIgnore):
@@ -306,3 +330,6 @@ class CleanTree(BaseTree):
     @property
     def hash_jobs(self):
         return self.tree.hash_jobs
+
+    def relative_path(self, abspath):
+        pass
