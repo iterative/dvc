@@ -103,6 +103,7 @@ class DvcIgnorePatterns(DvcIgnore):
                 rule = f"!{rel}{os.sep}{rule[1:]}"
             else:
                 rule = f"{rel}{os.sep}{rule}"
+            rule = normalize_file(rule)
             new_pattern_list.append(rule)
         return DvcIgnorePatterns(new_pattern_list, new_dirname)
 
