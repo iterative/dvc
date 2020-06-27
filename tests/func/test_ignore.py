@@ -195,3 +195,23 @@ def test_multi_ignore_file(tmp_dir, dvc, monkeypatch):
         "dir/subdir/not_ignore",
         "dir/{}".format(DvcIgnore.DVCIGNORE_FILE),
     }
+
+
+def test_no_ignore_in_parent_dir(tmp_dir, dvc, monkeypatch):
+    tmp_dir.gen(
+        {
+            "dir": {
+                "subdir": {"should_ignore": "1", "not_ignore": "1"},
+                "file1": "a",
+            }
+        }
+    )
+    tmp_dir.gen(
+        {"dir": {"subdir": {DvcIgnore.DVCIGNORE_FILE: "should_ignore"}}}
+    )
+
+    assert _files_set("dir", dvc.tree) == {
+        "dir/file1",
+        "dir/subdir/not_ignore",
+        "dir/subdir/{}".format(DvcIgnore.DVCIGNORE_FILE),
+    }

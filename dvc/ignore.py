@@ -90,6 +90,11 @@ class DvcIgnorePatterns(DvcIgnore):
             self.pattern_list == other.pattern_list
         )
 
+    def __bool__(self):
+        if self.pattern_list:
+            return True
+        return False
+
     def change_dirname(self, new_dirname):
         prefix = new_dirname + os.sep
         if new_dirname == self.dirname:
@@ -107,23 +112,44 @@ class DvcIgnorePatterns(DvcIgnore):
             new_pattern_list.append(rule)
         return DvcIgnorePatterns(new_pattern_list, new_dirname)
 
+    @staticmethod
+    def _longest_common_dir(dir1, dir2):
+        dir1_split = dir1.split(os.sep)
+        dir2_split = dir2.split(os.sep)
+        max_match = 0
+
+        for index, (i, j) in enumerate(zip(dir1_split, dir2_split)):
+            if i != j:
+                break
+            max_match = index
+        return os.sep.join(dir1_split[: max_match + 1])
+
     def __add__(self, other):
+        if not isinstance(other, DvcIgnorePatterns):
+            return NotImplemented
+
         if not other:
-            return self
-        if isinstance(other, DvcIgnorePatterns):
-            if self.prefix.startswith(other.prefix):
-                return DvcIgnorePatterns(
-                    other.pattern_list
-                    + self.change_dirname(other.dirname).pattern_list,
-                    other.dirname,
+            merged = self
+        elif not self:
+            merged = other
+        else:
+            longest_common_dir = self._longest_common_dir(
+                self.dirname, other.dirname
+            )
+            self_to_lcd = self.change_dirname(longest_common_dir)
+            other_to_lcd = other.change_dirname(longest_common_dir)
+            if len(self.dirname) < len(other.dirname):
+                merged = DvcIgnorePatterns(
+                    self_to_lcd.pattern_list + other_to_lcd.pattern_list,
+                    longest_common_dir,
                 )
-            if other.prefix.startswith(self.prefix):
-                return DvcIgnorePatterns(
-                    self.pattern_list
-                    + other.change_dirname(self.dirname).pattern_list,
-                    self.dirname,
+            else:
+                merged = DvcIgnorePatterns(
+                    other_to_lcd.pattern_list + self_to_lcd.pattern_list,
+                    longest_common_dir,
                 )
-        return NotImplemented
+
+        return merged
 
     __radd__ = __add__
 
@@ -155,7 +181,7 @@ class DvcIgnorePatternsTrie(DvcIgnore):
         ignore_pattern = self.trie.longest_prefix(root)
         if ignore_pattern:
             return ignore_pattern.value
-        return None
+        return DvcIgnorePatterns([], root)
 
 
 class DvcIgnoreDirs(DvcIgnore):
