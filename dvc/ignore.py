@@ -30,10 +30,9 @@ class DvcIgnorePatterns(DvcIgnore):
         self.dirname = dirname
         self.prefix = self.dirname + os.sep
 
-        regex_pattern_list = list(
-            map(GitWildMatchPattern.pattern_to_regex, pattern_list)
+        regex_pattern_list = map(
+            GitWildMatchPattern.pattern_to_regex, pattern_list
         )
-        self.regex_pattern_list = regex_pattern_list
 
         self.ignore_spec = [
             (ignore, re.compile("|".join(item[0] for item in group)))
@@ -110,20 +109,19 @@ class DvcIgnorePatterns(DvcIgnore):
     def __add__(self, other):
         if not other:
             return self
-        if not isinstance(other, DvcIgnorePatterns):
-            return NotImplemented
-        if self.prefix.startswith(other.prefix):
-            return DvcIgnorePatterns(
-                other.pattern_list
-                + self.change_dirname(other.dirname).pattern_list,
-                other.dirname,
-            )
-        if other.prefix.startswith(self.prefix):
-            return DvcIgnorePatterns(
-                self.pattern_list
-                + other.change_dirname(self.dirname).pattern_list,
-                self.dirname,
-            )
+        if isinstance(other, DvcIgnorePatterns):
+            if self.prefix.startswith(other.prefix):
+                return DvcIgnorePatterns(
+                    other.pattern_list
+                    + self.change_dirname(other.dirname).pattern_list,
+                    other.dirname,
+                )
+            if other.prefix.startswith(self.prefix):
+                return DvcIgnorePatterns(
+                    self.pattern_list
+                    + other.change_dirname(self.dirname).pattern_list,
+                    self.dirname,
+                )
         return NotImplemented
 
     __radd__ = __add__
