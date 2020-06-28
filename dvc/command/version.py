@@ -10,7 +10,7 @@ from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.exceptions import DvcException, NotDvcRepoError
 from dvc.scm.base import SCMError
 from dvc.system import System
-from dvc.utils.__init__ import relpath
+from dvc.utils import relpath
 from dvc.utils.pkg import PKG
 from dvc.version import __version__
 
