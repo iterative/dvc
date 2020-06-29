@@ -52,10 +52,9 @@ def gc(
     from contextlib import ExitStack
     from dvc.repo import Repo
 
-    all_repos = []
-
-    if repos:
-        all_repos = [Repo(path) for path in repos]
+    if not repos:
+        repos = []
+    all_repos = [Repo(path) for path in repos]
 
     with ExitStack() as stack:
         for repo in all_repos:

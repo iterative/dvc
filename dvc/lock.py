@@ -119,7 +119,7 @@ class HardlinkLock(flufl.lock.Lock):
     def lockfile(self):
         return self._lockfile
 
-    def lock(self):
+    def lock(self):  # pylint: disable=arguments-differ
         try:
             super().lock(timedelta(seconds=DEFAULT_TIMEOUT))
         except flufl.lock.TimeOutError:

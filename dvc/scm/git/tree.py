@@ -94,7 +94,7 @@ class GitTree(BaseTree):
 
         try:
             tree = self.git.tree(self.rev)
-        except git.exc.BadName as exc:
+        except git.exc.BadName as exc:  # pylint: disable=no-member
             raise DvcException(
                 "revision '{}' not found in Git '{}'".format(
                     self.rev, os.path.relpath(self.git.working_dir)

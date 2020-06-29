@@ -19,6 +19,9 @@ class CmdHookBase(CmdBaseNoRepo):
 
         return self._run()
 
+    def _run(self):
+        raise NotImplementedError
+
 
 class CmdPreCommit(CmdHookBase):
     def _run(self):

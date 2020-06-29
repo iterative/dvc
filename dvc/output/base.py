@@ -230,6 +230,8 @@ class BaseOutput:
     def isfile(self):
         return self.remote.tree.isfile(self.path_info)
 
+    # pylint: disable=no-member
+
     def ignore(self):
         if not self.use_scm_ignore:
             return
@@ -244,6 +246,8 @@ class BaseOutput:
             return
 
         self.repo.scm.ignore_remove(self.fspath)
+
+    # pylint: enable=no-member
 
     def save(self):
         if not self.exists:
@@ -346,6 +350,7 @@ class BaseOutput:
             self.ignore_remove()
 
     def move(self, out):
+        # pylint: disable=no-member
         if self.scheme == "local" and self.use_scm_ignore:
             self.repo.scm.ignore_remove(self.fspath)
 

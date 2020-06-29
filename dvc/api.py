@@ -27,7 +27,7 @@ def get_url(path, repo=None, rev=None, remote=None):
     """
     with _make_repo(repo, rev=rev) as _repo:
         if not isinstance(_repo, Repo):
-            raise UrlNotDvcRepoError(_repo.url)
+            raise UrlNotDvcRepoError(_repo.url)  # pylint: disable=no-member
         out = _repo.find_out_by_relpath(path)
         remote_obj = _repo.cloud.get_remote(remote)
         return str(remote_obj.hash_to_path_info(out.checksum))

@@ -129,6 +129,7 @@ tests_requirements = [
     "flake8-string-format",
     "pylint",
     "pylint-pytest",
+    "pylint-plugin-utils",
 ]
 
 if (sys.version_info) >= (3, 6):

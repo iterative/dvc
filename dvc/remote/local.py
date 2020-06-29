@@ -330,6 +330,7 @@ def _log_exceptions(func, operation):
         except Exception as exc:  # pylint: disable=broad-except
             # NOTE: this means we ran out of file descriptors and there is no
             # reason to try to proceed, as we will hit this error anyways.
+            # pylint: disable=no-member
             if isinstance(exc, OSError) and exc.errno == errno.EMFILE:
                 raise
 
@@ -362,7 +363,7 @@ class LocalCache(CloudCache):
         self.tree.path_info = PathInfo(value) if value else None
 
     @classmethod
-    def supported(cls, config):
+    def supported(cls, config):  # pylint: disable=unused-argument
         return True
 
     @cached_property
@@ -375,7 +376,9 @@ class LocalCache(CloudCache):
         # being ~5.5 times faster.
         return f"{self.cache_path}{os.sep}{hash_[0:2]}{os.sep}{hash_[2:]}"
 
-    def hashes_exist(self, hashes, jobs=None, name=None):
+    def hashes_exist(
+        self, hashes, jobs=None, name=None
+    ):  # pylint: disable=unused-argument
         return [
             hash_
             for hash_ in Tqdm(

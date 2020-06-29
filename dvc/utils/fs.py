@@ -108,7 +108,7 @@ def move(src, dst, mode=None):
     shutil.move(tmp, dst)
 
 
-def _chmod(func, p, excinfo):
+def _chmod(func, p, excinfo):  # pylint: disable=unused-argument
     perm = os.lstat(p).st_mode
     perm |= stat.S_IWRITE
 

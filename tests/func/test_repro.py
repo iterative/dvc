@@ -52,7 +52,7 @@ class SingleStageRun:
     def _run(self, **kwargs):
         kwargs["single_stage"] = True
         kwargs.pop("name", None)
-        return self.dvc.run(**kwargs)
+        return self.dvc.run(**kwargs)  # noqa, pylint: disable=no-member
 
     @staticmethod
     def _get_stage_target(stage):
@@ -841,7 +841,7 @@ class TestCmdReproChdir(TestDvc):
         self.assertTrue(filecmp.cmp(foo, bar, shallow=False))
 
 
-class TestReproExternalBase(SingleStageRun, TestDvc):
+class ReproExternalTestMixin(SingleStageRun, TestDvc):
     cache_type = None
 
     @staticmethod
@@ -892,7 +892,7 @@ class TestReproExternalBase(SingleStageRun, TestDvc):
                         mock_checkout.assert_called_once()
 
     @patch("dvc.prompt.confirm", return_value=True)
-    def test(self, mock_prompt):
+    def test(self, _mock_prompt):
         if not self.should_test():
             raise SkipTest(f"Test {self.__class__.__name__} is disabled")
 
@@ -998,7 +998,7 @@ class TestReproExternalBase(SingleStageRun, TestDvc):
 
 @pytest.mark.skipif(os.name == "nt", reason="temporarily disabled on windows")
 @flaky(max_runs=3, min_passes=1)
-class TestReproExternalS3(S3, TestReproExternalBase):
+class TestReproExternalS3(S3, ReproExternalTestMixin):
     @property
     def scheme(self):
         return "s3"
@@ -1015,7 +1015,7 @@ class TestReproExternalS3(S3, TestReproExternalBase):
         s3.put_object(Bucket=bucket, Key=key, Body=body)
 
 
-class TestReproExternalGS(GCP, TestReproExternalBase):
+class TestReproExternalGS(GCP, ReproExternalTestMixin):
     @property
     def scheme(self):
         return "gs"
@@ -1033,7 +1033,7 @@ class TestReproExternalGS(GCP, TestReproExternalBase):
         bucket.blob(key).upload_from_string(body)
 
 
-class TestReproExternalHDFS(HDFS, TestReproExternalBase):
+class TestReproExternalHDFS(HDFS, ReproExternalTestMixin):
     @property
     def scheme(self):
         return "hdfs"
@@ -1090,7 +1090,7 @@ class TestReproExternalHDFS(HDFS, TestReproExternalBase):
 
 
 @flaky(max_runs=5, min_passes=1)
-class TestReproExternalSSH(SSH, TestReproExternalBase):
+class TestReproExternalSSH(SSH, ReproExternalTestMixin):
     _dir = None
     cache_type = "copy"
 
@@ -1111,7 +1111,7 @@ class TestReproExternalSSH(SSH, TestReproExternalBase):
         o = o[len(prefix) :]
         return f"scp {i} {o}"
 
-    def write(self, bucket, key, body):
+    def write(self, _, key, body):
         path = posixpath.join(self._dir, key)
 
         ssh = None
@@ -1141,7 +1141,7 @@ class TestReproExternalSSH(SSH, TestReproExternalBase):
                 ssh.close()
 
 
-class TestReproExternalLOCAL(Local, TestReproExternalBase):
+class TestReproExternalLOCAL(Local, ReproExternalTestMixin):
     cache_type = "hardlink"
 
     def setUp(self):
@@ -1187,7 +1187,7 @@ class TestReproExternalLOCAL(Local, TestReproExternalBase):
             fd.write(body)
 
 
-class TestReproExternalHTTP(TestReproExternalBase):
+class TestReproExternalHTTP(ReproExternalTestMixin):
     _external_cache_id = None
 
     @staticmethod
@@ -1198,7 +1198,7 @@ class TestReproExternalHTTP(TestReproExternalBase):
     def local_cache(self):
         return os.path.join(self.dvc.dvc_dir, "cache")
 
-    def test(self):
+    def test(self):  # pylint: disable=arguments-differ
         # Import
         with StaticFileServer() as httpd:
             import_url = urljoin(self.get_remote(httpd.server_port), self.FOO)

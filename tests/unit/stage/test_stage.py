@@ -76,7 +76,10 @@ def test_stage_update(mocker):
 
 
 @pytest.mark.skipif(
-    not isinstance(threading.current_thread(), threading._MainThread),
+    not isinstance(
+        threading.current_thread(),
+        threading._MainThread,  # noqa, pylint: disable=protected-access
+    ),
     reason="Not running in the main thread.",
 )
 def test_stage_run_ignore_sigint(dvc, mocker):

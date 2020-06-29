@@ -125,7 +125,7 @@ class SingleStageLoader(Mapping):
     def load_stage(cls, dvcfile, d, stage_text):
         path, wdir = resolve_paths(dvcfile.path, d.get(Stage.PARAM_WDIR))
         stage = loads_from(Stage, dvcfile.repo, path, wdir, d)
-        stage._stage_text = stage_text
+        stage._stage_text = stage_text  # noqa, pylint:disable=protected-access
         stage.deps = dependency.loadd_from(
             stage, d.get(Stage.PARAM_DEPS) or []
         )

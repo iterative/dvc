@@ -173,8 +173,9 @@ def to_single_stage_file(stage: "Stage"):
     # - reparse the same yaml text with a slow but smart ruamel yaml parser
     # - apply changes to a returned structure
     # - serialize it
-    if stage._stage_text is not None:
-        saved_state = parse_yaml_for_update(stage._stage_text, stage.path)
+    text = stage._stage_text  # noqa, pylint: disable=protected-access
+    if text is not None:
+        saved_state = parse_yaml_for_update(text, stage.path)
         # Stage doesn't work with meta in any way, so .dumpd() doesn't
         # have it. We simply copy it over.
         if "meta" in saved_state:

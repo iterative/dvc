@@ -40,6 +40,7 @@ class TestWorkingTree(TestDir):
 
 
 class GitTreeTests:
+    # pylint: disable=no-member
     def test_open(self):
         self.scm.add([self.FOO, self.UNICODE, self.DATA_DIR])
         self.scm.commit("add")

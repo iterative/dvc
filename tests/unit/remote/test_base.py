@@ -106,7 +106,7 @@ def test_hashes_exist(object_exists, traverse, dvc):
 @mock.patch.object(
     BaseRemoteTree, "path_to_hash", side_effect=lambda x: x,
 )
-def test_list_hashes_traverse(path_to_hash, list_hashes, dvc):
+def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
     tree = BaseRemoteTree(dvc, {})
     tree.path_info = PathInfo("foo")
 

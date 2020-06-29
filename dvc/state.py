@@ -35,7 +35,7 @@ class StateNoop:
     def save(self, path_info, checksum):
         pass
 
-    def get(self, path_info):
+    def get(self, path_info):  # pylint: disable=unused-argument
         return None
 
     def save_link(self, path_info):

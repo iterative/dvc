@@ -83,7 +83,7 @@ class TestGetFilesNumber(TestDvc):
         "get_dir_cache",
         return_value=[{"md5": "asdf"}, {"md5": "qwe"}],
     )
-    def test_return_multiple_for_dir(self, mock_get_dir_cache):
+    def test_return_multiple_for_dir(self, _mock_get_dir_cache):
         o = self._get_output()
 
         self.assertEqual(2, o.get_files_number())

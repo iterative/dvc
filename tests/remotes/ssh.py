@@ -43,7 +43,7 @@ class SSH:
 
 class SSHMocked(Base):
     @staticmethod
-    def get_url(user, port):
+    def get_url(user, port):  # pylint: disable=arguments-differ
         path = Local.get_storagepath()
         if os.name == "nt":
             # NOTE: On Windows Local.get_storagepath() will return an

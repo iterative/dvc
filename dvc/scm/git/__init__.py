@@ -119,7 +119,7 @@ class Git(Base):
                     progress=pbar.update_git,
                 )
             tmp_repo.close()
-        except git.exc.GitCommandError as exc:
+        except git.exc.GitCommandError as exc:  # pylint: disable=no-member
             raise CloneError(url, to_path) from exc
 
         # NOTE: using our wrapper to make sure that env is fixed in __init__
@@ -128,7 +128,7 @@ class Git(Base):
         if rev:
             try:
                 repo.checkout(rev)
-            except git.exc.GitCommandError as exc:
+            except git.exc.GitCommandError as exc:  # pylint: disable=no-member
                 raise RevError(
                     "failed to access revision '{}' for repo '{}'".format(
                         rev, url

@@ -15,7 +15,11 @@ ignore-patterns=
 
 # Python code to execute, usually for sys.path manipulation such as
 # pygtk.require().
-#init-hook=
+init-hook="import sys; \
+           from pathlib import Path; \
+           from pylint.config import find_pylintrc; \
+           sys.path.append(Path(find_pylintrc()).parent / 'tests');"
+
 
 # Use multiple processes to speed up Pylint. Specifying 0 will auto-detect the
 # number of processors available to use.
@@ -28,7 +32,7 @@ limit-inference-results=100
 
 # List of plugins (as comma separated values of python modules names) to load,
 # usually to register additional checkers.
-load-plugins=pylint_pytest
+load-plugins=pylint_pytest,pylint_plugin_disable
 
 # Pickle collected data for later comparisons.
 persistent=yes
@@ -149,10 +153,8 @@ disable=format,
         exception-escape,
         comprehension-escape,
         # custom disables start here
-        protected-access,  # needs-refactor
         no-self-use,
         invalid-name,
-        blacklisted-name,
         # already a check enabled for `wildcard-import`
         unused-wildcard-import,
         misplaced-comparison-constant,
@@ -176,10 +178,6 @@ disable=format,
         # we use it to speedup/optimize
         import-outside-toplevel,
         fixme,
-        # Enabling soon:
-        no-member,
-        unused-argument,
-        arguments-differ,
 
 
 # Enable the message, report, category or checker with the given id(s). You can
@@ -267,7 +265,7 @@ contextmanager-decorators=contextlib.contextmanager
 # List of members which are set dynamically and missed by pylint inference
 # system, and so shouldn't trigger E1101 when accessed. Python regular
 # expressions are accepted.
-generated-members=
+generated-members=pytest.lazy_fixture,logging.TRACE,logger.trace,sys.getwindowsversion
 
 # Tells whether missing members accessed in mixin class should be ignored. A
 # mixin class is detected if its name ends with "mixin" (case insensitive).
@@ -288,7 +286,7 @@ ignore-on-opaque-inference=yes
 # List of class names for which member attributes should not be checked (useful
 # for classes with dynamically set attributes). This supports the use of
 # qualified names.
-ignored-classes=optparse.Values,thread._local,_thread._local
+ignored-classes=optparse.Values,thread._local,_thread._local,Dvcfile
 
 # List of module names for which member attributes should not be checked
 # (useful for modules/projects where namespaces are manipulated during runtime
@@ -329,7 +327,7 @@ dummy-variables-rgx=_+$|(_[a-zA-Z0-9_]*[a-zA-Z0-9]+?$)|dummy|^ignored_|^unused_
 
 # Argument names that match this expression will be ignored. Default to name
 # with leading underscore.
-ignored-argument-names=_.*|^ignored_|^unused_
+ignored-argument-names=_.*|^ignored_|^unused_|args|kwargs
 
 # Tells whether we should check for unused import in __init__ files.
 init-import=no

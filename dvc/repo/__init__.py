@@ -31,6 +31,7 @@ def locked(f):
     @wraps(f)
     def wrapper(repo, *args, **kwargs):
         with repo.lock, repo.state:
+            # pylint: disable=protected-access
             repo._reset()
             ret = f(repo, *args, **kwargs)
             # Our graph cache is no longer valid after we release the repo.lock

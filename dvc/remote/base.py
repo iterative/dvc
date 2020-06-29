@@ -100,7 +100,7 @@ class BaseRemoteTree:
 
     CACHE_MODE = None
     SHARED_MODE_MAP = {None: (None, None), "group": (None, None)}
-    CHECKSUM_DIR_SUFFIX = ".dir"
+    PARAM_CHECKSUM = None
 
     state = StateNoop()
 
@@ -119,6 +119,7 @@ class BaseRemoteTree:
             or self.HASH_JOBS
         )
         self.verify = config.get("verify", self.DEFAULT_VERIFY)
+        self.path_info = None
 
     @classmethod
     def get_missing_deps(cls):
@@ -184,13 +185,16 @@ class BaseRemoteTree:
 
     def open(self, path_info, mode="r", encoding=None):
         if hasattr(self, "_generate_download_url"):
-            get_url = partial(self._generate_download_url, path_info)
+            func = self._generate_download_url  # noqa,pylint:disable=no-member
+            get_url = partial(func, path_info)
             return open_url(get_url, mode=mode, encoding=encoding)
 
         raise RemoteActionNotImplemented("open", self.scheme)
 
     def exists(self, path_info):
         raise NotImplementedError
+
+    # pylint: disable=unused-argument
 
     def isdir(self, path_info):
         """Optional: Overwrite only if the remote has a way to distinguish
@@ -249,6 +253,8 @@ class BaseRemoteTree:
 
     def is_protected(self, path_info):
         return False
+
+    # pylint: enable=unused-argument
 
     @staticmethod
     def unprotect(path_info):
@@ -413,7 +419,7 @@ class BaseRemoteTree:
 
         name = name or from_info.name
 
-        self._upload(
+        self._upload(  # noqa, pylint: disable=no-member
             from_info.fspath,
             to_info,
             name=name,
@@ -504,7 +510,7 @@ class BaseRemoteTree:
 
         tmp_file = tmp_fname(to_info)
 
-        self._download(
+        self._download(  # noqa, pylint: disable=no-member
             from_info, tmp_file, name=name, no_progress_bar=no_progress_bar
         )
 
@@ -866,6 +872,7 @@ class Remote:
             path_info = tree.hash_to_path_info(hash_)
             if tree.is_dir_hash(hash_):
                 # backward compatibility
+                # pylint: disable=protected-access
                 tree._remove_unpacked_dir(hash_)
             tree.remove(path_info)
             removed = True

@@ -181,7 +181,7 @@ class CSVPlotData(PlotData):
         super().__init__(filename, revision, content)
         self.delimiter = delimiter
 
-    def raw(self, header=True, **kwargs):
+    def raw(self, header=True, **kwargs):  # pylint: disable=arguments-differ
         first_row = first(csv.reader(io.StringIO(self.content)))
 
         if header:

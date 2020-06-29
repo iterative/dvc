@@ -18,7 +18,7 @@ from .test_api import all_remotes
 
 
 @pytest.mark.parametrize("remote", all_remotes)
-def test_cloud(tmp_dir, dvc, remote):
+def test_cloud(tmp_dir, dvc, remote):  # pylint:disable=unused-argument
     (stage,) = tmp_dir.dvc_gen("foo", "foo")
     out = stage.outs[0]
     cache = out.cache_path

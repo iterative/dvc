@@ -33,6 +33,7 @@ def dynamic_chunk_size(func):
         while True:
             try:
                 # skipcq: PYL-W0212
+                # pylint: disable=protected-access
                 chunk_size = Blob._CHUNK_SIZE_MULTIPLE * multiplier
                 return func(*args, chunk_size=chunk_size, **kwargs)
             except requests.exceptions.ConnectionError:
@@ -102,7 +103,8 @@ class GSRemoteTree(BaseRemoteTree):
             raise FileNotFoundError
 
         if isinstance(
-            blob.client._credentials, google.auth.credentials.Signing
+            blob.client._credentials,  # pylint: disable=protected-access
+            google.auth.credentials.Signing,
         ):
             # sign if we're able to sign with credentials.
             return blob.generate_signed_url(expiration=expiration)
