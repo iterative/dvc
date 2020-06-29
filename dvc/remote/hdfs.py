@@ -1,7 +1,6 @@
 import io
 import logging
 import os
-import posixpath
 import re
 import subprocess
 from collections import deque
@@ -112,10 +111,13 @@ class HDFSRemoteTree(BaseRemoteTree):
             with self.hdfs(path_info) as hdfs:
                 hdfs.rm(path_info.path)
 
+    def makedirs(self, path_info):
+        with self.hdfs(path_info) as hdfs:
+            # NOTE: hdfs.mkdir creates parents by default
+            hdfs.mkdir(path_info.path)
+
     def copy(self, from_info, to_info, **_kwargs):
-        dname = posixpath.dirname(to_info.path)
         with self.hdfs(to_info) as hdfs:
-            hdfs.mkdir(dname)
             # NOTE: this is how `hadoop fs -cp` works too: it copies through
             # your local machine.
             with hdfs.open(from_info.path, "rb") as from_fobj:
@@ -169,7 +171,6 @@ class HDFSRemoteTree(BaseRemoteTree):
 
     def _upload(self, from_file, to_info, **_kwargs):
         with self.hdfs(to_info) as hdfs:
-            hdfs.mkdir(posixpath.dirname(to_info.path))
             tmp_file = tmp_fname(to_info.path)
             with open(from_file, "rb") as fobj:
                 hdfs.upload(tmp_file, fobj)
