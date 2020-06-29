@@ -4,6 +4,7 @@ import pytest
 
 from dvc.repo import Repo
 from dvc.repo.metrics.show import NoMetricsError
+from dvc.utils.fs import remove
 
 
 def test_show_empty(dvc):
@@ -93,3 +94,19 @@ def test_show_subrepo_with_preexisting_tags(tmp_dir, scm):
         "workspace": {expected_path: {"foo": 1}},
         "v1": {expected_path: {"foo": 1}},
     }
+
+
+def test_missing_cache(tmp_dir, dvc, run_copy_metrics):
+    tmp_dir.gen("metrics_t.yaml", "1.1")
+    run_copy_metrics(
+        "metrics_t.yaml", "metrics.yaml", metrics=["metrics.yaml"],
+    )
+
+    # This one should be skipped
+    stage = run_copy_metrics(
+        "metrics_t.yaml", "metrics2.yaml", metrics=["metrics2.yaml"],
+    )
+    remove(stage.outs[0].fspath)
+    remove(stage.outs[0].cache_path)
+
+    assert dvc.metrics.show() == {"": {"metrics.yaml": 1.1}}
