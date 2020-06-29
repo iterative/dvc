@@ -28,7 +28,7 @@ class MultiStageRun:
         assert kwargs.get("name")
         kwargs.pop("fname", None)
         # ignore fname for now
-        return self.dvc.run(**kwargs)
+        return self.dvc.run(**kwargs)  # noqa, pylint: disable=no-member
 
     @staticmethod
     def _get_stage_target(stage):

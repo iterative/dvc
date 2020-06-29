@@ -1,3 +1,4 @@
+# pylint: disable=no-member
 import textwrap
 
 import pytest

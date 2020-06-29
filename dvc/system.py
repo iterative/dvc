@@ -77,7 +77,7 @@ class System:
         )
 
     @staticmethod
-    def _reflink_windows(src, dst):
+    def _reflink_windows(_src, _dst):
         return -1
 
     @staticmethod

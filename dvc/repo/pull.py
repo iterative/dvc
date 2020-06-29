@@ -22,7 +22,7 @@ def pull(
     if isinstance(targets, str):
         targets = [targets]
 
-    processed_files_count = self._fetch(
+    processed_files_count = self._fetch(  # pylint: disable=protected-access
         targets,
         jobs,
         remote=remote,
@@ -33,7 +33,7 @@ def pull(
         recursive=recursive,
         run_cache=run_cache,
     )
-    stats = self._checkout(
+    stats = self._checkout(  # pylint: disable=protected-access
         targets=targets, with_deps=with_deps, force=force, recursive=recursive
     )
 

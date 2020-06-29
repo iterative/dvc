@@ -79,7 +79,7 @@ class SSHConnection:
 
         return 0
 
-    def exists(self, path, sftp=None):
+    def exists(self, path):
         return bool(self.st_mode(path))
 
     def isdir(self, path):

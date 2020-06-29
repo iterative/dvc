@@ -79,7 +79,7 @@ def get_args(cls, dist, header=None):  # noqa: D205,D400
                 group,
                 name,
             )
-            # pylint: disable=E1101
+            # pylint: disable=E1101,protected-access
             args = cls._get_script_args(type_, name, header, script_text)
             for res in args:
                 yield res

@@ -65,8 +65,8 @@ def main(argv=None):
     except DvcException:
         ret = 255
         logger.exception("")
-    except Exception as exc:  # pylint: disable=broad-except
-        if isinstance(exc, OSError) and exc.errno == errno.EMFILE:
+    except OSError as exc:
+        if exc.errno == errno.EMFILE:
             logger.exception(
                 "too many open files, please visit "
                 "{} to see how to handle this "
@@ -78,10 +78,13 @@ def main(argv=None):
         else:
             logger.exception("unexpected error")
         ret = 255
+    except Exception:  # noqa, pylint: disable=broad-except
+        logger.exception("unexpected error")
+        ret = 255
     finally:
         logger.setLevel(outerLogLevel)
 
-        # Closing pools by-hand to prevent wierd messages when closing SSH
+        # Closing pools by-hand to prevent weird messages when closing SSH
         # connections. See https://github.com/iterative/dvc/issues/3248 for
         # more info.
         close_pools()

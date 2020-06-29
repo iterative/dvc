@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 import os
 import pathlib
 import posixpath
@@ -17,7 +18,7 @@ class _BasePath:
         return self.isin_or_eq(other) or other.isin(self)
 
     def isin_or_eq(self, other):
-        return self == other or self.isin(other)
+        return self == other or self.isin(other)  # pylint: disable=no-member
 
 
 class PathInfo(pathlib.PurePath, _BasePath):
@@ -37,7 +38,7 @@ class PathInfo(pathlib.PurePath, _BasePath):
         return cls._from_parts(args)
 
     def as_posix(self):
-        f = self._flavour
+        f = self._flavour  # pylint: disable=no-member
         # Unlike original implementation [1] that uses `str()` we actually need
         # to use `fspath`, because we've overridden `__str__` method to return
         # relative paths, which will break original `as_posix`.
@@ -264,7 +265,7 @@ class HTTPURLInfo(URLInfo):
         params=None,
         query=None,
         fragment=None,
-    ):
+    ):  # pylint: disable=arguments-differ
         assert bool(host) ^ bool(netloc)
 
         if netloc is not None:

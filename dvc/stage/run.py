@@ -60,7 +60,10 @@ def cmd_run(stage, *args, **kwargs):
         warn_if_fish(executable)
         cmd = _nix_cmd(executable, stage.cmd)
 
-    main_thread = isinstance(threading.current_thread(), threading._MainThread)
+    main_thread = isinstance(
+        threading.current_thread(),
+        threading._MainThread,  # pylint: disable=protected-access
+    )
     old_handler = None
     p = None
 

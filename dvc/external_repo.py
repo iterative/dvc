@@ -68,6 +68,7 @@ def clean_repos():
 
 
 class BaseExternalRepo:
+    # pylint: disable=no-member
 
     _local_cache = None
 

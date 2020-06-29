@@ -29,9 +29,13 @@ class Template:
     EXTENSION = ".json"
     ANCHOR = "<DVC_METRIC_{}>"
 
+    DEFAULT_CONTENT = None
+    DEFAULT_NAME = None
+
     def __init__(self, content=None, name=None):
         self.content = self.DEFAULT_CONTENT if content is None else content
         self.name = name or self.DEFAULT_NAME
+        assert self.content and self.name
         self.filename = self.name + self.EXTENSION
 
     def render(self, data, props=None):

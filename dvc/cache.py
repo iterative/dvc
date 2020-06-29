@@ -106,6 +106,7 @@ class NamedCacheItem:
 
 
 class NamedCache:
+    # pylint: disable=protected-access
     def __init__(self):
         self._items = defaultdict(lambda: defaultdict(NamedCacheItem))
         self.external = defaultdict(set)

@@ -55,7 +55,9 @@ class DvcTree(BaseTree):
                 return entry[out.remote.tree.PARAM_CHECKSUM]
         raise FileNotFoundError
 
-    def open(self, path, mode="r", encoding="utf-8", remote=None):
+    def open(
+        self, path, mode="r", encoding="utf-8", remote=None
+    ):  # pylint: disable=arguments-differ
         try:
             outs = self._find_outs(path, strict=False)
         except OutputNotFoundError as exc:
@@ -221,7 +223,7 @@ class DvcTree(BaseTree):
             pass
         return False
 
-    def isexec(self, path):
+    def isexec(self, path):  # pylint: disable=unused-argument
         return False
 
     def get_file_hash(self, path_info):
@@ -345,7 +347,9 @@ class RepoTree(BaseTree):
             elif dirname in repo_set:
                 yield from self._walk_one(repo_walk)
 
-    def walk(self, top, topdown=True, onerror=None, dvcfiles=False, **kwargs):
+    def walk(
+        self, top, topdown=True, onerror=None, dvcfiles=False, **kwargs
+    ):  # pylint: disable=arguments-differ
         """Walk and merge both DVC and repo trees.
 
         Args:

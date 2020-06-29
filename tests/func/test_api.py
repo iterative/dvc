@@ -23,9 +23,11 @@ all_clouds = [pytest.lazy_fixture("local")] + clouds
 remotes = [pytest.lazy_fixture(f"{cloud}_remote") for cloud in cloud_names]
 all_remotes = [pytest.lazy_fixture("local_remote")] + remotes
 
+# `lazy_fixture` is confusing pylint, pylint: disable=unused-argument
+
 
 @pytest.mark.parametrize("remote", remotes)
-def test_get_url(tmp_dir, dvc, request, remote):
+def test_get_url(tmp_dir, dvc, remote):
     tmp_dir.dvc_gen("foo", "foo")
 
     expected_url = URLInfo(remote.url) / "ac/bd18db4cc2f85cedef654fccc4a4d8"
