@@ -428,11 +428,12 @@ class RepoTree(BaseTree):
 
         for root, _, files in self.walk(top):
             root = PathInfo(root)
-            makedirs(dest, exist_ok=True)
+            dest_dir = dest / root.relative_to(top)
+            makedirs(dest_dir, exist_ok=True)
             for fname in files:
                 src = root / fname
                 with self.open(src, mode="rb") as fobj:
-                    copy_fobj_to_file(fobj, dest / fname)
+                    copy_fobj_to_file(fobj, dest_dir / fname)
 
     @property
     def hash_jobs(self):
