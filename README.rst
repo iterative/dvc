@@ -10,7 +10,7 @@
 
 |Release| |CI| |Maintainability| |Coverage| |Donate| |DOI|
 
-|Snap| |Choco| |Brew| |Conda| |PyPI| |Packages|
+|PyPI| |Packages| |Brew| |Conda| |Choco| |Snap|
 
 |
 
