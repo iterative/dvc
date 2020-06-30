@@ -20,7 +20,7 @@ def test_init_env_var(monkeypatch, dvc):
     config = {"url": "azure://"}
     tree = AzureRemoteTree(dvc, config)
     assert tree.path_info == "azure://" + container_name
-    assert tree.connection_string == connection_string
+    assert tree._conn_kwargs["connection_string"] == connection_string
 
 
 def test_init(dvc):
@@ -29,7 +29,7 @@ def test_init(dvc):
     config = {"url": url, "connection_string": connection_string}
     tree = AzureRemoteTree(dvc, config)
     assert tree.path_info == url
-    assert tree.connection_string == connection_string
+    assert tree._conn_kwargs["connection_string"] == connection_string
 
 
 def test_get_file_hash(tmp_dir):

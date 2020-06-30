@@ -1,5 +1,4 @@
 import logging
-import os
 import threading
 from datetime import datetime, timedelta
 
@@ -16,23 +15,38 @@ logger = logging.getLogger(__name__)
 class AzureRemoteTree(BaseRemoteTree):
     scheme = Schemes.AZURE
     PATH_CLS = CloudURLInfo
-    REQUIRES = {"azure-storage-blob": "azure.storage.blob"}
+    REQUIRES = {
+        "azure-storage-blob": "azure.storage.blob",
+        "azure-cli-core": "azure.cli.core",
+    }
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
     LIST_OBJECT_PAGE_SIZE = 5000
 
     def __init__(self, repo, config):
+        from azure.cli.core import get_default_cli
+
         super().__init__(repo, config)
+
+        # NOTE: az_config takes care of env vars
+        az_config = get_default_cli().config
 
         url = config.get("url", "azure://")
         self.path_info = self.PATH_CLS(url)
 
         if not self.path_info.bucket:
-            container = os.getenv("AZURE_STORAGE_CONTAINER_NAME")
+            container = az_config.get("storage", "container_name", None)
             self.path_info = self.PATH_CLS(f"azure://{container}")
 
-        self.connection_string = config.get("connection_string") or os.getenv(
-            "AZURE_STORAGE_CONNECTION_STRING"
+        self._conn_kwargs = {
+            opt: config.get(opt) or az_config.get("storage", opt, None)
+            for opt in ["connection_string", "sas_token"]
+        }
+        self._conn_kwargs["account_name"] = az_config.get(
+            "storage", "account", None
+        )
+        self._conn_kwargs["account_key"] = az_config.get(
+            "storage", "key", None
         )
 
     @wrap_prop(threading.Lock())
@@ -43,10 +57,8 @@ class AzureRemoteTree(BaseRemoteTree):
         from azure.common import AzureMissingResourceHttpError
 
         logger.debug(f"URL {self.path_info}")
-        logger.debug(f"Connection string {self.connection_string}")
-        blob_service = BlockBlobService(
-            connection_string=self.connection_string
-        )
+        logger.debug(f"Connection options {self._conn_kwargs}")
+        blob_service = BlockBlobService(**self._conn_kwargs)
         logger.debug(f"Container name {self.path_info.bucket}")
         try:  # verify that container exists
             blob_service.list_blobs(
