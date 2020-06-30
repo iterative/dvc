@@ -1,20 +1,14 @@
 import pytest
 
 from dvc.exceptions import HTTPError
-from dvc.path_info import URLInfo
 from dvc.remote.http import HTTPRemoteTree
-from tests.utils.httpd import StaticFileServer
 
 
-def test_download_fails_on_error_code(dvc):
-    with StaticFileServer() as httpd:
-        url = f"http://localhost:{httpd.server_port}/"
-        config = {"url": url}
+def test_download_fails_on_error_code(dvc, http):
+    tree = HTTPRemoteTree(dvc, http.config)
 
-        tree = HTTPRemoteTree(dvc, config)
-
-        with pytest.raises(HTTPError):
-            tree._download(URLInfo(url) / "missing.txt", "missing.txt")
+    with pytest.raises(HTTPError):
+        tree._download(http / "missing.txt", "missing.txt")
 
 
 def test_public_auth_method(dvc):

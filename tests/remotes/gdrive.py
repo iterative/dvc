@@ -1,9 +1,11 @@
+# pylint:disable=abstract-method
 import os
 import uuid
 
 import pytest
 from funcy import cached_property
 
+from dvc.path_info import CloudURLInfo
 from dvc.remote.gdrive import GDriveRemoteTree
 
 from .base import Base
@@ -11,7 +13,7 @@ from .base import Base
 TEST_GDRIVE_REPO_BUCKET = "root"
 
 
-class GDrive(Base):
+class GDrive(Base, CloudURLInfo):
     @staticmethod
     def should_test():
         return os.getenv(GDriveRemoteTree.GDRIVE_CREDENTIALS_DATA) is not None
@@ -24,10 +26,6 @@ class GDrive(Base):
             "gdrive_service_account_p12_file_path": "test.p12",
             "gdrive_use_service_account": True,
         }
-
-    def __init__(self, dvc):
-        tree = GDriveRemoteTree(dvc, self.config)
-        tree._gdrive_create_dir("root", tree.path_info.path)
 
     @staticmethod
     def _get_storagepath():
@@ -46,7 +44,11 @@ def gdrive(make_tmp_dir):
 
     # NOTE: temporary workaround
     tmp_dir = make_tmp_dir("gdrive", dvc=True)
-    return GDrive(tmp_dir.dvc)
+
+    ret = GDrive(GDrive.get_url())
+    tree = GDriveRemoteTree(tmp_dir.dvc, ret.config)
+    tree._gdrive_create_dir("root", tree.path_info.path)
+    return ret
 
 
 @pytest.fixture

@@ -1,12 +1,11 @@
+import locale
 import os
 import uuid
-from contextlib import contextmanager
 
 import pytest
 from funcy import cached_property
 
-from dvc.remote.base import Remote
-from dvc.remote.gs import GSRemoteTree
+from dvc.path_info import CloudURLInfo
 from dvc.utils import env2bool
 
 from .base import Base
@@ -23,7 +22,7 @@ TEST_GCP_CREDS_FILE = os.path.abspath(
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = TEST_GCP_CREDS_FILE
 
 
-class GCP(Base):
+class GCP(Base, CloudURLInfo):
     @staticmethod
     def should_test():
         from subprocess import CalledProcessError, check_output
@@ -64,24 +63,63 @@ class GCP(Base):
     def get_url():
         return "gs://" + GCP._get_storagepath()
 
-    @classmethod
-    @contextmanager
-    def remote(cls, repo):
-        yield Remote(GSRemoteTree(repo, {"url": cls.get_url()}))
+    @property
+    def _gc(self):
+        from google.cloud.storage import Client
 
-    @staticmethod
-    def put_objects(remote, objects):
-        client = remote.tree.gs
-        bucket = client.get_bucket(remote.path_info.bucket)
-        for key, body in objects.items():
-            bucket.blob((remote.path_info / key).path).upload_from_string(body)
+        return Client.from_service_account_json(TEST_GCP_CREDS_FILE)
+
+    @property
+    def _bucket(self):
+        return self._gc.bucket(self.bucket)
+
+    @property
+    def _blob(self):
+        return self._bucket.blob(self.path)
+
+    def is_file(self):
+        if self.path.endswith("/"):
+            return False
+
+        return self._blob.exists()
+
+    def is_dir(self):
+        dir_path = self / ""
+        return bool(list(self._bucket.list_blobs(prefix=dir_path.path)))
+
+    def exists(self):
+        return self.is_file() or self.is_dir()
+
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
+        assert mode == 0o777
+        assert parents
+        assert not exist_ok
+
+    def write_bytes(self, contents):
+        assert isinstance(contents, bytes)
+        self._blob.upload_from_string(contents)
+
+    def write_text(self, contents, encoding=None, errors=None):
+        if not encoding:
+            encoding = locale.getpreferredencoding(False)
+        assert errors is None
+        self.write_bytes(contents.encode(encoding))
+
+    def read_bytes(self):
+        return self._blob.download_as_string()
+
+    def read_text(self, encoding=None, errors=None):
+        if not encoding:
+            encoding = locale.getpreferredencoding(False)
+        assert errors is None
+        return self.read_bytes().decode(encoding)
 
 
 @pytest.fixture
 def gs():
     if not GCP.should_test():
         pytest.skip("no gs")
-    yield GCP()
+    yield GCP(GCP.get_url())
 
 
 @pytest.fixture

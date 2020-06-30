@@ -159,42 +159,6 @@ class TestReproChangedDirDataMultiStage(
     pass
 
 
-class TestReproExternalS3MultiStage(
-    MultiStageRun, test_repro.TestReproExternalS3
-):
-    pass
-
-
-class TestReproExternalGSMultiStage(
-    MultiStageRun, test_repro.TestReproExternalGS
-):
-    pass
-
-
-class TestReproExternalHDFSMultiStage(
-    MultiStageRun, test_repro.TestReproExternalHDFS
-):
-    pass
-
-
-class TestReproExternalHTTPMultiStage(
-    MultiStageRun, test_repro.TestReproExternalHTTP
-):
-    pass
-
-
-class TestReproExternalLOCALMultiStage(
-    MultiStageRun, test_repro.TestReproExternalLOCAL
-):
-    pass
-
-
-class TestReproExternalSSHMultiStage(
-    MultiStageRun, test_repro.TestReproExternalSSH
-):
-    pass
-
-
 def test_non_existing_stage_name(tmp_dir, dvc, run_copy):
     from dvc.exceptions import DvcException
 

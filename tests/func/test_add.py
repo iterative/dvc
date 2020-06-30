@@ -185,27 +185,97 @@ def test_add_file_in_dir(tmp_dir, dvc):
     assert stage.outs[0].def_path == "subdata"
 
 
-class TestAddExternalLocalFile(TestDvc):
-    def test(self):
-        from dvc.stage.exceptions import StageExternalOutputsError
+@pytest.mark.parametrize(
+    "workspace, hash_name, hash_value",
+    [
+        (
+            pytest.lazy_fixture("local_cloud"),
+            "md5",
+            "8c7dd922ad47494fc02c388e12c00eac",
+        ),
+        pytest.param(
+            pytest.lazy_fixture("ssh"),
+            "md5",
+            "8c7dd922ad47494fc02c388e12c00eac",
+            marks=pytest.mark.skipif(
+                os.name == "nt", reason="disabled on windows"
+            ),
+        ),
+        (
+            pytest.lazy_fixture("s3"),
+            "etag",
+            "8c7dd922ad47494fc02c388e12c00eac",
+        ),
+        (pytest.lazy_fixture("gs"), "md5", "8c7dd922ad47494fc02c388e12c00eac"),
+        (
+            pytest.lazy_fixture("hdfs"),
+            "checksum",
+            "000002000000000000000000a86fe4d846edc1bf4c355cb6112f141e",
+        ),
+    ],
+    indirect=["workspace"],
+)
+def test_add_external_file(tmp_dir, dvc, workspace, hash_name, hash_value):
+    from dvc.stage.exceptions import StageExternalOutputsError
 
-        dname = TestDvc.mkdtemp()
-        fname = os.path.join(dname, "foo")
-        shutil.copyfile(self.FOO, fname)
+    workspace.gen("file", "file")
 
-        with self.assertRaises(StageExternalOutputsError):
-            self.dvc.add(fname)
+    with pytest.raises(StageExternalOutputsError):
+        dvc.add(workspace.url)
 
-        stages = self.dvc.add(fname, external=True)
-        self.assertEqual(len(stages), 1)
-        stage = stages[0]
-        self.assertNotEqual(stage, None)
-        self.assertEqual(len(stage.deps), 0)
-        self.assertEqual(len(stage.outs), 1)
-        self.assertEqual(stage.relpath, "foo.dvc")
-        self.assertEqual(len(os.listdir(dname)), 1)
-        self.assertTrue(os.path.isfile(fname))
-        self.assertTrue(filecmp.cmp(fname, "foo", shallow=False))
+    dvc.add("remote://workspace/file")
+    assert (tmp_dir / "file.dvc").read_text() == (
+        "outs:\n"
+        f"- {hash_name}: {hash_value}\n"
+        "  path: remote://workspace/file\n"
+    )
+    assert (workspace / "file").read_text() == "file"
+    assert (
+        workspace / "cache" / hash_value[:2] / hash_value[2:]
+    ).read_text() == "file"
+
+    assert dvc.status() == {}
+
+
+@pytest.mark.parametrize(
+    "workspace, hash_name, hash_value",
+    [
+        (
+            pytest.lazy_fixture("local_cloud"),
+            "md5",
+            "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
+        ),
+        pytest.param(
+            pytest.lazy_fixture("ssh"),
+            "md5",
+            "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
+            marks=pytest.mark.skipif(
+                os.name == "nt", reason="disabled on windows"
+            ),
+        ),
+        (
+            pytest.lazy_fixture("s3"),
+            "etag",
+            "ec602a6ba97b2dd07bd6d2cd89674a60.dir",
+        ),
+        (
+            pytest.lazy_fixture("gs"),
+            "md5",
+            "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
+        ),
+    ],
+    indirect=["workspace"],
+)
+def test_add_external_dir(tmp_dir, dvc, workspace, hash_name, hash_value):
+    workspace.gen({"dir": {"file": "file", "subdir": {"subfile": "subfile"}}})
+
+    dvc.add("remote://workspace/dir")
+    assert (tmp_dir / "dir.dvc").read_text() == (
+        "outs:\n"
+        f"- {hash_name}: {hash_value}\n"
+        "  path: remote://workspace/dir\n"
+    )
+    assert (workspace / "cache" / hash_value[:2] / hash_value[2:]).is_file()
 
 
 class TestAddLocalRemoteFile(TestDvc):

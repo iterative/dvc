@@ -68,7 +68,22 @@ def test_open(tmp_dir, dvc, remote):
         assert fd.read() == "foo-text"
 
 
-@pytest.mark.parametrize("cloud", clouds)
+@pytest.mark.parametrize(
+    "cloud",
+    [
+        pytest.lazy_fixture(cloud)
+        for cloud in [
+            "real_s3",  # NOTE: moto's s3 fails in some tests
+            "gs",
+            "azure",
+            "gdrive",
+            "oss",
+            "ssh",
+            "hdfs",
+            "http",
+        ]
+    ],
+)
 def test_open_external(erepo_dir, cloud):
     erepo_dir.add_remote(config=cloud.config)
 
@@ -104,7 +119,22 @@ def test_open_granular(tmp_dir, dvc, remote):
         assert fd.read() == "foo-text"
 
 
-@pytest.mark.parametrize("remote", all_remotes)
+@pytest.mark.parametrize(
+    "remote",
+    [
+        pytest.lazy_fixture(f"{cloud}_remote")
+        for cloud in [
+            "real_s3",  # NOTE: moto's s3 fails in some tests
+            "gs",
+            "azure",
+            "gdrive",
+            "oss",
+            "ssh",
+            "hdfs",
+            "http",
+        ]
+    ],
+)
 def test_missing(tmp_dir, dvc, remote):
     tmp_dir.dvc_gen("foo", "foo")
 

@@ -1,10 +1,13 @@
 import getpass
+import locale
 import os
+from contextlib import contextmanager
 from subprocess import CalledProcessError, check_output
 
 import pytest
 from funcy import cached_property
 
+from dvc.path_info import URLInfo
 from dvc.utils import env2bool
 
 from .base import Base
@@ -41,7 +44,7 @@ class SSH:
         )
 
 
-class SSHMocked(Base):
+class SSHMocked(Base, URLInfo):
     @staticmethod
     def get_url(user, port):  # pylint: disable=arguments-differ
         path = Local.get_storagepath()
@@ -63,19 +66,72 @@ class SSHMocked(Base):
         url = f"ssh://{user}@127.0.0.1:{port}{path}"
         return url
 
-    def __init__(self, server):
-        self.server = server
-
-    @cached_property
-    def url(self):
-        return self.get_url(TEST_SSH_USER, self.server.port)
-
     @cached_property
     def config(self):
         return {
             "url": self.url,
             "keyfile": TEST_SSH_KEY_PATH,
         }
+
+    @contextmanager
+    def _ssh(self):
+        from dvc.remote.ssh.connection import SSHConnection
+
+        conn = SSHConnection(
+            host=self.host,
+            port=self.port,
+            username=TEST_SSH_USER,
+            key_filename=TEST_SSH_KEY_PATH,
+        )
+        try:
+            yield conn
+        finally:
+            conn.close()
+
+    def is_file(self):
+        with self._ssh() as _ssh:
+            return _ssh.isfile(self.path)
+
+    def is_dir(self):
+        with self._ssh() as _ssh:
+            return _ssh.isdir(self.path)
+
+    def exists(self):
+        with self._ssh() as _ssh:
+            return _ssh.exists(self.path)
+
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
+        assert mode == 0o777
+        assert parents
+        assert not exist_ok
+
+        with self._ssh() as _ssh:
+            _ssh.makedirs(self.path)
+
+    def write_bytes(self, contents):
+        assert isinstance(contents, bytes)
+        with self._ssh() as _ssh:
+            with _ssh.open(self.path, "w+") as fobj:
+                # NOTE: accepts both str and bytes
+                fobj.write(contents)
+
+    def write_text(self, contents, encoding=None, errors=None):
+        if not encoding:
+            encoding = locale.getpreferredencoding(False)
+        assert errors is None
+        self.write_bytes(contents.encode(encoding))
+
+    def read_bytes(self):
+        with self._ssh() as _ssh:
+            # NOTE: sftp always reads in binary format
+            with _ssh.open(self.path, "r") as fobj:
+                return fobj.read()
+
+    def read_text(self, encoding=None, errors=None):
+        if not encoding:
+            encoding = locale.getpreferredencoding(False)
+        assert errors is None
+        return self.read_bytes().decode(encoding)
 
 
 @pytest.fixture
@@ -106,7 +162,7 @@ def ssh(ssh_server, monkeypatch):
     # NOTE: see http://github.com/iterative/dvc/pull/3501
     monkeypatch.setattr(SSHRemoteTree, "CAN_TRAVERSE", False)
 
-    return SSHMocked(ssh_server)
+    return SSHMocked(SSHMocked.get_url(TEST_SSH_USER, ssh_server.port))
 
 
 @pytest.fixture

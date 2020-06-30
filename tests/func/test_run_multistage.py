@@ -361,3 +361,89 @@ def test_run_overwrite_preserves_meta_and_comment(tmp_dir, dvc, run_copy):
     assert (tmp_dir / PIPELINE_FILE).read_text() == text.format(
         src="foo1", dest="bar1"
     )
+
+
+@pytest.mark.parametrize(
+    "workspace, hash_name, foo_hash, bar_hash",
+    [
+        (
+            pytest.lazy_fixture("local_cloud"),
+            "md5",
+            "acbd18db4cc2f85cedef654fccc4a4d8",
+            "37b51d194a7513e45b56f6524f2d51f2",
+        ),
+        pytest.param(
+            pytest.lazy_fixture("ssh"),
+            "md5",
+            "acbd18db4cc2f85cedef654fccc4a4d8",
+            "37b51d194a7513e45b56f6524f2d51f2",
+            marks=pytest.mark.skipif(
+                os.name == "nt", reason="disabled on windows"
+            ),
+        ),
+        (
+            pytest.lazy_fixture("s3"),
+            "etag",
+            "acbd18db4cc2f85cedef654fccc4a4d8",
+            "37b51d194a7513e45b56f6524f2d51f2",
+        ),
+        (
+            pytest.lazy_fixture("gs"),
+            "md5",
+            "acbd18db4cc2f85cedef654fccc4a4d8",
+            "37b51d194a7513e45b56f6524f2d51f2",
+        ),
+        (
+            pytest.lazy_fixture("hdfs"),
+            "checksum",
+            "0000020000000000000000003dba826b9be9c6a8e2f8310a770555c4",
+            "00000200000000000000000075433c81259d3c38e364b348af52e84d",
+        ),
+    ],
+    indirect=["workspace"],
+)
+def test_run_external_outputs(
+    tmp_dir, dvc, workspace, hash_name, foo_hash, bar_hash
+):
+    workspace.gen("foo", "foo")
+    dvc.run(
+        name="mystage",
+        cmd="mycmd",
+        deps=["remote://workspace/foo"],
+        outs=["remote://workspace/bar"],
+        no_exec=True,
+    )
+
+    dvc_yaml = (
+        "stages:\n"
+        "  mystage:\n"
+        "    cmd: mycmd\n"
+        "    deps:\n"
+        "    - remote://workspace/foo\n"
+        "    outs:\n"
+        "    - remote://workspace/bar\n"
+    )
+
+    assert (tmp_dir / "dvc.yaml").read_text() == dvc_yaml
+    assert not (tmp_dir / "dvc.lock").exists()
+
+    workspace.gen("bar", "bar")
+    dvc.commit("dvc.yaml", force=True)
+
+    assert (tmp_dir / "dvc.yaml").read_text() == dvc_yaml
+    assert (tmp_dir / "dvc.lock").read_text() == (
+        "mystage:\n"
+        "  cmd: mycmd\n"
+        "  deps:\n"
+        "  - path: remote://workspace/foo\n"
+        f"    {hash_name}: {foo_hash}\n"
+        "  outs:\n"
+        "  - path: remote://workspace/bar\n"
+        f"    {hash_name}: {bar_hash}\n"
+    )
+
+    assert (workspace / "foo").read_text() == "foo"
+    assert (workspace / "bar").read_text() == "bar"
+    assert (
+        workspace / "cache" / bar_hash[:2] / bar_hash[2:]
+    ).read_text() == "bar"
