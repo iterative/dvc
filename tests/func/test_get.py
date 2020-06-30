@@ -55,7 +55,9 @@ def test_get_git_dir(tmp_dir, erepo):
     src = "some_directory"
     dst = "some_directory_imported"
 
-    erepo.scm_gen({src: {"file.txt": "hello"}}, commit="add a regular dir")
+    erepo.scm_gen(
+        {src: {"dir": {"file.txt": "hello"}}}, commit="add a regular dir"
+    )
 
     Repo.get(os.fspath(erepo), src, dst)
 
