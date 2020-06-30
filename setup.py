@@ -68,7 +68,7 @@ install_requires = [
     "tqdm>=4.45.0,<5",
     "packaging>=19.0",
     "zc.lockfile>=1.2.1",
-    "flufl.lock>=3.2",
+    "flufl.lock>=3.2,<4",
     "win-unicode-console>=0.5; sys_platform == 'win32'",
     "pywin32>=225; sys_platform == 'win32'",
     "networkx>=2.1,<2.4",
