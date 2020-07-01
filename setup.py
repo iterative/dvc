@@ -87,7 +87,7 @@ install_requires = [
 gs = ["google-cloud-storage==1.19.0"]
 gdrive = ["pydrive2>=1.4.14"]
 s3 = ["boto3>=1.9.201"]
-azure = ["azure-storage-blob==2.1.0", "azure-cli-core>=2.0.70"]
+azure = ["azure-storage-blob==2.1.0", "knack"]
 oss = ["oss2==2.6.1"]
 ssh = ["paramiko>=2.5.0"]
 hdfs = ["pyarrow>=0.17.0"]

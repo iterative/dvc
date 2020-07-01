@@ -1,4 +1,5 @@
 import logging
+import os
 import threading
 from datetime import datetime, timedelta
 
@@ -17,37 +18,44 @@ class AzureRemoteTree(BaseRemoteTree):
     PATH_CLS = CloudURLInfo
     REQUIRES = {
         "azure-storage-blob": "azure.storage.blob",
-        "azure-cli-core": "azure.cli.core",
+        "knack": "knack",
     }
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
     LIST_OBJECT_PAGE_SIZE = 5000
 
     def __init__(self, repo, config):
-        from azure.cli.core import get_default_cli
-
         super().__init__(repo, config)
-
-        # NOTE: az_config takes care of env vars
-        az_config = get_default_cli().config
 
         url = config.get("url", "azure://")
         self.path_info = self.PATH_CLS(url)
 
         if not self.path_info.bucket:
-            container = az_config.get("storage", "container_name", None)
+            container = self._az_config.get("storage", "container_name", None)
             self.path_info = self.PATH_CLS(f"azure://{container}")
 
         self._conn_kwargs = {
-            opt: config.get(opt) or az_config.get("storage", opt, None)
+            opt: config.get(opt) or self._az_config.get("storage", opt, None)
             for opt in ["connection_string", "sas_token"]
         }
-        self._conn_kwargs["account_name"] = az_config.get(
+        self._conn_kwargs["account_name"] = self._az_config.get(
             "storage", "account", None
         )
-        self._conn_kwargs["account_key"] = az_config.get(
+        self._conn_kwargs["account_key"] = self._az_config.get(
             "storage", "key", None
         )
+
+    @cached_property
+    def _az_config(self):
+        # NOTE: ideally we would've used get_default_cli().config from
+        # azure.cli.core, but azure-cli-core has a lot of conflicts with other
+        # dependencies. So instead we are just use knack directly
+        from knack.config import CLIConfig
+
+        config_dir = os.getenv(
+            "AZURE_CONFIG_DIR", os.path.expanduser(os.path.join("~", ".azure"))
+        )
+        return CLIConfig(config_dir=config_dir, config_env_var_prefix="AZURE")
 
     @wrap_prop(threading.Lock())
     @cached_property
