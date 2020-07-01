@@ -1,6 +1,7 @@
 import argparse
 import logging
 
+from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
 
@@ -33,5 +34,5 @@ def add_parser(subparsers, parent_parser):
     )
     unprotect_parser.add_argument(
         "targets", nargs="+", help="Data files/directories to unprotect.",
-    ).complete = "file"
+    ).complete = completion.FILE
     unprotect_parser.set_defaults(func=CmdUnprotect)

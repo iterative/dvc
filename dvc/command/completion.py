@@ -6,6 +6,8 @@ import shtab
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
 
 logger = logging.getLogger(__name__)
+FILE = shtab.FILE
+DIR = shtab.DIRECTORY
 DVC_FILE = {
     "bash": "_dvc_compgen_DVCFiles",
     "zsh": "_files -g '(*?.dvc|Dvcfile|dvc.yaml)'",

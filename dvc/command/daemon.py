@@ -1,3 +1,4 @@
+from dvc.command import completion
 from dvc.command.base import CmdBaseNoRepo, fix_subparsers
 
 
@@ -66,5 +67,5 @@ def add_parser(subparsers, parent_parser):
     )
     daemon_analytics_parser.add_argument(
         "target", help="Analytics file.",
-    ).complete = "file"
+    ).complete = completion.FILE
     daemon_analytics_parser.set_defaults(func=CmdDaemonAnalytics)

@@ -3,6 +3,7 @@ import logging
 
 from dvc.exceptions import DvcException
 
+from . import completion
 from .base import CmdBaseNoRepo, append_doc_link
 
 logger = logging.getLogger(__name__)
@@ -34,5 +35,5 @@ def add_parser(subparsers, parent_parser):
     )
     get_parser.add_argument(
         "out", nargs="?", help="Destination path to put data to.",
-    ).complete = "directory"
+    ).complete = completion.DIR
     get_parser.set_defaults(func=CmdGetUrl)

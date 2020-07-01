@@ -2,6 +2,7 @@ import argparse
 import logging
 import os
 
+from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
 from dvc.schema import PLOT_PROPS
@@ -128,7 +129,7 @@ def add_parser(subparsers, parent_parser):
         "targets",
         nargs="*",
         help="Plots files to visualize. Shows all plots by default.",
-    ).complete = "file"
+    ).complete = completion.FILE
     _add_props_arguments(plots_show_parser)
     _add_output_arguments(plots_show_parser)
     plots_show_parser.set_defaults(func=CmdPlotsShow)
@@ -149,7 +150,7 @@ def add_parser(subparsers, parent_parser):
         nargs="*",
         help="Plots file to visualize. Shows all plots by default.",
         metavar="<path>",
-    ).complete = "file"
+    ).complete = completion.FILE
     plots_diff_parser.add_argument(
         "revisions", nargs="*", default=None, help="Git commits to plot from",
     )
@@ -167,7 +168,7 @@ def add_parser(subparsers, parent_parser):
     )
     plots_modify_parser.add_argument(
         "target", help="Metric file to set properties to",
-    ).complete = "file"
+    ).complete = completion.FILE
     _add_props_arguments(plots_modify_parser)
     plots_modify_parser.add_argument(
         "--unset",
@@ -191,7 +192,7 @@ def _add_props_arguments(parser):
             )
         ),
         metavar="<path>",
-    ).complete = "file"
+    ).complete = completion.FILE
     parser.add_argument(
         "-x", default=None, help="Field name for X axis.", metavar="<field>"
     )
@@ -223,7 +224,7 @@ def _add_output_arguments(parser):
         default=None,
         help="Destination path to save plots to",
         metavar="<path>",
-    ).complete = "directory"
+    ).complete = completion.DIR
     parser.add_argument(
         "--show-vega",
         action="store_true",

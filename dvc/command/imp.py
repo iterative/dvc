@@ -1,6 +1,7 @@
 import argparse
 import logging
 
+from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
 
@@ -44,14 +45,14 @@ def add_parser(subparsers, parent_parser):
     )
     import_parser.add_argument(
         "path", help="Path to a file or directory within the repository",
-    ).complete = "file"
+    ).complete = completion.FILE
     import_parser.add_argument(
         "-o",
         "--out",
         nargs="?",
         help="Destination path to download files to",
         metavar="<path>",
-    ).complete = "directory"
+    ).complete = completion.DIR
     import_parser.add_argument(
         "--rev",
         nargs="?",
