@@ -6,9 +6,11 @@ import shtab
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
 
 logger = logging.getLogger(__name__)
-CHOICE_FUNCTIONS = {
-    "bash": {"DVCFile": "_dvc_compgen_DVCFiles"},
-    "zsh": {"DVCFile": "_files -g '(*?.dvc|Dvcfile|dvc.yaml)'"},
+FILE = shtab.FILE
+DIR = shtab.DIRECTORY
+DVC_FILE = {
+    "bash": "_dvc_compgen_DVCFiles",
+    "zsh": "_files -g '(*?.dvc|Dvcfile|dvc.yaml)'",
 }
 PREAMBLE = {
     "bash": """
@@ -24,26 +26,13 @@ _dvc_compgen_DVCFiles() {
 }
 
 
-class Optional(shtab.Optional):
-    DVC_FILE = [shtab.Choice("DVCFile", required=False)]
-
-
-class Required(shtab.Required):
-    DVC_FILE = [shtab.Choice("DVCFile", required=True)]
-
-
 class CmdCompletion(CmdBaseNoRepo):
     def run(self):
         from dvc.cli import get_main_parser
 
         parser = get_main_parser()
         shell = self.args.shell
-        script = shtab.complete(
-            parser,
-            shell=shell,
-            preamble=PREAMBLE[shell],
-            choice_functions=CHOICE_FUNCTIONS[shell],
-        )
+        script = shtab.complete(parser, shell=shell, preamble=PREAMBLE)
         print(script)
         return 0
 

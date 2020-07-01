@@ -56,7 +56,5 @@ def add_parser(subparsers, parent_parser):
         help="Path to cache directory. Relative paths are resolved relative "
         "to the current directory and saved to config relative to the "
         "config file location.",
-        metavar="value",
-        choices=completion.Required.DIR,
-    )
+    ).complete = completion.DIR
     cache_dir_parser.set_defaults(func=CmdCacheDir)
