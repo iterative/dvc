@@ -1,7 +1,6 @@
 import argparse
 import logging
 
-from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
 
@@ -58,18 +57,13 @@ def add_parser(subparsers, parent_parser):
         "remote://myremote/path/to/file (see `dvc remote`)",
     )
     import_parser.add_argument(
-        "out",
-        nargs="?",
-        help="Destination path to put files to.",
-        metavar="out",
-        choices=completion.Optional.DIR,
-    )
+        "out", nargs="?", help="Destination path to put files to.",
+    ).complete = "directory"
     import_parser.add_argument(
         "--file",
         help="Specify name of the DVC-file this command will generate.",
         metavar="<filename>",
-        choices=completion.Optional.DIR,
-    )
+    ).complete = "directory"
     import_parser.add_argument(
         "--no-exec",
         action="store_true",

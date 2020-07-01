@@ -2,7 +2,6 @@ import argparse
 import logging
 import sys
 
-from dvc.command import completion
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.command.ls.ls_colors import LsColors
 from dvc.exceptions import DvcException
@@ -75,7 +74,5 @@ def add_parser(subparsers, parent_parser):
         "path",
         nargs="?",
         help="Path to directory within the repository to list outputs for",
-        metavar="path",
-        choices=completion.Optional.DIR,
-    )
+    ).complete = "directory"
     list_parser.set_defaults(func=CmdList)
