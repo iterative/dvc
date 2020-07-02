@@ -213,7 +213,12 @@ class BaseRemoteTree:
         return False  # We can't be sure by default
 
     def walk_files(self, path_info, **kwargs):
-        """Return a generator with `PathInfo`s to all the files"""
+        """Return a generator with `PathInfo`s to all the files.
+
+        Optional kwargs:
+            prefix (bool): If true `path_info` will be treated as a prefix
+                rather than directory path.
+        """
         raise NotImplementedError
 
     def is_empty(self, path_info):
@@ -522,14 +527,16 @@ class BaseRemoteTree:
                 path_info = self.path_info / prefix[:2] / prefix[2:]
             else:
                 path_info = self.path_info / prefix[:2]
+            prefix = True
         else:
             path_info = self.path_info
+            prefix = False
         if progress_callback:
-            for file_info in self.walk_files(path_info):
+            for file_info in self.walk_files(path_info, prefix=prefix):
                 progress_callback()
                 yield file_info.path
         else:
-            yield from self.walk_files(path_info)
+            yield from self.walk_files(path_info, prefix=prefix)
 
     def list_hashes(self, prefix=None, progress_callback=None):
         """Iterate over hashes in this tree.

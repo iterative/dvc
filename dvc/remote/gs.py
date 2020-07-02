@@ -144,7 +144,9 @@ class GSRemoteTree(BaseRemoteTree):
             yield blob.name
 
     def walk_files(self, path_info, **kwargs):
-        for fname in self._list_paths(path_info / "", **kwargs):
+        if not kwargs.pop("prefix", False):
+            path_info = path_info / ""
+        for fname in self._list_paths(path_info, **kwargs):
             # skip nested empty directories
             if fname.endswith("/"):
                 continue
