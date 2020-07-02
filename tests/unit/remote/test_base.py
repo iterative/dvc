@@ -142,6 +142,20 @@ def test_list_hashes(dvc):
         assert hashes == ["123456"]
 
 
+def test_list_paths(dvc):
+    tree = BaseRemoteTree(dvc, {})
+    tree.path_info = PathInfo("foo")
+
+    with mock.patch.object(tree, "walk_files", return_value=[]) as walk_mock:
+        for _ in tree.list_paths():
+            pass
+        walk_mock.assert_called_with(tree.path_info, prefix=False)
+
+        for _ in tree.list_paths(prefix="000"):
+            pass
+        walk_mock.assert_called_with(tree.path_info / "00" / "0", prefix=True)
+
+
 @pytest.mark.parametrize(
     "hash_, result",
     [(None, False), ("", False), ("3456.dir", True), ("3456", False)],
