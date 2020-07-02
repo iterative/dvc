@@ -36,7 +36,9 @@ def get(url, path, out=None, rev=None):
     dpath = os.path.dirname(os.path.abspath(out))
     tmp_dir = os.path.join(dpath, "." + str(shortuuid.uuid()))
     try:
-        with external_repo(url=url, rev=rev) as repo:
+        with external_repo(
+            url=url, rev=rev, path=os.path.dirname(path)
+        ) as repo:
             if hasattr(repo, "cache"):
                 repo.cache.local.cache_dir = tmp_dir
 

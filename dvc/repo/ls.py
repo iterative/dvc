@@ -1,3 +1,5 @@
+import os
+
 from dvc.exceptions import PathMissingError
 from dvc.path_info import PathInfo
 
@@ -29,8 +31,8 @@ def ls(
     """
     from dvc.external_repo import external_repo
 
-    with external_repo(url, rev) as repo:
-        path_info = PathInfo(repo.root_dir)
+    with external_repo(url, rev, path=os.path.dirname(path)) as repo:
+        path_info = PathInfo(repo.scm.root_dir)
         if path:
             path_info /= path
 

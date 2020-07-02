@@ -47,7 +47,9 @@ class RepoDependency(LocalDependency):
 
         d = self.def_repo
         rev = (d.get("rev_lock") if locked else None) or d.get("rev")
-        return external_repo(d["url"], rev=rev)
+        return external_repo(
+            d["url"], path=os.path.dirname(self.def_path), rev=rev
+        )
 
     def _get_checksum(self, locked=True):
         from dvc.repo.tree import RepoTree

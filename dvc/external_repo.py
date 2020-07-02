@@ -27,15 +27,17 @@ logger = logging.getLogger(__name__)
 
 
 @contextmanager
-def external_repo(url, rev=None, for_write=False):
+def external_repo(url, rev=None, path=None, for_write=False):
     logger.debug("Creating external repo %s@%s", url, rev)
-    path = _cached_clone(url, rev, for_write=for_write)
+    cloned_path = _cached_clone(url, rev, for_write=for_write)
+    # DVCRepo can find the path recursively
+    path = os.path.join(cloned_path, path) if path else cloned_path
     if not rev:
         rev = "HEAD"
     try:
-        repo = ExternalRepo(path, url, rev, for_write=for_write)
+        repo = ExternalRepo(cloned_path, path, url, rev, for_write=for_write)
     except NotDvcRepoError:
-        repo = ExternalGitRepo(path, url, rev)
+        repo = ExternalGitRepo(cloned_path, url, rev)
 
     try:
         yield repo
@@ -116,7 +118,7 @@ class BaseExternalRepo:
         download_results = []
         failed = 0
 
-        paths = [PathInfo(self.root_dir) / path for path in paths]
+        paths = [PathInfo(self.scm.root_dir) / path for path in paths]
 
         def download_update(result):
             download_results.append(result)
@@ -152,12 +154,12 @@ class BaseExternalRepo:
 
 
 class ExternalRepo(Repo, BaseExternalRepo):
-    def __init__(self, root_dir, url, rev, for_write=False):
+    def __init__(self, root_dir, path, url, rev, for_write=False):
         if for_write:
             super().__init__(root_dir)
         else:
             root_dir = os.path.realpath(root_dir)
-            super().__init__(root_dir, scm=Git(root_dir), rev=rev)
+            super().__init__(path, scm=Git(root_dir), rev=rev)
         self.url = url
         self._set_cache_dir()
         self._fix_upstream()
