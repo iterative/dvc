@@ -10,7 +10,6 @@ from dvc.repo import Repo
 from dvc.repo.get import GetDVCFileError
 from dvc.system import System
 from dvc.utils.fs import makedirs
-from tests.utils import trees_equal
 
 
 def test_get_repo_file(tmp_dir, erepo_dir):
@@ -29,8 +28,7 @@ def test_get_repo_dir(tmp_dir, erepo_dir):
 
     Repo.get(os.fspath(erepo_dir), "dir", "dir_imported")
 
-    assert os.path.isdir("dir_imported")
-    trees_equal(erepo_dir / "dir", "dir_imported")
+    assert (tmp_dir / "dir_imported").read_text() == {"file": "contents"}
 
 
 @pytest.mark.parametrize(
@@ -44,7 +42,6 @@ def test_get_git_file(tmp_dir, erepo):
 
     Repo.get(os.fspath(erepo), src, dst)
 
-    assert (tmp_dir / dst).is_file()
     assert (tmp_dir / dst).read_text() == "hello"
 
 
@@ -61,8 +58,7 @@ def test_get_git_dir(tmp_dir, erepo):
 
     Repo.get(os.fspath(erepo), src, dst)
 
-    assert (tmp_dir / dst).is_dir()
-    trees_equal(erepo / src, tmp_dir / dst)
+    assert (tmp_dir / dst).read_text() == {"dir": {"file.txt": "hello"}}
 
 
 def test_cache_type_is_properly_overridden(tmp_dir, erepo_dir):
