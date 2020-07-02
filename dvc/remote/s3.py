@@ -187,7 +187,7 @@ class S3RemoteTree(BaseRemoteTree):
         )
 
     def walk_files(self, path_info, **kwargs):
-        for fname in self._list_paths(path_info / "", **kwargs):
+        for fname in self._list_paths(path_info, **kwargs):
             if fname.endswith("/"):
                 continue
 
