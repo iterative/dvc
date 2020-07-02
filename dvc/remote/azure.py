@@ -121,6 +121,8 @@ class AzureRemoteTree(BaseRemoteTree):
             next_marker = blobs.next_marker
 
     def walk_files(self, path_info, **kwargs):
+        if not kwargs.pop("prefix", False):
+            path_info = path_info / ""
         for fname in self._list_paths(
             path_info.bucket, path_info.path, **kwargs
         ):

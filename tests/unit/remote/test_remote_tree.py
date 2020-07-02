@@ -81,9 +81,7 @@ def test_walk_files(remote):
         remote.path_info / "data/subdir/empty_file",
     ]
 
-    assert (
-        list(remote.tree.walk_files(remote.path_info / "data" / "")) == files
-    )
+    assert list(remote.tree.walk_files(remote.path_info / "data")) == files
 
 
 @pytest.mark.parametrize("remote", [pytest.lazy_fixture("s3")], indirect=True)
@@ -141,7 +139,7 @@ def test_isfile(remote):
 def test_download_dir(remote, tmpdir):
     path = str(tmpdir / "data")
     to_info = PathInfo(path)
-    remote.tree.download(remote.path_info / "data" / "", to_info)
+    remote.tree.download(remote.path_info / "data", to_info)
     assert os.path.isdir(path)
     data_dir = tmpdir / "data"
     assert len(list(walk_files(path))) == 7
