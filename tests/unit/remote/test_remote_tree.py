@@ -3,11 +3,11 @@ import os
 import pytest
 
 from dvc.path_info import PathInfo
+from dvc.remote import get_remote
 from dvc.remote.s3 import S3RemoteTree
 from dvc.utils.fs import walk_files
-from tests.remotes import GCP, S3Mocked
 
-remotes = [GCP, S3Mocked]
+remotes = [pytest.lazy_fixture(fix) for fix in ["gs", "s3"]]
 
 FILE_WITH_CONTENTS = {
     "data1.txt": "",
@@ -27,11 +27,9 @@ FILE_WITH_CONTENTS = {
 
 @pytest.fixture
 def remote(request, dvc):
-    if not request.param.should_test():
-        raise pytest.skip()
-    with request.param.remote(dvc) as _remote:
-        request.param.put_objects(_remote, FILE_WITH_CONTENTS)
-        yield _remote
+    cloud = request.param
+    cloud.gen(FILE_WITH_CONTENTS)
+    return get_remote(dvc, **cloud.config)
 
 
 @pytest.mark.parametrize("remote", remotes, indirect=True)
@@ -86,7 +84,7 @@ def test_walk_files(remote):
     assert list(remote.tree.walk_files(remote.path_info / "data")) == files
 
 
-@pytest.mark.parametrize("remote", [S3Mocked], indirect=True)
+@pytest.mark.parametrize("remote", [pytest.lazy_fixture("s3")], indirect=True)
 def test_copy_preserve_etag_across_buckets(remote, dvc):
     s3 = remote.tree.s3
     s3.create_bucket(Bucket="another")
@@ -115,7 +113,7 @@ def test_makedirs(remote):
     assert tree.isdir(empty_dir)
 
 
-@pytest.mark.parametrize("remote", [GCP, S3Mocked], indirect=True)
+@pytest.mark.parametrize("remote", remotes, indirect=True)
 def test_isfile(remote):
     test_cases = [
         (False, "empty_dir/"),

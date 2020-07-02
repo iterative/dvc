@@ -3,12 +3,9 @@ import io
 import requests
 
 from dvc.utils.http import open_url
-from tests.utils.httpd import StaticFileServer
 
 
-def test_open_url(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-
+def test_open_url(tmp_path, monkeypatch, http):
     # Simulate bad connection
     original_iter_content = requests.Response.iter_content
 
@@ -26,11 +23,9 @@ def test_open_url(tmp_path, monkeypatch):
     # using twice of that plus something tests second resume,
     # this is important because second response is different
     text = "0123456789" * (io.DEFAULT_BUFFER_SIZE // 10 + 1)
-    (tmp_path / "sample.txt").write_text(text * 2)
+    http.gen("sample.txt", text * 2)
 
-    with StaticFileServer() as httpd:
-        url = f"http://localhost:{httpd.server_port}/sample.txt"
-        with open_url(url) as fd:
-            # Test various .read() variants
-            assert fd.read(len(text)) == text
-            assert fd.read() == text
+    with open_url((http / "sample.txt").url) as fd:
+        # Test various .read() variants
+        assert fd.read(len(text)) == text
+        assert fd.read() == text

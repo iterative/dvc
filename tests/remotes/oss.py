@@ -1,8 +1,10 @@
+# pylint:disable=abstract-method
 import os
 import uuid
 
 import pytest
 
+from dvc.path_info import CloudURLInfo
 from dvc.utils import env2bool
 
 from .base import Base
@@ -10,7 +12,7 @@ from .base import Base
 TEST_OSS_REPO_BUCKET = "dvc-test"
 
 
-class OSS(Base):
+class OSS(Base, CloudURLInfo):
     @staticmethod
     def should_test():
         do_test = env2bool("DVC_TEST_OSS", undefined=None)
@@ -36,7 +38,7 @@ class OSS(Base):
 def oss():
     if not OSS.should_test():
         pytest.skip("no oss running")
-    yield OSS()
+    yield OSS(OSS.get_url())
 
 
 @pytest.fixture
