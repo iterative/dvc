@@ -221,6 +221,17 @@ class TmpDir(pathlib.Path):
         finally:
             self.scm.checkout(old)
 
+    def read_text(self, *args, **kwargs):  # pylint: disable=signature-differs
+        # NOTE: on windows we'll get PermissionError instead of
+        # IsADirectoryError when we try to `open` a directory, so we can't
+        # rely on exception flow control
+        if self.is_dir():
+            return {
+                path.name: path.read_text(*args, **kwargs)
+                for path in self.iterdir()
+            }
+        return super().read_text(*args, **kwargs)
+
 
 def _coerce_filenames(filenames):
     if isinstance(filenames, (str, bytes, pathlib.PurePath)):

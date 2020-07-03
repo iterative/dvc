@@ -11,7 +11,6 @@ from dvc.dvcfile import Dvcfile
 from dvc.exceptions import DownloadError, PathMissingError
 from dvc.system import System
 from dvc.utils.fs import makedirs, remove
-from tests.utils import trees_equal
 
 
 def test_import(tmp_dir, scm, dvc, erepo_dir):
@@ -73,8 +72,7 @@ def test_import_git_dir(tmp_dir, scm, dvc, git_dir, src_is_dvc):
 
     stage = dvc.imp(os.fspath(git_dir), "src", "dst")
 
-    assert (tmp_dir / "dst").is_dir()
-    trees_equal(git_dir / "src", tmp_dir / "dst")
+    assert (tmp_dir / "dst").read_text() == {"file.txt": "hello"}
     assert tmp_dir.scm.repo.git.check_ignore(os.fspath(tmp_dir / "dst"))
     assert stage.deps[0].def_repo == {
         "url": os.fspath(git_dir),
@@ -88,8 +86,7 @@ def test_import_dir(tmp_dir, scm, dvc, erepo_dir):
 
     stage = dvc.imp(os.fspath(erepo_dir), "dir", "dir_imported")
 
-    assert os.path.isdir("dir_imported")
-    trees_equal(erepo_dir / "dir", "dir_imported")
+    assert (tmp_dir / "dir_imported").read_text() == {"foo": "foo content"}
     assert scm.repo.git.check_ignore("dir_imported")
     assert stage.deps[0].def_repo == {
         "url": os.fspath(erepo_dir),
@@ -222,8 +219,7 @@ def test_pull_imported_directory_stage(tmp_dir, dvc, erepo_dir):
 
     dvc.pull(["dir_imported.dvc"])
 
-    assert os.path.isdir("dir_imported")
-    trees_equal(erepo_dir / "dir", "dir_imported")
+    assert (tmp_dir / "dir_imported").read_text() == {"foo": "foo content"}
 
 
 def test_download_error_pulling_imported_stage(tmp_dir, dvc, erepo_dir):
