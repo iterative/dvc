@@ -130,6 +130,7 @@ tests_requirements = [
     "pylint",
     "pylint-pytest",
     "pylint-plugin-utils",
+    "pydantic[typing_extensions]",
 ]
 
 if (sys.version_info) >= (3, 6):

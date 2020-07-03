@@ -1,0 +1,258 @@
+{
+  "title": "dvc.yaml",
+  "type": "object",
+  "properties": {
+    "stages": {
+      "title": "Stages",
+      "description": "List of stages",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/Stage"
+      }
+    }
+  },
+  "required": [
+    "stages"
+  ],
+  "definitions": {
+    "DepModel": {
+      "title": "DepModel",
+      "description": "A dependency for the stage",
+      "type": "string"
+    },
+    "Dependencies": {
+      "title": "Dependencies",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/DepModel"
+      },
+      "uniqueItems": true
+    },
+    "CustomParamFileKeys": {
+      "title": "CustomParamFileKeys",
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "uniqueItems": true
+      }
+    },
+    "Param": {
+      "title": "Param",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "$ref": "#/definitions/CustomParamFileKeys"
+        }
+      ]
+    },
+    "Params": {
+      "title": "Params",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Param"
+      },
+      "uniqueItems": true
+    },
+    "OutFlags": {
+      "title": "OutFlags",
+      "type": "object",
+      "properties": {
+        "cache": {
+          "title": "Cache",
+          "description": "Cache output by DVC",
+          "default": true,
+          "type": "boolean"
+        },
+        "persist": {
+          "title": "Persist",
+          "description": "Persist output between runs",
+          "default": false,
+          "type": "boolean"
+        }
+      }
+    },
+    "Out": {
+      "title": "Out",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/OutFlags"
+          }
+        }
+      ]
+    },
+    "Outs": {
+      "title": "Outs",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Out"
+      },
+      "uniqueItems": true
+    },
+    "PlotFlags": {
+      "title": "PlotFlags",
+      "type": "object",
+      "properties": {
+        "cache": {
+          "title": "Cache",
+          "description": "Cache output by DVC",
+          "default": true,
+          "type": "boolean"
+        },
+        "persist": {
+          "title": "Persist",
+          "description": "Persist output between runs",
+          "default": false,
+          "type": "boolean"
+        },
+        "x": {
+          "title": "X",
+          "description": "Default field name to use as x-axis data",
+          "type": "string"
+        },
+        "y": {
+          "title": "Y",
+          "description": "Default field name to use as y-axis data",
+          "type": "string"
+        },
+        "x_label": {
+          "title": "X Label",
+          "description": "Default label for the x-axis",
+          "type": "string"
+        },
+        "y_label": {
+          "title": "Y Label",
+          "description": "Default label for the y-axis",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "description": "Default plot title",
+          "type": "string"
+        },
+        "header": {
+          "title": "Header",
+          "description": "Whether the target CSV or TSV has a header or not",
+          "default": false,
+          "type": "boolean"
+        },
+        "template": {
+          "title": "Template",
+          "description": "Default plot template",
+          "type": "string"
+        }
+      }
+    },
+    "Plot": {
+      "title": "Plot",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/PlotFlags"
+          }
+        }
+      ]
+    },
+    "Plots": {
+      "title": "Plots",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Plot"
+      },
+      "uniqueItems": true
+    },
+    "Stage": {
+      "title": "Stage",
+      "type": "object",
+      "properties": {
+        "cmd": {
+          "title": "Cmd",
+          "description": "Command to run",
+          "type": "string"
+        },
+        "wdir": {
+          "title": "Wdir",
+          "description": "Working directory",
+          "type": "string"
+        },
+        "deps": {
+          "title": "Deps",
+          "description": "Dependencies for the stage",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Dependencies"
+            }
+          ]
+        },
+        "params": {
+          "title": "Params",
+          "description": "Params for the stage",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Params"
+            }
+          ]
+        },
+        "outs": {
+          "title": "Outs",
+          "description": "Outputs of the stage",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Outs"
+            }
+          ]
+        },
+        "metrics": {
+          "title": "Metrics",
+          "description": "Metrics of the stage",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Outs"
+            }
+          ]
+        },
+        "plots": {
+          "title": "Plots",
+          "description": "Plots of the stage",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Plots"
+            }
+          ]
+        },
+        "frozen": {
+          "title": "Frozen",
+          "description": "Assume stage as unchanged",
+          "default": false,
+          "type": "boolean"
+        },
+        "always_changed": {
+          "title": "Always Changed",
+          "description": "Assume stage as always changed",
+          "default": false,
+          "type": "boolean"
+        },
+        "meta": {
+          "title": "Meta",
+          "description": "Additional information/metadata"
+        }
+      },
+      "required": [
+        "cmd"
+      ]
+    }
+  }
+}

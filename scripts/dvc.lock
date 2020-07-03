@@ -1,0 +1,8 @@
+generate-jsonschema:
+  cmd: python jsonschema_gen.py > ../schema.json
+  deps:
+  - path: jsonschema_gen.py
+    md5: 4d59d736987173600974ea6abe50e0cc
+  outs:
+  - path: ../schema.json
+    md5: 2221115bef9d255ddd25ba70099a15ec

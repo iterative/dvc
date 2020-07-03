@@ -1,0 +1,8 @@
+stages:
+  generate-jsonschema:
+    cmd: python jsonschema_gen.py > ../schema.json
+    deps:
+      - jsonschema_gen.py
+    outs:
+      - ../schema.json:
+          cache: false
