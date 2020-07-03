@@ -153,18 +153,20 @@ class Repo:
     def find_root(cls, root=None, tree=None):
         root_dir = os.path.realpath(root or os.curdir)
 
-        if tree:
-            if tree.isdir(os.path.join(root_dir, cls.DVC_DIR)):
-                return root_dir
-            raise NotDvcRepoError(f"'{root}' does not contain DVC directory")
-
-        if not os.path.isdir(root_dir):
-            raise NotDvcRepoError(f"directory '{root}' does not exist")
+        is_dir = tree.isdir if tree else os.path.isdir
 
         while True:
             dvc_dir = os.path.join(root_dir, cls.DVC_DIR)
-            if os.path.isdir(dvc_dir):
+            if is_dir(dvc_dir):
                 return root_dir
+            if (
+                tree
+                and os.path.dirname(os.path.abspath(tree.tree_root))
+                == root_dir
+            ):
+                raise NotDvcRepoError(
+                    f"'{root}' does not contain DVC directory"
+                )
             if os.path.ismount(root_dir):
                 break
             root_dir = os.path.dirname(root_dir)

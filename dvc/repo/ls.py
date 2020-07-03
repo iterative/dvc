@@ -31,7 +31,9 @@ def ls(
     """
     from dvc.external_repo import external_repo
 
-    with external_repo(url, rev, path=os.path.dirname(path)) as repo:
+    d_path = os.path.dirname(path) if path else None
+
+    with external_repo(url, rev, path=d_path if d_path else None) as repo:
         path_info = PathInfo(repo.scm.root_dir)
         if path:
             path_info /= path

@@ -31,7 +31,12 @@ def external_repo(url, rev=None, path=None, for_write=False):
     logger.debug("Creating external repo %s@%s", url, rev)
     cloned_path = _cached_clone(url, rev, for_write=for_write)
     # DVCRepo can find the path recursively
-    path = os.path.join(cloned_path, path) if path else cloned_path
+    path = (
+        os.path.join(cloned_path, path)
+        if path and not os.path.isabs(path)
+        else cloned_path
+    )
+
     if not rev:
         rev = "HEAD"
     try:
@@ -147,7 +152,7 @@ class BaseExternalRepo:
         else:
             # git-only erepo with no cache, just copy files directly
             # to dest
-            path = PathInfo(self.root_dir) / path
+            path = PathInfo(self.scm.root_dir) / path
             if not self.repo_tree.exists(path):
                 raise PathMissingError(path, self.url)
             self.repo_tree.copytree(path, dest)

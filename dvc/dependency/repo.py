@@ -58,7 +58,7 @@ class RepoDependency(LocalDependency):
             try:
                 return repo.find_out_by_relpath(self.def_path).info["md5"]
             except OutputNotFoundError:
-                path = PathInfo(os.path.join(repo.root_dir, self.def_path))
+                path = PathInfo(os.path.join(repo.scm.root_dir, self.def_path))
 
                 # we want stream but not fetch, so DVC out directories are
                 # walked, but dir contents is not fetched
