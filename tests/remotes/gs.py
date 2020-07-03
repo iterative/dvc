@@ -120,9 +120,3 @@ def gs():
     if not GCP.should_test():
         pytest.skip("no gs")
     yield GCP(GCP.get_url())
-
-
-@pytest.fixture
-def gs_remote(tmp_dir, dvc, gs):
-    tmp_dir.add_remote(config=gs.config)
-    yield gs

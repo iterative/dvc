@@ -49,9 +49,3 @@ def gdrive(make_tmp_dir):
     tree = GDriveRemoteTree(tmp_dir.dvc, ret.config)
     tree._gdrive_create_dir("root", tree.path_info.path)
     return ret
-
-
-@pytest.fixture
-def gdrive_remote(tmp_dir, dvc, gdrive):
-    tmp_dir.add_remote(config=gdrive.config)
-    return gdrive

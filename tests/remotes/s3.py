@@ -103,19 +103,7 @@ def s3():
 
 
 @pytest.fixture
-def s3_remote(tmp_dir, dvc, s3):
-    tmp_dir.add_remote(config=s3.config)
-    yield s3
-
-
-@pytest.fixture
 def real_s3():
     if not S3.should_test():
         pytest.skip("no real s3")
     yield S3(S3.get_url())
-
-
-@pytest.fixture
-def real_s3_remote(tmp_dir, dvc, real_s3):
-    tmp_dir.add_remote(config=real_s3.config)
-    yield real_s3
