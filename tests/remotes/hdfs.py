@@ -108,9 +108,3 @@ def hdfs():
     if not HDFS.should_test():
         pytest.skip("no hadoop running")
     yield HDFS(HDFS.get_url())
-
-
-@pytest.fixture
-def hdfs_remote(tmp_dir, dvc, hdfs):
-    tmp_dir.add_remote(config=hdfs.config)
-    yield hdfs

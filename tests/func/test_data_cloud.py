@@ -14,10 +14,10 @@ from dvc.stage.exceptions import StageNotFound
 from dvc.utils.fs import remove
 from dvc.utils.yaml import dump_yaml, load_yaml
 
-from .test_api import all_remotes
+from .test_api import all_clouds
 
 
-@pytest.mark.parametrize("remote", all_remotes)
+@pytest.mark.parametrize("remote", all_clouds, indirect=True)
 def test_cloud(tmp_dir, dvc, remote):  # pylint:disable=unused-argument
     (stage,) = tmp_dir.dvc_gen("foo", "foo")
     out = stage.outs[0]
@@ -95,7 +95,7 @@ def test_cloud(tmp_dir, dvc, remote):  # pylint:disable=unused-argument
         assert status_dir == expected
 
 
-@pytest.mark.parametrize("remote", all_remotes)
+@pytest.mark.parametrize("remote", all_clouds, indirect=True)
 def test_cloud_cli(tmp_dir, dvc, remote):
     args = ["-v", "-j", "2"]
 

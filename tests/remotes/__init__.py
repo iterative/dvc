@@ -1,18 +1,11 @@
 import pytest
 
-from .azure import Azure, azure, azure_remote  # noqa: F401
-from .hdfs import HDFS, hdfs, hdfs_remote  # noqa: F401
-from .http import HTTP, http, http_remote, http_server  # noqa: F401
+from .azure import Azure, azure  # noqa: F401
+from .hdfs import HDFS, hdfs  # noqa: F401
+from .http import HTTP, http, http_server  # noqa: F401
 from .local import Local, local_cloud, local_remote  # noqa: F401
-from .oss import OSS, TEST_OSS_REPO_BUCKET, oss, oss_remote  # noqa: F401
-from .s3 import (  # noqa: F401
-    S3,
-    TEST_AWS_REPO_BUCKET,
-    real_s3,
-    real_s3_remote,
-    s3,
-    s3_remote,
-)
+from .oss import OSS, TEST_OSS_REPO_BUCKET, oss  # noqa: F401
+from .s3 import S3, TEST_AWS_REPO_BUCKET, real_s3, s3  # noqa: F401
 
 TEST_REMOTE = "upstream"
 TEST_CONFIG = {
@@ -26,23 +19,28 @@ from .gdrive import (  # noqa: F401; noqa: F401
     TEST_GDRIVE_REPO_BUCKET,
     GDrive,
     gdrive,
-    gdrive_remote,
 )
 from .gs import (  # noqa: F401; noqa: F401
     GCP,
     TEST_GCP_CREDS_FILE,
     TEST_GCP_REPO_BUCKET,
     gs,
-    gs_remote,
 )
 from .ssh import (  # noqa: F401; noqa: F401
     SSH,
     SSHMocked,
     ssh,
     ssh_connection,
-    ssh_remote,
     ssh_server,
 )
+
+
+@pytest.fixture
+def remote(tmp_dir, dvc, request):
+    cloud = request.param
+    assert cloud
+    tmp_dir.add_remote(config=cloud.config)
+    yield cloud
 
 
 @pytest.fixture

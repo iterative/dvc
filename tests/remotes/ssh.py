@@ -163,9 +163,3 @@ def ssh(ssh_server, monkeypatch):
     monkeypatch.setattr(SSHRemoteTree, "CAN_TRAVERSE", False)
 
     return SSHMocked(SSHMocked.get_url(TEST_SSH_USER, ssh_server.port))
-
-
-@pytest.fixture
-def ssh_remote(tmp_dir, dvc, ssh):
-    tmp_dir.add_remote(config=ssh.config)
-    yield ssh

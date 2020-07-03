@@ -34,9 +34,3 @@ def azure():
     if not Azure.should_test():
         pytest.skip("no azure running")
     yield Azure(Azure.get_url())
-
-
-@pytest.fixture
-def azure_remote(tmp_dir, dvc, azure):
-    tmp_dir.add_remote(config=azure.config)
-    yield azure

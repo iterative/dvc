@@ -46,9 +46,3 @@ def http_server(tmp_path_factory):
 @pytest.fixture
 def http(http_server):
     yield HTTP(HTTP.get_url(http_server.server_port))
-
-
-@pytest.fixture
-def http_remote(tmp_dir, dvc, http):
-    tmp_dir.add_remote(config=http.config)
-    yield http
