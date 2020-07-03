@@ -553,7 +553,8 @@ class GDriveRemoteTree(BaseRemoteTree):
             )
 
     def walk_files(self, path_info, **kwargs):
-        if path_info == self.path_info or not kwargs.pop("prefix", False):
+        use_prefix = kwargs.pop("prefix", False)
+        if path_info == self.path_info or not use_prefix:
             prefix = None
         else:
             prefix = path_info.path
