@@ -173,3 +173,42 @@ def test_ignore_blank_line(tmp_dir, dvc):
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "foo\n\ndir/ignored")
 
     assert _files_set("dir", dvc.tree) == {"dir/other"}
+
+
+# It is not possible to re-include a file if a parent directory of
+# that file is excluded.
+# Git doesn’t list excluded directories for performance reasons,
+# so any patterns on contained files have no effect,
+# no matter where they are defined.
+def test_ignore_parent_path(tmp_dir, dvc):
+    tmp_dir.gen({"dir": {"should_ignore": "121"}})
+    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir/*\n\n!should_ignore")
+    assert _files_set("dir", dvc.tree) == {
+        "dir/should_ignore",
+    }
+
+    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir\n\n!should_ignore")
+    assert _files_set("dir", dvc.tree) == set()
+
+    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir/\n\n!should_ignore")
+    assert _files_set("dir", dvc.tree) == set()
+
+
+# If there is a separator at the end of the pattern then the pattern
+# will only match directories,
+# otherwise the pattern can match both files and directories.
+# For example, a pattern doc/frotz/ matches doc/frotz directory,
+# but not a/doc/frotz directory;
+def test_ignore_sub_directory(tmp_dir, dvc):
+    tmp_dir.gen({"doc": {"fortz": {}}, "a": {"doc": {"fortz": {}}}})
+    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "doc/fortz")
+    assert _files_set("dir", dvc.tree) == {
+        "a/doc/fortz",
+    }
+
+
+# however frotz/ matches frotz and a/frotz that is a directory
+def test_ignore_directory(tmp_dir, dvc):
+    tmp_dir.gen({"fortz": {}, "a": {"fortz": {}}})
+    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "fortz")
+    assert _files_set("dir", dvc.tree) == set()
