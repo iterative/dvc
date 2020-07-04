@@ -141,7 +141,7 @@ def mock_dvcignore(dvcignore_path, patterns):
         (os.path.join("path", "to_ignore.txt"), ["/****.txt"], False),
         (os.path.join("data", "file.txt"), ["data/***"], True),
         # bug from PathSpec
-        # (os.path.join("data", "p", "file.txt"), ["data/***"], False)
+        (os.path.join("data", "p", "file.txt"), ["data/***"], False),
         (os.path.join("data", "p", "file.txt"), ["***/file.txt"], False),
         (
             os.path.join("rel", "path", "path2", "to_ignore"),

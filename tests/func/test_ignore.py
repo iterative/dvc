@@ -206,18 +206,25 @@ def test_ignore_parent_path_anotherform(tmp_dir, dvc):
 # For example, a pattern doc/frotz/ matches doc/frotz directory,
 # but not a/doc/frotz directory;
 def test_ignore_sub_directory(tmp_dir, dvc):
-    tmp_dir.gen({"doc": {"fortz": {}}, "a": {"doc": {"fortz": {}}}})
-    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "doc/fortz")
-    assert _files_set(".", dvc.tree) == {
-        "a/doc/fortz",
-        "./{}".format(DvcIgnore.DVCIGNORE_FILE),
+    tmp_dir.gen(
+        {
+            "dir": {
+                "doc": {"fortz": {"b": "b"}},
+                "a": {"doc": {"fortz": {"a": "a"}}},
+            }
+        }
+    )
+    tmp_dir.gen({"dir": {DvcIgnore.DVCIGNORE_FILE: "doc/fortz"}})
+    assert _files_set("dir", dvc.tree) == {
+        "dir/a/doc/fortz/a",
+        "dir/{}".format(DvcIgnore.DVCIGNORE_FILE),
     }
 
 
 # however frotz/ matches frotz and a/frotz that is a directory
 def test_ignore_directory(tmp_dir, dvc):
-    tmp_dir.gen({"fortz": {}, "a": {"fortz": {}}})
-    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "fortz")
-    assert _files_set(".", dvc.tree) == {
-        "./{}".format(DvcIgnore.DVCIGNORE_FILE),
+    tmp_dir.gen({"dir": {"fortz": {}, "a": {"fortz": {}}}})
+    tmp_dir.gen({"dir": {DvcIgnore.DVCIGNORE_FILE: "fortz"}})
+    assert _files_set("dir", dvc.tree) == {
+        "dir/{}".format(DvcIgnore.DVCIGNORE_FILE),
     }
