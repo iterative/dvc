@@ -180,17 +180,23 @@ def test_ignore_blank_line(tmp_dir, dvc):
 # Git doesn’t list excluded directories for performance reasons,
 # so any patterns on contained files have no effect,
 # no matter where they are defined.
-def test_ignore_parent_path(tmp_dir, dvc):
-    tmp_dir.gen({"dir": {"should_ignore": "121"}})
-    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir/*\n\n!should_ignore")
+def test_ignore_file_in_parent_path(tmp_dir, dvc):
+    tmp_dir.gen({"dir": {"subdir": {"not_ignore": "121"}}})
+    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "subdir/*\n\n!not_ignore")
     assert _files_set("dir", dvc.tree) == {
-        "dir/should_ignore",
+        "dir/subdir/not_ignore",
     }
 
-    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir\n\n!should_ignore")
+
+def test_ignore_parent_path(tmp_dir, dvc):
+    tmp_dir.gen({"dir": {"subdir": {"should_ignore": "121"}}})
+    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "subdir\n\n!should_ignore")
     assert _files_set("dir", dvc.tree) == set()
 
-    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir/\n\n!should_ignore")
+
+def test_ignore_parent_path_anotherform(tmp_dir, dvc):
+    tmp_dir.gen({"dir": {"subdir": {"should_ignore": "121"}}})
+    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "subdir/\n\n!should_ignore")
     assert _files_set("dir", dvc.tree) == set()
 
 
@@ -202,8 +208,9 @@ def test_ignore_parent_path(tmp_dir, dvc):
 def test_ignore_sub_directory(tmp_dir, dvc):
     tmp_dir.gen({"doc": {"fortz": {}}, "a": {"doc": {"fortz": {}}}})
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "doc/fortz")
-    assert _files_set("dir", dvc.tree) == {
+    assert _files_set(".", dvc.tree) == {
         "a/doc/fortz",
+        "./{}".format(DvcIgnore.DVCIGNORE_FILE),
     }
 
 
@@ -211,4 +218,6 @@ def test_ignore_sub_directory(tmp_dir, dvc):
 def test_ignore_directory(tmp_dir, dvc):
     tmp_dir.gen({"fortz": {}, "a": {"fortz": {}}})
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "fortz")
-    assert _files_set("dir", dvc.tree) == set()
+    assert _files_set(".", dvc.tree) == {
+        "./{}".format(DvcIgnore.DVCIGNORE_FILE),
+    }
