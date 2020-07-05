@@ -104,9 +104,6 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
         if isinstance(ignore, DvcIgnorePatternsTrie):
             ignore_pattern_trie = ignore
 
-    print(os.fspath(top_ignore_file))
-    print(os.fspath(ignore_file))
-
     assert ignore_pattern_trie is not None
     assert (
         DvcIgnorePatterns.from_files(
@@ -197,21 +194,184 @@ def test_multi_ignore_file(tmp_dir, dvc, monkeypatch):
     }
 
 
-def test_no_ignore_in_parent_dir(tmp_dir, dvc, monkeypatch):
+@pytest.mark.parametrize(
+    "patterns, dirname, changed",
+    [
+        # A line starting with # serves as a comment.
+        ("#comment", "dir", "#comment"),
+        # Put a backslash ("\") in front of the first hash for patterns that
+        # begin with a hash.
+        ("\\#hash", "dir", "/dir/**/#hash"),
+        ("\\#hash", "#dir", "/#dir/**/#hash"),
+        # Trailing spaces are ignored unless they are quoted with
+        # backslash ("\").
+        (" space", "dir", "/dir/**/space"),
+        ("\\ space", "dir", "/dir/**/ space"),
+        # An optional prefix "!" which negates the pattern;
+        ("!include", "dir", "!/dir/**/include"),
+        # Put a backslash ("\") in front of the first "!" for patterns that
+        # begin with a literal "!", for example, "\!important!.txt".
+        ("\\!important!.txt", "dir", "/dir/**/!important!.txt"),
+        # If there is a separator at the beginning or middle (or both) of the
+        # pattern, then the pattern is relative to the directory level of the
+        # particular .gitignore file itself.
+        ("/separator.txt", "dir", "/dir/separator.txt"),
+        ("subdir/separator.txt", "dir", "/dir/subdir/separator.txt"),
+        # Otherwise the pattern may also match at any level below
+        # the .gitignore level.
+        ("no_sep", "dir", "/dir/**/no_sep"),
+        # If there is a separator at the end of the pattern then the pattern
+        # will only match directories, otherwise the pattern can match both
+        # files and directories.
+        ("doc/fortz/", "dir", "/dir/doc/fortz/"),
+        ("fortz/", "dir", "/dir/**/fortz/"),
+        # An asterisk "*" matches anything except a slash.
+        ("*aste*risk*", "dir", "/dir/**/*aste*risk*"),
+        # The character "?" matches any one character except "/".
+        ("?fi?le?", "dir", "/dir/**/?fi?le?"),
+        # The range notation, e.g. [a-zA-Z], can be used to match one of the
+        # characters in a range. See fnmatch(3) and the FNM_PATHNAME flag
+        # for a more detailed description.
+        ("[a-zA-Z]file[a-zA-Z]", "dir", "/dir/**/[a-zA-Z]file[a-zA-Z]"),
+        # Two consecutive asterisks ("**") in patterns matched against full
+        # pathname may have special meaning:
+        # A leading "**" followed by a slash means match in all directories.
+        # For example, "**/foo" matches file or directory "foo" anywhere,
+        # the same as pattern "foo".
+        ("**/foo", "dir", "/dir/**/foo"),
+        # "**/foo/bar" matches file or directory "bar" anywhere that is
+        # directly under directory "foo".
+        ("**/foo/bar", "dir", "/dir/**/foo/bar"),
+        # A trailing "/**" matches everything inside.
+        # For example, "abc/**" matches all files inside directory "abc",
+        # relative to the location of the .gitignore file, with infinite depth.
+        ("abc/**", "dir", "/dir/abc/**"),
+        # A slash followed by two consecutive asterisks then a slash matches
+        # zero or more directories. For example, "a/**/b"
+        # matches "a/b", "a/x/b", "a/x/y/b" and so on.
+        ("a/**/b", "dir", "/dir/a/**/b"),
+        # Other consecutive asterisks are considered regular asterisks and
+        # will match according to the previous rules.
+        ("/***.txt", "dir", "/dir/***.txt"),
+        ("data/***", "dir", "/dir/data/***"),
+        ("***/file.txt", "dir", "/dir/***/file.txt"),
+        ("***file", "dir", "/dir/**/***file"),
+        ("a/***/b", "dir", "/dir/a/***/b"),
+    ],
+)
+def test_dvcignore_pattern_change_dir(
+    tmp_dir, dvc, patterns, dirname, changed
+):
     tmp_dir.gen(
         {
-            "dir": {
-                "subdir": {"should_ignore": "1", "not_ignore": "1"},
-                "file1": "a",
+            "parent": {
+                dirname: {DvcIgnore.DVCIGNORE_FILE: patterns},
+                "subdir": {},
             }
         }
     )
-    tmp_dir.gen(
-        {"dir": {"subdir": {DvcIgnore.DVCIGNORE_FILE: "should_ignore"}}}
+    ignore_pattern_trie = None
+    for ignore in dvc.tree.dvcignore.ignores:
+        if isinstance(ignore, DvcIgnorePatternsTrie):
+            ignore_pattern_trie = ignore
+            break
+
+    assert ignore_pattern_trie is not None
+    ignore_pattern = ignore_pattern_trie[
+        os.fspath(tmp_dir / "parent" / dirname)
+    ]
+    ignore_pattern_changed = ignore_pattern.change_dirname(
+        os.fspath(tmp_dir / "parent")
+    )
+    assert (
+        DvcIgnorePatterns([changed], os.fspath(tmp_dir / "parent"))
+        == ignore_pattern_changed
     )
 
-    assert _files_set("dir", dvc.tree) == {
-        "dir/file1",
-        "dir/subdir/not_ignore",
-        "dir/subdir/{}".format(DvcIgnore.DVCIGNORE_FILE),
-    }
+
+def test_dvcignore_pattern_merge(tmp_dir, dvc):
+    tmp_dir.gen(
+        {
+            "top": {
+                "first": {
+                    DvcIgnore.DVCIGNORE_FILE: "a\nb\nc",
+                    "middle": {
+                        "second": {
+                            DvcIgnore.DVCIGNORE_FILE: "d\ne\nf",
+                            "bottom": {},
+                        }
+                    },
+                },
+            },
+            "other": {DvcIgnore.DVCIGNORE_FILE: "1\n2\n3"},
+        }
+    )
+    ignore_pattern_trie = None
+    for ignore in dvc.tree.dvcignore.ignores:
+        if isinstance(ignore, DvcIgnorePatternsTrie):
+            ignore_pattern_trie = ignore
+            break
+
+    assert ignore_pattern_trie is not None
+    ignore_pattern_top = ignore_pattern_trie[os.fspath(tmp_dir / "top")]
+    ignore_pattern_other = ignore_pattern_trie[os.fspath(tmp_dir / "other")]
+    ignore_pattern_first = ignore_pattern_trie[
+        os.fspath(tmp_dir / "top" / "first")
+    ]
+    ignore_pattern_middle = ignore_pattern_trie[
+        os.fspath(tmp_dir / "top" / "first" / "middle")
+    ]
+    ignore_pattern_second = ignore_pattern_trie[
+        os.fspath(tmp_dir / "top" / "first" / "middle" / "second")
+    ]
+    ignore_pattern_bottom = ignore_pattern_trie[
+        os.fspath(tmp_dir / "top" / "first" / "middle" / "second" / "bottom")
+    ]
+    assert not ignore_pattern_top
+    assert (
+        DvcIgnorePatterns([], os.fspath(tmp_dir / "top")) == ignore_pattern_top
+    )
+    assert (
+        DvcIgnorePatterns(["1", "2", "3"], os.fspath(tmp_dir / "other"))
+        == ignore_pattern_other
+    )
+    assert (
+        DvcIgnorePatterns(
+            ["a", "b", "c"], os.fspath(tmp_dir / "top" / "first")
+        )
+        == ignore_pattern_first
+    )
+    assert (
+        DvcIgnorePatterns(
+            ["a", "b", "c"], os.fspath(tmp_dir / "top" / "first")
+        )
+        == ignore_pattern_middle
+    )
+    assert (
+        DvcIgnorePatterns(
+            [
+                "a",
+                "b",
+                "c",
+                "/middle/second/**/d",
+                "/middle/second/**/e",
+                "/middle/second/**/f",
+            ],
+            os.fspath(tmp_dir / "top" / "first"),
+        )
+        == ignore_pattern_second
+    )
+    assert (
+        DvcIgnorePatterns(
+            [
+                "a",
+                "b",
+                "c",
+                "/middle/second/**/d",
+                "/middle/second/**/e",
+                "/middle/second/**/f",
+            ],
+            os.fspath(tmp_dir / "top" / "first"),
+        )
+        == ignore_pattern_bottom
+    )

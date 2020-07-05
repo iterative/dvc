@@ -86,6 +86,7 @@ class DvcIgnorePatterns(DvcIgnore):
     def __eq__(self, other):
         if not isinstance(other, DvcIgnorePatterns):
             return NotImplemented
+        print(self.pattern_list, other.pattern_list)
         return (self.dirname == other.dirname) & (
             self.pattern_list == other.pattern_list
         )
@@ -95,6 +96,52 @@ class DvcIgnorePatterns(DvcIgnore):
             return True
         return False
 
+    @staticmethod
+    def _is_include(rule):
+        if rule.startswith("!"):
+            return True, rule[1:]
+        return False, rule
+
+    @staticmethod
+    def _is_comment(rule):
+        if rule.startswith("#"):
+            return True
+        return False
+
+    @staticmethod
+    def _remove_slash(rule):
+        if rule.startswith("\\"):
+            return rule[1:]
+        return rule
+
+    @staticmethod
+    def _match_all_level(rule):
+        if rule[:-1].find("/") >= 0 and not rule.startswith("**/"):
+            if rule.startswith("/"):
+                rule = rule[1:]
+            return False, rule
+        if rule.startswith("**/"):
+            rule = rule[3:]
+        return True, rule
+
+    def change_rule(self, rule, rel):
+        rule = rule.strip()
+        if self._is_comment(rule):
+            return rule
+        is_include, rule = self._is_include(rule)
+        match_all, rule = self._match_all_level(rule)
+        rule = self._remove_slash(rule)
+        if not match_all:
+            rule = f"/{rule}"
+        else:
+            rule = f"/**/{rule}"
+        if is_include:
+            rule = f"!/{rel}{rule}"
+        else:
+            rule = f"/{rel}{rule}"
+        rule = normalize_file(rule)
+        return rule
+
     def change_dirname(self, new_dirname):
         prefix = new_dirname + os.sep
         if new_dirname == self.dirname:
@@ -102,13 +149,10 @@ class DvcIgnorePatterns(DvcIgnore):
         if not self.dirname.startswith(prefix):
             raise ValueError("change dirname can only change to parent path")
         rel = self.dirname[len(prefix) :]
+
         new_pattern_list = []
         for rule in self.pattern_list:
-            if rule.startswith("!"):
-                rule = f"!{rel}{os.sep}{rule[1:]}"
-            else:
-                rule = f"{rel}{os.sep}{rule}"
-            rule = normalize_file(rule)
+            rule = self.change_rule(rule, rel)
             new_pattern_list.append(rule)
         return DvcIgnorePatterns(new_pattern_list, new_dirname)
 
