@@ -121,6 +121,7 @@ def mock_dvcignore(dvcignore_path, patterns):
         # For example, "abc/**" matches all files inside directory "abc",
         # relative to the location of the .gitignore file, with infinite depth.
         (os.path.join("rel", "p", "p2", "to_ignore"), ["rel/**"], True,),
+        (os.path.join("rel", "p", "p2", "to_ignore"), ["p/**"], False,),
         (
             os.path.join("rel", "path", "path2", "dont_ignore"),
             ["rel/**"],
@@ -138,6 +139,11 @@ def mock_dvcignore(dvcignore_path, patterns):
         (
             os.path.join("rel", "path", "path2", "dont_ignore"),
             ["rel/**/to_ignore"],
+            False,
+        ),
+        (
+            os.path.join("rel", "path", "path2", "dont_ignore"),
+            ["path/**/dont_ignore"],
             False,
         ),
         # Other consecutive asterisks are considered regular asterisks
