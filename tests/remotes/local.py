@@ -1,3 +1,4 @@
+# pylint: disable=cyclic-import,disable=abstract-method
 import pytest
 
 from tests.basic_env import TestDvc
@@ -16,8 +17,11 @@ class Local(Base):
 
 
 @pytest.fixture
-def local_cloud():
-    yield Local()
+def local_cloud(make_tmp_dir):
+    ret = make_tmp_dir("local-cloud")
+    ret.url = str(ret)
+    ret.config = {"url": ret.url}
+    return ret
 
 
 @pytest.fixture

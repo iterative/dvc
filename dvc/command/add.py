@@ -63,10 +63,6 @@ def add_parser(subparsers, parent_parser):
         metavar="<filename>",
     )
     parser.add_argument(
-        "targets",
-        nargs="+",
-        help="Input files/directories to add.",
-        metavar="targets",
-        choices=completion.Required.FILE,
-    )
+        "targets", nargs="+", help="Input files/directories to add.",
+    ).complete = completion.FILE
     parser.set_defaults(func=CmdAdd)

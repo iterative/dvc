@@ -60,19 +60,19 @@ def _read_metrics(repo, metrics, rev):
         if not tree.exists(metric):
             continue
 
-        with tree.open(metric, "r") as fobj:
-            try:
+        try:
+            with tree.open(metric, "r") as fobj:
                 # NOTE this also supports JSON
                 val = yaml.safe_load(fobj)
-            except yaml.YAMLError:
-                logger.debug(
-                    "failed to read '%s' on '%s'", metric, rev, exc_info=True
-                )
-                continue
+        except (FileNotFoundError, yaml.YAMLError):
+            logger.debug(
+                "failed to read '%s' on '%s'", metric, rev, exc_info=True
+            )
+            continue
 
-            val = _extract_metrics(val)
-            if val:
-                res[str(metric)] = val
+        val = _extract_metrics(val)
+        if val:
+            res[str(metric)] = val
 
     return res
 

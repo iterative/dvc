@@ -12,7 +12,7 @@ from dvc.scheme import Schemes
 logger = logging.getLogger(__name__)
 
 
-class OSSRemoteTree(BaseRemoteTree):
+class OSSRemoteTree(BaseRemoteTree):  # pylint:disable=abstract-method
     """
     oss2 document:
     https://www.alibabacloud.com/help/doc-detail/32026.htm
@@ -100,6 +100,8 @@ class OSSRemoteTree(BaseRemoteTree):
             yield blob.key
 
     def walk_files(self, path_info, **kwargs):
+        if not kwargs.pop("prefix", False):
+            path_info = path_info / ""
         for fname in self._list_paths(path_info):
             if fname.endswith("/"):
                 continue

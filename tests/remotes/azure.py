@@ -1,14 +1,17 @@
+# pylint:disable=abstract-method
+
 import os
 import uuid
 
 import pytest
 
+from dvc.path_info import CloudURLInfo
 from dvc.utils import env2bool
 
 from .base import Base
 
 
-class Azure(Base):
+class Azure(Base, CloudURLInfo):
     @staticmethod
     def should_test():
         do_test = env2bool("DVC_TEST_AZURE", undefined=None)
@@ -30,10 +33,4 @@ class Azure(Base):
 def azure():
     if not Azure.should_test():
         pytest.skip("no azure running")
-    yield Azure()
-
-
-@pytest.fixture
-def azure_remote(tmp_dir, dvc, azure):
-    tmp_dir.add_remote(config=azure.config)
-    yield azure
+    yield Azure(Azure.get_url())

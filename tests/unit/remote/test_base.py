@@ -106,7 +106,7 @@ def test_hashes_exist(object_exists, traverse, dvc):
 @mock.patch.object(
     BaseRemoteTree, "path_to_hash", side_effect=lambda x: x,
 )
-def test_list_hashes_traverse(path_to_hash, list_hashes, dvc):
+def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
     tree = BaseRemoteTree(dvc, {})
     tree.path_info = PathInfo("foo")
 
@@ -140,6 +140,20 @@ def test_list_hashes(dvc):
     ):
         hashes = list(tree.list_hashes())
         assert hashes == ["123456"]
+
+
+def test_list_paths(dvc):
+    tree = BaseRemoteTree(dvc, {})
+    tree.path_info = PathInfo("foo")
+
+    with mock.patch.object(tree, "walk_files", return_value=[]) as walk_mock:
+        for _ in tree.list_paths():
+            pass
+        walk_mock.assert_called_with(tree.path_info, prefix=False)
+
+        for _ in tree.list_paths(prefix="000"):
+            pass
+        walk_mock.assert_called_with(tree.path_info / "00" / "0", prefix=True)
 
 
 @pytest.mark.parametrize(

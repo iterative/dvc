@@ -83,7 +83,7 @@ COMMANDS = [
 class DvcParser(argparse.ArgumentParser):
     """Custom parser class for dvc CLI."""
 
-    def error(self, message, command=None):
+    def error(self, message, command=None):  # pylint: disable=arguments-differ
         """Custom error method.
         Args:
             message (str): error message.

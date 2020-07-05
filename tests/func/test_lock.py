@@ -13,7 +13,7 @@ class TestLock(TestDvc):
             with self.assertRaises(LockError):
                 lock2 = Lock(lockfile)
                 with lock2:
-                    self.assertTrue(False)
+                    pass
 
     def test_cli(self):
         lockfile = os.path.join(self.dvc.dvc_dir, "tmp", "lock")

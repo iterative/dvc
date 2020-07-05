@@ -147,7 +147,7 @@ def _create_stages(repo, targets, fname, pbar=None, external=False):
         if stage:
             Dvcfile(repo, stage.path).remove()
 
-        repo._reset()
+        repo._reset()  # pylint: disable=protected-access
 
         if not stage:
             if pbar is not None:

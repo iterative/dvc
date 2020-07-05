@@ -445,3 +445,30 @@ def test_ls_shows_pipeline_tracked_outs(tmp_dir, dvc, scm, run_copy):
 
     files = Repo.ls(os.curdir, dvc_only=True)
     match_files(files, ((("bar",), True),))
+
+
+def test_ls_granular(erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen(
+            {
+                "dir": {
+                    "1": "1",
+                    "2": "2",
+                    "subdir": {"foo": "foo", "bar": "bar"},
+                }
+            },
+            commit="create dir",
+        )
+
+    entries = Repo.ls(os.fspath(erepo_dir), os.path.join("dir", "subdir"))
+    assert entries == [
+        {"isout": False, "isdir": False, "isexec": False, "path": "bar"},
+        {"isout": False, "isdir": False, "isexec": False, "path": "foo"},
+    ]
+
+    entries = Repo.ls(os.fspath(erepo_dir), "dir")
+    assert entries == [
+        {"isout": False, "isdir": False, "isexec": False, "path": "1"},
+        {"isout": False, "isdir": False, "isexec": False, "path": "2"},
+        {"isout": False, "isdir": True, "isexec": False, "path": "subdir"},
+    ]

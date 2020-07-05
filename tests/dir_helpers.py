@@ -43,6 +43,8 @@ from global repo template to creating everything inplace, which:
     - does not create unnecessary files
 """
 
+# pylint: disable=redefined-outer-name, attribute-defined-outside-init
+
 import os
 import pathlib
 from contextlib import contextmanager
@@ -74,7 +76,9 @@ disable_other_loggers()
 class TmpDir(pathlib.Path):
     def __new__(cls, *args, **kwargs):
         if cls is TmpDir:
-            cls = WindowsTmpDir if os.name == "nt" else PosixTmpDir
+            cls = (  # pylint: disable=self-cls-assignment
+                WindowsTmpDir if os.name == "nt" else PosixTmpDir
+            )
         self = cls._from_parts(args, init=False)
         if not self._flavour.is_supported:
             raise NotImplementedError(
@@ -216,6 +220,17 @@ class TmpDir(pathlib.Path):
             yield
         finally:
             self.scm.checkout(old)
+
+    def read_text(self, *args, **kwargs):  # pylint: disable=signature-differs
+        # NOTE: on windows we'll get PermissionError instead of
+        # IsADirectoryError when we try to `open` a directory, so we can't
+        # rely on exception flow control
+        if self.is_dir():
+            return {
+                path.name: path.read_text(*args, **kwargs)
+                for path in self.iterdir()
+            }
+        return super().read_text(*args, **kwargs)
 
 
 def _coerce_filenames(filenames):

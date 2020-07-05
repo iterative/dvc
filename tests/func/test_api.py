@@ -19,13 +19,13 @@ cloud_names = [
     "http",
 ]
 clouds = [pytest.lazy_fixture(cloud) for cloud in cloud_names]
-all_clouds = [pytest.lazy_fixture("local")] + clouds
-remotes = [pytest.lazy_fixture(f"{cloud}_remote") for cloud in cloud_names]
-all_remotes = [pytest.lazy_fixture("local_remote")] + remotes
+all_clouds = [pytest.lazy_fixture("local_cloud")] + clouds
+
+# `lazy_fixture` is confusing pylint, pylint: disable=unused-argument
 
 
-@pytest.mark.parametrize("remote", remotes)
-def test_get_url(tmp_dir, dvc, request, remote):
+@pytest.mark.parametrize("remote", clouds, indirect=True)
+def test_get_url(tmp_dir, dvc, remote):
     tmp_dir.dvc_gen("foo", "foo")
 
     expected_url = URLInfo(remote.url) / "ac/bd18db4cc2f85cedef654fccc4a4d8"
@@ -54,7 +54,7 @@ def test_get_url_requires_dvc(tmp_dir, scm):
         api.get_url("foo", repo=f"file://{tmp_dir}")
 
 
-@pytest.mark.parametrize("remote", all_remotes)
+@pytest.mark.parametrize("remote", all_clouds, indirect=True)
 def test_open(tmp_dir, dvc, remote):
     tmp_dir.dvc_gen("foo", "foo-text")
     dvc.push()
@@ -66,7 +66,22 @@ def test_open(tmp_dir, dvc, remote):
         assert fd.read() == "foo-text"
 
 
-@pytest.mark.parametrize("cloud", clouds)
+@pytest.mark.parametrize(
+    "cloud",
+    [
+        pytest.lazy_fixture(cloud)
+        for cloud in [
+            "real_s3",  # NOTE: moto's s3 fails in some tests
+            "gs",
+            "azure",
+            "gdrive",
+            "oss",
+            "ssh",
+            "hdfs",
+            "http",
+        ]
+    ],
+)
 def test_open_external(erepo_dir, cloud):
     erepo_dir.add_remote(config=cloud.config)
 
@@ -90,7 +105,7 @@ def test_open_external(erepo_dir, cloud):
     assert api.read("version", repo=repo_url, rev="branch") == "branchver"
 
 
-@pytest.mark.parametrize("remote", all_remotes)
+@pytest.mark.parametrize("remote", all_clouds, indirect=True)
 def test_open_granular(tmp_dir, dvc, remote):
     tmp_dir.dvc_gen({"dir": {"foo": "foo-text"}})
     dvc.push()
@@ -102,7 +117,23 @@ def test_open_granular(tmp_dir, dvc, remote):
         assert fd.read() == "foo-text"
 
 
-@pytest.mark.parametrize("remote", all_remotes)
+@pytest.mark.parametrize(
+    "remote",
+    [
+        pytest.lazy_fixture(cloud)
+        for cloud in [
+            "real_s3",  # NOTE: moto's s3 fails in some tests
+            "gs",
+            "azure",
+            "gdrive",
+            "oss",
+            "ssh",
+            "hdfs",
+            "http",
+        ]
+    ],
+    indirect=True,
+)
 def test_missing(tmp_dir, dvc, remote):
     tmp_dir.dvc_gen("foo", "foo")
 

@@ -327,9 +327,10 @@ def _log_exceptions(func, operation):
         try:
             func(from_info, to_info, *args, **kwargs)
             return 0
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-except
             # NOTE: this means we ran out of file descriptors and there is no
             # reason to try to proceed, as we will hit this error anyways.
+            # pylint: disable=no-member
             if isinstance(exc, OSError) and exc.errno == errno.EMFILE:
                 raise
 
@@ -362,7 +363,7 @@ class LocalCache(CloudCache):
         self.tree.path_info = PathInfo(value) if value else None
 
     @classmethod
-    def supported(cls, config):
+    def supported(cls, config):  # pylint: disable=unused-argument
         return True
 
     @cached_property
@@ -375,7 +376,9 @@ class LocalCache(CloudCache):
         # being ~5.5 times faster.
         return f"{self.cache_path}{os.sep}{hash_[0:2]}{os.sep}{hash_[2:]}"
 
-    def hashes_exist(self, hashes, jobs=None, name=None):
+    def hashes_exist(
+        self, hashes, jobs=None, name=None
+    ):  # pylint: disable=unused-argument
         return [
             hash_
             for hash_ in Tqdm(
@@ -715,12 +718,12 @@ class LocalCache(CloudCache):
             if info["status"] == STATUS_MISSING
         ]
         if missing_caches:
-            missing_desc = "".join(
-                "\nname: {}, md5: {}".format(info["name"], md5)
+            missing_desc = "\n".join(
+                "name: {}, md5: {}".format(info["name"], md5)
                 for md5, info in missing_caches
             )
             msg = (
                 "Some of the cache files do not exist neither locally "
-                "nor on remote. Missing cache files: {}".format(missing_desc)
+                "nor on remote. Missing cache files:\n{}".format(missing_desc)
             )
             logger.warning(msg)

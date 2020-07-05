@@ -28,7 +28,7 @@ class MultiStageRun:
         assert kwargs.get("name")
         kwargs.pop("fname", None)
         # ignore fname for now
-        return self.dvc.run(**kwargs)
+        return self.dvc.run(**kwargs)  # noqa, pylint: disable=no-member
 
     @staticmethod
     def _get_stage_target(stage):
@@ -155,42 +155,6 @@ class TestReproChangedDirMultiStage(
 
 class TestReproChangedDirDataMultiStage(
     MultiStageRun, test_repro.TestReproChangedDirData
-):
-    pass
-
-
-class TestReproExternalS3MultiStage(
-    MultiStageRun, test_repro.TestReproExternalS3
-):
-    pass
-
-
-class TestReproExternalGSMultiStage(
-    MultiStageRun, test_repro.TestReproExternalGS
-):
-    pass
-
-
-class TestReproExternalHDFSMultiStage(
-    MultiStageRun, test_repro.TestReproExternalHDFS
-):
-    pass
-
-
-class TestReproExternalHTTPMultiStage(
-    MultiStageRun, test_repro.TestReproExternalHTTP
-):
-    pass
-
-
-class TestReproExternalLOCALMultiStage(
-    MultiStageRun, test_repro.TestReproExternalLOCAL
-):
-    pass
-
-
-class TestReproExternalSSHMultiStage(
-    MultiStageRun, test_repro.TestReproExternalSSH
 ):
     pass
 

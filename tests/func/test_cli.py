@@ -162,13 +162,17 @@ class TestFindRoot(TestDvc):
     def test(self):
         os.chdir("..")
 
+        class Cmd(CmdBase):
+            def run(self):
+                pass
+
         class A:
             quiet = False
             verbose = True
 
         args = A()
         with self.assertRaises(DvcException):
-            CmdBase(args)
+            Cmd(args)
 
 
 def test_unknown_command_help(capsys):

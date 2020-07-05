@@ -10,26 +10,69 @@ def test_update_import(tmp_dir, dvc, erepo_dir, cached):
     gen = erepo_dir.dvc_gen if cached else erepo_dir.scm_gen
 
     with erepo_dir.branch("branch", new=True), erepo_dir.chdir():
-        gen("version", "branch", "add version file")
+        gen(
+            {
+                "version": "branch",
+                "dir": {"version": "branch", "subdir": {"file": "file"}},
+            },
+            commit="add version file",
+        )
         old_rev = erepo_dir.scm.get_rev()
 
     stage = dvc.imp(os.fspath(erepo_dir), "version", "version", rev="branch")
+    dir_stage = dvc.imp(os.fspath(erepo_dir), "dir", "dir", rev="branch")
+    assert dvc.status() == {}
 
     assert (tmp_dir / "version").read_text() == "branch"
+    assert (tmp_dir / "dir").read_text() == {
+        "version": "branch",
+        "subdir": {"file": "file"},
+    }
     assert stage.deps[0].def_repo["rev_lock"] == old_rev
+    assert dir_stage.deps[0].def_repo["rev_lock"] == old_rev
 
     # Update version file
     with erepo_dir.branch("branch", new=False), erepo_dir.chdir():
-        gen("version", "updated", "update version content")
+        gen(
+            {
+                "version": "updated",
+                "dir": {"version": "updated", "subdir": {"file": "file"}},
+            },
+            commit="update version content",
+        )
         new_rev = erepo_dir.scm.get_rev()
 
     assert old_rev != new_rev
 
-    dvc.update([stage.path])
-    assert (tmp_dir / "version").read_text() == "updated"
+    assert dvc.status() == {
+        "dir.dvc": [
+            {
+                "changed deps": {
+                    f"dir ({os.fspath(erepo_dir)})": "update available"
+                }
+            }
+        ],
+        "version.dvc": [
+            {
+                "changed deps": {
+                    f"version ({os.fspath(erepo_dir)})": "update available"
+                }
+            }
+        ],
+    }
 
-    stage = Dvcfile(dvc, stage.path).stage
+    (stage,) = dvc.update(stage.path)
+    (dir_stage,) = dvc.update(dir_stage.path)
+    assert dvc.status() == {}
+
+    assert (tmp_dir / "version").read_text() == "updated"
+    assert (tmp_dir / "dir").read_text() == {
+        "version": "updated",
+        "subdir": {"file": "file"},
+    }
+
     assert stage.deps[0].def_repo["rev_lock"] == new_rev
+    assert dir_stage.deps[0].def_repo["rev_lock"] == new_rev
 
 
 def test_update_import_after_remote_updates_to_dvc(tmp_dir, dvc, erepo_dir):
@@ -111,19 +154,33 @@ def test_update_before_and_after_dvc_init(tmp_dir, dvc, git_dir):
     assert dvc.status([stage.path]) == {}
 
 
-def test_update_import_url(tmp_dir, dvc, tmp_path_factory):
-    import_src = tmp_path_factory.mktemp("import_url_source")
-    src = import_src / "file"
-    src.write_text("file content")
+@pytest.mark.parametrize(
+    "workspace",
+    [
+        pytest.lazy_fixture("local_cloud"),
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("hdfs"),
+        pytest.param(
+            pytest.lazy_fixture("ssh"),
+            marks=pytest.mark.skipif(
+                os.name == "nt", reason="disabled on windows"
+            ),
+        ),
+    ],
+    indirect=True,
+)
+def test_update_import_url(tmp_dir, dvc, workspace):
+    workspace.gen("file", "file content")
 
     dst = tmp_dir / "imported_file"
-    stage = dvc.imp_url(os.fspath(src), os.fspath(dst))
+    stage = dvc.imp_url("remote://workspace/file", os.fspath(dst))
 
     assert dst.is_file()
     assert dst.read_text() == "file content"
 
     # update data
-    src.write_text("updated file content")
+    workspace.gen("file", "updated file content")
 
     assert dvc.status([stage.path]) == {}
     dvc.update([stage.path])

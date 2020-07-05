@@ -383,7 +383,7 @@ class TestCheckoutDirectory(TestRepro):
 class TestCheckoutHook(TestDvc):
     @patch("sys.stdout.isatty", return_value=True)
     @patch("dvc.prompt.input", side_effect=EOFError)
-    def test(self, mock_input, mock_isatty):
+    def test(self, _mock_input, _mock_isatty):
         """ Test that dvc checkout handles EOFError gracefully, which is what
         it will experience when running in a git hook.
         """
@@ -400,6 +400,7 @@ class TestCheckoutHook(TestDvc):
 
 class TestCheckoutSuggestGit(TestRepro):
     def test(self):
+        # pylint: disable=no-member
 
         try:
             self.dvc.checkout(targets="gitbranch")

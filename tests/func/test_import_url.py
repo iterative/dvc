@@ -112,3 +112,56 @@ def test_import_url_with_no_exec(tmp_dir, dvc, erepo_dir):
     dvc.imp_url(src, ".", no_exec=True)
     dst = tmp_dir / "file"
     assert not dst.exists()
+
+
+@pytest.mark.parametrize(
+    "workspace",
+    [
+        pytest.lazy_fixture("local_cloud"),
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("hdfs"),
+        pytest.param(
+            pytest.lazy_fixture("ssh"),
+            marks=pytest.mark.skipif(
+                os.name == "nt", reason="disabled on windows"
+            ),
+        ),
+        pytest.lazy_fixture("http"),
+    ],
+    indirect=True,
+)
+def test_import_url(tmp_dir, dvc, workspace):
+    workspace.gen("file", "file")
+    assert not (tmp_dir / "file").exists()  # sanity check
+    dvc.imp_url("remote://workspace/file")
+    assert (tmp_dir / "file").read_text() == "file"
+
+    assert dvc.status() == {}
+
+
+@pytest.mark.parametrize(
+    "workspace",
+    [
+        pytest.lazy_fixture("local_cloud"),
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("gs"),
+        pytest.param(
+            pytest.lazy_fixture("ssh"),
+            marks=pytest.mark.skipif(
+                os.name == "nt", reason="disabled on windows"
+            ),
+        ),
+    ],
+    indirect=True,
+)
+def test_import_url_dir(tmp_dir, dvc, workspace):
+    workspace.gen({"dir": {"file": "file", "subdir": {"subfile": "subfile"}}})
+    assert not (tmp_dir / "dir").exists()  # sanity check
+    dvc.imp_url("remote://workspace/dir")
+    assert set(os.listdir(tmp_dir / "dir")) == {"file", "subdir"}
+    assert (tmp_dir / "dir" / "file").read_text() == "file"
+    assert list(os.listdir(tmp_dir / "dir" / "subdir")) == ["subfile"]
+    assert (tmp_dir / "dir" / "subdir" / "subfile").read_text() == "subfile"
+
+    assert dvc.status() == {}

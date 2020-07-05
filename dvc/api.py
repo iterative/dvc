@@ -27,13 +27,15 @@ def get_url(path, repo=None, rev=None, remote=None):
     """
     with _make_repo(repo, rev=rev) as _repo:
         if not isinstance(_repo, Repo):
-            raise UrlNotDvcRepoError(_repo.url)
+            raise UrlNotDvcRepoError(_repo.url)  # pylint: disable=no-member
         out = _repo.find_out_by_relpath(path)
         remote_obj = _repo.cloud.get_remote(remote)
         return str(remote_obj.hash_to_path_info(out.checksum))
 
 
-def open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
+def open(  # noqa, pylint: disable=redefined-builtin
+    path, repo=None, rev=None, remote=None, mode="r", encoding=None
+):
     """
     Open file in the supplied path tracked in a repo (both DVC projects and
     plain Git repos are supported). For Git repos, HEAD is used unless a rev
@@ -58,7 +60,9 @@ def open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
 
 
 class _OpenContextManager(GCM):
-    def __init__(self, func, args, kwds):
+    def __init__(
+        self, func, args, kwds
+    ):  # pylint: disable=super-init-not-called
         self.gen = func(*args, **kwds)
         self.func, self.args, self.kwds = func, args, kwds
 

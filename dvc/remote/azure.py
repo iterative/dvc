@@ -16,7 +16,10 @@ logger = logging.getLogger(__name__)
 class AzureRemoteTree(BaseRemoteTree):
     scheme = Schemes.AZURE
     PATH_CLS = CloudURLInfo
-    REQUIRES = {"azure-storage-blob": "azure.storage.blob"}
+    REQUIRES = {
+        "azure-storage-blob": "azure.storage.blob",
+        "knack": "knack",
+    }
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
     LIST_OBJECT_PAGE_SIZE = 5000
@@ -28,24 +31,42 @@ class AzureRemoteTree(BaseRemoteTree):
         self.path_info = self.PATH_CLS(url)
 
         if not self.path_info.bucket:
-            container = os.getenv("AZURE_STORAGE_CONTAINER_NAME")
+            container = self._az_config.get("storage", "container_name", None)
             self.path_info = self.PATH_CLS(f"azure://{container}")
 
-        self.connection_string = config.get("connection_string") or os.getenv(
-            "AZURE_STORAGE_CONNECTION_STRING"
+        self._conn_kwargs = {
+            opt: config.get(opt) or self._az_config.get("storage", opt, None)
+            for opt in ["connection_string", "sas_token"]
+        }
+        self._conn_kwargs["account_name"] = self._az_config.get(
+            "storage", "account", None
         )
+        self._conn_kwargs["account_key"] = self._az_config.get(
+            "storage", "key", None
+        )
+
+    @cached_property
+    def _az_config(self):
+        # NOTE: ideally we would've used get_default_cli().config from
+        # azure.cli.core, but azure-cli-core has a lot of conflicts with other
+        # dependencies. So instead we are just use knack directly
+        from knack.config import CLIConfig
+
+        config_dir = os.getenv(
+            "AZURE_CONFIG_DIR", os.path.expanduser(os.path.join("~", ".azure"))
+        )
+        return CLIConfig(config_dir=config_dir, config_env_var_prefix="AZURE")
 
     @wrap_prop(threading.Lock())
     @cached_property
     def blob_service(self):
+        # pylint: disable=no-name-in-module
         from azure.storage.blob import BlockBlobService
         from azure.common import AzureMissingResourceHttpError
 
         logger.debug(f"URL {self.path_info}")
-        logger.debug(f"Connection string {self.connection_string}")
-        blob_service = BlockBlobService(
-            connection_string=self.connection_string
-        )
+        logger.debug(f"Connection options {self._conn_kwargs}")
+        blob_service = BlockBlobService(**self._conn_kwargs)
         logger.debug(f"Container name {self.path_info.bucket}")
         try:  # verify that container exists
             blob_service.list_blobs(
@@ -62,7 +83,9 @@ class AzureRemoteTree(BaseRemoteTree):
         return etag.strip('"')
 
     def _generate_download_url(self, path_info, expires=3600):
-        from azure.storage.blob import BlobPermissions
+        from azure.storage.blob import (  # pylint:disable=no-name-in-module
+            BlobPermissions,
+        )
 
         expires_at = datetime.utcnow() + timedelta(seconds=expires)
 
@@ -98,6 +121,8 @@ class AzureRemoteTree(BaseRemoteTree):
             next_marker = blobs.next_marker
 
     def walk_files(self, path_info, **kwargs):
+        if not kwargs.pop("prefix", False):
+            path_info = path_info / ""
         for fname in self._list_paths(
             path_info.bucket, path_info.path, **kwargs
         ):

@@ -23,6 +23,13 @@ repos:
           - flake8-string-format
     repo: https://gitlab.com/pycqa/flake8
     rev: 3.7.9
+  - repo: local
+    hooks:
+    - id: pylint
+      name: pylint
+      entry: pylint
+      language: system
+      types: [python]
   - hooks:
       - args:
           - -i

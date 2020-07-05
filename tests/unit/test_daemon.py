@@ -16,11 +16,11 @@ class TestDaemon(TestCase):
         if os.name == "nt":
             mock_posix.assert_not_called()
             mock_windows.assert_called()
-            args, kwargs = mock_windows.call_args
+            args = mock_windows.call_args[0]
         else:
             mock_windows.assert_not_called()
             mock_posix.assert_called()
-            args, kwargs = mock_posix.call_args
+            args = mock_posix.call_args[0]
 
         env = args[1]
         self.assertTrue("PYTHONPATH" in env.keys())

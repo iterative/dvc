@@ -348,3 +348,45 @@ def test_gc_not_collect_pipeline_tracked_files(tmp_dir, dvc, run_copy):
     Dvcfile(dvc, PIPELINE_FILE).remove(force=True)
     dvc.gc(workspace=True, force=True)
     assert _count_files(dvc.cache.local.cache_dir) == 0
+
+
+@pytest.mark.parametrize(
+    "workspace",
+    [
+        pytest.lazy_fixture("local_cloud"),
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("hdfs"),
+        pytest.param(
+            pytest.lazy_fixture("ssh"),
+            marks=pytest.mark.skipif(
+                os.name == "nt", reason="disabled on windows"
+            ),
+        ),
+    ],
+    indirect=True,
+)
+def test_gc_external_output(tmp_dir, dvc, workspace):
+    workspace.gen({"foo": "foo", "bar": "bar"})
+
+    (foo_stage,) = dvc.add("remote://workspace/foo")
+    (bar_stage,) = dvc.add("remote://workspace/bar")
+
+    foo_hash = foo_stage.outs[0].checksum
+    bar_hash = bar_stage.outs[0].checksum
+
+    assert (
+        workspace / "cache" / foo_hash[:2] / foo_hash[2:]
+    ).read_text() == "foo"
+    assert (
+        workspace / "cache" / bar_hash[:2] / bar_hash[2:]
+    ).read_text() == "bar"
+
+    (tmp_dir / "foo.dvc").unlink()
+
+    dvc.gc(workspace=True)
+
+    assert not (workspace / "cache" / foo_hash[:2] / foo_hash[2:]).exists()
+    assert (
+        workspace / "cache" / bar_hash[:2] / bar_hash[2:]
+    ).read_text() == "bar"

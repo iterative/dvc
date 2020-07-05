@@ -108,7 +108,7 @@ def move(src, dst, mode=None):
     shutil.move(tmp, dst)
 
 
-def _chmod(func, p, excinfo):
+def _chmod(func, p, excinfo):  # pylint: disable=unused-argument
     perm = os.lstat(p).st_mode
     perm |= stat.S_IWRITE
 
@@ -170,7 +170,6 @@ def makedirs(path, exist_ok=False, mode=None):
 
 def copyfile(src, dest, no_progress_bar=False, name=None):
     """Copy file with progress bar"""
-    from dvc.exceptions import DvcException
     from dvc.progress import Tqdm
 
     name = name if name else os.path.basename(dest)

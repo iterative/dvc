@@ -47,7 +47,7 @@ def test_state_overflow(tmp_dir, dvc):
 
 
 def mock_get_inode(inode):
-    def get_inode_mocked(path):
+    def get_inode_mocked(_):
         return inode
 
     return get_inode_mocked

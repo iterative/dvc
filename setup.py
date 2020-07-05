@@ -9,7 +9,7 @@ from setuptools.command.build_py import build_py as _build_py
 # see https://github.com/ninjaaron/fast-entry_points.
 # This saves about 200 ms on startup time for non-wheel installs.
 try:
-    import fastentrypoints  # noqa: F401
+    import fastentrypoints  # noqa: F401, pylint: disable=unused-import
 except ImportError:
     pass  # not able to import when installing through pre-commit
 
@@ -68,7 +68,7 @@ install_requires = [
     "tqdm>=4.45.0,<5",
     "packaging>=19.0",
     "zc.lockfile>=1.2.1",
-    "flufl.lock>=3.2",
+    "flufl.lock>=3.2,<4",
     "win-unicode-console>=0.5; sys_platform == 'win32'",
     "pywin32>=225; sys_platform == 'win32'",
     "networkx>=2.1,<2.4",
@@ -78,7 +78,7 @@ install_requires = [
     "tabulate>=0.8.7",
     "pygtrie==2.3.2",
     "dpath>=2.0.1,<3",
-    "shtab>=1.0.2",
+    "shtab>=1.1.0,<2",
 ]
 
 
@@ -87,7 +87,7 @@ install_requires = [
 gs = ["google-cloud-storage==1.19.0"]
 gdrive = ["pydrive2>=1.4.14"]
 s3 = ["boto3>=1.9.201"]
-azure = ["azure-storage-blob==2.1.0"]
+azure = ["azure-storage-blob==2.1.0", "knack"]
 oss = ["oss2==2.6.1"]
 ssh = ["paramiko>=2.5.0"]
 hdfs = ["pyarrow>=0.17.0"]
@@ -127,6 +127,9 @@ tests_requirements = [
     "flake8-bugbear",
     "flake8-comprehensions",
     "flake8-string-format",
+    "pylint",
+    "pylint-pytest",
+    "pylint-plugin-utils",
 ]
 
 if (sys.version_info) >= (3, 6):

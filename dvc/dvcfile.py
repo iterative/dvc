@@ -1,3 +1,4 @@
+import collections
 import contextlib
 import logging
 import os
@@ -101,13 +102,13 @@ class FileMixin:
 
     @classmethod
     def validate(cls, d, fname=None):
-        assert cls.SCHEMA
+        assert isinstance(cls.SCHEMA, collections.abc.Callable)
         try:
-            cls.SCHEMA(d)
+            cls.SCHEMA(d)  # pylint: disable=not-callable
         except MultipleInvalid as exc:
             raise StageFileFormatError(f"'{fname}' format error: {exc}")
 
-    def remove(self, force=False):
+    def remove(self, force=False):  # pylint: disable=unused-argument
         with contextlib.suppress(FileNotFoundError):
             os.unlink(self.path)
 
@@ -117,9 +118,6 @@ class FileMixin:
 
 class SingleStageFile(FileMixin):
     from dvc.schema import COMPILED_SINGLE_STAGE_SCHEMA as SCHEMA
-
-    def __init__(self, repo, path):
-        super().__init__(repo, path)
 
     @property
     def stage(self):
@@ -143,7 +141,7 @@ class SingleStageFile(FileMixin):
         dump_yaml(self.path, serialize.to_single_stage_file(stage))
         self.repo.scm.track_file(self.relpath)
 
-    def remove_stage(self, stage):
+    def remove_stage(self, stage):  # pylint: disable=unused-argument
         self.remove()
 
 
@@ -156,7 +154,9 @@ class PipelineFile(FileMixin):
     def _lockfile(self):
         return Lockfile(self.repo, os.path.splitext(self.path)[0] + ".lock")
 
-    def dump(self, stage, update_pipeline=False, no_lock=False):
+    def dump(
+        self, stage, update_pipeline=False, no_lock=False, **kwargs
+    ):  # pylint: disable=arguments-differ
         """Dumps given stage appropriately in the dvcfile."""
         from dvc.stage import PipelineStage
 

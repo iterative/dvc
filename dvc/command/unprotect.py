@@ -33,10 +33,6 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     unprotect_parser.add_argument(
-        "targets",
-        nargs="+",
-        help="Data files/directories to unprotect.",
-        metavar="targets",
-        choices=completion.Required.FILE,
-    )
+        "targets", nargs="+", help="Data files/directories to unprotect.",
+    ).complete = completion.FILE
     unprotect_parser.set_defaults(func=CmdUnprotect)

@@ -10,7 +10,7 @@ class CmdInstall(CmdBase):
     def run(self):
         try:
             self.repo.install(self.args.use_pre_commit_tool)
-        except Exception:
+        except Exception:  # noqa, pylint:disable=broad-except
             logger.exception("failed to install DVC Git hooks")
             return 1
         return 0

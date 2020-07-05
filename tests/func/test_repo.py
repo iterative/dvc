@@ -136,12 +136,12 @@ def test_collect_with_not_existing_output_or_stage_name(
 
 
 def test_stages(tmp_dir, dvc):
-    def stages():
+    def collect_stages():
         return {stage.relpath for stage in Repo(os.fspath(tmp_dir)).stages}
 
     tmp_dir.dvc_gen({"file": "a", "dir/file": "b", "dir/subdir/file": "c"})
 
-    assert stages() == {
+    assert collect_stages() == {
         "file.dvc",
         os.path.join("dir", "file.dvc"),
         os.path.join("dir", "subdir", "file.dvc"),
@@ -149,7 +149,7 @@ def test_stages(tmp_dir, dvc):
 
     tmp_dir.gen(".dvcignore", "dir")
 
-    assert stages() == {"file.dvc"}
+    assert collect_stages() == {"file.dvc"}
 
 
 @pytest.fixture

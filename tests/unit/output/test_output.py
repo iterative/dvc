@@ -42,7 +42,7 @@ def test_checksum_schema(value, expected):
 @pytest.mark.parametrize("value", ["1", "11", {}, {"a": "b"}, [], [1, 2]])
 def test_checksum_schema_fail(value):
     with pytest.raises(MultipleInvalid):
-        Schema(CHECKSUM_SCHEMA)(value)["md5"]
+        assert Schema(CHECKSUM_SCHEMA)(value)
 
 
 @pytest.mark.parametrize(
