@@ -108,6 +108,11 @@ def mock_dvcignore(dvcignore_path, patterns):
         # directly under directory "foo".
         (os.path.join("rel", "p", "p2", "to_ignore"), ["**/to_ignore"], True,),
         (
+            os.path.join("rel", "p", "p2", "to_ignore"),
+            ["**/p2/to_ignore"],
+            True,
+        ),
+        (
             os.path.join("rel", "path", "path2", "dont_ignore"),
             ["**/to_ignore"],
             False,
