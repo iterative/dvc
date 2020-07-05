@@ -143,12 +143,11 @@ class DvcIgnorePatterns(DvcIgnore):
         return rule
 
     def change_dirname(self, new_dirname):
-        prefix = new_dirname + os.sep
         if new_dirname == self.dirname:
             return self
-        if not self.dirname.startswith(prefix):
+        rel = os.path.relpath(self.dirname, new_dirname)
+        if rel.startswith(".."):
             raise ValueError("change dirname can only change to parent path")
-        rel = self.dirname[len(prefix) :]
 
         new_pattern_list = []
         for rule in self.pattern_list:
