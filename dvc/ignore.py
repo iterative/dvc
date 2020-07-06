@@ -86,27 +86,20 @@ class DvcIgnorePatterns(DvcIgnore):
     def __eq__(self, other):
         if not isinstance(other, DvcIgnorePatterns):
             return NotImplemented
-        print(self.pattern_list, other.pattern_list)
         return (self.dirname == other.dirname) & (
             self.pattern_list == other.pattern_list
         )
 
     def __bool__(self):
-        if self.pattern_list:
-            return True
-        return False
+        return bool(self.pattern_list)
 
     @staticmethod
-    def _is_include(rule):
-        if rule.startswith("!"):
-            return True, rule[1:]
-        return False, rule
+    def _include_rule(rule):
+        return (True, rule[1:]) if rule.startswith("!") else (False, rule)
 
     @staticmethod
     def _is_comment(rule):
-        if rule.startswith("#"):
-            return True
-        return False
+        return rule.startswith("#")
 
     @staticmethod
     def _remove_slash(rule):
@@ -128,7 +121,7 @@ class DvcIgnorePatterns(DvcIgnore):
         rule = rule.strip()
         if self._is_comment(rule):
             return rule
-        is_include, rule = self._is_include(rule)
+        is_include, rule = self._include_rule(rule)
         match_all, rule = self._match_all_level(rule)
         rule = self._remove_slash(rule)
         if not match_all:
