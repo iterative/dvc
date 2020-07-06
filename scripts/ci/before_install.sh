@@ -73,5 +73,5 @@ if [ "$TRAVIS_OS_NAME" == "linux" ]; then
   fi
 
   # NOTE: after deprecating this branch, uncomment this line
-  # echo "unset SNAP_CHANNEL" >>env.sh
+  echo "unset SNAP_CHANNEL" >>env.sh
 fi
