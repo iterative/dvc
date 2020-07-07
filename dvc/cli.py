@@ -80,34 +80,36 @@ COMMANDS = [
 ]
 
 
+def _find_parser(parser, cmd_cls):
+    defaults = parser._defaults  # pylint: disable=protected-access
+    if not cmd_cls or cmd_cls == defaults.get("func"):
+        parser.print_help()
+        raise DvcParserError()
+
+    actions = parser._actions  # pylint: disable=protected-access
+    for action in actions:
+        if not isinstance(action.choices, dict):
+            # NOTE: we are only interested in subparsers
+            continue
+        for subparser in action.choices.values():
+            _find_parser(subparser, cmd_cls)
+
+
 class DvcParser(argparse.ArgumentParser):
     """Custom parser class for dvc CLI."""
 
-    def error(self, message, command=None):  # pylint: disable=arguments-differ
-        """Custom error method.
-        Args:
-            message (str): error message.
-            command (str): subcommand name for help message
-        Raises:
-            dvc.exceptions.DvcParser: dvc parser exception.
-
-        """
+    def error(self, message, cmd_cls=None):  # pylint: disable=arguments-differ
         logger.error(message)
-        if command is not None:
-            for action in self._actions:
-                if action.dest == "cmd" and command in action.choices:
-                    subparser = action.choices[command]
-                    subparser.print_help()
-                    raise DvcParserError()
-        self.print_help()
-        raise DvcParserError()
+        _find_parser(self, cmd_cls)
 
-    # override this to send subcommand name to error method
     def parse_args(self, args=None, namespace=None):
+        # NOTE: overriding to provide a more granular help message.
+        # E.g. `dvc plots diff --bad-flag` would result in a `dvc plots diff`
+        # help message instead of generic `dvc` usage.
         args, argv = self.parse_known_args(args, namespace)
         if argv:
             msg = "unrecognized arguments: %s"
-            self.error(msg % " ".join(argv), args.cmd)
+            self.error(msg % " ".join(argv), getattr(args, "func", None))
         return args
 
 
