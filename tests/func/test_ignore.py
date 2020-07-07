@@ -180,24 +180,32 @@ def test_ignore_blank_line(tmp_dir, dvc):
 # Git doesn’t list excluded directories for performance reasons,
 # so any patterns on contained files have no effect,
 # no matter where they are defined.
-def test_ignore_file_in_parent_path(tmp_dir, dvc):
-    tmp_dir.gen({"dir": {"subdir": {"not_ignore": "121"}}})
-    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "subdir/*\n\n!not_ignore")
-    assert _files_set("dir", dvc.tree) == {
-        "dir/subdir/not_ignore",
-    }
-
-
-def test_ignore_parent_path(tmp_dir, dvc):
-    tmp_dir.gen({"dir": {"subdir": {"should_ignore": "121"}}})
-    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "subdir\n\n!should_ignore")
-    assert _files_set("dir", dvc.tree) == set()
-
-
-def test_ignore_parent_path_anotherform(tmp_dir, dvc):
-    tmp_dir.gen({"dir": {"subdir": {"should_ignore": "121"}}})
-    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "subdir/\n\n!should_ignore")
-    assert _files_set("dir", dvc.tree) == set()
+@pytest.mark.parametrize(
+    "data_struct, pattern_list, result_set",
+    [
+        (
+            {"dir": {"subdir": {"not_ignore": "121"}}},
+            ["subdir/*", "!not_ignore"],
+            {"dir/subdir/not_ignore"},
+        ),
+        (
+            {"dir": {"subdir": {"should_ignore": "121"}}},
+            ["subdir", "!should_ignore"],
+            set(),
+        ),
+        (
+            {"dir": {"subdir": {"should_ignore": "121"}}},
+            ["subdir/", "!should_ignore"],
+            set(),
+        ),
+    ],
+)
+def test_ignore_file_in_parent_path(
+    tmp_dir, dvc, data_struct, pattern_list, result_set
+):
+    tmp_dir.gen(data_struct)
+    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "\n".join(pattern_list))
+    assert _files_set("dir", dvc.tree) == result_set
 
 
 # If there is a separator at the end of the pattern then the pattern
