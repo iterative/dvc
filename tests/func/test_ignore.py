@@ -173,3 +173,66 @@ def test_ignore_blank_line(tmp_dir, dvc):
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "foo\n\ndir/ignored")
 
     assert _files_set("dir", dvc.tree) == {"dir/other"}
+
+
+# It is not possible to re-include a file if a parent directory of
+# that file is excluded.
+# Git doesn’t list excluded directories for performance reasons,
+# so any patterns on contained files have no effect,
+# no matter where they are defined.
+@pytest.mark.parametrize(
+    "data_struct, pattern_list, result_set",
+    [
+        (
+            {"dir": {"subdir": {"not_ignore": "121"}}},
+            ["subdir/*", "!not_ignore"],
+            {"dir/subdir/not_ignore"},
+        ),
+        (
+            {"dir": {"subdir": {"should_ignore": "121"}}},
+            ["subdir", "!should_ignore"],
+            set(),
+        ),
+        (
+            {"dir": {"subdir": {"should_ignore": "121"}}},
+            ["subdir/", "!should_ignore"],
+            set(),
+        ),
+    ],
+)
+def test_ignore_file_in_parent_path(
+    tmp_dir, dvc, data_struct, pattern_list, result_set
+):
+    tmp_dir.gen(data_struct)
+    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "\n".join(pattern_list))
+    assert _files_set("dir", dvc.tree) == result_set
+
+
+# If there is a separator at the end of the pattern then the pattern
+# will only match directories,
+# otherwise the pattern can match both files and directories.
+# For example, a pattern doc/frotz/ matches doc/frotz directory,
+# but not a/doc/frotz directory;
+def test_ignore_sub_directory(tmp_dir, dvc):
+    tmp_dir.gen(
+        {
+            "dir": {
+                "doc": {"fortz": {"b": "b"}},
+                "a": {"doc": {"fortz": {"a": "a"}}},
+            }
+        }
+    )
+    tmp_dir.gen({"dir": {DvcIgnore.DVCIGNORE_FILE: "doc/fortz"}})
+    assert _files_set("dir", dvc.tree) == {
+        "dir/a/doc/fortz/a",
+        "dir/{}".format(DvcIgnore.DVCIGNORE_FILE),
+    }
+
+
+# however frotz/ matches frotz and a/frotz that is a directory
+def test_ignore_directory(tmp_dir, dvc):
+    tmp_dir.gen({"dir": {"fortz": {}, "a": {"fortz": {}}}})
+    tmp_dir.gen({"dir": {DvcIgnore.DVCIGNORE_FILE: "fortz"}})
+    assert _files_set("dir", dvc.tree) == {
+        "dir/{}".format(DvcIgnore.DVCIGNORE_FILE),
+    }
