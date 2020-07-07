@@ -32,8 +32,6 @@ if [[ "$TRAVIS_BUILD_STAGE_NAME" == "test" ]]; then
   fi
 
   if [ "$TRAVIS_OS_NAME" == "linux" ]; then
-    bash "$scriptdir/install_azurite.sh"
-    bash "$scriptdir/install_oss.sh"
     bash "$scriptdir/install_hadoop.sh"
   fi
 

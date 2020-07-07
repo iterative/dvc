@@ -1,36 +1,61 @@
 # pylint:disable=abstract-method
 
-import os
 import uuid
 
 import pytest
 
 from dvc.path_info import CloudURLInfo
-from dvc.utils import env2bool
 
 from .base import Base
 
+TEST_AZURE_CONTAINER = "tests"
+TEST_AZURE_CONNECTION_STRING = (
+    "DefaultEndpointsProtocol=http;"
+    "AccountName=devstoreaccount1;"
+    "AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSR"
+    "Z6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;"
+    "BlobEndpoint=http://127.0.0.1:{port}/devstoreaccount1;"
+)
+
 
 class Azure(Base, CloudURLInfo):
-    @staticmethod
-    def should_test():
-        do_test = env2bool("DVC_TEST_AZURE", undefined=None)
-        if do_test is not None:
-            return do_test
+    pass
 
-        return os.getenv("AZURE_STORAGE_CONTAINER_NAME") and os.getenv(
-            "AZURE_STORAGE_CONNECTION_STRING"
-        )
 
-    @staticmethod
-    def get_url():
-        container_name = os.getenv("AZURE_STORAGE_CONTAINER_NAME")
-        assert container_name is not None
-        return "azure://{}/{}".format(container_name, str(uuid.uuid4()))
+@pytest.fixture(scope="session")
+def azure_server(docker_compose, docker_services):
+    from azure.storage.blob import (  # pylint: disable=no-name-in-module
+        BlockBlobService,
+    )
+    from azure.common import (  # pylint: disable=no-name-in-module
+        AzureException,
+    )
+
+    port = docker_services.port_for("azurite", 10000)
+    connection_string = TEST_AZURE_CONNECTION_STRING.format(port=port)
+
+    def _check():
+        try:
+            BlockBlobService(
+                connection_string=connection_string,
+            ).list_containers()
+            return True
+        except AzureException:
+            return False
+
+    docker_services.wait_until_responsive(
+        timeout=60.0, pause=0.1, check=_check
+    )
+
+    return connection_string
 
 
 @pytest.fixture
-def azure():
-    if not Azure.should_test():
-        pytest.skip("no azure running")
-    yield Azure(Azure.get_url())
+def azure(azure_server):
+    url = f"azure://{TEST_AZURE_CONTAINER}/{uuid.uuid4()}"
+    ret = Azure(url)
+    ret.config = {
+        "url": url,
+        "connection_string": azure_server,
+    }
+    return ret
