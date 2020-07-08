@@ -9,3 +9,11 @@ services:
     image: rkuprieiev/oss-emulator
     ports:
       - "8880"
+  hdfs:
+    image: rkuprieiev/docker-hdfs
+    ports:
+      - "8020"
+      # NOTE: having this port as dynamic one will require modifying
+      # `dfs.datanode.address` in `hdfs-site.xml` and probably something
+      # else, so using default one for now.
+      - "50010:50010"

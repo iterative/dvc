@@ -131,6 +131,8 @@ tests_requirements = [
     "pylint",
     "pylint-pytest",
     "pylint-plugin-utils",
+    "wget",
+    "filelock",
 ]
 
 if (sys.version_info) >= (3, 6):

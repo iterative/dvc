@@ -31,10 +31,6 @@ if [[ "$TRAVIS_BUILD_STAGE_NAME" == "test" ]]; then
     ssh 0.0.0.0 ls &>/dev/null
   fi
 
-  if [ "$TRAVIS_OS_NAME" == "linux" ]; then
-    bash "$scriptdir/install_hadoop.sh"
-  fi
-
   if [[ "$TRAVIS_OS_NAME" == "osx" && "$TRAVIS_PULL_REQUEST" == "false" ]]; then
     brew install openssl
     $scriptdir/retry.sh brew cask install google-cloud-sdk
