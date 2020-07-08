@@ -74,6 +74,7 @@ class Repo:
         from dvc.scm import SCM
         from dvc.cache import Cache
         from dvc.data_cloud import DataCloud
+        from dvc.repo.experiments import Experiments
         from dvc.repo.metrics import Metrics
         from dvc.repo.plots import Plots
         from dvc.repo.params import Params
@@ -125,6 +126,8 @@ class Repo:
         self.metrics = Metrics(self)
         self.plots = Plots(self)
         self.params = Params(self)
+
+        self.experiments = Experiments(self)
 
         self._ignore()
 
