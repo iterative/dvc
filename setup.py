@@ -79,6 +79,7 @@ install_requires = [
     "pygtrie==2.3.2",
     "dpath>=2.0.1,<3",
     "shtab>=1.1.0,<2",
+    "rich>=3.0.5",
 ]
 
 
