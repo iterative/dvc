@@ -45,9 +45,8 @@ class ParamsDependency(LocalDependency):
         if not values:
             return
         for param in self.params:
-            value = values.get(param)
-            if value:
-                self.info[param] = value
+            if param in values:
+                self.info[param] = values[param]
 
     def save(self):
         super().save()
