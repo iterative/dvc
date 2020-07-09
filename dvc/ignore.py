@@ -9,6 +9,7 @@ from pathspec.util import normalize_file
 from pygtrie import StringTrie
 
 from dvc.path_info import PathInfo
+from dvc.pathspec_math import join_pattern
 from dvc.scm.tree import BaseTree
 from dvc.system import System
 from dvc.utils import relpath
@@ -99,102 +100,6 @@ class DvcIgnorePatterns(DvcIgnore):
     def __bool__(self):
         return bool(self.pattern_list)
 
-    @staticmethod
-    def _include_rule(rule):
-        return (True, rule[1:]) if rule.startswith("!") else (False, rule)
-
-    @staticmethod
-    def _is_comment(rule):
-        return rule.startswith("#")
-
-    @staticmethod
-    def _remove_slash(rule):
-        if rule.startswith("\\"):
-            return rule[1:]
-        return rule
-
-    @staticmethod
-    def _match_all_level(rule):
-        if rule[:-1].find("/") >= 0 and not rule.startswith("**/"):
-            if rule.startswith("/"):
-                rule = rule[1:]
-            return False, rule
-        if rule.startswith("**/"):
-            rule = rule[3:]
-        return True, rule
-
-    def change_rule(self, rule, rel):
-        rule = rule.strip()
-        if self._is_comment(rule):
-            return rule
-        is_include, rule = self._include_rule(rule)
-        match_all, rule = self._match_all_level(rule)
-        rule = self._remove_slash(rule)
-        if not match_all:
-            rule = f"/{rule}"
-        else:
-            rule = f"/**/{rule}"
-        if is_include:
-            rule = f"!/{rel}{rule}"
-        else:
-            rule = f"/{rel}{rule}"
-        rule = normalize_file(rule)
-        return rule
-
-    def change_dirname(self, new_dirname):
-        if new_dirname == self.dirname:
-            return self
-        rel = os.path.relpath(self.dirname, new_dirname)
-        if rel.startswith(".."):
-            raise ValueError("change dirname can only change to parent path")
-
-        new_pattern_list = []
-        for rule in self.pattern_list:
-            rule = self.change_rule(rule, rel)
-            new_pattern_list.append(rule)
-        return DvcIgnorePatterns(new_pattern_list, new_dirname)
-
-    @staticmethod
-    def _longest_common_dir(dir1, dir2):
-        dir1_split = dir1.split(os.sep)
-        dir2_split = dir2.split(os.sep)
-        max_match = 0
-
-        for index, (i, j) in enumerate(zip(dir1_split, dir2_split)):
-            if i != j:
-                break
-            max_match = index
-        return os.sep.join(dir1_split[: max_match + 1])
-
-    def __add__(self, other):
-        if not isinstance(other, DvcIgnorePatterns):
-            return NotImplemented
-
-        if not other:
-            merged = self
-        elif not self:
-            merged = other
-        else:
-            longest_common_dir = self._longest_common_dir(
-                self.dirname, other.dirname
-            )
-            self_to_lcd = self.change_dirname(longest_common_dir)
-            other_to_lcd = other.change_dirname(longest_common_dir)
-            if len(self.dirname) < len(other.dirname):
-                merged = DvcIgnorePatterns(
-                    self_to_lcd.pattern_list + other_to_lcd.pattern_list,
-                    longest_common_dir,
-                )
-            else:
-                merged = DvcIgnorePatterns(
-                    other_to_lcd.pattern_list + self_to_lcd.pattern_list,
-                    longest_common_dir,
-                )
-
-        return merged
-
-    __radd__ = __add__
-
 
 class DvcIgnorePatternsTrie(DvcIgnore):
     trie = None
@@ -217,7 +122,13 @@ class DvcIgnorePatternsTrie(DvcIgnore):
 
     def __setitem__(self, root, ignore_pattern):
         base_pattern = self[root]
-        self.trie[root] = base_pattern + ignore_pattern
+        common_dirname, merged_pattern = join_pattern(
+            base_pattern.dirname,
+            base_pattern.pattern_list,
+            ignore_pattern.dirname,
+            ignore_pattern.pattern_list,
+        )
+        self.trie[root] = DvcIgnorePatterns(merged_pattern, common_dirname)
 
     def __getitem__(self, root):
         ignore_pattern = self.trie.longest_prefix(root)
