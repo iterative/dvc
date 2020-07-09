@@ -244,7 +244,7 @@ def test_run_params_default(tmp_dir, dvc):
         params=["nested.nested1.nested2"],
         cmd="cat params.yaml",
     )
-    isinstance(stage.deps[0], ParamsDependency)
+    assert isinstance(stage.deps[0], ParamsDependency)
     assert stage.deps[0].params == ["nested.nested1.nested2"]
 
     lockfile = stage.dvcfile._lockfile
