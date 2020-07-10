@@ -69,6 +69,15 @@ def reproduce(
             "Neither `target` nor `--all-pipelines` are specified."
         )
 
+    experiment = kwargs.pop("experiment", False)
+    if experiment:
+        return self.experiments.reproduce(
+            target=target,
+            recursive=recursive,
+            all_pipelines=all_pipelines,
+            **kwargs
+        )
+
     interactive = kwargs.get("interactive", False)
     if not interactive:
         kwargs["interactive"] = self.config["core"].get("interactive", False)

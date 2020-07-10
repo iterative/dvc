@@ -193,7 +193,11 @@ class Repo:
         return self.cache.local.tree.unprotect(PathInfo(target))
 
     def _ignore(self):
-        flist = [self.config.files["local"], self.tmp_dir]
+        flist = [
+            self.config.files["local"],
+            self.tmp_dir,
+            self.experiments.exp_dir,
+        ]
 
         if path_isin(self.cache.local.cache_dir, self.root_dir):
             flist += [self.cache.local.cache_dir]
