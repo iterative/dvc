@@ -9,7 +9,7 @@ from pathspec.util import normalize_file
 from pygtrie import StringTrie
 
 from dvc.path_info import PathInfo
-from dvc.pathspec_math import join_pattern
+from dvc.pathspec_math import merge_patterns
 from dvc.scm.tree import BaseTree
 from dvc.system import System
 from dvc.utils import relpath
@@ -122,7 +122,7 @@ class DvcIgnorePatternsTrie(DvcIgnore):
 
     def __setitem__(self, root, ignore_pattern):
         base_pattern = self[root]
-        common_dirname, merged_pattern = join_pattern(
+        common_dirname, merged_pattern = merge_patterns(
             base_pattern.dirname,
             base_pattern.pattern_list,
             ignore_pattern.dirname,

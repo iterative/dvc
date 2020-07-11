@@ -76,7 +76,14 @@ def _longest_common_dir(dir1, dir2):
     return os.sep.join(dir1_split[: max_match + 1])
 
 
-def join_pattern(prefix_a, pattern_a, prefix_b, pattern_b):
+def merge_patterns(prefix_a, pattern_a, prefix_b, pattern_b):
+    """
+    Merge two path specification patterns.
+
+    This implementation merge two path specification patterns on different
+    bases. It returns the longest common parent directory, and the patterns
+    based on this new base directory.
+    """
     if not pattern_a:
         return prefix_b, pattern_b
     elif not pattern_b:
