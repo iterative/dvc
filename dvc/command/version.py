@@ -28,10 +28,10 @@ class CmdVersion(CmdBaseNoRepo):
         from dvc.repo import Repo
 
         info = [
-            f"DVC version: {__version__}",
+            f"DVC version: {__version__} ({PKG})",
             "--------------------------------- \n",
-            f"Build Info: Python {platform.python_version()} on "
-            f"{platform.platform()} installed via {PKG}",
+            f"Platform: Python {platform.python_version()} on "
+            f"{platform.platform()}",
             f"Supports: {self.get_supported_remotes()}",
         ]
 
@@ -49,7 +49,7 @@ class CmdVersion(CmdBaseNoRepo):
                 )
                 if psutil:
                     fs_type = self.get_fs_type(repo.cache.local.cache_dir)
-                    info.append(f"Directory cache: {fs_type}")
+                    info.append(f"Cache with {fs_type}")
             else:
                 logger.warning(
                     "Unable to detect supported link types, as cache "
@@ -65,11 +65,11 @@ class CmdVersion(CmdBaseNoRepo):
             root_directory = os.getcwd()
             info.append("Repo: dvc, git (broken)")
         else:
-            info.append("Repo: {}".format(_get_dvc_repo_info(repo)))
+            if psutil:
+                fs_root = self.get_fs_type(os.path.abspath(root_directory))
+                info.append(f"Workspace with {fs_root}")
 
-        if psutil:
-            fs_root = self.get_fs_type(os.path.abspath(root_directory))
-            info.append(f"Workspace with {fs_root}")
+            info.append("Repo: {}".format(_get_dvc_repo_info(repo)))
 
         logger.info("\n".join(info))
         return 0
@@ -130,10 +130,11 @@ class CmdVersion(CmdBaseNoRepo):
 
         if len(supported_remotes) == len(TREES):
             return "All remotes"
-        elif len(supported_remotes) == 1:
+
+        if len(supported_remotes) == 1:
             return supported_remotes
-        else:
-            return ", ".join(supported_remotes)
+
+        return ", ".join(supported_remotes)
 
 
 def _get_dvc_repo_info(repo):
