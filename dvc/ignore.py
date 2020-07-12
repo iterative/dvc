@@ -254,3 +254,6 @@ class CleanTree(BaseTree):
     @property
     def hash_jobs(self):
         return self.tree.hash_jobs
+
+    def makedirs(self, path, mode=0o777, exist_ok=True):
+        self.tree.makedirs(path, mode=mode, exist_ok=exist_ok)

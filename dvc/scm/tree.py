@@ -37,6 +37,9 @@ class BaseTree:
                 # NOTE: os.path.join is ~5.5 times slower
                 yield f"{root}{os.sep}{file}"
 
+    def makedirs(self, path, mode=0o777, exist_ok=True):
+        raise NotImplementedError
+
 
 class WorkingTree(BaseTree):
     """Proxies the repo file access methods to working tree files"""
@@ -89,6 +92,9 @@ class WorkingTree(BaseTree):
     @cached_property
     def hash_jobs(self):
         return max(1, min(4, cpu_count() // 2))
+
+    def makedirs(self, path, mode=0o777, exist_ok=True):
+        os.makedirs(path, mode=mode, exist_ok=exist_ok)
 
 
 def is_working_tree(tree):

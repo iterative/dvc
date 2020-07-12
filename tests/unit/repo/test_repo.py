@@ -3,7 +3,8 @@ import os
 import pytest
 from funcy import raiser
 
-from dvc.repo import locked
+from dvc.repo import NotDvcRepoError, Repo, locked
+from dvc.utils.fs import remove
 
 
 def test_is_dvc_internal(dvc):
@@ -127,3 +128,27 @@ def test_skip_graph_checks(tmp_dir, dvc, mocker, run_copy):
     dvc.add("quux")
     run_copy("quux", "quuz", single_stage=True)
     assert mock_collect_graph.called
+
+
+def test_branch_config(tmp_dir, scm):
+    tmp_dir.scm_gen("foo", "foo", commit="init")
+
+    scm.checkout("branch", create_new=True)
+    dvc = Repo.init()
+    with dvc.config.edit() as conf:
+        conf["remote"]["branch"] = {"url": "/some/path"}
+    scm.add([".dvc"])
+    scm.commit("init dvc")
+    scm.checkout("master")
+
+    remove(".dvc")
+
+    # sanity check
+    with pytest.raises(NotDvcRepoError):
+        Repo()
+
+    with pytest.raises(NotDvcRepoError):
+        Repo(scm=scm, rev="master")
+
+    dvc = Repo(scm=scm, rev="branch")
+    assert dvc.config["remote"]["branch"]["url"] == "/some/path"

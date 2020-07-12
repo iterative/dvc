@@ -19,7 +19,7 @@ def _item_basename(item):
     return os.path.basename(item.path)
 
 
-class GitTree(BaseTree):
+class GitTree(BaseTree):  # pylint:disable=abstract-method
     """Proxies the repo file access methods to Git objects"""
 
     def __init__(self, git, rev):
