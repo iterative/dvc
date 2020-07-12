@@ -112,7 +112,9 @@ def add_parser(subparsers, parent_parser):
     checkout_parser.add_argument(
         "targets",
         nargs="*",
-        help="DVC-files to checkout. Optional. "
-        "(Finds all DVC-files in the workspace by default.)",
+        help=(
+            "Limit command scope to these tracked files/directories, "
+            ".dvc files, or stage names."
+        ),
     ).complete = completion.DVC_FILE
     checkout_parser.set_defaults(func=CmdCheckout)
