@@ -293,7 +293,6 @@ def test_remove_stage_removes_dvcfiles_if_no_stages_left(tmp_dir, dvc):
             stages:
                 generate-foo:
                     cmd: "echo foo > foo"
-                    # This copies 'foo' text to 'foo' file.
                     outs:
                     - foo"""
         ),
