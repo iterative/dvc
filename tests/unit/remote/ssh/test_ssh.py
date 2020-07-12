@@ -183,6 +183,31 @@ def test_ssh_gss_auth(mock_file, mock_exists, dvc, config, expected_gss_auth):
     assert tree.gss_auth == expected_gss_auth
 
 
+@pytest.mark.parametrize(
+    "config,expected_allow_agent",
+    [
+        ({"url": "ssh://example.com"}, True),
+        ({"url": "ssh://not_in_ssh_config.com"}, True),
+        ({"url": "ssh://example.com", "allow_agent": True}, True),
+        ({"url": "ssh://example.com", "allow_agent": False}, False),
+    ],
+)
+@patch("os.path.exists", return_value=True)
+@patch(
+    f"{builtin_module_name}.open",
+    new_callable=mock_open,
+    read_data=mock_ssh_config,
+)
+def test_ssh_allow_agent(
+    mock_file, mock_exists, dvc, config, expected_allow_agent
+):
+    tree = SSHTree(dvc, config)
+
+    mock_exists.assert_called_with(SSHTree.ssh_config_filename())
+    mock_file.assert_called_with(SSHTree.ssh_config_filename())
+    assert tree.allow_agent == expected_allow_agent
+
+
 def test_hardlink_optimization(dvc, tmp_dir, ssh):
     tree = SSHTree(dvc, ssh.config)
 
