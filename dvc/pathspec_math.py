@@ -50,7 +50,7 @@ def change_rule(rule, rel):
     return rule
 
 
-def change_dirname(dirname, pattern_list, new_dirname):
+def _change_dirname(dirname, pattern_list, new_dirname):
     if new_dirname == dirname:
         return pattern_list
     rel = os.path.relpath(dirname, new_dirname)
@@ -90,8 +90,8 @@ def merge_patterns(prefix_a, pattern_a, prefix_b, pattern_b):
         return prefix_a, pattern_a
 
     longest_common_dir = _longest_common_dir(prefix_a, prefix_b)
-    new_pattern_a = change_dirname(prefix_a, pattern_a, longest_common_dir)
-    new_pattern_b = change_dirname(prefix_b, pattern_b, longest_common_dir)
+    new_pattern_a = _change_dirname(prefix_a, pattern_a, longest_common_dir)
+    new_pattern_b = _change_dirname(prefix_b, pattern_b, longest_common_dir)
 
     if len(prefix_a) < len(prefix_b):
         merged_pattern = new_pattern_a + new_pattern_b
