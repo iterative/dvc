@@ -307,8 +307,8 @@ def test_remove_stage_removes_dvcfiles_if_no_stages_left(tmp_dir, dvc):
     assert (tmp_dir / "foo").exists()
 
     dvc_file.remove_stage(dvc_file.stages["generate-foo"])
-    assert not dvc_file.exists()
     assert not (tmp_dir / PIPELINE_LOCK).exists()
+    assert not dvc_file.exists()
 
 
 def test_dvcfile_dump_preserves_meta(tmp_dir, dvc, run_copy):
