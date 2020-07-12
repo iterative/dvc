@@ -91,14 +91,14 @@ class Repo:
         else:
             root_dir = self.find_root(root_dir)
             self.root_dir = os.path.abspath(os.path.realpath(root_dir))
+            self.tree = WorkingTree(self.root_dir)
 
         self.dvc_dir = os.path.join(self.root_dir, self.DVC_DIR)
-        self.config = Config(self.dvc_dir)
+        self.config = Config(self.dvc_dir, tree=self.tree)
 
         if not scm:
             no_scm = self.config["core"].get("no_scm", False)
             self.scm = SCM(self.root_dir, no_scm=no_scm)
-            self.tree = WorkingTree(self.root_dir)
 
         self.tmp_dir = os.path.join(self.dvc_dir, "tmp")
         self.index_dir = os.path.join(self.tmp_dir, "index")

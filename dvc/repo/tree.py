@@ -12,7 +12,7 @@ from dvc.utils.fs import copy_fobj_to_file, makedirs
 logger = logging.getLogger(__name__)
 
 
-class DvcTree(BaseTree):
+class DvcTree(BaseTree):  # pylint:disable=abstract-method
     """DVC repo tree.
 
     Args:
@@ -236,7 +236,7 @@ class DvcTree(BaseTree):
         return out.checksum
 
 
-class RepoTree(BaseTree):
+class RepoTree(BaseTree):  # pylint:disable=abstract-method
     """DVC + git-tracked files tree.
 
     Args:
