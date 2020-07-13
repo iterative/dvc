@@ -57,11 +57,7 @@ def _change_dirname(dirname, pattern_list, new_dirname):
     if rel.startswith(".."):
         raise ValueError("change dirname can only change to parent path")
 
-    new_pattern_list = []
-    for rule in pattern_list:
-        rule = change_rule(rule, rel)
-        new_pattern_list.append(rule)
-    return new_pattern_list
+    return [change_rule(rule, rel) for rule in pattern_list]
 
 
 def _longest_common_dir(dir1, dir2):
