@@ -7,7 +7,7 @@ import os
 from pathspec.util import normalize_file
 
 
-def _include_rule(rule):
+def _not_ignore(rule):
     return (True, rule[1:]) if rule.startswith("!") else (False, rule)
 
 
@@ -35,14 +35,14 @@ def change_rule(rule, rel):
     rule = rule.strip()
     if _is_comment(rule):
         return rule
-    is_include, rule = _include_rule(rule)
+    not_ignore, rule = _not_ignore(rule)
     match_all, rule = _match_all_level(rule)
     rule = _remove_slash(rule)
     if not match_all:
         rule = f"/{rule}"
     else:
         rule = f"/**/{rule}"
-    if is_include:
+    if not_ignore:
         rule = f"!/{rel}{rule}"
     else:
         rule = f"/{rel}{rule}"
@@ -60,18 +60,6 @@ def _change_dirname(dirname, pattern_list, new_dirname):
     return [change_rule(rule, rel) for rule in pattern_list]
 
 
-def _longest_common_dir(dir1, dir2):
-    dir1_split = dir1.split(os.sep)
-    dir2_split = dir2.split(os.sep)
-    max_match = 0
-
-    for index, (i, j) in enumerate(zip(dir1_split, dir2_split)):
-        if i != j:
-            break
-        max_match = index
-    return os.sep.join(dir1_split[: max_match + 1])
-
-
 def merge_patterns(prefix_a, pattern_a, prefix_b, pattern_b):
     """
     Merge two path specification patterns.
@@ -85,7 +73,7 @@ def merge_patterns(prefix_a, pattern_a, prefix_b, pattern_b):
     elif not pattern_b:
         return prefix_a, pattern_a
 
-    longest_common_dir = _longest_common_dir(prefix_a, prefix_b)
+    longest_common_dir = os.path.commonpath([prefix_a, prefix_b])
     new_pattern_a = _change_dirname(prefix_a, pattern_a, longest_common_dir)
     new_pattern_b = _change_dirname(prefix_b, pattern_b, longest_common_dir)
 

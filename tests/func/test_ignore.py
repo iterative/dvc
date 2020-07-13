@@ -257,7 +257,7 @@ def test_multi_ignore_file(tmp_dir, dvc, monkeypatch):
     }
 
 
-def test_dvcignore_pattern_merge(tmp_dir, dvc):
+def test_pattern_trie_tree(tmp_dir, dvc):
     tmp_dir.gen(
         {
             "top": {

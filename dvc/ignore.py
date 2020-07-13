@@ -108,12 +108,6 @@ class DvcIgnorePatternsTrie(DvcIgnore):
         if self.trie is None:
             self.trie = StringTrie(separator=os.sep)
 
-    def __new__(cls, *args, **kwargs):
-        if not hasattr(DvcIgnorePatterns, "_instance"):
-            if not hasattr(DvcIgnorePatterns, "_instance"):
-                DvcIgnorePatterns._instance = object.__new__(cls)
-        return DvcIgnorePatterns._instance
-
     def __call__(self, root, dirs, files):
         ignore_pattern = self[root]
         if ignore_pattern:
@@ -176,19 +170,19 @@ class DvcIgnoreFilter:
             DvcIgnoreDirs([".git", ".hg", ".dvc"]),
             DvcIgnoreRepo(),
         }
+        ignore_pattern_trie = DvcIgnorePatternsTrie()
         for root, dirs, _ in self.tree.walk(self.root_dir):
-            self._update(root)
+            ignore_pattern = self._get_ignore_pattern(root)
+            if ignore_pattern:
+                ignore_pattern_trie[root] = ignore_pattern
+                self.ignores.add(ignore_pattern_trie)
             dirs[:], _ = self(root, dirs, [])
 
-    def _update(self, dirname):
+    def _get_ignore_pattern(self, dirname):
         ignore_file_path = os.path.join(dirname, DvcIgnore.DVCIGNORE_FILE)
         if self.tree.exists(ignore_file_path):
-            ignore_pattern = DvcIgnorePatterns.from_files(
-                ignore_file_path, self.tree
-            )
-            ignore_pattern_trie = DvcIgnorePatternsTrie()
-            ignore_pattern_trie[dirname] = ignore_pattern
-            self.ignores.add(ignore_pattern_trie)
+            return DvcIgnorePatterns.from_files(ignore_file_path, self.tree)
+        return None
 
     def __call__(self, root, dirs, files):
         for ignore in self.ignores:
