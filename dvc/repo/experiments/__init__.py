@@ -7,7 +7,8 @@ from funcy import cached_property
 
 from dvc.exceptions import DvcException
 from dvc.scm.git import Git
-from dvc.utils import relpath
+from dvc.stage.serialize import to_lockfile
+from dvc.utils import dict_sha256, relpath
 from dvc.utils.fs import remove
 
 logger = logging.getLogger(__name__)
@@ -52,6 +53,13 @@ class Experiments:
 
         return Repo(self.exp_dvc_dir)
 
+    @staticmethod
+    def exp_hash(stages):
+        exp_data = {}
+        for stage in stages:
+            exp_data.update(to_lockfile(stage))
+        return dict_sha256(exp_data)
+
     @contextmanager
     def _chdir(self):
         cwd = os.getcwd()
@@ -91,13 +99,45 @@ class Experiments:
         self.scm.repo.git.apply(tmp)
         remove(tmp)
 
-    def reproduce(self, *args, **kwargs):
+    def _commit(self, stages, check_exists=True, branch=True, rev=None):
+        """Commit stages as an experiment and return the commit SHA."""
+        hash_ = self.exp_hash(stages)
+        exp_name = f"{rev[:7]}-{hash_}"
+        if branch:
+            if check_exists and exp_name in self.scm.list_branches():
+                logger.debug("Using existing experiment branch '%s'", exp_name)
+                return self.scm.resolve_rev(exp_name)
+            self.scm.checkout(exp_name, create_new=True)
+        logger.debug("Commit new experiment branch '%s'", exp_name)
+        self.scm.repo.git.add(A=True)
+        self.scm.commit(f"Add experiment {exp_name}")
+
+    def _reproduce(self, *args, **kwargs):
+        """Run `dvc repro` inside the experiments workspace."""
+        with self._chdir():
+            return self.exp_dvc.reproduce(*args, **kwargs)
+
+    def new(self, *args, workspace=True, **kwargs):
+        """Create a new experiment.
+
+        Experiment will be reproduced and checked out into the user's
+        workspace.
+        """
         rev = self.repo.scm.get_rev()
         self._scm_checkout(rev)
-        self._patch_exp()
-        with self._chdir():
-            self.exp_dvc.checkout()
-            return self.exp_dvc.reproduce(*args, **kwargs)
+        if workspace:
+            self._patch_exp()
+        else:
+            # configure params via command line here
+            pass
+        self.exp_dvc.checkout()
+        stages = self._reproduce(*args, **kwargs)
+        self._commit(stages, rev=rev)
+        self.checkout()
+        return stages
+
+    def checkout(self):
+        pass
 
     def diff(self, *args, **kwargs):
         pass

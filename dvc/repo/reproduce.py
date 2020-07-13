@@ -71,7 +71,7 @@ def reproduce(
 
     experiment = kwargs.pop("experiment", False)
     if experiment:
-        return self.experiments.reproduce(
+        return self.experiments.new(
             target=target,
             recursive=recursive,
             all_pipelines=all_pipelines,
