@@ -285,6 +285,23 @@ def test_remove_stage_preserves_comment(tmp_dir, dvc, run_copy):
     )
 
 
+def test_remove_stage_removes_dvcfiles_if_no_stages_left(
+    tmp_dir, dvc, run_copy
+):
+    tmp_dir.gen("foo", "foo")
+    run_copy("foo", "bar", name="run_copy")
+
+    dvc_file = Dvcfile(dvc, PIPELINE_FILE)
+
+    assert dvc_file.exists()
+    assert (tmp_dir / PIPELINE_LOCK).exists()
+    assert (tmp_dir / "foo").exists()
+
+    dvc_file.remove_stage(dvc_file.stages["run_copy"])
+    assert not dvc_file.exists()
+    assert not (tmp_dir / PIPELINE_LOCK).exists()
+
+
 def test_dvcfile_dump_preserves_meta(tmp_dir, dvc, run_copy):
     tmp_dir.gen("foo", "foo")
     stage = run_copy("foo", "bar", name="run_copy")
