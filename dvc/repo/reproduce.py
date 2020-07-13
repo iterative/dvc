@@ -1,6 +1,7 @@
 import logging
 
 from dvc.exceptions import InvalidArgumentError, ReproductionError
+from dvc.repo.experiments import UnchangedExperimentError
 from dvc.repo.scm_context import scm_context
 
 from . import locked
@@ -71,12 +72,16 @@ def reproduce(
 
     experiment = kwargs.pop("experiment", False)
     if experiment:
-        return self.experiments.new(
-            target=target,
-            recursive=recursive,
-            all_pipelines=all_pipelines,
-            **kwargs
-        )
+        try:
+            return self.experiments.new(
+                target=target,
+                recursive=recursive,
+                all_pipelines=all_pipelines,
+                **kwargs
+            )
+        except UnchangedExperimentError as exc:
+            # If experiment contains no changes, just run regular repro
+            logger.debug(exc)
 
     interactive = kwargs.get("interactive", False)
     if not interactive:

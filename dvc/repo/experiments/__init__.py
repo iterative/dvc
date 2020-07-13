@@ -6,6 +6,8 @@ from contextlib import contextmanager
 from funcy import cached_property
 
 from dvc.exceptions import DvcException
+from dvc.repo import locked
+from dvc.repo.scm_context import scm_context
 from dvc.scm.git import Git
 from dvc.stage.serialize import to_lockfile
 from dvc.utils import dict_sha256, relpath
@@ -93,11 +95,18 @@ class Experiments:
         """Create a patch based on the current (parent) workspace and apply it
         to the experiment workspace.
         """
-        logger.debug("Patching experiment workspace")
         tmp = tempfile.NamedTemporaryFile(delete=False).name
-        self.repo.scm.repo.git.diff(patch=True, output=tmp)
-        self.scm.repo.git.apply(tmp)
-        remove(tmp)
+        try:
+            self.repo.scm.repo.git.diff(patch=True, output=tmp)
+            if os.path.getsize(tmp):
+                logger.debug("Patching experiment workspace")
+                self.scm.repo.git.apply(tmp)
+            else:
+                raise UnchangedExperimentError(
+                    "Experiment identical to baseline commit."
+                )
+        finally:
+            remove(tmp)
 
     def _commit(self, stages, check_exists=True, branch=True, rev=None):
         """Commit stages as an experiment and return the commit SHA."""
@@ -111,6 +120,7 @@ class Experiments:
         logger.debug("Commit new experiment branch '%s'", exp_name)
         self.scm.repo.git.add(A=True)
         self.scm.commit(f"Add experiment {exp_name}")
+        return self.scm.get_rev()
 
     def _reproduce(self, *args, **kwargs):
         """Run `dvc repro` inside the experiments workspace."""
@@ -132,12 +142,36 @@ class Experiments:
             pass
         self.exp_dvc.checkout()
         stages = self._reproduce(*args, **kwargs)
-        self._commit(stages, rev=rev)
-        self.checkout()
+        exp_rev = self._commit(stages, rev=rev)
+        self._checkout(exp_rev, force=True)
         return stages
 
-    def checkout(self):
-        pass
+    def _checkout(self, rev, force=False):
+        """Checkout an experiment to the user's workspace."""
+        from git.exc import RepositoryDirtyError
+
+        if force:
+            self.repo.scm.repo.git.reset(hard=True)
+        self._scm_checkout(rev)
+
+        logger.debug("Patching local workspace")
+        tmp = tempfile.NamedTemporaryFile(delete=False).name
+        try:
+            self.scm.repo.head.commit.diff("HEAD~1", patch=True, output=tmp)
+            if os.path.getsize(tmp):
+                self.repo.scm.repo.git.apply(tmp, reverse=True, reject=True)
+        except RepositoryDirtyError:
+            raise DvcException(
+                "Could not checkout experiment, workspace contains "
+                "uncommitted changes."
+            )
+        finally:
+            remove(tmp)
+
+    @locked
+    @scm_context
+    def checkout(self, *args, **kwargs):
+        return self._checkout(*args, **kwargs)
 
     def diff(self, *args, **kwargs):
         pass
