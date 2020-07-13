@@ -142,9 +142,6 @@ class Experiments:
     def diff(self, *args, **kwargs):
         pass
 
-    def list(self, *args, **kwargs):
-        pass
-
     def show(self, *args, **kwargs):
         from dvc.repo.experiments.show import show
 

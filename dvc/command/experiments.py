@@ -19,19 +19,20 @@ def _update_names(names, items):
             names.add(name)
 
 
-def _collect_names(experiments):
+def _collect_names(all_experiments):
     metric_names = set()
     param_names = set()
 
-    for exp in experiments.values():
-        _update_names(metric_names, exp.get("metrics", {}).items())
-        _update_names(param_names, exp.get("params", {}).items())
+    for _, experiments in all_experiments.items():
+        for exp in experiments.values():
+            _update_names(metric_names, exp.get("metrics", {}).items())
+            _update_names(param_names, exp.get("params", {}).items())
 
     return sorted(metric_names), sorted(param_names)
 
 
 def _collect_rows(
-    experiments, metric_names, param_names, include_rev=False, precision=None
+    base_rev, experiments, metric_names, param_names, precision=None
 ):
     from flatten_json import flatten
     from dvc.command.metrics import DEFAULT_PRECISION
@@ -57,71 +58,77 @@ def _collect_rows(
                 else:
                     row.append("-")
 
-    for rev, exp in experiments.items():
+    for i, (rev, exp) in enumerate(experiments.items()):
         row = []
-        if include_rev:
-            row.append(rev)
+        style = None
+        if rev == "baseline":
+            row.append(f"{base_rev}")
+            style = "bold"
+        elif i < len(experiments) - 1:
+            row.append(f"├── {rev[:7]}")
         else:
-            row.append(None)
+            row.append(f"└── {rev[:7]}")
 
         _extend(row, metric_names, exp.get("metrics", {}).items())
         _extend(row, param_names, exp.get("params", {}).items())
 
-        yield row
+        yield row, style
 
 
-def _show_experiments(
-    experiments,
-    all_branches=False,
-    all_tags=False,
-    all_commits=False,
-    precision=None,
-):
-    from rich.console import Console
+def _show_experiments(all_experiments, console, precision=None):
     from rich.table import Table
-    from dvc.utils.pager import pager
+    from dvc.scm.git import Git
 
-    metric_names, param_names = _collect_names(experiments)
-    include_rev = all_branches or all_tags or all_commits
+    metric_names, param_names = _collect_names(all_experiments)
 
-    table = Table(show_lines=True)
-    table.add_column("Commit")
+    table = Table(row_styles=["white", "bright_white"])
+    table.add_column("Experiment", header_style="black on grey93")
     for name in metric_names:
-        table.add_column(name, justify="right")
+        table.add_column(
+            name, justify="right", header_style="black on cornsilk1"
+        )
     for name in param_names:
-        table.add_column(name, justify="left")
+        table.add_column(
+            name, justify="left", header_style="black on light_cyan1"
+        )
 
-    for row in _collect_rows(
-        experiments,
-        metric_names,
-        param_names,
-        include_rev=include_rev,
-        precision=precision,
-    ):
-        table.add_row(*row)
+    for base_rev, experiments in all_experiments.items():
+        if Git.is_sha(base_rev):
+            base_rev = base_rev[:7]
 
-    # Note: rich does not currently include a native way to force infinite
-    # width for use with a pager
-    console = Console(file=io.StringIO(), force_terminal=True, width=9999)
+        for row, style, in _collect_rows(
+            base_rev,
+            experiments,
+            metric_names,
+            param_names,
+            precision=precision,
+        ):
+            table.add_row(*row, style=style)
+
     console.print(table)
-    pager(console.file.getvalue())
 
 
 class CmdExperimentsShow(CmdBase):
     def run(self):
+        from rich.console import Console
+        from dvc.utils.pager import pager
+
         try:
-            experiments = self.repo.experiments.show(
+            all_experiments = self.repo.experiments.show(
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,
                 all_commits=self.args.all_commits,
             )
 
-            _show_experiments(
-                experiments,
-                self.args.all_branches,
-                self.args.all_tags,
-                self.args.all_commits,
+            # Note: rich does not currently include a native way to force
+            # infinite width for use with a pager
+            console = Console(
+                file=io.StringIO(), force_terminal=True, width=9999
             )
+
+            _show_experiments(all_experiments, console)
+
+            pager(console.file.getvalue())
         except DvcException:
             logger.exception("failed to show experiments")
             return 1
