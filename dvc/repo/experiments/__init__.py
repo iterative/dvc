@@ -6,8 +6,6 @@ from contextlib import contextmanager
 from funcy import cached_property
 
 from dvc.exceptions import DvcException
-from dvc.repo import locked
-from dvc.repo.scm_context import scm_context
 from dvc.scm.git import Git
 from dvc.stage.serialize import to_lockfile
 from dvc.utils import dict_sha256, relpath
@@ -86,8 +84,8 @@ class Experiments:
 
     def _scm_checkout(self, rev):
         self.scm.repo.git.reset(hard=True)
-        if not Git.is_sha(rev) or not self.scm.has_rev(rev):
-            self.scm.pull()
+        # if not Git.is_sha(rev) or not self.scm.has_rev(rev):
+        #     self.scm.pull()
         logger.debug("Checking out base experiment commit '%s'", rev)
         self.scm.checkout(rev)
 
@@ -143,35 +141,39 @@ class Experiments:
         self.exp_dvc.checkout()
         stages = self._reproduce(*args, **kwargs)
         exp_rev = self._commit(stages, rev=rev)
-        self._checkout(exp_rev, force=True)
+        self.checkout_exp(exp_rev, force=True)
         return stages
 
-    def _checkout(self, rev, force=False):
+    def checkout_exp(self, rev, force=False):
         """Checkout an experiment to the user's workspace."""
-        from git.exc import RepositoryDirtyError
+        from git.exc import GitCommandError
+        from dvc.repo.checkout import _checkout as dvc_checkout
 
         if force:
             self.repo.scm.repo.git.reset(hard=True)
+        logger.debug(f"checkout {rev}")
         self._scm_checkout(rev)
 
-        logger.debug("Patching local workspace")
         tmp = tempfile.NamedTemporaryFile(delete=False).name
+        self.scm.repo.head.commit.diff("HEAD~1", patch=True, output=tmp)
         try:
-            self.scm.repo.head.commit.diff("HEAD~1", patch=True, output=tmp)
             if os.path.getsize(tmp):
-                self.repo.scm.repo.git.apply(tmp, reverse=True, reject=True)
-        except RepositoryDirtyError:
+                logger.debug("Patching local workspace")
+                self.repo.scm.repo.git.apply(tmp, reverse=True)
+            dvc_checkout(self.repo)
+        except GitCommandError:
             raise DvcException(
-                "Could not checkout experiment, workspace contains "
-                "uncommitted changes."
+                "Checkout failed, experiment contains changes which "
+                "conflict with your current workspace. To overwrite "
+                "your workspace, use `dvc experiments checkout --force`."
             )
         finally:
             remove(tmp)
 
-    @locked
-    @scm_context
     def checkout(self, *args, **kwargs):
-        return self._checkout(*args, **kwargs)
+        from dvc.repo.experiments.checkout import checkout
+
+        return checkout(self.repo, *args, **kwargs)
 
     def diff(self, *args, **kwargs):
         pass

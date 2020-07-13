@@ -136,6 +136,15 @@ class CmdExperimentsShow(CmdBase):
         return 0
 
 
+class CmdExperimentsCheckout(CmdBase):
+    def run(self):
+        self.repo.experiments.checkout(
+            self.args.experiment, force=self.args.force
+        )
+
+        return 0
+
+
 def add_parser(subparsers, parent_parser):
     EXPERIMENTS_HELP = "Commands to display and compare experiments."
 
@@ -184,3 +193,26 @@ def add_parser(subparsers, parent_parser):
         help="Show metrics for all commits.",
     )
     experiments_show_parser.set_defaults(func=CmdExperimentsShow)
+
+    EXPERIMENTS_CHECKOUT_HELP = "Checkout experiments."
+    experiments_checkout_parser = experiments_subparsers.add_parser(
+        "checkout",
+        parents=[parent_parser],
+        description=append_doc_link(
+            EXPERIMENTS_CHECKOUT_HELP, "experiments/checkout"
+        ),
+        help=EXPERIMENTS_CHECKOUT_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    experiments_checkout_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        default=False,
+        help="Overwrite your current workspace with changes from the "
+        "experiment.",
+    )
+    experiments_checkout_parser.add_argument(
+        "experiment", help="Checkout this experiment.",
+    )
+    experiments_checkout_parser.set_defaults(func=CmdExperimentsCheckout)

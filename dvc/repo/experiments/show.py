@@ -54,9 +54,10 @@ def show(
         if m:
             rev = repo.scm.resolve_rev(m.group("rev_sha"))
             if rev in revs:
+                exp_rev = repo.experiments.scm.resolve_rev(exp_branch)
                 experiment = _collect_experiment(
                     repo.experiments.exp_dvc, exp_branch
                 )
-                res[rev][m.group("exp_sha")] = experiment
+                res[rev][exp_rev] = experiment
 
     return res
