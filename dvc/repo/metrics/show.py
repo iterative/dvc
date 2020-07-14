@@ -53,7 +53,7 @@ def _extract_metrics(metrics):
 
 
 def _read_metrics(repo, metrics, rev):
-    tree = RepoTree(repo)
+    tree = RepoTree(repo.tree, [repo])
 
     res = {}
     for metric in metrics:

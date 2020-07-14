@@ -1,5 +1,8 @@
 import logging
 import os
+from typing import Optional
+
+from funcy import cached_property, post_processing
 
 from dvc.dvcfile import is_valid_filename
 from dvc.exceptions import OutputNotFoundError
@@ -245,25 +248,36 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
     Any kwargs will be passed to `DvcTree()`.
     """
 
-    def __init__(self, repo, **kwargs):
-        super().__init__(repo, {"url": repo.root_dir})
-        if hasattr(repo, "dvc_dir"):
-            self.dvctree = DvcTree(repo, **kwargs)
-        else:
-            # git-only erepo's do not need dvctree
-            self.dvctree = None
+    def __init__(
+        self, tree, subrepos=None, **kwargs
+    ):  # pylint: disable=super-init-not-called
+        subrepos = subrepos or []
+        subrepos.sort(key=lambda r: len(r.root_dir), reverse=True)
+        dvctrees = [DvcTree(repo, **kwargs) for repo in subrepos]
+        self._kwargs = kwargs
+        self._dvctrees = {
+            os.path.abspath(tree.repo.root_dir): tree for tree in dvctrees
+        }
+        self.tree = tree
 
     @property
     def fetch(self):
-        if self.dvctree:
-            return self.dvctree.fetch
-        return False
+        return self._kwargs.get("fetch", False)
 
     @property
     def stream(self):
-        if self.dvctree:
-            return self.dvctree.stream
-        return False
+        return self._kwargs.get("stream", False)
+
+    def _find_subtree(self, path_prefix) -> Optional[DvcTree]:
+        return self._find_subtree_with_prefix(path_prefix)[1]
+
+    def _find_subtree_with_prefix(self, path):
+        # dvctrees is already ordered from low to high
+        path_prefix = os.path.abspath(path)
+        for pref, tree in self._dvctrees.items():
+            if os.path.abspath(path_prefix).startswith(pref):
+                return pref, tree
+        return "", None
 
     def open(
         self, path, mode="r", encoding="utf-8", **kwargs
@@ -271,52 +285,71 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         if "b" in mode:
             encoding = None
 
-        if self.dvctree and self.dvctree.exists(path):
-            return self.dvctree.open(
-                path, mode=mode, encoding=encoding, **kwargs
-            )
-        return self.repo.tree.open(path, mode=mode, encoding=encoding)
+        subtree = self._find_subtree(path)
+        if subtree and subtree.exists(path):
+            return subtree.open(path, mode=mode, encoding=encoding, **kwargs)
+        return self.tree.open(path, mode=mode, encoding=encoding)
 
-    def exists(
-        self, path, use_dvcignore=True
-    ):  # pylint: disable=arguments-differ
-        return self.repo.tree.exists(path) or (
-            self.dvctree and self.dvctree.exists(path)
-        )
+    def open_by_relpath(self, path, *args, **kwargs):
+        return self.open(PathInfo(self.tree.tree_root, path), *args, **kwargs)
+
+    def exists(self, path):  # pylint: disable=arguments-differ
+        subtree = self._find_subtree(path)
+        return self.tree.exists(path) or (subtree and subtree.exists(path))
 
     def isdir(self, path):  # pylint: disable=arguments-differ
-        return self.repo.tree.isdir(path) or (
-            self.dvctree and self.dvctree.isdir(path)
-        )
+        subtree = self._find_subtree(path)
+        return self.tree.isdir(path) or (subtree and subtree.isdir(path))
 
     def isdvc(self, path, **kwargs):
-        return self.dvctree is not None and self.dvctree.isdvc(path, **kwargs)
+        subtree = self._find_subtree(path)
+        return subtree is not None and subtree.isdvc(path, **kwargs)
 
     def isfile(self, path):  # pylint: disable=arguments-differ
-        return self.repo.tree.isfile(path) or (
-            self.dvctree and self.dvctree.isfile(path)
-        )
+        subtree = self._find_subtree(path)
+        return self.tree.isfile(path) or (subtree and subtree.isfile(path))
 
     def isexec(self, path):
-        if self.dvctree and self.dvctree.exists(path):
-            return self.dvctree.isexec(path)
-        return self.repo.tree.isexec(path)
+        subtree = self._find_subtree(path)
+        if subtree and subtree.exists(path):
+            return subtree.isexec(path)
+        return self.tree.isexec(path)
 
     def stat(self, path):
-        return self.repo.tree.stat(path)
+        return self.tree.stat(path)
 
-    def _walk_one(self, walk):
+    def _dvc_walk(self, walk):
         try:
             root, dirs, files = next(walk)
         except StopIteration:
             return
         yield root, dirs, files
         for _ in dirs:
-            yield from self._walk_one(walk)
+            yield from self._dvc_walk(walk)
 
-    def _walk(self, dvc_walk, repo_walk, dvcfiles=False):
+    def _repo_walk(self, dir_path, walk, **kwargs):
+        assert os.path.isabs(dir_path)
+        subtree = self._dvctrees.get(dir_path)
+        if subtree:
+            dvc_walk = subtree.walk(dir_path, topdown=True)
+            yield from self._walk(walk, dvc_walk, **kwargs)
+        else:
+            try:
+                root, dirs, files = next(walk)
+            except StopIteration:
+                return
+            yield root, dirs, files
+            for dirname in dirs:
+                yield from self._repo_walk(
+                    os.path.join(root, dirname), walk, **kwargs
+                )
+
+    def _walk(self, repo_walk, dvc_walk=None, dvcfiles=False):
+        assert repo_walk
         try:
-            _, dvc_dirs, dvc_fnames = next(dvc_walk)
+            _, dvc_dirs, dvc_fnames = (
+                next(dvc_walk) if dvc_walk else (None, [], [])
+            )
             repo_root, repo_dirs, repo_fnames = next(repo_walk)
         except StopIteration:
             return
@@ -345,11 +378,15 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
 
         for dirname in dirs:
             if dirname in shared:
-                yield from self._walk(dvc_walk, repo_walk, dvcfiles=dvcfiles)
+                yield from self._walk(repo_walk, dvc_walk, dvcfiles=dvcfiles)
             elif dirname in dvc_set:
-                yield from self._walk_one(dvc_walk)
+                yield from self._dvc_walk(dvc_walk)
             elif dirname in repo_set:
-                yield from self._walk_one(repo_walk)
+                yield from self._repo_walk(
+                    os.path.join(repo_root, dirname),
+                    repo_walk,
+                    dvcfiles=dvcfiles,
+                )
 
     def walk(
         self, top, topdown=True, onerror=None, dvcfiles=False, **kwargs
@@ -379,22 +416,25 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
                 onerror(NotADirectoryError(top))
             return
 
-        dvc_exists = self.dvctree and self.dvctree.exists(top)
-        repo_exists = self.repo.tree.exists(top)
+        subtree = self._find_subtree(top)
+        dvc_exists = subtree and subtree.exists(top)
+        repo_exists = self.tree.exists(top)
         if dvc_exists and not repo_exists:
-            yield from self.dvctree.walk(
+            yield from subtree.walk(
                 top, topdown=topdown, onerror=onerror, **kwargs
             )
-            return
-        if repo_exists and not dvc_exists:
-            yield from self.repo.tree.walk(
-                top, topdown=topdown, onerror=onerror
+        if not dvc_exists and not repo_exists:
+            repo_walk = self.tree.walk(top, topdown=topdown, onerror=onerror)
+            yield from self._repo_walk(
+                os.path.abspath(top), repo_walk, dvcfiles=dvcfiles
             )
-            return
-
-        dvc_walk = self.dvctree.walk(top, topdown=topdown, **kwargs)
-        repo_walk = self.repo.tree.walk(top, topdown=topdown)
-        yield from self._walk(dvc_walk, repo_walk, dvcfiles=dvcfiles)
+        dvc_walk = (
+            subtree.walk(top, topdown=topdown, **kwargs)
+            if dvc_exists
+            else None
+        )
+        repo_walk = self.tree.walk(top, topdown=topdown)
+        yield from self._walk(repo_walk, dvc_walk, dvcfiles=dvcfiles)
 
     def walk_files(self, top, **kwargs):  # pylint: disable=arguments-differ
         for root, _, files in self.walk(top, **kwargs):
@@ -410,11 +450,10 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         """
         if not self.exists(path_info):
             raise FileNotFoundError
-        if self.dvctree and self.dvctree.exists(path_info):
-            try:
-                return self.dvctree.get_file_hash(path_info)
-            except OutputNotFoundError:
-                pass
+        subtree = self._find_subtree(path_info)
+        subtree_exists = subtree is not None and subtree.exists(path_info)
+        if subtree_exists:
+            return subtree.get_file_hash(path_info)
         return file_md5(path_info, self)[0]
 
     def copytree(self, top, dest):
@@ -439,6 +478,27 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
                 with self.open(src, mode="rb") as fobj:
                     copy_fobj_to_file(fobj, dest_dir / fname)
 
-    @property
-    def hash_jobs(self):  # pylint: disable=invalid-overridden-method
-        return self.repo.tree.hash_jobs
+    @cached_property
+    def hash_jobs(self):
+        return self.tree.hash_jobs
+
+    def in_subtree(self, path):
+        return self._find_subtree(path)
+
+    @post_processing("\r\n".join)
+    def _visualize(self, top, **kwargs):
+        """`tree`-like output, useful for debugging/visualizing"""
+        indent = 4
+        spacing = " " * indent
+        tee = "├── "
+        last = "└── "
+        for root, _, files in self.walk(top, **kwargs):
+            level = root.replace(top, "").count(os.sep)
+            indent = spacing * level
+            yield "{}{}/".format(indent, os.path.basename(root))
+            sub_indent = spacing * (level + 1)
+            length = len(files)
+            for i, f in enumerate(files):
+                yield "{}{}{}".format(
+                    sub_indent, tee if i + 1 != length else last, f
+                )

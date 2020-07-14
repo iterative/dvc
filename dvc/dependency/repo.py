@@ -2,7 +2,6 @@ import os
 
 from voluptuous import Required
 
-from dvc.exceptions import OutputNotFoundError
 from dvc.path_info import PathInfo
 
 from .local import LocalDependency
@@ -42,30 +41,17 @@ class RepoDependency(LocalDependency):
     def __str__(self):
         return "{} ({})".format(self.def_path, self.def_repo[self.PARAM_URL])
 
-    def _make_repo(self, *, locked=True):
+    def _make_repo(self, *, locked=True, **kwargs):
         from dvc.external_repo import external_repo
 
         d = self.def_repo
         rev = (d.get("rev_lock") if locked else None) or d.get("rev")
-        return external_repo(d["url"], rev=rev)
+        return external_repo(d["url"], rev=rev, **kwargs)
 
     def _get_checksum(self, locked=True):
-        from dvc.repo.tree import RepoTree
-
-        with self._make_repo(locked=locked) as repo:
-            try:
-                return repo.find_out_by_relpath(self.def_path).info["md5"]
-            except OutputNotFoundError:
-                path = PathInfo(os.path.join(repo.root_dir, self.def_path))
-
-                # we want stream but not fetch, so DVC out directories are
-                # walked, but dir contents is not fetched
-                tree = RepoTree(repo, stream=True)
-
-                # We are polluting our repo cache with some dir listing here
-                if tree.isdir(path):
-                    return self.repo.cache.local.tree.get_hash(path, tree=tree)
-                return tree.get_file_hash(path)
+        with self._make_repo(locked=locked, stream=True) as repo:
+            path = PathInfo(os.path.join(repo.root_dir, self.def_path))
+            return repo.get_checksum(path, self.repo.cache.local)
 
     def status(self):
         current_checksum = self._get_checksum(locked=True)
@@ -88,8 +74,7 @@ class RepoDependency(LocalDependency):
                 self.def_repo[self.PARAM_REV_LOCK] = repo.get_rev()
 
             cache = self.repo.cache.local
-            with repo.use_cache(cache):
-                _, _, cache_infos = repo.fetch_external([self.def_path])
+            _, _, cache_infos = repo.fetch_external([self.def_path], cache)
             cache.checkout(to.path_info, cache_infos[0])
 
     def update(self, rev=None):

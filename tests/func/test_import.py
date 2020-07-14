@@ -9,8 +9,10 @@ from dvc.cache import Cache
 from dvc.config import NoRemoteError
 from dvc.dvcfile import Dvcfile
 from dvc.exceptions import DownloadError, PathMissingError
+from dvc.scm.base import CloneError
 from dvc.system import System
 from dvc.utils.fs import makedirs, remove
+from tests.func.test_get import make_subrepo
 
 
 def test_import(tmp_dir, scm, dvc, erepo_dir):
@@ -234,7 +236,8 @@ def test_download_error_pulling_imported_stage(tmp_dir, dvc, erepo_dir):
     remove(dst_cache)
 
     with patch(
-        "dvc.tree.local.LocalTree._download", side_effect=Exception
+        "dvc.external_repo.external_repo",
+        side_effect=CloneError(os.fspath(erepo_dir), "somewhere"),
     ), pytest.raises(DownloadError):
         dvc.pull(["foo_imported.dvc"])
 
@@ -345,3 +348,45 @@ def test_local_import(tmp_dir, dvc, scm):
     tmp_dir.dvc_gen("foo", "foo", commit="init")
     (tmp_dir / "outdir").mkdir()
     dvc.imp(".", "foo", out="outdir")
+
+
+@pytest.mark.parametrize(
+    "output",
+    [
+        "foo",
+        {"foo": "foo", "bar": "bar"},
+        {"subdir": {"foo": "foo", "bar": "bar"}},
+    ],
+    ids=["file", "dir", "nested_dir"],
+)
+@pytest.mark.parametrize(
+    "erepo", [pytest.lazy_fixture("erepo_dir"), pytest.lazy_fixture("git_dir")]
+)
+@pytest.mark.parametrize(
+    "subrepo_paths",
+    [
+        (os.path.join("sub", "subdir1"), os.path.join("sub", "subdir2")),
+        (os.path.join("sub"), os.path.join("sub", "subdir1")),
+    ],
+    ids=["isolated", "nested"],
+)
+def test_subrepo_import(
+    tmp_dir, scm, dvc, output, subrepo_paths, erepo, local_cloud
+):
+    sub_repos = [erepo / path for path in subrepo_paths]
+    filename = "output"
+    for repo in sub_repos:
+        make_subrepo(repo, erepo.scm, local_cloud.config)
+        repo.dvc_gen({filename: output}, commit="add subrepo")
+        repo.dvc.push()
+
+    rev = erepo.scm.get_rev()
+    for i, repo in enumerate(sub_repos):
+        url = f"file:///{erepo}"
+        file = str((repo / filename).relative_to(erepo))
+        out = f"{filename}-{i}"
+
+        stage = dvc.imp(url, file, out=out)
+
+        assert stage.deps[0].def_repo == {"url": url, "rev_lock": rev}
+        assert (tmp_dir / out).read_text() == output

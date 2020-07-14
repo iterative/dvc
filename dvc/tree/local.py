@@ -36,12 +36,20 @@ class LocalTree(BaseTree):
     CACHE_MODE = 0o444
     SHARED_MODE_MAP = {None: (0o644, 0o755), "group": (0o664, 0o775)}
 
-    def __init__(self, repo, config, use_dvcignore=False, dvcignore_root=None):
+    def __init__(
+        self,
+        repo,
+        config,
+        use_dvcignore=False,
+        dvcignore_root=None,
+        ignore_subrepo=False,
+    ):
         super().__init__(repo, config)
         url = config.get("url")
         self.path_info = self.PATH_CLS(url) if url else None
         self.use_dvcignore = use_dvcignore
         self.dvcignore_root = dvcignore_root
+        self.ignore_subrepo = ignore_subrepo
 
     @property
     def tree_root(self):
@@ -58,8 +66,11 @@ class LocalTree(BaseTree):
         from dvc.ignore import DvcIgnoreFilter, DvcIgnoreFilterNoop
 
         root = self.dvcignore_root or self.tree_root
-        cls = DvcIgnoreFilter if self.use_dvcignore else DvcIgnoreFilterNoop
-        return cls(self, root)
+        if self.use_dvcignore:
+            return DvcIgnoreFilter(
+                self, root, ignore_subrepo=self.ignore_subrepo
+            )
+        return DvcIgnoreFilterNoop(self, root)
 
     @staticmethod
     def open(path_info, mode="r", encoding=None):
