@@ -29,7 +29,6 @@ from .gs import (  # noqa: F401; noqa: F401
     gs,
 )
 from .ssh import (  # noqa: F401; noqa: F401
-    SSH,
     SSHMocked,
     ssh,
     ssh_connection,
