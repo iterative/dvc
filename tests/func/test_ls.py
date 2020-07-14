@@ -472,3 +472,33 @@ def test_ls_granular(erepo_dir):
         {"isout": False, "isdir": False, "isexec": False, "path": "2"},
         {"isout": False, "isdir": True, "isexec": False, "path": "subdir"},
     ]
+
+
+@pytest.mark.parametrize("use_scm", [True, False])
+def test_ls_target(erepo_dir, use_scm):
+    with erepo_dir.chdir():
+        gen = erepo_dir.scm_gen if use_scm else erepo_dir.dvc_gen
+        gen(
+            {
+                "dir": {
+                    "1": "1",
+                    "2": "2",
+                    "subdir": {"foo": "foo", "bar": "bar"},
+                }
+            },
+            commit="create dir",
+        )
+
+    def _ls(path):
+        return Repo.ls(os.fspath(erepo_dir), path)
+
+    assert _ls(os.path.join("dir", "1")) == [
+        {"isout": False, "isdir": False, "isexec": False, "path": "1"}
+    ]
+    assert _ls(os.path.join("dir", "subdir", "foo")) == [
+        {"isout": False, "isdir": False, "isexec": False, "path": "foo"}
+    ]
+    assert _ls(os.path.join("dir", "subdir")) == [
+        {"isdir": False, "isexec": 0, "isout": False, "path": "bar"},
+        {"isdir": False, "isexec": 0, "isout": False, "path": "foo"},
+    ]
