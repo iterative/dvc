@@ -192,7 +192,7 @@ def test_repotree_walk_fetch(tmp_dir, dvc, scm, local_remote):
 
     assert os.path.exists(out.cache_path)
     for entry in out.dir_cache:
-        hash_ = entry[out.remote.tree.PARAM_CHECKSUM]
+        hash_ = entry[out.tree.PARAM_CHECKSUM]
         assert os.path.exists(dvc.cache.local.hash_to_path_info(hash_))
 
 

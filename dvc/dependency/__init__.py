@@ -12,7 +12,7 @@ from dvc.dependency.param import ParamsDependency
 from dvc.dependency.s3 import S3Dependency
 from dvc.dependency.ssh import SSHDependency
 from dvc.output.base import BaseOutput
-from dvc.remote import get_remote
+from dvc.remote import get_cloud_tree
 from dvc.scheme import Schemes
 
 from .repo import RepoDependency
@@ -54,8 +54,8 @@ SCHEMA.update(ParamsDependency.PARAM_SCHEMA)
 def _get(stage, p, info):
     parsed = urlparse(p) if p else None
     if parsed and parsed.scheme == "remote":
-        remote = get_remote(stage.repo, name=parsed.netloc)
-        return DEP_MAP[remote.scheme](stage, p, info, remote=remote)
+        tree = get_cloud_tree(stage.repo, name=parsed.netloc)
+        return DEP_MAP[tree.scheme](stage, p, info, tree=tree)
 
     if info and info.get(RepoDependency.PARAM_REPO):
         repo = info.pop(RepoDependency.PARAM_REPO)
