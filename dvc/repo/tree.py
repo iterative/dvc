@@ -44,6 +44,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
         return outs
 
     def _get_granular_checksum(self, path, out, remote=None):
+        assert isinstance(path, PathInfo)
         if not self.fetch and not self.stream:
             raise FileNotFoundError
         dir_cache = out.get_dir_cache(remote=remote)
@@ -128,7 +129,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
         # for dir checksum, we need to check if this is a file inside the
         # directory
         try:
-            self._get_granular_checksum(path, out)
+            self._get_granular_checksum(path_info, out)
             return False
         except FileNotFoundError:
             return True

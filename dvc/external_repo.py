@@ -72,6 +72,9 @@ class BaseExternalRepo:
 
     _local_cache = None
 
+    def __str__(self):
+        return self.url
+
     @property
     def local_cache(self):
         if hasattr(self, "cache"):
