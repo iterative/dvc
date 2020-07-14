@@ -184,7 +184,7 @@ def test_repotree_walk_fetch(tmp_dir, dvc, scm, local_remote):
     dvc.push()
     remove(dvc.cache.local.cache_dir)
 
-    tree = RepoTree(dvc, fetch=True)
+    tree = RepoTree(dvc.tree, [dvc], fetch=True)
     with dvc.state:
         for _, _, _ in tree.walk("dir"):
             pass
@@ -208,7 +208,7 @@ def test_repotree_cache_save(tmp_dir, dvc, scm, erepo_dir, local_cloud):
     #
     # for this test, all file objects are being opened() and copied from tree
     # into dvc.cache, not fetched or streamed from a remote
-    tree = RepoTree(erepo_dir.dvc, stream=True)
+    tree = RepoTree(erepo_dir.dvc.tree, [erepo_dir.dvc], stream=True)
     expected = [
         tree.get_file_hash(PathInfo(erepo_dir / path))
         for path in ("dir/bar", "dir/subdir/foo")

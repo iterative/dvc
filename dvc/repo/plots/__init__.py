@@ -44,7 +44,7 @@ class Plots:
                 continue
             rev = rev or "workspace"
 
-            tree = RepoTree(self.repo)
+            tree = RepoTree(self.repo.tree, [self.repo])
             plots = _collect_plots(self.repo, targets, rev)
             for path_info, props in plots.items():
                 datafile = relpath(path_info, self.repo.root_dir)
