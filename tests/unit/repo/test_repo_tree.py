@@ -12,7 +12,7 @@ def test_exists(tmp_dir, dvc):
     dvc.add("foo")
     (tmp_dir / "foo").unlink()
 
-    tree = RepoTree(dvc)
+    tree = RepoTree(dvc.tree, [dvc])
     assert tree.exists("foo")
 
 
@@ -21,7 +21,7 @@ def test_open(tmp_dir, dvc):
     dvc.add("foo")
     (tmp_dir / "foo").unlink()
 
-    tree = RepoTree(dvc)
+    tree = RepoTree(dvc.tree, [dvc])
     with dvc.state:
         with tree.open("foo", "r") as fobj:
             assert fobj.read() == "foo"
@@ -31,7 +31,7 @@ def test_open_dirty_hash(tmp_dir, dvc):
     tmp_dir.dvc_gen("file", "file")
     (tmp_dir / "file").write_text("something")
 
-    tree = RepoTree(dvc)
+    tree = RepoTree(dvc.tree, [dvc])
     with tree.open("file", "r") as fobj:
         assert fobj.read() == "something"
 
@@ -40,7 +40,7 @@ def test_open_dirty_no_hash(tmp_dir, dvc):
     tmp_dir.gen("file", "file")
     (tmp_dir / "file.dvc").write_text("outs:\n- path: file\n")
 
-    tree = RepoTree(dvc)
+    tree = RepoTree(dvc.tree, [dvc])
     with tree.open("file", "r") as fobj:
         assert fobj.read() == "file"
 
@@ -60,7 +60,7 @@ def test_open_in_history(tmp_dir, scm, dvc):
         if rev == "workspace":
             continue
 
-        tree = RepoTree(dvc)
+        tree = RepoTree(dvc.tree, [dvc])
         with tree.open("foo", "r") as fobj:
             assert fobj.read() == "foo"
 
@@ -68,7 +68,7 @@ def test_open_in_history(tmp_dir, scm, dvc):
 def test_isdir_isfile(tmp_dir, dvc):
     tmp_dir.gen({"datafile": "data", "datadir": {"foo": "foo", "bar": "bar"}})
 
-    tree = RepoTree(dvc)
+    tree = RepoTree(dvc.tree, [dvc])
     assert tree.isdir("datadir")
     assert not tree.isfile("datadir")
     assert not tree.isdvc("datadir")
@@ -93,7 +93,7 @@ def test_isdir_mixed(tmp_dir, dvc):
 
     dvc.add(str(tmp_dir / "dir" / "foo"))
 
-    tree = RepoTree(dvc)
+    tree = RepoTree(dvc.tree, [dvc])
     assert tree.isdir("dir")
     assert not tree.isfile("dir")
 
@@ -123,7 +123,7 @@ def test_walk(tmp_dir, dvc, dvcfiles, extra_expected):
     )
     dvc.add(str(tmp_dir / "dir"), recursive=True)
     tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
-    tree = RepoTree(dvc)
+    tree = RepoTree(dvc.tree, [dvc])
 
     expected = [
         PathInfo("dir") / "subdir1",
@@ -150,7 +150,7 @@ def test_walk_onerror(tmp_dir, dvc):
         raise exc
 
     tmp_dir.dvc_gen("foo", "foo")
-    tree = RepoTree(dvc)
+    tree = RepoTree(dvc.tree, [dvc])
 
     # path does not exist
     for _ in tree.walk("dir"):
@@ -171,7 +171,7 @@ def test_isdvc(tmp_dir, dvc):
     tmp_dir.gen({"foo": "foo", "bar": "bar", "dir": {"baz": "baz"}})
     dvc.add("foo")
     dvc.add("dir")
-    tree = RepoTree(dvc)
+    tree = RepoTree(dvc.tree, [dvc])
     assert tree.isdvc("foo")
     assert not tree.isdvc("bar")
     assert tree.isdvc("dir")

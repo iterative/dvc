@@ -2,7 +2,12 @@ import os
 from contextlib import _GeneratorContextManager as GCM
 from contextlib import contextmanager
 
-from dvc.exceptions import DvcException, NotDvcRepoError
+from dvc.exceptions import (
+    DvcException,
+    FileMissingError,
+    NotDvcRepoError,
+    PathMissingError,
+)
 from dvc.external_repo import external_repo
 from dvc.repo import Repo
 
@@ -26,10 +31,14 @@ def get_url(path, repo=None, rev=None, remote=None):
     directory in the remote storage.
     """
     with _make_repo(repo, rev=rev) as _repo:
-        if not isinstance(_repo, Repo):
-            raise UrlNotDvcRepoError(_repo.url)  # pylint: disable=no-member
-        out = _repo.find_out_by_relpath(path)
-        remote_obj = _repo.cloud.get_remote(remote)
+        # pylint: disable=no-member
+        path = os.path.join(_repo.root_dir, path)
+        is_erepo = not isinstance(_repo, Repo)
+        r = _repo.in_repo(path) if is_erepo else _repo
+        if is_erepo and not r:
+            raise UrlNotDvcRepoError(_repo.url)
+        out = r.find_out_by_relpath(path)
+        remote_obj = r.cloud.get_remote(remote)
         return str(remote_obj.tree.hash_to_path_info(out.checksum))
 
 
@@ -74,10 +83,17 @@ class _OpenContextManager(GCM):
 
 def _open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
     with _make_repo(repo, rev=rev) as _repo:
-        with _repo.open_by_relpath(
-            path, remote=remote, mode=mode, encoding=encoding
-        ) as fd:
-            yield fd
+        is_erepo = not isinstance(_repo, Repo)
+        try:
+            with _repo.repo_tree.open_by_relpath(
+                path, remote=remote, mode=mode, encoding=encoding
+            ) as fd:
+                yield fd
+        except FileNotFoundError as exc:
+            if is_erepo:
+                # pylint: disable=no-member
+                raise PathMissingError(path, _repo.url) from exc
+            raise FileMissingError(path) from exc
 
 
 def read(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
@@ -101,5 +117,5 @@ def _make_repo(repo_url=None, rev=None):
             return
         except NotDvcRepoError:
             pass  # fallthrough to external_repo
-    with external_repo(url=repo_url, rev=rev) as repo:
+    with external_repo(url=repo_url, rev=rev, stream=True) as repo:
         yield repo

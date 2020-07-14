@@ -3,7 +3,6 @@ import os
 from mock import patch
 
 from dvc.external_repo import external_repo
-from dvc.path_info import PathInfo
 from dvc.scm.git import Git
 from dvc.tree.local import LocalTree
 from dvc.utils import relpath
@@ -20,11 +19,11 @@ def test_external_repo(erepo_dir):
 
     with patch.object(Git, "clone", wraps=Git.clone) as mock:
         with external_repo(url) as repo:
-            with repo.open_by_relpath("file") as fd:
+            with repo.repo_tree.open_by_relpath("file") as fd:
                 assert fd.read() == "master"
 
         with external_repo(url, rev="branch") as repo:
-            with repo.open_by_relpath("file") as fd:
+            with repo.repo_tree.open_by_relpath("file") as fd:
                 assert fd.read() == "branch"
 
         assert mock.call_count == 1
@@ -43,7 +42,7 @@ def test_source_change(erepo_dir):
     assert old_rev != new_rev
 
 
-def test_cache_reused(erepo_dir, mocker, local_cloud):
+def test_cache_reused(tmp_dir, erepo_dir, mocker, local_cloud):
     erepo_dir.add_remote(config=local_cloud.config)
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("file", "text", commit="add file")
@@ -54,13 +53,13 @@ def test_cache_reused(erepo_dir, mocker, local_cloud):
     # Use URL to prevent any fishy optimizations
     url = f"file://{erepo_dir}"
     with external_repo(url) as repo:
-        repo.fetch()
+        repo.get_external("file", tmp_dir / "file1")
         assert download_spy.mock.call_count == 1
 
     # Should not download second time
     erepo_dir.scm.branch("branch")
     with external_repo(url, "branch") as repo:
-        repo.fetch()
+        repo.get_external("file", tmp_dir / "file2")
         assert download_spy.mock.call_count == 1
 
 
@@ -90,10 +89,7 @@ def test_pull_subdir_file(tmp_dir, erepo_dir):
 
     dest = tmp_dir / "file"
     with external_repo(os.fspath(erepo_dir)) as repo:
-        _, _, save_infos = repo.fetch_external(
-            [os.path.join("subdir", "file")]
-        )
-        repo.cache.local.checkout(PathInfo(dest), save_infos[0])
+        repo.get_external(os.path.join("subdir", "file"), dest)
 
     assert dest.is_file()
     assert dest.read_text() == "contents"
@@ -117,7 +113,8 @@ def test_relative_remote(erepo_dir, tmp_dir):
     url = os.fspath(erepo_dir)
 
     with external_repo(url) as repo:
-        assert os.path.isabs(repo.config["remote"]["upstream"]["url"])
-        assert os.path.isdir(repo.config["remote"]["upstream"]["url"])
-        with repo.open_by_relpath("file") as fd:
+        for subrepo in repo.repos:
+            assert os.path.isabs(subrepo.config["remote"]["upstream"]["url"])
+            assert os.path.isdir(subrepo.config["remote"]["upstream"]["url"])
+        with repo.repo_tree.open_by_relpath("file") as fd:
             assert fd.read() == "contents"

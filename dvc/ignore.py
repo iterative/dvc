@@ -175,13 +175,12 @@ class DvcIgnoreFilterNoop:
 
 
 class DvcIgnoreFilter:
-    def __init__(self, tree, root_dir):
+    def __init__(self, tree, root_dir, ignore_subrepo=True):
         self.tree = tree
         self.root_dir = root_dir
-        self.ignores = {
-            DvcIgnoreDirs([".git", ".hg", ".dvc"]),
-            DvcIgnoreRepo(),
-        }
+        self.ignores = {DvcIgnoreDirs([".git", ".hg", ".dvc"])}
+        if ignore_subrepo:
+            self.ignores.add(DvcIgnoreRepo())
         ignore_pattern_trie = DvcIgnorePatternsTrie()
         for root, dirs, _ in self.tree.walk(self.root_dir):
             ignore_pattern = self._get_ignore_pattern(root)

@@ -252,3 +252,50 @@ def test_get_pipeline_tracked_outs(
     with git_dir.chdir():
         Repo.get("file:///{}".format(os.fspath(tmp_dir)), "bar", out="baz")
         assert (git_dir / "baz").read_text() == "foo"
+
+
+def make_subrepo(dir_, scm, config):
+    dir_.mkdir(parents=True)
+    with dir_.chdir():
+        dir_.scm = scm
+        dir_.init(dvc=True, subdir=True)
+        dir_.add_remote(config=config)
+
+
+@pytest.mark.parametrize(
+    "output",
+    [
+        "foo",
+        {"foo": "foo", "bar": "bar"},
+        {"subdir": {"foo": "foo", "bar": "bar"}},
+    ],
+    ids=["file", "dir", "nested_dir"],
+)
+@pytest.mark.parametrize(
+    "erepo", [pytest.lazy_fixture("erepo_dir"), pytest.lazy_fixture("git_dir")]
+)
+@pytest.mark.parametrize(
+    "subrepo_paths",
+    [
+        (os.path.join("sub", "subdir1"), os.path.join("sub", "subdir2")),
+        (os.path.join("sub"), os.path.join("sub", "subdir1")),
+    ],
+    ids=["isolated", "nested"],
+)
+def test_subrepo_multiple(
+    tmp_dir, scm, output, subrepo_paths, erepo, local_cloud
+):
+    sub_repos = [erepo / path for path in subrepo_paths]
+    filename = "output"
+    for repo in sub_repos:
+        make_subrepo(repo, erepo.scm, local_cloud.config)
+        repo.dvc_gen({filename: output}, commit="add subrepo")
+        repo.dvc.push()
+
+    for i, repo in enumerate(sub_repos):
+        Repo.get(
+            f"file:///{erepo}",
+            str((repo / filename).relative_to(erepo)),
+            out=f"{filename}-{i}",
+        )
+        assert (tmp_dir / f"{filename}-{i}").read_text() == output

@@ -24,7 +24,14 @@ def _item_basename(item):
 class GitTree(BaseTree):  # pylint:disable=abstract-method
     """Proxies the repo file access methods to Git objects"""
 
-    def __init__(self, git, rev, use_dvcignore=False, dvcignore_root=None):
+    def __init__(
+        self,
+        git,
+        rev,
+        use_dvcignore=False,
+        dvcignore_root=None,
+        ignore_subrepo=True,
+    ):
         """Create GitTree instance
 
         Args:
@@ -36,6 +43,7 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
         self.rev = rev
         self.use_dvcignore = use_dvcignore
         self.dvcignore_root = dvcignore_root
+        self.ignore_subrepo = ignore_subrepo
 
     @property
     def tree_root(self):
@@ -49,7 +57,7 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
         if not self.use_dvcignore:
             return DvcIgnoreFilterNoop(self, root)
         self.use_dvcignore = False
-        ret = DvcIgnoreFilter(self, root)
+        ret = DvcIgnoreFilter(self, root, ignore_subrepo=self.ignore_subrepo)
         self.use_dvcignore = True
         return ret
 
