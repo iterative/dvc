@@ -29,7 +29,7 @@ def ls(
     """
     from dvc.external_repo import external_repo
 
-    with external_repo(url, rev) as repo:
+    with external_repo(url, rev, stream=True) as repo:
         path_info = PathInfo(repo.root_dir)
         if path:
             path_info /= path
@@ -48,15 +48,10 @@ def ls(
 
 
 def _ls(repo, path_info, recursive=None, dvc_only=False):
-    from dvc.repo.tree import RepoTree
-
     def onerror(exc):
         raise exc
 
-    # use our own RepoTree instance instead of repo.repo_tree since we want to
-    # fetch directory listings, but don't want to fetch file contents.
-    tree = RepoTree(repo, stream=True)
-
+    tree = repo.repo_tree
     ret = {}
     try:
         for root, dirs, files in tree.walk(
@@ -76,9 +71,8 @@ def _ls(repo, path_info, recursive=None, dvc_only=False):
             if not recursive:
                 for dname in dirs:
                     info = PathInfo(root) / dname
-                    if not dvc_only or (
-                        tree.dvctree and tree.dvctree.exists(info)
-                    ):
+                    subtree = tree.in_subtree(info)
+                    if not dvc_only or (subtree and subtree.exists(info)):
                         dvc = tree.isdvc(info)
                         path = str(info.relative_to(path_info))
                         ret[path] = {

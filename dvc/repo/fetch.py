@@ -81,10 +81,9 @@ def _fetch_external(self, repo_url, repo_rev, files, jobs):
     failed, downloaded = 0, 0
     try:
         with external_repo(repo_url, repo_rev) as repo:
-            with repo.use_cache(self.cache.local):
-                d, f, _ = repo.fetch_external(files, jobs=jobs)
-                downloaded += d
-                failed += f
+            d, f, _ = repo.fetch_external(files, self.cache.local, jobs=jobs)
+            downloaded += d
+            failed += f
     except CloneError:
         failed += 1
         logger.exception(

@@ -1,14 +1,11 @@
 import logging
 import os
-from contextlib import contextmanager
 from functools import wraps
 
 from funcy import cached_property, cat, first
 
 from dvc.config import Config
 from dvc.dvcfile import PIPELINE_FILE, Dvcfile, is_valid_filename
-from dvc.exceptions import FileMissingError
-from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
 from dvc.exceptions import (
     NoOutputOrStageError,
     NotDvcRepoError,
@@ -153,22 +150,29 @@ class Repo:
     def __repr__(self):
         return f"{self.__class__.__name__}: '{self.root_dir}'"
 
+    @cached_property
+    def repo_tree(self):
+        return RepoTree(self.tree, [self], stream=True)
+
     @classmethod
     def find_root(cls, root=None, tree=None):
+        # TODO (@skshetry): Verify and refactor this
         root_dir = os.path.realpath(root or os.curdir)
 
-        if tree:
-            if tree.isdir(os.path.join(root_dir, cls.DVC_DIR)):
-                return root_dir
-            raise NotDvcRepoError(f"'{root}' does not contain DVC directory")
-
-        if not os.path.isdir(root_dir):
-            raise NotDvcRepoError(f"directory '{root}' does not exist")
+        is_dir = tree.isdir if tree else os.path.isdir
 
         while True:
             dvc_dir = os.path.join(root_dir, cls.DVC_DIR)
-            if os.path.isdir(dvc_dir):
+            if is_dir(dvc_dir):
                 return root_dir
+            if (
+                tree
+                and os.path.dirname(os.path.abspath(tree.tree_root))
+                == root_dir
+            ):
+                raise NotDvcRepoError(
+                    f"'{root}' does not contain DVC directory"
+                )
             if os.path.ismount(root_dir):
                 break
             root_dir = os.path.dirname(root_dir)
@@ -579,26 +583,6 @@ class Repo:
     def is_dvc_internal(self, path):
         path_parts = os.path.normpath(path).split(os.path.sep)
         return self.DVC_DIR in path_parts
-
-    @contextmanager
-    def open_by_relpath(self, path, remote=None, mode="r", encoding=None):
-        """Opens a specified resource as a file descriptor"""
-
-        tree = RepoTree(self, stream=True)
-        path = os.path.join(self.root_dir, path)
-        try:
-            with self.state:
-                with tree.open(
-                    os.path.join(self.root_dir, path),
-                    mode=mode,
-                    encoding=encoding,
-                    remote=remote,
-                ) as fobj:
-                    yield fobj
-        except FileNotFoundError as exc:
-            raise FileMissingError(path) from exc
-        except IsADirectoryError as exc:
-            raise DvcIsADirectoryError(f"'{path}' is a directory") from exc
 
     def close(self):
         self.scm.close()
