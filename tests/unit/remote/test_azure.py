@@ -1,8 +1,5 @@
-import pytest
-
 from dvc.path_info import PathInfo
 from dvc.remote.azure import AzureRemoteTree
-from tests.remotes import Azure
 
 container_name = "container-name"
 connection_string = (
@@ -32,14 +29,11 @@ def test_init(dvc):
     assert tree._conn_kwargs["connection_string"] == connection_string
 
 
-def test_get_file_hash(tmp_dir):
-    if not Azure.should_test():
-        pytest.skip("no azurite running")
-
+def test_get_file_hash(tmp_dir, azure):
     tmp_dir.gen("foo", "foo")
 
-    tree = AzureRemoteTree(None, {})
-    to_info = tree.PATH_CLS(Azure.get_url())
+    tree = AzureRemoteTree(None, azure.config)
+    to_info = azure
     tree.upload(PathInfo("foo"), to_info)
     assert tree.exists(to_info)
     hash_ = tree.get_file_hash(to_info)

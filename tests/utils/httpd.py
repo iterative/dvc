@@ -20,7 +20,7 @@ class TestRequestHandler(RangeRequestHandler):
         import posixpath
 
         # NOTE: `directory` was introduced in 3.7
-        if sys.version_info < (3, 7):
+        if sys.version_info >= (3, 7):
             return super().translate_path(path)
 
         path = path.split("?", 1)[0]

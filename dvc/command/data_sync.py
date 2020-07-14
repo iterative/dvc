@@ -103,8 +103,10 @@ def shared_parent_parser():
     parent_parser.add_argument(
         "targets",
         nargs="*",
-        help="Limit command scope to these DVC-files. "
-        "Using -R, directories to search DVC-files in can also be given.",
+        help=(
+            "Limit command scope to these tracked files/directories, "
+            ".dvc files, or stage names."
+        ),
     ).complete = completion.DVC_FILE
 
     return parent_parser

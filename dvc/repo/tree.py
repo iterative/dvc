@@ -12,7 +12,7 @@ from dvc.utils.fs import copy_fobj_to_file, makedirs
 logger = logging.getLogger(__name__)
 
 
-class DvcTree(BaseTree):
+class DvcTree(BaseTree):  # pylint:disable=abstract-method
     """DVC repo tree.
 
     Args:
@@ -44,6 +44,7 @@ class DvcTree(BaseTree):
         return outs
 
     def _get_granular_checksum(self, path, out, remote=None):
+        assert isinstance(path, PathInfo)
         if not self.fetch and not self.stream:
             raise FileNotFoundError
         dir_cache = out.get_dir_cache(remote=remote)
@@ -128,7 +129,7 @@ class DvcTree(BaseTree):
         # for dir checksum, we need to check if this is a file inside the
         # directory
         try:
-            self._get_granular_checksum(path, out)
+            self._get_granular_checksum(path_info, out)
             return False
         except FileNotFoundError:
             return True
@@ -236,7 +237,7 @@ class DvcTree(BaseTree):
         return out.checksum
 
 
-class RepoTree(BaseTree):
+class RepoTree(BaseTree):  # pylint:disable=abstract-method
     """DVC + git-tracked files tree.
 
     Args:

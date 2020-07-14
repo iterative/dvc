@@ -103,6 +103,7 @@ tests_requirements = [
     "wheel>=0.31.1",
     # Test requirements:
     "pytest>=4.6.0",
+    "pytest-docker>=0.7.2",
     "pytest-timeout>=1.3.3",
     "pytest-cov>=2.6.1",
     "pytest-xdist>=1.26.1",
@@ -130,6 +131,8 @@ tests_requirements = [
     "pylint",
     "pylint-pytest",
     "pylint-plugin-utils",
+    "wget",
+    "filelock",
 ]
 
 if (sys.version_info) >= (3, 6):

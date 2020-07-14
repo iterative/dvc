@@ -131,8 +131,6 @@ Conda (Anaconda)
 
    conda install -c conda-forge dvc
 
-Currently, this includes support for Python versions 2.7, 3.6 and 3.7.
-
 pip (PyPI)
 ----------
 

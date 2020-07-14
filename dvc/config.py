@@ -232,8 +232,10 @@ class Config(dict):
     CONFIG_LOCAL = "config.local"
 
     def __init__(
-        self, dvc_dir=None, validate=True
+        self, dvc_dir=None, validate=True, tree=None,
     ):  # pylint: disable=super-init-not-called
+        from dvc.scm.tree import WorkingTree
+
         self.dvc_dir = dvc_dir
 
         if not dvc_dir:
@@ -245,6 +247,9 @@ class Config(dict):
                 self.dvc_dir = None
         else:
             self.dvc_dir = os.path.abspath(os.path.realpath(dvc_dir))
+
+        self.wtree = WorkingTree(self.dvc_dir)
+        self.tree = tree.tree if tree else self.wtree
 
         self.load(validate=validate)
 
@@ -304,8 +309,32 @@ class Config(dict):
         if not self["cache"].get("dir") and self.dvc_dir:
             self["cache"]["dir"] = os.path.join(self.dvc_dir, "cache")
 
+    def _load_config(self, level):
+        filename = self.files[level]
+        tree = self.tree if level == "repo" else self.wtree
+
+        if tree.exists(filename):
+            with tree.open(filename) as fobj:
+                conf_obj = configobj.ConfigObj(fobj)
+        else:
+            conf_obj = configobj.ConfigObj()
+        return _parse_remotes(_lower_keys(conf_obj.dict()))
+
+    def _save_config(self, level, conf_dict):
+        filename = self.files[level]
+        tree = self.tree if level == "repo" else self.wtree
+
+        logger.debug(f"Writing '{filename}'.")
+
+        tree.makedirs(os.path.dirname(filename), exist_ok=True)
+
+        config = configobj.ConfigObj(_pack_remotes(conf_dict))
+        with tree.open(filename, "wb") as fobj:
+            config.write(fobj)
+        config.filename = filename
+
     def load_one(self, level):
-        conf = _load_config(self.files[level])
+        conf = self._load_config(level)
         conf = self._load_paths(conf, self.files[level])
 
         # Auto-verify sections
@@ -375,7 +404,7 @@ class Config(dict):
         _merge(merged_conf, conf)
         self.validate(merged_conf)
 
-        _save_config(self.files[level], conf)
+        self._save_config(level, conf)
         self.load()
 
     @staticmethod
@@ -384,20 +413,6 @@ class Config(dict):
             return COMPILED_SCHEMA(data)
         except Invalid as exc:
             raise ConfigError(str(exc)) from None
-
-
-def _load_config(filename):
-    conf_obj = configobj.ConfigObj(filename)
-    return _parse_remotes(_lower_keys(conf_obj.dict()))
-
-
-def _save_config(filename, conf_dict):
-    logger.debug(f"Writing '{filename}'.")
-    os.makedirs(os.path.dirname(filename), exist_ok=True)
-
-    config = configobj.ConfigObj(_pack_remotes(conf_dict))
-    config.filename = filename
-    config.write()
 
 
 def _parse_remotes(conf):

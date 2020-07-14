@@ -1,14 +1,11 @@
-import getpass
 import locale
 import os
 from contextlib import contextmanager
-from subprocess import CalledProcessError, check_output
 
 import pytest
 from funcy import cached_property
 
 from dvc.path_info import URLInfo
-from dvc.utils import env2bool
 
 from .base import Base
 from .local import Local
@@ -17,31 +14,6 @@ TEST_SSH_USER = "user"
 TEST_SSH_KEY_PATH = os.path.join(
     os.path.abspath(os.path.dirname(__file__)), f"{TEST_SSH_USER}.key"
 )
-
-
-class SSH:
-    @staticmethod
-    def should_test():
-        do_test = env2bool("DVC_TEST_SSH", undefined=None)
-        if do_test is not None:
-            return do_test
-
-        # FIXME: enable on windows
-        if os.name == "nt":
-            return False
-
-        try:
-            check_output(["ssh", "-o", "BatchMode=yes", "127.0.0.1", "ls"])
-        except (CalledProcessError, OSError):
-            return False
-
-        return True
-
-    @staticmethod
-    def get_url():
-        return "ssh://{}@127.0.0.1:22{}".format(
-            getpass.getuser(), Local.get_storagepath()
-        )
 
 
 class SSHMocked(Base, URLInfo):

@@ -1,57 +1,22 @@
-import getpass
 import locale
 import os
 import platform
+import uuid
 from contextlib import contextmanager
-from subprocess import CalledProcessError, Popen, check_output
 
 import pytest
 
 from dvc.path_info import URLInfo
 
 from .base import Base
-from .local import Local
 
 
-class HDFS(Base, URLInfo):
-    @staticmethod
-    def should_test():
-        if platform.system() != "Linux":
-            return False
-
-        try:
-            # pylint: disable=unexpected-keyword-arg
-            # see: https://github.com/PyCQA/pylint/issues/3645
-            check_output(
-                ["hadoop", "version"],
-                shell=True,
-                executable=os.getenv("SHELL"),
-            )
-        except (CalledProcessError, OSError):
-            return False
-
-        p = Popen(
-            "hadoop fs -ls hdfs://127.0.0.1/",
-            shell=True,
-            executable=os.getenv("SHELL"),
-        )
-        p.communicate()
-        if p.returncode != 0:
-            return False
-
-        return True
-
-    @staticmethod
-    def get_url():
-        return "hdfs://{}@127.0.0.1{}".format(
-            getpass.getuser(), Local.get_storagepath()
-        )
-
+class HDFS(Base, URLInfo):  # pylint: disable=abstract-method
     @contextmanager
     def _hdfs(self):
         import pyarrow
 
-        conn = pyarrow.hdfs.connect()
+        conn = pyarrow.hdfs.connect(self.host, self.port)
         try:
             yield conn
         finally:
@@ -103,8 +68,77 @@ class HDFS(Base, URLInfo):
         return self.read_bytes().decode(encoding)
 
 
+@pytest.fixture(scope="session")
+def hadoop():
+    import wget
+    import tarfile
+    from appdirs import user_cache_dir
+
+    if platform.system() != "Linux":
+        pytest.skip("only supported on Linux")
+
+    hadoop_name = "hadoop-2.7.2.tar.gz"
+    java_name = "openjdk-7u75-b13-linux-x64-18_dec_2014.tar.gz"
+
+    base_url = "https://s3-us-east-2.amazonaws.com/dvc-public/dvc-test/"
+    hadoop_url = base_url + hadoop_name
+    java_url = base_url + java_name
+
+    (cache_dir,) = (user_cache_dir("dvc-test", "iterative"),)
+    dname = os.path.join(cache_dir, "hdfs")
+
+    java_tar = os.path.join(dname, java_name)
+    hadoop_tar = os.path.join(dname, hadoop_name)
+
+    java_home = os.path.join(dname, "java-se-7u75-ri")
+    hadoop_home = os.path.join(dname, "hadoop-2.7.2")
+
+    def _get(url, tar, target):
+        if os.path.isdir(target):
+            return
+
+        if not os.path.exists(tar):
+            wget.download(url, out=tar)
+        tar = tarfile.open(tar)
+        tar.extractall(dname)
+        assert os.path.isdir(target)
+
+    os.makedirs(dname, exist_ok=True)
+    _get(hadoop_url, hadoop_tar, hadoop_home)
+    _get(java_url, java_tar, java_home)
+
+    os.environ["JAVA_HOME"] = java_home
+    os.environ["HADOOP_HOME"] = hadoop_home
+    os.environ["PATH"] += f":{hadoop_home}/bin:{hadoop_home}/sbin"
+
+
+@pytest.fixture(scope="session")
+def hdfs_server(hadoop, docker_compose, docker_services):
+    import pyarrow
+
+    port = docker_services.port_for("hdfs", 8020)
+
+    def _check():
+        try:
+            # NOTE: just connecting or even opening something is not enough,
+            # we need to make sure that we are able to write something.
+            conn = pyarrow.hdfs.connect("127.0.0.1", port)
+            try:
+                with conn.open(str(uuid.uuid4()), "wb") as fobj:
+                    fobj.write(b"test")
+            finally:
+                conn.close()
+            return True
+        except (pyarrow.ArrowException, OSError):
+            return False
+
+    docker_services.wait_until_responsive(timeout=30.0, pause=5, check=_check)
+
+    return port
+
+
 @pytest.fixture
-def hdfs():
-    if not HDFS.should_test():
-        pytest.skip("no hadoop running")
-    yield HDFS(HDFS.get_url())
+def hdfs(hdfs_server):
+    port = hdfs_server
+    url = f"hdfs://127.0.0.1:{port}/{uuid.uuid4()}"
+    yield HDFS(url)

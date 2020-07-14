@@ -233,7 +233,11 @@ class PipelineFile(FileMixin):
 
         logger.debug("Removing '%s' from '%s'", stage.name, self.path)
         del d["stages"][stage.name]
-        dump_yaml(self.path, d)
+
+        if d["stages"]:
+            dump_yaml(self.path, d)
+        else:
+            super().remove()
 
 
 class Lockfile(FileMixin):
@@ -286,7 +290,10 @@ class Lockfile(FileMixin):
         logger.debug("Removing '%s' from '%s'", stage.name, self.path)
         del d[stage.name]
 
-        dump_yaml(self.path, d)
+        if d:
+            dump_yaml(self.path, d)
+        else:
+            self.remove()
 
 
 class Dvcfile:
