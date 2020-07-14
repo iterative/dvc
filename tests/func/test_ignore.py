@@ -8,6 +8,7 @@ from dvc.ignore import (
     DvcIgnore,
     DvcIgnoreDirs,
     DvcIgnorePatterns,
+    DvcIgnorePatternsTrie,
     DvcIgnoreRepo,
 )
 from dvc.repo import Repo
@@ -98,12 +99,19 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
 
     assert len(dvc.tree.dvcignore.ignores) == 3
     assert DvcIgnoreDirs([".git", ".hg", ".dvc"]) in dvc.tree.dvcignore.ignores
+    ignore_pattern_trie = None
+    for ignore in dvc.tree.dvcignore.ignores:
+        if isinstance(ignore, DvcIgnorePatternsTrie):
+            ignore_pattern_trie = ignore
+
+    assert ignore_pattern_trie is not None
     assert (
-        DvcIgnorePatterns(
+        DvcIgnorePatterns.from_files(
             os.fspath(top_ignore_file), WorkingTree(dvc.root_dir)
         )
-        in dvc.tree.dvcignore.ignores
+        == ignore_pattern_trie[os.fspath(ignore_file)]
     )
+
     assert any(
         i for i in dvc.tree.dvcignore.ignores if isinstance(i, DvcIgnoreRepo)
     )
@@ -236,3 +244,102 @@ def test_ignore_directory(tmp_dir, dvc):
     assert _files_set("dir", dvc.tree) == {
         "dir/{}".format(DvcIgnore.DVCIGNORE_FILE),
     }
+
+
+def test_multi_ignore_file(tmp_dir, dvc, monkeypatch):
+    tmp_dir.gen({"dir": {"subdir": {"should_ignore": "1", "not_ignore": "1"}}})
+    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir/subdir/*_ignore")
+    tmp_dir.gen({"dir": {DvcIgnore.DVCIGNORE_FILE: "!subdir/not_ignore"}})
+
+    assert _files_set("dir", dvc.tree) == {
+        "dir/subdir/not_ignore",
+        "dir/{}".format(DvcIgnore.DVCIGNORE_FILE),
+    }
+
+
+def test_pattern_trie_tree(tmp_dir, dvc):
+    tmp_dir.gen(
+        {
+            "top": {
+                "first": {
+                    DvcIgnore.DVCIGNORE_FILE: "a\nb\nc",
+                    "middle": {
+                        "second": {
+                            DvcIgnore.DVCIGNORE_FILE: "d\ne\nf",
+                            "bottom": {},
+                        }
+                    },
+                },
+            },
+            "other": {DvcIgnore.DVCIGNORE_FILE: "1\n2\n3"},
+        }
+    )
+    ignore_pattern_trie = None
+    for ignore in dvc.tree.dvcignore.ignores:
+        if isinstance(ignore, DvcIgnorePatternsTrie):
+            ignore_pattern_trie = ignore
+            break
+
+    assert ignore_pattern_trie is not None
+    ignore_pattern_top = ignore_pattern_trie[os.fspath(tmp_dir / "top")]
+    ignore_pattern_other = ignore_pattern_trie[os.fspath(tmp_dir / "other")]
+    ignore_pattern_first = ignore_pattern_trie[
+        os.fspath(tmp_dir / "top" / "first")
+    ]
+    ignore_pattern_middle = ignore_pattern_trie[
+        os.fspath(tmp_dir / "top" / "first" / "middle")
+    ]
+    ignore_pattern_second = ignore_pattern_trie[
+        os.fspath(tmp_dir / "top" / "first" / "middle" / "second")
+    ]
+    ignore_pattern_bottom = ignore_pattern_trie[
+        os.fspath(tmp_dir / "top" / "first" / "middle" / "second" / "bottom")
+    ]
+    assert not ignore_pattern_top
+    assert (
+        DvcIgnorePatterns([], os.fspath(tmp_dir / "top")) == ignore_pattern_top
+    )
+    assert (
+        DvcIgnorePatterns(["1", "2", "3"], os.fspath(tmp_dir / "other"))
+        == ignore_pattern_other
+    )
+    assert (
+        DvcIgnorePatterns(
+            ["a", "b", "c"], os.fspath(tmp_dir / "top" / "first")
+        )
+        == ignore_pattern_first
+    )
+    assert (
+        DvcIgnorePatterns(
+            ["a", "b", "c"], os.fspath(tmp_dir / "top" / "first")
+        )
+        == ignore_pattern_middle
+    )
+    assert (
+        DvcIgnorePatterns(
+            [
+                "a",
+                "b",
+                "c",
+                "/middle/second/**/d",
+                "/middle/second/**/e",
+                "/middle/second/**/f",
+            ],
+            os.fspath(tmp_dir / "top" / "first"),
+        )
+        == ignore_pattern_second
+    )
+    assert (
+        DvcIgnorePatterns(
+            [
+                "a",
+                "b",
+                "c",
+                "/middle/second/**/d",
+                "/middle/second/**/e",
+                "/middle/second/**/f",
+            ],
+            os.fspath(tmp_dir / "top" / "first"),
+        )
+        == ignore_pattern_bottom
+    )
