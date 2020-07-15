@@ -98,3 +98,9 @@ class RepoDependency(LocalDependency):
 
         with self._make_repo(locked=False) as repo:
             self.def_repo[self.PARAM_REV_LOCK] = repo.get_rev()
+
+    def changed_checksum(self):
+        # From current repo point of view what describes RepoDependency is its
+        # origin project url and rev_lock, and it makes RepoDependency
+        # immutable, hence its impossible for checksum to change.
+        return False

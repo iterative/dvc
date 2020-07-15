@@ -1,3 +1,5 @@
+from os import fspath
+
 import pytest
 
 from dvc.dvcfile import PIPELINE_FILE
@@ -95,3 +97,13 @@ def test_commit_pipeline_stage(tmp_dir, dvc, run_copy):
     assert dvc.commit(f":{stage.addressing}") == [stage]
     assert dvc.commit(f"{PIPELINE_FILE}:{stage.addressing}") == [stage]
     assert dvc.commit(PIPELINE_FILE) == [stage]
+
+
+def test_imported_entries_unchanged(tmp_dir, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("file", "file content", "initial commit")
+
+    stage = dvc.imp(fspath(erepo_dir), "file")
+
+    with dvc.state:
+        assert stage.changed_entries() == ([], [], None)
