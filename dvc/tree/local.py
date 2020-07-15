@@ -1,0 +1,309 @@
+import errno
+import logging
+import os
+import stat
+
+from funcy import cached_property
+from shortuuid import uuid
+
+from dvc.exceptions import DvcException
+from dvc.path_info import PathInfo
+from dvc.scheme import Schemes
+from dvc.scm.tree import WorkingTree, is_working_tree
+from dvc.system import System
+from dvc.utils import file_md5, relpath, tmp_fname
+from dvc.utils.fs import (
+    copy_fobj_to_file,
+    copyfile,
+    makedirs,
+    move,
+    remove,
+    walk_files,
+)
+
+from .base import BaseRemoteTree
+
+logger = logging.getLogger(__name__)
+
+
+class LocalRemoteTree(BaseRemoteTree):
+    scheme = Schemes.LOCAL
+    PATH_CLS = PathInfo
+    PARAM_CHECKSUM = "md5"
+    PARAM_PATH = "path"
+    TRAVERSE_PREFIX_LEN = 2
+    UNPACKED_DIR_SUFFIX = ".unpacked"
+
+    CACHE_MODE = 0o444
+    SHARED_MODE_MAP = {None: (0o644, 0o755), "group": (0o664, 0o775)}
+
+    def __init__(self, repo, config):
+        super().__init__(repo, config)
+        url = config.get("url")
+        self.path_info = self.PATH_CLS(url) if url else None
+
+    @property
+    def state(self):
+        from dvc.state import StateNoop
+
+        return self.repo.state if self.repo else StateNoop()
+
+    @cached_property
+    def work_tree(self):
+        # When using repo.brancher, repo.tree may change to/from WorkingTree to
+        # GitTree arbitarily. When repo.tree is GitTree, local cache needs to
+        # use its own WorkingTree instance.
+        if self.repo:
+            return WorkingTree(self.repo.root_dir)
+        return None
+
+    @staticmethod
+    def open(path_info, mode="r", encoding=None):
+        return open(path_info, mode=mode, encoding=encoding)
+
+    def exists(self, path_info):
+        assert isinstance(path_info, str) or path_info.scheme == "local"
+        if not self.repo:
+            return os.path.exists(path_info)
+        return self.work_tree.exists(path_info)
+
+    def isfile(self, path_info):
+        if not self.repo:
+            return os.path.isfile(path_info)
+        return self.work_tree.isfile(path_info)
+
+    def isdir(self, path_info):
+        if not self.repo:
+            return os.path.isdir(path_info)
+        return self.work_tree.isdir(path_info)
+
+    def iscopy(self, path_info):
+        return not (
+            System.is_symlink(path_info) or System.is_hardlink(path_info)
+        )
+
+    def walk_files(self, path_info, **kwargs):
+        for fname in self.work_tree.walk_files(path_info):
+            yield PathInfo(fname)
+
+    def is_empty(self, path_info):
+        path = path_info.fspath
+
+        if self.isfile(path_info) and os.path.getsize(path) == 0:
+            return True
+
+        if self.isdir(path_info) and len(os.listdir(path)) == 0:
+            return True
+
+        return False
+
+    def remove(self, path_info):
+        if isinstance(path_info, PathInfo):
+            if path_info.scheme != "local":
+                raise NotImplementedError
+            path = path_info.fspath
+        else:
+            path = path_info
+
+        if self.exists(path):
+            remove(path)
+
+    def makedirs(self, path_info):
+        makedirs(path_info, exist_ok=True, mode=self.dir_mode)
+
+    def move(self, from_info, to_info, mode=None):
+        if from_info.scheme != "local" or to_info.scheme != "local":
+            raise NotImplementedError
+
+        self.makedirs(to_info.parent)
+
+        if mode is None:
+            if self.isfile(from_info):
+                mode = self.file_mode
+            else:
+                mode = self.dir_mode
+
+        move(from_info, to_info, mode=mode)
+
+    def copy(self, from_info, to_info):
+        tmp_info = to_info.parent / tmp_fname(to_info.name)
+        try:
+            System.copy(from_info, tmp_info)
+            os.chmod(tmp_info, self.file_mode)
+            os.rename(tmp_info, to_info)
+        except Exception:
+            self.remove(tmp_info)
+            raise
+
+    def copy_fobj(self, fobj, to_info):
+        self.makedirs(to_info.parent)
+        tmp_info = to_info.parent / tmp_fname(to_info.name)
+        try:
+            copy_fobj_to_file(fobj, tmp_info)
+            os.chmod(tmp_info, self.file_mode)
+            os.rename(tmp_info, to_info)
+        except Exception:
+            self.remove(tmp_info)
+            raise
+
+    @staticmethod
+    def symlink(from_info, to_info):
+        System.symlink(from_info, to_info)
+
+    @staticmethod
+    def is_symlink(path_info):
+        return System.is_symlink(path_info)
+
+    def hardlink(self, from_info, to_info):
+        # If there are a lot of empty files (which happens a lot in datasets),
+        # and the cache type is `hardlink`, we might reach link limits and
+        # will get something like: `too many links error`
+        #
+        # This is because all those empty files will have the same hash
+        # (i.e. 68b329da9893e34099c7d8ad5cb9c940), therefore, they will be
+        # linked to the same file in the cache.
+        #
+        # From https://en.wikipedia.org/wiki/Hard_link
+        #   * ext4 limits the number of hard links on a file to 65,000
+        #   * Windows with NTFS has a limit of 1024 hard links on a file
+        #
+        # That's why we simply create an empty file rather than a link.
+        if self.getsize(from_info) == 0:
+            self.open(to_info, "w").close()
+
+            logger.debug(
+                "Created empty file: {src} -> {dest}".format(
+                    src=str(from_info), dest=str(to_info)
+                )
+            )
+            return
+
+        System.hardlink(from_info, to_info)
+
+    @staticmethod
+    def is_hardlink(path_info):
+        return System.is_hardlink(path_info)
+
+    def reflink(self, from_info, to_info):
+        tmp_info = to_info.parent / tmp_fname(to_info.name)
+        System.reflink(from_info, tmp_info)
+        # NOTE: reflink has its own separate inode, so you can set permissions
+        # that are different from the source.
+        os.chmod(tmp_info, self.file_mode)
+        os.rename(tmp_info, to_info)
+
+    def _unprotect_file(self, path):
+        if System.is_symlink(path) or System.is_hardlink(path):
+            logger.debug(f"Unprotecting '{path}'")
+            tmp = os.path.join(os.path.dirname(path), "." + uuid())
+
+            # The operations order is important here - if some application
+            # would access the file during the process of copyfile then it
+            # would get only the part of file. So, at first, the file should be
+            # copied with the temporary name, and then original file should be
+            # replaced by new.
+            copyfile(path, tmp, name="Unprotecting '{}'".format(relpath(path)))
+            remove(path)
+            os.rename(tmp, path)
+
+        else:
+            logger.debug(
+                "Skipping copying for '{}', since it is not "
+                "a symlink or a hardlink.".format(path)
+            )
+
+        os.chmod(path, self.file_mode)
+
+    def _unprotect_dir(self, path):
+        assert is_working_tree(self.repo.tree)
+
+        for fname in self.repo.tree.walk_files(path):
+            self._unprotect_file(fname)
+
+    def unprotect(self, path_info):
+        path = path_info.fspath
+        if not os.path.exists(path):
+            raise DvcException(f"can't unprotect non-existing data '{path}'")
+
+        if os.path.isdir(path):
+            self._unprotect_dir(path)
+        else:
+            self._unprotect_file(path)
+
+    def protect(self, path_info):
+        path = os.fspath(path_info)
+        mode = self.CACHE_MODE
+
+        try:
+            os.chmod(path, mode)
+        except OSError as exc:
+            # There is nothing we need to do in case of a read-only file system
+            if exc.errno == errno.EROFS:
+                return
+
+            # In shared cache scenario, we might not own the cache file, so we
+            # need to check if cache file is already protected.
+            if exc.errno not in [errno.EPERM, errno.EACCES]:
+                raise
+
+            actual = stat.S_IMODE(os.stat(path).st_mode)
+            if actual != mode:
+                raise
+
+    def is_protected(self, path_info):
+        try:
+            mode = os.stat(path_info).st_mode
+        except FileNotFoundError:
+            return False
+
+        return stat.S_IMODE(mode) == self.CACHE_MODE
+
+    def get_file_hash(self, path_info):
+        return file_md5(path_info)[0]
+
+    @staticmethod
+    def getsize(path_info):
+        return os.path.getsize(path_info)
+
+    def _upload(
+        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
+    ):
+        makedirs(to_info.parent, exist_ok=True)
+
+        tmp_file = tmp_fname(to_info)
+        copyfile(
+            from_file, tmp_file, name=name, no_progress_bar=no_progress_bar
+        )
+
+        self.protect(tmp_file)
+        os.rename(tmp_file, to_info)
+
+    @staticmethod
+    def _download(
+        from_info, to_file, name=None, no_progress_bar=False, **_kwargs
+    ):
+        copyfile(
+            from_info, to_file, no_progress_bar=no_progress_bar, name=name
+        )
+
+    def list_paths(self, prefix=None, progress_callback=None):
+        assert self.path_info is not None
+        if prefix:
+            path_info = self.path_info / prefix[:2]
+            if not self.exists(path_info):
+                return
+        else:
+            path_info = self.path_info
+        # NOTE: use utils.fs walk_files since tree.walk_files will not follow
+        # symlinks
+        if progress_callback:
+            for path in walk_files(path_info):
+                progress_callback()
+                yield path
+        else:
+            yield from walk_files(path_info)
+
+    def _remove_unpacked_dir(self, hash_):
+        info = self.hash_to_path_info(hash_)
+        path_info = info.with_name(info.name + self.UNPACKED_DIR_SUFFIX)
+        self.remove(path_info)

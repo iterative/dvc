@@ -4,8 +4,8 @@ import posixpath
 import configobj
 
 from dvc.main import main
-from dvc.remote.gdrive import GDriveRemoteTree
 from dvc.repo import Repo
+from dvc.tree.gdrive import GDriveRemoteTree
 
 
 def test_relative_user_credentials_file_config_setting(tmp_dir, dvc):

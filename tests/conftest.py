@@ -27,7 +27,7 @@ def reset_loglevel(request, caplog):
 
 @pytest.fixture(scope="session", autouse=True)
 def _close_pools():
-    from dvc.remote.pool import close_pools
+    from dvc.tree.pool import close_pools
 
     yield
     close_pools()

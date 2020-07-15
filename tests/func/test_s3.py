@@ -6,7 +6,7 @@ import pytest
 from moto import mock_s3
 
 from dvc.remote.base import CloudCache
-from dvc.remote.s3 import S3RemoteTree
+from dvc.tree.s3 import S3RemoteTree
 from tests.remotes import S3
 
 # from https://github.com/spulec/moto/blob/v1.3.5/tests/test_s3/test_s3.py#L40

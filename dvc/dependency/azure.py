@@ -1,6 +1,7 @@
 from dvc.dependency.base import BaseDependency
 from dvc.output.base import BaseOutput
-from dvc.remote.azure import AzureRemoteTree
+
+from ..tree.azure import AzureRemoteTree
 
 
 class AzureDependency(BaseDependency, BaseOutput):

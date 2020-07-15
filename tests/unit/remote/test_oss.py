@@ -1,4 +1,4 @@
-from dvc.remote.oss import OSSRemoteTree
+from dvc.tree.oss import OSSRemoteTree
 
 bucket_name = "bucket-name"
 endpoint = "endpoint"

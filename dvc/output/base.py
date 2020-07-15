@@ -12,7 +12,8 @@ from dvc.exceptions import (
     DvcException,
     RemoteCacheRequiredError,
 )
-from dvc.remote.base import BaseRemoteTree
+
+from ..tree.base import BaseRemoteTree
 
 logger = logging.getLogger(__name__)
 

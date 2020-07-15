@@ -1,7 +1,7 @@
 import pytest
 
-from dvc.remote.pool import get_connection
-from dvc.remote.ssh.connection import SSHConnection
+from dvc.tree.pool import get_connection
+from dvc.tree.ssh.connection import SSHConnection
 from tests.remotes.ssh import TEST_SSH_KEY_PATH, TEST_SSH_USER
 
 

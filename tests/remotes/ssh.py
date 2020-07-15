@@ -47,7 +47,7 @@ class SSHMocked(Base, URLInfo):
 
     @contextmanager
     def _ssh(self):
-        from dvc.remote.ssh.connection import SSHConnection
+        from dvc.tree.ssh.connection import SSHConnection
 
         conn = SSHConnection(
             host=self.host,
@@ -117,7 +117,7 @@ def ssh_server():
 
 @pytest.fixture
 def ssh_connection(ssh_server):
-    from dvc.remote.ssh.connection import SSHConnection
+    from dvc.tree.ssh.connection import SSHConnection
 
     yield SSHConnection(
         host=ssh_server.host,
@@ -129,7 +129,7 @@ def ssh_connection(ssh_server):
 
 @pytest.fixture
 def ssh(ssh_server, monkeypatch):
-    from dvc.remote.ssh import SSHRemoteTree
+    from dvc.tree.ssh import SSHRemoteTree
 
     # NOTE: see http://github.com/iterative/dvc/pull/3501
     monkeypatch.setattr(SSHRemoteTree, "CAN_TRAVERSE", False)

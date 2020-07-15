@@ -14,10 +14,11 @@ from funcy.py3 import cat
 from dvc.exceptions import DvcException, FileMissingError
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemoteTree
 from dvc.scheme import Schemes
 from dvc.utils import format_link, tmp_fname
 from dvc.utils.stream import IterStream
+
+from .base import BaseRemoteTree
 
 logger = logging.getLogger(__name__)
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"

@@ -1,7 +1,7 @@
 import pytest
 
 from dvc.config import ConfigError
-from dvc.remote.s3 import S3RemoteTree
+from dvc.tree.s3 import S3RemoteTree
 
 bucket_name = "bucket-name"
 prefix = "some/prefix"

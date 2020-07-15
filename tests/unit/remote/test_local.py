@@ -6,7 +6,8 @@ import pytest
 from dvc.cache import NamedCache
 from dvc.path_info import PathInfo
 from dvc.remote.index import RemoteIndexNoop
-from dvc.remote.local import LocalCache, LocalRemoteTree
+from dvc.remote.local import LocalCache
+from dvc.tree.local import LocalRemoteTree
 
 
 def test_status_download_optimization(mocker, dvc):

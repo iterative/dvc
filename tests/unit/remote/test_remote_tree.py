@@ -4,7 +4,7 @@ import pytest
 
 from dvc.path_info import PathInfo
 from dvc.remote import get_remote
-from dvc.remote.s3 import S3RemoteTree
+from dvc.tree.s3 import S3RemoteTree
 from dvc.utils.fs import walk_files
 
 remotes = [pytest.lazy_fixture(fix) for fix in ["gs", "s3"]]
@@ -46,7 +46,7 @@ def test_isdir(remote):
     ]
 
     for expected, path in test_cases:
-        assert remote.tree.isdir(remote.path_info / path) == expected
+        assert remote.tree.isdir(remote.tree.path_info / path) == expected
 
 
 @pytest.mark.parametrize("remote", remotes, indirect=True)
@@ -66,22 +66,24 @@ def test_exists(remote):
     ]
 
     for expected, path in test_cases:
-        assert remote.tree.exists(remote.path_info / path) == expected
+        assert remote.tree.exists(remote.tree.path_info / path) == expected
 
 
 @pytest.mark.parametrize("remote", remotes, indirect=True)
 def test_walk_files(remote):
     files = [
-        remote.path_info / "data/alice",
-        remote.path_info / "data/alpha",
-        remote.path_info / "data/subdir-file.txt",
-        remote.path_info / "data/subdir/1",
-        remote.path_info / "data/subdir/2",
-        remote.path_info / "data/subdir/3",
-        remote.path_info / "data/subdir/empty_file",
+        remote.tree.path_info / "data/alice",
+        remote.tree.path_info / "data/alpha",
+        remote.tree.path_info / "data/subdir-file.txt",
+        remote.tree.path_info / "data/subdir/1",
+        remote.tree.path_info / "data/subdir/2",
+        remote.tree.path_info / "data/subdir/3",
+        remote.tree.path_info / "data/subdir/empty_file",
     ]
 
-    assert list(remote.tree.walk_files(remote.path_info / "data")) == files
+    assert (
+        list(remote.tree.walk_files(remote.tree.path_info / "data")) == files
+    )
 
 
 @pytest.mark.parametrize("remote", [pytest.lazy_fixture("s3")], indirect=True)
@@ -91,7 +93,7 @@ def test_copy_preserve_etag_across_buckets(remote, dvc):
 
     another = S3RemoteTree(dvc, {"url": "s3://another", "region": "us-east-1"})
 
-    from_info = remote.path_info / "foo"
+    from_info = remote.tree.path_info / "foo"
     to_info = another.path_info / "foo"
 
     remote.tree.copy(from_info, to_info)
@@ -105,7 +107,7 @@ def test_copy_preserve_etag_across_buckets(remote, dvc):
 @pytest.mark.parametrize("remote", remotes, indirect=True)
 def test_makedirs(remote):
     tree = remote.tree
-    empty_dir = remote.path_info / "empty_dir" / ""
+    empty_dir = remote.tree.path_info / "empty_dir" / ""
     tree.remove(empty_dir)
     assert not tree.exists(empty_dir)
     tree.makedirs(empty_dir)
@@ -132,14 +134,14 @@ def test_isfile(remote):
     ]
 
     for expected, path in test_cases:
-        assert remote.tree.isfile(remote.path_info / path) == expected
+        assert remote.tree.isfile(remote.tree.path_info / path) == expected
 
 
 @pytest.mark.parametrize("remote", remotes, indirect=True)
 def test_download_dir(remote, tmpdir):
     path = str(tmpdir / "data")
     to_info = PathInfo(path)
-    remote.tree.download(remote.path_info / "data", to_info)
+    remote.tree.download(remote.tree.path_info / "data", to_info)
     assert os.path.isdir(path)
     data_dir = tmpdir / "data"
     assert len(list(walk_files(path))) == 7

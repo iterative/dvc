@@ -17,12 +17,12 @@ from dvc.exceptions import (
 )
 from dvc.main import main
 from dvc.remote.base import CloudCache, Remote
-from dvc.remote.local import LocalRemoteTree
-from dvc.remote.s3 import S3RemoteTree
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
+from dvc.tree.local import LocalRemoteTree
+from dvc.tree.s3 import S3RemoteTree
 from dvc.utils import relpath
 from dvc.utils.fs import walk_files
 from dvc.utils.yaml import dump_yaml, load_yaml
@@ -760,12 +760,12 @@ def test_checkout_for_external_outputs(tmp_dir, dvc):
     dvc.cache.s3 = CloudCache(S3RemoteTree(dvc, {"url": S3.get_url()}))
 
     remote = Remote(S3RemoteTree(dvc, {"url": S3.get_url()}))
-    file_path = remote.path_info / "foo"
+    file_path = remote.tree.path_info / "foo"
     remote.tree.s3.put_object(
-        Bucket=remote.path_info.bucket, Key=file_path.path, Body="foo"
+        Bucket=remote.tree.path_info.bucket, Key=file_path.path, Body="foo"
     )
 
-    dvc.add(str(remote.path_info / "foo"), external=True)
+    dvc.add(str(remote.tree.path_info / "foo"), external=True)
 
     remote.tree.remove(file_path)
     stats = dvc.checkout(force=True)
@@ -773,7 +773,9 @@ def test_checkout_for_external_outputs(tmp_dir, dvc):
     assert remote.tree.exists(file_path)
 
     remote.tree.s3.put_object(
-        Bucket=remote.path_info.bucket, Key=file_path.path, Body="foo\nfoo"
+        Bucket=remote.tree.path_info.bucket,
+        Key=file_path.path,
+        Body="foo\nfoo",
     )
     stats = dvc.checkout(force=True)
     assert stats == {**empty_checkout, "modified": [str(file_path)]}

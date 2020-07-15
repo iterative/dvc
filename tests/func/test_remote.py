@@ -10,8 +10,8 @@ from dvc.config import Config
 from dvc.exceptions import DownloadError, UploadError
 from dvc.main import main
 from dvc.path_info import PathInfo
-from dvc.remote.base import BaseRemoteTree, RemoteCacheRequiredError
-from dvc.remote.local import LocalRemoteTree
+from dvc.tree.base import BaseRemoteTree, RemoteCacheRequiredError
+from dvc.tree.local import LocalRemoteTree
 from dvc.utils.fs import remove
 from tests.basic_env import TestDvc
 from tests.remotes import Local
@@ -192,9 +192,13 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
         assert upload_error_info.value.amount == 3
 
         remote = dvc.cloud.get_remote("upstream")
-        assert not remote.tree.exists(remote.hash_to_path_info(foo.checksum))
-        assert remote.tree.exists(remote.hash_to_path_info(bar.checksum))
-        assert not remote.tree.exists(remote.hash_to_path_info(baz.checksum))
+        assert not remote.tree.exists(
+            remote.tree.hash_to_path_info(foo.checksum)
+        )
+        assert remote.tree.exists(remote.tree.hash_to_path_info(bar.checksum))
+        assert not remote.tree.exists(
+            remote.tree.hash_to_path_info(baz.checksum)
+        )
 
     # Push everything and delete local cache
     dvc.push()
@@ -388,7 +392,7 @@ def test_protect_local_remote(tmp_dir, dvc, local_remote):
 
     dvc.push()
     remote = dvc.cloud.get_remote("upstream")
-    remote_cache_file = remote.hash_to_path_info(stage.outs[0].checksum)
+    remote_cache_file = remote.tree.hash_to_path_info(stage.outs[0].checksum)
 
     assert os.path.exists(remote_cache_file)
     assert stat.S_IMODE(os.stat(remote_cache_file).st_mode) == 0o444

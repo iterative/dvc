@@ -9,8 +9,9 @@ from funcy import cached_property
 
 from dvc.exceptions import DvcException
 from dvc.progress import Tqdm
-from dvc.remote.base import RemoteCmdError
 from dvc.utils import tmp_fname
+
+from ..base import RemoteCmdError
 
 try:
     import paramiko

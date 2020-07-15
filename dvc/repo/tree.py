@@ -85,8 +85,8 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
                 else:
                     checksum = out.checksum
                 try:
-                    remote_info = remote_obj.hash_to_path_info(checksum)
-                    return remote_obj.open(
+                    remote_info = remote_obj.tree.hash_to_path_info(checksum)
+                    return remote_obj.tree.open(
                         remote_info, mode=mode, encoding=encoding
                     )
                 except RemoteActionNotImplemented:

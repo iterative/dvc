@@ -1,7 +1,7 @@
 import pytest
 
 from dvc.exceptions import HTTPError
-from dvc.remote.http import HTTPRemoteTree
+from dvc.tree.http import HTTPRemoteTree
 
 
 def test_download_fails_on_error_code(dvc, http):

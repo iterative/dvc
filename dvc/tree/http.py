@@ -8,8 +8,9 @@ import dvc.prompt as prompt
 from dvc.exceptions import DvcException, HTTPError
 from dvc.path_info import HTTPURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemoteTree
 from dvc.scheme import Schemes
+
+from .base import BaseRemoteTree
 
 logger = logging.getLogger(__name__)
 

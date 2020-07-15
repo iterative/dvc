@@ -1,5 +1,6 @@
 from dvc.output.base import BaseOutput
-from dvc.remote.ssh import SSHRemoteTree
+
+from ..tree.ssh import SSHRemoteTree
 
 
 class SSHOutput(BaseOutput):

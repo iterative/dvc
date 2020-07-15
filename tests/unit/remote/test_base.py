@@ -4,9 +4,9 @@ import mock
 import pytest
 
 from dvc.path_info import PathInfo
-from dvc.remote.base import (
+from dvc.remote.base import Remote
+from dvc.tree.base import (
     BaseRemoteTree,
-    Remote,
     RemoteCmdError,
     RemoteMissingDepsError,
 )

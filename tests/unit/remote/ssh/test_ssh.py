@@ -5,8 +5,8 @@ import sys
 import pytest
 from mock import mock_open, patch
 
-from dvc.remote.ssh import SSHRemoteTree
 from dvc.system import System
+from dvc.tree.ssh import SSHRemoteTree
 
 
 def test_url(dvc):

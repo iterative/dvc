@@ -9,8 +9,9 @@ from funcy import cached_property, wrap_prop
 from dvc.exceptions import DvcException
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
-from dvc.remote.base import BaseRemoteTree
 from dvc.scheme import Schemes
+
+from .base import BaseRemoteTree
 
 logger = logging.getLogger(__name__)
 

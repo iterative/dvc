@@ -6,7 +6,7 @@ import pytest
 from funcy import cached_property
 
 from dvc.path_info import CloudURLInfo
-from dvc.remote.gdrive import GDriveRemoteTree
+from dvc.tree.gdrive import GDriveRemoteTree
 
 from .base import Base
 
