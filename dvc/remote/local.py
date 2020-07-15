@@ -97,7 +97,7 @@ class LocalCache(CloudCache):
     def already_cached(self, path_info):
         assert path_info.scheme in ["", "local"]
 
-        current_md5 = self.get_hash(path_info)
+        current_md5 = self.tree.get_hash(path_info)
 
         if not current_md5:
             return False
@@ -147,7 +147,7 @@ class LocalCache(CloudCache):
         logger.debug(
             f"Preparing to collect status from {remote.tree.path_info}"
         )
-        md5s = set(named_cache.scheme_keys(self.scheme))
+        md5s = set(named_cache.scheme_keys(self.tree.scheme))
 
         logger.debug("Collecting information from local cache...")
         local_exists = frozenset(
@@ -163,7 +163,7 @@ class LocalCache(CloudCache):
         else:
             logger.debug("Collecting information from remote cache...")
             remote_exists = set()
-            dir_md5s = set(named_cache.dir_keys(self.scheme))
+            dir_md5s = set(named_cache.dir_keys(self.tree.scheme))
             if dir_md5s:
                 remote_exists.update(
                     self._indexed_dir_hashes(named_cache, remote, dir_md5s)
@@ -188,7 +188,7 @@ class LocalCache(CloudCache):
         dir_status = {}
         file_status = {}
         dir_contents = {}
-        for hash_, item in named_cache[self.scheme].items():
+        for hash_, item in named_cache[self.tree.scheme].items():
             if item.children:
                 dir_status[hash_] = make_names(hash_, item.names)
                 dir_contents[hash_] = set()
@@ -233,7 +233,9 @@ class LocalCache(CloudCache):
         # If .dir hash exists on the remote, assume directory contents
         # still exists on the remote
         for dir_hash in dir_exists:
-            file_hashes = list(named_cache.child_keys(self.scheme, dir_hash))
+            file_hashes = list(
+                named_cache.child_keys(self.tree.scheme, dir_hash)
+            )
             if dir_hash not in remote.index:
                 logger.debug(
                     "Indexing new .dir '{}' with '{}' nested files".format(
@@ -263,7 +265,7 @@ class LocalCache(CloudCache):
             status_info.items(), desc="Analysing status", unit="file"
         ):
             if info["status"] == status:
-                cache.append(self.hash_to_path_info(md5))
+                cache.append(self.tree.hash_to_path_info(md5))
                 path_infos.append(remote.tree.hash_to_path_info(md5))
                 names.append(info["name"])
                 hashes.append(md5)

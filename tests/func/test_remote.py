@@ -158,7 +158,7 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
                 {"relpath": "2", "md5": "2"},
             ],
         ):
-            hash1 = dvc.cache.local.get_hash(path_info)
+            hash1 = dvc.cache.local.tree.get_hash(path_info)
 
         with patch.object(
             BaseRemoteTree,
@@ -168,7 +168,7 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
                 {"md5": "2", "relpath": "2"},
             ],
         ):
-            hash2 = dvc.cache.local.get_hash(path_info)
+            hash2 = dvc.cache.local.tree.get_hash(path_info)
 
     assert hash1 == hash2
 

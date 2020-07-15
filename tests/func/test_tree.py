@@ -193,7 +193,7 @@ def test_repotree_walk_fetch(tmp_dir, dvc, scm, local_remote):
     assert os.path.exists(out.cache_path)
     for entry in out.dir_cache:
         hash_ = entry[out.tree.PARAM_CHECKSUM]
-        assert os.path.exists(dvc.cache.local.hash_to_path_info(hash_))
+        assert os.path.exists(dvc.cache.local.tree.hash_to_path_info(hash_))
 
 
 def test_repotree_cache_save(tmp_dir, dvc, scm, erepo_dir, local_cloud):
@@ -217,10 +217,10 @@ def test_repotree_cache_save(tmp_dir, dvc, scm, erepo_dir, local_cloud):
 
     with erepo_dir.dvc.state:
         cache = dvc.cache.local
-        with cache.state:
+        with cache.tree.state:
             cache.save(PathInfo(erepo_dir / "dir"), tree, None)
     for hash_ in expected:
-        assert os.path.exists(cache.hash_to_path_info(hash_))
+        assert os.path.exists(cache.tree.hash_to_path_info(hash_))
 
 
 def test_cleantree_subrepo(tmp_dir, dvc, scm, monkeypatch):
