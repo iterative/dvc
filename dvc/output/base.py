@@ -162,7 +162,7 @@ class BaseOutput:
 
     @property
     def cache_path(self):
-        return self.cache.hash_to_path_info(self.checksum).url
+        return self.cache.tree.hash_to_path_info(self.checksum).url
 
     @property
     def checksum_type(self):

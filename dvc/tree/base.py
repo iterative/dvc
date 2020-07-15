@@ -282,7 +282,7 @@ class BaseRemoteTree:
         if (
             hash_
             and self.is_dir_hash(hash_)
-            and not tree.exists(self.cache.hash_to_path_info(hash_))
+            and not tree.exists(self.cache.tree.hash_to_path_info(hash_))
         ):
             hash_ = None
 
@@ -375,7 +375,7 @@ class BaseRemoteTree:
 
     def _save_dir_info(self, dir_info, path_info):
         hash_, tmp_info = self._get_dir_info_hash(dir_info)
-        new_info = self.cache.hash_to_path_info(hash_)
+        new_info = self.cache.tree.hash_to_path_info(hash_)
         if self.cache.changed_cache_file(hash_):
             self.cache.tree.makedirs(new_info.parent)
             self.cache.tree.move(
