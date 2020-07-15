@@ -440,7 +440,9 @@ class LocalCache(CloudCache):
         {dir_hash: set(file_hash, ...)} which can be used to map
         a .dir file to its file contents.
         """
-        logger.debug(f"Preparing to collect status from {remote.path_info}")
+        logger.debug(
+            f"Preparing to collect status from {remote.tree.path_info}"
+        )
         md5s = set(named_cache.scheme_keys(self.scheme))
 
         logger.debug("Collecting information from local cache...")
@@ -466,7 +468,7 @@ class LocalCache(CloudCache):
             if md5s:
                 remote_exists.update(
                     remote.hashes_exist(
-                        md5s, jobs=jobs, name=str(remote.path_info)
+                        md5s, jobs=jobs, name=str(remote.tree.path_info)
                     )
                 )
         return self._make_status(
@@ -558,7 +560,7 @@ class LocalCache(CloudCache):
         ):
             if info["status"] == status:
                 cache.append(self.hash_to_path_info(md5))
-                path_infos.append(remote.hash_to_path_info(md5))
+                path_infos.append(remote.tree.hash_to_path_info(md5))
                 names.append(info["name"])
                 hashes.append(md5)
 
@@ -582,7 +584,7 @@ class LocalCache(CloudCache):
         logger.debug(
             "Preparing to {} '{}'".format(
                 "download data from" if download else "upload data to",
-                remote.path_info,
+                remote.tree.path_info,
             )
         )
 

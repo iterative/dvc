@@ -735,41 +735,15 @@ class Remote:
         else:
             self.index = RemoteIndexNoop()
 
-    @property
-    def path_info(self):
-        return self.tree.path_info
-
     def __repr__(self):
         return "{class_name}: '{path_info}'".format(
             class_name=type(self).__name__,
-            path_info=self.path_info or "No path",
+            path_info=self.tree.path_info or "No path",
         )
 
     @property
     def cache(self):
-        return getattr(self.repo.cache, self.scheme)
-
-    @property
-    def scheme(self):
-        return self.tree.scheme
-
-    def is_dir_hash(self, hash_):
-        return self.tree.is_dir_hash(hash_)
-
-    def get_hash(self, path_info, **kwargs):
-        return self.tree.get_hash(path_info, **kwargs)
-
-    def hash_to_path_info(self, hash_):
-        return self.tree.hash_to_path_info(hash_)
-
-    def path_to_hash(self, path):
-        return self.tree.path_to_hash(path)
-
-    def save_info(self, path_info, **kwargs):
-        return self.tree.save_info(path_info, **kwargs)
-
-    def open(self, *args, **kwargs):
-        return self.tree.open(*args, **kwargs)
+        return getattr(self.repo.cache, self.tree.scheme)
 
     def hashes_exist(self, hashes, jobs=None, name=None):
         """Check if the given hashes are stored in the remote.
@@ -1123,7 +1097,7 @@ class CloudCache:
             return True
 
         workspace_file = path_info.with_name("." + uuid())
-        test_cache_file = self.path_info / ".cache_type_test_file"
+        test_cache_file = self.tree.path_info / ".cache_type_test_file"
         if not self.tree.exists(test_cache_file):
             with self.tree.open(test_cache_file, "wb") as fobj:
                 fobj.write(bytes(1))
