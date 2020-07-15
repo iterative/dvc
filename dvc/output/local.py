@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 from dvc.exceptions import DvcException
 from dvc.istextfile import istextfile
 from dvc.output.base import BaseOutput
-from dvc.remote.local import LocalRemote, LocalRemoteTree
+from dvc.remote.local import LocalRemoteTree
 from dvc.utils import relpath
 from dvc.utils.fs import path_isin
 
@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 class LocalOutput(BaseOutput):
-    REMOTE_CLS = LocalRemote
     TREE_CLS = LocalRemoteTree
     sep = os.sep
 
@@ -23,10 +22,10 @@ class LocalOutput(BaseOutput):
 
         super().__init__(stage, path, *args, **kwargs)
 
-    def _parse_path(self, remote, path):
+    def _parse_path(self, tree, path):
         parsed = urlparse(path)
         if parsed.scheme == "remote":
-            p = remote.path_info / parsed.path.lstrip("/")
+            p = tree.path_info / parsed.path.lstrip("/")
         else:
             # NOTE: we can path either from command line or .dvc file,
             # so we should expect both posix and windows style paths.

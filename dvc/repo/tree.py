@@ -49,11 +49,11 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             raise FileNotFoundError
         dir_cache = out.get_dir_cache(remote=remote)
         for entry in dir_cache:
-            entry_relpath = entry[out.remote.tree.PARAM_RELPATH]
+            entry_relpath = entry[out.tree.PARAM_RELPATH]
             if os.name == "nt":
                 entry_relpath = entry_relpath.replace("/", os.sep)
             if path == out.path_info / entry_relpath:
-                return entry[out.remote.tree.PARAM_CHECKSUM]
+                return entry[out.tree.PARAM_CHECKSUM]
         raise FileNotFoundError
 
     def open(
@@ -156,7 +156,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
                     download_callback(downloaded)
 
         for entry in dir_cache:
-            entry_relpath = entry[out.remote.tree.PARAM_RELPATH]
+            entry_relpath = entry[out.tree.PARAM_RELPATH]
             if os.name == "nt":
                 entry_relpath = entry_relpath.replace("/", os.sep)
             path_info = out.path_info / entry_relpath

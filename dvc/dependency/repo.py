@@ -26,7 +26,7 @@ class RepoDependency(LocalDependency):
         self.def_repo = def_repo
         super().__init__(stage, *args, **kwargs)
 
-    def _parse_path(self, remote, path):
+    def _parse_path(self, tree, path):
         return None
 
     @property

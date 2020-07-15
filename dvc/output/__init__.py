@@ -10,7 +10,7 @@ from dvc.output.hdfs import HDFSOutput
 from dvc.output.local import LocalOutput
 from dvc.output.s3 import S3Output
 from dvc.output.ssh import SSHOutput
-from dvc.remote import get_remote
+from dvc.remote import get_cloud_tree
 from dvc.remote.hdfs import HDFSRemoteTree
 from dvc.remote.local import LocalRemoteTree
 from dvc.remote.s3 import S3RemoteTree
@@ -66,13 +66,13 @@ def _get(
     parsed = urlparse(p)
 
     if parsed.scheme == "remote":
-        remote = get_remote(stage.repo, name=parsed.netloc)
-        return OUTS_MAP[remote.scheme](
+        tree = get_cloud_tree(stage.repo, name=parsed.netloc)
+        return OUTS_MAP[tree.scheme](
             stage,
             p,
             info,
             cache=cache,
-            remote=remote,
+            tree=tree,
             metric=metric,
             plot=plot,
             persist=persist,
@@ -85,7 +85,7 @@ def _get(
                 p,
                 info,
                 cache=cache,
-                remote=None,
+                tree=None,
                 metric=metric,
                 plot=plot,
                 persist=persist,
@@ -95,7 +95,7 @@ def _get(
         p,
         info,
         cache=cache,
-        remote=None,
+        tree=None,
         metric=metric,
         plot=plot,
         persist=persist,

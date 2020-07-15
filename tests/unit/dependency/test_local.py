@@ -15,6 +15,6 @@ class TestLocalDependency(TestDvc):
 
     def test_save_missing(self):
         d = self._get_dependency()
-        with mock.patch.object(d.remote.tree, "exists", return_value=False):
+        with mock.patch.object(d.tree, "exists", return_value=False):
             with self.assertRaises(d.DoesNotExistError):
                 d.save()

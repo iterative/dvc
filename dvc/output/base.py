@@ -12,7 +12,7 @@ from dvc.exceptions import (
     DvcException,
     RemoteCacheRequiredError,
 )
-from dvc.remote.base import BaseRemoteTree, Remote
+from dvc.remote.base import BaseRemoteTree
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,6 @@ class OutputIsStageFileError(DvcException):
 class BaseOutput:
     IS_DEPENDENCY = False
 
-    REMOTE_CLS = Remote
     TREE_CLS = BaseRemoteTree
 
     PARAM_PATH = "path"
@@ -85,7 +84,7 @@ class BaseOutput:
         stage,
         path,
         info=None,
-        remote=None,
+        tree=None,
         cache=True,
         metric=False,
         plot=False,
@@ -106,24 +105,23 @@ class BaseOutput:
         self.repo = stage.repo if stage else None
         self.def_path = path
         self.info = info
-        if remote:
-            self.remote = remote
+        if tree:
+            self.tree = tree
         else:
-            tree = self.TREE_CLS(self.repo, {})
-            self.remote = self.REMOTE_CLS(tree)
+            self.tree = self.TREE_CLS(self.repo, {})
         self.use_cache = False if self.IS_DEPENDENCY else cache
         self.metric = False if self.IS_DEPENDENCY else metric
         self.plot = False if self.IS_DEPENDENCY else plot
         self.persist = persist
 
-        self.path_info = self._parse_path(remote, path)
+        self.path_info = self._parse_path(tree, path)
         if self.use_cache and self.cache is None:
             raise RemoteCacheRequiredError(self.path_info)
 
-    def _parse_path(self, remote, path):
-        if remote:
+    def _parse_path(self, tree, path):
+        if tree:
             parsed = urlparse(path)
-            return remote.path_info / parsed.path.lstrip("/")
+            return tree.path_info / parsed.path.lstrip("/")
         return self.TREE_CLS.PATH_CLS(path)
 
     def __repr__(self):
@@ -167,29 +165,29 @@ class BaseOutput:
 
     @property
     def checksum_type(self):
-        return self.remote.tree.PARAM_CHECKSUM
+        return self.tree.PARAM_CHECKSUM
 
     @property
     def checksum(self):
-        return self.info.get(self.remote.tree.PARAM_CHECKSUM)
+        return self.info.get(self.tree.PARAM_CHECKSUM)
 
     @checksum.setter
     def checksum(self, checksum):
-        self.info[self.remote.tree.PARAM_CHECKSUM] = checksum
+        self.info[self.tree.PARAM_CHECKSUM] = checksum
 
     def get_checksum(self):
-        return self.remote.get_hash(self.path_info)
+        return self.tree.get_hash(self.path_info)
 
     @property
     def is_dir_checksum(self):
-        return self.remote.is_dir_hash(self.checksum)
+        return self.tree.is_dir_hash(self.checksum)
 
     @property
     def exists(self):
-        return self.remote.tree.exists(self.path_info)
+        return self.tree.exists(self.path_info)
 
     def save_info(self):
-        return self.remote.save_info(self.path_info)
+        return self.tree.save_info(self.path_info)
 
     def changed_checksum(self):
         return self.checksum != self.get_checksum()
@@ -222,13 +220,13 @@ class BaseOutput:
 
     @property
     def is_empty(self):
-        return self.remote.tree.is_empty(self.path_info)
+        return self.tree.is_empty(self.path_info)
 
     def isdir(self):
-        return self.remote.tree.isdir(self.path_info)
+        return self.tree.isdir(self.path_info)
 
     def isfile(self):
-        return self.remote.tree.isfile(self.path_info)
+        return self.tree.isfile(self.path_info)
 
     # pylint: disable=no-member
 
@@ -316,7 +314,7 @@ class BaseOutput:
         raise DvcException(f"verify metric is not supported for {self.scheme}")
 
     def download(self, to):
-        self.remote.tree.download(self.path_info, to.path_info)
+        self.tree.download(self.path_info, to.path_info)
 
     def checkout(
         self,
@@ -342,7 +340,7 @@ class BaseOutput:
         )
 
     def remove(self, ignore_remove=False):
-        self.remote.tree.remove(self.path_info)
+        self.tree.remove(self.path_info)
         if self.scheme != "local":
             return
 
@@ -354,7 +352,7 @@ class BaseOutput:
         if self.scheme == "local" and self.use_scm_ignore:
             self.repo.scm.ignore_remove(self.fspath)
 
-        self.remote.tree.move(self.path_info, out.path_info)
+        self.tree.move(self.path_info, out.path_info)
         self.def_path = out.def_path
         self.path_info = out.path_info
         self.save()
@@ -373,7 +371,7 @@ class BaseOutput:
 
     def unprotect(self):
         if self.exists:
-            self.remote.tree.unprotect(self.path_info)
+            self.tree.unprotect(self.path_info)
 
     def get_dir_cache(self, **kwargs):
         if not self.is_dir_checksum:
@@ -433,8 +431,8 @@ class BaseOutput:
         filter_path = str(filter_info) if filter_info else None
         is_win = os.name == "nt"
         for entry in self.dir_cache:
-            checksum = entry[self.remote.tree.PARAM_CHECKSUM]
-            entry_relpath = entry[self.remote.tree.PARAM_RELPATH]
+            checksum = entry[self.tree.PARAM_CHECKSUM]
+            entry_relpath = entry[self.tree.PARAM_RELPATH]
             if is_win:
                 entry_relpath = entry_relpath.replace("/", os.sep)
             entry_path = os.path.join(path, entry_relpath)
