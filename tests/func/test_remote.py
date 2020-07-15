@@ -10,8 +10,8 @@ from dvc.config import Config
 from dvc.exceptions import DownloadError, UploadError
 from dvc.main import main
 from dvc.path_info import PathInfo
-from dvc.remote.base import BaseRemoteTree, RemoteCacheRequiredError
-from dvc.remote.local import LocalRemoteTree
+from dvc.tree.base import BaseRemoteTree, RemoteCacheRequiredError
+from dvc.tree.local import LocalRemoteTree
 from dvc.utils.fs import remove
 from tests.basic_env import TestDvc
 from tests.remotes import Local

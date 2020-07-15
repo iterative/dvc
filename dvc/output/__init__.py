@@ -10,11 +10,12 @@ from dvc.output.hdfs import HDFSOutput
 from dvc.output.local import LocalOutput
 from dvc.output.s3 import S3Output
 from dvc.output.ssh import SSHOutput
-from dvc.remote import get_cloud_tree
-from dvc.remote.hdfs import HDFSRemoteTree
-from dvc.remote.local import LocalRemoteTree
-from dvc.remote.s3 import S3RemoteTree
 from dvc.scheme import Schemes
+
+from ..tree import get_cloud_tree
+from ..tree.hdfs import HDFSRemoteTree
+from ..tree.local import LocalRemoteTree
+from ..tree.s3 import S3RemoteTree
 
 OUTS = [
     HDFSOutput,

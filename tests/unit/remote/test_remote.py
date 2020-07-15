@@ -1,8 +1,8 @@
 import pytest
 
-from dvc.remote import get_cloud_tree
-from dvc.remote.gs import GSRemoteTree
-from dvc.remote.s3 import S3RemoteTree
+from dvc.tree import get_cloud_tree
+from dvc.tree.gs import GSRemoteTree
+from dvc.tree.s3 import S3RemoteTree
 
 
 def test_remote_with_hash_jobs(dvc):

@@ -2,7 +2,7 @@ import mock
 import pytest
 import requests
 
-from dvc.remote.gs import GSRemoteTree, dynamic_chunk_size
+from dvc.tree.gs import GSRemoteTree, dynamic_chunk_size
 
 BUCKET = "bucket"
 PREFIX = "prefix"

@@ -9,7 +9,7 @@ from dvc.config import ConfigError
 from dvc.exceptions import DvcException, DvcParserError, NotDvcRepoError
 from dvc.external_repo import clean_repos
 from dvc.logger import FOOTER, disable_other_loggers
-from dvc.remote.pool import close_pools
+from dvc.tree.pool import close_pools
 from dvc.utils import format_link
 
 # Workaround for CPython bug. See [1] and [2] for more info.

@@ -5,9 +5,10 @@ from urllib.parse import urlparse
 from dvc.exceptions import DvcException
 from dvc.istextfile import istextfile
 from dvc.output.base import BaseOutput
-from dvc.remote.local import LocalRemoteTree
 from dvc.utils import relpath
 from dvc.utils.fs import path_isin
+
+from ..tree.local import LocalRemoteTree
 
 logger = logging.getLogger(__name__)
 

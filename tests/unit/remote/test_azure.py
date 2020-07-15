@@ -1,5 +1,5 @@
 from dvc.path_info import PathInfo
-from dvc.remote.azure import AzureRemoteTree
+from dvc.tree.azure import AzureRemoteTree
 
 container_name = "container-name"
 connection_string = (

@@ -4,7 +4,7 @@ import pytest
 
 from dvc.path_info import PathInfo
 from dvc.remote import get_remote
-from dvc.remote.s3 import S3RemoteTree
+from dvc.tree.s3 import S3RemoteTree
 from dvc.utils.fs import walk_files
 
 remotes = [pytest.lazy_fixture(fix) for fix in ["gs", "s3"]]

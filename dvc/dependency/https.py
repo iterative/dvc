@@ -1,5 +1,4 @@
-from dvc.remote.https import HTTPSRemoteTree
-
+from ..tree.https import HTTPSRemoteTree
 from .http import HTTPDependency
 
 

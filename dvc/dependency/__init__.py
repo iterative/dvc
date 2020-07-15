@@ -12,9 +12,9 @@ from dvc.dependency.param import ParamsDependency
 from dvc.dependency.s3 import S3Dependency
 from dvc.dependency.ssh import SSHDependency
 from dvc.output.base import BaseOutput
-from dvc.remote import get_cloud_tree
 from dvc.scheme import Schemes
 
+from ..tree import get_cloud_tree
 from .repo import RepoDependency
 
 DEPS = [

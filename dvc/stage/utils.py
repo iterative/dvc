@@ -8,8 +8,8 @@ from dvc import dependency, output
 from dvc.utils.fs import path_isin
 
 from ..dependency import ParamsDependency
-from ..remote.local import LocalRemoteTree
-from ..remote.s3 import S3RemoteTree
+from ..tree.local import LocalRemoteTree
+from ..tree.s3 import S3RemoteTree
 from ..utils import dict_md5, format_link, relpath
 from .exceptions import (
     MissingDataSource,
