@@ -94,7 +94,7 @@ class State:  # pylint: disable=too-many-instance-attributes
         repo = local_cache.repo
         self.repo = repo
         self.root_dir = repo.root_dir
-        self.tree = LocalRemoteTree(None, {})
+        self.tree = LocalRemoteTree(None, {"url": self.root_dir})
 
         state_config = repo.config.get("state", {})
         self.row_limit = state_config.get("row_limit", self.STATE_ROW_LIMIT)

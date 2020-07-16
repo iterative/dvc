@@ -1,7 +1,6 @@
 import os
 from os.path import join
 
-from dvc.ignore import CleanTree
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.repo.tree import RepoTree
@@ -137,7 +136,9 @@ class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
 
 class TestWalkInGit(AssertWalkEqualMixin, TestGit):
     def test_nobranch(self):
-        tree = CleanTree(LocalRemoteTree(None, {"url": self._root_dir}))
+        tree = LocalRemoteTree(
+            None, {"url": self._root_dir}, use_dvcignore=True
+        )
         self.assertWalkEqual(
             tree.walk("."),
             [
@@ -232,13 +233,13 @@ def test_cleantree_subrepo(tmp_dir, dvc, scm, monkeypatch):
 
     path = PathInfo(subrepo_dir)
 
-    assert isinstance(dvc.tree, CleanTree)
+    assert dvc.tree.use_dvcignore
     assert not dvc.tree.exists(path / "foo")
     assert not dvc.tree.isfile(path / "foo")
     assert not dvc.tree.exists(path / "dir")
     assert not dvc.tree.isdir(path / "dir")
 
-    assert isinstance(subrepo.tree, CleanTree)
+    assert subrepo.tree.use_dvcignore
     assert subrepo.tree.exists(path / "foo")
     assert subrepo.tree.isfile(path / "foo")
     assert subrepo.tree.exists(path / "dir")

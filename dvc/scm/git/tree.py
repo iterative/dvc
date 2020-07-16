@@ -3,6 +3,8 @@ import io
 import os
 import stat
 
+from funcy import cached_property
+
 from dvc.exceptions import DvcException
 from dvc.scm.tree import BaseTree
 from dvc.utils import relpath
@@ -22,7 +24,7 @@ def _item_basename(item):
 class GitTree(BaseTree):  # pylint:disable=abstract-method
     """Proxies the repo file access methods to Git objects"""
 
-    def __init__(self, git, rev):
+    def __init__(self, git, rev, use_dvcignore=False, dvcignore_root=None):
         """Create GitTree instance
 
         Args:
@@ -31,10 +33,24 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
         """
         self.git = git
         self.rev = rev
+        self.use_dvcignore = use_dvcignore
+        self.dvcignore_root = dvcignore_root
 
     @property
     def tree_root(self):
         return self.git.working_dir
+
+    @cached_property
+    def dvcignore(self):
+        from dvc.ignore import DvcIgnoreFilter, DvcIgnoreFilterNoop
+
+        root = self.dvcignore_root or self.tree_root
+        if not self.use_dvcignore:
+            return DvcIgnoreFilterNoop(self, root)
+        self.use_dvcignore = False
+        ret = DvcIgnoreFilter(self, root)
+        self.use_dvcignore = True
+        return ret
 
     def open(self, path, mode="r", encoding="utf-8"):
         assert mode in {"r", "rb"}
@@ -58,20 +74,29 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
         return io.StringIO(data.decode(encoding))
 
     def exists(self, path):
-        return self._git_object_by_path(path) is not None
+        if self._git_object_by_path(path) is None:
+            return False
+
+        return not self.dvcignore.is_ignored_file(
+            path
+        ) and not self.dvcignore.is_ignored_dir(path)
 
     def isdir(self, path):
         obj = self._git_object_by_path(path)
         if obj is None:
             return False
-        return obj.mode == GIT_MODE_DIR
+        if obj.mode != GIT_MODE_DIR:
+            return False
+        return not self.dvcignore.is_ignored_dir(path)
 
     def isfile(self, path):
         obj = self._git_object_by_path(path)
         if obj is None:
             return False
         # according to git-fast-import(1) file mode could be 644 or 755
-        return obj.mode & GIT_MODE_FILE == GIT_MODE_FILE
+        if obj.mode & GIT_MODE_FILE != GIT_MODE_FILE:
+            return False
+        return not self.dvcignore.is_ignored_file(path)
 
     @staticmethod
     def _is_tree_and_contains(obj, path):
@@ -145,7 +170,11 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
                 onerror(NotADirectoryError(top))
             return
 
-        yield from self._walk(tree, topdown=topdown)
+        for root, dirs, files in self._walk(tree, topdown=topdown):
+            dirs[:], files[:] = self.dvcignore(
+                os.path.abspath(root), dirs, files
+            )
+            yield root, dirs, files
 
     def isexec(self, path):
         if not self.exists(path):

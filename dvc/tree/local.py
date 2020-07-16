@@ -3,6 +3,7 @@ import logging
 import os
 import stat
 
+from funcy import cached_property
 from shortuuid import uuid
 
 from dvc.exceptions import DvcException
@@ -35,10 +36,12 @@ class LocalRemoteTree(BaseRemoteTree):
     CACHE_MODE = 0o444
     SHARED_MODE_MAP = {None: (0o644, 0o755), "group": (0o664, 0o775)}
 
-    def __init__(self, repo, config):
+    def __init__(self, repo, config, use_dvcignore=False, dvcignore_root=None):
         super().__init__(repo, config)
         url = config.get("url")
         self.path_info = self.PATH_CLS(url) if url else None
+        self.use_dvcignore = use_dvcignore
+        self.dvcignore_root = dvcignore_root
 
     @property
     def tree_root(self):
@@ -50,25 +53,46 @@ class LocalRemoteTree(BaseRemoteTree):
 
         return self.repo.state if self.repo else StateNoop()
 
+    @cached_property
+    def dvcignore(self):
+        from dvc.ignore import DvcIgnoreFilter, DvcIgnoreFilterNoop
+
+        root = self.dvcignore_root or self.tree_root
+        if not self.use_dvcignore:
+            return DvcIgnoreFilterNoop(self, root)
+        self.use_dvcignore = False
+        ret = DvcIgnoreFilter(self, root)
+        self.use_dvcignore = True
+        return ret
+
     @staticmethod
     def open(path_info, mode="r", encoding=None):
         return open(path_info, mode=mode, encoding=encoding)
 
     def exists(self, path_info):
         assert isinstance(path_info, str) or path_info.scheme == "local"
-        if not self.repo:
-            return os.path.exists(path_info)
-        return os.path.lexists(path_info)
+        if self.repo:
+            ret = os.path.lexists(path_info)
+        else:
+            ret = os.path.exists(path_info)
+        if not ret:
+            return False
+
+        return not self.dvcignore.is_ignored_file(
+            path_info
+        ) and not self.dvcignore.is_ignored_dir(path_info)
 
     def isfile(self, path_info):
-        if not self.repo:
-            return os.path.isfile(path_info)
-        return os.path.isfile(path_info)
+        if not os.path.isfile(path_info):
+            return False
+
+        return not self.dvcignore.is_ignored_file(path_info)
 
     def isdir(self, path_info):
-        if not self.repo:
-            return os.path.isdir(path_info)
-        return os.path.isdir(path_info)
+        if not os.path.isdir(path_info):
+            return False
+
+        return not self.dvcignore.is_ignored_dir(path_info)
 
     def iscopy(self, path_info):
         return not (
@@ -84,6 +108,10 @@ class LocalRemoteTree(BaseRemoteTree):
         for root, dirs, files in os.walk(
             top, topdown=topdown, onerror=onerror
         ):
+            dirs[:], files[:] = self.dvcignore(
+                os.path.abspath(root), dirs, files
+            )
+
             yield os.path.normpath(root), dirs, files
 
     def walk_files(self, path_info, **kwargs):

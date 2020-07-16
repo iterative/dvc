@@ -14,10 +14,8 @@ from dvc.exceptions import (
     NotDvcRepoError,
     OutputNotFoundError,
 )
-from dvc.ignore import CleanTree
 from dvc.path_info import PathInfo
 from dvc.repo.tree import RepoTree
-from dvc.scm.tree import is_working_tree
 from dvc.utils.fs import path_isin
 
 from ..stage.exceptions import StageFileDoesNotExistError, StageNotFound
@@ -85,12 +83,19 @@ class Repo:
             tree = scm.get_tree(rev)
             self.root_dir = self.find_root(root_dir, tree)
             self.scm = scm
-            self.tree = tree
+            self.tree = scm.get_tree(
+                rev, use_dvcignore=True, dvcignore_root=self.root_dir
+            )
             self.state = StateNoop()
         else:
             root_dir = self.find_root(root_dir)
             self.root_dir = os.path.abspath(os.path.realpath(root_dir))
-            self.tree = LocalRemoteTree(None, {"url": self.root_dir})
+            self.tree = LocalRemoteTree(
+                self,
+                {"url": self.root_dir},
+                use_dvcignore=True,
+                dvcignore_root=self.root_dir,
+            )
 
         self.dvc_dir = os.path.join(self.root_dir, self.DVC_DIR)
         self.config = Config(self.dvc_dir, tree=self.tree)
@@ -134,13 +139,7 @@ class Repo:
 
     @tree.setter
     def tree(self, tree):
-        if is_working_tree(tree) or tree.tree_root == self.root_dir:
-            root = None
-        else:
-            root = self.root_dir
-        self._tree = (
-            tree if isinstance(tree, CleanTree) else CleanTree(tree, root)
-        )
+        self._tree = tree
         # Our graph cache is no longer valid, as it was based on the previous
         # tree.
         self._reset()
@@ -605,4 +604,4 @@ class Repo:
         self.__dict__.pop("graph", None)
         self.__dict__.pop("stages", None)
         self.__dict__.pop("pipelines", None)
-        self.__dict__.pop("dvcignore", None)
+        self.tree.__dict__.pop("dvcignore", None)

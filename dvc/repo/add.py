@@ -109,17 +109,17 @@ def add(
 def _find_all_targets(repo, target, recursive):
     if os.path.isdir(target) and recursive:
         return [
-            fname
-            for fname in Tqdm(
+            os.fspath(path)
+            for path in Tqdm(
                 repo.tree.walk_files(target),
                 desc="Searching " + target,
                 bar_format=Tqdm.BAR_FMT_NOTOTAL,
                 unit="file",
             )
-            if not repo.is_dvc_internal(fname)
-            if not is_dvc_file(fname)
-            if not repo.scm.belongs_to_scm(fname)
-            if not repo.scm.is_tracked(fname)
+            if not repo.is_dvc_internal(os.fspath(path))
+            if not is_dvc_file(os.fspath(path))
+            if not repo.scm.belongs_to_scm(os.fspath(path))
+            if not repo.scm.is_tracked(os.fspath(path))
         ]
     return [target]
 

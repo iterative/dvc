@@ -29,7 +29,9 @@ def brancher(  # noqa: E302
 
     scm = self.scm
 
-    self.tree = LocalRemoteTree(self, {"url": self.root_dir})
+    self.tree = LocalRemoteTree(
+        self, {"url": self.root_dir}, use_dvcignore=True
+    )
     yield "workspace"
 
     if revs and "workspace" in revs:
@@ -47,7 +49,9 @@ def brancher(  # noqa: E302
     try:
         if revs:
             for sha, names in group_by(scm.resolve_rev, revs).items():
-                self.tree = scm.get_tree(sha)
+                self.tree = scm.get_tree(
+                    sha, use_dvcignore=True, dvcignore_root=self.root_dir
+                )
                 # ignore revs that don't contain repo root
                 # (i.e. revs from before a subdir=True repo was init'ed)
                 if self.tree.exists(self.root_dir):
