@@ -1,6 +1,6 @@
 from funcy import group_by
 
-from dvc.scm.tree import WorkingTree
+from dvc.tree.local import LocalRemoteTree
 
 
 def brancher(  # noqa: E302
@@ -29,7 +29,7 @@ def brancher(  # noqa: E302
 
     scm = self.scm
 
-    self.tree = WorkingTree(self.root_dir)
+    self.tree = LocalRemoteTree(self, {"url": self.root_dir})
     yield "workspace"
 
     if revs and "workspace" in revs:

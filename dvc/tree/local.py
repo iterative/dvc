@@ -3,13 +3,11 @@ import logging
 import os
 import stat
 
-from funcy import cached_property
 from shortuuid import uuid
 
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 from dvc.scheme import Schemes
-from dvc.scm.tree import WorkingTree, is_working_tree
 from dvc.system import System
 from dvc.utils import file_md5, relpath, tmp_fname
 from dvc.utils.fs import (
@@ -43,19 +41,14 @@ class LocalRemoteTree(BaseRemoteTree):
         self.path_info = self.PATH_CLS(url) if url else None
 
     @property
+    def tree_root(self):
+        return self.config.get("url")
+
+    @property
     def state(self):
         from dvc.state import StateNoop
 
         return self.repo.state if self.repo else StateNoop()
-
-    @cached_property
-    def work_tree(self):
-        # When using repo.brancher, repo.tree may change to/from WorkingTree to
-        # GitTree arbitarily. When repo.tree is GitTree, local cache needs to
-        # use its own WorkingTree instance.
-        if self.repo:
-            return WorkingTree(self.repo.root_dir)
-        return None
 
     @staticmethod
     def open(path_info, mode="r", encoding=None):
@@ -65,26 +58,39 @@ class LocalRemoteTree(BaseRemoteTree):
         assert isinstance(path_info, str) or path_info.scheme == "local"
         if not self.repo:
             return os.path.exists(path_info)
-        return self.work_tree.exists(path_info)
+        return os.path.lexists(path_info)
 
     def isfile(self, path_info):
         if not self.repo:
             return os.path.isfile(path_info)
-        return self.work_tree.isfile(path_info)
+        return os.path.isfile(path_info)
 
     def isdir(self, path_info):
         if not self.repo:
             return os.path.isdir(path_info)
-        return self.work_tree.isdir(path_info)
+        return os.path.isdir(path_info)
 
     def iscopy(self, path_info):
         return not (
             System.is_symlink(path_info) or System.is_hardlink(path_info)
         )
 
+    def walk(self, top, topdown=True, onerror=None):
+        """Directory tree generator.
+
+        See `os.walk` for the docs. Differences:
+        - no support for symlinks
+        """
+        for root, dirs, files in os.walk(
+            top, topdown=topdown, onerror=onerror
+        ):
+            yield os.path.normpath(root), dirs, files
+
     def walk_files(self, path_info, **kwargs):
-        for fname in self.work_tree.walk_files(path_info):
-            yield PathInfo(fname)
+        for root, _, files in self.walk(path_info):
+            for file in files:
+                # NOTE: os.path.join is ~5.5 times slower
+                yield PathInfo(f"{root}{os.sep}{file}")
 
     def is_empty(self, path_info):
         path = path_info.fspath
@@ -110,6 +116,14 @@ class LocalRemoteTree(BaseRemoteTree):
 
     def makedirs(self, path_info):
         makedirs(path_info, exist_ok=True, mode=self.dir_mode)
+
+    def isexec(self, path):
+        mode = os.stat(path).st_mode
+        return mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+    @staticmethod
+    def stat(path):
+        return os.stat(path)
 
     def move(self, from_info, to_info, mode=None):
         if from_info.scheme != "local" or to_info.scheme != "local":
@@ -215,9 +229,7 @@ class LocalRemoteTree(BaseRemoteTree):
         os.chmod(path, self.file_mode)
 
     def _unprotect_dir(self, path):
-        assert is_working_tree(self.repo.tree)
-
-        for fname in self.repo.tree.walk_files(path):
+        for fname in self.walk_files(path):
             self._unprotect_file(fname)
 
     def unprotect(self, path_info):
