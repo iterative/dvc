@@ -61,7 +61,7 @@ class Experiments:
         return dict_sha256(exp_data)
 
     @contextmanager
-    def _chdir(self):
+    def chdir(self):
         cwd = os.getcwd()
         os.chdir(self.exp_dvc.root_dir)
         yield
@@ -122,7 +122,7 @@ class Experiments:
 
     def _reproduce(self, *args, **kwargs):
         """Run `dvc repro` inside the experiments workspace."""
-        with self._chdir():
+        with self.chdir():
             return self.exp_dvc.reproduce(*args, **kwargs)
 
     def new(self, *args, workspace=True, **kwargs):
@@ -176,7 +176,9 @@ class Experiments:
         return checkout(self.repo, *args, **kwargs)
 
     def diff(self, *args, **kwargs):
-        pass
+        from dvc.repo.experiments.diff import diff
+
+        return diff(self.repo, *args, **kwargs)
 
     def show(self, *args, **kwargs):
         from dvc.repo.experiments.show import show

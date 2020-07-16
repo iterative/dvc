@@ -1,8 +1,10 @@
 import argparse
 import io
 import logging
+from collections import OrderedDict
 
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
+from dvc.command.metrics import DEFAULT_PRECISION
 from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
@@ -35,7 +37,6 @@ def _collect_rows(
     base_rev, experiments, metric_names, param_names, precision=None
 ):
     from flatten_json import flatten
-    from dvc.command.metrics import DEFAULT_PRECISION
 
     if precision is None:
         precision = DEFAULT_PRECISION
@@ -145,6 +146,78 @@ class CmdExperimentsCheckout(CmdBase):
         return 0
 
 
+def _show_diff(
+    diff, title="", markdown=False, no_path=False, old=False, precision=None
+):
+    from dvc.utils.diff import table
+
+    if precision is None:
+        precision = DEFAULT_PRECISION
+
+    def _round(val):
+        if isinstance(val, float):
+            return round(val, precision)
+
+        return val
+
+    rows = []
+    for fname, diff_ in diff.items():
+        sorted_diff = OrderedDict(sorted(diff_.items()))
+        for item, change in sorted_diff.items():
+            row = [] if no_path else [fname]
+            row.append(item)
+            if old:
+                row.append(_round(change.get("old")))
+            row.append(_round(change["new"]))
+            row.append(_round(change.get("diff", "diff not supported")))
+            rows.append(row)
+
+    header = [] if no_path else ["Path"]
+    header.append(title)
+    if old:
+        header.extend(["Old", "New"])
+    else:
+        header.append("Value")
+    header.append("Change")
+
+    return table(header, rows, markdown)
+
+
+class CmdExperimentsDiff(CmdBase):
+    def run(self):
+        try:
+            diff = self.repo.experiments.diff(
+                a_rev=self.args.a_rev,
+                b_rev=self.args.b_rev,
+                all=self.args.all,
+            )
+
+            if self.args.show_json:
+                import json
+
+                logger.info(json.dumps(diff))
+            else:
+                diffs = [("metrics", "Metric"), ("params", "Param")]
+                for key, title in diffs:
+                    table = _show_diff(
+                        diff[key],
+                        title=title,
+                        markdown=self.args.show_md,
+                        no_path=self.args.no_path,
+                        old=self.args.old,
+                        precision=self.args.precision,
+                    )
+                    if table:
+                        logger.info(table)
+                        logger.info("")
+
+        except DvcException:
+            logger.exception("failed to show experiments diff")
+            return 1
+
+        return 0
+
+
 def add_parser(subparsers, parent_parser):
     EXPERIMENTS_HELP = "Commands to display and compare experiments."
 
@@ -216,3 +289,62 @@ def add_parser(subparsers, parent_parser):
         "experiment", help="Checkout this experiment.",
     )
     experiments_checkout_parser.set_defaults(func=CmdExperimentsCheckout)
+
+    EXPERIMENTS_DIFF_HELP = (
+        "Show changes between experiments in the DVC repository."
+    )
+    experiments_diff_parser = experiments_subparsers.add_parser(
+        "diff",
+        parents=[parent_parser],
+        description=append_doc_link(EXPERIMENTS_DIFF_HELP, "experiments/diff"),
+        help=EXPERIMENTS_DIFF_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    experiments_diff_parser.add_argument(
+        "a_rev", nargs="?", help="Old experiment to compare (defaults to HEAD)"
+    )
+    experiments_diff_parser.add_argument(
+        "b_rev",
+        nargs="?",
+        help="New experiment to compare (defaults to the current workspace)",
+    )
+    experiments_diff_parser.add_argument(
+        "--all",
+        action="store_true",
+        default=False,
+        help="Show unchanged metrics/params as well.",
+    )
+    experiments_diff_parser.add_argument(
+        "--show-json",
+        action="store_true",
+        default=False,
+        help="Show output in JSON format.",
+    )
+    experiments_diff_parser.add_argument(
+        "--show-md",
+        action="store_true",
+        default=False,
+        help="Show tabulated output in the Markdown format (GFM).",
+    )
+    experiments_diff_parser.add_argument(
+        "--old",
+        action="store_true",
+        default=False,
+        help="Show old metric/param value.",
+    )
+    experiments_diff_parser.add_argument(
+        "--no-path",
+        action="store_true",
+        default=False,
+        help="Don't show metric/param path.",
+    )
+    experiments_diff_parser.add_argument(
+        "--precision",
+        type=int,
+        help=(
+            "Round metrics/params to `n` digits precision after the decimal "
+            f"point. Rounds to {DEFAULT_PRECISION} digits by default."
+        ),
+        metavar="<n>",
+    )
+    experiments_diff_parser.set_defaults(func=CmdExperimentsDiff)
