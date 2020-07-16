@@ -3,7 +3,7 @@ import json
 import logging
 import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from functools import partial, wraps
+from functools import partial
 from multiprocessing import cpu_count
 from operator import itemgetter
 from urllib.parse import urlparse
@@ -53,24 +53,6 @@ class RemoteActionNotImplemented(DvcException):
 
 class RemoteMissingDepsError(DvcException):
     pass
-
-
-class DirCacheError(DvcException):
-    def __init__(self, hash_):
-        super().__init__(
-            f"Failed to load dir cache for hash value: '{hash_}'."
-        )
-
-
-def index_locked(f):
-    @wraps(f)
-    def wrapper(obj, named_cache, remote, *args, **kwargs):
-        if hasattr(remote, "index"):
-            with remote.index:
-                return f(obj, named_cache, remote, *args, **kwargs)
-        return f(obj, named_cache, remote, *args, **kwargs)
-
-    return wrapper
 
 
 class BaseRemoteTree:
