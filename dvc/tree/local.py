@@ -118,13 +118,13 @@ class LocalRemoteTree(BaseRemoteTree):
     def makedirs(self, path_info):
         makedirs(path_info, exist_ok=True, mode=self.dir_mode)
 
-    def isexec(self, path):                                       
-        mode = os.stat(path).st_mode                              
+    def isexec(self, path):
+        mode = os.stat(path).st_mode
         return mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
-    @staticmethod                                                 
-    def stat(path):                                               
-        return os.stat(path)                                      
+    @staticmethod
+    def stat(path):
+        return os.stat(path)
 
     def move(self, from_info, to_info, mode=None):
         if from_info.scheme != "local" or to_info.scheme != "local":

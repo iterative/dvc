@@ -108,7 +108,8 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
     assert ignore_pattern_trie is not None
     assert (
         DvcIgnorePatterns.from_files(
-            os.fspath(top_ignore_file), LocalRemoteTree(None, {"url": dvc.root_dir})
+            os.fspath(top_ignore_file),
+            LocalRemoteTree(None, {"url": dvc.root_dir}),
         )
         == ignore_pattern_trie[os.fspath(ignore_file)]
     )

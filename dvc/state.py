@@ -91,6 +91,7 @@ class State:  # pylint: disable=too-many-instance-attributes
 
     def __init__(self, local_cache):
         from dvc.tree.local import LocalRemoteTree
+
         repo = local_cache.repo
         self.repo = repo
         self.root_dir = repo.root_dir
