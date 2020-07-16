@@ -250,7 +250,9 @@ class BaseRemoteTree:
         return hash_.endswith(cls.CHECKSUM_DIR_SUFFIX)
 
     def get_hash(self, path_info, tree=None, **kwargs):
-        assert isinstance(path_info, str) or path_info.scheme == self.scheme
+        assert path_info and (
+            isinstance(path_info, str) or path_info.scheme == self.scheme
+        )
 
         if not tree:
             tree = self
