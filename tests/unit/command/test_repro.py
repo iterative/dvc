@@ -14,6 +14,7 @@ default_arguments = {
     "single_item": False,
     "recursive": False,
     "force_downstream": False,
+    "experiment": False,
 }
 
 
