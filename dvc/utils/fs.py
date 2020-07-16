@@ -44,7 +44,7 @@ def get_mtime_and_size(path, tree):
                     raise
                 continue
             size += stats.st_size
-            files_mtimes[file_path] = stats.st_mtime
+            files_mtimes[os.fspath(file_path)] = stats.st_mtime
 
         # We track file changes and moves, which cannot be detected with simply
         # max(mtime(f) for f in non_ignored_files)

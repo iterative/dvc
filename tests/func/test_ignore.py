@@ -12,9 +12,10 @@ from dvc.ignore import (
     DvcIgnoreRepo,
 )
 from dvc.repo import Repo
-from dvc.scm.tree import WorkingTree
 from dvc.utils import relpath
 from dvc.utils.fs import get_mtime_and_size
+from dvc.path_info import PathInfo
+from dvc.tree.local import LocalRemoteTree
 from tests.dir_helpers import TmpDir
 from tests.utils import to_posixpath
 
@@ -107,7 +108,7 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
     assert ignore_pattern_trie is not None
     assert (
         DvcIgnorePatterns.from_files(
-            os.fspath(top_ignore_file), WorkingTree(dvc.root_dir)
+            os.fspath(top_ignore_file), LocalRemoteTree(None, {"url": dvc.root_dir})
         )
         == ignore_pattern_trie[os.fspath(ignore_file)]
     )
@@ -165,7 +166,7 @@ def test_ignore_subrepo(tmp_dir, scm, dvc):
     scm.commit("init parent dvcignore")
 
     subrepo_dir = tmp_dir / "subdir"
-    assert not dvc.tree.exists(subrepo_dir / "foo")
+    assert not dvc.tree.exists(PathInfo(subrepo_dir / "foo"))
 
     with subrepo_dir.chdir():
         subrepo = Repo.init(subdir=True)
@@ -173,7 +174,7 @@ def test_ignore_subrepo(tmp_dir, scm, dvc):
         scm.commit("subrepo init")
 
     for _ in subrepo.brancher(all_commits=True):
-        assert subrepo.tree.exists(subrepo_dir / "foo")
+        assert subrepo.tree.exists(PathInfo(subrepo_dir / "foo"))
 
 
 def test_ignore_blank_line(tmp_dir, dvc):
