@@ -79,9 +79,9 @@ def reproduce(
                 all_pipelines=all_pipelines,
                 **kwargs
             )
-        except UnchangedExperimentError as exc:
+        except UnchangedExperimentError:
             # If experiment contains no changes, just run regular repro
-            logger.debug(exc)
+            pass
 
     interactive = kwargs.get("interactive", False)
     if not interactive:

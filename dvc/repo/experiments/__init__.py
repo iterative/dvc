@@ -134,7 +134,11 @@ class Experiments:
         rev = self.repo.scm.get_rev()
         self._scm_checkout(rev)
         if workspace:
-            self._patch_exp()
+            try:
+                self._patch_exp()
+            except UnchangedExperimentError as exc:
+                logger.info("Reproducing existing experiment '%s'.", rev[:7])
+                raise exc
         else:
             # configure params via command line here
             pass
@@ -142,6 +146,7 @@ class Experiments:
         stages = self._reproduce(*args, **kwargs)
         exp_rev = self._commit(stages, rev=rev)
         self.checkout_exp(exp_rev, force=True)
+        logger.info("Generated experiment '%s'.", exp_rev[:7])
         return stages
 
     def checkout_exp(self, rev, force=False):
