@@ -10,7 +10,6 @@ from dvc.exceptions import DvcException
 from dvc.utils import current_timestamp, relpath, to_chunks
 from dvc.utils.fs import get_inode, get_mtime_and_size, remove
 
-
 SQLITE_MAX_VARIABLES_NUMBER = 999
 
 logger = logging.getLogger(__name__)

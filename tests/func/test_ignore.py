@@ -11,11 +11,11 @@ from dvc.ignore import (
     DvcIgnorePatternsTrie,
     DvcIgnoreRepo,
 )
+from dvc.path_info import PathInfo
 from dvc.repo import Repo
+from dvc.tree.local import LocalRemoteTree
 from dvc.utils import relpath
 from dvc.utils.fs import get_mtime_and_size
-from dvc.path_info import PathInfo
-from dvc.tree.local import LocalRemoteTree
 from tests.dir_helpers import TmpDir
 from tests.utils import to_posixpath
 
