@@ -249,7 +249,7 @@ class Config(dict):
             self.dvc_dir = os.path.abspath(os.path.realpath(dvc_dir))
 
         self.wtree = LocalRemoteTree(None, {"url": self.dvc_dir})
-        self.tree = tree.tree if tree else self.wtree
+        self.tree = tree or self.wtree
 
         self.load(validate=validate)
 

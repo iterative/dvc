@@ -8,6 +8,8 @@ from multiprocessing import cpu_count
 from operator import itemgetter
 from urllib.parse import urlparse
 
+from funcy import cached_property
+
 from dvc.exceptions import (
     DvcException,
     DvcIgnoreInCollectedDirError,
@@ -86,13 +88,16 @@ class BaseRemoteTree:
         shared = config.get("shared")
         self._file_mode, self._dir_mode = self.SHARED_MODE_MAP[shared]
 
-        self.hash_jobs = (
-            config.get("hash_jobs")
+        self.verify = config.get("verify", self.DEFAULT_VERIFY)
+        self.path_info = None
+
+    @cached_property
+    def hash_jobs(self):
+        return (
+            self.config.get("hash_jobs")
             or (self.repo and self.repo.config["core"].get("hash_jobs"))
             or self.HASH_JOBS
         )
-        self.verify = config.get("verify", self.DEFAULT_VERIFY)
-        self.path_info = None
 
     @classmethod
     def get_missing_deps(cls):

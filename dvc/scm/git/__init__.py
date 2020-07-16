@@ -375,8 +375,8 @@ class Git(Base):
         path_parts = os.path.normpath(path).split(os.path.sep)
         return basename == self.ignore_file or Git.GIT_DIR in path_parts
 
-    def get_tree(self, rev):
-        return GitTree(self.repo, self.resolve_rev(rev))
+    def get_tree(self, rev, **kwargs):
+        return GitTree(self.repo, self.resolve_rev(rev), **kwargs)
 
     def get_rev(self):
         return self.repo.rev_parse("HEAD").hexsha
