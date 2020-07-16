@@ -7,20 +7,20 @@ from dvc.repo import Repo
 from dvc.repo.tree import RepoTree
 from dvc.scm import SCM
 from dvc.scm.git import GitTree
-from dvc.scm.tree import WorkingTree
+from dvc.tree.local import LocalRemoteTree
 from dvc.utils.fs import remove
 from tests.basic_env import TestDir, TestGit, TestGitSubmodule
 
 
-class TestWorkingTree(TestDir):
+class TestLocalRemoteTree(TestDir):
     def setUp(self):
         super().setUp()
-        self.tree = WorkingTree()
+        self.tree = LocalRemoteTree(None, {})
 
     def test_open(self):
         with self.tree.open(self.FOO) as fd:
             self.assertEqual(fd.read(), self.FOO_CONTENTS)
-        with self.tree.open(self.UNICODE) as fd:
+        with self.tree.open(self.UNICODE, encoding="utf-8") as fd:
             self.assertEqual(fd.read(), self.UNICODE_CONTENTS)
 
     def test_exists(self):
@@ -109,7 +109,7 @@ class AssertWalkEqualMixin:
 
 class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
     def test(self):
-        tree = WorkingTree(self._root_dir)
+        tree = LocalRemoteTree(None, {"url": self._root_dir})
         self.assertWalkEqual(
             tree.walk(self._root_dir),
             [
@@ -128,7 +128,7 @@ class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
         )
 
     def test_subdir(self):
-        tree = WorkingTree(self._root_dir)
+        tree = LocalRemoteTree(None, {"url": self._root_dir})
         self.assertWalkEqual(
             tree.walk(join("data_dir", "data_sub_dir")),
             [(join("data_dir", "data_sub_dir"), [], ["data_sub"])],
@@ -137,7 +137,7 @@ class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
 
 class TestWalkInGit(AssertWalkEqualMixin, TestGit):
     def test_nobranch(self):
-        tree = CleanTree(WorkingTree(self._root_dir))
+        tree = CleanTree(LocalRemoteTree(None, {"url": self._root_dir}))
         self.assertWalkEqual(
             tree.walk("."),
             [
@@ -230,14 +230,16 @@ def test_cleantree_subrepo(tmp_dir, dvc, scm, monkeypatch):
         subrepo = Repo.init(subdir=True)
         subrepo_dir.gen({"foo": "foo", "dir": {"bar": "bar"}})
 
+    path = PathInfo(subrepo_dir)
+
     assert isinstance(dvc.tree, CleanTree)
-    assert not dvc.tree.exists(subrepo_dir / "foo")
-    assert not dvc.tree.isfile(subrepo_dir / "foo")
-    assert not dvc.tree.exists(subrepo_dir / "dir")
-    assert not dvc.tree.isdir(subrepo_dir / "dir")
+    assert not dvc.tree.exists(path / "foo")
+    assert not dvc.tree.isfile(path / "foo")
+    assert not dvc.tree.exists(path / "dir")
+    assert not dvc.tree.isdir(path / "dir")
 
     assert isinstance(subrepo.tree, CleanTree)
-    assert subrepo.tree.exists(subrepo_dir / "foo")
-    assert subrepo.tree.isfile(subrepo_dir / "foo")
-    assert subrepo.tree.exists(subrepo_dir / "dir")
-    assert subrepo.tree.isdir(subrepo_dir / "dir")
+    assert subrepo.tree.exists(path / "foo")
+    assert subrepo.tree.isfile(path / "foo")
+    assert subrepo.tree.exists(path / "dir")
+    assert subrepo.tree.isdir(path / "dir")

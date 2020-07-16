@@ -234,7 +234,7 @@ class Config(dict):
     def __init__(
         self, dvc_dir=None, validate=True, tree=None,
     ):  # pylint: disable=super-init-not-called
-        from dvc.scm.tree import WorkingTree
+        from dvc.tree.local import LocalRemoteTree
 
         self.dvc_dir = dvc_dir
 
@@ -248,7 +248,7 @@ class Config(dict):
         else:
             self.dvc_dir = os.path.abspath(os.path.realpath(dvc_dir))
 
-        self.wtree = WorkingTree(self.dvc_dir)
+        self.wtree = LocalRemoteTree(None, {"url": self.dvc_dir})
         self.tree = tree.tree if tree else self.wtree
 
         self.load(validate=validate)
@@ -326,7 +326,7 @@ class Config(dict):
 
         logger.debug(f"Writing '{filename}'.")
 
-        tree.makedirs(os.path.dirname(filename), exist_ok=True)
+        tree.makedirs(os.path.dirname(filename))
 
         config = configobj.ConfigObj(_pack_remotes(conf_dict))
         with tree.open(filename, "wb") as fobj:

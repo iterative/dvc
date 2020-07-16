@@ -77,12 +77,11 @@ class Repo:
         from dvc.repo.metrics import Metrics
         from dvc.repo.plots import Plots
         from dvc.repo.params import Params
-        from dvc.scm.tree import WorkingTree
+        from dvc.tree.local import LocalRemoteTree
         from dvc.utils.fs import makedirs
         from dvc.stage.cache import StageCache
 
         if scm:
-            # use GitTree instead of WorkingTree as default repo tree instance
             tree = scm.get_tree(rev)
             self.root_dir = self.find_root(root_dir, tree)
             self.scm = scm
@@ -91,7 +90,7 @@ class Repo:
         else:
             root_dir = self.find_root(root_dir)
             self.root_dir = os.path.abspath(os.path.realpath(root_dir))
-            self.tree = WorkingTree(self.root_dir)
+            self.tree = LocalRemoteTree(None, {"url": self.root_dir})
 
         self.dvc_dir = os.path.join(self.root_dir, self.DVC_DIR)
         self.config = Config(self.dvc_dir, tree=self.tree)

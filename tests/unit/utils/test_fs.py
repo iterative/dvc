@@ -8,8 +8,8 @@ from mock import patch
 import dvc
 from dvc.ignore import CleanTree
 from dvc.path_info import PathInfo
-from dvc.scm.tree import WorkingTree
 from dvc.system import System
+from dvc.tree.local import LocalRemoteTree
 from dvc.utils import relpath
 from dvc.utils.fs import (
     BasePathNotInCheckedPathException,
@@ -29,7 +29,7 @@ from tests.basic_env import TestDir
 
 class TestMtimeAndSize(TestDir):
     def test(self):
-        tree = CleanTree(WorkingTree(self.root_dir))
+        tree = CleanTree(LocalRemoteTree(None, {"url": self.root_dir}))
         file_time, file_size = get_mtime_and_size(self.DATA, tree)
         dir_time, dir_size = get_mtime_and_size(self.DATA_DIR, tree)
 
@@ -130,7 +130,7 @@ def test_path_object_and_str_are_valid_types_get_mtime_and_size(tmp_dir):
     tmp_dir.gen(
         {"dir": {"dir_file": "dir file content"}, "file": "file_content"}
     )
-    tree = CleanTree(WorkingTree(tmp_dir))
+    tree = CleanTree(LocalRemoteTree(None, {"url": os.fspath(tmp_dir)}))
 
     time, size = get_mtime_and_size("dir", tree)
     object_time, object_size = get_mtime_and_size(PathInfo("dir"), tree)
