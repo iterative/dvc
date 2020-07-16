@@ -127,7 +127,10 @@ class Repo:
         self.plots = Plots(self)
         self.params = Params(self)
 
-        self.experiments = Experiments(self)
+        try:
+            self.experiments = Experiments(self)
+        except NotImplementedError:
+            self.experiments = None
 
         self._ignore()
 
@@ -196,8 +199,9 @@ class Repo:
         flist = [
             self.config.files["local"],
             self.tmp_dir,
-            self.experiments.exp_dir,
         ]
+        if self.experiments:
+            flist.append(self.experiments.exp_dir)
 
         if path_isin(self.cache.local.cache_dir, self.root_dir):
             flist += [self.cache.local.cache_dir]

@@ -114,6 +114,9 @@ class CmdExperimentsShow(CmdBase):
         from rich.console import Console
         from dvc.utils.pager import pager
 
+        if not self.repo.experiments:
+            return 0
+
         try:
             all_experiments = self.repo.experiments.show(
                 all_branches=self.args.all_branches,
@@ -139,6 +142,9 @@ class CmdExperimentsShow(CmdBase):
 
 class CmdExperimentsCheckout(CmdBase):
     def run(self):
+        if not self.repo.experiments:
+            return 0
+
         self.repo.experiments.checkout(
             self.args.experiment, force=self.args.force
         )
@@ -185,6 +191,9 @@ def _show_diff(
 
 class CmdExperimentsDiff(CmdBase):
     def run(self):
+        if not self.repo.experiments:
+            return 0
+
         try:
             diff = self.repo.experiments.diff(
                 a_rev=self.args.a_rev,

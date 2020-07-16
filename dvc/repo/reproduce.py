@@ -71,7 +71,7 @@ def reproduce(
         )
 
     experiment = kwargs.pop("experiment", False)
-    if experiment:
+    if experiment and self.experiments:
         try:
             return self.experiments.new(
                 target=target,

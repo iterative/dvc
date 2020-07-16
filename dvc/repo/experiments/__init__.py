@@ -8,7 +8,7 @@ from funcy import cached_property
 from dvc.exceptions import DvcException
 from dvc.scm.git import Git
 from dvc.stage.serialize import to_lockfile
-from dvc.utils import dict_sha256, relpath
+from dvc.utils import dict_sha256, env2bool, relpath
 from dvc.utils.fs import remove
 
 logger = logging.getLogger(__name__)
@@ -28,6 +28,12 @@ class Experiments:
     EXPERIMENTS_DIR = "experiments"
 
     def __init__(self, repo):
+        if not (
+            env2bool("DVC_TEST")
+            or repo.config["core"].get("experiments", False)
+        ):
+            raise NotImplementedError
+
         self.repo = repo
 
     @cached_property
