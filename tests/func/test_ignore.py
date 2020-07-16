@@ -364,3 +364,28 @@ def test_pattern_trie_tree(tmp_dir, dvc):
         )
         == ignore_pattern_bottom
     )
+
+
+def test_ignore_in_added_dir(tmp_dir, dvc):
+    tmp_dir.gen(
+        {
+            "dir": {
+                "sub": {
+                    "ignored": {"content": "ignored content"},
+                    "not_ignored": "not ignored content",
+                }
+            },
+            ".dvcignore": "**/ignored",
+        }
+    )
+    dvc.tree.__dict__.pop("dvcignore", None)
+
+    ignored_path = tmp_dir / "dir" / "sub" / "ignored"
+    assert not dvc.tree.exists(PathInfo(ignored_path))
+    assert ignored_path.exists()
+
+    dvc.add("dir")
+    shutil.rmtree(ignored_path)
+    dvc.checkout()
+
+    assert not ignored_path.exists()
