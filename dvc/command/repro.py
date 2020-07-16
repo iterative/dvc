@@ -172,6 +172,6 @@ def add_parser(subparsers, parent_parser):
         "--experiment",
         action="store_true",
         default=False,
-        help="Save reproduction results as an experiment.",
+        help=argparse.SUPPRESS,
     )
     repro_parser.set_defaults(func=CmdRepro)

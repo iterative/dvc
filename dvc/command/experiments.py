@@ -225,7 +225,6 @@ def add_parser(subparsers, parent_parser):
         "experiments",
         parents=[parent_parser],
         description=append_doc_link(EXPERIMENTS_HELP, "experiments"),
-        help=EXPERIMENTS_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
