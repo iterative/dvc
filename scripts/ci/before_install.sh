@@ -40,17 +40,14 @@ if [ "$TRAVIS_OS_NAME" == "linux" ]; then
 
   if [[ -n "$TRAVIS_TAG" ]]; then
     if [[ $(echo "$TRAVIS_TAG" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$') ]]; then
-      echo "export SNAP_CHANNEL=stable" >>env.sh
-      echo "export SNAP_CHANNEL_MAJOR=v$TAG_MAJOR/stable" >>env.sh
+      SNAP_CHANNEL=stable
     else
-      echo "export SNAP_CHANNEL=beta" >>env.sh
-      echo "export SNAP_CHANNEL_MAJOR=v$TAG_MAJOR/beta" >>env.sh
+      SNAP_CHANNEL=beta
     fi
   else
-    echo "export SNAP_CHANNEL=edge" >>env.sh
-    echo "export SNAP_CHANNEL_MAJOR=v$TAG_MAJOR/edge" >>env.sh
+    SNAP_CHANNEL=edge
   fi
-
+  echo "export SNAP_CHANNEL=${SNAP_CHANNEL},v${TAG_MAJOR}/${SNAP_CHANNEL}" >>env.sh
   # NOTE: after deprecating this major version branch, uncomment this line
-  # echo "unset SNAP_CHANNEL" >>env.sh
+  # echo "export SNAP_CHANNEL=v${TAG_MAJOR}/${SNAP_CHANNEL}" >>env.sh
 fi
