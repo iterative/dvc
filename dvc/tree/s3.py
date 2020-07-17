@@ -61,7 +61,6 @@ class S3RemoteTree(BaseRemoteTree):
         if shared_creds:
             os.environ.setdefault("AWS_SHARED_CREDENTIALS_FILE", shared_creds)
 
-
     @wrap_prop(threading.Lock())
     @cached_property
     def s3(self):

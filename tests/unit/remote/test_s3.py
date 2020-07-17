@@ -9,6 +9,7 @@ url = f"s3://{bucket_name}/{prefix}"
 key_id = "key_id"
 key_secret = "key_secret"
 
+
 @pytest.fixture(autouse=True)
 def grants():
     return {
@@ -61,6 +62,8 @@ def test_sse_kms_key_id(dvc):
 
 
 def test_key_id_and_secret(dvc):
-    tree = S3RemoteTree(dvc, {"url": url, "s3_key_id": key_id, "s3_key_secret": key_secret})
+    tree = S3RemoteTree(
+        dvc, {"url": url, "s3_key_id": key_id, "s3_key_secret": key_secret}
+    )
     assert tree.key_id == key_id
     assert tree.key_secret == key_secret
