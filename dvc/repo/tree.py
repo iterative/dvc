@@ -5,14 +5,14 @@ from dvc.dvcfile import is_valid_filename
 from dvc.exceptions import OutputNotFoundError
 from dvc.path_info import PathInfo
 from dvc.remote.base import RemoteActionNotImplemented
-from dvc.scm.tree import BaseTree
+from dvc.tree.base import BaseRemoteTree
 from dvc.utils import file_md5
 from dvc.utils.fs import copy_fobj_to_file, makedirs
 
 logger = logging.getLogger(__name__)
 
 
-class DvcTree(BaseTree):  # pylint:disable=abstract-method
+class DvcTree(BaseRemoteTree):  # pylint:disable=abstract-method
     """DVC repo tree.
 
     Args:
@@ -27,7 +27,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
     """
 
     def __init__(self, repo, fetch=False, stream=False):
-        self.repo = repo
+        super().__init__(repo, {"url": repo.root_dir})
         self.fetch = fetch
         self.stream = stream
 
@@ -101,14 +101,14 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             cache_path = out.cache_path
         return open(cache_path, mode=mode, encoding=encoding)
 
-    def exists(self, path):
+    def exists(self, path):  # pylint: disable=arguments-differ
         try:
             self._find_outs(path, strict=False, recursive=True)
             return True
         except OutputNotFoundError:
             return False
 
-    def isdir(self, path):
+    def isdir(self, path):  # pylint: disable=arguments-differ
         if not self.exists(path):
             return False
 
@@ -134,7 +134,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
         except FileNotFoundError:
             return True
 
-    def isfile(self, path):
+    def isfile(self, path):  # pylint: disable=arguments-differ
         if not self.exists(path):
             return False
 
@@ -237,7 +237,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
         return out.checksum
 
 
-class RepoTree(BaseTree):  # pylint:disable=abstract-method
+class RepoTree(BaseRemoteTree):  # pylint:disable=abstract-method
     """DVC + git-tracked files tree.
 
     Args:
@@ -247,7 +247,7 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
     """
 
     def __init__(self, repo, **kwargs):
-        self.repo = repo
+        super().__init__(repo, {"url": repo.root_dir})
         if hasattr(repo, "dvc_dir"):
             self.dvctree = DvcTree(repo, **kwargs)
         else:
@@ -266,7 +266,9 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
             return self.dvctree.stream
         return False
 
-    def open(self, path, mode="r", encoding="utf-8", **kwargs):
+    def open(
+        self, path, mode="r", encoding="utf-8", **kwargs
+    ):  # pylint: disable=arguments-differ
         if "b" in mode:
             encoding = None
 
@@ -276,12 +278,12 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
             )
         return self.repo.tree.open(path, mode=mode, encoding=encoding)
 
-    def exists(self, path):
+    def exists(self, path):  # pylint: disable=arguments-differ
         return self.repo.tree.exists(path) or (
             self.dvctree and self.dvctree.exists(path)
         )
 
-    def isdir(self, path):
+    def isdir(self, path):  # pylint: disable=arguments-differ
         return self.repo.tree.isdir(path) or (
             self.dvctree and self.dvctree.isdir(path)
         )
@@ -289,7 +291,7 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
     def isdvc(self, path, **kwargs):
         return self.dvctree is not None and self.dvctree.isdvc(path, **kwargs)
 
-    def isfile(self, path):
+    def isfile(self, path):  # pylint: disable=arguments-differ
         return self.repo.tree.isfile(path) or (
             self.dvctree and self.dvctree.isfile(path)
         )
@@ -393,7 +395,7 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         repo_walk = self.repo.tree.walk(top, topdown=topdown)
         yield from self._walk(dvc_walk, repo_walk, dvcfiles=dvcfiles)
 
-    def walk_files(self, top, **kwargs):
+    def walk_files(self, top, **kwargs):  # pylint: disable=arguments-differ
         for root, _, files in self.walk(top, **kwargs):
             for fname in files:
                 yield PathInfo(root) / fname
@@ -437,5 +439,5 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
                     copy_fobj_to_file(fobj, dest_dir / fname)
 
     @property
-    def hash_jobs(self):
+    def hash_jobs(self):  # pylint: disable=invalid-overridden-method
         return self.repo.tree.hash_jobs
