@@ -1,6 +1,7 @@
 import logging
 
 from dvc.exceptions import InvalidArgumentError, ReproductionError
+from dvc.repo.experiments import UnchangedExperimentError
 from dvc.repo.scm_context import scm_context
 
 from . import locked
@@ -68,6 +69,19 @@ def reproduce(
         raise InvalidArgumentError(
             "Neither `target` nor `--all-pipelines` are specified."
         )
+
+    experiment = kwargs.pop("experiment", False)
+    if experiment and self.experiments:
+        try:
+            return self.experiments.new(
+                target=target,
+                recursive=recursive,
+                all_pipelines=all_pipelines,
+                **kwargs
+            )
+        except UnchangedExperimentError:
+            # If experiment contains no changes, just run regular repro
+            pass
 
     interactive = kwargs.get("interactive", False)
     if not interactive:

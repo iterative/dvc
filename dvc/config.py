@@ -127,6 +127,7 @@ SCHEMA = {
         Optional("analytics", default=True): Bool,
         Optional("hardlink_lock", default=False): Bool,
         Optional("no_scm", default=False): Bool,
+        Optional("experiments", default=False): Bool,
     },
     "cache": {
         "local": str,

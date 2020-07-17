@@ -15,6 +15,7 @@ from .command import (
     data_sync,
     destroy,
     diff,
+    experiments,
     freeze,
     gc,
     get,
@@ -77,6 +78,7 @@ COMMANDS = [
     update,
     git_hook,
     plots,
+    experiments,
 ]
 
 

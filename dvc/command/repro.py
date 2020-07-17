@@ -40,6 +40,7 @@ class CmdRepro(CmdBase):
                     downstream=self.args.downstream,
                     recursive=self.args.recursive,
                     force_downstream=self.args.force_downstream,
+                    experiment=self.args.experiment,
                 )
 
                 if len(stages) == 0:
@@ -165,5 +166,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Start from the specified stages when reproducing pipelines.",
+    )
+    repro_parser.add_argument(
+        "-e",
+        "--experiment",
+        action="store_true",
+        default=False,
+        help=argparse.SUPPRESS,
     )
     repro_parser.set_defaults(func=CmdRepro)

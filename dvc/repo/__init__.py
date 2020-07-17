@@ -72,6 +72,7 @@ class Repo:
         from dvc.scm import SCM
         from dvc.cache import Cache
         from dvc.data_cloud import DataCloud
+        from dvc.repo.experiments import Experiments
         from dvc.repo.metrics import Metrics
         from dvc.repo.plots import Plots
         from dvc.repo.params import Params
@@ -131,6 +132,11 @@ class Repo:
         self.plots = Plots(self)
         self.params = Params(self)
 
+        try:
+            self.experiments = Experiments(self)
+        except NotImplementedError:
+            self.experiments = None
+
         self._ignore()
 
     @property
@@ -189,7 +195,12 @@ class Repo:
         return self.cache.local.tree.unprotect(PathInfo(target))
 
     def _ignore(self):
-        flist = [self.config.files["local"], self.tmp_dir]
+        flist = [
+            self.config.files["local"],
+            self.tmp_dir,
+        ]
+        if self.experiments:
+            flist.append(self.experiments.exp_dir)
 
         if path_isin(self.cache.local.cache_dir, self.root_dir):
             flist += [self.cache.local.cache_dir]
