@@ -6,7 +6,8 @@ from dvc.tree.s3 import S3RemoteTree
 bucket_name = "bucket-name"
 prefix = "some/prefix"
 url = f"s3://{bucket_name}/{prefix}"
-
+key_id = "key_id"
+key_secret = "key_secret"
 
 @pytest.fixture(autouse=True)
 def grants():
@@ -57,3 +58,10 @@ def test_grants_mutually_exclusive_acl_error(dvc, grants):
 def test_sse_kms_key_id(dvc):
     tree = S3RemoteTree(dvc, {"url": url, "sse_kms_key_id": "key"})
     assert tree.extra_args["SSEKMSKeyId"] == "key"
+
+
+def test_key_id_and_secret(dvc):
+    tree = S3RemoteTree(dvc, {"url": url, "s3_key_id"= key_id, "s3_key_secret"=key_secret})
+    assert tree.key_id == key_id
+    assert tree.key_secret = key_secret
+

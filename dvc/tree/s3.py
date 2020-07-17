@@ -60,13 +60,7 @@ class S3RemoteTree(BaseRemoteTree):
         shared_creds = config.get("credentialpath")
         if shared_creds:
             os.environ.setdefault("AWS_SHARED_CREDENTIALS_FILE", shared_creds)
-        self._validate_config()
 
-    def _validate_config(self):
-        if bool(self.key_id) != bool(self.key_secret):
-            raise DvcException(
-                "Provide either both or none of `s3_key_id` and `s3_key_secret`."
-            )
 
     @wrap_prop(threading.Lock())
     @cached_property
@@ -75,8 +69,9 @@ class S3RemoteTree(BaseRemoteTree):
 
         session_opts = dict(profile_name=self.profile, region_name=self.region)
 
-        if self.key_id and self.key_secret:
+        if self.key_id:
             session_opts["aws_access_key_id"] = self.key_id
+        if self.key_secret:
             session_opts["aws_secret_access_key"] = self.key_secret
 
         session = boto3.session.Session(**session_opts)

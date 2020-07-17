@@ -149,6 +149,8 @@ SCHEMA = {
                     "profile": str,
                     "credentialpath": str,
                     "endpointurl": str,
+                    Optional("s3_key_id", default=None),
+                    Optional("s3_key_secret", default=None),
                     Optional("listobjects", default=False): Bool,
                     Optional("use_ssl", default=True): Bool,
                     "sse": str,
