@@ -160,11 +160,3 @@ deploy:
       condition: "$(./scripts/ci/deploy_condition.sh dvc_*.snap) && ($TRAVIS_BRANCH = master || -n $TRAVIS_TAG) && -n $SNAP_CHANNEL"
       repo: iterative/dvc
       stage: build
-  - provider: script
-    skip_cleanup: true
-    script: "(echo $SNAP_TOKEN | snapcraft login --with -) && timeout 600 snapcraft push dvc_*.snap --release $SNAP_CHANNEL_MAJOR || echo timed out"
-    on:
-      all_branches: true
-      condition: "$(./scripts/ci/deploy_condition.sh dvc_*.snap) && ($TRAVIS_BRANCH = master || -n $TRAVIS_TAG) && -n $SNAP_CHANNEL_MAJOR"
-      repo: iterative/dvc
-      stage: build
