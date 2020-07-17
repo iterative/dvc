@@ -10,6 +10,7 @@ from dvc.ignore import (
     DvcIgnorePatterns,
     DvcIgnorePatternsTrie,
     DvcIgnoreRepo,
+    DvcWarningDirs,
 )
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
@@ -98,7 +99,7 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
     ignore_file = tmp_dir / dname / DvcIgnore.DVCIGNORE_FILE
     ignore_file.write_text("foo")
 
-    assert len(dvc.tree.dvcignore.ignores) == 3
+    assert len(dvc.tree.dvcignore.ignores) == 4
     assert DvcIgnoreDirs([".git", ".hg", ".dvc"]) in dvc.tree.dvcignore.ignores
     ignore_pattern_trie = None
     for ignore in dvc.tree.dvcignore.ignores:
@@ -152,7 +153,7 @@ def test_match_nested(tmp_dir, dvc):
     assert result == {".dvcignore", "foo"}
 
 
-def test_ignore_external(tmp_dir, scm, dvc, tmp_path_factory):
+def test_ignore_external(tmp_dir, dvc, tmp_path_factory):
     tmp_dir.gen(".dvcignore", "*.backup\ntmp")
     ext_dir = TmpDir(os.fspath(tmp_path_factory.mktemp("external_dir")))
     ext_dir.gen({"y.backup": "y", "tmp": "ext tmp"})
@@ -248,7 +249,7 @@ def test_ignore_directory(tmp_dir, dvc):
     }
 
 
-def test_multi_ignore_file(tmp_dir, dvc, monkeypatch):
+def test_multi_ignore_file(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"subdir": {"should_ignore": "1", "not_ignore": "1"}}})
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir/subdir/*_ignore")
     tmp_dir.gen({"dir": {DvcIgnore.DVCIGNORE_FILE: "!subdir/not_ignore"}})
@@ -345,3 +346,20 @@ def test_pattern_trie_tree(tmp_dir, dvc):
         )
         == ignore_pattern_bottom
     )
+
+
+def test_special_folder_warning(tmp_dir, dvc, capsys):
+    for d in DvcWarningDirs.special_dirs:
+        tmp_dir.gen({"dir": {"tmp": "content"}, d: {"file": "test"}})
+
+        for _ in dvc.tree.walk_files("."):
+            pass
+
+        captured = capsys.readouterr()
+        output = captured.out
+        message = (
+            f"Warning: {d} found in dvc, traversing will be slow."
+            f" You can add it in .dvcignore. See "
+            f"more https://dvc.org/doc/user-guide/dvcignore"
+        )
+        assert message in output

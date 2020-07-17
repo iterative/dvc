@@ -150,6 +150,37 @@ class DvcIgnoreDirs(DvcIgnore):
         return self.basenames == other.basenames
 
 
+class DvcWarningDirs:
+    special_dirs = {
+        ".petest_cache",
+        ".mypy_cache",
+        "node_modules",
+        ".venv",
+        "venv",
+        "env",
+        "__pycache__",
+        "dist",
+        "eggs",
+        "wheels",
+        "htmlcov",
+        "docs",
+        ".ipynb_checkpoints",
+        ".vscode",
+        ".github",
+    }
+
+    def __call__(self, root, dirs, files):
+        for d in dirs:
+            if d in self.special_dirs:
+                print(
+                    f"Warning: {d} found in dvc, traversing may be slow."
+                    f" You can add it in .dvcignore. See more "
+                    f"https://dvc.org/doc/user-guide/dvcignore"
+                )
+
+        return dirs, files
+
+
 class DvcIgnoreRepo(DvcIgnore):
     def __call__(self, root, dirs, files):
         def is_dvc_repo(directory):
@@ -169,6 +200,7 @@ class DvcIgnoreFilter:
         self.ignores = {
             DvcIgnoreDirs([".git", ".hg", ".dvc"]),
             DvcIgnoreRepo(),
+            DvcWarningDirs(),
         }
         ignore_pattern_trie = DvcIgnorePatternsTrie()
         for root, dirs, _ in self.tree.walk(self.root_dir):
