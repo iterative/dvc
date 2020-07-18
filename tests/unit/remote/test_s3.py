@@ -6,8 +6,8 @@ from dvc.tree.s3 import S3RemoteTree
 bucket_name = "bucket-name"
 prefix = "some/prefix"
 url = f"s3://{bucket_name}/{prefix}"
-key_id = "key_id"
-key_secret = "key_secret"
+key_id = "key-id"
+key_secret = "key-secret"
 
 
 @pytest.fixture(autouse=True)
