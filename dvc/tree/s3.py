@@ -68,7 +68,7 @@ class S3RemoteTree(BaseRemoteTree):
 
         session_opts = dict(profile_name=self.profile, region_name=self.region)
 
-        if self.acess_key_id:
+        if self.access_key_id:
             session_opts["aws_access_key_id"] = self.access_key_id
         if self.secret_access_key:
             session_opts["aws_secret_access_key"] = self.secret_access_key
