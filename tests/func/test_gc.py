@@ -8,8 +8,8 @@ from git import Repo
 
 from dvc.exceptions import CollectCacheError
 from dvc.main import main
-from dvc.remote.local import LocalTree
 from dvc.repo import Repo as DvcRepo
+from dvc.tree.local import LocalTree
 from dvc.utils.fs import remove
 from tests.basic_env import TestDir, TestDvcGit
 

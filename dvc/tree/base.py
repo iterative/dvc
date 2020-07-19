@@ -25,19 +25,6 @@ from dvc.utils.http import open_url
 
 logger = logging.getLogger(__name__)
 
-STATUS_OK = 1
-STATUS_MISSING = 2
-STATUS_NEW = 3
-STATUS_DELETED = 4
-
-STATUS_MAP = {
-    # (local_exists, remote_exists)
-    (True, True): STATUS_OK,
-    (False, False): STATUS_MISSING,
-    (True, False): STATUS_NEW,
-    (False, True): STATUS_DELETED,
-}
-
 
 class RemoteCmdError(DvcException):
     def __init__(self, remote, cmd, ret, err):

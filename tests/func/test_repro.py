@@ -15,10 +15,10 @@ from dvc.exceptions import (
 )
 from dvc.main import main
 from dvc.output.base import BaseOutput
-from dvc.remote.local import LocalTree
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
+from dvc.tree.local import LocalTree
 from dvc.utils import file_md5, relpath
 from dvc.utils.fs import remove
 from dvc.utils.yaml import dump_yaml, load_yaml

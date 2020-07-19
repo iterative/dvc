@@ -2,8 +2,8 @@ import os
 
 from mock import patch
 
+from dvc.cache.local import LocalCache
 from dvc.output import LocalOutput
-from dvc.remote.local import LocalCache
 from dvc.stage import Stage
 from dvc.utils import relpath
 from tests.basic_env import TestDvc

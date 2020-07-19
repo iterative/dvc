@@ -4,8 +4,7 @@ import os
 from dvc.dvcfile import is_valid_filename
 from dvc.exceptions import OutputNotFoundError
 from dvc.path_info import PathInfo
-from dvc.remote.base import RemoteActionNotImplemented
-from dvc.tree.base import BaseTree
+from dvc.tree.base import BaseTree, RemoteActionNotImplemented
 from dvc.utils import file_md5
 from dvc.utils.fs import copy_fobj_to_file, makedirs
 

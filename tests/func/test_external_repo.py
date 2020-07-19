@@ -4,8 +4,8 @@ from mock import patch
 
 from dvc.external_repo import external_repo
 from dvc.path_info import PathInfo
-from dvc.remote.local import LocalTree
 from dvc.scm.git import Git
+from dvc.tree.local import LocalTree
 from dvc.utils import relpath
 from dvc.utils.fs import remove
 

@@ -5,7 +5,8 @@ import pytest
 from dvc.exceptions import DownloadError, UploadError
 from dvc.remote.base import Remote
 from dvc.remote.index import RemoteIndex
-from dvc.remote.local import LocalRemote, LocalTree
+from dvc.remote.local import LocalRemote
+from dvc.tree.local import LocalTree
 from dvc.utils.fs import remove
 
 
