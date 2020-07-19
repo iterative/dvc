@@ -30,6 +30,7 @@ class LocalTree(BaseTree):
     PATH_CLS = PathInfo
     PARAM_CHECKSUM = "md5"
     PARAM_PATH = "path"
+    PARAM_FILTER = "udf"
     TRAVERSE_PREFIX_LEN = 2
     UNPACKED_DIR_SUFFIX = ".unpacked"
 

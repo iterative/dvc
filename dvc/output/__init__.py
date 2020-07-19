@@ -55,6 +55,7 @@ CHECKSUMS_SCHEMA = {
 
 SCHEMA = CHECKSUMS_SCHEMA.copy()
 SCHEMA[Required(BaseOutput.PARAM_PATH)] = str
+SCHEMA[BaseOutput.PARAM_FILTER] = str
 SCHEMA[BaseOutput.PARAM_CACHE] = bool
 SCHEMA[BaseOutput.PARAM_METRIC] = BaseOutput.METRIC_SCHEMA
 SCHEMA[BaseOutput.PARAM_PLOT] = bool

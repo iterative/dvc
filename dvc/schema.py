@@ -17,7 +17,11 @@ SINGLE_STAGE_SCHEMA = {
     StageParams.PARAM_ALWAYS_CHANGED: bool,
 }
 
-DATA_SCHEMA = {**CHECKSUMS_SCHEMA, Required("path"): str}
+DATA_SCHEMA = {
+    **CHECKSUMS_SCHEMA,
+    Required(BaseOutput.PARAM_PATH): str,
+    Optional(BaseOutput.PARAM_FILTER): str,
+}
 LOCK_FILE_STAGE_SCHEMA = {
     Required(StageParams.PARAM_CMD): str,
     StageParams.PARAM_DEPS: [DATA_SCHEMA],
@@ -51,7 +55,15 @@ SINGLE_PIPELINE_STAGE_SCHEMA = {
     str: {
         StageParams.PARAM_CMD: str,
         Optional(StageParams.PARAM_WDIR): str,
-        Optional(StageParams.PARAM_DEPS): [str],
+        Optional(StageParams.PARAM_DEPS): [
+            Any(
+                str,
+                {
+                    Required(BaseOutput.PARAM_PATH): str,
+                    Optional(BaseOutput.PARAM_FILTER): str,
+                },
+            )
+        ],
         Optional(StageParams.PARAM_PARAMS): [
             Any(str, PARAM_PSTAGE_NON_DEFAULT_SCHEMA)
         ],
