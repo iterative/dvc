@@ -111,15 +111,7 @@ class DvcIgnorePatternsTrie(DvcIgnore):
         return dirs, files
 
     def __setitem__(self, root, ignore_pattern):
-        base_pattern = self[root]
-        self.trie[root] = DvcIgnorePatterns(
-            *merge_patterns(
-                base_pattern.pattern_list,
-                base_pattern.dirname,
-                ignore_pattern.pattern_list,
-                ignore_pattern.dirname,
-            )
-        )
+        self.trie[root] = ignore_pattern
 
     def __getitem__(self, root):
         ignore_pattern = self.trie.longest_prefix(root)
@@ -157,8 +149,17 @@ class DvcIgnoreFilter:
     def _update(self, dirname):
         ignore_file_path = os.path.join(dirname, DvcIgnore.DVCIGNORE_FILE)
         if self.tree.exists(ignore_file_path):
-            self.ignores_trie_tree[dirname] = DvcIgnorePatterns.from_files(
+            new_pattern = DvcIgnorePatterns.from_files(
                 ignore_file_path, self.tree
+            )
+            old_pattern = self.ignores_trie_tree[dirname]
+            self.ignores_trie_tree[dirname] = DvcIgnorePatterns(
+                *merge_patterns(
+                    old_pattern.pattern_list,
+                    old_pattern.dirname,
+                    new_pattern.pattern_list,
+                    new_pattern.dirname,
+                )
             )
 
     def __call__(self, root, dirs, files):
