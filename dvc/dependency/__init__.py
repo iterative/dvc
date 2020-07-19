@@ -52,6 +52,9 @@ SCHEMA.update(ParamsDependency.PARAM_SCHEMA)
 
 
 def _get(stage, p, info):
+    if isinstance(p, dict):
+        info.update(p)
+        p = info.pop("path", None)
     parsed = urlparse(p) if p else None
     if parsed and parsed.scheme == "remote":
         tree = get_cloud_tree(stage.repo, name=parsed.netloc)

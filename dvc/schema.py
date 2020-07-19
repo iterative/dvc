@@ -21,6 +21,7 @@ DATA_SCHEMA = {
     **CHECKSUMS_SCHEMA,
     Required(BaseOutput.PARAM_PATH): str,
     Optional(BaseOutput.PARAM_FILTER): str,
+    Optional(BaseOutput.PARAM_FILTER_CHECKSUM): str,
 }
 LOCK_FILE_STAGE_SCHEMA = {
     Required(StageParams.PARAM_CMD): str,

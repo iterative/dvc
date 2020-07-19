@@ -53,6 +53,7 @@ class BaseOutput:
     PARAM_PATH = "path"
     PARAM_CACHE = "cache"
     PARAM_FILTER = "udf"
+    PARAM_FILTER_CHECKSUM = "udf_md5"
     PARAM_METRIC = "metric"
     PARAM_METRIC_TYPE = "type"
     PARAM_METRIC_XPATH = "xpath"
@@ -176,6 +177,11 @@ class BaseOutput:
     @checksum.setter
     def checksum(self, checksum):
         self.info[self.tree.PARAM_CHECKSUM] = checksum
+
+    @property
+    def udf(self):
+        logger.warning("udf:%s info=%s", self.path_info, self.info)
+        return self.info.get(self.PARAM_FILTER)
 
     def get_checksum(self):
         return self.tree.get_hash(self.path_info)
