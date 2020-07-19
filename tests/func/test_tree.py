@@ -5,16 +5,16 @@ from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.repo.tree import RepoTree
 from dvc.scm import SCM
-from dvc.scm.git import GitTree
-from dvc.tree.local import LocalRemoteTree
+from dvc.tree.git import GitTree
+from dvc.tree.local import LocalTree
 from dvc.utils.fs import remove
 from tests.basic_env import TestDir, TestGit, TestGitSubmodule
 
 
-class TestLocalRemoteTree(TestDir):
+class TestLocalTree(TestDir):
     def setUp(self):
         super().setUp()
-        self.tree = LocalRemoteTree(None, {})
+        self.tree = LocalTree(None, {})
 
     def test_open(self):
         with self.tree.open(self.FOO) as fd:
@@ -108,7 +108,7 @@ class AssertWalkEqualMixin:
 
 class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
     def test(self):
-        tree = LocalRemoteTree(None, {"url": self._root_dir})
+        tree = LocalTree(None, {"url": self._root_dir})
         self.assertWalkEqual(
             tree.walk(self._root_dir),
             [
@@ -127,7 +127,7 @@ class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
         )
 
     def test_subdir(self):
-        tree = LocalRemoteTree(None, {"url": self._root_dir})
+        tree = LocalTree(None, {"url": self._root_dir})
         self.assertWalkEqual(
             tree.walk(join("data_dir", "data_sub_dir")),
             [(join("data_dir", "data_sub_dir"), [], ["data_sub"])],
@@ -136,9 +136,7 @@ class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
 
 class TestWalkInGit(AssertWalkEqualMixin, TestGit):
     def test_nobranch(self):
-        tree = LocalRemoteTree(
-            None, {"url": self._root_dir}, use_dvcignore=True
-        )
+        tree = LocalTree(None, {"url": self._root_dir}, use_dvcignore=True)
         self.assertWalkEqual(
             tree.walk("."),
             [

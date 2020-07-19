@@ -1,7 +1,7 @@
 from dvc.scheme import Schemes
 
-from .http import HTTPRemoteTree
+from .http import HTTPTree
 
 
-class HTTPSRemoteTree(HTTPRemoteTree):  # pylint:disable=abstract-method
+class HTTPSTree(HTTPTree):  # pylint:disable=abstract-method
     scheme = Schemes.HTTPS

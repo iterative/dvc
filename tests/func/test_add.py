@@ -21,7 +21,7 @@ from dvc.exceptions import (
 )
 from dvc.main import main
 from dvc.output.base import OutputAlreadyTrackedError, OutputIsStageFileError
-from dvc.remote.local import LocalRemoteTree
+from dvc.remote.local import LocalTree
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.system import System
@@ -410,7 +410,7 @@ class TestAddCommit(TestDvc):
 
 def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
     tmp_dir.gen({"data/data": "foo"})
-    get_dir_hash_counter = mocker.spy(LocalRemoteTree, "get_dir_hash")
+    get_dir_hash_counter = mocker.spy(LocalTree, "get_dir_hash")
     ret = main(["add", "data"])
     assert ret == 0
 
@@ -652,7 +652,7 @@ def test_readding_dir_should_not_unprotect_all(tmp_dir, dvc, mocker):
     dvc.add("dir")
     tmp_dir.gen("dir/new_file", "new_file_content")
 
-    unprotect_spy = mocker.spy(LocalRemoteTree, "unprotect")
+    unprotect_spy = mocker.spy(LocalTree, "unprotect")
     dvc.add("dir")
 
     assert not unprotect_spy.mock.called
@@ -772,7 +772,7 @@ def test_add_empty_files(tmp_dir, dvc, link):
 def test_add_optimization_for_hardlink_on_empty_files(tmp_dir, dvc, mocker):
     dvc.cache.local.cache_types = ["hardlink"]
     tmp_dir.gen({"foo": "", "bar": "", "lorem": "lorem", "ipsum": "ipsum"})
-    m = mocker.spy(LocalRemoteTree, "is_hardlink")
+    m = mocker.spy(LocalTree, "is_hardlink")
     stages = dvc.add(["foo", "bar", "lorem", "ipsum"])
 
     assert m.call_count == 1

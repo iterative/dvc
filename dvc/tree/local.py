@@ -20,12 +20,12 @@ from dvc.utils.fs import (
     walk_files,
 )
 
-from .base import BaseRemoteTree
+from .base import BaseTree
 
 logger = logging.getLogger(__name__)
 
 
-class LocalRemoteTree(BaseRemoteTree):
+class LocalTree(BaseTree):
     scheme = Schemes.LOCAL
     PATH_CLS = PathInfo
     PARAM_CHECKSUM = "md5"

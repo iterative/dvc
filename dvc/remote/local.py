@@ -20,7 +20,7 @@ from dvc.remote.base import (
 )
 from dvc.remote.index import RemoteIndexNoop
 
-from ..tree.local import LocalRemoteTree
+from ..tree.local import LocalTree
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ class LocalRemote(Remote):
 
 class LocalCache(CloudCache):
     DEFAULT_CACHE_TYPES = ["reflink", "copy"]
-    CACHE_MODE = LocalRemoteTree.CACHE_MODE
+    CACHE_MODE = LocalTree.CACHE_MODE
 
     def __init__(self, tree):
         super().__init__(tree)

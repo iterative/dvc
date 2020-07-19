@@ -237,7 +237,7 @@ class Config(dict):
     def __init__(
         self, dvc_dir=None, validate=True, tree=None,
     ):  # pylint: disable=super-init-not-called
-        from dvc.tree.local import LocalRemoteTree
+        from dvc.tree.local import LocalTree
 
         self.dvc_dir = dvc_dir
 
@@ -251,7 +251,7 @@ class Config(dict):
         else:
             self.dvc_dir = os.path.abspath(os.path.realpath(dvc_dir))
 
-        self.wtree = LocalRemoteTree(None, {"url": self.dvc_dir})
+        self.wtree = LocalTree(None, {"url": self.dvc_dir})
         self.tree = tree or self.wtree
 
         self.load(validate=validate)

@@ -12,7 +12,7 @@ from funcy import first, memoize, silent, wrap_with
 import dvc.prompt as prompt
 from dvc.scheme import Schemes
 
-from ..base import BaseRemoteTree
+from ..base import BaseTree
 from ..pool import get_connection
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ def ask_password(host, user, port):
     )
 
 
-class SSHRemoteTree(BaseRemoteTree):
+class SSHTree(BaseTree):
     scheme = Schemes.SSH
     REQUIRES = {"paramiko": "paramiko"}
     JOBS = 4
@@ -99,7 +99,7 @@ class SSHRemoteTree(BaseRemoteTree):
     def _load_user_ssh_config(hostname):
         import paramiko
 
-        user_config_file = SSHRemoteTree.ssh_config_filename()
+        user_config_file = SSHTree.ssh_config_filename()
         user_ssh_config = {}
         if hostname and os.path.exists(user_config_file):
             ssh_config = paramiko.SSHConfig()

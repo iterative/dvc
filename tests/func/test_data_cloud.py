@@ -9,7 +9,7 @@ from dvc.cache import NamedCache
 from dvc.external_repo import clean_repos
 from dvc.main import main
 from dvc.remote.base import STATUS_DELETED, STATUS_NEW, STATUS_OK
-from dvc.remote.local import LocalRemoteTree
+from dvc.remote.local import LocalTree
 from dvc.stage.exceptions import StageNotFound
 from dvc.utils.fs import remove
 from dvc.utils.yaml import dump_yaml, load_yaml
@@ -189,7 +189,7 @@ def test_warn_on_outdated_stage(tmp_dir, dvc, local_remote, caplog):
 
 def test_hash_recalculation(mocker, dvc, tmp_dir, local_remote):
     tmp_dir.gen({"foo": "foo"})
-    test_get_file_hash = mocker.spy(LocalRemoteTree, "get_file_hash")
+    test_get_file_hash = mocker.spy(LocalTree, "get_file_hash")
     ret = main(["config", "cache.type", "hardlink"])
     assert ret == 0
     ret = main(["add", "foo"])

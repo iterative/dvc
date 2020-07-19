@@ -6,7 +6,7 @@ import pytest
 from funcy import cached_property
 
 from dvc.path_info import CloudURLInfo
-from dvc.tree.gdrive import GDriveRemoteTree
+from dvc.tree.gdrive import GDriveTree
 
 from .base import Base
 
@@ -16,7 +16,7 @@ TEST_GDRIVE_REPO_BUCKET = "root"
 class GDrive(Base, CloudURLInfo):
     @staticmethod
     def should_test():
-        return os.getenv(GDriveRemoteTree.GDRIVE_CREDENTIALS_DATA) is not None
+        return os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA) is not None
 
     @cached_property
     def config(self):
@@ -46,6 +46,6 @@ def gdrive(make_tmp_dir):
     tmp_dir = make_tmp_dir("gdrive", dvc=True)
 
     ret = GDrive(GDrive.get_url())
-    tree = GDriveRemoteTree(tmp_dir.dvc, ret.config)
+    tree = GDriveTree(tmp_dir.dvc, ret.config)
     tree._gdrive_create_dir("root", tree.path_info.path)
     return ret

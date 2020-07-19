@@ -1,7 +1,7 @@
 import os
 
 from dvc.repo import locked
-from dvc.scm.tree import is_working_tree
+from dvc.tree.local import LocalTree
 
 
 @locked
@@ -33,7 +33,7 @@ def diff(self, a_rev="HEAD", b_rev=None):
                 else os.path.join(str(output), "")
             )
 
-        on_working_tree = is_working_tree(self.tree)
+        on_working_tree = isinstance(self.tree, LocalTree)
 
         def _to_checksum(output):
             if on_working_tree:

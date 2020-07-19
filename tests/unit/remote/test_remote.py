@@ -1,8 +1,8 @@
 import pytest
 
 from dvc.tree import get_cloud_tree
-from dvc.tree.gs import GSRemoteTree
-from dvc.tree.s3 import S3RemoteTree
+from dvc.tree.gs import GSTree
+from dvc.tree.s3 import S3Tree
 
 
 def test_remote_with_hash_jobs(dvc):
@@ -31,7 +31,7 @@ def test_remote_without_hash_jobs_default(dvc):
     assert tree.hash_jobs == tree.HASH_JOBS
 
 
-@pytest.mark.parametrize("tree_cls", [GSRemoteTree, S3RemoteTree])
+@pytest.mark.parametrize("tree_cls", [GSTree, S3Tree])
 def test_makedirs_not_create_for_top_level_path(tree_cls, dvc, mocker):
     url = f"{tree_cls.scheme}://bucket/"
     tree = tree_cls(dvc, {"url": url})
