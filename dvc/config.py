@@ -149,6 +149,8 @@ SCHEMA = {
                     "profile": str,
                     "credentialpath": str,
                     "endpointurl": str,
+                    "access_key_id": str,
+                    "secret_access_key": str,
                     Optional("listobjects", default=False): Bool,
                     Optional("use_ssl", default=True): Bool,
                     "sse": str,

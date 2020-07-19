@@ -54,6 +54,9 @@ class S3RemoteTree(BaseRemoteTree):
 
         self._append_aws_grants_to_extra_args(config)
 
+        self.access_key_id = config.get("access_key_id")
+        self.secret_access_key = config.get("secret_access_key")
+
         shared_creds = config.get("credentialpath")
         if shared_creds:
             os.environ.setdefault("AWS_SHARED_CREDENTIALS_FILE", shared_creds)
@@ -63,9 +66,14 @@ class S3RemoteTree(BaseRemoteTree):
     def s3(self):
         import boto3
 
-        session = boto3.session.Session(
-            profile_name=self.profile, region_name=self.region
-        )
+        session_opts = dict(profile_name=self.profile, region_name=self.region)
+
+        if self.access_key_id:
+            session_opts["aws_access_key_id"] = self.access_key_id
+        if self.secret_access_key:
+            session_opts["aws_secret_access_key"] = self.secret_access_key
+
+        session = boto3.session.Session(**session_opts)
 
         return session.client(
             "s3", endpoint_url=self.endpoint_url, use_ssl=self.use_ssl
