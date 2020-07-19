@@ -113,7 +113,7 @@ def hadoop():
 
 
 @pytest.fixture(scope="session")
-def hdfs_server(docker_compose, docker_services, hadoop):
+def hdfs_server(hadoop, docker_compose, docker_services):
     import pyarrow
 
     port = docker_services.port_for("hdfs", 8020)
