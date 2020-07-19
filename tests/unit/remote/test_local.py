@@ -4,9 +4,9 @@ import os
 import pytest
 
 from dvc.cache import NamedCache
+from dvc.cache.local import LocalCache
 from dvc.path_info import PathInfo
 from dvc.remote.index import RemoteIndexNoop
-from dvc.remote.local import LocalCache
 from dvc.tree.local import LocalTree
 
 

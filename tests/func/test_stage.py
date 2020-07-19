@@ -6,10 +6,10 @@ import pytest
 from dvc.dvcfile import SingleStageFile
 from dvc.main import main
 from dvc.output.local import LocalOutput
-from dvc.remote.local import LocalTree
 from dvc.repo import Repo
 from dvc.stage import PipelineStage, Stage
 from dvc.stage.exceptions import StageFileFormatError
+from dvc.tree.local import LocalTree
 from dvc.utils.yaml import dump_yaml, load_yaml
 from tests.basic_env import TestDvc
 

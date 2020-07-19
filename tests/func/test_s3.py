@@ -5,7 +5,7 @@ import moto.s3.models as s3model
 import pytest
 from moto import mock_s3
 
-from dvc.remote.base import CloudCache
+from dvc.cache.base import CloudCache
 from dvc.tree.s3 import S3Tree
 from tests.remotes import S3
 

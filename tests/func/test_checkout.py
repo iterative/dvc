@@ -7,6 +7,7 @@ import shutil
 import pytest
 from mock import patch
 
+from dvc.cache.base import CloudCache
 from dvc.dvcfile import DVC_FILE_SUFFIX, PIPELINE_FILE, Dvcfile
 from dvc.exceptions import (
     CheckoutError,
@@ -16,7 +17,7 @@ from dvc.exceptions import (
     NoOutputOrStageError,
 )
 from dvc.main import main
-from dvc.remote.base import CloudCache, Remote
+from dvc.remote.base import Remote
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError

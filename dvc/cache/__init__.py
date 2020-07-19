@@ -28,8 +28,8 @@ def _make_remote_property(name):
     """
 
     def getter(self):
-        from dvc.remote import get_cloud_tree
-        from dvc.remote.base import CloudCache
+        from ..tree import get_cloud_tree
+        from .base import CloudCache
 
         remote = self.config.get(name)
         if not remote:
@@ -52,8 +52,8 @@ class Cache:
     CACHE_DIR = "cache"
 
     def __init__(self, repo):
-        from dvc.remote import get_cloud_tree
-        from dvc.remote.local import LocalCache
+        from ..tree import get_cloud_tree
+        from .local import LocalCache
 
         self.repo = repo
         self.config = config = repo.config["cache"]
