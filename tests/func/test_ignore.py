@@ -4,16 +4,10 @@ import shutil
 import pytest
 
 from dvc.exceptions import DvcIgnoreInCollectedDirError
-from dvc.ignore import (
-    DvcIgnore,
-    DvcIgnoreDirs,
-    DvcIgnorePatterns,
-    DvcIgnorePatternsTrie,
-    DvcIgnoreRepo,
-)
+from dvc.ignore import DvcIgnore, DvcIgnorePatterns
 from dvc.path_info import PathInfo
+from dvc.pathspec_math import merge_patterns
 from dvc.repo import Repo
-from dvc.tree.local import LocalRemoteTree
 from dvc.utils import relpath
 from dvc.utils.fs import get_mtime_and_size
 from tests.dir_helpers import TmpDir
@@ -103,24 +97,23 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
     ignore_file = tmp_dir / dname / DvcIgnore.DVCIGNORE_FILE
     ignore_file.write_text("foo")
 
-    assert len(dvc.tree.dvcignore.ignores) == 3
-    assert DvcIgnoreDirs([".git", ".hg", ".dvc"]) in dvc.tree.dvcignore.ignores
-    ignore_pattern_trie = None
-    for ignore in dvc.tree.dvcignore.ignores:
-        if isinstance(ignore, DvcIgnorePatternsTrie):
-            ignore_pattern_trie = ignore
+    ignore_pattern_trie = dvc.tree.dvcignore.ignores_trie_tree
 
-    assert ignore_pattern_trie is not None
+    top_ignore_path = os.path.dirname(os.fspath(top_ignore_file))
+
+    sub_dir_path = os.path.dirname(os.fspath(ignore_file))
+
     assert (
-        DvcIgnorePatterns.from_files(
-            os.fspath(top_ignore_file),
-            LocalRemoteTree(None, {"url": dvc.root_dir}),
+        DvcIgnorePatterns(
+            *merge_patterns(
+                [".hg/", ".git/", ".dvc/"],
+                os.fspath(tmp_dir),
+                [os.path.basename(dname)],
+                top_ignore_path,
+            )
         )
-        == ignore_pattern_trie[os.fspath(ignore_file)]
-    )
-
-    assert any(
-        i for i in dvc.tree.dvcignore.ignores if isinstance(i, DvcIgnoreRepo)
+        == ignore_pattern_trie[top_ignore_path]
+        == ignore_pattern_trie[sub_dir_path]
     )
 
 
@@ -295,13 +288,8 @@ def test_pattern_trie_tree(tmp_dir, dvc):
         }
     )
     dvc.tree.__dict__.pop("dvcignore", None)
-    ignore_pattern_trie = None
-    for ignore in dvc.tree.dvcignore.ignores:
-        if isinstance(ignore, DvcIgnorePatternsTrie):
-            ignore_pattern_trie = ignore
-            break
+    ignore_pattern_trie = dvc.tree.dvcignore.ignores_trie_tree
 
-    assert ignore_pattern_trie is not None
     ignore_pattern_top = ignore_pattern_trie[os.fspath(tmp_dir / "top")]
     ignore_pattern_other = ignore_pattern_trie[os.fspath(tmp_dir / "other")]
     ignore_pattern_first = ignore_pattern_trie[
@@ -316,52 +304,30 @@ def test_pattern_trie_tree(tmp_dir, dvc):
     ignore_pattern_bottom = ignore_pattern_trie[
         os.fspath(tmp_dir / "top" / "first" / "middle" / "second" / "bottom")
     ]
-    assert not ignore_pattern_top
-    assert (
-        DvcIgnorePatterns([], os.fspath(tmp_dir / "top")) == ignore_pattern_top
+
+    base_pattern = [".hg/", ".git/", ".dvc/"], os.fspath(tmp_dir)
+    first_pattern = merge_patterns(
+        *base_pattern, ["a", "b", "c"], os.fspath(tmp_dir / "top" / "first")
     )
-    assert (
-        DvcIgnorePatterns(["1", "2", "3"], os.fspath(tmp_dir / "other"))
-        == ignore_pattern_other
+    second_pattern = merge_patterns(
+        *first_pattern,
+        ["d", "e", "f"],
+        os.fspath(tmp_dir / "top" / "first" / "middle" / "second")
     )
+    other_pattern = merge_patterns(
+        *base_pattern, ["1", "2", "3"], os.fspath(tmp_dir / "other")
+    )
+
+    assert DvcIgnorePatterns(*base_pattern) == ignore_pattern_top
+    assert DvcIgnorePatterns(*other_pattern) == ignore_pattern_other
     assert (
-        DvcIgnorePatterns(
-            ["a", "b", "c"], os.fspath(tmp_dir / "top" / "first")
-        )
+        DvcIgnorePatterns(*first_pattern)
         == ignore_pattern_first
-    )
-    assert (
-        DvcIgnorePatterns(
-            ["a", "b", "c"], os.fspath(tmp_dir / "top" / "first")
-        )
         == ignore_pattern_middle
     )
     assert (
-        DvcIgnorePatterns(
-            [
-                "a",
-                "b",
-                "c",
-                "/middle/second/**/d",
-                "/middle/second/**/e",
-                "/middle/second/**/f",
-            ],
-            os.fspath(tmp_dir / "top" / "first"),
-        )
+        DvcIgnorePatterns(*second_pattern)
         == ignore_pattern_second
-    )
-    assert (
-        DvcIgnorePatterns(
-            [
-                "a",
-                "b",
-                "c",
-                "/middle/second/**/d",
-                "/middle/second/**/e",
-                "/middle/second/**/f",
-            ],
-            os.fspath(tmp_dir / "top" / "first"),
-        )
         == ignore_pattern_bottom
     )
 

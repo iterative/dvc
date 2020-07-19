@@ -99,7 +99,7 @@ class Repo:
             )
 
         self.dvc_dir = os.path.join(self.root_dir, self.DVC_DIR)
-        self.config = Config(self.dvc_dir, tree=self.tree)
+        self.config = Config(self.dvc_dir)
 
         if not scm:
             no_scm = self.config["core"].get("no_scm", False)

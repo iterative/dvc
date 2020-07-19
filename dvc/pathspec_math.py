@@ -62,7 +62,7 @@ def _change_dirname(dirname, pattern_list, new_dirname):
     return [change_rule(rule, rel) for rule in pattern_list]
 
 
-def merge_patterns(prefix_a, pattern_a, prefix_b, pattern_b):
+def merge_patterns(pattern_a, prefix_a, pattern_b, prefix_b):
     """
     Merge two path specification patterns.
 
@@ -71,9 +71,9 @@ def merge_patterns(prefix_a, pattern_a, prefix_b, pattern_b):
     based on this new base directory.
     """
     if not pattern_a:
-        return prefix_b, pattern_b
+        return pattern_b, prefix_b
     elif not pattern_b:
-        return prefix_a, pattern_a
+        return pattern_a, prefix_a
 
     longest_common_dir = os.path.commonpath([prefix_a, prefix_b])
     new_pattern_a = _change_dirname(prefix_a, pattern_a, longest_common_dir)
@@ -84,4 +84,4 @@ def merge_patterns(prefix_a, pattern_a, prefix_b, pattern_b):
     else:
         merged_pattern = new_pattern_b + new_pattern_a
 
-    return longest_common_dir, merged_pattern
+    return merged_pattern, longest_common_dir
