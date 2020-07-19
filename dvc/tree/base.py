@@ -271,7 +271,9 @@ class BaseTree:
         if (
             hash_
             and self.is_dir_hash(hash_)
-            and not tree.exists(self.cache.tree.hash_to_path_info(hash_))
+            and not self.cache.tree.exists(
+                self.cache.tree.hash_to_path_info(hash_)
+            )
         ):
             hash_ = None
 
