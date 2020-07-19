@@ -5,14 +5,14 @@ from dvc.dvcfile import is_valid_filename
 from dvc.exceptions import OutputNotFoundError
 from dvc.path_info import PathInfo
 from dvc.remote.base import RemoteActionNotImplemented
-from dvc.tree.base import BaseRemoteTree
+from dvc.tree.base import BaseTree
 from dvc.utils import file_md5
 from dvc.utils.fs import copy_fobj_to_file, makedirs
 
 logger = logging.getLogger(__name__)
 
 
-class DvcTree(BaseRemoteTree):  # pylint:disable=abstract-method
+class DvcTree(BaseTree):  # pylint:disable=abstract-method
     """DVC repo tree.
 
     Args:
@@ -237,7 +237,7 @@ class DvcTree(BaseRemoteTree):  # pylint:disable=abstract-method
         return out.checksum
 
 
-class RepoTree(BaseRemoteTree):  # pylint:disable=abstract-method
+class RepoTree(BaseTree):  # pylint:disable=abstract-method
     """DVC + git-tracked files tree.
 
     Args:

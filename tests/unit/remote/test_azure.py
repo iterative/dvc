@@ -1,5 +1,5 @@
 from dvc.path_info import PathInfo
-from dvc.tree.azure import AzureRemoteTree
+from dvc.tree.azure import AzureTree
 
 container_name = "container-name"
 connection_string = (
@@ -15,7 +15,7 @@ def test_init_env_var(monkeypatch, dvc):
     monkeypatch.setenv("AZURE_STORAGE_CONNECTION_STRING", connection_string)
 
     config = {"url": "azure://"}
-    tree = AzureRemoteTree(dvc, config)
+    tree = AzureTree(dvc, config)
     assert tree.path_info == "azure://" + container_name
     assert tree._conn_kwargs["connection_string"] == connection_string
 
@@ -24,7 +24,7 @@ def test_init(dvc):
     prefix = "some/prefix"
     url = f"azure://{container_name}/{prefix}"
     config = {"url": url, "connection_string": connection_string}
-    tree = AzureRemoteTree(dvc, config)
+    tree = AzureTree(dvc, config)
     assert tree.path_info == url
     assert tree._conn_kwargs["connection_string"] == connection_string
 
@@ -32,7 +32,7 @@ def test_init(dvc):
 def test_get_file_hash(tmp_dir, azure):
     tmp_dir.gen("foo", "foo")
 
-    tree = AzureRemoteTree(None, azure.config)
+    tree = AzureTree(None, azure.config)
     to_info = azure
     tree.upload(PathInfo("foo"), to_info)
     assert tree.exists(to_info)

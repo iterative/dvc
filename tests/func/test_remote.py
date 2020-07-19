@@ -10,8 +10,8 @@ from dvc.config import Config
 from dvc.exceptions import DownloadError, UploadError
 from dvc.main import main
 from dvc.path_info import PathInfo
-from dvc.tree.base import BaseRemoteTree, RemoteCacheRequiredError
-from dvc.tree.local import LocalRemoteTree
+from dvc.tree.base import BaseTree, RemoteCacheRequiredError
+from dvc.tree.local import LocalTree
 from dvc.utils.fs import remove
 from tests.basic_env import TestDvc
 from tests.remotes import Local
@@ -151,7 +151,7 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
     path_info = PathInfo("data")
     with dvc.state:
         with patch.object(
-            BaseRemoteTree,
+            BaseTree,
             "_collect_dir",
             return_value=[
                 {"relpath": "1", "md5": "1"},
@@ -161,7 +161,7 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
             hash1 = dvc.cache.local.tree.get_hash(path_info)
 
         with patch.object(
-            BaseRemoteTree,
+            BaseTree,
             "_collect_dir",
             return_value=[
                 {"md5": "1", "relpath": "1"},
@@ -179,14 +179,14 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
     baz = tmp_dir.dvc_gen({"baz": {"foo": "baz content"}})[0].outs[0]
 
     # Faulty upload version, failing on foo
-    original = LocalRemoteTree._upload
+    original = LocalTree._upload
 
     def unreliable_upload(self, from_file, to_info, name=None, **kwargs):
         if "foo" in name:
             raise Exception("stop foo")
         return original(self, from_file, to_info, name, **kwargs)
 
-    with patch.object(LocalRemoteTree, "_upload", unreliable_upload):
+    with patch.object(LocalTree, "_upload", unreliable_upload):
         with pytest.raises(UploadError) as upload_error_info:
             dvc.push()
         assert upload_error_info.value.amount == 3
@@ -204,7 +204,7 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
     dvc.push()
     remove(dvc.cache.local.cache_dir)
 
-    with patch.object(LocalRemoteTree, "_download", side_effect=Exception):
+    with patch.object(LocalTree, "_download", side_effect=Exception):
         with pytest.raises(DownloadError) as download_error_info:
             dvc.pull()
         # error count should be len(.dir + standalone file checksums)
@@ -218,7 +218,7 @@ def test_raise_on_too_many_open_files(
     tmp_dir.dvc_gen({"file": "file content"})
 
     mocker.patch.object(
-        LocalRemoteTree,
+        LocalTree,
         "_upload",
         side_effect=OSError(errno.EMFILE, "Too many open files"),
     )
@@ -251,9 +251,7 @@ def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, local_remote):
     tmp_dir.dvc_gen({"foo": {"bar": "bar content"}})
     tmp_dir.dvc_gen({"baz": "baz content"})
 
-    mocked_upload = mocker.patch.object(
-        LocalRemoteTree, "_upload", return_value=0
-    )
+    mocked_upload = mocker.patch.object(LocalTree, "_upload", return_value=0)
     dvc.push()
     # last uploaded file should be dir checksum
     assert mocked_upload.call_args[0][0].endswith(".dir")

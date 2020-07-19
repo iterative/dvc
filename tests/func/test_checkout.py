@@ -21,8 +21,8 @@ from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
-from dvc.tree.local import LocalRemoteTree
-from dvc.tree.s3 import S3RemoteTree
+from dvc.tree.local import LocalTree
+from dvc.tree.s3 import S3Tree
 from dvc.utils import relpath
 from dvc.utils.fs import walk_files
 from dvc.utils.yaml import dump_yaml, load_yaml
@@ -308,8 +308,8 @@ class TestGitIgnoreWhenCheckout(CheckoutBase):
 class TestCheckoutMissingMd5InStageFile(TestRepro):
     def test(self):
         d = load_yaml(self.file1_stage)
-        del d[Stage.PARAM_OUTS][0][LocalRemoteTree.PARAM_CHECKSUM]
-        del d[Stage.PARAM_DEPS][0][LocalRemoteTree.PARAM_CHECKSUM]
+        del d[Stage.PARAM_OUTS][0][LocalTree.PARAM_CHECKSUM]
+        del d[Stage.PARAM_DEPS][0][LocalTree.PARAM_CHECKSUM]
         dump_yaml(self.file1_stage, d)
 
         with pytest.raises(CheckoutError):
@@ -759,9 +759,9 @@ def test_checkout_recursive(tmp_dir, dvc):
     not S3.should_test(), reason="Only run with S3 credentials"
 )
 def test_checkout_for_external_outputs(tmp_dir, dvc):
-    dvc.cache.s3 = CloudCache(S3RemoteTree(dvc, {"url": S3.get_url()}))
+    dvc.cache.s3 = CloudCache(S3Tree(dvc, {"url": S3.get_url()}))
 
-    remote = Remote(S3RemoteTree(dvc, {"url": S3.get_url()}))
+    remote = Remote(S3Tree(dvc, {"url": S3.get_url()}))
     file_path = remote.tree.path_info / "foo"
     remote.tree.s3.put_object(
         Bucket=remote.tree.path_info.bucket, Key=file_path.path, Body="foo"

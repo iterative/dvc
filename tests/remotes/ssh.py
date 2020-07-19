@@ -129,9 +129,9 @@ def ssh_connection(ssh_server):
 
 @pytest.fixture
 def ssh(ssh_server, monkeypatch):
-    from dvc.tree.ssh import SSHRemoteTree
+    from dvc.tree.ssh import SSHTree
 
     # NOTE: see http://github.com/iterative/dvc/pull/3501
-    monkeypatch.setattr(SSHRemoteTree, "CAN_TRAVERSE", False)
+    monkeypatch.setattr(SSHTree, "CAN_TRAVERSE", False)
 
     return SSHMocked(SSHMocked.get_url(TEST_SSH_USER, ssh_server.port))

@@ -8,13 +8,13 @@ from dvc.output.base import BaseOutput
 from dvc.utils import relpath
 from dvc.utils.fs import path_isin
 
-from ..tree.local import LocalRemoteTree
+from ..tree.local import LocalTree
 
 logger = logging.getLogger(__name__)
 
 
 class LocalOutput(BaseOutput):
-    TREE_CLS = LocalRemoteTree
+    TREE_CLS = LocalTree
     sep = os.sep
 
     def __init__(self, stage, path, *args, **kwargs):
@@ -25,7 +25,7 @@ class LocalOutput(BaseOutput):
         if (
             self.is_in_repo
             and self.repo
-            and isinstance(self.repo.tree, LocalRemoteTree)
+            and isinstance(self.repo.tree, LocalTree)
         ):
             self.tree = self.repo.tree
 

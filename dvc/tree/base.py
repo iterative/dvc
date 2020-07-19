@@ -57,7 +57,7 @@ class RemoteMissingDepsError(DvcException):
     pass
 
 
-class BaseRemoteTree:
+class BaseTree:
     scheme = "base"
     REQUIRES = {}
     PATH_CLS = URLInfo

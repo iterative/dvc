@@ -20,7 +20,7 @@ from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.repo.tree import RepoTree
 from dvc.scm.git import Git
-from dvc.tree.local import LocalRemoteTree
+from dvc.tree.local import LocalTree
 from dvc.utils.fs import remove
 
 logger = logging.getLogger(__name__)
@@ -102,7 +102,7 @@ class BaseExternalRepo:
         return RepoTree(self, fetch=True)
 
     def get_rev(self):
-        if isinstance(self.tree, LocalRemoteTree):
+        if isinstance(self.tree, LocalTree):
             return self.scm.get_rev()
         return self.tree.rev
 

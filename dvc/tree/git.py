@@ -6,7 +6,7 @@ import stat
 from funcy import cached_property
 
 from dvc.exceptions import DvcException
-from dvc.tree.base import BaseRemoteTree
+from dvc.tree.base import BaseTree
 from dvc.utils import relpath
 
 # see git-fast-import(1)
@@ -21,7 +21,7 @@ def _item_basename(item):
     return os.path.basename(item.path)
 
 
-class GitTree(BaseRemoteTree):  # pylint:disable=abstract-method
+class GitTree(BaseTree):  # pylint:disable=abstract-method
     """Proxies the repo file access methods to Git objects"""
 
     def __init__(self, git, rev, use_dvcignore=False, dvcignore_root=None):

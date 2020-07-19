@@ -13,7 +13,7 @@ from dvc.exceptions import (
     RemoteCacheRequiredError,
 )
 
-from ..tree.base import BaseRemoteTree
+from ..tree.base import BaseTree
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class OutputIsStageFileError(DvcException):
 class BaseOutput:
     IS_DEPENDENCY = False
 
-    TREE_CLS = BaseRemoteTree
+    TREE_CLS = BaseTree
 
     PARAM_PATH = "path"
     PARAM_CACHE = "cache"

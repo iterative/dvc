@@ -10,13 +10,13 @@ from urllib.parse import urlparse
 from dvc.scheme import Schemes
 from dvc.utils import fix_env, tmp_fname
 
-from .base import BaseRemoteTree, RemoteCmdError
+from .base import BaseTree, RemoteCmdError
 from .pool import get_connection
 
 logger = logging.getLogger(__name__)
 
 
-class HDFSRemoteTree(BaseRemoteTree):
+class HDFSTree(BaseTree):
     scheme = Schemes.HDFS
     REQUIRES = {"pyarrow": "pyarrow"}
     REGEX = r"^hdfs://((?P<user>.*)@)?.*$"

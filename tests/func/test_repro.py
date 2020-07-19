@@ -15,7 +15,7 @@ from dvc.exceptions import (
 )
 from dvc.main import main
 from dvc.output.base import BaseOutput
-from dvc.remote.local import LocalRemoteTree
+from dvc.remote.local import LocalTree
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
@@ -757,8 +757,8 @@ class TestReproChangedDirData(SingleStageRun, TestDvc):
 class TestReproMissingMd5InStageFile(TestRepro):
     def test(self):
         d = load_yaml(self.file1_stage)
-        del d[Stage.PARAM_OUTS][0][LocalRemoteTree.PARAM_CHECKSUM]
-        del d[Stage.PARAM_DEPS][0][LocalRemoteTree.PARAM_CHECKSUM]
+        del d[Stage.PARAM_OUTS][0][LocalTree.PARAM_CHECKSUM]
+        del d[Stage.PARAM_DEPS][0][LocalTree.PARAM_CHECKSUM]
         dump_yaml(self.file1_stage, d)
 
         stages = self.dvc.reproduce(self.file1_stage)
@@ -934,9 +934,9 @@ class TestReproAlreadyCached(TestRepro):
         self.assertEqual(ret, 0)
 
         patch_download = patch.object(
-            LocalRemoteTree,
+            LocalTree,
             "download",
-            side_effect=LocalRemoteTree.download,
+            side_effect=LocalTree.download,
             autospec=True,
         )
 

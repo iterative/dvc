@@ -13,7 +13,7 @@ from dvc.ignore import (
 )
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
-from dvc.tree.local import LocalRemoteTree
+from dvc.tree.local import LocalTree
 from dvc.utils import relpath
 from dvc.utils.fs import get_mtime_and_size
 from tests.dir_helpers import TmpDir
@@ -113,8 +113,7 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
     assert ignore_pattern_trie is not None
     assert (
         DvcIgnorePatterns.from_files(
-            os.fspath(top_ignore_file),
-            LocalRemoteTree(None, {"url": dvc.root_dir}),
+            os.fspath(top_ignore_file), LocalTree(None, {"url": dvc.root_dir}),
         )
         == ignore_pattern_trie[os.fspath(ignore_file)]
     )

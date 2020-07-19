@@ -10,7 +10,7 @@ from dvc.path_info import HTTPURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 
-from .base import BaseRemoteTree
+from .base import BaseTree
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ def ask_password(host, user):
     )
 
 
-class HTTPRemoteTree(BaseRemoteTree):  # pylint:disable=abstract-method
+class HTTPTree(BaseTree):  # pylint:disable=abstract-method
     scheme = Schemes.HTTP
     PATH_CLS = HTTPURLInfo
     PARAM_CHECKSUM = "etag"
