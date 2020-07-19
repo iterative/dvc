@@ -5,7 +5,6 @@ from urllib.parse import urlparse
 from dvc.exceptions import DvcException
 from dvc.istextfile import istextfile
 from dvc.output.base import BaseOutput
-from dvc.scm.tree import is_working_tree
 from dvc.utils import relpath
 from dvc.utils.fs import path_isin
 
@@ -23,7 +22,11 @@ class LocalOutput(BaseOutput):
             path = relpath(path, stage.wdir)
 
         super().__init__(stage, path, *args, **kwargs)
-        if self.is_in_repo and self.repo and is_working_tree(self.repo.tree):
+        if (
+            self.is_in_repo
+            and self.repo
+            and isinstance(self.repo.tree, LocalRemoteTree)
+        ):
             self.tree = self.repo.tree
 
     def _parse_path(self, tree, path):
