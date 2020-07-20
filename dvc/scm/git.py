@@ -3,9 +3,10 @@
 import logging
 import os
 import shlex
+from functools import partial
 
 import yaml
-from funcy import cached_property, partial
+from funcy import cached_property
 from pathspec.patterns import GitWildMatchPattern
 
 from dvc.exceptions import GitHookAlreadyExistsError
