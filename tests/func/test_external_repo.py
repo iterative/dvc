@@ -140,7 +140,7 @@ def test_shallow_clone_branch(erepo_dir):
         _, shallow = CLONES[url]
         assert shallow
 
-        with external_repo(url, rev="master") as repo:
+        with external_repo(url) as repo:
             with repo.open_by_relpath("file") as fd:
                 assert fd.read() == "master"
 

@@ -32,7 +32,7 @@ def external_repo(url, rev=None, for_write=False):
     logger.debug("Creating external repo %s@%s", url, rev)
     path = _cached_clone(url, rev, for_write=for_write)
     if not rev:
-        rev = "HEAD"
+        rev = "refs/remotes/origin/HEAD"
     try:
         repo = ExternalRepo(path, url, rev, for_write=for_write)
     except NotDvcRepoError:
