@@ -69,7 +69,7 @@ class LocalTree(BaseTree):
     def open(path_info, mode="r", encoding=None):
         return open(path_info, mode=mode, encoding=encoding)
 
-    def exists(self, path_info):
+    def exists(self, path_info, use_dvcignore=True):
         assert isinstance(path_info, str) or path_info.scheme == "local"
         if self.repo:
             ret = os.path.lexists(path_info)
@@ -77,6 +77,8 @@ class LocalTree(BaseTree):
             ret = os.path.exists(path_info)
         if not ret:
             return False
+        if not use_dvcignore:
+            return True
 
         return not self.dvcignore.is_ignored_file(
             path_info

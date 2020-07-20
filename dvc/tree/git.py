@@ -76,9 +76,13 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
             return io.BytesIO(data)
         return io.StringIO(data.decode(encoding))
 
-    def exists(self, path):  # pylint: disable=arguments-differ
+    def exists(
+        self, path, use_dvcignore=True
+    ):  # pylint: disable=arguments-differ
         if self._git_object_by_path(path) is None:
             return False
+        if not use_dvcignore:
+            return True
 
         return not self.dvcignore.is_ignored_file(
             path

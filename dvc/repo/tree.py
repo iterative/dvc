@@ -277,7 +277,9 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
             )
         return self.repo.tree.open(path, mode=mode, encoding=encoding)
 
-    def exists(self, path):  # pylint: disable=arguments-differ
+    def exists(
+        self, path, use_dvcignore=True
+    ):  # pylint: disable=arguments-differ
         return self.repo.tree.exists(path) or (
             self.dvctree and self.dvctree.exists(path)
         )

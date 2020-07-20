@@ -122,7 +122,7 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
         except requests.exceptions.RequestException:
             raise DvcException(f"could not perform a {method} request")
 
-    def exists(self, path_info):
+    def exists(self, path_info, use_dvcignore=True):
         return bool(self.request("HEAD", path_info.url))
 
     def get_file_hash(self, path_info):

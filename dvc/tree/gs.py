@@ -119,7 +119,7 @@ class GSTree(BaseTree):
         )
         return signing_credentials.signer.sign(blob)
 
-    def exists(self, path_info):
+    def exists(self, path_info, use_dvcignore=True):
         """Check if the blob exists. If it does not exist,
         it could be a part of a directory path.
 
