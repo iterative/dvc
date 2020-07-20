@@ -119,6 +119,13 @@ HTTP_COMMON = {
     "password": str,
     "ask_password": Bool,
 }
+WEBDAV_COMMON = {
+    "root": str,
+    "user": str,
+    "password": str,
+    "ask_password": Bool,
+}
+
 SCHEMA = {
     "core": {
         "remote": Lower,
@@ -199,6 +206,8 @@ SCHEMA = {
                 },
                 "http": {**HTTP_COMMON, **REMOTE_COMMON},
                 "https": {**HTTP_COMMON, **REMOTE_COMMON},
+                "webdav": {**WEBDAV_COMMON, **REMOTE_COMMON},
+                "webdavs": {**WEBDAV_COMMON, **REMOTE_COMMON},
                 "remote": {str: object},  # Any of the above options are valid
             }
         )
