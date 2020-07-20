@@ -5,7 +5,7 @@ import os
 import shlex
 
 import yaml
-from funcy import cached_property
+from funcy import cached_property, partial
 from pathspec.patterns import GitWildMatchPattern
 
 from dvc.exceptions import GitHookAlreadyExistsError
@@ -92,7 +92,7 @@ class Git(Base):
         return self.repo.working_tree_dir
 
     @staticmethod
-    def clone(url, to_path, rev=None):
+    def clone(url, to_path, rev=None, shallow_branch=None):
         import git
 
         ld_key = "LD_LIBRARY_PATH"
@@ -109,14 +109,23 @@ class Git(Base):
             env[ld_key] = ""
 
         try:
+            if shallow_branch is not None and os.path.exists(url):
+                # git disables --depth for local clones unless file:// url
+                # scheme is used
+                url = f"file://{url}"
             with TqdmGit(desc="Cloning", unit="obj") as pbar:
-                tmp_repo = git.Repo.clone_from(
+                clone_from = partial(
+                    git.Repo.clone_from,
                     url,
                     to_path,
                     env=env,  # needed before we can fix it in __init__
                     no_single_branch=True,
                     progress=pbar.update_git,
                 )
+                if shallow_branch is None:
+                    tmp_repo = clone_from()
+                else:
+                    tmp_repo = clone_from(branch=shallow_branch, depth=1)
             tmp_repo.close()
         except git.exc.GitCommandError as exc:  # pylint: disable=no-member
             raise CloneError(url, to_path) from exc

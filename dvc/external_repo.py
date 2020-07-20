@@ -19,6 +19,7 @@ from dvc.exceptions import (
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.repo.tree import RepoTree
+from dvc.scm.base import CloneError
 from dvc.scm.git import Git
 from dvc.tree.local import LocalTree
 from dvc.utils.fs import remove
@@ -59,7 +60,7 @@ CACHE_DIRS = {}
 
 def clean_repos():
     # Outside code should not see cache while we are removing
-    paths = list(CLONES.values()) + list(CACHE_DIRS.values())
+    paths = [path for path, _ in CLONES.values()] + list(CACHE_DIRS.values())
     CLONES.clear()
     CACHE_DIRS.clear()
 
@@ -251,10 +252,10 @@ def _cached_clone(url, rev, for_write=False):
     """
     # even if we have already cloned this repo, we may need to
     # fetch/fast-forward to get specified rev
-    clone_path = _clone_default_branch(url, rev)
+    clone_path, shallow = _clone_default_branch(url, rev, for_write=for_write)
 
     if not for_write and (url) in CLONES:
-        return CLONES[url]
+        return CLONES[url][0]
 
     # Copy to a new dir to keep the clone clean
     repo_path = tempfile.mkdtemp("dvc-erepo")
@@ -265,17 +266,17 @@ def _cached_clone(url, rev, for_write=False):
     if for_write:
         _git_checkout(repo_path, rev)
     else:
-        CLONES[url] = repo_path
+        CLONES[url] = (repo_path, shallow)
     return repo_path
 
 
 @wrap_with(threading.Lock())
-def _clone_default_branch(url, rev):
+def _clone_default_branch(url, rev, for_write=False):
     """Get or create a clean clone of the url.
 
     The cloned is reactualized with git pull unless rev is a known sha.
     """
-    clone_path = CLONES.get(url)
+    clone_path, shallow = CLONES.get(url, (None, False))
 
     git = None
     try:
@@ -283,18 +284,35 @@ def _clone_default_branch(url, rev):
             git = Git(clone_path)
             # Do not pull for known shas, branches and tags might move
             if not Git.is_sha(rev) or not git.has_rev(rev):
-                logger.debug("erepo: git pull %s", url)
+                if shallow:
+                    logger.debug("erepo: unshallowing clone for '%s'", url)
+                    git.repo.git.fetch(unshallow=True)
+                    shallow = False
+                    CLONES[url] = (clone_path, shallow)
+                logger.debug("erepo: git pull '%s'", url)
                 git.pull()
         else:
-            logger.debug("erepo: git clone %s to a temporary dir", url)
+            logger.debug("erepo: git clone '%s' to a temporary dir", url)
             clone_path = tempfile.mkdtemp("dvc-clone")
-            git = Git.clone(url, clone_path)
-            CLONES[url] = clone_path
+            if not for_write and rev and not Git.is_sha(rev):
+                # If rev is a tag or branch name try shallow clone first
+                try:
+                    git = Git.clone(url, clone_path, shallow_branch=rev)
+                    shallow = True
+                    logger.debug(
+                        "erepo: using shallow clone for branch '%s'", rev
+                    )
+                except CloneError:
+                    pass
+            if not git:
+                git = Git.clone(url, clone_path)
+                shallow = False
+            CLONES[url] = (clone_path, shallow)
     finally:
         if git:
             git.close()
 
-    return clone_path
+    return clone_path, shallow
 
 
 def _git_checkout(repo_path, rev):
