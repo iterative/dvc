@@ -280,7 +280,7 @@ class BaseTree:
             raise RemoteCacheRequiredError(path_info)
 
         dir_info = self._collect_dir(path_info, **kwargs)
-        return self._save_dir_info(dir_info)
+        return self.save_dir_info(dir_info)
 
     def hash_to_path_info(self, hash_):
         return self.path_info / hash_[0:2] / hash_[2:]
@@ -345,7 +345,7 @@ class BaseTree:
         # Sorting the list by path to ensure reproducibility
         return sorted(result, key=itemgetter(self.PARAM_RELPATH))
 
-    def _save_dir_info(self, dir_info):
+    def save_dir_info(self, dir_info):
         typ, hash_, tmp_info = self._get_dir_info_hash(dir_info)
         new_info = self.cache.tree.hash_to_path_info(hash_)
         if self.cache.changed_cache_file(hash_):
@@ -359,6 +359,9 @@ class BaseTree:
         return typ, hash_
 
     def _get_dir_info_hash(self, dir_info):
+        # Sorting the list by path to ensure reproducibility
+        dir_info = sorted(dir_info, key=itemgetter(self.PARAM_RELPATH))
+
         tmp = tempfile.NamedTemporaryFile(delete=False).name
         with open(tmp, "w+") as fobj:
             json.dump(dir_info, fobj, sort_keys=True)

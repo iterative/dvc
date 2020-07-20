@@ -61,6 +61,26 @@ class CmdPrePush(CmdHookBase):
         return main(["push"])
 
 
+class CmdMergeDriver(CmdHookBase):
+    def _run(self):
+        from dvc.dvcfile import Dvcfile
+        from dvc.repo import Repo
+
+        dvc = Repo()
+
+        try:
+            with dvc.state:
+                ancestor = Dvcfile(dvc, self.args.ancestor, verify=False)
+                our = Dvcfile(dvc, self.args.our, verify=False)
+                their = Dvcfile(dvc, self.args.their, verify=False)
+
+                our.merge(ancestor, their)
+
+                return 0
+        finally:
+            dvc.close()
+
+
 def add_parser(subparsers, parent_parser):
     GIT_HOOK_HELP = "Run GIT hook."
 
@@ -113,3 +133,27 @@ def add_parser(subparsers, parent_parser):
         "args", nargs="*", help="Arguments passed by GIT or pre-commit tool.",
     )
     pre_push_parser.set_defaults(func=CmdPrePush)
+
+    MERGE_DRIVER_HELP = "Run GIT merge driver."
+    merge_driver_parser = git_hook_subparsers.add_parser(
+        "merge-driver",
+        parents=[parent_parser],
+        description=MERGE_DRIVER_HELP,
+        help=MERGE_DRIVER_HELP,
+    )
+    merge_driver_parser.add_argument(
+        "--ancestor",
+        required=True,
+        help="Ancestor's version of the conflicting file.",
+    )
+    merge_driver_parser.add_argument(
+        "--our",
+        required=True,
+        help="Current version of the conflicting file.",
+    )
+    merge_driver_parser.add_argument(
+        "--their",
+        required=True,
+        help="Other branch's version of the conflicting file.",
+    )
+    merge_driver_parser.set_defaults(func=CmdMergeDriver)

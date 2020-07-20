@@ -56,9 +56,10 @@ def check_dvc_filename(path):
 class FileMixin:
     SCHEMA = None
 
-    def __init__(self, repo, path, **kwargs):
+    def __init__(self, repo, path, verify=True, **kwargs):
         self.repo = repo
         self.path = path
+        self.verify = verify
 
     def __repr__(self):
         return "{}: {}".format(
@@ -90,7 +91,8 @@ class FileMixin:
         # 3. path doesn't represent a regular file
         if not self.exists():
             raise StageFileDoesNotExistError(self.path)
-        check_dvc_filename(self.path)
+        if self.verify:
+            check_dvc_filename(self.path)
         if not self.repo.tree.isfile(self.path):
             raise StageFileIsNotDvcFileError(self.path)
 
@@ -115,6 +117,9 @@ class FileMixin:
     def dump(self, stage, **kwargs):
         raise NotImplementedError
 
+    def merge(self, ancestor, other):
+        raise NotImplementedError
+
 
 class SingleStageFile(FileMixin):
     from dvc.schema import COMPILED_SINGLE_STAGE_SCHEMA as SCHEMA
@@ -134,7 +139,8 @@ class SingleStageFile(FileMixin):
         from dvc.stage import PipelineStage
 
         assert not isinstance(stage, PipelineStage)
-        check_dvc_filename(self.path)
+        if self.verify:
+            check_dvc_filename(self.path)
         logger.debug(
             "Saving information to '{file}'.".format(file=relpath(self.path))
         )
@@ -143,6 +149,14 @@ class SingleStageFile(FileMixin):
 
     def remove_stage(self, stage):  # pylint: disable=unused-argument
         self.remove()
+
+    def merge(self, ancestor, other):
+        assert isinstance(ancestor, SingleStageFile)
+        assert isinstance(other, SingleStageFile)
+
+        stage = self.stage
+        stage.merge(ancestor.stage, other.stage)
+        self.dump(stage)
 
 
 class PipelineFile(FileMixin):
@@ -161,7 +175,8 @@ class PipelineFile(FileMixin):
         from dvc.stage import PipelineStage
 
         assert isinstance(stage, PipelineStage)
-        check_dvc_filename(self.path)
+        if self.verify:
+            check_dvc_filename(self.path)
 
         if update_pipeline and not stage.is_data_source:
             self._dump_pipeline_file(stage)
@@ -239,6 +254,9 @@ class PipelineFile(FileMixin):
         else:
             super().remove()
 
+    def merge(self, ancestor, other):
+        raise NotImplementedError
+
 
 class Lockfile(FileMixin):
     from dvc.schema import COMPILED_LOCKFILE_SCHEMA as SCHEMA
@@ -294,6 +312,9 @@ class Lockfile(FileMixin):
             dump_yaml(self.path, d)
         else:
             self.remove()
+
+    def merge(self, ancestor, other):
+        raise NotImplementedError
 
 
 class Dvcfile:

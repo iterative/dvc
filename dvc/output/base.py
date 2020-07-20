@@ -10,6 +10,7 @@ from dvc.cache import NamedCache
 from dvc.exceptions import (
     CollectCacheError,
     DvcException,
+    MergeError,
     RemoteCacheRequiredError,
 )
 
@@ -516,3 +517,37 @@ class BaseOutput:
             check = stage.repo.tree.dvcignore.check_ignore(path)
             if check.match:
                 raise cls.IsIgnoredError(check)
+
+    def _check_can_merge(self, out):
+        if self.scheme != out.scheme:
+            raise MergeError("unable to auto-merge outputs of different types")
+
+        my = self.dumpd()
+        other = out.dumpd()
+
+        my.pop(self.tree.PARAM_CHECKSUM)
+        other.pop(self.tree.PARAM_CHECKSUM)
+
+        if my != other:
+            raise MergeError(
+                "unable to auto-merge outputs with different options"
+            )
+
+        if not out.is_dir_checksum:
+            raise MergeError(
+                "unable to auto-merge outputs that are not directories"
+            )
+
+    def merge(self, ancestor, other):
+        assert other
+
+        if ancestor:
+            self._check_can_merge(ancestor)
+            ancestor_info = ancestor.info
+        else:
+            ancestor_info = None
+
+        self._check_can_merge(self)
+        self._check_can_merge(other)
+
+        self.info = self.cache.merge(ancestor_info, self.info, other.info)

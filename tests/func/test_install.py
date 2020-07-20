@@ -68,3 +68,65 @@ class TestInstall:
         scm.repo.git.push("origin", "master")
         assert expected_storage_path.is_file()
         assert expected_storage_path.read_text() == "file_content"
+
+
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="Git hooks aren't supported on Windows"
+)
+def test_merge_driver_no_ancestor(tmp_dir, scm, dvc):
+    scm.commit("init")
+    scm.install()
+    (tmp_dir / ".gitattributes").write_text("*.dvc merge=dvc")
+    scm.checkout("one", create_new=True)
+    tmp_dir.dvc_gen({"data": {"foo": "foo"}}, commit="one: add data")
+
+    scm.checkout("master")
+    scm.checkout("two", create_new=True)
+    tmp_dir.dvc_gen({"data": {"bar": "bar"}}, commit="two: add data")
+
+    scm.repo.git.merge("one", m="merged")
+
+    # NOTE: dvc shouldn't checkout automatically as it might take a long time
+    assert (tmp_dir / "data").read_text() == {"bar": "bar"}
+    assert (tmp_dir / "data.dvc").read_text() == (
+        "outs:\n"
+        "- md5: 5ea40360f5b4ec688df672a4db9c17d1.dir\n"
+        "  path: data\n"
+    )
+
+    dvc.checkout("data.dvc")
+    assert (tmp_dir / "data").read_text() == {"foo": "foo", "bar": "bar"}
+
+
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="Git hooks aren't supported on Windows"
+)
+def test_merge_driver(tmp_dir, scm, dvc):
+    scm.commit("init")
+    scm.install()
+    (tmp_dir / ".gitattributes").write_text("*.dvc merge=dvc")
+    tmp_dir.dvc_gen({"data": {"master": "master"}}, commit="master: add data")
+
+    scm.checkout("one", create_new=True)
+    tmp_dir.dvc_gen({"data": {"one": "one"}}, commit="one: add data")
+
+    scm.checkout("master")
+    scm.checkout("two", create_new=True)
+    tmp_dir.dvc_gen({"data": {"two": "two"}}, commit="two: add data")
+
+    scm.repo.git.merge("one", m="merged")
+
+    # NOTE: dvc shouldn't checkout automatically as it might take a long time
+    assert (tmp_dir / "data").read_text() == {"master": "master", "two": "two"}
+    assert (tmp_dir / "data.dvc").read_text() == (
+        "outs:\n"
+        "- md5: 839ef9371606817569c1ee0e5f4ed233.dir\n"
+        "  path: data\n"
+    )
+
+    dvc.checkout("data.dvc")
+    assert (tmp_dir / "data").read_text() == {
+        "master": "master",
+        "one": "one",
+        "two": "two",
+    }
