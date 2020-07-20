@@ -99,25 +99,6 @@ class DvcIgnorePatterns(DvcIgnore):
         return bool(self.pattern_list)
 
 
-class DvcIgnorePatternsTrie(DvcIgnore):
-    def __init__(self, default_ignore_pattern, root):
-        self.trie = StringTrie(separator=os.sep)
-        self.trie[root] = DvcIgnorePatterns(default_ignore_pattern, root)
-
-    def __call__(self, root, dirs, files):
-        ignore_pattern = self[root]
-        if ignore_pattern:
-            return ignore_pattern(root, dirs, files)
-        return dirs, files
-
-    def __setitem__(self, root, ignore_pattern):
-        self.trie[root] = ignore_pattern
-
-    def __getitem__(self, root):
-        ignore_pattern = self.trie.longest_prefix(root)
-        return ignore_pattern.value
-
-
 class DvcIgnoreFilterNoop:
     def __init__(self, tree, root_dir):
         pass
@@ -139,7 +120,8 @@ class DvcIgnoreFilter:
         self.tree = tree
         self.root_dir = root_dir
         default_ignore_pattern = [".hg/", ".git/", "{}/".format(Repo.DVC_DIR)]
-        self.ignores_trie_tree = DvcIgnorePatternsTrie(
+        self.ignores_trie_tree = StringTrie(separator=os.sep)
+        self.ignores_trie_tree[root_dir] = DvcIgnorePatterns(
             default_ignore_pattern, root_dir
         )
         for root, dirs, _ in self.tree.walk(self.root_dir):
@@ -152,7 +134,7 @@ class DvcIgnoreFilter:
             new_pattern = DvcIgnorePatterns.from_files(
                 ignore_file_path, self.tree
             )
-            old_pattern = self.ignores_trie_tree[dirname]
+            old_pattern = self._get_tire_pattern(dirname)
             self.ignores_trie_tree[dirname] = DvcIgnorePatterns(
                 *merge_patterns(
                     old_pattern.pattern_list,
@@ -163,26 +145,31 @@ class DvcIgnoreFilter:
             )
 
     def __call__(self, root, dirs, files):
-        return self.ignores_trie_tree(root, dirs, files)
+        ignore_pattern = self._get_tire_pattern(root)
+        return ignore_pattern(root, dirs, files)
 
-    def is_ignored_dir(self, path):
+    def _get_tire_pattern(self, dirname):
+        ignore_pattern = self.ignores_trie_tree.longest_prefix(dirname).value
+        if not ignore_pattern:
+            return DvcIgnorePatterns([], dirname)
+        return ignore_pattern
+
+    def _is_ignored(self, path, is_dir=False):
         if self._outside_repo(path):
             return True
+        dirname, basename = os.path.split(os.path.normpath(path))
+        ignore_pattern = self._get_tire_pattern(dirname)
+        return ignore_pattern.matches(dirname, basename, is_dir)
 
+    def is_ignored_dir(self, path):
         path = os.path.abspath(path)
         if path == self.root_dir:
             return False
-        dirname, basename = os.path.split(path)
-        dirs, _ = self(dirname, [basename], [])
-        return not dirs
+
+        return self._is_ignored(path, True)
 
     def is_ignored_file(self, path):
-        if self._outside_repo(path):
-            return True
-
-        dirname, basename = os.path.split(os.path.normpath(path))
-        _, files = self(os.path.abspath(dirname), [], [basename])
-        return not files
+        return self._is_ignored(path, False)
 
     def _outside_repo(self, path):
         path = PathInfo(path)

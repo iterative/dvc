@@ -97,7 +97,7 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
     ignore_file = tmp_dir / dname / DvcIgnore.DVCIGNORE_FILE
     ignore_file.write_text("foo")
 
-    ignore_pattern_trie = dvc.tree.dvcignore.ignores_trie_tree
+    dvcignore = dvc.tree.dvcignore
 
     top_ignore_path = os.path.dirname(os.fspath(top_ignore_file))
 
@@ -112,8 +112,8 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
                 top_ignore_path,
             )
         )
-        == ignore_pattern_trie[top_ignore_path]
-        == ignore_pattern_trie[sub_dir_path]
+        == dvcignore._get_tire_pattern(top_ignore_path)
+        == dvcignore._get_tire_pattern(sub_dir_path)
     )
 
 
@@ -288,22 +288,26 @@ def test_pattern_trie_tree(tmp_dir, dvc):
         }
     )
     dvc.tree.__dict__.pop("dvcignore", None)
-    ignore_pattern_trie = dvc.tree.dvcignore.ignores_trie_tree
+    dvcignore = dvc.tree.dvcignore
 
-    ignore_pattern_top = ignore_pattern_trie[os.fspath(tmp_dir / "top")]
-    ignore_pattern_other = ignore_pattern_trie[os.fspath(tmp_dir / "other")]
-    ignore_pattern_first = ignore_pattern_trie[
+    ignore_pattern_top = dvcignore._get_tire_pattern(
+        os.fspath(tmp_dir / "top")
+    )
+    ignore_pattern_other = dvcignore._get_tire_pattern(
+        os.fspath(tmp_dir / "other")
+    )
+    ignore_pattern_first = dvcignore._get_tire_pattern(
         os.fspath(tmp_dir / "top" / "first")
-    ]
-    ignore_pattern_middle = ignore_pattern_trie[
+    )
+    ignore_pattern_middle = dvcignore._get_tire_pattern(
         os.fspath(tmp_dir / "top" / "first" / "middle")
-    ]
-    ignore_pattern_second = ignore_pattern_trie[
+    )
+    ignore_pattern_second = dvcignore._get_tire_pattern(
         os.fspath(tmp_dir / "top" / "first" / "middle" / "second")
-    ]
-    ignore_pattern_bottom = ignore_pattern_trie[
+    )
+    ignore_pattern_bottom = dvcignore._get_tire_pattern(
         os.fspath(tmp_dir / "top" / "first" / "middle" / "second" / "bottom")
-    ]
+    )
 
     base_pattern = [".hg/", ".git/", ".dvc/"], os.fspath(tmp_dir)
     first_pattern = merge_patterns(
