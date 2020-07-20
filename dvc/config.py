@@ -120,10 +120,14 @@ HTTP_COMMON = {
     "ask_password": Bool,
 }
 WEBDAV_COMMON = {
-    "root": str,
     "user": str,
     "password": str,
     "ask_password": Bool,
+    "root": str,
+    "token": str,
+    "cert_path": str,
+    "key_path": str,
+    "timeout": Coerce(int),
 }
 
 SCHEMA = {

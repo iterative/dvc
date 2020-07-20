@@ -31,6 +31,9 @@ class WebdavTree(BaseTree):  # pylint:disable=abstract-method
         # Call BaseTree constructor
         super().__init__(repo, config)
 
+        # Get username from configuration
+        self.user = config.get("user", None)
+
         # Get password from configuration (might be None ~ not set)
         self.password = config.get("password", None)
 
@@ -40,13 +43,32 @@ class WebdavTree(BaseTree):  # pylint:disable=abstract-method
         # Webdav root directory
         self.root = config.get("root", "/")
 
-        # From HTTPTree
-        url = config.get("url")
-        if url:
-            self.path_info = self.PATH_CLS(url)
-            user = config.get("user", None)
-            if user:
-                self.path_info.user = user
+        # Use token for webdav auth
+        self.token = config.get("token", None)
+
+        # Path to certificate
+        self.cert_path = config.get("cert_path", None)
+
+        # Path to private key
+        self.key_path = config.get("key_path", None)
+
+        # Connection timeout
+        self.timeout = config.get("timeout", 30)
+
+        # Get URL from configuration
+        self.url = config.get("url", None)
+
+        # If URL in config parse path_info
+        if self.url:
+            self.path_info = self.PATH_CLS(self.url)
+
+            # If username not specified try to use from URL
+            if self.user is None and self.path_info.user is not None:
+                self.user = self.path_info.user
+
+            # If username specified add to path_info
+            if self.user is not None:
+                self.path_info.user = self.user
         else:
             self.path_info = None
 
@@ -65,16 +87,20 @@ class WebdavTree(BaseTree):  # pylint:disable=abstract-method
         )
 
         # Set password or ask for it
-        if self.ask_password and self.password is None:
+        if self.ask_password and self.password is None and self.token is None:
             host, user = self.path_info.host, self.path_info.user
             self.password = ask_password(host, user)
 
         # Setup webdav client options dictionary
         options = {
             "webdav_hostname": hostname,
-            "webdav_root": self.root,
-            "webdav_login": self.path_info.user,
+            "webdav_login": self.user,
             "webdav_password": self.password,
+            "webdav_token": self.token,
+            "webdav_root": self.root,
+            "webdav_cert_path": self.cert_path,
+            "webdav_key_path": self.key_path,
+            "webdav_timeout": self.timeout,
         }
 
         # Create a webdav client as configured
