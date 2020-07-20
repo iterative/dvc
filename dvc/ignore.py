@@ -114,6 +114,12 @@ class DvcIgnoreFilterNoop:
 
 
 class DvcIgnoreFilter:
+    @staticmethod
+    def _is_dvc_repo(root, directory):
+        from dvc.repo import Repo
+
+        return os.path.isdir(os.path.join(root, directory, Repo.DVC_DIR))
+
     def __init__(self, tree, root_dir):
         from dvc.repo import Repo
 
@@ -126,6 +132,7 @@ class DvcIgnoreFilter:
         )
         for root, dirs, _ in self.tree.walk(self.root_dir):
             self._update(root)
+            self._update_sub_repo(root, dirs)
             dirs[:], _ = self(root, dirs, [])
 
     def _update(self, dirname):
@@ -143,6 +150,19 @@ class DvcIgnoreFilter:
                     new_pattern.dirname,
                 )
             )
+
+    def _update_sub_repo(self, root, dirs):
+        for d in dirs:
+            if self._is_dvc_repo(root, d):
+                old_pattern = self._get_tire_pattern(root)
+                self.ignores_trie_tree[root] = DvcIgnorePatterns(
+                    *merge_patterns(
+                        old_pattern.pattern_list,
+                        old_pattern.dirname,
+                        ["/{}/".format(d)],
+                        root,
+                    )
+                )
 
     def __call__(self, root, dirs, files):
         ignore_pattern = self._get_tire_pattern(root)
