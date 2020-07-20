@@ -4,7 +4,7 @@ import pytest
 
 from dvc.path_info import PathInfo
 from dvc.remote import get_remote
-from dvc.tree.s3 import S3RemoteTree
+from dvc.tree.s3 import S3Tree
 from dvc.utils.fs import walk_files
 
 remotes = [pytest.lazy_fixture(fix) for fix in ["gs", "s3"]]
@@ -91,15 +91,15 @@ def test_copy_preserve_etag_across_buckets(remote, dvc):
     s3 = remote.tree.s3
     s3.create_bucket(Bucket="another")
 
-    another = S3RemoteTree(dvc, {"url": "s3://another", "region": "us-east-1"})
+    another = S3Tree(dvc, {"url": "s3://another", "region": "us-east-1"})
 
     from_info = remote.tree.path_info / "foo"
     to_info = another.path_info / "foo"
 
     remote.tree.copy(from_info, to_info)
 
-    from_etag = S3RemoteTree.get_etag(s3, from_info.bucket, from_info.path)
-    to_etag = S3RemoteTree.get_etag(s3, "another", "foo")
+    from_etag = S3Tree.get_etag(s3, from_info.bucket, from_info.path)
+    to_etag = S3Tree.get_etag(s3, "another", "foo")
 
     assert from_etag == to_etag
 

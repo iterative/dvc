@@ -5,11 +5,7 @@ import pytest
 
 from dvc.path_info import PathInfo
 from dvc.remote.base import Remote
-from dvc.tree.base import (
-    BaseRemoteTree,
-    RemoteCmdError,
-    RemoteMissingDepsError,
-)
+from dvc.tree.base import BaseTree, RemoteCmdError, RemoteMissingDepsError
 
 
 class _CallableOrNone:
@@ -24,9 +20,9 @@ CallableOrNone = _CallableOrNone()
 
 def test_missing_deps(dvc):
     requires = {"missing": "missing"}
-    with mock.patch.object(BaseRemoteTree, "REQUIRES", requires):
+    with mock.patch.object(BaseTree, "REQUIRES", requires):
         with pytest.raises(RemoteMissingDepsError):
-            BaseRemoteTree(dvc, {})
+            BaseTree(dvc, {})
 
 
 def test_cmd_error(dvc):
@@ -37,18 +33,16 @@ def test_cmd_error(dvc):
     err = "sed: expression #1, char 2: extra characters after command"
 
     with mock.patch.object(
-        BaseRemoteTree,
-        "remove",
-        side_effect=RemoteCmdError("base", cmd, ret, err),
+        BaseTree, "remove", side_effect=RemoteCmdError("base", cmd, ret, err),
     ):
         with pytest.raises(RemoteCmdError):
-            BaseRemoteTree(dvc, config).remove("file")
+            BaseTree(dvc, config).remove("file")
 
 
-@mock.patch.object(BaseRemoteTree, "list_hashes_traverse")
-@mock.patch.object(BaseRemoteTree, "list_hashes_exists")
+@mock.patch.object(BaseTree, "list_hashes_traverse")
+@mock.patch.object(BaseTree, "list_hashes_exists")
 def test_hashes_exist(object_exists, traverse, dvc):
-    remote = Remote(BaseRemoteTree(dvc, {}))
+    remote = Remote(BaseTree(dvc, {}))
 
     # remote does not support traverse
     remote.tree.CAN_TRAVERSE = False
@@ -101,13 +95,13 @@ def test_hashes_exist(object_exists, traverse, dvc):
 
 
 @mock.patch.object(
-    BaseRemoteTree, "list_hashes", return_value=[],
+    BaseTree, "list_hashes", return_value=[],
 )
 @mock.patch.object(
-    BaseRemoteTree, "path_to_hash", side_effect=lambda x: x,
+    BaseTree, "path_to_hash", side_effect=lambda x: x,
 )
 def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
-    tree = BaseRemoteTree(dvc, {})
+    tree = BaseTree(dvc, {})
     tree.path_info = PathInfo("foo")
 
     # parallel traverse
@@ -132,7 +126,7 @@ def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
 
 
 def test_list_hashes(dvc):
-    tree = BaseRemoteTree(dvc, {})
+    tree = BaseTree(dvc, {})
     tree.path_info = PathInfo("foo")
 
     with mock.patch.object(
@@ -143,7 +137,7 @@ def test_list_hashes(dvc):
 
 
 def test_list_paths(dvc):
-    tree = BaseRemoteTree(dvc, {})
+    tree = BaseTree(dvc, {})
     tree.path_info = PathInfo("foo")
 
     with mock.patch.object(tree, "walk_files", return_value=[]) as walk_mock:
@@ -161,4 +155,4 @@ def test_list_paths(dvc):
     [(None, False), ("", False), ("3456.dir", True), ("3456", False)],
 )
 def test_is_dir_hash(hash_, result):
-    assert BaseRemoteTree.is_dir_hash(hash_) == result
+    assert BaseTree.is_dir_hash(hash_) == result

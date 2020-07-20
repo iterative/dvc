@@ -9,12 +9,12 @@ from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 
-from .base import BaseRemoteTree
+from .base import BaseTree
 
 logger = logging.getLogger(__name__)
 
 
-class AzureRemoteTree(BaseRemoteTree):
+class AzureTree(BaseTree):
     scheme = Schemes.AZURE
     PATH_CLS = CloudURLInfo
     REQUIRES = {

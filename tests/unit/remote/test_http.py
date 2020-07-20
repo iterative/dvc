@@ -1,11 +1,11 @@
 import pytest
 
 from dvc.exceptions import HTTPError
-from dvc.tree.http import HTTPRemoteTree
+from dvc.tree.http import HTTPTree
 
 
 def test_download_fails_on_error_code(dvc, http):
-    tree = HTTPRemoteTree(dvc, http.config)
+    tree = HTTPTree(dvc, http.config)
 
     with pytest.raises(HTTPError):
         tree._download(http / "missing.txt", "missing.txt")
@@ -19,7 +19,7 @@ def test_public_auth_method(dvc):
         "password": "",
     }
 
-    tree = HTTPRemoteTree(dvc, config)
+    tree = HTTPTree(dvc, config)
 
     assert tree._auth_method() is None
 
@@ -38,7 +38,7 @@ def test_basic_auth_method(dvc):
         "password": password,
     }
 
-    tree = HTTPRemoteTree(dvc, config)
+    tree = HTTPTree(dvc, config)
 
     assert tree._auth_method() == auth
     assert isinstance(tree._auth_method(), HTTPBasicAuth)
@@ -58,7 +58,7 @@ def test_digest_auth_method(dvc):
         "password": password,
     }
 
-    tree = HTTPRemoteTree(dvc, config)
+    tree = HTTPTree(dvc, config)
 
     assert tree._auth_method() == auth
     assert isinstance(tree._auth_method(), HTTPDigestAuth)
@@ -75,7 +75,7 @@ def test_custom_auth_method(dvc):
         "password": password,
     }
 
-    tree = HTTPRemoteTree(dvc, config)
+    tree = HTTPTree(dvc, config)
 
     assert tree._auth_method() is None
     assert header in tree.headers

@@ -89,12 +89,12 @@ class State:  # pylint: disable=too-many-instance-attributes
     MAX_UINT = 2 ** 64 - 2
 
     def __init__(self, local_cache):
-        from dvc.tree.local import LocalRemoteTree
+        from dvc.tree.local import LocalTree
 
         repo = local_cache.repo
         self.repo = repo
         self.root_dir = repo.root_dir
-        self.tree = LocalRemoteTree(None, {"url": self.root_dir})
+        self.tree = LocalTree(None, {"url": self.root_dir})
 
         state_config = repo.config.get("state", {})
         self.row_limit = state_config.get("row_limit", self.STATE_ROW_LIMIT)
@@ -396,7 +396,7 @@ class State:  # pylint: disable=too-many-instance-attributes
         assert isinstance(path_info, str) or path_info.scheme == "local"
         path = os.fspath(path_info)
 
-        # NOTE: use os.path.exists instead of LocalRemoteTree.exists
+        # NOTE: use os.path.exists instead of LocalTree.exists
         # because it uses lexists() and will return True for broken
         # symlinks that we cannot stat() in get_mtime_and_size
         if not os.path.exists(path):

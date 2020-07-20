@@ -11,7 +11,7 @@ from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 
-from .base import BaseRemoteTree
+from .base import BaseTree
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,7 @@ def _upload_to_bucket(
             blob.upload_from_file(wrapped)
 
 
-class GSRemoteTree(BaseRemoteTree):
+class GSTree(BaseTree):
     scheme = Schemes.GS
     PATH_CLS = CloudURLInfo
     REQUIRES = {"google-cloud-storage": "google.cloud.storage"}

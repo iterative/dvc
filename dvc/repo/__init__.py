@@ -76,7 +76,7 @@ class Repo:
         from dvc.repo.metrics import Metrics
         from dvc.repo.plots import Plots
         from dvc.repo.params import Params
-        from dvc.tree.local import LocalRemoteTree
+        from dvc.tree.local import LocalTree
         from dvc.utils.fs import makedirs
         from dvc.stage.cache import StageCache
 
@@ -91,7 +91,7 @@ class Repo:
         else:
             root_dir = self.find_root(root_dir)
             self.root_dir = os.path.abspath(os.path.realpath(root_dir))
-            self.tree = LocalRemoteTree(
+            self.tree = LocalTree(
                 self,
                 {"url": self.root_dir},
                 use_dvcignore=True,

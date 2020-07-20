@@ -10,12 +10,12 @@ from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 
-from .base import BaseRemoteTree
+from .base import BaseTree
 
 logger = logging.getLogger(__name__)
 
 
-class S3RemoteTree(BaseRemoteTree):
+class S3Tree(BaseTree):
     scheme = Schemes.S3
     PATH_CLS = CloudURLInfo
     REQUIRES = {"boto3": "boto3"}
@@ -54,6 +54,9 @@ class S3RemoteTree(BaseRemoteTree):
 
         self._append_aws_grants_to_extra_args(config)
 
+        self.access_key_id = config.get("access_key_id")
+        self.secret_access_key = config.get("secret_access_key")
+
         shared_creds = config.get("credentialpath")
         if shared_creds:
             os.environ.setdefault("AWS_SHARED_CREDENTIALS_FILE", shared_creds)
@@ -63,9 +66,14 @@ class S3RemoteTree(BaseRemoteTree):
     def s3(self):
         import boto3
 
-        session = boto3.session.Session(
-            profile_name=self.profile, region_name=self.region
-        )
+        session_opts = dict(profile_name=self.profile, region_name=self.region)
+
+        if self.access_key_id:
+            session_opts["aws_access_key_id"] = self.access_key_id
+        if self.secret_access_key:
+            session_opts["aws_secret_access_key"] = self.secret_access_key
+
+        session = boto3.session.Session(**session_opts)
 
         return session.client(
             "s3", endpoint_url=self.endpoint_url, use_ssl=self.use_ssl
@@ -230,7 +238,7 @@ class S3RemoteTree(BaseRemoteTree):
         parts = []
         byte_position = 0
         for i in range(1, n_parts + 1):
-            obj = S3RemoteTree.get_head_object(
+            obj = S3Tree.get_head_object(
                 s3, from_info.bucket, from_info.path, PartNumber=i
             )
             part_size = obj["ContentLength"]
@@ -285,9 +293,7 @@ class S3RemoteTree(BaseRemoteTree):
         # object is transfered in the same chunks as it was originally.
         from boto3.s3.transfer import TransferConfig
 
-        obj = S3RemoteTree.get_head_object(
-            s3, from_info.bucket, from_info.path
-        )
+        obj = S3Tree.get_head_object(s3, from_info.bucket, from_info.path)
         etag = obj["ETag"].strip('"')
         size = obj["ContentLength"]
 
@@ -307,7 +313,7 @@ class S3RemoteTree(BaseRemoteTree):
                 Config=TransferConfig(multipart_threshold=size + 1),
             )
 
-        cached_etag = S3RemoteTree.get_etag(s3, to_info.bucket, to_info.path)
+        cached_etag = S3Tree.get_etag(s3, to_info.bucket, to_info.path)
         if etag != cached_etag:
             raise ETagMismatchError(etag, cached_etag)
 

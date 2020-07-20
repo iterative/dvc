@@ -5,18 +5,18 @@ import configobj
 
 from dvc.main import main
 from dvc.repo import Repo
-from dvc.tree.gdrive import GDriveRemoteTree
+from dvc.tree.gdrive import GDriveTree
 
 
 def test_relative_user_credentials_file_config_setting(tmp_dir, dvc):
     # CI sets it to test GDrive, here we want to test the work with file system
     # based, regular credentials
-    if os.getenv(GDriveRemoteTree.GDRIVE_CREDENTIALS_DATA):
-        del os.environ[GDriveRemoteTree.GDRIVE_CREDENTIALS_DATA]
+    if os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA):
+        del os.environ[GDriveTree.GDRIVE_CREDENTIALS_DATA]
 
     credentials = os.path.join("secrets", "credentials.json")
 
-    # GDriveRemoteTree.credentials_location helper checks for file existence,
+    # GDriveTree.credentials_location helper checks for file existence,
     # create the file
     tmp_dir.gen(credentials, "{'token': 'test'}")
 

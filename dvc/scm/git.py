@@ -17,7 +17,6 @@ from dvc.scm.base import (
     RevError,
     SCMError,
 )
-from dvc.scm.git.tree import GitTree
 from dvc.utils import fix_env, is_binary, relpath
 from dvc.utils.fs import path_isin
 
@@ -376,6 +375,8 @@ class Git(Base):
         return basename == self.ignore_file or Git.GIT_DIR in path_parts
 
     def get_tree(self, rev, **kwargs):
+        from dvc.tree.git import GitTree
+
         return GitTree(self.repo, self.resolve_rev(rev), **kwargs)
 
     def get_rev(self):
