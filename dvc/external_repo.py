@@ -289,6 +289,16 @@ def _clone_default_branch(url, rev, for_write=False):
                     git.repo.git.fetch(unshallow=True)
                     shallow = False
                     CLONES[url] = (clone_path, shallow)
+                    if git.repo.head.is_detached:
+                        # If this is a detached head (i.e. we shallow
+                        # cloned a tag) checkout the default branch
+                        origin_refs = git.repo.remotes["origin"].refs
+                        ref = origin_refs["HEAD"].reference
+                        branch_name = ref.name.split("/")[-1]
+                        branch = git.repo.create_head(branch_name, ref)
+                        branch.set_tracking_branch(ref)
+                        branch.checkout()
+
                 logger.debug("erepo: git pull '%s'", url)
                 git.pull()
         else:
