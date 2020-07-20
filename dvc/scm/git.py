@@ -260,8 +260,8 @@ class Git(Base):
         else:
             self.repo.git.checkout(branch)
 
-    def pull(self):
-        infos = self.repo.remote().pull()
+    def pull(self, **kwargs):
+        infos = self.repo.remote().pull(**kwargs)
         for info in infos:
             if info.flags & info.ERROR:
                 raise SCMError(f"pull failed: {info.note}")

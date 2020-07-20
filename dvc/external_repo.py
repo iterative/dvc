@@ -32,6 +32,9 @@ def external_repo(url, rev=None, for_write=False):
     logger.debug("Creating external repo %s@%s", url, rev)
     path = _cached_clone(url, rev, for_write=for_write)
     if not rev:
+        # Local HEAD points to the tip of whatever branch we first cloned from
+        # (which may not be the default branch), use origin/HEAD here to get
+        # the tip of the default branch
         rev = "refs/remotes/origin/HEAD"
     try:
         repo = ExternalRepo(path, url, rev, for_write=for_write)
@@ -270,19 +273,6 @@ def _cached_clone(url, rev, for_write=False):
     return repo_path
 
 
-def _unshallow(git):
-    git.repo.git.fetch(unshallow=True)
-    if git.repo.head.is_detached:
-        # If this is a detached head (i.e. we shallow cloned a tag) switch to
-        # the default branch
-        origin_refs = git.repo.remotes["origin"].refs
-        ref = origin_refs["HEAD"].reference
-        branch_name = ref.name.split("/")[-1]
-        branch = git.repo.create_head(branch_name, ref)
-        branch.set_tracking_branch(ref)
-        branch.checkout()
-
-
 @wrap_with(threading.Lock())
 def _clone_default_branch(url, rev, for_write=False):
     """Get or create a clean clone of the url.
@@ -298,12 +288,19 @@ def _clone_default_branch(url, rev, for_write=False):
             # Do not pull for known shas, branches and tags might move
             if not Git.is_sha(rev) or not git.has_rev(rev):
                 if shallow:
+                    # If we are missing a rev in a shallow clone, fallback to
+                    # a full (unshallowed) clone. Since fetching specific rev
+                    # SHAs is only available in certain git versions, if we
+                    # have need to reference multiple specific revs for a
+                    # given repo URL it is easier/safer for us to work with
+                    # full clones in this case.
                     logger.debug("erepo: unshallowing clone for '%s'", url)
                     _unshallow(git)
                     shallow = False
                     CLONES[url] = (clone_path, shallow)
-                logger.debug("erepo: git pull '%s'", url)
-                git.pull()
+                else:
+                    logger.debug("erepo: git pull '%s'", url)
+                    git.pull()
         else:
             logger.debug("erepo: git clone '%s' to a temporary dir", url)
             clone_path = tempfile.mkdtemp("dvc-clone")
@@ -326,6 +323,19 @@ def _clone_default_branch(url, rev, for_write=False):
             git.close()
 
     return clone_path, shallow
+
+
+def _unshallow(git):
+    if git.repo.head.is_detached:
+        # If this is a detached head (i.e. we shallow cloned a tag) switch to
+        # the default branch
+        origin_refs = git.repo.remotes["origin"].refs
+        ref = origin_refs["HEAD"].reference
+        branch_name = ref.name.split("/")[-1]
+        branch = git.repo.create_head(branch_name, ref)
+        branch.set_tracking_branch(ref)
+        branch.checkout()
+    git.pull(unshallow=True)
 
 
 def _git_checkout(repo_path, rev):
