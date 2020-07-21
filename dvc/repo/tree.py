@@ -251,12 +251,15 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
     def __init__(
         self, tree, subrepos=None, **kwargs
     ):  # pylint: disable=super-init-not-called
+        logger.info("original subrepos: %s", subrepos)
         subrepos = subrepos or []
         subrepos.sort(key=lambda r: len(r.root_dir), reverse=True)
+        logger.info("sorted subrepos: %r", subrepos)
         dvctrees = [
             (os.path.abspath(repo.root_dir), DvcTree(repo, **kwargs))
             for repo in subrepos
         ]
+        logger.info("dvctrees tuples: %r", dvctrees)
         self._dvctrees = dict(
             sorted(dvctrees, key=lambda v: len(v[0]), reverse=True)
         )

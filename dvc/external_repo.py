@@ -106,6 +106,7 @@ class ExternalRepo:
             repo_kw = dict(scm=self.scm, rev=rev)
 
         paths = subrepos.find(tree)
+        print("paths: ", paths)
         self.repos = [Repo(path, **repo_kw) for path in paths]
         self._setup_cache_dir()
         self.rev = rev
