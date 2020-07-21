@@ -6,10 +6,11 @@ from contextlib import contextmanager
 from funcy import cached_property
 
 from dvc.exceptions import DvcException
+from dvc.repo.experiments.executor import LocalExecutor
 from dvc.scm.git import Git
 from dvc.stage.serialize import to_lockfile
 from dvc.utils import dict_sha256, env2bool, relpath
-from dvc.utils.fs import remove
+from dvc.utils.fs import copyfile, remove
 
 logger = logging.getLogger(__name__)
 
@@ -48,9 +49,12 @@ class Experiments:
         return self._init_clone()
 
     @cached_property
+    def dvc_dir(self):
+        return relpath(self.repo.dvc_dir, self.repo.scm.root_dir)
+
+    @cached_property
     def exp_dvc_dir(self):
-        dvc_dir = relpath(self.repo.dvc_dir, self.repo.scm.root_dir)
-        return os.path.join(self.exp_dir, dvc_dir)
+        return os.path.join(self.exp_dir, self.dvc_dir)
 
     @cached_property
     def exp_dvc(self):
@@ -148,11 +152,27 @@ class Experiments:
         else:
             # configure params via command line here
             pass
-        self.exp_dvc.checkout()
-        stages = self._reproduce(*args, **kwargs)
+        stages = self._run_local(rev, *args, **kwargs)
+        # self.exp_dvc.checkout()
+        # stages = self._reproduce(*args, **kwargs)
         exp_rev = self._commit(stages, rev=rev)
         self.checkout_exp(exp_rev, force=True)
         logger.info("Generated experiment '%s'.", exp_rev[:7])
+        return stages
+
+    def _run_local(self, rev, *args, **kwargs):
+        tree = self.scm.get_tree(rev)
+        executor = LocalExecutor(
+            tree,
+            dvc_dir=self.dvc_dir,
+            cache_dir=self.repo.cache.local.cache_dir,
+        )
+        stages = executor.run(*args, **kwargs)
+        logger.debug("copying tmp output from '%s'", executor.tmp_dir)
+        for fname in tree.walk_files(tree.tree_root):
+            src = executor.path_info / relpath(fname, tree.tree_root)
+            copyfile(src, fname)
+        executor.cleanup()
         return stages
 
     def checkout_exp(self, rev, force=False):
