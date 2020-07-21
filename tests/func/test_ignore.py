@@ -112,8 +112,8 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
                 top_ignore_path,
             )
         )
-        == dvcignore._get_tire_pattern(top_ignore_path)
-        == dvcignore._get_tire_pattern(sub_dir_path)
+        == dvcignore._get_trie_pattern(top_ignore_path)
+        == dvcignore._get_trie_pattern(sub_dir_path)
     )
 
 
@@ -290,22 +290,22 @@ def test_pattern_trie_tree(tmp_dir, dvc):
     dvc.tree.__dict__.pop("dvcignore", None)
     dvcignore = dvc.tree.dvcignore
 
-    ignore_pattern_top = dvcignore._get_tire_pattern(
+    ignore_pattern_top = dvcignore._get_trie_pattern(
         os.fspath(tmp_dir / "top")
     )
-    ignore_pattern_other = dvcignore._get_tire_pattern(
+    ignore_pattern_other = dvcignore._get_trie_pattern(
         os.fspath(tmp_dir / "other")
     )
-    ignore_pattern_first = dvcignore._get_tire_pattern(
+    ignore_pattern_first = dvcignore._get_trie_pattern(
         os.fspath(tmp_dir / "top" / "first")
     )
-    ignore_pattern_middle = dvcignore._get_tire_pattern(
+    ignore_pattern_middle = dvcignore._get_trie_pattern(
         os.fspath(tmp_dir / "top" / "first" / "middle")
     )
-    ignore_pattern_second = dvcignore._get_tire_pattern(
+    ignore_pattern_second = dvcignore._get_trie_pattern(
         os.fspath(tmp_dir / "top" / "first" / "middle" / "second")
     )
-    ignore_pattern_bottom = dvcignore._get_tire_pattern(
+    ignore_pattern_bottom = dvcignore._get_trie_pattern(
         os.fspath(tmp_dir / "top" / "first" / "middle" / "second" / "bottom")
     )
 

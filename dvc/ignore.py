@@ -123,12 +123,13 @@ class DvcIgnoreFilter:
     def __init__(self, tree, root_dir):
         from dvc.repo import Repo
 
+        default_ignore_patterns = [".hg/", ".git/", "{}/".format(Repo.DVC_DIR)]
+
         self.tree = tree
         self.root_dir = root_dir
-        default_ignore_pattern = [".hg/", ".git/", "{}/".format(Repo.DVC_DIR)]
         self.ignores_trie_tree = StringTrie(separator=os.sep)
         self.ignores_trie_tree[root_dir] = DvcIgnorePatterns(
-            default_ignore_pattern, root_dir
+            default_ignore_patterns, root_dir
         )
         for root, dirs, _ in self.tree.walk(self.root_dir):
             self._update(root)
@@ -141,7 +142,7 @@ class DvcIgnoreFilter:
             new_pattern = DvcIgnorePatterns.from_files(
                 ignore_file_path, self.tree
             )
-            old_pattern = self._get_tire_pattern(dirname)
+            old_pattern = self._get_trie_pattern(dirname)
             self.ignores_trie_tree[dirname] = DvcIgnorePatterns(
                 *merge_patterns(
                     old_pattern.pattern_list,
@@ -154,7 +155,7 @@ class DvcIgnoreFilter:
     def _update_sub_repo(self, root, dirs):
         for d in dirs:
             if self._is_dvc_repo(root, d):
-                old_pattern = self._get_tire_pattern(root)
+                old_pattern = self._get_trie_pattern(root)
                 self.ignores_trie_tree[root] = DvcIgnorePatterns(
                     *merge_patterns(
                         old_pattern.pattern_list,
@@ -165,10 +166,10 @@ class DvcIgnoreFilter:
                 )
 
     def __call__(self, root, dirs, files):
-        ignore_pattern = self._get_tire_pattern(root)
+        ignore_pattern = self._get_trie_pattern(root)
         return ignore_pattern(root, dirs, files)
 
-    def _get_tire_pattern(self, dirname):
+    def _get_trie_pattern(self, dirname):
         ignore_pattern = self.ignores_trie_tree.longest_prefix(dirname).value
         if not ignore_pattern:
             return DvcIgnorePatterns([], dirname)
@@ -178,7 +179,7 @@ class DvcIgnoreFilter:
         if self._outside_repo(path):
             return True
         dirname, basename = os.path.split(os.path.normpath(path))
-        ignore_pattern = self._get_tire_pattern(dirname)
+        ignore_pattern = self._get_trie_pattern(dirname)
         return ignore_pattern.matches(dirname, basename, is_dir)
 
     def is_ignored_dir(self, path):
