@@ -42,7 +42,7 @@ class LocalTree(BaseTree):
         config,
         use_dvcignore=False,
         dvcignore_root=None,
-        ignore_subrepo=False,
+        ignore_subrepo=True,
     ):
         super().__init__(repo, config)
         url = config.get("url")
