@@ -294,7 +294,7 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         return self.tree.open(path, mode=mode, encoding=encoding)
 
     def open_by_relpath(self, path, *args, **kwargs):
-        return self.open(PathInfo(self.tree.tree_root, path), *args, **kwargs)
+        return self.open(PathInfo(self.tree.tree_root) / path, *args, **kwargs)
 
     def exists(self, path):  # pylint: disable=arguments-differ
         subtree = self._find_subtree(path)
