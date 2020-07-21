@@ -91,14 +91,14 @@ class ExternalRepo:
         self, root_dir, url, rev, for_write=False, fetch=True, **kwargs
     ):
         self.root_dir = os.path.realpath(root_dir)
-        self.scm = Git(root_dir)
+        self.scm = Git(self.root_dir)
         self.url = url
         self.config = {"fetch": fetch, **kwargs}
         self.for_write = for_write
 
         repo_kw = {}
         if for_write:
-            tree = LocalTree(None, {"url": self.root_dir})
+            tree = LocalTree(None, {"url": root_dir})
         else:
             # .dvc folders are ignored by dvcignore which is required for
             # `subrepos.find()`, hence using a separate tree
