@@ -178,6 +178,12 @@ class ExternalRepo:
         self.scm.close()
 
     def fetch_external(self, paths: Iterable, cache, **kwargs):
+        # `RepoTree` will try downloading it to the repo's cache
+        # instead of `cache_dir`, need to change on all instances
+        with self.with_cache(cache.cache_dir):
+            return self._fetch_to_cache(paths, cache, **kwargs)
+
+    def _fetch_to_cache(self, paths: Iterable, cache, **kwargs):
         """Fetch specified external repo paths into cache.
 
          Returns 3-tuple in the form
@@ -197,14 +203,13 @@ class ExternalRepo:
         for path in paths:
             if not self.repo_tree.exists(path):
                 raise PathMissingError(path, self.url)
-            with self.with_cache(cache.cache_dir):
-                save_info = cache.save(
-                    path,
-                    self.repo_tree,
-                    None,
-                    save_link=False,
-                    download_callback=download_update,
-                )
+            save_info = cache.save(
+                path,
+                self.repo_tree,
+                None,
+                save_link=False,
+                download_callback=download_update,
+            )
             save_infos.append(save_info)
 
         return sum(download_results), failed, save_infos
@@ -214,7 +219,7 @@ class ExternalRepo:
         repo = self.in_repo(src)
         if repo:
             cache = repo.cache.local
-            _, _, save_infos = self.fetch_external([src], cache)
+            _, _, save_infos = self._fetch_to_cache([src], cache)
             cache.checkout(PathInfo(dest), save_infos[0])
         else:
             path = PathInfo(self.root_dir) / src
@@ -233,7 +238,7 @@ class ExternalRepo:
         return self.repo_tree.get_file_hash(path_info)
 
     def in_repo(self, path):
-        tree = self.repo_tree.in_subtree(path)
+        tree = self.repo_tree.in_subtree(PathInfo(self.root_dir) / path)
         return tree.repo if tree else None
 
     @property
