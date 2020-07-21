@@ -153,7 +153,7 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
     # Creates directories
     def makedirs(self, path_info):
         # Terminate recursion
-        if path_info.path == "/":
+        if path_info.path == self.path_info.path:
             return
 
         # Recursively descent to root
