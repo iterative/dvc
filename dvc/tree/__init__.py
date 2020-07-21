@@ -11,8 +11,8 @@ from .local import LocalTree
 from .oss import OSSTree
 from .s3 import S3Tree
 from .ssh import SSHTree
-from .webdav import WebdavTree
-from .webdavs import WebdavsTree
+from .webdav import WebDAVTree
+from .webdavs import WebDAVSTree
 
 TREES = [
     AzureTree,
@@ -24,8 +24,8 @@ TREES = [
     S3Tree,
     SSHTree,
     OSSTree,
-    WebdavTree,
-    WebdavsTree,
+    WebDAVTree,
+    WebDAVSTree,
     # NOTE: LocalTree is the default
 ]
 

@@ -318,7 +318,7 @@ class HTTPURLInfo(URLInfo):
 
 
 # See https://github.com/shizacat/dvc/blob/remote-webdav/dvc/path_info.py
-class WebdavURLInfo(HTTPURLInfo):
+class WebDAVURLInfo(HTTPURLInfo):
     @cached_property
     def url(self):
         return "{}://{}{}{}{}{}".format(

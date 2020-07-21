@@ -299,7 +299,7 @@ class HTTPError(DvcException):
         super().__init__(f"'{code} {reason}'")
 
 
-class WebdavConfigError(DvcException):
+class WebDAVConfigError(DvcException):
     def __init__(self, host):
         super().__init__(f"Configuration for WebDAV {host} is invalid.")
 

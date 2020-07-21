@@ -1,7 +1,7 @@
 from dvc.scheme import Schemes
 
-from .webdav import WebdavTree
+from .webdav import WebDAVTree
 
 
-class WebdavsTree(WebdavTree):  # pylint:disable=abstract-method
+class WebDAVSTree(WebDAVTree):  # pylint:disable=abstract-method
     scheme = Schemes.WEBDAVS

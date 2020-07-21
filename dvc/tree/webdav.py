@@ -3,8 +3,8 @@ import threading
 
 from funcy import cached_property, wrap_prop
 
-from dvc.exceptions import DvcException, WebdavConfigError
-from dvc.path_info import WebdavURLInfo
+from dvc.exceptions import DvcException, WebDAVConfigError
+from dvc.path_info import WebDAVURLInfo
 from dvc.scheme import Schemes
 
 from .base import BaseTree
@@ -13,12 +13,12 @@ from .http import ask_password
 logger = logging.getLogger(__name__)
 
 
-class WebdavTree(BaseTree):  # pylint:disable=abstract-method
+class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
     # Use webdav scheme
     scheme = Schemes.WEBDAV
 
     # URLInfo for Webdav ~ replaces webdav -> http
-    PATH_CLS = WebdavURLInfo
+    PATH_CLS = WebDAVURLInfo
 
     # Non traversable as walk_files is not implemented
     CAN_TRAVERSE = False
@@ -108,7 +108,7 @@ class WebdavTree(BaseTree):  # pylint:disable=abstract-method
 
         # Check whether client options are valid
         if not client.valid():
-            raise WebdavConfigError(hostname)
+            raise WebDAVConfigError(hostname)
 
         # Return constructed client (cached)
         return client
