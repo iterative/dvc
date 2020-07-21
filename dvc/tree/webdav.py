@@ -3,7 +3,7 @@ import threading
 
 from funcy import cached_property, wrap_prop
 
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, WebdavConfigError
 from dvc.path_info import WebdavURLInfo
 from dvc.scheme import Schemes
 
@@ -104,7 +104,14 @@ class WebdavTree(BaseTree):  # pylint:disable=abstract-method
         }
 
         # Create a webdav client as configured
-        return Client(options)
+        client = Client(options)
+
+        # Check whether client options are valid
+        if not client.valid():
+            raise WebdavConfigError(hostname)
+
+        # Return constructed client (cached)
+        return client
 
     # Checks whether file exists
     def exists(self, path_info):
