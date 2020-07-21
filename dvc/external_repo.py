@@ -90,7 +90,7 @@ class ExternalRepo:
     def __init__(
         self, root_dir, url, rev, for_write=False, fetch=True, **kwargs
     ):
-        self.root_dir = os.path.abspath(root_dir)
+        self.root_dir = os.path.realpath(root_dir)
         self.scm = Git(root_dir)
         self.url = url
         self.config = {"fetch": fetch, **kwargs}
