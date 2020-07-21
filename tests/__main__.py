@@ -16,7 +16,5 @@ os.putenv("DVC_HOME", REPO_ROOT)
 
 params = " ".join(sys.argv[1:])
 
-cmd = (
-    "pytest -svv --timeout=600 {params} --durations=0".format(params=params)
-)
+cmd = "pytest -svv --timeout=600 {params} --durations=0".format(params=params)
 check_call(cmd, shell=True)

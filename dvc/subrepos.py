@@ -9,6 +9,10 @@ def find(tree, top=None):
     top = top or tree.tree_root
     for root, _, _ in tree.walk(top):
         print("root: ", root)
-        print("checking if it's a DVC repo", os.path.join(root, ".dvc"), tree.isdir(os.path.join(root, ".dvc")))
+        print(
+            "checking if it's a DVC repo",
+            os.path.join(root, ".dvc"),
+            tree.isdir(os.path.join(root, ".dvc")),
+        )
         if tree.isdir(os.path.join(root, ".dvc")):
             yield root
