@@ -2,7 +2,7 @@ import logging
 import os
 from typing import Optional
 
-from funcy import cached_property, log_calls, post_processing
+from funcy import cached_property, post_processing
 
 from dvc.dvcfile import is_valid_filename
 from dvc.exceptions import OutputNotFoundError
@@ -260,7 +260,7 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         self._dvctrees = dict(
             sorted(dvctrees, key=lambda v: len(v[0]), reverse=True)
         )
-        print(self._dvctrees)
+        logger.info("dvctrees: %r", self._dvctrees)
         self.tree = tree
         self._kwargs = kwargs
 
@@ -275,11 +275,10 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
     def _find_subtree(self, path_prefix) -> Optional[DvcTree]:
         return self._find_subtree_with_prefix(path_prefix)[1]
 
-    @log_calls(logger.info)
     def _find_subtree_with_prefix(self, path):
         # dvctrees is already ordered from low to high
         path_prefix = os.path.abspath(path)
-        print(path_prefix)
+        logger.info("Path prefix: %s, original: %s", path_prefix, path)
         for pref, tree in self._dvctrees.items():
             if path_prefix.startswith(pref):
                 return pref, tree
@@ -297,7 +296,7 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         return self.tree.open(path, mode=mode, encoding=encoding)
 
     def open_by_relpath(self, path, *args, **kwargs):
-        return self.open(PathInfo(self.tree.tree_root, path), *args, **kwargs)
+        return self.open(PathInfo(self.tree.tree_root) / path, *args, **kwargs)
 
     def exists(self, path):  # pylint: disable=arguments-differ
         subtree = self._find_subtree(path)

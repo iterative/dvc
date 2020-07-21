@@ -2,7 +2,7 @@ import logging
 import os.path
 import threading
 
-from funcy import cached_property, memoize, wrap_prop, wrap_with
+from funcy import cached_property, memoize, wrap_prop, wrap_with, log_exits
 
 import dvc.prompt as prompt
 from dvc.exceptions import DvcException, HTTPError
