@@ -7,7 +7,7 @@ from funcy import collecting
 def find(tree, top=None):
     print("tree, top, tree_root: ", tree, top, tree.tree_root)
     top = top or tree.tree_root
-    for root, _, _ in tree.walk(os.path.abspath(top)):
+    for root, _, _ in tree.walk(os.path.realpath(top)):
         print("root: ", root)
         print("checking if it's a DVC repo", os.path.join(root, ".dvc"), tree.isdir(os.path.join(root, ".dvc")))
         if tree.isdir(os.path.join(root, ".dvc")):
