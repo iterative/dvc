@@ -110,7 +110,7 @@ def reproduce(
 
 
 def _reproduce_stages(
-    G, stages, downstream=False, single_item=False, **kwargs
+    G, stages, downstream=False, single_item=False, on_unchanged=None, **kwargs
 ):
     r"""Derive the evaluation of the given node for the given graph.
 
@@ -194,7 +194,10 @@ def _reproduce_stages(
                 # dependencies didn't change.
                 kwargs["force"] = True
 
-            result.extend(ret)
+            if ret:
+                result.extend(ret)
+            elif on_unchanged is not None:
+                on_unchanged(stage)
         except Exception as exc:
             raise ReproductionError(stage.relpath) from exc
 

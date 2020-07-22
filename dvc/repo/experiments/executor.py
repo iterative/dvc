@@ -6,6 +6,7 @@ from tempfile import TemporaryDirectory
 from funcy import cached_property
 
 from dvc.path_info import PathInfo
+from dvc.stage import PipelineStage
 from dvc.tree.base import BaseTree
 from dvc.utils import relpath
 from dvc.utils.fs import copyfile, makedirs
@@ -70,10 +71,19 @@ class LocalExecutor(ExperimentExecutor):
         os.chdir(cwd)
 
     def run(self, *args, **kwargs):
+        unchanged = []
+
+        def filter_pipeline(stage):
+            if isinstance(stage, PipelineStage):
+                unchanged.append(stage)
+
         logger.debug("Running repro in '%s'", self.tmp_dir)
         with self.chdir():
             self.dvc.checkout()
-            return self.dvc.reproduce(*args, **kwargs)
+            stages = self.dvc.reproduce(
+                *args, on_unchanged=filter_pipeline, **kwargs,
+            )
+            return stages, unchanged
 
     def cleanup(self):
         logger.debug("Removing tmpdir '%s'", self.tmp_dir)

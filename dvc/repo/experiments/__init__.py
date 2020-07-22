@@ -155,10 +155,8 @@ class Experiments:
         else:
             # configure params via command line here
             pass
-        stages = self._run_local(rev, *args, **kwargs)
-        # self.exp_dvc.checkout()
-        # stages = self._reproduce(*args, **kwargs)
-        exp_rev = self._commit(stages, rev=rev)
+        stages, unchanged = self._run_local(rev, *args, **kwargs)
+        exp_rev = self._commit(stages + unchanged, rev=rev)
         self.checkout_exp(exp_rev, force=True)
         logger.info("Generated experiment '%s'.", exp_rev[:7])
         return stages
@@ -170,13 +168,13 @@ class Experiments:
             dvc_dir=self.dvc_dir,
             cache_dir=self.repo.cache.local.cache_dir,
         )
-        stages = executor.run(*args, **kwargs)
+        stages, unchanged = executor.run(*args, **kwargs)
         logger.debug("copying tmp output from '%s'", executor.tmp_dir)
         for fname in tree.walk_files(tree.tree_root):
             src = executor.path_info / relpath(fname, tree.tree_root)
             copyfile(src, fname)
         executor.cleanup()
-        return stages
+        return stages, unchanged
 
     def checkout_exp(self, rev, force=False):
         """Checkout an experiment to the user's workspace."""
