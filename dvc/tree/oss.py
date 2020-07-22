@@ -88,7 +88,7 @@ class OSSTree(BaseTree):  # pylint:disable=abstract-method
 
         return self.oss_service.sign_url("GET", path_info.path, expires)
 
-    def exists(self, path_info):
+    def exists(self, path_info, use_dvcignore=True):
         paths = self._list_paths(path_info)
         return any(path_info.path == path for path in paths)
 

@@ -522,7 +522,7 @@ class GDriveTree(BaseTree):
         assert not create
         raise FileMissingError(path_info, hint)
 
-    def exists(self, path_info):
+    def exists(self, path_info, use_dvcignore=True):
         try:
             self._get_item_id(path_info)
         except FileMissingError:

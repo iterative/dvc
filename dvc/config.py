@@ -316,7 +316,7 @@ class Config(dict):
         filename = self.files[level]
         tree = self.tree if level == "repo" else self.wtree
 
-        if tree.exists(filename):
+        if tree.exists(filename, use_dvcignore=False):
             with tree.open(filename) as fobj:
                 conf_obj = configobj.ConfigObj(fobj)
         else:

@@ -101,7 +101,7 @@ class AzureTree(BaseTree):
         )
         return download_url
 
-    def exists(self, path_info):
+    def exists(self, path_info, use_dvcignore=True):
         paths = self._list_paths(path_info.bucket, path_info.path)
         return any(path_info.path == path for path in paths)
 

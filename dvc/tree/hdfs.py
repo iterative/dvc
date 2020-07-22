@@ -72,7 +72,7 @@ class HDFSTree(BaseTree):
                 raise FileNotFoundError(*e.args)
             raise
 
-    def exists(self, path_info):
+    def exists(self, path_info, use_dvcignore=True):
         assert not isinstance(path_info, list)
         assert path_info.scheme == "hdfs"
         with self.hdfs(path_info) as hdfs:
