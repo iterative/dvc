@@ -94,8 +94,11 @@ class Experiments:
 
     def _scm_checkout(self, rev):
         self.scm.repo.git.reset(hard=True)
+        if self.scm.repo.head.is_detached:
+            # switch back to default branch
+            self.scm.repo.heads[0].checkout()
         if not Git.is_sha(rev) or not self.scm.has_rev(rev):
-            self.scm.fetch(all=True)
+            self.scm.pull()
         logger.debug("Checking out base experiment commit '%s'", rev)
         self.scm.checkout(rev)
 
