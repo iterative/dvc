@@ -45,6 +45,8 @@ class LocalExecutor(ExperimentExecutor):
             self.tmp_dir.cleanup()
             raise
         self._config(cache_dir)
+        self._stages = None
+        self._unchanged = None
 
     def _config(self, cache_dir):
         local_config = os.path.join(self.dvc_dir, "config.local")
@@ -62,6 +64,10 @@ class LocalExecutor(ExperimentExecutor):
     @cached_property
     def path_info(self):
         return PathInfo(self.tmp_dir.name)
+
+    @property
+    def result(self):
+        return self._stages, self._unchanged
 
     @contextmanager
     def chdir(self):
@@ -83,7 +89,8 @@ class LocalExecutor(ExperimentExecutor):
             stages = self.dvc.reproduce(
                 *args, on_unchanged=filter_pipeline, **kwargs,
             )
-            return stages, unchanged
+        self._stages = stages
+        self._unchanged = unchanged
 
     def cleanup(self):
         logger.debug("Removing tmpdir '%s'", self.tmp_dir)

@@ -1,12 +1,14 @@
 import logging
 import os
 import tempfile
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
+from typing import Iterable
 
 from funcy import cached_property
 
 from dvc.exceptions import DvcException
-from dvc.repo.experiments.executor import LocalExecutor
+from dvc.repo.experiments.executor import ExperimentExecutor, LocalExecutor
 from dvc.scm.git import Git
 from dvc.stage.serialize import to_lockfile
 from dvc.utils import dict_sha256, env2bool, relpath
@@ -155,26 +157,44 @@ class Experiments:
         else:
             # configure params via command line here
             pass
-        stages, unchanged = self._run_local(rev, *args, **kwargs)
+        executor = LocalExecutor(
+            self.scm.get_tree(rev),
+            dvc_dir=self.dvc_dir,
+            cache_dir=self.repo.cache.local.cache_dir,
+        )
+
+        self._run([executor], *args, **kwargs)
+        stages, unchanged = executor.result
+        self._collect_output(rev, executor)
+        executor.cleanup()
+
         exp_rev = self._commit(stages + unchanged, rev=rev)
         self.checkout_exp(exp_rev, force=True)
         logger.info("Generated experiment '%s'.", exp_rev[:7])
         return stages
 
-    def _run_local(self, rev, *args, **kwargs):
-        tree = self.scm.get_tree(rev)
-        executor = LocalExecutor(
-            tree,
-            dvc_dir=self.dvc_dir,
-            cache_dir=self.repo.cache.local.cache_dir,
-        )
-        stages, unchanged = executor.run(*args, **kwargs)
+    def _run(self, executors: Iterable, *args, **kwargs):
+        """Run the specified ExperimentExecutors in parallel.
+
+        All experiments will be reproduced with the same `dvc repro` options
+        (via *args, **kwargs).
+        """
+        # TODO: setup jobs
+        with ThreadPoolExecutor(max_workers=1) as thread_exec:
+            futures = [
+                thread_exec.submit(executor.run, *args, **kwargs)
+                for executor in executors
+            ]
+            for _ in as_completed(futures):
+                # TODO: collect repro errors
+                pass
+
+    def _collect_output(self, rev: str, executor: ExperimentExecutor):
         logger.debug("copying tmp output from '%s'", executor.tmp_dir)
+        tree = self.scm.get_tree(rev)
         for fname in tree.walk_files(tree.tree_root):
             src = executor.path_info / relpath(fname, tree.tree_root)
             copyfile(src, fname)
-        executor.cleanup()
-        return stages, unchanged
 
     def checkout_exp(self, rev, force=False):
         """Checkout an experiment to the user's workspace."""
@@ -183,7 +203,6 @@ class Experiments:
 
         if force:
             self.repo.scm.repo.git.reset(hard=True)
-        logger.debug(f"checkout {rev}")
         self._scm_checkout(rev)
 
         tmp = tempfile.NamedTemporaryFile(delete=False).name
