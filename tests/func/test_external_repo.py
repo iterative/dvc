@@ -1,8 +1,8 @@
 import os
 
-from mock import patch
+from mock import ANY, patch
 
-from dvc.external_repo import external_repo
+from dvc.external_repo import CLONES, external_repo
 from dvc.path_info import PathInfo
 from dvc.scm.git import Git
 from dvc.tree.local import LocalTree
@@ -121,3 +121,55 @@ def test_relative_remote(erepo_dir, tmp_dir):
         assert os.path.isdir(repo.config["remote"]["upstream"]["url"])
         with repo.open_by_relpath("file") as fd:
             assert fd.read() == "contents"
+
+
+def test_shallow_clone_branch(erepo_dir):
+    with erepo_dir.chdir():
+        with erepo_dir.branch("branch", new=True):
+            erepo_dir.dvc_gen("file", "branch", commit="create file on branch")
+        erepo_dir.dvc_gen("file", "master", commit="create file on master")
+
+    url = os.fspath(erepo_dir)
+
+    with patch.object(Git, "clone", wraps=Git.clone) as mock_clone:
+        with external_repo(url, rev="branch") as repo:
+            with repo.open_by_relpath("file") as fd:
+                assert fd.read() == "branch"
+
+        mock_clone.assert_called_with(url, ANY, shallow_branch="branch")
+        _, shallow = CLONES[url]
+        assert shallow
+
+        with external_repo(url) as repo:
+            with repo.open_by_relpath("file") as fd:
+                assert fd.read() == "master"
+
+        assert mock_clone.call_count == 1
+        _, shallow = CLONES[url]
+        assert not shallow
+
+
+def test_shallow_clone_tag(erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("file", "foo", commit="init")
+        erepo_dir.scm.tag("v1")
+        erepo_dir.dvc_gen("file", "bar", commit="update file")
+
+    url = os.fspath(erepo_dir)
+
+    with patch.object(Git, "clone", wraps=Git.clone) as mock_clone:
+        with external_repo(url, rev="v1") as repo:
+            with repo.open_by_relpath("file") as fd:
+                assert fd.read() == "foo"
+
+        mock_clone.assert_called_with(url, ANY, shallow_branch="v1")
+        _, shallow = CLONES[url]
+        assert shallow
+
+        with external_repo(url, rev="master") as repo:
+            with repo.open_by_relpath("file") as fd:
+                assert fd.read() == "bar"
+
+        assert mock_clone.call_count == 1
+        _, shallow = CLONES[url]
+        assert not shallow
