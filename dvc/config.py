@@ -123,7 +123,6 @@ WEBDAV_COMMON = {
     "user": str,
     "password": str,
     "ask_password": Bool,
-    "root": str,
     "token": str,
     "cert_path": str,
     "key_path": str,

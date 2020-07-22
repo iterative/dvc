@@ -3,8 +3,12 @@ import threading
 
 from funcy import cached_property, wrap_prop
 
-from dvc.exceptions import DvcException, WebDAVConfigError
-from dvc.path_info import WebDAVURLInfo
+from dvc.exceptions import (
+    DvcException,
+    WebDAVConfigError,
+    WebDAVConnectionError,
+)
+from dvc.path_info import HTTPURLInfo, WebDAVURLInfo
 from dvc.scheme import Schemes
 
 from .base import BaseTree
@@ -39,9 +43,6 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
 
         # Whether to ask for password is it is not set
         self.ask_password = config.get("ask_password", False)
-
-        # Webdav root directory
-        self.root = config.get("root", "/")
 
         # Use token for webdav auth
         self.token = config.get("token", None)
@@ -79,12 +80,9 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
         # Import the webdav client library
         from webdav3.client import Client
 
-        # Construct hostname from path_info
-        hostname = (
-            self.path_info.scheme.replace("webdav", "http")
-            + "://"
-            + self.path_info.host
-        )
+        # Construct hostname from path_info by stripping path
+        http_info = HTTPURLInfo(self.path_info.url)
+        hostname = http_info.replace(path="").url
 
         # Set password or ask for it
         if self.ask_password and self.password is None and self.token is None:
@@ -97,7 +95,6 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
             "webdav_login": self.user,
             "webdav_password": self.password,
             "webdav_token": self.token,
-            "webdav_root": self.root,
             "webdav_cert_path": self.cert_path,
             "webdav_key_path": self.key_path,
             "webdav_timeout": self.timeout,
@@ -109,6 +106,10 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
         # Check whether client options are valid
         if not client.valid():
             raise WebDAVConfigError(hostname)
+
+        # Check whether connection is valid (root should always exist)
+        if not client.check(self.path_info.path):
+            raise WebDAVConnectionError(hostname)
 
         # Return constructed client (cached)
         return client
