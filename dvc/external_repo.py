@@ -28,20 +28,36 @@ from dvc.utils.fs import remove
 logger = logging.getLogger(__name__)
 
 
+def _is_dvc_main_repo(scm, path, rev):
+    isdir = scm.get_tree(rev).isdir if scm else os.path.isdir
+    return isdir(os.path.join(path, Repo.DVC_DIR))
+
+
 @contextmanager
 def external_repo(url, rev=None, for_write=False, **kwargs):
     logger.debug("Creating external repo %s@%s", url, rev)
     path = _cached_clone(url, rev, for_write=for_write)
+    path = os.path.realpath(path)
+
     if not rev:
         # Local HEAD points to the tip of whatever branch we first cloned from
         # (which may not be the default branch), use origin/HEAD here to get
         # the tip of the default branch
         rev = "refs/remotes/origin/HEAD"
+    if for_write:
+        rev = None
+        scm = None
+    else:
+        scm = Git(path)
 
-    # TODO: What to do with for the `dvcx`?
-    #  something like following, perhaps?
-    #  repo = ExternalDVCRepo if _is_dvc_main_repo(path, rev) else ExternalRepo
-    repo = ExternalRepo(path, url, rev, for_write=for_write, **kwargs)
+    erepo_cls = (
+        ExternalDVCRepo
+        if _is_dvc_main_repo(scm, path, rev)
+        else ExternalGitRepo
+    )
+    repo_kw = dict(scm=scm, rev=rev, for_write=for_write, url=url, **kwargs)
+    repo = erepo_cls(path, **repo_kw)
+
     try:
         yield repo
     except NoRemoteError:
@@ -91,34 +107,18 @@ def _add_upstream(orig_repo, src_repo):
     orig_repo.config["core"]["remote"] = "auto-generated-upstream"
 
 
-class ExternalRepo:
-    def __init__(
-        self, root_dir, url, rev, for_write=False, fetch=True, **kwargs
-    ):
-        self.root_dir = os.path.realpath(root_dir)
-        self.scm = Git(self.root_dir)
-        self.url = url
-        self.config = {"fetch": fetch, **kwargs}
-        self.for_write = for_write
-
-        repo_kw = {}
-        if for_write:
-            tree = LocalTree(None, {"url": root_dir})
-        else:
-            # .dvc folders are ignored by dvcignore which is required for
-            # `subrepos.find()`, hence using a separate tree
-            tree = self.scm.get_tree(rev)
-            repo_kw = dict(scm=self.scm, rev=rev)
-
-        paths = subrepos.find(tree)
-        self.repos = [Repo(path, **repo_kw) for path in paths]
+class BaseExternalMixin:
+    def _setup(self):
         self._setup_cache_dir()
-        self.rev = rev
 
         for repo in self.repos:
             repo.cache.local.cache_dir = self.cache_dir
             if os.path.isdir(self.url):
                 self._fix_upstream(repo)
+
+    @property
+    def repos(self):
+        raise NotImplementedError
 
     @wrap_with(threading.Lock())
     def _setup_cache_dir(self):
@@ -129,21 +129,6 @@ class ExternalRepo:
             self.cache_dir = CACHE_DIRS[self.url] = tempfile.mkdtemp(
                 "dvc-cache"
             )
-
-    @cached_property
-    def tree(self):
-        kwargs = dict(
-            use_dvcignore=True,
-            dvcignore_root=self.root_dir,
-            ignore_subrepo=False,
-        )
-        if self.for_write:
-            return LocalTree(None, {"url": self.root_dir}, **kwargs)
-        return self.scm.get_tree(rev=self.rev, **kwargs)
-
-    @cached_property
-    def repo_tree(self) -> "RepoTree":
-        return RepoTree(self.tree, subrepos=self.repos, **self.config)
 
     @wrap_with(threading.Lock())
     @contextmanager
@@ -178,9 +163,8 @@ class ExternalRepo:
             src_repo.close()
 
     def close(self):
-        for repo in self.repos:
-            repo.close()
-        self.scm.close()
+        if self.scm:
+            self.scm.close()
 
     def fetch_external(self, paths: Iterable, cache, **kwargs):
         # `RepoTree` will try downloading it to the repo's cache
@@ -246,9 +230,101 @@ class ExternalRepo:
         tree = self.repo_tree.in_subtree(PathInfo(self.root_dir) / path)
         return tree.repo if tree else None
 
+    def _find_subrepos(self):
+        repo_kw = {}
+        if self.for_write:
+            tree = LocalTree(None, {"url": self.root_dir})
+        else:
+            assert self.url and self.scm and self.rev
+            # .dvc folders are ignored by dvcignore which is required for
+            # `subrepos.find()`, hence using a separate tree
+            tree = self.scm.get_tree(self.rev)
+            repo_kw = dict(scm=self.scm, rev=self.rev)
+
+        paths = subrepos.find(tree)
+        return [Repo(path, **repo_kw) for path in paths]
+
+    @cached_property
+    def main_tree(self):
+        # FIXME: Repo.tree has dvcignore embedded on it, which might ignore
+        #  subrepos. Also, there might be unwanted side effects of using `tree`
+        #  that does not ignore subrepos, so we create our own `master` tree,
+        #  that speaks for the whole repository
+        #   ---
+        #  This is blocking implementation of subrepos inside `Repo`,
+        #  as collecting `.dvcignore` twice is not an answer.
+        #  we need very granular controls on dvcignore, such that we have
+        #  per-ops controls and also be able to create a separate instance
+        #  of tree that does have some attributes of dvcignore (en/dis)abled.
+        kwargs = dict(
+            use_dvcignore=True,
+            dvcignore_root=self.root_dir,
+            ignore_subrepo=False,
+        )
+        if self.for_write:
+            return LocalTree(None, {"url": self.root_dir}, **kwargs)
+        return self.scm.get_tree(rev=self.rev, **kwargs)
+
+    @cached_property
+    def repo_tree(self) -> "RepoTree":
+        return RepoTree(
+            self.main_tree, subrepos=self.repos, **self._tree_config
+        )
+
+
+class ExternalDVCRepo(BaseExternalMixin, Repo):
+    def __init__(
+        self,
+        root_dir,
+        scm=None,
+        rev=None,
+        for_write=False,
+        url=None,
+        fetch=True,
+        **kwargs
+    ):
+        super().__init__(root_dir, scm=scm, rev=rev)
+
+        self.url = url
+        self.rev = rev
+        self.for_write = for_write
+        self._tree_config = {"fetch": fetch, **kwargs}
+        self.subrepos = self._find_subrepos()
+        self._setup()
+
     @property
-    def main_repo(self):
-        return self.in_repo(os.curdir)
+    def repos(self):
+        return [self] + self.subrepos
+
+
+class ExternalGitRepo(BaseExternalMixin):
+    def __init__(
+        self,
+        root_dir,
+        scm=None,
+        rev=None,
+        for_write=False,
+        url=None,
+        fetch=True,
+        **kwargs
+    ):
+        self.root_dir = root_dir
+        self.scm = scm
+        self.url = url
+        self.rev = rev
+        self.for_write = for_write
+        self._tree_config = {"fetch": fetch, **kwargs}
+
+        self.subrepos = self._find_subrepos()
+        self._setup()
+
+    @property
+    def repos(self):
+        return self.subrepos
+
+    @property
+    def tree(self):
+        return self.main_tree
 
 
 def _cached_clone(url, rev, for_write=False):
