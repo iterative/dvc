@@ -37,7 +37,21 @@ from .ssh import (  # noqa: F401; noqa: F401
 
 
 @pytest.fixture(scope="session")
-def docker_compose():
+def docker():
+    import os
+
+    # See https://travis-ci.community/t/docker-linux-containers-on-windows/301
+    if os.environ.get("TRAVIS") and os.name == "nt":
+        pytest.skip("disabled for Windows on Travis")
+
+    try:
+        subprocess.check_output("docker ps", shell=True)
+    except (subprocess.CalledProcessError, OSError):
+        pytest.skip("no docker installed")
+
+
+@pytest.fixture(scope="session")
+def docker_compose(docker):
     try:
         subprocess.check_output("docker-compose version", shell=True)
     except (subprocess.CalledProcessError, OSError):
