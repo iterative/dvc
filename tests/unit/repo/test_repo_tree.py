@@ -1,10 +1,12 @@
 import os
 import shutil
+from unittest import mock
 
 import pytest
 
 from dvc.path_info import PathInfo
 from dvc.repo.tree import RepoTree
+from tests.func.test_get import make_subrepo
 
 
 def test_exists(tmp_dir, dvc):
@@ -180,8 +182,6 @@ def test_isdvc(tmp_dir, dvc):
 
 
 def test_in_subtree(tmp_dir, scm, dvc):
-    from tests.func.test_get import make_subrepo
-
     subrepo1 = tmp_dir / "dir" / "repo"
     subrepo2 = tmp_dir / "dir" / "repo2"
 
@@ -210,3 +210,133 @@ def test_in_subtree(tmp_dir, scm, dvc):
             assert (
                 subtree.repo == repo.dvc
             ), f"repo did not match for path '{p}'"
+
+
+def test_subrepos(tmp_dir, scm, dvc):
+    tmp_dir.scm_gen(
+        {"dir": {"repo.txt": "file to confuse RepoTree"}},
+        commit="dir/repo.txt",
+    )
+
+    subrepo1 = tmp_dir / "dir" / "repo"
+    subrepo2 = tmp_dir / "dir" / "repo2"
+
+    for repo in [subrepo1, subrepo2]:
+        make_subrepo(repo, scm)
+
+    subrepo1.dvc_gen({"foo": "foo", "dir1": {"bar": "bar"}}, commit="FOO")
+    subrepo2.dvc_gen(
+        {"lorem": "lorem", "dir2": {"ipsum": "ipsum"}}, commit="BAR"
+    )
+
+    # using tree that does not have dvcignore
+    tree = RepoTree(
+        scm.get_tree("HEAD"), [dvc, subrepo1.dvc, subrepo2.dvc], fetch=True
+    )
+
+    def assert_tree_belongs_to_repo(ret_val):
+        method = tree._find_subtree
+
+        def f(*args, **kwargs):
+            r = method(*args, **kwargs)
+            assert r and r.repo == ret_val
+            return r
+
+        return f
+
+    with mock.patch.object(
+        tree,
+        "_find_subtree",
+        side_effect=assert_tree_belongs_to_repo(subrepo1.dvc),
+    ):
+        assert tree.exists(subrepo1 / "foo") is True
+        assert tree.exists(subrepo1 / "bar") is False
+
+        assert tree.isfile(subrepo1 / "foo") is True
+        assert tree.isfile(subrepo1 / "foo") is True
+        assert tree.isfile(subrepo1 / "dir1" / "bar") is True
+        assert tree.isfile(subrepo1 / "dir1") is False
+
+        assert tree.isdir(subrepo1 / "dir1") is True
+        assert tree.isdir(subrepo1 / "dir1" / "bar") is False
+        assert tree.isdvc(subrepo1 / "foo") is True
+
+    with mock.patch.object(
+        tree,
+        "_find_subtree",
+        side_effect=assert_tree_belongs_to_repo(subrepo2.dvc),
+    ):
+        assert tree.exists(subrepo2 / "lorem") is True
+        assert tree.exists(subrepo2 / "ipsum") is False
+
+        assert tree.isfile(subrepo2 / "lorem") is True
+        assert tree.isfile(subrepo2 / "lorem") is True
+        assert tree.isfile(subrepo2 / "dir2" / "ipsum") is True
+        assert tree.isfile(subrepo2 / "dir2") is False
+
+        assert tree.isdir(subrepo2 / "dir2") is True
+        assert tree.isdir(subrepo2 / "dir2" / "ipsum") is False
+        assert tree.isdvc(subrepo2 / "lorem") is True
+
+
+@pytest.mark.parametrize(
+    "dvcfiles,extra_expected",
+    [
+        (False, []),
+        (
+            True,
+            [
+                PathInfo("dir") / "repo" / "foo.dvc",
+                PathInfo("dir") / "repo" / "dir1.dvc",
+                PathInfo("dir") / "repo2" / "lorem.dvc",
+                PathInfo("dir") / "repo2" / "dir2.dvc",
+            ],
+        ),
+    ],
+)
+def test_subrepo_walk(tmp_dir, dvc, scm, dvcfiles, extra_expected):
+    tmp_dir.scm_gen(
+        {"dir": {"repo.txt": "file to confuse RepoTree"}},
+        commit="dir/repo.txt",
+    )
+
+    subrepo1 = tmp_dir / "dir" / "repo"
+    subrepo2 = tmp_dir / "dir" / "repo2"
+
+    for repo in [subrepo1, subrepo2]:
+        make_subrepo(repo, scm)
+
+    subrepo1.dvc_gen({"foo": "foo", "dir1": {"bar": "bar"}}, commit="FOO")
+    subrepo2.dvc_gen(
+        {"lorem": "lorem", "dir2": {"ipsum": "ipsum"}}, commit="BAR"
+    )
+
+    # using tree that does not have dvcignore
+    tree = RepoTree(
+        scm.get_tree("HEAD", use_dvcignore=True, ignore_subrepo=False),
+        [dvc, subrepo1.dvc, subrepo2.dvc],
+        fetch=True,
+    )
+    expected = [
+        PathInfo("dir") / "repo",
+        PathInfo("dir") / "repo.txt",
+        PathInfo("dir") / "repo2",
+        PathInfo("dir") / "repo" / ".gitignore",
+        PathInfo("dir") / "repo" / "foo",
+        PathInfo("dir") / "repo" / "dir1",
+        PathInfo("dir") / "repo" / "dir1" / "bar",
+        PathInfo("dir") / "repo2" / ".gitignore",
+        PathInfo("dir") / "repo2" / "lorem",
+        PathInfo("dir") / "repo2" / "dir2",
+        PathInfo("dir") / "repo2" / "dir2" / "ipsum",
+    ]
+
+    actual = []
+    for root, dirs, files in tree.walk("dir", dvcfiles=dvcfiles):
+        for entry in dirs + files:
+            actual.append(os.path.join(root, entry))
+
+    # need to change to abspath as scm.get_tree() makes `root` return abspath
+    expected = [str(tmp_dir / path) for path in expected + extra_expected]
+    assert set(actual) == set(expected)
+    assert len(actual) == len(expected)
