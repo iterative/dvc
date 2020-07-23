@@ -18,13 +18,17 @@ DETACHED_PROCESS = 0x00000008
 def _spawn_windows(cmd, env):
     from subprocess import STARTUPINFO, STARTF_USESHOWWINDOW
 
+    prefix = [sys.executable]
+    if not is_binary():
+        prefix += [sys.argv[0]]
+
     creationflags = CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS
 
     startupinfo = STARTUPINFO()
     startupinfo.dwFlags |= STARTF_USESHOWWINDOW
 
     Popen(
-        cmd,
+        prefix + cmd,
         env=env,
         close_fds=True,
         shell=False,
@@ -34,6 +38,8 @@ def _spawn_windows(cmd, env):
 
 
 def _spawn_posix(cmd, env):
+    from dvc.main import main
+
     # NOTE: using os._exit instead of sys.exit, because dvc built
     # with PyInstaller has trouble with SystemExit exception and throws
     # errors such as "[26338] Failed to execute script __main__"
@@ -59,7 +65,8 @@ def _spawn_posix(cmd, env):
     sys.stdout.close()
     sys.stderr.close()
 
-    Popen(cmd, env=env, close_fds=True, shell=False).communicate()
+    os.environ.update(env)
+    main(cmd)
 
     os._exit(0)  # pylint: disable=protected-access
 
@@ -87,10 +94,7 @@ def daemon(args):
         logger.debug("skipping launching a new daemon.")
         return
 
-    cmd = [sys.executable]
-    if not is_binary():
-        cmd += [sys.argv[0]]
-    cmd += ["daemon", "-q"] + args
+    cmd = ["daemon", "-q"] + args
 
     env = fix_env()
     file_path = os.path.abspath(inspect.stack()[0][1])
