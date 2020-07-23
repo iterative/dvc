@@ -125,7 +125,7 @@ class CmdVersion(CmdBaseNoRepo):
                 cache.append(name)
         os.remove(src)
 
-        return "/".join(cache)
+        return ", ".join(cache)
 
     @staticmethod
     def get_supported_remotes():
