@@ -2,7 +2,7 @@ import logging
 import os
 from typing import Optional
 
-from funcy import cached_property, post_processing
+from funcy import cached_property
 
 from dvc.dvcfile import is_valid_filename
 from dvc.exceptions import OutputNotFoundError
@@ -277,8 +277,12 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
     def _find_subtree_with_prefix(self, path):
         # dvctrees is already ordered from low to high
         path_prefix = os.path.abspath(path)
+        exact_match = self._dvctrees.get(path_prefix)
+        if exact_match:
+            return path_prefix, exact_match
+
         for pref, tree in self._dvctrees.items():
-            if path_prefix.startswith(pref):
+            if path_prefix.startswith(pref + os.sep):
                 return pref, tree
         return "", None
 
@@ -487,21 +491,3 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
 
     def in_subtree(self, path):
         return self._find_subtree(path)
-
-    @post_processing("\r\n".join)
-    def _visualize(self, top, **kwargs):
-        """`tree`-like output, useful for debugging/visualizing"""
-        indent = 4
-        spacing = " " * indent
-        tee = "├── "
-        last = "└── "
-        for root, _, files in self.walk(top, **kwargs):
-            level = root.replace(top, "").count(os.sep)
-            indent = spacing * level
-            yield "{}{}/".format(indent, os.path.basename(root))
-            sub_indent = spacing * (level + 1)
-            length = len(files)
-            for i, f in enumerate(files):
-                yield "{}{}{}".format(
-                    sub_indent, tee if i + 1 != length else last, f
-                )

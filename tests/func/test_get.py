@@ -238,12 +238,13 @@ def test_get_pipeline_tracked_outs(
         assert (git_dir / "baz").read_text() == "foo"
 
 
-def make_subrepo(dir_, scm, config):
+def make_subrepo(dir_, scm, config=None):
     dir_.mkdir(parents=True)
     with dir_.chdir():
         dir_.scm = scm
         dir_.init(dvc=True, subdir=True)
-        dir_.add_remote(config=config)
+        if config:
+            dir_.add_remote(config=config)
 
 
 @pytest.mark.parametrize(
