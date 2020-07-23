@@ -27,8 +27,14 @@ class CmdVersion(CmdBaseNoRepo):
     def run(self):
         from dvc.repo import Repo
 
+        package = PKG
+        if PKG is None:
+            package = ""
+        else:
+            package = f"({PKG})"
+
         info = [
-            f"DVC version: {__version__} ({PKG})",
+            f"DVC version: {__version__} {package}",
             "--------------------------------- \n",
             f"Platform: Python {platform.python_version()} on "
             f"{platform.platform()}",
@@ -45,11 +51,13 @@ class CmdVersion(CmdBaseNoRepo):
             # `dvc config cache.shared group`.
             if os.path.exists(repo.cache.local.cache_dir):
                 info.append(
-                    "Cache types: " + self.get_linktype_support_info(repo)
+                    "Cache types: {}".format(
+                        self.get_linktype_support_info(repo)
+                    )
                 )
                 if psutil:
                     fs_type = self.get_fs_type(repo.cache.local.cache_dir)
-                    info.append(f"Cache with {fs_type}")
+                    info.append(f"Cache directory: {fs_type}")
             else:
                 logger.warning(
                     "Unable to detect supported link types, as cache "
@@ -67,7 +75,7 @@ class CmdVersion(CmdBaseNoRepo):
         else:
             if psutil:
                 fs_root = self.get_fs_type(os.path.abspath(root_directory))
-                info.append(f"Workspace with {fs_root}")
+                info.append(f"Workspace directory: {fs_root}")
 
             info.append("Repo: {}".format(_get_dvc_repo_info(repo)))
 
@@ -144,7 +152,7 @@ def _get_dvc_repo_info(repo):
     if repo.root_dir != repo.scm.root_dir:
         return "dvc (subdir), git"
 
-    return "dvc + git"
+    return "dvc, git"
 
 
 def add_parser(subparsers, parent_parser):

@@ -22,7 +22,7 @@ def test_info_in_repo(scm_init, tmp_dir, caplog):
     assert re.search(r"Cache types: .*", caplog.text)
 
     if scm_init:
-        assert "Repo: dvc + git" in caplog.text
+        assert "Repo: dvc, git" in caplog.text
     else:
         assert "Repo: dvc (no_scm)" in caplog.text
 
@@ -53,8 +53,8 @@ def test_fs_info_in_repo(tmp_dir, dvc, caplog):
     os.mkdir(dvc.cache.local.cache_dir)
     assert main(["version"]) == 0
 
-    assert re.search(r"Cache with .* on .*", caplog.text)
-    assert re.search(r"Workspace with .* on .*", caplog.text)
+    assert re.search(r"Cache directory: .* on .*", caplog.text)
+    assert re.search(r"Workspace directory: .* on .*", caplog.text)
 
 
 def test_info_outside_of_repo(tmp_dir, caplog):
