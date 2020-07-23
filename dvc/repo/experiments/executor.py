@@ -9,7 +9,7 @@ from dvc.path_info import PathInfo
 from dvc.stage import PipelineStage
 from dvc.tree.base import BaseTree
 from dvc.utils import relpath
-from dvc.utils.fs import copyfile, makedirs
+from dvc.utils.fs import copy_fobj_to_file, makedirs
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,8 @@ class LocalExecutor(ExperimentExecutor):
                 dest = self.path_info / relpath(fname, src_tree.tree_root)
                 if not os.path.exists(dest.parent):
                     makedirs(dest.parent)
-                copyfile(fname, dest)
+                with src_tree.open(fname, "rb") as fobj:
+                    copy_fobj_to_file(fobj, dest)
         except Exception:
             self.tmp_dir.cleanup()
             raise

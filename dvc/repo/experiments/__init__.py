@@ -104,9 +104,8 @@ class Experiments:
         logger.debug("Checking out base experiment commit '%s'", rev)
         self.scm.checkout(rev)
 
-    def _patch_exp(self):
-        """Create a patch based on the current (parent) workspace and apply it
-        to the experiment workspace.
+    def _stash_exp(self):
+        """Stash changes from the current (parent) workspace as an experiment.
         """
         tmp = tempfile.NamedTemporaryFile(delete=False).name
         try:
@@ -120,6 +119,10 @@ class Experiments:
                 )
         finally:
             remove(tmp)
+        rev = self.scm.get_rev()
+        msg = f"Stashed experiment on {rev[:7]}"
+        self.scm.repo.git.stash("push", "-m", msg)
+        return self.scm.resolve_rev("stash@{0}")
 
     def _commit(self, stages, check_exists=True, branch=True, rev=None):
         """Commit stages as an experiment and return the commit SHA."""
@@ -150,23 +153,27 @@ class Experiments:
         self._scm_checkout(rev)
         if workspace:
             try:
-                self._patch_exp()
+                exp_rev = self._stash_exp()
             except UnchangedExperimentError as exc:
                 logger.info("Reproducing existing experiment '%s'.", rev[:7])
                 raise exc
         else:
             # configure params via command line here
             pass
-        executor = LocalExecutor(
-            self.scm.get_tree(rev),
-            dvc_dir=self.dvc_dir,
-            cache_dir=self.repo.cache.local.cache_dir,
-        )
 
-        self._run([executor], *args, **kwargs)
-        stages, unchanged = executor.result
-        self._collect_output(rev, executor)
-        executor.cleanup()
+        try:
+            executor = LocalExecutor(
+                self.scm.get_tree(exp_rev),
+                dvc_dir=self.dvc_dir,
+                cache_dir=self.repo.cache.local.cache_dir,
+            )
+
+            self._run([executor], *args, **kwargs)
+            stages, unchanged = executor.result
+            self._collect_output(rev, executor)
+            executor.cleanup()
+        finally:
+            self.scm.repo.git.stash("drop")
 
         exp_rev = self._commit(stages + unchanged, rev=rev)
         self.checkout_exp(exp_rev, force=True)
