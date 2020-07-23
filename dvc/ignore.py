@@ -131,14 +131,16 @@ class DvcIgnoreFilter:
         self.ignores_trie_tree[root_dir] = DvcIgnorePatterns(
             default_ignore_patterns, root_dir
         )
-        for root, dirs, _ in self.tree.walk(self.root_dir):
+        for root, dirs, _ in self.tree.walk(
+            self.root_dir, use_dvcignore=False
+        ):
             self._update(root)
             self._update_sub_repo(root, dirs)
             dirs[:], _ = self(root, dirs, [])
 
     def _update(self, dirname):
         ignore_file_path = os.path.join(dirname, DvcIgnore.DVCIGNORE_FILE)
-        if self.tree.exists(ignore_file_path):
+        if self.tree.exists(ignore_file_path, use_dvcignore=False):
             new_pattern = DvcIgnorePatterns.from_files(
                 ignore_file_path, self.tree
             )

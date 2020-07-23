@@ -58,12 +58,8 @@ class LocalTree(BaseTree):
         from dvc.ignore import DvcIgnoreFilter, DvcIgnoreFilterNoop
 
         root = self.dvcignore_root or self.tree_root
-        if not self.use_dvcignore:
-            return DvcIgnoreFilterNoop(self, root)
-        self.use_dvcignore = False
-        ret = DvcIgnoreFilter(self, root)
-        self.use_dvcignore = True
-        return ret
+        cls = DvcIgnoreFilter if self.use_dvcignore else DvcIgnoreFilterNoop
+        return cls(self, root)
 
     @staticmethod
     def open(path_info, mode="r", encoding=None):
@@ -101,7 +97,7 @@ class LocalTree(BaseTree):
             System.is_symlink(path_info) or System.is_hardlink(path_info)
         )
 
-    def walk(self, top, topdown=True, onerror=None):
+    def walk(self, top, topdown=True, onerror=None, use_dvcignore=True):
         """Directory tree generator.
 
         See `os.walk` for the docs. Differences:
@@ -110,9 +106,10 @@ class LocalTree(BaseTree):
         for root, dirs, files in os.walk(
             top, topdown=topdown, onerror=onerror
         ):
-            dirs[:], files[:] = self.dvcignore(
-                os.path.abspath(root), dirs, files
-            )
+            if use_dvcignore:
+                dirs[:], files[:] = self.dvcignore(
+                    os.path.abspath(root), dirs, files
+                )
 
             yield os.path.normpath(root), dirs, files
 
