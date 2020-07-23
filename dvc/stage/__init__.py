@@ -306,10 +306,12 @@ class Stage(params.StageParams):
     @rwlocked(read=["deps"], write=["outs"])
     def reproduce(self, interactive=False, **kwargs):
         if not (kwargs.get("force", False) or self.changed()):
-            if '.dvc' in self.adressing:
+            if ".dvc" in self.adressing:
                 logger.info("'%s' didn't change, skipping", self.addressing)
             else:
-                logger.info("Stage '%s' didn't change, skipping", self.addressing)
+                logger.info(
+                    "Stage '%s' didn't change, skipping", self.addressing
+                )
             return None
 
         msg = (
