@@ -177,3 +177,36 @@ def test_isdvc(tmp_dir, dvc):
     assert tree.isdvc("dir")
     assert not tree.isdvc("dir/baz")
     assert tree.isdvc("dir/baz", recursive=True, strict=False)
+
+
+def test_in_subtree(tmp_dir, scm, dvc):
+    from tests.func.test_get import make_subrepo
+
+    subrepo1 = tmp_dir / "dir" / "repo"
+    subrepo2 = tmp_dir / "dir" / "repo2"
+
+    for repo in [subrepo1, subrepo2]:
+        make_subrepo(repo, scm)
+
+    (tmp_dir / "dir" / "repotxt").write_text("file to confuse RepoTree")
+    subrepo1.dvc_gen({"foo": "foo"}, commit="FOO")
+    subrepo2.dvc_gen({"bar": "bar"}, commit="BAR")
+
+    # dvc.tree ignores subrepos by default,
+    # but we just want to test `in_subtree()`, which is purely lexical
+    tree = RepoTree(dvc.tree, [dvc, subrepo1.dvc, subrepo2.dvc])
+
+    assert tree.in_subtree(str(tmp_dir / "dir")).repo == dvc
+    assert tree.in_subtree(str(tmp_dir / "dir" / "re")).repo == dvc
+    assert tree.in_subtree(str(tmp_dir / "dir" / "repo")).repo == subrepo1.dvc
+    assert tree.in_subtree(str(tmp_dir / "dir" / "repotxt")).repo == dvc
+    assert tree.in_subtree(str(tmp_dir / "dir" / "repo2")).repo == subrepo2.dvc
+
+    for repo in [tmp_dir, subrepo1, subrepo2]:
+        for path in ["", "foo", "something-that-does-not-exist"]:
+            p = os.path.join(repo, path)
+            subtree = tree.in_subtree(p)
+            assert subtree, f"subtree not found for path '{p}'"
+            assert (
+                subtree.repo == repo.dvc
+            ), f"repo did not match for path '{p}'"
