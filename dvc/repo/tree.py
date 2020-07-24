@@ -291,6 +291,8 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
     ):  # pylint: disable=arguments-differ
         if "b" in mode:
             encoding = None
+        else:
+            encoding = encoding or "utf-8"
 
         subtree = self._find_subtree(path)
         if subtree and subtree.exists(path):

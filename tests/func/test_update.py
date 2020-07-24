@@ -1,4 +1,5 @@
 import os
+from copy import deepcopy
 
 import pytest
 
@@ -282,3 +283,43 @@ def test_update_recursive(tmp_dir, dvc, erepo_dir):
     assert stage1.deps[0].def_repo["rev_lock"] == new_rev
     assert stage2.deps[0].def_repo["rev_lock"] == new_rev
     assert stage3.deps[0].def_repo["rev_lock"] == new_rev
+
+
+def test_subrepo_update(tmp_dir, dvc, scm, erepo_dir, local_cloud):
+    from tests.func.test_get import make_subrepo
+
+    dir1 = {"subdir1": {"foo1": "foo1"}}
+    dir2 = {"subdir2": {"foo2": "foo2"}}
+
+    subrepo = erepo_dir / "sub"
+    make_subrepo(subrepo, erepo_dir.scm, local_cloud.config)
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen({"dir1": dir1}, commit="first")
+    with subrepo.chdir():
+        subrepo.dvc_gen({"dir2": dir2}, commit="second")
+    subrepo.dvc.push()  # FIXME: deleting this is failing the test, investigate
+
+    old_rev = erepo_dir.scm.get_rev()
+
+    dir1_new = deepcopy(dir1)
+    dir1_new["subdir1"].update({"bar1": "bar1"})
+    dir2_new = deepcopy(dir2)
+    dir2_new["subdir2"].update({"bar2": "bar2"})
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen({"dir1": dir1_new}, commit="third")
+    with subrepo.chdir():
+        subrepo.dvc_gen({"dir2": dir2_new}, commit="third")
+    subrepo.dvc.push()
+
+    dvc.imp(os.fspath(erepo_dir), "dir1", rev=old_rev)
+    dvc.imp(os.fspath(erepo_dir), os.path.join("sub", "dir2"), rev=old_rev)
+
+    assert (tmp_dir / "dir1").read_text() == dir1
+    assert (tmp_dir / "dir2").read_text() == dir2
+
+    dvc.update("dir1.dvc", rev="HEAD")
+    assert (tmp_dir / "dir1").read_text() == dir1_new
+    dvc.update("dir2.dvc", rev="HEAD")
+    assert (tmp_dir / "dir2").read_text() == dir2_new

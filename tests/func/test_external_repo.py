@@ -1,8 +1,14 @@
 import os
 
+import pytest
 from mock import ANY, patch
 
-from dvc.external_repo import CLONES, external_repo
+from dvc.external_repo import (
+    CLONES,
+    ExternalDVCRepo,
+    ExternalGitRepo,
+    external_repo,
+)
 from dvc.scm.git import Git
 from dvc.tree.local import LocalTree
 from dvc.utils import relpath
@@ -19,10 +25,12 @@ def test_external_repo(erepo_dir):
 
     with patch.object(Git, "clone", wraps=Git.clone) as mock:
         with external_repo(url) as repo:
+            assert isinstance(repo, ExternalDVCRepo)
             with repo.repo_tree.open_by_relpath("file") as fd:
                 assert fd.read() == "master"
 
         with external_repo(url, rev="branch") as repo:
+            assert isinstance(repo, ExternalDVCRepo)
             with repo.repo_tree.open_by_relpath("file") as fd:
                 assert fd.read() == "branch"
 
@@ -32,6 +40,7 @@ def test_external_repo(erepo_dir):
 def test_source_change(erepo_dir):
     url = os.fspath(erepo_dir)
     with external_repo(url) as repo:
+        assert isinstance(repo, ExternalDVCRepo)
         old_rev = repo.scm.get_rev()
 
     erepo_dir.scm_gen("file", "text", commit="a change")
@@ -53,12 +62,14 @@ def test_cache_reused(tmp_dir, erepo_dir, mocker, local_cloud):
     # Use URL to prevent any fishy optimizations
     url = f"file://{erepo_dir}"
     with external_repo(url) as repo:
+        assert isinstance(repo, ExternalDVCRepo)
         repo.get_external("file", tmp_dir / "file1")
         assert download_spy.mock.call_count == 1
 
     # Should not download second time
     erepo_dir.scm.branch("branch")
     with external_repo(url, "branch") as repo:
+        assert isinstance(repo, ExternalDVCRepo)
         repo.get_external("file", tmp_dir / "file2")
         assert download_spy.mock.call_count == 1
 
@@ -170,3 +181,24 @@ def test_shallow_clone_tag(erepo_dir):
         assert mock_clone.call_count == 1
         _, shallow = CLONES[url]
         assert not shallow
+
+
+@pytest.mark.parametrize(
+    "repo_class, erepo",
+    [
+        (ExternalDVCRepo, pytest.lazy_fixture("erepo_dir")),
+        (ExternalGitRepo, pytest.lazy_fixture("git_dir")),
+    ],
+)
+def test_subrepo(erepo, repo_class):
+    from tests.func.test_get import make_subrepo
+
+    subrepo = erepo / "sub"
+    nested = erepo / "sub" / "nested"
+    make_subrepo(subrepo, erepo.scm)
+    make_subrepo(nested, erepo.scm)
+    with external_repo(os.fspath(erepo), rev="master") as repo:
+        assert isinstance(repo, repo_class)
+        assert {
+            os.path.relpath(r.root_dir, repo.root_dir) for r in repo.subrepos
+        } == {"sub", os.path.join("sub", "nested")}

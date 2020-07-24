@@ -1,6 +1,7 @@
 import os
 import shutil
 import textwrap
+from operator import itemgetter
 
 import pytest
 
@@ -502,3 +503,109 @@ def test_ls_target(erepo_dir, use_scm):
         {"isdir": False, "isexec": 0, "isout": False, "path": "bar"},
         {"isdir": False, "isexec": 0, "isout": False, "path": "foo"},
     ]
+
+
+@pytest.mark.parametrize(
+    "dvc_top_level, erepo",
+    [
+        (True, pytest.lazy_fixture("erepo_dir")),
+        (False, pytest.lazy_fixture("git_dir")),
+    ],
+)
+def test_subrepo(dvc_top_level, erepo):
+    from tests.func.test_get import make_subrepo
+
+    # setup foo.txt and dvc_dir in each subrepo and bar.txt and scm_dir as scm
+    # tracked files
+    dvc_files = {"foo.txt": "foo.txt", "dvc_dir": {"lorem": "lorem"}}
+    scm_files = {"bar.txt": "bar.txt", "scm_dir": {"ipsum": "ipsum"}}
+    with erepo.chdir():
+        erepo.scm_gen(scm_files, commit="bar.txt")
+        if dvc_top_level:
+            erepo.dvc_gen(dvc_files, commit="foo.txt")
+        for path in ["sub1", "sub2", os.path.join("sub2", "nested")]:
+            repo = erepo / path
+            make_subrepo(repo, erepo.scm)
+            with repo.chdir():
+                repo.dvc_gen(dvc_files, commit=f"dvc track for path {path}")
+                repo.scm_gen(scm_files, commit=f"scm track for path {path}")
+
+    def _ls(path=None):
+        return Repo.ls(os.fspath(erepo), path)
+
+    git_tracked_outputs = [
+        # these outputs will be used if top-level is not a dvc repo,
+        # but just a plain git repo
+        {"isdir": False, "isexec": False, "isout": False, "path": "bar.txt"},
+        {"isdir": True, "isexec": 0, "isout": False, "path": "scm_dir"},
+    ]
+
+    # Repo.ls output is sorted alphabetically by path
+    common_outputs = sorted(
+        [
+            *git_tracked_outputs,
+            {
+                "isdir": False,
+                "isexec": 0,
+                "isout": False,
+                "path": ".gitignore",
+            },
+            {"isdir": True, "isexec": False, "isout": True, "path": "dvc_dir"},
+            {
+                "isdir": False,
+                "isexec": False,
+                "isout": True,
+                "path": "foo.txt",
+            },
+            {
+                "isdir": False,
+                "isexec": 0,
+                "isout": False,
+                "path": "foo.txt.dvc",
+            },
+            {
+                "isdir": False,
+                "isexec": 0,
+                "isout": False,
+                "path": "dvc_dir.dvc",
+            },
+        ],
+        key=itemgetter("path"),
+    )
+
+    top_level_outputs = (
+        common_outputs if dvc_top_level else git_tracked_outputs
+    )
+    assert _ls() == sorted(
+        [
+            *top_level_outputs,
+            {"isdir": True, "isexec": False, "isout": False, "path": "sub1"},
+            {"isdir": True, "isexec": False, "isout": False, "path": "sub2"},
+        ],
+        key=itemgetter("path"),
+    )
+
+    assert _ls("sub1") == common_outputs
+    assert _ls("sub2") == sorted(
+        [
+            *common_outputs,
+            {"isdir": True, "isexec": False, "isout": False, "path": "nested"},
+        ],
+        key=itemgetter("path"),
+    )
+    assert _ls(os.path.join("sub2", "nested")) == common_outputs
+
+    # testing for contents of a directory
+    for path in [os.curdir, "sub1", "sub2", os.path.join("sub2", "nested")]:
+        if path == os.curdir and dvc_top_level:
+            assert _ls(os.path.join(path, "dvc_dir")) == [
+                {
+                    "isdir": False,
+                    "isexec": False,
+                    "isout": False,
+                    "path": "lorem",
+                },
+            ]
+        assert _ls(os.path.join(path, "scm_dir")) == [
+            {"isdir": False, "isexec": False, "isout": False, "path": "ipsum"},
+        ]

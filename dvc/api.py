@@ -8,7 +8,7 @@ from dvc.exceptions import (
     NotDvcRepoError,
     PathMissingError,
 )
-from dvc.external_repo import external_repo
+from dvc.external_repo import ExternalDVCRepo, ExternalGitRepo, external_repo
 from dvc.repo import Repo
 
 
@@ -33,7 +33,7 @@ def get_url(path, repo=None, rev=None, remote=None):
     with _make_repo(repo, rev=rev) as _repo:
         # pylint: disable=no-member
         path = os.path.join(_repo.root_dir, path)
-        is_erepo = not isinstance(_repo, Repo)
+        is_erepo = isinstance(_repo, (ExternalDVCRepo, ExternalGitRepo))
         r = _repo.in_repo(path) if is_erepo else _repo
         if is_erepo and not r:
             raise UrlNotDvcRepoError(_repo.url)
