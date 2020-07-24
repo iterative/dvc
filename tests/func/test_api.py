@@ -186,7 +186,7 @@ def test_read_with_subrepos(tmp_dir, scm, local_cloud):
         make_subrepo(repo, scm, config=local_cloud.config)
         with repo.chdir():
             text = os.fspath((repo / "foo.txt").relative_to(tmp_dir)).replace(
-                "/", "-"
+                os.sep, "-"
             )
             repo.dvc_gen({"foo.txt": text}, commit=f"commit for path {path}")
             repo.dvc.push()
