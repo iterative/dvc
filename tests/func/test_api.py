@@ -7,6 +7,7 @@ from dvc.api import UrlNotDvcRepoError
 from dvc.exceptions import FileMissingError
 from dvc.path_info import URLInfo
 from dvc.utils.fs import remove
+from tests.func.test_get import make_subrepo
 
 cloud_names = [
     "s3",
@@ -173,3 +174,87 @@ def test_open_not_cached(dvc):
     os.remove(metric_file)
     with pytest.raises(FileMissingError):
         api.read(metric_file)
+
+
+def test_read_with_subrepos(tmp_dir, scm, local_cloud):
+    # create a repo in "sub1", "sub2" and nested dvc repo in "sub2/nested"
+    # each having a dvc-tracked file foo.txt with text of location:
+    # eg: "sub1-foo.txt", etc. And "foo.txt" and "sub1/bar.txt" are git tracked
+    tmp_dir.scm_gen("foo.txt", "foo.txt", commit="FOO")
+    for path in ["sub1", "sub2", os.path.join("sub2", "nested")]:
+        repo = tmp_dir / path
+        make_subrepo(repo, scm, config=local_cloud.config)
+        with repo.chdir():
+            text = os.fspath((repo / "foo.txt").relative_to(tmp_dir)).replace(
+                "/", "-"
+            )
+            repo.dvc_gen({"foo.txt": text}, commit=f"commit for path {path}")
+            repo.dvc.push()
+
+    tmp_dir.scm_gen(
+        {"sub1": {"bar.txt": "sub1-bar.txt"}}, commit="add sub1/bar.txt"
+    )
+    repo_path = f"file://{tmp_dir}"  # forcing it to load as ExternalRepo
+
+    assert api.read("foo.txt", repo=repo_path) == "foo.txt"
+    assert api.read("sub1/foo.txt", repo=repo_path) == "sub1-foo.txt"
+    assert api.read("sub1/bar.txt", repo=repo_path) == "sub1-bar.txt"
+    assert api.read("sub2/foo.txt", repo=repo_path) == "sub2-foo.txt"
+
+    nested_path = os.path.join("sub2", "nested", "foo.txt")
+    assert api.read(nested_path, repo=repo_path) == "sub2-nested-foo.txt"
+
+
+def test_get_url_subrepo_git_repo(tmp_dir, scm, local_cloud):
+    remote_url = local_cloud.config["url"]
+    checksums = []
+    paths = ["sub1", "sub2", os.path.join("sub2", "nested")]
+    for path in paths:
+        repo = tmp_dir / path
+        make_subrepo(repo, scm, config=local_cloud.config)
+        with repo.chdir():
+            text = os.fspath((repo / "foo.txt").relative_to(tmp_dir)).replace(
+                "/", "-"
+            )
+            (stage,) = repo.dvc_gen(
+                {"foo.txt": text}, commit=f"commit for path {path}"
+            )
+            repo.dvc.push()
+        checksum = stage.outs[0].info["md5"]
+        checksums.append(checksum)
+
+    repo_path = f"file://{tmp_dir}"  # forcing it to load as ExternalRepo
+
+    for path, c in zip(paths, checksums):
+        url = api.get_url(os.path.join(path, "foo.txt"), repo=repo_path)
+        assert url == os.path.join(os.path.relpath(remote_url), c[:2], c[2:])
+
+
+def test_get_url_subrepo_dvc_on_toplevel(tmp_dir, dvc, scm, local_remote):
+    remote_url = local_remote.config["url"]
+
+    (stage,) = tmp_dir.dvc_gen("foo.txt", "foo.txt", commit="foo.txt")
+    checksums = [stage.outs[0].checksum]
+    tmp_dir.dvc.push()
+
+    paths = ["sub1", "sub2", os.path.join("sub2", "nested")]
+    for path in paths:
+        repo = tmp_dir / path
+        make_subrepo(repo, scm, config=local_remote.config)
+        with repo.chdir():
+            text = os.fspath((repo / "foo.txt").relative_to(tmp_dir)).replace(
+                "/", "-"
+            )
+            (stage,) = repo.dvc_gen(
+                {"foo.txt": text}, commit=f"commit for path {path}"
+            )
+            repo.dvc.push()
+        checksum = stage.outs[0].checksum
+        checksums.append(checksum)
+
+    paths = [""] + paths
+    repo_path = f"file://{tmp_dir}"  # forcing it to load as ExternalRepo
+
+    for path, c in zip(paths, checksums):
+        url = api.get_url(os.path.join(path, "foo.txt"), repo=repo_path)
+        assert url == os.path.join(os.path.relpath(remote_url), c[:2], c[2:])

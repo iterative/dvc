@@ -294,7 +294,11 @@ def test_subrepos(tmp_dir, scm, dvc):
         ),
     ],
 )
-def test_subrepo_walk(tmp_dir, dvc, scm, dvcfiles, extra_expected):
+@pytest.mark.parametrize("is_dvc", [True, False])
+def test_subrepo_walk(tmp_dir, dvcfiles, extra_expected, is_dvc):
+    tmp_dir.init(scm=True, dvc=is_dvc)
+    scm = tmp_dir.scm
+
     tmp_dir.scm_gen(
         {"dir": {"repo.txt": "file to confuse RepoTree"}},
         commit="dir/repo.txt",
@@ -303,8 +307,11 @@ def test_subrepo_walk(tmp_dir, dvc, scm, dvcfiles, extra_expected):
     subrepo1 = tmp_dir / "dir" / "repo"
     subrepo2 = tmp_dir / "dir" / "repo2"
 
-    for repo in [subrepo1, subrepo2]:
-        make_subrepo(repo, scm)
+    subdirs = [subrepo1, subrepo2]
+    for dir_ in subdirs:
+        make_subrepo(dir_, scm)
+    if is_dvc:
+        subdirs.append(tmp_dir)
 
     subrepo1.dvc_gen({"foo": "foo", "dir1": {"bar": "bar"}}, commit="FOO")
     subrepo2.dvc_gen(
@@ -314,7 +321,7 @@ def test_subrepo_walk(tmp_dir, dvc, scm, dvcfiles, extra_expected):
     # using tree that does not have dvcignore
     tree = RepoTree(
         scm.get_tree("HEAD", use_dvcignore=True, ignore_subrepo=False),
-        [dvc, subrepo1.dvc, subrepo2.dvc],
+        [dir_.dvc for dir_ in subdirs],
         fetch=True,
     )
     expected = [

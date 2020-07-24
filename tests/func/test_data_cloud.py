@@ -311,6 +311,37 @@ def test_pull_external_dvc_imports(tmp_dir, dvc, scm, erepo_dir):
     assert (tmp_dir / "new_dir" / "bar").read_text() == "bar"
 
 
+def test_pull_subrepo_imports(tmp_dir, dvc, scm, erepo_dir, local_cloud):
+    from tests.func.test_get import make_subrepo
+
+    dir1 = {"subdir1": {"file1": "foo1"}}
+    dir2 = {"subdir2": {"file2": "foo2"}}
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo", commit="first")
+        erepo_dir.dvc_gen({"dir1": dir1}, commit="second")
+        erepo_dir.scm_gen({"lorem": "lorem"}, commit="third")
+
+    subrepo = erepo_dir / "sub"
+    make_subrepo(subrepo, erepo_dir.scm, local_cloud.config)
+    with subrepo.chdir():
+        subrepo.dvc_gen({"dir2": dir2}, commit="subrepo")
+        subrepo.dvc.push()
+
+    dvc.imp(os.fspath(erepo_dir), "foo")
+    dvc.imp(os.fspath(erepo_dir), "dir1")
+    dvc.imp(os.fspath(erepo_dir), os.path.join("sub", "dir2"))
+
+    assert dvc.pull()["fetched"] == 0
+
+    clean(["dir1", "dir2", "foo"], dvc)
+
+    assert dvc.pull(force=True)["fetched"] == 3
+    assert (tmp_dir / "foo").read_text() == "foo"
+    assert (tmp_dir / "dir1").read_text() == dir1
+    assert (tmp_dir / "dir2").read_text() == dir2
+
+
 def clean(outs, dvc=None):
     if dvc:
         outs = outs + [dvc.cache.local.cache_dir]

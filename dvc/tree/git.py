@@ -65,6 +65,8 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
         self, path, mode="r", encoding="utf-8"
     ):  # pylint: disable=arguments-differ
         assert mode in {"r", "rb"}
+        if "b" not in mode:
+            encoding = encoding or "utf-8"
 
         relative_path = relpath(path, self.git.working_dir)
 
