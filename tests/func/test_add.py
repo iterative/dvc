@@ -806,3 +806,23 @@ def test_add_pipeline_file(tmp_dir, dvc, run_copy):
 
     with pytest.raises(OutputIsStageFileError):
         dvc.add(PIPELINE_FILE)
+
+
+def test_add_symlink(tmp_dir, dvc):
+    tmp_dir.gen({"dir": {"bar": "bar"}})
+
+    (tmp_dir / "dir" / "foo").symlink_to(os.path.join(".", "bar"))
+
+    dvc.add(os.path.join("dir", "foo"))
+
+    assert not (tmp_dir / "dir" / "foo").is_symlink()
+    assert not (tmp_dir / "dir" / "bar").is_symlink()
+    assert (tmp_dir / "dir" / "foo").read_text() == "bar"
+    assert (tmp_dir / "dir" / "bar").read_text() == "bar"
+
+    assert (tmp_dir / ".dvc" / "cache").read_text() == {
+        "37": {"b51d194a7513e45b56f6524f2d51f2": "bar"}
+    }
+    assert not (
+        tmp_dir / ".dvc" / "cache" / "37" / "b51d194a7513e45b56f6524f2d51f2"
+    ).is_symlink()
