@@ -18,13 +18,18 @@ logger = logging.getLogger(__name__)
 class ExperimentExecutor:
     """Base class for executing experiments in parallel.
 
-    Keyword args:
+    Args:
+        src_tree: source tree for this experiment.
+        baseline_rev: baseline revision that this experiment is derived from.
+
+    Optional keyword args:
         repro_args: Args to be passed into reproduce.
         repro_kwargs: Keyword args to be passed into reproduce.
     """
 
-    def __init__(self, src_tree: BaseTree, **kwargs):
+    def __init__(self, src_tree: BaseTree, baseline_rev: str, **kwargs):
         self.src_tree = src_tree
+        self.baseline_rev = baseline_rev
         self.repro_args = kwargs.pop("repro_args", [])
         self.repro_kwargs = kwargs.pop("repro_kwargs", {})
 
@@ -51,10 +56,12 @@ class ExperimentExecutor:
 
 
 class LocalExecutor(ExperimentExecutor):
-    def __init__(self, src_tree: BaseTree, **kwargs):
+    """Local machine exepriment executor."""
+
+    def __init__(self, src_tree: BaseTree, baseline_rev: str, **kwargs):
         dvc_dir = kwargs.pop("dvc_dir")
         cache_dir = kwargs.pop("cache_dir")
-        super().__init__(src_tree, **kwargs)
+        super().__init__(src_tree, baseline_rev, **kwargs)
         self.tmp_dir = TemporaryDirectory()
         logger.debug("Init local executor in dir '%s'.", self.tmp_dir)
         self.dvc_dir = os.path.join(self.tmp_dir.name, dvc_dir)
@@ -69,8 +76,6 @@ class LocalExecutor(ExperimentExecutor):
             self.tmp_dir.cleanup()
             raise
         self._config(cache_dir)
-        self._stages = None
-        self._unchanged = None
 
     def _config(self, cache_dir):
         local_config = os.path.join(self.dvc_dir, "config.local")
@@ -89,10 +94,6 @@ class LocalExecutor(ExperimentExecutor):
     def path_info(self):
         return PathInfo(self.tmp_dir.name)
 
-    @property
-    def result(self):
-        return self._stages, self._unchanged
-
     @contextmanager
     def chdir(self):
         cwd = os.getcwd()
@@ -100,7 +101,8 @@ class LocalExecutor(ExperimentExecutor):
         yield
         os.chdir(cwd)
 
-    def run(self):
+    def reproduce(self):
+        """Run dvc repro and return the result."""
         unchanged = []
 
         def filter_pipeline(stage):
@@ -115,8 +117,7 @@ class LocalExecutor(ExperimentExecutor):
                 on_unchanged=filter_pipeline,
                 **self.repro_kwargs,
             )
-        self._stages = stages
-        self._unchanged = unchanged
+        return stages, unchanged
 
     def cleanup(self):
         logger.debug("Removing tmpdir '%s'", self.tmp_dir)

@@ -73,7 +73,7 @@ def reproduce(
     experiment = kwargs.pop("experiment", False)
     if experiment and self.experiments:
         try:
-            return self.experiments.new(
+            return self.experiments.reproduce_one(
                 target=target,
                 recursive=recursive,
                 all_pipelines=all_pipelines,

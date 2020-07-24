@@ -1,9 +1,10 @@
 import logging
 import os
+import re
 import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
-from typing import Iterable
+from typing import Iterable, Optional
 
 from funcy import cached_property
 
@@ -18,7 +19,9 @@ logger = logging.getLogger(__name__)
 
 
 class UnchangedExperimentError(DvcException):
-    pass
+    def __init__(self, rev):
+        super().__init__("Experiment identical to baseline '{rev[:7]}'.")
+        self.rev = rev
 
 
 class Experiments:
@@ -30,6 +33,10 @@ class Experiments:
 
     EXPERIMENTS_DIR = "experiments"
     PACKED_ARGS_FILE = "repro.dat"
+    STASH_MSG_PREFIX = "dvc-exp-"
+    STASH_EXPERIMENT_RE = re.compile(
+        r"(?:On \(.*\): )dvc-exp-(?P<baseline_rev>[0-9a-f]+)$"
+    )
 
     def __init__(self, repo):
         if not (
@@ -65,6 +72,23 @@ class Experiments:
         from dvc.repo import Repo
 
         return Repo(self.exp_dvc_dir)
+
+    @cached_property
+    def args_file(self):
+        return os.path.join(self.exp_dvc.tmp_dir, self.PACKED_ARGS_FILE)
+
+    @property
+    def stash_reflog(self):
+        return self.scm.repo.refs["refs/stash"].log()
+
+    @property
+    def stash_revs(self):
+        revs = {}
+        for i, entry in enumerate(self.stash_reflog):
+            m = self.STASH_EXPERIMENT_RE.match(entry.message)
+            if m:
+                revs[entry.newhexsha] = (i, m.group("baseline_rev"))
+        return revs
 
     @staticmethod
     def exp_hash(stages):
@@ -108,6 +132,7 @@ class Experiments:
     def _stash_exp(self, *args, **kwargs):
         """Stash changes from the current (parent) workspace as an experiment.
         """
+        rev = self.scm.get_rev()
         tmp = tempfile.NamedTemporaryFile(delete=False).name
         try:
             self.repo.scm.repo.git.diff(patch=True, output=tmp)
@@ -115,28 +140,27 @@ class Experiments:
                 logger.debug("Patching experiment workspace")
                 self.scm.repo.git.apply(tmp)
             else:
-                raise UnchangedExperimentError(
-                    "Experiment identical to baseline commit."
-                )
+                raise UnchangedExperimentError(rev)
         finally:
             remove(tmp)
-        rev = self.scm.get_rev()
         self._pack_args(*args, **kwargs)
-        msg = f"Stashed experiment on {rev[:7]}"
+        msg = f"{self.STASH_MSG_PREFIX}{rev}"
         self.scm.repo.git.stash("push", "-m", msg)
         return self.scm.resolve_rev("stash@{0}")
 
     def _pack_args(self, *args, **kwargs):
-        args_file = os.path.join(self.exp_dvc.tmp_dir, self.PACKED_ARGS_FILE)
-        ExperimentExecutor.pack_repro_args(args_file, *args, **kwargs)
-        self.scm.add(args_file)
+        ExperimentExecutor.pack_repro_args(self.args_file, *args, **kwargs)
+        self.scm.add(self.args_file)
 
     def _unpack_args(self, tree=None):
         args_file = os.path.join(self.exp_dvc.tmp_dir, self.PACKED_ARGS_FILE)
         return ExperimentExecutor.unpack_repro_args(args_file, tree=tree)
 
-    def _commit(self, stages, check_exists=True, branch=True, rev=None):
+    def _commit(self, stages, check_exists=True, branch=True):
         """Commit stages as an experiment and return the commit SHA."""
+        if not self.scm.is_dirty():
+            raise UnchangedExperimentError(self.scm.get_rev())
+        rev = self.scm.get_rev()
         hash_ = self.exp_hash(stages)
         exp_name = f"{rev[:7]}-{hash_}"
         if branch:
@@ -149,10 +173,13 @@ class Experiments:
         self.scm.commit(f"Add experiment {exp_name}")
         return self.scm.get_rev()
 
-    def _reproduce(self, *args, **kwargs):
-        """Run `dvc repro` inside the experiments workspace."""
-        with self.chdir():
-            return self.exp_dvc.reproduce(*args, **kwargs)
+    def reproduce_one(self, *args, **kwargs):
+        """Reproduce and checkout a single experiment."""
+        stash_rev = self.new(**kwargs)
+        result = self.reproduce([stash_rev], keep_stash=False)
+        for exp_rev, (stages, _) in result.items():
+            self.checkout_exp(exp_rev, force=True)
+            return stages
 
     def new(self, *args, workspace=True, **kwargs):
         """Create a new experiment.
@@ -164,51 +191,128 @@ class Experiments:
         self._scm_checkout(rev)
         if workspace:
             try:
-                exp_rev = self._stash_exp(*args, **kwargs)
+                stash_rev = self._stash_exp(*args, **kwargs)
             except UnchangedExperimentError as exc:
                 logger.info("Reproducing existing experiment '%s'.", rev[:7])
                 raise exc
         else:
             # configure params via command line here
             pass
+        logger.debug(
+            "Stashed experiment '%s' for future execution.", stash_rev
+        )
+        return stash_rev
 
-        try:
-            tree = self.scm.get_tree(exp_rev)
+    def reproduce(
+        self,
+        revs: Optional[Iterable] = None,
+        keep_stash: Optional[bool] = True,
+    ):
+        """Reproduce the specified experiments.
+
+        Args:
+            revs: If revs is not specified, all stashed experiments will be
+                reproduced.
+            keep_stash: If True, stashed experiments will be preserved if they
+                fail to reproduce successfully.
+        """
+        stash_revs = self.stash_revs
+
+        # to_run contains mapping of:
+        #   input_rev: baseline_rev
+        # where input_rev contains the changes to execute (usually a stash
+        # commit) and baseline_rev is the baseline to compare output against.
+        # The final experiment commit will be branched from baseline_rev.
+        if revs is None:
+            to_run = {
+                rev: baseline_rev for rev, (_, baseline_rev) in stash_revs
+            }
+        else:
+            to_run = {
+                rev: stash_revs[rev][1] if rev in stash_revs else rev
+                for rev in revs
+            }
+
+        # setup executors
+        executors = {}
+        for rev, baseline_rev in to_run.items():
+            tree = self.scm.get_tree(rev)
             repro_args, repro_kwargs = self._unpack_args(tree)
             executor = LocalExecutor(
                 tree,
+                baseline_rev,
                 repro_args=repro_args,
                 repro_kwargs=repro_kwargs,
                 dvc_dir=self.dvc_dir,
                 cache_dir=self.repo.cache.local.cache_dir,
             )
+            executors[rev] = executor
 
-            self._run([executor])
-            stages, unchanged = executor.result
-            self._collect_output(rev, executor)
-            executor.cleanup()
-        finally:
-            self.scm.repo.git.stash("drop")
+        exec_results = self._reproduce(executors)
 
-        exp_rev = self._commit(stages + unchanged, rev=rev)
-        self.checkout_exp(exp_rev, force=True)
-        logger.info("Generated experiment '%s'.", exp_rev[:7])
-        return stages
+        if keep_stash:
+            # only drop successfully run stashed experiments
+            to_drop = sorted(
+                (
+                    stash_revs[rev][0]
+                    for rev in exec_results
+                    if rev in stash_revs
+                ),
+                reverse=True,
+            )
+        else:
+            # drop all stashed experiments
+            to_drop = sorted(
+                (stash_revs[rev][0] for rev in to_run if rev in stash_revs),
+                reverse=True,
+            )
+        for index in to_drop:
+            self.scm.repo.git.stash("drop", index)
 
-    def _run(self, executors: Iterable):
-        """Run the specified ExperimentExecutors in parallel.
+        result = {}
+        for _, exp_result in exec_results.items():
+            result.update(exp_result)
+        return result
 
-        All experiments will be reproduced with the same `dvc repro` options
-        (via *args, **kwargs).
+    def _reproduce(self, executors: dict, jobs: Optional[int] = 1) -> dict:
+        """Run dvc repro for the specified ExperimentExecutors in parallel.
+
+        Returns dict containing successfully executed experiments.
         """
-        # TODO: setup jobs
-        with ThreadPoolExecutor(max_workers=1) as thread_exec:
-            futures = [
-                thread_exec.submit(executor.run) for executor in executors
-            ]
-            for _ in as_completed(futures):
-                # TODO: collect repro errors
-                pass
+        result = {}
+
+        with ThreadPoolExecutor(max_workers=jobs) as thread_exec:
+            futures = {
+                thread_exec.submit(executor.reproduce): (rev, executor)
+                for rev, executor in executors.items()
+            }
+            for future in as_completed(futures):
+                rev, executor = futures[future]
+                exc = future.exception()
+                if exc:
+                    logger.exception(
+                        "Failed to reproduce experiment '%s'", rev
+                    )
+                else:
+                    stages, unchanged = future.result()
+                    logger.debug(f"ran exp based on {executor.baseline_rev}")
+                    self._scm_checkout(executor.baseline_rev)
+                    self._collect_output(executor.baseline_rev, executor)
+                    remove(self.args_file)
+                    try:
+                        exp_rev = self._commit(stages + unchanged)
+                    except UnchangedExperimentError:
+                        logger.debug(
+                            "Experiment '%s' identical to baseline '%s'",
+                            rev,
+                            executor.baseline_rev,
+                        )
+                        exp_rev = executor.baseline_rev
+                    logger.info("Reproduced experiment '%s'.", exp_rev[:7])
+                    result[rev] = {exp_rev: (stages, unchanged)}
+                executor.cleanup()
+
+        return result
 
     def _collect_output(self, rev: str, executor: ExperimentExecutor):
         logger.debug("copying tmp output from '%s'", executor.tmp_dir)
