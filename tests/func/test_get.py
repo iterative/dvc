@@ -253,16 +253,10 @@ def make_subrepo(dir_, scm, config=None):
 )
 def test_subrepo(tmp_dir, erepo, local_cloud):
     def scm_framework(p):
-        return {
-            "foo": p + "foo-scm",
-            "scm_dir": {"lorem": p + "scm-lorem"}
-        }
+        return {"foo": p + "foo-scm", "scm_dir": {"lorem": p + "scm-lorem"}}
 
     def output_framework(p):
-        return {
-            "bar": p + "dvc-bar",
-            "dvc_dir": {"ipsum": p + "dvc-ipsum"}
-        }
+        return {"bar": p + "dvc-bar", "dvc_dir": {"ipsum": p + "dvc-ipsum"}}
 
     subrepo = ["sub1", "sub2", os.path.join("sub1", "nested")]
     for path in subrepo:
