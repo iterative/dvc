@@ -1,5 +1,6 @@
 import logging
 import os
+import pickle
 from contextlib import contextmanager
 from tempfile import TemporaryDirectory
 
@@ -15,16 +16,38 @@ logger = logging.getLogger(__name__)
 
 
 class ExperimentExecutor:
-    """Base class for executing experiments in parallel."""
+    """Base class for executing experiments in parallel.
+
+    Keyword args:
+        repro_args: Args to be passed into reproduce.
+        repro_kwargs: Keyword args to be passed into reproduce.
+    """
 
     def __init__(self, src_tree: BaseTree, **kwargs):
-        pass
+        self.src_tree = src_tree
+        self.repro_args = kwargs.pop("repro_args", [])
+        self.repro_kwargs = kwargs.pop("repro_kwargs", {})
 
-    def run(self, *args, **kwargs):
+    def run(self):
         pass
 
     def cleanup(self):
         pass
+
+    # TODO: come up with better way to stash repro arguments
+    @staticmethod
+    def pack_repro_args(path, *args, tree=None, **kwargs):
+        open_func = tree.open if tree else open
+        data = {"args": args, "kwargs": kwargs}
+        with open_func(path, "wb") as fobj:
+            pickle.dump(data, fobj)
+
+    @staticmethod
+    def unpack_repro_args(path, tree=None):
+        open_func = tree.open if tree else open
+        with open_func(path, "rb") as fobj:
+            data = pickle.load(fobj)
+        return data["args"], data["kwargs"]
 
 
 class LocalExecutor(ExperimentExecutor):
@@ -77,7 +100,7 @@ class LocalExecutor(ExperimentExecutor):
         yield
         os.chdir(cwd)
 
-    def run(self, *args, **kwargs):
+    def run(self):
         unchanged = []
 
         def filter_pipeline(stage):
@@ -88,7 +111,9 @@ class LocalExecutor(ExperimentExecutor):
         with self.chdir():
             self.dvc.checkout()
             stages = self.dvc.reproduce(
-                *args, on_unchanged=filter_pipeline, **kwargs,
+                *self.repro_args,
+                on_unchanged=filter_pipeline,
+                **self.repro_kwargs,
             )
         self._stages = stages
         self._unchanged = unchanged

@@ -29,6 +29,7 @@ class Experiments:
     """
 
     EXPERIMENTS_DIR = "experiments"
+    PACKED_ARGS_FILE = "repro.dat"
 
     def __init__(self, repo):
         if not (
@@ -104,7 +105,7 @@ class Experiments:
         logger.debug("Checking out base experiment commit '%s'", rev)
         self.scm.checkout(rev)
 
-    def _stash_exp(self):
+    def _stash_exp(self, *args, **kwargs):
         """Stash changes from the current (parent) workspace as an experiment.
         """
         tmp = tempfile.NamedTemporaryFile(delete=False).name
@@ -120,9 +121,19 @@ class Experiments:
         finally:
             remove(tmp)
         rev = self.scm.get_rev()
+        self._pack_args(*args, **kwargs)
         msg = f"Stashed experiment on {rev[:7]}"
         self.scm.repo.git.stash("push", "-m", msg)
         return self.scm.resolve_rev("stash@{0}")
+
+    def _pack_args(self, *args, **kwargs):
+        args_file = os.path.join(self.exp_dvc.tmp_dir, self.PACKED_ARGS_FILE)
+        ExperimentExecutor.pack_repro_args(args_file, *args, **kwargs)
+        self.scm.add(args_file)
+
+    def _unpack_args(self, tree=None):
+        args_file = os.path.join(self.exp_dvc.tmp_dir, self.PACKED_ARGS_FILE)
+        return ExperimentExecutor.unpack_repro_args(args_file, tree=tree)
 
     def _commit(self, stages, check_exists=True, branch=True, rev=None):
         """Commit stages as an experiment and return the commit SHA."""
@@ -153,7 +164,7 @@ class Experiments:
         self._scm_checkout(rev)
         if workspace:
             try:
-                exp_rev = self._stash_exp()
+                exp_rev = self._stash_exp(*args, **kwargs)
             except UnchangedExperimentError as exc:
                 logger.info("Reproducing existing experiment '%s'.", rev[:7])
                 raise exc
@@ -162,13 +173,17 @@ class Experiments:
             pass
 
         try:
+            tree = self.scm.get_tree(exp_rev)
+            repro_args, repro_kwargs = self._unpack_args(tree)
             executor = LocalExecutor(
-                self.scm.get_tree(exp_rev),
+                tree,
+                repro_args=repro_args,
+                repro_kwargs=repro_kwargs,
                 dvc_dir=self.dvc_dir,
                 cache_dir=self.repo.cache.local.cache_dir,
             )
 
-            self._run([executor], *args, **kwargs)
+            self._run([executor])
             stages, unchanged = executor.result
             self._collect_output(rev, executor)
             executor.cleanup()
@@ -180,7 +195,7 @@ class Experiments:
         logger.info("Generated experiment '%s'.", exp_rev[:7])
         return stages
 
-    def _run(self, executors: Iterable, *args, **kwargs):
+    def _run(self, executors: Iterable):
         """Run the specified ExperimentExecutors in parallel.
 
         All experiments will be reproduced with the same `dvc repro` options
@@ -189,8 +204,7 @@ class Experiments:
         # TODO: setup jobs
         with ThreadPoolExecutor(max_workers=1) as thread_exec:
             futures = [
-                thread_exec.submit(executor.run, *args, **kwargs)
-                for executor in executors
+                thread_exec.submit(executor.run) for executor in executors
             ]
             for _ in as_completed(futures):
                 # TODO: collect repro errors
