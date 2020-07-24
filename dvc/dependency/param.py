@@ -2,6 +2,7 @@ import os
 from collections import defaultdict
 
 import dpath.util
+import toml
 import yaml
 from voluptuous import Any
 
@@ -21,6 +22,8 @@ class ParamsDependency(LocalDependency):
     PARAM_PARAMS = "params"
     PARAM_SCHEMA = {PARAM_PARAMS: Any(dict, list, None)}
     DEFAULT_PARAMS_FILE = "params.yaml"
+    PARAMS_FILE_LOADERS = defaultdict(lambda: yaml.safe_load)
+    PARAMS_FILE_LOADERS.update({".toml": toml.load})
 
     def __init__(self, stage, path, params):
         info = {}
@@ -87,8 +90,10 @@ class ParamsDependency(LocalDependency):
 
         with self.repo.tree.open(self.path_info, "r") as fobj:
             try:
-                config = yaml.safe_load(fobj)
-            except yaml.YAMLError as exc:
+                config = self.PARAMS_FILE_LOADERS[
+                    self.path_info.suffix.lower()
+                ](fobj)
+            except (yaml.YAMLError, toml.TomlDecodeError) as exc:
                 raise BadParamFileError(
                     f"Unable to read parameters from '{self}'"
                 ) from exc

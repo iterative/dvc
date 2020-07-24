@@ -1,4 +1,5 @@
 import pytest
+import toml
 import yaml
 
 from dvc.dependency import ParamsDependency, loadd_from, loads_params
@@ -96,6 +97,37 @@ def test_read_params_nested(tmp_dir, dvc):
         yaml.dump({"some": {"path": {"foo": ["val1", "val2"]}}}),
     )
     dep = ParamsDependency(Stage(dvc), None, ["some.path.foo"])
+    assert dep.read_params() == {"some.path.foo": ["val1", "val2"]}
+
+
+def test_read_params_default_loader(tmp_dir, dvc):
+    parameters_file = "parameters.foo"
+    tmp_dir.gen(
+        parameters_file,
+        yaml.dump({"some": {"path": {"foo": ["val1", "val2"]}}}),
+    )
+    dep = ParamsDependency(Stage(dvc), parameters_file, ["some.path.foo"])
+    assert dep.read_params() == {"some.path.foo": ["val1", "val2"]}
+
+
+def test_read_params_wrong_suffix(tmp_dir, dvc):
+    parameters_file = "parameters.toml"
+    tmp_dir.gen(
+        parameters_file,
+        yaml.dump({"some": {"path": {"foo": ["val1", "val2"]}}}),
+    )
+    dep = ParamsDependency(Stage(dvc), parameters_file, ["some.path.foo"])
+    with pytest.raises(BadParamFileError):
+        dep.read_params()
+
+
+def test_read_params_toml(tmp_dir, dvc):
+    parameters_file = "parameters.toml"
+    tmp_dir.gen(
+        parameters_file,
+        toml.dumps({"some": {"path": {"foo": ["val1", "val2"]}}}),
+    )
+    dep = ParamsDependency(Stage(dvc), parameters_file, ["some.path.foo"])
     assert dep.read_params() == {"some.path.foo": ["val1", "val2"]}
 
 
