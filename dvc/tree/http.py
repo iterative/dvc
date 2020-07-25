@@ -10,7 +10,7 @@ from dvc.path_info import HTTPURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 
-from .base import BaseRemoteTree
+from .base import BaseTree
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ def ask_password(host, user):
     )
 
 
-class HTTPRemoteTree(BaseRemoteTree):  # pylint:disable=abstract-method
+class HTTPTree(BaseTree):  # pylint:disable=abstract-method
     scheme = Schemes.HTTP
     PATH_CLS = HTTPURLInfo
     PARAM_CHECKSUM = "etag"
@@ -122,7 +122,7 @@ class HTTPRemoteTree(BaseRemoteTree):  # pylint:disable=abstract-method
         except requests.exceptions.RequestException:
             raise DvcException(f"could not perform a {method} request")
 
-    def exists(self, path_info):
+    def exists(self, path_info, use_dvcignore=True):
         return bool(self.request("HEAD", path_info.url))
 
     def get_file_hash(self, path_info):

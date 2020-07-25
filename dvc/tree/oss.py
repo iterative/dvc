@@ -8,12 +8,12 @@ from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 
-from .base import BaseRemoteTree
+from .base import BaseTree
 
 logger = logging.getLogger(__name__)
 
 
-class OSSRemoteTree(BaseRemoteTree):  # pylint:disable=abstract-method
+class OSSTree(BaseTree):  # pylint:disable=abstract-method
     """
     oss2 document:
     https://www.alibabacloud.com/help/doc-detail/32026.htm
@@ -88,7 +88,7 @@ class OSSRemoteTree(BaseRemoteTree):  # pylint:disable=abstract-method
 
         return self.oss_service.sign_url("GET", path_info.path, expires)
 
-    def exists(self, path_info):
+    def exists(self, path_info, use_dvcignore=True):
         paths = self._list_paths(path_info)
         return any(path_info.path == path for path in paths)
 

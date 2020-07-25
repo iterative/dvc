@@ -6,7 +6,7 @@ import yaml
 from funcy import first
 from voluptuous import Invalid
 
-from dvc.remote.local import _log_exceptions
+from dvc.cache.local import _log_exceptions
 from dvc.schema import COMPILED_LOCK_FILE_STAGE_SCHEMA
 from dvc.utils import dict_sha256, relpath
 from dvc.utils.fs import makedirs

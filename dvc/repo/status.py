@@ -74,7 +74,7 @@ def _cloud_status(
 
             { "bar": "deleted" }
     """
-    import dvc.remote.base as cloud
+    import dvc.cache.base as cloud
 
     used = self.used_cache(
         targets,

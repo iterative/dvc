@@ -1,28 +1,28 @@
 import posixpath
 from urllib.parse import urlparse
 
-from .azure import AzureRemoteTree
-from .gdrive import GDriveRemoteTree
-from .gs import GSRemoteTree
-from .hdfs import HDFSRemoteTree
-from .http import HTTPRemoteTree
-from .https import HTTPSRemoteTree
-from .local import LocalRemoteTree
-from .oss import OSSRemoteTree
-from .s3 import S3RemoteTree
-from .ssh import SSHRemoteTree
+from .azure import AzureTree
+from .gdrive import GDriveTree
+from .gs import GSTree
+from .hdfs import HDFSTree
+from .http import HTTPTree
+from .https import HTTPSTree
+from .local import LocalTree
+from .oss import OSSTree
+from .s3 import S3Tree
+from .ssh import SSHTree
 
 TREES = [
-    AzureRemoteTree,
-    GDriveRemoteTree,
-    GSRemoteTree,
-    HDFSRemoteTree,
-    HTTPRemoteTree,
-    HTTPSRemoteTree,
-    S3RemoteTree,
-    SSHRemoteTree,
-    OSSRemoteTree,
-    # NOTE: LocalRemoteTree is the default
+    AzureTree,
+    GDriveTree,
+    GSTree,
+    HDFSTree,
+    HTTPTree,
+    HTTPSTree,
+    S3Tree,
+    SSHTree,
+    OSSTree,
+    # NOTE: LocalTree is the default
 ]
 
 
@@ -30,7 +30,7 @@ def _get_tree(remote_conf):
     for tree_cls in TREES:
         if tree_cls.supported(remote_conf):
             return tree_cls
-    return LocalRemoteTree
+    return LocalTree
 
 
 def _get_conf(repo, **kwargs):

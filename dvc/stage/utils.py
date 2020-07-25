@@ -8,8 +8,8 @@ from dvc import dependency, output
 from dvc.utils.fs import path_isin
 
 from ..dependency import ParamsDependency
-from ..tree.local import LocalRemoteTree
-from ..tree.s3 import S3RemoteTree
+from ..tree.local import LocalTree
+from ..tree.s3 import S3Tree
 from ..utils import dict_md5, format_link, relpath
 from .exceptions import (
     MissingDataSource,
@@ -133,8 +133,8 @@ def stage_dump_eq(stage_cls, old_d, new_d):
     new_d.pop(stage_cls.PARAM_MD5, None)
     outs = old_d.get(stage_cls.PARAM_OUTS, [])
     for out in outs:
-        out.pop(LocalRemoteTree.PARAM_CHECKSUM, None)
-        out.pop(S3RemoteTree.PARAM_CHECKSUM, None)
+        out.pop(LocalTree.PARAM_CHECKSUM, None)
+        out.pop(S3Tree.PARAM_CHECKSUM, None)
 
     # outs and deps are lists of dicts. To check equality, we need to make
     # them independent of the order, so, we convert them to dicts.

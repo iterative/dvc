@@ -3,6 +3,7 @@
 import logging
 import os
 import shlex
+from functools import partial
 
 import yaml
 from funcy import cached_property
@@ -17,7 +18,6 @@ from dvc.scm.base import (
     RevError,
     SCMError,
 )
-from dvc.scm.git.tree import GitTree
 from dvc.utils import fix_env, is_binary, relpath
 from dvc.utils.fs import path_isin
 
@@ -93,7 +93,7 @@ class Git(Base):
         return self.repo.working_tree_dir
 
     @staticmethod
-    def clone(url, to_path, rev=None):
+    def clone(url, to_path, rev=None, shallow_branch=None):
         import git
 
         ld_key = "LD_LIBRARY_PATH"
@@ -110,14 +110,23 @@ class Git(Base):
             env[ld_key] = ""
 
         try:
+            if shallow_branch is not None and os.path.exists(url):
+                # git disables --depth for local clones unless file:// url
+                # scheme is used
+                url = f"file://{url}"
             with TqdmGit(desc="Cloning", unit="obj") as pbar:
-                tmp_repo = git.Repo.clone_from(
+                clone_from = partial(
+                    git.Repo.clone_from,
                     url,
                     to_path,
                     env=env,  # needed before we can fix it in __init__
                     no_single_branch=True,
                     progress=pbar.update_git,
                 )
+                if shallow_branch is None:
+                    tmp_repo = clone_from()
+                else:
+                    tmp_repo = clone_from(branch=shallow_branch, depth=1)
             tmp_repo.close()
         except git.exc.GitCommandError as exc:  # pylint: disable=no-member
             raise CloneError(url, to_path) from exc
@@ -251,8 +260,8 @@ class Git(Base):
         else:
             self.repo.git.checkout(branch)
 
-    def pull(self):
-        infos = self.repo.remote().pull()
+    def pull(self, **kwargs):
+        infos = self.repo.remote().pull(**kwargs)
         for info in infos:
             if info.flags & info.ERROR:
                 raise SCMError(f"pull failed: {info.note}")
@@ -376,6 +385,8 @@ class Git(Base):
         return basename == self.ignore_file or Git.GIT_DIR in path_parts
 
     def get_tree(self, rev, **kwargs):
+        from dvc.tree.git import GitTree
+
         return GitTree(self.repo, self.resolve_rev(rev), **kwargs)
 
     def get_rev(self):

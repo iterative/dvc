@@ -6,10 +6,10 @@ import pytest
 from dvc.dvcfile import SingleStageFile
 from dvc.main import main
 from dvc.output.local import LocalOutput
-from dvc.remote.local import LocalRemoteTree
 from dvc.repo import Repo
 from dvc.stage import PipelineStage, Stage
 from dvc.stage.exceptions import StageFileFormatError
+from dvc.tree.local import LocalTree
 from dvc.utils.yaml import dump_yaml, load_yaml
 from tests.basic_env import TestDvc
 
@@ -54,8 +54,8 @@ def test_empty_list():
 
 def test_list():
     lst = [
-        {LocalOutput.PARAM_PATH: "foo", LocalRemoteTree.PARAM_CHECKSUM: "123"},
-        {LocalOutput.PARAM_PATH: "bar", LocalRemoteTree.PARAM_CHECKSUM: None},
+        {LocalOutput.PARAM_PATH: "foo", LocalTree.PARAM_CHECKSUM: "123"},
+        {LocalOutput.PARAM_PATH: "bar", LocalTree.PARAM_CHECKSUM: None},
         {LocalOutput.PARAM_PATH: "baz"},
     ]
     d = {Stage.PARAM_DEPS: lst}

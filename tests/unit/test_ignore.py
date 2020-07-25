@@ -3,7 +3,7 @@ import os
 import pytest
 from mock import MagicMock, mock_open, patch
 
-from dvc.ignore import DvcIgnoreDirs, DvcIgnorePatterns
+from dvc.ignore import DvcIgnorePatterns
 
 
 def mock_dvcignore(dvcignore_path, patterns):
@@ -85,6 +85,14 @@ def mock_dvcignore(dvcignore_path, patterns):
         ("to_ignore.txt", ["/*.txt"], True),
         (os.path.join("path", "to_ignore.txt"), ["/*.txt"], False),
         (os.path.join("data", "file.txt"), ["data/*"], True),
+        (os.path.join("data", "subdir", "file.txt"), ["data/*"], False),
+        (os.path.join("data", "file.txt"), ["data/"], True),
+        (os.path.join("data", "subdir", "file.txt"), ["data/"], True),
+        (os.path.join("data", "subdir", "file.txt"), ["subdir/"], True),
+        (os.path.join("data", "subdir", "file.txt"), ["/subdir/"], False),
+        (os.path.join("data", "path"), ["path/"], False),
+        (os.path.join(".git", "file.txt"), [".git/"], True),
+        (os.path.join("data", ".dvc", "file.txt"), [".dvc/"], True),
         # wait for Git
         # (os.path.join("data", "sub", "file.txt"), ["data/*"], True),
         (
@@ -181,14 +189,21 @@ def test_match_ignore_from_file(
     )
 
 
+@pytest.mark.parametrize("sub_dir", ["", "dir"])
 @pytest.mark.parametrize("omit_dir", [".git", ".hg", ".dvc"])
-def test_should_ignore_dir(omit_dir):
-    ignore = DvcIgnoreDirs([".git", ".hg", ".dvc"])
-
+def test_should_ignore_dir(omit_dir, sub_dir):
     root = os.path.join(os.path.sep, "walk", "dir", "root")
-    dirs = [omit_dir, "dir1", "dir2"]
-    files = []
+    ignore = DvcIgnorePatterns([".git/", ".hg/", ".dvc/"], root)
 
-    new_dirs, _ = ignore(root, dirs, files)
+    dirs = [omit_dir, "dir1", "dir2"]
+    files = [omit_dir, "file1", "file2"]
+
+    if sub_dir:
+        current = os.path.join(root, sub_dir)
+    else:
+        current = root
+
+    new_dirs, new_files = ignore(current, dirs, files)
 
     assert set(new_dirs) == {"dir1", "dir2"}
+    assert set(new_files) == {"file1", "file2", omit_dir}

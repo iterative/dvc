@@ -1,6 +1,6 @@
-from ..tree.https import HTTPSRemoteTree
+from ..tree.https import HTTPSTree
 from .http import HTTPDependency
 
 
 class HTTPSDependency(HTTPDependency):
-    TREE_CLS = HTTPSRemoteTree
+    TREE_CLS = HTTPSTree

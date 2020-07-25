@@ -14,6 +14,16 @@ def test_show(tmp_dir, dvc):
     assert dvc.params.show() == {"": {"params.yaml": {"foo": "bar"}}}
 
 
+def test_show_toml(tmp_dir, dvc):
+    tmp_dir.gen("params.toml", "[foo]\nbar = 42\nbaz = [1, 2]\n")
+    dvc.run(
+        cmd="echo params.toml", params=["params.toml:foo"], single_stage=True
+    )
+    assert dvc.params.show() == {
+        "": {"params.toml": {"foo": {"bar": 42, "baz": [1, 2]}}}
+    }
+
+
 def test_show_multiple(tmp_dir, dvc):
     tmp_dir.gen("params.yaml", "foo: bar\nbaz: qux\n")
     dvc.run(

@@ -6,7 +6,7 @@ import stat
 from funcy import cached_property
 
 from dvc.exceptions import DvcException
-from dvc.scm.tree import BaseTree
+from dvc.tree.base import BaseTree
 from dvc.utils import relpath
 
 # see git-fast-import(1)
@@ -31,6 +31,7 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
             git (dvc.scm.Git):
             branch:
         """
+        super().__init__(None, {})
         self.git = git
         self.rev = rev
         self.use_dvcignore = use_dvcignore
@@ -45,14 +46,12 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
         from dvc.ignore import DvcIgnoreFilter, DvcIgnoreFilterNoop
 
         root = self.dvcignore_root or self.tree_root
-        if not self.use_dvcignore:
-            return DvcIgnoreFilterNoop(self, root)
-        self.use_dvcignore = False
-        ret = DvcIgnoreFilter(self, root)
-        self.use_dvcignore = True
-        return ret
+        cls = DvcIgnoreFilter if self.use_dvcignore else DvcIgnoreFilterNoop
+        return cls(self, root)
 
-    def open(self, path, mode="r", encoding="utf-8"):
+    def open(
+        self, path, mode="r", encoding="utf-8"
+    ):  # pylint: disable=arguments-differ
         assert mode in {"r", "rb"}
 
         relative_path = relpath(path, self.git.working_dir)
@@ -73,15 +72,19 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
             return io.BytesIO(data)
         return io.StringIO(data.decode(encoding))
 
-    def exists(self, path):
+    def exists(
+        self, path, use_dvcignore=True
+    ):  # pylint: disable=arguments-differ
         if self._git_object_by_path(path) is None:
             return False
+        if not use_dvcignore:
+            return True
 
         return not self.dvcignore.is_ignored_file(
             path
         ) and not self.dvcignore.is_ignored_dir(path)
 
-    def isdir(self, path):
+    def isdir(self, path):  # pylint: disable=arguments-differ
         obj = self._git_object_by_path(path)
         if obj is None:
             return False
@@ -89,7 +92,7 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
             return False
         return not self.dvcignore.is_ignored_dir(path)
 
-    def isfile(self, path):
+    def isfile(self, path):  # pylint: disable=arguments-differ
         obj = self._git_object_by_path(path)
         if obj is None:
             return False
@@ -153,7 +156,7 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
         if not topdown:
             yield os.path.normpath(tree.abspath), dirs, nondirs
 
-    def walk(self, top, topdown=True, onerror=None):
+    def walk(self, top, topdown=True, onerror=None, use_dvcignore=True):
         """Directory tree generator.
 
         See `os.walk` for the docs. Differences:
@@ -171,9 +174,10 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
             return
 
         for root, dirs, files in self._walk(tree, topdown=topdown):
-            dirs[:], files[:] = self.dvcignore(
-                os.path.abspath(root), dirs, files
-            )
+            if use_dvcignore:
+                dirs[:], files[:] = self.dvcignore(
+                    os.path.abspath(root), dirs, files
+                )
             yield root, dirs, files
 
     def isexec(self, path):
@@ -214,7 +218,13 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
         )
 
     @property
-    def hash_jobs(self):
+    def hash_jobs(self):  # pylint: disable=invalid-overridden-method
         # NOTE: gitpython is not threadsafe. See
         # https://github.com/iterative/dvc/issues/4079
         return 1
+
+    def walk_files(self, top):  # pylint: disable=arguments-differ
+        for root, _, files in self.walk(top):
+            for file in files:
+                # NOTE: os.path.join is ~5.5 times slower
+                yield f"{root}{os.sep}{file}"

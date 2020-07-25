@@ -20,12 +20,12 @@ from dvc.utils.fs import (
     walk_files,
 )
 
-from .base import BaseRemoteTree
+from .base import BaseTree
 
 logger = logging.getLogger(__name__)
 
 
-class LocalRemoteTree(BaseRemoteTree):
+class LocalTree(BaseTree):
     scheme = Schemes.LOCAL
     PATH_CLS = PathInfo
     PARAM_CHECKSUM = "md5"
@@ -58,18 +58,14 @@ class LocalRemoteTree(BaseRemoteTree):
         from dvc.ignore import DvcIgnoreFilter, DvcIgnoreFilterNoop
 
         root = self.dvcignore_root or self.tree_root
-        if not self.use_dvcignore:
-            return DvcIgnoreFilterNoop(self, root)
-        self.use_dvcignore = False
-        ret = DvcIgnoreFilter(self, root)
-        self.use_dvcignore = True
-        return ret
+        cls = DvcIgnoreFilter if self.use_dvcignore else DvcIgnoreFilterNoop
+        return cls(self, root)
 
     @staticmethod
     def open(path_info, mode="r", encoding=None):
         return open(path_info, mode=mode, encoding=encoding)
 
-    def exists(self, path_info):
+    def exists(self, path_info, use_dvcignore=True):
         assert isinstance(path_info, str) or path_info.scheme == "local"
         if self.repo:
             ret = os.path.lexists(path_info)
@@ -77,6 +73,8 @@ class LocalRemoteTree(BaseRemoteTree):
             ret = os.path.exists(path_info)
         if not ret:
             return False
+        if not use_dvcignore:
+            return True
 
         return not self.dvcignore.is_ignored_file(
             path_info
@@ -99,7 +97,7 @@ class LocalRemoteTree(BaseRemoteTree):
             System.is_symlink(path_info) or System.is_hardlink(path_info)
         )
 
-    def walk(self, top, topdown=True, onerror=None):
+    def walk(self, top, topdown=True, onerror=None, use_dvcignore=True):
         """Directory tree generator.
 
         See `os.walk` for the docs. Differences:
@@ -108,9 +106,10 @@ class LocalRemoteTree(BaseRemoteTree):
         for root, dirs, files in os.walk(
             top, topdown=topdown, onerror=onerror
         ):
-            dirs[:], files[:] = self.dvcignore(
-                os.path.abspath(root), dirs, files
-            )
+            if use_dvcignore:
+                dirs[:], files[:] = self.dvcignore(
+                    os.path.abspath(root), dirs, files
+                )
 
             yield os.path.normpath(root), dirs, files
 

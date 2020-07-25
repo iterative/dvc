@@ -13,9 +13,9 @@ from dvc.output.ssh import SSHOutput
 from dvc.scheme import Schemes
 
 from ..tree import get_cloud_tree
-from ..tree.hdfs import HDFSRemoteTree
-from ..tree.local import LocalRemoteTree
-from ..tree.s3 import S3RemoteTree
+from ..tree.hdfs import HDFSTree
+from ..tree.local import LocalTree
+from ..tree.s3 import S3Tree
 
 OUTS = [
     HDFSOutput,
@@ -48,9 +48,9 @@ CHECKSUM_SCHEMA = Any(
 # so when a few types of outputs share the same name, we only need
 # specify it once.
 CHECKSUMS_SCHEMA = {
-    LocalRemoteTree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
-    S3RemoteTree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
-    HDFSRemoteTree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    LocalTree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    S3Tree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    HDFSTree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
 }
 
 SCHEMA = CHECKSUMS_SCHEMA.copy()

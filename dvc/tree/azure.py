@@ -9,12 +9,12 @@ from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 
-from .base import BaseRemoteTree
+from .base import BaseTree
 
 logger = logging.getLogger(__name__)
 
 
-class AzureRemoteTree(BaseRemoteTree):
+class AzureTree(BaseTree):
     scheme = Schemes.AZURE
     PATH_CLS = CloudURLInfo
     REQUIRES = {
@@ -101,7 +101,7 @@ class AzureRemoteTree(BaseRemoteTree):
         )
         return download_url
 
-    def exists(self, path_info):
+    def exists(self, path_info, use_dvcignore=True):
         paths = self._list_paths(path_info.bucket, path_info.path)
         return any(path_info.path == path for path in paths)
 

@@ -21,10 +21,10 @@ from dvc.exceptions import (
 )
 from dvc.main import main
 from dvc.output.base import OutputAlreadyTrackedError, OutputIsStageFileError
-from dvc.remote.local import LocalRemoteTree
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.system import System
+from dvc.tree.local import LocalTree
 from dvc.utils import LARGE_DIR_SIZE, file_md5, relpath
 from dvc.utils.fs import path_isin
 from dvc.utils.yaml import load_yaml
@@ -410,7 +410,7 @@ class TestAddCommit(TestDvc):
 
 def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
     tmp_dir.gen({"data/data": "foo"})
-    get_dir_hash_counter = mocker.spy(LocalRemoteTree, "get_dir_hash")
+    get_dir_hash_counter = mocker.spy(LocalTree, "get_dir_hash")
     ret = main(["add", "data"])
     assert ret == 0
 
@@ -652,7 +652,7 @@ def test_readding_dir_should_not_unprotect_all(tmp_dir, dvc, mocker):
     dvc.add("dir")
     tmp_dir.gen("dir/new_file", "new_file_content")
 
-    unprotect_spy = mocker.spy(LocalRemoteTree, "unprotect")
+    unprotect_spy = mocker.spy(LocalTree, "unprotect")
     dvc.add("dir")
 
     assert not unprotect_spy.mock.called
@@ -772,7 +772,7 @@ def test_add_empty_files(tmp_dir, dvc, link):
 def test_add_optimization_for_hardlink_on_empty_files(tmp_dir, dvc, mocker):
     dvc.cache.local.cache_types = ["hardlink"]
     tmp_dir.gen({"foo": "", "bar": "", "lorem": "lorem", "ipsum": "ipsum"})
-    m = mocker.spy(LocalRemoteTree, "is_hardlink")
+    m = mocker.spy(LocalTree, "is_hardlink")
     stages = dvc.add(["foo", "bar", "lorem", "ipsum"])
 
     assert m.call_count == 1
@@ -806,3 +806,23 @@ def test_add_pipeline_file(tmp_dir, dvc, run_copy):
 
     with pytest.raises(OutputIsStageFileError):
         dvc.add(PIPELINE_FILE)
+
+
+def test_add_symlink(tmp_dir, dvc):
+    tmp_dir.gen({"dir": {"bar": "bar"}})
+
+    (tmp_dir / "dir" / "foo").symlink_to(os.path.join(".", "bar"))
+
+    dvc.add(os.path.join("dir", "foo"))
+
+    assert not (tmp_dir / "dir" / "foo").is_symlink()
+    assert not (tmp_dir / "dir" / "bar").is_symlink()
+    assert (tmp_dir / "dir" / "foo").read_text() == "bar"
+    assert (tmp_dir / "dir" / "bar").read_text() == "bar"
+
+    assert (tmp_dir / ".dvc" / "cache").read_text() == {
+        "37": {"b51d194a7513e45b56f6524f2d51f2": "bar"}
+    }
+    assert not (
+        tmp_dir / ".dvc" / "cache" / "37" / "b51d194a7513e45b56f6524f2d51f2"
+    ).is_symlink()
