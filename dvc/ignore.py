@@ -1,7 +1,7 @@
 import logging
 import os
 import re
-from itertools import groupby
+from itertools import groupby, takewhile
 
 from pathspec.patterns import GitWildMatchPattern
 from pathspec.util import normalize_file
@@ -131,20 +131,19 @@ class DvcIgnoreFilter:
         self.ignores_trie_tree[root_dir] = DvcIgnorePatterns(
             default_ignore_patterns, root_dir
         )
-        for root, dirs, _ in self.tree.walk(
-            self.root_dir, use_dvcignore=False
-        ):
-            self._update(root)
-            self._update_sub_repo(root, dirs)
-            dirs[:], _ = self(root, dirs, [])
+        self._update(self.root_dir)
 
     def _update(self, dirname):
+        old_pattern = self.ignores_trie_tree.longest_prefix(dirname).value
+        matches = old_pattern.matches(dirname, DvcIgnore.DVCIGNORE_FILE, False)
+
         ignore_file_path = os.path.join(dirname, DvcIgnore.DVCIGNORE_FILE)
-        if self.tree.exists(ignore_file_path, use_dvcignore=False):
+        if not matches and self.tree.exists(
+            ignore_file_path, use_dvcignore=False
+        ):
             new_pattern = DvcIgnorePatterns.from_files(
                 ignore_file_path, self.tree
             )
-            old_pattern = self._get_trie_pattern(dirname)
             if old_pattern:
                 self.ignores_trie_tree[dirname] = DvcIgnorePatterns(
                     *merge_patterns(
@@ -156,11 +155,18 @@ class DvcIgnoreFilter:
                 )
             else:
                 self.ignores_trie_tree[dirname] = new_pattern
+        elif old_pattern:
+            self.ignores_trie_tree[dirname] = old_pattern
+
+        # NOTE: using `walk` + `break` because tree doesn't have `listdir()`
+        for root, dirs, _ in self.tree.walk(dirname, use_dvcignore=False):
+            self._update_sub_repo(root, dirs)
+            break
 
     def _update_sub_repo(self, root, dirs):
         for d in dirs:
             if self._is_dvc_repo(root, d):
-                old_pattern = self._get_trie_pattern(root)
+                old_pattern = self.ignores_trie_tree.longest_prefix(root).value
                 if old_pattern:
                     self.ignores_trie_tree[root] = DvcIgnorePatterns(
                         *merge_patterns(
@@ -183,8 +189,28 @@ class DvcIgnoreFilter:
             return dirs, files
 
     def _get_trie_pattern(self, dirname):
-        ignore_pattern = self.ignores_trie_tree.longest_prefix(dirname).value
-        return ignore_pattern
+        ignore_pattern = self.ignores_trie_tree.get(dirname)
+        if ignore_pattern:
+            return ignore_pattern
+
+        prefix = self.ignores_trie_tree.longest_prefix(dirname).key
+        if not prefix:
+            # outside of the repo
+            return None
+
+        dirs = list(
+            takewhile(
+                lambda path: path != prefix,
+                (parent.fspath for parent in PathInfo(dirname).parents),
+            )
+        )
+        dirs.reverse()
+        dirs.append(dirname)
+
+        for parent in dirs:
+            self._update(parent)
+
+        return self.ignores_trie_tree.get(dirname)
 
     def _is_ignored(self, path, is_dir=False):
         if self._outside_repo(path):
