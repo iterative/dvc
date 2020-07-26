@@ -185,10 +185,22 @@ class Repo:
         return os.path.join(root_dir, cls.DVC_DIR)
 
     @staticmethod
-    def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
+    def init(
+        root_dir=os.curdir,
+        no_scm=False,
+        force=False,
+        subdir=False,
+        ignore_template_list=None,
+    ):
         from dvc.repo.init import init
 
-        init(root_dir=root_dir, no_scm=no_scm, force=force, subdir=subdir)
+        init(
+            root_dir=root_dir,
+            no_scm=no_scm,
+            force=force,
+            subdir=subdir,
+            ignore_template_list=ignore_template_list,
+        )
         return Repo(root_dir)
 
     def unprotect(self, target):

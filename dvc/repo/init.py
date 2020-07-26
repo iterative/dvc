@@ -1,5 +1,6 @@
 import logging
 import os
+from importlib import resources
 
 import colorama
 
@@ -43,7 +44,29 @@ def _welcome_message():
     logger.info(msg)
 
 
-def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
+def generate_dvcignore(templates_list):
+    with open(".dvcignore", "w") as f:
+        f.write(
+            "# This is .dvcignore file."
+            " See more https://dvc.org/doc/user-guide/dvcignore\n"
+        )
+        if templates_list is not None:
+            for template in templates_list:
+                with resources.open_text(
+                    "dvc.ignore_templates", template
+                ) as template_file:
+                    f.write(f"# {template}\n")
+                    lines = template_file.readlines()
+                    f.writelines(lines)
+
+
+def init(
+    root_dir=os.curdir,
+    no_scm=False,
+    force=False,
+    subdir=False,
+    ignore_template_list=None,
+):
     """
     Creates an empty repo on the given directory -- basically a
     `.dvc` directory with subdirectories for configuration and cache.
@@ -102,6 +125,8 @@ def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
     proj = Repo(root_dir)
 
     scm.add([config.files["repo"], proj.plot_templates.templates_dir])
+
+    generate_dvcignore(templates_list=ignore_template_list)
 
     if scm.ignore_file:
         scm.add([os.path.join(dvc_dir, scm.ignore_file)])
