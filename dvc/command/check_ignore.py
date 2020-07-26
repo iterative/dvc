@@ -61,9 +61,11 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Show given paths which don’t match any pattern. "
-        "Only used when --verbose is enabled.",
+        "Only used when --details is enabled.",
     )
     parser.add_argument(
-        "targets", nargs="+", help="Input files/directories to add.",
+        "targets",
+        nargs="+",
+        help="Input files/directories to check " "ignore patterns.",
     ).complete = completion.FILE
     parser.set_defaults(func=CmdCheckIgnore)
