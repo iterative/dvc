@@ -1,5 +1,6 @@
 import logging
 import threading
+from collections import deque
 
 from funcy import cached_property, wrap_prop
 
@@ -24,8 +25,11 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
     # URLInfo for Webdav ~ replaces webdav -> http
     PATH_CLS = WebDAVURLInfo
 
-    # Non traversable as walk_files is not implemented
-    CAN_TRAVERSE = False
+    # Traversable as walk_files is implemented
+    CAN_TRAVERSE = True
+
+    # Length of walk_files prefix
+    TRAVERSE_PREFIX_LEN = 2
 
     # Implementation based on webdav3.client
     REQUIRES = {"webdavclient3": "webdav3.client"}
@@ -145,6 +149,33 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
     def isdir(self, path_info):
         # Use webdav is_dir to test whether path points to a directory
         return self._client.is_dir(path_info.path)
+
+    # Yields path info to all files
+    def walk_files(self, path_info, **kwargs):
+        # Check whether directory exists
+        if not self.exists(path_info):
+            return
+
+        # Collect directories
+        dirs = deque([path_info.path])
+
+        # Iterate all directories found so far
+        while dirs:
+            # Nex directory
+            next_dir = path_info.replace(path=dirs.pop())
+
+            # Iterate directory content
+            for entry in self._client.list(next_dir.path):
+                # Construct path_info to entry
+                info = self.PATH_CLS(f"{next_dir.url}/{entry}")
+
+                # Check whether entry is a directory
+                if self.isdir(info):
+                    # Append new found directory to directory list
+                    dirs.append(info.path)
+                else:
+                    # Yield path info to non directory
+                    yield info
 
     # Removes file/directory
     def remove(self, path_info):
