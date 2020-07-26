@@ -82,7 +82,7 @@ def test_check_ignore_sub_repo(tmp_dir, dvc):
     assert main(["check-ignore", "-q", os.path.join("dir", "foo")]) == 1
 
 
-def test_check_multi_ignore_file(tmp_dir, dvc, caplog):
+def test_check_sub_dir_ignore_file(tmp_dir, dvc, caplog):
     tmp_dir.gen(
         {
             DvcIgnore.DVCIGNORE_FILE: "other",
@@ -91,7 +91,10 @@ def test_check_multi_ignore_file(tmp_dir, dvc, caplog):
     )
 
     assert main(["check-ignore", "-d", os.path.join("dir", "foo")]) == 0
-    assert "dir/.dvcignore:2:foo\tdir/foo" in caplog.text
+    assert (
+        "dir/.dvcignore:2:foo\t{}".format(os.path.join("dir", "foo"))
+        in caplog.text
+    )
 
     sub_dir = tmp_dir / "dir"
     with sub_dir.chdir():
