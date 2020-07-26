@@ -161,16 +161,13 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
 
         # Iterate all directories found so far
         while dirs:
-            # Nex directory
-            next_dir = path_info.replace(path=dirs.pop())
-
             # Iterate directory content
-            for entry in self._client.list(next_dir.path):
+            for entry in self._client.list(dirs.pop(), get_info=True):
                 # Construct path_info to entry
-                info = self.PATH_CLS(f"{next_dir.url}/{entry}")
+                info = path_info.replace(path=entry["path"])
 
                 # Check whether entry is a directory
-                if self.isdir(info):
+                if entry["isdir"]:
                     # Append new found directory to directory list
                     dirs.append(info.path)
                 else:
