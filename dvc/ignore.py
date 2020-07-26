@@ -272,7 +272,7 @@ class DvcIgnoreFilter:
     def check_ignore(self, targets):
         check_results = []
         for target in targets:
-            full_target = os.path.join(os.getcwd(), target)
+            full_target = os.path.abspath(target)
             if not self._outside_repo(full_target):
                 dirname, basename = os.path.split(
                     os.path.normpath(full_target)
