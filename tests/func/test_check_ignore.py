@@ -92,7 +92,10 @@ def test_check_sub_dir_ignore_file(tmp_dir, dvc, caplog):
 
     assert main(["check-ignore", "-d", os.path.join("dir", "foo")]) == 0
     assert (
-        "dir/.dvcignore:2:foo\t{}".format(os.path.join("dir", "foo"))
+        "{}:2:foo\t{}".format(
+            os.path.join("dir", DvcIgnore.DVCIGNORE_FILE),
+            os.path.join("dir", "foo"),
+        )
         in caplog.text
     )
 
