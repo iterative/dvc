@@ -3,10 +3,13 @@
 # of two path specification patterns with different base
 # All the operations follow the documents of `gitignore`
 import os
+from collections import namedtuple
 
 from pathspec.util import normalize_file
 
 from dvc.utils import relpath
+
+PatternInfo = namedtuple("PatternInfo", ["patterns", "file_info"])
 
 
 def _not_ignore(rule):
@@ -59,7 +62,10 @@ def _change_dirname(dirname, pattern_list, new_dirname):
     if rel.startswith(".."):
         raise ValueError("change dirname can only change to parent path")
 
-    return [change_rule(rule, rel) for rule in pattern_list]
+    return [
+        PatternInfo(change_rule(rule.patterns, rel), rule.file_info)
+        for rule in pattern_list
+    ]
 
 
 def merge_patterns(pattern_a, prefix_a, pattern_b, prefix_b):

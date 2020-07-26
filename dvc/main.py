@@ -93,7 +93,7 @@ def main(argv=None):
         # so won't be reused by any other subsequent run anyway.
         clean_repos()
 
-    if ret != 0:
+    if ret != 0 and ret != 1:
         logger.info(FOOTER)
 
     if analytics.is_enabled():
