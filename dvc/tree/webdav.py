@@ -120,7 +120,7 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
         return client
 
     # Checks whether file/directory exists at remote
-    def exists(self, path_info):
+    def exists(self, path_info, use_dvcignore=True):
         # Use webdav check to test for file existence
         return self._client.check(path_info.path)
 
