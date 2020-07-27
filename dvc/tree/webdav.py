@@ -1,4 +1,5 @@
 import logging
+import os
 import threading
 from collections import deque
 
@@ -7,6 +8,7 @@ from funcy import cached_property, wrap_prop
 from dvc.config import ConfigError
 from dvc.exceptions import DvcException
 from dvc.path_info import HTTPURLInfo, WebDAVURLInfo
+from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 
 from .base import BaseTree
@@ -35,6 +37,9 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
 
     # Implementation based on webdav3.client
     REQUIRES = {"webdavclient3": "webdav3.client"}
+
+    # Chunk size for buffered upload/download with progress bar
+    CHUNK_SIZE = 2 ** 16
 
     # Constructor
     def __init__(self, repo, config):
@@ -103,6 +108,7 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
             "webdav_cert_path": self.cert_path,
             "webdav_key_path": self.key_path,
             "webdav_timeout": self.timeout,
+            "webdav_chunk_size": self.CHUNK_SIZE,
         }
 
         client = Client(options)
@@ -199,17 +205,49 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
 
     # Downloads file from remote to file
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
-        # pylint: disable=unused-argument
-
-        # Webdav client download
-        self._client.download(from_info.path, to_file)
+        # Progress from HTTPTree
+        with open(to_file, "wb") as fd:
+            with Tqdm.wrapattr(
+                fd,
+                "write",
+                total=None if no_progress_bar else self._file_size(from_info),
+                leave=False,
+                desc=from_info.url if name is None else name,
+                disable=no_progress_bar,
+            ) as fd_wrapped:
+                # Download from WebDAV via buffer
+                self._client.download_from(
+                    buff=fd_wrapped, remote_path=from_info.path
+                )
 
     # Uploads file to remote
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
-        # pylint: disable=unused-argument
-
         # First try to create parent directories
         self.makedirs(to_info.parent)
 
-        # Now upload the file
-        self._client.upload(to_info.path, from_file)
+        # Progress from HTTPTree
+        def chunks():
+            with open(from_file, "rb") as fd:
+                with Tqdm.wrapattr(
+                    fd,
+                    "read",
+                    total=None
+                    if no_progress_bar
+                    else os.path.getsize(from_file),
+                    leave=False,
+                    desc=to_info.url if name is None else name,
+                    disable=no_progress_bar,
+                ) as fd_wrapped:
+                    while True:
+                        chunk = fd_wrapped.read(self.CHUNK_SIZE)
+                        if not chunk:
+                            break
+                        yield chunk
+
+        # Upload to WebDAV via buffer
+        self._client.upload_to(buff=chunks(), remote_path=to_info.path)
+
+    # Queries size of file at remote
+    def _file_size(self, path_info):
+        # Get file size from info dictionary and convert to int (from str)
+        return int(self._client.info(path_info.path)["size"])
