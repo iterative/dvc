@@ -47,7 +47,7 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
         # Get password from configuration (might be None ~ not set)
         self.password = config.get("password", None)
 
-        # Whether to ask for password is it is not set
+        # Whether to ask for password if it is not set
         self.ask_password = config.get("ask_password", False)
 
         # Use token for webdav auth
@@ -83,7 +83,6 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
     @wrap_prop(threading.Lock())
     @cached_property
     def _client(self):
-        # Import the webdav client library
         from webdav3.client import Client
 
         # Construct hostname from path_info by stripping path
@@ -106,7 +105,6 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
             "webdav_timeout": self.timeout,
         }
 
-        # Create a webdav client as configured
         client = Client(options)
 
         # Check whether client options are valid
@@ -119,10 +117,9 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
         if not client.check(self.path_info.path):
             raise WebDAVConnectionError(hostname)
 
-        # Return constructed client (cached)
         return client
 
-    # Checks whether file exists
+    # Checks whether file/directory exists at remote
     def exists(self, path_info):
         # Use webdav check to test for file existence
         return self._client.check(path_info.path)
