@@ -299,16 +299,6 @@ class HTTPError(DvcException):
         super().__init__(f"'{code} {reason}'")
 
 
-class WebDAVConfigError(DvcException):
-    def __init__(self, host):
-        super().__init__(f"Configuration for WebDAV {host} is invalid.")
-
-
-class WebDAVConnectionError(DvcException):
-    def __init__(self, host):
-        super().__init__(f"Unable to connect to WebDAV {host}.")
-
-
 class PathMissingError(DvcException):
     default_msg = (
         "The path '{}' does not exist in the target repository '{}'"

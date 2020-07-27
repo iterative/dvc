@@ -4,11 +4,8 @@ from collections import deque
 
 from funcy import cached_property, wrap_prop
 
-from dvc.exceptions import (
-    DvcException,
-    WebDAVConfigError,
-    WebDAVConnectionError,
-)
+from dvc.config import ConfigError
+from dvc.exceptions import DvcException
 from dvc.path_info import HTTPURLInfo, WebDAVURLInfo
 from dvc.scheme import Schemes
 
@@ -16,6 +13,11 @@ from .base import BaseTree
 from .http import ask_password
 
 logger = logging.getLogger(__name__)
+
+
+class WebDAVConnectionError(DvcException):
+    def __init__(self, host):
+        super().__init__(f"Unable to connect to WebDAV {host}.")
 
 
 class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
@@ -109,7 +111,9 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
 
         # Check whether client options are valid
         if not client.valid():
-            raise WebDAVConfigError(hostname)
+            raise ConfigError(
+                f"Configuration for WebDAV {hostname} is invalid."
+            )
 
         # Check whether connection is valid (root should always exist)
         if not client.check(self.path_info.path):
