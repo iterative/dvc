@@ -197,11 +197,6 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
         # Webdav client move
         self._client.move(from_info.path, to_info.path)
 
-    # Copies file/directory at remote
-    def copy(self, from_info, to_info):
-        # Webdav client copy
-        self._client.copy(from_info.path, to_info.path)
-
     # Downloads file from remote to file
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         # pylint: disable=unused-argument
