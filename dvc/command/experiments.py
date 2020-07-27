@@ -82,29 +82,25 @@ def _show_experiments(all_experiments, console, precision=None):
 
     metric_names, param_names = _collect_names(all_experiments)
 
-    table = Table(row_styles=["white", "bright_white"])
-    table.add_column("Experiment", header_style="black on grey93")
+    table = Table()
+    table.add_column("Experiment")
     for name in metric_names:
-        table.add_column(
-            name, justify="right", header_style="black on cornsilk1"
-        )
+        table.add_column(name, justify="right")
     for name in param_names:
-        table.add_column(
-            name, justify="left", header_style="black on light_cyan1"
-        )
+        table.add_column(name, justify="left")
 
     for base_rev, experiments in all_experiments.items():
         if Git.is_sha(base_rev):
             base_rev = base_rev[:7]
 
-        for row, style, in _collect_rows(
+        for row, _, in _collect_rows(
             base_rev,
             experiments,
             metric_names,
             param_names,
             precision=precision,
         ):
-            table.add_row(*row, style=style)
+            table.add_row(*row)
 
     console.print(table)
 
