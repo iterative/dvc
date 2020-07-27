@@ -44,6 +44,7 @@ def parse_yaml_for_update(text, path):
 def dump_yaml(path, data):
     with open(path, "w", encoding="utf-8") as fd:
         yaml = YAML()
+        yaml.version = (1, 1)  # Workaround for #4281
         yaml.default_flow_style = False
         # tell Dumper to represent OrderedDict as
         # normal dict
