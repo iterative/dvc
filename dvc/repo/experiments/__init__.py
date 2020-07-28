@@ -2,7 +2,7 @@ import logging
 import os
 import re
 import tempfile
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from contextlib import contextmanager
 from typing import Iterable, Optional
 
@@ -281,9 +281,9 @@ class Experiments:
         """
         result = {}
 
-        with ThreadPoolExecutor(max_workers=jobs) as thread_exec:
+        with ProcessPoolExecutor(max_workers=jobs) as workers:
             futures = {
-                thread_exec.submit(executor.reproduce): (rev, executor)
+                workers.submit(executor.reproduce): (rev, executor)
                 for rev, executor in executors.items()
             }
             for future in as_completed(futures):
