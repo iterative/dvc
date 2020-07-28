@@ -120,11 +120,12 @@ class DvcIgnoreFilter:
 
         return os.path.isdir(os.path.join(root, directory, Repo.DVC_DIR))
 
-    def __init__(self, tree, root_dir):
+    def __init__(self, tree, root_dir, ignore_subrepo=True):
         from dvc.repo import Repo
 
         default_ignore_patterns = [".hg/", ".git/", "{}/".format(Repo.DVC_DIR)]
 
+        self._ignore_subrepo = ignore_subrepo
         self.tree = tree
         self.root_dir = root_dir
         self.ignores_trie_tree = StringTrie(separator=os.sep)
@@ -160,7 +161,8 @@ class DvcIgnoreFilter:
 
         # NOTE: using `walk` + `break` because tree doesn't have `listdir()`
         for root, dirs, _ in self.tree.walk(dirname, use_dvcignore=False):
-            self._update_sub_repo(root, dirs)
+            if self._ignore_subrepo:
+                self._update_sub_repo(root, dirs)
             break
 
     def _update_sub_repo(self, root, dirs):

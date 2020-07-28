@@ -152,7 +152,7 @@ class Repo:
 
     @cached_property
     def repo_tree(self):
-        return RepoTree(self.tree, [self], stream=True)
+        return RepoTree(self, self.tree, stream=True)
 
     @classmethod
     def find_root(cls, root=None, tree=None):

@@ -1,14 +1,8 @@
 import os
 
-import pytest
 from mock import ANY, patch
 
-from dvc.external_repo import (
-    CLONES,
-    ExternalDVCRepo,
-    ExternalGitRepo,
-    external_repo,
-)
+from dvc.external_repo import CLONES, ExternalDVCRepo, external_repo
 from dvc.scm.git import Git
 from dvc.tree.local import LocalTree
 from dvc.utils import relpath
@@ -124,9 +118,9 @@ def test_relative_remote(erepo_dir, tmp_dir):
     url = os.fspath(erepo_dir)
 
     with external_repo(url) as repo:
-        for subrepo in repo.repos:
-            assert os.path.isabs(subrepo.config["remote"]["upstream"]["url"])
-            assert os.path.isdir(subrepo.config["remote"]["upstream"]["url"])
+        # pylint: disable=no-member
+        assert os.path.isabs(repo.config["remote"]["upstream"]["url"])
+        assert os.path.isdir(repo.config["remote"]["upstream"]["url"])
         with repo.repo_tree.open_by_relpath("file") as fd:
             assert fd.read() == "contents"
 
@@ -181,24 +175,3 @@ def test_shallow_clone_tag(erepo_dir):
         assert mock_clone.call_count == 1
         _, shallow = CLONES[url]
         assert not shallow
-
-
-@pytest.mark.parametrize(
-    "repo_class, erepo",
-    [
-        (ExternalDVCRepo, pytest.lazy_fixture("erepo_dir")),
-        (ExternalGitRepo, pytest.lazy_fixture("git_dir")),
-    ],
-)
-def test_subrepo(erepo, repo_class):
-    from tests.func.test_get import make_subrepo
-
-    subrepo = erepo / "sub"
-    nested = erepo / "sub" / "nested"
-    make_subrepo(subrepo, erepo.scm)
-    make_subrepo(nested, erepo.scm)
-    with external_repo(os.fspath(erepo), rev="master") as repo:
-        assert isinstance(repo, repo_class)
-        assert {
-            os.path.relpath(r.root_dir, repo.root_dir) for r in repo.subrepos
-        } == {"sub", os.path.join("sub", "nested")}

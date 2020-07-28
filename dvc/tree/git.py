@@ -43,7 +43,7 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
         self.rev = rev
         self.use_dvcignore = use_dvcignore
         self.dvcignore_root = dvcignore_root
-        self.ignore_subrepo = ignore_subrepo
+        self._ignore_subrepo = ignore_subrepo
 
     @property
     def tree_root(self):
@@ -56,7 +56,7 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
         root = self.dvcignore_root or self.tree_root
         if self.use_dvcignore:
             return DvcIgnoreFilter(
-                self, root, ignore_subrepo=self.ignore_subrepo
+                self, root, ignore_subrepo=self._ignore_subrepo
             )
         return DvcIgnoreFilterNoop(self, root)
 
@@ -97,12 +97,16 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
             path
         ) and not self.dvcignore.is_ignored_dir(path)
 
-    def isdir(self, path):  # pylint: disable=arguments-differ
+    def isdir(
+        self, path, use_dvcignore=True
+    ):  # pylint: disable=arguments-differ
         obj = self._git_object_by_path(path)
         if obj is None:
             return False
         if obj.mode != GIT_MODE_DIR:
             return False
+        if not use_dvcignore:
+            return True
         return not self.dvcignore.is_ignored_dir(path)
 
     def isfile(self, path):  # pylint: disable=arguments-differ

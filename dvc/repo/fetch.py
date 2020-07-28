@@ -79,9 +79,12 @@ def _fetch_external(self, repo_url, repo_rev, files, jobs):
     from dvc.external_repo import external_repo
 
     failed, downloaded = 0, 0
+    cache = self.cache.local
     try:
-        with external_repo(repo_url, repo_rev) as repo:
-            d, f, _ = repo.fetch_external(files, self.cache.local, jobs=jobs)
+        with external_repo(
+            repo_url, repo_rev, cache_dir=cache.cache_dir
+        ) as repo:
+            d, f, _ = repo.fetch_external(files, cache, jobs=jobs)
             downloaded += d
             failed += f
     except CloneError:

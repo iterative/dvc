@@ -49,9 +49,12 @@ class RepoDependency(LocalDependency):
         return external_repo(d["url"], rev=rev, **kwargs)
 
     def _get_checksum(self, locked=True):
-        with self._make_repo(locked=locked, stream=True) as repo:
+        cache = self.repo.cache.local
+        with self._make_repo(
+            locked=locked, stream=True, cache_dir=cache.cache_dir
+        ) as repo:
             path = PathInfo(os.path.join(repo.root_dir, self.def_path))
-            return repo.get_checksum(path, self.repo.cache.local)
+            return repo.get_checksum(path, cache)
 
     def status(self):
         current_checksum = self._get_checksum(locked=True)
@@ -69,11 +72,10 @@ class RepoDependency(LocalDependency):
         return {self.PARAM_PATH: self.def_path, self.PARAM_REPO: self.def_repo}
 
     def download(self, to):
-        with self._make_repo() as repo:
+        cache = self.repo.cache.local
+        with self._make_repo(cache_dir=cache.cache_dir) as repo:
             if self.def_repo.get(self.PARAM_REV_LOCK) is None:
                 self.def_repo[self.PARAM_REV_LOCK] = repo.get_rev()
-
-            cache = self.repo.cache.local
             _, _, cache_infos = repo.fetch_external([self.def_path], cache)
             cache.checkout(to.path_info, cache_infos[0])
 

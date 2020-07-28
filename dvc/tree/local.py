@@ -49,7 +49,7 @@ class LocalTree(BaseTree):
         self.path_info = self.PATH_CLS(url) if url else None
         self.use_dvcignore = use_dvcignore
         self.dvcignore_root = dvcignore_root
-        self.ignore_subrepo = ignore_subrepo
+        self._ignore_subrepo = ignore_subrepo
 
     @property
     def tree_root(self):
@@ -68,7 +68,7 @@ class LocalTree(BaseTree):
         root = self.dvcignore_root or self.tree_root
         if self.use_dvcignore:
             return DvcIgnoreFilter(
-                self, root, ignore_subrepo=self.ignore_subrepo
+                self, root, ignore_subrepo=self._ignore_subrepo
             )
         return DvcIgnoreFilterNoop(self, root)
 
@@ -97,10 +97,11 @@ class LocalTree(BaseTree):
 
         return not self.dvcignore.is_ignored_file(path_info)
 
-    def isdir(self, path_info):
+    def isdir(self, path_info, use_dvcignore=True):  # pylint: disable=W0221
         if not os.path.isdir(path_info):
             return False
-
+        if not use_dvcignore:
+            return True
         return not self.dvcignore.is_ignored_dir(path_info)
 
     def iscopy(self, path_info):

@@ -36,7 +36,10 @@ def get(url, path, out=None, rev=None):
     dpath = os.path.dirname(os.path.abspath(out))
     tmp_dir = os.path.join(dpath, "." + str(shortuuid.uuid()))
     try:
-        with external_repo(url=url, rev=rev) as repo:
+        link_types = ["reflink", "hardlink", "copy"]
+        with external_repo(
+            url=url, rev=rev, cache_dir=tmp_dir, cache_types=link_types
+        ) as repo:
             # Try any links possible to avoid data duplication.
             #
             # Not using symlink, because we need to remove cache after we
@@ -46,8 +49,6 @@ def get(url, path, out=None, rev=None):
             #
             # Also, we can't use theoretical "move" link type here, because
             # the same cache file might be used a few times in a directory.
-            link_types = ["reflink", "hardlink", "copy"]
-            with repo.with_cache(tmp_dir, link_types=link_types):
-                repo.get_external(path, out)
+            repo.get_external(path, out)
     finally:
         remove(tmp_dir)

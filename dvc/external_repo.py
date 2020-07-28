@@ -8,7 +8,6 @@ from typing import Iterable
 
 from funcy import cached_property, retry, wrap_with
 
-from dvc import subrepos
 from dvc.config import NoRemoteError, NotDvcRepoError
 from dvc.exceptions import (
     FileMissingError,
@@ -108,18 +107,6 @@ def _add_upstream(orig_repo, src_repo):
 
 
 class BaseExternalMixin:
-    def _setup(self):
-        self._setup_cache_dir()
-
-        for repo in self.repos:
-            repo.cache.local.cache_dir = self.cache_dir
-            if os.path.isdir(self.url):
-                self._fix_upstream(repo)
-
-    @property
-    def repos(self):
-        raise NotImplementedError
-
     @wrap_with(threading.Lock())
     def _setup_cache_dir(self):
         # share same cache_dir among all subrepos
@@ -129,18 +116,6 @@ class BaseExternalMixin:
             self.cache_dir = CACHE_DIRS[self.url] = tempfile.mkdtemp(
                 "dvc-cache"
             )
-
-    @wrap_with(threading.Lock())
-    @contextmanager
-    def with_cache(self, cache_dir, link_types=None):
-        for repo in self.repos:
-            repo.cache.local.cache_dir = cache_dir
-            if link_types:
-                # FIXME: not rolling back, should be fine for now
-                repo.cache.local.cache_types = link_types
-        yield
-        for repo in self.repos:
-            repo.cache.local.cache_dir = self.cache_dir
 
     def _fix_upstream(self, orig_repo):
         try:
@@ -167,12 +142,6 @@ class BaseExternalMixin:
             self.scm.close()
 
     def fetch_external(self, paths: Iterable, cache, **kwargs):
-        # `RepoTree` will try downloading it to the repo's cache
-        # instead of `cache_dir`, need to change on all instances
-        with self.with_cache(cache.cache_dir):
-            return self._fetch_to_cache(paths, cache, **kwargs)
-
-    def _fetch_to_cache(self, paths: Iterable, cache, **kwargs):
         """Fetch specified external repo paths into cache.
 
          Returns 3-tuple in the form
@@ -208,7 +177,7 @@ class BaseExternalMixin:
         repo = self.in_repo(src)
         if repo:
             cache = repo.cache.local
-            _, _, save_infos = self._fetch_to_cache([src], cache)
+            _, _, save_infos = self.fetch_external([src], cache)
             cache.checkout(PathInfo(dest), save_infos[0])
         else:
             path = PathInfo(self.root_dir) / src
@@ -229,20 +198,6 @@ class BaseExternalMixin:
     def in_repo(self, path):
         tree = self.repo_tree.in_subtree(PathInfo(self.root_dir) / path)
         return tree.repo if tree else None
-
-    def _find_subrepos(self):
-        repo_kw = {}
-        if self.for_write:
-            tree = LocalTree(None, {"url": self.root_dir})
-        else:
-            assert self.url and self.scm and self.rev
-            # .dvc folders are ignored by dvcignore which is required for
-            # `subrepos.find()`, hence using a separate tree
-            tree = self.scm.get_tree(self.rev)
-            repo_kw = dict(scm=self.scm, rev=self.rev)
-
-        paths = subrepos.find(tree)
-        return [Repo(path, **repo_kw) for path in paths]
 
     @cached_property
     def main_tree(self):
@@ -268,8 +223,21 @@ class BaseExternalMixin:
     @cached_property
     def repo_tree(self) -> "RepoTree":
         return RepoTree(
-            self.main_tree, subrepos=self.repos, **self._tree_config
+            self,
+            self.main_tree,
+            traverse_subrepo=True,
+            repo_constructor=self.make_subrepo,
+            **self._tree_config,
         )
+
+    def make_subrepo(self, path):
+        repo = Repo(path, scm=self.scm, rev=self.rev)
+        repo.cache.local.cache_dir = self.cache_dir
+        if self.cache_types:
+            repo.cache.local.cache_types = self.cache_types
+        if os.path.isdir(self.url):
+            self._fix_upstream(repo)
+        return repo
 
 
 class ExternalDVCRepo(BaseExternalMixin, Repo):
@@ -281,7 +249,9 @@ class ExternalDVCRepo(BaseExternalMixin, Repo):
         for_write=False,
         url=None,
         fetch=True,
-        **kwargs
+        cache_dir=None,
+        cache_types=None,
+        **kwargs,
     ):
         super().__init__(root_dir, scm=scm, rev=rev)
 
@@ -289,12 +259,16 @@ class ExternalDVCRepo(BaseExternalMixin, Repo):
         self.rev = rev
         self.for_write = for_write
         self._tree_config = {"fetch": fetch, **kwargs}
-        self.subrepos = self._find_subrepos()
-        self._setup()
-
-    @property
-    def repos(self):
-        return [self] + self.subrepos
+        self.cache_types = cache_types
+        if cache_types:
+            self.cache.local.cache_types = cache_types
+        if cache_dir:
+            self.cache_dir = cache_dir
+        else:
+            self._setup_cache_dir()
+        self.cache.local.cache_dir = self.cache_dir
+        if os.path.isdir(self.url):
+            self._fix_upstream(self)
 
 
 class ExternalGitRepo(BaseExternalMixin):
@@ -306,7 +280,9 @@ class ExternalGitRepo(BaseExternalMixin):
         for_write=False,
         url=None,
         fetch=True,
-        **kwargs
+        cache_dir=None,
+        cache_types=None,
+        **kwargs,
     ):
         self.root_dir = root_dir
         self.scm = scm
@@ -314,13 +290,11 @@ class ExternalGitRepo(BaseExternalMixin):
         self.rev = rev
         self.for_write = for_write
         self._tree_config = {"fetch": fetch, **kwargs}
-
-        self.subrepos = self._find_subrepos()
-        self._setup()
-
-    @property
-    def repos(self):
-        return self.subrepos
+        self.cache_types = cache_types
+        if cache_dir:
+            self.cache_dir = cache_dir
+        else:
+            self._setup_cache_dir()
 
     @property
     def tree(self):

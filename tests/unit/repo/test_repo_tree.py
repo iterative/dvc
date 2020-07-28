@@ -14,7 +14,7 @@ def test_exists(tmp_dir, dvc):
     dvc.add("foo")
     (tmp_dir / "foo").unlink()
 
-    tree = RepoTree(dvc.tree, [dvc])
+    tree = RepoTree(dvc, dvc.tree)
     assert tree.exists("foo")
 
 
@@ -23,7 +23,7 @@ def test_open(tmp_dir, dvc):
     dvc.add("foo")
     (tmp_dir / "foo").unlink()
 
-    tree = RepoTree(dvc.tree, [dvc])
+    tree = RepoTree(dvc, dvc.tree)
     with dvc.state:
         with tree.open("foo", "r") as fobj:
             assert fobj.read() == "foo"
@@ -33,7 +33,7 @@ def test_open_dirty_hash(tmp_dir, dvc):
     tmp_dir.dvc_gen("file", "file")
     (tmp_dir / "file").write_text("something")
 
-    tree = RepoTree(dvc.tree, [dvc])
+    tree = RepoTree(dvc, dvc.tree)
     with tree.open("file", "r") as fobj:
         assert fobj.read() == "something"
 
@@ -42,7 +42,7 @@ def test_open_dirty_no_hash(tmp_dir, dvc):
     tmp_dir.gen("file", "file")
     (tmp_dir / "file.dvc").write_text("outs:\n- path: file\n")
 
-    tree = RepoTree(dvc.tree, [dvc])
+    tree = RepoTree(dvc, dvc.tree)
     with tree.open("file", "r") as fobj:
         assert fobj.read() == "file"
 
@@ -62,7 +62,7 @@ def test_open_in_history(tmp_dir, scm, dvc):
         if rev == "workspace":
             continue
 
-        tree = RepoTree(dvc.tree, [dvc])
+        tree = RepoTree(dvc, dvc.tree)
         with tree.open("foo", "r") as fobj:
             assert fobj.read() == "foo"
 
@@ -70,7 +70,7 @@ def test_open_in_history(tmp_dir, scm, dvc):
 def test_isdir_isfile(tmp_dir, dvc):
     tmp_dir.gen({"datafile": "data", "datadir": {"foo": "foo", "bar": "bar"}})
 
-    tree = RepoTree(dvc.tree, [dvc])
+    tree = RepoTree(dvc, dvc.tree)
     assert tree.isdir("datadir")
     assert not tree.isfile("datadir")
     assert not tree.isdvc("datadir")
@@ -95,7 +95,7 @@ def test_isdir_mixed(tmp_dir, dvc):
 
     dvc.add(str(tmp_dir / "dir" / "foo"))
 
-    tree = RepoTree(dvc.tree, [dvc])
+    tree = RepoTree(dvc, dvc.tree)
     assert tree.isdir("dir")
     assert not tree.isfile("dir")
 
@@ -125,7 +125,7 @@ def test_walk(tmp_dir, dvc, dvcfiles, extra_expected):
     )
     dvc.add(str(tmp_dir / "dir"), recursive=True)
     tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
-    tree = RepoTree(dvc.tree, [dvc])
+    tree = RepoTree(dvc, dvc.tree)
 
     expected = [
         PathInfo("dir") / "subdir1",
@@ -152,7 +152,7 @@ def test_walk_onerror(tmp_dir, dvc):
         raise exc
 
     tmp_dir.dvc_gen("foo", "foo")
-    tree = RepoTree(dvc.tree, [dvc])
+    tree = RepoTree(dvc, dvc.tree)
 
     # path does not exist
     for _ in tree.walk("dir"):
@@ -173,7 +173,7 @@ def test_isdvc(tmp_dir, dvc):
     tmp_dir.gen({"foo": "foo", "bar": "bar", "dir": {"baz": "baz"}})
     dvc.add("foo")
     dvc.add("dir")
-    tree = RepoTree(dvc.tree, [dvc])
+    tree = RepoTree(dvc, dvc.tree)
     assert tree.isdvc("foo")
     assert not tree.isdvc("bar")
     assert tree.isdvc("dir")
@@ -194,7 +194,7 @@ def test_in_subtree(tmp_dir, scm, dvc):
 
     # dvc.tree ignores subrepos by default,
     # but we just want to test `in_subtree()`, which is purely lexical
-    tree = RepoTree(dvc.tree, [dvc, subrepo1.dvc, subrepo2.dvc])
+    tree = RepoTree(dvc, scm.get_tree("HEAD"))
 
     assert tree.in_subtree(str(tmp_dir / "dir")).repo == dvc
     assert tree.in_subtree(str(tmp_dir / "dir" / "re")).repo == dvc
@@ -230,9 +230,7 @@ def test_subrepos(tmp_dir, scm, dvc):
     )
 
     # using tree that does not have dvcignore
-    tree = RepoTree(
-        scm.get_tree("HEAD"), [dvc, subrepo1.dvc, subrepo2.dvc], fetch=True
-    )
+    tree = RepoTree(dvc, scm.get_tree("HEAD"), fetch=True)
 
     def assert_tree_belongs_to_repo(ret_val):
         method = tree._find_subtree
@@ -294,11 +292,7 @@ def test_subrepos(tmp_dir, scm, dvc):
         ),
     ],
 )
-@pytest.mark.parametrize("is_dvc", [True, False])
-def test_subrepo_walk(tmp_dir, dvcfiles, extra_expected, is_dvc):
-    tmp_dir.init(scm=True, dvc=is_dvc)
-    scm = tmp_dir.scm
-
+def test_subrepo_walk(tmp_dir, scm, dvc, dvcfiles, extra_expected):
     tmp_dir.scm_gen(
         {"dir": {"repo.txt": "file to confuse RepoTree"}},
         commit="dir/repo.txt",
@@ -310,8 +304,6 @@ def test_subrepo_walk(tmp_dir, dvcfiles, extra_expected, is_dvc):
     subdirs = [subrepo1, subrepo2]
     for dir_ in subdirs:
         make_subrepo(dir_, scm)
-    if is_dvc:
-        subdirs.append(tmp_dir)
 
     subrepo1.dvc_gen({"foo": "foo", "dir1": {"bar": "bar"}}, commit="FOO")
     subrepo2.dvc_gen(
@@ -320,8 +312,8 @@ def test_subrepo_walk(tmp_dir, dvcfiles, extra_expected, is_dvc):
 
     # using tree that does not have dvcignore
     tree = RepoTree(
+        dvc,
         scm.get_tree("HEAD", use_dvcignore=True, ignore_subrepo=False),
-        [dir_.dvc for dir_ in subdirs],
         fetch=True,
     )
     expected = [

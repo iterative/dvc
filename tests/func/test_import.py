@@ -281,10 +281,6 @@ def test_import_non_existing(erepo_dir, tmp_dir, dvc):
     with pytest.raises(PathMissingError):
         tmp_dir.dvc.imp(os.fspath(erepo_dir), "invalid_output")
 
-    # https://github.com/iterative/dvc/pull/2837#discussion_r352123053
-    with pytest.raises(PathMissingError):
-        tmp_dir.dvc.imp(os.fspath(erepo_dir), "/root/", "root")
-
 
 def test_pull_no_rev_lock(erepo_dir, tmp_dir, dvc):
     with erepo_dir.chdir():
