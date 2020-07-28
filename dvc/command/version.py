@@ -35,7 +35,7 @@ class CmdVersion(CmdBaseNoRepo):
 
         info = [
             f"DVC version: {__version__} {package}",
-            "--------------------------------- \n",
+            "---------------------------------",
             f"Platform: Python {platform.python_version()} on "
             f"{platform.platform()}",
             f"Supports: {self.get_supported_remotes()}",
