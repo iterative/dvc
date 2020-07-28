@@ -270,7 +270,7 @@ class DvcIgnoreFilter:
 
     def _is_ignored(self, path, is_dir=False):
         try:
-            self._outside_repo(path)
+            self._is_inside_repo(path)
             dirname, basename = os.path.split(os.path.normpath(path))
             ignore_pattern = self._get_trie_pattern(dirname)
             return ignore_pattern.matches(dirname, basename, is_dir)
@@ -285,9 +285,10 @@ class DvcIgnoreFilter:
         return self._is_ignored(path, True)
 
     def is_ignored_file(self, path):
+        path = os.path.abspath(path)
         return self._is_ignored(path, False)
 
-    def _outside_repo(self, path):
+    def _is_inside_repo(self, path):
         path = PathInfo(path)
 
         # paths outside of the repo should be ignored
@@ -305,7 +306,7 @@ class DvcIgnoreFilter:
         for target in targets:
             full_target = os.path.abspath(target)
             try:
-                self._outside_repo(full_target)
+                self._is_inside_repo(full_target)
                 dirname, basename = os.path.split(
                     os.path.normpath(full_target)
                 )
