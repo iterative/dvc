@@ -48,6 +48,10 @@ def _collect_rows(
         return val
 
     def _extend(row, names, items):
+        if not items:
+            row.extend(["-"] * len(names))
+            return
+
         for fname, item in items:
             if isinstance(item, dict):
                 item = flatten(item, ".")
@@ -62,13 +66,14 @@ def _collect_rows(
     for i, (rev, exp) in enumerate(experiments.items()):
         row = []
         style = None
+        queued = "*" if exp.get("queued", False) else ""
         if rev == "baseline":
             row.append(f"{base_rev}")
             style = "bold"
         elif i < len(experiments) - 1:
-            row.append(f"├── {rev[:7]}")
+            row.append(f"├── {queued}{rev[:7]}")
         else:
-            row.append(f"└── {rev[:7]}")
+            row.append(f"└── {queued}{rev[:7]}")
 
         _extend(row, metric_names, exp.get("metrics", {}).items())
         _extend(row, param_names, exp.get("params", {}).items())
