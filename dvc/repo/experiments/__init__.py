@@ -180,7 +180,7 @@ class Experiments:
         stash_rev = self.new(**kwargs)
         if queue:
             logger.info(
-                "Queued experiment '%s' for future execution.", stash_rev
+                "Queued experiment '%s' for future execution.", stash_rev[:7]
             )
             return []
         results = self.reproduce([stash_rev], keep_stash=False)
@@ -195,7 +195,7 @@ class Experiments:
         if results:
             revs = [f"{rev[:7]}" for rev in results]
             logger.info(
-                "Successfully reproduced experiments '%s'.\n"
+                "Successfully reproduced experiment(s) '%s'.\n"
                 "Use `dvc exp checkout <exp_rev>` to apply the results of "
                 "a specific experiment to your workspace.",
                 ", ".join(revs),
