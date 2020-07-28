@@ -70,7 +70,6 @@ def test_check_ignore_dir(tmp_dir, dvc, path, ret):
 
 
 def test_check_ignore_default_dir(tmp_dir, dvc):
-    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir/")
     assert main(["check-ignore", "-q", ".dvc"]) == 1
 
 

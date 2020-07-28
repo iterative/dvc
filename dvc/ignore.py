@@ -8,12 +8,17 @@ from pathspec.patterns import GitWildMatchPattern
 from pathspec.util import normalize_file
 from pygtrie import StringTrie
 
+from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 from dvc.pathspec_math import PatternInfo, merge_patterns
 from dvc.system import System
 from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
+
+
+class OutOfWorkingSpaceError(DvcException):
+    """Thrown when unable to acquire the lock for DVC repo."""
 
 
 class DvcIgnore:
@@ -85,7 +90,9 @@ class DvcIgnorePatterns(DvcIgnore):
             # NOTE: `os.path.join` is ~x5.5 slower
             path = f"{rel}{os.sep}{basename}"
         else:
-            return False
+            raise OutOfWorkingSpaceError(
+                f"`{dirname}` is out side of `{self.dirname}`"
+            )
 
         if not System.is_unix():
             path = normalize_file(path)
@@ -116,16 +123,13 @@ class DvcIgnorePatterns(DvcIgnore):
         result = []
         for ignore, pattern in zip(self.regex_pattern_list, self.pattern_list):
             regex = re.compile(ignore[0])
-            # skip system pattern
-            if not pattern.file_info:
-                continue
-            if is_dir:
-                path_dir = f"{path}/"
-                if regex.match(path) or regex.match(path_dir):
-                    result.append(pattern.file_info)
-            else:
-                if regex.match(path):
-                    result.append(pattern.file_info)
+            if regex.match(path) or (is_dir and regex.match(f"{path}/")):
+                if not pattern.file_info:
+                    raise OutOfWorkingSpaceError(
+                        f"`{path}` is not in work space."
+                    )
+                result.append(pattern.file_info)
+
         return result
 
     def __hash__(self):
@@ -233,10 +237,10 @@ class DvcIgnoreFilter:
                     self.ignores_trie_tree[root] = new_pattern
 
     def __call__(self, root, dirs, files):
-        ignore_pattern = self._get_trie_pattern(root)
-        if ignore_pattern:
+        try:
+            ignore_pattern = self._get_trie_pattern(root)
             return ignore_pattern(root, dirs, files)
-        else:
+        except OutOfWorkingSpaceError:
             return dirs, files
 
     def _get_trie_pattern(self, dirname):
@@ -246,8 +250,9 @@ class DvcIgnoreFilter:
 
         prefix = self.ignores_trie_tree.longest_prefix(dirname).key
         if not prefix:
-            # outside of the repo
-            return None
+            raise OutOfWorkingSpaceError(
+                f"`{dirname}` is out side of `{self.root_dir}`"
+            )
 
         dirs = list(
             takewhile(
@@ -264,14 +269,13 @@ class DvcIgnoreFilter:
         return self.ignores_trie_tree.get(dirname)
 
     def _is_ignored(self, path, is_dir=False):
-        if self._outside_repo(path):
-            return True
-        dirname, basename = os.path.split(os.path.normpath(path))
-        ignore_pattern = self._get_trie_pattern(dirname)
-        if ignore_pattern:
+        try:
+            self._outside_repo(path)
+            dirname, basename = os.path.split(os.path.normpath(path))
+            ignore_pattern = self._get_trie_pattern(dirname)
             return ignore_pattern.matches(dirname, basename, is_dir)
-        else:
-            return False
+        except OutOfWorkingSpaceError:
+            return True
 
     def is_ignored_dir(self, path):
         path = os.path.abspath(path)
@@ -294,28 +298,29 @@ class DvcIgnoreFilter:
                 [os.path.abspath(path), self.root_dir]
             )
         ):
-            return True
-        return False
+            raise OutOfWorkingSpaceError(f"{path} is out of {self.root_dir}")
 
     def check_ignore(self, targets):
         check_results = []
         for target in targets:
             full_target = os.path.abspath(target)
-            if not self._outside_repo(full_target):
+            try:
+                self._outside_repo(full_target)
                 dirname, basename = os.path.split(
                     os.path.normpath(full_target)
                 )
                 pattern = self._get_trie_pattern(dirname)
-                if pattern:
-                    matches = pattern.match_details(
-                        dirname, basename, os.path.isdir(full_target)
-                    )
+                matches = pattern.match_details(
+                    dirname, basename, os.path.isdir(full_target)
+                )
 
-                    if matches:
-                        check_results.append(
-                            CheckIgnoreResult(target, True, matches)
-                        )
-                        continue
+                if matches:
+                    check_results.append(
+                        CheckIgnoreResult(target, True, matches)
+                    )
+                    continue
+            except OutOfWorkingSpaceError:
+                pass
             check_results.append(CheckIgnoreResult(target, False, ["::"]))
 
         return check_results
