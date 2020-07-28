@@ -3,6 +3,7 @@
 import inspect
 import logging
 import os
+import platform
 import sys
 from subprocess import Popen
 
@@ -15,25 +16,24 @@ CREATE_NEW_PROCESS_GROUP = 0x00000200
 DETACHED_PROCESS = 0x00000008
 
 
-def _spawn_windows(cmd, env):
-    from subprocess import STARTUPINFO, STARTF_USESHOWWINDOW
-
+def _popen(cmd, **kwargs):
     prefix = [sys.executable]
     if not is_binary():
         prefix += [sys.argv[0]]
+
+    return Popen(prefix + cmd, close_fds=True, shell=False, **kwargs)
+
+
+def _spawn_windows(cmd, env):
+    from subprocess import STARTUPINFO, STARTF_USESHOWWINDOW
 
     creationflags = CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS
 
     startupinfo = STARTUPINFO()
     startupinfo.dwFlags |= STARTF_USESHOWWINDOW
 
-    Popen(
-        prefix + cmd,
-        env=env,
-        close_fds=True,
-        shell=False,
-        creationflags=creationflags,
-        startupinfo=startupinfo,
+    _popen(
+        cmd, env=env, creationflags=creationflags, startupinfo=startupinfo,
     ).communicate()
 
 
@@ -65,8 +65,13 @@ def _spawn_posix(cmd, env):
     sys.stdout.close()
     sys.stderr.close()
 
-    os.environ.update(env)
-    main(cmd)
+    if platform.system() == "Darwin":
+        # workaround for MacOS bug
+        # https://github.com/iterative/dvc/issues/4294
+        _popen(cmd, env=env).communicate()
+    else:
+        os.environ.update(env)
+        main(cmd)
 
     os._exit(0)  # pylint: disable=protected-access
 
