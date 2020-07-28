@@ -74,7 +74,7 @@ def reproduce(
     queue = kwargs.pop("queue", False)
     run_all = kwargs.pop("run_all", False)
     jobs = kwargs.pop("jobs", 1)
-    if experiment and self.experiments:
+    if (experiment or run_all) and self.experiments:
         try:
             return _reproduce_experiments(
                 self,
@@ -118,7 +118,7 @@ def reproduce(
 
 def _reproduce_experiments(repo, run_all=False, jobs=1, **kwargs):
     if run_all:
-        return repo.experiments.reproduce_all(jobs=jobs)
+        return repo.experiments.reproduce_queued(jobs=jobs)
     return repo.experiments.reproduce_one(**kwargs)
 
 

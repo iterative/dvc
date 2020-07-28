@@ -79,7 +79,9 @@ class Experiments:
 
     @property
     def stash_reflog(self):
-        return self.scm.repo.refs["refs/stash"].log()
+        if "refs/stash" in self.scm.repo.refs:
+            return self.scm.repo.refs["refs/stash"].log()
+        return []
 
     @property
     def stash_revs(self):
@@ -145,11 +147,12 @@ class Experiments:
             remove(tmp)
         self._pack_args(*args, **kwargs)
         msg = f"{self.STASH_MSG_PREFIX}{rev}"
-        self.scm.repo.git.stash("push", "--include-untracked", "-m", msg)
+        self.scm.repo.git.stash("push", "-m", msg)
         return self.scm.resolve_rev("stash@{0}")
 
     def _pack_args(self, *args, **kwargs):
         ExperimentExecutor.pack_repro_args(self.args_file, *args, **kwargs)
+        self.scm.add(self.args_file)
 
     def _unpack_args(self, tree=None):
         args_file = os.path.join(self.exp_dvc.tmp_dir, self.PACKED_ARGS_FILE)
@@ -180,12 +183,23 @@ class Experiments:
                 "Queued experiment '%s' for future execution.", stash_rev
             )
             return []
-        result = self.reproduce([stash_rev], keep_stash=False)
-        exp_rev, (stages, _) = result.items()[0]
-        self.checkout_exp(exp_rev, force=True)
-        return stages
+        results = self.reproduce([stash_rev], keep_stash=False)
+        if results:
+            exp_rev, (stages, _) = results.items()[0]
+            self.checkout_exp(exp_rev, force=True)
+            return stages
+        return []
 
     def reproduce_queued(self, **kwargs):
+        results = self.reproduce(**kwargs)
+        if results:
+            revs = [f"{rev[:7]}" for rev in results]
+            logger.info(
+                "Successfully reproduced experiments '%s'.\n"
+                "Use `dvc exp checkout <exp_rev>` to apply the results of "
+                "a specific experiment to your workspace.",
+                ", ".join(revs),
+            )
         return []
 
     def new(self, *args, workspace=True, **kwargs):
@@ -214,6 +228,7 @@ class Experiments:
         self,
         revs: Optional[Iterable] = None,
         keep_stash: Optional[bool] = True,
+        **kwargs,
     ):
         """Reproduce the specified experiments.
 
@@ -256,7 +271,7 @@ class Experiments:
             )
             executors[rev] = executor
 
-        exec_results = self._reproduce(executors)
+        exec_results = self._reproduce(executors, **kwargs)
 
         if keep_stash:
             # only drop successfully run stashed experiments
@@ -297,11 +312,7 @@ class Experiments:
             for future in as_completed(futures):
                 rev, executor = futures[future]
                 exc = future.exception()
-                if exc:
-                    logger.exception(
-                        "Failed to reproduce experiment '%s'", rev
-                    )
-                else:
+                if exc is None:
                     stages, unchanged = future.result()
                     logger.debug(f"ran exp based on {executor.baseline_rev}")
                     self._scm_checkout(executor.baseline_rev)
@@ -318,6 +329,10 @@ class Experiments:
                         exp_rev = executor.baseline_rev
                     logger.info("Reproduced experiment '%s'.", exp_rev[:7])
                     result[rev] = {exp_rev: (stages, unchanged)}
+                else:
+                    logger.exception(
+                        "Failed to reproduce experiment '%s'", rev
+                    )
                 executor.cleanup()
 
         return result
