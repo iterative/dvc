@@ -1,5 +1,6 @@
 import logging
 
+import toml
 import yaml
 
 from dvc.dependency.param import ParamsDependency
@@ -34,8 +35,10 @@ def _read_params(repo, configs, rev):
 
         with repo.tree.open(config, "r") as fobj:
             try:
-                res[str(config)] = yaml.safe_load(fobj)
-            except yaml.YAMLError:
+                res[str(config)] = ParamsDependency.PARAMS_FILE_LOADERS[
+                    config.suffix.lower()
+                ](fobj)
+            except (yaml.YAMLError, toml.TomlDecodeError):
                 logger.debug(
                     "failed to read '%s' on '%s'", config, rev, exc_info=True
                 )

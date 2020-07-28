@@ -314,10 +314,9 @@ class Config(dict):
 
     def _load_config(self, level):
         filename = self.files[level]
-        tree = self.tree if level == "repo" else self.wtree
 
-        if tree.exists(filename, use_dvcignore=False):
-            with tree.open(filename) as fobj:
+        if self.tree.exists(filename, use_dvcignore=False):
+            with self.tree.open(filename) as fobj:
                 conf_obj = configobj.ConfigObj(fobj)
         else:
             conf_obj = configobj.ConfigObj()
@@ -325,14 +324,13 @@ class Config(dict):
 
     def _save_config(self, level, conf_dict):
         filename = self.files[level]
-        tree = self.tree if level == "repo" else self.wtree
 
         logger.debug(f"Writing '{filename}'.")
 
-        tree.makedirs(os.path.dirname(filename))
+        self.tree.makedirs(os.path.dirname(filename))
 
         config = configobj.ConfigObj(_pack_remotes(conf_dict))
-        with tree.open(filename, "wb") as fobj:
+        with self.tree.open(filename, "wb") as fobj:
             config.write(fobj)
         config.filename = filename
 

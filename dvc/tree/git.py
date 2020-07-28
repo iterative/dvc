@@ -46,12 +46,8 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
         from dvc.ignore import DvcIgnoreFilter, DvcIgnoreFilterNoop
 
         root = self.dvcignore_root or self.tree_root
-        if not self.use_dvcignore:
-            return DvcIgnoreFilterNoop(self, root)
-        self.use_dvcignore = False
-        ret = DvcIgnoreFilter(self, root)
-        self.use_dvcignore = True
-        return ret
+        cls = DvcIgnoreFilter if self.use_dvcignore else DvcIgnoreFilterNoop
+        return cls(self, root)
 
     def open(
         self, path, mode="r", encoding="utf-8"
@@ -160,7 +156,7 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
         if not topdown:
             yield os.path.normpath(tree.abspath), dirs, nondirs
 
-    def walk(self, top, topdown=True, onerror=None):
+    def walk(self, top, topdown=True, onerror=None, use_dvcignore=True):
         """Directory tree generator.
 
         See `os.walk` for the docs. Differences:
@@ -178,9 +174,10 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
             return
 
         for root, dirs, files in self._walk(tree, topdown=topdown):
-            dirs[:], files[:] = self.dvcignore(
-                os.path.abspath(root), dirs, files
-            )
+            if use_dvcignore:
+                dirs[:], files[:] = self.dvcignore(
+                    os.path.abspath(root), dirs, files
+                )
             yield root, dirs, files
 
     def isexec(self, path):
