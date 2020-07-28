@@ -145,12 +145,11 @@ class Experiments:
             remove(tmp)
         self._pack_args(*args, **kwargs)
         msg = f"{self.STASH_MSG_PREFIX}{rev}"
-        self.scm.repo.git.stash("push", "-m", msg)
+        self.scm.repo.git.stash("push", "--include-untracked", "-m", msg)
         return self.scm.resolve_rev("stash@{0}")
 
     def _pack_args(self, *args, **kwargs):
         ExperimentExecutor.pack_repro_args(self.args_file, *args, **kwargs)
-        self.scm.add(self.args_file)
 
     def _unpack_args(self, tree=None):
         args_file = os.path.join(self.exp_dvc.tmp_dir, self.PACKED_ARGS_FILE)
@@ -173,13 +172,21 @@ class Experiments:
         self.scm.commit(f"Add experiment {exp_name}")
         return self.scm.get_rev()
 
-    def reproduce_one(self, *args, **kwargs):
+    def reproduce_one(self, queue=False, **kwargs):
         """Reproduce and checkout a single experiment."""
         stash_rev = self.new(**kwargs)
+        if queue:
+            logger.info(
+                "Queued experiment '%s' for future execution.", stash_rev
+            )
+            return []
         result = self.reproduce([stash_rev], keep_stash=False)
-        for exp_rev, (stages, _) in result.items():
-            self.checkout_exp(exp_rev, force=True)
-            return stages
+        exp_rev, (stages, _) = result.items()[0]
+        self.checkout_exp(exp_rev, force=True)
+        return stages
+
+    def reproduce_queued(self, **kwargs):
+        return []
 
     def new(self, *args, workspace=True, **kwargs):
         """Create a new experiment.
@@ -199,7 +206,7 @@ class Experiments:
             # configure params via command line here
             pass
         logger.debug(
-            "Stashed experiment '%s' for future execution.", stash_rev
+            "Stashed experiment '%s' for future execution.", stash_rev[:7]
         )
         return stash_rev
 
@@ -219,13 +226,14 @@ class Experiments:
         stash_revs = self.stash_revs
 
         # to_run contains mapping of:
-        #   input_rev: baseline_rev
+        #   input_rev: (stash_index, baseline_rev)
         # where input_rev contains the changes to execute (usually a stash
         # commit) and baseline_rev is the baseline to compare output against.
         # The final experiment commit will be branched from baseline_rev.
         if revs is None:
             to_run = {
-                rev: baseline_rev for rev, (_, baseline_rev) in stash_revs
+                rev: baseline_rev
+                for rev, (_, baseline_rev) in stash_revs.items()
             }
         else:
             to_run = {

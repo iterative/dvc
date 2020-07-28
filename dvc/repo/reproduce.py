@@ -71,13 +71,20 @@ def reproduce(
         )
 
     experiment = kwargs.pop("experiment", False)
+    queue = kwargs.pop("queue", False)
+    run_all = kwargs.pop("run_all", False)
+    jobs = kwargs.pop("jobs", 1)
     if experiment and self.experiments:
         try:
-            return self.experiments.reproduce_one(
+            return _reproduce_experiments(
+                self,
                 target=target,
                 recursive=recursive,
                 all_pipelines=all_pipelines,
-                **kwargs
+                queue=queue,
+                run_all=run_all,
+                jobs=jobs,
+                **kwargs,
             )
         except UnchangedExperimentError:
             # If experiment contains no changes, just run regular repro
@@ -107,6 +114,12 @@ def reproduce(
         targets = self.collect(target, recursive=recursive, graph=active_graph)
 
     return _reproduce_stages(active_graph, targets, **kwargs)
+
+
+def _reproduce_experiments(repo, run_all=False, jobs=1, **kwargs):
+    if run_all:
+        return repo.experiments.reproduce_all(jobs=jobs)
+    return repo.experiments.reproduce_one(**kwargs)
 
 
 def _reproduce_stages(
