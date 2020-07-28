@@ -16,15 +16,10 @@ def test_info_in_repo(scm_init, tmp_dir, caplog):
 
     assert main(["version"]) == 0
 
-    assert re.search(r"DVC version: \d+\.\d+\.\d+", caplog.text)
-    assert re.search(r"Python version: \d\.\d\.\d", caplog.text)
-    assert re.search(r"Platform: .*", caplog.text)
-    assert re.search(r"Binary: (True|False)", caplog.text)
-    assert re.search(r"Package: .*", caplog.text)
-    assert re.search(r"Supported remotes: .*", caplog.text)
-    assert re.search(
-        r"(Cache: (.*link - (not )?supported(,\s)?){3})", caplog.text
-    )
+    assert re.search(r"DVC version: \d+\.\d+\.\d+\+.*", caplog.text)
+    assert re.search(r"Platform: Python \d\.\d\.\d on .*", caplog.text)
+    assert re.search(r"Supports: .*", caplog.text)
+    assert re.search(r"Cache types: .*", caplog.text)
 
     if scm_init:
         assert "Repo: dvc, git" in caplog.text
@@ -58,26 +53,20 @@ def test_fs_info_in_repo(tmp_dir, dvc, caplog):
     os.mkdir(dvc.cache.local.cache_dir)
     assert main(["version"]) == 0
 
-    assert "Filesystem type (cache directory): " in caplog.text
-    assert "Filesystem type (workspace): " in caplog.text
+    assert re.search(r"Cache directory: .* on .*", caplog.text)
+    assert re.search(r"Workspace directory: .* on .*", caplog.text)
 
 
 def test_info_outside_of_repo(tmp_dir, caplog):
     assert main(["version"]) == 0
 
-    assert re.search(r"DVC version: \d+\.\d+\.\d+", caplog.text)
-    assert re.search(r"Python version: \d\.\d\.\d", caplog.text)
-    assert re.search(r"Platform: .*", caplog.text)
-    assert re.search(r"Binary: (True|False)", caplog.text)
-    assert re.search(r"Package: .*", caplog.text)
-    assert re.search(r"Supported remotes: .*", caplog.text)
-    assert not re.search(r"(Cache: (.*link - (not )?(,\s)?){3})", caplog.text)
+    assert re.search(r"DVC version: \d+\.\d+\.\d+\+.*", caplog.text)
+    assert re.search(r"Platform: Python \d\.\d\.\d on .*", caplog.text)
+    assert re.search(r"Supports: .*", caplog.text)
+    assert not re.search(r"Cache types: .*", caplog.text)
     assert "Repo:" not in caplog.text
 
 
 @pytest.mark.skipif(psutil is None, reason="No psutil.")
 def test_fs_info_outside_of_repo(tmp_dir, caplog):
     assert main(["version"]) == 0
-
-    assert "Filesystem type (cache directory): " not in caplog.text
-    assert "Filesystem type (workspace): " in caplog.text
