@@ -101,23 +101,28 @@ class LocalExecutor(ExperimentExecutor):
         yield
         os.chdir(cwd)
 
-    def reproduce(self):
+    @staticmethod
+    def reproduce(dvc_dir, cwd=None, **kwargs):
         """Run dvc repro and return the result."""
+        from dvc.repo import Repo
+        from dvc.repo.experiments import hash_exp
+
         unchanged = []
 
         def filter_pipeline(stage):
             if isinstance(stage, PipelineStage):
                 unchanged.append(stage)
 
-        logger.debug("Running repro in '%s'", self.tmp_dir)
-        with self.chdir():
-            self.dvc.checkout()
-            stages = self.dvc.reproduce(
-                *self.repro_args,
-                on_unchanged=filter_pipeline,
-                **self.repro_kwargs,
-            )
-        return stages, unchanged
+        if cwd:
+            os.chdir(cwd)
+        else:
+            cwd = os.getcwd()
+
+        logger.debug("Running repro in '%s'", cwd)
+        dvc = Repo(dvc_dir)
+        dvc.checkout()
+        stages = dvc.reproduce(on_unchanged=filter_pipeline, **kwargs)
+        return hash_exp(stages + unchanged)
 
     def cleanup(self):
         logger.debug("Removing tmpdir '%s'", self.tmp_dir)

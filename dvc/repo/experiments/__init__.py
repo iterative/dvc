@@ -2,7 +2,7 @@ import logging
 import os
 import re
 import tempfile
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from contextlib import contextmanager
 from typing import Iterable, Optional
 
@@ -16,6 +16,13 @@ from dvc.utils import dict_sha256, env2bool, relpath
 from dvc.utils.fs import copyfile, remove
 
 logger = logging.getLogger(__name__)
+
+
+def hash_exp(stages):
+    exp_data = {}
+    for stage in stages:
+        exp_data.update(to_lockfile(stage))
+    return dict_sha256(exp_data)
 
 
 class UnchangedExperimentError(DvcException):
@@ -92,13 +99,6 @@ class Experiments:
                 revs[entry.newhexsha] = (i, m.group("baseline_rev"))
         return revs
 
-    @staticmethod
-    def exp_hash(stages):
-        exp_data = {}
-        for stage in stages:
-            exp_data.update(to_lockfile(stage))
-        return dict_sha256(exp_data)
-
     @contextmanager
     def chdir(self):
         cwd = os.getcwd()
@@ -158,13 +158,12 @@ class Experiments:
         args_file = os.path.join(self.exp_dvc.tmp_dir, self.PACKED_ARGS_FILE)
         return ExperimentExecutor.unpack_repro_args(args_file, tree=tree)
 
-    def _commit(self, stages, check_exists=True, branch=True):
+    def _commit(self, exp_hash, check_exists=True, branch=True):
         """Commit stages as an experiment and return the commit SHA."""
         if not self.scm.is_dirty():
             raise UnchangedExperimentError(self.scm.get_rev())
         rev = self.scm.get_rev()
-        hash_ = self.exp_hash(stages)
-        exp_name = f"{rev[:7]}-{hash_}"
+        exp_name = f"{rev[:7]}-{exp_hash}"
         if branch:
             if check_exists and exp_name in self.scm.list_branches():
                 logger.debug("Using existing experiment branch '%s'", exp_name)
@@ -182,13 +181,11 @@ class Experiments:
             logger.info(
                 "Queued experiment '%s' for future execution.", stash_rev[:7]
             )
-            return []
+            return [stash_rev]
         results = self.reproduce([stash_rev], keep_stash=False)
-        if results:
-            exp_rev, (stages, _) = results.items()[0]
+        for exp_rev in results:
             self.checkout_exp(exp_rev, force=True)
-            return stages
-        return []
+        return results
 
     def reproduce_queued(self, **kwargs):
         results = self.reproduce(**kwargs)
@@ -200,7 +197,7 @@ class Experiments:
                 "a specific experiment to your workspace.",
                 ", ".join(revs),
             )
-        return []
+        return results
 
     def new(self, *args, workspace=True, **kwargs):
         """Create a new experiment.
@@ -304,22 +301,27 @@ class Experiments:
         """
         result = {}
 
-        with ThreadPoolExecutor(max_workers=jobs) as workers:
-            futures = {
-                workers.submit(executor.reproduce): (rev, executor)
-                for rev, executor in executors.items()
-            }
+        with ProcessPoolExecutor(max_workers=jobs) as workers:
+            futures = {}
+            for rev, executor in executors.items():
+                future = workers.submit(
+                    executor.reproduce,
+                    executor.dvc_dir,
+                    cwd=executor.dvc.root_dir,
+                    **executor.repro_kwargs,
+                )
+                futures[future] = (rev, executor)
             for future in as_completed(futures):
                 rev, executor = futures[future]
                 exc = future.exception()
                 if exc is None:
-                    stages, unchanged = future.result()
+                    exp_hash = future.result()
                     logger.debug(f"ran exp based on {executor.baseline_rev}")
                     self._scm_checkout(executor.baseline_rev)
                     self._collect_output(executor.baseline_rev, executor)
                     remove(self.args_file)
                     try:
-                        exp_rev = self._commit(stages + unchanged)
+                        exp_rev = self._commit(exp_hash)
                     except UnchangedExperimentError:
                         logger.debug(
                             "Experiment '%s' identical to baseline '%s'",
@@ -328,7 +330,7 @@ class Experiments:
                         )
                         exp_rev = executor.baseline_rev
                     logger.info("Reproduced experiment '%s'.", exp_rev[:7])
-                    result[rev] = {exp_rev: (stages, unchanged)}
+                    result[rev] = {exp_rev: exp_hash}
                 else:
                     logger.exception(
                         "Failed to reproduce experiment '%s'", rev
