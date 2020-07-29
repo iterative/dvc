@@ -1,7 +1,6 @@
 import logging
 import os
 import pickle
-from contextlib import contextmanager
 from tempfile import TemporaryDirectory
 
 from funcy import cached_property
@@ -94,13 +93,6 @@ class LocalExecutor(ExperimentExecutor):
     def path_info(self):
         return PathInfo(self.tmp_dir.name)
 
-    @contextmanager
-    def chdir(self):
-        cwd = os.getcwd()
-        os.chdir(self.dvc.root_dir)
-        yield
-        os.chdir(cwd)
-
     @staticmethod
     def reproduce(dvc_dir, cwd=None, **kwargs):
         """Run dvc repro and return the result."""
@@ -114,14 +106,24 @@ class LocalExecutor(ExperimentExecutor):
                 unchanged.append(stage)
 
         if cwd:
+            old_cwd = os.getcwd()
             os.chdir(cwd)
         else:
+            old_cwd = None
             cwd = os.getcwd()
 
-        logger.debug("Running repro in '%s'", cwd)
-        dvc = Repo(dvc_dir)
-        dvc.checkout()
-        stages = dvc.reproduce(on_unchanged=filter_pipeline, **kwargs)
+        try:
+            logger.debug("Running repro in '%s'", cwd)
+            dvc = Repo(dvc_dir)
+            dvc.checkout()
+            stages = dvc.reproduce(on_unchanged=filter_pipeline, **kwargs)
+        finally:
+            if old_cwd is not None:
+                os.chdir(old_cwd)
+
+        # ideally we would return stages here like a normal repro() call, but
+        # stages is not currently picklable and cannot be returned across
+        # multiprocessing calls
         return hash_exp(stages + unchanged)
 
     def cleanup(self):

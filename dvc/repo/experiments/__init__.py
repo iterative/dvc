@@ -3,7 +3,6 @@ import os
 import re
 import tempfile
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from contextlib import contextmanager
 from typing import Iterable, Optional
 
 from funcy import cached_property
@@ -98,13 +97,6 @@ class Experiments:
             if m:
                 revs[entry.newhexsha] = (i, m.group("baseline_rev"))
         return revs
-
-    @contextmanager
-    def chdir(self):
-        cwd = os.getcwd()
-        os.chdir(self.exp_dvc.root_dir)
-        yield
-        os.chdir(cwd)
 
     def _init_clone(self):
         src_dir = self.repo.scm.root_dir
