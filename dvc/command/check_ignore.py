@@ -60,8 +60,8 @@ def add_parser(subparsers, parent_parser):
         "--non-matching",
         action="store_true",
         default=False,
-        help="Show given paths which don’t match any pattern. "
-        "Only used when --details is enabled.",
+        help="Show the target paths which don’t match any pattern. "
+        "Only usable when `--details` is also employed",
     )
     parser.add_argument(
         "targets",
