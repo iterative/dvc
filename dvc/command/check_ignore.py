@@ -53,7 +53,7 @@ def add_parser(subparsers, parent_parser):
         "--details",
         action="store_true",
         default=False,
-        help="Show the exclude pattern together with the path.",
+        help="Show the exclude pattern together with each target path.",
     )
     parser.add_argument(
         "-n",
