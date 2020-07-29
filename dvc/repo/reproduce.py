@@ -71,13 +71,20 @@ def reproduce(
         )
 
     experiment = kwargs.pop("experiment", False)
-    if experiment and self.experiments:
+    queue = kwargs.pop("queue", False)
+    run_all = kwargs.pop("run_all", False)
+    jobs = kwargs.pop("jobs", 1)
+    if (experiment or run_all) and self.experiments:
         try:
-            return self.experiments.new(
+            return _reproduce_experiments(
+                self,
                 target=target,
                 recursive=recursive,
                 all_pipelines=all_pipelines,
-                **kwargs
+                queue=queue,
+                run_all=run_all,
+                jobs=jobs,
+                **kwargs,
             )
         except UnchangedExperimentError:
             # If experiment contains no changes, just run regular repro
@@ -109,8 +116,14 @@ def reproduce(
     return _reproduce_stages(active_graph, targets, **kwargs)
 
 
+def _reproduce_experiments(repo, run_all=False, jobs=1, **kwargs):
+    if run_all:
+        return repo.experiments.reproduce_queued(jobs=jobs)
+    return repo.experiments.reproduce_one(**kwargs)
+
+
 def _reproduce_stages(
-    G, stages, downstream=False, single_item=False, **kwargs
+    G, stages, downstream=False, single_item=False, on_unchanged=None, **kwargs
 ):
     r"""Derive the evaluation of the given node for the given graph.
 
@@ -194,7 +207,10 @@ def _reproduce_stages(
                 # dependencies didn't change.
                 kwargs["force"] = True
 
-            result.extend(ret)
+            if ret:
+                result.extend(ret)
+            elif on_unchanged is not None:
+                on_unchanged(stage)
         except Exception as exc:
             raise ReproductionError(stage.relpath) from exc
 
