@@ -315,3 +315,17 @@ class HTTPURLInfo(URLInfo):
             and self._path == other._path
             and self._extra_parts == other._extra_parts
         )
+
+
+# See https://github.com/shizacat/dvc/blob/remote-webdav/dvc/path_info.py
+class WebDAVURLInfo(HTTPURLInfo):
+    @cached_property
+    def url(self):
+        return "{}://{}{}{}{}{}".format(
+            self.scheme.replace("webdav", "http"),
+            self.netloc,
+            self._spath,
+            (";" + self.params) if self.params else "",
+            ("?" + self.query) if self.query else "",
+            ("#" + self.fragment) if self.fragment else "",
+        )
