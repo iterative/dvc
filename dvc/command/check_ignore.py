@@ -16,7 +16,6 @@ class CmdCheckIgnore(CmdBase):
     def _show_results(self, results):
         for result in results:
             if result.matches or self.args.non_matching:
-                #
                 if self.args.details:
                     logger.info(
                         "{}\t{}".format(result.patterns[-1], result.file)
