@@ -105,9 +105,7 @@ all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs + webdav
 tests_requirements = [
     "wheel>=0.31.1",
     # Test requirements:
-    # https://github.com/pytest-dev/pytest/issues/7558
-    # FIXME: pylint complaining for pytest.mark.* on v6.0
-    "pytest>=4.6.0,<6.0",
+    "pytest>=6.0.1",
     "pytest-docker>=0.7.2",
     "pytest-timeout>=1.3.3",
     "pytest-cov>=2.6.1",
