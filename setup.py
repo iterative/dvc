@@ -93,18 +93,21 @@ azure = ["azure-storage-blob==2.1.0", "knack"]
 oss = ["oss2==2.6.1"]
 ssh = ["paramiko>=2.5.0"]
 hdfs = ["pyarrow>=0.17.0"]
+webdav = ["webdavclient3>=3.14.5"]
 # gssapi should not be included in all_remotes, because it doesn't have wheels
 # for linux and mac, so it will fail to compile if user doesn't have all the
 # requirements, including kerberos itself. Once all the wheels are available,
 # we can start shipping it by default.
 ssh_gssapi = ["paramiko[gssapi]>=2.5.0"]
-all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs
+all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs + webdav
 
 # Extra dependecies to run tests
 tests_requirements = [
     "wheel>=0.31.1",
     # Test requirements:
-    "pytest>=4.6.0",
+    # https://github.com/pytest-dev/pytest/issues/7558
+    # FIXME: pylint complaining for pytest.mark.* on v6.0
+    "pytest>=4.6.0,<6.0",
     "pytest-docker>=0.7.2",
     "pytest-timeout>=1.3.3",
     "pytest-cov>=2.6.1",
@@ -160,6 +163,7 @@ setup(
         "ssh": ssh,
         "ssh_gssapi": ssh_gssapi,
         "hdfs": hdfs,
+        "webdav": webdav,
         "tests": tests_requirements,
     },
     keywords="data-science data-version-control machine-learning git"

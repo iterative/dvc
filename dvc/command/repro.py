@@ -41,6 +41,9 @@ class CmdRepro(CmdBase):
                     recursive=self.args.recursive,
                     force_downstream=self.args.force_downstream,
                     experiment=self.args.experiment,
+                    queue=self.args.queue,
+                    run_all=self.args.run_all,
+                    jobs=self.args.jobs,
                 )
 
                 if len(stages) == 0:
@@ -173,5 +176,17 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help=argparse.SUPPRESS,
+    )
+    repro_parser.add_argument(
+        "--queue", action="store_true", default=False, help=argparse.SUPPRESS
+    )
+    repro_parser.add_argument(
+        "--run-all",
+        action="store_true",
+        default=False,
+        help=argparse.SUPPRESS,
+    )
+    repro_parser.add_argument(
+        "-j", "--jobs", type=int, help=argparse.SUPPRESS, metavar="<number>"
     )
     repro_parser.set_defaults(func=CmdRepro)
