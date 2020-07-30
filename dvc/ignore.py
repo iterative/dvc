@@ -8,17 +8,12 @@ from pathspec.patterns import GitWildMatchPattern
 from pathspec.util import normalize_file
 from pygtrie import StringTrie
 
-from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 from dvc.pathspec_math import PatternInfo, merge_patterns
 from dvc.system import System
 from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
-
-
-class OutOfWorkingSpaceError(DvcException):
-    """Thrown when unable to acquire the lock for DVC repo."""
 
 
 class DvcIgnore:
@@ -90,9 +85,7 @@ class DvcIgnorePatterns(DvcIgnore):
             # NOTE: `os.path.join` is ~x5.5 slower
             path = f"{rel}{os.sep}{basename}"
         else:
-            raise OutOfWorkingSpaceError(
-                f"`{dirname}` is out side of `{self.dirname}`"
-            )
+            return False
 
         if not System.is_unix():
             path = normalize_file(path)
@@ -123,13 +116,16 @@ class DvcIgnorePatterns(DvcIgnore):
         result = []
         for ignore, pattern in zip(self.regex_pattern_list, self.pattern_list):
             regex = re.compile(ignore[0])
-            if regex.match(path) or (is_dir and regex.match(f"{path}/")):
-                if not pattern.file_info:
-                    raise OutOfWorkingSpaceError(
-                        f"`{path}` is not in work space."
-                    )
-                result.append(pattern.file_info)
-
+            # skip system pattern
+            if not pattern.file_info:
+                continue
+            if is_dir:
+                path_dir = f"{path}/"
+                if regex.match(path) or regex.match(path_dir):
+                    result.append(pattern.file_info)
+            else:
+                if regex.match(path):
+                    result.append(pattern.file_info)
         return result
 
     def __hash__(self):
@@ -237,10 +233,10 @@ class DvcIgnoreFilter:
                     self.ignores_trie_tree[root] = new_pattern
 
     def __call__(self, root, dirs, files):
-        try:
-            ignore_pattern = self._get_trie_pattern(root)
+        ignore_pattern = self._get_trie_pattern(root)
+        if ignore_pattern:
             return ignore_pattern(root, dirs, files)
-        except OutOfWorkingSpaceError:
+        else:
             return dirs, files
 
     def _get_trie_pattern(self, dirname):
@@ -250,9 +246,8 @@ class DvcIgnoreFilter:
 
         prefix = self.ignores_trie_tree.longest_prefix(dirname).key
         if not prefix:
-            raise OutOfWorkingSpaceError(
-                f"`{dirname}` is out side of `{self.root_dir}`"
-            )
+            # outside of the repo
+            return None
 
         dirs = list(
             takewhile(
@@ -269,13 +264,14 @@ class DvcIgnoreFilter:
         return self.ignores_trie_tree.get(dirname)
 
     def _is_ignored(self, path, is_dir=False):
-        try:
-            self._is_inside_repo(path)
-            dirname, basename = os.path.split(os.path.normpath(path))
-            ignore_pattern = self._get_trie_pattern(dirname)
-            return ignore_pattern.matches(dirname, basename, is_dir)
-        except OutOfWorkingSpaceError:
+        if self._outside_repo(path):
             return True
+        dirname, basename = os.path.split(os.path.normpath(path))
+        ignore_pattern = self._get_trie_pattern(dirname)
+        if ignore_pattern:
+            return ignore_pattern.matches(dirname, basename, is_dir)
+        else:
+            return False
 
     def is_ignored_dir(self, path):
         path = os.path.abspath(path)
@@ -285,10 +281,9 @@ class DvcIgnoreFilter:
         return self._is_ignored(path, True)
 
     def is_ignored_file(self, path):
-        path = os.path.abspath(path)
         return self._is_ignored(path, False)
 
-    def _is_inside_repo(self, path):
+    def _outside_repo(self, path):
         path = PathInfo(path)
 
         # paths outside of the repo should be ignored
@@ -299,29 +294,28 @@ class DvcIgnoreFilter:
                 [os.path.abspath(path), self.root_dir]
             )
         ):
-            raise OutOfWorkingSpaceError(f"{path} is out of {self.root_dir}")
+            return True
+        return False
 
     def check_ignore(self, targets):
         check_results = []
         for target in targets:
             full_target = os.path.abspath(target)
-            try:
-                self._is_inside_repo(full_target)
+            if not self._outside_repo(full_target):
                 dirname, basename = os.path.split(
                     os.path.normpath(full_target)
                 )
                 pattern = self._get_trie_pattern(dirname)
-                matches = pattern.match_details(
-                    dirname, basename, os.path.isdir(full_target)
-                )
-
-                if matches:
-                    check_results.append(
-                        CheckIgnoreResult(target, True, matches)
+                if pattern:
+                    matches = pattern.match_details(
+                        dirname, basename, os.path.isdir(full_target)
                     )
-                    continue
-            except OutOfWorkingSpaceError:
-                pass
+
+                    if matches:
+                        check_results.append(
+                            CheckIgnoreResult(target, True, matches)
+                        )
+                        continue
             check_results.append(CheckIgnoreResult(target, False, ["::"]))
 
         return check_results
