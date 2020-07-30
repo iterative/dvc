@@ -67,7 +67,7 @@ class RepoDependency(LocalDependency):
                     return self.repo.cache.local.tree.get_hash(path, tree=tree)
                 return tree.get_file_hash(path)
 
-    def status(self):
+    def workspace_status(self):
         current_checksum = self._get_checksum(locked=True)
         updated_checksum = self._get_checksum(locked=False)
 
@@ -75,6 +75,9 @@ class RepoDependency(LocalDependency):
             return {str(self): "update available"}
 
         return {}
+
+    def status(self):
+        return self.workspace_status()
 
     def save(self):
         pass
