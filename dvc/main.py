@@ -21,7 +21,7 @@ from dvc.utils import format_link
 logger = logging.getLogger("dvc")
 
 
-def main(argv=None):
+def main(argv=None):  # noqa: C901
     """Run dvc CLI command.
 
     Args:
@@ -37,16 +37,17 @@ def main(argv=None):
     try:
         args = parse_args(argv)
 
-        verbosity = args.verbose - args.quiet
-        if verbosity:
-            logger.setLevel(
-                {
-                    -2: logging.CRITICAL,
-                    -1: logging.ERROR,
-                    1: logging.DEBUG,
-                    2: logging.TRACE,
-                }[max(-2, min(verbosity, 2))]
-            )
+        level = None
+        if args.quiet:
+            level = logging.CRITICAL
+        elif args.verbose == 1:
+            level = logging.DEBUG
+        elif args.verbose > 1:
+            level = logging.TRACE
+
+        if level is not None:
+            logger.setLevel(level)
+
         logger.trace(args)
 
         cmd = args.func(args)
@@ -81,6 +82,15 @@ def main(argv=None):
     except Exception:  # noqa, pylint: disable=broad-except
         logger.exception("unexpected error")
         ret = 255
+
+    try:
+        if ret != 0:
+            logger.info(FOOTER)
+
+        if analytics.is_enabled():
+            analytics.collect_and_send_report(args, ret)
+
+        return ret
     finally:
         logger.setLevel(outerLogLevel)
 
@@ -92,11 +102,3 @@ def main(argv=None):
         # Remove cached repos in the end of the call, these are anonymous
         # so won't be reused by any other subsequent run anyway.
         clean_repos()
-
-    if ret != 0:
-        logger.info(FOOTER)
-
-    if analytics.is_enabled():
-        analytics.collect_and_send_report(args, ret)
-
-    return ret
