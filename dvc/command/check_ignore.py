@@ -65,6 +65,7 @@ def add_parser(subparsers, parent_parser):
     parser.add_argument(
         "targets",
         nargs="+",
-        help="Input files/directories to check " "ignore patterns.",
+        help="Exact or wildcard paths of files or directories to check "
+        "ignore patterns.",
     ).complete = completion.FILE
     parser.set_defaults(func=CmdCheckIgnore)

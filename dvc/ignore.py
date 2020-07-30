@@ -93,6 +93,8 @@ class DvcIgnorePatterns(DvcIgnore):
 
     def matches(self, dirname, basename, is_dir=False):
         path = self._get_normalize_path(dirname, basename)
+        if not path:
+            return False
         return self.ignore(path, is_dir)
 
     def ignore(self, path, is_dir):
@@ -110,6 +112,8 @@ class DvcIgnorePatterns(DvcIgnore):
 
     def match_details(self, dirname, basename, is_dir=False):
         path = self._get_normalize_path(dirname, basename)
+        if not path:
+            return False
         return self._ignore_details(path, is_dir)
 
     def _ignore_details(self, path, is_dir):
