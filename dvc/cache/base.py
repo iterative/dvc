@@ -276,8 +276,6 @@ class CloudCache:
                 self.tree.scheme,
             )
 
-        if not hash_info:
-            hash_info = self.tree.save_info(path_info, tree=tree, **kwargs)
         hash_ = hash_info[self.tree.PARAM_CHECKSUM]
         return self._save(path_info, tree, hash_, save_link, **kwargs)
 
