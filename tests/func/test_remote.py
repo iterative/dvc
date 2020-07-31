@@ -237,6 +237,17 @@ def test_remote_modify_local_on_repo_config(tmp_dir, dvc):
     assert (
         main(["remote", "modify", "myremote", "user", "xxx", "--local"]) == 0
     )
+    assert dvc.config.load_one("local")["remote"]["myremote"] == {
+        "user": "xxx"
+    }
+    assert dvc.config.load_one("repo")["remote"]["myremote"] == {
+        "url": "http://example.com/path"
+    }
+    dvc.config.load()
+    assert dvc.config["remote"]["myremote"] == {
+        "url": "http://example.com/path",
+        "user": "xxx",
+    }
 
 
 def test_external_dir_resource_on_no_cache(tmp_dir, dvc, tmp_path_factory):
