@@ -18,7 +18,7 @@ class CmdRemote(CmdConfig):
 
     def _check_exists(self, conf):
         if self.args.name not in conf["remote"]:
-            raise ConfigError(f"remote '{self.args.name}' doesn't exists.")
+            raise ConfigError(f"remote '{self.args.name}' doesn't exist.")
 
 
 class CmdRemoteAdd(CmdRemote):
