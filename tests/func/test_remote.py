@@ -232,7 +232,7 @@ def test_modify_missing_remote(tmp_dir, dvc):
     assert main(["remote", "modify", "myremote", "user", "xxx"]) == 251
 
 
-def test_modify_parent_remote(tmp_dir, dvc):
+def test_remote_modify_local_on_repo_config(tmp_dir, dvc):
     assert main(["remote", "add", "myremote", "http://example.com/path"]) == 0
     assert (
         main(["remote", "modify", "myremote", "user", "xxx", "--local"]) == 0
