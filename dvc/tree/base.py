@@ -280,7 +280,7 @@ class BaseTree:
             raise RemoteCacheRequiredError(path_info)
 
         dir_info = self._collect_dir(path_info, **kwargs)
-        return self._save_dir_info(dir_info, path_info)
+        return self._save_dir_info(dir_info)
 
     def hash_to_path_info(self, hash_):
         return self.path_info / hash_[0:2] / hash_[2:]
@@ -343,7 +343,7 @@ class BaseTree:
         # Sorting the list by path to ensure reproducibility
         return sorted(result, key=itemgetter(self.PARAM_RELPATH))
 
-    def _save_dir_info(self, dir_info, path_info):
+    def _save_dir_info(self, dir_info):
         hash_, tmp_info = self._get_dir_info_hash(dir_info)
         new_info = self.cache.tree.hash_to_path_info(hash_)
         if self.cache.changed_cache_file(hash_):
@@ -352,8 +352,6 @@ class BaseTree:
                 tmp_info, new_info, mode=self.cache.CACHE_MODE
             )
 
-        if self.exists(path_info):
-            self.state.save(path_info, hash_)
         self.state.save(new_info, hash_)
 
         return hash_
