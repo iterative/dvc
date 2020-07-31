@@ -232,6 +232,13 @@ def test_modify_missing_remote(tmp_dir, dvc):
     assert main(["remote", "modify", "myremote", "user", "xxx"]) == 251
 
 
+def test_modify_parent_remote(tmp_dir, dvc):
+    assert main(["remote", "add", "myremote", "http://example.com/path"]) == 0
+    assert (
+        main(["remote", "modify", "myremote", "user", "xxx", "--local"]) == 0
+    )
+
+
 def test_external_dir_resource_on_no_cache(tmp_dir, dvc, tmp_path_factory):
     # https://github.com/iterative/dvc/issues/2647, is some situations
     # (external dir dependency) cache is required to calculate dir md5
