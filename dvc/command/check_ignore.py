@@ -13,15 +13,12 @@ class CmdCheckIgnore(CmdBase):
         super().__init__(args)
         self.ignore_filter = self.repo.tree.dvcignore
 
-    def _show_results(self, results):
-        for result in results:
-            if result.matches or self.args.non_matching:
-                if self.args.details:
-                    logger.info(
-                        "{}\t{}".format(result.patterns[-1], result.file)
-                    )
-                else:
-                    logger.info(result.file)
+    def _show_results(self, result):
+        if result.match or self.args.non_matching:
+            if self.args.details:
+                logger.info("{}\t{}".format(result.patterns[-1], result.file))
+            else:
+                logger.info(result.file)
 
     def run(self):
         if self.args.non_matching and not self.args.details:
@@ -30,11 +27,13 @@ class CmdCheckIgnore(CmdBase):
         if self.args.quiet and self.args.details:
             raise DvcException("cannot both --details and --quiet")
 
-        results = self.ignore_filter.check_ignore(self.args.targets)
-        self._show_results(results)
-        if any(result.matches for result in results):
-            return 0
-        return 1
+        ret = 1
+        for target in self.args.targets:
+            result = self.ignore_filter.check_ignore(target)
+            self._show_results(result)
+            if result.match:
+                ret = 0
+        return ret
 
 
 def add_parser(subparsers, parent_parser):

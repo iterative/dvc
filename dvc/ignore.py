@@ -148,7 +148,7 @@ class DvcIgnorePatterns(DvcIgnore):
 
 
 CheckIgnoreResult = namedtuple(
-    "CheckIgnoreResult", ["file", "matches", "patterns"]
+    "CheckIgnoreResult", ["file", "match", "patterns"]
 )
 
 
@@ -301,25 +301,16 @@ class DvcIgnoreFilter:
             return True
         return False
 
-    def check_ignore(self, targets):
-        check_results = []
-        for target in targets:
-            full_target = os.path.abspath(target)
-            if not self._outside_repo(full_target):
-                dirname, basename = os.path.split(
-                    os.path.normpath(full_target)
+    def check_ignore(self, target):
+        full_target = os.path.abspath(target)
+        if not self._outside_repo(full_target):
+            dirname, basename = os.path.split(os.path.normpath(full_target))
+            pattern = self._get_trie_pattern(dirname)
+            if pattern:
+                matches = pattern.match_details(
+                    dirname, basename, os.path.isdir(full_target)
                 )
-                pattern = self._get_trie_pattern(dirname)
-                if pattern:
-                    matches = pattern.match_details(
-                        dirname, basename, os.path.isdir(full_target)
-                    )
 
-                    if matches:
-                        check_results.append(
-                            CheckIgnoreResult(target, True, matches)
-                        )
-                        continue
-            check_results.append(CheckIgnoreResult(target, False, ["::"]))
-
-        return check_results
+                if matches:
+                    return CheckIgnoreResult(target, True, matches)
+        return CheckIgnoreResult(target, False, ["::"])

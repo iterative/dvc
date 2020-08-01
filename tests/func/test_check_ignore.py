@@ -73,6 +73,11 @@ def test_check_ignore_default_dir(tmp_dir, dvc):
     assert main(["check-ignore", "-q", ".dvc"]) == 1
 
 
+def test_check_ignore_out_side_repo(tmp_dir, dvc):
+    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "file")
+    assert main(["check-ignore", "-q", "../file"]) == 1
+
+
 def test_check_ignore_sub_repo(tmp_dir, dvc):
     tmp_dir.gen(
         {DvcIgnore.DVCIGNORE_FILE: "other", "dir": {".dvc": {}, "foo": "bar"}}
