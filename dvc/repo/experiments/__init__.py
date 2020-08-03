@@ -3,6 +3,7 @@ import os
 import re
 import tempfile
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from contextlib import contextmanager
 from typing import Iterable, Optional
 
 from funcy import cached_property
@@ -78,6 +79,13 @@ class Experiments:
         from dvc.repo import Repo
 
         return Repo(self.exp_dvc_dir)
+
+    @contextmanager
+    def chdir(self):
+        cwd = os.getcwd()
+        os.chdir(self.exp_dvc.root_dir)
+        yield self.exp_dvc.root_dir
+        os.chdir(cwd)
 
     @cached_property
     def args_file(self):
