@@ -49,16 +49,9 @@ def test_check_ignore_non_matching(tmp_dir, dvc, non_matching, output, caplog):
     assert output in caplog.text
 
 
-def test_check_ignore_non_matching_without_details(tmp_dir, dvc):
-    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "other")
-
-    assert main(["check-ignore", "-n", "file"]) == 255
-
-
-def test_check_ignore_details_with_quiet(tmp_dir, dvc):
-    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "other")
-
-    assert main(["check-ignore", "-d", "-q", "file"]) == 255
+@pytest.mark.parametrize("args", [["-n"], ["-a"], ["-q", "-d"]])
+def test_check_ignore_error_args_cases(tmp_dir, dvc, args):
+    assert main(["check-ignore"] + args + ["file"]) == 255
 
 
 @pytest.mark.parametrize("path,ret", [({"dir": {}}, 0), ({"dir": "files"}, 1)])
@@ -107,3 +100,11 @@ def test_check_sub_dir_ignore_file(tmp_dir, dvc, caplog):
     with sub_dir.chdir():
         assert main(["check-ignore", "-d", "foo"]) == 0
         assert ".dvcignore:2:foo\tfoo" in caplog.text
+
+
+def test_check_ignore_details_all(tmp_dir, dvc, caplog):
+    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "f*\n!foo")
+
+    assert main(["check-ignore", "-d", "-a", "foo"]) == 0
+    assert "{}:1:f*\tfoo\n".format(DvcIgnore.DVCIGNORE_FILE) in caplog.text
+    assert "{}:2:!foo\tfoo\n".format(DvcIgnore.DVCIGNORE_FILE) in caplog.text

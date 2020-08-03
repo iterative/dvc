@@ -54,3 +54,12 @@ def password(statement):
     """
     logger.info(f"{statement}: ")
     return getpass("")
+
+
+def path_input():
+    """Ask the user for a path.
+
+    Returns:
+        str: path entered by the user.
+    """
+    return _ask("")
