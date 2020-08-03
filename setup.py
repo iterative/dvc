@@ -80,7 +80,6 @@ install_requires = [
     "pygtrie==2.3.2",
     "dpath>=2.0.1,<3",
     "shtab>=1.1.0,<2",
-    "rich>=3.0.5",
 ]
 
 
@@ -138,6 +137,11 @@ tests_requirements = [
     "filelock",
 ]
 
+# Extra dependencies for under development experiments feature
+experiments_requirements = [
+    "rich>=3.0.5",
+]
+
 if (sys.version_info) >= (3, 6):
     tests_requirements.append("black==19.10b0")
 
@@ -163,6 +167,7 @@ setup(
         "hdfs": hdfs,
         "webdav": webdav,
         "tests": tests_requirements,
+        "experiments": experiments_requirements,
     },
     keywords="data-science data-version-control machine-learning git"
     " developer-tools reproducibility collaboration ai",

@@ -112,7 +112,11 @@ def _show_experiments(all_experiments, console, precision=None):
 
 class CmdExperimentsShow(CmdBase):
     def run(self):
-        from rich.console import Console
+        try:
+            from rich.console import Console
+        except ImportError:
+            logger.error("Missing experiments feature dependencies.")
+            return 0
         from dvc.utils.pager import pager
 
         if not self.repo.experiments:
