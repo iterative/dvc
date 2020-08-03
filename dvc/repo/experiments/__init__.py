@@ -27,7 +27,15 @@ def hash_exp(stages):
 
 class UnchangedExperimentError(DvcException):
     def __init__(self, rev):
-        super().__init__("Experiment identical to baseline '{rev[:7]}'.")
+        super().__init__(f"Experiment identical to baseline '{rev[:7]}'.")
+        self.rev = rev
+
+
+class BaselineMismatchError(DvcException):
+    def __init__(self, rev):
+        super().__init__(
+            f"Experiment is not derived from current baseline '{rev[:7]}'."
+        )
         self.rev = rev
 
 
@@ -128,7 +136,7 @@ class Experiments:
             self.scm.repo.heads[0].checkout()
         if not Git.is_sha(rev) or not self.scm.has_rev(rev):
             self.scm.pull()
-        logger.debug("Checking out base experiment commit '%s'", rev)
+        logger.debug("Checking out experiment commit '%s'", rev)
         self.scm.checkout(rev)
 
     def _stash_exp(self, *args, **kwargs):
@@ -351,6 +359,7 @@ class Experiments:
         from git.exc import GitCommandError
         from dvc.repo.checkout import _checkout as dvc_checkout
 
+        self._check_baseline(rev)
         self._scm_checkout(rev)
 
         tmp = tempfile.NamedTemporaryFile(delete=False).name
@@ -374,6 +383,14 @@ class Experiments:
 
         if need_checkout:
             dvc_checkout(self.repo)
+
+    def _check_baseline(self, exp_rev):
+        baseline_sha = self.repo.scm.get_rev()
+        exp_commit = self.scm.repo.rev_parse(exp_rev)
+        for parent in exp_commit.parents:
+            if parent.hexsha == baseline_sha:
+                return
+        raise BaselineMismatchError(baseline_sha)
 
     def _unstash_workspace(self):
         # Essentially we want `git stash pop` with `-X ours` merge strategy
