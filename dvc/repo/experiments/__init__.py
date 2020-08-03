@@ -184,7 +184,7 @@ class Experiments:
             return [stash_rev]
         results = self.reproduce([stash_rev], keep_stash=False)
         for exp_rev in results:
-            self.checkout_exp(exp_rev, force=True)
+            self.checkout_exp(exp_rev)
         return results
 
     def reproduce_queued(self, **kwargs):
@@ -346,30 +346,44 @@ class Experiments:
             src = executor.path_info / relpath(fname, tree.tree_root)
             copyfile(src, fname)
 
-    def checkout_exp(self, rev, force=False):
+    def checkout_exp(self, rev):
         """Checkout an experiment to the user's workspace."""
         from git.exc import GitCommandError
         from dvc.repo.checkout import _checkout as dvc_checkout
 
-        if force:
-            self.repo.scm.repo.git.reset(hard=True)
         self._scm_checkout(rev)
 
         tmp = tempfile.NamedTemporaryFile(delete=False).name
         self.scm.repo.head.commit.diff("HEAD~1", patch=True, output=tmp)
+
+        logger.debug("Stashing workspace changes.")
+        self.repo.scm.repo.git.stash("push")
+
         try:
             if os.path.getsize(tmp):
                 logger.debug("Patching local workspace")
                 self.repo.scm.repo.git.apply(tmp, reverse=True)
-            dvc_checkout(self.repo)
+                need_checkout = True
+            else:
+                need_checkout = False
         except GitCommandError:
-            raise DvcException(
-                "Checkout failed, experiment contains changes which "
-                "conflict with your current workspace. To overwrite "
-                "your workspace, use `dvc experiments checkout --force`."
-            )
+            raise DvcException("failed to apply experiment changes.")
         finally:
             remove(tmp)
+            self._unstash_workspace()
+
+        if need_checkout:
+            dvc_checkout(self.repo)
+
+    def _unstash_workspace(self):
+        # Essentially we want `git stash pop` with `-X ours` merge strategy
+        # to prefer the applied experiment changes over stashed workspace
+        # changes. git stash doesn't support merge strategy parameters, but we
+        # can do it ourselves with checkout/reset.
+        logger.debug("Unstashing workspace changes.")
+        self.repo.scm.repo.git.checkout("--ours", "stash@{0}", "--", ".")
+        self.repo.scm.repo.git.reset("HEAD")
+        self.repo.scm.repo.git.stash("drop", "stash@{0}")
 
     def checkout(self, *args, **kwargs):
         from dvc.repo.experiments.checkout import checkout
