@@ -146,9 +146,7 @@ class CmdExperimentsCheckout(CmdBase):
         if not self.repo.experiments:
             return 0
 
-        self.repo.experiments.checkout(
-            self.args.experiment, force=self.args.force
-        )
+        self.repo.experiments.checkout(self.args.experiment)
 
         return 0
 
@@ -286,14 +284,6 @@ def add_parser(subparsers, parent_parser):
         ),
         help=EXPERIMENTS_CHECKOUT_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    experiments_checkout_parser.add_argument(
-        "-f",
-        "--force",
-        action="store_true",
-        default=False,
-        help="Overwrite your current workspace with changes from the "
-        "experiment.",
     )
     experiments_checkout_parser.add_argument(
         "experiment", help="Checkout this experiment.",
