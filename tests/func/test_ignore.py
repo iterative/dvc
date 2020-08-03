@@ -6,11 +6,15 @@ import pytest
 from dvc.exceptions import DvcIgnoreInCollectedDirError
 from dvc.ignore import DvcIgnore, DvcIgnorePatterns
 from dvc.path_info import PathInfo
-from dvc.pathspec_math import merge_patterns
+from dvc.pathspec_math import PatternInfo, merge_patterns
 from dvc.repo import Repo
 from dvc.utils import relpath
 from dvc.utils.fs import get_mtime_and_size
 from tests.dir_helpers import TmpDir
+
+
+def _to_pattern_info_list(str_list):
+    return [PatternInfo(a, "") for a in str_list]
 
 
 def test_ignore(tmp_dir, dvc, monkeypatch):
@@ -106,9 +110,9 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
     assert (
         DvcIgnorePatterns(
             *merge_patterns(
-                [".hg/", ".git/", ".dvc/"],
+                _to_pattern_info_list([".hg/", ".git/", ".dvc/"]),
                 os.fspath(tmp_dir),
-                [os.path.basename(dname)],
+                _to_pattern_info_list([os.path.basename(dname)]),
                 top_ignore_path,
             )
         )
@@ -309,17 +313,24 @@ def test_pattern_trie_tree(tmp_dir, dvc):
         os.fspath(tmp_dir / "top" / "first" / "middle" / "second" / "bottom")
     )
 
-    base_pattern = [".hg/", ".git/", ".dvc/"], os.fspath(tmp_dir)
+    base_pattern = (
+        _to_pattern_info_list([".hg/", ".git/", ".dvc/"]),
+        os.fspath(tmp_dir),
+    )
     first_pattern = merge_patterns(
-        *base_pattern, ["a", "b", "c"], os.fspath(tmp_dir / "top" / "first")
+        *base_pattern,
+        _to_pattern_info_list(["a", "b", "c"]),
+        os.fspath(tmp_dir / "top" / "first")
     )
     second_pattern = merge_patterns(
         *first_pattern,
-        ["d", "e", "f"],
+        _to_pattern_info_list(["d", "e", "f"]),
         os.fspath(tmp_dir / "top" / "first" / "middle" / "second")
     )
     other_pattern = merge_patterns(
-        *base_pattern, ["1", "2", "3"], os.fspath(tmp_dir / "other")
+        *base_pattern,
+        _to_pattern_info_list(["1", "2", "3"]),
+        os.fspath(tmp_dir / "other")
     )
 
     assert DvcIgnorePatterns(*base_pattern) == ignore_pattern_top

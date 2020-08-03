@@ -6,6 +6,7 @@ import sys
 from .command import (
     add,
     cache,
+    check_ignore,
     checkout,
     commit,
     completion,
@@ -79,6 +80,7 @@ COMMANDS = [
     git_hook,
     plots,
     experiments,
+    check_ignore,
 ]
 
 
