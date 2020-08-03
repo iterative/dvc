@@ -245,3 +245,30 @@ def test_cleantree_subrepo(tmp_dir, dvc, scm, monkeypatch):
     assert subrepo.tree.isfile(path / "foo")
     assert subrepo.tree.exists(path / "dir")
     assert subrepo.tree.isdir(path / "dir")
+
+
+def test_walk_dont_ignore_subrepos(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen({"foo": "foo"}, commit="add foo")
+    subrepo_dir = tmp_dir / "subdir"
+    subrepo_dir.mkdir()
+    with subrepo_dir.chdir():
+        Repo.init(subdir=True)
+    scm.add(["subdir"])
+    scm.commit("Add subrepo")
+
+    assert list(dvc.tree.walk(os.fspath(tmp_dir))) == [
+        (os.fspath(tmp_dir), [], ["foo.dvc", "foo", ".gitignore"])
+    ]
+    assert list(dvc.tree.walk(os.fspath(tmp_dir), ignore_subrepos=False)) == [
+        (os.fspath(tmp_dir), ["subdir"], ["foo.dvc", "foo", ".gitignore"]),
+        (os.fspath(subrepo_dir), [], []),
+    ]
+
+    scm_tree = scm.get_tree("HEAD", use_dvcignore=True)
+    assert list(scm_tree.walk(os.fspath(tmp_dir))) == [
+        (os.fspath(tmp_dir), [], [".gitignore", "foo.dvc"])
+    ]
+    assert list(scm_tree.walk(os.fspath(tmp_dir), ignore_subrepos=False)) == [
+        (os.fspath(tmp_dir), ["subdir"], [".gitignore", "foo.dvc"]),
+        (os.fspath(subrepo_dir), [], []),
+    ]
