@@ -90,15 +90,26 @@ class BaseExternalRepo:
         """Use the specified cache in place of default tmpdir cache for
         download operations.
         """
-        if hasattr(self, "cache"):
-            save_cache = self.cache.local
-            self.cache.local = cache
+        has_cache = hasattr(self, "cache")
+
+        if has_cache:
+            save_cache = self.cache.local  # pylint: disable=E0203
+            self.cache.local = cache  # pylint: disable=E0203
+        else:
+            from collections import namedtuple
+
+            mock_cache = namedtuple("MockCache", ["local"])(local=cache)
+            self.cache = mock_cache  # pylint: disable=W0201
+
         self._local_cache = cache
 
         yield
 
-        if hasattr(self, "cache"):
+        if has_cache:
             self.cache.local = save_cache
+        else:
+            del self.cache
+
         self._local_cache = None
 
     @cached_property
@@ -130,14 +141,17 @@ class BaseExternalRepo:
         for path in paths:
             if not self.repo_tree.exists(path):
                 raise PathMissingError(path, self.url)
-            save_info = self.local_cache.save(
+            hash_info = self.repo_tree.save_info(
+                path, download_callback=download_update
+            )
+            self.local_cache.save(
                 path,
                 self.repo_tree,
-                None,
+                hash_info,
                 save_link=False,
                 download_callback=download_update,
             )
-            save_infos.append(save_info)
+            save_infos.append(hash_info)
 
         return sum(download_results), failed, save_infos
 

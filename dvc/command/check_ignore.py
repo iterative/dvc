@@ -70,7 +70,6 @@ class CmdCheckIgnore(CmdBase):
             ret = self._interactive_mode()
         else:
             ret = self._normal_mode()
-
         return ret
 
 

@@ -199,10 +199,7 @@ class BaseOutput:
 
         return self.cache.changed_cache(self.checksum, filter_info=filter_info)
 
-    def status(self):
-        if self.checksum and self.use_cache and self.changed_cache():
-            return {str(self): "not in cache"}
-
+    def workspace_status(self):
         if not self.exists:
             return {str(self): "deleted"}
 
@@ -213,6 +210,12 @@ class BaseOutput:
             return {str(self): "new"}
 
         return {}
+
+    def status(self):
+        if self.checksum and self.use_cache and self.changed_cache():
+            return {str(self): "not in cache"}
+
+        return self.workspace_status()
 
     def changed(self):
         status = self.status()
@@ -280,6 +283,7 @@ class BaseOutput:
         self.info = self.save_info()
 
     def commit(self):
+        assert self.info
         if self.use_cache:
             self.cache.save(self.path_info, self.cache.tree, self.info)
 
