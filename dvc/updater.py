@@ -47,7 +47,12 @@ class Updater:  # pragma: no cover
             logger.debug(msg.format(self.lock.lockfile, action))
 
     def check(self):
-        if os.getenv("CI") or env2bool("DVC_TEST") or PKG == "snap":
+        if (
+            os.getenv("CI")
+            or env2bool("DVC_TEST")
+            or PKG == "snap"
+            or not self.is_enabled()
+        ):
             return
 
         self._with_lock(self._check, "checking")

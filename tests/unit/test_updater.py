@@ -58,6 +58,14 @@ def test_is_enabled(dvc, updater, core, result):
     assert result == updater.is_enabled()
 
 
+@pytest.mark.parametrize("result", [True, False])
+@mock.patch("dvc.updater.Updater._check")
+def test_check_update_respect_config(mock_check, result, updater, mocker):
+    mocker.patch.object(updater, "is_enabled", return_value=result)
+    updater.check()
+    assert result == mock_check.called
+
+
 @pytest.mark.parametrize(
     "current,latest,notify",
     [
