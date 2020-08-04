@@ -3,6 +3,7 @@ import os
 import re
 import tempfile
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from contextlib import contextmanager
 from typing import Iterable, Optional
 
 from funcy import cached_property
@@ -26,7 +27,15 @@ def hash_exp(stages):
 
 class UnchangedExperimentError(DvcException):
     def __init__(self, rev):
-        super().__init__("Experiment identical to baseline '{rev[:7]}'.")
+        super().__init__(f"Experiment identical to baseline '{rev[:7]}'.")
+        self.rev = rev
+
+
+class BaselineMismatchError(DvcException):
+    def __init__(self, rev):
+        super().__init__(
+            f"Experiment is not derived from current baseline '{rev[:7]}'."
+        )
         self.rev = rev
 
 
@@ -79,6 +88,13 @@ class Experiments:
 
         return Repo(self.exp_dvc_dir)
 
+    @contextmanager
+    def chdir(self):
+        cwd = os.getcwd()
+        os.chdir(self.exp_dvc.root_dir)
+        yield self.exp_dvc.root_dir
+        os.chdir(cwd)
+
     @cached_property
     def args_file(self):
         return os.path.join(self.exp_dvc.tmp_dir, self.PACKED_ARGS_FILE)
@@ -120,7 +136,7 @@ class Experiments:
             self.scm.repo.heads[0].checkout()
         if not Git.is_sha(rev) or not self.scm.has_rev(rev):
             self.scm.pull()
-        logger.debug("Checking out base experiment commit '%s'", rev)
+        logger.debug("Checking out experiment commit '%s'", rev)
         self.scm.checkout(rev)
 
     def _stash_exp(self, *args, **kwargs):
@@ -176,7 +192,7 @@ class Experiments:
             return [stash_rev]
         results = self.reproduce([stash_rev], keep_stash=False)
         for exp_rev in results:
-            self.checkout_exp(exp_rev, force=True)
+            self.checkout_exp(exp_rev)
         return results
 
     def reproduce_queued(self, **kwargs):
@@ -338,30 +354,53 @@ class Experiments:
             src = executor.path_info / relpath(fname, tree.tree_root)
             copyfile(src, fname)
 
-    def checkout_exp(self, rev, force=False):
+    def checkout_exp(self, rev):
         """Checkout an experiment to the user's workspace."""
         from git.exc import GitCommandError
         from dvc.repo.checkout import _checkout as dvc_checkout
 
-        if force:
-            self.repo.scm.repo.git.reset(hard=True)
+        self._check_baseline(rev)
         self._scm_checkout(rev)
 
         tmp = tempfile.NamedTemporaryFile(delete=False).name
         self.scm.repo.head.commit.diff("HEAD~1", patch=True, output=tmp)
+
+        logger.debug("Stashing workspace changes.")
+        self.repo.scm.repo.git.stash("push")
+
         try:
             if os.path.getsize(tmp):
                 logger.debug("Patching local workspace")
                 self.repo.scm.repo.git.apply(tmp, reverse=True)
-            dvc_checkout(self.repo)
+                need_checkout = True
+            else:
+                need_checkout = False
         except GitCommandError:
-            raise DvcException(
-                "Checkout failed, experiment contains changes which "
-                "conflict with your current workspace. To overwrite "
-                "your workspace, use `dvc experiments checkout --force`."
-            )
+            raise DvcException("failed to apply experiment changes.")
         finally:
             remove(tmp)
+            self._unstash_workspace()
+
+        if need_checkout:
+            dvc_checkout(self.repo)
+
+    def _check_baseline(self, exp_rev):
+        baseline_sha = self.repo.scm.get_rev()
+        exp_commit = self.scm.repo.rev_parse(exp_rev)
+        for parent in exp_commit.parents:
+            if parent.hexsha == baseline_sha:
+                return
+        raise BaselineMismatchError(baseline_sha)
+
+    def _unstash_workspace(self):
+        # Essentially we want `git stash pop` with `-X ours` merge strategy
+        # to prefer the applied experiment changes over stashed workspace
+        # changes. git stash doesn't support merge strategy parameters, but we
+        # can do it ourselves with checkout/reset.
+        logger.debug("Unstashing workspace changes.")
+        self.repo.scm.repo.git.checkout("--ours", "stash@{0}", "--", ".")
+        self.repo.scm.repo.git.reset("HEAD")
+        self.repo.scm.repo.git.stash("drop", "stash@{0}")
 
     def checkout(self, *args, **kwargs):
         from dvc.repo.experiments.checkout import checkout
