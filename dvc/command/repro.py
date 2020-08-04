@@ -44,6 +44,7 @@ class CmdRepro(CmdBase):
                     queue=self.args.queue,
                     run_all=self.args.run_all,
                     jobs=self.args.jobs,
+                    params=self.args.params,
                 )
 
                 if len(stages) == 0:
@@ -176,6 +177,13 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help=argparse.SUPPRESS,
+    )
+    repro_parser.add_argument(
+        "--params",
+        action="append",
+        default=[],
+        help="Declare parameter values for an experiment.",
+        metavar="[<filename>:]<params_list>",
     )
     repro_parser.add_argument(
         "--queue", action="store_true", default=False, help=argparse.SUPPRESS
