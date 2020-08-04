@@ -34,7 +34,7 @@ class Updater:  # pragma: no cover
         ctime = os.path.getmtime(self.updater_file)
         outdated = time.time() - ctime >= self.TIMEOUT
         if outdated:
-            logger.debug(f"'{self.updater_file}' is outdated(")
+            logger.debug(f"'{self.updater_file}' is outdated")
         return outdated
 
     def _with_lock(self, func, action):
