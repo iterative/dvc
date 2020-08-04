@@ -194,6 +194,14 @@ class YAMLFileCorruptedError(DvcException):
         )
 
 
+class TOMLFileCorruptedError(DvcException):
+    def __init__(self, path):
+        path = relpath(path)
+        super().__init__(
+            f"unable to read: '{path}', TOML file structure is corrupted"
+        )
+
+
 class RecursiveAddingWhileUsingFilename(DvcException):
     def __init__(self):
         super().__init__(

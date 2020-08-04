@@ -17,7 +17,6 @@ from dvc.scm.git import Git
 from dvc.stage.serialize import to_lockfile
 from dvc.utils import dict_sha256, env2bool, relpath
 from dvc.utils.fs import copyfile, remove
-from dvc.utils.yaml import dump_yaml, parse_yaml_for_update
 
 logger = logging.getLogger(__name__)
 
@@ -190,6 +189,8 @@ class Experiments:
 
     def _update_params(self, params: dict):
         """Update experiment params files with the specified values."""
+        from dvc.utils.toml import dump_toml, parse_toml_for_update
+        from dvc.utils.yaml import dump_yaml, parse_yaml_for_update
 
         logger.debug("Using experiment params '%s'", params)
 
@@ -203,9 +204,9 @@ class Experiments:
             return dict_
 
         loaders = defaultdict(lambda: parse_yaml_for_update)
-        # loaders["toml"] = toml.load
+        loaders.update({".toml": parse_toml_for_update})
         dumpers = defaultdict(lambda: dump_yaml)
-        # loaders["toml"] = toml.dump
+        dumpers.update({".toml": dump_toml})
 
         for params_fname in params:
             path = PathInfo(self.exp_dvc.root_dir) / params_fname
