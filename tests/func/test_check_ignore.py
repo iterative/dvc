@@ -49,9 +49,18 @@ def test_check_ignore_non_matching(tmp_dir, dvc, non_matching, output, caplog):
     assert output in caplog.text
 
 
-@pytest.mark.parametrize("args", [["-n"], ["-a"], ["-q", "-d"]])
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["-n", "file"],
+        ["-a", "file"],
+        ["-q", "-d", "file"],
+        ["--stdin", "file"],
+        [],
+    ],
+)
 def test_check_ignore_error_args_cases(tmp_dir, dvc, args):
-    assert main(["check-ignore"] + args + ["file"]) == 255
+    assert main(["check-ignore"] + args) == 255
 
 
 @pytest.mark.parametrize("path,ret", [({"dir": {}}, 0), ({"dir": "files"}, 1)])

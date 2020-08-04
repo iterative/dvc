@@ -56,7 +56,13 @@ class CmdCheckIgnore(CmdBase):
                 ret = 0
         return ret
 
-    def run(self):
+    def _check_args(self):
+        if not self.args.stdin and not self.args.targets:
+            raise DvcException("targets or --stdin needed")
+
+        if self.args.stdin and self.args.targets:
+            raise DvcException("cannot have targets and --stdin both")
+
         if self.args.non_matching and not self.args.details:
             raise DvcException("--non-matching is only valid with --details")
 
@@ -66,6 +72,8 @@ class CmdCheckIgnore(CmdBase):
         if self.args.quiet and self.args.details:
             raise DvcException("cannot both --details and --quiet")
 
+    def run(self):
+        self._check_args()
         if self.args.stdin:
             ret = self._interactive_mode()
         else:
@@ -115,7 +123,7 @@ def add_parser(subparsers, parent_parser):
     )
     parser.add_argument(
         "targets",
-        nargs="+",
+        nargs="*",
         help="Exact or wildcard paths of files or directories to check "
         "ignore patterns.",
     ).complete = completion.FILE
