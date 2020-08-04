@@ -134,7 +134,9 @@ def _parse_params(path_params):
                 key, value = param_str.split("=")
                 params[key] = safe_load(value)
             except (ValueError, YAMLError):
-                raise InvalidArgumentError(f"Invalid param '{param_str}'")
+                raise InvalidArgumentError(
+                    f"Invalid param/value pair '{param_str}'"
+                )
         if not path:
             path = ParamsDependency.DEFAULT_PARAMS_FILE
         ret[path] = unflatten(params, ".")
