@@ -132,6 +132,23 @@ def test_import_file_from_dir(tmp_dir, scm, dvc, erepo_dir):
     assert (tmp_dir / "X.dvc").exists()
 
 
+@pytest.mark.parametrize("dir_exists", [True, False])
+def test_import_file_from_dir_to_dir(tmp_dir, scm, dvc, erepo_dir, dir_exists):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen({"dir": {"foo": "foo"}}, commit="create dir")
+    if dir_exists:
+        tmp_dir.gen({"dir": {}})
+
+    dvc.imp(
+        os.fspath(erepo_dir),
+        os.path.join("dir", "foo"),
+        out=os.path.join("dir", "foo"),
+    )
+    assert not (tmp_dir / "foo.dvc").exists()
+    assert (tmp_dir / "dir" / "foo").read_text() == "foo"
+    assert (tmp_dir / "dir" / "foo.dvc").exists()
+
+
 def test_import_non_cached(erepo_dir, tmp_dir, dvc, scm):
     src = "non_cached_output"
     dst = src + "_imported"
