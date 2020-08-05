@@ -373,11 +373,9 @@ def resolve_paths(repo, out):
 
     # NOTE: `out` might not exist yet, so using `dirname`(aka `wdir`) to check
     # if it is a local path.
-    if (
-        os.path.exists(dirname)  # out might not exist yet, so
-        and PathInfo(abspath).isin_or_eq(repo.root_dir)
-        and not contains_symlink_up_to(abspath, repo.root_dir)
-    ):
+    if PathInfo(abspath).isin_or_eq(
+        repo.root_dir
+    ) and not contains_symlink_up_to(abspath, repo.root_dir):
         wdir = dirname
         out = base
     else:
