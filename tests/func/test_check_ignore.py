@@ -7,13 +7,13 @@ from dvc.main import main
 
 
 @pytest.mark.parametrize(
-    "file,ret,output", [("ignored", 0, "ignored\n"), ("not_ignored", 1, "")]
+    "file,ret,output", [("ignored", 0, True), ("not_ignored", 1, False)]
 )
 def test_check_ignore(tmp_dir, dvc, file, ret, output, caplog):
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "ignored")
 
     assert main(["check-ignore", file]) == ret
-    assert output in caplog.text
+    assert (file in caplog.text) is output
 
 
 @pytest.mark.parametrize(
@@ -39,14 +39,15 @@ def test_check_ignore_details(tmp_dir, dvc, file, ret, output, caplog):
     assert output in caplog.text
 
 
-@pytest.mark.parametrize(
-    "non_matching,output", [(["-n"], "::\tfile\n"), ([], "")]
-)
-def test_check_ignore_non_matching(tmp_dir, dvc, non_matching, output, caplog):
+@pytest.mark.parametrize("non_matching", [True, False])
+def test_check_ignore_non_matching(tmp_dir, dvc, non_matching, caplog):
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "other")
+    if non_matching:
+        assert main(["check-ignore", "-d", "-n", "file"]) == 1
+    else:
+        assert main(["check-ignore", "-d", "file"]) == 1
 
-    assert main(["check-ignore", "-d"] + non_matching + ["file"]) == 1
-    assert output in caplog.text
+    assert ("::\tfile\n" in caplog.text) is non_matching
 
 
 @pytest.mark.parametrize(
@@ -117,3 +118,18 @@ def test_check_ignore_details_all(tmp_dir, dvc, caplog):
     assert main(["check-ignore", "-d", "-a", "foo"]) == 0
     assert "{}:1:f*\tfoo\n".format(DvcIgnore.DVCIGNORE_FILE) in caplog.text
     assert "{}:2:!foo\tfoo\n".format(DvcIgnore.DVCIGNORE_FILE) in caplog.text
+
+
+@pytest.mark.parametrize(
+    "file,ret,output", [("ignored", 0, True), ("not_ignored", 1, False)]
+)
+def test_check_ignore_stdin_mode(
+    tmp_dir, dvc, file, ret, output, caplog, mocker
+):
+    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "ignored")
+    mocker.patch("builtins.input", side_effect=[file, ""])
+    stdout_mock = mocker.patch("sys.stdout")
+    stdout_mock.isatty.return_value = True
+
+    assert main(["check-ignore", "--stdin"]) == ret
+    assert (file in caplog.text) is output
