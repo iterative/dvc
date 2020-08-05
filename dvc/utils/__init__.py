@@ -368,13 +368,17 @@ def resolve_paths(repo, out):
     from ..path_info import PathInfo
     from .fs import contains_symlink_up_to
 
-    abspath = os.path.abspath(out)
+    abspath = PathInfo(os.path.abspath(out))
     dirname = os.path.dirname(abspath)
     base = os.path.basename(os.path.normpath(out))
 
+    scheme = urlparse(out).scheme
+    if os.name == "nt" and scheme == abspath.drive[0].lower():
+        # urlparse interprets windows drive letters as URL scheme
+        scheme = ""
     if (
-        not urlparse(out).scheme
-        and PathInfo(abspath).isin_or_eq(repo.root_dir)
+        not scheme
+        and abspath.isin_or_eq(repo.root_dir)
         and not contains_symlink_up_to(abspath, repo.root_dir)
     ):
         wdir = dirname
