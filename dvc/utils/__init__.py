@@ -363,6 +363,7 @@ def resolve_output(inp, out):
 
 
 def resolve_paths(repo, out):
+    from urllib.parse import urlparse
     from ..dvcfile import DVC_FILE_SUFFIX
     from ..path_info import PathInfo
     from .fs import contains_symlink_up_to
@@ -371,11 +372,11 @@ def resolve_paths(repo, out):
     dirname = os.path.dirname(abspath)
     base = os.path.basename(os.path.normpath(out))
 
-    # NOTE: `out` might not exist yet, so using `dirname`(aka `wdir`) to check
-    # if it is a local path.
-    if PathInfo(abspath).isin_or_eq(
-        repo.root_dir
-    ) and not contains_symlink_up_to(abspath, repo.root_dir):
+    if (
+        not urlparse(out).scheme
+        and PathInfo(abspath).isin_or_eq(repo.root_dir)
+        and not contains_symlink_up_to(abspath, repo.root_dir)
+    ):
         wdir = dirname
         out = base
     else:
