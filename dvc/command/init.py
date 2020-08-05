@@ -17,7 +17,6 @@ class CmdInit(CmdBaseNoRepo):
                 no_scm=self.args.no_scm,
                 force=self.args.force,
                 subdir=self.args.subdir,
-                ignore_template_list=self.args.ignore_template,
             )
             self.config = self.repo.config
         except InitError:
@@ -66,12 +65,5 @@ def add_parser(subparsers, parent_parser):
             "Necessary for running this command inside a subdirectory of a "
             "parent SCM repository."
         ),
-    )
-    init_parser.add_argument(
-        "--ignore_template",
-        choices=["java", "julia", "python", "r", "scala"],
-        nargs="+",
-        default=None,
-        help="Fill .dvcignore from template",
     )
     init_parser.set_defaults(func=CmdInit)
