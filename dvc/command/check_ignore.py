@@ -58,7 +58,7 @@ class CmdCheckIgnore(CmdBase):
 
     def _check_args(self):
         if not self.args.stdin and not self.args.targets:
-            raise DvcException("targets or --stdin needed")
+            raise DvcException("`targets` or `--stdin` needed")
 
         if self.args.stdin and self.args.targets:
             raise DvcException("cannot have both `targets` and `--stdin`")
