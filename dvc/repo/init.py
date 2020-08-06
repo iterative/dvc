@@ -46,8 +46,9 @@ def _welcome_message():
 def generate_dvcignore():
     with open(".dvcignore", "w") as f:
         f.write(
-            "# This is .dvcignore file."
-            " See more https://dvc.org/doc/user-guide/dvcignore\n"
+            "# add patterns of files dvc should ignore,"
+            " can improve performance\n"
+            "# Learn more at https://dvc.org/doc/user-guide/dvcignore\n"
         )
 
 
