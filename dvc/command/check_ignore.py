@@ -75,10 +75,8 @@ class CmdCheckIgnore(CmdBase):
     def run(self):
         self._check_args()
         if self.args.stdin:
-            ret = self._interactive_mode()
-        else:
-            ret = self._normal_mode()
-        return ret
+            return self._interactive_mode()
+        return self._normal_mode()
 
 
 def add_parser(subparsers, parent_parser):
