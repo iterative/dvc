@@ -2,7 +2,7 @@ import os
 
 from dvc.repo.scm_context import scm_context
 from dvc.utils import relpath, resolve_output, resolve_paths
-from dvc.utils.fs import makedirs, path_isin
+from dvc.utils.fs import path_isin
 
 from ..exceptions import OutputDuplicationError
 from . import locked
@@ -26,9 +26,6 @@ def imp_url(
         and path_isin(os.path.abspath(url), self.root_dir)
     ):
         url = relpath(url, wdir)
-
-    if not os.path.exists(wdir):
-        makedirs(wdir)
 
     stage = create_stage(
         Stage,
