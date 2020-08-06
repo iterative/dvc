@@ -41,7 +41,7 @@ class CmdCheckIgnore(CmdBase):
             target = ask("")
             if target == "":
                 logger.info(
-                    "empty string is not a valid pathspec. please use . "
+                    "Empty string is not a valid pathspec. Please use . "
                     "instead if you meant to match all paths"
                 )
                 break
