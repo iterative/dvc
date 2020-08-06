@@ -1,4 +1,5 @@
 import os
+from operator import itemgetter
 from os.path import join
 
 from dvc.path_info import PathInfo
@@ -256,19 +257,14 @@ def test_walk_dont_ignore_subrepos(tmp_dir, scm, dvc):
     scm.add(["subdir"])
     scm.commit("Add subrepo")
 
-    assert list(dvc.tree.walk(os.fspath(tmp_dir))) == [
-        (os.fspath(tmp_dir), [], ["foo.dvc", "foo", ".gitignore"])
-    ]
-    assert list(dvc.tree.walk(os.fspath(tmp_dir), ignore_subrepos=False)) == [
-        (os.fspath(tmp_dir), ["subdir"], ["foo.dvc", "foo", ".gitignore"]),
-        (os.fspath(subrepo_dir), [], []),
-    ]
-
+    dvc_tree = dvc.tree
     scm_tree = scm.get_tree("HEAD", use_dvcignore=True)
-    assert list(scm_tree.walk(os.fspath(tmp_dir))) == [
-        (os.fspath(tmp_dir), [], [".gitignore", "foo.dvc"])
-    ]
-    assert list(scm_tree.walk(os.fspath(tmp_dir), ignore_subrepos=False)) == [
-        (os.fspath(tmp_dir), ["subdir"], [".gitignore", "foo.dvc"]),
-        (os.fspath(subrepo_dir), [], []),
-    ]
+    path = os.fspath(tmp_dir)
+    get_dirs = itemgetter(1)
+
+    assert get_dirs(next(dvc_tree.walk(path))) == []
+    assert get_dirs(next(scm_tree.walk(path))) == []
+
+    kw = dict(ignore_subrepos=False)
+    assert get_dirs(next(dvc_tree.walk(path, **kw))) == ["subdir"]
+    assert get_dirs(next(scm_tree.walk(path, **kw))) == ["subdir"]
