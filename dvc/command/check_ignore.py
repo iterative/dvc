@@ -70,7 +70,7 @@ class CmdCheckIgnore(CmdBase):
             raise DvcException("`--all` is only valid with `--details`")
 
         if self.args.quiet and self.args.details:
-            raise DvcException("cannot both --details and --quiet")
+            raise DvcException("cannot use both `--details` and `--quiet`")
 
     def run(self):
         self._check_args()
