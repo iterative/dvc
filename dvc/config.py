@@ -119,6 +119,16 @@ HTTP_COMMON = {
     "password": str,
     "ask_password": Bool,
 }
+WEBDAV_COMMON = {
+    "user": str,
+    "password": str,
+    "ask_password": Bool,
+    "token": str,
+    "cert_path": str,
+    "key_path": str,
+    "timeout": Coerce(int),
+}
+
 SCHEMA = {
     "core": {
         "remote": Lower,
@@ -199,6 +209,8 @@ SCHEMA = {
                 },
                 "http": {**HTTP_COMMON, **REMOTE_COMMON},
                 "https": {**HTTP_COMMON, **REMOTE_COMMON},
+                "webdav": {**WEBDAV_COMMON, **REMOTE_COMMON},
+                "webdavs": {**WEBDAV_COMMON, **REMOTE_COMMON},
                 "remote": {str: object},  # Any of the above options are valid
             }
         )
@@ -388,7 +400,7 @@ class Config(dict):
             if merge_level == level:
                 break
             if merge_level in self.files:
-                _merge(merged_conf, self.load_one(merge_level))
+                merge(merged_conf, self.load_one(merge_level))
         return merged_conf
 
     @contextmanager
@@ -402,7 +414,7 @@ class Config(dict):
         conf = self._save_paths(conf, self.files[level])
 
         merged_conf = self.load_config_to_level(level)
-        _merge(merged_conf, conf)
+        merge(merged_conf, conf)
         self.validate(merged_conf)
 
         self._save_config(level, conf)
@@ -441,11 +453,11 @@ def _pack_remotes(conf):
     return result
 
 
-def _merge(into, update):
+def merge(into, update):
     """Merges second dict into first recursively"""
     for key, val in update.items():
         if isinstance(into.get(key), dict) and isinstance(val, dict):
-            _merge(into[key], val)
+            merge(into[key], val)
         else:
             into[key] = val
 

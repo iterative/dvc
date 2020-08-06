@@ -75,7 +75,7 @@ install_requires = [
     "networkx>=2.1,<2.5",
     "pydot>=1.2.4",
     "speedcopy>=2.0.1; python_version < '3.8' and sys_platform == 'win32'",
-    "flatten_json>=0.1.6",
+    "flatten_json>=0.1.6,<0.1.8",
     "tabulate>=0.8.7",
     "pygtrie==2.3.2",
     "dpath>=2.0.1,<3",
@@ -93,18 +93,19 @@ azure = ["azure-storage-blob==2.1.0", "knack"]
 oss = ["oss2==2.6.1"]
 ssh = ["paramiko>=2.5.0"]
 hdfs = ["pyarrow>=0.17.0"]
+webdav = ["webdavclient3>=3.14.5"]
 # gssapi should not be included in all_remotes, because it doesn't have wheels
 # for linux and mac, so it will fail to compile if user doesn't have all the
 # requirements, including kerberos itself. Once all the wheels are available,
 # we can start shipping it by default.
 ssh_gssapi = ["paramiko[gssapi]>=2.5.0"]
-all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs
+all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs + webdav
 
 # Extra dependecies to run tests
 tests_requirements = [
     "wheel>=0.31.1",
     # Test requirements:
-    "pytest>=4.6.0",
+    "pytest>=6.0.1",
     "pytest-docker>=0.7.2",
     "pytest-timeout>=1.3.3",
     "pytest-cov>=2.6.1",
@@ -160,6 +161,7 @@ setup(
         "ssh": ssh,
         "ssh_gssapi": ssh_gssapi,
         "hdfs": hdfs,
+        "webdav": webdav,
         "tests": tests_requirements,
     },
     keywords="data-science data-version-control machine-learning git"

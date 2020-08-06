@@ -1,14 +1,15 @@
 import logging
 import os
 import re
-from itertools import groupby
+from collections import namedtuple
+from itertools import groupby, takewhile
 
 from pathspec.patterns import GitWildMatchPattern
 from pathspec.util import normalize_file
 from pygtrie import StringTrie
 
 from dvc.path_info import PathInfo
-from dvc.pathspec_math import merge_patterns
+from dvc.pathspec_math import PatternInfo, merge_patterns
 from dvc.system import System
 from dvc.utils import relpath
 
@@ -24,18 +25,26 @@ class DvcIgnore:
 
 class DvcIgnorePatterns(DvcIgnore):
     def __init__(self, pattern_list, dirname):
+        if pattern_list:
+            if isinstance(pattern_list[0], str):
+                pattern_list = [
+                    PatternInfo(pattern, "") for pattern in pattern_list
+                ]
 
         self.pattern_list = pattern_list
         self.dirname = dirname
         self.prefix = self.dirname + os.sep
 
-        regex_pattern_list = map(
-            GitWildMatchPattern.pattern_to_regex, pattern_list
-        )
+        self.regex_pattern_list = [
+            GitWildMatchPattern.pattern_to_regex(pattern_info.patterns)
+            for pattern_info in pattern_list
+        ]
 
         self.ignore_spec = [
             (ignore, re.compile("|".join(item[0] for item in group)))
-            for ignore, group in groupby(regex_pattern_list, lambda x: x[1])
+            for ignore, group in groupby(
+                self.regex_pattern_list, lambda x: x[1]
+            )
             if ignore is not None
         ]
 
@@ -43,9 +52,19 @@ class DvcIgnorePatterns(DvcIgnore):
     def from_files(cls, ignore_file_path, tree):
         assert os.path.isabs(ignore_file_path)
         dirname = os.path.normpath(os.path.dirname(ignore_file_path))
+        ignore_file_rel_path = os.path.relpath(
+            ignore_file_path, tree.tree_root
+        )
         with tree.open(ignore_file_path, encoding="utf-8") as fobj:
             path_spec_lines = [
-                line for line in map(str.strip, fobj.readlines()) if line
+                PatternInfo(
+                    line,
+                    "{}:{}:{}".format(ignore_file_rel_path, line_no + 1, line),
+                )
+                for line_no, line in enumerate(
+                    map(str.strip, fobj.readlines())
+                )
+                if line
             ]
 
         return cls(path_spec_lines, dirname)
@@ -56,7 +75,7 @@ class DvcIgnorePatterns(DvcIgnore):
 
         return dirs, files
 
-    def matches(self, dirname, basename, is_dir=False):
+    def _get_normalize_path(self, dirname, basename):
         # NOTE: `relpath` is too slow, so we have to assume that both
         # `dirname` and `self.dirname` are relative or absolute together.
         if dirname == self.dirname:
@@ -70,6 +89,12 @@ class DvcIgnorePatterns(DvcIgnore):
 
         if not System.is_unix():
             path = normalize_file(path)
+        return path
+
+    def matches(self, dirname, basename, is_dir=False):
+        path = self._get_normalize_path(dirname, basename)
+        if not path:
+            return False
         return self.ignore(path, is_dir)
 
     def ignore(self, path, is_dir):
@@ -85,18 +110,46 @@ class DvcIgnorePatterns(DvcIgnore):
                     result = ignore
         return result
 
+    def match_details(self, dirname, basename, is_dir=False):
+        path = self._get_normalize_path(dirname, basename)
+        if not path:
+            return False
+        return self._ignore_details(path, is_dir)
+
+    def _ignore_details(self, path, is_dir):
+        result = []
+        for ignore, pattern in zip(self.regex_pattern_list, self.pattern_list):
+            regex = re.compile(ignore[0])
+            # skip system pattern
+            if not pattern.file_info:
+                continue
+            if is_dir:
+                path_dir = f"{path}/"
+                if regex.match(path) or regex.match(path_dir):
+                    result.append(pattern.file_info)
+            else:
+                if regex.match(path):
+                    result.append(pattern.file_info)
+        return result
+
     def __hash__(self):
-        return hash(self.dirname + ":" + "\n".join(self.pattern_list))
+        return hash(self.dirname + ":" + str(self.pattern_list))
 
     def __eq__(self, other):
         if not isinstance(other, DvcIgnorePatterns):
             return NotImplemented
         return (self.dirname == other.dirname) & (
-            self.pattern_list == other.pattern_list
+            [pattern.patterns for pattern in self.pattern_list]
+            == [pattern.patterns for pattern in other.pattern_list]
         )
 
     def __bool__(self):
         return bool(self.pattern_list)
+
+
+CheckIgnoreResult = namedtuple(
+    "CheckIgnoreResult", ["file", "match", "patterns"]
+)
 
 
 class DvcIgnoreFilterNoop:
@@ -111,6 +164,9 @@ class DvcIgnoreFilterNoop:
 
     def is_ignored_file(self, _):
         return False
+
+    def check_ignore(self, _):
+        return []
 
 
 class DvcIgnoreFilter:
@@ -131,20 +187,19 @@ class DvcIgnoreFilter:
         self.ignores_trie_tree[root_dir] = DvcIgnorePatterns(
             default_ignore_patterns, root_dir
         )
-        for root, dirs, _ in self.tree.walk(
-            self.root_dir, use_dvcignore=False
-        ):
-            self._update(root)
-            self._update_sub_repo(root, dirs)
-            dirs[:], _ = self(root, dirs, [])
+        self._update(self.root_dir)
 
     def _update(self, dirname):
+        old_pattern = self.ignores_trie_tree.longest_prefix(dirname).value
+        matches = old_pattern.matches(dirname, DvcIgnore.DVCIGNORE_FILE, False)
+
         ignore_file_path = os.path.join(dirname, DvcIgnore.DVCIGNORE_FILE)
-        if self.tree.exists(ignore_file_path, use_dvcignore=False):
+        if not matches and self.tree.exists(
+            ignore_file_path, use_dvcignore=False
+        ):
             new_pattern = DvcIgnorePatterns.from_files(
                 ignore_file_path, self.tree
             )
-            old_pattern = self._get_trie_pattern(dirname)
             if old_pattern:
                 self.ignores_trie_tree[dirname] = DvcIgnorePatterns(
                     *merge_patterns(
@@ -156,24 +211,30 @@ class DvcIgnoreFilter:
                 )
             else:
                 self.ignores_trie_tree[dirname] = new_pattern
+        elif old_pattern:
+            self.ignores_trie_tree[dirname] = old_pattern
+
+        # NOTE: using `walk` + `break` because tree doesn't have `listdir()`
+        for root, dirs, _ in self.tree.walk(dirname, use_dvcignore=False):
+            self._update_sub_repo(root, dirs)
+            break
 
     def _update_sub_repo(self, root, dirs):
         for d in dirs:
             if self._is_dvc_repo(root, d):
-                old_pattern = self._get_trie_pattern(root)
+                new_pattern = DvcIgnorePatterns(["/{}/".format(d)], root)
+                old_pattern = self.ignores_trie_tree.longest_prefix(root).value
                 if old_pattern:
                     self.ignores_trie_tree[root] = DvcIgnorePatterns(
                         *merge_patterns(
                             old_pattern.pattern_list,
                             old_pattern.dirname,
-                            ["/{}/".format(d)],
-                            root,
+                            new_pattern.pattern_list,
+                            new_pattern.dirname,
                         )
                     )
                 else:
-                    self.ignores_trie_tree[root] = DvcIgnorePatterns(
-                        ["/{}/".format(d)], root
-                    )
+                    self.ignores_trie_tree[root] = new_pattern
 
     def __call__(self, root, dirs, files):
         ignore_pattern = self._get_trie_pattern(root)
@@ -183,8 +244,28 @@ class DvcIgnoreFilter:
             return dirs, files
 
     def _get_trie_pattern(self, dirname):
-        ignore_pattern = self.ignores_trie_tree.longest_prefix(dirname).value
-        return ignore_pattern
+        ignore_pattern = self.ignores_trie_tree.get(dirname)
+        if ignore_pattern:
+            return ignore_pattern
+
+        prefix = self.ignores_trie_tree.longest_prefix(dirname).key
+        if not prefix:
+            # outside of the repo
+            return None
+
+        dirs = list(
+            takewhile(
+                lambda path: path != prefix,
+                (parent.fspath for parent in PathInfo(dirname).parents),
+            )
+        )
+        dirs.reverse()
+        dirs.append(dirname)
+
+        for parent in dirs:
+            self._update(parent)
+
+        return self.ignores_trie_tree.get(dirname)
 
     def _is_ignored(self, path, is_dir=False):
         if self._outside_repo(path):
@@ -219,3 +300,17 @@ class DvcIgnoreFilter:
         ):
             return True
         return False
+
+    def check_ignore(self, target):
+        full_target = os.path.abspath(target)
+        if not self._outside_repo(full_target):
+            dirname, basename = os.path.split(os.path.normpath(full_target))
+            pattern = self._get_trie_pattern(dirname)
+            if pattern:
+                matches = pattern.match_details(
+                    dirname, basename, os.path.isdir(full_target)
+                )
+
+                if matches:
+                    return CheckIgnoreResult(target, True, matches)
+        return CheckIgnoreResult(target, False, ["::"])

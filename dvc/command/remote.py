@@ -3,7 +3,7 @@ import logging
 
 from dvc.command.base import append_doc_link, fix_subparsers
 from dvc.command.config import CmdConfig
-from dvc.config import ConfigError
+from dvc.config import ConfigError, merge
 from dvc.utils import format_link
 
 logger = logging.getLogger(__name__)
@@ -18,7 +18,7 @@ class CmdRemote(CmdConfig):
 
     def _check_exists(self, conf):
         if self.args.name not in conf["remote"]:
-            raise ConfigError(f"remote '{self.args.name}' doesn't exists.")
+            raise ConfigError(f"remote '{self.args.name}' doesn't exist.")
 
 
 class CmdRemoteAdd(CmdRemote):
@@ -61,7 +61,12 @@ class CmdRemoteRemove(CmdRemote):
 class CmdRemoteModify(CmdRemote):
     def run(self):
         with self.config.edit(self.args.level) as conf:
-            self._check_exists(conf)
+            merged = self.config.load_config_to_level(self.args.level)
+            merge(merged, conf)
+            self._check_exists(merged)
+
+            if self.args.name not in conf["remote"]:
+                conf["remote"][self.args.name] = {}
             section = conf["remote"][self.args.name]
             if self.args.unset:
                 section.pop(self.args.option, None)

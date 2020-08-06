@@ -48,6 +48,10 @@ def _collect_rows(
         return val
 
     def _extend(row, names, items):
+        if not items:
+            row.extend(["-"] * len(names))
+            return
+
         for fname, item in items:
             if isinstance(item, dict):
                 item = flatten(item, ".")
@@ -55,20 +59,23 @@ def _collect_rows(
                 item = {fname: item}
             for name in names:
                 if name in item:
-                    row.append(str(_round(item[name])))
+                    value = item[name]
+                    text = str(_round(value)) if value is not None else "-"
+                    row.append(text)
                 else:
                     row.append("-")
 
     for i, (rev, exp) in enumerate(experiments.items()):
         row = []
         style = None
+        queued = "*" if exp.get("queued", False) else ""
         if rev == "baseline":
             row.append(f"{base_rev}")
             style = "bold"
         elif i < len(experiments) - 1:
-            row.append(f"├── {rev[:7]}")
+            row.append(f"├── {queued}{rev[:7]}")
         else:
-            row.append(f"└── {rev[:7]}")
+            row.append(f"└── {queued}{rev[:7]}")
 
         _extend(row, metric_names, exp.get("metrics", {}).items())
         _extend(row, param_names, exp.get("params", {}).items())
@@ -82,29 +89,25 @@ def _show_experiments(all_experiments, console, precision=None):
 
     metric_names, param_names = _collect_names(all_experiments)
 
-    table = Table(row_styles=["white", "bright_white"])
-    table.add_column("Experiment", header_style="black on grey93")
+    table = Table()
+    table.add_column("Experiment", no_wrap=True)
     for name in metric_names:
-        table.add_column(
-            name, justify="right", header_style="black on cornsilk1"
-        )
+        table.add_column(name, justify="right", no_wrap=True)
     for name in param_names:
-        table.add_column(
-            name, justify="left", header_style="black on light_cyan1"
-        )
+        table.add_column(name, justify="left")
 
     for base_rev, experiments in all_experiments.items():
         if Git.is_sha(base_rev):
             base_rev = base_rev[:7]
 
-        for row, style, in _collect_rows(
+        for row, _, in _collect_rows(
             base_rev,
             experiments,
             metric_names,
             param_names,
             precision=precision,
         ):
-            table.add_row(*row, style=style)
+            table.add_row(*row)
 
     console.print(table)
 
@@ -124,15 +127,19 @@ class CmdExperimentsShow(CmdBase):
                 all_commits=self.args.all_commits,
             )
 
-            # Note: rich does not currently include a native way to force
-            # infinite width for use with a pager
-            console = Console(
-                file=io.StringIO(), force_terminal=True, width=9999
-            )
+            if self.args.no_pager:
+                console = Console()
+            else:
+                # Note: rich does not currently include a native way to force
+                # infinite width for use with a pager
+                console = Console(
+                    file=io.StringIO(), force_terminal=True, width=9999
+                )
 
             _show_experiments(all_experiments, console)
 
-            pager(console.file.getvalue())
+            if not self.args.no_pager:
+                pager(console.file.getvalue())
         except DvcException:
             logger.exception("failed to show experiments")
             return 1
@@ -145,9 +152,7 @@ class CmdExperimentsCheckout(CmdBase):
         if not self.repo.experiments:
             return 0
 
-        self.repo.experiments.checkout(
-            self.args.experiment, force=self.args.force
-        )
+        self.repo.experiments.checkout(self.args.experiment)
 
         return 0
 
@@ -233,6 +238,7 @@ def add_parser(subparsers, parent_parser):
     experiments_parser = subparsers.add_parser(
         "experiments",
         parents=[parent_parser],
+        aliases=["exp"],
         description=append_doc_link(EXPERIMENTS_HELP, "experiments"),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -273,6 +279,12 @@ def add_parser(subparsers, parent_parser):
         default=False,
         help="Show metrics for all commits.",
     )
+    experiments_show_parser.add_argument(
+        "--no-pager",
+        action="store_true",
+        default=False,
+        help="Do not pipe output into a pager.",
+    )
     experiments_show_parser.set_defaults(func=CmdExperimentsShow)
 
     EXPERIMENTS_CHECKOUT_HELP = "Checkout experiments."
@@ -284,14 +296,6 @@ def add_parser(subparsers, parent_parser):
         ),
         help=EXPERIMENTS_CHECKOUT_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    experiments_checkout_parser.add_argument(
-        "-f",
-        "--force",
-        action="store_true",
-        default=False,
-        help="Overwrite your current workspace with changes from the "
-        "experiment.",
     )
     experiments_checkout_parser.add_argument(
         "experiment", help="Checkout this experiment.",

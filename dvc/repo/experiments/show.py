@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 EXP_RE = re.compile(r"(?P<rev_sha>[a-f0-9]{7})-(?P<exp_sha>[a-f0-9]+)")
 
 
-def _collect_experiment(repo, branch):
+def _collect_experiment(repo, branch, stash=False):
     res = defaultdict(dict)
     for rev in repo.brancher(revs=[branch]):
         configs = _collect_configs(repo)
@@ -20,9 +20,10 @@ def _collect_experiment(repo, branch):
         if params:
             res["params"] = params
 
-        metrics = _collect_metrics(repo, None, False)
-        vals = _read_metrics(repo, metrics, rev)
-        if vals:
+        res["queued"] = stash
+        if not stash:
+            metrics = _collect_metrics(repo, None, False)
+            vals = _read_metrics(repo, metrics, rev)
             res["metrics"] = vals
 
     return res
@@ -37,8 +38,9 @@ def show(
     if revs is None:
         revs = [repo.scm.get_rev()]
 
-    revs = set(
-        repo.brancher(
+    revs = OrderedDict(
+        (rev, None)
+        for rev in repo.brancher(
             revs=revs,
             all_branches=all_branches,
             all_tags=all_tags,
@@ -49,6 +51,7 @@ def show(
     for rev in revs:
         res[rev]["baseline"] = _collect_experiment(repo, rev)
 
+    # collect reproduced experiments
     for exp_branch in repo.experiments.scm.list_branches():
         m = re.match(EXP_RE, exp_branch)
         if m:
@@ -60,5 +63,13 @@ def show(
                         repo.experiments.exp_dvc, exp_branch
                     )
                 res[rev][exp_rev] = experiment
+
+    # collect queued (not yet reproduced) experiments
+    for stash_rev, (_, baseline_rev) in repo.experiments.stash_revs.items():
+        with repo.experiments.chdir():
+            experiment = _collect_experiment(
+                repo.experiments.exp_dvc, stash_rev, stash=True
+            )
+        res[baseline_rev][stash_rev] = experiment
 
     return res

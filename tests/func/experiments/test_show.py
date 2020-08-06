@@ -15,5 +15,6 @@ def test_show_simple(tmp_dir, scm, dvc):
         "baseline": {
             "metrics": {"metrics.yaml": {"foo": 1}},
             "params": {"params.yaml": {"foo": 1}},
+            "queued": False,
         }
     }

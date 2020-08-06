@@ -245,6 +245,9 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
     Any kwargs will be passed to `DvcTree()`.
     """
 
+    scheme = "local"
+    PARAM_CHECKSUM = "md5"
+
     def __init__(self, repo, **kwargs):
         super().__init__(repo, {"url": repo.root_dir})
         if hasattr(repo, "dvc_dir"):

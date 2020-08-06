@@ -1,28 +1,34 @@
 import os
 
-from mock import patch
-
 from dvc.main import main
-from tests.basic_env import TestDvc
 
 
-class TestStatus(TestDvc):
-    def test_quiet(self):
-        self.dvc.add(self.FOO)
+def test_quiet(tmp_dir, dvc, capsys):
+    tmp_dir.dvc_gen("foo", "foo")
 
-        ret = main(["status", "--quiet"])
-        self.assertEqual(ret, 0)
+    # clear
+    capsys.readouterr()
 
-        os.remove(self.FOO)
-        os.rename(self.BAR, self.FOO)
+    assert main(["status", "--quiet"]) == 0
+    out_err = capsys.readouterr()
+    assert not out_err.out
+    assert not out_err.err
 
-        ret = main(["status", "--quiet"])
-        self.assertEqual(ret, 1)
+    tmp_dir.gen("foo", "barr")
 
-    @patch("dvc.repo.status._cloud_status", return_value=True)
-    def test_implied_cloud(self, mock_status):
-        main(["status", "--remote", "something"])
-        mock_status.assert_called()
+    assert main(["status", "--quiet"]) == 1
+    out_err = capsys.readouterr()
+    assert not out_err.out
+    assert not out_err.err
+
+
+def test_implied_cloud(dvc, mocker):
+    mock_status = mocker.patch(
+        "dvc.repo.status._cloud_status", return_value=True
+    )
+
+    main(["status", "--remote", "something"])
+    assert mock_status.called
 
 
 def test_status_non_dvc_repo_import(tmp_dir, dvc, git_dir):

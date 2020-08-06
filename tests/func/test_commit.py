@@ -2,7 +2,9 @@ from os import fspath
 
 import pytest
 
+from dvc.dependency.base import DependencyDoesNotExistError
 from dvc.dvcfile import PIPELINE_FILE
+from dvc.output.base import OutputDoesNotExistError
 from dvc.stage.exceptions import StageCommitError
 from dvc.utils.yaml import dump_yaml, load_yaml
 
@@ -84,6 +86,24 @@ def test_commit_no_exec(tmp_dir, dvc):
     assert dvc.status(stage.path)
     dvc.commit(stage.path, force=True)
     assert dvc.status(stage.path) == {}
+
+
+def test_commit_no_exec_missing_dep(tmp_dir, dvc):
+    stage = dvc.run(
+        name="my", cmd="mycmd", deps=["dep"], outs=["out"], no_exec=True
+    )
+    assert dvc.status(stage.path)
+
+    with pytest.raises(DependencyDoesNotExistError):
+        dvc.commit(stage.path, force=True)
+
+
+def test_commit_no_exec_missing_out(tmp_dir, dvc):
+    stage = dvc.run(name="my", cmd="mycmd", outs=["out"], no_exec=True)
+    assert dvc.status(stage.path)
+
+    with pytest.raises(OutputDoesNotExistError):
+        dvc.commit(stage.path, force=True)
 
 
 def test_commit_pipeline_stage(tmp_dir, dvc, run_copy):

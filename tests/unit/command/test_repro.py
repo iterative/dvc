@@ -15,6 +15,9 @@ default_arguments = {
     "recursive": False,
     "force_downstream": False,
     "experiment": False,
+    "queue": False,
+    "run_all": False,
+    "jobs": None,
 }
 
 
