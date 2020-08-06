@@ -4,7 +4,7 @@ import logging
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
-from dvc.prompt import path_input
+from dvc.prompt import ask
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class CmdCheckIgnore(CmdBase):
     def _interactive_mode(self):
         ret = 1
         while True:
-            target = path_input()
+            target = ask("")
             if target == "":
                 logger.info(
                     "empty string is not a valid pathspec. please use . "
