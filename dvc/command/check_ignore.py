@@ -42,7 +42,7 @@ class CmdCheckIgnore(CmdBase):
             if target == "":
                 logger.info(
                     "Empty string is not a valid pathspec. Please use . "
-                    "instead if you meant to match all paths"
+                    "instead if you meant to match all paths."
                 )
                 break
             if not self._check_one_file(target):
