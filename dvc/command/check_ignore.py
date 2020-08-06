@@ -67,7 +67,7 @@ class CmdCheckIgnore(CmdBase):
             raise DvcException("--non-matching is only valid with --details")
 
         if self.args.all and not self.args.details:
-            raise DvcException("--all is only valid with --details")
+            raise DvcException("`--all` is only valid with `--details`")
 
         if self.args.quiet and self.args.details:
             raise DvcException("cannot both --details and --quiet")
