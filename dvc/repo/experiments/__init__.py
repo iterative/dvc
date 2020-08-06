@@ -2,6 +2,8 @@ import logging
 import os
 import re
 import tempfile
+from collections import defaultdict
+from collections.abc import Mapping
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from contextlib import contextmanager
 from typing import Iterable, Optional
@@ -9,6 +11,7 @@ from typing import Iterable, Optional
 from funcy import cached_property
 
 from dvc.exceptions import DvcException
+from dvc.path_info import PathInfo
 from dvc.repo.experiments.executor import ExperimentExecutor, LocalExecutor
 from dvc.scm.git import Git
 from dvc.stage.serialize import to_lockfile
@@ -139,21 +142,39 @@ class Experiments:
         logger.debug("Checking out experiment commit '%s'", rev)
         self.scm.checkout(rev)
 
-    def _stash_exp(self, *args, **kwargs):
+    def _stash_exp(self, *args, params: Optional[dict] = None, **kwargs):
         """Stash changes from the current (parent) workspace as an experiment.
+
+        Args:
+            params: Optional dictionary of parameter values to be used.
+                Values take priority over any parameters specified in the
+                user's workspace.
         """
         rev = self.scm.get_rev()
+
+        # patch user's workspace into experiments clone
         tmp = tempfile.NamedTemporaryFile(delete=False).name
         try:
             self.repo.scm.repo.git.diff(patch=True, output=tmp)
             if os.path.getsize(tmp):
                 logger.debug("Patching experiment workspace")
                 self.scm.repo.git.apply(tmp)
-            else:
+            elif not params:
+                # experiment matches original baseline
                 raise UnchangedExperimentError(rev)
         finally:
             remove(tmp)
+
+        # update experiment params from command line
+        if params:
+            self._update_params(params)
+
+        # save additional repro command line arguments
         self._pack_args(*args, **kwargs)
+
+        # save experiment as a stash commit w/message containing baseline rev
+        # (stash commits are merge commits and do not contain a parent commit
+        # SHA)
         msg = f"{self.STASH_MSG_PREFIX}{rev}"
         self.scm.repo.git.stash("push", "-m", msg)
         return self.scm.resolve_rev("stash@{0}")
@@ -165,6 +186,36 @@ class Experiments:
     def _unpack_args(self, tree=None):
         args_file = os.path.join(self.exp_dvc.tmp_dir, self.PACKED_ARGS_FILE)
         return ExperimentExecutor.unpack_repro_args(args_file, tree=tree)
+
+    def _update_params(self, params: dict):
+        """Update experiment params files with the specified values."""
+        from dvc.utils.toml import dump_toml, parse_toml_for_update
+        from dvc.utils.yaml import dump_yaml, parse_yaml_for_update
+
+        logger.debug("Using experiment params '%s'", params)
+
+        # recursive dict update
+        def _update(dict_, other):
+            for key, value in other.items():
+                if isinstance(value, Mapping):
+                    dict_[key] = _update(dict_.get(key, {}), value)
+                else:
+                    dict_[key] = value
+            return dict_
+
+        loaders = defaultdict(lambda: parse_yaml_for_update)
+        loaders.update({".toml": parse_toml_for_update})
+        dumpers = defaultdict(lambda: dump_yaml)
+        dumpers.update({".toml": dump_toml})
+
+        for params_fname in params:
+            path = PathInfo(self.exp_dvc.root_dir) / params_fname
+            with self.exp_dvc.tree.open(path, "r") as fobj:
+                text = fobj.read()
+            suffix = path.suffix.lower()
+            data = loaders[suffix](text, path)
+            _update(data, params[params_fname])
+            dumpers[suffix](path, data)
 
     def _commit(self, exp_hash, check_exists=True, branch=True):
         """Commit stages as an experiment and return the commit SHA."""
@@ -207,7 +258,7 @@ class Experiments:
             )
         return results
 
-    def new(self, *args, workspace=True, **kwargs):
+    def new(self, *args, **kwargs):
         """Create a new experiment.
 
         Experiment will be reproduced and checked out into the user's
@@ -215,15 +266,11 @@ class Experiments:
         """
         rev = self.repo.scm.get_rev()
         self._scm_checkout(rev)
-        if workspace:
-            try:
-                stash_rev = self._stash_exp(*args, **kwargs)
-            except UnchangedExperimentError as exc:
-                logger.info("Reproducing existing experiment '%s'.", rev[:7])
-                raise exc
-        else:
-            # configure params via command line here
-            pass
+        try:
+            stash_rev = self._stash_exp(*args, **kwargs)
+        except UnchangedExperimentError as exc:
+            logger.info("Reproducing existing experiment '%s'.", rev[:7])
+            raise exc
         logger.debug(
             "Stashed experiment '%s' for future execution.", stash_rev[:7]
         )
@@ -365,8 +412,10 @@ class Experiments:
         tmp = tempfile.NamedTemporaryFile(delete=False).name
         self.scm.repo.head.commit.diff("HEAD~1", patch=True, output=tmp)
 
-        logger.debug("Stashing workspace changes.")
-        self.repo.scm.repo.git.stash("push")
+        dirty = self.repo.scm.is_dirty()
+        if dirty:
+            logger.debug("Stashing workspace changes.")
+            self.repo.scm.repo.git.stash("push")
 
         try:
             if os.path.getsize(tmp):
@@ -379,7 +428,8 @@ class Experiments:
             raise DvcException("failed to apply experiment changes.")
         finally:
             remove(tmp)
-            self._unstash_workspace()
+            if dirty:
+                self._unstash_workspace()
 
         if need_checkout:
             dvc_checkout(self.repo)

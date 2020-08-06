@@ -60,7 +60,7 @@ def reproduce(
     recursive=False,
     pipeline=False,
     all_pipelines=False,
-    **kwargs
+    **kwargs,
 ):
     from dvc.utils import parse_target
 
@@ -71,6 +71,7 @@ def reproduce(
         )
 
     experiment = kwargs.pop("experiment", False)
+    params = _parse_params(kwargs.pop("params", []))
     queue = kwargs.pop("queue", False)
     run_all = kwargs.pop("run_all", False)
     jobs = kwargs.pop("jobs", 1)
@@ -81,6 +82,7 @@ def reproduce(
                 target=target,
                 recursive=recursive,
                 all_pipelines=all_pipelines,
+                params=params,
                 queue=queue,
                 run_all=run_all,
                 jobs=jobs,
@@ -114,6 +116,31 @@ def reproduce(
         targets = self.collect(target, recursive=recursive, graph=active_graph)
 
     return _reproduce_stages(active_graph, targets, **kwargs)
+
+
+def _parse_params(path_params):
+    from flatten_json import unflatten
+    from yaml import safe_load, YAMLError
+    from dvc.dependency.param import ParamsDependency
+
+    ret = {}
+    for path_param in path_params:
+        path, _, params_str = path_param.rpartition(":")
+        # remove empty strings from params, on condition such as `-p "file1:"`
+        params = {}
+        for param_str in filter(bool, params_str.split(",")):
+            try:
+                # interpret value strings using YAML rules
+                key, value = param_str.split("=")
+                params[key] = safe_load(value)
+            except (ValueError, YAMLError):
+                raise InvalidArgumentError(
+                    f"Invalid param/value pair '{param_str}'"
+                )
+        if not path:
+            path = ParamsDependency.DEFAULT_PARAMS_FILE
+        ret[path] = unflatten(params, ".")
+    return ret
 
 
 def _reproduce_experiments(repo, run_all=False, jobs=1, **kwargs):
