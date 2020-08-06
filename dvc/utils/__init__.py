@@ -363,19 +363,22 @@ def resolve_output(inp, out):
 
 
 def resolve_paths(repo, out):
+    from urllib.parse import urlparse
     from ..dvcfile import DVC_FILE_SUFFIX
     from ..path_info import PathInfo
     from .fs import contains_symlink_up_to
 
-    abspath = os.path.abspath(out)
+    abspath = PathInfo(os.path.abspath(out))
     dirname = os.path.dirname(abspath)
     base = os.path.basename(os.path.normpath(out))
 
-    # NOTE: `out` might not exist yet, so using `dirname`(aka `wdir`) to check
-    # if it is a local path.
+    scheme = urlparse(out).scheme
+    if os.name == "nt" and scheme == abspath.drive[0].lower():
+        # urlparse interprets windows drive letters as URL scheme
+        scheme = ""
     if (
-        os.path.exists(dirname)  # out might not exist yet, so
-        and PathInfo(abspath).isin_or_eq(repo.root_dir)
+        not scheme
+        and abspath.isin_or_eq(repo.root_dir)
         and not contains_symlink_up_to(abspath, repo.root_dir)
     ):
         wdir = dirname

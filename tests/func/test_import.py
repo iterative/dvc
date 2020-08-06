@@ -9,6 +9,7 @@ from dvc.cache import Cache
 from dvc.config import NoRemoteError
 from dvc.dvcfile import Dvcfile
 from dvc.exceptions import DownloadError, PathMissingError
+from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.system import System
 from dvc.utils.fs import makedirs, remove
 
@@ -130,6 +131,28 @@ def test_import_file_from_dir(tmp_dir, scm, dvc, erepo_dir):
     )
     assert (tmp_dir / "X").read_text() == "foo"
     assert (tmp_dir / "X.dvc").exists()
+
+
+def test_import_file_from_dir_to_dir(tmp_dir, scm, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen({"dir": {"foo": "foo"}}, commit="create dir")
+
+    with pytest.raises(StagePathNotFoundError):
+        dvc.imp(
+            os.fspath(erepo_dir),
+            os.path.join("dir", "foo"),
+            out=os.path.join("dir", "foo"),
+        )
+
+    tmp_dir.gen({"dir": {}})
+    dvc.imp(
+        os.fspath(erepo_dir),
+        os.path.join("dir", "foo"),
+        out=os.path.join("dir", "foo"),
+    )
+    assert not (tmp_dir / "foo.dvc").exists()
+    assert (tmp_dir / "dir" / "foo").read_text() == "foo"
+    assert (tmp_dir / "dir" / "foo.dvc").exists()
 
 
 def test_import_non_cached(erepo_dir, tmp_dir, dvc, scm):
