@@ -61,7 +61,7 @@ class CmdCheckIgnore(CmdBase):
             raise DvcException("targets or --stdin needed")
 
         if self.args.stdin and self.args.targets:
-            raise DvcException("cannot have targets and --stdin both")
+            raise DvcException("cannot have both `targets` and `--stdin`")
 
         if self.args.non_matching and not self.args.details:
             raise DvcException("--non-matching is only valid with --details")
