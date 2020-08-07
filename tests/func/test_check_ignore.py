@@ -14,8 +14,7 @@ def test_check_ignore(tmp_dir, dvc, file, ret, output, caplog):
 
     assert main(["check-ignore", file]) == ret
     assert (file in caplog.text) is output
-    if not output:
-        assert caplog.text == ""
+    assert "Having any troubles?" not in caplog.text
 
 
 @pytest.mark.parametrize(
@@ -62,7 +61,7 @@ def test_check_ignore_non_matching(tmp_dir, dvc, non_matching, caplog):
         [],
     ],
 )
-def test_check_ignore_error_args_cases(tmp_dir, dvc, args):
+def test_check_ignore_error_args_cases(tmp_dir, dvc, args, caplog):
     assert main(["check-ignore"] + args) == 255
 
 
