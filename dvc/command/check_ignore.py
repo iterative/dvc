@@ -82,7 +82,9 @@ class CmdCheckIgnore(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    ADD_HELP = "Debug DVC ignore/exclude files"
+    ADD_HELP = (
+        "Check whether files or directories are excluded due to `.dvcignore`."
+    )
 
     parser = subparsers.add_parser(
         "check-ignore",
@@ -122,9 +124,6 @@ def add_parser(subparsers, parent_parser):
         "Only usable when `--details` is also employed",
     )
     parser.add_argument(
-        "targets",
-        nargs="*",
-        help="Exact or wildcard paths of files or directories to check "
-        "ignore patterns.",
+        "targets", nargs="*", help="File or directory paths to check",
     ).complete = completion.FILE
     parser.set_defaults(func=CmdCheckIgnore)
