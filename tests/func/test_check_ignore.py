@@ -61,7 +61,7 @@ def test_check_ignore_non_matching(tmp_dir, dvc, non_matching, caplog):
         [],
     ],
 )
-def test_check_ignore_error_args_cases(tmp_dir, dvc, args, caplog):
+def test_check_ignore_error_args_cases(tmp_dir, dvc, args):
     assert main(["check-ignore"] + args) == 255
 
 
