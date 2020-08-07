@@ -85,7 +85,7 @@ def main(argv=None):  # noqa: C901
 
     try:
         if ret != 0 and (
-            ret != 1 and getattr(args, "cmd", "") != "check-ignore"
+            ret != 1 or getattr(args, "cmd", "") != "check-ignore"
         ):
             logger.info(FOOTER)
 
