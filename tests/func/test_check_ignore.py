@@ -14,6 +14,8 @@ def test_check_ignore(tmp_dir, dvc, file, ret, output, caplog):
 
     assert main(["check-ignore", file]) == ret
     assert (file in caplog.text) is output
+    if not output:
+        assert caplog.text == ""
 
 
 @pytest.mark.parametrize(
