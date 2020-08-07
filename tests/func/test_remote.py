@@ -4,7 +4,6 @@ import stat
 
 import configobj
 import pytest
-from funcy import first
 from mock import patch
 
 from dvc.config import Config
@@ -424,8 +423,12 @@ def test_push_incomplete_dir(tmp_dir, dvc, mocker, local_remote):
     used = stage.get_used_cache(remote=remote)
 
     # remove one of the cache files for directory
-    file_hash = first(used.child_keys(cache.tree.scheme, dir_hash))
-    remove(cache.tree.hash_to_path_info(file_hash))
+    file_hashes = list(used.child_keys(cache.tree.scheme, dir_hash))
+    remove(cache.tree.hash_to_path_info(file_hashes[0]))
 
     dvc.push()
     assert not remote.tree.exists(remote.tree.hash_to_path_info(dir_hash))
+    assert not remote.tree.exists(
+        remote.tree.hash_to_path_info(file_hashes[0])
+    )
+    assert remote.tree.exists(remote.tree.hash_to_path_info(file_hashes[1]))
