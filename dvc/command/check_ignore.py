@@ -41,7 +41,7 @@ class CmdCheckIgnore(CmdBase):
             target = ask("")
             if target == "":
                 logger.info(
-                    "Empty string is not a valid pathspec. Please use . "
+                    "An empty string is not a valid path. Please use . "
                     "instead if you meant to match all paths."
                 )
                 break
@@ -101,27 +101,26 @@ def add_parser(subparsers, parent_parser):
         help="Show the exclude pattern together with each target path.",
     )
     parser.add_argument(
+        "-a",
+        "--all",
+        action="store_true",
+        default=False,
+        help="Include the target paths which don’t match any pattern "
+        "in the `--details` list.",
+    )
+    parser.add_argument(
         "-n",
         "--non-matching",
         action="store_true",
         default=False,
-        help="Show the target paths which don’t match any pattern. "
-        "Only usable when `--details` is also employed",
+        help="Include the target paths which don’t match any pattern "
+        "in the `--details` list.",
     )
     parser.add_argument(
         "--stdin",
         action="store_true",
         default=False,
-        help="Read pathnames from the standard input, one per line, "
-        "instead of from the command-line.",
-    )
-    parser.add_argument(
-        "-a",
-        "--all",
-        action="store_true",
-        default=False,
-        help="Show all of the patterns match the target paths. "
-        "Only usable when `--details` is also employed",
+        help="Read paths from standard input instead of providing `targets`.",
     )
     parser.add_argument(
         "targets", nargs="*", help="File or directory paths to check",
