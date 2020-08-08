@@ -31,7 +31,17 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     get_parser.add_argument(
-        "url", help="See `dvc import-url -h` for full list of supported URLs."
+        "url",
+        help="Location of the data to download. Supported URLs:\n"
+        "/absolute/path/to/file/or/dir\n"
+        "relative/path/to/file/or/dir\n"
+        "C:\\\\path\\to\\file\\or\\dir\n"
+        "https://example.com/path/to/file\n"
+        "s3://bucket/key/path\n"
+        "gs://bucket/path/to/file/or/dir\n"
+        "hdfs://example.com/path/to/file\n"
+        "ssh://example.com/absolute/path/to/file/or/dir\n"
+        "remote://remote_name/path/to/file/or/dir (see `dvc remote`)",
     )
     get_parser.add_argument(
         "out", nargs="?", help="Destination path to put data to.",
