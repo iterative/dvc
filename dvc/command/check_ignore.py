@@ -98,7 +98,7 @@ def add_parser(subparsers, parent_parser):
         "--details",
         action="store_true",
         default=False,
-        help="Show the exclude pattern together with each target path.",
+        help="Show the exclude patterns along with each target path.",
     )
     parser.add_argument(
         "-a",
