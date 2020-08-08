@@ -3,6 +3,7 @@ from urllib.parse import urlparse
 
 import dvc.output as output
 from dvc.dependency.azure import AzureDependency
+from dvc.dependency.base import BaseDependency
 from dvc.dependency.gs import GSDependency
 from dvc.dependency.hdfs import HDFSDependency
 from dvc.dependency.http import HTTPDependency
@@ -49,12 +50,15 @@ del SCHEMA[BaseOutput.PARAM_CACHE]
 del SCHEMA[BaseOutput.PARAM_METRIC]
 SCHEMA.update(RepoDependency.REPO_SCHEMA)
 SCHEMA.update(ParamsDependency.PARAM_SCHEMA)
+SCHEMA.update({BaseDependency.PARAM_FILTER: str})
 
 
 def _get(stage, p, info):
     if isinstance(p, dict):
-        info.update(p)
-        p = info.pop("path", None)
+        p = list(p.items())
+        assert len(p) == 1
+        p, extra_info = p[0]  # PARAM_FILTER
+        info.update(extra_info)
     parsed = urlparse(p) if p else None
     if parsed and parsed.scheme == "remote":
         tree = get_cloud_tree(stage.repo, name=parsed.netloc)

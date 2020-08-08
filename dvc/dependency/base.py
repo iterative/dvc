@@ -20,6 +20,7 @@ class DependencyIsStageFileError(DvcException):
 
 class BaseDependency:
     IS_DEPENDENCY = True
+    PARAM_FILTER = "cmd"
 
     DoesNotExistError = DependencyDoesNotExistError
     IsNotFileOrDirError = DependencyIsNotFileOrDirError
