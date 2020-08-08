@@ -21,7 +21,6 @@ DATA_SCHEMA = {
     **CHECKSUMS_SCHEMA,
     Required(BaseOutput.PARAM_PATH): str,
     Optional(BaseOutput.PARAM_FILTER): str,
-    Optional(BaseOutput.PARAM_FILTER_CHECKSUM): str,
 }
 LOCK_FILE_STAGE_SCHEMA = {
     Required(StageParams.PARAM_CMD): str,
@@ -57,13 +56,7 @@ SINGLE_PIPELINE_STAGE_SCHEMA = {
         StageParams.PARAM_CMD: str,
         Optional(StageParams.PARAM_WDIR): str,
         Optional(StageParams.PARAM_DEPS): [
-            Any(
-                str,
-                {
-                    Required(BaseOutput.PARAM_PATH): str,
-                    Optional(BaseOutput.PARAM_FILTER): str,
-                },
-            )
+            Any(str, {str: {BaseOutput.PARAM_FILTER: str}})
         ],
         Optional(StageParams.PARAM_PARAMS): [
             Any(str, PARAM_PSTAGE_NON_DEFAULT_SCHEMA)

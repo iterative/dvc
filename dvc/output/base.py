@@ -52,8 +52,7 @@ class BaseOutput:
 
     PARAM_PATH = "path"
     PARAM_CACHE = "cache"
-    PARAM_FILTER = "udf"
-    PARAM_FILTER_CHECKSUM = "udf_md5"
+    PARAM_FILTER = "cmd"
     PARAM_METRIC = "metric"
     PARAM_METRIC_TYPE = "type"
     PARAM_METRIC_XPATH = "xpath"
