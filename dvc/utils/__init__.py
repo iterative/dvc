@@ -45,7 +45,7 @@ def _fobj_md5(fobj, hash_md5, binary, progress_func=None):
             progress_func(len(data))
 
 
-def file_md5(fname, tree=None, cmd=None):
+def file_md5(fname, tree=None, cmd="cat"):
     """ get the (md5 hexdigest, md5 digest) of a file """
     from dvc.progress import Tqdm
     from dvc.istextfile import istextfile
@@ -61,7 +61,7 @@ def file_md5(fname, tree=None, cmd=None):
 
     if exists_func(fname):
         filtered = None
-        if cmd:
+        if cmd != "cat":
             p = subprocess.Popen(
                 cmd.split() + [fname],
                 stdout=subprocess.PIPE,
@@ -69,8 +69,10 @@ def file_md5(fname, tree=None, cmd=None):
             )
             out, err = p.communicate()
             if p.returncode != 0:
+                logger.error("filtering:%s %s", cmd, fname)
                 raise RuntimeError(err)
             with tempfile.NamedTemporaryFile(delete=False) as fobj:
+                logger.debug("filtering:%s %s > %s", cmd, fname, fobj.name)
                 fobj.write(out)
                 fname = filtered = fobj.name
         hash_md5 = hashlib.md5()
