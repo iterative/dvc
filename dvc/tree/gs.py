@@ -182,7 +182,8 @@ class GSTree(BaseTree):
         to_bucket = self.gs.bucket(to_info.bucket)
         from_bucket.copy_blob(blob, to_bucket, new_name=to_info.path)
 
-    def get_file_hash(self, path_info):
+    def get_file_hash(self, path_info, cmd=None):
+        assert not cmd, NotImplementedError
         import base64
         import codecs
 

@@ -125,7 +125,8 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
     def exists(self, path_info, use_dvcignore=True):
         return bool(self.request("HEAD", path_info.url))
 
-    def get_file_hash(self, path_info):
+    def get_file_hash(self, path_info, cmd=None):
+        assert not cmd, NotImplementedError
         url = path_info.url
         headers = self.request("HEAD", url).headers
         etag = headers.get("ETag") or headers.get("Content-MD5")

@@ -573,7 +573,7 @@ class GDriveTree(BaseTree):
         item_id = self._get_item_id(path_info)
         self.gdrive_delete_file(item_id)
 
-    def get_file_hash(self, path_info):
+    def get_file_hash(self, path_info, cmd=None):
         raise NotImplementedError
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):

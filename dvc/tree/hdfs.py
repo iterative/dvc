@@ -161,7 +161,8 @@ class HDFSTree(BaseTree):
         assert match is not None
         return match.group(gname)
 
-    def get_file_hash(self, path_info):
+    def get_file_hash(self, path_info, cmd=None):
+        assert not cmd, NotImplementedError
         # NOTE: pyarrow doesn't support checksum, so we need to use hadoop
         regex = r".*\t.*\t(?P<checksum>.*)"
         stdout = self.hadoop_fs(

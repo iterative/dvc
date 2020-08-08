@@ -317,7 +317,8 @@ class S3Tree(BaseTree):
         if etag != cached_etag:
             raise ETagMismatchError(etag, cached_etag)
 
-    def get_file_hash(self, path_info):
+    def get_file_hash(self, path_info, cmd=None):
+        assert not cmd, NotImplementedError
         return self.get_etag(self.s3, path_info.bucket, path_info.path)
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):

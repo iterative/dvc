@@ -226,7 +226,8 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
     def isexec(self, path):  # pylint: disable=unused-argument
         return False
 
-    def get_file_hash(self, path_info):
+    def get_file_hash(self, path_info, cmd=None):
+        assert not cmd, NotImplementedError
         outs = self._find_outs(path_info, strict=False)
         if len(outs) != 1:
             raise OutputNotFoundError
@@ -404,7 +405,7 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
             for fname in files:
                 yield PathInfo(root) / fname
 
-    def get_file_hash(self, path_info):
+    def get_file_hash(self, path_info, cmd=None):
         """Return file checksum for specified path.
 
         If path_info is a DVC out, the pre-computed checksum for the file
@@ -418,7 +419,7 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
                 return self.dvctree.get_file_hash(path_info)
             except OutputNotFoundError:
                 pass
-        return file_md5(path_info, self)[0]
+        return file_md5(path_info, self, cmd=cmd)[0]
 
     def copytree(self, top, dest):
         top = PathInfo(top)

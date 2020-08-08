@@ -139,7 +139,8 @@ class AzureTree(BaseTree):
         logger.debug(f"Removing {path_info}")
         self.blob_service.delete_blob(path_info.bucket, path_info.path)
 
-    def get_file_hash(self, path_info):
+    def get_file_hash(self, path_info, cmd=None):
+        assert not cmd, NotImplementedError
         return self.get_etag(path_info)
 
     def _upload(
