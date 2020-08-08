@@ -1,7 +1,6 @@
 from voluptuous import Any, Optional, Required, Schema
 
 from dvc import dependency, output
-from dvc.dependency.base import BaseDependency
 from dvc.output import CHECKSUMS_SCHEMA, BaseOutput
 from dvc.stage.params import StageParams
 
@@ -22,7 +21,7 @@ DATA_SCHEMA = {**CHECKSUMS_SCHEMA, Required(BaseOutput.PARAM_PATH): str}
 LOCK_FILE_STAGE_SCHEMA = {
     Required(StageParams.PARAM_CMD): str,
     StageParams.PARAM_DEPS: [
-        {**DATA_SCHEMA, Optional(BaseDependency.PARAM_FILTER): str}
+        {**DATA_SCHEMA, Optional(BaseOutput.PARAM_FILTER): str}
     ],
     StageParams.PARAM_PARAMS: {str: {str: object}},
     StageParams.PARAM_OUTS: [DATA_SCHEMA],
@@ -55,7 +54,7 @@ SINGLE_PIPELINE_STAGE_SCHEMA = {
         StageParams.PARAM_CMD: str,
         Optional(StageParams.PARAM_WDIR): str,
         Optional(StageParams.PARAM_DEPS): [
-            Any(str, {str: {BaseDependency.PARAM_FILTER: str}})
+            Any(str, {str: {BaseOutput.PARAM_FILTER: str}})
         ],
         Optional(StageParams.PARAM_PARAMS): [
             Any(str, PARAM_PSTAGE_NON_DEFAULT_SCHEMA)

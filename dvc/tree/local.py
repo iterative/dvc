@@ -30,7 +30,6 @@ class LocalTree(BaseTree):
     PATH_CLS = PathInfo
     PARAM_CHECKSUM = "md5"
     PARAM_PATH = "path"
-    PARAM_FILTER = "cmd"
     TRAVERSE_PREFIX_LEN = 2
     UNPACKED_DIR_SUFFIX = ".unpacked"
 
@@ -298,8 +297,8 @@ class LocalTree(BaseTree):
 
         return stat.S_IMODE(mode) == self.CACHE_MODE
 
-    def get_file_hash(self, path_info):
-        return file_md5(path_info)[0]
+    def get_file_hash(self, path_info, cmd=None):
+        return file_md5(path_info, cmd=cmd)[0]
 
     @staticmethod
     def getsize(path_info):

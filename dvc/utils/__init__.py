@@ -7,7 +7,9 @@ import logging
 import math
 import os
 import re
+import subprocess
 import sys
+import tempfile
 import time
 
 import colorama
@@ -43,7 +45,7 @@ def _fobj_md5(fobj, hash_md5, binary, progress_func=None):
             progress_func(len(data))
 
 
-def file_md5(fname, tree=None):
+def file_md5(fname, tree=None, cmd=None):
     """ get the (md5 hexdigest, md5 digest) of a file """
     from dvc.progress import Tqdm
     from dvc.istextfile import istextfile
@@ -58,6 +60,19 @@ def file_md5(fname, tree=None):
         open_func = open
 
     if exists_func(fname):
+        filtered = None
+        if cmd:
+            p = subprocess.Popen(
+                cmd.split() + [fname],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            out, err = p.communicate()
+            if p.returncode != 0:
+                raise RuntimeError(err)
+            with tempfile.NamedTemporaryFile(delete=False) as fobj:
+                fobj.write(out)
+                fname = filtered = fobj.name
         hash_md5 = hashlib.md5()
         binary = not istextfile(fname, tree=tree)
         size = stat_func(fname).st_size
@@ -80,6 +95,10 @@ def file_md5(fname, tree=None):
             with open_func(fname, "rb") as fobj:
                 _fobj_md5(fobj, hash_md5, binary, pbar.update)
 
+        if filtered is not None:
+            from dvc.utils.fs import remove
+
+            remove(filtered)
         return (hash_md5.hexdigest(), hash_md5.digest())
 
     return (None, None)

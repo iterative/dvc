@@ -52,6 +52,7 @@ class BaseOutput:
 
     PARAM_PATH = "path"
     PARAM_CACHE = "cache"
+    PARAM_FILTER = "cmd"
     PARAM_METRIC = "metric"
     PARAM_METRIC_TYPE = "type"
     PARAM_METRIC_XPATH = "xpath"
@@ -177,8 +178,7 @@ class BaseOutput:
         self.info[self.tree.PARAM_CHECKSUM] = checksum
 
     @property
-    def udf(self):
-        logger.warning("udf:%s info=%s", self.path_info, self.info)
+    def filter_cmd(self):
         return self.info.get(self.PARAM_FILTER)
 
     def get_checksum(self):
@@ -193,7 +193,7 @@ class BaseOutput:
         return self.tree.exists(self.path_info)
 
     def save_info(self):
-        return self.tree.save_info(self.path_info)
+        return self.tree.save_info(self.path_info, cmd=self.filter_cmd)
 
     def changed_checksum(self):
         return self.checksum != self.get_checksum()

@@ -3,7 +3,6 @@ from urllib.parse import urlparse
 
 import dvc.output as output
 from dvc.dependency.azure import AzureDependency
-from dvc.dependency.base import BaseDependency
 from dvc.dependency.gs import GSDependency
 from dvc.dependency.hdfs import HDFSDependency
 from dvc.dependency.http import HTTPDependency
@@ -50,7 +49,7 @@ del SCHEMA[BaseOutput.PARAM_CACHE]
 del SCHEMA[BaseOutput.PARAM_METRIC]
 SCHEMA.update(RepoDependency.REPO_SCHEMA)
 SCHEMA.update(ParamsDependency.PARAM_SCHEMA)
-SCHEMA.update({BaseDependency.PARAM_FILTER: str})
+SCHEMA.update({BaseOutput.PARAM_FILTER: str})
 
 
 def _get(stage, p, info):

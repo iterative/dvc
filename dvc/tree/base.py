@@ -236,7 +236,7 @@ class BaseTree:
             return False
         return hash_.endswith(cls.CHECKSUM_DIR_SUFFIX)
 
-    def get_hash(self, path_info, **kwargs):
+    def get_hash(self, path_info, cmd=None, **kwargs):
         assert path_info and (
             isinstance(path_info, str) or path_info.scheme == self.scheme
         )
@@ -265,14 +265,14 @@ class BaseTree:
         if self.isdir(path_info):
             hash_ = self.get_dir_hash(path_info, **kwargs)
         else:
-            hash_ = self.get_file_hash(path_info)
+            hash_ = self.get_file_hash(path_info, cmd=cmd)
 
         if hash_ and self.exists(path_info):
             self.state.save(path_info, hash_)
 
         return hash_
 
-    def get_file_hash(self, path_info):
+    def get_file_hash(self, path_info, cmd=None):
         raise NotImplementedError
 
     def get_dir_hash(self, path_info, **kwargs):
