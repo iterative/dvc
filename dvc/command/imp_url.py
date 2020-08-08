@@ -42,7 +42,7 @@ def add_parser(subparsers, parent_parser):
     )
     import_parser.add_argument(
         "url",
-        help="Supported urls:\n"
+        help="Supported URLs:\n"
         "/path/to/file\n"
         "/path/to/directory\n"
         "C:\\\\path\\to\\file\n"

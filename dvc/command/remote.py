@@ -172,7 +172,7 @@ def add_parser(subparsers, parent_parser):
     remote_add_parser.add_argument("name", help="Name of the remote")
     remote_add_parser.add_argument(
         "url",
-        help="URL. See full list of supported urls at {}".format(
+        help="Remote location. See full list of supported URLs at {}".format(
             format_link("https://man.dvc.org/remote")
         ),
     )
@@ -201,7 +201,7 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     remote_default_parser.add_argument(
-        "name", nargs="?", help="Name of the remote."
+        "name", nargs="?", help="Name of the remote"
     )
     remote_default_parser.add_argument(
         "-u",
@@ -220,7 +220,7 @@ def add_parser(subparsers, parent_parser):
         help=REMOTE_MODIFY_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    remote_modify_parser.add_argument("name", help="Name of the remote.")
+    remote_modify_parser.add_argument("name", help="Name of the remote")
     remote_modify_parser.add_argument(
         "option", help="Name of the option to modify."
     )
