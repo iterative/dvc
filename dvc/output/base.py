@@ -318,6 +318,8 @@ class BaseOutput:
         if self.persist:
             ret[self.PARAM_PERSIST] = self.persist
 
+        if self.filter_cmd:
+            ret[self.PARAM_FILTER] = self.filter_cmd
         return ret
 
     def verify_metric(self):
