@@ -29,6 +29,7 @@ class LocalTree(BaseTree):
     scheme = Schemes.LOCAL
     PATH_CLS = PathInfo
     PARAM_CHECKSUM = "md5"
+    PARAM_FILTER = "cmd"
     PARAM_PATH = "path"
     TRAVERSE_PREFIX_LEN = 2
     UNPACKED_DIR_SUFFIX = ".unpacked"

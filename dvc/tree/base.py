@@ -63,6 +63,7 @@ class BaseTree:
     CACHE_MODE = None
     SHARED_MODE_MAP = {None: (None, None), "group": (None, None)}
     PARAM_CHECKSUM = None
+    PARAM_FILTER = None
 
     state = StateNoop()
 
@@ -293,8 +294,11 @@ class BaseTree:
 
         return "".join(parts)
 
-    def save_info(self, path_info, **kwargs):
-        return {self.PARAM_CHECKSUM: self.get_hash(path_info, **kwargs)}
+    def save_info(self, path_info, cmd=None, **kwargs):
+        ret = {self.PARAM_CHECKSUM: self.get_hash(path_info, **kwargs)}
+        if cmd:
+            ret[self.PARAM_FILTER] = cmd
+        return ret
 
     def _calculate_hashes(self, file_infos):
         file_infos = list(file_infos)
