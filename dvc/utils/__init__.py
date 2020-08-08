@@ -45,8 +45,10 @@ def _fobj_md5(fobj, hash_md5, binary, progress_func=None):
             progress_func(len(data))
 
 
-def file_md5(fname, tree=None, cmd="cat"):
-    """ get the (md5 hexdigest, md5 digest) of a file """
+def file_md5(fname, tree=None, cmd=None):
+    """
+    Returns (md5_hexdigest, md5_digest) of `cmd file` (default: `cmd=cat`)
+    """
     from dvc.progress import Tqdm
     from dvc.istextfile import istextfile
 
@@ -61,7 +63,7 @@ def file_md5(fname, tree=None, cmd="cat"):
 
     if exists_func(fname):
         filtered = None
-        if cmd != "cat":
+        if cmd:
             p = subprocess.Popen(
                 cmd.split() + [fname],
                 stdout=subprocess.PIPE,
