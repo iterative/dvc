@@ -45,6 +45,28 @@ def test_fetch(mock_get, updater):
 
 
 @pytest.mark.parametrize(
+    "core, result",
+    [
+        ({}, True),
+        ({"check_update": "true"}, True),
+        ({"check_update": "false"}, False),
+    ],
+)
+def test_is_enabled(dvc, updater, core, result):
+    with dvc.config.edit("local") as conf:
+        conf["core"] = core
+    assert result == updater.is_enabled()
+
+
+@pytest.mark.parametrize("result", [True, False])
+@mock.patch("dvc.updater.Updater._check")
+def test_check_update_respect_config(mock_check, result, updater, mocker):
+    mocker.patch.object(updater, "is_enabled", return_value=result)
+    updater.check()
+    assert result == mock_check.called
+
+
+@pytest.mark.parametrize(
     "current,latest,notify",
     [
         ("0.0.2", "0.0.2", False),

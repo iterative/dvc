@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_PAGER = "less"
-DEFAULT_PAGER_FORMATTED = "{} --chop-long-lines --clear-screen".format(
-    DEFAULT_PAGER
+DEFAULT_PAGER_FORMATTED = (
+    f"{DEFAULT_PAGER} --chop-long-lines --clear-screen --RAW-CONTROL-CHARS"
 )
 
 

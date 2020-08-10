@@ -84,7 +84,9 @@ def main(argv=None):  # noqa: C901
         ret = 255
 
     try:
-        if ret != 0:
+        if ret != 0 and (
+            ret != 1 or getattr(args, "cmd", "") != "check-ignore"
+        ):
             logger.info(FOOTER)
 
         if analytics.is_enabled():

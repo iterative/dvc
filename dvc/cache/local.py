@@ -255,6 +255,7 @@ class LocalCache(CloudCache):
         path_infos = []
         names = []
         hashes = []
+        missing = []
         for md5, info in Tqdm(
             status_info.items(), desc="Analysing status", unit="file"
         ):
@@ -263,6 +264,8 @@ class LocalCache(CloudCache):
                 path_infos.append(remote.tree.hash_to_path_info(md5))
                 names.append(info["name"])
                 hashes.append(md5)
+            elif info["status"] == STATUS_MISSING:
+                missing.append(md5)
 
         if download:
             to_infos = cache
@@ -271,7 +274,7 @@ class LocalCache(CloudCache):
             to_infos = path_infos
             from_infos = cache
 
-        return from_infos, to_infos, names, hashes
+        return (from_infos, to_infos, names, hashes), missing
 
     def _process(
         self,
@@ -312,8 +315,10 @@ class LocalCache(CloudCache):
             download=download,
         )
 
-        dir_plans = self._get_plans(download, remote, dir_status, status)
-        file_plans = self._get_plans(download, remote, file_status, status)
+        dir_plans, _ = self._get_plans(download, remote, dir_status, status)
+        file_plans, missing_files = self._get_plans(
+            download, remote, file_status, status
+        )
 
         total = len(dir_plans[0]) + len(file_plans[0])
         if total == 0:
@@ -339,19 +344,32 @@ class LocalCache(CloudCache):
                         )
                     dir_futures = {}
                     for from_info, to_info, name, dir_hash in zip(*dir_plans):
-                        wait_futures = {
-                            future
-                            for file_hash, future in file_futures.items()
-                            if file_hash in dir_contents[dir_hash]
-                        }
-                        dir_futures[dir_hash] = executor.submit(
-                            self._dir_upload,
-                            func,
-                            wait_futures,
-                            from_info,
-                            to_info,
-                            name,
-                        )
+                        # if for some reason a file contained in this dir is
+                        # missing both locally and in the remote, we want to
+                        # push whatever file content we have, but should not
+                        # push .dir file
+                        for file_hash in missing_files:
+                            if file_hash in dir_contents[dir_hash]:
+                                logger.debug(
+                                    "directory '%s' contains missing files,"
+                                    "skipping .dir file upload",
+                                    name,
+                                )
+                                break
+                        else:
+                            wait_futures = {
+                                future
+                                for file_hash, future in file_futures.items()
+                                if file_hash in dir_contents[dir_hash]
+                            }
+                            dir_futures[dir_hash] = executor.submit(
+                                self._dir_upload,
+                                func,
+                                wait_futures,
+                                from_info,
+                                to_info,
+                                name,
+                            )
                     fails = sum(
                         future.result()
                         for future in concat(

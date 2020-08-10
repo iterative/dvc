@@ -412,3 +412,23 @@ def test_protect_local_remote(tmp_dir, dvc, local_remote):
 
     assert os.path.exists(remote_cache_file)
     assert stat.S_IMODE(os.stat(remote_cache_file).st_mode) == 0o444
+
+
+def test_push_incomplete_dir(tmp_dir, dvc, mocker, local_remote):
+    (stage,) = tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}})
+    remote = dvc.cloud.get_remote("upstream")
+
+    cache = dvc.cache.local
+    dir_hash = stage.outs[0].checksum
+    used = stage.get_used_cache(remote=remote)
+
+    # remove one of the cache files for directory
+    file_hashes = list(used.child_keys(cache.tree.scheme, dir_hash))
+    remove(cache.tree.hash_to_path_info(file_hashes[0]))
+
+    dvc.push()
+    assert not remote.tree.exists(remote.tree.hash_to_path_info(dir_hash))
+    assert not remote.tree.exists(
+        remote.tree.hash_to_path_info(file_hashes[0])
+    )
+    assert remote.tree.exists(remote.tree.hash_to_path_info(file_hashes[1]))

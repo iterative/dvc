@@ -38,12 +38,11 @@ class CmdCheckIgnore(CmdBase):
     def _interactive_mode(self):
         ret = 1
         while True:
-            target = ask("")
+            try:
+                target = ask("")
+            except (KeyboardInterrupt, EOFError):
+                break
             if target == "":
-                logger.info(
-                    "An empty string is not a valid path. Please use . "
-                    "instead if you meant to match all paths."
-                )
                 break
             if not self._check_one_file(target):
                 ret = 0
