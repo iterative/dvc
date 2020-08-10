@@ -136,12 +136,6 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
                 "Content-MD5 header for '{url}'".format(url=url)
             )
 
-        if etag.startswith("W/"):
-            raise DvcException(
-                "Weak ETags are not supported."
-                " (Etag: '{etag}', URL: '{url}')".format(etag=etag, url=url)
-            )
-
         return etag
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
