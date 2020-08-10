@@ -74,6 +74,8 @@ disable_other_loggers()
 
 
 class TmpDir(pathlib.Path):
+    scheme = "local"
+
     def __new__(cls, *args, **kwargs):
         if cls is TmpDir:
             cls = (  # pylint: disable=self-cls-assignment
@@ -87,7 +89,7 @@ class TmpDir(pathlib.Path):
         self._init()
         return self
 
-    def init(self, *, scm=False, dvc=False):
+    def init(self, *, scm=False, dvc=False, subdir=False):
         from dvc.repo import Repo
         from dvc.scm.git import Git
 
@@ -100,7 +102,9 @@ class TmpDir(pathlib.Path):
             git_init(str_path)
         if dvc:
             self.dvc = Repo.init(
-                str_path, no_scm=not scm and not hasattr(self, "scm")
+                str_path,
+                no_scm=not scm and not hasattr(self, "scm"),
+                subdir=subdir,
             )
         if scm:
             self.scm = self.dvc.scm if hasattr(self, "dvc") else Git(str_path)
@@ -123,10 +127,10 @@ class TmpDir(pathlib.Path):
         if isinstance(struct, (str, bytes, pathlib.PurePath)):
             struct = {struct: text}
 
-        self._gen(struct)
-        return struct.keys()
+        return self._gen(struct)
 
     def _gen(self, struct, prefix=None):
+        paths = []
         for name, contents in struct.items():
             path = (prefix or self) / name
 
@@ -141,6 +145,8 @@ class TmpDir(pathlib.Path):
                     path.write_bytes(contents)
                 else:
                     path.write_text(contents, encoding="utf-8")
+            paths.append(path)
+        return paths
 
     def dvc_gen(self, struct, text="", commit=None):
         paths = self.gen(struct, text)
@@ -249,10 +255,10 @@ class PosixTmpDir(TmpDir, pathlib.PurePosixPath):
 
 @pytest.fixture(scope="session")
 def make_tmp_dir(tmp_path_factory, request):
-    def make(name, *, scm=False, dvc=False):
+    def make(name, *, scm=False, dvc=False, **kwargs):
         path = tmp_path_factory.mktemp(name) if isinstance(name, str) else name
         new_dir = TmpDir(path)
-        new_dir.init(scm=scm, dvc=dvc)
+        new_dir.init(scm=scm, dvc=dvc, **kwargs)
         request.addfinalizer(new_dir.close)
         return new_dir
 

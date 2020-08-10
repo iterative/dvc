@@ -86,18 +86,26 @@ class LocalTree(BaseTree):
 
         return not self.dvcignore.is_ignored_file(path_info)
 
-    def isdir(self, path_info):
+    def isdir(
+        self, path_info, use_dvcignore=True
+    ):  # pylint: disable=arguments-differ
         if not os.path.isdir(path_info):
             return False
-
-        return not self.dvcignore.is_ignored_dir(path_info)
+        return not (use_dvcignore and self.dvcignore.is_ignored_dir(path_info))
 
     def iscopy(self, path_info):
         return not (
             System.is_symlink(path_info) or System.is_hardlink(path_info)
         )
 
-    def walk(self, top, topdown=True, onerror=None, use_dvcignore=True):
+    def walk(
+        self,
+        top,
+        topdown=True,
+        onerror=None,
+        use_dvcignore=True,
+        ignore_subrepos=True,
+    ):
         """Directory tree generator.
 
         See `os.walk` for the docs. Differences:
@@ -108,7 +116,10 @@ class LocalTree(BaseTree):
         ):
             if use_dvcignore:
                 dirs[:], files[:] = self.dvcignore(
-                    os.path.abspath(root), dirs, files
+                    os.path.abspath(root),
+                    dirs,
+                    files,
+                    ignore_subrepos=ignore_subrepos,
                 )
 
             yield os.path.normpath(root), dirs, files

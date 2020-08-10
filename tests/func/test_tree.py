@@ -1,4 +1,5 @@
 import os
+from operator import itemgetter
 from os.path import join
 
 from dvc.path_info import PathInfo
@@ -245,3 +246,25 @@ def test_cleantree_subrepo(tmp_dir, dvc, scm, monkeypatch):
     assert subrepo.tree.isfile(path / "foo")
     assert subrepo.tree.exists(path / "dir")
     assert subrepo.tree.isdir(path / "dir")
+
+
+def test_walk_dont_ignore_subrepos(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen({"foo": "foo"}, commit="add foo")
+    subrepo_dir = tmp_dir / "subdir"
+    subrepo_dir.mkdir()
+    with subrepo_dir.chdir():
+        Repo.init(subdir=True)
+    scm.add(["subdir"])
+    scm.commit("Add subrepo")
+
+    dvc_tree = dvc.tree
+    scm_tree = scm.get_tree("HEAD", use_dvcignore=True)
+    path = os.fspath(tmp_dir)
+    get_dirs = itemgetter(1)
+
+    assert get_dirs(next(dvc_tree.walk(path))) == []
+    assert get_dirs(next(scm_tree.walk(path))) == []
+
+    kw = dict(ignore_subrepos=False)
+    assert get_dirs(next(dvc_tree.walk(path, **kw))) == ["subdir"]
+    assert get_dirs(next(scm_tree.walk(path, **kw))) == ["subdir"]

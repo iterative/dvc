@@ -1,4 +1,15 @@
+import os
 from collections.abc import Mapping
+
+from pygtrie import StringTrie as _StringTrie
+
+
+class PathStringTrie(_StringTrie):
+    """Trie based on platform-dependent separator for pathname components."""
+
+    def __init__(self, *args, **kwargs):
+        kwargs["separator"] = os.sep
+        super().__init__(*args, **kwargs)
 
 
 def apply_diff(src, dest):

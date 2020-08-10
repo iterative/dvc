@@ -182,6 +182,28 @@ def test_ignore_subrepo(tmp_dir, scm, dvc):
         assert subrepo.tree.exists(PathInfo(subrepo_dir / "foo"))
 
 
+def test_ignore_resurface_subrepo(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen({"foo": "foo"}, commit="add foo")
+    subrepo_dir = tmp_dir / "subdir"
+    subrepo_dir.mkdir()
+    with subrepo_dir.chdir():
+        Repo.init(subdir=True)
+
+    dvc.tree.__dict__.pop("dvcignore", None)
+
+    dirs = ["subdir"]
+    files = ["foo"]
+    assert dvc.tree.dvcignore(os.fspath(tmp_dir), dirs, files) == ([], files)
+    assert dvc.tree.dvcignore(
+        os.fspath(tmp_dir), dirs, files, ignore_subrepos=False
+    ) == (dirs, files)
+
+    assert dvc.tree.dvcignore.is_ignored_dir(os.fspath(subrepo_dir))
+    assert not dvc.tree.dvcignore.is_ignored_dir(
+        os.fspath(subrepo_dir), ignore_subrepos=False
+    )
+
+
 def test_ignore_blank_line(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"ignored": "text", "other": "text2"}})
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "foo\n\ndir/ignored")

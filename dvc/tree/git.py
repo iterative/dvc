@@ -84,13 +84,15 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
             path
         ) and not self.dvcignore.is_ignored_dir(path)
 
-    def isdir(self, path):  # pylint: disable=arguments-differ
+    def isdir(
+        self, path, use_dvcignore=True
+    ):  # pylint: disable=arguments-differ
         obj = self._git_object_by_path(path)
         if obj is None:
             return False
         if obj.mode != GIT_MODE_DIR:
             return False
-        return not self.dvcignore.is_ignored_dir(path)
+        return not (use_dvcignore and self.dvcignore.is_ignored_dir(path))
 
     def isfile(self, path):  # pylint: disable=arguments-differ
         obj = self._git_object_by_path(path)
@@ -156,7 +158,14 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
         if not topdown:
             yield os.path.normpath(tree.abspath), dirs, nondirs
 
-    def walk(self, top, topdown=True, onerror=None, use_dvcignore=True):
+    def walk(
+        self,
+        top,
+        topdown=True,
+        onerror=None,
+        use_dvcignore=True,
+        ignore_subrepos=True,
+    ):
         """Directory tree generator.
 
         See `os.walk` for the docs. Differences:
@@ -176,7 +185,10 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
         for root, dirs, files in self._walk(tree, topdown=topdown):
             if use_dvcignore:
                 dirs[:], files[:] = self.dvcignore(
-                    os.path.abspath(root), dirs, files
+                    os.path.abspath(root),
+                    dirs,
+                    files,
+                    ignore_subrepos=ignore_subrepos,
                 )
             yield root, dirs, files
 
