@@ -16,7 +16,12 @@ from dvc.stage.exceptions import (
 from dvc.stage.loader import SingleStageLoader, StageLoader
 from dvc.utils import relpath
 from dvc.utils.collections import apply_diff
-from dvc.utils.yaml import dump_yaml, parse_yaml, parse_yaml_for_update
+from dvc.utils.yaml import (
+    YAMLVersion,
+    dump_yaml,
+    parse_yaml,
+    parse_yaml_for_update,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -176,7 +181,9 @@ class PipelineFile(FileMixin):
         data = {}
         if self.exists():
             with open(self.path) as fd:
-                data = parse_yaml_for_update(fd.read(), self.path)
+                data = parse_yaml_for_update(
+                    fd.read(), self.path, version=YAMLVersion.V12
+                )
         else:
             logger.info("Creating '%s'", self.relpath)
             open(self.path, "w+").close()
@@ -196,7 +203,7 @@ class PipelineFile(FileMixin):
         else:
             data["stages"].update(stage_data)
 
-        dump_yaml(self.path, data)
+        dump_yaml(self.path, data, version=YAMLVersion.V12)
         self.repo.scm.track_file(self.relpath)
 
     @property
