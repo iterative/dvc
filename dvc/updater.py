@@ -7,6 +7,7 @@ import colorama
 from packaging import version
 
 from dvc import __version__
+from dvc.config import Config, to_bool
 from dvc.lock import LockError, make_lock
 from dvc.utils import boxify, env2bool
 from dvc.utils.pkg import PKG
@@ -46,7 +47,12 @@ class Updater:  # pragma: no cover
             logger.debug(msg.format(self.lock.lockfile, action))
 
     def check(self):
-        if os.getenv("CI") or env2bool("DVC_TEST") or PKG == "snap":
+        if (
+            os.getenv("CI")
+            or env2bool("DVC_TEST")
+            or PKG == "snap"
+            or not self.is_enabled()
+        ):
             return
 
         self._with_lock(self._check, "checking")
@@ -144,3 +150,12 @@ class Updater:  # pragma: no cover
             package_manager = "binary"
 
         return instructions[package_manager]
+
+    def is_enabled(self):
+        enabled = to_bool(
+            Config(validate=False).get("core", {}).get("check_update", "true")
+        )
+        logger.debug(
+            "Check for update is {}abled.".format("en" if enabled else "dis")
+        )
+        return enabled

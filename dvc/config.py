@@ -138,6 +138,7 @@ SCHEMA = {
         Optional("hardlink_lock", default=False): Bool,
         Optional("no_scm", default=False): Bool,
         Optional("experiments", default=False): Bool,
+        Optional("check_update", default=True): Bool,
     },
     "cache": {
         "local": str,
