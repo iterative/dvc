@@ -132,7 +132,7 @@ tests_requirements = [
     "flake8-comprehensions",
     "flake8-string-format",
     "pylint",
-    "pylint-pytest",
+    "pylint-pytest>=0.3.0",
     "pylint-plugin-utils",
     "wget",
     "filelock",
