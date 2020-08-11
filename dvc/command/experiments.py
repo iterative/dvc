@@ -141,6 +141,10 @@ def _collect_rows(
 def _parse_list(param_list):
     ret = []
     for param_str in param_list:
+        # we don't care about filename prefixes for show, silently
+        # ignore it if provided to keep usage consistent with other
+        # metric/param list command options
+        _, _, param_str = param_str.rpartition(":")
         ret.extend(param_str.split(","))
     return ret
 
