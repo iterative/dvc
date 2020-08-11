@@ -1,5 +1,6 @@
 from collections import OrderedDict
 
+from funcy import reraise
 from ruamel.yaml import YAML
 from ruamel.yaml.emitter import Emitter
 from ruamel.yaml.error import YAMLError
@@ -13,21 +14,38 @@ except ImportError:
     from yaml import SafeLoader
 
 
-def load_yaml(path):
-    with open(path, encoding="utf-8") as fd:
-        return parse_yaml(fd.read(), path)
+class YAMLVersion:
+    V11 = (1, 1)
+    V12 = (1, 2)
 
 
-def parse_yaml(text, path):
-    try:
-        import yaml
+def _parse_yaml_v1_1(text, path):
+    import yaml
 
+    with reraise(yaml.error.YAMLError, YAMLFileCorruptedError(path)):
         return yaml.load(text, Loader=SafeLoader) or {}
-    except yaml.error.YAMLError as exc:
-        raise YAMLFileCorruptedError(path) from exc
 
 
-def parse_yaml_for_update(text, path):
+def _parse_yaml_v1_2(text, path):
+    yaml = YAML(typ="safe")
+    yaml.version = YAMLVersion.V12
+    with reraise(YAMLError, YAMLFileCorruptedError(path)):
+        return yaml.load(text) or {}
+
+
+def parse_yaml(text, path, *, version=None):
+    parser = _parse_yaml_v1_1
+    if version == YAMLVersion.V12:
+        parser = _parse_yaml_v1_2
+    return parser(text, path)
+
+
+def load_yaml(path, *, version=None):
+    with open(path, encoding="utf-8") as fd:
+        return parse_yaml(fd.read(), path, version=version)
+
+
+def parse_yaml_for_update(text, path, *, version=YAMLVersion.V11):
     """Parses text into Python structure.
 
     Unlike `parse_yaml()` this returns ordered dicts, values have special
@@ -36,47 +54,73 @@ def parse_yaml_for_update(text, path):
 
     This one is, however, several times slower than simple `parse_yaml()`.
     """
-    try:
-        yaml = YAML()
+    yaml = YAML()
+    yaml.version = version
+    with reraise(YAMLError, YAMLFileCorruptedError(path)):
         return yaml.load(text) or {}
-    except YAMLError as exc:
-        raise YAMLFileCorruptedError(path) from exc
 
 
-class YAMLEmitterNoVersionDirective(Emitter):
+class _YAMLEmitterNoVersionDirective(Emitter):
+    """
+    This emitter skips printing version directive when we set yaml version
+    on `dump_yaml()`. Also, ruamel.yaml will still try to add a document start
+    marker line (assuming version directive was written), for which we
+    need to find a _hack_ to ensure the marker line is not written to the
+    stream, as our dvcfiles and hopefully, params file are single document
+    YAML files.
+
+    NOTE: do not use this emitter during load/parse, only when dump for 1.1
+    """
+
     MARKER_START_LINE = "---"
 
     def write_version_directive(self, version_text):
         """Do not write version directive at all."""
 
+    def expect_first_document_start(self):
+        # as our yaml files are expected to only have a single document,
+        # this is not needed, just trying to make it a bit resilient,
+        # but it's not well-thought out.
+        # pylint: disable=attribute-defined-outside-init
+        self._first_document = True
+        ret = super().expect_first_document_start()
+        self._first_document = False
+        return ret
+
     # pylint: disable=signature-differs
     def write_indicator(self, indicator, *args, **kwargs):
+        # NOTE: if the yaml file already have a directive,
+        #  this will strip it
         if isinstance(self.event, DocumentStartEvent):
-            # TODO: need more tests, how reliable is this check?
             skip_marker = (
-                not self.event.explicit
+                # see comments in _expect_first_document_start()
+                getattr(self, "_first_document", False)
+                and not self.event.explicit
                 and not self.canonical
                 and not self.event.tags
             )
-            # FIXME: if there is a marker for "% YAML 1.1", it might
-            #  get removed
             if skip_marker and indicator == self.MARKER_START_LINE:
-                # skip adding marker line
                 return
         super().write_indicator(indicator, *args, **kwargs)
 
 
-def dump_yaml(path, data):
-    with open(path, "w", encoding="utf-8") as fd:
+def _dump_yaml(data, stream, *, version=None, with_directive=False):
+    yaml = YAML()
+    if version in (None, YAMLVersion.V11):
+        yaml.version = YAMLVersion.V11
+        if not with_directive:
+            yaml.Emitter = _YAMLEmitterNoVersionDirective
+    elif with_directive and version == YAMLVersion.V12:
+        # `ruamel.yaml` dumps in 1.2 by default
+        yaml.version = version
 
-        yaml = YAML()
-        # dump by default in v1.1
-        yaml.version = (1, 1)
-        yaml.default_flow_style = False
-        # skip printing directive, and also skip marker line for document start
-        yaml.Emitter = YAMLEmitterNoVersionDirective
-        # tell Dumper to represent OrderedDict as a normal dict
-        yaml.Representer.add_representer(
-            OrderedDict, yaml.Representer.represent_dict
-        )
-        yaml.dump(data, fd)
+    yaml.default_flow_style = False
+    yaml.Representer.add_representer(
+        OrderedDict, yaml.Representer.represent_dict
+    )
+    yaml.dump(data, stream)
+
+
+def dump_yaml(path, data, *, version=None, with_directive=False):
+    with open(path, "w", encoding="utf-8") as fd:
+        _dump_yaml(data, fd, version=version, with_directive=with_directive)
