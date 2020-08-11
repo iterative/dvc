@@ -81,7 +81,9 @@ class CmdCheckIgnore(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    ADD_HELP = "Debug DVC ignore/exclude files"
+    ADD_HELP = (
+        "Check whether files or directories are excluded due to `.dvcignore`."
+    )
 
     parser = subparsers.add_parser(
         "check-ignore",
@@ -95,35 +97,31 @@ def add_parser(subparsers, parent_parser):
         "--details",
         action="store_true",
         default=False,
-        help="Show the exclude pattern together with each target path.",
-    )
-    parser.add_argument(
-        "-n",
-        "--non-matching",
-        action="store_true",
-        default=False,
-        help="Show the target paths which don’t match any pattern. "
-        "Only usable when `--details` is also employed",
-    )
-    parser.add_argument(
-        "--stdin",
-        action="store_true",
-        default=False,
-        help="Read pathnames from the standard input, one per line, "
-        "instead of from the command-line.",
+        help="Show the exclude patterns along with each target path.",
     )
     parser.add_argument(
         "-a",
         "--all",
         action="store_true",
         default=False,
-        help="Show all of the patterns match the target paths. "
-        "Only usable when `--details` is also employed",
+        help="Include the target paths which don’t match any pattern "
+        "in the `--details` list.",
     )
     parser.add_argument(
-        "targets",
-        nargs="*",
-        help="Exact or wildcard paths of files or directories to check "
-        "ignore patterns.",
+        "-n",
+        "--non-matching",
+        action="store_true",
+        default=False,
+        help="Include the target paths which don’t match any pattern "
+        "in the `--details` list.",
+    )
+    parser.add_argument(
+        "--stdin",
+        action="store_true",
+        default=False,
+        help="Read paths from standard input instead of providing `targets`.",
+    )
+    parser.add_argument(
+        "targets", nargs="*", help="File or directory paths to check",
     ).complete = completion.FILE
     parser.set_defaults(func=CmdCheckIgnore)
