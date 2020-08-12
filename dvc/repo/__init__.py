@@ -188,9 +188,7 @@ class Repo:
     def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
         from dvc.repo.init import init
 
-        init(
-            root_dir=root_dir, no_scm=no_scm, force=force, subdir=subdir,
-        )
+        init(root_dir=root_dir, no_scm=no_scm, force=force, subdir=subdir)
         return Repo(root_dir)
 
     def unprotect(self, target):

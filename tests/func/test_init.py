@@ -106,9 +106,8 @@ def test_subdir_init_no_option(tmp_dir, scm, monkeypatch, caplog):
 def test_gen_dvcignore(tmp_dir):
     DvcRepo.init(no_scm=True)
     text = (
-        "# add patterns of files dvc should ignore,"
-        " can improve performance\n"
-        "# Learn more at https://dvc.org/doc/user-guide/dvcignore\n"
+        "# Add patterns of files dvc should ignore, which could improve\n"
+        "# the performance. Learn more at\n"
+        "# https://dvc.org/doc/user-guide/dvcignore\n"
     )
-    assert (tmp_dir / ".dvcignore").exists()
     assert text == (tmp_dir / ".dvcignore").read_text()

@@ -6,6 +6,7 @@ import colorama
 from dvc import analytics
 from dvc.config import Config
 from dvc.exceptions import InitError, InvalidArgumentError
+from dvc.ignore import init as init_dvcignore
 from dvc.repo import Repo
 from dvc.scm import SCM
 from dvc.scm.base import SCMError
@@ -41,15 +42,6 @@ def _welcome_message():
     )
 
     logger.info(msg)
-
-
-def generate_dvcignore():
-    with open(".dvcignore", "w") as f:
-        f.write(
-            "# add patterns of files dvc should ignore,"
-            " can improve performance\n"
-            "# Learn more at https://dvc.org/doc/user-guide/dvcignore\n"
-        )
 
 
 def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
@@ -108,11 +100,13 @@ def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
         with config.edit() as conf:
             conf["core"]["no_scm"] = True
 
+    dvcignore = init_dvcignore(root_dir)
+
     proj = Repo(root_dir)
 
-    scm.add([config.files["repo"], proj.plot_templates.templates_dir])
-
-    generate_dvcignore()
+    scm.add(
+        [config.files["repo"], dvcignore, proj.plot_templates.templates_dir]
+    )
 
     if scm.ignore_file:
         scm.add([os.path.join(dvc_dir, scm.ignore_file)])
