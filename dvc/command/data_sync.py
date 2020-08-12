@@ -97,7 +97,8 @@ def shared_parent_parser():
         "-j",
         "--jobs",
         type=int,
-        help="Number of jobs to run simultaneously.",
+        help="Number of jobs to run simultaneously. "
+        "Refer to docs to get default value.",
         metavar="<number>",
     )
     parent_parser.add_argument(
