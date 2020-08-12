@@ -42,20 +42,16 @@ def add_parser(subparsers, parent_parser):
     )
     import_parser.add_argument(
         "url",
-        help="Supported urls:\n"
-        "/path/to/file\n"
-        "/path/to/directory\n"
-        "C:\\\\path\\to\\file\n"
-        "C:\\\\path\\to\\directory\n"
+        help="Location of the data to download. Supported URLs:\n"
+        "/absolute/path/to/file/or/dir\n"
+        "relative/path/to/file/or/dir\n"
+        "C:\\\\path\\to\\file\\or\\dir\n"
         "https://example.com/path/to/file\n"
-        "s3://bucket/path/to/file\n"
-        "s3://bucket/path/to/directory\n"
-        "gs://bucket/path/to/file\n"
-        "gs://bucket/path/to/directory\n"
+        "s3://bucket/key/path\n"
+        "gs://bucket/path/to/file/or/dir\n"
         "hdfs://example.com/path/to/file\n"
-        "ssh://example.com:/path/to/file\n"
-        "ssh://example.com:/path/to/directory\n"
-        "remote://myremote/path/to/file (see `dvc remote`)",
+        "ssh://example.com/absolute/path/to/file/or/dir\n"
+        "remote://remote_name/path/to/file/or/dir (see `dvc remote`)",
     )
     import_parser.add_argument(
         "out", nargs="?", help="Destination path to put files to.",
