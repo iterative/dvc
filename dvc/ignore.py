@@ -274,7 +274,7 @@ class DvcIgnoreFilter:
 
     def _is_ignored(self, path, is_dir=False):
         if self._outside_repo(path):
-            return True
+            return False
         dirname, basename = os.path.split(os.path.normpath(path))
         ignore_pattern = self._get_trie_pattern(dirname)
         if ignore_pattern:
@@ -296,6 +296,7 @@ class DvcIgnoreFilter:
         return self._is_ignored(path, True)
 
     def is_ignored_file(self, path):
+        path = os.path.abspath(path)
         return self._is_ignored(path, False)
 
     def _outside_repo(self, path):
