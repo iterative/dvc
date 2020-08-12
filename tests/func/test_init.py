@@ -101,3 +101,13 @@ def test_subdir_init_no_option(tmp_dir, scm, monkeypatch, caplog):
         "`--subdir` if initializing inside a subdirectory of a parent SCM "
         "repository.".format(os.fspath(tmp_dir / "subdir"))
     ) in caplog.text
+
+
+def test_gen_dvcignore(tmp_dir):
+    DvcRepo.init(no_scm=True)
+    text = (
+        "# Add patterns of files dvc should ignore, which could improve\n"
+        "# the performance. Learn more at\n"
+        "# https://dvc.org/doc/user-guide/dvcignore\n"
+    )
+    assert text == (tmp_dir / ".dvcignore").read_text()

@@ -132,6 +132,7 @@ def test_ignore_on_branch(tmp_dir, scm, dvc):
     assert set(dvc.tree.walk_files(path)) == {
         path / "foo",
         path / "bar",
+        path / ".dvcignore",
     }
 
     dvc.tree = scm.get_tree("branch", use_dvcignore=True)

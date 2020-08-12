@@ -61,6 +61,7 @@ def test_ls_repo(tmp_dir, dvc, scm):
     match_files(
         files,
         (
+            ((".dvcignore",), False),
             ((".gitignore",), False),
             (("README.md",), False),
             (("structure.xml.dvc",), False),
@@ -89,6 +90,7 @@ def test_ls_repo_with_color(tmp_dir, dvc, scm, mocker, monkeypatch, caplog):
 
     assert caplog.records[-1].msg == "\n".join(
         [
+            ".dvcignore",
             ".gitignore",
             "README.md",
             "\x1b[01;34mdata\x1b[0m",
@@ -107,6 +109,7 @@ def test_ls_repo_recursive(tmp_dir, dvc, scm):
     match_files(
         files,
         (
+            ((".dvcignore",), False),
             ((".gitignore",), False),
             (("README.md",), False),
             (("structure.xml.dvc",), False),
@@ -258,6 +261,7 @@ def test_ls_repo_with_removed_dvc_dir(tmp_dir, dvc, scm):
             (("out.dvc",), False),
             (("dep",), True),
             (("out",), False),
+            ((".dvcignore",), False),
             ((".gitignore",), False),
         ),
     )
@@ -275,6 +279,7 @@ def test_ls_repo_with_removed_dvc_dir_recursive(tmp_dir, dvc, scm):
             (("out.dvc",), False),
             (("dep",), True),
             (("out", "file"), True),
+            ((".dvcignore",), False),
             ((".gitignore",), False),
         ),
     )
@@ -306,6 +311,7 @@ def test_ls_remote_repo(erepo_dir):
     match_files(
         files,
         (
+            ((".dvcignore",), False),
             ((".gitignore",), False),
             (("README.md",), False),
             (("structure.xml.dvc",), False),
@@ -326,6 +332,7 @@ def test_ls_remote_repo_recursive(erepo_dir):
     match_files(
         files,
         (
+            ((".dvcignore",), False),
             ((".gitignore",), False),
             (("README.md",), False),
             (("structure.xml.dvc",), False),
@@ -393,6 +400,7 @@ def test_ls_remote_repo_with_rev(erepo_dir):
     match_files(
         files,
         (
+            ((".dvcignore",), False),
             ((".gitignore",), False),
             (("README.md",), False),
             (("model",), False),
@@ -422,6 +430,7 @@ def test_ls_remote_repo_with_rev_recursive(erepo_dir):
             (("model", "people.csv"), True),
             (("model", ".gitignore"), False),
             (("structure.xml",), True),
+            ((".dvcignore",), False),
             ((".gitignore",), False),
         ),
     )

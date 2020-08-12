@@ -64,7 +64,7 @@ class DvcIgnorePatterns(DvcIgnore):
                 for line_no, line in enumerate(
                     map(str.strip, fobj.readlines())
                 )
-                if line
+                if line and not (line.strip().startswith("#"))
             ]
 
         return cls(path_spec_lines, dirname)
@@ -325,3 +325,18 @@ class DvcIgnoreFilter:
                 if matches:
                     return CheckIgnoreResult(target, True, matches)
         return CheckIgnoreResult(target, False, ["::"])
+
+
+def init(path):
+    dvcignore = os.path.join(path, DvcIgnore.DVCIGNORE_FILE)
+    if os.path.exists(dvcignore):
+        return dvcignore
+
+    with open(dvcignore, "w") as fobj:
+        fobj.write(
+            "# Add patterns of files dvc should ignore, which could improve\n"
+            "# the performance. Learn more at\n"
+            "# https://dvc.org/doc/user-guide/dvcignore\n"
+        )
+
+    return dvcignore
