@@ -2,12 +2,55 @@ import argparse
 import io
 import logging
 from collections import OrderedDict
+from itertools import groupby
+from typing import Iterable, Optional
 
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.command.metrics import DEFAULT_PRECISION
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, InvalidArgumentError
 
 logger = logging.getLogger(__name__)
+
+
+def _filter_names(
+    names: Iterable,
+    label: str,
+    include: Optional[Iterable],
+    exclude: Optional[Iterable],
+):
+    if include and exclude:
+        intersection = set(include) & set(exclude)
+        if intersection:
+            values = ", ".join(intersection)
+            raise InvalidArgumentError(
+                f"'{values}' specified in both --include-{label} and"
+                f" --exclude-{label}"
+            )
+
+    names = {tuple(name.split(".")) for name in names}
+
+    def _filter(filters, update_func):
+        filters = {tuple(name.split(".")) for name in filters}
+        for length, groups in groupby(filters, len):
+            for group in groups:
+                matches = [name for name in names if name[:length] == group]
+                if not matches:
+                    name = ".".join(group)
+                    raise InvalidArgumentError(
+                        f"'{name}' does not match any known {label}"
+                    )
+                update_func(matches)
+
+    if include:
+        ret = set()
+        _filter(include, ret.update)
+    else:
+        ret = set(names)
+
+    if exclude:
+        _filter(exclude, ret.difference_update)
+
+    return {".".join(name) for name in ret}
 
 
 def _update_names(names, items):
@@ -21,7 +64,7 @@ def _update_names(names, items):
             names.add(name)
 
 
-def _collect_names(all_experiments):
+def _collect_names(all_experiments, **kwargs):
     metric_names = set()
     param_names = set()
 
@@ -29,6 +72,19 @@ def _collect_names(all_experiments):
         for exp in experiments.values():
             _update_names(metric_names, exp.get("metrics", {}).items())
             _update_names(param_names, exp.get("params", {}).items())
+
+    metric_names = _filter_names(
+        metric_names,
+        "metrics",
+        kwargs.get("include_metrics"),
+        kwargs.get("exclude_metrics"),
+    )
+    param_names = _filter_names(
+        param_names,
+        "params",
+        kwargs.get("include_params"),
+        kwargs.get("exclude_params"),
+    )
 
     return sorted(metric_names), sorted(param_names)
 
@@ -83,11 +139,33 @@ def _collect_rows(
         yield row, style
 
 
-def _show_experiments(all_experiments, console, precision=None):
+def _parse_list(param_list):
+    ret = []
+    for param_str in param_list:
+        # we don't care about filename prefixes for show, silently
+        # ignore it if provided to keep usage consistent with other
+        # metric/param list command options
+        _, _, param_str = param_str.rpartition(":")
+        ret.extend(param_str.split(","))
+    return ret
+
+
+def _show_experiments(all_experiments, console, precision=None, **kwargs):
     from rich.table import Table
     from dvc.scm.git import Git
 
-    metric_names, param_names = _collect_names(all_experiments)
+    include_metrics = _parse_list(kwargs.get("include_metrics", []))
+    exclude_metrics = _parse_list(kwargs.get("exclude_metrics", []))
+    include_params = _parse_list(kwargs.get("include_params", []))
+    exclude_params = _parse_list(kwargs.get("exclude_params", []))
+
+    metric_names, param_names = _collect_names(
+        all_experiments,
+        include_metrics=include_metrics,
+        exclude_metrics=exclude_metrics,
+        include_params=include_params,
+        exclude_params=exclude_params,
+    )
 
     table = Table()
     table.add_column("Experiment", no_wrap=True)
@@ -136,7 +214,14 @@ class CmdExperimentsShow(CmdBase):
                     file=io.StringIO(), force_terminal=True, width=9999
                 )
 
-            _show_experiments(all_experiments, console)
+            _show_experiments(
+                all_experiments,
+                console,
+                include_metrics=self.args.include_metrics,
+                exclude_metrics=self.args.exclude_metrics,
+                include_params=self.args.include_params,
+                exclude_params=self.args.exclude_params,
+            )
 
             if not self.args.no_pager:
                 pager(console.file.getvalue())
@@ -284,6 +369,34 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Do not pipe output into a pager.",
+    )
+    experiments_show_parser.add_argument(
+        "--include-metrics",
+        action="append",
+        default=[],
+        help="Include the specified metrics in output table.",
+        metavar="<metrics_list>",
+    )
+    experiments_show_parser.add_argument(
+        "--exclude-metrics",
+        action="append",
+        default=[],
+        help="Exclude the specified metrics from output table.",
+        metavar="<metrics_list>",
+    )
+    experiments_show_parser.add_argument(
+        "--include-params",
+        action="append",
+        default=[],
+        help="Include the specified params in output table.",
+        metavar="<params_list>",
+    )
+    experiments_show_parser.add_argument(
+        "--exclude-params",
+        action="append",
+        default=[],
+        help="Exclude the specified params from output table.",
+        metavar="<params_list>",
     )
     experiments_show_parser.set_defaults(func=CmdExperimentsShow)
 
