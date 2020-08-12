@@ -2,6 +2,7 @@ import argparse
 import io
 import logging
 from collections import OrderedDict
+from itertools import groupby
 from typing import Iterable, Optional
 
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
@@ -12,44 +13,44 @@ logger = logging.getLogger(__name__)
 
 
 def _filter_names(
-    names: set,
+    names: Iterable,
     label: str,
     include: Optional[Iterable],
     exclude: Optional[Iterable],
 ):
-    if include is not None:
-        include = set(include)
-    if exclude is not None:
-        exclude = set(exclude)
-
     if include and exclude:
-        intersection = include & exclude
+        intersection = set(include) & set(exclude)
         if intersection:
-            params = ", ".join(intersection)
+            values = ", ".join(intersection)
             raise InvalidArgumentError(
-                f"'{params}' specified in both --include-{label} and"
+                f"'{values}' specified in both --include-{label} and"
                 f" --exclude-{label}"
             )
 
+    names = {tuple(name.split(".")) for name in names}
+
+    def _filter(filters, update_func):
+        filters = {tuple(name.split(".")) for name in filters}
+        for length, groups in groupby(filters, len):
+            for group in groups:
+                matches = [name for name in names if name[:length] == group]
+                if not matches:
+                    name = ".".join(group)
+                    raise InvalidArgumentError(
+                        f"'{name}' does not match any known {label}"
+                    )
+                update_func(matches)
+
     if include:
-        diff = include - names
-        if diff:
-            params = ", ".join(diff)
-            raise InvalidArgumentError(
-                f"Cannot include unknown {label} '{params}'"
-            )
-        names &= include
+        ret = set()
+        _filter(include, ret.update)
+    else:
+        ret = set(names)
 
     if exclude:
-        diff = exclude - names
-        if diff:
-            params = ", ".join(diff)
-            raise InvalidArgumentError(
-                f"Cannot exclude unknown {label} '{params}'"
-            )
-        names -= exclude
+        _filter(exclude, ret.difference_update)
 
-    return names
+    return {".".join(name) for name in ret}
 
 
 def _update_names(names, items):
