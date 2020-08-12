@@ -159,10 +159,17 @@ def test_match_nested(tmp_dir, dvc):
 def test_ignore_external(tmp_dir, scm, dvc, tmp_path_factory):
     tmp_dir.gen(".dvcignore", "*.backup\ntmp")
     ext_dir = TmpDir(os.fspath(tmp_path_factory.mktemp("external_dir")))
-    ext_dir.gen({"y.backup": "y", "tmp": "ext tmp"})
+    ext_dir.gen({"y.backup": "y", "tmp": {"file": "ext tmp"}})
 
     result = {relpath(f, ext_dir) for f in dvc.tree.walk_files(ext_dir)}
-    assert result == {"y.backup", "tmp"}
+    assert result == {"y.backup", os.path.join("tmp", "file")}
+    assert (
+        dvc.tree.dvcignore.is_ignored_dir(os.fspath(ext_dir / "tmp")) is False
+    )
+    assert (
+        dvc.tree.dvcignore.is_ignored_file(os.fspath(ext_dir / "y.backup"))
+        is False
+    )
 
 
 def test_ignore_subrepo(tmp_dir, scm, dvc):
