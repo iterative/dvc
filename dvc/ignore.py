@@ -64,7 +64,7 @@ class DvcIgnorePatterns(DvcIgnore):
                 for line_no, line in enumerate(
                     map(str.strip, fobj.readlines())
                 )
-                if line
+                if line and not (line.strip().startswith("#"))
             ]
 
         return cls(path_spec_lines, dirname)
