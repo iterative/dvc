@@ -142,14 +142,6 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
                 "Content-MD5 header for '{url}'".format(url=path_info.url)
             )
 
-        if etag.startswith("W/"):
-            raise DvcException(
-                "Weak ETags are not supported."
-                " (Etag: '{etag}', URL: '{url}')".format(
-                    etag=etag, url=path_info.url
-                )
-            )
-
         return etag
 
     # Checks whether path points to directory
