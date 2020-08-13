@@ -357,3 +357,6 @@ class LocalTree(BaseTree):
         info = self.hash_to_path_info(hash_)
         path_info = info.with_name(info.name + self.UNPACKED_DIR_SUFFIX)
         self.remove(path_info)
+
+    def _reset(self):
+        return self.__dict__.pop("dvcignore", None)

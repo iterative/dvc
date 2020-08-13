@@ -76,9 +76,10 @@ def _ls(repo, path_info, recursive=None, dvc_only=False):
             if not recursive:
                 for dname in dirs:
                     info = PathInfo(root) / dname
-                    if not dvc_only or (
-                        tree.dvctree and tree.dvctree.exists(info)
-                    ):
+                    t = tree._get_tree(  # pylint: disable=protected-access
+                        info
+                    )
+                    if not dvc_only or (t.dvctree and t.dvctree.exists(info)):
                         dvc = tree.isdvc(info)
                         path = str(info.relative_to(path_info))
                         ret[path] = {

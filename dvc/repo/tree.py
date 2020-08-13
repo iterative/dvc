@@ -1,5 +1,10 @@
 import logging
 import os
+import threading
+from itertools import takewhile
+
+from funcy import wrap_with
+from pygtrie import StringTrie
 
 from dvc.dvcfile import is_valid_filename
 from dvc.exceptions import OutputNotFoundError
@@ -236,7 +241,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
         return out.checksum
 
 
-class RepoTree(BaseTree):  # pylint:disable=abstract-method
+class CombinedTree(BaseTree):  # pylint:disable=abstract-method
     """DVC + git-tracked files tree.
 
     Args:
@@ -355,7 +360,13 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
                 yield from self._walk_one(repo_walk)
 
     def walk(
-        self, top, topdown=True, onerror=None, dvcfiles=False, **kwargs
+        self,
+        top,
+        topdown=True,
+        onerror=None,
+        dvcfiles=False,
+        ignore_subrepos=True,
+        **kwargs
     ):  # pylint: disable=arguments-differ
         """Walk and merge both DVC and repo trees.
 
@@ -391,18 +402,18 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
             return
         if repo_exists and not dvc_exists:
             yield from self.repo.tree.walk(
-                top, topdown=topdown, onerror=onerror
+                top,
+                topdown=topdown,
+                onerror=onerror,
+                ignore_subrepos=ignore_subrepos,
             )
             return
 
         dvc_walk = self.dvctree.walk(top, topdown=topdown, **kwargs)
-        repo_walk = self.repo.tree.walk(top, topdown=topdown)
+        repo_walk = self.repo.tree.walk(
+            top, topdown=topdown, ignore_subrepos=ignore_subrepos
+        )
         yield from self._walk(dvc_walk, repo_walk, dvcfiles=dvcfiles)
-
-    def walk_files(self, top, **kwargs):  # pylint: disable=arguments-differ
-        for root, _, files in self.walk(top, **kwargs):
-            for fname in files:
-                yield PathInfo(root) / fname
 
     def get_file_hash(self, path_info):
         """Return file checksum for specified path.
@@ -419,6 +430,118 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
             except OutputNotFoundError:
                 pass
         return file_md5(path_info, self)[0]
+
+    @property
+    def hash_jobs(self):  # pylint: disable=invalid-overridden-method
+        return self.repo.tree.hash_jobs
+
+
+class RepoTree(BaseTree):
+    scheme = "local"
+    PARAM_CHECKSUM = "md5"
+
+    def __init__(self, repo, subrepos=False, repo_factory=None, **kwargs):
+        super().__init__(repo, {"url": repo.root_dir})
+
+        if not repo_factory:
+            from dvc.repo import Repo
+
+            self.repo_factory = Repo
+        else:
+            self.repo_factory = repo_factory
+
+        self._main_repo = repo
+        self.root_dir = repo.root_dir
+        self._traverse_subrepos = subrepos
+
+        self.subtrees = StringTrie(separator=os.sep)
+        self.subtrees[self.root_dir] = CombinedTree(repo, **kwargs)
+        self._tree_configs = kwargs
+
+    def _get_tree(self, path) -> CombinedTree:
+        path = os.path.abspath(path)
+        tree = self.subtrees.get(path)
+        if tree:
+            return tree
+
+        prefix, tree = self.subtrees.longest_prefix(path)
+        if not prefix:
+            return self.subtrees.get(self.root_dir)
+
+        parents = (parent.fspath for parent in PathInfo(path).parents)
+        dirs = [path] + list(takewhile(lambda p: p != prefix, parents))
+        dirs.reverse()
+        self._update(dirs, start=tree)
+        return self.subtrees.get(path)
+
+    @wrap_with(threading.Lock())
+    def _update(self, dirs, start):
+        tree = start
+        for d in dirs:
+            if self._is_dvc_repo(d):
+                repo = self.repo_factory(d)
+                tree = CombinedTree(repo, **self._tree_configs)
+            self.subtrees[d] = tree
+
+    def _is_dvc_repo(self, dir_path):
+        if not self._traverse_subrepos:
+            return False
+
+        from dvc.repo import Repo
+
+        repo_path = os.path.join(dir_path, Repo.DVC_DIR)
+        return self._main_repo.tree.isdir(repo_path, use_dvcignore=False)
+
+    @property
+    def fetch(self):
+        return "fetch" in self._tree_configs
+
+    @property
+    def stream(self):
+        return "stream" in self._tree_configs
+
+    def open(
+        self, path_info, *args, **kwargs
+    ):  # pylint: disable=signature-differs
+        return self._get_tree(path_info).open(path_info, *args, **kwargs)
+
+    def exists(self, path_info, **kwargs):  # pylint: disable=arguments-differ
+        return self._get_tree(path_info).exists(path_info, **kwargs)
+
+    def isdir(self, path_info):
+        return self._get_tree(path_info).isdir(path_info)
+
+    def isfile(self, path_info):
+        return self._get_tree(path_info).isfile(path_info)
+
+    def isdvc(self, path, **kwargs):
+        return self._get_tree(path).isdvc(path, **kwargs)
+
+    def isexec(self, path):
+        return self._get_tree(path).isexec(path)
+
+    def stat(self, path):
+        return self._get_tree(path).stat(path)
+
+    def walk(self, top, *args, **kwargs):
+        tree = self._get_tree(top)
+        for root, dirs, files in tree.walk(
+            top, *args, ignore_subrepos=not self._traverse_subrepos, **kwargs
+        ):
+            yield root, dirs, files
+
+            for dirname in dirs:
+                dir_path = os.path.join(root, dirname)
+                if self._is_dvc_repo(dir_path):
+                    yield from self.walk(dir_path, *args, **kwargs)
+
+    def walk_files(self, top, **kwargs):  # pylint: disable=arguments-differ
+        for root, _, files in self.walk(top, **kwargs):
+            for fname in files:
+                yield PathInfo(root) / fname
+
+    def get_file_hash(self, path_info):
+        return self._get_tree(path_info).get_file_hash(path_info)
 
     def copytree(self, top, dest):
         top = PathInfo(top)
@@ -444,4 +567,4 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
 
     @property
     def hash_jobs(self):  # pylint: disable=invalid-overridden-method
-        return self.repo.tree.hash_jobs
+        return self._get_tree(self.root_dir).hash_jobs
