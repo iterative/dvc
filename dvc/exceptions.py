@@ -276,8 +276,11 @@ class CheckoutError(DvcException):
         self.stats = stats
         targets = [str(t) for t in target_infos]
         m = (
-            "Checkout failed for following targets:\n{}\nDid you "
-            "forget to fetch?".format("\n".join(targets))
+            "Checkout failed for following targets:\n{}\nIs your "
+            "cache up to date?\n{}".format(
+                "\n".join(targets),
+                format_link("https://error.dvc.org/missing-files"),
+            )
         )
         super().__init__(m)
 
