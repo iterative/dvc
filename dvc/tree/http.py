@@ -122,12 +122,27 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
         except requests.exceptions.RequestException:
             raise DvcException(f"could not perform a {method} request")
 
+    def _head(self, url):
+        response = self.request("HEAD", url)
+        if response.ok:
+            return response
+
+        # Sometimes servers are configured to forbid HEAD requests
+        # Context: https://github.com/iterative/dvc/issues/4131
+        with self.request("GET", url, stream=True) as r:
+            if r.ok:
+                return r
+
+        return response
+
     def exists(self, path_info, use_dvcignore=True):
-        return bool(self.request("HEAD", path_info.url))
+        return bool(self._head(path_info.url))
 
     def get_file_hash(self, path_info):
         url = path_info.url
-        headers = self.request("HEAD", url).headers
+
+        headers = self._head(url).headers
+
         etag = headers.get("ETag") or headers.get("Content-MD5")
 
         if not etag:
