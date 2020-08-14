@@ -45,6 +45,12 @@ class OutputIsStageFileError(DvcException):
         super().__init__(f"Stage file '{path}' cannot be an output.")
 
 
+class OutputIsIgnoredError(DvcException):
+    def __init__(self, match):
+        lines = "\n".join(match.patterns)
+        super().__init__(f"Path '{match.file}' is ignored by\n{lines}")
+
+
 class BaseOutput:
     IS_DEPENDENCY = False
 
@@ -77,6 +83,7 @@ class BaseOutput:
     DoesNotExistError = OutputDoesNotExistError
     IsNotFileOrDirError = OutputIsNotFileOrDirError
     IsStageFileError = OutputIsStageFileError
+    IsIgnoredError = OutputIsIgnoredError
 
     sep = "/"
 
@@ -91,7 +98,7 @@ class BaseOutput:
         plot=False,
         persist=False,
     ):
-        self._validate_output_path(path)
+        self._validate_output_path(path, stage)
         # This output (and dependency) objects have too many paths/urls
         # here is a list and comments:
         #
@@ -499,8 +506,13 @@ class BaseOutput:
         return ret
 
     @classmethod
-    def _validate_output_path(cls, path):
+    def _validate_output_path(cls, path, stage=None):
         from dvc.dvcfile import is_valid_filename
 
         if is_valid_filename(path):
             raise cls.IsStageFileError(path)
+
+        if stage:
+            check = stage.repo.tree.dvcignore.check_ignore(path)
+            if check.match:
+                raise cls.IsIgnoredError(check)

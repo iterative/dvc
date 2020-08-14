@@ -152,6 +152,10 @@ CheckIgnoreResult = namedtuple(
 )
 
 
+def _no_match(path):
+    return CheckIgnoreResult(path, False, ["::"])
+
+
 class DvcIgnoreFilterNoop:
     def __init__(self, tree, root_dir):
         pass
@@ -165,8 +169,8 @@ class DvcIgnoreFilterNoop:
     def is_ignored_file(self, _):
         return False
 
-    def check_ignore(self, _):
-        return []
+    def check_ignore(self, path):
+        return _no_match(path)
 
 
 class DvcIgnoreFilter:
@@ -325,7 +329,7 @@ class DvcIgnoreFilter:
 
                 if matches:
                     return CheckIgnoreResult(target, True, matches)
-        return CheckIgnoreResult(target, False, ["::"])
+        return _no_match(target)
 
 
 def init(path):

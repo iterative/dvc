@@ -5,6 +5,7 @@ import pytest
 
 from dvc.exceptions import DvcIgnoreInCollectedDirError
 from dvc.ignore import DvcIgnore, DvcIgnorePatterns
+from dvc.output.base import OutputIsIgnoredError
 from dvc.path_info import PathInfo
 from dvc.pathspec_math import PatternInfo, merge_patterns
 from dvc.repo import Repo
@@ -400,3 +401,10 @@ def test_ignore_in_added_dir(tmp_dir, dvc):
     dvc.checkout()
 
     assert not ignored_path.exists()
+
+
+def test_ignored_output(tmp_dir, scm, dvc, run_copy):
+    tmp_dir.gen({".dvcignore": "*.log", "foo": "foo content"})
+
+    with pytest.raises(OutputIsIgnoredError):
+        run_copy("foo", "foo.log", name="copy")
