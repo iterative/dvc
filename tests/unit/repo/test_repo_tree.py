@@ -228,7 +228,6 @@ def test_subrepos(tmp_dir, scm, dvc):
         assert tree.exists(subrepo1 / "bar") is False
 
         assert tree.isfile(subrepo1 / "foo") is True
-        assert tree.isfile(subrepo1 / "foo") is True
         assert tree.isfile(subrepo1 / "dir1" / "bar") is True
         assert tree.isfile(subrepo1 / "dir1") is False
 
@@ -244,7 +243,6 @@ def test_subrepos(tmp_dir, scm, dvc):
         assert tree.exists(subrepo2 / "lorem") is True
         assert tree.exists(subrepo2 / "ipsum") is False
 
-        assert tree.isfile(subrepo2 / "lorem") is True
         assert tree.isfile(subrepo2 / "lorem") is True
         assert tree.isfile(subrepo2 / "dir2" / "ipsum") is True
         assert tree.isfile(subrepo2 / "dir2") is False
@@ -294,10 +292,12 @@ def test_subrepo_walk(tmp_dir, scm, dvc, dvcfiles, extra_expected):
         PathInfo("dir") / "repo",
         PathInfo("dir") / "repo.txt",
         PathInfo("dir") / "repo2",
+        PathInfo("dir") / "repo" / ".dvcignore",
         PathInfo("dir") / "repo" / ".gitignore",
         PathInfo("dir") / "repo" / "foo",
         PathInfo("dir") / "repo" / "dir1",
         PathInfo("dir") / "repo" / "dir1" / "bar",
+        PathInfo("dir") / "repo2" / ".dvcignore",
         PathInfo("dir") / "repo2" / ".gitignore",
         PathInfo("dir") / "repo2" / "lorem",
         PathInfo("dir") / "repo2" / "dir2",
@@ -330,6 +330,7 @@ def test_repo_tree_no_subrepos(tmp_dir, dvc, scm):
     dvc.tree._reset()
     tree = RepoTree(dvc, subrepos=False, fetch=True)
     expected = [
+        tmp_dir / ".dvcignore",
         tmp_dir / ".gitignore",
         tmp_dir / "lorem",
         tmp_dir / "lorem.dvc",
