@@ -55,6 +55,7 @@ def test_cloud(tmp_dir, dvc, remote):  # pylint:disable=unused-argument
         assert status_dir == expected
 
         # Move cache and check status
+        # See issue https://github.com/iterative/dvc/issues/4383 for details
         backup_dir = dvc.cache.local.cache_dir + ".backup"
         move(dvc.cache.local.cache_dir, backup_dir)
         status = dvc.cloud.status(info, show_checksums=True)
