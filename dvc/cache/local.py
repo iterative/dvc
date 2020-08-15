@@ -91,7 +91,9 @@ class LocalCache(CloudCache):
     def already_cached(self, path_info):
         assert path_info.scheme in ["", "local"]
 
-        current_md5 = self.tree.get_hash(path_info)
+        typ, current_md5 = self.tree.get_hash(path_info)
+
+        assert typ == "md5"
 
         if not current_md5:
             return False

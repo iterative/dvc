@@ -36,7 +36,7 @@ def test_get_file_hash(tmp_dir, azure):
     to_info = azure
     tree.upload(PathInfo("foo"), to_info)
     assert tree.exists(to_info)
-    hash_ = tree.get_file_hash(to_info)
+    _, hash_ = tree.get_file_hash(to_info)
     assert hash_
     assert isinstance(hash_, str)
     assert hash_.strip("'").strip('"') == hash_

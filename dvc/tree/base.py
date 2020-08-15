@@ -242,7 +242,7 @@ class BaseTree:
         )
 
         if not self.exists(path_info):
-            return None
+            return self.PARAM_CHECKSUM, None
 
         # pylint: disable=assignment-from-none
         hash_ = self.state.get(path_info)
@@ -260,17 +260,17 @@ class BaseTree:
             hash_ = None
 
         if hash_:
-            return hash_
+            return self.PARAM_CHECKSUM, hash_
 
         if self.isdir(path_info):
-            hash_ = self.get_dir_hash(path_info, **kwargs)
+            typ, hash_ = self.get_dir_hash(path_info, **kwargs)
         else:
-            hash_ = self.get_file_hash(path_info)
+            typ, hash_ = self.get_file_hash(path_info)
 
         if hash_ and self.exists(path_info):
             self.state.save(path_info, hash_)
 
-        return hash_
+        return typ, hash_
 
     def get_file_hash(self, path_info):
         raise NotImplementedError
@@ -294,7 +294,8 @@ class BaseTree:
         return "".join(parts)
 
     def save_info(self, path_info, **kwargs):
-        return {self.PARAM_CHECKSUM: self.get_hash(path_info, **kwargs)}
+        typ, hash_ = self.get_hash(path_info, **kwargs)
+        return {typ: hash_}
 
     def _calculate_hashes(self, file_infos):
         file_infos = list(file_infos)
@@ -305,9 +306,10 @@ class BaseTree:
         ) as pbar:
             worker = pbar.wrap_fn(self.get_file_hash)
             with ThreadPoolExecutor(max_workers=self.hash_jobs) as executor:
-                tasks = executor.map(worker, file_infos)
-                hashes = dict(zip(file_infos, tasks))
-        return hashes
+                hashes = (
+                    value for typ, value in executor.map(worker, file_infos)
+                )
+                return dict(zip(file_infos, hashes))
 
     def _collect_dir(self, path_info, **kwargs):
         file_infos = set()
@@ -344,7 +346,7 @@ class BaseTree:
         return sorted(result, key=itemgetter(self.PARAM_RELPATH))
 
     def _save_dir_info(self, dir_info):
-        hash_, tmp_info = self._get_dir_info_hash(dir_info)
+        typ, hash_, tmp_info = self._get_dir_info_hash(dir_info)
         new_info = self.cache.tree.hash_to_path_info(hash_)
         if self.cache.changed_cache_file(hash_):
             self.cache.tree.makedirs(new_info.parent)
@@ -354,7 +356,7 @@ class BaseTree:
 
         self.state.save(new_info, hash_)
 
-        return hash_
+        return typ, hash_
 
     def _get_dir_info_hash(self, dir_info):
         tmp = tempfile.NamedTemporaryFile(delete=False).name
@@ -366,8 +368,8 @@ class BaseTree:
         to_info = tree.path_info / tmp_fname("")
         tree.upload(from_info, to_info, no_progress_bar=True)
 
-        hash_ = tree.get_file_hash(to_info) + self.CHECKSUM_DIR_SUFFIX
-        return hash_, to_info
+        typ, hash_ = tree.get_file_hash(to_info)
+        return typ, hash_ + self.CHECKSUM_DIR_SUFFIX, to_info
 
     def upload(self, from_info, to_info, name=None, no_progress_bar=False):
         if not hasattr(self, "_upload"):

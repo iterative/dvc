@@ -190,11 +190,14 @@ class GSTree(BaseTree):
         path = path_info.path
         blob = self.gs.bucket(bucket).get_blob(path)
         if not blob:
-            return None
+            return self.PARAM_CHECKSUM, None
 
         b64_md5 = blob.md5_hash
         md5 = base64.b64decode(b64_md5)
-        return codecs.getencoder("hex")(md5)[0].decode("utf-8")
+        return (
+            self.PARAM_CHECKSUM,
+            codecs.getencoder("hex")(md5)[0].decode("utf-8"),
+        )
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         bucket = self.gs.bucket(to_info.bucket)

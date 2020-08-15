@@ -64,7 +64,9 @@ class RepoDependency(LocalDependency):
 
                 # We are polluting our repo cache with some dir listing here
                 if tree.isdir(path):
-                    return self.repo.cache.local.tree.get_hash(path, tree=tree)
+                    return self.repo.cache.local.tree.get_hash(
+                        path, tree=tree
+                    )[1]
                 return tree.get_file_hash(path)
 
     def workspace_status(self):

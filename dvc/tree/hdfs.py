@@ -167,7 +167,7 @@ class HDFSTree(BaseTree):
         stdout = self.hadoop_fs(
             f"checksum {path_info.url}", user=path_info.user
         )
-        return self._group(regex, stdout, "checksum")
+        return self.PARAM_CHECKSUM, self._group(regex, stdout, "checksum")
 
     def _upload(self, from_file, to_info, **_kwargs):
         with self.hdfs(to_info) as hdfs:
