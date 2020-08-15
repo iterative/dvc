@@ -240,3 +240,6 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
             for file in files:
                 # NOTE: os.path.join is ~5.5 times slower
                 yield f"{root}{os.sep}{file}"
+
+    def _reset(self):
+        return self.__dict__.pop("dvcignore", None)

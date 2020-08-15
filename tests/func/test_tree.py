@@ -258,7 +258,7 @@ def test_walk_dont_ignore_subrepos(tmp_dir, scm, dvc):
     scm.commit("Add subrepo")
 
     dvc_tree = dvc.tree
-    dvc_tree.__dict__.pop("dvcignore")
+    dvc_tree._reset()
     scm_tree = scm.get_tree("HEAD", use_dvcignore=True)
     path = os.fspath(tmp_dir)
     get_dirs = itemgetter(1)
