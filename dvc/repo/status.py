@@ -93,10 +93,14 @@ def _cloud_status(
     for info in status_info.values():
         name = info["name"]
         status_ = info["status"]
-        if status_ in [cloud.STATUS_OK, cloud.STATUS_MISSING]:
+        if status_ == cloud.STATUS_OK:
             continue
 
-        prefix_map = {cloud.STATUS_DELETED: "deleted", cloud.STATUS_NEW: "new"}
+        prefix_map = {
+            cloud.STATUS_DELETED: "deleted",
+            cloud.STATUS_NEW: "new",
+            cloud.STATUS_MISSING: "missing",
+        }
 
         ret[name] = prefix_map[status_]
 
