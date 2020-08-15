@@ -142,7 +142,7 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
                 "Content-MD5 header for '{url}'".format(url=path_info.url)
             )
 
-        return etag
+        return self.PARAM_CHECKSUM, etag
 
     # Checks whether path points to directory
     def isdir(self, path_info):

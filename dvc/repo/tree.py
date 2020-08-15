@@ -238,8 +238,11 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             raise OutputNotFoundError
         out = outs[0]
         if out.is_dir_checksum:
-            return self._get_granular_checksum(path_info, out)
-        return out.checksum
+            return (
+                out.tree.PARAM_CHECKSUM,
+                self._get_granular_checksum(path_info, out),
+            )
+        return out.tree.PARAM_CHECKSUM, out.checksum
 
 
 class RepoTree(BaseTree):  # pylint:disable=abstract-method
@@ -504,7 +507,7 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
                 return dvc_tree.get_file_hash(path_info)
             except OutputNotFoundError:
                 pass
-        return file_md5(path_info, self)[0]
+        return self.PARAM_CHECKSUM, file_md5(path_info, self)[0]
 
     def copytree(self, top, dest):
         top = PathInfo(top)

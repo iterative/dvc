@@ -184,7 +184,7 @@ class BaseOutput:
         self.info[self.tree.PARAM_CHECKSUM] = checksum
 
     def get_checksum(self):
-        return self.tree.get_hash(self.path_info)
+        return self.tree.get_hash(self.path_info)[1]
 
     @property
     def is_dir_checksum(self):

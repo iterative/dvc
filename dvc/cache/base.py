@@ -127,7 +127,9 @@ class CloudCache:
             logger.debug("cache for '%s'('%s') has changed.", path_info, hash_)
             return True
 
-        actual = self.tree.get_hash(path_info)
+        typ, actual = self.tree.get_hash(path_info)
+        assert typ == self.tree.PARAM_CHECKSUM
+
         if hash_ != actual:
             logger.debug(
                 "hash value '%s' for '%s' has changed (actual '%s').",
@@ -312,7 +314,7 @@ class CloudCache:
             )
             return False
 
-        actual = self.tree.get_hash(cache_info)
+        _, actual = self.tree.get_hash(cache_info)
 
         logger.debug(
             "cache '%s' expected '%s' actual '%s'", cache_info, hash_, actual,
@@ -358,7 +360,7 @@ class CloudCache:
         return self.changed_cache_file(hash_)
 
     def already_cached(self, path_info):
-        current = self.tree.get_hash(path_info)
+        _, current = self.tree.get_hash(path_info)
 
         if not current:
             return False

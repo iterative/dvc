@@ -318,7 +318,10 @@ class S3Tree(BaseTree):
             raise ETagMismatchError(etag, cached_etag)
 
     def get_file_hash(self, path_info):
-        return self.get_etag(self.s3, path_info.bucket, path_info.path)
+        return (
+            self.PARAM_CHECKSUM,
+            self.get_etag(self.s3, path_info.bucket, path_info.path),
+        )
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         total = os.path.getsize(from_file)
