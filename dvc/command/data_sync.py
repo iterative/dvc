@@ -97,7 +97,11 @@ def shared_parent_parser():
         "-j",
         "--jobs",
         type=int,
-        help="Number of jobs to run simultaneously.",
+        help=(
+            "Number of jobs to run simultaneously. "
+            "The default value is 4 * cpu_count(). "
+            "For SSH remotes, the default is 4. "
+        ),
         metavar="<number>",
     )
     parent_parser.add_argument(
