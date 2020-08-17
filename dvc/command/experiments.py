@@ -89,10 +89,14 @@ def _collect_names(all_experiments, **kwargs):
     return sorted(metric_names), sorted(param_names)
 
 
-def _collect_rows(base_rev, experiments, metric_names, param_names, **kwargs):
-    precision = kwargs.pop("precision", DEFAULT_PRECISION)
-    no_timestamp = kwargs.pop("no_timestamp", False)
-
+def _collect_rows(
+    base_rev,
+    experiments,
+    metric_names,
+    param_names,
+    precision=DEFAULT_PRECISION,
+    no_timestamp=False,
+):
     for i, (rev, exp) in enumerate(experiments.items()):
         row = []
         style = None
