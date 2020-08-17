@@ -4,7 +4,6 @@ import logging
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
-from dvc.prompt import ask
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +38,7 @@ class CmdCheckIgnore(CmdBase):
         ret = 1
         while True:
             try:
-                target = ask("")
+                target = input()
             except (KeyboardInterrupt, EOFError):
                 break
             if target == "":
