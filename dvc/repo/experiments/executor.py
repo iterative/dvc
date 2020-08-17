@@ -6,6 +6,7 @@ from tempfile import TemporaryDirectory
 from funcy import cached_property
 
 from dvc.path_info import PathInfo
+from dvc.repo.tree import RepoTree
 from dvc.stage import PipelineStage
 from dvc.tree.base import BaseTree
 from dvc.utils import relpath
@@ -32,8 +33,16 @@ class ExperimentExecutor:
         self.repro_args = kwargs.pop("repro_args", [])
         self.repro_kwargs = kwargs.pop("repro_kwargs", {})
 
-    def run(self):
-        pass
+    @property
+    def tree(self) -> RepoTree:
+        """Return a RepoTree which can be used to collect output from this
+        executor.
+        """
+        raise NotImplementedError
+
+    @staticmethod
+    def reproduce(dvc_dir, cwd=None, **kwargs):
+        raise NotImplementedError
 
     def cleanup(self):
         pass
@@ -92,6 +101,10 @@ class LocalExecutor(ExperimentExecutor):
     @cached_property
     def path_info(self):
         return PathInfo(self.tmp_dir.name)
+
+    @property
+    def tree(self) -> RepoTree:
+        return RepoTree(self.dvc)
 
     @staticmethod
     def reproduce(dvc_dir, cwd=None, **kwargs):

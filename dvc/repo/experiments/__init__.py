@@ -17,7 +17,7 @@ from dvc.repo.experiments.executor import ExperimentExecutor, LocalExecutor
 from dvc.scm.git import Git
 from dvc.stage.serialize import to_lockfile
 from dvc.utils import dict_sha256, env2bool, relpath
-from dvc.utils.fs import copyfile, remove
+from dvc.utils.fs import copy_fobj_to_file, makedirs, remove
 
 logger = logging.getLogger(__name__)
 
@@ -204,8 +204,7 @@ class Experiments:
         self.scm.add(self.args_file)
 
     def _unpack_args(self, tree=None):
-        args_file = os.path.join(self.exp_dvc.tmp_dir, self.PACKED_ARGS_FILE)
-        return ExperimentExecutor.unpack_repro_args(args_file, tree=tree)
+        return ExperimentExecutor.unpack_repro_args(self.args_file, tree=tree)
 
     def _update_params(self, params: dict):
         """Update experiment params files with the specified values."""
@@ -400,8 +399,7 @@ class Experiments:
                     exp_hash = future.result()
                     logger.debug(f"ran exp based on {executor.baseline_rev}")
                     self._scm_checkout(executor.baseline_rev)
-                    self._collect_output(executor.baseline_rev, executor)
-                    remove(self.args_file)
+                    self._collect_output(executor)
                     try:
                         exp_rev = self._commit(exp_hash)
                     except UnchangedExperimentError:
@@ -421,12 +419,26 @@ class Experiments:
 
         return result
 
-    def _collect_output(self, rev: str, executor: ExperimentExecutor):
+    def _collect_output(self, executor: ExperimentExecutor):
+        """Copy (download) output from the executor tree into experiments
+        workspace.
+
+        DVC outs will not be copied (only the .dvc file will be copied).
+        The actual DVC out should be pulled into cache from the executor.
+        (For local executors outs will already be available via shared cache.)
+        """
         logger.debug("copying tmp output from '%s'", executor.tmp_dir)
-        tree = self.scm.get_tree(rev)
-        for fname in tree.walk_files(tree.tree_root):
-            src = executor.path_info / relpath(fname, tree.tree_root)
-            copyfile(src, fname)
+        tree = executor.tree
+        for fname in tree.walk_files(tree.root_dir, dvcfiles=True):
+            if not tree.isdvc(fname):
+                src = relpath(fname, tree.root_dir)
+                dest = PathInfo(self.exp_dvc.root_dir) / src
+                if not os.path.exists(dest.parent):
+                    makedirs(dest.parent)
+                with tree.open(fname, "rb") as fobj:
+                    copy_fobj_to_file(fobj, dest)
+        if os.path.exists(self.args_file):
+            remove(self.args_file)
 
     @scm_locked
     def checkout_exp(self, rev):
