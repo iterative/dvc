@@ -6,12 +6,17 @@ import pytest
 from flaky.flaky_decorator import flaky
 
 from dvc.cache import NamedCache
-from dvc.cache.base import STATUS_DELETED, STATUS_NEW, STATUS_OK
+from dvc.cache.base import (
+    STATUS_DELETED,
+    STATUS_MISSING,
+    STATUS_NEW,
+    STATUS_OK,
+)
 from dvc.external_repo import clean_repos
 from dvc.main import main
 from dvc.stage.exceptions import StageNotFound
 from dvc.tree.local import LocalTree
-from dvc.utils.fs import remove
+from dvc.utils.fs import move, remove
 from dvc.utils.yaml import dump_yaml, load_yaml
 
 from .test_api import all_clouds
@@ -48,6 +53,22 @@ def test_cloud(tmp_dir, dvc, remote):  # pylint:disable=unused-argument
         status_dir = dvc.cloud.status(info_dir, show_checksums=True)
         expected = {md5_dir: {"name": md5_dir, "status": STATUS_NEW}}
         assert status_dir == expected
+
+        # Move cache and check status
+        # See issue https://github.com/iterative/dvc/issues/4383 for details
+        backup_dir = dvc.cache.local.cache_dir + ".backup"
+        move(dvc.cache.local.cache_dir, backup_dir)
+        status = dvc.cloud.status(info, show_checksums=True)
+        expected = {md5: {"name": md5, "status": STATUS_MISSING}}
+        assert status == expected
+
+        status_dir = dvc.cloud.status(info_dir, show_checksums=True)
+        expected = {md5_dir: {"name": md5_dir, "status": STATUS_MISSING}}
+        assert status_dir == expected
+
+        # Restore original cache:
+        remove(dvc.cache.local.cache_dir)
+        move(backup_dir, dvc.cache.local.cache_dir)
 
         # Push and check status
         dvc.cloud.push(info)
