@@ -130,8 +130,6 @@ def test_check_ignore_stdin_mode(
 ):
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "ignored")
     mocker.patch("builtins.input", side_effect=[file, ""])
-    stdout_mock = mocker.patch("sys.stdout")
-    stdout_mock.isatty.return_value = True
 
     assert main(["check-ignore", "--stdin"]) == ret
     assert (file in caplog.text) is output
