@@ -9,14 +9,6 @@ from .local import Local, local_cloud, local_remote  # noqa: F401
 from .oss import OSS, TEST_OSS_REPO_BUCKET, oss, oss_server  # noqa: F401
 from .s3 import S3, TEST_AWS_REPO_BUCKET, real_s3, s3  # noqa: F401
 
-TEST_REMOTE = "upstream"
-TEST_CONFIG = {
-    "cache": {},
-    "core": {"remote": TEST_REMOTE},
-    "remote": {TEST_REMOTE: {"url": ""}},
-}
-
-
 from .gdrive import (  # noqa: F401; noqa: F401
     TEST_GDRIVE_REPO_BUCKET,
     GDrive,
@@ -34,6 +26,13 @@ from .ssh import (  # noqa: F401; noqa: F401
     ssh_connection,
     ssh_server,
 )
+
+TEST_REMOTE = "upstream"
+TEST_CONFIG = {
+    "cache": {},
+    "core": {"remote": TEST_REMOTE},
+    "remote": {TEST_REMOTE: {"url": ""}},
+}
 
 
 @pytest.fixture(scope="session")
