@@ -36,7 +36,7 @@ def _collect_metrics(repo, targets, recursive):
     return list(filter(_filter, metrics))
 
 
-def _extract_metrics(metrics):
+def _extract_metrics(metrics, path, rev):
     if isinstance(metrics, (int, float)):
         return metrics
 
@@ -45,9 +45,18 @@ def _extract_metrics(metrics):
 
     ret = {}
     for key, val in metrics.items():
-        m = _extract_metrics(val)
+        m = _extract_metrics(val, path, rev)
         if m:
             ret[key] = m
+        else:
+            logger.debug(
+                "Could not parse '%s' metric from '%s' at '%s' "
+                "due to its unsupported type: '%s'",
+                key,
+                path,
+                rev,
+                type(val).__name__,
+            )
 
     return ret
 
@@ -70,7 +79,7 @@ def _read_metrics(repo, metrics, rev):
             )
             continue
 
-        val = _extract_metrics(val)
+        val = _extract_metrics(val, metric, rev)
         if val:
             res[str(metric)] = val
 
@@ -88,6 +97,7 @@ def show(
     all_commits=False,
 ):
     res = {}
+    metrics_found = False
 
     for rev in repo.brancher(
         revs=revs,
@@ -96,13 +106,27 @@ def show(
         all_commits=all_commits,
     ):
         metrics = _collect_metrics(repo, targets, recursive)
+
+        if not metrics_found and metrics:
+            metrics_found = True
+
         vals = _read_metrics(repo, metrics, rev)
 
         if vals:
             res[rev] = vals
 
     if not res:
-        raise NoMetricsError()
+        if metrics_found:
+            msg = (
+                "Could not parse metric files. Use `-v` option to see more "
+                "details."
+            )
+        else:
+            msg = (
+                "no metric files in this repository. Use `-m/-M` options for "
+                "`dvc run` to mark stage outputs as  metrics."
+            )
+        raise NoMetricsError(msg)
 
     # Hide workspace metrics if they are the same as in the active branch
     try:

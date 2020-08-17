@@ -171,11 +171,7 @@ class BadMetricError(DvcException):
 
 
 class NoMetricsError(DvcException):
-    def __init__(self):
-        super().__init__(
-            "no metric files in this repository. Use `-m/-M` options for "
-            "`dvc run` to mark stage outputs as  metrics."
-        )
+    pass
 
 
 class NoPlotsError(DvcException):
