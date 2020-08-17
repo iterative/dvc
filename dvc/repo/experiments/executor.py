@@ -2,6 +2,7 @@ import logging
 import os
 import pickle
 from tempfile import TemporaryDirectory
+from typing import Iterable
 
 from funcy import cached_property
 
@@ -9,6 +10,7 @@ from dvc.path_info import PathInfo
 from dvc.repo.tree import RepoTree
 from dvc.stage import PipelineStage
 from dvc.tree.base import BaseTree
+from dvc.tree.local import LocalTree
 from dvc.utils import relpath
 from dvc.utils.fs import copy_fobj_to_file, makedirs
 
@@ -34,14 +36,15 @@ class ExperimentExecutor:
         self.repro_kwargs = kwargs.pop("repro_kwargs", {})
 
     @property
-    def tree(self) -> RepoTree:
-        """Return a RepoTree which can be used to collect output from this
-        executor.
-        """
+    def tree(self) -> BaseTree:
         raise NotImplementedError
 
     @staticmethod
     def reproduce(dvc_dir, cwd=None, **kwargs):
+        raise NotImplementedError
+
+    def collect_output(self) -> Iterable["PathInfo"]:
+        """Iterate over output pathnames for this executor."""
         raise NotImplementedError
 
     def cleanup(self):
@@ -84,6 +87,7 @@ class LocalExecutor(ExperimentExecutor):
             self.tmp_dir.cleanup()
             raise
         self._config(cache_dir)
+        self._tree = LocalTree(self.dvc, {"url": self.dvc.root_dir})
 
     def _config(self, cache_dir):
         local_config = os.path.join(self.dvc_dir, "config.local")
@@ -103,8 +107,8 @@ class LocalExecutor(ExperimentExecutor):
         return PathInfo(self.tmp_dir.name)
 
     @property
-    def tree(self) -> RepoTree:
-        return RepoTree(self.dvc)
+    def tree(self):
+        return self._tree
 
     @staticmethod
     def reproduce(dvc_dir, cwd=None, **kwargs):
@@ -138,6 +142,15 @@ class LocalExecutor(ExperimentExecutor):
         # stages is not currently picklable and cannot be returned across
         # multiprocessing calls
         return hash_exp(stages + unchanged)
+
+    def collect_output(self) -> Iterable["PathInfo"]:
+        """Iterate over output pathnames for this executor."""
+        repo_tree = RepoTree(self.dvc)
+        for fname in repo_tree.walk_files(repo_tree.root_dir, dvcfiles=True):
+            if not repo_tree.isdvc(fname):
+                yield self.tree.path_info / fname.relative_to(
+                    repo_tree.root_dir
+                )
 
     def cleanup(self):
         logger.debug("Removing tmpdir '%s'", self.tmp_dir)

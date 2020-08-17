@@ -4,20 +4,25 @@ import re
 import tempfile
 from collections import defaultdict
 from collections.abc import Mapping
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import (
+    ProcessPoolExecutor,
+    ThreadPoolExecutor,
+    as_completed,
+)
 from contextlib import contextmanager
-from functools import wraps
+from functools import partial, wraps
 from typing import Iterable, Optional
 
 from funcy import cached_property, first
 
-from dvc.exceptions import DvcException
+from dvc.exceptions import DownloadError, DvcException
 from dvc.path_info import PathInfo
+from dvc.progress import Tqdm
 from dvc.repo.experiments.executor import ExperimentExecutor, LocalExecutor
 from dvc.scm.git import Git
 from dvc.stage.serialize import to_lockfile
 from dvc.utils import dict_sha256, env2bool, relpath
-from dvc.utils.fs import copy_fobj_to_file, makedirs, remove
+from dvc.utils.fs import remove
 
 logger = logging.getLogger(__name__)
 
@@ -397,9 +402,19 @@ class Experiments:
                 exc = future.exception()
                 if exc is None:
                     exp_hash = future.result()
-                    logger.debug(f"ran exp based on {executor.baseline_rev}")
                     self._scm_checkout(executor.baseline_rev)
-                    self._collect_output(executor)
+                    try:
+                        self._collect_output(executor)
+                    except DownloadError:
+                        logger.error(
+                            "Failed to collect output for experiment '%s'",
+                            rev,
+                        )
+                        continue
+                    finally:
+                        if os.path.exists(self.args_file):
+                            remove(self.args_file)
+
                     try:
                         exp_rev = self._commit(exp_hash)
                     except UnchangedExperimentError:
@@ -427,18 +442,38 @@ class Experiments:
         The actual DVC out should be pulled into cache from the executor.
         (For local executors outs will already be available via shared cache.)
         """
-        logger.debug("copying tmp output from '%s'", executor.tmp_dir)
-        tree = executor.tree
-        for fname in tree.walk_files(tree.root_dir, dvcfiles=True):
-            if not tree.isdvc(fname):
-                src = relpath(fname, tree.root_dir)
-                dest = PathInfo(self.exp_dvc.root_dir) / src
-                if not os.path.exists(dest.parent):
-                    makedirs(dest.parent)
-                with tree.open(fname, "rb") as fobj:
-                    copy_fobj_to_file(fobj, dest)
-        if os.path.exists(self.args_file):
-            remove(self.args_file)
+        from dvc.cache.local import _log_exceptions
+
+        logger.debug("Collecting output from '%s'", executor.tmp_dir)
+        dest_tree = self.exp_dvc.tree
+        src_tree = executor.tree
+
+        from_infos = []
+        to_infos = []
+        names = []
+        for from_info in executor.collect_output():
+            from_infos.append(from_info)
+            fname = from_info.relative_to(src_tree.path_info)
+            names.append(fname)
+            to_info = dest_tree.path_info / fname
+            to_infos.append(dest_tree.path_info / fname)
+            logger.debug(f"from '{from_info}' to '{to_info}'")
+        total = len(from_infos)
+
+        func = partial(
+            _log_exceptions(dest_tree.download, "download"),
+            dir_mode=dest_tree.dir_mode,
+            file_mode=dest_tree.file_mode,
+        )
+        with Tqdm(total=total, unit="file", desc="Downloading") as pbar:
+            func = pbar.wrap_fn(func)
+            # TODO: parallelize this, currently --jobs for repro applies to
+            # number of repro executors not download threads
+            with ThreadPoolExecutor(max_workers=1) as dl_executor:
+                fails = sum(dl_executor.map(func, from_infos, to_infos, names))
+
+        if fails:
+            raise DownloadError(fails)
 
     @scm_locked
     def checkout_exp(self, rev):
