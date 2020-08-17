@@ -3,7 +3,6 @@
 import uuid
 
 import pytest
-
 from dvc.path_info import CloudURLInfo
 
 from .base import Base

@@ -6,19 +6,14 @@ import shutil
 import time
 
 import colorama
-import pytest
-from mock import call, patch
-
 import dvc as dvc_module
+import pytest
 from dvc.cache import Cache
 from dvc.dvcfile import DVC_FILE_SUFFIX
-from dvc.exceptions import (
-    DvcException,
-    OutputDuplicationError,
-    OverlappingOutputPathsError,
-    RecursiveAddingWhileUsingFilename,
-    YAMLFileCorruptedError,
-)
+from dvc.exceptions import (DvcException, OutputDuplicationError,
+                            OverlappingOutputPathsError,
+                            RecursiveAddingWhileUsingFilename,
+                            YAMLFileCorruptedError)
 from dvc.main import main
 from dvc.output.base import OutputAlreadyTrackedError, OutputIsStageFileError
 from dvc.repo import Repo as DvcRepo
@@ -28,6 +23,7 @@ from dvc.tree.local import LocalTree
 from dvc.utils import LARGE_DIR_SIZE, file_md5, relpath
 from dvc.utils.fs import path_isin
 from dvc.utils.yaml import load_yaml
+from mock import call, patch
 from tests.basic_env import TestDvc
 from tests.utils import get_gitignore_content
 

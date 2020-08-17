@@ -3,11 +3,10 @@ import os
 import threading
 from datetime import datetime, timedelta
 
-from funcy import cached_property, wrap_prop
-
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
+from funcy import cached_property, wrap_prop
 
 from .base import BaseTree
 

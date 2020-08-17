@@ -2,7 +2,6 @@ import logging
 import os
 
 import shortuuid
-
 from dvc.exceptions import DvcException
 from dvc.utils import resolve_output
 from dvc.utils.fs import remove

@@ -2,22 +2,17 @@ import os
 import pathlib
 from itertools import product
 
-from funcy import lsplit, rpartial
-
 from dvc import dependency, output
 from dvc.utils.fs import path_isin
+from funcy import lsplit, rpartial
 
 from ..dependency import ParamsDependency
 from ..tree.local import LocalTree
 from ..tree.s3 import S3Tree
 from ..utils import dict_md5, format_link, relpath
-from .exceptions import (
-    MissingDataSource,
-    StageExternalOutputsError,
-    StagePathNotDirectoryError,
-    StagePathNotFoundError,
-    StagePathOutsideError,
-)
+from .exceptions import (MissingDataSource, StageExternalOutputsError,
+                         StagePathNotDirectoryError, StagePathNotFoundError,
+                         StagePathOutsideError)
 
 
 def check_stage_path(repo, path, is_wdir=False):

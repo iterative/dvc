@@ -5,7 +5,6 @@ import uuid
 from contextlib import contextmanager
 
 import pytest
-
 from dvc.path_info import URLInfo
 
 from .base import Base

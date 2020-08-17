@@ -7,22 +7,12 @@ from functools import partial
 from urllib.parse import urlparse
 
 import configobj
-from funcy import cached_property, compact, re_find, walk_values
-from voluptuous import (
-    ALLOW_EXTRA,
-    All,
-    Any,
-    Coerce,
-    Invalid,
-    Lower,
-    Optional,
-    Range,
-    Schema,
-)
-
 from dvc.exceptions import DvcException, NotDvcRepoError
 from dvc.path_info import PathInfo
 from dvc.utils import relpath
+from funcy import cached_property, compact, re_find, walk_values
+from voluptuous import (ALLOW_EXTRA, All, Any, Coerce, Invalid, Lower,
+                        Optional, Range, Schema)
 
 logger = logging.getLogger(__name__)
 

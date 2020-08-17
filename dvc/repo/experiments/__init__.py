@@ -8,8 +8,6 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from contextlib import contextmanager
 from typing import Iterable, Optional
 
-from funcy import cached_property
-
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 from dvc.repo.experiments.executor import ExperimentExecutor, LocalExecutor
@@ -17,6 +15,7 @@ from dvc.scm.git import Git
 from dvc.stage.serialize import to_lockfile
 from dvc.utils import dict_sha256, env2bool, relpath
 from dvc.utils.fs import copyfile, remove
+from funcy import cached_property
 
 logger = logging.getLogger(__name__)
 

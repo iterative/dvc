@@ -6,10 +6,9 @@ from collections import OrderedDict
 from copy import copy
 
 import yaml
+from dvc.exceptions import DvcException
 from funcy import first
 from yaml import SafeLoader
-
-from dvc.exceptions import DvcException
 
 
 class PlotMetricTypeError(DvcException):

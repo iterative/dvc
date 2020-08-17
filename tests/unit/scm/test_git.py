@@ -1,7 +1,6 @@
 import os
 
 import pytest
-
 from tests.basic_env import TestDvcGit
 
 

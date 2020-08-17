@@ -3,20 +3,16 @@ import os
 from contextlib import contextmanager
 from functools import wraps
 
-from funcy import cached_property, cat, first
-
 from dvc.config import Config
 from dvc.dvcfile import PIPELINE_FILE, Dvcfile, is_valid_filename
 from dvc.exceptions import FileMissingError
 from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
-from dvc.exceptions import (
-    NoOutputOrStageError,
-    NotDvcRepoError,
-    OutputNotFoundError,
-)
+from dvc.exceptions import (NoOutputOrStageError, NotDvcRepoError,
+                            OutputNotFoundError)
 from dvc.path_info import PathInfo
 from dvc.repo.tree import RepoTree
 from dvc.utils.fs import path_isin
+from funcy import cached_property, cat, first
 
 from ..stage.exceptions import StageFileDoesNotExistError, StageNotFound
 from ..utils import parse_target

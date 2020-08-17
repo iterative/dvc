@@ -1,15 +1,11 @@
 import os
 from contextlib import suppress
 
-from funcy import concat, first, lfilter
-
 from dvc.exceptions import InvalidArgumentError
 from dvc.stage import PipelineStage
-from dvc.stage.exceptions import (
-    DuplicateStageName,
-    InvalidStageName,
-    StageFileAlreadyExistsError,
-)
+from dvc.stage.exceptions import (DuplicateStageName, InvalidStageName,
+                                  StageFileAlreadyExistsError)
+from funcy import concat, first, lfilter
 
 from ..exceptions import OutputDuplicationError
 from . import locked

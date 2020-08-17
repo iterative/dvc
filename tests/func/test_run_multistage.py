@@ -3,7 +3,6 @@ import textwrap
 
 import pytest
 import yaml
-
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo import Repo
 from dvc.stage.exceptions import DuplicateStageName, InvalidStageName

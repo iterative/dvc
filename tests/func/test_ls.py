@@ -3,7 +3,6 @@ import shutil
 import textwrap
 
 import pytest
-
 from dvc.exceptions import PathMissingError
 from dvc.repo import Repo
 from dvc.scm.base import CloneError

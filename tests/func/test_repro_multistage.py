@@ -4,13 +4,12 @@ from textwrap import dedent
 
 import pytest
 import yaml
-from funcy import lsplit
-
 from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
 from dvc.exceptions import CyclicGraphError
 from dvc.main import main
 from dvc.stage import PipelineStage
 from dvc.utils.yaml import dump_yaml, parse_yaml
+from funcy import lsplit
 from tests.func import test_repro
 
 COPY_SCRIPT_FORMAT = dedent(
