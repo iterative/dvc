@@ -22,7 +22,7 @@ repos:
           - flake8-debugger
           - flake8-string-format
     repo: https://gitlab.com/pycqa/flake8
-    rev: 3.7.9
+    rev: 3.8.3
   - repo: local
     hooks:
     - id: pylint

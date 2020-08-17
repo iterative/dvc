@@ -119,7 +119,7 @@ tests_requirements = [
     "google-compute-engine==2.8.13",
     "Pygments",  # required by collective.checkdocs,
     "collective.checkdocs",
-    "flake8==3.7.9",
+    "flake8==3.8.3",
     "psutil",
     "flake8-docstrings",
     "pydocstyle<4.0",

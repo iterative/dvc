@@ -114,10 +114,12 @@ def _find_data(data, fields=None, **kwargs):
         # just look for first list of dicts
         fields = set()
 
-    for l in _lists(data):
-        if all(isinstance(dp, dict) for dp in l):
-            if set(first(l).keys()) & fields == fields:
-                return l
+    for lst in _lists(data):
+        if (
+            all(isinstance(dp, dict) for dp in lst)
+            and set(first(lst).keys()) & fields == fields
+        ):
+            return lst
     raise PlotDataStructureError()
 
 
