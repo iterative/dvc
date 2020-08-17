@@ -80,7 +80,7 @@ class StageCache:
         return None
 
     def _create_stage(self, cache, wdir=None):
-        from . import create_stage, PipelineStage
+        from . import PipelineStage, create_stage
 
         stage = create_stage(
             PipelineStage,

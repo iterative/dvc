@@ -50,6 +50,7 @@ def gc(
     )
 
     from contextlib import ExitStack
+
     from dvc.repo import Repo
 
     if not repos:

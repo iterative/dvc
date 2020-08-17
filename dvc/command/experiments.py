@@ -152,6 +152,7 @@ def _parse_list(param_list):
 
 def _show_experiments(all_experiments, console, precision=None, **kwargs):
     from rich.table import Table
+
     from dvc.scm.git import Git
 
     include_metrics = _parse_list(kwargs.get("include_metrics", []))
@@ -193,6 +194,7 @@ def _show_experiments(all_experiments, console, precision=None, **kwargs):
 class CmdExperimentsShow(CmdBase):
     def run(self):
         from rich.console import Console
+
         from dvc.utils.pager import pager
 
         if not self.repo.experiments:

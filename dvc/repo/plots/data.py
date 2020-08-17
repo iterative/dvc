@@ -101,7 +101,7 @@ def _apply_path(data, path=None, **kwargs):
 def _lists(dictionary):
     for _, value in dictionary.items():
         if isinstance(value, dict):
-            yield from (_lists(value))
+            yield from _lists(value)
         elif isinstance(value, list):
             yield value
 

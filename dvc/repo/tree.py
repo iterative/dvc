@@ -16,8 +16,8 @@ from dvc.utils.fs import copy_fobj_to_file, makedirs
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
-    from dvc.tree.local import LocalTree
     from dvc.tree.git import GitTree
+    from dvc.tree.local import LocalTree
 
 
 logger = logging.getLogger(__name__)

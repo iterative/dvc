@@ -8,8 +8,8 @@ logger = logging.getLogger(__name__)
 
 
 def _show_ascii(G):
-    from dvc.repo.graph import get_pipelines
     from dvc.dagascii import draw
+    from dvc.repo.graph import get_pipelines
 
     pipelines = get_pipelines(G)
 
@@ -22,6 +22,7 @@ def _show_ascii(G):
 
 def _show_dot(G):
     import io
+
     from networkx.drawing.nx_pydot import write_dot
 
     dot_file = io.StringIO()
@@ -31,6 +32,7 @@ def _show_dot(G):
 
 def _build(G, target=None, full=False):
     import networkx as nx
+
     from dvc.repo.graph import get_pipeline, get_pipelines
 
     if target:

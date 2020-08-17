@@ -74,6 +74,7 @@ def test_ls_repo(tmp_dir, dvc, scm):
 
 def test_ls_repo_with_color(tmp_dir, dvc, scm, mocker, monkeypatch, caplog):
     import logging
+
     from dvc.cli import parse_args
 
     tmp_dir.scm_gen(FS_STRUCTURE, commit="init")

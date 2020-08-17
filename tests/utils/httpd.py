@@ -16,8 +16,8 @@ class TestRequestHandler(RangeRequestHandler):
         super().__init__(*args, **kwargs)
 
     def translate_path(self, path):
-        import urllib
         import posixpath
+        import urllib
 
         # NOTE: `directory` was introduced in 3.7
         if sys.version_info >= (3, 7):

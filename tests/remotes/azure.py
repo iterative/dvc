@@ -24,11 +24,11 @@ class Azure(Base, CloudURLInfo):
 
 @pytest.fixture(scope="session")
 def azure_server(docker_compose, docker_services):
-    from azure.storage.blob import (  # pylint: disable=no-name-in-module
-        BlobServiceClient,
-    )
     from azure.core.exceptions import (  # pylint: disable=no-name-in-module
         AzureError,
+    )
+    from azure.storage.blob import (  # pylint: disable=no-name-in-module
+        BlobServiceClient,
     )
 
     port = docker_services.port_for("azurite", 10000)

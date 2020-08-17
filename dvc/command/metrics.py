@@ -15,6 +15,7 @@ def show_metrics(
     metrics, all_branches=False, all_tags=False, all_commits=False
 ):
     from flatten_json import flatten
+
     from dvc.utils.diff import format_dict
 
     # When `metrics` contains a `None` key, it means that some files

@@ -36,7 +36,7 @@ def parse_params(path_params):
 
 
 def _get_file_path(kwargs):
-    from dvc.dvcfile import DVC_FILE_SUFFIX, DVC_FILE
+    from dvc.dvcfile import DVC_FILE, DVC_FILE_SUFFIX
 
     out = first(
         concat(
@@ -76,8 +76,8 @@ def _check_stage_exists(dvcfile, stage):
 @locked
 @scm_context
 def run(self, fname=None, no_exec=False, single_stage=False, **kwargs):
+    from dvc.dvcfile import PIPELINE_FILE, Dvcfile
     from dvc.stage import Stage, create_stage
-    from dvc.dvcfile import Dvcfile, PIPELINE_FILE
 
     if not kwargs.get("cmd"):
         raise InvalidArgumentError("command is not specified")

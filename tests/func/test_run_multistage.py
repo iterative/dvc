@@ -11,8 +11,8 @@ from dvc.utils.yaml import parse_yaml_for_update
 
 
 def test_run_with_name(tmp_dir, dvc, run_copy):
-    from dvc.stage import PipelineStage
     from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
+    from dvc.stage import PipelineStage
 
     tmp_dir.dvc_gen("foo", "foo")
     assert not os.path.exists(PIPELINE_FILE)
@@ -24,8 +24,8 @@ def test_run_with_name(tmp_dir, dvc, run_copy):
 
 
 def test_run_no_exec(tmp_dir, dvc, run_copy):
-    from dvc.stage import PipelineStage
     from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
+    from dvc.stage import PipelineStage
 
     tmp_dir.dvc_gen("foo", "foo")
     assert not os.path.exists(PIPELINE_FILE)
@@ -62,8 +62,8 @@ def test_run_with_multistage_and_single_stage(tmp_dir, dvc, run_copy):
 
 
 def test_run_multi_stage_repeat(tmp_dir, dvc, run_copy):
+    from dvc.dvcfile import PIPELINE_FILE, Dvcfile
     from dvc.stage import PipelineStage
-    from dvc.dvcfile import Dvcfile, PIPELINE_FILE
 
     tmp_dir.dvc_gen("foo", "foo")
     run_copy("foo", "foo1", name="copy-foo-foo1")
@@ -144,7 +144,7 @@ def test_graph(tmp_dir, dvc):
 
 
 def test_run_dump_on_multistage(tmp_dir, dvc, run_head):
-    from dvc.dvcfile import Dvcfile, PIPELINE_FILE
+    from dvc.dvcfile import PIPELINE_FILE, Dvcfile
 
     tmp_dir.gen(
         {

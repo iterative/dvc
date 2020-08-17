@@ -119,13 +119,14 @@ class System:
     @staticmethod
     def _getdirinfo(path):
         from collections import namedtuple
+
         from win32file import (  # pylint: disable=import-error
-            CreateFileW,
-            GetFileInformationByHandle,
             FILE_FLAG_BACKUP_SEMANTICS,
             FILE_FLAG_OPEN_REPARSE_POINT,
             FILE_SHARE_READ,
             OPEN_EXISTING,
+            CreateFileW,
+            GetFileInformationByHandle,
         )
 
         # NOTE: use FILE_FLAG_OPEN_REPARSE_POINT to open symlink itself and not

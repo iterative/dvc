@@ -471,9 +471,8 @@ def test_cyclic_graph_error(tmp_dir, dvc, run_copy):
 
 
 def test_repro_multiple_params(tmp_dir, dvc):
-    from tests.func.test_run_multistage import supported_params
-
     from dvc.stage.utils import split_params_deps
+    from tests.func.test_run_multistage import supported_params
 
     with (tmp_dir / "params2.yaml").open("w+") as f:
         yaml.dump(supported_params, f)

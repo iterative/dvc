@@ -110,8 +110,9 @@ def check_circular_dependency(stage):
 
 
 def check_duplicated_arguments(stage):
-    from dvc.exceptions import ArgumentDuplicationError
     from collections import Counter
+
+    from dvc.exceptions import ArgumentDuplicationError
 
     path_counts = Counter(edge.path_info for edge in stage.deps + stage.outs)
 
