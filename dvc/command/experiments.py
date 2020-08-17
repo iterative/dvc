@@ -90,12 +90,41 @@ def _collect_names(all_experiments, **kwargs):
 
 
 def _collect_rows(
-    base_rev, experiments, metric_names, param_names, precision=None
+    base_rev,
+    experiments,
+    metric_names,
+    param_names,
+    precision=DEFAULT_PRECISION,
+    no_timestamp=False,
 ):
-    from flatten_json import flatten
+    for i, (rev, exp) in enumerate(experiments.items()):
+        row = []
+        style = None
+        queued = "*" if exp.get("queued", False) else ""
+        if no_timestamp:
+            timestamp = ""
+        else:
+            commit_time = exp.get("timestamp")
+            timestamp = f" ({commit_time})" if commit_time is not None else ""
 
-    if precision is None:
-        precision = DEFAULT_PRECISION
+        if rev == "baseline":
+            row.append(f"{base_rev}{timestamp}")
+            style = "bold"
+        elif i < len(experiments) - 1:
+            row.append(f"├── {queued}{rev[:7]}{timestamp}")
+        else:
+            row.append(f"└── {queued}{rev[:7]}{timestamp}")
+
+        _extend_row(
+            row, metric_names, exp.get("metrics", {}).items(), precision
+        )
+        _extend_row(row, param_names, exp.get("params", {}).items(), precision)
+
+        yield row, style
+
+
+def _extend_row(row, names, items, precision):
+    from flatten_json import flatten
 
     def _round(val):
         if isinstance(val, float):
@@ -103,40 +132,22 @@ def _collect_rows(
 
         return val
 
-    def _extend(row, names, items):
-        if not items:
-            row.extend(["-"] * len(names))
-            return
+    if not items:
+        row.extend(["-"] * len(names))
+        return
 
-        for fname, item in items:
-            if isinstance(item, dict):
-                item = flatten(item, ".")
-            else:
-                item = {fname: item}
-            for name in names:
-                if name in item:
-                    value = item[name]
-                    text = str(_round(value)) if value is not None else "-"
-                    row.append(text)
-                else:
-                    row.append("-")
-
-    for i, (rev, exp) in enumerate(experiments.items()):
-        row = []
-        style = None
-        queued = "*" if exp.get("queued", False) else ""
-        if rev == "baseline":
-            row.append(f"{base_rev}")
-            style = "bold"
-        elif i < len(experiments) - 1:
-            row.append(f"├── {queued}{rev[:7]}")
+    for fname, item in items:
+        if isinstance(item, dict):
+            item = flatten(item, ".")
         else:
-            row.append(f"└── {queued}{rev[:7]}")
-
-        _extend(row, metric_names, exp.get("metrics", {}).items())
-        _extend(row, param_names, exp.get("params", {}).items())
-
-        yield row, style
+            item = {fname: item}
+        for name in names:
+            if name in item:
+                value = item[name]
+                text = str(_round(value)) if value is not None else "-"
+                row.append(text)
+            else:
+                row.append("-")
 
 
 def _parse_list(param_list):
@@ -150,15 +161,15 @@ def _parse_list(param_list):
     return ret
 
 
-def _show_experiments(all_experiments, console, precision=None, **kwargs):
+def _show_experiments(all_experiments, console, **kwargs):
     from rich.table import Table
 
     from dvc.scm.git import Git
 
-    include_metrics = _parse_list(kwargs.get("include_metrics", []))
-    exclude_metrics = _parse_list(kwargs.get("exclude_metrics", []))
-    include_params = _parse_list(kwargs.get("include_params", []))
-    exclude_params = _parse_list(kwargs.get("exclude_params", []))
+    include_metrics = _parse_list(kwargs.pop("include_metrics", []))
+    exclude_metrics = _parse_list(kwargs.pop("exclude_metrics", []))
+    include_params = _parse_list(kwargs.pop("include_params", []))
+    exclude_params = _parse_list(kwargs.pop("exclude_params", []))
 
     metric_names, param_names = _collect_names(
         all_experiments,
@@ -180,11 +191,7 @@ def _show_experiments(all_experiments, console, precision=None, **kwargs):
             base_rev = base_rev[:7]
 
         for row, _, in _collect_rows(
-            base_rev,
-            experiments,
-            metric_names,
-            param_names,
-            precision=precision,
+            base_rev, experiments, metric_names, param_names, **kwargs,
         ):
             table.add_row(*row)
 
@@ -223,6 +230,7 @@ class CmdExperimentsShow(CmdBase):
                 exclude_metrics=self.args.exclude_metrics,
                 include_params=self.args.include_params,
                 exclude_params=self.args.exclude_params,
+                no_timestamp=self.args.no_timestamp,
             )
 
             if not self.args.no_pager:
@@ -399,6 +407,12 @@ def add_parser(subparsers, parent_parser):
         default=[],
         help="Exclude the specified params from output table.",
         metavar="<params_list>",
+    )
+    experiments_show_parser.add_argument(
+        "--no-timestamp",
+        action="store_true",
+        default=False,
+        help="Do not show experiment timestamps.",
     )
     experiments_show_parser.set_defaults(func=CmdExperimentsShow)
 

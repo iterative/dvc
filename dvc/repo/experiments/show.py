@@ -1,6 +1,7 @@
 import logging
 import re
 from collections import OrderedDict, defaultdict
+from datetime import datetime
 
 from dvc.repo import locked
 from dvc.repo.metrics.show import _collect_metrics, _read_metrics
@@ -15,6 +16,12 @@ EXP_RE = re.compile(r"(?P<rev_sha>[a-f0-9]{7})-(?P<exp_sha>[a-f0-9]+)")
 def _collect_experiment(repo, branch, stash=False):
     res = defaultdict(dict)
     for rev in repo.brancher(revs=[branch]):
+        if rev == "workspace":
+            res["timestamp"] = None
+        else:
+            commit = repo.scm.repo.rev_parse(rev)
+            res["timestamp"] = datetime.fromtimestamp(commit.committed_date)
+
         configs = _collect_configs(repo)
         params = _read_params(repo, configs, rev)
         if params:
