@@ -34,6 +34,7 @@ def move(self, from_path, to_path):
     """
     import dvc.output as Output
     from dvc.stage import Stage
+
     from ..dvcfile import DVC_FILE_SUFFIX, Dvcfile
 
     from_out = Output.loads_from(Stage(self), [from_path])[0]

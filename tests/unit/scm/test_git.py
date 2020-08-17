@@ -98,8 +98,8 @@ def test_is_tracked_unicode(tmp_dir, scm):
 
 
 def test_no_commits(tmp_dir):
-    from tests.dir_helpers import git_init
     from dvc.scm.git import Git
+    from tests.dir_helpers import git_init
 
     git_init(".")
     assert Git().no_commits

@@ -2,8 +2,9 @@ import os
 
 # Increasing fd ulimit for tests
 if os.name == "nt":
-    import win32file  # pylint: disable=import-error
     import subprocess
+
+    import win32file  # pylint: disable=import-error
 
     win32file._setmaxstdio(2048)
 

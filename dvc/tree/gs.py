@@ -28,7 +28,6 @@ def dynamic_chunk_size(func):
         # Note: must be multiple of 256K.
         #
         # [#2572]: https://github.com/iterative/dvc/issues/2572
-
         # skipcq: PYL-W0212
         multiplier = 40
         while True:

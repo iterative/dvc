@@ -42,43 +42,43 @@ def locked(f):
 class Repo:
     DVC_DIR = ".dvc"
 
-    from dvc.repo.destroy import destroy
-    from dvc.repo.install import install
     from dvc.repo.add import add
-    from dvc.repo.remove import remove
-    from dvc.repo.ls import ls
-    from dvc.repo.freeze import freeze, unfreeze
-    from dvc.repo.move import move
-    from dvc.repo.run import run
-    from dvc.repo.imp import imp
-    from dvc.repo.imp_url import imp_url
-    from dvc.repo.reproduce import reproduce
-    from dvc.repo.checkout import _checkout
-    from dvc.repo.push import push
-    from dvc.repo.fetch import _fetch
-    from dvc.repo.pull import pull
-    from dvc.repo.status import status
-    from dvc.repo.gc import gc
-    from dvc.repo.commit import commit
-    from dvc.repo.diff import diff
     from dvc.repo.brancher import brancher
+    from dvc.repo.checkout import _checkout
+    from dvc.repo.commit import commit
+    from dvc.repo.destroy import destroy
+    from dvc.repo.diff import diff
+    from dvc.repo.fetch import _fetch
+    from dvc.repo.freeze import freeze, unfreeze
+    from dvc.repo.gc import gc
     from dvc.repo.get import get
     from dvc.repo.get_url import get_url
+    from dvc.repo.imp import imp
+    from dvc.repo.imp_url import imp_url
+    from dvc.repo.install import install
+    from dvc.repo.ls import ls
+    from dvc.repo.move import move
+    from dvc.repo.pull import pull
+    from dvc.repo.push import push
+    from dvc.repo.remove import remove
+    from dvc.repo.reproduce import reproduce
+    from dvc.repo.run import run
+    from dvc.repo.status import status
     from dvc.repo.update import update
 
     def __init__(self, root_dir=None, scm=None, rev=None):
-        from dvc.state import State, StateNoop
-        from dvc.lock import make_lock
-        from dvc.scm import SCM
         from dvc.cache import Cache
         from dvc.data_cloud import DataCloud
+        from dvc.lock import make_lock
         from dvc.repo.experiments import Experiments
         from dvc.repo.metrics import Metrics
-        from dvc.repo.plots import Plots
         from dvc.repo.params import Params
+        from dvc.repo.plots import Plots
+        from dvc.scm import SCM
+        from dvc.stage.cache import StageCache
+        from dvc.state import State, StateNoop
         from dvc.tree.local import LocalTree
         from dvc.utils.fs import makedirs
-        from dvc.stage.cache import StageCache
 
         if scm:
             tree = scm.get_tree(rev)
@@ -441,10 +441,11 @@ class Repo:
         """
         import networkx as nx
         from pygtrie import Trie
+
         from dvc.exceptions import (
             OutputDuplicationError,
-            StagePathAsOutputError,
             OverlappingOutputPathsError,
+            StagePathAsOutputError,
         )
 
         G = nx.DiGraph()
