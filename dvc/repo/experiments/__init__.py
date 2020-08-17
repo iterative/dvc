@@ -437,10 +437,6 @@ class Experiments:
     def _collect_output(self, executor: ExperimentExecutor):
         """Copy (download) output from the executor tree into experiments
         workspace.
-
-        DVC outs will not be copied (only the .dvc file will be copied).
-        The actual DVC out should be pulled into cache from the executor.
-        (For local executors outs will already be available via shared cache.)
         """
         from dvc.cache.local import _log_exceptions
 

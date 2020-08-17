@@ -44,7 +44,13 @@ class ExperimentExecutor:
         raise NotImplementedError
 
     def collect_output(self) -> Iterable["PathInfo"]:
-        """Iterate over output pathnames for this executor."""
+        """Iterate over output pathnames for this executor.
+
+        For DVC outs, only the .dvc file path will be yielded. DVC outs
+        themselves should be fetched from remote executor cache in the normal
+        fetch/pull way. For local executors outs will already be available via
+        shared local cache.
+        """
         raise NotImplementedError
 
     def cleanup(self):
@@ -144,7 +150,6 @@ class LocalExecutor(ExperimentExecutor):
         return hash_exp(stages + unchanged)
 
     def collect_output(self) -> Iterable["PathInfo"]:
-        """Iterate over output pathnames for this executor."""
         repo_tree = RepoTree(self.dvc)
         for fname in repo_tree.walk_files(repo_tree.root_dir, dvcfiles=True):
             if not repo_tree.isdvc(fname):
