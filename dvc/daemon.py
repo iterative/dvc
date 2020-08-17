@@ -25,7 +25,7 @@ def _popen(cmd, **kwargs):
 
 
 def _spawn_windows(cmd, env):
-    from subprocess import STARTUPINFO, STARTF_USESHOWWINDOW
+    from subprocess import STARTF_USESHOWWINDOW, STARTUPINFO
 
     creationflags = CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS
 

@@ -45,8 +45,8 @@ def _fobj_md5(fobj, hash_md5, binary, progress_func=None):
 
 def file_md5(fname, tree=None):
     """ get the (md5 hexdigest, md5 digest) of a file """
-    from dvc.progress import Tqdm
     from dvc.istextfile import istextfile
+    from dvc.progress import Tqdm
 
     if tree:
         exists_func = tree.exists
@@ -364,6 +364,7 @@ def resolve_output(inp, out):
 
 def resolve_paths(repo, out):
     from urllib.parse import urlparse
+
     from ..dvcfile import DVC_FILE_SUFFIX
     from ..path_info import PathInfo
     from .fs import contains_symlink_up_to

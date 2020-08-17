@@ -88,6 +88,7 @@ class Updater:  # pragma: no cover
 
     def _get_latest_version(self):
         import json
+
         import requests
 
         try:

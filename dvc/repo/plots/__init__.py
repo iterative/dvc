@@ -210,7 +210,7 @@ def _prepare_plots(data, revs, props):
 
 
 def _render(datafile, datas, props, templates):
-    from .data import plot_data, PlotData
+    from .data import PlotData, plot_data
 
     # Copy it to not modify a passed value
     props = props.copy()

@@ -9,8 +9,9 @@ class CmdDaemonBase(CmdBaseNoRepo):
 class CmdDaemonUpdater(CmdDaemonBase):
     def run(self):
         import os
-        from dvc.repo import Repo
+
         from dvc.config import Config
+        from dvc.repo import Repo
         from dvc.updater import Updater
 
         root_dir = Repo.find_root()

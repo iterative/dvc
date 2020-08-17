@@ -8,8 +8,8 @@ logger = logging.getLogger(__name__)
 
 class CmdInit(CmdBaseNoRepo):
     def run(self):
-        from dvc.repo import Repo
         from dvc.exceptions import InitError
+        from dvc.repo import Repo
 
         try:
             self.repo = Repo.init(

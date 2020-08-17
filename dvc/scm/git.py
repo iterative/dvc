@@ -393,8 +393,9 @@ class Git(Base):
         return self.repo.rev_parse("HEAD").hexsha
 
     def resolve_rev(self, rev):
-        from git.exc import BadName, GitCommandError
         from contextlib import suppress
+
+        from git.exc import BadName, GitCommandError
 
         def _resolve_rev(name):
             with suppress(BadName, GitCommandError):

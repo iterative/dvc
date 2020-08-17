@@ -66,8 +66,8 @@ class AzureTree(BaseTree):
     @cached_property
     def blob_service(self):
         # pylint: disable=no-name-in-module
-        from azure.storage.blob import BlobServiceClient
         from azure.core.exceptions import ResourceNotFoundError
+        from azure.storage.blob import BlobServiceClient
 
         logger.debug(f"URL {self.path_info}")
 

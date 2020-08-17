@@ -70,8 +70,9 @@ class HDFS(Base, URLInfo):  # pylint: disable=abstract-method
 
 @pytest.fixture(scope="session")
 def hadoop():
-    import wget
     import tarfile
+
+    import wget
     from appdirs import user_cache_dir
 
     if platform.system() != "Linux":

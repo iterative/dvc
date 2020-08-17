@@ -10,7 +10,7 @@ restylers:
     interpreters:
     - python
   - name: isort
-    image: restyled/restyler-isort:v4.3.21
+    image: restyled/restyler-isort:v5.4.2
     command:
     - isort
     arguments: []

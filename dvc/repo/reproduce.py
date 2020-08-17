@@ -120,7 +120,8 @@ def reproduce(
 
 def _parse_params(path_params):
     from flatten_json import unflatten
-    from yaml import safe_load, YAMLError
+    from yaml import YAMLError, safe_load
+
     from dvc.dependency.param import ParamsDependency
 
     ret = {}
