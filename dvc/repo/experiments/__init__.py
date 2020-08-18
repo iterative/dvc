@@ -450,7 +450,7 @@ class Experiments:
         for from_info in executor.collect_output():
             from_infos.append(from_info)
             fname = from_info.relative_to(src_tree.path_info)
-            names.append(fname)
+            names.append(str(fname))
             to_info = dest_tree.path_info / fname
             to_infos.append(dest_tree.path_info / fname)
             logger.debug(f"from '{from_info}' to '{to_info}'")
