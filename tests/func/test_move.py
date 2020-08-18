@@ -3,7 +3,7 @@ import os
 from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import DvcException, MoveNotDataSourceError
 from dvc.main import main
-from dvc.utils.yaml import load_yaml
+from dvc.utils.serialize import load_yaml
 from tests.basic_env import TestDvc, TestDvcGit
 from tests.func.test_repro import TestRepro
 from tests.utils import cd

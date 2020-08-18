@@ -10,7 +10,7 @@ from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
 from dvc.exceptions import CyclicGraphError
 from dvc.main import main
 from dvc.stage import PipelineStage
-from dvc.utils.yaml import dump_yaml, parse_yaml
+from dvc.utils.serialize import dump_yaml, parse_yaml
 from tests.func import test_repro
 
 COPY_SCRIPT_FORMAT = dedent(

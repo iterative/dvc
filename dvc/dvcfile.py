@@ -16,7 +16,7 @@ from dvc.stage.exceptions import (
 from dvc.stage.loader import SingleStageLoader, StageLoader
 from dvc.utils import relpath
 from dvc.utils.collections import apply_diff
-from dvc.utils.yaml import dump_yaml, parse_yaml, parse_yaml_for_update
+from dvc.utils.serialize import dump_yaml, parse_yaml, parse_yaml_for_update
 
 logger = logging.getLogger(__name__)
 

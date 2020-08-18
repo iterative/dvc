@@ -26,7 +26,7 @@ from dvc.tree.local import LocalTree
 from dvc.tree.s3 import S3Tree
 from dvc.utils import relpath
 from dvc.utils.fs import walk_files
-from dvc.utils.yaml import dump_yaml, load_yaml
+from dvc.utils.serialize import dump_yaml, load_yaml
 from tests.basic_env import TestDvc, TestDvcGit
 from tests.func.test_repro import TestRepro
 from tests.remotes import S3

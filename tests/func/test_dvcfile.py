@@ -9,7 +9,7 @@ from dvc.stage.exceptions import (
     StageFileFormatError,
 )
 from dvc.stage.loader import StageNotFound
-from dvc.utils.yaml import dump_yaml
+from dvc.utils.serialize import dump_yaml
 
 
 def test_run_load_one_for_multistage(tmp_dir, dvc):

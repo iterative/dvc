@@ -6,7 +6,7 @@ import yaml
 from dvc.dvcfile import PIPELINE_LOCK
 from dvc.stage.utils import split_params_deps
 from dvc.utils.fs import remove
-from dvc.utils.yaml import parse_yaml_for_update
+from dvc.utils.serialize import parse_yaml_for_update
 from tests.func.test_run_multistage import supported_params
 
 FS_STRUCTURE = {

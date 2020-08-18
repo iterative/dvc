@@ -10,7 +10,7 @@ from dvc.cache.local import _log_exceptions
 from dvc.schema import COMPILED_LOCK_FILE_STAGE_SCHEMA
 from dvc.utils import dict_sha256, relpath
 from dvc.utils.fs import makedirs
-from dvc.utils.yaml import dump_yaml
+from dvc.utils.serialize import dump_yaml
 
 from .loader import StageLoader
 from .serialize import to_single_stage_lockfile
