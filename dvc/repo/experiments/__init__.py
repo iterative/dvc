@@ -515,7 +515,7 @@ class Experiments:
         """Checkout an experiment to the user's workspace."""
         from git.exc import GitCommandError
 
-        from dvc.repo.checkout import _checkout as dvc_checkout
+        from dvc.repo.checkout import checkout as dvc_checkout
 
         self._check_baseline(rev)
         self._scm_checkout(rev)

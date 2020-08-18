@@ -9,6 +9,8 @@ from dvc.exceptions import (
 from dvc.progress import Tqdm
 from dvc.utils import relpath
 
+from . import locked
+
 logger = logging.getLogger(__name__)
 
 
@@ -36,7 +38,8 @@ def get_all_files_numbers(pairs):
     )
 
 
-def _checkout(
+@locked
+def checkout(
     self,
     targets=None,
     with_deps=False,

@@ -4,10 +4,13 @@ from dvc.config import NoRemoteError
 from dvc.exceptions import DownloadError
 from dvc.scm.base import CloneError
 
+from . import locked
+
 logger = logging.getLogger(__name__)
 
 
-def _fetch(
+@locked
+def fetch(
     self,
     targets=None,
     jobs=None,
