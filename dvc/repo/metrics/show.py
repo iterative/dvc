@@ -1,12 +1,11 @@
 import logging
 import os
 
-import yaml
-
 from dvc.exceptions import NoMetricsError
 from dvc.path_info import PathInfo
 from dvc.repo import locked
 from dvc.repo.tree import RepoTree
+from dvc.utils.serialize import YAMLFileCorruptedError, parse_yaml
 
 logger = logging.getLogger(__name__)
 
@@ -72,8 +71,8 @@ def _read_metrics(repo, metrics, rev):
         try:
             with tree.open(metric, "r") as fobj:
                 # NOTE this also supports JSON
-                val = yaml.safe_load(fobj)
-        except (FileNotFoundError, yaml.YAMLError):
+                val = parse_yaml(fobj.read(), metric)
+        except (FileNotFoundError, YAMLFileCorruptedError):
             logger.debug(
                 "failed to read '%s' on '%s'", metric, rev, exc_info=True
             )

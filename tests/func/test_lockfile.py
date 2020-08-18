@@ -1,20 +1,18 @@
 from collections import OrderedDict
 from operator import itemgetter
 
-import yaml
-
 from dvc.dvcfile import PIPELINE_LOCK
 from dvc.stage.utils import split_params_deps
 from dvc.utils.fs import remove
-from dvc.utils.serialize import parse_yaml_for_update
+from dvc.utils.serialize import dumps_yaml, parse_yaml_for_update
 from tests.func.test_run_multistage import supported_params
 
 FS_STRUCTURE = {
     "foo": "bar\nfoobar",
     "bar": "foo\nfoobar",
     "foobar": "foobar\nbar",
-    "params.yaml": yaml.dump(supported_params),
-    "params2.yaml": yaml.dump(supported_params),
+    "params.yaml": dumps_yaml(supported_params),
+    "params2.yaml": dumps_yaml(supported_params),
 }
 
 

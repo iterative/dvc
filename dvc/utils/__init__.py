@@ -1,7 +1,6 @@
 """Helpers for other modules."""
 
 import hashlib
-import io
 import json
 import logging
 import math
@@ -12,7 +11,6 @@ import time
 
 import colorama
 import nanotime
-from ruamel.yaml import YAML
 from shortuuid import uuid
 
 logger = logging.getLogger(__name__)
@@ -235,18 +233,6 @@ def tmp_fname(fname):
 
 def current_timestamp():
     return int(nanotime.timestamp(time.time()))
-
-
-def from_yaml_string(s):
-    return YAML().load(io.StringIO(s))
-
-
-def to_yaml_string(data):
-    stream = io.StringIO()
-    yaml = YAML()
-    yaml.default_flow_style = False
-    yaml.dump(data, stream)
-    return stream.getvalue()
 
 
 def colorize(message, color=None):

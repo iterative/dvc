@@ -1,9 +1,8 @@
 import json
 import logging
 
-import yaml
-
 from dvc.main import main
+from dvc.utils.serialize import dump_yaml
 
 
 def test_metrics_diff_simple(tmp_dir, scm, dvc, run_copy_metrics):
@@ -24,7 +23,7 @@ def test_metrics_diff_simple(tmp_dir, scm, dvc, run_copy_metrics):
 def test_metrics_diff_yaml(tmp_dir, scm, dvc, run_copy_metrics):
     def _gen(val):
         metrics = {"a": {"b": {"c": val, "d": 1, "e": str(val)}}}
-        tmp_dir.gen({"m_temp.yaml": yaml.dump(metrics)})
+        dump_yaml("m_temp.yaml", metrics)
         run_copy_metrics(
             "m_temp.yaml", "m.yaml", metrics=["m.yaml"], commit=str(val)
         )

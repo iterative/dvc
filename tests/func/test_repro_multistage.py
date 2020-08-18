@@ -3,7 +3,6 @@ from copy import deepcopy
 from textwrap import dedent
 
 import pytest
-import yaml
 from funcy import lsplit
 
 from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
@@ -474,11 +473,8 @@ def test_repro_multiple_params(tmp_dir, dvc):
     from dvc.stage.utils import split_params_deps
     from tests.func.test_run_multistage import supported_params
 
-    with (tmp_dir / "params2.yaml").open("w+") as f:
-        yaml.dump(supported_params, f)
-
-    with (tmp_dir / "params.yaml").open("w+") as f:
-        yaml.dump(supported_params, f)
+    dump_yaml(tmp_dir / "params2.yaml", supported_params)
+    dump_yaml(tmp_dir / "params.yaml", supported_params)
 
     (tmp_dir / "foo").write_text("foo")
     stage = dvc.run(
@@ -518,9 +514,8 @@ def test_repro_multiple_params(tmp_dir, dvc):
     assert set(defaults) == {"answer", "floats", "nested.nested1"}
 
     assert not dvc.reproduce(stage.addressing)
-    with (tmp_dir / "params.yaml").open("w+") as f:
-        params = deepcopy(supported_params)
-        params["answer"] = 43
-        yaml.dump(params, f)
+    params = deepcopy(supported_params)
+    params["answer"] = 43
+    dump_yaml(tmp_dir / "params.yaml", params)
 
     assert dvc.reproduce(stage.addressing) == [stage]

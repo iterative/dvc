@@ -6,7 +6,6 @@ import shutil
 from collections import OrderedDict
 
 import pytest
-import yaml
 from funcy import first
 
 from dvc.repo.plots.data import (
@@ -21,6 +20,7 @@ from dvc.repo.plots.template import (
     NoFieldInDataError,
     TemplateNotFoundError,
 )
+from dvc.utils.serialize import dump_yaml, dumps_yaml
 
 
 def _write_csv(metric, filename, header=True):
@@ -493,9 +493,7 @@ def test_plot_default_choose_column(tmp_dir, scm, dvc, run_copy_metrics):
 
 def test_plot_yaml(tmp_dir, scm, dvc, run_copy_metrics):
     metric = [{"val": 2}, {"val": 3}]
-    with open("metric_t.yaml", "w") as fobj:
-        yaml.dump(metric, fobj)
-
+    dump_yaml("metric_t.yaml", metric)
     run_copy_metrics(
         "metric_t.yaml", "metric.yaml", plots_no_cache=["metric.yaml"]
     )
@@ -543,7 +541,7 @@ def test_load_metric_from_dict_yaml(tmp_dir):
     metric = [{"acccuracy": 1, "loss": 2}, {"accuracy": 3, "loss": 4}]
     dmetric = {"train": metric}
 
-    plot_data = YAMLPlotData("-", "revision", yaml.dump(dmetric))
+    plot_data = YAMLPlotData("-", "revision", dumps_yaml(dmetric))
 
     expected = metric
     for d in expected:

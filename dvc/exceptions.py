@@ -182,22 +182,6 @@ class NoPlotsError(DvcException):
         )
 
 
-class YAMLFileCorruptedError(DvcException):
-    def __init__(self, path):
-        path = relpath(path)
-        super().__init__(
-            f"unable to read: '{path}', YAML file structure is corrupted"
-        )
-
-
-class TOMLFileCorruptedError(DvcException):
-    def __init__(self, path):
-        path = relpath(path)
-        super().__init__(
-            f"unable to read: '{path}', TOML file structure is corrupted"
-        )
-
-
 class RecursiveAddingWhileUsingFilename(DvcException):
     def __init__(self):
         super().__init__(

@@ -1,11 +1,9 @@
 import pytest
-import toml
-import yaml
 
 from dvc.dependency import ParamsDependency, loadd_from, loads_params
 from dvc.dependency.param import BadParamFileError, MissingParamsError
 from dvc.stage import Stage
-from dvc.utils.serialize import load_yaml
+from dvc.utils.serialize import dump_toml, dump_yaml, load_yaml
 
 PARAMS = {
     "foo": 1,
@@ -92,9 +90,8 @@ def test_read_params_unsupported_format(tmp_dir, dvc):
 
 
 def test_read_params_nested(tmp_dir, dvc):
-    tmp_dir.gen(
-        DEFAULT_PARAMS_FILE,
-        yaml.dump({"some": {"path": {"foo": ["val1", "val2"]}}}),
+    dump_yaml(
+        DEFAULT_PARAMS_FILE, {"some": {"path": {"foo": ["val1", "val2"]}}}
     )
     dep = ParamsDependency(Stage(dvc), None, ["some.path.foo"])
     assert dep.read_params() == {"some.path.foo": ["val1", "val2"]}
@@ -102,20 +99,14 @@ def test_read_params_nested(tmp_dir, dvc):
 
 def test_read_params_default_loader(tmp_dir, dvc):
     parameters_file = "parameters.foo"
-    tmp_dir.gen(
-        parameters_file,
-        yaml.dump({"some": {"path": {"foo": ["val1", "val2"]}}}),
-    )
+    dump_yaml(parameters_file, {"some": {"path": {"foo": ["val1", "val2"]}}})
     dep = ParamsDependency(Stage(dvc), parameters_file, ["some.path.foo"])
     assert dep.read_params() == {"some.path.foo": ["val1", "val2"]}
 
 
 def test_read_params_wrong_suffix(tmp_dir, dvc):
     parameters_file = "parameters.toml"
-    tmp_dir.gen(
-        parameters_file,
-        yaml.dump({"some": {"path": {"foo": ["val1", "val2"]}}}),
-    )
+    dump_yaml(parameters_file, {"some": {"path": {"foo": ["val1", "val2"]}}})
     dep = ParamsDependency(Stage(dvc), parameters_file, ["some.path.foo"])
     with pytest.raises(BadParamFileError):
         dep.read_params()
@@ -123,10 +114,7 @@ def test_read_params_wrong_suffix(tmp_dir, dvc):
 
 def test_read_params_toml(tmp_dir, dvc):
     parameters_file = "parameters.toml"
-    tmp_dir.gen(
-        parameters_file,
-        toml.dumps({"some": {"path": {"foo": ["val1", "val2"]}}}),
-    )
+    dump_toml(parameters_file, {"some": {"path": {"foo": ["val1", "val2"]}}})
     dep = ParamsDependency(Stage(dvc), parameters_file, ["some.path.foo"])
     assert dep.read_params() == {"some.path.foo": ["val1", "val2"]}
 

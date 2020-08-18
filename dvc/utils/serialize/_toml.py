@@ -1,6 +1,17 @@
 import toml
+from funcy import reraise
 
-from dvc.exceptions import TOMLFileCorruptedError
+from ._common import ParseError
+
+
+class TOMLFileCorruptedError(ParseError):
+    def __init__(self, path):
+        super().__init__(path, "TOML file structure is corrupted")
+
+
+def parse_toml(text, path, decoder=None):
+    with reraise(toml.TomlDecodeError, TOMLFileCorruptedError(path)):
+        return toml.loads(text, decoder=decoder)
 
 
 def parse_toml_for_update(text, path):
@@ -10,12 +21,10 @@ def parse_toml_for_update(text, path):
     keys may be re-ordered between load/dump, but this function will at
     least preserve comments.
     """
-    try:
-        return toml.loads(text, decoder=toml.TomlPreserveCommentDecoder())
-    except toml.TomlDecodeError as exc:
-        raise TOMLFileCorruptedError(path) from exc
+    decoder = toml.TomlPreserveCommentDecoder()
+    return parse_toml(text, path, decoder=decoder)
 
 
 def dump_toml(path, data):
-    with open(path, "w", encoding="utf-8") as fobj:
+    with open(path, "w+", encoding="utf-8") as fobj:
         toml.dump(data, fobj, encoder=toml.TomlPreserveCommentEncoder())

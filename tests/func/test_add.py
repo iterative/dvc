@@ -17,7 +17,6 @@ from dvc.exceptions import (
     OutputDuplicationError,
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
-    YAMLFileCorruptedError,
 )
 from dvc.main import main
 from dvc.output.base import OutputAlreadyTrackedError, OutputIsStageFileError
@@ -27,7 +26,7 @@ from dvc.system import System
 from dvc.tree.local import LocalTree
 from dvc.utils import LARGE_DIR_SIZE, file_md5, relpath
 from dvc.utils.fs import path_isin
-from dvc.utils.serialize import load_yaml
+from dvc.utils.serialize import YAMLFileCorruptedError, load_yaml
 from tests.basic_env import TestDvc
 from tests.utils import get_gitignore_content
 

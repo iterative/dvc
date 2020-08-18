@@ -2,12 +2,11 @@ import os
 import textwrap
 
 import pytest
-import yaml
 
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo import Repo
 from dvc.stage.exceptions import DuplicateStageName, InvalidStageName
-from dvc.utils.serialize import parse_yaml_for_update
+from dvc.utils.serialize import dump_yaml, parse_yaml_for_update
 
 
 def test_run_with_name(tmp_dir, dvc, run_copy):
@@ -236,9 +235,7 @@ supported_params = {
 def test_run_params_default(tmp_dir, dvc):
     from dvc.dependency import ParamsDependency
 
-    with (tmp_dir / "params.yaml").open("w+") as f:
-        yaml.dump(supported_params, f)
-
+    dump_yaml(tmp_dir / "params.yaml", supported_params)
     stage = dvc.run(
         name="read_params",
         params=["nested.nested1.nested2"],
@@ -261,9 +258,7 @@ def test_run_params_default(tmp_dir, dvc):
 def test_run_params_custom_file(tmp_dir, dvc):
     from dvc.dependency import ParamsDependency
 
-    with (tmp_dir / "params2.yaml").open("w+") as f:
-        yaml.dump(supported_params, f)
-
+    dump_yaml(tmp_dir / "params2.yaml", supported_params)
     stage = dvc.run(
         name="read_params",
         params=["params2.yaml:lists"],
@@ -286,9 +281,7 @@ def test_run_params_custom_file(tmp_dir, dvc):
 def test_run_params_no_exec(tmp_dir, dvc):
     from dvc.dependency import ParamsDependency
 
-    with (tmp_dir / "params2.yaml").open("w+") as f:
-        yaml.dump(supported_params, f)
-
+    dump_yaml(tmp_dir / "params2.yaml", supported_params)
     stage = dvc.run(
         name="read_params",
         params=["params2.yaml:lists"],
