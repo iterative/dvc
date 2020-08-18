@@ -189,8 +189,12 @@ class Experiments:
 
     def _update_params(self, params: dict):
         """Update experiment params files with the specified values."""
-        from dvc.utils.toml import dump_toml, parse_toml_for_update
-        from dvc.utils.yaml import dump_yaml, parse_yaml_for_update
+        from dvc.utils.serialize import (
+            dump_toml,
+            dump_yaml,
+            parse_toml_for_update,
+            parse_yaml_for_update,
+        )
 
         logger.debug("Using experiment params '%s'", params)
 

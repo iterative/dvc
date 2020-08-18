@@ -10,7 +10,7 @@ from dvc.repo import Repo
 from dvc.stage import PipelineStage, Stage
 from dvc.stage.exceptions import StageFileFormatError
 from dvc.tree.local import LocalTree
-from dvc.utils.yaml import dump_yaml, load_yaml
+from dvc.utils.serialize import dump_yaml, load_yaml
 from tests.basic_env import TestDvc
 
 

@@ -5,7 +5,7 @@ import yaml
 from dvc.dependency import ParamsDependency, loadd_from, loads_params
 from dvc.dependency.param import BadParamFileError, MissingParamsError
 from dvc.stage import Stage
-from dvc.utils.yaml import load_yaml
+from dvc.utils.serialize import load_yaml
 
 PARAMS = {
     "foo": 1,

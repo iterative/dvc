@@ -21,7 +21,7 @@ from dvc.system import System
 from dvc.tree.local import LocalTree
 from dvc.utils import file_md5, relpath
 from dvc.utils.fs import remove
-from dvc.utils.yaml import dump_yaml, load_yaml
+from dvc.utils.serialize import dump_yaml, load_yaml
 from tests.basic_env import TestDvc
 
 

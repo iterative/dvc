@@ -13,7 +13,7 @@ from dvc.stage.exceptions import (
     StageFileFormatError,
     StageFileIsNotDvcFileError,
 )
-from dvc.utils.yaml import dump_yaml
+from dvc.utils.serialize import dump_yaml
 
 
 @pytest.mark.parametrize(

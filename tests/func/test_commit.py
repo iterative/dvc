@@ -6,7 +6,7 @@ from dvc.dependency.base import DependencyDoesNotExistError
 from dvc.dvcfile import PIPELINE_FILE
 from dvc.output.base import OutputDoesNotExistError
 from dvc.stage.exceptions import StageCommitError
-from dvc.utils.yaml import dump_yaml, load_yaml
+from dvc.utils.serialize import dump_yaml, load_yaml
 
 
 def test_commit_recursive(tmp_dir, dvc):

@@ -8,7 +8,7 @@ from funcy import post_processing
 from dvc.dependency import ParamsDependency
 from dvc.output import BaseOutput
 from dvc.utils.collections import apply_diff
-from dvc.utils.yaml import parse_yaml_for_update
+from dvc.utils.serialize import parse_yaml_for_update
 
 from .params import StageParams
 from .utils import resolve_wdir, split_params_deps

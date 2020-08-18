@@ -17,7 +17,7 @@ from dvc.main import main
 from dvc.stage.exceptions import StageNotFound
 from dvc.tree.local import LocalTree
 from dvc.utils.fs import move, remove
-from dvc.utils.yaml import dump_yaml, load_yaml
+from dvc.utils.serialize import dump_yaml, load_yaml
 
 from .test_api import all_clouds
 

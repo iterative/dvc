@@ -32,7 +32,7 @@ from dvc.stage.exceptions import (
 )
 from dvc.system import System
 from dvc.utils import file_md5
-from dvc.utils.yaml import load_yaml
+from dvc.utils.serialize import load_yaml
 from tests.basic_env import TestDvc, TestDvcGit
 
 

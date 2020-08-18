@@ -7,7 +7,7 @@ import yaml
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo import Repo
 from dvc.stage.exceptions import DuplicateStageName, InvalidStageName
-from dvc.utils.yaml import parse_yaml_for_update
+from dvc.utils.serialize import parse_yaml_for_update
 
 
 def test_run_with_name(tmp_dir, dvc, run_copy):
