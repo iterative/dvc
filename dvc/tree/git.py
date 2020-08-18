@@ -2,6 +2,7 @@ import errno
 import io
 import os
 
+import methodtools
 from funcy import cached_property
 
 from dvc.exceptions import DvcException
@@ -113,6 +114,7 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
                 return True
         return False
 
+    @methodtools.lru_cache(maxsize=1)
     def _git_object_by_path(self, path):
         import git
 
