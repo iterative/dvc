@@ -60,4 +60,3 @@ def test_show_experiment(tmp_dir, scm, dvc):
         else:
             assert exp["metrics"]["metrics.yaml"] == expected_params
             assert exp["params"]["params.yaml"] == expected_params
-            assert exp["timestamp"] > timestamp

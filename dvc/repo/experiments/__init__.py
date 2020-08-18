@@ -6,9 +6,10 @@ from collections import defaultdict
 from collections.abc import Mapping
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from contextlib import contextmanager
+from functools import wraps
 from typing import Iterable, Optional
 
-from funcy import cached_property
+from funcy import cached_property, first
 
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
@@ -19,6 +20,17 @@ from dvc.utils import dict_sha256, env2bool, relpath
 from dvc.utils.fs import copyfile, remove
 
 logger = logging.getLogger(__name__)
+
+
+def scm_locked(f):
+    # Lock the experiments workspace so that we don't try to perform two
+    # different sequences of git operations at once
+    @wraps(f)
+    def wrapper(exp, *args, **kwargs):
+        with exp.scm_lock:
+            return f(exp, *args, **kwargs)
+
+    return wrapper
 
 
 def hash_exp(stages):
@@ -35,11 +47,13 @@ class UnchangedExperimentError(DvcException):
 
 
 class BaselineMismatchError(DvcException):
-    def __init__(self, rev):
+    def __init__(self, rev, expected):
+        rev_str = f"{rev[:7]}" if rev is not None else "dangling commit"
         super().__init__(
-            f"Experiment is not derived from current baseline '{rev[:7]}'."
+            f"Experiment derived from '{rev_str}', expected '{expected[:7]}'."
         )
         self.rev = rev
+        self.expected_rev = expected
 
 
 class Experiments:
@@ -57,6 +71,8 @@ class Experiments:
     )
 
     def __init__(self, repo):
+        from dvc.lock import make_lock
+
         if not (
             env2bool("DVC_TEST")
             or repo.config["core"].get("experiments", False)
@@ -64,6 +80,10 @@ class Experiments:
             raise NotImplementedError
 
         self.repo = repo
+        self.scm_lock = make_lock(
+            os.path.join(self.repo.tmp_dir, "exp_scm_lock"),
+            tmp_dir=self.repo.tmp_dir,
+        )
 
     @cached_property
     def exp_dir(self):
@@ -246,7 +266,8 @@ class Experiments:
             )
             return [stash_rev]
         results = self.reproduce([stash_rev], keep_stash=False)
-        for exp_rev in results:
+        exp_rev = first(results)
+        if exp_rev is not None:
             self.checkout_exp(exp_rev)
         return results
 
@@ -262,6 +283,7 @@ class Experiments:
             )
         return results
 
+    @scm_locked
     def new(self, *args, **kwargs):
         """Create a new experiment.
 
@@ -280,6 +302,7 @@ class Experiments:
         )
         return stash_rev
 
+    @scm_locked
     def reproduce(
         self,
         revs: Optional[Iterable] = None,
@@ -405,6 +428,7 @@ class Experiments:
             src = executor.path_info / relpath(fname, tree.tree_root)
             copyfile(src, fname)
 
+    @scm_locked
     def checkout_exp(self, rev):
         """Checkout an experiment to the user's workspace."""
         from git.exc import GitCommandError
@@ -442,10 +466,10 @@ class Experiments:
     def _check_baseline(self, exp_rev):
         baseline_sha = self.repo.scm.get_rev()
         exp_commit = self.scm.repo.rev_parse(exp_rev)
-        for parent in exp_commit.parents:
-            if parent.hexsha == baseline_sha:
-                return
-        raise BaselineMismatchError(baseline_sha)
+        parent = first(exp_commit.parents)
+        if parent is not None and parent.hexsha == baseline_sha:
+            return
+        raise BaselineMismatchError(parent, baseline_sha)
 
     def _unstash_workspace(self):
         # Essentially we want `git stash pop` with `-X ours` merge strategy
