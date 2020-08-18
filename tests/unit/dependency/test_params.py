@@ -132,13 +132,10 @@ def test_save_info_missing_param(tmp_dir, dvc):
         dep.save_info()
 
 
-@pytest.mark.parametrize(
-    "param_value",
-    ["", "false", "[]", "{}", "null", "no", "off"]
-    # we use pyyaml to load params.yaml, which only supports YAML 1.1
-    # so, some of the above are boolean values
-)
+@pytest.mark.regression_4184
+@pytest.mark.parametrize("param_value", ["", "false", "[]", "{}", "null"])
 def test_params_with_false_values(tmp_dir, dvc, param_value):
+    """These falsy params values should not ignored by `status` on loading."""
     key = "param"
     dep = ParamsDependency(Stage(dvc), DEFAULT_PARAMS_FILE, [key])
     (tmp_dir / DEFAULT_PARAMS_FILE).write_text(f"{key}: {param_value}")
