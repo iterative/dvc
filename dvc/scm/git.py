@@ -405,6 +405,8 @@ class Git(Base):
                 except NotImplementedError:
                     # Fall back to `git rev-parse` for advanced features
                     return self.repo.git.rev_parse(name)
+                except ValueError:
+                    raise RevError(f"unknown Git revision '{name}'")
 
         # Resolve across local names
         sha = _resolve_rev(rev)
