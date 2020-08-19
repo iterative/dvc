@@ -4,5 +4,5 @@ from ._common import *  # noqa, pylint: disable=wildcard-import
 from ._toml import *  # noqa, pylint: disable=wildcard-import
 from ._yaml import *  # noqa, pylint: disable=wildcard-import
 
-PARSERS = defaultdict(lambda: parse_yaml)  # noqa: F405
-PARSERS.update({".toml": parse_toml})  # noqa: F405
+LOADERS = defaultdict(lambda: load_yaml)  # noqa: F405
+LOADERS.update({".toml": load_toml})  # noqa: F405

@@ -6,7 +6,7 @@ from voluptuous import Any
 
 from dvc.dependency.local import LocalDependency
 from dvc.exceptions import DvcException
-from dvc.utils.serialize import PARSERS, ParseError
+from dvc.utils.serialize import LOADERS, ParseError
 
 
 class MissingParamsError(DvcException):
@@ -86,14 +86,13 @@ class ParamsDependency(LocalDependency):
             return {}
 
         suffix = self.path_info.suffix.lower()
-        parser = PARSERS[suffix]
-        with self.repo.tree.open(self.path_info, "r") as fobj:
-            try:
-                config = parser(fobj.read(), self.path_info)
-            except ParseError as exc:
-                raise BadParamFileError(
-                    f"Unable to read parameters from '{self}'"
-                ) from exc
+        loader = LOADERS[suffix]
+        try:
+            config = loader(self.path_info, tree=self.repo.tree)
+        except ParseError as exc:
+            raise BadParamFileError(
+                f"Unable to read parameters from '{self}'"
+            ) from exc
 
         ret = {}
         for param in self.params:
