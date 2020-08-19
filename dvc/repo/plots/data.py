@@ -5,9 +5,8 @@ import os
 from collections import OrderedDict
 from copy import copy
 
-import yaml
 from funcy import first
-from yaml import SafeLoader
+from ruamel.yaml import YAML
 
 from dvc.exceptions import DvcException
 
@@ -208,18 +207,7 @@ class CSVPlotData(PlotData):
 
 class YAMLPlotData(PlotData):
     def raw(self, **kwargs):
-        class OrderedLoader(SafeLoader):
-            pass
-
-        def construct_mapping(loader, node):
-            loader.flatten_mapping(node)
-            return OrderedDict(loader.construct_pairs(node))
-
-        OrderedLoader.add_constructor(
-            yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, construct_mapping
-        )
-
-        return yaml.load(self.content, OrderedLoader)
+        return YAML().load(self.content)
 
     def _processors(self):
         parent_processors = super()._processors()

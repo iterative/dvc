@@ -120,9 +120,10 @@ def reproduce(
 
 def _parse_params(path_params):
     from flatten_json import unflatten
-    from yaml import YAMLError, safe_load
+    from ruamel.yaml import YAMLError
 
     from dvc.dependency.param import ParamsDependency
+    from dvc.utils.serialize import loads_yaml
 
     ret = {}
     for path_param in path_params:
@@ -133,7 +134,7 @@ def _parse_params(path_params):
             try:
                 # interpret value strings using YAML rules
                 key, value = param_str.split("=")
-                params[key] = safe_load(value)
+                params[key] = loads_yaml(value)
             except (ValueError, YAMLError):
                 raise InvalidArgumentError(
                     f"Invalid param/value pair '{param_str}'"

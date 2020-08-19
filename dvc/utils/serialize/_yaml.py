@@ -1,14 +1,16 @@
+import io
 from collections import OrderedDict
 
+from funcy import reraise
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
 
-from dvc.exceptions import YAMLFileCorruptedError
+from ._common import ParseError
 
-try:
-    from yaml import CSafeLoader as SafeLoader
-except ImportError:
-    from yaml import SafeLoader
+
+class YAMLFileCorruptedError(ParseError):
+    def __init__(self, path):
+        super().__init__(path, "YAML file structure is corrupted")
 
 
 def load_yaml(path):
@@ -16,13 +18,10 @@ def load_yaml(path):
         return parse_yaml(fd.read(), path)
 
 
-def parse_yaml(text, path):
-    try:
-        import yaml
-
-        return yaml.load(text, Loader=SafeLoader) or {}
-    except yaml.error.YAMLError as exc:
-        raise YAMLFileCorruptedError(path) from exc
+def parse_yaml(text, path, typ="safe"):
+    yaml = YAML(typ=typ)
+    with reraise(YAMLError, YAMLFileCorruptedError(path)):
+        return yaml.load(text) or {}
 
 
 def parse_yaml_for_update(text, path):
@@ -34,20 +33,30 @@ def parse_yaml_for_update(text, path):
 
     This one is, however, several times slower than simple `parse_yaml()`.
     """
-    try:
-        yaml = YAML()
-        return yaml.load(text) or {}
-    except YAMLError as exc:
-        raise YAMLFileCorruptedError(path) from exc
+    return parse_yaml(text, path, typ="rt")
+
+
+def _get_yaml():
+    yaml = YAML()
+    yaml.default_flow_style = False
+
+    # tell Dumper to represent OrderedDict as normal dict
+    yaml_repr_cls = yaml.Representer
+    yaml_repr_cls.add_representer(OrderedDict, yaml_repr_cls.represent_dict)
+    return yaml
 
 
 def dump_yaml(path, data):
-    with open(path, "w", encoding="utf-8") as fd:
-        yaml = YAML()
-        yaml.default_flow_style = False
-        # tell Dumper to represent OrderedDict as
-        # normal dict
-        yaml.Representer.add_representer(
-            OrderedDict, yaml.Representer.represent_dict
-        )
+    yaml = _get_yaml()
+    with open(path, "w+", encoding="utf-8") as fd:
         yaml.dump(data, fd)
+
+
+def loads_yaml(s):
+    return YAML(typ="safe").load(s)
+
+
+def dumps_yaml(d):
+    stream = io.StringIO()
+    YAML().dump(d, stream)
+    return stream.getvalue()

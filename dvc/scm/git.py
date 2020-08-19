@@ -5,7 +5,6 @@ import os
 import shlex
 from functools import partial
 
-import yaml
 from funcy import cached_property
 from pathspec.patterns import GitWildMatchPattern
 
@@ -20,6 +19,7 @@ from dvc.scm.base import (
 )
 from dvc.utils import fix_env, is_binary, relpath
 from dvc.utils.fs import path_isin
+from dvc.utils.serialize import dump_yaml, load_yaml
 
 logger = logging.getLogger(__name__)
 
@@ -330,11 +330,7 @@ class Git(Base):
             return
 
         config_path = os.path.join(self.root_dir, ".pre-commit-config.yaml")
-
-        config = {}
-        if os.path.exists(config_path):
-            with open(config_path) as fobj:
-                config = yaml.safe_load(fobj)
+        config = load_yaml(config_path) if os.path.exists(config_path) else {}
 
         entry = {
             "repo": "https://github.com/iterative/dvc",
@@ -363,8 +359,7 @@ class Git(Base):
             return
 
         config["repos"].append(entry)
-        with open(config_path, "w+") as fobj:
-            yaml.dump(config, fobj)
+        dump_yaml(config_path, config)
 
     def cleanup_ignores(self):
         for path in self.ignored_paths:

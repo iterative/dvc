@@ -2,7 +2,6 @@ import logging
 import os
 from contextlib import contextmanager
 
-import yaml
 from funcy import first
 from voluptuous import Invalid
 
@@ -10,7 +9,7 @@ from dvc.cache.local import _log_exceptions
 from dvc.schema import COMPILED_LOCK_FILE_STAGE_SCHEMA
 from dvc.utils import dict_sha256, relpath
 from dvc.utils.fs import makedirs
-from dvc.utils.serialize import dump_yaml
+from dvc.utils.serialize import YAMLFileCorruptedError, dump_yaml, load_yaml
 
 from .loader import StageLoader
 from .serialize import to_single_stage_lockfile
@@ -54,11 +53,10 @@ class StageCache:
         path = self._get_cache_path(key, value)
 
         try:
-            with open(path) as fobj:
-                return COMPILED_LOCK_FILE_STAGE_SCHEMA(yaml.safe_load(fobj))
+            return COMPILED_LOCK_FILE_STAGE_SCHEMA(load_yaml(path))
         except FileNotFoundError:
             return None
-        except (yaml.error.YAMLError, Invalid):
+        except (YAMLFileCorruptedError, Invalid):
             logger.warning("corrupted cache file '%s'.", relpath(path))
             os.unlink(path)
             return None

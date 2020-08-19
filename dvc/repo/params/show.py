@@ -1,12 +1,10 @@
 import logging
 
-import toml
-import yaml
-
 from dvc.dependency.param import ParamsDependency
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 from dvc.repo import locked
+from dvc.utils.serialize import PARSERS, ParseError
 
 logger = logging.getLogger(__name__)
 
@@ -33,12 +31,12 @@ def _read_params(repo, configs, rev):
         if not repo.tree.exists(config):
             continue
 
+        suffix = config.suffix.lower()
+        parser = PARSERS[suffix]
         with repo.tree.open(config, "r") as fobj:
             try:
-                res[str(config)] = ParamsDependency.PARAMS_FILE_LOADERS[
-                    config.suffix.lower()
-                ](fobj)
-            except (yaml.YAMLError, toml.TomlDecodeError):
+                res[str(config)] = parser(fobj.read(), config)
+            except ParseError:
                 logger.debug(
                     "failed to read '%s' on '%s'", config, rev, exc_info=True
                 )
