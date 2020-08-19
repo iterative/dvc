@@ -4,20 +4,25 @@ import re
 import tempfile
 from collections import defaultdict
 from collections.abc import Mapping
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import (
+    ProcessPoolExecutor,
+    ThreadPoolExecutor,
+    as_completed,
+)
 from contextlib import contextmanager
-from functools import wraps
+from functools import partial, wraps
 from typing import Iterable, Optional
 
 from funcy import cached_property, first
 
-from dvc.exceptions import DvcException
+from dvc.exceptions import DownloadError, DvcException
 from dvc.path_info import PathInfo
+from dvc.progress import Tqdm
 from dvc.repo.experiments.executor import ExperimentExecutor, LocalExecutor
 from dvc.scm.git import Git
 from dvc.stage.serialize import to_lockfile
 from dvc.utils import dict_sha256, env2bool, relpath
-from dvc.utils.fs import copyfile, remove
+from dvc.utils.fs import remove
 
 logger = logging.getLogger(__name__)
 
@@ -204,8 +209,7 @@ class Experiments:
         self.scm.add(self.args_file)
 
     def _unpack_args(self, tree=None):
-        args_file = os.path.join(self.exp_dvc.tmp_dir, self.PACKED_ARGS_FILE)
-        return ExperimentExecutor.unpack_repro_args(args_file, tree=tree)
+        return ExperimentExecutor.unpack_repro_args(self.args_file, tree=tree)
 
     def _update_params(self, params: dict):
         """Update experiment params files with the specified values."""
@@ -398,10 +402,19 @@ class Experiments:
                 exc = future.exception()
                 if exc is None:
                     exp_hash = future.result()
-                    logger.debug(f"ran exp based on {executor.baseline_rev}")
                     self._scm_checkout(executor.baseline_rev)
-                    self._collect_output(executor.baseline_rev, executor)
-                    remove(self.args_file)
+                    try:
+                        self._collect_output(executor)
+                    except DownloadError:
+                        logger.error(
+                            "Failed to collect output for experiment '%s'",
+                            rev,
+                        )
+                        continue
+                    finally:
+                        if os.path.exists(self.args_file):
+                            remove(self.args_file)
+
                     try:
                         exp_rev = self._commit(exp_hash)
                     except UnchangedExperimentError:
@@ -421,12 +434,42 @@ class Experiments:
 
         return result
 
-    def _collect_output(self, rev: str, executor: ExperimentExecutor):
-        logger.debug("copying tmp output from '%s'", executor.tmp_dir)
-        tree = self.scm.get_tree(rev)
-        for fname in tree.walk_files(tree.tree_root):
-            src = executor.path_info / relpath(fname, tree.tree_root)
-            copyfile(src, fname)
+    def _collect_output(self, executor: ExperimentExecutor):
+        """Copy (download) output from the executor tree into experiments
+        workspace.
+        """
+        from dvc.cache.local import _log_exceptions
+
+        logger.debug("Collecting output from '%s'", executor.tmp_dir)
+        dest_tree = self.exp_dvc.tree
+        src_tree = executor.tree
+
+        from_infos = []
+        to_infos = []
+        names = []
+        for from_info in executor.collect_output():
+            from_infos.append(from_info)
+            fname = from_info.relative_to(src_tree.path_info)
+            names.append(str(fname))
+            to_info = dest_tree.path_info / fname
+            to_infos.append(dest_tree.path_info / fname)
+            logger.debug(f"from '{from_info}' to '{to_info}'")
+        total = len(from_infos)
+
+        func = partial(
+            _log_exceptions(dest_tree.download, "download"),
+            dir_mode=dest_tree.dir_mode,
+            file_mode=dest_tree.file_mode,
+        )
+        with Tqdm(total=total, unit="file", desc="Downloading") as pbar:
+            func = pbar.wrap_fn(func)
+            # TODO: parallelize this, currently --jobs for repro applies to
+            # number of repro executors not download threads
+            with ThreadPoolExecutor(max_workers=1) as dl_executor:
+                fails = sum(dl_executor.map(func, from_infos, to_infos, names))
+
+        if fails:
+            raise DownloadError(fails)
 
     @scm_locked
     def checkout_exp(self, rev):
