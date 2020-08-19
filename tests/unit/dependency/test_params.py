@@ -119,6 +119,26 @@ def test_read_params_toml(tmp_dir, dvc):
     assert dep.read_params() == {"some.path.foo": ["val1", "val2"]}
 
 
+def test_read_params_py(tmp_dir, dvc):
+    parameters_file = "parameters.py"
+    tmp_dir.gen(
+        parameters_file,
+        "class Train:\n    foo = 'val1'\n    bar = 'val2'\n\n"
+        "class Config:\n    foobar = 1\n    train = Train()\n",
+    )
+    dep = ParamsDependency(
+        Stage(dvc), parameters_file, ["foobar", "train.foo"]
+    )
+    assert dep.read_params() == {"foobar": 1, "train.foo": "val1"}
+
+    dep = ParamsDependency(
+        Stage(dvc), parameters_file, ["foobar", "train"]
+    )
+    assert dep.read_params() == {
+        "foobar": 1, "train": {"foo": "val1", "bar": "val2"}
+    }
+
+
 def test_save_info_missing_config(dvc):
     dep = ParamsDependency(Stage(dvc), None, ["foo"])
     with pytest.raises(MissingParamsError):
