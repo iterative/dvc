@@ -3,8 +3,8 @@ import logging
 from funcy import first, project
 
 from dvc.exceptions import DvcException, NoPlotsError, OutputNotFoundError
-from dvc.repo.tree import RepoTree
 from dvc.schema import PLOT_PROPS
+from dvc.tree.repo import RepoTree
 from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)

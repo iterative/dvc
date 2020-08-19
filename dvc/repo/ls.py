@@ -48,7 +48,7 @@ def ls(
 
 
 def _ls(repo, path_info, recursive=None, dvc_only=False):
-    from dvc.repo.tree import RepoTree
+    from dvc.tree.repo import RepoTree
 
     def onerror(exc):
         raise exc

@@ -4,7 +4,7 @@ import os
 from dvc.exceptions import NoMetricsError
 from dvc.path_info import PathInfo
 from dvc.repo import locked
-from dvc.repo.tree import RepoTree
+from dvc.tree.repo import RepoTree
 from dvc.utils.serialize import YAMLFileCorruptedError, parse_yaml
 
 logger = logging.getLogger(__name__)

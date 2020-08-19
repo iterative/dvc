@@ -4,7 +4,7 @@ import shutil
 import pytest
 
 from dvc.path_info import PathInfo
-from dvc.repo.tree import DvcTree
+from dvc.tree.dvc import DvcTree
 
 
 def test_exists(tmp_dir, dvc):

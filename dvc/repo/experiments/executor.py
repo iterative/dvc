@@ -7,10 +7,10 @@ from typing import Iterable
 from funcy import cached_property
 
 from dvc.path_info import PathInfo
-from dvc.repo.tree import RepoTree
 from dvc.stage import PipelineStage
 from dvc.tree.base import BaseTree
 from dvc.tree.local import LocalTree
+from dvc.tree.repo import RepoTree
 from dvc.utils import relpath
 from dvc.utils.fs import copy_fobj_to_file, makedirs
 
