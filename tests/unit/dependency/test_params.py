@@ -119,6 +119,73 @@ def test_read_params_toml(tmp_dir, dvc):
     assert dep.read_params() == {"some.path.foo": ["val1", "val2"]}
 
 
+def test_read_params_py(tmp_dir, dvc):
+    parameters_file = "parameters.py"
+    tmp_dir.gen(
+        parameters_file,
+        "INT: int = 5\n"
+        "FLOAT = 0.001\n"
+        "STR = 'abc'\n"
+        "BOOL: bool = True\n"
+        "DICT = {'a': 1}\n"
+        "LIST = [1, 2, 3]\n"
+        "SET = {4, 5, 6}\n"
+        "TUPLE = (10, 100)\n"
+        "NONE = None\n",
+    )
+    dep = ParamsDependency(
+        Stage(dvc),
+        parameters_file,
+        [
+            "INT",
+            "FLOAT",
+            "STR",
+            "BOOL",
+            "DICT",
+            "LIST",
+            "SET",
+            "TUPLE",
+            "NONE",
+        ],
+    )
+    assert dep.read_params() == {
+        "INT": 5,
+        "FLOAT": 0.001,
+        "STR": "abc",
+        "BOOL": True,
+        "DICT": {"a": 1},
+        "LIST": [1, 2, 3],
+        "SET": {4, 5, 6},
+        "TUPLE": (10, 100),
+        "NONE": None,
+    }
+
+    tmp_dir.gen(
+        parameters_file, "class Train:\n    foo = 'val1'\n    bar = 'val2'\n",
+    )
+    dep = ParamsDependency(Stage(dvc), parameters_file, ["Train.foo"])
+    assert dep.read_params() == {"Train.foo": "val1"}
+
+    dep = ParamsDependency(Stage(dvc), parameters_file, ["Train"])
+    assert dep.read_params() == {
+        "Train": {"foo": "val1", "bar": "val2"},
+    }
+
+    tmp_dir.gen(
+        parameters_file,
+        "x = 4\n"
+        "config.x = 3\n"
+        "class Klass:\n"
+        "    def __init__(self):\n"
+        "        self.a = 'val1'\n"
+        "        container.a = 2\n"
+        "        self.container.a = 1\n"
+        "        a = 'val2'\n",
+    )
+    dep = ParamsDependency(Stage(dvc), parameters_file, ["x", "Klass.a"])
+    assert dep.read_params() == {"x": 4, "Klass.a": "val1"}
+
+
 def test_get_hash_missing_config(dvc):
     dep = ParamsDependency(Stage(dvc), None, ["foo"])
     with pytest.raises(MissingParamsError):
