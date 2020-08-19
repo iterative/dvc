@@ -7,7 +7,7 @@ from funcy import cached_property, project
 
 import dvc.dependency as dependency
 import dvc.prompt as prompt
-from dvc.exceptions import CheckoutError, DvcException
+from dvc.exceptions import CheckoutError, DvcException, MergeError
 from dvc.utils import relpath
 
 from . import params
@@ -538,6 +538,44 @@ class Stage(params.StageParams):
 
         return cache
 
+    @staticmethod
+    def _check_can_merge(stage, ancestor_out=None):
+        if isinstance(stage, PipelineStage):
+            raise MergeError("unable to auto-merge pipeline stages")
+
+        if not stage.is_data_source or stage.deps or len(stage.outs) > 1:
+            raise MergeError(
+                "unable to auto-merge DVC-files that weren't "
+                "created by `dvc add`"
+            )
+
+        if ancestor_out and not stage.outs:
+            raise MergeError(
+                "unable to auto-merge DVC-files with deleted outputs"
+            )
+
+    def merge(self, ancestor, other):
+        assert other
+
+        if not other.outs:
+            return
+
+        if not self.outs:
+            self.outs = other.outs
+            return
+
+        if ancestor:
+            self._check_can_merge(ancestor)
+            outs = ancestor.outs
+            ancestor_out = outs[0] if outs else None
+        else:
+            ancestor_out = None
+
+        self._check_can_merge(self, ancestor_out)
+        self._check_can_merge(other, ancestor_out)
+
+        self.outs[0].merge(ancestor_out, other.outs[0])
+
 
 class PipelineStage(Stage):
     def __init__(self, *args, name=None, **kwargs):
@@ -577,3 +615,6 @@ class PipelineStage(Stage):
 
     def _changed_stage_entry(self):
         return f"'cmd' of {self} has changed."
+
+    def merge(self, ancestor, other):
+        raise NotImplementedError

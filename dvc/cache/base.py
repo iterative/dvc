@@ -5,7 +5,12 @@ from copy import copy
 from shortuuid import uuid
 
 import dvc.prompt as prompt
-from dvc.exceptions import CheckoutError, ConfirmRemoveError, DvcException
+from dvc.exceptions import (
+    CheckoutError,
+    ConfirmRemoveError,
+    DvcException,
+    MergeError,
+)
 from dvc.path_info import WindowsPathInfo
 from dvc.progress import Tqdm
 from dvc.remote.slow_link_detection import slow_link_guard
@@ -552,3 +557,82 @@ class CloudCache:
             filter_info.isin_or_eq(path_info / entry[self.tree.PARAM_CHECKSUM])
             for entry in self.get_dir_cache(hash_)
         )
+
+    def _to_dict(self, dir_info):
+        return {
+            entry[self.tree.PARAM_RELPATH]: entry[self.tree.PARAM_CHECKSUM]
+            for entry in dir_info
+        }
+
+    def _from_dict(self, dir_dict):
+        return [
+            {
+                self.tree.PARAM_RELPATH: relpath,
+                self.tree.PARAM_CHECKSUM: checksum,
+            }
+            for relpath, checksum in dir_dict.items()
+        ]
+
+    @staticmethod
+    def _diff(ancestor, other, allow_removed=False):
+        from dictdiffer import diff
+
+        allowed = ["add"]
+        if allow_removed:
+            allowed.append("remove")
+
+        result = list(diff(ancestor, other))
+        for typ, _, _ in result:
+            if typ not in allowed:
+                raise MergeError(
+                    "unable to auto-merge directories with diff that contains "
+                    f"'{typ}'ed files"
+                )
+        return result
+
+    def _merge_dirs(self, ancestor_info, our_info, their_info):
+        from operator import itemgetter
+
+        from dictdiffer import patch
+
+        ancestor = self._to_dict(ancestor_info)
+        our = self._to_dict(our_info)
+        their = self._to_dict(their_info)
+
+        our_diff = self._diff(ancestor, our)
+        if not our_diff:
+            return self._from_dict(their)
+
+        their_diff = self._diff(ancestor, their)
+        if not their_diff:
+            return self._from_dict(our)
+
+        # make sure there are no conflicting files
+        self._diff(our, their, allow_removed=True)
+
+        merged = patch(our_diff + their_diff, ancestor, in_place=True)
+
+        # Sorting the list by path to ensure reproducibility
+        return sorted(
+            self._from_dict(merged), key=itemgetter(self.tree.PARAM_RELPATH)
+        )
+
+    def merge(self, ancestor_info, our_info, their_info):
+        assert our_info
+        assert their_info
+
+        if ancestor_info:
+            ancestor_hash = ancestor_info[self.tree.PARAM_CHECKSUM]
+            ancestor = self.get_dir_cache(ancestor_hash)
+        else:
+            ancestor = []
+
+        our_hash = our_info[self.tree.PARAM_CHECKSUM]
+        our = self.get_dir_cache(our_hash)
+
+        their_hash = their_info[self.tree.PARAM_CHECKSUM]
+        their = self.get_dir_cache(their_hash)
+
+        merged = self._merge_dirs(ancestor, our, their)
+        typ, merged_hash = self.tree.save_dir_info(merged)
+        return {typ: merged_hash}

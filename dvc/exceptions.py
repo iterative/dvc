@@ -351,3 +351,7 @@ class NoOutputOrStageError(DvcException):
             f"'{target}' "
             f"does not exist as an output or a stage name in '{file}'"
         )
+
+
+class MergeError(DvcException):
+    pass

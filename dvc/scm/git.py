@@ -307,7 +307,21 @@ class Git(Base):
 
         os.chmod(hook, 0o777)
 
+    def _install_merge_driver(self):
+        self.repo.git.config("merge.dvc.name", "DVC merge driver")
+        self.repo.git.config(
+            "merge.dvc.driver",
+            (
+                "dvc git-hook merge-driver "
+                "--ancestor %O "
+                "--our %A "
+                "--their %B "
+            ),
+        )
+
     def install(self, use_pre_commit_tool=False):
+        self._install_merge_driver()
+
         if not use_pre_commit_tool:
             self._verify_dvc_hooks()
             self._install_hook("post-checkout")
