@@ -2,7 +2,6 @@ import logging
 import os
 import re
 import tempfile
-from collections import defaultdict
 from collections.abc import Mapping
 from concurrent.futures import (
     ProcessPoolExecutor,
@@ -213,12 +212,7 @@ class Experiments:
 
     def _update_params(self, params: dict):
         """Update experiment params files with the specified values."""
-        from dvc.utils.serialize import (
-            dump_toml,
-            dump_yaml,
-            parse_toml_for_update,
-            parse_yaml_for_update,
-        )
+        from dvc.utils.serialize import MODIFIERS
 
         logger.debug("Using experiment params '%s'", params)
 
@@ -231,19 +225,12 @@ class Experiments:
                     dict_[key] = value
             return dict_
 
-        loaders = defaultdict(lambda: parse_yaml_for_update)
-        loaders.update({".toml": parse_toml_for_update})
-        dumpers = defaultdict(lambda: dump_yaml)
-        dumpers.update({".toml": dump_toml})
-
         for params_fname in params:
             path = PathInfo(self.exp_dvc.root_dir) / params_fname
-            with self.exp_dvc.tree.open(path, "r") as fobj:
-                text = fobj.read()
             suffix = path.suffix.lower()
-            data = loaders[suffix](text, path)
-            _update(data, params[params_fname])
-            dumpers[suffix](path, data)
+            modify_data = MODIFIERS[suffix]
+            with modify_data(path, tree=self.exp_dvc.tree) as data:
+                _update(data, params[params_fname])
 
     def _commit(self, exp_hash, check_exists=True, branch=True):
         """Commit stages as an experiment and return the commit SHA."""

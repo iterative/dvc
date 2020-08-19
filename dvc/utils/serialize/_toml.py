@@ -1,7 +1,9 @@
+from contextlib import contextmanager
+
 import toml
 from funcy import reraise
 
-from ._common import ParseError, _dump_data, _load_data
+from ._common import ParseError, _dump_data, _load_data, _modify_data
 
 
 class TOMLFileCorruptedError(ParseError):
@@ -35,3 +37,9 @@ def _dump(data, stream):
 
 def dump_toml(path, data, tree=None):
     return _dump_data(path, data, dumper=_dump, tree=tree)
+
+
+@contextmanager
+def modify_toml(path, tree=None):
+    with _modify_data(path, parse_toml_for_update, dump_toml, tree=tree) as d:
+        yield d

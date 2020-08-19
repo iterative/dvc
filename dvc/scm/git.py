@@ -19,7 +19,7 @@ from dvc.scm.base import (
 )
 from dvc.utils import fix_env, is_binary, relpath
 from dvc.utils.fs import path_isin
-from dvc.utils.serialize import dump_yaml, load_yaml
+from dvc.utils.serialize import modify_yaml
 
 logger = logging.getLogger(__name__)
 
@@ -330,36 +330,32 @@ class Git(Base):
             return
 
         config_path = os.path.join(self.root_dir, ".pre-commit-config.yaml")
-        config = load_yaml(config_path) if os.path.exists(config_path) else {}
+        with modify_yaml(config_path) as config:
+            entry = {
+                "repo": "https://github.com/iterative/dvc",
+                "rev": "master",
+                "hooks": [
+                    {
+                        "id": "dvc-pre-commit",
+                        "language_version": "python3",
+                        "stages": ["commit"],
+                    },
+                    {
+                        "id": "dvc-pre-push",
+                        "language_version": "python3",
+                        "stages": ["push"],
+                    },
+                    {
+                        "id": "dvc-post-checkout",
+                        "language_version": "python3",
+                        "stages": ["post-checkout"],
+                        "always_run": True,
+                    },
+                ],
+            }
 
-        entry = {
-            "repo": "https://github.com/iterative/dvc",
-            "rev": "master",
-            "hooks": [
-                {
-                    "id": "dvc-pre-commit",
-                    "language_version": "python3",
-                    "stages": ["commit"],
-                },
-                {
-                    "id": "dvc-pre-push",
-                    "language_version": "python3",
-                    "stages": ["push"],
-                },
-                {
-                    "id": "dvc-post-checkout",
-                    "language_version": "python3",
-                    "stages": ["post-checkout"],
-                    "always_run": True,
-                },
-            ],
-        }
-
-        if entry in config["repos"]:
-            return
-
-        config["repos"].append(entry)
-        dump_yaml(config_path, config)
+            if entry not in config["repos"]:
+                config["repos"].append(entry)
 
     def cleanup_ignores(self):
         for path in self.ignored_paths:

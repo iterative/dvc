@@ -1,11 +1,12 @@
 import io
 from collections import OrderedDict
+from contextlib import contextmanager
 
 from funcy import reraise
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
 
-from ._common import ParseError, _dump_data, _load_data
+from ._common import ParseError, _dump_data, _load_data, _modify_data
 
 
 class YAMLFileCorruptedError(ParseError):
@@ -60,6 +61,11 @@ def loads_yaml(s, typ="safe"):
 
 def dumps_yaml(d):
     stream = io.StringIO()
-    yaml = _get_yaml()
-    yaml.dump(d, stream)
+    _dump(d, stream)
     return stream.getvalue()
+
+
+@contextmanager
+def modify_yaml(path, tree=None):
+    with _modify_data(path, parse_yaml_for_update, dump_yaml, tree=tree) as d:
+        yield d
