@@ -50,7 +50,7 @@ class RepoDependency(LocalDependency):
         return external_repo(d["url"], rev=rev)
 
     def _get_checksum(self, locked=True):
-        from dvc.repo.tree import RepoTree
+        from dvc.tree.repo import RepoTree
 
         with self._make_repo(locked=locked) as repo:
             try:

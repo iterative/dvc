@@ -5,7 +5,7 @@ from unittest import mock
 import pytest
 
 from dvc.path_info import PathInfo
-from dvc.repo.tree import RepoTree
+from dvc.tree.repo import RepoTree
 
 
 def test_exists(tmp_dir, dvc):

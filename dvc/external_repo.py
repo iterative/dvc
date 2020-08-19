@@ -18,10 +18,10 @@ from dvc.exceptions import (
 )
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
-from dvc.repo.tree import RepoTree
 from dvc.scm.base import CloneError
 from dvc.scm.git import Git
 from dvc.tree.local import LocalTree
+from dvc.tree.repo import RepoTree
 from dvc.utils.fs import remove
 
 logger = logging.getLogger(__name__)

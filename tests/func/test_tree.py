@@ -4,10 +4,10 @@ from os.path import join
 
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
-from dvc.repo.tree import RepoTree
 from dvc.scm import SCM
 from dvc.tree.git import GitTree
 from dvc.tree.local import LocalTree
+from dvc.tree.repo import RepoTree
 from dvc.utils.fs import remove
 from tests.basic_env import TestDir, TestGit, TestGitSubmodule
 

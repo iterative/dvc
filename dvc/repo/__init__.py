@@ -15,7 +15,7 @@ from dvc.exceptions import (
     OutputNotFoundError,
 )
 from dvc.path_info import PathInfo
-from dvc.repo.tree import RepoTree
+from dvc.tree.repo import RepoTree
 from dvc.utils.fs import path_isin
 
 from ..stage.exceptions import StageFileDoesNotExistError, StageNotFound
