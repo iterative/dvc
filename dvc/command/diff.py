@@ -11,6 +11,12 @@ from dvc.exceptions import DvcException
 logger = logging.getLogger(__name__)
 
 
+def _digest(checksum):
+    if isinstance(checksum, str):
+        return checksum[0:8]
+    return "{}..{}".format(checksum["old"][0:8], checksum["new"][0:8])
+
+
 def _show_md(diff):
     from dvc.utils.diff import table
 
@@ -54,11 +60,6 @@ class CmdDiff(CmdBase):
 
         At the bottom, include a summary with the number of files per state.
         """
-
-        def _digest(checksum):
-            if isinstance(checksum, str):
-                return checksum[0:8]
-            return "{}..{}".format(checksum["old"][0:8], checksum["new"][0:8])
 
         colors = {
             "added": colorama.Fore.GREEN,

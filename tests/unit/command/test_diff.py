@@ -2,8 +2,22 @@ import collections
 import logging
 import os
 
+import pytest
+
 from dvc.cli import parse_args
-from dvc.command.diff import _show_md
+from dvc.command.diff import _digest, _show_md
+
+
+@pytest.mark.parametrize(
+    "checksum, expected",
+    [
+        ("wxyz1234pq", "wxyz1234"),
+        (dict(old="1234567890", new="0987654321"), "12345678..09876543"),
+    ],
+    ids=["str", "dict"],
+)
+def test_digest(checksum, expected):
+    assert expected == _digest(checksum)
 
 
 def test_default(mocker, caplog):
@@ -118,6 +132,29 @@ def test_show_md_empty():
 
 
 def test_show_md():
+    diff = {
+        "deleted": [
+            {"path": "zoo"},
+            {"path": os.path.join("data", "")},
+            {"path": os.path.join("data", "foo")},
+            {"path": os.path.join("data", "bar")},
+        ],
+        "modified": [{"path": "file"}],
+        "added": [{"path": "file"}],
+    }
+    assert _show_md(diff) == (
+        "| Status   | Path     |\n"
+        "|----------|----------|\n"
+        "| added    | file     |\n"
+        "| deleted  | data{sep}    |\n"
+        "| deleted  | data{sep}bar |\n"
+        "| deleted  | data{sep}foo |\n"
+        "| deleted  | zoo      |\n"
+        "| modified | file     |\n"
+    ).format(sep=os.path.sep)
+
+
+def ignore_test_show_md_with_hash():
     diff = {
         "deleted": [
             {"path": "zoo", "hash": "22222"},
