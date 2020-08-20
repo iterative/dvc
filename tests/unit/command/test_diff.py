@@ -2,6 +2,7 @@ import collections
 import logging
 import os
 
+import mock
 import pytest
 
 from dvc.cli import parse_args
@@ -102,6 +103,21 @@ def test_show_json_and_hash(mocker, caplog):
     assert '"added": [{"path": "file", "hash": "00000000"}]' in caplog.text
     assert '"deleted": []' in caplog.text
     assert '"modified": []' in caplog.text
+
+
+@pytest.mark.parametrize("show_hash", [None, True, False])
+@mock.patch("dvc.command.diff._show_md")
+def test_diff_show_md_and_hash(mock_show_md, mocker, caplog, show_hash):
+    options = ["diff", "--show-md"] + (["--show-hash"] if show_hash else [])
+    args = parse_args(options)
+    cmd = args.func(args)
+
+    diff = {}
+    show_hash = show_hash if show_hash else False
+    mocker.patch("dvc.repo.Repo.diff", return_value=diff)
+
+    assert 0 == cmd.run()
+    mock_show_md.assert_called_once_with(diff, show_hash)
 
 
 def test_no_changes(mocker, caplog):
