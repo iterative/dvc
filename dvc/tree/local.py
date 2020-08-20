@@ -326,7 +326,7 @@ class LocalTree(BaseTree):
         )
 
         self.protect(tmp_file)
-        os.rename(tmp_file, to_info)
+        os.replace(tmp_file, to_info)
 
     @staticmethod
     def _download(
