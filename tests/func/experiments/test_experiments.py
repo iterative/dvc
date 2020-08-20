@@ -1,6 +1,10 @@
+import pytest
+
 from tests.func.test_repro_multistage import COPY_SCRIPT
 
 
+# https://github.com/iterative/dvc/issues/4401
+@pytest.mark.flaky(max_runs=3, min_passes=1)
 def test_new_simple(tmp_dir, scm, dvc, mocker):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("params.yaml", "foo: 1")
