@@ -485,7 +485,7 @@ class Experiments:
 
         if download:
             func = partial(
-                _log_exceptions(dest_tree.download, "download"),
+                _log_exceptions(src_tree.download, "download"),
                 dir_mode=dest_tree.dir_mode,
                 file_mode=dest_tree.file_mode,
             )
