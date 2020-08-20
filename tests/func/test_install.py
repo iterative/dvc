@@ -84,7 +84,7 @@ def test_merge_driver_no_ancestor(tmp_dir, scm, dvc):
     scm.checkout("two", create_new=True)
     tmp_dir.dvc_gen({"data": {"bar": "bar"}}, commit="two: add data")
 
-    scm.repo.git.merge("one", m="merged")
+    scm.repo.git.merge("one", m="merged", no_gpg_sign=True, no_signoff=True)
 
     # NOTE: dvc shouldn't checkout automatically as it might take a long time
     assert (tmp_dir / "data").read_text() == {"bar": "bar"}
@@ -114,7 +114,7 @@ def test_merge_driver(tmp_dir, scm, dvc):
     scm.checkout("two", create_new=True)
     tmp_dir.dvc_gen({"data": {"two": "two"}}, commit="two: add data")
 
-    scm.repo.git.merge("one", m="merged")
+    scm.repo.git.merge("one", m="merged", no_gpg_sign=True, no_signoff=True)
 
     # NOTE: dvc shouldn't checkout automatically as it might take a long time
     assert (tmp_dir / "data").read_text() == {"master": "master", "two": "two"}
