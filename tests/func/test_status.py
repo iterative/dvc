@@ -118,3 +118,23 @@ def test_status_recursive(tmp_dir, dvc):
             }
         ],
     }
+
+
+def test_status_outputs(tmp_dir, dvc, caplog):
+    dvc.run(
+        outs=["alice", "bob"],
+        cmd="echo alice>alice && echo bob>bob",
+        name="alice_bob",
+    )
+    tmp_dir.gen("alice", "bob")
+    tmp_dir.gen("bob", "alice")
+    assert main(["status", "alice_bob"]) == 0
+    assert "alice_bob:" in caplog.text
+    assert "changed outs:" in caplog.text
+    assert "modified:           alice" in caplog.text
+    assert "modified:           bob" in caplog.text
+    caplog.clear()
+
+    assert main(["status", "alice"]) == 0
+    assert "modified:           alice" in caplog.text
+    assert "modified:           bob" not in caplog.text
