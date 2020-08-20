@@ -1,12 +1,16 @@
 import toml
 from funcy import reraise
 
-from ._common import ParseError
+from ._common import ParseError, _dump_data, _load_data
 
 
 class TOMLFileCorruptedError(ParseError):
     def __init__(self, path):
         super().__init__(path, "TOML file structure is corrupted")
+
+
+def load_toml(path, tree=None):
+    return _load_data(path, parser=parse_toml, tree=tree)
 
 
 def parse_toml(text, path, decoder=None):
@@ -25,6 +29,9 @@ def parse_toml_for_update(text, path):
     return parse_toml(text, path, decoder=decoder)
 
 
-def dump_toml(path, data):
-    with open(path, "w+", encoding="utf-8") as fobj:
-        toml.dump(data, fobj, encoder=toml.TomlPreserveCommentEncoder())
+def _dump(data, stream):
+    return toml.dump(data, stream, encoder=toml.TomlPreserveCommentEncoder())
+
+
+def dump_toml(path, data, tree=None):
+    return _dump_data(path, data, dumper=_dump, tree=tree)

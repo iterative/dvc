@@ -6,9 +6,9 @@ from collections import OrderedDict
 from copy import copy
 
 from funcy import first
-from ruamel.yaml import YAML
 
 from dvc.exceptions import DvcException
+from dvc.utils.serialize import loads_yaml
 
 
 class PlotMetricTypeError(DvcException):
@@ -207,7 +207,7 @@ class CSVPlotData(PlotData):
 
 class YAMLPlotData(PlotData):
     def raw(self, **kwargs):
-        return YAML().load(self.content)
+        return loads_yaml(self.content, typ="rt")
 
     def _processors(self):
         parent_processors = super()._processors()

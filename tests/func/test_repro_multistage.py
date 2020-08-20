@@ -9,7 +9,7 @@ from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
 from dvc.exceptions import CyclicGraphError
 from dvc.main import main
 from dvc.stage import PipelineStage
-from dvc.utils.serialize import dump_yaml, parse_yaml
+from dvc.utils.serialize import dump_yaml, load_yaml
 from tests.func import test_repro
 
 COPY_SCRIPT_FORMAT = dedent(
@@ -457,13 +457,12 @@ def test_cyclic_graph_error(tmp_dir, dvc, run_copy):
     run_copy("bar", "baz", name="copy-bar-baz")
     run_copy("baz", "foobar", name="copy-baz-foobar")
 
-    with open(PIPELINE_FILE) as f:
-        data = parse_yaml(f.read(), PIPELINE_FILE)
-        data["stages"]["copy-baz-foo"] = {
-            "cmd": "echo baz > foo",
-            "deps": ["baz"],
-            "outs": ["foo"],
-        }
+    data = load_yaml(PIPELINE_FILE)
+    data["stages"]["copy-baz-foo"] = {
+        "cmd": "echo baz > foo",
+        "deps": ["baz"],
+        "outs": ["foo"],
+    }
     dump_yaml(PIPELINE_FILE, data)
     with pytest.raises(CyclicGraphError):
         dvc.reproduce(":copy-baz-foo")

@@ -5,7 +5,7 @@ from funcy import reraise
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
 
-from ._common import ParseError
+from ._common import ParseError, _dump_data, _load_data
 
 
 class YAMLFileCorruptedError(ParseError):
@@ -13,9 +13,8 @@ class YAMLFileCorruptedError(ParseError):
         super().__init__(path, "YAML file structure is corrupted")
 
 
-def load_yaml(path):
-    with open(path, encoding="utf-8") as fd:
-        return parse_yaml(fd.read(), path)
+def load_yaml(path, tree=None):
+    return _load_data(path, parser=parse_yaml, tree=tree)
 
 
 def parse_yaml(text, path, typ="safe"):
@@ -46,17 +45,21 @@ def _get_yaml():
     return yaml
 
 
-def dump_yaml(path, data):
+def _dump(data, stream):
     yaml = _get_yaml()
-    with open(path, "w+", encoding="utf-8") as fd:
-        yaml.dump(data, fd)
+    return yaml.dump(data, stream)
 
 
-def loads_yaml(s):
-    return YAML(typ="safe").load(s)
+def dump_yaml(path, data, tree=None):
+    return _dump_data(path, data, dumper=_dump, tree=tree)
+
+
+def loads_yaml(s, typ="safe"):
+    return YAML(typ=typ).load(s)
 
 
 def dumps_yaml(d):
     stream = io.StringIO()
-    YAML().dump(d, stream)
+    yaml = _get_yaml()
+    yaml.dump(d, stream)
     return stream.getvalue()

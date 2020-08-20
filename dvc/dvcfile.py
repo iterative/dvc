@@ -16,7 +16,12 @@ from dvc.stage.exceptions import (
 from dvc.stage.loader import SingleStageLoader, StageLoader
 from dvc.utils import relpath
 from dvc.utils.collections import apply_diff
-from dvc.utils.serialize import dump_yaml, parse_yaml, parse_yaml_for_update
+from dvc.utils.serialize import (
+    dump_yaml,
+    load_yaml,
+    parse_yaml,
+    parse_yaml_for_update,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -264,8 +269,8 @@ class Lockfile(FileMixin):
     def load(self):
         if not self.exists():
             return {}
-        with self.repo.tree.open(self.path) as fd:
-            data = parse_yaml(fd.read(), self.path)
+
+        data = load_yaml(self.path, tree=self.repo.tree)
         try:
             self.validate(data, fname=self.relpath)
         except StageFileFormatError:
