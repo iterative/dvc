@@ -154,7 +154,7 @@ def test_show_md():
     ).format(sep=os.path.sep)
 
 
-def ignore_test_show_md_with_hash():
+def test_show_md_with_hash():
     diff = {
         "deleted": [
             {"path": "zoo", "hash": "22222"},
@@ -167,13 +167,13 @@ def ignore_test_show_md_with_hash():
         ],
         "added": [{"path": "file", "hash": "00000000"}],
     }
-    assert _show_md(diff) == (
-        "| Status   | Path     |\n"
-        "|----------|----------|\n"
-        "| added    | file     |\n"
-        "| deleted  | data{sep}    |\n"
-        "| deleted  | data{sep}bar |\n"
-        "| deleted  | data{sep}foo |\n"
-        "| deleted  | zoo      |\n"
-        "| modified | file     |\n"
+    assert _show_md(diff, show_hash=True) == (
+        "| Status   | Hash               | Path     |\n"
+        "|----------|--------------------|----------|\n"
+        "| added    | 00000000           | file     |\n"
+        "| deleted  | XXXXXXXX           | data{sep}    |\n"
+        "| deleted  | 00000000           | data{sep}bar |\n"
+        "| deleted  | 11111111           | data{sep}foo |\n"
+        "| deleted  | 22222              | zoo      |\n"
+        "| modified | AAAAAAAA..BBBBBBBB | file     |\n"
     ).format(sep=os.path.sep)

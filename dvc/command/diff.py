@@ -17,19 +17,25 @@ def _digest(checksum):
     return "{}..{}".format(checksum["old"][0:8], checksum["new"][0:8])
 
 
-def _show_md(diff):
+def _show_md(diff, show_hash=False):
     from dvc.utils.diff import table
 
+    header = ["Status", "Hash", "Path"] if show_hash else ["Status", "Path"]
     rows = []
     for status in ["added", "deleted", "modified"]:
         entries = diff.get(status, [])
         if not entries:
             continue
-        paths = sorted(entry["path"] for entry in entries)
-        for path in paths:
-            rows.append([status, path])
+        sorted_entries = sorted(entries, key=lambda entry: entry["path"])
+        for entry in sorted_entries:
+            path = entry["path"]
+            if show_hash:
+                check_sum = _digest(entry.get("hash", ""))
+                rows.append([status, check_sum, path])
+            else:
+                rows.append([status, path])
 
-    return table(["Status", "Path"], rows, True)
+    return table(header, rows, True)
 
 
 class CmdDiff(CmdBase):
