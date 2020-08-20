@@ -177,7 +177,7 @@ def test_isdvc(tmp_dir, dvc):
     assert not tree.isdvc("bar")
     assert tree.isdvc("dir")
     assert not tree.isdvc("dir/baz")
-    assert tree.isdvc("dir/baz", recursive=True, strict=False)
+    assert tree.isdvc("dir/baz", recursive=True)
 
 
 def make_subrepo(dir_, scm, config=None):
