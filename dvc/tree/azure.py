@@ -167,7 +167,7 @@ class AzureTree(BaseTree):
             with Tqdm.wrapattr(
                 fobj, "read", desc=name, total=total, disable=no_progress_bar
             ) as wrapped:
-                blob_client.upload_blob(wrapped)
+                blob_client.upload_blob(wrapped, overwrite=True)
 
     def _download(
         self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
