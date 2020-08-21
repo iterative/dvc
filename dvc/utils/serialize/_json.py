@@ -7,7 +7,7 @@ from ._common import ParseError, _dump_data, _load_data, _modify_data
 
 class JSONFileCorruptedError(ParseError):
     def __init__(self, path):
-        super().__init__(path, "YAML file structure is corrupted")
+        super().__init__(path, "JSON file structure is corrupted")
 
 
 def load_json(path, tree=None):
