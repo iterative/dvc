@@ -437,6 +437,9 @@ def test_push_incomplete_dir(tmp_dir, dvc, mocker, local_remote):
 def test_upload_exists(tmp_dir, dvc, local_remote):
     tmp_dir.gen("foo", "foo")
     remote = dvc.cloud.get_remote("upstream")
+    # allow uploaded files to be writable for this test,
+    # normally they are set to read-only for DVC remotes
+    remote.tree.CACHE_MODE = 0o644
 
     from_info = PathInfo(tmp_dir / "foo")
     to_info = remote.tree.path_info / "foo"
