@@ -19,6 +19,7 @@ from dvc.utils.collections import apply_diff
 from dvc.utils.serialize import (
     dump_yaml,
     load_yaml,
+    modify_yaml,
     parse_yaml,
     parse_yaml_for_update,
 )
@@ -193,30 +194,27 @@ class PipelineFile(FileMixin):
         self._lockfile.dump(stage)
 
     def _dump_pipeline_file(self, stage):
-        data = {}
-        if self.exists():
-            with open(self.path) as fd:
-                data = parse_yaml_for_update(fd.read(), self.path)
-        else:
-            logger.info("Creating '%s'", self.relpath)
-            open(self.path, "w+").close()
-
-        data["stages"] = data.get("stages", {})
         stage_data = serialize.to_pipeline_file(stage)
-        existing_entry = stage.name in data["stages"]
 
-        action = "Modifying" if existing_entry else "Adding"
-        logger.info("%s stage '%s' in '%s'", action, stage.name, self.relpath)
+        with modify_yaml(self.path, tree=self.repo.tree) as data:
+            if not data:
+                logger.info("Creating '%s'", self.relpath)
 
-        if existing_entry:
-            orig_stage_data = data["stages"][stage.name]
-            if "meta" in orig_stage_data:
-                stage_data[stage.name]["meta"] = orig_stage_data["meta"]
-            apply_diff(stage_data[stage.name], orig_stage_data)
-        else:
-            data["stages"].update(stage_data)
+            data["stages"] = data.get("stages", {})
+            existing_entry = stage.name in data["stages"]
+            action = "Modifying" if existing_entry else "Adding"
+            logger.info(
+                "%s stage '%s' in '%s'", action, stage.name, self.relpath
+            )
 
-        dump_yaml(self.path, data)
+            if existing_entry:
+                orig_stage_data = data["stages"][stage.name]
+                if "meta" in orig_stage_data:
+                    stage_data[stage.name]["meta"] = orig_stage_data["meta"]
+                apply_diff(stage_data[stage.name], orig_stage_data)
+            else:
+                data["stages"].update(stage_data)
+
         self.repo.scm.track_file(self.relpath)
 
     @property
@@ -281,21 +279,18 @@ class Lockfile(FileMixin):
 
     def dump(self, stage, **kwargs):
         stage_data = serialize.to_lockfile(stage)
-        if not self.exists():
-            modified = True
-            logger.info("Generating lock file '%s'", self.relpath)
-            data = stage_data
-            open(self.path, "w+").close()
-        else:
-            with self.repo.tree.open(self.path, "r") as fd:
-                data = parse_yaml_for_update(fd.read(), self.path)
+
+        with modify_yaml(self.path, tree=self.repo.tree) as data:
+            if not data:
+                logger.info("Generating lock file '%s'", self.relpath)
+
             modified = data.get(stage.name, {}) != stage_data.get(
                 stage.name, {}
             )
             if modified:
                 logger.info("Updating lock file '%s'", self.relpath)
             data.update(stage_data)
-        dump_yaml(self.path, data)
+
         if modified:
             self.repo.scm.track_file(self.relpath)
 
