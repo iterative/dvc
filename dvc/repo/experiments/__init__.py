@@ -14,12 +14,13 @@ from typing import Iterable, Optional
 
 from funcy import cached_property, first
 
-from dvc.exceptions import DownloadError, DvcException
+from dvc.exceptions import DownloadError, DvcException, UploadError
 from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
 from dvc.repo.experiments.executor import ExperimentExecutor, LocalExecutor
 from dvc.scm.git import Git
 from dvc.stage.serialize import to_lockfile
+from dvc.tree.repo import RepoTree
 from dvc.utils import dict_sha256, env2bool, relpath
 from dvc.utils.fs import remove
 
@@ -52,6 +53,8 @@ class UnchangedExperimentError(DvcException):
 
 class BaselineMismatchError(DvcException):
     def __init__(self, rev, expected):
+        if hasattr(rev, "hexsha"):
+            rev = rev.hexsha
         rev_str = f"{rev[:7]}" if rev is not None else "dangling commit"
         super().__init__(
             f"Experiment derived from '{rev_str}', expected '{expected[:7]}'."
@@ -236,6 +239,7 @@ class Experiments:
         """Commit stages as an experiment and return the commit SHA."""
         if not self.scm.is_dirty():
             raise UnchangedExperimentError(self.scm.get_rev())
+
         rev = self.scm.get_rev()
         exp_name = f"{rev[:7]}-{exp_hash}"
         if branch:
@@ -326,19 +330,26 @@ class Experiments:
                 for rev in revs
             }
 
-        # setup executors
+        logger.debug(
+            "Reproducing experiment revs '%s'",
+            ", ".join((rev[:7] for rev in to_run)),
+        )
+
+        # setup executors - unstash experiment, generate executor, upload
+        # contents of (unstashed) exp workspace to the executor tree
         executors = {}
         for rev, baseline_rev in to_run.items():
-            tree = self.scm.get_tree(rev)
-            repro_args, repro_kwargs = self._unpack_args(tree)
+            self._scm_checkout(baseline_rev)
+            self.scm.repo.git.stash("apply", rev)
+            repro_args, repro_kwargs = self._unpack_args()
             executor = LocalExecutor(
-                tree,
                 baseline_rev,
                 repro_args=repro_args,
                 repro_kwargs=repro_kwargs,
                 dvc_dir=self.dvc_dir,
                 cache_dir=self.repo.cache.local.cache_dir,
             )
+            self._collect_input(executor)
             executors[rev] = executor
 
         exec_results = self._reproduce(executors, **kwargs)
@@ -421,34 +432,56 @@ class Experiments:
 
         return result
 
+    def _collect_input(self, executor: ExperimentExecutor):
+        """Copy (upload) input from the experiments workspace to the executor
+        tree.
+        """
+        logger.debug("Collecting input for '%s'", executor.tmp_dir)
+        repo_tree = RepoTree(self.exp_dvc)
+        self._process(
+            executor.tree,
+            self.exp_dvc.tree,
+            executor.collect_files(self.exp_dvc.tree, repo_tree),
+        )
+
     def _collect_output(self, executor: ExperimentExecutor):
         """Copy (download) output from the executor tree into experiments
         workspace.
         """
-        from dvc.cache.local import _log_exceptions
-
         logger.debug("Collecting output from '%s'", executor.tmp_dir)
-        dest_tree = self.exp_dvc.tree
-        src_tree = executor.tree
+        self._process(
+            self.exp_dvc.tree,
+            executor.tree,
+            executor.collect_output(),
+            download=True,
+        )
+
+    @staticmethod
+    def _process(dest_tree, src_tree, collected_files, download=False):
+        from dvc.cache.local import _log_exceptions
 
         from_infos = []
         to_infos = []
         names = []
-        for from_info in executor.collect_output():
+        for from_info in collected_files:
             from_infos.append(from_info)
             fname = from_info.relative_to(src_tree.path_info)
             names.append(str(fname))
-            to_info = dest_tree.path_info / fname
             to_infos.append(dest_tree.path_info / fname)
-            logger.debug(f"from '{from_info}' to '{to_info}'")
         total = len(from_infos)
 
-        func = partial(
-            _log_exceptions(dest_tree.download, "download"),
-            dir_mode=dest_tree.dir_mode,
-            file_mode=dest_tree.file_mode,
-        )
-        with Tqdm(total=total, unit="file", desc="Downloading") as pbar:
+        if download:
+            func = partial(
+                _log_exceptions(src_tree.download, "download"),
+                dir_mode=dest_tree.dir_mode,
+                file_mode=dest_tree.file_mode,
+            )
+            desc = "Downloading"
+        else:
+            func = partial(_log_exceptions(dest_tree.upload, "upload"))
+            desc = "Uploading"
+
+        with Tqdm(total=total, unit="file", desc=desc) as pbar:
             func = pbar.wrap_fn(func)
             # TODO: parallelize this, currently --jobs for repro applies to
             # number of repro executors not download threads
@@ -456,7 +489,9 @@ class Experiments:
                 fails = sum(dl_executor.map(func, from_infos, to_infos, names))
 
         if fails:
-            raise DownloadError(fails)
+            if download:
+                raise DownloadError(fails)
+            raise UploadError(fails)
 
     @scm_locked
     def checkout_exp(self, rev):
