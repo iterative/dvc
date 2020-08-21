@@ -69,29 +69,41 @@ def test_metadata_not_existing(repo_tree):
         "README.md",
         "models/train.py",
         "models/test.py",
-        "src/utils/__init__.py",
-        "src/utils/serve_model.py",
+        PathInfo("src") / "utils" / "__init__.py",
+        PathInfo("src") / "utils" / "serve_model.py",
     ],
 )
 def test_metadata_git_tracked_file(repo_tree, path):
+    root = PathInfo(repo_tree.root_dir)
     meta = repo_tree.metadata(path)
-    assert meta.isfile
-    assert not meta.isdir
-    assert not meta.contains_outputs
-    assert not meta.is_dvc
-    assert not meta.is_exec
+
+    assert meta.path_info == root / path
     assert not meta.is_output
     assert not meta.part_of_output
+    assert not meta.contains_outputs
+    assert not meta.is_dvc
+    assert not meta.output_exists
+    assert not meta.isdir
+    assert not meta.is_exec
+    assert meta.isfile
     assert not meta.outs
 
 
 @pytest.mark.parametrize(
     "path, outs, is_output",
     [
-        ("data/raw/raw-1.csv", [PathInfo("data")], False),
-        ("data/raw/raw-2.csv", [PathInfo("data")], False),
-        ("data/processed/processed-1.csv", [PathInfo("data")], False),
-        ("data/processed/processed-2.csv", [PathInfo("data")], False),
+        (PathInfo("data") / "raw" / "raw-1.csv", [PathInfo("data")], False),
+        (PathInfo("data") / "raw" / "raw-2.csv", [PathInfo("data")], False),
+        (
+            PathInfo("data") / "processed" / "processed-1.csv",
+            [PathInfo("data")],
+            False,
+        ),
+        (
+            PathInfo("data") / "processed" / "processed-2.csv",
+            [PathInfo("data")],
+            False,
+        ),
         (
             "models/transform.pickle",
             [PathInfo("models") / "transform.pickle"],
@@ -103,27 +115,32 @@ def test_metadata_dvc_tracked_file(repo_tree, path, outs, is_output):
     root = PathInfo(repo_tree.root_dir)
     meta = repo_tree.metadata(path)
 
-    assert meta.is_dvc
-    assert meta.isfile
+    assert meta.path_info == root / path
     assert meta.is_output == is_output
     assert meta.part_of_output != is_output
-    assert not meta.isdir
     assert not meta.contains_outputs
+    assert meta.is_dvc
+    assert meta.output_exists
+    assert not meta.isdir
     assert not meta.is_exec
-
+    assert meta.isfile
     assert {out.path_info for out in meta.outs} == {root / out for out in outs}
 
 
 @pytest.mark.parametrize("path", ["src", "src/utils"])
 def test_metadata_git_only_dirs(repo_tree, path):
+    root = PathInfo(repo_tree.root_dir)
     meta = repo_tree.metadata(path)
-    assert meta.isdir
-    assert meta.is_exec
-    assert not meta.contains_outputs
-    assert not meta.is_dvc
-    assert not meta.isfile
+
+    assert meta.path_info == root / path
     assert not meta.is_output
     assert not meta.part_of_output
+    assert not meta.contains_outputs
+    assert not meta.is_dvc
+    assert not meta.output_exists
+    assert meta.isdir
+    assert meta.is_exec
+    assert not meta.isfile
     assert not meta.outs
 
 
@@ -137,13 +154,16 @@ def test_metadata_git_only_dirs(repo_tree, path):
 def test_metadata_git_dvc_mixed_dirs(repo_tree, path, expected_outs):
     root = PathInfo(repo_tree.root_dir)
     meta = repo_tree.metadata(root / path)
-    assert meta.isdir
-    assert meta.contains_outputs
-    assert meta.is_dvc
-    assert not meta.is_exec
-    assert not meta.isfile
+
+    assert meta.path_info == root / path
     assert not meta.is_output
     assert not meta.part_of_output
+    assert meta.contains_outputs
+    assert not meta.is_dvc
+    assert meta.output_exists
+    assert meta.isdir
+    assert not meta.is_exec
+    assert not meta.isfile
 
     assert {out.path_info for out in meta.outs} == {
         root / out for out in expected_outs
@@ -159,14 +179,17 @@ def test_metadata_git_dvc_mixed_dirs(repo_tree, path, expected_outs):
     ],
 )
 def test_metadata_dvc_only_dirs(repo_tree, path, is_output):
-    meta = repo_tree.metadata(PathInfo(repo_tree.root_dir) / path)
-    assert meta.isdir
-    assert meta.is_dvc
+    data = PathInfo(repo_tree.root_dir) / "data"
+    root = PathInfo(repo_tree.root_dir)
+    meta = repo_tree.metadata(root / path)
+
+    assert meta.path_info == root / path
     assert meta.is_output == is_output
     assert meta.part_of_output != is_output
-    assert not meta.is_exec
     assert not meta.contains_outputs
+    assert meta.is_dvc
+    assert meta.output_exists
+    assert meta.isdir
+    assert not meta.is_exec
     assert not meta.isfile
-
-    data = PathInfo(repo_tree.root_dir) / "data"
     assert {out.path_info for out in meta.outs} == {data}

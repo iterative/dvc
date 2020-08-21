@@ -76,7 +76,7 @@ def _ls(repo, path_info, recursive=None, dvc_only=False):
     ret = {}
     for info in infos:
         metadata = tree.metadata(info)
-        if metadata.is_dvc or not dvc_only:
+        if metadata.output_exists or not dvc_only:
             path = (
                 path_info.name
                 if path_info == info

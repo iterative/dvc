@@ -218,8 +218,8 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
         except OutputNotFoundError:
             return False
 
-        recurse = recursive or not strict  # FIXME
-        return meta.is_dvc if recurse else meta.is_output
+        recurse = recursive or not strict
+        return meta.output_exists if recurse else meta.is_output
 
     def isexec(self, path):  # pylint: disable=unused-argument
         return False
