@@ -45,7 +45,7 @@ class Metadata:
             self.is_output = self.path_info == out.path_info
 
             # or, a directory must have an output somewhere deep inside it
-            if self.is_output:
+            if not self.is_output:
                 self.contains_outputs = out.path_info.isin(self.path_info)
 
         # or, the path could be a part of an output, i.e. inside of an output

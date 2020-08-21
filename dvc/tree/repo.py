@@ -12,7 +12,7 @@ from pygtrie import StringTrie
 from dvc.dvcfile import is_valid_filename
 from dvc.exceptions import OutputNotFoundError
 from dvc.path_info import PathInfo
-from dvc.utils import file_md5
+from dvc.utils import file_md5, is_exec
 from dvc.utils.fs import copy_fobj_to_file, makedirs
 
 from ._metadata import Metadata
@@ -365,11 +365,11 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         if not stat_result and not dvc_meta:
             raise FileNotFoundError
 
-        metadata = dvc_meta or Metadata(path_info=path_info)
+        meta = dvc_meta or Metadata(path_info=path_info)
 
         isdir = bool(stat_result) and stat.S_ISDIR(stat_result.st_mode)
-        metadata.isdir = metadata.isdir or isdir
+        meta.isdir = meta.isdir or isdir
 
-        # TODO: replace is_exec()
-        metadata.is_exec = bool(stat_result) and tree.isexec(path_info)
-        return metadata
+        if not dvc_meta:
+            meta.is_exec = bool(stat_result) and is_exec(stat_result.st_mode)
+        return meta

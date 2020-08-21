@@ -10,7 +10,7 @@ from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 from dvc.scheme import Schemes
 from dvc.system import System
-from dvc.utils import file_md5, relpath, tmp_fname
+from dvc.utils import file_md5, is_exec, relpath, tmp_fname
 from dvc.utils.fs import (
     copy_fobj_to_file,
     copyfile,
@@ -157,7 +157,7 @@ class LocalTree(BaseTree):
 
     def isexec(self, path):
         mode = os.stat(path).st_mode
-        return mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        return is_exec(mode)
 
     @staticmethod
     def stat(path):

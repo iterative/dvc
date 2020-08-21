@@ -1,13 +1,12 @@
 import errno
 import io
 import os
-import stat
 
 from funcy import cached_property
 
 from dvc.exceptions import DvcException
 from dvc.tree.base import BaseTree
-from dvc.utils import relpath
+from dvc.utils import is_exec, relpath
 
 # see git-fast-import(1)
 GIT_MODE_DIR = 0o40000
@@ -197,7 +196,7 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
             return False
 
         mode = self.stat(path).st_mode
-        return mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        return is_exec(mode)
 
     def stat(self, path):
         import git
