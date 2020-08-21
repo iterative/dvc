@@ -447,9 +447,6 @@ def test_upload_exists(tmp_dir, dvc, local_remote):
     assert remote.tree.exists(to_info)
 
     tmp_dir.gen("foo", "bar")
-    with pytest.raises(FileExistsError):
-        remote.tree.upload(from_info, to_info)
-
-    remote.tree.upload(from_info, to_info, overwrite=True)
+    remote.tree.upload(from_info, to_info)
     with remote.tree.open(to_info) as fobj:
         assert fobj.read() == "bar"
