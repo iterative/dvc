@@ -1,3 +1,5 @@
+from itertools import chain
+
 from dvc.exceptions import PathMissingError
 from dvc.path_info import PathInfo
 
@@ -57,48 +59,32 @@ def _ls(repo, path_info, recursive=None, dvc_only=False):
     # fetch directory listings, but don't want to fetch file contents.
     tree = RepoTree(repo, stream=True)
 
-    ret = {}
+    infos = []
     try:
         for root, dirs, files in tree.walk(
             path_info.fspath, onerror=onerror, dvcfiles=True
         ):
-            for fname in files:
-                info = PathInfo(root) / fname
-                dvc = tree.isdvc(info)
-                if dvc or not dvc_only:
-                    path = str(info.relative_to(path_info))
-                    ret[path] = {
-                        "isout": dvc,
-                        "isdir": False,
-                        "isexec": False if dvc else tree.isexec(info),
-                    }
-
+            entries = chain(files, dirs) if not recursive else files
+            infos.extend(PathInfo(root) / entry for entry in entries)
             if not recursive:
-                for dname in dirs:
-                    info = PathInfo(root) / dname
-                    # pylint:disable=protected-access
-                    _, dvctree = tree._get_tree_pair(info)  # noqa
-                    if not dvc_only or (dvctree and dvctree.exists(info)):
-                        dvc = tree.isdvc(info)
-                        path = str(info.relative_to(path_info))
-                        ret[path] = {
-                            "isout": dvc,
-                            "isdir": True,
-                            "isexec": False if dvc else tree.isexec(info),
-                        }
                 break
     except NotADirectoryError:
-        dvc = tree.isdvc(path_info)
-        if dvc or not dvc_only:
-            return {
-                path_info.name: {
-                    "isout": dvc,
-                    "isdir": False,
-                    "isexec": False if dvc else tree.isexec(path_info),
-                }
-            }
-        return {}
+        infos.append(path_info)
     except FileNotFoundError:
         return {}
 
+    ret = {}
+    for info in infos:
+        metadata = tree.metadata(info)
+        if metadata.output_exists or not dvc_only:
+            path = (
+                path_info.name
+                if path_info == info
+                else str(info.relative_to(path_info))
+            )
+            ret[path] = {
+                "isout": metadata.is_output,
+                "isdir": metadata.isdir,
+                "isexec": metadata.is_exec,
+            }
     return ret

@@ -6,6 +6,7 @@ import logging
 import math
 import os
 import re
+import stat
 import sys
 import time
 
@@ -415,3 +416,7 @@ def parse_target(target, default=None):
         logger.debug("Assuming file to be '%s'", path)
 
     return path, name
+
+
+def is_exec(mode):
+    return mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)

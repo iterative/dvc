@@ -4,6 +4,7 @@ import os
 from dvc.exceptions import OutputNotFoundError
 from dvc.path_info import PathInfo
 
+from ._metadata import Metadata
 from .base import BaseTree, RemoteActionNotImplemented
 
 logger = logging.getLogger(__name__)
@@ -100,17 +101,19 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
 
     def exists(self, path):  # pylint: disable=arguments-differ
         try:
-            self._find_outs(path, strict=False, recursive=True)
+            self.metadata(path)
             return True
         except OutputNotFoundError:
             return False
 
     def isdir(self, path):  # pylint: disable=arguments-differ
-        if not self.exists(path):
+        try:
+            meta = self.metadata(path)
+            return meta.isdir
+        except OutputNotFoundError:
             return False
 
-        path_info = PathInfo(os.path.abspath(path))
-        outs = self._find_outs(path, strict=False, recursive=True)
+    def check_isdir(self, path_info, outs):
         if len(outs) != 1:
             return True
 
@@ -129,10 +132,11 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             return True
 
     def isfile(self, path):  # pylint: disable=arguments-differ
-        if not self.exists(path):
+        try:
+            meta = self.metadata(path)
+            return meta.isfile
+        except OutputNotFoundError:
             return False
-
-        return not self.isdir(path)
 
     def _add_dir(self, top, trie, out, download_callback=None, **kwargs):
         if not self.fetch and not self.stream:
@@ -186,23 +190,21 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
         from pygtrie import Trie
 
         assert topdown
-
-        if not self.exists(top):
+        root = PathInfo(os.path.abspath(top))
+        try:
+            meta = self.metadata(root)
+        except OutputNotFoundError:
             if onerror is not None:
                 onerror(FileNotFoundError(top))
             return
 
-        if not self.isdir(top):
+        if not meta.isdir:
             if onerror is not None:
                 onerror(NotADirectoryError(top))
             return
 
-        root = PathInfo(os.path.abspath(top))
-        outs = self._find_outs(top, recursive=True, strict=False)
-
         trie = Trie()
-
-        for out in outs:
+        for out in meta.outs:
             trie[out.path_info.parts] = out
 
             if out.is_dir_checksum and root.isin_or_eq(out.path_info):
@@ -210,12 +212,14 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
 
         yield from self._walk(root, trie, topdown=topdown, **kwargs)
 
-    def isdvc(self, path, **kwargs):
+    def isdvc(self, path, recursive=False, strict=True):
         try:
-            return len(self._find_outs(path, **kwargs)) == 1
+            meta = self.metadata(path)
         except OutputNotFoundError:
-            pass
-        return False
+            return False
+
+        recurse = recursive or not strict
+        return meta.output_exists if recurse else meta.is_output
 
     def isexec(self, path):  # pylint: disable=unused-argument
         return False
@@ -231,3 +235,11 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
                 self._get_granular_checksum(path_info, out),
             )
         return out.tree.PARAM_CHECKSUM, out.checksum
+
+    def metadata(self, path_info):
+        path_info = PathInfo(os.path.abspath(path_info))
+        outs = self._find_outs(path_info, strict=False, recursive=True)
+
+        meta = Metadata(path_info=path_info, outs=outs)
+        meta.isdir = meta.isdir or self.check_isdir(meta.path_info, meta.outs)
+        return meta

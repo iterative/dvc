@@ -1,6 +1,8 @@
 import logging
 import os
+import stat
 import threading
+from contextlib import suppress
 from itertools import takewhile
 from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union
 
@@ -10,9 +12,10 @@ from pygtrie import StringTrie
 from dvc.dvcfile import is_valid_filename
 from dvc.exceptions import OutputNotFoundError
 from dvc.path_info import PathInfo
-from dvc.utils import file_md5
+from dvc.utils import file_md5, is_exec
 from dvc.utils.fs import copy_fobj_to_file, makedirs
 
+from ._metadata import Metadata
 from .base import BaseTree
 from .dvc import DvcTree
 
@@ -345,3 +348,28 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
     @property
     def hash_jobs(self):  # pylint: disable=invalid-overridden-method
         return self._main_repo.tree.hash_jobs
+
+    def metadata(self, path):
+        path_info = PathInfo(os.path.abspath(path))
+        tree, dvc_tree = self._get_tree_pair(path_info)
+
+        dvc_meta = None
+        if dvc_tree:
+            with suppress(OutputNotFoundError):
+                dvc_meta = dvc_tree.metadata(path_info)
+
+        stat_result = None
+        with suppress(FileNotFoundError):
+            stat_result = tree.stat(path_info)
+
+        if not stat_result and not dvc_meta:
+            raise FileNotFoundError
+
+        meta = dvc_meta or Metadata(path_info=path_info)
+
+        isdir = bool(stat_result) and stat.S_ISDIR(stat_result.st_mode)
+        meta.isdir = meta.isdir or isdir
+
+        if not dvc_meta:
+            meta.is_exec = bool(stat_result) and is_exec(stat_result.st_mode)
+        return meta
