@@ -992,32 +992,17 @@ def test_should_raise_on_stage_output(tmp_dir, dvc, run_copy):
         run_copy("foo", "name.dvc", single_stage=True)
 
 
-class TestRunDirMetrics:
-    @pytest.fixture(autouse=True)
-    def setup(self, dvc):
-        with open("script.py", "w+") as fobj:
-            fobj.write("import sys\n")
-            fobj.write("import os\n")
-            fobj.write("os.makedirs(sys.argv[1])\n")
-            fobj.write(
-                "with open(os.path.join(sys.argv[1], "
-                "'metrics.json'), 'a+') as fobj:\n"
-            )
-            fobj.write("    fobj.write('foo')\n")
-
-    def test_metrics_dir_cached(self, dvc):
-        with pytest.raises(IsADirectoryError):
-            dvc.run(
-                cmd="python script.py dir", metrics=["dir"], single_stage=True,
-            )
-
-    def test_metrics_dir_not_cached(self, dvc):
-        with pytest.raises(IsADirectoryError):
-            dvc.run(
-                cmd="python script.py dir",
-                metrics_no_cache=["dir"],
-                single_stage=True,
-            )
+@pytest.mark.parametrize(
+    "metrics_type", ["metrics", "metrics_no_cache"],
+)
+def test_metrics_dir(tmp_dir, dvc, caplog, run_copy_metrics, metrics_type):
+    copyargs = {metrics_type: ["dir_metric"]}
+    tmp_dir.gen({"dir": {"file": "content"}})
+    with caplog.at_level(logging.DEBUG, "dvc"):
+        run_copy_metrics("dir", "dir_metric", **copyargs)
+    assert (
+        "directory 'dir_metric' cannot be used as metrics." in caplog.messages
+    )
 
 
 def test_run_force_doesnot_preserve_comments_and_meta(tmp_dir, dvc, run_copy):
