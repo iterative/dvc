@@ -365,7 +365,7 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         if not stat_result and not dvc_meta:
             raise FileNotFoundError
 
-        metadata = dvc_meta or Metadata(path_info=path_info, outs=[])
+        metadata = dvc_meta or Metadata(path_info=path_info)
 
         isdir = bool(stat_result) and stat.S_ISDIR(stat_result.st_mode)
         metadata.isdir = metadata.isdir or isdir

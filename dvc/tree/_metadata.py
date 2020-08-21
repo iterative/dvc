@@ -7,12 +7,12 @@ from dvc.path_info import PathInfo
 
 @dataclass
 class Metadata:
-    # required fields
+    """
+    Container for storing metadata for a given path, similar to `stat_result`
+    """
+
+    # required field
     path_info: PathInfo
-    # NOTE: due to how we retrieve `outs`, we won't be able to fetch outputs
-    #  from sub-repos at all.
-    outs: List[BaseOutput]  # list of  outputs inside that path
-    # if `is_output` is True, there will be only one outputs inside it
 
     # computed fields
     is_output: bool = field(init=False, default=False)  # is it an output?
@@ -24,6 +24,9 @@ class Metadata:
     is_dvc: bool = field(init=False)  # equivalent to len(outs) >= 1
 
     # optional fields
+    outs: List[BaseOutput] = field(default_factory=list)
+    # list of outputs inside that path
+    # if `is_output` is True, there will be only one output inside it
     is_exec: bool = False  # executable?
     isdir: bool = False  # is it a directory?
 
@@ -33,23 +36,26 @@ class Metadata:
         if not self.is_dvc:
             return
 
+        # it can contain multiple outputs
         if len(self.outs) > 1:
             self.contains_outputs = True
         else:
             out = self.outs[0]
-            # otherwise the path itself could be an output
+            # or, the path itself could be an output
             self.is_output = self.path_info == out.path_info
-            # or a directory must have an output somewhere deep inside that dir
+
+            # or, a directory must have an output somewhere deep inside it
             if self.is_output:
                 self.contains_outputs = out.path_info.isin(self.path_info)
-            # or, the path could be a part of an output
-            self.part_of_output = (
-                not self.is_output and not self.contains_outputs
-            )
 
+        # or, the path could be a part of an output, i.e. inside of an output
+        self.part_of_output = not self.is_output and not self.contains_outputs
         # if it contains outputs, it must be a dir
         self.isdir = self.contains_outputs
 
     @property
     def isfile(self):
         return not self.isdir
+
+    def __str__(self):
+        return f"Metadata: {self.path_info}"
