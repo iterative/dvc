@@ -131,7 +131,7 @@ tests_requirements = [
     "flake8-bugbear",
     "flake8-comprehensions",
     "flake8-string-format",
-    "pylint",
+    "pylint==2.5.3",
     "pylint-pytest>=0.3.0",
     "pylint-plugin-utils",
     "wget",
