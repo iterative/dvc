@@ -144,11 +144,31 @@ def test_lock_outs_order(dvc, typ):
     )
 
 
-def test_dump_appropriate_checksums(dvc):
+def test_dump_nondefault_hash(dvc):
     stage = create_stage(
         PipelineStage, dvc, deps=["s3://dvc-temp/file"], **kwargs
     )
-    stage.deps[0].info = {"etag": "is-it-etag", "md5": "or-md5?"}
+    stage.deps[0].info = {"md5": "value"}
+    assert to_single_stage_lockfile(stage) == OrderedDict(
+        [
+            ("cmd", "command"),
+            (
+                "deps",
+                [
+                    OrderedDict(
+                        [("path", "s3://dvc-temp/file"), ("md5", "value")]
+                    )
+                ],
+            ),
+        ]
+    )
+
+
+def test_dump_multiple_hashes(dvc):
+    stage = create_stage(
+        PipelineStage, dvc, deps=["s3://dvc-temp/file"], **kwargs
+    )
+    stage.deps[0].info = {"etag": "etag-value", "md5": "md5-value"}
     assert to_single_stage_lockfile(stage) == OrderedDict(
         [
             ("cmd", "command"),
@@ -158,7 +178,8 @@ def test_dump_appropriate_checksums(dvc):
                     OrderedDict(
                         [
                             ("path", "s3://dvc-temp/file"),
-                            ("etag", "is-it-etag"),
+                            ("etag", "etag-value"),
+                            ("md5", "md5-value"),
                         ]
                     )
                 ],

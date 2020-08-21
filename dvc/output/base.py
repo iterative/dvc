@@ -173,16 +173,8 @@ class BaseOutput:
         return self.cache.tree.hash_to_path_info(self.checksum).url
 
     @property
-    def checksum_type(self):
-        return self.tree.PARAM_CHECKSUM
-
-    @property
     def checksum(self):
         return self.info.get(self.tree.PARAM_CHECKSUM)
-
-    @checksum.setter
-    def checksum(self, checksum):
-        self.info[self.tree.PARAM_CHECKSUM] = checksum
 
     def get_checksum(self):
         return self.tree.get_hash(self.path_info)[1]
