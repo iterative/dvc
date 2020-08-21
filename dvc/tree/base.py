@@ -374,7 +374,14 @@ class BaseTree:
         typ, hash_ = tree.get_file_hash(to_info)
         return typ, hash_ + self.CHECKSUM_DIR_SUFFIX, to_info
 
-    def upload(self, from_info, to_info, name=None, no_progress_bar=False):
+    def upload(
+        self,
+        from_info,
+        to_info,
+        name=None,
+        no_progress_bar=False,
+        overwrite=False,
+    ):
         if not hasattr(self, "_upload"):
             raise RemoteActionNotImplemented("upload", self.scheme)
 
@@ -383,6 +390,9 @@ class BaseTree:
 
         if from_info.scheme != "local":
             raise NotImplementedError
+
+        if not overwrite and self.exists(to_info):
+            raise FileExistsError(to_info)
 
         logger.debug("Uploading '%s' to '%s'", from_info, to_info)
 
