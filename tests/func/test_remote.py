@@ -432,3 +432,21 @@ def test_push_incomplete_dir(tmp_dir, dvc, mocker, local_remote):
         remote.tree.hash_to_path_info(file_hashes[0])
     )
     assert remote.tree.exists(remote.tree.hash_to_path_info(file_hashes[1]))
+
+
+def test_upload_exists(tmp_dir, dvc, local_remote):
+    tmp_dir.gen("foo", "foo")
+    remote = dvc.cloud.get_remote("upstream")
+
+    from_info = PathInfo(tmp_dir / "foo")
+    to_info = remote.tree.path_info / "foo"
+    remote.tree.upload(from_info, to_info)
+    assert remote.tree.exists(to_info)
+
+    tmp_dir.gen("foo", "bar")
+    with pytest.raises(FileExistsError):
+        remote.tree.upload(from_info, to_info)
+
+    remote.tree.upload(from_info, to_info, overwrite=True)
+    with remote.tree.open(to_info) as fobj:
+        assert fobj.read() == "bar"
