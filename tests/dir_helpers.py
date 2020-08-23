@@ -299,7 +299,12 @@ def git_init(path):
 def run_copy(tmp_dir, dvc):
     tmp_dir.gen(
         "copy.py",
-        "import sys, shutil\nshutil.copyfile(sys.argv[1], sys.argv[2])",
+        (
+            "import sys, shutil, os\n"
+            "shutil.copyfile(sys.argv[1], sys.argv[2]) "
+            "if os.path.isfile(sys.argv[1]) "
+            "else shutil.copytree(sys.argv[1], sys.argv[2])"
+        ),
     )
 
     def run_copy(src, dst, **run_kwargs):

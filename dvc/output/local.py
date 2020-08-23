@@ -87,8 +87,9 @@ class LocalOutput(BaseOutput):
 
         name = "metrics" if self.metric else "plot"
         if os.path.isdir(path):
-            msg = "directory '{}' cannot be used as {}."
-            raise IsADirectoryError(msg.format(self.path_info, name))
+            msg = "directory '%s' cannot be used as %s."
+            logger.debug(msg, str(self.path_info), name)
+            return
 
         if not istextfile(path):
             msg = "binary file '{}' cannot be used as {}."
