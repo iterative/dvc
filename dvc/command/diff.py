@@ -11,19 +11,31 @@ from dvc.exceptions import DvcException
 logger = logging.getLogger(__name__)
 
 
-def _show_md(diff):
+def _digest(checksum):
+    if isinstance(checksum, str):
+        return checksum[0:8]
+    return "{}..{}".format(checksum["old"][0:8], checksum["new"][0:8])
+
+
+def _show_md(diff, show_hash=False):
     from dvc.utils.diff import table
 
+    header = ["Status", "Hash", "Path"] if show_hash else ["Status", "Path"]
     rows = []
     for status in ["added", "deleted", "modified"]:
         entries = diff.get(status, [])
         if not entries:
             continue
-        paths = sorted(entry["path"] for entry in entries)
-        for path in paths:
-            rows.append([status, path])
+        sorted_entries = sorted(entries, key=lambda entry: entry["path"])
+        for entry in sorted_entries:
+            path = entry["path"]
+            if show_hash:
+                check_sum = _digest(entry.get("hash", ""))
+                rows.append([status, check_sum, path])
+            else:
+                rows.append([status, path])
 
-    return table(["Status", "Path"], rows, True)
+    return table(header, rows, True)
 
 
 class CmdDiff(CmdBase):
@@ -54,11 +66,6 @@ class CmdDiff(CmdBase):
 
         At the bottom, include a summary with the number of files per state.
         """
-
-        def _digest(checksum):
-            if isinstance(checksum, str):
-                return checksum[0:8]
-            return "{}..{}".format(checksum["old"][0:8], checksum["new"][0:8])
 
         colors = {
             "added": colorama.Fore.GREEN,
@@ -111,7 +118,8 @@ class CmdDiff(CmdBase):
         try:
             diff = self.repo.diff(self.args.a_rev, self.args.b_rev)
 
-            if not self.args.show_hash:
+            show_hash = self.args.show_hash
+            if not show_hash:
                 for _, entries in diff.items():
                     for entry in entries:
                         del entry["hash"]
@@ -119,7 +127,7 @@ class CmdDiff(CmdBase):
             if self.args.show_json:
                 logger.info(json.dumps(diff))
             elif self.args.show_md:
-                logger.info(_show_md(diff))
+                logger.info(_show_md(diff, show_hash))
             elif diff:
                 logger.info(self._format(diff))
 

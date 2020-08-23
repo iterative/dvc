@@ -2,8 +2,23 @@ import collections
 import logging
 import os
 
+import mock
+import pytest
+
 from dvc.cli import parse_args
-from dvc.command.diff import _show_md
+from dvc.command.diff import _digest, _show_md
+
+
+@pytest.mark.parametrize(
+    "checksum, expected",
+    [
+        ("wxyz1234pq", "wxyz1234"),
+        (dict(old="1234567890", new="0987654321"), "12345678..09876543"),
+    ],
+    ids=["str", "dict"],
+)
+def test_digest(checksum, expected):
+    assert expected == _digest(checksum)
 
 
 def test_default(mocker, caplog):
@@ -90,6 +105,21 @@ def test_show_json_and_hash(mocker, caplog):
     assert '"modified": []' in caplog.text
 
 
+@pytest.mark.parametrize("show_hash", [None, True, False])
+@mock.patch("dvc.command.diff._show_md")
+def test_diff_show_md_and_hash(mock_show_md, mocker, caplog, show_hash):
+    options = ["diff", "--show-md"] + (["--show-hash"] if show_hash else [])
+    args = parse_args(options)
+    cmd = args.func(args)
+
+    diff = {}
+    show_hash = show_hash if show_hash else False
+    mocker.patch("dvc.repo.Repo.diff", return_value=diff)
+
+    assert 0 == cmd.run()
+    mock_show_md.assert_called_once_with(diff, show_hash)
+
+
 def test_no_changes(mocker, caplog):
     args = parse_args(["diff", "--show-json"])
     cmd = args.func(args)
@@ -120,15 +150,13 @@ def test_show_md_empty():
 def test_show_md():
     diff = {
         "deleted": [
-            {"path": "zoo", "hash": "22222"},
-            {"path": os.path.join("data", ""), "hash": "XXXXXXXX.dir"},
-            {"path": os.path.join("data", "foo"), "hash": "11111111"},
-            {"path": os.path.join("data", "bar"), "hash": "00000000"},
+            {"path": "zoo"},
+            {"path": os.path.join("data", "")},
+            {"path": os.path.join("data", "foo")},
+            {"path": os.path.join("data", "bar")},
         ],
-        "modified": [
-            {"path": "file", "hash": {"old": "AAAAAAAA", "new": "BBBBBBBB"}}
-        ],
-        "added": [{"path": "file", "hash": "00000000"}],
+        "modified": [{"path": "file"}],
+        "added": [{"path": "file"}],
     }
     assert _show_md(diff) == (
         "| Status   | Path     |\n"
@@ -139,4 +167,29 @@ def test_show_md():
         "| deleted  | data{sep}foo |\n"
         "| deleted  | zoo      |\n"
         "| modified | file     |\n"
+    ).format(sep=os.path.sep)
+
+
+def test_show_md_with_hash():
+    diff = {
+        "deleted": [
+            {"path": "zoo", "hash": "22222"},
+            {"path": os.path.join("data", ""), "hash": "XXXXXXXX.dir"},
+            {"path": os.path.join("data", "foo"), "hash": "11111111"},
+            {"path": os.path.join("data", "bar"), "hash": "00000000"},
+        ],
+        "modified": [
+            {"path": "file", "hash": {"old": "AAAAAAAA", "new": "BBBBBBBB"}}
+        ],
+        "added": [{"path": "file", "hash": "00000000"}],
+    }
+    assert _show_md(diff, show_hash=True) == (
+        "| Status   | Hash               | Path     |\n"
+        "|----------|--------------------|----------|\n"
+        "| added    | 00000000           | file     |\n"
+        "| deleted  | XXXXXXXX           | data{sep}    |\n"
+        "| deleted  | 00000000           | data{sep}bar |\n"
+        "| deleted  | 11111111           | data{sep}foo |\n"
+        "| deleted  | 22222              | zoo      |\n"
+        "| modified | AAAAAAAA..BBBBBBBB | file     |\n"
     ).format(sep=os.path.sep)
