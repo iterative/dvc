@@ -18,10 +18,74 @@ def load_yaml(path, tree=None):
     return _load_data(path, parser=parse_yaml, tree=tree)
 
 
-def parse_yaml(text, path, typ="safe"):
-    yaml = YAML(typ=typ)
-    with reraise(YAMLError, YAMLFileCorruptedError(path)):
-        return yaml.load(text) or {}
+def parse_yaml(text, path):
+    try:
+        result =  populate_dvc_template(text)#yaml.load(text, Loader=SafeLoader) or {}
+        return result
+    except yaml.error.YAMLError as exc:
+        raise YAMLFileCorruptedError(path) from exc
+
+# Original parse_yaml
+#def parse_yaml(text, path, typ="safe"):
+#    yaml = YAML(typ=typ)
+#    with reraise(YAMLError, YAMLFileCorruptedError(path)):
+#        return yaml.load(text) or {}
+
+### NEW STUFF ###A
+from collections import namedtuple
+from pathlib import Path
+from jinja2 import Template
+import os
+
+def recursive_render(tpl, values, max_passes=100):
+    '''This is a bit of black magic to recursivly render a
+    template. Adaped from:
+
+      https://stackoverflow.com/questions/8862731/jinja-nested-rendering-on-variable-content
+
+    Args:
+      tpl: Template string
+      values: dict of values. Importantly this dict can contain
+          values that are themselves {{ placeholders }}
+      max_passes: Limits the number of times we loop over the
+          template.
+
+    Returns:
+      rendered template.
+    '''
+    prev = tpl
+    for _ in range(max_passes):
+        curr = Template(prev).render(**values)
+        if curr != prev:
+            prev = curr
+        else:
+            return curr
+    raise RecursionError("Max resursion depth reached")
+
+def populate_dvc_template(text):
+
+    dvc_dict = yaml.load(text, Loader=SafeLoader) or {}
+    if 'vars' in dvc_dict:
+        vars_dict = dvc_dict['vars']
+        vars_template = yaml.dump(vars_dict)
+
+        rendered_vars = recursive_render(
+                                vars_template,
+                                vars_dict)
+        vars_dict = yaml.load(rendered_vars, Loader=SafeLoader)
+
+        del(dvc_dict['vars'])
+        dvc_template = yaml.dump(dvc_dict)
+        rendered_dvc = Template(dvc_template).render(**vars_dict)
+
+        if os.environ.get("DVC_DEBUG", False):
+            print(f'Rendered Stage (pre yaml parsing):\n\n{rendered_dvc}')
+
+        dvc_dict = yaml.load(rendered_dvc, Loader=yaml.SafeLoader) or {}
+
+    return dvc_dict
+
+### OLD STUFF ###
 
 
 def parse_yaml_for_update(text, path):
