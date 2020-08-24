@@ -291,19 +291,16 @@ class HTTPError(DvcException):
 
 
 class PathMissingError(DvcException):
-    default_msg = (
-        "The path '{}' does not exist in the target repository '{}'"
-        " neither as a DVC output nor as a Git-tracked file."
-    )
-    default_msg_dvc_only = (
-        "The path '{}' does not exist in the target repository '{}'"
-        " as an DVC output."
-    )
+    def __init__(self, path, repo=None, dvc_only=False):
+        msg = f"The path '{path}' does not exist in the"
+        msg += " repository" if not repo else f" target repository '{repo}'"
+        msg += " as a DVC output"
+        msg = f"{msg}." if dvc_only else f"{msg} nor as a Git-tracked file."
 
-    def __init__(self, path, repo, dvc_only=False):
-        msg = self.default_msg if not dvc_only else self.default_msg_dvc_only
-        super().__init__(msg.format(path, repo))
         self.dvc_only = dvc_only
+        self.repo = repo
+        self.path = path
+        super().__init__(msg)
 
 
 class RemoteCacheRequiredError(DvcException):

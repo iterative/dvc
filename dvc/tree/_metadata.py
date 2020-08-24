@@ -1,8 +1,11 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import TYPE_CHECKING, List, Optional
 
 from dvc.output import BaseOutput
 from dvc.path_info import PathInfo
+
+if TYPE_CHECKING:
+    from dvc.repo import Repo
 
 
 @dataclass
@@ -30,6 +33,7 @@ class Metadata:
     isdir: bool = False  # is it a directory?
     is_exec: bool = False  # is it an executable?
     outs: List[BaseOutput] = field(default_factory=list)  # list of outputs
+    repo: Optional["Repo"] = None  # the repo path falls in
 
     def __post_init__(self):
         self.output_exists = bool(self.outs)

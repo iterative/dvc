@@ -3,8 +3,7 @@ import os
 import pytest
 
 from dvc import api
-from dvc.api import UrlNotDvcRepoError
-from dvc.exceptions import FileMissingError
+from dvc.exceptions import OutputNotFoundError, PathMissingError
 from dvc.path_info import URLInfo
 from dvc.utils.fs import remove
 
@@ -47,10 +46,10 @@ def test_get_url_external(erepo_dir, cloud):
 def test_get_url_requires_dvc(tmp_dir, scm):
     tmp_dir.scm_gen({"foo": "foo"}, commit="initial")
 
-    with pytest.raises(UrlNotDvcRepoError, match="not a DVC repository"):
+    with pytest.raises(OutputNotFoundError, match="with output 'foo'"):
         api.get_url("foo", repo=os.fspath(tmp_dir))
 
-    with pytest.raises(UrlNotDvcRepoError):
+    with pytest.raises(OutputNotFoundError):
         api.get_url("foo", repo=f"file://{tmp_dir}")
 
 
@@ -144,7 +143,7 @@ def test_missing(tmp_dir, dvc, remote):
 
     remove("foo")
 
-    with pytest.raises(FileMissingError):
+    with pytest.raises(PathMissingError, match="path 'foo' does not exist"):
         api.read("foo")
 
 
@@ -164,12 +163,12 @@ def test_open_not_cached(dvc):
     dvc.run(
         single_stage=True,
         metrics_no_cache=[metric_file],
-        cmd=(f'python -c "{metric_code}"'),
+        cmd=f'python -c "{metric_code}"',
     )
 
     with api.open(metric_file) as fd:
         assert fd.read() == metric_content
 
     os.remove(metric_file)
-    with pytest.raises(FileMissingError):
+    with pytest.raises(PathMissingError):
         api.read(metric_file)

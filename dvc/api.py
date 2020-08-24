@@ -2,16 +2,17 @@ import os
 from contextlib import _GeneratorContextManager as GCM
 from contextlib import contextmanager
 
-from dvc.exceptions import DvcException, NotDvcRepoError
+from funcy import reraise
+
+from dvc.exceptions import (
+    NotDvcRepoError,
+    OutputNotFoundError,
+    PathMissingError,
+)
 from dvc.external_repo import external_repo
+from dvc.path_info import PathInfo
 from dvc.repo import Repo
-
-
-class UrlNotDvcRepoError(DvcException):
-    """Thrown if the given URL is not a DVC repository."""
-
-    def __init__(self, url):
-        super().__init__(f"'{url}' is not a DVC repository.")
+from dvc.tree.repo import RepoTree
 
 
 def get_url(path, repo=None, rev=None, remote=None):
@@ -20,17 +21,26 @@ def get_url(path, repo=None, rev=None, remote=None):
     in a DVC repo. For Git repos, HEAD is used unless a rev argument is
     supplied. The default remote is tried unless a remote argument is supplied.
 
-    Raises UrlNotDvcRepoError if repo is not a DVC project.
+    Raises OutputNotFoundError if the file is not a dvc-tracked file.
 
     NOTE: This function does not check for the actual existence of the file or
     directory in the remote storage.
     """
     with _make_repo(repo, rev=rev) as _repo:
-        if not isinstance(_repo, Repo):
-            raise UrlNotDvcRepoError(_repo.url)  # pylint: disable=no-member
-        out = _repo.find_out_by_relpath(path)
-        remote_obj = _repo.cloud.get_remote(remote)
-        return str(remote_obj.tree.hash_to_path_info(out.checksum))
+        tree = RepoTree(_repo, fetch=True)
+        path_info = PathInfo(_repo.root_dir) / path
+
+        meta = tree.metadata(path_info)
+        exc = OutputNotFoundError(path)
+        if not meta.is_dvc:
+            raise exc
+
+        with reraise(FileNotFoundError, exc):
+            _, hash_ = tree.get_hash(PathInfo(_repo.root_dir) / path)
+
+        assert hash_ and meta.repo
+        cloud = meta.repo.cloud
+        return cloud.get_url_for(remote, checksum=hash_)
 
 
 def open(  # noqa, pylint: disable=redefined-builtin
@@ -74,10 +84,14 @@ class _OpenContextManager(GCM):
 
 def _open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
     with _make_repo(repo, rev=rev) as _repo:
-        with _repo.open_by_relpath(
-            path, remote=remote, mode=mode, encoding=encoding
-        ) as fd:
-            yield fd
+        tree = RepoTree(_repo, stream=True, fetch=True)
+
+        path = PathInfo(_repo.root_dir) / path
+        with reraise(FileNotFoundError, PathMissingError(path, repo)):
+            with tree.open(
+                path, remote=remote, mode=mode, encoding=encoding
+            ) as fd:
+                yield fd
 
 
 def read(path, repo=None, rev=None, remote=None, mode="r", encoding=None):

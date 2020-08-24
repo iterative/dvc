@@ -116,3 +116,11 @@ class DataCloud:
         return self.repo.cache.local.status(
             cache, jobs=jobs, remote=remote, show_checksums=show_checksums
         )
+
+    def get_url_for(self, remote=None, checksum=None):
+        remote = self.get_remote(remote)
+        tree = remote.tree
+
+        if checksum:
+            return tree.hash_to_path_info(checksum).url
+        return tree.path_info.url
