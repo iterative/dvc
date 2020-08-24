@@ -45,9 +45,6 @@ def recursive_render(tpl, values, max_passes=100):
     raise RecursionError("Max resursion depth reached")
 
 def populate_dvc_template(text):
-    class MyLogger:
-        def write(self, s):
-            sys.stdout.write(s.decode('utf-8'))
 
     yaml = YAML(typ='safe')
     dvc_dict = yaml.load(text) or {}
@@ -72,12 +69,18 @@ def populate_dvc_template(text):
     return dvc_dict
 
 
-def parse_yaml(text, path):
-    try:
-        result =  populate_dvc_template(text)#yaml.load(text, Loader=SafeLoader) or {}
-        return result
-    except Exception as exc:
-        raise YAMLFileCorruptedError(path) from exc
+def parse_yaml(text, path, typ="safe"):
+    yaml = YAML(typ=typ)
+    with reraise(YAMLError, YAMLFileCorruptedError(path)):
+        result = yaml.load(text) or {}
+
+    if 'vars' in result:
+        try:
+            result =  populate_dvc_template(text)#yaml.load(text, Loader=SafeLoader) or {}
+        except Exception as exc:
+            raise YAMLFileCorruptedError(path) from exc
+
+    return result
 
 def load_yaml(path, tree=None):
     return _load_data(path, parser=parse_yaml, tree=tree)
