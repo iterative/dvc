@@ -182,7 +182,9 @@ class Experiments:
         # patch user's workspace into experiments clone
         tmp = tempfile.NamedTemporaryFile(delete=False).name
         try:
-            self.repo.scm.repo.git.diff(patch=True, output=tmp)
+            self.repo.scm.repo.git.diff(
+                patch=True, full_index=True, binary=True, output=tmp
+            )
             if os.path.getsize(tmp):
                 logger.debug("Patching experiment workspace")
                 self.scm.repo.git.apply(tmp)
@@ -504,12 +506,14 @@ class Experiments:
         self._scm_checkout(rev)
 
         tmp = tempfile.NamedTemporaryFile(delete=False).name
-        self.scm.repo.head.commit.diff("HEAD~1", patch=True, output=tmp)
+        self.scm.repo.head.commit.diff(
+            "HEAD~1", patch=True, full_index=True, binary=True, output=tmp
+        )
 
         dirty = self.repo.scm.is_dirty()
         if dirty:
             logger.debug("Stashing workspace changes.")
-            self.repo.scm.repo.git.stash("push")
+            self.repo.scm.repo.git.stash("push", "--include-untracked")
 
         try:
             if os.path.getsize(tmp):
