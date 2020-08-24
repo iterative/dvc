@@ -3,7 +3,7 @@ from contextlib import contextmanager
 
 from funcy import reraise
 
-from ._common import _dump_data, _load_data, _modify_data, ParseError
+from ._common import ParseError, _dump_data, _load_data, _modify_data
 
 
 class PYFileCorruptedError(ParseError):
