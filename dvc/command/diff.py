@@ -26,8 +26,7 @@ def _show_md(diff, show_hash=False):
         entries = diff.get(status, [])
         if not entries:
             continue
-        sorted_entries = sorted(entries, key=lambda entry: entry["path"])
-        for entry in sorted_entries:
+        for entry in entries:
             path = entry["path"]
             if show_hash:
                 check_sum = _digest(entry.get("hash", ""))
@@ -45,8 +44,7 @@ class CmdDiff(CmdBase):
         Given a diff structure, generate a string of paths separated
         by new lines and grouped together by their state.
 
-        A group's header is colored and its entries are sorted to enhance
-        readability, for example:
+        A group's header is colored to enhance readability, for example:
 
             Added:
                 another_file.txt
@@ -117,12 +115,14 @@ class CmdDiff(CmdBase):
     def run(self):
         try:
             diff = self.repo.diff(self.args.a_rev, self.args.b_rev)
-
             show_hash = self.args.show_hash
-            if not show_hash:
-                for _, entries in diff.items():
+
+            for key, entries in diff.items():
+                entries = sorted(entries, key=lambda entry: entry["path"])
+                if not show_hash:
                     for entry in entries:
                         del entry["hash"]
+                diff[key] = entries
 
             if self.args.show_json:
                 logger.info(json.dumps(diff))
