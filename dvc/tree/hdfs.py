@@ -130,6 +130,14 @@ class HDFSTree(BaseTree):
                     self.remove(tmp_info)
                     raise
 
+    def isfile(self, path_info):
+        with self.hdfs(path_info) as hdfs:
+            return hdfs.isfile(path_info.path)
+
+    def isdir(self, path_info):
+        with self.hdfs(path_info) as hdfs:
+            return hdfs.isdir(path_info.path)
+
     def hadoop_fs(self, cmd, user=None):
         cmd = "hadoop fs -" + cmd
         if user:

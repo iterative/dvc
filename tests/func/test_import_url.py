@@ -146,6 +146,7 @@ def test_import_url(tmp_dir, dvc, workspace):
         pytest.lazy_fixture("local_cloud"),
         pytest.lazy_fixture("s3"),
         pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("hdfs"),
         pytest.param(
             pytest.lazy_fixture("ssh"),
             marks=pytest.mark.skipif(
