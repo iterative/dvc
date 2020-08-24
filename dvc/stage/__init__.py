@@ -442,7 +442,7 @@ class Stage(params.StageParams):
             if not no_commit:
                 self.commit()
 
-    def _filter_outs(self, path_info):
+    def filter_outs(self, path_info):
         def _func(o):
             return path_info.isin_or_eq(o.path_info)
 
@@ -451,7 +451,7 @@ class Stage(params.StageParams):
     @rwlocked(write=["outs"])
     def checkout(self, **kwargs):
         stats = defaultdict(list)
-        for out in self._filter_outs(kwargs.get("filter_info")):
+        for out in self.filter_outs(kwargs.get("filter_info")):
             key, outs = self._checkout(out, **kwargs)
             if key:
                 stats[key].extend(outs)
@@ -526,14 +526,14 @@ class Stage(params.StageParams):
     def get_all_files_number(self, filter_info=None):
         return sum(
             out.get_files_number(filter_info)
-            for out in self._filter_outs(filter_info)
+            for out in self.filter_outs(filter_info)
         )
 
     def get_used_cache(self, *args, **kwargs):
         from dvc.cache import NamedCache
 
         cache = NamedCache()
-        for out in self._filter_outs(kwargs.get("filter_info")):
+        for out in self.filter_outs(kwargs.get("filter_info")):
             cache.update(out.get_used_cache(*args, **kwargs))
 
         return cache

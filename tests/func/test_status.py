@@ -121,8 +121,10 @@ def test_status_recursive(tmp_dir, dvc):
 
 
 def test_status_outputs(tmp_dir, dvc, caplog):
+    tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
     dvc.run(
         outs=["alice", "bob"],
+        deps=["foo", "bar"],
         cmd="echo alice>alice && echo bob>bob",
         name="alice_bob",
     )

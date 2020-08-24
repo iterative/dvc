@@ -10,31 +10,32 @@ from . import locked
 logger = logging.getLogger(__name__)
 
 
-def _joint_status(stages):
+def _joint_status(pairs):
     status_info = {}
 
-    for stage in stages:
+    for stage, filter_info in pairs:
         if stage.frozen and not stage.is_repo_import:
             logger.warning(
                 "{} is frozen. Its dependencies are"
                 " not going to be shown in the status output.".format(stage)
             )
-
-        status_info.update(stage.status(check_updates=True))
+        if not filter_info:
+            status_info.update(stage.status(check_updates=True))
+        else:
+            for out in stage.filter_outs(filter_info):
+                status_info.update(out.status())
 
     return status_info
 
 
 def _local_status(self, targets=None, with_deps=False, recursive=False):
-    if targets:
-        stages = cat(
-            self.collect(t, with_deps=with_deps, recursive=recursive)
-            for t in targets
-        )
-    else:
-        stages = self.collect(None, with_deps=with_deps, recursive=recursive)
+    targets = targets or [None]
+    pairs = cat(
+        self.collect_granular(t, with_deps=with_deps, recursive=recursive)
+        for t in targets
+    )
 
-    return _joint_status(stages)
+    return _joint_status(pairs)
 
 
 def _cloud_status(
