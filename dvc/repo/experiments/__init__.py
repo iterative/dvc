@@ -162,12 +162,24 @@ class Experiments:
     def _scm_checkout(self, rev):
         self.scm.repo.git.reset(hard=True)
         if self.scm.repo.head.is_detached:
-            # switch back to default branch
-            self.scm.repo.heads[0].checkout()
+            self._checkout_default_branch()
         if not Git.is_sha(rev) or not self.scm.has_rev(rev):
             self.scm.pull()
         logger.debug("Checking out experiment commit '%s'", rev)
         self.scm.checkout(rev)
+
+    def _checkout_default_branch(self):
+        # switch to default branch
+        git_repo = self.scm.repo
+        origin_refs = git_repo.remotes["origin"].refs
+        ref = origin_refs["HEAD"].reference
+        branch_name = ref.name.split("/")[-1]
+        if branch_name in git_repo.heads:
+            branch = git_repo.heads[branch_name]
+        else:
+            branch = git_repo.create_head(branch_name, ref)
+            branch.set_tracking_branch(ref)
+        branch.checkout()
 
     def _stash_exp(self, *args, params: Optional[dict] = None, **kwargs):
         """Stash changes from the current (parent) workspace as an experiment.
