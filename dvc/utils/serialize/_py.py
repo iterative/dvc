@@ -20,9 +20,9 @@ def parse_py(text, path):
     module = dict()
     with reraise(SyntaxError, PYFileCorruptedError(path)):
         exec(text, module)
-    with reraise(KeyError, PYFileCorruptedError(
-            path, "PY file is missing class Config"
-    )):
+    with reraise(
+        KeyError, PYFileCorruptedError(path, "PY file is missing class Config")
+    ):
         config = module["Config"]()
 
     config_dict = parse_class(config, module)

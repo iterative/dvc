@@ -131,11 +131,10 @@ def test_read_params_py(tmp_dir, dvc):
     )
     assert dep.read_params() == {"foobar": 1, "train.foo": "val1"}
 
-    dep = ParamsDependency(
-        Stage(dvc), parameters_file, ["foobar", "train"]
-    )
+    dep = ParamsDependency(Stage(dvc), parameters_file, ["foobar", "train"])
     assert dep.read_params() == {
-        "foobar": 1, "train": {"foo": "val1", "bar": "val2"}
+        "foobar": 1,
+        "train": {"foo": "val1", "bar": "val2"},
     }
 
 

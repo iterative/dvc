@@ -26,12 +26,8 @@ def test_show_toml(tmp_dir, dvc):
 
 def test_show_py(tmp_dir, dvc):
     tmp_dir.gen("params.py", "class Config:\n    foo = 42\n")
-    dvc.run(
-        cmd="echo params.py", params=["params.py:foo"], single_stage=True
-    )
-    assert dvc.params.show() == {
-        "": {"params.py": {'foo': 42}}
-    }
+    dvc.run(cmd="echo params.py", params=["params.py:foo"], single_stage=True)
+    assert dvc.params.show() == {"": {"params.py": {"foo": 42}}}
 
 
 def test_show_multiple(tmp_dir, dvc):
