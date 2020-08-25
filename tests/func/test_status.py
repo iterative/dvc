@@ -128,8 +128,7 @@ def test_status_outputs(tmp_dir, dvc, caplog):
         cmd="echo alice>alice && echo bob>bob",
         name="alice_bob",
     )
-    tmp_dir.gen("alice", "bob")
-    tmp_dir.gen("bob", "alice")
+    tmp_dir.gen({"alice": "new alice", "bob": "new bob"})
     assert main(["status", "alice_bob"]) == 0
     assert "alice_bob:" in caplog.text
     assert "changed outs:" in caplog.text
