@@ -14,11 +14,13 @@ class YAMLFileCorruptedError(ParseError):
         super().__init__(path, "YAML file structure is corrupted")
 
 
+import os
+
 ### NEW STUFF ###A
 from collections import namedtuple
 from pathlib import Path
+
 from jinja2 import Template
-import os
 
 
 def recursive_render(tpl, values, max_passes=100):
