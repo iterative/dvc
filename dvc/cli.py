@@ -33,6 +33,7 @@ from .command import (
     plots,
     remote,
     remove,
+    render,
     repro,
     root,
     run,
@@ -81,6 +82,7 @@ COMMANDS = [
     plots,
     experiments,
     check_ignore,
+    render,
 ]
 
 

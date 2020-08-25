@@ -3,6 +3,7 @@ from collections import OrderedDict
 from contextlib import contextmanager
 
 from funcy import reraise
+from jinja2 import Template
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
 
@@ -13,14 +14,9 @@ class YAMLFileCorruptedError(ParseError):
     def __init__(self, path):
         super().__init__(path, "YAML file structure is corrupted")
 
-### NEW STUFF ###A
-from collections import namedtuple
-from pathlib import Path
-from jinja2 import Template
-import os
 
 def recursive_render(tpl, values, max_passes=100):
-    '''This is a bit of black magic to recursivly render a
+    """This is a bit of black magic to recursivly render a
     template. Adaped from:
 
       https://stackoverflow.com/questions/8862731/jinja-nested-rendering-on-variable-content
@@ -34,7 +30,7 @@ def recursive_render(tpl, values, max_passes=100):
 
     Returns:
       rendered template.
-    '''
+    """
     prev = tpl
     for _ in range(max_passes):
         curr = Template(prev).render(**values)
@@ -44,29 +40,32 @@ def recursive_render(tpl, values, max_passes=100):
             return curr
     raise RecursionError("Max resursion depth reached")
 
-def populate_dvc_template(text):
 
-    yaml = YAML(typ='safe')
+def render_vars(dvc_dict):
+    vars_dict = dvc_dict["vars"]
+    vars_template = dumps_yaml(vars_dict)
+
+    rendered_vars = recursive_render(vars_template, vars_dict)
+    return rendered_vars
+
+
+def render_dvc(dvc_dict, vars_dict):
+    dvc_template = dumps_yaml(dvc_dict)
+    rendered_dvc = Template(dvc_template).render(**vars_dict)
+    return rendered_dvc
+
+
+def render_dvc_template(text):
+
+    yaml = YAML(typ="safe")
     dvc_dict = yaml.load(text) or {}
-    if 'vars' in dvc_dict:
-        vars_dict = dvc_dict['vars']
-        vars_template = dumps_yaml(vars_dict)
+    if "vars" in dvc_dict:
+        vars_dict = yaml.load(render_vars(dvc_dict))
 
-        rendered_vars = recursive_render(
-                                vars_template,
-                                vars_dict)
-        vars_dict = yaml.load(rendered_vars)
+        del dvc_dict["vars"]
+        rendered_dvc = yaml.load(render_dvc(dvc_dict, vars_dict)) or {}
 
-        del(dvc_dict['vars'])
-        dvc_template = dumps_yaml(dvc_dict)
-        rendered_dvc = Template(dvc_template).render(**vars_dict)
-
-        if os.environ.get("DVC_DEBUG", False):
-            print(f'Rendered Stage (pre yaml parsing):\n\n{rendered_dvc}')
-
-        dvc_dict = yaml.load(rendered_dvc) or {}
-
-    return dvc_dict
+    return rendered_dvc, vars_dict
 
 
 def parse_yaml(text, path, typ="safe"):
@@ -74,25 +73,19 @@ def parse_yaml(text, path, typ="safe"):
     with reraise(YAMLError, YAMLFileCorruptedError(path)):
         result = yaml.load(text) or {}
 
-    if 'vars' in result:
+    if "vars" in result:
         try:
-            result =  populate_dvc_template(text)#yaml.load(text, Loader=SafeLoader) or {}
+            result, _ = render_dvc_template(
+                text
+            )  # yaml.load(text, Loader=SafeLoader) or {}
         except Exception as exc:
             raise YAMLFileCorruptedError(path) from exc
 
     return result
 
+
 def load_yaml(path, tree=None):
     return _load_data(path, parser=parse_yaml, tree=tree)
-
-
-# Original parse_yaml
-#def parse_yaml(text, path, typ="safe"):
-#    yaml = YAML(typ=typ)
-#    with reraise(YAMLError, YAMLFileCorruptedError(path)):
-#        return yaml.load(text) or {}
-
-### OLD STUFF ###
 
 
 def parse_yaml_for_update(text, path):
