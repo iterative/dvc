@@ -118,3 +118,22 @@ def test_status_recursive(tmp_dir, dvc):
             }
         ],
     }
+
+
+def test_status_outputs(tmp_dir, dvc):
+    tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
+    dvc.run(
+        outs=["alice", "bob"],
+        deps=["foo", "bar"],
+        cmd="echo alice>alice && echo bob>bob",
+        name="alice_bob",
+    )
+    tmp_dir.gen({"alice": "new alice", "bob": "new bob"})
+
+    assert dvc.status(targets=["alice_bob"]) == {
+        "alice_bob": [
+            {"changed outs": {"alice": "modified", "bob": "modified"}}
+        ]
+    }
+
+    assert dvc.status(targets=["alice"]) == {"alice": "modified"}
