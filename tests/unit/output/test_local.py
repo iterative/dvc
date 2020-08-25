@@ -1,5 +1,7 @@
 import os
+import platform
 
+import pytest
 from mock import patch
 
 from dvc.cache.local import LocalCache
@@ -25,6 +27,10 @@ class TestLocalOutput(TestDvc):
                 o.save()
 
 
+@pytest.mark.skipif(
+    platform.system() == "Windows",
+    reason="https://github.com/iterative/dvc/issues/4418",
+)
 def test_str_workdir_outside_repo(erepo_dir):
     stage = Stage(erepo_dir.dvc)
     output = LocalOutput(stage, "path", cache=False)
