@@ -42,7 +42,9 @@ class StageLoader(Mapping):
             if isinstance(item, dependency.ParamsDependency):
                 item.fill_values(get_in(lock_data, [stage.PARAM_PARAMS, path]))
                 continue
-            item.checksum = get_in(checksums, [key, path, item.checksum_type])
+            item.info = get_in(checksums, [key, path], {})
+            item.info = item.info.copy()
+            item.info.pop("path", None)
 
     @classmethod
     def load_stage(cls, dvcfile, name, stage_data, lock_data=None):
