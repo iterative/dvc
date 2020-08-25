@@ -49,3 +49,30 @@ def test_update_with_pull(tmp_dir, scm, dvc, mocker):
     exp_scm = dvc.experiments.scm
     for rev in expected_revs:
         assert exp_scm.has_rev(rev)
+
+
+def test_checkout(tmp_dir, scm, dvc):
+    tmp_dir.gen("copy.py", COPY_SCRIPT)
+    tmp_dir.gen("params.yaml", "foo: 1")
+    stage = dvc.run(
+        cmd="python copy.py params.yaml metrics.yaml",
+        metrics_no_cache=["metrics.yaml"],
+        params=["foo"],
+        name="copy-file",
+    )
+    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
+    scm.commit("init")
+
+    dvc.reproduce(stage.addressing, experiment=True, params=["foo=2"])
+    exp_a = dvc.experiments.scm.get_rev()
+
+    dvc.reproduce(stage.addressing, experiment=True, params=["foo=3"])
+    exp_b = dvc.experiments.scm.get_rev()
+
+    dvc.experiments.checkout(exp_a)
+    assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 2"
+    assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 2"
+
+    dvc.experiments.checkout(exp_b)
+    assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 3"
+    assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 3"

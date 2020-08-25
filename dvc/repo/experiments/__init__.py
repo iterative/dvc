@@ -557,10 +557,23 @@ class Experiments:
         # to prefer the applied experiment changes over stashed workspace
         # changes. git stash doesn't support merge strategy parameters, but we
         # can do it ourselves with checkout/reset.
+        from git.exc import GitCommandError
+
         logger.debug("Unstashing workspace changes.")
-        self.repo.scm.repo.git.checkout("--ours", "stash@{0}", "--", ".")
-        self.repo.scm.repo.git.reset("HEAD")
-        self.repo.scm.repo.git.stash("drop", "stash@{0}")
+        git_repo = self.repo.scm.repo.git
+
+        # stage workspace changes, then apply stashed changes on top
+        git_repo.add(A=True)
+        try:
+            git_repo.stash("apply", "stash@{0}")
+        except GitCommandError:
+            # stash apply will return error code on merge conflicts,
+            # prefer workspace changes over stash changes
+            git_repo.checkout("--ours", "--", ".")
+
+        # unstage changes and drop the stash entry
+        git_repo.reset("HEAD")
+        git_repo.stash("drop", "stash@{0}")
 
     def checkout(self, *args, **kwargs):
         from dvc.repo.experiments.checkout import checkout
