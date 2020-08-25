@@ -60,3 +60,45 @@ def test_show_experiment(tmp_dir, scm, dvc):
         else:
             assert exp["metrics"]["metrics.yaml"] == expected_params
             assert exp["params"]["params.yaml"] == expected_params
+
+
+def test_show_queued(tmp_dir, scm, dvc):
+    tmp_dir.gen("copy.py", COPY_SCRIPT)
+    tmp_dir.gen("params.yaml", "foo: 1")
+    stage = dvc.run(
+        cmd="python copy.py params.yaml metrics.yaml",
+        metrics_no_cache=["metrics.yaml"],
+        params=["foo"],
+        name="foo",
+    )
+    scm.add(["copy.py", "params.yaml", "metrics.yaml", "dvc.yaml", "dvc.lock"])
+    scm.commit("baseline")
+    baseline_rev = scm.get_rev()
+
+    dvc.reproduce(
+        stage.addressing, experiment=True, params=["foo=2"], queue=True
+    )
+    exp_rev = dvc.experiments.scm.resolve_rev("stash@{0}")
+
+    results = dvc.experiments.show()[baseline_rev]
+    assert len(results) == 2
+    exp = results[exp_rev]
+    assert exp["queued"]
+    assert exp["params"]["params.yaml"] == {"foo": 2}
+
+    # test that only queued experiments for the current baseline are returned
+    tmp_dir.gen("foo", "foo")
+    scm.add(["foo"])
+    scm.commit("new commit")
+    new_rev = scm.get_rev()
+
+    dvc.reproduce(
+        stage.addressing, experiment=True, params=["foo=3"], queue=True
+    )
+    exp_rev = dvc.experiments.scm.resolve_rev("stash@{0}")
+
+    results = dvc.experiments.show()[new_rev]
+    assert len(results) == 2
+    exp = results[exp_rev]
+    assert exp["queued"]
+    assert exp["params"]["params.yaml"] == {"foo": 3}

@@ -73,10 +73,11 @@ def show(
 
     # collect queued (not yet reproduced) experiments
     for stash_rev, (_, baseline_rev) in repo.experiments.stash_revs.items():
-        with repo.experiments.chdir():
-            experiment = _collect_experiment(
-                repo.experiments.exp_dvc, stash_rev, stash=True
-            )
-        res[baseline_rev][stash_rev] = experiment
+        if baseline_rev in revs:
+            with repo.experiments.chdir():
+                experiment = _collect_experiment(
+                    repo.experiments.exp_dvc, stash_rev, stash=True
+                )
+            res[baseline_rev][stash_rev] = experiment
 
     return res
