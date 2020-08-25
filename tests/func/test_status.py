@@ -120,7 +120,7 @@ def test_status_recursive(tmp_dir, dvc):
     }
 
 
-def test_status_outputs(tmp_dir, dvc, caplog):
+def test_status_outputs(tmp_dir, dvc):
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
     dvc.run(
         outs=["alice", "bob"],
@@ -129,13 +129,11 @@ def test_status_outputs(tmp_dir, dvc, caplog):
         name="alice_bob",
     )
     tmp_dir.gen({"alice": "new alice", "bob": "new bob"})
-    assert main(["status", "alice_bob"]) == 0
-    assert "alice_bob:" in caplog.text
-    assert "changed outs:" in caplog.text
-    assert "modified:           alice" in caplog.text
-    assert "modified:           bob" in caplog.text
-    caplog.clear()
 
-    assert main(["status", "alice"]) == 0
-    assert "modified:           alice" in caplog.text
-    assert "modified:           bob" not in caplog.text
+    assert dvc.status(targets=["alice_bob"]) == {
+        "alice_bob": [
+            {"changed outs": {"alice": "modified", "bob": "modified"}}
+        ]
+    }
+
+    assert dvc.status(targets=["alice"]) == {"alice": "modified"}
