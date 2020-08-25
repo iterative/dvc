@@ -100,7 +100,14 @@ class DataCloud:
                 # (see `RemoteBASE.download()`)
                 self.repo.state.save(cache_file, checksum)
 
-    def status(self, cache, jobs=None, remote=None, show_checksums=False):
+    def status(
+        self,
+        cache,
+        jobs=None,
+        remote=None,
+        show_checksums=False,
+        log_missing=True,
+    ):
         """Check status of data items in a cloud-agnostic way.
 
         Args:
@@ -111,8 +118,14 @@ class DataCloud:
                 is used.
             show_checksums (bool): show checksums instead of file names in
                 information messages.
+            log_missing (bool): log warning messages if file doesn't exist
+                neither in cache, neither in cloud.
         """
         remote = self.get_remote(remote, "status")
         return self.repo.cache.local.status(
-            cache, jobs=jobs, remote=remote, show_checksums=show_checksums
+            cache,
+            jobs=jobs,
+            remote=remote,
+            show_checksums=show_checksums,
+            log_missing=log_missing,
         )

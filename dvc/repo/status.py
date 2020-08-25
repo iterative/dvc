@@ -53,6 +53,7 @@ def _cloud_status(
 
     - new: Remote doesn't have the file
     - deleted: File is no longer in the local cache
+    - missing: File doesn't exist neither in the cache, neither in remote
 
     Example:
             Given the following commands:
@@ -90,7 +91,9 @@ def _cloud_status(
     )
 
     ret = {}
-    status_info = self.cloud.status(used, jobs, remote=remote)
+    status_info = self.cloud.status(
+        used, jobs, remote=remote, log_missing=False
+    )
     for info in status_info.values():
         name = info["name"]
         status_ = info["status"]
