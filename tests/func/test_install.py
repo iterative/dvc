@@ -3,6 +3,7 @@ import pathlib
 import sys
 
 import pytest
+from git import GitCommandError
 
 from dvc.exceptions import GitHookAlreadyExistsError
 from dvc.utils import file_md5
@@ -35,18 +36,25 @@ class TestInstall:
         with pytest.raises(GitHookAlreadyExistsError):
             scm.install()
 
-    def test_post_checkout(self, tmp_dir, scm, dvc):
+    def test_pre_commit_hook(self, tmp_dir, scm, dvc, caplog):
+        tmp_dir.dvc_gen("file", "file content", commit="create foo")
+        tmp_dir.gen("file", "file modified")
         scm.install()
-        tmp_dir.dvc_gen({"file": "file content"}, commit="add")
 
+        # scm.commit bypasses hooks
+        with pytest.raises(GitCommandError, match=r"modified:\s*file"):
+            scm.repo.git.commit(m="file modified")
+
+    def test_post_checkout(self, tmp_dir, scm, dvc):
+        tmp_dir.dvc_gen({"file": "file content"}, commit="add")
         os.unlink("file")
+        scm.install()
+
         scm.checkout("new_branch", create_new=True)
 
         assert os.path.isfile("file")
 
     def test_pre_push_hook(self, tmp_dir, scm, dvc, tmp_path_factory):
-        scm.install()
-
         temp = tmp_path_factory.mktemp("external")
         git_remote = temp / "project.git"
         storage_path = temp / "dvc_storage"
@@ -64,6 +72,8 @@ class TestInstall:
         scm.repo.clone(os.fspath(git_remote))
         scm.repo.create_remote("origin", os.fspath(git_remote))
 
+        scm.install()
+
         assert not expected_storage_path.is_file()
         scm.repo.git.push("origin", "master")
         assert expected_storage_path.is_file()
@@ -74,15 +84,18 @@ class TestInstall:
     sys.platform == "win32", reason="Git hooks aren't supported on Windows"
 )
 def test_merge_driver_no_ancestor(tmp_dir, scm, dvc):
-    scm.commit("init")
+    with tmp_dir.branch("one", new=True):
+        tmp_dir.dvc_gen({"data": {"foo": "foo"}}, commit="one: add data")
+
+    scm.checkout("two", create_new=True)
+    dvc.checkout()  # keep things in sync
+
+    tmp_dir.dvc_gen({"data": {"bar": "bar"}}, commit="two: add data")
+
+    # installing hook only before merge, as it runs `dvc` commands which makes
+    # `checkouts` and `commits` above slower
     scm.install()
     (tmp_dir / ".gitattributes").write_text("*.dvc merge=dvc")
-    scm.checkout("one", create_new=True)
-    tmp_dir.dvc_gen({"data": {"foo": "foo"}}, commit="one: add data")
-
-    scm.checkout("master")
-    scm.checkout("two", create_new=True)
-    tmp_dir.dvc_gen({"data": {"bar": "bar"}}, commit="two: add data")
 
     scm.repo.git.merge("one", m="merged", no_gpg_sign=True, no_signoff=True)
 
@@ -102,17 +115,20 @@ def test_merge_driver_no_ancestor(tmp_dir, scm, dvc):
     sys.platform == "win32", reason="Git hooks aren't supported on Windows"
 )
 def test_merge_driver(tmp_dir, scm, dvc):
-    scm.commit("init")
-    scm.install()
-    (tmp_dir / ".gitattributes").write_text("*.dvc merge=dvc")
     tmp_dir.dvc_gen({"data": {"master": "master"}}, commit="master: add data")
 
-    scm.checkout("one", create_new=True)
-    tmp_dir.dvc_gen({"data": {"one": "one"}}, commit="one: add data")
+    with tmp_dir.branch("one", new=True):
+        tmp_dir.dvc_gen({"data": {"one": "one"}}, commit="one: add data")
 
-    scm.checkout("master")
     scm.checkout("two", create_new=True)
+    dvc.checkout()  # keep things in sync
+
     tmp_dir.dvc_gen({"data": {"two": "two"}}, commit="two: add data")
+
+    # installing hook only before merge, as it runs `dvc` commands on
+    # `checkouts` and `commits` which slows tests down
+    scm.install()
+    (tmp_dir / ".gitattributes").write_text("*.dvc merge=dvc")
 
     scm.repo.git.merge("one", m="merged", no_gpg_sign=True, no_signoff=True)
 
