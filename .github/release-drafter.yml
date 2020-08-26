@@ -1,5 +1,48 @@
 # Config for https://github.com/apps/release-drafter
-branches:
-  - master
+name-template: "$RESOLVED_VERSION 🦉 "
+tag-template: "$RESOLVED_VERSION"
+categories:
+  - title: "🚀 New Features and Enhancements "
+    labels:
+      - "feature"
+      - "enhancement"
+  - title: "💣 Breaking Changes "
+    labels:
+      - "breaking-change"
+  - title: "🏇 Optimizations "
+    labels:
+      - "optimize"
+      - "performance"
+  - title: "🐛 Bug Fixes "
+    labels:
+      - "bugfix"
+      - "bug"
+  - title: "🔨 Maintenance "
+    labels:
+      - "maintenance"
+      - "refactoring"
+      - "chore"
+      - "build"
+      - "ci"
+change-template: "- $TITLE (#$NUMBER) @$AUTHOR"
+version-resolver:
+  major:
+    labels:
+      - "major"
+  minor:
+    labels:
+      - "minor"
+  patch:
+    labels:
+      - "patch"
+  default: patch
+exclude-labels:
+  - "skip-changelog"
 template: |
+  > Refer to https://dvc.org/doc/install for installation instructions.
+
+  ## Changes
+
   $CHANGES
+
+  Thanks again to $CONTRIBUTORS for the contributions! 🎉
