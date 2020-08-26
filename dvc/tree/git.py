@@ -1,6 +1,7 @@
 import errno
 import io
 import os
+from functools import lru_cache
 
 from funcy import cached_property
 
@@ -18,6 +19,30 @@ def _item_basename(item):
     #
     # [1] https://github.com/iterative/dvc/issues/3481#issuecomment-600693884
     return os.path.basename(item.path)
+
+
+def _is_tree_and_contains(obj, path):
+    if obj.mode != GIT_MODE_DIR:
+        return False
+    # see https://github.com/gitpython-developers/GitPython/issues/851
+    # `return (i in tree)` doesn't work so here is a workaround:
+    for item in obj:
+        if _item_basename(item) == path:
+            return True
+    return False
+
+
+# NOTE: small lru cache covers sequential exists() calls
+@lru_cache(maxsize=1)
+def _get_obj(tree, path):
+    if not path or path == ".":
+        return tree
+    for i in path.split(os.sep):
+        if not _is_tree_and_contains(tree, i):
+            # there is no tree for specified path
+            return None
+        tree = tree[i]
+    return tree
 
 
 class GitTree(BaseTree):  # pylint:disable=abstract-method
@@ -102,27 +127,12 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
             return False
         return not self.dvcignore.is_ignored_file(path)
 
-    @staticmethod
-    def _is_tree_and_contains(obj, path):
-        if obj.mode != GIT_MODE_DIR:
-            return False
-        # see https://github.com/gitpython-developers/GitPython/issues/851
-        # `return (i in tree)` doesn't work so here is a workaround:
-        for item in obj:
-            if _item_basename(item) == path:
-                return True
-        return False
-
-    def _git_object_by_path(self, path):
+    @cached_property
+    def _tree(self):
         import git
 
-        path = relpath(os.path.realpath(path), self.git.working_dir)
-        if path.split(os.sep, 1)[0] == "..":
-            # path points outside of git repository
-            return None
-
         try:
-            tree = self.git.tree(self.rev)
+            return self.git.tree(self.rev)
         except git.exc.BadName as exc:  # pylint: disable=no-member
             raise DvcException(
                 "revision '{}' not found in Git '{}'".format(
@@ -130,14 +140,13 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
                 )
             ) from exc
 
-        if not path or path == ".":
-            return tree
-        for i in path.split(os.sep):
-            if not self._is_tree_and_contains(tree, i):
-                # there is no tree for specified path
-                return None
-            tree = tree[i]
-        return tree
+    def _git_object_by_path(self, path):
+        path = relpath(os.path.realpath(path), self.git.working_dir)
+        if path.split(os.sep, 1)[0] == "..":
+            # path points outside of git repository
+            return None
+
+        return _get_obj(self._tree, path)
 
     def _walk(self, tree, topdown=True):
         dirs, nondirs = [], []
