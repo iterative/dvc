@@ -248,10 +248,10 @@ def test_missing_cache(tmp_dir, dvc, local_remote, caplog):
     assert bar in caplog.text
 
     caplog.clear()
-    dvc.status(cloud=True)
-    assert header in caplog.text
-    assert foo in caplog.text
-    assert bar in caplog.text
+    assert dvc.status(cloud=True) == {"bar": "missing", "foo": "missing"}
+    assert header not in caplog.text
+    assert foo not in caplog.text
+    assert bar not in caplog.text
 
 
 def test_verify_hashes(

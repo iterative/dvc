@@ -114,6 +114,7 @@ class LocalCache(CloudCache):
         jobs=None,
         show_checksums=False,
         download=False,
+        log_missing=True,
     ):
         # Return flattened dict containing all status info
         dir_status, file_status, _ = self._status(
@@ -122,6 +123,7 @@ class LocalCache(CloudCache):
             jobs=jobs,
             show_checksums=show_checksums,
             download=download,
+            log_missing=log_missing,
         )
         return dict(dir_status, **file_status)
 
@@ -132,6 +134,7 @@ class LocalCache(CloudCache):
         jobs=None,
         show_checksums=False,
         download=False,
+        log_missing=True,
     ):
         """Return a tuple of (dir_status_info, file_status_info, dir_contents).
 
@@ -172,11 +175,20 @@ class LocalCache(CloudCache):
                     )
                 )
         return self._make_status(
-            named_cache, show_checksums, local_exists, remote_exists
+            named_cache,
+            show_checksums,
+            local_exists,
+            remote_exists,
+            log_missing,
         )
 
     def _make_status(
-        self, named_cache, show_checksums, local_exists, remote_exists
+        self,
+        named_cache,
+        show_checksums,
+        local_exists,
+        remote_exists,
+        log_missing,
     ):
         def make_names(hash_, names):
             return {"name": hash_ if show_checksums else " ".join(names)}
@@ -199,7 +211,8 @@ class LocalCache(CloudCache):
         self._fill_statuses(dir_status, local_exists, remote_exists)
         self._fill_statuses(file_status, local_exists, remote_exists)
 
-        self._log_missing_caches(dict(dir_status, **file_status))
+        if log_missing:
+            self._log_missing_caches(dict(dir_status, **file_status))
 
         return dir_status, file_status, dir_contents
 
