@@ -21,7 +21,7 @@ class CmdRender(CmdBase):
 
         if self.args.stage is not None:
             dvc_dict = dvc_dict["stages"][self.args.stage]
-        dvc_str = dumps_yaml(dvc_dict)
+        dvc_str = dumps_yaml({"stages": {self.args.stage: dvc_dict}})
 
         if self.args.only_stages:
             logger.info(dvc_str)
