@@ -47,11 +47,12 @@ def test_show_hash(mocker, caplog):
         "added": [],
         "deleted": [
             {"path": os.path.join("data", ""), "hash": "XXXXXXXX.dir"},
-            {"path": os.path.join("data", "bar"), "hash": "00000000"},
             {"path": os.path.join("data", "foo"), "hash": "11111111"},
+            {"path": os.path.join("data", "bar"), "hash": "00000000"},
         ],
         "modified": [
-            {"path": "file", "hash": {"old": "AAAAAAAA", "new": "BBBBBBBB"}}
+            {"path": "file2", "hash": {"old": "AAAAAAAA", "new": "BBBBBBBB"}},
+            {"path": "file1", "hash": {"old": "CCCCCCCC", "new": "DDDDDDDD"}},
         ],
     }
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
@@ -63,9 +64,10 @@ def test_show_hash(mocker, caplog):
         "    11111111  " + os.path.join("data", "foo") + "\n"
         "\n"
         "Modified:\n"
-        "    AAAAAAAA..BBBBBBBB  file\n"
+        "    CCCCCCCC..DDDDDDDD  file1\n"
+        "    AAAAAAAA..BBBBBBBB  file2\n"
         "\n"
-        "files summary: 0 added, 2 deleted, 1 modified"
+        "files summary: 0 added, 2 deleted, 2 modified"
     ) in caplog.text
 
 
@@ -73,14 +75,17 @@ def test_show_json(mocker, caplog):
     args = parse_args(["diff", "--show-json"])
     cmd = args.func(args)
     diff = {
-        "added": [{"path": "file", "hash": "00000000"}],
+        "added": [
+            {"path": "file2", "hash": "22222222"},
+            {"path": "file1", "hash": "11111111"},
+        ],
         "deleted": [],
         "modified": [],
     }
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
 
     assert 0 == cmd.run()
-    assert '"added": [{"path": "file"}]' in caplog.text
+    assert '"added": [{"path": "file1"}, {"path": "file2"}]' in caplog.text
     assert '"deleted": []' in caplog.text
     assert '"modified": []' in caplog.text
 
@@ -92,7 +97,8 @@ def test_show_json_and_hash(mocker, caplog):
     diff = {
         "added": [
             # py35: maintain a consistent key order for tests purposes
-            collections.OrderedDict([("path", "file"), ("hash", "00000000")])
+            collections.OrderedDict([("path", "file2"), ("hash", "22222222")]),
+            collections.OrderedDict([("path", "file1"), ("hash", "11111111")]),
         ],
         "deleted": [],
         "modified": [],
@@ -100,7 +106,10 @@ def test_show_json_and_hash(mocker, caplog):
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
 
     assert 0 == cmd.run()
-    assert '"added": [{"path": "file", "hash": "00000000"}]' in caplog.text
+    assert (
+        '"added": [{"path": "file1", "hash": "11111111"}, '
+        '{"path": "file2", "hash": "22222222"}]' in caplog.text
+    )
     assert '"deleted": []' in caplog.text
     assert '"modified": []' in caplog.text
 
@@ -114,7 +123,7 @@ def test_diff_show_md_and_hash(mock_show_md, mocker, caplog, show_hash):
 
     diff = {}
     show_hash = show_hash if show_hash else False
-    mocker.patch("dvc.repo.Repo.diff", return_value=diff)
+    mocker.patch("dvc.repo.Repo.diff", return_value=diff.copy())
 
     assert 0 == cmd.run()
     mock_show_md.assert_called_once_with(diff, show_hash)
@@ -162,10 +171,10 @@ def test_show_md():
         "| Status   | Path     |\n"
         "|----------|----------|\n"
         "| added    | file     |\n"
-        "| deleted  | data{sep}    |\n"
-        "| deleted  | data{sep}bar |\n"
-        "| deleted  | data{sep}foo |\n"
         "| deleted  | zoo      |\n"
+        "| deleted  | data{sep}    |\n"
+        "| deleted  | data{sep}foo |\n"
+        "| deleted  | data{sep}bar |\n"
         "| modified | file     |\n"
     ).format(sep=os.path.sep)
 
@@ -187,9 +196,9 @@ def test_show_md_with_hash():
         "| Status   | Hash               | Path     |\n"
         "|----------|--------------------|----------|\n"
         "| added    | 00000000           | file     |\n"
-        "| deleted  | XXXXXXXX           | data{sep}    |\n"
-        "| deleted  | 00000000           | data{sep}bar |\n"
-        "| deleted  | 11111111           | data{sep}foo |\n"
         "| deleted  | 22222              | zoo      |\n"
+        "| deleted  | XXXXXXXX           | data{sep}    |\n"
+        "| deleted  | 11111111           | data{sep}foo |\n"
+        "| deleted  | 00000000           | data{sep}bar |\n"
         "| modified | AAAAAAAA..BBBBBBBB | file     |\n"
     ).format(sep=os.path.sep)
