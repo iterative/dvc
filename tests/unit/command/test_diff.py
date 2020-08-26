@@ -123,7 +123,7 @@ def test_diff_show_md_and_hash(mock_show_md, mocker, caplog, show_hash):
 
     diff = {}
     show_hash = show_hash if show_hash else False
-    mocker.patch("dvc.repo.Repo.diff", return_value=diff)
+    mocker.patch("dvc.repo.Repo.diff", return_value=diff.copy())
 
     assert 0 == cmd.run()
     mock_show_md.assert_called_once_with(diff, show_hash)
