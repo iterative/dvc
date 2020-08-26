@@ -22,6 +22,7 @@ from dvc.scm.base import CloneError
 from dvc.scm.git import Git
 from dvc.tree.local import LocalTree
 from dvc.tree.repo import RepoTree
+from dvc.utils import relpath
 from dvc.utils.fs import remove
 
 logger = logging.getLogger(__name__)
@@ -365,6 +366,11 @@ def _remove(path):
     if os.name == "nt":
         # git.exe may hang for a while not permitting to remove temp dir
         os_retry = retry(5, errors=OSError, timeout=0.1)
-        os_retry(remove)(path)
+        try:
+            os_retry(remove)(path)
+        except PermissionError:
+            logger.warning(
+                "Failed to remove '%s'", relpath(path), exc_info=True
+            )
     else:
         remove(path)
