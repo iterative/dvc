@@ -44,53 +44,60 @@ class GitTreeTests:
     def test_open(self):
         self.scm.add([self.FOO, self.UNICODE, self.DATA_DIR])
         self.scm.commit("add")
-        with self.tree.open(self.FOO) as fd:
+
+        tree = GitTree(self.git, "master")
+        with tree.open(self.FOO) as fd:
             self.assertEqual(fd.read(), self.FOO_CONTENTS)
-        with self.tree.open(self.UNICODE) as fd:
+        with tree.open(self.UNICODE) as fd:
             self.assertEqual(fd.read(), self.UNICODE_CONTENTS)
         with self.assertRaises(IOError):
-            self.tree.open("not-existing-file")
+            tree.open("not-existing-file")
         with self.assertRaises(IOError):
-            self.tree.open(self.DATA_DIR)
+            tree.open(self.DATA_DIR)
 
     def test_exists(self):
-        self.assertFalse(self.tree.exists(self.FOO))
-        self.assertFalse(self.tree.exists(self.UNICODE))
-        self.assertFalse(self.tree.exists(self.DATA_DIR))
+        tree = GitTree(self.git, "master")
+        self.assertFalse(tree.exists(self.FOO))
+        self.assertFalse(tree.exists(self.UNICODE))
+        self.assertFalse(tree.exists(self.DATA_DIR))
         self.scm.add([self.FOO, self.UNICODE, self.DATA])
         self.scm.commit("add")
-        self.assertTrue(self.tree.exists(self.FOO))
-        self.assertTrue(self.tree.exists(self.UNICODE))
-        self.assertTrue(self.tree.exists(self.DATA_DIR))
-        self.assertFalse(self.tree.exists("non-existing-file"))
+
+        tree = GitTree(self.git, "master")
+        self.assertTrue(tree.exists(self.FOO))
+        self.assertTrue(tree.exists(self.UNICODE))
+        self.assertTrue(tree.exists(self.DATA_DIR))
+        self.assertFalse(tree.exists("non-existing-file"))
 
     def test_isdir(self):
         self.scm.add([self.FOO, self.DATA_DIR])
         self.scm.commit("add")
-        self.assertTrue(self.tree.isdir(self.DATA_DIR))
-        self.assertFalse(self.tree.isdir(self.FOO))
-        self.assertFalse(self.tree.isdir("non-existing-file"))
+
+        tree = GitTree(self.git, "master")
+        self.assertTrue(tree.isdir(self.DATA_DIR))
+        self.assertFalse(tree.isdir(self.FOO))
+        self.assertFalse(tree.isdir("non-existing-file"))
 
     def test_isfile(self):
         self.scm.add([self.FOO, self.DATA_DIR])
         self.scm.commit("add")
-        self.assertTrue(self.tree.isfile(self.FOO))
-        self.assertFalse(self.tree.isfile(self.DATA_DIR))
-        self.assertFalse(self.tree.isfile("not-existing-file"))
+
+        tree = GitTree(self.git, "master")
+        self.assertTrue(tree.isfile(self.FOO))
+        self.assertFalse(tree.isfile(self.DATA_DIR))
+        self.assertFalse(tree.isfile("not-existing-file"))
 
 
 class TestGitTree(TestGit, GitTreeTests):
     def setUp(self):
         super().setUp()
         self.scm = SCM(self._root_dir)
-        self.tree = GitTree(self.git, "master")
 
 
 class TestGitSubmoduleTree(TestGitSubmodule, GitTreeTests):
     def setUp(self):
         super().setUp()
         self.scm = SCM(self._root_dir)
-        self.tree = GitTree(self.git, "master")
         self._pushd(self._root_dir)
 
 
