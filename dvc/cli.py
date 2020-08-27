@@ -85,6 +85,70 @@ COMMANDS = [
 ]
 
 
+def _ld(source, target):
+    """Compare similarity (Levenshtein distance) of typed command to dvc command.
+
+    Args:
+        source: typed command.
+        target: dvc command.
+
+    Returns:
+        Integer value representing Levenshtein distance between two strings.
+    """
+    rows = len(source) + 1
+    cols = len(target) + 1
+
+    d = [[0 for i in range(cols)] for j in range(rows)]
+
+    for i in range(rows):
+        d[i][0] = i
+
+    for i in range(cols):
+        d[0][i] = i
+
+    for col in range(1, cols):
+        for row in range(1, rows):
+            if source[row - 1] == target[col - 1]:
+                cost = 0
+            else:
+                cost = 1
+
+            a = d[row - 1][col] + 1
+            b = d[row][col - 1] + 1
+            c = d[row - 1][col - 1] + cost
+
+            d[row][col] = min(a, b, c)
+
+    return d[-1][-1]
+
+
+def _find_cmd_suggestions(cmd_arg, cmd_choices):
+    """Find similar command suggestions for a typed command that contains typos.
+
+    Args:
+        cmd_arg: command argument typed in.
+        cmd_choices: list of valid dvc commands to measure against.
+
+    Returns:
+        String with command suggestions to display to the user if any exist.
+    """
+
+    suggestions = []
+    min_distance = 2
+
+    for command in cmd_choices:
+        levenshtein_distance = _ld(cmd_arg, command)
+        if levenshtein_distance <= min_distance:
+            suggestions.append(command)
+
+    suggestion_str = ""
+    if suggestions:
+        suggestion_str += "\n\nThe most similar command(s) are\n"
+        for suggestion in suggestions:
+            suggestion_str += f"\t\n{suggestion}"
+    return suggestion_str
+
+
 def _find_parser(parser, cmd_cls):
     defaults = parser._defaults  # pylint: disable=protected-access
     if not cmd_cls or cmd_cls == defaults.get("func"):
@@ -103,11 +167,23 @@ def _find_parser(parser, cmd_cls):
 class DvcParser(argparse.ArgumentParser):
     """Custom parser class for dvc CLI."""
 
+    cmd_choices = []
+
     def error(self, message, cmd_cls=None):  # pylint: disable=arguments-differ
         logger.error(message)
         _find_parser(self, cmd_cls)
 
     def parse_args(self, args=None, namespace=None):
+        # NOTE: this is a custom check to see if any suggestions can
+        # be displayed to users in case of small typos
+        # E.g. `dvc commti` would display
+        # `The most similar command(s) are commit`
+        if args and args[0] not in self.cmd_choices:
+            cmd_suggestions = _find_cmd_suggestions(args[0], self.cmd_choices)
+            if cmd_suggestions:
+                sys.stderr.write(cmd_suggestions)
+                sys.exit(2)
+
         # NOTE: overriding to provide a more granular help message.
         # E.g. `dvc plots diff --bad-flag` would result in a `dvc plots diff`
         # help message instead of generic `dvc` usage.
@@ -216,6 +292,8 @@ def get_main_parser():
 
     for cmd in COMMANDS:
         cmd.add_parser(subparsers, parent_parser)
+
+    parser.cmd_choices = list(subparsers.choices.keys())
 
     return parser
 

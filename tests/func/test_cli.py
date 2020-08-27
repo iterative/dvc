@@ -231,3 +231,22 @@ def test_unknown_subcommand_help(capsys):
     captured = capsys.readouterr()
     help_output = captured.out
     assert output == help_output
+
+
+def test_similar_command_suggestions(capsys):
+    suggestions = {
+        "addd": "add",
+        "commti": "commit",
+        "stats": "status",
+    }
+    for typo, suggestion in suggestions.items():
+        try:
+            _ = parse_args([typo])
+        except SystemExit:
+            pass
+        captured = capsys.readouterr()
+        error_output = captured.err
+        assert (
+            error_output
+            == f"\n\nThe most similar command(s) are\n\t\n{suggestion}"
+        )
