@@ -11,7 +11,7 @@ from dvc.exceptions import DvcException, DvcParserError, NotDvcRepoError
 from dvc.external_repo import clean_repos
 from dvc.logger import FOOTER, disable_other_loggers
 from dvc.tree.pool import close_pools
-from dvc.utils import format_link
+from dvc.utils import error_link
 
 # Workaround for CPython bug. See [1] and [2] for more info.
 # [1] https://github.com/aws/aws-cli/blob/1.16.277/awscli/clidriver.py#L55
@@ -92,9 +92,7 @@ def main(argv=None):  # noqa: C901
             logger.exception(
                 "too many open files, please visit "
                 "{} to see how to handle this "
-                "problem".format(
-                    format_link("https://error.dvc.org/many-files")
-                ),
+                "problem".format(error_link("many-files")),
                 extra={"tb_only": True},
             )
         else:

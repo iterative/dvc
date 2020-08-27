@@ -1,7 +1,7 @@
 """Exceptions raised by the dvc."""
 from funcy import first
 
-from dvc.utils import format_link, relpath
+from dvc.utils import error_link, format_link, relpath
 
 
 class DvcException(Exception):
@@ -258,8 +258,7 @@ class CheckoutError(DvcException):
         m = (
             "Checkout failed for following targets:\n{}\nIs your "
             "cache up to date?\n{}".format(
-                "\n".join(targets),
-                format_link("https://error.dvc.org/missing-files"),
+                "\n".join(targets), error_link("missing-files"),
             )
         )
         super().__init__(m)

@@ -1,6 +1,7 @@
 import pytest
 
 from dvc.config import ConfigError
+from dvc.exceptions import DvcException
 from dvc.tree.s3 import S3Tree
 
 bucket_name = "bucket-name"
@@ -68,3 +69,41 @@ def test_key_id_and_secret(dvc):
     )
     assert tree.access_key_id == key_id
     assert tree.secret_access_key == key_secret
+
+
+def test_get_s3_no_credentials(mocker):
+    from botocore.exceptions import NoCredentialsError
+
+    tree = S3Tree(None, {})
+    with pytest.raises(DvcException, match="Unable to find AWS credentials"):
+        with tree._get_s3():
+            raise NoCredentialsError
+
+
+def test_get_s3_connection_error(mocker):
+    from botocore.exceptions import EndpointConnectionError
+
+    tree = S3Tree(None, {})
+
+    msg = "Unable to connect to 'AWS S3'."
+    with pytest.raises(DvcException, match=msg):
+        with tree._get_s3():
+            raise EndpointConnectionError(endpoint_url="url")
+
+
+def test_get_s3_connection_error_endpoint(mocker):
+    from botocore.exceptions import EndpointConnectionError
+
+    tree = S3Tree(None, {"endpointurl": "https://example.com"})
+
+    msg = "Unable to connect to 'https://example.com'."
+    with pytest.raises(DvcException, match=msg):
+        with tree._get_s3():
+            raise EndpointConnectionError(endpoint_url="url")
+
+
+def test_get_bucket():
+    tree = S3Tree(None, {"url": "s3://mybucket/path"})
+    with pytest.raises(DvcException, match="Bucket 'mybucket' does not exist"):
+        with tree._get_bucket("mybucket") as bucket:
+            raise bucket.meta.client.exceptions.NoSuchBucket({}, None)

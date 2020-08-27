@@ -1,6 +1,7 @@
 import logging
 import os
 import threading
+from contextlib import contextmanager
 
 from funcy import cached_property, wrap_prop
 
@@ -9,6 +10,7 @@ from dvc.exceptions import DvcException, ETagMismatchError
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
+from dvc.utils import error_link
 
 from .base import BaseTree
 
@@ -30,11 +32,6 @@ class S3Tree(BaseTree):
         self.region = config.get("region")
         self.profile = config.get("profile")
         self.endpoint_url = config.get("endpointurl")
-
-        if config.get("listobjects"):
-            self.list_objects_api = "list_objects"
-        else:
-            self.list_objects_api = "list_objects_v2"
 
         self.use_ssl = config.get("use_ssl", True)
 
@@ -75,24 +72,49 @@ class S3Tree(BaseTree):
 
         session = boto3.session.Session(**session_opts)
 
-        return session.client(
+        return session.resource(
             "s3", endpoint_url=self.endpoint_url, use_ssl=self.use_ssl
         )
 
-    @classmethod
-    def get_etag(cls, s3, bucket, path):
-        obj = cls.get_head_object(s3, bucket, path)
-
-        return obj["ETag"].strip('"')
-
-    @staticmethod
-    def get_head_object(s3, bucket, path, *args, **kwargs):
+    @contextmanager
+    def _get_s3(self):
+        from botocore.exceptions import (
+            EndpointConnectionError,
+            NoCredentialsError,
+        )
 
         try:
-            obj = s3.head_object(Bucket=bucket, Key=path, *args, **kwargs)
-        except Exception as exc:
-            raise DvcException(f"s3://{bucket}/{path} does not exist") from exc
-        return obj
+            yield self.s3
+        except NoCredentialsError as exc:
+            link = error_link("no-credentials")
+            raise DvcException(
+                f"Unable to find AWS credentials. {link}"
+            ) from exc
+        except EndpointConnectionError as exc:
+            link = error_link("connection-error")
+            name = self.endpoint_url or "AWS S3"
+            raise DvcException(
+                f"Unable to connect to '{name}'. {link}"
+            ) from exc
+
+    @contextmanager
+    def _get_bucket(self, bucket):
+        with self._get_s3() as s3:
+            try:
+                yield s3.Bucket(bucket)
+            except s3.meta.client.exceptions.NoSuchBucket as exc:
+                link = error_link("no-bucket")
+                raise DvcException(
+                    f"Bucket '{bucket}' does not exist. {link}"
+                ) from exc
+
+    @contextmanager
+    def _get_obj(self, path_info):
+        with self._get_bucket(path_info.bucket) as bucket:
+            try:
+                yield bucket.Object(path_info.path)
+            except bucket.meta.client.exceptions.NoSuchKey as exc:
+                raise DvcException(f"{path_info.url} does not exist") from exc
 
     def _append_aws_grants_to_extra_args(self, config):
         # Keys for extra_args can be one of the following list:
@@ -127,9 +149,12 @@ class S3Tree(BaseTree):
 
     def _generate_download_url(self, path_info, expires=3600):
         params = {"Bucket": path_info.bucket, "Key": path_info.path}
-        return self.s3.generate_presigned_url(
-            ClientMethod="get_object", Params=params, ExpiresIn=int(expires)
-        )
+        with self._get_s3() as s3:
+            return s3.meta.client.generate_presigned_url(
+                ClientMethod="get_object",
+                Params=params,
+                ExpiresIn=int(expires),
+            )
 
     def exists(self, path_info, use_dvcignore=True):
         """Check if the blob exists. If it does not exist,
@@ -164,36 +189,19 @@ class S3Tree(BaseTree):
         return bool(list(self._list_paths(dir_path, max_items=1)))
 
     def isfile(self, path_info):
-        from botocore.exceptions import ClientError
-
         if path_info.path.endswith("/"):
             return False
 
-        try:
-            self.s3.head_object(Bucket=path_info.bucket, Key=path_info.path)
-        except ClientError as exc:
-            if exc.response["Error"]["Code"] != "404":
-                raise
-            return False
-
-        return True
-
-    def _list_objects(self, path_info, max_items=None):
-        """ Read config for list object api, paginate through list objects."""
-        kwargs = {
-            "Bucket": path_info.bucket,
-            "Prefix": path_info.path,
-            "PaginationConfig": {"MaxItems": max_items},
-        }
-        paginator = self.s3.get_paginator(self.list_objects_api)
-        for page in paginator.paginate(**kwargs):
-            contents = page.get("Contents", ())
-            yield from contents
+        return path_info.path in self._list_paths(path_info)
 
     def _list_paths(self, path_info, max_items=None):
-        return (
-            item["Key"] for item in self._list_objects(path_info, max_items)
-        )
+        kwargs = {"Prefix": path_info.path}
+        if max_items is not None:
+            kwargs["MaxKeys"] = max_items
+
+        with self._get_bucket(path_info.bucket) as bucket:
+            for obj_summary in bucket.objects.filter(**kwargs):
+                yield obj_summary.key
 
     def walk_files(self, path_info, **kwargs):
         if not kwargs.pop("prefix", False):
@@ -209,7 +217,8 @@ class S3Tree(BaseTree):
             raise NotImplementedError
 
         logger.debug(f"Removing {path_info}")
-        self.s3.delete_object(Bucket=path_info.bucket, Key=path_info.path)
+        with self._get_obj(path_info) as obj:
+            obj.delete()
 
     def makedirs(self, path_info):
         # We need to support creating empty directories, which means
@@ -221,10 +230,12 @@ class S3Tree(BaseTree):
             return
 
         dir_path = path_info / ""
-        self.s3.put_object(Bucket=path_info.bucket, Key=dir_path.path, Body="")
+        with self._get_obj(dir_path) as obj:
+            obj.put(Body="")
 
     def copy(self, from_info, to_info):
-        self._copy(self.s3, from_info, to_info, self.extra_args)
+        with self._get_s3() as s3:
+            self._copy(s3.meta.client, from_info, to_info, self.extra_args)
 
     @classmethod
     def _copy_multipart(
@@ -238,8 +249,8 @@ class S3Tree(BaseTree):
         parts = []
         byte_position = 0
         for i in range(1, n_parts + 1):
-            obj = S3Tree.get_head_object(
-                s3, from_info.bucket, from_info.path, PartNumber=i
+            obj = s3.head_object(
+                Bucket=from_info.bucket, Key=from_info.path, PartNumber=i
             )
             part_size = obj["ContentLength"]
             lastbyte = byte_position + part_size - 1
@@ -293,7 +304,7 @@ class S3Tree(BaseTree):
         # object is transfered in the same chunks as it was originally.
         from boto3.s3.transfer import TransferConfig
 
-        obj = S3Tree.get_head_object(s3, from_info.bucket, from_info.path)
+        obj = s3.head_object(Bucket=from_info.bucket, Key=from_info.path)
         etag = obj["ETag"].strip('"')
         size = obj["ContentLength"]
 
@@ -313,39 +324,35 @@ class S3Tree(BaseTree):
                 Config=TransferConfig(multipart_threshold=size + 1),
             )
 
-        cached_etag = S3Tree.get_etag(s3, to_info.bucket, to_info.path)
+        cached_etag = s3.head_object(Bucket=to_info.bucket, Key=to_info.path)[
+            "ETag"
+        ].strip('"')
         if etag != cached_etag:
             raise ETagMismatchError(etag, cached_etag)
 
     def get_file_hash(self, path_info):
-        return (
-            self.PARAM_CHECKSUM,
-            self.get_etag(self.s3, path_info.bucket, path_info.path),
-        )
+        with self._get_obj(path_info) as obj:
+            return (
+                self.PARAM_CHECKSUM,
+                obj.e_tag.strip('"'),
+            )
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
-        total = os.path.getsize(from_file)
-        with Tqdm(
-            disable=no_progress_bar, total=total, bytes=True, desc=name
-        ) as pbar:
-            self.s3.upload_file(
-                from_file,
-                to_info.bucket,
-                to_info.path,
-                Callback=pbar.update,
-                ExtraArgs=self.extra_args,
-            )
+        with self._get_obj(to_info) as obj:
+            total = os.path.getsize(from_file)
+            with Tqdm(
+                disable=no_progress_bar, total=total, bytes=True, desc=name
+            ) as pbar:
+                obj.upload_file(
+                    from_file, Callback=pbar.update, ExtraArgs=self.extra_args,
+                )
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
-        if no_progress_bar:
-            total = None
-        else:
-            total = self.s3.head_object(
-                Bucket=from_info.bucket, Key=from_info.path
-            )["ContentLength"]
-        with Tqdm(
-            disable=no_progress_bar, total=total, bytes=True, desc=name
-        ) as pbar:
-            self.s3.download_file(
-                from_info.bucket, from_info.path, to_file, Callback=pbar.update
-            )
+        with self._get_obj(from_info) as obj:
+            with Tqdm(
+                disable=no_progress_bar,
+                total=obj.content_length,
+                bytes=True,
+                desc=name,
+            ) as pbar:
+                obj.download_file(to_file, Callback=pbar.update)

@@ -54,7 +54,7 @@ def test_copy_singlepart_preserve_etag():
 def test_link_created_on_non_nested_path(base_info, tmp_dir, dvc, scm):
     tree = S3Tree(dvc, {"url": str(base_info.parent)})
     cache = CloudCache(tree)
-    s3 = cache.tree.s3
+    s3 = cache.tree.s3.meta.client
     s3.create_bucket(Bucket=base_info.bucket)
     s3.put_object(
         Bucket=base_info.bucket, Key=(base_info / "from").path, Body="data"

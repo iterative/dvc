@@ -89,7 +89,7 @@ def test_walk_files(remote):
 @pytest.mark.parametrize("remote", [pytest.lazy_fixture("s3")], indirect=True)
 def test_copy_preserve_etag_across_buckets(remote, dvc):
     s3 = remote.tree.s3
-    s3.create_bucket(Bucket="another")
+    s3.Bucket("another").create()
 
     another = S3Tree(dvc, {"url": "s3://another", "region": "us-east-1"})
 
@@ -98,10 +98,10 @@ def test_copy_preserve_etag_across_buckets(remote, dvc):
 
     remote.tree.copy(from_info, to_info)
 
-    from_etag = S3Tree.get_etag(s3, from_info.bucket, from_info.path)
-    to_etag = S3Tree.get_etag(s3, "another", "foo")
+    from_hash = remote.tree.get_hash(from_info)
+    to_hash = another.get_hash(to_info)
 
-    assert from_etag == to_etag
+    assert from_hash == to_hash
 
 
 @pytest.mark.parametrize("remote", remotes, indirect=True)
