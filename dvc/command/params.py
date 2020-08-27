@@ -67,6 +67,7 @@ def add_parser(subparsers, parent_parser):
         description=append_doc_link(PARAMS_HELP, "params"),
         help=PARAMS_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        exit_on_error=False,
     )
 
     params_subparsers = params_parser.add_subparsers(

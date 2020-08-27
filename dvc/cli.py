@@ -3,6 +3,7 @@ import argparse
 import logging
 import os
 import sys
+from difflib import get_close_matches
 
 from ._debug import add_debugging_flags
 from .command import (
@@ -90,6 +91,39 @@ COMMANDS = [
 ]
 
 
+def _get_cmd_suggestion_msg(cmd_arg, cmd_choices, cmd=None):
+    """Find similar command suggestions for a typed command that contains typos.
+
+    Args:
+        cmd_arg: command argument typed in.
+        cmd_choices: list of valid dvc commands to match against.
+
+    Returns:
+        String with command suggestions to display to the user if any exist.
+    """
+    base_suggestion = "is not a dvc command. See 'dvc --help'\n"
+    if cmd:
+        suggestion_str = f"dvc: '{cmd} {cmd_arg}' {base_suggestion}"
+    else:
+        suggestion_str = f"dvc: '{cmd_arg}' {base_suggestion}"
+    suggestions = get_close_matches(cmd_arg, cmd_choices)
+    if not suggestions:
+        return suggestion_str
+
+    if len(suggestions) > 1:
+        suggestion_str += "\nThe most similar commands are"
+    else:
+        suggestion_str += "\nThe most similar command is"
+
+    for suggestion in suggestions:
+        if cmd:
+            suggestion_str += f"\n\t{cmd} {suggestion}"
+        else:
+            suggestion_str += f"\n\t{suggestion}"
+
+    return suggestion_str
+
+
 def _find_parser(parser, cmd_cls):
     defaults = parser._defaults  # pylint: disable=protected-access
     if not cmd_cls or cmd_cls == defaults.get("func"):
@@ -116,11 +150,96 @@ class DvcParser(argparse.ArgumentParser):
         # NOTE: overriding to provide a more granular help message.
         # E.g. `dvc plots diff --bad-flag` would result in a `dvc plots diff`
         # help message instead of generic `dvc` usage.
-        args, argv = self.parse_known_args(args, namespace)
-        if argv:
-            msg = "unrecognized arguments: %s"
-            self.error(msg % " ".join(argv), getattr(args, "func", None))
-        return args
+        try:
+            args, argv = self.parse_known_args(args, namespace)
+        except argparse.ArgumentError:
+            if args is None:
+                args = sys.argv[1:]
+            else:
+                args = list(args)
+            self._find_cmd_suggestions(args)
+        else:
+            if argv:
+                msg = "unrecognized arguments: %s"
+                self.error(msg % " ".join(argv), getattr(args, "func", None))
+            return args
+
+    def _get_cmd_choices(self):
+        """Keep track of public dvc commands and hidden dvc commands.
+
+        Returns:
+            A dictionary with public dvc commands mapped to a list containing
+            dvc subcommands (if they exist).
+
+            A list containing hidden dvc commands to be ignored when finding
+            suggestions.
+        """
+        cmd_choices = {}
+        hidden_cmds = []
+
+        parser_actions = self._actions  # pylint: disable=protected-access
+        for parser_action in parser_actions:
+            if parser_action.dest == "help":
+                # treat -h, --help as command choices
+                for option in parser_action.option_strings:
+                    cmd_choices[option] = []
+            elif parser_action.dest == "cmd":
+                for cmd, subparser in parser_action.choices.items():
+                    if not subparser.add_help:
+                        hidden_cmds.append(cmd)
+                        continue
+                    cmd_choices[cmd] = []
+                    actions = (
+                        subparser._actions  # pylint: disable=protected-access
+                    )
+                    for action in actions:
+                        if not isinstance(action.choices, dict):
+                            # NOTE: we are only interested in subcommands
+                            continue
+                        cmd_choices[cmd].extend(action.choices.keys())
+
+        return cmd_choices, hidden_cmds
+
+    def _find_cmd_suggestions(self, args):
+        """Find similar command suggestions for commands and subcommands
+        that contain typos. Show suggestions for public commands, do not show
+        suggestions for hidden commands.
+
+        Args:
+            args: argument strings.
+
+        Raises:
+            dvc.exceptions.DvcParserError: raised for found suggestions.
+        """
+        cmd_choices, hidden_cmds = self._get_cmd_choices()
+
+        # NOTE: Check top level dvc commands for suggestions
+        # E.g. `dvc commti` would display
+        # The most similar command is
+        #         commit
+        if (
+            len(args) >= 1
+            and args[0] not in cmd_choices
+            and args[0] not in hidden_cmds
+        ):
+            cmd_suggestion_msg = _get_cmd_suggestion_msg(
+                args[0], list(cmd_choices.keys())
+            )
+            logger.error(cmd_suggestion_msg)
+            raise DvcParserError
+
+        # NOTE: Check nested dvc subcommands for suggestions
+        # E.g. `dvc remote modfiy` would display
+        # The most similar command is
+        #         remote modify
+        if len(args) == 2 and args[0] in cmd_choices:
+            sub_cmd_choices = cmd_choices[args[0]]
+            if sub_cmd_choices and args[1] not in sub_cmd_choices:
+                cmd_suggestion_msg = _get_cmd_suggestion_msg(
+                    args[1], sub_cmd_choices, args[0]
+                )
+                logger.error(cmd_suggestion_msg)
+                raise DvcParserError
 
 
 class VersionAction(argparse.Action):  # pragma: no cover
@@ -165,6 +284,7 @@ def get_main_parser():
         parents=[parent_parser],
         formatter_class=argparse.RawTextHelpFormatter,
         add_help=False,
+        exit_on_error=False,
     )
 
     # NOTE: We are doing this to capitalize help message.
