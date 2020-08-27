@@ -85,7 +85,7 @@ def test_get_s3_connection_error(mocker):
 
     tree = S3Tree(None, {})
 
-    msg = "Unable to connect to AWS S3. Are you connected to the internet?"
+    msg = "Unable to connect to 'AWS S3'. Are you online?"
     with pytest.raises(DvcException, match=msg):
         with tree._get_s3():
             raise EndpointConnectionError(endpoint_url="url")
@@ -96,10 +96,7 @@ def test_get_s3_connection_error_endpoint(mocker):
 
     tree = S3Tree(None, {"endpointurl": "https://example.com"})
 
-    msg = (
-        "Unable to connect to https://example.com. "
-        "Are you connected to the internet?"
-    )
+    msg = "Unable to connect to 'https://example.com'. Are you online?"
     with pytest.raises(DvcException, match=msg):
         with tree._get_s3():
             raise EndpointConnectionError(endpoint_url="url")
