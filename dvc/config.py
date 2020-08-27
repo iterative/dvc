@@ -162,7 +162,7 @@ SCHEMA = {
                     "endpointurl": str,
                     "access_key_id": str,
                     "secret_access_key": str,
-                    Optional("listobjects", default=False): Bool,
+                    Optional("listobjects", default=False): Bool,  # obsoleted
                     Optional("use_ssl", default=True): Bool,
                     "sse": str,
                     "sse_kms_key_id": str,
