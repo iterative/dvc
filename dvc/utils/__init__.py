@@ -385,6 +385,10 @@ def format_link(link):
     )
 
 
+def error_link(name):
+    return format_link(f"https://error.dvc.org/{name}")
+
+
 def parse_target(target, default=None):
     from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK, is_valid_filename
     from dvc.exceptions import DvcException

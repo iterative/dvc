@@ -10,7 +10,7 @@ from dvc.exceptions import DvcException, ETagMismatchError
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
-from dvc.utils import format_link
+from dvc.utils import error_link
 
 from .base import BaseTree
 
@@ -86,12 +86,12 @@ class S3Tree(BaseTree):
         try:
             yield self.s3
         except NoCredentialsError as exc:
-            link = format_link("https://error.dvc.org/no-credentials")
+            link = error_link("no-credentials")
             raise DvcException(
                 f"Unable to find AWS credentials. {link}"
             ) from exc
         except EndpointConnectionError as exc:
-            link = format_link("https://error.dvc.org/connection-error")
+            link = error_link("connection-error")
             name = self.endpoint_url or "AWS S3"
             raise DvcException(
                 f"Unable to connect to {name}. Are you connected to the "
@@ -104,7 +104,7 @@ class S3Tree(BaseTree):
             try:
                 yield s3.Bucket(bucket)
             except s3.meta.client.exceptions.NoSuchBucket as exc:
-                link = format_link("https://error.dvc.org/no-bucket")
+                link = error_link("no-bucket")
                 raise DvcException(
                     f"Bucket '{bucket}' does not exist. {link}"
                 ) from exc
