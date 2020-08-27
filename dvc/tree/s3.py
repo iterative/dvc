@@ -94,8 +94,7 @@ class S3Tree(BaseTree):
             link = error_link("connection-error")
             name = self.endpoint_url or "AWS S3"
             raise DvcException(
-                f"Unable to connect to {name}. Are you connected to the "
-                f"internet? {link}"
+                f"Unable to connect to '{name}'. Are you online?"
             ) from exc
 
     @contextmanager
