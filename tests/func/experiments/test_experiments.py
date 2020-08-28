@@ -76,3 +76,27 @@ def test_checkout(tmp_dir, scm, dvc):
     dvc.experiments.checkout(exp_b)
     assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 3"
     assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 3"
+
+
+def test_get_baseline(tmp_dir, scm, dvc):
+    tmp_dir.gen("copy.py", COPY_SCRIPT)
+    tmp_dir.gen("params.yaml", "foo: 1")
+    stage = dvc.run(
+        cmd="python copy.py params.yaml metrics.yaml",
+        metrics_no_cache=["metrics.yaml"],
+        params=["foo"],
+        name="copy-file",
+    )
+    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
+    scm.commit("init")
+    expected = scm.get_rev()
+    assert dvc.experiments.get_baseline(expected) is None
+
+    dvc.reproduce(stage.addressing, experiment=True, params=["foo=2"])
+    rev = dvc.experiments.scm.get_rev()
+    assert dvc.experiments.get_baseline(rev) == expected
+
+    dvc.reproduce(
+        stage.addressing, experiment=True, params=["foo=3"], queue=True
+    )
+    assert dvc.experiments.get_baseline("stash@{0}") == expected
