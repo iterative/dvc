@@ -764,7 +764,7 @@ def test_checkout_for_external_outputs(tmp_dir, dvc):
 
     remote = Remote(S3Tree(dvc, {"url": S3.get_url()}))
     file_path = remote.tree.path_info / "foo"
-    remote.tree.s3.put_object(
+    remote.tree.s3.meta.client.put_object(
         Bucket=remote.tree.path_info.bucket, Key=file_path.path, Body="foo"
     )
 
@@ -775,7 +775,7 @@ def test_checkout_for_external_outputs(tmp_dir, dvc):
     assert stats == {**empty_checkout, "added": [str(file_path)]}
     assert remote.tree.exists(file_path)
 
-    remote.tree.s3.put_object(
+    remote.tree.s3.meta.client.put_object(
         Bucket=remote.tree.path_info.bucket,
         Key=file_path.path,
         Body="foo\nfoo",
