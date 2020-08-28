@@ -37,6 +37,7 @@ def test_experiments_show(dvc, mocker):
             "--all-tags",
             "--all-branches",
             "--all-commits",
+            "--sha",
         ]
     )
     assert cli_args.func == CmdExperimentsShow
@@ -47,5 +48,9 @@ def test_experiments_show(dvc, mocker):
     assert cmd.run() == 0
 
     m.assert_called_once_with(
-        cmd.repo, all_tags=True, all_branches=True, all_commits=True
+        cmd.repo,
+        all_tags=True,
+        all_branches=True,
+        all_commits=True,
+        sha_only=True,
     )
