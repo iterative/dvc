@@ -7,7 +7,11 @@ def _revisions(revs, is_dirty):
     return revisions
 
 
-def diff(repo, *args, revs=None, **kwargs):
+def diff(repo, *args, revs=None, experiment=False, **kwargs):
+    if experiment:
+        # use experiments repo brancher with templates from the main repo
+        kwargs["templates"] = repo.plot_templates
+        repo = repo.experiments.exp_dvc
     return repo.plots.show(
         *args, revs=_revisions(revs, repo.scm.is_dirty()), **kwargs
     )
