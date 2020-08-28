@@ -102,19 +102,18 @@ def _collect_rows(
         row = []
         style = None
         queued = "*" if exp.get("queued", False) else ""
-        if no_timestamp:
-            timestamp = ""
-        else:
-            timestamp = _format_time(exp.get("timestamp"))
 
         if rev == "baseline":
             name = exp.get("name", base_rev)
-            row.append(f"{name}{timestamp}")
+            row.append(f"{name}")
             style = "bold"
         elif i < len(experiments) - 1:
-            row.append(f"├── {queued}{rev[:7]}{timestamp}")
+            row.append(f"├── {queued}{rev[:7]}")
         else:
-            row.append(f"└── {queued}{rev[:7]}{timestamp}")
+            row.append(f"└── {queued}{rev[:7]}")
+
+        if not no_timestamp:
+            row.append(_format_time(exp.get("timestamp")))
 
         _extend_row(
             row, metric_names, exp.get("metrics", {}).items(), precision
@@ -126,12 +125,12 @@ def _collect_rows(
 
 def _format_time(timestamp):
     if timestamp is None:
-        return ""
+        return "-"
     if timestamp.date() == date.today():
         fmt = "%I:%M %p"
     else:
         fmt = "%b %d, %Y"
-    return " ({})".format(timestamp.strftime(fmt))
+    return timestamp.strftime(fmt)
 
 
 def _extend_row(row, names, items, precision):
@@ -192,6 +191,8 @@ def _show_experiments(all_experiments, console, **kwargs):
 
     table = Table()
     table.add_column("Experiment", no_wrap=True)
+    if not kwargs.get("no_timestamp", False):
+        table.add_column("Created")
     for name in metric_names:
         table.add_column(name, justify="right", no_wrap=True)
     for name in param_names:
