@@ -2,6 +2,7 @@ import argparse
 import io
 import logging
 from collections import OrderedDict
+from datetime import date
 from itertools import groupby
 from typing import Iterable, Optional
 
@@ -104,11 +105,11 @@ def _collect_rows(
         if no_timestamp:
             timestamp = ""
         else:
-            commit_time = exp.get("timestamp")
-            timestamp = f" ({commit_time})" if commit_time is not None else ""
+            timestamp = _format_time(exp.get("timestamp"))
 
         if rev == "baseline":
-            row.append(f"{base_rev}{timestamp}")
+            name = exp.get("name", base_rev)
+            row.append(f"{name}{timestamp}")
             style = "bold"
         elif i < len(experiments) - 1:
             row.append(f"├── {queued}{rev[:7]}{timestamp}")
@@ -121,6 +122,16 @@ def _collect_rows(
         _extend_row(row, param_names, exp.get("params", {}).items(), precision)
 
         yield row, style
+
+
+def _format_time(timestamp):
+    if timestamp is None:
+        return ""
+    if timestamp.date() == date.today():
+        fmt = "%I:%M %p"
+    else:
+        fmt = "%b %d, %Y"
+    return " ({})".format(timestamp.strftime(fmt))
 
 
 def _extend_row(row, names, items, precision):
@@ -212,6 +223,7 @@ class CmdExperimentsShow(CmdBase):
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,
                 all_commits=self.args.all_commits,
+                sha_only=self.args.sha,
             )
 
             if self.args.no_pager:
@@ -413,6 +425,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Do not show experiment timestamps.",
+    )
+    experiments_show_parser.add_argument(
+        "--sha",
+        action="store_true",
+        default=False,
+        help="Always show git commit SHAs instead of branch/tag names.",
     )
     experiments_show_parser.set_defaults(func=CmdExperimentsShow)
 

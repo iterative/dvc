@@ -13,7 +13,9 @@ logger = logging.getLogger(__name__)
 EXP_RE = re.compile(r"(?P<rev_sha>[a-f0-9]{7})-(?P<exp_sha>[a-f0-9]+)")
 
 
-def _collect_experiment(repo, branch, stash=False):
+def _collect_experiment(repo, branch, stash=False, sha_only=True):
+    from git.exc import GitCommandError
+
     res = defaultdict(dict)
     for rev in repo.brancher(revs=[branch]):
         if rev == "workspace":
@@ -33,12 +35,27 @@ def _collect_experiment(repo, branch, stash=False):
             vals = _read_metrics(repo, metrics, rev)
             res["metrics"] = vals
 
+        if not sha_only and rev != "workspace":
+            try:
+                name = repo.scm.repo.git.describe(
+                    rev, all=True, exact_match=True
+                )
+                name = name.rsplit("/")[-1]
+                res["name"] = name
+            except GitCommandError:
+                pass
+
     return res
 
 
 @locked
 def show(
-    repo, all_branches=False, all_tags=False, revs=None, all_commits=False
+    repo,
+    all_branches=False,
+    all_tags=False,
+    revs=None,
+    all_commits=False,
+    sha_only=False,
 ):
     res = defaultdict(OrderedDict)
 
@@ -56,7 +73,9 @@ def show(
     )
 
     for rev in revs:
-        res[rev]["baseline"] = _collect_experiment(repo, rev)
+        res[rev]["baseline"] = _collect_experiment(
+            repo, rev, sha_only=sha_only
+        )
 
     # collect reproduced experiments
     for exp_branch in repo.experiments.scm.list_branches():
