@@ -9,7 +9,9 @@ from dvc.cli import parse_args
 from dvc.config import ConfigError
 from dvc.exceptions import DvcException, DvcParserError, NotDvcRepoError
 from dvc.external_repo import clean_repos
-from dvc.logger import FOOTER, disable_other_loggers
+from dvc.logger import FOOTER
+from dvc.logger import config as config_logger
+from dvc.logger import disable_other_loggers
 from dvc.tree.pool import close_pools
 from dvc.utils import format_link
 
@@ -52,6 +54,7 @@ def main(argv=None):  # noqa: C901
     """
     args = None
     disable_other_loggers()
+    config_logger()
 
     outerLogLevel = logger.level
     try:

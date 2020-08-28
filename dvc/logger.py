@@ -180,10 +180,12 @@ def disable_other_loggers():
             logger.disabled = True
 
 
-def setup(level=logging.INFO):
+def setup():
     colorama.init()
-
     addLoggingLevel("TRACE", logging.DEBUG - 5)
+
+
+def config():
     logging.config.dictConfig(
         {
             "version": 1,
@@ -224,7 +226,7 @@ def setup(level=logging.INFO):
             },
             "loggers": {
                 "dvc": {
-                    "level": level,
+                    "level": "INFO",
                     "handlers": [
                         "console_info",
                         "console_debug",
