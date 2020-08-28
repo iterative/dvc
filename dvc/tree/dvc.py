@@ -224,6 +224,17 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
     def isexec(self, path):  # pylint: disable=unused-argument
         return False
 
+    def get_dir_hash(self, path_info, **kwargs):
+        outs = self._find_outs(path_info, strict=True)
+        if len(outs) == 1 and outs[0].is_dir_checksum:
+            if self.fetch or self.stream:
+                # pull dir cache if needed, because the other code expects
+                # to have .dir cache file present after hash calculation.
+                outs[0].get_dir_cache(**kwargs)
+            return outs[0].tree.PARAM_CHECKSUM, outs[0].checksum
+
+        return super().get_dir_hash(path_info, **kwargs)
+
     def get_file_hash(self, path_info):
         outs = self._find_outs(path_info, strict=False)
         if len(outs) != 1:
