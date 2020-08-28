@@ -75,7 +75,7 @@ class Plots:
             for datafile, desc in plots.items()
         }
 
-    def show(self, targets=None, revs=None, props=None):
+    def show(self, targets=None, revs=None, props=None, templates=None):
         from .data import NoMetricInHistoryError
 
         data = self.collect(targets, revs)
@@ -90,7 +90,9 @@ class Plots:
         if not data:
             raise NoPlotsError()
 
-        return self.render(data, revs, props, self.repo.plot_templates)
+        if templates is None:
+            templates = self.repo.plot_templates
+        return self.render(data, revs, props, templates)
 
     def diff(self, *args, **kwargs):
         from .diff import diff

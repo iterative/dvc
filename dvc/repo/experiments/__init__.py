@@ -76,6 +76,9 @@ class Experiments:
     STASH_EXPERIMENT_RE = re.compile(
         r"(?:On \(.*\): )dvc-exp-(?P<baseline_rev>[0-9a-f]+)$"
     )
+    BRANCH_RE = re.compile(
+        r"^(?P<baseline_rev>[a-f0-9]{7})-(?P<exp_sha>[a-f0-9]+)$"
+    )
 
     def __init__(self, repo):
         from dvc.lock import make_lock
@@ -574,6 +577,26 @@ class Experiments:
         # unstage changes and drop the stash entry
         git_repo.reset("HEAD")
         git_repo.stash("drop", "stash@{0}")
+
+    @scm_locked
+    def get_baseline(self, rev):
+        """Return the baseline rev for an experiment rev."""
+        from git.exc import GitCommandError
+
+        rev = self.scm.resolve_rev(rev)
+        try:
+            name = self.scm.repo.git.name_rev(rev, name_only=True)
+        except GitCommandError:
+            return None
+        if not name:
+            return None
+        if name in ("undefined", "stash"):
+            _, baseline = self.stash_revs.get(rev, (None, None))
+            return baseline
+        m = self.BRANCH_RE.match(name)
+        if m:
+            return self.scm.resolve_rev(m.group("baseline_rev"))
+        return None
 
     def checkout(self, *args, **kwargs):
         from dvc.repo.experiments.checkout import checkout

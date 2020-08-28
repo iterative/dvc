@@ -86,7 +86,12 @@ class CmdPlotsShow(CmdPlots):
 
 class CmdPlotsDiff(CmdPlots):
     def _func(self, *args, **kwargs):
-        return self.repo.plots.diff(*args, revs=self.args.revisions, **kwargs)
+        return self.repo.plots.diff(
+            *args,
+            revs=self.args.revisions,
+            experiment=self.args.experiment,
+            **kwargs,
+        )
 
 
 class CmdPlotsModify(CmdPlots):
@@ -151,6 +156,13 @@ def add_parser(subparsers, parent_parser):
         help="Plots file to visualize. Shows all plots by default.",
         metavar="<path>",
     ).complete = completion.FILE
+    plots_diff_parser.add_argument(
+        "-e",
+        "--experiment",
+        action="store_true",
+        default=False,
+        help=argparse.SUPPRESS,
+    )
     plots_diff_parser.add_argument(
         "revisions", nargs="*", default=None, help="Git commits to plot from",
     )
