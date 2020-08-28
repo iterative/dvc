@@ -77,7 +77,7 @@ class Experiments:
         r"(?:On \(.*\): )dvc-exp-(?P<baseline_rev>[0-9a-f]+)$"
     )
     BRANCH_RE = re.compile(
-        r"(?P<baseline_rev>[a-f0-9]{7})-(?P<exp_sha>[a-f0-9]+)"
+        r"^(?P<baseline_rev>[a-f0-9]{7})-(?P<exp_sha>[a-f0-9]+)$"
     )
 
     def __init__(self, repo):
