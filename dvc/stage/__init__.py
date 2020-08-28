@@ -469,13 +469,13 @@ class Stage(params.StageParams):
             return "failed", exc.target_infos
 
     @rwlocked(read=["deps", "outs"])
-    def status(self, check_updates=False):
+    def status(self, check_updates=False, filter_info=None):
         ret = []
         show_import = self.is_repo_import and check_updates
 
         if not self.frozen or show_import:
             self._status_deps(ret)
-        self._status_outs(ret)
+        self._status_outs(ret, filter_info=filter_info)
         self._status_always_changed(ret)
         self._status_stage(ret)
         return {self.addressing: ret} if ret else {}
@@ -494,8 +494,9 @@ class Stage(params.StageParams):
         if deps_status:
             ret.append({"changed deps": deps_status})
 
-    def _status_outs(self, ret):
-        outs_status = self._status(self.outs)
+    def _status_outs(self, ret, filter_info):
+        filter_outs = self.filter_outs(filter_info)
+        outs_status = self._status(filter_outs)
         if outs_status:
             ret.append({"changed outs": outs_status})
 

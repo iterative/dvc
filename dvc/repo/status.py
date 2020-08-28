@@ -19,11 +19,9 @@ def _joint_status(pairs):
                 "{} is frozen. Its dependencies are"
                 " not going to be shown in the status output.".format(stage)
             )
-        if not filter_info:
-            status_info.update(stage.status(check_updates=True))
-        else:
-            for out in stage.filter_outs(filter_info):
-                status_info.update(out.status())
+        status_info.update(
+            stage.status(check_updates=True, filter_info=filter_info)
+        )
 
     return status_info
 
