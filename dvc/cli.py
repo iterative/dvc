@@ -3,6 +3,7 @@ import argparse
 import logging
 import os
 import sys
+from difflib import get_close_matches
 
 from .command import (
     add,
@@ -85,61 +86,17 @@ COMMANDS = [
 ]
 
 
-def _ld(source, target):
-    """Compare similarity (Levenshtein distance) of typed command to dvc command.
-
-    Args:
-        source: typed command.
-        target: dvc command.
-
-    Returns:
-        Integer value representing Levenshtein distance between two strings.
-    """
-    rows = len(source) + 1
-    cols = len(target) + 1
-
-    d = [[0 for i in range(cols)] for j in range(rows)]
-
-    for i in range(rows):
-        d[i][0] = i
-
-    for i in range(cols):
-        d[0][i] = i
-
-    for col in range(1, cols):
-        for row in range(1, rows):
-            if source[row - 1] == target[col - 1]:
-                cost = 0
-            else:
-                cost = 1
-
-            a = d[row - 1][col] + 1
-            b = d[row][col - 1] + 1
-            c = d[row - 1][col - 1] + cost
-
-            d[row][col] = min(a, b, c)
-
-    return d[-1][-1]
-
-
 def _find_cmd_suggestions(cmd_arg, cmd_choices):
     """Find similar command suggestions for a typed command that contains typos.
 
     Args:
         cmd_arg: command argument typed in.
-        cmd_choices: list of valid dvc commands to measure against.
+        cmd_choices: list of valid dvc commands to match against.
 
     Returns:
         String with command suggestions to display to the user if any exist.
     """
-
-    suggestions = []
-    min_distance = 2
-
-    for command in cmd_choices:
-        levenshtein_distance = _ld(cmd_arg, command)
-        if levenshtein_distance <= min_distance:
-            suggestions.append(command)
+    suggestions = get_close_matches(cmd_arg, cmd_choices)
 
     suggestion_str = ""
     if suggestions:
