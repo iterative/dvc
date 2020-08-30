@@ -66,7 +66,7 @@ class RepoDependency(LocalDependency):
                 if tree.isdir(path):
                     return self.repo.cache.local.tree.get_hash(
                         path, tree=tree
-                    )[1]
+                    ).value
                 return tree.get_file_hash(path)
 
     def workspace_status(self):

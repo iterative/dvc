@@ -7,6 +7,7 @@ from funcy import cached_property, wrap_prop
 
 from dvc.config import ConfigError
 from dvc.exceptions import DvcException, ETagMismatchError
+from dvc.hash_info import HashInfo
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -332,10 +333,7 @@ class S3Tree(BaseTree):
 
     def get_file_hash(self, path_info):
         with self._get_obj(path_info) as obj:
-            return (
-                self.PARAM_CHECKSUM,
-                obj.e_tag.strip('"'),
-            )
+            return HashInfo(self.PARAM_CHECKSUM, obj.e_tag.strip('"'))
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         with self._get_obj(to_info) as obj:

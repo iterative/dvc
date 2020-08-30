@@ -7,6 +7,7 @@ from funcy import cached_property
 from shortuuid import uuid
 
 from dvc.exceptions import DvcException
+from dvc.hash_info import HashInfo
 from dvc.path_info import PathInfo
 from dvc.scheme import Schemes
 from dvc.system import System
@@ -309,7 +310,7 @@ class LocalTree(BaseTree):
         return stat.S_IMODE(mode) == self.CACHE_MODE
 
     def get_file_hash(self, path_info):
-        return self.PARAM_CHECKSUM, file_md5(path_info)[0]
+        return HashInfo(self.PARAM_CHECKSUM, file_md5(path_info)[0])
 
     @staticmethod
     def getsize(path_info):

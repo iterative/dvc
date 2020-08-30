@@ -218,7 +218,7 @@ def test_repotree_cache_save(tmp_dir, dvc, scm, erepo_dir, local_cloud):
     # into dvc.cache, not fetched or streamed from a remote
     tree = RepoTree(erepo_dir.dvc, stream=True)
     expected = [
-        tree.get_file_hash(PathInfo(erepo_dir / path))[1]
+        tree.get_file_hash(PathInfo(erepo_dir / path)).value
         for path in ("dir/bar", "dir/subdir/foo")
     ]
 

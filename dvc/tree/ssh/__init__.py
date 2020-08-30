@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 from funcy import first, memoize, silent, wrap_with
 
 import dvc.prompt as prompt
+from dvc.hash_info import HashInfo
 from dvc.scheme import Schemes
 
 from ..base import BaseTree
@@ -238,7 +239,7 @@ class SSHTree(BaseTree):
             raise NotImplementedError
 
         with self.ssh(path_info) as ssh:
-            return self.PARAM_CHECKSUM, ssh.md5(path_info.path)
+            return HashInfo(self.PARAM_CHECKSUM, ssh.md5(path_info.path))
 
     def getsize(self, path_info):
         with self.ssh(path_info) as ssh:

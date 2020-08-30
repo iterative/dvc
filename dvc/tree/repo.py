@@ -11,6 +11,7 @@ from pygtrie import StringTrie
 
 from dvc.dvcfile import is_valid_filename
 from dvc.exceptions import OutputNotFoundError
+from dvc.hash_info import HashInfo
 from dvc.path_info import PathInfo
 from dvc.utils import file_md5, is_exec
 from dvc.utils.fs import copy_fobj_to_file, makedirs
@@ -332,7 +333,7 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
                 return dvc_tree.get_file_hash(path_info)
             except OutputNotFoundError:
                 pass
-        return self.PARAM_CHECKSUM, file_md5(path_info, self)[0]
+        return HashInfo(self.PARAM_CHECKSUM, file_md5(path_info, self)[0])
 
     def copytree(self, top, dest):
         top = PathInfo(top)

@@ -6,6 +6,7 @@ from funcy import cached_property, memoize, wrap_prop, wrap_with
 
 import dvc.prompt as prompt
 from dvc.exceptions import DvcException, HTTPError
+from dvc.hash_info import HashInfo
 from dvc.path_info import HTTPURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -151,7 +152,7 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
                 "Content-MD5 header for '{url}'".format(url=url)
             )
 
-        return self.PARAM_CHECKSUM, etag
+        return HashInfo(self.PARAM_CHECKSUM, etag)
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         response = self.request("GET", from_info.url, stream=True)

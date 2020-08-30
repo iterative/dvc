@@ -7,6 +7,7 @@ from collections import deque
 from contextlib import closing, contextmanager
 from urllib.parse import urlparse
 
+from dvc.hash_info import HashInfo
 from dvc.scheme import Schemes
 from dvc.utils import fix_env, tmp_fname
 
@@ -175,7 +176,9 @@ class HDFSTree(BaseTree):
         stdout = self.hadoop_fs(
             f"checksum {path_info.url}", user=path_info.user
         )
-        return self.PARAM_CHECKSUM, self._group(regex, stdout, "checksum")
+        return HashInfo(
+            self.PARAM_CHECKSUM, self._group(regex, stdout, "checksum")
+        )
 
     def _upload(self, from_file, to_info, **_kwargs):
         with self.hdfs(to_info) as hdfs:
