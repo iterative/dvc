@@ -55,11 +55,11 @@ def _filter_names(
 
 
 def _update_names(names, items):
-    from flatten_json import flatten
+    from flatten_dict import flatten
 
     for name, item in items:
         if isinstance(item, dict):
-            item = flatten(item, ".")
+            item = flatten(item, reducer="dot")
             names.update(item.keys())
         else:
             names.add(name)
@@ -134,7 +134,7 @@ def _format_time(timestamp):
 
 
 def _extend_row(row, names, items, precision):
-    from flatten_json import flatten
+    from flatten_dict import flatten
 
     def _round(val):
         if isinstance(val, float):
@@ -148,7 +148,7 @@ def _extend_row(row, names, items, precision):
 
     for fname, item in items:
         if isinstance(item, dict):
-            item = flatten(item, ".")
+            item = flatten(item, reducer="dot")
         else:
             item = {fname: item}
         for name in names:

@@ -35,9 +35,9 @@ def _flatten(d):
         return defaultdict(lambda: None)
 
     if isinstance(d, dict):
-        from flatten_json import flatten as fltn
+        from flatten_dict import flatten as fltn
 
-        return defaultdict(lambda: None, fltn(d, "."))
+        return defaultdict(lambda: None, fltn(d, reducer="dot"))
 
     return defaultdict(lambda: "unable to parse")
 
