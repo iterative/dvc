@@ -437,13 +437,25 @@ class LocalCache(CloudCache):
 
     @index_locked
     def pull(self, named_cache, remote, jobs=None, show_checksums=False):
-        return self._process(
+        ret = self._process(
             named_cache,
             remote,
             jobs=jobs,
             show_checksums=show_checksums,
             download=True,
         )
+
+        if not remote.tree.verify:
+            for checksum in named_cache.scheme_keys("local"):
+                cache_file = self.tree.hash_to_path_info(checksum)
+                if self.tree.exists(cache_file):
+                    # We can safely save here, as existing corrupted files will
+                    # be removed upon status, while files corrupted during
+                    # download will not be moved from tmp_file
+                    # (see `BaseTree.download()`)
+                    self.tree.state.save(cache_file, checksum)
+
+        return ret
 
     @staticmethod
     def _log_missing_caches(hash_info_dict):

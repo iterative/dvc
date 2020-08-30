@@ -81,24 +81,9 @@ class DataCloud:
         """
         remote = self.get_remote(remote, "pull")
 
-        downloaded_items_num = self.repo.cache.local.pull(
+        return self.repo.cache.local.pull(
             cache, jobs=jobs, remote=remote, show_checksums=show_checksums
         )
-
-        if not remote.tree.verify:
-            self._save_pulled_checksums(cache)
-
-        return downloaded_items_num
-
-    def _save_pulled_checksums(self, cache):
-        for checksum in cache.scheme_keys("local"):
-            cache_file = self.repo.cache.local.tree.hash_to_path_info(checksum)
-            if self.repo.cache.local.tree.exists(cache_file):
-                # We can safely save here, as existing corrupted files will
-                # be removed upon status, while files corrupted during
-                # download will not be moved from tmp_file
-                # (see `RemoteBASE.download()`)
-                self.repo.state.save(cache_file, checksum)
 
     def status(
         self,

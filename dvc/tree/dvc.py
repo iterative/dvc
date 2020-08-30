@@ -24,6 +24,9 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
     as a fallback.
     """
 
+    scheme = "local"
+    PARAM_CHECKSUM = "md5"
+
     def __init__(self, repo, fetch=False, stream=False):
         super().__init__(repo, {"url": repo.root_dir})
         self.fetch = fetch
@@ -138,21 +141,26 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
         except OutputNotFoundError:
             return False
 
-    def _add_dir(self, top, trie, out, download_callback=None, **kwargs):
-        if not self.fetch and not self.stream:
-            return
-
+    def _fetch_dir(
+        self, out, filter_info=None, download_callback=None, **kwargs
+    ):
         # pull dir cache if needed
-        dir_cache = out.get_dir_cache(**kwargs)
+        out.get_dir_cache(**kwargs)
 
         # pull dir contents if needed
-        if self.fetch and out.changed_cache(filter_info=top):
-            used_cache = out.get_used_cache(filter_info=top)
+        if self.fetch and out.changed_cache(filter_info=filter_info):
+            used_cache = out.get_used_cache(filter_info=filter_info)
             downloaded = self.repo.cloud.pull(used_cache, **kwargs)
             if download_callback:
                 download_callback(downloaded)
 
-        for entry in dir_cache:
+    def _add_dir(self, top, trie, out, **kwargs):
+        if not self.fetch and not self.stream:
+            return
+
+        self._fetch_dir(out, filter_info=top, **kwargs)
+
+        for entry in out.dir_cache:
             entry_relpath = entry[out.tree.PARAM_RELPATH]
             if os.name == "nt":
                 entry_relpath = entry_relpath.replace("/", os.sep)
@@ -212,6 +220,12 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
 
         yield from self._walk(root, trie, topdown=topdown, **kwargs)
 
+    def walk_files(self, path_info, **kwargs):
+        for root, _, files in self.walk(path_info):
+            for fname in files:
+                # NOTE: os.path.join is ~5.5 times slower
+                yield PathInfo(f"{root}{os.sep}{fname}")
+
     def isdvc(self, path, recursive=False, strict=True):
         try:
             meta = self.metadata(path)
@@ -223,6 +237,19 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
 
     def isexec(self, path):  # pylint: disable=unused-argument
         return False
+
+    def get_dir_hash(self, path_info, **kwargs):
+        try:
+            outs = self._find_outs(path_info, strict=True)
+            if len(outs) == 1 and outs[0].is_dir_checksum:
+                out = outs[0]
+                # other code expects us to fetch the dir at this point
+                self._fetch_dir(out, **kwargs)
+                return out.tree.PARAM_CHECKSUM, out.checksum
+        except OutputNotFoundError:
+            pass
+
+        return super().get_dir_hash(path_info, **kwargs)
 
     def get_file_hash(self, path_info):
         outs = self._find_outs(path_info, strict=False)

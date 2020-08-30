@@ -2,7 +2,7 @@ from dvc.cli import parse_args
 from dvc.command.plots import CmdPlotsDiff, CmdPlotsShow
 
 
-def test_metrics_diff(dvc, mocker):
+def test_plots_diff(dvc, mocker):
     cli_args = parse_args(
         [
             "plots",
@@ -24,6 +24,7 @@ def test_metrics_diff(dvc, mocker):
             "x_title",
             "--y-label",
             "y_title",
+            "--experiment",
             "HEAD",
             "tag1",
             "tag2",
@@ -50,10 +51,11 @@ def test_metrics_diff(dvc, mocker):
             "x_label": "x_title",
             "y_label": "y_title",
         },
+        experiment=True,
     )
 
 
-def test_metrics_show(dvc, mocker):
+def test_plots_show(dvc, mocker):
     cli_args = parse_args(
         [
             "plots",
