@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 from funcy import cached_property, wrap_prop
 
+from dvc.hash_info import HashInfo
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -153,7 +154,7 @@ class AzureTree(BaseTree):
         ).delete_blob()
 
     def get_file_hash(self, path_info):
-        return self.PARAM_CHECKSUM, self.get_etag(path_info)
+        return HashInfo(self.PARAM_CHECKSUM, self.get_etag(path_info))
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs

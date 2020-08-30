@@ -15,6 +15,7 @@ from dvc.exceptions import (
     DvcIgnoreInCollectedDirError,
     RemoteCacheRequiredError,
 )
+from dvc.hash_info import HashInfo
 from dvc.ignore import DvcIgnore
 from dvc.path_info import PathInfo, URLInfo
 from dvc.progress import Tqdm
@@ -242,7 +243,7 @@ class BaseTree:
         )
 
         if not self.exists(path_info):
-            return self.PARAM_CHECKSUM, None
+            return None
 
         # pylint: disable=assignment-from-none
         hash_ = self.state.get(path_info)
@@ -260,17 +261,17 @@ class BaseTree:
             hash_ = None
 
         if hash_:
-            return self.PARAM_CHECKSUM, hash_
+            return HashInfo(self.PARAM_CHECKSUM, hash_)
 
         if self.isdir(path_info):
-            typ, hash_ = self.get_dir_hash(path_info, **kwargs)
+            hash_info = self.get_dir_hash(path_info, **kwargs)
         else:
-            typ, hash_ = self.get_file_hash(path_info)
+            hash_info = self.get_file_hash(path_info)
 
-        if hash_ and self.exists(path_info):
-            self.state.save(path_info, hash_)
+        if hash_info and self.exists(path_info):
+            self.state.save(path_info, hash_info.value)
 
-        return typ, hash_
+        return hash_info
 
     def get_file_hash(self, path_info):
         raise NotImplementedError
@@ -294,8 +295,8 @@ class BaseTree:
         return "".join(parts)
 
     def save_info(self, path_info, **kwargs):
-        typ, hash_ = self.get_hash(path_info, **kwargs)
-        return {typ: hash_}
+        hash_info = self.get_hash(path_info, **kwargs)
+        return {hash_info.name: hash_info.value}
 
     def _calculate_hashes(self, file_infos):
         file_infos = list(file_infos)
@@ -306,9 +307,7 @@ class BaseTree:
         ) as pbar:
             worker = pbar.wrap_fn(self.get_file_hash)
             with ThreadPoolExecutor(max_workers=self.hash_jobs) as executor:
-                hashes = (
-                    value for typ, value in executor.map(worker, file_infos)
-                )
+                hashes = (hi.value for hi in executor.map(worker, file_infos))
                 return dict(zip(file_infos, hashes))
 
     def _collect_dir(self, path_info, **kwargs):
@@ -346,17 +345,17 @@ class BaseTree:
         return sorted(result, key=itemgetter(self.PARAM_RELPATH))
 
     def save_dir_info(self, dir_info):
-        typ, hash_, tmp_info = self._get_dir_info_hash(dir_info)
-        new_info = self.cache.tree.hash_to_path_info(hash_)
-        if self.cache.changed_cache_file(hash_):
+        hash_info, tmp_info = self._get_dir_info_hash(dir_info)
+        new_info = self.cache.tree.hash_to_path_info(hash_info.value)
+        if self.cache.changed_cache_file(hash_info.value):
             self.cache.tree.makedirs(new_info.parent)
             self.cache.tree.move(
                 tmp_info, new_info, mode=self.cache.CACHE_MODE
             )
 
-        self.state.save(new_info, hash_)
+        self.state.save(new_info, hash_info.value)
 
-        return typ, hash_
+        return hash_info
 
     def _get_dir_info_hash(self, dir_info):
         # Sorting the list by path to ensure reproducibility
@@ -371,8 +370,9 @@ class BaseTree:
         to_info = tree.path_info / tmp_fname("")
         tree.upload(from_info, to_info, no_progress_bar=True)
 
-        typ, hash_ = tree.get_file_hash(to_info)
-        return typ, hash_ + self.CHECKSUM_DIR_SUFFIX, to_info
+        hash_info = tree.get_file_hash(to_info)
+        hash_info.value += self.CHECKSUM_DIR_SUFFIX
+        return hash_info, to_info
 
     def upload(self, from_info, to_info, name=None, no_progress_bar=False):
         if not hasattr(self, "_upload"):

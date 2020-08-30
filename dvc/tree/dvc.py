@@ -2,6 +2,7 @@ import logging
 import os
 
 from dvc.exceptions import OutputNotFoundError
+from dvc.hash_info import HashInfo
 from dvc.path_info import PathInfo
 
 from ._metadata import Metadata
@@ -245,7 +246,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
                 out = outs[0]
                 # other code expects us to fetch the dir at this point
                 self._fetch_dir(out, **kwargs)
-                return out.tree.PARAM_CHECKSUM, out.checksum
+                return HashInfo(out.tree.PARAM_CHECKSUM, out.checksum)
         except OutputNotFoundError:
             pass
 
@@ -257,11 +258,11 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             raise OutputNotFoundError
         out = outs[0]
         if out.is_dir_checksum:
-            return (
+            return HashInfo(
                 out.tree.PARAM_CHECKSUM,
                 self._get_granular_checksum(path_info, out),
             )
-        return out.tree.PARAM_CHECKSUM, out.checksum
+        return HashInfo(out.tree.PARAM_CHECKSUM, out.checksum)
 
     def metadata(self, path_info):
         path_info = PathInfo(os.path.abspath(path_info))

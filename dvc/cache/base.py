@@ -132,10 +132,8 @@ class CloudCache:
             logger.debug("cache for '%s'('%s') has changed.", path_info, hash_)
             return True
 
-        typ, actual = self.tree.get_hash(path_info)
-        assert typ == self.tree.PARAM_CHECKSUM
-
-        if hash_ != actual:
+        actual = self.tree.get_hash(path_info)
+        if hash_ != actual.value:
             logger.debug(
                 "hash value '%s' for '%s' has changed (actual '%s').",
                 hash_,
@@ -319,7 +317,7 @@ class CloudCache:
             )
             return False
 
-        _, actual = self.tree.get_hash(cache_info)
+        actual = self.tree.get_hash(cache_info)
 
         logger.debug(
             "cache '%s' expected '%s' actual '%s'", cache_info, hash_, actual,
@@ -328,7 +326,7 @@ class CloudCache:
         if not hash_ or not actual:
             return True
 
-        if actual.split(".")[0] == hash_.split(".")[0]:
+        if actual.value.split(".")[0] == hash_.split(".")[0]:
             # making cache file read-only so we don't need to check it
             # next time
             self.tree.protect(cache_info)
@@ -634,5 +632,5 @@ class CloudCache:
         their = self.get_dir_cache(their_hash)
 
         merged = self._merge_dirs(ancestor, our, their)
-        typ, merged_hash = self.tree.save_dir_info(merged)
-        return {typ: merged_hash}
+        hash_info = self.tree.save_dir_info(merged)
+        return {hash_info.name: hash_info.value}

@@ -7,6 +7,7 @@ from functools import wraps
 from funcy import cached_property, wrap_prop
 
 from dvc.exceptions import DvcException
+from dvc.hash_info import HashInfo
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -189,11 +190,11 @@ class GSTree(BaseTree):
         path = path_info.path
         blob = self.gs.bucket(bucket).get_blob(path)
         if not blob:
-            return self.PARAM_CHECKSUM, None
+            return HashInfo(self.PARAM_CHECKSUM, None)
 
         b64_md5 = blob.md5_hash
         md5 = base64.b64decode(b64_md5)
-        return (
+        return HashInfo(
             self.PARAM_CHECKSUM,
             codecs.getencoder("hex")(md5)[0].decode("utf-8"),
         )

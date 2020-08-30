@@ -4,6 +4,7 @@ from unittest import mock
 
 import pytest
 
+from dvc.hash_info import HashInfo
 from dvc.path_info import PathInfo
 from dvc.tree.repo import RepoTree
 
@@ -363,9 +364,8 @@ def test_get_hash_cached_file(tmp_dir, dvc, mocker):
     tmp_dir.dvc_gen({"foo": "foo"})
     tree = RepoTree(dvc)
     dvc_tree_spy = mocker.spy(tree._dvctrees[dvc.root_dir], "get_file_hash")
-    assert tree.get_hash(PathInfo(tmp_dir) / "foo") == (
-        "md5",
-        "acbd18db4cc2f85cedef654fccc4a4d8",
+    assert tree.get_hash(PathInfo(tmp_dir) / "foo") == HashInfo(
+        "md5", "acbd18db4cc2f85cedef654fccc4a4d8",
     )
     assert dvc_tree_spy.called
 
@@ -377,9 +377,8 @@ def test_get_hash_cached_dir(tmp_dir, dvc, mocker):
     tree = RepoTree(dvc)
     get_file_hash_spy = mocker.spy(tree, "get_file_hash")
     dvc_tree_spy = mocker.spy(tree._dvctrees[dvc.root_dir], "get_dir_hash")
-    assert tree.get_hash(PathInfo(tmp_dir) / "dir") == (
-        "md5",
-        "8761c4e9acad696bee718615e23e22db.dir",
+    assert tree.get_hash(PathInfo(tmp_dir) / "dir") == HashInfo(
+        "md5", "8761c4e9acad696bee718615e23e22db.dir",
     )
     assert not get_file_hash_spy.called
     assert dvc_tree_spy.called
@@ -392,12 +391,10 @@ def test_get_hash_cached_granular(tmp_dir, dvc, mocker):
     tree = RepoTree(dvc, fetch=True)
     dvc_tree_spy = mocker.spy(tree._dvctrees[dvc.root_dir], "get_file_hash")
     subdir = PathInfo(tmp_dir) / "dir" / "subdir"
-    assert tree.get_hash(subdir) == (
-        "md5",
-        "af314506f1622d107e0ed3f14ec1a3b5.dir",
+    assert tree.get_hash(subdir) == HashInfo(
+        "md5", "af314506f1622d107e0ed3f14ec1a3b5.dir",
     )
-    assert tree.get_hash(subdir / "data") == (
-        "md5",
-        "8d777f385d3dfec8815d20f7496026dc",
+    assert tree.get_hash(subdir / "data") == HashInfo(
+        "md5", "8d777f385d3dfec8815d20f7496026dc",
     )
     assert dvc_tree_spy.called
