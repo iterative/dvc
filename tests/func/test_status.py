@@ -136,4 +136,6 @@ def test_status_outputs(tmp_dir, dvc):
         ]
     }
 
-    assert dvc.status(targets=["alice"]) == {"alice": "modified"}
+    assert dvc.status(targets=["alice"]) == {
+        "alice_bob": [{"changed outs": {"alice": "modified"}}]
+    }
