@@ -9,9 +9,6 @@ from dvc.repo.params.show import _collect_configs, _read_params
 logger = logging.getLogger(__name__)
 
 
-EXP_RE = re.compile(r"(?P<rev_sha>[a-f0-9]{7})-(?P<exp_sha>[a-f0-9]+)")
-
-
 def _collect_experiment(repo, branch, stash=False, sha_only=True):
     from git.exc import GitCommandError
 
