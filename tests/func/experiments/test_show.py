@@ -48,6 +48,7 @@ def test_show_experiment(tmp_dir, scm, dvc):
         "params": {"params.yaml": {"foo": 1}},
         "queued": False,
         "timestamp": timestamp,
+        "name": "master",
     }
     expected_params = {"foo": 2}
 

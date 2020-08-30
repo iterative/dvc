@@ -9,7 +9,9 @@ from dvc.repo.params.show import _collect_configs, _read_params
 logger = logging.getLogger(__name__)
 
 
-def _collect_experiment(repo, branch, stash=False):
+def _collect_experiment(repo, branch, stash=False, sha_only=True):
+    from git.exc import GitCommandError
+
     res = defaultdict(dict)
     for rev in repo.brancher(revs=[branch]):
         if rev == "workspace":
@@ -29,12 +31,27 @@ def _collect_experiment(repo, branch, stash=False):
             vals = _read_metrics(repo, metrics, rev)
             res["metrics"] = vals
 
+        if not sha_only and rev != "workspace":
+            try:
+                name = repo.scm.repo.git.describe(
+                    rev, all=True, exact_match=True
+                )
+                name = name.rsplit("/")[-1]
+                res["name"] = name
+            except GitCommandError:
+                pass
+
     return res
 
 
 @locked
 def show(
-    repo, all_branches=False, all_tags=False, revs=None, all_commits=False
+    repo,
+    all_branches=False,
+    all_tags=False,
+    revs=None,
+    all_commits=False,
+    sha_only=False,
 ):
     res = defaultdict(OrderedDict)
 
@@ -52,7 +69,9 @@ def show(
     )
 
     for rev in revs:
-        res[rev]["baseline"] = _collect_experiment(repo, rev)
+        res[rev]["baseline"] = _collect_experiment(
+            repo, rev, sha_only=sha_only
+        )
 
     # collect reproduced experiments
     for exp_branch in repo.experiments.scm.list_branches():
