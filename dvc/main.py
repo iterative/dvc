@@ -87,8 +87,9 @@ def main(argv=None):  # noqa: C901
     except DvcException:
         ret = 255
         logger.exception("")
-    except OSError as exc:
-        if exc.errno == errno.EMFILE:
+    except Exception as exc:  # noqa, pylint: disable=broad-except
+        # pylint: disable=no-member
+        if isinstance(exc, OSError) and exc.errno == errno.EMFILE:
             logger.exception(
                 "too many open files, please visit "
                 "{} to see how to handle this "
@@ -97,17 +98,10 @@ def main(argv=None):  # noqa: C901
             )
         else:
             logger.exception("unexpected error")
-        ret = 255
-    except Exception:  # noqa, pylint: disable=broad-except
-        logger.exception("unexpected error")
+            logger.info(FOOTER)
         ret = 255
 
     try:
-        if ret != 0 and (
-            ret != 1 or getattr(args, "cmd", "") != "check-ignore"
-        ):
-            logger.info(FOOTER)
-
         if analytics.is_enabled():
             analytics.collect_and_send_report(args, ret)
 
