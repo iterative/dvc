@@ -25,7 +25,7 @@ class CmdDestroy(CmdBase):
                 )
 
             self.repo.destroy()
-        except Exception:  # noqa, pylint: disable=broad-except
+        except DvcException:
             logger.exception("failed to destroy DVC")
             return 1
         return 0

@@ -2,6 +2,7 @@ import argparse
 import logging
 
 from dvc.command.base import CmdBase, append_doc_link
+from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
 
@@ -10,7 +11,7 @@ class CmdInstall(CmdBase):
     def run(self):
         try:
             self.repo.install(self.args.use_pre_commit_tool)
-        except Exception:  # noqa, pylint:disable=broad-except
+        except DvcException:
             logger.exception("failed to install DVC Git hooks")
             return 1
         return 0

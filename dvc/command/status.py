@@ -1,6 +1,7 @@
 import logging
 
 from dvc.command.data_sync import CmdDataBase
+from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +64,7 @@ class CmdDataStatus(CmdDataBase):
             else:
                 logger.info(self.UP_TO_DATE_MSG)
 
-        except Exception:  # noqa, pylint: disable=broad-except
+        except DvcException:
             logger.exception("failed to obtain data status")
             return 1
         return 0
