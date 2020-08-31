@@ -6,7 +6,7 @@ from contextlib import suppress
 from itertools import takewhile
 from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union
 
-from funcy import wrap_with
+from funcy import lfilter, wrap_with
 from pygtrie import StringTrie
 
 from dvc.dvcfile import is_valid_filename
@@ -235,14 +235,19 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
 
         yield repo_root, dirs, list(files)
 
+        def is_dvc_repo(d):
+            return self._is_dvc_repo(os.path.join(repo_root, d))
+
+        # remove subrepos to prevent it from being traversed
+        subrepos = set(filter(is_dvc_repo, repo_only))
         # set dir order for next recursion level - shared dirs first so that
         # next() for both generators recurses into the same shared directory
         dvc_dirs[:] = [dirname for dirname in dirs if dirname in dvc_set]
-        repo_dirs[:] = [dirname for dirname in dirs if dirname in repo_set]
+        repo_dirs[:] = lfilter(lambda d: d in (repo_set - subrepos), dirs)
 
         for dirname in dirs:
-            dir_path = os.path.join(repo_root, dirname)
-            if self._is_dvc_repo(dir_path):
+            if dirname in subrepos:
+                dir_path = os.path.join(repo_root, dirname)
                 yield from self._subrepo_walk(dir_path, dvcfiles=dvcfiles)
             elif dirname in shared:
                 yield from self._walk(repo_walk, dvc_walk, dvcfiles=dvcfiles)
