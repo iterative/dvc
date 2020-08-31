@@ -96,7 +96,19 @@ def _collect_rows(
     param_names,
     precision=DEFAULT_PRECISION,
     no_timestamp=False,
+    sort_by=None,
+    sort_order=None,
 ):
+    if sort_by:
+        if sort_by in metric_names:
+            sort_type = "metrics"
+        elif sort_by in param_names:
+            sort_type = "params"
+        else:
+            raise InvalidArgumentError(f"Unknown sort column '{sort_by}'")
+        reverse = sort_order == "desc"
+        experiments = _sort_exp(experiments, sort_by, sort_type, reverse)
+
     for i, (rev, exp) in enumerate(experiments.items()):
         row = []
         style = None
@@ -120,6 +132,30 @@ def _collect_rows(
         _extend_row(row, param_names, exp.get("params", {}).items(), precision)
 
         yield row, style
+
+
+def _sort_exp(experiments, sort_by, typ, reverse):
+    if "baseline" in experiments:
+        ret = OrderedDict({"baseline": experiments.pop("baseline")})
+    else:
+        ret = OrderedDict()
+
+    def _sort(item):
+        _, exp = item
+        for fname, item in exp.get(typ, {}).items():
+            if isinstance(item, dict):
+                item = flatten(item)
+            else:
+                item = {fname: item}
+            if sort_by in item:
+                val = item[sort_by]
+                break
+        else:
+            val = None
+        return (val is None, val)
+
+    ret.update(sorted(experiments.items(), key=_sort, reverse=reverse))
+    return ret
 
 
 def _format_time(timestamp):
@@ -241,6 +277,8 @@ class CmdExperimentsShow(CmdBase):
                 include_params=self.args.include_params,
                 exclude_params=self.args.exclude_params,
                 no_timestamp=self.args.no_timestamp,
+                sort_by=self.args.sort_by,
+                sort_order=self.args.sort_order,
             )
 
             if not self.args.no_pager:
@@ -417,6 +455,17 @@ def add_parser(subparsers, parent_parser):
         default=[],
         help="Exclude the specified params from output table.",
         metavar="<params_list>",
+    )
+    experiments_show_parser.add_argument(
+        "--sort-by",
+        help="Sort related experiments by the specified metric or param.",
+        metavar="<metric/param>",
+    )
+    experiments_show_parser.add_argument(
+        "--sort-order",
+        help="Sort order to use with --sort-by.",
+        choices=("asc", "desc"),
+        default="asc",
     )
     experiments_show_parser.add_argument(
         "--no-timestamp",
