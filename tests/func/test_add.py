@@ -18,6 +18,7 @@ from dvc.exceptions import (
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
 )
+from dvc.hash_info import HashInfo
 from dvc.main import main
 from dvc.output.base import OutputAlreadyTrackedError, OutputIsStageFileError
 from dvc.repo import Repo as DvcRepo
@@ -42,7 +43,7 @@ def test_add(tmp_dir, dvc):
     assert len(stage.outs) == 1
     assert len(stage.deps) == 0
     assert stage.cmd is None
-    assert stage.outs[0].info["md5"] == md5
+    assert stage.outs[0].hash_info == HashInfo("md5", md5)
     assert stage.md5 is None
 
     assert load_yaml("foo.dvc") == {
@@ -71,7 +72,7 @@ def test_add_directory(tmp_dir, dvc):
     assert len(stage.deps) == 0
     assert len(stage.outs) == 1
 
-    md5 = stage.outs[0].info["md5"]
+    md5 = stage.outs[0].hash_info.value
 
     dir_info = dvc.cache.local.load_dir_cache(md5)
     for info in dir_info:

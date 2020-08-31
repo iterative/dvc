@@ -620,17 +620,16 @@ class CloudCache:
         assert their_info
 
         if ancestor_info:
-            ancestor_hash = ancestor_info[self.tree.PARAM_CHECKSUM]
+            ancestor_hash = ancestor_info.value
             ancestor = self.get_dir_cache(ancestor_hash)
         else:
             ancestor = []
 
-        our_hash = our_info[self.tree.PARAM_CHECKSUM]
+        our_hash = our_info.value
         our = self.get_dir_cache(our_hash)
 
-        their_hash = their_info[self.tree.PARAM_CHECKSUM]
+        their_hash = their_info.value
         their = self.get_dir_cache(their_hash)
 
         merged = self._merge_dirs(ancestor, our, their)
-        hash_info = self.tree.save_dir_info(merged)
-        return {hash_info.name: hash_info.value}
+        return self.tree.save_dir_info(merged)

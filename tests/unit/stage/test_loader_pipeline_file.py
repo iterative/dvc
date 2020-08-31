@@ -5,6 +5,7 @@ from itertools import chain
 import pytest
 
 from dvc.dvcfile import PIPELINE_FILE, Dvcfile
+from dvc.hash_info import HashInfo
 from dvc.stage import PipelineStage, create_stage
 from dvc.stage.loader import StageLoader
 from dvc.stage.serialize import split_params_deps
@@ -30,12 +31,12 @@ def test_fill_from_lock_deps_outs(dvc, lock_data):
     )
 
     for item in chain(stage.deps, stage.outs):
-        assert not item.checksum and not item.info
+        assert not item.checksum and not item.hash_info
 
     StageLoader.fill_from_lock(stage, lock_data)
 
-    assert stage.deps[0].info == {"md5": "foo_checksum"}
-    assert stage.outs[0].info == {"md5": "bar_checksum"}
+    assert stage.deps[0].hash_info == HashInfo("md5", "foo_checksum")
+    assert stage.outs[0].hash_info == HashInfo("md5", "bar_checksum")
 
 
 def test_fill_from_lock_params(dvc, lock_data):
@@ -64,12 +65,14 @@ def test_fill_from_lock_params(dvc, lock_data):
     params_deps = split_params_deps(stage)[0]
     assert set(params_deps[0].params) == {"lorem", "lorem.ipsum"}
     assert set(params_deps[1].params) == {"ipsum", "foobar"}
-    assert not params_deps[0].info
-    assert not params_deps[1].info
+    assert not params_deps[0].hash_info
+    assert not params_deps[1].hash_info
 
     StageLoader.fill_from_lock(stage, lock_data)
-    assert params_deps[0].info == lock_data["params"]["params.yaml"]
-    assert params_deps[1].info == lock_data["params"]["myparams.yaml"]
+    assert params_deps[0].hash_info.value == lock_data["params"]["params.yaml"]
+    assert (
+        params_deps[1].hash_info.value == lock_data["params"]["myparams.yaml"]
+    )
 
 
 def test_fill_from_lock_missing_params_section(dvc, lock_data):
@@ -83,7 +86,7 @@ def test_fill_from_lock_missing_params_section(dvc, lock_data):
     )
     params_deps = split_params_deps(stage)[0]
     StageLoader.fill_from_lock(stage, lock_data)
-    assert not params_deps[0].info and not params_deps[1].info
+    assert not params_deps[0].hash_info and not params_deps[1].hash_info
 
 
 def test_fill_from_lock_missing_checksums(dvc, lock_data):
@@ -97,8 +100,8 @@ def test_fill_from_lock_missing_checksums(dvc, lock_data):
 
     StageLoader.fill_from_lock(stage, lock_data)
 
-    assert stage.deps[0].info == {"md5": "foo_checksum"}
-    assert stage.outs[0].info == {"md5": "bar_checksum"}
+    assert stage.deps[0].hash_info == HashInfo("md5", "foo_checksum")
+    assert stage.outs[0].hash_info == HashInfo("md5", "bar_checksum")
     assert not stage.deps[1].checksum and not stage.outs[1].checksum
 
 
@@ -110,9 +113,7 @@ def test_fill_from_lock_use_appropriate_checksum(dvc, lock_data):
         deps=["s3://dvc-temp/foo"],
         outs=["bar"],
     )
-    lock_data["deps"] = [
-        {"path": "s3://dvc-temp/foo", "md5": "high five", "etag": "e-tag"}
-    ]
+    lock_data["deps"] = [{"path": "s3://dvc-temp/foo", "etag": "e-tag"}]
     StageLoader.fill_from_lock(stage, lock_data)
     assert stage.deps[0].checksum == "e-tag"
     assert stage.outs[0].checksum == "bar_checksum"
@@ -183,7 +184,7 @@ def test_load_stage_with_params(dvc, stage_data, lock_data):
     params, deps = split_params_deps(stage)
     assert deps[0].def_path == "foo" and stage.outs[0].def_path == "bar"
     assert params[0].def_path == "params.yaml"
-    assert params[0].info == {"lorem": "ipsum"}
+    assert params[0].hash_info == HashInfo("params", {"lorem": "ipsum"})
     assert deps[0].checksum == "foo_checksum"
     assert stage.outs[0].checksum == "bar_checksum"
 

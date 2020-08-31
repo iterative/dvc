@@ -13,6 +13,7 @@ from dvc.exceptions import (
     MergeError,
     RemoteCacheRequiredError,
 )
+from dvc.hash_info import HashInfo
 
 from ..tree.base import BaseTree
 
@@ -113,7 +114,7 @@ class BaseOutput:
         self.stage = stage
         self.repo = stage.repo if stage else None
         self.def_path = path
-        self.info = info
+        self.hash_info = HashInfo.from_dict(info)
         if tree:
             self.tree = tree
         else:
@@ -174,10 +175,13 @@ class BaseOutput:
 
     @property
     def checksum(self):
-        return self.info.get(self.tree.PARAM_CHECKSUM)
+        return self.hash_info.value
 
     def get_checksum(self):
-        return self.tree.get_hash(self.path_info).value
+        return self.get_hash().value
+
+    def get_hash(self):
+        return self.tree.get_hash(self.path_info)
 
     @property
     def is_dir_checksum(self):
@@ -186,9 +190,6 @@ class BaseOutput:
     @property
     def exists(self):
         return self.tree.exists(self.path_info)
-
-    def save_info(self):
-        return self.tree.save_info(self.path_info)
 
     def changed_checksum(self):
         return self.checksum != self.get_checksum()
@@ -267,7 +268,7 @@ class BaseOutput:
             self.verify_metric()
 
         if not self.use_cache:
-            self.info = self.save_info()
+            self.hash_info = self.get_hash()
             if not self.IS_DEPENDENCY:
                 logger.debug(
                     "Output '%s' doesn't use cache. Skipping saving.", self
@@ -280,15 +281,17 @@ class BaseOutput:
             logger.debug("Output '%s' didn't change. Skipping saving.", self)
             return
 
-        self.info = self.save_info()
+        self.hash_info = self.get_hash()
 
     def commit(self):
-        assert self.info
+        assert self.hash_info
         if self.use_cache:
-            self.cache.save(self.path_info, self.cache.tree, self.info)
+            self.cache.save(
+                self.path_info, self.cache.tree, self.hash_info.to_dict()
+            )
 
     def dumpd(self):
-        ret = copy(self.info)
+        ret = copy(self.hash_info.to_dict())
         ret[self.PARAM_PATH] = self.def_path
 
         if self.IS_DEPENDENCY:
@@ -337,7 +340,7 @@ class BaseOutput:
 
         return self.cache.checkout(
             self.path_info,
-            self.info,
+            self.hash_info.to_dict(),
             force=force,
             progress_callback=progress_callback,
             relink=relink,
@@ -535,11 +538,13 @@ class BaseOutput:
 
         if ancestor:
             self._check_can_merge(ancestor)
-            ancestor_info = ancestor.info
+            ancestor_info = ancestor.hash_info
         else:
             ancestor_info = None
 
         self._check_can_merge(self)
         self._check_can_merge(other)
 
-        self.info = self.cache.merge(ancestor_info, self.info, other.info)
+        self.hash_info = self.cache.merge(
+            ancestor_info, self.hash_info, other.hash_info
+        )

@@ -76,7 +76,7 @@ def test_uncached_outs_are_cached(tmp_dir, dvc, run_copy):
         name="copy-foo-bar",
     )
     with dvc.state:
-        stage.outs[0].info = stage.outs[0].save_info()
+        stage.outs[0].hash_info = stage.outs[0].get_hash()
     assert os.path.exists(relpath(stage.outs[0].cache_path))
 
 
