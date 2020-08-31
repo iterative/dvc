@@ -6,6 +6,7 @@ import pytest
 
 from dvc.cache import Cache
 from dvc.cache.base import DirCacheError
+from dvc.hash_info import HashInfo
 from dvc.main import main
 from dvc.utils import relpath
 from tests.basic_env import TestDir, TestDvc
@@ -52,14 +53,16 @@ class TestCacheLoadBadDirCache(TestDvc):
         )
         self.create(fname, "<clearly>not,json")
         with pytest.raises(DirCacheError):
-            self.dvc.cache.local.load_dir_cache(dir_hash)
+            self.dvc.cache.local.load_dir_cache(HashInfo("md5", dir_hash))
 
         dir_hash = "234.dir"
         fname = os.fspath(
             self.dvc.cache.local.tree.hash_to_path_info(dir_hash)
         )
         self.create(fname, '{"a": "b"}')
-        self._do_test(self.dvc.cache.local.load_dir_cache(dir_hash))
+        self._do_test(
+            self.dvc.cache.local.load_dir_cache(HashInfo("md5", dir_hash))
+        )
 
 
 class TestExternalCacheDir(TestDvc):

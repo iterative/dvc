@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+HASH_DIR_SUFFIX = ".dir"
+
 
 @dataclass
 class HashInfo:
@@ -18,3 +20,9 @@ class HashInfo:
 
     def to_dict(self):
         return {self.name: self.value} if self else {}
+
+    @property
+    def isdir(self):
+        if not self:
+            return False
+        return self.value.endswith(HASH_DIR_SUFFIX)

@@ -27,7 +27,7 @@ def test_cloud(tmp_dir, dvc, remote):  # pylint:disable=unused-argument
     (stage,) = tmp_dir.dvc_gen("foo", "foo")
     out = stage.outs[0]
     cache = out.cache_path
-    md5 = out.checksum
+    md5 = out.hash_info.value
     info = out.get_used_cache()
 
     (stage_dir,) = tmp_dir.dvc_gen(
@@ -41,7 +41,7 @@ def test_cloud(tmp_dir, dvc, remote):  # pylint:disable=unused-argument
     out_dir = stage_dir.outs[0]
     cache_dir = out_dir.cache_path
     name_dir = str(out_dir)
-    md5_dir = out_dir.checksum
+    md5_dir = out_dir.hash_info.value
     info_dir = NamedCache.make(out_dir.scheme, md5_dir, name_dir)
 
     with dvc.state:

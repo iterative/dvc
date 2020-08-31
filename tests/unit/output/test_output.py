@@ -84,9 +84,6 @@ def test_get_used_cache(exists, expected_message, mocker, caplog):
     mocker.patch.object(output, "use_cache", True)
     mocker.patch.object(stage, "is_repo_import", False)
     mocker.patch.object(
-        BaseOutput, "checksum", new_callable=mocker.PropertyMock
-    ).return_value = None
-    mocker.patch.object(
         BaseOutput, "exists", new_callable=mocker.PropertyMock
     ).return_value = exists
 

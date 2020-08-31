@@ -31,7 +31,7 @@ def test_fill_from_lock_deps_outs(dvc, lock_data):
     )
 
     for item in chain(stage.deps, stage.outs):
-        assert not item.checksum and not item.hash_info
+        assert not item.hash_info
 
     StageLoader.fill_from_lock(stage, lock_data)
 
@@ -102,7 +102,7 @@ def test_fill_from_lock_missing_checksums(dvc, lock_data):
 
     assert stage.deps[0].hash_info == HashInfo("md5", "foo_checksum")
     assert stage.outs[0].hash_info == HashInfo("md5", "bar_checksum")
-    assert not stage.deps[1].checksum and not stage.outs[1].checksum
+    assert not stage.deps[1].hash_info and not stage.outs[1].hash_info
 
 
 def test_fill_from_lock_use_appropriate_checksum(dvc, lock_data):
@@ -115,8 +115,8 @@ def test_fill_from_lock_use_appropriate_checksum(dvc, lock_data):
     )
     lock_data["deps"] = [{"path": "s3://dvc-temp/foo", "etag": "e-tag"}]
     StageLoader.fill_from_lock(stage, lock_data)
-    assert stage.deps[0].checksum == "e-tag"
-    assert stage.outs[0].checksum == "bar_checksum"
+    assert stage.deps[0].hash_info == HashInfo("etag", "e-tag")
+    assert stage.outs[0].hash_info == HashInfo("md5", "bar_checksum")
 
 
 def test_fill_from_lock_with_missing_sections(dvc, lock_data):
@@ -126,14 +126,14 @@ def test_fill_from_lock_with_missing_sections(dvc, lock_data):
     lock = deepcopy(lock_data)
     del lock["deps"]
     StageLoader.fill_from_lock(stage, lock)
-    assert not stage.deps[0].checksum
-    assert stage.outs[0].checksum == "bar_checksum"
+    assert not stage.deps[0].hash_info
+    assert stage.outs[0].hash_info == HashInfo("md5", "bar_checksum")
 
     lock = deepcopy(lock_data)
     del lock["outs"]
     StageLoader.fill_from_lock(stage, lock)
-    assert stage.deps[0].checksum == "foo_checksum"
-    assert not stage.outs[0].checksum
+    assert stage.deps[0].hash_info == HashInfo("md5", "foo_checksum")
+    assert not stage.outs[0].hash_info
 
 
 def test_fill_from_lock_empty_data(dvc):
@@ -141,9 +141,9 @@ def test_fill_from_lock_empty_data(dvc):
         PipelineStage, dvc, PIPELINE_FILE, deps=["foo"], outs=["bar"]
     )
     StageLoader.fill_from_lock(stage, None)
-    assert not stage.deps[0].checksum and not stage.outs[0].checksum
+    assert not stage.deps[0].hash_info and not stage.outs[0].hash_info
     StageLoader.fill_from_lock(stage, {})
-    assert not stage.deps[0].checksum and not stage.outs[0].checksum
+    assert not stage.deps[0].hash_info and not stage.outs[0].hash_info
 
 
 def test_load_stage(dvc, stage_data, lock_data):
@@ -155,9 +155,9 @@ def test_load_stage(dvc, stage_data, lock_data):
     assert stage.cmd == "command"
     assert stage.path == os.path.abspath(PIPELINE_FILE)
     assert stage.deps[0].def_path == "foo"
-    assert stage.deps[0].checksum == "foo_checksum"
+    assert stage.deps[0].hash_info == HashInfo("md5", "foo_checksum")
     assert stage.outs[0].def_path == "bar"
-    assert stage.outs[0].checksum == "bar_checksum"
+    assert stage.outs[0].hash_info == HashInfo("md5", "bar_checksum")
 
 
 def test_load_stage_outs_with_flags(dvc, stage_data, lock_data):
@@ -171,8 +171,8 @@ def test_load_stage_no_lock(dvc, stage_data):
     dvcfile = Dvcfile(dvc, PIPELINE_FILE)
     stage = StageLoader.load_stage(dvcfile, "stage-1", stage_data)
     assert stage.deps[0].def_path == "foo" and stage.outs[0].def_path == "bar"
-    assert not stage.deps[0].checksum
-    assert not stage.outs[0].checksum
+    assert not stage.deps[0].hash_info
+    assert not stage.outs[0].hash_info
 
 
 def test_load_stage_with_params(dvc, stage_data, lock_data):
@@ -185,8 +185,8 @@ def test_load_stage_with_params(dvc, stage_data, lock_data):
     assert deps[0].def_path == "foo" and stage.outs[0].def_path == "bar"
     assert params[0].def_path == "params.yaml"
     assert params[0].hash_info == HashInfo("params", {"lorem": "ipsum"})
-    assert deps[0].checksum == "foo_checksum"
-    assert stage.outs[0].checksum == "bar_checksum"
+    assert deps[0].hash_info == HashInfo("md5", "foo_checksum")
+    assert stage.outs[0].hash_info == HashInfo("md5", "bar_checksum")
 
 
 @pytest.mark.parametrize("typ", ["metrics", "plots"])
@@ -196,7 +196,7 @@ def test_load_stage_with_metrics_and_plots(dvc, stage_data, lock_data, typ):
     stage = StageLoader.load_stage(dvcfile, "stage-1", stage_data, lock_data)
 
     assert stage.outs[0].def_path == "bar"
-    assert stage.outs[0].checksum == "bar_checksum"
+    assert stage.outs[0].hash_info == HashInfo("md5", "bar_checksum")
 
 
 def test_load_changed_command(dvc, stage_data, lock_data):

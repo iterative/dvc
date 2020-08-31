@@ -163,7 +163,7 @@ class BaseOutput:
 
     @property
     def dir_cache(self):
-        return self.cache.get_dir_cache(self.checksum)
+        return self.cache.get_dir_cache(self.hash_info)
 
     @classmethod
     def supported(cls, url):
@@ -171,34 +171,29 @@ class BaseOutput:
 
     @property
     def cache_path(self):
-        return self.cache.tree.hash_to_path_info(self.checksum).url
-
-    @property
-    def checksum(self):
-        return self.hash_info.value
-
-    def get_checksum(self):
-        return self.get_hash().value
+        return self.cache.tree.hash_to_path_info(self.hash_info.value).url
 
     def get_hash(self):
         return self.tree.get_hash(self.path_info)
 
     @property
     def is_dir_checksum(self):
-        return self.tree.is_dir_hash(self.checksum)
+        return self.hash_info.isdir
 
     @property
     def exists(self):
         return self.tree.exists(self.path_info)
 
     def changed_checksum(self):
-        return self.checksum != self.get_checksum()
+        return self.hash_info != self.get_hash()
 
     def changed_cache(self, filter_info=None):
-        if not self.use_cache or not self.checksum:
+        if not self.use_cache or not self.hash_info:
             return True
 
-        return self.cache.changed_cache(self.checksum, filter_info=filter_info)
+        return self.cache.changed_cache(
+            self.hash_info, filter_info=filter_info
+        )
 
     def workspace_status(self):
         if not self.exists:
@@ -207,13 +202,13 @@ class BaseOutput:
         if self.changed_checksum():
             return {str(self): "modified"}
 
-        if not self.checksum:
+        if not self.hash_info:
             return {str(self): "new"}
 
         return {}
 
     def status(self):
-        if self.checksum and self.use_cache and self.changed_cache():
+        if self.hash_info and self.use_cache and self.changed_cache():
             return {str(self): "not in cache"}
 
         return self.workspace_status()
@@ -286,9 +281,7 @@ class BaseOutput:
     def commit(self):
         assert self.hash_info
         if self.use_cache:
-            self.cache.save(
-                self.path_info, self.cache.tree, self.hash_info.to_dict()
-            )
+            self.cache.save(self.path_info, self.cache.tree, self.hash_info)
 
     def dumpd(self):
         ret = copy(self.hash_info.to_dict())
@@ -340,7 +333,7 @@ class BaseOutput:
 
         return self.cache.checkout(
             self.path_info,
-            self.hash_info.to_dict(),
+            self.hash_info,
             force=force,
             progress_callback=progress_callback,
             relink=relink,
@@ -374,7 +367,7 @@ class BaseOutput:
             return 0
 
         return self.cache.get_files_number(
-            self.path_info, self.checksum, filter_info
+            self.path_info, self.hash_info, filter_info
         )
 
     def unprotect(self):
@@ -384,9 +377,9 @@ class BaseOutput:
     def get_dir_cache(self, **kwargs):
         if not self.is_dir_checksum:
             raise DvcException("cannot get dir cache for file checksum")
-        if self.cache.changed_cache_file(self.checksum):
+        if self.cache.changed_cache_file(self.hash_info):
             self.repo.cloud.pull(
-                NamedCache.make("local", self.checksum, str(self)),
+                NamedCache.make("local", self.hash_info.value, str(self)),
                 show_checksums=False,
                 **kwargs,
             )
@@ -421,7 +414,7 @@ class BaseOutput:
         except DvcException:
             logger.debug(f"failed to pull cache for '{self}'")
 
-        if self.cache.changed_cache_file(self.checksum):
+        if self.cache.changed_cache_file(self.hash_info):
             msg = (
                 "Missing cache for directory '{}'. "
                 "Cache for files inside will be lost. "
@@ -471,7 +464,7 @@ class BaseOutput:
             cache.external[dep.repo_pair].add(dep.def_path)
             return cache
 
-        if not self.checksum:
+        if not self.hash_info:
             msg = (
                 "Output '{}'({}) is missing version info. "
                 "Cache for it will not be collected. "
@@ -490,13 +483,13 @@ class BaseOutput:
             logger.warning(msg)
             return NamedCache()
 
-        ret = NamedCache.make(self.scheme, self.checksum, str(self))
+        ret = NamedCache.make(self.scheme, self.hash_info.value, str(self))
 
         if not self.is_dir_checksum:
             return ret
 
         ret.add_child_cache(
-            self.checksum, self.collect_used_dir_cache(**kwargs),
+            self.hash_info.value, self.collect_used_dir_cache(**kwargs),
         )
 
         return ret

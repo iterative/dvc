@@ -7,6 +7,7 @@ from functools import partial, wraps
 from funcy import cached_property, concat
 
 from dvc.exceptions import DownloadError, UploadError
+from dvc.hash_info import HashInfo
 from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
 
@@ -85,20 +86,19 @@ class LocalCache(CloudCache):
                 desc="Querying "
                 + ("cache in " + name if name else "local cache"),
             )
-            if not self.changed_cache_file(hash_)
+            if not self.changed_cache_file(
+                HashInfo(self.tree.PARAM_CHECKSUM, hash_)
+            )
         ]
 
     def already_cached(self, path_info):
         assert path_info.scheme in ["", "local"]
 
         current = self.tree.get_hash(path_info)
-
-        assert current.name == "md5"
-
         if not current:
             return False
 
-        return not self.changed_cache(current.value)
+        return not self.changed_cache(current)
 
     def _verify_link(self, path_info, link_type):
         if link_type == "hardlink" and self.tree.getsize(path_info) == 0:
