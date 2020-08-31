@@ -9,6 +9,7 @@ from typing import Iterable, Optional
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.command.metrics import DEFAULT_PRECISION
 from dvc.exceptions import DvcException, InvalidArgumentError
+from dvc.utils.flatten import flatten
 
 logger = logging.getLogger(__name__)
 
@@ -55,11 +56,9 @@ def _filter_names(
 
 
 def _update_names(names, items):
-    from flatten_json import flatten
-
     for name, item in items:
         if isinstance(item, dict):
-            item = flatten(item, ".")
+            item = flatten(item)
             names.update(item.keys())
         else:
             names.add(name)
@@ -134,8 +133,6 @@ def _format_time(timestamp):
 
 
 def _extend_row(row, names, items, precision):
-    from flatten_json import flatten
-
     def _round(val):
         if isinstance(val, float):
             return round(val, precision)
@@ -148,7 +145,7 @@ def _extend_row(row, names, items, precision):
 
     for fname, item in items:
         if isinstance(item, dict):
-            item = flatten(item, ".")
+            item = flatten(item)
         else:
             item = {fname: item}
         for name in names:

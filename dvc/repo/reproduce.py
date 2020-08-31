@@ -119,10 +119,10 @@ def reproduce(
 
 
 def _parse_params(path_params):
-    from flatten_json import unflatten
     from ruamel.yaml import YAMLError
 
     from dvc.dependency.param import ParamsDependency
+    from dvc.utils.flatten import unflatten
     from dvc.utils.serialize import loads_yaml
 
     ret = {}
@@ -141,7 +141,7 @@ def _parse_params(path_params):
                 )
         if not path:
             path = ParamsDependency.DEFAULT_PARAMS_FILE
-        ret[path] = unflatten(params, ".")
+        ret[path] = unflatten(params)
     return ret
 
 
