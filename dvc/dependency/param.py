@@ -6,6 +6,7 @@ from voluptuous import Any
 
 from dvc.dependency.local import LocalDependency
 from dvc.exceptions import DvcException
+from dvc.hash_info import HashInfo
 from dvc.utils.serialize import LOADERS, ParseError
 
 
@@ -31,7 +32,7 @@ class ParamsDependency(LocalDependency):
             else:
                 assert isinstance(params, dict)
                 self.params = list(params.keys())
-                info = params
+                info = {self.PARAM_PARAMS: params}
 
         super().__init__(
             stage,
@@ -40,46 +41,48 @@ class ParamsDependency(LocalDependency):
             info=info,
         )
 
+    def dumpd(self):
+        ret = super().dumpd()
+        if not self.hash_info:
+            ret[self.PARAM_PARAMS] = self.params
+        return ret
+
     def fill_values(self, values=None):
         """Load params values dynamically."""
         if not values:
             return
+        info = {}
         for param in self.params:
             if param in values:
-                self.info[param] = values[param]
+                info[param] = values[param]
+        self.hash_info = HashInfo(self.PARAM_PARAMS, info)
 
-    def save(self):
-        super().save()
-        self.info = self.save_info()
+    def workspace_status(self):
+        status = super().workspace_status()
 
-    def status(self):
-        status = super().status()
-
-        if status[str(self)] == "deleted":
+        if status.get(str(self)) == "deleted":
             return status
 
         status = defaultdict(dict)
-        info = self.read_params()
+        info = self.hash_info.value if self.hash_info else {}
+        actual = self.read_params()
         for param in self.params:
-            if param not in info.keys():
+            if param not in actual.keys():
                 st = "deleted"
-            elif param not in self.info:
+            elif param not in info:
                 st = "new"
-            elif info[param] != self.info[param]:
+            elif actual[param] != info[param]:
                 st = "modified"
             else:
-                assert info[param] == self.info[param]
+                assert actual[param] == info[param]
                 continue
 
             status[str(self)][param] = st
 
         return status
 
-    def dumpd(self):
-        return {
-            self.PARAM_PATH: self.def_path,
-            self.PARAM_PARAMS: self.info or self.params,
-        }
+    def status(self):
+        return self.workspace_status()
 
     def read_params(self):
         if not self.exists:
@@ -102,7 +105,7 @@ class ParamsDependency(LocalDependency):
                 pass
         return ret
 
-    def save_info(self):
+    def get_hash(self):
         info = self.read_params()
 
         missing_params = set(self.params) - set(info.keys())
@@ -113,4 +116,4 @@ class ParamsDependency(LocalDependency):
                 )
             )
 
-        return info
+        return HashInfo(self.PARAM_PARAMS, info)

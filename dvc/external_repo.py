@@ -138,13 +138,13 @@ class BaseExternalRepo:
         def download_update(result):
             download_results.append(result)
 
-        save_infos = []
+        hash_infos = []
         for path in paths:
             if not self.repo_tree.exists(path):
                 raise PathMissingError(path, self.url)
-            hash_info = self.repo_tree.save_info(
+            hash_info = self.repo_tree.get_hash(
                 path, download_callback=download_update
-            )
+            ).to_dict()
             self.local_cache.save(
                 path,
                 self.repo_tree,
@@ -152,9 +152,9 @@ class BaseExternalRepo:
                 save_link=False,
                 download_callback=download_update,
             )
-            save_infos.append(hash_info)
+            hash_infos.append(hash_info)
 
-        return sum(download_results), failed, save_infos
+        return sum(download_results), failed, hash_infos
 
     def get_external(self, path, dest):
         """Convenience wrapper for fetch_external and checkout."""

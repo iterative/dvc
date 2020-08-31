@@ -49,12 +49,12 @@ class RepoDependency(LocalDependency):
         rev = (d.get("rev_lock") if locked else None) or d.get("rev")
         return external_repo(d["url"], rev=rev)
 
-    def _get_checksum(self, locked=True):
+    def _get_hash(self, locked=True):
         from dvc.tree.repo import RepoTree
 
         with self._make_repo(locked=locked) as repo:
             try:
-                return repo.find_out_by_relpath(self.def_path).info["md5"]
+                return repo.find_out_by_relpath(self.def_path).hash_info
             except OutputNotFoundError:
                 path = PathInfo(os.path.join(repo.root_dir, self.def_path))
 
@@ -64,16 +64,14 @@ class RepoDependency(LocalDependency):
 
                 # We are polluting our repo cache with some dir listing here
                 if tree.isdir(path):
-                    return self.repo.cache.local.tree.get_hash(
-                        path, tree=tree
-                    ).value
+                    return self.repo.cache.local.tree.get_hash(path, tree=tree)
                 return tree.get_file_hash(path)
 
     def workspace_status(self):
-        current_checksum = self._get_checksum(locked=True)
-        updated_checksum = self._get_checksum(locked=False)
+        current = self._get_hash(locked=True)
+        updated = self._get_hash(locked=False)
 
-        if current_checksum != updated_checksum:
+        if current != updated:
             return {str(self): "update available"}
 
         return {}

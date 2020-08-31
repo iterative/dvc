@@ -39,7 +39,7 @@ def test_load_from_pipeline(dvc, out_type, type_test_func):
         assert out.def_path == f"file{i}"
         assert out.use_cache == (out.def_path in cached_outs)
         assert out.persist == (out.def_path in persisted_outs)
-        assert out.info == {}
+        assert not out.hash_info
         assert type_test_func(out)
 
 
@@ -57,7 +57,7 @@ def test_load_from_pipeline_accumulates_flag(dvc):
     for out in outs:
         assert isinstance(out, LocalOutput)
         assert not out.plot and not out.metric
-        assert out.info == {}
+        assert not out.hash_info
 
     assert outs[0].use_cache and not outs[0].persist
     assert not outs[1].use_cache and outs[1].persist
@@ -71,7 +71,7 @@ def test_load_remote_files_from_pipeline(dvc):
     assert isinstance(out, S3Output)
     assert not out.plot and out.metric
     assert not out.persist
-    assert out.info == {}
+    assert not out.hash_info
 
 
 @pytest.mark.parametrize("typ", [None, "", "illegal"])

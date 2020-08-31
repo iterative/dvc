@@ -6,6 +6,7 @@ from itertools import chain
 from funcy import get_in, lcat, project
 
 from dvc import dependency, output
+from dvc.hash_info import HashInfo
 
 from . import PipelineStage, Stage, loads_from
 from .exceptions import StageNameUnspecified, StageNotFound
@@ -42,9 +43,10 @@ class StageLoader(Mapping):
             if isinstance(item, dependency.ParamsDependency):
                 item.fill_values(get_in(lock_data, [stage.PARAM_PARAMS, path]))
                 continue
-            item.info = get_in(checksums, [key, path], {})
-            item.info = item.info.copy()
-            item.info.pop("path", None)
+            info = get_in(checksums, [key, path], {})
+            info = info.copy()
+            info.pop("path", None)
+            item.hash_info = HashInfo.from_dict(info)
 
     @classmethod
     def load_stage(cls, dvcfile, name, stage_data, lock_data=None):

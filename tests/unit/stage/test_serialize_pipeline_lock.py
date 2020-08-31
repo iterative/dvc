@@ -4,6 +4,7 @@ import pytest
 from voluptuous import Schema as _Schema
 
 from dvc.dvcfile import PIPELINE_FILE
+from dvc.hash_info import HashInfo
 from dvc.schema import LOCK_FILE_STAGE_SCHEMA, LOCKFILE_SCHEMA
 from dvc.stage import PipelineStage, create_stage
 from dvc.stage.serialize import DEFAULT_PARAMS_FILE, to_lockfile
@@ -30,7 +31,7 @@ def test_lock(dvc):
 
 def test_lock_deps(dvc):
     stage = create_stage(PipelineStage, dvc, deps=["input"], **kwargs)
-    stage.deps[0].info = {"md5": "md-five"}
+    stage.deps[0].hash_info = HashInfo("md5", "md-five")
     assert to_single_stage_lockfile(stage) == OrderedDict(
         [
             ("cmd", "command"),
@@ -43,8 +44,8 @@ def test_lock_deps_order(dvc):
     stage = create_stage(
         PipelineStage, dvc, deps=["input1", "input0"], **kwargs
     )
-    stage.deps[0].info = {"md5": "md-one1"}
-    stage.deps[1].info = {"md5": "md-zer0"}
+    stage.deps[0].hash_info = HashInfo("md5", "md-one1")
+    stage.deps[1].hash_info = HashInfo("md5", "md-zer0")
     assert to_single_stage_lockfile(stage) == OrderedDict(
         [
             ("cmd", "command"),
@@ -63,7 +64,9 @@ def test_lock_params(dvc):
     stage = create_stage(
         PipelineStage, dvc, params=["lorem.ipsum", "abc"], **kwargs
     )
-    stage.deps[0].info = {"lorem.ipsum": {"lorem1": 1, "lorem2": 2}, "abc": 3}
+    stage.deps[0].hash_info = HashInfo(
+        "params", {"lorem.ipsum": {"lorem1": 1, "lorem2": 2}, "abc": 3}
+    )
     assert to_single_stage_lockfile(stage)["params"][
         DEFAULT_PARAMS_FILE
     ] == OrderedDict([("abc", 3), ("lorem.ipsum", {"lorem1": 1, "lorem2": 2})])
@@ -81,9 +84,15 @@ def test_lock_params_file_sorted(dvc):
         ],
         **kwargs
     )
-    stage.deps[0].info = {"lorem.ipsum": {"lorem1": 1, "lorem2": 2}, "abc": 3}
-    stage.deps[1].info = {"foo": ["f", "o", "o"], "foobar": "foobar"}
-    stage.deps[2].info = {"bar": ["b", "a", "r"], "barr": "barr"}
+    stage.deps[0].hash_info = HashInfo(
+        "params", {"lorem.ipsum": {"lorem1": 1, "lorem2": 2}, "abc": 3}
+    )
+    stage.deps[1].hash_info = HashInfo(
+        "params", {"foo": ["f", "o", "o"], "foobar": "foobar"}
+    )
+    stage.deps[2].hash_info = HashInfo(
+        "params", {"bar": ["b", "a", "r"], "barr": "barr"}
+    )
     assert to_single_stage_lockfile(stage)["params"] == OrderedDict(
         [
             (
@@ -114,7 +123,7 @@ def test_lock_params_no_values_filled(dvc):
 @pytest.mark.parametrize("typ", ["plots", "metrics", "outs"])
 def test_lock_outs(dvc, typ):
     stage = create_stage(PipelineStage, dvc, **{typ: ["input"]}, **kwargs)
-    stage.outs[0].info = {"md5": "md-five"}
+    stage.outs[0].hash_info = HashInfo("md5", "md-five")
     assert to_single_stage_lockfile(stage) == OrderedDict(
         [
             ("cmd", "command"),
@@ -128,8 +137,8 @@ def test_lock_outs_order(dvc, typ):
     stage = create_stage(
         PipelineStage, dvc, **{typ: ["input1", "input0"]}, **kwargs
     )
-    stage.outs[0].info = {"md5": "md-one1"}
-    stage.outs[1].info = {"md5": "md-zer0"}
+    stage.outs[0].hash_info = HashInfo("md5", "md-one1")
+    stage.outs[1].hash_info = HashInfo("md5", "md-zer0")
     assert to_single_stage_lockfile(stage) == OrderedDict(
         [
             ("cmd", "command"),
@@ -148,7 +157,7 @@ def test_dump_nondefault_hash(dvc):
     stage = create_stage(
         PipelineStage, dvc, deps=["s3://dvc-temp/file"], **kwargs
     )
-    stage.deps[0].info = {"md5": "value"}
+    stage.deps[0].hash_info = HashInfo("md5", "value")
     assert to_single_stage_lockfile(stage) == OrderedDict(
         [
             ("cmd", "command"),
@@ -157,30 +166,6 @@ def test_dump_nondefault_hash(dvc):
                 [
                     OrderedDict(
                         [("path", "s3://dvc-temp/file"), ("md5", "value")]
-                    )
-                ],
-            ),
-        ]
-    )
-
-
-def test_dump_multiple_hashes(dvc):
-    stage = create_stage(
-        PipelineStage, dvc, deps=["s3://dvc-temp/file"], **kwargs
-    )
-    stage.deps[0].info = {"etag": "etag-value", "md5": "md5-value"}
-    assert to_single_stage_lockfile(stage) == OrderedDict(
-        [
-            ("cmd", "command"),
-            (
-                "deps",
-                [
-                    OrderedDict(
-                        [
-                            ("path", "s3://dvc-temp/file"),
-                            ("etag", "etag-value"),
-                            ("md5", "md5-value"),
-                        ]
                     )
                 ],
             ),
@@ -199,9 +184,9 @@ def test_order(dvc):
     )
     params, deps = split_params_deps(stage)
 
-    deps[0].info = {"md5": "md-five"}
-    params[0].info = {"foo-param": "value"}
-    stage.outs[0].info = {"md5": "md5-output"}
+    deps[0].hash_info = HashInfo("md5", "md-five")
+    params[0].hash_info = HashInfo("params", {"foo-param": "value"})
+    stage.outs[0].hash_info = HashInfo("md5", "md5-output")
 
     assert to_single_stage_lockfile(stage) == OrderedDict(
         [
@@ -215,7 +200,7 @@ def test_order(dvc):
 
 def test_to_lockfile(dvc):
     stage = create_stage(PipelineStage, dvc, deps=["input"], **kwargs)
-    stage.deps[0].info = {"md5": "md-five"}
+    stage.deps[0].hash_info = HashInfo("md5", "md-five")
     entry = to_lockfile(stage)
     assert len(entry) == 1
     _Schema(LOCKFILE_SCHEMA)(entry)

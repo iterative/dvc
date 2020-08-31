@@ -226,7 +226,7 @@ def test_repotree_cache_save(tmp_dir, dvc, scm, erepo_dir, local_cloud):
         cache = dvc.cache.local
         with cache.tree.state:
             path_info = PathInfo(erepo_dir / "dir")
-            hash_info = cache.tree.save_info(path_info)
+            hash_info = cache.tree.get_hash(path_info).to_dict()
             cache.save(path_info, tree, hash_info)
 
     for hash_ in expected:

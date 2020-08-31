@@ -32,17 +32,17 @@ def test_loads_params(dvc):
     assert isinstance(deps[0], ParamsDependency)
     assert deps[0].def_path == ParamsDependency.DEFAULT_PARAMS_FILE
     assert deps[0].params == ["foo", "bar"]
-    assert deps[0].info == {}
+    assert not deps[0].hash_info
 
     assert isinstance(deps[1], ParamsDependency)
     assert deps[1].def_path == "a_file"
     assert deps[1].params == ["baz", "bat", "foobar"]
-    assert deps[1].info == {}
+    assert not deps[1].hash_info
 
     assert isinstance(deps[2], ParamsDependency)
     assert deps[2].def_path == "b_file"
     assert deps[2].params == ["cat"]
-    assert deps[2].info == {}
+    assert not deps[2].hash_info
 
 
 @pytest.mark.parametrize("params", [[3], [{"b_file": "cat"}]])
@@ -58,7 +58,7 @@ def test_loadd_from(dvc):
     assert isinstance(deps[0], ParamsDependency)
     assert deps[0].def_path == ParamsDependency.DEFAULT_PARAMS_FILE
     assert deps[0].params == list(PARAMS.keys())
-    assert deps[0].info == PARAMS
+    assert deps[0].hash_info.value == PARAMS
 
 
 def test_dumpd_with_info(dvc):
@@ -119,17 +119,17 @@ def test_read_params_toml(tmp_dir, dvc):
     assert dep.read_params() == {"some.path.foo": ["val1", "val2"]}
 
 
-def test_save_info_missing_config(dvc):
+def test_get_hash_missing_config(dvc):
     dep = ParamsDependency(Stage(dvc), None, ["foo"])
     with pytest.raises(MissingParamsError):
-        dep.save_info()
+        dep.get_hash()
 
 
-def test_save_info_missing_param(tmp_dir, dvc):
+def test_get_hash_missing_param(tmp_dir, dvc):
     tmp_dir.gen(DEFAULT_PARAMS_FILE, "bar: baz")
     dep = ParamsDependency(Stage(dvc), None, ["foo"])
     with pytest.raises(MissingParamsError):
-        dep.save_info()
+        dep.get_hash()
 
 
 @pytest.mark.regression_4184
