@@ -29,10 +29,10 @@ def _filter_names(
                 f" --exclude-{label}"
             )
 
-    names = {tuple(name.split(".")) for name in names}
+    names = [tuple(name.split(".")) for name in names]
 
     def _filter(filters, update_func):
-        filters = {tuple(name.split(".")) for name in filters}
+        filters = [tuple(name.split(".")) for name in filters]
         for length, groups in groupby(filters, len):
             for group in groups:
                 matches = [name for name in names if name[:length] == group]
@@ -41,18 +41,18 @@ def _filter_names(
                     raise InvalidArgumentError(
                         f"'{name}' does not match any known {label}"
                     )
-                update_func(matches)
+                update_func({match: None for match in matches})
 
     if include:
-        ret = set()
+        ret = OrderedDict()
         _filter(include, ret.update)
     else:
-        ret = set(names)
+        ret = OrderedDict({name: None for name in names})
 
     if exclude:
         _filter(exclude, ret.difference_update)
 
-    return {".".join(name) for name in ret}
+    return [".".join(name) for name in ret]
 
 
 def _update_names(names, items):
@@ -61,7 +61,7 @@ def _update_names(names, items):
             item = flatten(item)
             names.update(item.keys())
         else:
-            names.add(name)
+            names[name] = None
 
 
 def _collect_names(all_experiments, **kwargs):
@@ -74,19 +74,19 @@ def _collect_names(all_experiments, **kwargs):
             _update_names(param_names, exp.get("params", {}).items())
 
     metric_names = _filter_names(
-        metric_names,
+        sorted(metric_names),
         "metrics",
         kwargs.get("include_metrics"),
         kwargs.get("exclude_metrics"),
     )
     param_names = _filter_names(
-        param_names,
+        sorted(param_names),
         "params",
         kwargs.get("include_params"),
         kwargs.get("exclude_params"),
     )
 
-    return sorted(metric_names), sorted(param_names)
+    return metric_names, param_names
 
 
 def _collect_rows(
