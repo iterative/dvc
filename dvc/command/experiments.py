@@ -29,10 +29,10 @@ def _filter_names(
                 f" --exclude-{label}"
             )
 
-    names = {tuple(name.split(".")) for name in names}
+    names = [tuple(name.split(".")) for name in names]
 
     def _filter(filters, update_func):
-        filters = {tuple(name.split(".")) for name in filters}
+        filters = [tuple(name.split(".")) for name in filters]
         for length, groups in groupby(filters, len):
             for group in groups:
                 matches = [name for name in names if name[:length] == group]
@@ -41,18 +41,18 @@ def _filter_names(
                     raise InvalidArgumentError(
                         f"'{name}' does not match any known {label}"
                     )
-                update_func(matches)
+                update_func({match: None for match in matches})
 
     if include:
-        ret = set()
+        ret = OrderedDict()
         _filter(include, ret.update)
     else:
-        ret = set(names)
+        ret = OrderedDict({name: None for name in names})
 
     if exclude:
         _filter(exclude, ret.difference_update)
 
-    return {".".join(name) for name in ret}
+    return [".".join(name) for name in ret]
 
 
 def _update_names(names, items):
@@ -61,7 +61,7 @@ def _update_names(names, items):
             item = flatten(item)
             names.update(item.keys())
         else:
-            names.add(name)
+            names[name] = None
 
 
 def _collect_names(all_experiments, **kwargs):
@@ -74,19 +74,19 @@ def _collect_names(all_experiments, **kwargs):
             _update_names(param_names, exp.get("params", {}).items())
 
     metric_names = _filter_names(
-        metric_names,
+        sorted(metric_names),
         "metrics",
         kwargs.get("include_metrics"),
         kwargs.get("exclude_metrics"),
     )
     param_names = _filter_names(
-        param_names,
+        sorted(param_names),
         "params",
         kwargs.get("include_params"),
         kwargs.get("exclude_params"),
     )
 
-    return sorted(metric_names), sorted(param_names)
+    return metric_names, param_names
 
 
 def _collect_rows(
@@ -96,7 +96,19 @@ def _collect_rows(
     param_names,
     precision=DEFAULT_PRECISION,
     no_timestamp=False,
+    sort_by=None,
+    sort_order=None,
 ):
+    if sort_by:
+        if sort_by in metric_names:
+            sort_type = "metrics"
+        elif sort_by in param_names:
+            sort_type = "params"
+        else:
+            raise InvalidArgumentError(f"Unknown sort column '{sort_by}'")
+        reverse = sort_order == "desc"
+        experiments = _sort_exp(experiments, sort_by, sort_type, reverse)
+
     for i, (rev, exp) in enumerate(experiments.items()):
         row = []
         style = None
@@ -120,6 +132,28 @@ def _collect_rows(
         _extend_row(row, param_names, exp.get("params", {}).items(), precision)
 
         yield row, style
+
+
+def _sort_exp(experiments, sort_by, typ, reverse):
+    if "baseline" in experiments:
+        ret = OrderedDict({"baseline": experiments.pop("baseline")})
+    else:
+        ret = OrderedDict()
+
+    def _sort(item):
+        _, exp = item
+        for fname, item in exp.get(typ, {}).items():
+            if isinstance(item, dict):
+                item = flatten(item)
+            else:
+                item = {fname: item}
+            if sort_by in item:
+                val = item[sort_by]
+                return (val is None, val)
+        return (True, None)
+
+    ret.update(sorted(experiments.items(), key=_sort, reverse=reverse))
+    return ret
 
 
 def _format_time(timestamp):
@@ -241,6 +275,8 @@ class CmdExperimentsShow(CmdBase):
                 include_params=self.args.include_params,
                 exclude_params=self.args.exclude_params,
                 no_timestamp=self.args.no_timestamp,
+                sort_by=self.args.sort_by,
+                sort_order=self.args.sort_order,
             )
 
             if not self.args.no_pager:
@@ -417,6 +453,17 @@ def add_parser(subparsers, parent_parser):
         default=[],
         help="Exclude the specified params from output table.",
         metavar="<params_list>",
+    )
+    experiments_show_parser.add_argument(
+        "--sort-by",
+        help="Sort related experiments by the specified metric or param.",
+        metavar="<metric/param>",
+    )
+    experiments_show_parser.add_argument(
+        "--sort-order",
+        help="Sort order to use with --sort-by.",
+        choices=("asc", "desc"),
+        default="asc",
     )
     experiments_show_parser.add_argument(
         "--no-timestamp",
