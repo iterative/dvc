@@ -149,10 +149,8 @@ def _sort_exp(experiments, sort_by, typ, reverse):
                 item = {fname: item}
             if sort_by in item:
                 val = item[sort_by]
-                break
-        else:
-            val = None
-        return (val is None, val)
+                return (val is None, val)
+        return (True, None)
 
     ret.update(sorted(experiments.items(), key=_sort, reverse=reverse))
     return ret
