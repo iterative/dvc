@@ -182,7 +182,7 @@ def test_isdvc(tmp_dir, dvc):
 
 
 def make_subrepo(dir_, scm, config=None):
-    dir_.mkdir(parents=True)
+    dir_.mkdir(parents=True, exist_ok=True)
     with dir_.chdir():
         dir_.scm = scm
         dir_.init(dvc=True, subdir=True)
@@ -398,3 +398,54 @@ def test_get_hash_cached_granular(tmp_dir, dvc, mocker):
         "md5", "8d777f385d3dfec8815d20f7496026dc",
     )
     assert dvc_tree_spy.called
+
+
+@pytest.mark.parametrize("traverse_subrepos", [True, False])
+def test_walk_nested_subrepos(tmp_dir, dvc, scm, traverse_subrepos):
+    # generate a dvc and fs structure, with suffix based on repo's basename
+    def fs_structure(suffix):
+        return {
+            f"foo-{suffix}": f"foo-{suffix}",
+            f"dir-{suffix}": {f"bar-{suffix}": f"bar-{suffix}"},
+        }
+
+    def dvc_structure(suffix):
+        return {
+            f"lorem-{suffix}": f"lorem-{suffix}",
+            f"dvc-{suffix}": {f"ipsum-{suffix}": f"ipsum-{suffix}"},
+        }
+
+    paths = ["subrepo1", "subrepo2", "subrepo1/subrepo3"]
+    subrepos = [tmp_dir / path for path in paths]
+    for repo_dir in subrepos:
+        make_subrepo(repo_dir, scm)
+
+    extras = {".dvcignore", ".gitignore"}  # these files are always there
+    expected = {}
+    for repo_dir in subrepos + [tmp_dir]:
+        base = os.path.basename(repo_dir)
+        scm_files = fs_structure(base)
+        dvc_files = dvc_structure(base)
+        with repo_dir.chdir():
+            repo_dir.scm_gen(scm_files, commit=f"git add in {repo_dir}")
+            repo_dir.dvc_gen(dvc_files, commit=f"dvc add in {repo_dir}")
+
+        if traverse_subrepos or repo_dir == tmp_dir:
+            expected[str(repo_dir)] = set(
+                scm_files.keys() | dvc_files.keys() | extras
+            )
+            # files inside a dvc directory
+            expected[str(repo_dir / f"dvc-{base}")] = {f"ipsum-{base}"}
+            # files inside a git directory
+            expected[str(repo_dir / f"dir-{base}")] = {f"bar-{base}"}
+
+    if traverse_subrepos:
+        # update subrepos
+        expected[str(tmp_dir)].update(["subrepo1", "subrepo2"])
+        expected[str(tmp_dir / "subrepo1")].add("subrepo3")
+
+    actual = {}
+    tree = RepoTree(dvc, subrepos=traverse_subrepos)
+    for root, dirs, files in tree.walk(str(tmp_dir)):
+        actual[root] = set(dirs + files)
+    assert expected == actual
