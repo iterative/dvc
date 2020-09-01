@@ -3,6 +3,7 @@ from uuid import uuid4
 
 import pytest
 
+from dvc.cache import Cache
 from dvc.dependency.base import DependencyDoesNotExistError
 from dvc.main import main
 from dvc.stage import Stage
@@ -141,28 +142,59 @@ def test_import_url(tmp_dir, dvc, workspace):
 
 
 @pytest.mark.parametrize(
-    "workspace",
+    "workspace, stage_md5, dir_md5",
     [
-        pytest.lazy_fixture("local_cloud"),
-        pytest.lazy_fixture("s3"),
-        pytest.lazy_fixture("gs"),
-        pytest.lazy_fixture("hdfs"),
+        (
+            pytest.lazy_fixture("local_cloud"),
+            "dc24e1271084ee317ac3c2656fb8812b",
+            "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
+        ),
+        (
+            pytest.lazy_fixture("s3"),
+            "2aa17f8daa26996b3f7a4cf8888ac9ac",
+            "ec602a6ba97b2dd07bd6d2cd89674a60.dir",
+        ),
+        (pytest.lazy_fixture("gs"), "fixme", "fixme",),
+        (
+            pytest.lazy_fixture("hdfs"),
+            "ec0943f83357f702033c98e70b853c8c",
+            "e6dcd267966dc628d732874f94ef4280.dir",
+        ),
         pytest.param(
             pytest.lazy_fixture("ssh"),
+            "dc24e1271084ee317ac3c2656fb8812b",
+            "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
             marks=pytest.mark.skipif(
                 os.name == "nt", reason="disabled on windows"
             ),
         ),
     ],
-    indirect=True,
+    indirect=["workspace"],
 )
-def test_import_url_dir(tmp_dir, dvc, workspace):
+def test_import_url_dir(tmp_dir, dvc, workspace, stage_md5, dir_md5):
     workspace.gen({"dir": {"file": "file", "subdir": {"subfile": "subfile"}}})
+
+    # remove external cache to make sure that we don't need it to import dirs
+    with dvc.config.edit() as conf:
+        del conf["cache"]
+    dvc.cache = Cache(dvc)
+
     assert not (tmp_dir / "dir").exists()  # sanity check
     dvc.imp_url("remote://workspace/dir")
     assert set(os.listdir(tmp_dir / "dir")) == {"file", "subdir"}
     assert (tmp_dir / "dir" / "file").read_text() == "file"
     assert list(os.listdir(tmp_dir / "dir" / "subdir")) == ["subfile"]
     assert (tmp_dir / "dir" / "subdir" / "subfile").read_text() == "subfile"
+
+    assert (tmp_dir / "dir.dvc").read_text() == (
+        f"md5: {stage_md5}\n"
+        "frozen: true\n"
+        "deps:\n"
+        f"- md5: {dir_md5}\n"
+        "  path: remote://workspace/dir\n"
+        "outs:\n"
+        "- md5: b6dcab6ccd17ca0a8bf4a215a37d14cc.dir\n"
+        "  path: dir\n"
+    )
 
     assert dvc.status() == {}
