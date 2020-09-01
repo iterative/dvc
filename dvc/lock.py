@@ -2,17 +2,17 @@
 
 import hashlib
 import os
-import time
 from datetime import timedelta
 
 import flufl.lock
 import zc.lockfile
+from funcy import retry
 
 from dvc.exceptions import DvcException
 from dvc.progress import Tqdm
 from dvc.utils import format_link
 
-DEFAULT_TIMEOUT = 5
+DEFAULT_TIMEOUT = 3
 
 FAILED_TO_LOCK_MESSAGE = (
     "cannot perform the command because another DVC process seems to be "
@@ -56,13 +56,10 @@ class Lock:
             raise LockError(FAILED_TO_LOCK_MESSAGE)
 
     def lock(self):
-        try:
-            self._do_lock()
-            return
-        except LockError:
-            time.sleep(DEFAULT_TIMEOUT)
-
-        self._do_lock()
+        retries = 6
+        delay = DEFAULT_TIMEOUT / retries
+        lock_retry = retry(retries, LockError, timeout=delay)(self._do_lock)
+        lock_retry()
 
     def unlock(self):
         self._lock.close()
