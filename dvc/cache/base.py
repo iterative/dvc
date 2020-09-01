@@ -1,6 +1,7 @@
 import json
 import logging
 from copy import copy
+from operator import itemgetter
 
 from shortuuid import uuid
 
@@ -255,10 +256,52 @@ class CloudCache:
         self.cache_type_confirmed = True
         return self.cache_types[0] == "copy"
 
+    def _get_dir_info_hash(self, dir_info):
+        import tempfile
+
+        from dvc.path_info import PathInfo
+        from dvc.utils import tmp_fname
+
+        # Sorting the list by path to ensure reproducibility
+        dir_info = sorted(dir_info, key=itemgetter(self.tree.PARAM_RELPATH))
+
+        tmp = tempfile.NamedTemporaryFile(delete=False).name
+        with open(tmp, "w+") as fobj:
+            json.dump(dir_info, fobj, sort_keys=True)
+
+        from_info = PathInfo(tmp)
+        to_info = self.tree.path_info / tmp_fname("")
+        self.tree.upload(from_info, to_info, no_progress_bar=True)
+
+        hash_info = self.tree.get_hash(to_info)
+        hash_info.value += self.tree.CHECKSUM_DIR_SUFFIX
+        hash_info.dir_info = dir_info
+
+        return hash_info, to_info
+
+    def save_dir_info(self, dir_info, hash_info=None):
+        if hash_info and not self.changed_cache_file(hash_info):
+            return hash_info
+
+        hi, tmp_info = self._get_dir_info_hash(dir_info)
+        if hash_info:
+            assert hi == hash_info
+
+        new_info = self.tree.hash_to_path_info(hi.value)
+        if self.changed_cache_file(hi):
+            self.tree.makedirs(new_info.parent)
+            self.tree.move(tmp_info, new_info, mode=self.CACHE_MODE)
+
+        self.tree.state.save(new_info, hi.value)
+
+        return hi
+
     def _save_dir(self, path_info, tree, hash_info, save_link=True, **kwargs):
-        dir_info = self.get_dir_cache(hash_info)
+        if not hash_info.dir_info:
+            hash_info.dir_info = tree.cache.get_dir_cache(hash_info)
+        hi = self.save_dir_info(hash_info.dir_info, hash_info)
         for entry in Tqdm(
-            dir_info, desc="Saving " + path_info.name, unit="file"
+            hi.dir_info, desc="Saving " + path_info.name, unit="file"
         ):
             entry_info = path_info / entry[self.tree.PARAM_RELPATH]
             entry_hash = HashInfo(
@@ -271,10 +314,10 @@ class CloudCache:
         if save_link:
             self.tree.state.save_link(path_info)
         if self.tree.exists(path_info):
-            self.tree.state.save(path_info, hash_info.value)
+            self.tree.state.save(path_info, hi.value)
 
-        cache_info = self.tree.hash_to_path_info(hash_info.value)
-        self.tree.state.save(cache_info, hash_info.value)
+        cache_info = self.tree.hash_to_path_info(hi.value)
+        self.tree.state.save(cache_info, hi.value)
 
     def save(self, path_info, tree, hash_info, save_link=True, **kwargs):
         if path_info.scheme != self.tree.scheme:
@@ -602,8 +645,6 @@ class CloudCache:
         return result
 
     def _merge_dirs(self, ancestor_info, our_info, their_info):
-        from operator import itemgetter
-
         from dictdiffer import patch
 
         ancestor = self._to_dict(ancestor_info)
@@ -641,4 +682,12 @@ class CloudCache:
         their = self.get_dir_cache(their_info)
 
         merged = self._merge_dirs(ancestor, our, their)
-        return self.tree.save_dir_info(merged)
+        return self.save_dir_info(merged)
+
+    def get_hash(self, tree, path_info):
+        hash_info = tree.get_hash(path_info)
+        if not hash_info.isdir:
+            assert hash_info.name == self.tree.PARAM_CHECKSUM
+            return hash_info
+
+        return self.save_dir_info(hash_info.dir_info, hash_info)

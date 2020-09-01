@@ -391,12 +391,13 @@ def test_get_hash_cached_granular(tmp_dir, dvc, mocker):
     tree = RepoTree(dvc, fetch=True)
     dvc_tree_spy = mocker.spy(tree._dvctrees[dvc.root_dir], "get_file_hash")
     subdir = PathInfo(tmp_dir) / "dir" / "subdir"
-    assert tree.get_hash(subdir) == HashInfo(
-        "md5", "af314506f1622d107e0ed3f14ec1a3b5.dir",
-    )
-    assert tree.get_hash(subdir / "data") == HashInfo(
-        "md5", "8d777f385d3dfec8815d20f7496026dc",
-    )
+    with dvc.state:
+        assert tree.get_hash(subdir) == HashInfo(
+            "md5", "af314506f1622d107e0ed3f14ec1a3b5.dir",
+        )
+        assert tree.get_hash(subdir / "data") == HashInfo(
+            "md5", "8d777f385d3dfec8815d20f7496026dc",
+        )
     assert dvc_tree_spy.called
 
 

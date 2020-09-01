@@ -230,9 +230,10 @@ def test_get_hash_granular(tmp_dir, dvc):
     )
     tree = DvcTree(dvc, fetch=True)
     subdir = PathInfo(tmp_dir) / "dir" / "subdir"
-    assert tree.get_hash(subdir) == HashInfo(
-        "md5", "af314506f1622d107e0ed3f14ec1a3b5.dir",
-    )
-    assert tree.get_hash(subdir / "data") == HashInfo(
-        "md5", "8d777f385d3dfec8815d20f7496026dc",
-    )
+    with dvc.state:
+        assert tree.get_hash(subdir) == HashInfo(
+            "md5", "af314506f1622d107e0ed3f14ec1a3b5.dir",
+        )
+        assert tree.get_hash(subdir / "data") == HashInfo(
+            "md5", "8d777f385d3dfec8815d20f7496026dc",
+        )
