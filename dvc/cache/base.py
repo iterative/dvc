@@ -273,7 +273,7 @@ class CloudCache:
         to_info = self.tree.path_info / tmp_fname("")
         self.tree.upload(from_info, to_info, no_progress_bar=True)
 
-        hash_info = self.tree.get_hash(to_info)
+        hash_info = self.tree.get_file_hash(to_info)
         hash_info.value += self.tree.CHECKSUM_DIR_SUFFIX
         hash_info.dir_info = dir_info
 
