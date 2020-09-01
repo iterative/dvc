@@ -174,7 +174,9 @@ class BaseOutput:
         return self.cache.tree.hash_to_path_info(self.hash_info.value).url
 
     def get_hash(self):
-        return self.tree.get_hash(self.path_info)
+        if not self.use_cache:
+            return self.tree.get_hash(self.path_info)
+        return self.cache.get_hash(self.tree, self.path_info)
 
     @property
     def is_dir_checksum(self):

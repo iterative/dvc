@@ -1,11 +1,8 @@
 import itertools
-import json
 import logging
-import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partial
 from multiprocessing import cpu_count
-from operator import itemgetter
 from urllib.parse import urlparse
 
 from funcy import cached_property
@@ -17,7 +14,7 @@ from dvc.exceptions import (
 )
 from dvc.hash_info import HashInfo
 from dvc.ignore import DvcIgnore
-from dvc.path_info import PathInfo, URLInfo
+from dvc.path_info import URLInfo
 from dvc.progress import Tqdm
 from dvc.state import StateNoop
 from dvc.utils import tmp_fname
@@ -261,7 +258,10 @@ class BaseTree:
             hash_ = None
 
         if hash_:
-            return HashInfo(self.PARAM_CHECKSUM, hash_)
+            hash_info = HashInfo(self.PARAM_CHECKSUM, hash_)
+            if hash_info.isdir:
+                hash_info.dir_info = self.cache.get_dir_cache(hash_info)
+            return hash_info
 
         if self.isdir(path_info):
             hash_info = self.get_dir_hash(path_info, **kwargs)
@@ -275,13 +275,6 @@ class BaseTree:
 
     def get_file_hash(self, path_info):
         raise NotImplementedError
-
-    def get_dir_hash(self, path_info, **kwargs):
-        if not self.cache:
-            raise RemoteCacheRequiredError(path_info)
-
-        dir_info = self._collect_dir(path_info, **kwargs)
-        return self.save_dir_info(dir_info)
 
     def hash_to_path_info(self, hash_):
         return self.path_info / hash_[0:2] / hash_[2:]
@@ -321,7 +314,7 @@ class BaseTree:
         new_hashes = self._calculate_hashes(not_in_state)
         hashes.update(new_hashes)
 
-        result = [
+        return [
             {
                 self.PARAM_CHECKSUM: hashes[fi],
                 # NOTE: this is lossy transformation:
@@ -337,38 +330,12 @@ class BaseTree:
             for fi in file_infos
         ]
 
-        # Sorting the list by path to ensure reproducibility
-        return sorted(result, key=itemgetter(self.PARAM_RELPATH))
+    def get_dir_hash(self, path_info, **kwargs):
+        if not self.cache:
+            raise RemoteCacheRequiredError(path_info)
 
-    def save_dir_info(self, dir_info):
-        hash_info, tmp_info = self._get_dir_info_hash(dir_info)
-        new_info = self.cache.tree.hash_to_path_info(hash_info.value)
-        if self.cache.changed_cache_file(hash_info):
-            self.cache.tree.makedirs(new_info.parent)
-            self.cache.tree.move(
-                tmp_info, new_info, mode=self.cache.CACHE_MODE
-            )
-
-        self.state.save(new_info, hash_info.value)
-
-        return hash_info
-
-    def _get_dir_info_hash(self, dir_info):
-        # Sorting the list by path to ensure reproducibility
-        dir_info = sorted(dir_info, key=itemgetter(self.PARAM_RELPATH))
-
-        tmp = tempfile.NamedTemporaryFile(delete=False).name
-        with open(tmp, "w+") as fobj:
-            json.dump(dir_info, fobj, sort_keys=True)
-
-        tree = self.cache.tree
-        from_info = PathInfo(tmp)
-        to_info = tree.path_info / tmp_fname("")
-        tree.upload(from_info, to_info, no_progress_bar=True)
-
-        hash_info = tree.get_file_hash(to_info)
-        hash_info.value += self.CHECKSUM_DIR_SUFFIX
-        return hash_info, to_info
+        dir_info = self._collect_dir(path_info, **kwargs)
+        return self.cache.save_dir_info(dir_info)
 
     def upload(self, from_info, to_info, name=None, no_progress_bar=False):
         if not hasattr(self, "_upload"):
