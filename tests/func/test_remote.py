@@ -193,11 +193,13 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
 
         remote = dvc.cloud.get_remote("upstream")
         assert not remote.tree.exists(
-            remote.tree.hash_to_path_info(foo.checksum)
+            remote.tree.hash_to_path_info(foo.hash_info.value)
         )
-        assert remote.tree.exists(remote.tree.hash_to_path_info(bar.checksum))
+        assert remote.tree.exists(
+            remote.tree.hash_to_path_info(bar.hash_info.value)
+        )
         assert not remote.tree.exists(
-            remote.tree.hash_to_path_info(baz.checksum)
+            remote.tree.hash_to_path_info(baz.hash_info.value)
         )
 
     # Push everything and delete local cache
@@ -408,7 +410,9 @@ def test_protect_local_remote(tmp_dir, dvc, local_remote):
 
     dvc.push()
     remote = dvc.cloud.get_remote("upstream")
-    remote_cache_file = remote.tree.hash_to_path_info(stage.outs[0].checksum)
+    remote_cache_file = remote.tree.hash_to_path_info(
+        stage.outs[0].hash_info.value
+    )
 
     assert os.path.exists(remote_cache_file)
     assert stat.S_IMODE(os.stat(remote_cache_file).st_mode) == 0o444
@@ -419,7 +423,7 @@ def test_push_incomplete_dir(tmp_dir, dvc, mocker, local_remote):
     remote = dvc.cloud.get_remote("upstream")
 
     cache = dvc.cache.local
-    dir_hash = stage.outs[0].checksum
+    dir_hash = stage.outs[0].hash_info.value
     used = stage.get_used_cache(remote=remote)
 
     # remove one of the cache files for directory

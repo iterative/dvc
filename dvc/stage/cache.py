@@ -28,7 +28,7 @@ def _get_stage_hash(stage):
         return None
 
     for dep in stage.deps:
-        if not (dep.scheme == "local" and dep.def_path and dep.get_checksum()):
+        if not (dep.scheme == "local" and dep.def_path and dep.get_hash()):
             return None
 
     for out in stage.outs:

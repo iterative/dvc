@@ -370,8 +370,8 @@ def test_gc_external_output(tmp_dir, dvc, workspace):
     (foo_stage,) = dvc.add("remote://workspace/foo")
     (bar_stage,) = dvc.add("remote://workspace/bar")
 
-    foo_hash = foo_stage.outs[0].checksum
-    bar_hash = bar_stage.outs[0].checksum
+    foo_hash = foo_stage.outs[0].hash_info.value
+    bar_hash = bar_stage.outs[0].hash_info.value
 
     assert (
         workspace / "cache" / foo_hash[:2] / foo_hash[2:]

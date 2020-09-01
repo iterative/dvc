@@ -85,7 +85,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
                 if out.is_dir_checksum:
                     checksum = self._get_granular_checksum(path, out)
                 else:
-                    checksum = out.checksum
+                    checksum = out.hash_info.value
                 try:
                     remote_info = remote_obj.tree.hash_to_path_info(checksum)
                     return remote_obj.tree.open(
@@ -246,7 +246,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
                 out = outs[0]
                 # other code expects us to fetch the dir at this point
                 self._fetch_dir(out, **kwargs)
-                return HashInfo(out.tree.PARAM_CHECKSUM, out.checksum)
+                return out.hash_info
         except OutputNotFoundError:
             pass
 
@@ -262,7 +262,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
                 out.tree.PARAM_CHECKSUM,
                 self._get_granular_checksum(path_info, out),
             )
-        return HashInfo(out.tree.PARAM_CHECKSUM, out.checksum)
+        return out.hash_info
 
     def metadata(self, path_info):
         path_info = PathInfo(os.path.abspath(path_info))

@@ -39,9 +39,9 @@ def test_indexed_on_status(tmp_dir, dvc, tmp_path_factory, remote):
 
     dvc.status(cloud=True)
     with remote.index:
-        assert {bar.checksum, baz["md5"]} == set(remote.index.hashes())
-        assert [bar.checksum] == list(remote.index.dir_hashes())
-        assert foo.checksum not in remote.index.hashes()
+        assert {bar.hash_info.value, baz["md5"]} == set(remote.index.hashes())
+        assert [bar.hash_info.value] == list(remote.index.dir_hashes())
+        assert foo.hash_info.value not in remote.index.hashes()
 
 
 def test_indexed_on_push(tmp_dir, dvc, tmp_path_factory, remote):
@@ -51,15 +51,15 @@ def test_indexed_on_push(tmp_dir, dvc, tmp_path_factory, remote):
 
     dvc.push()
     with remote.index:
-        assert {bar.checksum, baz["md5"]} == set(remote.index.hashes())
-        assert [bar.checksum] == list(remote.index.dir_hashes())
-        assert foo.checksum not in remote.index.hashes()
+        assert {bar.hash_info.value, baz["md5"]} == set(remote.index.hashes())
+        assert [bar.hash_info.value] == list(remote.index.dir_hashes())
+        assert foo.hash_info.value not in remote.index.hashes()
 
 
 def test_indexed_dir_missing(tmp_dir, dvc, tmp_path_factory, remote):
     bar = tmp_dir.dvc_gen({"bar": {"baz": "baz content"}})[0].outs[0]
     with remote.index:
-        remote.index.update([bar.checksum], [])
+        remote.index.update([bar.hash_info.value], [])
     dvc.status(cloud=True)
     with remote.index:
         assert not list(remote.index.hashes())

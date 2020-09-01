@@ -674,7 +674,9 @@ class TestReproDataSource(TestReproChangedData):
         stages = self.dvc.reproduce(self.foo_stage.path)
 
         self.assertTrue(filecmp.cmp(self.FOO, self.BAR, shallow=False))
-        self.assertEqual(stages[0].outs[0].checksum, file_md5(self.BAR)[0])
+        self.assertEqual(
+            stages[0].outs[0].hash_info.value, file_md5(self.BAR)[0]
+        )
 
 
 class TestReproChangedDir(SingleStageRun, TestDvc):
@@ -911,7 +913,7 @@ class TestReproAlreadyCached(TestRepro):
             0
         ]
 
-        self.assertNotEqual(run_out.checksum, repro_out.checksum)
+        self.assertNotEqual(run_out.hash_info, repro_out.hash_info)
 
     def test_force_with_dependencies(self):
         run_out = self.dvc.run(
@@ -927,7 +929,7 @@ class TestReproAlreadyCached(TestRepro):
 
         repro_out = Dvcfile(self.dvc, "datetime.dvc").stage.outs[0]
 
-        self.assertNotEqual(run_out.checksum, repro_out.checksum)
+        self.assertNotEqual(run_out.hash_info, repro_out.hash_info)
 
     def test_force_import(self):
         ret = main(["import-url", self.FOO, self.BAR])

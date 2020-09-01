@@ -144,7 +144,7 @@ class BaseExternalRepo:
                 raise PathMissingError(path, self.url)
             hash_info = self.repo_tree.get_hash(
                 path, download_callback=download_update
-            ).to_dict()
+            )
             self.local_cache.save(
                 path,
                 self.repo_tree,

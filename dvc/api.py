@@ -30,7 +30,7 @@ def get_url(path, repo=None, rev=None, remote=None):
             raise UrlNotDvcRepoError(_repo.url)  # pylint: disable=no-member
         out = _repo.find_out_by_relpath(path)
         remote_obj = _repo.cloud.get_remote(remote)
-        return str(remote_obj.tree.hash_to_path_info(out.checksum))
+        return str(remote_obj.tree.hash_to_path_info(out.hash_info.value))
 
 
 def open(  # noqa, pylint: disable=redefined-builtin

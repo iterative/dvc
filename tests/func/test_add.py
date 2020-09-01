@@ -72,9 +72,9 @@ def test_add_directory(tmp_dir, dvc):
     assert len(stage.deps) == 0
     assert len(stage.outs) == 1
 
-    md5 = stage.outs[0].hash_info.value
+    hash_info = stage.outs[0].hash_info
 
-    dir_info = dvc.cache.local.load_dir_cache(md5)
+    dir_info = dvc.cache.local.load_dir_cache(hash_info)
     for info in dir_info:
         assert "\\" not in info["relpath"]
 

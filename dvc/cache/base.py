@@ -11,6 +11,7 @@ from dvc.exceptions import (
     DvcException,
     MergeError,
 )
+from dvc.hash_info import HashInfo
 from dvc.path_info import WindowsPathInfo
 from dvc.progress import Tqdm
 from dvc.remote.slow_link_detection import slow_link_guard
@@ -56,29 +57,29 @@ class CloudCache:
         self.cache_type_confirmed = False
         self._dir_info = {}
 
-    def get_dir_cache(self, hash_):
-        assert hash_
+    def get_dir_cache(self, hash_info):
+        assert hash_info
 
-        dir_info = self._dir_info.get(hash_)
+        dir_info = self._dir_info.get(hash_info.value)
         if dir_info:
             return dir_info
 
         try:
-            dir_info = self.load_dir_cache(hash_)
+            dir_info = self.load_dir_cache(hash_info)
         except DirCacheError:
             dir_info = []
 
-        self._dir_info[hash_] = dir_info
+        self._dir_info[hash_info.value] = dir_info
         return dir_info
 
-    def load_dir_cache(self, hash_):
-        path_info = self.tree.hash_to_path_info(hash_)
+    def load_dir_cache(self, hash_info):
+        path_info = self.tree.hash_to_path_info(hash_info.value)
 
         try:
             with self.tree.open(path_info, "r") as fobj:
                 d = json.load(fobj)
         except (ValueError, FileNotFoundError) as exc:
-            raise DirCacheError(hash_) from exc
+            raise DirCacheError(hash_info) from exc
 
         if not isinstance(d, list):
             logger.error(
@@ -123,20 +124,21 @@ class CloudCache:
             logger.debug("'%s' doesn't exist.", path_info)
             return True
 
-        hash_ = hash_info.get(self.tree.PARAM_CHECKSUM)
-        if hash_ is None:
+        if not hash_info:
             logger.debug("hash value for '%s' is missing.", path_info)
             return True
 
-        if self.changed_cache(hash_):
-            logger.debug("cache for '%s'('%s') has changed.", path_info, hash_)
+        if self.changed_cache(hash_info):
+            logger.debug(
+                "cache for '%s'('%s') has changed.", path_info, hash_info
+            )
             return True
 
         actual = self.tree.get_hash(path_info)
-        if hash_ != actual.value:
+        if hash_info != actual:
             logger.debug(
                 "hash value '%s' for '%s' has changed (actual '%s').",
-                hash_,
+                hash_info,
                 actual,
                 path_info,
             )
@@ -193,12 +195,12 @@ class CloudCache:
             "Created '%s': %s -> %s", self.cache_types[0], from_info, to_info,
         )
 
-    def _save_file(self, path_info, tree, hash_, save_link=True, **kwargs):
-        assert hash_
+    def _save_file(self, path_info, tree, hash_info, save_link=True, **kwargs):
+        assert hash_info
 
-        cache_info = self.tree.hash_to_path_info(hash_)
+        cache_info = self.tree.hash_to_path_info(hash_info.value)
         if tree == self.tree:
-            if self.changed_cache(hash_):
+            if self.changed_cache(hash_info):
                 self.tree.move(path_info, cache_info, mode=self.CACHE_MODE)
                 self.link(cache_info, path_info)
             elif self.tree.iscopy(path_info) and self._cache_is_copy(
@@ -215,9 +217,9 @@ class CloudCache:
             # we need to update path and cache, since in case of reflink,
             # or copy cache type moving original file results in updates on
             # next executed command, which causes md5 recalculation
-            self.tree.state.save(path_info, hash_)
+            self.tree.state.save(path_info, hash_info.value)
         else:
-            if self.changed_cache(hash_):
+            if self.changed_cache(hash_info):
                 with tree.open(path_info, mode="rb") as fobj:
                     # if tree has fetch enabled, DVC out will be fetched on
                     # open and we do not need to read/copy any data
@@ -229,8 +231,7 @@ class CloudCache:
                 if callback:
                     callback(1)
 
-        self.tree.state.save(cache_info, hash_)
-        return {self.tree.PARAM_CHECKSUM: hash_}
+        self.tree.state.save(cache_info, hash_info.value)
 
     def _cache_is_copy(self, path_info):
         """Checks whether cache uses copies."""
@@ -254,13 +255,15 @@ class CloudCache:
         self.cache_type_confirmed = True
         return self.cache_types[0] == "copy"
 
-    def _save_dir(self, path_info, tree, hash_, save_link=True, **kwargs):
-        dir_info = self.get_dir_cache(hash_)
+    def _save_dir(self, path_info, tree, hash_info, save_link=True, **kwargs):
+        dir_info = self.get_dir_cache(hash_info)
         for entry in Tqdm(
             dir_info, desc="Saving " + path_info.name, unit="file"
         ):
             entry_info = path_info / entry[self.tree.PARAM_RELPATH]
-            entry_hash = entry[self.tree.PARAM_CHECKSUM]
+            entry_hash = HashInfo(
+                self.tree.PARAM_CHECKSUM, entry[self.tree.PARAM_CHECKSUM]
+            )
             self._save_file(
                 entry_info, tree, entry_hash, save_link=False, **kwargs
             )
@@ -268,11 +271,10 @@ class CloudCache:
         if save_link:
             self.tree.state.save_link(path_info)
         if self.tree.exists(path_info):
-            self.tree.state.save(path_info, hash_)
+            self.tree.state.save(path_info, hash_info.value)
 
-        cache_info = self.tree.hash_to_path_info(hash_)
-        self.tree.state.save(cache_info, hash_)
-        return {self.tree.PARAM_CHECKSUM: hash_}
+        cache_info = self.tree.hash_to_path_info(hash_info.value)
+        self.tree.state.save(cache_info, hash_info.value)
 
     def save(self, path_info, tree, hash_info, save_link=True, **kwargs):
         if path_info.scheme != self.tree.scheme:
@@ -281,23 +283,23 @@ class CloudCache:
                 self.tree.scheme,
             )
 
-        hash_ = hash_info[self.tree.PARAM_CHECKSUM]
-        return self._save(path_info, tree, hash_, save_link, **kwargs)
+        self._save(path_info, tree, hash_info, save_link, **kwargs)
 
-    def _save(self, path_info, tree, hash_, save_link=True, **kwargs):
-        to_info = self.tree.hash_to_path_info(hash_)
+    def _save(self, path_info, tree, hash_info, save_link=True, **kwargs):
+        to_info = self.tree.hash_to_path_info(hash_info.value)
         logger.debug("Saving '%s' to '%s'.", path_info, to_info)
 
         if tree.isdir(path_info):
-            return self._save_dir(path_info, tree, hash_, save_link, **kwargs)
-        return self._save_file(path_info, tree, hash_, save_link, **kwargs)
+            self._save_dir(path_info, tree, hash_info, save_link, **kwargs)
+        else:
+            self._save_file(path_info, tree, hash_info, save_link, **kwargs)
 
     # Override to return path as a string instead of PathInfo for clouds
     # which support string paths (see local)
     def hash_to_path(self, hash_):
         return self.tree.hash_to_path_info(hash_)
 
-    def changed_cache_file(self, hash_):
+    def changed_cache_file(self, hash_info):
         """Compare the given hash with the (corresponding) actual one.
 
         - Use `State` as a cache for computed hashes
@@ -310,7 +312,7 @@ class CloudCache:
         - Remove the file from cache if it doesn't match the actual hash
         """
         # Prefer string path over PathInfo when possible due to performance
-        cache_info = self.hash_to_path(hash_)
+        cache_info = self.hash_to_path(hash_info.value)
         if self.tree.is_protected(cache_info):
             logger.debug(
                 "Assuming '%s' is unchanged since it is read-only", cache_info
@@ -320,13 +322,16 @@ class CloudCache:
         actual = self.tree.get_hash(cache_info)
 
         logger.debug(
-            "cache '%s' expected '%s' actual '%s'", cache_info, hash_, actual,
+            "cache '%s' expected '%s' actual '%s'",
+            cache_info,
+            hash_info,
+            actual,
         )
 
-        if not hash_ or not actual:
+        if not hash_info or not actual:
             return True
 
-        if actual.value.split(".")[0] == hash_.split(".")[0]:
+        if actual.value.split(".")[0] == hash_info.value.split(".")[0]:
             # making cache file read-only so we don't need to check it
             # next time
             self.tree.protect(cache_info)
@@ -338,12 +343,14 @@ class CloudCache:
 
         return True
 
-    def _changed_dir_cache(self, hash_, path_info=None, filter_info=None):
-        if self.changed_cache_file(hash_):
+    def _changed_dir_cache(self, hash_info, path_info=None, filter_info=None):
+        if self.changed_cache_file(hash_info):
             return True
 
-        for entry in self.get_dir_cache(hash_):
-            entry_hash = entry[self.tree.PARAM_CHECKSUM]
+        for entry in self.get_dir_cache(hash_info):
+            entry_hash = HashInfo(
+                self.tree.PARAM_CHECKSUM, entry[self.tree.PARAM_CHECKSUM]
+            )
 
             if path_info and filter_info:
                 entry_info = path_info / entry[self.tree.PARAM_RELPATH]
@@ -355,12 +362,12 @@ class CloudCache:
 
         return False
 
-    def changed_cache(self, hash_, path_info=None, filter_info=None):
-        if self.tree.is_dir_hash(hash_):
+    def changed_cache(self, hash_info, path_info=None, filter_info=None):
+        if hash_info.isdir:
             return self._changed_dir_cache(
-                hash_, path_info=path_info, filter_info=filter_info
+                hash_info, path_info=path_info, filter_info=filter_info
             )
-        return self.changed_cache_file(hash_)
+        return self.changed_cache_file(hash_info)
 
     def already_cached(self, path_info):
         _, current = self.tree.get_hash(path_info)
@@ -386,11 +393,11 @@ class CloudCache:
         self.tree.remove(path_info)
 
     def _checkout_file(
-        self, path_info, hash_, force, progress_callback=None, relink=False
+        self, path_info, hash_info, force, progress_callback=None, relink=False
     ):
         """The file is changed we need to checkout a new copy"""
         added, modified = True, False
-        cache_info = self.tree.hash_to_path_info(hash_)
+        cache_info = self.tree.hash_to_path_info(hash_info.value)
         if self.tree.exists(path_info):
             logger.debug("data '%s' will be replaced.", path_info)
             self.safe_remove(path_info, force=force)
@@ -398,7 +405,7 @@ class CloudCache:
 
         self.link(cache_info, path_info)
         self.tree.state.save_link(path_info)
-        self.tree.state.save(path_info, hash_)
+        self.tree.state.save(path_info, hash_info.value)
         if progress_callback:
             progress_callback(str(path_info))
 
@@ -407,7 +414,7 @@ class CloudCache:
     def _checkout_dir(
         self,
         path_info,
-        hash_,
+        hash_info,
         force,
         progress_callback=None,
         relink=False,
@@ -420,7 +427,7 @@ class CloudCache:
             added = True
             self.tree.makedirs(path_info)
 
-        dir_info = self.get_dir_cache(hash_)
+        dir_info = self.get_dir_cache(hash_info)
 
         logger.debug("Linking directory '%s'.", path_info)
 
@@ -433,7 +440,7 @@ class CloudCache:
             if filter_info and not entry_info.isin_or_eq(filter_info):
                 continue
 
-            entry_hash_info = {self.tree.PARAM_CHECKSUM: entry_hash}
+            entry_hash_info = HashInfo(self.tree.PARAM_CHECKSUM, entry_hash)
             if relink or self.changed(entry_info, entry_hash_info):
                 modified = True
                 self.safe_remove(entry_info, force=force)
@@ -448,7 +455,7 @@ class CloudCache:
         )
 
         self.tree.state.save_link(path_info)
-        self.tree.state.save(path_info, hash_)
+        self.tree.state.save(path_info, hash_info.value)
 
         # relink is not modified, assume it as nochange
         return added, not added and modified and not relink
@@ -477,10 +484,9 @@ class CloudCache:
         if path_info.scheme not in ["local", self.tree.scheme]:
             raise NotImplementedError
 
-        hash_ = hash_info.get(self.tree.PARAM_CHECKSUM)
         failed = None
         skip = False
-        if not hash_:
+        if not hash_info:
             logger.warning(
                 "No file hash info found for '%s'. " "It won't be created.",
                 path_info,
@@ -493,11 +499,11 @@ class CloudCache:
             skip = True
 
         elif self.changed_cache(
-            hash_, path_info=path_info, filter_info=filter_info
+            hash_info, path_info=path_info, filter_info=filter_info
         ):
             logger.warning(
                 "Cache '%s' not found. File '%s' won't be created.",
-                hash_,
+                hash_info,
                 path_info,
             )
             self.safe_remove(path_info, force=force)
@@ -508,52 +514,59 @@ class CloudCache:
                 progress_callback(
                     str(path_info),
                     self.get_files_number(
-                        self.tree.path_info, hash_, filter_info
+                        self.tree.path_info, hash_info, filter_info
                     ),
                 )
             if failed:
                 raise CheckoutError([failed])
             return
 
-        logger.debug("Checking out '%s' with cache '%s'.", path_info, hash_)
+        logger.debug(
+            "Checking out '%s' with cache '%s'.", path_info, hash_info
+        )
 
         return self._checkout(
-            path_info, hash_, force, progress_callback, relink, filter_info,
+            path_info,
+            hash_info,
+            force,
+            progress_callback,
+            relink,
+            filter_info,
         )
 
     def _checkout(
         self,
         path_info,
-        hash_,
+        hash_info,
         force=False,
         progress_callback=None,
         relink=False,
         filter_info=None,
     ):
-        if not self.tree.is_dir_hash(hash_):
+        if not hash_info.isdir:
             return self._checkout_file(
-                path_info, hash_, force, progress_callback, relink
+                path_info, hash_info, force, progress_callback, relink
             )
 
         return self._checkout_dir(
-            path_info, hash_, force, progress_callback, relink, filter_info
+            path_info, hash_info, force, progress_callback, relink, filter_info
         )
 
-    def get_files_number(self, path_info, hash_, filter_info):
+    def get_files_number(self, path_info, hash_info, filter_info):
         from funcy.py3 import ilen
 
-        if not hash_:
+        if not hash_info:
             return 0
 
-        if not self.tree.is_dir_hash(hash_):
+        if not hash_info.isdir:
             return 1
 
         if not filter_info:
-            return len(self.get_dir_cache(hash_))
+            return len(self.get_dir_cache(hash_info))
 
         return ilen(
             filter_info.isin_or_eq(path_info / entry[self.tree.PARAM_CHECKSUM])
-            for entry in self.get_dir_cache(hash_)
+            for entry in self.get_dir_cache(hash_info)
         )
 
     def _to_dict(self, dir_info):
@@ -620,16 +633,12 @@ class CloudCache:
         assert their_info
 
         if ancestor_info:
-            ancestor_hash = ancestor_info.value
-            ancestor = self.get_dir_cache(ancestor_hash)
+            ancestor = self.get_dir_cache(ancestor_info)
         else:
             ancestor = []
 
-        our_hash = our_info.value
-        our = self.get_dir_cache(our_hash)
-
-        their_hash = their_info.value
-        their = self.get_dir_cache(their_hash)
+        our = self.get_dir_cache(our_info)
+        their = self.get_dir_cache(their_info)
 
         merged = self._merge_dirs(ancestor, our, their)
         return self.tree.save_dir_info(merged)
