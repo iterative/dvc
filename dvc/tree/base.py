@@ -19,7 +19,7 @@ from dvc.ignore import DvcIgnore
 from dvc.path_info import PathInfo, URLInfo
 from dvc.progress import Tqdm
 from dvc.state import StateNoop
-from dvc.utils import tmp_fname, dict_md5
+from dvc.utils import dict_md5, tmp_fname
 from dvc.utils.fs import makedirs, move
 from dvc.utils.http import open_url
 
