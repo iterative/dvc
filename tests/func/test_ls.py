@@ -1,6 +1,7 @@
 import os
 import shutil
 import textwrap
+from operator import itemgetter
 
 import pytest
 
@@ -512,3 +513,46 @@ def test_ls_target(erepo_dir, use_scm):
         {"isdir": False, "isexec": 0, "isout": False, "path": "bar"},
         {"isdir": False, "isexec": 0, "isout": False, "path": "foo"},
     ]
+
+
+@pytest.mark.parametrize(
+    "dvc_top_level, erepo",
+    [
+        (True, pytest.lazy_fixture("erepo_dir")),
+        (False, pytest.lazy_fixture("git_dir")),
+    ],
+)
+def test_subrepo(dvc_top_level, erepo):
+    from tests.func.test_get import make_subrepo
+
+    dvc_files = {"foo.txt": "foo.txt", "dvc_dir": {"lorem": "lorem"}}
+    scm_files = {"bar.txt": "bar.txt", "scm_dir": {"ipsum": "ipsum"}}
+    subrepo = erepo / "subrepo"
+    make_subrepo(subrepo, erepo.scm)
+
+    for repo in [erepo, subrepo]:
+        with repo.chdir():
+            repo.scm_gen(scm_files, commit=f"scm track for top {repo}")
+            if hasattr(repo, "dvc"):
+                repo.dvc_gen(dvc_files, commit=f"dvc track for {repo}")
+
+    def _list_files(path=None):
+        return set(map(itemgetter("path"), Repo.ls(os.fspath(erepo), path)))
+
+    extras = {".dvcignore", ".gitignore"}
+    git_tracked_outputs = {"bar.txt", "scm_dir"}
+    dvc_files = {"dvc_dir", "foo.txt", "foo.txt.dvc", "dvc_dir.dvc"}
+    common_outputs = git_tracked_outputs | extras | dvc_files
+
+    top_level_outputs = (
+        common_outputs if dvc_top_level else git_tracked_outputs
+    )
+    assert _list_files() == top_level_outputs | {"subrepo"}
+    assert _list_files("subrepo") == common_outputs
+
+    assert _list_files("scm_dir") == {"ipsum"}
+    assert _list_files("subrepo/scm_dir") == {"ipsum"}
+
+    if dvc_top_level:
+        assert _list_files("dvc_dir") == {"lorem"}
+    assert _list_files("subrepo/dvc_dir") == {"lorem"}

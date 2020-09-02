@@ -5,11 +5,13 @@ import pytest
 
 from dvc.cache import Cache
 from dvc.exceptions import PathMissingError
+from dvc.external_repo import IsADVCRepoError
 from dvc.main import main
 from dvc.repo import Repo
 from dvc.repo.get import GetDVCFileError
 from dvc.system import System
 from dvc.utils.fs import makedirs
+from tests.unit.tree.test_repo import make_subrepo
 
 
 def test_get_repo_file(tmp_dir, erepo_dir):
@@ -265,3 +267,45 @@ def test_get_mixed_dir(tmp_dir, erepo_dir):
         "foo": "foo",
         "bar": "bar",
     }
+
+
+@pytest.mark.parametrize("is_dvc", [True, False])
+@pytest.mark.parametrize("files", [{"foo": "foo"}, {"dir": {"bar": "bar"}}])
+def test_get_from_subrepos(tmp_dir, erepo_dir, is_dvc, files):
+    subrepo = erepo_dir / "subrepo"
+    make_subrepo(subrepo, erepo_dir.scm)
+    gen = subrepo.dvc_gen if is_dvc else subrepo.scm_gen
+    with subrepo.chdir():
+        gen(files, commit="add files in subrepo")
+
+    key = next(iter(files))
+    Repo.get(os.fspath(erepo_dir), f"subrepo/{key}", out="out")
+
+    assert (tmp_dir / "out").read_text() == files[key]
+
+
+def test_granular_get_from_subrepos(tmp_dir, erepo_dir):
+    subrepo = erepo_dir / "subrepo"
+    make_subrepo(subrepo, erepo_dir.scm)
+    with subrepo.chdir():
+        subrepo.dvc_gen({"dir": {"bar": "bar"}}, commit="files in subrepo")
+
+    path = os.path.join("subrepo", "dir", "bar")
+    Repo.get(os.fspath(erepo_dir), path, out="out")
+    assert (tmp_dir / "out").read_text() == "bar"
+
+
+def test_try_to_get_complete_repo(tmp_dir, dvc, erepo_dir):
+    subrepo = erepo_dir / "subrepo"
+    make_subrepo(subrepo, erepo_dir.scm)
+    with subrepo.chdir():
+        subrepo.dvc_gen({"dir": {"bar": "bar"}}, commit="files in subrepo")
+
+    expected_message = "Cannot fetch a complete DVC repository"
+    with pytest.raises(IsADVCRepoError) as exc_info:
+        Repo.get(os.fspath(erepo_dir), "subrepo", out="out")
+    assert f"{expected_message} 'subrepo'" == str(exc_info.value)
+
+    with pytest.raises(IsADVCRepoError) as exc_info:
+        Repo.get(os.fspath(erepo_dir), ".", out="out")
+    assert expected_message == str(exc_info.value)
