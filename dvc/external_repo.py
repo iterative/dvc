@@ -179,8 +179,8 @@ class BaseExternalRepo:
             save_info = self._fetch_to_cache(path_info, repo, None)
             cache.checkout(PathInfo(dest), save_info)
         else:
-            # git-only erepo with no cache, just copy files directly to dest
-            tree = self._get_tree_for(metadata.repo)  # skip copying subrepos
+            # git-only folder, just copy files directly to dest
+            tree = self._get_tree_for(metadata.repo)  # ignore subrepos
             tree.copytree(path_info, dest)
 
     def _get_tree_for(self, repo, **kwargs):

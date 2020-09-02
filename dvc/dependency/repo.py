@@ -45,6 +45,8 @@ class RepoDependency(LocalDependency):
         return external_repo(d["url"], rev=rev, **kwargs)
 
     def _get_hash(self, locked=True):
+        # we want stream but not fetch, so DVC out directories are
+        # walked, but dir contents is not fetched
         with self._make_repo(locked=locked, fetch=False, stream=True) as repo:
             return repo.get_checksum(self.def_path)
 
