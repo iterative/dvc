@@ -252,3 +252,16 @@ def test_get_pipeline_tracked_outs(
     with git_dir.chdir():
         Repo.get("file:///{}".format(os.fspath(tmp_dir)), "bar", out="baz")
         assert (git_dir / "baz").read_text() == "foo"
+
+
+def test_get_mixed_dir(tmp_dir, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen(os.path.join("dir", "foo"), "foo", commit="foo")
+        erepo_dir.scm_gen(os.path.join("dir", "bar"), "bar", commit="bar")
+
+    Repo.get(os.fspath(erepo_dir), "dir")
+    assert (tmp_dir / "dir").read_text() == {
+        ".gitignore": "/foo\n",
+        "foo": "foo",
+        "bar": "bar",
+    }
