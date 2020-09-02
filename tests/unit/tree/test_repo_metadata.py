@@ -208,7 +208,7 @@ def test_metadata_on_subrepos(make_tmp_dir, temp_repo, repo_tree):
     subrepo.dvc_gen("foobar", "foobar", commit="add foobar on subrepo")
 
     for path in ["subrepo", "subrepo/foo", "subrepo/foobar"]:
-        meta = repo_tree.metadata(temp_repo / "subrepo" / "foo")
+        meta = repo_tree.metadata(temp_repo / path)
         assert meta.repo.root_dir == str(
             subrepo
         ), f"repo root didn't match for {path}"
