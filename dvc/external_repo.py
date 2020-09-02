@@ -44,10 +44,11 @@ def external_repo(url, rev=None, for_write=False, **kwargs):
     # the tip of the default branch
     rev = rev or "refs/remotes/origin/HEAD"
 
+    root_dir = path if for_write else os.path.realpath(path)
     conf = dict(
-        root_dir=path if for_write else os.path.realpath(path),
+        root_dir=root_dir,
         url=url,
-        scm=None if for_write else Git(path),
+        scm=None if for_write else Git(root_dir),
         rev=None if for_write else rev,
         for_write=for_write,
         **kwargs,
