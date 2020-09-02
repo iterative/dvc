@@ -60,7 +60,7 @@ class CmdVersion(CmdBaseNoRepo):
                     info.append(f"Cache directory: {fs_type}")
             else:
                 info.append(
-                    "Cache types: " + error_link("unable-to-detect-cache-type")
+                    "Cache types: " + error_link("no-dvc-cache")
                 )
 
         except NotDvcRepoError:
