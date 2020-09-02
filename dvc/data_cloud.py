@@ -114,3 +114,7 @@ class DataCloud:
             show_checksums=show_checksums,
             log_missing=log_missing,
         )
+
+    def get_url_for(self, remote, checksum):
+        remote = self.get_remote(remote)
+        return str(remote.tree.hash_to_path_info(checksum))

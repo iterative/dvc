@@ -1,8 +1,11 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import TYPE_CHECKING, List
 
 from dvc.output import BaseOutput
 from dvc.path_info import PathInfo
+
+if TYPE_CHECKING:
+    from dvc.repo import Repo
 
 
 @dataclass
@@ -14,6 +17,7 @@ class Metadata:
 
     # required field
     path_info: PathInfo
+    repo: "Repo"
 
     # computed fields
     is_output: bool = field(init=False, default=False)  # is it an output?

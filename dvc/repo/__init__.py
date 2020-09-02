@@ -66,7 +66,7 @@ class Repo:
     from dvc.repo.status import status
     from dvc.repo.update import update
 
-    def __init__(self, root_dir=None, scm=None, rev=None):
+    def __init__(self, root_dir=None, scm=None, rev=None, subrepos=False):
         from dvc.cache import Cache
         from dvc.data_cloud import DataCloud
         from dvc.lock import make_lock
@@ -116,6 +116,8 @@ class Repo:
             hardlink_lock=hardlink_lock,
             friendly=True,
         )
+        # used by RepoTree to determine if it should traverse subrepos
+        self.subrepos = subrepos
 
         self.cache = Cache(self)
         self.cloud = DataCloud(self)
@@ -581,19 +583,20 @@ class Repo:
         path_parts = os.path.normpath(path).split(os.path.sep)
         return self.DVC_DIR in path_parts
 
+    @cached_property
+    def repo_tree(self):
+        return RepoTree(self, subrepos=self.subrepos, fetch=True)
+
     @contextmanager
     def open_by_relpath(self, path, remote=None, mode="r", encoding=None):
         """Opens a specified resource as a file descriptor"""
 
-        tree = RepoTree(self, stream=True)
+        tree = RepoTree(self, stream=True, subrepos=True)
         path = os.path.join(self.root_dir, path)
         try:
             with self.state:
                 with tree.open(
-                    os.path.join(self.root_dir, path),
-                    mode=mode,
-                    encoding=encoding,
-                    remote=remote,
+                    path, mode=mode, encoding=encoding, remote=remote,
                 ) as fobj:
                     yield fobj
         except FileNotFoundError as exc:

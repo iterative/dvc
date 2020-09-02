@@ -268,6 +268,6 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
         path_info = PathInfo(os.path.abspath(path_info))
         outs = self._find_outs(path_info, strict=False, recursive=True)
 
-        meta = Metadata(path_info=path_info, outs=outs)
+        meta = Metadata(path_info=path_info, outs=outs, repo=self.repo)
         meta.isdir = meta.isdir or self.check_isdir(meta.path_info, meta.outs)
         return meta
