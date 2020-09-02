@@ -446,7 +446,7 @@ def test_pull_imported_stage_from_subrepos(
 
     stats = dvc.pull(["out.dvc"])
 
-    expected = ["out/"] if isinstance(files[key], dict) else ["out"]
+    expected = [f"out{os.sep}"] if isinstance(files[key], dict) else ["out"]
     assert stats["added"] == expected
     assert (tmp_dir / "out").read_text() == files[key]
 

@@ -11,10 +11,10 @@ def test_hook_is_called(tmp_dir, erepo_dir, mocker):
     subrepo_paths = [
         "subrepo1",
         "subrepo2",
-        "dir/subrepo3",
-        "dir/subrepo4",
+        os.path.join("dir", "subrepo3"),
+        os.path.join("dir", "subrepo4"),
         "subrepo5",
-        "subrepo5/subrepo6",
+        os.path.join("subrepo5", "subrepo6"),
     ]
     subrepos = [erepo_dir / path for path in subrepo_paths]
     for repo in subrepos:

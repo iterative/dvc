@@ -231,8 +231,8 @@ def test_get_url_subrepos(tmp_dir, scm, local_cloud):
 
     path = os.path.relpath(local_cloud.config["url"])
 
-    expected_url = path + "/ac/bd18db4cc2f85cedef654fccc4a4d8"
+    expected_url = os.path.join(path, "ac", "bd18db4cc2f85cedef654fccc4a4d8")
     assert api.get_url(os.path.join("subrepo", "dir", "foo")) == expected_url
 
-    expected_url = path + "/37/b51d194a7513e45b56f6524f2d51f2"
+    expected_url = os.path.join(path, "37", "b51d194a7513e45b56f6524f2d51f2")
     assert api.get_url("subrepo/bar") == expected_url
