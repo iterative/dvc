@@ -182,7 +182,7 @@ def add_parser(subparsers, parent_parser):
         "--params",
         action="append",
         default=[],
-        help="Declare parameter values for an experiment.",
+        help=argparse.SUPPRESS,
         metavar="[<filename>:]<params_list>",
     )
     repro_parser.add_argument(
