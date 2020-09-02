@@ -316,11 +316,8 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         if not self.exists(path_info):
             raise FileNotFoundError
         _, dvc_tree = self._get_tree_pair(path_info)
-        if dvc_tree and dvc_tree.exists(path_info):
-            try:
-                return dvc_tree.get_dir_hash(path_info, **kwargs)
-            except OutputNotFoundError:
-                pass
+        if dvc_tree and dvc_tree.isdvc(path_info):
+            return dvc_tree.get_dir_hash(path_info, **kwargs)
         return super().get_dir_hash(path_info, **kwargs)
 
     def get_file_hash(self, path_info):

@@ -368,3 +368,16 @@ def test_local_import(tmp_dir, dvc, scm):
     tmp_dir.dvc_gen("foo", "foo", commit="init")
     (tmp_dir / "outdir").mkdir()
     dvc.imp(".", "foo", out="outdir")
+
+
+def test_import_mixed_dir(tmp_dir, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen(os.path.join("dir", "foo"), "foo", commit="foo")
+        erepo_dir.scm_gen(os.path.join("dir", "bar"), "bar", commit="bar")
+
+    dvc.imp(os.fspath(erepo_dir), "dir")
+    assert (tmp_dir / "dir").read_text() == {
+        ".gitignore": "/foo\n",
+        "foo": "foo",
+        "bar": "bar",
+    }

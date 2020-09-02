@@ -147,6 +147,34 @@ def test_walk(tmp_dir, dvc, dvcfiles, extra_expected):
     assert len(actual) == len(expected)
 
 
+def test_walk_mixed_dir(tmp_dir, scm, dvc):
+    tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
+    tmp_dir.dvc.add(os.path.join("dir", "foo"))
+    tmp_dir.scm.add(
+        [
+            os.path.join("dir", "bar"),
+            os.path.join("dir", ".gitignore"),
+            os.path.join("dir", "foo.dvc"),
+        ]
+    )
+    tmp_dir.scm.commit("add dir")
+
+    tree = RepoTree(dvc)
+
+    expected = [
+        str(PathInfo("dir") / "foo"),
+        str(PathInfo("dir") / "bar"),
+        str(PathInfo("dir") / ".gitignore"),
+    ]
+    actual = []
+    for root, dirs, files in tree.walk("dir"):
+        for entry in dirs + files:
+            actual.append(os.path.join(root, entry))
+
+    assert set(actual) == set(expected)
+    assert len(actual) == len(expected)
+
+
 def test_walk_onerror(tmp_dir, dvc):
     def onerror(exc):
         raise exc
@@ -399,6 +427,25 @@ def test_get_hash_cached_granular(tmp_dir, dvc, mocker):
             "md5", "8d777f385d3dfec8815d20f7496026dc",
         )
     assert dvc_tree_spy.called
+
+
+def test_get_hash_mixed_dir(tmp_dir, scm, dvc):
+    tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
+    tmp_dir.dvc.add(os.path.join("dir", "foo"))
+    tmp_dir.scm.add(
+        [
+            os.path.join("dir", "bar"),
+            os.path.join("dir", ".gitignore"),
+            os.path.join("dir", "foo.dvc"),
+        ]
+    )
+    tmp_dir.scm.commit("add dir")
+
+    tree = RepoTree(dvc)
+    with dvc.state:
+        actual = tree.get_hash(PathInfo(tmp_dir) / "dir")
+    expected = HashInfo("md5", "e1d9e8eae5374860ae025ec84cfd85c7.dir")
+    assert actual == expected
 
 
 @pytest.mark.parametrize("traverse_subrepos", [True, False])
