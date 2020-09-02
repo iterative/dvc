@@ -4,7 +4,6 @@ import textwrap
 import pytest
 
 from dvc.exceptions import InvalidArgumentError
-from dvc.repo import Repo
 from dvc.stage.exceptions import DuplicateStageName, InvalidStageName
 from dvc.utils.serialize import dump_yaml, parse_yaml_for_update
 
@@ -306,9 +305,9 @@ def test_run_params_no_exec(tmp_dir, dvc):
         {"outs": ["foo"], "deps": ["bar"], "name": "copy-foo-bar"},
     ],
 )
-def test_run_without_cmd(kwargs):
+def test_run_without_cmd(tmp_dir, dvc, kwargs):
     with pytest.raises(InvalidArgumentError) as exc:
-        Repo().run(**kwargs)
+        dvc.run(**kwargs)
     assert "command is not specified" == str(exc.value)
 
 
