@@ -43,7 +43,11 @@ def test_no_cache_entry(tmp_dir, scm, dvc):
     dir_checksum = "5fb6b29836c388e093ca0715c872fe2a.dir"
 
     assert dvc.diff() == {
-        "added": [{"path": os.path.join("dir", ""), "hash": dir_checksum}],
+        "added": [
+            {"path": os.path.join("dir", ""), "hash": dir_checksum},
+            {"path": os.path.join("dir", "1"), "hash": digest("1")},
+            {"path": os.path.join("dir", "2"), "hash": digest("2")},
+        ],
         "deleted": [],
         "modified": [
             {
@@ -125,13 +129,15 @@ def test_directories(tmp_dir, scm, dvc):
                 "path": os.path.join("dir", ""),
                 "hash": "5fb6b29836c388e093ca0715c872fe2a.dir",
             },
+            {"path": os.path.join("dir", "1"), "hash": digest("1")},
+            {"path": os.path.join("dir", "2"), "hash": digest("2")},
         ],
         "deleted": [],
         "modified": [],
     }
 
     assert dvc.diff(":/directory", ":/modify") == {
-        "added": [],
+        "added": [{"path": os.path.join("dir", "3"), "hash": digest("3")}],
         "deleted": [],
         "modified": [
             {
@@ -141,12 +147,18 @@ def test_directories(tmp_dir, scm, dvc):
                     "new": "9b5faf37366b3370fd98e3e60ca439c1.dir",
                 },
             },
+            {
+                "path": os.path.join("dir", "2"),
+                "hash": {"old": digest("2"), "new": digest("two")},
+            },
         ],
     }
 
     assert dvc.diff(":/modify", ":/delete") == {
         "added": [],
-        "deleted": [],
+        "deleted": [
+            {"path": os.path.join("dir", "2"), "hash": digest("two")},
+        ],
         "modified": [
             {
                 "path": os.path.join("dir", ""),
@@ -193,7 +205,11 @@ def test_diff_dirty(tmp_dir, scm, dvc):
 
     assert result == {
         "added": [
-            {"hash": "86d049de17c76ac44cdcac146042ec9b", "path": "new_file"}
+            {
+                "hash": digest("dir file 2 content"),
+                "path": os.path.join("dir", "dir_file2"),
+            },
+            {"hash": "86d049de17c76ac44cdcac146042ec9b", "path": "new_file"},
         ],
         "deleted": [
             {"hash": "7f0b6bb0b7e951b7fd2b2a4a326297e1", "path": "file"}
