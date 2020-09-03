@@ -96,13 +96,21 @@ def _find_cmd_suggestions(cmd_arg, cmd_choices):
     Returns:
         String with command suggestions to display to the user if any exist.
     """
+    suggestion_str = (
+        f"dvc: '{cmd_arg}' is not a dvc command. See 'dvc --help'\n"
+    )
     suggestions = get_close_matches(cmd_arg, cmd_choices)
+    if not suggestions:
+        return suggestion_str
 
-    suggestion_str = ""
-    if suggestions:
-        suggestion_str += "\n\nThe most similar command(s) are\n"
-        for suggestion in suggestions:
-            suggestion_str += f"\t\n{suggestion}"
+    if len(suggestions) > 1:
+        suggestion_str += "\nThe most similar commands are"
+    else:
+        suggestion_str += "\nThe most similar command is"
+
+    for suggestion in suggestions:
+        suggestion_str += f"\n\t{suggestion}"
+
     return suggestion_str
 
 
@@ -141,9 +149,8 @@ class DvcParser(argparse.ArgumentParser):
             args = list(args)
         if args and args[0] not in self.cmd_choices:
             cmd_suggestions = _find_cmd_suggestions(args[0], self.cmd_choices)
-            if cmd_suggestions:
-                logger.error(cmd_suggestions)
-                raise DvcParserError
+            logger.error(cmd_suggestions)
+            raise DvcParserError
 
         # NOTE: overriding to provide a more granular help message.
         # E.g. `dvc plots diff --bad-flag` would result in a `dvc plots diff`

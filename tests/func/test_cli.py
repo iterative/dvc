@@ -233,7 +233,7 @@ def test_unknown_subcommand_help(capsys):
     assert output == help_output
 
 
-def test_similar_command_suggestions(capsys):
+def test_similar_command_suggestions(caplog):
     suggestions = {
         "addd": "add",
         "stats": "status",
@@ -241,20 +241,16 @@ def test_similar_command_suggestions(capsys):
     for typo, suggestion in suggestions.items():
         try:
             _ = parse_args([typo])
-        except SystemExit:
+        except DvcParserError:
             pass
-        captured = capsys.readouterr()
-        error_output = captured.err
         assert (
-            error_output
-            == f"\n\nThe most similar command(s) are\n\t\n{suggestion}"
+            f"\n\nThe most similar command is\n\t{suggestion}\n" in caplog.text
         )
 
     try:
         _ = parse_args(["commti"])
-    except SystemExit:
+    except DvcParserError:
         pass
-    captured = capsys.readouterr()
-    error_output = captured.err
-    assert "commit" in error_output
-    assert "completion" in error_output
+    assert "The most similar commands are" in caplog.text
+    assert "commit" in caplog.text
+    assert "completion" in caplog.text
