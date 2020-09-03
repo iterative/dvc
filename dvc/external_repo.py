@@ -311,6 +311,9 @@ class ExternalGitRepo(BaseExternalRepo):
 
         self.config = {"cache": {"dir": self.cache_dir}}
         self.cache = Cache(self)
+        if cache_types:
+            self.cache.local.cache_types = cache_types
+
         self.state = StateNoop()
 
     @cached_property

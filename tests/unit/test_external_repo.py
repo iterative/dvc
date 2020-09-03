@@ -26,7 +26,7 @@ def test_hook_is_called(tmp_dir, erepo_dir, mocker):
             repo.dvc_gen("bar", "bar", commit=f"dvc add {repo}/bar")
 
     with external_repo(str(erepo_dir)) as repo:
-        spy = mocker.patch.object(repo, "make_repo", wraps=repo.make_repo)
+        spy = mocker.spy(repo, "make_repo")
 
         list(repo.repo_tree.walk(repo.root_dir))  # drain
         assert spy.call_count == len(subrepos)
@@ -35,10 +35,13 @@ def test_hook_is_called(tmp_dir, erepo_dir, mocker):
         spy.assert_has_calls([call(path) for path in paths], any_order=True)
 
 
-@pytest.mark.parametrize("top_level_dvc", [False, True])
+@pytest.mark.parametrize("root_is_dvc", [False, True])
 def test_subrepo_is_constructed_properly(
-    tmp_dir, dvc, scm, mocker, make_tmp_dir, top_level_dvc
+    tmp_dir, scm, mocker, make_tmp_dir, root_is_dvc
 ):
+    if root_is_dvc:
+        make_subrepo(tmp_dir, scm)
+
     subrepo = tmp_dir / "subrepo"
     make_subrepo(subrepo, scm)
     local_cache = subrepo.dvc.cache.local.cache_dir
@@ -69,7 +72,7 @@ def test_subrepo_is_constructed_properly(
             subrepo.config["remote"]["auto-generated-upstream"]["url"]
             == local_cache
         )
-        if top_level_dvc:
+        if root_is_dvc:
             main_cache = tmp_dir.dvc.cache.local.cache_dir
             assert repo.config["remote"]["auto-generated-upstream"][
                 "url"
