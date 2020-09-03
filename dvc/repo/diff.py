@@ -1,8 +1,11 @@
+import logging
 import os
 
 from dvc.repo import locked
 from dvc.tree.local import LocalTree
 from dvc.tree.repo import RepoTree
+
+logger = logging.getLogger(__name__)
 
 
 @locked
@@ -65,6 +68,7 @@ def _paths_checksums(repo):
 
 
 def _output_paths(repo):
+    repo_tree = RepoTree(repo, stream=True)
     on_working_tree = isinstance(repo.tree, LocalTree)
 
     def _exists(output):
@@ -89,21 +93,14 @@ def _output_paths(repo):
             if _exists(output):
                 yield _to_path(output), _to_checksum(output)
                 if output.is_dir_checksum:
-                    yield from _dir_output_paths(repo, output, on_working_tree)
+                    yield from _dir_output_paths(repo_tree, output)
 
 
-def _dir_output_paths(repo, output, on_working_tree):
+def _dir_output_paths(repo_tree, output):
     from dvc.config import NoRemoteError
 
     try:
-        repo_tree = RepoTree(repo, stream=True)
         for fname in repo_tree.walk_files(output.path_info):
-            if on_working_tree:
-                hash_ = repo.cache.local.tree.get_hash(fname).value
-            else:
-                hash_ = repo_tree.get_hash(fname).value
-            yield str(fname), hash_
+            yield str(fname), repo_tree.get_hash(fname).value
     except NoRemoteError:
-        # if dir hash is missing from cache, and no remote to pull it from,
-        # there is nothing we can do here
-        pass
+        logger.warning("dir cache entry for '%s' is missing", output)
