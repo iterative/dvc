@@ -253,6 +253,15 @@ class HTTPURLInfo(URLInfo):
         self.query = p.query
         self.fragment = p.fragment
 
+    def replace(self, path=None):
+        return self.from_parts(
+            *self._base_parts,
+            params=self.params,
+            query=self.query,
+            fragment=self.fragment,
+            path=path,
+        )
+
     @classmethod
     def from_parts(
         cls,
