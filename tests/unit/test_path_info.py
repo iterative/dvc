@@ -87,11 +87,10 @@ def test_path_info_as_posix(mocker, path, as_posix, osname):
     assert PathInfo(path).as_posix() == as_posix
 
 
-@pytest.mark.parametrize("cls", [HTTPURLInfo])
-def test_url_replace_path(cls):
+def test_url_replace_path():
     url = "https://user@test.com/original/path;p=par?q=quer#frag"
 
-    u = cls(url)
+    u = HTTPURLInfo(url)
     new_u = u.replace("/new/path")
 
     assert u.path == "/original/path"
