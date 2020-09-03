@@ -364,7 +364,8 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         return self._main_repo.tree.hash_jobs
 
     def metadata(self, path):
-        path_info = PathInfo(os.path.abspath(path))
+        abspath = os.path.abspath(path)
+        path_info = PathInfo(abspath)
         tree, dvc_tree = self._get_tree_pair(path_info)
 
         dvc_meta = None
@@ -379,7 +380,10 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         if not stat_result and not dvc_meta:
             raise FileNotFoundError
 
-        meta = dvc_meta or Metadata(path_info=path_info)
+        meta = dvc_meta or Metadata(
+            path_info=path_info,
+            repo=self._get_repo(abspath) or self._main_repo,
+        )
 
         isdir = bool(stat_result) and stat.S_ISDIR(stat_result.st_mode)
         meta.isdir = meta.isdir or isdir

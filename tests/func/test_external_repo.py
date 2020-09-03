@@ -3,11 +3,13 @@ import os
 from mock import ANY, patch
 
 from dvc.external_repo import CLONES, external_repo
+from dvc.hash_info import HashInfo
 from dvc.path_info import PathInfo
 from dvc.scm.git import Git
 from dvc.tree.local import LocalTree
 from dvc.utils import relpath
-from dvc.utils.fs import remove
+from dvc.utils.fs import makedirs, remove
+from tests.unit.tree.test_repo import make_subrepo
 
 
 def test_external_repo(erepo_dir):
@@ -173,3 +175,52 @@ def test_shallow_clone_tag(erepo_dir):
         assert mock_clone.call_count == 1
         _, shallow = CLONES[url]
         assert not shallow
+
+
+def test_subrepos_are_ignored(tmp_dir, erepo_dir):
+    subrepo = erepo_dir / "dir" / "subrepo"
+    make_subrepo(subrepo, erepo_dir.scm)
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("dir/foo", "foo", commit="foo")
+        erepo_dir.scm_gen("dir/bar", "bar", commit="bar")
+
+    with subrepo.chdir():
+        subrepo.dvc_gen({"file": "file"}, commit="add files on subrepo")
+
+    with external_repo(os.fspath(erepo_dir)) as repo:
+        repo.get_external("dir", "out")
+        expected_files = {"foo": "foo", "bar": "bar", ".gitignore": "/foo\n"}
+        assert (tmp_dir / "out").read_text() == expected_files
+
+        expected_hash = HashInfo("md5", "e1d9e8eae5374860ae025ec84cfd85c7.dir")
+        assert (
+            repo.get_checksum(os.path.join(repo.root_dir, "dir"))
+            == expected_hash
+        )
+
+        # clear cache to test `fetch_external` again
+        cache_dir = tmp_dir / repo.cache.local.cache_dir
+        remove(cache_dir)
+        makedirs(cache_dir)
+
+        assert repo.fetch_external(["dir"]) == (
+            len(expected_files),
+            0,
+            [expected_hash],
+        )
+
+
+def test_subrepos_are_ignored_for_git_tracked_dirs(tmp_dir, erepo_dir):
+    subrepo = erepo_dir / "dir" / "subrepo"
+    make_subrepo(subrepo, erepo_dir.scm)
+    with erepo_dir.chdir():
+        scm_files = {"foo": "foo", "bar": "bar", "subdir": {"lorem": "lorem"}}
+        erepo_dir.scm_gen({"dir": scm_files}, commit="add scm dir")
+
+    with subrepo.chdir():
+        subrepo.dvc_gen({"file": "file"}, commit="add files on subrepo")
+
+    with external_repo(os.fspath(erepo_dir)) as repo:
+        repo.get_external("dir", "out")
+        # subrepo files should not be here
+        assert (tmp_dir / "out").read_text() == scm_files

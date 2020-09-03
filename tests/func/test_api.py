@@ -3,10 +3,10 @@ import os
 import pytest
 
 from dvc import api
-from dvc.api import UrlNotDvcRepoError
-from dvc.exceptions import FileMissingError
+from dvc.exceptions import FileMissingError, OutputNotFoundError
 from dvc.path_info import URLInfo
 from dvc.utils.fs import remove
+from tests.unit.tree.test_repo import make_subrepo
 
 cloud_names = [
     "s3",
@@ -47,10 +47,10 @@ def test_get_url_external(erepo_dir, cloud):
 def test_get_url_requires_dvc(tmp_dir, scm):
     tmp_dir.scm_gen({"foo": "foo"}, commit="initial")
 
-    with pytest.raises(UrlNotDvcRepoError, match="not a DVC repository"):
+    with pytest.raises(OutputNotFoundError, match="output 'foo'"):
         api.get_url("foo", repo=os.fspath(tmp_dir))
 
-    with pytest.raises(UrlNotDvcRepoError):
+    with pytest.raises(OutputNotFoundError, match="output 'foo'"):
         api.get_url("foo", repo=f"file://{tmp_dir}")
 
 
@@ -173,3 +173,66 @@ def test_open_not_cached(dvc):
     os.remove(metric_file)
     with pytest.raises(FileMissingError):
         api.read(metric_file)
+
+
+@pytest.mark.parametrize("local_repo", [False, True])
+def test_read_with_subrepos(tmp_dir, scm, local_cloud, local_repo):
+    tmp_dir.scm_gen("foo.txt", "foo.txt", commit="add foo.txt")
+    subrepo = tmp_dir / "dir" / "subrepo"
+    make_subrepo(subrepo, scm, config=local_cloud.config)
+    with subrepo.chdir():
+        subrepo.scm_gen({"lorem": "lorem"}, commit="add lorem")
+        subrepo.dvc_gen({"dir": {"file.txt": "file.txt"}}, commit="add dir")
+        subrepo.dvc_gen("dvc-file", "dvc-file", commit="add dir")
+        subrepo.dvc.push()
+
+    repo_path = None if local_repo else f"file:///{tmp_dir}"
+    subrepo_path = os.path.join("dir", "subrepo")
+
+    assert api.read("foo.txt", repo=repo_path) == "foo.txt"
+    assert (
+        api.read(os.path.join(subrepo_path, "lorem"), repo=repo_path)
+        == "lorem"
+    )
+    assert (
+        api.read(os.path.join(subrepo_path, "dvc-file"), repo=repo_path)
+        == "dvc-file"
+    )
+    assert (
+        api.read(os.path.join(subrepo_path, "dir", "file.txt"), repo=repo_path)
+        == "file.txt"
+    )
+
+
+def test_get_url_granular(tmp_dir, dvc, s3):
+    tmp_dir.add_remote(config=s3.config)
+    tmp_dir.dvc_gen(
+        {"dir": {"foo": "foo", "bar": "bar", "nested": {"file": "file"}}}
+    )
+
+    expected_url = URLInfo(s3.url) / "ac/bd18db4cc2f85cedef654fccc4a4d8"
+    assert api.get_url("dir/foo") == expected_url
+
+    expected_url = URLInfo(s3.url) / "37/b51d194a7513e45b56f6524f2d51f2"
+    assert api.get_url("dir/bar") == expected_url
+
+    expected_url = URLInfo(s3.url) / "8c/7dd922ad47494fc02c388e12c00eac"
+    assert api.get_url(os.path.join("dir", "nested", "file")) == expected_url
+
+
+def test_get_url_subrepos(tmp_dir, scm, local_cloud):
+    subrepo = tmp_dir / "subrepo"
+    make_subrepo(subrepo, scm, config=local_cloud.config)
+    with subrepo.chdir():
+        subrepo.dvc_gen(
+            {"dir": {"foo": "foo"}, "bar": "bar"}, commit="add files"
+        )
+        subrepo.dvc.push()
+
+    path = os.path.relpath(local_cloud.config["url"])
+
+    expected_url = os.path.join(path, "ac", "bd18db4cc2f85cedef654fccc4a4d8")
+    assert api.get_url(os.path.join("subrepo", "dir", "foo")) == expected_url
+
+    expected_url = os.path.join(path, "37", "b51d194a7513e45b56f6524f2d51f2")
+    assert api.get_url("subrepo/bar") == expected_url

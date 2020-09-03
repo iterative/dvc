@@ -2,6 +2,7 @@ import filecmp
 import os
 
 import pytest
+from funcy import first
 from mock import patch
 
 import dvc.data_cloud as cloud
@@ -9,9 +10,11 @@ from dvc.cache import Cache
 from dvc.config import NoRemoteError
 from dvc.dvcfile import Dvcfile
 from dvc.exceptions import DownloadError, PathMissingError
+from dvc.external_repo import IsADVCRepoError
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.system import System
 from dvc.utils.fs import makedirs, remove
+from tests.unit.tree.test_repo import make_subrepo
 
 
 def test_import(tmp_dir, scm, dvc, erepo_dir):
@@ -381,3 +384,84 @@ def test_import_mixed_dir(tmp_dir, dvc, erepo_dir):
         "foo": "foo",
         "bar": "bar",
     }
+
+
+@pytest.mark.parametrize("is_dvc", [True, False])
+@pytest.mark.parametrize("files", [{"foo": "foo"}, {"dir": {"bar": "bar"}}])
+def test_import_subrepos(tmp_dir, erepo_dir, dvc, scm, is_dvc, files):
+    subrepo = erepo_dir / "subrepo"
+    make_subrepo(subrepo, erepo_dir.scm)
+    gen = subrepo.dvc_gen if is_dvc else subrepo.scm_gen
+    with subrepo.chdir():
+        gen(files, commit="add files in subrepo")
+
+    key = next(iter(files))
+    path = str((subrepo / key).relative_to(erepo_dir))
+
+    stage = dvc.imp(os.fspath(erepo_dir), path, out="out",)
+
+    assert (tmp_dir / "out").read_text() == files[key]
+    assert stage.deps[0].def_path == path
+    assert stage.deps[0].def_repo == {
+        "url": os.fspath(erepo_dir),
+        "rev_lock": erepo_dir.scm.get_rev(),
+    }
+
+
+def test_granular_import_from_subrepos(tmp_dir, dvc, erepo_dir):
+    subrepo = erepo_dir / "subrepo"
+    make_subrepo(subrepo, erepo_dir.scm)
+    with subrepo.chdir():
+        subrepo.dvc_gen({"dir": {"bar": "bar"}}, commit="files in subrepo")
+
+    path = os.path.join("subrepo", "dir", "bar")
+    stage = dvc.imp(os.fspath(erepo_dir), path, out="out")
+    assert (tmp_dir / "out").read_text() == "bar"
+    assert stage.deps[0].def_path == path
+    assert stage.deps[0].def_repo == {
+        "url": os.fspath(erepo_dir),
+        "rev_lock": erepo_dir.scm.get_rev(),
+    }
+
+
+@pytest.mark.parametrize("is_dvc", [True, False])
+@pytest.mark.parametrize("files", [{"foo": "foo"}, {"dir": {"bar": "bar"}}])
+def test_pull_imported_stage_from_subrepos(
+    tmp_dir, dvc, erepo_dir, is_dvc, files
+):
+    subrepo = erepo_dir / "subrepo"
+    make_subrepo(subrepo, erepo_dir.scm)
+    gen = subrepo.dvc_gen if is_dvc else subrepo.scm_gen
+    with subrepo.chdir():
+        gen(files, commit="files in subrepo")
+
+    key = first(files)
+    path = os.path.join("subrepo", key)
+    dvc.imp(os.fspath(erepo_dir), path, out="out")
+
+    # clean everything
+    remove(dvc.cache.local.cache_dir)
+    remove("out")
+    makedirs(dvc.cache.local.cache_dir)
+
+    stats = dvc.pull(["out.dvc"])
+
+    expected = [f"out{os.sep}"] if isinstance(files[key], dict) else ["out"]
+    assert stats["added"] == expected
+    assert (tmp_dir / "out").read_text() == files[key]
+
+
+def test_try_import_complete_repo(tmp_dir, dvc, erepo_dir):
+    subrepo = erepo_dir / "subrepo"
+    make_subrepo(subrepo, erepo_dir.scm)
+    with subrepo.chdir():
+        subrepo.dvc_gen({"dir": {"bar": "bar"}}, commit="files in subrepo")
+
+    expected_message = "Cannot fetch a complete DVC repository"
+    with pytest.raises(IsADVCRepoError) as exc_info:
+        dvc.imp(os.fspath(erepo_dir), "subrepo", out="out")
+    assert f"{expected_message} 'subrepo'" == str(exc_info.value)
+
+    with pytest.raises(IsADVCRepoError) as exc_info:
+        dvc.imp(os.fspath(erepo_dir), os.curdir, out="out")
+    assert expected_message == str(exc_info.value)

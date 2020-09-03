@@ -3,6 +3,7 @@ import os
 import pytest
 
 from dvc.dvcfile import Dvcfile
+from tests.unit.tree.test_repo import make_subrepo
 
 
 @pytest.mark.parametrize("cached", [True, False])
@@ -282,3 +283,32 @@ def test_update_recursive(tmp_dir, dvc, erepo_dir):
     assert stage1.deps[0].def_repo["rev_lock"] == new_rev
     assert stage2.deps[0].def_repo["rev_lock"] == new_rev
     assert stage3.deps[0].def_repo["rev_lock"] == new_rev
+
+
+@pytest.mark.parametrize("is_dvc", [True, False])
+def test_update_from_subrepos(tmp_dir, dvc, erepo_dir, is_dvc):
+    subrepo = erepo_dir / "subrepo"
+    make_subrepo(subrepo, erepo_dir.scm)
+    gen = subrepo.dvc_gen if is_dvc else subrepo.scm_gen
+    with subrepo.chdir():
+        gen("foo", "foo", commit="subrepo initial")
+
+    path = os.path.join("subrepo", "foo")
+    repo_path = os.fspath(erepo_dir)
+    dvc.imp(repo_path, path, out="out")
+    assert dvc.status() == {}
+
+    with subrepo.chdir():
+        gen("foo", "foobar", commit="subrepo second commit")
+
+    assert dvc.status()["out.dvc"][0]["changed deps"] == {
+        f"{path} ({repo_path})": "update available"
+    }
+    (stage,) = dvc.update(["out.dvc"])
+
+    assert (tmp_dir / "out").read_text() == "foobar"
+    assert stage.deps[0].def_path == os.path.join("subrepo", "foo")
+    assert stage.deps[0].def_repo == {
+        "url": repo_path,
+        "rev_lock": erepo_dir.scm.get_rev(),
+    }

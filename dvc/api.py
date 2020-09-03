@@ -2,16 +2,16 @@ import os
 from contextlib import _GeneratorContextManager as GCM
 from contextlib import contextmanager
 
-from dvc.exceptions import DvcException, NotDvcRepoError
+from funcy import reraise
+
+from dvc.exceptions import (
+    NotDvcRepoError,
+    OutputNotFoundError,
+    PathMissingError,
+)
 from dvc.external_repo import external_repo
+from dvc.path_info import PathInfo
 from dvc.repo import Repo
-
-
-class UrlNotDvcRepoError(DvcException):
-    """Thrown if the given URL is not a DVC repository."""
-
-    def __init__(self, url):
-        super().__init__(f"'{url}' is not a DVC repository.")
 
 
 def get_url(path, repo=None, rev=None, remote=None):
@@ -20,17 +20,22 @@ def get_url(path, repo=None, rev=None, remote=None):
     in a DVC repo. For Git repos, HEAD is used unless a rev argument is
     supplied. The default remote is tried unless a remote argument is supplied.
 
-    Raises UrlNotDvcRepoError if repo is not a DVC project.
+    Raises OutputNotFoundError if the file is not a dvc-tracked file.
 
     NOTE: This function does not check for the actual existence of the file or
     directory in the remote storage.
     """
     with _make_repo(repo, rev=rev) as _repo:
-        if not isinstance(_repo, Repo):
-            raise UrlNotDvcRepoError(_repo.url)  # pylint: disable=no-member
-        out = _repo.find_out_by_relpath(path)
-        remote_obj = _repo.cloud.get_remote(remote)
-        return str(remote_obj.tree.hash_to_path_info(out.hash_info.value))
+        path_info = PathInfo(_repo.root_dir) / path
+        with reraise(FileNotFoundError, PathMissingError(path, repo)):
+            metadata = _repo.repo_tree.metadata(path_info)
+
+        if not metadata.is_dvc:
+            raise OutputNotFoundError(path, repo)
+
+        cloud = metadata.repo.cloud
+        hash_info = _repo.repo_tree.get_hash(path_info)
+        return cloud.get_url_for(remote, checksum=hash_info.value)
 
 
 def open(  # noqa, pylint: disable=redefined-builtin
@@ -97,7 +102,7 @@ def _make_repo(repo_url=None, rev=None):
     repo_url = repo_url or os.getcwd()
     if rev is None and os.path.exists(repo_url):
         try:
-            yield Repo(repo_url)
+            yield Repo(repo_url, subrepos=True)
             return
         except NotDvcRepoError:
             pass  # fallthrough to external_repo
