@@ -135,6 +135,10 @@ class DvcParser(argparse.ArgumentParser):
         # be displayed to users in case of small typos
         # E.g. `dvc commti` would display
         # `The most similar command(s) are commit`
+        if args is None:
+            args = sys.argv[1:]
+        else:
+            args = list(args)
         if args and args[0] not in self.cmd_choices:
             cmd_suggestions = _find_cmd_suggestions(args[0], self.cmd_choices)
             if cmd_suggestions:
