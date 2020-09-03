@@ -85,3 +85,21 @@ def test_https_url_info_str():
 def test_path_info_as_posix(mocker, path, as_posix, osname):
     mocker.patch("os.name", osname)
     assert PathInfo(path).as_posix() == as_posix
+
+
+@pytest.mark.parametrize("cls", [HTTPURLInfo])
+def test_url_replace_path(cls):
+    url = "https://user@test.com/original/path;p=par?q=quer#frag"
+
+    u = cls(url)
+    new_u = u.replace("/new/path")
+
+    assert u.path == "/original/path"
+    assert new_u.path == "/new/path"
+
+    assert u.scheme == new_u.scheme
+    assert u.host == new_u.host
+    assert u.user == new_u.user
+    assert u.params == new_u.params
+    assert u.query == new_u.query
+    assert u.fragment == new_u.fragment
