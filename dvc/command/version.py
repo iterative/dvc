@@ -10,7 +10,7 @@ from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.exceptions import DvcException, NotDvcRepoError
 from dvc.scm.base import SCMError
 from dvc.system import System
-from dvc.utils import relpath
+from dvc.utils import error_link
 from dvc.utils.pkg import PKG
 from dvc.version import __version__
 
@@ -59,13 +59,7 @@ class CmdVersion(CmdBaseNoRepo):
                     fs_type = self.get_fs_type(repo.cache.local.cache_dir)
                     info.append(f"Cache directory: {fs_type}")
             else:
-                logger.warning(
-                    "Unable to detect supported link types, as cache "
-                    "directory '{}' doesn't exist. It is usually auto-created "
-                    "by commands such as `dvc add/fetch/pull/run/import`, "
-                    "but you could create it manually to enable this "
-                    "check.".format(relpath(repo.cache.local.cache_dir))
-                )
+                info.append("Cache types: " + error_link("no-dvc-cache"))
 
         except NotDvcRepoError:
             root_directory = os.getcwd()
