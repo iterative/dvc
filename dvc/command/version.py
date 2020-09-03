@@ -59,9 +59,7 @@ class CmdVersion(CmdBaseNoRepo):
                     fs_type = self.get_fs_type(repo.cache.local.cache_dir)
                     info.append(f"Cache directory: {fs_type}")
             else:
-                info.append(
-                    "Cache types: " + error_link("no-dvc-cache")
-                )
+                info.append("Cache types: " + error_link("no-dvc-cache"))
 
         except NotDvcRepoError:
             root_directory = os.getcwd()
