@@ -142,7 +142,9 @@ class DvcParser(argparse.ArgumentParser):
         # NOTE: this is a custom check to see if any suggestions can
         # be displayed to users in case of small typos
         # E.g. `dvc commti` would display
-        # `The most similar command(s) are commit`
+        # The most similar commands are
+        #         commit
+        #         completion
         if args is None:
             args = sys.argv[1:]
         else:
