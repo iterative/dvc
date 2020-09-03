@@ -142,8 +142,8 @@ class DvcParser(argparse.ArgumentParser):
         if args and args[0] not in self.cmd_choices:
             cmd_suggestions = _find_cmd_suggestions(args[0], self.cmd_choices)
             if cmd_suggestions:
-                sys.stderr.write(cmd_suggestions)
-                sys.exit(2)
+                logger.error(cmd_suggestions)
+                raise DvcParserError
 
         # NOTE: overriding to provide a more granular help message.
         # E.g. `dvc plots diff --bad-flag` would result in a `dvc plots diff`
