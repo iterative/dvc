@@ -133,6 +133,9 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             self._get_granular_checksum(path_info, out)
             return False
         except FileNotFoundError:
+            # path may be an untracked file from a dirty workspace
+            if self.repo.tree.isfile(path_info):
+                return False
             return True
 
     def isfile(self, path):  # pylint: disable=arguments-differ
@@ -258,10 +261,16 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             raise OutputNotFoundError
         out = outs[0]
         if out.is_dir_checksum:
-            return HashInfo(
-                out.tree.PARAM_CHECKSUM,
-                self._get_granular_checksum(path_info, out),
-            )
+            try:
+                return HashInfo(
+                    out.tree.PARAM_CHECKSUM,
+                    self._get_granular_checksum(path_info, out),
+                )
+            except FileNotFoundError:
+                # path may be an untracked file from a dirty workspace
+                if self.repo.tree.isfile(path_info):
+                    return self.repo.tree.get_file_hash(path_info)
+                raise
         return out.hash_info
 
     def metadata(self, path_info):
