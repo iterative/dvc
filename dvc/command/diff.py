@@ -17,13 +17,13 @@ def _digest(checksum):
     return "{}..{}".format(checksum["old"][0:8], checksum["new"][0:8])
 
 
-def _show_md(diff, show_hash=False, show_missing=True):
+def _show_md(diff, show_hash=False, hide_missing=False):
     from dvc.utils.diff import table
 
     header = ["Status", "Hash", "Path"] if show_hash else ["Status", "Path"]
     rows = []
     statuses = ["added", "deleted", "modified"]
-    if show_missing:
+    if not hide_missing:
         statuses.append("not in cache")
     for status in statuses:
         entries = diff.get(status, [])
@@ -42,7 +42,7 @@ def _show_md(diff, show_hash=False, show_missing=True):
 
 class CmdDiff(CmdBase):
     @staticmethod
-    def _format(diff, show_missing=True):
+    def _format(diff, hide_missing=False):
         """
         Given a diff structure, generate a string of paths separated
         by new lines and grouped together by their state.
@@ -79,7 +79,7 @@ class CmdDiff(CmdBase):
         groups = []
 
         states = ["added", "deleted", "modified"]
-        if show_missing:
+        if not hide_missing:
             states.append("not in cache")
         for state in states:
             summary[state] = 0
@@ -119,7 +119,7 @@ class CmdDiff(CmdBase):
             "files summary: {added} added, {deleted} deleted,"
             " {modified} modified"
         )
-        if show_missing:
+        if not hide_missing:
             fmt += ", {not in cache} not in cache"
         groups.append(fmt.format_map(summary))
 
@@ -129,8 +129,8 @@ class CmdDiff(CmdBase):
         try:
             diff = self.repo.diff(self.args.a_rev, self.args.b_rev)
             show_hash = self.args.show_hash
-            show_missing = False if self.args.b_rev else self.args.show_missing
-            if not show_missing:
+            hide_missing = self.args.b_rev or self.args.hide_missing
+            if hide_missing:
                 del diff["not in cache"]
 
             for key, entries in diff.items():
@@ -143,9 +143,9 @@ class CmdDiff(CmdBase):
             if self.args.show_json:
                 logger.info(json.dumps(diff))
             elif self.args.show_md:
-                logger.info(_show_md(diff, show_hash, show_missing))
+                logger.info(_show_md(diff, show_hash, hide_missing))
             elif diff:
-                output = self._format(diff, show_missing)
+                output = self._format(diff, hide_missing)
                 if output:
                     logger.info(output)
 
@@ -199,7 +199,6 @@ def add_parser(subparsers, parent_parser):
     diff_parser.add_argument(
         "--hide-missing",
         help="Hide missing cache file status.",
-        action="store_false",
-        dest="show_missing",
+        action="store_true",
     )
     diff_parser.set_defaults(func=CmdDiff)

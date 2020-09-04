@@ -153,7 +153,7 @@ def test_diff_show_md_and_hash(mock_show_md, mocker, caplog, show_hash):
     mocker.patch("dvc.repo.Repo.diff", return_value=diff.copy())
 
     assert 0 == cmd.run()
-    mock_show_md.assert_called_once_with(diff, show_hash, True)
+    mock_show_md.assert_called_once_with(diff, show_hash, False)
 
 
 def test_no_changes(mocker, caplog):
@@ -247,7 +247,7 @@ def test_show_md_hide_missing():
         "added": [{"path": "file"}],
         "not in cache": [{"path": "file2"}],
     }
-    assert _show_md(diff, show_missing=False) == (
+    assert _show_md(diff, hide_missing=True) == (
         "| Status   | Path     |\n"
         "|----------|----------|\n"
         "| added    | file     |\n"
