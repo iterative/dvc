@@ -112,6 +112,9 @@ class CmdDiff(CmdBase):
                 )
             )
 
+        if not sum(summary.values()):
+            return None
+
         fmt = (
             "files summary: {added} added, {deleted} deleted,"
             " {modified} modified"
@@ -142,7 +145,9 @@ class CmdDiff(CmdBase):
             elif self.args.show_md:
                 logger.info(_show_md(diff, show_hash, show_missing))
             elif diff:
-                logger.info(self._format(diff, show_missing))
+                output = self._format(diff, show_missing)
+                if output:
+                    logger.info(output)
 
         except DvcException:
             logger.exception("failed to get diff")
