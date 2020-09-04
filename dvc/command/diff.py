@@ -126,7 +126,7 @@ class CmdDiff(CmdBase):
         try:
             diff = self.repo.diff(self.args.a_rev, self.args.b_rev)
             show_hash = self.args.show_hash
-            show_missing = self.args.show_missing
+            show_missing = False if self.args.b_rev else self.args.show_missing
             if not show_missing:
                 del diff["not in cache"]
 
