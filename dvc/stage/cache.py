@@ -6,6 +6,7 @@ from funcy import first
 from voluptuous import Invalid
 
 from dvc.cache.local import _log_exceptions
+from dvc.exceptions import DvcException
 from dvc.schema import COMPILED_LOCK_FILE_STAGE_SCHEMA
 from dvc.utils import dict_sha256, relpath
 from dvc.utils.fs import makedirs
@@ -15,6 +16,11 @@ from .loader import StageLoader
 from .serialize import to_single_stage_lockfile
 
 logger = logging.getLogger(__name__)
+
+
+class RunCacheNotFoundError(DvcException):
+    def __init__(self, stage):
+        super().__init__(f"No run-cache for {stage.addressing}")
 
 
 def _get_cache_hash(cache, key=False):
@@ -142,17 +148,33 @@ class StageCache:
         makedirs(dpath, exist_ok=True)
         dump_yaml(path, cache)
 
-    def is_cached(self, stage):
-        return bool(self._load(stage))
-
-    def restore(self, stage):
+    def _restore(self, stage):
+        stage.save_deps()
         cache = self._load(stage)
         if not cache:
-            return
-        StageLoader.fill_from_lock(stage, cache)
+            raise RunCacheNotFoundError(stage)
 
+        StageLoader.fill_from_lock(stage, cache)
         for out in self._uncached_outs(stage, cache):
             out.checkout()
+
+        if not stage.outs_cached():
+            raise RunCacheNotFoundError(stage)
+
+    def restore(self, stage, run_cache=True):
+        if stage.is_callback or stage.always_changed:
+            raise RunCacheNotFoundError(stage)
+
+        if not stage.already_cached():
+            if not run_cache:  # backward compatibility
+                raise RunCacheNotFoundError(stage)
+            self._restore(stage)
+
+        logger.info(
+            "Stage '%s' is cached - skipping run, checking out outputs",
+            stage.addressing,
+        )
+        stage.checkout()
 
     @staticmethod
     def _transfer(func, from_remote, to_remote):

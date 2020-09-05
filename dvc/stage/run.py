@@ -81,39 +81,15 @@ def cmd_run(stage, *args, **kwargs):
         raise StageCmdFailedError(stage.cmd, retcode)
 
 
-def _is_cached(stage):
-    cached = (
-        not stage.is_callback
-        and not stage.always_changed
-        and stage.already_cached()
-    )
-    if cached:
-        logger.info("Stage '%s' is cached", stage.addressing)
-    return cached
-
-
-def restored_from_cache(stage):
-    stage.save_deps()
-    stage_cache = stage.repo.stage_cache
-    if not stage_cache.is_cached(stage):
-        return False
-    # restore stage from build cache
-    stage_cache.restore(stage)
-    restored = stage.outs_cached()
-    if restored:
-        logger.info("Restored stage '%s' from run-cache", stage.addressing)
-    return restored
-
-
 def run_stage(stage, dry=False, force=False, run_cache=False):
     if not (dry or force):
-        stage_cached = _is_cached(stage) or (
-            run_cache and restored_from_cache(stage)
-        )
-        if stage_cached:
-            logger.info("Skipping run, checking out outputs")
-            stage.checkout()
+        from .cache import RunCacheNotFoundError
+
+        try:
+            stage.repo.stage_cache.restore(stage, run_cache=run_cache)
             return
+        except RunCacheNotFoundError:
+            pass
 
     callback_str = "callback " if stage.is_callback else ""
     logger.info(
