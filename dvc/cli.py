@@ -224,7 +224,7 @@ def get_main_parser():
     # Unfortunately, there is no easier and clearer way to do it,
     # as adding this argument in get_parent_parser() either in
     # log_level_group or on parent_parser itself will cause unexpected error.
-    parser.add_argument(
+    help_action = parser.add_argument(
         "-h",
         "--help",
         action="help",
@@ -264,6 +264,7 @@ def get_main_parser():
         cmd.add_parser(subparsers, parent_parser)
 
     parser.cmd_choices = list(subparsers.choices.keys())
+    parser.cmd_choices.extend(help_action.option_strings)
 
     return parser
 

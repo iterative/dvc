@@ -1,6 +1,6 @@
 import os
 
-from dvc.cli import parse_args
+from dvc.cli import get_main_parser, parse_args
 from dvc.command.add import CmdAdd
 from dvc.command.base import CmdBase
 from dvc.command.checkout import CmdCheckout
@@ -200,11 +200,17 @@ class TestCd(TestDvc):
         self.assertEqual(parent_dir, current_dir)
 
 
-def test_unknown_command_help(capsys):
+def test_unknown_command_help(caplog, capsys):
     try:
         _ = parse_args(["unknown"])
     except DvcParserError:
         pass
+    assert (
+        "dvc: 'unknown' is not a dvc command. See 'dvc --help'" in caplog.text
+    )
+
+    parser = get_main_parser()
+    parser.print_help()
     captured = capsys.readouterr()
     output = captured.out
     try:
