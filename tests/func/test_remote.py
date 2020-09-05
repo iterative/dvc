@@ -7,10 +7,10 @@ import pytest
 from mock import patch
 
 from dvc.config import Config
-from dvc.exceptions import DownloadError, UploadError
+from dvc.exceptions import DownloadError, RemoteCacheRequiredError, UploadError
 from dvc.main import main
 from dvc.path_info import PathInfo
-from dvc.tree.base import BaseTree, RemoteCacheRequiredError
+from dvc.tree.base import BaseTree
 from dvc.tree.local import LocalTree
 from dvc.utils.fs import remove
 from tests.basic_env import TestDvc
@@ -262,7 +262,7 @@ def test_external_dir_resource_on_no_cache(tmp_dir, dvc, tmp_path_factory):
     with pytest.raises(RemoteCacheRequiredError):
         dvc.run(
             cmd="echo hello world",
-            deps=[os.fspath(external_dir)],
+            outs=[os.fspath(external_dir)],
             single_stage=True,
         )
 

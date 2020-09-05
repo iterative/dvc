@@ -7,11 +7,7 @@ from urllib.parse import urlparse
 
 from funcy import cached_property
 
-from dvc.exceptions import (
-    DvcException,
-    DvcIgnoreInCollectedDirError,
-    RemoteCacheRequiredError,
-)
+from dvc.exceptions import DvcException, DvcIgnoreInCollectedDirError
 from dvc.hash_info import HashInfo
 from dvc.ignore import DvcIgnore
 from dvc.path_info import URLInfo
@@ -331,11 +327,8 @@ class BaseTree:
         ]
 
     def get_dir_hash(self, path_info, **kwargs):
-        if not self.cache:
-            raise RemoteCacheRequiredError(path_info)
-
         dir_info = self._collect_dir(path_info, **kwargs)
-        return self.cache.save_dir_info(dir_info)
+        return self.repo.cache.local.save_dir_info(dir_info)
 
     def upload(self, from_info, to_info, name=None, no_progress_bar=False):
         if not hasattr(self, "_upload"):
