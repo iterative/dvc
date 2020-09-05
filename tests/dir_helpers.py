@@ -51,7 +51,7 @@ from contextlib import contextmanager
 from textwrap import dedent
 
 import pytest
-from funcy import lmap, retry
+from funcy import lmap
 
 from dvc.logger import disable_other_loggers
 from dvc.utils.fs import makedirs
@@ -283,16 +283,9 @@ def dvc(tmp_dir):
 
 
 def git_init(path):
-    from git import Repo
-    from git.exc import GitCommandNotFound
+    from pygit2 import init_repository
 
-    # NOTE: handles EAGAIN error on BSD systems (osx in our case).
-    # Otherwise when running tests you might get this exception:
-    #
-    #    GitCommandNotFound: Cmd('git') not found due to:
-    #        OSError('[Errno 35] Resource temporarily unavailable')
-    git = retry(5, GitCommandNotFound)(Repo.init)(path)
-    git.close()
+    init_repository(path, False)
 
 
 @pytest.fixture
