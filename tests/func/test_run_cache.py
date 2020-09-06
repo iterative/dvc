@@ -32,7 +32,7 @@ def test_restore(tmp_dir, dvc, run_copy, mocker):
 
     (stage,) = dvc.reproduce("copy-foo-bar")
 
-    mock_restore.assert_called_once_with(stage)
+    mock_restore.assert_called_once_with(stage, run_cache=True)
     mock_run.assert_not_called()
     assert (tmp_dir / "bar").exists() and not (tmp_dir / "foo").unlink()
     assert (tmp_dir / PIPELINE_LOCK).exists()
@@ -46,7 +46,7 @@ def test_save(tmp_dir, dvc, run_copy):
     stage = run_copy("foo", "bar", name="copy-foo-bar")
     assert _recurse_count_files(run_cache_dir) == 1
     with dvc.state:
-        assert dvc.stage_cache.is_cached(stage)
+        assert dvc.stage_cache._load(stage)
 
 
 def test_do_not_save_on_no_exec_and_dry(tmp_dir, dvc, run_copy):
@@ -58,13 +58,13 @@ def test_do_not_save_on_no_exec_and_dry(tmp_dir, dvc, run_copy):
 
     assert _recurse_count_files(run_cache_dir) == 0
     with dvc.state:
-        assert not dvc.stage_cache.is_cached(stage)
+        assert not dvc.stage_cache._load(stage)
 
     (stage,) = dvc.reproduce("copy-foo-bar", dry=True)
 
     assert _recurse_count_files(run_cache_dir) == 0
     with dvc.state:
-        assert not dvc.stage_cache.is_cached(stage)
+        assert not dvc.stage_cache._load(stage)
 
 
 def test_uncached_outs_are_cached(tmp_dir, dvc, run_copy):
@@ -103,7 +103,7 @@ def test_memory_for_multiple_runs_of_same_stage(
     assert (tmp_dir / PIPELINE_LOCK).exists()
     assert (tmp_dir / "bar").read_text() == "foobar"
     mock_run.assert_not_called()
-    mock_restore.assert_called_once_with(stage)
+    mock_restore.assert_called_once_with(stage, run_cache=True)
     mock_restore.reset_mock()
 
     (tmp_dir / PIPELINE_LOCK).unlink()
@@ -112,7 +112,7 @@ def test_memory_for_multiple_runs_of_same_stage(
 
     assert (tmp_dir / "bar").read_text() == "foo"
     mock_run.assert_not_called()
-    mock_restore.assert_called_once_with(stage)
+    mock_restore.assert_called_once_with(stage, run_cache=True)
     assert (tmp_dir / "bar").exists() and not (tmp_dir / "foo").unlink()
     assert (tmp_dir / PIPELINE_LOCK).exists()
 
@@ -141,7 +141,7 @@ def test_memory_runs_of_multiple_stages(tmp_dir, dvc, run_copy, mocker):
     assert (tmp_dir / "foo.bak").read_text() == "foo"
     assert (tmp_dir / PIPELINE_LOCK).exists()
     mock_run.assert_not_called()
-    mock_restore.assert_called_once_with(stage)
+    mock_restore.assert_called_once_with(stage, run_cache=True)
     mock_restore.reset_mock()
 
     (stage,) = dvc.reproduce("backup-bar")
@@ -149,4 +149,4 @@ def test_memory_runs_of_multiple_stages(tmp_dir, dvc, run_copy, mocker):
     assert (tmp_dir / "bar.bak").read_text() == "bar"
     assert (tmp_dir / PIPELINE_LOCK).exists()
     mock_run.assert_not_called()
-    mock_restore.assert_called_once_with(stage)
+    mock_restore.assert_called_once_with(stage, run_cache=True)
