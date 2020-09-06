@@ -3,3 +3,8 @@ try:
     from .build import PKG  # noqa, pylint:disable=unused-import
 except ImportError:
     PKG = None
+
+if PKG is None:
+    package = ""
+else:
+    package = f"({PKG})"
