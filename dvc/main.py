@@ -35,6 +35,7 @@ def profile(enable, dump):
 
     yield
 
+    prof.disable()
     if not dump:
         prof.print_stats(sort="cumtime")
         return
