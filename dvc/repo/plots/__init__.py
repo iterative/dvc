@@ -187,6 +187,11 @@ def _prepare_plots(data, revs, props):
             continue
 
         for datafile, desc in data[rev].items():
+            # We silently skip on an absent data file,
+            # see also try/except/pass in .collect()
+            if "data" not in desc:
+                continue
+
             # props from command line overwrite plot props from out definition
             full_props = {**desc["props"], **props}
 
