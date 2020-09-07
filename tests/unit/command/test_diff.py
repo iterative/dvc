@@ -28,6 +28,7 @@ def test_default(mocker, caplog):
         "added": [{"path": "file", "hash": "00000000"}],
         "deleted": [],
         "modified": [],
+        "not in cache": [],
     }
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
 
@@ -36,7 +37,7 @@ def test_default(mocker, caplog):
         "Added:\n"
         "    file\n"
         "\n"
-        "files summary: 1 added, 0 deleted, 0 modified"
+        "files summary: 1 added, 0 deleted, 0 modified, 0 not in cache"
     ) in caplog.text
 
 
@@ -54,6 +55,7 @@ def test_show_hash(mocker, caplog):
             {"path": "file2", "hash": {"old": "AAAAAAAA", "new": "BBBBBBBB"}},
             {"path": "file1", "hash": {"old": "CCCCCCCC", "new": "DDDDDDDD"}},
         ],
+        "not in cache": [],
     }
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
     assert 0 == cmd.run()
@@ -67,7 +69,7 @@ def test_show_hash(mocker, caplog):
         "    CCCCCCCC..DDDDDDDD  file1\n"
         "    AAAAAAAA..BBBBBBBB  file2\n"
         "\n"
-        "files summary: 0 added, 2 deleted, 2 modified"
+        "files summary: 0 added, 2 deleted, 2 modified, 0 not in cache"
     ) in caplog.text
 
 
@@ -81,6 +83,7 @@ def test_show_json(mocker, caplog):
         ],
         "deleted": [],
         "modified": [],
+        "not in cache": [],
     }
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
 
@@ -88,6 +91,7 @@ def test_show_json(mocker, caplog):
     assert '"added": [{"path": "file1"}, {"path": "file2"}]' in caplog.text
     assert '"deleted": []' in caplog.text
     assert '"modified": []' in caplog.text
+    assert '"not in cache": []' in caplog.text
 
 
 def test_show_json_and_hash(mocker, caplog):
@@ -102,6 +106,7 @@ def test_show_json_and_hash(mocker, caplog):
         ],
         "deleted": [],
         "modified": [],
+        "not in cache": [],
     }
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
 
@@ -112,6 +117,28 @@ def test_show_json_and_hash(mocker, caplog):
     )
     assert '"deleted": []' in caplog.text
     assert '"modified": []' in caplog.text
+    assert '"not in cache": []' in caplog.text
+
+
+def test_show_json_hide_missing(mocker, caplog):
+    args = parse_args(["diff", "--show-json", "--hide-missing"])
+    cmd = args.func(args)
+    diff = {
+        "added": [
+            {"path": "file2", "hash": "22222222"},
+            {"path": "file1", "hash": "11111111"},
+        ],
+        "deleted": [],
+        "modified": [],
+        "not in cache": [],
+    }
+    mocker.patch("dvc.repo.Repo.diff", return_value=diff)
+
+    assert 0 == cmd.run()
+    assert '"added": [{"path": "file1"}, {"path": "file2"}]' in caplog.text
+    assert '"deleted": []' in caplog.text
+    assert '"modified": []' in caplog.text
+    assert '"not in cache": []' not in caplog.text
 
 
 @pytest.mark.parametrize("show_hash", [None, True, False])
@@ -126,7 +153,7 @@ def test_diff_show_md_and_hash(mock_show_md, mocker, caplog, show_hash):
     mocker.patch("dvc.repo.Repo.diff", return_value=diff.copy())
 
     assert 0 == cmd.run()
-    mock_show_md.assert_called_once_with(diff, show_hash)
+    mock_show_md.assert_called_once_with(diff, show_hash, False)
 
 
 def test_no_changes(mocker, caplog):
@@ -166,16 +193,18 @@ def test_show_md():
         ],
         "modified": [{"path": "file"}],
         "added": [{"path": "file"}],
+        "not in cache": [{"path": "file2"}],
     }
     assert _show_md(diff) == (
-        "| Status   | Path     |\n"
-        "|----------|----------|\n"
-        "| added    | file     |\n"
-        "| deleted  | zoo      |\n"
-        "| deleted  | data{sep}    |\n"
-        "| deleted  | data{sep}foo |\n"
-        "| deleted  | data{sep}bar |\n"
-        "| modified | file     |\n"
+        "| Status       | Path     |\n"
+        "|--------------|----------|\n"
+        "| added        | file     |\n"
+        "| deleted      | zoo      |\n"
+        "| deleted      | data{sep}    |\n"
+        "| deleted      | data{sep}foo |\n"
+        "| deleted      | data{sep}bar |\n"
+        "| modified     | file     |\n"
+        "| not in cache | file2    |\n"
     ).format(sep=os.path.sep)
 
 
@@ -191,14 +220,61 @@ def test_show_md_with_hash():
             {"path": "file", "hash": {"old": "AAAAAAAA", "new": "BBBBBBBB"}}
         ],
         "added": [{"path": "file", "hash": "00000000"}],
+        "not in cache": [{"path": "file2", "hash": "12345678"}],
     }
     assert _show_md(diff, show_hash=True) == (
-        "| Status   | Hash               | Path     |\n"
-        "|----------|--------------------|----------|\n"
-        "| added    | 00000000           | file     |\n"
-        "| deleted  | 22222              | zoo      |\n"
-        "| deleted  | XXXXXXXX           | data{sep}    |\n"
-        "| deleted  | 11111111           | data{sep}foo |\n"
-        "| deleted  | 00000000           | data{sep}bar |\n"
-        "| modified | AAAAAAAA..BBBBBBBB | file     |\n"
+        "| Status       | Hash               | Path     |\n"
+        "|--------------|--------------------|----------|\n"
+        "| added        | 00000000           | file     |\n"
+        "| deleted      | 22222              | zoo      |\n"
+        "| deleted      | XXXXXXXX           | data{sep}    |\n"
+        "| deleted      | 11111111           | data{sep}foo |\n"
+        "| deleted      | 00000000           | data{sep}bar |\n"
+        "| modified     | AAAAAAAA..BBBBBBBB | file     |\n"
+        "| not in cache | 12345678           | file2    |\n"
     ).format(sep=os.path.sep)
+
+
+def test_show_md_hide_missing():
+    diff = {
+        "deleted": [
+            {"path": "zoo"},
+            {"path": os.path.join("data", "")},
+            {"path": os.path.join("data", "foo")},
+            {"path": os.path.join("data", "bar")},
+        ],
+        "modified": [{"path": "file"}],
+        "added": [{"path": "file"}],
+        "not in cache": [{"path": "file2"}],
+    }
+    assert _show_md(diff, hide_missing=True) == (
+        "| Status   | Path     |\n"
+        "|----------|----------|\n"
+        "| added    | file     |\n"
+        "| deleted  | zoo      |\n"
+        "| deleted  | data{sep}    |\n"
+        "| deleted  | data{sep}foo |\n"
+        "| deleted  | data{sep}bar |\n"
+        "| modified | file     |\n"
+    ).format(sep=os.path.sep)
+
+
+def test_hide_missing(mocker, caplog):
+    args = parse_args(["diff", "--hide-missing"])
+    cmd = args.func(args)
+    diff = {
+        "added": [{"path": "file", "hash": "00000000"}],
+        "deleted": [],
+        "modified": [],
+        "not in cache": [],
+    }
+    mocker.patch("dvc.repo.Repo.diff", return_value=diff)
+
+    assert 0 == cmd.run()
+    assert (
+        "Added:\n"
+        "    file\n"
+        "\n"
+        "files summary: 1 added, 0 deleted, 0 modified"
+    ) in caplog.text
+    assert "not in cache" not in caplog.text

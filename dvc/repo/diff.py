@@ -36,7 +36,14 @@ def diff(self, a_rev="HEAD", b_rev=None):
     # Compare paths between the old and new tree.
     # set() efficiently converts dict keys to a set
     added = sorted(set(new) - set(old))
-    deleted = sorted(set(old) - set(new))
+    deleted_or_missing = set(old) - set(new)
+    if b_rev == "workspace":
+        # missing status is only applicable when diffing local workspace
+        # against a commit
+        missing = sorted(_filter_missing(self, deleted_or_missing))
+    else:
+        missing = []
+    deleted = sorted(deleted_or_missing - set(missing))
     modified = sorted(set(old) & set(new))
 
     ret = {
@@ -46,6 +53,9 @@ def diff(self, a_rev="HEAD", b_rev=None):
             {"path": path, "hash": {"old": old[path], "new": new[path]}}
             for path in modified
             if old[path] != new[path]
+        ],
+        "not in cache": [
+            {"path": path, "hash": old[path]} for path in missing
         ],
     }
 
@@ -104,3 +114,13 @@ def _dir_output_paths(repo_tree, output):
             yield str(fname), repo_tree.get_hash(fname).value
     except NoRemoteError:
         logger.warning("dir cache entry for '%s' is missing", output)
+
+
+def _filter_missing(repo, paths):
+    repo_tree = RepoTree(repo, stream=True)
+    for path in paths:
+        metadata = repo_tree.metadata(path)
+        if metadata.is_dvc:
+            out = metadata.outs[0]
+            if out.status()[str(out)] == "not in cache":
+                yield path

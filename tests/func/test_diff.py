@@ -28,6 +28,7 @@ def test_added(tmp_dir, scm, dvc):
         "added": [{"path": "file", "hash": digest("text")}],
         "deleted": [],
         "modified": [],
+        "not in cache": [],
     }
 
 
@@ -55,6 +56,7 @@ def test_no_cache_entry(tmp_dir, scm, dvc):
                 "hash": {"old": digest("first"), "new": digest("second")},
             }
         ],
+        "not in cache": [],
     }
 
 
@@ -66,6 +68,7 @@ def test_deleted(tmp_dir, scm, dvc):
         "added": [],
         "deleted": [{"path": "file", "hash": digest("text")}],
         "modified": [],
+        "not in cache": [],
     }
 
 
@@ -82,6 +85,7 @@ def test_modified(tmp_dir, scm, dvc):
                 "hash": {"old": digest("first"), "new": digest("second")},
             }
         ],
+        "not in cache": [],
     }
 
 
@@ -98,12 +102,14 @@ def test_refs(tmp_dir, scm, dvc):
         "added": [],
         "deleted": [],
         "modified": [{"path": "file", "hash": {"old": HEAD_1, "new": HEAD}}],
+        "not in cache": [],
     }
 
     assert dvc.diff("HEAD~2", "HEAD~1") == {
         "added": [],
         "deleted": [],
         "modified": [{"path": "file", "hash": {"old": HEAD_2, "new": HEAD_1}}],
+        "not in cache": [],
     }
 
     with pytest.raises(DvcException, match=r"unknown Git revision 'missing'"):
@@ -134,6 +140,7 @@ def test_directories(tmp_dir, scm, dvc):
         ],
         "deleted": [],
         "modified": [],
+        "not in cache": [],
     }
 
     assert dvc.diff(":/directory", ":/modify") == {
@@ -152,6 +159,7 @@ def test_directories(tmp_dir, scm, dvc):
                 "hash": {"old": digest("2"), "new": digest("two")},
             },
         ],
+        "not in cache": [],
     }
 
     assert dvc.diff(":/modify", ":/delete") == {
@@ -168,6 +176,7 @@ def test_directories(tmp_dir, scm, dvc):
                 },
             }
         ],
+        "not in cache": [],
     }
 
 
@@ -189,6 +198,20 @@ def test_diff_no_cache(tmp_dir, scm, dvc):
     assert diff["added"] == []
     assert diff["deleted"] == []
     assert first(diff["modified"])["path"] == os.path.join("dir", "")
+    assert diff["not in cache"] == []
+
+    (tmp_dir / "dir" / "file").unlink()
+    remove(str(tmp_dir / "dir"))
+    diff = dvc.diff()
+    assert diff["added"] == []
+    assert diff["deleted"] == []
+    assert diff["modified"] == []
+    assert diff["not in cache"] == [
+        {
+            "path": os.path.join("dir", ""),
+            "hash": "f0f7a307d223921557c929f944bf5303.dir",
+        },
+    ]
 
 
 def test_diff_dirty(tmp_dir, scm, dvc):
@@ -223,6 +246,7 @@ def test_diff_dirty(tmp_dir, scm, dvc):
                 "path": os.path.join("dir", ""),
             }
         ],
+        "not in cache": [],
     }
 
 
