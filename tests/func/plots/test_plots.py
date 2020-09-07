@@ -20,6 +20,7 @@ from dvc.repo.plots.template import (
     NoFieldInDataError,
     TemplateNotFoundError,
 )
+from dvc.utils.fs import remove
 from dvc.utils.serialize import dump_yaml, dumps_yaml
 
 
@@ -340,6 +341,38 @@ def test_plot_even_if_metric_missing(
     ]
     assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
     assert plot_content["encoding"]["y"]["field"] == "y"
+
+
+def test_plot_cache_missing(tmp_dir, scm, dvc, caplog, run_copy_metrics):
+    metric = [{"y": 2}, {"y": 3}]
+    _write_json(tmp_dir, metric, "metric_t.json")
+    stage = run_copy_metrics(
+        "metric_t.json",
+        "metric.json",
+        plots=["metric.json"],
+        commit="there is metric",
+    )
+    scm.tag("v1")
+
+    # Make a different plot and then remove its datafile
+    metric = [{"y": 3}, {"y": 4}]
+    _write_json(tmp_dir, metric, "metric_t.json")
+    stage = run_copy_metrics(
+        "metric_t.json",
+        "metric.json",
+        plots=["metric.json"],
+        commit="there is an another metric",
+    )
+    scm.tag("v2")
+    remove(stage.outs[0].fspath)
+    remove(stage.outs[0].cache_path)
+
+    plots = dvc.plots.show(revs=["v1", "v2"], targets=["metric.json"])
+    plot_content = json.loads(plots["metric.json"])
+    assert plot_content["data"]["values"] == [
+        {"y": 2, PlotData.INDEX_FIELD: 0, "rev": "v1"},
+        {"y": 3, PlotData.INDEX_FIELD: 1, "rev": "v1"},
+    ]
 
 
 def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc, caplog):
