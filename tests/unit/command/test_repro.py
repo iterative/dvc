@@ -19,6 +19,7 @@ default_arguments = {
     "queue": False,
     "run_all": False,
     "jobs": None,
+    "pull": False,
 }
 
 
