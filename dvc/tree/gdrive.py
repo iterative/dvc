@@ -382,7 +382,7 @@ class GDriveTree(BaseTree):
         gdrive_file = self._drive.CreateFile(param)
 
         gdrive_file.FetchMetadata(fields="fileSize")
-        size = gdrive_file["fileSize"]
+        size = int(gdrive_file["fileSize"])
 
         with Tqdm(
             desc=progress_desc,
