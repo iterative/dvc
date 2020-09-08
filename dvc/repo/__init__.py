@@ -25,16 +25,30 @@ from .graph import check_acyclic, get_pipeline, get_pipelines
 logger = logging.getLogger(__name__)
 
 
+@contextmanager
+def lock_repo(repo):
+    # pylint: disable=protected-access
+    depth = getattr(repo, "_lock_depth", 0)
+    repo._lock_depth = depth + 1
+
+    try:
+        if depth > 0:
+            yield
+        else:
+            with repo.lock, repo.state:
+                repo._reset()
+                yield
+                # Graph cache is no longer valid after we release the repo.lock
+                repo._reset()
+    finally:
+        repo._lock_depth = depth
+
+
 def locked(f):
     @wraps(f)
     def wrapper(repo, *args, **kwargs):
-        with repo.lock, repo.state:
-            # pylint: disable=protected-access
-            repo._reset()
-            ret = f(repo, *args, **kwargs)
-            # Our graph cache is no longer valid after we release the repo.lock
-            repo._reset()
-            return ret
+        with lock_repo(repo):
+            return f(repo, *args, **kwargs)
 
     return wrapper
 
@@ -44,11 +58,11 @@ class Repo:
 
     from dvc.repo.add import add
     from dvc.repo.brancher import brancher
-    from dvc.repo.checkout import _checkout
+    from dvc.repo.checkout import checkout
     from dvc.repo.commit import commit
     from dvc.repo.destroy import destroy
     from dvc.repo.diff import diff
-    from dvc.repo.fetch import _fetch
+    from dvc.repo.fetch import fetch
     from dvc.repo.freeze import freeze, unfreeze
     from dvc.repo.gc import gc
     from dvc.repo.get import get
@@ -606,14 +620,6 @@ class Repo:
 
     def close(self):
         self.scm.close()
-
-    @locked
-    def checkout(self, *args, **kwargs):
-        return self._checkout(*args, **kwargs)
-
-    @locked
-    def fetch(self, *args, **kwargs):
-        return self._fetch(*args, **kwargs)
 
     def _reset(self):
         self.__dict__.pop("graph", None)

@@ -60,9 +60,10 @@ def test_used_cache(tmp_dir, dvc, path):
 
 def test_locked(mocker):
     repo = mocker.MagicMock()
+    repo._lock_depth = 0
     repo.method = locked(repo.method)
 
-    args = {}
+    args = ()
     kwargs = {}
     repo.method(repo, args, kwargs)
 
