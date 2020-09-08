@@ -53,6 +53,7 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
         self.password = config.get("password", None)
         self.ask_password = config.get("ask_password", False)
         self.headers = {}
+        self.ssl_verify = config.get("ssl_verify", True)
 
     def _auth_method(self, path_info=None):
         from requests.auth import HTTPBasicAuth, HTTPDigestAuth
@@ -80,6 +81,8 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
         from urllib3.util.retry import Retry
 
         session = requests.Session()
+
+        session.verify = self.ssl_verify
 
         retries = Retry(
             total=self.SESSION_RETRIES,

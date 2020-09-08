@@ -118,6 +118,7 @@ HTTP_COMMON = {
     "user": str,
     "password": str,
     "ask_password": Bool,
+    "ssl_verify": Bool,
 }
 WEBDAV_COMMON = {
     "user": str,
