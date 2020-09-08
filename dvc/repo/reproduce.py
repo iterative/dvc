@@ -25,7 +25,7 @@ def _reproduce_stage(stage, **kwargs):
         from ..dvcfile import Dvcfile
 
         dvcfile = Dvcfile(stage.repo, stage.path)
-        dvcfile.dump(stage)
+        dvcfile.dump(stage, update_pipeline=False)
 
     return [stage]
 
