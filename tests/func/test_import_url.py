@@ -154,7 +154,11 @@ def test_import_url(tmp_dir, dvc, workspace):
             "2aa17f8daa26996b3f7a4cf8888ac9ac",
             "ec602a6ba97b2dd07bd6d2cd89674a60.dir",
         ),
-        (pytest.lazy_fixture("gs"), "fixme", "fixme",),
+        (
+            pytest.lazy_fixture("gs"),
+            "dc24e1271084ee317ac3c2656fb8812b",
+            "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
+        ),
         (
             pytest.lazy_fixture("hdfs"),
             "ec0943f83357f702033c98e70b853c8c",
