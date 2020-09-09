@@ -54,7 +54,7 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
         self.ask_password = config.get("ask_password", False)
         self.headers = {}
         self.ssl_verify = config.get("ssl_verify", True)
-        self.method = config.get("http_method", "POST")
+        self.method = config.get("method", "POST")
 
     def _auth_method(self, path_info=None):
         from requests.auth import HTTPBasicAuth, HTTPDigestAuth
