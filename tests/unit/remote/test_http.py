@@ -117,11 +117,11 @@ def test_http_method(dvc):
         "auth": "basic",
         "user": user,
         "password": password,
-        "HTTP_method": "PUT",
+        "method": "PUT",
     }
 
     tree = HTTPTree(dvc, config)
 
     assert tree._auth_method() == auth
-    assert tree.http_method == "PUT"
+    assert tree.method == "PUT"
     assert isinstance(tree._auth_method(), HTTPBasicAuth)
