@@ -80,3 +80,26 @@ def test_custom_auth_method(dvc):
     assert tree._auth_method() is None
     assert header in tree.headers
     assert tree.headers[header] == password
+
+
+def test_ssl_verify_is_enabled_by_default(dvc):
+    config = {
+        "url": "http://example.com/",
+        "path_info": "file.html",
+    }
+
+    tree = HTTPTree(dvc, config)
+
+    assert tree._session.verify is True
+
+
+def test_ssl_verify_disable(dvc):
+    config = {
+        "url": "http://example.com/",
+        "path_info": "file.html",
+        "ssl_verify": False,
+    }
+
+    tree = HTTPTree(dvc, config)
+
+    assert tree._session.verify is False
