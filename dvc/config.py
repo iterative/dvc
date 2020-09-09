@@ -190,7 +190,7 @@ SCHEMA = {
                     **REMOTE_COMMON,
                 },
                 "hdfs": {"user": str, **REMOTE_COMMON},
-                "azure": {"connection_string": str, "sas_token": str, **REMOTE_COMMON},
+                "azure": {"connection_string": str, **REMOTE_COMMON},
                 "oss": {
                     "oss_key_id": str,
                     "oss_key_secret": str,
