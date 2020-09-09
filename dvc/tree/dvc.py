@@ -66,10 +66,6 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
         except OutputNotFoundError as exc:
             raise FileNotFoundError from exc
 
-        # NOTE: this handles both dirty and checkout-ed out at the same time
-        if self.repo.tree.exists(path):
-            return self.repo.tree.open(path, mode=mode, encoding=encoding)
-
         if len(outs) != 1 or (
             outs[0].is_dir_checksum and path == outs[0].path_info
         ):
