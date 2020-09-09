@@ -39,8 +39,8 @@ def get_dvc_info():
             info.append(
                 "Cache types: {}".format(_get_linktype_support_info(repo))
             )
-            fs_type = get_fs_type(repo.cache.local.cache_dir)
-            if fs_type:
+            if psutil:
+                fs_type = get_fs_type(repo.cache.local.cache_dir)
                 info.append(f"Cache directory: {fs_type}")
         else:
             info.append("Cache types: " + error_link("no-dvc-cache"))
@@ -51,8 +51,8 @@ def get_dvc_info():
         info.append("Repo: dvc, git (broken)")
     else:
         root_directory = repo.root_dir
-        fs_root = get_fs_type(os.path.abspath(root_directory))
-        if fs_root:
+        if psutil:
+            fs_root = get_fs_type(os.path.abspath(root_directory))
             info.append(f"Workspace directory: {fs_root}")
         info.append("Repo: {}".format(_get_dvc_repo_info(repo)))
     return "\n".join(info)
