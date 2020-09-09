@@ -151,9 +151,13 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
             encoding = None
 
         tree, dvc_tree = self._get_tree_pair(path)
-        if dvc_tree and dvc_tree.exists(path):
-            return dvc_tree.open(path, mode=mode, encoding=encoding, **kwargs)
-        return tree.open(path, mode=mode, encoding=encoding)
+        try:
+            return tree.open(path, mode=mode, encoding=encoding)
+        except FileNotFoundError:
+            if not dvc_tree:
+                raise
+
+        return dvc_tree.open(path, mode=mode, encoding=encoding, **kwargs)
 
     def exists(
         self, path, use_dvcignore=True
