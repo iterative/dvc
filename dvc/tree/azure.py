@@ -42,7 +42,7 @@ class AzureTree(BaseTree):
 
         self._account_url = None
         if not self._conn_str:
-            name = self._az_config.get("storage", "account", None)
+            name = config.get("account")
             self._account_url = f"https://{name}.blob.core.windows.net"
 
         self._credential = config.get("sas_token") or self._az_config.get(
