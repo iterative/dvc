@@ -1,7 +1,9 @@
+import re
+
 from dvc.main import main
 
 
-def test_(tmp_dir, dvc, scm):
+def test_(tmp_dir, dvc, scm, caplog):
     assert main(["version"]) == 0
 
     assert re.search(r"DVC version: \d+\.\d+\.\d+.*", caplog.text)

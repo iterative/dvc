@@ -10,13 +10,18 @@ from dvc.scm.base import SCMError
 from dvc.system import System
 from dvc.tree import TREES
 from dvc.utils import error_link
-from dvc.utils.pkg import package
+from dvc.utils.pkg import PKG
 from dvc.version import __version__
 
 try:
     import psutil
 except ImportError:
     psutil = None
+
+if PKG is None:
+    package = ""
+else:
+    package = f"({PKG})"
 
 
 def get_dvc_info():
