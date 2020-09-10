@@ -215,6 +215,9 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
             sec, nano_sec = git_time
             return sec + nano_sec / 1000000000
 
+        if self.dvcignore.is_ignored(path):
+            raise FileNotFoundError
+
         obj = self._git_object_by_path(path)
         if obj is None:
             raise OSError(errno.ENOENT, "No such file")

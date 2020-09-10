@@ -10,7 +10,6 @@ from funcy import lfilter, wrap_with
 from pygtrie import StringTrie
 
 from dvc.dvcfile import is_valid_filename
-from dvc.exceptions import OutputNotFoundError
 from dvc.hash_info import HashInfo
 from dvc.path_info import PathInfo
 from dvc.utils import file_md5, is_exec
@@ -163,11 +162,47 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         self, path, use_dvcignore=True
     ):  # pylint: disable=arguments-differ
         tree, dvc_tree = self._get_tree_pair(path)
-        return tree.exists(path) or (dvc_tree and dvc_tree.exists(path))
+
+        if not dvc_tree:
+            return tree.exists(path)
+
+        if tree.exists(path):
+            return True
+
+        try:
+            meta = dvc_tree.metadata(path)
+        except FileNotFoundError:
+            return False
+
+        (out,) = meta.outs
+        assert len(meta.outs) == 1
+        if tree.exists(out.path_info):
+            return False
+        return True
 
     def isdir(self, path):  # pylint: disable=arguments-differ
         tree, dvc_tree = self._get_tree_pair(path)
-        return tree.isdir(path) or (dvc_tree and dvc_tree.isdir(path))
+
+        try:
+            st = tree.stat(path)
+            return stat.S_ISDIR(st.st_mode)
+        except (OSError, ValueError):
+            # from CPython's os.path.isdir()
+            pass
+
+        if not dvc_tree:
+            return False
+
+        try:
+            meta = dvc_tree.metadata(path)
+        except FileNotFoundError:
+            return False
+
+        (out,) = meta.outs
+        assert len(meta.outs) == 1
+        if tree.exists(out.path_info):
+            return False
+        return meta.isdir
 
     def isdvc(self, path, **kwargs):
         _, dvc_tree = self._get_tree_pair(path)
@@ -175,7 +210,27 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
 
     def isfile(self, path):  # pylint: disable=arguments-differ
         tree, dvc_tree = self._get_tree_pair(path)
-        return tree.isfile(path) or (dvc_tree and dvc_tree.isfile(path))
+
+        try:
+            st = tree.stat(path)
+            return stat.S_ISREG(st.st_mode)
+        except (OSError, ValueError):
+            # from CPython's os.path.isfile()
+            pass
+
+        if not dvc_tree:
+            return False
+
+        try:
+            meta = dvc_tree.metadata(path)
+        except FileNotFoundError:
+            return False
+
+        (out,) = meta.outs
+        assert len(meta.outs) == 1
+        if tree.exists(out.path_info):
+            return False
+        return meta.isfile
 
     def isexec(self, path):
         tree, dvc_tree = self._get_tree_pair(path)
@@ -289,27 +344,26 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
             return
 
         tree, dvc_tree = self._get_tree_pair(top)
-        dvc_exists = dvc_tree and dvc_tree.exists(top)
         repo_exists = tree.exists(top)
-        if dvc_exists:
-            dvc_walk = dvc_tree.walk(top, topdown=topdown, **kwargs)
-            if repo_exists:
-                repo_walk = tree.walk(
-                    top,
-                    topdown=topdown,
-                    ignore_subrepos=not self._traverse_subrepos,
-                )
-                yield from self._walk(repo_walk, dvc_walk, dvcfiles=dvcfiles)
-            else:
-                yield from dvc_walk
-        else:
-            repo_walk = tree.walk(
-                top,
-                topdown=topdown,
-                onerror=onerror,
-                ignore_subrepos=not self._traverse_subrepos,
-            )
+        repo_walk = tree.walk(
+            top,
+            topdown=topdown,
+            onerror=onerror,
+            ignore_subrepos=not self._traverse_subrepos,
+        )
+
+        if not dvc_tree or (repo_exists and dvc_tree.isdvc(top)):
             yield from self._walk(repo_walk, None, dvcfiles=dvcfiles)
+            return
+
+        if not repo_exists:
+            yield from dvc_tree.walk(top, topdown=topdown, **kwargs)
+
+        dvc_walk = None
+        if dvc_tree.exists(top):
+            dvc_walk = dvc_tree.walk(top, topdown=topdown, **kwargs)
+
+        yield from self._walk(repo_walk, dvc_walk, dvcfiles=dvcfiles)
 
     def walk_files(self, top, **kwargs):  # pylint: disable=arguments-differ
         for root, _, files in self.walk(top, **kwargs):
@@ -317,12 +371,12 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
                 yield PathInfo(root) / fname
 
     def get_dir_hash(self, path_info, **kwargs):
-        if not self.exists(path_info):
+        tree, dvc_tree = self._get_tree_pair(path_info)
+        if tree.exists(path_info):
+            return super().get_dir_hash(path_info, **kwargs)
+        if not dvc_tree:
             raise FileNotFoundError
-        _, dvc_tree = self._get_tree_pair(path_info)
-        if dvc_tree and dvc_tree.isdvc(path_info):
-            return dvc_tree.get_dir_hash(path_info, **kwargs)
-        return super().get_dir_hash(path_info, **kwargs)
+        return dvc_tree.get_dir_hash(path_info, **kwargs)
 
     def get_file_hash(self, path_info):
         """Return file checksum for specified path.
@@ -337,7 +391,7 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         if dvc_tree and dvc_tree.exists(path_info):
             try:
                 return dvc_tree.get_file_hash(path_info)
-            except OutputNotFoundError:
+            except FileNotFoundError:
                 pass
         return HashInfo(self.PARAM_CHECKSUM, file_md5(path_info, self)[0])
 
@@ -374,7 +428,7 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
 
         dvc_meta = None
         if dvc_tree:
-            with suppress(OutputNotFoundError):
+            with suppress(FileNotFoundError):
                 dvc_meta = dvc_tree.metadata(path_info)
 
         stat_result = None

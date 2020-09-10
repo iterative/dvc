@@ -191,6 +191,7 @@ def test_repotree_walk_fetch(tmp_dir, dvc, scm, local_remote):
     out = tmp_dir.dvc_gen({"dir": {"foo": "foo"}}, commit="init")[0].outs[0]
     dvc.push()
     remove(dvc.cache.local.cache_dir)
+    remove(tmp_dir / "dir")
 
     tree = RepoTree(dvc, fetch=True)
     with dvc.state:

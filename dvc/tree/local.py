@@ -160,8 +160,10 @@ class LocalTree(BaseTree):
         mode = os.stat(path).st_mode
         return is_exec(mode)
 
-    @staticmethod
-    def stat(path):
+    def stat(self, path):
+        if self.dvcignore.is_ignored(path):
+            raise FileNotFoundError
+
         return os.stat(path)
 
     def move(self, from_info, to_info, mode=None):

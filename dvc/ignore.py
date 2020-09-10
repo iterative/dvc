@@ -172,6 +172,9 @@ class DvcIgnoreFilterNoop:
     def check_ignore(self, path):
         return _no_match(path)
 
+    def is_ignored(self, _):
+        return False
+
 
 class DvcIgnoreFilter:
     @staticmethod
@@ -330,6 +333,11 @@ class DvcIgnoreFilter:
                 if matches:
                     return CheckIgnoreResult(target, True, matches)
         return _no_match(target)
+
+    def is_ignored(self, path):
+        # NOTE: can't use self.check_ignore(path).match for now, see
+        # https://github.com/iterative/dvc/issues/4555
+        return self.is_ignored_dir(path) or self.is_ignored_file(path)
 
 
 def init(path):

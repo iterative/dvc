@@ -90,6 +90,42 @@ def test_isdir_isfile(tmp_dir, dvc):
     assert tree.isdvc("datafile")
 
 
+def test_exists_isdir_isfile_dirty(tmp_dir, dvc):
+    tmp_dir.dvc_gen(
+        {"datafile": "data", "datadir": {"foo": "foo", "bar": "bar"}}
+    )
+
+    tree = RepoTree(dvc, stream=True)
+    shutil.rmtree(tmp_dir / "datadir")
+    (tmp_dir / "datafile").unlink()
+
+    root = PathInfo(tmp_dir)
+    assert tree.exists(root / "datafile")
+    assert tree.exists(root / "datadir")
+    assert tree.exists(root / "datadir" / "foo")
+    assert tree.isfile(root / "datafile")
+    assert not tree.isfile(root / "datadir")
+    assert tree.isfile(root / "datadir" / "foo")
+    assert not tree.isdir(root / "datafile")
+    assert tree.isdir(root / "datadir")
+    assert not tree.isdir(root / "datadir" / "foo")
+
+    # NOTE: creating file instead of dir and dir instead of file
+    tmp_dir.gen({"datadir": "data", "datafile": {"foo": "foo", "bar": "bar"}})
+    assert tree.exists(root / "datafile")
+    assert tree.exists(root / "datadir")
+    assert not tree.exists(root / "datadir" / "foo")
+    assert tree.exists(root / "datafile" / "foo")
+    assert not tree.isfile(root / "datafile")
+    assert tree.isfile(root / "datadir")
+    assert not tree.isfile(root / "datadir" / "foo")
+    assert tree.isfile(root / "datafile" / "foo")
+    assert tree.isdir(root / "datafile")
+    assert not tree.isdir(root / "datadir")
+    assert not tree.isdir(root / "datadir" / "foo")
+    assert not tree.isdir(root / "datafile" / "foo")
+
+
 def test_isdir_mixed(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
 
@@ -145,6 +181,59 @@ def test_walk(tmp_dir, dvc, dvcfiles, extra_expected):
     expected = [str(path) for path in expected + extra_expected]
     assert set(actual) == set(expected)
     assert len(actual) == len(expected)
+
+
+def test_walk_dirty(tmp_dir, dvc):
+    tmp_dir.dvc_gen(
+        {
+            "dir": {
+                "foo": "foo",
+                "subdir1": {"foo1": "foo1", "bar1": "bar1"},
+                "subdir2": {"foo2": "foo2"},
+            }
+        }
+    )
+    tmp_dir.gen({"dir": {"bar": "bar", "subdir3": {"foo3": "foo3"}}})
+    (tmp_dir / "dir" / "foo").unlink()
+
+    tree = RepoTree(dvc)
+    expected = [
+        PathInfo("dir") / "subdir1",
+        PathInfo("dir") / "subdir2",
+        PathInfo("dir") / "subdir3",
+        PathInfo("dir") / "subdir1" / "foo1",
+        PathInfo("dir") / "subdir1" / "bar1",
+        PathInfo("dir") / "subdir2" / "foo2",
+        PathInfo("dir") / "subdir3" / "foo3",
+        PathInfo("dir") / "bar",
+    ]
+
+    actual = []
+    for root, dirs, files in tree.walk("dir"):
+        for entry in dirs + files:
+            actual.append(os.path.join(root, entry))
+
+    expected = [str(path) for path in expected]
+    assert set(actual) == set(expected)
+    assert len(actual) == len(expected)
+
+
+def test_walk_dirty_cached_dir(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen(
+        {"data": {"foo": "foo", "bar": "bar"}}, commit="add data",
+    )
+    (tmp_dir / "data" / "foo").unlink()
+
+    tree = RepoTree(dvc)
+
+    data = PathInfo(tmp_dir) / "data"
+
+    actual = []
+    for root, dirs, files in tree.walk(data):
+        for entry in dirs + files:
+            actual.append(os.path.join(root, entry))
+
+    assert actual == [(data / "bar").fspath]
 
 
 def test_walk_mixed_dir(tmp_dir, scm, dvc):
@@ -405,9 +494,19 @@ def test_get_hash_cached_dir(tmp_dir, dvc, mocker):
     tree = RepoTree(dvc)
     get_file_hash_spy = mocker.spy(tree, "get_file_hash")
     dvc_tree_spy = mocker.spy(tree._dvctrees[dvc.root_dir], "get_dir_hash")
-    assert tree.get_hash(PathInfo(tmp_dir) / "dir") == HashInfo(
-        "md5", "8761c4e9acad696bee718615e23e22db.dir",
-    )
+    with dvc.state:
+        assert tree.get_hash(PathInfo(tmp_dir) / "dir") == HashInfo(
+            "md5", "8761c4e9acad696bee718615e23e22db.dir",
+        )
+    assert get_file_hash_spy.called
+    assert not dvc_tree_spy.called
+    get_file_hash_spy.reset_mock()
+
+    shutil.rmtree(tmp_dir / "dir")
+    with dvc.state:
+        assert tree.get_hash(PathInfo(tmp_dir) / "dir") == HashInfo(
+            "md5", "8761c4e9acad696bee718615e23e22db.dir",
+        )
     assert not get_file_hash_spy.called
     assert dvc_tree_spy.called
 
@@ -446,6 +545,29 @@ def test_get_hash_mixed_dir(tmp_dir, scm, dvc):
         actual = tree.get_hash(PathInfo(tmp_dir) / "dir")
     expected = HashInfo("md5", "e1d9e8eae5374860ae025ec84cfd85c7.dir")
     assert actual == expected
+
+
+def test_get_hash_dirty_file(tmp_dir, dvc):
+    tmp_dir.dvc_gen("file", "file")
+    (tmp_dir / "file").write_text("something")
+
+    tree = RepoTree(dvc)
+    with dvc.state:
+        actual = tree.get_hash(PathInfo(tmp_dir) / "file")
+    expected = HashInfo("md5", "8c7dd922ad47494fc02c388e12c00eac")
+    assert actual == expected
+
+
+def test_get_hash_dirty_dir(tmp_dir, dvc):
+    tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}})
+    (tmp_dir / "dir" / "baz").write_text("baz")
+
+    tree = RepoTree(dvc)
+    with dvc.state:
+        actual = tree.get_hash(PathInfo(tmp_dir) / "dir")
+    expected = HashInfo("md5", "ba75a2162ca9c29acecb7957105a0bc2.dir")
+    assert actual == expected
+    assert len(actual.dir_info) == 3
 
 
 @pytest.mark.parametrize("traverse_subrepos", [True, False])
