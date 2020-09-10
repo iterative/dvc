@@ -86,7 +86,7 @@ COMMANDS = [
 ]
 
 
-def _find_cmd_suggestions(cmd_arg, cmd_choices):
+def _find_cmd_suggestions(cmd_arg, cmd_choices, cmd=None):
     """Find similar command suggestions for a typed command that contains typos.
 
     Args:
@@ -96,9 +96,14 @@ def _find_cmd_suggestions(cmd_arg, cmd_choices):
     Returns:
         String with command suggestions to display to the user if any exist.
     """
-    suggestion_str = (
-        f"dvc: '{cmd_arg}' is not a dvc command. See 'dvc --help'\n"
-    )
+    if cmd:
+        suggestion_str = (
+            f"dvc: '{cmd} {cmd_arg}' is not a dvc command. See 'dvc --help'\n"
+        )
+    else:
+        suggestion_str = (
+            f"dvc: '{cmd_arg}' is not a dvc command. See 'dvc --help'\n"
+        )
     suggestions = get_close_matches(cmd_arg, cmd_choices)
     if not suggestions:
         return suggestion_str
@@ -109,7 +114,10 @@ def _find_cmd_suggestions(cmd_arg, cmd_choices):
         suggestion_str += "\nThe most similar command is"
 
     for suggestion in suggestions:
-        suggestion_str += f"\n\t{suggestion}"
+        if cmd:
+            suggestion_str += f"\n\t{cmd} {suggestion}"
+        else:
+            suggestion_str += f"\n\t{suggestion}"
 
     return suggestion_str
 
@@ -133,10 +141,26 @@ class DvcParser(argparse.ArgumentParser):
     """Custom parser class for dvc CLI."""
 
     cmd_choices = []
+    sub_cmd_choices = {}
 
     def error(self, message, cmd_cls=None):  # pylint: disable=arguments-differ
         logger.error(message)
         _find_parser(self, cmd_cls)
+
+    def parse_known_args(self, args=None, namespace=None):
+        if len(args) == 2 and args[0] in self.sub_cmd_choices:
+            sub_cmd_choices = self.sub_cmd_choices[args[0]]
+
+            if args[1] in sub_cmd_choices:
+                return super().parse_known_args(args, namespace)
+
+            sub_cmd_suggestions = _find_cmd_suggestions(
+                args[1], sub_cmd_choices, args[0]
+            )
+            logger.error(sub_cmd_suggestions)
+            raise DvcParserError
+
+        return super().parse_known_args(args, namespace)
 
     def parse_args(self, args=None, namespace=None):
         # NOTE: this is a custom check to see if any suggestions can
@@ -145,11 +169,14 @@ class DvcParser(argparse.ArgumentParser):
         # The most similar commands are
         #         commit
         #         completion
+        # E.g. `dvc remote modfiy` would display
+        # The most similar commands are
+        #         remote modify
         if args is None:
             args = sys.argv[1:]
         else:
             args = list(args)
-        if args and args[0] not in self.cmd_choices:
+        if len(args) == 1 and args[0] not in self.cmd_choices:
             cmd_suggestions = _find_cmd_suggestions(args[0], self.cmd_choices)
             logger.error(cmd_suggestions)
             raise DvcParserError
@@ -265,6 +292,14 @@ def get_main_parser():
 
     parser.cmd_choices = list(subparsers.choices.keys())
     parser.cmd_choices.extend(help_action.option_strings)
+
+    for cmd, subparser in subparsers.choices.items():
+        actions = subparser._actions  # pylint: disable=protected-access
+        for action in actions:
+            if not isinstance(action.choices, dict):
+                # NOTE: we are only interested in subparsers
+                continue
+            parser.sub_cmd_choices[cmd] = list(action.choices.keys())
 
     return parser
 

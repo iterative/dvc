@@ -260,3 +260,19 @@ def test_similar_command_suggestions(caplog):
     assert "The most similar commands are" in caplog.text
     assert "commit" in caplog.text
     assert "completion" in caplog.text
+
+
+def test_similar_subcommand_suggestions(caplog):
+    try:
+        _ = parse_args(["remote", "modfiy"])
+    except DvcParserError:
+        pass
+    assert "\n\nThe most similar command is\n\tremote modify\n" in caplog.text
+
+    try:
+        _ = parse_args(["git-hook", "postcommit"])
+    except DvcParserError:
+        pass
+    assert "The most similar commands are" in caplog.text
+    assert "git-hook pre-commit" in caplog.text
+    assert "git-hook post-checkout" in caplog.text
