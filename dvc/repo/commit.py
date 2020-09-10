@@ -45,5 +45,5 @@ def commit(self, target, with_deps=False, recursive=False, force=False):
             stage.save()
         stage.commit()
 
-        Dvcfile(self, stage.path).dump(stage)
+        Dvcfile(self, stage.path).dump(stage, update_pipeline=False)
     return stages

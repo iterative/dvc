@@ -8,7 +8,7 @@ def _set(repo, target, frozen):
     path, name = parse_target(target)
     stage = repo.get_stage(path, name)
     stage.frozen = frozen
-    stage.dvcfile.dump(stage, update_pipeline=True)
+    stage.dvcfile.dump(stage, update_lock=False)
 
     return stage
 

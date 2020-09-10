@@ -138,7 +138,7 @@ class Plots:
         out.verify_metric()
 
         dvcfile = Dvcfile(self.repo, out.stage.path)
-        dvcfile.dump(out.stage, update_pipeline=True, no_lock=True)
+        dvcfile.dump(out.stage, update_lock=False)
 
 
 def _collect_plots(repo, targets=None, rev=None):

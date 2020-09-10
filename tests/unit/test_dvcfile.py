@@ -13,6 +13,7 @@ from dvc.stage.exceptions import (
     StageFileFormatError,
     StageFileIsNotDvcFileError,
 )
+from dvc.utils.fs import remove
 from dvc.utils.serialize import dump_yaml
 
 
@@ -67,15 +68,18 @@ def test_dump_stage(tmp_dir, dvc):
     )
     dvcfile = Dvcfile(dvc, "dvc.yaml")
 
-    dvcfile.dump(stage, no_lock=True)
+    dvcfile.dump(stage, update_lock=False, update_pipeline=False)
     assert not (tmp_dir / PIPELINE_FILE).exists()
     assert not (tmp_dir / PIPELINE_LOCK).exists()
 
-    dvcfile.dump(stage, no_lock=False)
+    dvcfile.dump(stage, update_pipeline=False)
     assert not (tmp_dir / PIPELINE_FILE).exists()
+    assert (tmp_dir / PIPELINE_LOCK).exists()
     assert dvcfile._lockfile.load()
 
-    dvcfile.dump(stage, update_pipeline=True, no_lock=False)
+    remove(tmp_dir / PIPELINE_LOCK)
+
+    dvcfile.dump(stage)
     assert (tmp_dir / PIPELINE_FILE).exists()
     assert (tmp_dir / PIPELINE_LOCK).exists()
     assert list(dvcfile.stages.values()) == [stage]

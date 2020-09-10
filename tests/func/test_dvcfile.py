@@ -242,7 +242,7 @@ def test_remove_stage_on_lockfile_format_error(tmp_dir, dvc, run_copy):
         dvc_file.remove_stage(stage)
 
     lock_file.remove()
-    dvc_file.dump(stage)
+    dvc_file.dump(stage, update_pipeline=False)
 
     dump_yaml(dvc_file.relpath, data)
     with pytest.raises(StageFileFormatError):
@@ -312,7 +312,7 @@ def test_dvcfile_dump_preserves_meta(tmp_dir, dvc, run_copy):
     data["stages"]["run_copy"]["meta"] = metadata
     dump_yaml(dvcfile.path, data)
 
-    dvcfile.dump(stage, update_pipeline=True)
+    dvcfile.dump(stage)
     assert dvcfile._load()[0] == data
     assert dvcfile._load()[0]["stages"]["run_copy"]["meta"] == metadata
 
@@ -332,5 +332,5 @@ def test_dvcfile_dump_preserves_comments(tmp_dir, dvc):
     stage.outs[0].use_cache = False
     dvcfile = stage.dvcfile
 
-    dvcfile.dump(stage, update_pipeline=True)
+    dvcfile.dump(stage)
     assert dvcfile._load()[1] == (text + ":\n\tcache: false\n".expandtabs())

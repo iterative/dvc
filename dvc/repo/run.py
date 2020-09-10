@@ -134,5 +134,5 @@ def run(self, fname=None, no_exec=False, single_stage=False, **kwargs):
             run_cache=kwargs.get("run_cache", True),
         )
 
-    dvcfile.dump(stage, update_pipeline=True, no_lock=no_exec)
+    dvcfile.dump(stage, update_lock=not no_exec)
     return stage
