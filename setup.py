@@ -107,6 +107,7 @@ tests_requirements = [
     "wheel>=0.31.1",
     # Test requirements:
     "pytest>=6.0.1",
+    "pytest-cov",
     "pytest-docker>=0.7.2",
     "pytest-timeout>=1.3.3",
     "pytest-cov>=2.6.1",

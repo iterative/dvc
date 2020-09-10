@@ -24,17 +24,19 @@ jobs:
       with:
         python-version: ${{ matrix.pyv }}
     - name: install
-      run: pip install ".[all,tests]"
+      run: |
+        pip install ".[all,tests]"
     - name: setup git
       run: |
         git config --global user.email "dvctester@example.com"
         git config --global user.name "DVC Tester"
     - name: run tests
-      run: python -m tests -n=2
-    - name: run codecov
-      if: github.event.action == 'push'
-      run: |
-        pip install codecov
-        codecov
+      run: python -m tests -n=2 --cov-report=xml
+    - name: upload coverage report
+      if: github.event.name == 'push'
+      uses: codecov/codecov-action@v1.0.13
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: true
 
 
