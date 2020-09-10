@@ -103,3 +103,25 @@ def test_ssl_verify_disable(dvc):
     tree = HTTPTree(dvc, config)
 
     assert tree._session.verify is False
+
+
+def test_http_method(dvc):
+    from requests.auth import HTTPBasicAuth
+
+    user = "username"
+    password = "password"
+    auth = HTTPBasicAuth(user, password)
+    config = {
+        "url": "http://example.com/",
+        "path_info": "file.html",
+        "auth": "basic",
+        "user": user,
+        "password": password,
+        "method": "PUT",
+    }
+
+    tree = HTTPTree(dvc, config)
+
+    assert tree._auth_method() == auth
+    assert tree.method == "PUT"
+    assert isinstance(tree._auth_method(), HTTPBasicAuth)

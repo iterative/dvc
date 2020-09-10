@@ -54,6 +54,7 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
         self.ask_password = config.get("ask_password", False)
         self.headers = {}
         self.ssl_verify = config.get("ssl_verify", True)
+        self.method = config.get("method", "POST")
 
     def _auth_method(self, path_info=None):
         from requests.auth import HTTPBasicAuth, HTTPDigestAuth
@@ -194,7 +195,7 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
                             break
                         yield chunk
 
-        response = self.request("POST", to_info.url, data=chunks())
+        response = self.request(self.method, to_info.url, data=chunks())
         if response.status_code not in (200, 201):
             raise HTTPError(response.status_code, response.reason)
 
