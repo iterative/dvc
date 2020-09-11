@@ -1,3 +1,6 @@
+import pytest
+
+from dvc.utils.serialize import PythonFileCorruptedError
 from tests.func.test_repro_multistage import COPY_SCRIPT
 
 
@@ -100,6 +103,75 @@ def test_get_baseline(tmp_dir, scm, dvc):
         stage.addressing, experiment=True, params=["foo=3"], queue=True
     )
     assert dvc.experiments.get_baseline("stash@{0}") == expected
+
+
+def test_update_py_params(tmp_dir, scm, dvc):
+    tmp_dir.gen("copy.py", COPY_SCRIPT)
+    tmp_dir.gen("params.py", "INT = 1\n")
+    stage = dvc.run(
+        cmd="python copy.py params.py metrics.py",
+        metrics_no_cache=["metrics.py"],
+        params=["params.py:INT"],
+        name="copy-file",
+    )
+    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.py", "metrics.py"])
+    scm.commit("init")
+
+    dvc.reproduce(
+        stage.addressing, experiment=True, params=["params.py:INT=2"]
+    )
+    exp_a = dvc.experiments.scm.get_rev()
+
+    dvc.experiments.checkout(exp_a)
+    assert (tmp_dir / "params.py").read_text().strip() == "INT = 2"
+    assert (tmp_dir / "metrics.py").read_text().strip() == "INT = 2"
+
+    tmp_dir.gen(
+        "params.py",
+        "INT = 1\nFLOAT = 0.001\nDICT = {'a': 1}\n\n"
+        "class Train:\n    seed = 2020\n\n"
+        "class Klass:\n    def __init__(self):\n        self.a = 111\n",
+    )
+    stage = dvc.run(
+        cmd="python copy.py params.py metrics.py",
+        metrics_no_cache=["metrics.py"],
+        params=["params.py:INT,FLOAT,DICT,Train,Klass"],
+        name="copy-file",
+    )
+    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.py", "metrics.py"])
+    scm.commit("init")
+
+    dvc.reproduce(
+        stage.addressing,
+        experiment=True,
+        params=["params.py:FLOAT=0.1,Train.seed=2121,Klass.a=222"],
+    )
+    exp_a = dvc.experiments.scm.get_rev()
+
+    result = (
+        "INT = 1\nFLOAT = 0.1\nDICT = {'a': 1}\n\n"
+        "class Train:\n    seed = 2121\n\n"
+        "class Klass:\n    def __init__(self):\n        self.a = 222"
+    )
+
+    dvc.experiments.checkout(exp_a)
+    assert (tmp_dir / "params.py").read_text().strip() == result
+    assert (tmp_dir / "metrics.py").read_text().strip() == result
+
+    tmp_dir.gen("params.py", "INT = 1\n")
+    stage = dvc.run(
+        cmd="python copy.py params.py metrics.py",
+        metrics_no_cache=["metrics.py"],
+        params=["params.py:INT"],
+        name="copy-file",
+    )
+    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.py", "metrics.py"])
+    scm.commit("init")
+
+    with pytest.raises(PythonFileCorruptedError):
+        dvc.reproduce(
+            stage.addressing, experiment=True, params=["params.py:INT=2a"]
+        )
 
 
 def test_extend_branch(tmp_dir, scm, dvc):

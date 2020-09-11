@@ -12,4 +12,10 @@ LOADERS.update(
 )
 
 MODIFIERS = defaultdict(lambda: modify_yaml)  # noqa: F405
-MODIFIERS.update({".toml": modify_toml, ".json": modify_json})  # noqa: F405
+MODIFIERS.update(
+    {
+        ".toml": modify_toml,  # noqa: F405
+        ".json": modify_json,  # noqa: F405
+        ".py": modify_py,  # noqa: F405
+    }
+)
