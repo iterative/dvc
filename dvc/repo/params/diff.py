@@ -7,7 +7,7 @@ from .show import NoParamsError
 def _get_params(repo, *args, rev=None, **kwargs):
     try:
         params = repo.params.show(*args, **kwargs, revs=[rev] if rev else None)
-        return params.get(rev or "", {})
+        return params.get(rev or "workspace", {})
     except NoParamsError:
         return {}
 

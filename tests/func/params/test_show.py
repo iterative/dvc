@@ -11,7 +11,7 @@ def test_show_empty(dvc):
 def test_show(tmp_dir, dvc):
     tmp_dir.gen("params.yaml", "foo: bar")
     dvc.run(cmd="echo params.yaml", params=["foo"], single_stage=True)
-    assert dvc.params.show() == {"": {"params.yaml": {"foo": "bar"}}}
+    assert dvc.params.show() == {"workspace": {"params.yaml": {"foo": "bar"}}}
 
 
 def test_show_toml(tmp_dir, dvc):
@@ -20,7 +20,7 @@ def test_show_toml(tmp_dir, dvc):
         cmd="echo params.toml", params=["params.toml:foo"], single_stage=True
     )
     assert dvc.params.show() == {
-        "": {"params.toml": {"foo": {"bar": 42, "baz": [1, 2]}}}
+        "workspace": {"params.toml": {"foo": {"bar": 42, "baz": [1, 2]}}}
     }
 
 
@@ -39,14 +39,16 @@ def test_show_multiple(tmp_dir, dvc):
         single_stage=True,
     )
     assert dvc.params.show() == {
-        "": {"params.yaml": {"foo": "bar", "baz": "qux"}}
+        "workspace": {"params.yaml": {"foo": "bar", "baz": "qux"}}
     }
 
 
 def test_show_list(tmp_dir, dvc):
     tmp_dir.gen("params.yaml", "foo:\n- bar\n- baz\n")
     dvc.run(cmd="echo params.yaml", params=["foo"], single_stage=True)
-    assert dvc.params.show() == {"": {"params.yaml": {"foo": ["bar", "baz"]}}}
+    assert dvc.params.show() == {
+        "workspace": {"params.yaml": {"foo": ["bar", "baz"]}}
+    }
 
 
 def test_show_branch(tmp_dir, scm, dvc):

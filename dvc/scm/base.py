@@ -3,6 +3,7 @@
 import os
 
 from dvc.exceptions import DvcException
+from dvc.tree import LocalTree
 
 
 class SCMError(DvcException):
@@ -165,3 +166,15 @@ class Base:
 
     def close(self):
         """ Method to close the files """
+
+    def brancher(
+        self,
+        root_dir,
+        revs=None,
+        all_branches=False,
+        all_tags=False,
+        all_commits=False,
+    ):  # pylint: disable=no-self-use, unused-argument
+        yield "workspace", LocalTree(
+            None, {"url": root_dir}, use_dvcignore=True
+        )

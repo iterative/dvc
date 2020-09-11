@@ -8,7 +8,7 @@ def _get_metrics(repo, *args, rev=None, **kwargs):
         metrics = repo.metrics.show(
             *args, **kwargs, revs=[rev] if rev else None
         )
-        return metrics.get(rev or "", {})
+        return metrics.get(rev or "workspace", {})
     except NoMetricsError:
         return {}
 

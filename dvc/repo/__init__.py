@@ -398,7 +398,7 @@ class Repo:
                 for target in targets
             )
 
-            suffix = f"({branch})" if branch else ""
+            suffix = f"({branch})" if branch != "workspace" else ""
             for stage, filter_info in pairs:
                 used_cache = stage.get_used_cache(
                     remote=remote,

@@ -42,7 +42,6 @@ class Plots:
             # .brancher() adds unwanted workspace
             if revs is not None and rev not in revs:
                 continue
-            rev = rev or "workspace"
 
             tree = RepoTree(self.repo)
             plots = _collect_plots(self.repo, targets, rev)

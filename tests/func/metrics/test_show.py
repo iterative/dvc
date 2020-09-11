@@ -17,7 +17,7 @@ def test_show_simple(tmp_dir, dvc, run_copy_metrics):
     run_copy_metrics(
         "metrics_t.yaml", "metrics.yaml", metrics=["metrics.yaml"],
     )
-    assert dvc.metrics.show() == {"": {"metrics.yaml": 1.1}}
+    assert dvc.metrics.show() == {"workspace": {"metrics.yaml": 1.1}}
 
 
 def test_show(tmp_dir, dvc, run_copy_metrics):
@@ -25,7 +25,7 @@ def test_show(tmp_dir, dvc, run_copy_metrics):
     run_copy_metrics(
         "metrics_t.yaml", "metrics.yaml", metrics=["metrics.yaml"],
     )
-    assert dvc.metrics.show() == {"": {"metrics.yaml": {"foo": 1.1}}}
+    assert dvc.metrics.show() == {"workspace": {"metrics.yaml": {"foo": 1.1}}}
 
 
 def test_show_multiple(tmp_dir, dvc, run_copy_metrics):
@@ -33,7 +33,9 @@ def test_show_multiple(tmp_dir, dvc, run_copy_metrics):
     tmp_dir.gen("baz_temp", "baz: 2\n")
     run_copy_metrics("foo_temp", "foo", fname="foo.dvc", metrics=["foo"])
     run_copy_metrics("baz_temp", "baz", fname="baz.dvc", metrics=["baz"])
-    assert dvc.metrics.show() == {"": {"foo": {"foo": 1}, "baz": {"baz": 2}}}
+    assert dvc.metrics.show() == {
+        "workspace": {"foo": {"foo": 1}, "baz": {"baz": 2}}
+    }
 
 
 def test_show_invalid_metric(tmp_dir, dvc, run_copy_metrics):
@@ -109,4 +111,4 @@ def test_missing_cache(tmp_dir, dvc, run_copy_metrics):
     remove(stage.outs[0].fspath)
     remove(stage.outs[0].cache_path)
 
-    assert dvc.metrics.show() == {"": {"metrics.yaml": 1.1}}
+    assert dvc.metrics.show() == {"workspace": {"metrics.yaml": 1.1}}

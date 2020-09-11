@@ -5,7 +5,7 @@ import os
 import shlex
 from functools import partial
 
-from funcy import cached_property
+from funcy import cached_property, group_by
 from pathspec.patterns import GitWildMatchPattern
 
 from dvc.exceptions import GitHookAlreadyExistsError
@@ -460,3 +460,38 @@ class Git(Base):
     @property
     def no_commits(self):
         return not self.list_all_commits()
+
+    def brancher(
+        self,
+        root_dir,
+        revs=None,
+        all_branches=False,
+        all_tags=False,
+        all_commits=False,
+    ):
+        yield from super().brancher(
+            root_dir,
+            revs=revs,
+            all_branches=all_branches,
+            all_tags=all_tags,
+            all_commits=all_commits,
+        )
+
+        revs = revs.copy() if revs else []
+        if revs and "workspace" in revs:
+            revs.remove("workspace")
+
+        if all_commits:
+            revs = self.list_all_commits()
+        else:
+            if all_branches:
+                revs.extend(self.list_branches())
+
+            if all_tags:
+                revs.extend(self.list_tags())
+
+        if revs:
+            for sha, names in group_by(self.resolve_rev, revs).items():
+                yield ", ".join(names), self.get_tree(
+                    sha, use_dvcignore=True, dvcignore_root=root_dir
+                )
