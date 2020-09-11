@@ -103,14 +103,14 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
         try:
             self.metadata(path)
             return True
-        except OutputNotFoundError:
+        except FileNotFoundError:
             return False
 
     def isdir(self, path):  # pylint: disable=arguments-differ
         try:
             meta = self.metadata(path)
             return meta.isdir
-        except OutputNotFoundError:
+        except FileNotFoundError:
             return False
 
     def check_isdir(self, path_info, outs):
@@ -123,22 +123,17 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
         if out.path_info == path_info:
             return True
 
-        # for dir checksum, we need to check if this is a file inside the
-        # directory
         try:
             self._get_granular_checksum(path_info, out)
             return False
         except FileNotFoundError:
-            # path may be an untracked file from a dirty workspace
-            if self.repo.tree.isfile(path_info):
-                return False
             return True
 
     def isfile(self, path):  # pylint: disable=arguments-differ
         try:
             meta = self.metadata(path)
             return meta.isfile
-        except OutputNotFoundError:
+        except FileNotFoundError:
             return False
 
     def _fetch_dir(
@@ -201,7 +196,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
         root = PathInfo(os.path.abspath(top))
         try:
             meta = self.metadata(root)
-        except OutputNotFoundError:
+        except FileNotFoundError:
             if onerror is not None:
                 onerror(FileNotFoundError(top))
             return
@@ -229,7 +224,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
     def isdvc(self, path, recursive=False, strict=True):
         try:
             meta = self.metadata(path)
-        except OutputNotFoundError:
+        except FileNotFoundError:
             return False
 
         recurse = recursive or not strict
@@ -257,21 +252,19 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             raise OutputNotFoundError
         out = outs[0]
         if out.is_dir_checksum:
-            try:
-                return HashInfo(
-                    out.tree.PARAM_CHECKSUM,
-                    self._get_granular_checksum(path_info, out),
-                )
-            except FileNotFoundError:
-                # path may be an untracked file from a dirty workspace
-                if self.repo.tree.isfile(path_info):
-                    return self.repo.tree.get_file_hash(path_info)
-                raise
+            return HashInfo(
+                out.tree.PARAM_CHECKSUM,
+                self._get_granular_checksum(path_info, out),
+            )
         return out.hash_info
 
     def metadata(self, path_info):
         path_info = PathInfo(os.path.abspath(path_info))
-        outs = self._find_outs(path_info, strict=False, recursive=True)
+
+        try:
+            outs = self._find_outs(path_info, strict=False, recursive=True)
+        except OutputNotFoundError as exc:
+            raise FileNotFoundError from exc
 
         meta = Metadata(path_info=path_info, outs=outs, repo=self.repo)
         meta.isdir = meta.isdir or self.check_isdir(meta.path_info, meta.outs)

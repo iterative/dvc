@@ -242,3 +242,26 @@ def test_get_hash_granular(tmp_dir, dvc):
         assert tree.get_hash(subdir / "data") == HashInfo(
             "md5", "8d777f385d3dfec8815d20f7496026dc",
         )
+
+
+def test_get_hash_dirty_file(tmp_dir, dvc):
+    tmp_dir.dvc_gen("file", "file")
+    (tmp_dir / "file").write_text("something")
+
+    tree = DvcTree(dvc)
+    with dvc.state:
+        actual = tree.get_hash(PathInfo(tmp_dir) / "file")
+    expected = HashInfo("md5", "8c7dd922ad47494fc02c388e12c00eac")
+    assert actual == expected
+
+
+def test_get_hash_dirty_dir(tmp_dir, dvc):
+    tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}})
+    (tmp_dir / "dir" / "baz").write_text("baz")
+
+    tree = DvcTree(dvc)
+    with dvc.state:
+        actual = tree.get_hash(PathInfo(tmp_dir) / "dir")
+    expected = HashInfo("md5", "5ea40360f5b4ec688df672a4db9c17d1.dir")
+
+    assert actual == expected
