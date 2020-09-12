@@ -140,31 +140,15 @@ def _find_parser(parser, cmd_cls):
 class DvcParser(argparse.ArgumentParser):
     """Custom parser class for dvc CLI."""
 
-    cmd_choices = []
-    sub_cmd_choices = {}
+    cmd_choices = {}
 
     def error(self, message, cmd_cls=None):  # pylint: disable=arguments-differ
         logger.error(message)
         _find_parser(self, cmd_cls)
 
-    def parse_known_args(self, args=None, namespace=None):
-        if len(args) == 2 and args[0] in self.sub_cmd_choices:
-            sub_cmd_choices = self.sub_cmd_choices[args[0]]
-
-            if args[1] in sub_cmd_choices:
-                return super().parse_known_args(args, namespace)
-
-            sub_cmd_suggestions = _find_cmd_suggestions(
-                args[1], sub_cmd_choices, args[0]
-            )
-            logger.error(sub_cmd_suggestions)
-            raise DvcParserError
-
-        return super().parse_known_args(args, namespace)
-
     def parse_args(self, args=None, namespace=None):
         # NOTE: this is a custom check to see if any suggestions can
-        # be displayed to users in case of small typos
+        # be displayed to users in case a command contains typos
         # E.g. `dvc commti` would display
         # The most similar commands are
         #         commit
@@ -177,9 +161,25 @@ class DvcParser(argparse.ArgumentParser):
         else:
             args = list(args)
         if len(args) == 1 and args[0] not in self.cmd_choices:
-            cmd_suggestions = _find_cmd_suggestions(args[0], self.cmd_choices)
+            cmd_suggestions = _find_cmd_suggestions(
+                args[0], list(self.cmd_choices.keys())
+            )
             logger.error(cmd_suggestions)
             raise DvcParserError
+
+        # NOTE: this is a custom check to see if any suggestions can
+        # be displayed to users in case a nested subcommand contains typos
+        # E.g. `dvc remote modfiy` would display
+        # The most similar commands are
+        #         remote modify
+        if len(args) == 2 and args[0] in self.cmd_choices:
+            sub_cmd_choices = self.cmd_choices[args[0]]
+            if sub_cmd_choices and args[1] not in sub_cmd_choices:
+                sub_cmd_suggestions = _find_cmd_suggestions(
+                    args[1], sub_cmd_choices, args[0]
+                )
+                logger.error(sub_cmd_suggestions)
+                raise DvcParserError
 
         # NOTE: overriding to provide a more granular help message.
         # E.g. `dvc plots diff --bad-flag` would result in a `dvc plots diff`
@@ -290,16 +290,18 @@ def get_main_parser():
     for cmd in COMMANDS:
         cmd.add_parser(subparsers, parent_parser)
 
-    parser.cmd_choices = list(subparsers.choices.keys())
-    parser.cmd_choices.extend(help_action.option_strings)
-
     for cmd, subparser in subparsers.choices.items():
+        parser.cmd_choices[cmd] = []
         actions = subparser._actions  # pylint: disable=protected-access
         for action in actions:
             if not isinstance(action.choices, dict):
                 # NOTE: we are only interested in subparsers
                 continue
-            parser.sub_cmd_choices[cmd] = list(action.choices.keys())
+            parser.cmd_choices[cmd].extend(action.choices.keys())
+
+    # treat -h, --help as command choices
+    for option in help_action.option_strings:
+        parser.cmd_choices[option] = []
 
     return parser
 
