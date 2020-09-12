@@ -90,7 +90,7 @@ def test_check_ignore_sub_repo(tmp_dir, dvc, caplog):
 
     assert main(["check-ignore", "-d", os.path.join("dir", "foo")]) == 0
     assert (
-        "(inside sub_repo:{})\t{}".format("dir", os.path.join("dir", "foo"),)
+        "in sub_repo:{}\t{}".format("dir", os.path.join("dir", "foo"),)
         in caplog.text
     )
 

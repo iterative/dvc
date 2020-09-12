@@ -231,7 +231,7 @@ class DvcIgnoreFilter:
                     root, set()
                 ) | {d}
                 pattern_info = PatternInfo(
-                    f"/{d}/", "(inside sub_repo:{})".format(d)
+                    f"/{d}/", "in sub_repo:{}".format(d)
                 )
                 new_pattern = DvcIgnorePatterns([pattern_info], root)
                 old_pattern = self.ignores_trie_tree.longest_prefix(root).value
