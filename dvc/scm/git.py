@@ -386,9 +386,6 @@ class Git(Base):
             return
 
         self.add(self.files_to_track)
-        self.reset_tracked_files()
-
-        logger.info("\nChanges staged to git.")
 
     def track_file(self, path):
         self.files_to_track.add(path)
