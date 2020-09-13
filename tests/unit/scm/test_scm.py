@@ -9,7 +9,6 @@ from dvc.scm import NoSCM
 
 class TestScmContext(TestCase):
     def setUp(self):
-
         self.repo_mock = mock.Mock(spec=Repo)
         self.scm_mock = mock.Mock(spec=NoSCM)
         self.repo_mock.scm = self.scm_mock
