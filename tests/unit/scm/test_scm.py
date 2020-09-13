@@ -17,8 +17,7 @@ class TestScmContext(TestCase):
         method = mock.Mock()
         wrapped = scm_context(method)
 
-        config_noautostage_attrs = {"config": {"core": {"autostage": False}}}
-        self.repo_mock.configure_mock(**config_noautostage_attrs)
+        self.repo_mock.configure_mock(config={})
         wrapped(self.repo_mock)
 
         self.assertEqual(1, method.call_count)
