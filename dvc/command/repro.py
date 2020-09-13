@@ -15,8 +15,7 @@ logger = logging.getLogger(__name__)
 class CmdRepro(CmdBase):
     def run(self):
         saved_dir = os.path.realpath(os.curdir)
-        if self.args.cwd:
-            os.chdir(self.args.cwd)
+        os.chdir(self.args.cwd)
 
         # Dirty hack so the for loop below can at least enter once
         if self.args.all_pipelines:

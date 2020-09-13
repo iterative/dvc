@@ -160,8 +160,6 @@ class TestCheckout(TestDvc):
 
 class TestFindRoot(TestDvc):
     def test(self):
-        os.chdir("..")
-
         class Cmd(CmdBase):
             def run(self):
                 pass
@@ -169,10 +167,30 @@ class TestFindRoot(TestDvc):
         class A:
             quiet = False
             verbose = True
+            cd = os.path.pardir
 
         args = A()
         with self.assertRaises(DvcException):
             Cmd(args)
+
+
+class TestCd(TestDvc):
+    def test(self):
+        class Cmd(CmdBase):
+            def run(self):
+                pass
+
+        class A:
+            quiet = False
+            verbose = True
+            cd = os.path.pardir
+
+        parent_dir = os.path.realpath(os.path.pardir)
+        args = A()
+        with self.assertRaises(DvcException):
+            Cmd(args)
+        current_dir = os.path.realpath(os.path.curdir)
+        self.assertEqual(parent_dir, current_dir)
 
 
 def test_unknown_command_help(capsys):

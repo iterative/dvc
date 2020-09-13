@@ -1,6 +1,7 @@
 """DVC command line interface"""
 import argparse
 import logging
+import os
 import sys
 
 from .command import (
@@ -189,6 +190,14 @@ def get_main_parser():
         action=VersionAction,
         nargs=0,
         help="Show program's version.",
+    )
+
+    parser.add_argument(
+        "--cd",
+        default=os.path.curdir,
+        metavar="<path>",
+        help="Change to directory before executing.",
+        type=str,
     )
 
     # Sub commands
