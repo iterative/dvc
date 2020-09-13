@@ -6,7 +6,7 @@ import tempfile
 
 import pytest
 
-from dvc.command.version import CmdVersion
+from dvc.info import get_fs_type
 from dvc.system import System
 
 here = os.path.abspath(os.path.dirname(__file__))
@@ -85,8 +85,7 @@ def test_walk(tmp_path, ssh_connection):
 
 
 @pytest.mark.skipif(
-    CmdVersion.get_fs_type(tempfile.gettempdir())[0]
-    not in ["xfs", "apfs", "btrfs"],
+    get_fs_type(tempfile.gettempdir())[0] not in ["xfs", "apfs", "btrfs"],
     reason="Reflinks only work in specified file systems",
 )
 def test_reflink(tmp_dir, ssh_connection):

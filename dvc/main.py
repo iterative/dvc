@@ -98,8 +98,12 @@ def main(argv=None):  # noqa: C901
                 extra={"tb_only": True},
             )
         else:
+            from dvc.info import get_dvc_info
+
             logger.exception("unexpected error")
             logger.info(FOOTER)
+            dvc_info = get_dvc_info()
+            logger.info(dvc_info)
         ret = 255
 
     try:
