@@ -3,8 +3,8 @@ def scm_context(method):
         try:
             result = method(repo, *args, **kw)
             repo.scm.reset_ignores()
-            auto_stage = repo.config.get("core", {}).get("autostage", False)
-            if auto_stage:
+            autostage = repo.config.get("core", {}).get("autostage", False)
+            if autostage:
                 repo.scm.track_changed_files()
             else:
                 repo.scm.remind_to_track()
