@@ -852,7 +852,9 @@ def test_checkouts_for_pipeline_tracked_outs(tmp_dir, dvc, scm, run_copy):
     assert set(dvc.checkout()["added"]) == {"bar", "ipsum"}
 
 
-@pytest.mark.parametrize("workspace", [pytest.lazy_fixture("s3")], indirect=True)
+@pytest.mark.parametrize(
+    "workspace", [pytest.lazy_fixture("s3")], indirect=True
+)
 def test_checkout_external_modified_file(tmp_dir, dvc, scm, mocker, workspace):
     # regression: happened when file in external output changed and checkout
     # was attempted without force, dvc checks if it's present in its cache
