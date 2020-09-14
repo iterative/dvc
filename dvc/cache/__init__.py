@@ -63,7 +63,12 @@ class Cache:
         if local:
             settings = {"name": local}
         else:
-            settings = {**config, "url": config["dir"]}
+            from ..config import LOCAL_COMMON
+
+            settings = {"url": config["dir"]}
+            for opt in LOCAL_COMMON.keys():
+                if opt in config:
+                    settings[str(opt)] = config.get(opt)
 
         tree = get_cloud_tree(repo, **settings)
         self.local = LocalCache(tree)

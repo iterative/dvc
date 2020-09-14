@@ -78,5 +78,11 @@ def _resolve_remote_refs(repo, remote_conf):
 
 
 def get_cloud_tree(repo, **kwargs):
+    from dvc.config import SCHEMA, ConfigError, Invalid
+
     remote_conf = _get_conf(repo, **kwargs)
+    try:
+        remote_conf = SCHEMA["remote"][str](remote_conf)
+    except Invalid as exc:
+        raise ConfigError(str(exc)) from None
     return _get_tree(remote_conf)(repo, remote_conf)
