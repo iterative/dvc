@@ -43,10 +43,10 @@ def _get_conf(repo, **kwargs):
         remote_conf = repo.config["remote"][name.lower()]
     else:
         remote_conf = kwargs
-    return _resolve_remote_refs(repo.config, remote_conf)
+    return _resolve_remote_refs(repo, remote_conf)
 
 
-def _resolve_remote_refs(config, remote_conf):
+def _resolve_remote_refs(repo, remote_conf):
     # Support for cross referenced remotes.
     # This will merge the settings, shadowing base ref with remote_conf.
     # For example, having:
@@ -72,7 +72,7 @@ def _resolve_remote_refs(config, remote_conf):
     if parsed.scheme != "remote":
         return remote_conf
 
-    base = config["remote"][parsed.netloc]
+    base = _get_conf(repo, name=parsed.netloc)
     url = posixpath.join(base["url"], parsed.path.lstrip("/"))
     return {**base, **remote_conf, "url": url}
 
