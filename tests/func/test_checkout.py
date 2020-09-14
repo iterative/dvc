@@ -852,22 +852,18 @@ def test_checkouts_for_pipeline_tracked_outs(tmp_dir, dvc, scm, run_copy):
     assert set(dvc.checkout()["added"]) == {"bar", "ipsum"}
 
 
-def test_checkout_external_modify(tmp_dir, dvc, scm, s3):
-    def add_and_commit(paths, message):
-        scm.add(paths)
-        scm.commit(message)
+@pytest.mark.parametrize("workspace", [pytest.lazy_fixture("s3")], indirect=True)
+def test_checkout_external_modified_file(tmp_dir, dvc, scm, mocker, workspace):
+    # regression: happened when file in external output changed and checkout
+    # was attempted without force, dvc checks if it's present in its cache
+    # before asking user to remove it.
+    workspace.gen("foo", "foo")
+    dvc.add(str(workspace / "foo"), external=True)
+    scm.add(["foo.dvc"])
+    scm.commit("add foo")
 
-    s3.gen({"dir": {"foo": "foo"}})
+    workspace.gen("foo", "foobar")  # messing up the external outputs
+    mocker.patch("dvc.prompt.confirm", return_value=True)
+    dvc.checkout()
 
-    dvc.cache.s3 = CloudCache(S3Tree(dvc, {"url": S3.get_url()}))
-    dvc.add(str(s3 / "dir"), external=True)
-    add_and_commit(["dir.dvc"], "add dir")
-
-    with tmp_dir.branch("branch1", new=True):
-        s3.gen({"dir": {"bar": "bar"}})
-        add_and_commit(["dir.dvc"], "modify dir")
-
-    dvc.checkout(force=True)
-    assert (s3 / "dir").is_dir()
-    assert (s3 / "dir" / "foo").read_text() == "foo"
-    assert not (s3 / "dir" / "bar").exists()
+    assert (workspace / "foo").read_text() == "foo"
