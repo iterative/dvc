@@ -75,8 +75,8 @@ class BaseTree:
     @cached_property
     def hash_jobs(self):
         return (
-            self.config.get("hash_jobs")
-            or (self.repo and self.repo.config["core"].get("hash_jobs"))
+            self.config.get("checksum_jobs")
+            or (self.repo and self.repo.config["core"].get("checksum_jobs"))
             or self.HASH_JOBS
         )
 
