@@ -850,3 +850,24 @@ def test_checkouts_for_pipeline_tracked_outs(tmp_dir, dvc, scm, run_copy):
 
     (tmp_dir / "ipsum").unlink()
     assert set(dvc.checkout()["added"]) == {"bar", "ipsum"}
+
+
+def test_checkout_external_modify(tmp_dir, dvc, scm, s3):
+    def add_and_commit(paths, message):
+        scm.add(paths)
+        scm.commit(message)
+
+    s3.gen({"dir": {"foo": "foo"}})
+
+    dvc.cache.s3 = CloudCache(S3Tree(dvc, {"url": S3.get_url()}))
+    dvc.add(str(s3 / "dir"), external=True)
+    add_and_commit(["dir.dvc"], "add dir")
+
+    with tmp_dir.branch("branch1", new=True):
+        s3.gen({"dir": {"bar": "bar"}})
+        add_and_commit(["dir.dvc"], "modify dir")
+
+    dvc.checkout(force=True)
+    assert (s3 / "dir").is_dir()
+    assert (s3 / "dir" / "foo").read_text() == "foo"
+    assert not (s3 / "dir" / "bar").exists()

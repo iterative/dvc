@@ -414,7 +414,7 @@ class CloudCache:
         return self.changed_cache_file(hash_info)
 
     def already_cached(self, path_info):
-        _, current = self.tree.get_hash(path_info)
+        current = self.tree.get_hash(path_info)
 
         if not current:
             return False
