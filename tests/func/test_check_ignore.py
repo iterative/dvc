@@ -83,12 +83,16 @@ def test_check_ignore_out_side_repo(tmp_dir, dvc):
     assert main(["check-ignore", "-q", "../file"]) == 1
 
 
-def test_check_ignore_sub_repo(tmp_dir, dvc):
+def test_check_ignore_sub_repo(tmp_dir, dvc, caplog):
     tmp_dir.gen(
         {DvcIgnore.DVCIGNORE_FILE: "other", "dir": {".dvc": {}, "foo": "bar"}}
     )
 
-    assert main(["check-ignore", "-q", os.path.join("dir", "foo")]) == 1
+    assert main(["check-ignore", "-d", os.path.join("dir", "foo")]) == 0
+    assert (
+        "in sub_repo:{}\t{}".format("dir", os.path.join("dir", "foo"),)
+        in caplog.text
+    )
 
 
 def test_check_sub_dir_ignore_file(tmp_dir, dvc, caplog):

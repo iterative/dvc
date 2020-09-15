@@ -233,7 +233,10 @@ class DvcIgnoreFilter:
                 self._ignored_subrepos[root] = self._ignored_subrepos.get(
                     root, set()
                 ) | {d}
-                new_pattern = DvcIgnorePatterns([f"/{d}/"], root)
+                pattern_info = PatternInfo(
+                    f"/{d}/", "in sub_repo:{}".format(d)
+                )
+                new_pattern = DvcIgnorePatterns([pattern_info], root)
                 old_pattern = self.ignores_trie_tree.longest_prefix(root).value
                 if old_pattern:
                     self.ignores_trie_tree[root] = DvcIgnorePatterns(
