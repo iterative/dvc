@@ -196,6 +196,7 @@ class Experiments:
         params: Optional[dict] = None,
         branch: Optional[str] = None,
         allow_unchanged: Optional[bool] = False,
+        apply_workspace: Optional[bool] = True,
         **kwargs,
     ):
         """Stash changes from the current (parent) workspace as an experiment.
@@ -209,26 +210,34 @@ class Experiments:
                 a new branch.
             allow_unchanged: Force experiment reproduction even if params are
                 unchanged from the baseline.
+            apply_workspace: Apply changes from the user workspace to the
+                experiment workspace.
         """
         if branch:
             rev = self.scm.resolve_rev(branch)
         else:
             rev = self.scm.get_rev()
 
-        # patch user's workspace into experiments clone
-        tmp = tempfile.NamedTemporaryFile(delete=False).name
-        try:
-            self.repo.scm.repo.git.diff(
-                patch=True, full_index=True, binary=True, output=tmp
-            )
-            if os.path.getsize(tmp):
-                logger.debug("Patching experiment workspace")
-                self.scm.repo.git.apply(tmp)
-            elif not params and not allow_unchanged:
-                # experiment matches original baseline
-                raise UnchangedExperimentError(rev)
-        finally:
-            remove(tmp)
+        if apply_workspace:
+            # patch user's workspace into experiments clone
+            #
+            # TODO: patching changes into an extended branch will require
+            # propagating changes down the full branch, since the workspace
+            # patch will be based on the original branch point, not the tip
+            # of the experiment branch
+            tmp = tempfile.NamedTemporaryFile(delete=False).name
+            try:
+                self.repo.scm.repo.git.diff(
+                    patch=True, full_index=True, binary=True, output=tmp
+                )
+                if os.path.getsize(tmp):
+                    logger.debug("Patching experiment workspace")
+                    self.scm.repo.git.apply(tmp)
+                elif not params and not allow_unchanged:
+                    # experiment matches original baseline
+                    raise UnchangedExperimentError(rev)
+            finally:
+                remove(tmp)
 
         # update experiment params from command line
         if params:
@@ -278,19 +287,21 @@ class Experiments:
             with modify_data(path, tree=self.exp_dvc.tree) as data:
                 _update(data, params[params_fname])
 
-    def _commit(self, exp_hash, check_exists=True, branch=True):
+    def _commit(self, exp_hash, check_exists=True, create_branch=True):
         """Commit stages as an experiment and return the commit SHA."""
         if not self.scm.is_dirty():
             raise UnchangedExperimentError(self.scm.get_rev())
 
         rev = self.scm.get_rev()
         exp_name = f"{rev[:7]}-{exp_hash}"
-        if branch:
+        if create_branch:
             if check_exists and exp_name in self.scm.list_branches():
                 logger.debug("Using existing experiment branch '%s'", exp_name)
                 return self.scm.resolve_rev(exp_name)
             self.scm.checkout(exp_name, create_new=True)
             logger.debug("Commit new experiment branch '%s'", exp_name)
+        else:
+            logger.debug("Commit to current experiment branch")
         self.scm.repo.git.add(A=True)
         self.scm.commit(f"Add experiment {exp_name}")
         return self.scm.get_rev()
@@ -328,7 +339,14 @@ class Experiments:
         Experiment will be reproduced and checked out into the user's
         workspace.
         """
-        rev = self.repo.scm.get_rev()
+        branch = kwargs.get("branch")
+        if branch:
+            rev = self.scm.resolve_rev(branch)
+            logger.debug(
+                "Using '%s' (tip of branch '%s') as baseline", rev, branch
+            )
+        else:
+            rev = self.repo.scm.get_rev()
         self._scm_checkout(rev)
         try:
             stash_rev = self._stash_exp(*args, **kwargs)
@@ -443,7 +461,10 @@ class Experiments:
                 exc = future.exception()
                 if exc is None:
                     exp_hash = future.result()
-                    self._scm_checkout(executor.baseline_rev)
+                    if executor.branch:
+                        self._scm_checkout(executor.branch)
+                    else:
+                        self._scm_checkout(executor.baseline_rev)
                     try:
                         self._collect_output(executor)
                     except DownloadError:
@@ -457,7 +478,8 @@ class Experiments:
                             remove(self.args_file)
 
                     try:
-                        exp_rev = self._commit(exp_hash)
+                        branch = not executor.branch
+                        exp_rev = self._commit(exp_hash, create_branch=branch)
                     except UnchangedExperimentError:
                         logger.debug(
                             "Experiment '%s' identical to baseline '%s'",
@@ -543,12 +565,12 @@ class Experiments:
 
         from dvc.repo.checkout import checkout as dvc_checkout
 
-        self._check_baseline(rev)
+        baseline_rev = self._check_baseline(rev)
         self._scm_checkout(rev)
 
         tmp = tempfile.NamedTemporaryFile(delete=False).name
         self.scm.repo.head.commit.diff(
-            "HEAD~1", patch=True, full_index=True, binary=True, output=tmp
+            baseline_rev, patch=True, full_index=True, binary=True, output=tmp
         )
 
         dirty = self.repo.scm.is_dirty()
@@ -575,11 +597,14 @@ class Experiments:
 
     def _check_baseline(self, exp_rev):
         baseline_sha = self.repo.scm.get_rev()
-        exp_commit = self.scm.repo.rev_parse(exp_rev)
-        parent = first(exp_commit.parents)
-        if parent is not None and parent.hexsha == baseline_sha:
-            return
-        raise BaselineMismatchError(parent, baseline_sha)
+        exp_baseline = self._get_baseline(exp_rev)
+        if exp_baseline is None:
+            # if we can't tell from branch name, fall back to parent commit
+            exp_commit = self.scm.repo.rev_parse(exp_rev)
+            exp_baseline = first(exp_commit.parents).hexsha
+        if exp_baseline == baseline_sha:
+            return exp_baseline
+        raise BaselineMismatchError(exp_baseline, baseline_sha)
 
     def _unstash_workspace(self):
         # Essentially we want `git stash pop` with `-X ours` merge strategy
@@ -607,14 +632,15 @@ class Experiments:
     @scm_locked
     def get_baseline(self, rev):
         """Return the baseline rev for an experiment rev."""
+        return self._get_baseline(rev)
+
+    def _get_baseline(self, rev):
         from git.exc import GitCommandError
 
         rev = self.scm.resolve_rev(rev)
         try:
             name = self.scm.repo.git.name_rev(rev, name_only=True)
         except GitCommandError:
-            return None
-        if not name:
             return None
         if name in ("undefined", "stash"):
             entry = self.stash_revs.get(rev)
@@ -624,6 +650,18 @@ class Experiments:
         m = self.BRANCH_RE.match(name)
         if m:
             return self.scm.resolve_rev(m.group("baseline_rev"))
+        return None
+
+    def _get_branch_containing(self, rev):
+        from git.exc import GitCommandError
+
+        if self.scm.repo.head.is_detached:
+            self._checkout_default_branch()
+        try:
+            name = self.scm.repo.git.branch(contains=rev)
+            return name.rsplit("/")[-1].strip()
+        except GitCommandError:
+            pass
         return None
 
     def checkout(self, *args, **kwargs):
