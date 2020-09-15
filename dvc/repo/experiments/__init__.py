@@ -2,6 +2,7 @@ import logging
 import os
 import re
 import tempfile
+from collections import namedtuple
 from collections.abc import Mapping
 from concurrent.futures import (
     ProcessPoolExecutor,
@@ -72,13 +73,16 @@ class Experiments:
 
     EXPERIMENTS_DIR = "experiments"
     PACKED_ARGS_FILE = "repro.dat"
-    STASH_MSG_PREFIX = "dvc-exp-"
+    STASH_MSG_PREFIX = "dvc-exp:"
     STASH_EXPERIMENT_RE = re.compile(
-        r"(?:On \(.*\): )dvc-exp-(?P<baseline_rev>[0-9a-f]+)$"
+        r"(?:On \(.*\): )"
+        r"dvc-exp:(?P<baseline_rev>[0-9a-f]+)(:(?P<branch>.+))?$"
     )
     BRANCH_RE = re.compile(
         r"^(?P<baseline_rev>[a-f0-9]{7})-(?P<exp_sha>[a-f0-9]+)$"
     )
+
+    StashEntry = namedtuple("StashEntry", ["index", "baseline_rev", "branch"])
 
     def __init__(self, repo):
         from dvc.lock import make_lock
@@ -144,7 +148,9 @@ class Experiments:
         for i, entry in enumerate(self.stash_reflog):
             m = self.STASH_EXPERIMENT_RE.match(entry.message)
             if m:
-                revs[entry.newhexsha] = (i, m.group("baseline_rev"))
+                revs[entry.newhexsha] = self.StashEntry(
+                    i, m.group("baseline_rev"), m.group("branch")
+                )
         return revs
 
     def _init_clone(self):
@@ -184,15 +190,30 @@ class Experiments:
             branch.set_tracking_branch(ref)
         branch.checkout()
 
-    def _stash_exp(self, *args, params: Optional[dict] = None, **kwargs):
+    def _stash_exp(
+        self,
+        *args,
+        params: Optional[dict] = None,
+        branch: Optional[str] = None,
+        allow_unchanged: Optional[bool] = False,
+        **kwargs,
+    ):
         """Stash changes from the current (parent) workspace as an experiment.
 
         Args:
             params: Optional dictionary of parameter values to be used.
                 Values take priority over any parameters specified in the
                 user's workspace.
+            branch: Optional experiment branch name. If specified, the
+                experiment will be added to `branch` instead of creating
+                a new branch.
+            allow_unchanged: Force experiment reproduction even if params are
+                unchanged from the baseline.
         """
-        rev = self.scm.get_rev()
+        if branch:
+            rev = self.scm.resolve_rev(branch)
+        else:
+            rev = self.scm.get_rev()
 
         # patch user's workspace into experiments clone
         tmp = tempfile.NamedTemporaryFile(delete=False).name
@@ -203,7 +224,7 @@ class Experiments:
             if os.path.getsize(tmp):
                 logger.debug("Patching experiment workspace")
                 self.scm.repo.git.apply(tmp)
-            elif not params:
+            elif not params and not allow_unchanged:
                 # experiment matches original baseline
                 raise UnchangedExperimentError(rev)
         finally:
@@ -219,9 +240,14 @@ class Experiments:
         # save experiment as a stash commit w/message containing baseline rev
         # (stash commits are merge commits and do not contain a parent commit
         # SHA)
-        msg = f"{self.STASH_MSG_PREFIX}{rev}"
+        msg = self._stash_msg(rev, branch)
         self.scm.repo.git.stash("push", "-m", msg)
         return self.scm.resolve_rev("stash@{0}")
+
+    def _stash_msg(self, rev, branch=None):
+        if branch:
+            return f"{self.STASH_MSG_PREFIX}{rev}:{branch}"
+        return f"{self.STASH_MSG_PREFIX}{rev}"
 
     def _pack_args(self, *args, **kwargs):
         ExperimentExecutor.pack_repro_args(self.args_file, *args, **kwargs)
@@ -264,7 +290,7 @@ class Experiments:
                 logger.debug("Using existing experiment branch '%s'", exp_name)
                 return self.scm.resolve_rev(exp_name)
             self.scm.checkout(exp_name, create_new=True)
-        logger.debug("Commit new experiment branch '%s'", exp_name)
+            logger.debug("Commit new experiment branch '%s'", exp_name)
         self.scm.repo.git.add(A=True)
         self.scm.commit(f"Add experiment {exp_name}")
         return self.scm.get_rev()
@@ -337,13 +363,12 @@ class Experiments:
         # commit) and baseline_rev is the baseline to compare output against.
         # The final experiment commit will be branched from baseline_rev.
         if revs is None:
-            to_run = {
-                rev: baseline_rev
-                for rev, (_, baseline_rev) in stash_revs.items()
-            }
+            to_run = dict(stash_revs)
         else:
             to_run = {
-                rev: stash_revs[rev][1] if rev in stash_revs else rev
+                rev: stash_revs[rev]
+                if rev in stash_revs
+                else self.StashEntry(None, rev, None)
                 for rev in revs
             }
 
@@ -355,12 +380,13 @@ class Experiments:
         # setup executors - unstash experiment, generate executor, upload
         # contents of (unstashed) exp workspace to the executor tree
         executors = {}
-        for rev, baseline_rev in to_run.items():
-            self._scm_checkout(baseline_rev)
+        for rev, item in to_run.items():
+            self._scm_checkout(item.baseline_rev)
             self.scm.repo.git.stash("apply", rev)
             repro_args, repro_kwargs = self._unpack_args()
             executor = LocalExecutor(
-                baseline_rev,
+                item.baseline_rev,
+                branch=item.branch,
                 repro_args=repro_args,
                 repro_kwargs=repro_kwargs,
                 dvc_dir=self.dvc_dir,
@@ -591,8 +617,10 @@ class Experiments:
         if not name:
             return None
         if name in ("undefined", "stash"):
-            _, baseline = self.stash_revs.get(rev, (None, None))
-            return baseline
+            entry = self.stash_revs.get(rev)
+            if entry:
+                return entry.baseline_rev
+            return None
         m = self.BRANCH_RE.match(name)
         if m:
             return self.scm.resolve_rev(m.group("baseline_rev"))
