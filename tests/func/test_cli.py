@@ -1,5 +1,7 @@
 import os
 
+import pytest
+
 from dvc.cli import get_main_parser, parse_args
 from dvc.command.add import CmdAdd
 from dvc.command.base import CmdBase
@@ -239,40 +241,41 @@ def test_unknown_subcommand_help(capsys):
     assert output == help_output
 
 
-def test_similar_command_suggestions(caplog):
-    suggestions = {
-        "addd": "add",
-        "stats": "status",
-    }
-    for typo, suggestion in suggestions.items():
-        try:
-            _ = parse_args([typo])
-        except DvcParserError:
-            pass
-        assert (
-            f"\n\nThe most similar command is\n\t{suggestion}\n" in caplog.text
-        )
-
+@pytest.mark.parametrize(
+    "typo,suggestion", [("addd", "add"), ("stats", "status")],
+)
+def test_similar_command_single_suggestion(typo, suggestion, caplog):
     try:
-        _ = parse_args(["commti"])
+        _ = parse_args([typo])
+    except DvcParserError:
+        pass
+    assert f"\n\nThe most similar command is\n\t{suggestion}\n" in caplog.text
+
+
+def test_similar_command_multiple_suggestions(caplog):
+    try:
+        _ = parse_args(["remot"])
     except DvcParserError:
         pass
     assert "The most similar commands are" in caplog.text
-    assert "commit" in caplog.text
-    assert "completion" in caplog.text
+    assert "remote" in caplog.text
+    assert "remove" in caplog.text
+    assert "root" in caplog.text
 
 
-def test_similar_subcommand_suggestions(caplog):
+def test_similar_subcommand_single_suggestion(caplog):
     try:
         _ = parse_args(["remote", "modfiy"])
     except DvcParserError:
         pass
     assert "\n\nThe most similar command is\n\tremote modify\n" in caplog.text
 
+
+def test_similar_subcommand_multiple_suggestions(caplog):
     try:
-        _ = parse_args(["git-hook", "postcommit"])
+        _ = parse_args(["plots", "dif"])
     except DvcParserError:
         pass
     assert "The most similar commands are" in caplog.text
-    assert "git-hook pre-commit" in caplog.text
-    assert "git-hook post-checkout" in caplog.text
+    assert "plots diff" in caplog.text
+    assert "plots modify" in caplog.text
