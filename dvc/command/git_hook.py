@@ -93,7 +93,7 @@ def add_parser(subparsers, parent_parser):
 
     git_hook_subparsers = git_hook_parser.add_subparsers(
         dest="cmd",
-        help="Use `dvc daemon CMD --help` for command-specific help.",
+        help="Use `dvc git-hook CMD --help` for command-specific help.",
     )
 
     fix_subparsers(git_hook_subparsers)
