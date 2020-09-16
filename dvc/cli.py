@@ -141,6 +141,7 @@ class DvcParser(argparse.ArgumentParser):
     """Custom parser class for dvc CLI."""
 
     cmd_choices = {}
+    hidden_cmds = ["completion", "daemon", "exp", "experiments", "git-hook"]
 
     def error(self, message, cmd_cls=None):  # pylint: disable=arguments-differ
         logger.error(message)
@@ -150,17 +151,17 @@ class DvcParser(argparse.ArgumentParser):
         # NOTE: this is a custom check to see if any suggestions can
         # be displayed to users in case a command contains typos
         # E.g. `dvc commti` would display
-        # The most similar commands are
+        # The most similar command is
         #         commit
-        #         completion
-        # E.g. `dvc remote modfiy` would display
-        # The most similar commands are
-        #         remote modify
         if args is None:
             args = sys.argv[1:]
         else:
             args = list(args)
-        if len(args) == 1 and args[0] not in self.cmd_choices:
+        if (
+            len(args) >= 1
+            and args[0] not in self.cmd_choices
+            and args[0] not in self.hidden_cmds
+        ):
             cmd_suggestions = _find_cmd_suggestions(
                 args[0], list(self.cmd_choices.keys())
             )
@@ -170,7 +171,7 @@ class DvcParser(argparse.ArgumentParser):
         # NOTE: this is a custom check to see if any suggestions can
         # be displayed to users in case a nested subcommand contains typos
         # E.g. `dvc remote modfiy` would display
-        # The most similar commands are
+        # The most similar command is
         #         remote modify
         if len(args) == 2 and args[0] in self.cmd_choices:
             sub_cmd_choices = self.cmd_choices[args[0]]
@@ -291,6 +292,8 @@ def get_main_parser():
         cmd.add_parser(subparsers, parent_parser)
 
     for cmd, subparser in subparsers.choices.items():
+        if cmd in parser.hidden_cmds:
+            continue
         parser.cmd_choices[cmd] = []
         actions = subparser._actions  # pylint: disable=protected-access
         for action in actions:
