@@ -1,14 +1,17 @@
 import os
 import tempfile
+from time import sleep
 
 import pytest
 
+from dvc.api import make_checkpoint
 from dvc.dvcfile import SingleStageFile
 from dvc.main import main
 from dvc.output.local import LocalOutput
 from dvc.repo import Repo
 from dvc.stage import PipelineStage, Stage
 from dvc.stage.exceptions import StageFileFormatError
+from dvc.stage.run import run_stage
 from dvc.tree.local import LocalTree
 from dvc.utils.serialize import dump_yaml, load_yaml
 from tests.basic_env import TestDvc
@@ -274,3 +277,25 @@ def test_stage_remove_pointer_stage(tmp_dir, dvc, run_copy):
     with dvc.lock:
         stage.remove()
     assert not (tmp_dir / stage.relpath).exists()
+
+
+@pytest.mark.parametrize("checkpoint", [True, False])
+def test_stage_run_checkpoint(mocker, checkpoint):
+    stage = Stage(None, "stage.dvc", cmd="mycmd arg1 arg2")
+    mocker.patch.object(stage, "save")
+    mock_callback = mocker.Mock()
+
+    def mock_cmd_run(*args, **kwargs):
+        if checkpoint:
+            os.environ["DVC_CHECKPOINT"] = "1"
+            sleep(6)
+        make_checkpoint()
+        if checkpoint:
+            del os.environ["DVC_CHECKPOINT"]
+
+    mocker.patch("dvc.stage.run.cmd_run", mock_cmd_run)
+    run_stage(stage, checkpoint_func=mock_callback)
+    if checkpoint:
+        mock_callback.assert_called()
+    else:
+        mock_callback.assert_not_called()
