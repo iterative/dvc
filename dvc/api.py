@@ -109,3 +109,24 @@ def _make_repo(repo_url=None, rev=None):
             pass  # fallthrough to external_repo
     with external_repo(url=repo_url, rev=rev) as repo:
         yield repo
+
+
+def make_checkpoint():
+    """
+    Signal DVC to create a checkpoint experiment.
+
+    If the current process is being run from DVC, this function will block
+    until DVC has finished creating the checkpoint. Otherwise, this function
+    will return immediately.
+    """
+    import builtins
+    from time import sleep
+
+    from dvc.stage.run import CHECKPOINT_SIGNAL_FILE
+
+    if os.getenv("DVC_CHECKPOINT") is None:
+        return
+
+    builtins.open(CHECKPOINT_SIGNAL_FILE, "w")
+    while os.path.exists(CHECKPOINT_SIGNAL_FILE):
+        sleep(5)
