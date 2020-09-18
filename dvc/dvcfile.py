@@ -105,7 +105,7 @@ class FileMixin:
         with self.repo.tree.open(self.path) as fd:
             stage_text = fd.read()
         d = parse_yaml(stage_text, self.path)
-        self.validate(d, self.relpath)
+        # self.validate(d, self.relpath)
         return d, stage_text
 
     @classmethod
@@ -225,9 +225,13 @@ class PipelineFile(FileMixin):
 
     @property
     def stages(self):
+        from dvc.parsing import DataLoader
+
         data, _ = self._load()
+        spec = DataLoader(data)
+        resolved = spec.resolve()
         lockfile_data = self._lockfile.load()
-        return StageLoader(self, data.get("stages", {}), lockfile_data)
+        return StageLoader(self, resolved.get("stages", {}), lockfile_data)
 
     def remove(self, force=False):
         if not force:
