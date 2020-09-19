@@ -2,7 +2,7 @@ import logging
 import os
 import pickle
 from tempfile import TemporaryDirectory
-from typing import Iterable
+from typing import Iterable, Optional
 
 from funcy import cached_property
 
@@ -22,12 +22,16 @@ class ExperimentExecutor:
         baseline_rev: baseline revision that this experiment is derived from.
 
     Optional keyword args:
+        branch: Existing git branch for this experiment.
         repro_args: Args to be passed into reproduce.
         repro_kwargs: Keyword args to be passed into reproduce.
     """
 
-    def __init__(self, baseline_rev: str, **kwargs):
+    def __init__(
+        self, baseline_rev: str, branch: Optional[str] = None, **kwargs,
+    ):
         self.baseline_rev = baseline_rev
+        self.branch = branch
         self.repro_args = kwargs.pop("repro_args", [])
         self.repro_kwargs = kwargs.pop("repro_kwargs", {})
 
