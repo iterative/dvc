@@ -95,7 +95,7 @@ class AzureTree(BaseTree):
             container_client.create_container()
         except HttpResponseError as e:
             # client may not have account-level privileges
-            if e.status_code != 403:
+            if exc.status_code != 403:
                 raise
 
         return blob_service
