@@ -154,6 +154,11 @@ class Base:
         Method to remind user to track newly created files handled by scm
         """
 
+    def track_changed_files(self):
+        """
+        Method to stage files that have changed
+        """
+
     def track_file(self, path):
         """
         Method to add file to mechanism that will remind user

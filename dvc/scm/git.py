@@ -381,6 +381,12 @@ class Git(Base):
             "\tgit add {files}".format(files=files)
         )
 
+    def track_changed_files(self):
+        if not self.files_to_track:
+            return
+
+        self.add(self.files_to_track)
+
     def track_file(self, path):
         self.files_to_track.add(path)
 
