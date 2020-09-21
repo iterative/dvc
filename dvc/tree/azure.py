@@ -94,9 +94,8 @@ class AzureTree(BaseTree):
         except ResourceNotFoundError:
             container_client.create_container()
         except HttpResponseError as e:
-            if e.status_code == 403:
-                pass  # client may not have account-level privileges
-            else:
+            # client may not have account-level privileges
+            if e.status_code != 403:
                 raise
 
         return blob_service
