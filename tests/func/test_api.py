@@ -210,6 +210,9 @@ def test_get_url_granular(tmp_dir, dvc, s3):
         {"dir": {"foo": "foo", "bar": "bar", "nested": {"file": "file"}}}
     )
 
+    expected_url = URLInfo(s3.url) / "5f/c28ea78987408341668eba6525ebd1.dir"
+    assert api.get_url("dir") == expected_url
+
     expected_url = URLInfo(s3.url) / "ac/bd18db4cc2f85cedef654fccc4a4d8"
     assert api.get_url("dir/foo") == expected_url
 
