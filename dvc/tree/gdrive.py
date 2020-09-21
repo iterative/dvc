@@ -366,10 +366,7 @@ class GDriveTree(BaseTree):
                 total=total,
                 disable=no_progress_bar,
             ) as wrapped:
-                # PyDrive doesn't like content property setting for empty files
-                # https://github.com/gsuitedevs/PyDrive/issues/121
-                if total:
-                    item.content = wrapped
+                item.content = wrapped
                 item.Upload()
         return item
 
@@ -381,9 +378,6 @@ class GDriveTree(BaseTree):
         # it does not create a file on the remote
         gdrive_file = self._drive.CreateFile(param)
 
-        gdrive_file.FetchMetadata(fields="fileSize")
-        size = int(gdrive_file["fileSize"])
-
         with Tqdm(
             desc=progress_desc,
             disable=no_progress_bar,
@@ -391,13 +385,7 @@ class GDriveTree(BaseTree):
             # explicit `bar_format` as `total` will be set by `update_to`
             bar_format=Tqdm.BAR_FMT_DEFAULT,
         ) as pbar:
-            if size:
-                gdrive_file.GetContentFile(to_file, callback=pbar.update_to)
-            else:
-                # PyDrive doesn't like downloading empty files
-                # https://github.com/iterative/dvc/issues/4286
-                with open(to_file, "w"):
-                    pass
+            gdrive_file.GetContentFile(to_file, callback=pbar.update_to)
 
     @contextmanager
     @_gdrive_retry
