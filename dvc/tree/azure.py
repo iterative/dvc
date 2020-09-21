@@ -69,6 +69,7 @@ class AzureTree(BaseTree):
         # pylint: disable=no-name-in-module
         from azure.core.exceptions import ResourceNotFoundError
         from azure.storage.blob import BlobServiceClient
+        from azure.core.exceptions import HttpResponseError
 
         logger.debug(f"URL {self.path_info}")
 
@@ -92,6 +93,8 @@ class AzureTree(BaseTree):
             container_client.get_container_properties()
         except ResourceNotFoundError:
             container_client.create_container()
+        except HttpResponseError:
+            pass  # Client may not have account-level privileges
 
         return blob_service
 
