@@ -195,3 +195,17 @@ def test_metrics_diff_cli(tmp_dir, scm, dvc, run_copy_metrics, caplog, capsys):
         "Path    Metric    Old      New      Change\n"
         "m.yaml  foo       1.23457  3.45679  2.22222"
     )
+
+
+def test_metrics_diff_non_metrics(tmp_dir, scm, dvc):
+    def _gen(val):
+        tmp_dir.scm_gen({"some_file.yaml": f"foo: {val}"}, commit=str(val))
+
+    _gen(1)
+    _gen(2)
+    _gen(3)
+
+    result = dvc.metrics.diff(targets=["some_file.yaml"], a_rev="HEAD~2")
+    assert result == {
+        "some_file.yaml": {"foo": {"old": 1, "new": 3, "diff": 2}}
+    }
