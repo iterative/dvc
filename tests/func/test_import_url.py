@@ -164,10 +164,13 @@ def test_import_url(tmp_dir, dvc, workspace):
             "dc24e1271084ee317ac3c2656fb8812b",
             "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
         ),
-        (
+        pytest.param(
             pytest.lazy_fixture("hdfs"),
             "ec0943f83357f702033c98e70b853c8c",
             "e6dcd267966dc628d732874f94ef4280.dir",
+            marks=pytest.mark.xfail(
+                reason="https://github.com/iterative/dvc/issues/4418"
+            ),
         ),
         pytest.param(
             pytest.lazy_fixture("ssh"),
