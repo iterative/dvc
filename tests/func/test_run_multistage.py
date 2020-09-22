@@ -386,10 +386,15 @@ def test_run_overwrite_preserves_meta_and_comment(tmp_dir, dvc, run_copy):
             "37b51d194a7513e45b56f6524f2d51f2",
         ),
         (
-            pytest.lazy_fixture("hdfs"),
-            "checksum",
-            "0000020000000000000000003dba826b9be9c6a8e2f8310a770555c4",
-            "00000200000000000000000075433c81259d3c38e364b348af52e84d",
+            pytest.param(
+                pytest.lazy_fixture("hdfs"),
+                "checksum",
+                "0000020000000000000000003dba826b9be9c6a8e2f8310a770555c4",
+                "00000200000000000000000075433c81259d3c38e364b348af52e84d",
+                marks=pytest.mark.xfail(
+                    reason="https://github.com/iterative/dvc/issues/4418"
+                ),
+            )
         ),
     ],
     indirect=["workspace"],

@@ -208,9 +208,14 @@ def test_add_file_in_dir(tmp_dir, dvc):
         ),
         (pytest.lazy_fixture("gs"), "md5", "8c7dd922ad47494fc02c388e12c00eac"),
         (
-            pytest.lazy_fixture("hdfs"),
-            "checksum",
-            "000002000000000000000000a86fe4d846edc1bf4c355cb6112f141e",
+            pytest.param(
+                pytest.lazy_fixture("hdfs"),
+                "checksum",
+                "000002000000000000000000a86fe4d846edc1bf4c355cb6112f141e",
+                marks=pytest.mark.xfail(
+                    reason="https://github.com/iterative/dvc/issues/4418"
+                ),
+            )
         ),
     ],
     indirect=["workspace"],

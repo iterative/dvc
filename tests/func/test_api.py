@@ -1,9 +1,10 @@
 import os
+import platform
 
 import pytest
 
 from dvc import api
-from dvc.exceptions import FileMissingError, OutputNotFoundError
+from dvc.exceptions import DvcException, FileMissingError, OutputNotFoundError
 from dvc.path_info import URLInfo
 from dvc.utils.fs import remove
 from tests.unit.tree.test_repo import make_subrepo
@@ -15,10 +16,16 @@ cloud_names = [
     "gdrive",
     "oss",
     "ssh",
-    "hdfs",
     "http",
 ]
-clouds = [pytest.lazy_fixture(cloud) for cloud in cloud_names]
+clouds = [pytest.lazy_fixture(cloud) for cloud in cloud_names] + [
+    pytest.param(
+        pytest.lazy_fixture("hdfs"),
+        marks=pytest.mark.xfail(
+            reason="https://github.com/iterative/dvc/issues/4418"
+        ),
+    )
+]
 all_clouds = [pytest.lazy_fixture("local_cloud")] + clouds
 
 # `lazy_fixture` is confusing pylint, pylint: disable=unused-argument
@@ -69,17 +76,26 @@ def test_open(tmp_dir, dvc, remote):
 @pytest.mark.parametrize(
     "cloud",
     [
-        pytest.lazy_fixture(cloud)
-        for cloud in [
-            "real_s3",  # NOTE: moto's s3 fails in some tests
-            "gs",
-            "azure",
-            "gdrive",
-            "oss",
-            "ssh",
-            "hdfs",
-            "http",
-        ]
+        *[
+            pytest.lazy_fixture(cloud)
+            for cloud in [
+                "real_s3",  # NOTE: moto's s3 fails in some tests
+                "gs",
+                "azure",
+                "gdrive",
+                "oss",
+                "hdfs",
+                "http",
+            ]
+        ],
+        pytest.param(
+            pytest.lazy_fixture("ssh"),
+            marks=pytest.mark.xfail(
+                raises=DvcException,
+                condition=platform.system() == "Windows",
+                reason="https://github.com/iterative/dvc/issues/4418",
+            ),
+        ),
     ],
 )
 def test_open_external(erepo_dir, cloud):

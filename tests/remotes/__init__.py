@@ -40,8 +40,8 @@ def docker():
     import os
 
     # See https://travis-ci.community/t/docker-linux-containers-on-windows/301
-    if os.environ.get("TRAVIS") and os.name == "nt":
-        pytest.skip("disabled for Windows on Travis")
+    if os.environ.get("CI") and os.name == "nt":
+        pytest.skip("disabled for Windows on Github Actions")
 
     try:
         subprocess.check_output("docker ps", shell=True)
