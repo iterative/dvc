@@ -147,7 +147,9 @@ def _get_dvc_repo_info(self):
 def _get_external_remotes_cache(self):
     cache_info = self.config.get("cache", {})
 
-    cache_vars = [val for val in Schemes.__dict__.values() if type(val) == str]
+    cache_vars = [
+        val for val in Schemes.__dict__.values() if isinstance(val, str)
+    ]
     cache_key = list(set(cache_info.keys()).intersection(set(cache_vars)))
 
     core_info = self.config.get("core", {})
