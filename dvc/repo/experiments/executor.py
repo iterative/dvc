@@ -134,9 +134,10 @@ class LocalExecutor(ExperimentExecutor):
 
         unchanged = []
 
-        def filter_pipeline(stage):
-            if isinstance(stage, PipelineStage):
-                unchanged.append(stage)
+        def filter_pipeline(stages):
+            unchanged.extend(
+                [stage for stage in stages if isinstance(stage, PipelineStage)]
+            )
 
         if cwd:
             old_cwd = os.getcwd()

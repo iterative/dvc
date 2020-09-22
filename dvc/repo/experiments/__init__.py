@@ -378,6 +378,7 @@ class Experiments:
         self,
         revs: Optional[Iterable] = None,
         keep_stash: Optional[bool] = True,
+        checkpoint: Optional[bool] = False,
         **kwargs,
     ):
         """Reproduce the specified experiments.
@@ -428,7 +429,10 @@ class Experiments:
             self._collect_input(executor)
             executors[rev] = executor
 
-        exec_results = self._reproduce(executors, **kwargs)
+        if checkpoint:
+            exec_results = self._reproduce_checkpoint(executors)
+        else:
+            exec_results = self._reproduce(executors, **kwargs)
 
         if keep_stash:
             # only drop successfully run stashed experiments
@@ -480,30 +484,10 @@ class Experiments:
                         self._scm_checkout(executor.branch)
                     else:
                         self._scm_checkout(executor.baseline_rev)
-                    try:
-                        self._collect_output(executor)
-                    except DownloadError:
-                        logger.error(
-                            "Failed to collect output for experiment '%s'",
-                            rev,
-                        )
-                        continue
-                    finally:
-                        if os.path.exists(self.args_file):
-                            remove(self.args_file)
-
-                    try:
-                        branch = not executor.branch
-                        exp_rev = self._commit(exp_hash, create_branch=branch)
-                    except UnchangedExperimentError:
-                        logger.debug(
-                            "Experiment '%s' identical to baseline '%s'",
-                            rev,
-                            executor.baseline_rev,
-                        )
-                        exp_rev = executor.baseline_rev
-                    logger.info("Reproduced experiment '%s'.", exp_rev[:7])
-                    result[rev] = {exp_rev: exp_hash}
+                    exp_rev = self._collect_and_commit(rev, executor, exp_hash)
+                    if exp_rev:
+                        logger.info("Reproduced experiment '%s'.", exp_rev[:7])
+                        result[rev] = {exp_rev: exp_hash}
                 else:
                     logger.exception(
                         "Failed to reproduce experiment '%s'", rev
@@ -511,6 +495,64 @@ class Experiments:
                 executor.cleanup()
 
         return result
+
+    def _reproduce_checkpoint(self, executors):
+        result = {}
+        for rev, executor in executors.items():
+            if executor.branch:
+                self._scm_checkout(executor.branch)
+            else:
+                self._scm_checkout(executor.baseline_rev)
+
+            def _checkpoint_callback(rev, executor, unchanged, stages):
+                exp_hash = hash_exp(stages + unchanged)
+                exp_rev = self._collect_and_commit(rev, executor, exp_hash)
+                if exp_rev:
+                    if not executor.branch:
+                        branch = self._get_branch_containing(exp_rev)
+                        executor.branch = branch
+                    logger.info(
+                        "Checkpoint experiment iteration '%s'.", exp_rev[:7]
+                    )
+                    result[rev] = {exp_rev: exp_hash}
+
+            checkpoint_func = partial(_checkpoint_callback, rev, executor)
+            executor.reproduce(
+                executor.dvc_dir,
+                cwd=executor.dvc.root_dir,
+                checkpoint_func=checkpoint_func,
+                **executor.repro_kwargs,
+            )
+
+            # TODO: determine whether or not we should create a final
+            # checkpoint commit after repro is killed, or if we should only do
+            # it on explicit make_checkpoint() signals.
+
+        return result
+
+    def _collect_and_commit(self, rev, executor, exp_hash):
+        try:
+            self._collect_output(executor)
+        except DownloadError:
+            logger.error(
+                "Failed to collect output for experiment '%s'", rev,
+            )
+            return None
+        finally:
+            if os.path.exists(self.args_file):
+                remove(self.args_file)
+
+        try:
+            create_branch = not executor.branch
+            exp_rev = self._commit(exp_hash, create_branch=create_branch)
+        except UnchangedExperimentError:
+            logger.debug(
+                "Experiment '%s' identical to baseline '%s'",
+                rev,
+                executor.baseline_rev,
+            )
+            exp_rev = executor.baseline_rev
+        return exp_rev
 
     def _collect_input(self, executor: ExperimentExecutor):
         """Copy (upload) input from the experiments workspace to the executor
