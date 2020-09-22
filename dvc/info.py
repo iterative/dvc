@@ -6,6 +6,7 @@ import uuid
 
 from dvc.exceptions import DvcException, NotDvcRepoError
 from dvc.repo import Repo
+from dvc.scheme import Schemes
 from dvc.scm.base import SCMError
 from dvc.system import System
 from dvc.tree import TREES
@@ -60,6 +61,13 @@ def get_dvc_info():
             fs_root = get_fs_type(os.path.abspath(root_directory))
             info.append(f"Workspace directory: {fs_root}")
         info.append("Repo: {}".format(_get_dvc_repo_info(repo)))
+
+        cache_location, remote_url = _get_external_remotes_cache(repo)
+        if cache_location:
+            info.append(f"External cache: {cache_location}")
+        if remote_url:
+            info.append(f"Remote url: {remote_url}")
+
     return "\n".join(info)
 
 
@@ -134,3 +142,24 @@ def _get_dvc_repo_info(self):
         return "dvc (subdir), git"
 
     return "dvc, git"
+
+
+def _get_external_remotes_cache(self):
+    cache_info = self.config.get("cache", {})
+
+    cache_vars = [val for val in Schemes.__dict__.values() if type(val) == str]
+    cache_key = list(set(cache_info.keys()).intersection(set(cache_vars)))
+
+    core_info = self.config.get("core", {})
+    cache_location, remote_url = "", ""
+
+    if cache_info and cache_key:
+        cache_location = cache_info[cache_key[0]]
+
+    if core_info.get("remote", False):
+        remote = core_info["remote"]
+        remote_url = (
+            self.config.get("remote", {}).get(remote, {}).get("url", None)
+        )
+
+    return cache_location, remote_url
