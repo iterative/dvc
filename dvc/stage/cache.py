@@ -1,5 +1,6 @@
 import logging
 import os
+import tempfile
 from contextlib import contextmanager
 
 from funcy import first
@@ -7,9 +8,9 @@ from voluptuous import Invalid
 
 from dvc.cache.local import _log_exceptions
 from dvc.exceptions import DvcException
+from dvc.path_info import PathInfo
 from dvc.schema import COMPILED_LOCK_FILE_STAGE_SCHEMA
 from dvc.utils import dict_sha256, relpath
-from dvc.utils.fs import makedirs
 from dvc.utils.serialize import YAMLFileCorruptedError, dump_yaml, load_yaml
 
 from .loader import StageLoader
@@ -48,6 +49,10 @@ class StageCache:
     def __init__(self, repo):
         self.repo = repo
         self.cache_dir = os.path.join(repo.cache.local.cache_dir, "runs")
+
+    @property
+    def tree(self):
+        return self.repo.cache.local.tree
 
     def _get_cache_dir(self, key):
         return os.path.join(self.cache_dir, key[:2], key)
@@ -143,10 +148,13 @@ class StageCache:
         # sanity check
         COMPILED_LOCK_FILE_STAGE_SCHEMA(cache)
 
-        path = self._get_cache_path(cache_key, cache_value)
-        dpath = os.path.dirname(path)
-        makedirs(dpath, exist_ok=True)
-        dump_yaml(path, cache)
+        path = PathInfo(self._get_cache_path(cache_key, cache_value))
+        self.tree.makedirs(path.parent)
+        tmp = tempfile.NamedTemporaryFile(delete=False, dir=path.parent).name
+        assert os.path.exists(path.parent)
+        assert os.path.isdir(path.parent)
+        dump_yaml(tmp, cache)
+        self.tree.move(PathInfo(tmp), path)
 
     def _restore(self, stage):
         stage.save_deps()
