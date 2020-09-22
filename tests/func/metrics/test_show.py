@@ -110,3 +110,41 @@ def test_missing_cache(tmp_dir, dvc, run_copy_metrics):
     remove(stage.outs[0].cache_path)
 
     assert dvc.metrics.show() == {"": {"metrics.yaml": 1.1}}
+
+
+def test_show_non_metric(tmp_dir, dvc):
+    tmp_dir.gen("metrics.yaml", "foo: 1.1")
+
+    assert dvc.metrics.show(targets=["metrics.yaml"]) == {
+        "": {"metrics.yaml": {"foo": 1.1}}
+    }
+
+
+def test_show_non_metric_branch(tmp_dir, scm, dvc):
+    tmp_dir.scm_gen("metrics.yaml", "foo: 1.1", commit="init")
+    with tmp_dir.branch("branch", new=True):
+        tmp_dir.scm_gen("metrics.yaml", "foo: 2.2", commit="other")
+
+    assert dvc.metrics.show(targets=["metrics.yaml"], revs=["branch"]) == {
+        "workspace": {"metrics.yaml": {"foo": 1.1}},
+        "branch": {"metrics.yaml": {"foo": 2.2}},
+    }
+
+
+def test_non_metric_and_recurisve_show(tmp_dir, dvc, run_copy_metrics):
+    tmp_dir.gen(
+        {"metrics_t.yaml": "foo: 1.1", "metrics": {"metric1.yaml": "bar: 1.2"}}
+    )
+
+    metric2 = os.fspath(tmp_dir / "metrics" / "metric2.yaml")
+    run_copy_metrics("metrics_t.yaml", metric2, metrics=[metric2])
+
+    assert dvc.metrics.show(
+        targets=["metrics_t.yaml", "metrics"], recursive=True
+    ) == {
+        "": {
+            os.path.join("metrics", "metric1.yaml"): {"bar": 1.2},
+            os.path.join("metrics", "metric2.yaml"): {"foo": 1.1},
+            "metrics_t.yaml": {"foo": 1.1},
+        }
+    }

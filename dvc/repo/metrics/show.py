@@ -11,28 +11,31 @@ logger = logging.getLogger(__name__)
 
 
 def _collect_metrics(repo, targets, recursive):
-    metrics = set()
 
+    if targets:
+        target_infos = [
+            PathInfo(os.path.abspath(target)) for target in targets
+        ]
+        tree = RepoTree(repo)
+
+        rec_files = []
+        if recursive:
+            for target_info in target_infos:
+                if tree.isdir(target_info):
+                    rec_files.extend(list(tree.walk_files(target_info)))
+
+        result = [t for t in target_infos if tree.isfile(t)]
+        result.extend(rec_files)
+
+        return result
+
+    metrics = set()
     for stage in repo.stages:
         for out in stage.outs:
             if not out.metric:
                 continue
-
             metrics.add(out.path_info)
-
-    if not targets:
-        return list(metrics)
-
-    target_infos = [PathInfo(os.path.abspath(target)) for target in targets]
-
-    def _filter(path_info):
-        for info in target_infos:
-            func = path_info.isin_or_eq if recursive else path_info.__eq__
-            if func(info):
-                return True
-        return False
-
-    return list(filter(_filter, metrics))
+    return list(metrics)
 
 
 def _extract_metrics(metrics, path, rev):
