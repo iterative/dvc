@@ -7,7 +7,7 @@ from contextlib import contextmanager
 
 from dvc.utils import fix_env
 
-from .decorators import unlocked_repo
+from .decorators import relock_repo, unlocked_repo
 from .exceptions import StageCmdFailedError
 
 logger = logging.getLogger(__name__)
@@ -138,13 +138,18 @@ def _checkpoint_run(stage, callback_func, done, done_cond):
     """Run callback_func whenever checkpoint signal file is present."""
     signal_path = os.path.join(stage.wdir, CHECKPOINT_SIGNAL_FILE)
     while True:
+        if os.path.exists(signal_path):
+            _run_callback(stage, callback_func)
+            logger.debug("Remove checkpoint signal file")
+            os.remove(signal_path)
         with done_cond:
             if done or done_cond.wait(5):
                 return
-        if os.path.exists(signal_path):
-            stage.save()
-            # TODO: do we need commit() (and check for --no-commit) here
-            logger.debug("Running checkpoint callback for stage '%s'", stage)
-            callback_func()
-            logger.debug("Remove checkpoint signal file")
-            os.remove(signal_path)
+
+
+@relock_repo
+def _run_callback(stage, callback_func):
+    stage.save()
+    # TODO: do we need commit() (and check for --no-commit) here
+    logger.debug("Running checkpoint callback for stage '%s'", stage)
+    callback_func()

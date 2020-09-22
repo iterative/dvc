@@ -16,7 +16,7 @@ def _reproduce_stage(stage, **kwargs):
         _dump_stage(stage)
         repro_callback([stage])
 
-    checkpoint_func = kwargs.pop("checkpoint_func")
+    checkpoint_func = kwargs.pop("checkpoint_func", None)
     if checkpoint_func:
         kwargs["checkpoint_func"] = partial(_run_callback, checkpoint_func)
 
@@ -241,7 +241,7 @@ def _reproduce_stages(
         if ret:
             logger.info("")
 
-        checkpoint_func = kwargs.pop("checkpoint_func")
+        checkpoint_func = kwargs.pop("checkpoint_func", None)
         if checkpoint_func:
             kwargs["checkpoint_func"] = partial(
                 _repro_callback, checkpoint_func, unchanged
