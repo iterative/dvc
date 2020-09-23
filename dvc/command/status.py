@@ -1,5 +1,7 @@
 import logging
 
+import colorama
+
 from dvc.command.data_sync import CmdDataBase
 from dvc.exceptions import DvcException
 
@@ -10,6 +12,10 @@ class CmdDataStatus(CmdDataBase):
     STATUS_LEN = 20
     STATUS_INDENT = "\t"
     UP_TO_DATE_MSG = "Data and pipelines are up to date."
+    EMPTY_PROJECT_MSG = (
+        "There is no data tracked in this project yet.\n"
+        "See {blue}https://dvc.org/doc/start/data-versioning{nc} to get started!"
+    ).format(blue=colorama.Fore.BLUE, nc=colorama.Fore.RESET)
 
     def _normalize(self, s):
         s += ":"
@@ -61,6 +67,8 @@ class CmdDataStatus(CmdDataBase):
                 logger.info(json.dumps(st))
             elif st:
                 self._show(st, indent)
+            elif not self.repo.stages:
+                logger.info(self.EMPTY_PROJECT_MSG)
             else:
                 logger.info(self.UP_TO_DATE_MSG)
 
