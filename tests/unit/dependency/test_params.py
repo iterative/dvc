@@ -132,7 +132,6 @@ def test_get_hash_missing_param(tmp_dir, dvc):
         dep.get_hash()
 
 
-@pytest.mark.regression_4184
 @pytest.mark.parametrize("param_value", ["", "false", "[]", "{}", "null"])
 def test_params_with_false_values(tmp_dir, dvc, param_value):
     """These falsy params values should not ignored by `status` on loading."""
