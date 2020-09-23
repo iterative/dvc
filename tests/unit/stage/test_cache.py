@@ -158,3 +158,49 @@ def test_stage_cache_wdir(tmp_dir, dvc, mocker):
     assert (tmp_dir / "wdir" / "out_no_cache").exists()
     assert (tmp_dir / "wdir" / "out").read_text() == "out"
     assert (tmp_dir / "wdir" / "out_no_cache").read_text() == "out_no_cache"
+
+
+def test_shared_stage_cache(tmp_dir, dvc, run_copy):
+    import stat
+
+    from dvc.cache import Cache
+
+    tmp_dir.gen("foo", "foo")
+
+    with dvc.config.edit() as config:
+        config["cache"]["shared"] = "group"
+
+    dvc.cache = Cache(dvc)
+
+    run_copy("foo", "bar", name="copy-foo-bar")
+
+    parent_cache_dir = os.path.join(dvc.stage_cache.cache_dir, "88",)
+    cache_dir = os.path.join(
+        parent_cache_dir,
+        "883395068439203a9de3d1e1649a16e9027bfd1ab5dab4f438d321c4a928b328",
+    )
+    cache_file = os.path.join(
+        cache_dir,
+        "e42b7ebb9bc5ac4bccab769c8d1338914dad25d7ffecc8671dbd4581bad4aa15",
+    )
+
+    # sanity check
+    assert os.path.isdir(cache_dir)
+    assert os.listdir(cache_dir) == [os.path.basename(cache_file)]
+    assert os.path.isfile(cache_file)
+
+    def _mode(path):
+        return stat.S_IMODE(os.stat(path).st_mode)
+
+    if os.name == "nt":
+        dir_mode = 0o777
+        file_mode = 0o666
+    else:
+        dir_mode = 0o775
+        file_mode = 0o664
+
+    assert _mode(dvc.cache.local.cache_dir) == dir_mode
+    assert _mode(dvc.stage_cache.cache_dir) == dir_mode
+    assert _mode(parent_cache_dir) == dir_mode
+    assert _mode(cache_dir) == dir_mode
+    assert _mode(cache_file) == file_mode
