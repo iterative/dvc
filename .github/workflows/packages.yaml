@@ -1,0 +1,126 @@
+name: Build packages
+on: [push, pull_request, release]
+jobs:
+  linux:
+    runs-on: ubuntu-16.04
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+    - name: Set up Ruby 2.4
+      uses: actions/setup-ruby@v1
+      with:
+        ruby-version: 2.4
+    - name: Build
+      run: ./scripts/build_posix.sh
+    - name: Publish deb
+      if: github.event_name == 'release'
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: dvc_${{ github.event.release.tag_name }}_amd64.deb
+        asset_name: dvc_${{ github.event.release.tag_name }}_amd64.deb
+        asset_content_type: binary/octet-stream
+    - name: Publish rpm
+      if: github.event_name == 'release'
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: dvc-${{ github.event.release.tag_name }}-1.x86_64.rpm
+        asset_name: dvc-${{ github.event.release.tag_name }}-1.x86_64.rpm
+        asset_content_type: binary/octet-stream
+  mac:
+    runs-on: macos-10.15
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+    - name: Set up Ruby 2.4
+      uses: actions/setup-ruby@v1
+      with:
+        ruby-version: 2.4
+    - name: Build
+      run: ./scripts/build_posix.sh
+    - name: Publish
+      if: github.event_name == 'release'
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: dvc-${{ github.event.release.tag_name }}.pkg
+        asset_name: dvc-${{ github.event.release.tag_name }}.pkg
+        asset_content_type: binary/octet-stream
+  windows:
+    runs-on: windows-2019
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+    - name: Build
+      run: scripts\build_windows.cmd
+      shell: cmd
+    - name: Publish
+      if: github.event_name == 'release'
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: dvc-${{ github.event.release.tag_name }}.exe
+        asset_name: dvc-${{ github.event.release.tag_name }}.exe
+        asset_content_type: binary/octet-stream
+  python:
+    runs-on: ubuntu-16.04
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+    - name: Install
+      run: pip install ".[all,tests]"
+    - name: Build packages
+      run: ./scripts/build_package.sh
+    - name: Publish packages to PyPI
+      if: github.event_name == 'release'
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_TOKEN }}
+  snap:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build the package
+      uses: snapcore/action-build@v1
+      id: snapcraft
+    - name: Test the package
+      run: |
+        sudo snap install --dangerous --classic ${{ steps.snapcraft.outputs.snap }}
+        dvc version
+        sudo snap remove dvc
+    - name: Publish to the edge channel
+      uses: snapcore/action-publish@v1
+      if: github.event_name == 'push'
+      with:
+        store_login: ${{ secrets.STORE_LOGIN }}
+        snap: ${{ steps.snapcraft.outputs.snap }}
+        release: edge
+    - name: Publish to the stable channel
+      uses: snapcore/action-publish@v1
+      if: github.event_name == 'release'
+      with:
+        store_login: ${{ secrets.STORE_LOGIN }}
+        snap: ${{ steps.snapcraft.outputs.snap }}
+        release: stable
