@@ -23,7 +23,7 @@ def _collect_experiment(repo, rev, stash=False, sha_only=True):
             commit = _resolve_commit(repo, rev)
             res["timestamp"] = datetime.fromtimestamp(commit.committed_date)
 
-        configs = _collect_configs(repo)
+        configs = _collect_configs(repo, rev=rev)
         params = _read_params(repo, configs, rev)
         if params:
             res["params"] = params

@@ -330,10 +330,7 @@ def test_plot_even_if_metric_missing(
     caplog.clear()
     with caplog.at_level(logging.WARNING, "dvc"):
         plots = dvc.plots.show(revs=["v1", "v2"], targets=["metric.json"])
-        assert (
-            "'metric.json' was not found at: 'v1'. "
-            "It will not be plotted." in caplog.text
-        )
+        assert "'metric.json' was not found at: 'v1'." in caplog.text
 
     plot_content = json.loads(plots["metric.json"])
     assert plot_content["data"]["values"] == [
