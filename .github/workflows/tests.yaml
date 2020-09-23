@@ -31,7 +31,7 @@ jobs:
         git config --global user.email "dvctester@example.com"
         git config --global user.name "DVC Tester"
     - name: run tests
-      run: python -m tests -n=2 --cov-report=xml
+      run: python -m tests --cov-report=xml
     - name: upload coverage report
       if: github.event.name == 'push'
       uses: codecov/codecov-action@v1.0.13

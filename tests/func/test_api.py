@@ -84,10 +84,15 @@ def test_open(tmp_dir, dvc, remote):
                 "azure",
                 "gdrive",
                 "oss",
-                "hdfs",
                 "http",
             ]
         ],
+        pytest.param(
+            pytest.lazy_fixture("hdfs"),
+            marks=pytest.mark.xfail(
+                reason="https://github.com/iterative/dvc/issues/4418",
+            ),
+        ),
         pytest.param(
             pytest.lazy_fixture("ssh"),
             marks=pytest.mark.xfail(
@@ -136,17 +141,24 @@ def test_open_granular(tmp_dir, dvc, remote):
 @pytest.mark.parametrize(
     "remote",
     [
-        pytest.lazy_fixture(cloud)
-        for cloud in [
-            "real_s3",  # NOTE: moto's s3 fails in some tests
-            "gs",
-            "azure",
-            "gdrive",
-            "oss",
-            "ssh",
-            "hdfs",
-            "http",
-        ]
+        *[
+            pytest.lazy_fixture(cloud)
+            for cloud in [
+                "real_s3",  # NOTE: moto's s3 fails in some tests
+                "gs",
+                "azure",
+                "gdrive",
+                "oss",
+                "ssh",
+                "http",
+            ]
+        ],
+        pytest.param(
+            pytest.lazy_fixture("hdfs"),
+            marks=pytest.mark.xfail(
+                reason="https://github.com/iterative/dvc/issues/4418",
+            ),
+        ),
     ],
     indirect=True,
 )
