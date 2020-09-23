@@ -1,8 +1,10 @@
 import logging
+import os
 
 from funcy import first, project
 
-from dvc.exceptions import DvcException, NoPlotsError, OutputNotFoundError
+from dvc.exceptions import DvcException, NoPlotsError
+from dvc.path_info import PathInfo
 from dvc.schema import PLOT_PROPS
 from dvc.tree.repo import RepoTree
 from dvc.utils import relpath
@@ -142,23 +144,34 @@ class Plots:
 
 
 def _collect_plots(repo, targets=None, rev=None):
-    def _targets_to_outs(targets):
-        for t in targets:
-            try:
-                (out,) = repo.find_outs_by_path(t)
-                yield out
-            except OutputNotFoundError:
-                logger.warning(
-                    "File '{}' was not found at: '{}'. It will not be "
-                    "plotted.".format(t, rev)
-                )
+    plots = {out for stage in repo.stages for out in stage.outs if out.plot}
 
-    if targets:
-        outs = _targets_to_outs(targets)
-    else:
-        outs = (out for stage in repo.stages for out in stage.outs if out.plot)
+    def to_result(plots):
+        return {plot.path_info: _plot_props(plot) for plot in plots}
 
-    return {out.path_info: _plot_props(out) for out in outs}
+    if not targets:
+        return to_result(plots)
+
+    target_infos = {PathInfo(os.path.abspath(target)) for target in targets}
+
+    target_plots = set()
+    for p in plots:
+        if p.path_info in target_infos:
+            target_plots.add(p)
+            target_infos.remove(p.path_info)
+
+    tree = RepoTree(repo)
+    result = to_result(target_plots)
+
+    for t in target_infos:
+        if tree.isfile(t):
+            result[t] = {}
+        else:
+            logger.warning(
+                "'%s' was not found at: '%s'. It will not be plotted.", t, rev,
+            )
+
+    return result
 
 
 def _plot_props(out):
