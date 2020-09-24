@@ -8,9 +8,24 @@ env:
   SHELL: /bin/bash
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+    - name: Install requirements
+      run: pip install ".[all,tests]" Pygments collective.checkdocs pre-commit
+    - name: Check README
+      run: python setup.py checkdocs
+    - name: Check formatting
+      run: pre-commit run --all-files
   tests:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-18.04, windows-2019, macos-10.15]
         pyv: [3.6, 3.7, 3.8]
