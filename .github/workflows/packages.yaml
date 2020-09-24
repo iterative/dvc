@@ -24,7 +24,7 @@ jobs:
     - name: Build
       run: ./scripts/build_posix.sh
     - name: Publish deb
-      if: github.event_name == 'release' && github.event.release.action == 'released'
+      if: github.event_name == 'release'
       uses: actions/upload-release-asset@v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -34,7 +34,7 @@ jobs:
         asset_name: dvc_${{ github.event.release.tag_name }}_amd64.deb
         asset_content_type: binary/octet-stream
     - name: Publish rpm
-      if: github.event_name == 'release' && github.event.release.action == 'released'
+      if: github.event_name == 'release'
       uses: actions/upload-release-asset@v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -58,7 +58,7 @@ jobs:
     - name: Build
       run: ./scripts/build_posix.sh
     - name: Publish
-      if: github.event_name == 'release' && github.event.release.action == 'released'
+      if: github.event_name == 'release'
       uses: actions/upload-release-asset@v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -79,7 +79,7 @@ jobs:
       run: scripts\build_windows.cmd
       shell: cmd
     - name: Publish
-      if: github.event_name == 'release' && github.event.release.action == 'released'
+      if: github.event_name == 'release'
       uses: actions/upload-release-asset@v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -101,7 +101,7 @@ jobs:
     - name: Build packages
       run: ./scripts/build_package.sh
     - name: Publish packages to PyPI
-      if: github.event_name == 'release' && github.event.release.action == 'released'
+      if: github.event_name == 'release'
       uses: pypa/gh-action-pypi-publish@master
       with:
         user: __token__
@@ -127,7 +127,7 @@ jobs:
         release: edge
     - name: Publish to the stable channel
       uses: snapcore/action-publish@v1
-      if: github.event_name == 'release' && github.event.release.action == 'released'
+      if: github.event_name == 'release'
       with:
         store_login: ${{ secrets.STORE_LOGIN }}
         snap: ${{ steps.snapcraft.outputs.snap }}
