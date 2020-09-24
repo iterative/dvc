@@ -24,6 +24,21 @@ def test_show_toml(tmp_dir, dvc):
     }
 
 
+def test_show_py(tmp_dir, dvc):
+    tmp_dir.gen(
+        "params.py",
+        "CONST = 1\nIS_DIR: bool = True\n\n\nclass Config:\n    foo = 42\n",
+    )
+    dvc.run(
+        cmd="echo params.py",
+        params=["params.py:CONST,IS_DIR,Config.foo"],
+        single_stage=True,
+    )
+    assert dvc.params.show() == {
+        "": {"params.py": {"CONST": 1, "IS_DIR": True, "Config": {"foo": 42}}}
+    }
+
+
 def test_show_multiple(tmp_dir, dvc):
     tmp_dir.gen("params.yaml", "foo: bar\nbaz: qux\n")
     dvc.run(
