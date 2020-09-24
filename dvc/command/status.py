@@ -12,9 +12,9 @@ class CmdDataStatus(CmdDataBase):
     STATUS_INDENT = "\t"
     UP_TO_DATE_MSG = "Data and pipelines are up to date."
     EMPTY_PROJECT_MSG = (
-        "There is no data tracked in this project yet.\n"
+        "There are no data or pipelines tracked in this project yet.\n"
         "See {link} to get started!"
-    ).format(link=format_link("https://dvc.org/doc/start/data-versioning"))
+    ).format(link=format_link("https://dvc.org/doc/start"))
 
     def _normalize(self, s):
         s += ":"
