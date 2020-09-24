@@ -92,14 +92,14 @@ gdrive = ["pydrive2>=1.6.2", "six >= 1.13.0"]
 s3 = ["boto3>=1.9.201"]
 azure = ["azure-storage-blob>=12.0", "knack"]
 oss = ["oss2==2.6.1"]
-ssh = ["paramiko>=2.5.0"]
+ssh = ["paramiko[invoke]>=2.7.0"]
 hdfs = ["pyarrow>=0.17.0"]
 webdav = ["webdavclient3>=3.14.5"]
 # gssapi should not be included in all_remotes, because it doesn't have wheels
 # for linux and mac, so it will fail to compile if user doesn't have all the
 # requirements, including kerberos itself. Once all the wheels are available,
 # we can start shipping it by default.
-ssh_gssapi = ["paramiko[gssapi]>=2.5.0"]
+ssh_gssapi = ["paramiko[invoke,gssapi]>=2.7.0"]
 all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs + webdav
 
 # Extra dependecies to run tests
