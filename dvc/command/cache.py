@@ -7,6 +7,9 @@ from dvc.command.config import CmdConfig
 
 class CmdCacheDir(CmdConfig):
     def run(self):
+        if not self.args.value:
+            print(self.config["cache"]["dir"])
+            return 0
         with self.config.edit(level=self.args.level) as edit:
             edit["cache"]["dir"] = self.args.value
         return 0
@@ -55,6 +58,8 @@ def add_parser(subparsers, parent_parser):
         "value",
         help="Path to cache directory. Relative paths are resolved relative "
         "to the current directory and saved to config relative to the "
-        "config file location.",
+        "config file location. If no path is provided, it returns the "
+        "current cache directory.",
+        nargs="?",
     ).complete = completion.DIR
     cache_dir_parser.set_defaults(func=CmdCacheDir)
