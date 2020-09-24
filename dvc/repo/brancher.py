@@ -4,7 +4,12 @@ from dvc.tree.local import LocalTree
 
 
 def brancher(  # noqa: E302
-    self, revs=None, all_branches=False, all_tags=False, all_commits=False
+    self,
+    revs=None,
+    all_branches=False,
+    all_tags=False,
+    all_commits=False,
+    sha_only=False,
 ):
     """Generator that iterates over specified revisions.
 
@@ -13,6 +18,7 @@ def brancher(  # noqa: E302
         all_branches (bool): iterate over all available branches.
         all_commits (bool): iterate over all commits.
         all_tags (bool): iterate over all available tags.
+        sha_only (bool): only return git SHA for a revision.
 
     Yields:
         str: the display name for the currently selected tree, it could be:
@@ -53,6 +59,9 @@ def brancher(  # noqa: E302
                 # ignore revs that don't contain repo root
                 # (i.e. revs from before a subdir=True repo was init'ed)
                 if self.tree.exists(self.root_dir):
-                    yield ", ".join(names)
+                    if sha_only:
+                        yield sha
+                    else:
+                        yield ", ".join(names)
     finally:
         self.tree = saved_tree
