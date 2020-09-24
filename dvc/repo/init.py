@@ -10,7 +10,9 @@ from dvc.ignore import init as init_dvcignore
 from dvc.repo import Repo
 from dvc.scm import SCM
 from dvc.scm.base import SCMError
-from dvc.utils import boxify, relpath, format_link as fmt_link
+from dvc.utils import boxify
+from dvc.utils import format_link as fmt_link
+from dvc.utils import relpath
 from dvc.utils.fs import remove
 
 logger = logging.getLogger(__name__)
