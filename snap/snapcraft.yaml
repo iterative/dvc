@@ -29,7 +29,6 @@ parts:
     - git
     override-pull: |
         snapcraftctl pull
-        snapcraftctl set-version $(cd $SNAPCRAFT_PART_SRC && git describe --tags)
         git diff --quiet || error_dirty_build
         echo 'PKG = "snap"' > dvc/utils/build.py
         # install all optional extras
@@ -45,6 +44,7 @@ parts:
         touch $SNAPCRAFT_PART_INSTALL/completion.sh
     override-stage: |
         snapcraftctl stage
+        snapcraftctl set-version $(usr/bin/python3 -m dvc --version)
         usr/bin/python3 -m dvc completion -s bash > completion.sh
 apps:
   dvc:
