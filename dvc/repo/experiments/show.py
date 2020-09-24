@@ -17,7 +17,7 @@ def _collect_experiment(repo, branch, stash=False, sha_only=True):
         if rev == "workspace":
             res["timestamp"] = None
         else:
-            commit = repo.scm.repo.rev_parse(rev)
+            commit = _resolve_commit(repo, rev)
             res["timestamp"] = datetime.fromtimestamp(commit.committed_date)
 
         configs = _collect_configs(repo)
@@ -44,6 +44,15 @@ def _collect_experiment(repo, branch, stash=False, sha_only=True):
     return res
 
 
+def _resolve_commit(repo, rev):
+    from git.objects.tag import TagObject
+
+    commit = repo.scm.repo.rev_parse(rev)
+    if isinstance(commit, TagObject):
+        commit = commit.object
+    return commit
+
+
 @locked
 def show(
     repo,
@@ -65,6 +74,7 @@ def show(
             all_branches=all_branches,
             all_tags=all_tags,
             all_commits=all_commits,
+            sha_only=True,
         )
     )
 
