@@ -1,9 +1,8 @@
 import logging
 
-import colorama
-
 from dvc.command.data_sync import CmdDataBase
 from dvc.exceptions import DvcException
+from dvc.utils import format_link
 
 logger = logging.getLogger(__name__)
 
@@ -14,8 +13,8 @@ class CmdDataStatus(CmdDataBase):
     UP_TO_DATE_MSG = "Data and pipelines are up to date."
     EMPTY_PROJECT_MSG = (
         "There is no data tracked in this project yet.\n"
-        "See {bl}https://dvc.org/doc/start/data-versioning{nc} to get started!"
-    ).format(bl=colorama.Fore.BLUE, nc=colorama.Fore.RESET)
+        "See {link} to get started!"
+    ).format(link=format_link("https://dvc.org/doc/start/data-versioning"))
 
     def _normalize(self, s):
         s += ":"
