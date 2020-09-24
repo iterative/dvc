@@ -1,5 +1,13 @@
 name: Build packages
-on: [push, pull_request, release]
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+    branches:
+    - master
+  release:
+    types: [released]
 jobs:
   linux:
     runs-on: ubuntu-16.04
