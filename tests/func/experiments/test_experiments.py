@@ -208,3 +208,31 @@ def test_extend_branch(tmp_dir, scm, dvc):
     dvc.experiments.checkout(exp_b)
     assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 3"
     assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 3"
+
+
+def test_detached_parent(tmp_dir, scm, dvc, mocker):
+    tmp_dir.gen("copy.py", COPY_SCRIPT)
+    tmp_dir.gen("params.yaml", "foo: 1")
+    stage = dvc.run(
+        cmd="python copy.py params.yaml metrics.yaml",
+        metrics_no_cache=["metrics.yaml"],
+        params=["foo"],
+        name="copy-file",
+    )
+    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
+    scm.commit("v1")
+    detached_rev = scm.get_rev()
+
+    tmp_dir.gen("params.yaml", "foo: 2")
+    dvc.reproduce(stage.addressing)
+    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
+    scm.commit("v2")
+
+    scm.checkout(detached_rev)
+    assert scm.repo.head.is_detached
+    dvc.reproduce(stage.addressing, experiment=True, params=["foo=3"])
+
+    exp_rev = dvc.experiments.scm.get_rev()
+    assert dvc.experiments.get_baseline(exp_rev) == detached_rev
+    assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 3"
+    assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 3"
