@@ -14,8 +14,8 @@ class CmdDataStatus(CmdDataBase):
     UP_TO_DATE_MSG = "Data and pipelines are up to date."
     EMPTY_PROJECT_MSG = (
         "There is no data tracked in this project yet.\n"
-        "See {blue}https://dvc.org/doc/start/data-versioning{nc} to get started!"
-    ).format(blue=colorama.Fore.BLUE, nc=colorama.Fore.RESET)
+        "See {bl}https://dvc.org/doc/start/data-versioning{nc} to get started!"
+    ).format(bl=colorama.Fore.BLUE, nc=colorama.Fore.RESET)
 
     def _normalize(self, s):
         s += ":"
