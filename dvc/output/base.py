@@ -8,6 +8,7 @@ from voluptuous import Any
 import dvc.prompt as prompt
 from dvc.cache import NamedCache
 from dvc.exceptions import (
+    CheckoutError,
     CollectCacheError,
     DvcException,
     MergeError,
@@ -325,6 +326,7 @@ class BaseOutput:
         progress_callback=None,
         relink=False,
         filter_info=None,
+        allow_persist_missing=False,
     ):
         if not self.use_cache:
             if progress_callback:
@@ -333,14 +335,19 @@ class BaseOutput:
                 )
             return None
 
-        return self.cache.checkout(
-            self.path_info,
-            self.hash_info,
-            force=force,
-            progress_callback=progress_callback,
-            relink=relink,
-            filter_info=filter_info,
-        )
+        try:
+            return self.cache.checkout(
+                self.path_info,
+                self.hash_info,
+                force=force,
+                progress_callback=progress_callback,
+                relink=relink,
+                filter_info=filter_info,
+            )
+        except CheckoutError:
+            if self.persist and allow_persist_missing:
+                return None
+            raise
 
     def remove(self, ignore_remove=False):
         self.tree.remove(self.path_info)
