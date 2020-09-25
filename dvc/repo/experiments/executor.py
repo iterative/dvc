@@ -149,7 +149,8 @@ class LocalExecutor(ExperimentExecutor):
         try:
             logger.debug("Running repro in '%s'", cwd)
             dvc = Repo(dvc_dir)
-            dvc.checkout()
+            checkpoint = kwargs.pop("checkpoint", False)
+            dvc.checkout(allow_persist_missing=checkpoint)
             stages = dvc.reproduce(on_unchanged=filter_pipeline, **kwargs)
         finally:
             if old_cwd is not None:

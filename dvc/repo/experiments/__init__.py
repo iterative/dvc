@@ -528,6 +528,7 @@ class Experiments:
             executor.reproduce(
                 executor.dvc_dir,
                 cwd=executor.dvc.root_dir,
+                checkpoint=True,
                 checkpoint_func=checkpoint_func,
                 **executor.repro_kwargs,
             )
