@@ -323,7 +323,7 @@ class Experiments:
 
     def reproduce_one(self, queue=False, **kwargs):
         """Reproduce and checkout a single experiment."""
-        checkpoint = kwargs.pop("checkpoint", False)
+        checkpoint = kwargs.get("checkpoint", False)
         stash_rev = self.new(**kwargs)
         if queue:
             logger.info(
@@ -367,7 +367,10 @@ class Experiments:
             rev = self.repo.scm.get_rev()
         self._scm_checkout(rev)
         try:
-            stash_rev = self._stash_exp(*args, **kwargs)
+            checkpoint = kwargs.pop("checkpoint")
+            stash_rev = self._stash_exp(
+                *args, allow_unchanged=checkpoint, **kwargs
+            )
         except UnchangedExperimentError as exc:
             logger.info("Reproducing existing experiment '%s'.", rev[:7])
             raise exc
