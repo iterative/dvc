@@ -10,7 +10,9 @@ from dvc.ignore import init as init_dvcignore
 from dvc.repo import Repo
 from dvc.scm import SCM
 from dvc.scm.base import SCMError
-from dvc.utils import boxify, relpath
+from dvc.utils import boxify
+from dvc.utils import format_link as fmt_link
+from dvc.utils import relpath
 from dvc.utils.fs import remove
 
 logger = logging.getLogger(__name__)
@@ -22,9 +24,7 @@ def _welcome_message():
             boxify(
                 "DVC has enabled anonymous aggregate usage analytics.\n"
                 "Read the analytics documentation (and how to opt-out) here:\n"
-                "{blue}https://dvc.org/doc/user-guide/analytics{nc}".format(
-                    blue=colorama.Fore.BLUE, nc=colorama.Fore.RESET
-                ),
+                + fmt_link("https://dvc.org/doc/user-guide/analytics"),
                 border_color="red",
             )
         )
@@ -32,14 +32,10 @@ def _welcome_message():
     msg = (
         "{yellow}What's next?{nc}\n"
         "{yellow}------------{nc}\n"
-        "- Check out the documentation: {blue}https://dvc.org/doc{nc}\n"
-        "- Get help and share ideas: {blue}https://dvc.org/chat{nc}\n"
-        "- Star us on GitHub: {blue}https://github.com/iterative/dvc{nc}"
-    ).format(
-        yellow=colorama.Fore.YELLOW,
-        blue=colorama.Fore.BLUE,
-        nc=colorama.Fore.RESET,
-    )
+        f"- Check out the documentation: {fmt_link('https://dvc.org/doc')}\n"
+        f"- Get help and share ideas: {fmt_link('https://dvc.org/chat')}\n"
+        f"- Star us on GitHub: {fmt_link('https://github.com/iterative/dvc')}"
+    ).format(yellow=colorama.Fore.YELLOW, nc=colorama.Fore.RESET)
 
     logger.info(msg)
 

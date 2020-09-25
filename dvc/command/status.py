@@ -2,6 +2,7 @@ import logging
 
 from dvc.command.data_sync import CmdDataBase
 from dvc.exceptions import DvcException
+from dvc.utils import format_link
 
 logger = logging.getLogger(__name__)
 
@@ -10,6 +11,10 @@ class CmdDataStatus(CmdDataBase):
     STATUS_LEN = 20
     STATUS_INDENT = "\t"
     UP_TO_DATE_MSG = "Data and pipelines are up to date."
+    EMPTY_PROJECT_MSG = (
+        "There are no data or pipelines tracked in this project yet.\n"
+        "See {link} to get started!"
+    ).format(link=format_link("https://dvc.org/doc/start"))
 
     def _normalize(self, s):
         s += ":"
@@ -61,6 +66,8 @@ class CmdDataStatus(CmdDataBase):
                 logger.info(json.dumps(st))
             elif st:
                 self._show(st, indent)
+            elif not self.repo.stages:
+                logger.info(self.EMPTY_PROJECT_MSG)
             else:
                 logger.info(self.UP_TO_DATE_MSG)
 
