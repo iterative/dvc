@@ -96,7 +96,8 @@ def add_parser(subparsers, parent_parser):
         "-c",
         "--cwd",
         default=os.path.curdir,
-        help="Directory within your repo to reproduce from.",
+        help="Directory within your repo to reproduce from. Note: deprecated "
+        "by `dvc --cd <path>`.",
         metavar="<path>",
     )
     repro_parser.add_argument(
