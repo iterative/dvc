@@ -1,4 +1,5 @@
 import logging
+import os
 from abc import ABC, abstractmethod
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,8 @@ class CmdBase(ABC):
         from dvc.repo import Repo
         from dvc.updater import Updater
 
+        os.chdir(args.cd)
+
         self.repo = Repo()
         self.config = self.repo.config
         self.args = args
@@ -55,3 +58,5 @@ class CmdBase(ABC):
 class CmdBaseNoRepo(CmdBase):
     def __init__(self, args):  # pylint: disable=super-init-not-called
         self.args = args
+
+        os.chdir(args.cd)
