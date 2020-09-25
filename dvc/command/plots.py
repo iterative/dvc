@@ -133,7 +133,9 @@ def add_parser(subparsers, parent_parser):
     plots_show_parser.add_argument(
         "targets",
         nargs="*",
-        help="Plots files to visualize. Shows all plots by default.",
+        help="Files to visualize (supports any file, "
+        "even when not found as `plots` in `dvc.yaml`). "
+        "Shows all plots by default.",
     ).complete = completion.FILE
     _add_props_arguments(plots_show_parser)
     _add_output_arguments(plots_show_parser)
@@ -153,7 +155,9 @@ def add_parser(subparsers, parent_parser):
     plots_diff_parser.add_argument(
         "--targets",
         nargs="*",
-        help="Plots file to visualize. Shows all plots by default.",
+        help="Files to visualize (supports any file, "
+        "even when not found as `plots` in `dvc.yaml`). "
+        "Shows all plots by default.",
         metavar="<path>",
     ).complete = completion.FILE
     plots_diff_parser.add_argument(
