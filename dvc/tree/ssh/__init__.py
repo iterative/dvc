@@ -91,6 +91,7 @@ class SSHTree(BaseTree):
             self.sock = paramiko.ProxyCommand(proxy_command)
         else:
             self.sock = None
+        self.allow_agent = config.get("allow_agent", True)
 
     @staticmethod
     def ssh_config_filename():
@@ -143,6 +144,7 @@ class SSHTree(BaseTree):
             password=self.password,
             gss_auth=self.gss_auth,
             sock=self.sock,
+            allow_agent=self.allow_agent,
         )
 
     @contextmanager
