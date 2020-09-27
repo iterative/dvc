@@ -15,6 +15,7 @@ class CmdImport(CmdBase):
                 self.args.url,
                 self.args.path,
                 out=self.args.out,
+                fname=self.args.file,
                 rev=self.args.rev,
             )
         except DvcException:
@@ -58,5 +59,10 @@ def add_parser(subparsers, parent_parser):
         nargs="?",
         help="Git revision (e.g. SHA, branch, tag)",
         metavar="<commit>",
+    )
+    import_parser.add_argument(
+        "--file",
+        help="Specify name of the DVC-file this command will generate.",
+        metavar="<filename>",
     )
     import_parser.set_defaults(func=CmdImport)
