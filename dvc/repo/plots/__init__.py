@@ -1,7 +1,7 @@
 import logging
 import os
 
-from funcy import first, project
+from funcy import cached_property, first, project
 
 from dvc.exceptions import DvcException, NoPlotsError
 from dvc.path_info import PathInfo
@@ -93,7 +93,7 @@ class Plots:
             raise NoPlotsError()
 
         if templates is None:
-            templates = self.repo.plot_templates
+            templates = self.templates
         return self.render(data, revs, props, templates)
 
     def diff(self, *args, **kwargs):
@@ -118,7 +118,7 @@ class Plots:
         props = props or {}
         template = props.get("template")
         if template:
-            self.repo.plot_templates.get_template(template)
+            self.templates.get_template(template)
 
         (out,) = self.repo.find_outs_by_path(path)
         if not out.plot and unset is not None:
@@ -141,6 +141,12 @@ class Plots:
 
         dvcfile = Dvcfile(self.repo, out.stage.path)
         dvcfile.dump(out.stage, update_lock=False)
+
+    @cached_property
+    def templates(self):
+        from .template import PlotTemplates
+
+        return PlotTemplates(self.repo.dvc_dir)
 
 
 def _collect_plots(repo, targets=None, rev=None):

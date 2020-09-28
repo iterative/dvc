@@ -554,12 +554,6 @@ class Repo:
         """
         return self._collect_stages()
 
-    @cached_property
-    def plot_templates(self):
-        from .plots.template import PlotTemplates
-
-        return PlotTemplates(self.dvc_dir)
-
     def _collect_stages(self):
         stages = []
         outs = set()

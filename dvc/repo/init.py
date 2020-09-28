@@ -101,7 +101,7 @@ def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
     proj = Repo(root_dir)
 
     scm.add(
-        [config.files["repo"], dvcignore, proj.plot_templates.templates_dir]
+        [config.files["repo"], dvcignore, proj.plots.templates.templates_dir]
     )
 
     if scm.ignore_file:
