@@ -7,7 +7,7 @@ from dvc.command.config import CmdConfig
 
 class CmdCacheDir(CmdConfig):
     def run(self):
-        if not self.args.value:
+        if self.args.value is None and not self.args.unset:
             print(self.config["cache"]["dir"])
             return 0
         with self.config.edit(level=self.args.level) as edit:
