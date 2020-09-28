@@ -6,6 +6,7 @@ import threading
 from funcy import lchunks
 
 from dvc.state import _connect_sqlite
+from dvc.utils.fs import makedirs
 
 logger = logging.getLogger(__name__)
 
@@ -67,9 +68,12 @@ class RemoteIndex:
     VERSION = 1
     INDEX_TABLE = "remote_index"
     INDEX_TABLE_LAYOUT = "checksum TEXT PRIMARY KEY, dir INTEGER NOT NULL"
+    INDEX_DIR = "index"
 
     def __init__(self, repo, name, dir_suffix=".dir"):
-        self.path = os.path.join(repo.index_dir, f"{name}{self.INDEX_SUFFIX}")
+        self.path = os.path.join(
+            repo.tmp_dir, self.INDEX_DIR, f"{name}{self.INDEX_SUFFIX}"
+        )
 
         self.dir_suffix = dir_suffix
         self.database = None
@@ -150,6 +154,7 @@ class RemoteIndex:
             assert self.cursor is None
 
             empty = not os.path.isfile(self.path)
+            makedirs(os.path.dirname(self.path), exist_ok=True)
             self.database = _connect_sqlite(self.path, {"nolock": 1})
             self.cursor = self.database.cursor()
 

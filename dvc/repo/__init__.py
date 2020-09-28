@@ -132,8 +132,7 @@ class Repo:
             self.scm = SCM(self.root_dir, no_scm=no_scm)
 
         self.tmp_dir = os.path.join(self.dvc_dir, "tmp")
-        self.index_dir = os.path.join(self.tmp_dir, "index")
-        makedirs(self.index_dir, exist_ok=True)
+        makedirs(self.tmp_dir, exist_ok=True)
 
         hardlink_lock = self.config["core"].get("hardlink_lock", False)
         self.lock = make_lock(
