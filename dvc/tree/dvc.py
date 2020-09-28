@@ -55,6 +55,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
         super().__init__(repo, {"url": repo.root_dir})
         self.fetch = fetch
         self.stream = stream
+        self._file_hash_cache = {}
 
     def _find_outs(self, path, *args, **kwargs):
         outs = self.repo.find_outs_by_path(path, *args, **kwargs)
@@ -191,29 +192,38 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             path_info = out.path_info / entry_relpath
             trie[path_info.parts] = None
 
+            # cache file hashes for this dir out, cache will remain valid
+            # within the scope of this walk() iteration
+            self._file_hash_cache[top / path_info] = HashInfo(
+                out.tree.PARAM_CHECKSUM, entry[out.tree.PARAM_CHECKSUM],
+            )
+
     def _walk(self, root, trie, topdown=True, **kwargs):
         dirs = set()
         files = []
 
-        out = trie.get(root.parts)
-        if out and out.is_dir_checksum:
-            self._add_dir(root, trie, out, **kwargs)
+        try:
+            out = trie.get(root.parts)
+            if out and out.is_dir_checksum:
+                self._add_dir(root, trie, out, **kwargs)
 
-        root_len = len(root.parts)
-        for key, out in trie.iteritems(prefix=root.parts):  # noqa: B301
-            if key == root.parts:
-                continue
+            root_len = len(root.parts)
+            for key, out in trie.iteritems(prefix=root.parts):  # noqa: B301
+                if key == root.parts:
+                    continue
 
-            name = key[root_len]
-            if len(key) > root_len + 1 or (out and out.is_dir_checksum):
-                dirs.add(name)
-                continue
+                name = key[root_len]
+                if len(key) > root_len + 1 or (out and out.is_dir_checksum):
+                    dirs.add(name)
+                    continue
 
-            files.append(name)
+                files.append(name)
 
-        assert topdown
-        dirs = list(dirs)
-        yield root.fspath, dirs, files
+            assert topdown
+            dirs = list(dirs)
+            yield root.fspath, dirs, files
+        finally:
+            self._file_hash_cache.clear()
 
         for dname in dirs:
             yield from self._walk(root / dname, trie)
@@ -276,6 +286,10 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
         return super().get_dir_hash(path_info, **kwargs)
 
     def get_file_hash(self, path_info):
+        hash_info = self._file_hash_cache.get(path_info)
+        if hash_info:
+            return hash_info
+
         outs = self._find_outs(path_info, strict=False)
         if len(outs) != 1:
             raise OutputNotFoundError
