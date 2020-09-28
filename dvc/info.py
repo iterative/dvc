@@ -4,9 +4,9 @@ import pathlib
 import platform
 import uuid
 
+from dvc.config import SCHEMA
 from dvc.exceptions import DvcException, NotDvcRepoError
 from dvc.repo import Repo
-from dvc.scheme import Schemes
 from dvc.scm.base import SCMError
 from dvc.system import System
 from dvc.tree import TREES
@@ -36,7 +36,6 @@ def get_dvc_info():
 
     try:
         repo = Repo()
-
         # cache_dir might not exist yet (e.g. after `dvc init`), and we
         # can't auto-create it, as it might cause issues if the user
         # later decides to enable shared cache mode with
@@ -48,6 +47,13 @@ def get_dvc_info():
             if psutil:
                 fs_type = get_fs_type(repo.cache.local.cache_dir)
                 info.append(f"Cache directory: {fs_type}")
+                external_cache = repo.cache.local.tree.config.get("url", None)
+                remote_cache = _get_external_cache(repo)
+                if external_cache:
+                    info.append(f"External file cache: {external_cache}")
+                if remote_cache:
+                    info.append(f"External remote cache: {remote_cache}")
+
         else:
             info.append("Cache types: " + error_link("no-dvc-cache"))
 
@@ -62,9 +68,7 @@ def get_dvc_info():
             info.append(f"Workspace directory: {fs_root}")
         info.append("Repo: {}".format(_get_dvc_repo_info(repo)))
 
-        cache_location, remote_url = _get_external_remotes_cache(repo)
-        if cache_location:
-            info.append(f"External cache: {cache_location}")
+        remote_url = _get_external_remotes(repo)
         if remote_url:
             info.append(f"Remote url: {remote_url}")
 
@@ -144,24 +148,37 @@ def _get_dvc_repo_info(self):
     return "dvc, git"
 
 
-def _get_external_remotes_cache(self):
-    cache_info = self.config.get("cache", {})
-
-    cache_vars = [
-        val for val in Schemes.__dict__.values() if isinstance(val, str)
-    ]
-    cache_key = list(set(cache_info.keys()).intersection(set(cache_vars)))
+def _get_external_remotes(self):
 
     core_info = self.config.get("core", {})
-    cache_location, remote_url = "", ""
-
-    if cache_info and cache_key:
-        cache_location = cache_info[cache_key[0]]
-
+    remote_url = ""
     if core_info.get("remote", False):
         remote = core_info["remote"]
         remote_url = (
             self.config.get("remote", {}).get(remote, {}).get("url", None)
         )
 
-    return cache_location, remote_url
+    return remote_url
+
+
+def _get_external_cache(self):
+    cache_info = self.config.get("cache", {})
+    cache_vars = [
+        key
+        for key, val in SCHEMA["cache"].items()
+        if val == str and key != "dir"
+    ]
+    cache_key = list(set(cache_info.keys()).intersection(set(cache_vars)))
+    cache_location = ""
+
+    if cache_info and cache_key:
+        cache_location = ", ".join(
+            [
+                self.config.get("remote", {})
+                .get(cache_info[key], {})
+                .get("url", "")
+                for key in cache_key
+            ]
+        )
+
+    return cache_location
