@@ -38,7 +38,11 @@ def show_metrics(
         raise BadMetricError(missing)
 
 
-class CmdMetricsShow(CmdBase):
+class CmdMetricsBase(CmdBase):
+    UNINITIALIZED = True
+
+
+class CmdMetricsShow(CmdMetricsBase):
     def run(self):
         try:
             metrics = self.repo.metrics.show(
@@ -104,7 +108,7 @@ def _show_diff(diff, markdown=False, no_path=False, old=False, precision=None):
     return table(header, rows, markdown)
 
 
-class CmdMetricsDiff(CmdBase):
+class CmdMetricsDiff(CmdMetricsBase):
     def run(self):
         try:
             diff = self.repo.metrics.diff(

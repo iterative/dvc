@@ -80,7 +80,14 @@ class Repo:
     from dvc.repo.status import status
     from dvc.repo.update import update
 
-    def __init__(self, root_dir=None, scm=None, rev=None, subrepos=False):
+    def __init__(
+        self,
+        root_dir=None,
+        scm=None,
+        rev=None,
+        subrepos=False,
+        uninitialized=False,
+    ):
         from dvc.cache import Cache
         from dvc.data_cloud import DataCloud
         from dvc.lock import make_lock
@@ -103,7 +110,12 @@ class Repo:
             )
             self.state = StateNoop()
         else:
-            root_dir = self.find_root(root_dir)
+            try:
+                root_dir = self.find_root(root_dir)
+            except NotDvcRepoError:
+                if not uninitialized:
+                    raise
+                root_dir = SCM(root_dir or os.curdir).root_dir
             self.root_dir = os.path.abspath(os.path.realpath(root_dir))
             self.tree = LocalTree(
                 self,
