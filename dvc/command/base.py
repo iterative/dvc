@@ -29,13 +29,15 @@ def append_doc_link(help_message, path):
 
 
 class CmdBase(ABC):
+    UNINITIALIZED = False
+
     def __init__(self, args):
         from dvc.repo import Repo
         from dvc.updater import Updater
 
         os.chdir(args.cd)
 
-        self.repo = Repo()
+        self.repo = Repo(uninitialized=self.UNINITIALIZED)
         self.config = self.repo.config
         self.args = args
         hardlink_lock = self.config["core"].get("hardlink_lock", False)

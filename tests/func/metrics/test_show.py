@@ -112,18 +112,30 @@ def test_missing_cache(tmp_dir, dvc, run_copy_metrics):
     assert dvc.metrics.show() == {"": {"metrics.yaml": 1.1}}
 
 
-def test_show_non_metric(tmp_dir, dvc):
+@pytest.mark.parametrize("use_dvc", [True, False])
+def test_show_non_metric(tmp_dir, scm, use_dvc):
     tmp_dir.gen("metrics.yaml", "foo: 1.1")
+
+    if use_dvc:
+        dvc = Repo.init()
+    else:
+        dvc = Repo(uninitialized=True)
 
     assert dvc.metrics.show(targets=["metrics.yaml"]) == {
         "": {"metrics.yaml": {"foo": 1.1}}
     }
 
 
-def test_show_non_metric_branch(tmp_dir, scm, dvc):
+@pytest.mark.parametrize("use_dvc", [True, False])
+def test_show_non_metric_branch(tmp_dir, scm, use_dvc):
     tmp_dir.scm_gen("metrics.yaml", "foo: 1.1", commit="init")
     with tmp_dir.branch("branch", new=True):
         tmp_dir.scm_gen("metrics.yaml", "foo: 2.2", commit="other")
+
+    if use_dvc:
+        dvc = Repo.init()
+    else:
+        dvc = Repo(uninitialized=True)
 
     assert dvc.metrics.show(targets=["metrics.yaml"], revs=["branch"]) == {
         "workspace": {"metrics.yaml": {"foo": 1.1}},
