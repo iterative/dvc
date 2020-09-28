@@ -31,6 +31,8 @@ DIV_HTML = """<div id = "{id}"></div>
 
 
 class CmdPlots(CmdBase):
+    UNINITIALIZED = True
+
     def _func(self, *args, **kwargs):
         raise NotImplementedError
 

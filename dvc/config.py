@@ -190,6 +190,7 @@ SCHEMA = {
                     "keyfile": str,
                     "timeout": Coerce(int),
                     "gss_auth": Bool,
+                    "allow_agent": Bool,
                     **REMOTE_COMMON,
                 },
                 "hdfs": {"user": str, **REMOTE_COMMON},
