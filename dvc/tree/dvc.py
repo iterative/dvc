@@ -1,6 +1,7 @@
 import logging
 import os
 import typing
+from functools import lru_cache
 
 from dvc.exceptions import OutputNotFoundError
 from dvc.hash_info import HashInfo
@@ -14,6 +15,23 @@ if typing.TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+
+# cache metadata for sequential exists/isdir/isfile/etc calls
+@lru_cache(maxsize=1)
+def _get_metadata(tree, path_info):
+    path_info = PathInfo(os.path.abspath(path_info))
+
+    try:
+        outs = tree._find_outs(  # pylint:disable=protected-access
+            path_info, strict=False, recursive=True
+        )
+    except OutputNotFoundError as exc:
+        raise FileNotFoundError from exc
+
+    meta = Metadata(path_info=path_info, outs=outs, repo=tree.repo)
+    meta.isdir = meta.isdir or tree.check_isdir(meta.path_info, meta.outs)
+    return meta
 
 
 class DvcTree(BaseTree):  # pylint:disable=abstract-method
@@ -270,13 +288,4 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
         return out.hash_info
 
     def metadata(self, path_info):
-        path_info = PathInfo(os.path.abspath(path_info))
-
-        try:
-            outs = self._find_outs(path_info, strict=False, recursive=True)
-        except OutputNotFoundError as exc:
-            raise FileNotFoundError from exc
-
-        meta = Metadata(path_info=path_info, outs=outs, repo=self.repo)
-        meta.isdir = meta.isdir or self.check_isdir(meta.path_info, meta.outs)
-        return meta
+        return _get_metadata(self, path_info)
