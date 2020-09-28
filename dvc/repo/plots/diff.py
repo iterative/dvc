@@ -14,7 +14,7 @@ def _revisions(repo, revs, experiment):
 def diff(repo, *args, revs=None, experiment=False, **kwargs):
     if experiment:
         # use experiments repo brancher with templates from the main repo
-        kwargs["templates"] = repo.plot_templates
+        kwargs["templates"] = repo.plots.templates
         plots_repo = repo.experiments.exp_dvc
     else:
         plots_repo = repo

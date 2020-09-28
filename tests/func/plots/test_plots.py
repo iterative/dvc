@@ -264,7 +264,7 @@ def test_plot_multiple_revs_default(tmp_dir, scm, dvc, run_copy_metrics):
 
 
 def test_plot_multiple_revs(tmp_dir, scm, dvc, run_copy_metrics):
-    templates_dir = dvc.plot_templates.templates_dir
+    templates_dir = dvc.plots.templates.templates_dir
     shutil.copy(
         os.path.join(templates_dir, "default.json"),
         os.path.join(templates_dir, "template.json"),
