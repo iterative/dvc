@@ -4,7 +4,7 @@ import os
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
-from dvc.command.metrics import CmdMetricsShow
+from dvc.command.metrics import _show_metrics
 from dvc.command.status import CmdDataStatus
 from dvc.dvcfile import PIPELINE_FILE
 from dvc.exceptions import DvcException
@@ -51,7 +51,10 @@ class CmdRepro(CmdBase):
 
                 if self.args.metrics:
                     metrics = self.repo.metrics.show()
-                    CmdMetricsShow(metrics)
+                    lines = _show_metrics(metrics)
+                    for line in lines:
+                        logger.info(line)
+
             except DvcException:
                 logger.exception("")
                 ret = 1
