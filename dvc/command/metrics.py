@@ -67,8 +67,8 @@ class CmdMetricsShow(CmdMetricsBase):
                     self.args.all_tags,
                     self.args.all_commits,
                 )
-                for _line in lines:
-                    logger.info(lines)
+                for line in lines:
+                    logger.info(line)
         except DvcException:
             logger.exception("failed to show metrics")
             return 1
