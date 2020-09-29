@@ -61,7 +61,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
 
         # NOTE: use string paths here for performance reasons
         self._update_dir_entry_hashes(out, remote)
-        path_str = path_info.as_posix()
+        path_str = str(path_info)
         hash_info = self._dir_entry_hashes.get(path_str)
         if hash_info:
             return hash_info
@@ -76,12 +76,12 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
 
         self._cached_dir_cache = dir_cache
         self._dir_entry_hashes.clear()
-        out_path_str = out.path_info.as_posix()
+        out_path_str = str(out.path_info)
         for entry in dir_cache:
             entry_relpath = entry[out.tree.PARAM_RELPATH]
             if os.name == "nt":
                 entry_relpath = entry_relpath.replace("/", os.sep)
-            entry_path_str = "/".join([out_path_str, entry_relpath])
+            entry_path_str = os.sep.join([out_path_str, entry_relpath])
             hash_info = HashInfo(
                 out.tree.PARAM_CHECKSUM, entry[out.tree.PARAM_CHECKSUM]
             )
