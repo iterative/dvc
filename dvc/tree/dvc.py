@@ -50,12 +50,13 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
 
     scheme = "local"
     PARAM_CHECKSUM = "md5"
+    _cached_dir_cache = None
+    _dir_entry_hashes = {}
 
     def __init__(self, repo, fetch=False, stream=False):
         super().__init__(repo, {"url": repo.root_dir})
         self.fetch = fetch
         self.stream = stream
-        self._file_hash_cache = {}
 
     def _find_outs(self, path, *args, **kwargs):
         outs = self.repo.find_outs_by_path(path, *args, **kwargs)
@@ -69,7 +70,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
 
         return outs
 
-    def _get_granular_checksum(
+    def _get_granular_hash(
         self, path_info: PathInfo, out: "BaseOutput", remote=None
     ):
         assert isinstance(path_info, PathInfo)
@@ -77,16 +78,32 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             raise FileNotFoundError
 
         # NOTE: use string paths here for performance reasons
+        self._update_dir_entry_hashes(out, remote)
         path_str = path_info.as_posix()
-        out_path_str = out.path_info.as_posix()
+        hash_info = self._dir_entry_hashes.get(path_str)
+        if hash_info:
+            return hash_info
+        raise FileNotFoundError
+
+    def _update_dir_entry_hashes(self, out, remote):
+        # cache the most recently used output dir cache to avoid expensive
+        # repeated lookups of individual files within the same large output dir
         dir_cache = out.get_dir_cache(remote=remote)
+        if dir_cache == self._cached_dir_cache:
+            return
+
+        self._cached_dir_cache = dir_cache
+        self._dir_entry_hashes.clear()
+        out_path_str = out.path_info.as_posix()
         for entry in dir_cache:
             entry_relpath = entry[out.tree.PARAM_RELPATH]
             if os.name == "nt":
                 entry_relpath = entry_relpath.replace("/", os.sep)
-            if path_str == "/".join([out_path_str, entry_relpath]):
-                return entry[out.tree.PARAM_CHECKSUM]
-        raise FileNotFoundError
+            entry_path_str = "/".join([out_path_str, entry_relpath])
+            hash_info = HashInfo(
+                out.tree.PARAM_CHECKSUM, entry[out.tree.PARAM_CHECKSUM]
+            )
+            self._dir_entry_hashes[entry_path_str] = hash_info
 
     def open(
         self, path: PathInfo, mode="r", encoding="utf-8", remote=None
@@ -109,7 +126,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             remote_obj = self.repo.cloud.get_remote(remote)
             if self.stream:
                 if out.is_dir_checksum:
-                    checksum = self._get_granular_checksum(path, out)
+                    checksum = self._get_granular_hash(path, out).value
                 else:
                     checksum = out.hash_info.value
                 try:
@@ -123,7 +140,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             self.repo.cloud.pull(cache_info, remote=remote)
 
         if out.is_dir_checksum:
-            checksum = self._get_granular_checksum(path, out)
+            checksum = self._get_granular_hash(path, out).value
             cache_path = out.cache.tree.hash_to_path_info(checksum).url
         else:
             cache_path = out.cache_path
@@ -154,7 +171,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             return True
 
         try:
-            self._get_granular_checksum(path_info, out)
+            self._get_granular_hash(path_info, out)
             return False
         except FileNotFoundError:
             return True
@@ -192,38 +209,29 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             path_info = out.path_info / entry_relpath
             trie[path_info.parts] = None
 
-            # cache file hashes for this dir out, cache will remain valid
-            # within the scope of this walk() iteration
-            self._file_hash_cache[top / path_info] = HashInfo(
-                out.tree.PARAM_CHECKSUM, entry[out.tree.PARAM_CHECKSUM],
-            )
-
     def _walk(self, root, trie, topdown=True, **kwargs):
         dirs = set()
         files = []
 
-        try:
-            out = trie.get(root.parts)
-            if out and out.is_dir_checksum:
-                self._add_dir(root, trie, out, **kwargs)
+        out = trie.get(root.parts)
+        if out and out.is_dir_checksum:
+            self._add_dir(root, trie, out, **kwargs)
 
-            root_len = len(root.parts)
-            for key, out in trie.iteritems(prefix=root.parts):  # noqa: B301
-                if key == root.parts:
-                    continue
+        root_len = len(root.parts)
+        for key, out in trie.iteritems(prefix=root.parts):  # noqa: B301
+            if key == root.parts:
+                continue
 
-                name = key[root_len]
-                if len(key) > root_len + 1 or (out and out.is_dir_checksum):
-                    dirs.add(name)
-                    continue
+            name = key[root_len]
+            if len(key) > root_len + 1 or (out and out.is_dir_checksum):
+                dirs.add(name)
+                continue
 
-                files.append(name)
+            files.append(name)
 
-            assert topdown
-            dirs = list(dirs)
-            yield root.fspath, dirs, files
-        finally:
-            self._file_hash_cache.clear()
+        assert topdown
+        dirs = list(dirs)
+        yield root.fspath, dirs, files
 
         for dname in dirs:
             yield from self._walk(root / dname, trie)
@@ -286,19 +294,12 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
         return super().get_dir_hash(path_info, **kwargs)
 
     def get_file_hash(self, path_info):
-        hash_info = self._file_hash_cache.get(path_info)
-        if hash_info:
-            return hash_info
-
         outs = self._find_outs(path_info, strict=False)
         if len(outs) != 1:
             raise OutputNotFoundError
         out = outs[0]
         if out.is_dir_checksum:
-            return HashInfo(
-                out.tree.PARAM_CHECKSUM,
-                self._get_granular_checksum(path_info, out),
-            )
+            return self._get_granular_hash(path_info, out)
         return out.hash_info
 
     def metadata(self, path_info):
