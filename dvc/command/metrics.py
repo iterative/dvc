@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_PRECISION = 5
 
 
-def show_metrics(
+def _show_metrics(
     metrics, all_branches=False, all_tags=False, all_commits=False
 ):
     from dvc.utils.diff import format_dict
@@ -21,21 +21,24 @@ def show_metrics(
     # specified as `targets` in `repo.metrics.show` didn't contain any metrics.
     missing = metrics.pop(None, None)
 
+    lines = []
     for branch, val in metrics.items():
         if all_branches or all_tags or all_commits:
-            logger.info(f"{branch}:")
+            lines.append(f"{branch}:")
 
         for fname, metric in val.items():
             if not isinstance(metric, dict):
-                logger.info("\t{}: {}".format(fname, str(metric)))
+                lines.append("\t{}: {}".format(fname, str(metric)))
                 continue
 
-            logger.info(f"\t{fname}:")
+            lines.append(f"\t{fname}:")
             for key, value in flatten(format_dict(metric)).items():
-                logger.info(f"\t\t{key}: {value}")
+                lines.append(f"\t\t{key}: {value}")
 
     if missing:
         raise BadMetricError(missing)
+
+    return lines
 
 
 class CmdMetricsBase(CmdBase):
@@ -58,12 +61,14 @@ class CmdMetricsShow(CmdMetricsBase):
 
                 logger.info(json.dumps(metrics))
             else:
-                show_metrics(
+                lines = _show_metrics(
                     metrics,
                     self.args.all_branches,
                     self.args.all_tags,
                     self.args.all_commits,
                 )
+                for _line in lines:
+                    logger.info(lines)
         except DvcException:
             logger.exception("failed to show metrics")
             return 1
