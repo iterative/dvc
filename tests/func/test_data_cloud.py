@@ -19,7 +19,17 @@ from dvc.tree.local import LocalTree
 from dvc.utils.fs import move, remove
 from dvc.utils.serialize import dump_yaml, load_yaml
 
-from .test_api import all_clouds
+all_clouds = [
+    pytest.lazy_fixture(cloud)
+    for cloud in ["s3", "gs", "azure", "gdrive", "ssh", "http"]
+] + [
+    pytest.param(
+        pytest.lazy_fixture("oss"),
+        marks=pytest.mark.xfail(
+            reason="https://github.com/iterative/dvc/issues/4633",
+        ),
+    )
+]
 
 
 @pytest.mark.parametrize("remote", all_clouds, indirect=True)
@@ -35,6 +45,7 @@ def test_cloud(tmp_dir, dvc, remote):  # pylint:disable=unused-argument
             "data_dir": {
                 "data_sub_dir": {"data_sub": "data_sub"},
                 "data": "data",
+                "empty": "",
             }
         }
     )
@@ -128,6 +139,7 @@ def test_cloud_cli(tmp_dir, dvc, remote):
             "data_dir": {
                 "data_sub_dir": {"data_sub": "data_sub"},
                 "data": "data",
+                "empty": "",
             }
         }
     )
