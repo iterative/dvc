@@ -16,7 +16,7 @@ def index(dvc):
 
 
 def test_init(dvc, index):
-    assert str(index.path) == os.path.join(dvc.index_dir, "foo.idx")
+    assert str(index.path) == os.path.join(dvc.tmp_dir, "index", "foo.idx")
 
 
 def test_is_dir_hash(dvc, index):

@@ -59,7 +59,15 @@ class ExperimentExecutor:
     # TODO: come up with better way to stash repro arguments
     @staticmethod
     def pack_repro_args(path, *args, tree=None, **kwargs):
-        open_func = tree.open if tree else open
+        dpath = os.path.dirname(path)
+        if tree:
+            open_func = tree.open
+            tree.makedirs(dpath)
+        else:
+            from dvc.utils.fs import makedirs
+
+            open_func = open
+            makedirs(dpath, exist_ok=True)
         data = {"args": args, "kwargs": kwargs}
         with open_func(path, "wb") as fobj:
             pickle.dump(data, fobj)
