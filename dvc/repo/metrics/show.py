@@ -48,7 +48,7 @@ def _extract_metrics(metrics, path, rev):
     ret = {}
     for key, val in metrics.items():
         m = _extract_metrics(val, path, rev)
-        if m:
+        if m not in (None, {}):
             ret[key] = m
         else:
             logger.debug(
@@ -80,7 +80,7 @@ def _read_metrics(repo, metrics, rev):
             continue
 
         val = _extract_metrics(val, metric, rev)
-        if val:
+        if val not in (None, {}):
             res[str(metric)] = val
 
     return res

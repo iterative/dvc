@@ -160,3 +160,10 @@ def test_non_metric_and_recurisve_show(tmp_dir, dvc, run_copy_metrics):
             "metrics_t.yaml": {"foo": 1.1},
         }
     }
+
+
+def test_show_falsey(tmp_dir, dvc):
+    tmp_dir.gen("metrics.json", '{"foo": 0, "bar": 0.0, "baz": {}}')
+    assert dvc.metrics.show(targets=["metrics.json"]) == {
+        "": {"metrics.json": {"foo": 0, "bar": 0.0}}
+    }

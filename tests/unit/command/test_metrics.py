@@ -1,7 +1,12 @@
 import textwrap
 
 from dvc.cli import parse_args
-from dvc.command.metrics import CmdMetricsDiff, CmdMetricsShow, _show_diff
+from dvc.command.metrics import (
+    CmdMetricsDiff,
+    CmdMetricsShow,
+    _show_diff,
+    _show_metrics,
+)
 
 
 def test_metrics_diff(dvc, mocker):
@@ -232,4 +237,18 @@ def test_metrics_diff_with_old():
         metrics.yaml  a.b.c     1      2      1
         metrics.yaml  a.d.e     3      4      1
         metrics.yaml  x.b       5      6      1"""
+    )
+
+
+def test_metrics_show_with_valid_falsey_values():
+    assert _show_metrics(
+        {"branch_1": {"metrics.json": {"a": 0, "b": {"ad": 0.0, "bc": 0.0}}}},
+        all_branches=True,
+    ) == textwrap.dedent(
+        """\
+        branch_1:
+        \tmetrics.json:
+        \t\ta: 0
+        \t\tb.ad: 0.0
+        \t\tb.bc: 0.0"""
     )
