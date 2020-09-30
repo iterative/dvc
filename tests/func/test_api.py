@@ -9,23 +9,8 @@ from dvc.path_info import URLInfo
 from dvc.utils.fs import remove
 from tests.unit.tree.test_repo import make_subrepo
 
-cloud_names = [
-    "s3",
-    "gs",
-    "azure",
-    "gdrive",
-    "oss",
-    "ssh",
-    "http",
-]
-clouds = [pytest.lazy_fixture(cloud) for cloud in cloud_names] + [
-    pytest.param(
-        pytest.lazy_fixture("hdfs"),
-        marks=pytest.mark.xfail(
-            reason="https://github.com/iterative/dvc/issues/4418"
-        ),
-    )
-]
+cloud_names = ["s3", "gs", "azure", "gdrive", "oss", "ssh", "http", "hdfs"]
+clouds = [pytest.lazy_fixture(cloud) for cloud in cloud_names]
 all_clouds = [pytest.lazy_fixture("local_cloud")] + clouds
 
 # `lazy_fixture` is confusing pylint, pylint: disable=unused-argument
@@ -85,14 +70,9 @@ def test_open(tmp_dir, dvc, remote):
                 "gdrive",
                 "oss",
                 "http",
+                "hdfs",
             ]
         ],
-        pytest.param(
-            pytest.lazy_fixture("hdfs"),
-            marks=pytest.mark.xfail(
-                reason="https://github.com/iterative/dvc/issues/4418",
-            ),
-        ),
         pytest.param(
             pytest.lazy_fixture("ssh"),
             marks=pytest.mark.xfail(
@@ -141,24 +121,17 @@ def test_open_granular(tmp_dir, dvc, remote):
 @pytest.mark.parametrize(
     "remote",
     [
-        *[
-            pytest.lazy_fixture(cloud)
-            for cloud in [
-                "real_s3",  # NOTE: moto's s3 fails in some tests
-                "gs",
-                "azure",
-                "gdrive",
-                "oss",
-                "ssh",
-                "http",
-            ]
-        ],
-        pytest.param(
-            pytest.lazy_fixture("hdfs"),
-            marks=pytest.mark.xfail(
-                reason="https://github.com/iterative/dvc/issues/4418",
-            ),
-        ),
+        pytest.lazy_fixture(cloud)
+        for cloud in [
+            "real_s3",  # NOTE: moto's s3 fails in some tests
+            "gs",
+            "azure",
+            "gdrive",
+            "oss",
+            "ssh",
+            "http",
+            "hdfs",
+        ]
     ],
     indirect=True,
 )

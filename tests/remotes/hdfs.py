@@ -70,8 +70,6 @@ class HDFS(Base, URLInfo):  # pylint: disable=abstract-method
 
 @pytest.fixture(scope="session")
 def hadoop():
-    import tarfile
-
     import wget
     from appdirs import user_cache_dir
 
@@ -100,8 +98,7 @@ def hadoop():
 
         if not os.path.exists(tar):
             wget.download(url, out=tar)
-        tar = tarfile.open(tar)
-        tar.extractall(dname)
+        assert os.system(f"tar -xvf {tar} -C {dname}") == 0
         assert os.path.isdir(target)
 
     os.makedirs(dname, exist_ok=True)

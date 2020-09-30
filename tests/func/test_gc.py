@@ -354,12 +354,7 @@ def test_gc_not_collect_pipeline_tracked_files(tmp_dir, dvc, run_copy):
         pytest.lazy_fixture("local_cloud"),
         pytest.lazy_fixture("s3"),
         pytest.lazy_fixture("gs"),
-        pytest.param(
-            pytest.lazy_fixture("hdfs"),
-            marks=pytest.mark.xfail(
-                reason="https://github.com/iterative/dvc/issues/4418"
-            ),
-        ),
+        pytest.lazy_fixture("hdfs"),
         pytest.param(
             pytest.lazy_fixture("ssh"),
             marks=pytest.mark.skipif(
