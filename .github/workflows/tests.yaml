@@ -36,8 +36,8 @@ jobs:
         with:
           python-version: ${{ matrix.pyv }}
       - name: Install libxml2 and libxslt
-        if: matrix.pyv == "3.9-dev" && matrix.os == "ubuntu-18.04"
-        # need to install for building lxml
+        if: matrix.pyv == '3.9-dev' && matrix.os == 'ubuntu-18.04'
+        # need to install for building
         run: |
           sudo apt install libxml2 libxslt
       - name: install
