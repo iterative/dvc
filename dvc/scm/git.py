@@ -210,6 +210,7 @@ class Git(Base):
         entry = GitWildMatchPattern.escape(entry)
 
         with open(gitignore, "a+", encoding="utf-8") as fobj:
+            unique_lines = set(fobj.readlines())
             fobj.seek(0, os.SEEK_END)
             if fobj.tell() == 0:
                 # Empty file
@@ -218,7 +219,9 @@ class Git(Base):
                 fobj.seek(fobj.tell() - 1, os.SEEK_SET)
                 last = fobj.read(1)
                 prefix = "" if last == "\n" else "\n"
-            fobj.write(f"{prefix}{entry}\n")
+            new_entry = f"{prefix}{entry}\n"
+            if new_entry not in unique_lines:
+                fobj.write(new_entry)
 
     def ignore_remove(self, path):
         entry, gitignore = self._get_gitignore(path)
