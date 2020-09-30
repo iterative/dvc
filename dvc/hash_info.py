@@ -7,7 +7,7 @@ HASH_DIR_SUFFIX = ".dir"
 class HashInfo:
     name: str
     value: str
-    dir_info: list = field(default=None, compare=False)
+    dir_info: dict = field(default=None, compare=False)
 
     def __bool__(self):
         return bool(self.value)
