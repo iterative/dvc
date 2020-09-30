@@ -4,6 +4,7 @@ import typing
 
 from dvc.exceptions import OutputNotFoundError
 from dvc.path_info import PathInfo
+from dvc.utils import relpath
 
 from ._metadata import Metadata
 from .base import BaseTree, RemoteActionNotImplemented
@@ -59,7 +60,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             raise FileNotFoundError
 
         # NOTE: use string paths here for performance reasons
-        path_str = str(path_info.relative_to(out.path_info))
+        path_str = relpath(path_info, out.path_info)
         out.get_dir_cache(remote=remote)
         file_hash = out.hash_info.dir_info.get(path_str)
         if file_hash:
