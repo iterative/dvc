@@ -176,7 +176,8 @@ def add_parser(subparsers, parent_parser):
         "targets",
         nargs="*",
         help=(
-            "Limit command scope to these metric files. Using -R, "
+            "Limit command scope to these metric files (supports any file, "
+            "even when not found as `metrics` in `dvc.yaml`). Using -R, "
             "directories to search metric files in can also be given."
         ),
     ).complete = completion.FILE
