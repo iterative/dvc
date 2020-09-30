@@ -29,6 +29,9 @@ jobs:
       matrix:
         os: [ubuntu-18.04, windows-2019, macos-10.15]
         pyv: [3.6, 3.7, 3.8, "3.9-dev"]
+        exclude:
+          - os: windows-2019
+            pyv: "3.9-dev"
     steps:
     - uses: actions/checkout@v2.3.2
     - name: Set up Python
@@ -48,7 +51,7 @@ jobs:
         git config --global user.email "dvctester@example.com"
         git config --global user.name "DVC Tester"
     - name: run tests
-      run: python -m tests -rsx --cov-report=xml
+      run: python -m tests -ra --cov-report=xml
     - name: upload coverage report
       if: github.event.name == 'push'
       uses: codecov/codecov-action@v1.0.13
