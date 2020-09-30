@@ -3,7 +3,6 @@ import os
 import typing
 
 from dvc.exceptions import OutputNotFoundError
-from dvc.hash_info import HashInfo
 from dvc.path_info import PathInfo
 
 from ._metadata import Metadata
@@ -60,32 +59,12 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             raise FileNotFoundError
 
         # NOTE: use string paths here for performance reasons
-        self._update_dir_entry_hashes(out, remote)
-        path_str = str(path_info)
-        hash_info = self._dir_entry_hashes.get(path_str)
-        if hash_info:
-            return hash_info
+        path_str = str(path_info.relative_to(out.path_info))
+        out.get_dir_cache(remote=remote)
+        file_hash = out.hash_info.dir_info.get(path_str)
+        if file_hash:
+            return file_hash
         raise FileNotFoundError
-
-    def _update_dir_entry_hashes(self, out, remote):
-        # cache the most recently used output dir cache to avoid expensive
-        # repeated lookups of individual files within the same large output dir
-        dir_cache = out.get_dir_cache(remote=remote)
-        if dir_cache == self._cached_dir_cache:
-            return
-
-        self._cached_dir_cache = dir_cache
-        self._dir_entry_hashes.clear()
-        out_path_str = str(out.path_info)
-        for entry in dir_cache:
-            entry_relpath = entry[out.tree.PARAM_RELPATH]
-            if os.name == "nt":
-                entry_relpath = entry_relpath.replace("/", os.sep)
-            entry_path_str = os.sep.join([out_path_str, entry_relpath])
-            hash_info = HashInfo(
-                out.tree.PARAM_CHECKSUM, entry[out.tree.PARAM_CHECKSUM]
-            )
-            self._dir_entry_hashes[entry_path_str] = hash_info
 
     def open(
         self, path: PathInfo, mode="r", encoding="utf-8", remote=None

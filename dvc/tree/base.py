@@ -256,7 +256,7 @@ class BaseTree:
         if hash_:
             hash_info = HashInfo(self.PARAM_CHECKSUM, hash_)
             if hash_info.isdir:
-                hash_info.dir_info = self.cache.get_dir_cache(hash_info)
+                self.cache.set_dir_info(hash_info)
             return hash_info
 
         if self.isdir(path_info):
