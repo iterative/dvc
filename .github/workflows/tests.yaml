@@ -35,11 +35,11 @@ jobs:
         uses: actions/setup-python@v2.1.2
         with:
           python-version: ${{ matrix.pyv }}
-      - name: Install libxml2 and libxslt-dev
+      - name: Install libxml2 and libxslt
         if: matrix.pyv == '3.9-dev' && matrix.os == 'ubuntu-18.04'
         # need to install for building
         run: |
-          sudo apt install libxml2 libxslt
+          sudo apt install libxml2 libxslt-dev
       - name: install
         run: |
           pip install ".[all,tests]"
