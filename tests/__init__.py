@@ -1,4 +1,9 @@
 import os
+import sys
+
+PY39 = sys.version_info >= (3, 9, 0)
+HDFS_SKIP_REASON = "pyarrow not available yet for Python3.9"
+
 
 # Increasing fd ulimit for tests
 if os.name == "nt":

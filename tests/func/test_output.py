@@ -2,6 +2,7 @@ import pytest
 
 from dvc.output import OUTS_MAP, _get
 from dvc.stage import Stage
+from tests import PY39
 
 TESTS = [
     ("s3://bucket/path", "s3"),
@@ -17,6 +18,10 @@ TESTS = [
     ("..\\file", "local"),
     ("unknown://path", "local"),
 ]
+
+
+if not PY39:
+    TESTS.append(("hdfs://example.com/dir/path", "hdfs"))
 
 
 def _get_out(dvc, path):
