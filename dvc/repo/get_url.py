@@ -6,7 +6,7 @@ from dvc.utils import resolve_output
 
 
 @staticmethod
-def get_url(url, out=None):
+def get_url(url, out=None, in_repo=True):
     out = resolve_output(url, out)
 
     if os.path.exists(url):
@@ -16,6 +16,7 @@ def get_url(url, out=None):
 
     (dep,) = dependency.loads_from(None, [url])
     (out,) = output.loads_from(None, [out], use_cache=False)
-    dep.save()
+    if in_repo:
+        dep.save()
     dep.download(out)
     out.save()
