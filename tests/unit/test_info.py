@@ -6,7 +6,7 @@ import pytest
 
 from dvc.info import get_dvc_info, psutil
 
-# PYthon's version is in the shape of:
+# Python's version is in the shape of:
 # <major>.<minor>.<patch>[{a|b|rc}N][.postN][.devN]
 # `patch` is more than enough for the tests.
 # Refer PEP-0440 for complete regex just in-case.
