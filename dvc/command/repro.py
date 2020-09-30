@@ -51,9 +51,7 @@ class CmdRepro(CmdBase):
 
                 if self.args.metrics:
                     metrics = self.repo.metrics.show()
-                    lines = _show_metrics(metrics)
-                    for line in lines:
-                        logger.info(line)
+                    logger.info(_show_metrics(metrics))
 
             except DvcException:
                 logger.exception("")

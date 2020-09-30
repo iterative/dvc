@@ -38,7 +38,7 @@ def _show_metrics(
     if missing:
         raise BadMetricError(missing)
 
-    return lines
+    return "\n".join(lines)
 
 
 class CmdMetricsBase(CmdBase):
@@ -61,14 +61,14 @@ class CmdMetricsShow(CmdMetricsBase):
 
                 logger.info(json.dumps(metrics))
             else:
-                lines = _show_metrics(
+                table = _show_metrics(
                     metrics,
                     self.args.all_branches,
                     self.args.all_tags,
                     self.args.all_commits,
                 )
-                for line in lines:
-                    logger.info(line)
+                if table:
+                    logger.info(table)
         except DvcException:
             logger.exception("failed to show metrics")
             return 1
