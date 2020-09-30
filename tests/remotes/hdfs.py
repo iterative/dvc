@@ -1,13 +1,13 @@
 import locale
 import os
 import platform
-import sys
 import uuid
 from contextlib import contextmanager
 
 import pytest
 
 from dvc.path_info import URLInfo
+from tests import PY39, PYARROW_NOT_AVAILABLE
 
 from .base import Base
 
@@ -74,8 +74,8 @@ def hadoop():
     if platform.system() != "Linux":
         pytest.skip("only supported on Linux")
 
-    if sys.version_info >= (3, 9, 0):
-        pytest.skip("pyarrow not available yet for Python3.9")
+    if PY39:
+        pytest.skip(PYARROW_NOT_AVAILABLE)
 
     import wget
     from appdirs import user_cache_dir
