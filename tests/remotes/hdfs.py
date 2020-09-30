@@ -1,6 +1,7 @@
 import locale
 import os
 import platform
+import sys
 import uuid
 from contextlib import contextmanager
 
@@ -70,11 +71,14 @@ class HDFS(Base, URLInfo):  # pylint: disable=abstract-method
 
 @pytest.fixture(scope="session")
 def hadoop():
-    import wget
-    from appdirs import user_cache_dir
-
     if platform.system() != "Linux":
         pytest.skip("only supported on Linux")
+
+    if sys.version_info >= (3, 9, 0):
+        pytest.skip("pyarrow not available yet for Python3.9")
+
+    import wget
+    from appdirs import user_cache_dir
 
     hadoop_name = "hadoop-2.7.2.tar.gz"
     java_name = "openjdk-7u75-b13-linux-x64-18_dec_2014.tar.gz"
