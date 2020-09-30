@@ -8,6 +8,7 @@ from contextlib import closing, contextmanager
 from urllib.parse import urlparse
 
 from dvc.hash_info import HashInfo
+from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 from dvc.utils import fix_env, tmp_fname
 
@@ -180,14 +181,34 @@ class HDFSTree(BaseTree):
             self.PARAM_CHECKSUM, self._group(regex, stdout, "checksum")
         )
 
-    def _upload(self, from_file, to_info, **_kwargs):
+    def _upload(
+        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
+    ):
         with self.hdfs(to_info) as hdfs:
             tmp_file = tmp_fname(to_info.path)
+            total = os.path.getsize(from_file)
             with open(from_file, "rb") as fobj:
-                hdfs.upload(tmp_file, fobj)
+                with Tqdm.wrapattr(
+                    fobj,
+                    "read",
+                    desc=name,
+                    total=total,
+                    disable=no_progress_bar,
+                ) as wrapped:
+                    hdfs.upload(tmp_file, wrapped)
             hdfs.rename(tmp_file, to_info.path)
 
-    def _download(self, from_info, to_file, **_kwargs):
+    def _download(
+        self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
+    ):
         with self.hdfs(from_info) as hdfs:
+            total = hdfs.info(from_info.path)["size"]
             with open(to_file, "wb+") as fobj:
-                hdfs.download(from_info.path, fobj)
+                with Tqdm.wrapattr(
+                    fobj,
+                    "write",
+                    desc=name,
+                    total=total,
+                    disable=no_progress_bar,
+                ) as wrapped:
+                    hdfs.download(from_info.path, wrapped)
