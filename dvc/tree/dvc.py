@@ -61,6 +61,8 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
 
         # NOTE: use string paths here for performance reasons
         path_str = relpath(path_info, out.path_info)
+        if os.name == "nt":
+            path_str = path_str.replace(os.sep, "/")
         out.get_dir_cache(remote=remote)
         file_hash = out.hash_info.dir_info.get(path_str)
         if file_hash:
