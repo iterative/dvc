@@ -37,9 +37,12 @@ def _resolve_str(src, context, tracker=None):
             # value rather than it's string counterparts.
             if num_matches == 1 and src == matches[0].group(0):
                 return list(to_replace.values())[0]
-            # but not "{num} days"
-            return str_interpolate(src, to_replace)
-    return src
+            # but not "${num} days"
+            src = str_interpolate(src, to_replace)
+
+    # regex already backtracks and avoids any `${` starting with
+    # backslashes(`\--`). We just need to replace those by `${`.
+    return src.replace(r"\${", "${")
 
 
 def _resolve(src, context, tracker=None):
