@@ -611,7 +611,7 @@ class Repo:
         """Opens a specified resource as a file descriptor"""
 
         tree = RepoTree(self, stream=True, subrepos=True)
-        path = os.path.join(self.root_dir, path)
+        path = PathInfo(self.root_dir) / path
         try:
             with self.state:
                 with tree.open(
