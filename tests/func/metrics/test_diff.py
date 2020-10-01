@@ -185,7 +185,7 @@ def test_metrics_diff_cli(tmp_dir, scm, dvc, run_copy_metrics, caplog, capsys):
     _gen(3.45678910111213)
 
     caplog.clear()
-    assert main(["metrics", "diff", "HEAD~2", "--old"]) == 0
+    assert main(["metrics", "diff", "HEAD~2"]) == 0
     (info,) = [
         msg
         for name, level, msg in caplog.record_tuples
