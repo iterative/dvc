@@ -2,6 +2,7 @@ import os
 import platform
 
 import pytest
+from funcy import first, get_in
 
 from dvc import api
 from dvc.exceptions import DvcException, FileMissingError, OutputNotFoundError
@@ -174,6 +175,31 @@ def test_open_not_cached(dvc):
     os.remove(metric_file)
     with pytest.raises(FileMissingError):
         api.read(metric_file)
+
+
+@pytest.mark.parametrize("as_external", [True, False])
+@pytest.mark.parametrize("remote", [pytest.lazy_fixture("ssh")], indirect=True)
+@pytest.mark.parametrize(
+    "files, to_read",
+    [
+        ({"foo": "foo"}, "foo"),
+        ({"dir": {"foo": "foo", "bar": "bar"}}, os.path.join("dir", "foo")),
+    ],
+    ids=["file", "inside-dir"],
+)
+def test_api_missing_local_cache_exists_on_remote(
+    tmp_dir, scm, dvc, as_external, remote, files, to_read,
+):
+    tmp_dir.dvc_gen(files, commit="DVC track files")
+    dvc.push()
+
+    # Remove cache to make foo missing
+    remove(dvc.cache.local.cache_dir)
+    remove(first(files))
+
+    repo_url = f"file://{tmp_dir}" if as_external else None
+    file_content = get_in(files, to_read.split(os.sep))
+    assert api.read(to_read, repo=repo_url) == file_content
 
 
 @pytest.mark.parametrize("local_repo", [False, True])

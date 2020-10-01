@@ -1,5 +1,6 @@
 import logging
 import os
+import typing
 
 from dvc.exceptions import OutputNotFoundError
 from dvc.hash_info import HashInfo
@@ -7,6 +8,10 @@ from dvc.path_info import PathInfo
 
 from ._metadata import Metadata
 from .base import BaseTree, RemoteActionNotImplemented
+
+if typing.TYPE_CHECKING:
+    from dvc.output.base import BaseOutput
+
 
 logger = logging.getLogger(__name__)
 
@@ -45,8 +50,10 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
 
         return outs
 
-    def _get_granular_checksum(self, path, out, remote=None):
-        assert isinstance(path, PathInfo)
+    def _get_granular_checksum(
+        self, path_info: PathInfo, out: "BaseOutput", remote=None
+    ):
+        assert isinstance(path_info, PathInfo)
         if not self.fetch and not self.stream:
             raise FileNotFoundError
         dir_cache = out.get_dir_cache(remote=remote)
@@ -54,12 +61,12 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             entry_relpath = entry[out.tree.PARAM_RELPATH]
             if os.name == "nt":
                 entry_relpath = entry_relpath.replace("/", os.sep)
-            if path == out.path_info / entry_relpath:
+            if path_info == out.path_info / entry_relpath:
                 return entry[out.tree.PARAM_CHECKSUM]
         raise FileNotFoundError
 
     def open(
-        self, path, mode="r", encoding="utf-8", remote=None
+        self, path: PathInfo, mode="r", encoding="utf-8", remote=None
     ):  # pylint: disable=arguments-differ
         try:
             outs = self._find_outs(path, strict=False)
