@@ -28,16 +28,21 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-18.04, windows-2019, macos-10.15]
-        pyv: [3.6, 3.7, 3.8]
+        pyv: [3.6, 3.7, 3.8, "3.9-dev"]
         exclude:
           - os: windows-2019
-            pyv: 3.8
+            pyv: "3.9-dev"
     steps:
     - uses: actions/checkout@v2.3.2
     - name: Set up Python
       uses: actions/setup-python@v2.1.2
       with:
         python-version: ${{ matrix.pyv }}
+    - name: Install libxml2 and libxslt
+      if: matrix.pyv == '3.9-dev' && matrix.os == 'ubuntu-18.04'
+      # need to install for building lxml, a dependency of webdavclient3
+      run: |
+        sudo apt install libxml2 libxslt-dev
     - name: install
       run: |
         pip install ".[all,tests]"
@@ -46,12 +51,10 @@ jobs:
         git config --global user.email "dvctester@example.com"
         git config --global user.name "DVC Tester"
     - name: run tests
-      run: python -m tests --cov-report=xml
+      run: python -m tests -ra --cov-report=xml
     - name: upload coverage report
       if: github.event.name == 'push'
       uses: codecov/codecov-action@v1.0.13
       with:
         file: ./coverage.xml
         fail_ci_if_error: true
-
-

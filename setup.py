@@ -1,6 +1,5 @@
 import importlib.util
 import os
-import sys
 
 from setuptools import find_packages, setup
 from setuptools.command.build_py import build_py as _build_py
@@ -93,7 +92,9 @@ s3 = ["boto3>=1.9.201"]
 azure = ["azure-storage-blob>=12.0", "knack"]
 oss = ["oss2==2.6.1"]
 ssh = ["paramiko[invoke]>=2.7.0"]
-hdfs = ["pyarrow>=0.17.0"]
+
+# Remove the env marker if/when pyarrow is available for Python3.9
+hdfs = ["pyarrow>=0.17.0;  python_version < '3.9'"]
 webdav = ["webdavclient3>=3.14.5"]
 # gssapi should not be included in all_remotes, because it doesn't have wheels
 # for linux and mac, so it will fail to compile if user doesn't have all the
@@ -138,10 +139,8 @@ tests_requirements = [
     "pylint-plugin-utils",
     "wget",
     "filelock",
+    "black==19.10b0",
 ]
-
-if (sys.version_info) >= (3, 6):
-    tests_requirements.append("black==19.10b0")
 
 setup(
     name="dvc",

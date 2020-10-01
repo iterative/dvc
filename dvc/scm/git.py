@@ -177,7 +177,7 @@ class Git(Base):
 
         gitignore = os.path.join(ignore_file_dir, self.GITIGNORE)
 
-        if not path_isin(gitignore, os.path.realpath(self.root_dir)):
+        if not path_isin(os.path.realpath(gitignore), self.root_dir):
             raise FileNotInRepoError(path)
 
         return entry, gitignore
