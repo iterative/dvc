@@ -199,6 +199,7 @@ class DvcParser(argparse.ArgumentParser):
         parser_actions = self._actions  # pylint: disable=protected-access
         for parser_action in parser_actions:
             if parser_action.dest == "help":
+                # treat -h, --help as command choices
                 for option in parser_action.option_strings:
                     self.cmd_choices[option] = []
             elif parser_action.dest == "cmd":
@@ -212,7 +213,7 @@ class DvcParser(argparse.ArgumentParser):
                     )
                     for action in actions:
                         if not isinstance(action.choices, dict):
-                            # NOTE: we are only interested in subparsers
+                            # NOTE: we are only interested in subcommands
                             continue
                         self.cmd_choices[cmd].extend(action.choices.keys())
 
