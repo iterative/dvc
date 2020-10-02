@@ -141,7 +141,7 @@ class DvcParser(argparse.ArgumentParser):
     """Custom parser class for dvc CLI."""
 
     cmd_choices = {}
-    hidden_cmds = ["completion", "daemon", "exp", "experiments", "git-hook"]
+    hidden_cmds = []
 
     def error(self, message, cmd_cls=None):  # pylint: disable=arguments-differ
         logger.error(message)
@@ -190,6 +190,30 @@ class DvcParser(argparse.ArgumentParser):
             msg = "unrecognized arguments: %s"
             self.error(msg % " ".join(argv), getattr(args, "func", None))
         return args
+
+    def set_cmd_choices(self, subparsers, help_action):
+        """Keep track of public dvc commands and hidden dvc commands; show
+        suggestions for public commands, do not show suggestions for hidden
+        commands.
+
+        Args:
+            subparsers: dvc sub-commands containing command names.
+            help_action: action contains -h, --help commands.
+        """
+        for cmd, subparser in subparsers.choices.items():
+            if not subparser.add_help:
+                self.hidden_cmds.append(cmd)
+                continue
+            self.cmd_choices[cmd] = []
+            actions = subparser._actions  # pylint: disable=protected-access
+            for action in actions:
+                if not isinstance(action.choices, dict):
+                    # NOTE: we are only interested in subparsers
+                    continue
+                self.cmd_choices[cmd].extend(action.choices.keys())
+
+        for option in help_action.option_strings:
+            self.cmd_choices[option] = []
 
 
 class VersionAction(argparse.Action):  # pragma: no cover
@@ -291,20 +315,7 @@ def get_main_parser():
     for cmd in COMMANDS:
         cmd.add_parser(subparsers, parent_parser)
 
-    for cmd, subparser in subparsers.choices.items():
-        if cmd in parser.hidden_cmds:
-            continue
-        parser.cmd_choices[cmd] = []
-        actions = subparser._actions  # pylint: disable=protected-access
-        for action in actions:
-            if not isinstance(action.choices, dict):
-                # NOTE: we are only interested in subparsers
-                continue
-            parser.cmd_choices[cmd].extend(action.choices.keys())
-
-    # treat -h, --help as command choices
-    for option in help_action.option_strings:
-        parser.cmd_choices[option] = []
+    parser.set_cmd_choices(subparsers, help_action)
 
     return parser
 
