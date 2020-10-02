@@ -27,13 +27,19 @@ class SSHMocked(Base, URLInfo):
             # a proper posixpath.
             # To do that, we should construct a posixpath that would be
             # relative to the server's root.
-            # In our case our ssh server is running with `c:/` as a root,
-            # and our URL format requires absolute paths, so the
+            # Our URL format requires absolute paths, so the
             # resulting path would look like `/some/path`.
             #
             # [1]https://tools.ietf.org/html/draft-ietf-secsh-filexfer-13#section-6
             drive, path = os.path.splitdrive(path)
-            assert drive.lower() == "c:"
+
+            # Hackish way to make sure SSH server runs on same drive as tests
+            # and temporary directories are.
+            # Context: https://github.com/iterative/dvc/pull/4660
+            test_drive, _ = os.path.splitdrive(os.getcwd())
+            if drive.lower() != test_drive.lower():
+                raise Exception("Did you forget to use `tmp_dir?`")
+
             path = path.replace("\\", "/")
         url = f"ssh://{user}@127.0.0.1:{port}{path}"
         return url
