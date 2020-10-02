@@ -1,6 +1,7 @@
 import argparse
 import logging
 
+from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
 
@@ -99,7 +100,7 @@ def add_parser(subparsers, parent_parser):
         default=[],
         help="Declare dependencies for reproducible cmd.",
         metavar="<path>",
-    )
+    ).complete = completion.FILE
     run_parser.add_argument(
         "-n", "--name", help="Stage name.",
     )
