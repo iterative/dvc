@@ -42,7 +42,7 @@ def _resolve_str(src, context, tracker=None):
 
     # regex already backtracks and avoids any `${` starting with
     # backslashes(`\--`). We just need to replace those by `${`.
-    return src.replace(r"\${", "${")
+    return src.replace(r"\${", "${") if isinstance(src, str) else src
 
 
 def _resolve(src, context, tracker=None):
