@@ -47,7 +47,7 @@ def get_dvc_info():
             if psutil:
                 fs_type = get_fs_type(repo.cache.local.cache_dir)
                 info.append(f"Cache directory: {fs_type}")
-                external_cache = repo.cache.local.tree.config.get("url", None)
+                external_cache = repo.cache.local.cache_dir
                 remote_cache = _get_external_cache(repo)
                 if external_cache:
                     info.append(f"External file cache: {external_cache}")
