@@ -1,4 +1,3 @@
-"""Exceptions raised by the dvc."""
 from funcy import first
 
 from dvc.utils import error_link, format_link, relpath
@@ -338,3 +337,9 @@ class NoOutputOrStageError(DvcException):
 
 class MergeError(DvcException):
     pass
+
+
+class AuthInfoMissingError(DvcException):
+    """
+    Raised when not enough information is provided for auth against remote.
+    """

@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 from funcy import cached_property, wrap_prop
 
+from dvc.exceptions import AuthInfoMissingError
 from dvc.hash_info import HashInfo
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
@@ -20,6 +21,7 @@ class AzureTree(BaseTree):
     PATH_CLS = CloudURLInfo
     REQUIRES = {
         "azure-storage-blob": "azure.storage.blob",
+        "azure-identity": "azure.identity",
         "knack": "knack",
     }
     PARAM_CHECKSUM = "etag"
@@ -36,6 +38,59 @@ class AzureTree(BaseTree):
             container = self._az_config.get("storage", "container_name", None)
             self.path_info = self.PATH_CLS(f"azure://{container}")
 
+        self._get_string_token_credential(config)
+
+        if not (self._conn_str or self._credential):
+            # from azure.identity import DefaultAzureCredential
+            from azure.identity import (
+                AzureCliCredential,
+                ChainedTokenCredential,
+            )
+
+            account_name = config.get("account_name")
+            self._account_url = f"https://{account_name}.blob.core.windows.net"
+            if not account_name:
+                logging.warning(
+                    "You must enter an account name for this auth flow"
+                )
+
+            if config.get("azcli_credential"):
+                self._credential = ChainedTokenCredential(AzureCliCredential())
+            else:
+                self._credential = self._create_client_secret_credential(
+                    config
+                )
+
+    def _create_client_secret_credential(self, config):
+        from azure.identity import ClientSecretCredential
+
+        client_id = config.get("client_id") or self._az_config.get(
+            "client", "id", None
+        )
+
+        client_secret = config.get("client_secret") or self._az_config.get(
+            "client", "secret", None
+        )
+
+        tenant_id = config.get("tenant_id") or self._az_config.get(
+            "tenant", "id", None
+        )
+
+        if not (client_id and client_secret and tenant_id):
+            raise AuthInfoMissingError(
+                "Not enough information to authenticate to azure remote."
+            )
+
+        return ClientSecretCredential(
+            client_id=client_id,
+            client_secret=client_secret,
+            tenant_id=tenant_id,
+        )
+
+    def _get_string_token_credential(self, config):
+        # Get `token` like credential to pass to
+        # blob service client. String like
+        # conn_str, sas_token, account_key
         self._conn_str = config.get(
             "connection_string"
         ) or self._az_config.get("storage", "connection_string", None)
