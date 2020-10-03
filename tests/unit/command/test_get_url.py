@@ -11,4 +11,4 @@ def test_get_url(mocker):
 
     assert cmd.run() == 0
 
-    m.assert_called_once_with("src", out="out", in_repo=False)
+    m.assert_called_once_with("src", out="out")
