@@ -1,8 +1,11 @@
 import argparse
+import logging
 
 from dvc.command import completion
 from dvc.command.base import append_doc_link, fix_subparsers
 from dvc.command.config import CmdConfig
+
+logger = logging.getLogger(__name__)
 
 
 class CmdCacheDir(CmdConfig):
