@@ -3,8 +3,8 @@ import os
 import typing
 
 from dvc.exceptions import OutputNotFoundError
-from dvc.hash_info import HashInfo
 from dvc.path_info import PathInfo
+from dvc.utils import relpath
 
 from ._metadata import Metadata
 from .base import BaseTree, RemoteActionNotImplemented
@@ -32,6 +32,8 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
 
     scheme = "local"
     PARAM_CHECKSUM = "md5"
+    _cached_dir_cache = None
+    _dir_entry_hashes = {}
 
     def __init__(self, repo, fetch=False, stream=False):
         super().__init__(repo, {"url": repo.root_dir})
@@ -50,19 +52,21 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
 
         return outs
 
-    def _get_granular_checksum(
+    def _get_granular_hash(
         self, path_info: PathInfo, out: "BaseOutput", remote=None
     ):
         assert isinstance(path_info, PathInfo)
         if not self.fetch and not self.stream:
             raise FileNotFoundError
-        dir_cache = out.get_dir_cache(remote=remote)
-        for entry in dir_cache:
-            entry_relpath = entry[out.tree.PARAM_RELPATH]
-            if os.name == "nt":
-                entry_relpath = entry_relpath.replace("/", os.sep)
-            if path_info == out.path_info / entry_relpath:
-                return entry[out.tree.PARAM_CHECKSUM]
+
+        # NOTE: use string paths here for performance reasons
+        path_str = relpath(path_info, out.path_info)
+        if os.name == "nt":
+            path_str = path_str.replace(os.sep, "/")
+        out.get_dir_cache(remote=remote)
+        file_hash = out.hash_info.dir_info.get(path_str)
+        if file_hash:
+            return file_hash
         raise FileNotFoundError
 
     def open(
@@ -86,7 +90,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             remote_obj = self.repo.cloud.get_remote(remote)
             if self.stream:
                 if out.is_dir_checksum:
-                    checksum = self._get_granular_checksum(path, out)
+                    checksum = self._get_granular_hash(path, out).value
                 else:
                     checksum = out.hash_info.value
                 try:
@@ -100,7 +104,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             self.repo.cloud.pull(cache_info, remote=remote)
 
         if out.is_dir_checksum:
-            checksum = self._get_granular_checksum(path, out)
+            checksum = self._get_granular_hash(path, out).value
             cache_path = out.cache.tree.hash_to_path_info(checksum).url
         else:
             cache_path = out.cache_path
@@ -131,7 +135,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             return True
 
         try:
-            self._get_granular_checksum(path_info, out)
+            self._get_granular_hash(path_info, out)
             return False
         except FileNotFoundError:
             return True
@@ -259,10 +263,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             raise OutputNotFoundError
         out = outs[0]
         if out.is_dir_checksum:
-            return HashInfo(
-                out.tree.PARAM_CHECKSUM,
-                self._get_granular_checksum(path_info, out),
-            )
+            return self._get_granular_hash(path_info, out)
         return out.hash_info
 
     def metadata(self, path_info):

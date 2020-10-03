@@ -385,6 +385,9 @@ class BaseOutput:
                 show_checksums=False,
                 **kwargs,
             )
+            self.hash_info.dir_info = None
+        if not self.hash_info.dir_info:
+            self.cache.set_dir_info(self.hash_info)
         return self.dir_cache
 
     def collect_used_dir_cache(

@@ -263,6 +263,8 @@ class CloudCache:
         from dvc.utils import tmp_fname
 
         # Sorting the list by path to ensure reproducibility
+        if isinstance(dir_info, dict):
+            dir_info = self._from_dict(dir_info)
         dir_info = sorted(dir_info, key=itemgetter(self.tree.PARAM_RELPATH))
 
         tmp = tempfile.NamedTemporaryFile(delete=False).name
@@ -275,7 +277,7 @@ class CloudCache:
 
         hash_info = self.tree.get_file_hash(to_info)
         hash_info.value += self.tree.CHECKSUM_DIR_SUFFIX
-        hash_info.dir_info = dir_info
+        hash_info.dir_info = self._to_dict(dir_info)
 
         return hash_info, to_info
 
@@ -299,15 +301,14 @@ class CloudCache:
 
     def _save_dir(self, path_info, tree, hash_info, save_link=True, **kwargs):
         if not hash_info.dir_info:
-            hash_info.dir_info = tree.cache.get_dir_cache(hash_info)
-        hi = self.save_dir_info(hash_info.dir_info, hash_info)
-        for entry in Tqdm(
-            hi.dir_info, desc="Saving " + path_info.name, unit="file"
-        ):
-            entry_info = path_info / entry[self.tree.PARAM_RELPATH]
-            entry_hash = HashInfo(
-                self.tree.PARAM_CHECKSUM, entry[self.tree.PARAM_CHECKSUM]
+            hash_info.dir_info = self._to_dict(
+                tree.cache.get_dir_cache(hash_info)
             )
+        hi = self.save_dir_info(hash_info.dir_info, hash_info)
+        for relpath, entry_hash in Tqdm(
+            hi.dir_info.items(), desc="Saving " + path_info.name, unit="file"
+        ):
+            entry_info = path_info / relpath
             self._save_file(
                 entry_info, tree, entry_hash, save_link=False, **kwargs
             )
@@ -614,18 +615,25 @@ class CloudCache:
         )
 
     def _to_dict(self, dir_info):
-        return {
-            entry[self.tree.PARAM_RELPATH]: entry[self.tree.PARAM_CHECKSUM]
-            for entry in dir_info
-        }
+        info = {}
+        for entry in dir_info:
+            relpath = None
+            hash_info = None
+            for key, value in entry.items():
+                if key == self.tree.PARAM_RELPATH:
+                    relpath = value
+                else:
+                    hash_info = HashInfo(key, value)
+            info[relpath] = hash_info
+        return info
 
     def _from_dict(self, dir_dict):
         return [
             {
                 self.tree.PARAM_RELPATH: relpath,
-                self.tree.PARAM_CHECKSUM: checksum,
+                hash_info.name: hash_info.value,
             }
-            for relpath, checksum in dir_dict.items()
+            for relpath, hash_info in dir_dict.items()
         ]
 
     @staticmethod
@@ -692,3 +700,8 @@ class CloudCache:
             return hash_info
 
         return self.save_dir_info(hash_info.dir_info, hash_info)
+
+    def set_dir_info(self, hash_info):
+        assert hash_info.isdir
+
+        hash_info.dir_info = self._to_dict(self.get_dir_cache(hash_info))

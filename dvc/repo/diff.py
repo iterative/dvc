@@ -111,7 +111,7 @@ def _dir_output_paths(repo_tree, output):
 
     try:
         for fname in repo_tree.walk_files(output.path_info):
-            yield str(fname), repo_tree.get_hash(fname).value
+            yield str(fname), repo_tree.get_file_hash(fname).value
     except NoRemoteError:
         logger.warning("dir cache entry for '%s' is missing", output)
 
