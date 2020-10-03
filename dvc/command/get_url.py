@@ -14,7 +14,7 @@ class CmdGetUrl(CmdBaseNoRepo):
         from dvc.repo import Repo
 
         try:
-            Repo.get_url(self.args.url, out=self.args.out, in_repo=False)
+            Repo.get_url(self.args.url, out=self.args.out)
             return 0
         except DvcException:
             logger.exception(f"failed to get '{self.args.url}'")
