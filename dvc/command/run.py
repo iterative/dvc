@@ -128,7 +128,7 @@ def add_parser(subparsers, parent_parser):
         default=[],
         help="Declare parameter to use as additional dependency.",
         metavar="[<filename>:]<params_list>",
-    )
+    ).complete = completion.FILE
     run_parser.add_argument(
         "-m",
         "--metrics",
