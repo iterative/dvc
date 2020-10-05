@@ -1,6 +1,7 @@
 import argparse
 import logging
 
+from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
 
@@ -99,7 +100,7 @@ def add_parser(subparsers, parent_parser):
         default=[],
         help="Declare dependencies for reproducible cmd.",
         metavar="<path>",
-    )
+    ).complete = completion.FILE
     run_parser.add_argument(
         "-n", "--name", help="Stage name.",
     )
@@ -110,7 +111,7 @@ def add_parser(subparsers, parent_parser):
         default=[],
         help="Declare output file or directory.",
         metavar="<filename>",
-    )
+    ).complete = completion.FILE
     run_parser.add_argument(
         "-O",
         "--outs-no-cache",
@@ -119,7 +120,7 @@ def add_parser(subparsers, parent_parser):
         help="Declare output file or directory "
         "(do not put into DVC cache).",
         metavar="<filename>",
-    )
+    ).complete = completion.FILE
     run_parser.add_argument(
         "-p",
         "--params",
@@ -127,7 +128,7 @@ def add_parser(subparsers, parent_parser):
         default=[],
         help="Declare parameter to use as additional dependency.",
         metavar="[<filename>:]<params_list>",
-    )
+    ).complete = completion.FILE
     run_parser.add_argument(
         "-m",
         "--metrics",
