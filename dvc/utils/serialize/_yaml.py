@@ -4,12 +4,17 @@ from contextlib import contextmanager
 
 from funcy import reraise
 from ruamel.yaml import YAML
-from ruamel.yaml.error import YAMLError
+from ruamel.yaml.constructor import DuplicateKeyError
+from ruamel.yaml.error import YAMLError as _YAMLError
 
 from ._common import ParseError, _dump_data, _load_data, _modify_data
 
 
-class YAMLFileCorruptedError(ParseError):
+class YAMLError(ParseError):
+    pass
+
+
+class YAMLFileCorruptedError(YAMLError):
     def __init__(self, path):
         super().__init__(path, "YAML file structure is corrupted")
 
@@ -20,8 +25,14 @@ def load_yaml(path, tree=None):
 
 def parse_yaml(text, path, typ="safe"):
     yaml = YAML(typ=typ)
-    with reraise(YAMLError, YAMLFileCorruptedError(path)):
-        return yaml.load(text) or {}
+    try:
+        with reraise(_YAMLError, YAMLFileCorruptedError(path)):
+            return yaml.load(text) or {}
+    except DuplicateKeyError as exc:
+        # NOTE: unfortunately this one doesn't inherit from YAMLError, so we
+        # have to catch it by-hand. See
+        # https://yaml.readthedocs.io/en/latest/api.html#duplicate-keys
+        raise YAMLError(path, exc.problem)
 
 
 def parse_yaml_for_update(text, path):
