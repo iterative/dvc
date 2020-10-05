@@ -3,6 +3,7 @@ import contextlib
 import logging
 import os
 
+from funcy import print_durations
 from voluptuous import MultipleInvalid
 
 from dvc.exceptions import DvcException
@@ -228,8 +229,10 @@ class PipelineFile(FileMixin):
         from dvc.parsing import DataLoader
 
         data, _ = self._load()
-        spec = DataLoader(data)
-        resolved = spec.resolve()
+
+        with print_durations("Resolving values"):
+            spec = DataLoader(data)
+            resolved = spec.resolve()
         lockfile_data = self._lockfile.load()
         return StageLoader(self, resolved.get("stages", {}), lockfile_data)
 
