@@ -72,6 +72,6 @@ class CmdDataStatus(CmdDataBase):
                 logger.info(self.UP_TO_DATE_MSG)
 
         except DvcException:
-            logger.exception("failed to obtain data status")
+            logger.exception("")
             return 1
         return 0
