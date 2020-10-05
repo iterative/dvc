@@ -16,7 +16,7 @@ TEST_GDRIVE_REPO_BUCKET = "root"
 class GDrive(Base, CloudURLInfo):
     @staticmethod
     def should_test():
-        return os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA) is not None
+        return bool(os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA))
 
     @cached_property
     def config(self):
