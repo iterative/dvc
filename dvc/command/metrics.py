@@ -76,7 +76,7 @@ class CmdMetricsShow(CmdMetricsBase):
         return 0
 
 
-def _show_diff(diff, markdown=False, no_path=False, old=False, precision=None):
+def _show_diff(diff, markdown=False, no_path=False, precision=None):
     from collections import OrderedDict
 
     from dvc.utils.diff import table
@@ -96,18 +96,14 @@ def _show_diff(diff, markdown=False, no_path=False, old=False, precision=None):
         for metric, change in sorted_mdiff.items():
             row = [] if no_path else [fname]
             row.append(metric)
-            if old:
-                row.append(_round(change.get("old")))
+            row.append(_round(change.get("old")))
             row.append(_round(change["new"]))
-            row.append(_round(change.get("diff", "diff not supported")))
+            row.append(_round(change.get("diff")))
             rows.append(row)
 
     header = [] if no_path else ["Path"]
     header.append("Metric")
-    if old:
-        header.extend(["Old", "New"])
-    else:
-        header.append("Value")
+    header.extend(["Old", "New"])
     header.append("Change")
 
     return table(header, rows, markdown)
@@ -133,7 +129,6 @@ class CmdMetricsDiff(CmdMetricsBase):
                     diff,
                     self.args.show_md,
                     self.args.no_path,
-                    self.args.old,
                     precision=self.args.precision,
                 )
                 if table:
@@ -274,12 +269,6 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Show tabulated output in the Markdown format (GFM).",
-    )
-    metrics_diff_parser.add_argument(
-        "--old",
-        action="store_true",
-        default=False,
-        help="Show old metric value.",
     )
     metrics_diff_parser.add_argument(
         "--no-path",
