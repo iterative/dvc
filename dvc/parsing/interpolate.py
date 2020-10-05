@@ -21,17 +21,20 @@ def _find_match(template):
     return list(KEYCRE.finditer(template))
 
 
-def _str_interpolate(template, replace_strings):
-    buf = str(template)
-    for replace_string, value in replace_strings.items():
-        if not isinstance(value, Value):
-            raise TypeError(
-                "Cannot interpolate to string that's not a primitive",
-                "received: ",
-                type(value),
-            )
-        buf = buf.replace(replace_string, str(value))
-    return buf
+def _resolve_value(match, context):
+    expand_and_track, _, inner = match.groups()
+    return context.select(inner, track=expand_and_track)
+
+
+def _str_interpolate(template, matches, context):
+    ret = ""
+    idx = 0
+    for match in matches:
+        value = _resolve_value(match, context)
+        ret += template[idx : match.start(0)]
+        ret += str(value)
+        idx = match.end()
+    return ret + template[idx:]
 
 
 def _resolve_str(src, context):
@@ -39,25 +42,16 @@ def _resolve_str(src, context):
         matches = _find_match(src)
         num_matches = len(matches)
         if num_matches:
-            to_replace = {}
-            for match in matches:
-                expr = match.group()
-                expand_and_track, _, inner = match.groups()
-                track = expand_and_track
-                if expr not in to_replace:
-                    to_replace[expr] = context.select(inner, track=track)
             # replace "${enabled}", if `enabled` is a boolean, with it's actual
             # value rather than it's string counterparts.
             if num_matches == 1 and src == matches[0].group(0):
-                values = list(to_replace.values())
-                assert len(values) == 1
-                return values[0].value
+                value = _resolve_value(matches[0], context)
+                return value.value
             # but not "${num} days"
-            src = _str_interpolate(src, to_replace)
+            src = _str_interpolate(src, matches, context)
 
     # regex already backtracks and avoids any `${` starting with
     # backslashes(`\`). We just need to replace those by `${`.
-    # FIXME: how to fix "\${abc} ${abc}"? right now, both will be replaced
     return src.replace(r"\${", "${")
 
 
