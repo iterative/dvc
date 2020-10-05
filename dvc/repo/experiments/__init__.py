@@ -556,6 +556,11 @@ class Experiments:
             # checkpoint commit after repro is killed, or if we should only do
             # it on explicit make_checkpoint() signals.
 
+        # NOTE: our cached GitPython Repo instance cannot be re-used if the
+        # checkpoint run was interrupted via SIGINT, so we need this hack
+        # to create a new git repo instance after checkpoint runs.
+        del self.scm
+
         return result
 
     def _collect_and_commit(self, rev, executor, exp_hash):
@@ -744,6 +749,8 @@ class Experiments:
             self._checkout_default_branch()
         try:
             name = self.scm.repo.git.branch(contains=rev)
+            if name.startswith("*"):
+                name = name[1:]
             return name.rsplit("/")[-1].strip()
         except GitCommandError:
             pass
