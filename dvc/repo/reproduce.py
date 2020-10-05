@@ -89,6 +89,7 @@ def reproduce(
     run_all = kwargs.pop("run_all", False)
     jobs = kwargs.pop("jobs", 1)
     checkpoint = kwargs.pop("checkpoint", False)
+    checkpoint_continue = kwargs.pop("checkpoint_continue", None)
     if (experiment or run_all) and self.experiments:
         try:
             return _reproduce_experiments(
@@ -101,6 +102,7 @@ def reproduce(
                 run_all=run_all,
                 jobs=jobs,
                 checkpoint=checkpoint,
+                checkpoint_continue=checkpoint_continue,
                 **kwargs,
             )
         except UnchangedExperimentError:

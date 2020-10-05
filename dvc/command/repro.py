@@ -45,7 +45,6 @@ class CmdRepro(CmdBase):
                     jobs=self.args.jobs,
                     params=self.args.params,
                     pull=self.args.pull,
-                    checkpoint=self.args.checkpoint,
                 )
 
                 if len(stages) == 0:
@@ -208,11 +207,5 @@ def add_parser(subparsers, parent_parser):
             "Try automatically pulling missing cache for outputs restored "
             "from the run-cache."
         ),
-    )
-    repro_parser.add_argument(
-        "--checkpoint",
-        action="store_true",
-        default=False,
-        help=argparse.SUPPRESS,
     )
     repro_parser.set_defaults(func=CmdRepro)
