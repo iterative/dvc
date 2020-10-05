@@ -351,13 +351,29 @@ class Experiments:
         return results
 
     @scm_locked
-    def new(self, *args, **kwargs):
+    def new(
+        self,
+        *args,
+        checkpoint: Optional[bool] = False,
+        checkpoint_continue: Optional[str] = None,
+        branch: Optional[str] = None,
+        **kwargs,
+    ):
         """Create a new experiment.
 
         Experiment will be reproduced and checked out into the user's
         workspace.
         """
-        branch = kwargs.get("branch")
+        if checkpoint_continue:
+            branch = self._get_branch_containing(checkpoint_continue)
+            if not branch:
+                raise DvcException(
+                    "Could not find checkpoint experiment "
+                    f"'{checkpoint_continue}'"
+                )
+            logger.debug(
+                "Continuing checkpoint experiment '%s'", checkpoint_continue
+            )
         if branch:
             rev = self.scm.resolve_rev(branch)
             logger.debug(
@@ -367,9 +383,12 @@ class Experiments:
             rev = self.repo.scm.get_rev()
         self._scm_checkout(rev)
         try:
-            checkpoint = kwargs.pop("checkpoint")
             stash_rev = self._stash_exp(
-                *args, allow_unchanged=checkpoint, **kwargs
+                *args,
+                branch=branch,
+                allow_unchanged=checkpoint,
+                apply_workspace=not checkpoint_continue,
+                **kwargs,
             )
         except UnchangedExperimentError as exc:
             logger.info("Reproducing existing experiment '%s'.", rev[:7])
@@ -505,7 +524,7 @@ class Experiments:
     def _reproduce_checkpoint(self, executors):
         result = {}
         for rev, executor in executors.items():
-            logger.debug("Reproducing checkpoint experiment '%s'")
+            logger.debug("Reproducing checkpoint experiment '%s'", rev[:7])
 
             if executor.branch:
                 self._scm_checkout(executor.branch)
