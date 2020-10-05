@@ -6,6 +6,7 @@ env:
   DVC_TEST: "true"
   HOMEBREW_NO_AUTO_UPDATE: 1
   SHELL: /bin/bash
+  GDRIVE_CREDENTIALS_DATA: ${{ secrets.GDRIVE_CREDENTIALS_DATA }}
 
 jobs:
   lint:
