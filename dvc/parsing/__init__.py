@@ -26,7 +26,7 @@ class DataLoader:
         args = d.get(ARGS, {})
 
         imports = args.get(IMPORTS, [])
-        constants = args.get(CONSTANTS, [])
+        constants = args.get(CONSTANTS, {})
         self.file_ctx = Context.load_variables(imports, constants)
 
     def _resolve_entry(self, name, definition):
