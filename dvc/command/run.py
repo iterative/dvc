@@ -111,7 +111,7 @@ def add_parser(subparsers, parent_parser):
         default=[],
         help="Declare output file or directory.",
         metavar="<filename>",
-    )
+    ).complete = completion.FILE
     run_parser.add_argument(
         "-O",
         "--outs-no-cache",
@@ -120,7 +120,7 @@ def add_parser(subparsers, parent_parser):
         help="Declare output file or directory "
         "(do not put into DVC cache).",
         metavar="<filename>",
-    )
+    ).complete = completion.FILE
     run_parser.add_argument(
         "-p",
         "--params",
