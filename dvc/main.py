@@ -101,9 +101,11 @@ def main(argv=None):  # noqa: C901
             from dvc.info import get_dvc_info
 
             logger.exception("unexpected error")
-            logger.info(FOOTER)
+
             dvc_info = get_dvc_info()
-            logger.info(dvc_info)
+            logger.debug("Version info for developers:\n%s", dvc_info)
+
+            logger.info(FOOTER)
         ret = 255
 
     try:
