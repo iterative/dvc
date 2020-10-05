@@ -96,9 +96,9 @@ def _show_diff(diff, markdown=False, no_path=False, precision=None):
         for metric, change in sorted_mdiff.items():
             row = [] if no_path else [fname]
             row.append(metric)
-            row.append(_round(change.get("old", "")))
+            row.append(_round(change.get("old")))
             row.append(_round(change["new"]))
-            row.append(_round(change.get("diff", "")))
+            row.append(_round(change.get("diff")))
             rows.append(row)
 
     header = [] if no_path else ["Path"]

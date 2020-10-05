@@ -61,7 +61,7 @@ def test_metrics_show_raw_diff():
     ) == textwrap.dedent(
         """\
         Path     Metric    Old    New    Change
-        metrics            1      2"""
+        metrics            1      2      —"""
     )
 
 
@@ -71,7 +71,7 @@ def test_metrics_diff_no_diff():
     ) == textwrap.dedent(
         """\
         Path        Metric    Old    New    Change
-        other.json  a.b.d     old    new"""
+        other.json  a.b.d     old    new    —"""
     )
 
 
@@ -85,7 +85,7 @@ def test_metrics_diff_new_metric():
     ) == textwrap.dedent(
         """\
         Path        Metric    Old    New    Change
-        other.json  a.b.d     None   new"""
+        other.json  a.b.d     —      new    —"""
     )
 
 
@@ -95,7 +95,7 @@ def test_metrics_diff_deleted_metric():
     ) == textwrap.dedent(
         """\
         Path        Metric    Old    New    Change
-        other.json  a.b.d     old    None"""
+        other.json  a.b.d     old    —      —"""
     )
 
 
@@ -196,7 +196,7 @@ def test_metrics_diff_markdown():
         |--------------|----------|-------|-------|----------|
         | metrics.yaml | a.b.c    | 1     | 2     | 1        |
         | metrics.yaml | a.d.e    | 3     | 4     | 1        |
-        | metrics.yaml | x.b      | 5     | 6     |          |
+        | metrics.yaml | x.b      | 5     | 6     | —        |
         """
     )
 
