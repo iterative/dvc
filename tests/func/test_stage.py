@@ -1,10 +1,8 @@
 import os
 import tempfile
-from time import sleep
 
 import pytest
 
-from dvc.api import make_checkpoint
 from dvc.dvcfile import SingleStageFile
 from dvc.main import main
 from dvc.output.local import LocalOutput
@@ -280,22 +278,14 @@ def test_stage_remove_pointer_stage(tmp_dir, dvc, run_copy):
 
 
 @pytest.mark.parametrize("checkpoint", [True, False])
-def test_stage_run_checkpoint(mocker, checkpoint):
-    stage = Stage(None, "stage.dvc", cmd="mycmd arg1 arg2")
+def test_stage_run_checkpoint(tmp_dir, dvc, mocker, checkpoint):
+    stage = Stage(dvc, "stage.dvc", cmd="mycmd arg1 arg2")
     mocker.patch.object(stage, "save")
-    mock_callback = mocker.Mock()
 
-    def mock_cmd_run(*args, **kwargs):
-        if checkpoint:
-            os.environ["DVC_CHECKPOINT"] = "1"
-            sleep(6)
-        make_checkpoint()
-        if checkpoint:
-            del os.environ["DVC_CHECKPOINT"]
-
-    mocker.patch("dvc.stage.run.cmd_run", mock_cmd_run)
-    run_stage(stage, checkpoint_func=mock_callback)
+    mock_cmd_run = mocker.patch("dvc.stage.run.cmd_run")
     if checkpoint:
-        mock_callback.assert_called()
+        callback = mocker.Mock()
     else:
-        mock_callback.assert_not_called()
+        callback = None
+    run_stage(stage, checkpoint_func=callback)
+    mock_cmd_run.assert_called_with(stage, checkpoint=checkpoint)
