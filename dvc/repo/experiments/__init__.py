@@ -378,6 +378,8 @@ class Experiments:
             logger.debug(
                 "Continuing checkpoint experiment '%s'", checkpoint_continue
             )
+            kwargs["apply_workspace"] = False
+
         if branch:
             rev = self.scm.resolve_rev(branch)
             logger.debug(
@@ -386,13 +388,10 @@ class Experiments:
         else:
             rev = self.repo.scm.get_rev()
         self._scm_checkout(rev)
+
         try:
             stash_rev = self._stash_exp(
-                *args,
-                branch=branch,
-                allow_unchanged=checkpoint,
-                apply_workspace=not checkpoint_continue,
-                **kwargs,
+                *args, branch=branch, allow_unchanged=checkpoint, **kwargs
             )
         except UnchangedExperimentError as exc:
             logger.info("Reproducing existing experiment '%s'.", rev[:7])
