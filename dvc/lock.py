@@ -53,6 +53,28 @@ class LockBase(ABC):
         pass
 
 
+class LockNoop(LockBase):
+    def __init__(self, lockfile, **kwargs):
+        super().__init__(lockfile)
+        self._lock = False
+
+    def lock(self):
+        self._lock = True
+
+    def unlock(self):
+        self._lock = False
+
+    @property
+    def is_locked(self):
+        return self._lock
+
+    def __enter__(self):
+        self.lock()
+
+    def __exit__(self, typ, value, tbck):
+        self.unlock()
+
+
 class Lock(LockBase):
     """Class for DVC repo lock.
 
@@ -168,5 +190,8 @@ class HardlinkLock(flufl.lock.Lock, LockBase):
 
 
 def make_lock(lockfile, tmp_dir=None, friendly=False, hardlink_lock=False):
-    cls = HardlinkLock if hardlink_lock else Lock
+    if not tmp_dir:
+        cls = LockNoop
+    else:
+        cls = HardlinkLock if hardlink_lock else Lock
     return cls(lockfile, tmp_dir=tmp_dir, friendly=friendly)
