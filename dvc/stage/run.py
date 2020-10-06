@@ -110,29 +110,41 @@ def run_stage(stage, dry=False, force=False, checkpoint_func=None, **kwargs):
             cmd_run(stage, checkpoint=monitor is not None)
 
 
+class CheckpointCond:
+    def __init__(self):
+        self.done = False
+        self.cond = threading.Condition()
+
+    def notify(self):
+        with self.cond:
+            self.done = True
+            self.cond.notify()
+
+    def wait(self, timeout=None):
+        with self.cond:
+            return self.cond.wait(timeout) or self.done
+
+
 @contextmanager
 def checkpoint_monitor(stage, callback_func):
     if not callback_func:
         yield None
         return
 
-    done = False
-    done_cond = threading.Condition()
+    done_cond = CheckpointCond()
     monitor_thread = threading.Thread(
-        target=_checkpoint_run, args=(stage, callback_func, done, done_cond),
+        target=_checkpoint_run, args=(stage, callback_func, done_cond),
     )
 
     try:
         monitor_thread.start()
         yield monitor_thread
     finally:
-        with done_cond:
-            done = True
-            done_cond.notify()
+        done_cond.notify()
         monitor_thread.join()
 
 
-def _checkpoint_run(stage, callback_func, done, done_cond):
+def _checkpoint_run(stage, callback_func, done_cond):
     """Run callback_func whenever checkpoint signal file is present."""
     signal_path = os.path.join(stage.repo.tmp_dir, CHECKPOINT_SIGNAL_FILE)
     while True:
@@ -140,9 +152,8 @@ def _checkpoint_run(stage, callback_func, done, done_cond):
             _run_callback(stage, callback_func)
             logger.debug("Remove checkpoint signal file")
             os.remove(signal_path)
-        with done_cond:
-            if done or done_cond.wait(1):
-                return
+        if done_cond.wait(1):
+            return
 
 
 @relock_repo
