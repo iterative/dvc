@@ -129,4 +129,4 @@ def make_checkpoint():
 
     builtins.open(CHECKPOINT_SIGNAL_FILE, "w")
     while os.path.exists(CHECKPOINT_SIGNAL_FILE):
-        sleep(5)
+        sleep(1)

@@ -143,7 +143,7 @@ def _checkpoint_run(stage, callback_func, done, done_cond):
             logger.debug("Remove checkpoint signal file")
             os.remove(signal_path)
         with done_cond:
-            if done or done_cond.wait(5):
+            if done or done_cond.wait(1):
                 return
 
 
