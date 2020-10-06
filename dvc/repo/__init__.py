@@ -164,7 +164,8 @@ class Repo:
         except NotImplementedError:
             self.experiments = None
 
-        self._ignore()
+        if not scm:
+            self._ignore()
 
     @property
     def tree(self):
