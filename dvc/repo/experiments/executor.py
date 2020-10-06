@@ -134,9 +134,10 @@ class LocalExecutor(ExperimentExecutor):
 
         unchanged = []
 
-        def filter_pipeline(stage):
-            if isinstance(stage, PipelineStage):
-                unchanged.append(stage)
+        def filter_pipeline(stages):
+            unchanged.extend(
+                [stage for stage in stages if isinstance(stage, PipelineStage)]
+            )
 
         if cwd:
             old_cwd = os.getcwd()
@@ -148,7 +149,20 @@ class LocalExecutor(ExperimentExecutor):
         try:
             logger.debug("Running repro in '%s'", cwd)
             dvc = Repo(dvc_dir)
-            dvc.checkout()
+
+            # NOTE: for checkpoint experiments we handle persist outs slightly
+            # differently than normal:
+            #
+            # - checkpoint out may not yet exist if this is the first time this
+            #   experiment has been run, this is not an error condition for
+            #   experiments
+            # - at the start of a repro run, we need to remove the persist out
+            #   and restore it to its last known (committed) state (which may
+            #   be removed/does not yet exist) so that our executor workspace
+            #   is not polluted with the (persistent) out from an unrelated
+            #   experiment run
+            checkpoint = kwargs.pop("checkpoint", False)
+            dvc.checkout(allow_persist_missing=checkpoint, force=checkpoint)
             stages = dvc.reproduce(on_unchanged=filter_pipeline, **kwargs)
         finally:
             if old_cwd is not None:

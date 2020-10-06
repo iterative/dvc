@@ -1,4 +1,5 @@
 import logging
+from functools import partial
 
 from dvc.exceptions import InvalidArgumentError, ReproductionError
 from dvc.repo.experiments import UnchangedExperimentError
@@ -11,6 +12,14 @@ logger = logging.getLogger(__name__)
 
 
 def _reproduce_stage(stage, **kwargs):
+    def _run_callback(repro_callback):
+        _dump_stage(stage)
+        repro_callback([stage])
+
+    checkpoint_func = kwargs.pop("checkpoint_func", None)
+    if checkpoint_func:
+        kwargs["checkpoint_func"] = partial(_run_callback, checkpoint_func)
+
     if stage.frozen and not stage.is_import:
         logger.warning(
             "{} is frozen. Its dependencies are"
@@ -22,12 +31,16 @@ def _reproduce_stage(stage, **kwargs):
         return []
 
     if not kwargs.get("dry", False):
-        from ..dvcfile import Dvcfile
-
-        dvcfile = Dvcfile(stage.repo, stage.path)
-        dvcfile.dump(stage, update_pipeline=False)
+        _dump_stage(stage)
 
     return [stage]
+
+
+def _dump_stage(stage):
+    from ..dvcfile import Dvcfile
+
+    dvcfile = Dvcfile(stage.repo, stage.path)
+    dvcfile.dump(stage, update_pipeline=False)
 
 
 def _get_active_graph(G):
@@ -75,6 +88,8 @@ def reproduce(
     queue = kwargs.pop("queue", False)
     run_all = kwargs.pop("run_all", False)
     jobs = kwargs.pop("jobs", 1)
+    checkpoint = kwargs.pop("checkpoint", False)
+    checkpoint_continue = kwargs.pop("checkpoint_continue", None)
     if (experiment or run_all) and self.experiments:
         try:
             return _reproduce_experiments(
@@ -86,6 +101,8 @@ def reproduce(
                 queue=queue,
                 run_all=run_all,
                 jobs=jobs,
+                checkpoint=checkpoint,
+                checkpoint_continue=checkpoint_continue,
                 **kwargs,
             )
         except UnchangedExperimentError:
@@ -219,16 +236,25 @@ def _reproduce_stages(
 
     force_downstream = kwargs.pop("force_downstream", False)
     result = []
+    unchanged = []
     # `ret` is used to add a cosmetic newline.
     ret = []
     for stage in pipeline:
         if ret:
             logger.info("")
 
+        checkpoint_func = kwargs.pop("checkpoint_func", None)
+        if checkpoint_func:
+            kwargs["checkpoint_func"] = partial(
+                _repro_callback, checkpoint_func, unchanged
+            )
+
         try:
             ret = _reproduce_stage(stage, **kwargs)
 
-            if len(ret) != 0 and force_downstream:
+            if len(ret) == 0:
+                unchanged.extend([stage])
+            elif force_downstream:
                 # NOTE: we are walking our pipeline from the top to the
                 # bottom. If one stage is changed, it will be reproduced,
                 # which tells us that we should force reproducing all of
@@ -238,9 +264,13 @@ def _reproduce_stages(
 
             if ret:
                 result.extend(ret)
-            elif on_unchanged is not None:
-                on_unchanged(stage)
         except Exception as exc:
             raise ReproductionError(stage.relpath) from exc
 
+    if on_unchanged is not None:
+        on_unchanged(unchanged)
     return result
+
+
+def _repro_callback(experiments_callback, unchanged, stages):
+    experiments_callback(unchanged, stages)

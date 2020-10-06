@@ -50,3 +50,19 @@ def unlocked_repo(f):
         return ret
 
     return wrapper
+
+
+def relock_repo(f):
+    @wraps(f)
+    def wrapper(stage, *args, **kwargs):
+        stage.repo.lock.lock()
+        stage.repo.state.load()
+        try:
+            ret = f(stage, *args, **kwargs)
+        finally:
+            stage.repo.state.dump()
+            stage.repo.lock.unlock()
+            stage.repo._reset()  # pylint: disable=protected-access
+        return ret
+
+    return wrapper
