@@ -79,7 +79,8 @@ class Experiments:
         r"dvc-exp:(?P<baseline_rev>[0-9a-f]+)(:(?P<branch>.+))?$"
     )
     BRANCH_RE = re.compile(
-        r"^(?P<baseline_rev>[a-f0-9]{7})-(?P<exp_sha>[a-f0-9]+)$"
+        r"^(?P<baseline_rev>[a-f0-9]{7})-(?P<exp_sha>[a-f0-9]+)"
+        r"(?P<checkpoint>-checkpoint)?$"
     )
 
     StashEntry = namedtuple("StashEntry", ["index", "baseline_rev", "branch"])
@@ -302,13 +303,16 @@ class Experiments:
             with modify_data(path, tree=self.exp_dvc.tree) as data:
                 _update(data, params[params_fname])
 
-    def _commit(self, exp_hash, check_exists=True, create_branch=True):
+    def _commit(
+        self, exp_hash, check_exists=True, create_branch=True, checkpoint=False
+    ):
         """Commit stages as an experiment and return the commit SHA."""
         if not self.scm.is_dirty():
             raise UnchangedExperimentError(self.scm.get_rev())
 
         rev = self.scm.get_rev()
-        exp_name = f"{rev[:7]}-{exp_hash}"
+        checkpoint = "-checkpoint" if checkpoint else ""
+        exp_name = f"{rev[:7]}-{exp_hash}{checkpoint}"
         if create_branch:
             if check_exists and exp_name in self.scm.list_branches():
                 logger.debug("Using existing experiment branch '%s'", exp_name)
@@ -533,7 +537,9 @@ class Experiments:
 
             def _checkpoint_callback(rev, executor, unchanged, stages):
                 exp_hash = hash_exp(stages + unchanged)
-                exp_rev = self._collect_and_commit(rev, executor, exp_hash)
+                exp_rev = self._collect_and_commit(
+                    rev, executor, exp_hash, checkpoint=True
+                )
                 if exp_rev:
                     if not executor.branch:
                         branch = self._get_branch_containing(exp_rev)
@@ -563,7 +569,7 @@ class Experiments:
 
         return result
 
-    def _collect_and_commit(self, rev, executor, exp_hash):
+    def _collect_and_commit(self, rev, executor, exp_hash, **kwargs):
         try:
             self._collect_output(executor)
         except DownloadError:
@@ -577,7 +583,9 @@ class Experiments:
 
         try:
             create_branch = not executor.branch
-            exp_rev = self._commit(exp_hash, create_branch=create_branch)
+            exp_rev = self._commit(
+                exp_hash, create_branch=create_branch, **kwargs
+            )
         except UnchangedExperimentError:
             logger.debug(
                 "Experiment '%s' identical to baseline '%s'",

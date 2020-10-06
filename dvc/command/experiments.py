@@ -113,19 +113,30 @@ def _collect_rows(
         reverse = sort_order == "desc"
         experiments = _sort_exp(experiments, sort_by, sort_type, reverse)
 
+    last_tip = None
     for i, (rev, exp) in enumerate(experiments.items()):
         row = []
         style = None
         queued = "*" if exp.get("queued", False) else ""
 
+        tip = exp.get("checkpoint_tip")
         if rev == "baseline":
             name = exp.get("name", base_rev)
             row.append(f"{name}")
             style = "bold"
-        elif i < len(experiments) - 1:
-            row.append(f"├── {queued}{rev[:7]}")
         else:
-            row.append(f"└── {queued}{rev[:7]}")
+            if tip and tip == last_tip:
+                tree = "│ ╟"
+            else:
+                if i < len(experiments) - 1:
+                    if tip:
+                        tree = "├─╥"
+                    else:
+                        tree = "├──"
+                else:
+                    tree = "└──"
+            row.append(f"{tree} {queued}{rev[:7]}")
+        last_tip = tip
 
         if not no_timestamp:
             row.append(_format_time(exp.get("timestamp")))
