@@ -421,14 +421,14 @@ class Stage(params.StageParams):
             out.commit()
 
     @rwlocked(read=["deps"], write=["outs"])
-    def run(self, dry=False, no_commit=False, force=False, run_cache=True):
+    def run(self, dry=False, no_commit=False, force=False, **kwargs):
         if (self.cmd or self.is_import) and not self.frozen and not dry:
             self.remove_outs(ignore_remove=False, force=False)
 
         if not self.frozen and self.is_import:
             sync_import(self, dry, force)
         elif not self.frozen and self.cmd:
-            run_stage(self, dry, force, run_cache)
+            run_stage(self, dry, force, **kwargs)
         else:
             args = (
                 ("outputs", "frozen ") if self.frozen else ("data sources", "")

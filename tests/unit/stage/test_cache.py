@@ -40,12 +40,12 @@ def test_stage_cache(tmp_dir, dvc, mocker):
     assert os.path.isfile(cache_file)
 
     run_spy = mocker.patch("dvc.stage.run.cmd_run")
-    checkout_spy = mocker.spy(stage, "checkout")
+    checkout_spy = mocker.spy(dvc.cache.local, "checkout")
     with dvc.lock, dvc.state:
         stage.run()
 
     assert not run_spy.called
-    assert checkout_spy.call_count == 1
+    assert checkout_spy.call_count == 2
 
     assert (tmp_dir / "out").exists()
     assert (tmp_dir / "out_no_cache").exists()
@@ -93,12 +93,12 @@ def test_stage_cache_params(tmp_dir, dvc, mocker):
     assert os.path.isfile(cache_file)
 
     run_spy = mocker.patch("dvc.stage.run.cmd_run")
-    checkout_spy = mocker.spy(stage, "checkout")
+    checkout_spy = mocker.spy(dvc.cache.local, "checkout")
     with dvc.lock, dvc.state:
         stage.run()
 
     assert not run_spy.called
-    assert checkout_spy.call_count == 1
+    assert checkout_spy.call_count == 2
 
     assert (tmp_dir / "out").exists()
     assert (tmp_dir / "out_no_cache").exists()
@@ -147,12 +147,12 @@ def test_stage_cache_wdir(tmp_dir, dvc, mocker):
     assert os.path.isfile(cache_file)
 
     run_spy = mocker.patch("dvc.stage.run.cmd_run")
-    checkout_spy = mocker.spy(stage, "checkout")
+    checkout_spy = mocker.spy(dvc.cache.local, "checkout")
     with dvc.lock, dvc.state:
         stage.run()
 
     assert not run_spy.called
-    assert checkout_spy.call_count == 1
+    assert checkout_spy.call_count == 2
 
     assert (tmp_dir / "wdir" / "out").exists()
     assert (tmp_dir / "wdir" / "out_no_cache").exists()

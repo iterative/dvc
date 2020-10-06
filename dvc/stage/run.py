@@ -81,12 +81,12 @@ def cmd_run(stage, *args, **kwargs):
         raise StageCmdFailedError(stage.cmd, retcode)
 
 
-def run_stage(stage, dry=False, force=False, run_cache=False):
+def run_stage(stage, dry=False, force=False, **kwargs):
     if not (dry or force):
         from .cache import RunCacheNotFoundError
 
         try:
-            stage.repo.stage_cache.restore(stage, run_cache=run_cache)
+            stage.repo.stage_cache.restore(stage, **kwargs)
             return
         except RunCacheNotFoundError:
             pass

@@ -44,6 +44,7 @@ class CmdRepro(CmdBase):
                     run_all=self.args.run_all,
                     jobs=self.args.jobs,
                     params=self.args.params,
+                    pull=self.args.pull,
                 )
 
                 if len(stages) == 0:
@@ -197,5 +198,14 @@ def add_parser(subparsers, parent_parser):
     )
     repro_parser.add_argument(
         "-j", "--jobs", type=int, help=argparse.SUPPRESS, metavar="<number>"
+    )
+    repro_parser.add_argument(
+        "--pull",
+        action="store_true",
+        default=False,
+        help=(
+            "Try automatically pulling missing cache for outputs restored "
+            "from the run-cache."
+        ),
     )
     repro_parser.set_defaults(func=CmdRepro)
