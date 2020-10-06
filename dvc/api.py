@@ -127,6 +127,16 @@ def make_checkpoint():
     if os.getenv("DVC_CHECKPOINT") is None:
         return
 
-    builtins.open(CHECKPOINT_SIGNAL_FILE, "w")
-    while os.path.exists(CHECKPOINT_SIGNAL_FILE):
+    root_dir = Repo.find_root()
+    signal_file = os.path.join(
+        root_dir, Repo.DVC_DIR, "tmp", CHECKPOINT_SIGNAL_FILE
+    )
+
+    with builtins.open(signal_file, "w") as fobj:
+        # NOTE: force flushing/writing empty file to disk, otherwise when
+        # run in certain contexts (pytest) file may not actually be written
+        fobj.write("")
+        fobj.flush()
+        os.fsync(fobj.fileno())
+    while os.path.exists(signal_file):
         sleep(1)

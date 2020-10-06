@@ -13,7 +13,7 @@ from .exceptions import StageCmdFailedError
 logger = logging.getLogger(__name__)
 
 
-CHECKPOINT_SIGNAL_FILE = os.path.join(".dvc", "tmp", "DVC_CHECKPOINT")
+CHECKPOINT_SIGNAL_FILE = "DVC_CHECKPOINT"
 
 
 def _nix_cmd(executable, cmd):
@@ -136,7 +136,7 @@ def checkpoint_monitor(stage, callback_func):
 
 def _checkpoint_run(stage, callback_func, done, done_cond):
     """Run callback_func whenever checkpoint signal file is present."""
-    signal_path = os.path.join(CHECKPOINT_SIGNAL_FILE)
+    signal_path = os.path.join(stage.repo.tmp_dir, CHECKPOINT_SIGNAL_FILE)
     while True:
         if os.path.exists(signal_path):
             _run_callback(stage, callback_func)
