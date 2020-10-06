@@ -424,7 +424,8 @@ class CmdExperimentsRun(CmdBase):
                     jobs=self.args.jobs,
                     params=self.args.params,
                     checkpoint=(
-                        self.args.checkpoint or self.args.checkpoint_continue
+                        self.args.checkpoint
+                        or self.args.checkpoint_continue is not None
                     ),
                     checkpoint_continue=self.args.checkpoint_continue,
                 )
