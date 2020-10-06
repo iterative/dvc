@@ -88,9 +88,7 @@ def cmd_run(stage, *args, checkpoint=False, **kwargs):
         raise StageCmdFailedError(stage.cmd, retcode)
 
 
-def run_stage(
-    stage, dry=False, force=False, checkpoint_func=None, **kwargs
-):
+def run_stage(stage, dry=False, force=False, checkpoint_func=None, **kwargs):
     if not (dry or force or checkpoint_func):
         from .cache import RunCacheNotFoundError
 
