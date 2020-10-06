@@ -14,12 +14,12 @@ class NoParamsError(DvcException):
     pass
 
 
-def is_params(dep):
+def _is_params(dep):
     return isinstance(dep, ParamsDependency)
 
 
 def _collect_configs(repo, rev):
-    params, _ = collect(repo, deps=True, output_filter=is_params, rev=rev)
+    params, _ = collect(repo, deps=True, output_filter=_is_params, rev=rev)
     configs = {p.path_info for p in params}
     configs.add(PathInfo(repo.root_dir) / ParamsDependency.DEFAULT_PARAMS_FILE)
     return list(configs)

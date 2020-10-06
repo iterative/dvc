@@ -9,13 +9,13 @@ from dvc.utils.serialize import YAMLFileCorruptedError, load_yaml
 logger = logging.getLogger(__name__)
 
 
-def is_metric(out):
+def _is_metric(out):
     return bool(out.metric)
 
 
 def _collect_metrics(repo, targets, recursive):
     metrics, path_infos = collect(
-        repo, targets=targets, output_filter=is_metric, recursive=recursive
+        repo, targets=targets, output_filter=_is_metric, recursive=recursive
     )
     return [m.path_info for m in metrics] + list(path_infos)
 

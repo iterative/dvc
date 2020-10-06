@@ -1,55 +1,74 @@
 import logging
 import os
+from typing import Iterable
 
 from dvc.path_info import PathInfo
+from dvc.repo import Repo
 from dvc.tree.repo import RepoTree
 
 logger = logging.getLogger(__name__)
 
 
-def collect(
-    repo,
-    deps=False,
-    targets=None,
-    output_filter=None,
-    rev=None,
-    recursive=False,
+def _collect_outs(
+    repo: Repo, output_filter: callable = None, deps: bool = False
 ):
-    assert targets or output_filter
-
     outs = {
         out
         for stage in repo.stages
         for out in (stage.deps if deps else stage.outs)
     }
-    if output_filter:
-        outs = filter(output_filter, outs)
+    return set(filter(output_filter, outs)) if output_filter else outs
 
-    if not targets:
-        return outs, []
 
-    target_infos = {PathInfo(os.path.abspath(target)) for target in targets}
+def _collect_paths(
+    repo: Repo, targets: Iterable, recursive: bool = False, rev: str = None
+):
+    path_infos = {PathInfo(os.path.abspath(target)) for target in targets}
     tree = RepoTree(repo)
-    wrong_targets = set()
-    subtargets = set()
 
-    for t in target_infos:
-        if recursive and tree.isdir(t):
-            subtargets.update(set(tree.walk_files(t)))
+    target_infos = set()
+    for path_info in path_infos:
 
-        if not tree.isfile(t):
+        if recursive and tree.isdir(path_info):
+            target_infos.update(set(tree.walk_files(path_info)))
+
+        if not tree.isfile(path_info):
             if not recursive:
                 logger.warning(
-                    "'%s' was not found at: '%s'.", t, rev,
+                    "'%s' was not found at: '%s'.", path_info, rev,
                 )
-            wrong_targets.add(t)
+            continue
+        target_infos.add(path_info)
+    return target_infos
 
-    target_infos = (target_infos ^ subtargets) - wrong_targets
 
-    target_outs = set()
+def _filter_duplicates(outs: Iterable, path_infos: Iterable):
+    res_outs = set()
+    res_infos = set(path_infos)
+
     for out in outs:
-        if out.path_info in target_infos:
-            target_outs.add(out)
-            target_infos.remove(out.path_info)
+        if out.path_info in path_infos:
+            res_outs.add(out)
+            res_infos.remove(out.path_info)
 
-    return target_outs, target_infos
+    return res_outs, res_infos
+
+
+def collect(
+    repo: Repo,
+    deps: bool = False,
+    targets: Iterable = None,
+    output_filter: callable = None,
+    rev: str = None,
+    recursive: bool = False,
+):
+    assert targets or output_filter
+
+    outs = _collect_outs(repo, output_filter=output_filter, deps=deps)
+
+    if not targets:
+        return outs, set()
+
+    target_infos = _collect_paths(repo, targets, recursive=recursive, rev=rev)
+
+    return _filter_duplicates(outs, target_infos)
