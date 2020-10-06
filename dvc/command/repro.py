@@ -204,8 +204,8 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help=(
-            "Try automatically pulling cached outputs if they are not "
-            "present in the local cache."
+            "Try automatically pulling missing cache for outputs restored "
+            "from the run-cache."
         ),
     )
     repro_parser.set_defaults(func=CmdRepro)
