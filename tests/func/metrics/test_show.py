@@ -125,6 +125,9 @@ def test_show_non_metric(tmp_dir, scm, use_dvc):
         "": {"metrics.yaml": {"foo": 1.1}}
     }
 
+    if not use_dvc:
+        assert not (tmp_dir / ".dvc").exists()
+
 
 @pytest.mark.parametrize("use_dvc", [True, False])
 def test_show_non_metric_branch(tmp_dir, scm, use_dvc):
@@ -141,6 +144,9 @@ def test_show_non_metric_branch(tmp_dir, scm, use_dvc):
         "workspace": {"metrics.yaml": {"foo": 1.1}},
         "branch": {"metrics.yaml": {"foo": 2.2}},
     }
+
+    if not use_dvc:
+        assert not (tmp_dir / ".dvc").exists()
 
 
 def test_non_metric_and_recurisve_show(tmp_dir, dvc, run_copy_metrics):

@@ -638,6 +638,9 @@ def test_show_non_plot(tmp_dir, scm, use_dvc):
     assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
     assert plot_content["encoding"]["y"]["field"] == "val"
 
+    if not use_dvc:
+        assert not (tmp_dir / ".dvc").exists()
+
 
 def test_show_non_plot_and_plot_with_params(
     tmp_dir, scm, dvc, run_copy_metrics

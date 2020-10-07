@@ -33,7 +33,18 @@ class Template:
     DEFAULT_NAME = None
 
     def __init__(self, content=None, name=None):
-        self.content = self.DEFAULT_CONTENT if content is None else content
+        if content:
+            self.content = content
+        else:
+            self.content = (
+                json.dumps(
+                    self.DEFAULT_CONTENT,
+                    indent=self.INDENT,
+                    separators=self.SEPARATORS,
+                )
+                + "\n"
+            )
+
         self.name = name or self.DEFAULT_NAME
         assert self.content and self.name
         self.filename = self.name + self.EXTENSION
@@ -216,60 +227,54 @@ class PlotTemplates:
     def templates_dir(self):
         return os.path.join(self.dvc_dir, self.TEMPLATES_DIR)
 
-    @cached_property
-    def default_template(self):
-        default_plot_path = os.path.join(self.templates_dir, "default.json")
-        if not os.path.exists(default_plot_path):
-            raise TemplateNotFoundError(os.path.relpath(default_plot_path))
-        return default_plot_path
-
     def get_template(self, path):
         if os.path.exists(path):
             return path
 
-        t_path = os.path.join(self.templates_dir, path)
-        if os.path.exists(t_path):
-            return t_path
+        if self.dvc_dir and os.path.exists(self.dvc_dir):
+            t_path = os.path.join(self.templates_dir, path)
+            if os.path.exists(t_path):
+                return t_path
 
-        all_templates = [
-            os.path.join(root, file)
-            for root, _, files in os.walk(self.templates_dir)
-            for file in files
-        ]
-        matches = [
-            template
-            for template in all_templates
-            if os.path.splitext(template)[0] == t_path
-        ]
-        if matches:
-            assert len(matches) == 1
-            return matches[0]
+            all_templates = [
+                os.path.join(root, file)
+                for root, _, files in os.walk(self.templates_dir)
+                for file in files
+            ]
+            matches = [
+                template
+                for template in all_templates
+                if os.path.splitext(template)[0] == t_path
+            ]
+            if matches:
+                assert len(matches) == 1
+                return matches[0]
 
         raise TemplateNotFoundError(path)
 
     def __init__(self, dvc_dir):
         self.dvc_dir = dvc_dir
 
-        if not os.path.exists(self.templates_dir):
-            makedirs(self.templates_dir, exist_ok=True)
-            for t in self.TEMPLATES:
-                self.dump(t())
+    def init(self):
+        makedirs(self.templates_dir, exist_ok=True)
+        for t in self.TEMPLATES:
+            self._dump(t())
 
-    def dump(self, template):
+    def _dump(self, template):
         path = os.path.join(self.templates_dir, template.filename)
         with open(path, "w") as fd:
-            json.dump(
-                template.content,
-                fd,
-                indent=template.INDENT,
-                separators=template.SEPARATORS,
-            )
-            fd.write("\n")
+            fd.write(template.content)
 
     def load(self, name):
-        path = self.get_template(name)
+        try:
+            path = self.get_template(name)
 
-        with open(path) as fd:
-            content = fd.read()
+            with open(path) as fd:
+                content = fd.read()
 
-        return Template(content, name=name)
+            return Template(content, name=name)
+        except TemplateNotFoundError:
+            for template in self.TEMPLATES:
+                if template.DEFAULT_NAME == name:
+                    return template()
+            raise
