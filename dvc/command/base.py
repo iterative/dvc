@@ -40,9 +40,10 @@ class CmdBase(ABC):
         self.repo = Repo(uninitialized=self.UNINITIALIZED)
         self.config = self.repo.config
         self.args = args
-        hardlink_lock = self.config["core"].get("hardlink_lock", False)
-        updater = Updater(self.repo.tmp_dir, hardlink_lock=hardlink_lock)
-        updater.check()
+        if self.repo.tmp_dir:
+            hardlink_lock = self.config["core"].get("hardlink_lock", False)
+            updater = Updater(self.repo.tmp_dir, hardlink_lock=hardlink_lock)
+            updater.check()
 
     @property
     def default_targets(self):
