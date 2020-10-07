@@ -31,6 +31,10 @@ class LockBase(ABC):
     def __init__(self, lockfile):
         self._lockfile = lockfile
 
+    @property
+    def lockfile(self):
+        return self._lockfile
+
     @abstractmethod
     def lock(self):
         pass
@@ -54,8 +58,9 @@ class LockBase(ABC):
 
 
 class LockNoop(LockBase):
-    def __init__(self, lockfile, **kwargs):
-        super().__init__(lockfile)
+    def __init__(
+        self, *args, **kwargs
+    ):  # pylint: disable=super-init-not-called
         self._lock = False
 
     def lock(self):
@@ -190,8 +195,5 @@ class HardlinkLock(flufl.lock.Lock, LockBase):
 
 
 def make_lock(lockfile, tmp_dir=None, friendly=False, hardlink_lock=False):
-    if not tmp_dir:
-        cls = LockNoop
-    else:
-        cls = HardlinkLock if hardlink_lock else Lock
+    cls = HardlinkLock if hardlink_lock else Lock
     return cls(lockfile, tmp_dir=tmp_dir, friendly=friendly)

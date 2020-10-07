@@ -90,7 +90,7 @@ class Repo:
     ):
         from dvc.cache import Cache
         from dvc.data_cloud import DataCloud
-        from dvc.lock import make_lock
+        from dvc.lock import LockNoop, make_lock
         from dvc.repo.experiments import Experiments
         from dvc.repo.metrics import Metrics
         from dvc.repo.params import Params
@@ -124,13 +124,6 @@ class Repo:
         no_scm = self.config["core"].get("no_scm", False)
         self.scm = scm if scm else SCM(self.root_dir, no_scm=no_scm)
 
-        self.lock = make_lock(
-            os.path.join(self.tmp_dir, "lock"),
-            tmp_dir=self.tmp_dir,
-            hardlink_lock=self.config["core"].get("hardlink_lock", False),
-            friendly=True,
-        )
-
         # used by RepoTree to determine if it should traverse subrepos
         self.subrepos = subrepos
 
@@ -138,8 +131,16 @@ class Repo:
         self.cloud = DataCloud(self)
 
         if scm or not self.dvc_dir:
+            self.lock = LockNoop()
             self.state = StateNoop()
         else:
+            self.lock = make_lock(
+                os.path.join(self.tmp_dir, "lock"),
+                tmp_dir=self.tmp_dir,
+                hardlink_lock=self.config["core"].get("hardlink_lock", False),
+                friendly=True,
+            )
+
             # NOTE: storing state and link_state in the repository itself to
             # avoid any possible state corruption in 'shared cache dir'
             # scenario.
