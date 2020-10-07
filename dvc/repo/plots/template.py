@@ -216,13 +216,6 @@ class PlotTemplates:
     def templates_dir(self):
         return os.path.join(self.dvc_dir, self.TEMPLATES_DIR)
 
-    @cached_property
-    def default_template(self):
-        default_plot_path = os.path.join(self.templates_dir, "default.json")
-        if not os.path.exists(default_plot_path):
-            raise TemplateNotFoundError(os.path.relpath(default_plot_path))
-        return default_plot_path
-
     def get_template(self, path):
         if os.path.exists(path):
             return path
