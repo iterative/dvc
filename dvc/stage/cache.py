@@ -2,7 +2,6 @@ import logging
 import os
 import tempfile
 from contextlib import contextmanager
-from pathlib import Path
 
 from funcy import first
 from voluptuous import Invalid
@@ -198,7 +197,7 @@ class StageCache:
             return []
 
         for src in from_remote.walk_files(runs):
-            rel = Path(os.path.relpath(src, from_remote.path_info))
+            rel = PathInfo(os.path.relpath(src, from_remote.path_info))
             dst = to_remote.path_info / rel
             key = dst.parent
             # check if any build cache already exists for this key
