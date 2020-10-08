@@ -239,11 +239,11 @@ def _reproduce_stages(
     unchanged = []
     # `ret` is used to add a cosmetic newline.
     ret = []
+    checkpoint_func = kwargs.pop("checkpoint_func", None)
     for stage in pipeline:
         if ret:
             logger.info("")
 
-        checkpoint_func = kwargs.pop("checkpoint_func", None)
         if checkpoint_func:
             kwargs["checkpoint_func"] = partial(
                 _repro_callback, checkpoint_func, unchanged
