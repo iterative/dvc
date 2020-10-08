@@ -132,12 +132,11 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
     MAX_INT = 2 ** 63 - 1
     MAX_UINT = 2 ** 64 - 2
 
-    def __init__(self, local_cache):
+    def __init__(self, repo):
         from dvc.tree.local import LocalTree
 
         super().__init__()
 
-        repo = local_cache.repo
         self.repo = repo
         self.root_dir = repo.root_dir
         self.tree = LocalTree(None, {"url": self.root_dir})
