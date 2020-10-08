@@ -22,7 +22,6 @@ from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.scm.base import CloneError
 from dvc.scm.git import Git
-from dvc.state import StateNoop
 from dvc.tree.local import LocalTree
 from dvc.tree.repo import RepoTree
 from dvc.utils import relpath
@@ -51,12 +50,10 @@ def external_repo(url, rev=None, for_write=False, **kwargs):
         scm=None if for_write else Git(root_dir),
         rev=None if for_write else rev,
         for_write=for_write,
+        uninitialized=True,
         **kwargs,
     )
-    try:
-        repo = ExternalRepo(**conf)
-    except NotDvcRepoError:
-        repo = ExternalGitRepo(**conf)
+    repo = ExternalRepo(**conf)
 
     try:
         yield repo
@@ -90,8 +87,33 @@ def clean_repos():
         _remove(path)
 
 
-class BaseExternalRepo:
+class ExternalRepo(Repo):
     # pylint: disable=no-member
+
+    def __init__(
+        self,
+        root_dir,
+        url,
+        scm=None,
+        rev=None,
+        for_write=False,
+        cache_dir=None,
+        cache_types=None,
+        uninitialized=False,
+        **kwargs,
+    ):
+        super().__init__(
+            root_dir, scm=scm, rev=rev, uninitialized=uninitialized
+        )
+
+        self.url = url
+        self.for_write = for_write
+        self.cache_dir = cache_dir or self._get_cache_dir()
+        self.cache_types = cache_types
+
+        self._setup_cache(self)
+        self._fix_upstream(self)
+        self.tree_confs = kwargs
 
     def __str__(self):
         return self.url
@@ -230,7 +252,8 @@ class BaseExternalRepo:
         return repo
 
     def _setup_cache(self, repo):
-        repo.cache.local.cache_dir = self.cache_dir
+        repo.config["cache"]["dir"] = self.cache_dir
+        repo.cache = Cache(repo)
         if self.cache_types:
             repo.cache.local.cache_types = self.cache_types
 
@@ -260,86 +283,6 @@ class BaseExternalRepo:
         except KeyError:
             cache_dir = CACHE_DIRS[self.url] = tempfile.mkdtemp("dvc-cache")
         return cache_dir
-
-
-class ExternalRepo(BaseExternalRepo, Repo):
-    def __init__(
-        self,
-        root_dir,
-        url,
-        scm=None,
-        rev=None,
-        for_write=False,
-        cache_dir=None,
-        cache_types=None,
-        **kwargs,
-    ):
-        super().__init__(root_dir, scm=scm, rev=rev)
-
-        self.url = url
-        self.for_write = for_write
-        self.cache_dir = cache_dir or self._get_cache_dir()
-        self.cache_types = cache_types
-
-        self._setup_cache(self)
-        self._fix_upstream(self)
-        self.tree_confs = kwargs
-
-
-class ExternalGitRepo(BaseExternalRepo):
-    def __init__(
-        self,
-        root_dir,
-        url,
-        scm=None,
-        rev=None,
-        for_write=False,
-        cache_dir=None,
-        cache_types=None,
-        **kwargs,
-    ):
-        self.root_dir = os.path.realpath(root_dir)
-        self.scm = scm
-
-        self.url = url
-        self.for_write = for_write
-        self.cache_dir = cache_dir or self._get_cache_dir()
-        self.cache_types = cache_types
-
-        self.rev = rev
-        self.tree_confs = kwargs
-
-        self.config = {"cache": {"dir": self.cache_dir}}
-        self.cache = Cache(self)
-        if cache_types:
-            self.cache.local.cache_types = cache_types
-
-        self.state = StateNoop()
-
-    @cached_property
-    def tree(self):
-        if self.scm:
-            return self.scm.get_tree(self.rev)
-        return LocalTree(self, {"url": self.root_dir})
-
-    def close(self):
-        if self.scm:
-            self.scm.close()
-
-    def find_out_by_relpath(self, path):
-        raise OutputNotFoundError(path, self)
-
-    @contextmanager
-    def open_by_relpath(self, path, mode="r", encoding=None, **kwargs):
-        """Opens a specified resource as a file object."""
-        path_info = PathInfo(self.root_dir) / path
-        try:
-            with self.repo_tree.open(
-                path_info, mode=mode, encoding=encoding, **kwargs
-            ) as fobj:
-                yield fobj
-        except FileNotFoundError as exc:
-            raise PathMissingError(path, self.url) from exc
 
 
 def _cached_clone(url, rev, for_write=False):
