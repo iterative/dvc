@@ -3,9 +3,11 @@ import contextlib
 import logging
 import os
 
+from funcy import log_durations
 from voluptuous import MultipleInvalid
 
 from dvc.exceptions import DvcException
+from dvc.parsing import DataResolver
 from dvc.stage import serialize
 from dvc.stage.exceptions import (
     StageFileBadNameError,
@@ -226,6 +228,12 @@ class PipelineFile(FileMixin):
     @property
     def stages(self):
         data, _ = self._load()
+
+        if self.repo.config["feature"]["parametrization"]:
+            with log_durations(logger.debug, "resolving values"):
+                resolver = DataResolver(data)
+                data = resolver.resolve()
+
         lockfile_data = self._lockfile.load()
         return StageLoader(self, data.get("stages", {}), lockfile_data)
 
