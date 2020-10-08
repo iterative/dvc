@@ -2,17 +2,11 @@ name: Tests build
 
 on: [push, pull_request]
 
-env:
-  DVC_TEST: "true"
-  HOMEBREW_NO_AUTO_UPDATE: 1
-  SHELL: /bin/bash
-  GDRIVE_CREDENTIALS_DATA: ${{ secrets.GDRIVE_CREDENTIALS_DATA }}
-
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2.3.2
     - name: Set up Python 3.8
       uses: actions/setup-python@v1
       with:
@@ -34,6 +28,12 @@ jobs:
           - os: windows-2019
             pyv: "3.9-dev"
     steps:
+    - name: set up environment variables
+      run: |
+        echo 'DVC_TEST=true' >> $GITHUB_ENV
+        echo 'HOMEBREW_NO_AUTO_UPDATE=1' >> $GITHUB_ENV
+        echo 'SHELL=/bin/bash' >> $GITHUB_ENV
+        echo 'GDRIVE_CREDENTIALS_DATA=${{ secrets.GDRIVE_CREDENTIALS_DATA }}' >> $GITHUB_ENV
     - uses: actions/checkout@v2.3.2
     - name: Set up Python
       uses: actions/setup-python@v2.1.2
