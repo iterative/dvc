@@ -1,9 +1,16 @@
 name: Tests build
 
-on: [push, pull_request]
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
 
 jobs:
   lint:
+    if: ${{ github.repository }} == 'iteratie/dvc'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2.3.2
@@ -18,6 +25,7 @@ jobs:
     - name: Check formatting
       run: pre-commit run --all-files
   tests:
+    if: ${{ github.repository }} == 'iteratie/dvc'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
