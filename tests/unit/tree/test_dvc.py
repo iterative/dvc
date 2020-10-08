@@ -23,9 +23,8 @@ def test_open(tmp_dir, dvc):
     (tmp_dir / "foo").unlink()
 
     tree = DvcTree(dvc)
-    with dvc.state:
-        with tree.open("foo", "r") as fobj:
-            assert fobj.read() == "foo"
+    with tree.open("foo", "r") as fobj:
+        assert fobj.read() == "foo"
 
 
 def test_open_dirty_hash(tmp_dir, dvc):
@@ -169,11 +168,10 @@ def test_walk_dir(tmp_dir, dvc, fetch, expected):
 
     expected = [str(tmp_dir / path) for path in expected]
 
-    with dvc.state:
-        actual = []
-        for root, dirs, files in tree.walk("dir"):
-            for entry in dirs + files:
-                actual.append(os.path.join(root, entry))
+    actual = []
+    for root, dirs, files in tree.walk("dir"):
+        for entry in dirs + files:
+            actual.append(os.path.join(root, entry))
 
     assert set(actual) == set(expected)
     assert len(actual) == len(expected)
@@ -235,13 +233,12 @@ def test_get_hash_granular(tmp_dir, dvc):
     )
     tree = DvcTree(dvc, fetch=True)
     subdir = PathInfo(tmp_dir) / "dir" / "subdir"
-    with dvc.state:
-        assert tree.get_hash(subdir) == HashInfo(
-            "md5", "af314506f1622d107e0ed3f14ec1a3b5.dir",
-        )
-        assert tree.get_hash(subdir / "data") == HashInfo(
-            "md5", "8d777f385d3dfec8815d20f7496026dc",
-        )
+    assert tree.get_hash(subdir) == HashInfo(
+        "md5", "af314506f1622d107e0ed3f14ec1a3b5.dir",
+    )
+    assert tree.get_hash(subdir / "data") == HashInfo(
+        "md5", "8d777f385d3dfec8815d20f7496026dc",
+    )
 
 
 def test_get_hash_dirty_file(tmp_dir, dvc):
@@ -249,8 +246,7 @@ def test_get_hash_dirty_file(tmp_dir, dvc):
     (tmp_dir / "file").write_text("something")
 
     tree = DvcTree(dvc)
-    with dvc.state:
-        actual = tree.get_hash(PathInfo(tmp_dir) / "file")
+    actual = tree.get_hash(PathInfo(tmp_dir) / "file")
     expected = HashInfo("md5", "8c7dd922ad47494fc02c388e12c00eac")
     assert actual == expected
 
@@ -260,8 +256,7 @@ def test_get_hash_dirty_dir(tmp_dir, dvc):
     (tmp_dir / "dir" / "baz").write_text("baz")
 
     tree = DvcTree(dvc)
-    with dvc.state:
-        actual = tree.get_hash(PathInfo(tmp_dir) / "dir")
+    actual = tree.get_hash(PathInfo(tmp_dir) / "dir")
     expected = HashInfo("md5", "5ea40360f5b4ec688df672a4db9c17d1.dir")
 
     assert actual == expected

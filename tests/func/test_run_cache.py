@@ -46,8 +46,7 @@ def test_save(tmp_dir, dvc, run_copy):
     tmp_dir.gen("foo", "foo")
     stage = run_copy("foo", "bar", name="copy-foo-bar")
     assert _recurse_count_files(run_cache_dir) == 1
-    with dvc.state:
-        assert dvc.stage_cache._load(stage)
+    assert dvc.stage_cache._load(stage)
 
 
 def test_do_not_save_on_no_exec_and_dry(tmp_dir, dvc, run_copy):
@@ -58,14 +57,12 @@ def test_do_not_save_on_no_exec_and_dry(tmp_dir, dvc, run_copy):
     stage = run_copy("foo", "bar", name="copy-foo-bar", no_exec=True)
 
     assert _recurse_count_files(run_cache_dir) == 0
-    with dvc.state:
-        assert not dvc.stage_cache._load(stage)
+    assert not dvc.stage_cache._load(stage)
 
     (stage,) = dvc.reproduce("copy-foo-bar", dry=True)
 
     assert _recurse_count_files(run_cache_dir) == 0
-    with dvc.state:
-        assert not dvc.stage_cache._load(stage)
+    assert not dvc.stage_cache._load(stage)
 
 
 def test_uncached_outs_are_cached(tmp_dir, dvc, run_copy):
@@ -76,8 +73,7 @@ def test_uncached_outs_are_cached(tmp_dir, dvc, run_copy):
         outs_no_cache=["bar"],
         name="copy-foo-bar",
     )
-    with dvc.state:
-        stage.outs[0].hash_info = stage.outs[0].get_hash()
+    stage.outs[0].hash_info = stage.outs[0].get_hash()
     assert os.path.exists(relpath(stage.outs[0].cache_path))
 
 

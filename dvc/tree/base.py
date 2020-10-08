@@ -5,7 +5,7 @@ from functools import partial
 from multiprocessing import cpu_count
 from urllib.parse import urlparse
 
-from funcy import cached_property
+from funcy import cached_property, decorator
 
 from dvc.exceptions import DvcException, DvcIgnoreInCollectedDirError
 from dvc.hash_info import HashInfo
@@ -36,6 +36,13 @@ class RemoteActionNotImplemented(DvcException):
 
 class RemoteMissingDepsError(DvcException):
     pass
+
+
+@decorator
+def use_state(call):
+    tree = call._args[0]  # pylint: disable=protected-access
+    with tree.state:
+        return call()
 
 
 class BaseTree:
@@ -230,6 +237,7 @@ class BaseTree:
             return False
         return hash_.endswith(cls.CHECKSUM_DIR_SUFFIX)
 
+    @use_state
     def get_hash(self, path_info, **kwargs):
         assert path_info and (
             isinstance(path_info, str) or path_info.scheme == self.scheme
@@ -326,6 +334,7 @@ class BaseTree:
             for fi in file_infos
         ]
 
+    @use_state
     def get_dir_hash(self, path_info, **kwargs):
         dir_info = self._collect_dir(path_info, **kwargs)
         return self.repo.cache.local.save_dir_info(dir_info)

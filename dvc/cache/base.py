@@ -3,6 +3,7 @@ import logging
 from copy import copy
 from operator import itemgetter
 
+from funcy import decorator
 from shortuuid import uuid
 
 import dvc.prompt as prompt
@@ -40,6 +41,13 @@ class DirCacheError(DvcException):
         super().__init__(
             f"Failed to load dir cache for hash value: '{hash_}'."
         )
+
+
+@decorator
+def use_state(call):
+    tree = call._args[0].tree  # pylint: disable=protected-access
+    with tree.state:
+        return call()
 
 
 class CloudCache:
@@ -281,6 +289,7 @@ class CloudCache:
 
         return hash_info, to_info
 
+    @use_state
     def save_dir_info(self, dir_info, hash_info=None):
         if (
             hash_info
@@ -321,6 +330,7 @@ class CloudCache:
         cache_info = self.tree.hash_to_path_info(hi.value)
         self.tree.state.save(cache_info, hi.value)
 
+    @use_state
     def save(self, path_info, tree, hash_info, save_link=True, **kwargs):
         if path_info.scheme != self.tree.scheme:
             raise RemoteActionNotImplemented(
@@ -517,6 +527,7 @@ class CloudCache:
 
         return bool(redundant_files)
 
+    @use_state
     def checkout(
         self,
         path_info,
@@ -693,6 +704,7 @@ class CloudCache:
         merged = self._merge_dirs(ancestor, our, their)
         return self.save_dir_info(merged)
 
+    @use_state
     def get_hash(self, tree, path_info):
         hash_info = tree.get_hash(path_info)
         if not hash_info.isdir:
