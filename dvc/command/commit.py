@@ -31,13 +31,13 @@ class CmdCommit(CmdBase):
         return 0
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, *args):
     COMMIT_HELP = "Save changed data to cache and update DVC-files."
 
     commit_parser = subparsers.add_parser(
         "commit",
-        parents=[parent_parser],
         description=append_doc_link(COMMIT_HELP, "commit"),
+        add_help=False,
         help=COMMIT_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -69,3 +69,4 @@ def add_parser(subparsers, parent_parser):
         "(Finds all DVC-files in the workspace by default.)",
     ).complete = completion.DVC_FILE
     commit_parser.set_defaults(func=CmdCommit)
+    return commit_parser

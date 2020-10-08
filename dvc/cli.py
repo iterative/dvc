@@ -137,16 +137,21 @@ def get_parent_parser():
     in order to prevent some weird behavior.
     """
     parent_parser = argparse.ArgumentParser(add_help=False)
+    add_common_args(parent_parser)
+    return parent_parser
 
-    parent_parser.add_argument(
+
+def add_common_args(parser, add_help=False):
+    """Add common arguments shared among all the commands."""
+    parser.add_argument(
         "--cprofile",
         action="store_true",
         default=False,
         help=argparse.SUPPRESS,
     )
-    parent_parser.add_argument("--cprofile-dump", help=argparse.SUPPRESS)
+    parser.add_argument("--cprofile-dump", help=argparse.SUPPRESS)
 
-    log_level_group = parent_parser.add_mutually_exclusive_group()
+    log_level_group = parser.add_mutually_exclusive_group()
     log_level_group.add_argument(
         "-q", "--quiet", action="count", default=0, help="Be quiet."
     )
@@ -154,32 +159,25 @@ def get_parent_parser():
         "-v", "--verbose", action="count", default=0, help="Be verbose."
     )
 
-    return parent_parser
+    if add_help:
+        # NOTE: We are doing this to capitalize help message.
+        parser.add_argument(
+            "-h",
+            "--help",
+            action="help",
+            default=argparse.SUPPRESS,
+            help="Show this help message and exit.",
+        )
 
 
 def get_main_parser():
-    parent_parser = get_parent_parser()
-
     # Main parser
     desc = "Data Version Control"
     parser = DvcParser(
         prog="dvc",
         description=desc,
-        parents=[parent_parser],
         formatter_class=argparse.RawTextHelpFormatter,
         add_help=False,
-    )
-
-    # NOTE: We are doing this to capitalize help message.
-    # Unfortunately, there is no easier and clearer way to do it,
-    # as adding this argument in get_parent_parser() either in
-    # log_level_group or on parent_parser itself will cause unexpected error.
-    parser.add_argument(
-        "-h",
-        "--help",
-        action="help",
-        default=argparse.SUPPRESS,
-        help="Show this help message and exit.",
     )
 
     # NOTE: On some python versions action='version' prints to stderr
@@ -200,6 +198,8 @@ def get_main_parser():
         type=str,
     )
 
+    add_common_args(parser, add_help=True)
+
     # Sub commands
     subparsers = parser.add_subparsers(
         title="Available Commands",
@@ -210,8 +210,11 @@ def get_main_parser():
 
     fix_subparsers(subparsers)
 
+    parent_parser = get_parent_parser()
     for cmd in COMMANDS:
-        cmd.add_parser(subparsers, parent_parser)
+        subparser = cmd.add_parser(subparsers, parent_parser)
+        if isinstance(subparser, argparse.ArgumentParser):
+            add_common_args(subparser, add_help=True)
 
     return parser
 
