@@ -26,26 +26,7 @@ class CmdRepro(CmdBase):
         ret = 0
         for target in self.args.targets:
             try:
-                stages = self.repo.reproduce(
-                    target,
-                    single_item=self.args.single_item,
-                    force=self.args.force,
-                    dry=self.args.dry,
-                    interactive=self.args.interactive,
-                    pipeline=self.args.pipeline,
-                    all_pipelines=self.args.all_pipelines,
-                    run_cache=not self.args.no_run_cache,
-                    no_commit=self.args.no_commit,
-                    downstream=self.args.downstream,
-                    recursive=self.args.recursive,
-                    force_downstream=self.args.force_downstream,
-                    experiment=self.args.experiment,
-                    queue=self.args.queue,
-                    run_all=self.args.run_all,
-                    jobs=self.args.jobs,
-                    params=self.args.params,
-                    pull=self.args.pull,
-                )
+                stages = self.repo.reproduce(target, **self._repro_kwargs)
 
                 if len(stages) == 0:
                     logger.info(CmdDataStatus.UP_TO_DATE_MSG)
@@ -62,18 +43,25 @@ class CmdRepro(CmdBase):
         os.chdir(saved_dir)
         return ret
 
+    @property
+    def _repro_kwargs(self):
+        return {
+            "single_item": self.args.single_item,
+            "force": self.args.force,
+            "dry": self.args.dry,
+            "interactive": self.args.interactive,
+            "pipeline": self.args.pipeline,
+            "all_pipelines": self.args.all_pipelines,
+            "run_cache": not self.args.no_run_cache,
+            "no_commit": self.args.no_commit,
+            "downstream": self.args.downstream,
+            "recursive": self.args.recursive,
+            "force_downstream": self.args.force_downstream,
+            "pull": self.args.pull,
+        }
 
-def add_parser(subparsers, parent_parser):
-    REPRO_HELP = (
-        "Reproduce complete or partial pipelines by executing their stages."
-    )
-    repro_parser = subparsers.add_parser(
-        "repro",
-        parents=[parent_parser],
-        description=append_doc_link(REPRO_HELP, "repro"),
-        help=REPRO_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
+
+def add_arguments(repro_parser):
     repro_parser.add_argument(
         "targets",
         nargs="*",
@@ -174,32 +162,6 @@ def add_parser(subparsers, parent_parser):
         help="Start from the specified stages when reproducing pipelines.",
     )
     repro_parser.add_argument(
-        "-e",
-        "--experiment",
-        action="store_true",
-        default=False,
-        help=argparse.SUPPRESS,
-    )
-    repro_parser.add_argument(
-        "--params",
-        action="append",
-        default=[],
-        help=argparse.SUPPRESS,
-        metavar="[<filename>:]<params_list>",
-    )
-    repro_parser.add_argument(
-        "--queue", action="store_true", default=False, help=argparse.SUPPRESS
-    )
-    repro_parser.add_argument(
-        "--run-all",
-        action="store_true",
-        default=False,
-        help=argparse.SUPPRESS,
-    )
-    repro_parser.add_argument(
-        "-j", "--jobs", type=int, help=argparse.SUPPRESS, metavar="<number>"
-    )
-    repro_parser.add_argument(
         "--pull",
         action="store_true",
         default=False,
@@ -208,4 +170,18 @@ def add_parser(subparsers, parent_parser):
             "from the run-cache."
         ),
     )
+
+
+def add_parser(subparsers, parent_parser):
+    REPRO_HELP = (
+        "Reproduce complete or partial pipelines by executing their stages."
+    )
+    repro_parser = subparsers.add_parser(
+        "repro",
+        parents=[parent_parser],
+        description=append_doc_link(REPRO_HELP, "repro"),
+        help=REPRO_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    add_arguments(repro_parser)
     repro_parser.set_defaults(func=CmdRepro)

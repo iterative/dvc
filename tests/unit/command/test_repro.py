@@ -14,11 +14,6 @@ default_arguments = {
     "single_item": False,
     "recursive": False,
     "force_downstream": False,
-    "experiment": False,
-    "params": [],
-    "queue": False,
-    "run_all": False,
-    "jobs": None,
     "pull": False,
 }
 

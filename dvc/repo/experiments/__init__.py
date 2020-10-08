@@ -779,3 +779,8 @@ class Experiments:
         from dvc.repo.experiments.show import show
 
         return show(self.repo, *args, **kwargs)
+
+    def run(self, *args, **kwargs):
+        from dvc.repo.experiments.run import run
+
+        return run(self.repo, *args, **kwargs)
