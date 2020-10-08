@@ -58,7 +58,7 @@ def test_new_simple(tmp_dir, scm, dvc, mocker):
     tmp_dir.gen("params.yaml", "foo: 2")
 
     new_mock = mocker.spy(dvc.experiments, "new")
-    dvc.reproduce(stage.addressing, experiment=True)
+    dvc.experiments.run(stage.addressing)
 
     new_mock.assert_called_once()
     assert (
@@ -80,13 +80,13 @@ def test_update_with_pull(tmp_dir, scm, dvc, mocker):
     expected_revs = [scm.get_rev()]
 
     tmp_dir.gen("params.yaml", "foo: 2")
-    dvc.reproduce(stage.addressing, experiment=True)
+    dvc.experiments.run(stage.addressing)
     scm.add(["dvc.yaml", "dvc.lock", "params.yaml", "metrics.yaml"])
     scm.commit("promote experiment")
     expected_revs.append(scm.get_rev())
 
     tmp_dir.gen("params.yaml", "foo: 3")
-    dvc.reproduce(stage.addressing, experiment=True)
+    dvc.experiments.run(stage.addressing)
 
     exp_scm = dvc.experiments.scm
     for rev in expected_revs:
@@ -105,11 +105,11 @@ def test_checkout(tmp_dir, scm, dvc):
     scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
     scm.commit("init")
 
-    dvc.reproduce(stage.addressing, experiment=True, params=["foo=2"])
-    exp_a = dvc.experiments.scm.get_rev()
+    results = dvc.experiments.run(stage.addressing, params=["foo=2"])
+    exp_a = first(results)
 
-    dvc.reproduce(stage.addressing, experiment=True, params=["foo=3"])
-    exp_b = dvc.experiments.scm.get_rev()
+    results = dvc.experiments.run(stage.addressing, params=["foo=3"])
+    exp_b = first(results)
 
     dvc.experiments.checkout(exp_a)
     assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 2"
@@ -134,13 +134,10 @@ def test_get_baseline(tmp_dir, scm, dvc):
     expected = scm.get_rev()
     assert dvc.experiments.get_baseline(expected) is None
 
-    dvc.reproduce(stage.addressing, experiment=True, params=["foo=2"])
-    rev = dvc.experiments.scm.get_rev()
-    assert dvc.experiments.get_baseline(rev) == expected
+    results = dvc.experiments.run(stage.addressing, params=["foo=2"])
+    assert dvc.experiments.get_baseline(first(results)) == expected
 
-    dvc.reproduce(
-        stage.addressing, experiment=True, params=["foo=3"], queue=True
-    )
+    dvc.experiments.run(stage.addressing, params=["foo=3"], queue=True)
     assert dvc.experiments.get_baseline("stash@{0}") == expected
 
 
@@ -156,10 +153,8 @@ def test_update_py_params(tmp_dir, scm, dvc):
     scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.py", "metrics.py"])
     scm.commit("init")
 
-    dvc.reproduce(
-        stage.addressing, experiment=True, params=["params.py:INT=2"]
-    )
-    exp_a = dvc.experiments.scm.get_rev()
+    results = dvc.experiments.run(stage.addressing, params=["params.py:INT=2"])
+    exp_a = first(results)
 
     dvc.experiments.checkout(exp_a)
     assert (tmp_dir / "params.py").read_text().strip() == "INT = 2"
@@ -180,12 +175,11 @@ def test_update_py_params(tmp_dir, scm, dvc):
     scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.py", "metrics.py"])
     scm.commit("init")
 
-    dvc.reproduce(
+    results = dvc.experiments.run(
         stage.addressing,
-        experiment=True,
         params=["params.py:FLOAT=0.1,Train.seed=2121,Klass.a=222"],
     )
-    exp_a = dvc.experiments.scm.get_rev()
+    exp_a = first(results)
 
     result = (
         "INT = 1\nFLOAT = 0.1\nDICT = {'a': 1}\n\n"
@@ -208,9 +202,7 @@ def test_update_py_params(tmp_dir, scm, dvc):
     scm.commit("init")
 
     with pytest.raises(PythonFileCorruptedError):
-        dvc.reproduce(
-            stage.addressing, experiment=True, params=["params.py:INT=2a"]
-        )
+        dvc.experiments.run(stage.addressing, params=["params.py:INT=2a"])
 
 
 def test_extend_branch(tmp_dir, scm, dvc):
@@ -225,18 +217,17 @@ def test_extend_branch(tmp_dir, scm, dvc):
     scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
     scm.commit("init")
 
-    dvc.reproduce(stage.addressing, experiment=True, params=["foo=2"])
-    exp_a = dvc.experiments.scm.get_rev()
+    results = dvc.experiments.run(stage.addressing, params=["foo=2"])
+    exp_a = first(results)
     exp_branch = dvc.experiments._get_branch_containing(exp_a)
 
-    dvc.reproduce(
+    results = dvc.experiments.run(
         stage.addressing,
-        experiment=True,
         params=["foo=3"],
         branch=exp_branch,
         apply_workspace=False,
     )
-    exp_b = dvc.experiments.scm.get_rev()
+    exp_b = first(results)
 
     assert dvc.experiments._get_branch_containing(exp_b) == exp_branch
 
@@ -269,9 +260,9 @@ def test_detached_parent(tmp_dir, scm, dvc, mocker):
 
     scm.checkout(detached_rev)
     assert scm.repo.head.is_detached
-    dvc.reproduce(stage.addressing, experiment=True, params=["foo=3"])
+    results = dvc.experiments.run(stage.addressing, params=["foo=3"])
 
-    exp_rev = dvc.experiments.scm.get_rev()
+    exp_rev = first(results)
     assert dvc.experiments.get_baseline(exp_rev) == detached_rev
     assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 3"
     assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 3"
@@ -300,9 +291,7 @@ def test_new_checkpoint(tmp_dir, scm, dvc, mocker):
     scm.commit("init")
 
     new_mock = mocker.spy(dvc.experiments, "new")
-    dvc.reproduce(
-        stage.addressing, experiment=True, checkpoint=True, params=["foo=2"]
-    )
+    dvc.experiments.run(stage.addressing, checkpoint=True, params=["foo=2"])
 
     new_mock.assert_called_once()
     assert (tmp_dir / "foo").read_text() == "5"
@@ -333,16 +322,13 @@ def test_continue_checkpoint(tmp_dir, scm, dvc, mocker):
     )
     scm.commit("init")
 
-    results = dvc.reproduce(
-        stage.addressing, experiment=True, checkpoint=True, params=["foo=2"]
+    results = dvc.experiments.run(
+        stage.addressing, checkpoint=True, params=["foo=2"]
     )
     exp_rev = first(results)
 
-    dvc.reproduce(
-        stage.addressing,
-        experiment=True,
-        checkpoint=True,
-        checkpoint_continue=exp_rev,
+    dvc.experiments.run(
+        stage.addressing, checkpoint=True, checkpoint_continue=exp_rev,
     )
 
     assert (tmp_dir / "foo").read_text() == "10"
