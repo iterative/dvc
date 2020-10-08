@@ -20,6 +20,7 @@ from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
 from dvc.repo.experiments.executor import ExperimentExecutor, LocalExecutor
 from dvc.scm.git import Git
+from dvc.stage import PipelineStage
 from dvc.stage.serialize import to_lockfile
 from dvc.tree.repo import RepoTree
 from dvc.utils import dict_sha256, env2bool, relpath
@@ -42,7 +43,8 @@ def scm_locked(f):
 def hash_exp(stages):
     exp_data = {}
     for stage in stages:
-        exp_data.update(to_lockfile(stage))
+        if isinstance(stage, PipelineStage):
+            exp_data.update(to_lockfile(stage))
     return dict_sha256(exp_data)
 
 
