@@ -2,7 +2,6 @@ import logging
 from functools import partial
 
 from dvc.exceptions import InvalidArgumentError, ReproductionError
-from dvc.repo.experiments import UnchangedExperimentError
 from dvc.repo.scm_context import scm_context
 
 from . import locked
@@ -83,32 +82,6 @@ def reproduce(
             "Neither `target` nor `--all-pipelines` are specified."
         )
 
-    experiment = kwargs.pop("experiment", False)
-    params = _parse_params(kwargs.pop("params", []))
-    queue = kwargs.pop("queue", False)
-    run_all = kwargs.pop("run_all", False)
-    jobs = kwargs.pop("jobs", 1)
-    checkpoint = kwargs.pop("checkpoint", False)
-    checkpoint_continue = kwargs.pop("checkpoint_continue", None)
-    if (experiment or run_all) and self.experiments:
-        try:
-            return _reproduce_experiments(
-                self,
-                target=target,
-                recursive=recursive,
-                all_pipelines=all_pipelines,
-                params=params,
-                queue=queue,
-                run_all=run_all,
-                jobs=jobs,
-                checkpoint=checkpoint,
-                checkpoint_continue=checkpoint_continue,
-                **kwargs,
-            )
-        except UnchangedExperimentError:
-            # If experiment contains no changes, just run regular repro
-            pass
-
     interactive = kwargs.get("interactive", False)
     if not interactive:
         kwargs["interactive"] = self.config["core"].get("interactive", False)
@@ -133,39 +106,6 @@ def reproduce(
         targets = self.collect(target, recursive=recursive, graph=active_graph)
 
     return _reproduce_stages(active_graph, targets, **kwargs)
-
-
-def _parse_params(path_params):
-    from ruamel.yaml import YAMLError
-
-    from dvc.dependency.param import ParamsDependency
-    from dvc.utils.flatten import unflatten
-    from dvc.utils.serialize import loads_yaml
-
-    ret = {}
-    for path_param in path_params:
-        path, _, params_str = path_param.rpartition(":")
-        # remove empty strings from params, on condition such as `-p "file1:"`
-        params = {}
-        for param_str in filter(bool, params_str.split(",")):
-            try:
-                # interpret value strings using YAML rules
-                key, value = param_str.split("=")
-                params[key] = loads_yaml(value)
-            except (ValueError, YAMLError):
-                raise InvalidArgumentError(
-                    f"Invalid param/value pair '{param_str}'"
-                )
-        if not path:
-            path = ParamsDependency.DEFAULT_PARAMS_FILE
-        ret[path] = unflatten(params)
-    return ret
-
-
-def _reproduce_experiments(repo, run_all=False, jobs=1, **kwargs):
-    if run_all:
-        return repo.experiments.reproduce_queued(jobs=jobs)
-    return repo.experiments.reproduce_one(**kwargs)
 
 
 def _reproduce_stages(
