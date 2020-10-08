@@ -6,6 +6,8 @@ from dvc.command.experiments import (
 )
 from dvc.dvcfile import PIPELINE_FILE
 
+from .test_repro import default_arguments as repro_arguments
+
 
 def test_experiments_diff(dvc, mocker):
     cli_args = parse_args(
@@ -61,32 +63,22 @@ def test_experiments_show(dvc, mocker):
     )
 
 
-default_run_arguments = {
-    "all_pipelines": False,
-    "downstream": False,
-    "dry": False,
-    "force": False,
-    "run_cache": True,
-    "interactive": False,
-    "no_commit": False,
-    "pipeline": False,
-    "single_item": False,
-    "recursive": False,
-    "force_downstream": False,
-    "params": [],
-    "queue": False,
-    "run_all": False,
-    "jobs": None,
-    "checkpoint": False,
-    "checkpoint_continue": None,
-    "experiment": True,
-}
-
-
 def test_experiments_run(dvc, mocker):
+    default_arguments = {
+        "params": [],
+        "queue": False,
+        "run_all": False,
+        "jobs": None,
+        "checkpoint": False,
+        "checkpoint_continue": None,
+    }
+
+    default_arguments.update(repro_arguments)
+
     cmd = CmdExperimentsRun(parse_args(["exp", "run"]))
     mocker.patch.object(cmd.repo, "reproduce")
+    mocker.patch.object(cmd.repo.experiments, "run")
     cmd.run()
-    cmd.repo.reproduce.assert_called_with(
-        PIPELINE_FILE, **default_run_arguments
+    cmd.repo.experiments.run.assert_called_with(
+        PIPELINE_FILE, **default_arguments
     )

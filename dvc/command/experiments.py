@@ -7,11 +7,10 @@ from datetime import date
 from itertools import groupby
 from typing import Iterable, Optional
 
-from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
-from dvc.command.metrics import DEFAULT_PRECISION, _show_metrics
-from dvc.command.status import CmdDataStatus
-from dvc.dvcfile import PIPELINE_FILE
+from dvc.command.metrics import DEFAULT_PRECISION
+from dvc.command.repro import CmdRepro
+from dvc.command.repro import add_arguments as add_repro_arguments
 from dvc.exceptions import DvcException, InvalidArgumentError
 from dvc.utils.flatten import flatten
 
@@ -388,7 +387,7 @@ class CmdExperimentsDiff(CmdBase):
         return 0
 
 
-class CmdExperimentsRun(CmdBase):
+class CmdExperimentsRun(CmdRepro):
     def run(self):
         if not self.repo.experiments:
             return 0
@@ -405,20 +404,8 @@ class CmdExperimentsRun(CmdBase):
         ret = 0
         for target in self.args.targets:
             try:
-                stages = self.repo.reproduce(
+                self.repo.experiments.run(
                     target,
-                    single_item=self.args.single_item,
-                    force=self.args.force,
-                    dry=self.args.dry,
-                    interactive=self.args.interactive,
-                    pipeline=self.args.pipeline,
-                    all_pipelines=self.args.all_pipelines,
-                    run_cache=not self.args.no_run_cache,
-                    no_commit=self.args.no_commit,
-                    downstream=self.args.downstream,
-                    recursive=self.args.recursive,
-                    force_downstream=self.args.force_downstream,
-                    experiment=True,
                     queue=self.args.queue,
                     run_all=self.args.run_all,
                     jobs=self.args.jobs,
@@ -428,15 +415,8 @@ class CmdExperimentsRun(CmdBase):
                         or self.args.checkpoint_continue is not None
                     ),
                     checkpoint_continue=self.args.checkpoint_continue,
+                    **self._repro_kwargs,
                 )
-
-                if len(stages) == 0:
-                    logger.info(CmdDataStatus.UP_TO_DATE_MSG)
-
-                if self.args.metrics:
-                    metrics = self.repo.metrics.show()
-                    logger.info(_show_metrics(metrics))
-
             except DvcException:
                 logger.exception("")
                 ret = 1
@@ -636,105 +616,8 @@ def add_parser(subparsers, parent_parser):
         help=EXPERIMENTS_RUN_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    experiments_run_parser.add_argument(
-        "targets",
-        nargs="*",
-        help=f"Stages to reproduce. '{PIPELINE_FILE}' by default.",
-    ).complete = completion.DVC_FILE
-    experiments_run_parser.add_argument(
-        "-f",
-        "--force",
-        action="store_true",
-        default=False,
-        help="Reproduce even if dependencies were not changed.",
-    )
-    experiments_run_parser.add_argument(
-        "-s",
-        "--single-item",
-        action="store_true",
-        default=False,
-        help="Reproduce only single data item without recursive dependencies "
-        "check.",
-    )
-    experiments_run_parser.add_argument(
-        "-c",
-        "--cwd",
-        default=os.path.curdir,
-        help="Directory within your repo to reproduce from. Note: deprecated "
-        "by `dvc --cd <path>`.",
-        metavar="<path>",
-    )
-    experiments_run_parser.add_argument(
-        "-m",
-        "--metrics",
-        action="store_true",
-        default=False,
-        help="Show metrics after reproduction.",
-    )
-    experiments_run_parser.add_argument(
-        "--dry",
-        action="store_true",
-        default=False,
-        help="Only print the commands that would be executed without "
-        "actually executing.",
-    )
-    experiments_run_parser.add_argument(
-        "-i",
-        "--interactive",
-        action="store_true",
-        default=False,
-        help="Ask for confirmation before reproducing each stage.",
-    )
-    experiments_run_parser.add_argument(
-        "-p",
-        "--pipeline",
-        action="store_true",
-        default=False,
-        help="Reproduce the whole pipeline that the specified stage file "
-        "belongs to.",
-    )
-    experiments_run_parser.add_argument(
-        "-P",
-        "--all-pipelines",
-        action="store_true",
-        default=False,
-        help="Reproduce all pipelines in the repo.",
-    )
-    experiments_run_parser.add_argument(
-        "-R",
-        "--recursive",
-        action="store_true",
-        default=False,
-        help="Reproduce all stages in the specified directory.",
-    )
-    experiments_run_parser.add_argument(
-        "--no-run-cache",
-        action="store_true",
-        default=False,
-        help=(
-            "Execute stage commands even if they have already been run with "
-            "the same command/dependencies/outputs/etc before."
-        ),
-    )
-    experiments_run_parser.add_argument(
-        "--force-downstream",
-        action="store_true",
-        default=False,
-        help="Reproduce all descendants of a changed stage even if their "
-        "direct dependencies didn't change.",
-    )
-    experiments_run_parser.add_argument(
-        "--no-commit",
-        action="store_true",
-        default=False,
-        help="Don't put files/directories into cache.",
-    )
-    experiments_run_parser.add_argument(
-        "--downstream",
-        action="store_true",
-        default=False,
-        help="Start from the specified stages when reproducing pipelines.",
-    )
+    # inherit arguments from `dvc repro`
+    add_repro_arguments(experiments_run_parser)
     experiments_run_parser.add_argument(
         "--params",
         action="append",
