@@ -50,12 +50,11 @@ def test_used_cache(tmp_dir, dvc, path):
         ),
     )
 
-    with dvc.state:
-        used_cache = dvc.used_cache([path])
-        assert (
-            used_cache._items == expected._items
-            and used_cache.external == expected.external
-        )
+    used_cache = dvc.used_cache([path])
+    assert (
+        used_cache._items == expected._items
+        and used_cache.external == expected.external
+    )
 
 
 def test_locked(mocker):

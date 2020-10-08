@@ -24,19 +24,16 @@ def test_commit_force(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"file": "text1", "file2": "text2"}})
     (stage,) = dvc.add("dir", no_commit=True)
 
-    with dvc.state:
-        assert stage.outs[0].changed_cache()
+    assert stage.outs[0].changed_cache()
 
     tmp_dir.gen("dir/file", "file content modified")
 
-    with dvc.state:
-        assert stage.outs[0].changed_cache()
+    assert stage.outs[0].changed_cache()
 
     with pytest.raises(StageCommitError):
         dvc.commit(stage.path)
 
-    with dvc.state:
-        assert stage.outs[0].changed_cache()
+    assert stage.outs[0].changed_cache()
 
     dvc.commit(stage.path, force=True)
     assert dvc.status([stage.path]) == {}
@@ -53,14 +50,12 @@ def test_commit_with_deps(tmp_dir, dvc, run_copy, run_kw):
     assert stage is not None
     assert len(stage.outs) == 1
 
-    with dvc.state:
-        assert foo_stage.outs[0].changed_cache()
-        assert stage.outs[0].changed_cache()
+    assert foo_stage.outs[0].changed_cache()
+    assert stage.outs[0].changed_cache()
 
     dvc.commit(stage.path, with_deps=True)
-    with dvc.state:
-        assert not foo_stage.outs[0].changed_cache()
-        assert not stage.outs[0].changed_cache()
+    assert not foo_stage.outs[0].changed_cache()
+    assert not stage.outs[0].changed_cache()
 
 
 def test_commit_changed_md5(tmp_dir, dvc):
@@ -125,5 +120,4 @@ def test_imported_entries_unchanged(tmp_dir, dvc, erepo_dir):
 
     stage = dvc.imp(fspath(erepo_dir), "file")
 
-    with dvc.state:
-        assert stage.changed_entries() == ([], [], None)
+    assert stage.changed_entries() == ([], [], None)

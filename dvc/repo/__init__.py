@@ -144,7 +144,7 @@ class Repo:
             # NOTE: storing state and link_state in the repository itself to
             # avoid any possible state corruption in 'shared cache dir'
             # scenario.
-            self.state = State(self.cache.local)
+            self.state = State(self)
             self.stage_cache = StageCache(self)
 
             try:
