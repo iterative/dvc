@@ -1,41 +1,23 @@
 import logging
-import os
 
 from dvc.exceptions import NoMetricsError
-from dvc.path_info import PathInfo
 from dvc.repo import locked
+from dvc.repo.collect import collect
 from dvc.tree.repo import RepoTree
 from dvc.utils.serialize import YAMLFileCorruptedError, load_yaml
 
 logger = logging.getLogger(__name__)
 
 
+def _is_metric(out):
+    return bool(out.metric)
+
+
 def _collect_metrics(repo, targets, recursive):
-
-    if targets:
-        target_infos = [
-            PathInfo(os.path.abspath(target)) for target in targets
-        ]
-        tree = RepoTree(repo)
-
-        rec_files = []
-        if recursive:
-            for target_info in target_infos:
-                if tree.isdir(target_info):
-                    rec_files.extend(list(tree.walk_files(target_info)))
-
-        result = [t for t in target_infos if tree.isfile(t)]
-        result.extend(rec_files)
-
-        return result
-
-    metrics = set()
-    for stage in repo.stages:
-        for out in stage.outs:
-            if not out.metric:
-                continue
-            metrics.add(out.path_info)
-    return list(metrics)
+    metrics, path_infos = collect(
+        repo, targets=targets, output_filter=_is_metric, recursive=recursive
+    )
+    return [m.path_info for m in metrics] + list(path_infos)
 
 
 def _extract_metrics(metrics, path, rev):

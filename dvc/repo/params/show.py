@@ -4,6 +4,7 @@ from dvc.dependency.param import ParamsDependency
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 from dvc.repo import locked
+from dvc.repo.collect import collect
 from dvc.utils.serialize import LOADERS, ParseError
 
 logger = logging.getLogger(__name__)
@@ -13,15 +14,14 @@ class NoParamsError(DvcException):
     pass
 
 
-def _collect_configs(repo):
-    configs = set()
-    configs.add(PathInfo(repo.root_dir) / ParamsDependency.DEFAULT_PARAMS_FILE)
-    for stage in repo.stages:
-        for dep in stage.deps:
-            if not isinstance(dep, ParamsDependency):
-                continue
+def _is_params(dep):
+    return isinstance(dep, ParamsDependency)
 
-            configs.add(dep.path_info)
+
+def _collect_configs(repo, rev):
+    params, _ = collect(repo, deps=True, output_filter=_is_params, rev=rev)
+    configs = {p.path_info for p in params}
+    configs.add(PathInfo(repo.root_dir) / ParamsDependency.DEFAULT_PARAMS_FILE)
     return list(configs)
 
 
@@ -49,7 +49,7 @@ def show(repo, revs=None):
     res = {}
 
     for branch in repo.brancher(revs=revs):
-        configs = _collect_configs(repo)
+        configs = _collect_configs(repo, branch)
         params = _read_params(repo, configs, branch)
 
         if params:
