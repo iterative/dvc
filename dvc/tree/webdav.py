@@ -42,6 +42,8 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
     # Chunk size for buffered upload/download with progress bar
     CHUNK_SIZE = 2 ** 16
 
+    PARAM_CHECKSUM = "etag"
+
     # Constructor
     def __init__(self, repo, config):
         # Call BaseTree constructor
