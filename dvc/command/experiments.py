@@ -3,7 +3,7 @@ import io
 import logging
 import os
 from collections import OrderedDict
-from datetime import date
+from datetime import date, datetime
 from itertools import groupby
 from typing import Iterable, Optional
 
@@ -255,6 +255,12 @@ def _show_experiments(all_experiments, console, **kwargs):
     console.print(table)
 
 
+def _format_json(item):
+    if isinstance(item, (date, datetime)):
+        return item.isoformat()
+    raise TypeError
+
+
 class CmdExperimentsShow(CmdBase):
     def run(self):
         from rich.console import Console
@@ -271,6 +277,12 @@ class CmdExperimentsShow(CmdBase):
                 all_commits=self.args.all_commits,
                 sha_only=self.args.sha,
             )
+
+            if self.args.show_json:
+                import json
+
+                logger.info(json.dumps(all_experiments, default=_format_json))
+                return 0
 
             if self.args.no_pager:
                 console = Console()
@@ -529,6 +541,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Always show git commit SHAs instead of branch/tag names.",
+    )
+    experiments_show_parser.add_argument(
+        "--show-json",
+        action="store_true",
+        default=False,
+        help="Print output in JSON format instead of a human-readable table.",
     )
     experiments_show_parser.set_defaults(func=CmdExperimentsShow)
 
