@@ -11,6 +11,8 @@ from dvc.dependency.local import LocalDependency
 from dvc.dependency.param import ParamsDependency
 from dvc.dependency.s3 import S3Dependency
 from dvc.dependency.ssh import SSHDependency
+from dvc.dependency.webdav import WebDAVDependency
+from dvc.dependency.webdavs import WebDAVSDependency
 from dvc.output.base import BaseOutput
 from dvc.scheme import Schemes
 
@@ -25,6 +27,8 @@ DEPS = [
     HTTPSDependency,
     S3Dependency,
     SSHDependency,
+    WebDAVDependency,
+    WebDAVSDependency
     # NOTE: LocalDependency is the default choice
 ]
 
@@ -37,6 +41,8 @@ DEP_MAP = {
     Schemes.HDFS: HDFSDependency,
     Schemes.HTTP: HTTPDependency,
     Schemes.HTTPS: HTTPSDependency,
+    Schemes.WEBDAV: WebDAVDependency,
+    Schemes.WEBDAVS: WebDAVSDependency,
 }
 
 
