@@ -155,15 +155,15 @@ class CmdDiff(CmdBase):
         return 0
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     DIFF_DESCRIPTION = (
         "Show added, modified, or deleted data between commits in the DVC"
         " repository, or between a commit and the workspace."
     )
     diff_parser = subparsers.add_parser(
         "diff",
-        parents=[parent_parser],
         description=append_doc_link(DIFF_DESCRIPTION, "diff"),
+        add_help=False,
         help=DIFF_DESCRIPTION,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -202,3 +202,4 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
     )
     diff_parser.set_defaults(func=CmdDiff)
+    add_common_args(diff_parser)

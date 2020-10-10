@@ -50,12 +50,12 @@ class CmdGet(CmdBaseNoRepo):
             return 1
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     GET_HELP = "Download file or directory tracked by DVC or by Git."
     get_parser = subparsers.add_parser(
         "get",
-        parents=[parent_parser],
         description=append_doc_link(GET_HELP, "get"),
+        add_help=False,
         help=GET_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -85,3 +85,4 @@ def add_parser(subparsers, parent_parser):
         "downloaded from, and exit.",
     )
     get_parser.set_defaults(func=CmdGet)
+    add_common_args(get_parser)

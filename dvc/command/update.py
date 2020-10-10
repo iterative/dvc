@@ -23,12 +23,12 @@ class CmdUpdate(CmdBase):
         return ret
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     UPDATE_HELP = "Update data artifacts imported from other DVC repositories."
     update_parser = subparsers.add_parser(
         "update",
-        parents=[parent_parser],
         description=append_doc_link(UPDATE_HELP, "update"),
+        add_help=False,
         help=UPDATE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -49,3 +49,4 @@ def add_parser(subparsers, parent_parser):
         help="Update all stages in the specified directory.",
     )
     update_parser.set_defaults(func=CmdUpdate)
+    add_common_args(update_parser)

@@ -142,17 +142,18 @@ class CmdRemoteRename(CmdRemote):
         return 0
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     from dvc.command.config import parent_config_parser
 
     REMOTE_HELP = "Set up and manage data remotes."
     remote_parser = subparsers.add_parser(
         "remote",
-        parents=[parent_parser],
         description=append_doc_link(REMOTE_HELP, "remote"),
+        add_help=False,
         help=REMOTE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    add_common_args(remote_parser)
 
     remote_subparsers = remote_parser.add_subparsers(
         dest="cmd",
@@ -164,8 +165,9 @@ def add_parser(subparsers, parent_parser):
     REMOTE_ADD_HELP = "Add a new data remote."
     remote_add_parser = remote_subparsers.add_parser(
         "add",
-        parents=[parent_config_parser, parent_parser],
+        parents=[parent_config_parser],
         description=append_doc_link(REMOTE_ADD_HELP, "remote/add"),
+        add_help=False,
         help=REMOTE_ADD_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -191,12 +193,14 @@ def add_parser(subparsers, parent_parser):
         help="Force overwriting existing configs",
     )
     remote_add_parser.set_defaults(func=CmdRemoteAdd)
+    add_common_args(remote_add_parser)
 
     REMOTE_DEFAULT_HELP = "Set/unset the default data remote."
     remote_default_parser = remote_subparsers.add_parser(
         "default",
-        parents=[parent_config_parser, parent_parser],
+        parents=[parent_config_parser],
         description=append_doc_link(REMOTE_DEFAULT_HELP, "remote/default"),
+        add_help=False,
         help=REMOTE_DEFAULT_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -211,12 +215,14 @@ def add_parser(subparsers, parent_parser):
         help="Unset default remote.",
     )
     remote_default_parser.set_defaults(func=CmdRemoteDefault)
+    add_common_args(remote_default_parser)
 
     REMOTE_MODIFY_HELP = "Modify the configuration of a data remote."
     remote_modify_parser = remote_subparsers.add_parser(
         "modify",
-        parents=[parent_config_parser, parent_parser],
+        parents=[parent_config_parser],
         description=append_doc_link(REMOTE_MODIFY_HELP, "remote/modify"),
+        add_help=False,
         help=REMOTE_MODIFY_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -235,22 +241,26 @@ def add_parser(subparsers, parent_parser):
         help="Unset option.",
     )
     remote_modify_parser.set_defaults(func=CmdRemoteModify)
+    add_common_args(remote_modify_parser)
 
     REMOTE_LIST_HELP = "List all available data remotes."
     remote_list_parser = remote_subparsers.add_parser(
         "list",
-        parents=[parent_config_parser, parent_parser],
+        parents=[parent_config_parser],
         description=append_doc_link(REMOTE_LIST_HELP, "remote/list"),
+        add_help=False,
         help=REMOTE_LIST_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     remote_list_parser.set_defaults(func=CmdRemoteList)
+    add_common_args(remote_list_parser)
 
     REMOTE_REMOVE_HELP = "Remove a data remote."
     remote_remove_parser = remote_subparsers.add_parser(
         "remove",
-        parents=[parent_config_parser, parent_parser],
+        parents=[parent_config_parser],
         description=append_doc_link(REMOTE_REMOVE_HELP, "remote/remove"),
+        add_help=False,
         help=REMOTE_REMOVE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -258,14 +268,18 @@ def add_parser(subparsers, parent_parser):
         "name", help="Name of the remote to remove."
     )
     remote_remove_parser.set_defaults(func=CmdRemoteRemove)
+    add_common_args(remote_remove_parser)
+
     REMOTE_RENAME_HELP = "Rename a DVC remote"
     remote_rename_parser = remote_subparsers.add_parser(
         "rename",
-        parents=[parent_config_parser, parent_parser],
+        parents=[parent_config_parser],
         description=append_doc_link(REMOTE_RENAME_HELP, "remote/rename"),
+        add_help=False,
         help=REMOTE_RENAME_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     remote_rename_parser.add_argument("name", help="Remote to be renamed")
     remote_rename_parser.add_argument("new", help="New name of the remote")
     remote_rename_parser.set_defaults(func=CmdRemoteRename)
+    add_common_args(remote_rename_parser)

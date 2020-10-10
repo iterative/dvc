@@ -79,15 +79,15 @@ class CmdCheckIgnore(CmdBase):
         return self._normal_mode()
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     ADD_HELP = (
         "Check whether files or directories are excluded due to `.dvcignore`."
     )
 
     parser = subparsers.add_parser(
         "check-ignore",
-        parents=[parent_parser],
         description=append_doc_link(ADD_HELP, "check-ignore"),
+        add_help=False,
         help=ADD_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -124,3 +124,4 @@ def add_parser(subparsers, parent_parser):
         "targets", nargs="*", help="File or directory paths to check",
     ).complete = completion.FILE
     parser.set_defaults(func=CmdCheckIgnore)
+    add_common_args(parser)

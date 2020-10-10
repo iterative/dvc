@@ -59,7 +59,7 @@ class CmdGC(CmdBase):
         return 0
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     GC_HELP = "Garbage collect unused objects from cache or remote storage."
     GC_DESCRIPTION = (
         "Removes all files in the cache or a remote which are not in\n"
@@ -67,8 +67,8 @@ def add_parser(subparsers, parent_parser):
     )
     gc_parser = subparsers.add_parser(
         "gc",
-        parents=[parent_parser],
         description=append_doc_link(GC_DESCRIPTION, "gc"),
+        add_help=False,
         help=GC_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -142,3 +142,4 @@ def add_parser(subparsers, parent_parser):
         metavar="<paths>",
     )
     gc_parser.set_defaults(func=CmdGC)
+    add_common_args(gc_parser)

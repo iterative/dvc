@@ -21,19 +21,20 @@ class CmdGetUrl(CmdBaseNoRepo):
             return 1
 
 
-def add_parser(subparsers, parent_parser):
-    GET_HELP = "Download or copy files from URL."
-    get_parser = subparsers.add_parser(
+def add_parser(subparsers, add_common_args):
+    HELP = "Download or copy files from URL."
+    parser = subparsers.add_parser(
         "get-url",
-        parents=[parent_parser],
-        description=append_doc_link(GET_HELP, "get-url"),
-        help=GET_HELP,
+        description=append_doc_link(HELP, "get-url"),
+        add_help=False,
+        help=HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    get_parser.add_argument(
+    parser.add_argument(
         "url", help="See `dvc import-url -h` for full list of supported URLs."
     )
-    get_parser.add_argument(
+    parser.add_argument(
         "out", nargs="?", help="Destination path to put data to.",
     ).complete = completion.DIR
-    get_parser.set_defaults(func=CmdGetUrl)
+    parser.set_defaults(func=CmdGetUrl)
+    add_common_args(parser)

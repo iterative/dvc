@@ -25,7 +25,7 @@ class CmdInit(CmdBaseNoRepo):
         return 0
 
 
-def add_parser(subparsers, *args):
+def add_parser(subparsers, add_common_args):
     """Setup parser for `dvc init`."""
     INIT_HELP = "Initialize DVC in the current directory."
     INIT_DESCRIPTION = (
@@ -67,4 +67,4 @@ def add_parser(subparsers, *args):
         ),
     )
     init_parser.set_defaults(func=CmdInit)
-    return init_parser
+    add_common_args(init_parser)

@@ -28,7 +28,7 @@ class CmdImport(CmdBase):
         return 0
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     IMPORT_HELP = (
         "Download file or directory tracked by DVC or by Git "
         "into the workspace, and track it."
@@ -36,8 +36,8 @@ def add_parser(subparsers, parent_parser):
 
     import_parser = subparsers.add_parser(
         "import",
-        parents=[parent_parser],
         description=append_doc_link(IMPORT_HELP, "import"),
+        add_help=False,
         help=IMPORT_HELP,
         formatter_class=argparse.RawTextHelpFormatter,
     )
@@ -66,3 +66,4 @@ def add_parser(subparsers, parent_parser):
         metavar="<filename>",
     )
     import_parser.set_defaults(func=CmdImport)
+    add_common_args(import_parser)

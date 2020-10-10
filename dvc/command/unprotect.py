@@ -20,15 +20,15 @@ class CmdUnprotect(CmdBase):
         return 0
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     UNPROTECT_HELP = (
         "Unprotect tracked files or directories (when hardlinks or symlinks "
         "have been enabled with `dvc config cache.type`)"
     )
     unprotect_parser = subparsers.add_parser(
         "unprotect",
-        parents=[parent_parser],
         description=append_doc_link(UNPROTECT_HELP, "unprotect"),
+        add_help=False,
         help=UNPROTECT_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -36,3 +36,4 @@ def add_parser(subparsers, parent_parser):
         "targets", nargs="+", help="Data files/directories to unprotect.",
     ).complete = completion.FILE
     unprotect_parser.set_defaults(func=CmdUnprotect)
+    add_common_args(unprotect_parser)

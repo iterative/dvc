@@ -28,13 +28,13 @@ class CmdAdd(CmdBase):
         return 0
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     ADD_HELP = "Track data files or directories with DVC."
 
     parser = subparsers.add_parser(
         "add",
-        parents=[parent_parser],
         description=append_doc_link(ADD_HELP, "add"),
+        add_help=False,
         help=ADD_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -66,3 +66,4 @@ def add_parser(subparsers, parent_parser):
         "targets", nargs="+", help="Input files/directories to add.",
     ).complete = completion.FILE
     parser.set_defaults(func=CmdAdd)
+    add_common_args(parser)

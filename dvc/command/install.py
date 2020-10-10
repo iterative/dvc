@@ -17,12 +17,12 @@ class CmdInstall(CmdBase):
         return 0
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     INSTALL_HELP = "Install DVC git hooks into the repository."
     install_parser = subparsers.add_parser(
         "install",
-        parents=[parent_parser],
         description=append_doc_link(INSTALL_HELP, "install"),
+        add_help=False,
         help=INSTALL_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -34,3 +34,4 @@ def add_parser(subparsers, parent_parser):
         "(https://pre-commit.com) if it is installed.",
     )
     install_parser.set_defaults(func=CmdInstall)
+    add_common_args(install_parser)

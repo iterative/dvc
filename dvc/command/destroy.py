@@ -31,13 +31,13 @@ class CmdDestroy(CmdBase):
         return 0
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     DESTROY_HELP = "Remove DVC-files, local DVC config and data cache."
 
     destroy_parser = subparsers.add_parser(
         "destroy",
-        parents=[parent_parser],
         description=append_doc_link(DESTROY_HELP, "destroy"),
+        add_help=False,
         help=DESTROY_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -49,3 +49,4 @@ def add_parser(subparsers, parent_parser):
         help="Force destruction.",
     )
     destroy_parser.set_defaults(func=CmdDestroy)
+    add_common_args(destroy_parser)

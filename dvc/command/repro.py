@@ -172,16 +172,16 @@ def add_arguments(repro_parser):
     )
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     REPRO_HELP = (
         "Reproduce complete or partial pipelines by executing their stages."
     )
     repro_parser = subparsers.add_parser(
         "repro",
-        parents=[parent_parser],
         description=append_doc_link(REPRO_HELP, "repro"),
+        add_help=False,
         help=REPRO_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_arguments(repro_parser)
-    repro_parser.set_defaults(func=CmdRepro)
+    add_common_args(repro_parser, func=CmdRepro)

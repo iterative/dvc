@@ -15,13 +15,14 @@ class CmdRoot(CmdBaseNoRepo):
         return 0
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     ROOT_HELP = "Return the relative path to the root of the DVC project."
     root_parser = subparsers.add_parser(
         "root",
-        parents=[parent_parser],
         description=append_doc_link(ROOT_HELP, "root"),
+        add_help=False,
         help=ROOT_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     root_parser.set_defaults(func=CmdRoot)
+    add_common_args(root_parser)

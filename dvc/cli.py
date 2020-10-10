@@ -129,19 +129,7 @@ class VersionAction(argparse.Action):  # pragma: no cover
         sys.exit(0)
 
 
-def get_parent_parser():
-    """Create instances of a parser containing common arguments shared among
-    all the commands.
-
-    When overwriting `-q` or `-v`, you need to instantiate a new object
-    in order to prevent some weird behavior.
-    """
-    parent_parser = argparse.ArgumentParser(add_help=False)
-    add_common_args(parent_parser)
-    return parent_parser
-
-
-def add_common_args(parser, add_help=False):
+def add_common_args(parser):
     """Add common arguments shared among all the commands."""
     parser.add_argument(
         "--cprofile",
@@ -159,15 +147,15 @@ def add_common_args(parser, add_help=False):
         "-v", "--verbose", action="count", default=0, help="Be verbose."
     )
 
-    if add_help:
-        # NOTE: We are doing this to capitalize help message.
-        parser.add_argument(
-            "-h",
-            "--help",
-            action="help",
-            default=argparse.SUPPRESS,
-            help="Show this help message and exit.",
-        )
+    # NOTE: We are doing this to capitalize help message and move it to the
+    # bottom of all agruments.
+    parser.add_argument(
+        "-h",
+        "--help",
+        action="help",
+        default=argparse.SUPPRESS,
+        help="Show this help message and exit.",
+    )
 
 
 def get_main_parser():
@@ -198,7 +186,7 @@ def get_main_parser():
         type=str,
     )
 
-    add_common_args(parser, add_help=True)
+    add_common_args(parser)
 
     # Sub commands
     subparsers = parser.add_subparsers(
@@ -210,12 +198,8 @@ def get_main_parser():
 
     fix_subparsers(subparsers)
 
-    parent_parser = get_parent_parser()
     for cmd in COMMANDS:
-        subparser = cmd.add_parser(subparsers, parent_parser)
-        if isinstance(subparser, argparse.ArgumentParser):
-            add_common_args(subparser, add_help=True)
-
+        cmd.add_parser(subparsers, add_common_args)
     return parser
 
 

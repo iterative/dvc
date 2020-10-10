@@ -12,18 +12,19 @@ class CmdCacheDir(CmdConfig):
         return 0
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     from dvc.command.config import parent_config_parser
 
     CACHE_HELP = "Manage cache settings."
 
     cache_parser = subparsers.add_parser(
         "cache",
-        parents=[parent_parser],
         description=append_doc_link(CACHE_HELP, "cache"),
+        add_help=False,
         help=CACHE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    add_common_args(cache_parser)
 
     cache_subparsers = cache_parser.add_subparsers(
         dest="cmd",
@@ -39,8 +40,9 @@ def add_parser(subparsers, parent_parser):
 
     cache_dir_parser = cache_subparsers.add_parser(
         "dir",
-        parents=[parent_parser, parent_cache_config_parser],
+        parents=[parent_cache_config_parser],
         description=append_doc_link(CACHE_HELP, "cache/dir"),
+        add_help=False,
         help=CACHE_DIR_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -58,3 +60,4 @@ def add_parser(subparsers, parent_parser):
         "config file location.",
     ).complete = completion.DIR
     cache_dir_parser.set_defaults(func=CmdCacheDir)
+    add_common_args(cache_dir_parser)

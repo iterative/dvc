@@ -141,16 +141,17 @@ class CmdMetricsDiff(CmdMetricsBase):
         return 0
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     METRICS_HELP = "Commands to display and compare metrics."
 
     metrics_parser = subparsers.add_parser(
         "metrics",
-        parents=[parent_parser],
         description=append_doc_link(METRICS_HELP, "metrics"),
+        add_help=False,
         help=METRICS_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    add_common_args(metrics_parser)
 
     metrics_subparsers = metrics_parser.add_subparsers(
         dest="cmd",
@@ -162,8 +163,8 @@ def add_parser(subparsers, parent_parser):
     METRICS_SHOW_HELP = "Print metrics, with optional formatting."
     metrics_show_parser = metrics_subparsers.add_parser(
         "show",
-        parents=[parent_parser],
         description=append_doc_link(METRICS_SHOW_HELP, "metrics/show"),
+        add_help=False,
         help=METRICS_SHOW_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -213,6 +214,7 @@ def add_parser(subparsers, parent_parser):
         ),
     )
     metrics_show_parser.set_defaults(func=CmdMetricsShow)
+    add_common_args(metrics_show_parser)
 
     METRICS_DIFF_HELP = (
         "Show changes in metrics between commits in the DVC repository, or "
@@ -220,8 +222,8 @@ def add_parser(subparsers, parent_parser):
     )
     metrics_diff_parser = metrics_subparsers.add_parser(
         "diff",
-        parents=[parent_parser],
         description=append_doc_link(METRICS_DIFF_HELP, "metrics/diff"),
+        add_help=False,
         help=METRICS_DIFF_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -286,3 +288,4 @@ def add_parser(subparsers, parent_parser):
         metavar="<n>",
     )
     metrics_diff_parser.set_defaults(func=CmdMetricsDiff)
+    add_common_args(metrics_diff_parser)

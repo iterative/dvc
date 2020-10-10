@@ -37,13 +37,13 @@ class CmdCompletion(CmdBaseNoRepo):
         return 0
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     COMPLETION_HELP = "Generate shell tab completion."
     COMPLETION_DESCRIPTION = "Prints out shell tab completion scripts."
     completion_parser = subparsers.add_parser(
         "completion",
-        parents=[parent_parser],
         description=append_doc_link(COMPLETION_DESCRIPTION, "completion"),
+        add_help=False,
         help=COMPLETION_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -55,3 +55,4 @@ def add_parser(subparsers, parent_parser):
         choices=["bash", "zsh"],
     )
     completion_parser.set_defaults(func=CmdCompletion)
+    add_common_args(completion_parser)

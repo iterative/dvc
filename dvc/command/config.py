@@ -75,13 +75,14 @@ level_group.add_argument(
 parent_config_parser.set_defaults(level="repo")
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     CONFIG_HELP = "Get or set config options."
 
     config_parser = subparsers.add_parser(
         "config",
-        parents=[parent_config_parser, parent_parser],
+        parents=[parent_config_parser],
         description=append_doc_link(CONFIG_HELP, "config"),
+        add_help=False,
         help=CONFIG_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -95,3 +96,4 @@ def add_parser(subparsers, parent_parser):
     config_parser.add_argument("name", help="Option name.")
     config_parser.add_argument("value", nargs="?", help="Option value.")
     config_parser.set_defaults(func=CmdConfig)
+    add_common_args(config_parser)

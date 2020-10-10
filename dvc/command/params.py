@@ -54,16 +54,17 @@ class CmdParamsDiff(CmdBase):
         return 0
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     PARAMS_HELP = "Commands to display params."
 
     params_parser = subparsers.add_parser(
         "params",
-        parents=[parent_parser],
         description=append_doc_link(PARAMS_HELP, "params"),
+        add_help=False,
         help=PARAMS_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    add_common_args(params_parser)
 
     params_subparsers = params_parser.add_subparsers(
         dest="cmd",
@@ -78,8 +79,8 @@ def add_parser(subparsers, parent_parser):
     )
     params_diff_parser = params_subparsers.add_parser(
         "diff",
-        parents=[parent_parser],
         description=append_doc_link(PARAMS_DIFF_HELP, "params/diff"),
+        add_help=False,
         help=PARAMS_DIFF_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -116,3 +117,4 @@ def add_parser(subparsers, parent_parser):
         help="Don't show params path.",
     )
     params_diff_parser.set_defaults(func=CmdParamsDiff)
+    add_common_args(params_diff_parser)

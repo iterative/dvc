@@ -84,12 +84,12 @@ class CmdDAG(CmdBase):
             return 1
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     DAG_HELP = "Visualize DVC project DAG."
     dag_parser = subparsers.add_parser(
         "dag",
-        parents=[parent_parser],
         description=append_doc_link(DAG_HELP, "dag"),
+        add_help=False,
         help=DAG_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -115,3 +115,4 @@ def add_parser(subparsers, parent_parser):
         "Finds all stages in the workspace by default.",
     )
     dag_parser.set_defaults(func=CmdDAG)
+    add_common_args(dag_parser)

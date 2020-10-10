@@ -30,12 +30,12 @@ class CmdUnfreeze(CmdFreezeBase):
         return self._run(self.repo.unfreeze, "unfreeze")
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     FREEZE_HELP = "Freeze stages or .dvc files."
     freeze_parser = subparsers.add_parser(
         "freeze",
-        parents=[parent_parser],
         description=append_doc_link(FREEZE_HELP, "freeze"),
+        add_help=False,
         help=FREEZE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -43,12 +43,13 @@ def add_parser(subparsers, parent_parser):
         "targets", nargs="+", help="Stages or .dvc files to freeze",
     ).complete = completion.DVC_FILE
     freeze_parser.set_defaults(func=CmdFreeze)
+    add_common_args(freeze_parser)
 
     UNFREEZE_HELP = "Unfreeze stages or .dvc files."
     unfreeze_parser = subparsers.add_parser(
         "unfreeze",
-        parents=[parent_parser],
         description=append_doc_link(UNFREEZE_HELP, "unfreeze"),
+        add_help=False,
         help=UNFREEZE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -56,3 +57,4 @@ def add_parser(subparsers, parent_parser):
         "targets", nargs="+", help="Stages or .dvc files to unfreeze",
     ).complete = completion.DVC_FILE
     unfreeze_parser.set_defaults(func=CmdUnfreeze)
+    add_common_args(unfreeze_parser)

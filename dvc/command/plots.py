@@ -104,7 +104,7 @@ class CmdPlotsModify(CmdPlots):
         return 0
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     PLOTS_HELP = (
         "Commands to visualize and compare plot metrics in structured files "
         "(JSON, YAML, CSV, TSV)"
@@ -112,11 +112,12 @@ def add_parser(subparsers, parent_parser):
 
     plots_parser = subparsers.add_parser(
         "plots",
-        parents=[parent_parser],
         description=append_doc_link(PLOTS_HELP, "plots"),
+        add_help=False,
         help=PLOTS_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    add_common_args(plots_parser)
     plots_subparsers = plots_parser.add_subparsers(
         dest="cmd",
         help="Use `dvc plots CMD --help` to display command-specific help.",
@@ -127,8 +128,8 @@ def add_parser(subparsers, parent_parser):
     SHOW_HELP = "Generate plots from metric files."
     plots_show_parser = plots_subparsers.add_parser(
         "show",
-        parents=[parent_parser],
         description=append_doc_link(SHOW_HELP, "plots/show"),
+        add_help=False,
         help=SHOW_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -142,6 +143,7 @@ def add_parser(subparsers, parent_parser):
     _add_props_arguments(plots_show_parser)
     _add_output_arguments(plots_show_parser)
     plots_show_parser.set_defaults(func=CmdPlotsShow)
+    add_common_args(plots_show_parser)
 
     PLOTS_DIFF_HELP = (
         "Show multiple versions of plot metrics "
@@ -149,8 +151,8 @@ def add_parser(subparsers, parent_parser):
     )
     plots_diff_parser = plots_subparsers.add_parser(
         "diff",
-        parents=[parent_parser],
         description=append_doc_link(PLOTS_DIFF_HELP, "plots/diff"),
+        add_help=False,
         help=PLOTS_DIFF_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -175,12 +177,13 @@ def add_parser(subparsers, parent_parser):
     _add_props_arguments(plots_diff_parser)
     _add_output_arguments(plots_diff_parser)
     plots_diff_parser.set_defaults(func=CmdPlotsDiff)
+    add_common_args(plots_diff_parser)
 
     PLOTS_MODIFY_HELP = "Modify display properties of plot metric files."
     plots_modify_parser = plots_subparsers.add_parser(
         "modify",
-        parents=[parent_parser],
         description=append_doc_link(PLOTS_MODIFY_HELP, "plots/modify"),
+        add_help=False,
         help=PLOTS_MODIFY_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -195,6 +198,7 @@ def add_parser(subparsers, parent_parser):
         help="Unset one or more display properties.",
     )
     plots_modify_parser.set_defaults(func=CmdPlotsModify)
+    add_common_args(plots_modify_parser)
 
 
 def _add_props_arguments(parser):

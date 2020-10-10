@@ -84,12 +84,12 @@ class CmdRun(CmdBase):
         return f'"{argument}"'
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     RUN_HELP = "Generate a stage file from a command and execute the command."
     run_parser = subparsers.add_parser(
         "run",
-        parents=[parent_parser],
         description=append_doc_link(RUN_HELP, "run"),
+        add_help=False,
         help=RUN_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -234,3 +234,4 @@ def add_parser(subparsers, parent_parser):
         "command", nargs=argparse.REMAINDER, help="Command to execute."
     )
     run_parser.set_defaults(func=CmdRun)
+    add_common_args(run_parser)

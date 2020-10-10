@@ -86,14 +86,11 @@ class CmdDataFetch(CmdDataBase):
         return 0
 
 
-def shared_parent_parser():
-    from dvc.cli import get_parent_parser
+def add_shared_args(parser):
+    from dvc.cli import add_common_args
 
     # Parent parser used in pull/push/status
-    parent_parser = argparse.ArgumentParser(
-        add_help=False, parents=[get_parent_parser()]
-    )
-    parent_parser.add_argument(
+    parser.add_argument(
         "-j",
         "--jobs",
         type=int,
@@ -104,7 +101,7 @@ def shared_parent_parser():
         ),
         metavar="<number>",
     )
-    parent_parser.add_argument(
+    parser.add_argument(
         "targets",
         nargs="*",
         help=(
@@ -113,10 +110,10 @@ def shared_parent_parser():
         ),
     ).complete = completion.DVC_FILE
 
-    return parent_parser
+    add_common_args(parser)
 
 
-def add_parser(subparsers, _parent_parser):
+def add_parser(subparsers, _add_common_args):
     from dvc.command.status import CmdDataStatus
 
     # Pull
@@ -124,11 +121,12 @@ def add_parser(subparsers, _parent_parser):
 
     pull_parser = subparsers.add_parser(
         "pull",
-        parents=[shared_parent_parser()],
         description=append_doc_link(PULL_HELP, "pull"),
+        add_help=False,
         help=PULL_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    add_shared_args(pull_parser)
     pull_parser.add_argument(
         "-r", "--remote", help="Remote storage to pull from", metavar="<name>",
     )
@@ -186,11 +184,12 @@ def add_parser(subparsers, _parent_parser):
 
     push_parser = subparsers.add_parser(
         "push",
-        parents=[shared_parent_parser()],
         description=append_doc_link(PUSH_HELP, "push"),
+        add_help=False,
         help=PUSH_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    add_shared_args(push_parser)
     push_parser.add_argument(
         "-r", "--remote", help="Remote storage to push to", metavar="<name>",
     )
@@ -244,11 +243,12 @@ def add_parser(subparsers, _parent_parser):
 
     fetch_parser = subparsers.add_parser(
         "fetch",
-        parents=[shared_parent_parser()],
         description=append_doc_link(FETCH_HELP, "fetch"),
+        add_help=False,
         help=FETCH_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    add_shared_args(fetch_parser)
     fetch_parser.add_argument(
         "-r",
         "--remote",
@@ -304,12 +304,13 @@ def add_parser(subparsers, _parent_parser):
 
     status_parser = subparsers.add_parser(
         "status",
-        parents=[shared_parent_parser()],
         description=append_doc_link(STATUS_HELP, "status"),
+        add_help=False,
         help=STATUS_HELP,
         conflict_handler="resolve",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    add_shared_args(status_parser)
     status_parser.add_argument(
         "-q",
         "--quiet",

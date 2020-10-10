@@ -438,16 +438,17 @@ class CmdExperimentsRun(CmdRepro):
         return ret
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     EXPERIMENTS_HELP = "Commands to display and compare experiments."
 
     experiments_parser = subparsers.add_parser(
         "experiments",
-        parents=[parent_parser],
         aliases=["exp"],
         description=append_doc_link(EXPERIMENTS_HELP, "experiments"),
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        add_help=False,
     )
+    add_common_args(experiments_parser)
 
     experiments_subparsers = experiments_parser.add_subparsers(
         dest="cmd",
@@ -460,8 +461,8 @@ def add_parser(subparsers, parent_parser):
     EXPERIMENTS_SHOW_HELP = "Print experiments."
     experiments_show_parser = experiments_subparsers.add_parser(
         "show",
-        parents=[parent_parser],
         description=append_doc_link(EXPERIMENTS_SHOW_HELP, "experiments/show"),
+        add_help=False,
         help=EXPERIMENTS_SHOW_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -549,14 +550,15 @@ def add_parser(subparsers, parent_parser):
         help="Print output in JSON format instead of a human-readable table.",
     )
     experiments_show_parser.set_defaults(func=CmdExperimentsShow)
+    add_common_args(experiments_show_parser)
 
     EXPERIMENTS_CHECKOUT_HELP = "Checkout experiments."
     experiments_checkout_parser = experiments_subparsers.add_parser(
         "checkout",
-        parents=[parent_parser],
         description=append_doc_link(
             EXPERIMENTS_CHECKOUT_HELP, "experiments/checkout"
         ),
+        add_help=False,
         help=EXPERIMENTS_CHECKOUT_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -564,14 +566,15 @@ def add_parser(subparsers, parent_parser):
         "experiment", help="Checkout this experiment.",
     )
     experiments_checkout_parser.set_defaults(func=CmdExperimentsCheckout)
+    add_common_args(experiments_checkout_parser)
 
     EXPERIMENTS_DIFF_HELP = (
         "Show changes between experiments in the DVC repository."
     )
     experiments_diff_parser = experiments_subparsers.add_parser(
         "diff",
-        parents=[parent_parser],
         description=append_doc_link(EXPERIMENTS_DIFF_HELP, "experiments/diff"),
+        add_help=False,
         help=EXPERIMENTS_DIFF_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -623,14 +626,15 @@ def add_parser(subparsers, parent_parser):
         metavar="<n>",
     )
     experiments_diff_parser.set_defaults(func=CmdExperimentsDiff)
+    add_common_args(experiments_diff_parser)
 
     EXPERIMENTS_RUN_HELP = (
         "Reproduce complete or partial experiment pipelines."
     )
     experiments_run_parser = experiments_subparsers.add_parser(
         "run",
-        parents=[parent_parser],
         description=append_doc_link(EXPERIMENTS_RUN_HELP, "experiments/run"),
+        add_help=False,
         help=EXPERIMENTS_RUN_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -679,3 +683,4 @@ def add_parser(subparsers, parent_parser):
         ),
     )
     experiments_run_parser.set_defaults(func=CmdExperimentsRun)
+    add_common_args(experiments_run_parser)

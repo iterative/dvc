@@ -28,15 +28,15 @@ class CmdImportUrl(CmdBase):
         return 0
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     IMPORT_HELP = (
         "Download or copy file from URL and take it under DVC control."
     )
 
     import_parser = subparsers.add_parser(
         "import-url",
-        parents=[parent_parser],
         description=append_doc_link(IMPORT_HELP, "import-url"),
+        add_help=False,
         help=IMPORT_HELP,
         formatter_class=argparse.RawTextHelpFormatter,
     )
@@ -68,3 +68,4 @@ def add_parser(subparsers, parent_parser):
         help="Only create DVC-file without actually downloading it.",
     )
     import_parser.set_defaults(func=CmdImportUrl)
+    add_common_args(import_parser)

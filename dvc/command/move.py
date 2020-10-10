@@ -21,7 +21,7 @@ class CmdMove(CmdBase):
         return 0
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     MOVE_HELP = "Rename or move a DVC controlled data file or a directory."
     MOVE_DESCRIPTION = (
         "Rename or move a DVC controlled data file or a directory.\n"
@@ -31,8 +31,8 @@ def add_parser(subparsers, parent_parser):
 
     move_parser = subparsers.add_parser(
         "move",
-        parents=[parent_parser],
         description=append_doc_link(MOVE_DESCRIPTION, "move"),
+        add_help=False,
         help=MOVE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -43,3 +43,4 @@ def add_parser(subparsers, parent_parser):
         "dst", help="Destination path.",
     ).complete = completion.FILE
     move_parser.set_defaults(func=CmdMove)
+    add_common_args(move_parser)

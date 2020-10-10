@@ -34,14 +34,12 @@ class CmdDaemonAnalytics(CmdDaemonBase):
         return 0
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     DAEMON_HELP = "Service daemon."
     daemon_parser = subparsers.add_parser(
-        "daemon",
-        parents=[parent_parser],
-        description=DAEMON_HELP,
-        add_help=False,
+        "daemon", description=DAEMON_HELP, add_help=False,
     )
+    add_common_args(daemon_parser)
 
     daemon_subparsers = daemon_parser.add_subparsers(
         dest="cmd",
@@ -53,20 +51,22 @@ def add_parser(subparsers, parent_parser):
     DAEMON_UPDATER_HELP = "Fetch latest available version."
     daemon_updater_parser = daemon_subparsers.add_parser(
         "updater",
-        parents=[parent_parser],
         description=DAEMON_UPDATER_HELP,
+        add_help=False,
         help=DAEMON_UPDATER_HELP,
     )
     daemon_updater_parser.set_defaults(func=CmdDaemonUpdater)
+    add_common_args(daemon_updater_parser)
 
     DAEMON_ANALYTICS_HELP = "Send dvc usage analytics."
     daemon_analytics_parser = daemon_subparsers.add_parser(
         "analytics",
-        parents=[parent_parser],
         description=DAEMON_ANALYTICS_HELP,
+        add_help=False,
         help=DAEMON_ANALYTICS_HELP,
     )
     daemon_analytics_parser.add_argument(
         "target", help="Analytics file.",
     ).complete = completion.FILE
     daemon_analytics_parser.set_defaults(func=CmdDaemonAnalytics)
+    add_common_args(daemon_analytics_parser)

@@ -43,15 +43,15 @@ class CmdList(CmdBaseNoRepo):
             return 1
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     LIST_HELP = (
         "List repository contents, including files"
         " and directories tracked by DVC and by Git."
     )
     list_parser = subparsers.add_parser(
         "list",
-        parents=[parent_parser],
         description=append_doc_link(LIST_HELP, "list"),
+        add_help=False,
         help=LIST_HELP,
         formatter_class=argparse.RawTextHelpFormatter,
     )
@@ -77,3 +77,4 @@ def add_parser(subparsers, parent_parser):
         help="Path to directory within the repository to list outputs for",
     ).complete = completion.DIR
     list_parser.set_defaults(func=CmdList)
+    add_common_args(list_parser)

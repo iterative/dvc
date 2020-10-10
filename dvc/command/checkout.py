@@ -66,13 +66,13 @@ class CmdCheckout(CmdBase):
         return 0
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     CHECKOUT_HELP = "Checkout data files from cache."
 
     checkout_parser = subparsers.add_parser(
         "checkout",
-        parents=[parent_parser],
         description=append_doc_link(CHECKOUT_HELP, "checkout"),
+        add_help=False,
         help=CHECKOUT_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -118,3 +118,4 @@ def add_parser(subparsers, parent_parser):
         ),
     ).complete = completion.DVC_FILE
     checkout_parser.set_defaults(func=CmdCheckout)
+    add_common_args(checkout_parser)

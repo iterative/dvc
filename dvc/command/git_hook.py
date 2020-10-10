@@ -81,15 +81,13 @@ class CmdMergeDriver(CmdHookBase):
             dvc.close()
 
 
-def add_parser(subparsers, parent_parser):
+def add_parser(subparsers, add_common_args):
     GIT_HOOK_HELP = "Run GIT hook."
 
     git_hook_parser = subparsers.add_parser(
-        "git-hook",
-        parents=[parent_parser],
-        description=GIT_HOOK_HELP,
-        add_help=False,
+        "git-hook", description=GIT_HOOK_HELP, add_help=False,
     )
+    add_common_args(git_hook_parser)
 
     git_hook_subparsers = git_hook_parser.add_subparsers(
         dest="cmd",
@@ -101,20 +99,21 @@ def add_parser(subparsers, parent_parser):
     PRE_COMMIT_HELP = "Run pre-commit GIT hook."
     pre_commit_parser = git_hook_subparsers.add_parser(
         "pre-commit",
-        parents=[parent_parser],
         description=PRE_COMMIT_HELP,
+        add_help=False,
         help=PRE_COMMIT_HELP,
     )
     pre_commit_parser.add_argument(
         "args", nargs="*", help="Arguments passed by GIT or pre-commit tool.",
     )
     pre_commit_parser.set_defaults(func=CmdPreCommit)
+    add_common_args(pre_commit_parser)
 
     POST_CHECKOUT_HELP = "Run post-checkout GIT hook."
     post_checkout_parser = git_hook_subparsers.add_parser(
         "post-checkout",
-        parents=[parent_parser],
         description=POST_CHECKOUT_HELP,
+        add_help=False,
         help=POST_CHECKOUT_HELP,
     )
     post_checkout_parser.add_argument(
@@ -125,20 +124,21 @@ def add_parser(subparsers, parent_parser):
     PRE_PUSH_HELP = "Run pre-push GIT hook."
     pre_push_parser = git_hook_subparsers.add_parser(
         "pre-push",
-        parents=[parent_parser],
         description=PRE_PUSH_HELP,
+        add_help=False,
         help=PRE_PUSH_HELP,
     )
     pre_push_parser.add_argument(
         "args", nargs="*", help="Arguments passed by GIT or pre-commit tool.",
     )
     pre_push_parser.set_defaults(func=CmdPrePush)
+    add_common_args(pre_push_parser)
 
     MERGE_DRIVER_HELP = "Run GIT merge driver."
     merge_driver_parser = git_hook_subparsers.add_parser(
         "merge-driver",
-        parents=[parent_parser],
         description=MERGE_DRIVER_HELP,
+        add_help=False,
         help=MERGE_DRIVER_HELP,
     )
     merge_driver_parser.add_argument(
@@ -157,3 +157,4 @@ def add_parser(subparsers, parent_parser):
         help="Other branch's version of the conflicting file.",
     )
     merge_driver_parser.set_defaults(func=CmdMergeDriver)
+    add_common_args(merge_driver_parser)
