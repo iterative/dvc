@@ -66,5 +66,4 @@ def add_parser(subparsers, add_common_args):
             "parent SCM repository."
         ),
     )
-    init_parser.set_defaults(func=CmdInit)
-    add_common_args(init_parser)
+    add_common_args(init_parser, func=CmdInit)

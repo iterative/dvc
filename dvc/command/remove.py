@@ -39,5 +39,4 @@ def add_parser(subparsers, add_common_args):
     remove_parser.add_argument(
         "targets", nargs="+", help="DVC-files to remove.",
     ).complete = completion.DVC_FILE
-    remove_parser.set_defaults(func=CmdRemove)
-    add_common_args(remove_parser)
+    add_common_args(remove_parser, func=CmdRemove)

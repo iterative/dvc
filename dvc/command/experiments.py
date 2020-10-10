@@ -549,8 +549,7 @@ def add_parser(subparsers, add_common_args):
         default=False,
         help="Print output in JSON format instead of a human-readable table.",
     )
-    experiments_show_parser.set_defaults(func=CmdExperimentsShow)
-    add_common_args(experiments_show_parser)
+    add_common_args(experiments_show_parser, func=CmdExperimentsShow)
 
     EXPERIMENTS_CHECKOUT_HELP = "Checkout experiments."
     experiments_checkout_parser = experiments_subparsers.add_parser(
@@ -565,8 +564,7 @@ def add_parser(subparsers, add_common_args):
     experiments_checkout_parser.add_argument(
         "experiment", help="Checkout this experiment.",
     )
-    experiments_checkout_parser.set_defaults(func=CmdExperimentsCheckout)
-    add_common_args(experiments_checkout_parser)
+    add_common_args(experiments_checkout_parser, func=CmdExperimentsCheckout)
 
     EXPERIMENTS_DIFF_HELP = (
         "Show changes between experiments in the DVC repository."
@@ -625,8 +623,7 @@ def add_parser(subparsers, add_common_args):
         ),
         metavar="<n>",
     )
-    experiments_diff_parser.set_defaults(func=CmdExperimentsDiff)
-    add_common_args(experiments_diff_parser)
+    add_common_args(experiments_diff_parser, func=CmdExperimentsDiff)
 
     EXPERIMENTS_RUN_HELP = (
         "Reproduce complete or partial experiment pipelines."
@@ -682,5 +679,4 @@ def add_parser(subparsers, add_common_args):
             "(implies --checkpoint)."
         ),
     )
-    experiments_run_parser.set_defaults(func=CmdExperimentsRun)
-    add_common_args(experiments_run_parser)
+    add_common_args(experiments_run_parser, func=CmdExperimentsRun)

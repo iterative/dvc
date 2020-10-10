@@ -114,5 +114,4 @@ def add_parser(subparsers, add_common_args):
         help="Stage or output to show pipeline for (optional). "
         "Finds all stages in the workspace by default.",
     )
-    dag_parser.set_defaults(func=CmdDAG)
-    add_common_args(dag_parser)
+    add_common_args(dag_parser, func=CmdDAG)

@@ -116,5 +116,4 @@ def add_parser(subparsers, add_common_args):
         default=False,
         help="Don't show params path.",
     )
-    params_diff_parser.set_defaults(func=CmdParamsDiff)
-    add_common_args(params_diff_parser)
+    add_common_args(params_diff_parser, func=CmdParamsDiff)

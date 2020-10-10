@@ -233,5 +233,4 @@ def add_parser(subparsers, add_common_args):
     run_parser.add_argument(
         "command", nargs=argparse.REMAINDER, help="Command to execute."
     )
-    run_parser.set_defaults(func=CmdRun)
-    add_common_args(run_parser)
+    add_common_args(run_parser, func=CmdRun)

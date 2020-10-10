@@ -42,8 +42,7 @@ def add_parser(subparsers, add_common_args):
     freeze_parser.add_argument(
         "targets", nargs="+", help="Stages or .dvc files to freeze",
     ).complete = completion.DVC_FILE
-    freeze_parser.set_defaults(func=CmdFreeze)
-    add_common_args(freeze_parser)
+    add_common_args(freeze_parser, func=CmdFreeze)
 
     UNFREEZE_HELP = "Unfreeze stages or .dvc files."
     unfreeze_parser = subparsers.add_parser(
@@ -56,5 +55,4 @@ def add_parser(subparsers, add_common_args):
     unfreeze_parser.add_argument(
         "targets", nargs="+", help="Stages or .dvc files to unfreeze",
     ).complete = completion.DVC_FILE
-    unfreeze_parser.set_defaults(func=CmdUnfreeze)
-    add_common_args(unfreeze_parser)
+    add_common_args(unfreeze_parser, func=CmdUnfreeze)

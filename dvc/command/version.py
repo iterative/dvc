@@ -25,5 +25,4 @@ def add_parser(subparsers, add_common_args):
         help=VERSION_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    version_parser.set_defaults(func=CmdVersion)
-    add_common_args(version_parser)
+    add_common_args(version_parser, func=CmdVersion)

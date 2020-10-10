@@ -106,8 +106,7 @@ def add_parser(subparsers, add_common_args):
     pre_commit_parser.add_argument(
         "args", nargs="*", help="Arguments passed by GIT or pre-commit tool.",
     )
-    pre_commit_parser.set_defaults(func=CmdPreCommit)
-    add_common_args(pre_commit_parser)
+    add_common_args(pre_commit_parser, func=CmdPreCommit)
 
     POST_CHECKOUT_HELP = "Run post-checkout GIT hook."
     post_checkout_parser = git_hook_subparsers.add_parser(
@@ -119,7 +118,7 @@ def add_parser(subparsers, add_common_args):
     post_checkout_parser.add_argument(
         "args", nargs="*", help="Arguments passed by GIT or pre-commit tool.",
     )
-    post_checkout_parser.set_defaults(func=CmdPostCheckout)
+    add_common_args(post_checkout_parser, func=CmdPostCheckout)
 
     PRE_PUSH_HELP = "Run pre-push GIT hook."
     pre_push_parser = git_hook_subparsers.add_parser(
@@ -131,8 +130,7 @@ def add_parser(subparsers, add_common_args):
     pre_push_parser.add_argument(
         "args", nargs="*", help="Arguments passed by GIT or pre-commit tool.",
     )
-    pre_push_parser.set_defaults(func=CmdPrePush)
-    add_common_args(pre_push_parser)
+    add_common_args(pre_push_parser, func=CmdPrePush)
 
     MERGE_DRIVER_HELP = "Run GIT merge driver."
     merge_driver_parser = git_hook_subparsers.add_parser(
@@ -156,5 +154,4 @@ def add_parser(subparsers, add_common_args):
         required=True,
         help="Other branch's version of the conflicting file.",
     )
-    merge_driver_parser.set_defaults(func=CmdMergeDriver)
-    add_common_args(merge_driver_parser)
+    add_common_args(merge_driver_parser, func=CmdMergeDriver)

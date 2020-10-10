@@ -213,8 +213,7 @@ def add_parser(subparsers, add_common_args):
             "metric files."
         ),
     )
-    metrics_show_parser.set_defaults(func=CmdMetricsShow)
-    add_common_args(metrics_show_parser)
+    add_common_args(metrics_show_parser, func=CmdMetricsShow)
 
     METRICS_DIFF_HELP = (
         "Show changes in metrics between commits in the DVC repository, or "
@@ -287,5 +286,4 @@ def add_parser(subparsers, add_common_args):
         ),
         metavar="<n>",
     )
-    metrics_diff_parser.set_defaults(func=CmdMetricsDiff)
-    add_common_args(metrics_diff_parser)
+    add_common_args(metrics_diff_parser, func=CmdMetricsDiff)

@@ -48,5 +48,4 @@ def add_parser(subparsers, add_common_args):
         default=False,
         help="Update all stages in the specified directory.",
     )
-    update_parser.set_defaults(func=CmdUpdate)
-    add_common_args(update_parser)
+    add_common_args(update_parser, func=CmdUpdate)

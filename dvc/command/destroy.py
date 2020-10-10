@@ -48,5 +48,4 @@ def add_parser(subparsers, add_common_args):
         default=False,
         help="Force destruction.",
     )
-    destroy_parser.set_defaults(func=CmdDestroy)
-    add_common_args(destroy_parser)
+    add_common_args(destroy_parser, func=CmdDestroy)

@@ -68,5 +68,4 @@ def add_parser(subparsers, add_common_args):
         help="DVC-files to commit. Optional. "
         "(Finds all DVC-files in the workspace by default.)",
     ).complete = completion.DVC_FILE
-    commit_parser.set_defaults(func=CmdCommit)
-    add_common_args(commit_parser)
+    add_common_args(commit_parser, func=CmdCommit)

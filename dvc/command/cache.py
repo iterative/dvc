@@ -59,5 +59,4 @@ def add_parser(subparsers, add_common_args):
         "to the current directory and saved to config relative to the "
         "config file location.",
     ).complete = completion.DIR
-    cache_dir_parser.set_defaults(func=CmdCacheDir)
-    add_common_args(cache_dir_parser)
+    add_common_args(cache_dir_parser, func=CmdCacheDir)

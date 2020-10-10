@@ -33,5 +33,4 @@ def add_parser(subparsers, add_common_args):
         help="Install DVC hooks using pre-commit "
         "(https://pre-commit.com) if it is installed.",
     )
-    install_parser.set_defaults(func=CmdInstall)
-    add_common_args(install_parser)
+    add_common_args(install_parser, func=CmdInstall)

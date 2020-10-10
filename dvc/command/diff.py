@@ -201,5 +201,4 @@ def add_parser(subparsers, add_common_args):
         help="Hide missing cache file status.",
         action="store_true",
     )
-    diff_parser.set_defaults(func=CmdDiff)
-    add_common_args(diff_parser)
+    add_common_args(diff_parser, func=CmdDiff)

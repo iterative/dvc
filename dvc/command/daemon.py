@@ -55,8 +55,7 @@ def add_parser(subparsers, add_common_args):
         add_help=False,
         help=DAEMON_UPDATER_HELP,
     )
-    daemon_updater_parser.set_defaults(func=CmdDaemonUpdater)
-    add_common_args(daemon_updater_parser)
+    add_common_args(daemon_updater_parser, func=CmdDaemonUpdater)
 
     DAEMON_ANALYTICS_HELP = "Send dvc usage analytics."
     daemon_analytics_parser = daemon_subparsers.add_parser(
@@ -68,5 +67,4 @@ def add_parser(subparsers, add_common_args):
     daemon_analytics_parser.add_argument(
         "target", help="Analytics file.",
     ).complete = completion.FILE
-    daemon_analytics_parser.set_defaults(func=CmdDaemonAnalytics)
-    add_common_args(daemon_analytics_parser)
+    add_common_args(daemon_analytics_parser, func=CmdDaemonAnalytics)

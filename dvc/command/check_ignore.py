@@ -123,5 +123,4 @@ def add_parser(subparsers, add_common_args):
     parser.add_argument(
         "targets", nargs="*", help="File or directory paths to check",
     ).complete = completion.FILE
-    parser.set_defaults(func=CmdCheckIgnore)
-    add_common_args(parser)
+    add_common_args(parser, func=CmdCheckIgnore)

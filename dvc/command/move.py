@@ -42,5 +42,4 @@ def add_parser(subparsers, add_common_args):
     move_parser.add_argument(
         "dst", help="Destination path.",
     ).complete = completion.FILE
-    move_parser.set_defaults(func=CmdMove)
-    add_common_args(move_parser)
+    add_common_args(move_parser, func=CmdMove)

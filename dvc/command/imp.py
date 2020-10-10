@@ -65,5 +65,4 @@ def add_parser(subparsers, add_common_args):
         help="Specify name of the DVC-file this command will generate.",
         metavar="<filename>",
     )
-    import_parser.set_defaults(func=CmdImport)
-    add_common_args(import_parser)
+    add_common_args(import_parser, func=CmdImport)

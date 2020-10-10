@@ -141,5 +141,4 @@ def add_parser(subparsers, add_common_args):
         "Useful if you share a single cache across repos.",
         metavar="<paths>",
     )
-    gc_parser.set_defaults(func=CmdGC)
-    add_common_args(gc_parser)
+    add_common_args(gc_parser, func=CmdGC)

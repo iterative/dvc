@@ -129,8 +129,11 @@ class VersionAction(argparse.Action):  # pragma: no cover
         sys.exit(0)
 
 
-def add_common_args(parser):
+def add_common_args(parser, *, func=None):
     """Add common arguments shared among all the commands."""
+    if func:
+        parser.set_defaults(func=func)
+
     parser.add_argument(
         "--cprofile",
         action="store_true",

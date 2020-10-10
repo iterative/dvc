@@ -76,5 +76,4 @@ def add_parser(subparsers, add_common_args):
         nargs="?",
         help="Path to directory within the repository to list outputs for",
     ).complete = completion.DIR
-    list_parser.set_defaults(func=CmdList)
-    add_common_args(list_parser)
+    add_common_args(list_parser, func=CmdList)

@@ -67,5 +67,4 @@ def add_parser(subparsers, add_common_args):
         default=False,
         help="Only create DVC-file without actually downloading it.",
     )
-    import_parser.set_defaults(func=CmdImportUrl)
-    add_common_args(import_parser)
+    add_common_args(import_parser, func=CmdImportUrl)

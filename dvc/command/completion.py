@@ -54,5 +54,4 @@ def add_parser(subparsers, add_common_args):
         default="bash",
         choices=["bash", "zsh"],
     )
-    completion_parser.set_defaults(func=CmdCompletion)
-    add_common_args(completion_parser)
+    add_common_args(completion_parser, func=CmdCompletion)

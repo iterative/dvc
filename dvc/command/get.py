@@ -84,5 +84,4 @@ def add_parser(subparsers, add_common_args):
         help="Print the storage location (URL) the target data would be "
         "downloaded from, and exit.",
     )
-    get_parser.set_defaults(func=CmdGet)
-    add_common_args(get_parser)
+    add_common_args(get_parser, func=CmdGet)

@@ -117,5 +117,4 @@ def add_parser(subparsers, add_common_args):
             ".dvc files, or stage names."
         ),
     ).complete = completion.DVC_FILE
-    checkout_parser.set_defaults(func=CmdCheckout)
-    add_common_args(checkout_parser)
+    add_common_args(checkout_parser, func=CmdCheckout)

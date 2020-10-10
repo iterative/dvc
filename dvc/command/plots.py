@@ -142,8 +142,7 @@ def add_parser(subparsers, add_common_args):
     ).complete = completion.FILE
     _add_props_arguments(plots_show_parser)
     _add_output_arguments(plots_show_parser)
-    plots_show_parser.set_defaults(func=CmdPlotsShow)
-    add_common_args(plots_show_parser)
+    add_common_args(plots_show_parser, func=CmdPlotsShow)
 
     PLOTS_DIFF_HELP = (
         "Show multiple versions of plot metrics "
@@ -176,8 +175,7 @@ def add_parser(subparsers, add_common_args):
     )
     _add_props_arguments(plots_diff_parser)
     _add_output_arguments(plots_diff_parser)
-    plots_diff_parser.set_defaults(func=CmdPlotsDiff)
-    add_common_args(plots_diff_parser)
+    add_common_args(plots_diff_parser, func=CmdPlotsDiff)
 
     PLOTS_MODIFY_HELP = "Modify display properties of plot metric files."
     plots_modify_parser = plots_subparsers.add_parser(
@@ -197,8 +195,7 @@ def add_parser(subparsers, add_common_args):
         metavar="<property>",
         help="Unset one or more display properties.",
     )
-    plots_modify_parser.set_defaults(func=CmdPlotsModify)
-    add_common_args(plots_modify_parser)
+    add_common_args(plots_modify_parser, func=CmdPlotsModify)
 
 
 def _add_props_arguments(parser):

@@ -36,5 +36,4 @@ def add_parser(subparsers, add_common_args):
     parser.add_argument(
         "out", nargs="?", help="Destination path to put data to.",
     ).complete = completion.DIR
-    parser.set_defaults(func=CmdGetUrl)
-    add_common_args(parser)
+    add_common_args(parser, func=CmdGetUrl)

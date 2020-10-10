@@ -35,5 +35,4 @@ def add_parser(subparsers, add_common_args):
     unprotect_parser.add_argument(
         "targets", nargs="+", help="Data files/directories to unprotect.",
     ).complete = completion.FILE
-    unprotect_parser.set_defaults(func=CmdUnprotect)
-    add_common_args(unprotect_parser)
+    add_common_args(unprotect_parser, func=CmdUnprotect)

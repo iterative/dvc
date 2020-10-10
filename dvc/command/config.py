@@ -95,5 +95,4 @@ def add_parser(subparsers, add_common_args):
     )
     config_parser.add_argument("name", help="Option name.")
     config_parser.add_argument("value", nargs="?", help="Option value.")
-    config_parser.set_defaults(func=CmdConfig)
-    add_common_args(config_parser)
+    add_common_args(config_parser, func=CmdConfig)

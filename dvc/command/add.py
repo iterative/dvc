@@ -65,5 +65,4 @@ def add_parser(subparsers, add_common_args):
     parser.add_argument(
         "targets", nargs="+", help="Input files/directories to add.",
     ).complete = completion.FILE
-    parser.set_defaults(func=CmdAdd)
-    add_common_args(parser)
+    add_common_args(parser, func=CmdAdd)
