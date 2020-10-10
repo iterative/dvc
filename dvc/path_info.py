@@ -224,7 +224,11 @@ class URLInfo(_BasePath):
         if self._base_parts != other._base_parts:
             msg = f"'{self}' does not start with '{other}'"
             raise ValueError(msg)
-        return self._path.relative_to(other._path)
+        try:
+            path = self._path.relative_to(other._path)
+        except ValueError:
+            path = relpath(self._path, other._path)
+        return path
 
     def isin(self, other):
         if isinstance(other, (str, bytes)):
