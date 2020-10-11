@@ -164,7 +164,7 @@ class BadMetricError(DvcException):
     def __init__(self, paths):
         super().__init__(
             "the following metrics do not exist, "
-            "are not metric files or are malformed: {paths}".format(
+            "are not metrics files or are malformed: {paths}".format(
                 paths=", ".join(f"'{path}'" for path in paths)
             )
         )
