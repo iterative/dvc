@@ -37,6 +37,7 @@ def add_parser(subparsers, parent_parser):
         "init",
         parents=[parent_parser],
         description=append_doc_link(INIT_DESCRIPTION, "init"),
+        add_help=False,
         help=INIT_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
