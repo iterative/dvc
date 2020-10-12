@@ -288,4 +288,4 @@ def test_stage_run_checkpoint(tmp_dir, dvc, mocker, checkpoint):
     else:
         callback = None
     run_stage(stage, checkpoint_func=callback)
-    mock_cmd_run.assert_called_with(stage, checkpoint=checkpoint)
+    mock_cmd_run.assert_called_with(stage, checkpoint_func=callback)
