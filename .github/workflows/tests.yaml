@@ -29,10 +29,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-18.04, windows-2019, macos-10.15]
-        pyv: [3.6, 3.7, 3.8, "3.9-dev"]
+        pyv: ["3.6", "3.7", "3.8", "3.9"]
         exclude:
           - os: windows-2019
-            pyv: "3.9-dev"
+            pyv: "3.9"
     steps:
     - name: set up environment variables
       run: |
@@ -46,7 +46,7 @@ jobs:
       with:
         python-version: ${{ matrix.pyv }}
     - name: Install libxml2 and libxslt
-      if: matrix.pyv == '3.9-dev' && matrix.os == 'ubuntu-18.04'
+      if: matrix.pyv == '3.9' && matrix.os == 'ubuntu-18.04'
       # need to install for building lxml, a dependency of webdavclient3
       run: |
         sudo apt install libxml2 libxslt-dev
