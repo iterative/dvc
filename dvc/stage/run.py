@@ -157,9 +157,7 @@ def _checkpoint_run(stage, callback_func, done_cond, proc):
                 _run_callback(stage, callback_func)
             except Exception:  # pylint: disable=broad-except
                 logger.exception(
-                    "Error generating checkpoint for %s, "
-                    "stage will be aborted",
-                    stage,
+                    "Error generating checkpoint, %s will be aborted", stage
                 )
                 proc.terminate()
             finally:
