@@ -1,12 +1,18 @@
 import argparse
+import logging
 
 from dvc.command import completion
 from dvc.command.base import append_doc_link, fix_subparsers
 from dvc.command.config import CmdConfig
 
+logger = logging.getLogger(__name__)
+
 
 class CmdCacheDir(CmdConfig):
     def run(self):
+        if self.args.value is None and not self.args.unset:
+            logger.info(self.config["cache"]["dir"])
+            return 0
         with self.config.edit(level=self.args.level) as edit:
             edit["cache"]["dir"] = self.args.value
         return 0
@@ -55,6 +61,8 @@ def add_parser(subparsers, parent_parser):
         "value",
         help="Path to cache directory. Relative paths are resolved relative "
         "to the current directory and saved to config relative to the "
-        "config file location.",
+        "config file location. If no path is provided, it returns the "
+        "current cache directory.",
+        nargs="?",
     ).complete = completion.DIR
     cache_dir_parser.set_defaults(func=CmdCacheDir)
