@@ -1,43 +1,48 @@
 """DVC command line interface"""
 import argparse
 import logging
+import os
 import sys
 
 from .command import (
     add,
     cache,
+    check_ignore,
     checkout,
     commit,
+    completion,
     config,
     daemon,
+    dag,
     data_sync,
     destroy,
     diff,
+    experiments,
+    freeze,
     gc,
     get,
     get_url,
+    git_hook,
     imp,
     imp_url,
     init,
     install,
     ls,
-    lock,
     metrics,
     move,
-    pipeline,
+    params,
+    plots,
     remote,
     remove,
     repro,
     root,
     run,
-    tag,
     unprotect,
     update,
     version,
 )
 from .command.base import fix_subparsers
 from .exceptions import DvcParserError
-
 
 logger = logging.getLogger(__name__)
 
@@ -61,34 +66,56 @@ COMMANDS = [
     remote,
     cache,
     metrics,
+    params,
     install,
     root,
     ls,
-    lock,
-    pipeline,
+    freeze,
+    dag,
     daemon,
     commit,
-    tag,
+    completion,
     diff,
     version,
     update,
+    git_hook,
+    plots,
+    experiments,
+    check_ignore,
 ]
+
+
+def _find_parser(parser, cmd_cls):
+    defaults = parser._defaults  # pylint: disable=protected-access
+    if not cmd_cls or cmd_cls == defaults.get("func"):
+        parser.print_help()
+        raise DvcParserError()
+
+    actions = parser._actions  # pylint: disable=protected-access
+    for action in actions:
+        if not isinstance(action.choices, dict):
+            # NOTE: we are only interested in subparsers
+            continue
+        for subparser in action.choices.values():
+            _find_parser(subparser, cmd_cls)
 
 
 class DvcParser(argparse.ArgumentParser):
     """Custom parser class for dvc CLI."""
 
-    def error(self, message):
-        """Custom error method.
-        Args:
-            message (str): error message.
-
-        Raises:
-            dvc.exceptions.DvcParser: dvc parser exception.
-        """
+    def error(self, message, cmd_cls=None):  # pylint: disable=arguments-differ
         logger.error(message)
-        self.print_help()
-        raise DvcParserError()
+        _find_parser(self, cmd_cls)
+
+    def parse_args(self, args=None, namespace=None):
+        # NOTE: overriding to provide a more granular help message.
+        # E.g. `dvc plots diff --bad-flag` would result in a `dvc plots diff`
+        # help message instead of generic `dvc` usage.
+        args, argv = self.parse_known_args(args, namespace)
+        if argv:
+            msg = "unrecognized arguments: %s"
+            self.error(msg % " ".join(argv), getattr(args, "func", None))
+        return args
 
 
 class VersionAction(argparse.Action):  # pragma: no cover
@@ -111,30 +138,26 @@ def get_parent_parser():
     """
     parent_parser = argparse.ArgumentParser(add_help=False)
 
-    log_level_group = parent_parser.add_mutually_exclusive_group()
-    log_level_group.add_argument(
-        "-q", "--quiet", action="store_true", default=False, help="Be quiet."
-    )
-    log_level_group.add_argument(
-        "-v",
-        "--verbose",
+    parent_parser.add_argument(
+        "--cprofile",
         action="store_true",
         default=False,
-        help="Be verbose.",
+        help=argparse.SUPPRESS,
+    )
+    parent_parser.add_argument("--cprofile-dump", help=argparse.SUPPRESS)
+
+    log_level_group = parent_parser.add_mutually_exclusive_group()
+    log_level_group.add_argument(
+        "-q", "--quiet", action="count", default=0, help="Be quiet."
+    )
+    log_level_group.add_argument(
+        "-v", "--verbose", action="count", default=0, help="Be verbose."
     )
 
     return parent_parser
 
 
-def parse_args(argv=None):
-    """Parses CLI arguments.
-
-    Args:
-        argv: optional list of arguments to parse. sys.argv is used by default.
-
-    Raises:
-        dvc.exceptions.DvcParserError: raised for argument parsing errors.
-    """
+def get_main_parser():
     parent_parser = get_parent_parser()
 
     # Main parser
@@ -169,6 +192,14 @@ def parse_args(argv=None):
         help="Show program's version.",
     )
 
+    parser.add_argument(
+        "--cd",
+        default=os.path.curdir,
+        metavar="<path>",
+        help="Change to directory before executing.",
+        type=str,
+    )
+
     # Sub commands
     subparsers = parser.add_subparsers(
         title="Available Commands",
@@ -182,6 +213,18 @@ def parse_args(argv=None):
     for cmd in COMMANDS:
         cmd.add_parser(subparsers, parent_parser)
 
-    args = parser.parse_args(argv)
+    return parser
 
+
+def parse_args(argv=None):
+    """Parses CLI arguments.
+
+    Args:
+        argv: optional list of arguments to parse. sys.argv is used by default.
+
+    Raises:
+        dvc.exceptions.DvcParserError: raised for argument parsing errors.
+    """
+    parser = get_main_parser()
+    args = parser.parse_args(argv)
     return args

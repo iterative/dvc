@@ -2,12 +2,12 @@ import json
 import logging
 import os
 import platform
-import requests
 import sys
 import tempfile
 import uuid
 
 import distro
+import requests
 
 from dvc import __version__
 from dvc.config import Config, to_bool
@@ -19,7 +19,6 @@ from dvc.scm import SCM, NoSCM
 from dvc.scm.base import SCMError
 from dvc.utils import env2bool, is_binary
 from dvc.utils.fs import makedirs
-
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +35,7 @@ def collect_and_send_report(args=None, return_code=None):
     report as a JSON, where the _collector_ generates it and the _sender_
     removes it after sending it.
     """
-    report = _runtime_info()
+    report = {}
 
     # Include command execution information on the report only when available.
     if args and hasattr(args, "func"):
@@ -62,7 +61,7 @@ def is_enabled():
     return enabled
 
 
-def send(report):
+def send(path):
     """
     Side effect: Removes the report after sending it.
 
@@ -73,13 +72,17 @@ def send(report):
     url = "https://analytics.dvc.org"
     headers = {"content-type": "application/json"}
 
-    with open(report, "rb") as fobj:
-        try:
-            requests.post(url, data=fobj, headers=headers, timeout=5)
-        except requests.exceptions.RequestException:
-            logger.debug("failed to send analytics report", exc_info=True)
+    with open(path) as fobj:
+        report = json.load(fobj)
 
-    os.remove(report)
+    report.update(_runtime_info())
+
+    try:
+        requests.post(url, json=report, headers=headers, timeout=5)
+    except requests.exceptions.RequestException:
+        logger.debug("failed to send analytics report", exc_info=True)
+
+    os.remove(path)
 
 
 def _scm_in_use():
@@ -155,7 +158,7 @@ def _find_or_create_user_id():
     try:
         with Lock(lockfile):
             try:
-                with open(fname, "r") as fobj:
+                with open(fname) as fobj:
                     user_id = json.load(fobj)["user_id"]
 
             except (FileNotFoundError, ValueError, KeyError):
@@ -167,6 +170,4 @@ def _find_or_create_user_id():
             return user_id
 
     except LockError:
-        logger.debug(
-            "Failed to acquire '{lockfile}'".format(lockfile=lockfile)
-        )
+        logger.debug(f"Failed to acquire '{lockfile}'")

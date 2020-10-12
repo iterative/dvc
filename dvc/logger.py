@@ -7,7 +7,6 @@ import colorama
 
 from dvc.progress import Tqdm
 
-
 FOOTER = (
     "\n{yellow}Having any troubles?{nc}"
     " Hit us up at {blue}https://dvc.org/support{nc},"
@@ -19,20 +18,46 @@ FOOTER = (
 )
 
 
+def addLoggingLevel(levelName, levelNum, methodName=None):
+    """
+    Adds a new logging level to the `logging` module and the
+    currently configured logging class.
+
+    Based on https://stackoverflow.com/questions/2183233
+    """
+    if methodName is None:
+        methodName = levelName.lower()
+
+    assert not hasattr(logging, levelName)
+    assert not hasattr(logging, methodName)
+    assert not hasattr(logging.getLoggerClass(), methodName)
+
+    def logForLevel(self, message, *args, **kwargs):
+        if self.isEnabledFor(levelNum):
+            # pylint: disable=protected-access
+            self._log(levelNum, message, args, **kwargs)
+
+    def logToRoot(message, *args, **kwargs):
+        logging.log(levelNum, message, *args, **kwargs)
+
+    logging.addLevelName(levelNum, levelName)
+    setattr(logging, levelName, levelNum)
+    setattr(logging.getLoggerClass(), methodName, logForLevel)
+    setattr(logging, methodName, logToRoot)
+
+
 class LoggingException(Exception):
     def __init__(self, record):
         msg = "failed to log {}".format(str(record))
         super().__init__(msg)
 
 
-class ExcludeErrorsFilter(logging.Filter):
-    def filter(self, record):
-        return record.levelno < logging.WARNING
+def excludeFilter(level):
+    class ExcludeLevelFilter(logging.Filter):
+        def filter(self, record):
+            return record.levelno < level
 
-
-class ExcludeInfoFilter(logging.Filter):
-    def filter(self, record):
-        return record.levelno < logging.INFO
+    return ExcludeLevelFilter
 
 
 class ColorFormatter(logging.Formatter):
@@ -48,6 +73,7 @@ class ColorFormatter(logging.Formatter):
     """
 
     color_code = {
+        "TRACE": colorama.Fore.GREEN,
         "DEBUG": colorama.Fore.BLUE,
         "WARNING": colorama.Fore.YELLOW,
         "ERROR": colorama.Fore.RED,
@@ -55,7 +81,8 @@ class ColorFormatter(logging.Formatter):
     }
 
     def format(self, record):
-        msg = record.msg.format(*record.args) if record.args else record.msg
+        record.message = record.getMessage()
+        msg = self.formatMessage(record)
 
         if record.levelname == "INFO":
             return msg
@@ -111,12 +138,16 @@ class LoggerHandler(logging.StreamHandler):
             self.flush()
         except RecursionError:
             raise
-        except Exception:
+        except Exception:  # noqa, pylint: disable=broad-except
             self.handleError(record)
 
 
 def _is_verbose():
-    return logging.getLogger("dvc").getEffectiveLevel() == logging.DEBUG
+    return (
+        logging.NOTSET
+        < logging.getLogger("dvc").getEffectiveLevel()
+        <= logging.DEBUG
+    )
 
 
 def _iter_causes(exc):
@@ -142,6 +173,7 @@ def _stack_trace(exc_info):
 
 
 def disable_other_loggers():
+    logging.captureWarnings(True)
     root = logging.root
     for (logger_name, logger) in root.manager.loggerDict.items():
         if logger_name != "dvc" and not logger_name.startswith("dvc."):
@@ -151,12 +183,14 @@ def disable_other_loggers():
 def setup(level=logging.INFO):
     colorama.init()
 
+    addLoggingLevel("TRACE", logging.DEBUG - 5)
     logging.config.dictConfig(
         {
             "version": 1,
             "filters": {
-                "exclude_errors": {"()": ExcludeErrorsFilter},
-                "exclude_info": {"()": ExcludeInfoFilter},
+                "exclude_errors": {"()": excludeFilter(logging.WARNING)},
+                "exclude_info": {"()": excludeFilter(logging.INFO)},
+                "exclude_debug": {"()": excludeFilter(logging.DEBUG)},
             },
             "formatters": {"color": {"()": ColorFormatter}},
             "handlers": {
@@ -174,6 +208,13 @@ def setup(level=logging.INFO):
                     "stream": "ext://sys.stdout",
                     "filters": ["exclude_info"],
                 },
+                "console_trace": {
+                    "class": "dvc.logger.LoggerHandler",
+                    "level": "TRACE",
+                    "formatter": "color",
+                    "stream": "ext://sys.stdout",
+                    "filters": ["exclude_debug"],
+                },
                 "console_errors": {
                     "class": "dvc.logger.LoggerHandler",
                     "level": "WARNING",
@@ -187,6 +228,7 @@ def setup(level=logging.INFO):
                     "handlers": [
                         "console_info",
                         "console_debug",
+                        "console_trace",
                         "console_errors",
                     ],
                 },

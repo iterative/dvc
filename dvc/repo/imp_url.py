@@ -1,34 +1,60 @@
-from . import locked as locked_repo
+import os
+
 from dvc.repo.scm_context import scm_context
-from dvc.utils import resolve_output
+from dvc.utils import relpath, resolve_output, resolve_paths
+from dvc.utils.fs import path_isin
+
+from ..exceptions import OutputDuplicationError
+from . import locked
 
 
-@locked_repo
+@locked
 @scm_context
-def imp_url(self, url, out=None, fname=None, erepo=None, locked=True):
-    from dvc.stage import Stage
+def imp_url(
+    self, url, out=None, fname=None, erepo=None, frozen=True, no_exec=False
+):
+    from dvc.dvcfile import Dvcfile
+    from dvc.stage import Stage, create_stage
 
     out = resolve_output(url, out)
+    path, wdir, out = resolve_paths(self, out)
 
-    stage = Stage.create(
+    # NOTE: when user is importing something from within their own repository
+    if (
+        erepo is None
+        and os.path.exists(url)
+        and path_isin(os.path.abspath(url), self.root_dir)
+    ):
+        url = relpath(url, wdir)
+
+    stage = create_stage(
+        Stage,
         self,
-        cmd=None,
+        fname or path,
+        wdir=wdir,
         deps=[url],
         outs=[out],
-        fname=fname,
         erepo=erepo,
-        accompany_outs=True,
     )
 
     if stage is None:
         return None
 
-    self.check_modified_graph([stage])
+    dvcfile = Dvcfile(self, stage.path)
+    dvcfile.remove()
 
-    stage.run()
+    try:
+        self.check_modified_graph([stage])
+    except OutputDuplicationError as exc:
+        raise OutputDuplicationError(exc.output, set(exc.stages) - {stage})
 
-    stage.locked = locked
+    if no_exec:
+        stage.ignore_outs()
+    else:
+        stage.run()
 
-    stage.dump()
+    stage.frozen = frozen
+
+    dvcfile.dump(stage)
 
     return stage

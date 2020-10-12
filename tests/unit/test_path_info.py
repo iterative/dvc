@@ -3,10 +3,7 @@ import pathlib
 
 import pytest
 
-from dvc.path_info import CloudURLInfo
-from dvc.path_info import PathInfo
-from dvc.path_info import URLInfo
-
+from dvc.path_info import CloudURLInfo, HTTPURLInfo, PathInfo, URLInfo
 
 TEST_DEPTH = len(pathlib.Path(__file__).parents) + 1
 
@@ -44,11 +41,21 @@ def test_url_info_parents(cls):
     ]
 
 
-@pytest.mark.parametrize("cls", [URLInfo, CloudURLInfo])
+@pytest.mark.parametrize("cls", [URLInfo, CloudURLInfo, HTTPURLInfo])
 def test_url_info_deepcopy(cls):
     u1 = cls("ssh://user@test.com:/test1/test2/test3")
     u2 = copy.deepcopy(u1)
     assert u1 == u2
+
+
+def test_https_url_info_str():
+    url = "https://user@test.com/test1;p=par?q=quer#frag"
+    u = HTTPURLInfo(url)
+    assert u.url == url
+    assert str(u) == u.url
+    assert u.params == "p=par"
+    assert u.query == "q=quer"
+    assert u.fragment == "frag"
 
 
 @pytest.mark.parametrize(
@@ -78,3 +85,20 @@ def test_url_info_deepcopy(cls):
 def test_path_info_as_posix(mocker, path, as_posix, osname):
     mocker.patch("os.name", osname)
     assert PathInfo(path).as_posix() == as_posix
+
+
+def test_url_replace_path():
+    url = "https://user@test.com/original/path;p=par?q=quer#frag"
+
+    u = HTTPURLInfo(url)
+    new_u = u.replace("/new/path")
+
+    assert u.path == "/original/path"
+    assert new_u.path == "/new/path"
+
+    assert u.scheme == new_u.scheme
+    assert u.host == new_u.host
+    assert u.user == new_u.user
+    assert u.params == new_u.params
+    assert u.query == new_u.query
+    assert u.fragment == new_u.fragment

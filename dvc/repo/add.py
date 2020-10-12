@@ -3,23 +3,27 @@ import os
 
 import colorama
 
-from . import locked
+from dvc.dvcfile import Dvcfile, is_dvc_file
+
 from ..exceptions import (
-    RecursiveAddingWhileUsingFilename,
+    OutputDuplicationError,
     OverlappingOutputPathsError,
+    RecursiveAddingWhileUsingFilename,
 )
 from ..output.base import OutputDoesNotExistError
 from ..progress import Tqdm
 from ..repo.scm_context import scm_context
-from ..stage import Stage
-from ..utils import LARGE_DIR_SIZE
+from ..utils import LARGE_DIR_SIZE, resolve_paths
+from . import locked
 
 logger = logging.getLogger(__name__)
 
 
 @locked
 @scm_context
-def add(repo, targets, recursive=False, no_commit=False, fname=None):
+def add(
+    repo, targets, recursive=False, no_commit=False, fname=None, external=False
+):
     if recursive and fname:
         raise RecursiveAddingWhileUsingFilename()
 
@@ -50,7 +54,9 @@ def add(repo, targets, recursive=False, no_commit=False, fname=None):
                     )
                 )
 
-            stages = _create_stages(repo, sub_targets, fname, pbar=pbar)
+            stages = _create_stages(
+                repo, sub_targets, fname, pbar=pbar, external=external
+            )
 
             try:
                 repo.check_modified_graph(stages)
@@ -63,10 +69,14 @@ def add(repo, targets, recursive=False, no_commit=False, fname=None):
                 ).format(
                     out=exc.overlapping_out.path_info,
                     parent=exc.parent.path_info,
-                    parent_stage=exc.parent.stage.relpath,
+                    parent_stage=exc.parent.stage.addressing,
                 )
                 raise OverlappingOutputPathsError(
                     exc.parent, exc.overlapping_out, msg
+                )
+            except OutputDuplicationError as exc:
+                raise OutputDuplicationError(
+                    exc.output, set(exc.stages) - set(stages)
                 )
 
             with Tqdm(
@@ -85,7 +95,7 @@ def add(repo, targets, recursive=False, no_commit=False, fname=None):
                     if not no_commit:
                         stage.commit()
 
-                    stage.dump()
+                    Dvcfile(repo, stage.path).dump(stage)
                     pbar_stages.update()
 
             stages_list += stages
@@ -99,22 +109,24 @@ def add(repo, targets, recursive=False, no_commit=False, fname=None):
 def _find_all_targets(repo, target, recursive):
     if os.path.isdir(target) and recursive:
         return [
-            fname
-            for fname in Tqdm(
+            os.fspath(path)
+            for path in Tqdm(
                 repo.tree.walk_files(target),
                 desc="Searching " + target,
                 bar_format=Tqdm.BAR_FMT_NOTOTAL,
                 unit="file",
             )
-            if not repo.is_dvc_internal(fname)
-            if not Stage.is_stage_file(fname)
-            if not repo.scm.belongs_to_scm(fname)
-            if not repo.scm.is_tracked(fname)
+            if not repo.is_dvc_internal(os.fspath(path))
+            if not is_dvc_file(os.fspath(path))
+            if not repo.scm.belongs_to_scm(os.fspath(path))
+            if not repo.scm.is_tracked(os.fspath(path))
         ]
     return [target]
 
 
-def _create_stages(repo, targets, fname, pbar=None):
+def _create_stages(repo, targets, fname, pbar=None, external=False):
+    from dvc.stage import Stage, create_stage
+
     stages = []
 
     for out in Tqdm(
@@ -123,10 +135,19 @@ def _create_stages(repo, targets, fname, pbar=None):
         disable=len(targets) < LARGE_DIR_SIZE,
         unit="file",
     ):
-        stage = Stage.create(
-            repo, outs=[out], accompany_outs=True, fname=fname
+        path, wdir, out = resolve_paths(repo, out)
+        stage = create_stage(
+            Stage,
+            repo,
+            fname or path,
+            wdir=wdir,
+            outs=[out],
+            external=external,
         )
-        repo._reset()
+        if stage:
+            Dvcfile(repo, stage.path).remove()
+
+        repo._reset()  # pylint: disable=protected-access
 
         if not stage:
             if pbar is not None:
@@ -135,6 +156,6 @@ def _create_stages(repo, targets, fname, pbar=None):
 
         stages.append(stage)
         if pbar is not None:
-            pbar.update_desc(out)
+            pbar.update_msg(out)
 
     return stages

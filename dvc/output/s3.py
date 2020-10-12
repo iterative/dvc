@@ -1,6 +1,7 @@
-from dvc.output.base import OutputBase
-from dvc.remote.s3 import RemoteS3
+from dvc.output.base import BaseOutput
+
+from ..tree.s3 import S3Tree
 
 
-class OutputS3(OutputBase):
-    REMOTE = RemoteS3
+class S3Output(BaseOutput):
+    TREE_CLS = S3Tree

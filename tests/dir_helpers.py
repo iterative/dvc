@@ -43,17 +43,18 @@ from global repo template to creating everything inplace, which:
     - does not create unnecessary files
 """
 
+# pylint: disable=redefined-outer-name, attribute-defined-outside-init
+
 import os
 import pathlib
 from contextlib import contextmanager
+from textwrap import dedent
 
 import pytest
 from funcy import lmap, retry
 
 from dvc.logger import disable_other_loggers
 from dvc.utils.fs import makedirs
-from dvc.compat import fspath, fspath_py35
-
 
 __all__ = [
     "make_tmp_dir",
@@ -61,8 +62,10 @@ __all__ = [
     "scm",
     "dvc",
     "run_copy",
+    "run_head",
     "erepo_dir",
     "git_dir",
+    "git_init",
 ]
 
 
@@ -71,35 +74,37 @@ disable_other_loggers()
 
 
 class TmpDir(pathlib.Path):
+    scheme = "local"
+
     def __new__(cls, *args, **kwargs):
         if cls is TmpDir:
-            cls = WindowsTmpDir if os.name == "nt" else PosixTmpDir
+            cls = (  # pylint: disable=self-cls-assignment
+                WindowsTmpDir if os.name == "nt" else PosixTmpDir
+            )
         self = cls._from_parts(args, init=False)
         if not self._flavour.is_supported:
             raise NotImplementedError(
-                "cannot instantiate %r on your system" % (cls.__name__,)
+                f"cannot instantiate {cls.__name__!r} on your system"
             )
         self._init()
         return self
 
-    # Not needed in Python 3.6+
-    def __fspath__(self):
-        return str(self)
-
-    def init(self, *, scm=False, dvc=False):
+    def init(self, *, scm=False, dvc=False, subdir=False):
         from dvc.repo import Repo
         from dvc.scm.git import Git
 
         assert not scm or not hasattr(self, "scm")
         assert not dvc or not hasattr(self, "dvc")
 
-        str_path = fspath(self)
+        str_path = os.fspath(self)
 
         if scm:
-            _git_init(str_path)
+            git_init(str_path)
         if dvc:
             self.dvc = Repo.init(
-                str_path, no_scm=not scm and not hasattr(self, "scm")
+                str_path,
+                no_scm=not scm and not hasattr(self, "scm"),
+                subdir=subdir,
             )
         if scm:
             self.scm = self.dvc.scm if hasattr(self, "dvc") else Git(str_path)
@@ -122,10 +127,10 @@ class TmpDir(pathlib.Path):
         if isinstance(struct, (str, bytes, pathlib.PurePath)):
             struct = {struct: text}
 
-        self._gen(struct)
-        return struct.keys()
+        return self._gen(struct)
 
     def _gen(self, struct, prefix=None):
+        paths = []
         for name, contents in struct.items():
             path = (prefix or self) / name
 
@@ -140,6 +145,8 @@ class TmpDir(pathlib.Path):
                     path.write_bytes(contents)
                 else:
                     path.write_text(contents, encoding="utf-8")
+            paths.append(path)
+        return paths
 
     def dvc_gen(self, struct, text="", commit=None):
         paths = self.gen(struct, text)
@@ -156,7 +163,18 @@ class TmpDir(pathlib.Path):
         stages = self.dvc.add(filenames)
         if commit:
             stage_paths = [s.path for s in stages]
-            self.scm_add(stage_paths, commit=commit)
+
+            def to_gitignore(stage_path):
+                from dvc.scm import Git
+
+                return os.path.join(os.path.dirname(stage_path), Git.GITIGNORE)
+
+            gitignores = [
+                to_gitignore(s)
+                for s in stage_paths
+                if os.path.exists(to_gitignore(s))
+            ]
+            self.scm_add(stage_paths + gitignores, commit=commit)
 
         return stages
 
@@ -168,12 +186,33 @@ class TmpDir(pathlib.Path):
         if commit:
             self.scm.commit(commit)
 
+    def add_remote(
+        self, *, url=None, config=None, name="upstream", default=True
+    ):
+        self._require("dvc")
+
+        assert bool(url) ^ bool(config)
+
+        if url:
+            config = {"url": url}
+
+        with self.dvc.config.edit() as conf:
+            conf["remote"][name] = config
+            if default:
+                conf["core"]["remote"] = name
+
+        if hasattr(self, "scm"):
+            self.scm.add(self.dvc.config.files["repo"])
+            self.scm.commit(f"add '{name}' remote")
+
+        return url or config["url"]
+
     # contexts
     @contextmanager
     def chdir(self):
         old = os.getcwd()
         try:
-            os.chdir(fspath_py35(self))
+            os.chdir(self)
             yield
         finally:
             os.chdir(old)
@@ -188,11 +227,22 @@ class TmpDir(pathlib.Path):
         finally:
             self.scm.checkout(old)
 
+    def read_text(self, *args, **kwargs):  # pylint: disable=signature-differs
+        # NOTE: on windows we'll get PermissionError instead of
+        # IsADirectoryError when we try to `open` a directory, so we can't
+        # rely on exception flow control
+        if self.is_dir():
+            return {
+                path.name: path.read_text(*args, **kwargs)
+                for path in self.iterdir()
+            }
+        return super().read_text(*args, **kwargs)
+
 
 def _coerce_filenames(filenames):
     if isinstance(filenames, (str, bytes, pathlib.PurePath)):
         filenames = [filenames]
-    return lmap(fspath, filenames)
+    return lmap(os.fspath, filenames)
 
 
 class WindowsTmpDir(TmpDir, pathlib.PureWindowsPath):
@@ -203,12 +253,33 @@ class PosixTmpDir(TmpDir, pathlib.PurePosixPath):
     pass
 
 
+CACHE = {}
+
+
 @pytest.fixture(scope="session")
-def make_tmp_dir(tmp_path_factory, request):
-    def make(name, *, scm=False, dvc=False):
+def make_tmp_dir(tmp_path_factory, request, worker_id):
+    def make(name, *, scm=False, dvc=False, subdir=False):
+        from dvc.repo import Repo
+        from dvc.scm.git import Git
+        from dvc.utils.fs import fs_copy
+
+        cache = CACHE.get((scm, dvc, subdir))
+        if not cache:
+            cache = tmp_path_factory.mktemp("dvc-test-cache" + worker_id)
+            TmpDir(cache).init(scm=scm, dvc=dvc, subdir=subdir)
+            CACHE[(scm, dvc, subdir)] = os.fspath(cache)
         path = tmp_path_factory.mktemp(name) if isinstance(name, str) else name
-        new_dir = TmpDir(fspath_py35(path))
-        new_dir.init(scm=scm, dvc=dvc)
+        for entry in os.listdir(cache):
+            # shutil.copytree's dirs_exist_ok is only available in >=3.8
+            fs_copy(os.path.join(cache, entry), os.path.join(path, entry))
+        new_dir = TmpDir(path)
+        str_path = os.fspath(new_dir)
+        if dvc:
+            new_dir.dvc = Repo(str_path)
+        if scm:
+            new_dir.scm = (
+                new_dir.dvc.scm if hasattr(new_dir, "dvc") else Git(str_path)
+            )
         request.addfinalizer(new_dir.close)
         return new_dir
 
@@ -232,7 +303,7 @@ def dvc(tmp_dir):
     return tmp_dir.dvc
 
 
-def _git_init(path):
+def git_init(path):
     from git import Repo
     from git.exc import GitCommandNotFound
 
@@ -249,33 +320,61 @@ def _git_init(path):
 def run_copy(tmp_dir, dvc):
     tmp_dir.gen(
         "copy.py",
-        "import sys, shutil\nshutil.copyfile(sys.argv[1], sys.argv[2])",
+        (
+            "import sys, shutil, os\n"
+            "shutil.copyfile(sys.argv[1], sys.argv[2]) "
+            "if os.path.isfile(sys.argv[1]) "
+            "else shutil.copytree(sys.argv[1], sys.argv[2])"
+        ),
     )
 
     def run_copy(src, dst, **run_kwargs):
         return dvc.run(
-            cmd="python copy.py {} {}".format(src, dst),
+            cmd=f"python copy.py {src} {dst}",
             outs=[dst],
             deps=[src, "copy.py"],
-            **run_kwargs
+            **run_kwargs,
         )
 
     return run_copy
 
 
 @pytest.fixture
+def run_head(tmp_dir, dvc):
+    """Output first line of each file to different file with '-1' appended.
+    Useful for tracking multiple outputs/dependencies which are not a copy
+    of each others.
+    """
+    tmp_dir.gen(
+        {
+            "head.py": dedent(
+                """
+        import sys
+        for file in sys.argv[1:]:
+            with open(file) as f, open(file +"-1","w+") as w:
+                w.write(f.readline())
+        """
+            )
+        }
+    )
+    script = os.path.abspath(tmp_dir / "head.py")
+
+    def run(*args, **run_kwargs):
+        return dvc.run(
+            **{
+                "cmd": "python {} {}".format(script, " ".join(args)),
+                "outs": [dep + "-1" for dep in args],
+                "deps": list(args),
+                **run_kwargs,
+            }
+        )
+
+    return run
+
+
+@pytest.fixture
 def erepo_dir(make_tmp_dir):
-    path = make_tmp_dir("erepo", scm=True, dvc=True)
-
-    # Chdir for git and dvc to work locally
-    with path.chdir():
-        with path.dvc.config.edit() as conf:
-            cache_dir = path.dvc.cache.local.cache_dir
-            conf["remote"]["upstream"] = {"url": cache_dir}
-            conf["core"]["remote"] = "upstream"
-        path.scm_add([path.dvc.config.files["repo"]], commit="add remote")
-
-    return path
+    return make_tmp_dir("erepo", scm=True, dvc=True)
 
 
 @pytest.fixture

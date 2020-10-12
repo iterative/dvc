@@ -1,6 +1,7 @@
-from dvc.output.base import OutputBase
-from dvc.remote.hdfs import RemoteHDFS
+from dvc.output.base import BaseOutput
+
+from ..tree.hdfs import HDFSTree
 
 
-class OutputHDFS(OutputBase):
-    REMOTE = RemoteHDFS
+class HDFSOutput(BaseOutput):
+    TREE_CLS = HDFSTree

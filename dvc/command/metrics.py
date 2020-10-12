@@ -1,64 +1,74 @@
 import argparse
 import logging
 
-from dvc.command.base import append_doc_link
-from dvc.command.base import CmdBase
-from dvc.command.base import fix_subparsers
-from dvc.exceptions import BadMetricError
-from dvc.exceptions import DvcException
-
+from dvc.command import completion
+from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
+from dvc.exceptions import BadMetricError, DvcException
 
 logger = logging.getLogger(__name__)
 
 
-def show_metrics(metrics, all_branches=False, all_tags=False):
-    """
-    Args:
-        metrics (list): Where each element is either a `list`
-            if an xpath was specified, otherwise a `str`
-    """
+DEFAULT_PRECISION = 5
+
+
+def _show_metrics(
+    metrics, all_branches=False, all_tags=False, all_commits=False
+):
+    from dvc.utils.diff import format_dict
+    from dvc.utils.flatten import flatten
+
     # When `metrics` contains a `None` key, it means that some files
     # specified as `targets` in `repo.metrics.show` didn't contain any metrics.
     missing = metrics.pop(None, None)
 
+    lines = []
     for branch, val in metrics.items():
-        if all_branches or all_tags:
-            logger.info("{branch}:".format(branch=branch))
+        if all_branches or all_tags or all_commits:
+            lines.append(f"{branch}:")
 
         for fname, metric in val.items():
-            if isinstance(metric, dict):
-                lines = list(metric.values())
-            elif isinstance(metric, list):
-                lines = metric
-            else:
-                lines = metric.splitlines()
+            if not isinstance(metric, dict):
+                lines.append("\t{}: {}".format(fname, str(metric)))
+                continue
 
-            if len(lines) > 1:
-                logger.info("\t{fname}:".format(fname=fname))
-
-                for line in lines:
-                    logger.info("\t\t{content}".format(content=line))
-
-            else:
-                logger.info("\t{}: {}".format(fname, metric))
+            lines.append(f"\t{fname}:")
+            for key, value in flatten(format_dict(metric)).items():
+                lines.append(f"\t\t{key}: {value}")
 
     if missing:
         raise BadMetricError(missing)
 
+    return "\n".join(lines)
 
-class CmdMetricsShow(CmdBase):
+
+class CmdMetricsBase(CmdBase):
+    UNINITIALIZED = True
+
+
+class CmdMetricsShow(CmdMetricsBase):
     def run(self):
         try:
             metrics = self.repo.metrics.show(
                 self.args.targets,
-                typ=self.args.type,
-                xpath=self.args.xpath,
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,
+                all_commits=self.args.all_commits,
                 recursive=self.args.recursive,
             )
 
-            show_metrics(metrics, self.args.all_branches, self.args.all_tags)
+            if self.args.show_json:
+                import json
+
+                logger.info(json.dumps(metrics))
+            else:
+                table = _show_metrics(
+                    metrics,
+                    self.args.all_branches,
+                    self.args.all_tags,
+                    self.args.all_commits,
+                )
+                if table:
+                    logger.info(table)
         except DvcException:
             logger.exception("failed to show metrics")
             return 1
@@ -66,82 +76,48 @@ class CmdMetricsShow(CmdBase):
         return 0
 
 
-class CmdMetricsModify(CmdBase):
-    def run(self):
-        try:
-            self.repo.metrics.modify(
-                self.args.path, typ=self.args.type, xpath=self.args.xpath
-            )
-        except DvcException:
-            logger.exception("failed to modify metric file settings")
-            return 1
+def _show_diff(diff, markdown=False, no_path=False, precision=None):
+    from collections import OrderedDict
 
-        return 0
+    from dvc.utils.diff import table
 
+    if precision is None:
+        precision = DEFAULT_PRECISION
 
-class CmdMetricsAdd(CmdBase):
-    def run(self):
-        try:
-            self.repo.metrics.add(
-                self.args.path, self.args.type, self.args.xpath
-            )
-        except DvcException:
-            msg = "failed to add metric file '{}'".format(self.args.path)
-            logger.exception(msg)
-            return 1
+    def _round(val):
+        if isinstance(val, float):
+            return round(val, precision)
 
-        return 0
+        return val
 
-
-class CmdMetricsRemove(CmdBase):
-    def run(self):
-        try:
-            self.repo.metrics.remove(self.args.path)
-        except DvcException:
-            msg = "failed to remove metric file '{}'".format(self.args.path)
-            logger.exception(msg)
-            return 1
-
-        return 0
-
-
-def _show_diff(diff):
-    from texttable import Texttable
-
-    if not diff:
-        return "No changes."
-
-    table = Texttable()
-
-    # remove borders to make it easier for users to copy stuff
-    table.set_chars(("", "", "", ""))
-    table.set_deco(0)
-
-    rows = [["Path", "Metric", "Value", "Change"]]
+    rows = []
     for fname, mdiff in diff.items():
-        for metric, change in mdiff.items():
-            rows.append(
-                [
-                    fname,
-                    metric,
-                    change["new"],
-                    change.get("diff", "diff not supported"),
-                ]
-            )
-    table.add_rows(rows)
-    return table.draw()
+        sorted_mdiff = OrderedDict(sorted(mdiff.items()))
+        for metric, change in sorted_mdiff.items():
+            row = [] if no_path else [fname]
+            row.append(metric)
+            row.append(_round(change.get("old")))
+            row.append(_round(change["new"]))
+            row.append(_round(change.get("diff")))
+            rows.append(row)
+
+    header = [] if no_path else ["Path"]
+    header.append("Metric")
+    header.extend(["Old", "New"])
+    header.append("Change")
+
+    return table(header, rows, markdown)
 
 
-class CmdMetricsDiff(CmdBase):
+class CmdMetricsDiff(CmdMetricsBase):
     def run(self):
         try:
             diff = self.repo.metrics.diff(
                 a_rev=self.args.a_rev,
                 b_rev=self.args.b_rev,
                 targets=self.args.targets,
-                typ=self.args.type,
-                xpath=self.args.xpath,
                 recursive=self.args.recursive,
+                all=self.args.all,
             )
 
             if self.args.show_json:
@@ -149,7 +125,14 @@ class CmdMetricsDiff(CmdBase):
 
                 logger.info(json.dumps(diff))
             else:
-                logger.info(_show_diff(diff))
+                table = _show_diff(
+                    diff,
+                    self.args.show_md,
+                    self.args.no_path,
+                    precision=self.args.precision,
+                )
+                if table:
+                    logger.info(table)
 
         except DvcException:
             logger.exception("failed to show metrics diff")
@@ -159,7 +142,7 @@ class CmdMetricsDiff(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    METRICS_HELP = "Commands to add, manage, collect and display metrics."
+    METRICS_HELP = "Commands to display and compare metrics."
 
     metrics_parser = subparsers.add_parser(
         "metrics",
@@ -176,7 +159,7 @@ def add_parser(subparsers, parent_parser):
 
     fix_subparsers(metrics_subparsers)
 
-    METRICS_SHOW_HELP = "Output metric values."
+    METRICS_SHOW_HELP = "Print metrics, with optional formatting."
     metrics_show_parser = metrics_subparsers.add_parser(
         "show",
         parents=[parent_parser],
@@ -187,20 +170,12 @@ def add_parser(subparsers, parent_parser):
     metrics_show_parser.add_argument(
         "targets",
         nargs="*",
-        help="Metric files or directories (see -R) to show",
-    )
-    metrics_show_parser.add_argument(
-        "-t",
-        "--type",
         help=(
-            "Type of metrics (json/tsv/htsv/csv/hcsv). "
-            "It can be detected by the file extension automatically. "
-            "Unsupported types will be treated as raw."
+            "Limit command scope to these metric files (supports any file, "
+            "even when not found as `metrics` in `dvc.yaml`). Using -R, "
+            "directories to search metric files in can also be given."
         ),
-    )
-    metrics_show_parser.add_argument(
-        "-x", "--xpath", help="json/tsv/htsv/csv/hcsv path."
-    )
+    ).complete = completion.FILE
     metrics_show_parser.add_argument(
         "-a",
         "--all-branches",
@@ -216,6 +191,18 @@ def add_parser(subparsers, parent_parser):
         help="Show metrics for all tags.",
     )
     metrics_show_parser.add_argument(
+        "--all-commits",
+        action="store_true",
+        default=False,
+        help="Show metrics for all commits.",
+    )
+    metrics_show_parser.add_argument(
+        "--show-json",
+        action="store_true",
+        default=False,
+        help="Show output in JSON format.",
+    )
+    metrics_show_parser.add_argument(
         "-R",
         "--recursive",
         action="store_true",
@@ -227,53 +214,10 @@ def add_parser(subparsers, parent_parser):
     )
     metrics_show_parser.set_defaults(func=CmdMetricsShow)
 
-    METRICS_ADD_HELP = "Tag file as a metric file."
-    metrics_add_parser = metrics_subparsers.add_parser(
-        "add",
-        parents=[parent_parser],
-        description=append_doc_link(METRICS_ADD_HELP, "metrics/add"),
-        help=METRICS_ADD_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+    METRICS_DIFF_HELP = (
+        "Show changes in metrics between commits in the DVC repository, or "
+        "between a commit and the workspace."
     )
-    metrics_add_parser.add_argument(
-        "-t", "--type", help="Type of metrics (raw/json/tsv/htsv/csv/hcsv)."
-    )
-    metrics_add_parser.add_argument(
-        "-x", "--xpath", help="json/tsv/htsv/csv/hcsv path."
-    )
-    metrics_add_parser.add_argument("path", help="Path to a metric file.")
-    metrics_add_parser.set_defaults(func=CmdMetricsAdd)
-
-    METRICS_MODIFY_HELP = "Modify metric file options."
-    metrics_modify_parser = metrics_subparsers.add_parser(
-        "modify",
-        parents=[parent_parser],
-        description=append_doc_link(METRICS_MODIFY_HELP, "metrics/modify"),
-        help=METRICS_MODIFY_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    metrics_modify_parser.add_argument(
-        "-t", "--type", help="Type of metrics (raw/json/tsv/htsv/csv/hcsv)."
-    )
-    metrics_modify_parser.add_argument(
-        "-x", "--xpath", help="json/tsv/htsv/csv/hcsv path."
-    )
-    metrics_modify_parser.add_argument("path", help="Path to a metric file.")
-    metrics_modify_parser.set_defaults(func=CmdMetricsModify)
-
-    METRICS_REMOVE_HELP = "Remove files's metric tag."
-    metrics_remove_parser = metrics_subparsers.add_parser(
-        "remove",
-        parents=[parent_parser],
-        description=append_doc_link(METRICS_REMOVE_HELP, "metrics/remove"),
-        help=METRICS_REMOVE_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    metrics_remove_parser.add_argument("path", help="Path to a metric file.")
-    metrics_remove_parser.set_defaults(func=CmdMetricsRemove)
-
-    METRICS_DIFF_HELP = "Show changes in metrics between commits"
-    " in the DVC repository, or between a commit and the workspace."
     metrics_diff_parser = metrics_subparsers.add_parser(
         "diff",
         parents=[parent_parser],
@@ -287,28 +231,17 @@ def add_parser(subparsers, parent_parser):
     metrics_diff_parser.add_argument(
         "b_rev",
         nargs="?",
-        help=("New Git commit to compare (defaults to the current workspace)"),
+        help="New Git commit to compare (defaults to the current workspace)",
     )
     metrics_diff_parser.add_argument(
         "--targets",
         nargs="*",
         help=(
-            "Metric files or directories (see -R) to show diff for. "
-            "Shows diff for all metric files by default."
+            "Limit command scope to these metric files. Using -R, "
+            "directories to search metric files in can also be given."
         ),
-    )
-    metrics_diff_parser.add_argument(
-        "-t",
-        "--type",
-        help=(
-            "Type of metrics (json/tsv/htsv/csv/hcsv). "
-            "It can be detected by the file extension automatically. "
-            "Unsupported types will be treated as raw."
-        ),
-    )
-    metrics_diff_parser.add_argument(
-        "-x", "--xpath", help="json/tsv/htsv/csv/hcsv path."
-    )
+        metavar="<paths>",
+    ).complete = completion.FILE
     metrics_diff_parser.add_argument(
         "-R",
         "--recursive",
@@ -320,9 +253,36 @@ def add_parser(subparsers, parent_parser):
         ),
     )
     metrics_diff_parser.add_argument(
+        "--all",
+        action="store_true",
+        default=False,
+        help="Show unchanged metrics as well.",
+    )
+    metrics_diff_parser.add_argument(
         "--show-json",
         action="store_true",
         default=False,
         help="Show output in JSON format.",
+    )
+    metrics_diff_parser.add_argument(
+        "--show-md",
+        action="store_true",
+        default=False,
+        help="Show tabulated output in the Markdown format (GFM).",
+    )
+    metrics_diff_parser.add_argument(
+        "--no-path",
+        action="store_true",
+        default=False,
+        help="Don't show metric path.",
+    )
+    metrics_diff_parser.add_argument(
+        "--precision",
+        type=int,
+        help=(
+            "Round metrics to `n` digits precision after the decimal point. "
+            f"Rounds to {DEFAULT_PRECISION} digits by default."
+        ),
+        metavar="<n>",
     )
     metrics_diff_parser.set_defaults(func=CmdMetricsDiff)

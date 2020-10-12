@@ -6,40 +6,60 @@ import logging
 import math
 import os
 import re
+import stat
 import sys
 import time
-import io
 
 import colorama
 import nanotime
-from ruamel.yaml import YAML
 from shortuuid import uuid
-
-from dvc.compat import fspath, fspath_py35
-
 
 logger = logging.getLogger(__name__)
 
 LOCAL_CHUNK_SIZE = 2 ** 20  # 1 MB
 LARGE_FILE_SIZE = 2 ** 30  # 1 GB
 LARGE_DIR_SIZE = 100
+TARGET_REGEX = re.compile(r"(?P<path>.*?)(:(?P<name>[^\\/:]*))??$")
 
 
 def dos2unix(data):
     return data.replace(b"\r\n", b"\n")
 
 
-def file_md5(fname):
+def _fobj_md5(fobj, hash_md5, binary, progress_func=None):
+    while True:
+        data = fobj.read(LOCAL_CHUNK_SIZE)
+        if not data:
+            break
+
+        if binary:
+            chunk = data
+        else:
+            chunk = dos2unix(data)
+
+        hash_md5.update(chunk)
+        if progress_func:
+            progress_func(len(data))
+
+
+def file_md5(fname, tree=None):
     """ get the (md5 hexdigest, md5 digest) of a file """
-    from dvc.progress import Tqdm
     from dvc.istextfile import istextfile
+    from dvc.progress import Tqdm
 
-    fname = fspath_py35(fname)
+    if tree:
+        exists_func = tree.exists
+        stat_func = tree.stat
+        open_func = tree.open
+    else:
+        exists_func = os.path.exists
+        stat_func = os.stat
+        open_func = open
 
-    if os.path.exists(fname):
+    if exists_func(fname):
         hash_md5 = hashlib.md5()
-        binary = not istextfile(fname)
-        size = os.path.getsize(fname)
+        binary = not istextfile(fname, tree=tree)
+        size = stat_func(fname).st_size
         no_progress_bar = True
         if size >= LARGE_FILE_SIZE:
             no_progress_bar = False
@@ -56,27 +76,16 @@ def file_md5(fname):
             bytes=True,
             leave=False,
         ) as pbar:
-            with open(fname, "rb") as fobj:
-                while True:
-                    data = fobj.read(LOCAL_CHUNK_SIZE)
-                    if not data:
-                        break
-
-                    if binary:
-                        chunk = data
-                    else:
-                        chunk = dos2unix(data)
-
-                    hash_md5.update(chunk)
-                    pbar.update(len(data))
+            with open_func(fname, "rb") as fobj:
+                _fobj_md5(fobj, hash_md5, binary, pbar.update)
 
         return (hash_md5.hexdigest(), hash_md5.digest())
 
     return (None, None)
 
 
-def bytes_md5(byts):
-    hasher = hashlib.md5()
+def bytes_hash(byts, typ):
+    hasher = getattr(hashlib, typ)()
     hasher.update(byts)
     return hasher.hexdigest()
 
@@ -99,10 +108,18 @@ def dict_filter(d, exclude=()):
     return d
 
 
-def dict_md5(d, exclude=()):
+def dict_hash(d, typ, exclude=()):
     filtered = dict_filter(d, exclude)
     byts = json.dumps(filtered, sort_keys=True).encode("utf-8")
-    return bytes_md5(byts)
+    return bytes_hash(byts, typ)
+
+
+def dict_md5(d, **kwargs):
+    return dict_hash(d, "md5", **kwargs)
+
+
+def dict_sha256(d, **kwargs):
+    return dict_hash(d, "sha256", **kwargs)
 
 
 def _split(list_to_split, chunk_size):
@@ -212,23 +229,11 @@ def fix_env(env=None):
 
 def tmp_fname(fname):
     """ Temporary name for a partial download """
-    return fspath(fname) + "." + uuid() + ".tmp"
+    return os.fspath(fname) + "." + uuid() + ".tmp"
 
 
 def current_timestamp():
     return int(nanotime.timestamp(time.time()))
-
-
-def from_yaml_string(s):
-    return YAML().load(io.StringIO(s))
-
-
-def to_yaml_string(data):
-    stream = io.StringIO()
-    yaml = YAML()
-    yaml.default_flow_style = False
-    yaml.dump(data, stream)
-    return stream.getvalue()
 
 
 def colorize(message, color=None):
@@ -312,8 +317,8 @@ def _visual_center(line, width):
 
 
 def relpath(path, start=os.curdir):
-    path = fspath(path)
-    start = os.path.abspath(fspath(start))
+    path = os.fspath(path)
+    start = os.path.abspath(os.fspath(start))
 
     # Windows path on different drive than curdir doesn't have relpath
     if os.name == "nt" and not os.path.commonprefix(
@@ -344,7 +349,78 @@ def resolve_output(inp, out):
     return out
 
 
+def resolve_paths(repo, out):
+    from urllib.parse import urlparse
+
+    from ..dvcfile import DVC_FILE_SUFFIX
+    from ..path_info import PathInfo
+    from .fs import contains_symlink_up_to
+
+    abspath = PathInfo(os.path.abspath(out))
+    dirname = os.path.dirname(abspath)
+    base = os.path.basename(os.path.normpath(out))
+
+    scheme = urlparse(out).scheme
+    if os.name == "nt" and scheme == abspath.drive[0].lower():
+        # urlparse interprets windows drive letters as URL scheme
+        scheme = ""
+    if (
+        not scheme
+        and abspath.isin_or_eq(repo.root_dir)
+        and not contains_symlink_up_to(abspath, repo.root_dir)
+    ):
+        wdir = dirname
+        out = base
+    else:
+        wdir = os.getcwd()
+
+    path = os.path.join(wdir, base + DVC_FILE_SUFFIX)
+
+    return (path, wdir, out)
+
+
 def format_link(link):
     return "<{blue}{link}{nc}>".format(
         blue=colorama.Fore.CYAN, link=link, nc=colorama.Fore.RESET
     )
+
+
+def error_link(name):
+    return format_link(f"https://error.dvc.org/{name}")
+
+
+def parse_target(target, default=None):
+    from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK, is_valid_filename
+    from dvc.exceptions import DvcException
+
+    if not target:
+        return None, None
+
+    match = TARGET_REGEX.match(target)
+    if not match:
+        return target, None
+
+    path, name = (
+        match.group("path"),
+        match.group("name"),
+    )
+    if path:
+        if os.path.basename(path) == PIPELINE_LOCK:
+            raise DvcException(
+                "Did you mean: `{}`?".format(
+                    target.replace(".lock", ".yaml", 1)
+                )
+            )
+        if not name:
+            ret = (target, None)
+            return ret if is_valid_filename(target) else ret[::-1]
+
+    if not path:
+        path = default or PIPELINE_FILE
+        logger.debug("Assuming file to be '%s'", path)
+
+    return path, name
+
+
+def is_exec(mode):
+    return mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)

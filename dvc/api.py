@@ -1,16 +1,17 @@
 import os
-from contextlib import contextmanager, _GeneratorContextManager as GCM
+from contextlib import _GeneratorContextManager as GCM
+from contextlib import contextmanager
 
-from dvc.repo import Repo
-from dvc.exceptions import DvcException, NotDvcRepoError
+from funcy import reraise
+
+from dvc.exceptions import (
+    NotDvcRepoError,
+    OutputNotFoundError,
+    PathMissingError,
+)
 from dvc.external_repo import external_repo
-
-
-class UrlNotDvcRepoError(DvcException):
-    """Thrown if the given URL is not a DVC repository."""
-
-    def __init__(self, url):
-        super().__init__("'{}' is not a DVC repository.".format(url))
+from dvc.path_info import PathInfo
+from dvc.repo import Repo
 
 
 def get_url(path, repo=None, rev=None, remote=None):
@@ -19,20 +20,27 @@ def get_url(path, repo=None, rev=None, remote=None):
     in a DVC repo. For Git repos, HEAD is used unless a rev argument is
     supplied. The default remote is tried unless a remote argument is supplied.
 
-    Raises UrlNotDvcRepoError if repo is not a DVC project.
+    Raises OutputNotFoundError if the file is not a tracked by DVC.
 
     NOTE: This function does not check for the actual existence of the file or
     directory in the remote storage.
     """
     with _make_repo(repo, rev=rev) as _repo:
-        if not isinstance(_repo, Repo):
-            raise UrlNotDvcRepoError(_repo.url)
-        out = _repo.find_out_by_relpath(path)
-        remote_obj = _repo.cloud.get_remote(remote)
-        return str(remote_obj.checksum_to_path_info(out.checksum))
+        path_info = PathInfo(_repo.root_dir) / path
+        with reraise(FileNotFoundError, PathMissingError(path, repo)):
+            metadata = _repo.repo_tree.metadata(path_info)
+
+        if not metadata.is_dvc:
+            raise OutputNotFoundError(path, repo)
+
+        cloud = metadata.repo.cloud
+        hash_info = _repo.repo_tree.get_hash(path_info)
+        return cloud.get_url_for(remote, checksum=hash_info.value)
 
 
-def open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
+def open(  # noqa, pylint: disable=redefined-builtin
+    path, repo=None, rev=None, remote=None, mode="r", encoding=None
+):
     """
     Open file in the supplied path tracked in a repo (both DVC projects and
     plain Git repos are supported). For Git repos, HEAD is used unless a rev
@@ -57,7 +65,9 @@ def open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
 
 
 class _OpenContextManager(GCM):
-    def __init__(self, func, args, kwds):
+    def __init__(
+        self, func, args, kwds
+    ):  # pylint: disable=super-init-not-called
         self.gen = func(*args, **kwds)
         self.func, self.args, self.kwds = func, args, kwds
 
@@ -92,9 +102,40 @@ def _make_repo(repo_url=None, rev=None):
     repo_url = repo_url or os.getcwd()
     if rev is None and os.path.exists(repo_url):
         try:
-            yield Repo(repo_url)
+            yield Repo(repo_url, subrepos=True)
             return
         except NotDvcRepoError:
             pass  # fallthrough to external_repo
     with external_repo(url=repo_url, rev=rev) as repo:
         yield repo
+
+
+def make_checkpoint():
+    """
+    Signal DVC to create a checkpoint experiment.
+
+    If the current process is being run from DVC, this function will block
+    until DVC has finished creating the checkpoint. Otherwise, this function
+    will return immediately.
+    """
+    import builtins
+    from time import sleep
+
+    from dvc.stage.run import CHECKPOINT_SIGNAL_FILE
+
+    if os.getenv("DVC_CHECKPOINT") is None:
+        return
+
+    root_dir = Repo.find_root()
+    signal_file = os.path.join(
+        root_dir, Repo.DVC_DIR, "tmp", CHECKPOINT_SIGNAL_FILE
+    )
+
+    with builtins.open(signal_file, "w") as fobj:
+        # NOTE: force flushing/writing empty file to disk, otherwise when
+        # run in certain contexts (pytest) file may not actually be written
+        fobj.write("")
+        fobj.flush()
+        os.fsync(fobj.fileno())
+    while os.path.exists(signal_file):
+        sleep(1)

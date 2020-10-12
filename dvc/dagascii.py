@@ -6,12 +6,9 @@ import os
 import pydoc
 import sys
 
-from grandalf.graphs import Edge
-from grandalf.graphs import Graph
-from grandalf.graphs import Vertex
+from grandalf.graphs import Edge, Graph, Vertex
 from grandalf.layouts import SugiyamaLayout
-from grandalf.routing import EdgeViewer
-from grandalf.routing import route_with_lines
+from grandalf.routing import EdgeViewer, route_with_lines
 
 from dvc.env import DVC_PAGER
 from dvc.utils import format_link
@@ -40,7 +37,7 @@ def find_pager():
     if env_pager:
         return make_pager(env_pager)
 
-    if os.system("({}) 2>{}".format(DEFAULT_PAGER, os.devnull)) == 0:
+    if os.system(f"({DEFAULT_PAGER}) 2>{os.devnull}") == 0:
         return make_pager(DEFAULT_PAGER_FORMATTED)
 
     logger.warning(
@@ -52,7 +49,7 @@ def find_pager():
     return pydoc.plainpager
 
 
-class VertexViewer(object):
+class VertexViewer:
     """Class to define vertex box boundaries that will be accounted for during
     graph building by grandalf.
 
@@ -78,7 +75,7 @@ class VertexViewer(object):
         return self._w
 
 
-class AsciiCanvas(object):
+class AsciiCanvas:
     """Class for drawing in ASCII.
 
     Args:
@@ -95,14 +92,13 @@ class AsciiCanvas(object):
         self.cols = cols
         self.lines = lines
 
-        self.canvas = [[" "] * cols for l in range(lines)]
+        self.canvas = [[" "] * cols for line in range(lines)]
 
     def draw(self):
         """Draws ASCII canvas on the screen."""
-        pager = find_pager()
         lines = map("".join, self.canvas)
         joined_lines = os.linesep.join(lines)
-        pager(joined_lines)
+        return joined_lines
 
     def point(self, x, y, char):
         """Create a point on ASCII canvas.
@@ -148,21 +144,21 @@ class AsciiCanvas(object):
                 if dx == 0:
                     y = y0
                 else:
-                    y = y0 + int(round((x - x0) * dy / float((dx))))
+                    y = y0 + int(round((x - x0) * dy / float(dx)))
                 self.point(x, y, char)
         elif y0 < y1:
             for y in range(y0, y1 + 1):
                 if dy == 0:
                     x = x0
                 else:
-                    x = x0 + int(round((y - y0) * dx / float((dy))))
+                    x = x0 + int(round((y - y0) * dx / float(dy)))
                 self.point(x, y, char)
         else:
             for y in range(y1, y0 + 1):
                 if dy == 0:
                     x = x0
                 else:
-                    x = x1 + int(round((y - y1) * dx / float((dy))))
+                    x = x1 + int(round((y - y1) * dx / float(dy)))
                 self.point(x, y, char)
 
     def text(self, x, y, text):
@@ -216,7 +212,7 @@ def _build_sugiyama_layout(vertexes, edges):
     # Y
     #
 
-    vertexes = {v: Vertex(" {} ".format(v)) for v in vertexes}
+    vertexes = {v: Vertex(f" {v} ") for v in vertexes}
     # NOTE: reverting edges to correctly orientate the graph
     edges = [Edge(vertexes[e], vertexes[s]) for s, e in edges]
     vertexes = vertexes.values()
@@ -226,7 +222,7 @@ def _build_sugiyama_layout(vertexes, edges):
         vertex.view = VertexViewer(vertex.data)
 
     # NOTE: determine min box length to create the best layout
-    minw = min([v.view.w for v in vertexes])
+    minw = min(v.view.w for v in vertexes)
 
     for edge in edges:
         edge.view = EdgeViewer()
@@ -319,4 +315,4 @@ def draw(vertexes, edges):
             int(round(x - minx)) + 1, int(round(y - miny)) + 1, vertex.data
         )
 
-    canvas.draw()
+    return canvas.draw()

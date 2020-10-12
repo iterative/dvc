@@ -1,42 +1,39 @@
 import getpass
 import os
 import sys
-from unittest import TestCase
 
 import pytest
-from mock import mock_open
-from mock import patch
+from mock import mock_open, patch
 
-from dvc.remote.ssh import RemoteSSH
 from dvc.system import System
-from tests.remotes import SSHMocked
+from dvc.tree.ssh import SSHTree
 
 
-class TestRemoteSSH(TestCase):
-    def test_url(self):
-        user = "test"
-        host = "123.45.67.89"
-        port = 1234
-        path = "/path/to/dir"
+def test_url(dvc):
+    user = "test"
+    host = "123.45.67.89"
+    port = 1234
+    path = "/path/to/dir"
 
-        # URL ssh://[user@]host.xz[:port]/path
-        url = "ssh://{}@{}:{}{}".format(user, host, port, path)
-        config = {"url": url}
+    # URL ssh://[user@]host.xz[:port]/path
+    url = f"ssh://{user}@{host}:{port}{path}"
+    config = {"url": url}
 
-        remote = RemoteSSH(None, config)
-        self.assertEqual(remote.path_info, url)
+    tree = SSHTree(dvc, config)
+    assert tree.path_info == url
 
-        # SCP-like URL ssh://[user@]host.xz:/absolute/path
-        url = "ssh://{}@{}:{}".format(user, host, path)
-        config = {"url": url}
+    # SCP-like URL ssh://[user@]host.xz:/absolute/path
+    url = f"ssh://{user}@{host}:{path}"
+    config = {"url": url}
 
-        remote = RemoteSSH(None, config)
-        self.assertEqual(remote.path_info, url)
+    tree = SSHTree(dvc, config)
+    assert tree.path_info == url
 
-    def test_no_path(self):
-        config = {"url": "ssh://127.0.0.1"}
-        remote = RemoteSSH(None, config)
-        self.assertEqual(remote.path_info.path, "")
+
+def test_no_path(dvc):
+    config = {"url": "ssh://127.0.0.1"}
+    tree = SSHTree(dvc, config)
+    assert tree.path_info.path == ""
 
 
 mock_ssh_config = """
@@ -62,18 +59,18 @@ else:
 )
 @patch("os.path.exists", return_value=True)
 @patch(
-    "{}.open".format(builtin_module_name),
+    f"{builtin_module_name}.open",
     new_callable=mock_open,
     read_data=mock_ssh_config,
 )
 def test_ssh_host_override_from_config(
-    mock_file, mock_exists, config, expected_host
+    mock_file, mock_exists, dvc, config, expected_host
 ):
-    remote = RemoteSSH(None, config)
+    tree = SSHTree(dvc, config)
 
-    mock_exists.assert_called_with(RemoteSSH.ssh_config_filename())
-    mock_file.assert_called_with(RemoteSSH.ssh_config_filename())
-    assert remote.path_info.host == expected_host
+    mock_exists.assert_called_with(SSHTree.ssh_config_filename())
+    mock_file.assert_called_with(SSHTree.ssh_config_filename())
+    assert tree.path_info.host == expected_host
 
 
 @pytest.mark.parametrize(
@@ -92,16 +89,16 @@ def test_ssh_host_override_from_config(
 )
 @patch("os.path.exists", return_value=True)
 @patch(
-    "{}.open".format(builtin_module_name),
+    f"{builtin_module_name}.open",
     new_callable=mock_open,
     read_data=mock_ssh_config,
 )
-def test_ssh_user(mock_file, mock_exists, config, expected_user):
-    remote = RemoteSSH(None, config)
+def test_ssh_user(mock_file, mock_exists, dvc, config, expected_user):
+    tree = SSHTree(dvc, config)
 
-    mock_exists.assert_called_with(RemoteSSH.ssh_config_filename())
-    mock_file.assert_called_with(RemoteSSH.ssh_config_filename())
-    assert remote.path_info.user == expected_user
+    mock_exists.assert_called_with(SSHTree.ssh_config_filename())
+    mock_file.assert_called_with(SSHTree.ssh_config_filename())
+    assert tree.path_info.user == expected_user
 
 
 @pytest.mark.parametrize(
@@ -110,23 +107,23 @@ def test_ssh_user(mock_file, mock_exists, config, expected_user):
         ({"url": "ssh://example.com:2222"}, 2222),
         ({"url": "ssh://example.com"}, 1234),
         ({"url": "ssh://example.com", "port": 4321}, 4321),
-        ({"url": "ssh://not_in_ssh_config.com"}, RemoteSSH.DEFAULT_PORT),
+        ({"url": "ssh://not_in_ssh_config.com"}, SSHTree.DEFAULT_PORT),
         ({"url": "ssh://not_in_ssh_config.com:2222"}, 2222),
         ({"url": "ssh://not_in_ssh_config.com:2222", "port": 4321}, 4321),
     ],
 )
 @patch("os.path.exists", return_value=True)
 @patch(
-    "{}.open".format(builtin_module_name),
+    f"{builtin_module_name}.open",
     new_callable=mock_open,
     read_data=mock_ssh_config,
 )
-def test_ssh_port(mock_file, mock_exists, config, expected_port):
-    remote = RemoteSSH(None, config)
+def test_ssh_port(mock_file, mock_exists, dvc, config, expected_port):
+    tree = SSHTree(dvc, config)
 
-    mock_exists.assert_called_with(RemoteSSH.ssh_config_filename())
-    mock_file.assert_called_with(RemoteSSH.ssh_config_filename())
-    assert remote.path_info.port == expected_port
+    mock_exists.assert_called_with(SSHTree.ssh_config_filename())
+    mock_file.assert_called_with(SSHTree.ssh_config_filename())
+    assert tree.path_info.port == expected_port
 
 
 @pytest.mark.parametrize(
@@ -152,16 +149,16 @@ def test_ssh_port(mock_file, mock_exists, config, expected_port):
 )
 @patch("os.path.exists", return_value=True)
 @patch(
-    "{}.open".format(builtin_module_name),
+    f"{builtin_module_name}.open",
     new_callable=mock_open,
     read_data=mock_ssh_config,
 )
-def test_ssh_keyfile(mock_file, mock_exists, config, expected_keyfile):
-    remote = RemoteSSH(None, config)
+def test_ssh_keyfile(mock_file, mock_exists, dvc, config, expected_keyfile):
+    tree = SSHTree(dvc, config)
 
-    mock_exists.assert_called_with(RemoteSSH.ssh_config_filename())
-    mock_file.assert_called_with(RemoteSSH.ssh_config_filename())
-    assert remote.keyfile == expected_keyfile
+    mock_exists.assert_called_with(SSHTree.ssh_config_filename())
+    mock_file.assert_called_with(SSHTree.ssh_config_filename())
+    assert tree.keyfile == expected_keyfile
 
 
 @pytest.mark.parametrize(
@@ -174,34 +171,50 @@ def test_ssh_keyfile(mock_file, mock_exists, config, expected_keyfile):
 )
 @patch("os.path.exists", return_value=True)
 @patch(
-    "{}.open".format(builtin_module_name),
+    f"{builtin_module_name}.open",
     new_callable=mock_open,
     read_data=mock_ssh_config,
 )
-def test_ssh_gss_auth(mock_file, mock_exists, config, expected_gss_auth):
-    remote = RemoteSSH(None, config)
+def test_ssh_gss_auth(mock_file, mock_exists, dvc, config, expected_gss_auth):
+    tree = SSHTree(dvc, config)
 
-    mock_exists.assert_called_with(RemoteSSH.ssh_config_filename())
-    mock_file.assert_called_with(RemoteSSH.ssh_config_filename())
-    assert remote.gss_auth == expected_gss_auth
+    mock_exists.assert_called_with(SSHTree.ssh_config_filename())
+    mock_file.assert_called_with(SSHTree.ssh_config_filename())
+    assert tree.gss_auth == expected_gss_auth
 
 
-def test_hardlink_optimization(tmp_dir, ssh_server):
-    port = ssh_server.test_creds["port"]
-    user = ssh_server.test_creds["username"]
+@pytest.mark.parametrize(
+    "config,expected_allow_agent",
+    [
+        ({"url": "ssh://example.com"}, True),
+        ({"url": "ssh://not_in_ssh_config.com"}, True),
+        ({"url": "ssh://example.com", "allow_agent": True}, True),
+        ({"url": "ssh://example.com", "allow_agent": False}, False),
+    ],
+)
+@patch("os.path.exists", return_value=True)
+@patch(
+    f"{builtin_module_name}.open",
+    new_callable=mock_open,
+    read_data=mock_ssh_config,
+)
+def test_ssh_allow_agent(
+    mock_file, mock_exists, dvc, config, expected_allow_agent
+):
+    tree = SSHTree(dvc, config)
 
-    config = {
-        "url": SSHMocked.get_url(user, port),
-        "port": port,
-        "user": user,
-        "keyfile": ssh_server.test_creds["key_filename"],
-    }
-    remote = RemoteSSH(None, config)
+    mock_exists.assert_called_with(SSHTree.ssh_config_filename())
+    mock_file.assert_called_with(SSHTree.ssh_config_filename())
+    assert tree.allow_agent == expected_allow_agent
 
-    from_info = remote.path_info / "empty"
-    to_info = remote.path_info / "link"
 
-    with remote.open(from_info, "wb"):
+def test_hardlink_optimization(dvc, tmp_dir, ssh):
+    tree = SSHTree(dvc, ssh.config)
+
+    from_info = tree.path_info / "empty"
+    to_info = tree.path_info / "link"
+
+    with tree.open(from_info, "wb"):
         pass
 
     if os.name == "nt":
@@ -209,5 +222,5 @@ def test_hardlink_optimization(tmp_dir, ssh_server):
     else:
         link_path = to_info.path
 
-    remote.hardlink(from_info, to_info)
+    tree.hardlink(from_info, to_info)
     assert not System.is_hardlink(link_path)

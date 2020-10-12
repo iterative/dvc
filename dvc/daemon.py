@@ -3,13 +3,12 @@
 import inspect
 import logging
 import os
+import platform
 import sys
 from subprocess import Popen
 
 from dvc.env import DVC_DAEMON
-from dvc.utils import fix_env
-from dvc.utils import is_binary
-
+from dvc.utils import fix_env, is_binary
 
 logger = logging.getLogger(__name__)
 
@@ -17,25 +16,30 @@ CREATE_NEW_PROCESS_GROUP = 0x00000200
 DETACHED_PROCESS = 0x00000008
 
 
+def _popen(cmd, **kwargs):
+    prefix = [sys.executable]
+    if not is_binary():
+        prefix += [sys.argv[0]]
+
+    return Popen(prefix + cmd, close_fds=True, shell=False, **kwargs)
+
+
 def _spawn_windows(cmd, env):
-    from subprocess import STARTUPINFO, STARTF_USESHOWWINDOW
+    from subprocess import STARTF_USESHOWWINDOW, STARTUPINFO
 
     creationflags = CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS
 
     startupinfo = STARTUPINFO()
     startupinfo.dwFlags |= STARTF_USESHOWWINDOW
 
-    Popen(
-        cmd,
-        env=env,
-        close_fds=True,
-        shell=False,
-        creationflags=creationflags,
-        startupinfo=startupinfo,
+    _popen(
+        cmd, env=env, creationflags=creationflags, startupinfo=startupinfo,
     ).communicate()
 
 
 def _spawn_posix(cmd, env):
+    from dvc.main import main
+
     # NOTE: using os._exit instead of sys.exit, because dvc built
     # with PyInstaller has trouble with SystemExit exception and throws
     # errors such as "[26338] Failed to execute script __main__"
@@ -48,7 +52,6 @@ def _spawn_posix(cmd, env):
         os._exit(1)  # pylint: disable=protected-access
 
     os.setsid()
-    os.umask(0)
 
     try:
         pid = os.fork()
@@ -62,13 +65,19 @@ def _spawn_posix(cmd, env):
     sys.stdout.close()
     sys.stderr.close()
 
-    Popen(cmd, env=env, close_fds=True, shell=False).communicate()
+    if platform.system() == "Darwin":
+        # workaround for MacOS bug
+        # https://github.com/iterative/dvc/issues/4294
+        _popen(cmd, env=env).communicate()
+    else:
+        os.environ.update(env)
+        main(cmd)
 
     os._exit(0)  # pylint: disable=protected-access
 
 
 def _spawn(cmd, env):
-    logger.debug("Trying to spawn '{}'".format(cmd))
+    logger.debug(f"Trying to spawn '{cmd}'")
 
     if os.name == "nt":
         _spawn_windows(cmd, env)
@@ -77,7 +86,7 @@ def _spawn(cmd, env):
     else:
         raise NotImplementedError
 
-    logger.debug("Spawned '{}'".format(cmd))
+    logger.debug(f"Spawned '{cmd}'")
 
 
 def daemon(args):
@@ -90,10 +99,7 @@ def daemon(args):
         logger.debug("skipping launching a new daemon.")
         return
 
-    cmd = [sys.executable]
-    if not is_binary():
-        cmd += [sys.argv[0]]
-    cmd += ["daemon", "-q"] + args
+    cmd = ["daemon", "-q"] + args
 
     env = fix_env()
     file_path = os.path.abspath(inspect.stack()[0][1])

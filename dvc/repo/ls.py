@@ -1,84 +1,88 @@
-import os
+from itertools import chain
 
-from dvc.exceptions import PathMissingError, OutputNotFoundError
+from dvc.exceptions import PathMissingError
+from dvc.path_info import PathInfo
 
 
 @staticmethod
-def ls(url, target=None, rev=None, recursive=None, outs_only=False):
+def ls(
+    url, path=None, rev=None, recursive=None, dvc_only=False,
+):
+    """Methods for getting files and outputs for the repo.
+
+    Args:
+        url (str): the repo url
+        path (str, optional): relative path into the repo
+        rev (str, optional): SHA commit, branch or tag name
+        recursive (bool, optional): recursively walk the repo
+        dvc_only (bool, optional): show only DVC-artifacts
+
+    Returns:
+        list of `entry`
+
+    Notes:
+        `entry` is a dictionary with structure
+        {
+            "path": str,
+            "isout": bool,
+            "isdir": bool,
+            "isexec": bool,
+        }
+    """
     from dvc.external_repo import external_repo
-    from dvc.repo import Repo
-    from dvc.utils import relpath
 
-    with external_repo(url, rev) as repo:
-        target_path_info = _get_target_path_info(repo, target)
-        result = []
-        if isinstance(repo, Repo):
-            result.extend(_ls_outs_repo(repo, target_path_info, recursive))
+    # use our own RepoTree instance instead of repo.repo_tree since we want to
+    # fetch directory listings, but don't want to fetch file contents.
+    with external_repo(url, rev, fetch=False, stream=True) as repo:
+        path_info = PathInfo(repo.root_dir)
+        if path:
+            path_info /= path
 
-        if not outs_only:
-            result.extend(_ls_files_repo(target_path_info, recursive))
+        ret = _ls(repo, path_info, recursive, dvc_only)
 
-        if target and not result:
-            raise PathMissingError(target, repo, output_only=outs_only)
+        if path and not ret:
+            raise PathMissingError(path, repo, dvc_only=dvc_only)
 
-        def prettify(path_info):
-            if path_info == target_path_info:
-                return path_info.name
-            return relpath(path_info, target_path_info)
-
-        result = list(set(map(prettify, result)))
-        result.sort()
-    return result
+        ret_list = []
+        for path, info in ret.items():
+            info["path"] = path
+            ret_list.append(info)
+        ret_list.sort(key=lambda f: f["path"])
+        return ret_list
 
 
-def _ls_files_repo(target_path_info, recursive=None):
-    from dvc.compat import fspath
-    from dvc.ignore import CleanTree
-    from dvc.path_info import PathInfo
-    from dvc.scm.tree import WorkingTree
+def _ls(repo, path_info, recursive=None, dvc_only=False):
+    def onerror(exc):
+        raise exc
 
-    if not os.path.exists(fspath(target_path_info)):
-        return []
+    tree = repo.repo_tree
 
-    files = []
-    tree = CleanTree(WorkingTree(target_path_info))
+    infos = []
     try:
-        for dirpath, dirnames, filenames in tree.walk(target_path_info):
-            files.extend(map(lambda f: PathInfo(dirpath, f), filenames))
+        for root, dirs, files in tree.walk(
+            path_info.fspath, onerror=onerror, dvcfiles=True
+        ):
+            entries = chain(files, dirs) if not recursive else files
+            infos.extend(PathInfo(root) / entry for entry in entries)
             if not recursive:
-                files.extend(map(lambda d: PathInfo(dirpath, d), dirnames))
                 break
     except NotADirectoryError:
-        if os.path.isfile(fspath(target_path_info)):
-            return [target_path_info]
+        infos.append(path_info)
+    except FileNotFoundError:
+        return {}
 
-    return files
-
-
-def _ls_outs_repo(repo, target_path_info, recursive=None):
-    from dvc.compat import fspath
-    from dvc.path_info import PathInfo
-
-    try:
-        outs = repo.find_outs_by_path(fspath(target_path_info), recursive=True)
-    except OutputNotFoundError:
-        return []
-
-    if recursive:
-        return [out.path_info for out in outs]
-
-    def get_top_part(path_info):
-        relpath = path_info.relpath(target_path_info)
-        if relpath.parts:
-            return PathInfo(target_path_info, relpath.parts[0])
-        return path_info
-
-    return list({get_top_part(out.path_info) for out in outs})
-
-
-def _get_target_path_info(repo, target=None):
-    from dvc.path_info import PathInfo
-
-    if not target:
-        return PathInfo(repo.root_dir)
-    return PathInfo(repo.root_dir, target)
+    ret = {}
+    for info in infos:
+        metadata = tree.metadata(info)
+        if metadata.output_exists or not dvc_only:
+            path = (
+                path_info.name
+                if path_info == info
+                else str(info.relative_to(path_info))
+            )
+            ret[path] = {
+                "isout": metadata.is_output,
+                "isdir": metadata.isdir,
+                "isexec": metadata.is_exec,
+            }
+    return ret

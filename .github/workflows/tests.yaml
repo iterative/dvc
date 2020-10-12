@@ -1,0 +1,69 @@
+name: Tests build
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+jobs:
+  lint:
+    if: ${{ github.repository }} == 'iteratie/dvc'
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2.3.2
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+    - name: Install requirements
+      run: pip install ".[all,tests]" Pygments collective.checkdocs pre-commit
+    - name: Check README
+      run: python setup.py checkdocs
+    - name: Check formatting
+      run: pre-commit run --all-files
+  tests:
+    if: ${{ github.repository }} == 'iteratie/dvc'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-18.04, windows-2019, macos-10.15]
+        pyv: [3.6, 3.7, 3.8, "3.9-dev"]
+        exclude:
+          - os: windows-2019
+            pyv: "3.9-dev"
+    steps:
+    - name: set up environment variables
+      run: |
+        echo 'DVC_TEST=true' >> $GITHUB_ENV
+        echo 'HOMEBREW_NO_AUTO_UPDATE=1' >> $GITHUB_ENV
+        echo 'SHELL=/bin/bash' >> $GITHUB_ENV
+        echo 'GDRIVE_CREDENTIALS_DATA=${{ secrets.GDRIVE_CREDENTIALS_DATA }}' >> $GITHUB_ENV
+    - uses: actions/checkout@v2.3.2
+    - name: Set up Python
+      uses: actions/setup-python@v2.1.2
+      with:
+        python-version: ${{ matrix.pyv }}
+    - name: Install libxml2 and libxslt
+      if: matrix.pyv == '3.9-dev' && matrix.os == 'ubuntu-18.04'
+      # need to install for building lxml, a dependency of webdavclient3
+      run: |
+        sudo apt install libxml2 libxslt-dev
+    - name: install
+      run: |
+        pip install ".[all,tests]"
+    - name: setup git
+      run: |
+        git config --global user.email "dvctester@example.com"
+        git config --global user.name "DVC Tester"
+    - name: run tests
+      run: python -m tests -ra --cov-report=xml
+    - name: upload coverage report
+      if: github.event.name == 'push'
+      uses: codecov/codecov-action@v1.0.13
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: true

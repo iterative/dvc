@@ -1,15 +1,13 @@
 import logging
+import time
 import traceback
+from datetime import datetime
 
 import colorama
-
-import dvc.logger
-import time
-from datetime import datetime
 import pytest
 
+import dvc.logger
 from dvc.exceptions import DvcException
-
 
 logger = logging.getLogger("dvc")
 formatter = dvc.logger.ColorFormatter()
@@ -24,13 +22,14 @@ colors = {
 
 @pytest.fixture()
 def dt(mocker):
-    with mocker.patch(
+    mocker.patch(
         "time.time", return_value=time.mktime(datetime(2020, 2, 2).timetuple())
-    ):
-        yield "2020-02-02 00:00:00,000"
+    )
+    yield "2020-02-02 00:00:00,000"
 
 
 class TestColorFormatter:
+    # pylint: disable=broad-except
     def test_debug(self, caplog, dt):
         with caplog.at_level(logging.DEBUG, logger="dvc"):
             logger.debug("message")
@@ -195,39 +194,40 @@ class TestColorFormatter:
     def test_progress_awareness(self, mocker, capsys, caplog):
         from dvc.progress import Tqdm
 
-        with mocker.patch("sys.stdout.isatty", return_value=True):
-            with Tqdm(total=100, desc="progress") as pbar:
-                pbar.update()
+        mocker.patch("sys.stdout.isatty", return_value=True)
+        with Tqdm(total=100, desc="progress") as pbar:
+            pbar.update()
 
-                # logging an invisible message should not break
-                # the progress bar output
-                with caplog.at_level(logging.INFO, logger="dvc"):
-                    debug_record = logging.LogRecord(
-                        name="dvc",
-                        level=logging.DEBUG,
-                        pathname=__name__,
-                        lineno=1,
-                        msg="debug",
-                        args=(),
-                        exc_info=None,
-                    )
+            # logging an invisible message should not break
+            # the progress bar output
+            with caplog.at_level(logging.INFO, logger="dvc"):
+                debug_record = logging.LogRecord(
+                    name="dvc",
+                    level=logging.DEBUG,
+                    pathname=__name__,
+                    lineno=1,
+                    msg="debug",
+                    args=(),
+                    exc_info=None,
+                )
 
-                    formatter.format(debug_record)
-                    captured = capsys.readouterr()
-                    assert captured.out == ""
+                formatter.format(debug_record)
+                captured = capsys.readouterr()
+                assert captured.out == ""
 
-                #  when the message is actually visible
-                with caplog.at_level(logging.INFO, logger="dvc"):
-                    logger.info("some info")
-                    captured = capsys.readouterr()
-                    assert captured.out == ""
+            #  when the message is actually visible
+            with caplog.at_level(logging.INFO, logger="dvc"):
+                logger.info("some info")
+                captured = capsys.readouterr()
+                assert captured.out == ""
 
 
 def test_handlers():
-    out, deb, err = logger.handlers
+    out, deb, vrb, err = logger.handlers
 
     assert out.level == logging.INFO
     assert deb.level == logging.DEBUG
+    assert vrb.level == logging.TRACE
     assert err.level == logging.WARNING
 
 
@@ -235,6 +235,7 @@ def test_logging_debug_with_datetime(caplog, dt):
     with caplog.at_level(logging.DEBUG, logger="dvc"):
         logger.warning("WARNING")
         logger.debug("DEBUG")
+        logger.trace("TRACE")
         logger.error("ERROR")
 
         for record in caplog.records:

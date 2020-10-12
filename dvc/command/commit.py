@@ -1,10 +1,9 @@
 import argparse
 import logging
 
-from dvc.command.base import append_doc_link
-from dvc.command.base import CmdBase
+from dvc.command import completion
+from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
-
 
 logger = logging.getLogger(__name__)
 
@@ -68,5 +67,5 @@ def add_parser(subparsers, parent_parser):
         nargs="*",
         help="DVC-files to commit. Optional. "
         "(Finds all DVC-files in the workspace by default.)",
-    )
+    ).complete = completion.DVC_FILE
     commit_parser.set_defaults(func=CmdCommit)

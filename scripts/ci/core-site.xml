@@ -1,6 +1,0 @@
-<configuration>
-<property>
-<name>fs.defaultFS</name>
-<value>hdfs://localhost:8020</value>
-</property>
-</configuration>

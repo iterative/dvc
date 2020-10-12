@@ -1,0 +1,36 @@
+- args:
+  - git-hook
+  - pre-commit
+  entry: dvc
+  id: dvc-pre-commit
+  language: python
+  language_version: python3
+  name: DVC pre-commit
+  require_serial: true
+  stages:
+  - commit
+  verbose: true
+- args:
+  - git-hook
+  - pre-push
+  entry: dvc
+  id: dvc-pre-push
+  language: python
+  language_version: python3
+  name: DVC pre-push
+  require_serial: true
+  stages:
+  - push
+- always_run: true
+  args:
+  - git-hook
+  - post-checkout
+  entry: dvc
+  id: dvc-post-checkout
+  language: python
+  language_version: python3
+  minimum_pre_commit_version: 2.2.0
+  name: DVC post-checkout
+  require_serial: true
+  stages:
+  - post-checkout

@@ -2,7 +2,6 @@ import logging
 
 from dvc.repo import locked
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -17,17 +16,26 @@ def pull(
     all_tags=False,
     force=False,
     recursive=False,
+    all_commits=False,
+    run_cache=False,
 ):
-    processed_files_count = self._fetch(
+    if isinstance(targets, str):
+        targets = [targets]
+
+    processed_files_count = self.fetch(
         targets,
         jobs,
         remote=remote,
         all_branches=all_branches,
         all_tags=all_tags,
+        all_commits=all_commits,
         with_deps=with_deps,
         recursive=recursive,
+        run_cache=run_cache,
     )
-    self._checkout(
+    stats = self.checkout(
         targets=targets, with_deps=with_deps, force=force, recursive=recursive
     )
-    return processed_files_count
+
+    stats["fetched"] = processed_files_count
+    return stats

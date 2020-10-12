@@ -1,6 +1,7 @@
-from dvc.output.s3 import OutputS3
-from dvc.remote.gs import RemoteGS
+from dvc.output.s3 import S3Output
+
+from ..tree.gs import GSTree
 
 
-class OutputGS(OutputS3):
-    REMOTE = RemoteGS
+class GSOutput(S3Output):
+    TREE_CLS = GSTree

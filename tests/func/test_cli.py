@@ -5,15 +5,14 @@ from dvc.command.add import CmdAdd
 from dvc.command.base import CmdBase
 from dvc.command.checkout import CmdCheckout
 from dvc.command.config import CmdConfig
-from dvc.command.data_sync import CmdDataPull
-from dvc.command.data_sync import CmdDataPush
+from dvc.command.data_sync import CmdDataPull, CmdDataPush
 from dvc.command.gc import CmdGC
 from dvc.command.init import CmdInit
 from dvc.command.remove import CmdRemove
 from dvc.command.repro import CmdRepro
 from dvc.command.run import CmdRun
 from dvc.command.status import CmdDataStatus
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, DvcParserError
 from tests.basic_env import TestDvc
 
 
@@ -35,7 +34,6 @@ class TestRun(TestDvc):
         out_no_cache2 = "out_no_cache2"
 
         fname = "dvc.dvc"
-        cwd = os.curdir
         cmd = "cmd"
         arg1 = "arg1"
         arg2 = "arg2"
@@ -55,12 +53,8 @@ class TestRun(TestDvc):
                 out_no_cache1,
                 "--outs-no-cache",
                 out_no_cache2,
-                "-f",
-                fname,
                 "--file",
                 fname,
-                "-c",
-                cwd,
                 cmd,
                 arg1,
                 arg2,
@@ -72,7 +66,6 @@ class TestRun(TestDvc):
         self.assertEqual(args.outs, [out1, out2])
         self.assertEqual(args.outs_no_cache, [out_no_cache1, out_no_cache2])
         self.assertEqual(args.file, fname)
-        self.assertEqual(args.cwd, cwd)
         self.assertEqual(args.command, [cmd, arg1, arg2])
 
 
@@ -167,12 +160,67 @@ class TestCheckout(TestDvc):
 
 class TestFindRoot(TestDvc):
     def test(self):
-        os.chdir("..")
+        class Cmd(CmdBase):
+            def run(self):
+                pass
 
-        class A(object):
+        class A:
             quiet = False
             verbose = True
+            cd = os.path.pardir
 
         args = A()
         with self.assertRaises(DvcException):
-            CmdBase(args)
+            Cmd(args)
+
+
+class TestCd(TestDvc):
+    def test(self):
+        class Cmd(CmdBase):
+            def run(self):
+                pass
+
+        class A:
+            quiet = False
+            verbose = True
+            cd = os.path.pardir
+
+        parent_dir = os.path.realpath(os.path.pardir)
+        args = A()
+        with self.assertRaises(DvcException):
+            Cmd(args)
+        current_dir = os.path.realpath(os.path.curdir)
+        self.assertEqual(parent_dir, current_dir)
+
+
+def test_unknown_command_help(capsys):
+    try:
+        _ = parse_args(["unknown"])
+    except DvcParserError:
+        pass
+    captured = capsys.readouterr()
+    output = captured.out
+    try:
+        _ = parse_args(["--help"])
+    except SystemExit:
+        pass
+    captured = capsys.readouterr()
+    help_output = captured.out
+    assert output == help_output
+
+
+def test_unknown_subcommand_help(capsys):
+    sample_subcommand = "push"
+    try:
+        _ = parse_args([sample_subcommand, "--unknown"])
+    except DvcParserError:
+        pass
+    captured = capsys.readouterr()
+    output = captured.out
+    try:
+        _ = parse_args([sample_subcommand, "--help"])
+    except SystemExit:
+        pass
+    captured = capsys.readouterr()
+    help_output = captured.out
+    assert output == help_output

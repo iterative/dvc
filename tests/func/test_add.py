@@ -7,25 +7,27 @@ import time
 
 import colorama
 import pytest
-from mock import patch
+from mock import call, patch
 
 import dvc as dvc_module
 from dvc.cache import Cache
-from dvc.exceptions import DvcException, OverlappingOutputPathsError
-from dvc.exceptions import RecursiveAddingWhileUsingFilename
-from dvc.exceptions import StageFileCorruptedError
+from dvc.dvcfile import DVC_FILE_SUFFIX
+from dvc.exceptions import (
+    DvcException,
+    OutputDuplicationError,
+    OverlappingOutputPathsError,
+    RecursiveAddingWhileUsingFilename,
+)
+from dvc.hash_info import HashInfo
 from dvc.main import main
-from dvc.output.base import OutputAlreadyTrackedError
-from dvc.remote import RemoteLOCAL
+from dvc.output.base import OutputAlreadyTrackedError, OutputIsStageFileError
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.system import System
-from dvc.utils import file_md5
-from dvc.utils import LARGE_DIR_SIZE
-from dvc.utils import relpath
-from dvc.compat import fspath
+from dvc.tree.local import LocalTree
+from dvc.utils import LARGE_DIR_SIZE, file_md5, relpath
 from dvc.utils.fs import path_isin
-from dvc.utils.stage import load_stage_file
+from dvc.utils.serialize import YAMLFileCorruptedError, load_yaml
 from tests.basic_env import TestDvc
 from tests.utils import get_gitignore_content
 
@@ -41,13 +43,17 @@ def test_add(tmp_dir, dvc):
     assert len(stage.outs) == 1
     assert len(stage.deps) == 0
     assert stage.cmd is None
-    assert stage.outs[0].info["md5"] == md5
-    assert stage.md5 == "ee343f2482f53efffc109be83cc976ac"
+    assert stage.outs[0].hash_info == HashInfo("md5", md5)
+    assert stage.md5 is None
+
+    assert load_yaml("foo.dvc") == {
+        "outs": [{"md5": "acbd18db4cc2f85cedef654fccc4a4d8", "path": "foo"}],
+    }
 
 
 def test_add_unicode(tmp_dir, dvc):
     with open("\xe1", "wb") as fd:
-        fd.write("something".encode("utf-8"))
+        fd.write(b"something")
 
     (stage,) = dvc.add("\xe1")
 
@@ -66,9 +72,9 @@ def test_add_directory(tmp_dir, dvc):
     assert len(stage.deps) == 0
     assert len(stage.outs) == 1
 
-    md5 = stage.outs[0].info["md5"]
+    hash_info = stage.outs[0].hash_info
 
-    dir_info = dvc.cache.local.load_dir_cache(md5)
+    dir_info = dvc.cache.local.load_dir_cache(hash_info)
     for info in dir_info:
         assert "\\" not in info["relpath"]
 
@@ -122,10 +128,16 @@ class TestAddDirectoryWithForwardSlash(TestDvc):
 
 
 def test_add_tracked_file(tmp_dir, scm, dvc):
-    tmp_dir.scm_gen("tracked_file", "...", commit="add tracked file")
+    path = "tracked_file"
+    tmp_dir.scm_gen(path, "...", commit="add tracked file")
+    msg = f""" output '{path}' is already tracked by SCM \\(e.g. Git\\).
+    You can remove it from Git, then add to DVC.
+        To stop tracking from Git:
+            git rm -r --cached '{path}'
+            git commit -m "stop tracking {path}" """
 
-    with pytest.raises(OutputAlreadyTrackedError):
-        dvc.add("tracked_file")
+    with pytest.raises(OutputAlreadyTrackedError, match=msg):
+        dvc.add(path)
 
 
 class TestAddDirWithExistingCache(TestDvc):
@@ -173,22 +185,97 @@ def test_add_file_in_dir(tmp_dir, dvc):
     assert stage.outs[0].def_path == "subdata"
 
 
-class TestAddExternalLocalFile(TestDvc):
-    def test(self):
-        dname = TestDvc.mkdtemp()
-        fname = os.path.join(dname, "foo")
-        shutil.copyfile(self.FOO, fname)
+@pytest.mark.parametrize(
+    "workspace, hash_name, hash_value",
+    [
+        (
+            pytest.lazy_fixture("local_cloud"),
+            "md5",
+            "8c7dd922ad47494fc02c388e12c00eac",
+        ),
+        pytest.param(
+            pytest.lazy_fixture("ssh"),
+            "md5",
+            "8c7dd922ad47494fc02c388e12c00eac",
+            marks=pytest.mark.skipif(
+                os.name == "nt", reason="disabled on windows"
+            ),
+        ),
+        (
+            pytest.lazy_fixture("s3"),
+            "etag",
+            "8c7dd922ad47494fc02c388e12c00eac",
+        ),
+        (pytest.lazy_fixture("gs"), "md5", "8c7dd922ad47494fc02c388e12c00eac"),
+        (
+            pytest.lazy_fixture("hdfs"),
+            "checksum",
+            "000002000000000000000000a86fe4d846edc1bf4c355cb6112f141e",
+        ),
+    ],
+    indirect=["workspace"],
+)
+def test_add_external_file(tmp_dir, dvc, workspace, hash_name, hash_value):
+    from dvc.stage.exceptions import StageExternalOutputsError
 
-        stages = self.dvc.add(fname)
-        self.assertEqual(len(stages), 1)
-        stage = stages[0]
-        self.assertNotEqual(stage, None)
-        self.assertEqual(len(stage.deps), 0)
-        self.assertEqual(len(stage.outs), 1)
-        self.assertEqual(stage.relpath, "foo.dvc")
-        self.assertEqual(len(os.listdir(dname)), 1)
-        self.assertTrue(os.path.isfile(fname))
-        self.assertTrue(filecmp.cmp(fname, "foo", shallow=False))
+    workspace.gen("file", "file")
+
+    with pytest.raises(StageExternalOutputsError):
+        dvc.add(workspace.url)
+
+    dvc.add("remote://workspace/file")
+    assert (tmp_dir / "file.dvc").read_text() == (
+        "outs:\n"
+        f"- {hash_name}: {hash_value}\n"
+        "  path: remote://workspace/file\n"
+    )
+    assert (workspace / "file").read_text() == "file"
+    assert (
+        workspace / "cache" / hash_value[:2] / hash_value[2:]
+    ).read_text() == "file"
+
+    assert dvc.status() == {}
+
+
+@pytest.mark.parametrize(
+    "workspace, hash_name, hash_value",
+    [
+        (
+            pytest.lazy_fixture("local_cloud"),
+            "md5",
+            "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
+        ),
+        pytest.param(
+            pytest.lazy_fixture("ssh"),
+            "md5",
+            "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
+            marks=pytest.mark.skipif(
+                os.name == "nt", reason="disabled on windows"
+            ),
+        ),
+        (
+            pytest.lazy_fixture("s3"),
+            "etag",
+            "ec602a6ba97b2dd07bd6d2cd89674a60.dir",
+        ),
+        (
+            pytest.lazy_fixture("gs"),
+            "md5",
+            "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
+        ),
+    ],
+    indirect=["workspace"],
+)
+def test_add_external_dir(tmp_dir, dvc, workspace, hash_name, hash_value):
+    workspace.gen({"dir": {"file": "file", "subdir": {"subfile": "subfile"}}})
+
+    dvc.add("remote://workspace/dir")
+    assert (tmp_dir / "dir.dvc").read_text() == (
+        "outs:\n"
+        f"- {hash_name}: {hash_value}\n"
+        "  path: remote://workspace/dir\n"
+    )
+    assert (workspace / "cache" / hash_value[:2] / hash_value[2:]).is_file()
 
 
 class TestAddLocalRemoteFile(TestDvc):
@@ -204,18 +291,18 @@ class TestAddLocalRemoteFile(TestDvc):
 
         self.dvc = DvcRepo()
 
-        foo = "remote://{}/{}".format(remote, self.FOO)
+        foo = f"remote://{remote}/{self.FOO}"
         ret = main(["add", foo])
         self.assertEqual(ret, 0)
 
-        d = load_stage_file("foo.dvc")
+        d = load_yaml("foo.dvc")
         self.assertEqual(d["outs"][0]["path"], foo)
 
         bar = os.path.join(cwd, self.BAR)
         ret = main(["add", bar])
         self.assertEqual(ret, 0)
 
-        d = load_stage_file("bar.dvc")
+        d = load_yaml("bar.dvc")
         self.assertEqual(d["outs"][0]["path"], self.BAR)
 
 
@@ -245,7 +332,7 @@ class TestDoubleAddUnchanged(TestDvc):
 
 
 def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
-    file_md5_counter = mocker.spy(dvc_module.remote.local, "file_md5")
+    file_md5_counter = mocker.spy(dvc_module.tree.local, "file_md5")
     tmp_dir.gen("foo", "foo")
 
     ret = main(["config", "cache.type", "copy"])
@@ -259,7 +346,7 @@ def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
     assert ret == 0
     assert file_md5_counter.mock.call_count == 1
 
-    ret = main(["run", "-d", "foo", "echo foo"])
+    ret = main(["run", "--single-stage", "-d", "foo", "echo foo"])
     assert ret == 0
     assert file_md5_counter.mock.call_count == 1
 
@@ -276,7 +363,7 @@ def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
 def test_should_update_state_entry_for_directory_after_add(
     mocker, dvc, tmp_dir
 ):
-    file_md5_counter = mocker.spy(dvc_module.remote.local, "file_md5")
+    file_md5_counter = mocker.spy(dvc_module.tree.local, "file_md5")
 
     tmp_dir.gen({"data/data": "foo", "data/data_sub/sub_data": "foo"})
 
@@ -292,7 +379,9 @@ def test_should_update_state_entry_for_directory_after_add(
     assert file_md5_counter.mock.call_count == 3
 
     ls = "dir" if os.name == "nt" else "ls"
-    ret = main(["run", "-d", "data", "{} {}".format(ls, "data")])
+    ret = main(
+        ["run", "--single-stage", "-d", "data", "{} {}".format(ls, "data")]
+    )
     assert ret == 0
     assert file_md5_counter.mock.call_count == 3
 
@@ -321,7 +410,7 @@ class TestAddCommit(TestDvc):
 
 def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
     tmp_dir.gen({"data/data": "foo"})
-    get_dir_checksum_counter = mocker.spy(RemoteLOCAL, "get_dir_checksum")
+    get_dir_hash_counter = mocker.spy(LocalTree, "get_dir_hash")
     ret = main(["add", "data"])
     assert ret == 0
 
@@ -330,7 +419,7 @@ def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
 
     ret = main(["status"])
     assert ret == 0
-    assert get_dir_checksum_counter.mock.call_count == 1
+    assert get_dir_hash_counter.mock.call_count == 1
 
 
 class SymlinkAddTestBase(TestDvc):
@@ -340,27 +429,26 @@ class SymlinkAddTestBase(TestDvc):
     def _prepare_external_data(self):
         data_dir = self._get_data_dir()
 
-        self.data_file_name = "data_file"
-        external_data_path = os.path.join(data_dir, self.data_file_name)
+        data_file_name = "data_file"
+        external_data_path = os.path.join(data_dir, data_file_name)
         with open(external_data_path, "w+") as f:
             f.write("data")
 
-        self.link_name = "data_link"
-        System.symlink(data_dir, self.link_name)
+        link_name = "data_link"
+        System.symlink(data_dir, link_name)
+        return data_file_name, link_name
 
     def _test(self):
-        self._prepare_external_data()
+        data_file_name, link_name = self._prepare_external_data()
 
-        ret = main(["add", os.path.join(self.link_name, self.data_file_name)])
+        ret = main(["add", os.path.join(link_name, data_file_name)])
         self.assertEqual(0, ret)
 
-        stage_file = self.data_file_name + Stage.STAGE_FILE_SUFFIX
+        stage_file = data_file_name + DVC_FILE_SUFFIX
         self.assertTrue(os.path.exists(stage_file))
 
-        d = load_stage_file(stage_file)
-        relative_data_path = posixpath.join(
-            self.link_name, self.data_file_name
-        )
+        d = load_yaml(stage_file)
+        relative_data_path = posixpath.join(link_name, data_file_name)
         self.assertEqual(relative_data_path, d["outs"][0]["path"])
 
 
@@ -395,13 +483,13 @@ class TestShouldPlaceStageInDataDirIfRepositoryBelowSymlink(TestDvc):
             self.assertEqual(0, ret)
 
             stage_file_path_on_data_below_symlink = (
-                os.path.basename(self.DATA) + Stage.STAGE_FILE_SUFFIX
+                os.path.basename(self.DATA) + DVC_FILE_SUFFIX
             )
             self.assertFalse(
                 os.path.exists(stage_file_path_on_data_below_symlink)
             )
 
-            stage_file_path = self.DATA + Stage.STAGE_FILE_SUFFIX
+            stage_file_path = self.DATA + DVC_FILE_SUFFIX
             self.assertTrue(os.path.exists(stage_file_path))
 
 
@@ -410,7 +498,7 @@ class TestShouldThrowProperExceptionOnCorruptedStageFile(TestDvc):
         ret = main(["add", self.FOO])
         assert 0 == ret
 
-        foo_stage = relpath(self.FOO + Stage.STAGE_FILE_SUFFIX)
+        foo_stage = relpath(self.FOO + DVC_FILE_SUFFIX)
 
         # corrupt stage file
         with open(foo_stage, "a+") as file:
@@ -422,8 +510,7 @@ class TestShouldThrowProperExceptionOnCorruptedStageFile(TestDvc):
         assert 1 == ret
 
         expected_error = (
-            "unable to read DVC-file: {} "
-            "YAML file structure is corrupted".format(foo_stage)
+            f"unable to read: '{foo_stage}', YAML file structure is corrupted"
         )
 
         assert expected_error in self._caplog.text
@@ -431,20 +518,20 @@ class TestShouldThrowProperExceptionOnCorruptedStageFile(TestDvc):
 
 class TestAddFilename(TestDvc):
     def test(self):
-        ret = main(["add", self.FOO, self.BAR, "-f", "error.dvc"])
+        ret = main(["add", self.FOO, self.BAR, "--file", "error.dvc"])
         self.assertNotEqual(0, ret)
 
-        ret = main(["add", "-R", self.DATA_DIR, "-f", "error.dvc"])
+        ret = main(["add", "-R", self.DATA_DIR, "--file", "error.dvc"])
         self.assertNotEqual(0, ret)
 
         with self.assertRaises(RecursiveAddingWhileUsingFilename):
             self.dvc.add(self.DATA_DIR, recursive=True, fname="error.dvc")
 
-        ret = main(["add", self.DATA_DIR, "-f", "data_directory.dvc"])
+        ret = main(["add", self.DATA_DIR, "--file", "data_directory.dvc"])
         self.assertEqual(0, ret)
         self.assertTrue(os.path.exists("data_directory.dvc"))
 
-        ret = main(["add", self.FOO, "-f", "bar.dvc"])
+        ret = main(["add", self.FOO, "--file", "bar.dvc"])
         self.assertEqual(0, ret)
         self.assertTrue(os.path.exists("bar.dvc"))
         self.assertFalse(os.path.exists("foo.dvc"))
@@ -464,7 +551,7 @@ def test_failed_add_cleanup(tmp_dir, scm, dvc):
     dvc.add("foo")
     tmp_dir.gen("foo.dvc", "- broken\nyaml")
 
-    with pytest.raises(StageFileCorruptedError):
+    with pytest.raises(YAMLFileCorruptedError):
         dvc.add("bar")
 
     assert not os.path.exists("bar.dvc")
@@ -489,11 +576,11 @@ class TestAddUnprotected(TestDvc):
         ret = main(["config", "cache.type", "hardlink"])
         self.assertEqual(ret, 0)
 
-        ret = main(["config", "cache.protected", "true"])
-        self.assertEqual(ret, 0)
-
         ret = main(["add", self.FOO])
         self.assertEqual(ret, 0)
+
+        self.assertFalse(os.access(self.FOO, os.W_OK))
+        self.assertTrue(System.is_hardlink(self.FOO))
 
         ret = main(["unprotect", self.FOO])
         self.assertEqual(ret, 0)
@@ -508,9 +595,10 @@ class TestAddUnprotected(TestDvc):
 @pytest.fixture
 def temporary_windows_drive(tmp_path_factory):
     import string
-    import win32api
     from ctypes import windll
-    from win32con import DDD_REMOVE_DEFINITION
+
+    import win32api  # pylint: disable=import-error
+    from win32con import DDD_REMOVE_DEFINITION  # pylint: disable=import-error
 
     drives = [
         s[0].upper()
@@ -521,12 +609,12 @@ def temporary_windows_drive(tmp_path_factory):
     new_drive_name = [
         letter for letter in string.ascii_uppercase if letter not in drives
     ][0]
-    new_drive = "{}:".format(new_drive_name)
+    new_drive = f"{new_drive_name}:"
 
     target_path = tmp_path_factory.mktemp("tmp_windows_drive")
 
     set_up_result = windll.kernel32.DefineDosDeviceW(
-        0, new_drive, fspath(target_path)
+        0, new_drive, os.fspath(target_path)
     )
     if set_up_result == 0:
         raise RuntimeError("Failed to mount windows drive!")
@@ -536,7 +624,7 @@ def temporary_windows_drive(tmp_path_factory):
     yield os.path.join(new_drive, os.sep)
 
     tear_down_result = windll.kernel32.DefineDosDeviceW(
-        DDD_REMOVE_DEFINITION, new_drive, fspath(target_path)
+        DDD_REMOVE_DEFINITION, new_drive, os.fspath(target_path)
     )
     if tear_down_result == 0:
         raise RuntimeError("Could not unmount windows drive!")
@@ -561,12 +649,11 @@ def test_readding_dir_should_not_unprotect_all(tmp_dir, dvc, mocker):
     tmp_dir.gen("dir/data", "data")
 
     dvc.cache.local.cache_types = ["symlink"]
-    dvc.cache.local.protected = True
 
     dvc.add("dir")
     tmp_dir.gen("dir/new_file", "new_file_content")
 
-    unprotect_spy = mocker.spy(RemoteLOCAL, "unprotect")
+    unprotect_spy = mocker.spy(LocalTree, "unprotect")
     dvc.add("dir")
 
     assert not unprotect_spy.mock.called
@@ -580,7 +667,7 @@ def test_should_not_checkout_when_adding_cached_copy(tmp_dir, dvc, mocker):
 
     shutil.copy("bar", "foo")
 
-    copy_spy = mocker.spy(dvc.cache.local, "copy")
+    copy_spy = mocker.spy(dvc.cache.local.tree, "copy")
 
     dvc.add("foo")
 
@@ -606,7 +693,7 @@ def test_should_relink_on_repeated_add(
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
 
     os.remove("foo")
-    getattr(dvc.cache.local, link)(PathInfo("bar"), PathInfo("foo"))
+    getattr(dvc.cache.local.tree, link)(PathInfo("bar"), PathInfo("foo"))
 
     dvc.cache.local.cache_types = [new_link]
 
@@ -618,7 +705,6 @@ def test_should_relink_on_repeated_add(
 @pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])
 def test_should_protect_on_repeated_add(link, tmp_dir, dvc):
     dvc.cache.local.cache_types = [link]
-    dvc.cache.local.protected = True
 
     tmp_dir.dvc_gen({"foo": "foo"})
 
@@ -626,7 +712,16 @@ def test_should_protect_on_repeated_add(link, tmp_dir, dvc):
 
     dvc.add("foo")
 
-    assert not os.access("foo", os.W_OK)
+    assert not os.access(
+        os.path.join(".dvc", "cache", "ac", "bd18db4cc2f85cedef654fccc4a4d8"),
+        os.W_OK,
+    )
+
+    # NOTE: Windows symlink perms don't propagate to the target
+    if link == "copy" or (link == "symlink" and os.name == "nt"):
+        assert os.access("foo", os.W_OK)
+    else:
+        assert not os.access("foo", os.W_OK)
 
 
 def test_escape_gitignore_entries(tmp_dir, scm, dvc):
@@ -662,3 +757,73 @@ def test_not_raises_on_re_add(tmp_dir, dvc):
 
     tmp_dir.gen({"file2": "file2 content", "file": "modified file"})
     dvc.add(["file2", "file"])
+
+
+@pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])
+def test_add_empty_files(tmp_dir, dvc, link):
+    file = "foo"
+    dvc.cache.local.cache_types = [link]
+    stages = tmp_dir.dvc_gen(file, "")
+
+    assert (tmp_dir / file).exists()
+    assert (tmp_dir / (file + DVC_FILE_SUFFIX)).exists()
+    assert os.path.exists(stages[0].outs[0].cache_path)
+
+
+def test_add_optimization_for_hardlink_on_empty_files(tmp_dir, dvc, mocker):
+    dvc.cache.local.cache_types = ["hardlink"]
+    tmp_dir.gen({"foo": "", "bar": "", "lorem": "lorem", "ipsum": "ipsum"})
+    m = mocker.spy(LocalTree, "is_hardlink")
+    stages = dvc.add(["foo", "bar", "lorem", "ipsum"])
+
+    assert m.call_count == 1
+    assert m.call_args != call(tmp_dir / "foo")
+    assert m.call_args != call(tmp_dir / "bar")
+
+    for stage in stages[:2]:
+        # hardlinks are not created for empty files
+        assert not System.is_hardlink(stage.outs[0].path_info)
+
+    for stage in stages[2:]:
+        assert System.is_hardlink(stage.outs[0].path_info)
+
+    for stage in stages:
+        assert os.path.exists(stage.path)
+        assert os.path.exists(stage.outs[0].cache_path)
+
+
+def test_output_duplication_for_pipeline_tracked(tmp_dir, dvc, run_copy):
+    tmp_dir.dvc_gen("foo", "foo")
+    run_copy("foo", "bar", name="copy-foo-bar")
+    with pytest.raises(OutputDuplicationError):
+        dvc.add("bar")
+
+
+def test_add_pipeline_file(tmp_dir, dvc, run_copy):
+    from dvc.dvcfile import PIPELINE_FILE
+
+    tmp_dir.dvc_gen("foo", "foo")
+    run_copy("foo", "bar", name="copy-foo-bar")
+
+    with pytest.raises(OutputIsStageFileError):
+        dvc.add(PIPELINE_FILE)
+
+
+def test_add_symlink(tmp_dir, dvc):
+    tmp_dir.gen({"dir": {"bar": "bar"}})
+
+    (tmp_dir / "dir" / "foo").symlink_to(os.path.join(".", "bar"))
+
+    dvc.add(os.path.join("dir", "foo"))
+
+    assert not (tmp_dir / "dir" / "foo").is_symlink()
+    assert not (tmp_dir / "dir" / "bar").is_symlink()
+    assert (tmp_dir / "dir" / "foo").read_text() == "bar"
+    assert (tmp_dir / "dir" / "bar").read_text() == "bar"
+
+    assert (tmp_dir / ".dvc" / "cache").read_text() == {
+        "37": {"b51d194a7513e45b56f6524f2d51f2": "bar"}
+    }
+    assert not (
+        tmp_dir / ".dvc" / "cache" / "37" / "b51d194a7513e45b56f6524f2d51f2"
+    ).is_symlink()

@@ -1,8 +1,9 @@
 import os
 
-from . import locked
 from dvc.exceptions import MoveNotDataSourceError
 from dvc.repo.scm_context import scm_context
+
+from . import locked
 
 
 def _expand_target_path(from_path, to_path):
@@ -34,6 +35,8 @@ def move(self, from_path, to_path):
     import dvc.output as Output
     from dvc.stage import Stage
 
+    from ..dvcfile import DVC_FILE_SUFFIX, Dvcfile
+
     from_out = Output.loads_from(Stage(self), [from_path])[0]
     assert from_out.scheme == "local"
 
@@ -45,7 +48,7 @@ def move(self, from_path, to_path):
     stage = out.stage
 
     if not stage.is_data_source:
-        raise MoveNotDataSourceError(stage.relpath)
+        raise MoveNotDataSourceError(stage.addressing)
 
     stage_name = os.path.splitext(os.path.basename(stage.path))[0]
     from_name = os.path.basename(from_out.fspath)
@@ -54,7 +57,7 @@ def move(self, from_path, to_path):
 
         stage.path = os.path.join(
             os.path.dirname(to_path),
-            os.path.basename(to_path) + Stage.STAGE_FILE_SUFFIX,
+            os.path.basename(to_path) + DVC_FILE_SUFFIX,
         )
 
         stage.wdir = os.path.abspath(
@@ -68,4 +71,4 @@ def move(self, from_path, to_path):
     out.move(to_out)
     stage.save()
 
-    stage.dump()
+    Dvcfile(self, stage.path).dump(stage)

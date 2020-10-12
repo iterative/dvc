@@ -1,15 +1,16 @@
 import os
+import platform
 import stat
 
 import configobj
 import pytest
 
 from dvc.cache import Cache
+from dvc.cache.base import DirCacheError
+from dvc.hash_info import HashInfo
 from dvc.main import main
-from dvc.remote.base import DirCacheError
 from dvc.utils import relpath
-from tests.basic_env import TestDir
-from tests.basic_env import TestDvc
+from tests.basic_env import TestDir, TestDvc
 
 
 class TestCache(TestDvc):
@@ -31,14 +32,14 @@ class TestCache(TestDvc):
         self.create(self.cache2, "2")
 
     def test_all(self):
-        md5_list = list(Cache(self.dvc).local.all())
+        md5_list = list(Cache(self.dvc).local.tree.all())
         self.assertEqual(len(md5_list), 2)
         self.assertIn(self.cache1_md5, md5_list)
         self.assertIn(self.cache2_md5, md5_list)
 
     def test_get(self):
-        cache = Cache(self.dvc).local.get(self.cache1_md5)
-        self.assertEqual(cache, self.cache1)
+        cache = Cache(self.dvc).local.tree.hash_to_path_info(self.cache1_md5)
+        self.assertEqual(os.fspath(cache), self.cache1)
 
 
 class TestCacheLoadBadDirCache(TestDvc):
@@ -47,16 +48,22 @@ class TestCacheLoadBadDirCache(TestDvc):
         self.assertEqual(len(ret), 0)
 
     def test(self):
-        checksum = "123.dir"
-        fname = self.dvc.cache.local.get(checksum)
+        dir_hash = "123.dir"
+        fname = os.fspath(
+            self.dvc.cache.local.tree.hash_to_path_info(dir_hash)
+        )
         self.create(fname, "<clearly>not,json")
         with pytest.raises(DirCacheError):
-            self.dvc.cache.local.load_dir_cache(checksum)
+            self.dvc.cache.local.load_dir_cache(HashInfo("md5", dir_hash))
 
-        checksum = "234.dir"
-        fname = self.dvc.cache.local.get(checksum)
+        dir_hash = "234.dir"
+        fname = os.fspath(
+            self.dvc.cache.local.tree.hash_to_path_info(dir_hash)
+        )
         self.create(fname, '{"a": "b"}')
-        self._do_test(self.dvc.cache.local.load_dir_cache(checksum))
+        self._do_test(
+            self.dvc.cache.local.load_dir_cache(HashInfo("md5", dir_hash))
+        )
 
 
 class TestExternalCacheDir(TestDvc):
@@ -85,7 +92,7 @@ class TestExternalCacheDir(TestDvc):
 
         self.dvc.__init__()
 
-        assert self.dvc.cache.ssh.path_info == ssh_url + "/tmp"
+        assert self.dvc.cache.ssh.tree.path_info == ssh_url + "/tmp"
 
 
 class TestSharedCacheDir(TestDir):
@@ -155,8 +162,12 @@ class TestCmdCacheDir(TestDvc):
         self.assertEqual(ret, 0)
 
         config = configobj.ConfigObj(self.dvc.config.files["repo"])
-        self.assertEqual(config["cache"]["dir"], dname)
+        self.assertEqual(config["cache"]["dir"], dname.replace("\\", "/"))
 
+    @pytest.mark.skipif(
+        platform.system() == "Darwin",
+        reason="https://github.com/iterative/dvc/issues/4418",
+    )
     def test_relative_path(self):
         tmpdir = self.mkdtemp()
         dname = relpath(tmpdir)
@@ -167,7 +178,7 @@ class TestCmdCacheDir(TestDvc):
         # dir path written to config should be just one level above.
         rel = os.path.join("..", dname)
         config = configobj.ConfigObj(self.dvc.config.files["repo"])
-        self.assertEqual(config["cache"]["dir"], rel)
+        self.assertEqual(config["cache"]["dir"], rel.replace("\\", "/"))
 
         ret = main(["add", self.FOO])
         self.assertEqual(ret, 0)
@@ -184,12 +195,12 @@ def test_default_cache_type(dvc):
 
 @pytest.mark.skipif(os.name == "nt", reason="Not supported for Windows.")
 @pytest.mark.parametrize(
-    "protected,dir_mode,file_mode",
-    [(False, 0o775, 0o664), (True, 0o775, 0o444)],
+    "group, dir_mode", [(False, 0o755), (True, 0o775)],
 )
-def test_shared_cache(tmp_dir, dvc, protected, dir_mode, file_mode):
-    with dvc.config.edit() as conf:
-        conf["cache"].update({"shared": "group", "protected": str(protected)})
+def test_shared_cache(tmp_dir, dvc, group, dir_mode):
+    if group:
+        with dvc.config.edit() as conf:
+            conf["cache"].update({"shared": "group"})
     dvc.cache = Cache(dvc)
 
     tmp_dir.dvc_gen(
@@ -203,4 +214,4 @@ def test_shared_cache(tmp_dir, dvc, protected, dir_mode, file_mode):
 
         for fname in fnames:
             path = os.path.join(root, fname)
-            assert stat.S_IMODE(os.stat(path).st_mode) == file_mode
+            assert stat.S_IMODE(os.stat(path).st_mode) == 0o444

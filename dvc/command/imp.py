@@ -1,10 +1,9 @@
 import argparse
 import logging
 
-from dvc.command.base import append_doc_link
-from dvc.command.base import CmdBase
+from dvc.command import completion
+from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
-
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +15,7 @@ class CmdImport(CmdBase):
                 self.args.url,
                 self.args.path,
                 out=self.args.out,
+                fname=self.args.file,
                 rev=self.args.rev,
             )
         except DvcException:
@@ -45,12 +45,24 @@ def add_parser(subparsers, parent_parser):
         "url", help="Location of DVC or Git repository to download from"
     )
     import_parser.add_argument(
-        "path", help="Path to a file or directory within the repository"
+        "path", help="Path to a file or directory within the repository",
+    ).complete = completion.FILE
+    import_parser.add_argument(
+        "-o",
+        "--out",
+        nargs="?",
+        help="Destination path to download files to",
+        metavar="<path>",
+    ).complete = completion.DIR
+    import_parser.add_argument(
+        "--rev",
+        nargs="?",
+        help="Git revision (e.g. SHA, branch, tag)",
+        metavar="<commit>",
     )
     import_parser.add_argument(
-        "-o", "--out", nargs="?", help="Destination path to download files to"
-    )
-    import_parser.add_argument(
-        "--rev", nargs="?", help="Git revision (e.g. SHA, branch, tag)"
+        "--file",
+        help="Specify name of the DVC-file this command will generate.",
+        metavar="<filename>",
     )
     import_parser.set_defaults(func=CmdImport)

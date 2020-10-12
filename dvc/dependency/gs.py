@@ -1,6 +1,6 @@
-from dvc.dependency.base import DependencyBase
-from dvc.output.gs import OutputGS
+from dvc.dependency.base import BaseDependency
+from dvc.output.gs import GSOutput
 
 
-class DependencyGS(DependencyBase, OutputGS):
+class GSDependency(BaseDependency, GSOutput):
     pass

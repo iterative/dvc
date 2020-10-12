@@ -2,12 +2,12 @@ import argparse
 import logging
 import os
 
-from dvc.command.base import append_doc_link
-from dvc.command.base import CmdBase
-from dvc.command.metrics import show_metrics
+from dvc.command import completion
+from dvc.command.base import CmdBase, append_doc_link
+from dvc.command.metrics import _show_metrics
 from dvc.command.status import CmdDataStatus
+from dvc.dvcfile import PIPELINE_FILE
 from dvc.exceptions import DvcException
-
 
 logger = logging.getLogger(__name__)
 
@@ -15,8 +15,7 @@ logger = logging.getLogger(__name__)
 class CmdRepro(CmdBase):
     def run(self):
         saved_dir = os.path.realpath(os.curdir)
-        if self.args.cwd:
-            os.chdir(self.args.cwd)
+        os.chdir(self.args.cwd)
 
         # Dirty hack so the for loop below can at least enter once
         if self.args.all_pipelines:
@@ -27,26 +26,15 @@ class CmdRepro(CmdBase):
         ret = 0
         for target in self.args.targets:
             try:
-                stages = self.repo.reproduce(
-                    target,
-                    single_item=self.args.single_item,
-                    force=self.args.force,
-                    dry=self.args.dry,
-                    interactive=self.args.interactive,
-                    pipeline=self.args.pipeline,
-                    all_pipelines=self.args.all_pipelines,
-                    ignore_build_cache=self.args.ignore_build_cache,
-                    no_commit=self.args.no_commit,
-                    downstream=self.args.downstream,
-                    recursive=self.args.recursive,
-                )
+                stages = self.repo.reproduce(target, **self._repro_kwargs)
 
                 if len(stages) == 0:
                     logger.info(CmdDataStatus.UP_TO_DATE_MSG)
 
                 if self.args.metrics:
                     metrics = self.repo.metrics.show()
-                    show_metrics(metrics)
+                    logger.info(_show_metrics(metrics))
+
             except DvcException:
                 logger.exception("")
                 ret = 1
@@ -55,21 +43,30 @@ class CmdRepro(CmdBase):
         os.chdir(saved_dir)
         return ret
 
+    @property
+    def _repro_kwargs(self):
+        return {
+            "single_item": self.args.single_item,
+            "force": self.args.force,
+            "dry": self.args.dry,
+            "interactive": self.args.interactive,
+            "pipeline": self.args.pipeline,
+            "all_pipelines": self.args.all_pipelines,
+            "run_cache": not self.args.no_run_cache,
+            "no_commit": self.args.no_commit,
+            "downstream": self.args.downstream,
+            "recursive": self.args.recursive,
+            "force_downstream": self.args.force_downstream,
+            "pull": self.args.pull,
+        }
 
-def add_parser(subparsers, parent_parser):
-    REPRO_HELP = "Check for changes and reproduce stages and dependencies."
-    repro_parser = subparsers.add_parser(
-        "repro",
-        parents=[parent_parser],
-        description=append_doc_link(REPRO_HELP, "repro"),
-        help=REPRO_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
+
+def add_arguments(repro_parser):
     repro_parser.add_argument(
         "targets",
         nargs="*",
-        help="DVC-file to reproduce. 'Dvcfile' by default.",
-    )
+        help=f"Stages to reproduce. '{PIPELINE_FILE}' by default.",
+    ).complete = completion.DVC_FILE
     repro_parser.add_argument(
         "-f",
         "--force",
@@ -89,7 +86,9 @@ def add_parser(subparsers, parent_parser):
         "-c",
         "--cwd",
         default=os.path.curdir,
-        help="Directory within your repo to reproduce from.",
+        help="Directory within your repo to reproduce from. Note: deprecated "
+        "by `dvc --cd <path>`.",
+        metavar="<path>",
     )
     repro_parser.add_argument(
         "-m",
@@ -135,7 +134,16 @@ def add_parser(subparsers, parent_parser):
         help="Reproduce all stages in the specified directory.",
     )
     repro_parser.add_argument(
-        "--ignore-build-cache",
+        "--no-run-cache",
+        action="store_true",
+        default=False,
+        help=(
+            "Execute stage commands even if they have already been run with "
+            "the same command/dependencies/outputs/etc before."
+        ),
+    )
+    repro_parser.add_argument(
+        "--force-downstream",
         action="store_true",
         default=False,
         help="Reproduce all descendants of a changed stage even if their "
@@ -153,4 +161,27 @@ def add_parser(subparsers, parent_parser):
         default=False,
         help="Start from the specified stages when reproducing pipelines.",
     )
+    repro_parser.add_argument(
+        "--pull",
+        action="store_true",
+        default=False,
+        help=(
+            "Try automatically pulling missing cache for outputs restored "
+            "from the run-cache."
+        ),
+    )
+
+
+def add_parser(subparsers, parent_parser):
+    REPRO_HELP = (
+        "Reproduce complete or partial pipelines by executing their stages."
+    )
+    repro_parser = subparsers.add_parser(
+        "repro",
+        parents=[parent_parser],
+        description=append_doc_link(REPRO_HELP, "repro"),
+        help=REPRO_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    add_arguments(repro_parser)
     repro_parser.set_defaults(func=CmdRepro)

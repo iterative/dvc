@@ -1,7 +1,11 @@
-from dvc.output.hdfs import OutputHDFS
-from tests.unit.output.test_local import TestOutputLOCAL
+import pytest
+
+from dvc.output.hdfs import HDFSOutput
+from tests import PY39, PYARROW_NOT_AVAILABLE
+from tests.unit.output.test_local import TestLocalOutput
 
 
-class TestOutputHDFS(TestOutputLOCAL):
+@pytest.mark.skipif(PY39, reason=PYARROW_NOT_AVAILABLE)
+class TestHDFSOutput(TestLocalOutput):
     def _get_cls(self):
-        return OutputHDFS
+        return HDFSOutput

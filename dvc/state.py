@@ -4,17 +4,12 @@ import logging
 import os
 import re
 import sqlite3
-from urllib.parse import urlunparse, urlencode
+from abc import ABC, abstractmethod
+from urllib.parse import urlencode, urlunparse
 
 from dvc.exceptions import DvcException
-from dvc.utils import current_timestamp
-from dvc.utils import relpath
-from dvc.utils import to_chunks
-from dvc.compat import fspath_py35
-from dvc.utils.fs import get_inode
-from dvc.utils.fs import get_mtime_and_size
-from dvc.utils.fs import remove
-
+from dvc.utils import current_timestamp, relpath, to_chunks
+from dvc.utils.fs import get_inode, get_mtime_and_size, remove
 
 SQLITE_MAX_VARIABLES_NUMBER = 999
 
@@ -35,26 +30,69 @@ class StateVersionTooNewError(DvcException):
         )
 
 
-class StateNoop(object):
-    files = []
+class StateBase(ABC):
+    def __init__(self):
+        self.count = 0
+
+    @property
+    @abstractmethod
+    def files(self):
+        pass
+
+    @abstractmethod
+    def save(self, path_info, checksum):
+        pass
+
+    @abstractmethod
+    def get(self, path_info):
+        pass
+
+    @abstractmethod
+    def save_link(self, path_info):
+        pass
+
+    @abstractmethod
+    def load(self):
+        pass
+
+    @abstractmethod
+    def dump(self):
+        pass
+
+    def __enter__(self):
+        if self.count <= 0:
+            self.load()
+        self.count += 1
+
+    def __exit__(self, typ, value, tbck):
+        self.count -= 1
+        if self.count > 0:
+            return
+        self.dump()
+
+
+class StateNoop(StateBase):
+    @property
+    def files(self):
+        return []
 
     def save(self, path_info, checksum):
         pass
 
-    def get(self, path_info):
+    def get(self, path_info):  # pylint: disable=unused-argument
         return None
 
     def save_link(self, path_info):
         pass
 
-    def __enter__(self):
+    def load(self):
         pass
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def dump(self):
         pass
 
 
-class State(object):  # pylint: disable=too-many-instance-attributes
+class State(StateBase):  # pylint: disable=too-many-instance-attributes
     """Class for the state database.
 
     Args:
@@ -95,9 +133,13 @@ class State(object):  # pylint: disable=too-many-instance-attributes
     MAX_UINT = 2 ** 64 - 2
 
     def __init__(self, repo):
+        from dvc.tree.local import LocalTree
+
+        super().__init__()
+
         self.repo = repo
-        self.dvc_dir = repo.dvc_dir
         self.root_dir = repo.root_dir
+        self.tree = LocalTree(None, {"url": self.root_dir})
 
         state_config = repo.config.get("state", {})
         self.row_limit = state_config.get("row_limit", self.STATE_ROW_LIMIT)
@@ -105,11 +147,11 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             "row_cleanup_quota", self.STATE_ROW_CLEANUP_QUOTA
         )
 
-        if not self.dvc_dir:
+        if not repo.tmp_dir:
             self.state_file = None
             return
 
-        self.state_file = os.path.join(self.dvc_dir, self.STATE_FILE)
+        self.state_file = os.path.join(repo.tmp_dir, self.STATE_FILE)
 
         # https://www.sqlite.org/tempfiles.html
         self.temp_files = [
@@ -125,19 +167,13 @@ class State(object):  # pylint: disable=too-many-instance-attributes
     def files(self):
         return self.temp_files + [self.state_file]
 
-    def __enter__(self):
-        self.load()
-
-    def __exit__(self, typ, value, tbck):
-        self.dump()
-
     def _execute(self, cmd, parameters=()):
-        logger.debug(cmd)
+        logger.trace(cmd)
         return self.cursor.execute(cmd, parameters)
 
     def _fetchall(self):
         ret = self.cursor.fetchall()
-        logger.debug("fetched: {}", ret)
+        logger.debug("fetched: %s", ret)
         return ret
 
     def _to_sqlite(self, num):
@@ -178,8 +214,8 @@ class State(object):  # pylint: disable=too-many-instance-attributes
                 )
             elif version < self.VERSION:
                 logger.warning(
-                    "State file version '{}' is too old. "
-                    "Reformatting to the current version '{}'.",
+                    "State file version '%d' is too old. "
+                    "Reformatting to the current version '%d'.",
                     version,
                     self.VERSION,
                 )
@@ -367,13 +403,11 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             path_info (dict): path_info to save checksum for.
             checksum (str): checksum to save.
         """
-        assert path_info.scheme == "local"
+        assert isinstance(path_info, str) or path_info.scheme == "local"
         assert checksum is not None
-        assert os.path.exists(fspath_py35(path_info))
+        assert os.path.exists(path_info)
 
-        actual_mtime, actual_size = get_mtime_and_size(
-            path_info, self.repo.tree
-        )
+        actual_mtime, actual_size = get_mtime_and_size(path_info, self.tree)
         actual_inode = get_inode(path_info)
 
         existing_record = self.get_state_record_for_inode(actual_inode)
@@ -398,13 +432,16 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             str or None: checksum for the specified path info or None if it
             doesn't exist in the state database.
         """
-        assert path_info.scheme == "local"
-        path = fspath_py35(path_info)
+        assert isinstance(path_info, str) or path_info.scheme == "local"
+        path = os.fspath(path_info)
 
+        # NOTE: use os.path.exists instead of LocalTree.exists
+        # because it uses lexists() and will return True for broken
+        # symlinks that we cannot stat() in get_mtime_and_size
         if not os.path.exists(path):
             return None
 
-        actual_mtime, actual_size = get_mtime_and_size(path, self.repo.tree)
+        actual_mtime, actual_size = get_mtime_and_size(path, self.tree)
         actual_inode = get_inode(path)
 
         existing_record = self.get_state_record_for_inode(actual_inode)
@@ -425,12 +462,12 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         Args:
             path_info (dict): path info to add to the list of links.
         """
-        assert path_info.scheme == "local"
+        assert isinstance(path_info, str) or path_info.scheme == "local"
 
-        if not os.path.exists(fspath_py35(path_info)):
+        if not self.tree.exists(path_info):
             return
 
-        mtime, _ = get_mtime_and_size(path_info, self.repo.tree)
+        mtime, _ = get_mtime_and_size(path_info, self.tree)
         inode = get_inode(path_info)
         relative_path = relpath(path_info, self.root_dir)
 
@@ -439,7 +476,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         )
         self._execute(cmd, (relative_path, self._to_sqlite(inode), mtime))
 
-    def remove_unused_links(self, used):
+    def get_unused_links(self, used):
         """Removes all saved links except the ones that are used.
 
         Args:
@@ -447,25 +484,27 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         """
         unused = []
 
-        self._execute("SELECT * FROM {}".format(self.LINK_STATE_TABLE))
+        self._execute(f"SELECT * FROM {self.LINK_STATE_TABLE}")
         for row in self.cursor:
-            relpath, inode, mtime = row
+            relative_path, inode, mtime = row
             inode = self._from_sqlite(inode)
-            path = os.path.join(self.root_dir, relpath)
+            path = os.path.join(self.root_dir, relative_path)
 
-            if path in used:
-                continue
-
-            if not os.path.exists(path):
+            if path in used or not self.tree.exists(path):
                 continue
 
             actual_inode = get_inode(path)
-            actual_mtime, _ = get_mtime_and_size(path, self.repo.tree)
+            actual_mtime, _ = get_mtime_and_size(path, self.tree)
 
-            if inode == actual_inode and mtime == actual_mtime:
-                logger.debug("Removing '{}' as unused link.", path)
-                remove(path)
-                unused.append(relpath)
+            if (inode, mtime) == (actual_inode, actual_mtime):
+                logger.debug("Removing '%s' as unused link.", path)
+                unused.append(relative_path)
+
+        return unused
+
+    def remove_links(self, unused):
+        for path in unused:
+            remove(path)
 
         for chunk_unused in to_chunks(
             unused, chunk_size=SQLITE_MAX_VARIABLES_NUMBER

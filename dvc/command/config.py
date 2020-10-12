@@ -1,7 +1,7 @@
 import argparse
 import logging
 
-from dvc.command.base import append_doc_link, CmdBaseNoRepo
+from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.config import Config, ConfigError
 
 logger = logging.getLogger(__name__)
@@ -50,21 +50,22 @@ class CmdConfig(CmdBaseNoRepo):
 
 
 parent_config_parser = argparse.ArgumentParser(add_help=False)
-parent_config_parser.add_argument(
+level_group = parent_config_parser.add_mutually_exclusive_group()
+level_group.add_argument(
     "--global",
     dest="level",
     action="store_const",
     const="global",
     help="Use global config.",
 )
-parent_config_parser.add_argument(
+level_group.add_argument(
     "--system",
     dest="level",
     action="store_const",
     const="system",
     help="Use system config.",
 )
-parent_config_parser.add_argument(
+level_group.add_argument(
     "--local",
     dest="level",
     action="store_const",

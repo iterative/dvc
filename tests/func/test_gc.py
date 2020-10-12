@@ -1,15 +1,16 @@
 import logging
 import os
+import shutil
 
 import configobj
 import pytest
 from git import Repo
 
-from dvc.compat import fspath
 from dvc.exceptions import CollectCacheError
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
-from dvc.remote.local import RemoteLOCAL
+from dvc.tree.local import LocalTree
+from dvc.utils.fs import remove
 from tests.basic_env import TestDir, TestDvcGit
 
 
@@ -20,7 +21,8 @@ class TestGC(TestDvcGit):
         self.dvc.add(self.FOO)
         self.dvc.add(self.DATA_DIR)
         self.good_cache = [
-            self.dvc.cache.local.get(md5) for md5 in self.dvc.cache.local.all()
+            self.dvc.cache.local.tree.hash_to_path_info(md5)
+            for md5 in self.dvc.cache.local.tree.all()
         ]
 
         self.bad_cache = []
@@ -50,7 +52,7 @@ class TestGC(TestDvcGit):
 class TestGCBranchesTags(TestDvcGit):
     def _check_cache(self, num):
         total = 0
-        for root, dirs, files in os.walk(os.path.join(".dvc", "cache")):
+        for _, _, files in os.walk(os.path.join(".dvc", "cache")):
             total += len(files)
         self.assertEqual(total, num)
 
@@ -67,7 +69,7 @@ class TestGCBranchesTags(TestDvcGit):
         self.dvc.scm.tag("v1.0")
 
         self.dvc.scm.checkout("test", create_new=True)
-        self.dvc.remove(stages[0].relpath, outs_only=True)
+        self.dvc.remove(stages[0].relpath)
         with open(fname, "w+") as fobj:
             fobj.write("test")
         stages = self.dvc.add(fname)
@@ -76,7 +78,7 @@ class TestGCBranchesTags(TestDvcGit):
         self.dvc.scm.commit("test")
 
         self.dvc.scm.checkout("master")
-        self.dvc.remove(stages[0].relpath, outs_only=True)
+        self.dvc.remove(stages[0].relpath)
         with open(fname, "w+") as fobj:
             fobj.write("trash")
         stages = self.dvc.add(fname)
@@ -84,7 +86,7 @@ class TestGCBranchesTags(TestDvcGit):
         self.dvc.scm.add([".gitignore", stages[0].relpath])
         self.dvc.scm.commit("trash")
 
-        self.dvc.remove(stages[0].relpath, outs_only=True)
+        self.dvc.remove(stages[0].relpath)
         with open(fname, "w+") as fobj:
             fobj.write("master")
         stages = self.dvc.add(fname)
@@ -110,7 +112,7 @@ class TestGCBranchesTags(TestDvcGit):
 class TestGCMultipleDvcRepos(TestDvcGit):
     def _check_cache(self, num):
         total = 0
-        for root, dirs, files in os.walk(os.path.join(".dvc", "cache")):
+        for _, _, files in os.walk(os.path.join(".dvc", "cache")):
             total += len(files)
         self.assertEqual(total, num)
 
@@ -152,7 +154,7 @@ class TestGCMultipleDvcRepos(TestDvcGit):
         cwd = os.getcwd()
         os.chdir(self.additional_path)
         # ADD FILE ONLY IN SECOND PROJECT
-        fname = os.path.join(self.additional_path, "only_in_second")
+        fname = "only_in_second"
         with open(fname, "w+") as fobj:
             fobj.write("only in additional repo")
 
@@ -160,7 +162,7 @@ class TestGCMultipleDvcRepos(TestDvcGit):
         self.assertEqual(len(stages), 1)
 
         # ADD FILE IN SECOND PROJECT THAT IS ALSO IN MAIN PROJECT
-        fname = os.path.join(self.additional_path, "in_both")
+        fname = "in_both"
         with open(fname, "w+") as fobj:
             fobj.write("in both repos")
 
@@ -195,7 +197,7 @@ def test_gc_no_dir_cache(tmp_dir, dvc):
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
     (dir_stage,) = tmp_dir.dvc_gen({"dir": {"x": "x", "subdir": {"y": "y"}}})
 
-    os.unlink(dir_stage.outs[0].cache_path)
+    remove(dir_stage.outs[0].cache_path)
 
     with pytest.raises(CollectCacheError):
         dvc.gc(workspace=True)
@@ -215,9 +217,11 @@ def test_gc_no_unpacked_dir(tmp_dir, dvc):
 
     os.remove("dir.dvc")
     unpackeddir = (
-        dir_stages[0].outs[0].cache_path + RemoteLOCAL.UNPACKED_DIR_SUFFIX
+        dir_stages[0].outs[0].cache_path + LocalTree.UNPACKED_DIR_SUFFIX
     )
 
+    # older (pre 1.0) versions of dvc used to generate this dir
+    shutil.copytree("dir", unpackeddir)
     assert os.path.exists(unpackeddir)
 
     dvc.gc(force=True, workspace=True)
@@ -236,6 +240,20 @@ def test_gc_without_workspace_raises_error(tmp_dir, dvc):
         dvc.gc(force=True, workspace=False)
 
 
+def test_gc_cloud_with_or_without_specifier(tmp_dir, erepo_dir, local_cloud):
+    erepo_dir.add_remote(config=local_cloud.config)
+    dvc = erepo_dir.dvc
+    from dvc.exceptions import InvalidArgumentError
+
+    with pytest.raises(InvalidArgumentError):
+        dvc.gc(force=True, cloud=True)
+
+    dvc.gc(cloud=True, all_tags=True)
+    dvc.gc(cloud=True, all_commits=True)
+    dvc.gc(cloud=True, all_branches=True)
+    dvc.gc(cloud=True, all_commits=False, all_branches=True, all_tags=True)
+
+
 def test_gc_without_workspace_on_tags_branches_commits(tmp_dir, dvc):
     dvc.gc(force=True, all_tags=True)
     dvc.gc(force=True, all_commits=True)
@@ -250,7 +268,20 @@ def test_gc_without_workspace(tmp_dir, dvc, caplog):
     with caplog.at_level(logging.WARNING, logger="dvc"):
         assert main(["gc", "-vf"]) == 255
 
-    assert "Invalid Arguments" in caplog.text
+    assert (
+        "Either of `-w|--workspace`, `-a|--all-branches`, `-T|--all-tags` "
+        "or `--all-commits` needs to be set."
+    ) in caplog.text
+
+
+def test_gc_cloud_without_any_specifier(tmp_dir, dvc, caplog):
+    with caplog.at_level(logging.WARNING, logger="dvc"):
+        assert main(["gc", "-cvf"]) == 255
+
+    assert (
+        "Either of `-w|--workspace`, `-a|--all-branches`, `-T|--all-tags` "
+        "or `--all-commits` needs to be set."
+    ) in caplog.text
 
 
 def test_gc_with_possible_args_positive(tmp_dir, dvc):
@@ -266,13 +297,94 @@ def test_gc_with_possible_args_positive(tmp_dir, dvc):
         assert main(["gc", "-vf", flag]) == 0
 
 
-def test_gc_cloud_positive(tmp_dir, dvc, tmp_path_factory):
-    with dvc.config.edit() as conf:
-        storage = fspath(tmp_path_factory.mktemp("test_remote_base"))
-        conf["remote"]["local_remote"] = {"url": storage}
-        conf["core"]["remote"] = "local_remote"
-
-    dvc.push()
-
-    for flag in ["-c", "-ca", "-cT", "-caT", "-cwT"]:
+def test_gc_cloud_positive(tmp_dir, dvc, tmp_path_factory, local_remote):
+    for flag in ["-cw", "-ca", "-cT", "-caT", "-cwT"]:
         assert main(["gc", "-vf", flag]) == 0
+
+
+def test_gc_cloud_remove_order(tmp_dir, scm, dvc, tmp_path_factory, mocker):
+    storage = os.fspath(tmp_path_factory.mktemp("test_remote_base"))
+    dvc.config["remote"]["local_remote"] = {"url": storage}
+    dvc.config["core"]["remote"] = "local_remote"
+
+    (standalone, dir1, dir2) = tmp_dir.dvc_gen(
+        {
+            "file1": "standalone",
+            "dir1": {"file2": "file2"},
+            "dir2": {"file3": "file3", "file4": "file4"},
+        }
+    )
+    dvc.push()
+    dvc.remove(standalone.relpath)
+    dvc.remove(dir1.relpath)
+    dvc.remove(dir2.relpath)
+    dvc.gc(workspace=True)
+
+    mocked_remove = mocker.patch.object(LocalTree, "remove", autospec=True)
+    dvc.gc(workspace=True, cloud=True)
+    assert len(mocked_remove.mock_calls) == 8
+    # dir (and unpacked dir) should be first 4 checksums removed from
+    # the remote
+    for args in mocked_remove.call_args_list[:4]:
+        checksum = str(args[0][1])
+        assert checksum.endswith(".dir") or checksum.endswith(".dir.unpacked")
+
+
+def test_gc_not_collect_pipeline_tracked_files(tmp_dir, dvc, run_copy):
+    from dvc.dvcfile import PIPELINE_FILE, Dvcfile
+
+    tmp_dir.gen("foo", "foo")
+    tmp_dir.gen("bar", "bar")
+
+    run_copy("foo", "foo2", name="copy")
+    shutil.rmtree(dvc.stage_cache.cache_dir)
+    assert _count_files(dvc.cache.local.cache_dir) == 1
+    dvc.gc(workspace=True, force=True)
+    assert _count_files(dvc.cache.local.cache_dir) == 1
+
+    # remove pipeline file and lockfile and check
+    Dvcfile(dvc, PIPELINE_FILE).remove(force=True)
+    dvc.gc(workspace=True, force=True)
+    assert _count_files(dvc.cache.local.cache_dir) == 0
+
+
+@pytest.mark.parametrize(
+    "workspace",
+    [
+        pytest.lazy_fixture("local_cloud"),
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("hdfs"),
+        pytest.param(
+            pytest.lazy_fixture("ssh"),
+            marks=pytest.mark.skipif(
+                os.name == "nt", reason="disabled on windows"
+            ),
+        ),
+    ],
+    indirect=True,
+)
+def test_gc_external_output(tmp_dir, dvc, workspace):
+    workspace.gen({"foo": "foo", "bar": "bar"})
+
+    (foo_stage,) = dvc.add("remote://workspace/foo")
+    (bar_stage,) = dvc.add("remote://workspace/bar")
+
+    foo_hash = foo_stage.outs[0].hash_info.value
+    bar_hash = bar_stage.outs[0].hash_info.value
+
+    assert (
+        workspace / "cache" / foo_hash[:2] / foo_hash[2:]
+    ).read_text() == "foo"
+    assert (
+        workspace / "cache" / bar_hash[:2] / bar_hash[2:]
+    ).read_text() == "bar"
+
+    (tmp_dir / "foo.dvc").unlink()
+
+    dvc.gc(workspace=True)
+
+    assert not (workspace / "cache" / foo_hash[:2] / foo_hash[2:]).exists()
+    assert (
+        workspace / "cache" / bar_hash[:2] / bar_hash[2:]
+    ).read_text() == "bar"

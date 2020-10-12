@@ -2,11 +2,12 @@ from functools import wraps
 
 import boto3
 import moto.s3.models as s3model
+import pytest
 from moto import mock_s3
 
-from dvc.remote.s3 import RemoteS3
+from dvc.cache.base import CloudCache
+from dvc.tree.s3 import S3Tree
 from tests.remotes import S3
-
 
 # from https://github.com/spulec/moto/blob/v1.3.5/tests/test_s3/test_s3.py#L40
 REDUCED_PART_SIZE = 256
@@ -30,7 +31,7 @@ def reduced_min_part_size(f):
 
 
 def _get_src_dst():
-    base_info = RemoteS3.path_cls(S3.get_url())
+    base_info = S3Tree.PATH_CLS(S3.get_url())
     return base_info / "from", base_info / "to"
 
 
@@ -42,7 +43,33 @@ def test_copy_singlepart_preserve_etag():
     s3.create_bucket(Bucket=from_info.bucket)
     s3.put_object(Bucket=from_info.bucket, Key=from_info.path, Body="data")
 
-    RemoteS3._copy(s3, from_info, to_info, {})
+    S3Tree._copy(s3, from_info, to_info, {})
+
+
+@mock_s3
+@pytest.mark.parametrize(
+    "base_info",
+    [S3Tree.PATH_CLS("s3://bucket/"), S3Tree.PATH_CLS("s3://bucket/ns/")],
+)
+def test_link_created_on_non_nested_path(base_info, tmp_dir, dvc, scm):
+    tree = S3Tree(dvc, {"url": str(base_info.parent)})
+    cache = CloudCache(tree)
+    s3 = cache.tree.s3.meta.client
+    s3.create_bucket(Bucket=base_info.bucket)
+    s3.put_object(
+        Bucket=base_info.bucket, Key=(base_info / "from").path, Body="data"
+    )
+    cache.link(base_info / "from", base_info / "to")
+
+    assert cache.tree.exists(base_info / "from")
+    assert cache.tree.exists(base_info / "to")
+
+
+@mock_s3
+def test_makedirs_doesnot_try_on_top_level_paths(tmp_dir, dvc, scm):
+    base_info = S3Tree.PATH_CLS("s3://bucket/")
+    tree = S3Tree(dvc, {"url": str(base_info)})
+    tree.makedirs(base_info)
 
 
 def _upload_multipart(s3, Bucket, Key):
@@ -83,4 +110,4 @@ def test_copy_multipart_preserve_etag():
     s3 = boto3.client("s3")
     s3.create_bucket(Bucket=from_info.bucket)
     _upload_multipart(s3, from_info.bucket, from_info.path)
-    RemoteS3._copy(s3, from_info, to_info, {})
+    S3Tree._copy(s3, from_info, to_info, {})

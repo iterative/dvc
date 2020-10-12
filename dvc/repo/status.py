@@ -3,37 +3,37 @@ from itertools import compress
 
 from funcy.py3 import cat
 
-from dvc.exceptions import DvcException
-from . import locked
+from dvc.exceptions import InvalidArgumentError
 
+from . import locked
 
 logger = logging.getLogger(__name__)
 
 
-def _joint_status(stages):
-    status = {}
+def _joint_status(pairs):
+    status_info = {}
 
-    for stage in stages:
-        if stage.locked and not stage.is_repo_import:
+    for stage, filter_info in pairs:
+        if stage.frozen and not stage.is_repo_import:
             logger.warning(
-                "DVC-file '{path}' is locked. Its dependencies are"
-                " not going to be shown in the status output.".format(
-                    path=stage.relpath
-                )
+                "{} is frozen. Its dependencies are"
+                " not going to be shown in the status output.".format(stage)
             )
+        status_info.update(
+            stage.status(check_updates=True, filter_info=filter_info)
+        )
 
-        status.update(stage.status(check_updates=True))
-
-    return status
+    return status_info
 
 
-def _local_status(self, targets=None, with_deps=False):
-    if targets:
-        stages = cat(self.collect(t, with_deps=with_deps) for t in targets)
-    else:
-        stages = self.collect(None, with_deps=with_deps)
+def _local_status(self, targets=None, with_deps=False, recursive=False):
+    targets = targets or [None]
+    pairs = cat(
+        self.collect_granular(t, with_deps=with_deps, recursive=recursive)
+        for t in targets
+    )
 
-    return _joint_status(stages)
+    return _joint_status(pairs)
 
 
 def _cloud_status(
@@ -44,11 +44,14 @@ def _cloud_status(
     all_branches=False,
     with_deps=False,
     all_tags=False,
+    recursive=False,
+    all_commits=False,
 ):
     """Returns a dictionary with the files that are new or deleted.
 
     - new: Remote doesn't have the file
     - deleted: File is no longer in the local cache
+    - missing: File doesn't exist neither in the cache, neither in remote
 
     Example:
             Given the following commands:
@@ -71,29 +74,37 @@ def _cloud_status(
 
             { "bar": "deleted" }
     """
-    import dvc.remote.base as cloud
+    import dvc.cache.base as cloud
 
     used = self.used_cache(
         targets,
         all_branches=all_branches,
         all_tags=all_tags,
+        all_commits=all_commits,
         with_deps=with_deps,
         force=True,
         remote=remote,
         jobs=jobs,
+        recursive=recursive,
     )
 
     ret = {}
-    status_info = self.cloud.status(used, jobs, remote=remote)
+    status_info = self.cloud.status(
+        used, jobs, remote=remote, log_missing=False
+    )
     for info in status_info.values():
         name = info["name"]
-        status = info["status"]
-        if status in [cloud.STATUS_OK, cloud.STATUS_MISSING]:
+        status_ = info["status"]
+        if status_ == cloud.STATUS_OK:
             continue
 
-        prefix_map = {cloud.STATUS_DELETED: "deleted", cloud.STATUS_NEW: "new"}
+        prefix_map = {
+            cloud.STATUS_DELETED: "deleted",
+            cloud.STATUS_NEW: "new",
+            cloud.STATUS_MISSING: "missing",
+        }
 
-        ret[name] = prefix_map[status]
+        ret[name] = prefix_map[status_]
 
     return ret
 
@@ -108,7 +119,12 @@ def status(
     all_branches=False,
     with_deps=False,
     all_tags=False,
+    all_commits=False,
+    recursive=False,
 ):
+    if isinstance(targets, str):
+        targets = [targets]
+
     if cloud or remote:
         return _cloud_status(
             self,
@@ -118,16 +134,20 @@ def status(
             with_deps=with_deps,
             remote=remote,
             all_tags=all_tags,
+            all_commits=all_commits,
+            recursive=True,
         )
 
     ignored = list(
         compress(
-            ["--all-branches", "--all-tags", "--jobs"],
-            [all_branches, all_tags, jobs],
+            ["--all-branches", "--all-tags", "--all-commits", "--jobs"],
+            [all_branches, all_tags, all_commits, jobs],
         )
     )
     if ignored:
-        msg = "the following options are meaningless for local status: {}"
-        raise DvcException(msg.format(", ".join(ignored)))
+        msg = "The following options are meaningless for local status: {}"
+        raise InvalidArgumentError(msg.format(", ".join(ignored)))
 
-    return _local_status(self, targets, with_deps=with_deps)
+    return _local_status(
+        self, targets, with_deps=with_deps, recursive=recursive
+    )

@@ -1,13 +1,11 @@
 import logging
 import os
 
-from dvc.compat import fspath
 from dvc.config import Config
 from dvc.exceptions import InitError
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
-from tests.basic_env import TestDir
-from tests.basic_env import TestGit
+from tests.basic_env import TestDir, TestGit
 
 
 class TestInit(TestGit):
@@ -65,14 +63,15 @@ def test_init_no_scm_cli(tmp_dir):
 
     dvc_path = tmp_dir / DvcRepo.DVC_DIR
     assert dvc_path.is_dir()
-    assert Config(fspath(dvc_path))["core"]["no_scm"]
+    assert Config(os.fspath(dvc_path))["core"]["no_scm"]
 
 
 def test_init_quiet_should_not_display_welcome_screen(tmp_dir, scm, caplog):
-    ret = main(["init", "--quiet"])
+    with caplog.at_level(logging.INFO, logger="dvc"):
+        ret = main(["init", "--quiet"])
 
-    assert 0 == ret
-    assert "" == caplog.text
+        assert 0 == ret
+        assert "" == caplog.text
 
 
 def test_allow_init_dvc_subdir(tmp_dir, scm, monkeypatch):
@@ -83,8 +82,8 @@ def test_allow_init_dvc_subdir(tmp_dir, scm, monkeypatch):
         assert main(["init", "--subdir"]) == 0
 
     repo = DvcRepo("subdir")
-    assert repo.root_dir == fspath(tmp_dir / "subdir")
-    assert repo.scm.root_dir == fspath(tmp_dir)
+    assert repo.root_dir == os.fspath(tmp_dir / "subdir")
+    assert repo.scm.root_dir == os.fspath(tmp_dir)
 
 
 def test_subdir_init_no_option(tmp_dir, scm, monkeypatch, caplog):
@@ -100,5 +99,15 @@ def test_subdir_init_no_option(tmp_dir, scm, monkeypatch, caplog):
         "{} is not tracked by any supported SCM tool (e.g. Git). "
         "Use `--no-scm` if you don't want to use any SCM or "
         "`--subdir` if initializing inside a subdirectory of a parent SCM "
-        "repository.".format(fspath(tmp_dir / "subdir"))
+        "repository.".format(os.fspath(tmp_dir / "subdir"))
     ) in caplog.text
+
+
+def test_gen_dvcignore(tmp_dir):
+    DvcRepo.init(no_scm=True)
+    text = (
+        "# Add patterns of files dvc should ignore, which could improve\n"
+        "# the performance. Learn more at\n"
+        "# https://dvc.org/doc/user-guide/dvcignore\n"
+    )
+    assert text == (tmp_dir / ".dvcignore").read_text()

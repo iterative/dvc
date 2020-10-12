@@ -8,19 +8,46 @@ import colorama
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
 
-
 logger = logging.getLogger(__name__)
+
+
+def _digest(checksum):
+    if isinstance(checksum, str):
+        return checksum[0:8]
+    return "{}..{}".format(checksum["old"][0:8], checksum["new"][0:8])
+
+
+def _show_md(diff, show_hash=False, hide_missing=False):
+    from dvc.utils.diff import table
+
+    header = ["Status", "Hash", "Path"] if show_hash else ["Status", "Path"]
+    rows = []
+    statuses = ["added", "deleted", "modified"]
+    if not hide_missing:
+        statuses.append("not in cache")
+    for status in statuses:
+        entries = diff.get(status, [])
+        if not entries:
+            continue
+        for entry in entries:
+            path = entry["path"]
+            if show_hash:
+                check_sum = _digest(entry.get("hash", ""))
+                rows.append([status, check_sum, path])
+            else:
+                rows.append([status, path])
+
+    return table(header, rows, True)
 
 
 class CmdDiff(CmdBase):
     @staticmethod
-    def _format(diff):
+    def _format(diff, hide_missing=False):
         """
         Given a diff structure, generate a string of paths separated
         by new lines and grouped together by their state.
 
-        A group's header is colored and its entries are sorted to enhance
-        readability, for example:
+        A group's header is colored to enhance readability, for example:
 
             Added:
                 another_file.txt
@@ -41,21 +68,20 @@ class CmdDiff(CmdBase):
         At the bottom, include a summary with the number of files per state.
         """
 
-        def _digest(checksum):
-            if type(checksum) is str:
-                return checksum[0:8]
-            return "{}..{}".format(checksum["old"][0:8], checksum["new"][0:8])
-
         colors = {
             "added": colorama.Fore.GREEN,
             "modified": colorama.Fore.YELLOW,
             "deleted": colorama.Fore.RED,
+            "not in cache": colorama.Fore.YELLOW,
         }
 
         summary = {}
         groups = []
 
-        for state in ["added", "deleted", "modified"]:
+        states = ["added", "deleted", "modified"]
+        if not hide_missing:
+            states.append("not in cache")
+        for state in states:
             summary[state] = 0
             entries = diff[state]
 
@@ -86,31 +112,42 @@ class CmdDiff(CmdBase):
                 )
             )
 
-        groups.append(
+        if not sum(summary.values()):
+            return None
+
+        fmt = (
             "files summary: {added} added, {deleted} deleted,"
-            " {modified} modified".format_map(summary)
+            " {modified} modified"
         )
+        if not hide_missing:
+            fmt += ", {not in cache} not in cache"
+        groups.append(fmt.format_map(summary))
 
         return "\n\n".join(groups)
 
     def run(self):
         try:
             diff = self.repo.diff(self.args.a_rev, self.args.b_rev)
+            show_hash = self.args.show_hash
+            hide_missing = self.args.b_rev or self.args.hide_missing
+            if hide_missing:
+                del diff["not in cache"]
 
-            if not any(diff.values()):
-                return 0
-
-            if not self.args.show_hash:
-                for _, entries in diff.items():
+            for key, entries in diff.items():
+                entries = sorted(entries, key=lambda entry: entry["path"])
+                if not show_hash:
                     for entry in entries:
                         del entry["hash"]
+                diff[key] = entries
 
             if self.args.show_json:
-                res = json.dumps(diff)
-            else:
-                res = self._format(diff)
-
-            logger.info(res)
+                logger.info(json.dumps(diff))
+            elif self.args.show_md:
+                logger.info(_show_md(diff, show_hash, hide_missing))
+            elif diff:
+                output = self._format(diff, hide_missing)
+                if output:
+                    logger.info(output)
 
         except DvcException:
             logger.exception("failed to get diff")
@@ -120,9 +157,8 @@ class CmdDiff(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     DIFF_DESCRIPTION = (
-        "Show changes between commits in the DVC repository,"
-        " or between a commit and the workspace."
-        "Prints the list of paths added, modified, or deleted."
+        "Show added, modified, or deleted data between commits in the DVC"
+        " repository, or between a commit and the workspace."
     )
     diff_parser = subparsers.add_parser(
         "diff",
@@ -153,5 +189,16 @@ def add_parser(subparsers, parent_parser):
         help="Display hash value for each entry",
         action="store_true",
         default=False,
+    )
+    diff_parser.add_argument(
+        "--show-md",
+        help="Show tabulated output in the Markdown format (GFM).",
+        action="store_true",
+        default=False,
+    )
+    diff_parser.add_argument(
+        "--hide-missing",
+        help="Hide missing cache file status.",
+        action="store_true",
     )
     diff_parser.set_defaults(func=CmdDiff)

@@ -1,11 +1,13 @@
 from dvc.utils.fs import remove
+
 from . import locked
 
 
 @locked
 def _destroy_stages(repo):
     for stage in repo.stages:
-        stage.remove(remove_outs=False)
+        stage.unprotect_outs()
+        stage.dvcfile.remove(force=True)
 
 
 # NOTE: not locking `destroy`, as `remove` will need to delete `.dvc` dir,

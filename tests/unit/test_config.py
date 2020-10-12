@@ -1,16 +1,35 @@
-from dvc.config import COMPILED_SCHEMA
+import os
+
+import pytest
+
+from dvc.config import Config
+from dvc.tree.local import LocalTree
 
 
-def test_remote_config_no_traverse():
-    d = COMPILED_SCHEMA({"remote": {"myremote": {"url": "url"}}})
-    assert "no_traverse" not in d["remote"]["myremote"]
+@pytest.mark.parametrize(
+    "path, expected",
+    [
+        ("cache", "../cache"),
+        (os.path.join("..", "cache"), "../../cache"),
+        (os.getcwd(), os.getcwd().replace("\\", "/")),
+        ("ssh://some/path", "ssh://some/path"),
+    ],
+)
+def test_to_relpath(path, expected):
+    assert Config._to_relpath(os.path.join(".", "config"), path) == expected
 
-    d = COMPILED_SCHEMA(
-        {"remote": {"myremote": {"url": "url", "no_traverse": "fAlSe"}}}
-    )
-    assert not d["remote"]["myremote"]["no_traverse"]
 
-    d = COMPILED_SCHEMA(
-        {"remote": {"myremote": {"url": "url", "no_traverse": "tRuE"}}}
-    )
-    assert d["remote"]["myremote"]["no_traverse"]
+def test_get_tree(tmp_dir, scm):
+    tmp_dir.scm_gen("foo", "foo", commit="add foo")
+
+    tree = scm.get_tree("master")
+    config = Config(tree=tree)
+
+    assert config.tree == tree
+    assert config.wtree != tree
+    assert isinstance(config.wtree, LocalTree)
+
+    assert config._get_tree("repo") == tree
+    assert config._get_tree("local") == config.wtree
+    assert config._get_tree("global") == config.wtree
+    assert config._get_tree("system") == config.wtree

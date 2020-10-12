@@ -1,32 +1,36 @@
+from collections import defaultdict
 from urllib.parse import urlparse
-from voluptuous import Any, Required, Lower, Length, Coerce, And, SetTo
 
-from dvc.output.base import OutputBase
-from dvc.output.gs import OutputGS
-from dvc.output.hdfs import OutputHDFS
-from dvc.output.local import OutputLOCAL
-from dvc.output.s3 import OutputS3
-from dvc.output.ssh import OutputSSH
-from dvc.remote import Remote
-from dvc.remote.hdfs import RemoteHDFS
-from dvc.remote.local import RemoteLOCAL
-from dvc.remote.s3 import RemoteS3
+from funcy import collecting, project
+from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
+
+from dvc.output.base import BaseOutput
+from dvc.output.gs import GSOutput
+from dvc.output.hdfs import HDFSOutput
+from dvc.output.local import LocalOutput
+from dvc.output.s3 import S3Output
+from dvc.output.ssh import SSHOutput
 from dvc.scheme import Schemes
 
+from ..tree import get_cloud_tree
+from ..tree.hdfs import HDFSTree
+from ..tree.local import LocalTree
+from ..tree.s3 import S3Tree
+
 OUTS = [
-    OutputHDFS,
-    OutputS3,
-    OutputGS,
-    OutputSSH,
-    # NOTE: OutputLOCAL is the default choice
+    HDFSOutput,
+    S3Output,
+    GSOutput,
+    SSHOutput,
+    # NOTE: LocalOutput is the default choice
 ]
 
 OUTS_MAP = {
-    Schemes.HDFS: OutputHDFS,
-    Schemes.S3: OutputS3,
-    Schemes.GS: OutputGS,
-    Schemes.SSH: OutputSSH,
-    Schemes.LOCAL: OutputLOCAL,
+    Schemes.HDFS: HDFSOutput,
+    Schemes.S3: S3Output,
+    Schemes.GS: GSOutput,
+    Schemes.SSH: SSHOutput,
+    Schemes.LOCAL: LocalOutput,
 }
 
 CHECKSUM_SCHEMA = Any(
@@ -44,35 +48,35 @@ CHECKSUM_SCHEMA = Any(
 # so when a few types of outputs share the same name, we only need
 # specify it once.
 CHECKSUMS_SCHEMA = {
-    RemoteLOCAL.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
-    RemoteS3.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
-    RemoteHDFS.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    LocalTree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    S3Tree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    HDFSTree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
 }
 
-TAGS_SCHEMA = {str: CHECKSUMS_SCHEMA}
-
 SCHEMA = CHECKSUMS_SCHEMA.copy()
-SCHEMA[Required(OutputBase.PARAM_PATH)] = str
-SCHEMA[OutputBase.PARAM_CACHE] = bool
-SCHEMA[OutputBase.PARAM_METRIC] = OutputBase.METRIC_SCHEMA
-SCHEMA[OutputBase.PARAM_TAGS] = TAGS_SCHEMA
-SCHEMA[OutputBase.PARAM_PERSIST] = bool
+SCHEMA[Required(BaseOutput.PARAM_PATH)] = str
+SCHEMA[BaseOutput.PARAM_CACHE] = bool
+SCHEMA[BaseOutput.PARAM_METRIC] = BaseOutput.METRIC_SCHEMA
+SCHEMA[BaseOutput.PARAM_PLOT] = bool
+SCHEMA[BaseOutput.PARAM_PERSIST] = bool
 
 
-def _get(stage, p, info, cache, metric, persist=False, tags=None):
+def _get(
+    stage, p, info=None, cache=True, metric=False, plot=False, persist=False
+):
     parsed = urlparse(p)
 
     if parsed.scheme == "remote":
-        remote = Remote(stage.repo, name=parsed.netloc)
-        return OUTS_MAP[remote.scheme](
+        tree = get_cloud_tree(stage.repo, name=parsed.netloc)
+        return OUTS_MAP[tree.scheme](
             stage,
             p,
             info,
             cache=cache,
-            remote=remote,
+            tree=tree,
             metric=metric,
+            plot=plot,
             persist=persist,
-            tags=tags,
         )
 
     for o in OUTS:
@@ -82,31 +86,31 @@ def _get(stage, p, info, cache, metric, persist=False, tags=None):
                 p,
                 info,
                 cache=cache,
-                remote=None,
+                tree=None,
                 metric=metric,
+                plot=plot,
                 persist=persist,
-                tags=tags,
             )
-    return OutputLOCAL(
+    return LocalOutput(
         stage,
         p,
         info,
         cache=cache,
-        remote=None,
+        tree=None,
         metric=metric,
+        plot=plot,
         persist=persist,
-        tags=tags,
     )
 
 
 def loadd_from(stage, d_list):
     ret = []
     for d in d_list:
-        p = d.pop(OutputBase.PARAM_PATH)
-        cache = d.pop(OutputBase.PARAM_CACHE, True)
-        metric = d.pop(OutputBase.PARAM_METRIC, False)
-        persist = d.pop(OutputBase.PARAM_PERSIST, False)
-        tags = d.pop(OutputBase.PARAM_TAGS, None)
+        p = d.pop(BaseOutput.PARAM_PATH)
+        cache = d.pop(BaseOutput.PARAM_CACHE, True)
+        metric = d.pop(BaseOutput.PARAM_METRIC, False)
+        plot = d.pop(BaseOutput.PARAM_PLOT, False)
+        persist = d.pop(BaseOutput.PARAM_PERSIST, False)
         ret.append(
             _get(
                 stage,
@@ -114,24 +118,67 @@ def loadd_from(stage, d_list):
                 info=d,
                 cache=cache,
                 metric=metric,
+                plot=plot,
                 persist=persist,
-                tags=tags,
             )
         )
     return ret
 
 
-def loads_from(stage, s_list, use_cache=True, metric=False, persist=False):
-    ret = []
-    for s in s_list:
-        ret.append(
-            _get(
-                stage,
-                s,
-                info={},
-                cache=use_cache,
-                metric=metric,
-                persist=persist,
-            )
+def loads_from(
+    stage, s_list, use_cache=True, metric=False, plot=False, persist=False
+):
+    return [
+        _get(
+            stage,
+            s,
+            info={},
+            cache=use_cache,
+            metric=metric,
+            plot=plot,
+            persist=persist,
         )
-    return ret
+        for s in s_list
+    ]
+
+
+def _split_dict(d, keys):
+    return project(d, keys), project(d, d.keys() - keys)
+
+
+def _merge_data(s_list):
+    d = defaultdict(dict)
+    for key in s_list:
+        if isinstance(key, str):
+            d[key].update({})
+            continue
+        if not isinstance(key, dict):
+            raise ValueError(f"'{type(key).__name__}' not supported.")
+
+        for k, flags in key.items():
+            if not isinstance(flags, dict):
+                raise ValueError(
+                    f"Expected dict for '{k}', got: '{type(flags).__name__}'"
+                )
+            d[k].update(flags)
+    return d
+
+
+@collecting
+def load_from_pipeline(stage, s_list, typ="outs"):
+    if typ not in (stage.PARAM_OUTS, stage.PARAM_METRICS, stage.PARAM_PLOTS):
+        raise ValueError(f"'{typ}' key is not allowed for pipeline files.")
+
+    metric = typ == stage.PARAM_METRICS
+    plot = typ == stage.PARAM_PLOTS
+
+    d = _merge_data(s_list)
+
+    for path, flags in d.items():
+        plt_d = {}
+        if plot:
+            from dvc.schema import PLOT_PROPS
+
+            plt_d, flags = _split_dict(flags, keys=PLOT_PROPS.keys())
+        extra = project(flags, ["cache", "persist"])
+        yield _get(stage, path, {}, plot=plt_d or plot, metric=metric, **extra)

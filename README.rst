@@ -10,7 +10,7 @@
 
 |Release| |CI| |Maintainability| |Coverage| |Donate| |DOI|
 
-|Snap| |Choco| |Brew| |Conda| |PyPI| |Packages|
+|PyPI| |Packages| |Brew| |Conda| |Choco| |Snap|
 
 |
 
@@ -101,7 +101,8 @@ Snap (Snapcraft/Linux)
    snap install dvc --classic
 
 This corresponds to the latest tagged release.
-Add ``--edge`` for the latest ``master`` version.
+Add ``--beta`` for the latest tagged release candidate,
+or ``--edge`` for the latest ``master`` version.
 
 Choco (Chocolatey/Windows)
 --------------------------
@@ -129,8 +130,6 @@ Conda (Anaconda)
 .. code-block:: bash
 
    conda install -c conda-forge dvc
-
-Currently, this includes support for Python versions 2.7, 3.6 and 3.7.
 
 pip (PyPI)
 ----------
@@ -255,7 +254,7 @@ Citation
 Iterative, *DVC: Data Version Control - Git for Data & Models* (2020)
 `DOI:10.5281/zenodo.012345 <https://doi.org/10.5281/zenodo.3677553>`_.
 
-.. |Banner| image:: https://dvc.org/static/img/logo-github-readme.png
+.. |Banner| image:: https://dvc.org/img/logo-github-readme.png
    :target: https://dvc.org
    :alt: DVC logo
 
@@ -307,6 +306,6 @@ Iterative, *DVC: Data Version Control - Git for Data & Models* (2020)
    :target: https://doi.org/10.5281/zenodo.3677553
    :alt: DOI
 
-.. |Flowchart| image:: https://dvc.org/static/img/flow.gif
-   :target: https://dvc.org/static/img/flow.gif
+.. |Flowchart| image:: https://dvc.org/img/flow.gif
+   :target: https://dvc.org/img/flow.gif
    :alt: how_dvc_works

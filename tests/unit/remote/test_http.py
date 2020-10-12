@@ -1,32 +1,14 @@
 import pytest
 
-from dvc.config import ConfigError
 from dvc.exceptions import HTTPError
-from dvc.path_info import URLInfo
-from dvc.remote.http import RemoteHTTP
-from tests.utils.httpd import StaticFileServer
+from dvc.tree.http import HTTPTree
 
 
-def test_no_traverse_compatibility(dvc):
-    config = {
-        "url": "http://example.com/",
-        "path_info": "file.html",
-        "no_traverse": False,
-    }
+def test_download_fails_on_error_code(dvc, http):
+    tree = HTTPTree(dvc, http.config)
 
-    with pytest.raises(ConfigError):
-        RemoteHTTP(dvc, config)
-
-
-def test_download_fails_on_error_code(dvc):
-    with StaticFileServer() as httpd:
-        url = "http://localhost:{}/".format(httpd.server_port)
-        config = {"url": url}
-
-        remote = RemoteHTTP(dvc, config)
-
-        with pytest.raises(HTTPError):
-            remote._download(URLInfo(url) / "missing.txt", "missing.txt")
+    with pytest.raises(HTTPError):
+        tree._download(http / "missing.txt", "missing.txt")
 
 
 def test_public_auth_method(dvc):
@@ -37,9 +19,9 @@ def test_public_auth_method(dvc):
         "password": "",
     }
 
-    remote = RemoteHTTP(dvc, config)
+    tree = HTTPTree(dvc, config)
 
-    assert remote.auth_method() is None
+    assert tree._auth_method() is None
 
 
 def test_basic_auth_method(dvc):
@@ -56,10 +38,10 @@ def test_basic_auth_method(dvc):
         "password": password,
     }
 
-    remote = RemoteHTTP(dvc, config)
+    tree = HTTPTree(dvc, config)
 
-    assert remote.auth_method() == auth
-    assert isinstance(remote.auth_method(), HTTPBasicAuth)
+    assert tree._auth_method() == auth
+    assert isinstance(tree._auth_method(), HTTPBasicAuth)
 
 
 def test_digest_auth_method(dvc):
@@ -76,10 +58,10 @@ def test_digest_auth_method(dvc):
         "password": password,
     }
 
-    remote = RemoteHTTP(dvc, config)
+    tree = HTTPTree(dvc, config)
 
-    assert remote.auth_method() == auth
-    assert isinstance(remote.auth_method(), HTTPDigestAuth)
+    assert tree._auth_method() == auth
+    assert isinstance(tree._auth_method(), HTTPDigestAuth)
 
 
 def test_custom_auth_method(dvc):
@@ -93,8 +75,53 @@ def test_custom_auth_method(dvc):
         "password": password,
     }
 
-    remote = RemoteHTTP(dvc, config)
+    tree = HTTPTree(dvc, config)
 
-    assert remote.auth_method() is None
-    assert header in remote.headers
-    assert remote.headers[header] == password
+    assert tree._auth_method() is None
+    assert header in tree.headers
+    assert tree.headers[header] == password
+
+
+def test_ssl_verify_is_enabled_by_default(dvc):
+    config = {
+        "url": "http://example.com/",
+        "path_info": "file.html",
+    }
+
+    tree = HTTPTree(dvc, config)
+
+    assert tree._session.verify is True
+
+
+def test_ssl_verify_disable(dvc):
+    config = {
+        "url": "http://example.com/",
+        "path_info": "file.html",
+        "ssl_verify": False,
+    }
+
+    tree = HTTPTree(dvc, config)
+
+    assert tree._session.verify is False
+
+
+def test_http_method(dvc):
+    from requests.auth import HTTPBasicAuth
+
+    user = "username"
+    password = "password"
+    auth = HTTPBasicAuth(user, password)
+    config = {
+        "url": "http://example.com/",
+        "path_info": "file.html",
+        "auth": "basic",
+        "user": user,
+        "password": password,
+        "method": "PUT",
+    }
+
+    tree = HTTPTree(dvc, config)
+
+    assert tree._auth_method() == auth
+    assert tree.method == "PUT"
+    assert isinstance(tree._auth_method(), HTTPBasicAuth)

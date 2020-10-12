@@ -1,10 +1,10 @@
 import argparse
 import logging
 
-from .base import append_doc_link
-from .base import CmdBaseNoRepo
 from dvc.exceptions import DvcException
 
+from . import completion
+from .base import CmdBaseNoRepo, append_doc_link
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ class CmdGetUrl(CmdBaseNoRepo):
             Repo.get_url(self.args.url, out=self.args.out)
             return 0
         except DvcException:
-            logger.exception("failed to get '{}'".format(self.args.url))
+            logger.exception(f"failed to get '{self.args.url}'")
             return 1
 
 
@@ -34,6 +34,6 @@ def add_parser(subparsers, parent_parser):
         "url", help="See `dvc import-url -h` for full list of supported URLs."
     )
     get_parser.add_argument(
-        "out", nargs="?", help="Destination path to put data to."
-    )
+        "out", nargs="?", help="Destination path to put data to.",
+    ).complete = completion.DIR
     get_parser.set_defaults(func=CmdGetUrl)

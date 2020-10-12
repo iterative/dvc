@@ -3,9 +3,7 @@ import logging
 import os
 
 import dvc.prompt as prompt
-from dvc.command.base import append_doc_link
-from dvc.command.base import CmdBase
-
+from dvc.command.base import CmdBase, append_doc_link
 
 logger = logging.getLogger(__name__)
 
@@ -19,12 +17,11 @@ class CmdGC(CmdBase):
             all_tags=self.args.all_tags,
             all_commits=self.args.all_commits,
             workspace=self.args.workspace,
-            cloud=self.args.cloud,
         )
 
         msg = "This will remove all cache except items used in "
 
-        msg += "the working tree"
+        msg += "the workspace"
         if self.args.all_commits:
             msg += " and all git commits"
         elif self.args.all_branches and self.args.all_tags:
@@ -87,20 +84,20 @@ def add_parser(subparsers, parent_parser):
         "--all-branches",
         action="store_true",
         default=False,
-        help="Keep data files for the tips of all git branches.",
+        help="Keep data files for the tips of all Git branches.",
     )
     gc_parser.add_argument(
         "-T",
         "--all-tags",
         action="store_true",
         default=False,
-        help="Keep data files for all git tags.",
+        help="Keep data files for all Git tags.",
     )
     gc_parser.add_argument(
         "--all-commits",
         action="store_true",
         default=False,
-        help=argparse.SUPPRESS,
+        help="Keep data files for all Git commits.",
     )
     gc_parser.add_argument(
         "-c",
@@ -110,7 +107,10 @@ def add_parser(subparsers, parent_parser):
         help="Collect garbage in remote repository.",
     )
     gc_parser.add_argument(
-        "-r", "--remote", help="Remote storage to collect garbage in."
+        "-r",
+        "--remote",
+        help="Remote storage to collect garbage in",
+        metavar="<name>",
     )
     gc_parser.add_argument(
         "-f",
@@ -120,7 +120,15 @@ def add_parser(subparsers, parent_parser):
         help="Force garbage collection - automatically agree to all prompts.",
     )
     gc_parser.add_argument(
-        "-j", "--jobs", type=int, help="Number of jobs to run simultaneously."
+        "-j",
+        "--jobs",
+        type=int,
+        help=(
+            "Number of jobs to run simultaneously. "
+            "The default value is 4 * cpu_count(). "
+            "For SSH remotes, the default is 4. "
+        ),
+        metavar="<number>",
     )
     gc_parser.add_argument(
         "-p",
@@ -131,5 +139,6 @@ def add_parser(subparsers, parent_parser):
         help="Keep data files required by these projects "
         "in addition to the current one. "
         "Useful if you share a single cache across repos.",
+        metavar="<paths>",
     )
     gc_parser.set_defaults(func=CmdGC)

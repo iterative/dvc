@@ -1,13 +1,13 @@
 import mock
 
-from dvc.dependency import DependencyLOCAL
+from dvc.dependency import LocalDependency
 from dvc.stage import Stage
 from tests.basic_env import TestDvc
 
 
-class TestDependencyLOCAL(TestDvc):
+class TestLocalDependency(TestDvc):
     def _get_cls(self):
-        return DependencyLOCAL
+        return LocalDependency
 
     def _get_dependency(self):
         stage = Stage(self.dvc)
@@ -15,6 +15,6 @@ class TestDependencyLOCAL(TestDvc):
 
     def test_save_missing(self):
         d = self._get_dependency()
-        with mock.patch.object(d.remote, "exists", return_value=False):
+        with mock.patch.object(d.tree, "exists", return_value=False):
             with self.assertRaises(d.DoesNotExistError):
                 d.save()

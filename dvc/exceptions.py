@@ -1,10 +1,15 @@
 """Exceptions raised by the dvc."""
+from funcy import first
 
-from dvc.utils import relpath, format_link
+from dvc.utils import error_link, format_link, relpath
 
 
 class DvcException(Exception):
     """Base class for all dvc exceptions."""
+
+    def __init__(self, msg, *args):
+        assert msg
+        super().__init__(msg, *args)
 
 
 class InvalidArgumentError(ValueError, DvcException):
@@ -23,16 +28,21 @@ class OutputDuplicationError(DvcException):
     def __init__(self, output, stages):
         assert isinstance(output, str)
         assert all(hasattr(stage, "relpath") for stage in stages)
-        msg = (
-            "file/directory '{}' is specified as an output in more than one "
-            "stage: {}\n"
-            "This is not allowed. Consider using a different output name."
-        ).format(output, "\n    ".join(s.relpath for s in stages))
+        if len(stages) == 1:
+            msg = "output '{}' is already specified in {}.".format(
+                output, first(stages)
+            )
+        else:
+            msg = "output '{}' is already specified in stages:\n{}".format(
+                output, "\n".join(f"\t- {s.addressing}" for s in stages),
+            )
         super().__init__(msg)
+        self.stages = stages
+        self.output = output
 
 
 class OutputNotFoundError(DvcException):
-    """Thrown if a file/directory not found in repository pipelines.
+    """Thrown if a file/directory is not found as an output in any pipeline.
 
     Args:
         output (unicode): path to the file/directory.
@@ -60,8 +70,8 @@ class StagePathAsOutputError(DvcException):
     def __init__(self, stage, output):
         assert isinstance(output, str)
         super().__init__(
-            "'{stage}' is within an output '{output}' of another stage".format(
-                stage=stage.relpath, output=output
+            "{stage} is within an output '{output}' of another stage".format(
+                stage=stage, output=output
             )
         )
 
@@ -77,10 +87,7 @@ class CircularDependencyError(DvcException):
     def __init__(self, dependency):
         assert isinstance(dependency, str)
 
-        msg = (
-            "file/directory '{}' is specified as an output and as a "
-            "dependency."
-        )
+        msg = "'{}' is specified as an output and as a dependency."
         super().__init__(msg.format(dependency))
 
 
@@ -94,11 +101,11 @@ class ArgumentDuplicationError(DvcException):
 
     def __init__(self, path):
         assert isinstance(path, str)
-        super().__init__("file '{}' is specified more than once.".format(path))
+        super().__init__(f"file '{path}' is specified more than once.")
 
 
 class MoveNotDataSourceError(DvcException):
-    """Thrown if attempted to move a file/directory that is not an output
+    """Thrown when trying to move a file/directory that is not an output
     in a data source stage.
 
     Args:
@@ -129,12 +136,8 @@ class DvcParserError(DvcException):
 class CyclicGraphError(DvcException):
     def __init__(self, stages):
         assert isinstance(stages, list)
-        stages = "\n".join("\t- {}".format(stage.relpath) for stage in stages)
-        msg = (
-            "you've introduced a cycle in your pipeline that involves "
-            "the following stages:"
-            "\n"
-            "{stages}".format(stages=stages)
+        msg = "Pipeline has a cycle involving: {}.".format(
+            ", ".join(s.addressing for s in stages)
         )
         super().__init__(msg)
 
@@ -142,7 +145,7 @@ class CyclicGraphError(DvcException):
 class ConfirmRemoveError(DvcException):
     def __init__(self, path):
         super().__init__(
-            "unable to remove '{}' without a confirmation from the user. Use "
+            "unable to remove '{}' without a confirmation. Use "
             "`-f` to force.".format(path)
         )
 
@@ -154,7 +157,7 @@ class InitError(DvcException):
 class ReproductionError(DvcException):
     def __init__(self, dvc_file_name):
         self.path = dvc_file_name
-        super().__init__("failed to reproduce '{}'".format(dvc_file_name))
+        super().__init__(f"failed to reproduce '{dvc_file_name}'")
 
 
 class BadMetricError(DvcException):
@@ -162,25 +165,20 @@ class BadMetricError(DvcException):
         super().__init__(
             "the following metrics do not exist, "
             "are not metric files or are malformed: {paths}".format(
-                paths=", ".join("'{}'".format(path) for path in paths)
+                paths=", ".join(f"'{path}'" for path in paths)
             )
         )
 
 
 class NoMetricsError(DvcException):
+    pass
+
+
+class NoPlotsError(DvcException):
     def __init__(self):
         super().__init__(
-            "no metric files in this repository. "
-            "Use `dvc metrics add` to add a metric file to track."
-        )
-
-
-class StageFileCorruptedError(DvcException):
-    def __init__(self, path):
-        path = relpath(path)
-        super().__init__(
-            "unable to read DVC-file: {} "
-            "YAML file structure is corrupted".format(path)
+            "no plots in this repository. Use `--plots/--plots-no-cache` "
+            "options for `dvc run` to mark stage outputs as plots."
         )
 
 
@@ -200,7 +198,7 @@ class OverlappingOutputPathsError(DvcException):
 
 class CheckoutErrorSuggestGit(DvcException):
     def __init__(self, target):
-        super().__init__("Did you mean `git checkout {}`?".format(target))
+        super().__init__(f"Did you mean `git checkout {target}`?")
 
 
 class ETagMismatchError(DvcException):
@@ -212,10 +210,11 @@ class ETagMismatchError(DvcException):
 
 
 class FileMissingError(DvcException):
-    def __init__(self, path):
+    def __init__(self, path, hint=None):
         self.path = path
+        hint = "" if hint is None else f". {hint}"
         super().__init__(
-            "Can't find '{}' neither locally nor on remote".format(path)
+            f"Can't find '{path}' neither locally nor on remote{hint}"
         )
 
 
@@ -241,26 +240,26 @@ class DownloadError(DvcException):
     def __init__(self, amount):
         self.amount = amount
 
-        super().__init__(
-            "{amount} files failed to download".format(amount=amount)
-        )
+        super().__init__(f"{amount} files failed to download")
 
 
 class UploadError(DvcException):
     def __init__(self, amount):
         self.amount = amount
 
-        super().__init__(
-            "{amount} files failed to upload".format(amount=amount)
-        )
+        super().__init__(f"{amount} files failed to upload")
 
 
 class CheckoutError(DvcException):
-    def __init__(self, target_infos):
+    def __init__(self, target_infos, stats=None):
+        self.target_infos = target_infos
+        self.stats = stats
         targets = [str(t) for t in target_infos]
         m = (
-            "Checkout failed for following targets:\n {}\nDid you "
-            "forget to fetch?".format("\n".join(targets))
+            "Checkout failed for following targets:\n{}\nIs your "
+            "cache up to date?\n{}".format(
+                "\n".join(targets), error_link("missing-files"),
+            )
         )
         super().__init__(m)
 
@@ -272,7 +271,7 @@ class CollectCacheError(DvcException):
 class NoRemoteInExternalRepoError(DvcException):
     def __init__(self, url):
         super().__init__(
-            "No DVC remote is specified in target repository '{}'.".format(url)
+            f"No DVC remote is specified in target repository '{url}'."
         )
 
 
@@ -287,27 +286,23 @@ class NoOutputInExternalRepoError(DvcException):
 
 class HTTPError(DvcException):
     def __init__(self, code, reason):
-        super().__init__("'{} {}'".format(code, reason))
+        super().__init__(f"'{code} {reason}'")
 
 
 class PathMissingError(DvcException):
     default_msg = (
         "The path '{}' does not exist in the target repository '{}'"
-        " neither as an output nor a git-handled file."
+        " neither as a DVC output nor as a Git-tracked file."
     )
-    default_msg_output_only = (
+    default_msg_dvc_only = (
         "The path '{}' does not exist in the target repository '{}'"
-        " as an output."
+        " as an DVC output."
     )
 
-    def __init__(self, path, repo, output_only=False):
-        msg = (
-            self.default_msg
-            if not output_only
-            else self.default_msg_output_only
-        )
+    def __init__(self, path, repo, dvc_only=False):
+        msg = self.default_msg if not dvc_only else self.default_msg_dvc_only
         super().__init__(msg.format(path, repo))
-        self.output_only = output_only
+        self.dvc_only = dvc_only
 
 
 class RemoteCacheRequiredError(DvcException):
@@ -323,3 +318,23 @@ class RemoteCacheRequiredError(DvcException):
                 format_link("https://man.dvc.org/config#cache"),
             )
         )
+
+
+class IsADirectoryError(DvcException):  # noqa,pylint:disable=redefined-builtin
+    """Raised when a file operation is requested on a directory."""
+
+
+class NoOutputOrStageError(DvcException):
+    """
+    Raised when the target is neither an output nor a stage name in dvc.yaml
+    """
+
+    def __init__(self, target, file):
+        super().__init__(
+            f"'{target}' "
+            f"does not exist as an output or a stage name in '{file}'"
+        )
+
+
+class MergeError(DvcException):
+    pass

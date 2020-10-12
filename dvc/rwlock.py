@@ -1,10 +1,9 @@
-import os
 import json
-
+import os
 from collections import defaultdict
 from contextlib import contextmanager
 
-from voluptuous import Schema, Invalid, Required, Optional
+from voluptuous import Invalid, Optional, Required, Schema
 
 from .exceptions import DvcException
 from .lock import LockError
@@ -39,7 +38,7 @@ class RWLockFileFormatError(DvcException):
 def _edit_rwlock(lock_dir):
     path = os.path.join(lock_dir, "rwlock")
     try:
-        with open(path, "r") as fobj:
+        with open(path) as fobj:
             lock = SCHEMA(json.load(fobj))
     except FileNotFoundError:
         lock = SCHEMA({})
@@ -52,9 +51,6 @@ def _edit_rwlock(lock_dir):
     yield lock
     with open(path, "w+") as fobj:
         json.dump(lock, fobj)
-        # NOTE: flush and fsync to ensure that rwlock contents are saved
-        fobj.flush()
-        os.fsync(fobj.fileno())
 
 
 def _infos_to_str(infos):

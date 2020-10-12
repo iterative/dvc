@@ -1,6 +1,6 @@
-from dvc.dependency.base import DependencyBase
-from dvc.output.ssh import OutputSSH
+from dvc.dependency.base import BaseDependency
+from dvc.output.ssh import SSHOutput
 
 
-class DependencySSH(DependencyBase, OutputSSH):
+class SSHDependency(BaseDependency, SSHOutput):
     pass

@@ -1,79 +1,91 @@
 import os
-import shutil
+import platform
 
 import pytest
+from funcy import first, get_in
 
 from dvc import api
-from dvc.api import UrlNotDvcRepoError
-from dvc.compat import fspath
-from dvc.exceptions import FileMissingError
-from dvc.main import main
+from dvc.exceptions import DvcException, FileMissingError, OutputNotFoundError
 from dvc.path_info import URLInfo
-from tests.remotes import Azure, GCP, HDFS, Local, OSS, S3, SSH
+from dvc.utils.fs import remove
+from tests.unit.tree.test_repo import make_subrepo
+
+cloud_names = ["s3", "gs", "azure", "gdrive", "oss", "ssh", "http", "hdfs"]
+clouds = [pytest.lazy_fixture(cloud) for cloud in cloud_names]
+all_clouds = [pytest.lazy_fixture("local_cloud")] + clouds
+
+# `lazy_fixture` is confusing pylint, pylint: disable=unused-argument
 
 
-remote_params = [S3, GCP, Azure, OSS, SSH, HDFS]
-all_remote_params = [Local] + remote_params
-
-
-@pytest.fixture
-def remote_url(request):
-    if not request.param.should_test():
-        raise pytest.skip()
-    return request.param.get_url()
-
-
-def run_dvc(*argv):
-    assert main(argv) == 0
-
-
-@pytest.mark.parametrize("remote_url", remote_params, indirect=True)
-def test_get_url(tmp_dir, dvc, remote_url):
-    run_dvc("remote", "add", "-d", "upstream", remote_url)
+@pytest.mark.parametrize("remote", clouds, indirect=True)
+def test_get_url(tmp_dir, dvc, remote):
     tmp_dir.dvc_gen("foo", "foo")
 
-    expected_url = URLInfo(remote_url) / "ac/bd18db4cc2f85cedef654fccc4a4d8"
+    expected_url = URLInfo(remote.url) / "ac/bd18db4cc2f85cedef654fccc4a4d8"
     assert api.get_url("foo") == expected_url
 
 
-@pytest.mark.parametrize("remote_url", remote_params, indirect=True)
-def test_get_url_external(erepo_dir, remote_url):
-    _set_remote_url_and_commit(erepo_dir.dvc, remote_url)
+@pytest.mark.parametrize("cloud", clouds)
+def test_get_url_external(erepo_dir, cloud):
+    erepo_dir.add_remote(config=cloud.config)
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo", commit="add foo")
 
     # Using file url to force clone to tmp repo
-    repo_url = "file://{}".format(erepo_dir)
-    expected_url = URLInfo(remote_url) / "ac/bd18db4cc2f85cedef654fccc4a4d8"
+    repo_url = f"file://{erepo_dir}"
+    expected_url = URLInfo(cloud.url) / "ac/bd18db4cc2f85cedef654fccc4a4d8"
     assert api.get_url("foo", repo=repo_url) == expected_url
 
 
 def test_get_url_requires_dvc(tmp_dir, scm):
     tmp_dir.scm_gen({"foo": "foo"}, commit="initial")
 
-    with pytest.raises(UrlNotDvcRepoError, match="not a DVC repository"):
-        api.get_url("foo", repo=fspath(tmp_dir))
+    with pytest.raises(OutputNotFoundError, match="output 'foo'"):
+        api.get_url("foo", repo=os.fspath(tmp_dir))
 
-    with pytest.raises(UrlNotDvcRepoError):
-        api.get_url("foo", repo="file://{}".format(tmp_dir))
+    with pytest.raises(OutputNotFoundError, match="output 'foo'"):
+        api.get_url("foo", repo=f"file://{tmp_dir}")
 
 
-@pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
-def test_open(remote_url, tmp_dir, dvc):
-    run_dvc("remote", "add", "-d", "upstream", remote_url)
+@pytest.mark.parametrize("remote", all_clouds, indirect=True)
+def test_open(tmp_dir, dvc, remote):
     tmp_dir.dvc_gen("foo", "foo-text")
-    run_dvc("push")
+    dvc.push()
 
     # Remove cache to force download
-    shutil.rmtree(dvc.cache.local.cache_dir)
+    remove(dvc.cache.local.cache_dir)
 
     with api.open("foo") as fd:
         assert fd.read() == "foo-text"
 
 
-@pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
-def test_open_external(remote_url, erepo_dir):
-    _set_remote_url_and_commit(erepo_dir.dvc, remote_url)
+@pytest.mark.parametrize(
+    "cloud",
+    [
+        *[
+            pytest.lazy_fixture(cloud)
+            for cloud in [
+                "real_s3",  # NOTE: moto's s3 fails in some tests
+                "gs",
+                "azure",
+                "gdrive",
+                "oss",
+                "http",
+                "hdfs",
+            ]
+        ],
+        pytest.param(
+            pytest.lazy_fixture("ssh"),
+            marks=pytest.mark.xfail(
+                raises=DvcException,
+                condition=platform.system() == "Windows",
+                reason="https://github.com/iterative/dvc/issues/4418",
+            ),
+        ),
+    ],
+)
+def test_open_external(erepo_dir, cloud):
+    erepo_dir.add_remote(config=cloud.config)
 
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("version", "master", commit="add version")
@@ -85,39 +97,63 @@ def test_open_external(remote_url, erepo_dir):
     erepo_dir.dvc.push(all_branches=True)
 
     # Remove cache to force download
-    shutil.rmtree(erepo_dir.dvc.cache.local.cache_dir)
+    remove(erepo_dir.dvc.cache.local.cache_dir)
 
     # Using file url to force clone to tmp repo
-    repo_url = "file://{}".format(erepo_dir)
+    repo_url = f"file://{erepo_dir}"
     with api.open("version", repo=repo_url) as fd:
         assert fd.read() == "master"
 
     assert api.read("version", repo=repo_url, rev="branch") == "branchver"
 
 
-@pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
-def test_missing(remote_url, tmp_dir, dvc):
+@pytest.mark.parametrize("remote", all_clouds, indirect=True)
+def test_open_granular(tmp_dir, dvc, remote):
+    tmp_dir.dvc_gen({"dir": {"foo": "foo-text"}})
+    dvc.push()
+
+    # Remove cache to force download
+    remove(dvc.cache.local.cache_dir)
+
+    with api.open("dir/foo") as fd:
+        assert fd.read() == "foo-text"
+
+
+@pytest.mark.parametrize(
+    "remote",
+    [
+        pytest.lazy_fixture(cloud)
+        for cloud in [
+            "real_s3",  # NOTE: moto's s3 fails in some tests
+            "gs",
+            "azure",
+            "gdrive",
+            "oss",
+            "ssh",
+            "http",
+            "hdfs",
+        ]
+    ],
+    indirect=True,
+)
+def test_missing(tmp_dir, dvc, remote):
     tmp_dir.dvc_gen("foo", "foo")
-    run_dvc("remote", "add", "-d", "upstream", remote_url)
 
     # Remove cache to make foo missing
-    shutil.rmtree(dvc.cache.local.cache_dir)
+    remove(dvc.cache.local.cache_dir)
+
+    api.read("foo")
+
+    remove("foo")
 
     with pytest.raises(FileMissingError):
         api.read("foo")
 
 
-def _set_remote_url_and_commit(repo, remote_url):
-    with repo.config.edit() as conf:
-        conf["remote"]["upstream"]["url"] = remote_url
-    repo.scm.add([repo.config.files["repo"]])
-    repo.scm.commit("modify remote")
-
-
 def test_open_scm_controlled(tmp_dir, erepo_dir):
     erepo_dir.scm_gen({"scm_controlled": "file content"}, commit="create file")
 
-    with api.open("scm_controlled", repo=fspath(erepo_dir)) as fd:
+    with api.open("scm_controlled", repo=os.fspath(erepo_dir)) as fd:
         assert fd.read() == "file content"
 
 
@@ -128,8 +164,9 @@ def test_open_not_cached(dvc):
         metric_file, metric_content
     )
     dvc.run(
+        single_stage=True,
         metrics_no_cache=[metric_file],
-        cmd=('python -c "{}"'.format(metric_code)),
+        cmd=(f'python -c "{metric_code}"'),
     )
 
     with api.open(metric_file) as fd:
@@ -138,3 +175,94 @@ def test_open_not_cached(dvc):
     os.remove(metric_file)
     with pytest.raises(FileMissingError):
         api.read(metric_file)
+
+
+@pytest.mark.parametrize("as_external", [True, False])
+@pytest.mark.parametrize("remote", [pytest.lazy_fixture("ssh")], indirect=True)
+@pytest.mark.parametrize(
+    "files, to_read",
+    [
+        ({"foo": "foo"}, "foo"),
+        ({"dir": {"foo": "foo", "bar": "bar"}}, os.path.join("dir", "foo")),
+    ],
+    ids=["file", "inside-dir"],
+)
+def test_api_missing_local_cache_exists_on_remote(
+    tmp_dir, scm, dvc, as_external, remote, files, to_read,
+):
+    tmp_dir.dvc_gen(files, commit="DVC track files")
+    dvc.push()
+
+    # Remove cache to make foo missing
+    remove(dvc.cache.local.cache_dir)
+    remove(first(files))
+
+    repo_url = f"file://{tmp_dir}" if as_external else None
+    file_content = get_in(files, to_read.split(os.sep))
+    assert api.read(to_read, repo=repo_url) == file_content
+
+
+@pytest.mark.parametrize("local_repo", [False, True])
+def test_read_with_subrepos(tmp_dir, scm, local_cloud, local_repo):
+    tmp_dir.scm_gen("foo.txt", "foo.txt", commit="add foo.txt")
+    subrepo = tmp_dir / "dir" / "subrepo"
+    make_subrepo(subrepo, scm, config=local_cloud.config)
+    with subrepo.chdir():
+        subrepo.scm_gen({"lorem": "lorem"}, commit="add lorem")
+        subrepo.dvc_gen({"dir": {"file.txt": "file.txt"}}, commit="add dir")
+        subrepo.dvc_gen("dvc-file", "dvc-file", commit="add dir")
+        subrepo.dvc.push()
+
+    repo_path = None if local_repo else f"file:///{tmp_dir}"
+    subrepo_path = os.path.join("dir", "subrepo")
+
+    assert api.read("foo.txt", repo=repo_path) == "foo.txt"
+    assert (
+        api.read(os.path.join(subrepo_path, "lorem"), repo=repo_path)
+        == "lorem"
+    )
+    assert (
+        api.read(os.path.join(subrepo_path, "dvc-file"), repo=repo_path)
+        == "dvc-file"
+    )
+    assert (
+        api.read(os.path.join(subrepo_path, "dir", "file.txt"), repo=repo_path)
+        == "file.txt"
+    )
+
+
+def test_get_url_granular(tmp_dir, dvc, s3):
+    tmp_dir.add_remote(config=s3.config)
+    tmp_dir.dvc_gen(
+        {"dir": {"foo": "foo", "bar": "bar", "nested": {"file": "file"}}}
+    )
+
+    expected_url = URLInfo(s3.url) / "5f/c28ea78987408341668eba6525ebd1.dir"
+    assert api.get_url("dir") == expected_url
+
+    expected_url = URLInfo(s3.url) / "ac/bd18db4cc2f85cedef654fccc4a4d8"
+    assert api.get_url("dir/foo") == expected_url
+
+    expected_url = URLInfo(s3.url) / "37/b51d194a7513e45b56f6524f2d51f2"
+    assert api.get_url("dir/bar") == expected_url
+
+    expected_url = URLInfo(s3.url) / "8c/7dd922ad47494fc02c388e12c00eac"
+    assert api.get_url(os.path.join("dir", "nested", "file")) == expected_url
+
+
+def test_get_url_subrepos(tmp_dir, scm, local_cloud):
+    subrepo = tmp_dir / "subrepo"
+    make_subrepo(subrepo, scm, config=local_cloud.config)
+    with subrepo.chdir():
+        subrepo.dvc_gen(
+            {"dir": {"foo": "foo"}, "bar": "bar"}, commit="add files"
+        )
+        subrepo.dvc.push()
+
+    path = os.path.relpath(local_cloud.config["url"])
+
+    expected_url = os.path.join(path, "ac", "bd18db4cc2f85cedef654fccc4a4d8")
+    assert api.get_url(os.path.join("subrepo", "dir", "foo")) == expected_url
+
+    expected_url = os.path.join(path, "37", "b51d194a7513e45b56f6524f2d51f2")
+    assert api.get_url("subrepo/bar") == expected_url

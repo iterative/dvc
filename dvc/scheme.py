@@ -9,3 +9,5 @@ class Schemes:
     GDRIVE = "gdrive"
     LOCAL = "local"
     OSS = "oss"
+    WEBDAV = "webdav"
+    WEBDAVS = "webdavs"

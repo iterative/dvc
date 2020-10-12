@@ -4,7 +4,17 @@ from dvc.command.imp import CmdImport
 
 def test_import(mocker):
     cli_args = parse_args(
-        ["import", "repo_url", "src", "--out", "out", "--rev", "version"]
+        [
+            "import",
+            "repo_url",
+            "src",
+            "--out",
+            "out",
+            "--file",
+            "file",
+            "--rev",
+            "version",
+        ]
     )
     assert cli_args.func == CmdImport
 
@@ -13,4 +23,6 @@ def test_import(mocker):
 
     assert cmd.run() == 0
 
-    m.assert_called_once_with("repo_url", path="src", out="out", rev="version")
+    m.assert_called_once_with(
+        "repo_url", path="src", out="out", fname="file", rev="version"
+    )

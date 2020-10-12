@@ -1,5 +1,6 @@
 import logging
-
+import os
+from abc import ABC, abstractmethod
 
 logger = logging.getLogger(__name__)
 
@@ -27,32 +28,38 @@ def append_doc_link(help_message, path):
     )
 
 
-class CmdBase(object):
+class CmdBase(ABC):
+    UNINITIALIZED = False
+
     def __init__(self, args):
         from dvc.repo import Repo
         from dvc.updater import Updater
 
-        self.repo = Repo()
+        os.chdir(args.cd)
+
+        self.repo = Repo(uninitialized=self.UNINITIALIZED)
         self.config = self.repo.config
         self.args = args
-        hardlink_lock = self.config["core"].get("hardlink_lock", False)
-        updater = Updater(self.repo.dvc_dir, hardlink_lock=hardlink_lock)
-        updater.check()
+        if self.repo.tmp_dir:
+            hardlink_lock = self.config["core"].get("hardlink_lock", False)
+            updater = Updater(self.repo.tmp_dir, hardlink_lock=hardlink_lock)
+            updater.check()
 
     @property
     def default_targets(self):
-        """Default targets for `dvc repro` and `dvc pipeline`."""
-        from dvc.stage import Stage
+        """Default targets for `dvc repro`."""
+        from dvc.dvcfile import PIPELINE_FILE
 
-        msg = "assuming default target '{}'.".format(Stage.STAGE_FILE)
-        logger.warning(msg)
-        return [Stage.STAGE_FILE]
+        logger.debug(f"assuming default target '{PIPELINE_FILE}'.")
+        return [PIPELINE_FILE]
 
-    # Abstract methods that have to be implemented by any inheritance class
+    @abstractmethod
     def run(self):
-        raise NotImplementedError
+        pass
 
 
 class CmdBaseNoRepo(CmdBase):
-    def __init__(self, args):
+    def __init__(self, args):  # pylint: disable=super-init-not-called
         self.args = args
+
+        os.chdir(args.cd)

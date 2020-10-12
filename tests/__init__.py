@@ -1,9 +1,16 @@
 import os
+import sys
+
+# FIXME: Search and replace these from the tests if pyarrow wheel is available
+PY39 = sys.version_info >= (3, 9, 0)
+PYARROW_NOT_AVAILABLE = "pyarrow not available yet for Python3.9"
+
 
 # Increasing fd ulimit for tests
 if os.name == "nt":
-    import win32file
     import subprocess
+
+    import win32file  # pylint: disable=import-error
 
     win32file._setmaxstdio(2048)
 

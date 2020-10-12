@@ -1,98 +1,71 @@
 import os
-import shutil
 
-from mock import patch
+import pytest
 
 from dvc.exceptions import DvcException
 from dvc.main import main
-from dvc.stage import Stage
-from dvc.stage import StageFileDoesNotExistError
+from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
-from tests.basic_env import TestDvc
+from dvc.utils.fs import remove
+from tests.utils import get_gitignore_content
 
 
-class TestRemove(TestDvc):
-    def test(self):
-        stages = self.dvc.add(self.FOO)
-        self.assertEqual(len(stages), 1)
-        stage = stages[0]
-        self.assertTrue(stage is not None)
-        stage_removed = self.dvc.remove(stage.path, outs_only=True)
+@pytest.mark.parametrize("remove_outs", [True, False])
+def test_remove(tmp_dir, scm, dvc, run_copy, remove_outs):
+    (stage1,) = tmp_dir.dvc_gen("foo", "foo")
+    stage2 = run_copy("foo", "bar", single_stage=True)
+    stage3 = run_copy("bar", "foobar", name="copy-bar-foobar")
 
-        self.assertIsInstance(stage_removed, Stage)
-        self.assertEqual(stage.path, stage_removed.path)
-        self.assertFalse(os.path.isfile(self.FOO))
+    assert "/foo" in get_gitignore_content()
+    assert "/bar" in get_gitignore_content()
+    assert "/foobar" in get_gitignore_content()
 
-        stage_removed = self.dvc.remove(stage.path)
-        self.assertIsInstance(stage_removed, Stage)
-        self.assertEqual(stage.path, stage_removed.path)
-        self.assertFalse(os.path.isfile(self.FOO))
-        self.assertFalse(os.path.exists(stage.path))
+    for stage in [stage1, stage2, stage3]:
+        dvc.remove(stage.addressing, outs=remove_outs)
+        out_exists = (out.exists for out in stage.outs)
+        assert stage not in dvc._collect_stages()
+        if remove_outs:
+            assert not any(out_exists)
+        else:
+            assert all(out_exists)
 
-
-class TestRemoveNonExistentFile(TestDvc):
-    def test(self):
-        with self.assertRaises(StageFileDoesNotExistError):
-            self.dvc.remove("non_existent_dvc_file")
+        assert not any(out in get_gitignore_content() for out in stage.outs)
 
 
-class TestRemoveBrokenSymlink(TestDvc):
-    def test(self):
-        ret = main(["config", "cache.type", "symlink"])
-        self.assertEqual(ret, 0)
-
-        ret = main(["add", self.FOO])
-        self.assertEqual(ret, 0)
-
-        shutil.rmtree(self.dvc.cache.local.cache_dir)
-
-        self.assertTrue(System.is_symlink(self.FOO))
-
-        ret = main(["remove", self.FOO + ".dvc"])
-        self.assertEqual(ret, 0)
-
-        self.assertFalse(os.path.lexists(self.FOO))
+def test_remove_non_existent_file(tmp_dir, dvc):
+    with pytest.raises(StageFileDoesNotExistError):
+        dvc.remove("non_existent_dvc_file.dvc")
+    with pytest.raises(StageFileDoesNotExistError):
+        dvc.remove("non_existent_stage_name")
 
 
-class TestRemoveDirectory(TestDvc):
-    def test(self):
-        stages = self.dvc.add(self.DATA_DIR)
-        self.assertEqual(len(stages), 1)
-        stage_add = stages[0]
-        self.assertTrue(stage_add is not None)
-        stage_removed = self.dvc.remove(stage_add.path)
-        self.assertEqual(stage_add.path, stage_removed.path)
-        self.assertFalse(os.path.exists(self.DATA_DIR))
-        self.assertFalse(os.path.exists(stage_removed.path))
+def test_remove_broken_symlink(tmp_dir, dvc):
+    tmp_dir.gen("foo", "foo")
+    dvc.cache.local.cache_types = ["symlink"]
+
+    (stage,) = dvc.add("foo")
+    remove(dvc.cache.local.cache_dir)
+    assert System.is_symlink("foo")
+
+    with pytest.raises(DvcException):
+        dvc.remove(stage.addressing)
+    assert os.path.lexists("foo")
+    assert (tmp_dir / stage.relpath).exists()
+
+    dvc.remove(stage.addressing, outs=True)
+    assert not os.path.lexists("foo")
+    assert not (tmp_dir / stage.relpath).exists()
 
 
-class TestCmdRemove(TestDvc):
-    def test(self):
-        stages = self.dvc.add(self.FOO)
-        self.assertEqual(len(stages), 1)
-        stage = stages[0]
-        self.assertTrue(stage is not None)
-        ret = main(["remove", stage.path])
-        self.assertEqual(ret, 0)
+def test_cmd_remove(tmp_dir, dvc):
+    assert main(["remove", "non-existing-dvc-file"]) == 1
 
-        ret = main(["remove", "non-existing-dvc-file"])
-        self.assertNotEqual(ret, 0)
+    (stage,) = tmp_dir.dvc_gen("foo", "foo")
+    assert main(["remove", stage.addressing]) == 0
+    assert not (tmp_dir / stage.relpath).exists()
+    assert (tmp_dir / "foo").exists()
 
-
-class TestRemovePurge(TestDvc):
-    def test(self):
-        dvcfile = self.dvc.add(self.FOO)[0].path
-        ret = main(["remove", "--purge", "--force", dvcfile])
-
-        self.assertEqual(ret, 0)
-        self.assertFalse(os.path.exists(self.FOO))
-        self.assertFalse(os.path.exists(dvcfile))
-
-    @patch("dvc.prompt.confirm", return_value=False)
-    def test_force(self, mock_prompt):
-        dvcfile = self.dvc.add(self.FOO)[0].path
-        ret = main(["remove", "--purge", dvcfile])
-
-        mock_prompt.assert_called()
-        self.assertEqual(ret, 1)
-        self.assertRaises(DvcException)
+    (stage,) = tmp_dir.dvc_gen("foo", "foo")
+    assert main(["remove", stage.addressing, "--outs"]) == 0
+    assert not (tmp_dir / stage.relpath).exists()
+    assert not (tmp_dir / "foo").exists()

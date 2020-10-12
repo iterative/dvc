@@ -1,8 +1,7 @@
 import argparse
 import logging
 
-from dvc.command.base import append_doc_link
-from dvc.command.base import CmdBaseNoRepo
+from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
@@ -17,7 +16,7 @@ class CmdRoot(CmdBaseNoRepo):
 
 
 def add_parser(subparsers, parent_parser):
-    ROOT_HELP = "Relative path to the repository's directory."
+    ROOT_HELP = "Return the relative path to the root of the DVC project."
     root_parser = subparsers.add_parser(
         "root",
         parents=[parent_parser],

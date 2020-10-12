@@ -1,7 +1,7 @@
-from dvc.output.ssh import OutputSSH
-from tests.unit.output.test_local import TestOutputLOCAL
+from dvc.output.ssh import SSHOutput
+from tests.unit.output.test_local import TestLocalOutput
 
 
-class TestOutputSSH(TestOutputLOCAL):
+class TestSSHOutput(TestLocalOutput):
     def _get_cls(self):
-        return OutputSSH
+        return SSHOutput

@@ -1,14 +1,19 @@
-import re
 import os
+import re
 
 import pytest
 
 from dvc.path_info import PathInfo
-from dvc.utils import file_md5, resolve_output
-from dvc.utils import fix_env
-from dvc.utils import relpath
-from dvc.utils import to_chunks
-from dvc.utils import tmp_fname
+from dvc.utils import (
+    dict_sha256,
+    file_md5,
+    fix_env,
+    parse_target,
+    relpath,
+    resolve_output,
+    tmp_fname,
+    to_chunks,
+)
 
 
 @pytest.mark.parametrize(
@@ -125,7 +130,57 @@ def test_relpath():
     ],
 )
 def test_resolve_output(inp, out, is_dir, expected, mocker):
-    with mocker.patch("os.path.isdir", return_value=is_dir):
-        result = resolve_output(inp, out)
-
+    mocker.patch("os.path.isdir", return_value=is_dir)
+    result = resolve_output(inp, out)
     assert result == expected
+
+
+@pytest.mark.parametrize(
+    "inp,out, default",
+    [
+        ["dvc.yaml", ("dvc.yaml", None), None],
+        ["dvc.yaml:name", ("dvc.yaml", "name"), None],
+        [":name", ("dvc.yaml", "name"), None],
+        ["stage.dvc", ("stage.dvc", None), None],
+        ["dvc.yaml:name", ("dvc.yaml", "name"), None],
+        ["../models/stage.dvc", ("../models/stage.dvc", None), "def"],
+        [":name", ("default", "name"), "default"],
+        [":name", ("default", "name"), "default"],
+        ["something.dvc:name", ("something.dvc", "name"), None],
+        ["../something.dvc:name", ("../something.dvc", "name"), None],
+        ["file", (None, "file"), None],
+    ],
+)
+def test_parse_target(inp, out, default):
+    assert parse_target(inp, default) == out
+
+
+def test_hint_on_lockfile():
+    with pytest.raises(Exception) as exc:
+        assert parse_target("dvc.lock:name")
+    assert "dvc.yaml:name" in str(exc.value)
+
+
+@pytest.mark.parametrize(
+    "d,sha",
+    [
+        (
+            {
+                "cmd": "echo content > out",
+                "deps": {"dep": "2254342becceafbd04538e0a38696791"},
+                "outs": {"out": "f75b8179e4bbe7e2b4a074dcef62de95"},
+            },
+            "f472eda60f09660a4750e8b3208cf90b3a3b24e5f42e0371d829710e9464d74a",
+        ),
+        (
+            {
+                "cmd": "echo content > out",
+                "deps": {"dep": "2254342becceafbd04538e0a38696791"},
+                "outs": ["out"],
+            },
+            "a239b67073bd58affcdb81fff3305d1726c6e7f9c86f3d4fca0e92e8147dc7b0",
+        ),
+    ],
+)
+def test_dict_sha256(d, sha):
+    assert dict_sha256(d) == sha

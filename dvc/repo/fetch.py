@@ -1,16 +1,16 @@
 import logging
 
-from dvc.cache import NamedCache
 from dvc.config import NoRemoteError
 from dvc.exceptions import DownloadError
-from dvc.exceptions import OutputNotFoundError
 from dvc.scm.base import CloneError
 
+from . import locked
 
 logger = logging.getLogger(__name__)
 
 
-def _fetch(
+@locked
+def fetch(
     self,
     targets=None,
     jobs=None,
@@ -20,6 +20,8 @@ def _fetch(
     with_deps=False,
     all_tags=False,
     recursive=False,
+    all_commits=False,
+    run_cache=False,
 ):
     """Download data items from a cloud and imported repositories
 
@@ -33,10 +35,15 @@ def _fetch(
         config.NoRemoteError: thrown when downloading only local files and no
             remote is configured
     """
+
+    if isinstance(targets, str):
+        targets = [targets]
+
     used = self.used_cache(
         targets,
         all_branches=all_branches,
         all_tags=all_tags,
+        all_commits=all_commits,
         with_deps=with_deps,
         force=True,
         remote=remote,
@@ -48,8 +55,10 @@ def _fetch(
     failed = 0
 
     try:
+        if run_cache:
+            self.stage_cache.pull(remote)
         downloaded += self.cloud.pull(
-            used, jobs, remote=remote, show_checksums=show_checksums
+            used, jobs, remote=remote, show_checksums=show_checksums,
         )
     except NoRemoteError:
         if not used.external and used["local"]:
@@ -71,33 +80,19 @@ def _fetch(
 def _fetch_external(self, repo_url, repo_rev, files, jobs):
     from dvc.external_repo import external_repo
 
-    failed = 0
+    failed, downloaded = 0, 0
+    cache = self.cache.local
     try:
-        with external_repo(repo_url, repo_rev) as repo:
-            repo.cache.local.cache_dir = self.cache.local.cache_dir
-
-            with repo.state:
-                cache = NamedCache()
-                for name in files:
-                    try:
-                        out = repo.find_out_by_relpath(name)
-                    except OutputNotFoundError:
-                        failed += 1
-                        logger.exception(
-                            "failed to fetch data for '{}'".format(name)
-                        )
-                        continue
-                    else:
-                        cache.update(out.get_used_cache())
-
-                try:
-                    return repo.cloud.pull(cache, jobs=jobs), failed
-                except DownloadError as exc:
-                    failed += exc.amount
+        with external_repo(
+            repo_url, repo_rev, cache_dir=cache.cache_dir
+        ) as repo:
+            d, f, _ = repo.fetch_external(files, jobs=jobs)
+            downloaded += d
+            failed += f
     except CloneError:
         failed += 1
         logger.exception(
             "failed to fetch data for '{}'".format(", ".join(files))
         )
 
-    return 0, failed
+    return downloaded, failed

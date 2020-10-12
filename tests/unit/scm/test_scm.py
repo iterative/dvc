@@ -17,11 +17,26 @@ class TestScmContext(TestCase):
         method = mock.Mock()
         wrapped = scm_context(method)
 
+        self.repo_mock.configure_mock(config={})
         wrapped(self.repo_mock)
 
         self.assertEqual(1, method.call_count)
         self.assertEqual(1, self.scm_mock.reset_ignores.call_count)
         self.assertEqual(1, self.scm_mock.remind_to_track.call_count)
+
+        self.assertEqual(0, self.scm_mock.cleanup_ignores.call_count)
+
+    def test_should_check_autostage(self):
+        method = mock.Mock()
+        wrapped = scm_context(method)
+
+        config_autostage_attrs = {"config": {"core": {"autostage": True}}}
+        self.repo_mock.configure_mock(**config_autostage_attrs)
+        wrapped(self.repo_mock)
+
+        self.assertEqual(1, method.call_count)
+        self.assertEqual(1, self.scm_mock.reset_ignores.call_count)
+        self.assertEqual(1, self.scm_mock.track_changed_files.call_count)
 
         self.assertEqual(0, self.scm_mock.cleanup_ignores.call_count)
 
@@ -37,3 +52,9 @@ class TestScmContext(TestCase):
 
         self.assertEqual(0, self.scm_mock.reset_ignores.call_count)
         self.assertEqual(0, self.scm_mock.remind_to_track.call_count)
+
+
+def test_remind_to_track(scm, caplog):
+    scm.files_to_track = ["fname with spaces.txt", "тест", "foo"]
+    scm.remind_to_track()
+    assert "git add 'fname with spaces.txt' 'тест' foo" in caplog.text

@@ -1,17 +1,15 @@
 import argparse
 import logging
 
-from dvc.command.base import append_doc_link
-from dvc.command.base import CmdBaseNoRepo
-
+from dvc.command.base import CmdBaseNoRepo, append_doc_link
 
 logger = logging.getLogger(__name__)
 
 
 class CmdInit(CmdBaseNoRepo):
     def run(self):
-        from dvc.repo import Repo
         from dvc.exceptions import InitError
+        from dvc.repo import Repo
 
         try:
             self.repo = Repo.init(
@@ -47,7 +45,7 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Initiate DVC in directory that is "
-        "not tracked by any scm tool (e.g. git).",
+        "not tracked by any SCM tool (e.g. Git).",
     )
     init_parser.add_argument(
         "-f",

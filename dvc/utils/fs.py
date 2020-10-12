@@ -3,17 +3,14 @@ import logging
 import os
 import shutil
 import stat
+import sys
 
 import nanotime
 from shortuuid import uuid
 
 from dvc.exceptions import DvcException
-from dvc.scm.tree import is_working_tree
 from dvc.system import System
 from dvc.utils import dict_md5
-from dvc.utils import fspath
-from dvc.utils import fspath_py35
-
 
 logger = logging.getLogger(__name__)
 
@@ -29,33 +26,31 @@ def fs_copy(src, dst):
 
 def get_inode(path):
     inode = System.inode(path)
-    logger.debug("Path {} inode {}", path, inode)
+    logger.debug("Path '%s' inode '%d'", path, inode)
     return inode
 
 
 def get_mtime_and_size(path, tree):
 
-    if os.path.isdir(fspath_py35(path)):
-        assert is_working_tree(tree)
-
+    if tree.isdir(path):
         size = 0
         files_mtimes = {}
         for file_path in tree.walk_files(path):
             try:
-                stat = os.stat(file_path)
+                stats = tree.stat(file_path)
             except OSError as exc:
                 # NOTE: broken symlink case.
                 if exc.errno != errno.ENOENT:
                     raise
                 continue
-            size += stat.st_size
-            files_mtimes[file_path] = stat.st_mtime
+            size += stats.st_size
+            files_mtimes[os.fspath(file_path)] = stats.st_mtime
 
         # We track file changes and moves, which cannot be detected with simply
         # max(mtime(f) for f in non_ignored_files)
         mtime = dict_md5(files_mtimes)
     else:
-        base_stat = os.stat(fspath_py35(path))
+        base_stat = tree.stat(path)
         size = base_stat.st_size
         mtime = base_stat.st_mtime
         mtime = int(nanotime.timestamp(mtime))
@@ -74,8 +69,8 @@ class BasePathNotInCheckedPathException(DvcException):
 
 
 def contains_symlink_up_to(path, base_path):
-    base_path = fspath(base_path)
-    path = fspath(path)
+    base_path = os.fspath(base_path)
+    path = os.fspath(path)
 
     if base_path not in path:
         raise BasePathNotInCheckedPathException(path, base_path)
@@ -97,14 +92,11 @@ def move(src, dst, mode=None):
     of data is happening.
     """
 
-    src = fspath(src)
-    dst = fspath(dst)
-
     dst = os.path.abspath(dst)
-    tmp = "{}.{}".format(dst, uuid())
+    tmp = f"{dst}.{uuid()}"
 
     if os.path.islink(src):
-        shutil.copy(os.readlink(src), tmp)
+        shutil.copy(src, tmp)
         os.unlink(src)
     else:
         shutil.move(src, tmp)
@@ -115,7 +107,7 @@ def move(src, dst, mode=None):
     shutil.move(tmp, dst)
 
 
-def _chmod(func, p, excinfo):
+def _chmod(func, p, excinfo):  # pylint: disable=unused-argument
     perm = os.lstat(p).st_mode
     perm |= stat.S_IWRITE
 
@@ -129,15 +121,21 @@ def _chmod(func, p, excinfo):
     func(p)
 
 
-def remove(path):
-    logger.debug("Removing '{}'", path)
+def _unlink(path, onerror):
+    try:
+        os.unlink(path)
+    except OSError:
+        onerror(os.unlink, path, sys.exc_info())
 
-    path = fspath_py35(path)
+
+def remove(path):
+    logger.debug("Removing '%s'", path)
+
     try:
         if os.path.isdir(path):
             shutil.rmtree(path, onerror=_chmod)
         else:
-            _chmod(os.unlink, path, None)
+            _unlink(path, _chmod)
     except OSError as exc:
         if exc.errno != errno.ENOENT:
             raise
@@ -147,7 +145,7 @@ def path_isin(child, parent):
     """Check if given `child` path is inside `parent`."""
 
     def normalize_path(path):
-        return os.path.normpath(fspath_py35(path))
+        return os.path.normpath(path)
 
     parent = os.path.join(normalize_path(parent), "")
     child = normalize_path(child)
@@ -155,8 +153,6 @@ def path_isin(child, parent):
 
 
 def makedirs(path, exist_ok=False, mode=None):
-    path = fspath_py35(path)
-
     if mode is None:
         os.makedirs(path, exist_ok=exist_ok)
         return
@@ -173,12 +169,7 @@ def makedirs(path, exist_ok=False, mode=None):
 
 def copyfile(src, dest, no_progress_bar=False, name=None):
     """Copy file with progress bar"""
-    from dvc.exceptions import DvcException
     from dvc.progress import Tqdm
-    from dvc.system import System
-
-    src = fspath_py35(src)
-    dest = fspath_py35(dest)
 
     name = name if name else os.path.basename(dest)
     total = os.stat(src).st_size
@@ -189,19 +180,29 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
     try:
         System.reflink(src, dest)
     except DvcException:
-        with Tqdm(
-            desc=name, disable=no_progress_bar, total=total, bytes=True
-        ) as pbar:
-            with open(src, "rb") as fsrc, open(dest, "wb+") as fdest:
+        with open(src, "rb") as fsrc, open(dest, "wb+") as fdest:
+            with Tqdm.wrapattr(
+                fdest,
+                "write",
+                desc=name,
+                disable=no_progress_bar,
+                total=total,
+                bytes=True,
+            ) as fdest_wrapped:
                 while True:
                     buf = fsrc.read(LOCAL_CHUNK_SIZE)
                     if not buf:
                         break
-                    fdest.write(buf)
-                    pbar.update(len(buf))
+                    fdest_wrapped.write(buf)
+
+
+def copy_fobj_to_file(fsrc, dest):
+    """Copy contents of open file object to destination path."""
+    with open(dest, "wb+") as fdest:
+        shutil.copyfileobj(fsrc, fdest)
 
 
 def walk_files(directory):
-    for root, _, files in os.walk(fspath(directory)):
+    for root, _, files in os.walk(directory):
         for f in files:
             yield os.path.join(root, f)

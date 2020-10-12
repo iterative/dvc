@@ -7,7 +7,7 @@ from getpass import getpass
 logger = logging.getLogger(__name__)
 
 
-def _ask(prompt, limited_to=None):
+def ask(prompt, limited_to=None):
     if not sys.stdout.isatty():
         return None
 
@@ -38,8 +38,8 @@ def confirm(statement):
     Returns:
         bool: whether or not specified statement was confirmed.
     """
-    prompt = "{statement} [y/n]".format(statement=statement)
-    answer = _ask(prompt, limited_to=["yes", "no", "y", "n"])
+    prompt = f"{statement} [y/n]"
+    answer = ask(prompt, limited_to=["yes", "no", "y", "n"])
     return answer and answer.startswith("y")
 
 
@@ -52,5 +52,5 @@ def password(statement):
     Returns:
         str: password entered by the user.
     """
-    logger.info("{statement}: ".format(statement=statement))
+    logger.info(f"{statement}: ")
     return getpass("")

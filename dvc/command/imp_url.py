@@ -1,10 +1,9 @@
 import argparse
 import logging
 
-from dvc.command.base import append_doc_link
-from dvc.command.base import CmdBase
+from dvc.command import completion
+from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
-
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +12,10 @@ class CmdImportUrl(CmdBase):
     def run(self):
         try:
             self.repo.imp_url(
-                self.args.url, out=self.args.out, fname=self.args.file
+                self.args.url,
+                out=self.args.out,
+                fname=self.args.file,
+                no_exec=self.args.no_exec,
             )
         except DvcException:
             logger.exception(
@@ -40,25 +42,29 @@ def add_parser(subparsers, parent_parser):
     )
     import_parser.add_argument(
         "url",
-        help="Supported urls:\n"
-        "/path/to/file\n"
-        "/path/to/directory\n"
-        "C:\\\\path\\to\\file\n"
-        "C:\\\\path\\to\\directory\n"
+        help="Location of the data to download. Supported URLs:\n"
+        "/absolute/path/to/file/or/dir\n"
+        "relative/path/to/file/or/dir\n"
+        "C:\\\\path\\to\\file\\or\\dir\n"
         "https://example.com/path/to/file\n"
-        "s3://bucket/path/to/file\n"
-        "s3://bucket/path/to/directory\n"
-        "gs://bucket/path/to/file\n"
-        "gs://bucket/path/to/directory\n"
+        "s3://bucket/key/path\n"
+        "gs://bucket/path/to/file/or/dir\n"
         "hdfs://example.com/path/to/file\n"
-        "ssh://example.com:/path/to/file\n"
-        "ssh://example.com:/path/to/directory\n"
-        "remote://myremote/path/to/file (see `dvc remote`)",
+        "ssh://example.com/absolute/path/to/file/or/dir\n"
+        "remote://remote_name/path/to/file/or/dir (see `dvc remote`)",
     )
     import_parser.add_argument(
-        "out", nargs="?", help="Destination path to put files to."
-    )
+        "out", nargs="?", help="Destination path to put files to.",
+    ).complete = completion.DIR
     import_parser.add_argument(
-        "-f", "--file", help="Specify name of the DVC-file it generates."
+        "--file",
+        help="Specify name of the DVC-file this command will generate.",
+        metavar="<filename>",
+    ).complete = completion.DIR
+    import_parser.add_argument(
+        "--no-exec",
+        action="store_true",
+        default=False,
+        help="Only create DVC-file without actually downloading it.",
     )
     import_parser.set_defaults(func=CmdImportUrl)

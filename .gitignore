@@ -1,12 +1,11 @@
 neatlynx.conf
 neatlynx/__pycache__
 .idea
-cache
+/cache
 *.pyc
 .env/
 .env2.7/
 
-cache
 .dvc.conf.lock
 .DS_Store
 build/

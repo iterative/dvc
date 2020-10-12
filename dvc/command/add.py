@@ -1,7 +1,8 @@
 import argparse
 import logging
 
-from dvc.command.base import append_doc_link, CmdBase
+from dvc.command import completion
+from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException, RecursiveAddingWhileUsingFilename
 
 logger = logging.getLogger(__name__)
@@ -18,6 +19,7 @@ class CmdAdd(CmdBase):
                 recursive=self.args.recursive,
                 no_commit=self.args.no_commit,
                 fname=self.args.file,
+                external=self.args.external,
             )
 
         except DvcException:
@@ -50,11 +52,17 @@ def add_parser(subparsers, parent_parser):
         help="Don't put files/directories into cache.",
     )
     parser.add_argument(
-        "-f",
-        "--file",
-        help="Specify name of the DVC-file this command will generate.",
+        "--external",
+        action="store_true",
+        default=False,
+        help="Allow targets that are outside of the DVC repository.",
     )
     parser.add_argument(
-        "targets", nargs="+", help="Input files/directories to add."
+        "--file",
+        help="Specify name of the DVC-file this command will generate.",
+        metavar="<filename>",
     )
+    parser.add_argument(
+        "targets", nargs="+", help="Input files/directories to add.",
+    ).complete = completion.FILE
     parser.set_defaults(func=CmdAdd)

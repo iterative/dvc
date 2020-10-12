@@ -2,11 +2,11 @@ import logging
 
 import pytest
 from funcy import first
-
-from voluptuous import Schema, MultipleInvalid
+from voluptuous import MultipleInvalid, Schema
 
 from dvc.cache import NamedCache
-from dvc.output import CHECKSUM_SCHEMA, OutputBase
+from dvc.ignore import _no_match
+from dvc.output import CHECKSUM_SCHEMA, BaseOutput
 
 
 @pytest.mark.parametrize(
@@ -43,7 +43,7 @@ def test_checksum_schema(value, expected):
 @pytest.mark.parametrize("value", ["1", "11", {}, {"a": "b"}, [], [1, 2]])
 def test_checksum_schema_fail(value):
     with pytest.raises(MultipleInvalid):
-        Schema(CHECKSUM_SCHEMA)(value)["md5"]
+        assert Schema(CHECKSUM_SCHEMA)(value)
 
 
 @pytest.mark.parametrize(
@@ -52,7 +52,7 @@ def test_checksum_schema_fail(value):
         (
             False,
             (
-                "Output 'path'(Stage stage.dvc) is missing version info. "
+                "Output 'path'(stage: 'stage.dvc') is missing version info. "
                 "Cache for it will not be collected. "
                 "Use `dvc repro` to get your pipeline up to date."
             ),
@@ -60,29 +60,31 @@ def test_checksum_schema_fail(value):
         (
             True,
             (
-                "Output 'path'(Stage stage.dvc) is missing version info. "
+                "Output 'path'(stage: 'stage.dvc') is missing version info. "
                 "Cache for it will not be collected. "
                 "Use `dvc repro` to get your pipeline up to date.\n"
                 "You can also use `dvc commit stage.dvc` to associate "
-                "existing 'path' with 'stage.dvc'."
+                "existing 'path' with stage: 'stage.dvc'."
             ),
         ),
     ],
 )
 def test_get_used_cache(exists, expected_message, mocker, caplog):
     stage = mocker.MagicMock()
-    mocker.patch.object(stage, "__str__", return_value="Stage stage.dvc")
-    mocker.patch.object(stage, "relpath", "stage.dvc")
+    mocker.patch.object(stage, "__str__", return_value="stage: 'stage.dvc'")
+    mocker.patch.object(stage, "addressing", "stage.dvc")
+    mocker.patch.object(
+        stage.repo.tree.dvcignore,
+        "check_ignore",
+        return_value=_no_match("path"),
+    )
 
-    output = OutputBase(stage, "path")
+    output = BaseOutput(stage, "path")
 
     mocker.patch.object(output, "use_cache", True)
     mocker.patch.object(stage, "is_repo_import", False)
     mocker.patch.object(
-        OutputBase, "checksum", new_callable=mocker.PropertyMock
-    ).return_value = None
-    mocker.patch.object(
-        OutputBase, "exists", new_callable=mocker.PropertyMock
+        BaseOutput, "exists", new_callable=mocker.PropertyMock
     ).return_value = exists
 
     with caplog.at_level(logging.WARNING, logger="dvc"):

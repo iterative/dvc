@@ -2,22 +2,23 @@
 
 import hashlib
 import os
-import time
+from abc import ABC, abstractmethod
 from datetime import timedelta
 
-import zc.lockfile
 import flufl.lock
+import zc.lockfile
+from funcy import retry
 
 from dvc.exceptions import DvcException
-from dvc.utils import format_link
 from dvc.progress import Tqdm
+from dvc.utils import format_link
 
-DEFAULT_TIMEOUT = 5
+DEFAULT_TIMEOUT = 3
 
 FAILED_TO_LOCK_MESSAGE = (
     "cannot perform the command because another DVC process seems to be "
     "running on this project. If that is not the case, manually remove "
-    "`.dvc/lock` and try again."
+    "`.dvc/tmp/lock` and try again."
 )
 
 
@@ -25,20 +26,74 @@ class LockError(DvcException):
     """Thrown when unable to acquire the lock for DVC repo."""
 
 
-class Lock(object):
+class LockBase(ABC):
+    @abstractmethod
+    def __init__(self, lockfile):
+        self._lockfile = lockfile
+
+    @property
+    def lockfile(self):
+        return self._lockfile
+
+    @abstractmethod
+    def lock(self):
+        pass
+
+    @abstractmethod
+    def unlock(self):
+        pass
+
+    @property
+    @abstractmethod
+    def is_locked(self):
+        pass
+
+    @abstractmethod
+    def __enter__(self):
+        pass
+
+    @abstractmethod
+    def __exit__(self, typ, value, tbck):
+        pass
+
+
+class LockNoop(LockBase):
+    def __init__(
+        self, *args, **kwargs
+    ):  # pylint: disable=super-init-not-called
+        self._lock = False
+
+    def lock(self):
+        self._lock = True
+
+    def unlock(self):
+        self._lock = False
+
+    @property
+    def is_locked(self):
+        return self._lock
+
+    def __enter__(self):
+        self.lock()
+
+    def __exit__(self, typ, value, tbck):
+        self.unlock()
+
+
+class Lock(LockBase):
     """Class for DVC repo lock.
 
     Uses zc.lockfile as backend.
     """
 
     def __init__(self, lockfile, friendly=False, **kwargs):
+        super().__init__(lockfile)
         self._friendly = friendly
-        self.lockfile = lockfile
         self._lock = None
 
     @property
     def files(self):
-        return [self.lockfile]
+        return [self._lockfile]
 
     def _do_lock(self):
         try:
@@ -47,22 +102,19 @@ class Lock(object):
                 disable=not self._friendly,
                 desc=(
                     "If DVC froze, see `hardlink_lock` in {}".format(
-                        format_link("man.dvc.org/config#core")
+                        format_link("https://man.dvc.org/config#core")
                     )
                 ),
             ):
-                self._lock = zc.lockfile.LockFile(self.lockfile)
+                self._lock = zc.lockfile.LockFile(self._lockfile)
         except zc.lockfile.LockError:
             raise LockError(FAILED_TO_LOCK_MESSAGE)
 
     def lock(self):
-        try:
-            self._do_lock()
-            return
-        except LockError:
-            time.sleep(DEFAULT_TIMEOUT)
-
-        self._do_lock()
+        retries = 6
+        delay = DEFAULT_TIMEOUT / retries
+        lock_retry = retry(retries, LockError, timeout=delay)(self._do_lock)
+        lock_retry()
 
     def unlock(self):
         self._lock.close()
@@ -79,7 +131,7 @@ class Lock(object):
         self.unlock()
 
 
-class HardlinkLock(flufl.lock.Lock):
+class HardlinkLock(flufl.lock.Lock, LockBase):
     """Class for DVC repo lock.
 
     Args:
@@ -88,8 +140,12 @@ class HardlinkLock(flufl.lock.Lock):
         tmp_dir (str): a directory to store claim files.
     """
 
-    def __init__(self, lockfile, tmp_dir=None, **kwargs):
+    def __init__(
+        self, lockfile, tmp_dir=None, **kwargs
+    ):  # pylint: disable=super-init-not-called
         import socket
+
+        super().__init__(lockfile)
 
         self._tmp_dir = tmp_dir
 
@@ -106,18 +162,13 @@ class HardlinkLock(flufl.lock.Lock):
         # [1] https://github.com/iterative/dvc/issues/2582
         self._hostname = socket.gethostname()
 
-        self._lockfile = lockfile
         self._lifetime = timedelta(days=365)  # Lock for good by default
         self._separator = flufl.lock.SEP
         self._set_claimfile()
         self._owned = True
         self._retry_errnos = []
 
-    @property
-    def lockfile(self):
-        return self._lockfile
-
-    def lock(self):
+    def lock(self):  # pylint: disable=arguments-differ
         try:
             super().lock(timedelta(seconds=DEFAULT_TIMEOUT))
         except flufl.lock.TimeOutError:

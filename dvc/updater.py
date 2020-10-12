@@ -7,26 +7,25 @@ import colorama
 from packaging import version
 
 from dvc import __version__
-from dvc.lock import make_lock, LockError
-from dvc.utils import boxify
-from dvc.utils import env2bool
+from dvc.config import Config, to_bool
+from dvc.lock import LockError, make_lock
+from dvc.utils import boxify, env2bool
 from dvc.utils.pkg import PKG
 
 logger = logging.getLogger(__name__)
 
 
-class Updater(object):  # pragma: no cover
+class Updater:  # pragma: no cover
     URL = "https://updater.dvc.org"
     UPDATER_FILE = "updater"
     TIMEOUT = 24 * 60 * 60  # every day
     TIMEOUT_GET = 10
 
-    def __init__(self, dvc_dir, friendly=False, hardlink_lock=False):
-        self.dvc_dir = dvc_dir
-        self.updater_file = os.path.join(dvc_dir, self.UPDATER_FILE)
+    def __init__(self, tmp_dir, friendly=False, hardlink_lock=False):
+        self.updater_file = os.path.join(tmp_dir, self.UPDATER_FILE)
         self.lock = make_lock(
             self.updater_file + ".lock",
-            tmp_dir=os.path.join(dvc_dir, "tmp"),
+            tmp_dir=tmp_dir,
             friendly=friendly,
             hardlink_lock=hardlink_lock,
         )
@@ -36,7 +35,7 @@ class Updater(object):  # pragma: no cover
         ctime = os.path.getmtime(self.updater_file)
         outdated = time.time() - ctime >= self.TIMEOUT
         if outdated:
-            logger.debug("'{}' is outdated(".format(self.updater_file))
+            logger.debug(f"'{self.updater_file}' is outdated")
         return outdated
 
     def _with_lock(self, func, action):
@@ -48,7 +47,12 @@ class Updater(object):  # pragma: no cover
             logger.debug(msg.format(self.lock.lockfile, action))
 
     def check(self):
-        if os.getenv("CI") or env2bool("DVC_TEST") or PKG == "snap":
+        if (
+            os.getenv("CI")
+            or env2bool("DVC_TEST")
+            or PKG == "snap"
+            or not self.is_enabled()
+        ):
             return
 
         self._with_lock(self._check, "checking")
@@ -58,20 +62,20 @@ class Updater(object):  # pragma: no cover
             self.fetch()
             return
 
-        with open(self.updater_file, "r") as fobj:
+        with open(self.updater_file) as fobj:
             import json
 
             try:
                 info = json.load(fobj)
-                self.latest = info["version"]
-            except Exception as exc:
+                latest = info["version"]
+            except Exception as exc:  # pylint: disable=broad-except
                 msg = "'{}' is not a valid json: {}"
                 logger.debug(msg.format(self.updater_file, exc))
                 self.fetch()
                 return
 
-        if self._is_outdated():
-            self._notify()
+        if version.parse(self.current) < version.parse(latest):
+            self._notify(latest)
 
     def fetch(self, detach=True):
         from dvc.daemon import daemon
@@ -84,11 +88,12 @@ class Updater(object):  # pragma: no cover
 
     def _get_latest_version(self):
         import json
+
         import requests
 
         try:
-            r = requests.get(self.URL, timeout=self.TIMEOUT_GET)
-            info = r.json()
+            resp = requests.get(self.URL, timeout=self.TIMEOUT_GET)
+            info = resp.json()
         except requests.exceptions.RequestException as exc:
             msg = "Failed to retrieve latest version: {}"
             logger.debug(msg.format(exc))
@@ -97,10 +102,7 @@ class Updater(object):  # pragma: no cover
         with open(self.updater_file, "w+") as fobj:
             json.dump(info, fobj)
 
-    def _is_outdated(self):
-        return version.parse(self.current) < version.parse(self.latest)
-
-    def _notify(self):
+    def _notify(self, latest):
         if not sys.stdout.isatty():
             return
 
@@ -115,7 +117,7 @@ class Updater(object):  # pragma: no cover
             yellow=colorama.Fore.YELLOW,
             blue=colorama.Fore.BLUE,
             current=self.current,
-            latest=self.latest,
+            latest=latest,
         )
 
         logger.info(boxify(message, border_color="yellow"))
@@ -149,3 +151,12 @@ class Updater(object):  # pragma: no cover
             package_manager = "binary"
 
         return instructions[package_manager]
+
+    def is_enabled(self):
+        enabled = to_bool(
+            Config(validate=False).get("core", {}).get("check_update", "true")
+        )
+        logger.debug(
+            "Check for update is {}abled.".format("en" if enabled else "dis")
+        )
+        return enabled

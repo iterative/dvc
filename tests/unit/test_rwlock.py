@@ -2,19 +2,18 @@ import os
 
 import pytest
 
-from dvc.rwlock import (
-    rwlock,
-    _edit_rwlock,
-    RWLockFileFormatError,
-    RWLockFileCorruptedError,
-)
 from dvc.lock import LockError
-from dvc.compat import fspath
 from dvc.path_info import PathInfo
+from dvc.rwlock import (
+    RWLockFileCorruptedError,
+    RWLockFileFormatError,
+    _edit_rwlock,
+    rwlock,
+)
 
 
 def test_rwlock(tmp_path):
-    path = fspath(tmp_path)
+    path = os.fspath(tmp_path)
     foo = PathInfo("foo")
 
     with rwlock(path, "cmd1", [foo], []):
@@ -34,7 +33,7 @@ def test_rwlock(tmp_path):
 
 
 def test_rwlock_reentrant(tmp_path):
-    path = fspath(tmp_path)
+    path = os.fspath(tmp_path)
     foo = PathInfo("foo")
 
     with rwlock(path, "cmd1", [], [foo]):
@@ -57,7 +56,7 @@ def test_rwlock_reentrant(tmp_path):
 
 
 def test_rwlock_subdirs(tmp_path):
-    path = fspath(tmp_path)
+    path = os.fspath(tmp_path)
     foo = PathInfo("foo")
     subfoo = PathInfo("foo/subfoo")
 
@@ -82,7 +81,7 @@ def test_rwlock_subdirs(tmp_path):
 
 
 def test_broken_rwlock(tmp_path):
-    dir_path = fspath(tmp_path)
+    dir_path = os.fspath(tmp_path)
     path = tmp_path / "rwlock"
 
     path.write_text('{"broken": "format"}', encoding="utf-8")

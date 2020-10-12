@@ -1,12 +1,10 @@
 import os
 
-from dvc.exceptions import DvcException
-from dvc.exceptions import MoveNotDataSourceError
+from dvc.dvcfile import DVC_FILE_SUFFIX
+from dvc.exceptions import DvcException, MoveNotDataSourceError
 from dvc.main import main
-from dvc.stage import Stage
-from dvc.utils.stage import load_stage_file
-from tests.basic_env import TestDvc
-from tests.basic_env import TestDvcGit
+from dvc.utils.serialize import load_yaml
+from tests.basic_env import TestDvc, TestDvcGit
 from tests.func.test_repro import TestRepro
 from tests.utils import cd
 
@@ -84,13 +82,13 @@ class TestMoveFileWithExtension(TestDvc):
 
 class TestMoveFileToDirectory(TestDvc):
     def test(self):
-        foo_dvc_file = self.FOO + Stage.STAGE_FILE_SUFFIX
+        foo_dvc_file = self.FOO + DVC_FILE_SUFFIX
         ret = main(["add", self.FOO])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.exists(foo_dvc_file))
 
         new_foo_path = os.path.join(self.DATA_DIR, self.FOO)
-        new_foo_dvc_path = new_foo_path + Stage.STAGE_FILE_SUFFIX
+        new_foo_dvc_path = new_foo_path + DVC_FILE_SUFFIX
         ret = main(["move", self.FOO, new_foo_path])
         self.assertEqual(ret, 0)
 
@@ -102,13 +100,13 @@ class TestMoveFileToDirectory(TestDvc):
 
 class TestMoveFileToDirectoryWithoutSpecifiedTargetName(TestDvc):
     def test(self):
-        foo_stage_file_path = self.FOO + Stage.STAGE_FILE_SUFFIX
+        foo_stage_file_path = self.FOO + DVC_FILE_SUFFIX
         ret = main(["add", self.FOO])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.exists(foo_stage_file_path))
 
         target_foo_path = os.path.join(self.DATA_DIR, self.FOO)
-        target_foo_stage_file_path = target_foo_path + Stage.STAGE_FILE_SUFFIX
+        target_foo_stage_file_path = target_foo_path + DVC_FILE_SUFFIX
 
         ret = main(["move", self.FOO, self.DATA_DIR])
         self.assertEqual(ret, 0)
@@ -119,7 +117,7 @@ class TestMoveFileToDirectoryWithoutSpecifiedTargetName(TestDvc):
         self.assertTrue(os.path.exists(target_foo_path))
         self.assertTrue(os.path.exists(target_foo_stage_file_path))
 
-        new_stage = load_stage_file(target_foo_stage_file_path)
+        new_stage = load_yaml(target_foo_stage_file_path)
         self.assertEqual(self.FOO, new_stage["outs"][0]["path"])
 
 
@@ -135,24 +133,24 @@ class TestMoveDirectoryShouldNotOverwriteExisting(TestDvcGit):
 
         self.dvc.move(self.DATA_DIR, dir_name)
 
-        data_dir_stage = self.DATA_DIR + Stage.STAGE_FILE_SUFFIX
+        data_dir_stage = self.DATA_DIR + DVC_FILE_SUFFIX
         self.assertFalse(os.path.exists(self.DATA_DIR))
         self.assertFalse(os.path.exists(data_dir_stage))
 
         self.assertTrue(os.path.exists(dir_name))
         self.assertEqual(
             set(os.listdir(dir_name)),
-            set([".gitignore", data_dir_stage, self.DATA_DIR]),
+            {".gitignore", data_dir_stage, self.DATA_DIR},
         )
 
         self.assertTrue(os.path.exists(new_dir_name))
-        self.assertTrue(os.path.isfile(new_dir_name + Stage.STAGE_FILE_SUFFIX))
+        self.assertTrue(os.path.isfile(new_dir_name + DVC_FILE_SUFFIX))
         self.assertEqual(set(os.listdir(new_dir_name)), orig_listdir)
 
 
 class TestMoveFileBetweenDirectories(TestDvc):
     def test(self):
-        data_stage_file = self.DATA + Stage.STAGE_FILE_SUFFIX
+        data_stage_file = self.DATA + DVC_FILE_SUFFIX
         ret = main(["add", self.DATA])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.exists(data_stage_file))
@@ -164,7 +162,7 @@ class TestMoveFileBetweenDirectories(TestDvc):
         self.assertEqual(ret, 0)
 
         new_data_path = os.path.join(new_data_dir, os.path.basename(self.DATA))
-        new_data_stage_file = new_data_path + Stage.STAGE_FILE_SUFFIX
+        new_data_stage_file = new_data_path + DVC_FILE_SUFFIX
 
         self.assertFalse(os.path.exists(self.DATA))
         self.assertFalse(os.path.exists(data_stage_file))
@@ -172,7 +170,7 @@ class TestMoveFileBetweenDirectories(TestDvc):
         self.assertTrue(os.path.exists(new_data_path))
         self.assertTrue(os.path.exists(new_data_stage_file))
 
-        new_stage_file = load_stage_file(new_data_stage_file)
+        new_stage_file = load_yaml(new_data_stage_file)
         self.assertEqual(
             os.path.basename(self.DATA), new_stage_file["outs"][0]["path"]
         )

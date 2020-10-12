@@ -3,7 +3,11 @@ def scm_context(method):
         try:
             result = method(repo, *args, **kw)
             repo.scm.reset_ignores()
-            repo.scm.remind_to_track()
+            autostage = repo.config.get("core", {}).get("autostage", False)
+            if autostage:
+                repo.scm.track_changed_files()
+            else:
+                repo.scm.remind_to_track()
             repo.scm.reset_tracked_files()
             return result
         except Exception:

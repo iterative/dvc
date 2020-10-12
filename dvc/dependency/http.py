@@ -1,7 +1,8 @@
-from dvc.dependency.base import DependencyBase
-from dvc.output.base import OutputBase
-from dvc.remote.http import RemoteHTTP
+from dvc.dependency.base import BaseDependency
+from dvc.output.base import BaseOutput
+
+from ..tree.http import HTTPTree
 
 
-class DependencyHTTP(DependencyBase, OutputBase):
-    REMOTE = RemoteHTTP
+class HTTPDependency(BaseDependency, BaseOutput):
+    TREE_CLS = HTTPTree

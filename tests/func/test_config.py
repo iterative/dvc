@@ -1,8 +1,8 @@
-import pytest
 import configobj
+import pytest
 
-from dvc.main import main
 from dvc.config import Config, ConfigError
+from dvc.main import main
 from tests.basic_env import TestDvc
 
 
@@ -34,7 +34,7 @@ class TestConfigCLI(TestDvc):
     def _do_test(self, local=False):
         section = "core"
         field = "analytics"
-        section_field = "{}.{}".format(section, field)
+        section_field = f"{section}.{field}"
         value = "True"
         newvalue = "False"
 
@@ -93,6 +93,12 @@ def test_set_invalid_key(dvc):
 def test_merging_two_levels(dvc):
     with dvc.config.edit() as conf:
         conf["remote"]["test"] = {"url": "ssh://example.com"}
+
+    with pytest.raises(
+        ConfigError, match=r"expected 'url' for dictionary value"
+    ):
+        with dvc.config.edit("global") as conf:
+            conf["remote"]["test"] = {"password": "1"}
 
     with dvc.config.edit("local") as conf:
         conf["remote"]["test"] = {"password": "1"}

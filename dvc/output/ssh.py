@@ -1,6 +1,7 @@
-from dvc.output.base import OutputBase
-from dvc.remote.ssh import RemoteSSH
+from dvc.output.base import BaseOutput
+
+from ..tree.ssh import SSHTree
 
 
-class OutputSSH(OutputBase):
-    REMOTE = RemoteSSH
+class SSHOutput(BaseOutput):
+    TREE_CLS = SSHTree

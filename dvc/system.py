@@ -3,13 +3,17 @@ import logging
 import os
 import platform
 import shutil
+import sys
 
-from dvc.compat import fspath
 from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
 
-if platform.system() == "Windows":
+if (
+    platform.system() == "Windows"
+    and sys.version_info < (3, 8)
+    and sys.getwindowsversion() >= (6, 2)
+):
     try:
         import speedcopy
 
@@ -18,19 +22,17 @@ if platform.system() == "Windows":
         pass
 
 
-class System(object):
+class System:
     @staticmethod
     def is_unix():
         return os.name != "nt"
 
     @staticmethod
     def copy(src, dest):
-        src, dest = fspath(src), fspath(dest)
         return shutil.copyfile(src, dest)
 
     @staticmethod
     def hardlink(source, link_name):
-        source, link_name = fspath(source), fspath(link_name)
         try:
             os.link(source, link_name)
         except OSError as exc:
@@ -38,7 +40,6 @@ class System(object):
 
     @staticmethod
     def symlink(source, link_name):
-        source, link_name = fspath(source), fspath(link_name)
         try:
             os.symlink(source, link_name)
         except OSError as exc:
@@ -76,19 +77,18 @@ class System(object):
         )
 
     @staticmethod
-    def _reflink_windows(src, dst):
+    def _reflink_windows(_src, _dst):
         return -1
 
     @staticmethod
     def _reflink_linux(src, dst):
-        import os
         import fcntl
 
         FICLONE = 0x40049409
 
         try:
             ret = 255
-            with open(src, "r") as s, open(dst, "w+") as d:
+            with open(src) as s, open(dst, "w+") as d:
                 ret = fcntl.ioctl(d.fileno(), FICLONE, s.fileno())
         finally:
             if ret != 0:
@@ -98,7 +98,7 @@ class System(object):
 
     @staticmethod
     def reflink(source, link_name):
-        source, link_name = fspath(source), fspath(link_name)
+        source, link_name = os.fspath(source), os.fspath(link_name)
 
         system = platform.system()
         try:
@@ -110,7 +110,7 @@ class System(object):
                 ret = System._reflink_linux(source, link_name)
             else:
                 ret = -1
-        except IOError:
+        except OSError:
             ret = -1
 
         if ret != 0:
@@ -119,13 +119,14 @@ class System(object):
     @staticmethod
     def _getdirinfo(path):
         from collections import namedtuple
-        from win32file import (
-            CreateFileW,
-            GetFileInformationByHandle,
+
+        from win32file import (  # pylint: disable=import-error
             FILE_FLAG_BACKUP_SEMANTICS,
             FILE_FLAG_OPEN_REPARSE_POINT,
             FILE_SHARE_READ,
             OPEN_EXISTING,
+            CreateFileW,
+            GetFileInformationByHandle,
         )
 
         # NOTE: use FILE_FLAG_OPEN_REPARSE_POINT to open symlink itself and not
@@ -158,7 +159,7 @@ class System(object):
 
     @staticmethod
     def inode(path):
-        path = fspath(path)
+        path = os.fspath(path)
 
         if System.is_unix():
             import ctypes
@@ -186,14 +187,16 @@ class System(object):
 
     @staticmethod
     def is_symlink(path):
-        path = fspath(path)
+        path = os.fspath(path)
 
         if System.is_unix():
             return os.path.islink(path)
 
         # https://docs.microsoft.com/en-us/windows/desktop/fileio/
         # file-attribute-constants
-        from winnt import FILE_ATTRIBUTE_REPARSE_POINT
+        from winnt import (  # pylint: disable=import-error
+            FILE_ATTRIBUTE_REPARSE_POINT,
+        )
 
         if os.path.lexists(path):
             info = System._getdirinfo(path)
@@ -202,7 +205,7 @@ class System(object):
 
     @staticmethod
     def is_hardlink(path):
-        path = fspath(path)
+        path = os.fspath(path)
 
         if System.is_unix():
             return os.stat(path).st_nlink > 1

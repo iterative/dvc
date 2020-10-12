@@ -1,14 +1,17 @@
+import logging
+
+from ..utils import parse_target
 from . import locked
+
+logger = logging.getLogger(__name__)
 
 
 @locked
-def remove(self, target, outs_only=False):
-    from dvc.stage import Stage
+def remove(self, target, outs=False):
+    path, name = parse_target(target)
+    stages = self.get_stages(path, name)
 
-    stage = Stage.load(self, target)
-    if outs_only:
-        stage.remove_outs(force=True)
-    else:
-        stage.remove(force=True)
+    for stage in stages:
+        stage.remove(remove_outs=outs, force=outs)
 
-    return stage
+    return stages

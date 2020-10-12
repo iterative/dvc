@@ -1,5 +1,6 @@
 import pytest
 
+from dvc.dependency.base import DependencyDoesNotExistError
 from dvc.repo import Repo
 
 
@@ -20,3 +21,8 @@ def test_get_url_to_dir(tmp_dir, dname):
 
     assert (tmp_dir / dname).is_dir()
     assert (tmp_dir / dname / "foo").read_text() == "foo contents"
+
+
+def test_get_url_nonexistent(tmp_dir):
+    with pytest.raises(DependencyDoesNotExistError):
+        Repo.get_url("nonexistent")

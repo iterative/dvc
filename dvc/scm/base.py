@@ -1,4 +1,4 @@
-"""Manages source control systems(e.g. Git) in dvc."""
+"""Manages source control systems (e.g. Git) in DVC."""
 
 import os
 
@@ -17,14 +17,24 @@ class FileNotInRepoError(SCMError):
 
 class CloneError(SCMError):
     def __init__(self, url, path):
-        super().__init__("Failed to clone repo '{}' to '{}'".format(url, path))
+        super().__init__(f"Failed to clone repo '{url}' to '{path}'")
 
 
 class RevError(SCMError):
     pass
 
 
-class Base(object):
+class NoSCMError(SCMError):
+    def __init__(self):
+        msg = (
+            "Only supported for Git repositories. If you're "
+            "seeing this error in a Git repo, try updating the DVC "
+            "configuration with `dvc config core.no_scm false`."
+        )
+        super().__init__(msg)
+
+
+class Base:
     """Base class for source control management driver implementations."""
 
     def __init__(self, root_dir=os.curdir):
@@ -114,8 +124,13 @@ class Base(object):
         """Returns a list of commits in the repo."""
         return []
 
-    def install(self):
-        """Adds dvc commands to SCM hooks for the repo."""
+    def install(self, use_pre_commit_tool=False):
+        """
+        Adds dvc commands to SCM hooks for the repo.
+
+        If use_pre_commit_tool is set and pre-commit is
+        installed it will be used to install the hooks.
+        """
 
     def cleanup_ignores(self):
         """
@@ -137,6 +152,11 @@ class Base(object):
     def remind_to_track(self):
         """
         Method to remind user to track newly created files handled by scm
+        """
+
+    def track_changed_files(self):
+        """
+        Method to stage files that have changed
         """
 
     def track_file(self, path):
