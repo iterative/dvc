@@ -38,7 +38,7 @@ def ls(
         if path:
             path_info /= path
 
-        ret = _ls(repo, path_info, recursive, dvc_only)
+        ret = _ls(repo.repo_tree, path_info, recursive, dvc_only)
 
         if path and not ret:
             raise PathMissingError(path, repo, dvc_only=dvc_only)
@@ -51,11 +51,9 @@ def ls(
         return ret_list
 
 
-def _ls(repo, path_info, recursive=None, dvc_only=False):
+def _ls(tree, path_info, recursive=None, dvc_only=False):
     def onerror(exc):
         raise exc
-
-    tree = repo.repo_tree
 
     infos = []
     try:
