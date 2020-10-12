@@ -319,7 +319,16 @@ class Experiments:
         checkpoint = "-checkpoint" if checkpoint else ""
         exp_name = f"{rev[:7]}-{exp_hash}{checkpoint}"
         if create_branch:
-            if check_exists and exp_name in self.scm.list_branches():
+            if (
+                check_exists or checkpoint
+            ) and exp_name in self.scm.list_branches():
+                if checkpoint:
+                    raise DvcException(
+                        f"Checkpoint experiment containing '{rev[:7]}' "
+                        "already exists. To resume the experiment, "
+                        "run:\n\n"
+                        f"\tdvc exp run --continue {rev[:7]}"
+                    )
                 logger.debug("Using existing experiment branch '%s'", exp_name)
                 return self.scm.resolve_rev(exp_name)
             self.scm.checkout(exp_name, create_new=True)
