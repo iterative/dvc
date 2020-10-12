@@ -42,7 +42,7 @@ class OutputDuplicationError(DvcException):
 
 
 class OutputNotFoundError(DvcException):
-    """Thrown if a file/directory not found in repository pipelines.
+    """Thrown if a file/directory is not found as an output in any pipeline.
 
     Args:
         output (unicode): path to the file/directory.
@@ -105,7 +105,7 @@ class ArgumentDuplicationError(DvcException):
 
 
 class MoveNotDataSourceError(DvcException):
-    """Thrown if attempted to move a file/directory that is not an output
+    """Thrown when trying to move a file/directory that is not an output
     in a data source stage.
 
     Args:
