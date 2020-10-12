@@ -9,8 +9,6 @@ jobs:
   linux:
     runs-on: ubuntu-16.04
     steps:
-    - name: set up environment variables
-      run: echo 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}' >> $GITHUB_ENV
     - uses: actions/checkout@v1
     - name: Set up Python 3.7
       uses: actions/setup-python@v1
@@ -22,6 +20,8 @@ jobs:
         ruby-version: 2.4
     - name: Build
       run: ./scripts/build_posix.sh
+    - name: set up github token
+      run: echo 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}' >> $GITHUB_ENV
     - name: Publish deb
       if: github.event_name == 'release'
       uses: actions/upload-release-asset@v1.0.1
@@ -52,10 +52,11 @@ jobs:
         ruby-version: 2.4
     - name: Build
       run: ./scripts/build_posix.sh
+    - name: set up github token
+      run: echo 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}' >> $GITHUB_ENV
     - name: Publish
       if: github.event_name == 'release'
       uses: actions/upload-release-asset@v1.0.1
-      run: echo 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}' >> $GITHUB_ENV
       with:
         upload_url: ${{ github.event.release.upload_url }}
         asset_path: dvc-${{ github.event.release.tag_name }}.pkg
@@ -72,10 +73,11 @@ jobs:
     - name: Build
       run: scripts\build_windows.cmd
       shell: cmd
+    - name: set up github token
+      run: echo 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}' >> $GITHUB_ENV
     - name: Publish
       if: github.event_name == 'release'
       uses: actions/upload-release-asset@v1.0.1
-      run: echo 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}' >> $GITHUB_ENV
       with:
         upload_url: ${{ github.event.release.upload_url }}
         asset_path: dvc-${{ github.event.release.tag_name }}.exe
