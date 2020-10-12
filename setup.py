@@ -146,7 +146,7 @@ setup(
     name="dvc",
     version=version,
     description="Git for data scientists - manage your code and data together",
-    long_description=open("README.rst", "r").read(),
+    long_description=open("README.rst", "r", encoding="UTF-8").read(),
     author="Dmitry Petrov",
     author_email="dmitry@dvc.org",
     download_url="https://github.com/iterative/dvc",
