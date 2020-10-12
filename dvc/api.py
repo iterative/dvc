@@ -20,7 +20,7 @@ def get_url(path, repo=None, rev=None, remote=None):
     in a DVC repo. For Git repos, HEAD is used unless a rev argument is
     supplied. The default remote is tried unless a remote argument is supplied.
 
-    Raises OutputNotFoundError if the file is not a dvc-tracked file.
+    Raises OutputNotFoundError if the file is not tracked by DVC.
 
     NOTE: This function does not check for the actual existence of the file or
     directory in the remote storage.

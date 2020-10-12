@@ -171,9 +171,8 @@ def add_parser(subparsers, parent_parser):
         "targets",
         nargs="*",
         help=(
-            "Limit command scope to these metric files (supports any file, "
-            "even when not found as `metrics` in `dvc.yaml`). Using -R, "
-            "directories to search metric files in can also be given."
+            "Limit command scope to these metrics files. Using -R, "
+            "directories to search metrics files in can also be given."
         ),
     ).complete = completion.FILE
     metrics_show_parser.add_argument(
@@ -209,7 +208,7 @@ def add_parser(subparsers, parent_parser):
         default=False,
         help=(
             "If any target is a directory, recursively search and process "
-            "metric files."
+            "metrics files."
         ),
     )
     metrics_show_parser.set_defaults(func=CmdMetricsShow)
@@ -237,8 +236,8 @@ def add_parser(subparsers, parent_parser):
         "--targets",
         nargs="*",
         help=(
-            "Limit command scope to these metric files. Using -R, "
-            "directories to search metric files in can also be given."
+            "Limit command scope to these metrics files. Using -R, "
+            "directories to search metrics files in can also be given."
         ),
         metavar="<paths>",
     ).complete = completion.FILE
@@ -249,7 +248,7 @@ def add_parser(subparsers, parent_parser):
         default=False,
         help=(
             "If any target is a directory, recursively search and process "
-            "metric files."
+            "metrics files."
         ),
     )
     metrics_diff_parser.add_argument(

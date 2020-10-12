@@ -100,12 +100,12 @@ def show(
     if not res:
         if metrics_found:
             msg = (
-                "Could not parse metric files. Use `-v` option to see more "
+                "Could not parse metrics files. Use `-v` option to see more "
                 "details."
             )
         else:
             msg = (
-                "no metric files in this repository. Use `-m/-M` options for "
+                "no metrics files in this repository. Use `-m/-M` options for "
                 "`dvc run` to mark stage outputs as  metrics."
             )
         raise NoMetricsError(msg)
