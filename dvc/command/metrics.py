@@ -29,12 +29,10 @@ def _show_metrics(
                 header_set.add(key)
     header = list(header_set)
     for branch, val in metrics.items():
-        if all_branches or all_tags or all_commits:
-            logger.info(f"{branch}:")
-
         for fname, metric in val.items():
             row = []
-            row.append(branch)
+            if all_branches or all_tags or all_commits:
+                row.append(branch)
             row.append(fname)
             if not isinstance(metric, dict):
                 row.append(str(metric))
@@ -48,7 +46,8 @@ def _show_metrics(
                     row.append(None)
             rows.append(row)
     header.insert(0, "Path")
-    header.insert(0, "Branch")
+    if all_branches or all_tags or all_commits:
+        header.insert(0, "Branch")
 
     if missing:
         raise BadMetricError(missing)
