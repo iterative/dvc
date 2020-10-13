@@ -27,7 +27,7 @@ def _show_metrics(
         for _fname, metric in val.items():
             for key, _val in flatten(format_dict(metric)).items():
                 header_set.add(key)
-    header = list(header_set)
+    header = sorted(header_set)
     for branch, val in metrics.items():
         for fname, metric in val.items():
             row = []
