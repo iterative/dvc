@@ -25,7 +25,7 @@ def _show_metrics(
     rows = []
     for _branch, val in metrics.items():
         for _fname, metric in val.items():
-            for key in flatten(format_dict(metric)).items():
+            for key, _val in flatten(format_dict(metric)).items():
                 header_set.add(key)
     header = list(header_set)
     for branch, val in metrics.items():
@@ -298,3 +298,9 @@ def add_parser(subparsers, parent_parser):
         metavar="<n>",
     )
     metrics_diff_parser.set_defaults(func=CmdMetricsDiff)
+
+
+# import json
+# s = '{"branch_1": {"metrics.json": {"a": 0, "b": {"ad": 0.0, "bc": 0.0}}}}'
+# s_d = json.loads(s)
+# print(_show_metrics(s_d,all_branches=True))
