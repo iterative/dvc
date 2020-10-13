@@ -288,8 +288,8 @@ class Git(Base):
     def is_tracked(self, path):
         return bool(self.repo.git.ls_files(path))
 
-    def is_dirty(self):
-        return self.repo.is_dirty()
+    def is_dirty(self, **kwargs):
+        return self.repo.is_dirty(**kwargs)
 
     def active_branch(self):
         return self.repo.active_branch.name

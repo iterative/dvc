@@ -39,9 +39,9 @@ def warn_if_fish(executable):
 
 
 @unlocked_repo
-def cmd_run(stage, *args, checkpoint=False, **kwargs):
+def cmd_run(stage, *args, checkpoint_func=None, **kwargs):
     kwargs = {"cwd": stage.wdir, "env": fix_env(None), "close_fds": True}
-    if checkpoint:
+    if checkpoint_func:
         # indicate that checkpoint cmd is being run inside DVC
         kwargs["env"].update({"DVC_CHECKPOINT": "1"})
 
@@ -78,7 +78,9 @@ def cmd_run(stage, *args, checkpoint=False, **kwargs):
         p = subprocess.Popen(cmd, **kwargs)
         if main_thread:
             old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
-        p.communicate()
+
+        with checkpoint_monitor(stage, checkpoint_func, p):
+            p.communicate()
     finally:
         if old_handler:
             signal.signal(signal.SIGINT, old_handler)
@@ -106,8 +108,7 @@ def run_stage(stage, dry=False, force=False, checkpoint_func=None, **kwargs):
     )
     logger.info("\t%s", stage.cmd)
     if not dry:
-        with checkpoint_monitor(stage, checkpoint_func) as monitor:
-            cmd_run(stage, checkpoint=monitor is not None)
+        cmd_run(stage, checkpoint_func=checkpoint_func)
 
 
 class CheckpointCond:
@@ -126,14 +127,17 @@ class CheckpointCond:
 
 
 @contextmanager
-def checkpoint_monitor(stage, callback_func):
+def checkpoint_monitor(stage, callback_func, proc):
     if not callback_func:
         yield None
         return
 
+    logger.debug(
+        "Monitoring checkpoint stage '%s' with cmd process '%s'", stage, proc
+    )
     done_cond = CheckpointCond()
     monitor_thread = threading.Thread(
-        target=_checkpoint_run, args=(stage, callback_func, done_cond),
+        target=_checkpoint_run, args=(stage, callback_func, done_cond, proc),
     )
 
     try:
@@ -144,14 +148,21 @@ def checkpoint_monitor(stage, callback_func):
         monitor_thread.join()
 
 
-def _checkpoint_run(stage, callback_func, done_cond):
+def _checkpoint_run(stage, callback_func, done_cond, proc):
     """Run callback_func whenever checkpoint signal file is present."""
     signal_path = os.path.join(stage.repo.tmp_dir, CHECKPOINT_SIGNAL_FILE)
     while True:
         if os.path.exists(signal_path):
-            _run_callback(stage, callback_func)
-            logger.debug("Remove checkpoint signal file")
-            os.remove(signal_path)
+            try:
+                _run_callback(stage, callback_func)
+            except Exception:  # pylint: disable=broad-except
+                logger.exception(
+                    "Error generating checkpoint, %s will be aborted", stage
+                )
+                proc.terminate()
+            finally:
+                logger.debug("Remove checkpoint signal file")
+                os.remove(signal_path)
         if done_cond.wait(1):
             return
 

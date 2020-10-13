@@ -173,6 +173,7 @@ class Experiments:
 
     def _scm_checkout(self, rev):
         self.scm.repo.git.reset(hard=True)
+        self.scm.repo.git.clean(force=True)
         if self.scm.repo.head.is_detached:
             self._checkout_default_branch()
         if not Git.is_sha(rev) or not self.scm.has_rev(rev):
@@ -185,6 +186,8 @@ class Experiments:
 
         # switch to default branch
         git_repo = self.scm.repo
+        git_repo.git.reset(hard=True)
+        git_repo.git.clean(force=True)
         origin_refs = git_repo.remotes["origin"].refs
 
         # origin/HEAD will point to tip of the default branch unless we
@@ -309,14 +312,23 @@ class Experiments:
         self, exp_hash, check_exists=True, create_branch=True, checkpoint=False
     ):
         """Commit stages as an experiment and return the commit SHA."""
-        if not self.scm.is_dirty():
+        if not self.scm.is_dirty(untracked_files=True):
             raise UnchangedExperimentError(self.scm.get_rev())
 
         rev = self.scm.get_rev()
         checkpoint = "-checkpoint" if checkpoint else ""
         exp_name = f"{rev[:7]}-{exp_hash}{checkpoint}"
         if create_branch:
-            if check_exists and exp_name in self.scm.list_branches():
+            if (
+                check_exists or checkpoint
+            ) and exp_name in self.scm.list_branches():
+                if checkpoint:
+                    raise DvcException(
+                        f"Checkpoint experiment containing '{rev[:7]}' "
+                        "already exists. To resume the experiment, "
+                        "run:\n\n"
+                        f"\tdvc exp run --continue {rev[:7]}"
+                    )
                 logger.debug("Using existing experiment branch '%s'", exp_name)
                 return self.scm.resolve_rev(exp_name)
             self.scm.checkout(exp_name, create_new=True)
@@ -696,6 +708,9 @@ class Experiments:
 
     def _check_baseline(self, exp_rev):
         baseline_sha = self.repo.scm.get_rev()
+        if exp_rev == baseline_sha:
+            return exp_rev
+
         exp_baseline = self._get_baseline(exp_rev)
         if exp_baseline is None:
             # if we can't tell from branch name, fall back to parent commit

@@ -1302,4 +1302,4 @@ def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy, mocker):
         stage.addressing: ["changed checksum"]
     }
     assert dvc.reproduce(stage.addressing)[0] == stage
-    m.assert_called_once_with(stage, checkpoint=False)
+    m.assert_called_once_with(stage, checkpoint_func=None)
