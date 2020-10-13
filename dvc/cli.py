@@ -140,8 +140,8 @@ def _find_parser(parser, cmd_cls):
 class DvcParser(argparse.ArgumentParser):
     """Custom parser class for dvc CLI."""
 
-    cmd_choices = {}
-    hidden_cmds = []
+    _cmd_choices = {}
+    _hidden_cmds = []
 
     def error(self, message, cmd_cls=None):  # pylint: disable=arguments-differ
         logger.error(message)
@@ -153,17 +153,19 @@ class DvcParser(argparse.ArgumentParser):
         # E.g. `dvc commti` would display
         # The most similar command is
         #         commit
+        self.set_cmd_choices()
+
         if args is None:
             args = sys.argv[1:]
         else:
             args = list(args)
         if (
             len(args) >= 1
-            and args[0] not in self.cmd_choices
-            and args[0] not in self.hidden_cmds
+            and args[0] not in self._cmd_choices
+            and args[0] not in self._hidden_cmds
         ):
             cmd_suggestions = _find_cmd_suggestions(
-                args[0], list(self.cmd_choices.keys())
+                args[0], list(self._cmd_choices.keys())
             )
             logger.error(cmd_suggestions)
             raise DvcParserError
@@ -173,8 +175,8 @@ class DvcParser(argparse.ArgumentParser):
         # E.g. `dvc remote modfiy` would display
         # The most similar command is
         #         remote modify
-        if len(args) == 2 and args[0] in self.cmd_choices:
-            sub_cmd_choices = self.cmd_choices[args[0]]
+        if len(args) == 2 and args[0] in self._cmd_choices:
+            sub_cmd_choices = self._cmd_choices[args[0]]
             if sub_cmd_choices and args[1] not in sub_cmd_choices:
                 sub_cmd_suggestions = _find_cmd_suggestions(
                     args[1], sub_cmd_choices, args[0]
@@ -201,13 +203,13 @@ class DvcParser(argparse.ArgumentParser):
             if parser_action.dest == "help":
                 # treat -h, --help as command choices
                 for option in parser_action.option_strings:
-                    self.cmd_choices[option] = []
+                    self._cmd_choices[option] = []
             elif parser_action.dest == "cmd":
                 for cmd, subparser in parser_action.choices.items():
                     if not subparser.add_help:
-                        self.hidden_cmds.append(cmd)
+                        self._hidden_cmds.append(cmd)
                         continue
-                    self.cmd_choices[cmd] = []
+                    self._cmd_choices[cmd] = []
                     actions = (
                         subparser._actions  # pylint: disable=protected-access
                     )
@@ -215,7 +217,7 @@ class DvcParser(argparse.ArgumentParser):
                         if not isinstance(action.choices, dict):
                             # NOTE: we are only interested in subcommands
                             continue
-                        self.cmd_choices[cmd].extend(action.choices.keys())
+                        self._cmd_choices[cmd].extend(action.choices.keys())
 
 
 class VersionAction(argparse.Action):  # pragma: no cover
@@ -316,8 +318,6 @@ def get_main_parser():
 
     for cmd in COMMANDS:
         cmd.add_parser(subparsers, parent_parser)
-
-    parser.set_cmd_choices()
 
     return parser
 
