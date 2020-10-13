@@ -73,10 +73,10 @@ jobs:
     - name: Build
       run: scripts\build_windows.cmd
       shell: cmd
-    - name: set up github token
-      run: echo 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}' >> $GITHUB_ENV
     - name: Publish
       if: github.event_name == 'release'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       uses: actions/upload-release-asset@v1.0.1
       with:
         upload_url: ${{ github.event.release.upload_url }}
