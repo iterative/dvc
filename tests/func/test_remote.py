@@ -279,12 +279,8 @@ def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, local_remote):
     bar_path = remote.tree.hash_to_path_info(
         foo.hash_info.dir_info["bar"].value
     )
-    foo_uploaded = False
-    for args in mocked_upload.call_args_list:
-        if args[0] == foo_path:
-            foo_uploaded = True
-        elif args[0] == bar_path:
-            assert foo_uploaded
+    paths = [args[1] for args, _ in mocked_upload.call_args_list]
+    assert paths.index(foo_path) > paths.index(bar_path)
 
 
 def test_remote_modify_validation(dvc):
