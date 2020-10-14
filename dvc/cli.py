@@ -208,12 +208,12 @@ class DvcParser(argparse.ArgumentParser):
         Raises:
             dvc.exceptions.DvcParserError: raised for found suggestions.
         """
+        cmd_choices, hidden_cmds = self.get_cmd_choices()
+
         # NOTE: Check top level dvc commands for suggestions
         # E.g. `dvc commti` would display
         # The most similar command is
         #         commit
-        cmd_choices, hidden_cmds = self.get_cmd_choices()
-
         if (
             len(args) >= 1
             and args[0] not in cmd_choices
