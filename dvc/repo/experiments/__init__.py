@@ -543,7 +543,7 @@ class Experiments:
                         result[rev] = {exp_rev: exp_hash}
                 else:
                     logger.exception(
-                        "Failed to reproduce experiment '%s'", rev
+                        "Failed to reproduce experiment '%s'", rev[:7]
                     )
                 executor.cleanup()
 
@@ -574,7 +574,8 @@ class Experiments:
                     result[rev] = {exp_rev: exp_hash}
 
             checkpoint_func = partial(_checkpoint_callback, rev, executor)
-            executor.reproduce(
+
+            exp_hash = executor.reproduce(
                 executor.dvc_dir,
                 cwd=executor.dvc.root_dir,
                 checkpoint=True,
@@ -582,14 +583,17 @@ class Experiments:
                 **executor.repro_kwargs,
             )
 
-            # TODO: determine whether or not we should create a final
-            # checkpoint commit after repro is killed, or if we should only do
-            # it on explicit make_checkpoint() signals.
+            # NOTE: GitPython Repo instances cannot be re-used after
+            # process has received SIGINT or SIGTERM, so we need this hack
+            # to re-instantiate git instances after checkpoint runs. See:
+            # https://github.com/gitpython-developers/GitPython/issues/427
+            del self.repo.scm
+            del self.scm
 
-        # NOTE: our cached GitPython Repo instance cannot be re-used if the
-        # checkpoint run was interrupted via SIGINT, so we need this hack
-        # to create a new git repo instance after checkpoint runs.
-        del self.scm
+            # Create final checkpoint commit if needed
+            exp_rev = self._collect_and_commit(rev, executor, exp_hash)
+            if exp_rev not in result[rev]:
+                result[rev] = {exp_rev: exp_hash}
 
         return result
 
