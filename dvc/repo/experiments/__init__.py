@@ -591,7 +591,9 @@ class Experiments:
             del self.scm
 
             # Create final checkpoint commit if needed
-            exp_rev = self._collect_and_commit(rev, executor, exp_hash)
+            exp_rev = self._collect_and_commit(
+                rev, executor, exp_hash, checkpoint=True
+            )
             if exp_rev not in result[rev]:
                 result[rev] = {exp_rev: exp_hash}
 
@@ -614,13 +616,11 @@ class Experiments:
             exp_rev = self._commit(
                 exp_hash, create_branch=create_branch, **kwargs
             )
-        except UnchangedExperimentError:
+        except UnchangedExperimentError as exc:
             logger.debug(
-                "Experiment '%s' identical to baseline '%s'",
-                rev,
-                executor.baseline_rev,
+                "Experiment '%s' identical to '%s'", rev, exc.rev,
             )
-            exp_rev = executor.baseline_rev
+            exp_rev = exc.rev
         return exp_rev
 
     def _collect_input(self, executor: ExperimentExecutor):
