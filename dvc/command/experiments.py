@@ -670,7 +670,7 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_run_parser.add_argument(
         "--continue",
-        nargs=1,
+        type=str,
         default=None,
         dest="checkpoint_continue",
         help=(

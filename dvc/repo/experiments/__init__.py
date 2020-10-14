@@ -66,6 +66,15 @@ class BaselineMismatchError(DvcException):
         self.expected_rev = expected
 
 
+class MultipleBranchError(DvcException):
+    def __init__(self, rev):
+        super().__init__(
+            f"Ambiguous commit '{rev[:7]}' belongs to multiple experiment "
+            "branches."
+        )
+        self.rev = rev
+
+
 class Experiments:
     """Class that manages experiments in a DVC repo.
 
@@ -322,15 +331,16 @@ class Experiments:
             if (
                 check_exists or checkpoint
             ) and exp_name in self.scm.list_branches():
+                branch_tip = self.scm.resolve_rev(exp_name)
                 if checkpoint:
                     raise DvcException(
                         f"Checkpoint experiment containing '{rev[:7]}' "
                         "already exists. To resume the experiment, "
                         "run:\n\n"
-                        f"\tdvc exp run --continue {rev[:7]}"
+                        f"\tdvc exp run --continue {branch_tip[:7]}"
                     )
                 logger.debug("Using existing experiment branch '%s'", exp_name)
-                return self.scm.resolve_rev(exp_name)
+                return branch_tip
             self.scm.checkout(exp_name, create_new=True)
             logger.debug("Commit new experiment branch '%s'", exp_name)
         else:
@@ -383,7 +393,8 @@ class Experiments:
         workspace.
         """
         if checkpoint_continue:
-            branch = self._get_branch_containing(checkpoint_continue)
+            rev = self.scm.resolve_rev(checkpoint_continue)
+            branch = self._get_branch_containing(rev)
             if not branch:
                 raise DvcException(
                     "Could not find checkpoint experiment "
@@ -772,7 +783,12 @@ class Experiments:
         if self.scm.repo.head.is_detached:
             self._checkout_default_branch()
         try:
-            name = self.scm.repo.git.branch(contains=rev)
+            names = self.scm.repo.git.branch(contains=rev).strip().splitlines()
+            if not names:
+                return None
+            if len(names) > 1:
+                raise MultipleBranchError(rev)
+            name = names[0]
             if name.startswith("*"):
                 name = name[1:]
             return name.rsplit("/")[-1].strip()
