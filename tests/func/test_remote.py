@@ -267,13 +267,20 @@ def test_external_dir_resource_on_no_cache(tmp_dir, dvc, tmp_path_factory):
 
 
 def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, local_remote):
-    tmp_dir.dvc_gen({"foo": {"bar": "bar content"}})
+    foo = tmp_dir.dvc_gen({"foo": {"bar": "bar content"}})[0].outs[0]
     tmp_dir.dvc_gen({"baz": "baz content"})
 
     mocked_upload = mocker.patch.object(LocalTree, "_upload", return_value=0)
     dvc.push()
-    # last uploaded file should be dir checksum
-    assert mocked_upload.call_args[0][0].endswith(".dir")
+
+    # foo .dir file should be uploaded after bar
+    remote = dvc.cloud.get_remote("upstream")
+    foo_path = remote.tree.hash_to_path_info(foo.hash_info.value)
+    bar_path = remote.tree.hash_to_path_info(
+        foo.hash_info.dir_info["bar"].value
+    )
+    paths = [args[1] for args, _ in mocked_upload.call_args_list]
+    assert paths.index(foo_path) > paths.index(bar_path)
 
 
 def test_remote_modify_validation(dvc):
