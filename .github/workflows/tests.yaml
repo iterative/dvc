@@ -50,6 +50,10 @@ jobs:
       run: |
         git config --global user.email "dvctester@example.com"
         git config --global user.name "DVC Tester"
+    - name: run type checker
+      if: contains(matrix.os, 'ubuntu')
+      run: |
+        pytype -V${{ matrix.pyv }}
     - name: run tests
       run: python -m tests -ra --cov-report=xml
     - name: upload coverage report

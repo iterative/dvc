@@ -137,6 +137,7 @@ tests_requirements = [
     "pylint==2.5.3",
     "pylint-pytest>=0.3.0",
     "pylint-plugin-utils",
+    "pytype",
     "wget",
     "filelock",
     "black==19.10b0",
