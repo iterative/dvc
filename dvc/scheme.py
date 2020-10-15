@@ -11,3 +11,4 @@ class Schemes:
     OSS = "oss"
     WEBDAV = "webdav"
     WEBDAVS = "webdavs"
+    IPFS = "ipfs"

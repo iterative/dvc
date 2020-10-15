@@ -1,3 +1,4 @@
+import logging
 import posixpath
 from urllib.parse import urlparse
 
@@ -13,6 +14,9 @@ from .s3 import S3Tree
 from .ssh import SSHTree
 from .webdav import WebDAVTree
 from .webdavs import WebDAVSTree
+from .ipfs import IPFSTree
+
+logger = logging.getLogger(__name__)
 
 TREES = [
     AzureTree,
@@ -26,6 +30,7 @@ TREES = [
     OSSTree,
     WebDAVTree,
     WebDAVSTree,
+    IPFSTree,
     # NOTE: LocalTree is the default
 ]
 
@@ -34,6 +39,7 @@ def _get_tree(remote_conf):
     for tree_cls in TREES:
         if tree_cls.supported(remote_conf):
             return tree_cls
+    logger.debug(f"Falling back to LocalTree for remote config {remote_conf}")
     return LocalTree
 
 

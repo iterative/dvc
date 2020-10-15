@@ -216,6 +216,7 @@ SCHEMA = {
                 "https": {**HTTP_COMMON, **REMOTE_COMMON},
                 "webdav": {**WEBDAV_COMMON, **REMOTE_COMMON},
                 "webdavs": {**WEBDAV_COMMON, **REMOTE_COMMON},
+                "ipfs": {"ipfs_daemon_ip": str, **REMOTE_COMMON},
                 "remote": {str: object},  # Any of the above options are valid
             }
         )
