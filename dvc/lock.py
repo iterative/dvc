@@ -17,7 +17,8 @@ DEFAULT_TIMEOUT = 3
 
 FAILED_TO_LOCK_MESSAGE = (
     "Unable to acquire lock. Most likely another DVC process is running or "
-    "was terminated abruptly. Check the page {}."
+    "was terminated abruptly. Check the page {} for other possible reasons "
+    "and to learn how to resolve this."
 ).format(
     format_link("https://dvc.org/doc/user-guide/troubleshooting#lock-issue")
 )

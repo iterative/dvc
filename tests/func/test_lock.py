@@ -21,7 +21,8 @@ def test_cli(tmp_dir, dvc, mocker, caplog):
     expected_error_msg = (
         "Unable to acquire lock. Most likely another DVC process is "
         "running or was terminated abruptly. Check the page "
-        "<https://dvc.org/doc/user-guide/troubleshooting#lock-issue>."
+        "<https://dvc.org/doc/user-guide/troubleshooting#lock-issue> "
+        "for other possible reasons and to learn how to resolve this."
     )
     with Lock(tmp_dir / dvc.tmp_dir / "lock"):
         assert main(["add", "foo"]) == 1
