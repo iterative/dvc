@@ -20,11 +20,11 @@ jobs:
         ruby-version: 2.4
     - name: Build
       run: ./scripts/build_posix.sh
-    - name: set up github token
-      run: echo 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}' >> $GITHUB_ENV
     - name: Publish deb
       if: github.event_name == 'release'
       uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ github.event.release.upload_url }}
         asset_path: dvc_${{ github.event.release.tag_name }}_amd64.deb
@@ -33,6 +33,8 @@ jobs:
     - name: Publish rpm
       if: github.event_name == 'release'
       uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ github.event.release.upload_url }}
         asset_path: dvc-${{ github.event.release.tag_name }}-1.x86_64.rpm
@@ -52,11 +54,11 @@ jobs:
         ruby-version: 2.4
     - name: Build
       run: ./scripts/build_posix.sh
-    - name: set up github token
-      run: echo 'GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}' >> $GITHUB_ENV
     - name: Publish
       if: github.event_name == 'release'
       uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ github.event.release.upload_url }}
         asset_path: dvc-${{ github.event.release.tag_name }}.pkg
