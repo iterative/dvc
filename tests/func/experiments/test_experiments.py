@@ -1,7 +1,6 @@
 from textwrap import dedent
 
 import pytest
-from flaky.flaky_decorator import flaky
 from funcy import first
 
 from dvc.utils.serialize import PythonFileCorruptedError
@@ -206,8 +205,6 @@ def test_update_py_params(tmp_dir, scm, dvc):
         dvc.experiments.run(stage.addressing, params=["params.py:INT=2a"])
 
 
-# See: https://github.com/iterative/dvc/issues/4717
-@flaky(max_runs=3, min_passes=1)
 def test_extend_branch(tmp_dir, scm, dvc):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("params.yaml", "foo: 1")
@@ -232,6 +229,7 @@ def test_extend_branch(tmp_dir, scm, dvc):
     )
     exp_b = first(results)
 
+    assert exp_a != exp_b
     assert dvc.experiments._get_branch_containing(exp_b) == exp_branch
 
     dvc.experiments.checkout(exp_a)

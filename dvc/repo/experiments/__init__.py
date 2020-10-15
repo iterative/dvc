@@ -263,15 +263,16 @@ class Experiments:
                 if os.path.getsize(tmp):
                     logger.debug("Patching experiment workspace")
                     self.scm.repo.git.apply(tmp)
-                elif not params and not allow_unchanged:
-                    # experiment matches original baseline
-                    raise UnchangedExperimentError(rev)
             finally:
                 remove(tmp)
 
         # update experiment params from command line
         if params:
             self._update_params(params)
+
+        if not self.scm.is_dirty(untracked_files=True) and not allow_unchanged:
+            # experiment matches original baseline
+            raise UnchangedExperimentError(rev)
 
         # save additional repro command line arguments
         self._pack_args(*args, **kwargs)
@@ -316,6 +317,12 @@ class Experiments:
             modify_data = MODIFIERS[suffix]
             with modify_data(path, tree=self.exp_dvc.tree) as data:
                 _update(data, params[params_fname])
+
+        # Force params file changes to be staged in git
+        # Otherwise in certain situations the changes to params file may be
+        # ignored when we `git stash` them since mtime is used to determine
+        # whether the file is dirty
+        self.scm.add(list(params.keys()))
 
     def _commit(
         self, exp_hash, check_exists=True, create_branch=True, checkpoint=False
