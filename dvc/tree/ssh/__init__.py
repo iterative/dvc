@@ -3,7 +3,7 @@ import io
 import logging
 import os
 import threading
-from contextlib import closing, contextmanager
+from contextlib import closing, contextmanager, suppress
 from urllib.parse import urlparse
 
 from funcy import first, memoize, silent, wrap_with
@@ -173,7 +173,8 @@ class SSHTree(BaseTree):
     def walk_files(self, path_info, **kwargs):
         with self.ssh(path_info) as ssh:
             for fname in ssh.walk_files(path_info.path):
-                yield path_info.replace(path=fname)
+                with suppress(GeneratorExit):  # dropping further walk in the middle doesn't hurt
+                    yield path_info.replace(path=fname)
 
     def remove(self, path_info):
         if path_info.scheme != self.scheme:
