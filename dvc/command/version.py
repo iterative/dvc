@@ -24,15 +24,6 @@ def add_parser(subparsers, parent_parser):
         description=append_doc_link(VERSION_HELP, "version"),
         help=VERSION_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        aliases=["doctor"],
     )
     version_parser.set_defaults(func=CmdVersion)
-
-    DOCTOR_HELP = "Alias for 'dvc version'. " + VERSION_HELP
-    doctor_parser = subparsers.add_parser(
-        "doctor",
-        parents=[parent_parser],
-        description=append_doc_link(DOCTOR_HELP, "doctor"),
-        help=DOCTOR_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    doctor_parser.set_defaults(func=CmdVersion)
