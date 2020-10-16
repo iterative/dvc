@@ -83,7 +83,12 @@ class ExperimentExecutor:
 class LocalExecutor(ExperimentExecutor):
     """Local machine experiment executor."""
 
-    def __init__(self, baseline_rev: str, **kwargs):
+    def __init__(
+        self,
+        baseline_rev: str,
+        checkpoint_reset: Optional[bool] = False,
+        **kwargs,
+    ):
         from dvc.repo import Repo
 
         dvc_dir = kwargs.pop("dvc_dir")
@@ -104,6 +109,7 @@ class LocalExecutor(ExperimentExecutor):
         # override default CACHE_MODE since files must be writable in order
         # to run repro
         self._tree.CACHE_MODE = 0o644
+        self.checkpoint_reset = checkpoint_reset
 
     def _config(self, cache_dir):
         local_config = os.path.join(self.dvc_dir, "config.local")
