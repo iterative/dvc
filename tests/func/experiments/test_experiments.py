@@ -336,3 +336,44 @@ def test_continue_checkpoint(tmp_dir, scm, dvc, mocker):
     assert (
         tmp_dir / ".dvc" / "experiments" / "metrics.yaml"
     ).read_text().strip() == "foo: 2"
+
+
+def test_reset_checkpoint(tmp_dir, scm, dvc, mocker):
+    from dvc.exceptions import ReproductionError
+
+    tmp_dir.gen("checkpoint.py", CHECKPOINT_SCRIPT)
+    tmp_dir.gen("params.yaml", "foo: 1")
+    stage = dvc.run(
+        cmd="python checkpoint.py foo 5 params.yaml metrics.yaml",
+        metrics_no_cache=["metrics.yaml"],
+        params=["foo"],
+        outs_persist=["foo"],
+        always_changed=True,
+        name="checkpoint-file",
+    )
+    scm.add(
+        [
+            "dvc.yaml",
+            "dvc.lock",
+            "checkpoint.py",
+            "params.yaml",
+            "metrics.yaml",
+        ]
+    )
+    scm.commit("init")
+
+    dvc.experiments.run(stage.addressing, checkpoint=True)
+    scm.repo.git.reset(hard=True)
+    scm.repo.git.clean(force=True)
+
+    with pytest.raises(ReproductionError):
+        dvc.experiments.run(stage.addressing, checkpoint=True)
+
+    dvc.experiments.run(
+        stage.addressing, checkpoint=True, checkpoint_reset=True
+    )
+
+    assert (tmp_dir / "foo").read_text() == "5"
+    assert (
+        tmp_dir / ".dvc" / "experiments" / "metrics.yaml"
+    ).read_text().strip() == "foo: 1"
