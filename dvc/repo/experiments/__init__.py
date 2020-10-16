@@ -66,6 +66,19 @@ class BaselineMismatchError(DvcException):
         self.expected_rev = expected
 
 
+class CheckpointExistsError(DvcException):
+    def __init__(self, rev, continue_rev):
+        msg = (
+            f"Checkpoint experiment containing '{rev[:7]}' already exists."
+            " To restart the experiment run:\n\n"
+            "\tdvc exp run --reset ...\n\n"
+            "To resume the experiment, run:\n\n"
+            f"\tdvc exp run --continue {continue_rev[:7]}\n"
+        )
+        super().__init__(msg)
+        self.rev = rev
+
+
 class MultipleBranchError(DvcException):
     def __init__(self, rev):
         super().__init__(
@@ -363,13 +376,7 @@ class Experiments:
 
     def _reset_checkpoint_branch(self, branch, rev, branch_tip, reset):
         if not reset:
-            raise DvcException(
-                f"Checkpoint experiment containing '{rev[:7]}' already exists."
-                " To restart the experiment run:\n\n"
-                "\tdvc exp run --reset ...\n\n"
-                "To resume the experiment, run:\n\n"
-                f"\tdvc exp run --continue {branch_tip[:7]}\n"
-            )
+            raise CheckpointExistsError(rev, branch_tip)
         self._checkout_default_branch()
         logger.debug("Removing existing checkpoint branch '%s'", branch)
         self.scm.repo.git.branch(branch, D=True)
