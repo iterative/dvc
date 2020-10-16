@@ -21,7 +21,17 @@ from dvc.utils.serialize import dump_yaml, load_yaml
 
 all_clouds = [
     pytest.lazy_fixture(cloud)
-    for cloud in ["s3", "gs", "azure", "gdrive", "ssh", "http", "hdfs"]
+    for cloud in [
+        "s3",
+        "real_s3",
+        "real_oss",
+        "gs",
+        "azure",
+        "gdrive",
+        "ssh",
+        "http",
+        "hdfs",
+    ]
 ] + [
     pytest.param(
         pytest.lazy_fixture("oss"),
