@@ -173,7 +173,9 @@ class SSHTree(BaseTree):
     def walk_files(self, path_info, **kwargs):
         with self.ssh(path_info) as ssh:
             for fname in ssh.walk_files(path_info.path):
-                with suppress(GeneratorExit):  # dropping further walk in the middle doesn't hurt
+                with suppress(
+                    GeneratorExit
+                ):  # dropping further walk in the middle doesn't hurt
                     yield path_info.replace(path=fname)
 
     def remove(self, path_info):
@@ -215,7 +217,6 @@ class SSHTree(BaseTree):
 
         # See dvc/remote/local/__init__.py - hardlink()
         if self.getsize(from_info) == 0:
-
             with self.ssh(to_info) as ssh:
                 ssh.sftp.open(to_info.path, "w").close()
 
