@@ -226,6 +226,6 @@ def test_metrics_show_with_valid_falsey_values():
         all_branches=True,
     ) == textwrap.dedent(
         """\
-        Branch    Path          a    b.ad    b.bc
-        branch_1  metrics.json  0    0.0     0.0"""
+        Revision    Path          a    b.ad    b.bc
+        branch_1    metrics.json  0    0.0     0.0"""
     )
