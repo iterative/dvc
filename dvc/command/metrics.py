@@ -20,34 +20,35 @@ def _show_metrics(
     # When `metrics` contains a `None` key, it means that some files
     # specified as `targets` in `repo.metrics.show` didn't contain any metrics.
     missing = metrics.pop(None, None)
-
+    with_rev = any([all_branches, all_tags, all_commits])
     header_set = set()
     rows = []
     for _branch, val in metrics.items():
         for _fname, metric in val.items():
+            if not isinstance(metric, dict):
+                header_set.add("")
+                continue
             for key, _val in flatten(format_dict(metric)).items():
                 header_set.add(key)
     header = sorted(header_set)
     for branch, val in metrics.items():
         for fname, metric in val.items():
             row = []
-            if all_branches or all_tags or all_commits:
+            if with_rev:
                 row.append(branch)
             row.append(fname)
             if not isinstance(metric, dict):
                 row.append(str(metric))
+                rows.append(row)
                 continue
             flattened_val = flatten(format_dict(metric))
 
             for i in header:
-                if i in flattened_val:
-                    row.append(flattened_val[i])
-                else:
-                    row.append(None)
+                row.append(flattened_val.get(i))
             rows.append(row)
     header.insert(0, "Path")
-    if all_branches or all_tags or all_commits:
-        header.insert(0, "Branch")
+    if with_rev:
+        header.insert(0, "Revision")
 
     if missing:
         raise BadMetricError(missing)
@@ -298,9 +299,3 @@ def add_parser(subparsers, parent_parser):
         metavar="<n>",
     )
     metrics_diff_parser.set_defaults(func=CmdMetricsDiff)
-
-
-# import json
-# s = '{"branch_1": {"metrics.json": {"a": 0, "b": {"ad": 0.0, "bc": 0.0}}}}'
-# s_d = json.loads(s)
-# print(_show_metrics(s_d,all_branches=True))
