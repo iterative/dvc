@@ -39,7 +39,6 @@ def _get_tree(remote_conf):
     for tree_cls in TREES:
         if tree_cls.supported(remote_conf):
             return tree_cls
-    logger.debug(f"Falling back to LocalTree for remote config {remote_conf}")
     return LocalTree
 
 
