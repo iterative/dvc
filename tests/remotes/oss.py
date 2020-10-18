@@ -75,13 +75,13 @@ def oss(oss_server):
 def real_oss():
     if not OSS.should_test():
         pytest.skip("no real OSS")
-    else:
-        url = OSS.get_url()
-        ret = OSS(url)
-        ret.config = {
-            "url": url,
-            "oss_key_id": os.environ.get("OSS_ACCESS_KEY_ID"),
-            "oss_key_secret": os.environ.get("OSS_ACCESS_KEY_SECRET"),
-            "oss_endpoint": os.environ.get("OSS_ENDPOINT"),
-        }
-        return ret
+
+    url = OSS.get_url()
+    ret = OSS(url)
+    ret.config = {
+        "url": url,
+        "oss_key_id": os.environ.get("OSS_ACCESS_KEY_ID"),
+        "oss_key_secret": os.environ.get("OSS_ACCESS_KEY_SECRET"),
+        "oss_endpoint": os.environ.get("OSS_ENDPOINT"),
+    }
+    return ret
