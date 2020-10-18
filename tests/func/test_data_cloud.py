@@ -23,8 +23,6 @@ all_clouds = [
     pytest.lazy_fixture(cloud)
     for cloud in [
         "s3",
-        "real_s3",
-        "real_oss",
         "gs",
         "azure",
         "gdrive",
