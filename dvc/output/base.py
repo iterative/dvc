@@ -73,6 +73,7 @@ class BaseOutput:
     PARAM_PLOT_TITLE = "title"
     PARAM_PLOT_HEADER = "header"
     PARAM_PERSIST = "persist"
+    PARAM_SIZE = "size"
 
     METRIC_SCHEMA = Any(
         None,
@@ -115,6 +116,7 @@ class BaseOutput:
         self.stage = stage
         self.repo = stage.repo if stage else None
         self.def_path = path
+        self.size = (info or {}).pop(self.PARAM_SIZE, None)
         self.hash_info = HashInfo.from_dict(info)
         if tree:
             self.tree = tree
@@ -267,6 +269,7 @@ class BaseOutput:
 
         if not self.use_cache:
             self.hash_info = self.get_hash()
+            self.size = self.hash_info.size
             if not self.IS_DEPENDENCY:
                 logger.debug(
                     "Output '%s' doesn't use cache. Skipping saving.", self
@@ -280,6 +283,7 @@ class BaseOutput:
             return
 
         self.hash_info = self.get_hash()
+        self.size = self.hash_info.size
 
     def commit(self):
         if not self.exists:
@@ -292,6 +296,9 @@ class BaseOutput:
     def dumpd(self):
         ret = copy(self.hash_info.to_dict())
         ret[self.PARAM_PATH] = self.def_path
+
+        if self.size is not None:
+            ret[self.PARAM_SIZE] = self.size
 
         if self.IS_DEPENDENCY:
             return ret
@@ -533,6 +540,9 @@ class BaseOutput:
         my.pop(self.tree.PARAM_CHECKSUM)
         other.pop(self.tree.PARAM_CHECKSUM)
 
+        my.pop(self.PARAM_SIZE, None)
+        other.pop(self.PARAM_SIZE, None)
+
         if my != other:
             raise MergeError(
                 "unable to auto-merge outputs with different options"
@@ -558,3 +568,4 @@ class BaseOutput:
         self.hash_info = self.cache.merge(
             ancestor_info, self.hash_info, other.hash_info
         )
+        self.size = self.hash_info.size

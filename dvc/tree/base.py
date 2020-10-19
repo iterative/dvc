@@ -8,7 +8,6 @@ from urllib.parse import urlparse
 from funcy import cached_property, decorator
 
 from dvc.exceptions import DvcException, DvcIgnoreInCollectedDirError
-from dvc.hash_info import HashInfo
 from dvc.ignore import DvcIgnore
 from dvc.path_info import URLInfo
 from dvc.progress import Tqdm
@@ -247,22 +246,22 @@ class BaseTree:
             return None
 
         # pylint: disable=assignment-from-none
-        hash_ = self.state.get(path_info)
+        hash_info = self.state.get(path_info)
 
         # If we have dir hash in state db, but dir cache file is lost,
         # then we need to recollect the dir via .get_dir_hash() call below,
         # see https://github.com/iterative/dvc/issues/2219 for context
         if (
-            hash_
-            and self.is_dir_hash(hash_)
+            hash_info
+            and hash_info.isdir
             and not self.cache.tree.exists(
-                self.cache.tree.hash_to_path_info(hash_)
+                self.cache.tree.hash_to_path_info(hash_info.value)
             )
         ):
-            hash_ = None
+            hash_info = None
 
-        if hash_:
-            hash_info = HashInfo(self.PARAM_CHECKSUM, hash_)
+        if hash_info:
+            assert hash_info.name == self.PARAM_CHECKSUM
             if hash_info.isdir:
                 self.cache.set_dir_info(hash_info)
             return hash_info
@@ -273,7 +272,7 @@ class BaseTree:
             hash_info = self.get_file_hash(path_info)
 
         if hash_info and self.exists(path_info):
-            self.state.save(path_info, hash_info.value)
+            self.state.save(path_info, hash_info)
 
         return hash_info
 
@@ -300,10 +299,11 @@ class BaseTree:
         ) as pbar:
             worker = pbar.wrap_fn(self.get_file_hash)
             with ThreadPoolExecutor(max_workers=self.hash_jobs) as executor:
-                hashes = (hi.value for hi in executor.map(worker, file_infos))
-                return dict(zip(file_infos, hashes))
+                hash_infos = executor.map(worker, file_infos)
+                return dict(zip(file_infos, hash_infos))
 
     def _collect_dir(self, path_info, **kwargs):
+
         file_infos = set()
 
         for fname in self.walk_files(path_info, **kwargs):
@@ -312,15 +312,21 @@ class BaseTree:
 
             file_infos.add(fname)
 
-        hashes = {fi: self.state.get(fi) for fi in file_infos}
-        not_in_state = {fi for fi, hash_ in hashes.items() if hash_ is None}
+        hash_infos = {fi: self.state.get(fi) for fi in file_infos}
+        not_in_state = {fi for fi, hi in hash_infos.items() if hi is None}
 
-        new_hashes = self._calculate_hashes(not_in_state)
-        hashes.update(new_hashes)
+        new_hash_infos = self._calculate_hashes(not_in_state)
+        hash_infos.update(new_hash_infos)
 
-        return [
+        sizes = [hi.size for hi in hash_infos.values()]
+        if None in sizes:
+            size = None
+        else:
+            size = sum(sizes)
+
+        dir_info = [
             {
-                self.PARAM_CHECKSUM: hashes[fi],
+                self.PARAM_CHECKSUM: hash_infos[fi].value,
                 # NOTE: this is lossy transformation:
                 #   "hey\there" -> "hey/there"
                 #   "hey/there" -> "hey/there"
@@ -334,10 +340,14 @@ class BaseTree:
             for fi in file_infos
         ]
 
+        return (dir_info, size)
+
     @use_state
     def get_dir_hash(self, path_info, **kwargs):
-        dir_info = self._collect_dir(path_info, **kwargs)
-        return self.repo.cache.local.save_dir_info(dir_info)
+        dir_info, size = self._collect_dir(path_info, **kwargs)
+        hash_info = self.repo.cache.local.save_dir_info(dir_info)
+        hash_info.size = size
+        return hash_info
 
     def upload(self, from_info, to_info, name=None, no_progress_bar=False):
         if not hasattr(self, "_upload"):

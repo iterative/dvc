@@ -46,7 +46,13 @@ def test_add(tmp_dir, dvc):
     assert stage.md5 is None
 
     assert load_yaml("foo.dvc") == {
-        "outs": [{"md5": "acbd18db4cc2f85cedef654fccc4a4d8", "path": "foo"}],
+        "outs": [
+            {
+                "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
+                "path": "foo",
+                "size": 3,
+            }
+        ],
     }
 
 
@@ -227,6 +233,7 @@ def test_add_external_file(tmp_dir, dvc, workspace, hash_name, hash_value):
         "outs:\n"
         f"- {hash_name}: {hash_value}\n"
         "  path: remote://workspace/file\n"
+        "  size: 4\n"
     )
     assert (workspace / "file").read_text() == "file"
     assert (
@@ -273,6 +280,7 @@ def test_add_external_dir(tmp_dir, dvc, workspace, hash_name, hash_value):
         "outs:\n"
         f"- {hash_name}: {hash_value}\n"
         "  path: remote://workspace/dir\n"
+        "  size: 11\n"
     )
     assert (workspace / "cache" / hash_value[:2] / hash_value[2:]).is_file()
 

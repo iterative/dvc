@@ -2,6 +2,7 @@ import os
 
 import mock
 
+from dvc.hash_info import HashInfo
 from dvc.path_info import PathInfo
 from dvc.state import State
 from dvc.utils import file_md5
@@ -11,26 +12,23 @@ def test_state(tmp_dir, dvc):
     tmp_dir.gen("foo", "foo content")
     path = tmp_dir / "foo"
     path_info = PathInfo(path)
-    md5 = file_md5(path)[0]
+    hash_info = HashInfo("md5", file_md5(path)[0])
 
     state = State(dvc)
 
     with state:
-        state.save(path_info, md5)
-        entry_md5 = state.get(path_info)
-        assert entry_md5 == md5
+        state.save(path_info, hash_info)
+        assert state.get(path_info) == hash_info
 
         path.unlink()
         path.write_text("1")
 
-        entry_md5 = state.get(path_info)
-        assert entry_md5 is None
+        assert state.get(path_info) is None
 
-        md5 = file_md5(path)[0]
-        state.save(path_info, md5)
+        hash_info = HashInfo("md5", file_md5(path)[0])
+        state.save(path_info, hash_info)
 
-        entry_md5 = state.get(path_info)
-        assert entry_md5 == md5
+        assert state.get(path_info) == hash_info
 
 
 def test_state_overflow(tmp_dir, dvc):
@@ -66,7 +64,7 @@ def test_get_state_record_for_inode(get_inode_mock, tmp_dir, dvc):
     get_inode_mock.side_effect = mock_get_inode(inode)
 
     with state:
-        state.save(PathInfo(foo), md5)
+        state.save(PathInfo(foo), HashInfo("md5", md5))
         ret = state.get_state_record_for_inode(inode)
         assert ret is not None
 

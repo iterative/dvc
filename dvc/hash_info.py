@@ -8,6 +8,7 @@ class HashInfo:
     name: str
     value: str
     dir_info: dict = field(default=None, compare=False)
+    size: int = field(default=None, compare=False)
 
     def __bool__(self):
         return bool(self.value)

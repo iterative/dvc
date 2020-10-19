@@ -105,6 +105,7 @@ def test_merge_driver_no_ancestor(tmp_dir, scm, dvc):
         "outs:\n"
         "- md5: 5ea40360f5b4ec688df672a4db9c17d1.dir\n"
         "  path: data\n"
+        "  size: 6\n"
     )
 
     dvc.checkout("data.dvc")
@@ -138,6 +139,7 @@ def test_merge_driver(tmp_dir, scm, dvc):
         "outs:\n"
         "- md5: 839ef9371606817569c1ee0e5f4ed233.dir\n"
         "  path: data\n"
+        "  size: 12\n"
     )
 
     dvc.checkout("data.dvc")

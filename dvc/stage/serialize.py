@@ -134,18 +134,20 @@ def to_pipeline_file(stage: "PipelineStage"):
 def to_single_stage_lockfile(stage: "Stage") -> dict:
     assert stage.cmd
 
+    def _dumpd(item):
+        ret = [
+            (item.PARAM_PATH, item.def_path),
+            *item.hash_info.to_dict().items(),
+        ]
+
+        if item.size is not None:
+            ret.append((item.PARAM_SIZE, item.size))
+        return OrderedDict(ret)
+
     res = OrderedDict([("cmd", stage.cmd)])
     params, deps = split_params_deps(stage)
     deps, outs = [
-        [
-            OrderedDict(
-                [
-                    (PARAM_PATH, item.def_path),
-                    *item.hash_info.to_dict().items(),
-                ]
-            )
-            for item in sort_by_path(items)
-        ]
+        [_dumpd(item) for item in sort_by_path(items)]
         for items in [deps, stage.outs]
     ]
     params = _serialize_params_values(params)

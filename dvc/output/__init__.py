@@ -59,6 +59,7 @@ SCHEMA[BaseOutput.PARAM_CACHE] = bool
 SCHEMA[BaseOutput.PARAM_METRIC] = BaseOutput.METRIC_SCHEMA
 SCHEMA[BaseOutput.PARAM_PLOT] = bool
 SCHEMA[BaseOutput.PARAM_PERSIST] = bool
+SCHEMA[BaseOutput.PARAM_SIZE] = int
 
 
 def _get(

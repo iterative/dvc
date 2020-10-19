@@ -429,9 +429,11 @@ def test_run_external_outputs(
         "  deps:\n"
         "  - path: remote://workspace/foo\n"
         f"    {hash_name}: {foo_hash}\n"
+        "    size: 3\n"
         "  outs:\n"
         "  - path: remote://workspace/bar\n"
         f"    {hash_name}: {bar_hash}\n"
+        "    size: 3\n"
     )
 
     assert (workspace / "foo").read_text() == "foo"

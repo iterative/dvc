@@ -152,20 +152,20 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
     with patch.object(
         BaseTree,
         "_collect_dir",
-        return_value=[
-            {"relpath": "1", "md5": "1"},
-            {"relpath": "2", "md5": "2"},
-        ],
+        return_value=(
+            [{"relpath": "1", "md5": "1"}, {"relpath": "2", "md5": "2"}],
+            None,
+        ),
     ):
         hash1 = dvc.cache.local.tree.get_hash(path_info)
 
     with patch.object(
         BaseTree,
         "_collect_dir",
-        return_value=[
-            {"md5": "1", "relpath": "1"},
-            {"md5": "2", "relpath": "2"},
-        ],
+        return_value=(
+            [{"md5": "1", "relpath": "1"}, {"md5": "2", "relpath": "2"}],
+            None,
+        ),
     ):
         hash2 = dvc.cache.local.tree.get_hash(path_info)
 

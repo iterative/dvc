@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from urllib.parse import urlencode, urlunparse
 
 from dvc.exceptions import DvcException
+from dvc.hash_info import HashInfo
 from dvc.utils import current_timestamp, relpath, to_chunks
 from dvc.utils.fs import get_inode, get_mtime_and_size, remove
 
@@ -40,7 +41,7 @@ class StateBase(ABC):
         pass
 
     @abstractmethod
-    def save(self, path_info, checksum):
+    def save(self, path_info, hash_info):
         pass
 
     @abstractmethod
@@ -76,7 +77,7 @@ class StateNoop(StateBase):
     def files(self):
         return []
 
-    def save(self, path_info, checksum):
+    def save(self, path_info, hash_info):
         pass
 
     def get(self, path_info):  # pylint: disable=unused-argument
@@ -396,15 +397,16 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             return results[0]
         return None
 
-    def save(self, path_info, checksum):
-        """Save checksum for the specified path info.
+    def save(self, path_info, hash_info):
+        """Save hash for the specified path info.
 
         Args:
-            path_info (dict): path_info to save checksum for.
-            checksum (str): checksum to save.
+            path_info (dict): path_info to save hash for.
+            hash_info (HashInfo): hash to save.
         """
         assert isinstance(path_info, str) or path_info.scheme == "local"
-        assert checksum is not None
+        assert hash_info
+        assert isinstance(hash_info, HashInfo)
         assert os.path.exists(path_info)
 
         actual_mtime, actual_size = get_mtime_and_size(path_info, self.tree)
@@ -413,23 +415,23 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         existing_record = self.get_state_record_for_inode(actual_inode)
         if not existing_record:
             self._insert_new_state_record(
-                actual_inode, actual_mtime, actual_size, checksum
+                actual_inode, actual_mtime, actual_size, hash_info.value
             )
             return
 
         self._update_state_for_path_changed(
-            actual_inode, actual_mtime, actual_size, checksum
+            actual_inode, actual_mtime, actual_size, hash_info.value
         )
 
     def get(self, path_info):
-        """Gets the checksum for the specified path info. Checksum will be
+        """Gets the hash for the specified path info. Hash will be
         retrieved from the state database if available.
 
         Args:
-            path_info (dict): path info to get the checksum for.
+            path_info (dict): path info to get the hash for.
 
         Returns:
-            str or None: checksum for the specified path info or None if it
+            HashInfo or None: hash for the specified path info or None if it
             doesn't exist in the state database.
         """
         assert isinstance(path_info, str) or path_info.scheme == "local"
@@ -448,12 +450,12 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         if not existing_record:
             return None
 
-        mtime, size, checksum, _ = existing_record
+        mtime, size, value, _ = existing_record
         if self._file_metadata_changed(actual_mtime, mtime, actual_size, size):
             return None
 
         self._update_state_record_timestamp_for_inode(actual_inode)
-        return checksum
+        return HashInfo("md5", value, size=int(actual_size))
 
     def save_link(self, path_info):
         """Adds the specified path to the list of links created by dvc. This

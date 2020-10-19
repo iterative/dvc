@@ -18,7 +18,11 @@ SINGLE_STAGE_SCHEMA = {
     StageParams.PARAM_ALWAYS_CHANGED: bool,
 }
 
-DATA_SCHEMA = {**CHECKSUMS_SCHEMA, Required("path"): str}
+DATA_SCHEMA = {
+    **CHECKSUMS_SCHEMA,
+    Required("path"): str,
+    BaseOutput.PARAM_SIZE: int,
+}
 LOCK_FILE_STAGE_SCHEMA = {
     Required(StageParams.PARAM_CMD): str,
     StageParams.PARAM_DEPS: [DATA_SCHEMA],
