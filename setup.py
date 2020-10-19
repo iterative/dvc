@@ -98,13 +98,14 @@ ssh = ["paramiko[invoke]>=2.7.0"]
 
 # Remove the env marker if/when pyarrow is available for Python3.9
 hdfs = ["pyarrow>=2.0.0;  python_version < '3.9'"]
+webhdfs = ["hdfs==2.5.8"]
 webdav = ["webdavclient3>=3.14.5"]
 # gssapi should not be included in all_remotes, because it doesn't have wheels
 # for linux and mac, so it will fail to compile if user doesn't have all the
 # requirements, including kerberos itself. Once all the wheels are available,
 # we can start shipping it by default.
 ssh_gssapi = ["paramiko[invoke,gssapi]>=2.7.0"]
-all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs + webdav
+all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs + webhdfs + webdav
 
 # Extra dependecies to run tests
 tests_requirements = [
@@ -173,6 +174,7 @@ setup(
         "ssh": ssh,
         "ssh_gssapi": ssh_gssapi,
         "hdfs": hdfs,
+        "webhdfs": webhdfs,
         "webdav": webdav,
         "tests": tests_requirements,
     },
