@@ -110,7 +110,9 @@ def show(
         )
 
     # collect reproduced experiments
-    for exp_branch in repo.experiments.scm.list_branches():
+    for exp_branch in repo.experiments.scm.list_branches(
+        key=lambda h: h.commit.committed_date, reverse=True
+    ):
         m = repo.experiments.BRANCH_RE.match(exp_branch)
         if m:
             rev = repo.scm.resolve_rev(m.group("baseline_rev"))

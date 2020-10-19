@@ -294,8 +294,18 @@ class Git(Base):
     def active_branch(self):
         return self.repo.active_branch.name
 
-    def list_branches(self):
-        return [h.name for h in self.repo.heads]
+    def list_branches(self, **kwargs):
+        """Return list of git branch names.
+
+        Any provided kwargs will be passed into `sorted()` to sort the list of
+        git head (branch) objects. By default branches are listed
+        alphabetically.
+        """
+        if kwargs:
+            heads = sorted(self.repo.heads, **kwargs)
+        else:
+            heads = self.repo.heads
+        return [h.name for h in heads]
 
     def list_tags(self):
         return [t.name for t in self.repo.tags]
