@@ -153,17 +153,15 @@ class WebHDFS(Base, URLInfo):  # pylint: disable=abstract-method
 
         client = hdfs.InsecureClient(self.url, self.user)
         return client
-        
 
     def is_file(self):
         with self._webhdfs() as _hdfs:
             return _hdfs.status(self.path)["type"] == "FILE"
-            
 
     def is_dir(self):
         with self._webhdfs() as _hdfs:
             return _hdfs.status(self.path)["type"] == "DIRECTORY"
-            
+
     def exists(self):
         with self._webhdfs() as _hdfs:
             return _hdfs.status(self.path, strict=False) is not None
