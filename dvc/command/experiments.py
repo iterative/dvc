@@ -155,7 +155,11 @@ def _sort_exp(experiments, sort_by, typ, reverse):
         ret = OrderedDict()
 
     def _sort(item):
-        _, exp = item
+        rev, exp = item
+        tip = exp.get("checkpoint_tip")
+        if tip and tip != rev:
+            # Sort checkpoint experiments by tip commit
+            return _sort((tip, experiments[tip]))
         for fname, item in exp.get(typ, {}).items():
             if isinstance(item, dict):
                 item = flatten(item)
