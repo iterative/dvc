@@ -1,12 +1,12 @@
 import logging
 import os
 import threading
-import shutil
 
 from funcy import cached_property, wrap_prop
 
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
+from dvc.scheme import Schemes
 
 from .base import BaseTree
 
@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class WebHDFSTree(BaseTree):
+    scheme = Schemes.WEBHDFS
     PATH_CLS = CloudURLInfo
     REQUIRES = {"hdfs": "hdfs"}
 
@@ -29,15 +30,9 @@ class WebHDFSTree(BaseTree):
             or "~/.hdfscli.cfg"
         )
 
-        self.token = (
-            config.get("webhdfs_token")
-        )
-        self.user = (
-            config.get("webhdfs_user")
-        )
-        self.alias = (
-            config.get("webhdfs_alias")
-        )
+        self.token = config.get("webhdfs_token")
+        self.user = config.get("user")
+        self.alias = config.get("webhdfs_alias")
 
     @wrap_prop(threading.Lock())
     @cached_property
@@ -48,29 +43,47 @@ class WebHDFSTree(BaseTree):
         logger.debug("HDFSConfig: %s", self.hdfscli_config)
 
         try:
-            client = hdfs.config.Config(self.hdfscli_config).get(self.alias)
-        except hdfs.HdfsError:
+            client = hdfs.config.Config(  # pylint: disable=no-member
+                self.hdfscli_config
+            ).get(self.alias)
+        except hdfs.util.HdfsError:  # pylint: disable=no-member
             if self.token is not None:
-                client = hdfs.TokenClient(self.path_info.url, self.token)
+                client = hdfs.TokenClient(  # pylint: disable=no-member
+                    self.path_info.url, self.token
+                )
             else:
-                client = hdfs.InsecureClient(self.path_info.url, self.user)
-   
+                client = hdfs.InsecureClient(  # pylint: disable=no-member
+                    self.path_info.url, self.user
+                )
+
         return client
+
+    def walk_files(self, path_info, **kwargs):
+        yield self.hdfs_client.walk(
+            path_info.path, depth=kwargs.get("depth", 0)
+        )
+
+    def remove(self, path_info):
+        if path_info.scheme != self.scheme:
+            raise NotImplementedError
+
+        self.hdfs_client.delete(path_info.path)
 
     def exists(self, path_info, use_dvcignore=True):
         status = self.hdfs_client.status(path_info.path, strict=False)
         return status is not None
 
+    def get_file_hash(self, path_info):
+        return self.hdfs_client.checksum(path_info.path)
+
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):
         with Tqdm(desc=name, disable=no_progress_bar, bytes=True) as pbar:
-            with self.hdfs_client.write(to_info.path, encoding='utf-8') as writer:
-                shutil.copyfileobj(from_file, writer)
+            self.hdfs_client.upload(to_info.path, from_file, progress=pbar)
 
     def _download(
         self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
     ):
         with Tqdm(desc=name, disable=no_progress_bar, bytes=True) as pbar:
-            with self.hdfs_client.read(from_info.path, encoding='utf-8') as reader:
-                shutil.copyfileobj(reader, to_file)
+            self.hdfs_client.download(from_info.path, to_file, progress=pbar)

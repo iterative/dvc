@@ -149,6 +149,7 @@ SCHEMA = {
         "s3": str,
         "gs": str,
         "hdfs": str,
+        "webhdfs": str,
         "ssh": str,
         "azure": str,
         # This is for default local cache
@@ -195,6 +196,13 @@ SCHEMA = {
                     **REMOTE_COMMON,
                 },
                 "hdfs": {"user": str, **REMOTE_COMMON},
+                "webhdfs": {
+                    "hdfscli_config": str,
+                    "webhdfs_token": str,
+                    "user": str,
+                    "webhdfs_alias": str,
+                    **REMOTE_COMMON,
+                },
                 "azure": {"connection_string": str, **REMOTE_COMMON},
                 "oss": {
                     "oss_key_id": str,
