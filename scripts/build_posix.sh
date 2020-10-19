@@ -31,7 +31,7 @@ print_error() {
   echo -e "\e[31m$1\e[0m" >&2
 }
 
-if [ ! -d "dvc" ]; then
+if [[ ! -d "dvc" ]]; then
   print_error "Please run this script from repository root"
   exit 1
 fi

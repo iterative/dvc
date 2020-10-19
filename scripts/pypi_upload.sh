@@ -2,7 +2,7 @@
 
 set -e
 
-if [ ! -d "dvc" ]; then
+if [[ ! -d "dvc" ]]; then
   echo "Please run this script from repository root"
   exit 1
 fi
