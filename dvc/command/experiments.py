@@ -180,13 +180,15 @@ def _format_time(timestamp):
     return timestamp.strftime(fmt)
 
 
+def _format_float(val, precision=DEFAULT_PRECISION):
+    if isinstance(val, float):
+        fmt = f"{{:.{precision}g}}"
+        return fmt.format(val)
+
+    return str(val)
+
+
 def _extend_row(row, names, items, precision):
-    def _round(val):
-        if isinstance(val, float):
-            return round(val, precision)
-
-        return val
-
     if not items:
         row.extend(["-"] * len(names))
         return
@@ -199,7 +201,10 @@ def _extend_row(row, names, items, precision):
         for name in names:
             if name in item:
                 value = item[name]
-                text = str(_round(value)) if value is not None else "-"
+                if value is None:
+                    text = "-"
+                else:
+                    text = _format_float(value, precision)
                 row.append(text)
             else:
                 row.append("-")
@@ -293,6 +298,11 @@ class CmdExperimentsShow(CmdBase):
                     file=io.StringIO(), force_terminal=True, width=9999
                 )
 
+            if self.args.precision is None:
+                precision = DEFAULT_PRECISION
+            else:
+                precision = self.args.precision
+
             _show_experiments(
                 all_experiments,
                 console,
@@ -303,6 +313,7 @@ class CmdExperimentsShow(CmdBase):
                 no_timestamp=self.args.no_timestamp,
                 sort_by=self.args.sort_by,
                 sort_order=self.args.sort_order,
+                precision=precision,
             )
 
             if not self.args.no_pager:
@@ -325,18 +336,14 @@ class CmdExperimentsCheckout(CmdBase):
 
 
 def _show_diff(
-    diff, title="", markdown=False, no_path=False, old=False, precision=None
+    diff,
+    title="",
+    markdown=False,
+    no_path=False,
+    old=False,
+    precision=DEFAULT_PRECISION,
 ):
     from dvc.utils.diff import table
-
-    if precision is None:
-        precision = DEFAULT_PRECISION
-
-    def _round(val):
-        if isinstance(val, float):
-            return round(val, precision)
-
-        return val
 
     rows = []
     for fname, diff_ in diff.items():
@@ -345,9 +352,13 @@ def _show_diff(
             row = [] if no_path else [fname]
             row.append(item)
             if old:
-                row.append(_round(change.get("old")))
-            row.append(_round(change["new"]))
-            row.append(_round(change.get("diff", "diff not supported")))
+                row.append(_format_float(change.get("old"), precision))
+            row.append(_format_float(change["new"], precision))
+            row.append(
+                _format_float(
+                    change.get("diff", "diff not supported"), precision
+                )
+            )
             rows.append(row)
 
     header = [] if no_path else ["Path"]
@@ -378,6 +389,11 @@ class CmdExperimentsDiff(CmdBase):
 
                 logger.info(json.dumps(diff))
             else:
+                if self.args.precision is None:
+                    precision = DEFAULT_PRECISION
+                else:
+                    precision = self.args.precision
+
                 diffs = [("metrics", "Metric"), ("params", "Param")]
                 for key, title in diffs:
                     table = _show_diff(
@@ -386,7 +402,7 @@ class CmdExperimentsDiff(CmdBase):
                         markdown=self.args.show_md,
                         no_path=self.args.no_path,
                         old=self.args.old,
-                        precision=self.args.precision,
+                        precision=precision,
                     )
                     if table:
                         logger.info(table)
@@ -557,6 +573,15 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Print output in JSON format instead of a human-readable table.",
+    )
+    experiments_show_parser.add_argument(
+        "--precision",
+        type=int,
+        help=(
+            "Round metrics/params to `n` digits precision after the decimal "
+            f"point. Rounds to {DEFAULT_PRECISION} digits by default."
+        ),
+        metavar="<n>",
     )
     experiments_show_parser.set_defaults(func=CmdExperimentsShow)
 
