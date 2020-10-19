@@ -3,7 +3,7 @@ import subprocess
 import pytest
 
 from .azure import Azure, azure, azure_server  # noqa: F401
-from .hdfs import HDFS, hadoop, hdfs, hdfs_server  # noqa: F401
+from .hdfs import HDFS, hadoop, hdfs, hdfs_server, webhdfs  # noqa: F401
 from .http import HTTP, http, http_server  # noqa: F401
 from .local import Local, local_cloud, local_remote  # noqa: F401
 from .oss import (  # noqa: F401

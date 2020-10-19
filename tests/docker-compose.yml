@@ -17,3 +17,4 @@ services:
       # `dfs.datanode.address` in `hdfs-site.xml` and probably something
       # else, so using default one for now.
       - "50010:50010"
+      - "50070"
