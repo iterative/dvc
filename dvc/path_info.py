@@ -75,6 +75,17 @@ class PathInfo(pathlib.PurePath, _BasePath):
         n = len(other._cparts)
         return len(self._cparts) > n and self._cparts[:n] == other._cparts
 
+    def relative_to(self, other):  # pylint: disable=arguments-differ
+        # pathlib relative_to raises exception when one path is not a direct
+        # descendant of the other when os.path.relpath would return abspath.
+        # For DVC PathInfo we only need the relpath behavior.
+        # See: https://bugs.python.org/issue40358
+        try:
+            path = super().relative_to(other)
+        except ValueError:
+            path = relpath(self, other)
+        return self.__class__(path)
+
 
 class WindowsPathInfo(PathInfo, pathlib.PureWindowsPath):
     pass
@@ -224,11 +235,7 @@ class URLInfo(_BasePath):
         if self._base_parts != other._base_parts:
             msg = f"'{self}' does not start with '{other}'"
             raise ValueError(msg)
-        try:
-            path = self._path.relative_to(other._path)
-        except ValueError:
-            path = relpath(self._path, other._path)
-        return path
+        return self._path.relative_to(other._path)
 
     def isin(self, other):
         if isinstance(other, (str, bytes)):

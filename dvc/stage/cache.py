@@ -197,7 +197,7 @@ class StageCache:
             return []
 
         for src in from_remote.walk_files(runs):
-            rel = PathInfo(os.path.relpath(src, from_remote.path_info))
+            rel = src.relative_to(from_remote.path_info)
             dst = to_remote.path_info / rel
             key = dst.parent
             # check if any build cache already exists for this key
