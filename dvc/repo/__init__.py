@@ -121,8 +121,7 @@ class Repo:
             self.tree = LocalTree(self, {"url": self.root_dir}, **tree_kwargs)
 
         self.config = Config(self.dvc_dir, tree=self.tree)
-        no_scm = self.config["core"].get("no_scm", False)
-        self.scm = scm if scm else SCM(self.root_dir, no_scm=no_scm)
+        self._scm = scm
 
         # used by RepoTree to determine if it should traverse subrepos
         self.subrepos = subrepos
@@ -157,6 +156,13 @@ class Repo:
         self.metrics = Metrics(self)
         self.plots = Plots(self)
         self.params = Params(self)
+
+    @cached_property
+    def scm(self):
+        from dvc.scm import SCM
+
+        no_scm = self.config["core"].get("no_scm", False)
+        return self._scm if self._scm else SCM(self.root_dir, no_scm=no_scm)
 
     @property
     def tree(self):
