@@ -413,6 +413,14 @@ class CmdExperimentsRun(CmdRepro):
         elif not self.args.targets:
             self.args.targets = self.default_targets
 
+        if (
+            self.args.checkpoint_reset
+            and self.args.checkpoint_continue is not None
+        ):
+            raise InvalidArgumentError(
+                "--continue and --reset cannot be used together"
+            )
+
         ret = 0
         for target in self.args.targets:
             try:
@@ -425,8 +433,10 @@ class CmdExperimentsRun(CmdRepro):
                     checkpoint=(
                         self.args.checkpoint
                         or self.args.checkpoint_continue is not None
+                        or self.args.checkpoint_reset
                     ),
                     checkpoint_continue=self.args.checkpoint_continue,
+                    checkpoint_reset=self.args.checkpoint_reset,
                     **self._repro_kwargs,
                 )
             except DvcException:
@@ -674,7 +684,17 @@ def add_parser(subparsers, parent_parser):
         default=None,
         dest="checkpoint_continue",
         help=(
-            "Continue from the specified checkpoint experiment"
+            "Continue from the specified checkpoint experiment "
+            "(implies --checkpoint)."
+        ),
+    )
+    experiments_run_parser.add_argument(
+        "--reset",
+        action="store_true",
+        default=False,
+        dest="checkpoint_reset",
+        help=(
+            "Reset checkpoint experiment if it already exists "
             "(implies --checkpoint)."
         ),
     )

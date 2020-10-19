@@ -66,6 +66,19 @@ class BaselineMismatchError(DvcException):
         self.expected_rev = expected
 
 
+class CheckpointExistsError(DvcException):
+    def __init__(self, rev, continue_rev):
+        msg = (
+            f"Checkpoint experiment containing '{rev[:7]}' already exists."
+            " To restart the experiment run:\n\n"
+            "\tdvc exp run --reset ...\n\n"
+            "To resume the experiment, run:\n\n"
+            f"\tdvc exp run --continue {continue_rev[:7]}\n"
+        )
+        super().__init__(msg)
+        self.rev = rev
+
+
 class MultipleBranchError(DvcException):
     def __init__(self, rev):
         super().__init__(
@@ -325,7 +338,12 @@ class Experiments:
         self.scm.add(list(params.keys()))
 
     def _commit(
-        self, exp_hash, check_exists=True, create_branch=True, checkpoint=False
+        self,
+        exp_hash,
+        check_exists=True,
+        create_branch=True,
+        checkpoint=False,
+        checkpoint_reset=False,
     ):
         """Commit stages as an experiment and return the commit SHA."""
         if not self.scm.is_dirty(untracked_files=True):
@@ -340,14 +358,14 @@ class Experiments:
             ) and exp_name in self.scm.list_branches():
                 branch_tip = self.scm.resolve_rev(exp_name)
                 if checkpoint:
-                    raise DvcException(
-                        f"Checkpoint experiment containing '{rev[:7]}' "
-                        "already exists. To resume the experiment, "
-                        "run:\n\n"
-                        f"\tdvc exp run --continue {branch_tip[:7]}"
+                    self._reset_checkpoint_branch(
+                        exp_name, rev, branch_tip, checkpoint_reset
                     )
-                logger.debug("Using existing experiment branch '%s'", exp_name)
-                return branch_tip
+                else:
+                    logger.debug(
+                        "Using existing experiment branch '%s'", exp_name
+                    )
+                    return branch_tip
             self.scm.checkout(exp_name, create_new=True)
             logger.debug("Commit new experiment branch '%s'", exp_name)
         else:
@@ -355,6 +373,13 @@ class Experiments:
         self.scm.repo.git.add(A=True)
         self.scm.commit(f"Add experiment {exp_name}")
         return self.scm.get_rev()
+
+    def _reset_checkpoint_branch(self, branch, rev, branch_tip, reset):
+        if not reset:
+            raise CheckpointExistsError(rev, branch_tip)
+        self._checkout_default_branch()
+        logger.debug("Removing existing checkpoint branch '%s'", branch)
+        self.scm.repo.git.branch(branch, D=True)
 
     def reproduce_one(self, queue=False, **kwargs):
         """Reproduce and checkout a single experiment."""
@@ -391,6 +416,7 @@ class Experiments:
         *args,
         checkpoint: Optional[bool] = False,
         checkpoint_continue: Optional[str] = None,
+        checkpoint_reset: Optional[bool] = False,
         branch: Optional[str] = None,
         **kwargs,
     ):
@@ -423,7 +449,11 @@ class Experiments:
 
         try:
             stash_rev = self._stash_exp(
-                *args, branch=branch, allow_unchanged=checkpoint, **kwargs
+                *args,
+                branch=branch,
+                allow_unchanged=checkpoint,
+                checkpoint_reset=checkpoint_reset,
+                **kwargs,
             )
         except UnchangedExperimentError as exc:
             logger.info("Reproducing existing experiment '%s'.", rev[:7])
@@ -477,14 +507,16 @@ class Experiments:
         for rev, item in to_run.items():
             self._scm_checkout(item.baseline_rev)
             self.scm.repo.git.stash("apply", rev)
-            repro_args, repro_kwargs = self._unpack_args()
+            packed_args, packed_kwargs = self._unpack_args()
+            checkpoint_reset = packed_kwargs.pop("checkpoint_reset", False)
             executor = LocalExecutor(
                 item.baseline_rev,
                 branch=item.branch,
-                repro_args=repro_args,
-                repro_kwargs=repro_kwargs,
+                repro_args=packed_args,
+                repro_kwargs=packed_kwargs,
                 dvc_dir=self.dvc_dir,
                 cache_dir=self.repo.cache.local.cache_dir,
+                checkpoint_reset=checkpoint_reset,
             )
             self._collect_input(executor)
             executors[rev] = executor
@@ -615,7 +647,10 @@ class Experiments:
         try:
             create_branch = not executor.branch
             exp_rev = self._commit(
-                exp_hash, create_branch=create_branch, **kwargs
+                exp_hash,
+                create_branch=create_branch,
+                checkpoint_reset=executor.checkpoint_reset,
+                **kwargs,
             )
         except UnchangedExperimentError:
             logger.debug(
