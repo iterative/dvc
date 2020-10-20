@@ -149,10 +149,10 @@ def hdfs(hdfs_server):
 class WebHDFS(Base, URLInfo):  # pylint: disable=abstract-method
     @contextmanager
     def _webhdfs(self):
-        import hdfs
+        from hdfs import InsecureClient
 
-        client = hdfs.InsecureClient(self.url, self.user)
-        return client
+        client = InsecureClient(self.url, self.user)
+        yield client
 
     def is_file(self):
         with self._webhdfs() as _hdfs:
@@ -187,8 +187,9 @@ class WebHDFS(Base, URLInfo):  # pylint: disable=abstract-method
         self.write_bytes(contents.encode(encoding))
 
     def read_bytes(self):
-        with self._webhdfs().read(self.path) as reader:
-            return reader.read()
+        with self._webhdfs() as _hdfs:
+            with _hdfs.read(self.path) as reader:
+                return reader.read()
 
     def read_text(self, encoding=None, errors=None):
         if not encoding:
