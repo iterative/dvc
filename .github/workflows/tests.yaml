@@ -58,7 +58,7 @@ jobs:
         file: ./coverage.xml
         fail_ci_if_error: true
     - name: Post TAP
-      uses: GoogleCloudPlatform/flaky-service/packages/action@v1.0.0
+      uses: GoogleCloudPlatform/flaky-service/packages/action@v1.0.3
       if: ${{ always() }}
       with:
         file-path: ${{github.workspace}}/testresults.tap
