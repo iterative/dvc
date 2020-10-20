@@ -3,6 +3,8 @@ from collections.abc import Mapping
 
 from funcy import rpartial
 
+from dvc.parsing.context import Context, Value
+
 KEYCRE = re.compile(
     r"""
     (?<!\\)                   # escape \${} or ${{}}
@@ -19,9 +21,16 @@ def _get_matches(template):
     return list(KEYCRE.finditer(template))
 
 
-def _resolve_value(match, context):
+def _unwrap(value):
+    if isinstance(value, Value):
+        return value.value
+    return value
+
+
+def _resolve_value(match, context: Context):
     _, _, inner = match.groups()
-    return context.select(inner)
+    value = context.select(inner)
+    return _unwrap(value)
 
 
 def _str_interpolate(template, matches, context):
@@ -39,10 +48,9 @@ def _resolve_str(src: str, context):
         # replace "${enabled}", if `enabled` is a boolean, with it's actual
         # value rather than it's string counterparts.
         return _resolve_value(matches[0], context)
-    elif matches:
-        # but not "${num} days"
-        src = _str_interpolate(src, matches, context)
 
+    # but not "${num} days"
+    src = _str_interpolate(src, matches, context)
     # regex already backtracks and avoids any `${` starting with
     # backslashes(`\`). We just need to replace those by `${`.
     return src.replace(r"\${", "${")

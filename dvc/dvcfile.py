@@ -8,6 +8,7 @@ from voluptuous import MultipleInvalid
 
 from dvc.exceptions import DvcException
 from dvc.parsing import DataResolver
+from dvc.path_info import PathInfo
 from dvc.stage import serialize
 from dvc.stage.exceptions import (
     StageFileBadNameError,
@@ -231,7 +232,9 @@ class PipelineFile(FileMixin):
 
         if self.repo.config["feature"]["parametrization"]:
             with log_durations(logger.debug, "resolving values"):
-                resolver = DataResolver(data)
+                resolver = DataResolver(
+                    self.repo, PathInfo(self.path).parent, data
+                )
                 data = resolver.resolve()
 
         lockfile_data = self._lockfile.load()
