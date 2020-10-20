@@ -31,8 +31,6 @@ DIV_HTML = """<div id = "{id}"></div>
 
 
 class CmdPlots(CmdBase):
-    UNINITIALIZED = True
-
     def _func(self, *args, **kwargs):
         raise NotImplementedError
 
@@ -82,11 +80,15 @@ class CmdPlots(CmdBase):
 
 
 class CmdPlotsShow(CmdPlots):
+    UNINITIALIZED = True
+
     def _func(self, *args, **kwargs):
         return self.repo.plots.show(*args, **kwargs)
 
 
 class CmdPlotsDiff(CmdPlots):
+    UNINITIALIZED = True
+
     def _func(self, *args, **kwargs):
         return self.repo.plots.diff(
             *args,
