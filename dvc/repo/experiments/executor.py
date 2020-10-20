@@ -168,8 +168,12 @@ class LocalExecutor(ExperimentExecutor):
             #   is not polluted with the (persistent) out from an unrelated
             #   experiment run
             checkpoint = kwargs.pop("checkpoint", False)
-            dvc.checkout(allow_persist_missing=checkpoint, force=checkpoint)
-            stages = dvc.reproduce(on_unchanged=filter_pipeline, **kwargs)
+            dvc.checkout(allow_missing=checkpoint, force=checkpoint)
+            stages = dvc.reproduce(
+                on_unchanged=filter_pipeline,
+                allow_missing=checkpoint,
+                **kwargs,
+            )
         finally:
             if old_cwd is not None:
                 os.chdir(old_cwd)

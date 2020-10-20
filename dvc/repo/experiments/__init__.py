@@ -395,7 +395,7 @@ class Experiments:
         )
         exp_rev = first(results)
         if exp_rev is not None:
-            self.checkout_exp(exp_rev)
+            self.checkout_exp(exp_rev, allow_missing=checkpoint)
         return results
 
     def reproduce_queued(self, **kwargs):
@@ -727,7 +727,7 @@ class Experiments:
             raise UploadError(fails)
 
     @scm_locked
-    def checkout_exp(self, rev):
+    def checkout_exp(self, rev, allow_missing=False):
         """Checkout an experiment to the user's workspace."""
         from git.exc import GitCommandError
 
@@ -761,7 +761,7 @@ class Experiments:
                 self._unstash_workspace()
 
         if need_checkout:
-            dvc_checkout(self.repo)
+            dvc_checkout(self.repo, allow_missing=allow_missing)
 
     def _check_baseline(self, exp_rev):
         baseline_sha = self.repo.scm.get_rev()

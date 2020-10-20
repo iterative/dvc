@@ -8,6 +8,7 @@ from funcy import cached_property, project
 import dvc.dependency as dependency
 import dvc.prompt as prompt
 from dvc.exceptions import CheckoutError, DvcException, MergeError
+from dvc.output.base import OutputDoesNotExistError
 from dvc.utils import relpath
 
 from . import params
@@ -380,9 +381,9 @@ class Stage(params.StageParams):
         logger.debug(f"Computed {self} md5: '{m}'")
         return m
 
-    def save(self):
+    def save(self, allow_missing=False):
         self.save_deps()
-        self.save_outs()
+        self.save_outs(allow_missing=allow_missing)
         self.md5 = self.compute_md5()
 
         self.repo.stage_cache.save(self)
@@ -391,9 +392,13 @@ class Stage(params.StageParams):
         for dep in self.deps:
             dep.save()
 
-    def save_outs(self):
+    def save_outs(self, allow_missing=False):
         for out in self.outs:
-            out.save()
+            try:
+                out.save()
+            except OutputDoesNotExistError:
+                if not allow_missing:
+                    raise
 
     def ignore_outs(self):
         for out in self.outs:
@@ -416,12 +421,23 @@ class Stage(params.StageParams):
         )
 
     @rwlocked(write=["outs"])
-    def commit(self):
+    def commit(self, allow_missing=False):
         for out in self.outs:
-            out.commit()
+            try:
+                out.commit()
+            except OutputDoesNotExistError:
+                if not allow_missing:
+                    raise
 
     @rwlocked(read=["deps"], write=["outs"])
-    def run(self, dry=False, no_commit=False, force=False, **kwargs):
+    def run(
+        self,
+        dry=False,
+        no_commit=False,
+        force=False,
+        allow_missing=False,
+        **kwargs,
+    ):
         if (self.cmd or self.is_import) and not self.frozen and not dry:
             self.remove_outs(ignore_remove=False, force=False)
 
@@ -438,9 +454,9 @@ class Stage(params.StageParams):
                 check_missing_outputs(self)
 
         if not dry:
-            self.save()
+            self.save(allow_missing=allow_missing)
             if not no_commit:
-                self.commit()
+                self.commit(allow_missing=allow_missing)
 
     def filter_outs(self, path_info):
         def _func(o):
