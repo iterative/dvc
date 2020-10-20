@@ -2,7 +2,7 @@ from voluptuous import Any, Optional, Required, Schema
 
 from dvc import dependency, output
 from dvc.output import CHECKSUMS_SCHEMA, BaseOutput
-from dvc.parsing import USE_KWD, VARS_KWD
+from dvc.parsing import FOREACH_KWD, IN_KWD, USE_KWD, VARS_KWD
 from dvc.stage.params import StageParams
 
 STAGES = "stages"
@@ -48,26 +48,28 @@ PLOT_PSTAGE_SCHEMA = {str: Any(PLOT_PROPS_SCHEMA, [PLOT_PROPS_SCHEMA])}
 
 PARAM_PSTAGE_NON_DEFAULT_SCHEMA = {str: [str]}
 
-SINGLE_PIPELINE_STAGE_SCHEMA = {
-    str: {
-        StageParams.PARAM_CMD: str,
-        Optional(StageParams.PARAM_WDIR): str,
-        Optional(StageParams.PARAM_DEPS): [str],
-        Optional(StageParams.PARAM_PARAMS): [
-            Any(str, PARAM_PSTAGE_NON_DEFAULT_SCHEMA)
-        ],
-        Optional(StageParams.PARAM_FROZEN): bool,
-        Optional(StageParams.PARAM_META): object,
-        Optional(StageParams.PARAM_ALWAYS_CHANGED): bool,
-        Optional(StageParams.PARAM_OUTS): [
-            Any(str, OUT_PSTAGE_DETAILED_SCHEMA)
-        ],
-        Optional(StageParams.PARAM_METRICS): [
-            Any(str, OUT_PSTAGE_DETAILED_SCHEMA)
-        ],
-        Optional(StageParams.PARAM_PLOTS): [Any(str, PLOT_PSTAGE_SCHEMA)],
-    }
+STAGE_DEFINITION = {
+    StageParams.PARAM_CMD: str,
+    Optional(StageParams.PARAM_WDIR): str,
+    Optional(StageParams.PARAM_DEPS): [str],
+    Optional(StageParams.PARAM_PARAMS): [
+        Any(str, PARAM_PSTAGE_NON_DEFAULT_SCHEMA)
+    ],
+    Optional(StageParams.PARAM_FROZEN): bool,
+    Optional(StageParams.PARAM_META): object,
+    Optional(StageParams.PARAM_ALWAYS_CHANGED): bool,
+    Optional(StageParams.PARAM_OUTS): [Any(str, OUT_PSTAGE_DETAILED_SCHEMA)],
+    Optional(StageParams.PARAM_METRICS): [
+        Any(str, OUT_PSTAGE_DETAILED_SCHEMA)
+    ],
+    Optional(StageParams.PARAM_PLOTS): [Any(str, PLOT_PSTAGE_SCHEMA)],
 }
+
+FOREACH_IN = {
+    Required(FOREACH_KWD): Any(dict, list, str),
+    Required(IN_KWD): STAGE_DEFINITION,
+}
+SINGLE_PIPELINE_STAGE_SCHEMA = {str: Any(STAGE_DEFINITION, FOREACH_IN)}
 MULTI_STAGE_SCHEMA = {
     STAGES: SINGLE_PIPELINE_STAGE_SCHEMA,
     USE_KWD: str,
