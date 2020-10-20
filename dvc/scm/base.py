@@ -112,7 +112,7 @@ class Base:
         """Returns current branch in the repo."""
         return ""
 
-    def list_branches(self, **kwargs):  # pylint: disable=no-self-use
+    def list_branches(self):  # pylint: disable=no-self-use
         """Returns a list of available branches in the repo."""
         return []
 
