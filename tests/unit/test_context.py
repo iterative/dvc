@@ -25,7 +25,7 @@ def test_context():
     assert "foo" in context
 
     with pytest.raises(KeyError):
-        context["foobar"]
+        _ = context["foobar"]
 
 
 def test_context_dict_ignores_keys_except_str():
@@ -48,7 +48,7 @@ def test_context_list():
     assert "baz" not in context
 
     with pytest.raises(IndexError):
-        context["lst"][3]
+        _ = context["lst"][3]
 
     context["lst"].insert(0, "baz")
     assert context["lst"] == CtxList(["baz"] + lst[:2])
