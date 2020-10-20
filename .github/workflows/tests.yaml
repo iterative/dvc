@@ -50,10 +50,19 @@ jobs:
         git config --global user.email "dvctester@example.com"
         git config --global user.name "DVC Tester"
     - name: run tests
-      run: python -m tests -ra --cov-report=xml
+      run: python -m tests -ra --cov-report=xml --tap-combined
     - name: upload coverage report
       if: github.event.name == 'push'
       uses: codecov/codecov-action@v1.0.13
       with:
         file: ./coverage.xml
         fail_ci_if_error: true
+    - name: Post TAP
+      uses: GoogleCloudPlatform/flaky-service/packages/action@v1.0.3
+      if: ${{ always() }}
+      with:
+        file-path: ${{github.workspace}}/testresults.tap
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        os: ${{runner.os}}
+        matrix: ${{toJson(matrix)}}
+        repo-description: ${{github.event.repository.description}}
