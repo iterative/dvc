@@ -1,5 +1,6 @@
 import logging
 import os
+from collections import defaultdict
 from copy import deepcopy
 from itertools import starmap
 from typing import TYPE_CHECKING
@@ -30,6 +31,7 @@ class DataResolver:
     def __init__(self, repo: "Repo", wdir: PathInfo, d: dict):
         to_import: PathInfo = wdir / d.get(USE_KWD, DEFAULT_PARAMS_FILE)
         vars_ = d.get(VARS_KWD, {})
+        vars_ctx = Context(vars_)
         if os.path.exists(to_import):
             self.global_ctx_source = to_import
             self.global_ctx = Context.load_from(repo.tree, str(to_import))
@@ -41,7 +43,7 @@ class DataResolver:
                 to_import,
             )
 
-        self.global_ctx.merge_update(vars_)
+        self.global_ctx.merge_update(vars_ctx)
         self.data: dict = d
         self.wdir = wdir
         self.repo = repo
@@ -92,11 +94,20 @@ class DataResolver:
         with context.track():
             stage_d = resolve(definition, context)
 
-        params = stage_d.get(PARAMS_KWD, []) + context.tracked
+        params = stage_d.get(PARAMS_KWD, []) + self._resolve_params(
+            context, wdir
+        )
 
         if params:
             stage_d[PARAMS_KWD] = params
         return {name: stage_d}
+
+    def _resolve_params(self, context: Context, wdir):
+        tracked = defaultdict(set)
+        for src, keys in context.tracked.items():
+            tracked[str(PathInfo(src).relative_to(wdir))].update(keys)
+
+        return [{file: list(keys)} for file, keys in tracked.items()]
 
     def _resolve_wdir(self, context: Context, wdir: str = None) -> PathInfo:
         if not wdir:

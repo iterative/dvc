@@ -1,9 +1,7 @@
-from collections import defaultdict
 from dataclasses import asdict
 from math import pi
 
 import pytest
-from funcy.seqs import first
 
 from dvc.parsing.context import Context, CtxDict, CtxList, Value
 from dvc.tree.local import LocalTree
@@ -244,7 +242,7 @@ def test_track(tmp_dir):
 
     def key_tracked(key):
         assert len(context.tracked) == 1
-        return key in context.tracked[0][str(path)]
+        return key in context.tracked[str(path)]
 
     with context.track():
         context.select("lst")
@@ -282,11 +280,7 @@ def test_track_from_multiple_files(tmp_dir):
     context.merge_update(c)
 
     def key_tracked(path, key):
-        tracked = defaultdict(list)
-        for item in context.tracked:
-            source = first(item)
-            tracked[source].extend(item[source])
-        return key in tracked[str(path)]
+        return key in context.tracked[str(path)]
 
     with context.track():
         context.select("Train")
