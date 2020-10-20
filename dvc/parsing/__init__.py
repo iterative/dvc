@@ -26,12 +26,10 @@ WDIR_KWD = "wdir"
 DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
 PARAMS_KWD = "params"
 
-DEFAULT_SENTINEL = object()
-
 
 class DataResolver:
-    def __init__(self, repo: "Repo", yaml_wdir: PathInfo, d: dict):
-        to_import: PathInfo = yaml_wdir / d.get(USE_KWD, DEFAULT_PARAMS_FILE)
+    def __init__(self, repo: "Repo", wdir: PathInfo, d: dict):
+        to_import: PathInfo = wdir / d.get(USE_KWD, DEFAULT_PARAMS_FILE)
         vars_ = d.get(VARS_KWD, {})
         if os.path.exists(to_import):
             self.global_ctx_source = to_import
@@ -46,7 +44,7 @@ class DataResolver:
 
         self.global_ctx.merge_update(vars_)
         self.data: dict = d
-        self._yaml_wdir = yaml_wdir
+        self.wdir = wdir
         self.repo = repo
 
     def _resolve_entry(self, name: str, definition):
@@ -62,7 +60,7 @@ class DataResolver:
     def _resolve_stage(self, context: Context, name: str, definition) -> dict:
         definition = deepcopy(definition)
         wdir = self._resolve_wdir(context, definition.get(WDIR_KWD))
-        if self._yaml_wdir != wdir:
+        if self.wdir != wdir:
             logger.debug(
                 "Stage %s has different wdir than dvc.yaml file", name
             )
@@ -103,6 +101,6 @@ class DataResolver:
 
     def _resolve_wdir(self, context: Context, wdir: str = None) -> PathInfo:
         if not wdir:
-            return self._yaml_wdir
+            return self.wdir
         wdir = resolve(wdir, context)
-        return self._yaml_wdir / str(wdir)
+        return self.wdir / str(wdir)
