@@ -4,8 +4,7 @@ from copy import deepcopy
 from itertools import starmap
 from typing import TYPE_CHECKING
 
-from funcy import join
-from funcy.seqs import first
+from funcy import first, join
 
 from dvc.dependency.param import ParamsDependency
 from dvc.path_info import PathInfo

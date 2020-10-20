@@ -25,7 +25,7 @@ def _merge(into, update, overwrite):
 
 @dataclass
 class Meta:
-    source: Optional[str]
+    source: Optional[str] = None
     dpaths: List[str] = field(default_factory=list)
 
     @staticmethod
@@ -42,16 +42,19 @@ class Meta:
         return ".".join(self.dpaths)
 
 
+def _default_meta():
+    return Meta(source=None)
+
+
 @dataclass
 class Value:
     value: Any
-    meta: Meta = field(compare=False, repr=False)
+    meta: Meta = field(
+        compare=False, default_factory=_default_meta, repr=False
+    )
 
     def __repr__(self):
-        return f"'{self}'"
-
-    def __str__(self) -> str:
-        return str(self.value)
+        return repr(self.value)
 
     def get_sources(self):
         return {self.meta.source: self.meta.path()}
@@ -75,7 +78,10 @@ class Container:
             container = CtxDict if isinstance(value, dict) else CtxList
             return container(value, meta=meta)
         else:
-            msg = "Unsupported value of type '{value}' in '{meta}'"
+            msg = (
+                "Unsupported value of type "
+                f"'{type(value).__name__}' in '{meta}'"
+            )
             raise TypeError(msg)
 
     def __repr__(self):
@@ -146,7 +152,7 @@ class CtxDict(Container, MutableMapping):
             return
         return super().__setitem__(key, value)
 
-    def merge_update(self, *args, overwrite=True):
+    def merge_update(self, *args, overwrite=False):
         for d in args:
             _merge(self.data, d, overwrite=overwrite)
 
