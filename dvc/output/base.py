@@ -282,6 +282,9 @@ class BaseOutput:
         self.hash_info = self.get_hash()
 
     def commit(self):
+        if not self.exists:
+            raise self.DoesNotExistError(self)
+
         assert self.hash_info
         if self.use_cache:
             self.cache.save(self.path_info, self.cache.tree, self.hash_info)
@@ -326,7 +329,7 @@ class BaseOutput:
         progress_callback=None,
         relink=False,
         filter_info=None,
-        allow_persist_missing=False,
+        allow_missing=False,
     ):
         if not self.use_cache:
             if progress_callback:
@@ -345,7 +348,7 @@ class BaseOutput:
                 filter_info=filter_info,
             )
         except CheckoutError:
-            if self.persist and allow_persist_missing:
+            if allow_missing:
                 return None
             raise
 
