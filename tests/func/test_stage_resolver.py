@@ -1,7 +1,7 @@
+import os
 from copy import deepcopy
 
 import pytest
-import os
 
 from dvc.dependency import _merge_params
 from dvc.parsing import DEFAULT_PARAMS_FILE, DataResolver
