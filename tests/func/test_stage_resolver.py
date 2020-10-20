@@ -1,6 +1,7 @@
 from copy import deepcopy
 
 import pytest
+import os
 
 from dvc.dependency import _merge_params
 from dvc.parsing import DEFAULT_PARAMS_FILE, DataResolver
@@ -173,6 +174,8 @@ def test_stage_with_wdir(tmp_dir, dvc):
     dump_yaml(tmp_dir / DEFAULT_PARAMS_FILE, {"dict": {"bar": "bar"}})
     dump_json(data_dir / DEFAULT_PARAMS_FILE, {"dict": {"foo": "foo"}})
     resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
+
+    root_params_file = os.path.relpath(tmp_dir / "params.yaml", data_dir)
     assert_stage_equal(
         resolver.resolve(),
         {
@@ -183,7 +186,7 @@ def test_stage_with_wdir(tmp_dir, dvc):
                     "params": [
                         "dict.foo",
                         "value1",
-                        {"../params.yaml": ["dict.bar"]},
+                        {root_params_file: ["dict.bar"]},
                     ],
                 }
             }
@@ -212,6 +215,8 @@ def test_with_templated_wdir(tmp_dir, dvc):
     data_dir.mkdir()
     dump_json(data_dir / DEFAULT_PARAMS_FILE, {"dict": {"foo": "foo"}})
     resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
+
+    root_params_file = os.path.relpath(tmp_dir / "params.yaml", data_dir)
     assert_stage_equal(
         resolver.resolve(),
         {
@@ -222,7 +227,7 @@ def test_with_templated_wdir(tmp_dir, dvc):
                     "params": [
                         "dict.foo",
                         "value1",
-                        {"../params.yaml": ["dict.bar", "dict.ws"]},
+                        {root_params_file: ["dict.bar", "dict.ws"]},
                     ],
                 }
             }
