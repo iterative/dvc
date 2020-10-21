@@ -426,13 +426,31 @@ class Experiments:
         workspace.
         """
         if checkpoint_continue:
-            rev = self.scm.resolve_rev(checkpoint_continue)
-            branch = self._get_branch_containing(rev)
-            if not branch:
-                raise DvcException(
-                    "Could not find checkpoint experiment "
-                    f"'{checkpoint_continue}'"
-                )
+            branch = None
+            if checkpoint_continue == ":last":
+                # Continue from most recently committed checkpoint
+                for head in sorted(
+                    self.scm.repo.heads,
+                    key=lambda h: h.commit.committed_date,
+                    reverse=True,
+                ):
+                    exp_branch = head.name
+                    m = self.BRANCH_RE.match(exp_branch)
+                    if m and m.group("checkpoint"):
+                        branch = exp_branch
+                        break
+                if not branch:
+                    raise DvcException(
+                        "No existing checkpoint experiment to continue"
+                    )
+            else:
+                rev = self.scm.resolve_rev(checkpoint_continue)
+                branch = self._get_branch_containing(rev)
+                if not branch:
+                    raise DvcException(
+                        "Could not find checkpoint experiment "
+                        f"'{checkpoint_continue}'"
+                    )
             logger.debug(
                 "Continuing checkpoint experiment '%s'", checkpoint_continue
             )

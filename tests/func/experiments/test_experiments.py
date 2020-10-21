@@ -301,7 +301,8 @@ def test_new_checkpoint(tmp_dir, scm, dvc, mocker):
     ).read_text().strip() == "foo: 2"
 
 
-def test_continue_checkpoint(tmp_dir, scm, dvc, mocker):
+@pytest.mark.parametrize("last", [True, False])
+def test_continue_checkpoint(tmp_dir, scm, dvc, mocker, last):
     tmp_dir.gen("checkpoint.py", CHECKPOINT_SCRIPT)
     tmp_dir.gen("params.yaml", "foo: 1")
     stage = dvc.run(
@@ -326,7 +327,10 @@ def test_continue_checkpoint(tmp_dir, scm, dvc, mocker):
     results = dvc.experiments.run(
         stage.addressing, checkpoint=True, params=["foo=2"]
     )
-    exp_rev = first(results)
+    if last:
+        exp_rev = ":last"
+    else:
+        exp_rev = first(results)
 
     dvc.experiments.run(
         stage.addressing, checkpoint=True, checkpoint_continue=exp_rev,
