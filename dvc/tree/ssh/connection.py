@@ -2,6 +2,7 @@ import errno
 import logging
 import os
 import posixpath
+import shlex
 import stat
 from contextlib import suppress
 
@@ -291,6 +292,7 @@ class SSHConnection:
          Example:
               MD5 (foo.txt) = f3d220a856b52aabbf294351e8a24300
         """
+        path = shlex.quote(path)
         if self.uname == "Linux":
             md5 = self.execute("md5sum " + path).split()[0]
         elif self.uname == "Darwin":
