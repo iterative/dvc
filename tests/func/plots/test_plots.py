@@ -663,3 +663,15 @@ def test_show_non_plot_and_plot_with_params(
     plot_content.pop("title")
     plot2_content.pop("title")
     assert plot_content == plot2_content
+
+
+def test_show_no_repo(tmp_dir):
+    metric = [
+        {"first_val": 100, "val": 2},
+        {"first_val": 200, "val": 3},
+    ]
+    _write_json(tmp_dir, metric, "metric.json")
+
+    dvc = Repo(uninitialized=True)
+
+    dvc.plots.show(["metric.json"])
