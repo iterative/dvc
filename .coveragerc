@@ -1,5 +1,6 @@
 [run]
 branch = True
+source = dvc
 omit =
     *__main__.py
 
