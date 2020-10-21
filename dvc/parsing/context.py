@@ -56,6 +56,9 @@ class Value:
     def __repr__(self):
         return repr(self.value)
 
+    def __str__(self) -> str:
+        return str(self.value)
+
     def get_sources(self):
         return {self.meta.source: self.meta.path()}
 
@@ -103,7 +106,10 @@ class Container:
         return iter(self.data)
 
     def __eq__(self, o):
-        return o.data == self.data
+        container = type(self)
+        if isinstance(o, container):
+            return o.data == self.data
+        return container(o) == self
 
     def select(self, key: str):
         index, *rems = key.split(sep=".", maxsplit=1)

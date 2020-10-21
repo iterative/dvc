@@ -2,7 +2,7 @@ from voluptuous import Any, Optional, Required, Schema
 
 from dvc import dependency, output
 from dvc.output import CHECKSUMS_SCHEMA, BaseOutput
-from dvc.parsing import FOREACH_KWD, IN_KWD, USE_KWD, VARS_KWD
+from dvc.parsing import FOREACH_KWD, IN_KWD, SET_KWD, USE_KWD, VARS_KWD
 from dvc.stage.params import StageParams
 
 STAGES = "stages"
@@ -50,6 +50,7 @@ PARAM_PSTAGE_NON_DEFAULT_SCHEMA = {str: [str]}
 
 STAGE_DEFINITION = {
     StageParams.PARAM_CMD: str,
+    Optional(SET_KWD): dict,
     Optional(StageParams.PARAM_WDIR): str,
     Optional(StageParams.PARAM_DEPS): [str],
     Optional(StageParams.PARAM_PARAMS): [
@@ -66,6 +67,7 @@ STAGE_DEFINITION = {
 }
 
 FOREACH_IN = {
+    Optional(SET_KWD): dict,
     Required(FOREACH_KWD): Any(dict, list, str),
     Required(IN_KWD): STAGE_DEFINITION,
 }
