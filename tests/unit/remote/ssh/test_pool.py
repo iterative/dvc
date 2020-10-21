@@ -25,14 +25,6 @@ def test_escapes_filepaths_for_md5_calculation(ssh_server, uname, md5command, mo
     path_with_spaces = "Some Path With Spaces"
     escaped_path_with_spaces = "\'Some Path With Spaces\'"
     fake_md5 = "x" * 32
-    return_values = {
-        "uname": uname,
-        f"{md5command} {path_with_spaces}": fake_md5,
-        f"{md5command} {escaped_path_with_spaces}": fake_md5,
-    }
-
-    def mock_execute(arg):
-        return return_values[arg]
 
     with get_connection(
         SSHConnection,
@@ -41,7 +33,63 @@ def test_escapes_filepaths_for_md5_calculation(ssh_server, uname, md5command, mo
         username=TEST_SSH_USER,
         key_filename=TEST_SSH_KEY_PATH,
     ) as connection:
-        connection.execute = mocker.Mock(side_effect=mock_execute)
+        mocker.patch.object(SSHConnection, "uname", new_callable=mocker.PropertyMock(return_value=uname))
+        connection.execute = mocker.Mock(return_value=fake_md5)
         connection.md5(path_with_spaces)
         connection.execute.assert_called_with(f"{md5command} {escaped_path_with_spaces}")
 
+
+def test_escapes_filepaths_for_copy(ssh_server, mocker):
+    src_path_with_spaces = "Path With Spaces"
+    escaped_src_path_with_spaces = "\'Path With Spaces\'"
+    dest_path_with_spaces = "Other Path With Spaces"
+    escaped_dest_path_with_spaces = "\'Other Path With Spaces\'"
+
+    with get_connection(
+        SSHConnection,
+        host=ssh_server.host,
+        port=ssh_server.port,
+        username=TEST_SSH_USER,
+        key_filename=TEST_SSH_KEY_PATH,
+    ) as connection:
+        connection.execute = mocker.Mock()
+        connection.copy(src_path_with_spaces, dest_path_with_spaces)
+        connection.execute.assert_called_with(f"cp {escaped_src_path_with_spaces} {escaped_dest_path_with_spaces}")
+
+
+@pytest.mark.parametrize("uname,cp_command", [("Linux", "cp --reflink"), ("Darwin", "cp -c")])
+def test_escapes_filepaths_for_reflink(ssh_server, uname, cp_command, mocker):
+    src_path_with_spaces = "Path With Spaces"
+    escaped_src_path_with_spaces = "\'Path With Spaces\'"
+    dest_path_with_spaces = "Other Path With Spaces"
+    escaped_dest_path_with_spaces = "\'Other Path With Spaces\'"
+
+    with get_connection(
+        SSHConnection,
+        host=ssh_server.host,
+        port=ssh_server.port,
+        username=TEST_SSH_USER,
+        key_filename=TEST_SSH_KEY_PATH,
+    ) as connection:
+        mocker.patch.object(SSHConnection, "uname", new_callable=mocker.PropertyMock(return_value=uname))
+        connection.execute = mocker.Mock()
+        connection.reflink(src_path_with_spaces, dest_path_with_spaces)
+        connection.execute.assert_called_with(f"{cp_command} {escaped_src_path_with_spaces} {escaped_dest_path_with_spaces}")
+
+
+def test_escapes_filepaths_for_hardlink(ssh_server, mocker):
+    src_path_with_spaces = "Path With Spaces"
+    escaped_src_path_with_spaces = "\'Path With Spaces\'"
+    dest_path_with_spaces = "Other Path With Spaces"
+    escaped_dest_path_with_spaces = "\'Other Path With Spaces\'"
+
+    with get_connection(
+        SSHConnection,
+        host=ssh_server.host,
+        port=ssh_server.port,
+        username=TEST_SSH_USER,
+        key_filename=TEST_SSH_KEY_PATH,
+    ) as connection:
+        connection.execute = mocker.Mock()
+        connection.hardlink(src_path_with_spaces, dest_path_with_spaces)
+        connection.execute.assert_called_with(f"ln {escaped_src_path_with_spaces} {escaped_dest_path_with_spaces}")

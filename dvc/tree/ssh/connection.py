@@ -306,6 +306,8 @@ class SSHConnection:
         return md5
 
     def copy(self, src, dest):
+        dest = shlex.quote(dest)
+        src = shlex.quote(src)
         self.execute(f"cp {src} {dest}")
 
     def open_max_sftp_channels(self):
@@ -327,6 +329,8 @@ class SSHConnection:
         self.sftp.symlink(src, dest)
 
     def reflink(self, src, dest):
+        dest = shlex.quote(dest)
+        src = shlex.quote(src)
         if self.uname == "Linux":
             return self.execute(f"cp --reflink {src} {dest}")
 
@@ -336,4 +340,6 @@ class SSHConnection:
         raise DvcException(f"'{self.uname}' is not supported as a SSH remote")
 
     def hardlink(self, src, dest):
+        dest = shlex.quote(dest)
+        src = shlex.quote(src)
         self.execute(f"ln {src} {dest}")
