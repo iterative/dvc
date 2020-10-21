@@ -710,12 +710,16 @@ def add_parser(subparsers, parent_parser):
     experiments_run_parser.add_argument(
         "--continue",
         type=str,
+        nargs="?",
         default=None,
+        const=":last",
         dest="checkpoint_continue",
         help=(
             "Continue from the specified checkpoint experiment "
-            "(implies --checkpoint)."
+            "(implies --checkpoint). If no experiment revision is provided, "
+            "the most recently run checkpoint experiment will be used."
         ),
+        metavar="<experiment_rev>",
     )
     experiments_run_parser.add_argument(
         "--reset",
