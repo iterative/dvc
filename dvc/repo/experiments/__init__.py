@@ -319,7 +319,12 @@ class Experiments:
         def _update(dict_, other):
             for key, value in other.items():
                 if isinstance(value, Mapping):
-                    dict_[key] = _update(dict_.get(key, {}), value)
+                    if isinstance(dict_, Mapping):
+                        fallback_value = dict_.get(key, {})
+                    elif isinstance(dict_, list) and key.isdigit():
+                        key = int(key)
+                        fallback_value = dict_[key]
+                    dict_[key] = _update(fallback_value, value)
                 else:
                     dict_[key] = value
             return dict_
