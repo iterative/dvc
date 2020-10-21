@@ -44,7 +44,8 @@ jobs:
         python-version: ${{ matrix.pyv }}
     - name: install
       run: |
-        pip install ".[all,tests]"
+        pip install wheel
+        pip install -e ".[all,tests]"
     - name: setup git
       run: |
         git config --global user.email "dvctester@example.com"
