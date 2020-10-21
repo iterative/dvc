@@ -185,9 +185,7 @@ class Context(CtxDict):
 
     @property
     def tracked(self):
-        return [
-            {file: list(keys)} for file, keys in self._tracked_data.items()
-        ]
+        return self._tracked_data
 
     def select(self, key: str):
         node = super().select(key)
