@@ -40,7 +40,9 @@ def _welcome_message():
     logger.info(msg)
 
 
-def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
+def init(
+    root_dir=os.curdir, no_scm=False, force=False, subdir=False, quiet=False
+):
     """
     Creates an empty repo on the given directory -- basically a
     `.dvc` directory with subdirectories for configuration and cache.
@@ -108,8 +110,10 @@ def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
 
     if scm.ignore_file:
         scm.add([os.path.join(dvc_dir, scm.ignore_file)])
-        logger.info("\nYou can now commit the changes to git.\n")
+        if not quiet:
+            logger.info("\nYou can now commit the changes to git.\n")
 
-    _welcome_message()
+    if not quiet:
+        _welcome_message()
 
     return proj
