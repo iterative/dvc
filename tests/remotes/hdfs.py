@@ -200,6 +200,6 @@ class WebHDFS(Base, URLInfo):  # pylint: disable=abstract-method
 
 @pytest.fixture
 def webhdfs(hdfs_server):
-    port = "50070"
+    port = hdfs_server
     url = f"webhdfs://127.0.0.1:{port}/{uuid.uuid4()}"
     yield WebHDFS(url)
