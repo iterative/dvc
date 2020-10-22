@@ -1,5 +1,4 @@
 import logging
-import os
 import threading
 from contextlib import contextmanager
 
@@ -25,12 +24,7 @@ class WebHDFSTree(BaseTree):
         url = config.get("url")
         self.path_info = self.PATH_CLS(url) if url else None
 
-        self.hdfscli_config = (
-            config.get("hdfscli_config")
-            or os.getenv("HDFSCLI_CONFIG")
-            or "~/.hdfscli.cfg"
-        )
-
+        self.hdfscli_config = config.get("hdfscli_config")
         self.token = config.get("webhdfs_token")
         self.user = config.get("user")
         self.alias = config.get("webhdfs_alias")
