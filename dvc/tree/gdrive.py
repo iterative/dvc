@@ -366,10 +366,7 @@ class GDriveTree(BaseTree):
                 total=total,
                 disable=no_progress_bar,
             ) as wrapped:
-                # PyDrive2 doesn't like content property setting for empty
-                # files https://github.com/iterative/PyDrive2/issues/59
-                if total:
-                    item.content = wrapped
+                item.content = wrapped
                 item.Upload()
         return item
 
