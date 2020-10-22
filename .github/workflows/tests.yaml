@@ -52,7 +52,6 @@ jobs:
     - name: run tests
       run: python -m tests -ra --cov-report=xml
     - name: upload coverage report
-      if: github.event.name == 'push'
       uses: codecov/codecov-action@v1.0.13
       with:
         file: ./coverage.xml
