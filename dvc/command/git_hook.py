@@ -103,6 +103,7 @@ def add_parser(subparsers, parent_parser):
         "pre-commit",
         parents=[parent_parser],
         description=PRE_COMMIT_HELP,
+        add_help=False,
         help=PRE_COMMIT_HELP,
     )
     pre_commit_parser.add_argument(
@@ -115,6 +116,7 @@ def add_parser(subparsers, parent_parser):
         "post-checkout",
         parents=[parent_parser],
         description=POST_CHECKOUT_HELP,
+        add_help=False,
         help=POST_CHECKOUT_HELP,
     )
     post_checkout_parser.add_argument(
@@ -127,6 +129,7 @@ def add_parser(subparsers, parent_parser):
         "pre-push",
         parents=[parent_parser],
         description=PRE_PUSH_HELP,
+        add_help=False,
         help=PRE_PUSH_HELP,
     )
     pre_push_parser.add_argument(
@@ -139,6 +142,7 @@ def add_parser(subparsers, parent_parser):
         "merge-driver",
         parents=[parent_parser],
         description=MERGE_DRIVER_HELP,
+        add_help=False,
         help=MERGE_DRIVER_HELP,
     )
     merge_driver_parser.add_argument(

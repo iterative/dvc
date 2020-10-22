@@ -29,6 +29,7 @@ def add_parser(subparsers, parent_parser):
         "unprotect",
         parents=[parent_parser],
         description=append_doc_link(UNPROTECT_HELP, "unprotect"),
+        add_help=False,
         help=UNPROTECT_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

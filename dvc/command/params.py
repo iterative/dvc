@@ -61,6 +61,7 @@ def add_parser(subparsers, parent_parser):
         "params",
         parents=[parent_parser],
         description=append_doc_link(PARAMS_HELP, "params"),
+        add_help=False,
         help=PARAMS_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -80,6 +81,7 @@ def add_parser(subparsers, parent_parser):
         "diff",
         parents=[parent_parser],
         description=append_doc_link(PARAMS_DIFF_HELP, "params/diff"),
+        add_help=False,
         help=PARAMS_DIFF_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

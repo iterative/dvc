@@ -27,6 +27,7 @@ def add_parser(subparsers, parent_parser):
         "remove",
         parents=[parent_parser],
         description=append_doc_link(REMOVE_HELP, "remove"),
+        add_help=False,
         help=REMOVE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

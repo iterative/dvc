@@ -126,6 +126,7 @@ def add_parser(subparsers, _parent_parser):
         "pull",
         parents=[shared_parent_parser()],
         description=append_doc_link(PULL_HELP, "pull"),
+        add_help=False,
         help=PULL_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -188,6 +189,7 @@ def add_parser(subparsers, _parent_parser):
         "push",
         parents=[shared_parent_parser()],
         description=append_doc_link(PUSH_HELP, "push"),
+        add_help=False,
         help=PUSH_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -246,6 +248,7 @@ def add_parser(subparsers, _parent_parser):
         "fetch",
         parents=[shared_parent_parser()],
         description=append_doc_link(FETCH_HELP, "fetch"),
+        add_help=False,
         help=FETCH_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -306,6 +309,7 @@ def add_parser(subparsers, _parent_parser):
         "status",
         parents=[shared_parent_parser()],
         description=append_doc_link(STATUS_HELP, "status"),
+        add_help=False,
         help=STATUS_HELP,
         conflict_handler="resolve",
         formatter_class=argparse.RawDescriptionHelpFormatter,

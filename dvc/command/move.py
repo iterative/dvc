@@ -33,6 +33,7 @@ def add_parser(subparsers, parent_parser):
         "move",
         parents=[parent_parser],
         description=append_doc_link(MOVE_DESCRIPTION, "move"),
+        add_help=False,
         help=MOVE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

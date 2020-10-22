@@ -44,6 +44,7 @@ def add_parser(subparsers, parent_parser):
         "completion",
         parents=[parent_parser],
         description=append_doc_link(COMPLETION_DESCRIPTION, "completion"),
+        add_help=False,
         help=COMPLETION_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

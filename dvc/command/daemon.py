@@ -55,6 +55,7 @@ def add_parser(subparsers, parent_parser):
         "updater",
         parents=[parent_parser],
         description=DAEMON_UPDATER_HELP,
+        add_help=False,
         help=DAEMON_UPDATER_HELP,
     )
     daemon_updater_parser.set_defaults(func=CmdDaemonUpdater)
@@ -64,6 +65,7 @@ def add_parser(subparsers, parent_parser):
         "analytics",
         parents=[parent_parser],
         description=DAEMON_ANALYTICS_HELP,
+        add_help=False,
         help=DAEMON_ANALYTICS_HELP,
     )
     daemon_analytics_parser.add_argument(

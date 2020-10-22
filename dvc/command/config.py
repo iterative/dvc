@@ -82,6 +82,7 @@ def add_parser(subparsers, parent_parser):
         "config",
         parents=[parent_config_parser, parent_parser],
         description=append_doc_link(CONFIG_HELP, "config"),
+        add_help=False,
         help=CONFIG_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

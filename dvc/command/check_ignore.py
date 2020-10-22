@@ -88,6 +88,7 @@ def add_parser(subparsers, parent_parser):
         "check-ignore",
         parents=[parent_parser],
         description=append_doc_link(ADD_HELP, "check-ignore"),
+        add_help=False,
         help=ADD_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

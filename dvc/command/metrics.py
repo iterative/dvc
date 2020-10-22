@@ -148,6 +148,7 @@ def add_parser(subparsers, parent_parser):
         "metrics",
         parents=[parent_parser],
         description=append_doc_link(METRICS_HELP, "metrics"),
+        add_help=False,
         help=METRICS_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -164,6 +165,7 @@ def add_parser(subparsers, parent_parser):
         "show",
         parents=[parent_parser],
         description=append_doc_link(METRICS_SHOW_HELP, "metrics/show"),
+        add_help=False,
         help=METRICS_SHOW_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -221,6 +223,7 @@ def add_parser(subparsers, parent_parser):
         "diff",
         parents=[parent_parser],
         description=append_doc_link(METRICS_DIFF_HELP, "metrics/diff"),
+        add_help=False,
         help=METRICS_DIFF_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

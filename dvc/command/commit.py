@@ -38,6 +38,7 @@ def add_parser(subparsers, parent_parser):
         "commit",
         parents=[parent_parser],
         description=append_doc_link(COMMIT_HELP, "commit"),
+        add_help=False,
         help=COMMIT_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

@@ -69,6 +69,7 @@ def add_parser(subparsers, parent_parser):
         "gc",
         parents=[parent_parser],
         description=append_doc_link(GC_DESCRIPTION, "gc"),
+        add_help=False,
         help=GC_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

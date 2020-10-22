@@ -27,6 +27,7 @@ def add_parser(subparsers, parent_parser):
         "cache",
         parents=[parent_parser],
         description=append_doc_link(CACHE_HELP, "cache"),
+        add_help=False,
         help=CACHE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -47,6 +48,7 @@ def add_parser(subparsers, parent_parser):
         "dir",
         parents=[parent_parser, parent_cache_config_parser],
         description=append_doc_link(CACHE_HELP, "cache/dir"),
+        add_help=False,
         help=CACHE_DIR_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

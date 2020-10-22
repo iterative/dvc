@@ -138,6 +138,16 @@ def get_parent_parser():
     """
     parent_parser = argparse.ArgumentParser(add_help=False)
 
+    # NOTE: We are doing this to capitalize help message.
+    # All subparsers that use this as parent should specify "add_help=False"
+    parent_parser.add_argument(
+        "-h",
+        "--help",
+        action="help",
+        default=argparse.SUPPRESS,
+        help="Show this help message and exit.",
+    )
+
     parent_parser.add_argument(
         "--cprofile",
         action="store_true",
@@ -168,18 +178,6 @@ def get_main_parser():
         parents=[parent_parser],
         formatter_class=argparse.RawTextHelpFormatter,
         add_help=False,
-    )
-
-    # NOTE: We are doing this to capitalize help message.
-    # Unfortunately, there is no easier and clearer way to do it,
-    # as adding this argument in get_parent_parser() either in
-    # log_level_group or on parent_parser itself will cause unexpected error.
-    parser.add_argument(
-        "-h",
-        "--help",
-        action="help",
-        default=argparse.SUPPRESS,
-        help="Show this help message and exit.",
     )
 
     # NOTE: On some python versions action='version' prints to stderr

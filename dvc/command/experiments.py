@@ -486,6 +486,7 @@ def add_parser(subparsers, parent_parser):
         aliases=["exp"],
         description=append_doc_link(EXPERIMENTS_HELP, "experiments"),
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        add_help=False,
     )
 
     experiments_subparsers = experiments_parser.add_subparsers(
@@ -501,6 +502,7 @@ def add_parser(subparsers, parent_parser):
         "show",
         parents=[parent_parser],
         description=append_doc_link(EXPERIMENTS_SHOW_HELP, "experiments/show"),
+        add_help=False,
         help=EXPERIMENTS_SHOW_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -605,6 +607,7 @@ def add_parser(subparsers, parent_parser):
         description=append_doc_link(
             EXPERIMENTS_CHECKOUT_HELP, "experiments/checkout"
         ),
+        add_help=False,
         help=EXPERIMENTS_CHECKOUT_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -620,6 +623,7 @@ def add_parser(subparsers, parent_parser):
         "diff",
         parents=[parent_parser],
         description=append_doc_link(EXPERIMENTS_DIFF_HELP, "experiments/diff"),
+        add_help=False,
         help=EXPERIMENTS_DIFF_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -679,6 +683,7 @@ def add_parser(subparsers, parent_parser):
         "run",
         parents=[parent_parser],
         description=append_doc_link(EXPERIMENTS_RUN_HELP, "experiments/run"),
+        add_help=False,
         help=EXPERIMENTS_RUN_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

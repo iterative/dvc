@@ -116,6 +116,7 @@ def add_parser(subparsers, parent_parser):
         "plots",
         parents=[parent_parser],
         description=append_doc_link(PLOTS_HELP, "plots"),
+        add_help=False,
         help=PLOTS_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -131,6 +132,7 @@ def add_parser(subparsers, parent_parser):
         "show",
         parents=[parent_parser],
         description=append_doc_link(SHOW_HELP, "plots/show"),
+        add_help=False,
         help=SHOW_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -153,6 +155,7 @@ def add_parser(subparsers, parent_parser):
         "diff",
         parents=[parent_parser],
         description=append_doc_link(PLOTS_DIFF_HELP, "plots/diff"),
+        add_help=False,
         help=PLOTS_DIFF_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -183,6 +186,7 @@ def add_parser(subparsers, parent_parser):
         "modify",
         parents=[parent_parser],
         description=append_doc_link(PLOTS_MODIFY_HELP, "plots/modify"),
+        add_help=False,
         help=PLOTS_MODIFY_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

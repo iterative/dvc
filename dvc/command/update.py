@@ -29,6 +29,7 @@ def add_parser(subparsers, parent_parser):
         "update",
         parents=[parent_parser],
         description=append_doc_link(UPDATE_HELP, "update"),
+        add_help=False,
         help=UPDATE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

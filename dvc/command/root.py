@@ -21,6 +21,7 @@ def add_parser(subparsers, parent_parser):
         "root",
         parents=[parent_parser],
         description=append_doc_link(ROOT_HELP, "root"),
+        add_help=False,
         help=ROOT_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

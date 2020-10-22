@@ -90,6 +90,7 @@ def add_parser(subparsers, parent_parser):
         "run",
         parents=[parent_parser],
         description=append_doc_link(RUN_HELP, "run"),
+        add_help=False,
         help=RUN_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

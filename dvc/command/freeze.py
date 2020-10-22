@@ -36,6 +36,7 @@ def add_parser(subparsers, parent_parser):
         "freeze",
         parents=[parent_parser],
         description=append_doc_link(FREEZE_HELP, "freeze"),
+        add_help=False,
         help=FREEZE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -49,6 +50,7 @@ def add_parser(subparsers, parent_parser):
         "unfreeze",
         parents=[parent_parser],
         description=append_doc_link(UNFREEZE_HELP, "unfreeze"),
+        add_help=False,
         help=UNFREEZE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

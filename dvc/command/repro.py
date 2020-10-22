@@ -180,6 +180,7 @@ def add_parser(subparsers, parent_parser):
         "repro",
         parents=[parent_parser],
         description=append_doc_link(REPRO_HELP, "repro"),
+        add_help=False,
         help=REPRO_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

@@ -150,6 +150,7 @@ def add_parser(subparsers, parent_parser):
         "remote",
         parents=[parent_parser],
         description=append_doc_link(REMOTE_HELP, "remote"),
+        add_help=False,
         help=REMOTE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -166,6 +167,7 @@ def add_parser(subparsers, parent_parser):
         "add",
         parents=[parent_config_parser, parent_parser],
         description=append_doc_link(REMOTE_ADD_HELP, "remote/add"),
+        add_help=False,
         help=REMOTE_ADD_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -197,6 +199,7 @@ def add_parser(subparsers, parent_parser):
         "default",
         parents=[parent_config_parser, parent_parser],
         description=append_doc_link(REMOTE_DEFAULT_HELP, "remote/default"),
+        add_help=False,
         help=REMOTE_DEFAULT_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -217,6 +220,7 @@ def add_parser(subparsers, parent_parser):
         "modify",
         parents=[parent_config_parser, parent_parser],
         description=append_doc_link(REMOTE_MODIFY_HELP, "remote/modify"),
+        add_help=False,
         help=REMOTE_MODIFY_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -241,6 +245,7 @@ def add_parser(subparsers, parent_parser):
         "list",
         parents=[parent_config_parser, parent_parser],
         description=append_doc_link(REMOTE_LIST_HELP, "remote/list"),
+        add_help=False,
         help=REMOTE_LIST_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -251,6 +256,7 @@ def add_parser(subparsers, parent_parser):
         "remove",
         parents=[parent_config_parser, parent_parser],
         description=append_doc_link(REMOTE_REMOVE_HELP, "remote/remove"),
+        add_help=False,
         help=REMOTE_REMOVE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -263,6 +269,7 @@ def add_parser(subparsers, parent_parser):
         "rename",
         parents=[parent_config_parser, parent_parser],
         description=append_doc_link(REMOTE_RENAME_HELP, "remote/rename"),
+        add_help=False,
         help=REMOTE_RENAME_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

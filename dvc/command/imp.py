@@ -38,6 +38,7 @@ def add_parser(subparsers, parent_parser):
         "import",
         parents=[parent_parser],
         description=append_doc_link(IMPORT_HELP, "import"),
+        add_help=False,
         help=IMPORT_HELP,
         formatter_class=argparse.RawTextHelpFormatter,
     )

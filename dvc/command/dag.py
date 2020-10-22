@@ -90,6 +90,7 @@ def add_parser(subparsers, parent_parser):
         "dag",
         parents=[parent_parser],
         description=append_doc_link(DAG_HELP, "dag"),
+        add_help=False,
         help=DAG_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

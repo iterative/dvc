@@ -56,6 +56,7 @@ def add_parser(subparsers, parent_parser):
         "get",
         parents=[parent_parser],
         description=append_doc_link(GET_HELP, "get"),
+        add_help=False,
         help=GET_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

@@ -22,6 +22,7 @@ def add_parser(subparsers, parent_parser):
         "version",
         parents=[parent_parser],
         description=append_doc_link(VERSION_HELP, "version"),
+        add_help=False,
         help=VERSION_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         aliases=["doctor"],

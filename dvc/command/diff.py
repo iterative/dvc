@@ -164,6 +164,7 @@ def add_parser(subparsers, parent_parser):
         "diff",
         parents=[parent_parser],
         description=append_doc_link(DIFF_DESCRIPTION, "diff"),
+        add_help=False,
         help=DIFF_DESCRIPTION,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

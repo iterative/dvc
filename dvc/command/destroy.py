@@ -38,6 +38,7 @@ def add_parser(subparsers, parent_parser):
         "destroy",
         parents=[parent_parser],
         description=append_doc_link(DESTROY_HELP, "destroy"),
+        add_help=False,
         help=DESTROY_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

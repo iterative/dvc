@@ -73,6 +73,7 @@ def add_parser(subparsers, parent_parser):
         "checkout",
         parents=[parent_parser],
         description=append_doc_link(CHECKOUT_HELP, "checkout"),
+        add_help=False,
         help=CHECKOUT_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
