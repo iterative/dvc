@@ -3,6 +3,7 @@ import io
 import logging
 import os
 from collections import OrderedDict
+from collections.abc import Mapping
 from datetime import date, datetime
 from itertools import groupby
 from typing import Iterable, Optional
@@ -184,15 +185,20 @@ def _format_time(timestamp):
     return timestamp.strftime(fmt)
 
 
-def _format_float(val, precision=DEFAULT_PRECISION):
+def _format_field(val, precision=DEFAULT_PRECISION):
     if isinstance(val, float):
         fmt = f"{{:.{precision}g}}"
         return fmt.format(val)
-
+    elif isinstance(val, Mapping):
+        return {k: _format_field(v) for k, v in val.items()}
+    elif isinstance(val, list):
+        return [_format_field(x) for x in val]
     return str(val)
 
 
 def _extend_row(row, names, items, precision):
+    from rich.text import Text
+
     if not items:
         row.extend(["-"] * len(names))
         return
@@ -208,7 +214,10 @@ def _extend_row(row, names, items, precision):
                 if value is None:
                     text = "-"
                 else:
-                    text = _format_float(value, precision)
+                    # wrap field data in rich.Text, otherwise rich may
+                    # interpret unescaped braces from list/dict types as rich
+                    # markup tags
+                    text = Text(str(_format_field(value, precision)))
                 row.append(text)
             else:
                 row.append("-")
@@ -356,10 +365,10 @@ def _show_diff(
             row = [] if no_path else [fname]
             row.append(item)
             if old:
-                row.append(_format_float(change.get("old"), precision))
-            row.append(_format_float(change["new"], precision))
+                row.append(_format_field(change.get("old"), precision))
+            row.append(_format_field(change["new"], precision))
             row.append(
-                _format_float(
+                _format_field(
                     change.get("diff", "diff not supported"), precision
                 )
             )
