@@ -97,7 +97,7 @@ class LocalExecutor(ExperimentExecutor):
         self.tmp_dir = TemporaryDirectory()
 
         # init empty DVC repo (will be overwritten when input is uploaded)
-        Repo.init(root_dir=self.tmp_dir.name, no_scm=True, quiet=True)
+        Repo.init(root_dir=self.tmp_dir.name, no_scm=True)
         logger.debug(
             "Init local executor in dir '%s' with baseline '%s'.",
             self.tmp_dir,
