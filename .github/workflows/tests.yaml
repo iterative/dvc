@@ -44,13 +44,14 @@ jobs:
         python-version: ${{ matrix.pyv }}
     - name: install
       run: |
-        pip install ".[all,tests]"
+        pip install wheel
+        pip install -e ".[all,tests]"
     - name: setup git
       run: |
         git config --global user.email "dvctester@example.com"
         git config --global user.name "DVC Tester"
     - name: run tests
-      run: python -m tests -ra --cov-report=xml
+      run: python -m tests -ra --cov-report=xml --cov-report=term
     - name: upload coverage report
       uses: codecov/codecov-action@v1.0.13
       with:
