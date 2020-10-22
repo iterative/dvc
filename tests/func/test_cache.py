@@ -1,3 +1,4 @@
+import logging
 import os
 import platform
 import stat
@@ -10,7 +11,7 @@ from dvc.cache.base import DirCacheError
 from dvc.hash_info import HashInfo
 from dvc.main import main
 from dvc.utils import relpath
-from tests.basic_env import TestDir, TestDvc
+from tests.basic_env import TestDir, TestDvc, TestDvcFixture
 
 
 class TestCache(TestDvc):
@@ -187,6 +188,31 @@ class TestCmdCacheDir(TestDvc):
         self.assertEqual(len(subdirs), 1)
         files = os.listdir(os.path.join(tmpdir, subdirs[0]))
         self.assertEqual(len(files), 1)
+
+
+def test_cache_status_command(caplog):
+    dvc_fixture = TestDvcFixture()
+    dvc_fixture.setUp()
+    dvc_fixture.dvc.add(TestDvcFixture.FOO)
+    dvc_fixture.dvc.add(TestDvcFixture.DATA_DIR, recursive=True)
+    dvc_fixture.dvc.add(TestDvcFixture.DATA_SUB_DIR, recursive=True)
+
+    with caplog.at_level(logging.INFO):
+        ret = main(["cache", "status"])
+        assert ret == 0
+        logs = "\n".join([record.message for record in caplog.records])
+        assert "Step 1: Permission Check on:" in logs
+        assert dvc_fixture.root_dir in logs
+        assert "Read: OK" in logs
+        assert "Write: OK" in logs
+        assert "Exist: OK" in logs
+        assert "Step 2: DVC Files and Cache status." in logs
+        assert TestDvcFixture.FOO in logs
+        assert ".dvc/cache/ac/bd18db4cc2f85cedef654fccc4a4d8" in logs
+        assert TestDvcFixture.DATA_SUB_DIR in logs
+        assert ".dvc/cache/1a/d1c255771ec00b7cee20a136250065" in logs
+        assert TestDvcFixture.DATA_SUB in logs
+        assert ".dvc/cache/2b/7235bae9a59ef5602ad01d5719aabc" in logs
 
 
 def test_default_cache_type(dvc):
