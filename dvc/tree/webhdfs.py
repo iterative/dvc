@@ -1,6 +1,7 @@
 import logging
 import os
 import threading
+from contextlib import contextmanager
 
 from funcy import cached_property, wrap_prop
 
@@ -57,6 +58,15 @@ class WebHDFSTree(BaseTree):
                 )
 
         return client
+
+    @contextmanager
+    def open(self, path_info, mode="r", encoding=None):
+        assert mode in {"r", "rt", "rb"}
+
+        with self.hdfs_client.read(
+            path_info.path, encoding=encoding
+        ) as reader:
+            yield reader.read()
 
     def walk_files(self, path_info, **kwargs):
         yield self.hdfs_client.walk(
