@@ -8,8 +8,17 @@ import pytest
 
 from dvc.info import get_fs_type
 from dvc.system import System
+from dvc.tree.ssh.connection import SSHConnection
 
 here = os.path.abspath(os.path.dirname(__file__))
+
+SRC_PATH_WITH_SPECIAL_CHARACTERS = "Escape me [' , ']"
+ESCAPED_SRC_PATH_WITH_SPECIAL_CHARACTERS = "'Escape me ['\"'\"' , '\"'\"']'"
+
+DEST_PATH_WITH_SPECIAL_CHARACTERS = "Escape me too [' , ']"
+ESCAPED_DEST_PATH_WITH_SPECIAL_CHARACTERS = (
+    "'Escape me too ['\"'\"' , '\"'\"']'"
+)
 
 
 def test_isdir(ssh_connection):
@@ -131,3 +140,60 @@ def test_move(tmp_dir, ssh_connection):
     ssh_connection.move("foo", "copy")
     assert os.path.exists("copy")
     assert not os.path.exists("foo")
+
+
+@pytest.mark.parametrize(
+    "uname,md5command", [("Linux", "md5sum"), ("Darwin", "md5")]
+)
+def test_escapes_filepaths_for_md5_calculation(
+    ssh_connection, uname, md5command, mocker
+):
+    fake_md5 = "x" * 32
+    uname_mock = mocker.PropertyMock(return_value=uname)
+    mocker.patch.object(SSHConnection, "uname", new_callable=uname_mock)
+    ssh_connection.execute = mocker.Mock(return_value=fake_md5)
+    ssh_connection.md5(SRC_PATH_WITH_SPECIAL_CHARACTERS)
+    ssh_connection.execute.assert_called_with(
+        f"{md5command} {ESCAPED_SRC_PATH_WITH_SPECIAL_CHARACTERS}"
+    )
+
+
+def test_escapes_filepaths_for_copy(ssh_connection, mocker):
+    ssh_connection.execute = mocker.Mock()
+    ssh_connection.copy(
+        SRC_PATH_WITH_SPECIAL_CHARACTERS, DEST_PATH_WITH_SPECIAL_CHARACTERS
+    )
+    ssh_connection.execute.assert_called_with(
+        f"cp {ESCAPED_SRC_PATH_WITH_SPECIAL_CHARACTERS} "
+        + f"{ESCAPED_DEST_PATH_WITH_SPECIAL_CHARACTERS}"
+    )
+
+
+@pytest.mark.parametrize(
+    "uname,cp_command", [("Linux", "cp --reflink"), ("Darwin", "cp -c")]
+)
+def test_escapes_filepaths_for_reflink(
+    ssh_connection, uname, cp_command, mocker
+):
+    uname_mock = mocker.PropertyMock(return_value=uname)
+    mocker.patch.object(SSHConnection, "uname", new_callable=uname_mock)
+    ssh_connection.execute = mocker.Mock()
+    ssh_connection.reflink(
+        SRC_PATH_WITH_SPECIAL_CHARACTERS, DEST_PATH_WITH_SPECIAL_CHARACTERS
+    )
+    ssh_connection.execute.assert_called_with(
+        f"{cp_command} "
+        + f"{ESCAPED_SRC_PATH_WITH_SPECIAL_CHARACTERS} "
+        + f"{ESCAPED_DEST_PATH_WITH_SPECIAL_CHARACTERS}"
+    )
+
+
+def test_escapes_filepaths_for_hardlink(ssh_connection, mocker):
+    ssh_connection.execute = mocker.Mock()
+    ssh_connection.hardlink(
+        SRC_PATH_WITH_SPECIAL_CHARACTERS, DEST_PATH_WITH_SPECIAL_CHARACTERS
+    )
+    ssh_connection.execute.assert_called_with(
+        f"ln {ESCAPED_SRC_PATH_WITH_SPECIAL_CHARACTERS} "
+        + f"{ESCAPED_DEST_PATH_WITH_SPECIAL_CHARACTERS}"
+    )
