@@ -93,6 +93,35 @@ def test_update_with_pull(tmp_dir, scm, dvc, mocker):
         assert exp_scm.has_rev(rev)
 
 
+@pytest.mark.parametrize(
+    "change, expected",
+    [
+        ["foo.1.baz=3", "foo: [bar: 1, baz: 3]"],
+        ["foo.0=bar", "foo: [bar, baz: 2]"],
+        ["foo.1=- baz\n- goo", "foo: [bar: 1, [baz, goo]]"],
+    ],
+)
+def test_modify_list_param(tmp_dir, scm, dvc, mocker, change, expected):
+    tmp_dir.gen("copy.py", COPY_SCRIPT)
+    tmp_dir.gen("params.yaml", "foo: [bar: 1, baz: 2]")
+    stage = dvc.run(
+        cmd="python copy.py params.yaml metrics.yaml",
+        metrics_no_cache=["metrics.yaml"],
+        params=["foo"],
+        name="copy-file",
+    )
+    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
+    scm.commit("init")
+
+    new_mock = mocker.spy(dvc.experiments, "new")
+    dvc.experiments.run(stage.addressing, params=[change])
+
+    new_mock.assert_called_once()
+    assert (
+        tmp_dir / ".dvc" / "experiments" / "metrics.yaml"
+    ).read_text().strip() == expected
+
+
 def test_checkout(tmp_dir, scm, dvc):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("params.yaml", "foo: 1")
