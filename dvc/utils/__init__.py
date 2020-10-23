@@ -367,7 +367,7 @@ def resolve_paths(repo, out):
     if (
         not scheme
         and abspath.isin_or_eq(repo.root_dir)
-        and not contains_symlink_up_to(abspath, repo.root_dir)
+        and not contains_symlink_up_to(dirname, repo.root_dir)
     ):
         wdir = dirname
         out = base
