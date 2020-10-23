@@ -816,6 +816,8 @@ def test_add_symlink(tmp_dir, dvc):
 
     dvc.add(os.path.join("dir", "foo"))
 
+    assert not (tmp_dir / "foo.dvc").exists()
+    assert (tmp_dir / "dir" / "foo.dvc").exists()
     assert not (tmp_dir / "dir" / "foo").is_symlink()
     assert not (tmp_dir / "dir" / "bar").is_symlink()
     assert (tmp_dir / "dir" / "foo").read_text() == "bar"
@@ -827,3 +829,26 @@ def test_add_symlink(tmp_dir, dvc):
     assert not (
         tmp_dir / ".dvc" / "cache" / "37" / "b51d194a7513e45b56f6524f2d51f2"
     ).is_symlink()
+
+    # Test that subsequent add succeeds
+    # See https://github.com/iterative/dvc/issues/4654
+    dvc.add(os.path.join("dir", "foo"))
+
+
+def test_add_file_in_symlink_dir(make_tmp_dir, tmp_dir, dvc):
+    data_dir = make_tmp_dir("data")
+    data_dir.gen({"dir": {"foo": "foo"}})
+
+    (tmp_dir / "dir").symlink_to(os.fspath(data_dir / "dir"))
+
+    dvc.add(os.path.join("dir", "foo"))
+
+    assert (tmp_dir / "foo.dvc").exists()
+    assert not (tmp_dir / "dir" / "foo.dvc").exists()
+    assert (tmp_dir / "dir" / "foo").read_text() == "foo"
+    assert (tmp_dir / ".dvc" / "cache").read_text() == {
+        "ac": {"bd18db4cc2f85cedef654fccc4a4d8": "foo"}
+    }
+
+    # Test that subsequent add succeeds
+    dvc.add(os.path.join("dir", "foo"))
