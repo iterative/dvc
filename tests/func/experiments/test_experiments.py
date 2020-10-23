@@ -66,27 +66,45 @@ def test_update_with_pull(tmp_dir, scm, dvc, exp_stage, mocker):
 
 
 @pytest.mark.parametrize(
-    "change, expected",
+    "changes, expected",
     [
-        ["foo.1.baz=3", "foo: [bar: 1, baz: 3]"],
-        ["foo.0=bar", "foo: [bar, baz: 2]"],
-        ["foo.1=- baz\n- goo", "foo: [bar: 1, [baz, goo]]"],
+        [["foo=baz"], "{foo: baz, goo: {bag: 3}, lorem: false}"],
+        [["foo=baz,goo=bar"], "{foo: baz, goo: bar, lorem: false}"],
+        [
+            ["goo.bag=4"],
+            "{foo: [bar: 1, baz: 2], goo: {bag: 4}, lorem: false}",
+        ],
+        [["foo[0]=bar"], "{foo: [bar, baz: 2], goo: {bag: 3}, lorem: false}"],
+        [
+            ["foo[1].baz=3"],
+            "{foo: [bar: 1, baz: 3], goo: {bag: 3}, lorem: false}",
+        ],
+        [
+            ["foo[1]=- baz\n- goo"],
+            "{foo: [bar: 1, [baz, goo]], goo: {bag: 3}, lorem: false}",
+        ],
+        [
+            ["lorem.ipsum=3"],
+            "{foo: [bar: 1, baz: 2], goo: {bag: 3}, lorem: {ipsum: 3}}",
+        ],
     ],
 )
-def test_modify_list_param(tmp_dir, scm, dvc, mocker, change, expected):
+def test_modify_params(tmp_dir, scm, dvc, mocker, changes, expected):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
-    tmp_dir.gen("params.yaml", "foo: [bar: 1, baz: 2]")
+    tmp_dir.gen(
+        "params.yaml", "{foo: [bar: 1, baz: 2], goo: {bag: 3}, lorem: false}"
+    )
     stage = dvc.run(
         cmd="python copy.py params.yaml metrics.yaml",
         metrics_no_cache=["metrics.yaml"],
-        params=["foo"],
+        params=["foo", "goo", "lorem"],
         name="copy-file",
     )
     scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
     scm.commit("init")
 
     new_mock = mocker.spy(dvc.experiments, "new")
-    dvc.experiments.run(stage.addressing, params=[change])
+    dvc.experiments.run(stage.addressing, params=changes)
 
     new_mock.assert_called_once()
     assert (

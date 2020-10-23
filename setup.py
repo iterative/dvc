@@ -82,6 +82,7 @@ install_requires = [
     "shtab>=1.3.2,<2",
     "rich>=3.0.5",
     "dictdiffer>=0.8.1",
+    "python-benedict>=0.21.1",
 ]
 
 
