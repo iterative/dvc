@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 from dvc.exceptions import DvcException
 from dvc.istextfile import istextfile
 from dvc.output.base import BaseOutput
+from dvc.scm.base import FileNotInRepoError
 from dvc.utils import relpath
 from dvc.utils.fs import path_isin
 
@@ -65,6 +66,18 @@ class LocalOutput(BaseOutput):
     def is_in_repo(self):
         def_scheme = urlparse(self.def_path).scheme
         return def_scheme != "remote" and not os.path.isabs(self.def_path)
+
+    def ignore(self):
+        try:
+            super().ignore()
+        except FileNotInRepoError:
+            # relpath outputs that are symlinked to a path outside the git repo
+            # cannot be .gitignore'd
+            if path_isin(
+                os.path.realpath(self.fspath),
+                os.path.realpath(self.repo.root_dir),
+            ):
+                raise
 
     def dumpd(self):
         ret = super().dumpd()
