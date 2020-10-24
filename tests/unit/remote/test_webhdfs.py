@@ -7,7 +7,7 @@ hdfscli_config = "path/to/cli/config"
 
 
 def test_init(dvc):
-    url = "webhdfs://127.0.0.1:50070"
+    url = "webhdfs://test@127.0.0.1:50070"
     config = {
         "url": url,
         "webhdfs_token": webhdfs_token,
@@ -20,5 +20,5 @@ def test_init(dvc):
     assert tree.path_info == url
     assert tree.token == webhdfs_token
     assert tree.alias == webhdfs_alias
-    assert tree.user == user
+    assert tree.path_info.user == user
     assert tree.hdfscli_config == hdfscli_config
