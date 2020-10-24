@@ -150,7 +150,7 @@ class DvcParser(argparse.ArgumentParser):
         else:
             args = list(args)
 
-        self.find_cmd_suggestions(args)
+        self._find_cmd_suggestions(args)
 
         # NOTE: overriding to provide a more granular help message.
         # E.g. `dvc plots diff --bad-flag` would result in a `dvc plots diff`
@@ -208,7 +208,7 @@ class DvcParser(argparse.ArgumentParser):
         Raises:
             dvc.exceptions.DvcParserError: raised for found suggestions.
         """
-        cmd_choices, hidden_cmds = self.get_cmd_choices()
+        cmd_choices, hidden_cmds = self._get_cmd_choices()
 
         # NOTE: Check top level dvc commands for suggestions
         # E.g. `dvc commti` would display
