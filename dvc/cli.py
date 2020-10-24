@@ -96,14 +96,11 @@ def _find_cmd_suggestions(cmd_arg, cmd_choices, cmd=None):
     Returns:
         String with command suggestions to display to the user if any exist.
     """
+    base_suggestion = "is not a dvc command. See 'dvc --help'\n"
     if cmd:
-        suggestion_str = (
-            f"dvc: '{cmd} {cmd_arg}' is not a dvc command. See 'dvc --help'\n"
-        )
+        suggestion_str = f"dvc: '{cmd} {cmd_arg}' {base_suggestion}"
     else:
-        suggestion_str = (
-            f"dvc: '{cmd_arg}' is not a dvc command. See 'dvc --help'\n"
-        )
+        suggestion_str = f"dvc: '{cmd_arg}' {base_suggestion}"
     suggestions = get_close_matches(cmd_arg, cmd_choices)
     if not suggestions:
         return suggestion_str
