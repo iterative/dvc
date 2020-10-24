@@ -119,6 +119,7 @@ def hdfs_server(hadoop, docker_compose, docker_services):
     import pyarrow
 
     port = docker_services.port_for("hdfs", 8020)
+    web_port = docker_services.port_for("hdfs", 50070)
 
     def _check():
         try:
@@ -136,12 +137,12 @@ def hdfs_server(hadoop, docker_compose, docker_services):
 
     docker_services.wait_until_responsive(timeout=30.0, pause=5, check=_check)
 
-    return port
+    return {"hdfs": port, "webhdfs": web_port}
 
 
 @pytest.fixture
 def hdfs(hdfs_server):
-    port = hdfs_server
+    port = hdfs_server["hdfs"]
     url = f"hdfs://127.0.0.1:{port}/{uuid.uuid4()}"
     yield HDFS(url)
 
@@ -200,6 +201,6 @@ class WebHDFS(Base, URLInfo):  # pylint: disable=abstract-method
 
 @pytest.fixture
 def webhdfs(hdfs_server):
-    port = hdfs_server
+    port = hdfs_server["webhdfs"]
     url = f"webhdfs://127.0.0.1:{port}/{uuid.uuid4()}"
     yield WebHDFS(url)
