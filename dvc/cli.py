@@ -197,7 +197,7 @@ class DvcParser(argparse.ArgumentParser):
 
         return cmd_choices, hidden_cmds
 
-    def find_cmd_suggestions(self, args):
+    def _find_cmd_suggestions(self, args):
         """Find similar command suggestions for commands and subcommands
         that contain typos. Show suggestions for public commands, do not show
         suggestions for hidden commands.
