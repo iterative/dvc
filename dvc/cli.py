@@ -161,7 +161,7 @@ class DvcParser(argparse.ArgumentParser):
             self.error(msg % " ".join(argv), getattr(args, "func", None))
         return args
 
-    def get_cmd_choices(self):
+    def _get_cmd_choices(self):
         """Keep track of public dvc commands and hidden dvc commands.
 
         Returns:
