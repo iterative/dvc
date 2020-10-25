@@ -127,7 +127,10 @@ class WebHDFSTree(BaseTree):
     ):
         with Tqdm(desc=name, disable=no_progress_bar, bytes=True) as pbar:
             self.hdfs_client.upload(
-                to_info.path, from_file, progress=update_pbar(pbar)
+                to_info.path,
+                from_file,
+                overwrite=True,
+                progress=update_pbar(pbar),
             )
 
     def _download(
