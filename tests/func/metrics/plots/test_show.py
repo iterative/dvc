@@ -230,7 +230,7 @@ def test_plot_confusion_normalized(tmp_dir, dvc, run_copy_metrics):
         "actual",
         "predicted",
     ]
-    assert plot_content["spec"]["transform"][1]["groupby"] == ["actual"]
+    assert plot_content["spec"]["transform"][1]["groupby"] == ["rev", "actual"]
     assert plot_content["spec"]["encoding"]["x"]["field"] == "predicted"
     assert plot_content["spec"]["encoding"]["y"]["field"] == "actual"
 

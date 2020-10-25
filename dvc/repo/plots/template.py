@@ -145,6 +145,18 @@ class DefaultConfusionTemplate(Template):
                     "groupby": [Template.anchor("y"), Template.anchor("x")],
                 },
                 {
+                    "impute": "xy_count",
+                    "groupby": ["rev", Template.anchor("y")],
+                    "key": Template.anchor("x"),
+                    "value": 0,
+                },
+                {
+                    "impute": "xy_count",
+                    "groupby": ["rev", Template.anchor("x")],
+                    "key": Template.anchor("y"),
+                    "value": 0,
+                },
+                {
                     "joinaggregate": [
                         {"op": "max", "field": "xy_count", "as": "max_count"}
                     ],
@@ -213,6 +225,18 @@ class NormalizedConfusionTemplate(Template):
                 {
                     "aggregate": [{"op": "count", "as": "xy_count"}],
                     "groupby": [Template.anchor("y"), Template.anchor("x")],
+                },
+                {
+                    "impute": "xy_count",
+                    "groupby": ["rev", Template.anchor("y")],
+                    "key": Template.anchor("x"),
+                    "value": 0,
+                },
+                {
+                    "impute": "xy_count",
+                    "groupby": ["rev", Template.anchor("x")],
+                    "key": Template.anchor("y"),
+                    "value": 0,
                 },
                 {
                     "joinaggregate": [
