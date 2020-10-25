@@ -12,7 +12,11 @@ DEFAULT_PRECISION = 5
 
 
 def _show_metrics(
-    metrics, all_branches=False, all_tags=False, all_commits=False
+    metrics,
+    all_branches=False,
+    all_tags=False,
+    all_commits=False,
+    precision=None,
 ):
     from dvc.utils.diff import format_dict, table
     from dvc.utils.flatten import flatten
@@ -23,6 +27,12 @@ def _show_metrics(
     with_rev = any([all_branches, all_tags, all_commits])
     header_set = set()
     rows = []
+
+    def _round(val):
+        if isinstance(val, float):
+            return round(val, precision)
+        return val
+
     for _branch, val in metrics.items():
         for _fname, metric in val.items():
             if not isinstance(metric, dict):
@@ -44,7 +54,7 @@ def _show_metrics(
             flattened_val = flatten(format_dict(metric))
 
             for i in header:
-                row.append(flattened_val.get(i))
+                row.append(_round(flattened_val.get(i)))
             rows.append(row)
     header.insert(0, "Path")
     if with_rev:

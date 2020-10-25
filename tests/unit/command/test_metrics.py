@@ -227,5 +227,5 @@ def test_metrics_show_with_valid_falsey_values():
     ) == textwrap.dedent(
         """\
         Revision    Path          a    b.ad    b.bc
-        branch_1    metrics.json  0    0.0     0.0"""
+        branch_1    metrics.json  0    0       0"""
     )
