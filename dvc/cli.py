@@ -100,8 +100,22 @@ def _find_parser(parser, cmd_cls):
             _find_parser(subparser, cmd_cls)
 
 
+class SubParsersAction(
+    argparse._SubParsersAction  # pylint: disable=protected-access
+):
+    # NOTE: Overriding dongle class, otherwise we need to pass add_help=False
+    # for all subparsers
+    def add_parser(self, *args, **kwargs):
+        kwargs.setdefault("add_help", False)
+        return super().add_parser(*args, **kwargs)
+
+
 class DvcParser(argparse.ArgumentParser):
     """Custom parser class for dvc CLI."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.register("action", "parsers", SubParsersAction)
 
     def error(self, message, cmd_cls=None):  # pylint: disable=arguments-differ
         logger.error(message)
@@ -138,6 +152,15 @@ def get_parent_parser():
     """
     parent_parser = argparse.ArgumentParser(add_help=False)
 
+    # NOTE: We are doing this to capitalize help message.
+    parent_parser.add_argument(
+        "-h",
+        "--help",
+        action="help",
+        default=argparse.SUPPRESS,
+        help="Show this help message and exit.",
+    )
+
     parent_parser.add_argument(
         "--cprofile",
         action="store_true",
@@ -168,18 +191,6 @@ def get_main_parser():
         parents=[parent_parser],
         formatter_class=argparse.RawTextHelpFormatter,
         add_help=False,
-    )
-
-    # NOTE: We are doing this to capitalize help message.
-    # Unfortunately, there is no easier and clearer way to do it,
-    # as adding this argument in get_parent_parser() either in
-    # log_level_group or on parent_parser itself will cause unexpected error.
-    parser.add_argument(
-        "-h",
-        "--help",
-        action="help",
-        default=argparse.SUPPRESS,
-        help="Show this help message and exit.",
     )
 
     # NOTE: On some python versions action='version' prints to stderr
