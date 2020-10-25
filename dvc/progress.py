@@ -31,9 +31,12 @@ class Tqdm(tqdm):
     BAR_FMT_NOTOTAL = (
         "{desc}{bar:b}|{postfix[info]}{n_fmt} [{elapsed}, {rate_fmt:>11}]"
     )
-    BYTES_DEFAULTS = dict(
-        unit="B", unit_scale=True, unit_divisor=1024, miniters=1
-    )
+    BYTES_DEFAULTS = {
+        "unit": "B",
+        "unit_scale": True,
+        "unit_divisor": 1024,
+        "miniters": 1,
+    }
 
     def __init__(
         self,

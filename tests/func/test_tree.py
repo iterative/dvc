@@ -271,6 +271,6 @@ def test_walk_dont_ignore_subrepos(tmp_dir, scm, dvc):
     assert get_dirs(next(dvc_tree.walk(path))) == []
     assert get_dirs(next(scm_tree.walk(path))) == []
 
-    kw = dict(ignore_subrepos=False)
+    kw = {"ignore_subrepos": False}
     assert get_dirs(next(dvc_tree.walk(path, **kw))) == ["subdir"]
     assert get_dirs(next(scm_tree.walk(path, **kw))) == ["subdir"]

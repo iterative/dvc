@@ -132,7 +132,7 @@ tests_requirements = [
     "rangehttpserver==1.2.0",
     "beautifulsoup4==4.4.0",
     "flake8-bugbear",
-    "flake8-comprehensions",
+    "flake8-comprehensions==3.3.0",
     "flake8-string-format",
     "pylint==2.5.3",
     "pylint-pytest>=0.3.0",

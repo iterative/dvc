@@ -114,7 +114,7 @@ class Repo:
             self.dvc_dir = None
             self.tmp_dir = None
 
-        tree_kwargs = dict(use_dvcignore=True, dvcignore_root=self.root_dir)
+        tree_kwargs = {"use_dvcignore": True, "dvcignore_root": self.root_dir}
         if scm:
             self.tree = scm.get_tree(rev, **tree_kwargs)
         else:
