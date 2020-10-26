@@ -81,7 +81,7 @@ def test_subrepo_is_constructed_properly(
 
 @pytest.mark.parametrize("jobs", [1, 2, 4])
 def test_fetch_external_repo_jobs(
-    tmp_dir, scm, mocker, dvc, local_remote, jobs
+    tmp_dir, scm, mocker, dvc, local_remote
 ):
     tmp_dir.dvc_gen(
         {
