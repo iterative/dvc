@@ -15,6 +15,7 @@ env:
   GDRIVE_CREDENTIALS_DATA: ${{ secrets.GDRIVE_CREDENTIALS_DATA }}
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  GS_CREDS_JSON: ${{ secrets.GS_CREDS_JSON }}
 
 jobs:
   lint:
@@ -52,6 +53,11 @@ jobs:
       run: |
         git config --global user.email "dvctester@example.com"
         git config --global user.name "DVC Tester"
+    - name: setup gs creds
+      shell: bash
+      run: |
+        mkdir -p scripts/ci
+        echo "$GS_CREDS_JSON" > scripts/ci/gcp-creds.json
     - name: run tests
       run: python -m tests -ra --cov-report=xml --cov-report=term
     - name: upload coverage report
