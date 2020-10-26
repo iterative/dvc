@@ -55,6 +55,7 @@ jobs:
         git config --global user.name "DVC Tester"
     - name: setup gs creds
       shell: bash
+      if: env.GS_CREDS_JSON != ''
       run: |
         mkdir -p scripts/ci
         echo "$GS_CREDS_JSON" > scripts/ci/gcp-creds.json
