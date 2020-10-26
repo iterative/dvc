@@ -98,6 +98,6 @@ def test_fetch_external_repo_jobs(
 
     with external_repo(str(tmp_dir)) as repo:
         spy = mocker.spy(repo.cloud, "pull")
-        repo.fetch_external(["dir1"], jobs=jobs)
+        repo.fetch_external(["dir1"], jobs=3)
         run_jobs = tuple(spy.call_args_list[0])[1].get("jobs")
-        assert run_jobs == jobs
+        assert run_jobs == 3
