@@ -77,3 +77,25 @@ def test_subrepo_is_constructed_properly(
             assert repo.config["remote"]["auto-generated-upstream"][
                 "url"
             ] == str(main_cache)
+
+
+def test_fetch_external_repo_jobs(tmp_dir, scm, mocker, dvc, local_remote):
+    tmp_dir.dvc_gen(
+        {
+            "dir1": {
+                "file1": "file1",
+                "file2": "file2",
+                "file3": "file3",
+                "file4": "file4",
+            },
+        },
+        commit="init",
+    )
+
+    dvc.push()
+
+    with external_repo(str(tmp_dir)) as repo:
+        spy = mocker.spy(repo.cloud, "pull")
+        repo.fetch_external(["dir1"], jobs=3)
+        run_jobs = tuple(spy.call_args_list[0])[1].get("jobs")
+        assert run_jobs == 3
