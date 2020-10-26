@@ -84,7 +84,8 @@ class Plots:
         # If any mentioned plot doesn't have any data then that's an error
         targets = [targets] if isinstance(targets, str) else targets or []
         for target in targets:
-            if not any("data" in d[target] for d in data.values()):
+            rpath = relpath(target, self.repo.root_dir)
+            if not any("data" in d[rpath] for d in data.values()):
                 raise NoMetricInHistoryError(target)
 
         # No data at all is a special error with a special message
