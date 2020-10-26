@@ -1,7 +1,6 @@
 import filecmp
 import logging
 import os
-import posixpath
 import shutil
 import time
 
@@ -422,52 +421,6 @@ def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
     assert get_dir_hash_counter.mock.call_count == 1
 
 
-class SymlinkAddTestBase(TestDvc):
-    def _get_data_dir(self):
-        raise NotImplementedError
-
-    def _prepare_external_data(self):
-        data_dir = self._get_data_dir()
-
-        data_file_name = "data_file"
-        external_data_path = os.path.join(data_dir, data_file_name)
-        with open(external_data_path, "w+") as f:
-            f.write("data")
-
-        link_name = "data_link"
-        System.symlink(data_dir, link_name)
-        return data_file_name, link_name
-
-    def _test(self):
-        data_file_name, link_name = self._prepare_external_data()
-
-        ret = main(["add", os.path.join(link_name, data_file_name)])
-        self.assertEqual(0, ret)
-
-        stage_file = data_file_name + DVC_FILE_SUFFIX
-        self.assertTrue(os.path.exists(stage_file))
-
-        d = load_yaml(stage_file)
-        relative_data_path = posixpath.join(link_name, data_file_name)
-        self.assertEqual(relative_data_path, d["outs"][0]["path"])
-
-
-class TestShouldAddDataFromExternalSymlink(SymlinkAddTestBase):
-    def _get_data_dir(self):
-        return self.mkdtemp()
-
-    def test(self):
-        self._test()
-
-
-class TestShouldAddDataFromInternalSymlink(SymlinkAddTestBase):
-    def _get_data_dir(self):
-        return self.DATA_DIR
-
-    def test(self):
-        self._test()
-
-
 class TestShouldPlaceStageInDataDirIfRepositoryBelowSymlink(TestDvc):
     def test(self):
         def is_symlink_true_below_dvc_root(path):
@@ -809,7 +762,7 @@ def test_add_pipeline_file(tmp_dir, dvc, run_copy):
         dvc.add(PIPELINE_FILE)
 
 
-def test_add_symlink(tmp_dir, dvc):
+def test_add_symlink_file(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"bar": "bar"}})
 
     (tmp_dir / "dir" / "foo").symlink_to(os.path.join(".", "bar"))
@@ -835,20 +788,35 @@ def test_add_symlink(tmp_dir, dvc):
     dvc.add(os.path.join("dir", "foo"))
 
 
-def test_add_file_in_symlink_dir(make_tmp_dir, tmp_dir, dvc):
-    data_dir = make_tmp_dir("data")
-    data_dir.gen({"dir": {"foo": "foo"}})
+@pytest.mark.parametrize("external", [True, False])
+def test_add_symlink_dir(make_tmp_dir, tmp_dir, dvc, external):
+    if external:
+        data_dir = make_tmp_dir("data")
+        data_dir.gen({"foo": "foo"})
+        target = os.fspath(data_dir)
+    else:
+        tmp_dir.gen({"data": {"foo": "foo"}})
+        target = os.path.join(".", "data")
 
-    (tmp_dir / "dir").symlink_to(os.fspath(data_dir / "dir"))
+    tmp_dir.gen({"data": {"foo": "foo"}})
 
-    dvc.add(os.path.join("dir", "foo"))
+    (tmp_dir / "dir").symlink_to(target)
 
-    assert (tmp_dir / "foo.dvc").exists()
-    assert not (tmp_dir / "dir" / "foo.dvc").exists()
-    assert (tmp_dir / "dir" / "foo").read_text() == "foo"
-    assert (tmp_dir / ".dvc" / "cache").read_text() == {
-        "ac": {"bd18db4cc2f85cedef654fccc4a4d8": "foo"}
-    }
+    with pytest.raises(DvcException):
+        dvc.add("dir")
 
-    # Test that subsequent add succeeds
-    dvc.add(os.path.join("dir", "foo"))
+
+@pytest.mark.parametrize("external", [True, False])
+def test_add_file_in_symlink_dir(make_tmp_dir, tmp_dir, dvc, external):
+    if external:
+        data_dir = make_tmp_dir("data")
+        data_dir.gen({"dir": {"foo": "foo"}})
+        target = os.fspath(data_dir / "dir")
+    else:
+        tmp_dir.gen({"data": {"foo": "foo"}})
+        target = os.path.join(".", "data")
+
+    (tmp_dir / "dir").symlink_to(target)
+
+    with pytest.raises(DvcException):
+        dvc.add(os.path.join("dir", "foo"))
