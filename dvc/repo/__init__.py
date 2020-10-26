@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from functools import wraps
 
 from funcy import cached_property, cat, first
+from git import InvalidGitRepositoryError
 
 from dvc.config import Config
 from dvc.dvcfile import PIPELINE_FILE, Dvcfile, is_valid_filename
@@ -15,6 +16,8 @@ from dvc.exceptions import (
     OutputNotFoundError,
 )
 from dvc.path_info import PathInfo
+from dvc.scm import Base
+from dvc.scm.base import SCMError
 from dvc.tree.repo import RepoTree
 from dvc.utils.fs import path_isin
 
@@ -80,6 +83,37 @@ class Repo:
     from dvc.repo.status import status
     from dvc.repo.update import update
 
+    def _get_repo_dirs(
+        self,
+        root_dir: str = None,
+        scm: Base = None,
+        rev: str = None,
+        uninitialized: bool = False,
+    ):
+        assert bool(scm) == bool(rev)
+
+        from dvc.scm import SCM
+        from dvc.utils.fs import makedirs
+
+        try:
+            tree = scm.get_tree(rev) if rev else None
+            root_dir = self.find_root(root_dir, tree)
+            dvc_dir = os.path.join(root_dir, self.DVC_DIR)
+            tmp_dir = os.path.join(dvc_dir, "tmp")
+            makedirs(tmp_dir, exist_ok=True)
+
+        except NotDvcRepoError:
+            if not uninitialized:
+                raise
+            try:
+                root_dir = SCM(root_dir or os.curdir).root_dir
+            except (SCMError, InvalidGitRepositoryError):
+                root_dir = SCM(os.curdir, no_scm=True).root_dir
+
+            dvc_dir = None
+            tmp_dir = None
+        return root_dir, dvc_dir, tmp_dir
+
     def __init__(
         self,
         root_dir=None,
@@ -95,24 +129,13 @@ class Repo:
         from dvc.repo.metrics import Metrics
         from dvc.repo.params import Params
         from dvc.repo.plots import Plots
-        from dvc.scm import SCM
         from dvc.stage.cache import StageCache
         from dvc.state import State, StateNoop
         from dvc.tree.local import LocalTree
-        from dvc.utils.fs import makedirs
 
-        try:
-            tree = scm.get_tree(rev) if rev else None
-            self.root_dir = self.find_root(root_dir, tree)
-            self.dvc_dir = os.path.join(self.root_dir, self.DVC_DIR)
-            self.tmp_dir = os.path.join(self.dvc_dir, "tmp")
-            makedirs(self.tmp_dir, exist_ok=True)
-        except NotDvcRepoError:
-            if not uninitialized:
-                raise
-            self.root_dir = SCM(root_dir or os.curdir).root_dir
-            self.dvc_dir = None
-            self.tmp_dir = None
+        self.root_dir, self.dvc_dir, self.tmp_dir = self._get_repo_dirs(
+            root_dir=root_dir, scm=scm, rev=rev, uninitialized=uninitialized
+        )
 
         tree_kwargs = {"use_dvcignore": True, "dvcignore_root": self.root_dir}
         if scm:

@@ -3,6 +3,7 @@ import logging
 from dvc.exceptions import NoMetricsError
 from dvc.repo import locked
 from dvc.repo.collect import collect
+from dvc.scm.base import SCMError
 from dvc.tree.repo import RepoTree
 from dvc.utils.serialize import YAMLFileCorruptedError, load_yaml
 
@@ -113,8 +114,10 @@ def show(
     # Hide workspace metrics if they are the same as in the active branch
     try:
         active_branch = repo.scm.active_branch()
-    except TypeError:
-        pass  # Detached head
+    except (TypeError, SCMError):
+        # TypeError - detached head
+        # SCMError - no repo case
+        pass
     else:
         if res.get("workspace") == res.get(active_branch):
             res.pop("workspace", None)
