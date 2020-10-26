@@ -91,10 +91,10 @@ def test_fetch_external_repo_jobs(
                 "file3": "file3",
                 "file4": "file4",
             },
-        }
+        },
+        commit="init",
     )
-    scm.add("dir1.dvc")
-    scm.commit("init")
+
     dvc.push()
 
     with external_repo(str(tmp_dir)) as repo:
