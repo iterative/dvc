@@ -209,3 +209,13 @@ def test_metrics_diff_non_metrics(tmp_dir, scm, dvc):
     assert result == {
         "some_file.yaml": {"foo": {"old": 1, "new": 3, "diff": 2}}
     }
+
+
+def test_diff_no_metric_on_target_branch(tmp_dir, scm, dvc, caplog):
+    with tmp_dir.branch("new_branch", new=True):
+        tmp_dir.dvc_gen({"metric.yaml": "foo: 1"}, commit="add metric")
+
+        with caplog.at_level(logging.WARNING, "dvc"):
+            dvc.metrics.diff(targets=["metric.yaml"], a_rev="master")
+
+    assert "'metric.yaml' was not found at: 'master'." in caplog.text

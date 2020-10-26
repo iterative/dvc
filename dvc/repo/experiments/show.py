@@ -30,7 +30,7 @@ def _collect_experiment(repo, rev, stash=False, sha_only=True):
 
         res["queued"] = stash
         if not stash:
-            metrics = _collect_metrics(repo, None, False)
+            metrics = _collect_metrics(repo, None, rev, False)
             vals = _read_metrics(repo, metrics, rev)
             res["metrics"] = vals
 
