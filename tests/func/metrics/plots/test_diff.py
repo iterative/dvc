@@ -1,7 +1,7 @@
 import json
-import logging
 
-from .test_show import PlotData, _write_json
+from dvc.repo.plots.data import PlotData
+from tests.func.metrics import _write_json
 
 
 def test_diff_dirty(tmp_dir, scm, dvc, run_copy_metrics):
@@ -54,13 +54,3 @@ def test_diff_dirty(tmp_dir, scm, dvc, run_copy_metrics):
     ]
     assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
     assert plot_content["encoding"]["y"]["field"] == "y"
-
-
-def test_diff_no_plot_on_target_branch(tmp_dir, scm, dvc, caplog):
-    with tmp_dir.branch("new_branch", new=True):
-        _write_json(tmp_dir, [{"m": 1}, {"m": 2}], "metric.json")
-
-        with caplog.at_level(logging.WARNING, "dvc"):
-            dvc.metrics.diff(targets=["metric.json"], a_rev="master")
-
-    assert "'metric.json' was not found at: 'master'." in caplog.text
