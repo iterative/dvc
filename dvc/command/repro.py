@@ -36,7 +36,7 @@ class CmdRepro(CmdBase):
                     logger.info(_show_metrics(metrics))
 
                 logger.info(
-                    "To save your updates to remote storage, run 'dvc push'."
+                    "Use 'dvc push' to send your updates to remote storage."
                 )
 
             except DvcException:
