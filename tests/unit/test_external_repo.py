@@ -79,9 +79,7 @@ def test_subrepo_is_constructed_properly(
             ] == str(main_cache)
 
 
-def test_fetch_external_repo_jobs(
-    tmp_dir, scm, mocker, dvc, local_remote
-):
+def test_fetch_external_repo_jobs(tmp_dir, scm, mocker, dvc, local_remote):
     tmp_dir.dvc_gen(
         {
             "dir1": {
