@@ -1,5 +1,7 @@
 import os
 
+import pytest
+
 
 def test_stage_cache(tmp_dir, dvc, mocker):
     tmp_dir.gen("dep", "dep")
@@ -40,12 +42,12 @@ def test_stage_cache(tmp_dir, dvc, mocker):
     assert os.path.isfile(cache_file)
 
     run_spy = mocker.patch("dvc.stage.run.cmd_run")
-    checkout_spy = mocker.spy(stage, "checkout")
+    checkout_spy = mocker.spy(dvc.cache.local, "checkout")
     with dvc.lock, dvc.state:
         stage.run()
 
     assert not run_spy.called
-    assert checkout_spy.call_count == 1
+    assert checkout_spy.call_count == 2
 
     assert (tmp_dir / "out").exists()
     assert (tmp_dir / "out_no_cache").exists()
@@ -93,12 +95,12 @@ def test_stage_cache_params(tmp_dir, dvc, mocker):
     assert os.path.isfile(cache_file)
 
     run_spy = mocker.patch("dvc.stage.run.cmd_run")
-    checkout_spy = mocker.spy(stage, "checkout")
+    checkout_spy = mocker.spy(dvc.cache.local, "checkout")
     with dvc.lock, dvc.state:
         stage.run()
 
     assert not run_spy.called
-    assert checkout_spy.call_count == 1
+    assert checkout_spy.call_count == 2
 
     assert (tmp_dir / "out").exists()
     assert (tmp_dir / "out_no_cache").exists()
@@ -147,12 +149,12 @@ def test_stage_cache_wdir(tmp_dir, dvc, mocker):
     assert os.path.isfile(cache_file)
 
     run_spy = mocker.patch("dvc.stage.run.cmd_run")
-    checkout_spy = mocker.spy(stage, "checkout")
+    checkout_spy = mocker.spy(dvc.cache.local, "checkout")
     with dvc.lock, dvc.state:
         stage.run()
 
     assert not run_spy.called
-    assert checkout_spy.call_count == 1
+    assert checkout_spy.call_count == 2
 
     assert (tmp_dir / "wdir" / "out").exists()
     assert (tmp_dir / "wdir" / "out_no_cache").exists()
@@ -204,3 +206,19 @@ def test_shared_stage_cache(tmp_dir, dvc, run_copy):
     assert _mode(parent_cache_dir) == dir_mode
     assert _mode(cache_dir) == dir_mode
     assert _mode(cache_file) == file_mode
+
+
+def test_always_changed(mocker):
+    from dvc.repo import Repo
+    from dvc.stage import Stage
+    from dvc.stage.cache import RunCacheNotFoundError, StageCache
+
+    repo = mocker.Mock(spec=Repo)
+    cache = StageCache(repo)
+    stage = Stage(repo, always_changed=True)
+    get_stage_hash = mocker.patch("dvc.stage.cache._get_stage_hash")
+    assert cache.save(stage) is None
+    assert get_stage_hash.not_called
+    with pytest.raises(RunCacheNotFoundError):
+        cache.restore(stage)
+    assert get_stage_hash.not_called

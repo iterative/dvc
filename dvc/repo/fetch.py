@@ -36,8 +36,6 @@ def fetch(
             remote is configured
     """
 
-    used_run_cache = self.stage_cache.pull(remote) if run_cache else []
-
     if isinstance(targets, str):
         targets = [targets]
 
@@ -51,13 +49,14 @@ def fetch(
         remote=remote,
         jobs=jobs,
         recursive=recursive,
-        used_run_cache=used_run_cache,
     )
 
     downloaded = 0
     failed = 0
 
     try:
+        if run_cache:
+            self.stage_cache.pull(remote)
         downloaded += self.cloud.pull(
             used, jobs, remote=remote, show_checksums=show_checksums,
         )
@@ -75,7 +74,7 @@ def fetch(
     if failed:
         raise DownloadError(failed)
 
-    return downloaded + len(used_run_cache)
+    return downloaded
 
 
 def _fetch_external(self, repo_url, repo_rev, files, jobs):

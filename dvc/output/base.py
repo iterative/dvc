@@ -8,6 +8,7 @@ from voluptuous import Any
 import dvc.prompt as prompt
 from dvc.cache import NamedCache
 from dvc.exceptions import (
+    CheckoutError,
     CollectCacheError,
     DvcException,
     MergeError,
@@ -281,6 +282,9 @@ class BaseOutput:
         self.hash_info = self.get_hash()
 
     def commit(self):
+        if not self.exists:
+            raise self.DoesNotExistError(self)
+
         assert self.hash_info
         if self.use_cache:
             self.cache.save(self.path_info, self.cache.tree, self.hash_info)
@@ -325,6 +329,7 @@ class BaseOutput:
         progress_callback=None,
         relink=False,
         filter_info=None,
+        allow_missing=False,
     ):
         if not self.use_cache:
             if progress_callback:
@@ -333,14 +338,19 @@ class BaseOutput:
                 )
             return None
 
-        return self.cache.checkout(
-            self.path_info,
-            self.hash_info,
-            force=force,
-            progress_callback=progress_callback,
-            relink=relink,
-            filter_info=filter_info,
-        )
+        try:
+            return self.cache.checkout(
+                self.path_info,
+                self.hash_info,
+                force=force,
+                progress_callback=progress_callback,
+                relink=relink,
+                filter_info=filter_info,
+            )
+        except CheckoutError:
+            if allow_missing:
+                return None
+            raise
 
     def remove(self, ignore_remove=False):
         self.tree.remove(self.path_info)
@@ -385,6 +395,9 @@ class BaseOutput:
                 show_checksums=False,
                 **kwargs,
             )
+            self.hash_info.dir_info = None
+        if not self.hash_info.dir_info:
+            self.cache.set_dir_info(self.hash_info)
         return self.dir_cache
 
     def collect_used_dir_cache(

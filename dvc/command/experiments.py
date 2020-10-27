@@ -1,13 +1,17 @@
 import argparse
 import io
 import logging
+import os
 from collections import OrderedDict
-from datetime import date
+from collections.abc import Mapping
+from datetime import date, datetime
 from itertools import groupby
 from typing import Iterable, Optional
 
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.command.metrics import DEFAULT_PRECISION
+from dvc.command.repro import CmdRepro
+from dvc.command.repro import add_arguments as add_repro_arguments
 from dvc.exceptions import DvcException, InvalidArgumentError
 from dvc.utils.flatten import flatten
 
@@ -109,19 +113,30 @@ def _collect_rows(
         reverse = sort_order == "desc"
         experiments = _sort_exp(experiments, sort_by, sort_type, reverse)
 
+    last_tip = None
     for i, (rev, exp) in enumerate(experiments.items()):
         row = []
         style = None
         queued = "*" if exp.get("queued", False) else ""
 
+        tip = exp.get("checkpoint_tip")
         if rev == "baseline":
             name = exp.get("name", base_rev)
             row.append(f"{name}")
             style = "bold"
-        elif i < len(experiments) - 1:
-            row.append(f"├── {queued}{rev[:7]}")
         else:
-            row.append(f"└── {queued}{rev[:7]}")
+            if tip and tip == last_tip:
+                tree = "│ ╟"
+            else:
+                if i < len(experiments) - 1:
+                    if tip:
+                        tree = "├─╥"
+                    else:
+                        tree = "├──"
+                else:
+                    tree = "└──"
+            row.append(f"{tree} {queued}{rev[:7]}")
+        last_tip = tip
 
         if not no_timestamp:
             row.append(_format_time(exp.get("timestamp")))
@@ -141,7 +156,11 @@ def _sort_exp(experiments, sort_by, typ, reverse):
         ret = OrderedDict()
 
     def _sort(item):
-        _, exp = item
+        rev, exp = item
+        tip = exp.get("checkpoint_tip")
+        if tip and tip != rev:
+            # Sort checkpoint experiments by tip commit
+            return _sort((tip, experiments[tip]))
         for fname, item in exp.get(typ, {}).items():
             if isinstance(item, dict):
                 item = flatten(item)
@@ -166,12 +185,19 @@ def _format_time(timestamp):
     return timestamp.strftime(fmt)
 
 
-def _extend_row(row, names, items, precision):
-    def _round(val):
-        if isinstance(val, float):
-            return round(val, precision)
+def _format_field(val, precision=DEFAULT_PRECISION):
+    if isinstance(val, float):
+        fmt = f"{{:.{precision}g}}"
+        return fmt.format(val)
+    elif isinstance(val, Mapping):
+        return {k: _format_field(v) for k, v in val.items()}
+    elif isinstance(val, list):
+        return [_format_field(x) for x in val]
+    return str(val)
 
-        return val
+
+def _extend_row(row, names, items, precision):
+    from rich.text import Text
 
     if not items:
         row.extend(["-"] * len(names))
@@ -185,7 +211,13 @@ def _extend_row(row, names, items, precision):
         for name in names:
             if name in item:
                 value = item[name]
-                text = str(_round(value)) if value is not None else "-"
+                if value is None:
+                    text = "-"
+                else:
+                    # wrap field data in rich.Text, otherwise rich may
+                    # interpret unescaped braces from list/dict types as rich
+                    # markup tags
+                    text = Text(str(_format_field(value, precision)))
                 row.append(text)
             else:
                 row.append("-")
@@ -241,6 +273,12 @@ def _show_experiments(all_experiments, console, **kwargs):
     console.print(table)
 
 
+def _format_json(item):
+    if isinstance(item, (date, datetime)):
+        return item.isoformat()
+    raise TypeError
+
+
 class CmdExperimentsShow(CmdBase):
     def run(self):
         from rich.console import Console
@@ -258,6 +296,12 @@ class CmdExperimentsShow(CmdBase):
                 sha_only=self.args.sha,
             )
 
+            if self.args.show_json:
+                import json
+
+                logger.info(json.dumps(all_experiments, default=_format_json))
+                return 0
+
             if self.args.no_pager:
                 console = Console()
             else:
@@ -266,6 +310,11 @@ class CmdExperimentsShow(CmdBase):
                 console = Console(
                     file=io.StringIO(), force_terminal=True, width=9999
                 )
+
+            if self.args.precision is None:
+                precision = DEFAULT_PRECISION
+            else:
+                precision = self.args.precision
 
             _show_experiments(
                 all_experiments,
@@ -277,6 +326,7 @@ class CmdExperimentsShow(CmdBase):
                 no_timestamp=self.args.no_timestamp,
                 sort_by=self.args.sort_by,
                 sort_order=self.args.sort_order,
+                precision=precision,
             )
 
             if not self.args.no_pager:
@@ -299,18 +349,14 @@ class CmdExperimentsCheckout(CmdBase):
 
 
 def _show_diff(
-    diff, title="", markdown=False, no_path=False, old=False, precision=None
+    diff,
+    title="",
+    markdown=False,
+    no_path=False,
+    old=False,
+    precision=DEFAULT_PRECISION,
 ):
     from dvc.utils.diff import table
-
-    if precision is None:
-        precision = DEFAULT_PRECISION
-
-    def _round(val):
-        if isinstance(val, float):
-            return round(val, precision)
-
-        return val
 
     rows = []
     for fname, diff_ in diff.items():
@@ -319,9 +365,13 @@ def _show_diff(
             row = [] if no_path else [fname]
             row.append(item)
             if old:
-                row.append(_round(change.get("old")))
-            row.append(_round(change["new"]))
-            row.append(_round(change.get("diff", "diff not supported")))
+                row.append(_format_field(change.get("old"), precision))
+            row.append(_format_field(change["new"], precision))
+            row.append(
+                _format_field(
+                    change.get("diff", "diff not supported"), precision
+                )
+            )
             rows.append(row)
 
     header = [] if no_path else ["Path"]
@@ -352,6 +402,11 @@ class CmdExperimentsDiff(CmdBase):
 
                 logger.info(json.dumps(diff))
             else:
+                if self.args.precision is None:
+                    precision = DEFAULT_PRECISION
+                else:
+                    precision = self.args.precision
+
                 diffs = [("metrics", "Metric"), ("params", "Param")]
                 for key, title in diffs:
                     table = _show_diff(
@@ -360,7 +415,7 @@ class CmdExperimentsDiff(CmdBase):
                         markdown=self.args.show_md,
                         no_path=self.args.no_path,
                         old=self.args.old,
-                        precision=self.args.precision,
+                        precision=precision,
                     )
                     if table:
                         logger.info(table)
@@ -371,6 +426,55 @@ class CmdExperimentsDiff(CmdBase):
             return 1
 
         return 0
+
+
+class CmdExperimentsRun(CmdRepro):
+    def run(self):
+        if not self.repo.experiments:
+            return 0
+
+        saved_dir = os.path.realpath(os.curdir)
+        os.chdir(self.args.cwd)
+
+        # Dirty hack so the for loop below can at least enter once
+        if self.args.all_pipelines:
+            self.args.targets = [None]
+        elif not self.args.targets:
+            self.args.targets = self.default_targets
+
+        if (
+            self.args.checkpoint_reset
+            and self.args.checkpoint_continue is not None
+        ):
+            raise InvalidArgumentError(
+                "--continue and --reset cannot be used together"
+            )
+
+        ret = 0
+        for target in self.args.targets:
+            try:
+                self.repo.experiments.run(
+                    target,
+                    queue=self.args.queue,
+                    run_all=self.args.run_all,
+                    jobs=self.args.jobs,
+                    params=self.args.params,
+                    checkpoint=(
+                        self.args.checkpoint
+                        or self.args.checkpoint_continue is not None
+                        or self.args.checkpoint_reset
+                    ),
+                    checkpoint_continue=self.args.checkpoint_continue,
+                    checkpoint_reset=self.args.checkpoint_reset,
+                    **self._repro_kwargs,
+                )
+            except DvcException:
+                logger.exception("")
+                ret = 1
+                break
+
+        os.chdir(saved_dir)
+        return ret
 
 
 def add_parser(subparsers, parent_parser):
@@ -477,6 +581,21 @@ def add_parser(subparsers, parent_parser):
         default=False,
         help="Always show git commit SHAs instead of branch/tag names.",
     )
+    experiments_show_parser.add_argument(
+        "--show-json",
+        action="store_true",
+        default=False,
+        help="Print output in JSON format instead of a human-readable table.",
+    )
+    experiments_show_parser.add_argument(
+        "--precision",
+        type=int,
+        help=(
+            "Round metrics/params to `n` digits precision after the decimal "
+            f"point. Rounds to {DEFAULT_PRECISION} digits by default."
+        ),
+        metavar="<n>",
+    )
     experiments_show_parser.set_defaults(func=CmdExperimentsShow)
 
     EXPERIMENTS_CHECKOUT_HELP = "Checkout experiments."
@@ -552,3 +671,73 @@ def add_parser(subparsers, parent_parser):
         metavar="<n>",
     )
     experiments_diff_parser.set_defaults(func=CmdExperimentsDiff)
+
+    EXPERIMENTS_RUN_HELP = (
+        "Reproduce complete or partial experiment pipelines."
+    )
+    experiments_run_parser = experiments_subparsers.add_parser(
+        "run",
+        parents=[parent_parser],
+        description=append_doc_link(EXPERIMENTS_RUN_HELP, "experiments/run"),
+        help=EXPERIMENTS_RUN_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    # inherit arguments from `dvc repro`
+    add_repro_arguments(experiments_run_parser)
+    experiments_run_parser.add_argument(
+        "--params",
+        action="append",
+        default=[],
+        help="Use the specified param values when reproducing pipelines.",
+        metavar="[<filename>:]<params_list>",
+    )
+    experiments_run_parser.add_argument(
+        "--queue",
+        action="store_true",
+        default=False,
+        help="Stage this experiment in the run queue for future execution.",
+    )
+    experiments_run_parser.add_argument(
+        "--run-all",
+        action="store_true",
+        default=False,
+        help="Execute all experiments in the run queue.",
+    )
+    experiments_run_parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        help="Run the specified number of experiments at a time in parallel.",
+        metavar="<number>",
+    )
+    experiments_run_parser.add_argument(
+        "--checkpoint",
+        action="store_true",
+        default=False,
+        help="Reproduce pipelines as a checkpoint experiment.",
+    )
+    experiments_run_parser.add_argument(
+        "--continue",
+        type=str,
+        nargs="?",
+        default=None,
+        const=":last",
+        dest="checkpoint_continue",
+        help=(
+            "Continue from the specified checkpoint experiment "
+            "(implies --checkpoint). If no experiment revision is provided, "
+            "the most recently run checkpoint experiment will be used."
+        ),
+        metavar="<experiment_rev>",
+    )
+    experiments_run_parser.add_argument(
+        "--reset",
+        action="store_true",
+        default=False,
+        dest="checkpoint_reset",
+        help=(
+            "Reset checkpoint experiment if it already exists "
+            "(implies --checkpoint)."
+        ),
+    )
+    experiments_run_parser.set_defaults(func=CmdExperimentsRun)

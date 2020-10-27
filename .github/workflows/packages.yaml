@@ -3,9 +3,6 @@ on:
   push:
     branches:
     - master
-  pull_request:
-    branches:
-    - master
   release:
     types: [released]
 jobs:
@@ -80,9 +77,9 @@ jobs:
       shell: cmd
     - name: Publish
       if: github.event_name == 'release'
-      uses: actions/upload-release-asset@v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: actions/upload-release-asset@v1.0.1
       with:
         upload_url: ${{ github.event.release.upload_url }}
         asset_path: dvc-${{ github.event.release.tag_name }}.exe

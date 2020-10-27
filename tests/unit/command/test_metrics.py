@@ -24,7 +24,6 @@ def test_metrics_diff(dvc, mocker):
             "target2",
             "--show-md",
             "--no-path",
-            "--old",
             "--precision",
             "10",
         ]
@@ -51,8 +50,8 @@ def test_metrics_show_json_diff():
         {"metrics.json": {"a.b.c": {"old": 1, "new": 2, "diff": 3}}}
     ) == textwrap.dedent(
         """\
-        Path          Metric    Value    Change
-        metrics.json  a.b.c     2        3"""
+        Path          Metric    Old    New    Change
+        metrics.json  a.b.c     1      2      3"""
     )
 
 
@@ -61,8 +60,8 @@ def test_metrics_show_raw_diff():
         {"metrics": {"": {"old": "1", "new": "2"}}}
     ) == textwrap.dedent(
         """\
-        Path     Metric    Value    Change
-        metrics            2        diff not supported"""
+        Path     Metric    Old    New    Change
+        metrics            1      2      —"""
     )
 
 
@@ -71,8 +70,8 @@ def test_metrics_diff_no_diff():
         {"other.json": {"a.b.d": {"old": "old", "new": "new"}}}
     ) == textwrap.dedent(
         """\
-        Path        Metric    Value    Change
-        other.json  a.b.d     new      diff not supported"""
+        Path        Metric    Old    New    Change
+        other.json  a.b.d     old    new    —"""
     )
 
 
@@ -85,8 +84,8 @@ def test_metrics_diff_new_metric():
         {"other.json": {"a.b.d": {"old": None, "new": "new"}}}
     ) == textwrap.dedent(
         """\
-        Path        Metric    Value    Change
-        other.json  a.b.d     new      diff not supported"""
+        Path        Metric    Old    New    Change
+        other.json  a.b.d     —      new    —"""
     )
 
 
@@ -95,8 +94,8 @@ def test_metrics_diff_deleted_metric():
         {"other.json": {"a.b.d": {"old": "old", "new": None}}}
     ) == textwrap.dedent(
         """\
-        Path        Metric    Value    Change
-        other.json  a.b.d     None     diff not supported"""
+        Path        Metric    Old    New    Change
+        other.json  a.b.d     old    —      —"""
     )
 
 
@@ -143,14 +142,14 @@ def test_metrics_diff_precision():
 
     assert _show_diff(diff) == textwrap.dedent(
         """\
-        Path        Metric    Value    Change
-        other.json  a.b       0.76543  0.64198"""
+        Path        Metric    Old      New      Change
+        other.json  a.b       0.12346  0.76543  0.64198"""
     )
 
     assert _show_diff(diff, precision=10) == textwrap.dedent(
         """\
-        Path        Metric    Value         Change
-        other.json  a.b       0.7654321012  0.6419754012"""
+        Path        Metric    Old        New           Change
+        other.json  a.b       0.1234567  0.7654321012  0.6419754012"""
     )
 
 
@@ -165,18 +164,18 @@ def test_metrics_diff_sorted():
         }
     ) == textwrap.dedent(
         """\
-        Path          Metric    Value    Change
-        metrics.yaml  a.b.c     2        1
-        metrics.yaml  a.d.e     4        1
-        metrics.yaml  x.b       6        1"""
+        Path          Metric    Old    New    Change
+        metrics.yaml  a.b.c     1      2      1
+        metrics.yaml  a.d.e     3      4      1
+        metrics.yaml  x.b       5      6      1"""
     )
 
 
 def test_metrics_diff_markdown_empty():
     assert _show_diff({}, markdown=True) == textwrap.dedent(
         """\
-        | Path   | Metric   | Value   | Change   |
-        |--------|----------|---------|----------|
+        | Path   | Metric   | Old   | New   | Change   |
+        |--------|----------|-------|-------|----------|
         """
     )
 
@@ -193,11 +192,11 @@ def test_metrics_diff_markdown():
         markdown=True,
     ) == textwrap.dedent(
         """\
-        | Path         | Metric   | Value   | Change             |
-        |--------------|----------|---------|--------------------|
-        | metrics.yaml | a.b.c    | 2       | 1                  |
-        | metrics.yaml | a.d.e    | 4       | 1                  |
-        | metrics.yaml | x.b      | 6       | diff not supported |
+        | Path         | Metric   | Old   | New   | Change   |
+        |--------------|----------|-------|-------|----------|
+        | metrics.yaml | a.b.c    | 1     | 2     | 1        |
+        | metrics.yaml | a.d.e    | 3     | 4     | 1        |
+        | metrics.yaml | x.b      | 5     | 6     | —        |
         """
     )
 
@@ -214,29 +213,10 @@ def test_metrics_diff_no_path():
         no_path=True,
     ) == textwrap.dedent(
         """\
-        Metric    Value    Change
-        a.b.c     2        1
-        a.d.e     4        1
-        x.b       6        1"""
-    )
-
-
-def test_metrics_diff_with_old():
-    assert _show_diff(
-        {
-            "metrics.yaml": {
-                "x.b": {"old": 5, "new": 6, "diff": 1},
-                "a.d.e": {"old": 3, "new": 4, "diff": 1},
-                "a.b.c": {"old": 1, "new": 2, "diff": 1},
-            }
-        },
-        old=True,
-    ) == textwrap.dedent(
-        """\
-        Path          Metric    Old    New    Change
-        metrics.yaml  a.b.c     1      2      1
-        metrics.yaml  a.d.e     3      4      1
-        metrics.yaml  x.b       5      6      1"""
+        Metric    Old    New    Change
+        a.b.c     1      2      1
+        a.d.e     3      4      1
+        x.b       5      6      1"""
     )
 
 

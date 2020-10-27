@@ -40,7 +40,7 @@ def test_show_experiment(tmp_dir, scm, dvc):
         scm.repo.rev_parse(baseline_rev).committed_date
     )
 
-    dvc.reproduce(PIPELINE_FILE, experiment=True, params=["foo=2"])
+    dvc.experiments.run(PIPELINE_FILE, params=["foo=2"])
     results = dvc.experiments.show()
 
     expected_baseline = {
@@ -76,9 +76,7 @@ def test_show_queued(tmp_dir, scm, dvc):
     scm.commit("baseline")
     baseline_rev = scm.get_rev()
 
-    dvc.reproduce(
-        stage.addressing, experiment=True, params=["foo=2"], queue=True
-    )
+    dvc.experiments.run(stage.addressing, params=["foo=2"], queue=True)
     exp_rev = dvc.experiments.scm.resolve_rev("stash@{0}")
 
     results = dvc.experiments.show()[baseline_rev]
@@ -93,9 +91,7 @@ def test_show_queued(tmp_dir, scm, dvc):
     scm.commit("new commit")
     new_rev = scm.get_rev()
 
-    dvc.reproduce(
-        stage.addressing, experiment=True, params=["foo=3"], queue=True
-    )
+    dvc.experiments.run(stage.addressing, params=["foo=3"], queue=True)
     exp_rev = dvc.experiments.scm.resolve_rev("stash@{0}")
 
     results = dvc.experiments.show()[new_rev]

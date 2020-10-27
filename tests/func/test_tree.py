@@ -194,9 +194,8 @@ def test_repotree_walk_fetch(tmp_dir, dvc, scm, local_remote):
     remove(tmp_dir / "dir")
 
     tree = RepoTree(dvc, fetch=True)
-    with dvc.state:
-        for _, _, _ in tree.walk("dir"):
-            pass
+    for _, _, _ in tree.walk("dir"):
+        pass
 
     assert os.path.exists(out.cache_path)
     for entry in out.dir_cache:
@@ -223,12 +222,10 @@ def test_repotree_cache_save(tmp_dir, dvc, scm, erepo_dir, local_cloud):
         for path in ("dir/bar", "dir/subdir/foo")
     ]
 
-    with erepo_dir.dvc.state:
-        cache = dvc.cache.local
-        with cache.tree.state:
-            path_info = PathInfo(erepo_dir / "dir")
-            hash_info = cache.tree.get_hash(path_info)
-            cache.save(path_info, tree, hash_info)
+    cache = dvc.cache.local
+    path_info = PathInfo(erepo_dir / "dir")
+    hash_info = cache.tree.get_hash(path_info)
+    cache.save(path_info, tree, hash_info)
 
     for hash_ in expected:
         assert os.path.exists(cache.tree.hash_to_path_info(hash_))
@@ -274,6 +271,6 @@ def test_walk_dont_ignore_subrepos(tmp_dir, scm, dvc):
     assert get_dirs(next(dvc_tree.walk(path))) == []
     assert get_dirs(next(scm_tree.walk(path))) == []
 
-    kw = dict(ignore_subrepos=False)
+    kw = {"ignore_subrepos": False}
     assert get_dirs(next(dvc_tree.walk(path, **kw))) == ["subdir"]
     assert get_dirs(next(scm_tree.walk(path, **kw))) == ["subdir"]

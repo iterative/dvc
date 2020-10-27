@@ -70,7 +70,7 @@ def test_params_diff_new():
     ) == textwrap.dedent(
         """\
         Path         Param    Old    New
-        params.yaml  a.b.d    None   new"""
+        params.yaml  a.b.d    —      new"""
     )
 
 
@@ -80,7 +80,7 @@ def test_params_diff_deleted():
     ) == textwrap.dedent(
         """\
         Path         Param    Old    New
-        params.yaml  a.b.d    old    None"""
+        params.yaml  a.b.d    old    —"""
     )
 
 
@@ -148,8 +148,8 @@ def test_params_diff_markdown():
         """\
         | Path        | Param   | Old   | New   |
         |-------------|---------|-------|-------|
-        | params.yaml | a.b.c   | 1     | None  |
-        | params.yaml | a.d.e   | None  | 4     |
+        | params.yaml | a.b.c   | 1     | —     |
+        | params.yaml | a.d.e   | —     | 4     |
         | params.yaml | x.b     | 5     | 6     |
         """
     )

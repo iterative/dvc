@@ -330,10 +330,7 @@ def test_plot_even_if_metric_missing(
     caplog.clear()
     with caplog.at_level(logging.WARNING, "dvc"):
         plots = dvc.plots.show(revs=["v1", "v2"], targets=["metric.json"])
-        assert (
-            "'metric.json' was not found at: 'v1'. "
-            "It will not be plotted." in caplog.text
-        )
+        assert "'metric.json' was not found at: 'v1'." in caplog.text
 
     plot_content = json.loads(plots["metric.json"])
     assert plot_content["data"]["values"] == [
@@ -638,6 +635,9 @@ def test_show_non_plot(tmp_dir, scm, use_dvc):
     assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
     assert plot_content["encoding"]["y"]["field"] == "val"
 
+    if not use_dvc:
+        assert not (tmp_dir / ".dvc").exists()
+
 
 def test_show_non_plot_and_plot_with_params(
     tmp_dir, scm, dvc, run_copy_metrics
@@ -663,3 +663,15 @@ def test_show_non_plot_and_plot_with_params(
     plot_content.pop("title")
     plot2_content.pop("title")
     assert plot_content == plot2_content
+
+
+def test_show_no_repo(tmp_dir):
+    metric = [
+        {"first_val": 100, "val": 2},
+        {"first_val": 200, "val": 3},
+    ]
+    _write_json(tmp_dir, metric, "metric.json")
+
+    dvc = Repo(uninitialized=True)
+
+    dvc.plots.show(["metric.json"])

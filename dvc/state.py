@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import sqlite3
+from abc import ABC, abstractmethod
 from urllib.parse import urlencode, urlunparse
 
 from dvc.exceptions import DvcException
@@ -29,8 +30,51 @@ class StateVersionTooNewError(DvcException):
         )
 
 
-class StateNoop:
-    files = []
+class StateBase(ABC):
+    def __init__(self):
+        self.count = 0
+
+    @property
+    @abstractmethod
+    def files(self):
+        pass
+
+    @abstractmethod
+    def save(self, path_info, checksum):
+        pass
+
+    @abstractmethod
+    def get(self, path_info):
+        pass
+
+    @abstractmethod
+    def save_link(self, path_info):
+        pass
+
+    @abstractmethod
+    def load(self):
+        pass
+
+    @abstractmethod
+    def dump(self):
+        pass
+
+    def __enter__(self):
+        if self.count <= 0:
+            self.load()
+        self.count += 1
+
+    def __exit__(self, typ, value, tbck):
+        self.count -= 1
+        if self.count > 0:
+            return
+        self.dump()
+
+
+class StateNoop(StateBase):
+    @property
+    def files(self):
+        return []
 
     def save(self, path_info, checksum):
         pass
@@ -41,14 +85,14 @@ class StateNoop:
     def save_link(self, path_info):
         pass
 
-    def __enter__(self):
+    def load(self):
         pass
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def dump(self):
         pass
 
 
-class State:  # pylint: disable=too-many-instance-attributes
+class State(StateBase):  # pylint: disable=too-many-instance-attributes
     """Class for the state database.
 
     Args:
@@ -88,10 +132,11 @@ class State:  # pylint: disable=too-many-instance-attributes
     MAX_INT = 2 ** 63 - 1
     MAX_UINT = 2 ** 64 - 2
 
-    def __init__(self, local_cache):
+    def __init__(self, repo):
         from dvc.tree.local import LocalTree
 
-        repo = local_cache.repo
+        super().__init__()
+
         self.repo = repo
         self.root_dir = repo.root_dir
         self.tree = LocalTree(None, {"url": self.root_dir})
@@ -121,12 +166,6 @@ class State:  # pylint: disable=too-many-instance-attributes
     @property
     def files(self):
         return self.temp_files + [self.state_file]
-
-    def __enter__(self):
-        self.load()
-
-    def __exit__(self, typ, value, tbck):
-        self.dump()
 
     def _execute(self, cmd, parameters=()):
         logger.trace(cmd)

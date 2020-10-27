@@ -208,5 +208,4 @@ def test_params_with_false_values(tmp_dir, dvc, param_value):
 
     dep.fill_values(load_yaml(DEFAULT_PARAMS_FILE))
 
-    with dvc.state:
-        assert dep.status() == {}
+    assert dep.status() == {}

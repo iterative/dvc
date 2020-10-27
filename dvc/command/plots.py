@@ -31,8 +31,6 @@ DIV_HTML = """<div id = "{id}"></div>
 
 
 class CmdPlots(CmdBase):
-    UNINITIALIZED = True
-
     def _func(self, *args, **kwargs):
         raise NotImplementedError
 
@@ -82,11 +80,15 @@ class CmdPlots(CmdBase):
 
 
 class CmdPlotsShow(CmdPlots):
+    UNINITIALIZED = True
+
     def _func(self, *args, **kwargs):
         return self.repo.plots.show(*args, **kwargs)
 
 
 class CmdPlotsDiff(CmdPlots):
+    UNINITIALIZED = True
+
     def _func(self, *args, **kwargs):
         return self.repo.plots.diff(
             *args,
@@ -124,7 +126,7 @@ def add_parser(subparsers, parent_parser):
 
     fix_subparsers(plots_subparsers)
 
-    SHOW_HELP = "Generate plots from metric files."
+    SHOW_HELP = "Generate plots from metrics files."
     plots_show_parser = plots_subparsers.add_parser(
         "show",
         parents=[parent_parser],
@@ -176,7 +178,7 @@ def add_parser(subparsers, parent_parser):
     _add_output_arguments(plots_diff_parser)
     plots_diff_parser.set_defaults(func=CmdPlotsDiff)
 
-    PLOTS_MODIFY_HELP = "Modify display properties of plot metric files."
+    PLOTS_MODIFY_HELP = "Modify display properties of plot metrics files."
     plots_modify_parser = plots_subparsers.add_parser(
         "modify",
         parents=[parent_parser],

@@ -1,7 +1,7 @@
 import logging
+from functools import partial
 
 from dvc.exceptions import InvalidArgumentError, ReproductionError
-from dvc.repo.experiments import UnchangedExperimentError
 from dvc.repo.scm_context import scm_context
 
 from . import locked
@@ -11,6 +11,14 @@ logger = logging.getLogger(__name__)
 
 
 def _reproduce_stage(stage, **kwargs):
+    def _run_callback(repro_callback):
+        _dump_stage(stage)
+        repro_callback([stage])
+
+    checkpoint_func = kwargs.pop("checkpoint_func", None)
+    if checkpoint_func:
+        kwargs["checkpoint_func"] = partial(_run_callback, checkpoint_func)
+
     if stage.frozen and not stage.is_import:
         logger.warning(
             "{} is frozen. Its dependencies are"
@@ -22,12 +30,16 @@ def _reproduce_stage(stage, **kwargs):
         return []
 
     if not kwargs.get("dry", False):
-        from ..dvcfile import Dvcfile
-
-        dvcfile = Dvcfile(stage.repo, stage.path)
-        dvcfile.dump(stage, update_pipeline=False)
+        _dump_stage(stage)
 
     return [stage]
+
+
+def _dump_stage(stage):
+    from ..dvcfile import Dvcfile
+
+    dvcfile = Dvcfile(stage.repo, stage.path)
+    dvcfile.dump(stage, update_pipeline=False)
 
 
 def _get_active_graph(G):
@@ -70,28 +82,6 @@ def reproduce(
             "Neither `target` nor `--all-pipelines` are specified."
         )
 
-    experiment = kwargs.pop("experiment", False)
-    params = _parse_params(kwargs.pop("params", []))
-    queue = kwargs.pop("queue", False)
-    run_all = kwargs.pop("run_all", False)
-    jobs = kwargs.pop("jobs", 1)
-    if (experiment or run_all) and self.experiments:
-        try:
-            return _reproduce_experiments(
-                self,
-                target=target,
-                recursive=recursive,
-                all_pipelines=all_pipelines,
-                params=params,
-                queue=queue,
-                run_all=run_all,
-                jobs=jobs,
-                **kwargs,
-            )
-        except UnchangedExperimentError:
-            # If experiment contains no changes, just run regular repro
-            pass
-
     interactive = kwargs.get("interactive", False)
     if not interactive:
         kwargs["interactive"] = self.config["core"].get("interactive", False)
@@ -116,39 +106,6 @@ def reproduce(
         targets = self.collect(target, recursive=recursive, graph=active_graph)
 
     return _reproduce_stages(active_graph, targets, **kwargs)
-
-
-def _parse_params(path_params):
-    from ruamel.yaml import YAMLError
-
-    from dvc.dependency.param import ParamsDependency
-    from dvc.utils.flatten import unflatten
-    from dvc.utils.serialize import loads_yaml
-
-    ret = {}
-    for path_param in path_params:
-        path, _, params_str = path_param.rpartition(":")
-        # remove empty strings from params, on condition such as `-p "file1:"`
-        params = {}
-        for param_str in filter(bool, params_str.split(",")):
-            try:
-                # interpret value strings using YAML rules
-                key, value = param_str.split("=")
-                params[key] = loads_yaml(value)
-            except (ValueError, YAMLError):
-                raise InvalidArgumentError(
-                    f"Invalid param/value pair '{param_str}'"
-                )
-        if not path:
-            path = ParamsDependency.DEFAULT_PARAMS_FILE
-        ret[path] = unflatten(params)
-    return ret
-
-
-def _reproduce_experiments(repo, run_all=False, jobs=1, **kwargs):
-    if run_all:
-        return repo.experiments.reproduce_queued(jobs=jobs)
-    return repo.experiments.reproduce_one(**kwargs)
 
 
 def _reproduce_stages(
@@ -219,16 +176,25 @@ def _reproduce_stages(
 
     force_downstream = kwargs.pop("force_downstream", False)
     result = []
+    unchanged = []
     # `ret` is used to add a cosmetic newline.
     ret = []
+    checkpoint_func = kwargs.pop("checkpoint_func", None)
     for stage in pipeline:
         if ret:
             logger.info("")
 
+        if checkpoint_func:
+            kwargs["checkpoint_func"] = partial(
+                _repro_callback, checkpoint_func, unchanged
+            )
+
         try:
             ret = _reproduce_stage(stage, **kwargs)
 
-            if len(ret) != 0 and force_downstream:
+            if len(ret) == 0:
+                unchanged.extend([stage])
+            elif force_downstream:
                 # NOTE: we are walking our pipeline from the top to the
                 # bottom. If one stage is changed, it will be reproduced,
                 # which tells us that we should force reproducing all of
@@ -238,9 +204,13 @@ def _reproduce_stages(
 
             if ret:
                 result.extend(ret)
-            elif on_unchanged is not None:
-                on_unchanged(stage)
         except Exception as exc:
             raise ReproductionError(stage.relpath) from exc
 
+    if on_unchanged is not None:
+        on_unchanged(unchanged)
     return result
+
+
+def _repro_callback(experiments_callback, unchanged, stages):
+    experiments_callback(unchanged, stages)

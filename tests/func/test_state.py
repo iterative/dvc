@@ -13,7 +13,7 @@ def test_state(tmp_dir, dvc):
     path_info = PathInfo(path)
     md5 = file_md5(path)[0]
 
-    state = State(dvc.cache.local)
+    state = State(dvc)
 
     with state:
         state.save(path_info, md5)
@@ -57,7 +57,7 @@ def mock_get_inode(inode):
 def test_get_state_record_for_inode(get_inode_mock, tmp_dir, dvc):
     tmp_dir.gen("foo", "foo content")
 
-    state = State(dvc.cache.local)
+    state = State(dvc)
     inode = state.MAX_INT + 2
     assert inode != state._to_sqlite(inode)
 

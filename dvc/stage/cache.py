@@ -3,7 +3,7 @@ import os
 import tempfile
 from contextlib import contextmanager
 
-from funcy import first
+from funcy import cached_property, first
 from voluptuous import Invalid
 
 from dvc.cache.local import _log_exceptions
@@ -48,7 +48,10 @@ def _get_stage_hash(stage):
 class StageCache:
     def __init__(self, repo):
         self.repo = repo
-        self.cache_dir = os.path.join(repo.cache.local.cache_dir, "runs")
+
+    @cached_property
+    def cache_dir(self):
+        return os.path.join(self.repo.cache.local.cache_dir, "runs")
 
     @property
     def tree(self):
@@ -129,6 +132,9 @@ class StageCache:
                     yield out
 
     def save(self, stage):
+        if stage.is_callback or stage.always_changed:
+            return
+
         cache_key = _get_stage_hash(stage)
         if not cache_key:
             return
@@ -156,33 +162,37 @@ class StageCache:
         dump_yaml(tmp, cache)
         self.tree.move(PathInfo(tmp), path)
 
-    def _restore(self, stage):
-        stage.save_deps()
-        cache = self._load(stage)
-        if not cache:
-            raise RunCacheNotFoundError(stage)
-
-        StageLoader.fill_from_lock(stage, cache)
-        for out in self._uncached_outs(stage, cache):
-            out.checkout()
-
-        if not stage.outs_cached():
-            raise RunCacheNotFoundError(stage)
-
-    def restore(self, stage, run_cache=True):
+    def restore(self, stage, run_cache=True, pull=False):
         if stage.is_callback or stage.always_changed:
             raise RunCacheNotFoundError(stage)
 
-        if not stage.already_cached():
+        if (
+            not stage.changed_stage()
+            and stage.deps_cached()
+            and all(bool(out.hash_info) for out in stage.outs)
+        ):
+            cache = to_single_stage_lockfile(stage)
+        else:
             if not run_cache:  # backward compatibility
                 raise RunCacheNotFoundError(stage)
-            self._restore(stage)
+            stage.save_deps()
+            cache = self._load(stage)
+            if not cache:
+                raise RunCacheNotFoundError(stage)
+
+        cached_stage = self._create_stage(cache, wdir=stage.wdir)
+
+        if pull:
+            self.repo.cloud.pull(cached_stage.get_used_cache())
+
+        if not cached_stage.outs_cached():
+            raise RunCacheNotFoundError(stage)
 
         logger.info(
             "Stage '%s' is cached - skipping run, checking out outputs",
             stage.addressing,
         )
-        stage.checkout()
+        cached_stage.checkout()
 
     @staticmethod
     def _transfer(func, from_remote, to_remote):

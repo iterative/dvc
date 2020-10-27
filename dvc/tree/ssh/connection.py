@@ -2,6 +2,7 @@ import errno
 import logging
 import os
 import posixpath
+import shlex
 import stat
 from contextlib import suppress
 
@@ -291,6 +292,7 @@ class SSHConnection:
          Example:
               MD5 (foo.txt) = f3d220a856b52aabbf294351e8a24300
         """
+        path = shlex.quote(path)
         if self.uname == "Linux":
             md5 = self.execute("md5sum " + path).split()[0]
         elif self.uname == "Darwin":
@@ -304,6 +306,8 @@ class SSHConnection:
         return md5
 
     def copy(self, src, dest):
+        dest = shlex.quote(dest)
+        src = shlex.quote(src)
         self.execute(f"cp {src} {dest}")
 
     def open_max_sftp_channels(self):
@@ -325,6 +329,8 @@ class SSHConnection:
         self.sftp.symlink(src, dest)
 
     def reflink(self, src, dest):
+        dest = shlex.quote(dest)
+        src = shlex.quote(src)
         if self.uname == "Linux":
             return self.execute(f"cp --reflink {src} {dest}")
 
@@ -334,4 +340,6 @@ class SSHConnection:
         raise DvcException(f"'{self.uname}' is not supported as a SSH remote")
 
     def hardlink(self, src, dest):
+        dest = shlex.quote(dest)
+        src = shlex.quote(src)
         self.execute(f"ln {src} {dest}")

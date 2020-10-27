@@ -20,7 +20,7 @@ def get_url(path, repo=None, rev=None, remote=None):
     in a DVC repo. For Git repos, HEAD is used unless a rev argument is
     supplied. The default remote is tried unless a remote argument is supplied.
 
-    Raises OutputNotFoundError if the file is not a dvc-tracked file.
+    Raises OutputNotFoundError if the file is not tracked by DVC.
 
     NOTE: This function does not check for the actual existence of the file or
     directory in the remote storage.
@@ -34,8 +34,7 @@ def get_url(path, repo=None, rev=None, remote=None):
             raise OutputNotFoundError(path, repo)
 
         cloud = metadata.repo.cloud
-        with _repo.state:
-            hash_info = _repo.repo_tree.get_hash(path_info)
+        hash_info = _repo.repo_tree.get_hash(path_info)
         return cloud.get_url_for(remote, checksum=hash_info.value)
 
 
@@ -109,3 +108,34 @@ def _make_repo(repo_url=None, rev=None):
             pass  # fallthrough to external_repo
     with external_repo(url=repo_url, rev=rev) as repo:
         yield repo
+
+
+def make_checkpoint():
+    """
+    Signal DVC to create a checkpoint experiment.
+
+    If the current process is being run from DVC, this function will block
+    until DVC has finished creating the checkpoint. Otherwise, this function
+    will return immediately.
+    """
+    import builtins
+    from time import sleep
+
+    from dvc.stage.run import CHECKPOINT_SIGNAL_FILE
+
+    if os.getenv("DVC_CHECKPOINT") is None:
+        return
+
+    root_dir = Repo.find_root()
+    signal_file = os.path.join(
+        root_dir, Repo.DVC_DIR, "tmp", CHECKPOINT_SIGNAL_FILE
+    )
+
+    with builtins.open(signal_file, "w") as fobj:
+        # NOTE: force flushing/writing empty file to disk, otherwise when
+        # run in certain contexts (pytest) file may not actually be written
+        fobj.write("")
+        fobj.flush()
+        os.fsync(fobj.fileno())
+    while os.path.exists(signal_file):
+        sleep(1)

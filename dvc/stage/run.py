@@ -3,13 +3,17 @@ import os
 import signal
 import subprocess
 import threading
+from contextlib import contextmanager
 
 from dvc.utils import fix_env
 
-from .decorators import unlocked_repo
+from .decorators import relock_repo, unlocked_repo
 from .exceptions import StageCmdFailedError
 
 logger = logging.getLogger(__name__)
+
+
+CHECKPOINT_SIGNAL_FILE = "DVC_CHECKPOINT"
 
 
 def _nix_cmd(executable, cmd):
@@ -35,8 +39,11 @@ def warn_if_fish(executable):
 
 
 @unlocked_repo
-def cmd_run(stage, *args, **kwargs):
+def cmd_run(stage, *args, checkpoint_func=None, **kwargs):
     kwargs = {"cwd": stage.wdir, "env": fix_env(None), "close_fds": True}
+    if checkpoint_func:
+        # indicate that checkpoint cmd is being run inside DVC
+        kwargs["env"].update({"DVC_CHECKPOINT": "1"})
 
     if os.name == "nt":
         kwargs["shell"] = True
@@ -71,7 +78,9 @@ def cmd_run(stage, *args, **kwargs):
         p = subprocess.Popen(cmd, **kwargs)
         if main_thread:
             old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
-        p.communicate()
+
+        with checkpoint_monitor(stage, checkpoint_func, p):
+            p.communicate()
     finally:
         if old_handler:
             signal.signal(signal.SIGINT, old_handler)
@@ -81,12 +90,12 @@ def cmd_run(stage, *args, **kwargs):
         raise StageCmdFailedError(stage.cmd, retcode)
 
 
-def run_stage(stage, dry=False, force=False, run_cache=False):
-    if not (dry or force):
+def run_stage(stage, dry=False, force=False, checkpoint_func=None, **kwargs):
+    if not (dry or force or checkpoint_func):
         from .cache import RunCacheNotFoundError
 
         try:
-            stage.repo.stage_cache.restore(stage, run_cache=run_cache)
+            stage.repo.stage_cache.restore(stage, **kwargs)
             return
         except RunCacheNotFoundError:
             pass
@@ -99,4 +108,68 @@ def run_stage(stage, dry=False, force=False, run_cache=False):
     )
     logger.info("\t%s", stage.cmd)
     if not dry:
-        cmd_run(stage)
+        cmd_run(stage, checkpoint_func=checkpoint_func)
+
+
+class CheckpointCond:
+    def __init__(self):
+        self.done = False
+        self.cond = threading.Condition()
+
+    def notify(self):
+        with self.cond:
+            self.done = True
+            self.cond.notify()
+
+    def wait(self, timeout=None):
+        with self.cond:
+            return self.cond.wait(timeout) or self.done
+
+
+@contextmanager
+def checkpoint_monitor(stage, callback_func, proc):
+    if not callback_func:
+        yield None
+        return
+
+    logger.debug(
+        "Monitoring checkpoint stage '%s' with cmd process '%s'", stage, proc
+    )
+    done_cond = CheckpointCond()
+    monitor_thread = threading.Thread(
+        target=_checkpoint_run, args=(stage, callback_func, done_cond, proc),
+    )
+
+    try:
+        monitor_thread.start()
+        yield monitor_thread
+    finally:
+        done_cond.notify()
+        monitor_thread.join()
+
+
+def _checkpoint_run(stage, callback_func, done_cond, proc):
+    """Run callback_func whenever checkpoint signal file is present."""
+    signal_path = os.path.join(stage.repo.tmp_dir, CHECKPOINT_SIGNAL_FILE)
+    while True:
+        if os.path.exists(signal_path):
+            try:
+                _run_callback(stage, callback_func)
+            except Exception:  # pylint: disable=broad-except
+                logger.exception(
+                    "Error generating checkpoint, %s will be aborted", stage
+                )
+                proc.terminate()
+            finally:
+                logger.debug("Remove checkpoint signal file")
+                os.remove(signal_path)
+        if done_cond.wait(1):
+            return
+
+
+@relock_repo
+def _run_callback(stage, callback_func):
+    stage.save(allow_missing=True)
+    # TODO: do we need commit() (and check for --no-commit) here
+    logger.debug("Running checkpoint callback for stage '%s'", stage)
+    callback_func()

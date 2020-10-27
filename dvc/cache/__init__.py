@@ -62,6 +62,9 @@ class Cache:
 
         if local:
             settings = {"name": local}
+        elif "dir" not in config:
+            self.local = None
+            return
         else:
             from ..config import LOCAL_COMMON
 

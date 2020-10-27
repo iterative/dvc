@@ -6,6 +6,7 @@ categories:
     labels:
       - "feature"
       - "enhancement"
+      - "ui"
   - title: "💣 Breaking Changes "
     labels:
       - "breaking-change"

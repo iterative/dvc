@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from functools import wraps
 
 from funcy import cached_property, cat, first
+from git import InvalidGitRepositoryError
 
 from dvc.config import Config
 from dvc.dvcfile import PIPELINE_FILE, Dvcfile, is_valid_filename
@@ -15,6 +16,8 @@ from dvc.exceptions import (
     OutputNotFoundError,
 )
 from dvc.path_info import PathInfo
+from dvc.scm import Base
+from dvc.scm.base import SCMError
 from dvc.tree.repo import RepoTree
 from dvc.utils.fs import path_isin
 
@@ -80,6 +83,37 @@ class Repo:
     from dvc.repo.status import status
     from dvc.repo.update import update
 
+    def _get_repo_dirs(
+        self,
+        root_dir: str = None,
+        scm: Base = None,
+        rev: str = None,
+        uninitialized: bool = False,
+    ):
+        assert bool(scm) == bool(rev)
+
+        from dvc.scm import SCM
+        from dvc.utils.fs import makedirs
+
+        try:
+            tree = scm.get_tree(rev) if rev else None
+            root_dir = self.find_root(root_dir, tree)
+            dvc_dir = os.path.join(root_dir, self.DVC_DIR)
+            tmp_dir = os.path.join(dvc_dir, "tmp")
+            makedirs(tmp_dir, exist_ok=True)
+
+        except NotDvcRepoError:
+            if not uninitialized:
+                raise
+            try:
+                root_dir = SCM(root_dir or os.curdir).root_dir
+            except (SCMError, InvalidGitRepositoryError):
+                root_dir = SCM(os.curdir, no_scm=True).root_dir
+
+            dvc_dir = None
+            tmp_dir = None
+        return root_dir, dvc_dir, tmp_dir
+
     def __init__(
         self,
         root_dir=None,
@@ -90,81 +124,68 @@ class Repo:
     ):
         from dvc.cache import Cache
         from dvc.data_cloud import DataCloud
-        from dvc.lock import make_lock
+        from dvc.lock import LockNoop, make_lock
         from dvc.repo.experiments import Experiments
         from dvc.repo.metrics import Metrics
         from dvc.repo.params import Params
         from dvc.repo.plots import Plots
-        from dvc.scm import SCM
         from dvc.stage.cache import StageCache
         from dvc.state import State, StateNoop
         from dvc.tree.local import LocalTree
-        from dvc.utils.fs import makedirs
 
-        if scm:
-            tree = scm.get_tree(rev)
-            self.root_dir = self.find_root(root_dir, tree)
-            self.scm = scm
-            self.tree = scm.get_tree(
-                rev, use_dvcignore=True, dvcignore_root=self.root_dir
-            )
-            self.state = StateNoop()
-        else:
-            try:
-                root_dir = self.find_root(root_dir)
-            except NotDvcRepoError:
-                if not uninitialized:
-                    raise
-                root_dir = SCM(root_dir or os.curdir).root_dir
-            self.root_dir = os.path.abspath(os.path.realpath(root_dir))
-            self.tree = LocalTree(
-                self,
-                {"url": self.root_dir},
-                use_dvcignore=True,
-                dvcignore_root=self.root_dir,
-            )
-
-        self.dvc_dir = os.path.join(self.root_dir, self.DVC_DIR)
-        self.config = Config(self.dvc_dir, tree=self.tree)
-
-        if not scm:
-            no_scm = self.config["core"].get("no_scm", False)
-            self.scm = SCM(self.root_dir, no_scm=no_scm)
-
-        self.tmp_dir = os.path.join(self.dvc_dir, "tmp")
-        makedirs(self.tmp_dir, exist_ok=True)
-
-        hardlink_lock = self.config["core"].get("hardlink_lock", False)
-        self.lock = make_lock(
-            os.path.join(self.tmp_dir, "lock"),
-            tmp_dir=self.tmp_dir,
-            hardlink_lock=hardlink_lock,
-            friendly=True,
+        self.root_dir, self.dvc_dir, self.tmp_dir = self._get_repo_dirs(
+            root_dir=root_dir, scm=scm, rev=rev, uninitialized=uninitialized
         )
+
+        tree_kwargs = {"use_dvcignore": True, "dvcignore_root": self.root_dir}
+        if scm:
+            self.tree = scm.get_tree(rev, **tree_kwargs)
+        else:
+            self.tree = LocalTree(self, {"url": self.root_dir}, **tree_kwargs)
+
+        self.config = Config(self.dvc_dir, tree=self.tree)
+        self._scm = scm
+
         # used by RepoTree to determine if it should traverse subrepos
         self.subrepos = subrepos
 
         self.cache = Cache(self)
         self.cloud = DataCloud(self)
 
-        if not scm:
+        if scm or not self.dvc_dir:
+            self.lock = LockNoop()
+            self.state = StateNoop()
+        else:
+            self.lock = make_lock(
+                os.path.join(self.tmp_dir, "lock"),
+                tmp_dir=self.tmp_dir,
+                hardlink_lock=self.config["core"].get("hardlink_lock", False),
+                friendly=True,
+            )
+
             # NOTE: storing state and link_state in the repository itself to
             # avoid any possible state corruption in 'shared cache dir'
             # scenario.
-            self.state = State(self.cache.local)
+            self.state = State(self)
+            self.stage_cache = StageCache(self)
 
-        self.stage_cache = StageCache(self)
+            try:
+                self.experiments = Experiments(self)
+            except NotImplementedError:
+                self.experiments = None
+
+            self._ignore()
 
         self.metrics = Metrics(self)
         self.plots = Plots(self)
         self.params = Params(self)
 
-        try:
-            self.experiments = Experiments(self)
-        except NotImplementedError:
-            self.experiments = None
+    @cached_property
+    def scm(self):
+        from dvc.scm import SCM
 
-        self._ignore()
+        no_scm = self.config["core"].get("no_scm", False)
+        return self._scm if self._scm else SCM(self.root_dir, no_scm=no_scm)
 
     @property
     def tree(self):

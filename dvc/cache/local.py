@@ -19,6 +19,7 @@ from .base import (
     STATUS_MISSING,
     STATUS_NEW,
     CloudCache,
+    use_state,
 )
 
 logger = logging.getLogger(__name__)
@@ -431,6 +432,7 @@ class LocalCache(CloudCache):
             download=False,
         )
 
+    @use_state
     @index_locked
     def pull(self, named_cache, remote, jobs=None, show_checksums=False):
         ret = self._process(

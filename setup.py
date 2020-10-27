@@ -87,14 +87,14 @@ install_requires = [
 # Extra dependencies for remote integrations
 
 gs = ["google-cloud-storage==1.19.0"]
-gdrive = ["pydrive2>=1.6.2", "six >= 1.13.0"]
+gdrive = ["pydrive2>=1.6.3", "six >= 1.13.0"]
 s3 = ["boto3>=1.9.201"]
 azure = ["azure-storage-blob>=12.0", "azure-identity==1.4.0", "knack"]
 oss = ["oss2==2.6.1"]
 ssh = ["paramiko[invoke]>=2.7.0"]
 
 # Remove the env marker if/when pyarrow is available for Python3.9
-hdfs = ["pyarrow>=0.17.0;  python_version < '3.9'"]
+hdfs = ["pyarrow>=2.0.0;  python_version < '3.9'"]
 webdav = ["webdavclient3>=3.14.5"]
 # gssapi should not be included in all_remotes, because it doesn't have wheels
 # for linux and mac, so it will fail to compile if user doesn't have all the
@@ -132,7 +132,7 @@ tests_requirements = [
     "rangehttpserver==1.2.0",
     "beautifulsoup4==4.4.0",
     "flake8-bugbear",
-    "flake8-comprehensions",
+    "flake8-comprehensions==3.3.0",
     "flake8-string-format",
     "pylint==2.5.3",
     "pylint-pytest>=0.3.0",
@@ -146,7 +146,7 @@ setup(
     name="dvc",
     version=version,
     description="Git for data scientists - manage your code and data together",
-    long_description=open("README.rst", "r").read(),
+    long_description=open("README.rst", "r", encoding="UTF-8").read(),
     author="Dmitry Petrov",
     author_email="dmitry@dvc.org",
     download_url="https://github.com/iterative/dvc",

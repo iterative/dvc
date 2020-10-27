@@ -13,7 +13,7 @@ from dvc.command.diff import _digest, _show_md
     "checksum, expected",
     [
         ("wxyz1234pq", "wxyz1234"),
-        (dict(old="1234567890", new="0987654321"), "12345678..09876543"),
+        ({"old": "1234567890", "new": "0987654321"}, "12345678..09876543"),
     ],
     ids=["str", "dict"],
 )

@@ -149,26 +149,25 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
     tmp_dir.gen({"data": {"1": "1 content", "2": "2 content"}})
 
     path_info = PathInfo("data")
-    with dvc.state:
-        with patch.object(
-            BaseTree,
-            "_collect_dir",
-            return_value=[
-                {"relpath": "1", "md5": "1"},
-                {"relpath": "2", "md5": "2"},
-            ],
-        ):
-            hash1 = dvc.cache.local.tree.get_hash(path_info)
+    with patch.object(
+        BaseTree,
+        "_collect_dir",
+        return_value=[
+            {"relpath": "1", "md5": "1"},
+            {"relpath": "2", "md5": "2"},
+        ],
+    ):
+        hash1 = dvc.cache.local.tree.get_hash(path_info)
 
-        with patch.object(
-            BaseTree,
-            "_collect_dir",
-            return_value=[
-                {"md5": "1", "relpath": "1"},
-                {"md5": "2", "relpath": "2"},
-            ],
-        ):
-            hash2 = dvc.cache.local.tree.get_hash(path_info)
+    with patch.object(
+        BaseTree,
+        "_collect_dir",
+        return_value=[
+            {"md5": "1", "relpath": "1"},
+            {"md5": "2", "relpath": "2"},
+        ],
+    ):
+        hash2 = dvc.cache.local.tree.get_hash(path_info)
 
     assert hash1 == hash2
 
@@ -268,13 +267,20 @@ def test_external_dir_resource_on_no_cache(tmp_dir, dvc, tmp_path_factory):
 
 
 def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, local_remote):
-    tmp_dir.dvc_gen({"foo": {"bar": "bar content"}})
+    foo = tmp_dir.dvc_gen({"foo": {"bar": "bar content"}})[0].outs[0]
     tmp_dir.dvc_gen({"baz": "baz content"})
 
     mocked_upload = mocker.patch.object(LocalTree, "_upload", return_value=0)
     dvc.push()
-    # last uploaded file should be dir checksum
-    assert mocked_upload.call_args[0][0].endswith(".dir")
+
+    # foo .dir file should be uploaded after bar
+    remote = dvc.cloud.get_remote("upstream")
+    foo_path = remote.tree.hash_to_path_info(foo.hash_info.value)
+    bar_path = remote.tree.hash_to_path_info(
+        foo.hash_info.dir_info["bar"].value
+    )
+    paths = [args[1] for args, _ in mocked_upload.call_args_list]
+    assert paths.index(foo_path) > paths.index(bar_path)
 
 
 def test_remote_modify_validation(dvc):
