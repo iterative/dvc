@@ -40,7 +40,6 @@ class AzureTree(BaseTree):
         self._get_string_token_credential(config)
 
         if not (self._conn_str or self._credential):
-            # from azure.identity import DefaultAzureCredential
             from azure.identity import (
                 AzureCliCredential,
                 ChainedTokenCredential,
@@ -53,6 +52,8 @@ class AzureTree(BaseTree):
                     "You must enter an account name for this auth flow"
                 )
 
+            # Microsoft azure docs
+            # https://docs.microsoft.com/en-us/python/api/overview/azure/identity-readme?view=azure-python
             if config.get("azcli_credential"):
                 self._credential = ChainedTokenCredential(AzureCliCredential())
             else:
@@ -89,9 +90,9 @@ class AzureTree(BaseTree):
         # Get `token` like credential to pass to
         # blob service client. String like
         # conn_str, sas_token, account_key
-        self._conn_str = config.get(
-            "connection_string"
-        ) or self._az_config.get("storage", "connection_string", None)
+        self._conn_str = config.get("connection_string") or self._az_config.get(
+            "storage", "connection_string", None
+        )
 
         self._account_url = None
         if not self._conn_str:
