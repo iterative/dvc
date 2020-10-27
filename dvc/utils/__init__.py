@@ -372,9 +372,15 @@ def resolve_paths(repo, out):
     elif contains_symlink_up_to(dirname, repo.root_dir) or (
         os.path.isdir(abspath) and System.is_symlink(abspath)
     ):
-        raise DvcException(
-            "Cannot add files inside symlinked directories to DVC."
+        msg = (
+            "Cannot add files inside symlinked directories to DVC. "
+            "See {} for more information."
+        ).format(
+            format_link(
+                "https://dvc.org/doc/user-guide/troubleshooting#add-symlink"
+            )
         )
+        raise DvcException(msg)
     else:
         wdir = dirname
         out = base
