@@ -1,7 +1,6 @@
 import pytest
 from azure.identity import ChainedTokenCredential, ClientSecretCredential
 
-from dvc.exceptions import AuthInfoMissingError
 from dvc.tree.azure import AzureTree
 
 container_name = "test_container"
@@ -43,8 +42,9 @@ def test_init(dvc):
 def test_throw_exception_if_not_all_svc_principle_details_in_config(dvc):
     incomplete_config = config.copy()
     incomplete_config.pop("tenant_id", None)
-    with pytest.raises(AuthInfoMissingError):
-        AzureTree(dvc, incomplete_config)
+    tree = AzureTree(dvc, incomplete_config)
+
+    assert tree._credential is None
 
 
 # ClientSecretCredentials do not have a tenant property
@@ -68,15 +68,15 @@ def test_credential_is_client_secret_credential_from_env_vars(
     assert tree._credential._secret == client_secret
 
 
-def test_throw_exception_if_not_all_svc_principle_details_in_env(
+def test_none_credential_if_not_all_svc_principle_details_in_env(
     monkeypatch, dvc, configure_env
 ):
     incomplete_env = env_vars.copy()
     incomplete_env.pop("AZURE_TENANT_ID", None)
     configure_env(monkeypatch, incomplete_env)
+    tree = AzureTree(dvc, only_url_config)
 
-    with pytest.raises(AuthInfoMissingError):
-        AzureTree(dvc, only_url_config)
+    assert tree._credential is None
 
 
 def test_credential_is_chained_token_credential(dvc):

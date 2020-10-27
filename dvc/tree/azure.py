@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 
 from funcy import cached_property, wrap_prop
 
-from dvc.exceptions import AuthInfoMissingError
 from dvc.hash_info import HashInfo
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
@@ -57,11 +56,9 @@ class AzureTree(BaseTree):
             if config.get("azcli_credential"):
                 self._credential = ChainedTokenCredential(AzureCliCredential())
             else:
-                self._credential = self._create_client_secret_credential(
-                    config
-                )
+                self._credential = self._create_client_secret_cred(config)
 
-    def _create_client_secret_credential(self, config):
+    def _create_client_secret_cred(self, config):
         from azure.identity import ClientSecretCredential
 
         client_id = config.get("client_id") or self._az_config.get(
@@ -77,9 +74,10 @@ class AzureTree(BaseTree):
         )
 
         if not (client_id and client_secret and tenant_id):
-            raise AuthInfoMissingError(
+            logging.error(
                 "Not enough information to authenticate to azure remote."
             )
+            return None
 
         return ClientSecretCredential(
             client_id=client_id,
