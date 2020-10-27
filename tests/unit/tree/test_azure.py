@@ -26,10 +26,10 @@ env_vars = {
 
 
 @pytest.fixture(scope="function")
-def configure_env(monkeypatch):
-    def _configure_env(monkeypatch, env_vars):
-        for env_var, val in env_vars.items():
-            monkeypatch.setenv(env_var, val)
+def configure_env():
+    def _configure_env(monkeypatch, var_dict):
+        for var, val in var_dict.items():
+            monkeypatch.setenv(var, val)
 
     return _configure_env
 
@@ -39,7 +39,7 @@ def test_init(dvc):
     assert tree.path_info == url
 
 
-def test_throw_exception_if_not_all_svc_principle_details_in_config(dvc):
+def test_none_credential_if_not_all_svc_principle_details_in_config(dvc):
     incomplete_config = config.copy()
     incomplete_config.pop("tenant_id", None)
     tree = AzureTree(dvc, incomplete_config)

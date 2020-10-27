@@ -337,9 +337,3 @@ class NoOutputOrStageError(DvcException):
 
 class MergeError(DvcException):
     pass
-
-
-class AuthInfoMissingError(DvcException):
-    """
-    Raised when not enough information is provided for auth against remote.
-    """
