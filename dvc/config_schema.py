@@ -195,6 +195,7 @@ SCHEMA = {
                     Optional("gdrive_trash_only", default=False): Bool,
                     **REMOTE_COMMON,
                 },
+                "dropbox": {**REMOTE_COMMON},
                 "http": {**HTTP_COMMON, **REMOTE_COMMON},
                 "https": {**HTTP_COMMON, **REMOTE_COMMON},
                 "webdav": {**WEBDAV_COMMON, **REMOTE_COMMON},

@@ -93,6 +93,7 @@ install_requires = [
 
 gs = ["google-cloud-storage==1.19.0"]
 gdrive = ["pydrive2>=1.6.3", "six >= 1.13.0"]
+dropbox = ["dropbox>=10.7.0"]
 s3 = ["boto3>=1.9.201"]
 azure = ["azure-storage-blob>=12.0", "knack"]
 # https://github.com/Legrandin/pycryptodome/issues/465
@@ -108,7 +109,9 @@ webdav = ["webdavclient3>=3.14.5"]
 # requirements, including kerberos itself. Once all the wheels are available,
 # we can start shipping it by default.
 ssh_gssapi = ["paramiko[invoke,gssapi]>=2.7.0"]
-all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs + webhdfs + webdav
+all_remotes = (
+    gs + s3 + azure + ssh + oss + gdrive + dropbox + hdfs + webhdfs + webdav
+)
 
 # Extra dependecies to run tests
 tests_requirements = [
@@ -166,6 +169,7 @@ setup(
         "all": all_remotes,
         "gs": gs,
         "gdrive": gdrive,
+        "dropbox": dropbox,
         "s3": s3,
         "azure": azure,
         "oss": oss,

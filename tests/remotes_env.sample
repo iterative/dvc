@@ -6,6 +6,11 @@
 # Uncomment and set a bucket name to test against Google Storage
 # export GOOGLE_APPLICATION_CREDENTIALS="scripts/ci/gcp-creds.json"
 
+# Uncomment and set a path to test against Dropbox
+# export DROPBOX_ACCESS_TOKEN="...SET-ME..."
+# export DROPBOX_EXPIRES_AT="...SET-ME..."
+# export DROPBOX_REFRESH_KEY="...SET-ME..."
+
 # Uncomment to test against Microsoft Azure via Azurite
 # export AZURE_STORAGE_CONTAINER_NAME="dvc-test"
 # export AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"

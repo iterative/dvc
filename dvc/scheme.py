@@ -8,6 +8,7 @@ class Schemes:
     HTTPS = "https"
     GS = "gs"
     GDRIVE = "gdrive"
+    DROPBOX = "dropbox"
     LOCAL = "local"
     OSS = "oss"
     WEBDAV = "webdav"

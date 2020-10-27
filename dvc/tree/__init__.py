@@ -2,6 +2,7 @@ import posixpath
 from urllib.parse import urlparse
 
 from .azure import AzureTree
+from .dropbox import DropboxTree
 from .gdrive import GDriveTree
 from .gs import GSTree
 from .hdfs import HDFSTree
@@ -17,6 +18,7 @@ from .webhdfs import WebHDFSTree
 
 TREES = [
     AzureTree,
+    DropboxTree,
     GDriveTree,
     GSTree,
     HDFSTree,
