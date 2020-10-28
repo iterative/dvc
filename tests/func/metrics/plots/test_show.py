@@ -21,7 +21,7 @@ from dvc.repo.plots.template import (
 )
 from dvc.utils.fs import remove
 from dvc.utils.serialize import dump_yaml, dumps_yaml
-from tests.func.metrics import _write_csv, _write_json
+from tests.func.metrics.utils import _write_csv, _write_json
 
 
 def test_plot_csv_one_column(tmp_dir, scm, dvc, run_copy_metrics):

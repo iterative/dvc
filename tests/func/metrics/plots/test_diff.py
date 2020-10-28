@@ -1,7 +1,7 @@
 import json
 
 from dvc.repo.plots.data import PlotData
-from tests.func.metrics import _write_json
+from tests.func.metrics.utils import _write_json
 
 
 def test_diff_dirty(tmp_dir, scm, dvc, run_copy_metrics):

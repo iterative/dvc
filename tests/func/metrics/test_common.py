@@ -2,7 +2,7 @@ import logging
 
 import pytest
 
-from tests.func.metrics import _write_json
+from tests.func.metrics.utils import _write_json
 
 
 def metrics_diff(dvc, filename, revision):
