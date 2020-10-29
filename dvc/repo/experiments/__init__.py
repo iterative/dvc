@@ -163,8 +163,10 @@ class Experiments:
 
     @property
     def stash_reflog(self):
+        """Return stash reflog in Git 'stash@{...}' index order."""
         if "refs/stash" in self.scm.repo.refs:
-            return self.scm.repo.refs["refs/stash"].log()
+            # gitpython reflog log() returns commits oldest to newest
+            return reversed(self.scm.repo.refs["refs/stash"].log())
         return []
 
     @property

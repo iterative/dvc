@@ -160,14 +160,29 @@ def test_get_baseline(tmp_dir, scm, dvc):
     )
     scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
     scm.commit("init")
-    expected = scm.get_rev()
-    assert dvc.experiments.get_baseline(expected) is None
+    init_rev = scm.get_rev()
+    assert dvc.experiments.get_baseline(init_rev) is None
 
     results = dvc.experiments.run(stage.addressing, params=["foo=2"])
-    assert dvc.experiments.get_baseline(first(results)) == expected
+    exp_rev = first(results)
+    assert dvc.experiments.get_baseline(exp_rev) == init_rev
 
     dvc.experiments.run(stage.addressing, params=["foo=3"], queue=True)
-    assert dvc.experiments.get_baseline("stash@{0}") == expected
+    assert dvc.experiments.get_baseline("stash@{0}") == init_rev
+
+    dvc.experiments.checkout(exp_rev)
+    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
+    scm.commit("promote exp")
+    promote_rev = scm.get_rev()
+
+    results = dvc.experiments.run(stage.addressing, params=["foo=4"])
+    exp_rev = first(results)
+    assert dvc.experiments.get_baseline(promote_rev) is None
+    assert dvc.experiments.get_baseline(exp_rev) == promote_rev
+
+    dvc.experiments.run(stage.addressing, params=["foo=5"], queue=True)
+    assert dvc.experiments.get_baseline("stash@{0}") == promote_rev
+    assert dvc.experiments.get_baseline("stash@{1}") == init_rev
 
 
 def test_update_py_params(tmp_dir, scm, dvc):
