@@ -343,7 +343,7 @@ class MergeError(DvcException):
 class CacheLinkError(DvcException):
     SUPPORT_LINK = "See {} for more information.".format(
         format_link(
-            "https://dvc.org/doc/user-guide/" "troubleshooting#cache-types"
+            "https://dvc.org/doc/user-guide/troubleshooting#cache-types"
         )
     )
 
