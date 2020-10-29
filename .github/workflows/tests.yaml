@@ -27,8 +27,10 @@ jobs:
       with:
         python-version: 3.8
     - name: Install requirements
-      # collective.checkdocs doesn't provide wheels
-      run: pip install --only-binary ':all:' ".[all,tests]" Pygments pre-commit --prefer-binary collective.checkdocs
+      run: |
+        pip install --only-binary ':all:' ".[all,tests]" Pygments pre-commit
+        # collective.checkdocs doesn't provide wheels
+        pip install collective.checkdocs
     - name: Check README
       run: python setup.py checkdocs
     - name: Check formatting
