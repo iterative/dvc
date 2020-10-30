@@ -14,9 +14,13 @@ def _is_metric(out):
     return bool(out.metric)
 
 
-def _collect_metrics(repo, targets, recursive):
+def _collect_metrics(repo, targets, revision, recursive):
     metrics, path_infos = collect(
-        repo, targets=targets, output_filter=_is_metric, recursive=recursive
+        repo,
+        targets=targets,
+        output_filter=_is_metric,
+        recursive=recursive,
+        rev=revision,
     )
     return [m.path_info for m in metrics] + list(path_infos)
 
@@ -88,7 +92,7 @@ def show(
         all_tags=all_tags,
         all_commits=all_commits,
     ):
-        metrics = _collect_metrics(repo, targets, recursive)
+        metrics = _collect_metrics(repo, targets, rev, recursive)
 
         if not metrics_found and metrics:
             metrics_found = True
