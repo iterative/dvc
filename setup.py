@@ -50,7 +50,7 @@ install_requires = [
     "colorama>=0.3.9",
     "configobj>=5.0.6",
     "gitpython>3",
-    "dulwich>=0.20.6",
+    "dulwich>=0.20.11",
     "setuptools>=34.0.0",
     "nanotime>=0.5.2",
     "pyasn1>=0.4.1",
