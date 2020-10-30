@@ -1,10 +1,14 @@
+import pytest
+
 from dvc.cli import parse_args
 from dvc.command.experiments import (
     CmdExperimentsDiff,
+    CmdExperimentsGC,
     CmdExperimentsRun,
     CmdExperimentsShow,
 )
 from dvc.dvcfile import PIPELINE_FILE
+from dvc.exceptions import InvalidArgumentError
 
 from .test_repro import default_arguments as repro_arguments
 
@@ -83,3 +87,38 @@ def test_experiments_run(dvc, mocker):
     cmd.repo.experiments.run.assert_called_with(
         PIPELINE_FILE, **default_arguments
     )
+
+
+def test_experiments_gc(dvc, mocker):
+    cli_args = parse_args(
+        [
+            "exp",
+            "gc",
+            "--workspace",
+            "--all-tags",
+            "--all-branches",
+            "--all-commits",
+            "--queued",
+            "--force",
+        ]
+    )
+    assert cli_args.func == CmdExperimentsGC
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch("dvc.repo.experiments.gc.gc", return_value={})
+
+    assert cmd.run() == 0
+
+    m.assert_called_once_with(
+        cmd.repo,
+        workspace=True,
+        all_tags=True,
+        all_branches=True,
+        all_commits=True,
+        queued=True,
+    )
+
+    cli_args = parse_args(["exp", "gc"])
+    cmd = cli_args.func(cli_args)
+    with pytest.raises(InvalidArgumentError):
+        cmd.run()
