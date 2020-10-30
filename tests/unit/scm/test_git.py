@@ -109,3 +109,17 @@ def test_no_commits(tmp_dir):
     Git().commit("foo")
 
     assert not Git().no_commits
+
+
+def test_branch_revs(tmp_dir, scm):
+    tmp_dir.scm_gen({"file": "0"}, commit="init")
+    init_rev = scm.get_rev()
+
+    expected = []
+    for i in range(1, 5):
+        tmp_dir.scm_gen({"file": f"{i}"}, commit=f"{i}")
+        expected.append(scm.get_rev())
+
+    for rev in scm.branch_revs("master", init_rev):
+        assert rev == expected.pop()
+    assert len(expected) == 0

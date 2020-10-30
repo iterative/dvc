@@ -1,9 +1,6 @@
 import logging
 from collections import OrderedDict, defaultdict
 from datetime import datetime
-from typing import Optional
-
-from funcy import first
 
 from dvc.repo import locked
 from dvc.repo.metrics.show import _collect_metrics, _read_metrics
@@ -20,7 +17,7 @@ def _collect_experiment(repo, rev, stash=False, sha_only=True):
         if rev == "workspace":
             res["timestamp"] = None
         else:
-            commit = _resolve_commit(repo, rev)
+            commit = repo.scm.resolve_commit(rev)
             res["timestamp"] = datetime.fromtimestamp(commit.committed_date)
 
         configs = _collect_configs(repo, rev=rev)
@@ -47,36 +44,13 @@ def _collect_experiment(repo, rev, stash=False, sha_only=True):
     return res
 
 
-def _resolve_commit(repo, rev):
-    from git.objects.tag import TagObject
-
-    commit = repo.scm.repo.rev_parse(rev)
-    if isinstance(commit, TagObject):
-        commit = commit.object
-    return commit
-
-
 def _collect_checkpoint_experiment(repo, branch, baseline, **kwargs):
     res = OrderedDict()
     exp_rev = repo.scm.resolve_rev(branch)
-    for rev in _branch_revs(repo, exp_rev, baseline):
+    for rev in repo.scm.branch_revs(exp_rev, baseline):
         res[rev] = _collect_experiment(repo, rev, **kwargs)
         res[rev]["checkpoint_tip"] = exp_rev
     return res
-
-
-def _branch_revs(repo, branch_tip, baseline: Optional[str] = None):
-    """Iterate over revisions in a given branch (from newest to oldest).
-
-    If baseline is set, iterator will stop when the specified revision is
-    reached.
-    """
-    commit = _resolve_commit(repo, branch_tip)
-    while commit is not None:
-        yield commit.hexsha
-        commit = first(commit.parents)
-        if commit and commit.hexsha == baseline:
-            return
 
 
 @locked
