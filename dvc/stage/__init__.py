@@ -7,7 +7,12 @@ from funcy import cached_property, project
 
 import dvc.dependency as dependency
 import dvc.prompt as prompt
-from dvc.exceptions import CheckoutError, DvcException, MergeError
+from dvc.exceptions import (
+    CacheLinkError,
+    CheckoutError,
+    DvcException,
+    MergeError,
+)
 from dvc.output.base import OutputDoesNotExistError
 from dvc.utils import relpath
 
@@ -422,12 +427,17 @@ class Stage(params.StageParams):
 
     @rwlocked(write=["outs"])
     def commit(self, allow_missing=False):
+        link_failures = []
         for out in self.outs:
             try:
                 out.commit()
             except OutputDoesNotExistError:
                 if not allow_missing:
                     raise
+            except CacheLinkError:
+                link_failures.append(out.path_info)
+        if link_failures:
+            raise CacheLinkError(link_failures)
 
     @rwlocked(read=["deps"], write=["outs"])
     def run(
