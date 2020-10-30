@@ -1,4 +1,5 @@
 import copy
+import os
 import pathlib
 
 import pytest
@@ -102,3 +103,17 @@ def test_url_replace_path():
     assert u.params == new_u.params
     assert u.query == new_u.query
     assert u.fragment == new_u.fragment
+
+
+@pytest.mark.parametrize(
+    "p1, p2",
+    [
+        ("/foo/bar", "/baz"),
+        ("/baz", "/foo/bar"),
+        ("/foo/bar", "../baz"),
+        ("../baz", "/foo/bar"),
+    ],
+)
+def test_relative_to_different_subpath(p1, p2):
+    expected = PathInfo(os.path.relpath(p1, p2))
+    assert PathInfo(p1).relative_to(PathInfo(p2)) == expected

@@ -25,8 +25,6 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = TEST_GCP_CREDS_FILE
 class GCP(Base, CloudURLInfo):
     @staticmethod
     def should_test():
-        from subprocess import CalledProcessError, check_output
-
         do_test = env2bool("DVC_TEST_GCP", undefined=None)
         if do_test is not None:
             return do_test
@@ -34,18 +32,6 @@ class GCP(Base, CloudURLInfo):
         if not os.path.exists(TEST_GCP_CREDS_FILE):
             return False
 
-        try:
-            check_output(
-                [
-                    "gcloud",
-                    "auth",
-                    "activate-service-account",
-                    "--key-file",
-                    TEST_GCP_CREDS_FILE,
-                ]
-            )
-        except (CalledProcessError, OSError):
-            return False
         return True
 
     @cached_property

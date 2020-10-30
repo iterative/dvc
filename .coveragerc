@@ -1,10 +1,14 @@
 [run]
+branch = True
+source = dvc
 omit =
     *__main__.py
 
 [report]
 exclude_lines =
     if __name__ == .__main__.:
+    if typing.TYPE_CHECKING:
+    if TYPE_CHECKING:
     pass
     raise NotImplementedError
     # pragma: no cover

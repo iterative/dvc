@@ -50,6 +50,7 @@ install_requires = [
     "colorama>=0.3.9",
     "configobj>=5.0.6",
     "gitpython>3",
+    "dulwich>=0.20.6",
     "setuptools>=34.0.0",
     "nanotime>=0.5.2",
     "pyasn1>=0.4.1",
@@ -87,14 +88,14 @@ install_requires = [
 # Extra dependencies for remote integrations
 
 gs = ["google-cloud-storage==1.19.0"]
-gdrive = ["pydrive2>=1.6.2", "six >= 1.13.0"]
+gdrive = ["pydrive2>=1.6.3", "six >= 1.13.0"]
 s3 = ["boto3>=1.9.201"]
 azure = ["azure-storage-blob>=12.0", "knack"]
 oss = ["oss2==2.6.1"]
 ssh = ["paramiko[invoke]>=2.7.0"]
 
 # Remove the env marker if/when pyarrow is available for Python3.9
-hdfs = ["pyarrow>=0.17.0;  python_version < '3.9'"]
+hdfs = ["pyarrow>=2.0.0;  python_version < '3.9'"]
 webdav = ["webdavclient3>=3.14.5"]
 # gssapi should not be included in all_remotes, because it doesn't have wheels
 # for linux and mac, so it will fail to compile if user doesn't have all the
@@ -132,7 +133,7 @@ tests_requirements = [
     "rangehttpserver==1.2.0",
     "beautifulsoup4==4.4.0",
     "flake8-bugbear",
-    "flake8-comprehensions",
+    "flake8-comprehensions==3.3.0",
     "flake8-string-format",
     "pylint==2.5.3",
     "pylint-pytest>=0.3.0",

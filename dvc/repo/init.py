@@ -1,43 +1,16 @@
 import logging
 import os
 
-import colorama
-
-from dvc import analytics
 from dvc.config import Config
 from dvc.exceptions import InitError, InvalidArgumentError
 from dvc.ignore import init as init_dvcignore
 from dvc.repo import Repo
 from dvc.scm import SCM
 from dvc.scm.base import SCMError
-from dvc.utils import boxify
-from dvc.utils import format_link as fmt_link
 from dvc.utils import relpath
 from dvc.utils.fs import remove
 
 logger = logging.getLogger(__name__)
-
-
-def _welcome_message():
-    if analytics.is_enabled():
-        logger.info(
-            boxify(
-                "DVC has enabled anonymous aggregate usage analytics.\n"
-                "Read the analytics documentation (and how to opt-out) here:\n"
-                + fmt_link("https://dvc.org/doc/user-guide/analytics"),
-                border_color="red",
-            )
-        )
-
-    msg = (
-        "{yellow}What's next?{nc}\n"
-        "{yellow}------------{nc}\n"
-        f"- Check out the documentation: {fmt_link('https://dvc.org/doc')}\n"
-        f"- Get help and share ideas: {fmt_link('https://dvc.org/chat')}\n"
-        f"- Star us on GitHub: {fmt_link('https://github.com/iterative/dvc')}"
-    ).format(yellow=colorama.Fore.YELLOW, nc=colorama.Fore.RESET)
-
-    logger.info(msg)
 
 
 def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
@@ -109,7 +82,5 @@ def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
     if scm.ignore_file:
         scm.add([os.path.join(dvc_dir, scm.ignore_file)])
         logger.info("\nYou can now commit the changes to git.\n")
-
-    _welcome_message()
 
     return proj

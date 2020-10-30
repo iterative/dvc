@@ -64,7 +64,10 @@ class S3Tree(BaseTree):
     def s3(self):
         import boto3
 
-        session_opts = dict(profile_name=self.profile, region_name=self.region)
+        session_opts = {
+            "profile_name": self.profile,
+            "region_name": self.region,
+        }
 
         if self.access_key_id:
             session_opts["aws_access_key_id"] = self.access_key_id

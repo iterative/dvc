@@ -6,6 +6,7 @@ import colorama
 from dvc.dvcfile import Dvcfile, is_dvc_file
 
 from ..exceptions import (
+    CacheLinkError,
     OutputDuplicationError,
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
@@ -30,6 +31,7 @@ def add(
     if isinstance(targets, str):
         targets = [targets]
 
+    link_failures = []
     stages_list = []
     num_targets = len(targets)
     with Tqdm(total=num_targets, desc="Add", unit="file", leave=True) as pbar:
@@ -79,31 +81,54 @@ def add(
                     exc.output, set(exc.stages) - set(stages)
                 )
 
-            with Tqdm(
-                total=len(stages),
-                desc="Processing",
-                unit="file",
-                disable=len(stages) == 1,
-            ) as pbar_stages:
-                for stage in stages:
-                    try:
-                        stage.save()
-                    except OutputDoesNotExistError:
-                        pbar.n -= 1
-                        raise
-
-                    if not no_commit:
-                        stage.commit()
-
-                    Dvcfile(repo, stage.path).dump(stage)
-                    pbar_stages.update()
-
+            link_failures.extend(
+                _process_stages(repo, stages, no_commit, pbar)
+            )
             stages_list += stages
 
         if num_targets == 1:  # restore bar format for stats
             pbar.bar_format = pbar.BAR_FMT_DEFAULT
 
+    if link_failures:
+        msg = (
+            "Some targets could not be linked from cache to workspace.\n{}\n"
+            "To re-link these targets, reconfigure cache types and then run:\n"
+            "\n\tdvc checkout {}"
+        ).format(
+            CacheLinkError.SUPPORT_LINK,
+            " ".join([str(stage.relpath) for stage in link_failures]),
+        )
+        logger.warning(msg)
+
     return stages_list
+
+
+def _process_stages(repo, stages, no_commit, pbar):
+    link_failures = []
+
+    with Tqdm(
+        total=len(stages),
+        desc="Processing",
+        unit="file",
+        disable=len(stages) == 1,
+    ) as pbar_stages:
+        for stage in stages:
+            try:
+                stage.save()
+            except OutputDoesNotExistError:
+                pbar.n -= 1
+                raise
+
+            try:
+                if not no_commit:
+                    stage.commit()
+            except CacheLinkError:
+                link_failures.append(stage)
+
+            Dvcfile(repo, stage.path).dump(stage)
+            pbar_stages.update()
+
+    return link_failures
 
 
 def _find_all_targets(repo, target, recursive):

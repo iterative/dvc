@@ -15,10 +15,13 @@ from dvc.utils import format_link
 
 DEFAULT_TIMEOUT = 3
 
+
 FAILED_TO_LOCK_MESSAGE = (
-    "cannot perform the command because another DVC process seems to be "
-    "running on this project. If that is not the case, manually remove "
-    "`.dvc/tmp/lock` and try again."
+    "Unable to acquire lock. Most likely another DVC process is running or "
+    "was terminated abruptly. Check the page {} for other possible reasons "
+    "and to learn how to resolve this."
+).format(
+    format_link("https://dvc.org/doc/user-guide/troubleshooting#lock-issue")
 )
 
 

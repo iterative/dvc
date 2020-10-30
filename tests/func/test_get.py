@@ -1,10 +1,11 @@
 import logging
 import os
 
+import mock
 import pytest
 
 from dvc.cache import Cache
-from dvc.exceptions import PathMissingError
+from dvc.exceptions import ConfirmRemoveError, PathMissingError
 from dvc.external_repo import IsADVCRepoError
 from dvc.main import main
 from dvc.repo import Repo
@@ -19,6 +20,55 @@ def test_get_repo_file(tmp_dir, erepo_dir):
         erepo_dir.dvc_gen("file", "contents", commit="create file")
 
     Repo.get(os.fspath(erepo_dir), "file", "file_imported")
+
+    assert os.path.isfile("file_imported")
+    assert (tmp_dir / "file_imported").read_text() == "contents"
+
+
+def test_get_repo_file_replace_without_confirmation(tmp_dir, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("file", "contents", commit="create file")
+        erepo_dir.dvc_gen(
+            "file2", "something different", commit="create file2"
+        )
+
+    Repo.get(os.fspath(erepo_dir), "file", "file_imported")
+    # getting another file with a name that already exists in Repo.
+    with pytest.raises(ConfirmRemoveError):
+        Repo.get(os.fspath(erepo_dir), "file2", "file_imported")
+
+    assert os.path.isfile("file_imported")
+    assert (tmp_dir / "file_imported").read_text() == "contents"
+
+
+def test_get_repo_file_replace_yes(tmp_dir, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("file", "contents", commit="create file")
+        erepo_dir.dvc_gen(
+            "file2", "something different", commit="create file2"
+        )
+
+    Repo.get(os.fspath(erepo_dir), "file", "file_imported")
+    # getting another file with a name that already exists in Repo.
+    with mock.patch("dvc.prompt.confirm", return_value=True):
+        Repo.get(os.fspath(erepo_dir), "file2", "file_imported")
+
+    assert os.path.isfile("file_imported")
+    assert (tmp_dir / "file_imported").read_text() == "something different"
+
+
+def test_get_repo_file_replace_no(tmp_dir, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("file", "contents", commit="create file")
+        erepo_dir.dvc_gen(
+            "file2", "something different", commit="create file2"
+        )
+
+    Repo.get(os.fspath(erepo_dir), "file", "file_imported")
+    # getting another file with a name that already exists in Repo.
+    with mock.patch("dvc.prompt.confirm", return_value=False):
+        with pytest.raises(ConfirmRemoveError):
+            Repo.get(os.fspath(erepo_dir), "file2", "file_imported")
 
     assert os.path.isfile("file_imported")
     assert (tmp_dir / "file_imported").read_text() == "contents"

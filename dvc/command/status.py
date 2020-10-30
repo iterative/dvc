@@ -11,6 +11,7 @@ class CmdDataStatus(CmdDataBase):
     STATUS_LEN = 20
     STATUS_INDENT = "\t"
     UP_TO_DATE_MSG = "Data and pipelines are up to date."
+    IN_SYNC_MSG = "Cache and remote '{remote}' are in sync."
     EMPTY_PROJECT_MSG = (
         "There are no data or pipelines tracked in this project yet.\n"
         "See {link} to get started!"
@@ -68,6 +69,11 @@ class CmdDataStatus(CmdDataBase):
                 self._show(st, indent)
             elif not self.repo.stages:
                 logger.info(self.EMPTY_PROJECT_MSG)
+            elif self.args.cloud or self.args.remote:
+                remote = self.args.remote or self.repo.config["core"].get(
+                    "remote"
+                )
+                logger.info(self.IN_SYNC_MSG.format(remote=remote))
             else:
                 logger.info(self.UP_TO_DATE_MSG)
 

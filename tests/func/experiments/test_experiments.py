@@ -93,6 +93,35 @@ def test_update_with_pull(tmp_dir, scm, dvc, mocker):
         assert exp_scm.has_rev(rev)
 
 
+@pytest.mark.parametrize(
+    "change, expected",
+    [
+        ["foo.1.baz=3", "foo: [bar: 1, baz: 3]"],
+        ["foo.0=bar", "foo: [bar, baz: 2]"],
+        ["foo.1=- baz\n- goo", "foo: [bar: 1, [baz, goo]]"],
+    ],
+)
+def test_modify_list_param(tmp_dir, scm, dvc, mocker, change, expected):
+    tmp_dir.gen("copy.py", COPY_SCRIPT)
+    tmp_dir.gen("params.yaml", "foo: [bar: 1, baz: 2]")
+    stage = dvc.run(
+        cmd="python copy.py params.yaml metrics.yaml",
+        metrics_no_cache=["metrics.yaml"],
+        params=["foo"],
+        name="copy-file",
+    )
+    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
+    scm.commit("init")
+
+    new_mock = mocker.spy(dvc.experiments, "new")
+    dvc.experiments.run(stage.addressing, params=[change])
+
+    new_mock.assert_called_once()
+    assert (
+        tmp_dir / ".dvc" / "experiments" / "metrics.yaml"
+    ).read_text().strip() == expected
+
+
 def test_checkout(tmp_dir, scm, dvc):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("params.yaml", "foo: 1")
@@ -131,14 +160,29 @@ def test_get_baseline(tmp_dir, scm, dvc):
     )
     scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
     scm.commit("init")
-    expected = scm.get_rev()
-    assert dvc.experiments.get_baseline(expected) is None
+    init_rev = scm.get_rev()
+    assert dvc.experiments.get_baseline(init_rev) is None
 
     results = dvc.experiments.run(stage.addressing, params=["foo=2"])
-    assert dvc.experiments.get_baseline(first(results)) == expected
+    exp_rev = first(results)
+    assert dvc.experiments.get_baseline(exp_rev) == init_rev
 
     dvc.experiments.run(stage.addressing, params=["foo=3"], queue=True)
-    assert dvc.experiments.get_baseline("stash@{0}") == expected
+    assert dvc.experiments.get_baseline("stash@{0}") == init_rev
+
+    dvc.experiments.checkout(exp_rev)
+    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
+    scm.commit("promote exp")
+    promote_rev = scm.get_rev()
+
+    results = dvc.experiments.run(stage.addressing, params=["foo=4"])
+    exp_rev = first(results)
+    assert dvc.experiments.get_baseline(promote_rev) is None
+    assert dvc.experiments.get_baseline(exp_rev) == promote_rev
+
+    dvc.experiments.run(stage.addressing, params=["foo=5"], queue=True)
+    assert dvc.experiments.get_baseline("stash@{0}") == promote_rev
+    assert dvc.experiments.get_baseline("stash@{1}") == init_rev
 
 
 def test_update_py_params(tmp_dir, scm, dvc):
@@ -301,7 +345,8 @@ def test_new_checkpoint(tmp_dir, scm, dvc, mocker):
     ).read_text().strip() == "foo: 2"
 
 
-def test_continue_checkpoint(tmp_dir, scm, dvc, mocker):
+@pytest.mark.parametrize("last", [True, False])
+def test_continue_checkpoint(tmp_dir, scm, dvc, mocker, last):
     tmp_dir.gen("checkpoint.py", CHECKPOINT_SCRIPT)
     tmp_dir.gen("params.yaml", "foo: 1")
     stage = dvc.run(
@@ -326,7 +371,10 @@ def test_continue_checkpoint(tmp_dir, scm, dvc, mocker):
     results = dvc.experiments.run(
         stage.addressing, checkpoint=True, params=["foo=2"]
     )
-    exp_rev = first(results)
+    if last:
+        exp_rev = ":last"
+    else:
+        exp_rev = first(results)
 
     dvc.experiments.run(
         stage.addressing, checkpoint=True, checkpoint_continue=exp_rev,
@@ -336,3 +384,44 @@ def test_continue_checkpoint(tmp_dir, scm, dvc, mocker):
     assert (
         tmp_dir / ".dvc" / "experiments" / "metrics.yaml"
     ).read_text().strip() == "foo: 2"
+
+
+def test_reset_checkpoint(tmp_dir, scm, dvc, mocker):
+    from dvc.exceptions import ReproductionError
+
+    tmp_dir.gen("checkpoint.py", CHECKPOINT_SCRIPT)
+    tmp_dir.gen("params.yaml", "foo: 1")
+    stage = dvc.run(
+        cmd="python checkpoint.py foo 5 params.yaml metrics.yaml",
+        metrics_no_cache=["metrics.yaml"],
+        params=["foo"],
+        outs_persist=["foo"],
+        always_changed=True,
+        name="checkpoint-file",
+    )
+    scm.add(
+        [
+            "dvc.yaml",
+            "dvc.lock",
+            "checkpoint.py",
+            "params.yaml",
+            "metrics.yaml",
+        ]
+    )
+    scm.commit("init")
+
+    dvc.experiments.run(stage.addressing, checkpoint=True)
+    scm.repo.git.reset(hard=True)
+    scm.repo.git.clean(force=True)
+
+    with pytest.raises(ReproductionError):
+        dvc.experiments.run(stage.addressing, checkpoint=True)
+
+    dvc.experiments.run(
+        stage.addressing, checkpoint=True, checkpoint_reset=True
+    )
+
+    assert (tmp_dir / "foo").read_text() == "5"
+    assert (
+        tmp_dir / ".dvc" / "experiments" / "metrics.yaml"
+    ).read_text().strip() == "foo: 1"

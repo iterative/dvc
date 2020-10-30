@@ -338,3 +338,18 @@ class NoOutputOrStageError(DvcException):
 
 class MergeError(DvcException):
     pass
+
+
+class CacheLinkError(DvcException):
+    SUPPORT_LINK = "See {} for more information.".format(
+        format_link(
+            "https://dvc.org/doc/user-guide/troubleshooting#cache-types"
+        )
+    )
+
+    def __init__(self, path_infos):
+        msg = "No possible cache link types for '{}'. {}".format(
+            ", ".join([str(path) for path in path_infos]), self.SUPPORT_LINK,
+        )
+        super().__init__(msg)
+        self.path_infos = path_infos

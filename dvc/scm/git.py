@@ -183,13 +183,12 @@ class Git(Base):
         return entry, gitignore
 
     def _ignored(self, path):
-        from git.exc import GitCommandError
+        from dulwich import ignore
+        from dulwich.repo import Repo
 
-        try:
-            self.repo.git.check_ignore(path)
-            return True
-        except GitCommandError:
-            return False
+        repo = Repo(self.root_dir)
+        manager = ignore.IgnoreFilterManager.from_repo(repo)
+        return manager.is_ignored(relpath(path, self.root_dir))
 
     def ignore(self, path):
         entry, gitignore = self._get_gitignore(path)

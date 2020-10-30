@@ -169,7 +169,7 @@ def _checkpoint_run(stage, callback_func, done_cond, proc):
 
 @relock_repo
 def _run_callback(stage, callback_func):
-    stage.save()
+    stage.save(allow_missing=True)
     # TODO: do we need commit() (and check for --no-commit) here
     logger.debug("Running checkpoint callback for stage '%s'", stage)
     callback_func()

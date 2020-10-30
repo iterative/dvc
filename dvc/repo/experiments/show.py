@@ -30,7 +30,7 @@ def _collect_experiment(repo, rev, stash=False, sha_only=True):
 
         res["queued"] = stash
         if not stash:
-            metrics = _collect_metrics(repo, None, False)
+            metrics = _collect_metrics(repo, None, rev, False)
             vals = _read_metrics(repo, metrics, rev)
             res["metrics"] = vals
 
@@ -110,7 +110,12 @@ def show(
         )
 
     # collect reproduced experiments
-    for exp_branch in repo.experiments.scm.list_branches():
+    for head in sorted(
+        repo.experiments.scm.repo.heads,
+        key=lambda h: h.commit.committed_date,
+        reverse=True,
+    ):
+        exp_branch = head.name
         m = repo.experiments.BRANCH_RE.match(exp_branch)
         if m:
             rev = repo.scm.resolve_rev(m.group("baseline_rev"))

@@ -1,4 +1,3 @@
-import csv
 import json
 import logging
 import os
@@ -6,7 +5,6 @@ import shutil
 from collections import OrderedDict
 
 import pytest
-from funcy import first
 
 from dvc.repo import Repo
 from dvc.repo.plots.data import (
@@ -23,25 +21,7 @@ from dvc.repo.plots.template import (
 )
 from dvc.utils.fs import remove
 from dvc.utils.serialize import dump_yaml, dumps_yaml
-
-
-def _write_csv(metric, filename, header=True):
-    with open(filename, "w", newline="") as csvobj:
-        if header:
-            writer = csv.DictWriter(
-                csvobj, fieldnames=list(first(metric).keys())
-            )
-            writer.writeheader()
-            writer.writerows(metric)
-        else:
-            writer = csv.writer(csvobj)
-            for d in metric:
-                assert len(d) == 1
-                writer.writerow(list(d.values()))
-
-
-def _write_json(tmp_dir, metric, filename):
-    tmp_dir.gen(filename, json.dumps(metric, sort_keys=True))
+from tests.func.metrics.utils import _write_csv, _write_json
 
 
 def test_plot_csv_one_column(tmp_dir, scm, dvc, run_copy_metrics):
@@ -663,3 +643,15 @@ def test_show_non_plot_and_plot_with_params(
     plot_content.pop("title")
     plot2_content.pop("title")
     assert plot_content == plot2_content
+
+
+def test_show_no_repo(tmp_dir):
+    metric = [
+        {"first_val": 100, "val": 2},
+        {"first_val": 200, "val": 3},
+    ]
+    _write_json(tmp_dir, metric, "metric.json")
+
+    dvc = Repo(uninitialized=True)
+
+    dvc.plots.show(["metric.json"])

@@ -71,6 +71,7 @@ def test_experiments_run(dvc, mocker):
         "jobs": None,
         "checkpoint": False,
         "checkpoint_continue": None,
+        "checkpoint_reset": False,
     }
 
     default_arguments.update(repro_arguments)

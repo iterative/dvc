@@ -66,6 +66,19 @@ class BaselineMismatchError(DvcException):
         self.expected_rev = expected
 
 
+class CheckpointExistsError(DvcException):
+    def __init__(self, rev, continue_rev):
+        msg = (
+            f"Checkpoint experiment containing '{rev[:7]}' already exists."
+            " To restart the experiment run:\n\n"
+            "\tdvc exp run --reset ...\n\n"
+            "To resume the experiment, run:\n\n"
+            f"\tdvc exp run --continue {continue_rev[:7]}\n"
+        )
+        super().__init__(msg)
+        self.rev = rev
+
+
 class MultipleBranchError(DvcException):
     def __init__(self, rev):
         super().__init__(
@@ -150,8 +163,10 @@ class Experiments:
 
     @property
     def stash_reflog(self):
+        """Return stash reflog in Git 'stash@{...}' index order."""
         if "refs/stash" in self.scm.repo.refs:
-            return self.scm.repo.refs["refs/stash"].log()
+            # gitpython reflog log() returns commits oldest to newest
+            return reversed(self.scm.repo.refs["refs/stash"].log())
         return []
 
     @property
@@ -305,8 +320,14 @@ class Experiments:
         # recursive dict update
         def _update(dict_, other):
             for key, value in other.items():
+                if isinstance(dict_, list) and key.isdigit():
+                    key = int(key)
                 if isinstance(value, Mapping):
-                    dict_[key] = _update(dict_.get(key, {}), value)
+                    if isinstance(dict_, list):
+                        fallback_value = dict_[key]
+                    else:
+                        fallback_value = dict_.get(key, {})
+                    dict_[key] = _update(fallback_value, value)
                 else:
                     dict_[key] = value
             return dict_
@@ -325,7 +346,12 @@ class Experiments:
         self.scm.add(list(params.keys()))
 
     def _commit(
-        self, exp_hash, check_exists=True, create_branch=True, checkpoint=False
+        self,
+        exp_hash,
+        check_exists=True,
+        create_branch=True,
+        checkpoint=False,
+        checkpoint_reset=False,
     ):
         """Commit stages as an experiment and return the commit SHA."""
         if not self.scm.is_dirty(untracked_files=True):
@@ -340,14 +366,14 @@ class Experiments:
             ) and exp_name in self.scm.list_branches():
                 branch_tip = self.scm.resolve_rev(exp_name)
                 if checkpoint:
-                    raise DvcException(
-                        f"Checkpoint experiment containing '{rev[:7]}' "
-                        "already exists. To resume the experiment, "
-                        "run:\n\n"
-                        f"\tdvc exp run --continue {branch_tip[:7]}"
+                    self._reset_checkpoint_branch(
+                        exp_name, rev, branch_tip, checkpoint_reset
                     )
-                logger.debug("Using existing experiment branch '%s'", exp_name)
-                return branch_tip
+                else:
+                    logger.debug(
+                        "Using existing experiment branch '%s'", exp_name
+                    )
+                    return branch_tip
             self.scm.checkout(exp_name, create_new=True)
             logger.debug("Commit new experiment branch '%s'", exp_name)
         else:
@@ -355,6 +381,13 @@ class Experiments:
         self.scm.repo.git.add(A=True)
         self.scm.commit(f"Add experiment {exp_name}")
         return self.scm.get_rev()
+
+    def _reset_checkpoint_branch(self, branch, rev, branch_tip, reset):
+        if not reset:
+            raise CheckpointExistsError(rev, branch_tip)
+        self._checkout_default_branch()
+        logger.debug("Removing existing checkpoint branch '%s'", branch)
+        self.scm.repo.git.branch(branch, D=True)
 
     def reproduce_one(self, queue=False, **kwargs):
         """Reproduce and checkout a single experiment."""
@@ -370,7 +403,7 @@ class Experiments:
         )
         exp_rev = first(results)
         if exp_rev is not None:
-            self.checkout_exp(exp_rev)
+            self.checkout_exp(exp_rev, allow_missing=checkpoint)
         return results
 
     def reproduce_queued(self, **kwargs):
@@ -391,6 +424,7 @@ class Experiments:
         *args,
         checkpoint: Optional[bool] = False,
         checkpoint_continue: Optional[str] = None,
+        checkpoint_reset: Optional[bool] = False,
         branch: Optional[str] = None,
         **kwargs,
     ):
@@ -400,13 +434,31 @@ class Experiments:
         workspace.
         """
         if checkpoint_continue:
-            rev = self.scm.resolve_rev(checkpoint_continue)
-            branch = self._get_branch_containing(rev)
-            if not branch:
-                raise DvcException(
-                    "Could not find checkpoint experiment "
-                    f"'{checkpoint_continue}'"
-                )
+            branch = None
+            if checkpoint_continue == ":last":
+                # Continue from most recently committed checkpoint
+                for head in sorted(
+                    self.scm.repo.heads,
+                    key=lambda h: h.commit.committed_date,
+                    reverse=True,
+                ):
+                    exp_branch = head.name
+                    m = self.BRANCH_RE.match(exp_branch)
+                    if m and m.group("checkpoint"):
+                        branch = exp_branch
+                        break
+                if not branch:
+                    raise DvcException(
+                        "No existing checkpoint experiment to continue"
+                    )
+            else:
+                rev = self.scm.resolve_rev(checkpoint_continue)
+                branch = self._get_branch_containing(rev)
+                if not branch:
+                    raise DvcException(
+                        "Could not find checkpoint experiment "
+                        f"'{checkpoint_continue}'"
+                    )
             logger.debug(
                 "Continuing checkpoint experiment '%s'", checkpoint_continue
             )
@@ -423,7 +475,11 @@ class Experiments:
 
         try:
             stash_rev = self._stash_exp(
-                *args, branch=branch, allow_unchanged=checkpoint, **kwargs
+                *args,
+                branch=branch,
+                allow_unchanged=checkpoint,
+                checkpoint_reset=checkpoint_reset,
+                **kwargs,
             )
         except UnchangedExperimentError as exc:
             logger.info("Reproducing existing experiment '%s'.", rev[:7])
@@ -477,14 +533,16 @@ class Experiments:
         for rev, item in to_run.items():
             self._scm_checkout(item.baseline_rev)
             self.scm.repo.git.stash("apply", rev)
-            repro_args, repro_kwargs = self._unpack_args()
+            packed_args, packed_kwargs = self._unpack_args()
+            checkpoint_reset = packed_kwargs.pop("checkpoint_reset", False)
             executor = LocalExecutor(
                 item.baseline_rev,
                 branch=item.branch,
-                repro_args=repro_args,
-                repro_kwargs=repro_kwargs,
+                repro_args=packed_args,
+                repro_kwargs=packed_kwargs,
                 dvc_dir=self.dvc_dir,
                 cache_dir=self.repo.cache.local.cache_dir,
+                checkpoint_reset=checkpoint_reset,
             )
             self._collect_input(executor)
             executors[rev] = executor
@@ -550,7 +608,7 @@ class Experiments:
                         result[rev] = {exp_rev: exp_hash}
                 else:
                     logger.exception(
-                        "Failed to reproduce experiment '%s'", rev
+                        "Failed to reproduce experiment '%s'", rev[:7]
                     )
                 executor.cleanup()
 
@@ -581,7 +639,8 @@ class Experiments:
                     result[rev] = {exp_rev: exp_hash}
 
             checkpoint_func = partial(_checkpoint_callback, rev, executor)
-            executor.reproduce(
+
+            exp_hash = executor.reproduce(
                 executor.dvc_dir,
                 cwd=executor.dvc.root_dir,
                 checkpoint=True,
@@ -589,14 +648,19 @@ class Experiments:
                 **executor.repro_kwargs,
             )
 
-            # TODO: determine whether or not we should create a final
-            # checkpoint commit after repro is killed, or if we should only do
-            # it on explicit make_checkpoint() signals.
+            # NOTE: GitPython Repo instances cannot be re-used after
+            # process has received SIGINT or SIGTERM, so we need this hack
+            # to re-instantiate git instances after checkpoint runs. See:
+            # https://github.com/gitpython-developers/GitPython/issues/427
+            del self.repo.scm
+            del self.scm
 
-        # NOTE: our cached GitPython Repo instance cannot be re-used if the
-        # checkpoint run was interrupted via SIGINT, so we need this hack
-        # to create a new git repo instance after checkpoint runs.
-        del self.scm
+            # Create final checkpoint commit if needed
+            exp_rev = self._collect_and_commit(
+                rev, executor, exp_hash, checkpoint=True
+            )
+            if exp_rev not in result[rev]:
+                result[rev] = {exp_rev: exp_hash}
 
         return result
 
@@ -615,15 +679,16 @@ class Experiments:
         try:
             create_branch = not executor.branch
             exp_rev = self._commit(
-                exp_hash, create_branch=create_branch, **kwargs
+                exp_hash,
+                create_branch=create_branch,
+                checkpoint_reset=executor.checkpoint_reset,
+                **kwargs,
             )
-        except UnchangedExperimentError:
+        except UnchangedExperimentError as exc:
             logger.debug(
-                "Experiment '%s' identical to baseline '%s'",
-                rev,
-                executor.baseline_rev,
+                "Experiment '%s' identical to '%s'", rev, exc.rev,
             )
-            exp_rev = executor.baseline_rev
+            exp_rev = exc.rev
         return exp_rev
 
     def _collect_input(self, executor: ExperimentExecutor):
@@ -688,7 +753,7 @@ class Experiments:
             raise UploadError(fails)
 
     @scm_locked
-    def checkout_exp(self, rev):
+    def checkout_exp(self, rev, allow_missing=False):
         """Checkout an experiment to the user's workspace."""
         from git.exc import GitCommandError
 
@@ -722,7 +787,7 @@ class Experiments:
                 self._unstash_workspace()
 
         if need_checkout:
-            dvc_checkout(self.repo)
+            dvc_checkout(self.repo, allow_missing=allow_missing)
 
     def _check_baseline(self, exp_rev):
         baseline_sha = self.repo.scm.get_rev()

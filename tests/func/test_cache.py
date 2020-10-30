@@ -1,6 +1,5 @@
 import logging
 import os
-import platform
 import stat
 
 import configobj
@@ -165,12 +164,8 @@ class TestCmdCacheDir(TestDvc):
         config = configobj.ConfigObj(self.dvc.config.files["repo"])
         self.assertEqual(config["cache"]["dir"], dname.replace("\\", "/"))
 
-    @pytest.mark.skipif(
-        platform.system() == "Darwin",
-        reason="https://github.com/iterative/dvc/issues/4418",
-    )
     def test_relative_path(self):
-        tmpdir = self.mkdtemp()
+        tmpdir = os.path.realpath(self.mkdtemp())
         dname = relpath(tmpdir)
         ret = main(["cache", "dir", dname])
         self.assertEqual(ret, 0)

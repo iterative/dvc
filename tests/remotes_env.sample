@@ -9,3 +9,10 @@
 # Uncomment to test against Microsoft Azure via Azurite
 # export AZURE_STORAGE_CONTAINER_NAME="dvc-test"
 # export AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"
+
+# Uncomment and fill in to test against Alibaba OSS
+# export OSS_ENDPOINT="...SET-ME.."
+# export OSS_ACCESS_KEY_ID="...SET-ME.."
+# export OSS_ACCESS_KEY_SECRET="...SET-ME.."
+# export DVC_TEST_OSS=1
+# export DVC_TEST_OSS_REPO_BUCKET="...SET-ME..."
