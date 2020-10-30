@@ -4,8 +4,9 @@ import logging
 import os
 import shlex
 from functools import partial
+from typing import Optional
 
-from funcy import cached_property
+from funcy import cached_property, first
 from pathspec.patterns import GitWildMatchPattern
 
 from dvc.exceptions import GitHookAlreadyExistsError
@@ -468,3 +469,25 @@ class Git(Base):
     @property
     def no_commits(self):
         return not self.list_all_commits()
+
+    def branch_revs(self, branch: str, end_rev: Optional[str] = None):
+        """Iterate over revisions in a given branch (from newest to oldest).
+
+        If end_rev is set, iterator will stop when the specified revision is
+        reached.
+        """
+        commit = self.resolve_commit(branch)
+        while commit is not None:
+            yield commit.hexsha
+            commit = first(commit.parents)
+            if commit and commit.hexsha == end_rev:
+                return
+
+    def resolve_commit(self, rev):
+        """Return Commit object for the specified revision."""
+        from git.objects.tag import TagObject
+
+        commit = self.repo.rev_parse(rev)
+        if isinstance(commit, TagObject):
+            commit = commit.object
+        return commit
