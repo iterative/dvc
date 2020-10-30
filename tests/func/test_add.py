@@ -820,3 +820,20 @@ def test_add_file_in_symlink_dir(make_tmp_dir, tmp_dir, dvc, external):
 
     with pytest.raises(DvcException):
         dvc.add(os.path.join("dir", "foo"))
+
+
+def test_add_with_cache_link_error(tmp_dir, dvc, mocker, caplog):
+    tmp_dir.gen("foo", "foo")
+
+    mocker.patch.object(
+        dvc.cache.local, "_do_link", side_effect=DvcException("link failed")
+    )
+    with caplog.at_level(logging.WARNING, logger="dvc"):
+        dvc.add("foo")
+        assert "reconfigure cache types" in caplog.text
+
+    assert not (tmp_dir / "foo").exists()
+    assert (tmp_dir / "foo.dvc").exists()
+    assert (tmp_dir / ".dvc" / "cache").read_text() == {
+        "ac": {"bd18db4cc2f85cedef654fccc4a4d8": "foo"}
+    }

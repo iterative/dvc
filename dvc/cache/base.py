@@ -8,6 +8,7 @@ from shortuuid import uuid
 
 import dvc.prompt as prompt
 from dvc.exceptions import (
+    CacheLinkError,
     CheckoutError,
     ConfirmRemoveError,
     DvcException,
@@ -192,7 +193,7 @@ class CloudCache:
                 )
                 del link_types[0]
 
-        raise DvcException("no possible cache types left to try out.")
+        raise CacheLinkError([to_info])
 
     def _do_link(self, from_info, to_info, link_method):
         if self.tree.exists(to_info):
