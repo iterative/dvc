@@ -152,7 +152,7 @@ class WebHDFS(Base, URLInfo):  # pylint: disable=abstract-method
     def _webhdfs(self):
         from hdfs import InsecureClient
 
-        client = InsecureClient(self.url, self.user)
+        client = InsecureClient(f"http://{self.host}:{self.port}", self.user)
         yield client
 
     def is_file(self):
@@ -174,11 +174,11 @@ class WebHDFS(Base, URLInfo):  # pylint: disable=abstract-method
 
         with self._webhdfs() as _hdfs:
             # NOTE: hdfs.makekdirs always creates parents
-            _hdfs.makedirs(self.path)
+            _hdfs.makedirs(self.path, permission=mode)
 
     def write_bytes(self, contents):
         with self._webhdfs() as _hdfs:
-            with _hdfs.write(self.path) as writer:
+            with _hdfs.write(self.path, overwrite=True) as writer:
                 writer.write(contents)
 
     def write_text(self, contents, encoding=None, errors=None):

@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 
 from funcy import cached_property, wrap_prop
 
+from dvc.hash_info import HashInfo
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -32,6 +33,7 @@ class WebHDFSTree(BaseTree):
     PATH_CLS = CloudURLInfo
     REQUIRES = {"hdfs": "hdfs"}
     REGEX = r"^webhdfs://((?P<user>.*)@)?.*$"
+    PARAM_CHECKSUM = "checksum"
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
@@ -73,11 +75,11 @@ class WebHDFSTree(BaseTree):
 
             if self.token is not None:
                 client = hdfs.TokenClient(  # pylint: disable=no-member
-                    http_url, self.token
+                    http_url, token=self.token, root="/"
                 )
             else:
                 client = hdfs.InsecureClient(  # pylint: disable=no-member
-                    http_url, self.path_info.user
+                    http_url, user=self.path_info.user, root="/"
                 )
 
         return client
@@ -116,11 +118,21 @@ class WebHDFSTree(BaseTree):
         self.hdfs_client.delete(path_info.path)
 
     def exists(self, path_info, use_dvcignore=True):
+        assert not isinstance(path_info, list)
+        assert path_info.scheme == "webhdfs"
+
         status = self.hdfs_client.status(path_info.path, strict=False)
         return status is not None
 
     def get_file_hash(self, path_info):
-        return self.hdfs_client.checksum(path_info.path)
+        checksum = self.hdfs_client.checksum(path_info.path)
+        print(checksum)
+        return HashInfo(self.PARAM_CHECKSUM, checksum["bytes"])
+
+    def copy(self, from_info, to_info, **_kwargs):
+        with self.hdfs_client.read(from_info.path) as reader:
+            content = reader.read()
+        self.hdfs_client.write(to_info.path, data=content)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
