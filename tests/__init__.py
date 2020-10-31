@@ -29,11 +29,15 @@ if os.name == "nt":
     # exception, which it doesn't ignore and so Popen is not able to cleanup
     # old processes and that prevents it from creating any new processes at
     # all, which results in our tests failing whenever they try to use Popen.
+    # This patch was released in 3.9.0 and backported to some earlier
+    # versions.
+    if sys.version_info < (3, 9, 0):
 
-    def noop():
-        pass
+        def noop():
+            pass
 
-    subprocess._cleanup = noop
+        subprocess._cleanup = noop
+        subprocess._active = None
 else:
     import resource
 
