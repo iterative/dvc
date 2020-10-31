@@ -28,6 +28,9 @@ def _show_metrics(
     header_set = set()
     rows = []
 
+    if precision is None:
+        precision = DEFAULT_PRECISION
+
     def _round(val):
         if isinstance(val, float):
             return round(val, precision)
@@ -234,6 +237,15 @@ def add_parser(subparsers, parent_parser):
             "If any target is a directory, recursively search and process "
             "metrics files."
         ),
+    )
+    metrics_show_parser.add_argument(
+        "--precision",
+        type=int,
+        help=(
+            "Round metrics to `n` digits precision after the decimal point. "
+            f"Rounds to {DEFAULT_PRECISION} digits by default."
+        ),
+        metavar="<n>",
     )
     metrics_show_parser.set_defaults(func=CmdMetricsShow)
 
