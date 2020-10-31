@@ -17,6 +17,7 @@ class CmdImport(CmdBase):
                 out=self.args.out,
                 fname=self.args.file,
                 rev=self.args.rev,
+                no_exec=self.args.no_exec,
             )
         except DvcException:
             logger.exception(
@@ -64,5 +65,11 @@ def add_parser(subparsers, parent_parser):
         "--file",
         help="Specify name of the DVC-file this command will generate.",
         metavar="<filename>",
+    )
+    import_parser.add_argument(
+        "--no-exec",
+        action="store_true",
+        default=False,
+        help="Only create DVC-file without actually downloading it.",
     )
     import_parser.set_defaults(func=CmdImport)
