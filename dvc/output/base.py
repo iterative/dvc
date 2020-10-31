@@ -254,7 +254,6 @@ class BaseOutput:
     # pylint: enable=no-member
 
     def save(self):
-        print(self)
         if not self.exists:
             raise self.DoesNotExistError(self)
 

@@ -126,7 +126,6 @@ class WebHDFSTree(BaseTree):
 
     def get_file_hash(self, path_info):
         checksum = self.hdfs_client.checksum(path_info.path)
-        print(checksum)
         return HashInfo(self.PARAM_CHECKSUM, checksum["bytes"])
 
     def copy(self, from_info, to_info, **_kwargs):
