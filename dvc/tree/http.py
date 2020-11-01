@@ -33,7 +33,7 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
 
     SESSION_RETRIES = 5
     SESSION_BACKOFF_FACTOR = 0.1
-    REQUEST_TIMEOUT = 10
+    REQUEST_TIMEOUT = 60
     CHUNK_SIZE = 2 ** 16
 
     def __init__(self, repo, config):
