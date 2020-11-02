@@ -122,5 +122,5 @@ def _filter_missing(repo, paths):
         metadata = repo_tree.metadata(path)
         if metadata.is_dvc:
             out = metadata.outs[0]
-            if out.status()[str(out)] == "not in cache":
+            if out.status().get(str(out)) == "not in cache":
                 yield path
