@@ -414,6 +414,9 @@ class Git(Base):
         def _resolve_rev(name):
             with suppress(BadName, GitCommandError):
                 try:
+                    # Special case to be handled @see #4773
+                    if name == "@":
+                        return self.repo.git.rev_parse(name)
                     # Try python implementation of rev-parse first, it's faster
                     return self.repo.rev_parse(name).hexsha
                 except NotImplementedError:
