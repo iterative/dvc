@@ -16,9 +16,15 @@ KEYCRE = re.compile(
     re.VERBOSE,
 )
 
+UNWRAP_DEFAULT = True
 
-def _get_matches(template):
+
+def _get_matches(template: str):
     return list(KEYCRE.finditer(template))
+
+
+def _is_interpolated_string(val):
+    return bool(_get_matches(val)) if isinstance(val, str) else False
 
 
 def _unwrap(value):
@@ -27,10 +33,10 @@ def _unwrap(value):
     return value
 
 
-def _resolve_value(match, context: Context):
+def _resolve_value(match, context: Context, unwrap=UNWRAP_DEFAULT):
     _, _, inner = match.groups()
     value = context.select(inner)
-    return _unwrap(value)
+    return _unwrap(value) if unwrap else value
 
 
 def _str_interpolate(template, matches, context):
@@ -42,12 +48,16 @@ def _str_interpolate(template, matches, context):
     return buf + template[index:]
 
 
-def _resolve_str(src: str, context):
+def _is_exact_string(src: str, matches):
+    return len(matches) == 1 and src == matches[0].group(0)
+
+
+def _resolve_str(src: str, context, unwrap=UNWRAP_DEFAULT):
     matches = _get_matches(src)
-    if len(matches) == 1 and src == matches[0].group(0):
+    if _is_exact_string(src, matches):
         # replace "${enabled}", if `enabled` is a boolean, with it's actual
         # value rather than it's string counterparts.
-        return _resolve_value(matches[0], context)
+        return _resolve_value(matches[0], context, unwrap=unwrap)
 
     # but not "${num} days"
     src = _str_interpolate(src, matches, context)
