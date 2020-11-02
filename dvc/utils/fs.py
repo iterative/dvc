@@ -101,8 +101,13 @@ def move(src, dst, mode=None):
     else:
         shutil.move(src, tmp)
 
-    if mode is not None:
-        os.chmod(tmp, mode)
+    try:
+        if mode is not None:
+            os.chmod(tmp, mode)
+    except OSError:
+        # File now owned by us, return file to src from tmp
+        shutil.move(tmp, src)
+        raise DvcException(f"File not owned by user:  {src}")
 
     shutil.move(tmp, dst)
 
