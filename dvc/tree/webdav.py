@@ -81,12 +81,6 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
             if self.user is None and self.path_info.user is not None:
                 self.user = self.path_info.user
 
-            # If username specified add to path_info
-            if self.user is not None:
-                self.path_info.user = self.user
-        else:
-            self.path_info = None
-
     # Webdav client
     @wrap_prop(threading.Lock())
     @cached_property

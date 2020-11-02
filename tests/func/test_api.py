@@ -10,7 +10,17 @@ from dvc.path_info import URLInfo
 from dvc.utils.fs import remove
 from tests.unit.tree.test_repo import make_subrepo
 
-cloud_names = ["s3", "gs", "azure", "gdrive", "oss", "ssh", "http", "hdfs"]
+cloud_names = [
+    "s3",
+    "gs",
+    "azure",
+    "gdrive",
+    "oss",
+    "ssh",
+    "http",
+    "hdfs",
+    "webdav",
+]
 clouds = [pytest.lazy_fixture(cloud) for cloud in cloud_names]
 all_clouds = [pytest.lazy_fixture("local_cloud")] + clouds
 
@@ -72,6 +82,7 @@ def test_open(tmp_dir, dvc, remote):
             "http",
             "hdfs",
             "ssh",
+            "webdav",
         ]
     ],
 )
@@ -124,6 +135,7 @@ def test_open_granular(tmp_dir, dvc, remote):
             "ssh",
             "http",
             "hdfs",
+            "webdav",
         ]
     ],
     indirect=True,

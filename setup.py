@@ -149,6 +149,7 @@ tests_requirements = [
     "wget",
     "filelock",
     "black==19.10b0",
+    "wsgidav",
 ]
 
 setup(
