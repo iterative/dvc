@@ -537,6 +537,7 @@ class CloudCache:
         progress_callback=None,
         relink=False,
         filter_info=None,
+        quiet=False,
     ):
         if path_info.scheme not in ["local", self.tree.scheme]:
             raise NotImplementedError
@@ -544,10 +545,11 @@ class CloudCache:
         failed = None
         skip = False
         if not hash_info:
-            logger.warning(
-                "No file hash info found for '%s'. " "It won't be created.",
-                path_info,
-            )
+            if not quiet:
+                logger.warning(
+                    "No file hash info found for '%s'. It won't be created.",
+                    path_info,
+                )
             self.safe_remove(path_info, force=force)
             failed = path_info
 
@@ -558,11 +560,12 @@ class CloudCache:
         elif self.changed_cache(
             hash_info, path_info=path_info, filter_info=filter_info
         ):
-            logger.warning(
-                "Cache '%s' not found. File '%s' won't be created.",
-                hash_info,
-                path_info,
-            )
+            if not quiet:
+                logger.warning(
+                    "Cache '%s' not found. File '%s' won't be created.",
+                    hash_info,
+                    path_info,
+                )
             self.safe_remove(path_info, force=force)
             failed = path_info
 

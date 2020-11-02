@@ -330,6 +330,7 @@ class BaseOutput:
         relink=False,
         filter_info=None,
         allow_missing=False,
+        **kwargs,
     ):
         if not self.use_cache:
             if progress_callback:
@@ -346,6 +347,7 @@ class BaseOutput:
                 progress_callback=progress_callback,
                 relink=relink,
                 filter_info=filter_info,
+                **kwargs,
             )
         except CheckoutError:
             if allow_missing:
