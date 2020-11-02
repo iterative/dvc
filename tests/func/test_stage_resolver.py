@@ -260,8 +260,8 @@ def test_foreach_loop_dict(tmp_dir, dvc):
     d = {
         "stages": {
             "build": {
-                "foreach": iterable,
-                "in": {"cmd": "python script.py ${item}"},
+                "foreach": iterable["models"],
+                "in": {"cmd": "python script.py ${item.thresh}"},
             }
         }
     }
@@ -269,8 +269,8 @@ def test_foreach_loop_dict(tmp_dir, dvc):
     resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
     assert resolver.resolve() == {
         "stages": {
-            f"build-{key}": {"cmd": f"python script.py {item}"}
-            for key, item in iterable.items()
+            f"build-{key}": {"cmd": f"python script.py {item['thresh']}"}
+            for key, item in iterable["models"].items()
         }
     }
 
