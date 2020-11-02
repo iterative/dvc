@@ -403,9 +403,7 @@ class Experiments:
         )
         exp_rev = first(results)
         if exp_rev is not None:
-            self.checkout_exp(
-                exp_rev, allow_missing=checkpoint, quiet=checkpoint
-            )
+            self.checkout_exp(exp_rev)
         return results
 
     def reproduce_queued(self, **kwargs):
@@ -859,12 +857,20 @@ class Experiments:
     def _get_branch_containing(self, rev):
         from git.exc import GitCommandError
 
-        if self.scm.repo.head.is_detached:
-            self._checkout_default_branch()
         try:
             names = self.scm.repo.git.branch(contains=rev).strip().splitlines()
+
+            if (
+                names
+                and self.scm.repo.head.is_detached
+                and names[0].startswith("* (HEAD detached")
+            ):
+                # Ignore detached head entry if it exists
+                del names[0]
+
             if not names:
                 return None
+
             if len(names) > 1:
                 raise MultipleBranchError(rev)
             name = names[0]
