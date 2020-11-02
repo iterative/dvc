@@ -233,3 +233,72 @@ def test_with_templated_wdir(tmp_dir, dvc):
             }
         },
     )
+
+
+def test_simple_foreach_loop(tmp_dir, dvc):
+    iterable = ["foo", "bar", "baz"]
+    d = {
+        "stages": {
+            "build": {
+                "foreach": iterable,
+                "in": {"cmd": "python script.py ${item}"},
+            }
+        }
+    }
+
+    resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
+    assert resolver.resolve() == {
+        "stages": {
+            f"build-{item}": {"cmd": f"python script.py {item}"}
+            for item in iterable
+        }
+    }
+
+
+def test_foreach_loop_dict(tmp_dir, dvc):
+    iterable = {"models": {"us": {"thresh": 10}, "gb": {"thresh": 15}}}
+    d = {
+        "stages": {
+            "build": {
+                "foreach": iterable["models"],
+                "in": {"cmd": "python script.py ${item.thresh}"},
+            }
+        }
+    }
+
+    resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
+    assert resolver.resolve() == {
+        "stages": {
+            f"build-{key}": {"cmd": f"python script.py {item['thresh']}"}
+            for key, item in iterable["models"].items()
+        }
+    }
+
+
+def test_foreach_loop_templatized(tmp_dir, dvc):
+    params = {"models": {"us": {"thresh": 10}}}
+    vars_ = {"models": {"gb": {"thresh": 15}}}
+    dump_yaml(tmp_dir / DEFAULT_PARAMS_FILE, params)
+    d = {
+        "vars": vars_,
+        "stages": {
+            "build": {
+                "foreach": "${models}",
+                "in": {"cmd": "python script.py --thresh ${item.thresh}"},
+            }
+        },
+    }
+
+    resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
+    assert_stage_equal(
+        resolver.resolve(),
+        {
+            "stages": {
+                "build-gb": {"cmd": "python script.py --thresh 15"},
+                "build-us": {
+                    "cmd": "python script.py --thresh 10",
+                    "params": ["models.us.thresh"],
+                },
+            }
+        },
+    )

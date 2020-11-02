@@ -1,6 +1,7 @@
 import logging
 import os
 from collections import defaultdict
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from itertools import starmap
 from typing import TYPE_CHECKING
@@ -25,6 +26,10 @@ VARS_KWD = "vars"
 WDIR_KWD = "wdir"
 DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
 PARAMS_KWD = "params"
+FOREACH_KWD = "foreach"
+IN_KWD = "in"
+
+DEFAULT_SENTINEL = object()
 
 
 class DataResolver:
@@ -50,6 +55,11 @@ class DataResolver:
 
     def _resolve_entry(self, name: str, definition):
         context = Context.clone(self.global_ctx)
+        if FOREACH_KWD in definition:
+            assert IN_KWD in definition
+            return self._foreach(
+                context, name, definition[FOREACH_KWD], definition[IN_KWD]
+            )
         return self._resolve_stage(context, name, definition)
 
     def resolve(self):
@@ -114,3 +124,21 @@ class DataResolver:
             return self.wdir
         wdir = resolve(wdir, context)
         return self.wdir / str(wdir)
+
+    def _foreach(self, context: Context, name: str, foreach_data, in_data):
+        def each_iter(value, key=DEFAULT_SENTINEL):
+            c = Context.clone(context)
+            c["item"] = value
+            if key is not DEFAULT_SENTINEL:
+                c["key"] = key
+            suffix = str(key if key is not DEFAULT_SENTINEL else value)
+            return self._resolve_stage(c, f"{name}-{suffix}", in_data)
+
+        iterable = resolve(foreach_data, context)
+        if isinstance(iterable, Sequence):
+            gen = (each_iter(v) for v in iterable)
+        elif isinstance(iterable, Mapping):
+            gen = (each_iter(v, k) for k, v in iterable.items())
+        else:
+            raise Exception(f"got type of {type(iterable)}")
+        return join(gen)
