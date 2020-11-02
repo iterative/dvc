@@ -216,31 +216,44 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
                 )
 
     # Uploads file to remote
-    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
+    def _upload(
+        self,
+        from_file,
+        to_info,
+        name=None,
+        no_progress_bar=False,
+        chunked=False,
+    ):
         # First try to create parent directories
         self.makedirs(to_info.parent)
 
-        # Progress from HTTPTree
-        def chunks():
-            with open(from_file, "rb") as fd:
-                with Tqdm.wrapattr(
-                    fd,
-                    "read",
-                    total=None
-                    if no_progress_bar
-                    else os.path.getsize(from_file),
-                    leave=False,
-                    desc=to_info.url if name is None else name,
-                    disable=no_progress_bar,
-                ) as fd_wrapped:
-                    while True:
-                        chunk = fd_wrapped.read(self.CHUNK_SIZE)
-                        if not chunk:
-                            break
-                        yield chunk
+        if chunked:
+            # Progress from HTTPTree
+            def chunks():
+                with open(from_file, "rb") as fd:
+                    with Tqdm.wrapattr(
+                        fd,
+                        "read",
+                        total=None
+                        if no_progress_bar
+                        else os.path.getsize(from_file),
+                        leave=False,
+                        desc=to_info.url if name is None else name,
+                        disable=no_progress_bar,
+                    ) as fd_wrapped:
+                        while True:
+                            chunk = fd_wrapped.read(self.CHUNK_SIZE)
+                            if not chunk:
+                                break
+                            yield chunk
 
-        # Upload to WebDAV via buffer
-        self._client.upload_to(buff=chunks(), remote_path=to_info.path)
+            # Upload to WebDAV via buffer
+            self._client.upload_to(buff=chunks(), remote_path=to_info.path)
+        else:
+            # Upload to WebDAV without chunking
+            self._client.upload_file(
+                local_path=from_file, remote_path=to_info.path
+            )
 
     # Queries size of file at remote
     def _file_size(self, path_info):
