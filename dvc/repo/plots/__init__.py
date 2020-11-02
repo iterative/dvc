@@ -4,6 +4,7 @@ from funcy import cached_property, first, project
 
 from dvc.exceptions import DvcException, NoPlotsError
 from dvc.repo.collect import collect
+from dvc.repo.plots.data import PlotParsingError
 from dvc.schema import PLOT_PROPS
 from dvc.tree.repo import RepoTree
 from dvc.utils import relpath
@@ -64,17 +65,24 @@ class Plots:
         return data
 
     @staticmethod
-    def render(data, revs=None, props=None, templates=None):
-        """Renders plots"""
-        props = props or {}
+    def render(plots, templates=None):
+        result = {}
+        for datafile, desc in plots.items():
+            try:
+                result[datafile] = _render(
+                    datafile, desc["data"], desc["props"], templates
+                )
+            except PlotParsingError as e:
+                logger.debug(
+                    "failed to read '%s' on '%s'",
+                    e.path,
+                    e.revision,
+                    exc_info=True,
+                )
 
-        # Merge data by plot file and apply overriding props
-        plots = _prepare_plots(data, revs, props)
-
-        return {
-            datafile: _render(datafile, desc["data"], desc["props"], templates)
-            for datafile, desc in plots.items()
-        }
+        if not any(result.values()):
+            raise DvcException("Failed to parse any plot.")
+        return result
 
     def show(self, targets=None, revs=None, props=None, templates=None):
         from .data import NoMetricInHistoryError
@@ -94,7 +102,10 @@ class Plots:
 
         if templates is None:
             templates = self.templates
-        return self.render(data, revs, props, templates)
+
+        plots = _prepare_plots(data, revs, props or {})
+
+        return self.render(plots, templates)
 
     def diff(self, *args, **kwargs):
         from .diff import diff
