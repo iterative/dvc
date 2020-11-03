@@ -74,6 +74,7 @@ class BaseOutput:
     PARAM_PLOT_HEADER = "header"
     PARAM_PERSIST = "persist"
     PARAM_SIZE = "size"
+    PARAM_NFILES = "nfiles"
 
     METRIC_SCHEMA = Any(
         None,
@@ -117,6 +118,7 @@ class BaseOutput:
         self.repo = stage.repo if stage else None
         self.def_path = path
         self.size = (info or {}).pop(self.PARAM_SIZE, None)
+        self.nfiles = (info or {}).pop(self.PARAM_NFILES, None)
         self.hash_info = HashInfo.from_dict(info)
         if tree:
             self.tree = tree
@@ -270,6 +272,7 @@ class BaseOutput:
         if not self.use_cache:
             self.hash_info = self.get_hash()
             self.size = self.hash_info.size
+            self.nfiles = self.hash_info.nfiles
             if not self.IS_DEPENDENCY:
                 logger.debug(
                     "Output '%s' doesn't use cache. Skipping saving.", self
@@ -284,6 +287,7 @@ class BaseOutput:
 
         self.hash_info = self.get_hash()
         self.size = self.hash_info.size
+        self.nfiles = self.hash_info.nfiles
 
     def commit(self):
         if not self.exists:
@@ -299,6 +303,9 @@ class BaseOutput:
 
         if self.size is not None:
             ret[self.PARAM_SIZE] = self.size
+
+        if self.nfiles is not None:
+            ret[self.PARAM_NFILES] = self.nfiles
 
         if self.IS_DEPENDENCY:
             return ret
@@ -537,11 +544,15 @@ class BaseOutput:
         my = self.dumpd()
         other = out.dumpd()
 
-        my.pop(self.tree.PARAM_CHECKSUM)
-        other.pop(self.tree.PARAM_CHECKSUM)
+        ignored = [
+            self.tree.PARAM_CHECKSUM,
+            self.PARAM_SIZE,
+            self.PARAM_NFILES,
+        ]
 
-        my.pop(self.PARAM_SIZE, None)
-        other.pop(self.PARAM_SIZE, None)
+        for opt in ignored:
+            my.pop(opt, None)
+            other.pop(opt, None)
 
         if my != other:
             raise MergeError(
@@ -569,3 +580,4 @@ class BaseOutput:
             ancestor_info, self.hash_info, other.hash_info
         )
         self.size = self.hash_info.size
+        self.nfiles = self.get_files_number()

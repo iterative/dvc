@@ -281,6 +281,7 @@ def test_add_external_dir(tmp_dir, dvc, workspace, hash_name, hash_value):
         f"- {hash_name}: {hash_value}\n"
         "  path: remote://workspace/dir\n"
         "  size: 11\n"
+        "  nfiles: 2\n"
     )
     assert (workspace / "cache" / hash_value[:2] / hash_value[2:]).is_file()
 

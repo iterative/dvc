@@ -25,6 +25,13 @@ class HashInfo:
 
     @property
     def isdir(self):
-        if not self:
+        if not self or not isinstance(self.value, str):
             return False
         return self.value.endswith(HASH_DIR_SUFFIX)
+
+    @property
+    def nfiles(self):
+        if not self.isdir or self.dir_info is None:
+            return None
+
+        return len(self.dir_info)

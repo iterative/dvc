@@ -29,7 +29,9 @@ def _get_cache_hash(cache, key=False):
 
     if key:
         cache["outs"] = [out["path"] for out in cache.get("outs", [])]
-    return dict_sha256(cache, exclude=[BaseOutput.PARAM_SIZE])
+    return dict_sha256(
+        cache, exclude=[BaseOutput.PARAM_SIZE, BaseOutput.PARAM_NFILES]
+    )
 
 
 def _get_stage_hash(stage):

@@ -46,6 +46,7 @@ class StageLoader(Mapping):
             info = get_in(checksums, [key, path], {})
             info = info.copy()
             item.size = info.pop(item.PARAM_SIZE, None)
+            item.nfiles = info.pop(item.PARAM_NFILES, None)
             info.pop("path", None)
             item.hash_info = HashInfo.from_dict(info)
 

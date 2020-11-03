@@ -22,6 +22,7 @@ DATA_SCHEMA = {
     **CHECKSUMS_SCHEMA,
     Required("path"): str,
     BaseOutput.PARAM_SIZE: int,
+    BaseOutput.PARAM_NFILES: int,
 }
 LOCK_FILE_STAGE_SCHEMA = {
     Required(StageParams.PARAM_CMD): str,

@@ -175,6 +175,7 @@ def compute_md5(stage):
             BaseOutput.PARAM_METRIC,
             BaseOutput.PARAM_PERSIST,
             BaseOutput.PARAM_SIZE,
+            BaseOutput.PARAM_NFILES,
         ],
     )
 
