@@ -91,7 +91,8 @@ gs = ["google-cloud-storage==1.19.0"]
 gdrive = ["pydrive2>=1.6.3", "six >= 1.13.0"]
 s3 = ["boto3>=1.9.201"]
 azure = ["azure-storage-blob>=12.0", "knack"]
-oss = ["oss2==2.6.1"]
+# https://github.com/Legrandin/pycryptodome/issues/465
+oss = ["oss2==2.6.1", "pycryptodome<3.9.9"]
 ssh = ["paramiko[invoke]>=2.7.0"]
 
 # Remove the env marker if/when pyarrow is available for Python3.9
