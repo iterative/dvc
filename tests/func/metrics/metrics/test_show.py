@@ -2,14 +2,9 @@ import os
 
 import pytest
 
+from dvc.exceptions import NoMetricsError
 from dvc.repo import Repo
-from dvc.repo.metrics.show import NoMetricsError
 from dvc.utils.fs import remove
-
-
-def test_show_empty(dvc):
-    with pytest.raises(NoMetricsError):
-        dvc.metrics.show()
 
 
 def test_show_simple(tmp_dir, dvc, run_copy_metrics):
