@@ -29,6 +29,9 @@ call dvc pull || goto :error
 echo ====== Building dvc binary... ======
 call pyinstaller --additional-hooks-dir scripts\hooks dvc/__main__.py --name dvc --specpath build
 
+echo ====== Testing dvc binary... ======
+call dist\dvc\dvc.exe version || goto :error
+
 echo ====== Copying additional files... ======
 copy scripts\innosetup\addSymLinkPermissions.ps1 dist\ || goto :error
 
