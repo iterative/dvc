@@ -146,8 +146,7 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
             return False
         if bool(res):
             return True
-        res.raise_for_status()
-        return False
+        raise HTTPError(res.status_code, res.reason)
 
     def get_file_hash(self, path_info):
         url = path_info.url
