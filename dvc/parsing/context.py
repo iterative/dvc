@@ -9,6 +9,7 @@ from typing import Any, List, Optional, Union
 from funcy import identity
 
 from dvc.parsing.interpolate import (
+    UNWRAP_DEFAULT,
     get_matches,
     is_exact_string,
     is_interpolated_string,
@@ -76,8 +77,8 @@ class Container:
     data: Union[list, dict]
     _key_transform = staticmethod(identity)
 
-    def __init__(self, meta) -> None:
-        self.meta = meta or Meta(source=None)
+    def __init__(self, meta=None) -> None:
+        self.meta = meta or _default_meta()
 
     def _convert(self, key, value):
         meta = Meta.update_path(self.meta, key)
@@ -233,11 +234,39 @@ class Context(CtxDict):
             raise ValueError(f"Cannot set '{key}', key already exists")
         if isinstance(value, str):
             self._check_joined_with_interpolation(key, value)
-            value = resolve_str(value, self, unwrap=False)
+            value = self.resolve_str(value, unwrap=False)
         elif isinstance(value, (Sequence, Mapping)):
             self._check_not_nested_collection(key, value)
             self._check_interpolation_collection(key, value)
         self[key] = value
+
+    def resolve(self, src):
+        """Recursively resolves interpolation and returns resolved data.
+
+        >>> c = Context({"three": 3})
+        >>> c.resolve({"lst": [1, 2, "${three}"]})
+        {'lst': [1, 2, 3]}
+        """
+        Seq = (list, tuple, set)
+        if isinstance(src, Mapping):
+            return {key: self.resolve(value) for key, value in src.items()}
+        elif isinstance(src, Seq):
+            return type(src)(map(self.resolve, src))
+        elif isinstance(src, str):
+            return self.resolve_str(src)
+        return src
+
+    def resolve_str(self, src, unwrap=UNWRAP_DEFAULT):
+        """Resolves interpolated string to it's original value,
+        or in case of multiple interpolations, a combined string.
+
+        >>> c = Context({"enabled": True})
+        >>> c.resolve_str("${enabled}")
+        True
+        >>> c.resolve_str("enabled? ${enabled}")
+        'enabled? True'
+        """
+        return resolve_str(src, self, unwrap=unwrap)
 
     @staticmethod
     def _check_not_nested_collection(key: str, value: SeqOrMap):
