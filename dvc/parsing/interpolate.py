@@ -1,8 +1,5 @@
 import re
 import typing
-from collections.abc import Mapping
-
-from funcy import rpartial
 
 if typing.TYPE_CHECKING:
     from .context import Context
@@ -68,16 +65,3 @@ def resolve_str(src: str, context, unwrap=UNWRAP_DEFAULT):
     # regex already backtracks and avoids any `${` starting with
     # backslashes(`\`). We just need to replace those by `${`.
     return src.replace(r"\${", "${")
-
-
-def resolve(src, context):
-    Seq = (list, tuple, set)
-
-    apply_value = rpartial(resolve, context)
-    if isinstance(src, Mapping):
-        return {key: apply_value(value) for key, value in src.items()}
-    elif isinstance(src, Seq):
-        return type(src)(map(apply_value, src))
-    elif isinstance(src, str):
-        return resolve_str(src, context)
-    return src

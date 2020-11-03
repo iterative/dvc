@@ -3,7 +3,6 @@ from math import inf, pi
 import pytest
 
 from dvc.parsing import Context
-from dvc.parsing.interpolate import resolve
 
 
 @pytest.mark.parametrize(
@@ -19,7 +18,8 @@ from dvc.parsing.interpolate import resolve
     "data", [True, 12, pi, None, False, 0, "0", "123", "Foobar", "", inf, 3e4]
 )
 def test_resolve_primitive_values(data, template, var):
-    assert resolve(template, Context({var: data})) == data
+    context = Context({var: data})
+    assert context.resolve(template) == data
 
 
 @pytest.mark.parametrize(
@@ -40,16 +40,15 @@ def test_resolve_primitive_values(data, template, var):
     ],
 )
 def test_escape(template, expected, mocker):
-    assert resolve(template, Context({"value": "value"})) == expected
+    context = Context({"value": "value"})
+    assert context.resolve(template) == expected
 
 
 def test_resolve_str():
     template = "My name is ${last}, ${first} ${last}"
     expected = "My name is Bond, James Bond"
-    assert (
-        resolve(template, Context({"first": "James", "last": "Bond"}))
-        == expected
-    )
+    context = Context({"first": "James", "last": "Bond"})
+    assert context.resolve(template) == expected
 
 
 def test_resolve_primitives_dict_access():
@@ -62,12 +61,12 @@ def test_resolve_primitives_dict_access():
     }
     context = Context(data)
 
-    assert resolve("${dict.num}", context) == 5
-    assert resolve("${dict.string}", context) == "foo"
-    assert resolve("${dict.nested.float}", context) == pi
-    assert resolve("${dict.nested.string}", context) == "bar"
+    assert context.resolve("${dict.num}") == 5
+    assert context.resolve("${dict.string}") == "foo"
+    assert context.resolve("${dict.nested.float}") == pi
+    assert context.resolve("${dict.nested.string}") == "bar"
 
-    assert resolve("Number ${dict.num}", context) == "Number 5"
+    assert context.resolve("Number ${dict.num}") == "Number 5"
 
 
 def test_resolve_primitives_list_access():
@@ -82,12 +81,12 @@ def test_resolve_primitives_list_access():
         }
     )
 
-    assert resolve("${dict.0.f}", context) == "f"
-    assert resolve("${dict.1.fo}", context) == "fo"
-    assert resolve("${dict.2.foo}", context) == "foo"
-    assert resolve("${dict.3.foo.0}", context) == "f"
+    assert context.resolve("${dict.0.f}") == "f"
+    assert context.resolve("${dict.1.fo}") == "fo"
+    assert context.resolve("${dict.2.foo}") == "foo"
+    assert context.resolve("${dict.3.foo.0}") == "f"
 
-    assert resolve("${ dict.1.fo}${dict.3.foo.1}bar", context) == "foobar"
+    assert context.resolve("${ dict.1.fo}${dict.3.foo.1}bar") == "foobar"
 
 
 def test_resolve_collection():
@@ -98,4 +97,4 @@ def test_resolve_collection():
     )
 
     context = Context(CONTEXT_DATA)
-    assert resolve(TEMPLATED_DVC_YAML_DATA, context) == RESOLVED_DVC_YAML_DATA
+    assert context.resolve(TEMPLATED_DVC_YAML_DATA) == RESOLVED_DVC_YAML_DATA

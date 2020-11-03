@@ -12,7 +12,6 @@ from dvc.dependency.param import ParamsDependency
 from dvc.path_info import PathInfo
 
 from .context import Context
-from .interpolate import resolve
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -105,7 +104,7 @@ class DataResolver:
         )
 
         with context.track():
-            stage_d = resolve(definition, context)
+            stage_d = context.resolve(definition)
 
         params = stage_d.get(PARAMS_KWD, []) + self._resolve_params(
             context, wdir
@@ -125,7 +124,8 @@ class DataResolver:
     def _resolve_wdir(self, context: Context, wdir: str = None) -> PathInfo:
         if not wdir:
             return self.wdir
-        wdir = resolve(wdir, context)
+
+        wdir = context.resolve(wdir)
         return self.wdir / str(wdir)
 
     def _foreach(self, context: Context, name: str, foreach_data, in_data):
@@ -137,7 +137,7 @@ class DataResolver:
             suffix = str(key if key is not DEFAULT_SENTINEL else value)
             return self._resolve_stage(c, f"{name}-{suffix}", in_data)
 
-        iterable = resolve(foreach_data, context)
+        iterable = context.resolve(foreach_data)
 
         assert isinstance(iterable, (Sequence, Mapping)) and not isinstance(
             iterable, str
