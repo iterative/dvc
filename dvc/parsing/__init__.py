@@ -12,13 +12,7 @@ from dvc.dependency.param import ParamsDependency
 from dvc.path_info import PathInfo
 
 from .context import Context
-from .interpolate import (
-    _get_matches,
-    _is_exact_string,
-    _is_interpolated_string,
-    _resolve_str,
-    resolve,
-)
+from .interpolate import resolve
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -157,43 +151,4 @@ class DataResolver:
     @classmethod
     def set_context_from(cls, context: Context, to_set):
         for key, value in to_set.items():
-            if key in context:
-                raise ValueError(f"Cannot set '{key}', key already exists")
-            if isinstance(value, str):
-                cls._check_joined_with_interpolation(key, value)
-                value = _resolve_str(value, context, unwrap=False)
-            elif isinstance(value, (Sequence, Mapping)):
-                cls._check_nested_collection(key, value)
-                cls._check_interpolation_collection(key, value)
-            context[key] = value
-
-    @staticmethod
-    def _check_nested_collection(key: str, value: SeqOrMap):
-        values = value.values() if isinstance(value, Mapping) else value
-        has_nested = any(
-            not isinstance(item, str) and isinstance(item, (Mapping, Sequence))
-            for item in values
-        )
-        if has_nested:
-            raise ValueError(f"Cannot set '{key}', has nested dict/list")
-
-    @staticmethod
-    def _check_interpolation_collection(key: str, value: SeqOrMap):
-        values = value.values() if isinstance(value, Mapping) else value
-        interpolated = any(_is_interpolated_string(item) for item in values)
-        if interpolated:
-            raise ValueError(
-                f"Cannot set '{key}', "
-                "having interpolation inside "
-                f"'{type(value).__name__}' is not supported."
-            )
-
-    @staticmethod
-    def _check_joined_with_interpolation(key: str, value: str):
-        matches = _get_matches(value)
-        if matches and not _is_exact_string(value, matches):
-            raise ValueError(
-                f"Cannot set '{key}', "
-                "joining string with interpolated string"
-                "is not supported"
-            )
+            context.set(key, value)
