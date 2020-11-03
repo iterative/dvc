@@ -403,7 +403,7 @@ class Experiments:
         )
         exp_rev = first(results)
         if exp_rev is not None:
-            self.checkout_exp(exp_rev, allow_missing=checkpoint)
+            self.checkout_exp(exp_rev)
         return results
 
     def reproduce_queued(self, **kwargs):
@@ -753,7 +753,7 @@ class Experiments:
             raise UploadError(fails)
 
     @scm_locked
-    def checkout_exp(self, rev, allow_missing=False):
+    def checkout_exp(self, rev, **kwargs):
         """Checkout an experiment to the user's workspace."""
         from git.exc import GitCommandError
 
@@ -762,12 +762,17 @@ class Experiments:
         baseline_rev = self._check_baseline(rev)
         self._scm_checkout(rev)
 
+        branch = self._get_branch_containing(rev)
+        m = self.BRANCH_RE.match(branch)
+        if m and m.group("checkpoint"):
+            kwargs.update({"allow_missing": True, "quiet": True})
+
         tmp = tempfile.NamedTemporaryFile(delete=False).name
         self.scm.repo.head.commit.diff(
             baseline_rev, patch=True, full_index=True, binary=True, output=tmp
         )
 
-        dirty = self.repo.scm.is_dirty()
+        dirty = self.repo.scm.is_dirty(untracked_files=True)
         if dirty:
             logger.debug("Stashing workspace changes.")
             self.repo.scm.repo.git.stash("push", "--include-untracked")
@@ -787,7 +792,7 @@ class Experiments:
                 self._unstash_workspace()
 
         if need_checkout:
-            dvc_checkout(self.repo, allow_missing=allow_missing)
+            dvc_checkout(self.repo, **kwargs)
 
     def _check_baseline(self, exp_rev):
         baseline_sha = self.repo.scm.get_rev()
@@ -852,12 +857,20 @@ class Experiments:
     def _get_branch_containing(self, rev):
         from git.exc import GitCommandError
 
-        if self.scm.repo.head.is_detached:
-            self._checkout_default_branch()
         try:
             names = self.scm.repo.git.branch(contains=rev).strip().splitlines()
+
+            if (
+                names
+                and self.scm.repo.head.is_detached
+                and names[0].startswith("* (HEAD detached")
+            ):
+                # Ignore detached head entry if it exists
+                del names[0]
+
             if not names:
                 return None
+
             if len(names) > 1:
                 raise MultipleBranchError(rev)
             name = names[0]
