@@ -95,14 +95,18 @@ def move(src, dst, mode=None):
     dst = os.path.abspath(dst)
     tmp = f"{dst}.{uuid()}"
 
+    try:
+        if mode is not None:
+            os.chmod(src, mode)
+    except OSError:
+        # File not owned by us, raise exception
+        raise DvcException(f"File not owned by user:  {src}")
+
     if os.path.islink(src):
         shutil.copy(src, tmp)
         os.unlink(src)
     else:
         shutil.move(src, tmp)
-
-    if mode is not None:
-        os.chmod(tmp, mode)
 
     shutil.move(tmp, dst)
 
