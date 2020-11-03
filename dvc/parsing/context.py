@@ -1,14 +1,22 @@
 import os
 from collections import defaultdict
-from collections.abc import Mapping, MutableMapping, MutableSequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
-from typing import Any, List, Optional, Sequence, Union
+from typing import Any, List, Optional, Union
 
 from funcy import identity
 
+from dvc.parsing.interpolate import (
+    get_matches,
+    is_exact_string,
+    is_interpolated_string,
+    resolve_str,
+)
 from dvc.utils.serialize import LOADERS
+
+SeqOrMap = Union[Sequence, Mapping]
 
 
 def _merge(into, update, overwrite):
@@ -210,3 +218,60 @@ class Context(CtxDict):
     def clone(cls, ctx: "Context") -> "Context":
         """Clones given context."""
         return cls(deepcopy(ctx.data))
+
+    def set(self, key, value):
+        """
+        Sets a value, either non-interpolated values to a key,
+        or an interpolated string after resolving it.
+
+        >>> c = Context({"foo": "foo", "bar": [1, 2], "lorem": {"a": "z"}})
+        >>> c.set("foobar", "${bar}")
+        >>> c
+        {'foo': 'foo', 'bar': [1, 2], 'lorem': {'a': 'z'}, 'foobar': [1, 2]}
+        """
+        if key in self:
+            raise ValueError(f"Cannot set '{key}', key already exists")
+        if isinstance(value, str):
+            self._check_joined_with_interpolation(key, value)
+            value = resolve_str(value, self, unwrap=False)
+        elif isinstance(value, (Sequence, Mapping)):
+            self._check_not_nested_collection(key, value)
+            self._check_interpolation_collection(key, value)
+        self[key] = value
+
+    @staticmethod
+    def _check_not_nested_collection(key: str, value: SeqOrMap):
+        values = value.values() if isinstance(value, Mapping) else value
+        has_nested = any(
+            not isinstance(item, str) and isinstance(item, (Mapping, Sequence))
+            for item in values
+        )
+        if has_nested:
+            raise ValueError(f"Cannot set '{key}', has nested dict/list")
+
+    @staticmethod
+    def _check_interpolation_collection(key: str, value: SeqOrMap):
+        values = value.values() if isinstance(value, Mapping) else value
+        interpolated = any(is_interpolated_string(item) for item in values)
+        if interpolated:
+            raise ValueError(
+                f"Cannot set '{key}', "
+                "having interpolation inside "
+                f"'{type(value).__name__}' is not supported."
+            )
+
+    @staticmethod
+    def _check_joined_with_interpolation(key: str, value: str):
+        matches = get_matches(value)
+        if matches and not is_exact_string(value, matches):
+            raise ValueError(
+                f"Cannot set '{key}', "
+                "joining string with interpolated string"
+                "is not supported"
+            )
+
+
+if __name__ == "__main__":
+    import doctest
+
+    doctest.testmod()
