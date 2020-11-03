@@ -2,7 +2,11 @@ import logging
 
 from funcy import cached_property, first, project
 
-from dvc.exceptions import DvcException, NoPlotsError
+from dvc.exceptions import (
+    DvcException,
+    NoMetricsFoundError,
+    NoMetricsParsedError,
+)
 from dvc.repo.collect import collect
 from dvc.repo.plots.data import PlotParsingError
 from dvc.schema import PLOT_PROPS
@@ -65,7 +69,13 @@ class Plots:
         return data
 
     @staticmethod
-    def render(plots, templates=None):
+    def render(data, revs=None, props=None, templates=None):
+        """Renders plots"""
+        props = props or {}
+
+        # Merge data by plot file and apply overriding props
+        plots = _prepare_plots(data, revs, props)
+
         result = {}
         for datafile, desc in plots.items():
             try:
@@ -81,7 +91,8 @@ class Plots:
                 )
 
         if not any(result.values()):
-            raise DvcException("Failed to parse any plot.")
+            raise NoMetricsParsedError("plots")
+
         return result
 
     def show(self, targets=None, revs=None, props=None, templates=None):
@@ -98,14 +109,11 @@ class Plots:
 
         # No data at all is a special error with a special message
         if not data:
-            raise NoPlotsError()
+            raise NoMetricsFoundError("plots", "--plots/--plots-no-cache")
 
         if templates is None:
             templates = self.templates
-
-        plots = _prepare_plots(data, revs, props or {})
-
-        return self.render(plots, templates)
+        return self.render(data, revs, props, templates)
 
     def diff(self, *args, **kwargs):
         from .diff import diff

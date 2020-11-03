@@ -73,7 +73,7 @@ class CmdPlots(CmdBase):
             )
 
         except DvcException:
-            logger.exception("")
+            logger.exception("failed to show plots")
             return 1
 
         return 0

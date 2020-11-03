@@ -167,7 +167,8 @@ class PlotData:
 
     def to_datapoints(self, **kwargs):
         with reraise(
-            ParseError, PlotParsingError(self.filename, self.revision)
+            [ParseError, csv.Error],
+            PlotParsingError(self.filename, self.revision),
         ):
             data = self.raw(**kwargs)
 
@@ -195,31 +196,26 @@ class CSVPlotData(PlotData):
         self.delimiter = delimiter
 
     def raw(self, header=True, **kwargs):  # pylint: disable=arguments-differ
-        with reraise(
-            csv.Error, ParseError(self.filename, f"revision: {self.revision}")
-        ):
-            first_row = first(csv.reader(io.StringIO(self.content)))
+        first_row = first(csv.reader(io.StringIO(self.content)))
 
-            if header:
-                reader = csv.DictReader(
-                    io.StringIO(self.content), delimiter=self.delimiter,
-                )
-            else:
-                reader = csv.DictReader(
-                    io.StringIO(self.content),
-                    delimiter=self.delimiter,
-                    fieldnames=[str(i) for i in range(len(first_row))],
-                )
+        if header:
+            reader = csv.DictReader(
+                io.StringIO(self.content), delimiter=self.delimiter,
+            )
+        else:
+            reader = csv.DictReader(
+                io.StringIO(self.content),
+                delimiter=self.delimiter,
+                fieldnames=[str(i) for i in range(len(first_row))],
+            )
 
-            fieldnames = reader.fieldnames
-            data = list(reader)
+        fieldnames = reader.fieldnames
+        data = list(reader)
 
-            return [
-                OrderedDict(
-                    [(field, data_point[field]) for field in fieldnames]
-                )
-                for data_point in data
-            ]
+        return [
+            OrderedDict([(field, data_point[field]) for field in fieldnames])
+            for data_point in data
+        ]
 
 
 class YAMLPlotData(PlotData):
