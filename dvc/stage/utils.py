@@ -8,6 +8,7 @@ from dvc import dependency, output
 from dvc.utils.fs import path_isin
 
 from ..dependency import ParamsDependency
+from ..hash_info import HashInfo
 from ..tree.local import LocalTree
 from ..tree.s3 import S3Tree
 from ..utils import dict_md5, format_link, relpath
@@ -128,8 +129,6 @@ def check_missing_outputs(stage):
 
 
 def stage_dump_eq(stage_cls, old_d, new_d):
-    from dvc.output.base import BaseOutput
-
     # NOTE: need to remove checksums from old dict in order to compare
     # it to the new one, since the new one doesn't have checksums yet.
     old_d.pop(stage_cls.PARAM_MD5, None)
@@ -138,7 +137,8 @@ def stage_dump_eq(stage_cls, old_d, new_d):
     for out in outs:
         out.pop(LocalTree.PARAM_CHECKSUM, None)
         out.pop(S3Tree.PARAM_CHECKSUM, None)
-        out.pop(BaseOutput.PARAM_SIZE, None)
+        out.pop(HashInfo.PARAM_SIZE, None)
+        out.pop(HashInfo.PARAM_NFILES, None)
 
     # outs and deps are lists of dicts. To check equality, we need to make
     # them independent of the order, so, we convert them to dicts.
@@ -174,8 +174,8 @@ def compute_md5(stage):
             stage.PARAM_FROZEN,
             BaseOutput.PARAM_METRIC,
             BaseOutput.PARAM_PERSIST,
-            BaseOutput.PARAM_SIZE,
-            BaseOutput.PARAM_NFILES,
+            HashInfo.PARAM_SIZE,
+            HashInfo.PARAM_NFILES,
         ],
     )
 

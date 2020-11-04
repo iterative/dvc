@@ -140,8 +140,6 @@ def to_single_stage_lockfile(stage: "Stage") -> dict:
             *item.hash_info.to_dict().items(),
         ]
 
-        if item.size is not None:
-            ret.append((item.PARAM_SIZE, item.size))
         return OrderedDict(ret)
 
     res = OrderedDict([("cmd", stage.cmd)])

@@ -287,6 +287,7 @@ class CloudCache:
         hash_info = self.tree.get_file_hash(to_info)
         hash_info.value += self.tree.CHECKSUM_DIR_SUFFIX
         hash_info.dir_info = self._to_dict(dir_info)
+        hash_info.nfiles = len(dir_info)
 
         return hash_info, to_info
 
@@ -736,3 +737,4 @@ class CloudCache:
         assert hash_info.isdir
 
         hash_info.dir_info = self._to_dict(self.get_dir_cache(hash_info))
+        hash_info.nfiles = len(hash_info.dir_info)

@@ -195,14 +195,14 @@ def test_import_url_dir(tmp_dir, dvc, workspace, stage_md5, dir_md5):
         "frozen: true\n"
         "deps:\n"
         f"- md5: {dir_md5}\n"
-        "  path: remote://workspace/dir\n"
         "  size: 11\n"
         "  nfiles: 2\n"
+        "  path: remote://workspace/dir\n"
         "outs:\n"
         "- md5: b6dcab6ccd17ca0a8bf4a215a37d14cc.dir\n"
-        "  path: dir\n"
         "  size: 11\n"
         "  nfiles: 2\n"
+        "  path: dir\n"
     )
 
     assert dvc.status() == {}
