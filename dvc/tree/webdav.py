@@ -251,9 +251,23 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
             self._client.upload_to(buff=chunks(), remote_path=to_info.path)
         else:
             # Upload to WebDAV without chunking
-            self._client.upload_file(
-                local_path=from_file, remote_path=to_info.path
-            )
+            # self._client.upload_file(
+            #    local_path=from_file, remote_path=to_info.path
+            # )
+            with open(from_file, "rb") as fd:
+                with Tqdm.wrapattr(
+                    fd,
+                    "read",
+                    total=None
+                    if no_progress_bar
+                    else os.path.getsize(from_file),
+                    leave=False,
+                    desc=to_info.url if name is None else name,
+                    disable=no_progress_bar,
+                ) as fd_wrapped:
+                    self._client.upload_to(
+                        buff=fd_wrapped, remote_path=to_info.path
+                    )
 
     # Queries size of file at remote
     def _file_size(self, path_info):
