@@ -193,8 +193,46 @@ def test_plot_confusion(tmp_dir, dvc, run_copy_metrics):
         {"predicted": "B", "actual": "A", "rev": "workspace"},
         {"predicted": "A", "actual": "A", "rev": "workspace"},
     ]
-    assert plot_content["encoding"]["x"]["field"] == "predicted"
-    assert plot_content["encoding"]["y"]["field"] == "actual"
+    assert plot_content["spec"]["transform"][0]["groupby"] == [
+        "actual",
+        "predicted",
+    ]
+    assert plot_content["spec"]["encoding"]["x"]["field"] == "predicted"
+    assert plot_content["spec"]["encoding"]["y"]["field"] == "actual"
+
+
+def test_plot_confusion_normalized(tmp_dir, dvc, run_copy_metrics):
+    confusion_matrix = [
+        {"predicted": "B", "actual": "A"},
+        {"predicted": "A", "actual": "A"},
+    ]
+    _write_json(tmp_dir, confusion_matrix, "metric_t.json")
+    run_copy_metrics(
+        "metric_t.json",
+        "metric.json",
+        plots_no_cache=["metric.json"],
+        commit="first run",
+    )
+
+    props = {
+        "template": "confusion_normalized",
+        "x": "predicted",
+        "y": "actual",
+    }
+    plot_string = dvc.plots.show(props=props)["metric.json"]
+
+    plot_content = json.loads(plot_string)
+    assert plot_content["data"]["values"] == [
+        {"predicted": "B", "actual": "A", "rev": "workspace"},
+        {"predicted": "A", "actual": "A", "rev": "workspace"},
+    ]
+    assert plot_content["spec"]["transform"][0]["groupby"] == [
+        "actual",
+        "predicted",
+    ]
+    assert plot_content["spec"]["transform"][1]["groupby"] == ["rev", "actual"]
+    assert plot_content["spec"]["encoding"]["x"]["field"] == "predicted"
+    assert plot_content["spec"]["encoding"]["y"]["field"] == "actual"
 
 
 def test_plot_multiple_revs_default(tmp_dir, scm, dvc, run_copy_metrics):

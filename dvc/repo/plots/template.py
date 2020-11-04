@@ -137,22 +137,164 @@ class DefaultConfusionTemplate(Template):
         "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
         "data": {"values": Template.anchor("data")},
         "title": Template.anchor("title"),
-        "mark": "rect",
-        "encoding": {
-            "x": {
-                "field": Template.anchor("x"),
-                "type": "nominal",
-                "sort": "ascending",
-                "title": Template.anchor("x_label"),
+        "facet": {"field": "rev", "type": "nominal"},
+        "spec": {
+            "transform": [
+                {
+                    "aggregate": [{"op": "count", "as": "xy_count"}],
+                    "groupby": [Template.anchor("y"), Template.anchor("x")],
+                },
+                {
+                    "impute": "xy_count",
+                    "groupby": ["rev", Template.anchor("y")],
+                    "key": Template.anchor("x"),
+                    "value": 0,
+                },
+                {
+                    "impute": "xy_count",
+                    "groupby": ["rev", Template.anchor("x")],
+                    "key": Template.anchor("y"),
+                    "value": 0,
+                },
+                {
+                    "joinaggregate": [
+                        {"op": "max", "field": "xy_count", "as": "max_count"}
+                    ],
+                    "groupby": [],
+                },
+                {
+                    "calculate": "datum.xy_count / datum.max_count",
+                    "as": "percent_of_max",
+                },
+            ],
+            "encoding": {
+                "x": {
+                    "field": Template.anchor("x"),
+                    "type": "nominal",
+                    "sort": "ascending",
+                    "title": Template.anchor("x_label"),
+                },
+                "y": {
+                    "field": Template.anchor("y"),
+                    "type": "nominal",
+                    "sort": "ascending",
+                    "title": Template.anchor("y_label"),
+                },
             },
-            "y": {
-                "field": Template.anchor("y"),
-                "type": "nominal",
-                "sort": "ascending",
-                "title": Template.anchor("y_label"),
+            "layer": [
+                {
+                    "mark": "rect",
+                    "width": 300,
+                    "height": 300,
+                    "encoding": {
+                        "color": {
+                            "field": "xy_count",
+                            "type": "quantitative",
+                            "title": "",
+                            "scale": {"domainMin": 0, "nice": True},
+                        }
+                    },
+                },
+                {
+                    "mark": "text",
+                    "encoding": {
+                        "text": {"field": "xy_count", "type": "quantitative"},
+                        "color": {
+                            "condition": {
+                                "test": "datum.percent_of_max > 0.5",
+                                "value": "white",
+                            },
+                            "value": "black",
+                        },
+                    },
+                },
+            ],
+        },
+    }
+
+
+class NormalizedConfusionTemplate(Template):
+    DEFAULT_NAME = "confusion_normalized"
+    DEFAULT_CONTENT = {
+        "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
+        "data": {"values": Template.anchor("data")},
+        "title": Template.anchor("title"),
+        "facet": {"field": "rev", "type": "nominal"},
+        "spec": {
+            "transform": [
+                {
+                    "aggregate": [{"op": "count", "as": "xy_count"}],
+                    "groupby": [Template.anchor("y"), Template.anchor("x")],
+                },
+                {
+                    "impute": "xy_count",
+                    "groupby": ["rev", Template.anchor("y")],
+                    "key": Template.anchor("x"),
+                    "value": 0,
+                },
+                {
+                    "impute": "xy_count",
+                    "groupby": ["rev", Template.anchor("x")],
+                    "key": Template.anchor("y"),
+                    "value": 0,
+                },
+                {
+                    "joinaggregate": [
+                        {"op": "sum", "field": "xy_count", "as": "sum_y"}
+                    ],
+                    "groupby": [Template.anchor("y")],
+                },
+                {
+                    "calculate": "datum.xy_count / datum.sum_y",
+                    "as": "percent_of_y",
+                },
+            ],
+            "encoding": {
+                "x": {
+                    "field": Template.anchor("x"),
+                    "type": "nominal",
+                    "sort": "ascending",
+                    "title": Template.anchor("x_label"),
+                },
+                "y": {
+                    "field": Template.anchor("y"),
+                    "type": "nominal",
+                    "sort": "ascending",
+                    "title": Template.anchor("y_label"),
+                },
             },
-            "color": {"aggregate": "count", "type": "quantitative"},
-            "facet": {"field": "rev", "type": "nominal"},
+            "layer": [
+                {
+                    "mark": "rect",
+                    "width": 300,
+                    "height": 300,
+                    "encoding": {
+                        "color": {
+                            "field": "percent_of_y",
+                            "type": "quantitative",
+                            "title": "",
+                            "scale": {"domain": [0, 1]},
+                        }
+                    },
+                },
+                {
+                    "mark": "text",
+                    "encoding": {
+                        "text": {
+                            "field": "percent_of_y",
+                            "type": "quantitative",
+                            "format": ".2f",
+                        },
+                        "color": {
+                            "condition": {
+                                "test": "datum.percent_of_y > 0.5",
+                                "value": "white",
+                            },
+                            "value": "black",
+                        },
+                    },
+                },
+            ],
         },
     }
 
@@ -219,6 +361,7 @@ class PlotTemplates:
     TEMPLATES = [
         DefaultLinearTemplate,
         DefaultConfusionTemplate,
+        NormalizedConfusionTemplate,
         DefaultScatterTemplate,
         SmoothLinearTemplate,
     ]
