@@ -32,7 +32,6 @@ class WebHDFSTree(BaseTree):
     scheme = Schemes.WEBHDFS
     PATH_CLS = CloudURLInfo
     REQUIRES = {"hdfs": "hdfs"}
-    REGEX = r"^webhdfs://((?P<user>.*)@)?.*$"
     PARAM_CHECKSUM = "checksum"
 
     def __init__(self, repo, config):
