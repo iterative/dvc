@@ -65,12 +65,11 @@ class CmdPlots(CmdBase):
             html = PAGE_HTML.format(divs="\n".join(divs))
             path = self.args.out or "plots.html"
 
+            path = os.path.join(os.getcwd(), path)
             with open(path, "w") as fobj:
                 fobj.write(html)
 
-            logger.info(
-                "file://{}".format(os.path.join(self.repo.root_dir, path))
-            )
+            logger.info(f"file://{path}")
 
         except DvcException:
             logger.exception("")
