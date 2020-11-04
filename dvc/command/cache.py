@@ -26,12 +26,12 @@ class CmdCacheDir(CmdConfig):
 class CmdCacheStatus(CmdBase):
     def run(self):
         self.permission_check()
-        self.show_dvc_files_status()
+        self.show_tracked_files_with_cache_status()
         return 0
 
     def permission_check(self):
         cache_dir = self.config["cache"]["dir"]
-        logger.info("Step 1: Permission Check on: {}".format(cache_dir))
+        logger.info("Step 1: permissions check on: {}".format(cache_dir))
         logger.info(
             "\tRead: {}".format(
                 "OK" if os.access(cache_dir, os.R_OK) else "Not OK"
@@ -48,20 +48,20 @@ class CmdCacheStatus(CmdBase):
             )
         )
 
-    def show_dvc_files_status(self):
-        logger.info("Step 2: DVC Files and Cache status.")
+    def show_tracked_files_with_cache_status(self):
+        logger.info("Step 2: cache details of all DVC-tracked files:")
 
         cache_dir = self.config["cache"]["dir"]
         root_dir = self.repo.root_dir + os.path.sep
 
         rows = []
-        cached_files, dvc_files = self._get_dvc_and_cached_files()
+        cached_files, tracked_files = self._get_dvc_and_cached_files()
 
         for cached_file in cached_files:
             md5_stage_path = "".join(
                 cached_file.replace(cache_dir, "").split("/")
             )
-            filename = dvc_files[md5_stage_path]
+            filename = tracked_files[md5_stage_path]
             row = [
                 "Dir" if cached_file.endswith(".dir") else "File",
                 filename.replace(root_dir, ""),
@@ -82,13 +82,13 @@ class CmdCacheStatus(CmdBase):
         cache_dir = self.config["cache"]["dir"]
         cached_files = list(walk_files(cache_dir))
         cached_dirs = [file for file in cached_files if file.endswith(".dir")]
-        dvc_files = {}
+        tracked_files = {}
 
         for path in self.repo.tree.list_paths():
             if path.endswith(".dvc"):
                 dvcfile = Dvcfile(self.repo, path)
                 for stage_file in dvcfile.stages.stage_data["outs"]:
-                    dvc_files[stage_file["md5"]] = "{}/{}".format(
+                    tracked_files[stage_file["md5"]] = "{}/{}".format(
                         os.path.dirname(path), stage_file["path"]
                     )
 
@@ -96,11 +96,11 @@ class CmdCacheStatus(CmdBase):
             md5_stage_path = "".join(file.replace(cache_dir, "").split("/"))
             with open(file, "r") as handler:
                 for stage_file in json.loads(handler.read()):
-                    dvc_files[stage_file["md5"]] = "{}/{}".format(
-                        dvc_files[md5_stage_path], stage_file["relpath"]
+                    tracked_files[stage_file["md5"]] = "{}/{}".format(
+                        tracked_files[md5_stage_path], stage_file["relpath"]
                     )
 
-        return cached_files, dvc_files
+        return cached_files, tracked_files
 
 
 def add_parser(subparsers, parent_parser):
@@ -127,7 +127,9 @@ def add_parser(subparsers, parent_parser):
         add_help=False, parents=[parent_config_parser]
     )
     CACHE_DIR_HELP = "Configure cache directory location."
-    CACHE_CHECK_HELP = "Check and show cache status"
+    CACHE_STATUS_HELP = (
+        "Check cache dir permissions and show tracked files with cache status"
+    )
 
     cache_dir_parser = cache_subparsers.add_parser(
         "dir",
@@ -157,7 +159,7 @@ def add_parser(subparsers, parent_parser):
         "status",
         parents=[parent_parser, parent_cache_config_parser],
         description=append_doc_link(CACHE_HELP, "cache/status"),
-        help=CACHE_CHECK_HELP,
+        help=CACHE_STATUS_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     cache_status_parser.set_defaults(func=CmdCacheStatus)

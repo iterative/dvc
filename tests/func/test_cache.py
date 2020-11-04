@@ -196,12 +196,12 @@ def test_cache_status_command(caplog):
         ret = main(["cache", "status"])
         assert ret == 0
         logs = "\n".join([record.message for record in caplog.records])
-        assert "Step 1: Permission Check on:" in logs
+        assert "Step 1: permissions check on:" in logs
         assert dvc_fixture.root_dir in logs
         assert "Read: OK" in logs
         assert "Write: OK" in logs
         assert "Exist: OK" in logs
-        assert "Step 2: DVC Files and Cache status." in logs
+        assert "Step 2: cache details of all DVC-tracked files:" in logs
         assert TestDvcFixture.FOO in logs
         assert ".dvc/cache/ac/bd18db4cc2f85cedef654fccc4a4d8" in logs
         assert TestDvcFixture.DATA_SUB_DIR in logs
