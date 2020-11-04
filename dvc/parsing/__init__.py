@@ -4,7 +4,7 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from itertools import starmap
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 from funcy import first, join
 
@@ -29,7 +29,6 @@ IN_KWD = "in"
 SET_KWD = "set"
 
 DEFAULT_SENTINEL = object()
-SeqOrMap = Union[Sequence, Mapping]
 
 
 class DataResolver:
@@ -125,7 +124,7 @@ class DataResolver:
         if not wdir:
             return self.wdir
 
-        wdir = context.resolve(wdir)
+        wdir = str(context.resolve_str(wdir, unwrap=True))
         return self.wdir / str(wdir)
 
     def _foreach(self, context: Context, name: str, foreach_data, in_data):

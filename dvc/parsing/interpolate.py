@@ -2,6 +2,8 @@ import re
 import typing
 
 if typing.TYPE_CHECKING:
+    from typing import List, Match
+
     from .context import Context
 
 KEYCRE = re.compile(
@@ -15,8 +17,6 @@ KEYCRE = re.compile(
     re.VERBOSE,
 )
 
-UNWRAP_DEFAULT = True
-
 
 def get_matches(template: str):
     return list(KEYCRE.finditer(template))
@@ -26,42 +26,23 @@ def is_interpolated_string(val):
     return bool(get_matches(val)) if isinstance(val, str) else False
 
 
-def _unwrap(value):
-    from .context import Value
-
-    if isinstance(value, Value):
-        return value.value
-    return value
-
-
-def _resolve_value(match, context: "Context", unwrap=UNWRAP_DEFAULT):
+def get_expression(match: "Match"):
     _, _, inner = match.groups()
-    value = context.select(inner)
-    return _unwrap(value) if unwrap else value
+    return inner
 
 
-def _str_interpolate(template, matches, context):
+def str_interpolate(template: str, matches: "List[Match]", context: "Context"):
     index, buf = 0, ""
     for match in matches:
         start, end = match.span(0)
-        buf += template[index:start] + str(_resolve_value(match, context))
+        expr = get_expression(match)
+        buf += template[index:start] + str(context.select(expr))
         index = end
-    return buf + template[index:]
-
-
-def is_exact_string(src: str, matches):
-    return len(matches) == 1 and src == matches[0].group(0)
-
-
-def resolve_str(src: str, context, unwrap=UNWRAP_DEFAULT):
-    matches = get_matches(src)
-    if is_exact_string(src, matches):
-        # replace "${enabled}", if `enabled` is a boolean, with it's actual
-        # value rather than it's string counterparts.
-        return _resolve_value(matches[0], context, unwrap=unwrap)
-
-    # but not "${num} days"
-    src = _str_interpolate(src, matches, context)
+    buf += template[index:]
     # regex already backtracks and avoids any `${` starting with
     # backslashes(`\`). We just need to replace those by `${`.
-    return src.replace(r"\${", "${")
+    return buf.replace(r"\${", "${")
+
+
+def is_exact_string(src: str, matches: "List[Match]"):
+    return len(matches) == 1 and src == matches[0].group(0)
