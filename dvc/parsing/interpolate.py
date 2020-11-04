@@ -17,8 +17,6 @@ KEYCRE = re.compile(
     re.VERBOSE,
 )
 
-UNWRAP_DEFAULT = True
-
 
 def get_matches(template: str):
     return list(KEYCRE.finditer(template))

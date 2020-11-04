@@ -124,7 +124,7 @@ class DataResolver:
         if not wdir:
             return self.wdir
 
-        wdir = context.resolve_str(wdir)
+        wdir = str(context.resolve_str(wdir, unwrap=True))
         return self.wdir / str(wdir)
 
     def _foreach(self, context: Context, name: str, foreach_data, in_data):

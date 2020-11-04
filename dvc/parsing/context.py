@@ -18,7 +18,6 @@ from dvc.parsing.interpolate import (
 from dvc.utils.serialize import LOADERS
 
 SeqOrMap = Union[Sequence, Mapping]
-UNWRAP_DEFAULT = True
 
 
 def _merge(into, update, overwrite):
@@ -204,8 +203,9 @@ class Context(CtxDict):
         return self._tracked_data
 
     def select(
-        self, key: str, unwrap=UNWRAP_DEFAULT
+        self, key: str, unwrap=False
     ):  # pylint: disable=arguments-differ
+        # NOTE: `unwrap` default value is different from `resolve_str`
         node = super().select(key)
         self._track_data(node)
         return node.value if isinstance(node, Value) and unwrap else node
@@ -259,7 +259,7 @@ class Context(CtxDict):
             return self.resolve_str(src)
         return src
 
-    def resolve_str(self, src: str, unwrap=UNWRAP_DEFAULT):
+    def resolve_str(self, src: str, unwrap=True):
         """Resolves interpolated string to it's original value,
         or in case of multiple interpolations, a combined string.
 
