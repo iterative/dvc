@@ -632,23 +632,15 @@ class CloudCache:
 
     def _to_dict(self, dir_info):
         info = {}
-        for entry in dir_info:
-            relpath = None
-            hash_info = None
-            for key, value in entry.items():
-                if key == self.tree.PARAM_RELPATH:
-                    relpath = value
-                else:
-                    hash_info = HashInfo(key, value)
-            info[relpath] = hash_info
+        for _entry in dir_info:
+            entry = _entry.copy()
+            relpath = entry.pop(self.tree.PARAM_RELPATH)
+            info[relpath] = HashInfo.from_dict(entry)
         return info
 
     def _from_dict(self, dir_dict):
         return [
-            {
-                self.tree.PARAM_RELPATH: relpath,
-                hash_info.name: hash_info.value,
-            }
+            {self.tree.PARAM_RELPATH: relpath, **hash_info.to_dict()}
             for relpath, hash_info in dir_dict.items()
         ]
 
