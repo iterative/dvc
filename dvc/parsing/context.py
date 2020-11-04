@@ -9,15 +9,16 @@ from typing import Any, List, Optional, Union
 from funcy import identity
 
 from dvc.parsing.interpolate import (
-    UNWRAP_DEFAULT,
+    get_expression,
     get_matches,
     is_exact_string,
     is_interpolated_string,
-    resolve_str,
+    str_interpolate,
 )
 from dvc.utils.serialize import LOADERS
 
 SeqOrMap = Union[Sequence, Mapping]
+UNWRAP_DEFAULT = True
 
 
 def _merge(into, update, overwrite):
@@ -202,10 +203,12 @@ class Context(CtxDict):
     def tracked(self):
         return self._tracked_data
 
-    def select(self, key: str):
+    def select(
+        self, key: str, unwrap=UNWRAP_DEFAULT
+    ):  # pylint: disable=arguments-differ
         node = super().select(key)
         self._track_data(node)
-        return node
+        return node.value if isinstance(node, Value) and unwrap else node
 
     @classmethod
     def load_from(cls, tree, file: str) -> "Context":
@@ -256,7 +259,7 @@ class Context(CtxDict):
             return self.resolve_str(src)
         return src
 
-    def resolve_str(self, src, unwrap=UNWRAP_DEFAULT):
+    def resolve_str(self, src: str, unwrap=UNWRAP_DEFAULT):
         """Resolves interpolated string to it's original value,
         or in case of multiple interpolations, a combined string.
 
@@ -266,7 +269,14 @@ class Context(CtxDict):
         >>> c.resolve_str("enabled? ${enabled}")
         'enabled? True'
         """
-        return resolve_str(src, self, unwrap=unwrap)
+        matches = get_matches(src)
+        if is_exact_string(src, matches):
+            # replace "${enabled}", if `enabled` is a boolean, with it's actual
+            # value rather than it's string counterparts.
+            expr = get_expression(matches[0])
+            return self.select(expr, unwrap=unwrap)
+        # but not "${num} days"
+        return str_interpolate(src, matches, self)
 
     @staticmethod
     def _check_not_nested_collection(key: str, value: SeqOrMap):
