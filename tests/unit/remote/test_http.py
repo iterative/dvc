@@ -127,23 +127,27 @@ def test_http_method(dvc):
     assert isinstance(tree._auth_method(), HTTPBasicAuth)
 
 
-def test_exists(dvc, http, mocker):
+def test_exists(mocker):
     import io
 
     import requests
 
+    from dvc.path_info import URLInfo
+
     res = requests.Response()
     res.raw = io.StringIO("foo")
-    tree = HTTPTree(dvc, http.config)
+    tree = HTTPTree(None, {})
 
     mocker.patch.object(tree, "request", return_value=res)
 
+    url = URLInfo("https://example.org/file.txt")
+
     res.status_code = 200
-    assert tree.exists(http / "file.txt") is True
+    assert tree.exists(url) is True
 
     res.status_code = 404
-    assert tree.exists(http / "file.txt") is False
+    assert tree.exists(url) is False
 
     res.status_code = 403
     with pytest.raises(HTTPError):
-        tree.exists(http / "file.txt")
+        tree.exists(url)
