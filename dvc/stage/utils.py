@@ -8,6 +8,7 @@ from dvc import dependency, output
 from dvc.utils.fs import path_isin
 
 from ..dependency import ParamsDependency
+from ..hash_info import HashInfo
 from ..tree.local import LocalTree
 from ..tree.s3 import S3Tree
 from ..utils import dict_md5, format_link, relpath
@@ -136,6 +137,8 @@ def stage_dump_eq(stage_cls, old_d, new_d):
     for out in outs:
         out.pop(LocalTree.PARAM_CHECKSUM, None)
         out.pop(S3Tree.PARAM_CHECKSUM, None)
+        out.pop(HashInfo.PARAM_SIZE, None)
+        out.pop(HashInfo.PARAM_NFILES, None)
 
     # outs and deps are lists of dicts. To check equality, we need to make
     # them independent of the order, so, we convert them to dicts.
@@ -171,6 +174,8 @@ def compute_md5(stage):
             stage.PARAM_FROZEN,
             BaseOutput.PARAM_METRIC,
             BaseOutput.PARAM_PERSIST,
+            HashInfo.PARAM_SIZE,
+            HashInfo.PARAM_NFILES,
         ],
     )
 

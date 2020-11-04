@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 from funcy import collecting, project
 from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
 
+from dvc.hash_info import HashInfo
 from dvc.output.base import BaseOutput
 from dvc.output.gs import GSOutput
 from dvc.output.hdfs import HDFSOutput
@@ -59,6 +60,8 @@ SCHEMA[BaseOutput.PARAM_CACHE] = bool
 SCHEMA[BaseOutput.PARAM_METRIC] = BaseOutput.METRIC_SCHEMA
 SCHEMA[BaseOutput.PARAM_PLOT] = bool
 SCHEMA[BaseOutput.PARAM_PERSIST] = bool
+SCHEMA[HashInfo.PARAM_SIZE] = int
+SCHEMA[HashInfo.PARAM_NFILES] = int
 
 
 def _get(

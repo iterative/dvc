@@ -530,8 +530,15 @@ class BaseOutput:
         my = self.dumpd()
         other = out.dumpd()
 
-        my.pop(self.tree.PARAM_CHECKSUM)
-        other.pop(self.tree.PARAM_CHECKSUM)
+        ignored = [
+            self.tree.PARAM_CHECKSUM,
+            HashInfo.PARAM_SIZE,
+            HashInfo.PARAM_NFILES,
+        ]
+
+        for opt in ignored:
+            my.pop(opt, None)
+            other.pop(opt, None)
 
         if my != other:
             raise MergeError(

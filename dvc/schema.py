@@ -1,6 +1,7 @@
 from voluptuous import Any, Optional, Required, Schema
 
 from dvc import dependency, output
+from dvc.hash_info import HashInfo
 from dvc.output import CHECKSUMS_SCHEMA, BaseOutput
 from dvc.parsing import FOREACH_KWD, IN_KWD, SET_KWD, USE_KWD, VARS_KWD
 from dvc.stage.params import StageParams
@@ -18,7 +19,12 @@ SINGLE_STAGE_SCHEMA = {
     StageParams.PARAM_ALWAYS_CHANGED: bool,
 }
 
-DATA_SCHEMA = {**CHECKSUMS_SCHEMA, Required("path"): str}
+DATA_SCHEMA = {
+    **CHECKSUMS_SCHEMA,
+    Required("path"): str,
+    HashInfo.PARAM_SIZE: int,
+    HashInfo.PARAM_NFILES: int,
+}
 LOCK_FILE_STAGE_SCHEMA = {
     Required(StageParams.PARAM_CMD): str,
     StageParams.PARAM_DEPS: [DATA_SCHEMA],

@@ -336,7 +336,11 @@ class S3Tree(BaseTree):
 
     def get_file_hash(self, path_info):
         with self._get_obj(path_info) as obj:
-            return HashInfo(self.PARAM_CHECKSUM, obj.e_tag.strip('"'))
+            return HashInfo(
+                self.PARAM_CHECKSUM,
+                obj.e_tag.strip('"'),
+                size=obj.content_length,
+            )
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         with self._get_obj(to_info) as obj:

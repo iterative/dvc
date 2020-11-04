@@ -43,8 +43,12 @@ def test_deps_outs_are_sorted_by_path(tmp_dir, dvc, run_head):
     assert list(lock.keys()) == ["cmd", "deps", "outs"]
 
     # `path` key appear first and then the `md5`
-    assert all(list(dep.keys()) == ["path", "md5"] for dep in lock["deps"])
-    assert all(list(out.keys()) == ["path", "md5"] for out in lock["outs"])
+    assert all(
+        list(dep.keys()) == ["path", "md5", "size"] for dep in lock["deps"]
+    )
+    assert all(
+        list(out.keys()) == ["path", "md5", "size"] for out in lock["outs"]
+    )
 
     # deps are always sorted by the file path naming
     assert list(map(itemgetter("path"), lock["deps"])) == sorted(deps)

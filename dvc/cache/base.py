@@ -227,7 +227,7 @@ class CloudCache:
             # we need to update path and cache, since in case of reflink,
             # or copy cache type moving original file results in updates on
             # next executed command, which causes md5 recalculation
-            self.tree.state.save(path_info, hash_info.value)
+            self.tree.state.save(path_info, hash_info)
         else:
             if self.changed_cache(hash_info):
                 with tree.open(path_info, mode="rb") as fobj:
@@ -241,7 +241,7 @@ class CloudCache:
                 if callback:
                     callback(1)
 
-        self.tree.state.save(cache_info, hash_info.value)
+        self.tree.state.save(cache_info, hash_info)
 
     def _cache_is_copy(self, path_info):
         """Checks whether cache uses copies."""
@@ -287,6 +287,7 @@ class CloudCache:
         hash_info = self.tree.get_file_hash(to_info)
         hash_info.value += self.tree.CHECKSUM_DIR_SUFFIX
         hash_info.dir_info = self._to_dict(dir_info)
+        hash_info.nfiles = len(dir_info)
 
         return hash_info, to_info
 
@@ -305,7 +306,7 @@ class CloudCache:
             self.tree.makedirs(new_info.parent)
             self.tree.move(tmp_info, new_info, mode=self.CACHE_MODE)
 
-        self.tree.state.save(new_info, hi.value)
+        self.tree.state.save(new_info, hi)
 
         return hi
 
@@ -326,10 +327,10 @@ class CloudCache:
         if save_link:
             self.tree.state.save_link(path_info)
         if self.tree.exists(path_info):
-            self.tree.state.save(path_info, hi.value)
+            self.tree.state.save(path_info, hi)
 
         cache_info = self.tree.hash_to_path_info(hi.value)
-        self.tree.state.save(cache_info, hi.value)
+        self.tree.state.save(cache_info, hi)
 
     @use_state
     def save(self, path_info, tree, hash_info, save_link=True, **kwargs):
@@ -461,7 +462,7 @@ class CloudCache:
 
         self.link(cache_info, path_info)
         self.tree.state.save_link(path_info)
-        self.tree.state.save(path_info, hash_info.value)
+        self.tree.state.save(path_info, hash_info)
         if progress_callback:
             progress_callback(str(path_info))
 
@@ -501,7 +502,7 @@ class CloudCache:
                 modified = True
                 self.safe_remove(entry_info, force=force)
                 self.link(entry_cache_info, entry_info)
-                self.tree.state.save(entry_info, entry_hash)
+                self.tree.state.save(entry_info, entry_hash_info)
             if progress_callback:
                 progress_callback(str(entry_info))
 
@@ -511,7 +512,7 @@ class CloudCache:
         )
 
         self.tree.state.save_link(path_info)
-        self.tree.state.save(path_info, hash_info.value)
+        self.tree.state.save(path_info, hash_info)
 
         # relink is not modified, assume it as nochange
         return added, not added and modified and not relink
@@ -690,8 +691,19 @@ class CloudCache:
 
         # Sorting the list by path to ensure reproducibility
         return sorted(
-            self._from_dict(merged), key=itemgetter(self.tree.PARAM_RELPATH)
+            self._from_dict(merged), key=itemgetter(self.tree.PARAM_RELPATH),
         )
+
+    def _get_dir_size(self, dir_info):
+        def _getsize(entry):
+            return self.tree.getsize(
+                self.tree.hash_to_path_info(entry[self.tree.PARAM_CHECKSUM])
+            )
+
+        try:
+            return sum(_getsize(entry) for entry in dir_info)
+        except FileNotFoundError:
+            return None
 
     def merge(self, ancestor_info, our_info, their_info):
         assert our_info
@@ -706,7 +718,9 @@ class CloudCache:
         their = self.get_dir_cache(their_info)
 
         merged = self._merge_dirs(ancestor, our, their)
-        return self.save_dir_info(merged)
+        hash_info = self.save_dir_info(merged)
+        hash_info.size = self._get_dir_size(merged)
+        return hash_info
 
     @use_state
     def get_hash(self, tree, path_info):
@@ -715,9 +729,12 @@ class CloudCache:
             assert hash_info.name == self.tree.PARAM_CHECKSUM
             return hash_info
 
-        return self.save_dir_info(hash_info.dir_info, hash_info)
+        hi = self.save_dir_info(hash_info.dir_info, hash_info)
+        hi.size = hash_info.size
+        return hi
 
     def set_dir_info(self, hash_info):
         assert hash_info.isdir
 
         hash_info.dir_info = self._to_dict(self.get_dir_cache(hash_info))
+        hash_info.nfiles = len(hash_info.dir_info)

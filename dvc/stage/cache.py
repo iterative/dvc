@@ -25,9 +25,13 @@ class RunCacheNotFoundError(DvcException):
 
 
 def _get_cache_hash(cache, key=False):
+    from dvc.hash_info import HashInfo
+
     if key:
         cache["outs"] = [out["path"] for out in cache.get("outs", [])]
-    return dict_sha256(cache)
+    return dict_sha256(
+        cache, exclude=[HashInfo.PARAM_SIZE, HashInfo.PARAM_NFILES]
+    )
 
 
 def _get_stage_hash(stage):

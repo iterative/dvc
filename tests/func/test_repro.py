@@ -1183,7 +1183,16 @@ def test_dvc_formatting_retained(tmp_dir, dvc, run_copy):
     (tmp_dir / "foo").write_text("new foo")
     dvc.reproduce("foo_copy.dvc", force=True)
 
-    assert _hide_md5(stage_text) == _hide_md5(stage_path.read_text())
+    def _hide_md5(text):
+        return re.sub(r"\b[a-f0-9]{32}\b", "<md5>", text)
+
+    def _hide_size(text):
+        return re.sub(r"size: [0-9]*\b", "size: <size>", text)
+
+    def _mask(text):
+        return _hide_size(_hide_md5(text))
+
+    assert _mask(stage_text) == _mask(stage_path.read_text())
 
 
 def _format_dvc_line(line):
@@ -1196,10 +1205,6 @@ def _format_dvc_line(line):
         return pre + " >\n" + "\n".join("  " + s for s in command.split())
     else:
         return line
-
-
-def _hide_md5(text):
-    return re.sub(r"\b[a-f0-9]{32}\b", "<md5>", text)
 
 
 def test_downstream(dvc):

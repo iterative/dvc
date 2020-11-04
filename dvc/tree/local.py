@@ -312,7 +312,12 @@ class LocalTree(BaseTree):
         return stat.S_IMODE(mode) == self.CACHE_MODE
 
     def get_file_hash(self, path_info):
-        return HashInfo(self.PARAM_CHECKSUM, file_md5(path_info)[0])
+        hash_info = HashInfo(self.PARAM_CHECKSUM, file_md5(path_info)[0],)
+
+        if hash_info:
+            hash_info.size = os.path.getsize(path_info)
+
+        return hash_info
 
     @staticmethod
     def getsize(path_info):

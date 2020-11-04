@@ -241,7 +241,12 @@ class SSHTree(BaseTree):
             raise NotImplementedError
 
         with self.ssh(path_info) as ssh:
-            return HashInfo(self.PARAM_CHECKSUM, ssh.md5(path_info.path))
+            hash_info = HashInfo(self.PARAM_CHECKSUM, ssh.md5(path_info.path),)
+
+            if hash_info:
+                hash_info.size = ssh.getsize(path_info.path)
+
+            return hash_info
 
     def getsize(self, path_info):
         with self.ssh(path_info) as ssh:

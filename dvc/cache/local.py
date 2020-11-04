@@ -451,7 +451,8 @@ class LocalCache(CloudCache):
                     # be removed upon status, while files corrupted during
                     # download will not be moved from tmp_file
                     # (see `BaseTree.download()`)
-                    self.tree.state.save(cache_file, checksum)
+                    hash_info = HashInfo(self.tree.PARAM_CHECKSUM, checksum)
+                    self.tree.state.save(cache_file, hash_info)
 
         return ret
 
