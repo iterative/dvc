@@ -99,7 +99,6 @@ def move(src, dst, mode=None):
         if mode is not None:
             os.chmod(src, mode)
     except OSError:
-        # File not owned by us, raise exception
         raise DvcException(f"File not owned by user:  {src}")
 
     if os.path.islink(src):
