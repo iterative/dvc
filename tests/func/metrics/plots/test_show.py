@@ -6,6 +6,7 @@ from collections import OrderedDict
 
 import pytest
 
+from dvc.main import main
 from dvc.repo import Repo
 from dvc.repo.plots.data import (
     JSONPlotData,
@@ -693,3 +694,20 @@ def test_show_no_repo(tmp_dir):
     dvc = Repo(uninitialized=True)
 
     dvc.plots.show(["metric.json"])
+
+
+def test_show_from_subdir(tmp_dir, dvc, caplog):
+    subdir = tmp_dir / "subdir"
+
+    subdir.mkdir()
+    metric = [
+        {"first_val": 100, "val": 2},
+        {"first_val": 200, "val": 3},
+    ]
+    _write_json(subdir, metric, "metric.json")
+
+    with subdir.chdir(), caplog.at_level(logging.INFO, "dvc"):
+        assert main(["plots", "show", "metric.json"]) == 0
+
+    assert f"file://{str(subdir)}" in caplog.text
+    assert (subdir / "plots.html").exists()
