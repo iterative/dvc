@@ -6,12 +6,12 @@ import re
 import threading
 from collections import defaultdict
 from contextlib import contextmanager
-from urllib.parse import urlparse
 
 from funcy import cached_property, retry, wrap_prop, wrap_with
 from funcy.py3 import cat
 
 from dvc.exceptions import DvcException, FileMissingError
+from dvc.hash_info import HashInfo
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -72,12 +72,8 @@ def _gdrive_retry(func):
 
 class GDriveURLInfo(CloudURLInfo):
     def __init__(self, url):
-        super().__init__(url)
-
-        # GDrive URL host part is case sensitive,
-        # we are restoring it here.
-        p = urlparse(url)
-        self.host = p.netloc
+        # GDrive URL host part is case sensitive
+        super().__init__(url, keep_host_case=True)
         assert self.netloc == self.host
 
         # Normalize path. Important since we have a cache (path to ID)
@@ -88,6 +84,7 @@ class GDriveURLInfo(CloudURLInfo):
 class GDriveTree(BaseTree):
     scheme = Schemes.GDRIVE
     PATH_CLS = GDriveURLInfo
+    PARAM_CHECKSUM = "md5"
     REQUIRES = {"pydrive2": "pydrive2"}
     DEFAULT_VERIFY = True
     # Always prefer traverse for GDrive since API usage quotas are a concern.
@@ -103,17 +100,22 @@ class GDriveTree(BaseTree):
     def __init__(self, repo, config):
         super().__init__(repo, config)
 
-        self.path_info = self.PATH_CLS(config["url"])
+        url = config.get("url")
+        if url:
+            self.path_info = self.PATH_CLS(url)
 
-        if not self.path_info.bucket:
-            raise DvcException(
-                "Empty GDrive URL '{}'. Learn more at {}".format(
-                    config["url"],
-                    format_link("https://man.dvc.org/remote/add"),
+            if not self.path_info.bucket:
+                raise DvcException(
+                    "Empty GDrive URL '{}'. Learn more at {}".format(
+                        url, format_link("https://man.dvc.org/remote/add"),
+                    )
                 )
-            )
 
-        self._bucket = self.path_info.bucket
+            self._bucket = self.path_info.bucket
+        else:
+            self.path_info = None
+            self._bucket = None
+
         self._trash_only = config.get("gdrive_trash_only")
         self._use_service_account = config.get("gdrive_use_service_account")
         self._service_account_email = config.get(
@@ -128,16 +130,17 @@ class GDriveTree(BaseTree):
         self._client_id = config.get("gdrive_client_id")
         self._client_secret = config.get("gdrive_client_secret")
         self._validate_config()
-        self._gdrive_user_credentials_path = (
-            tmp_fname(os.path.join(self.repo.tmp_dir, ""))
-            if os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA)
-            else config.get(
-                "gdrive_user_credentials_file",
-                os.path.join(
-                    self.repo.tmp_dir, self.DEFAULT_USER_CREDENTIALS_FILE,
-                ),
+
+        if os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA):
+            cred_path = os.path.join(self.repo.tmp_dir, "")
+            self._gdrive_user_credentials_path = tmp_fname(cred_path)
+        else:
+            cred_path = os.path.join(
+                self.repo.tmp_dir, self.DEFAULT_USER_CREDENTIALS_FILE
             )
-        )
+            self._gdrive_user_credentials_path = config.get(
+                "gdrive_user_credentials_file", cred_path
+            )
 
     def _validate_config(self):
         # Validate Service Account configuration
@@ -510,19 +513,29 @@ class GDriveTree(BaseTree):
         )
 
     def _get_item_id(self, path_info, create=False, use_cache=True, hint=None):
-        assert path_info.bucket == self._bucket
-
-        item_ids = self._path_to_item_ids(path_info.path, create, use_cache)
-        if item_ids:
-            return min(item_ids)
+        if isinstance(path_info, GDriveURLInfo):
+            return path_info.host
+        else:
+            assert path_info.bucket == self._bucket
+            item_ids = self._path_to_item_ids(
+                path_info.path, create, use_cache
+            )
+            if item_ids:
+                return min(item_ids)
 
         assert not create
         raise FileMissingError(path_info, hint)
 
     def exists(self, path_info, use_dvcignore=True):
+        from pydrive2.files import ApiRequestError
+
         try:
-            self._get_item_id(path_info)
-        except FileMissingError:
+            item_id = self._get_item_id(path_info)
+            if isinstance(path_info, GDriveURLInfo):
+                file_repr = self._drive.CreateFile({"id": item_id})
+                file_repr.FetchMetadata()
+
+        except (FileMissingError, ApiRequestError):
             return False
         else:
             return True
@@ -562,7 +575,9 @@ class GDriveTree(BaseTree):
         self.gdrive_delete_file(item_id)
 
     def get_file_hash(self, path_info):
-        raise NotImplementedError
+        item_id = self._get_item_id(path_info)
+        file_repr = self._drive.CreateFile({"id": item_id})
+        return HashInfo(self.PARAM_CHECKSUM, file_repr["md5Checksum"])
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs

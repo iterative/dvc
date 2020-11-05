@@ -341,7 +341,14 @@ def env2bool(var, undefined=False):
 def resolve_output(inp, out):
     from urllib.parse import urlparse
 
-    name = os.path.basename(os.path.normpath(urlparse(inp).path))
+    from dvc.scheme import Schemes
+
+    parsed = urlparse(inp)
+    if parsed.scheme == Schemes.GDRIVE:
+        name = uuid()
+    else:
+        name = os.path.basename(os.path.normpath(parsed.path))
+
     if not out:
         return name
     if os.path.isdir(out):

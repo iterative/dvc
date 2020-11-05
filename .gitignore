@@ -33,6 +33,7 @@ pip-wheel-metadata/
 azurite
 env.sh
 tests/remotes_env
+tests/gdrive-user-credentials.json
 scripts/ci/gcp-creds.json
 .gcp-creds.json
 

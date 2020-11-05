@@ -44,3 +44,23 @@ def test_import_url_no_exec(mocker):
     assert cmd.run() == 0
 
     m.assert_called_once_with("src", out="out", fname="file", no_exec=True)
+
+
+def test_import_url_https(dvc):
+    cli_args = parse_args(
+        ["import-url", "https://data.dvc.org/get-started/data.xml"]
+    )
+    assert cli_args.func == CmdImportUrl
+
+    cmd = cli_args.func(cli_args)
+    assert cmd.run() == 0
+
+
+def test_import_url_gdrive(dvc):
+    cli_args = parse_args(
+        ["import-url", "gdrive://1SDVFLCExM5BL-fsYXt2fuBd7yYM5UF7O"]
+    )
+    assert cli_args.func == CmdImportUrl
+
+    cmd = cli_args.func(cli_args)
+    assert cmd.run() == 0
