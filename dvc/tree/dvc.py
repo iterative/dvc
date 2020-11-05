@@ -32,7 +32,6 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
 
     scheme = "local"
     PARAM_CHECKSUM = "md5"
-    _cached_dir_cache = None
     _dir_entry_hashes = {}
 
     def __init__(self, repo, fetch=False, stream=False):
@@ -60,11 +59,9 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             raise FileNotFoundError
 
         # NOTE: use string paths here for performance reasons
-        path_str = relpath(path_info, out.path_info)
-        if os.name == "nt":
-            path_str = path_str.replace(os.sep, "/")
+        key = tuple(relpath(path_info, out.path_info).split(os.sep))
         out.get_dir_cache(remote=remote)
-        file_hash = out.hash_info.dir_info.get(path_str)
+        file_hash = out.hash_info.dir_info.trie.get(key)
         if file_hash:
             return file_hash
         raise FileNotFoundError
@@ -166,12 +163,9 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
 
         self._fetch_dir(out, filter_info=top, **kwargs)
 
-        for entry in out.dir_cache:
-            entry_relpath = entry[out.tree.PARAM_RELPATH]
-            if os.name == "nt":
-                entry_relpath = entry_relpath.replace("/", os.sep)
-            path_info = out.path_info / entry_relpath
-            trie[path_info.parts] = None
+        base = out.path_info.parts
+        for key in out.dir_cache.trie.iterkeys():  # noqa: B301
+            trie[base + key] = None
 
     def _walk(self, root, trie, topdown=True, **kwargs):
         dirs = set()

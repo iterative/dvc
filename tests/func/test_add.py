@@ -80,8 +80,8 @@ def test_add_directory(tmp_dir, dvc):
     hash_info = stage.outs[0].hash_info
 
     dir_info = dvc.cache.local.load_dir_cache(hash_info)
-    for info in dir_info:
-        assert "\\" not in info["relpath"]
+    for path, _ in dir_info.trie.items():
+        assert "\\" not in path
 
 
 class TestAddDirectoryRecursive(TestDvc):

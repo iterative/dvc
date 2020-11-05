@@ -7,6 +7,7 @@ import pytest
 from mock import patch
 
 from dvc.config import Config
+from dvc.dir_info import DirInfo
 from dvc.exceptions import DownloadError, RemoteCacheRequiredError, UploadError
 from dvc.main import main
 from dvc.path_info import PathInfo
@@ -149,23 +150,20 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
     tmp_dir.gen({"data": {"1": "1 content", "2": "2 content"}})
 
     path_info = PathInfo("data")
+
+    dir_info = DirInfo.from_list(
+        [{"relpath": "1", "md5": "1"}, {"relpath": "2", "md5": "2"}]
+    )
     with patch.object(
-        BaseTree,
-        "_collect_dir",
-        return_value=(
-            [{"relpath": "1", "md5": "1"}, {"relpath": "2", "md5": "2"}],
-            None,
-        ),
+        BaseTree, "_collect_dir", return_value=dir_info,
     ):
         hash1 = dvc.cache.local.tree.get_hash(path_info)
 
+    dir_info = DirInfo.from_list(
+        [{"md5": "1", "relpath": "1"}, {"md5": "2", "relpath": "2"}]
+    )
     with patch.object(
-        BaseTree,
-        "_collect_dir",
-        return_value=(
-            [{"md5": "1", "relpath": "1"}, {"md5": "2", "relpath": "2"}],
-            None,
-        ),
+        BaseTree, "_collect_dir", return_value=dir_info,
     ):
         hash2 = dvc.cache.local.tree.get_hash(path_info)
 
@@ -277,7 +275,7 @@ def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, local_remote):
     remote = dvc.cloud.get_remote("upstream")
     foo_path = remote.tree.hash_to_path_info(foo.hash_info.value)
     bar_path = remote.tree.hash_to_path_info(
-        foo.hash_info.dir_info["bar"].value
+        foo.hash_info.dir_info.trie[("bar",)].value
     )
     paths = [args[1] for args, _ in mocked_upload.call_args_list]
     assert paths.index(foo_path) > paths.index(bar_path)

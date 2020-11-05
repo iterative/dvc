@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 
 from funcy import cached_property, decorator
 
+from dvc.dir_info import DirInfo
 from dvc.exceptions import DvcException, DvcIgnoreInCollectedDirError
 from dvc.ignore import DvcIgnore
 from dvc.path_info import URLInfo
@@ -50,7 +51,6 @@ class BaseTree:
     PATH_CLS = URLInfo
     JOBS = 4 * cpu_count()
 
-    PARAM_RELPATH = "relpath"
     CHECKSUM_DIR_SUFFIX = ".dir"
     HASH_JOBS = max(1, min(4, cpu_count() // 2))
     DEFAULT_VERIFY = False
@@ -318,35 +318,25 @@ class BaseTree:
         new_hash_infos = self._calculate_hashes(not_in_state)
         hash_infos.update(new_hash_infos)
 
-        sizes = [hi.size for hi in hash_infos.values()]
-        if None in sizes:
-            size = None
-        else:
-            size = sum(sizes)
+        dir_info = DirInfo()
+        for fi, hi in hash_infos.items():
+            # NOTE: this is lossy transformation:
+            #   "hey\there" -> "hey/there"
+            #   "hey/there" -> "hey/there"
+            # The latter is fine filename on Windows, which
+            # will transform to dir/file on back transform.
+            #
+            # Yes, this is a BUG, as long as we permit "/" in
+            # filenames on Windows and "\" on Unix
+            dir_info.trie[fi.relative_to(path_info).parts] = hi
 
-        dir_info = [
-            {
-                self.PARAM_CHECKSUM: hash_infos[fi].value,
-                # NOTE: this is lossy transformation:
-                #   "hey\there" -> "hey/there"
-                #   "hey/there" -> "hey/there"
-                # The latter is fine filename on Windows, which
-                # will transform to dir/file on back transform.
-                #
-                # Yes, this is a BUG, as long as we permit "/" in
-                # filenames on Windows and "\" on Unix
-                self.PARAM_RELPATH: fi.relative_to(path_info).as_posix(),
-            }
-            for fi in file_infos
-        ]
-
-        return (dir_info, size)
+        return dir_info
 
     @use_state
     def get_dir_hash(self, path_info, **kwargs):
-        dir_info, size = self._collect_dir(path_info, **kwargs)
+        dir_info = self._collect_dir(path_info, **kwargs)
         hash_info = self.repo.cache.local.save_dir_info(dir_info)
-        hash_info.size = size
+        hash_info.size = dir_info.size
         return hash_info
 
     def upload(self, from_info, to_info, name=None, no_progress_bar=False):
