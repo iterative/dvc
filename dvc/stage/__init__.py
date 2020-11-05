@@ -216,6 +216,14 @@ class Stage(params.StageParams):
 
         return isinstance(self.deps[0], dependency.RepoDependency)
 
+    @property
+    def is_checkpoint(self):
+        """
+        A stage containing checkpoint outs is always considered as changed
+        since the checkpoint out is a circular dependency.
+        """
+        return any(out.checkpoint for out in self.outs)
+
     def changed_deps(self):
         if self.frozen:
             return False
@@ -229,7 +237,7 @@ class Stage(params.StageParams):
             )
             return True
 
-        if self.always_changed:
+        if self.always_changed or self.is_checkpoint:
             return True
 
         return self._changed_deps()
@@ -284,7 +292,7 @@ class Stage(params.StageParams):
     def remove_outs(self, ignore_remove=False, force=False):
         """Used mainly for `dvc remove --outs` and :func:`Stage.reproduce`."""
         for out in self.outs:
-            if out.persist and not force:
+            if (out.persist or out.checkpoint) and not force:
                 out.unprotect()
                 continue
 
@@ -402,7 +410,7 @@ class Stage(params.StageParams):
             try:
                 out.save()
             except OutputDoesNotExistError:
-                if not allow_missing:
+                if not (allow_missing or out.checkpoint):
                     raise
 
     def ignore_outs(self):
@@ -432,7 +440,7 @@ class Stage(params.StageParams):
             try:
                 out.commit()
             except OutputDoesNotExistError:
-                if not allow_missing:
+                if not (allow_missing or out.checkpoint):
                     raise
             except CacheLinkError:
                 link_failures.append(out.path_info)
@@ -527,7 +535,7 @@ class Stage(params.StageParams):
             ret.append({"changed outs": outs_status})
 
     def _status_always_changed(self, ret):
-        if self.is_callback or self.always_changed:
+        if self.is_callback or self.always_changed or self.is_checkpoint:
             ret.append("always changed")
 
     def _status_stage(self, ret):

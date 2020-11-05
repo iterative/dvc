@@ -53,6 +53,7 @@ def fill_stage_outputs(stage, **kwargs):
         "plots",
         "outs_no_cache",
         "outs",
+        "checkpoints",
     ]
 
     stage.outs = []
@@ -64,6 +65,7 @@ def fill_stage_outputs(stage, **kwargs):
             persist="persist" in key,
             metric="metrics" in key,
             plot="plots" in key,
+            checkpoint="checkpoints" in key,
         )
 
 
@@ -174,6 +176,7 @@ def compute_md5(stage):
             stage.PARAM_FROZEN,
             BaseOutput.PARAM_METRIC,
             BaseOutput.PARAM_PERSIST,
+            BaseOutput.PARAM_CHECKPOINT,
             HashInfo.PARAM_SIZE,
             HashInfo.PARAM_NFILES,
         ],
