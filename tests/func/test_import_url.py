@@ -121,6 +121,7 @@ def test_import_url_with_no_exec(tmp_dir, dvc, erepo_dir):
         pytest.lazy_fixture("local_cloud"),
         pytest.lazy_fixture("s3"),
         pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("gdrive"),
         pytest.lazy_fixture("hdfs"),
         pytest.lazy_fixture("webhdfs"),
         pytest.param(
@@ -161,6 +162,11 @@ def test_import_url(tmp_dir, dvc, workspace):
             "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
         ),
         (
+            pytest.lazy_fixture("gdrive"),
+            "dc24e1271084ee317ac3c2656fb8812b",
+            "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
+        ),
+        (
             pytest.lazy_fixture("hdfs"),
             "ec0943f83357f702033c98e70b853c8c",
             "e6dcd267966dc628d732874f94ef4280.dir",
@@ -186,10 +192,7 @@ def test_import_url_dir(tmp_dir, dvc, workspace, stage_md5, dir_md5):
 
     assert not (tmp_dir / "dir").exists()  # sanity check
     dvc.imp_url("remote://workspace/dir")
-    assert set(os.listdir(tmp_dir / "dir")) == {"file", "subdir"}
-    assert (tmp_dir / "dir" / "file").read_text() == "file"
-    assert list(os.listdir(tmp_dir / "dir" / "subdir")) == ["subfile"]
-    assert (tmp_dir / "dir" / "subdir" / "subfile").read_text() == "subfile"
+    assert_local_dir(dvc, tmp_dir, "dir")
 
     assert (tmp_dir / "dir.dvc").read_text() == (
         f"md5: {stage_md5}\n"
@@ -206,4 +209,45 @@ def test_import_url_dir(tmp_dir, dvc, workspace, stage_md5, dir_md5):
         "  path: dir\n"
     )
 
+
+def assert_local_dir(dvc, tmp_dir, dir_name):
+    assert set(os.listdir(tmp_dir / dir_name)) == {"file", "subdir"}
+    assert (tmp_dir / dir_name / "file").read_text() == "file"
+    assert list(os.listdir(tmp_dir / dir_name / "subdir")) == ["subfile"]
+    assert (tmp_dir / dir_name / "subdir" / "subfile").read_text() == "subfile"
+
     assert dvc.status() == {}
+
+
+def test_import_gdrive_url_dir(gdrive, tmp_dir, dvc):
+
+    gdrive.gen({"dir": {"file": "file", "subdir": {"subfile": "subfile"}}})
+
+    # remove external cache to make sure that we don't need it to import dirs
+    with dvc.config.edit() as conf:
+        del conf["cache"]
+    dvc.cache = Cache(dvc)
+
+    item_id = gdrive.tree._get_item_id(gdrive / "dir")
+
+    url = f"gdrive://{item_id}"
+    dvc.imp_url(url)
+    assert_local_dir(dvc, tmp_dir, item_id)
+
+    # stage_md5 depends on the url string. As it's dynamic,
+    # we ignore it in this test.
+    lines = (tmp_dir / f"{item_id}.dvc").read_text().split("\n")
+    metadata = "\n".join(lines[1:])
+    assert metadata == (
+        "frozen: true\n"
+        "deps:\n"
+        "- md5: b6dcab6ccd17ca0a8bf4a215a37d14cc.dir\n"
+        "  size: 11\n"
+        "  nfiles: 2\n"
+        f"  path: {url}\n"
+        "outs:\n"
+        "- md5: b6dcab6ccd17ca0a8bf4a215a37d14cc.dir\n"
+        "  size: 11\n"
+        "  nfiles: 2\n"
+        f"  path: {item_id}\n"
+    )

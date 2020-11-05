@@ -341,7 +341,12 @@ def env2bool(var, undefined=False):
 def resolve_output(inp, out):
     from urllib.parse import urlparse
 
-    name = os.path.basename(os.path.normpath(urlparse(inp).path))
+    parsed_inp = urlparse(inp)
+    path = parsed_inp.path
+    if not path:
+        path = parsed_inp.netloc.split(":")[0]
+    name = os.path.basename(os.path.normpath(path))
+
     if not out:
         return name
     if os.path.isdir(out):

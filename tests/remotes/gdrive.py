@@ -1,11 +1,14 @@
 # pylint:disable=abstract-method
+import locale
 import os
+import pathlib
+import tempfile
 import uuid
 
 import pytest
 from funcy import cached_property
 
-from dvc.path_info import CloudURLInfo
+from dvc.path_info import CloudURLInfo, PathInfo
 from dvc.tree.gdrive import GDriveTree
 
 from .base import Base
@@ -14,6 +17,11 @@ TEST_GDRIVE_REPO_BUCKET = "root"
 
 
 class GDrive(Base, CloudURLInfo):
+    def __init__(self, url, dvc):
+        CloudURLInfo.__init__(self, url)
+        Base.__init__(self, url)
+        self.tree = GDriveTree(dvc, self.config)
+
     @staticmethod
     def should_test():
         return bool(os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA))
@@ -31,10 +39,37 @@ class GDrive(Base, CloudURLInfo):
     def _get_storagepath():
         return TEST_GDRIVE_REPO_BUCKET + "/" + str(uuid.uuid4())
 
+    def _join(self, name, prefix=None):
+        path = Base._join(self, name, prefix)
+        path.tree = self.tree
+        return path
+
     @staticmethod
     def get_url():
         # NOTE: `get_url` should always return new random url
         return "gdrive://" + GDrive._get_storagepath()
+
+    def exists(self):
+        return self.tree.exists(self)
+
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
+        assert mode == 0o777
+        assert parents
+        assert not exist_ok
+
+    def write_bytes(self, contents):
+        with tempfile.NamedTemporaryFile() as f:
+            f.write(contents)
+            f.flush()
+
+            local = PathInfo(pathlib.Path(f.name))
+            self.tree.upload(local, self)
+
+    def write_text(self, contents, encoding=None, errors=None):
+        if not encoding:
+            encoding = locale.getpreferredencoding(False)
+        assert errors is None
+        self.write_bytes(contents.encode(encoding))
 
 
 @pytest.fixture
@@ -45,7 +80,7 @@ def gdrive(make_tmp_dir):
     # NOTE: temporary workaround
     tmp_dir = make_tmp_dir("gdrive", dvc=True)
 
-    ret = GDrive(GDrive.get_url())
-    tree = GDriveTree(tmp_dir.dvc, ret.config)
+    ret = GDrive(GDrive.get_url(), tmp_dir.dvc)
+    tree = ret.tree
     tree._gdrive_create_dir("root", tree.path_info.path)
     return ret
