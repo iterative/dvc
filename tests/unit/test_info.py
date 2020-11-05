@@ -53,6 +53,20 @@ def test_info_in_broken_git_repo(tmp_dir, dvc, scm, caplog):
     assert "Repo: dvc, git (broken)" in dvc_info
 
 
+def test_cache_paths_in_repo(tmp_dir, dvc, caplog):
+    tmp_dir.add_remote(
+        name="sshcache", url="ssh://example.com/path", default=False
+    )
+    with tmp_dir.dvc.config.edit() as conf:
+        conf["cache"]["ssh"] = "sshcache"
+
+    dvc_info = get_dvc_info()
+
+    assert "Cache paths:" in dvc_info
+    assert "  ssh: ssh://example.com/path" in dvc_info
+    assert f"  local: {dvc.cache.local.cache_dir}" in dvc_info
+
+
 @pytest.mark.skipif(psutil is None, reason="No psutil.")
 def test_fs_info_in_repo(tmp_dir, dvc, caplog):
     os.mkdir(dvc.cache.local.cache_dir)

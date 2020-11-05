@@ -50,6 +50,11 @@ def get_dvc_info():
         else:
             info.append("Cache types: " + error_link("no-dvc-cache"))
 
+        cache_urls = _get_cache_urls(repo.cache)
+        if cache_urls:
+            info.append("Cache paths:")
+            info.extend(f"  {c[0]}: {c[1]}" for c in cache_urls)
+
     except NotDvcRepoError:
         pass
     except SCMError:
@@ -61,6 +66,23 @@ def get_dvc_info():
             info.append(f"Workspace directory: {fs_root}")
         info.append("Repo: {}".format(_get_dvc_repo_info(repo)))
     return "\n".join(info)
+
+
+def _get_cache_urls(cache):
+    from dvc.config import SCHEMA
+
+    for cache_type in SCHEMA["cache"].keys():
+        # Ignore any non cache types, e.g. LOCAL_COMMON objects
+        if not isinstance(cache_type, str):
+            continue
+
+        # Ignore the cache types not available in the repo
+        cache_instance = getattr(cache, cache_type, None)
+        if not cache_instance:
+            continue
+
+        cache_url = cache_instance.tree.config["url"]
+        yield (cache_type, cache_url)
 
 
 def _get_linktype_support_info(repo):
