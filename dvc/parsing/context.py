@@ -1,4 +1,5 @@
 import os
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from contextlib import contextmanager
@@ -6,7 +7,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from typing import Any, List, Optional, Union
 
-from funcy import identity
+from funcy import identity, rpartial
 
 from dvc.parsing.interpolate import (
     get_expression,
@@ -30,6 +31,7 @@ def _merge(into, update, overwrite):
                     f"Cannot overwrite as key {key} already exists in {into}"
                 )
             into[key] = val
+            assert isinstance(into[key], Node)
 
 
 @dataclass
@@ -55,24 +57,41 @@ def _default_meta():
     return Meta(source=None)
 
 
+class Node:
+    def get_sources(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def value(self):
+        pass
+
+
 @dataclass
-class Value:
-    value: Any
+class Value(Node):
+    _value: Any
     meta: Meta = field(
         compare=False, default_factory=_default_meta, repr=False
     )
 
     def __repr__(self):
-        return repr(self.value)
+        return repr(self._value)
 
     def __str__(self) -> str:
-        return str(self.value)
+        return str(self._value)
 
     def get_sources(self):
         return {self.meta.source: self.meta.path()}
 
+    @property
+    def value(self):
+        return self._value
 
-class Container:
+
+PRIMITIVES = (int, float, str, bytes, bool)
+
+
+class Container(Node, ABC):
     meta: Meta
     data: Union[list, dict]
     _key_transform = staticmethod(identity)
@@ -82,9 +101,9 @@ class Container:
 
     def _convert(self, key, value):
         meta = Meta.update_path(self.meta, key)
-        if value is None or isinstance(value, (int, float, str, bytes, bool)):
+        if value is None or isinstance(value, PRIMITIVES):
             return Value(value, meta=meta)
-        elif isinstance(value, (CtxList, CtxDict, Value)):
+        elif isinstance(value, Node):
             return value
         elif isinstance(value, (list, dict)):
             container = CtxDict if isinstance(value, dict) else CtxList
@@ -150,6 +169,10 @@ class CtxList(Container, MutableSequence):
     def get_sources(self):
         return {self.meta.source: self.meta.path()}
 
+    @property
+    def value(self):
+        return [node.value for node in self]
+
 
 class CtxDict(Container, MutableMapping):
     def __init__(self, mapping: Mapping = None, meta: Meta = None, **kwargs):
@@ -169,7 +192,11 @@ class CtxDict(Container, MutableMapping):
 
     def merge_update(self, *args, overwrite=False):
         for d in args:
-            _merge(self.data, d, overwrite=overwrite)
+            _merge(self, d, overwrite=overwrite)
+
+    @property
+    def value(self):
+        return {key: node.value for key, node in self.items()}
 
 
 class Context(CtxDict):
@@ -205,10 +232,21 @@ class Context(CtxDict):
     def select(
         self, key: str, unwrap=False
     ):  # pylint: disable=arguments-differ
-        # NOTE: `unwrap` default value is different from `resolve_str`
+        """Select the item using key, similar to `__getitem__`
+           but can track the usage of the data on interpolation
+           as well and can get from nested data structure by using
+           "." separated key (eg: "key1.key2.key3")
+
+        Args:
+            key: key to select value from
+            unwrap: Convert CtxList/CtxDict/Value items to it's original data
+                    Defaults to False. Note that the default is different from
+                    `resolve`.
+        """
         node = super().select(key)
         self._track_data(node)
-        return node.value if isinstance(node, Value) and unwrap else node
+        assert isinstance(node, Node)
+        return node.value if unwrap else node
 
     @classmethod
     def load_from(cls, tree, file: str) -> "Context":
@@ -243,20 +281,27 @@ class Context(CtxDict):
             self._check_interpolation_collection(key, value)
         self[key] = value
 
-    def resolve(self, src):
+    def resolve(self, src, unwrap=True):
         """Recursively resolves interpolation and returns resolved data.
+
+        Args:
+            src: Data (str/list/dict etc.) to resolve
+            unwrap: Unwrap CtxDict/CtxList/Value to it's original data if
+                    inside `src`. Defaults to True.
 
         >>> c = Context({"three": 3})
         >>> c.resolve({"lst": [1, 2, "${three}"]})
         {'lst': [1, 2, 3]}
         """
         Seq = (list, tuple, set)
+
+        resolve = rpartial(self.resolve, unwrap)
         if isinstance(src, Mapping):
-            return {key: self.resolve(value) for key, value in src.items()}
+            return {key: resolve(value) for key, value in src.items()}
         elif isinstance(src, Seq):
-            return type(src)(map(self.resolve, src))
+            return type(src)(map(resolve, src))
         elif isinstance(src, str):
-            return self.resolve_str(src)
+            return self.resolve_str(src, unwrap=unwrap)
         return src
 
     def resolve_str(self, src: str, unwrap=True):

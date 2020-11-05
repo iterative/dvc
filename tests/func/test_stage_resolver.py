@@ -6,6 +6,7 @@ import pytest
 
 from dvc.dependency import _merge_params
 from dvc.parsing import DEFAULT_PARAMS_FILE, DataResolver
+from dvc.parsing.context import Node
 from dvc.path_info import PathInfo
 from dvc.utils.serialize import dump_json, dump_yaml
 
@@ -44,9 +45,19 @@ RESOLVED_DVC_YAML_DATA = {
 }
 
 
+def recurse_not_a_node(d):
+    assert not isinstance(d, Node)
+    if isinstance(d, (list, dict)):
+        iterable = d if isinstance(d, list) else d.values()
+        for item in iterable:
+            assert recurse_not_a_node(item)
+    return True
+
+
 def assert_stage_equal(d1, d2):
     """Keeps the params section in order, and then checks for equality."""
     for d in [d1, d2]:
+        assert recurse_not_a_node(d)
         for _, stage_d in d.get("stages", {}).items():
             params = _merge_params(stage_d.get("params", []))
             for k in params:
@@ -248,12 +259,15 @@ def test_simple_foreach_loop(tmp_dir, dvc):
     }
 
     resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
-    assert resolver.resolve() == {
-        "stages": {
-            f"build-{item}": {"cmd": f"python script.py {item}"}
-            for item in iterable
-        }
-    }
+    assert_stage_equal(
+        resolver.resolve(),
+        {
+            "stages": {
+                f"build-{item}": {"cmd": f"python script.py {item}"}
+                for item in iterable
+            }
+        },
+    )
 
 
 def test_foreach_loop_dict(tmp_dir, dvc):
@@ -268,12 +282,15 @@ def test_foreach_loop_dict(tmp_dir, dvc):
     }
 
     resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
-    assert resolver.resolve() == {
-        "stages": {
-            f"build-{key}": {"cmd": f"python script.py {item['thresh']}"}
-            for key, item in iterable["models"].items()
-        }
-    }
+    assert_stage_equal(
+        resolver.resolve(),
+        {
+            "stages": {
+                f"build-{key}": {"cmd": f"python script.py {item['thresh']}"}
+                for key, item in iterable["models"].items()
+            }
+        },
+    )
 
 
 def test_foreach_loop_templatized(tmp_dir, dvc):
@@ -319,14 +336,17 @@ def test_set(tmp_dir, dvc, value):
         }
     }
     resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
-    assert resolver.resolve() == {
-        "stages": {
-            "build": {
-                "cmd": f"python script.py --thresh {value}",
-                "always_changed": value,
+    assert_stage_equal(
+        resolver.resolve(),
+        {
+            "stages": {
+                "build": {
+                    "cmd": f"python script.py --thresh {value}",
+                    "always_changed": value,
+                }
             }
-        }
-    }
+        },
+    )
 
 
 @pytest.mark.parametrize(
@@ -343,11 +363,14 @@ def test_coll(tmp_dir, dvc, coll):
         }
     }
     resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
-    assert resolver.resolve() == {
-        "stages": {
-            "build": {"cmd": "python script.py --thresh 10", "outs": coll}
-        }
-    }
+    assert_stage_equal(
+        resolver.resolve(),
+        {
+            "stages": {
+                "build": {"cmd": "python script.py --thresh 10", "outs": coll}
+            }
+        },
+    )
 
 
 def test_set_with_foreach(tmp_dir, dvc):
@@ -362,12 +385,15 @@ def test_set_with_foreach(tmp_dir, dvc):
         }
     }
     resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
-    assert resolver.resolve() == {
-        "stages": {
-            f"build-{item}": {"cmd": f"command --value {item}"}
-            for item in items
-        }
-    }
+    assert_stage_equal(
+        resolver.resolve(),
+        {
+            "stages": {
+                f"build-{item}": {"cmd": f"command --value {item}"}
+                for item in items
+            }
+        },
+    )
 
 
 def test_set_with_foreach_and_on_stage_definition(tmp_dir, dvc):
@@ -388,15 +414,18 @@ def test_set_with_foreach_and_on_stage_definition(tmp_dir, dvc):
         },
     }
     resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
-    assert resolver.resolve() == {
-        "stages": {
-            "build-us": {
-                "cmd": "command --value 10",
-                "params": [{"params.json": ["models.us.thresh"]}],
-            },
-            "build-gb": {
-                "cmd": "command --value 15",
-                "params": [{"params.json": ["models.gb.thresh"]}],
-            },
-        }
-    }
+    assert_stage_equal(
+        resolver.resolve(),
+        {
+            "stages": {
+                "build-us": {
+                    "cmd": "command --value 10",
+                    "params": [{"params.json": ["models.us.thresh"]}],
+                },
+                "build-gb": {
+                    "cmd": "command --value 15",
+                    "params": [{"params.json": ["models.gb.thresh"]}],
+                },
+            }
+        },
+    )

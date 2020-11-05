@@ -136,7 +136,7 @@ class DataResolver:
             suffix = str(key if key is not DEFAULT_SENTINEL else value)
             return self._resolve_stage(c, f"{name}-{suffix}", in_data)
 
-        iterable = context.resolve(foreach_data)
+        iterable = context.resolve(foreach_data, unwrap=False)
 
         assert isinstance(iterable, (Sequence, Mapping)) and not isinstance(
             iterable, str
