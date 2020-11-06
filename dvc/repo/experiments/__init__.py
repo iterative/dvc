@@ -900,3 +900,8 @@ class Experiments:
         from dvc.repo.experiments.run import run
 
         return run(self.repo, *args, **kwargs)
+
+    def gc(self, *args, **kwargs):
+        from dvc.repo.experiments.gc import gc
+
+        return gc(self.repo, *args, **kwargs)
