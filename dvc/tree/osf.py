@@ -5,8 +5,8 @@ import threading
 from funcy import cached_property, wrap_prop
 
 from dvc.exceptions import DvcException
-from dvc.hash_info import HashInfo
 from dvc.path_info import URLInfo
+from dvc.hash_info import HashInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 
@@ -23,7 +23,6 @@ class OSFAuthError(DvcException):
             " to a private project."
         )
         super().__init__(message)
-
 
 class OSFTree(BaseTree):
     scheme = Schemes.OSF
