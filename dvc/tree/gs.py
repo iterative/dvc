@@ -197,6 +197,7 @@ class GSTree(BaseTree):
         return HashInfo(
             self.PARAM_CHECKSUM,
             codecs.getencoder("hex")(md5)[0].decode("utf-8"),
+            size=blob.size,
         )
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
