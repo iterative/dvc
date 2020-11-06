@@ -353,9 +353,7 @@ def test_resume_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker, last):
     else:
         exp_rev = first(results)
 
-    dvc.experiments.run(
-        checkpoint_stage.addressing, checkpoint_continue=exp_rev
-    )
+    dvc.experiments.run(checkpoint_stage.addressing, checkpoint_resume=exp_rev)
 
     assert (tmp_dir / "foo").read_text() == "10"
     assert (

@@ -68,9 +68,9 @@ class CheckpointExistsError(DvcException):
         msg = (
             f"Checkpoint experiment containing '{rev[:7]}' already exists."
             " To restart the experiment run:\n\n"
-            "\tdvc exp run --reset ...\n\n"
+            "\tdvc exp run -f ...\n\n"
             "To resume the experiment, run:\n\n"
-            f"\tdvc exp run --continue {continue_rev[:7]}\n"
+            f"\tdvc exp resume {continue_rev[:7]}\n"
         )
         super().__init__(msg)
         self.rev = rev
@@ -422,7 +422,7 @@ class Experiments:
         Experiment will be reproduced and checked out into the user's
         workspace.
         """
-        if kwargs.get("checkpoint_continue", False):
+        if kwargs.get("checkpoint_resume", None) is not None:
             return self._resume_checkpoint(*args, **kwargs)
 
         if branch:
@@ -448,17 +448,17 @@ class Experiments:
         return stash_rev
 
     def _resume_checkpoint(
-        self, *args, checkpoint_continue: Optional[str] = None, **kwargs,
+        self, *args, checkpoint_resume: Optional[str] = None, **kwargs,
     ):
         """Resume an existing (checkpoint) experiment.
 
         Experiment will be reproduced and checked out into the user's
         workspace.
         """
-        assert checkpoint_continue
+        assert checkpoint_resume
 
         branch = None
-        if checkpoint_continue == self.LAST_CHECKPOINT:
+        if checkpoint_resume == self.LAST_CHECKPOINT:
             # Continue from most recently committed checkpoint
             for head in sorted(
                 self.scm.repo.heads,
@@ -475,15 +475,15 @@ class Experiments:
                     "No existing checkpoint experiment to continue"
                 )
         else:
-            rev = self.scm.resolve_rev(checkpoint_continue)
+            rev = self.scm.resolve_rev(checkpoint_resume)
             branch = self._get_branch_containing(rev)
             if not branch:
                 raise DvcException(
                     "Could not find checkpoint experiment "
-                    f"'{checkpoint_continue}'"
+                    f"'{checkpoint_resume}'"
                 )
         logger.debug(
-            "Continuing checkpoint experiment '%s'", checkpoint_continue
+            "Continuing checkpoint experiment '%s'", checkpoint_resume
         )
         kwargs["apply_workspace"] = False
 
@@ -645,7 +645,9 @@ class Experiments:
                         collect_lock.release()
                 else:
                     logger.exception(
-                        "Failed to reproduce experiment '%s'", rev[:7]
+                        "Failed to reproduce experiment '%s'",
+                        rev[:7],
+                        exc_info=exc,
                     )
                 executor.cleanup()
 
