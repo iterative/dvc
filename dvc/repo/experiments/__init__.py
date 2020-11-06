@@ -198,7 +198,7 @@ class Experiments:
         self.scm.repo.git.clean(force=True)
         if self.scm.repo.head.is_detached:
             self._checkout_default_branch()
-        if not Git.is_sha(rev) or not self.scm.has_rev(rev):
+        if not self.scm.has_rev(rev):
             self.scm.pull()
         logger.debug("Checking out experiment commit '%s'", rev)
         self.scm.checkout(rev)
@@ -642,7 +642,6 @@ class Experiments:
                     logger.exception(
                         "Failed to reproduce experiment '%s'", rev[:7]
                     )
-                    raise exc
                 executor.cleanup()
 
         return result
