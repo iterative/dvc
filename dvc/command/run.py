@@ -21,6 +21,7 @@ class CmdRun(CmdBase):
                 self.args.plots_no_cache,
                 self.args.outs_persist,
                 self.args.outs_persist_no_cache,
+                self.args.checkpoints,
                 self.args.params,
                 self.args.command,
             ]
@@ -45,12 +46,13 @@ class CmdRun(CmdBase):
                 params=self.args.params,
                 fname=self.args.file,
                 wdir=self.args.wdir,
-                no_exec=self.args.no_exec,
+                no_exec=(self.args.no_exec or bool(self.args.checkpoints)),
                 force=self.args.force,
                 run_cache=not self.args.no_run_cache,
                 no_commit=self.args.no_commit,
                 outs_persist=self.args.outs_persist,
                 outs_persist_no_cache=self.args.outs_persist_no_cache,
+                checkpoints=self.args.checkpoints,
                 always_changed=self.args.always_changed,
                 name=self.args.name,
                 single_stage=self.args.single_stage,
@@ -212,6 +214,14 @@ def add_parser(subparsers, parent_parser):
         "removed upon repro (do not put into DVC cache).",
         metavar="<filename>",
     )
+    run_parser.add_argument(
+        "-c",
+        "--checkpoints",
+        action="append",
+        default=[],
+        help=argparse.SUPPRESS,
+        metavar="<filename>",
+    ).complete = completion.FILE
     run_parser.add_argument(
         "--always-changed",
         action="store_true",

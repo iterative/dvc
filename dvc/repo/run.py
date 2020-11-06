@@ -48,6 +48,7 @@ def _get_file_path(kwargs):
             kwargs.get("plots_no_cache", []),
             kwargs.get("outs_persist", []),
             kwargs.get("outs_persist_no_cache", []),
+            kwargs.get("checkpoints", []),
         )
     )
 

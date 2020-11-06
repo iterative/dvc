@@ -34,7 +34,11 @@ LOCK_FILE_STAGE_SCHEMA = {
 LOCKFILE_SCHEMA = {str: LOCK_FILE_STAGE_SCHEMA}
 
 OUT_PSTAGE_DETAILED_SCHEMA = {
-    str: {BaseOutput.PARAM_CACHE: bool, BaseOutput.PARAM_PERSIST: bool}
+    str: {
+        BaseOutput.PARAM_CACHE: bool,
+        BaseOutput.PARAM_PERSIST: bool,
+        BaseOutput.PARAM_CHECKPOINT: bool,
+    }
 }
 
 PLOT_PROPS = {

@@ -61,6 +61,7 @@ class BaseOutput:
 
     PARAM_PATH = "path"
     PARAM_CACHE = "cache"
+    PARAM_CHECKPOINT = "checkpoint"
     PARAM_METRIC = "metric"
     PARAM_METRIC_TYPE = "type"
     PARAM_METRIC_XPATH = "xpath"
@@ -100,6 +101,7 @@ class BaseOutput:
         metric=False,
         plot=False,
         persist=False,
+        checkpoint=False,
     ):
         self._validate_output_path(path, stage)
         # This output (and dependency) objects have too many paths/urls
@@ -124,6 +126,7 @@ class BaseOutput:
         self.metric = False if self.IS_DEPENDENCY else metric
         self.plot = False if self.IS_DEPENDENCY else plot
         self.persist = persist
+        self.checkpoint = checkpoint
 
         self.path_info = self._parse_path(tree, path)
         if self.use_cache and self.cache is None:
@@ -315,6 +318,9 @@ class BaseOutput:
         if self.persist:
             ret[self.PARAM_PERSIST] = self.persist
 
+        if self.checkpoint:
+            ret[self.PARAM_CHECKPOINT] = self.checkpoint
+
         return ret
 
     def verify_metric(self):
@@ -350,7 +356,7 @@ class BaseOutput:
                 **kwargs,
             )
         except CheckoutError:
-            if allow_missing:
+            if allow_missing or self.checkpoint:
                 return None
             raise
 

@@ -320,19 +320,11 @@ def test_new_checkpoint(tmp_dir, scm, dvc, mocker):
         cmd="python checkpoint.py foo 5 params.yaml metrics.yaml",
         metrics_no_cache=["metrics.yaml"],
         params=["foo"],
-        outs_persist=["foo"],
-        always_changed=True,
+        checkpoints=["foo"],
+        no_exec=True,
         name="checkpoint-file",
     )
-    scm.add(
-        [
-            "dvc.yaml",
-            "dvc.lock",
-            "checkpoint.py",
-            "params.yaml",
-            "metrics.yaml",
-        ]
-    )
+    scm.add(["dvc.yaml", "checkpoint.py", "params.yaml"])
     scm.commit("init")
 
     new_mock = mocker.spy(dvc.experiments, "new")
@@ -353,19 +345,11 @@ def test_continue_checkpoint(tmp_dir, scm, dvc, mocker, last):
         cmd="python checkpoint.py foo 5 params.yaml metrics.yaml",
         metrics_no_cache=["metrics.yaml"],
         params=["foo"],
-        outs_persist=["foo"],
-        always_changed=True,
+        checkpoints=["foo"],
+        no_exec=True,
         name="checkpoint-file",
     )
-    scm.add(
-        [
-            "dvc.yaml",
-            "dvc.lock",
-            "checkpoint.py",
-            "params.yaml",
-            "metrics.yaml",
-        ]
-    )
+    scm.add(["dvc.yaml", "checkpoint.py", "params.yaml"])
     scm.commit("init")
 
     results = dvc.experiments.run(
@@ -395,19 +379,11 @@ def test_reset_checkpoint(tmp_dir, scm, dvc, mocker):
         cmd="python checkpoint.py foo 5 params.yaml metrics.yaml",
         metrics_no_cache=["metrics.yaml"],
         params=["foo"],
-        outs_persist=["foo"],
-        always_changed=True,
+        checkpoints=["foo"],
+        no_exec=True,
         name="checkpoint-file",
     )
-    scm.add(
-        [
-            "dvc.yaml",
-            "dvc.lock",
-            "checkpoint.py",
-            "params.yaml",
-            "metrics.yaml",
-        ]
-    )
+    scm.add(["dvc.yaml", "checkpoint.py", "params.yaml"])
     scm.commit("init")
 
     dvc.experiments.run(stage.addressing, checkpoint=True)
