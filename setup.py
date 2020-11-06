@@ -132,6 +132,9 @@ tests_requirements = [
     "jaraco.windows==3.9.2",
     "mock-ssh-server>=0.8.2",
     "moto==1.3.14.dev464",
+    # moto's indirect dependency that is causing problems with flufl.lock's
+    # dependency (atpublic). See https://github.com/iterative/dvc/pull/4853
+    "aws-sam-translator<1.29.0",
     "rangehttpserver==1.2.0",
     "beautifulsoup4==4.4.0",
     "flake8-bugbear",
