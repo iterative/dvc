@@ -434,9 +434,10 @@ class Experiments:
             rev = self.repo.scm.get_rev()
         self._scm_checkout(rev)
 
+        force = kwargs.get("force", False)
         try:
             stash_rev = self._stash_exp(
-                *args, branch=branch, checkpoint_reset=True, **kwargs,
+                *args, branch=branch, checkpoint_reset=force, **kwargs,
             )
         except UnchangedExperimentError as exc:
             logger.info("Reproducing existing experiment '%s'.", rev[:7])
