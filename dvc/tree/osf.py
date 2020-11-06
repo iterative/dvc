@@ -24,6 +24,7 @@ class OSFAuthError(DvcException):
         )
         super().__init__(message)
 
+
 class OSFTree(BaseTree):
     scheme = Schemes.OSF
     REQUIRES = {"ofsclient": "osfclient"}
