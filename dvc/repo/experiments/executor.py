@@ -167,15 +167,8 @@ class LocalExecutor(ExperimentExecutor):
             #   be removed/does not yet exist) so that our executor workspace
             #   is not polluted with the (persistent) out from an unrelated
             #   experiment run
-            checkpoint = kwargs.pop("checkpoint", False)
-            dvc.checkout(
-                allow_missing=checkpoint, force=checkpoint, quiet=checkpoint
-            )
-            stages = dvc.reproduce(
-                on_unchanged=filter_pipeline,
-                allow_missing=checkpoint,
-                **kwargs,
-            )
+            dvc.checkout(force=True, quiet=True)
+            stages = dvc.reproduce(on_unchanged=filter_pipeline, **kwargs)
         finally:
             if old_cwd is not None:
                 os.chdir(old_cwd)

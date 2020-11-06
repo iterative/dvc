@@ -2,13 +2,10 @@ import logging
 import os
 import re
 import tempfile
+import threading
 from collections import namedtuple
 from collections.abc import Mapping
-from concurrent.futures import (
-    ProcessPoolExecutor,
-    ThreadPoolExecutor,
-    as_completed,
-)
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
 from functools import partial, wraps
 from typing import Iterable, Optional
@@ -106,6 +103,7 @@ class Experiments:
         r"^(?P<baseline_rev>[a-f0-9]{7})-(?P<exp_sha>[a-f0-9]+)"
         r"(?P<checkpoint>-checkpoint)?$"
     )
+    LAST_CHECKPOINT = ":last"
 
     StashEntry = namedtuple("StashEntry", ["index", "baseline_rev", "branch"])
 
@@ -391,16 +389,13 @@ class Experiments:
 
     def reproduce_one(self, queue=False, **kwargs):
         """Reproduce and checkout a single experiment."""
-        checkpoint = kwargs.get("checkpoint", False)
         stash_rev = self.new(**kwargs)
         if queue:
             logger.info(
                 "Queued experiment '%s' for future execution.", stash_rev[:7]
             )
             return [stash_rev]
-        results = self.reproduce(
-            [stash_rev], keep_stash=False, checkpoint=checkpoint
-        )
+        results = self.reproduce([stash_rev], keep_stash=False)
         exp_rev = first(results)
         if exp_rev is not None:
             self.checkout_exp(exp_rev)
@@ -420,50 +415,13 @@ class Experiments:
 
     @scm_locked
     def new(
-        self,
-        *args,
-        checkpoint: Optional[bool] = False,
-        checkpoint_continue: Optional[str] = None,
-        checkpoint_reset: Optional[bool] = False,
-        branch: Optional[str] = None,
-        **kwargs,
+        self, *args, branch: Optional[str] = None, **kwargs,
     ):
         """Create a new experiment.
 
         Experiment will be reproduced and checked out into the user's
         workspace.
         """
-        if checkpoint_continue:
-            branch = None
-            if checkpoint_continue == ":last":
-                # Continue from most recently committed checkpoint
-                for head in sorted(
-                    self.scm.repo.heads,
-                    key=lambda h: h.commit.committed_date,
-                    reverse=True,
-                ):
-                    exp_branch = head.name
-                    m = self.BRANCH_RE.match(exp_branch)
-                    if m and m.group("checkpoint"):
-                        branch = exp_branch
-                        break
-                if not branch:
-                    raise DvcException(
-                        "No existing checkpoint experiment to continue"
-                    )
-            else:
-                rev = self.scm.resolve_rev(checkpoint_continue)
-                branch = self._get_branch_containing(rev)
-                if not branch:
-                    raise DvcException(
-                        "Could not find checkpoint experiment "
-                        f"'{checkpoint_continue}'"
-                    )
-            logger.debug(
-                "Continuing checkpoint experiment '%s'", checkpoint_continue
-            )
-            kwargs["apply_workspace"] = False
-
         if branch:
             rev = self.scm.resolve_rev(branch)
             logger.debug(
@@ -475,11 +433,7 @@ class Experiments:
 
         try:
             stash_rev = self._stash_exp(
-                *args,
-                branch=branch,
-                allow_unchanged=checkpoint,
-                checkpoint_reset=checkpoint_reset,
-                **kwargs,
+                *args, branch=branch, checkpoint_reset=True, **kwargs,
             )
         except UnchangedExperimentError as exc:
             logger.info("Reproducing existing experiment '%s'.", rev[:7])
@@ -490,11 +444,63 @@ class Experiments:
         return stash_rev
 
     @scm_locked
+    def resume(
+        self, *args, checkpoint_continue: Optional[str] = None, **kwargs,
+    ):
+        """Resume an existing (checkpoint) experiment.
+
+        Experiment will be reproduced and checked out into the user's
+        workspace.
+        """
+        assert checkpoint_continue
+
+        branch = None
+        if checkpoint_continue == self.LAST_CHECKPOINT:
+            # Continue from most recently committed checkpoint
+            for head in sorted(
+                self.scm.repo.heads,
+                key=lambda h: h.commit.committed_date,
+                reverse=True,
+            ):
+                exp_branch = head.name
+                m = self.BRANCH_RE.match(exp_branch)
+                if m and m.group("checkpoint"):
+                    branch = exp_branch
+                    break
+            if not branch:
+                raise DvcException(
+                    "No existing checkpoint experiment to continue"
+                )
+        else:
+            rev = self.scm.resolve_rev(checkpoint_continue)
+            branch = self._get_branch_containing(rev)
+            if not branch:
+                raise DvcException(
+                    "Could not find checkpoint experiment "
+                    f"'{checkpoint_continue}'"
+                )
+        logger.debug(
+            "Continuing checkpoint experiment '%s'", checkpoint_continue
+        )
+        kwargs["apply_workspace"] = False
+
+        rev = self.scm.resolve_rev(branch)
+        logger.debug(
+            "Using '%s' (tip of branch '%s') as baseline", rev, branch
+        )
+        self._scm_checkout(rev)
+
+        stash_rev = self._stash_exp(*args, branch=branch, **kwargs)
+        logger.debug(
+            "Stashed experiment '%s' for future execution.", stash_rev[:7]
+        )
+        return stash_rev
+
+    @scm_locked
     def reproduce(
         self,
         revs: Optional[Iterable] = None,
         keep_stash: Optional[bool] = True,
-        checkpoint: Optional[bool] = False,
         **kwargs,
     ):
         """Reproduce the specified experiments.
@@ -547,10 +553,7 @@ class Experiments:
             self._collect_input(executor)
             executors[rev] = executor
 
-        if checkpoint:
-            exec_results = self._reproduce_checkpoint(executors)
-        else:
-            exec_results = self._reproduce(executors, **kwargs)
+        exec_results = self._reproduce(executors, **kwargs)
 
         if keep_stash:
             # only drop successfully run stashed experiments
@@ -583,86 +586,97 @@ class Experiments:
         """
         result = {}
 
-        with ProcessPoolExecutor(max_workers=jobs) as workers:
+        collect_lock = threading.Lock()
+
+        with ThreadPoolExecutor(max_workers=jobs) as workers:
             futures = {}
             for rev, executor in executors.items():
+                checkpoint_func = partial(
+                    self._checkpoint_callback,
+                    result,
+                    collect_lock,
+                    rev,
+                    executor,
+                )
                 future = workers.submit(
                     executor.reproduce,
                     executor.dvc_dir,
                     cwd=executor.dvc.root_dir,
+                    checkpoint_func=checkpoint_func,
                     **executor.repro_kwargs,
                 )
                 futures[future] = (rev, executor)
+
             for future in as_completed(futures):
                 rev, executor = futures[future]
                 exc = future.exception()
+
                 if exc is None:
                     exp_hash = future.result()
-                    if executor.branch:
-                        self._scm_checkout(executor.branch)
-                    else:
-                        self._scm_checkout(executor.baseline_rev)
-                    exp_rev = self._collect_and_commit(rev, executor, exp_hash)
-                    if exp_rev:
-                        logger.info("Reproduced experiment '%s'.", exp_rev[:7])
-                        result[rev] = {exp_rev: exp_hash}
+
+                    collect_lock.acquire()
+                    try:
+                        # NOTE: GitPython Repo instances cannot be re-used
+                        # after process has received SIGINT or SIGTERM, so we
+                        # need this hack to re-instantiate git instances after
+                        # checkpoint runs. See:
+                        # https://github.com/gitpython-developers/GitPython/issues/427
+                        del self.repo.scm
+                        del self.scm
+
+                        if executor.branch:
+                            self._scm_checkout(executor.branch)
+                        else:
+                            self._scm_checkout(executor.baseline_rev)
+                        exp_rev = self._collect_and_commit(
+                            rev, executor, exp_hash
+                        )
+                        if exp_rev:
+                            logger.info(
+                                "Reproduced experiment '%s'.", exp_rev[:7]
+                            )
+                            result[rev] = {exp_rev: exp_hash}
+                    finally:
+                        collect_lock.release()
                 else:
                     logger.exception(
                         "Failed to reproduce experiment '%s'", rev[:7]
                     )
+                    raise exc
                 executor.cleanup()
 
         return result
 
-    def _reproduce_checkpoint(self, executors):
-        result = {}
-        for rev, executor in executors.items():
-            logger.debug("Reproducing checkpoint experiment '%s'", rev[:7])
-
+    def _checkpoint_callback(
+        self,
+        result: Mapping,
+        lock: threading.Lock,
+        rev: str,
+        executor: LocalExecutor,
+        unchanged: Iterable,
+        stages: Iterable,
+    ):
+        lock.acquire()
+        try:
             if executor.branch:
                 self._scm_checkout(executor.branch)
             else:
                 self._scm_checkout(executor.baseline_rev)
 
-            def _checkpoint_callback(rev, executor, unchanged, stages):
-                exp_hash = hash_exp(stages + unchanged)
-                exp_rev = self._collect_and_commit(
-                    rev, executor, exp_hash, checkpoint=True
-                )
-                if exp_rev:
-                    if not executor.branch:
-                        branch = self._get_branch_containing(exp_rev)
-                        executor.branch = branch
-                    logger.info(
-                        "Checkpoint experiment iteration '%s'.", exp_rev[:7]
-                    )
-                    result[rev] = {exp_rev: exp_hash}
-
-            checkpoint_func = partial(_checkpoint_callback, rev, executor)
-
-            exp_hash = executor.reproduce(
-                executor.dvc_dir,
-                cwd=executor.dvc.root_dir,
-                checkpoint=True,
-                checkpoint_func=checkpoint_func,
-                **executor.repro_kwargs,
-            )
-
-            # NOTE: GitPython Repo instances cannot be re-used after
-            # process has received SIGINT or SIGTERM, so we need this hack
-            # to re-instantiate git instances after checkpoint runs. See:
-            # https://github.com/gitpython-developers/GitPython/issues/427
-            del self.repo.scm
-            del self.scm
-
-            # Create final checkpoint commit if needed
+            exp_hash = hash_exp(stages + unchanged)
             exp_rev = self._collect_and_commit(
                 rev, executor, exp_hash, checkpoint=True
             )
-            if exp_rev not in result[rev]:
+            if exp_rev:
+                if not executor.branch:
+                    branch = self._get_branch_containing(exp_rev)
+                    executor.branch = branch
+                logger.info(
+                    "Checkpoint experiment iteration '%s'.", exp_rev[:7]
+                )
                 result[rev] = {exp_rev: exp_hash}
-
-        return result
+        finally:
+            lock.release()
 
     def _collect_and_commit(self, rev, executor, exp_hash, **kwargs):
         try:
