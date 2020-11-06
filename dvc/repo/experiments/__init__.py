@@ -238,7 +238,7 @@ class Experiments:
         *args,
         params: Optional[dict] = None,
         branch: Optional[str] = None,
-        allow_unchanged: Optional[bool] = False,
+        allow_unchanged: Optional[bool] = True,
         apply_workspace: Optional[bool] = True,
         **kwargs,
     ):
@@ -612,7 +612,9 @@ class Experiments:
                 exc = future.exception()
 
                 if exc is None:
-                    exp_hash = future.result()
+                    stages = future.result()
+                    exp_hash = hash_exp(stages)
+                    checkpoint = any(stage.is_checkpoint for stage in stages)
 
                     collect_lock.acquire()
                     try:
@@ -629,7 +631,7 @@ class Experiments:
                         else:
                             self._scm_checkout(executor.baseline_rev)
                         exp_rev = self._collect_and_commit(
-                            rev, executor, exp_hash
+                            rev, executor, exp_hash, checkpoint=checkpoint
                         )
                         if exp_rev:
                             logger.info(
