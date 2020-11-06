@@ -47,7 +47,7 @@ def test_all_commits(tmp_dir, scm, dvc, queued, expected):
     scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
     scm.commit("v2")
 
-    results = dvc.experiments.run(stage.addressing, params=["foo=4"])
+    dvc.experiments.run(stage.addressing, params=["foo=4"])
     dvc.experiments.run(stage.addressing, params=["foo=5"], queue=True)
 
     removed = dvc.experiments.gc(all_commits=True, queued=queued)
