@@ -154,6 +154,7 @@ SCHEMA = {
                     "grant_full_control": str,
                     **REMOTE_COMMON,
                 },
+                "osf": {"osf_username": str, "project": str},
                 "gs": {
                     "projectname": str,
                     "credentialpath": str,
