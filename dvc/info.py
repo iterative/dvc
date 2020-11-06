@@ -51,9 +51,8 @@ def get_dvc_info():
             info.append("Cache types: " + error_link("no-dvc-cache"))
 
         cache_urls = _get_cache_urls(repo.cache)
-        if cache_urls:
-            info.append("Cache paths:")
-            info.extend(f"  {c[0]}: {c[1]}" for c in cache_urls)
+        info.append("Cache paths:")
+        info.extend(f"  {c[0]}: {c[1]}" for c in cache_urls)
 
     except NotDvcRepoError:
         pass
