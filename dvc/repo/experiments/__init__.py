@@ -422,6 +422,9 @@ class Experiments:
         Experiment will be reproduced and checked out into the user's
         workspace.
         """
+        if kwargs.get("checkpoint_continue", False):
+            return self._resume_checkpoint(*args, **kwargs)
+
         if branch:
             rev = self.scm.resolve_rev(branch)
             logger.debug(
@@ -443,8 +446,7 @@ class Experiments:
         )
         return stash_rev
 
-    @scm_locked
-    def resume(
+    def _resume_checkpoint(
         self, *args, checkpoint_continue: Optional[str] = None, **kwargs,
     ):
         """Resume an existing (checkpoint) experiment.
