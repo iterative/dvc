@@ -1,8 +1,10 @@
+import logging
 from textwrap import dedent
 
 import pytest
 from funcy import first
 
+from dvc.repo.experiments import Experiments
 from dvc.utils.serialize import PythonFileCorruptedError
 from tests.func.test_repro_multistage import COPY_SCRIPT
 
@@ -41,6 +43,23 @@ CHECKPOINT_SCRIPT_FORMAT = dedent(
 CHECKPOINT_SCRIPT = CHECKPOINT_SCRIPT_FORMAT.format(
     "sys.argv[1]", "sys.argv[2]", "sys.argv[3]", "sys.argv[4]"
 )
+
+
+@pytest.fixture
+def checkpoint_stage(tmp_dir, scm, dvc):
+    tmp_dir.gen("checkpoint.py", CHECKPOINT_SCRIPT)
+    tmp_dir.gen("params.yaml", "foo: 1")
+    stage = dvc.run(
+        cmd="python checkpoint.py foo 5 params.yaml metrics.yaml",
+        metrics_no_cache=["metrics.yaml"],
+        params=["foo"],
+        checkpoints=["foo"],
+        no_exec=True,
+        name="checkpoint-file",
+    )
+    scm.add(["dvc.yaml", "checkpoint.py", "params.yaml"])
+    scm.commit("init")
+    return stage
 
 
 def test_new_simple(tmp_dir, scm, dvc, mocker):
@@ -313,22 +332,9 @@ def test_detached_parent(tmp_dir, scm, dvc, mocker):
     assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 3"
 
 
-def test_new_checkpoint(tmp_dir, scm, dvc, mocker):
-    tmp_dir.gen("checkpoint.py", CHECKPOINT_SCRIPT)
-    tmp_dir.gen("params.yaml", "foo: 1")
-    stage = dvc.run(
-        cmd="python checkpoint.py foo 5 params.yaml metrics.yaml",
-        metrics_no_cache=["metrics.yaml"],
-        params=["foo"],
-        checkpoints=["foo"],
-        no_exec=True,
-        name="checkpoint-file",
-    )
-    scm.add(["dvc.yaml", "checkpoint.py", "params.yaml"])
-    scm.commit("init")
-
+def test_new_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker):
     new_mock = mocker.spy(dvc.experiments, "new")
-    dvc.experiments.run(stage.addressing, checkpoint=True, params=["foo=2"])
+    dvc.experiments.run(checkpoint_stage.addressing, params=["foo=2"])
 
     new_mock.assert_called_once()
     assert (tmp_dir / "foo").read_text() == "5"
@@ -338,30 +344,17 @@ def test_new_checkpoint(tmp_dir, scm, dvc, mocker):
 
 
 @pytest.mark.parametrize("last", [True, False])
-def test_continue_checkpoint(tmp_dir, scm, dvc, mocker, last):
-    tmp_dir.gen("checkpoint.py", CHECKPOINT_SCRIPT)
-    tmp_dir.gen("params.yaml", "foo: 1")
-    stage = dvc.run(
-        cmd="python checkpoint.py foo 5 params.yaml metrics.yaml",
-        metrics_no_cache=["metrics.yaml"],
-        params=["foo"],
-        checkpoints=["foo"],
-        no_exec=True,
-        name="checkpoint-file",
-    )
-    scm.add(["dvc.yaml", "checkpoint.py", "params.yaml"])
-    scm.commit("init")
-
+def test_resume_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker, last):
     results = dvc.experiments.run(
-        stage.addressing, checkpoint=True, params=["foo=2"]
+        checkpoint_stage.addressing, params=["foo=2"]
     )
     if last:
-        exp_rev = ":last"
+        exp_rev = Experiments.LAST_CHECKPOINT
     else:
         exp_rev = first(results)
 
     dvc.experiments.run(
-        stage.addressing, checkpoint=True, checkpoint_continue=exp_rev,
+        checkpoint_stage.addressing, checkpoint_continue=exp_rev
     )
 
     assert (tmp_dir / "foo").read_text() == "10"
@@ -370,32 +363,17 @@ def test_continue_checkpoint(tmp_dir, scm, dvc, mocker, last):
     ).read_text().strip() == "foo: 2"
 
 
-def test_reset_checkpoint(tmp_dir, scm, dvc, mocker):
-    from dvc.exceptions import ReproductionError
-
-    tmp_dir.gen("checkpoint.py", CHECKPOINT_SCRIPT)
-    tmp_dir.gen("params.yaml", "foo: 1")
-    stage = dvc.run(
-        cmd="python checkpoint.py foo 5 params.yaml metrics.yaml",
-        metrics_no_cache=["metrics.yaml"],
-        params=["foo"],
-        checkpoints=["foo"],
-        no_exec=True,
-        name="checkpoint-file",
-    )
-    scm.add(["dvc.yaml", "checkpoint.py", "params.yaml"])
-    scm.commit("init")
-
-    dvc.experiments.run(stage.addressing, checkpoint=True)
+def test_reset_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker, caplog):
+    dvc.experiments.run(checkpoint_stage.addressing)
     scm.repo.git.reset(hard=True)
     scm.repo.git.clean(force=True)
 
-    with pytest.raises(ReproductionError):
-        dvc.experiments.run(stage.addressing, checkpoint=True)
+    with caplog.at_level(logging.ERROR):
+        results = dvc.experiments.run(checkpoint_stage.addressing)
+        assert len(results) == 0
+        assert "already exists" in caplog.text
 
-    dvc.experiments.run(
-        stage.addressing, checkpoint=True, checkpoint_reset=True
-    )
+    dvc.experiments.run(checkpoint_stage.addressing, force=True)
 
     assert (tmp_dir / "foo").read_text() == "5"
     assert (
