@@ -222,8 +222,6 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
         # First try to create parent directories
         self.makedirs(to_info.parent)
 
-        # Upload to WebDAV without chunking
-        # Using non chunked progress
         with open(from_file, "rb") as fd:
             with Tqdm.wrapattr(
                 fd,
