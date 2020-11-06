@@ -4,6 +4,7 @@ import threading
 
 from funcy import cached_property, wrap_prop
 
+from dvc.exceptions import DvcException
 from dvc.hash_info import HashInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -11,6 +12,16 @@ from dvc.scheme import Schemes
 from .base import BaseTree
 
 logger = logging.getLogger(__name__)
+
+
+class OSFAuthError(DvcException):
+    def __init__(self):
+        message = (
+            "OSF authorization failed. Please check or provide a password."
+            " It is also possible that you do not have access"
+            " to a private project."
+        )
+        super().__init__(message)
 
 
 class OSFTree(BaseTree):
@@ -34,7 +45,10 @@ class OSFTree(BaseTree):
 
         osf = osfclient.OSF()
         osf.login(self.osf_username, self.password)
-        storage = osf.project(self.project).storage()
+        try:
+            storage = osf.project(self.project).storage()
+        except osfclient.exceptions.UnauthorizedException:
+            raise OSFAuthError
         return storage
 
     def _get_file_obj(self, path_info):
