@@ -429,3 +429,56 @@ def test_set_with_foreach_and_on_stage_definition(tmp_dir, dvc):
             }
         },
     )
+
+
+def test_resolve_local_tries_to_load_globally_used_files(tmp_dir, dvc):
+    iterable = {"bar": "bar", "foo": "foo"}
+    dump_json(tmp_dir / "params.json", iterable)
+
+    d = {
+        "use": "params.json",
+        "stages": {
+            "build": {
+                "cmd": "command --value ${bar}",
+                "params": [{"params.json": ["foo"]}],
+            },
+        },
+    }
+    resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
+    assert_stage_equal(
+        resolver.resolve(),
+        {
+            "stages": {
+                "build": {
+                    "cmd": "command --value bar",
+                    "params": [{"params.json": ["bar", "foo"]}],
+                },
+            }
+        },
+    )
+
+
+def test_resolve_local_tries_to_load_globally_used_params_yaml(tmp_dir, dvc):
+    iterable = {"bar": "bar", "foo": "foo"}
+    dump_yaml(tmp_dir / "params.yaml", iterable)
+
+    d = {
+        "stages": {
+            "build": {
+                "cmd": "command --value ${bar}",
+                "params": [{"params.yaml": ["foo"]}],
+            },
+        },
+    }
+    resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
+    assert_stage_equal(
+        resolver.resolve(),
+        {
+            "stages": {
+                "build": {
+                    "cmd": "command --value bar",
+                    "params": [{"params.yaml": ["bar", "foo"]}],
+                },
+            }
+        },
+    )
