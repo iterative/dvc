@@ -298,21 +298,8 @@ def scm(tmp_dir):
     return tmp_dir.scm
 
 
-def load_credentials(test_dir):
-    parent_dir = pathlib.Path(__file__).parent
-    gdrive_credentials = parent_dir.joinpath("gdrive-user-credentials.json")
-
-    if gdrive_credentials.exists():
-        import shutil
-
-        inner_tmp = test_dir.joinpath(".dvc", "tmp")
-        inner_tmp.mkdir(exist_ok=True)
-        shutil.copy(gdrive_credentials, inner_tmp)
-
-
 @pytest.fixture
 def dvc(tmp_dir):
-    load_credentials(tmp_dir)
     return tmp_dir.dvc
 
 
