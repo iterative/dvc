@@ -437,13 +437,6 @@ def _replace(path, src, dst):
     path.write_text(path.read_text().replace(src, dst))
 
 
-def test_no_plots(tmp_dir, dvc):
-    from dvc.exceptions import NoPlotsError
-
-    with pytest.raises(NoPlotsError):
-        dvc.plots.show()
-
-
 def test_should_raise_on_no_template(tmp_dir, dvc, run_copy_metrics):
     metric = [{"val": 2}, {"val": 3}]
     _write_json(tmp_dir, metric, "metric_t.json")

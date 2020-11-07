@@ -72,7 +72,7 @@ class CmdPlots(CmdBase):
             logger.info(f"file://{path}")
 
         except DvcException:
-            logger.exception("")
+            logger.exception("failed to show plots")
             return 1
 
         return 0
