@@ -65,7 +65,7 @@ class WebHDFSTree(BaseTree):
         logger.debug("HDFSConfig: %s", self.hdfscli_config)
 
         try:
-            client = hdfs.config.Config(self.hdfscli_config).get_client(
+            return hdfs.config.Config(self.hdfscli_config).get_client(
                 self.alias
             )
         except hdfs.util.HdfsError as exc:
