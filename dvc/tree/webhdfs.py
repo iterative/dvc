@@ -67,18 +67,16 @@ class WebHDFSTree(BaseTree):
         logger.debug("HDFSConfig: %s", self.hdfscli_config)
 
         try:
-            client = hdfs.config.Config(  # pylint: disable=no-member
-                self.hdfscli_config
-            ).get_client(self.alias)
-        except hdfs.util.HdfsError:  # pylint: disable=no-member
+            client = hdfs.config.Config(self.hdfscli_config).get_client(
+                self.alias
+            )
+        except hdfs.util.HdfsError:
             http_url = f"http://{self.path_info.host}:{self.path_info.port}"
 
             if self.token is not None:
-                client = hdfs.TokenClient(  # pylint: disable=no-member
-                    http_url, token=self.token, root="/"
-                )
+                client = hdfs.TokenClient(http_url, token=self.token, root="/")
             else:
-                client = hdfs.InsecureClient(  # pylint: disable=no-member
+                client = hdfs.InsecureClient(
                     http_url, user=self.path_info.user, root="/"
                 )
 
