@@ -3,6 +3,7 @@ import os
 from mock import patch
 
 from dvc.cache.local import LocalCache
+from dvc.dir_info import DirInfo
 from dvc.hash_info import HashInfo
 from dvc.output import LocalOutput
 from dvc.stage import Stage
@@ -81,7 +82,12 @@ class TestGetFilesNumber(TestDvc):
     @patch.object(
         LocalCache,
         "get_dir_cache",
-        return_value=[{"md5": "asdf"}, {"md5": "qwe"}],
+        return_value=DirInfo.from_list(
+            [
+                {"relpath": "foo", "md5": "asdf"},
+                {"relpath": "bar", "md5": "qwe"},
+            ]
+        ),
     )
     def test_return_multiple_for_dir(self, _mock_get_dir_cache):
         o = self._get_output()

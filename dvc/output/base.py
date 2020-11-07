@@ -454,9 +454,7 @@ class BaseOutput:
         path = str(self.path_info)
         filter_path = str(filter_info) if filter_info else None
         is_win = os.name == "nt"
-        for entry in self.dir_cache:
-            checksum = entry[self.tree.PARAM_CHECKSUM]
-            entry_relpath = entry[self.tree.PARAM_RELPATH]
+        for entry_relpath, entry_hash_info in self.dir_cache.items():
             if is_win:
                 entry_relpath = entry_relpath.replace("/", os.sep)
             entry_path = os.path.join(path, entry_relpath)
@@ -465,7 +463,7 @@ class BaseOutput:
                 or entry_path == filter_path
                 or entry_path.startswith(filter_path + os.sep)
             ):
-                cache.add(self.scheme, checksum, entry_path)
+                cache.add(self.scheme, entry_hash_info.value, entry_path)
 
         return cache
 

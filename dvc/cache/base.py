@@ -1,21 +1,18 @@
 import json
 import logging
 from copy import copy
-from operator import itemgetter
 
 from funcy import decorator
 from shortuuid import uuid
 
 import dvc.prompt as prompt
+from dvc.dir_info import DirInfo
 from dvc.exceptions import (
     CacheLinkError,
     CheckoutError,
     ConfirmRemoveError,
     DvcException,
-    MergeError,
 )
-from dvc.hash_info import HashInfo
-from dvc.path_info import WindowsPathInfo
 from dvc.progress import Tqdm
 from dvc.remote.slow_link_detection import slow_link_guard
 
@@ -77,7 +74,7 @@ class CloudCache:
         try:
             dir_info = self.load_dir_cache(hash_info)
         except DirCacheError:
-            dir_info = []
+            dir_info = DirInfo()
 
         self._dir_info[hash_info.value] = dir_info
         return dir_info
@@ -96,18 +93,9 @@ class CloudCache:
                 "dir cache file format error '%s' [skipping the file]",
                 path_info,
             )
-            return []
+            d = []
 
-        if self.tree.PATH_CLS == WindowsPathInfo:
-            # only need to convert it for Windows
-            for info in d:
-                # NOTE: here is a BUG, see comment to .as_posix() below
-                relpath = info[self.tree.PARAM_RELPATH]
-                info[self.tree.PARAM_RELPATH] = relpath.replace(
-                    "/", self.tree.PATH_CLS.sep
-                )
-
-        return d
+        return DirInfo.from_list(d)
 
     def changed(self, path_info, hash_info):
         """Checks if data has changed.
@@ -271,14 +259,9 @@ class CloudCache:
         from dvc.path_info import PathInfo
         from dvc.utils import tmp_fname
 
-        # Sorting the list by path to ensure reproducibility
-        if isinstance(dir_info, dict):
-            dir_info = self._from_dict(dir_info)
-        dir_info = sorted(dir_info, key=itemgetter(self.tree.PARAM_RELPATH))
-
         tmp = tempfile.NamedTemporaryFile(delete=False).name
         with open(tmp, "w+") as fobj:
-            json.dump(dir_info, fobj, sort_keys=True)
+            json.dump(dir_info.to_list(), fobj, sort_keys=True)
 
         from_info = PathInfo(tmp)
         to_info = self.tree.path_info / tmp_fname("")
@@ -286,8 +269,8 @@ class CloudCache:
 
         hash_info = self.tree.get_file_hash(to_info)
         hash_info.value += self.tree.CHECKSUM_DIR_SUFFIX
-        hash_info.dir_info = self._to_dict(dir_info)
-        hash_info.nfiles = len(dir_info)
+        hash_info.dir_info = dir_info
+        hash_info.nfiles = dir_info.nfiles
 
         return hash_info, to_info
 
@@ -312,14 +295,13 @@ class CloudCache:
 
     def _save_dir(self, path_info, tree, hash_info, save_link=True, **kwargs):
         if not hash_info.dir_info:
-            hash_info.dir_info = self._to_dict(
-                tree.cache.get_dir_cache(hash_info)
-            )
+            hash_info.dir_info = tree.cache.get_dir_cache(hash_info)
         hi = self.save_dir_info(hash_info.dir_info, hash_info)
-        for relpath, entry_hash in Tqdm(
-            hi.dir_info.items(), desc="Saving " + path_info.name, unit="file"
+        for entry_info, entry_hash in Tqdm(
+            hi.dir_info.items(path_info),
+            desc="Saving " + path_info.name,
+            unit="file",
         ):
-            entry_info = path_info / relpath
             self._save_file(
                 entry_info, tree, entry_hash, save_link=False, **kwargs
             )
@@ -404,13 +386,9 @@ class CloudCache:
         if self.changed_cache_file(hash_info):
             return True
 
-        for entry in self.get_dir_cache(hash_info):
-            entry_hash = HashInfo(
-                self.tree.PARAM_CHECKSUM, entry[self.tree.PARAM_CHECKSUM]
-            )
-
+        dir_info = self.get_dir_cache(hash_info)
+        for entry_info, entry_hash in dir_info.items(path_info):
             if path_info and filter_info:
-                entry_info = path_info / entry[self.tree.PARAM_RELPATH]
                 if not entry_info.isin_or_eq(filter_info):
                     continue
 
@@ -488,16 +466,14 @@ class CloudCache:
 
         logger.debug("Linking directory '%s'.", path_info)
 
-        for entry in dir_info:
-            relative_path = entry[self.tree.PARAM_RELPATH]
-            entry_hash = entry[self.tree.PARAM_CHECKSUM]
-            entry_cache_info = self.tree.hash_to_path_info(entry_hash)
-            entry_info = path_info / relative_path
+        for entry_info, entry_hash_info in dir_info.items(path_info):
+            entry_cache_info = self.tree.hash_to_path_info(
+                entry_hash_info.value
+            )
 
             if filter_info and not entry_info.isin_or_eq(filter_info):
                 continue
 
-            entry_hash_info = HashInfo(self.tree.PARAM_CHECKSUM, entry_hash)
             if relink or self.changed(entry_info, entry_hash_info):
                 modified = True
                 self.safe_remove(entry_info, force=force)
@@ -520,9 +496,7 @@ class CloudCache:
     def _remove_redundant_files(self, path_info, dir_info, force):
         existing_files = set(self.tree.walk_files(path_info))
 
-        needed_files = {
-            path_info / entry[self.tree.PARAM_RELPATH] for entry in dir_info
-        }
+        needed_files = {info for info, _ in dir_info.items(path_info)}
         redundant_files = existing_files - needed_files
         for path in redundant_files:
             self.safe_remove(path, force)
@@ -623,77 +597,19 @@ class CloudCache:
             return 1
 
         if not filter_info:
-            return len(self.get_dir_cache(hash_info))
+            return self.get_dir_cache(hash_info).nfiles
 
         return ilen(
-            filter_info.isin_or_eq(path_info / entry[self.tree.PARAM_CHECKSUM])
-            for entry in self.get_dir_cache(hash_info)
-        )
-
-    def _to_dict(self, dir_info):
-        info = {}
-        for _entry in dir_info:
-            entry = _entry.copy()
-            relpath = entry.pop(self.tree.PARAM_RELPATH)
-            info[relpath] = HashInfo.from_dict(entry)
-        return info
-
-    def _from_dict(self, dir_dict):
-        return [
-            {self.tree.PARAM_RELPATH: relpath, **hash_info.to_dict()}
-            for relpath, hash_info in dir_dict.items()
-        ]
-
-    @staticmethod
-    def _diff(ancestor, other, allow_removed=False):
-        from dictdiffer import diff
-
-        allowed = ["add"]
-        if allow_removed:
-            allowed.append("remove")
-
-        result = list(diff(ancestor, other))
-        for typ, _, _ in result:
-            if typ not in allowed:
-                raise MergeError(
-                    "unable to auto-merge directories with diff that contains "
-                    f"'{typ}'ed files"
-                )
-        return result
-
-    def _merge_dirs(self, ancestor_info, our_info, their_info):
-        from dictdiffer import patch
-
-        ancestor = self._to_dict(ancestor_info)
-        our = self._to_dict(our_info)
-        their = self._to_dict(their_info)
-
-        our_diff = self._diff(ancestor, our)
-        if not our_diff:
-            return self._from_dict(their)
-
-        their_diff = self._diff(ancestor, their)
-        if not their_diff:
-            return self._from_dict(our)
-
-        # make sure there are no conflicting files
-        self._diff(our, their, allow_removed=True)
-
-        merged = patch(our_diff + their_diff, ancestor, in_place=True)
-
-        # Sorting the list by path to ensure reproducibility
-        return sorted(
-            self._from_dict(merged), key=itemgetter(self.tree.PARAM_RELPATH),
+            filter_info.isin_or_eq(path_info / relpath)
+            for relpath, _ in self.get_dir_cache(hash_info).items()
         )
 
     def _get_dir_size(self, dir_info):
-        def _getsize(entry):
-            return self.tree.getsize(
-                self.tree.hash_to_path_info(entry[self.tree.PARAM_CHECKSUM])
-            )
-
         try:
-            return sum(_getsize(entry) for entry in dir_info)
+            return sum(
+                self.tree.getsize(self.tree.hash_to_path_info(hi.value))
+                for _, hi in dir_info.items()
+            )
         except FileNotFoundError:
             return None
 
@@ -704,12 +620,12 @@ class CloudCache:
         if ancestor_info:
             ancestor = self.get_dir_cache(ancestor_info)
         else:
-            ancestor = []
+            ancestor = DirInfo()
 
         our = self.get_dir_cache(our_info)
         their = self.get_dir_cache(their_info)
 
-        merged = self._merge_dirs(ancestor, our, their)
+        merged = our.merge(ancestor, their)
         hash_info = self.save_dir_info(merged)
         hash_info.size = self._get_dir_size(merged)
         return hash_info
@@ -728,5 +644,5 @@ class CloudCache:
     def set_dir_info(self, hash_info):
         assert hash_info.isdir
 
-        hash_info.dir_info = self._to_dict(self.get_dir_cache(hash_info))
-        hash_info.nfiles = len(hash_info.dir_info)
+        hash_info.dir_info = self.get_dir_cache(hash_info)
+        hash_info.nfiles = hash_info.dir_info.nfiles
