@@ -1,7 +1,6 @@
 import logging
 import os
 import threading
-from collections import deque
 from contextlib import contextmanager
 from urllib.parse import urlparse
 
@@ -97,13 +96,10 @@ class WebHDFSTree(BaseTree):
             return
 
         root = path_info.path
-        dir_queue = deque([root])
-
-        while dir_queue:
-            for path, _, files in self.hdfs_client.walk(dir_queue.pop()):
-                for file_ in files:
-                    path = os.path.join(path, file_)
-                    yield path_info.replace(path=path)
+        for path, _, files in self.hdfs_client.walk(root):
+            for file_ in files:
+                path = os.path.join(path, file_)
+                yield path_info.replace(path=path)
 
     def remove(self, path_info):
         if path_info.scheme != self.scheme:
