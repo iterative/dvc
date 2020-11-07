@@ -101,12 +101,7 @@ class WebHDFSTree(BaseTree):
         dir_queue = deque([root])
 
         while dir_queue:
-            for path, dirs, files in self.hdfs_client.walk(
-                dir_queue.pop(), depth=kwargs.get("depth", 0)
-            ):
-                new_dirs = [os.path.join(path, dir_) for dir_ in dirs]
-                dir_queue.extend(new_dirs)
-
+            for path, _, files in self.hdfs_client.walk(dir_queue.pop()):
                 for file_ in files:
                     path = os.path.join(path, file_)
                     yield path_info.replace(path=path)
