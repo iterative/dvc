@@ -89,12 +89,19 @@ class DataResolver:
                     "%s does not exist for stage %s", params_yaml_file, name
                 )
 
-        params_file = definition.get(PARAMS_KWD, [])
-        for item in params_file:
-            if item and isinstance(item, dict):
-                contexts.append(
-                    Context.load_from(self.repo.tree, str(wdir / first(item)))
-                )
+        params_deps = definition.get(PARAMS_KWD, [])
+        params_files = {
+            wdir / first(item)
+            for item in params_deps
+            if item and isinstance(item, dict)
+        }
+        for params_file in params_files - {
+            self.global_ctx_source,
+            params_yaml_file,
+        }:
+            contexts.append(
+                Context.load_from(self.repo.tree, str(params_file))
+            )
 
         context.merge_update(*contexts)
 
