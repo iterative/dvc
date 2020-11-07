@@ -6,6 +6,7 @@ import pytest
 from dvc.parsing.context import Context, CtxDict, CtxList, Value
 from dvc.tree.local import LocalTree
 from dvc.utils.serialize import dump_yaml
+from tests.func.test_stage_resolver import recurse_not_a_node
 
 
 def test_context():
@@ -145,6 +146,22 @@ def test_select():
         assert context.select(f"lst.{i}.bar{i}") == Value(f"bar{i}")
 
 
+def test_select_unwrap():
+    context = Context({"dct": {"foo": "bar"}}, lst=[1, 2, 3], foo="foo")
+
+    assert context.select("dct.foo", unwrap=True) == "bar"
+    assert context.select("lst.0", unwrap=True) == 1
+    assert context.select("foo", unwrap=True) == "foo"
+
+    node = context.select("dct", unwrap=True)
+    assert isinstance(node, dict) and recurse_not_a_node(node)
+    assert node == {"foo": "bar"}
+
+    node = context.select("lst", unwrap=True)
+    assert isinstance(node, list) and recurse_not_a_node(node)
+    assert node == [1, 2, 3]
+
+
 def test_merge_dict():
     d1 = {"Train": {"us": {"lr": 10}}}
     d2 = {"Train": {"us": {"layers": 100}}}
@@ -160,7 +177,11 @@ def test_merge_dict():
         c1.merge_update({"Train": {"us": {"lr": 15}}})
 
     c1.merge_update({"Train": {"us": {"lr": 15}}}, overwrite=True)
-    assert c1.select("Train.us") == CtxDict(lr=15, layers=100)
+    node = c1.select("Train.us")
+    assert node == {"lr": 15, "layers": 100}
+    assert isinstance(node, CtxDict)
+    assert node["lr"] == Value(15)
+    assert node["layers"] == Value(100)
 
 
 def test_merge_list():
@@ -171,7 +192,10 @@ def test_merge_list():
 
     # lists are never merged
     c1.merge_update({"lst": [10, 11, 12]}, overwrite=True)
-    assert c1.select("lst") == [10, 11, 12]
+    node = c1.select("lst")
+    assert node == [10, 11, 12]
+    assert isinstance(node, CtxList)
+    assert node[0] == Value(10)
 
 
 def test_overwrite_with_setitem():
@@ -319,3 +343,30 @@ def test_track_from_multiple_files(tmp_dir):
         assert not key_tracked(path1, "Train.us.layers") and key_tracked(
             path2, "Train.us.layers"
         )
+
+
+def test_node_value():
+    d = {"dct": {"foo": "bar"}, "lst": [1, 2, 3], "foo": "foo"}
+    context = Context(d)
+    assert isinstance(context, (Context, CtxDict))
+    assert isinstance(context["dct"], CtxDict)
+    assert isinstance(context["lst"], CtxList)
+    assert isinstance(context["foo"], Value)
+    assert isinstance(context["dct"]["foo"], Value)
+    assert isinstance(context["lst"][0], Value)
+
+    assert context.value == d
+    assert recurse_not_a_node(context.value)
+    assert isinstance(context.value["dct"], dict)
+    assert isinstance(context.value["lst"], list)
+    assert isinstance(context.value["foo"], str)
+    assert isinstance(context.value["dct"]["foo"], str)
+    assert isinstance(context.value["lst"][0], int)
+
+    assert isinstance(context["dct"].value, dict)
+    assert context["dct"]["foo"].value == "bar"
+
+    assert isinstance(context["lst"].value, list)
+    assert context["lst"][1].value == 2
+
+    assert context["foo"].value == "foo"

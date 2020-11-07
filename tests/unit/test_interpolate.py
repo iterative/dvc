@@ -3,6 +3,7 @@ from math import inf, pi
 import pytest
 
 from dvc.parsing import Context
+from tests.func.test_stage_resolver import recurse_not_a_node
 
 
 @pytest.mark.parametrize(
@@ -97,4 +98,6 @@ def test_resolve_collection():
     )
 
     context = Context(CONTEXT_DATA)
-    assert context.resolve(TEMPLATED_DVC_YAML_DATA) == RESOLVED_DVC_YAML_DATA
+    resolved = context.resolve(TEMPLATED_DVC_YAML_DATA)
+    assert resolved == RESOLVED_DVC_YAML_DATA
+    assert recurse_not_a_node(resolved)
