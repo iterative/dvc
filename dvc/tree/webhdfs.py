@@ -68,9 +68,16 @@ class WebHDFSTree(BaseTree):
             client = hdfs.config.Config(self.hdfscli_config).get_client(
                 self.alias
             )
-        except hdfs.util.HdfsError:
-            # No hdfs config file was found, or parsing failed. Fallback to
-            # clients using Hadoop delegation token or username
+        except hdfs.util.HdfsError as exc:
+            exc_msg = str(exc)
+            errors = (
+                "No alias specified",
+                "Invalid configuration file",
+                f"Alias {self.alias} not found",
+            )
+            if not any(err in exc_msg for err in errors):
+                raise
+
             http_url = f"http://{self.path_info.host}:{self.path_info.port}"
 
             if self.token is not None:
