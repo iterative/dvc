@@ -8,6 +8,7 @@ from .hdfs import HDFSTree
 from .http import HTTPTree
 from .https import HTTPSTree
 from .local import LocalTree
+from .osf import OSFTree
 from .oss import OSSTree
 from .s3 import S3Tree
 from .ssh import SSHTree
@@ -27,7 +28,8 @@ TREES = [
     OSSTree,
     WebDAVTree,
     WebDAVSTree,
-    WebHDFSTree
+    WebHDFSTree,
+    OSFTree,
     # NOTE: LocalTree is the default
 ]
 
