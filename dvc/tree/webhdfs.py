@@ -71,6 +71,8 @@ class WebHDFSTree(BaseTree):
                 self.alias
             )
         except hdfs.util.HdfsError:
+            # No hdfs config file was found, or parsing failed. Fallback to
+            # clients using Hadoop delegation token or username
             http_url = f"http://{self.path_info.host}:{self.path_info.port}"
 
             if self.token is not None:
