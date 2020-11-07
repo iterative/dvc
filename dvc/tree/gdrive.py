@@ -2,7 +2,6 @@ import io
 import logging
 import os
 import posixpath
-import re
 import threading
 from collections import defaultdict
 from contextlib import contextmanager
@@ -12,7 +11,7 @@ from funcy.py3 import cat
 
 from dvc.exceptions import DvcException, FileMissingError
 from dvc.hash_info import HashInfo
-from dvc.path_info import CloudURLInfo
+from dvc.path_info import GDriveURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 from dvc.utils import format_link, tmp_fname
@@ -68,17 +67,6 @@ def _gdrive_retry(func):
         timeout=lambda a: min(0.5 * 1.618 ** a, 20),
         filter_errors=should_retry,
     )(func)
-
-
-class GDriveURLInfo(CloudURLInfo):
-    def __init__(self, url):
-        # GDrive URL host part is case sensitive
-        super().__init__(url, keep_host_case=True)
-        assert self.netloc == self.host
-
-        # Normalize path. Important since we have a cache (path to ID)
-        # and don't want to deal with different variations of path in it.
-        self._spath = re.sub("/{2,}", "/", self._spath.rstrip("/"))
 
 
 class GDriveTree(BaseTree):

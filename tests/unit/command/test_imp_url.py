@@ -59,17 +59,17 @@ def test_import_url_https(dvc):
     assert cmd.run() == 0
 
 
-# The first file id is a publicly available file
-# The second, instead, requires authentication
+# The first file id is a publicly available file.
+# The second, instead, requires authentication, which depend on a proper
+# gdrive-user-credentials.json. The absence of the file skips the test.
 @pytest.mark.parametrize(
-    "file_id_auth",
+    "file_id, auth",
     [
         ("1nKf4XcsNCN3oLujqlFTJoK5Fvx9iKCZb", False),
         ("1syA-26p7tehWyUiMPPk_s0hsFN0Nr_kX", True),
     ],
 )
-def test_import_url_gdrive(dvc, file_id_auth):
-    file_id, auth = file_id_auth
+def test_import_url_gdrive(dvc, file_id, auth):
     root_dir = Path(dvc.root_dir)
 
     if auth:
