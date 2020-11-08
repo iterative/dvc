@@ -62,7 +62,6 @@ def loads_from(cls, repo, path, wdir, data):
     return cls(**kw)
 
 
-# path is the dvc file name. dvc_filename
 def create_stage(cls, repo, path, external=False, **kwargs):
     """Create a stage from the class *cls*
 

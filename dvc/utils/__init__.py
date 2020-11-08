@@ -361,9 +361,9 @@ def resolve_paths(repo, out):
     """Resolves the final path, when a relative *out* path is suggested.
 
     :param repo: a Repo object
-    :param out: a str containing a relative path to the out filename
-    :returns: absolute path where the output should be saved and, if out
-              is not None, the out filename.
+    :param out: a str containing a relative path to a out filename or directory
+    :returns: absolute path where the output should be saved and the output
+    file name, if provided.
     """
     from urllib.parse import urlparse
 
@@ -374,22 +374,23 @@ def resolve_paths(repo, out):
 
     if out:
         abspath = PathInfo(os.path.abspath(out))
-        dirname = os.path.dirname(abspath)
-        base = os.path.basename(os.path.normpath(out))
-
         scheme = urlparse(out).scheme
 
-        # When out is a dir, the destination path was set to *dirname*
+        # When out is a dir, the destination path is set to *dirname*
         # and the output file name will be defined later from the source file
         if os.path.isdir(out):
+            dirname = abspath
             out = None
+        else:
+            dirname = os.path.dirname(abspath)
+            out = os.path.basename(os.path.normpath(out))
 
         if os.name == "nt" and scheme == abspath.drive[0].lower():
             # urlparse interprets windows drive letters as URL scheme
             scheme = ""
 
         if scheme or not abspath.isin_or_eq(repo.root_dir):
-            wdir = os.getcwd()
+            dirname = os.getcwd()
         elif contains_symlink_up_to(dirname, repo.root_dir) or (
             os.path.isdir(abspath) and System.is_symlink(abspath)
         ):
@@ -402,13 +403,11 @@ def resolve_paths(repo, out):
             ).format(flink)
 
             raise DvcException(msg)
-        else:
-            wdir = dirname
-            out = base
-    else:
-        wdir = os.getcwd()
 
-    return wdir, out
+    else:
+        dirname = os.getcwd()
+
+    return dirname, out
 
 
 def format_link(link):
