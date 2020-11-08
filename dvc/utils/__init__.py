@@ -375,43 +375,45 @@ def resolve_paths(repo, out, to_file_output=True):
     from ..system import System
     from .fs import contains_symlink_up_to
 
+    # TODO comment better this function
     if out:
         abspath = PathInfo(os.path.abspath(out))
         scheme = urlparse(out).scheme
-
-        # When the expected output is a file and *out* is a dir, the
-        # destination path is set to *dirname* and the output file name
-        # will be defined later from the source file.
-        if to_file_output and os.path.isdir(out):
-            dirname = abspath
-            out = None
-        else:
-            dirname = os.path.dirname(abspath)
-            out = os.path.basename(os.path.normpath(out))
 
         if os.name == "nt" and scheme == abspath.drive[0].lower():
             # urlparse interprets windows drive letters as URL scheme
             scheme = ""
 
         if scheme or not abspath.isin_or_eq(repo.root_dir):
-            dirname = os.getcwd()
-        elif contains_symlink_up_to(dirname, repo.root_dir) or (
-            os.path.isdir(abspath) and System.is_symlink(abspath)
-        ):
-            flink = format_link(
-                "https://dvc.org/doc/user-guide/troubleshooting#add-symlink"
-            )
-            msg = (
-                "Cannot add files inside symlinked directories to DVC. "
-                "See {} for more information."
-            ).format(flink)
+            wdir = os.getcwd()
+        else:
+            # When the expected output is a file and *out* is a dir, the
+            # destination path is set to *dirname* and the output file name
+            # will be defined later from the source file.
+            if to_file_output and os.path.isdir(out):
+                wdir = abspath
+                out = None
+            else:
+                wdir = os.path.dirname(abspath)
+                out = os.path.basename(os.path.normpath(out))
 
-            raise DvcException(msg)
-
+            if contains_symlink_up_to(wdir, repo.root_dir) or (
+                os.path.isdir(abspath) and System.is_symlink(abspath)
+            ):
+                msg = (
+                    "Cannot add files inside symlinked directories to DVC. "
+                    "See {} for more information."
+                ).format(
+                    format_link(
+                        "https://dvc.org/doc/user-guide/"
+                        "troubleshooting#add-symlink"
+                    )
+                )
+                raise DvcException(msg)
     else:
-        dirname = os.getcwd()
+        wdir = os.getcwd()
 
-    return dirname, out
+    return wdir, out
 
 
 def format_link(link):

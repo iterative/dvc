@@ -58,6 +58,16 @@ class PathInfo(pathlib.PurePath, _BasePath):
     def __fspath__(self):
         return pathlib.PurePath.__str__(self)
 
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.fspath == os.path.abspath(other)
+        else:
+            return super().__eq__(other)
+
+    # pylint: disable=W0235
+    def __hash__(self):
+        return super().__hash__()
+
     @property
     def fspath(self):
         return self.__fspath__()

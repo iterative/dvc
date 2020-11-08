@@ -6,7 +6,7 @@ import pytest
 from dvc.cli import parse_args
 from dvc.command.imp_url import CmdImportUrl
 from dvc.exceptions import DvcException
-from tests.dir_helpers import load_gdrive_credentials
+from tests.utils import load_gdrive_credentials
 
 
 def test_import_url(mocker):

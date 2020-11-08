@@ -2,7 +2,7 @@ import pytest
 
 from dvc.path_info import GDriveURLInfo
 from dvc.tree import GDriveTree
-from tests.dir_helpers import load_gdrive_credentials
+from tests.utils import load_gdrive_credentials
 
 
 def test_get_file_name(dvc):
