@@ -181,12 +181,16 @@ class GDriveTree(BaseTree):
         return None
 
     def get_file_name(self, path_info):
-        assert isinstance(path_info, GDriveURLInfo)
+        if self.exists(path_info):
+            assert isinstance(path_info, GDriveURLInfo)
 
-        item_id = self._get_item_id(path_info)
-        file_repr = self._drive.CreateFile({"id": item_id})
-        file_repr.FetchMetadata()
-        return file_repr["title"]
+            item_id = self._get_item_id(path_info)
+            file_repr = self._drive.CreateFile({"id": item_id})
+            return file_repr["title"]
+        else:
+            raise DvcException(
+                f"{path_info} doesn't exist or it's inaccessible."
+            )
 
     @staticmethod
     def _validate_credentials(auth, settings):
@@ -542,8 +546,19 @@ class GDriveTree(BaseTree):
                 file_repr = self._drive.CreateFile({"id": item_id})
                 file_repr.FetchMetadata()
 
-        except (FileMissingError, ApiRequestError):
+        except FileMissingError:
             return False
+        except ApiRequestError as e:
+            error_code = e.error.get("code", 0)
+            if error_code == 404:
+                return False
+            else:
+                raise DvcException(
+                    f"Error accessing '{self.path_info}' using the credentials"
+                    f" in {self.credentials_location}. HTTP error code = "
+                    f"{error_code} | "
+                    f"error msg = '{e.error.get('message', '')}'"
+                )
         else:
             return True
 
