@@ -76,6 +76,10 @@ class OSFTree(BaseTree):
         for file in self.storage.files:
             yield file.path
 
+    def isdir(self, path_info):
+        file = self._get_file_obj(path_info)
+        return file.path.endswith("/")
+
     def walk_files(self, path_info, **kwargs):
         for fname in self._list_paths():
             if fname.endswith("/"):
