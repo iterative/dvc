@@ -6,6 +6,7 @@ import pytest
 from dvc.cli import parse_args
 from dvc.command.imp_url import CmdImportUrl
 from dvc.exceptions import DvcException
+from tests.dir_helpers import load_gdrive_credentials
 
 
 def test_import_url(mocker):
@@ -65,7 +66,7 @@ def test_import_url_https(dvc):
 @pytest.mark.parametrize(
     "file_id, auth",
     [
-        ("1nKf4XcsNCN3oLujqlFTJoK5Fvx9iKCZb", False),
+        # ("1nKf4XcsNCN3oLujqlFTJoK5Fvx9iKCZb", False),
         ("1syA-26p7tehWyUiMPPk_s0hsFN0Nr_kX", True),
     ],
 )
@@ -73,36 +74,27 @@ def test_import_url_gdrive(dvc, file_id, auth):
     root_dir = Path(dvc.root_dir)
 
     if auth:
-        # accessing the tests folder
-        parent_dir = Path(__file__).parent.parent.parent
-        gdrive_credentials = parent_dir.joinpath(
-            "gdrive-user-credentials.json"
-        )
-
-        if gdrive_credentials.exists():
-            import shutil
-
-            inner_tmp = root_dir.joinpath(".dvc", "tmp")
-            inner_tmp.mkdir(exist_ok=True)
-            shutil.copy(gdrive_credentials, inner_tmp)
-        else:
+        success = load_gdrive_credentials(root_dir)
+        if not success:
             pytest.skip("no gdrive-user-credentials.json available")
 
     url = f"gdrive://{file_id}"
-    cli_args = parse_args(["import-url", url, "data.txt"])
+    cli_args = parse_args(
+        ["import-url", url, "data/data.txt", "--file", "blabla.dvc"]
+    )
     assert cli_args.func == CmdImportUrl
 
     cmd = cli_args.func(cli_args)
     res = cmd.run()
     assert res == 0
 
-    data_file = root_dir.joinpath("data.txt")
+    data_file = root_dir.joinpath("data/data.txt")
     assert data_file.exists()
     with open(data_file) as f:
         assert f.readline().strip() == "the data content"
 
-    data_dvc_file = root_dir.joinpath("data.txt.dvc")
+    data_dvc_file = root_dir.joinpath("blabla.dvc")
+    assert data_dvc_file.exists()
+
     with open(data_dvc_file) as f:
         assert f.readlines()
-
-    assert data_dvc_file.exists()

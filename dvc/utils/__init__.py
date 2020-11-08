@@ -345,6 +345,7 @@ def resolve_output(inp, out):
 
     parsed = urlparse(inp)
     if parsed.scheme == Schemes.GDRIVE:
+        # TODO REMOVE IT HERE.
         name = uuid()
     else:
         name = os.path.basename(os.path.normpath(parsed.path))
@@ -357,44 +358,57 @@ def resolve_output(inp, out):
 
 
 def resolve_paths(repo, out):
+    """Resolves the final path, when a relative *out* path is suggested.
+
+    :param repo: a Repo object
+    :param out: a str containing a relative path to the out filename
+    :returns: absolute path where the output should be saved and, if out
+              is not None, the out filename.
+    """
     from urllib.parse import urlparse
 
-    from ..dvcfile import DVC_FILE_SUFFIX
     from ..exceptions import DvcException
     from ..path_info import PathInfo
     from ..system import System
     from .fs import contains_symlink_up_to
 
-    abspath = PathInfo(os.path.abspath(out))
-    dirname = os.path.dirname(abspath)
-    base = os.path.basename(os.path.normpath(out))
+    if out:
+        abspath = PathInfo(os.path.abspath(out))
+        dirname = os.path.dirname(abspath)
+        base = os.path.basename(os.path.normpath(out))
 
-    scheme = urlparse(out).scheme
-    if os.name == "nt" and scheme == abspath.drive[0].lower():
-        # urlparse interprets windows drive letters as URL scheme
-        scheme = ""
+        scheme = urlparse(out).scheme
 
-    if scheme or not abspath.isin_or_eq(repo.root_dir):
-        wdir = os.getcwd()
-    elif contains_symlink_up_to(dirname, repo.root_dir) or (
-        os.path.isdir(abspath) and System.is_symlink(abspath)
-    ):
-        msg = (
-            "Cannot add files inside symlinked directories to DVC. "
-            "See {} for more information."
-        ).format(
-            format_link(
+        # When out is a dir, the destination path was set to *dirname*
+        # and the output file name will be defined later from the source file
+        if os.path.isdir(out):
+            out = None
+
+        if os.name == "nt" and scheme == abspath.drive[0].lower():
+            # urlparse interprets windows drive letters as URL scheme
+            scheme = ""
+
+        if scheme or not abspath.isin_or_eq(repo.root_dir):
+            wdir = os.getcwd()
+        elif contains_symlink_up_to(dirname, repo.root_dir) or (
+            os.path.isdir(abspath) and System.is_symlink(abspath)
+        ):
+            flink = format_link(
                 "https://dvc.org/doc/user-guide/troubleshooting#add-symlink"
             )
-        )
-        raise DvcException(msg)
+            msg = (
+                "Cannot add files inside symlinked directories to DVC. "
+                "See {} for more information."
+            ).format(flink)
+
+            raise DvcException(msg)
+        else:
+            wdir = dirname
+            out = base
     else:
-        wdir = dirname
-        out = base
+        wdir = os.getcwd()
 
-    path = os.path.join(wdir, base + DVC_FILE_SUFFIX)
-
-    return (path, wdir, out)
+    return wdir, out
 
 
 def format_link(link):

@@ -154,12 +154,12 @@ class URLInfo(_BasePath):
         self.port = int(port) if port else self.DEFAULT_PORTS.get(self.scheme)
 
         if isinstance(path, _URLPathInfo):
-            self._spath = str(path)
+            self.spath = str(path)
             self._path = path
         else:
             if path and path[0] != "/":
                 path = "/" + path
-            self._spath = path
+            self.spath = path
 
     @property
     def _base_parts(self):
@@ -174,7 +174,7 @@ class URLInfo(_BasePath):
 
     @cached_property
     def url(self):
-        return f"{self.scheme}://{self.netloc}{self._spath}"
+        return f"{self.scheme}://{self.netloc}{self.spath}"
 
     def __str__(self):
         return self.url
@@ -195,17 +195,17 @@ class URLInfo(_BasePath):
         return hash(self.parts)
 
     def __div__(self, other):
-        return self.replace(path=posixpath.join(self._spath, other))
+        return self.replace(path=posixpath.join(self.spath, other))
 
     __truediv__ = __div__
 
     @property
     def path(self):
-        return self._spath
+        return self.spath
 
     @cached_property
     def _path(self):
-        return _URLPathInfo(self._spath)
+        return _URLPathInfo(self.spath)
 
     @property
     def name(self):
@@ -256,7 +256,7 @@ class URLInfo(_BasePath):
 class CloudURLInfo(URLInfo):
     @property
     def path(self):
-        return self._spath.lstrip("/")
+        return self.spath.lstrip("/")
 
 
 class HTTPURLInfo(URLInfo):
@@ -326,7 +326,7 @@ class HTTPURLInfo(URLInfo):
         return "{}://{}{}{}{}{}".format(
             self.scheme,
             self.netloc,
-            self._spath,
+            self.spath,
             (";" + self.params) if self.params else "",
             ("?" + self.query) if self.query else "",
             ("#" + self.fragment) if self.fragment else "",
@@ -347,7 +347,7 @@ class WebDAVURLInfo(URLInfo):
     @cached_property
     def url(self):
         return "{}://{}{}".format(
-            self.scheme.replace("webdav", "http"), self.netloc, self._spath
+            self.scheme.replace("webdav", "http"), self.netloc, self.spath
         )
 
 
@@ -359,4 +359,4 @@ class GDriveURLInfo(CloudURLInfo):
 
         # Normalize path. Important since we have a cache (path to ID)
         # and don't want to deal with different variations of path in it.
-        self._spath = re.sub("/{2,}", "/", self._spath.rstrip("/"))
+        self._spath = re.sub("/{2,}", "/", self.spath.rstrip("/"))

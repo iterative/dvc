@@ -1,7 +1,7 @@
 import os
 
 from dvc.repo.scm_context import scm_context
-from dvc.utils import relpath, resolve_output, resolve_paths
+from dvc.utils import relpath, resolve_paths
 from dvc.utils.fs import path_isin
 
 from ..exceptions import OutputDuplicationError
@@ -16,8 +16,8 @@ def imp_url(
     from dvc.dvcfile import Dvcfile
     from dvc.stage import Stage, create_stage
 
-    out = resolve_output(url, out)
-    path, wdir, out = resolve_paths(self, out)
+    # out = resolve_output(url, out)  # TODO remove
+    dest_dir, out = resolve_paths(self, out)
 
     # NOTE: when user is importing something from within their own repository
     if (
@@ -25,15 +25,15 @@ def imp_url(
         and os.path.exists(url)
         and path_isin(os.path.abspath(url), self.root_dir)
     ):
-        url = relpath(url, wdir)
+        url = relpath(url, dest_dir)
 
     stage = create_stage(
         Stage,
         self,
-        fname or path,
-        wdir=wdir,
+        fname,
+        wdir=dest_dir,
         deps=[url],
-        outs=[out],
+        outs=[out],  # suggested name
         erepo=erepo,
     )
 

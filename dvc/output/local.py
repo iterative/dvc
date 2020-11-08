@@ -94,3 +94,6 @@ class LocalOutput(BaseOutput):
         if not istextfile(path):
             msg = "binary file '{}' cannot be used as {}."
             raise DvcException(msg.format(self.path_info, name))
+
+    def get_file_name(self):
+        return os.path.basename(os.path.normpath(self.def_path))

@@ -169,6 +169,14 @@ class GDriveTree(BaseTree):
             return self._gdrive_user_credentials_path
         return None
 
+    def get_file_name(self, path_info):
+        assert isinstance(path_info, GDriveURLInfo)
+
+        item_id = self._get_item_id(path_info)
+        file_repr = self._drive.CreateFile({"id": item_id})
+        file_repr.FetchMetadata()
+        return file_repr["title"]
+
     @staticmethod
     def _validate_credentials(auth, settings):
         """
