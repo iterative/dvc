@@ -41,6 +41,8 @@ class OSFTree(BaseTree):
         self.password = os.getenv(
             "OSF_PASSWORD", None
         )  # need for private projects
+        if self.password is None:
+            self.password = config.get("password")
         logger.debug(OSFTree)
 
     @wrap_prop(threading.Lock())
