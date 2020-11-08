@@ -30,11 +30,7 @@ class OSFTree(BaseTree):
     scheme = Schemes.OSF
     REQUIRES = {"ofsclient": "osfclient"}
     PARAM_CHECKSUM = "md5"
-<<<<<<< HEAD
     PATH_CLS = URLInfo
-=======
-    PATH_CLS = CloudURLInfo
->>>>>>> rebase on master
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
@@ -47,10 +43,15 @@ class OSFTree(BaseTree):
             "OSF_PASSWORD", None
         )  # need for private projects
 <<<<<<< HEAD
+<<<<<<< HEAD
         if self.password is None:
             self.password = config.get("password")
 =======
 >>>>>>> rebase on master
+=======
+        if self.password is None:
+            self.password = config.get("password")
+>>>>>>> add password field to osf config
         logger.debug(OSFTree)
 
     @wrap_prop(threading.Lock())
