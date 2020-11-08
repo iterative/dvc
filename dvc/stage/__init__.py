@@ -85,6 +85,7 @@ def create_stage(cls, repo, path, external=False, **kwargs):
         check_stage_path(repo, os.path.dirname(path))
 
     wdir = os.path.abspath(kwargs.get("wdir", None) or os.curdir)
+    check_stage_path(repo, wdir, is_wdir=kwargs.get("wdir"))
 
     # path is None because we define its filename from the dependency.
     stage = loads_from(cls, repo, None, wdir, kwargs)
