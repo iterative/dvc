@@ -2,7 +2,6 @@
 import os
 import pathlib
 import posixpath
-import re
 from urllib.parse import urlparse
 
 from funcy import cached_property
@@ -359,14 +358,3 @@ class WebDAVURLInfo(URLInfo):
         return "{}://{}{}".format(
             self.scheme.replace("webdav", "http"), self.netloc, self.spath
         )
-
-
-class GDriveURLInfo(CloudURLInfo):
-    def __init__(self, url):
-        # GDrive URL host part is case sensitive
-        super().__init__(url, keep_host_case=True)
-        assert self.netloc == self.host
-
-        # Normalize path. Important since we have a cache (path to ID)
-        # and don't want to deal with different variations of path in it.
-        self._spath = re.sub("/{2,}", "/", self.spath.rstrip("/"))

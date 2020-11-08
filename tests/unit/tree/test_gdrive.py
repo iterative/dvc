@@ -1,7 +1,7 @@
 import pytest
 
-from dvc.path_info import GDriveURLInfo
 from dvc.tree import GDriveTree
+from dvc.tree.gdrive import GDriveURLInfo
 from tests.utils import load_gdrive_credentials
 
 

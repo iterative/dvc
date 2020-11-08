@@ -2,6 +2,7 @@ import io
 import logging
 import os
 import posixpath
+import re
 import threading
 from collections import defaultdict
 from contextlib import contextmanager
@@ -11,7 +12,7 @@ from funcy.py3 import cat
 
 from dvc.exceptions import DvcException, FileMissingError
 from dvc.hash_info import HashInfo
-from dvc.path_info import GDriveURLInfo
+from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 from dvc.utils import format_link, tmp_fname
@@ -69,6 +70,17 @@ def _gdrive_retry(func):
     )(func)
 
 
+class GDriveURLInfo(CloudURLInfo):
+    def __init__(self, url):
+        # GDrive URL host part is case sensitive
+        super().__init__(url, keep_host_case=True)
+        assert self.netloc == self.host
+
+        # Normalize path. Important since we have a cache (path to ID)
+        # and don't want to deal with different variations of path in it.
+        self._spath = re.sub("/{2,}", "/", self.spath.rstrip("/"))
+
+
 class GDriveTree(BaseTree):
     scheme = Schemes.GDRIVE
     PATH_CLS = GDriveURLInfo
@@ -118,17 +130,16 @@ class GDriveTree(BaseTree):
         self._client_id = config.get("gdrive_client_id")
         self._client_secret = config.get("gdrive_client_secret")
         self._validate_config()
-
-        if os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA):
-            cred_path = os.path.join(self.repo.tmp_dir, "")
-            self._gdrive_user_credentials_path = tmp_fname(cred_path)
-        else:
-            cred_path = os.path.join(
-                self.repo.tmp_dir, self.DEFAULT_USER_CREDENTIALS_FILE
+        self._gdrive_user_credentials_path = (
+            tmp_fname(os.path.join(self.repo.tmp_dir, ""))
+            if os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA)
+            else config.get(
+                "gdrive_user_credentials_file",
+                os.path.join(
+                    self.repo.tmp_dir, self.DEFAULT_USER_CREDENTIALS_FILE,
+                ),
             )
-            self._gdrive_user_credentials_path = config.get(
-                "gdrive_user_credentials_file", cred_path
-            )
+        )
 
     def _validate_config(self):
         # Validate Service Account configuration

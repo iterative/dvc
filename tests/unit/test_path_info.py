@@ -4,13 +4,8 @@ import pathlib
 
 import pytest
 
-from dvc.path_info import (
-    CloudURLInfo,
-    GDriveURLInfo,
-    HTTPURLInfo,
-    PathInfo,
-    URLInfo,
-)
+from dvc.path_info import CloudURLInfo, HTTPURLInfo, PathInfo, URLInfo
+from dvc.tree.gdrive import GDriveURLInfo
 
 TEST_DEPTH = len(pathlib.Path(__file__).parents) + 1
 
