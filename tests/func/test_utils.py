@@ -96,3 +96,11 @@ def test_resolve_paths_dirs(dvc, path, force_out):
     else:
         assert target_path == Path(wdir)
         assert out is None
+
+
+def test_resolve_paths_out_of_repo(dvc):
+    filename = "/path/out/of/the/repo"
+    wdir, out = resolve_paths(dvc, filename)
+
+    assert dvc.root_dir == wdir
+    assert out == filename

@@ -16,7 +16,7 @@ def imp_url(
     from dvc.dvcfile import Dvcfile
     from dvc.stage import Stage, create_stage
 
-    dest_dir, out = resolve_paths(self, out)
+    wdir, out = resolve_paths(self, out)
 
     # NOTE: when user is importing something from within their own repository
     if (
@@ -24,16 +24,10 @@ def imp_url(
         and os.path.exists(url)
         and path_isin(os.path.abspath(url), self.root_dir)
     ):
-        url = relpath(url, dest_dir)
+        url = relpath(url, wdir)
 
     stage = create_stage(
-        Stage,
-        self,
-        fname,
-        wdir=dest_dir,
-        deps=[url],
-        outs=[out],  # suggested name
-        erepo=erepo,
+        Stage, self, fname, wdir=wdir, deps=[url], outs=[out], erepo=erepo,
     )
 
     if stage is None:
