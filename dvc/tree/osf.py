@@ -6,7 +6,7 @@ from funcy import cached_property, wrap_prop
 
 from dvc.exceptions import DvcException
 from dvc.hash_info import HashInfo
-from dvc.path_info import CloudURLInfo
+from dvc.path_info import URLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 
@@ -29,7 +29,7 @@ class OSFTree(BaseTree):
     scheme = Schemes.OSF
     REQUIRES = {"ofsclient": "osfclient"}
     PARAM_CHECKSUM = "md5"
-    PATH_CLS = CloudURLInfo
+    PATH_CLS = URLInfo
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
@@ -100,7 +100,7 @@ class OSFTree(BaseTree):
 
     def _download(self, from_info, to_file, **_kwargs):
         file = self._get_file_obj(from_info)
-        # total = file._get_attribute(file, "attributes", "self", "size")
+
         with open(to_file, "wb") as fobj:
             file.write_to(fobj)
 
