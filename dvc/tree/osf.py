@@ -112,7 +112,6 @@ class OSFTree(BaseTree):
     ):
         file = self._get_file_obj(from_info)
 
-<<<<<<< HEAD
         # hack to get size of file
         # This will be no longer needed after the
         # pull-request https://github.com/osfclient/osfclient/pull/185 merge
@@ -123,8 +122,6 @@ class OSFTree(BaseTree):
         total = self.osf._get_attribute(json, "data", "attributes", "size")
         # pylint: enable=W0212
 
-=======
->>>>>>> change part_info class
         with open(to_file, "wb") as fobj:
             with Tqdm.wrapattr(
                 fobj, "read", desc=name, total=total, disable=no_progress_bar
