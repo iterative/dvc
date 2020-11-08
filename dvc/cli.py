@@ -86,7 +86,7 @@ COMMANDS = [
 ]
 
 
-def _find_cmd_suggestions(cmd_arg, cmd_choices, cmd=None):
+def _get_cmd_suggestion_msg(cmd_arg, cmd_choices, cmd=None):
     """Find similar command suggestions for a typed command that contains typos.
 
     Args:
@@ -216,10 +216,10 @@ class DvcParser(argparse.ArgumentParser):
             and args[0] not in cmd_choices
             and args[0] not in hidden_cmds
         ):
-            cmd_suggestions = _find_cmd_suggestions(
+            cmd_suggestion_msg = _get_cmd_suggestion_msg(
                 args[0], list(cmd_choices.keys())
             )
-            logger.error(cmd_suggestions)
+            logger.error(cmd_suggestion_msg)
             raise DvcParserError
 
         # NOTE: Check nested dvc subcommands for suggestions
@@ -229,10 +229,10 @@ class DvcParser(argparse.ArgumentParser):
         if len(args) == 2 and args[0] in cmd_choices:
             sub_cmd_choices = cmd_choices[args[0]]
             if sub_cmd_choices and args[1] not in sub_cmd_choices:
-                sub_cmd_suggestions = _find_cmd_suggestions(
+                cmd_suggestion_msg = _get_cmd_suggestion_msg(
                     args[1], sub_cmd_choices, args[0]
                 )
-                logger.error(sub_cmd_suggestions)
+                logger.error(cmd_suggestion_msg)
                 raise DvcParserError
 
 
