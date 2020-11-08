@@ -34,9 +34,6 @@ from .utils import (
     stage_dump_eq,
 )
 
-# circular dependency
-# from ..dvcfile import DVC_FILE_SUFFIX
-
 logger = logging.getLogger(__name__)
 # Disallow all punctuation characters except hyphen and underscore
 INVALID_STAGENAME_CHARS = set(string.punctuation) - {"_", "-"}
