@@ -79,21 +79,19 @@ def test_import_url_gdrive(dvc, file_id, auth):
             pytest.skip("no gdrive-user-credentials.json available")
 
     url = f"gdrive://{file_id}"
-    cli_args = parse_args(
-        ["import-url", url, "data/data.txt", "--file", "blabla.dvc"]
-    )
+    cli_args = parse_args(["import-url", url])
     assert cli_args.func == CmdImportUrl
 
     cmd = cli_args.func(cli_args)
     res = cmd.run()
     assert res == 0
 
-    data_file = root_dir.joinpath("data/data.txt")
+    data_file = root_dir.joinpath("data.txt")
     assert data_file.exists()
     with open(data_file) as f:
         assert f.readline().strip() == "the data content"
 
-    data_dvc_file = root_dir.joinpath("blabla.dvc")
+    data_dvc_file = root_dir.joinpath("data.txt.dvc")
     assert data_dvc_file.exists()
 
     with open(data_dvc_file) as f:

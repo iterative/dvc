@@ -183,7 +183,7 @@ def _create_stages(
         disable=len(expanded_targets) < LARGE_DIR_SIZE,
         unit="file",
     ):
-        wdir, out = resolve_paths(repo, out, to_file_output=False)
+        wdir, out = resolve_paths(repo, out, force_out=True)
         stage = create_stage(
             Stage, repo, fname, wdir=wdir, outs=[out], external=external,
         )

@@ -341,15 +341,7 @@ def env2bool(var, undefined=False):
 def resolve_output(inp, out):
     from urllib.parse import urlparse
 
-    from dvc.scheme import Schemes
-
-    parsed = urlparse(inp)
-    if parsed.scheme == Schemes.GDRIVE:
-        # TODO REMOVE IT HERE.
-        name = uuid()
-    else:
-        name = os.path.basename(os.path.normpath(parsed.path))
-
+    name = os.path.basename(os.path.normpath(urlparse(inp).path))
     if not out:
         return name
     if os.path.isdir(out):
@@ -357,16 +349,15 @@ def resolve_output(inp, out):
     return out
 
 
-def resolve_paths(repo, out, to_file_output=True):
-    """Resolves the final path, when a relative *out* path is suggested.
+def resolve_paths(repo, out, force_out=False):
+    """Resolves the dir and out paths, when an *out* path is suggested.
 
-    TODO update the description
-
-    :param repo: a Repo object
-    :param out: a str containing a relative path to a out filename or directory
-    :to_file_output: TODO
-    :returns: absolute path where the output should be saved and the output
-    file name, if provided.
+    :param repo: a Repo object.
+    :param out: a str path to an out file or directory.
+    :force_out: if true, returns an *out* even when it's a sub dir.
+    :returns: (wdir, out) - the absolute dir where the stage should be saved,
+              and *out* path if it points to a file, or its path is outside
+              *repo* or if it's a dir with force_out=True.
     """
     from urllib.parse import urlparse
 
@@ -375,7 +366,6 @@ def resolve_paths(repo, out, to_file_output=True):
     from ..system import System
     from .fs import contains_symlink_up_to
 
-    # TODO comment better this function
     if out:
         abspath = PathInfo(os.path.abspath(out))
         scheme = urlparse(out).scheme
@@ -390,7 +380,7 @@ def resolve_paths(repo, out, to_file_output=True):
             # When the expected output is a file and *out* is a dir, the
             # destination path is set to *dirname* and the output file name
             # will be defined later from the source file.
-            if to_file_output and os.path.isdir(out):
+            if (not force_out) and os.path.isdir(out):
                 wdir = abspath
                 out = None
             else:

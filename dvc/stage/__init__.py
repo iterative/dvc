@@ -66,23 +66,23 @@ def create_stage(cls, repo, path, external=False, **kwargs):
     """Create a stage from the class *cls*
 
     :param cls: the class from which the stage will be
-                created (e.g Stage, PipelineStage)
-    :param repo: the repository object (Repo class)
+                created (e.g Stage, PipelineStage).
+    :param repo: the repository object (Repo class).
     :param path: the path to the dvc filename. If None,
-                 path become <out file>.dvc
-    :param external TODO here
+                 path become <out>.dvc
+    :param external: if True, prevents users from accidentally
+                     using external outputs.
+                     See https://github.com/iterative/dvc/issues/1545
+                     for more details.
 
     the method can also receive other params as:
-    :param outs: a list of output file names
-    :param deps: urls that represents the source of files.
+    :param outs: a list of output file (or dir) names.
+    :param deps: a list of urls that represents the source of files.
+    # NOTE there are other possible parameters.
 
     :returns: a *cls* object representing the stage.
     """
     from dvc.dvcfile import check_dvc_filename
-
-    if path:
-        path = os.path.abspath(path)
-        check_stage_path(repo, os.path.dirname(path))
 
     wdir = os.path.abspath(kwargs.get("wdir", None) or os.curdir)
     check_stage_path(repo, wdir, is_wdir=kwargs.get("wdir"))
@@ -102,11 +102,13 @@ def create_stage(cls, repo, path, external=False, **kwargs):
             outs.append(o or stage.deps[i].get_file_name())
         kwargs["outs"] = outs
 
-    if not path:
-        # TODO here
-        DVC_FILE_SUFFIX = ".dvc"
+    if path:
+        path = os.path.abspath(path)
+    else:
         base = os.path.basename(os.path.normpath(outs[0]))
-        path = os.path.join(wdir, base + DVC_FILE_SUFFIX)
+        # importing DVC_FILE_SUFFIX causes circular dependency
+        path = os.path.join(wdir, base + ".dvc")
+    check_stage_path(repo, os.path.dirname(path))
 
     check_dvc_filename(path)
     stage.path = path

@@ -16,7 +16,6 @@ def imp_url(
     from dvc.dvcfile import Dvcfile
     from dvc.stage import Stage, create_stage
 
-    # out = resolve_output(url, out)  # TODO remove
     dest_dir, out = resolve_paths(self, out)
 
     # NOTE: when user is importing something from within their own repository

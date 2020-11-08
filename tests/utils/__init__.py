@@ -25,7 +25,7 @@ def to_posixpath(path):
 
 
 def load_gdrive_credentials(root_dir):
-    current_dir = pathlib.Path(__file__).parent
+    current_dir = pathlib.Path(__file__).parent.parent
     gdrive_credentials = current_dir.joinpath("gdrive-user-credentials.json")
 
     if gdrive_credentials.exists():
