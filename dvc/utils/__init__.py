@@ -357,11 +357,14 @@ def resolve_output(inp, out):
     return out
 
 
-def resolve_paths(repo, out):
+def resolve_paths(repo, out, to_file_output=True):
     """Resolves the final path, when a relative *out* path is suggested.
+
+    TODO update the description
 
     :param repo: a Repo object
     :param out: a str containing a relative path to a out filename or directory
+    :to_file_output: TODO
     :returns: absolute path where the output should be saved and the output
     file name, if provided.
     """
@@ -376,9 +379,10 @@ def resolve_paths(repo, out):
         abspath = PathInfo(os.path.abspath(out))
         scheme = urlparse(out).scheme
 
-        # When out is a dir, the destination path is set to *dirname*
-        # and the output file name will be defined later from the source file
-        if os.path.isdir(out):
+        # When the expected output is a file and *out* is a dir, the
+        # destination path is set to *dirname* and the output file name
+        # will be defined later from the source file.
+        if to_file_output and os.path.isdir(out):
             dirname = abspath
             out = None
         else:
