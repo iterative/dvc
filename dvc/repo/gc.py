@@ -77,22 +77,9 @@ def gc(
             )
 
     # treat caches as remotes for garbage collection
-    _do_gc("local", self.cache.local, used, jobs)
-
-    if self.cache.s3:
-        _do_gc("s3", self.cache.s3, used, jobs)
-
-    if self.cache.gs:
-        _do_gc("gs", self.cache.gs, used, jobs)
-
-    if self.cache.ssh:
-        _do_gc("ssh", self.cache.ssh, used, jobs)
-
-    if self.cache.hdfs:
-        _do_gc("hdfs", self.cache.hdfs, used, jobs)
-
-    if self.cache.azure:
-        _do_gc("azure", self.cache.azure, used, jobs)
+    for scheme, cache in self.cache.by_scheme():
+        if cache:
+            _do_gc(scheme, cache, used, jobs)
 
     if cloud:
         _do_gc("remote", self.cloud.get_remote(remote, "gc -c"), used, jobs)

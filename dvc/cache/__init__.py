@@ -1,45 +1,7 @@
 """Manages cache of a DVC repo."""
 from collections import defaultdict
 
-from funcy import cached_property
-
-
-def _make_remote_property(name):
-    """
-    The config file is stored in a way that allows you to have a
-    cache for each remote.
-
-    This is needed when specifying external outputs
-    (as they require you to have an external cache location).
-
-    Imagine a config file like the following:
-
-            ['remote "dvc-storage"']
-            url = ssh://localhost/tmp
-            ask_password = true
-
-            [cache]
-            ssh = dvc-storage
-
-    This method creates a cached property, containing cache named `name`:
-
-        self.config == {'ssh': 'dvc-storage'}
-        self.ssh  # a RemoteSSH instance
-    """
-
-    def getter(self):
-        from ..tree import get_cloud_tree
-        from .base import CloudCache
-
-        remote = self.config.get(name)
-        if not remote:
-            return None
-
-        tree = get_cloud_tree(self.repo, name=remote)
-        return CloudCache(tree)
-
-    getter.__name__ = name
-    return cached_property(getter)
+from ..scheme import Schemes
 
 
 class Cache:
@@ -50,9 +12,11 @@ class Cache:
     """
 
     CACHE_DIR = "cache"
+    CLOUD_SCHEMES = [Schemes.S3, Schemes.GS, Schemes.SSH, Schemes.HDFS]
 
     def __init__(self, repo):
         from ..tree import get_cloud_tree
+        from .base import CloudCache
         from .local import LocalCache
 
         self.repo = repo
@@ -74,13 +38,29 @@ class Cache:
                     settings[str(opt)] = config.get(opt)
 
         tree = get_cloud_tree(repo, **settings)
-        self.local = LocalCache(tree)
 
-    s3 = _make_remote_property("s3")
-    gs = _make_remote_property("gs")
-    ssh = _make_remote_property("ssh")
-    hdfs = _make_remote_property("hdfs")
-    azure = _make_remote_property("azure")
+        self._cache = {}
+        self._cache[Schemes.LOCAL] = LocalCache(tree)
+
+        for scheme in self.CLOUD_SCHEMES:
+
+            remote = self.config.get(scheme)
+            if remote:
+                tree = get_cloud_tree(self.repo, name=remote)
+                cache = CloudCache(tree)
+            else:
+                cache = None
+
+            self._cache[scheme] = cache
+
+    def __getattr__(self, name):
+        try:
+            return self._cache[name]
+        except KeyError as exc:
+            raise AttributeError from exc
+
+    def by_scheme(self):
+        yield from self._cache.items()
 
 
 class NamedCacheItem:
