@@ -1,3 +1,4 @@
+import glob
 import logging
 import os
 
@@ -152,12 +153,19 @@ def _find_all_targets(repo, target, recursive):
 def _create_stages(repo, targets, fname, pbar=None, external=False):
     from dvc.stage import Stage, create_stage
 
-    stages = []
+    expanded_targets = []
 
+    for target in targets:
+        found_target = glob.glob(target, recursive=True)
+        if not found_target:
+            found_target = [target]
+        expanded_targets.extend(found_target)
+
+    stages = []
     for out in Tqdm(
-        targets,
+        expanded_targets,
         desc="Creating DVC-files",
-        disable=len(targets) < LARGE_DIR_SIZE,
+        disable=len(expanded_targets) < LARGE_DIR_SIZE,
         unit="file",
     ):
         path, wdir, out = resolve_paths(repo, out)
