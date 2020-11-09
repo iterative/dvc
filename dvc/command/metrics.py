@@ -70,7 +70,7 @@ class CmdMetricsShow(CmdMetricsBase):
                 if table:
                     logger.info(table)
         except DvcException:
-            logger.exception("failed to show metrics")
+            logger.exception("")
             return 1
 
         return 0
