@@ -3,7 +3,7 @@ import os
 import threading
 from collections import deque
 
-from funcy import cached_property, wrap_prop
+from funcy import cached_property, nullcontext, wrap_prop
 
 from dvc.config import ConfigError
 from dvc.exceptions import DvcException
@@ -222,15 +222,21 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
         # First try to create parent directories
         self.makedirs(to_info.parent)
 
+        file_size = os.path.getsize(from_file)
         with open(from_file, "rb") as fd:
-            with Tqdm.wrapattr(
-                fd,
-                "read",
-                total=None if no_progress_bar else os.path.getsize(from_file),
-                leave=False,
-                desc=to_info.url if name is None else name,
-                disable=no_progress_bar,
-            ) as fd_wrapped:
+            progress_context = (
+                nullcontext(fd)
+                if file_size == 0
+                else Tqdm.wrapattr(
+                    fd,
+                    "read",
+                    total=None if no_progress_bar else file_size,
+                    leave=False,
+                    desc=to_info.url if name is None else name,
+                    disable=no_progress_bar,
+                )
+            )
+            with progress_context as fd_wrapped:
                 self._client.upload_to(
                     buff=fd_wrapped, remote_path=to_info.path
                 )
