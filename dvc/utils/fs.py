@@ -106,7 +106,7 @@ def move(src, dst, mode=None):
 
     if os.path.islink(src):
         shutil.copy(src, tmp)
-        os.unlink(src)
+        _unlink(src, _chmod)
     else:
         shutil.move(src, tmp)
 
