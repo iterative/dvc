@@ -160,6 +160,7 @@ def _checkpoint_run(stage, callback_func, done_cond, proc):
                     "Error generating checkpoint, %s will be aborted", stage
                 )
                 proc.terminate()
+                proc.wait()
             finally:
                 logger.debug("Remove checkpoint signal file")
                 os.remove(signal_path)
