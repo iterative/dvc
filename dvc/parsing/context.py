@@ -297,7 +297,7 @@ class Context(CtxDict):
 
         resolve = rpartial(self.resolve, unwrap)
         if isinstance(src, Mapping):
-            return {key: resolve(value) for key, value in src.items()}
+            return dict(map(resolve, kv) for kv in src.items())
         elif isinstance(src, Seq):
             return type(src)(map(resolve, src))
         elif isinstance(src, str):
