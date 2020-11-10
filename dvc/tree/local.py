@@ -12,14 +12,7 @@ from dvc.path_info import PathInfo
 from dvc.scheme import Schemes
 from dvc.system import System
 from dvc.utils import file_md5, is_exec, relpath, tmp_fname
-from dvc.utils.fs import (
-    copy_fobj_to_file,
-    copyfile,
-    makedirs,
-    move,
-    remove,
-    walk_files,
-)
+from dvc.utils.fs import copy_fobj_to_file, copyfile, makedirs, move, remove
 
 from .base import BaseTree
 
@@ -32,7 +25,6 @@ class LocalTree(BaseTree):
     PARAM_CHECKSUM = "md5"
     PARAM_PATH = "path"
     TRAVERSE_PREFIX_LEN = 2
-    UNPACKED_DIR_SUFFIX = ".unpacked"
 
     CACHE_MODE = 0o444
     SHARED_MODE_MAP = {None: (0o644, 0o755), "group": (0o664, 0o775)}
@@ -343,28 +335,6 @@ class LocalTree(BaseTree):
         copyfile(
             from_info, to_file, no_progress_bar=no_progress_bar, name=name
         )
-
-    def list_paths(self, prefix=None, progress_callback=None):
-        assert self.path_info is not None
-        if prefix:
-            path_info = self.path_info / prefix[:2]
-            if not self.exists(path_info):
-                return
-        else:
-            path_info = self.path_info
-        # NOTE: use utils.fs walk_files since tree.walk_files will not follow
-        # symlinks
-        if progress_callback:
-            for path in walk_files(path_info):
-                progress_callback()
-                yield path
-        else:
-            yield from walk_files(path_info)
-
-    def _remove_unpacked_dir(self, hash_):
-        info = self.hash_to_path_info(hash_)
-        path_info = info.with_name(info.name + self.UNPACKED_DIR_SUFFIX)
-        self.remove(path_info)
 
     def _reset(self):
         return self.__dict__.pop("dvcignore", None)

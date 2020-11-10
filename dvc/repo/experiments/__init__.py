@@ -717,7 +717,7 @@ class Experiments:
 
     @staticmethod
     def _process(dest_tree, src_tree, collected_files, download=False):
-        from dvc.cache.local import _log_exceptions
+        from dvc.remote.base import _log_exceptions
 
         from_infos = []
         to_infos = []

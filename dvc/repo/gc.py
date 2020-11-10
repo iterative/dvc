@@ -3,17 +3,10 @@ import logging
 from dvc.cache import NamedCache
 from dvc.exceptions import InvalidArgumentError
 
+from ..scheme import Schemes
 from . import locked
 
 logger = logging.getLogger(__name__)
-
-
-def _do_gc(typ, remote, clist, jobs=None):
-    from dvc.remote.base import Remote
-
-    removed = Remote.gc(clist, remote, jobs=jobs)
-    if not removed:
-        logger.info(f"No unused '{typ}' cache to remove.")
 
 
 def _raise_error_if_all_disabled(**kwargs):
@@ -76,10 +69,18 @@ def gc(
                 )
             )
 
-    # treat caches as remotes for garbage collection
     for scheme, cache in self.cache.by_scheme():
-        if cache:
-            _do_gc(scheme, cache, used, jobs)
+        if not cache:
+            continue
 
-    if cloud:
-        _do_gc("remote", self.cloud.get_remote(remote, "gc -c"), used, jobs)
+        removed = cache.gc(set(used.scheme_keys(scheme)), jobs=jobs)
+        if not removed:
+            logger.info(f"No unused '{scheme}' cache to remove.")
+
+    if not cloud:
+        return
+
+    remote = self.cloud.get_remote(remote, "gc -c")
+    removed = remote.gc(set(used.scheme_keys(Schemes.LOCAL)), jobs=jobs)
+    if not removed:
+        logger.info("No unused cache to remove from remote.")
