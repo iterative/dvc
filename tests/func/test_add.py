@@ -191,7 +191,7 @@ def test_add_file_in_dir(tmp_dir, dvc):
 
 
 @pytest.mark.parametrize(
-    "path_pattern, expected_def_paths, expected_rel_paths",
+    "target, expected_def_paths, expected_rel_paths",
     [
         (
             os.path.join("dir", "subdir", "subdata*"),
@@ -227,7 +227,7 @@ def test_add_file_in_dir(tmp_dir, dvc):
     ],
 )
 def test_add_filtered_files_in_dir(
-    tmp_dir, dvc, path_pattern, expected_def_paths, expected_rel_paths
+    tmp_dir, dvc, target, expected_def_paths, expected_rel_paths
 ):
     tmp_dir.gen(
         {
@@ -247,7 +247,7 @@ def test_add_filtered_files_in_dir(
         }
     )
 
-    stages = dvc.add(path_pattern)
+    stages = dvc.add(target, glob=True)
 
     assert len(stages) == len(expected_def_paths)
     for stage in stages:
@@ -511,6 +511,7 @@ class TestShouldPlaceStageInDataDirIfRepositoryBelowSymlink(TestDvc):
         with patch.object(
             System, "is_symlink", side_effect=is_symlink_true_below_dvc_root
         ):
+
             ret = main(["add", self.DATA])
             self.assertEqual(0, ret)
 

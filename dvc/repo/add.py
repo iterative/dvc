@@ -1,4 +1,3 @@
-import glob
 import logging
 import os
 
@@ -24,7 +23,13 @@ logger = logging.getLogger(__name__)
 @locked
 @scm_context
 def add(
-    repo, targets, recursive=False, no_commit=False, fname=None, external=False
+    repo,
+    targets,
+    recursive=False,
+    no_commit=False,
+    fname=None,
+    external=False,
+    glob=False,
 ):
     if recursive and fname:
         raise RecursiveAddingWhileUsingFilename()
@@ -58,7 +63,12 @@ def add(
                 )
 
             stages = _create_stages(
-                repo, sub_targets, fname, pbar=pbar, external=external
+                repo,
+                sub_targets,
+                fname,
+                pbar=pbar,
+                external=external,
+                enable_glob=glob,
             )
 
             try:
@@ -150,16 +160,21 @@ def _find_all_targets(repo, target, recursive):
     return [target]
 
 
-def _create_stages(repo, targets, fname, pbar=None, external=False):
+def _create_stages(
+    repo, targets, fname, pbar=None, external=False, enable_glob=False
+):
+    import glob
+
     from dvc.stage import Stage, create_stage
 
-    expanded_targets = []
-
-    for target in targets:
-        found_target = glob.glob(target, recursive=True)
-        if not found_target:
-            found_target = [target]
-        expanded_targets.extend(found_target)
+    if enable_glob:
+        expanded_targets = [
+            exp_target
+            for target in targets
+            for exp_target in glob.iglob(target, recursive=True)
+        ]
+    else:
+        expanded_targets = targets
 
     stages = []
     for out in Tqdm(
