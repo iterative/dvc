@@ -27,6 +27,7 @@ PARAM_METRIC = BaseOutput.PARAM_METRIC
 PARAM_PLOT = BaseOutput.PARAM_PLOT
 PARAM_PERSIST = BaseOutput.PARAM_PERSIST
 PARAM_CHECKPOINT = BaseOutput.PARAM_CHECKPOINT
+PARAM_DESC = BaseOutput.PARAM_DESC
 
 DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
 
@@ -36,6 +37,8 @@ sort_by_path = partial(sorted, key=attrgetter("def_path"))
 
 @post_processing(OrderedDict)
 def _get_flags(out):
+    if out.desc:
+        yield PARAM_DESC, out.desc
     if not out.use_cache:
         yield PARAM_CACHE, False
     if out.checkpoint:
@@ -119,6 +122,7 @@ def to_pipeline_file(stage: "PipelineStage"):
 
     outs, metrics, plots = _serialize_outs(stage.outs)
     res = [
+        (stage.PARAM_DESC, stage.desc),
         (stage.PARAM_CMD, stage.cmd),
         (stage.PARAM_WDIR, wdir),
         (stage.PARAM_DEPS, deps),

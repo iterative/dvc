@@ -11,7 +11,14 @@ from . import locked
 @locked
 @scm_context
 def imp_url(
-    self, url, out=None, fname=None, erepo=None, frozen=True, no_exec=False
+    self,
+    url,
+    out=None,
+    fname=None,
+    erepo=None,
+    frozen=True,
+    no_exec=False,
+    desc=None,
 ):
     from dvc.dvcfile import Dvcfile
     from dvc.stage import Stage, create_stage
@@ -39,6 +46,9 @@ def imp_url(
 
     if stage is None:
         return None
+
+    if desc:
+        stage.outs[0].desc = desc
 
     dvcfile = Dvcfile(self, stage.path)
     dvcfile.remove()

@@ -56,6 +56,7 @@ DEP_MAP = {
 SCHEMA = output.SCHEMA.copy()
 del SCHEMA[BaseOutput.PARAM_CACHE]
 del SCHEMA[BaseOutput.PARAM_METRIC]
+del SCHEMA[BaseOutput.PARAM_DESC]
 SCHEMA.update(RepoDependency.REPO_SCHEMA)
 SCHEMA.update(ParamsDependency.PARAM_SCHEMA)
 

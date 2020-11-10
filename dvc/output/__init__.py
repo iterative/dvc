@@ -68,6 +68,7 @@ SCHEMA[BaseOutput.PARAM_PERSIST] = bool
 SCHEMA[BaseOutput.PARAM_CHECKPOINT] = bool
 SCHEMA[HashInfo.PARAM_SIZE] = int
 SCHEMA[HashInfo.PARAM_NFILES] = int
+SCHEMA[BaseOutput.PARAM_DESC] = str
 
 
 def _get(
@@ -79,6 +80,7 @@ def _get(
     plot=False,
     persist=False,
     checkpoint=False,
+    desc=None,
 ):
     parsed = urlparse(p)
 
@@ -94,6 +96,7 @@ def _get(
             plot=plot,
             persist=persist,
             checkpoint=checkpoint,
+            desc=desc,
         )
 
     for o in OUTS:
@@ -108,6 +111,7 @@ def _get(
                 plot=plot,
                 persist=persist,
                 checkpoint=checkpoint,
+                desc=desc,
             )
     return LocalOutput(
         stage,
@@ -119,6 +123,7 @@ def _get(
         plot=plot,
         persist=persist,
         checkpoint=checkpoint,
+        desc=desc,
     )
 
 
@@ -131,6 +136,7 @@ def loadd_from(stage, d_list):
         plot = d.pop(BaseOutput.PARAM_PLOT, False)
         persist = d.pop(BaseOutput.PARAM_PERSIST, False)
         checkpoint = d.pop(BaseOutput.PARAM_CHECKPOINT, False)
+        desc = d.pop(BaseOutput.PARAM_DESC, False)
         ret.append(
             _get(
                 stage,
@@ -141,6 +147,7 @@ def loadd_from(stage, d_list):
                 plot=plot,
                 persist=persist,
                 checkpoint=checkpoint,
+                desc=desc,
             )
         )
     return ret

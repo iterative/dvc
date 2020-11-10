@@ -74,6 +74,7 @@ class BaseOutput:
     PARAM_PLOT_TITLE = "title"
     PARAM_PLOT_HEADER = "header"
     PARAM_PERSIST = "persist"
+    PARAM_DESC = "desc"
 
     METRIC_SCHEMA = Any(
         None,
@@ -102,6 +103,7 @@ class BaseOutput:
         plot=False,
         persist=False,
         checkpoint=False,
+        desc=None,
     ):
         self._validate_output_path(path, stage)
         # This output (and dependency) objects have too many paths/urls
@@ -127,6 +129,7 @@ class BaseOutput:
         self.plot = False if self.IS_DEPENDENCY else plot
         self.persist = persist
         self.checkpoint = checkpoint
+        self.desc = desc
 
         self.path_info = self._parse_path(tree, path)
         if self.use_cache and self.cache is None:
@@ -298,6 +301,9 @@ class BaseOutput:
 
         if self.IS_DEPENDENCY:
             return ret
+
+        if self.desc:
+            ret[self.PARAM_DESC] = self.desc
 
         if not self.use_cache:
             ret[self.PARAM_CACHE] = self.use_cache
