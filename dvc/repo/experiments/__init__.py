@@ -18,6 +18,7 @@ from dvc.progress import Tqdm
 from dvc.repo.experiments.executor import ExperimentExecutor, LocalExecutor
 from dvc.scm.git import Git
 from dvc.stage import PipelineStage
+from dvc.stage.run import CheckpointKilledError
 from dvc.stage.serialize import to_lockfile
 from dvc.tree.repo import RepoTree
 from dvc.utils import dict_sha256, env2bool, relpath
@@ -614,44 +615,51 @@ class Experiments:
                 rev, executor = futures[future]
                 exc = future.exception()
 
-                if exc is None:
-                    stages = future.result()
-                    exp_hash = hash_exp(stages)
-                    checkpoint = any(stage.is_checkpoint for stage in stages)
-
-                    collect_lock.acquire()
-                    try:
-                        # NOTE: GitPython Repo instances cannot be re-used
-                        # after process has received SIGINT or SIGTERM, so we
-                        # need this hack to re-instantiate git instances after
-                        # checkpoint runs. See:
-                        # https://github.com/gitpython-developers/GitPython/issues/427
-                        del self.repo.scm
-                        del self.scm
-
-                        if executor.branch:
-                            self._scm_checkout(executor.branch)
-                        else:
-                            self._scm_checkout(executor.baseline_rev)
-                        exp_rev = self._collect_and_commit(
-                            rev, executor, exp_hash, checkpoint=checkpoint
+                try:
+                    if exc is None:
+                        stages = future.result()
+                        self._collect_executor(
+                            rev, executor, stages, result, collect_lock
                         )
-                        if exp_rev:
-                            logger.info(
-                                "Reproduced experiment '%s'.", exp_rev[:7]
+                    else:
+                        # Checkpoint errors have already been logged
+                        if not isinstance(exc, CheckpointKilledError):
+                            logger.exception(
+                                "Failed to reproduce experiment '%s'",
+                                rev[:7],
+                                exc_info=exc,
                             )
-                            result[rev] = {exp_rev: exp_hash}
-                    finally:
-                        collect_lock.release()
-                else:
-                    logger.exception(
-                        "Failed to reproduce experiment '%s'",
-                        rev[:7],
-                        exc_info=exc,
-                    )
-                executor.cleanup()
+                finally:
+                    executor.cleanup()
 
         return result
+
+    def _collect_executor(self, rev, executor, stages, result, lock):
+        exp_hash = hash_exp(stages)
+        checkpoint = any(stage.is_checkpoint for stage in stages)
+
+        lock.acquire()
+        try:
+            # NOTE: GitPython Repo instances cannot be re-used
+            # after process has received SIGINT or SIGTERM, so we
+            # need this hack to re-instantiate git instances after
+            # checkpoint runs. See:
+            # https://github.com/gitpython-developers/GitPython/issues/427
+            del self.repo.scm
+            del self.scm
+
+            if executor.branch:
+                self._scm_checkout(executor.branch)
+            else:
+                self._scm_checkout(executor.baseline_rev)
+            exp_rev = self._collect_and_commit(
+                rev, executor, exp_hash, checkpoint=checkpoint
+            )
+            if exp_rev:
+                logger.info("Reproduced experiment '%s'.", exp_rev[:7])
+                result[rev] = {exp_rev: exp_hash}
+        finally:
+            lock.release()
 
     def _checkpoint_callback(
         self,
