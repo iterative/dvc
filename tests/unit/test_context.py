@@ -370,3 +370,12 @@ def test_node_value():
     assert context["lst"][1].value == 2
 
     assert context["foo"].value == "foo"
+
+
+def test_resolve_resolves_dict_keys():
+    d = {"dct": {"foo": "foobar", "persist": True}}
+
+    context = Context(d)
+    assert context.resolve({"${dct.foo}": {"persist": "${dct.persist}"}}) == {
+        "foobar": {"persist": True}
+    }
