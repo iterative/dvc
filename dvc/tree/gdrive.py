@@ -181,16 +181,12 @@ class GDriveTree(BaseTree):
         return None
 
     def get_file_name(self, path_info):
-        if self.exists(path_info):
-            assert isinstance(path_info, GDriveURLInfo)
+        assert isinstance(path_info, GDriveURLInfo)
 
-            item_id = self._get_item_id(path_info)
-            file_repr = self._drive.CreateFile({"id": item_id})
-            return file_repr["title"]
-        else:
-            raise DvcException(
-                f"{path_info} doesn't exist or it's inaccessible."
-            )
+        item_id = self._get_item_id(path_info)
+        file_repr = self._drive.CreateFile({"id": item_id})
+        self._fetch_metadata(file_repr, "title")
+        return file_repr["title"]
 
     @staticmethod
     def _validate_credentials(auth, settings):
@@ -334,31 +330,44 @@ class GDriveTree(BaseTree):
         return params
 
     @_gdrive_retry
-    def _gdrive_shared_drive_id(self, item_id):
+    def _fetch_metadata(self, item, fields=None, fetch_all=False):
         from pydrive2.files import ApiRequestError
 
+        if isinstance(item, str):
+            param = {"id": item}
+            # it does not create a file on the remote
+            item = self._drive.CreateFile(param)
+
+        try:
+            item.FetchMetadata(fields=fields, fetch_all=fetch_all)
+        except ApiRequestError as exc:
+            error_code = exc.error.get("code", 0)
+            if error_code == 404:
+                raise FileMissingError(
+                    f"{self.scheme}://{item['id']}"
+                ) from exc
+            raise
+
+    def _gdrive_shared_drive_id(self, item_id):
         param = {"id": item_id}
         # it does not create a file on the remote
         item = self._drive.CreateFile(param)
         # ID of the shared drive the item resides in.
         # Only populated for items in shared drives.
         try:
-            item.FetchMetadata("driveId")
-        except ApiRequestError as exc:
-            error_code = exc.error.get("code", 0)
-            if error_code == 404:
-                raise DvcException(
-                    "'{}' for '{}':\n\n"
-                    "1. Confirm the directory exists and you can access it.\n"
-                    "2. Make sure that credentials in '{}'\n"
-                    "   are correct for this remote e.g. "
-                    "use the `gdrive_user_credentials_file` config\n"
-                    "   option if you use multiple GDrive remotes with "
-                    "different email accounts.\n\nDetails".format(
-                        item_id, self.path_info, self.credentials_location
-                    )
-                ) from exc
-            raise
+            self._fetch_metadata(item, "driveId")
+        except FileMissingError as exc:
+            raise DvcException(
+                "'{}' for '{}':\n\n"
+                "1. Confirm the directory exists and you can access it.\n"
+                "2. Make sure that credentials in '{}'\n"
+                "   are correct for this remote e.g. "
+                "use the `gdrive_user_credentials_file` config\n"
+                "   option if you use multiple GDrive remotes with "
+                "different email accounts.\n\nDetails".format(
+                    item_id, self.path_info, self.credentials_location
+                )
+            ) from exc
 
         return item.get("driveId", None)
 
@@ -532,43 +541,33 @@ class GDriveTree(BaseTree):
         )
 
     def _get_item_id(self, path_info, create=False, use_cache=True, hint=None):
-        # cache is not used when Tree is associated with a GDriveDependency
-        if not self.path_info:
+        if self.path_info:
+            assert path_info.bucket == self._bucket
+        else:
+            # cache is not used when Tree is associated with a GDriveDependency
             use_cache = False
 
         item_ids = self._path_to_item_ids(
             path_info.path, create, use_cache, path_info.bucket
         )
         if item_ids:
-            return min(item_ids)
+            item_id = min(item_ids)
+            if item_id == path_info.bucket:
+                # if item_id doesn't exist, _fetch_metadata
+                # raises FileMissingError
+                self._fetch_metadata(item_id)
+            return item_id
 
         assert not create
         raise FileMissingError(path_info, hint)
 
     def exists(self, path_info, use_dvcignore=True):
-        from pydrive2.files import ApiRequestError
-
         assert isinstance(path_info, GDriveURLInfo)
         try:
-            item_id = self._get_item_id(path_info)
-            file_repr = self._drive.CreateFile({"id": item_id})
-            file_repr.FetchMetadata()
-
+            self._get_item_id(path_info)
+            return True
         except FileMissingError:
             return False
-        except ApiRequestError as e:
-            error_code = e.error.get("code", 0)
-            if error_code == 404:
-                return False
-            else:
-                raise DvcException(
-                    f"Error accessing '{self.path_info}' using the credentials"
-                    f" in {self.credentials_location}. HTTP error code = "
-                    f"{error_code} | "
-                    f"error msg = '{e.error.get('message', '')}'"
-                )
-        else:
-            return True
 
     def _list_paths(self, prefix=None):
         if not self._ids_cache["ids"]:

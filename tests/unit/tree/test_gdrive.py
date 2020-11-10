@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from dvc.exceptions import DvcException
+from dvc.exceptions import FileMissingError
 from dvc.tree import GDriveTree
 from dvc.tree.gdrive import GDriveURLInfo
 from tests.basic_env import TestDvc
@@ -31,6 +31,7 @@ class TestGDriveURL(TestDvc):
     def test_get_file_name(self):
         for path, answer in self.paths_answers:
             path_info = GDriveURLInfo("gdrive://" + path)
+            assert self.tree.exists(path_info)
             filename = self.tree.get_file_name(path_info)
             assert filename == answer
 
@@ -38,7 +39,9 @@ class TestGDriveURL(TestDvc):
         for invalid_path in self.invalid_paths:
             path = "gdrive://" + invalid_path
             path_info = GDriveURLInfo(path)
-            with pytest.raises(DvcException) as e:
+
+            assert not self.tree.exists(path_info)
+
+            with pytest.raises(FileMissingError) as e:
                 _ = self.tree.get_file_name(path_info)
             assert path in str(e.value)
-            assert "doesn't exist" in str(e.value)
