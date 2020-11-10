@@ -1,5 +1,6 @@
 import os
 import pathlib
+from collections import defaultdict
 from itertools import product
 
 from funcy import lsplit, rpartial
@@ -44,6 +45,13 @@ def check_stage_path(repo, path, is_wdir=False):
 def fill_stage_outputs(stage, **kwargs):
     assert not stage.outs
 
+    kw = defaultdict(list, kwargs)
+    if "dvclive" in kw:
+        logs_path = kw["dvclive"]
+        for lp in logs_path:
+            kw["plots_no_cache"].append(os.path.join(lp, "history"))
+            kw["metrics_no_cache"].append(os.path.join(lp, "latest.json"))
+
     keys = [
         "outs_persist",
         "outs_persist_no_cache",
@@ -60,7 +68,7 @@ def fill_stage_outputs(stage, **kwargs):
     for key in keys:
         stage.outs += output.loads_from(
             stage,
-            kwargs.get(key, []),
+            kw[key],
             use_cache="no_cache" not in key,
             persist="persist" in key,
             metric="metrics" in key,
