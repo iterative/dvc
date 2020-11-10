@@ -49,7 +49,7 @@ class BaseTree:
     scheme = "base"
     REQUIRES = {}
     PATH_CLS = URLInfo
-    JOBS = 4 * cpu_count()
+    JOBS = 4
 
     CHECKSUM_DIR_SUFFIX = ".dir"
     HASH_JOBS = max(1, min(4, cpu_count() // 2))
