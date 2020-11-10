@@ -2,7 +2,6 @@ import getpass
 import io
 import logging
 import os
-import posixpath
 import threading
 from contextlib import closing, contextmanager
 from urllib.parse import urlparse
@@ -269,19 +268,3 @@ class SSHTree(BaseTree):
                 progress_title=name,
                 no_progress_bar=no_progress_bar,
             )
-
-    def list_paths(self, prefix=None, progress_callback=None):
-        if prefix:
-            root = posixpath.join(self.path_info.path, prefix[:2])
-        else:
-            root = self.path_info.path
-        with self.ssh(self.path_info) as ssh:
-            if prefix and not ssh.exists(root):
-                return
-            # If we simply return an iterator then with above closes instantly
-            if progress_callback:
-                for path in ssh.walk_files(root):
-                    progress_callback()
-                    yield path
-            else:
-                yield from ssh.walk_files(root)

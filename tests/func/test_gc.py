@@ -6,6 +6,7 @@ import configobj
 import pytest
 from git import Repo
 
+from dvc.cache.local import LocalCache
 from dvc.exceptions import CollectCacheError
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
@@ -22,7 +23,7 @@ class TestGC(TestDvcGit):
         self.dvc.add(self.DATA_DIR)
         self.good_cache = [
             self.dvc.cache.local.tree.hash_to_path_info(md5)
-            for md5 in self.dvc.cache.local.tree.all()
+            for md5 in self.dvc.cache.local.all()
         ]
 
         self.bad_cache = []
@@ -217,7 +218,7 @@ def test_gc_no_unpacked_dir(tmp_dir, dvc):
 
     os.remove("dir.dvc")
     unpackeddir = (
-        dir_stages[0].outs[0].cache_path + LocalTree.UNPACKED_DIR_SUFFIX
+        dir_stages[0].outs[0].cache_path + LocalCache.UNPACKED_DIR_SUFFIX
     )
 
     # older (pre 1.0) versions of dvc used to generate this dir
