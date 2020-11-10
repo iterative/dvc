@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 from funcy import first
 
@@ -5,7 +7,8 @@ from dvc.utils.serialize import PythonFileCorruptedError
 from tests.func.test_repro_multistage import COPY_SCRIPT
 
 
-def test_new_simple(tmp_dir, scm, dvc, mocker):
+@pytest.fixture
+def exp_stage(tmp_dir, scm, dvc):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("params.yaml", "foo: 1")
     stage = dvc.run(
@@ -16,11 +19,14 @@ def test_new_simple(tmp_dir, scm, dvc, mocker):
     )
     scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
     scm.commit("init")
+    return stage
 
+
+def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker):
     tmp_dir.gen("params.yaml", "foo: 2")
 
     new_mock = mocker.spy(dvc.experiments, "new")
-    dvc.experiments.run(stage.addressing)
+    dvc.experiments.run(exp_stage.addressing)
 
     new_mock.assert_called_once()
     assert (
@@ -28,27 +34,31 @@ def test_new_simple(tmp_dir, scm, dvc, mocker):
     ).read_text() == "foo: 2"
 
 
-def test_update_with_pull(tmp_dir, scm, dvc, mocker):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
-    tmp_dir.gen("params.yaml", "foo: 1")
-    stage = dvc.run(
-        cmd="python copy.py params.yaml metrics.yaml",
-        metrics_no_cache=["metrics.yaml"],
-        params=["foo"],
-        name="copy-file",
+def test_failed_exp(tmp_dir, scm, dvc, exp_stage, mocker, caplog):
+    from dvc.stage.exceptions import StageCmdFailedError
+
+    tmp_dir.gen("params.yaml", "foo: 2")
+
+    mocker.patch(
+        "dvc.stage.run.cmd_run",
+        side_effect=StageCmdFailedError(exp_stage.cmd, -1),
     )
-    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
-    scm.commit("init")
+    with caplog.at_level(logging.ERROR):
+        dvc.experiments.run(exp_stage.addressing)
+        assert "Failed to reproduce experiment" in caplog.text
+
+
+def test_update_with_pull(tmp_dir, scm, dvc, exp_stage, mocker):
     expected_revs = [scm.get_rev()]
 
     tmp_dir.gen("params.yaml", "foo: 2")
-    dvc.experiments.run(stage.addressing)
+    dvc.experiments.run(exp_stage.addressing)
     scm.add(["dvc.yaml", "dvc.lock", "params.yaml", "metrics.yaml"])
     scm.commit("promote experiment")
     expected_revs.append(scm.get_rev())
 
     tmp_dir.gen("params.yaml", "foo: 3")
-    dvc.experiments.run(stage.addressing)
+    dvc.experiments.run(exp_stage.addressing)
 
     exp_scm = dvc.experiments.scm
     for rev in expected_revs:
@@ -84,22 +94,11 @@ def test_modify_list_param(tmp_dir, scm, dvc, mocker, change, expected):
     ).read_text().strip() == expected
 
 
-def test_checkout(tmp_dir, scm, dvc):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
-    tmp_dir.gen("params.yaml", "foo: 1")
-    stage = dvc.run(
-        cmd="python copy.py params.yaml metrics.yaml",
-        metrics_no_cache=["metrics.yaml"],
-        params=["foo"],
-        name="copy-file",
-    )
-    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
-    scm.commit("init")
-
-    results = dvc.experiments.run(stage.addressing, params=["foo=2"])
+def test_checkout(tmp_dir, scm, dvc, exp_stage):
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
     exp_a = first(results)
 
-    results = dvc.experiments.run(stage.addressing, params=["foo=3"])
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=3"])
     exp_b = first(results)
 
     dvc.experiments.checkout(exp_a)
@@ -111,25 +110,15 @@ def test_checkout(tmp_dir, scm, dvc):
     assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 3"
 
 
-def test_get_baseline(tmp_dir, scm, dvc):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
-    tmp_dir.gen("params.yaml", "foo: 1")
-    stage = dvc.run(
-        cmd="python copy.py params.yaml metrics.yaml",
-        metrics_no_cache=["metrics.yaml"],
-        params=["foo"],
-        name="copy-file",
-    )
-    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
-    scm.commit("init")
+def test_get_baseline(tmp_dir, scm, dvc, exp_stage):
     init_rev = scm.get_rev()
     assert dvc.experiments.get_baseline(init_rev) is None
 
-    results = dvc.experiments.run(stage.addressing, params=["foo=2"])
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
     exp_rev = first(results)
     assert dvc.experiments.get_baseline(exp_rev) == init_rev
 
-    dvc.experiments.run(stage.addressing, params=["foo=3"], queue=True)
+    dvc.experiments.run(exp_stage.addressing, params=["foo=3"], queue=True)
     assert dvc.experiments.get_baseline("stash@{0}") == init_rev
 
     dvc.experiments.checkout(exp_rev)
@@ -137,12 +126,12 @@ def test_get_baseline(tmp_dir, scm, dvc):
     scm.commit("promote exp")
     promote_rev = scm.get_rev()
 
-    results = dvc.experiments.run(stage.addressing, params=["foo=4"])
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=4"])
     exp_rev = first(results)
     assert dvc.experiments.get_baseline(promote_rev) is None
     assert dvc.experiments.get_baseline(exp_rev) == promote_rev
 
-    dvc.experiments.run(stage.addressing, params=["foo=5"], queue=True)
+    dvc.experiments.run(exp_stage.addressing, params=["foo=5"], queue=True)
     assert dvc.experiments.get_baseline("stash@{0}") == promote_rev
     assert dvc.experiments.get_baseline("stash@{1}") == init_rev
 
@@ -211,24 +200,13 @@ def test_update_py_params(tmp_dir, scm, dvc):
         dvc.experiments.run(stage.addressing, params=["params.py:INT=2a"])
 
 
-def test_extend_branch(tmp_dir, scm, dvc):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
-    tmp_dir.gen("params.yaml", "foo: 1")
-    stage = dvc.run(
-        cmd="python copy.py params.yaml metrics.yaml",
-        metrics_no_cache=["metrics.yaml"],
-        params=["foo"],
-        name="copy-file",
-    )
-    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
-    scm.commit("init")
-
-    results = dvc.experiments.run(stage.addressing, params=["foo=2"])
+def test_extend_branch(tmp_dir, scm, dvc, exp_stage):
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
     exp_a = first(results)
     exp_branch = dvc.experiments._get_branch_containing(exp_a)
 
     results = dvc.experiments.run(
-        stage.addressing,
+        exp_stage.addressing,
         params=["foo=3"],
         branch=exp_branch,
         apply_workspace=False,
@@ -247,27 +225,17 @@ def test_extend_branch(tmp_dir, scm, dvc):
     assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 3"
 
 
-def test_detached_parent(tmp_dir, scm, dvc, mocker):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
-    tmp_dir.gen("params.yaml", "foo: 1")
-    stage = dvc.run(
-        cmd="python copy.py params.yaml metrics.yaml",
-        metrics_no_cache=["metrics.yaml"],
-        params=["foo"],
-        name="copy-file",
-    )
-    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
-    scm.commit("v1")
+def test_detached_parent(tmp_dir, scm, dvc, exp_stage, mocker):
     detached_rev = scm.get_rev()
 
     tmp_dir.gen("params.yaml", "foo: 2")
-    dvc.reproduce(stage.addressing)
+    dvc.reproduce(exp_stage.addressing)
     scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
     scm.commit("v2")
 
     scm.checkout(detached_rev)
     assert scm.repo.head.is_detached
-    results = dvc.experiments.run(stage.addressing, params=["foo=3"])
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=3"])
 
     exp_rev = first(results)
     assert dvc.experiments.get_baseline(exp_rev) == detached_rev
