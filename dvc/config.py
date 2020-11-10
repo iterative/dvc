@@ -383,8 +383,7 @@ class Config(dict):
             if os.path.sep == "\\" and "/" in path:
                 path = path.replace("/", "\\")
 
-            path = RelPath(os.path.join(abs_conf_dir, path))
-            return path
+            return RelPath(os.path.join(abs_conf_dir, path))
 
         return Config._map_dirs(conf, resolve)
 
