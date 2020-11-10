@@ -1,12 +1,15 @@
 import logging
+from funcy import cached_property
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
 import ipfshttpclient
 
 from .base import BaseTree
+from ..config import Config
 from ..exceptions import DvcException
-from ..path_info import URLInfo
+from ..path_info import _BasePath
 from ..scheme import Schemes
 
 logger = logging.getLogger(__name__)
@@ -20,15 +23,37 @@ TMP_IPFS_CID_MAP = {
 }
 
 
+class IPFSPathInfo(_BasePath):
+    def __init__(self, url):
+        p = urlparse(url)
+        self.cid = p.netloc
+        self.path = p.path.rstrip("/")
+        self.scheme = p.scheme
+
+    @cached_property
+    def url(self):
+        return f"{self.scheme}://{self.cid}{self.path}"
+
+    def __div__(self, other):
+        url = f"{self.scheme}://{self.cid}{self.path}/{other}"
+        return IPFSPathInfo(url)
+
+    def __str__(self):
+        return self.url
+
+    __truediv__ = __div__
+
+
 class IPFSTree(BaseTree):
     scheme = Schemes.IPFS
-    PATH_CLS = URLInfo
+    PATH_CLS = IPFSPathInfo
     REQUIRES = {"ipfshttpclient": "ipfshttpclient"}
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
         logger.debug(config["url"])
         self.path_info = IPFSTree.PATH_CLS(config["url"])
+        self.config = Config()
         self._ipfs_client: Optional[ipfshttpclient.Client] = None
         try:
             self._ipfs_client = ipfshttpclient.connect(session=True)
@@ -75,8 +100,17 @@ class IPFSTree(BaseTree):
         # TODO: find a way to get notified about upload process for progress bar
         #       https://github.com/encode/httpx seems to be used in the background.
         #       Maybe httpx is configurable via kwarg "params"
-        ipfs_cid = self._ipfs_client.add(from_file)["Hash"]
-        logger.debug(f"Stored {from_file} at ipfs://{ipfs_cid}")
+
+        # TODO: mfs_path should probably go into IPFSPathInfo
+        mfs_project_dir = "/TODO"
+        mfs_path = f"{mfs_project_dir}{to_info.path}"
+        with open(from_file, "rb") as f:
+            # "parents" might get a kwarg in future versions of py-ipfs-http-client? If so, change the opts param here
+            self._ipfs_client.files.write(
+                mfs_path, f, create=True, opts={"parents": True}
+            )
+        # we changed the content of the MFS, the CID will now be different
+        self._update_dvc_config()
         # TODO: the ipfs_cid needs to be returned and persisted by DVC
 
     def _download(
@@ -97,3 +131,24 @@ class IPFSTree(BaseTree):
         # TODO: find a way to get notified about download process for progress bar
         self._ipfs_client.get(ipfs_cid, to_directory)
         (to_directory / ipfs_cid).rename(to_file)
+
+    def _update_dvc_config(self):
+        """
+        Changing content in IPFS means that the CID gets changed. After doing any modifications, we need to
+        update .dvc/config so it will always point to the latest content for every user.
+
+        Returns:
+
+        """
+        old_cid = self.path_info.cid
+        new_cid = "TODO_NEW_CID"
+        with self.config.edit("repo") as repo_config:
+            section = None
+            for v in repo_config["remote"].values():
+                if v.get("url") == "ipfs://" + old_cid:
+                    section = v
+                    break
+            if not section:
+                raise DvcException("Could not find ipfs config in .dvc/config")
+            section["url"] = "ipfs://" + new_cid
+            self.path_info.cid = new_cid

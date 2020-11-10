@@ -218,7 +218,11 @@ SCHEMA = {
                 "webdavs": {**WEBDAV_COMMON, **REMOTE_COMMON},
                 # TODO: ipfs_daemon_ip is not yet supported but may be useful. Add more options for authentication
                 #       update this as well: https://dvc.org/doc/command-reference/remote/modify
-                "ipfs": {"ipfs_daemon_ip": str, **REMOTE_COMMON},
+                "ipfs": {
+                    "ipfs_daemon_ip": str,
+                    "mfs_path": str,
+                    **REMOTE_COMMON,
+                },
                 "remote": {str: object},  # Any of the above options are valid
             }
         )
