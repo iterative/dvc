@@ -395,8 +395,7 @@ class Config(dict):
         if isinstance(path, RelPath) or not os.path.isabs(path):
             path = relpath(path, conf_dir)
 
-        path = PathInfo(path).as_posix()
-        return path
+        return PathInfo(path).as_posix()
 
     @staticmethod
     def _save_paths(conf, filename):
