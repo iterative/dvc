@@ -621,7 +621,9 @@ class BaseTree:
                     )
                 )
 
-            with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
+            with ThreadPoolExecutor(
+                max_workers=jobs or self.jobs_count
+            ) as executor:
                 in_remote = executor.map(list_with_update, traverse_prefixes,)
                 yield from itertools.chain.from_iterable(in_remote)
 
@@ -644,7 +646,9 @@ class BaseTree:
                 pbar.update_msg(str(path_info))
                 return ret
 
-            with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
+            with ThreadPoolExecutor(
+                max_workers=jobs or self.jobs_count
+            ) as executor:
                 path_infos = map(self.hash_to_path_info, hashes)
                 in_remote = executor.map(exists_with_progress, path_infos)
                 ret = list(itertools.compress(hashes, in_remote))

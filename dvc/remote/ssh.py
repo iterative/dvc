@@ -29,6 +29,7 @@ class SSHRemote(Remote):
 
         with self.tree.ssh(path_infos[0]) as ssh:
             channels = ssh.open_max_sftp_channels()
+            # NOTE: is the config-based max workers limit relevant here?
             max_workers = len(channels)
 
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
