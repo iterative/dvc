@@ -760,3 +760,36 @@ def test_plots_show_overlap(tmp_dir, dvc, run_copy_metrics, clear_before_run):
 
     with pytest.raises(OverlappingOutputPathsError):
         dvc.plots.show()
+
+
+def test_dir_plots(tmp_dir, dvc, run_copy_metrics):
+    subdir = tmp_dir / "subdir"
+    subdir.mkdir()
+
+    metric = [
+        {"first_val": 100, "val": 2},
+        {"first_val": 200, "val": 3},
+    ]
+
+    fname = "file.json"
+    _write_json(tmp_dir, metric, fname)
+
+    p1 = os.path.join("subdir", "p1.json")
+    p2 = os.path.join("subdir", "p2.json")
+    tmp_dir.dvc.run(
+        cmd=(
+            f"mkdir subdir && python copy.py {fname} {p1} && "
+            f"python copy.py {fname} {p2}"
+        ),
+        deps=[fname],
+        single_stage=False,
+        plots=["subdir"],
+        name="copy_double",
+    )
+    dvc.plots.modify("subdir", {"title": "TITLE"})
+
+    result = dvc.plots.show()
+    p1_content = json.loads(result["subdir/p1.json"])
+    p2_content = json.loads(result["subdir/p2.json"])
+
+    assert p1_content["title"] == p2_content["title"] == "TITLE"

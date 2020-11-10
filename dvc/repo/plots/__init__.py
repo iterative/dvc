@@ -54,18 +54,31 @@ class Plots:
             tree = RepoTree(self.repo)
             plots = _collect_plots(self.repo, targets, rev)
             for path_info, props in plots.items():
-                datafile = relpath(path_info, self.repo.root_dir)
+
                 if rev not in data:
                     data[rev] = {}
-                data[rev].update({datafile: {"props": props}})
 
-                # Load data from git or dvc cache
-                try:
-                    with tree.open(path_info) as fd:
-                        data[rev][datafile]["data"] = fd.read()
-                except FileNotFoundError:
-                    # This might happen simply because cache is absent
-                    pass
+                if tree.isdir(path_info):
+                    plot_files = []
+                    for pi in tree.walk_files(path_info):
+                        plot_files.append(
+                            (pi, relpath(pi, self.repo.root_dir))
+                        )
+                else:
+                    plot_files = [
+                        (path_info, relpath(path_info, self.repo.root_dir))
+                    ]
+
+                for path, repo_path in plot_files:
+                    data[rev].update({repo_path: {"props": props}})
+
+                    # Load data from git or dvc cache
+                    try:
+                        with tree.open(path) as fd:
+                            data[rev][repo_path]["data"] = fd.read()
+                    except FileNotFoundError:
+                        # This might happen simply because cache is absent
+                        pass
 
         return data
 
