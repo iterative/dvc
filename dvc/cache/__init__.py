@@ -4,6 +4,30 @@ from collections import defaultdict
 from ..scheme import Schemes
 
 
+def get_cloud_cache(tree):
+    from .base import CloudCache
+    from .local import LocalCache
+    from .ssh import SSHCache
+
+    if tree.scheme == Schemes.LOCAL:
+        return LocalCache(tree)
+
+    if tree.scheme == Schemes.SSH:
+        return SSHCache(tree)
+
+    return CloudCache(tree)
+
+
+def _get_cache(repo, settings):
+    from ..tree import get_cloud_tree
+
+    if not settings:
+        return None
+
+    tree = get_cloud_tree(repo, **settings)
+    return get_cloud_cache(tree)
+
+
 class Cache:
     """Class that manages cache locations of a DVC repo.
 
@@ -15,20 +39,16 @@ class Cache:
     CLOUD_SCHEMES = [Schemes.S3, Schemes.GS, Schemes.SSH, Schemes.HDFS]
 
     def __init__(self, repo):
-        from ..tree import get_cloud_tree
-        from .base import CloudCache
-        from .local import LocalCache
-
         self.repo = repo
         self.config = config = repo.config["cache"]
+        self._cache = {}
 
         local = config.get("local")
 
         if local:
             settings = {"name": local}
         elif "dir" not in config:
-            self.local = None
-            return
+            settings = None
         else:
             from ..config import LOCAL_COMMON
 
@@ -37,21 +57,12 @@ class Cache:
                 if opt in config:
                     settings[str(opt)] = config.get(opt)
 
-        tree = get_cloud_tree(repo, **settings)
-
-        self._cache = {}
-        self._cache[Schemes.LOCAL] = LocalCache(tree)
+        self._cache[Schemes.LOCAL] = _get_cache(repo, settings)
 
         for scheme in self.CLOUD_SCHEMES:
-
             remote = self.config.get(scheme)
-            if remote:
-                tree = get_cloud_tree(self.repo, name=remote)
-                cache = CloudCache(tree)
-            else:
-                cache = None
-
-            self._cache[scheme] = cache
+            settings = {"name": remote} if remote else None
+            self._cache[scheme] = _get_cache(repo, settings)
 
     def __getattr__(self, name):
         try:

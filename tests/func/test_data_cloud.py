@@ -6,14 +6,14 @@ import pytest
 from flaky.flaky_decorator import flaky
 
 from dvc.cache import NamedCache
-from dvc.cache.base import (
+from dvc.external_repo import clean_repos
+from dvc.main import main
+from dvc.remote.base import (
     STATUS_DELETED,
     STATUS_MISSING,
     STATUS_NEW,
     STATUS_OK,
 )
-from dvc.external_repo import clean_repos
-from dvc.main import main
 from dvc.stage.exceptions import StageNotFound
 from dvc.tree.local import LocalTree
 from dvc.utils.fs import move, remove

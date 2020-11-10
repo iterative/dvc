@@ -3,8 +3,8 @@ import math
 import mock
 import pytest
 
+from dvc.cache.base import CloudCache
 from dvc.path_info import PathInfo
-from dvc.remote.base import Remote
 from dvc.tree.base import BaseTree, RemoteCmdError, RemoteMissingDepsError
 
 
@@ -39,36 +39,36 @@ def test_cmd_error(dvc):
             BaseTree(dvc, config).remove("file")
 
 
-@mock.patch.object(BaseTree, "list_hashes_traverse")
-@mock.patch.object(BaseTree, "list_hashes_exists")
+@mock.patch.object(CloudCache, "list_hashes_traverse")
+@mock.patch.object(CloudCache, "list_hashes_exists")
 def test_hashes_exist(object_exists, traverse, dvc):
-    remote = Remote(BaseTree(dvc, {}))
+    cache = CloudCache(BaseTree(dvc, {}))
 
     # remote does not support traverse
-    remote.tree.CAN_TRAVERSE = False
+    cache.tree.CAN_TRAVERSE = False
     with mock.patch.object(
-        remote.tree, "list_hashes", return_value=list(range(256))
+        cache, "list_hashes", return_value=list(range(256))
     ):
         hashes = set(range(1000))
-        remote.hashes_exist(hashes)
+        cache.hashes_exist(hashes)
         object_exists.assert_called_with(hashes, None, None)
         traverse.assert_not_called()
 
-    remote.tree.CAN_TRAVERSE = True
+    cache.tree.CAN_TRAVERSE = True
 
     # large remote, small local
     object_exists.reset_mock()
     traverse.reset_mock()
     with mock.patch.object(
-        remote.tree, "list_hashes", return_value=list(range(256))
+        cache, "list_hashes", return_value=list(range(256))
     ):
         hashes = list(range(1000))
-        remote.hashes_exist(hashes)
+        cache.hashes_exist(hashes)
         # verify that _cache_paths_with_max() short circuits
         # before returning all 256 remote hashes
         max_hashes = math.ceil(
-            remote.tree._max_estimation_size(hashes)
-            / pow(16, remote.tree.TRAVERSE_PREFIX_LEN)
+            cache._max_estimation_size(hashes)
+            / pow(16, cache.tree.TRAVERSE_PREFIX_LEN)
         )
         assert max_hashes < 256
         object_exists.assert_called_with(
@@ -79,15 +79,15 @@ def test_hashes_exist(object_exists, traverse, dvc):
     # large remote, large local
     object_exists.reset_mock()
     traverse.reset_mock()
-    remote.tree.JOBS = 16
+    cache.tree.JOBS = 16
     with mock.patch.object(
-        remote.tree, "list_hashes", return_value=list(range(256))
+        cache, "list_hashes", return_value=list(range(256))
     ):
         hashes = list(range(1000000))
-        remote.hashes_exist(hashes)
+        cache.hashes_exist(hashes)
         object_exists.assert_not_called()
         traverse.assert_called_with(
-            256 * pow(16, remote.tree.TRAVERSE_PREFIX_LEN),
+            256 * pow(16, cache.tree.TRAVERSE_PREFIX_LEN),
             set(range(256)),
             None,
             None,
@@ -95,18 +95,18 @@ def test_hashes_exist(object_exists, traverse, dvc):
 
 
 @mock.patch.object(
-    BaseTree, "list_hashes", return_value=[],
+    CloudCache, "list_hashes", return_value=[],
 )
 @mock.patch.object(
-    BaseTree, "path_to_hash", side_effect=lambda x: x,
+    CloudCache, "_path_to_hash", side_effect=lambda x: x,
 )
 def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
-    tree = BaseTree(dvc, {})
-    tree.path_info = PathInfo("foo")
+    cache = CloudCache(BaseTree(dvc, {}))
+    cache.tree.path_info = PathInfo("foo")
 
     # parallel traverse
-    size = 256 / tree.JOBS * tree.LIST_OBJECT_PAGE_SIZE
-    list(tree.list_hashes_traverse(size, {0}))
+    size = 256 / cache.tree.JOBS * cache.tree.LIST_OBJECT_PAGE_SIZE
+    list(cache.list_hashes_traverse(size, {0}))
     for i in range(1, 16):
         list_hashes.assert_any_call(
             prefix=f"{i:03x}", progress_callback=CallableOrNone
@@ -119,35 +119,39 @@ def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
     # default traverse (small remote)
     size -= 1
     list_hashes.reset_mock()
-    list(tree.list_hashes_traverse(size - 1, {0}))
+    list(cache.list_hashes_traverse(size - 1, {0}))
     list_hashes.assert_called_with(
         prefix=None, progress_callback=CallableOrNone
     )
 
 
 def test_list_hashes(dvc):
-    tree = BaseTree(dvc, {})
-    tree.path_info = PathInfo("foo")
+    cache = CloudCache(BaseTree(dvc, {}))
+    cache.tree.path_info = PathInfo("foo")
 
     with mock.patch.object(
-        tree, "list_paths", return_value=["12/3456", "bar"]
+        cache, "_list_paths", return_value=["12/3456", "bar"]
     ):
-        hashes = list(tree.list_hashes())
+        hashes = list(cache.list_hashes())
         assert hashes == ["123456"]
 
 
 def test_list_paths(dvc):
-    tree = BaseTree(dvc, {})
-    tree.path_info = PathInfo("foo")
+    cache = CloudCache(BaseTree(dvc, {}))
+    cache.tree.path_info = PathInfo("foo")
 
-    with mock.patch.object(tree, "walk_files", return_value=[]) as walk_mock:
-        for _ in tree.list_paths():
+    with mock.patch.object(
+        cache.tree, "walk_files", return_value=[]
+    ) as walk_mock:
+        for _ in cache._list_paths():
             pass
-        walk_mock.assert_called_with(tree.path_info, prefix=False)
+        walk_mock.assert_called_with(cache.tree.path_info, prefix=False)
 
-        for _ in tree.list_paths(prefix="000"):
+        for _ in cache._list_paths(prefix="000"):
             pass
-        walk_mock.assert_called_with(tree.path_info / "00" / "0", prefix=True)
+        walk_mock.assert_called_with(
+            cache.tree.path_info / "00" / "0", prefix=True
+        )
 
 
 @pytest.mark.parametrize(

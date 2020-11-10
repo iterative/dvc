@@ -29,7 +29,7 @@ def test_status_download_optimization(mocker, dvc):
     other_remote.hashes_exist.return_value = []
     other_remote.index = RemoteIndexNoop()
 
-    cache.status(infos, other_remote, download=True)
+    other_remote.status(cache, infos, download=True)
 
     assert other_remote.hashes_exist.call_count == 0
 

@@ -124,7 +124,6 @@ class URLInfo(_BasePath):
         p = urlparse(url)
         assert not p.query and not p.params and not p.fragment
         assert p.password is None
-
         self._fill_parts(p.scheme, p.hostname, p.username, p.port, p.path)
 
     @classmethod

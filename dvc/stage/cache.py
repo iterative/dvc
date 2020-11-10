@@ -6,9 +6,9 @@ from contextlib import contextmanager
 from funcy import cached_property, first
 from voluptuous import Invalid
 
-from dvc.cache.local import _log_exceptions
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
+from dvc.remote.base import _log_exceptions
 from dvc.schema import COMPILED_LOCK_FILE_STAGE_SCHEMA
 from dvc.utils import dict_sha256, relpath
 from dvc.utils.serialize import YAMLFileCorruptedError, dump_yaml, load_yaml
