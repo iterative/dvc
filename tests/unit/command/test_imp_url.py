@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 
 import pytest
@@ -6,7 +7,7 @@ import pytest
 from dvc.cli import parse_args
 from dvc.command.imp_url import CmdImportUrl
 from dvc.exceptions import DvcException
-from tests.utils import load_gdrive_credentials
+from dvc.tree import GDriveTree
 
 
 def test_import_url(mocker):
@@ -74,10 +75,11 @@ def test_import_url_https(dvc):
 def test_import_url_gdrive(dvc, file_id, auth):
     root_dir = Path(dvc.root_dir)
 
-    if auth:
-        success = load_gdrive_credentials(root_dir)
-        if not success:
-            pytest.skip("no gdrive-user-credentials.json available")
+    if not os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA):
+        pytest.skip("no gdrive credentials data available")
+
+    if not auth:
+        os.environ[GDriveTree.GDRIVE_CREDENTIALS_DATA] = ""
 
     url = f"gdrive://{file_id}"
     cli_args = parse_args(["import-url", url])
