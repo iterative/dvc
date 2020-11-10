@@ -377,6 +377,12 @@ class Config(dict):
         def resolve(path):
             if os.path.isabs(path) or re.match(r"\w+://", path):
                 return path
+
+            # on windows convert slashes to backslashes
+            # to have path compatible with abs_conf_dir
+            if os.path.sep == "\\" and "/" in path:
+                path = path.replace("/", "\\")
+
             return RelPath(os.path.join(abs_conf_dir, path))
 
         return Config._map_dirs(conf, resolve)
@@ -403,7 +409,15 @@ class Config(dict):
         dirs_schema = {
             "cache": {"dir": func},
             "remote": {
-                str: {"url": func, "gdrive_user_credentials_file": func}
+                str: {
+                    "url": func,
+                    "gdrive_user_credentials_file": func,
+                    "gdrive_service_account_p12_file_path": func,
+                    "credentialpath": func,
+                    "keyfile": func,
+                    "cert_path": func,
+                    "key_path": func,
+                }
             },
         }
         return Schema(dirs_schema, extra=ALLOW_EXTRA)(conf)
