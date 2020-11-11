@@ -16,6 +16,10 @@ logger = logging.getLogger(__name__)
 CHECKPOINT_SIGNAL_FILE = "DVC_CHECKPOINT"
 
 
+class CheckpointKilledError(StageCmdFailedError):
+    pass
+
+
 def _nix_cmd(executable, cmd):
     opts = {"zsh": ["--no-rcs"], "bash": ["--noprofile", "--norc"]}
     name = os.path.basename(executable).lower()
@@ -79,7 +83,8 @@ def cmd_run(stage, *args, checkpoint_func=None, **kwargs):
         if main_thread:
             old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-        with checkpoint_monitor(stage, checkpoint_func, p):
+        killed = threading.Event()
+        with checkpoint_monitor(stage, checkpoint_func, p, killed):
             p.communicate()
     finally:
         if old_handler:
@@ -87,6 +92,8 @@ def cmd_run(stage, *args, checkpoint_func=None, **kwargs):
 
     retcode = None if not p else p.returncode
     if retcode != 0:
+        if killed.is_set():
+            raise CheckpointKilledError(stage.cmd, retcode)
         raise StageCmdFailedError(stage.cmd, retcode)
 
 
@@ -111,44 +118,32 @@ def run_stage(stage, dry=False, force=False, checkpoint_func=None, **kwargs):
         cmd_run(stage, checkpoint_func=checkpoint_func)
 
 
-class CheckpointCond:
-    def __init__(self):
-        self.done = False
-        self.cond = threading.Condition()
-
-    def notify(self):
-        with self.cond:
-            self.done = True
-            self.cond.notify()
-
-    def wait(self, timeout=None):
-        with self.cond:
-            return self.cond.wait(timeout) or self.done
-
-
 @contextmanager
-def checkpoint_monitor(stage, callback_func, proc):
+def checkpoint_monitor(stage, callback_func, proc, killed):
     if not callback_func:
         yield None
         return
 
     logger.debug(
-        "Monitoring checkpoint stage '%s' with cmd process '%s'", stage, proc
+        "Monitoring checkpoint stage '%s' with cmd process '%d'",
+        stage,
+        proc.pid,
     )
-    done_cond = CheckpointCond()
+    done = threading.Event()
     monitor_thread = threading.Thread(
-        target=_checkpoint_run, args=(stage, callback_func, done_cond, proc),
+        target=_checkpoint_run,
+        args=(stage, callback_func, done, proc, killed),
     )
 
     try:
         monitor_thread.start()
         yield monitor_thread
     finally:
-        done_cond.notify()
+        done.set()
         monitor_thread.join()
 
 
-def _checkpoint_run(stage, callback_func, done_cond, proc):
+def _checkpoint_run(stage, callback_func, done, proc, killed):
     """Run callback_func whenever checkpoint signal file is present."""
     signal_path = os.path.join(stage.repo.tmp_dir, CHECKPOINT_SIGNAL_FILE)
     while True:
@@ -159,17 +154,31 @@ def _checkpoint_run(stage, callback_func, done_cond, proc):
                 logger.exception(
                     "Error generating checkpoint, %s will be aborted", stage
                 )
-                proc.terminate()
+                _kill(proc)
+                killed.set()
             finally:
                 logger.debug("Remove checkpoint signal file")
                 os.remove(signal_path)
-        if done_cond.wait(1):
+        if done.wait(1):
             return
+
+
+def _kill(proc):
+    if os.name == "nt":
+        return _kill_nt(proc)
+    proc.terminate()
+    proc.wait()
+
+
+def _kill_nt(proc):
+    # windows stages are spawned with shell=True, proc is the shell process and
+    # not the actual stage process - we have to kill the entire tree
+    subprocess.call(["taskkill", "/F", "/T", "/PID", str(proc.pid)])
 
 
 @relock_repo
 def _run_callback(stage, callback_func):
     stage.save(allow_missing=True)
-    # TODO: do we need commit() (and check for --no-commit) here
+    stage.commit(allow_missing=True)
     logger.debug("Running checkpoint callback for stage '%s'", stage)
     callback_func()

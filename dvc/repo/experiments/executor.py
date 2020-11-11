@@ -110,6 +110,7 @@ class LocalExecutor(ExperimentExecutor):
         # to run repro
         self._tree.CACHE_MODE = 0o644
         self.checkpoint_reset = checkpoint_reset
+        self.checkpoint = False
 
     def _config(self, cache_dir):
         local_config = os.path.join(self.dvc_dir, "config.local")
@@ -136,7 +137,6 @@ class LocalExecutor(ExperimentExecutor):
     def reproduce(dvc_dir, cwd=None, **kwargs):
         """Run dvc repro and return the result."""
         from dvc.repo import Repo
-        from dvc.repo.experiments import hash_exp
 
         unchanged = []
 
@@ -167,15 +167,8 @@ class LocalExecutor(ExperimentExecutor):
             #   be removed/does not yet exist) so that our executor workspace
             #   is not polluted with the (persistent) out from an unrelated
             #   experiment run
-            checkpoint = kwargs.pop("checkpoint", False)
-            dvc.checkout(
-                allow_missing=checkpoint, force=checkpoint, quiet=checkpoint
-            )
-            stages = dvc.reproduce(
-                on_unchanged=filter_pipeline,
-                allow_missing=checkpoint,
-                **kwargs,
-            )
+            dvc.checkout(force=True, quiet=True)
+            stages = dvc.reproduce(on_unchanged=filter_pipeline, **kwargs)
         finally:
             if old_cwd is not None:
                 os.chdir(old_cwd)
@@ -183,7 +176,7 @@ class LocalExecutor(ExperimentExecutor):
         # ideally we would return stages here like a normal repro() call, but
         # stages is not currently picklable and cannot be returned across
         # multiprocessing calls
-        return hash_exp(stages + unchanged)
+        return stages + unchanged
 
     def collect_output(self) -> Iterable["PathInfo"]:
         repo_tree = RepoTree(self.dvc)
