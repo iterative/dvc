@@ -138,6 +138,15 @@ class Remote:
         )
         return list(indexed_hashes) + list(hashes & set(remote_hashes))
 
+    def after_upload(self):
+        """Will be called after all uploads were successful
+
+        Some remotes may need to do additional work after all uploads were processed. This method was originally
+        implemented to allow the final hash calculation of the content addressed filesystem IPFS, but may also be
+        useful to trigger further post-upload actions.
+        """
+        pass
+
     @classmethod
     @index_locked
     def gc(cls, named_cache, remote, jobs=None):

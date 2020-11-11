@@ -24,10 +24,26 @@ TMP_IPFS_CID_MAP = {
 
 
 class IPFSPathInfo(_BasePath):
-    def __init__(self, url):
+
+    # This is the content id of an empty directory. It will be used when the user doesn't provide a CID
+    CID_EMPTY_DIRECTORY = "QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn"
+
+    def __init__(self, url, mfs_path=None):
         p = urlparse(url)
-        self.cid = p.netloc
+        self.cid = p.netloc or IPFSPathInfo.CID_EMPTY_DIRECTORY
         self.path = p.path.rstrip("/")
+        # Get the name of the project directory to provide a sane default
+        project_dir_name = Path(Config().dvc_dir).parent.name
+        self.mfs_path = (
+            mfs_path.rstrip("/") if mfs_path else f"/dvc/{project_dir_name}"
+        )
+        if not self.mfs_path:
+            # if mfs_path was a /, it was removed by .rstrip(). It will also clutter / if it would actually be used,
+            # so just disallow it
+            raise DvcException(
+                "You may not use / as your IPFS MFS path. "
+                "Choose another with `dvc remote modify <remote_name> mfs_path <mfs_path>`"
+            )
         self.scheme = p.scheme
 
     @cached_property
@@ -36,10 +52,10 @@ class IPFSPathInfo(_BasePath):
 
     def __div__(self, other):
         url = f"{self.scheme}://{self.cid}{self.path}/{other}"
-        return IPFSPathInfo(url)
+        return IPFSPathInfo(url, self.mfs_path)
 
     def __str__(self):
-        return self.url
+        return self.mfs_path + self.path
 
     __truediv__ = __div__
 
@@ -51,12 +67,13 @@ class IPFSTree(BaseTree):
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
-        logger.debug(config["url"])
-        self.path_info = IPFSTree.PATH_CLS(config["url"])
-        self.config = Config()
-        self._ipfs_client: Optional[ipfshttpclient.Client] = None
+        self.ipfs_client: Optional[ipfshttpclient.Client] = None
+        self.path_info = IPFSTree.PATH_CLS(
+            config["url"], config.get("mfs_path")
+        )
         try:
-            self._ipfs_client = ipfshttpclient.connect(session=True)
+            # TODO: support remote IPFS daemons with credentials
+            self.ipfs_client = ipfshttpclient.connect(session=True)
         except ipfshttpclient.exceptions.VersionMismatch as e:
             raise DvcException(f"Unsupported IPFS daemon ({e})") from e
         except ipfshttpclient.exceptions.ConnectionError as e:
@@ -65,8 +82,8 @@ class IPFSTree(BaseTree):
             )
 
     def __del__(self):
-        if self._ipfs_client is not None:
-            self._ipfs_client.close()
+        if self.ipfs_client is not None:
+            self.ipfs_client.close()
 
     def exists(self, path_info: PATH_CLS, use_dvcignore=True):
         logger.debug(f"Checking if {path_info} exists")
@@ -78,7 +95,7 @@ class IPFSTree(BaseTree):
 
         # Is there a method that checks directly the existence of a pin?
         try:
-            self._ipfs_client.pin.ls(ipfs_cid)
+            self.ipfs_client.pin.ls(ipfs_cid)
         except ipfshttpclient.exceptions.ErrorResponse:
             return False
         else:
@@ -97,21 +114,12 @@ class IPFSTree(BaseTree):
         return iter(())
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
-        # TODO: find a way to get notified about upload process for progress bar
-        #       https://github.com/encode/httpx seems to be used in the background.
-        #       Maybe httpx is configurable via kwarg "params"
-
-        # TODO: mfs_path should probably go into IPFSPathInfo
-        mfs_project_dir = "/TODO"
-        mfs_path = f"{mfs_project_dir}{to_info.path}"
+        mfs_path = f"{self.path_info.mfs_path}/{to_info.path}"
         with open(from_file, "rb") as f:
             # "parents" might get a kwarg in future versions of py-ipfs-http-client? If so, change the opts param here
-            self._ipfs_client.files.write(
+            self.ipfs_client.files.write(
                 mfs_path, f, create=True, opts={"parents": True}
             )
-        # we changed the content of the MFS, the CID will now be different
-        self._update_dvc_config()
-        # TODO: the ipfs_cid needs to be returned and persisted by DVC
 
     def _download(
         self,
@@ -129,26 +137,5 @@ class IPFSTree(BaseTree):
         # Workaround by saving it to the parent directory and renaming if afterwards to the DVC expected name
         to_directory = Path(to_file).parent
         # TODO: find a way to get notified about download process for progress bar
-        self._ipfs_client.get(ipfs_cid, to_directory)
+        self.ipfs_client.get(ipfs_cid, to_directory)
         (to_directory / ipfs_cid).rename(to_file)
-
-    def _update_dvc_config(self):
-        """
-        Changing content in IPFS means that the CID gets changed. After doing any modifications, we need to
-        update .dvc/config so it will always point to the latest content for every user.
-
-        Returns:
-
-        """
-        old_cid = self.path_info.cid
-        new_cid = "TODO_NEW_CID"
-        with self.config.edit("repo") as repo_config:
-            section = None
-            for v in repo_config["remote"].values():
-                if v.get("url") == "ipfs://" + old_cid:
-                    section = v
-                    break
-            if not section:
-                raise DvcException("Could not find ipfs config in .dvc/config")
-            section["url"] = "ipfs://" + new_cid
-            self.path_info.cid = new_cid

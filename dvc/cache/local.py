@@ -405,6 +405,8 @@ class LocalCache(CloudCache):
                         "'{}' nested files".format(dir_hash, len(file_hashes))
                     )
                     remote.index.update([dir_hash], file_hashes)
+            # notify remote of successful upload
+            remote.after_upload()
 
         return len(dir_plans[0]) + len(file_plans[0])
 

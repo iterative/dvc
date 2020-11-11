@@ -1,3 +1,4 @@
+from .ipfs import IPFSRemote
 from ..tree import get_cloud_tree
 from .base import Remote
 from .local import LocalRemote
@@ -10,4 +11,6 @@ def get_remote(repo, **kwargs):
         return LocalRemote(tree)
     if tree.scheme == "ssh":
         return SSHRemote(tree)
+    if tree.scheme == "ipfs":
+        return IPFSRemote(tree)
     return Remote(tree)
