@@ -100,23 +100,18 @@ class GDriveTree(BaseTree):
     def __init__(self, repo, config):
         super().__init__(repo, config)
 
-        url = config.get("url")
-        if url:
-            self.path_info = self.PATH_CLS(url)
+        self.path_info = self.PATH_CLS(config["url"])
 
-            if not self.path_info.bucket:
-                link = format_link(
-                    "https://dvc.org/doc/user-guide/"
-                    "setup-google-drive-remote#url-format"
-                )
-                raise DvcException(
-                    f"Empty GDrive URL '{url}'. Learn more at {link}"
-                )
+        if not self.path_info.bucket:
+            link = format_link(
+                "https://dvc.org/doc/user-guide/"
+                "setup-google-drive-remote#url-format"
+            )
+            raise DvcException(
+                f"Empty GDrive URL '{config['url']}'. Learn more at {link}"
+            )
 
-            self._bucket = self.path_info.bucket
-        else:
-            self.path_info = None
-            self._bucket = None
+        self._bucket = self.path_info.bucket
 
         self._trash_only = config.get("gdrive_trash_only")
         self._use_service_account = config.get("gdrive_use_service_account")
@@ -287,7 +282,6 @@ class GDriveTree(BaseTree):
     @wrap_prop(threading.RLock())
     @cached_property
     def _ids_cache(self):
-        assert self.path_info
         cache = {
             "dirs": defaultdict(list),
             "ids": {},
