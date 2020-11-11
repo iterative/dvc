@@ -191,6 +191,77 @@ def test_add_file_in_dir(tmp_dir, dvc):
 
 
 @pytest.mark.parametrize(
+    "target, expected_def_paths, expected_rel_paths",
+    [
+        (
+            os.path.join("dir", "subdir", "subdata*"),
+            ["subdata", "subdata123"],
+            [
+                os.path.join("dir", "subdir", "subdata") + ".dvc",
+                os.path.join("dir", "subdir", "subdata123") + ".dvc",
+            ],
+        ),
+        (
+            os.path.join("dir", "subdir", "?subdata"),
+            ["esubdata", "isubdata"],
+            [
+                os.path.join("dir", "subdir", "esubdata") + ".dvc",
+                os.path.join("dir", "subdir", "isubdata") + ".dvc",
+            ],
+        ),
+        (
+            os.path.join("dir", "subdir", "[aiou]subdata"),
+            ["isubdata"],
+            [os.path.join("dir", "subdir", "isubdata") + ".dvc"],
+        ),
+        (
+            os.path.join("dir", "**", "subdata*"),
+            ["subdata", "subdata123", "subdata4", "subdata5"],
+            [
+                os.path.join("dir", "subdir", "subdata") + ".dvc",
+                os.path.join("dir", "subdir", "subdata123") + ".dvc",
+                os.path.join("dir", "anotherdir", "subdata4") + ".dvc",
+                os.path.join("dir", "subdata5") + ".dvc",
+            ],
+        ),
+    ],
+)
+def test_add_filtered_files_in_dir(
+    tmp_dir, dvc, target, expected_def_paths, expected_rel_paths
+):
+    tmp_dir.gen(
+        {
+            "dir": {
+                "subdir": {
+                    "subdata": "subdata content",
+                    "esubdata": "extra subdata content",
+                    "isubdata": "i subdata content",
+                    "subdata123": "subdata content 123",
+                },
+                "anotherdir": {
+                    "subdata4": "subdata 4 content",
+                    "esubdata": "extra 2 subdata content",
+                },
+                "subdata5": "subdata 5 content",
+            }
+        }
+    )
+
+    stages = dvc.add(target, glob=True)
+
+    assert len(stages) == len(expected_def_paths)
+    for stage in stages:
+        assert stage is not None
+        assert len(stage.deps) == 0
+        assert len(stage.outs) == 1
+        assert stage.relpath in expected_rel_paths
+
+        # Current dir should not be taken into account
+        assert stage.wdir == os.path.dirname(stage.path)
+        assert stage.outs[0].def_path in expected_def_paths
+
+
+@pytest.mark.parametrize(
     "workspace, hash_name, hash_value",
     [
         (

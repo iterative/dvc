@@ -23,7 +23,13 @@ logger = logging.getLogger(__name__)
 @locked
 @scm_context
 def add(
-    repo, targets, recursive=False, no_commit=False, fname=None, external=False
+    repo,
+    targets,
+    recursive=False,
+    no_commit=False,
+    fname=None,
+    external=False,
+    glob=False,
 ):
     if recursive and fname:
         raise RecursiveAddingWhileUsingFilename()
@@ -57,7 +63,12 @@ def add(
                 )
 
             stages = _create_stages(
-                repo, sub_targets, fname, pbar=pbar, external=external
+                repo,
+                sub_targets,
+                fname,
+                pbar=pbar,
+                external=external,
+                glob=glob,
             )
 
             try:
@@ -149,15 +160,27 @@ def _find_all_targets(repo, target, recursive):
     return [target]
 
 
-def _create_stages(repo, targets, fname, pbar=None, external=False):
+def _create_stages(
+    repo, targets, fname, pbar=None, external=False, glob=False
+):
+    from glob import iglob
+
     from dvc.stage import Stage, create_stage
 
-    stages = []
+    if glob:
+        expanded_targets = [
+            exp_target
+            for target in targets
+            for exp_target in iglob(target, recursive=True)
+        ]
+    else:
+        expanded_targets = targets
 
+    stages = []
     for out in Tqdm(
-        targets,
+        expanded_targets,
         desc="Creating DVC-files",
-        disable=len(targets) < LARGE_DIR_SIZE,
+        disable=len(expanded_targets) < LARGE_DIR_SIZE,
         unit="file",
     ):
         path, wdir, out = resolve_paths(repo, out)
