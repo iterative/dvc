@@ -171,7 +171,7 @@ def _create_stages(
         expanded_targets = [
             exp_target
             for target in targets
-            for exp_target in glob.iglob(target, recursive=True)
+            for exp_target in iglob(target, recursive=True)
         ]
     else:
         expanded_targets = targets
