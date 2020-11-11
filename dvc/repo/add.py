@@ -167,7 +167,7 @@ def _create_stages(
 
     from dvc.stage import Stage, create_stage
 
-    if enable_glob:
+    if glob:
         expanded_targets = [
             exp_target
             for target in targets
