@@ -103,7 +103,7 @@ class RelPath(str):
 REMOTE_COMMON = {
     "url": str,
     "checksum_jobs": All(Coerce(int), Range(1)),
-    "jobs": Coerce(int),
+    "jobs": All(Coerce(int), Range(1)),
     Optional("no_traverse"): Bool,  # obsoleted
     "verify": Bool,
 }
@@ -136,7 +136,7 @@ SCHEMA = {
     "core": {
         "remote": Lower,
         "checksum_jobs": All(Coerce(int), Range(1)),
-        "jobs": Coerce (int),
+        "jobs": All(Coerce(int), Range(1)),
         Optional("interactive", default=False): Bool,
         Optional("analytics", default=True): Bool,
         Optional("hardlink_lock", default=False): Bool,
