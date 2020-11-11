@@ -163,7 +163,7 @@ def _find_all_targets(repo, target, recursive):
 def _create_stages(
     repo, targets, fname, pbar=None, external=False, glob=False
 ):
-    import glob
+    from glob import iglob
 
     from dvc.stage import Stage, create_stage
 
