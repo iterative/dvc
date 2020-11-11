@@ -48,6 +48,7 @@ class BaseTree:
     scheme = "base"
     REQUIRES = {}
     PATH_CLS = URLInfo
+    JOBS = 4
 
     CHECKSUM_DIR_SUFFIX = ".dir"
     HASH_JOBS = max(1, min(4, cpu_count() // 2))
@@ -78,8 +79,14 @@ class BaseTree:
 
     @cached_property
     def jobs_count(self):
-        """Number of workers per cpu core."""
-        return self.config.get("jobs", self.repo.config["core"]["jobs"])
+        # NOTE: alternative style.
+        # repo_config = self.repo.config['core'] if self.repo else {}
+        # return self.config.get("jobs", repo_config.get("jobs", self.JOBS))
+        return (
+            self.config.get("jobs")
+            or (self.repo and self.repo.config["core"].get("jobs"))
+            or self.JOBS
+        )
 
     @cached_property
     def hash_jobs(self):
