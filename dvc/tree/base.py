@@ -85,10 +85,9 @@ class BaseTree:
         # style:
         # repo_config = self.repo.config['core'] if self.repo else {}
         # jobs_per_core = self.config.get('jobs', repo_config.get('jobs', self.JOBS))
-        jobs_per_core = self.config.get("jobs") or (
+        return self.config.get("jobs") or (
             (self.repo and self.repo.config["core"].get("jobs")) or self.JOBS
         )
-        return jobs_per_core * cpu_count()
 
     @cached_property
     def hash_jobs(self):
