@@ -53,7 +53,7 @@ def test_info_in_broken_git_repo(tmp_dir, dvc, scm, caplog):
     assert "Repo: dvc, git (broken)" in dvc_info
 
 
-def test_cache_paths_in_repo(tmp_dir, dvc, caplog):
+def test_caches(tmp_dir, dvc, caplog):
     tmp_dir.add_remote(
         name="sshcache", url="ssh://example.com/path", default=False
     )
@@ -62,9 +62,27 @@ def test_cache_paths_in_repo(tmp_dir, dvc, caplog):
 
     dvc_info = get_dvc_info()
 
-    assert "Cache paths:" in dvc_info
-    assert "  ssh: ssh://example.com/path" in dvc_info
-    assert f"  local: {dvc.cache.local.cache_dir}" in dvc_info
+    assert "Caches: local, ssh\n" in dvc_info
+
+
+def test_remotes_empty(tmp_dir, dvc, caplog):
+    # no remotes are configured
+    dvc_info = get_dvc_info()
+
+    assert "Remotes: None\n" in dvc_info
+
+
+def test_remotes(tmp_dir, dvc, caplog):
+    tmp_dir.add_remote(
+        name="azure", url="azure://example.com/path", default=False
+    )
+    tmp_dir.add_remote(
+        name="remote", url="remote://example.com/path", default=False
+    )
+
+    dvc_info = get_dvc_info()
+
+    assert "Remotes: azure\n" in dvc_info
 
 
 @pytest.mark.skipif(psutil is None, reason="No psutil.")

@@ -50,9 +50,8 @@ def get_dvc_info():
         else:
             info.append("Cache types: " + error_link("no-dvc-cache"))
 
-        cache_urls = _get_cache_urls(repo.cache)
-        info.append("Cache paths:")
-        info.extend(f"  {c[0]}: {c[1]}" for c in cache_urls)
+        info.append(f"Caches: {_get_caches(repo.cache)}")
+        info.append(f"Remotes: {_get_configured_remotes(repo)}")
 
     except NotDvcRepoError:
         pass
@@ -67,9 +66,10 @@ def get_dvc_info():
     return "\n".join(info)
 
 
-def _get_cache_urls(cache):
+def _get_caches(cache):
     from dvc.config import SCHEMA
 
+    caches = set()
     for cache_type in SCHEMA["cache"].keys():
         # Ignore any non cache types, e.g. LOCAL_COMMON objects
         if not isinstance(cache_type, str):
@@ -80,8 +80,10 @@ def _get_cache_urls(cache):
         if not cache_instance:
             continue
 
-        cache_url = cache_instance.tree.config["url"]
-        yield (cache_type, cache_url)
+        caches.add(cache_type)
+
+    # Caches will be always non-empty including the local cache
+    return ", ".join(caches)
 
 
 def _get_linktype_support_info(repo):
@@ -130,6 +132,26 @@ def _get_supported_remotes():
         return supported_remotes
 
     return ", ".join(supported_remotes)
+
+
+def _get_configured_remotes(repo):
+    from urllib.parse import urlparse
+
+    from dvc.scheme import Schemes
+
+    # Get supported schemes, exclude the private variables
+    available_remotes = {
+        v
+        for k, v in vars(Schemes).items()
+        if not k.startswith("_") and isinstance(v, str)
+    }
+    remotes = set()
+    for remote_config in repo.config["remote"].values():
+        parsed = urlparse(remote_config["url"])
+        if parsed.scheme in available_remotes:
+            remotes.add(parsed.scheme)
+
+    return ", ".join(remotes) if len(remotes) > 0 else "None"
 
 
 def get_fs_type(path):
