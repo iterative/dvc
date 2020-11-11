@@ -65,14 +65,15 @@ def test_import_url_https(dvc):
 # The second, instead, requires authentication, which depend on a proper
 # gdrive-user-credentials.json. The absence of the file skips the test.
 @pytest.mark.parametrize(
-    "file_id, auth",
+    "path, auth",
     [
         # ("1nKf4XcsNCN3oLujqlFTJoK5Fvx9iKCZb", False),
-        ("1syA-26p7tehWyUiMPPk_s0hsFN0Nr_kX", True),
+        # ("1syA-26p7tehWyUiMPPk_s0hsFN0Nr_kX", True),
         ("16onq6BZiiUFj083XloYVk7LDDpklDr7h/dir/data.txt", True),
+        # ("16onq6BZiiUFj083XloYVk7LDDpklDr7h/dir", True),
     ],
 )
-def test_import_url_gdrive(dvc, file_id, auth):
+def test_import_url_gdrive(dvc, path, auth):
     root_dir = Path(dvc.root_dir)
 
     if not os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA):
@@ -81,13 +82,16 @@ def test_import_url_gdrive(dvc, file_id, auth):
     if not auth:
         os.environ[GDriveTree.GDRIVE_CREDENTIALS_DATA] = ""
 
-    url = f"gdrive://{file_id}"
+    url = f"gdrive://{path}"
     cli_args = parse_args(["import-url", url])
     assert cli_args.func == CmdImportUrl
 
     cmd = cli_args.func(cli_args)
     res = cmd.run()
     assert res == 0
+
+    if path.endswith("dir"):
+        root_dir = root_dir.joinpath("dir")
 
     data_file = root_dir.joinpath("data.txt")
     assert data_file.exists()
