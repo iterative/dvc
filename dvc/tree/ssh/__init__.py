@@ -218,6 +218,7 @@ class SSHTree(BaseTree):
 
         # See dvc/remote/local/__init__.py - hardlink()
         if self.getsize(from_info) == 0:
+
             with self.ssh(to_info) as ssh:
                 ssh.sftp.open(to_info.path, "w").close()
 
