@@ -1,6 +1,7 @@
 import os
 
 import pytest
+from flaky.flaky_decorator import flaky
 from funcy import first, get_in
 
 from dvc import api
@@ -97,6 +98,7 @@ def test_open_external(tmp_dir, erepo_dir, cloud):
     assert api.read("version", repo=repo_url, rev="branch") == "branchver"
 
 
+@flaky(max_runs=3, min_passes=1)
 @pytest.mark.parametrize("remote", all_clouds, indirect=True)
 def test_open_granular(tmp_dir, dvc, remote):
     tmp_dir.dvc_gen({"dir": {"foo": "foo-text"}})
