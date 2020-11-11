@@ -3,7 +3,7 @@ import os
 import threading
 from collections import deque
 
-from funcy import cached_property, wrap_prop
+from funcy import cached_property, nullcontext, wrap_prop
 
 from dvc.config import ConfigError
 from dvc.exceptions import DvcException
@@ -216,31 +216,30 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
                 )
 
     # Uploads file to remote
-    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
+    def _upload(
+        self, from_file, to_info, name=None, no_progress_bar=False,
+    ):
         # First try to create parent directories
         self.makedirs(to_info.parent)
 
-        # Progress from HTTPTree
-        def chunks():
-            with open(from_file, "rb") as fd:
-                with Tqdm.wrapattr(
+        file_size = os.path.getsize(from_file)
+        with open(from_file, "rb") as fd:
+            progress_context = (
+                nullcontext(fd)
+                if file_size == 0
+                else Tqdm.wrapattr(
                     fd,
                     "read",
-                    total=None
-                    if no_progress_bar
-                    else os.path.getsize(from_file),
+                    total=None if no_progress_bar else file_size,
                     leave=False,
                     desc=to_info.url if name is None else name,
                     disable=no_progress_bar,
-                ) as fd_wrapped:
-                    while True:
-                        chunk = fd_wrapped.read(self.CHUNK_SIZE)
-                        if not chunk:
-                            break
-                        yield chunk
-
-        # Upload to WebDAV via buffer
-        self._client.upload_to(buff=chunks(), remote_path=to_info.path)
+                )
+            )
+            with progress_context as fd_wrapped:
+                self._client.upload_to(
+                    buff=fd_wrapped, remote_path=to_info.path
+                )
 
     # Queries size of file at remote
     def _file_size(self, path_info):
