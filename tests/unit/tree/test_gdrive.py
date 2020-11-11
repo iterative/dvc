@@ -26,13 +26,16 @@ class TestGDriveURL(TestDvc):
             "16onq6BZiiUFj083XloYVk7LDDpklDr7h/fake_dir",
         ]
 
-        self.tree = GDriveTree(self.dvc, {})
+    def get_tree(self, path_info):
+        url = path_info.replace(path="").url
+        return GDriveTree(self.dvc, {"url": url})
 
     def test_get_file_name(self):
         for path, answer in self.paths_answers:
             path_info = GDriveURLInfo("gdrive://" + path)
-            assert self.tree.exists(path_info)
-            filename = self.tree.get_file_name(path_info)
+            tree = self.get_tree(path_info)
+            assert tree.exists(path_info)
+            filename = tree.get_file_name(path_info)
             assert filename == answer
 
     def test_get_file_name_non_existing(self):
@@ -40,8 +43,9 @@ class TestGDriveURL(TestDvc):
             path = "gdrive://" + invalid_path
             path_info = GDriveURLInfo(path)
 
-            assert not self.tree.exists(path_info)
+            tree = self.get_tree(path_info)
+            assert not tree.exists(path_info)
 
             with pytest.raises(FileMissingError) as e:
-                _ = self.tree.get_file_name(path_info)
+                _ = tree.get_file_name(path_info)
             assert path in str(e.value)
