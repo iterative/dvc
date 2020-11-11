@@ -68,7 +68,7 @@ def add(
                 fname,
                 pbar=pbar,
                 external=external,
-                enable_glob=glob,
+                glob=glob,
             )
 
             try:
