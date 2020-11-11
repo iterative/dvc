@@ -68,7 +68,7 @@ def test_import_url_https(dvc):
     "path, auth",
     [
         # ("1nKf4XcsNCN3oLujqlFTJoK5Fvx9iKCZb", False),
-        # ("1syA-26p7tehWyUiMPPk_s0hsFN0Nr_kX", True),
+        ("1syA-26p7tehWyUiMPPk_s0hsFN0Nr_kX", True),
         ("16onq6BZiiUFj083XloYVk7LDDpklDr7h/dir/data.txt", True),
         # ("16onq6BZiiUFj083XloYVk7LDDpklDr7h/dir", True),
     ],

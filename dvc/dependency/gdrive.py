@@ -5,7 +5,7 @@ from dvc.tree.gdrive import GDriveURLInfo
 
 
 class GDriveDependency(BaseDependency, GDriveOutput):
-    def __init__(self, stage, path, info, **wkwargs):
+    def __init__(self, stage, path, info=None, **wkwargs):
         repo = stage.repo if stage else None
         base_path = GDriveURLInfo(path).replace(path="").url
         tree = GDriveTree(repo, {"url": base_path})
