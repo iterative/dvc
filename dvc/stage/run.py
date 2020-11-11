@@ -47,7 +47,7 @@ def cmd_run(stage, *args, checkpoint_func=None, **kwargs):
     kwargs = {"cwd": stage.wdir, "env": fix_env(None), "close_fds": True}
     if checkpoint_func:
         # indicate that checkpoint cmd is being run inside DVC
-        kwargs["env"].update({"DVC_CHECKPOINT": "1"})
+        kwargs["env"].update(_checkpoint_env(stage))
 
     if os.name == "nt":
         kwargs["shell"] = True
@@ -116,6 +116,10 @@ def run_stage(stage, dry=False, force=False, checkpoint_func=None, **kwargs):
     logger.info("\t%s", stage.cmd)
     if not dry:
         cmd_run(stage, checkpoint_func=checkpoint_func)
+
+
+def _checkpoint_env(stage):
+    return {"DVC_CHECKPOINT": "1", "DVC_ROOT": stage.repo.root_dir}
 
 
 @contextmanager
