@@ -161,7 +161,7 @@ def _find_all_targets(repo, target, recursive):
 
 
 def _create_stages(
-    repo, targets, fname, pbar=None, external=False, enable_glob=False
+    repo, targets, fname, pbar=None, external=False, glob=False
 ):
     import glob
 
