@@ -62,14 +62,15 @@ def test_caches(tmp_dir, dvc, caplog):
 
     dvc_info = get_dvc_info()
 
-    assert "Caches: local, ssh\n" in dvc_info
+    # Order of cache types is runtime dependent
+    assert re.search("Caches: (local, ssh|ssh, local)", dvc_info)
 
 
 def test_remotes_empty(tmp_dir, dvc, caplog):
-    # no remotes are configured
+    # No remotes are configured
     dvc_info = get_dvc_info()
 
-    assert "Remotes: None\n" in dvc_info
+    assert "Remotes: None" in dvc_info
 
 
 def test_remotes(tmp_dir, dvc, caplog):
