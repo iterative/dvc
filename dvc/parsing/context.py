@@ -256,6 +256,14 @@ class Context(CtxDict):
         meta = Meta(source=file)
         return cls(loader(file, tree=tree), meta=meta)
 
+    def merge_from(self, tree, path, overwrite=False):
+        if not tree.exists(path):
+            raise FileNotFoundError(path)
+
+        self.merge_update(
+            Context.load_from(tree, str(path)), overwrite=overwrite
+        )
+
     @classmethod
     def clone(cls, ctx: "Context") -> "Context":
         """Clones given context."""

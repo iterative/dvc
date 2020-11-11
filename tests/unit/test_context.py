@@ -3,6 +3,7 @@ from math import pi
 
 import pytest
 
+from dvc.parsing import DEFAULT_PARAMS_FILE
 from dvc.parsing.context import Context, CtxDict, CtxList, Value
 from dvc.tree.local import LocalTree
 from dvc.utils.serialize import dump_yaml
@@ -379,3 +380,9 @@ def test_resolve_resolves_dict_keys():
     assert context.resolve({"${dct.foo}": {"persist": "${dct.persist}"}}) == {
         "foobar": {"persist": True}
     }
+
+
+def test_merge_from_raises_if_file_not_exist(tmp_dir, dvc):
+    context = Context(foo="bar")
+    with pytest.raises(FileNotFoundError):
+        context.merge_from(dvc.tree, DEFAULT_PARAMS_FILE)

@@ -77,7 +77,7 @@ def test_simple(tmp_dir, dvc):
 
 def test_vars(tmp_dir, dvc):
     d = deepcopy(TEMPLATED_DVC_YAML_DATA)
-    d["vars"] = CONTEXT_DATA
+    d["vars"] = [CONTEXT_DATA]
     resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
     resolved_data = deepcopy(RESOLVED_DVC_YAML_DATA)
 
@@ -95,14 +95,14 @@ def test_no_params_yaml_and_vars(tmp_dir, dvc):
         resolver.resolve()
 
 
-def test_use(tmp_dir, dvc):
+def test_vars_import(tmp_dir, dvc):
     """
     Test that different file can be loaded using `use`
     instead of default params.yaml.
     """
     dump_yaml(tmp_dir / "params2.yaml", CONTEXT_DATA)
     d = deepcopy(TEMPLATED_DVC_YAML_DATA)
-    d["use"] = "params2.yaml"
+    d["vars"] = ["params2.yaml"]
     resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
 
     resolved_data = deepcopy(RESOLVED_DVC_YAML_DATA)
@@ -119,8 +119,7 @@ def test_vars_and_params_import(tmp_dir, dvc):
     whilst tracking the "used" variables from params.
     """
     d = {
-        "use": DEFAULT_PARAMS_FILE,
-        "vars": {"dict": {"foo": "foobar"}},
+        "vars": [DEFAULT_PARAMS_FILE, {"dict": {"foo": "foobar"}}],
         "stages": {"stage1": {"cmd": "echo ${dict.foo} ${dict.bar}"}},
     }
     dump_yaml(tmp_dir / DEFAULT_PARAMS_FILE, {"dict": {"bar": "bar"}})
@@ -139,12 +138,12 @@ def test_vars_and_params_import(tmp_dir, dvc):
 def test_with_params_section(tmp_dir, dvc):
     """Test that params section is also loaded for interpolation"""
     d = {
-        "use": "params.yaml",
-        "vars": {"dict": {"foo": "foo"}},
+        "vars": [DEFAULT_PARAMS_FILE, {"dict": {"foo": "foo"}}],
         "stages": {
             "stage1": {
                 "cmd": "echo ${dict.foo} ${dict.bar} ${dict.foobar}",
                 "params": [{"params.json": ["value1"]}],
+                "vars": ["params.json"],
             },
         },
     }
@@ -177,6 +176,7 @@ def test_stage_with_wdir(tmp_dir, dvc):
                 "cmd": "echo ${dict.foo} ${dict.bar}",
                 "params": ["value1"],
                 "wdir": "data",
+                "vars": [DEFAULT_PARAMS_FILE],
             },
         },
     }
@@ -217,6 +217,7 @@ def test_with_templated_wdir(tmp_dir, dvc):
                 "cmd": "echo ${dict.foo} ${dict.bar}",
                 "params": ["value1"],
                 "wdir": "${dict.ws}",
+                "vars": [DEFAULT_PARAMS_FILE],
             },
         },
     }
@@ -295,7 +296,7 @@ def test_foreach_loop_dict(tmp_dir, dvc):
 
 def test_foreach_loop_templatized(tmp_dir, dvc):
     params = {"models": {"us": {"thresh": 10}}}
-    vars_ = {"models": {"gb": {"thresh": 15}}}
+    vars_ = [{"models": {"gb": {"thresh": 15}}}]
     dump_yaml(tmp_dir / DEFAULT_PARAMS_FILE, params)
     d = {
         "vars": vars_,
@@ -401,7 +402,7 @@ def test_set_with_foreach_and_on_stage_definition(tmp_dir, dvc):
     dump_json(tmp_dir / "params.json", iterable)
 
     d = {
-        "use": "params.json",
+        "vars": ["params.json"],
         "stages": {
             "build": {
                 "set": {"data": "${models}"},
@@ -436,11 +437,12 @@ def test_resolve_local_tries_to_load_globally_used_files(tmp_dir, dvc):
     dump_json(tmp_dir / "params.json", iterable)
 
     d = {
-        "use": "params.json",
+        "vars": ["params.json"],
         "stages": {
             "build": {
                 "cmd": "command --value ${bar}",
                 "params": [{"params.json": ["foo"]}],
+                "vars": ["params.json"],
             },
         },
     }
@@ -467,6 +469,7 @@ def test_resolve_local_tries_to_load_globally_used_params_yaml(tmp_dir, dvc):
             "build": {
                 "cmd": "command --value ${bar}",
                 "params": [{"params.yaml": ["foo"]}],
+                "vars": ["params.yaml"],
             },
         },
     }
