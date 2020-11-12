@@ -217,10 +217,7 @@ SCHEMA = {
                 "webdav": {**WEBDAV_COMMON, **REMOTE_COMMON},
                 "webdavs": {**WEBDAV_COMMON, **REMOTE_COMMON},
                 # TODO: Update this: https://dvc.org/doc/command-reference/remote/modify
-                "ipfs": {
-                    "mfs_path": str,
-                    **REMOTE_COMMON,
-                },
+                "ipfs": {"mfs_path": str, **REMOTE_COMMON},
                 "remote": {str: object},  # Any of the above options are valid
             }
         )
