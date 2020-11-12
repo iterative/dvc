@@ -316,7 +316,7 @@ class LocalCache(CloudCache):
             status = STATUS_NEW
             desc = "Uploading"
 
-        remote.before_process(download)
+        remote.before_transfer(download=download, upload=not download)
 
         if jobs is None:
             jobs = remote.tree.JOBS
@@ -408,7 +408,7 @@ class LocalCache(CloudCache):
                     )
                     remote.index.update([dir_hash], file_hashes)
         # notify remote of successful up / download
-        remote.after_process(download)
+        remote.after_transfer(download=download, upload=not download)
 
         return len(dir_plans[0]) + len(file_plans[0])
 

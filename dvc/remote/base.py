@@ -138,12 +138,12 @@ class Remote:
         )
         return list(indexed_hashes) + list(hashes & set(remote_hashes))
 
-    def before_process(self, download=False):
-        """Will be called before an upload or download is attempted."""
+    def before_transfer(self, download=False, upload=False, gc=False):
+        """Will be called before an upload, download or garbage collect is attempted."""
         pass
 
-    def after_process(self, download=False):
-        """Will be called after all uploads or downloads were successful
+    def after_transfer(self, download=False, upload=False, gc=False):
+        """Will be called after all uploads, downloads or garbage collect operations were successful
 
         Some remotes may need to do additional work after all uploads were processed. This method was originally
         implemented to allow the final hash calculation of the content addressed filesystem IPFS, but may also be
@@ -160,6 +160,7 @@ class Remote:
         if tree.scheme != "":
             used.update(named_cache.scheme_keys(tree.scheme))
 
+        remote.before_transfer(gc=True)
         removed = False
         # hashes must be sorted to ensure we always remove .dir files first
         for hash_ in sorted(
@@ -179,4 +180,6 @@ class Remote:
 
         if removed and hasattr(remote, "index"):
             remote.index.clear()
+        if removed:
+            remote.after_transfer(gc=True)
         return removed

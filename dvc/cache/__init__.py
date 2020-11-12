@@ -81,6 +81,8 @@ class Cache:
     ssh = _make_remote_property("ssh")
     hdfs = _make_remote_property("hdfs")
     azure = _make_remote_property("azure")
+    # TODO: don't yet understand this piece of code, do we need this for IPFS?
+    # ipfs = _make_remote_property("ipfs")
 
 
 class NamedCacheItem:

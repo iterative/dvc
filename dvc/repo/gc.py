@@ -94,5 +94,9 @@ def gc(
     if self.cache.azure:
         _do_gc("azure", self.cache.azure, used, jobs)
 
+    # TODO: don't yet understand this piece of code, do we need this for IPFS?
+    # if self.cache.ipfs:
+    #     _do_gc("ipfs", self.cache.ipfs, used, jobs)
+
     if cloud:
         _do_gc("remote", self.cloud.get_remote(remote, "gc -c"), used, jobs)

@@ -9,11 +9,11 @@ logger = logging.getLogger(__name__)
 
 
 class IPFSRemote(Remote):
-    def before_process(self, download=False):
+    def before_transfer(self, download=False, upload=False, gc=False):
         """Make sure that the MFS is in the desired state"""
         self._update_mfs_to_latest_cid()
 
-    def after_process(self, download=False):
+    def after_transfer(self, download=False, upload=False, gc=False):
         """Calculate the final CID after a successful upload
 
         Changing files in our local MFS means that the content ID gets changed. After doing any modifications,
@@ -21,7 +21,7 @@ class IPFSRemote(Remote):
         Though we get a new CID, other users won't need to download everything again, since the existing files
         and subdirectories will keep their CID.
        """
-        if download:
+        if not (upload or gc):
             return
         path_info = self.tree.path_info
         old_cid = path_info.cid

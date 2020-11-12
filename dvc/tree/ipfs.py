@@ -1,4 +1,6 @@
 import logging
+from collections import deque
+
 from funcy import cached_property
 from pathlib import Path
 from typing import Optional
@@ -41,6 +43,10 @@ class IPFSPathInfo(_BasePath):
     @cached_property
     def url(self):
         return f"{self.scheme}://{self.cid}{self.path}"
+
+    @property
+    def mfs_file_path(self):
+        return self.mfs_path + self.path
 
     def __div__(self, other):
         url = f"{self.scheme}://{self.cid}{self.path}/{other}"
@@ -89,17 +95,30 @@ class IPFSTree(BaseTree):
             return False
         return True
 
-    def walk_files(self, path_info, **kwargs):
-        logger.debug(f"Walking files in {path_info} (kwargs={kwargs})")
-        # TODO: walking a file path is not possible in IPFS. We could generate a directory listing with all content
-        #  of our project. For example, this is a list of all xkcd comics until Comic #1862:
-        #  https://ipfs.io/ipfs/QmdmQXB2mzChmMeKY47C43LxUdg1NDJ5MWcKMKxDu7RgQm
-        #  This would be possible to walk, but any change on any file generates a new CID. Therefore, we need to
-        #  generate a new directory listing on every update and save that CID somewhere in our project. Not sure if
-        #  this is still in scope of DVC.
-        #
-        #  Therefore, we return an empty tree for now
-        return iter(())
+    def walk_files(self, path_info: PATH_CLS, **kwargs):
+        dirs = deque([path_info])
+
+        while dirs:
+            dir_path = dirs.pop()
+            try:
+                entries = self.ipfs_client.files.ls(dir_path.mfs_file_path)['Entries']
+            except ipfshttpclient.exceptions.ErrorResponse as e:
+                if e.args[0] != 'file does not exist':
+                    raise e
+                continue
+            for entry in entries:
+                entry_path_info = dir_path / entry['Name']
+                type_ = self.ipfs_client.files.stat(entry_path_info.mfs_file_path)['Type']
+                if type_ == 'directory':
+                    dirs.append(entry_path_info)
+                elif type_ == 'file':
+                    logger.debug(entry_path_info.mfs_file_path)
+                    yield entry_path_info
+                else:
+                    raise DvcException(f"Unexpected file type ({type_}) in IPFS at {entry_path_info.mfs_file_path}")
+
+    def path_to_hash(self, path):
+        return path.replace('/', '')
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         mfs_path = f"{self.path_info.mfs_path}/{to_info.path}"
@@ -119,7 +138,5 @@ class IPFSTree(BaseTree):
         logger.debug(f"Downloading {from_info} to {to_file}")
         with open(to_file, "wb") as f:
             f.write(
-                self.ipfs_client.files.read(
-                    f"{from_info.mfs_path}/{from_info.path}"
-                )
+                self.ipfs_client.files.read(from_info.mfs_file_path)
             )
