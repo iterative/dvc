@@ -48,7 +48,7 @@ class BaseTree:
     scheme = "base"
     REQUIRES = {}
     PATH_CLS = URLInfo
-    JOBS = 4
+    JOBS = 4 * cpu_count()
 
     CHECKSUM_DIR_SUFFIX = ".dir"
     HASH_JOBS = max(1, min(4, cpu_count() // 2))
@@ -78,7 +78,7 @@ class BaseTree:
         self.path_info = None
 
     @cached_property
-    def jobs_count(self):
+    def jobs(self):
         # NOTE: alternative style.
         # repo_config = self.repo.config['core'] if self.repo else {}
         # return self.config.get("jobs", repo_config.get("jobs", self.JOBS))
@@ -415,7 +415,7 @@ class BaseTree:
                     dir_mode=dir_mode,
                 )
             )
-            with ThreadPoolExecutor(max_workers=self.jobs_count) as executor:
+            with ThreadPoolExecutor(max_workers=self.jobs) as executor:
                 futures = [
                     executor.submit(download_files, from_info, to_info)
                     for from_info, to_info in zip(from_infos, to_infos)
