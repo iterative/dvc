@@ -5,6 +5,7 @@ import subprocess
 import threading
 from contextlib import contextmanager
 
+from dvc.env import DVC_CHECKPOINT, DVC_ROOT
 from dvc.utils import fix_env
 
 from .decorators import relock_repo, unlocked_repo
@@ -119,7 +120,7 @@ def run_stage(stage, dry=False, force=False, checkpoint_func=None, **kwargs):
 
 
 def _checkpoint_env(stage):
-    return {"DVC_CHECKPOINT": "1", "DVC_ROOT": stage.repo.root_dir}
+    return {DVC_CHECKPOINT: "1", DVC_ROOT: stage.repo.root_dir}
 
 
 @contextmanager

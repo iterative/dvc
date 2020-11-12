@@ -63,13 +63,15 @@ def checkpoint_stage(tmp_dir, scm, dvc):
 
 
 def test_new_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker):
+    from dvc.env import DVC_CHECKPOINT, DVC_ROOT
+
     new_mock = mocker.spy(dvc.experiments, "new")
     env_mock = mocker.spy(dvc_module.stage.run, "_checkpoint_env")
     dvc.experiments.run(checkpoint_stage.addressing, params=["foo=2"])
 
     new_mock.assert_called_once()
     env_mock.assert_called_once()
-    assert set(env_mock.return_value.keys()) == {"DVC_CHECKPOINT", "DVC_ROOT"}
+    assert set(env_mock.return_value.keys()) == {DVC_CHECKPOINT, DVC_ROOT}
     assert (tmp_dir / "foo").read_text() == "5"
     assert (
         tmp_dir / ".dvc" / "experiments" / "metrics.yaml"
