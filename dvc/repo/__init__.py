@@ -129,6 +129,7 @@ class Repo:
         from dvc.repo.metrics import Metrics
         from dvc.repo.params import Params
         from dvc.repo.plots import Plots
+        from dvc.repo.vdir import Vdir
         from dvc.stage.cache import StageCache
         from dvc.state import State, StateNoop
         from dvc.tree.local import LocalTree
@@ -177,6 +178,7 @@ class Repo:
             self._ignore()
 
         self.metrics = Metrics(self)
+        self.vdir = Vdir(self)
         self.plots = Plots(self)
         self.params = Params(self)
 

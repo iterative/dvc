@@ -39,6 +39,7 @@ from .command import (
     run,
     unprotect,
     update,
+    vdir,
     version,
 )
 from .command.base import fix_subparsers
@@ -76,6 +77,7 @@ COMMANDS = [
     commit,
     completion,
     diff,
+    vdir,
     version,
     update,
     git_hook,
