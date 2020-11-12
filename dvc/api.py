@@ -121,12 +121,13 @@ def make_checkpoint():
     import builtins
     from time import sleep
 
+    from dvc.env import DVC_CHECKPOINT, DVC_ROOT
     from dvc.stage.run import CHECKPOINT_SIGNAL_FILE
 
-    if os.getenv("DVC_CHECKPOINT") is None:
+    if os.getenv(DVC_CHECKPOINT) is None:
         return
 
-    root_dir = Repo.find_root()
+    root_dir = os.getenv(DVC_ROOT, Repo.find_root())
     signal_file = os.path.join(
         root_dir, Repo.DVC_DIR, "tmp", CHECKPOINT_SIGNAL_FILE
     )

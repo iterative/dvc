@@ -1,17 +1,18 @@
 import errno
 import itertools
 import logging
+import posixpath
 from concurrent.futures import ThreadPoolExecutor
 
 from dvc.progress import Tqdm
 from dvc.utils import to_chunks
 
-from .base import Remote
+from .base import CloudCache
 
 logger = logging.getLogger(__name__)
 
 
-class SSHRemote(Remote):
+class SSHCache(CloudCache):
     def batch_exists(self, path_infos, callback):
         def _exists(chunk_and_channel):
             chunk, channel = chunk_and_channel
@@ -47,7 +48,7 @@ class SSHRemote(Remote):
         remote/base.
         """
         if not self.tree.CAN_TRAVERSE:
-            return list(set(hashes) & set(self.tree.all()))
+            return list(set(hashes) & set(self.all()))
 
         # possibly prompt for credentials before "Querying" progress output
         self.tree.ensure_credentials()
@@ -71,3 +72,19 @@ class SSHRemote(Remote):
                 in_remote = itertools.chain.from_iterable(results)
                 ret = list(itertools.compress(hashes, in_remote))
                 return ret
+
+    def _list_paths(self, prefix=None, progress_callback=None):
+        if prefix:
+            root = posixpath.join(self.tree.path_info.path, prefix[:2])
+        else:
+            root = self.tree.path_info.path
+        with self.tree.ssh(self.tree.path_info) as ssh:
+            if prefix and not ssh.exists(root):
+                return
+            # If we simply return an iterator then with above closes instantly
+            if progress_callback:
+                for path in ssh.walk_files(root):
+                    progress_callback()
+                    yield path
+            else:
+                yield from ssh.walk_files(root)

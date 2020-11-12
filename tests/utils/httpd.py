@@ -2,6 +2,7 @@ import hashlib
 import os
 import sys
 import threading
+from contextlib import contextmanager
 from http import HTTPStatus
 from http.server import HTTPServer
 
@@ -89,26 +90,35 @@ class TestRequestHandler(RangeRequestHandler):
         self.end_headers()
 
 
+@contextmanager
+def run_server_on_thread(server):
+    thread = threading.Thread(target=server.serve_forever)
+    thread.daemon = True
+    thread.start()
+
+    yield server
+
+    server.socket.close()
+    server.shutdown()
+    server.server_close()
+
+
 class StaticFileServer:
     _lock = threading.Lock()
 
     def __init__(self, directory):
         from functools import partial
 
-        self._lock.acquire()
-        self._httpd = HTTPServer(
-            ("localhost", 0), partial(TestRequestHandler, directory=directory),
-        )
-        self._thread = None
+        addr = ("localhost", 0)
+        req = partial(TestRequestHandler, directory=directory)
+        server = HTTPServer(addr, req)
+        self.runner = run_server_on_thread(server)
 
+    # pylint: disable=no-member
     def __enter__(self):
-        self._thread = threading.Thread(target=self._httpd.serve_forever)
-        self._thread.daemon = True
-        self._thread.start()
-        return self._httpd
+        self._lock.acquire()
+        return self.runner.__enter__()
 
     def __exit__(self, *args):
-        self._httpd.socket.close()
-        self._httpd.shutdown()
-        self._httpd.server_close()
+        self.runner.__exit__(*args)
         self._lock.release()

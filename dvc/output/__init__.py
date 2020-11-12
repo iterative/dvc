@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 from funcy import collecting, project
 from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
 
+from dvc.hash_info import HashInfo
 from dvc.output.base import BaseOutput
 from dvc.output.gs import GSOutput
 from dvc.output.hdfs import HDFSOutput
@@ -59,10 +60,20 @@ SCHEMA[BaseOutput.PARAM_CACHE] = bool
 SCHEMA[BaseOutput.PARAM_METRIC] = BaseOutput.METRIC_SCHEMA
 SCHEMA[BaseOutput.PARAM_PLOT] = bool
 SCHEMA[BaseOutput.PARAM_PERSIST] = bool
+SCHEMA[BaseOutput.PARAM_CHECKPOINT] = bool
+SCHEMA[HashInfo.PARAM_SIZE] = int
+SCHEMA[HashInfo.PARAM_NFILES] = int
 
 
 def _get(
-    stage, p, info=None, cache=True, metric=False, plot=False, persist=False
+    stage,
+    p,
+    info=None,
+    cache=True,
+    metric=False,
+    plot=False,
+    persist=False,
+    checkpoint=False,
 ):
     parsed = urlparse(p)
 
@@ -77,6 +88,7 @@ def _get(
             metric=metric,
             plot=plot,
             persist=persist,
+            checkpoint=checkpoint,
         )
 
     for o in OUTS:
@@ -90,6 +102,7 @@ def _get(
                 metric=metric,
                 plot=plot,
                 persist=persist,
+                checkpoint=checkpoint,
             )
     return LocalOutput(
         stage,
@@ -100,6 +113,7 @@ def _get(
         metric=metric,
         plot=plot,
         persist=persist,
+        checkpoint=checkpoint,
     )
 
 
@@ -111,6 +125,7 @@ def loadd_from(stage, d_list):
         metric = d.pop(BaseOutput.PARAM_METRIC, False)
         plot = d.pop(BaseOutput.PARAM_PLOT, False)
         persist = d.pop(BaseOutput.PARAM_PERSIST, False)
+        checkpoint = d.pop(BaseOutput.PARAM_CHECKPOINT, False)
         ret.append(
             _get(
                 stage,
@@ -120,13 +135,20 @@ def loadd_from(stage, d_list):
                 metric=metric,
                 plot=plot,
                 persist=persist,
+                checkpoint=checkpoint,
             )
         )
     return ret
 
 
 def loads_from(
-    stage, s_list, use_cache=True, metric=False, plot=False, persist=False
+    stage,
+    s_list,
+    use_cache=True,
+    metric=False,
+    plot=False,
+    persist=False,
+    checkpoint=False,
 ):
     return [
         _get(
@@ -137,6 +159,7 @@ def loads_from(
             metric=metric,
             plot=plot,
             persist=persist,
+            checkpoint=checkpoint,
         )
         for s in s_list
     ]
@@ -180,5 +203,12 @@ def load_from_pipeline(stage, s_list, typ="outs"):
             from dvc.schema import PLOT_PROPS
 
             plt_d, flags = _split_dict(flags, keys=PLOT_PROPS.keys())
-        extra = project(flags, ["cache", "persist"])
+        extra = project(
+            flags,
+            [
+                BaseOutput.PARAM_CACHE,
+                BaseOutput.PARAM_PERSIST,
+                BaseOutput.PARAM_CHECKPOINT,
+            ],
+        )
         yield _get(stage, path, {}, plot=plt_d or plot, metric=metric, **extra)

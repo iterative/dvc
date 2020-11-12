@@ -465,3 +465,13 @@ def test_try_import_complete_repo(tmp_dir, dvc, erepo_dir):
     with pytest.raises(IsADVCRepoError) as exc_info:
         dvc.imp(os.fspath(erepo_dir), os.curdir, out="out")
     assert expected_message == str(exc_info.value)
+
+
+def test_import_with_no_exec(tmp_dir, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
+
+    dvc.imp(os.fspath(erepo_dir), "foo", out="foo_imported", no_exec=True)
+
+    dst = tmp_dir / "foo_imported"
+    assert not dst.exists()

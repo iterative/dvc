@@ -100,10 +100,11 @@ class TestCheckoutCorruptedCacheDir(TestDvc):
 
         # NOTE: modifying cache file for one of the files inside the directory
         # to check if dvc will detect that the cache is corrupted.
-        entry = self.dvc.cache.local.load_dir_cache(out.hash_info)[0]
-        entry_hash = entry[self.dvc.cache.local.tree.PARAM_CHECKSUM]
+        _, entry_hash = next(
+            self.dvc.cache.local.load_dir_cache(out.hash_info).items()
+        )
         cache = os.fspath(
-            self.dvc.cache.local.tree.hash_to_path_info(entry_hash)
+            self.dvc.cache.local.tree.hash_to_path_info(entry_hash.value)
         )
 
         os.chmod(cache, 0o644)

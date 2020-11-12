@@ -30,6 +30,11 @@ class CmdRepro(CmdBase):
 
                 if len(stages) == 0:
                     logger.info(CmdDataStatus.UP_TO_DATE_MSG)
+                else:
+                    logger.info(
+                        "Use `dvc push` to send your updates to "
+                        "remote storage."
+                    )
 
                 if self.args.metrics:
                     metrics = self.repo.metrics.show()

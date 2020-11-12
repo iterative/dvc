@@ -14,6 +14,7 @@ from .oss import (  # noqa: F401
     real_oss,
 )
 from .s3 import S3, TEST_AWS_REPO_BUCKET, real_s3, s3  # noqa: F401
+from .webdav import Webdav, webdav, webdav_server  # noqa: F401
 
 from .gdrive import (  # noqa: F401; noqa: F401
     TEST_GDRIVE_REPO_BUCKET,

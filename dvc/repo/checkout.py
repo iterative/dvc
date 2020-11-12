@@ -47,6 +47,7 @@ def checkout(
     relink=False,
     recursive=False,
     allow_missing=False,
+    **kwargs,
 ):
     from dvc.stage.exceptions import (
         StageFileBadNameError,
@@ -98,6 +99,7 @@ def checkout(
                 relink=relink,
                 filter_info=filter_info,
                 allow_missing=allow_missing,
+                **kwargs,
             )
             for key, items in result.items():
                 stats[key].extend(_fspath_dir(path) for path in items)

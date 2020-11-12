@@ -1,45 +1,31 @@
 """Manages cache of a DVC repo."""
 from collections import defaultdict
 
-from funcy import cached_property
+from ..scheme import Schemes
 
 
-def _make_remote_property(name):
-    """
-    The config file is stored in a way that allows you to have a
-    cache for each remote.
+def get_cloud_cache(tree):
+    from .base import CloudCache
+    from .local import LocalCache
+    from .ssh import SSHCache
 
-    This is needed when specifying external outputs
-    (as they require you to have an external cache location).
+    if tree.scheme == Schemes.LOCAL:
+        return LocalCache(tree)
 
-    Imagine a config file like the following:
+    if tree.scheme == Schemes.SSH:
+        return SSHCache(tree)
 
-            ['remote "dvc-storage"']
-            url = ssh://localhost/tmp
-            ask_password = true
+    return CloudCache(tree)
 
-            [cache]
-            ssh = dvc-storage
 
-    This method creates a cached property, containing cache named `name`:
+def _get_cache(repo, settings):
+    from ..tree import get_cloud_tree
 
-        self.config == {'ssh': 'dvc-storage'}
-        self.ssh  # a RemoteSSH instance
-    """
+    if not settings:
+        return None
 
-    def getter(self):
-        from ..tree import get_cloud_tree
-        from .base import CloudCache
-
-        remote = self.config.get(name)
-        if not remote:
-            return None
-
-        tree = get_cloud_tree(self.repo, name=remote)
-        return CloudCache(tree)
-
-    getter.__name__ = name
-    return cached_property(getter)
+    tree = get_cloud_tree(repo, **settings)
+    return get_cloud_cache(tree)
 
 
 class Cache:
@@ -50,21 +36,19 @@ class Cache:
     """
 
     CACHE_DIR = "cache"
+    CLOUD_SCHEMES = [Schemes.S3, Schemes.GS, Schemes.SSH, Schemes.HDFS]
 
     def __init__(self, repo):
-        from ..tree import get_cloud_tree
-        from .local import LocalCache
-
         self.repo = repo
         self.config = config = repo.config["cache"]
+        self._cache = {}
 
         local = config.get("local")
 
         if local:
             settings = {"name": local}
         elif "dir" not in config:
-            self.local = None
-            return
+            settings = None
         else:
             from ..config import LOCAL_COMMON
 
@@ -73,14 +57,21 @@ class Cache:
                 if opt in config:
                     settings[str(opt)] = config.get(opt)
 
-        tree = get_cloud_tree(repo, **settings)
-        self.local = LocalCache(tree)
+        self._cache[Schemes.LOCAL] = _get_cache(repo, settings)
 
-    s3 = _make_remote_property("s3")
-    gs = _make_remote_property("gs")
-    ssh = _make_remote_property("ssh")
-    hdfs = _make_remote_property("hdfs")
-    azure = _make_remote_property("azure")
+        for scheme in self.CLOUD_SCHEMES:
+            remote = self.config.get(scheme)
+            settings = {"name": remote} if remote else None
+            self._cache[scheme] = _get_cache(repo, settings)
+
+    def __getattr__(self, name):
+        try:
+            return self._cache[name]
+        except KeyError as exc:
+            raise AttributeError from exc
+
+    def by_scheme(self):
+        yield from self._cache.items()
 
 
 class NamedCacheItem:

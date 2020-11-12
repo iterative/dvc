@@ -1,3 +1,5 @@
+import os
+
 import configobj
 import pytest
 
@@ -112,3 +114,34 @@ def test_merging_two_levels(dvc):
 def test_config_loads_without_error_for_non_dvc_repo(tmp_dir):
     # regression testing for https://github.com/iterative/dvc/issues/3328
     Config(validate=True)
+
+
+@pytest.mark.parametrize(
+    "field, remote_url",
+    [
+        ("credentialpath", "s3://mybucket/my/path"),
+        ("credentialpath", "gs://my-bucket/path"),
+        ("keyfile", "ssh://user@example.com:1234/path/to/dir"),
+        ("cert_path", "webdavs://example.com/files/USERNAME/"),
+        ("key_path", "webdavs://example.com/files/USERNAME/"),
+        ("gdrive_service_account_p12_file_path", "gdrive://root/test"),
+        ("gdrive_user_credentials_file", "gdrive://root/test"),
+    ],
+)
+def test_load_relative_paths(dvc, field, remote_url):
+    # set field to test
+    with dvc.config.edit() as conf:
+        conf["remote"]["test"] = {"url": remote_url, field: "file.txt"}
+
+    # check if written paths are correct
+    dvc_dir = dvc.config.dvc_dir
+    assert dvc.config["remote"]["test"][field] == os.path.join(
+        dvc_dir, "..", "file.txt"
+    )
+
+    # load config and check that it contains what we expect
+    # (relative paths are evaluated correctly)
+    cfg = Config(dvc_dir)
+    assert cfg["remote"]["test"][field] == os.path.join(
+        dvc_dir, "..", "file.txt"
+    )

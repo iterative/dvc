@@ -6,6 +6,7 @@ import pytest
 
 from dvc.cache import Cache
 from dvc.cache.base import DirCacheError
+from dvc.dir_info import DirInfo
 from dvc.hash_info import HashInfo
 from dvc.main import main
 from dvc.utils import relpath
@@ -31,7 +32,7 @@ class TestCache(TestDvc):
         self.create(self.cache2, "2")
 
     def test_all(self):
-        md5_list = list(Cache(self.dvc).local.tree.all())
+        md5_list = list(Cache(self.dvc).local.all())
         self.assertEqual(len(md5_list), 2)
         self.assertIn(self.cache1_md5, md5_list)
         self.assertIn(self.cache2_md5, md5_list)
@@ -60,9 +61,11 @@ class TestCacheLoadBadDirCache(TestDvc):
             self.dvc.cache.local.tree.hash_to_path_info(dir_hash)
         )
         self.create(fname, '{"a": "b"}')
-        self._do_test(
-            self.dvc.cache.local.load_dir_cache(HashInfo("md5", dir_hash))
+        dir_info = self.dvc.cache.local.load_dir_cache(
+            HashInfo("md5", dir_hash)
         )
+        self.assertTrue(isinstance(dir_info, DirInfo))
+        self.assertEqual(dir_info.nfiles, 0)
 
 
 class TestExternalCacheDir(TestDvc):

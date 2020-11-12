@@ -1,39 +1,26 @@
+import itertools
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from copy import copy
-from operator import itemgetter
 
 from funcy import decorator
 from shortuuid import uuid
 
 import dvc.prompt as prompt
+from dvc.dir_info import DirInfo
 from dvc.exceptions import (
+    CacheLinkError,
     CheckoutError,
     ConfirmRemoveError,
     DvcException,
-    MergeError,
 )
-from dvc.hash_info import HashInfo
-from dvc.path_info import WindowsPathInfo
 from dvc.progress import Tqdm
 from dvc.remote.slow_link_detection import slow_link_guard
 
 from ..tree.base import RemoteActionNotImplemented
 
 logger = logging.getLogger(__name__)
-
-STATUS_OK = 1
-STATUS_MISSING = 2
-STATUS_NEW = 3
-STATUS_DELETED = 4
-
-STATUS_MAP = {
-    # (local_exists, remote_exists)
-    (True, True): STATUS_OK,
-    (False, False): STATUS_MISSING,
-    (True, False): STATUS_NEW,
-    (False, True): STATUS_DELETED,
-}
 
 
 class DirCacheError(DvcException):
@@ -76,7 +63,7 @@ class CloudCache:
         try:
             dir_info = self.load_dir_cache(hash_info)
         except DirCacheError:
-            dir_info = []
+            dir_info = DirInfo()
 
         self._dir_info[hash_info.value] = dir_info
         return dir_info
@@ -95,18 +82,9 @@ class CloudCache:
                 "dir cache file format error '%s' [skipping the file]",
                 path_info,
             )
-            return []
+            d = []
 
-        if self.tree.PATH_CLS == WindowsPathInfo:
-            # only need to convert it for Windows
-            for info in d:
-                # NOTE: here is a BUG, see comment to .as_posix() below
-                relpath = info[self.tree.PARAM_RELPATH]
-                info[self.tree.PARAM_RELPATH] = relpath.replace(
-                    "/", self.tree.PATH_CLS.sep
-                )
-
-        return d
+        return DirInfo.from_list(d)
 
     def changed(self, path_info, hash_info):
         """Checks if data has changed.
@@ -192,7 +170,7 @@ class CloudCache:
                 )
                 del link_types[0]
 
-        raise DvcException("no possible cache types left to try out.")
+        raise CacheLinkError([to_info])
 
     def _do_link(self, from_info, to_info, link_method):
         if self.tree.exists(to_info):
@@ -226,7 +204,7 @@ class CloudCache:
             # we need to update path and cache, since in case of reflink,
             # or copy cache type moving original file results in updates on
             # next executed command, which causes md5 recalculation
-            self.tree.state.save(path_info, hash_info.value)
+            self.tree.state.save(path_info, hash_info)
         else:
             if self.changed_cache(hash_info):
                 with tree.open(path_info, mode="rb") as fobj:
@@ -240,7 +218,7 @@ class CloudCache:
                 if callback:
                     callback(1)
 
-        self.tree.state.save(cache_info, hash_info.value)
+        self.tree.state.save(cache_info, hash_info)
 
     def _cache_is_copy(self, path_info):
         """Checks whether cache uses copies."""
@@ -270,14 +248,9 @@ class CloudCache:
         from dvc.path_info import PathInfo
         from dvc.utils import tmp_fname
 
-        # Sorting the list by path to ensure reproducibility
-        if isinstance(dir_info, dict):
-            dir_info = self._from_dict(dir_info)
-        dir_info = sorted(dir_info, key=itemgetter(self.tree.PARAM_RELPATH))
-
         tmp = tempfile.NamedTemporaryFile(delete=False).name
         with open(tmp, "w+") as fobj:
-            json.dump(dir_info, fobj, sort_keys=True)
+            json.dump(dir_info.to_list(), fobj, sort_keys=True)
 
         from_info = PathInfo(tmp)
         to_info = self.tree.path_info / tmp_fname("")
@@ -285,7 +258,8 @@ class CloudCache:
 
         hash_info = self.tree.get_file_hash(to_info)
         hash_info.value += self.tree.CHECKSUM_DIR_SUFFIX
-        hash_info.dir_info = self._to_dict(dir_info)
+        hash_info.dir_info = dir_info
+        hash_info.nfiles = dir_info.nfiles
 
         return hash_info, to_info
 
@@ -304,20 +278,19 @@ class CloudCache:
             self.tree.makedirs(new_info.parent)
             self.tree.move(tmp_info, new_info, mode=self.CACHE_MODE)
 
-        self.tree.state.save(new_info, hi.value)
+        self.tree.state.save(new_info, hi)
 
         return hi
 
     def _save_dir(self, path_info, tree, hash_info, save_link=True, **kwargs):
         if not hash_info.dir_info:
-            hash_info.dir_info = self._to_dict(
-                tree.cache.get_dir_cache(hash_info)
-            )
+            hash_info.dir_info = tree.cache.get_dir_cache(hash_info)
         hi = self.save_dir_info(hash_info.dir_info, hash_info)
-        for relpath, entry_hash in Tqdm(
-            hi.dir_info.items(), desc="Saving " + path_info.name, unit="file"
+        for entry_info, entry_hash in Tqdm(
+            hi.dir_info.items(path_info),
+            desc="Saving " + path_info.name,
+            unit="file",
         ):
-            entry_info = path_info / relpath
             self._save_file(
                 entry_info, tree, entry_hash, save_link=False, **kwargs
             )
@@ -325,10 +298,10 @@ class CloudCache:
         if save_link:
             self.tree.state.save_link(path_info)
         if self.tree.exists(path_info):
-            self.tree.state.save(path_info, hi.value)
+            self.tree.state.save(path_info, hi)
 
         cache_info = self.tree.hash_to_path_info(hi.value)
-        self.tree.state.save(cache_info, hi.value)
+        self.tree.state.save(cache_info, hi)
 
     @use_state
     def save(self, path_info, tree, hash_info, save_link=True, **kwargs):
@@ -402,13 +375,9 @@ class CloudCache:
         if self.changed_cache_file(hash_info):
             return True
 
-        for entry in self.get_dir_cache(hash_info):
-            entry_hash = HashInfo(
-                self.tree.PARAM_CHECKSUM, entry[self.tree.PARAM_CHECKSUM]
-            )
-
+        dir_info = self.get_dir_cache(hash_info)
+        for entry_info, entry_hash in dir_info.items(path_info):
             if path_info and filter_info:
-                entry_info = path_info / entry[self.tree.PARAM_RELPATH]
                 if not entry_info.isin_or_eq(filter_info):
                     continue
 
@@ -460,7 +429,7 @@ class CloudCache:
 
         self.link(cache_info, path_info)
         self.tree.state.save_link(path_info)
-        self.tree.state.save(path_info, hash_info.value)
+        self.tree.state.save(path_info, hash_info)
         if progress_callback:
             progress_callback(str(path_info))
 
@@ -486,21 +455,19 @@ class CloudCache:
 
         logger.debug("Linking directory '%s'.", path_info)
 
-        for entry in dir_info:
-            relative_path = entry[self.tree.PARAM_RELPATH]
-            entry_hash = entry[self.tree.PARAM_CHECKSUM]
-            entry_cache_info = self.tree.hash_to_path_info(entry_hash)
-            entry_info = path_info / relative_path
+        for entry_info, entry_hash_info in dir_info.items(path_info):
+            entry_cache_info = self.tree.hash_to_path_info(
+                entry_hash_info.value
+            )
 
             if filter_info and not entry_info.isin_or_eq(filter_info):
                 continue
 
-            entry_hash_info = HashInfo(self.tree.PARAM_CHECKSUM, entry_hash)
             if relink or self.changed(entry_info, entry_hash_info):
                 modified = True
                 self.safe_remove(entry_info, force=force)
                 self.link(entry_cache_info, entry_info)
-                self.tree.state.save(entry_info, entry_hash)
+                self.tree.state.save(entry_info, entry_hash_info)
             if progress_callback:
                 progress_callback(str(entry_info))
 
@@ -510,7 +477,7 @@ class CloudCache:
         )
 
         self.tree.state.save_link(path_info)
-        self.tree.state.save(path_info, hash_info.value)
+        self.tree.state.save(path_info, hash_info)
 
         # relink is not modified, assume it as nochange
         return added, not added and modified and not relink
@@ -518,9 +485,7 @@ class CloudCache:
     def _remove_redundant_files(self, path_info, dir_info, force):
         existing_files = set(self.tree.walk_files(path_info))
 
-        needed_files = {
-            path_info / entry[self.tree.PARAM_RELPATH] for entry in dir_info
-        }
+        needed_files = {info for info, _ in dir_info.items(path_info)}
         redundant_files = existing_files - needed_files
         for path in redundant_files:
             self.safe_remove(path, force)
@@ -536,6 +501,7 @@ class CloudCache:
         progress_callback=None,
         relink=False,
         filter_info=None,
+        quiet=False,
     ):
         if path_info.scheme not in ["local", self.tree.scheme]:
             raise NotImplementedError
@@ -543,10 +509,11 @@ class CloudCache:
         failed = None
         skip = False
         if not hash_info:
-            logger.warning(
-                "No file hash info found for '%s'. " "It won't be created.",
-                path_info,
-            )
+            if not quiet:
+                logger.warning(
+                    "No file hash info found for '%s'. It won't be created.",
+                    path_info,
+                )
             self.safe_remove(path_info, force=force)
             failed = path_info
 
@@ -557,11 +524,12 @@ class CloudCache:
         elif self.changed_cache(
             hash_info, path_info=path_info, filter_info=filter_info
         ):
-            logger.warning(
-                "Cache '%s' not found. File '%s' won't be created.",
-                hash_info,
-                path_info,
-            )
+            if not quiet:
+                logger.warning(
+                    "Cache '%s' not found. File '%s' won't be created.",
+                    hash_info,
+                    path_info,
+                )
             self.safe_remove(path_info, force=force)
             failed = path_info
 
@@ -618,76 +586,21 @@ class CloudCache:
             return 1
 
         if not filter_info:
-            return len(self.get_dir_cache(hash_info))
+            return self.get_dir_cache(hash_info).nfiles
 
         return ilen(
-            filter_info.isin_or_eq(path_info / entry[self.tree.PARAM_CHECKSUM])
-            for entry in self.get_dir_cache(hash_info)
+            filter_info.isin_or_eq(path_info / relpath)
+            for relpath, _ in self.get_dir_cache(hash_info).items()
         )
 
-    def _to_dict(self, dir_info):
-        info = {}
-        for entry in dir_info:
-            relpath = None
-            hash_info = None
-            for key, value in entry.items():
-                if key == self.tree.PARAM_RELPATH:
-                    relpath = value
-                else:
-                    hash_info = HashInfo(key, value)
-            info[relpath] = hash_info
-        return info
-
-    def _from_dict(self, dir_dict):
-        return [
-            {
-                self.tree.PARAM_RELPATH: relpath,
-                hash_info.name: hash_info.value,
-            }
-            for relpath, hash_info in dir_dict.items()
-        ]
-
-    @staticmethod
-    def _diff(ancestor, other, allow_removed=False):
-        from dictdiffer import diff
-
-        allowed = ["add"]
-        if allow_removed:
-            allowed.append("remove")
-
-        result = list(diff(ancestor, other))
-        for typ, _, _ in result:
-            if typ not in allowed:
-                raise MergeError(
-                    "unable to auto-merge directories with diff that contains "
-                    f"'{typ}'ed files"
-                )
-        return result
-
-    def _merge_dirs(self, ancestor_info, our_info, their_info):
-        from dictdiffer import patch
-
-        ancestor = self._to_dict(ancestor_info)
-        our = self._to_dict(our_info)
-        their = self._to_dict(their_info)
-
-        our_diff = self._diff(ancestor, our)
-        if not our_diff:
-            return self._from_dict(their)
-
-        their_diff = self._diff(ancestor, their)
-        if not their_diff:
-            return self._from_dict(our)
-
-        # make sure there are no conflicting files
-        self._diff(our, their, allow_removed=True)
-
-        merged = patch(our_diff + their_diff, ancestor, in_place=True)
-
-        # Sorting the list by path to ensure reproducibility
-        return sorted(
-            self._from_dict(merged), key=itemgetter(self.tree.PARAM_RELPATH)
-        )
+    def _get_dir_size(self, dir_info):
+        try:
+            return sum(
+                self.tree.getsize(self.tree.hash_to_path_info(hi.value))
+                for _, hi in dir_info.items()
+            )
+        except FileNotFoundError:
+            return None
 
     def merge(self, ancestor_info, our_info, their_info):
         assert our_info
@@ -696,13 +609,15 @@ class CloudCache:
         if ancestor_info:
             ancestor = self.get_dir_cache(ancestor_info)
         else:
-            ancestor = []
+            ancestor = DirInfo()
 
         our = self.get_dir_cache(our_info)
         their = self.get_dir_cache(their_info)
 
-        merged = self._merge_dirs(ancestor, our, their)
-        return self.save_dir_info(merged)
+        merged = our.merge(ancestor, their)
+        hash_info = self.save_dir_info(merged)
+        hash_info.size = self._get_dir_size(merged)
+        return hash_info
 
     @use_state
     def get_hash(self, tree, path_info):
@@ -711,9 +626,309 @@ class CloudCache:
             assert hash_info.name == self.tree.PARAM_CHECKSUM
             return hash_info
 
-        return self.save_dir_info(hash_info.dir_info, hash_info)
+        hi = self.save_dir_info(hash_info.dir_info, hash_info)
+        hi.size = hash_info.size
+        return hi
 
     def set_dir_info(self, hash_info):
         assert hash_info.isdir
 
-        hash_info.dir_info = self._to_dict(self.get_dir_cache(hash_info))
+        hash_info.dir_info = self.get_dir_cache(hash_info)
+        hash_info.nfiles = hash_info.dir_info.nfiles
+
+    def _list_paths(self, prefix=None, progress_callback=None):
+        if prefix:
+            if len(prefix) > 2:
+                path_info = self.tree.path_info / prefix[:2] / prefix[2:]
+            else:
+                path_info = self.tree.path_info / prefix[:2]
+            prefix = True
+        else:
+            path_info = self.tree.path_info
+            prefix = False
+        if progress_callback:
+            for file_info in self.tree.walk_files(path_info, prefix=prefix):
+                progress_callback()
+                yield file_info.path
+        else:
+            yield from self.tree.walk_files(path_info, prefix=prefix)
+
+    def _path_to_hash(self, path):
+        parts = self.tree.PATH_CLS(path).parts[-2:]
+
+        if not (len(parts) == 2 and parts[0] and len(parts[0]) == 2):
+            raise ValueError(f"Bad cache file path '{path}'")
+
+        return "".join(parts)
+
+    def list_hashes(self, prefix=None, progress_callback=None):
+        """Iterate over hashes in this tree.
+
+        If `prefix` is specified, only hashes which begin with `prefix`
+        will be returned.
+        """
+        for path in self._list_paths(prefix, progress_callback):
+            try:
+                yield self._path_to_hash(path)
+            except ValueError:
+                logger.debug(
+                    "'%s' doesn't look like a cache file, skipping", path
+                )
+
+    def _hashes_with_limit(self, limit, prefix=None, progress_callback=None):
+        count = 0
+        for hash_ in self.list_hashes(prefix, progress_callback):
+            yield hash_
+            count += 1
+            if count > limit:
+                logger.debug(
+                    "`list_hashes()` returned max '{}' hashes, "
+                    "skipping remaining results".format(limit)
+                )
+                return
+
+    def _max_estimation_size(self, hashes):
+        # Max remote size allowed for us to use traverse method
+        return max(
+            self.tree.TRAVERSE_THRESHOLD_SIZE,
+            len(hashes)
+            / self.tree.TRAVERSE_WEIGHT_MULTIPLIER
+            * self.tree.LIST_OBJECT_PAGE_SIZE,
+        )
+
+    def _estimate_remote_size(self, hashes=None, name=None):
+        """Estimate tree size based on number of entries beginning with
+        "00..." prefix.
+        """
+        prefix = "0" * self.tree.TRAVERSE_PREFIX_LEN
+        total_prefixes = pow(16, self.tree.TRAVERSE_PREFIX_LEN)
+        if hashes:
+            max_hashes = self._max_estimation_size(hashes)
+        else:
+            max_hashes = None
+
+        with Tqdm(
+            desc="Estimating size of "
+            + (f"cache in '{name}'" if name else "remote cache"),
+            unit="file",
+        ) as pbar:
+
+            def update(n=1):
+                pbar.update(n * total_prefixes)
+
+            if max_hashes:
+                hashes = self._hashes_with_limit(
+                    max_hashes / total_prefixes, prefix, update
+                )
+            else:
+                hashes = self.list_hashes(prefix, update)
+
+            remote_hashes = set(hashes)
+            if remote_hashes:
+                remote_size = total_prefixes * len(remote_hashes)
+            else:
+                remote_size = total_prefixes
+            logger.debug(f"Estimated remote size: {remote_size} files")
+        return remote_size, remote_hashes
+
+    def list_hashes_traverse(
+        self, remote_size, remote_hashes, jobs=None, name=None
+    ):
+        """Iterate over all hashes found in this tree.
+        Hashes are fetched in parallel according to prefix, except in
+        cases where the remote size is very small.
+
+        All hashes from the remote (including any from the size
+        estimation step passed via the `remote_hashes` argument) will be
+        returned.
+
+        NOTE: For large remotes the list of hashes will be very
+        big(e.g. 100M entries, md5 for each is 32 bytes, so ~3200Mb list)
+        and we don't really need all of it at the same time, so it makes
+        sense to use a generator to gradually iterate over it, without
+        keeping all of it in memory.
+        """
+        num_pages = remote_size / self.tree.LIST_OBJECT_PAGE_SIZE
+        if num_pages < 256 / self.tree.JOBS:
+            # Fetching prefixes in parallel requires at least 255 more
+            # requests, for small enough remotes it will be faster to fetch
+            # entire cache without splitting it into prefixes.
+            #
+            # NOTE: this ends up re-fetching hashes that were already
+            # fetched during remote size estimation
+            traverse_prefixes = [None]
+            initial = 0
+        else:
+            yield from remote_hashes
+            initial = len(remote_hashes)
+            traverse_prefixes = [f"{i:02x}" for i in range(1, 256)]
+            if self.tree.TRAVERSE_PREFIX_LEN > 2:
+                traverse_prefixes += [
+                    "{0:0{1}x}".format(i, self.tree.TRAVERSE_PREFIX_LEN)
+                    for i in range(
+                        1, pow(16, self.tree.TRAVERSE_PREFIX_LEN - 2)
+                    )
+                ]
+        with Tqdm(
+            desc="Querying "
+            + (f"cache in '{name}'" if name else "remote cache"),
+            total=remote_size,
+            initial=initial,
+            unit="file",
+        ) as pbar:
+
+            def list_with_update(prefix):
+                return list(
+                    self.list_hashes(
+                        prefix=prefix, progress_callback=pbar.update
+                    )
+                )
+
+            with ThreadPoolExecutor(
+                max_workers=jobs or self.tree.JOBS
+            ) as executor:
+                in_remote = executor.map(list_with_update, traverse_prefixes,)
+                yield from itertools.chain.from_iterable(in_remote)
+
+    def all(self, jobs=None, name=None):
+        """Iterate over all hashes in this tree.
+
+        Hashes will be fetched in parallel threads according to prefix
+        (except for small remotes) and a progress bar will be displayed.
+        """
+        logger.debug(
+            "Fetching all hashes from '{}'".format(
+                name if name else "remote cache"
+            )
+        )
+
+        if not self.tree.CAN_TRAVERSE:
+            return self.list_hashes()
+
+        remote_size, remote_hashes = self._estimate_remote_size(name=name)
+        return self.list_hashes_traverse(
+            remote_size, remote_hashes, jobs, name
+        )
+
+    def _remove_unpacked_dir(self, hash_):
+        pass
+
+    def gc(self, used, jobs=None):
+        removed = False
+        # hashes must be sorted to ensure we always remove .dir files first
+        for hash_ in sorted(
+            self.all(jobs, str(self.tree.path_info)),
+            key=self.tree.is_dir_hash,
+            reverse=True,
+        ):
+            if hash_ in used:
+                continue
+            path_info = self.tree.hash_to_path_info(hash_)
+            if self.tree.is_dir_hash(hash_):
+                # backward compatibility
+                # pylint: disable=protected-access
+                self._remove_unpacked_dir(hash_)
+            self.tree.remove(path_info)
+            removed = True
+
+        return removed
+
+    def list_hashes_exists(self, hashes, jobs=None, name=None):
+        """Return list of the specified hashes which exist in this tree.
+        Hashes will be queried individually.
+        """
+        logger.debug(
+            "Querying {} hashes via object_exists".format(len(hashes))
+        )
+        with Tqdm(
+            desc="Querying "
+            + ("cache in " + name if name else "remote cache"),
+            total=len(hashes),
+            unit="file",
+        ) as pbar:
+
+            def exists_with_progress(path_info):
+                ret = self.tree.exists(path_info)
+                pbar.update_msg(str(path_info))
+                return ret
+
+            with ThreadPoolExecutor(
+                max_workers=jobs or self.tree.JOBS
+            ) as executor:
+                path_infos = map(self.tree.hash_to_path_info, hashes)
+                in_remote = executor.map(exists_with_progress, path_infos)
+                ret = list(itertools.compress(hashes, in_remote))
+                return ret
+
+    def hashes_exist(self, hashes, jobs=None, name=None):
+        """Check if the given hashes are stored in the remote.
+
+        There are two ways of performing this check:
+
+        - Traverse method: Get a list of all the files in the remote
+            (traversing the cache directory) and compare it with
+            the given hashes. Cache entries will be retrieved in parallel
+            threads according to prefix (i.e. entries starting with, "00...",
+            "01...", and so on) and a progress bar will be displayed.
+
+        - Exists method: For each given hash, run the `exists`
+            method and filter the hashes that aren't on the remote.
+            This is done in parallel threads.
+            It also shows a progress bar when performing the check.
+
+        The reason for such an odd logic is that most of the remotes
+        take much shorter time to just retrieve everything they have under
+        a certain prefix (e.g. s3, gs, ssh, hdfs). Other remotes that can
+        check if particular file exists much quicker, use their own
+        implementation of hashes_exist (see ssh, local).
+
+        Which method to use will be automatically determined after estimating
+        the size of the remote cache, and comparing the estimated size with
+        len(hashes). To estimate the size of the remote cache, we fetch
+        a small subset of cache entries (i.e. entries starting with "00...").
+        Based on the number of entries in that subset, the size of the full
+        cache can be estimated, since the cache is evenly distributed according
+        to hash.
+
+        Returns:
+            A list with hashes that were found in the remote
+        """
+        # Remotes which do not use traverse prefix should override
+        # hashes_exist() (see ssh, local)
+        assert self.tree.TRAVERSE_PREFIX_LEN >= 2
+
+        hashes = set(hashes)
+        if len(hashes) == 1 or not self.tree.CAN_TRAVERSE:
+            remote_hashes = self.list_hashes_exists(hashes, jobs, name)
+            return remote_hashes
+
+        # Max remote size allowed for us to use traverse method
+        remote_size, remote_hashes = self._estimate_remote_size(hashes, name)
+
+        traverse_pages = remote_size / self.tree.LIST_OBJECT_PAGE_SIZE
+        # For sufficiently large remotes, traverse must be weighted to account
+        # for performance overhead from large lists/sets.
+        # From testing with S3, for remotes with 1M+ files, object_exists is
+        # faster until len(hashes) is at least 10k~100k
+        if remote_size > self.tree.TRAVERSE_THRESHOLD_SIZE:
+            traverse_weight = (
+                traverse_pages * self.tree.TRAVERSE_WEIGHT_MULTIPLIER
+            )
+        else:
+            traverse_weight = traverse_pages
+        if len(hashes) < traverse_weight:
+            logger.debug(
+                "Large remote ('{}' hashes < '{}' traverse weight), "
+                "using object_exists for remaining hashes".format(
+                    len(hashes), traverse_weight
+                )
+            )
+            return list(hashes & remote_hashes) + self.list_hashes_exists(
+                hashes - remote_hashes, jobs, name
+            )
+
+        logger.debug("Querying '{}' hashes via traverse".format(len(hashes)))
+        remote_hashes = set(
+            self.list_hashes_traverse(remote_size, remote_hashes, jobs, name)
+        )
+        return list(hashes & set(remote_hashes))

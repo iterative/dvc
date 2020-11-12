@@ -26,6 +26,7 @@ PARAM_CACHE = BaseOutput.PARAM_CACHE
 PARAM_METRIC = BaseOutput.PARAM_METRIC
 PARAM_PLOT = BaseOutput.PARAM_PLOT
 PARAM_PERSIST = BaseOutput.PARAM_PERSIST
+PARAM_CHECKPOINT = BaseOutput.PARAM_CHECKPOINT
 
 DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
 
@@ -37,6 +38,8 @@ sort_by_path = partial(sorted, key=attrgetter("def_path"))
 def _get_flags(out):
     if not out.use_cache:
         yield PARAM_CACHE, False
+    if out.checkpoint:
+        yield PARAM_CHECKPOINT, True
     if out.persist:
         yield PARAM_PERSIST, True
     if out.plot and isinstance(out.plot, dict):
@@ -134,18 +137,18 @@ def to_pipeline_file(stage: "PipelineStage"):
 def to_single_stage_lockfile(stage: "Stage") -> dict:
     assert stage.cmd
 
+    def _dumpd(item):
+        ret = [
+            (item.PARAM_PATH, item.def_path),
+            *item.hash_info.to_dict().items(),
+        ]
+
+        return OrderedDict(ret)
+
     res = OrderedDict([("cmd", stage.cmd)])
     params, deps = split_params_deps(stage)
     deps, outs = [
-        [
-            OrderedDict(
-                [
-                    (PARAM_PATH, item.def_path),
-                    *item.hash_info.to_dict().items(),
-                ]
-            )
-            for item in sort_by_path(items)
-        ]
+        [_dumpd(item) for item in sort_by_path(items)]
         for items in [deps, stage.outs]
     ]
     params = _serialize_params_values(params)

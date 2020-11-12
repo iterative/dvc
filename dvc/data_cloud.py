@@ -62,8 +62,11 @@ class DataCloud:
         """
         remote = self.get_remote(remote, "push")
 
-        return self.repo.cache.local.push(
-            cache, jobs=jobs, remote=remote, show_checksums=show_checksums,
+        return remote.push(
+            self.repo.cache.local,
+            cache,
+            jobs=jobs,
+            show_checksums=show_checksums,
         )
 
     def pull(
@@ -81,8 +84,11 @@ class DataCloud:
         """
         remote = self.get_remote(remote, "pull")
 
-        return self.repo.cache.local.pull(
-            cache, jobs=jobs, remote=remote, show_checksums=show_checksums
+        return remote.pull(
+            self.repo.cache.local,
+            cache,
+            jobs=jobs,
+            show_checksums=show_checksums,
         )
 
     def status(
@@ -107,10 +113,10 @@ class DataCloud:
                 neither in cache, neither in cloud.
         """
         remote = self.get_remote(remote, "status")
-        return self.repo.cache.local.status(
+        return remote.status(
+            self.repo.cache.local,
             cache,
             jobs=jobs,
-            remote=remote,
             show_checksums=show_checksums,
             log_missing=log_missing,
         )

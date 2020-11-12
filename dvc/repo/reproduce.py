@@ -3,6 +3,7 @@ from functools import partial
 
 from dvc.exceptions import InvalidArgumentError, ReproductionError
 from dvc.repo.scm_context import scm_context
+from dvc.stage.run import CheckpointKilledError
 
 from . import locked
 from .graph import get_pipeline, get_pipelines
@@ -16,8 +17,15 @@ def _reproduce_stage(stage, **kwargs):
         repro_callback([stage])
 
     checkpoint_func = kwargs.pop("checkpoint_func", None)
-    if checkpoint_func:
-        kwargs["checkpoint_func"] = partial(_run_callback, checkpoint_func)
+    if stage.is_checkpoint:
+        if checkpoint_func:
+            kwargs["checkpoint_func"] = partial(_run_callback, checkpoint_func)
+        else:
+            logger.warning(
+                "Checkpoint stages are not fully supported in 'dvc repro'. "
+                "Checkpoint stages should be reproduced with 'dvc exp run' "
+                "or 'dvc exp resume'."
+            )
 
     if stage.frozen and not stage.is_import:
         logger.warning(
@@ -146,33 +154,7 @@ def _reproduce_stages(
 
     The derived evaluation of _downstream_ B would be: [B, D, E]
     """
-    import networkx as nx
-
-    if single_item:
-        all_pipelines = stages
-    else:
-        all_pipelines = []
-        for stage in stages:
-            if downstream:
-                # NOTE (py3 only):
-                # Python's `deepcopy` defaults to pickle/unpickle the object.
-                # Stages are complex objects (with references to `repo`,
-                # `outs`, and `deps`) that cause struggles when you try
-                # to serialize them. We need to create a copy of the graph
-                # itself, and then reverse it, instead of using
-                # graph.reverse() directly because it calls `deepcopy`
-                # underneath -- unless copy=False is specified.
-                nodes = nx.dfs_postorder_nodes(
-                    G.copy().reverse(copy=False), stage
-                )
-                all_pipelines += reversed(list(nodes))
-            else:
-                all_pipelines += nx.dfs_postorder_nodes(G, stage)
-
-    pipeline = []
-    for stage in all_pipelines:
-        if stage not in pipeline:
-            pipeline.append(stage)
+    pipeline = _get_pipeline(G, stages, downstream, single_item)
 
     force_downstream = kwargs.pop("force_downstream", False)
     result = []
@@ -204,12 +186,46 @@ def _reproduce_stages(
 
             if ret:
                 result.extend(ret)
+        except CheckpointKilledError:
+            raise
         except Exception as exc:
             raise ReproductionError(stage.relpath) from exc
 
     if on_unchanged is not None:
         on_unchanged(unchanged)
     return result
+
+
+def _get_pipeline(G, stages, downstream, single_item):
+    import networkx as nx
+
+    if single_item:
+        all_pipelines = stages
+    else:
+        all_pipelines = []
+        for stage in stages:
+            if downstream:
+                # NOTE (py3 only):
+                # Python's `deepcopy` defaults to pickle/unpickle the object.
+                # Stages are complex objects (with references to `repo`,
+                # `outs`, and `deps`) that cause struggles when you try
+                # to serialize them. We need to create a copy of the graph
+                # itself, and then reverse it, instead of using
+                # graph.reverse() directly because it calls `deepcopy`
+                # underneath -- unless copy=False is specified.
+                nodes = nx.dfs_postorder_nodes(
+                    G.copy().reverse(copy=False), stage
+                )
+                all_pipelines += reversed(list(nodes))
+            else:
+                all_pipelines += nx.dfs_postorder_nodes(G, stage)
+
+    pipeline = []
+    for stage in all_pipelines:
+        if stage not in pipeline:
+            pipeline.append(stage)
+
+    return pipeline
 
 
 def _repro_callback(experiments_callback, unchanged, stages):

@@ -1,4 +1,3 @@
-import csv
 import json
 import logging
 import os
@@ -6,8 +5,8 @@ import shutil
 from collections import OrderedDict
 
 import pytest
-from funcy import first
 
+from dvc.main import main
 from dvc.repo import Repo
 from dvc.repo.plots.data import (
     JSONPlotData,
@@ -23,25 +22,7 @@ from dvc.repo.plots.template import (
 )
 from dvc.utils.fs import remove
 from dvc.utils.serialize import dump_yaml, dumps_yaml
-
-
-def _write_csv(metric, filename, header=True):
-    with open(filename, "w", newline="") as csvobj:
-        if header:
-            writer = csv.DictWriter(
-                csvobj, fieldnames=list(first(metric).keys())
-            )
-            writer.writeheader()
-            writer.writerows(metric)
-        else:
-            writer = csv.writer(csvobj)
-            for d in metric:
-                assert len(d) == 1
-                writer.writerow(list(d.values()))
-
-
-def _write_json(tmp_dir, metric, filename):
-    tmp_dir.gen(filename, json.dumps(metric, sort_keys=True))
+from tests.func.metrics.utils import _write_csv, _write_json
 
 
 def test_plot_csv_one_column(tmp_dir, scm, dvc, run_copy_metrics):
@@ -213,8 +194,46 @@ def test_plot_confusion(tmp_dir, dvc, run_copy_metrics):
         {"predicted": "B", "actual": "A", "rev": "workspace"},
         {"predicted": "A", "actual": "A", "rev": "workspace"},
     ]
-    assert plot_content["encoding"]["x"]["field"] == "predicted"
-    assert plot_content["encoding"]["y"]["field"] == "actual"
+    assert plot_content["spec"]["transform"][0]["groupby"] == [
+        "actual",
+        "predicted",
+    ]
+    assert plot_content["spec"]["encoding"]["x"]["field"] == "predicted"
+    assert plot_content["spec"]["encoding"]["y"]["field"] == "actual"
+
+
+def test_plot_confusion_normalized(tmp_dir, dvc, run_copy_metrics):
+    confusion_matrix = [
+        {"predicted": "B", "actual": "A"},
+        {"predicted": "A", "actual": "A"},
+    ]
+    _write_json(tmp_dir, confusion_matrix, "metric_t.json")
+    run_copy_metrics(
+        "metric_t.json",
+        "metric.json",
+        plots_no_cache=["metric.json"],
+        commit="first run",
+    )
+
+    props = {
+        "template": "confusion_normalized",
+        "x": "predicted",
+        "y": "actual",
+    }
+    plot_string = dvc.plots.show(props=props)["metric.json"]
+
+    plot_content = json.loads(plot_string)
+    assert plot_content["data"]["values"] == [
+        {"predicted": "B", "actual": "A", "rev": "workspace"},
+        {"predicted": "A", "actual": "A", "rev": "workspace"},
+    ]
+    assert plot_content["spec"]["transform"][0]["groupby"] == [
+        "actual",
+        "predicted",
+    ]
+    assert plot_content["spec"]["transform"][1]["groupby"] == ["rev", "actual"]
+    assert plot_content["spec"]["encoding"]["x"]["field"] == "predicted"
+    assert plot_content["spec"]["encoding"]["y"]["field"] == "actual"
 
 
 def test_plot_multiple_revs_default(tmp_dir, scm, dvc, run_copy_metrics):
@@ -416,13 +435,6 @@ def test_custom_template(tmp_dir, scm, dvc, custom_template, run_copy_metrics):
 
 def _replace(path, src, dst):
     path.write_text(path.read_text().replace(src, dst))
-
-
-def test_no_plots(tmp_dir, dvc):
-    from dvc.exceptions import NoPlotsError
-
-    with pytest.raises(NoPlotsError):
-        dvc.plots.show()
 
 
 def test_should_raise_on_no_template(tmp_dir, dvc, run_copy_metrics):
@@ -675,3 +687,20 @@ def test_show_no_repo(tmp_dir):
     dvc = Repo(uninitialized=True)
 
     dvc.plots.show(["metric.json"])
+
+
+def test_show_from_subdir(tmp_dir, dvc, caplog):
+    subdir = tmp_dir / "subdir"
+
+    subdir.mkdir()
+    metric = [
+        {"first_val": 100, "val": 2},
+        {"first_val": 200, "val": 3},
+    ]
+    _write_json(subdir, metric, "metric.json")
+
+    with subdir.chdir(), caplog.at_level(logging.INFO, "dvc"):
+        assert main(["plots", "show", "metric.json"]) == 0
+
+    assert f"file://{str(subdir)}" in caplog.text
+    assert (subdir / "plots.html").exists()

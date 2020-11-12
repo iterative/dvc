@@ -46,7 +46,13 @@ def test_add(tmp_dir, dvc):
     assert stage.md5 is None
 
     assert load_yaml("foo.dvc") == {
-        "outs": [{"md5": "acbd18db4cc2f85cedef654fccc4a4d8", "path": "foo"}],
+        "outs": [
+            {
+                "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
+                "path": "foo",
+                "size": 3,
+            }
+        ],
     }
 
 
@@ -74,8 +80,8 @@ def test_add_directory(tmp_dir, dvc):
     hash_info = stage.outs[0].hash_info
 
     dir_info = dvc.cache.local.load_dir_cache(hash_info)
-    for info in dir_info:
-        assert "\\" not in info["relpath"]
+    for path, _ in dir_info.trie.items():
+        assert "\\" not in path
 
 
 class TestAddDirectoryRecursive(TestDvc):
@@ -185,6 +191,77 @@ def test_add_file_in_dir(tmp_dir, dvc):
 
 
 @pytest.mark.parametrize(
+    "target, expected_def_paths, expected_rel_paths",
+    [
+        (
+            os.path.join("dir", "subdir", "subdata*"),
+            ["subdata", "subdata123"],
+            [
+                os.path.join("dir", "subdir", "subdata") + ".dvc",
+                os.path.join("dir", "subdir", "subdata123") + ".dvc",
+            ],
+        ),
+        (
+            os.path.join("dir", "subdir", "?subdata"),
+            ["esubdata", "isubdata"],
+            [
+                os.path.join("dir", "subdir", "esubdata") + ".dvc",
+                os.path.join("dir", "subdir", "isubdata") + ".dvc",
+            ],
+        ),
+        (
+            os.path.join("dir", "subdir", "[aiou]subdata"),
+            ["isubdata"],
+            [os.path.join("dir", "subdir", "isubdata") + ".dvc"],
+        ),
+        (
+            os.path.join("dir", "**", "subdata*"),
+            ["subdata", "subdata123", "subdata4", "subdata5"],
+            [
+                os.path.join("dir", "subdir", "subdata") + ".dvc",
+                os.path.join("dir", "subdir", "subdata123") + ".dvc",
+                os.path.join("dir", "anotherdir", "subdata4") + ".dvc",
+                os.path.join("dir", "subdata5") + ".dvc",
+            ],
+        ),
+    ],
+)
+def test_add_filtered_files_in_dir(
+    tmp_dir, dvc, target, expected_def_paths, expected_rel_paths
+):
+    tmp_dir.gen(
+        {
+            "dir": {
+                "subdir": {
+                    "subdata": "subdata content",
+                    "esubdata": "extra subdata content",
+                    "isubdata": "i subdata content",
+                    "subdata123": "subdata content 123",
+                },
+                "anotherdir": {
+                    "subdata4": "subdata 4 content",
+                    "esubdata": "extra 2 subdata content",
+                },
+                "subdata5": "subdata 5 content",
+            }
+        }
+    )
+
+    stages = dvc.add(target, glob=True)
+
+    assert len(stages) == len(expected_def_paths)
+    for stage in stages:
+        assert stage is not None
+        assert len(stage.deps) == 0
+        assert len(stage.outs) == 1
+        assert stage.relpath in expected_rel_paths
+
+        # Current dir should not be taken into account
+        assert stage.wdir == os.path.dirname(stage.path)
+        assert stage.outs[0].def_path in expected_def_paths
+
+
+@pytest.mark.parametrize(
     "workspace, hash_name, hash_value",
     [
         (
@@ -226,6 +303,7 @@ def test_add_external_file(tmp_dir, dvc, workspace, hash_name, hash_value):
     assert (tmp_dir / "file.dvc").read_text() == (
         "outs:\n"
         f"- {hash_name}: {hash_value}\n"
+        "  size: 4\n"
         "  path: remote://workspace/file\n"
     )
     assert (workspace / "file").read_text() == "file"
@@ -272,6 +350,8 @@ def test_add_external_dir(tmp_dir, dvc, workspace, hash_name, hash_value):
     assert (tmp_dir / "dir.dvc").read_text() == (
         "outs:\n"
         f"- {hash_name}: {hash_value}\n"
+        "  size: 11\n"
+        "  nfiles: 2\n"
         "  path: remote://workspace/dir\n"
     )
     assert (workspace / "cache" / hash_value[:2] / hash_value[2:]).is_file()
@@ -820,3 +900,20 @@ def test_add_file_in_symlink_dir(make_tmp_dir, tmp_dir, dvc, external):
 
     with pytest.raises(DvcException):
         dvc.add(os.path.join("dir", "foo"))
+
+
+def test_add_with_cache_link_error(tmp_dir, dvc, mocker, caplog):
+    tmp_dir.gen("foo", "foo")
+
+    mocker.patch.object(
+        dvc.cache.local, "_do_link", side_effect=DvcException("link failed")
+    )
+    with caplog.at_level(logging.WARNING, logger="dvc"):
+        dvc.add("foo")
+        assert "reconfigure cache types" in caplog.text
+
+    assert not (tmp_dir / "foo").exists()
+    assert (tmp_dir / "foo.dvc").exists()
+    assert (tmp_dir / ".dvc" / "cache").read_text() == {
+        "ac": {"bd18db4cc2f85cedef654fccc4a4d8": "foo"}
+    }

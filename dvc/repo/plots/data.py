@@ -1,14 +1,13 @@
 import csv
 import io
-import json
 import os
 from collections import OrderedDict
 from copy import copy
 
-from funcy import first
+from funcy import first, reraise
 
 from dvc.exceptions import DvcException
-from dvc.utils.serialize import loads_yaml
+from dvc.utils.serialize import ParseError, parse_json, parse_yaml
 
 
 class PlotMetricTypeError(DvcException):
@@ -30,6 +29,14 @@ class PlotDataStructureError(DvcException):
 class NoMetricInHistoryError(DvcException):
     def __init__(self, path):
         super().__init__(f"Could not find '{path}'.")
+
+
+class PlotParsingError(ParseError):
+    def __init__(self, path, revision):
+        self.path = path
+        self.revision = revision
+
+        super().__init__(path, f"revision: {revision}")
 
 
 def plot_data(filename, revision, content):
@@ -159,7 +166,11 @@ class PlotData:
         return [_filter_fields, _append_index, _append_revision]
 
     def to_datapoints(self, **kwargs):
-        data = self.raw(**kwargs)
+        with reraise(
+            [ParseError, csv.Error],
+            PlotParsingError(self.filename, self.revision),
+        ):
+            data = self.raw(**kwargs)
 
         for data_proc in self._processors():
             data = data_proc(
@@ -170,7 +181,9 @@ class PlotData:
 
 class JSONPlotData(PlotData):
     def raw(self, **kwargs):
-        return json.loads(self.content, object_pairs_hook=OrderedDict)
+        return parse_json(
+            self.content, self.filename, object_pairs_hook=OrderedDict
+        )
 
     def _processors(self):
         parent_processors = super()._processors()
@@ -207,7 +220,7 @@ class CSVPlotData(PlotData):
 
 class YAMLPlotData(PlotData):
     def raw(self, **kwargs):
-        return loads_yaml(self.content, typ="rt")
+        return parse_yaml(self.content, self.filename, typ="rt")
 
     def _processors(self):
         parent_processors = super()._processors()

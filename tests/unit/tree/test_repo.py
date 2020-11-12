@@ -560,7 +560,7 @@ def test_get_hash_dirty_dir(tmp_dir, dvc):
     actual = tree.get_hash(PathInfo(tmp_dir) / "dir")
     expected = HashInfo("md5", "ba75a2162ca9c29acecb7957105a0bc2.dir")
     assert actual == expected
-    assert len(actual.dir_info) == 3
+    assert actual.dir_info.nfiles == 3
 
 
 @pytest.mark.parametrize("traverse_subrepos", [True, False])

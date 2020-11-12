@@ -1,6 +1,7 @@
 import logging
 import os
 from collections import defaultdict
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from itertools import starmap
 from typing import TYPE_CHECKING
@@ -9,10 +10,8 @@ from funcy import first, join
 
 from dvc.dependency.param import ParamsDependency
 from dvc.path_info import PathInfo
-from dvc.utils.serialize import dumps_yaml
 
 from .context import Context
-from .interpolate import resolve
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -25,6 +24,11 @@ VARS_KWD = "vars"
 WDIR_KWD = "wdir"
 DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
 PARAMS_KWD = "params"
+FOREACH_KWD = "foreach"
+IN_KWD = "in"
+SET_KWD = "set"
+
+DEFAULT_SENTINEL = object()
 
 
 class DataResolver:
@@ -50,16 +54,23 @@ class DataResolver:
 
     def _resolve_entry(self, name: str, definition):
         context = Context.clone(self.global_ctx)
+        if FOREACH_KWD in definition:
+            self.set_context_from(context, definition.get(SET_KWD, {}))
+            assert IN_KWD in definition
+            return self._foreach(
+                context, name, definition[FOREACH_KWD], definition[IN_KWD]
+            )
         return self._resolve_stage(context, name, definition)
 
     def resolve(self):
         stages = self.data.get(STAGES_KWD, {})
         data = join(starmap(self._resolve_entry, stages.items()))
-        logger.trace("Resolved dvc.yaml:\n%s", dumps_yaml(data))
+        logger.trace("Resolved dvc.yaml:\n%s", data)
         return {STAGES_KWD: data}
 
     def _resolve_stage(self, context: Context, name: str, definition) -> dict:
         definition = deepcopy(definition)
+        self.set_context_from(context, definition.pop(SET_KWD, {}))
         wdir = self._resolve_wdir(context, definition.get(WDIR_KWD))
         if self.wdir != wdir:
             logger.debug(
@@ -78,12 +89,19 @@ class DataResolver:
                     "%s does not exist for stage %s", params_yaml_file, name
                 )
 
-        params_file = definition.get(PARAMS_KWD, [])
-        for item in params_file:
-            if item and isinstance(item, dict):
-                contexts.append(
-                    Context.load_from(self.repo.tree, str(wdir / first(item)))
-                )
+        params_deps = definition.get(PARAMS_KWD, [])
+        params_files = {
+            wdir / first(item)
+            for item in params_deps
+            if item and isinstance(item, dict)
+        }
+        for params_file in params_files - {
+            self.global_ctx_source,
+            params_yaml_file,
+        }:
+            contexts.append(
+                Context.load_from(self.repo.tree, str(params_file))
+            )
 
         context.merge_update(*contexts)
 
@@ -92,7 +110,7 @@ class DataResolver:
         )
 
         with context.track():
-            stage_d = resolve(definition, context)
+            stage_d = context.resolve(definition)
 
         params = stage_d.get(PARAMS_KWD, []) + self._resolve_params(
             context, wdir
@@ -112,5 +130,31 @@ class DataResolver:
     def _resolve_wdir(self, context: Context, wdir: str = None) -> PathInfo:
         if not wdir:
             return self.wdir
-        wdir = resolve(wdir, context)
+
+        wdir = str(context.resolve_str(wdir, unwrap=True))
         return self.wdir / str(wdir)
+
+    def _foreach(self, context: Context, name: str, foreach_data, in_data):
+        def each_iter(value, key=DEFAULT_SENTINEL):
+            c = Context.clone(context)
+            c["item"] = value
+            if key is not DEFAULT_SENTINEL:
+                c["key"] = key
+            suffix = str(key if key is not DEFAULT_SENTINEL else value)
+            return self._resolve_stage(c, f"{name}-{suffix}", in_data)
+
+        iterable = context.resolve(foreach_data, unwrap=False)
+
+        assert isinstance(iterable, (Sequence, Mapping)) and not isinstance(
+            iterable, str
+        ), f"got type of {type(iterable)}"
+        if isinstance(iterable, Sequence):
+            gen = (each_iter(v) for v in iterable)
+        else:
+            gen = (each_iter(v, k) for k, v in iterable.items())
+        return join(gen)
+
+    @classmethod
+    def set_context_from(cls, context: Context, to_set):
+        for key, value in to_set.items():
+            context.set(key, value)

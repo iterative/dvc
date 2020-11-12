@@ -173,11 +173,20 @@ class NoMetricsError(DvcException):
     pass
 
 
-class NoPlotsError(DvcException):
-    def __init__(self):
+class NoMetricsParsedError(NoMetricsError):
+    def __init__(self, command):
         super().__init__(
-            "no plots in this repository. Use `--plots/--plots-no-cache` "
-            "options for `dvc run` to mark stage outputs as plots."
+            f"Could not parse {command} files. Use `-v` option to see more "
+            "details."
+        )
+
+
+class NoMetricsFoundError(NoMetricsError):
+    def __init__(self, command, run_options):
+        super().__init__(
+            f"No {command} files in this repository. "
+            f"Use `{run_options}` options for "
+            f"`dvc run` to mark stage outputs as {command}."
         )
 
 
@@ -215,6 +224,11 @@ class FileMissingError(DvcException):
         super().__init__(
             f"Can't find '{path}' neither locally nor on remote{hint}"
         )
+
+
+class FileOwnershipError(DvcException):
+    def __init__(self, path):
+        super().__init__(f"file '{path}' not owned by user! ")
 
 
 class DvcIgnoreInCollectedDirError(DvcException):
@@ -337,3 +351,18 @@ class NoOutputOrStageError(DvcException):
 
 class MergeError(DvcException):
     pass
+
+
+class CacheLinkError(DvcException):
+    SUPPORT_LINK = "See {} for more information.".format(
+        format_link(
+            "https://dvc.org/doc/user-guide/troubleshooting#cache-types"
+        )
+    )
+
+    def __init__(self, path_infos):
+        msg = "No possible cache link types for '{}'. {}".format(
+            ", ".join([str(path) for path in path_infos]), self.SUPPORT_LINK,
+        )
+        super().__init__(msg)
+        self.path_infos = path_infos

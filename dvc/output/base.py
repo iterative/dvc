@@ -61,6 +61,7 @@ class BaseOutput:
 
     PARAM_PATH = "path"
     PARAM_CACHE = "cache"
+    PARAM_CHECKPOINT = "checkpoint"
     PARAM_METRIC = "metric"
     PARAM_METRIC_TYPE = "type"
     PARAM_METRIC_XPATH = "xpath"
@@ -100,6 +101,7 @@ class BaseOutput:
         metric=False,
         plot=False,
         persist=False,
+        checkpoint=False,
     ):
         self._validate_output_path(path, stage)
         # This output (and dependency) objects have too many paths/urls
@@ -124,6 +126,7 @@ class BaseOutput:
         self.metric = False if self.IS_DEPENDENCY else metric
         self.plot = False if self.IS_DEPENDENCY else plot
         self.persist = persist
+        self.checkpoint = checkpoint
 
         self.path_info = self._parse_path(tree, path)
         if self.use_cache and self.cache is None:
@@ -315,6 +318,9 @@ class BaseOutput:
         if self.persist:
             ret[self.PARAM_PERSIST] = self.persist
 
+        if self.checkpoint:
+            ret[self.PARAM_CHECKPOINT] = self.checkpoint
+
         return ret
 
     def verify_metric(self):
@@ -330,6 +336,7 @@ class BaseOutput:
         relink=False,
         filter_info=None,
         allow_missing=False,
+        **kwargs,
     ):
         if not self.use_cache:
             if progress_callback:
@@ -346,9 +353,10 @@ class BaseOutput:
                 progress_callback=progress_callback,
                 relink=relink,
                 filter_info=filter_info,
+                **kwargs,
             )
         except CheckoutError:
-            if allow_missing:
+            if allow_missing or self.checkpoint:
                 return None
             raise
 
@@ -446,9 +454,7 @@ class BaseOutput:
         path = str(self.path_info)
         filter_path = str(filter_info) if filter_info else None
         is_win = os.name == "nt"
-        for entry in self.dir_cache:
-            checksum = entry[self.tree.PARAM_CHECKSUM]
-            entry_relpath = entry[self.tree.PARAM_RELPATH]
+        for entry_relpath, entry_hash_info in self.dir_cache.items():
             if is_win:
                 entry_relpath = entry_relpath.replace("/", os.sep)
             entry_path = os.path.join(path, entry_relpath)
@@ -457,7 +463,7 @@ class BaseOutput:
                 or entry_path == filter_path
                 or entry_path.startswith(filter_path + os.sep)
             ):
-                cache.add(self.scheme, checksum, entry_path)
+                cache.add(self.scheme, entry_hash_info.value, entry_path)
 
         return cache
 
@@ -528,8 +534,15 @@ class BaseOutput:
         my = self.dumpd()
         other = out.dumpd()
 
-        my.pop(self.tree.PARAM_CHECKSUM)
-        other.pop(self.tree.PARAM_CHECKSUM)
+        ignored = [
+            self.tree.PARAM_CHECKSUM,
+            HashInfo.PARAM_SIZE,
+            HashInfo.PARAM_NFILES,
+        ]
+
+        for opt in ignored:
+            my.pop(opt, None)
+            other.pop(opt, None)
 
         if my != other:
             raise MergeError(

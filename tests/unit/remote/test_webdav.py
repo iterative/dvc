@@ -1,3 +1,5 @@
+import pytest
+
 from dvc.tree.webdav import WebDAVTree
 
 # Test configuration
@@ -16,12 +18,13 @@ def test_init(dvc):
 
 
 # Test username from configuration
-def test_user(dvc):
-    config = {"url": url, "user": user}
+@pytest.mark.parametrize(
+    "config", [{"url": url, "user": user}, {"url": userurl}]
+)
+def test_user(dvc, config):
     tree = WebDAVTree(dvc, config)
 
     assert tree.user == user
-    assert tree.path_info.user == user
 
 
 # Test username extraction from url

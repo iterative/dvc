@@ -14,9 +14,9 @@ def load_json(path, tree=None):
     return _load_data(path, parser=parse_json, tree=tree)
 
 
-def parse_json(text, path):
+def parse_json(text, path, **kwargs):
     with reraise(json.JSONDecodeError, JSONFileCorruptedError(path)):
-        return json.loads(text) or {}
+        return json.loads(text, **kwargs) or {}
 
 
 def dump_json(path, data, tree=None):

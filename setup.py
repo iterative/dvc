@@ -50,6 +50,7 @@ install_requires = [
     "colorama>=0.3.9",
     "configobj>=5.0.6",
     "gitpython>3",
+    "dulwich>=0.20.11",
     "setuptools>=34.0.0",
     "nanotime>=0.5.2",
     "pyasn1>=0.4.1",
@@ -81,6 +82,7 @@ install_requires = [
     "shtab>=1.3.2,<2",
     "rich>=3.0.5",
     "dictdiffer>=0.8.1",
+    "python-benedict>=0.21.1",
 ]
 
 
@@ -90,7 +92,8 @@ gs = ["google-cloud-storage==1.19.0"]
 gdrive = ["pydrive2>=1.6.3", "six >= 1.13.0"]
 s3 = ["boto3>=1.9.201"]
 azure = ["azure-storage-blob>=12.0", "azure-identity==1.4.0", "knack"]
-oss = ["oss2==2.6.1"]
+# https://github.com/Legrandin/pycryptodome/issues/465
+oss = ["oss2==2.6.1", "pycryptodome<3.9.9"]
 ssh = ["paramiko[invoke]>=2.7.0"]
 
 # Remove the env marker if/when pyarrow is available for Python3.9
@@ -115,6 +118,7 @@ tests_requirements = [
     "pytest-xdist>=1.26.1",
     "pytest-mock==1.11.2",
     "pytest-lazy-fixture",
+    "pytest-tap",
     "flaky>=3.5.3",
     "mock>=3.0.0",
     "xmltodict>=0.11.0",
@@ -128,7 +132,13 @@ tests_requirements = [
     "pydocstyle<4.0",
     "jaraco.windows==3.9.2",
     "mock-ssh-server>=0.8.2",
-    "moto==1.3.14.dev464",
+    "moto==1.3.16.dev110",
+    # moto's indirect dependency that is causing problems with flufl.lock's
+    # dependency (atpublic). See https://github.com/iterative/dvc/pull/4853
+    "aws-sam-translator<1.29.0",
+    # for moto's indirect dependency.
+    # See https://github.com/iterative/dvc/pull/4879
+    "urllib3<1.26.0",
     "rangehttpserver==1.2.0",
     "beautifulsoup4==4.4.0",
     "flake8-bugbear",
@@ -140,6 +150,7 @@ tests_requirements = [
     "wget",
     "filelock",
     "black==19.10b0",
+    "wsgidav",
 ]
 
 setup(

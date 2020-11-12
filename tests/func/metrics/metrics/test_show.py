@@ -3,13 +3,7 @@ import os
 import pytest
 
 from dvc.repo import Repo
-from dvc.repo.metrics.show import NoMetricsError
 from dvc.utils.fs import remove
-
-
-def test_show_empty(dvc):
-    with pytest.raises(NoMetricsError):
-        dvc.metrics.show()
 
 
 def test_show_simple(tmp_dir, dvc, run_copy_metrics):
@@ -34,15 +28,6 @@ def test_show_multiple(tmp_dir, dvc, run_copy_metrics):
     run_copy_metrics("foo_temp", "foo", fname="foo.dvc", metrics=["foo"])
     run_copy_metrics("baz_temp", "baz", fname="baz.dvc", metrics=["baz"])
     assert dvc.metrics.show() == {"": {"foo": {"foo": 1}, "baz": {"baz": 2}}}
-
-
-def test_show_invalid_metric(tmp_dir, dvc, run_copy_metrics):
-    tmp_dir.gen("metrics_temp.yaml", "foo:\n- bar\n- baz\nxyz: string")
-    run_copy_metrics(
-        "metrics_temp.yaml", "metrics.yaml", metrics=["metrics.yaml"]
-    )
-    with pytest.raises(NoMetricsError):
-        dvc.metrics.show()
 
 
 def test_show_branch(tmp_dir, scm, dvc, run_copy_metrics):

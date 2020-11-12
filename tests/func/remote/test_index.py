@@ -32,14 +32,16 @@ def remote(tmp_dir, dvc, tmp_path_factory, mocker):
 def test_indexed_on_status(tmp_dir, dvc, tmp_path_factory, remote):
     foo = tmp_dir.dvc_gen({"foo": "foo content"})[0].outs[0]
     bar = tmp_dir.dvc_gen({"bar": {"baz": "baz content"}})[0].outs[0]
-    baz = bar.dir_cache[0]
+    baz_hash = bar.dir_cache.trie.get(("baz",))
     dvc.push()
     with remote.index:
         remote.index.clear()
 
     dvc.status(cloud=True)
     with remote.index:
-        assert {bar.hash_info.value, baz["md5"]} == set(remote.index.hashes())
+        assert {bar.hash_info.value, baz_hash.value} == set(
+            remote.index.hashes()
+        )
         assert [bar.hash_info.value] == list(remote.index.dir_hashes())
         assert foo.hash_info.value not in remote.index.hashes()
 
@@ -47,11 +49,13 @@ def test_indexed_on_status(tmp_dir, dvc, tmp_path_factory, remote):
 def test_indexed_on_push(tmp_dir, dvc, tmp_path_factory, remote):
     foo = tmp_dir.dvc_gen({"foo": "foo content"})[0].outs[0]
     bar = tmp_dir.dvc_gen({"bar": {"baz": "baz content"}})[0].outs[0]
-    baz = bar.dir_cache[0]
+    baz_hash = bar.dir_cache.trie.get(("baz",))
 
     dvc.push()
     with remote.index:
-        assert {bar.hash_info.value, baz["md5"]} == set(remote.index.hashes())
+        assert {bar.hash_info.value, baz_hash.value} == set(
+            remote.index.hashes()
+        )
         assert [bar.hash_info.value] == list(remote.index.dir_hashes())
         assert foo.hash_info.value not in remote.index.hashes()
 
