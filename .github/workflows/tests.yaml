@@ -69,7 +69,7 @@ jobs:
     - name: Post TAP
       # Running custom fork with an option, that does not fail CI on error
       uses: skshetry/flaky-service/packages/action@master
-      if: ${{ always() }}
+      if: always() && github.ref == 'refs/heads/master'
       with:
         file-path: ${{github.workspace}}/testresults.tap
         repo-token: ${{ secrets.GITHUB_TOKEN }}
