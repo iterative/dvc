@@ -67,20 +67,11 @@ def get_dvc_info():
 
 
 def _get_caches(cache):
-    from dvc.config import SCHEMA
-
-    caches = set()
-    for cache_type in SCHEMA["cache"].keys():
-        # Ignore any non cache types, e.g. LOCAL_COMMON objects
-        if not isinstance(cache_type, str):
-            continue
-
-        # Ignore the cache types not available in the repo
-        cache_instance = getattr(cache, cache_type, None)
-        if not cache_instance:
-            continue
-
-        caches.add(cache_type)
+    caches = (
+        cache_type
+        for cache_type, cache_instance in cache.by_scheme()
+        if cache_instance
+    )
 
     # Caches will be always non-empty including the local cache
     return ", ".join(caches)
