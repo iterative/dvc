@@ -30,7 +30,13 @@ class S3(Base, CloudURLInfo):
 
     @staticmethod
     def _get_storagepath():
-        return TEST_AWS_REPO_BUCKET + "/" + str(uuid.uuid4())
+        return (
+            TEST_AWS_REPO_BUCKET
+            + "/"
+            + "dvc_test_caches"
+            + "/"
+            + str(uuid.uuid4())
+        )
 
     @staticmethod
     def get_url():
