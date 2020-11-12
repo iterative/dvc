@@ -793,3 +793,26 @@ def test_dir_plots(tmp_dir, dvc, run_copy_metrics):
     p2_content = json.loads(result["subdir/p2.json"])
 
     assert p1_content["title"] == p2_content["title"] == "TITLE"
+
+
+def test_ble(tmp_dir, scm, dvc, run_copy_metrics):
+    metric = [
+        OrderedDict([("first_val", 100), ("second_val", 100), ("val", 2)]),
+        OrderedDict([("first_val", 200), ("second_val", 300), ("val", 3)]),
+    ]
+
+    _write_json(tmp_dir, metric, "metric_t.json")
+    scm.add(["metric_t.json", "copy.py"])
+
+    scm.commit("ble")
+    target = os.path.join("subdir", "metric.json")
+
+    run_copy_metrics(
+        "metric_t.json",
+        target,
+        plots_no_cache=[target],
+        name="copy",
+        single_stage=False,
+    )
+    with tmp_dir.branch("test", "new"):
+        dvc.plots.modify(target, props={"x": "first_val"})

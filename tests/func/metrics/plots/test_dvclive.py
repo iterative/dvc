@@ -1,5 +1,7 @@
 from textwrap import dedent
 
+from dvc.main import main
+
 DVCLIVE_SCRITP = dedent(
     """\
         from dvclive import dvclive
@@ -12,9 +14,9 @@ DVCLIVE_SCRITP = dedent(
         multiplier = float(params["multiplier"])
 
         dvclive.init("{log_path}")
-        for i in range(10):
-           dvclive.log("loss", 2**(1/(i+1)/multiplier))
-           dvclive.log("accuracy", i/10*multiplier)
+        for i in range(5):
+           dvclive.log("loss", -i/5/multiplier)
+           dvclive.log("accuracy", i/5*multiplier)
            dvclive.next_epoch()
 """
 )
@@ -36,3 +38,21 @@ def test_live_plots(tmp_dir, scm, dvc):
     scm.checkout("improved", create_new=True)
     tmp_dir.gen("params.yaml", "multiplier: 1.4")
     dvc.reproduce("run_logger")
+
+    assert main(["plots", "diff", "master"]) == 0
+
+    # whole dir seems to not be working
+    # assert main(["plots", "diff", "master", "--targets", "logs/history"]) ==
+    # 0
+    assert (
+        main(
+            [
+                "plots",
+                "diff",
+                "master",
+                "--targets",
+                "logs/history/accuracy.tsv",
+            ]
+        )
+        == 0
+    )
