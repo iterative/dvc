@@ -79,9 +79,6 @@ class BaseTree:
 
     @cached_property
     def jobs(self):
-        # NOTE: alternative style.
-        # repo_config = self.repo.config['core'] if self.repo else {}
-        # return self.config.get("jobs", repo_config.get("jobs", self.JOBS))
         return (
             self.config.get("jobs")
             or (self.repo and self.repo.config["core"].get("jobs"))
