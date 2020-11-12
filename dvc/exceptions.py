@@ -227,6 +227,11 @@ class FileMissingError(DvcException):
         )
 
 
+class FileOwnershipError(DvcException):
+    def __init__(self, path):
+        super().__init__(f"file '{path}' not owned by user! ")
+
+
 class DvcIgnoreInCollectedDirError(DvcException):
     def __init__(self, ignore_dirname):
         super().__init__(

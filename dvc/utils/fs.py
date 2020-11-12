@@ -8,7 +8,7 @@ import sys
 import nanotime
 from shortuuid import uuid
 
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, FileOwnershipError
 from dvc.system import System
 from dvc.utils import dict_md5
 
@@ -95,14 +95,20 @@ def move(src, dst, mode=None):
     dst = os.path.abspath(dst)
     tmp = f"{dst}.{uuid()}"
 
+    try:
+        if mode is not None:
+            os.chmod(src, mode)
+    except OSError as e:
+        if e.errno not in [errno.EACCES, errno.EPERM]:
+            raise
+        else:
+            raise FileOwnershipError(src)
+
     if os.path.islink(src):
         shutil.copy(src, tmp)
-        os.unlink(src)
+        _unlink(src, _chmod)
     else:
         shutil.move(src, tmp)
-
-    if mode is not None:
-        os.chmod(tmp, mode)
 
     shutil.move(tmp, dst)
 
