@@ -67,20 +67,21 @@ def test_experiments_show(dvc, mocker):
     )
 
 
-def test_experiments_run(dvc, mocker):
+@pytest.mark.parametrize(
+    "args, resume", [(["exp", "run"], None), (["exp", "resume"], ":last")]
+)
+def test_experiments_run(dvc, mocker, args, resume):
     default_arguments = {
         "params": [],
         "queue": False,
         "run_all": False,
         "jobs": None,
-        "checkpoint": False,
-        "checkpoint_continue": None,
-        "checkpoint_reset": False,
+        "checkpoint_resume": resume,
     }
 
     default_arguments.update(repro_arguments)
 
-    cmd = CmdExperimentsRun(parse_args(["exp", "run"]))
+    cmd = CmdExperimentsRun(parse_args(args))
     mocker.patch.object(cmd.repo, "reproduce")
     mocker.patch.object(cmd.repo.experiments, "run")
     cmd.run()

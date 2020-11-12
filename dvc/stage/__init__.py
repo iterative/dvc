@@ -485,6 +485,7 @@ class Stage(params.StageParams):
     @rwlocked(write=["outs"])
     def checkout(self, **kwargs):
         stats = defaultdict(list)
+        kwargs["allow_missing"] = self.is_checkpoint
         for out in self.filter_outs(kwargs.get("filter_info")):
             key, outs = self._checkout(out, **kwargs)
             if key:

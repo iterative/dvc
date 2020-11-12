@@ -58,6 +58,20 @@ def test_build_target(graph):
     assert set(G.edges()) == {("3", "a.dvc"), ("3", "b.dvc")}
 
 
+def test_build_target_with_outs(graph):
+    (stage,) = filter(
+        lambda s: hasattr(s, "name") and s.name == "3", graph.nodes()
+    )
+    G = _build(graph, target=stage, outs=True)
+    assert set(G.nodes()) == {"a", "b", "h", "i"}
+    assert set(G.edges()) == {
+        ("h", "a"),
+        ("h", "b"),
+        ("i", "a"),
+        ("i", "b"),
+    }
+
+
 def test_build_full(graph):
     (stage,) = filter(
         lambda s: hasattr(s, "name") and s.name == "3", graph.nodes()

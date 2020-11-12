@@ -14,6 +14,7 @@ from dvc.command.metrics import DEFAULT_PRECISION
 from dvc.command.repro import CmdRepro
 from dvc.command.repro import add_arguments as add_repro_arguments
 from dvc.exceptions import DvcException, InvalidArgumentError
+from dvc.repo.experiments import Experiments
 from dvc.utils.flatten import flatten
 
 logger = logging.getLogger(__name__)
@@ -443,14 +444,6 @@ class CmdExperimentsRun(CmdRepro):
         elif not self.args.targets:
             self.args.targets = self.default_targets
 
-        if (
-            self.args.checkpoint_reset
-            and self.args.checkpoint_continue is not None
-        ):
-            raise InvalidArgumentError(
-                "--continue and --reset cannot be used together"
-            )
-
         ret = 0
         for target in self.args.targets:
             try:
@@ -460,13 +453,7 @@ class CmdExperimentsRun(CmdRepro):
                     run_all=self.args.run_all,
                     jobs=self.args.jobs,
                     params=self.args.params,
-                    checkpoint=(
-                        self.args.checkpoint
-                        or self.args.checkpoint_continue is not None
-                        or self.args.checkpoint_reset
-                    ),
-                    checkpoint_continue=self.args.checkpoint_continue,
-                    checkpoint_reset=self.args.checkpoint_reset,
+                    checkpoint_resume=self.args.checkpoint_resume,
                     **self._repro_kwargs,
                 )
             except DvcException:
@@ -738,65 +725,38 @@ def add_parser(subparsers, parent_parser):
         help=EXPERIMENTS_RUN_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    # inherit arguments from `dvc repro`
-    add_repro_arguments(experiments_run_parser)
+    _add_run_common(experiments_run_parser)
     experiments_run_parser.add_argument(
-        "--params",
-        action="append",
-        default=[],
-        help="Use the specified param values when reproducing pipelines.",
-        metavar="[<filename>:]<params_list>",
+        "--checkpoint-resume", type=str, default=None, help=argparse.SUPPRESS,
     )
-    experiments_run_parser.add_argument(
-        "--queue",
-        action="store_true",
-        default=False,
-        help="Stage this experiment in the run queue for future execution.",
+    experiments_run_parser.set_defaults(func=CmdExperimentsRun)
+
+    EXPERIMENTS_RESUME_HELP = "Resume checkpoint experiments."
+    experiments_resume_parser = experiments_subparsers.add_parser(
+        "resume",
+        parents=[parent_parser],
+        aliases=["res"],
+        description=append_doc_link(
+            EXPERIMENTS_RESUME_HELP, "experiments/resume"
+        ),
+        help=EXPERIMENTS_RESUME_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    experiments_run_parser.add_argument(
-        "--run-all",
-        action="store_true",
-        default=False,
-        help="Execute all experiments in the run queue.",
-    )
-    experiments_run_parser.add_argument(
-        "-j",
-        "--jobs",
-        type=int,
-        help="Run the specified number of experiments at a time in parallel.",
-        metavar="<number>",
-    )
-    experiments_run_parser.add_argument(
-        "--checkpoint",
-        action="store_true",
-        default=False,
-        help="Reproduce pipelines as a checkpoint experiment.",
-    )
-    experiments_run_parser.add_argument(
-        "--continue",
+    _add_run_common(experiments_resume_parser)
+    experiments_resume_parser.add_argument(
+        "-r",
+        "--rev",
         type=str,
-        nargs="?",
-        default=None,
-        const=":last",
-        dest="checkpoint_continue",
+        default=Experiments.LAST_CHECKPOINT,
+        dest="checkpoint_resume",
         help=(
-            "Continue from the specified checkpoint experiment "
-            "(implies --checkpoint). If no experiment revision is provided, "
+            "Continue the specified checkpoint experiment. "
+            "If no experiment revision is provided, "
             "the most recently run checkpoint experiment will be used."
         ),
         metavar="<experiment_rev>",
     )
-    experiments_run_parser.add_argument(
-        "--reset",
-        action="store_true",
-        default=False,
-        dest="checkpoint_reset",
-        help=(
-            "Reset checkpoint experiment if it already exists "
-            "(implies --checkpoint)."
-        ),
-    )
-    experiments_run_parser.set_defaults(func=CmdExperimentsRun)
+    experiments_resume_parser.set_defaults(func=CmdExperimentsRun)
 
     EXPERIMENTS_GC_HELP = "Garbage collect unneeded experiments."
     EXPERIMENTS_GC_DESCRIPTION = (
@@ -856,3 +816,35 @@ def add_parser(subparsers, parent_parser):
         help="Force garbage collection - automatically agree to all prompts.",
     )
     experiments_gc_parser.set_defaults(func=CmdExperimentsGC)
+
+
+def _add_run_common(parser):
+    """Add common args for 'exp run' and 'exp resume'."""
+    # inherit arguments from `dvc repro`
+    add_repro_arguments(parser)
+    parser.add_argument(
+        "--params",
+        action="append",
+        default=[],
+        help="Use the specified param values when reproducing pipelines.",
+        metavar="[<filename>:]<params_list>",
+    )
+    parser.add_argument(
+        "--queue",
+        action="store_true",
+        default=False,
+        help="Stage this experiment in the run queue for future execution.",
+    )
+    parser.add_argument(
+        "--run-all",
+        action="store_true",
+        default=False,
+        help="Execute all experiments in the run queue.",
+    )
+    parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        help="Run the specified number of experiments at a time in parallel.",
+        metavar="<number>",
+    )

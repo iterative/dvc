@@ -30,7 +30,7 @@ def _show_dot(G):
     return dot_file.getvalue()
 
 
-def _build(G, target=None, full=False):
+def _build(G, target=None, full=False, outs=False):
     import networkx as nx
 
     from dvc.repo.graph import get_pipeline, get_pipelines
@@ -44,8 +44,25 @@ def _build(G, target=None, full=False):
     else:
         H = G
 
-    def _relabel(stage):
-        return stage.addressing
+    if outs:
+        G = nx.DiGraph()
+        for stage in H.nodes:
+            G.add_nodes_from(stage.outs)
+
+        for from_stage, to_stage in nx.edge_dfs(H):
+            G.add_edges_from(
+                [
+                    (from_out, to_out)
+                    for from_out in from_stage.outs
+                    for to_out in to_stage.outs
+                ]
+            )
+        H = G
+
+    def _relabel(node):
+        from dvc.stage import Stage
+
+        return node.addressing if isinstance(node, Stage) else str(node)
 
     return nx.relabel_nodes(H, _relabel, copy=False)
 
@@ -64,7 +81,12 @@ class CmdDAG(CmdBase):
                     return 1
                 target = stages[0]
 
-            G = _build(self.repo.graph, target=target, full=self.args.full,)
+            G = _build(
+                self.repo.graph,
+                target=target,
+                full=self.args.full,
+                outs=self.args.outs,
+            )
 
             if self.args.dot:
                 logger.info(_show_dot(G))
@@ -107,6 +129,13 @@ def add_parser(subparsers, parent_parser):
             "Show full DAG that the target belongs too, instead of "
             "showing DAG consisting only of ancestors."
         ),
+    )
+    dag_parser.add_argument(
+        "-o",
+        "--outs",
+        action="store_true",
+        default=False,
+        help="Print output files instead of stages.",
     )
     dag_parser.add_argument(
         "target",

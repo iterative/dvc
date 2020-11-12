@@ -1,6 +1,7 @@
 import os
 
 import pytest
+from flaky.flaky_decorator import flaky
 from funcy import first, get_in
 
 from dvc import api
@@ -9,7 +10,17 @@ from dvc.path_info import URLInfo
 from dvc.utils.fs import remove
 from tests.unit.tree.test_repo import make_subrepo
 
-cloud_names = ["s3", "gs", "azure", "gdrive", "oss", "ssh", "http", "hdfs"]
+cloud_names = [
+    "s3",
+    "gs",
+    "azure",
+    "gdrive",
+    "oss",
+    "ssh",
+    "http",
+    "hdfs",
+    "webdav",
+]
 clouds = [pytest.lazy_fixture(cloud) for cloud in cloud_names]
 all_clouds = [pytest.lazy_fixture("local_cloud")] + clouds
 
@@ -71,6 +82,7 @@ def test_open(tmp_dir, dvc, remote):
             "http",
             "hdfs",
             "ssh",
+            "webdav",
         ]
     ],
 )
@@ -97,6 +109,7 @@ def test_open_external(tmp_dir, erepo_dir, cloud):
     assert api.read("version", repo=repo_url, rev="branch") == "branchver"
 
 
+@flaky(max_runs=3, min_passes=1)
 @pytest.mark.parametrize("remote", all_clouds, indirect=True)
 def test_open_granular(tmp_dir, dvc, remote):
     tmp_dir.dvc_gen({"dir": {"foo": "foo-text"}})
@@ -122,6 +135,7 @@ def test_open_granular(tmp_dir, dvc, remote):
             "ssh",
             "http",
             "hdfs",
+            "webdav",
         ]
     ],
     indirect=True,

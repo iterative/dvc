@@ -20,6 +20,7 @@ class CmdAdd(CmdBase):
                 no_commit=self.args.no_commit,
                 fname=self.args.file,
                 external=self.args.external,
+                glob=self.args.glob,
             )
 
         except DvcException:
@@ -56,6 +57,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Allow targets that are outside of the DVC repository.",
+    )
+    parser.add_argument(
+        "--glob",
+        action="store_true",
+        default=False,
+        help="Allows targets containing shell-style wildcards.",
     )
     parser.add_argument(
         "--file",
