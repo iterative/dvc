@@ -27,13 +27,13 @@ class CmdVdirPull(CmdVdirBase):
         return 0
 
 
-class CmdVdirAdd(CmdVdirBase):
+class CmdVdirCp(CmdVdirBase):
     def run(self):
         try:
-            self.repo.vdir.add(self.args.paths)
+            self.repo.vdir.cp(self.args.paths)
         except DvcException:
             logger.exception(
-                "failed to add into the virtual directory: {}".format(
+                "failed to cp into the virtual directory: {}".format(
                     self.args.paths
                 )
             )
@@ -43,7 +43,10 @@ class CmdVdirAdd(CmdVdirBase):
 
 
 def add_parser(subparsers, parent_parser):
-    VDIR_HELP = "Commands to transact with virtual directories."
+    VDIR_HELP = (
+        "Commands to transact with virtual directories representing remote "
+        "storages."
+    )
 
     vdir_parser = subparsers.add_parser(
         "vdir",
@@ -82,22 +85,32 @@ def add_parser(subparsers, parent_parser):
     ).complete = completion.FILE
     vdir_pull_parser.set_defaults(func=CmdVdirPull)
 
-    VDIR_ADD_HELP = "Adds files or directories into the virtual directory."
+    VDIR_CP_HELP = "Copies files or directories into the virtual directory."
 
-    vdir_add_parser = vdir_subparsers.add_parser(
-        "add",
+    vdir_cp_parser = vdir_subparsers.add_parser(
+        "cp",
         parents=[parent_parser],
-        description=append_doc_link(VDIR_ADD_HELP, "vdir/add"),
-        help=VDIR_ADD_HELP,
+        description=append_doc_link(VDIR_CP_HELP, "vdir/cp"),
+        help=VDIR_CP_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    vdir_add_parser.add_argument(
-        "paths",
-        nargs="*",
+    vdir_cp_parser.add_argument(
+        "src",
+        help="Source path of the file or directory to be copied.",
+        metavar="<src>",
+    )
+    vdir_cp_parser.add_argument(
+        "dst",
+        help="Destination target path for the file or directory",
+        metavar="<dst>",
+    )
+    vdir_cp_parser.add_argument(
+        "--local-src",
+        action="store_true",
+        default=False,
         help=(
-            "Local paths of the files and directories that is added to the "
-            "virtual directory."
+            "Declare that the src file/dir is from the local workspace instead"
+            "of being remotely tracked by DVC or Git."
         ),
-        metavar="<paths>",
-    ).complete = completion.FILE
-    vdir_add_parser.set_defaults(func=CmdVdirAdd)
+    )
+    vdir_cp_parser.set_defaults(func=CmdVdirCp)

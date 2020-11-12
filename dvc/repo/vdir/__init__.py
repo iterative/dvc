@@ -7,7 +7,7 @@ class Vdir:
 
         return pull(self.repo, *args, **kwargs)
 
-    def add(self, *args, **kwargs):
-        from .add import add
+    def cp(self, *args, **kwargs):
+        from .cp import cp
 
-        return add(self.repo, *args, **kwargs)
+        return cp(self.repo, *args, **kwargs)
