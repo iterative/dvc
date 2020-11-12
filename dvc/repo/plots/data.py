@@ -147,7 +147,7 @@ def _append_revision(data_points, revision, **kwargs):
 
 class PlotData:
     REVISION_FIELD = "rev"
-    INDEX_FIELD = "index"
+    INDEX_FIELD = "step"
 
     def __init__(self, filename, revision, content, **kwargs):
         self.filename = filename
