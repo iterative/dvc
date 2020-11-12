@@ -12,6 +12,7 @@ from typing import Iterable, Optional
 
 from funcy import cached_property, first
 
+from dvc.dvcfile import is_lock_file
 from dvc.exceptions import DownloadError, DvcException, UploadError
 from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
@@ -284,7 +285,7 @@ class Experiments:
         if params:
             self._update_params(params)
 
-        if not self.scm.is_dirty(untracked_files=True) and not allow_unchanged:
+        if not self._check_dirty() and not allow_unchanged:
             # experiment matches original baseline
             raise UnchangedExperimentError(rev)
 
@@ -297,6 +298,21 @@ class Experiments:
         msg = self._stash_msg(rev, branch)
         self.scm.repo.git.stash("push", "-m", msg)
         return self.scm.resolve_rev("stash@{0}")
+
+    def _check_dirty(self) -> bool:
+        # NOTE: dirty DVC lock files must be restored to index state to
+        # avoid checking out incorrect persist or checkpoint outs
+        dirty = [diff.a_path for diff in self.scm.repo.index.diff(None)]
+        to_checkout = [fname for fname in dirty if is_lock_file(fname)]
+        self.scm.repo.index.checkout(paths=to_checkout, force=True)
+
+        untracked = self.scm.repo.untracked_files
+        to_remove = [fname for fname in untracked if is_lock_file(fname)]
+        for fname in to_remove:
+            remove(fname)
+        return (
+            len(dirty) - len(to_checkout) + len(untracked) - len(to_remove)
+        ) != 0
 
     def _stash_msg(self, rev, branch=None):
         if branch:

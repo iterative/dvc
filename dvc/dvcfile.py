@@ -48,8 +48,12 @@ def is_valid_filename(path):
 
 def is_dvc_file(path):
     return os.path.isfile(path) and (
-        is_valid_filename(path) or os.path.basename(path) == PIPELINE_LOCK
+        is_valid_filename(path) or is_lock_file(path)
     )
+
+
+def is_lock_file(path):
+    return os.path.basename(path) == PIPELINE_LOCK
 
 
 def check_dvc_filename(path):
