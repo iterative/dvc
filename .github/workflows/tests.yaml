@@ -37,8 +37,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-18.04, windows-2019, macos-10.15]
+        os: [ubuntu-18.04, windows-2019, macos-10.15, macos-11.0]
         pyv: ["3.6", "3.7", "3.8", "3.9"]
+        exclude:
+          - os: macos-11.0
+            pyv: "3.6"
+          - os: macos-11.0
+            pyv: "3.7"
     steps:
     - uses: actions/checkout@v2.3.2
     - name: Set up Python
