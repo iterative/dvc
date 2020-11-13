@@ -1,6 +1,6 @@
-from .ipfs import IPFSRemote
 from ..tree import get_cloud_tree
 from .base import Remote
+from .ipfs import IPFSRemote
 from .local import LocalRemote
 from .ssh import SSHRemote
 

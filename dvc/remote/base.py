@@ -139,15 +139,25 @@ class Remote:
         return list(indexed_hashes) + list(hashes & set(remote_hashes))
 
     def before_transfer(self, download=False, upload=False, gc=False):
-        """Will be called before an upload, download or garbage collect is attempted."""
+        """Hook before work is done
+
+        Will be called before an upload, download or garbage collect
+        operation is attempted. Originally implemented to allow the
+        content addressed filesystem IPFS to copy the desired content
+        in it's MFS (mutable filesystem).
+        """
         pass
 
     def after_transfer(self, download=False, upload=False, gc=False):
-        """Will be called after all uploads, downloads or garbage collect operations were successful
+        """Hook after work has been done
 
-        Some remotes may need to do additional work after all uploads were processed. This method was originally
-        implemented to allow the final hash calculation of the content addressed filesystem IPFS, but may also be
-        useful to trigger further post-upload actions.
+        Will be called after all uploads, downloads or garbage collect
+        operations were successful.
+
+        Some remotes may need to do additional work after all uploads were
+        processed. This method was originally implemented to allow the final
+        hash calculation of the content addressed filesystem IPFS, but may
+        also be useful to trigger further post-upload actions.
         """
         pass
 

@@ -731,8 +731,8 @@ class CloudCache:
         hash_info.dir_info = self._to_dict(self.get_dir_cache(hash_info))
         hash_info.nfiles = len(hash_info.dir_info)
 
-    # stub before_ and after_ methods because this class is used where remotes are used,
-    # but it is not inherited from a remote.base.Remote
+    # stub before_ and after_ methods because this class is used where
+    # remotes are used, but it is not inherited from a remote.base.Remote
     def before_transfer(self, *args, **kwargs):
         pass
 

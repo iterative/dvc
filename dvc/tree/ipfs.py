@@ -1,25 +1,25 @@
 import logging
 from collections import deque
-
-from funcy import cached_property
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
 import ipfshttpclient
+from funcy import cached_property
 
-from .base import BaseTree
 from ..config import Config
 from ..exceptions import DvcException
 from ..path_info import _BasePath
 from ..scheme import Schemes
+from .base import BaseTree
 
 logger = logging.getLogger(__name__)
 
 
 class IPFSPathInfo(_BasePath):
 
-    # This is the content id of an empty directory. It will be used when the user doesn't provide a CID
+    # this is the content id of an empty directory
+    # it will be used when the user doesn't provide a CID
     CID_EMPTY_DIRECTORY = "QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn"
 
     def __init__(self, url, mfs_path=None):
@@ -32,11 +32,13 @@ class IPFSPathInfo(_BasePath):
             mfs_path.rstrip("/") if mfs_path else f"/dvc/{project_dir_name}"
         )
         if not self.mfs_path:
-            # if mfs_path was a /, it was removed by .rstrip(). It will also clutter / if it would actually be used,
+            # if mfs_path was a /, it was removed by .rstrip().
+            # it will also clutter root directory if it would actually be used,
             # so just disallow it
             raise DvcException(
                 "You may not use / as your IPFS MFS path. "
-                "Choose another with `dvc remote modify <remote_name> mfs_path <mfs_path>`"
+                "Choose another with "
+                "`dvc remote modify <remote_name> mfs_path <mfs_path>`"
             )
         self.scheme = p.scheme
 
@@ -75,9 +77,10 @@ class IPFSTree(BaseTree):
             self.ipfs_client = ipfshttpclient.connect(session=True)
         except ipfshttpclient.exceptions.VersionMismatch as e:
             raise DvcException(f"Unsupported IPFS daemon ({e})") from e
-        except ipfshttpclient.exceptions.ConnectionError as e:
+        except ipfshttpclient.exceptions.ConnectionError:
             raise DvcException(
-                "Could not connect to ipfs daemon. Install ipfs on your machine and run `ipfs daemon`"
+                "Could not connect to ipfs daemon. "
+                "Install ipfs on your machine and run `ipfs daemon`"
             )
 
     def __del__(self):
@@ -87,9 +90,7 @@ class IPFSTree(BaseTree):
     def exists(self, path_info: PATH_CLS, use_dvcignore=True):
         self.ipfs_client.files.mkdir(path_info.mfs_path, parents=True)
         try:
-            self.ipfs_client.files.stat(
-                path_info.mfs_path + path_info.path
-            )
+            self.ipfs_client.files.stat(path_info.mfs_path + path_info.path)
         except ipfshttpclient.exceptions.ErrorResponse as e:
             if e.args[0] != "file does not exist":
                 raise e
@@ -106,28 +107,36 @@ class IPFSTree(BaseTree):
         while dirs:
             dir_path = dirs.pop()
             try:
-                entries = self.ipfs_client.files.ls(dir_path.mfs_file_path)['Entries']
+                entries = self.ipfs_client.files.ls(dir_path.mfs_file_path)[
+                    "Entries"
+                ]
             except ipfshttpclient.exceptions.ErrorResponse as e:
-                if e.args[0] != 'file does not exist':
+                if e.args[0] != "file does not exist":
                     raise e
                 continue
             for entry in entries:
-                entry_path_info = dir_path / entry['Name']
-                type_ = self.ipfs_client.files.stat(entry_path_info.mfs_file_path)['Type']
-                if type_ == 'directory':
+                entry_path_info = dir_path / entry["Name"]
+                type_ = self.ipfs_client.files.stat(
+                    entry_path_info.mfs_file_path
+                )["Type"]
+                if type_ == "directory":
                     dirs.append(entry_path_info)
-                elif type_ == 'file':
+                elif type_ == "file":
                     yield entry_path_info
                 else:
-                    raise DvcException(f"Unexpected file type ({type_}) in IPFS at {entry_path_info.mfs_file_path}")
+                    raise DvcException(
+                        f"Unexpected file type ({type_}) "
+                        f"in IPFS at {entry_path_info.mfs_file_path}"
+                    )
 
     def path_to_hash(self, path):
-        return path.replace('/', '')
+        return path.replace("/", "")
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         mfs_path = f"{self.path_info.mfs_path}/{to_info.path}"
         with open(from_file, "rb") as f:
-            # "parents" might get a kwarg in future versions of py-ipfs-http-client? If so, change the opts param here
+            # "parents" might get a kwarg in future versions of
+            # py-ipfs-http-client? If so, change the opts param here
             self.ipfs_client.files.write(
                 mfs_path, f, create=True, opts={"parents": True}
             )
@@ -141,6 +150,4 @@ class IPFSTree(BaseTree):
     ):
         logger.debug(f"Downloading {from_info} to {to_file}")
         with open(to_file, "wb") as f:
-            f.write(
-                self.ipfs_client.files.read(from_info.mfs_file_path)
-            )
+            f.write(self.ipfs_client.files.read(from_info.mfs_file_path))

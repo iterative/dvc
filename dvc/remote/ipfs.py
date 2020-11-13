@@ -1,9 +1,9 @@
 import logging
 
-from .base import Remote
 from ..config import Config
 from ..exceptions import DvcException
 from ..progress import Tqdm
+from .base import Remote
 
 logger = logging.getLogger(__name__)
 
@@ -16,10 +16,11 @@ class IPFSRemote(Remote):
     def after_transfer(self, download=False, upload=False, gc=False):
         """Calculate the final CID after a successful upload
 
-        Changing files in our local MFS means that the content ID gets changed. After doing any modifications,
-        we therefore need to update .dvc/config so it will always point to the latest content.
-        Though we get a new CID, other users won't need to download everything again, since the existing files
-        and subdirectories will keep their CID.
+        Changing files in our local MFS means that the content ID gets changed.
+        After doing any modifications, we therefore need to update .dvc/config
+        so it will always point to the latest content.
+        Though we get a new CID, other users won't need to download everything
+        again, since the existing files and subdirectories will keep their CID.
        """
         if not (upload or gc):
             return
@@ -43,30 +44,34 @@ class IPFSRemote(Remote):
 
     def _update_mfs_to_latest_cid(self):
         """
-        This method makes sure that the hash of our working directory in the MFS matches the desired CID which
-        is defined in .dvc/config
+        This method makes sure that the hash of our working directory in the
+        MFS matches the desired CID which is defined in .dvc/config
 
-        It should be called before executing download operations to make sure the content is available, and it
-        could be called before uploading new files to make sure no unwanted files get published.
+        It should be called before executing download operations to make sure
+        the content is available, and it should be called before uploading
+        new files to make sure no unwanted files get published.
         """
-        # doesn't change anything if the path already exists, but creates an empty directory if the path didn't exists
         mfs = self.tree.path_info.mfs_path
         files_api = self.tree.ipfs_client.files
         cid = self.tree.path_info.cid
 
+        # doesn't change anything if the path already exists, but creates an
+        # empty directory if the path didn't exists, saving us from exceptions
         files_api.mkdir(mfs, parents=True)
+
         current_hash = files_api.stat(mfs)["Hash"]
         if current_hash != cid:
-            logger.debug(
-                f"Updating IPFS MFS path {mfs} to CID {cid}"
-            )
+            logger.debug(f"Updating IPFS MFS path {mfs} to CID {cid}")
             with Tqdm(
-                desc=f"Updating IPFS MFS at {mfs}. This may take a while. See progress at http://127.0.0.1:5001/webui"
+                desc=f"Updating IPFS MFS at {mfs}. This may take a while. "
+                f"See progress at http://127.0.0.1:5001/webui"
             ):
-                # "cp" does not like overwriting files, so delete everything beforehand
-                # Don't worry - IPFS still keeps a cache, so we won't actually downloading everything again
-                # Still should investigate when the IPFS cache gets cleared
+                # "cp" does not like overwriting files, so delete everything
+                # beforehand
+                # don't worry - IPFS still keeps a cache, so we won't actually
+                # downloading everything again
                 files_api.rm(mfs, recursive=True)
-                # This single command makes IPFS download everything. Any chance to provide a useful progress bar?
+                # this single command makes IPFS download everything.
+                # any chance to provide a useful progress bar?
                 # https://docs.ipfs.io/reference/http/api/#api-v0-files-cp
                 files_api.cp(f"/ipfs/{cid}", mfs)

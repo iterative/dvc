@@ -8,13 +8,13 @@ from .gs import GSTree
 from .hdfs import HDFSTree
 from .http import HTTPTree
 from .https import HTTPSTree
+from .ipfs import IPFSTree
 from .local import LocalTree
 from .oss import OSSTree
 from .s3 import S3Tree
 from .ssh import SSHTree
 from .webdav import WebDAVTree
 from .webdavs import WebDAVSTree
-from .ipfs import IPFSTree
 
 logger = logging.getLogger(__name__)
 
