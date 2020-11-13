@@ -134,6 +134,7 @@ class WebHDFSTree(BaseTree):
         self.hdfs_client.write(to_info.path, data=content)
 
     def move(self, from_info, to_info, mode=None):
+        self.hdfs_client.makedirs(to_info.parent.path)
         self.hdfs_client.rename(from_info.path, to_info.path)
 
     def _upload(
