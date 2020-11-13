@@ -181,7 +181,9 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
                 for chunk in response.iter_content(chunk_size=self.CHUNK_SIZE):
                     fd_wrapped.write(chunk)
 
-    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
+    def _upload(
+        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
+    ):
         def chunks():
             with open(from_file, "rb") as fd:
                 with Tqdm.wrapattr(

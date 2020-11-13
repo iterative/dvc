@@ -225,7 +225,7 @@ class BaseTree:
         raise RemoteActionNotImplemented("reflink", self.scheme)
 
     @staticmethod
-    def protect(path_info):
+    def protect(path_info, mode=None):
         pass
 
     def is_protected(self, path_info):
@@ -338,7 +338,14 @@ class BaseTree:
         hash_info.size = dir_info.size
         return hash_info
 
-    def upload(self, from_info, to_info, name=None, no_progress_bar=False):
+    def upload(
+        self,
+        from_info,
+        to_info,
+        name=None,
+        no_progress_bar=False,
+        file_mode=None,
+    ):
         if not hasattr(self, "_upload"):
             raise RemoteActionNotImplemented("upload", self.scheme)
 
@@ -357,6 +364,7 @@ class BaseTree:
             to_info,
             name=name,
             no_progress_bar=no_progress_bar,
+            file_mode=file_mode,
         )
 
     def download(

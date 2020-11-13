@@ -200,7 +200,9 @@ class GSTree(BaseTree):
             size=blob.size,
         )
 
-    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
+    def _upload(
+        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
+    ):
         bucket = self.gs.bucket(to_info.bucket)
         _upload_to_bucket(
             bucket,

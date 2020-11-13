@@ -275,9 +275,9 @@ class LocalTree(BaseTree):
         else:
             self._unprotect_file(path)
 
-    def protect(self, path_info):
+    def protect(self, path_info, mode=None):
         path = os.fspath(path_info)
-        mode = self.CACHE_MODE
+        mode = mode if mode is not None else self.CACHE_MODE
 
         try:
             os.chmod(path, mode)
@@ -316,7 +316,13 @@ class LocalTree(BaseTree):
         return os.path.getsize(path_info)
 
     def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
+        self,
+        from_file,
+        to_info,
+        name=None,
+        no_progress_bar=False,
+        file_mode=None,
+        **_kwargs,
     ):
         makedirs(to_info.parent, exist_ok=True)
 
@@ -325,7 +331,7 @@ class LocalTree(BaseTree):
             from_file, tmp_file, name=name, no_progress_bar=no_progress_bar
         )
 
-        self.protect(tmp_file)
+        self.protect(tmp_file, mode=file_mode)
         os.replace(tmp_file, to_info)
 
     @staticmethod

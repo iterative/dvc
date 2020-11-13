@@ -564,7 +564,9 @@ class GDriveTree(BaseTree):
     def get_file_hash(self, path_info):
         raise NotImplementedError
 
-    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
+    def _upload(
+        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
+    ):
         dirname = to_info.parent
         assert dirname
         parent_id = self._get_item_id(dirname, True)

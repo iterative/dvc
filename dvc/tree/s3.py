@@ -342,7 +342,9 @@ class S3Tree(BaseTree):
                 size=obj.content_length,
             )
 
-    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
+    def _upload(
+        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
+    ):
         with self._get_obj(to_info) as obj:
             total = os.path.getsize(from_file)
             with Tqdm(
