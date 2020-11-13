@@ -146,7 +146,6 @@ class Remote:
         content addressed filesystem IPFS to copy the desired content
         in it's MFS (mutable filesystem).
         """
-        pass
 
     def after_transfer(self, download=False, upload=False, gc=False):
         """Hook after work has been done
@@ -159,7 +158,6 @@ class Remote:
         hash calculation of the content addressed filesystem IPFS, but may
         also be useful to trigger further post-upload actions.
         """
-        pass
 
     @classmethod
     @index_locked

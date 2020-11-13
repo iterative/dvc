@@ -1,4 +1,5 @@
 import logging
+import os
 from collections import deque
 from pathlib import Path
 from typing import Optional
@@ -10,6 +11,7 @@ from funcy import cached_property
 from ..config import Config
 from ..exceptions import DvcException
 from ..path_info import _BasePath
+from ..progress import Tqdm
 from ..scheme import Schemes
 from .base import BaseTree
 
@@ -97,6 +99,10 @@ class IPFSTree(BaseTree):
             return False
         return True
 
+    def get_file_hash(self, path_info: PATH_CLS):
+        # TODO
+        pass
+
     def remove(self, path_info: PATH_CLS):
         logger.debug(f"Removing {path_info} from MFS")
         self.ipfs_client.files.rm(path_info.mfs_file_path, recursive=True)
@@ -107,9 +113,8 @@ class IPFSTree(BaseTree):
         while dirs:
             dir_path = dirs.pop()
             try:
-                entries = self.ipfs_client.files.ls(dir_path.mfs_file_path)[
-                    "Entries"
-                ]
+                stat = self.ipfs_client.files.ls(dir_path.mfs_file_path)
+                entries = stat["Entries"] or []
             except ipfshttpclient.exceptions.ErrorResponse as e:
                 if e.args[0] != "file does not exist":
                     raise e
@@ -135,11 +140,18 @@ class IPFSTree(BaseTree):
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         mfs_path = f"{self.path_info.mfs_path}/{to_info.path}"
         with open(from_file, "rb") as f:
-            # "parents" might get a kwarg in future versions of
-            # py-ipfs-http-client? If so, change the opts param here
-            self.ipfs_client.files.write(
-                mfs_path, f, create=True, opts={"parents": True}
-            )
+            with Tqdm.wrapattr(
+                f,
+                "read",
+                desc=name,
+                total=os.path.getsize(from_file),
+                disable=no_progress_bar,
+            ) as wrapped_f:
+                # "parents" might get a kwarg in future versions of
+                # py-ipfs-http-client? If so, change the opts param here
+                self.ipfs_client.files.write(
+                    mfs_path, wrapped_f, create=True, opts={"parents": True}
+                )
 
     def _download(
         self,
@@ -148,6 +160,14 @@ class IPFSTree(BaseTree):
         name=None,
         no_progress_bar=False,
     ):
-        logger.debug(f"Downloading {from_info} to {to_file}")
+        from_file = from_info.mfs_file_path
         with open(to_file, "wb") as f:
-            f.write(self.ipfs_client.files.read(from_info.mfs_file_path))
+            # there is "Size" and "CumulativeSize". Both do not reflect
+            # filesize after download, not sure which one is more accurate
+            # https://docs.ipfs.io/reference/http/api/#api-v0-files-stat
+            size = self.ipfs_client.files.stat(from_file)["CumulativeSize"]
+            s = self.ipfs_client.files.read(from_file, stream=True)
+            with Tqdm(s, desc=name, total=size, disable=no_progress_bar,) as t:
+                for chunk in s:
+                    f.write(chunk)
+                    t.update(len(chunk))
