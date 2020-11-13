@@ -1,10 +1,14 @@
 import logging
+import os
+import stat
 
 import pytest
 from funcy import first
 
 from dvc.utils.serialize import PythonFileCorruptedError
 from tests.func.test_repro_multistage import COPY_SCRIPT
+
+SCRIPT_MODE = 0o755
 
 
 def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker):
@@ -14,6 +18,7 @@ def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker):
     dvc.experiments.run(exp_stage.addressing)
 
     new_mock.assert_called_once()
+    assert stat.S_IMODE(os.stat(tmp_dir / "copy.py").st_mode) == SCRIPT_MODE
     assert (
         tmp_dir / ".dvc" / "experiments" / "metrics.yaml"
     ).read_text() == "foo: 2"
