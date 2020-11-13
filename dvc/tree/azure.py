@@ -38,7 +38,16 @@ class AzureTree(BaseTree):
             container = self._az_config.get("storage", "container_name", None)
             self.path_info = self.PATH_CLS(f"azure://{container}")
 
-        self._get_string_token_credential(config)
+        self._storage_account = config.get(
+            "storage_account"
+        ) or self._az_config.get("storage", "account", None)
+        self._account_url = (
+            f"https://{self._storage_account}.blob.core.windows.net"
+        )
+
+        self._conn_str, self._credential = self._get_string_token_credential(
+            config
+        )
 
         if not (self._conn_str or self._credential):
             from azure.identity import (
@@ -48,7 +57,7 @@ class AzureTree(BaseTree):
 
             if not self._storage_account:
                 logging.warning(
-                    "You must enter a storgae account name for this auth flow"
+                    "You must enter a storage account name for this auth flow"
                 )
 
             # Microsoft azure docs
@@ -74,7 +83,7 @@ class AzureTree(BaseTree):
         )
 
         if not (client_id and client_secret and tenant_id):
-            logging.error(
+            logging.warning(
                 "Not enough information to authenticate to azure remote."
             )
             return None
@@ -89,24 +98,17 @@ class AzureTree(BaseTree):
         # Get `token` like credential to pass to
         # blob service client. String like
         # conn_str, sas_token, account_key
-        self._conn_str = config.get(
-            "connection_string"
-        ) or self._az_config.get("storage", "connection_string", None)
+        _conn_str = config.get("connection_string") or self._az_config.get(
+            "storage", "connection_string", None
+        )
 
-        self._account_url = None
-        if not self._conn_str:
-            self._storage_account = config.get(
-                "storage_account"
-            ) or self._az_config.get("storage", "account", None)
-            self._account_url = (
-                f"https://{self._storage_account}.blob.core.windows.net"
-            )
-
-        self._credential = config.get("sas_token") or self._az_config.get(
+        _credential = config.get("sas_token") or self._az_config.get(
             "storage", "sas_token", None
         )
-        if not self._credential:
-            self._credential = self._az_config.get("storage", "key", None)
+        if not _credential:
+            _credential = self._az_config.get("storage", "key", None)
+
+        return _conn_str, _credential
 
     @cached_property
     def _az_config(self):
