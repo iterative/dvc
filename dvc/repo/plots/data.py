@@ -125,14 +125,8 @@ def _find_data(data, fields=None, **kwargs):
 
 
 def _append_index(data_points, append_index=False, **kwargs):
-    if not append_index:
+    if not append_index or PlotData.INDEX_FIELD in first(data_points).keys():
         return data_points
-
-    if PlotData.INDEX_FIELD in first(data_points).keys():
-        raise DvcException(
-            "Cannot append index. Field of same name ('{}') found in data. "
-            "Use `-x` to specify x axis field.".format(PlotData.INDEX_FIELD)
-        )
 
     for index, data_point in enumerate(data_points):
         data_point[PlotData.INDEX_FIELD] = index
