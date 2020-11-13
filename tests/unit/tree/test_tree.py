@@ -51,6 +51,7 @@ def test_get_cloud_tree_validate(tmp_dir, dvc):
         get_cloud_tree(dvc, name="second")
 
 
+@pytest.mark.skipif(os.name == "nt", reason="Not supported for Windows.")
 @pytest.mark.parametrize(
     "mode, expected", [(None, LocalTree.CACHE_MODE), (0o777, 0o777)],
 )

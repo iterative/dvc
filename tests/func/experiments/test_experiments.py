@@ -18,10 +18,16 @@ def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker):
     dvc.experiments.run(exp_stage.addressing)
 
     new_mock.assert_called_once()
-    assert stat.S_IMODE(os.stat(tmp_dir / "copy.py").st_mode) == SCRIPT_MODE
     assert (
         tmp_dir / ".dvc" / "experiments" / "metrics.yaml"
     ).read_text() == "foo: 2"
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Not supported for Windows.")
+def test_file_permissions(tmp_dir, scm, dvc, exp_stage, mocker):
+    tmp_dir.gen("params.yaml", "foo: 2")
+    dvc.experiments.run(exp_stage.addressing)
+    assert stat.S_IMODE(os.stat(tmp_dir / "copy.py").st_mode) == SCRIPT_MODE
 
 
 def test_failed_exp(tmp_dir, scm, dvc, exp_stage, mocker, caplog):
