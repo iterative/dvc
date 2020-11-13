@@ -79,6 +79,7 @@ class Cache:
     def by_scheme(self):
         yield from self._cache.items()
 
+
 class NamedCacheItem:
     def __init__(self):
         self.names = set()
