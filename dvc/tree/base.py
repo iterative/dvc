@@ -78,6 +78,14 @@ class BaseTree:
         self.path_info = None
 
     @cached_property
+    def jobs(self):
+        return (
+            self.config.get("jobs")
+            or (self.repo and self.repo.config["core"].get("jobs"))
+            or self.JOBS
+        )
+
+    @cached_property
     def hash_jobs(self):
         return (
             self.config.get("checksum_jobs")
@@ -404,7 +412,7 @@ class BaseTree:
                     dir_mode=dir_mode,
                 )
             )
-            with ThreadPoolExecutor(max_workers=self.JOBS) as executor:
+            with ThreadPoolExecutor(max_workers=self.jobs) as executor:
                 futures = [
                     executor.submit(download_files, from_info, to_info)
                     for from_info, to_info in zip(from_infos, to_infos)

@@ -16,6 +16,17 @@ def test_remote_with_hash_jobs(dvc):
     assert tree.hash_jobs == 100
 
 
+def test_remote_with_jobs(dvc):
+    dvc.config["remote"]["with_jobs"] = {
+        "url": "s3://bucket/name",
+        "jobs": 100,
+    }
+    dvc.config["core"]["jobs"] = 200
+
+    tree = get_cloud_tree(dvc, name="with_jobs")
+    assert tree.jobs == 100
+
+
 def test_remote_without_hash_jobs(dvc):
     dvc.config["remote"]["without_hash_jobs"] = {"url": "s3://bucket/name"}
     dvc.config["core"]["checksum_jobs"] = 200
