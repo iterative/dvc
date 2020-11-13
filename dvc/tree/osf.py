@@ -77,7 +77,7 @@ class OSFTree(BaseTree):
         return md5
 
     def exists(self, path_info, use_dvcignore=True):
-        paths = self.list_paths()
+        paths = self._list_paths()
         return any(path_info.path == path for path in paths)
 
     def _list_paths(self):
