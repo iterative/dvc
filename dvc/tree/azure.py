@@ -30,6 +30,7 @@ class AzureTree(BaseTree):
     def __init__(self, repo, config):
         super().__init__(repo, config)
 
+        self._account_url = None
         url = config.get("url", "azure://")
         self.path_info = self.PATH_CLS(url)
 
@@ -45,11 +46,9 @@ class AzureTree(BaseTree):
                 ChainedTokenCredential,
             )
 
-            account_name = config.get("account_name")
-            self._account_url = f"https://{account_name}.blob.core.windows.net"
-            if not account_name:
+            if not self._storage_account:
                 logging.warning(
-                    "You must enter an account name for this auth flow"
+                    "You must enter a storgae account name for this auth flow"
                 )
 
             # Microsoft azure docs
@@ -90,14 +89,18 @@ class AzureTree(BaseTree):
         # Get `token` like credential to pass to
         # blob service client. String like
         # conn_str, sas_token, account_key
-        self._conn_str = config.get("connection_string") or self._az_config.get(
-            "storage", "connection_string", None
-        )
+        self._conn_str = config.get(
+            "connection_string"
+        ) or self._az_config.get("storage", "connection_string", None)
 
         self._account_url = None
         if not self._conn_str:
-            name = self._az_config.get("storage", "account", None)
-            self._account_url = f"https://{name}.blob.core.windows.net"
+            self._storage_account = config.get(
+                "storage_account"
+            ) or self._az_config.get("storage", "account", None)
+            self._account_url = (
+                f"https://{self._storage_account}.blob.core.windows.net"
+            )
 
         self._credential = config.get("sas_token") or self._az_config.get(
             "storage", "sas_token", None

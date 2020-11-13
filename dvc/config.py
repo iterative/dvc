@@ -197,7 +197,7 @@ SCHEMA = {
                 "azure": {
                     "connection_string": str,
                     "azcli_credential": Bool,
-                    "account_name": str,
+                    "storage_account": str,
                     "client_id": str,
                     "client_secret": str,
                     "tenant_id": str,
