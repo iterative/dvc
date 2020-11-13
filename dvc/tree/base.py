@@ -79,7 +79,6 @@ class BaseTree:
 
     @cached_property
     def jobs(self):
-        """Number of jobs (workers) set in a configuration"""
         return (
             self.config.get("jobs")
             or (self.repo and self.repo.config["core"].get("jobs"))
