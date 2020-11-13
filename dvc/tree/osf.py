@@ -47,14 +47,22 @@ class OSFTree(BaseTree):
 
     @wrap_prop(threading.Lock())
     @cached_property
-    def storage(self):
+    def osf(self):
         import osfclient
 
         osf = osfclient.OSF()
+        return osf
+
+    @wrap_prop(threading.Lock())
+    @cached_property
+    def storage(self):
+        from osfclient.exceptions import UnauthorizedException
+
+        osf = self.osf
         osf.login(self.osf_username, self.password)
         try:
             storage = osf.project(self.project).storage()
-        except osfclient.exceptions.UnauthorizedException:
+        except UnauthorizedException:
             raise OSFAuthError
         return storage
 
@@ -98,11 +106,26 @@ class OSFTree(BaseTree):
     def get_file_hash(self, path_info):
         return HashInfo(self.PARAM_CHECKSUM, self.get_md5(path_info))
 
-    def _download(self, from_info, to_file, **_kwargs):
+    def _download(
+        self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
+    ):
         file = self._get_file_obj(from_info)
 
+        # hack to get size of file
+        # This will be no longer needed after the
+        # pull-request https://github.com/osfclient/osfclient/pull/185 merge
+
+        # pylint: disable=W0212
+        resp = self.osf._get(file._endpoint)
+        json = self.osf._json(resp, 200)
+        total = self.osf._get_attribute(json, "data", "attributes", "size")
+        # pylint: enable=W0212
+
         with open(to_file, "wb") as fobj:
-            file.write_to(fobj)
+            with Tqdm.wrapattr(
+                fobj, "read", desc=name, total=total, disable=no_progress_bar
+            ) as wrapped:
+                file.write_to(wrapped)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
