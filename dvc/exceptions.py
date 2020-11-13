@@ -1,3 +1,4 @@
+"""Exceptions raised by the dvc."""
 from funcy import first
 
 from dvc.utils import error_link, format_link, relpath
