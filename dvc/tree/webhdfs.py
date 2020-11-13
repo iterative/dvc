@@ -133,6 +133,9 @@ class WebHDFSTree(BaseTree):
             content = reader.read()
         self.hdfs_client.write(to_info.path, data=content)
 
+    def move(self, from_info, to_info, mode=None):
+        self.hdfs_client.rename(from_info.path, to_info.path)
+
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):
