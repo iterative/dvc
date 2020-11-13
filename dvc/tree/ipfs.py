@@ -46,6 +46,7 @@ class IPFSPathInfo(_BasePath):
 
     @property
     def mfs_file_path(self):
+        """Full filepath inside the mfs"""
         return self.mfs_path + self.path
 
     def __div__(self, other):
@@ -95,6 +96,10 @@ class IPFSTree(BaseTree):
             return False
         return True
 
+    def remove(self, path_info: PATH_CLS):
+        logger.debug(f"Removing {path_info} from MFS")
+        self.ipfs_client.files.rm(path_info.mfs_file_path, recursive=True)
+
     def walk_files(self, path_info: PATH_CLS, **kwargs):
         dirs = deque([path_info])
 
@@ -112,7 +117,6 @@ class IPFSTree(BaseTree):
                 if type_ == 'directory':
                     dirs.append(entry_path_info)
                 elif type_ == 'file':
-                    logger.debug(entry_path_info.mfs_file_path)
                     yield entry_path_info
                 else:
                     raise DvcException(f"Unexpected file type ({type_}) in IPFS at {entry_path_info.mfs_file_path}")
