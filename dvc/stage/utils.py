@@ -42,15 +42,22 @@ def check_stage_path(repo, path, is_wdir=False):
         raise StagePathOutsideError(error_msg.format("is outside of DVC repo"))
 
 
+def _resolve_dvclive_integration(**kwargs):
+    kw = defaultdict(list, kwargs)
+    if "dvclive" in kw:
+        log_paths = kw["dvclive"]
+        for log_path in log_paths:
+            kw["plots_no_cache"].append(os.path.join(log_path, "history"))
+            kw["metrics_no_cache"].append(
+                os.path.join(log_path, "latest.json")
+            )
+    return kw
+
+
 def fill_stage_outputs(stage, **kwargs):
     assert not stage.outs
 
-    kw = defaultdict(list, kwargs)
-    if "dvclive" in kw:
-        logs_path = kw["dvclive"]
-        for lp in logs_path:
-            kw["plots_no_cache"].append(os.path.join(lp, "history"))
-            kw["metrics_no_cache"].append(os.path.join(lp, "latest.json"))
+    kw = _resolve_dvclive_integration(**kwargs)
 
     keys = [
         "outs_persist",
