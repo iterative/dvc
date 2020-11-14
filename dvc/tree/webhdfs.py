@@ -16,13 +16,14 @@ from .base import BaseTree
 logger = logging.getLogger(__name__)
 
 
-def update_pbar(pbar):
+def update_pbar(pbar, total):
     """Update pbar to accept the two arguments passed by hdfs"""
 
-    def update(_, bytes_transfered):  # No use for first argument (path)
+    def update(_, bytes_transfered):
         if bytes_transfered == -1:
+            pbar.update_to(total)
             return
-        pbar.update(bytes_transfered)
+        pbar.update_to(bytes_transfered)
 
     return update
 
@@ -140,18 +141,24 @@ class WebHDFSTree(BaseTree):
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):
-        with Tqdm(desc=name, disable=no_progress_bar, bytes=True) as pbar:
+        total = os.path.getsize(from_file)
+        with Tqdm(
+            desc=name, total=total, disable=no_progress_bar, bytes=True
+        ) as pbar:
             self.hdfs_client.upload(
                 to_info.path,
                 from_file,
                 overwrite=True,
-                progress=update_pbar(pbar),
+                progress=update_pbar(pbar, total),
             )
 
     def _download(
         self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
     ):
-        with Tqdm(desc=name, disable=no_progress_bar, bytes=True) as pbar:
+        total = self.hdfs_client.status(from_info.path)["length"]
+        with Tqdm(
+            desc=name, total=total, disable=no_progress_bar, bytes=True
+        ) as pbar:
             self.hdfs_client.download(
-                from_info.path, to_file, progress=update_pbar(pbar)
+                from_info.path, to_file, progress=update_pbar(pbar, total)
             )
