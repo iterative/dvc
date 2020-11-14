@@ -11,8 +11,7 @@ from tests.basic_env import TestDvc
 class TestGDriveTree(TestDvc):
     def setUp(self):
         super().setUp()
-        if not os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA):
-            pytest.skip("no gdrive credentials data available")
+        self.skip = not os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA)
 
         self.paths_answers = [
             ("1nKf4XcsNCN3oLujqlFTJoK5Fvx9iKCZb", "data.txt"),
@@ -28,10 +27,13 @@ class TestGDriveTree(TestDvc):
 
         self.dir_paths = [
             "16onq6BZiiUFj083XloYVk7LDDpklDr7h",
-            # "16onq6BZiiUFj083XloYVk7LDDpklDr7h/dir"
+            "16onq6BZiiUFj083XloYVk7LDDpklDr7h/dir",
         ]
 
     def get_tree(self, path_info):
+        if self.skip:
+            pytest.skip("no gdrive credentials data available")
+
         url = path_info.replace(path="").url
         return GDriveTree(self.dvc, {"url": url})
 
