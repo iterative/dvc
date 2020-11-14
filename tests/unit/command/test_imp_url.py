@@ -51,16 +51,6 @@ def test_import_url_no_exec(mocker):
     m.assert_called_once_with("src", out="out", fname="file", no_exec=True)
 
 
-def test_import_url_https(dvc):
-    cli_args = parse_args(
-        ["import-url", "https://data.dvc.org/get-started/data.xml"]
-    )
-    assert cli_args.func == CmdImportUrl
-
-    cmd = cli_args.func(cli_args)
-    assert cmd.run() == 0
-
-
 # The first file id is a publicly available file.
 # The second, instead, requires authentication, which depend on a proper
 # gdrive-user-credentials.json. The absence of the file skips the test.
