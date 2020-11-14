@@ -11,7 +11,7 @@ from tests.basic_env import TestDvc
 class TestGDriveTree(TestDvc):
     def setUp(self):
         super().setUp()
-        self.skip = not os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA)
+        self.skip = not os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA).strip()
 
         self.paths_answers = [
             ("1nKf4XcsNCN3oLujqlFTJoK5Fvx9iKCZb", "data.txt"),
