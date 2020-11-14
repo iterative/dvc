@@ -31,13 +31,13 @@ class TestGDriveTree(TestDvc):
         ]
 
     def get_tree(self, path_info):
-        if self.skip:
-            pytest.skip("no gdrive credentials data available")
-
         url = path_info.replace(path="").url
         return GDriveTree(self.dvc, {"url": url})
 
     def test_get_file_name(self):
+        if self.skip:
+            pytest.skip("no gdrive credentials data available")
+
         for path, answer in self.paths_answers:
             path_info = GDriveURLInfo("gdrive://" + path)
             tree = self.get_tree(path_info)
@@ -46,6 +46,9 @@ class TestGDriveTree(TestDvc):
             assert filename == answer
 
     def test_get_file_name_non_existing(self):
+        if self.skip:
+            pytest.skip("no gdrive credentials data available")
+
         for invalid_path in self.invalid_paths:
             path = "gdrive://" + invalid_path
             path_info = GDriveURLInfo(path)
@@ -58,6 +61,9 @@ class TestGDriveTree(TestDvc):
             assert path in str(e.value)
 
     def test_walk_files(self):
+        if self.skip:
+            pytest.skip("no gdrive credentials data available")
+
         for path in self.dir_paths:
             path_info = GDriveURLInfo("gdrive://" + path)
             tree = self.get_tree(path_info)
