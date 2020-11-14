@@ -146,6 +146,10 @@ def get_parent_parser():
     )
     parent_parser.add_argument("--cprofile-dump", help=argparse.SUPPRESS)
 
+    parent_parser.add_argument(
+        "--pdb", action="store_true", default=False, help=argparse.SUPPRESS,
+    )
+
     log_level_group = parent_parser.add_mutually_exclusive_group()
     log_level_group.add_argument(
         "-q", "--quiet", action="count", default=0, help="Be quiet."
