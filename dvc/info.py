@@ -127,26 +127,6 @@ def _get_supported_remotes():
     return ", ".join(supported_remotes)
 
 
-def _get_configured_remotes(repo):
-    from urllib.parse import urlparse
-
-    from dvc.scheme import Schemes
-
-    # Get supported schemes, exclude the private variables
-    available_remotes = {
-        v
-        for k, v in vars(Schemes).items()
-        if not k.startswith("_") and isinstance(v, str)
-    }
-    remotes = set()
-    for remote_config in repo.config["remote"].values():
-        parsed = urlparse(remote_config["url"])
-        if parsed.scheme in available_remotes:
-            remotes.add(parsed.scheme)
-
-    return ", ".join(remotes) if len(remotes) > 0 else "None"
-
-
 def get_fs_type(path):
 
     partition = {
