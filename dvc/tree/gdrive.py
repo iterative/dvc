@@ -304,7 +304,8 @@ class GDriveTree(BaseTree):
 
     def _cache_path_id(self, path, item_id, cache=None):
         cache = cache or self._ids_cache
-        cache["dirs"][path].append(item_id)
+        if self._isdir_by_id(item_id):
+            cache["dirs"][path].append(item_id)
         cache["ids"][item_id] = path
 
     @cached_property
@@ -555,12 +556,15 @@ class GDriveTree(BaseTree):
 
     def isdir(self, path_info):
         item_id = self._get_item_id(path_info)
-        file_repr = self._drive.CreateFile({"id": item_id})
-        self._fetch_metadata(file_repr, fields="mimeType")
-        return file_repr["mimeType"] == "application/vnd.google-apps.folder"
+        return self._isdir_by_id(item_id)
 
     def isfile(self, path_info):
         return not self.isdir(path_info)
+
+    def _isdir_by_id(self, item_id):
+        file_repr = self._drive.CreateFile({"id": item_id})
+        self._fetch_metadata(file_repr, fields="mimeType")
+        return file_repr["mimeType"] == "application/vnd.google-apps.folder"
 
     def _list_paths(self, prefix=None):
         if not self._ids_cache["ids"]:
@@ -571,9 +575,9 @@ class GDriveTree(BaseTree):
             if not dir_ids:
                 return
         else:
-            dir_ids = self._ids_cache["ids"]
+            dir_ids = self._ids_cache["dirs"]
         parents_query = " or ".join(
-            f"'{dir_id}' in parents" for dir_id in dir_ids
+            f"'{min(dir_id)}' in parents" for dir_id in dir_ids.values()
         )
         query = f"({parents_query}) and trashed=false"
 

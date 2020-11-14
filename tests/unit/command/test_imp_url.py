@@ -67,10 +67,10 @@ def test_import_url_https(dvc):
 @pytest.mark.parametrize(
     "path, auth",
     [
-        # ("1nKf4XcsNCN3oLujqlFTJoK5Fvx9iKCZb", False),
+        ("1nKf4XcsNCN3oLujqlFTJoK5Fvx9iKCZb", False),
         ("1syA-26p7tehWyUiMPPk_s0hsFN0Nr_kX", True),
         ("16onq6BZiiUFj083XloYVk7LDDpklDr7h/dir/data.txt", True),
-        # ("16onq6BZiiUFj083XloYVk7LDDpklDr7h/dir", True),
+        ("16onq6BZiiUFj083XloYVk7LDDpklDr7h/dir", True),
     ],
 )
 def test_import_url_gdrive(dvc, path, auth):
@@ -98,8 +98,8 @@ def test_import_url_gdrive(dvc, path, auth):
     with open(data_file) as f:
         assert f.readline().strip() == "the data content"
 
-    data_dvc_file = root_dir.joinpath("data.txt.dvc")
-    assert data_dvc_file.exists()
+    dir_dvc_file = root_dir.parent.joinpath("dir.dvc")
+    assert dir_dvc_file.exists()
 
-    with open(data_dvc_file) as f:
+    with open(dir_dvc_file) as f:
         assert f.readlines()

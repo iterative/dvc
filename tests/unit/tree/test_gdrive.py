@@ -8,7 +8,7 @@ from dvc.tree.gdrive import GDriveURLInfo
 from tests.basic_env import TestDvc
 
 
-class TestGDriveURL(TestDvc):
+class TestGDriveTree(TestDvc):
     def setUp(self):
         super().setUp()
         if not os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA):
@@ -24,6 +24,11 @@ class TestGDriveURL(TestDvc):
         self.invalid_paths = [
             "============",
             "16onq6BZiiUFj083XloYVk7LDDpklDr7h/fake_dir",
+        ]
+
+        self.dir_paths = [
+            "16onq6BZiiUFj083XloYVk7LDDpklDr7h",
+            # "16onq6BZiiUFj083XloYVk7LDDpklDr7h/dir"
         ]
 
     def get_tree(self, path_info):
@@ -49,3 +54,11 @@ class TestGDriveURL(TestDvc):
             with pytest.raises(FileMissingError) as e:
                 _ = tree.get_file_name(path_info)
             assert path in str(e.value)
+
+    def test_walk_files(self):
+        for path in self.dir_paths:
+            path_info = GDriveURLInfo("gdrive://" + path)
+            tree = self.get_tree(path_info)
+            files = tree.walk_files(path_info)
+            list_files = list(files)
+            assert list_files
