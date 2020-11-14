@@ -147,6 +147,7 @@ SCHEMA = {
     "cache": {
         "local": str,
         "s3": str,
+        "gdrive": str,
         "gs": str,
         "hdfs": str,
         "webhdfs": str,
