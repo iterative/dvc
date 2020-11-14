@@ -5,7 +5,7 @@ import pytest
 
 from dvc.config import ConfigError
 from dvc.path_info import CloudURLInfo, PathInfo
-from dvc.tree import LocalTree, get_cloud_tree
+from dvc.tree import LocalTree, get_cloud_schemes, get_cloud_tree
 
 
 def test_get_cloud_tree(tmp_dir, dvc):
@@ -64,3 +64,22 @@ def test_upload_file_mode(tmp_dir, mode, expected):
     assert (tmp_dir / "dest").exists()
     assert (tmp_dir / "dest").read_text() == "foo"
     assert stat.S_IMODE(os.stat(dest).st_mode) == expected
+
+
+def test_get_cloud_schemes_empty(tmp_dir, dvc):
+    remotes = get_cloud_schemes(dvc)
+
+    assert len(remotes) == 0
+
+
+def test_get_cloud_schemes(tmp_dir, dvc):
+    tmp_dir.add_remote(name="server", url="ssh://localhost", default=False)
+    tmp_dir.add_remote(
+        name="remote", url="remote://server/path", default=False
+    )
+    tmp_dir.add_remote(name="s3", url="s3://bucket/path", default=False)
+    tmp_dir.add_remote(name="local remote", url="/tmp/path", default=True)
+
+    remotes = get_cloud_schemes(dvc)
+
+    assert {"ssh", "s3", "local"} == remotes

@@ -8,7 +8,7 @@ from dvc.exceptions import DvcException, NotDvcRepoError
 from dvc.repo import Repo
 from dvc.scm.base import SCMError
 from dvc.system import System
-from dvc.tree import TREES
+from dvc.tree import TREES, get_cloud_schemes
 from dvc.utils import error_link
 from dvc.utils.pkg import PKG
 from dvc.version import __version__
@@ -51,7 +51,9 @@ def get_dvc_info():
             info.append("Cache types: " + error_link("no-dvc-cache"))
 
         info.append(f"Caches: {_get_caches(repo.cache)}")
-        info.append(f"Remotes: {_get_configured_remotes(repo)}")
+
+        remotes = ", ".join(get_cloud_schemes(repo)) or "None"
+        info.append(f"Remotes: {remotes}")
 
     except NotDvcRepoError:
         pass

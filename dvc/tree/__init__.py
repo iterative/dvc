@@ -88,3 +88,15 @@ def get_cloud_tree(repo, **kwargs):
     except Invalid as exc:
         raise ConfigError(str(exc)) from None
     return _get_tree(remote_conf)(repo, remote_conf)
+
+
+def get_cloud_schemes(repo):
+    """Get a list of remote schemes configured for a repo.
+
+    Args:
+        repo: dvc repository
+    """
+    return {
+        _get_tree(_get_conf(repo, name=remote)).scheme
+        for remote in repo.config["remote"]
+    }

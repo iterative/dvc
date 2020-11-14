@@ -74,16 +74,15 @@ def test_remotes_empty(tmp_dir, dvc, caplog):
 
 
 def test_remotes(tmp_dir, dvc, caplog):
+    tmp_dir.add_remote(name="server", url="ssh://localhost", default=False)
     tmp_dir.add_remote(
-        name="azure", url="azure://example.com/path", default=False
+        name="r1", url="azure://example.com/path", default=False
     )
-    tmp_dir.add_remote(
-        name="remote", url="remote://example.com/path", default=False
-    )
+    tmp_dir.add_remote(name="r2", url="remote://server/path", default=False)
 
     dvc_info = get_dvc_info()
 
-    assert "Remotes: azure\n" in dvc_info
+    assert re.search("Remotes: (ssh, azure|azure, ssh)", dvc_info)
 
 
 @pytest.mark.skipif(psutil is None, reason="No psutil.")
