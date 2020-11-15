@@ -140,7 +140,8 @@ class AzureTree(BaseTree):
             if check_path == path:
                 item_exists = True
             else:
-                # if we path is a folder, then a single result means its existence
+                # if we path is a folder,
+                # then a single result means its existence
                 if not check_path.endswith("/"):
                     check_path += "/"
                 if path.startswith(check_path):
