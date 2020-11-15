@@ -60,60 +60,21 @@ def loads_from(cls, repo, path, wdir, data):
 
 
 def create_stage(cls, repo, path, external=False, **kwargs):
-    """Create a stage from the class *cls*
-
-    :param cls: the class from which the stage will be
-                created (e.g Stage, PipelineStage).
-    :param repo: the repository object (Repo class).
-    :param path: the path to the dvc filename. If None,
-                 path become <out>.dvc
-    :param external: if True, prevents users from accidentally
-                     using external outputs.
-                     See https://github.com/iterative/dvc/issues/1545
-                     for more details.
-
-    the method can also receive other params as:
-    :param outs: a list of output file (or dir) names.
-    :param deps: a list of urls that represents the source of files.
-    # NOTE there are other possible parameters.
-
-    :returns: a *cls* object representing the stage.
-    """
     from dvc.dvcfile import check_dvc_filename
 
     wdir = os.path.abspath(kwargs.get("wdir", None) or os.curdir)
+    path = os.path.abspath(path)
+    check_dvc_filename(path)
     check_stage_path(repo, wdir, is_wdir=kwargs.get("wdir"))
-
-    # path is None because we define its filename from the dependency.
-    stage = loads_from(cls, repo, None, wdir, kwargs)
-
-    fill_stage_dependencies(
-        stage, **project(kwargs, ["deps", "erepo", "params"])
-    )
-
-    param_outs = kwargs.get("outs")
-
-    if param_outs:
-        outs = []
-        for i, o in enumerate(param_outs):
-            outs.append(o or stage.deps[i].get_file_name())
-        kwargs["outs"] = outs
-
-    if path:
-        path = os.path.abspath(path)
-    else:
-        base = os.path.basename(os.path.normpath(outs[0]))
-        # importing DVC_FILE_SUFFIX causes circular dependency
-        path = os.path.join(wdir, base + ".dvc")
     check_stage_path(repo, os.path.dirname(path))
 
-    check_dvc_filename(path)
-    stage.path = path
-
+    stage = loads_from(cls, repo, path, wdir, kwargs)
     fill_stage_outputs(stage, **kwargs)
     if not external:
         check_no_externals(stage)
-
+    fill_stage_dependencies(
+        stage, **project(kwargs, ["deps", "erepo", "params"])
+    )
     check_circular_dependency(stage)
     check_duplicated_arguments(stage)
 

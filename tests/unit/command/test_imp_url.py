@@ -1,13 +1,8 @@
 import logging
-import os
-from pathlib import Path
-
-import pytest
 
 from dvc.cli import parse_args
 from dvc.command.imp_url import CmdImportUrl
 from dvc.exceptions import DvcException
-from dvc.tree import GDriveTree
 
 
 def test_import_url(mocker):
@@ -49,47 +44,3 @@ def test_import_url_no_exec(mocker):
     assert cmd.run() == 0
 
     m.assert_called_once_with("src", out="out", fname="file", no_exec=True)
-
-
-# The first file id is a publicly available file.
-# The second, instead, requires authentication, which depend on a proper
-# gdrive-user-credentials.json. The absence of the file skips the test.
-@pytest.mark.parametrize(
-    "path, auth",
-    [
-        ("1nKf4XcsNCN3oLujqlFTJoK5Fvx9iKCZb", False),
-        ("1syA-26p7tehWyUiMPPk_s0hsFN0Nr_kX", True),
-        ("16onq6BZiiUFj083XloYVk7LDDpklDr7h/dir/data.txt", True),
-        ("16onq6BZiiUFj083XloYVk7LDDpklDr7h/dir", True),
-    ],
-)
-def test_import_url_gdrive(dvc, path, auth):
-    root_dir = Path(dvc.root_dir)
-
-    if not os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA):
-        pytest.skip("no gdrive credentials data available")
-
-    if not auth:
-        os.environ[GDriveTree.GDRIVE_CREDENTIALS_DATA] = ""
-
-    url = f"gdrive://{path}"
-    cli_args = parse_args(["import-url", url])
-    assert cli_args.func == CmdImportUrl
-
-    cmd = cli_args.func(cli_args)
-    res = cmd.run()
-    assert res == 0
-
-    if path.endswith("dir"):
-        root_dir = root_dir.joinpath("dir")
-
-    data_file = root_dir.joinpath("data.txt")
-    assert data_file.exists()
-    with open(data_file) as f:
-        assert f.readline().strip() == "the data content"
-
-    dir_dvc_file = root_dir.parent.joinpath("dir.dvc")
-    assert dir_dvc_file.exists()
-
-    with open(dir_dvc_file) as f:
-        assert f.readlines()

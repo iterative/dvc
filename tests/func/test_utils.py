@@ -1,9 +1,4 @@
-from pathlib import Path
-
-import pytest
-
 from dvc import utils
-from dvc.utils import resolve_paths
 
 
 def test_file_md5_crlf(tmp_dir):
@@ -45,62 +40,3 @@ def test_boxify():
     )
 
     assert expected == utils.boxify("message")
-
-
-@pytest.mark.parametrize(
-    "filename", [None, "file"],
-)
-def test_resolve_paths_simple_filename(dvc, filename):
-    wdir, out = resolve_paths(dvc, filename)
-
-    assert dvc.root_dir == wdir
-    assert out == filename
-
-
-@pytest.mark.parametrize(
-    "path", ["dir", "dir/with/sub", "./another/dir"],
-)
-def test_resolve_paths_filename_with_path(dvc, path):
-    filename = "file"
-    out = str(Path(path).joinpath(filename))
-    wdir, out = resolve_paths(dvc, out)
-
-    assert Path(dvc.root_dir).joinpath(path) == Path(wdir)
-    assert out == filename
-
-
-def test_resolve_paths_dot(dvc):
-    wdir, out = resolve_paths(dvc, ".")
-
-    assert dvc.root_dir == wdir
-    assert out is None
-
-
-@pytest.mark.parametrize(
-    "path", ["", ".", "sub/with", "./another"],
-)
-@pytest.mark.parametrize(
-    "force_out", [False, True],
-)
-def test_resolve_paths_dirs(dvc, path, force_out):
-    last_dir = "dir"
-    partial_path = Path(path).joinpath(last_dir)
-    target_path = Path(dvc.root_dir).joinpath(partial_path)
-    target_path.mkdir(parents=True)
-
-    wdir, out = resolve_paths(dvc, str(partial_path), force_out=force_out)
-
-    if force_out:
-        assert target_path.parent == Path(wdir)
-        assert out == last_dir
-    else:
-        assert target_path == Path(wdir)
-        assert out is None
-
-
-def test_resolve_paths_out_of_repo(dvc):
-    filename = "/path/out/of/the/repo"
-    wdir, out = resolve_paths(dvc, filename)
-
-    assert dvc.root_dir == wdir
-    assert out == filename

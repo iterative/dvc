@@ -121,6 +121,7 @@ def test_import_url_with_no_exec(tmp_dir, dvc, erepo_dir):
         pytest.lazy_fixture("local_cloud"),
         pytest.lazy_fixture("s3"),
         pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("gdrive"),
         pytest.lazy_fixture("hdfs"),
         pytest.lazy_fixture("webhdfs"),
         pytest.param(
@@ -157,6 +158,11 @@ def test_import_url(tmp_dir, dvc, workspace):
         ),
         (
             pytest.lazy_fixture("gs"),
+            "dc24e1271084ee317ac3c2656fb8812b",
+            "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
+        ),
+        (
+            pytest.lazy_fixture("gdrive"),
             "dc24e1271084ee317ac3c2656fb8812b",
             "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
         ),

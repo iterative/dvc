@@ -57,16 +57,6 @@ class PathInfo(pathlib.PurePath, _BasePath):
     def __fspath__(self):
         return pathlib.PurePath.__str__(self)
 
-    def __eq__(self, other):
-        if isinstance(other, str):
-            return self.fspath == os.path.abspath(other)
-        else:
-            return super().__eq__(other)
-
-    # pylint: disable=W0235
-    def __hash__(self):
-        return super().__hash__()
-
     @property
     def fspath(self):
         return self.__fspath__()
@@ -163,12 +153,12 @@ class URLInfo(_BasePath):
         self.port = int(port) if port else self.DEFAULT_PORTS.get(self.scheme)
 
         if isinstance(path, _URLPathInfo):
-            self.spath = str(path)
+            self._spath = str(path)
             self._path = path
         else:
             if path and path[0] != "/":
                 path = "/" + path
-            self.spath = path
+            self._spath = path
 
     @property
     def _base_parts(self):
@@ -183,7 +173,7 @@ class URLInfo(_BasePath):
 
     @cached_property
     def url(self):
-        return f"{self.scheme}://{self.netloc}{self.spath}"
+        return f"{self.scheme}://{self.netloc}{self._spath}"
 
     def __str__(self):
         return self.url
@@ -204,17 +194,17 @@ class URLInfo(_BasePath):
         return hash(self.parts)
 
     def __div__(self, other):
-        return self.replace(path=posixpath.join(self.spath, other))
+        return self.replace(path=posixpath.join(self._spath, other))
 
     __truediv__ = __div__
 
     @property
     def path(self):
-        return self.spath
+        return self._spath
 
     @cached_property
     def _path(self):
-        return _URLPathInfo(self.spath)
+        return _URLPathInfo(self._spath)
 
     @property
     def name(self):
@@ -265,7 +255,7 @@ class URLInfo(_BasePath):
 class CloudURLInfo(URLInfo):
     @property
     def path(self):
-        return self.spath.lstrip("/")
+        return self._spath.lstrip("/")
 
 
 class HTTPURLInfo(URLInfo):
@@ -335,7 +325,7 @@ class HTTPURLInfo(URLInfo):
         return "{}://{}{}{}{}{}".format(
             self.scheme,
             self.netloc,
-            self.spath,
+            self._spath,
             (";" + self.params) if self.params else "",
             ("?" + self.query) if self.query else "",
             ("#" + self.fragment) if self.fragment else "",
@@ -356,5 +346,5 @@ class WebDAVURLInfo(URLInfo):
     @cached_property
     def url(self):
         return "{}://{}{}".format(
-            self.scheme.replace("webdav", "http"), self.netloc, self.spath
+            self.scheme.replace("webdav", "http"), self.netloc, self._spath
         )

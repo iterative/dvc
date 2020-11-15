@@ -30,9 +30,12 @@ class Base(URLInfo):
     def read_bytes(self):
         raise NotImplementedError
 
+    def _join(self, name, prefix=None):
+        return (prefix or self) / name
+
     def _gen(self, struct, prefix=None):
         for name, contents in struct.items():
-            path = (prefix or self) / name
+            path = self._join(name, prefix=prefix)
 
             if isinstance(contents, dict):
                 if not contents:

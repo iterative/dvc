@@ -341,7 +341,12 @@ def env2bool(var, undefined=False):
 def resolve_output(inp, out):
     from urllib.parse import urlparse
 
-    name = os.path.basename(os.path.normpath(urlparse(inp).path))
+    parsed_inp = urlparse(inp)
+    path = parsed_inp.path
+    if not path:
+        path = parsed_inp.hostname
+    name = os.path.basename(os.path.normpath(path))
+
     if not out:
         return name
     if os.path.isdir(out):
@@ -349,61 +354,45 @@ def resolve_output(inp, out):
     return out
 
 
-def resolve_paths(repo, out, force_out=False):
-    """Resolves the dir and out paths, when an *out* path is suggested.
-
-    :param repo: a Repo object.
-    :param out: a str path to an out file or directory.
-    :force_out: if true, returns an *out* even when it's a sub dir.
-    :returns: (wdir, out) - the absolute dir where the stage should be saved,
-              and *out* path if it points to a file, or its path is outside
-              *repo* or if it's a dir with force_out=True.
-    """
+def resolve_paths(repo, out):
     from urllib.parse import urlparse
 
+    from ..dvcfile import DVC_FILE_SUFFIX
     from ..exceptions import DvcException
     from ..path_info import PathInfo
     from ..system import System
     from .fs import contains_symlink_up_to
 
-    if out:
-        abspath = PathInfo(os.path.abspath(out))
-        scheme = urlparse(out).scheme
+    abspath = PathInfo(os.path.abspath(out))
+    dirname = os.path.dirname(abspath)
+    base = os.path.basename(os.path.normpath(out))
 
-        if os.name == "nt" and scheme == abspath.drive[0].lower():
-            # urlparse interprets windows drive letters as URL scheme
-            scheme = ""
+    scheme = urlparse(out).scheme
+    if os.name == "nt" and scheme == abspath.drive[0].lower():
+        # urlparse interprets windows drive letters as URL scheme
+        scheme = ""
 
-        if scheme or not abspath.isin_or_eq(repo.root_dir):
-            wdir = os.getcwd()
-        else:
-            # When the expected output is a file and *out* is a dir, the
-            # destination path is set to *dirname* and the output file name
-            # will be defined later from the source file.
-            if (not force_out) and os.path.isdir(out):
-                wdir = abspath
-                out = None
-            else:
-                wdir = os.path.dirname(abspath)
-                out = os.path.basename(os.path.normpath(out))
-
-            if contains_symlink_up_to(wdir, repo.root_dir) or (
-                os.path.isdir(abspath) and System.is_symlink(abspath)
-            ):
-                msg = (
-                    "Cannot add files inside symlinked directories to DVC. "
-                    "See {} for more information."
-                ).format(
-                    format_link(
-                        "https://dvc.org/doc/user-guide/"
-                        "troubleshooting#add-symlink"
-                    )
-                )
-                raise DvcException(msg)
-    else:
+    if scheme or not abspath.isin_or_eq(repo.root_dir):
         wdir = os.getcwd()
+    elif contains_symlink_up_to(dirname, repo.root_dir) or (
+        os.path.isdir(abspath) and System.is_symlink(abspath)
+    ):
+        msg = (
+            "Cannot add files inside symlinked directories to DVC. "
+            "See {} for more information."
+        ).format(
+            format_link(
+                "https://dvc.org/doc/user-guide/troubleshooting#add-symlink"
+            )
+        )
+        raise DvcException(msg)
+    else:
+        wdir = dirname
+        out = base
 
-    return wdir, out
+    path = os.path.join(wdir, base + DVC_FILE_SUFFIX)
+
+    return (path, wdir, out)
 
 
 def format_link(link):

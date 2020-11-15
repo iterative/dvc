@@ -78,13 +78,13 @@ class GDriveURLInfo(CloudURLInfo):
 
         # Normalize path. Important since we have a cache (path to ID)
         # and don't want to deal with different variations of path in it.
-        self._spath = re.sub("/{2,}", "/", self.spath.rstrip("/"))
+        self._spath = re.sub("/{2,}", "/", self._spath.rstrip("/"))
 
 
 class GDriveTree(BaseTree):
     scheme = Schemes.GDRIVE
     PATH_CLS = GDriveURLInfo
-    PARAM_CHECKSUM = "etag"
+    PARAM_CHECKSUM = "md5"
     REQUIRES = {"pydrive2": "pydrive2"}
     DEFAULT_VERIFY = True
     # Always prefer traverse for GDrive since API usage quotas are a concern.
@@ -176,14 +176,6 @@ class GDriveTree(BaseTree):
         if os.path.exists(self._gdrive_user_credentials_path):
             return self._gdrive_user_credentials_path
         return None
-
-    def get_file_name(self, path_info):
-        assert isinstance(path_info, GDriveURLInfo)
-
-        item_id = self._get_item_id(path_info)
-        file_repr = self._drive.CreateFile({"id": item_id})
-        self._fetch_metadata(file_repr, "title")
-        return file_repr["title"]
 
     @staticmethod
     def _validate_credentials(auth, settings):
@@ -304,8 +296,7 @@ class GDriveTree(BaseTree):
 
     def _cache_path_id(self, path, item_id, cache=None):
         cache = cache or self._ids_cache
-        if self._isdir_by_id(item_id):
-            cache["dirs"][path].append(item_id)
+        cache["dirs"][path].append(item_id)
         cache["ids"][item_id] = path
 
     @cached_property
@@ -313,7 +304,6 @@ class GDriveTree(BaseTree):
         params = {"corpora": "default"}
         if self._bucket != "root" and self._bucket != "appDataFolder":
             drive_id = self._gdrive_shared_drive_id(self._bucket)
-
             if drive_id:
                 logger.debug(
                     "GDrive remote '{}' is using shared drive id '{}'.".format(
@@ -556,45 +546,31 @@ class GDriveTree(BaseTree):
 
     def isdir(self, path_info):
         item_id = self._get_item_id(path_info)
-        return self._isdir_by_id(item_id)
-
-    def isfile(self, path_info):
-        return not self.isdir(path_info)
-
-    def _isdir_by_id(self, item_id):
         file_repr = self._drive.CreateFile({"id": item_id})
         self._fetch_metadata(file_repr, fields="mimeType")
-        return file_repr["mimeType"] == "application/vnd.google-apps.folder"
+        return file_repr["mimeType"] == FOLDER_MIME_TYPE
 
-    def _list_paths(self, prefix=None):
-        if not self._ids_cache["ids"]:
-            return
-
-        if prefix:
-            dir_ids = self._ids_cache["dirs"].get(prefix[:2])
-            if not dir_ids:
-                return
-        else:
-            dir_ids = self._ids_cache["dirs"]
-        parents_query = " or ".join(
-            f"'{min(dir_id)}' in parents" for dir_id in dir_ids.values()
-        )
-        query = f"({parents_query}) and trashed=false"
-
-        for item in self._gdrive_list(query):
-            parent_id = item["parents"][0]["id"]
-            yield posixpath.join(
-                self._ids_cache["ids"][parent_id], item["title"]
-            )
+    def isfile(self, path_info):
+        return self.exists(path_info) and not self.isdir(path_info)
 
     def walk_files(self, path_info, **kwargs):
-        use_prefix = kwargs.pop("prefix", False)
-        if path_info == self.path_info or not use_prefix:
-            prefix = None
-        else:
-            prefix = path_info.path
-        for fname in self._list_paths(prefix=prefix, **kwargs):
-            yield path_info.replace(fname)
+        dir_ids = [self._get_item_id(path_info)]
+        id_paths = {dir_ids[0]: path_info.path}
+
+        while dir_ids:
+            dir_id = dir_ids.pop()
+            query = f"'{dir_id}' in parents and trashed=false"
+
+            for item in self._gdrive_list(query):
+                parent_id = item["parents"][0]["id"]
+
+                if item["mimeType"] == FOLDER_MIME_TYPE:
+                    dir_ids.append(item["id"])
+                    path = posixpath.join(id_paths[parent_id], item["title"])
+                    id_paths[item["id"]] = path
+                else:
+                    fname = posixpath.join(id_paths[parent_id], item["title"])
+                    yield path_info.replace(fname)
 
     def remove(self, path_info):
         item_id = self._get_item_id(path_info)
@@ -603,8 +579,12 @@ class GDriveTree(BaseTree):
     def get_file_hash(self, path_info):
         item_id = self._get_item_id(path_info)
         file_repr = self._drive.CreateFile({"id": item_id})
-        self._fetch_metadata(file_repr, fields="etag")
-        return HashInfo(self.PARAM_CHECKSUM, file_repr["etag"])
+        self._fetch_metadata(file_repr, fields="md5Checksum,fileSize")
+        return HashInfo(
+            self.PARAM_CHECKSUM,
+            file_repr["md5Checksum"],
+            size=int(file_repr["fileSize"]),
+        )
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs

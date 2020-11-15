@@ -569,10 +569,3 @@ class BaseOutput:
         self.hash_info = self.cache.merge(
             ancestor_info, self.hash_info, other.hash_info
         )
-
-    def get_file_name(self):
-        if self.path_info:
-            p = self.path_info.spath
-        else:
-            p = self.def_path
-        return os.path.basename(os.path.normpath(p))
