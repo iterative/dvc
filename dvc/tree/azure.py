@@ -132,8 +132,67 @@ class AzureTree(BaseTree):
         return blob_client.url + "?" + sas_token
 
     def exists(self, path_info, use_dvcignore=True):
-        paths = self._list_paths(path_info.bucket, path_info.path)
-        return any(path_info.path == path for path in paths)
+        check_path = path_info.path
+        item_exists = False
+        paths = self._list_paths(path_info.bucket, check_path)
+        for path in paths:
+            # we only check a single result
+            if check_path == path:
+                item_exists = True
+            else:
+                # if we path is a folder, then a single result means its existence
+                if not check_path.endswith("/"):
+                    check_path += "/"
+                if path.startswith(check_path):
+                    item_exists = True
+            break
+
+        return item_exists
+
+    def isfile(self, path_info):
+        if path_info.path.endswith("/"):
+            return False
+
+        container_client = self.blob_service.get_container_client(
+            path_info.bucket)
+
+        paths = container_client.list_blobs(path_info.path)
+        for path in paths:
+            # check only first result
+            # if it's not good, no need to enumerate the rest
+            if path_info.path == path:
+                return True
+            else:
+                return False
+        return False
+
+    def isdir(self, path_info):
+        # Azure Blob doesn't have a concept for directories.
+        #
+        #
+        # A reliable way to know if a given path is a directory is by
+        # checking if there are more files sharing the same prefix
+        # with a `list_blobs` call.
+        #
+        # We need to make sure that the path ends with a forward slash,
+        # since we can end with false-positives like the following example:
+        #
+        #       container
+        #       └── data
+        #          ├── alice
+        #          └── alpha
+        #
+        # Using `data/al` as prefix will return `[data/alice, data/alpha]`,
+        # While `data/al/` will return nothing.
+        #
+        dir_path = path_info.path
+        if not dir_path.endswith("/"):
+            dir_path += "/"
+        container_client = self.blob_service.get_container_client(
+            path_info.bucket)
+
+        paths = container_client.list_blobs(name_starts_with=dir_path)
+        return any(True for _ in paths)
 
     def _list_paths(self, bucket, prefix):
         container_client = self.blob_service.get_container_client(bucket)
