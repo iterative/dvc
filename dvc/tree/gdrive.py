@@ -112,7 +112,6 @@ class GDriveTree(BaseTree):
             )
 
         self._bucket = self.path_info.bucket
-
         self._trash_only = config.get("gdrive_trash_only")
         self._use_service_account = config.get("gdrive_use_service_account")
         self._service_account_email = config.get(
