@@ -9,7 +9,7 @@ import pytest
 from funcy import cached_property
 
 from dvc.path_info import CloudURLInfo, PathInfo
-from dvc.tree.gdrive import GDriveTree, GDriveURLInfo
+from dvc.tree.gdrive import GDriveTree
 
 from .base import Base
 
@@ -28,25 +28,16 @@ class GDrive(Base, CloudURLInfo):
 
     @cached_property
     def config(self):
-        if GDrive.should_test():
-            return {
-                "url": self.url,
-            }
-        else:
-            return {
-                "url": self.url,
-                "gdrive_service_account_email": "test",
-                "gdrive_service_account_p12_file_path": "test.p12",
-                "gdrive_use_service_account": True,
-            }
+        return {
+            "url": self.url,
+            "gdrive_service_account_email": "test",
+            "gdrive_service_account_p12_file_path": "test.p12",
+            "gdrive_use_service_account": True,
+        }
 
     @staticmethod
     def _get_storagepath():
         return TEST_GDRIVE_REPO_BUCKET + "/" + str(uuid.uuid4())
-
-    @cached_property
-    def _get_gdrive_path_info(self):
-        return GDriveURLInfo(self.url)
 
     def _join(self, name, prefix=None):
         path = Base._join(self, name, prefix)
@@ -59,7 +50,7 @@ class GDrive(Base, CloudURLInfo):
         return "gdrive://" + GDrive._get_storagepath()
 
     def exists(self):
-        return self.tree.exists(self._get_gdrive_path_info)
+        return self.tree.exists(self)
 
     def mkdir(self, mode=0o777, parents=False, exist_ok=False):
         assert mode == 0o777
@@ -72,7 +63,7 @@ class GDrive(Base, CloudURLInfo):
             f.flush()
 
             local = PathInfo(pathlib.Path(f.name))
-            self.tree.upload(local, self._get_gdrive_path_info)
+            self.tree.upload(local, self)
 
     def write_text(self, contents, encoding=None, errors=None):
         if not encoding:

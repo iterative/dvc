@@ -120,17 +120,11 @@ class _URLPathParents:
 class URLInfo(_BasePath):
     DEFAULT_PORTS = {"http": 80, "https": 443, "ssh": 22, "hdfs": 0}
 
-    def __init__(self, url, keep_host_case=False):
+    def __init__(self, url):
         p = urlparse(url)
         assert not p.query and not p.params and not p.fragment
         assert p.password is None
-
-        if keep_host_case:
-            host = p.netloc.split(":")[0]
-        else:
-            host = p.hostname
-
-        self._fill_parts(p.scheme, host, p.username, p.port, p.path)
+        self._fill_parts(p.scheme, p.hostname, p.username, p.port, p.path)
 
     @classmethod
     def from_parts(

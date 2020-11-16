@@ -6,6 +6,7 @@ import re
 import threading
 from collections import defaultdict
 from contextlib import contextmanager
+from urllib.parse import urlparse
 
 from funcy import cached_property, retry, wrap_prop, wrap_with
 from funcy.py3 import cat
@@ -72,8 +73,12 @@ def _gdrive_retry(func):
 
 class GDriveURLInfo(CloudURLInfo):
     def __init__(self, url):
-        # GDrive URL host part is case sensitive
-        super().__init__(url, keep_host_case=True)
+        super().__init__(url)
+
+        # GDrive URL host part is case sensitive,
+        # we are restoring it here.
+        p = urlparse(url)
+        self.host = p.netloc
         assert self.netloc == self.host
 
         # Normalize path. Important since we have a cache (path to ID)
