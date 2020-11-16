@@ -3,7 +3,7 @@ import os
 import threading
 from datetime import datetime, timedelta
 
-from funcy import cached_property, wrap_prop
+from funcy import cached_property, first, wrap_prop
 
 from dvc.hash_info import HashInfo
 from dvc.path_info import CloudURLInfo
@@ -134,9 +134,8 @@ class AzureTree(BaseTree):
     def exists(self, path_info, use_dvcignore=True):
         check_path = path_info.path
         item_exists = False
-        paths = self._list_paths(path_info.bucket, check_path)
-        for path in paths:
-            # we only check a single result
+        path = first(self._list_paths(path_info.bucket, check_path))
+        if path is not None:
             if check_path == path:
                 item_exists = True
             else:
@@ -146,7 +145,6 @@ class AzureTree(BaseTree):
                     check_path += "/"
                 if path.startswith(check_path):
                     item_exists = True
-            break
 
         return item_exists
 
@@ -157,15 +155,7 @@ class AzureTree(BaseTree):
         container_client = self.blob_service.get_container_client(
             path_info.bucket)
 
-        paths = container_client.list_blobs(path_info.path)
-        for path in paths:
-            # check only first result
-            # if it's not good, no need to enumerate the rest
-            if path_info.path == path:
-                return True
-            else:
-                return False
-        return False
+        return path_info.path == first(container_client.list_blobs(path_info.path))
 
     def isdir(self, path_info):
         # Azure Blob doesn't have a concept for directories.
@@ -192,8 +182,7 @@ class AzureTree(BaseTree):
         container_client = self.blob_service.get_container_client(
             path_info.bucket)
 
-        paths = container_client.list_blobs(name_starts_with=dir_path)
-        return any(True for _ in paths)
+        return any(container_client.list_blobs(name_starts_with=dir_path))
 
     def _list_paths(self, bucket, prefix):
         container_client = self.blob_service.get_container_client(bucket)
