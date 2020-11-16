@@ -12,20 +12,12 @@ from tests.basic_env import TestDvc
 
 
 class TestLocalOutput(TestDvc):
-    @property
-    def _path(self):
-        return "path"
-
-    @property
-    def _tree(self):
-        return None
-
     def _get_cls(self):
         return LocalOutput
 
     def _get_output(self):
         stage = Stage(self.dvc)
-        return self._get_cls()(stage, self._path, tree=self._tree, cache=False)
+        return self._get_cls()(stage, "path", cache=False)
 
     def test_save_missing(self):
         o = self._get_output()

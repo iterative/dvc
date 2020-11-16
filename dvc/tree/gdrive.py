@@ -546,11 +546,20 @@ class GDriveTree(BaseTree):
     def isdir(self, path_info):
         item_id = self._get_item_id(path_info)
         file_repr = self._drive.CreateFile({"id": item_id})
-        self._fetch_metadata(file_repr, fields="mimeType")
-        return file_repr["mimeType"] == FOLDER_MIME_TYPE
+        try:
+            self._fetch_metadata(file_repr, fields="mimeType")
+            return file_repr["mimeType"] == FOLDER_MIME_TYPE
+        except FileMissingError:
+            return False
 
     def isfile(self, path_info):
-        return self.exists(path_info) and not self.isdir(path_info)
+        item_id = self._get_item_id(path_info)
+        file_repr = self._drive.CreateFile({"id": item_id})
+        try:
+            self._fetch_metadata(file_repr, fields="mimeType")
+            return file_repr["mimeType"] != FOLDER_MIME_TYPE
+        except FileMissingError:
+            return False
 
     def walk_files(self, path_info, **kwargs):
         dir_ids = [self._get_item_id(path_info)]

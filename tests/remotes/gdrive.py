@@ -58,12 +58,6 @@ class GDrive(Base, CloudURLInfo):
         # NOTE: `get_url` should always return new random url
         return "gdrive://" + GDrive._get_storagepath()
 
-    def is_file(self):
-        return self.tree.isfile(self._get_gdrive_path_info)
-
-    def is_dir(self):
-        return self.tree.isdir(self._get_gdrive_path_info)
-
     def exists(self):
         return self.tree.exists(self._get_gdrive_path_info)
 
@@ -73,31 +67,18 @@ class GDrive(Base, CloudURLInfo):
         assert not exist_ok
 
     def write_bytes(self, contents):
-        f = tempfile.NamedTemporaryFile()
-        f.write(contents)
-        f.flush()
+        with tempfile.NamedTemporaryFile() as f:
+            f.write(contents)
+            f.flush()
 
-        local = PathInfo(pathlib.Path(f.name))
-        self.tree.upload(local, self._get_gdrive_path_info)
-
-        f.close()
+            local = PathInfo(pathlib.Path(f.name))
+            self.tree.upload(local, self._get_gdrive_path_info)
 
     def write_text(self, contents, encoding=None, errors=None):
         if not encoding:
             encoding = locale.getpreferredencoding(False)
         assert errors is None
         self.write_bytes(contents.encode(encoding))
-
-    # pylint: disable=E1101
-    def read_bytes(self):
-        stream = self.tree.open(self._get_gdrive_path_info, mode="rb")
-        return stream.read()
-
-    def read_text(self, encoding=None, errors=None):
-        if not encoding:
-            encoding = locale.getpreferredencoding(False)
-        assert errors is None
-        return self.read_bytes().decode(encoding)
 
 
 @pytest.fixture
