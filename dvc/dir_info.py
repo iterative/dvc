@@ -47,16 +47,22 @@ def _merge(ancestor, our, their):
 class DirInfo:
     PARAM_RELPATH = "relpath"
 
-    def __init__(self):
+    def __init__(self, vdir=None):
         self.trie = Trie()
+        self.vdir = vdir
 
     @property
     def size(self):
         try:
-            return sum(
-                hash_info.size
+            total = sum(
+                hash_info.size or 0
                 for _, hash_info in self.trie.iteritems()  # noqa: B301
             )
+
+            if not self.vdir:
+                return total
+            return self.vdir.hash_info.size + total
+
         except TypeError:
             return None
 

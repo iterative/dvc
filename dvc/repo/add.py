@@ -30,6 +30,7 @@ def add(
     fname=None,
     external=False,
     glob=False,
+    vdir=None,
 ):
     if recursive and fname:
         raise RecursiveAddingWhileUsingFilename()
@@ -69,6 +70,7 @@ def add(
                 pbar=pbar,
                 external=external,
                 glob=glob,
+                vdir=vdir,
             )
 
             try:
@@ -161,7 +163,7 @@ def _find_all_targets(repo, target, recursive):
 
 
 def _create_stages(
-    repo, targets, fname, pbar=None, external=False, glob=False
+    repo, targets, fname, pbar=None, external=False, glob=False, vdir=None,
 ):
     from glob import iglob
 
@@ -191,7 +193,14 @@ def _create_stages(
             wdir=wdir,
             outs=[out],
             external=external,
+            vdir=vdir,
         )
+        if vdir:
+            vdir.hash_info = stage.reload().outs[0].hash_info
+
+            # inject the dependency
+            stage.outs[0].tree.vdir = vdir
+
         if stage:
             Dvcfile(repo, stage.path).remove()
 

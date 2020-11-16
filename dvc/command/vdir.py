@@ -30,7 +30,9 @@ class CmdVdirPull(CmdVdirBase):
 class CmdVdirCp(CmdVdirBase):
     def run(self):
         try:
-            self.repo.vdir.cp(self.args.paths)
+            self.repo.vdir.cp(
+                self.args.src, self.args.dst, self.args.local_src
+            )
         except DvcException:
             logger.exception(
                 "failed to cp into the virtual directory: {}".format(

@@ -291,9 +291,10 @@ class CloudCache:
             desc="Saving " + path_info.name,
             unit="file",
         ):
-            self._save_file(
-                entry_info, tree, entry_hash, save_link=False, **kwargs
-            )
+            if entry_hash.size:
+                self._save_file(
+                    entry_info, tree, entry_hash, save_link=False, **kwargs
+                )
 
         if save_link:
             self.tree.state.save_link(path_info)

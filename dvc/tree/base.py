@@ -8,6 +8,7 @@ from funcy import cached_property, decorator
 
 from dvc.dir_info import DirInfo
 from dvc.exceptions import DvcException, DvcIgnoreInCollectedDirError
+from dvc.hash_info import HashInfo
 from dvc.ignore import DvcIgnore
 from dvc.path_info import URLInfo
 from dvc.progress import Tqdm
@@ -76,6 +77,7 @@ class BaseTree:
 
         self.verify = config.get("verify", self.DEFAULT_VERIFY)
         self.path_info = None
+        self.vdir = None
 
     @cached_property
     def hash_jobs(self):
@@ -304,12 +306,27 @@ class BaseTree:
             file_infos.add(fname)
 
         hash_infos = {fi: self.state.get(fi) for fi in file_infos}
+
+        if self.vdir:
+            vhash_infos = {}
+            vdir_info = self.cache.load_dir_cache(self.vdir.hash_info)
+            for fname in vdir_info.to_list():
+                fi = path_info / fname["relpath"]
+                hi = HashInfo(
+                    "md5", fname["md5"]
+                )  # no size is saved in the cache
+                vhash_infos[fi] = hi
+
+            # This contains the new file
+            if self.vdir.operation == "cp":
+                hash_infos = {**hash_infos, **vhash_infos}
+
         not_in_state = {fi for fi, hi in hash_infos.items() if hi is None}
 
         new_hash_infos = self._calculate_hashes(not_in_state)
         hash_infos.update(new_hash_infos)
 
-        dir_info = DirInfo()
+        dir_info = DirInfo(self.vdir)
         for fi, hi in hash_infos.items():
             # NOTE: this is lossy transformation:
             #   "hey\there" -> "hey/there"
@@ -328,6 +345,10 @@ class BaseTree:
         dir_info = self._collect_dir(path_info, **kwargs)
         hash_info = self.repo.cache.local.save_dir_info(dir_info)
         hash_info.size = dir_info.size
+
+        if self.vdir:
+            self.vdir.hash_info = hash_info
+
         return hash_info
 
     def upload(self, from_info, to_info, name=None, no_progress_bar=False):

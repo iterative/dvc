@@ -180,7 +180,8 @@ class BaseOutput:
     def get_hash(self):
         if not self.use_cache:
             return self.tree.get_hash(self.path_info)
-        return self.cache.get_hash(self.tree, self.path_info)
+        self.hash_info = self.cache.get_hash(self.tree, self.path_info)
+        return self.hash_info
 
     @property
     def is_dir_checksum(self):
@@ -287,6 +288,9 @@ class BaseOutput:
     def commit(self):
         if not self.exists:
             raise self.DoesNotExistError(self)
+
+        if self.tree.vdir:
+            self.hash_info = self.stage.outs[0].tree.vdir.hash_info
 
         assert self.hash_info
         if self.use_cache:
