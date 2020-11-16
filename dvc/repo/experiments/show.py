@@ -44,13 +44,20 @@ def _collect_experiment(repo, rev, stash=False, sha_only=True):
     return res
 
 
-def _collect_checkpoint_experiment(repo, branch, baseline, **kwargs):
-    res = OrderedDict()
+def _collect_checkpoint_experiment(
+    repo, graph, checkpoints, branch, baseline, **kwargs
+):
     exp_rev = repo.scm.resolve_rev(branch)
+    prev = None
     for rev in repo.scm.branch_revs(exp_rev, baseline):
-        res[rev] = _collect_experiment(repo, rev, **kwargs)
-        res[rev]["checkpoint_tip"] = exp_rev
-    return res
+        if rev not in checkpoints:
+            exp = _collect_experiment(repo, rev, **kwargs)
+            checkpoints[rev] = exp
+        if prev:
+            graph.add_edge(rev, prev)
+        prev = rev
+    if prev:
+        graph.add_edge(baseline, prev)
 
 
 @locked
@@ -62,6 +69,8 @@ def show(
     all_commits=False,
     sha_only=False,
 ):
+    import networkx as nx
+
     res = defaultdict(OrderedDict)
 
     if revs is None:
@@ -84,6 +93,7 @@ def show(
         )
 
     # collect reproduced experiments
+    checkpoint_graph = nx.DiGraph()
     for head in sorted(
         repo.experiments.scm.repo.heads,
         key=lambda h: h.commit.committed_date,
@@ -96,16 +106,31 @@ def show(
             if rev in revs:
                 with repo.experiments.chdir():
                     if m.group("checkpoint"):
-                        checkpoint_exps = _collect_checkpoint_experiment(
-                            repo.experiments.exp_dvc, exp_branch, rev
+                        if "checkpoints" not in res[rev]:
+                            res[rev]["checkpoints"] = {
+                                "tree": {},
+                                "experiments": {},
+                            }
+                        checkpoints = res[rev]["checkpoints"]
+                        _collect_checkpoint_experiment(
+                            repo.experiments.exp_dvc,
+                            checkpoint_graph,
+                            checkpoints["experiments"],
+                            exp_branch,
+                            rev,
                         )
-                        res[rev].update(checkpoint_exps)
                     else:
                         exp_rev = repo.experiments.scm.resolve_rev(exp_branch)
                         experiment = _collect_experiment(
                             repo.experiments.exp_dvc, exp_branch
                         )
                         res[rev][exp_rev] = experiment
+
+    for rev in revs:
+        if rev in checkpoint_graph:
+            checkpoints = res[rev]["checkpoints"]
+            tree = nx.dfs_successors(checkpoint_graph, rev)
+            checkpoints["tree"] = tree
 
     # collect queued (not yet reproduced) experiments
     for stash_rev, entry in repo.experiments.stash_revs.items():
