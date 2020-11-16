@@ -5,7 +5,6 @@ import pathlib
 import pytest
 
 from dvc.path_info import CloudURLInfo, HTTPURLInfo, PathInfo, URLInfo
-from dvc.tree.gdrive import GDriveURLInfo
 
 TEST_DEPTH = len(pathlib.Path(__file__).parents) + 1
 
@@ -58,15 +57,6 @@ def test_https_url_info_str():
     assert u.params == "p=par"
     assert u.query == "q=quer"
     assert u.fragment == "frag"
-
-
-def test_gdrive_url_info_str():
-    file_id = "1nKf4XcsNCN3oLujqlFTJoK5Fvx9iKCZb"
-    url = f"gdrive://{file_id}"
-    u = GDriveURLInfo(url)
-    assert u.url == url
-    assert str(u) == u.url
-    assert u.host == file_id  # GDriveURL is case sensitive
 
 
 @pytest.mark.parametrize(
