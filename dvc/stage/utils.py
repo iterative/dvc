@@ -52,7 +52,7 @@ def _resolve_dvclive_integration(**kwargs):
         └── latest.json
     """
     kw = defaultdict(list, kwargs)
-    update = defaultdict(list, kwargs)
+    resolved = defaultdict(list, kwargs)
     for key in kw.keys():
         if "logs" in key:
             log_paths = kw[key]
@@ -62,20 +62,19 @@ def _resolve_dvclive_integration(**kwargs):
             metrics_key = "metrics_no_cache" if no_cache else "metrics"
 
             for log_path in log_paths:
-
-                update[plots_key].append(os.path.join(log_path, "history"))
-                update[metrics_key].append(
+                resolved[plots_key].append(os.path.join(log_path, "history"))
+                resolved[metrics_key].append(
                     os.path.join(log_path, "latest.json")
                 )
 
-    kw.update(update)
-    return kw
+    kw.update(resolved)
+    return dict(kw)
 
 
 def fill_stage_outputs(stage, **kwargs):
     assert not stage.outs
 
-    kw = _resolve_dvclive_integration(**kwargs)
+    kwargs = _resolve_dvclive_integration(**kwargs)
 
     keys = [
         "outs_persist",
@@ -93,7 +92,7 @@ def fill_stage_outputs(stage, **kwargs):
     for key in keys:
         stage.outs += output.loads_from(
             stage,
-            kw[key],
+            kwargs.get(key, []),
             use_cache="no_cache" not in key,
             persist="persist" in key,
             metric="metrics" in key,
