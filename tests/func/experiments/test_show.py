@@ -3,6 +3,7 @@ from datetime import datetime
 from funcy import first
 
 from dvc.dvcfile import PIPELINE_FILE
+from dvc.main import main
 from tests.func.test_repro_multistage import COPY_SCRIPT
 
 
@@ -103,7 +104,7 @@ def test_show_queued(tmp_dir, scm, dvc):
     assert exp["params"]["params.yaml"] == {"foo": 3}
 
 
-def test_show_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker):
+def test_show_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker, capsys):
     baseline_rev = scm.get_rev()
     results = dvc.experiments.run(
         checkpoint_stage.addressing, params=["foo=2"]
@@ -112,6 +113,22 @@ def test_show_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker):
 
     results = dvc.experiments.show()[baseline_rev]
     assert len(results) == 6
+
+    checkpoints = []
     for rev, exp in results.items():
         if rev != "baseline":
+            checkpoints.append(rev)
             assert exp["checkpoint_tip"] == exp_rev
+
+    capsys.readouterr()
+    assert main(["exp", "show", "--no-pager"]) == 0
+    cap = capsys.readouterr()
+
+    for i, rev in enumerate(checkpoints):
+        if i == 0:
+            tree = "╓"
+        elif i == len(checkpoints) - 1:
+            tree = "╨"
+        else:
+            tree = "╟"
+        assert f"{tree} {rev[:7]}" in cap.out
