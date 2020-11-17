@@ -6,7 +6,7 @@ from funcy import first
 
 import dvc as dvc_module
 from dvc.exceptions import DvcException
-from dvc.repo.experiments import Experiments
+from dvc.repo.experiments import Experiments, MultipleBranchError
 
 CHECKPOINT_SCRIPT_FORMAT = dedent(
     """\
@@ -94,6 +94,12 @@ def test_resume_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker, last):
     results = dvc.experiments.run(
         checkpoint_stage.addressing, params=["foo=2"]
     )
+
+    with pytest.raises(DvcException):
+        dvc.experiments.run(
+            checkpoint_stage.addressing, checkpoint_resume="abc1234",
+        )
+
     if last:
         exp_rev = Experiments.LAST_CHECKPOINT
     else:
@@ -123,3 +129,43 @@ def test_reset_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker, caplog):
     assert (
         tmp_dir / ".dvc" / "experiments" / "metrics.yaml"
     ).read_text().strip() == "foo: 1"
+
+
+def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage, mocker):
+    results = dvc.experiments.run(
+        checkpoint_stage.addressing, params=["foo=2"]
+    )
+    branch_rev = first(results)
+
+    results = dvc.experiments.run(
+        checkpoint_stage.addressing, checkpoint_resume=branch_rev
+    )
+    checkpoint_a = first(results)
+
+    results = dvc.experiments.run(
+        checkpoint_stage.addressing,
+        checkpoint_resume=branch_rev,
+        params=["foo=100"],
+    )
+    checkpoint_b = first(results)
+
+    dvc.experiments.checkout(checkpoint_a)
+    assert (tmp_dir / "foo").read_text() == "10"
+    assert (
+        tmp_dir / ".dvc" / "experiments" / "metrics.yaml"
+    ).read_text().strip() == "foo: 2"
+
+    dvc.experiments.checkout(checkpoint_b)
+    assert (tmp_dir / "foo").read_text() == "10"
+    assert (
+        tmp_dir / ".dvc" / "experiments" / "metrics.yaml"
+    ).read_text().strip() == "foo: 100"
+
+    with pytest.raises(MultipleBranchError):
+        dvc.experiments._get_branch_containing(branch_rev)
+
+    branch_a = dvc.experiments._get_branch_containing(checkpoint_a)
+    branch_b = dvc.experiments._get_branch_containing(checkpoint_b)
+    assert branch_rev == dvc.experiments.scm.repo.git.merge_base(
+        branch_a, branch_b, fork_point=True
+    )
