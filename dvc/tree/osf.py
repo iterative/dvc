@@ -7,6 +7,7 @@ from funcy import cached_property, wrap_prop
 from dvc.exceptions import DvcException
 from dvc.path_info import URLInfo
 from dvc.hash_info import HashInfo
+from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 
@@ -29,7 +30,11 @@ class OSFTree(BaseTree):
     scheme = Schemes.OSF
     REQUIRES = {"ofsclient": "osfclient"}
     PARAM_CHECKSUM = "md5"
+<<<<<<< HEAD
     PATH_CLS = URLInfo
+=======
+    PATH_CLS = CloudURLInfo
+>>>>>>> rebase on master
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
@@ -41,8 +46,11 @@ class OSFTree(BaseTree):
         self.password = os.getenv(
             "OSF_PASSWORD", None
         )  # need for private projects
+<<<<<<< HEAD
         if self.password is None:
             self.password = config.get("password")
+=======
+>>>>>>> rebase on master
         logger.debug(OSFTree)
 
     @wrap_prop(threading.Lock())

@@ -46,6 +46,7 @@ class Cache:
         Schemes.SSH,
         Schemes.HDFS,
         Schemes.WEBHDFS,
+        Schemes.OSF,
     ]
 
     def __init__(self, repo):
