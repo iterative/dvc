@@ -8,8 +8,6 @@ from funcy import first
 from dvc.utils.serialize import PythonFileCorruptedError
 from tests.func.test_repro_multistage import COPY_SCRIPT
 
-SCRIPT_MODE = 0o755
-
 
 def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker):
     tmp_dir.gen("params.yaml", "foo: 2")
@@ -25,9 +23,14 @@ def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker):
 
 @pytest.mark.skipif(os.name == "nt", reason="Not supported for Windows.")
 def test_file_permissions(tmp_dir, scm, dvc, exp_stage, mocker):
+    mode = 0o755
+    os.chmod(tmp_dir / "copy.py", mode)
+    scm.add(["copy.py"])
+    scm.commit("set exec")
+
     tmp_dir.gen("params.yaml", "foo: 2")
     dvc.experiments.run(exp_stage.addressing)
-    assert stat.S_IMODE(os.stat(tmp_dir / "copy.py").st_mode) == SCRIPT_MODE
+    assert stat.S_IMODE(os.stat(tmp_dir / "copy.py").st_mode) == mode
 
 
 def test_failed_exp(tmp_dir, scm, dvc, exp_stage, mocker, caplog):
