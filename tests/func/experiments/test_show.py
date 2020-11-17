@@ -104,7 +104,7 @@ def test_show_queued(tmp_dir, scm, dvc):
     assert exp["params"]["params.yaml"] == {"foo": 3}
 
 
-def test_show_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker, capsys):
+def test_show_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, capsys):
     baseline_rev = scm.get_rev()
     results = dvc.experiments.run(
         checkpoint_stage.addressing, params=["foo=2"]
@@ -132,3 +132,30 @@ def test_show_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker, capsys):
         else:
             tree = "╟"
         assert f"{tree} {rev[:7]}" in cap.out
+
+
+def test_show_checkpoint_branch(tmp_dir, scm, dvc, checkpoint_stage, capsys):
+    results = dvc.experiments.run(
+        checkpoint_stage.addressing, params=["foo=2"]
+    )
+    branch_rev = first(results)
+
+    results = dvc.experiments.run(
+        checkpoint_stage.addressing, checkpoint_resume=branch_rev
+    )
+    checkpoint_a = first(results)
+
+    results = dvc.experiments.run(
+        checkpoint_stage.addressing,
+        checkpoint_resume=branch_rev,
+        params=["foo=100"],
+    )
+    checkpoint_b = first(results)
+
+    capsys.readouterr()
+    assert main(["exp", "show", "--no-pager"]) == 0
+    cap = capsys.readouterr()
+
+    for rev in (checkpoint_a, checkpoint_b):
+        assert f"╓ {rev[:7]}" in cap.out
+    assert f"({branch_rev[:7]})" in cap.out

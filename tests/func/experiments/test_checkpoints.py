@@ -25,7 +25,7 @@ def test_new_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker):
 
 
 @pytest.mark.parametrize("last", [True, False])
-def test_resume_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker, last):
+def test_resume_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, last):
     with pytest.raises(DvcException):
         if last:
             dvc.experiments.run(
@@ -59,7 +59,7 @@ def test_resume_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker, last):
     ).read_text().strip() == "foo: 2"
 
 
-def test_reset_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker, caplog):
+def test_reset_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, caplog):
     dvc.experiments.run(checkpoint_stage.addressing)
     scm.repo.git.reset(hard=True)
     scm.repo.git.clean(force=True)
@@ -77,7 +77,7 @@ def test_reset_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker, caplog):
     ).read_text().strip() == "foo: 1"
 
 
-def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage, mocker):
+def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage):
     results = dvc.experiments.run(
         checkpoint_stage.addressing, params=["foo=2"]
     )
