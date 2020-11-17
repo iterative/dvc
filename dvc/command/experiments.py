@@ -116,11 +116,14 @@ def _collect_rows(
         reverse = sort_order == "desc"
         experiments = _sort_exp(experiments, sort_by, sort_type, reverse)
 
+    new_checkpoint = True
     for i, (rev, exp) in enumerate(experiments.items()):
         row = []
         style = None
         queued = "*" if exp.get("queued", False) else ""
 
+        tip = exp.get("checkpoint_tip")
+        parent = ""
         if rev == "baseline":
             if Git.is_sha(base_rev):
                 name_rev = base_rev[:7]
@@ -129,22 +132,31 @@ def _collect_rows(
             name = exp.get("name", name_rev)
             row.append(f"{name}")
             style = "bold"
-        elif rev == "checkpoints":
-            yield from _collect_checkpoints(
-                base_rev,
-                exp,
-                metric_names,
-                param_names,
-                no_timestamp,
-                precision,
-            )
-            continue
         else:
-            if i < len(experiments) - 1:
-                tree = "├──"
+            if tip:
+                parent_rev = exp.get("checkpoint_parent", "")
+                parent_exp = experiments.get(parent_rev, {})
+                parent_tip = parent_exp.get("checkpoint_tip")
+                if tip == parent_tip:
+                    if new_checkpoint:
+                        tree = "│ ╓"
+                    else:
+                        tree = "│ ╟"
+                    new_checkpoint = False
+                else:
+                    if parent_rev == base_rev:
+                        tree = "├─╨"
+                    else:
+                        tree = "│ ╟"
+                        parent = f" ({parent_rev[:7]})"
+                    new_checkpoint = True
             else:
-                tree = "└──"
-            row.append(f"{tree} {queued}{rev[:7]}")
+                if i < len(experiments) - 1:
+                    tree = "├──"
+                else:
+                    tree = "└──"
+                new_checkpoint = True
+            row.append(f"{tree} {queued}{rev[:7]}{parent}")
 
         if not no_timestamp:
             row.append(_format_time(exp.get("timestamp")))
@@ -219,12 +231,8 @@ def _sort_exp(experiments, sort_by, typ, reverse):
         return (True, None)
 
     ret = OrderedDict()
-
-    # baseline and checkpoints tree should not be sorted
     if "baseline" in experiments:
         ret["baseline"] = experiments.pop("baseline")
-    if "checkpoints" in experiments:
-        ret["checkpoints"] = experiments.pop("checkpoints")
 
     ret.update(sorted(experiments.items(), key=_sort, reverse=reverse))
     return ret
