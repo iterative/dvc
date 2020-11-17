@@ -15,6 +15,7 @@ from dvc.command.repro import CmdRepro
 from dvc.command.repro import add_arguments as add_repro_arguments
 from dvc.exceptions import DvcException, InvalidArgumentError
 from dvc.repo.experiments import Experiments
+from dvc.scm.git import Git
 from dvc.utils.flatten import flatten
 
 logger = logging.getLogger(__name__)
@@ -115,30 +116,47 @@ def _collect_rows(
         reverse = sort_order == "desc"
         experiments = _sort_exp(experiments, sort_by, sort_type, reverse)
 
-    last_tip = None
+    new_checkpoint = True
     for i, (rev, exp) in enumerate(experiments.items()):
         row = []
         style = None
         queued = "*" if exp.get("queued", False) else ""
 
         tip = exp.get("checkpoint_tip")
+        parent = ""
         if rev == "baseline":
-            name = exp.get("name", base_rev)
+            if Git.is_sha(base_rev):
+                name_rev = base_rev[:7]
+            else:
+                name_rev = base_rev
+            name = exp.get("name", name_rev)
             row.append(f"{name}")
             style = "bold"
         else:
-            if tip and tip == last_tip:
-                tree = "│ ╟"
+            if tip:
+                parent_rev = exp.get("checkpoint_parent", "")
+                parent_exp = experiments.get(parent_rev, {})
+                parent_tip = parent_exp.get("checkpoint_tip")
+                if tip == parent_tip:
+                    if new_checkpoint:
+                        tree = "│ ╓"
+                    else:
+                        tree = "│ ╟"
+                    new_checkpoint = False
+                else:
+                    if parent_rev == base_rev:
+                        tree = "├─╨"
+                    else:
+                        tree = "│ ╟"
+                        parent = f" ({parent_rev[:7]})"
+                    new_checkpoint = True
             else:
                 if i < len(experiments) - 1:
-                    if tip:
-                        tree = "├─╥"
-                    else:
-                        tree = "├──"
+                    tree = "├──"
                 else:
                     tree = "└──"
-            row.append(f"{tree} {queued}{rev[:7]}")
-        last_tip = tip
+                new_checkpoint = True
+            row.append(f"{tree} {queued}{rev[:7]}{parent}")
 
         if not no_timestamp:
             row.append(_format_time(exp.get("timestamp")))
@@ -152,11 +170,6 @@ def _collect_rows(
 
 
 def _sort_exp(experiments, sort_by, typ, reverse):
-    if "baseline" in experiments:
-        ret = OrderedDict({"baseline": experiments.pop("baseline")})
-    else:
-        ret = OrderedDict()
-
     def _sort(item):
         rev, exp = item
         tip = exp.get("checkpoint_tip")
@@ -172,6 +185,10 @@ def _sort_exp(experiments, sort_by, typ, reverse):
                 val = item[sort_by]
                 return (val is None, val)
         return (True, None)
+
+    ret = OrderedDict()
+    if "baseline" in experiments:
+        ret["baseline"] = experiments.pop("baseline")
 
     ret.update(sorted(experiments.items(), key=_sort, reverse=reverse))
     return ret
@@ -239,8 +256,6 @@ def _parse_list(param_list):
 def _show_experiments(all_experiments, console, **kwargs):
     from rich.table import Table
 
-    from dvc.scm.git import Git
-
     include_metrics = _parse_list(kwargs.pop("include_metrics", []))
     exclude_metrics = _parse_list(kwargs.pop("exclude_metrics", []))
     include_params = _parse_list(kwargs.pop("include_params", []))
@@ -264,9 +279,6 @@ def _show_experiments(all_experiments, console, **kwargs):
         table.add_column(name, justify="left")
 
     for base_rev, experiments in all_experiments.items():
-        if Git.is_sha(base_rev):
-            base_rev = base_rev[:7]
-
         for row, _, in _collect_rows(
             base_rev, experiments, metric_names, param_names, **kwargs,
         ):

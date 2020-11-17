@@ -96,10 +96,11 @@ class Experiments:
 
     EXPERIMENTS_DIR = "experiments"
     PACKED_ARGS_FILE = "repro.dat"
-    STASH_MSG_PREFIX = "dvc-exp:"
+    STASH_EXPERIMENT_FORMAT = "dvc-exp:{rev}:{baseline_rev}"
     STASH_EXPERIMENT_RE = re.compile(
         r"(?:On \(.*\): )"
-        r"dvc-exp:(?P<baseline_rev>[0-9a-f]+)(:(?P<branch>.+))?$"
+        r"dvc-exp:(?P<rev>[0-9a-f]+):(?P<baseline_rev>[0-9a-f]+)"
+        r"(:(?P<branch>.+))?$"
     )
     BRANCH_RE = re.compile(
         r"^(?P<baseline_rev>[a-f0-9]{7})-(?P<exp_sha>[a-f0-9]+)"
@@ -107,7 +108,9 @@ class Experiments:
     )
     LAST_CHECKPOINT = ":last"
 
-    StashEntry = namedtuple("StashEntry", ["index", "baseline_rev", "branch"])
+    StashEntry = namedtuple(
+        "StashEntry", ["index", "rev", "baseline_rev", "branch"]
+    )
 
     def __init__(self, repo):
         from dvc.lock import make_lock
@@ -176,7 +179,10 @@ class Experiments:
             m = self.STASH_EXPERIMENT_RE.match(entry.message)
             if m:
                 revs[entry.newhexsha] = self.StashEntry(
-                    i, m.group("baseline_rev"), m.group("branch")
+                    i,
+                    m.group("rev"),
+                    m.group("baseline_rev"),
+                    m.group("branch"),
                 )
         return revs
 
@@ -239,6 +245,7 @@ class Experiments:
         self,
         *args,
         params: Optional[dict] = None,
+        baseline_rev: Optional[str] = None,
         branch: Optional[str] = None,
         allow_unchanged: Optional[bool] = True,
         apply_workspace: Optional[bool] = True,
@@ -250,6 +257,8 @@ class Experiments:
             params: Optional dictionary of parameter values to be used.
                 Values take priority over any parameters specified in the
                 user's workspace.
+            baseline_rev: Optional baseline rev for this experiment, defaults
+                to the current SCM rev.
             branch: Optional experiment branch name. If specified, the
                 experiment will be added to `branch` instead of creating
                 a new branch.
@@ -264,12 +273,12 @@ class Experiments:
             rev = self.scm.get_rev()
 
         if apply_workspace:
+            if branch:
+                raise DvcException(
+                    "Cannot apply workspace changes into existing experiment"
+                    "branch."
+                )
             # patch user's workspace into experiments clone
-            #
-            # TODO: patching changes into an extended branch will require
-            # propagating changes down the full branch, since the workspace
-            # patch will be based on the original branch point, not the tip
-            # of the experiment branch
             tmp = tempfile.NamedTemporaryFile(delete=False).name
             try:
                 self.repo.scm.repo.git.diff(
@@ -295,7 +304,7 @@ class Experiments:
         # save experiment as a stash commit w/message containing baseline rev
         # (stash commits are merge commits and do not contain a parent commit
         # SHA)
-        msg = self._stash_msg(rev, branch)
+        msg = self._stash_msg(rev, baseline_rev=baseline_rev, branch=branch)
         self.scm.repo.git.stash("push", "-m", msg)
         return self.scm.resolve_rev("stash@{0}")
 
@@ -314,10 +323,15 @@ class Experiments:
             len(dirty) - len(to_checkout) + len(untracked) - len(to_remove)
         ) != 0
 
-    def _stash_msg(self, rev, branch=None):
+    def _stash_msg(self, rev, baseline_rev=None, branch=None):
+        if not baseline_rev:
+            baseline_rev = rev
+        msg = self.STASH_EXPERIMENT_FORMAT.format(
+            rev=rev, baseline_rev=baseline_rev
+        )
         if branch:
-            return f"{self.STASH_MSG_PREFIX}{rev}:{branch}"
-        return f"{self.STASH_MSG_PREFIX}{rev}"
+            return f"{msg}:{branch}"
+        return msg
 
     def _pack_args(self, *args, **kwargs):
         ExperimentExecutor.pack_repro_args(self.args_file, *args, **kwargs)
@@ -349,19 +363,22 @@ class Experiments:
 
     def _commit(
         self,
-        exp_hash,
-        check_exists=True,
-        create_branch=True,
-        checkpoint=False,
-        checkpoint_reset=False,
+        exp_hash: str,
+        baseline_rev: Optional[str] = None,
+        check_exists: Optional[bool] = True,
+        create_branch: Optional[bool] = True,
+        checkpoint: Optional[bool] = False,
+        checkpoint_reset: Optional[bool] = False,
     ):
         """Commit stages as an experiment and return the commit SHA."""
         if not self.scm.is_dirty(untracked_files=True):
             raise UnchangedExperimentError(self.scm.get_rev())
 
         rev = self.scm.get_rev()
+        if not baseline_rev:
+            baseline_rev = rev
         checkpoint = "-checkpoint" if checkpoint else ""
-        exp_name = f"{rev[:7]}-{exp_hash}{checkpoint}"
+        exp_name = f"{baseline_rev[:7]}-{exp_hash}{checkpoint}"
         if create_branch:
             if (
                 check_exists or checkpoint
@@ -464,44 +481,56 @@ class Experiments:
         branch = None
         if checkpoint_resume == self.LAST_CHECKPOINT:
             # Continue from most recently committed checkpoint
-            for head in sorted(
-                self.scm.repo.heads,
-                key=lambda h: h.commit.committed_date,
-                reverse=True,
-            ):
-                exp_branch = head.name
-                m = self.BRANCH_RE.match(exp_branch)
-                if m and m.group("checkpoint"):
-                    branch = exp_branch
-                    break
-            if not branch:
-                raise DvcException(
-                    "No existing checkpoint experiment to continue"
-                )
+            branch = self._get_last_checkpoint()
+            resume_rev = self.scm.resolve_rev(branch)
         else:
             rev = self.scm.resolve_rev(checkpoint_resume)
+            resume_rev = rev
             branch = self._get_branch_containing(rev)
             if not branch:
                 raise DvcException(
                     "Could not find checkpoint experiment "
                     f"'{checkpoint_resume}'"
                 )
-        logger.debug(
-            "Continuing checkpoint experiment '%s'", checkpoint_resume
-        )
-        kwargs["apply_workspace"] = False
 
-        rev = self.scm.resolve_rev(branch)
-        logger.debug(
-            "Using '%s' (tip of branch '%s') as baseline", rev, branch
-        )
+        baseline_rev = self._get_baseline(branch)
+        if kwargs.get("params", None):
+            logger.debug(
+                "Branching from checkpoint '%s' with modified params",
+                checkpoint_resume,
+            )
+            rev = resume_rev
+            branch = None
+        else:
+            logger.debug(
+                "Continuing checkpoint experiment '%s'", checkpoint_resume
+            )
+            rev = self.scm.resolve_rev(branch)
+            logger.debug(
+                "Using '%s' (tip of branch '%s') as baseline", rev, branch
+            )
         self._scm_checkout(rev)
 
-        stash_rev = self._stash_exp(*args, branch=branch, **kwargs)
+        kwargs["apply_workspace"] = False
+        stash_rev = self._stash_exp(
+            *args, baseline_rev=baseline_rev, branch=branch, **kwargs
+        )
         logger.debug(
             "Stashed experiment '%s' for future execution.", stash_rev[:7]
         )
         return stash_rev
+
+    def _get_last_checkpoint(self):
+        for head in sorted(
+            self.scm.repo.heads,
+            key=lambda h: h.commit.committed_date,
+            reverse=True,
+        ):
+            exp_branch = head.name
+            m = self.BRANCH_RE.match(exp_branch)
+            if m and m.group("checkpoint"):
+                return exp_branch
+        raise DvcException("No existing checkpoint experiment to continue")
 
     @scm_locked
     def reproduce(
@@ -521,17 +550,17 @@ class Experiments:
         stash_revs = self.stash_revs
 
         # to_run contains mapping of:
-        #   input_rev: (stash_index, baseline_rev)
+        #   input_rev: (stash_index, rev, baseline_rev)
         # where input_rev contains the changes to execute (usually a stash
-        # commit) and baseline_rev is the baseline to compare output against.
-        # The final experiment commit will be branched from baseline_rev.
+        # commit), rev is the original SCM commit to be checked out, and
+        # baseline_rev is the experiment baseline.
         if revs is None:
             to_run = dict(stash_revs)
         else:
             to_run = {
                 rev: stash_revs[rev]
                 if rev in stash_revs
-                else self.StashEntry(None, rev, None)
+                else self.StashEntry(None, rev, rev, None)
                 for rev in revs
             }
 
@@ -544,12 +573,13 @@ class Experiments:
         # contents of (unstashed) exp workspace to the executor tree
         executors = {}
         for rev, item in to_run.items():
-            self._scm_checkout(item.baseline_rev)
+            self._scm_checkout(item.rev)
             self.scm.repo.git.stash("apply", rev)
             packed_args, packed_kwargs = self._unpack_args()
             checkpoint_reset = packed_kwargs.pop("checkpoint_reset", False)
             executor = LocalExecutor(
-                item.baseline_rev,
+                rev=item.rev,
+                baseline_rev=item.baseline_rev,
                 branch=item.branch,
                 repro_args=packed_args,
                 repro_kwargs=packed_kwargs,
@@ -654,7 +684,7 @@ class Experiments:
             if executor.branch:
                 self._scm_checkout(executor.branch)
             else:
-                self._scm_checkout(executor.baseline_rev)
+                self._scm_checkout(executor.rev)
             exp_rev = self._collect_and_commit(
                 rev, executor, exp_hash, checkpoint=checkpoint
             )
@@ -678,7 +708,7 @@ class Experiments:
             if executor.branch:
                 self._scm_checkout(executor.branch)
             else:
-                self._scm_checkout(executor.baseline_rev)
+                self._scm_checkout(executor.rev)
 
             exp_hash = hash_exp(stages + unchanged)
             exp_rev = self._collect_and_commit(
@@ -711,6 +741,7 @@ class Experiments:
             create_branch = not executor.branch
             exp_rev = self._commit(
                 exp_hash,
+                baseline_rev=executor.baseline_rev,
                 create_branch=create_branch,
                 checkpoint_reset=executor.checkpoint_reset,
                 **kwargs,

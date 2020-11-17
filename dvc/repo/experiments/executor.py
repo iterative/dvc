@@ -19,18 +19,25 @@ class ExperimentExecutor:
     """Base class for executing experiments in parallel.
 
     Args:
-        baseline_rev: baseline revision that this experiment is derived from.
+        baseline_rev: Baseline revision that this experiment is derived from.
 
     Optional keyword args:
         branch: Existing git branch for this experiment.
+        rev: Git revision to be checked out for this experiment, defaults to
+            branch, baseline_rev in that order.
         repro_args: Args to be passed into reproduce.
         repro_kwargs: Keyword args to be passed into reproduce.
     """
 
     def __init__(
-        self, baseline_rev: str, branch: Optional[str] = None, **kwargs,
+        self,
+        baseline_rev: str,
+        branch: Optional[str] = None,
+        rev: Optional[str] = None,
+        **kwargs,
     ):
         self.baseline_rev = baseline_rev
+        self._rev = rev
         self.branch = branch
         self.repro_args = kwargs.pop("repro_args", [])
         self.repro_kwargs = kwargs.pop("repro_kwargs", {})
@@ -84,16 +91,13 @@ class LocalExecutor(ExperimentExecutor):
     """Local machine experiment executor."""
 
     def __init__(
-        self,
-        baseline_rev: str,
-        checkpoint_reset: Optional[bool] = False,
-        **kwargs,
+        self, checkpoint_reset: Optional[bool] = False, **kwargs,
     ):
         from dvc.repo import Repo
 
         dvc_dir = kwargs.pop("dvc_dir")
         cache_dir = kwargs.pop("cache_dir")
-        super().__init__(baseline_rev, **kwargs)
+        super().__init__(**kwargs)
         self.tmp_dir = TemporaryDirectory()
 
         # init empty DVC repo (will be overwritten when input is uploaded)
@@ -101,7 +105,7 @@ class LocalExecutor(ExperimentExecutor):
         logger.debug(
             "Init local executor in dir '%s' with baseline '%s'.",
             self.tmp_dir,
-            baseline_rev[:7],
+            self.baseline_rev[:7],
         )
         self.dvc_dir = os.path.join(self.tmp_dir.name, dvc_dir)
         self._config(cache_dir)
@@ -132,6 +136,10 @@ class LocalExecutor(ExperimentExecutor):
     @property
     def tree(self):
         return self._tree
+
+    @property
+    def rev(self):
+        return self._rev if self._rev else self.baseline_rev
 
     @staticmethod
     def reproduce(dvc_dir, cwd=None, **kwargs):

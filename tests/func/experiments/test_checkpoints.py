@@ -1,65 +1,11 @@
 import logging
-from textwrap import dedent
 
 import pytest
 from funcy import first
 
 import dvc as dvc_module
 from dvc.exceptions import DvcException
-from dvc.repo.experiments import Experiments
-
-CHECKPOINT_SCRIPT_FORMAT = dedent(
-    """\
-    import os
-    import sys
-    import shutil
-    from time import sleep
-
-    from dvc.api import make_checkpoint
-
-    checkpoint_file = {}
-    checkpoint_iterations = int({})
-    if os.path.exists(checkpoint_file):
-        with open(checkpoint_file) as fobj:
-            try:
-                value = int(fobj.read())
-            except ValueError:
-                value = 0
-    else:
-        with open(checkpoint_file, "w"):
-            pass
-        value = 0
-
-    shutil.copyfile({}, {})
-
-    if os.getenv("DVC_CHECKPOINT"):
-        for _ in range(checkpoint_iterations):
-            value += 1
-            with open(checkpoint_file, "w") as fobj:
-                fobj.write(str(value))
-            make_checkpoint()
-"""
-)
-CHECKPOINT_SCRIPT = CHECKPOINT_SCRIPT_FORMAT.format(
-    "sys.argv[1]", "sys.argv[2]", "sys.argv[3]", "sys.argv[4]"
-)
-
-
-@pytest.fixture
-def checkpoint_stage(tmp_dir, scm, dvc):
-    tmp_dir.gen("checkpoint.py", CHECKPOINT_SCRIPT)
-    tmp_dir.gen("params.yaml", "foo: 1")
-    stage = dvc.run(
-        cmd="python checkpoint.py foo 5 params.yaml metrics.yaml",
-        metrics_no_cache=["metrics.yaml"],
-        params=["foo"],
-        checkpoints=["foo"],
-        no_exec=True,
-        name="checkpoint-file",
-    )
-    scm.add(["dvc.yaml", "checkpoint.py", "params.yaml"])
-    scm.commit("init")
-    return stage
+from dvc.repo.experiments import Experiments, MultipleBranchError
 
 
 def test_new_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker):
@@ -79,7 +25,7 @@ def test_new_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker):
 
 
 @pytest.mark.parametrize("last", [True, False])
-def test_resume_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker, last):
+def test_resume_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, last):
     with pytest.raises(DvcException):
         if last:
             dvc.experiments.run(
@@ -94,6 +40,12 @@ def test_resume_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker, last):
     results = dvc.experiments.run(
         checkpoint_stage.addressing, params=["foo=2"]
     )
+
+    with pytest.raises(DvcException):
+        dvc.experiments.run(
+            checkpoint_stage.addressing, checkpoint_resume="abc1234",
+        )
+
     if last:
         exp_rev = Experiments.LAST_CHECKPOINT
     else:
@@ -107,7 +59,7 @@ def test_resume_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker, last):
     ).read_text().strip() == "foo: 2"
 
 
-def test_reset_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker, caplog):
+def test_reset_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, caplog):
     dvc.experiments.run(checkpoint_stage.addressing)
     scm.repo.git.reset(hard=True)
     scm.repo.git.clean(force=True)
@@ -123,3 +75,43 @@ def test_reset_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker, caplog):
     assert (
         tmp_dir / ".dvc" / "experiments" / "metrics.yaml"
     ).read_text().strip() == "foo: 1"
+
+
+def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage):
+    results = dvc.experiments.run(
+        checkpoint_stage.addressing, params=["foo=2"]
+    )
+    branch_rev = first(results)
+
+    results = dvc.experiments.run(
+        checkpoint_stage.addressing, checkpoint_resume=branch_rev
+    )
+    checkpoint_a = first(results)
+
+    results = dvc.experiments.run(
+        checkpoint_stage.addressing,
+        checkpoint_resume=branch_rev,
+        params=["foo=100"],
+    )
+    checkpoint_b = first(results)
+
+    dvc.experiments.checkout(checkpoint_a)
+    assert (tmp_dir / "foo").read_text() == "10"
+    assert (
+        tmp_dir / ".dvc" / "experiments" / "metrics.yaml"
+    ).read_text().strip() == "foo: 2"
+
+    dvc.experiments.checkout(checkpoint_b)
+    assert (tmp_dir / "foo").read_text() == "10"
+    assert (
+        tmp_dir / ".dvc" / "experiments" / "metrics.yaml"
+    ).read_text().strip() == "foo: 100"
+
+    with pytest.raises(MultipleBranchError):
+        dvc.experiments._get_branch_containing(branch_rev)
+
+    branch_a = dvc.experiments._get_branch_containing(checkpoint_a)
+    branch_b = dvc.experiments._get_branch_containing(checkpoint_b)
+    assert branch_rev == dvc.experiments.scm.repo.git.merge_base(
+        branch_a, branch_b, fork_point=True
+    )
