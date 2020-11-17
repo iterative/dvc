@@ -239,6 +239,24 @@ class LocalTree(BaseTree):
         os.chmod(tmp_info, self.file_mode)
         os.rename(tmp_info, to_info)
 
+    def chmod(self, path_info, mode):
+        path = os.fspath(path_info)
+        try:
+            os.chmod(path, mode)
+        except OSError as exc:
+            # There is nothing we need to do in case of a read-only file system
+            if exc.errno == errno.EROFS:
+                return
+
+            # In shared cache scenario, we might not own the cache file, so we
+            # need to check if cache file is already protected.
+            if exc.errno not in [errno.EPERM, errno.EACCES]:
+                raise
+
+            actual = stat.S_IMODE(os.stat(path).st_mode)
+            if actual != mode:
+                raise
+
     def _unprotect_file(self, path):
         if System.is_symlink(path) or System.is_hardlink(path):
             logger.debug(f"Unprotecting '{path}'")
@@ -275,25 +293,8 @@ class LocalTree(BaseTree):
         else:
             self._unprotect_file(path)
 
-    def protect(self, path_info, mode=None):
-        path = os.fspath(path_info)
-        mode = mode if mode is not None else self.CACHE_MODE
-
-        try:
-            os.chmod(path, mode)
-        except OSError as exc:
-            # There is nothing we need to do in case of a read-only file system
-            if exc.errno == errno.EROFS:
-                return
-
-            # In shared cache scenario, we might not own the cache file, so we
-            # need to check if cache file is already protected.
-            if exc.errno not in [errno.EPERM, errno.EACCES]:
-                raise
-
-            actual = stat.S_IMODE(os.stat(path).st_mode)
-            if actual != mode:
-                raise
+    def protect(self, path_info):
+        self.chmod(path_info, self.CACHE_MODE)
 
     def is_protected(self, path_info):
         try:
@@ -331,7 +332,10 @@ class LocalTree(BaseTree):
             from_file, tmp_file, name=name, no_progress_bar=no_progress_bar
         )
 
-        self.protect(tmp_file, mode=file_mode)
+        if file_mode is not None:
+            self.chmod(tmp_file, file_mode)
+        else:
+            self.protect(tmp_file)
         os.replace(tmp_file, to_info)
 
     @staticmethod

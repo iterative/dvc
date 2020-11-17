@@ -225,7 +225,7 @@ class BaseTree:
         raise RemoteActionNotImplemented("reflink", self.scheme)
 
     @staticmethod
-    def protect(path_info, mode=None):
+    def protect(path_info):
         pass
 
     def is_protected(self, path_info):
