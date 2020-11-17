@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from funcy import first
+
 from dvc.dvcfile import PIPELINE_FILE
 from tests.func.test_repro_multistage import COPY_SCRIPT
 
@@ -99,3 +101,17 @@ def test_show_queued(tmp_dir, scm, dvc):
     exp = results[exp_rev]
     assert exp["queued"]
     assert exp["params"]["params.yaml"] == {"foo": 3}
+
+
+def test_show_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker):
+    baseline_rev = scm.get_rev()
+    results = dvc.experiments.run(
+        checkpoint_stage.addressing, params=["foo=2"]
+    )
+    exp_rev = first(results)
+
+    results = dvc.experiments.show()[baseline_rev]
+    assert len(results) == 6
+    for rev, exp in results.items():
+        if rev != "baseline":
+            assert exp["checkpoint_tip"] == exp_rev
