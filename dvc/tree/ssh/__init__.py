@@ -260,7 +260,9 @@ class SSHTree(BaseTree):
                 no_progress_bar=no_progress_bar,
             )
 
-    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
+    def _upload(
+        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
+    ):
         with self.ssh(to_info) as ssh:
             ssh.upload(
                 from_file,

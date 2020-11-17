@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import stat
 import tempfile
 import threading
 from collections import namedtuple
@@ -795,7 +796,6 @@ class Experiments:
             func = partial(
                 _log_exceptions(src_tree.download, "download"),
                 dir_mode=dest_tree.dir_mode,
-                file_mode=dest_tree.file_mode,
             )
             desc = "Downloading"
         else:
@@ -807,7 +807,23 @@ class Experiments:
             # TODO: parallelize this, currently --jobs for repro applies to
             # number of repro executors not download threads
             with ThreadPoolExecutor(max_workers=1) as dl_executor:
-                fails = sum(dl_executor.map(func, from_infos, to_infos, names))
+                mode = None
+                stat_func = getattr(src_tree, "stat", None)
+                futures = []
+                for from_info, to_info, name in zip(
+                    from_infos, to_infos, names
+                ):
+                    if stat_func:
+                        mode = stat.S_IMODE(stat_func(from_info).st_mode)
+                    futures.append(
+                        dl_executor.submit(
+                            func, from_info, to_info, name, file_mode=mode
+                        )
+                    )
+
+                fails = sum(
+                    future.result() for future in as_completed(futures)
+                )
 
         if fails:
             if download:

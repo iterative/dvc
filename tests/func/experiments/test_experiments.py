@@ -1,4 +1,6 @@
 import logging
+import os
+import stat
 
 import pytest
 from funcy import first
@@ -17,6 +19,18 @@ def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker):
     assert (
         tmp_dir / ".dvc" / "experiments" / "metrics.yaml"
     ).read_text() == "foo: 2"
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Not supported for Windows.")
+def test_file_permissions(tmp_dir, scm, dvc, exp_stage, mocker):
+    mode = 0o755
+    os.chmod(tmp_dir / "copy.py", mode)
+    scm.add(["copy.py"])
+    scm.commit("set exec")
+
+    tmp_dir.gen("params.yaml", "foo: 2")
+    dvc.experiments.run(exp_stage.addressing)
+    assert stat.S_IMODE(os.stat(tmp_dir / "copy.py").st_mode) == mode
 
 
 def test_failed_exp(tmp_dir, scm, dvc, exp_stage, mocker, caplog):
