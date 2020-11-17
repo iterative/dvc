@@ -9,9 +9,9 @@ jobs:
   linux:
     runs-on: ubuntu-16.04
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2.3.2
     - name: Set up Python 3.7
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v2.1.4
       with:
         python-version: 3.7
     - name: Set up Ruby 2.4
@@ -43,9 +43,9 @@ jobs:
   mac:
     runs-on: macos-10.15
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2.3.2
     - name: Set up Python 3.7
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v2.1.4
       with:
         python-version: 3.7
     - name: Set up Ruby 2.4
@@ -67,9 +67,9 @@ jobs:
   windows:
     runs-on: windows-2019
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2.3.2
     - name: Set up Python 3.7
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v2.1.4
       with:
         python-version: 3.7
     - name: Build
@@ -88,9 +88,9 @@ jobs:
   python:
     runs-on: ubuntu-16.04
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2.3.2
     - name: Set up Python 3.7
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v2.1.4
       with:
         python-version: 3.7
     - name: Install
@@ -106,7 +106,7 @@ jobs:
   snap:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v2.3.2
     - name: Build the package
       uses: snapcore/action-build@v1
       id: snapcraft
