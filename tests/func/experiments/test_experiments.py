@@ -7,21 +7,6 @@ from dvc.utils.serialize import PythonFileCorruptedError
 from tests.func.test_repro_multistage import COPY_SCRIPT
 
 
-@pytest.fixture
-def exp_stage(tmp_dir, scm, dvc):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
-    tmp_dir.gen("params.yaml", "foo: 1")
-    stage = dvc.run(
-        cmd="python copy.py params.yaml metrics.yaml",
-        metrics_no_cache=["metrics.yaml"],
-        params=["foo"],
-        name="copy-file",
-    )
-    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
-    scm.commit("init")
-    return stage
-
-
 def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker):
     tmp_dir.gen("params.yaml", "foo: 2")
 
