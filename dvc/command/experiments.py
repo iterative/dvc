@@ -2,7 +2,7 @@ import argparse
 import io
 import logging
 import os
-from collections import OrderedDict, deque
+from collections import OrderedDict
 from collections.abc import Mapping
 from datetime import date, datetime
 from itertools import groupby
@@ -167,50 +167,6 @@ def _collect_rows(
         _extend_row(row, param_names, exp.get("params", {}).items(), precision)
 
         yield row, style
-
-
-def _collect_checkpoints(
-    base_rev, checkpoints, metric_names, param_names, no_timestamp, precision
-):
-    tree = checkpoints["tree"]
-    experiments = checkpoints["experiments"]
-
-    # DFS walk checkpoints tree and push each entry onto the stack
-    checkpoint_stack = deque()
-    to_visit = deque([(0, rev, True, False) for rev in tree[base_rev]])
-    while to_visit:
-        depth, rev, first, branch = to_visit.pop()
-        children = tree.get(rev, [])
-        tip = len(children) == 0
-        next_branch = len(children) > 1
-        checkpoint_stack.append((depth, rev, first, branch, tip))
-        for i, child in enumerate(children):
-            next_branch = i > 0 and len(children) > 1
-            to_visit.append((depth + i, child, False, next_branch))
-
-    for depth, rev, first, branch, tip in reversed(checkpoint_stack):
-        row = []
-        exp = experiments[rev]
-        queued = "*" if exp.get("queued", False) else ""
-        if tip:
-            tree = "│ {}╓─".format("║ " * depth)
-        elif first:
-            tree = "├─{}╨─".format("╫─" * depth)
-        elif branch:
-            tree = "│ {}╨─".format("╟─" * depth)
-        else:
-            tree = "│ {}╟─".format("║ " * depth)
-        row.append(f"{tree} {queued}{rev[:7]}")
-
-        if not no_timestamp:
-            row.append(_format_time(exp.get("timestamp")))
-
-        _extend_row(
-            row, metric_names, exp.get("metrics", {}).items(), precision
-        )
-        _extend_row(row, param_names, exp.get("params", {}).items(), precision)
-
-        yield row, None
 
 
 def _sort_exp(experiments, sort_by, typ, reverse):
