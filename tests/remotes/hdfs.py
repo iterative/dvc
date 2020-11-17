@@ -119,6 +119,7 @@ def hdfs_server(hadoop, docker_compose, docker_services):
     import pyarrow
 
     port = docker_services.port_for("hdfs", 8020)
+    web_port = docker_services.port_for("hdfs", 50070)
 
     def _check():
         try:
@@ -136,11 +137,70 @@ def hdfs_server(hadoop, docker_compose, docker_services):
 
     docker_services.wait_until_responsive(timeout=30.0, pause=5, check=_check)
 
-    return port
+    return {"hdfs": port, "webhdfs": web_port}
 
 
 @pytest.fixture
 def hdfs(hdfs_server):
-    port = hdfs_server
+    port = hdfs_server["hdfs"]
     url = f"hdfs://127.0.0.1:{port}/{uuid.uuid4()}"
     yield HDFS(url)
+
+
+class WebHDFS(Base, URLInfo):  # pylint: disable=abstract-method
+    @contextmanager
+    def _webhdfs(self):
+        from hdfs import InsecureClient
+
+        client = InsecureClient(f"http://{self.host}:{self.port}", self.user)
+        yield client
+
+    def is_file(self):
+        with self._webhdfs() as _hdfs:
+            return _hdfs.status(self.path)["type"] == "FILE"
+
+    def is_dir(self):
+        with self._webhdfs() as _hdfs:
+            return _hdfs.status(self.path)["type"] == "DIRECTORY"
+
+    def exists(self):
+        with self._webhdfs() as _hdfs:
+            return _hdfs.status(self.path, strict=False) is not None
+
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
+        assert mode == 0o777
+        assert parents
+        assert not exist_ok
+
+        with self._webhdfs() as _hdfs:
+            # NOTE: hdfs.makekdirs always creates parents
+            _hdfs.makedirs(self.path, permission=mode)
+
+    def write_bytes(self, contents):
+        with self._webhdfs() as _hdfs:
+            with _hdfs.write(self.path, overwrite=True) as writer:
+                writer.write(contents)
+
+    def write_text(self, contents, encoding=None, errors=None):
+        if not encoding:
+            encoding = locale.getpreferredencoding(False)
+        assert errors is None
+        self.write_bytes(contents.encode(encoding))
+
+    def read_bytes(self):
+        with self._webhdfs() as _hdfs:
+            with _hdfs.read(self.path) as reader:
+                return reader.read()
+
+    def read_text(self, encoding=None, errors=None):
+        if not encoding:
+            encoding = locale.getpreferredencoding(False)
+        assert errors is None
+        return self.read_bytes().decode(encoding)
+
+
+@pytest.fixture
+def webhdfs(hdfs_server):
+    port = hdfs_server["webhdfs"]
+    url = f"webhdfs://127.0.0.1:{port}/{uuid.uuid4()}"
+    yield WebHDFS(url)

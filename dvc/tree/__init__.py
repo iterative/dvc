@@ -13,6 +13,7 @@ from .s3 import S3Tree
 from .ssh import SSHTree
 from .webdav import WebDAVTree
 from .webdavs import WebDAVSTree
+from .webhdfs import WebHDFSTree
 
 TREES = [
     AzureTree,
@@ -26,6 +27,7 @@ TREES = [
     OSSTree,
     WebDAVTree,
     WebDAVSTree,
+    WebHDFSTree
     # NOTE: LocalTree is the default
 ]
 
