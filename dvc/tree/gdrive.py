@@ -74,16 +74,17 @@ def _gdrive_retry(func):
 class GDriveURLInfo(CloudURLInfo):
     def __init__(self, url):
         super().__init__(url)
-
         # GDrive URL host part is case sensitive,
         # we are restoring it here.
         p = urlparse(url)
         self.host = p.netloc
+
         assert self.netloc == self.host
 
         # Normalize path. Important since we have a cache (path to ID)
         # and don't want to deal with different variations of path in it.
-        self._spath = re.sub("/{2,}", "/", self._spath.rstrip("/"))
+        new_spath = re.sub("/{2,}", "/", self._spath.rstrip("/"))
+        self._spath = new_spath if new_spath else "/"
 
 
 class GDriveTree(BaseTree):
