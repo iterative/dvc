@@ -5,7 +5,6 @@ import threading
 from funcy import cached_property, wrap_prop
 
 from dvc.exceptions import DvcException
-from dvc.path_info import URLInfo
 from dvc.hash_info import HashInfo
 from dvc.path_info import URLInfo
 from dvc.progress import Tqdm
