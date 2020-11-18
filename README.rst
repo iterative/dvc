@@ -262,9 +262,9 @@ Iterative, *DVC: Data Version Control - Git for Data & Models* (2020)
    :target: https://travis-ci.com/iterative/dvc/branches
    :alt: Release
 
-.. |CI| image:: https://img.shields.io/travis/com/iterative/dvc/master?label=dev&logo=travis
-   :target: https://travis-ci.com/iterative/dvc/builds
-   :alt: Travis dev branch
+.. |CI| image:: https://github.com/iterative/dvc/workflows/Tests/badge.svg?branch=master
+   :target: https://github.com/iterative/dvc/actions
+   :alt: GHA Tests
 
 .. |Maintainability| image:: https://codeclimate.com/github/iterative/dvc/badges/gpa.svg
    :target: https://codeclimate.com/github/iterative/dvc
