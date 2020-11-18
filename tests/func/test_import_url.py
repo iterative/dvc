@@ -192,6 +192,7 @@ def test_import_url_dir(tmp_dir, dvc, workspace, stage_md5, dir_md5):
 
     assert not (tmp_dir / "dir").exists()  # sanity check
     dvc.imp_url("remote://workspace/dir")
+
     assert set(os.listdir(tmp_dir / "dir")) == {"file", "subdir"}
     assert (tmp_dir / "dir" / "file").read_text() == "file"
     assert list(os.listdir(tmp_dir / "dir" / "subdir")) == ["subfile"]

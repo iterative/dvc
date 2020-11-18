@@ -105,18 +105,24 @@ class GDriveTree(BaseTree):
     def __init__(self, repo, config):
         super().__init__(repo, config)
 
-        self.path_info = self.PATH_CLS(config["url"])
+        url = config.get("url")
+        if url:
+            self.path_info = self.PATH_CLS(url)
 
-        if not self.path_info.bucket:
-            link = format_link(
-                "https://dvc.org/doc/user-guide/"
-                "setup-google-drive-remote#url-format"
-            )
-            raise DvcException(
-                f"Empty GDrive URL '{config['url']}'. Learn more at {link}"
-            )
+            if not self.path_info.bucket:
+                link = format_link(
+                    "https://dvc.org/doc/user-guide/"
+                    "setup-google-drive-remote#url-format"
+                )
+                raise DvcException(
+                    f"Empty GDrive URL '{url}'. Learn more at {link}"
+                )
 
-        self._bucket = self.path_info.bucket
+            self._bucket = self.path_info.bucket
+        else:
+            self.path_info = None
+            self._bucket = None
+
         self._trash_only = config.get("gdrive_trash_only")
         self._use_service_account = config.get("gdrive_use_service_account")
         self._service_account_email = config.get(
@@ -278,6 +284,8 @@ class GDriveTree(BaseTree):
     @wrap_prop(threading.RLock())
     @cached_property
     def _ids_cache(self):
+        assert self.path_info
+
         cache = {
             "dirs": defaultdict(list),
             "ids": {},
@@ -291,7 +299,8 @@ class GDriveTree(BaseTree):
         self._cache_path_id(self.path_info.path, cache["root_id"], cache)
 
         for item in self._gdrive_list(
-            "'{}' in parents and trashed=false".format(cache["root_id"])
+            "'{}' in parents and trashed=false".format(cache["root_id"]),
+            self._bucket,
         ):
             item_path = (self.path_info / item["title"]).path
             self._cache_path_id(item_path, item["id"], cache)
@@ -303,11 +312,10 @@ class GDriveTree(BaseTree):
         cache["dirs"][path].append(item_id)
         cache["ids"][item_id] = path
 
-    @cached_property
-    def _list_params(self):
+    def _list_params(self, bucket):
         params = {"corpora": "default"}
-        if self._bucket != "root" and self._bucket != "appDataFolder":
-            drive_id = self._gdrive_shared_drive_id(self._bucket)
+        if bucket != "root" and bucket != "appDataFolder":
+            drive_id = self._gdrive_shared_drive_id(bucket)
             if drive_id:
                 logger.debug(
                     "GDrive remote '{}' is using shared drive id '{}'.".format(
@@ -424,6 +432,9 @@ class GDriveTree(BaseTree):
     def gdrive_delete_file(self, item_id):
         from pydrive2.files import ApiRequestError
 
+        # this method shouldn't be available for GDriveDependency
+        assert self.path_info
+
         param = {"id": item_id}
         # it does not create a file on the remote
         item = self._drive.CreateFile(param)
@@ -434,7 +445,7 @@ class GDriveTree(BaseTree):
             http_error_code = exc.error.get("code", 0)
             if (
                 http_error_code == 403
-                and self._list_params["corpora"] == "drive"
+                and self._list_params(self._bucket)["corpora"] == "drive"
                 and exc.GetField("location") == "file.permissions"
             ):
                 raise DvcException(
@@ -452,9 +463,9 @@ class GDriveTree(BaseTree):
                 ) from exc
             raise
 
-    def _gdrive_list(self, query):
+    def _gdrive_list(self, query, bucket):
         param = {"q": query, "maxResults": 1000}
-        param.update(self._list_params)
+        param.update(self._list_params(bucket))
         file_list = self._drive.ListFile(param)
 
         # Isolate and decorate fetching of remote drive items in pages.
@@ -474,6 +485,9 @@ class GDriveTree(BaseTree):
 
     @wrap_with(threading.RLock())
     def _create_dir(self, parent_id, title, remote_path):
+        # this method shouldn't be available for GDriveDependency
+        assert self.path_info
+
         cached = self._ids_cache["dirs"].get(remote_path)
         if cached:
             return cached[0]
@@ -485,7 +499,7 @@ class GDriveTree(BaseTree):
 
         return item["id"]
 
-    def _get_remote_item_ids(self, parent_ids, title):
+    def _get_remote_item_ids(self, parent_ids, title, bucket):
         if not parent_ids:
             return None
         query = "trashed=false and ({})".format(
@@ -499,25 +513,27 @@ class GDriveTree(BaseTree):
         # all results and pick the ones with the right title
         return [
             item["id"]
-            for item in self._gdrive_list(query)
+            for item in self._gdrive_list(query, bucket)
             if item["title"] == title
         ]
 
-    def _get_cached_item_ids(self, path, use_cache):
+    def _get_cached_item_ids(self, path, use_cache, bucket):
         if not path:
-            return [self._bucket]
+            return [bucket]
         if use_cache:
             return self._ids_cache["dirs"].get(path, [])
         return []
 
-    def _path_to_item_ids(self, path, create, use_cache):
-        item_ids = self._get_cached_item_ids(path, use_cache)
+    def _path_to_item_ids(self, path, create, use_cache, bucket):
+        item_ids = self._get_cached_item_ids(path, use_cache, bucket)
         if item_ids:
             return item_ids
 
         parent_path, title = posixpath.split(path)
-        parent_ids = self._path_to_item_ids(parent_path, create, use_cache)
-        item_ids = self._get_remote_item_ids(parent_ids, title)
+        parent_ids = self._path_to_item_ids(
+            parent_path, create, use_cache, bucket
+        )
+        item_ids = self._get_remote_item_ids(parent_ids, title, bucket)
         if item_ids:
             return item_ids
 
@@ -526,9 +542,17 @@ class GDriveTree(BaseTree):
         )
 
     def _get_item_id(self, path_info, create=False, use_cache=True, hint=None):
-        assert path_info.bucket == self._bucket
+        if not self.path_info:
+            bucket = path_info.bucket
+            use_cache = False
+            assert not create
+        else:
+            assert path_info.bucket == self._bucket
+            bucket = self._bucket
 
-        item_ids = self._path_to_item_ids(path_info.path, create, use_cache)
+        item_ids = self._path_to_item_ids(
+            path_info.path, create, use_cache, bucket
+        )
         if item_ids:
             item_id = min(item_ids)
             if item_id == path_info.bucket:
@@ -570,11 +594,17 @@ class GDriveTree(BaseTree):
         dir_ids = [self._get_item_id(path_info)]
         id_paths = {dir_ids[0]: path_info.path}
 
+        if not self.path_info:
+            bucket = path_info.bucket
+        else:
+            assert path_info.bucket == self._bucket
+            bucket = self._bucket
+
         while dir_ids:
             dir_id = dir_ids.pop()
             query = f"'{dir_id}' in parents and trashed=false"
 
-            for item in self._gdrive_list(query):
+            for item in self._gdrive_list(query, bucket):
                 parent_id = item["parents"][0]["id"]
 
                 if item["mimeType"] == FOLDER_MIME_TYPE:
