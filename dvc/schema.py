@@ -17,6 +17,7 @@ SINGLE_STAGE_SCHEMA = {
     StageParams.PARAM_FROZEN: bool,
     StageParams.PARAM_META: object,
     StageParams.PARAM_ALWAYS_CHANGED: bool,
+    StageParams.PARAM_DESC: str,
 }
 
 DATA_SCHEMA = {
@@ -38,6 +39,7 @@ OUT_PSTAGE_DETAILED_SCHEMA = {
         BaseOutput.PARAM_CACHE: bool,
         BaseOutput.PARAM_PERSIST: bool,
         BaseOutput.PARAM_CHECKPOINT: bool,
+        BaseOutput.PARAM_DESC: str,
     }
 }
 
@@ -68,6 +70,7 @@ STAGE_DEFINITION = {
     ],
     Optional(StageParams.PARAM_FROZEN): bool,
     Optional(StageParams.PARAM_META): object,
+    Optional(StageParams.PARAM_DESC): str,
     Optional(StageParams.PARAM_ALWAYS_CHANGED): bool,
     Optional(StageParams.PARAM_OUTS): [Any(str, OUT_PSTAGE_DETAILED_SCHEMA)],
     Optional(StageParams.PARAM_METRICS): [

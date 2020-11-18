@@ -57,6 +57,7 @@ class CmdRun(CmdBase):
                 name=self.args.name,
                 single_stage=self.args.single_stage,
                 external=self.args.external,
+                desc=self.args.desc,
             )
         except DvcException:
             logger.exception("")
@@ -239,6 +240,15 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Allow outputs that are outside of the DVC repository.",
+    )
+    run_parser.add_argument(
+        "--desc",
+        type=str,
+        metavar="<text>",
+        help=(
+            "User description of the stage (optional). "
+            "This doesn't affect any DVC operations."
+        ),
     )
     run_parser.add_argument(
         "command", nargs=argparse.REMAINDER, help="Command to execute."

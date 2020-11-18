@@ -181,6 +181,25 @@ def test_meta_is_preserved(tmp_dir, dvc):
     assert new_data["meta"] == data["meta"]
 
 
+def test_desc_is_preserved(tmp_dir, dvc):
+    (stage,) = tmp_dir.dvc_gen("foo", "foo content")
+
+    data = load_yaml(stage.path)
+    stage_desc = "test stage description"
+    out_desc = "test out description"
+    data["desc"] = stage_desc
+    data["outs"][0]["desc"] = out_desc
+    dump_yaml(stage.path, data)
+
+    dvcfile = SingleStageFile(dvc, stage.path)
+    new_stage = dvcfile.stage
+    dvcfile.dump(new_stage)
+
+    new_data = load_yaml(stage.path)
+    assert new_data["desc"] == stage_desc
+    assert new_data["outs"][0]["desc"] == out_desc
+
+
 def test_parent_repo_collect_stages(tmp_dir, scm, dvc):
     tmp_dir.gen({"subdir": {}})
     tmp_dir.gen({"deep": {"dir": {}}})

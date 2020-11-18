@@ -52,6 +52,7 @@ def loads_from(cls, repo, path, wdir, data):
                 Stage.PARAM_FROZEN,
                 Stage.PARAM_ALWAYS_CHANGED,
                 Stage.PARAM_MD5,
+                Stage.PARAM_DESC,
                 "name",
             ],
         ),
@@ -111,6 +112,7 @@ class Stage(params.StageParams):
         always_changed=False,
         stage_text=None,
         dvcfile=None,
+        desc=None,
     ):
         if deps is None:
             deps = []
@@ -128,6 +130,7 @@ class Stage(params.StageParams):
         self.always_changed = always_changed
         self._stage_text = stage_text
         self._dvcfile = dvcfile
+        self.desc = desc
 
     @property
     def path(self):

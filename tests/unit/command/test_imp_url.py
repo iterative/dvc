@@ -6,7 +6,9 @@ from dvc.exceptions import DvcException
 
 
 def test_import_url(mocker):
-    cli_args = parse_args(["import-url", "src", "out", "--file", "file"])
+    cli_args = parse_args(
+        ["import-url", "src", "out", "--file", "file", "--desc", "description"]
+    )
     assert cli_args.func == CmdImportUrl
 
     cmd = cli_args.func(cli_args)
@@ -14,7 +16,9 @@ def test_import_url(mocker):
 
     assert cmd.run() == 0
 
-    m.assert_called_once_with("src", out="out", fname="file", no_exec=False)
+    m.assert_called_once_with(
+        "src", out="out", fname="file", no_exec=False, desc="description"
+    )
 
 
 def test_failed_import_url(mocker, caplog):
@@ -35,7 +39,16 @@ def test_failed_import_url(mocker, caplog):
 
 def test_import_url_no_exec(mocker):
     cli_args = parse_args(
-        ["import-url", "--no-exec", "src", "out", "--file", "file"]
+        [
+            "import-url",
+            "--no-exec",
+            "src",
+            "out",
+            "--file",
+            "file",
+            "--desc",
+            "description",
+        ]
     )
 
     cmd = cli_args.func(cli_args)
@@ -43,4 +56,6 @@ def test_import_url_no_exec(mocker):
 
     assert cmd.run() == 0
 
-    m.assert_called_once_with("src", out="out", fname="file", no_exec=True)
+    m.assert_called_once_with(
+        "src", out="out", fname="file", no_exec=True, desc="description"
+    )
