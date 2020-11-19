@@ -506,8 +506,57 @@ class Git(Base):
         from dulwich.stash import Stash
 
         if ref is not None:
-            ref = ref.encode("utf-8")
+            ref = os.fsencode(ref)
         else:
             ref = b"refs/stash"
 
         return Stash(self.dulwich_repo, ref=ref)
+
+    def set_ref(self, name: str, new_ref: str, old_ref: Optional[str] = None):
+        """Set the specified git ref.
+
+        If old_ref is specified, ref will only be set if it currently equals
+        old_ref.
+        """
+        name = os.fsencode(name)
+        new_ref = os.fsencode(new_ref)
+        if old_ref is not None:
+            old_ref = os.fsencode(old_ref)
+        if not self.dulwich_repo.refs.set_if_equals(name, old_ref, new_ref):
+            raise SCMError(f"Failed to set '{name}'")
+
+    def remove_ref(self, name: str, old_ref: Optional[str] = None):
+        """Remove the specified git ref.
+
+        If old_ref is specified, ref will only be removed if it currently
+        equals old_ref.
+        """
+        name = name.encode("utf-8")
+        if old_ref is not None:
+            old_ref = old_ref.encode("utf-8")
+        if not self.dulwich_repo.refs.remove_if_equals(name, old_ref):
+            raise SCMError(f"Failed to set '{name}'")
+
+    def get_refs_containing(self, rev: str, pattern: Optional[str]):
+        """Iterate over all git refs containing the specfied revision."""
+        from git.exc import GitCommandError
+
+        try:
+            if pattern:
+                args = [pattern]
+            else:
+                args = []
+            for line in self.repo.git.for_each_ref(
+                *args, contains=rev, format=r"%(refname)"
+            ).splitlines():
+                line = line.strip()
+                if line:
+                    yield line
+        except GitCommandError:
+            pass
+
+    def stash_drop(self, ref):
+        # dulwich Stash does not implement drop or pop
+        self.repo.git.reflog("delete", "--updateref", ref)
+        if len(self.repo.refs["refs/stash"].log()) == 0:
+            self.remove_ref(ref)
