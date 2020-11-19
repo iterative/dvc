@@ -23,7 +23,7 @@ def test_dag(tmp_dir, dvc, mocker, fmt):
 
 
 @pytest.fixture
-def graph(tmp_dir, dvc):
+def repo(tmp_dir, dvc):
     tmp_dir.dvc_gen("a", "a")
     tmp_dir.dvc_gen("b", "b")
 
@@ -42,46 +42,68 @@ def graph(tmp_dir, dvc):
     )
     dvc.run(no_exec=True, deps=["a", "h"], outs=["j"], cmd="cmd4", name="4")
 
-    return dvc.graph
+    return dvc
 
 
-def test_build(graph):
-    assert nx.is_isomorphic(_build(graph), graph)
+def test_build(repo):
+    assert nx.is_isomorphic(_build(repo), repo.graph)
 
 
-def test_build_target(graph):
-    (stage,) = filter(
-        lambda s: hasattr(s, "name") and s.name == "3", graph.nodes()
-    )
-    G = _build(graph, target=stage)
+def test_build_target(repo):
+    G = _build(repo, target="3")
     assert set(G.nodes()) == {"3", "b.dvc", "a.dvc"}
     assert set(G.edges()) == {("3", "a.dvc"), ("3", "b.dvc")}
 
 
-def test_build_target_with_outs(graph):
-    (stage,) = filter(
-        lambda s: hasattr(s, "name") and s.name == "3", graph.nodes()
-    )
-    G = _build(graph, target=stage, outs=True)
+def test_build_target_with_outs(repo):
+    G = _build(repo, target="3", outs=True)
     assert set(G.nodes()) == {"a", "b", "h", "i"}
     assert set(G.edges()) == {
+        ("i", "a"),
+        ("i", "b"),
+        ("h", "a"),
+        ("h", "b"),
+    }
+
+
+def test_build_granular_target_with_outs(repo):
+    G = _build(repo, target="h", outs=True)
+    assert set(G.nodes()) == {"a", "b", "h"}
+    assert set(G.edges()) == {
+        ("h", "a"),
+        ("h", "b"),
+    }
+
+
+def test_build_full(repo):
+    G = _build(repo, target="3", full=True)
+    assert nx.is_isomorphic(G, repo.graph)
+
+
+# NOTE: granular or not, full outs DAG should be the same
+@pytest.mark.parametrize("granular", [True, False])
+def test_build_full_outs(repo, granular):
+    target = "h" if granular else "3"
+    G = _build(repo, target=target, outs=True, full=True)
+    assert set(G.nodes()) == {"j", "i", "d", "b", "g", "f", "e", "a", "h"}
+    assert set(G.edges()) == {
+        ("d", "a"),
+        ("e", "a"),
+        ("f", "b"),
+        ("g", "b"),
         ("h", "a"),
         ("h", "b"),
         ("i", "a"),
         ("i", "b"),
+        ("j", "a"),
+        ("j", "h"),
     }
 
 
-def test_build_full(graph):
-    (stage,) = filter(
-        lambda s: hasattr(s, "name") and s.name == "3", graph.nodes()
-    )
-    G = _build(graph, target=stage, full=True)
-    assert nx.is_isomorphic(G, graph)
-
-
-def test_show_ascii(graph):
-    assert [line.rstrip() for line in _show_ascii(graph).splitlines()] == [
+def test_show_ascii(repo):
+    assert [
+        line.rstrip() for line in _show_ascii(repo.graph).splitlines()
+    ] == [
         "                        +----------------+                          +----------------+",  # noqa: E501
         "                        | stage: 'a.dvc' |                          | stage: 'b.dvc' |",  # noqa: E501
         "                       *+----------------+****                      +----------------+",  # noqa: E501
@@ -100,8 +122,8 @@ def test_show_ascii(graph):
     ]
 
 
-def test_show_dot(graph):
-    assert _show_dot(graph) == (
+def test_show_dot(repo):
+    assert _show_dot(repo.graph) == (
         "strict digraph  {\n"
         "stage;\n"
         "stage;\n"

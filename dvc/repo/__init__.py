@@ -3,7 +3,7 @@ import os
 from contextlib import contextmanager
 from functools import wraps
 
-from funcy import cached_property, cat, first
+from funcy import cached_property, cat
 from git import InvalidGitRepositoryError
 
 from dvc.config import Config
@@ -23,7 +23,8 @@ from dvc.utils.fs import path_isin
 
 from ..stage.exceptions import StageFileDoesNotExistError, StageNotFound
 from ..utils import parse_target
-from .graph import check_acyclic, get_pipeline, get_pipelines
+from .graph import build_graph, build_outs_graph, get_pipeline, get_pipelines
+from .trie import build_outs_trie
 
 logger = logging.getLogger(__name__)
 
@@ -289,7 +290,7 @@ class Repo:
         #
         # [1] https://github.com/iterative/dvc/issues/2671
         if not getattr(self, "_skip_graph_checks", False):
-            self._collect_graph(self.stages + new_stages)
+            build_graph(self.stages + new_stages)
 
     def _collect_inside(self, path, graph):
         import networkx as nx
@@ -448,114 +449,17 @@ class Repo:
 
         return cache
 
-    def _collect_graph(self, stages):
-        """Generate a graph by using the given stages on the given directory
-
-        The nodes of the graph are the stage's path relative to the root.
-
-        Edges are created when the output of one stage is used as a
-        dependency in other stage.
-
-        The direction of the edges goes from the stage to its dependency:
-
-        For example, running the following:
-
-            $ dvc run -o A "echo A > A"
-            $ dvc run -d A -o B "echo B > B"
-            $ dvc run -d B -o C "echo C > C"
-
-        Will create the following graph:
-
-               ancestors <--
-                           |
-                C.dvc -> B.dvc -> A.dvc
-                |          |
-                |          --> descendants
-                |
-                ------- pipeline ------>
-                           |
-                           v
-              (weakly connected components)
-
-        Args:
-            stages (list): used to build a graph, if None given, collect stages
-                in the repository.
-
-        Raises:
-            OutputDuplicationError: two outputs with the same path
-            StagePathAsOutputError: stage inside an output directory
-            OverlappingOutputPathsError: output inside output directory
-            CyclicGraphError: resulting graph has cycles
-        """
-        import networkx as nx
-        from pygtrie import Trie
-
-        from dvc.exceptions import (
-            OutputDuplicationError,
-            OverlappingOutputPathsError,
-            StagePathAsOutputError,
-        )
-
-        G = nx.DiGraph()
-        stages = stages or self.stages
-        outs = Trie()  # Use trie to efficiently find overlapping outs and deps
-
-        for stage in filter(bool, stages):  # bug? not using it later
-            for out in stage.outs:
-                out_key = out.path_info.parts
-
-                # Check for dup outs
-                if out_key in outs:
-                    dup_stages = [stage, outs[out_key].stage]
-                    raise OutputDuplicationError(str(out), dup_stages)
-
-                # Check for overlapping outs
-                if outs.has_subtrie(out_key):
-                    parent = out
-                    overlapping = first(outs.values(prefix=out_key))
-                else:
-                    parent = outs.shortest_prefix(out_key).value
-                    overlapping = out
-                if parent and overlapping:
-                    msg = (
-                        "Paths for outs:\n'{}'('{}')\n'{}'('{}')\n"
-                        "overlap. To avoid unpredictable behaviour, "
-                        "rerun command with non overlapping outs paths."
-                    ).format(
-                        str(parent),
-                        parent.stage.addressing,
-                        str(overlapping),
-                        overlapping.stage.addressing,
-                    )
-                    raise OverlappingOutputPathsError(parent, overlapping, msg)
-
-                outs[out_key] = out
-
-        for stage in stages:
-            out = outs.shortest_prefix(PathInfo(stage.path).parts).value
-            if out:
-                raise StagePathAsOutputError(stage, str(out))
-
-        # Building graph
-        G.add_nodes_from(stages)
-        for stage in stages:
-            for dep in stage.deps:
-                if dep.path_info is None:
-                    continue
-
-                dep_key = dep.path_info.parts
-                overlapping = [n.value for n in outs.prefixes(dep_key)]
-                if outs.has_subtrie(dep_key):
-                    overlapping.extend(outs.values(prefix=dep_key))
-
-                G.add_edges_from((stage, out.stage) for out in overlapping)
-        check_acyclic(G)
-
-        return G
+    @cached_property
+    def outs_trie(self):
+        return build_outs_trie(self.stages)
 
     @cached_property
     def graph(self):
-        return self._collect_graph(self.stages)
+        return build_graph(self.stages, self.outs_trie)
+
+    @cached_property
+    def outs_graph(self):
+        return build_outs_graph(self.graph, self.outs_trie)
 
     @cached_property
     def pipelines(self):
@@ -648,6 +552,8 @@ class Repo:
         self.scm.close()
 
     def _reset(self):
+        self.__dict__.pop("outs_trie", None)
+        self.__dict__.pop("outs_graph", None)
         self.__dict__.pop("graph", None)
         self.__dict__.pop("stages", None)
         self.__dict__.pop("pipelines", None)
