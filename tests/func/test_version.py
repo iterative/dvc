@@ -11,4 +11,6 @@ def test_(tmp_dir, dvc, scm, caplog):
     assert re.search(f"Platform: {PYTHON_VERSION_REGEX} on .*", caplog.text)
     assert re.search(r"Supports: .*", caplog.text)
     assert re.search(r"Cache types: .*", caplog.text)
+    assert re.search(r"Caches: local", caplog.text)
+    assert re.search(r"Remotes: None", caplog.text)
     assert "Repo: dvc, git" in caplog.text

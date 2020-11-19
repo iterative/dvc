@@ -32,23 +32,23 @@ TREES = [
 ]
 
 
-def _get_tree(remote_conf):
+def get_tree_cls(remote_conf):
     for tree_cls in TREES:
         if tree_cls.supported(remote_conf):
             return tree_cls
     return LocalTree
 
 
-def _get_conf(repo, **kwargs):
+def get_tree_config(config, **kwargs):
     name = kwargs.get("name")
     if name:
-        remote_conf = repo.config["remote"][name.lower()]
+        remote_conf = config["remote"][name.lower()]
     else:
         remote_conf = kwargs
-    return _resolve_remote_refs(repo, remote_conf)
+    return _resolve_remote_refs(config, remote_conf)
 
 
-def _resolve_remote_refs(repo, remote_conf):
+def _resolve_remote_refs(config, remote_conf):
     # Support for cross referenced remotes.
     # This will merge the settings, shadowing base ref with remote_conf.
     # For example, having:
@@ -74,7 +74,7 @@ def _resolve_remote_refs(repo, remote_conf):
     if parsed.scheme != "remote":
         return remote_conf
 
-    base = _get_conf(repo, name=parsed.netloc)
+    base = get_tree_config(config, name=parsed.netloc)
     url = posixpath.join(base["url"], parsed.path.lstrip("/"))
     return {**base, **remote_conf, "url": url}
 
@@ -82,9 +82,9 @@ def _resolve_remote_refs(repo, remote_conf):
 def get_cloud_tree(repo, **kwargs):
     from dvc.config import SCHEMA, ConfigError, Invalid
 
-    remote_conf = _get_conf(repo, **kwargs)
+    remote_conf = get_tree_config(repo.config, **kwargs)
     try:
         remote_conf = SCHEMA["remote"][str](remote_conf)
     except Invalid as exc:
         raise ConfigError(str(exc)) from None
-    return _get_tree(remote_conf)(repo, remote_conf)
+    return get_tree_cls(remote_conf)(repo, remote_conf)
