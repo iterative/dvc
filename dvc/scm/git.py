@@ -89,6 +89,16 @@ class Git(Base):
         self.ignored_paths = []
         self.files_to_track = set()
 
+        self._dulwich_repo = None
+
+    @property
+    def dulwich_repo(self):
+        from dulwich.repo import Repo
+
+        if self._dulwich_repo is None:
+            self._dulwich_repo = Repo(self.root_dir)
+        return self._dulwich_repo
+
     @property
     def root_dir(self) -> str:
         return self.repo.working_tree_dir
@@ -185,10 +195,8 @@ class Git(Base):
 
     def is_ignored(self, path):
         from dulwich import ignore
-        from dulwich.repo import Repo
 
-        repo = Repo(self.root_dir)
-        manager = ignore.IgnoreFilterManager.from_repo(repo)
+        manager = ignore.IgnoreFilterManager.from_repo(self.dulwich_repo)
         return manager.is_ignored(relpath(path, self.root_dir))
 
     def ignore(self, path):
@@ -257,11 +265,11 @@ class Git(Base):
     def commit(self, msg):
         self.repo.index.commit(msg)
 
-    def checkout(self, branch, create_new=False):
+    def checkout(self, branch, create_new=False, **kwargs):
         if create_new:
-            self.repo.git.checkout("HEAD", b=branch)
+            self.repo.git.checkout("HEAD", b=branch, **kwargs)
         else:
-            self.repo.git.checkout(branch)
+            self.repo.git.checkout(branch, **kwargs)
 
     def pull(self, **kwargs):
         infos = self.repo.remote().pull(**kwargs)
@@ -448,6 +456,8 @@ class Git(Base):
             return False
 
     def close(self):
+        if self._dulwich_repo is not None:
+            self._dulwich_repo.close()
         self.repo.close()
 
     @cached_property
@@ -491,3 +501,13 @@ class Git(Base):
         if isinstance(commit, TagObject):
             commit = commit.object
         return commit
+
+    def get_stash(self, ref: Optional[str] = None):
+        from dulwich.stash import Stash
+
+        if ref is not None:
+            ref = ref.encode("utf-8")
+        else:
+            ref = b"refs/stash"
+
+        return Stash(self.dulwich_repo, ref=ref)
