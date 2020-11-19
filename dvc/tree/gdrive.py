@@ -118,11 +118,8 @@ class GDriveTree(BaseTree):
                 raise DvcException(
                     f"Empty GDrive URL '{url}'. Learn more at {link}"
                 )
-
-            self._bucket = self.path_info.bucket
         else:
             self.path_info = None
-            self._bucket = None
 
         self._trash_only = config.get("gdrive_trash_only")
         self._use_service_account = config.get("gdrive_use_service_account")
@@ -301,7 +298,7 @@ class GDriveTree(BaseTree):
 
         for item in self._gdrive_list(
             "'{}' in parents and trashed=false".format(cache["root_id"]),
-            self._bucket,
+            self.path_info.bucket,
         ):
             item_path = (self.path_info / item["title"]).path
             self._cache_path_id(item_path, item["id"], cache)
@@ -446,7 +443,8 @@ class GDriveTree(BaseTree):
             http_error_code = exc.error.get("code", 0)
             if (
                 http_error_code == 403
-                and self._list_params(self._bucket)["corpora"] == "drive"
+                and self._list_params(self.path_info.bucket)["corpora"]
+                == "drive"
                 and exc.GetField("location") == "file.permissions"
             ):
                 raise DvcException(
@@ -544,15 +542,13 @@ class GDriveTree(BaseTree):
 
     def _get_item_id(self, path_info, create=False, use_cache=True, hint=None):
         if not self.path_info:
-            bucket = path_info.bucket
-            use_cache = False
             assert not create
+            use_cache = False
         else:
-            assert path_info.bucket == self._bucket
-            bucket = self._bucket
+            assert path_info.bucket == self.path_info.bucket
 
         item_ids = self._path_to_item_ids(
-            path_info.path, create, use_cache, bucket
+            path_info.path, create, use_cache, path_info.bucket
         )
         if item_ids:
             item_id = min(item_ids)
@@ -595,17 +591,11 @@ class GDriveTree(BaseTree):
         dir_ids = [self._get_item_id(path_info)]
         id_paths = {dir_ids[0]: path_info.path}
 
-        if not self.path_info:
-            bucket = path_info.bucket
-        else:
-            assert path_info.bucket == self._bucket
-            bucket = self._bucket
-
         while dir_ids:
             dir_id = dir_ids.pop()
             query = f"'{dir_id}' in parents and trashed=false"
 
-            for item in self._gdrive_list(query, bucket):
+            for item in self._gdrive_list(query, path_info.bucket):
                 parent_id = item["parents"][0]["id"]
 
                 if item["mimeType"] == FOLDER_MIME_TYPE:
