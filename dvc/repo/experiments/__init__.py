@@ -189,7 +189,7 @@ class Experiments:
                 )
         return revs
 
-    def get_refname(self, baseline: str, name: str):
+    def get_refname(self, baseline: str, name: Optional[str] = None):
         """Return git ref name for the specified experiment.
 
         Args:
@@ -197,12 +197,15 @@ class Experiments:
             name: experiment name
         """
         sha = self.scm.resolve_rev(baseline)
-        return "/".join([self.REF_NAMESPACE, sha[:2], sha[2:], name])
+        parts = [self.REF_NAMESPACE, sha[:2], sha[2:]]
+        if name is not None:
+            parts.append(name)
+        return "/".join(parts)
 
     @staticmethod
     def split_refname(refname):
         """Return (namespace, sha, name) ref name tuple."""
-        refs, namespace, sha1, sha2, name = "/".split(refname, maxsplit=4)
+        refs, namespace, sha1, sha2, name = refname.split("/", maxsplit=4)
         return "/".join([refs, namespace]), sha1 + sha2, name
 
     def _init_clone(self):
@@ -633,7 +636,7 @@ class Experiments:
                 reverse=True,
             )
         for index in to_drop:
-            self.scm.reflog_drop("{}@{{{}}}".format(self.STASH_REF, index))
+            self.scm.stash_drop(index, ref=self.STASH_REF)
 
         result = {}
         for _, exp_result in exec_results.items():

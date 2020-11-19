@@ -92,26 +92,29 @@ def show(
             repo, rev, sha_only=sha_only
         )
 
-    # collect reproduced experiments
-    for head in sorted(
-        repo.experiments.scm.repo.heads,
-        key=lambda h: h.commit.committed_date,
-        reverse=True,
-    ):
-        exp_branch = head.name
-        m = repo.experiments.BRANCH_RE.match(exp_branch)
-        if m:
-            rev = repo.scm.resolve_rev(m.group("baseline_rev"))
-            if rev in revs:
+        if rev == "workspace":
+            continue
+
+        common_path = repo.experiments.get_refname(rev)
+        for ref in sorted(
+            repo.experiments.scm.iter_refs(common_path),
+            key=lambda r: r.commit.committed_date,
+            reverse=True,
+        ):
+            exp_ref = "/".join([repo.experiments.REF_NAMESPACE, ref.name])
+            _, sha, exp_branch = repo.experiments.split_refname(exp_ref)
+            assert sha == rev
+            m = repo.experiments.BRANCH_RE.match(exp_branch)
+            if m:
                 with repo.experiments.chdir():
                     if m.group("checkpoint"):
                         _collect_checkpoint_experiment(
-                            res[rev], repo.experiments.exp_dvc, exp_branch, rev
+                            res[rev], repo.experiments.exp_dvc, exp_ref, rev
                         )
                     else:
-                        exp_rev = repo.experiments.scm.resolve_rev(exp_branch)
+                        exp_rev = repo.experiments.scm.resolve_rev(exp_ref)
                         experiment = _collect_experiment(
-                            repo.experiments.exp_dvc, exp_branch
+                            repo.experiments.exp_dvc, exp_rev
                         )
                         res[rev][exp_rev] = experiment
 

@@ -309,6 +309,14 @@ class Git(Base):
     def list_all_commits(self):
         return [c.hexsha for c in self.repo.iter_commits("--all")]
 
+    def list_refs(self, common_path: Optional[str] = None):
+        return [ref.name for ref in self.iter_refs(common_path=common_path)]
+
+    def iter_refs(self, common_path: Optional[str] = None):
+        from git import Reference
+
+        yield from Reference.iter_items(self.repo, common_path=common_path)
+
     def _install_hook(self, name):
         hook = self._hook_path(name)
         with open(hook, "w+") as fobj:
