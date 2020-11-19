@@ -467,10 +467,7 @@ class Experiments:
 
     @scm_locked
     def new(
-        self,
-        *args,
-        checkpoint_resume: Optional[str] = None,
-        **kwargs,
+        self, *args, checkpoint_resume: Optional[str] = None, **kwargs,
     ):
         """Create a new experiment.
 
