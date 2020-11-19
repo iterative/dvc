@@ -31,7 +31,7 @@ class ExperimentExecutor:
 
     def __init__(
         self,
-        baseline_rev: str,
+        baseline_rev: Optional[str] = None,
         branch: Optional[str] = None,
         rev: Optional[str] = None,
         **kwargs,

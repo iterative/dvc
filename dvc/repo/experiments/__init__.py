@@ -99,7 +99,7 @@ class Experiments:
     PACKED_ARGS_FILE = "repro.dat"
     STASH_EXPERIMENT_FORMAT = "dvc-exp:{rev}:{baseline_rev}"
     STASH_EXPERIMENT_RE = re.compile(
-        r"(?:On \(.*\): )"
+        r"(?:commit: )"
         r"dvc-exp:(?P<rev>[0-9a-f]+):(?P<baseline_rev>[0-9a-f]+)"
         r"(:(?P<branch>.+))?$"
     )
@@ -108,6 +108,11 @@ class Experiments:
         r"(?P<checkpoint>-checkpoint)?$"
     )
     LAST_CHECKPOINT = ":last"
+
+    # Experiment refs are stored according baseline git SHA:
+    #   refs/exps/01/234abcd.../<exp_name>
+    REF_NAMESPACE = "refs/exps"
+    STASH_REF = f"{REF_NAMESPACE}/stash"
 
     StashEntry = namedtuple(
         "StashEntry", ["index", "rev", "baseline_rev", "branch"]
@@ -165,27 +170,40 @@ class Experiments:
     def args_file(self):
         return os.path.join(self.exp_dvc.tmp_dir, self.PACKED_ARGS_FILE)
 
-    @property
-    def stash_reflog(self):
-        """Return stash reflog in Git 'stash@{...}' index order."""
-        if "refs/stash" in self.scm.repo.refs:
-            # gitpython reflog log() returns commits oldest to newest
-            return reversed(self.scm.repo.refs["refs/stash"].log())
-        return []
+    @cached_property
+    def stash(self):
+        return self.scm.get_stash(self.STASH_REF)
 
     @property
     def stash_revs(self):
         revs = {}
-        for i, entry in enumerate(self.stash_reflog):
-            m = self.STASH_EXPERIMENT_RE.match(entry.message)
+        for i, entry in enumerate(self.stash.stashes()):
+            msg = entry.message.decode("utf-8").strip()
+            m = self.STASH_EXPERIMENT_RE.match(msg)
             if m:
-                revs[entry.newhexsha] = self.StashEntry(
+                revs[entry.new_sha.decode("utf-8")] = self.StashEntry(
                     i,
                     m.group("rev"),
                     m.group("baseline_rev"),
                     m.group("branch"),
                 )
         return revs
+
+    def get_refname(self, baseline: str, name: str):
+        """Return git ref name for the specified experiment.
+
+        Args:
+            baseline: baseline git commit SHA (or named ref)
+            name: experiment name
+        """
+        sha = self.scm.resolve_rev(baseline)
+        return "/".join([self.REF_NAMESPACE, sha[:2], sha[2:], name])
+
+    @staticmethod
+    def split_refname(refname):
+        """Return (namespace, sha, name) ref name tuple."""
+        refs, namespace, sha1, sha2, name = "/".split(refname, maxsplit=4)
+        return "/".join([refs, namespace]), sha1 + sha2, name
 
     def _init_clone(self):
         src_dir = self.repo.scm.root_dir
@@ -202,7 +220,7 @@ class Experiments:
         with open(local_config, "w") as fobj:
             fobj.write(f"[cache]\n    dir = {cache_dir}")
 
-    def _scm_checkout(self, rev):
+    def _scm_checkout(self, rev, **kwargs):
         self.scm.repo.git.reset(hard=True)
         self.scm.repo.git.clean(force=True)
         if self.scm.repo.head.is_detached:
@@ -210,7 +228,7 @@ class Experiments:
         if not self.scm.has_rev(rev):
             self.scm.pull()
         logger.debug("Checking out experiment commit '%s'", rev)
-        self.scm.checkout(rev)
+        self.scm.checkout(rev, **kwargs)
 
     def _checkout_default_branch(self):
         from git.refs.symbolic import SymbolicReference
@@ -306,8 +324,14 @@ class Experiments:
         # (stash commits are merge commits and do not contain a parent commit
         # SHA)
         msg = self._stash_msg(rev, baseline_rev=baseline_rev, branch=branch)
-        self.scm.repo.git.stash("push", "-m", msg)
-        return self.scm.resolve_rev("stash@{0}")
+        self.stash.push(message=msg.encode("utf-8"))
+        stash_rev = self.scm.resolve_rev(f"{self.STASH_REF}@{{0}}")
+        logger.debug(
+            "Stashed experiment '%s' with baseline '%s' for future execution.",
+            stash_rev[:7],
+            baseline_rev[:7],
+        )
+        return stash_rev
 
     def _check_dirty(self) -> bool:
         # NOTE: dirty DVC lock files must be restored to index state to
@@ -324,7 +348,7 @@ class Experiments:
             len(dirty) - len(to_checkout) + len(untracked) - len(to_remove)
         ) != 0
 
-    def _stash_msg(self, rev, baseline_rev=None, branch=None):
+    def _stash_msg(self, rev: str, baseline_rev: str, branch=None):
         if not baseline_rev:
             baseline_rev = rev
         msg = self.STASH_EXPERIMENT_FORMAT.format(
@@ -375,14 +399,16 @@ class Experiments:
         if not self.scm.is_dirty(untracked_files=True):
             raise UnchangedExperimentError(self.scm.get_rev())
 
-        rev = baseline_rev or self.scm.get_rev()
+        rev = self.scm.get_rev()
+        logger.debug(f"commit {rev} baseline {baseline_rev}")
+        if not baseline_rev:
+            baseline_rev = rev
         suffix = "-checkpoint" if checkpoint else ""
-        exp_name = f"{rev[:7]}-{exp_hash}{suffix}"
+        exp_name = f"{baseline_rev[:7]}-{exp_hash}{suffix}"
+        exp_ref = self.get_refname(baseline_rev, exp_name)
         if create_branch:
-            if (
-                check_exists or checkpoint
-            ) and exp_name in self.scm.list_branches():
-                branch_tip = self.scm.resolve_rev(exp_name)
+            if (check_exists or checkpoint) and self.scm.has_rev(exp_ref):
+                branch_tip = self.scm.resolve_rev(exp_ref)
                 if checkpoint:
                     self._reset_checkpoint_branch(
                         exp_name, rev, branch_tip, checkpoint_reset
@@ -392,13 +418,16 @@ class Experiments:
                         "Using existing experiment branch '%s'", exp_name
                     )
                     return branch_tip
-            self.scm.checkout(exp_name, create_new=True)
+            self.scm.checkout(rev, detach=True)
+            self.scm.set_ref(exp_ref, rev)
             logger.debug("Commit new experiment branch '%s'", exp_name)
         else:
             logger.debug("Commit to current experiment branch")
         self.scm.repo.git.add(A=True)
         self.scm.commit(f"Add experiment {exp_name}")
-        return self.scm.get_rev()
+        new_rev = self.scm.get_rev()
+        self.scm.set_ref(exp_ref, new_rev, old_ref=rev)
+        return new_rev
 
     def _reset_checkpoint_branch(self, branch, rev, branch_tip, reset):
         if not reset:
@@ -437,7 +466,6 @@ class Experiments:
     def new(
         self,
         *args,
-        branch: Optional[str] = None,
         checkpoint_resume: Optional[str] = None,
         **kwargs,
     ):
@@ -451,26 +479,17 @@ class Experiments:
                 *args, checkpoint_resume=checkpoint_resume, **kwargs
             )
 
-        if branch:
-            rev = self.scm.resolve_rev(branch)
-            logger.debug(
-                "Using '%s' (tip of branch '%s') as baseline", rev, branch
-            )
-        else:
-            rev = self.repo.scm.get_rev()
-        self._scm_checkout(rev)
+        rev = self.repo.scm.get_rev()
+        self._scm_checkout(rev, detach=True)
 
         force = kwargs.get("force", False)
         try:
             stash_rev = self._stash_exp(
-                *args, branch=branch, checkpoint_reset=force, **kwargs,
+                *args, baseline_rev=rev, checkpoint_reset=force, **kwargs,
             )
         except UnchangedExperimentError as exc:
             logger.info("Reproducing existing experiment '%s'.", rev[:7])
             raise exc
-        logger.debug(
-            "Stashed experiment '%s' for future execution.", stash_rev[:7]
-        )
         return stash_rev
 
     def _resume_checkpoint(
@@ -614,7 +633,7 @@ class Experiments:
                 reverse=True,
             )
         for index in to_drop:
-            self.scm.repo.git.stash("drop", index)
+            self.scm.reflog_drop("{}@{{{}}}".format(self.STASH_REF, index))
 
         result = {}
         for _, exp_result in exec_results.items():
@@ -923,49 +942,31 @@ class Experiments:
         return self._get_baseline(rev)
 
     def _get_baseline(self, rev):
-        from git.exc import GitCommandError
-
-        rev = self.scm.resolve_rev(rev)
-        try:
-            name = self.scm.repo.git.name_rev(rev, name_only=True)
-        except GitCommandError:
+        ref = first(self.scm.get_refs_containing(rev, self.REF_NAMESPACE))
+        if not ref:
             return None
-        if name in ("undefined", "stash"):
+        if ref == self.STASH_REF:
             entry = self.stash_revs.get(rev)
             if entry:
                 return entry.baseline_rev
             return None
-        m = self.BRANCH_RE.match(name)
-        if m:
-            return self.scm.resolve_rev(m.group("baseline_rev"))
-        return None
+        try:
+            _, sha, _ = self.split_refname(ref)
+            return sha
+        except ValueError:
+            return None
 
     def _get_branch_containing(self, rev):
-        from git.exc import GitCommandError
-
-        try:
-            names = self.scm.repo.git.branch(contains=rev).strip().splitlines()
-
-            if (
-                names
-                and self.scm.repo.head.is_detached
-                and names[0].startswith("* (HEAD detached")
-            ):
-                # Ignore detached head entry if it exists
-                del names[0]
-
-            if not names:
-                return None
-
-            if len(names) > 1:
-                raise MultipleBranchError(rev)
-            name = names[0]
-            if name.startswith("*"):
-                name = name[1:]
-            return name.rsplit("/")[-1].strip()
-        except GitCommandError:
-            pass
-        return None
+        names = [
+            ref
+            for ref in self.scm.get_refs_containing(rev, self.REF_NAMESPACE)
+            if ref != self.STASH_REF
+        ]
+        if not names:
+            return None
+        if len(names) > 1:
+            raise MultipleBranchError(rev)
+        return names[0]
 
     def checkout(self, *args, **kwargs):
         from dvc.repo.experiments.checkout import checkout
