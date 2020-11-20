@@ -172,7 +172,7 @@ def add_parser(subparsers, parent_parser):
         metavar="<path>",
     )
     run_parser.add_argument(
-        "--logs_no_cache",
+        "--logs-no-cache",
         action="append",
         default=[],
         help=argparse.SUPPRESS,
