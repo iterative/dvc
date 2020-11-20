@@ -100,8 +100,8 @@ def test_dir_plots(tmp_dir, dvc, run_copy_metrics):
     dvc.plots.modify("subdir", {"title": "TITLE"})
 
     result = dvc.plots.show()
-    p1_content = json.loads(result["subdir/p1.json"])
-    p2_content = json.loads(result["subdir/p2.json"])
+    p1_content = json.loads(result[os.path.join("subdir", "p1.json")])
+    p2_content = json.loads(result[os.path.join("subdir", "p2.json")])
 
     assert p1_content["title"] == p2_content["title"] == "TITLE"
     assert p1_content == p2_content
