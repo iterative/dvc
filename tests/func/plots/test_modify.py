@@ -104,6 +104,7 @@ def test_dir_plots(tmp_dir, dvc, run_copy_metrics):
     p2_content = json.loads(result["subdir/p2.json"])
 
     assert p1_content["title"] == p2_content["title"] == "TITLE"
+    assert p1_content == p2_content
 
 
 def test_live_plots(tmp_dir, scm, dvc):

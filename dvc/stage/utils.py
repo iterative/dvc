@@ -51,24 +51,20 @@ def _resolve_dvclive_integration(**kwargs):
         │   └── m2.tsv
         └── latest.json
     """
-    kw = defaultdict(list, kwargs)
-    resolved = defaultdict(list, kwargs)
-    for key in kw.keys():
+    result = defaultdict(list, kwargs)
+    for key, paths in kwargs.items():
         if "logs" in key:
-            log_paths = kw[key]
-
             no_cache = "no_cache" in key
             plots_key = "plots_no_cache" if no_cache else "plots"
             metrics_key = "metrics_no_cache" if no_cache else "metrics"
 
-            for log_path in log_paths:
-                resolved[plots_key].append(os.path.join(log_path, "history"))
-                resolved[metrics_key].append(
+            for log_path in paths:
+                result[plots_key].append(os.path.join(log_path, "history"))
+                result[metrics_key].append(
                     os.path.join(log_path, "latest.json")
                 )
 
-    kw.update(resolved)
-    return dict(kw)
+    return dict(result)
 
 
 def fill_stage_outputs(stage, **kwargs):
