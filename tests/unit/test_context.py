@@ -4,7 +4,7 @@ from math import pi
 import pytest
 
 from dvc.parsing import DEFAULT_PARAMS_FILE
-from dvc.parsing.context import Context, CtxDict, CtxList, Value
+from dvc.parsing.context import Context, CtxDict, CtxList, MergeError, Value
 from dvc.tree.local import LocalTree
 from dvc.utils.serialize import dump_yaml
 from tests.func.test_stage_resolver import recurse_not_a_node
@@ -173,7 +173,7 @@ def test_merge_dict():
     c1.merge_update(c2)
     assert c1.select("Train.us") == CtxDict(lr=10, layers=100)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(MergeError):
         # cannot overwrite by default
         c1.merge_update({"Train": {"us": {"lr": 15}}})
 
@@ -187,7 +187,7 @@ def test_merge_dict():
 
 def test_merge_list():
     c1 = Context(lst=[1, 2, 3])
-    with pytest.raises(ValueError):
+    with pytest.raises(MergeError):
         # cannot overwrite by default
         c1.merge_update({"lst": [10, 11, 12]})
 
