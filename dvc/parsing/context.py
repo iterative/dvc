@@ -11,6 +11,7 @@ from funcy import identity, rpartial
 
 from dvc.exceptions import DvcException
 from dvc.parsing.interpolate import (
+    ParseError,
     get_expression,
     get_matches,
     is_exact_string,
@@ -23,6 +24,10 @@ SeqOrMap = Union[Sequence, Mapping]
 
 
 class ContextError(DvcException):
+    pass
+
+
+class SetError(ContextError):
     pass
 
 
@@ -66,6 +71,7 @@ def _merge(into, update, overwrite):
 class Meta:
     source: Optional[str] = None
     dpaths: List[str] = field(default_factory=list)
+    local: bool = True
 
     @staticmethod
     def update_path(meta: "Meta", path: Union[str, int]):
@@ -129,11 +135,17 @@ class Container(Node, ABC):
 
     def _convert(self, key, value):
         meta = Meta.update_path(self.meta, key)
+        return self._convert_with_meta(value, meta)
+
+    @staticmethod
+    def _convert_with_meta(value, meta: Meta = None):
         if value is None or isinstance(value, PRIMITIVES):
+            assert meta
             return Value(value, meta=meta)
         elif isinstance(value, Node):
             return value
         elif isinstance(value, (list, dict)):
+            assert meta
             container = CtxDict if isinstance(value, dict) else CtxList
             return container(value, meta=meta)
         else:
@@ -255,6 +267,9 @@ class Context(CtxDict):
         if not self._track:
             return
 
+        if node.meta and node.meta.local:
+            return
+
         for source, keys in node.get_sources().items():
             if not source:
                 continue
@@ -294,7 +309,7 @@ class Context(CtxDict):
         _, ext = os.path.splitext(file)
         loader = LOADERS[ext]
 
-        meta = Meta(source=file)
+        meta = Meta(source=file, local=False)
         return cls(loader(file, tree=tree), meta=meta)
 
     def merge_from(self, tree, path, overwrite=False):
@@ -310,7 +325,7 @@ class Context(CtxDict):
         """Clones given context."""
         return cls(deepcopy(ctx.data))
 
-    def set(self, key, value):
+    def set(self, key, value, source=None):
         """
         Sets a value, either non-interpolated values to a key,
         or an interpolated string after resolving it.
@@ -320,6 +335,13 @@ class Context(CtxDict):
         >>> c
         {'foo': 'foo', 'bar': [1, 2], 'lorem': {'a': 'z'}, 'foobar': [1, 2]}
         """
+        try:
+            self._set(key, value, source)
+        except (ParseError, ValueError, ContextError) as exc:
+            sp = "\n" if isinstance(exc, ParseError) else " "
+            raise SetError(f"Failed to set '{source}':{sp}{str(exc)}") from exc
+
+    def _set(self, key, value, source):
         if key in self:
             raise ValueError(f"Cannot set '{key}', key already exists")
         if isinstance(value, str):
@@ -328,7 +350,7 @@ class Context(CtxDict):
         elif isinstance(value, (Sequence, Mapping)):
             self._check_not_nested_collection(key, value)
             self._check_interpolation_collection(key, value)
-        self[key] = value
+        self[key] = self._convert_with_meta(value, Meta(source=source))
 
     def resolve(self, src, unwrap=True):
         """Recursively resolves interpolation and returns resolved data.
@@ -399,7 +421,7 @@ class Context(CtxDict):
         if matches and not is_exact_string(value, matches):
             raise ValueError(
                 f"Cannot set '{key}', "
-                "joining string with interpolated string"
+                "joining string with interpolated string "
                 "is not supported"
             )
 

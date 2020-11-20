@@ -9,9 +9,10 @@ from typing import TYPE_CHECKING, List, Set
 from funcy import join
 
 from dvc.dependency.param import ParamsDependency
+from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 
-from .context import Context
+from .context import Context, SetError
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -28,6 +29,17 @@ IN_KWD = "in"
 SET_KWD = "set"
 
 DEFAULT_SENTINEL = object()
+
+
+class ResolveError(DvcException):
+    pass
+
+
+def _reraise_err(exc_cls, *args, from_exc=None):
+    err = exc_cls(*args)
+    if from_exc and logger.isEnabledFor(logging.DEBUG):
+        raise err from from_exc
+    raise err
 
 
 class DataResolver:
@@ -76,7 +88,9 @@ class DataResolver:
     def _resolve_entry(self, name: str, definition):
         context = Context.clone(self.global_ctx)
         if FOREACH_KWD in definition:
-            self.set_context_from(context, definition.get(SET_KWD, {}))
+            self.set_context_from(
+                context, definition.get(SET_KWD, {}), source=[name, "set"]
+            )
             assert IN_KWD in definition
             return self._foreach(
                 context, name, definition[FOREACH_KWD], definition[IN_KWD]
@@ -91,7 +105,9 @@ class DataResolver:
 
     def _resolve_stage(self, context: Context, name: str, definition) -> dict:
         definition = deepcopy(definition)
-        self.set_context_from(context, definition.pop(SET_KWD, {}))
+        self.set_context_from(
+            context, definition.pop(SET_KWD, {}), source=[name, "set"]
+        )
         wdir = self._resolve_wdir(context, definition.get(WDIR_KWD))
         if self.wdir != wdir:
             logger.debug(
@@ -153,6 +169,10 @@ class DataResolver:
         return join(gen)
 
     @classmethod
-    def set_context_from(cls, context: Context, to_set):
-        for key, value in to_set.items():
-            context.set(key, value)
+    def set_context_from(cls, context: Context, to_set, source=None):
+        try:
+            for key, value in to_set.items():
+                src_set = [*(source or []), key]
+                context.set(key, value, source=".".join(src_set))
+        except SetError as exc:
+            _reraise_err(ResolveError, str(exc), from_exc=exc)

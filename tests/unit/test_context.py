@@ -221,20 +221,35 @@ def test_load_from(mocker):
     file = "params.yaml"
     c = Context.load_from(object(), file)
 
-    assert asdict(c["x"].meta) == {"source": file, "dpaths": ["x"]}
-    assert asdict(c["foo"].meta) == {"source": file, "dpaths": ["foo"]}
-    assert asdict(c["x"]["y"].meta) == {"source": file, "dpaths": ["x", "y"]}
+    assert asdict(c["x"].meta) == {
+        "source": file,
+        "dpaths": ["x"],
+        "local": False,
+    }
+    assert asdict(c["foo"].meta) == {
+        "source": file,
+        "local": False,
+        "dpaths": ["foo"],
+    }
+    assert asdict(c["x"]["y"].meta) == {
+        "source": file,
+        "dpaths": ["x", "y"],
+        "local": False,
+    }
     assert asdict(c["x"]["y"]["z"].meta) == {
         "source": file,
         "dpaths": ["x", "y", "z"],
+        "local": False,
     }
     assert asdict(c["x"]["lst"].meta) == {
         "source": file,
         "dpaths": ["x", "lst"],
+        "local": False,
     }
     assert asdict(c["x"]["lst"][0].meta) == {
         "source": file,
         "dpaths": ["x", "lst", "0"],
+        "local": False,
     }
 
 
