@@ -10,9 +10,11 @@ from funcy import join
 
 from dvc.dependency.param import ParamsDependency
 from dvc.exceptions import DvcException
+from dvc.parsing.interpolate import ParseError
 from dvc.path_info import PathInfo
+from dvc.utils import relpath
 
-from .context import Context, SetError
+from .context import Context, MergeError, Meta, ParamsFileNotFound, SetError
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -35,6 +37,15 @@ class ResolveError(DvcException):
     pass
 
 
+def format_and_raise(exc, msg, path):
+    spacing = "\n" if isinstance(exc, (ParseError, MergeError)) else " "
+    message = f"failed to parse {msg} in '{path}':{spacing}{str(exc)}"
+
+    # FIXME: cannot reraise because of how we log "cause" of the exception
+    # the error message is verbose, hence need control over the spacing
+    _reraise_err(ResolveError, message, from_exc=exc)
+
+
 def _reraise_err(exc_cls, *args, from_exc=None):
     err = exc_cls(*args)
     if from_exc and logger.isEnabledFor(logging.DEBUG):
@@ -44,16 +55,17 @@ def _reraise_err(exc_cls, *args, from_exc=None):
 
 class DataResolver:
     def __init__(self, repo: "Repo", wdir: PathInfo, d: dict):
-
         self.data: dict = d
         self.wdir = wdir
         self.repo = repo
+        self.tree = self.repo.tree
         self.imported_files: Set[str] = set()
+        self.relpath = relpath(self.wdir / "dvc.yaml")
 
         to_import: PathInfo = wdir / DEFAULT_PARAMS_FILE
-        if repo.tree.exists(to_import):
+        if self.tree.exists(to_import):
             self.imported_files = {os.path.abspath(to_import)}
-            self.global_ctx = Context.load_from(repo.tree, str(to_import))
+            self.global_ctx = Context.load_from(self.tree, to_import)
         else:
             self.global_ctx = Context()
             logger.debug(
@@ -62,9 +74,12 @@ class DataResolver:
             )
 
         vars_ = d.get(VARS_KWD, [])
-        self.load_from_vars(
-            self.global_ctx, vars_, wdir, skip_imports=self.imported_files
-        )
+        try:
+            self.load_from_vars(
+                self.global_ctx, vars_, wdir, skip_imports=self.imported_files
+            )
+        except (ParamsFileNotFound, MergeError) as exc:
+            format_and_raise(exc, "'vars'", self.relpath)
 
     def load_from_vars(
         self,
@@ -72,18 +87,23 @@ class DataResolver:
         vars_: List,
         wdir: PathInfo,
         skip_imports: Set[str],
+        stage_name: str = None,
     ):
-        for item in vars_:
+        stage_name = stage_name or ""
+        for index, item in enumerate(vars_):
             assert isinstance(item, (str, dict))
             if isinstance(item, str):
-                path = os.path.abspath(wdir / item)
+                path_info = wdir / item
+                path = os.path.abspath(path_info)
                 if path in skip_imports:
                     continue
 
-                context.merge_from(self.repo.tree, str(path))
+                context.merge_from(self.tree, path_info)
                 skip_imports.add(path)
             else:
-                context.merge_update(Context(item))
+                joiner = "." if stage_name else ""
+                meta = Meta(source=f"{stage_name}{joiner}vars[{index}]")
+                context.merge_update(Context(item, meta=meta))
 
     def _resolve_entry(self, name: str, definition):
         context = Context.clone(self.global_ctx)
@@ -115,8 +135,13 @@ class DataResolver:
             )
 
         vars_ = definition.pop(VARS_KWD, [])
+        # FIXME: Should `vars` be templatized?
         self.load_from_vars(
-            context, vars_, wdir, skip_imports=deepcopy(self.imported_files)
+            context,
+            vars_,
+            wdir,
+            skip_imports=deepcopy(self.imported_files),
+            stage_name=name,
         )
 
         logger.trace(  # pytype: disable=attribute-error

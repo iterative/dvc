@@ -18,6 +18,8 @@ from dvc.parsing.interpolate import (
     is_interpolated_string,
     str_interpolate,
 )
+from dvc.path_info import PathInfo
+from dvc.utils import relpath
 from dvc.utils.serialize import LOADERS
 
 SeqOrMap = Union[Sequence, Mapping]
@@ -50,6 +52,10 @@ class MergeError(ContextError):
         )
 
 
+class ParamsFileNotFound(ContextError):
+    pass
+
+
 class KeyNotInContext(ContextError):
     def __init__(self, key) -> None:
         self.key = key
@@ -79,8 +85,8 @@ class Meta:
         return replace(meta, dpaths=dpaths)
 
     def __str__(self):
-        string = self.source or "<local>:"
-        string += self.path()
+        string = self.source or "<local>"
+        string += ":" + self.path()
         return string
 
     def path(self):
@@ -305,20 +311,19 @@ class Context(CtxDict):
         return node.value if unwrap else node
 
     @classmethod
-    def load_from(cls, tree, file: str) -> "Context":
+    def load_from(cls, tree, path: PathInfo) -> "Context":
+        file = relpath(path)
+        if not tree.exists(path):
+            raise ParamsFileNotFound(f"'{file}' does not exist")
+
         _, ext = os.path.splitext(file)
         loader = LOADERS[ext]
 
-        meta = Meta(source=file, local=False)
-        return cls(loader(file, tree=tree), meta=meta)
+        meta = Meta(source=str(path), local=False)
+        return cls(loader(path, tree=tree), meta=meta)
 
-    def merge_from(self, tree, path, overwrite=False):
-        if not tree.exists(path):
-            raise FileNotFoundError(path)
-
-        self.merge_update(
-            Context.load_from(tree, str(path)), overwrite=overwrite
-        )
+    def merge_from(self, tree, path: PathInfo, overwrite=False):
+        self.merge_update(Context.load_from(tree, path), overwrite=overwrite)
 
     @classmethod
     def clone(cls, ctx: "Context") -> "Context":

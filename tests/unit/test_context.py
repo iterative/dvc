@@ -10,6 +10,7 @@ from dvc.parsing.context import (
     CtxList,
     KeyNotInContext,
     MergeError,
+    ParamsFileNotFound,
     Value,
 )
 from dvc.tree.local import LocalTree
@@ -218,8 +219,13 @@ def test_load_from(mocker):
         return {"x": {"y": {"z": 5}, "lst": [1, 2, 3]}, "foo": "foo"}
 
     mocker.patch("dvc.parsing.context.LOADERS", {".yaml": _yaml_load})
+
+    class tree:
+        def exists(self, _):
+            return True
+
     file = "params.yaml"
-    c = Context.load_from(object(), file)
+    c = Context.load_from(tree(), file)
 
     assert asdict(c["x"].meta) == {
         "source": file,
@@ -406,5 +412,5 @@ def test_resolve_resolves_dict_keys():
 
 def test_merge_from_raises_if_file_not_exist(tmp_dir, dvc):
     context = Context(foo="bar")
-    with pytest.raises(FileNotFoundError):
-        context.merge_from(dvc.tree, DEFAULT_PARAMS_FILE)
+    with pytest.raises(ParamsFileNotFound):
+        context.merge_from(dvc.tree, tmp_dir / DEFAULT_PARAMS_FILE)
