@@ -437,15 +437,21 @@ class Experiments:
 
     @scm_locked
     def new(
-        self, *args, branch: Optional[str] = None, **kwargs,
+        self,
+        *args,
+        branch: Optional[str] = None,
+        checkpoint_resume: Optional[str] = None,
+        **kwargs,
     ):
         """Create a new experiment.
 
         Experiment will be reproduced and checked out into the user's
         workspace.
         """
-        if kwargs.get("checkpoint_resume", None) is not None:
-            return self._resume_checkpoint(*args, **kwargs)
+        if checkpoint_resume is not None:
+            return self._resume_checkpoint(
+                *args, **kwargs, checkpoint_resume=checkpoint_resume
+            )
 
         if branch:
             rev = self.scm.resolve_rev(branch)

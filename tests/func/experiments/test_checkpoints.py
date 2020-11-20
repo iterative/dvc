@@ -24,18 +24,17 @@ def test_new_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker):
     ).read_text().strip() == "foo: 2"
 
 
-@pytest.mark.parametrize("last", [True, False])
-def test_resume_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, last):
+@pytest.mark.parametrize(
+    "checkpoint_resume", [Experiments.LAST_CHECKPOINT, "foo"]
+)
+def test_resume_checkpoint(
+    tmp_dir, scm, dvc, checkpoint_stage, checkpoint_resume
+):
     with pytest.raises(DvcException):
-        if last:
-            dvc.experiments.run(
-                checkpoint_stage.addressing,
-                checkpoint_resume=Experiments.LAST_CHECKPOINT,
-            )
-        else:
-            dvc.experiments.run(
-                checkpoint_stage.addressing, checkpoint_resume="foo"
-            )
+        dvc.experiments.run(
+            checkpoint_stage=checkpoint_stage.addressing,
+            checkpoint_resume=checkpoint_resume,
+        )
 
     results = dvc.experiments.run(
         checkpoint_stage.addressing, params=["foo=2"]
@@ -46,12 +45,12 @@ def test_resume_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, last):
             checkpoint_stage.addressing, checkpoint_resume="abc1234",
         )
 
-    if last:
-        exp_rev = Experiments.LAST_CHECKPOINT
-    else:
-        exp_rev = first(results)
+    if checkpoint_resume != Experiments.LAST_CHECKPOINT:
+        checkpoint_resume = first(results)
 
-    dvc.experiments.run(checkpoint_stage.addressing, checkpoint_resume=exp_rev)
+    dvc.experiments.run(
+        checkpoint_stage.addressing, checkpoint_resume=checkpoint_resume
+    )
 
     assert (tmp_dir / "foo").read_text() == "10"
     assert (
