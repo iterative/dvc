@@ -83,6 +83,7 @@ install_requires = [
     "rich>=3.0.5",
     "dictdiffer>=0.8.1",
     "python-benedict>=0.21.1",
+    "pyparsing==2.4.7",
 ]
 
 
