@@ -593,6 +593,7 @@ class Experiments:
                 dvc_dir=self.dvc_dir,
                 cache_dir=self.repo.cache.local.cache_dir,
                 checkpoint_reset=checkpoint_reset,
+                features=self.repo.config.get("feature", {}),
             )
             self._collect_input(executor)
             executors[rev] = executor

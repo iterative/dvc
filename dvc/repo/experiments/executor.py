@@ -97,6 +97,7 @@ class LocalExecutor(ExperimentExecutor):
 
         dvc_dir = kwargs.pop("dvc_dir")
         cache_dir = kwargs.pop("cache_dir")
+        features = kwargs.pop("features", {})
         super().__init__(**kwargs)
         self.tmp_dir = TemporaryDirectory()
 
@@ -108,7 +109,7 @@ class LocalExecutor(ExperimentExecutor):
             self.baseline_rev[:7],
         )
         self.dvc_dir = os.path.join(self.tmp_dir.name, dvc_dir)
-        self._config(cache_dir)
+        self._config(cache_dir, features)
         self._tree = LocalTree(self.dvc, {"url": self.dvc.root_dir})
         # override default CACHE_MODE since files must be writable in order
         # to run repro
@@ -116,12 +117,17 @@ class LocalExecutor(ExperimentExecutor):
         self.checkpoint_reset = checkpoint_reset
         self.checkpoint = False
 
-    def _config(self, cache_dir):
+    def _config(self, cache_dir, features):
         local_config = os.path.join(self.dvc_dir, "config.local")
         logger.debug("Writing experiments local config '%s'", local_config)
         with open(local_config, "w") as fobj:
             fobj.write("[core]\n    no_scm = true\n")
             fobj.write(f"[cache]\n    dir = {cache_dir}")
+            if not isinstance(features, dict) or len(features) == 0:
+                return
+            fobj.write("\n[feature]\n")
+            for feature_name, feature_value in features.items():
+                fobj.write(f"    {feature_name} = {feature_value}\n")
 
     @cached_property
     def dvc(self):
