@@ -36,7 +36,7 @@ WDIR_KWD = "wdir"
 DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
 PARAMS_KWD = "params"
 FOREACH_KWD = "foreach"
-IN_KWD = "in"
+DO_KWD = "do"
 SET_KWD = "set"
 
 DEFAULT_SENTINEL = object()
@@ -119,12 +119,12 @@ class DataResolver:
     def _resolve_entry(self, name: str, definition):
         context = Context.clone(self.global_ctx)
         if FOREACH_KWD in definition:
-            assert IN_KWD in definition
+            assert DO_KWD in definition
             self.set_context_from(
                 context, definition.get(SET_KWD, {}), source=[name, "set"]
             )
             return self._foreach(
-                context, name, definition[FOREACH_KWD], definition[IN_KWD]
+                context, name, definition[FOREACH_KWD], definition[DO_KWD]
             )
 
         try:
@@ -206,9 +206,9 @@ class DataResolver:
             format_and_raise(exc, f"'stages.{name}.wdir'", self.relpath)
         return self.wdir / str(wdir)
 
-    def _foreach(self, context: Context, name: str, foreach_data, in_data):
+    def _foreach(self, context: Context, name: str, foreach_data, do_data):
         iterable = self._resolve_foreach_data(context, name, foreach_data)
-        args = (context, name, in_data, iterable)
+        args = (context, name, do_data, iterable)
         it = (
             range(len(iterable))
             if not isinstance(iterable, Mapping)
@@ -217,7 +217,7 @@ class DataResolver:
         gen = (self._each_iter(*args, i) for i in it)
         return join(gen)
 
-    def _each_iter(self, context: Context, name: str, in_data, iterable, key):
+    def _each_iter(self, context: Context, name: str, do_data, iterable, key):
         value = iterable[key]
         c = Context.clone(context)
         suffix = c["item"] = value
@@ -226,7 +226,7 @@ class DataResolver:
 
         generated = f"{name}{JOIN}{suffix}"
         try:
-            return self._resolve_stage(c, generated, in_data)
+            return self._resolve_stage(c, generated, do_data)
         except ContextError as exc:
             # pylint: disable=no-member
             if isinstance(exc, MergeError) and exc.key in self._inserted_keys(

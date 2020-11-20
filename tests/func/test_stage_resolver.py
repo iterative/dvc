@@ -254,7 +254,7 @@ def test_simple_foreach_loop(tmp_dir, dvc):
         "stages": {
             "build": {
                 "foreach": iterable,
-                "in": {"cmd": "python script.py ${item}"},
+                "do": {"cmd": "python script.py ${item}"},
             }
         }
     }
@@ -277,7 +277,7 @@ def test_foreach_loop_dict(tmp_dir, dvc):
         "stages": {
             "build": {
                 "foreach": iterable["models"],
-                "in": {"cmd": "python script.py ${item.thresh}"},
+                "do": {"cmd": "python script.py ${item.thresh}"},
             }
         }
     }
@@ -303,7 +303,7 @@ def test_foreach_loop_templatized(tmp_dir, dvc):
         "stages": {
             "build": {
                 "foreach": "${models}",
-                "in": {"cmd": "python script.py --thresh ${item.thresh}"},
+                "do": {"cmd": "python script.py --thresh ${item.thresh}"},
             }
         },
     }
@@ -381,7 +381,7 @@ def test_set_with_foreach(tmp_dir, dvc):
             "build": {
                 "set": {"items": items},
                 "foreach": "${items}",
-                "in": {"cmd": "command --value ${item}"},
+                "do": {"cmd": "command --value ${item}"},
             }
         }
     }
@@ -407,7 +407,7 @@ def test_set_with_foreach_and_on_stage_definition(tmp_dir, dvc):
             "build": {
                 "set": {"data": "${models}"},
                 "foreach": "${data}",
-                "in": {
+                "do": {
                     "set": {"thresh": "${item.thresh}"},
                     "cmd": "command --value ${thresh}",
                 },

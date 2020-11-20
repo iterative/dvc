@@ -139,7 +139,7 @@ def test_foreach_item_key_already_exists(
 ):
     d = {
         "vars": [local_vars],
-        "stages": {"build": {"foreach": "${models}", "in": {}}},
+        "stages": {"build": {"foreach": "${models}", "do": {}}},
     }
     resolver = DataResolver(repo, tmp_dir, d)
 
@@ -152,7 +152,7 @@ def test_foreach_item_key_already_exists(
 
 def test_foreach_interpolation_key_does_not_exist(tmp_dir, repo):
     d = {
-        "stages": {"build": {"foreach": "${modelss}", "in": {}}},
+        "stages": {"build": {"foreach": "${modelss}", "do": {}}},
     }
     resolver = DataResolver(repo, tmp_dir, d)
     with pytest.raises(ResolveError) as exc_info:
@@ -165,7 +165,7 @@ def test_foreach_interpolation_key_does_not_exist(tmp_dir, repo):
 
 def test_foreach_interpolation_key_error(tmp_dir, repo):
     d = {
-        "stages": {"build": {"foreach": "${models[123}", "in": {}}},
+        "stages": {"build": {"foreach": "${models[123}", "do": {}}},
     }
     resolver = DataResolver(repo, tmp_dir, d)
     with pytest.raises(ResolveError) as exc_info:
@@ -195,7 +195,7 @@ def test_foreach_interpolation_key_error(tmp_dir, repo):
 def test_foreach_generated_errors(tmp_dir, repo, syn, msg):
     d = {
         "stages": {
-            "build": {"foreach": "${models}", "in": {"cmd": f"echo {syn}"}}
+            "build": {"foreach": "${models}", "do": {"cmd": f"echo {syn}"}}
         },
     }
     resolver = DataResolver(repo, tmp_dir, d)
@@ -222,7 +222,7 @@ def test_foreach_generated_local_vars_error(tmp_dir, repo, vars_, msg):
         "stages": {
             "build": {
                 "foreach": "${models}",
-                "in": {"vars": vars_, "cmd": "echo ${item}"},
+                "do": {"vars": vars_, "cmd": "echo ${item}"},
             }
         },
     }
@@ -253,7 +253,7 @@ def test_foreach_wdir_interpolation_issues(tmp_dir, repo, wdir, msg):
         "stages": {
             "build": {
                 "foreach": "${models}",
-                "in": {"wdir": wdir, "cmd": "echo ${item}"},
+                "do": {"wdir": wdir, "cmd": "echo ${item}"},
             }
         },
     }
@@ -268,7 +268,7 @@ def test_foreach_wdir_interpolation_issues(tmp_dir, repo, wdir, msg):
 @pytest.mark.parametrize("foreach", ["${models.bar}", "foo"])
 def test_foreach_expects_dict_or_list(tmp_dir, repo, foreach):
     d = {
-        "stages": {"build": {"foreach": foreach, "in": {}}},
+        "stages": {"build": {"foreach": foreach, "do": {}}},
     }
     resolver = DataResolver(repo, tmp_dir, d)
     with pytest.raises(ResolveError) as exc_info:
@@ -315,7 +315,7 @@ def test_item_key_in_generated_stage_vars(tmp_dir, repo, foreach, redefine):
         "stages": {
             "build": {
                 "foreach": foreach,
-                "in": {"cmd": "echo ${item}", "vars": [{redefine: "value"}]},
+                "do": {"cmd": "echo ${item}", "vars": [{redefine: "value"}]},
             }
         },
     }
