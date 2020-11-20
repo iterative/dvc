@@ -202,7 +202,7 @@ def test_foreach_generated_errors(tmp_dir, repo, syn, msg):
     with pytest.raises(ResolveError) as exc_info:
         resolver.resolve()
     assert str(exc_info.value) == (
-        "failed to parse 'stages.build-bar.cmd' in 'dvc.yaml':" + msg
+        "failed to parse 'stages.build@bar.cmd' in 'dvc.yaml':" + msg
     )
 
 
@@ -212,7 +212,7 @@ def test_foreach_generated_errors(tmp_dir, repo, syn, msg):
         (["params-does-not-exist"], " 'params-does-not-exist' does not exist"),
         (
             [DATA],
-            "\ncannot redefine 'models.bar' from 'build-bar.vars[0]' "
+            "\ncannot redefine 'models.bar' from 'build@bar.vars[0]' "
             f"as it already exists in '{DEFAULT_PARAMS_FILE}'",
         ),
     ],
@@ -230,7 +230,7 @@ def test_foreach_generated_local_vars_error(tmp_dir, repo, vars_, msg):
     with pytest.raises(ResolveError) as exc_info:
         resolver.resolve()
     assert str(exc_info.value) == (
-        "failed to parse stage 'build-bar' (gen. from 'build') in 'dvc.yaml':"
+        "failed to parse stage 'build@bar' (gen. from 'build') in 'dvc.yaml':"
         + msg
     )
 
@@ -261,7 +261,7 @@ def test_foreach_wdir_interpolation_issues(tmp_dir, repo, wdir, msg):
     with pytest.raises(ResolveError) as exc_info:
         resolver.resolve()
     assert str(exc_info.value) == (
-        "failed to parse 'stages.build-bar.wdir' in 'dvc.yaml':" + msg
+        "failed to parse 'stages.build@bar.wdir' in 'dvc.yaml':" + msg
     )
 
 
@@ -323,7 +323,7 @@ def test_item_key_in_generated_stage_vars(tmp_dir, repo, foreach, redefine):
     with pytest.raises(ResolveError) as exc_info:
         resolver.resolve()
     assert str(exc_info.value) == (
-        f"attempted to redefine '{redefine}' in stage 'build-bar'"
+        f"attempted to redefine '{redefine}' in stage 'build@bar'"
         " generated through 'foreach'"
     )
 

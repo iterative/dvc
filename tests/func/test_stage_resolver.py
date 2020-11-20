@@ -264,7 +264,7 @@ def test_simple_foreach_loop(tmp_dir, dvc):
         resolver.resolve(),
         {
             "stages": {
-                f"build-{item}": {"cmd": f"python script.py {item}"}
+                f"build@{item}": {"cmd": f"python script.py {item}"}
                 for item in iterable
             }
         },
@@ -287,7 +287,7 @@ def test_foreach_loop_dict(tmp_dir, dvc):
         resolver.resolve(),
         {
             "stages": {
-                f"build-{key}": {"cmd": f"python script.py {item['thresh']}"}
+                f"build@{key}": {"cmd": f"python script.py {item['thresh']}"}
                 for key, item in iterable["models"].items()
             }
         },
@@ -313,8 +313,8 @@ def test_foreach_loop_templatized(tmp_dir, dvc):
         resolver.resolve(),
         {
             "stages": {
-                "build-gb": {"cmd": "python script.py --thresh 15"},
-                "build-us": {
+                "build@gb": {"cmd": "python script.py --thresh 15"},
+                "build@us": {
                     "cmd": "python script.py --thresh 10",
                     "params": ["models.us.thresh"],
                 },
@@ -390,7 +390,7 @@ def test_set_with_foreach(tmp_dir, dvc):
         resolver.resolve(),
         {
             "stages": {
-                f"build-{item}": {"cmd": f"command --value {item}"}
+                f"build@{item}": {"cmd": f"command --value {item}"}
                 for item in items
             }
         },
@@ -419,11 +419,11 @@ def test_set_with_foreach_and_on_stage_definition(tmp_dir, dvc):
         resolver.resolve(),
         {
             "stages": {
-                "build-us": {
+                "build@us": {
                     "cmd": "command --value 10",
                     "params": [{"params.json": ["models.us.thresh"]}],
                 },
-                "build-gb": {
+                "build@gb": {
                     "cmd": "command --value 15",
                     "params": [{"params.json": ["models.gb.thresh"]}],
                 },

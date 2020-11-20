@@ -41,7 +41,7 @@ SET_KWD = "set"
 
 DEFAULT_SENTINEL = object()
 
-JOIN = "-"
+JOIN = "@"
 
 
 class ResolveError(DvcException):
