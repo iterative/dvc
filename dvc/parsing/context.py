@@ -45,6 +45,12 @@ class MergeError(ContextError):
         )
 
 
+class KeyNotInContext(ContextError):
+    def __init__(self, key) -> None:
+        self.key = key
+        super().__init__(f"Could not find '{key}'")
+
+
 def _merge(into, update, overwrite):
     for key, val in update.items():
         if isinstance(into.get(key), Mapping) and isinstance(val, Mapping):
@@ -171,7 +177,16 @@ class Container(Node, ABC):
             raise ValueError(
                 f"Could not find '{index}' in {self.data}"
             ) from exc
-        return d.select(rems[0]) if rems else d
+
+        if not rems:
+            return d
+
+        rem = rems[0]
+        if not isinstance(d, Container):
+            raise ValueError(
+                f"{index} is a primitive value, cannot get '{rem}'"
+            )
+        return d.select(rem)
 
     def get_sources(self):
         return {}
@@ -265,7 +280,11 @@ class Context(CtxDict):
                     Defaults to False. Note that the default is different from
                     `resolve`.
         """
-        node = super().select(key)
+        try:
+            node = super().select(key)
+        except ValueError as exc:
+            raise KeyNotInContext(key) from exc
+
         self._track_data(node)
         assert isinstance(node, Node)
         return node.value if unwrap else node
