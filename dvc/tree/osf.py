@@ -18,9 +18,10 @@ logger = logging.getLogger(__name__)
 class OSFAuthError(DvcException):
     def __init__(self):
         message = (
-            "OSF authorization failed. Please check or provide a password."
+            "OSF authorization failed. Please check or provide"
+            " osf_username and password."
             " It is also possible that you do not have access"
-            " to a private project."
+            " to a project."
         )
         super().__init__(message)
 
@@ -37,7 +38,7 @@ class OSFTree(BaseTree):
         self.path_info = self.PATH_CLS(config["url"])
 
         self.osf_username = config.get("osf_username")
-        self.project = config.get("project")
+        self.project_guid = config.get("project")
         self.password = os.getenv(
             "OSF_PASSWORD", None
         )  # need for private projects
@@ -55,19 +56,19 @@ class OSFTree(BaseTree):
 
     @wrap_prop(threading.Lock())
     @cached_property
-    def storage(self):
+    def project(self):
         from osfclient.exceptions import UnauthorizedException
 
         osf = self.osf
         osf.login(self.osf_username, self.password)
         try:
-            storage = osf.project(self.project).storage()
+            project = osf.project(self.project_guid)
         except UnauthorizedException:
             raise OSFAuthError
-        return storage
+        return project
 
     def _get_file_obj(self, path_info):
-        for file in self.storage.files:
+        for file in self.project.storage().files:
             if file.path == path_info.path:
                 return file
 
@@ -81,7 +82,7 @@ class OSFTree(BaseTree):
         return any(path_info.path == path for path in paths)
 
     def _list_paths(self):
-        for file in self.storage.files:
+        for file in self.project.storage().files:
             yield file.path
 
     def isdir(self, path_info):
@@ -135,6 +136,6 @@ class OSFTree(BaseTree):
             with Tqdm.wrapattr(
                 fobj, "read", desc=name, total=total, disable=no_progress_bar
             ) as wrapped:
-                self.storage.create_file(
+                self.project.storage().create_file(
                     to_info.path, wrapped, force=False, update=False
                 )
