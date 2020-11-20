@@ -1,4 +1,5 @@
 import logging
+import os
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
@@ -35,11 +36,11 @@ class DataResolver:
         self.data: dict = d
         self.wdir = wdir
         self.repo = repo
-        self.imported_files: Set[PathInfo] = set()
+        self.imported_files: Set[str] = set()
 
         to_import: PathInfo = wdir / DEFAULT_PARAMS_FILE
         if repo.tree.exists(to_import):
-            self.imported_files = {to_import}
+            self.imported_files = {os.path.abspath(to_import)}
             self.global_ctx = Context.load_from(repo.tree, str(to_import))
         else:
             self.global_ctx = Context()
@@ -58,12 +59,12 @@ class DataResolver:
         context: "Context",
         vars_: List,
         wdir: PathInfo,
-        skip_imports: Set[PathInfo],
+        skip_imports: Set[str],
     ):
         for item in vars_:
             assert isinstance(item, (str, dict))
             if isinstance(item, str):
-                path = wdir / item
+                path = os.path.abspath(wdir / item)
                 if path in skip_imports:
                     continue
 

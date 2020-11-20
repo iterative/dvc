@@ -485,3 +485,20 @@ def test_resolve_local_tries_to_load_globally_used_params_yaml(tmp_dir, dvc):
             }
         },
     )
+
+
+def test_vars_relpath_overwrite(tmp_dir, dvc):
+    iterable = {"bar": "bar", "foo": "foo"}
+    dump_yaml(tmp_dir / "params.yaml", iterable)
+    d = {
+        "vars": ["params.yaml"],
+        "stages": {
+            "build": {
+                "wdir": "data",
+                "cmd": "echo ${bar}",
+                "vars": ["../params.yaml"],
+            }
+        },
+    }
+    resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
+    resolver.resolve()
