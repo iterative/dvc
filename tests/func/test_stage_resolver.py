@@ -5,8 +5,8 @@ from math import pi
 import pytest
 
 from dvc.dependency import _merge_params
-from dvc.parsing import DEFAULT_PARAMS_FILE, DataResolver
-from dvc.parsing.context import KeyNotInContext, Node
+from dvc.parsing import DEFAULT_PARAMS_FILE, DataResolver, ResolveError
+from dvc.parsing.context import Node
 from dvc.path_info import PathInfo
 from dvc.utils.serialize import dump_json, dump_yaml
 
@@ -91,7 +91,7 @@ def test_no_params_yaml_and_vars(tmp_dir, dvc):
     resolver = DataResolver(
         dvc, PathInfo(str(tmp_dir)), deepcopy(TEMPLATED_DVC_YAML_DATA)
     )
-    with pytest.raises(KeyNotInContext):
+    with pytest.raises(ResolveError):
         resolver.resolve()
 
 

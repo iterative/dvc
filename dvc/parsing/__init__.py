@@ -14,7 +14,15 @@ from dvc.parsing.interpolate import ParseError
 from dvc.path_info import PathInfo
 from dvc.utils import relpath
 
-from .context import Context, MergeError, Meta, ParamsFileNotFound, SetError
+from .context import (
+    Context,
+    ContextError,
+    KeyNotInContext,
+    MergeError,
+    Meta,
+    ParamsFileNotFound,
+    SetError,
+)
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -115,7 +123,11 @@ class DataResolver:
             return self._foreach(
                 context, name, definition[FOREACH_KWD], definition[IN_KWD]
             )
-        return self._resolve_stage(context, name, definition)
+
+        try:
+            return self._resolve_stage(context, name, definition)
+        except ContextError as exc:
+            format_and_raise(exc, f"stage '{name}'", self.relpath)
 
     def resolve(self):
         stages = self.data.get(STAGES_KWD, {})
@@ -128,7 +140,7 @@ class DataResolver:
         self.set_context_from(
             context, definition.pop(SET_KWD, {}), source=[name, "set"]
         )
-        wdir = self._resolve_wdir(context, definition.get(WDIR_KWD))
+        wdir = self._resolve_wdir(context, name, definition.get(WDIR_KWD))
         if self.wdir != wdir:
             logger.debug(
                 "Stage %s has different wdir than dvc.yaml file", name
@@ -149,15 +161,28 @@ class DataResolver:
         )
 
         with context.track():
-            stage_d = context.resolve(definition)
+            resolved = {}
+            for key, value in definition.items():
+                # NOTE: we do not pop "wdir", and resolve it again
+                # this does not affect anything and is done to try to
+                # track the source of `wdir` interpolation.
+                # This works because of the side-effect that we do not
+                # allow overwriting and/or str interpolating complex objects.
+                # Fix if/when those assumptions are no longer valid.
+                try:
+                    resolved[key] = context.resolve(value)
+                except (ParseError, KeyNotInContext) as exc:
+                    format_and_raise(
+                        exc, f"'stages.{name}.{key}'", self.relpath
+                    )
 
-        params = stage_d.get(PARAMS_KWD, []) + self._resolve_params(
+        # FIXME: Decide if we should track them or not (it does right now)
+        params = resolved.get(PARAMS_KWD, []) + self._resolve_params(
             context, wdir
         )
-
         if params:
-            stage_d[PARAMS_KWD] = params
-        return {name: stage_d}
+            resolved[PARAMS_KWD] = params
+        return {name: resolved}
 
     def _resolve_params(self, context: Context, wdir):
         tracked = defaultdict(set)
@@ -166,11 +191,16 @@ class DataResolver:
 
         return [{file: list(keys)} for file, keys in tracked.items()]
 
-    def _resolve_wdir(self, context: Context, wdir: str = None) -> PathInfo:
+    def _resolve_wdir(
+        self, context: Context, name: str, wdir: str = None
+    ) -> PathInfo:
         if not wdir:
             return self.wdir
 
-        wdir = str(context.resolve_str(wdir, unwrap=True))
+        try:
+            wdir = str(context.resolve_str(wdir, unwrap=True))
+        except (ContextError, ParseError) as exc:
+            format_and_raise(exc, f"'stages.{name}.wdir'", self.relpath)
         return self.wdir / str(wdir)
 
     def _foreach(self, context: Context, name: str, foreach_data, in_data):
