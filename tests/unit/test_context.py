@@ -14,6 +14,7 @@ from dvc.parsing.context import (
     Value,
 )
 from dvc.tree.local import LocalTree
+from dvc.utils import relpath
 from dvc.utils.serialize import dump_yaml
 from tests.func.test_stage_resolver import recurse_not_a_node
 
@@ -291,11 +292,11 @@ def test_track(tmp_dir):
     path = tmp_dir / "params.yaml"
     dump_yaml(path, d, tree)
 
-    context = Context.load_from(tree, str(path))
+    context = Context.load_from(tree, path)
 
     def key_tracked(key):
         assert len(context.tracked) == 1
-        return key in context.tracked[str(path)]
+        return key in context.tracked[relpath(path)]
 
     with context.track():
         context.select("lst")
@@ -328,12 +329,12 @@ def test_track_from_multiple_files(tmp_dir):
     dump_yaml(path1, d1, tree)
     dump_yaml(path2, d2, tree)
 
-    context = Context.load_from(tree, str(path1))
-    c = Context.load_from(tree, str(path2))
+    context = Context.load_from(tree, path1)
+    c = Context.load_from(tree, path2)
     context.merge_update(c)
 
     def key_tracked(path, key):
-        return key in context.tracked[str(path)]
+        return key in context.tracked[relpath(path)]
 
     with context.track():
         context.select("Train")
