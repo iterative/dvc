@@ -20,6 +20,7 @@ from .context import (
     KeyNotInContext,
     MergeError,
     Meta,
+    Node,
     ParamsFileNotFound,
     SetError,
 )
@@ -39,6 +40,8 @@ IN_KWD = "in"
 SET_KWD = "set"
 
 DEFAULT_SENTINEL = object()
+
+JOIN = "-"
 
 
 class ResolveError(DvcException):
@@ -116,10 +119,10 @@ class DataResolver:
     def _resolve_entry(self, name: str, definition):
         context = Context.clone(self.global_ctx)
         if FOREACH_KWD in definition:
+            assert IN_KWD in definition
             self.set_context_from(
                 context, definition.get(SET_KWD, {}), source=[name, "set"]
             )
-            assert IN_KWD in definition
             return self._foreach(
                 context, name, definition[FOREACH_KWD], definition[IN_KWD]
             )
@@ -204,24 +207,75 @@ class DataResolver:
         return self.wdir / str(wdir)
 
     def _foreach(self, context: Context, name: str, foreach_data, in_data):
-        def each_iter(value, key=DEFAULT_SENTINEL):
-            c = Context.clone(context)
-            c["item"] = value
-            if key is not DEFAULT_SENTINEL:
-                c["key"] = key
-            suffix = str(key if key is not DEFAULT_SENTINEL else value)
-            return self._resolve_stage(c, f"{name}-{suffix}", in_data)
-
-        iterable = context.resolve(foreach_data, unwrap=False)
-
-        assert isinstance(iterable, (Sequence, Mapping)) and not isinstance(
-            iterable, str
-        ), f"got type of {type(iterable)}"
-        if isinstance(iterable, Sequence):
-            gen = (each_iter(v) for v in iterable)
-        else:
-            gen = (each_iter(v, k) for k, v in iterable.items())
+        iterable = self._resolve_foreach_data(context, name, foreach_data)
+        args = (context, name, in_data, iterable)
+        it = (
+            range(len(iterable))
+            if not isinstance(iterable, Mapping)
+            else iterable
+        )
+        gen = (self._each_iter(*args, i) for i in it)
         return join(gen)
+
+    def _each_iter(self, context: Context, name: str, in_data, iterable, key):
+        value = iterable[key]
+        c = Context.clone(context)
+        suffix = c["item"] = value
+        if isinstance(iterable, Mapping):
+            suffix = c["key"] = key
+
+        generated = f"{name}{JOIN}{suffix}"
+        try:
+            return self._resolve_stage(c, generated, in_data)
+        except ContextError as exc:
+            # pylint: disable=no-member
+            if isinstance(exc, MergeError) and exc.key in self._inserted_keys(
+                iterable
+            ):
+                raise ResolveError(
+                    f"attempted to redefine '{exc.key}' in stage '{generated}'"
+                    " generated through 'foreach'"
+                )
+            format_and_raise(
+                exc, f"stage '{generated}' (gen. from '{name}')", self.relpath
+            )
+
+    def _resolve_foreach_data(
+        self, context: "Context", name: str, foreach_data
+    ):
+        try:
+            iterable = context.resolve(foreach_data, unwrap=False)
+        except (ContextError, ParseError) as exc:
+            format_and_raise(exc, f"'stages.{name}.foreach'", self.relpath)
+        if isinstance(iterable, str) or not isinstance(
+            iterable, (Sequence, Mapping)
+        ):
+            raise ResolveError(
+                f"failed to resolve 'stages.{name}.foreach'"
+                f" in '{self.relpath}': expected list/dictionary, got "
+                + type(
+                    iterable.value if isinstance(iterable, Node) else iterable
+                ).__name__
+            )
+
+        warn_for = [k for k in self._inserted_keys(iterable) if k in context]
+        if warn_for:
+            logger.warning(
+                "%s %s already specified, "
+                "will be overwritten for stages generated from '%s'",
+                " and ".join(warn_for),
+                "is" if len(warn_for) == 1 else "are",
+                name,
+            )
+
+        return iterable
+
+    @staticmethod
+    def _inserted_keys(iterable):
+        keys = ["item"]
+        if isinstance(iterable, Mapping):
+            keys.append("key")
+        return keys
 
     @classmethod
     def set_context_from(cls, context: Context, to_set, source=None):
