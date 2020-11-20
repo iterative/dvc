@@ -4,7 +4,14 @@ from math import pi
 import pytest
 
 from dvc.parsing import DEFAULT_PARAMS_FILE
-from dvc.parsing.context import Context, CtxDict, CtxList, MergeError, Value
+from dvc.parsing.context import (
+    Context,
+    CtxDict,
+    CtxList,
+    KeyNotInContext,
+    MergeError,
+    Value,
+)
 from dvc.tree.local import LocalTree
 from dvc.utils.serialize import dump_yaml
 from tests.func.test_stage_resolver import recurse_not_a_node
@@ -125,7 +132,7 @@ def test_select():
     assert context.select("lst") == CtxList([1, 2, 3])
     assert context.select("lst.0") == Value(1)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(KeyNotInContext):
         context.select("baz")
 
     d = {
@@ -139,7 +146,7 @@ def test_select():
     assert context.select("lst.0") == CtxDict(d["lst"][0])
     assert context.select("lst.1") == CtxDict(d["lst"][1])
 
-    with pytest.raises(ValueError):
+    with pytest.raises(KeyNotInContext):
         context.select("lst.2")
 
     for i, _ in enumerate(d["lst"]):
@@ -247,7 +254,7 @@ def test_clone():
     assert c1 != c2
     assert c1 == Context(d)
     assert c2.select("lst.0.foo0") == Value("foo")
-    with pytest.raises(ValueError):
+    with pytest.raises(KeyNotInContext):
         c2.select("lst.1.foo1")
 
 
