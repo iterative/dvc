@@ -3,7 +3,7 @@ from voluptuous import Any, Optional, Required, Schema
 from dvc import dependency, output
 from dvc.hash_info import HashInfo
 from dvc.output import CHECKSUMS_SCHEMA, BaseOutput
-from dvc.parsing import FOREACH_KWD, IN_KWD, SET_KWD, VARS_KWD
+from dvc.parsing import DO_KWD, FOREACH_KWD, SET_KWD, VARS_KWD
 from dvc.stage.params import StageParams
 
 STAGES = "stages"
@@ -83,7 +83,7 @@ STAGE_DEFINITION = {
 FOREACH_IN = {
     Optional(SET_KWD): dict,
     Required(FOREACH_KWD): Any(dict, list, str),
-    Required(IN_KWD): STAGE_DEFINITION,
+    Required(DO_KWD): STAGE_DEFINITION,
 }
 SINGLE_PIPELINE_STAGE_SCHEMA = {str: Any(STAGE_DEFINITION, FOREACH_IN)}
 MULTI_STAGE_SCHEMA = {
