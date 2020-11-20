@@ -99,7 +99,8 @@ class S3(Base, CloudURLInfo):
 
 
 @pytest.fixture
-def s3():
+def s3(test_config):
+    test_config.requires("s3")
     with mock_s3():
         import boto3
 
@@ -109,7 +110,8 @@ def s3():
 
 
 @pytest.fixture
-def real_s3():
+def real_s3(test_config):
+    test_config.requires("s3")
     if not S3.should_test():
         pytest.skip("no real s3")
     yield S3(S3.get_url())

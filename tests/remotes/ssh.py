@@ -113,9 +113,10 @@ class SSHMocked(Base, URLInfo):
 
 
 @pytest.fixture
-def ssh_server():
+def ssh_server(test_config):
     import mockssh
 
+    test_config.requires("ssh")
     users = {TEST_SSH_USER: TEST_SSH_KEY_PATH}
     with mockssh.Server(users) as s:
         yield s

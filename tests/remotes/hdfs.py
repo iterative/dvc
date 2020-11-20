@@ -70,7 +70,9 @@ class HDFS(Base, URLInfo):  # pylint: disable=abstract-method
 
 
 @pytest.fixture(scope="session")
-def hadoop():
+def hadoop(test_config):
+    test_config.requires("hdfs")
+
     if platform.system() != "Linux":
         pytest.skip("only supported on Linux")
 
