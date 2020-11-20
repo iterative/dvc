@@ -111,20 +111,34 @@ def test_modify_params(tmp_dir, scm, dvc, mocker, changes, expected):
     ).read_text().strip() == expected
 
 
-def test_checkout(tmp_dir, scm, dvc, exp_stage):
-    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
+@pytest.mark.parametrize("queue", [True, False])
+def test_checkout(tmp_dir, scm, dvc, exp_stage, queue):
+    metrics_original = (tmp_dir / "metrics.yaml").read_text().strip()
+    results = dvc.experiments.run(
+        exp_stage.addressing, params=["foo=2"], queue=queue
+    )
     exp_a = first(results)
 
-    results = dvc.experiments.run(exp_stage.addressing, params=["foo=3"])
+    results = dvc.experiments.run(
+        exp_stage.addressing, params=["foo=3"], queue=queue
+    )
     exp_b = first(results)
 
     dvc.experiments.checkout(exp_a)
     assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 2"
-    assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 2"
+    assert (
+        (tmp_dir / "metrics.yaml").read_text().strip() == metrics_original
+        if queue
+        else "foo: 2"
+    )
 
     dvc.experiments.checkout(exp_b)
     assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 3"
-    assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 3"
+    assert (
+        (tmp_dir / "metrics.yaml").read_text().strip() == metrics_original
+        if queue
+        else "foo: 3"
+    )
 
 
 def test_get_baseline(tmp_dir, scm, dvc, exp_stage):

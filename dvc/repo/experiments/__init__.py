@@ -847,7 +847,7 @@ class Experiments:
         self._scm_checkout(rev)
 
         branch = self._get_branch_containing(rev)
-        m = self.BRANCH_RE.match(branch)
+        m = self.BRANCH_RE.match(branch) if branch else None
         if m and m.group("checkpoint"):
             kwargs.update({"allow_missing": True, "quiet": True})
 
@@ -874,6 +874,9 @@ class Experiments:
             remove(tmp)
             if dirty:
                 self._unstash_workspace()
+            args_file = os.path.join(self.repo.tmp_dir, self.PACKED_ARGS_FILE)
+            if os.path.exists(args_file):
+                remove(args_file)
 
         if need_checkout:
             dvc_checkout(self.repo, **kwargs)
