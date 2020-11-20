@@ -1,12 +1,11 @@
 import logging
-import os
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from itertools import starmap
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Set
 
-from funcy import first, join
+from funcy import join
 
 from dvc.dependency.param import ParamsDependency
 from dvc.path_info import PathInfo
@@ -19,7 +18,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 STAGES_KWD = "stages"
-USE_KWD = "use"
 VARS_KWD = "vars"
 WDIR_KWD = "wdir"
 DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
@@ -33,24 +31,46 @@ DEFAULT_SENTINEL = object()
 
 class DataResolver:
     def __init__(self, repo: "Repo", wdir: PathInfo, d: dict):
-        to_import: PathInfo = wdir / d.get(USE_KWD, DEFAULT_PARAMS_FILE)
-        vars_ = d.get(VARS_KWD, {})
-        vars_ctx = Context(vars_)
-        if os.path.exists(to_import):
-            self.global_ctx_source = to_import
+
+        self.data: dict = d
+        self.wdir = wdir
+        self.repo = repo
+        self.imported_files: Set[PathInfo] = set()
+
+        to_import: PathInfo = wdir / DEFAULT_PARAMS_FILE
+        if repo.tree.exists(to_import):
+            self.imported_files = {to_import}
             self.global_ctx = Context.load_from(repo.tree, str(to_import))
         else:
             self.global_ctx = Context()
-            self.global_ctx_source = None
             logger.debug(
                 "%s does not exist, it won't be used in parametrization",
                 to_import,
             )
 
-        self.global_ctx.merge_update(vars_ctx)
-        self.data: dict = d
-        self.wdir = wdir
-        self.repo = repo
+        vars_ = d.get(VARS_KWD, [])
+        self.load_from_vars(
+            self.global_ctx, vars_, wdir, skip_imports=self.imported_files
+        )
+
+    def load_from_vars(
+        self,
+        context: "Context",
+        vars_: List,
+        wdir: PathInfo,
+        skip_imports: Set[PathInfo],
+    ):
+        for item in vars_:
+            assert isinstance(item, (str, dict))
+            if isinstance(item, str):
+                path = wdir / item
+                if path in skip_imports:
+                    continue
+
+                context.merge_from(self.repo.tree, str(path))
+                skip_imports.add(path)
+            else:
+                context.merge_update(Context(item))
 
     def _resolve_entry(self, name: str, definition):
         context = Context.clone(self.global_ctx)
@@ -77,33 +97,10 @@ class DataResolver:
                 "Stage %s has different wdir than dvc.yaml file", name
             )
 
-        contexts = []
-        params_yaml_file = wdir / DEFAULT_PARAMS_FILE
-        if self.global_ctx_source != params_yaml_file:
-            if os.path.exists(params_yaml_file):
-                contexts.append(
-                    Context.load_from(self.repo.tree, str(params_yaml_file))
-                )
-            else:
-                logger.debug(
-                    "%s does not exist for stage %s", params_yaml_file, name
-                )
-
-        params_deps = definition.get(PARAMS_KWD, [])
-        params_files = {
-            wdir / first(item)
-            for item in params_deps
-            if item and isinstance(item, dict)
-        }
-        for params_file in params_files - {
-            self.global_ctx_source,
-            params_yaml_file,
-        }:
-            contexts.append(
-                Context.load_from(self.repo.tree, str(params_file))
-            )
-
-        context.merge_update(*contexts)
+        vars_ = definition.pop(VARS_KWD, [])
+        self.load_from_vars(
+            context, vars_, wdir, skip_imports=deepcopy(self.imported_files)
+        )
 
         logger.trace(  # pytype: disable=attribute-error
             "Context during resolution of stage %s:\n%s", name, context
