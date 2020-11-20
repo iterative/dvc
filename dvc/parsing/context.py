@@ -9,6 +9,7 @@ from typing import Any, List, Optional, Union
 
 from funcy import identity, rpartial
 
+from dvc.exceptions import DvcException
 from dvc.parsing.interpolate import (
     get_expression,
     get_matches,
@@ -21,15 +22,36 @@ from dvc.utils.serialize import LOADERS
 SeqOrMap = Union[Sequence, Mapping]
 
 
+class ContextError(DvcException):
+    pass
+
+
+class MergeError(ContextError):
+    def __init__(self, key, new, into):
+        self.key = key
+        if not isinstance(into[key], Node) or not isinstance(new, Node):
+            super().__init__(
+                f"cannot merge '{key}' as it already exists in {into}"
+            )
+            return
+
+        assert isinstance(new, Node) and isinstance(into[key], Node)
+        preexisting = into[key].meta.source
+        new_src = new.meta.source
+        path = new.meta.path()
+        super().__init__(
+            f"cannot redefine '{path}' from '{new_src}'"
+            f" as it already exists in '{preexisting}'"
+        )
+
+
 def _merge(into, update, overwrite):
     for key, val in update.items():
         if isinstance(into.get(key), Mapping) and isinstance(val, Mapping):
             _merge(into[key], val, overwrite)
         else:
             if key in into and not overwrite:
-                raise ValueError(
-                    f"Cannot overwrite as key {key} already exists in {into}"
-                )
+                raise MergeError(key, val, into)
             into[key] = val
             assert isinstance(into[key], Node)
 
