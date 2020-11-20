@@ -319,7 +319,7 @@ class Context(CtxDict):
         _, ext = os.path.splitext(file)
         loader = LOADERS[ext]
 
-        meta = Meta(source=str(path), local=False)
+        meta = Meta(source=file, local=False)
         return cls(loader(path, tree=tree), meta=meta)
 
     def merge_from(self, tree, path: PathInfo, overwrite=False):
