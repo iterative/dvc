@@ -63,7 +63,7 @@ PARAM_PSTAGE_NON_DEFAULT_SCHEMA = {str: [str]}
 VARS_SCHEMA = [str, dict]
 
 STAGE_DEFINITION = {
-    StageParams.PARAM_CMD: str,
+    StageParams.PARAM_CMD: Any(str, list),
     Optional(SET_KWD): dict,
     Optional(StageParams.PARAM_WDIR): str,
     Optional(StageParams.PARAM_DEPS): [str],
