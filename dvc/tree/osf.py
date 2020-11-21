@@ -67,8 +67,13 @@ class OSFTree(BaseTree):
             raise OSFAuthError
         return project
 
+    @wrap_prop(threading.Lock())
+    @cached_property
+    def storage(self):
+        return self.project.storage()
+
     def _get_file_obj(self, path_info):
-        for file in self.project.storage().files:
+        for file in self.storage.files:
             if file.path == path_info.path:
                 return file
 
@@ -82,7 +87,8 @@ class OSFTree(BaseTree):
         return any(path_info.path == path for path in paths)
 
     def _list_paths(self):
-        for file in self.project.storage().files:
+        # print(list(self.storage.files))
+        for file in self.storage.files:
             yield file.path
 
     def isdir(self, path_info):
