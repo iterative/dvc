@@ -588,7 +588,11 @@ class GDriveTree(BaseTree):
             return False
 
     def walk_files(self, path_info, **kwargs):
-        dir_ids = [self._get_item_id(path_info)]
+        try:
+            dir_ids = [self._get_item_id(path_info)]
+        except FileMissingError:
+            return
+
         id_paths = {dir_ids[0]: path_info.path}
 
         while dir_ids:
