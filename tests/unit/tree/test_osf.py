@@ -2,10 +2,11 @@ import os
 
 import pytest
 from mock import call, patch
-from osfclient.models import Folder, OSFCore, Project
+from osfclient.models import File, Folder, OSFCore, Project
 from osfclient.tests import mocks
 from osfclient.tests.fake_responses import files_node, project_node
 
+from dvc.path_info import URLInfo
 from dvc.tree.osf import OSFTree
 
 username = "example@mail.com"
@@ -13,6 +14,12 @@ data_dir = "data"
 url = f"osf://odf.io/{data_dir}"
 project = "abcd"
 password = "12345"
+config = {
+    "url": url,
+    "project": project,
+    "osf_username": username,
+    "password": password,
+}
 
 
 @pytest.fixture
@@ -24,12 +31,6 @@ def passwd_env_var():
 
 
 def test_init(dvc):
-    config = {
-        "url": url,
-        "project": project,
-        "osf_username": username,
-        "password": password,
-    }
     tree = OSFTree(dvc, config)
 
     assert tree.path_info == url
@@ -39,8 +40,8 @@ def test_init(dvc):
 
 
 def test_init_envvar(dvc, passwd_env_var):
-    config = {"url": url, "project": project, "osf_username": username}
-    tree = OSFTree(dvc, config)
+    config_env = {"url": url, "project": project, "osf_username": username}
+    tree = OSFTree(dvc, config_env)
 
     assert tree.password == password
 
@@ -49,12 +50,6 @@ def test_init_envvar(dvc, passwd_env_var):
     OSFCore, "_get", return_value=mocks.FakeResponse(200, project_node)
 )
 def test_project(OSFCore_get, dvc):
-    config = {
-        "url": url,
-        "project": project,
-        "osf_username": username,
-        "password": password,
-    }
     tree = OSFTree(dvc, config)
     proj = tree.project
 
@@ -69,13 +64,6 @@ def test_project(OSFCore_get, dvc):
 
 @patch.object(OSFCore, "_get")
 def test_list_paths(OSFCore_get, dvc):
-    config = {
-        "url": url,
-        "project": project,
-        "osf_username": username,
-        "password": password,
-    }
-
     _files_url = (
         f"https://api.osf.io/v2//nodes/{project}/files/osfstorage/foo123"
     )
@@ -92,5 +80,30 @@ def test_list_paths(OSFCore_get, dvc):
         assert len(files) == 2
         assert "/foo/hello.txt" in files
         assert "/foo/bye.txt" in files
+
+    OSFCore_get.assert_called_once_with(_files_url)
+
+
+@patch.object(OSFCore, "_get")
+def test_get_file_obj(OSFCore_get, dvc):
+    _files_url = (
+        f"https://api.osf.io/v2//nodes/{project}/files/osfstorage/data123"
+    )
+    json = files_node(
+        project, "osfstorage", ["data/hello.txt", "data/bye.txt"]
+    )
+    response = mocks.FakeResponse(200, json)
+    OSFCore_get.return_value = response
+
+    store = Folder({})
+    store._files_url = _files_url
+
+    path_info = URLInfo(url) / "hello.txt"
+
+    with patch.object(OSFTree, "storage", new=store):
+        tree = OSFTree(dvc, config)
+        file = tree._get_file_obj(path_info)
+        assert isinstance(file, File)
+        assert file.path == "/data/hello.txt"
 
     OSFCore_get.assert_called_once_with(_files_url)
