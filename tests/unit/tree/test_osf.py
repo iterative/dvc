@@ -107,3 +107,32 @@ def test_get_file_obj(OSFCore_get, dvc):
         assert file.path == "/data/hello.txt"
 
     OSFCore_get.assert_called_once_with(_files_url)
+
+
+def test_is_dir(dvc):
+    path_info = URLInfo(url) / "dir/"
+    f = File({})
+
+    f.path = "/data/dir/"
+    with patch.object(OSFTree, "_get_file_obj", return_value=f):
+        tree = OSFTree(dvc, config)
+        assert tree.isdir(path_info)
+
+    f.path = "/data/file"
+    with patch.object(OSFTree, "_get_file_obj", return_value=f):
+        tree = OSFTree(dvc, config)
+        assert not tree.isdir(path_info)
+
+
+def test_walk_files(dvc):
+    path_info = URLInfo(url)
+
+    f1 = "/data/dir/"
+    f2 = "/data/file1"
+    f3 = "/data/file2"
+
+    with patch.object(OSFTree, "_list_paths", return_value=[f1, f2, f3]):
+        tree = OSFTree(dvc, config)
+        files = [i.url for i in tree.walk_files(path_info)]
+        assert "osf://odf.io/data/file1" in files
+        assert "osf://odf.io/data/file2" in files
