@@ -17,7 +17,7 @@ class HDFS(Base, URLInfo):  # pylint: disable=abstract-method
     def _hdfs(self):
         import pyarrow
 
-        conn = pyarrow.hdfs.connect(self.host, self.port)
+        conn = pyarrow.hdfs.HadoopFileSystem(self.host, self.port)
         try:
             yield conn
         finally:
@@ -125,7 +125,7 @@ def hdfs_server(hadoop, docker_compose, docker_services):
         try:
             # NOTE: just connecting or even opening something is not enough,
             # we need to make sure that we are able to write something.
-            conn = pyarrow.hdfs.connect("127.0.0.1", port)
+            conn = pyarrow.hdfs.HadoopFileSystem("127.0.0.1", port)
             try:
                 with conn.open(str(uuid.uuid4()), "wb") as fobj:
                     fobj.write(b"test")

@@ -46,10 +46,11 @@ class HDFSTree(BaseTree):
 
     @staticmethod
     def hdfs(path_info):
+
         import pyarrow
 
         return get_connection(
-            pyarrow.hdfs.connect,
+            pyarrow.hdfs.HadoopFileSystem,
             path_info.host,
             path_info.port,
             user=path_info.user,
