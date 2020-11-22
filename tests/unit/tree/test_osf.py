@@ -2,7 +2,7 @@ import os
 
 import pytest
 from mock import call, patch
-from osfclient.models import File, Folder, OSFCore, Project
+from osfclient.models import File, Folder, OSFCore, Project, Storage
 from osfclient.tests import mocks
 from osfclient.tests.fake_responses import files_node, project_node
 
@@ -136,3 +136,63 @@ def test_walk_files(dvc):
         files = [i.url for i in tree.walk_files(path_info)]
         assert "osf://odf.io/data/file1" in files
         assert "osf://odf.io/data/file2" in files
+
+
+def test_get_md5(dvc):
+    path_info = URLInfo(url) / "data/file"
+
+    f = File({})
+    f.path = "/data/file"
+    f.hashes = {"md5": "md5_hash"}
+
+    with patch.object(OSFTree, "_get_file_obj", return_value=f):
+        tree = OSFTree(dvc, config)
+        # print(tree._get_file_obj(path_info))
+        assert tree.get_md5(path_info) == "md5_hash"
+
+
+@patch.object(File, "remove")
+def test_remove(File_remove, dvc):
+    path_info = URLInfo(url) / "data/file"
+    f = File({})
+    f.path = "/data/file"
+
+    with patch.object(OSFTree, "_get_file_obj", return_value=f):
+        tree = OSFTree(dvc, config)
+        tree.remove(path_info)
+
+    File_remove.assert_called_once()
+
+
+def test_download(dvc, tmp_dir):
+    def write_mock(f):
+        f.write("test".encode("utf-8"))
+
+    path_info = URLInfo(url) / "data/file"
+    f = File({})
+    f.path = "/data/file"
+    f.write_to = write_mock
+
+    to_file = tmp_dir / "file"
+
+    with patch.object(OSFTree, "_get_file_obj", return_value=f):
+        tree = OSFTree(dvc, config)
+        tree._download(path_info, to_file, no_progress_bar=True)
+
+    with open((tmp_dir / "file"), "rb") as fp:
+        assert fp.read().decode("utf-8") == "test"
+
+
+@patch.object(Storage, "create_file")
+def test_upload(Storage_create_file, dvc, tmp_dir):
+    to_info = URLInfo(url) / "data"
+    store = Storage({})
+    from_file = tmp_dir / "file"
+    with open(from_file, "w") as f:
+        f.write("test")
+
+    with patch.object(OSFTree, "storage", new=store):
+        tree = OSFTree(dvc, config)
+        tree._upload(from_file, to_info, no_progress_bar=True)
+
+    Storage_create_file.assert_called_once()
