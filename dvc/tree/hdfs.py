@@ -46,7 +46,6 @@ class HDFSTree(BaseTree):
 
     @staticmethod
     def hdfs(path_info):
-
         import pyarrow
 
         return get_connection(
