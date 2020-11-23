@@ -17,7 +17,7 @@ password = "12345"
 config = {
     "url": url,
     "project": project,
-    "osf_username": username,
+    "username": username,
     "password": password,
 }
 

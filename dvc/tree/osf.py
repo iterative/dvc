@@ -19,9 +19,8 @@ class OSFAuthError(DvcException):
     def __init__(self):
         message = (
             "OSF authorization failed. Please check or provide"
-            " osf_username and password."
-            " It is also possible that you do not have access"
-            " to a project."
+            " osf_username and password. See "
+            "https://bit.ly/375On32 for details"
         )
         super().__init__(message)
 
@@ -37,7 +36,7 @@ class OSFTree(BaseTree):
 
         self.path_info = self.PATH_CLS(config["url"])
 
-        self.osf_username = config.get("osf_username")
+        self.osf_username = config.get("username")
         self.project_guid = config.get("project")
         self.password = os.getenv(
             "OSF_PASSWORD", None
