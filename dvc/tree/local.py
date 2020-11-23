@@ -2,6 +2,7 @@ import errno
 import logging
 import os
 import stat
+from typing import Any, Dict
 
 from funcy import cached_property
 from shortuuid import uuid
@@ -27,7 +28,10 @@ class LocalTree(BaseTree):
     TRAVERSE_PREFIX_LEN = 2
 
     CACHE_MODE = 0o444
-    SHARED_MODE_MAP = {None: (0o644, 0o755), "group": (0o664, 0o775)}
+    SHARED_MODE_MAP: Dict[Any, Any] = {
+        None: (0o644, 0o755),
+        "group": (0o664, 0o775),
+    }
 
     def __init__(self, repo, config, use_dvcignore=False, dvcignore_root=None):
         super().__init__(repo, config)

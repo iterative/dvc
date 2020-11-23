@@ -32,7 +32,6 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
 
     scheme = "local"
     PARAM_CHECKSUM = "md5"
-    _dir_entry_hashes = {}
 
     def __init__(self, repo, fetch=False, stream=False):
         super().__init__(repo, {"url": repo.root_dir})
