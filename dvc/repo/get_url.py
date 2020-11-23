@@ -5,7 +5,6 @@ import dvc.output as output
 from dvc.utils import resolve_output
 
 
-@staticmethod
 def get_url(url, out=None):
     out = resolve_output(url, out)
 
