@@ -3,7 +3,13 @@ import textwrap
 
 import pytest
 
-from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK, Dvcfile, SingleStageFile
+from dvc.dvcfile import (
+    PIPELINE_FILE,
+    PIPELINE_LOCK,
+    Dvcfile,
+    ParametrizedDumpError,
+    SingleStageFile,
+)
 from dvc.stage.exceptions import (
     StageFileDoesNotExistError,
     StageFileFormatError,
@@ -355,3 +361,26 @@ def test_dvcfile_dump_preserves_comments(tmp_dir, dvc):
 
     dvcfile.dump(stage)
     assert dvcfile._load()[1] == (text + ":\n\tcache: false\n".expandtabs())
+
+
+@pytest.mark.parametrize(
+    "data, name",
+    [
+        ({"build-us": {"cmd": "echo ${foo}"}}, "build-us"),
+        (
+            {"build": {"foreach": ["us", "gb"], "do": {"cmd": "echo ${foo}"}}},
+            "build@us",
+        ),
+    ],
+)
+def test_dvcfile_try_dumping_parametrized_stage(tmp_dir, dvc, data, name):
+    dump_yaml("dvc.yaml", {"stages": data, "vars": [{"foo": "foobar"}]})
+    dvc.config["feature"]["parametrization"] = True
+
+    stage = dvc.get_stage(name=name)
+    dvcfile = stage.dvcfile
+
+    with pytest.raises(ParametrizedDumpError) as exc:
+        dvcfile.dump(stage)
+
+    assert str(exc.value) == f"cannot dump a parametrized stage: '{name}'"
