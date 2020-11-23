@@ -190,7 +190,7 @@ class Container(Node, ABC):
         index = index.strip()
         index = self._key_transform(index)
         try:
-            d = self.data[index]
+            d = self[index]
         except LookupError as exc:
             raise ValueError(
                 f"Could not find '{index}' in {self.data}"

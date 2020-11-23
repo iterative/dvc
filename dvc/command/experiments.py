@@ -51,13 +51,13 @@ def _filter_names(
                 update_func({match: None for match in matches})
 
     if include:
-        ret = OrderedDict()
+        ret: OrderedDict = OrderedDict()
         _filter(include, ret.update)
     else:
         ret = OrderedDict({name: None for name in names})
 
     if exclude:
-        _filter(exclude, ret.difference_update)
+        _filter(exclude, ret.difference_update)  # type: ignore[attr-defined]
 
     return [".".join(name) for name in ret]
 
