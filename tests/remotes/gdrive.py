@@ -38,7 +38,8 @@ class GDrive(Base, CloudURLInfo):
 
 
 @pytest.fixture
-def gdrive(make_tmp_dir):
+def gdrive(test_config, make_tmp_dir):
+    test_config.requires("gdrive")
     if not GDrive.should_test():
         pytest.skip("no gdrive")
 

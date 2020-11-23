@@ -35,9 +35,10 @@ class HTTP(Base, HTTPURLInfo):
 
 
 @pytest.fixture(scope="session")
-def http_server(tmp_path_factory):
+def http_server(test_config, tmp_path_factory):
     from tests.utils.httpd import StaticFileServer
 
+    test_config.requires("http")
     directory = os.fspath(tmp_path_factory.mktemp("http"))
     with StaticFileServer(directory=directory) as httpd:
         yield httpd

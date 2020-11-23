@@ -65,7 +65,7 @@ jobs:
         mkdir -p scripts/ci
         echo "$GS_CREDS_JSON" > scripts/ci/gcp-creds.json
     - name: run tests
-      run: python -m tests -ra --cov-report=xml --cov-report=term --tap-combined
+      run: python -m tests --all -ra --cov-report=xml --cov-report=term --tap-combined
     - name: upload coverage report
       uses: codecov/codecov-action@v1.0.13
       with:

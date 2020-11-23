@@ -23,7 +23,9 @@ class Azure(Base, CloudURLInfo):
 
 
 @pytest.fixture(scope="session")
-def azure_server(docker_compose, docker_services):
+def azure_server(test_config, docker_compose, docker_services):
+    test_config.requires("azure")
+
     from azure.core.exceptions import (  # pylint: disable=no-name-in-module
         AzureError,
     )
