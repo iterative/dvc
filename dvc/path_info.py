@@ -2,6 +2,7 @@
 import os
 import pathlib
 import posixpath
+from typing import Callable
 from urllib.parse import urlparse
 
 from funcy import cached_property
@@ -253,7 +254,7 @@ class CloudURLInfo(URLInfo):
 
 
 class HTTPURLInfo(URLInfo):
-    __hash__ = URLInfo.__hash__
+    __hash__: Callable[["HTTPURLInfo"], int] = URLInfo.__hash__
 
     def __init__(self, url):
         p = urlparse(url)

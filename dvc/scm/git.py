@@ -90,7 +90,7 @@ class Git(Base):
         self.files_to_track = set()
 
     @property
-    def root_dir(self):
+    def root_dir(self) -> str:
         return self.repo.working_tree_dir
 
     @staticmethod
