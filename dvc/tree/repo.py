@@ -7,12 +7,12 @@ from itertools import takewhile
 from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union
 
 from funcy import lfilter, wrap_with
-from pygtrie import StringTrie
 
 from dvc.dvcfile import is_valid_filename
 from dvc.hash_info import HashInfo
 from dvc.path_info import PathInfo
 from dvc.utils import file_md5, is_exec
+from dvc.utils.collections import PathStringTrie
 from dvc.utils.fs import copy_fobj_to_file, makedirs
 
 from ._metadata import Metadata
@@ -62,7 +62,7 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         self.root_dir = repo.root_dir
         self._traverse_subrepos = subrepos
 
-        self._subrepos_trie = StringTrie(separator=os.sep)
+        self._subrepos_trie = PathStringTrie()
         """Keeps track of each and every path with the corresponding repo."""
 
         self._subrepos_trie[self.root_dir] = repo
