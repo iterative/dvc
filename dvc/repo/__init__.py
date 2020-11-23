@@ -2,6 +2,7 @@ import logging
 import os
 from contextlib import contextmanager
 from functools import wraps
+from typing import TYPE_CHECKING
 
 from funcy import cached_property, cat
 from git import InvalidGitRepositoryError
@@ -26,14 +27,18 @@ from ..utils import parse_target
 from .graph import build_graph, build_outs_graph, get_pipeline, get_pipelines
 from .trie import build_outs_trie
 
+if TYPE_CHECKING:
+    from dvc.tree.base import BaseTree
+
+
 logger = logging.getLogger(__name__)
 
 
 @contextmanager
-def lock_repo(repo):
+def lock_repo(repo: "Repo"):
     # pylint: disable=protected-access
-    depth = getattr(repo, "_lock_depth", 0)
-    repo._lock_depth = depth + 1
+    depth = repo._lock_depth
+    repo._lock_depth += 1
 
     try:
         if depth > 0:
@@ -69,12 +74,12 @@ class Repo:
     from dvc.repo.fetch import fetch
     from dvc.repo.freeze import freeze, unfreeze
     from dvc.repo.gc import gc
-    from dvc.repo.get import get
-    from dvc.repo.get_url import get_url
+    from dvc.repo.get import get as _get
+    from dvc.repo.get_url import get_url as _get_url
     from dvc.repo.imp import imp
     from dvc.repo.imp_url import imp_url
     from dvc.repo.install import install
-    from dvc.repo.ls import ls
+    from dvc.repo.ls import ls as _ls
     from dvc.repo.move import move
     from dvc.repo.pull import pull
     from dvc.repo.push import push
@@ -83,6 +88,10 @@ class Repo:
     from dvc.repo.run import run
     from dvc.repo.status import status
     from dvc.repo.update import update
+
+    ls = staticmethod(_ls)
+    get = staticmethod(_get)
+    get_url = staticmethod(_get_url)
 
     def _get_repo_dirs(
         self,
@@ -94,25 +103,29 @@ class Repo:
         assert bool(scm) == bool(rev)
 
         from dvc.scm import SCM
+        from dvc.scm.git import Git
         from dvc.utils.fs import makedirs
 
+        dvc_dir = None
+        tmp_dir = None
         try:
-            tree = scm.get_tree(rev) if rev else None
+            tree = scm.get_tree(rev) if isinstance(scm, Git) and rev else None
             root_dir = self.find_root(root_dir, tree)
             dvc_dir = os.path.join(root_dir, self.DVC_DIR)
             tmp_dir = os.path.join(dvc_dir, "tmp")
             makedirs(tmp_dir, exist_ok=True)
-
         except NotDvcRepoError:
             if not uninitialized:
                 raise
-            try:
-                root_dir = SCM(root_dir or os.curdir).root_dir
-            except (SCMError, InvalidGitRepositoryError):
-                root_dir = SCM(os.curdir, no_scm=True).root_dir
 
-            dvc_dir = None
-            tmp_dir = None
+            try:
+                scm = SCM(root_dir or os.curdir)
+            except (SCMError, InvalidGitRepositoryError):
+                scm = SCM(os.curdir, no_scm=True)
+
+            assert isinstance(scm, Base)
+            root_dir = scm.root_dir
+
         return root_dir, dvc_dir, tmp_dir
 
     def __init__(
@@ -180,6 +193,7 @@ class Repo:
         self.metrics = Metrics(self)
         self.plots = Plots(self)
         self.params = Params(self)
+        self._lock_depth = 0
 
     @cached_property
     def scm(self):
@@ -189,11 +203,11 @@ class Repo:
         return self._scm if self._scm else SCM(self.root_dir, no_scm=no_scm)
 
     @property
-    def tree(self):
+    def tree(self) -> "BaseTree":
         return self._tree
 
     @tree.setter
-    def tree(self, tree):
+    def tree(self, tree: "BaseTree"):
         self._tree = tree
         # Our graph cache is no longer valid, as it was based on the previous
         # tree.
@@ -203,7 +217,7 @@ class Repo:
         return f"{self.__class__.__name__}: '{self.root_dir}'"
 
     @classmethod
-    def find_root(cls, root=None, tree=None):
+    def find_root(cls, root=None, tree=None) -> str:
         root_dir = os.path.realpath(root or os.curdir)
 
         if tree:
