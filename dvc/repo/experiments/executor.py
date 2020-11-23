@@ -41,6 +41,7 @@ class ExperimentExecutor:
         self.branch = branch
         self.repro_args = kwargs.pop("repro_args", [])
         self.repro_kwargs = kwargs.pop("repro_kwargs", {})
+        self.tmp_dir: Optional[TemporaryDirectory] = None
 
     @property
     def tree(self) -> BaseTree:
@@ -85,6 +86,10 @@ class ExperimentExecutor:
         with open_func(path, "rb") as fobj:
             data = pickle.load(fobj)
         return data["args"], data["kwargs"]
+
+    @staticmethod
+    def collect_files(tree: BaseTree, repo_tree: RepoTree):
+        raise NotImplementedError
 
 
 class LocalExecutor(ExperimentExecutor):
