@@ -3,6 +3,7 @@
 import logging
 import os
 import shlex
+from contextlib import contextmanager
 from functools import partial
 from typing import Optional
 
@@ -102,6 +103,10 @@ class Git(Base):
     @property
     def root_dir(self) -> str:
         return self.repo.working_tree_dir
+
+    @cached_property
+    def stash(self):
+        return Stash(self)
 
     @staticmethod
     def clone(url, to_path, rev=None, shallow_branch=None):
@@ -502,28 +507,57 @@ class Git(Base):
             commit = commit.object
         return commit
 
-    def get_stash(self, ref: Optional[str] = None):
-        from dulwich.stash import Stash
-
-        if ref is not None:
-            ref = os.fsencode(ref)
-        else:
-            ref = b"refs/stash"
-
-        return Stash(self.dulwich_repo, ref=ref)
-
-    def set_ref(self, name: str, new_ref: str, old_ref: Optional[str] = None):
+    def set_ref(
+        self,
+        name: str,
+        new_ref: str,
+        old_ref: Optional[str] = None,
+        message: Optional[str] = None,
+        symbolic: Optional[bool] = False,
+    ):
         """Set the specified git ref.
 
-        If old_ref is specified, ref will only be set if it currently equals
-        old_ref.
+        Optional kwargs:
+            old_ref: If specified, ref will only be set if it currently equals
+                old_ref. Has no effect is symblic is True.
+            message: Optional reflog message.
+            symbolic: If True, ref will be set as a symbolic ref to new_ref
+                rather than the dereferenced object.
         """
         name = os.fsencode(name)
         new_ref = os.fsencode(new_ref)
         if old_ref is not None:
             old_ref = os.fsencode(old_ref)
-        if not self.dulwich_repo.refs.set_if_equals(name, old_ref, new_ref):
+        if message is not None:
+            message = message.encode("utf-8")
+        if symbolic:
+            return self.dulwich_repo.refs.set_symbolic_ref(
+                name, new_ref, message=message
+            )
+        if not self.dulwich_repo.refs.set_if_equals(
+            name, old_ref, new_ref, message=message
+        ):
             raise SCMError(f"Failed to set '{name}'")
+
+    def get_ref(self, name, follow: Optional[bool] = True):
+        """Return the value of specified ref.
+
+        If follow is false, symbolic refs will not be dereferenced.
+        """
+        from dulwich.refs import parse_symref_value
+
+        name = os.fsencode(name)
+        if follow:
+            ref = self.dulwich_repo.refs[name]
+        else:
+            ref = self.dulwich_repo.refs.read_ref(name)
+            try:
+                ref = parse_symref_value(ref)
+            except ValueError:
+                pass
+        if ref:
+            ref = os.fsdecode(ref)
+        return ref
 
     def remove_ref(self, name: str, old_ref: Optional[str] = None):
         """Remove the specified git ref.
@@ -560,3 +594,150 @@ class Git(Base):
         self.repo.git.reflog("delete", "--updateref", ref)
         if len(self.repo.refs["refs/stash"].log()) == 0:
             self.remove_ref(ref)
+
+    @contextmanager
+    def detach_head(self, rev: Optional[str] = None):
+        """Context manager for performing detached HEAD SCM operations.
+
+        Detaches and restores HEAD similar to interactive git rebase.
+        Restore is equivalent to 'reset --soft', meaning the caller is
+        is responsible for preserving & restoring working tree state
+        (i.e. via stash) when applicable.
+
+        Yields revision of detached head.
+        """
+        from dulwich.refs import LOCAL_BRANCH_PREFIX
+
+        if not rev:
+            rev = "HEAD"
+        orig_head = self.get_ref("HEAD", follow=False)
+        logger.debug("Detaching HEAD at '%s'", rev)
+        self.checkout(rev, detach=True)
+        try:
+            yield self.get_ref("HEAD")
+        finally:
+            prefix = os.fsdecode(LOCAL_BRANCH_PREFIX)
+            if orig_head.startswith(prefix):
+                orig_head = orig_head[len(prefix) :]
+            logger.debug("Restore HEAD to '%s'", orig_head)
+            self.checkout(orig_head)
+
+    @contextmanager
+    def stash_workspace(self, **kwargs):
+        """Stash restore any workspace changes.
+
+        Yields revision of the stash commit.
+        """
+        logger.debug("Stashing workspace")
+        rev = self.stash.push(**kwargs)
+        assert len(self.stash) == 1
+        try:
+            yield rev
+        finally:
+            logger.debug("Restoring stashed workspace")
+            self.stash.pop()
+
+
+class Stash:
+    """Wrapper for representing Git stash.
+
+    Uses dulwich.stash when possible, `git stash` will be used directly for
+    operations which are not implemented in dulwich.
+    """
+
+    DEFAULT_STASH = "refs/stash"
+
+    def __init__(self, scm, ref: Optional[str] = None):
+        from dulwich.stash import Stash as DulwichStash
+
+        self.ref = ref if ref else self.DEFAULT_STASH
+        self.scm = scm
+        self._stash = DulwichStash(
+            self.scm.dulwich_repo, ref=os.fsencode(self.ref)
+        )
+
+    @property
+    def git(self):
+        return self.scm.repo.git
+
+    def __iter__(self):
+        yield from self._stash.stashes()
+
+    def __len__(self):
+        return len(self._stash)
+
+    def __getitem__(self, index):
+        return self._stash.__getitem__(index)
+
+    def list(self):
+        return self._stash.stashes()
+
+    def push(
+        self,
+        message: Optional[str] = None,
+        include_untracked: Optional[bool] = False,
+    ):
+        # dulwich stash.push does not support include_untracked and does not
+        # touch working tree
+        logger.debug("Stashing changes in '%s'", self.ref)
+        if include_untracked:
+            self._git_push(
+                message=message, include_untracked=include_untracked
+            )
+        else:
+            self._stash.push(message=message.encode("utf-8"))
+            self.git.reset(hard=True)
+        return os.fsdecode(self[0].new_sha)
+
+    def _git_push(
+        self,
+        message: Optional[str] = None,
+        include_untracked: Optional[bool] = False,
+    ):
+        args = ["push"]
+        if message:
+            args.extend(["-m", message])
+        if include_untracked:
+            args.append("--include-untracked")
+        self.git.stash(*args)
+        if self.ref != self.DEFAULT_STASH:
+            # `git stash` CLI doesn't support using custom refspecs,
+            # so we push a commit onto refs/stash, make our refspec
+            # point to the new commit, then pop it from refs/stash
+            # `git stash create` is intended to be used for this kind of
+            # behavior but it doesn't support --include-untracked so we need to
+            # use push
+            commit = self.scm.resolve_commit("stash@{0}")
+            self.scm.set_ref(self.ref, message=commit.message)
+            self.git.stash("drop")
+
+    def pop(self):
+        logger.debug("Popping from stash '%s'", self.ref)
+        rev = os.fsdecode(self[0].new_sha)
+        if self.ref == self.DEFAULT_STASH:
+            logger.debug("git pop")
+            self.git.stash("pop")
+        else:
+            logger.debug("dulwich pop")
+            self.apply(rev)
+            self.drop()
+        return rev
+
+    def apply(self, rev):
+        logger.debug("Applying stash commit '%s'", rev)
+        self.git.stash("apply", rev)
+
+    def drop(self, index: Optional[int] = 0):
+        ref = "{0}@{{{1}}}".format(self.ref, index)
+        if index < 0 or index >= len(self):
+            raise SCMError(f"Invalid stash ref '{ref}'")
+        logger.debug("Dropping '%s'", ref)
+        self.git.reflog("delete", "--updateref", ref)
+        refs = self.scm.dulwich_repo.refs
+        if ref not in refs or len(refs[ref].log()) == 0:
+            self.scm.remove_ref(ref)
+
+    def clear(self):
+        logger.debug("Clear stash '%s'", self.ref)
+        for _ in range(len(self)):
+            self.drop()
