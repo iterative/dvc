@@ -8,6 +8,7 @@ from dvc.path_info import PathInfo
 from dvc.repo import locked
 from dvc.repo.collect import collect
 from dvc.stage import PipelineStage
+from dvc.scm.base import SCMError
 from dvc.utils.serialize import LOADERS, ParseError
 
 if TYPE_CHECKING:
@@ -25,11 +26,20 @@ def _is_params(dep: "BaseOutput"):
     return isinstance(dep, ParamsDependency)
 
 
-def _collect_configs(repo: "Repo", rev) -> List[PathInfo]:
-    params, _ = collect(repo, deps=True, output_filter=_is_params, rev=rev)
-    configs = {p.path_info for p in params}
-    configs.add(PathInfo(repo.root_dir) / ParamsDependency.DEFAULT_PARAMS_FILE)
-    return list(configs)
+def _collect_configs(repo: "Repo", rev, targets=None) -> List[PathInfo]:
+    params, path_infos = collect(
+        repo,
+        targets=targets or [],
+        deps=True,
+        output_filter=_is_params,
+        rev=rev,
+    )
+    path_infos.update({p.path_info for p in params})
+    if not targets:
+        path_infos.add(
+            PathInfo(repo.root_dir) / ParamsDependency.DEFAULT_PARAMS_FILE
+        )
+    return list(path_infos)
 
 
 def _read_params(repo, configs, rev):
@@ -66,11 +76,11 @@ def _collect_vars(repo, params):
 
 
 @locked
-def show(repo, revs=None):
+def show(repo, revs=None, targets=None):
     res = {}
 
     for branch in repo.brancher(revs=revs):
-        configs = _collect_configs(repo, branch)
+        configs = _collect_configs(repo, branch, targets)
         params = _read_params(repo, configs, branch)
         vars_params = _collect_vars(repo, params)
 
@@ -87,8 +97,10 @@ def show(repo, revs=None):
     # Hide workspace params if they are the same as in the active branch
     try:
         active_branch = repo.scm.active_branch()
-    except TypeError:
-        pass  # Detached head
+    except (TypeError, SCMError):
+        # TypeError - detached head
+        # SCMError - no repo case
+        pass
     else:
         if res.get("workspace") == res.get(active_branch):
             res.pop("workspace", None)

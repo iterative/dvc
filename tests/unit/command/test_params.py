@@ -12,6 +12,8 @@ def test_params_diff(dvc, mocker):
             "diff",
             "HEAD~10",
             "HEAD~1",
+            "--targets",
+            "target",
             "--all",
             "--show-json",
             "--show-md",
@@ -26,7 +28,11 @@ def test_params_diff(dvc, mocker):
     assert cmd.run() == 0
 
     m.assert_called_once_with(
-        cmd.repo, a_rev="HEAD~10", b_rev="HEAD~1", all=True,
+        cmd.repo,
+        a_rev="HEAD~10",
+        b_rev="HEAD~1",
+        targets=["target"],
+        all=True,
     )
 
 

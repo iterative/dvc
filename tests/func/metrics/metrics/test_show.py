@@ -161,8 +161,11 @@ def test_show_falsey(tmp_dir, dvc):
 
 
 def test_show_no_repo(tmp_dir):
-    tmp_dir.gen("metrics.json", '{"foo": 0, "bar": 0.0, "baz": {}}')
+    tmp_dir.gen("metrics.json", '{"foo": 0, "bar": 0.0}')
 
     dvc = Repo(uninitialized=True)
 
     dvc.metrics.show(targets=["metrics.json"])
+    assert dvc.metrics.show(targets=["metrics.json"]) == {
+        "": {"metrics.json": {"foo": 0, "bar": 0.0}}
+    }
