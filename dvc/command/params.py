@@ -31,6 +31,8 @@ def _show_diff(diff, markdown=False, no_path=False):
 
 
 class CmdParamsDiff(CmdBase):
+    UNINITIALIZED = True
+
     def run(self):
         try:
             diff = self.repo.params.diff(
