@@ -18,7 +18,6 @@ from dvc.exceptions import DownloadError, DvcException, UploadError
 from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
 from dvc.repo.experiments.executor import ExperimentExecutor, LocalExecutor
-from dvc.scm.git import Git
 from dvc.stage import PipelineStage
 from dvc.stage.run import CheckpointKilledError
 from dvc.stage.serialize import to_lockfile
@@ -137,12 +136,9 @@ class Experiments:
     def exp_dir(self):
         return os.path.join(self.repo.dvc_dir, self.EXPERIMENTS_DIR)
 
-    @cached_property
+    @property
     def scm(self):
-        """Experiments clone scm instance."""
-        if os.path.exists(self.exp_dir):
-            return Git(self.exp_dir)
-        return self._init_clone()
+        return self.repo.scm
 
     @cached_property
     def dvc_dir(self):
@@ -152,19 +148,13 @@ class Experiments:
     def exp_dvc_dir(self):
         return os.path.join(self.exp_dir, self.dvc_dir)
 
-    @cached_property
+    @property
     def exp_dvc(self):
-        """Return clone dvc Repo instance."""
-        from dvc.repo import Repo
-
-        return Repo(self.exp_dvc_dir)
+        return self.repo
 
     @contextmanager
     def chdir(self):
-        cwd = os.getcwd()
-        os.chdir(self.exp_dvc.root_dir)
-        yield self.exp_dvc.root_dir
-        os.chdir(cwd)
+        yield
 
     @cached_property
     def args_file(self):
@@ -172,12 +162,14 @@ class Experiments:
 
     @cached_property
     def stash(self):
-        return self.scm.get_stash(self.STASH_REF)
+        from dvc.scm.git import Stash
+
+        return Stash(self.scm, self.STASH_REF)
 
     @property
     def stash_revs(self):
         revs = {}
-        for i, entry in enumerate(self.stash.stashes()):
+        for i, entry in enumerate(self.stash):
             msg = entry.message.decode("utf-8").strip()
             m = self.STASH_EXPERIMENT_RE.match(msg)
             if m:
@@ -208,28 +200,9 @@ class Experiments:
         refs, namespace, sha1, sha2, name = refname.split("/", maxsplit=4)
         return "/".join([refs, namespace]), sha1 + sha2, name
 
-    def _init_clone(self):
-        src_dir = self.repo.scm.root_dir
-        logger.debug("Initializing experiments clone")
-        git = Git.clone(src_dir, self.exp_dir)
-        self._config_clone()
-        return git
-
-    def _config_clone(self):
-        dvc_dir = relpath(self.repo.dvc_dir, self.repo.scm.root_dir)
-        local_config = os.path.join(self.exp_dir, dvc_dir, "config.local")
-        cache_dir = self.repo.cache.local.cache_dir
-        logger.debug("Writing experiments local config '%s'", local_config)
-        with open(local_config, "w") as fobj:
-            fobj.write(f"[cache]\n    dir = {cache_dir}")
-
     def _scm_checkout(self, rev, **kwargs):
         self.scm.repo.git.reset(hard=True)
         self.scm.repo.git.clean(force=True)
-        if self.scm.repo.head.is_detached:
-            self._checkout_default_branch()
-        if not self.scm.has_rev(rev):
-            self.scm.pull()
         logger.debug("Checking out experiment commit '%s'", rev)
         self.scm.checkout(rev, **kwargs)
 
@@ -269,11 +242,9 @@ class Experiments:
         params: Optional[dict] = None,
         baseline_rev: Optional[str] = None,
         branch: Optional[str] = None,
-        allow_unchanged: Optional[bool] = True,
-        apply_workspace: Optional[bool] = True,
         **kwargs,
     ):
-        """Stash changes from the current (parent) workspace as an experiment.
+        """Stash changes from the workspace as an experiment.
 
         Args:
             params: Optional dictionary of parameter values to be used.
@@ -284,56 +255,44 @@ class Experiments:
             branch: Optional experiment branch name. If specified, the
                 experiment will be added to `branch` instead of creating
                 a new branch.
-            allow_unchanged: Force experiment reproduction even if params are
-                unchanged from the baseline.
-            apply_workspace: Apply changes from the user workspace to the
-                experiment workspace.
         """
-        if branch:
-            rev = self.scm.resolve_rev(branch)
-        else:
-            rev = self.scm.get_rev()
+        with self.scm.stash_workspace(include_untracked=True) as workspace:
+            # If we are not extending an existing branch, apply current
+            # workspace changes to be made in new branch
+            if not branch:
+                self.stash.apply(workspace)
 
-        if apply_workspace:
-            if branch:
-                raise DvcException(
-                    "Cannot apply workspace changes into existing experiment"
-                    "branch."
+            # checkout and detach at branch (or current HEAD)
+            with self.scm.detach_head(branch) as rev:
+                if baseline_rev is None:
+                    baseline_rev = rev
+
+                # update experiment params from command line
+                if params:
+                    self._update_params(params)
+
+                # save additional repro command line arguments
+                self._pack_args(*args, **kwargs)
+
+                # save experiment as a stash commit
+                msg = self._stash_msg(
+                    rev, baseline_rev=baseline_rev, branch=branch
                 )
-            # patch user's workspace into experiments clone
-            tmp = tempfile.NamedTemporaryFile(delete=False).name
-            try:
-                self.repo.scm.repo.git.diff(
-                    patch=True, full_index=True, binary=True, output=tmp
-                )
-                if os.path.getsize(tmp):
-                    logger.debug("Patching experiment workspace")
-                    self.scm.repo.git.apply(tmp)
-            finally:
-                remove(tmp)
+                stash_rev = self.stash.push(message=msg)
 
-        # update experiment params from command line
-        if params:
-            self._update_params(params)
+            logger.debug(
+                (
+                    "Stashed experiment '%s' with baseline '%s' "
+                    "for future execution."
+                ),
+                stash_rev[:7],
+                baseline_rev[:7],
+            )
 
-        if not self._check_dirty() and not allow_unchanged:
-            # experiment matches original baseline
-            raise UnchangedExperimentError(rev)
+            # Reset/clean any changes before prior workspace is unstashed
+            self.scm.repo.git.reset(hard=True)
+            self.scm.repo.git.clean(force=True)
 
-        # save additional repro command line arguments
-        self._pack_args(*args, **kwargs)
-
-        # save experiment as a stash commit w/message containing baseline rev
-        # (stash commits are merge commits and do not contain a parent commit
-        # SHA)
-        msg = self._stash_msg(rev, baseline_rev=baseline_rev, branch=branch)
-        self.stash.push(message=msg.encode("utf-8"))
-        stash_rev = self.scm.resolve_rev(f"{self.STASH_REF}@{{0}}")
-        logger.debug(
-            "Stashed experiment '%s' with baseline '%s' for future execution.",
-            stash_rev[:7],
-            baseline_rev[:7],
-        )
         return stash_rev
 
     def _check_dirty(self) -> bool:
@@ -479,18 +438,8 @@ class Experiments:
                 *args, checkpoint_resume=checkpoint_resume, **kwargs
             )
 
-        rev = self.repo.scm.get_rev()
-        self._scm_checkout(rev, detach=True)
-
         force = kwargs.get("force", False)
-        try:
-            stash_rev = self._stash_exp(
-                *args, baseline_rev=rev, checkpoint_reset=force, **kwargs,
-            )
-        except UnchangedExperimentError as exc:
-            logger.info("Reproducing existing experiment '%s'.", rev[:7])
-            raise exc
-        return stash_rev
+        return self._stash_exp(*args, checkpoint_reset=force, **kwargs)
 
     def _resume_checkpoint(
         self, *args, checkpoint_resume: Optional[str] = None, **kwargs,
@@ -596,23 +545,30 @@ class Experiments:
         # setup executors - unstash experiment, generate executor, upload
         # contents of (unstashed) exp workspace to the executor tree
         executors = {}
-        for rev, item in to_run.items():
-            self._scm_checkout(item.rev)
-            self.scm.repo.git.stash("apply", rev)
-            packed_args, packed_kwargs = self._unpack_args()
-            checkpoint_reset = packed_kwargs.pop("checkpoint_reset", False)
-            executor = LocalExecutor(
-                rev=item.rev,
-                baseline_rev=item.baseline_rev,
-                branch=item.branch,
-                repro_args=packed_args,
-                repro_kwargs=packed_kwargs,
-                dvc_dir=self.dvc_dir,
-                cache_dir=self.repo.cache.local.cache_dir,
-                checkpoint_reset=checkpoint_reset,
-            )
-            self._collect_input(executor)
-            executors[rev] = executor
+        with self.scm.stash_workspace(include_untracked=True):
+            with self.scm.detach_head():
+                for rev, item in to_run.items():
+                    self._scm_checkout(item.rev)
+                    self.stash.apply(rev)
+                    packed_args, packed_kwargs = self._unpack_args()
+                    checkpoint_reset = packed_kwargs.pop(
+                        "checkpoint_reset", False
+                    )
+                    executor = LocalExecutor(
+                        rev=item.rev,
+                        baseline_rev=item.baseline_rev,
+                        branch=item.branch,
+                        repro_args=packed_args,
+                        repro_kwargs=packed_kwargs,
+                        dvc_dir=self.dvc_dir,
+                        cache_dir=self.repo.cache.local.cache_dir,
+                        checkpoint_reset=checkpoint_reset,
+                    )
+                    self._collect_input(executor)
+                    executors[rev] = executor
+
+            self.scm.repo.git.reset(hard=True)
+            self.scm.repo.git.clean(force=True)
 
         exec_results = self._reproduce(executors, **kwargs)
 
@@ -703,7 +659,6 @@ class Experiments:
             # checkpoint runs. See:
             # https://github.com/gitpython-developers/GitPython/issues/427
             del self.repo.scm
-            del self.scm
 
             if executor.branch:
                 self._scm_checkout(executor.branch)
