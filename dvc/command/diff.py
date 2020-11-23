@@ -127,7 +127,9 @@ class CmdDiff(CmdBase):
 
     def run(self):
         try:
-            diff = self.repo.diff(self.args.a_rev, self.args.b_rev)
+            diff = self.repo.diff(
+                self.args.a_rev, self.args.b_rev, self.args.target
+            )
             show_hash = self.args.show_hash
             hide_missing = self.args.b_rev or self.args.hide_missing
             if hide_missing:
@@ -166,6 +168,15 @@ def add_parser(subparsers, parent_parser):
         description=append_doc_link(DIFF_DESCRIPTION, "diff"),
         help=DIFF_DESCRIPTION,
         formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    diff_parser.add_argument(
+        "-t",
+        "--target",
+        help=(
+            "Source path to a data file or directory. Default None. "
+            "If not specified, compares all files and directories "
+            "that are under DVC control in the current working space."
+        ),
     )
     diff_parser.add_argument(
         "a_rev",

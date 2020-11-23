@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 @locked
-def diff(self, a_rev="HEAD", b_rev=None):
+def diff(self, a_rev="HEAD", b_rev=None, target=None):
     """
     By default, it compares the workspace with the last commit's tree.
 
@@ -28,7 +28,7 @@ def diff(self, a_rev="HEAD", b_rev=None):
             # brancher always returns workspace, but we only need to compute
             # workspace paths/checksums if b_rev was None
             continue
-        results[rev] = _paths_checksums(self)
+        results[rev] = _paths_checksums(self, target)
 
     old = results[a_rev]
     new = results[b_rev]
@@ -62,7 +62,7 @@ def diff(self, a_rev="HEAD", b_rev=None):
     return ret if any(ret.values()) else {}
 
 
-def _paths_checksums(repo):
+def _paths_checksums(repo, target):
     """
     A dictionary of checksums addressed by relpaths collected from
     the current tree outputs.
@@ -74,10 +74,10 @@ def _paths_checksums(repo):
         file:      "data"
     """
 
-    return dict(_output_paths(repo))
+    return dict(_output_paths(repo, target))
 
 
-def _output_paths(repo):
+def _output_paths(repo, target):
     repo_tree = RepoTree(repo, stream=True)
     on_working_tree = isinstance(repo.tree, LocalTree)
 
@@ -101,6 +101,9 @@ def _output_paths(repo):
     for stage in repo.stages:
         for output in stage.outs:
             if _exists(output):
+                # if a target was supplied, filter out non-target files
+                if target is not None and not str(output).startswith(target):
+                    continue
                 yield _to_path(output), _to_checksum(output)
                 if output.is_dir_checksum:
                     yield from _dir_output_paths(repo_tree, output)
