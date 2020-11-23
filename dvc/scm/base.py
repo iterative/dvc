@@ -41,7 +41,7 @@ class Base:
         self._root_dir = os.path.realpath(root_dir)
 
     @property
-    def root_dir(self):
+    def root_dir(self) -> str:
         return self._root_dir
 
     def __repr__(self):

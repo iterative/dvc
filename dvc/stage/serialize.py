@@ -1,7 +1,7 @@
 from collections import OrderedDict
 from functools import partial
 from operator import attrgetter
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, no_type_check
 
 from funcy import post_processing
 
@@ -57,6 +57,7 @@ def _serialize_out(out):
     return out.def_path if not flags else {out.def_path: flags}
 
 
+@no_type_check
 def _serialize_outs(outputs: List[BaseOutput]):
     outs, metrics, plots = [], [], []
     for out in sort_by_path(outputs):
@@ -95,6 +96,7 @@ def _serialize_params_keys(params):
     return keys
 
 
+@no_type_check
 def _serialize_params_values(params: List[ParamsDependency]):
     """Returns output of following format, used for lockfile:
         {'params.yaml': {'lr': '1', 'train': 2}, {'params2.yaml': {'lr': '1'}}

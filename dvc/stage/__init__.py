@@ -133,11 +133,11 @@ class Stage(params.StageParams):
         self.desc = desc
 
     @property
-    def path(self):
+    def path(self) -> str:
         return self._path
 
     @path.setter
-    def path(self, path):
+    def path(self, path: str):
         self._path = path
         self.__dict__.pop("path_in_repo", None)
         self.__dict__.pop("relpath", None)
@@ -169,7 +169,7 @@ class Stage(params.StageParams):
         return f"stage: '{self.addressing}'"
 
     @property
-    def addressing(self):
+    def addressing(self) -> str:
         """
         Useful for alternative presentations where we don't need
         `Stage:` prefix.
