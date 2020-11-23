@@ -1,4 +1,5 @@
 import os
+from contextlib import suppress
 
 import pytest
 
@@ -30,7 +31,11 @@ def reset_loglevel(request, caplog):
     Use it to ensure log level at the start of each test
     regardless of dvc.logger.setup(), Repo configs or whatever.
     """
-    level = request.config.getoption("--log-level")
+    ini_opt = None
+    with suppress(ValueError):
+        ini_opt = request.config.getini("log_level")
+
+    level = request.config.getoption("--log-level") or ini_opt
     if level:
         with caplog.at_level(level.upper(), logger="dvc"):
             yield
