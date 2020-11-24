@@ -59,8 +59,8 @@ class OSFTree(BaseTree):
         osf.login(self.user, self.password)
         try:
             project = osf.project(self.project_guid)
-        except UnauthorizedException:
-            raise OSFAuthError
+        except UnauthorizedException as e:
+            raise OSFAuthError from e
         return project
 
     @wrap_prop(threading.Lock())
