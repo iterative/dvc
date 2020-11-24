@@ -163,3 +163,120 @@ def test_gitignore_should_append_newline_to_gitignore(tmp_dir, scm):
     assert gitignore.read_text().endswith("\n")
 
     assert contents.splitlines() == ["/foo", "/bar"]
+
+
+def test_git_detach_head(tmp_dir, scm):
+    tmp_dir.scm_gen({"file": "0"}, commit="init")
+    init_rev = scm.get_rev()
+
+    with scm.detach_head() as rev:
+        assert init_rev == rev
+        assert init_rev == (tmp_dir / ".git" / "HEAD").read_text().strip()
+    assert (
+        "ref: refs/heads/master"
+        == (tmp_dir / ".git" / "HEAD").read_text().strip()
+    )
+
+
+def test_git_stash_workspace(tmp_dir, scm):
+    tmp_dir.scm_gen({"file": "0"}, commit="init")
+    tmp_dir.gen("file", "1")
+
+    with scm.stash_workspace():
+        assert not scm.repo.is_dirty()
+        assert "0" == (tmp_dir / "file").read_text()
+    assert scm.repo.is_dirty()
+    assert "1" == (tmp_dir / "file").read_text()
+
+
+@pytest.mark.parametrize(
+    "ref, include_untracked",
+    [
+        (None, True),
+        (None, False),
+        ("refs/foo/stash", True),
+        ("refs/foo/stash", False),
+    ],
+)
+def test_git_stash_push(tmp_dir, scm, ref, include_untracked):
+    from dvc.scm.git import Stash
+
+    tmp_dir.scm_gen({"file": "0"}, commit="init")
+    tmp_dir.gen({"file": "1", "untracked": "0"})
+
+    stash = Stash(scm, ref=ref)
+    rev = stash.push(include_untracked=include_untracked)
+    assert rev == scm.get_ref(stash.ref)
+    assert "0" == (tmp_dir / "file").read_text()
+    assert include_untracked != (tmp_dir / "untracked").exists()
+    assert len(stash) == 1
+
+    stash.apply(rev)
+    assert "1" == (tmp_dir / "file").read_text()
+    assert "0" == (tmp_dir / "untracked").read_text()
+
+    parts = list(stash.ref.split("/"))
+    assert os.path.exists(os.path.join(os.fspath(tmp_dir), ".git", *parts))
+    assert os.path.exists(
+        os.path.join(os.fspath(tmp_dir), ".git", "logs", *parts)
+    )
+
+
+@pytest.mark.parametrize("ref", [None, "refs/foo/stash"])
+def test_git_stash_drop(tmp_dir, scm, ref):
+    from dvc.scm.git import Stash
+
+    tmp_dir.scm_gen({"file": "0"}, commit="init")
+    tmp_dir.gen("file", "1")
+
+    stash = Stash(scm, ref=ref)
+    stash.push()
+
+    tmp_dir.gen("file", "2")
+    expected = stash.push()
+
+    stash.drop(1)
+    assert expected == scm.get_ref(stash.ref)
+    assert len(stash) == 1
+
+
+@pytest.mark.parametrize("ref", [None, "refs/foo/stash"])
+def test_git_stash_pop(tmp_dir, scm, ref):
+    from dvc.scm.git import Stash
+
+    tmp_dir.scm_gen({"file": "0"}, commit="init")
+    tmp_dir.gen("file", "1")
+
+    stash = Stash(scm, ref=ref)
+    first = stash.push()
+
+    tmp_dir.gen("file", "2")
+    second = stash.push()
+
+    assert second == stash.pop()
+    assert len(stash) == 1
+    assert first == scm.get_ref(stash.ref)
+    assert "2" == (tmp_dir / "file").read_text()
+
+
+@pytest.mark.parametrize("ref", [None, "refs/foo/stash"])
+def test_git_stash_clear(tmp_dir, scm, ref):
+    from dvc.scm.git import Stash
+
+    tmp_dir.scm_gen({"file": "0"}, commit="init")
+    tmp_dir.gen("file", "1")
+
+    stash = Stash(scm, ref=ref)
+    stash.push()
+
+    tmp_dir.gen("file", "2")
+    stash.push()
+
+    stash.clear()
+    assert len(stash) == 0
+
+    parts = list(stash.ref.split("/"))
+    assert not os.path.exists(os.path.join(os.fspath(tmp_dir), ".git", *parts))
+    assert not os.path.exists(
+        os.path.join(os.fspath(tmp_dir), ".git", "logs", *parts)
+    )
