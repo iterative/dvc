@@ -70,16 +70,18 @@ class SSHConnection:
         self._ssh.close()
 
     def st_mode(self, path):
+        lstat = None
         with suppress(FileNotFoundError):
-            return self.sftp.lstat(path).st_mode
+            lstat = self.sftp.lstat(path)
 
-        return 0
+        return lstat.st_mode if lstat else 0
 
     def getsize(self, path):
+        lstat = None
         with suppress(FileNotFoundError):
-            return self.sftp.lstat(path).st_size
+            lstat = self.sftp.lstat(path)
 
-        return 0
+        return lstat.st_size if lstat else 0
 
     def exists(self, path):
         return bool(self.st_mode(path))
