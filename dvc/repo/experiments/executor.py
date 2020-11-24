@@ -65,21 +65,25 @@ class BaseExecutor:
         from dulwich.repo import Repo as DulwichRepo
 
         DulwichRepo.init(os.fspath(self.root_dir))
+
+        cwd = os.getcwd()
         os.chdir(self.root_dir)
+        try:
+            refspec = f"{EXEC_NAMESPACE}/"
+            scm.push_refspec(self.git_url, refspec, refspec)
+            if branch:
+                scm.push_refspec(self.git_url, branch, branch)
+                self.scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
 
-        refspec = f"{EXEC_NAMESPACE}/"
-        scm.push_refspec(self.git_url, refspec, refspec)
-        if branch:
-            scm.push_refspec(self.git_url, branch, branch)
-            self.scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
-
-        # checkout EXEC_HEAD and apply EXEC_MERGE on top of it without
-        # committing
-        head = EXEC_BRANCH if branch else EXEC_HEAD
-        self.scm.checkout(head, detach=True)
-        self.scm.repo.git.merge(EXEC_MERGE, squash=True, no_commit=True)
-        self.scm.repo.git.reset()
-        self._prune_lockfiles()
+            # checkout EXEC_HEAD and apply EXEC_MERGE on top of it without
+            # committing
+            head = EXEC_BRANCH if branch else EXEC_HEAD
+            self.scm.checkout(head, detach=True)
+            self.scm.repo.git.merge(EXEC_MERGE, squash=True, no_commit=True)
+            self.scm.repo.git.reset()
+            self._prune_lockfiles()
+        finally:
+            os.chdir(cwd)
 
     def _prune_lockfiles(self):
         # NOTE: dirty DVC lock files must be restored to index state to
@@ -150,7 +154,18 @@ class BaseExecutor:
             ref = "/".join([EXPS_NAMESPACE, os.fsdecode(key)])
             if not ref.startswith(EXEC_NAMESPACE) and ref != EXPS_STASH:
                 refs.append(ref)
-        scm.fetch_refspecs(self.git_url, [f"{ref}:{ref}" for ref in refs])
+
+        def on_diverged(orig_ref, _new_ref):
+            logger.debug(
+                "Reproduced existing experiment '%s'", os.fsdecode(orig_ref)
+            )
+            return False
+
+        scm.fetch_refspecs(
+            self.git_url,
+            [f"{ref}:{ref}" for ref in refs],
+            on_diverged=on_diverged,
+        )
         return refs
 
     @classmethod
@@ -168,16 +183,15 @@ class BaseExecutor:
                 [stage for stage in stages if isinstance(stage, PipelineStage)]
             )
 
-        if cwd:
-            old_cwd = os.getcwd()
-            os.chdir(cwd)
-        else:
-            old_cwd = None
-            cwd = os.getcwd()
-
         try:
-            logger.debug("Running repro in '%s'", cwd)
             dvc = Repo(dvc_dir)
+            if cwd:
+                old_cwd = os.getcwd()
+            else:
+                cwd = dvc.root_dir
+                old_cwd = None
+            os.chdir(cwd)
+            logger.debug("Running repro in '%s'", cwd)
 
             args_path = os.path.join(
                 dvc.tmp_dir, BaseExecutor.PACKED_ARGS_FILE
