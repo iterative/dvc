@@ -1,4 +1,5 @@
 import logging
+from typing import TYPE_CHECKING, List
 
 from dvc.dependency.param import ParamsDependency
 from dvc.exceptions import DvcException
@@ -7,6 +8,10 @@ from dvc.repo import locked
 from dvc.repo.collect import collect
 from dvc.utils.serialize import LOADERS, ParseError
 
+if TYPE_CHECKING:
+    from dvc.output.base import BaseOutput
+    from dvc.repo import Repo
+
 logger = logging.getLogger(__name__)
 
 
@@ -14,11 +19,11 @@ class NoParamsError(DvcException):
     pass
 
 
-def _is_params(dep):
+def _is_params(dep: "BaseOutput"):
     return isinstance(dep, ParamsDependency)
 
 
-def _collect_configs(repo, rev):
+def _collect_configs(repo: "Repo", rev) -> List[PathInfo]:
     params, _ = collect(repo, deps=True, output_filter=_is_params, rev=rev)
     configs = {p.path_info for p in params}
     configs.add(PathInfo(repo.root_dir) / ParamsDependency.DEFAULT_PARAMS_FILE)

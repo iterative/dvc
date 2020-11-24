@@ -1,6 +1,7 @@
 import logging
 import os
 from copy import copy
+from typing import Type
 from urllib.parse import urlparse
 
 from voluptuous import Any
@@ -85,10 +86,10 @@ class BaseOutput:
         },
     )
 
-    DoesNotExistError = OutputDoesNotExistError
-    IsNotFileOrDirError = OutputIsNotFileOrDirError
-    IsStageFileError = OutputIsStageFileError
-    IsIgnoredError = OutputIsIgnoredError
+    DoesNotExistError = OutputDoesNotExistError  # type: Type[DvcException]
+    IsNotFileOrDirError = OutputIsNotFileOrDirError  # type: Type[DvcException]
+    IsStageFileError = OutputIsStageFileError  # type: Type[DvcException]
+    IsIgnoredError = OutputIsIgnoredError  # type: Type[DvcException]
 
     sep = "/"
 

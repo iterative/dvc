@@ -159,7 +159,7 @@ class DataResolver:
             stage_name=name,
         )
 
-        logger.trace(  # pytype: disable=attribute-error
+        logger.trace(  # type: ignore[attr-defined]
             "Context during resolution of stage %s:\n%s", name, context
         )
 
