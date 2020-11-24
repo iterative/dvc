@@ -17,7 +17,7 @@ DVCLIVE_SCRITP = dedent(
         for i in range(5):
            dvclive.log("loss", -i/5/multiplier)
            dvclive.log("accuracy", i/5*multiplier)
-           dvclive.next_epoch()
+           dvclive.next_step()
 """
 )
 
@@ -39,20 +39,15 @@ def test_live_plots(tmp_dir, scm, dvc):
     tmp_dir.gen("params.yaml", "multiplier: 1.4")
     dvc.reproduce("run_logger")
 
+    assert (tmp_dir / "logs").is_dir()
+    assert (tmp_dir / "logs.json").is_file()
+
     assert main(["plots", "diff", "master"]) == 0
 
     # whole dir seems to not be working
     # assert main(["plots", "diff", "master", "--targets", "logs/history"]) ==
     # 0
     assert (
-        main(
-            [
-                "plots",
-                "diff",
-                "master",
-                "--targets",
-                "logs/history/accuracy.tsv",
-            ]
-        )
+        main(["plots", "diff", "master", "--targets", "logs/accuracy.tsv"])
         == 0
     )

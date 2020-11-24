@@ -33,7 +33,7 @@ class Plots:
     def __init__(self, repo):
         self.repo = repo
 
-    def collect(self, targets=None, revs=None):
+    def collect(self, targets=None, revs=None, recursive=False):
         """Collects all props and data for plots.
 
         Returns a structure like:
@@ -52,7 +52,7 @@ class Plots:
             rev = rev or "workspace"
 
             tree = RepoTree(self.repo)
-            plots = _collect_plots(self.repo, targets, rev)
+            plots = _collect_plots(self.repo, targets, rev, recursive)
             for path_info, props in plots.items():
 
                 if rev not in data:
@@ -109,9 +109,16 @@ class Plots:
 
         return result
 
-    def show(self, targets=None, revs=None, props=None, templates=None):
+    def show(
+        self,
+        targets=None,
+        revs=None,
+        props=None,
+        templates=None,
+        recursive=False,
+    ):
 
-        data = self.collect(targets, revs)
+        data = self.collect(targets, revs, recursive)
 
         # If any mentioned plot doesn't have any data then that's an error
         targets = [targets] if isinstance(targets, str) else targets or []
@@ -190,9 +197,13 @@ def _is_plot(out):
     return bool(out.plot)
 
 
-def _collect_plots(repo, targets=None, rev=None):
+def _collect_plots(repo, targets=None, rev=None, recursive=False):
     plots, path_infos = collect(
-        repo, output_filter=_is_plot, targets=targets, rev=rev
+        repo,
+        output_filter=_is_plot,
+        targets=targets,
+        rev=rev,
+        recursive=recursive,
     )
     result = {plot.path_info: _plot_props(plot) for plot in plots}
     result.update({path_info: {} for path_info in path_infos})
