@@ -17,7 +17,7 @@ password = "12345"
 config = {
     "url": url,
     "project": project,
-    "username": username,
+    "user": username,
     "password": password,
 }
 
@@ -36,7 +36,7 @@ def test_init(dvc):
     assert tree.path_info == url
     assert tree.project_guid == project
     assert tree.password == password
-    assert tree.osf_username == username
+    assert tree.user == username
 
 
 def test_init_envvar(dvc, passwd_env_var):
