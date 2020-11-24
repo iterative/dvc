@@ -42,7 +42,6 @@ class MergeError(ContextError):
             )
             return
 
-        assert isinstance(new, Node) and isinstance(into[key], Node)
         preexisting = into[key].meta.source
         new_src = new.meta.source
         path = new.meta.path()

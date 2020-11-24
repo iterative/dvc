@@ -84,6 +84,7 @@ install_requires = [
     "dictdiffer>=0.8.1",
     "python-benedict>=0.21.1",
     "pyparsing==2.4.7",
+    "typing_extensions>=3.7.4",
 ]
 
 
@@ -152,6 +153,7 @@ tests_requirements = [
     "wget",
     "filelock",
     "black==19.10b0",
+    "mypy",
     "wsgidav",
 ]
 

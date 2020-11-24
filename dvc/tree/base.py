@@ -165,7 +165,7 @@ class BaseTree:
 
         raise RemoteActionNotImplemented("open", self.scheme)
 
-    def exists(self, path_info, use_dvcignore=True):
+    def exists(self, path_info, use_dvcignore=True) -> bool:
         raise NotImplementedError
 
     # pylint: disable=unused-argument
