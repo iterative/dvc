@@ -1,4 +1,5 @@
 import logging
+import re
 
 import pytest
 
@@ -7,6 +8,11 @@ from dvc.utils.fs import remove
 from dvc.utils.serialize import dump_json, dump_yaml
 
 DATA = {"models": {"bar": "bar", "foo": "foo"}}
+
+
+def escape_ansi(line):
+    ansi_escape = re.compile(r"(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]")
+    return ansi_escape.sub("", line)
 
 
 @pytest.fixture
@@ -73,7 +79,7 @@ def test_failed_to_interpolate(tmp_dir, repo):
     with pytest.raises(ResolveError) as exc_info:
         resolver = DataResolver(repo, tmp_dir, d)
         resolver.resolve()
-    assert str(exc_info.value) == (
+    assert escape_ansi(str(exc_info.value)) == (
         "failed to parse 'stages.build.cmd' in 'dvc.yaml':\n"
         "${models.foo.}\n"
         "            ^\n"
@@ -170,7 +176,7 @@ def test_foreach_interpolation_key_error(tmp_dir, repo):
     resolver = DataResolver(repo, tmp_dir, d)
     with pytest.raises(ResolveError) as exc_info:
         resolver.resolve()
-    assert str(exc_info.value) == (
+    assert escape_ansi(str(exc_info.value)) == (
         "failed to parse 'stages.build.foreach' in 'dvc.yaml':\n"
         "${models[123}\n"
         "        ^\n"
@@ -201,7 +207,7 @@ def test_foreach_generated_errors(tmp_dir, repo, syn, msg):
     resolver = DataResolver(repo, tmp_dir, d)
     with pytest.raises(ResolveError) as exc_info:
         resolver.resolve()
-    assert str(exc_info.value) == (
+    assert escape_ansi(str(exc_info.value)) == (
         "failed to parse 'stages.build@bar.cmd' in 'dvc.yaml':" + msg
     )
 
@@ -260,7 +266,7 @@ def test_foreach_wdir_interpolation_issues(tmp_dir, repo, wdir, msg):
     resolver = DataResolver(repo, tmp_dir, d)
     with pytest.raises(ResolveError) as exc_info:
         resolver.resolve()
-    assert str(exc_info.value) == (
+    assert escape_ansi(str(exc_info.value)) == (
         "failed to parse 'stages.build@bar.wdir' in 'dvc.yaml':" + msg
     )
 
@@ -297,7 +303,7 @@ def test_wdir_failed_to_interpolate(tmp_dir, repo, wdir, expected_msg):
     resolver = DataResolver(repo, tmp_dir, d)
     with pytest.raises(ResolveError) as exc_info:
         resolver.resolve()
-    assert str(exc_info.value) == (
+    assert escape_ansi(str(exc_info.value)) == (
         "failed to parse 'stages.build.wdir' in 'dvc.yaml':" + expected_msg
     )
 

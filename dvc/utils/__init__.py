@@ -236,20 +236,29 @@ def current_timestamp():
     return int(nanotime.timestamp(time.time()))
 
 
-def colorize(message, color=None):
+def colorize(message, color=None, style=None):
     """Returns a message in a specified color."""
     if not color:
         return message
+
+    styles = {
+        "dim": colorama.Style.DIM,
+        "bold": colorama.Style.BRIGHT,
+    }
 
     colors = {
         "green": colorama.Fore.GREEN,
         "yellow": colorama.Fore.YELLOW,
         "blue": colorama.Fore.BLUE,
         "red": colorama.Fore.RED,
+        "magenta": colorama.Fore.MAGENTA,
     }
 
-    return "{color}{message}{nc}".format(
-        color=colors.get(color, ""), message=message, nc=colorama.Fore.RESET
+    return "{style}{color}{message}{reset}".format(
+        style=styles.get(style, ""),
+        color=colors.get(color, ""),
+        message=message,
+        reset=colorama.Style.RESET_ALL,
     )
 
 

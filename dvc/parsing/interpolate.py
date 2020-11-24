@@ -10,6 +10,7 @@ from pyparsing import (
 )
 
 from dvc.exceptions import DvcException
+from dvc.utils import colorize
 
 if typing.TYPE_CHECKING:
     from typing import List, Match
@@ -53,16 +54,31 @@ def is_interpolated_string(val):
 
 
 def format_and_raise_parse_error(exc):
-    msg = ParseException.explain(exc, depth=0)
-    raise ParseError(msg)
+    raise ParseError(_format_exc_msg(exc))
+
+
+def _format_exc_msg(exc: ParseException):
+    exc.loc += 2  # 2 because we append `${` at the start of expr below
+
+    expr = exc.pstr
+    exc.pstr = "${" + exc.pstr + "}"
+    error = ParseException.explain(exc, depth=0)
+
+    _, pointer, *explains = error.splitlines()
+    pstr = "{brace_open}{expr}{brace_close}".format(
+        brace_open=colorize("${", color="blue"),
+        expr=colorize(expr, color="magenta"),
+        brace_close=colorize("}", color="blue"),
+    )
+    msg = "\n".join(explains)
+    pointer = colorize(pointer, color="red")
+    return "\n".join([pstr, pointer, colorize(msg, color="red", style="bold")])
 
 
 def parse_expr(s: str):
     try:
         result = parser.parseString(s, parseAll=True)
     except ParseException as exc:
-        exc.pstr = "${" + exc.pstr + "}"
-        exc.loc += 2
         format_and_raise_parse_error(exc)
 
     joined = result.asList()
