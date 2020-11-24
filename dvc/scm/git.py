@@ -524,18 +524,16 @@ class Git(Base):
             symbolic: If True, ref will be set as a symbolic ref to new_ref
                 rather than the dereferenced object.
         """
-        name = os.fsencode(name)
-        new_ref = os.fsencode(new_ref)
-        if old_ref is not None:
-            old_ref = os.fsencode(old_ref)
-        if message is not None:
-            message = message.encode("utf-8")
+        name_b = os.fsencode(name)
+        new_ref_b = os.fsencode(new_ref)
+        old_ref_b = os.fsencode(old_ref) if old_ref else None
+        message_b = message.encode("utf-8") if message else None
         if symbolic:
             return self.dulwich_repo.refs.set_symbolic_ref(
-                name, new_ref, message=message
+                name_b, new_ref_b, message=message
             )
         if not self.dulwich_repo.refs.set_if_equals(
-            name, old_ref, new_ref, message=message
+            name_b, old_ref_b, new_ref_b, message=message_b
         ):
             raise SCMError(f"Failed to set '{name}'")
 
@@ -570,10 +568,9 @@ class Git(Base):
         If old_ref is specified, ref will only be removed if it currently
         equals old_ref.
         """
-        name = name.encode("utf-8")
-        if old_ref is not None:
-            old_ref = old_ref.encode("utf-8")
-        if not self.dulwich_repo.refs.remove_if_equals(name, old_ref):
+        name_b = name.encode("utf-8")
+        old_ref_b = old_ref.encode("utf-8") if old_ref else None
+        if not self.dulwich_repo.refs.remove_if_equals(name_b, old_ref_b):
             raise SCMError(f"Failed to remove '{name}'")
 
     def get_refs_containing(self, rev: str, pattern: Optional[str]):
@@ -610,10 +607,10 @@ class Git(Base):
         from dulwich.objects import ZERO_SHA
 
         if src is not None and src.endswith("/"):
-            src = os.fsencode(src)
-            keys = self.dulwich_repo.refs.subkeys(src)
+            src_b = os.fsencode(src)
+            keys = self.dulwich_repo.refs.subkeys(src_b)
             values = [
-                self.dulwich_repo.refs[b"".join([src, key])] for key in keys
+                self.dulwich_repo.refs[b"".join([src_b, key])] for key in keys
             ]
             dest_refs = [b"".join([os.fsencode(dest), key]) for key in keys]
         else:
@@ -661,11 +658,15 @@ class Git(Base):
 
         fetch_refs = []
         repo = self.dulwich_repo
-        refspecs = [os.fsencode(refspec) for refspec in refspecs]
 
         def determine_wants(remote_refs):
             fetch_refs.extend(
-                parse_reftuples(remote_refs, repo.refs, refspecs, force=force)
+                parse_reftuples(
+                    remote_refs,
+                    repo.refs,
+                    [os.fsencode(refspec) for refspec in refspecs],
+                    force=force,
+                )
             )
             return [
                 remote_refs[lh]
@@ -781,9 +782,8 @@ class Stash:
                 message=message, include_untracked=include_untracked
             )
         else:
-            if message is not None:
-                message = message.encode("utf-8")
-            self._stash.push(message=message)
+            message_b = message.encode("utf-8") if message else None
+            self._stash.push(message=message_b)
             self.git.reset(hard=True)
         return os.fsdecode(self[0].new_sha)
 
@@ -823,7 +823,7 @@ class Stash:
         logger.debug("Applying stash commit '%s'", rev)
         self.git.stash("apply", rev)
 
-    def drop(self, index: Optional[int] = 0):
+    def drop(self, index: int = 0):
         ref = "{0}@{{{1}}}".format(self.ref, index)
         if index < 0 or index >= len(self):
             raise SCMError(f"Invalid stash ref '{ref}'")
