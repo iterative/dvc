@@ -116,9 +116,9 @@ class StageLoader(Mapping):
 
         group, *keys = name.rsplit(JOIN, maxsplit=1)
         if group and keys and name in self.stages_data:
-            stage.meta.generated_from = group
+            stage.raw_data.generated_from = group
 
-        stage.meta.parametrized = (
+        stage.raw_data.parametrized = (
             self.stages_data.get(name, {}) != self.resolved_data[name]
         )
 

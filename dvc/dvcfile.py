@@ -203,7 +203,7 @@ class PipelineFile(FileMixin):
 
     @staticmethod
     def _check_if_parametrized(stage):
-        if stage.meta.parametrized:
+        if stage.raw_data.parametrized:
             raise ParametrizedDumpError(f"cannot dump a parametrized {stage}")
 
     def _dump_pipeline_file(self, stage):

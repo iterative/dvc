@@ -63,7 +63,7 @@ def loads_from(cls, repo, path, wdir, data):
 
 
 @dataclass
-class Meta:
+class RawData:
     parametrized: bool = False
     generated_from: Optional[str] = None
 
@@ -139,7 +139,7 @@ class Stage(params.StageParams):
         self._stage_text = stage_text
         self._dvcfile = dvcfile
         self.desc = desc
-        self.meta = Meta()
+        self.raw_data = RawData()
 
     @property
     def path(self) -> str:
