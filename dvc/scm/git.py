@@ -5,7 +5,7 @@ import os
 import shlex
 from contextlib import contextmanager
 from functools import partial
-from typing import Optional
+from typing import Iterable, Optional
 
 from funcy import cached_property, first
 from pathspec.patterns import GitWildMatchPattern
@@ -642,6 +642,55 @@ class Git(Base):
             self.dulwich_repo.object_store.generate_pack_data,
             progress=progress,
         )
+
+    def fetch_refspecs(
+        self, url: str, refspecs: Iterable[str], force: Optional[bool] = False
+    ):
+        """Fetch refspecs from a remote Git repo.
+
+        Args:
+            url: Remote repo Git URL (Note this must be a Git URL and not
+                a remote name).
+            refspecs: Iterable containing refspecs to fetch.
+                Note that this will not match subkeys.
+            force: If True, local refs will be overwritten.
+        """
+        from dulwich.client import get_transport_and_path
+        from dulwich.objectspec import parse_reftuples
+        from dulwich.porcelain import DivergedBranches, check_diverged
+
+        fetch_refs = []
+        repo = self.dulwich_repo
+        refspecs = [os.fsencode(refspec) for refspec in refspecs]
+
+        def determine_wants(remote_refs):
+            fetch_refs.extend(
+                parse_reftuples(remote_refs, repo.refs, refspecs, force=force)
+            )
+            return [
+                remote_refs[lh]
+                for (lh, _, _) in fetch_refs
+                if remote_refs[lh] not in repo.object_store
+            ]
+
+        try:
+            client, path = get_transport_and_path(url)
+        except Exception as exc:
+            raise SCMError("Could not get remote client") from exc
+
+        def progress(msg):
+            logger.trace("git fetch: %s", msg)
+
+        fetch_result = client.fetch(
+            path, repo, progress=progress, determine_wants=determine_wants
+        )
+        for (lh, rh, _) in fetch_refs:
+            try:
+                if rh in repo.refs:
+                    check_diverged(repo, repo.refs[rh], fetch_result.refs[lh])
+            except DivergedBranches as exc:
+                raise SCMError("Experiment branch has diverged") from exc
+            repo.refs[rh] = fetch_result.refs[lh]
 
     @contextmanager
     def detach_head(self, rev: Optional[str] = None):
