@@ -1,21 +1,37 @@
 import logging
 import os
 import pickle
+from functools import partial
 from tempfile import TemporaryDirectory
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Union
 
 from funcy import cached_property
 
+from dvc.dvcfile import is_lock_file
 from dvc.path_info import PathInfo
+from dvc.repo import Repo
+from dvc.repo.experiments.base import (
+    EXEC_BRANCH,
+    EXEC_HEAD,
+    EXEC_MERGE,
+    EXEC_NAMESPACE,
+    EXPS_NAMESPACE,
+    EXPS_STASH,
+    UnchangedExperimentError,
+    get_exps_refname,
+    split_exps_refname,
+)
+from dvc.scm import SCM
+from dvc.scm.git import Git
 from dvc.stage import PipelineStage
-from dvc.tree.base import BaseTree
-from dvc.tree.local import LocalTree
-from dvc.tree.repo import RepoTree
+from dvc.stage.serialize import to_lockfile
+from dvc.utils import dict_sha256
+from dvc.utils.fs import remove
 
 logger = logging.getLogger(__name__)
 
 
-class ExperimentExecutor:
+class BaseExecutor:
     """Base class for executing experiments in parallel.
 
     Args:
@@ -29,37 +45,76 @@ class ExperimentExecutor:
         repro_kwargs: Keyword args to be passed into reproduce.
     """
 
+    PACKED_ARGS_FILE = "repro.dat"
+
     def __init__(
         self,
-        baseline_rev: Optional[str] = None,
+        src: SCM,
+        dvc_dir: str,
+        root_dir: Optional[Union[str, PathInfo]] = None,
         branch: Optional[str] = None,
-        rev: Optional[str] = None,
         **kwargs,
     ):
-        self.baseline_rev = baseline_rev
-        self._rev = rev
-        self.branch = branch
-        self.repro_args = kwargs.pop("repro_args", [])
-        self.repro_kwargs = kwargs.pop("repro_kwargs", {})
-        self.tmp_dir: Optional[TemporaryDirectory] = None
+        assert root_dir is not None
+        self._dvc_dir = dvc_dir
+        self.root_dir = root_dir
+        self._init_git(src, branch)
+
+    def _init_git(self, scm: SCM, branch: Optional[str] = None):
+        """Init git repo and collect executor refs from the specified SCM."""
+        from dulwich.repo import Repo as DulwichRepo
+
+        DulwichRepo.init(os.fspath(self.root_dir))
+        os.chdir(self.root_dir)
+
+        refspec = f"{EXEC_NAMESPACE}/"
+        scm.push_refspec(self.git_url, refspec, refspec)
+        if branch:
+            scm.push_refspec(self.git_url, branch, branch)
+            self.scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
+
+        # checkout EXEC_HEAD and apply EXEC_MERGE on top of it without
+        # committing
+        head = EXEC_BRANCH if branch else EXEC_HEAD
+        self.scm.checkout(head, detach=True)
+        self.scm.repo.git.merge(EXEC_MERGE, squash=True, no_commit=True)
+        self.scm.repo.git.reset()
+        self._prune_lockfiles()
+
+    def _prune_lockfiles(self):
+        # NOTE: dirty DVC lock files must be restored to index state to
+        # avoid checking out incorrect persist or checkpoint outs
+        dirty = [diff.a_path for diff in self.scm.repo.index.diff(None)]
+        to_checkout = [fname for fname in dirty if is_lock_file(fname)]
+        self.scm.repo.index.checkout(paths=to_checkout, force=True)
+
+        untracked = self.scm.repo.untracked_files
+        to_remove = [fname for fname in untracked if is_lock_file(fname)]
+        for fname in to_remove:
+            remove(fname)
+        return (
+            len(dirty) - len(to_checkout) + len(untracked) - len(to_remove)
+        ) != 0
+
+    @cached_property
+    def scm(self):
+        return SCM(self.root_dir)
 
     @property
-    def tree(self) -> BaseTree:
+    def git_url(self) -> str:
         raise NotImplementedError
+
+    @property
+    def dvc_dir(self) -> str:
+        return os.path.join(self.root_dir, self._dvc_dir)
 
     @staticmethod
-    def reproduce(dvc_dir, cwd=None, **kwargs):
-        raise NotImplementedError
-
-    def collect_output(self) -> Iterable["PathInfo"]:
-        """Iterate over output pathnames for this executor.
-
-        For DVC outs, only the .dvc file path will be yielded. DVC outs
-        themselves should be fetched from remote executor cache in the normal
-        fetch/pull way. For local executors outs will already be available via
-        shared local cache.
-        """
-        raise NotImplementedError
+    def hash_exp(stages):
+        exp_data = {}
+        for stage in stages:
+            if isinstance(stage, PipelineStage):
+                exp_data.update(to_lockfile(stage))
+        return dict_sha256(exp_data)
 
     def cleanup(self):
         pass
@@ -81,76 +136,31 @@ class ExperimentExecutor:
             pickle.dump(data, fobj)
 
     @staticmethod
-    def unpack_repro_args(path, tree=None):
-        open_func = tree.open if tree else open
-        with open_func(path, "rb") as fobj:
+    def unpack_repro_args(path):
+        with open(path, "rb") as fobj:
             data = pickle.load(fobj)
         return data["args"], data["kwargs"]
 
-    @staticmethod
-    def collect_files(tree: BaseTree, repo_tree: RepoTree):
-        raise NotImplementedError
+    def fetch_exps(self, scm: SCM) -> Iterable[str]:
+        """Fetch reproduced experiments into the specified SCM."""
+        refs = []
+        for key in self.scm.dulwich_repo.refs.keys(
+            base=os.fsencode(EXPS_NAMESPACE)
+        ):
+            ref = "/".join([EXPS_NAMESPACE, os.fsdecode(key)])
+            if not ref.startswith(EXEC_NAMESPACE) and ref != EXPS_STASH:
+                refs.append(ref)
+        scm.fetch_refspecs(self.git_url, [f"{ref}:{ref}" for ref in refs])
+        return refs
 
+    @classmethod
+    def reproduce(
+        cls, dvc_dir: str, cwd: Optional[str] = None
+    ) -> Optional[str]:
+        """Run dvc repro and return the result.
 
-class LocalExecutor(ExperimentExecutor):
-    """Local machine experiment executor."""
-
-    def __init__(
-        self, checkpoint_reset: Optional[bool] = False, **kwargs,
-    ):
-        from dvc.repo import Repo
-
-        dvc_dir = kwargs.pop("dvc_dir")
-        cache_dir = kwargs.pop("cache_dir")
-        super().__init__(**kwargs)
-        self.tmp_dir = TemporaryDirectory()
-
-        # init empty DVC repo (will be overwritten when input is uploaded)
-        Repo.init(root_dir=self.tmp_dir.name, no_scm=True)
-        logger.debug(
-            "Init local executor in dir '%s' with baseline '%s'.",
-            self.tmp_dir,
-            self.baseline_rev[:7],
-        )
-        self.dvc_dir = os.path.join(self.tmp_dir.name, dvc_dir)
-        self._config(cache_dir)
-        self._tree = LocalTree(self.dvc, {"url": self.dvc.root_dir})
-        # override default CACHE_MODE since files must be writable in order
-        # to run repro
-        self._tree.CACHE_MODE = 0o644
-        self.checkpoint_reset = checkpoint_reset
-        self.checkpoint = False
-
-    def _config(self, cache_dir):
-        local_config = os.path.join(self.dvc_dir, "config.local")
-        logger.debug("Writing experiments local config '%s'", local_config)
-        with open(local_config, "w") as fobj:
-            fobj.write("[core]\n    no_scm = true\n")
-            fobj.write(f"[cache]\n    dir = {cache_dir}")
-
-    @cached_property
-    def dvc(self):
-        from dvc.repo import Repo
-
-        return Repo(self.dvc_dir)
-
-    @cached_property
-    def path_info(self):
-        return PathInfo(self.tmp_dir.name)
-
-    @property
-    def tree(self):
-        return self._tree
-
-    @property
-    def rev(self):
-        return self._rev if self._rev else self.baseline_rev
-
-    @staticmethod
-    def reproduce(dvc_dir, cwd=None, **kwargs):
-        """Run dvc repro and return the result."""
-        from dvc.repo import Repo
-
+        Returns the hashed experiment or None if an error occured.
+        """
         unchanged = []
 
         def filter_pipeline(stages):
@@ -169,6 +179,16 @@ class LocalExecutor(ExperimentExecutor):
             logger.debug("Running repro in '%s'", cwd)
             dvc = Repo(dvc_dir)
 
+            args_path = os.path.join(
+                dvc.tmp_dir, BaseExecutor.PACKED_ARGS_FILE
+            )
+            if os.path.exists(args_path):
+                args, kwargs = BaseExecutor.unpack_repro_args(args_path)
+                remove(args_path)
+            else:
+                args = []
+                kwargs = {}
+
             # NOTE: for checkpoint experiments we handle persist outs slightly
             # differently than normal:
             #
@@ -180,8 +200,26 @@ class LocalExecutor(ExperimentExecutor):
             #   be removed/does not yet exist) so that our executor workspace
             #   is not polluted with the (persistent) out from an unrelated
             #   experiment run
+            exp_hash = None
             dvc.checkout(force=True, quiet=True)
-            stages = dvc.reproduce(on_unchanged=filter_pipeline, **kwargs)
+
+            # We cannot use dvc.scm to make commits inside the executor since
+            # cached props are not picklable.
+            scm = Git()
+            checkpoint_func = partial(cls.checkpoint_callback, scm)
+            stages = dvc.reproduce(
+                *args,
+                on_unchanged=filter_pipeline,
+                checkpoint_func=checkpoint_func,
+                **kwargs,
+            )
+            logger.debug("before hash")
+
+            exp_hash = cls.hash_exp(stages)
+            cls.commit(scm, exp_hash)
+            # logger.debug("done")
+        except UnchangedExperimentError:
+            pass
         finally:
             if old_cwd is not None:
                 os.chdir(old_cwd)
@@ -189,19 +227,79 @@ class LocalExecutor(ExperimentExecutor):
         # ideally we would return stages here like a normal repro() call, but
         # stages is not currently picklable and cannot be returned across
         # multiprocessing calls
-        return stages + unchanged
+        return exp_hash
 
-    def collect_output(self) -> Iterable["PathInfo"]:
-        repo_tree = RepoTree(self.dvc)
-        yield from self.collect_files(self.tree, repo_tree)
+    @classmethod
+    def checkpoint_callback(
+        cls,
+        scm: SCM,
+        unchanged: Iterable[PipelineStage],
+        stages: Iterable[PipelineStage],
+    ):
+        try:
+            exp_hash = cls.hash_exp(stages + unchanged)
+            exp_rev = cls.commit(scm, exp_hash)
+            logger.info("Checkpoint experiment iteration '%s'.", exp_rev[:7])
+        except UnchangedExperimentError:
+            pass
 
-    @staticmethod
-    def collect_files(tree: BaseTree, repo_tree: RepoTree):
-        for fname in repo_tree.walk_files(repo_tree.root_dir, dvcfiles=True):
-            if not repo_tree.isdvc(fname):
-                yield tree.path_info / fname.relative_to(repo_tree.root_dir)
+    @classmethod
+    def commit(cls, scm: SCM, exp_hash: str):
+        """Commit stages as an experiment and return the commit SHA."""
+        rev = scm.get_rev()
+        if not scm.is_dirty(untracked_files=True):
+            logger.debug("No changes to commit")
+            raise UnchangedExperimentError(rev)
+
+        branch = scm.get_ref(EXEC_BRANCH, follow=False)
+        if branch:
+            _, baseline_rev, _ = split_exps_refname(branch)
+            old_ref = rev
+            logger.debug("Commit to current experiment branch '%s'", branch)
+        else:
+            baseline_rev = scm.get_ref(EXEC_HEAD)
+            branch = get_exps_refname(scm, baseline_rev, exp_hash)
+            old_ref = None
+            logger.debug("Commit to new experiment branch '%s'", branch)
+
+        scm.repo.git.add(A=True)
+        scm.commit(f"dvc: commit experiment {exp_hash}")
+        new_rev = scm.get_rev()
+        scm.set_ref(branch, new_rev, old_ref=old_ref)
+        scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
+        return new_rev
+
+
+class LocalExecutor(BaseExecutor):
+    """Local machine experiment executor."""
+
+    def __init__(
+        self,
+        *args,
+        tmp_dir: Optional[str] = None,
+        cache_dir: Optional[str] = None,
+        **kwargs,
+    ):
+        self._tmp_dir = TemporaryDirectory(dir=tmp_dir)
+        super().__init__(*args, root_dir=self._tmp_dir.name, **kwargs)
+        if cache_dir:
+            self._config(cache_dir)
+        logger.debug(
+            "Init local executor in dir '%s'", self._tmp_dir,
+        )
+
+    def _config(self, cache_dir):
+        local_config = os.path.join(self.dvc_dir, "config.local")
+        logger.debug("Writing experiments local config '%s'", local_config)
+        with open(local_config, "w") as fobj:
+            fobj.write("[core]\n    no_scm = true\n")
+            fobj.write(f"[cache]\n    dir = {cache_dir}")
+
+    @property
+    def git_url(self) -> str:
+        return "file://{}".format(os.path.abspath(self.root_dir))
 
     def cleanup(self):
-        logger.debug("Removing tmpdir '%s'", self.tmp_dir)
-        self.tmp_dir.cleanup()
+        logger.debug("Removing tmpdir '%s'", self._tmp_dir)
+        self._tmp_dir.cleanup()
         super().cleanup()
