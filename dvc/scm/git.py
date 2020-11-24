@@ -543,16 +543,21 @@ class Git(Base):
         """Return the value of specified ref.
 
         If follow is false, symbolic refs will not be dereferenced.
+        Returns None if the ref does not exist.
         """
         from dulwich.refs import parse_symref_value
 
         name = os.fsencode(name)
         if follow:
-            ref = self.dulwich_repo.refs[name]
+            try:
+                ref = self.dulwich_repo.refs[name]
+            except KeyError:
+                ref = None
         else:
             ref = self.dulwich_repo.refs.read_ref(name)
             try:
-                ref = parse_symref_value(ref)
+                if ref:
+                    ref = parse_symref_value(ref)
             except ValueError:
                 pass
         if ref:
@@ -608,13 +613,14 @@ class Git(Base):
             src = os.fsencode(src)
             keys = self.dulwich_repo.refs.subkeys(src)
             values = [
-                self.dulwich_repo.refs[b"".join([src, key])].id for key in keys
+                self.dulwich_repo.refs[b"".join([src, key])] for key in keys
             ]
             dest_refs = [b"".join([os.fsencode(dest), key]) for key in keys]
         else:
             if src is None:
                 values = [ZERO_SHA]
-            values = [self.dulwich_repo.refs[os.fsencode(src)].id]
+            else:
+                values = [self.dulwich_repo.refs[os.fsencode(src)]]
             dest_refs = [os.fsencode(dest)]
 
         def update_refs(refs):
