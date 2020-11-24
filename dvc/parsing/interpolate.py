@@ -58,15 +58,16 @@ def format_and_raise_parse_error(exc):
 
 
 def _format_exc_msg(exc: ParseException):
-    loc = exc.col + 2  # 2 because we append `${` at the start of expr below
     msg = str(exc)
     pstr_line = "{brace_open}{expr}{brace_close}\n".format(
         brace_open=colorize("${", color="blue"),
         expr=colorize(exc.pstr, color="magenta"),
         brace_close=colorize("}", color="blue"),
     )
+
+    exc.loc += 2  # 2 because we append `${` at the start of expr below
     pointer = "^"
-    pointer_line = f"{pointer:>{loc}}\n"
+    pointer_line = f"{pointer:>{exc.col}}\n"
     pointer_line = colorize(pointer_line, color="red")
     return pstr_line + pointer_line + colorize(msg, color="red", style="bold")
 
