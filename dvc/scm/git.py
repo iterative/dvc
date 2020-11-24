@@ -813,10 +813,8 @@ class Stash:
         logger.debug("Popping from stash '%s'", self.ref)
         rev = os.fsdecode(self[0].new_sha)
         if self.ref == self.DEFAULT_STASH:
-            logger.debug("git pop")
             self.git.stash("pop")
         else:
-            logger.debug("dulwich pop")
             self.apply(rev)
             self.drop()
         return rev
