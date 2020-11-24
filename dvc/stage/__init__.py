@@ -2,6 +2,8 @@ import logging
 import os
 import string
 from collections import defaultdict
+from dataclasses import dataclass
+from typing import Optional
 
 from funcy import cached_property, project
 
@@ -58,6 +60,12 @@ def loads_from(cls, repo, path, wdir, data):
         ),
     }
     return cls(**kw)
+
+
+@dataclass
+class RawData:
+    parametrized: bool = False
+    generated_from: Optional[str] = None
 
 
 def create_stage(cls, repo, path, external=False, **kwargs):
@@ -131,6 +139,7 @@ class Stage(params.StageParams):
         self._stage_text = stage_text
         self._dvcfile = dvcfile
         self.desc = desc
+        self.raw_data = RawData()
 
     @property
     def path(self) -> str:
