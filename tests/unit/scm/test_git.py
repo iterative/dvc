@@ -184,6 +184,20 @@ def test_remove_ref(tmp_dir, scm):
     assert not (tmp_dir / ".git" / "refs" / "foo" / "bar").exists()
 
 
+def test_refs_containing(tmp_dir, scm):
+    tmp_dir.scm_gen({"file": "0"}, commit="init")
+    init_rev = scm.get_rev()
+    tmp_dir.gen(
+        {
+            os.path.join(".git", "refs", "foo", "bar"): init_rev,
+            os.path.join(".git", "refs", "foo", "baz"): init_rev,
+        }
+    )
+
+    expected = {"refs/foo/bar", "refs/foo/baz", "refs/heads/master"}
+    assert expected == set(scm.get_refs_containing(init_rev))
+
+
 def test_push_refspec(tmp_dir, scm, make_tmp_dir):
     tmp_dir.scm_gen({"file": "0"}, commit="init")
     init_rev = scm.get_rev()

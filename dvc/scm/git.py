@@ -519,7 +519,7 @@ class Git(Base):
 
         Optional kwargs:
             old_ref: If specified, ref will only be set if it currently equals
-                old_ref. Has no effect is symblic is True.
+                old_ref. Has no effect is symbolic is True.
             message: Optional reflog message.
             symbolic: If True, ref will be set as a symbolic ref to new_ref
                 rather than the dereferenced object.
