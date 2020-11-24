@@ -125,7 +125,7 @@ class OSFTree(BaseTree):
 
         with open(to_file, "wb") as fobj:
             with Tqdm.wrapattr(
-                fobj, "read", desc=name, total=total, disable=no_progress_bar
+                fobj, "write", desc=name, total=total, disable=no_progress_bar
             ) as wrapped:
                 file.write_to(wrapped)
 
