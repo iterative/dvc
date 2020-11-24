@@ -316,9 +316,9 @@ class Experiments:
             )
             return [stash_rev]
         results = self.reproduce([stash_rev], keep_stash=False)
-        # exp_rev = first(results)
-        # if exp_rev is not None:
-        #     self.checkout_exp(exp_rev)
+        exp_rev = first(results)
+        if exp_rev is not None:
+            self.checkout_exp(exp_rev)
         return results
 
     def reproduce_queued(self, **kwargs):
@@ -558,14 +558,30 @@ class Experiments:
     @scm_locked
     def checkout_exp(self, rev, **kwargs):
         """Checkout an experiment to the user's workspace."""
+        from git.exc import GitCommandError
+
         from dvc.repo.checkout import checkout as dvc_checkout
 
         self._check_baseline(rev)
         branch = self._get_branch_containing(rev)
 
-        with self.scm.stash_workspace(include_untracked=True):
-            self.scm.repo.git.merge(branch, squash=True, no_commit=True)
-            self.scm.repo.git.reset()
+        if self.scm.is_dirty(untracked_files=True):
+            logger.debug("Stashing workspace")
+            workspace = self.scm.stash.push(include_untracked=True)
+        else:
+            workspace = None
+
+        # merge experiment branch into working copy without committing
+        self.scm.repo.git.merge(branch, squash=True, no_commit=True)
+        if workspace:
+            try:
+                self.scm.stash.apply(workspace)
+            except GitCommandError:
+                # if stash apply returns merge conflicts, prefer experiment
+                # changes over prior stashed changes
+                self.scm.repo.git.checkout("--ours", "--", ".")
+            self.scm.stash.drop()
+        self.scm.repo.git.reset()
 
         dvc_checkout(self.repo, **kwargs)
 
