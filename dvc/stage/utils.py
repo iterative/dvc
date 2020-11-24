@@ -44,12 +44,12 @@ def check_stage_path(repo, path, is_wdir=False):
 
 def _resolve_dvclive_integration(**kwargs):
     """
-        dvclive dir structure:
+        dvclive results structure:
         .
-        ├── history
+        ├── {logs_path}
         │   ├── m1.tsv
         │   └── m2.tsv
-        └── latest.json
+        └── {logs_path}.json
     """
     result = defaultdict(list, kwargs)
     for key, paths in kwargs.items():
@@ -59,10 +59,8 @@ def _resolve_dvclive_integration(**kwargs):
             metrics_key = "metrics_no_cache" if no_cache else "metrics"
 
             for log_path in paths:
-                result[plots_key].append(os.path.join(log_path, "history"))
-                result[metrics_key].append(
-                    os.path.join(log_path, "latest.json")
-                )
+                result[plots_key].append(log_path)
+                result[metrics_key].append(log_path + ".json")
 
     return dict(result)
 

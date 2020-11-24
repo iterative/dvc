@@ -1,4 +1,5 @@
 import logging
+from typing import Dict
 
 from funcy import cached_property, first, project
 
@@ -109,6 +110,15 @@ class Plots:
 
         return result
 
+    def _any_exists(self, data: Dict[str, Dict], target: str):
+        rpath = relpath(target, self.repo.root_dir)
+        return any(
+            "data" in rev_data[key]
+            for rev_data in data.values()
+            for key, d in rev_data.items()
+            if rpath in key
+        )
+
     def show(self, targets=None, revs=None, props=None, templates=None):
 
         data = self.collect(targets, revs)
@@ -117,7 +127,12 @@ class Plots:
         targets = [targets] if isinstance(targets, str) else targets or []
         for target in targets:
             rpath = relpath(target, self.repo.root_dir)
-            if not any("data" in d[rpath] for d in data.values()):
+            if not any(
+                "data" in rev_data[key]
+                for rev_data in data.values()
+                for key, d in rev_data.items()
+                if rpath in key
+            ):
                 raise MetricDoesNotExistError([target])
 
         # No data at all is a special error with a special message

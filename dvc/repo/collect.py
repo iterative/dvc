@@ -42,7 +42,7 @@ def _collect_paths(
         if recursive and tree.isdir(path_info):
             target_infos.update(set(tree.walk_files(path_info)))
 
-        if not tree.isfile(path_info):
+        if not tree.exists(path_info):
             if not recursive:
                 logger.warning(
                     "'%s' was not found at: '%s'.", path_info, rev,
@@ -59,9 +59,10 @@ def _filter_duplicates(
     res_infos = set(path_infos)
 
     for out in outs:
-        if out.path_info in path_infos:
-            res_outs.add(out)
-            res_infos.remove(out.path_info)
+        for p in path_infos:
+            if out.path_info.overlaps(p):
+                res_outs.add(out)
+                res_infos.remove(p)
 
     return res_outs, res_infos
 

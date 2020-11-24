@@ -795,24 +795,32 @@ def test_dir_plots(tmp_dir, dvc, run_copy_metrics):
     assert p1_content["title"] == p2_content["title"] == "TITLE"
 
 
-def test_ble(tmp_dir, scm, dvc, run_copy_metrics):
+def test_show_dir_plots(tmp_dir, dvc, run_copy_metrics):
+    subdir = tmp_dir / "subdir"
+    subdir.mkdir()
     metric = [
-        OrderedDict([("first_val", 100), ("second_val", 100), ("val", 2)]),
-        OrderedDict([("first_val", 200), ("second_val", 300), ("val", 3)]),
+        {"first_val": 100, "val": 2},
+        {"first_val": 200, "val": 3},
     ]
 
-    _write_json(tmp_dir, metric, "metric_t.json")
-    scm.add(["metric_t.json", "copy.py"])
+    fname = "file.json"
+    _write_json(tmp_dir, metric, fname)
 
-    scm.commit("ble")
-    target = os.path.join("subdir", "metric.json")
-
-    run_copy_metrics(
-        "metric_t.json",
-        target,
-        plots_no_cache=[target],
-        name="copy",
+    p1 = os.path.join("subdir", "p1.json")
+    p2 = os.path.join("subdir", "p2.json")
+    tmp_dir.dvc.run(
+        cmd=(
+            f"mkdir subdir && python copy.py {fname} {p1} && "
+            f"python copy.py {fname} {p2}"
+        ),
+        deps=[fname],
         single_stage=False,
+        plots=["subdir"],
+        name="copy_double",
     )
-    with tmp_dir.branch("test", "new"):
-        dvc.plots.modify(target, props={"x": "first_val"})
+
+    result = dvc.plots.show(targets=["subdir"])
+    p1_content = json.loads(result[os.path.join("subdir", "p1.json")])
+    p2_content = json.loads(result[os.path.join("subdir", "p2.json")])
+
+    assert p1_content == p2_content
