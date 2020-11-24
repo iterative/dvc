@@ -58,18 +58,21 @@ def format_and_raise_parse_error(exc):
 
 
 def _format_exc_msg(exc: ParseException):
-    msg = str(exc)
-    pstr_line = "{brace_open}{expr}{brace_close}\n".format(
+    exc.loc += 2  # 2 because we append `${` at the start of expr below
+
+    expr = exc.pstr
+    exc.pstr = "${" + exc.pstr + "}"
+    error = ParseException.explain(exc, depth=0)
+
+    _, pointer, *explains = error.splitlines()
+    pstr = "{brace_open}{expr}{brace_close}".format(
         brace_open=colorize("${", color="blue"),
-        expr=colorize(exc.pstr, color="magenta"),
+        expr=colorize(expr, color="magenta"),
         brace_close=colorize("}", color="blue"),
     )
-
-    exc.loc += 2  # 2 because we append `${` at the start of expr below
-    pointer = "^"
-    pointer_line = f"{pointer:>{exc.col}}\n"
-    pointer_line = colorize(pointer_line, color="red")
-    return pstr_line + pointer_line + colorize(msg, color="red", style="bold")
+    msg = "\n".join(explains)
+    pointer = colorize(pointer, color="red")
+    return "\n".join([pstr, pointer, colorize(msg, color="red", style="bold")])
 
 
 def parse_expr(s: str):
