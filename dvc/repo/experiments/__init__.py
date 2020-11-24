@@ -9,7 +9,7 @@ from collections.abc import Mapping
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
 from functools import partial, wraps
-from typing import Iterable, Optional
+from typing import Iterable, Optional, no_type_check
 
 from funcy import cached_property, first
 
@@ -375,11 +375,9 @@ class Experiments:
         if not self.scm.is_dirty(untracked_files=True):
             raise UnchangedExperimentError(self.scm.get_rev())
 
-        rev = self.scm.get_rev()
-        if not baseline_rev:
-            baseline_rev = rev
-        checkpoint = "-checkpoint" if checkpoint else ""
-        exp_name = f"{baseline_rev[:7]}-{exp_hash}{checkpoint}"
+        rev = baseline_rev or self.scm.get_rev()
+        suffix = "-checkpoint" if checkpoint else ""
+        exp_name = f"{rev[:7]}-{exp_hash}{suffix}"
         if create_branch:
             if (
                 check_exists or checkpoint
@@ -450,7 +448,7 @@ class Experiments:
         """
         if checkpoint_resume is not None:
             return self._resume_checkpoint(
-                *args, **kwargs, checkpoint_resume=checkpoint_resume
+                *args, checkpoint_resume=checkpoint_resume, **kwargs
             )
 
         if branch:
@@ -628,7 +626,7 @@ class Experiments:
 
         Returns dict containing successfully executed experiments.
         """
-        result = {}
+        result: dict = {}
 
         collect_lock = threading.Lock()
 
@@ -701,6 +699,7 @@ class Experiments:
         finally:
             lock.release()
 
+    @no_type_check
     def _checkpoint_callback(
         self,
         result: Mapping,
