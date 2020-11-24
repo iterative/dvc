@@ -20,7 +20,7 @@ from dvc.scm.base import (
     SCMError,
 )
 from dvc.utils import fix_env, is_binary, relpath
-from dvc.utils.fs import path_isin
+from dvc.utils.fs import path_isin, remove
 from dvc.utils.serialize import modify_yaml
 
 logger = logging.getLogger(__name__)
@@ -569,7 +569,7 @@ class Git(Base):
         if old_ref is not None:
             old_ref = old_ref.encode("utf-8")
         if not self.dulwich_repo.refs.remove_if_equals(name, old_ref):
-            raise SCMError(f"Failed to set '{name}'")
+            raise SCMError(f"Failed to remove '{name}'")
 
     def get_refs_containing(self, rev: str, pattern: Optional[str]):
         """Iterate over all git refs containing the specfied revision."""
@@ -589,11 +589,53 @@ class Git(Base):
         except GitCommandError:
             pass
 
-    def stash_drop(self, ref):
-        # dulwich Stash does not implement drop or pop
-        self.repo.git.reflog("delete", "--updateref", ref)
-        if len(self.repo.refs["refs/stash"].log()) == 0:
-            self.remove_ref(ref)
+    def push_refspec(self, url: str, src: Optional[str], dest: str):
+        """Push refspec to a remote Git repo.
+
+        Args:
+            url: Remote repo Git URL (Note this must be a Git URL and not
+                a remote name).
+            src: Local refspec. If src ends with "/" it will be treated as a
+                prefix, and all refs inside src will be pushed using dest
+                as destination refspec prefix. If src is None, dest will be
+                deleted from the remote.
+            dest: Remote refspec.
+        """
+        from dulwich.client import get_transport_and_path
+        from dulwich.objects import ZERO_SHA
+
+        if src is not None and src.endswith("/"):
+            src = os.fsencode(src)
+            keys = self.dulwich_repo.refs.subkeys(src)
+            values = [
+                self.dulwich_repo.refs[b"".join([src, key])].id for key in keys
+            ]
+            dest_refs = [b"".join([os.fsencode(dest), key]) for key in keys]
+        else:
+            if src is None:
+                values = [ZERO_SHA]
+            values = [self.dulwich_repo.refs[os.fsencode(src)].id]
+            dest_refs = [os.fsencode(dest)]
+
+        def update_refs(refs):
+            for ref, value in zip(dest_refs, values):
+                refs[ref] = value
+            return refs
+
+        try:
+            client, path = get_transport_and_path(url)
+        except Exception as exc:
+            raise SCMError("Could not get remote client") from exc
+
+        def progress(msg):
+            logger.trace("git send_pack: %s", msg)
+
+        client.send_pack(
+            path,
+            update_refs,
+            self.dulwich_repo.object_store.generate_pack_data,
+            progress=progress,
+        )
 
     @contextmanager
     def detach_head(self, rev: Optional[str] = None):
@@ -630,7 +672,6 @@ class Git(Base):
         """
         logger.debug("Stashing workspace")
         rev = self.stash.push(**kwargs)
-        assert len(self.stash) == 1
         try:
             yield rev
         finally:
@@ -685,7 +726,9 @@ class Stash:
                 message=message, include_untracked=include_untracked
             )
         else:
-            self._stash.push(message=message.encode("utf-8"))
+            if message is not None:
+                message = message.encode("utf-8")
+            self._stash.push(message=message)
             self.git.reset(hard=True)
         return os.fsdecode(self[0].new_sha)
 
@@ -708,7 +751,7 @@ class Stash:
             # behavior but it doesn't support --include-untracked so we need to
             # use push
             commit = self.scm.resolve_commit("stash@{0}")
-            self.scm.set_ref(self.ref, message=commit.message)
+            self.scm.set_ref(self.ref, commit.hexsha, message=commit.message)
             self.git.stash("drop")
 
     def pop(self):
@@ -733,9 +776,13 @@ class Stash:
             raise SCMError(f"Invalid stash ref '{ref}'")
         logger.debug("Dropping '%s'", ref)
         self.git.reflog("delete", "--updateref", ref)
-        refs = self.scm.dulwich_repo.refs
-        if ref not in refs or len(refs[ref].log()) == 0:
-            self.scm.remove_ref(ref)
+
+        # if we removed the last reflog entry, delete the ref and reflog
+        if len(self) == 0:
+            self.scm.remove_ref(self.ref)
+            parts = self.ref.split("/")
+            reflog = os.path.join(self.scm.root_dir, ".git", "logs", *parts)
+            remove(reflog)
 
     def clear(self):
         logger.debug("Clear stash '%s'", self.ref)
