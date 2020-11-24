@@ -1,15 +1,9 @@
 """Common utilities for serialize."""
 import os
 from contextlib import contextmanager
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ContextManager,
-    Dict,
-    Protocol,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, ContextManager, Dict, Union
+
+from typing_extensions import Protocol
 
 from dvc.exceptions import DvcException
 from dvc.utils import relpath
