@@ -168,6 +168,7 @@ def test_get_ref(tmp_dir, scm):
     assert init_rev == scm.get_ref("refs/foo/bar")
     assert init_rev == scm.get_ref("refs/foo/baz")
     assert "refs/heads/master" == scm.get_ref("refs/foo/baz", follow=False)
+    assert scm.get_ref("refs/foo/qux") is None
 
 
 def test_remove_ref(tmp_dir, scm):
@@ -181,3 +182,29 @@ def test_remove_ref(tmp_dir, scm):
         scm.remove_ref("refs/foo/bar", old_ref=commit_rev)
     scm.remove_ref("refs/foo/bar", old_ref=init_rev)
     assert not (tmp_dir / ".git" / "refs" / "foo" / "bar").exists()
+
+
+def test_push_refspec(tmp_dir, scm, make_tmp_dir):
+    tmp_dir.scm_gen({"file": "0"}, commit="init")
+    init_rev = scm.get_rev()
+    tmp_dir.gen(
+        {
+            os.path.join(".git", "refs", "foo", "bar"): init_rev,
+            os.path.join(".git", "refs", "foo", "baz"): init_rev,
+        }
+    )
+    remote_dir = make_tmp_dir("git-remote", scm=True)
+    url = "file://{}".format(remote_dir.resolve())
+
+    scm.push_refspec(url, "refs/foo/bar", "refs/foo/bar")
+    assert init_rev == remote_dir.scm.get_ref("refs/foo/bar")
+
+    remote_dir.scm.checkout("refs/foo/bar")
+    assert init_rev == remote_dir.scm.get_rev()
+    assert "0" == (remote_dir / "file").read_text()
+
+    scm.push_refspec(url, "refs/foo/", "refs/foo/")
+    assert init_rev == remote_dir.scm.get_ref("refs/foo/baz")
+
+    scm.push_refspec(url, None, "refs/foo/baz")
+    assert remote_dir.scm.get_ref("refs/foo/baz") is None
