@@ -3,6 +3,7 @@ from collections import OrderedDict, defaultdict
 from datetime import datetime
 
 from dvc.repo import locked
+from dvc.repo.experiments.base import EXPS_NAMESPACE, split_exps_refname
 from dvc.repo.metrics.show import _collect_metrics, _read_metrics
 from dvc.repo.params.show import _collect_configs, _read_params
 
@@ -33,8 +34,9 @@ def _collect_experiment(repo, rev, stash=False, sha_only=True):
 
         if not sha_only and rev != "workspace":
             try:
+                exclude = f"{EXPS_NAMESPACE}/*"
                 name = repo.scm.repo.git.describe(
-                    rev, all=True, exact_match=True
+                    rev, all=True, exact_match=True, exclude=exclude
                 )
                 name = name.rsplit("/")[-1]
                 res["name"] = name
@@ -101,30 +103,15 @@ def show(
             key=lambda r: r.commit.committed_date,
             reverse=True,
         ):
-            exp_ref = "/".join([repo.experiments.REF_NAMESPACE, ref.name])
-            _, sha, exp_branch = repo.experiments.split_refname(exp_ref)
+            exp_ref = "/".join([EXPS_NAMESPACE, ref.name])
+            _, sha, _exp_branch = split_exps_refname(exp_ref)
             assert sha == rev
-            m = repo.experiments.BRANCH_RE.match(exp_branch)
-            if m:
-                with repo.experiments.chdir():
-                    if m.group("checkpoint"):
-                        _collect_checkpoint_experiment(
-                            res[rev], repo.experiments.exp_dvc, exp_ref, rev
-                        )
-                    else:
-                        exp_rev = repo.experiments.scm.resolve_rev(exp_ref)
-                        experiment = _collect_experiment(
-                            repo.experiments.exp_dvc, exp_rev
-                        )
-                        res[rev][exp_rev] = experiment
+            _collect_checkpoint_experiment(res[rev], repo, exp_ref, rev)
 
     # collect queued (not yet reproduced) experiments
     for stash_rev, entry in repo.experiments.stash_revs.items():
         if entry.baseline_rev in revs:
-            with repo.experiments.chdir():
-                experiment = _collect_experiment(
-                    repo.experiments.exp_dvc, stash_rev, stash=True
-                )
+            experiment = _collect_experiment(repo, stash_rev, stash=True)
             res[entry.baseline_rev][stash_rev] = experiment
 
     return res
