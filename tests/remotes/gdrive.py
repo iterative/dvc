@@ -58,12 +58,19 @@ class GDrive(Base, CloudURLInfo):
         assert not exist_ok
 
     def write_bytes(self, contents):
-        with tempfile.NamedTemporaryFile() as f:
-            f.write(contents)
-            f.flush()
+        file_name = ""
+        try:
+            # Windows doesn't allow to read a file before closing.
+            with tempfile.NamedTemporaryFile(delete=False) as f:
+                file_name = f.name
+                f.write(contents)
 
-            local = PathInfo(pathlib.Path(f.name))
+            path_file_name = pathlib.Path(file_name)
+            local = PathInfo(path_file_name)
             self.tree.upload(local, self)
+        finally:
+            if file_name:
+                os.remove(path_file_name)
 
     def write_text(self, contents, encoding=None, errors=None):
         if not encoding:
