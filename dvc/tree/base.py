@@ -2,6 +2,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partial
 from multiprocessing import cpu_count
+from typing import Any, ClassVar, Dict, Optional
 from urllib.parse import urlparse
 
 from funcy import cached_property, decorator
@@ -46,8 +47,8 @@ def use_state(call):
 
 class BaseTree:
     scheme = "base"
-    REQUIRES = {}
-    PATH_CLS = URLInfo
+    REQUIRES: ClassVar[Dict[str, str]] = {}
+    PATH_CLS = URLInfo  # type: Any
     JOBS = 4 * cpu_count()
 
     CHECKSUM_DIR_SUFFIX = ".dir"
@@ -59,9 +60,9 @@ class BaseTree:
     TRAVERSE_THRESHOLD_SIZE = 500000
     CAN_TRAVERSE = True
 
-    CACHE_MODE = None
+    CACHE_MODE: Optional[int] = None
     SHARED_MODE_MAP = {None: (None, None), "group": (None, None)}
-    PARAM_CHECKSUM = None
+    PARAM_CHECKSUM: ClassVar[Optional[str]] = None
 
     state = StateNoop()
 
@@ -155,9 +156,10 @@ class BaseTree:
     def cache(self):
         return getattr(self.repo.cache, self.scheme)
 
-    def open(self, path_info, mode="r", encoding=None):
+    def open(self, path_info, mode: str = "r", encoding: str = None):
         if hasattr(self, "_generate_download_url"):
-            func = self._generate_download_url  # noqa,pylint:disable=no-member
+            # pylint:disable=no-member
+            func = self._generate_download_url  # type: ignore[attr-defined]
             get_url = partial(func, path_info)
             return open_url(get_url, mode=mode, encoding=encoding)
 

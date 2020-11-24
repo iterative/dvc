@@ -4,7 +4,7 @@ import stat
 import threading
 from contextlib import suppress
 from itertools import takewhile
-from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Optional, Tuple, Type, Union
 
 from funcy import lfilter, wrap_with
 
@@ -22,11 +22,9 @@ from .dvc import DvcTree
 if TYPE_CHECKING:
     from dvc.repo import Repo
 
-    from .git import GitTree
-    from .local import LocalTree
-
-
 logger = logging.getLogger(__name__)
+
+RepoFactory = Union[Callable[[str], "Repo"], Type["Repo"]]
 
 
 class RepoTree(BaseTree):  # pylint:disable=abstract-method
@@ -43,18 +41,14 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
     PARAM_CHECKSUM = "md5"
 
     def __init__(
-        self,
-        repo,
-        subrepos=False,
-        repo_factory: Callable[[str], "Repo"] = None,
-        **kwargs
+        self, repo, subrepos=False, repo_factory: RepoFactory = None, **kwargs
     ):
         super().__init__(repo, {"url": repo.root_dir})
 
         if not repo_factory:
             from dvc.repo import Repo
 
-            self.repo_factory = Repo
+            self.repo_factory: RepoFactory = Repo
         else:
             self.repo_factory = repo_factory
 
@@ -120,9 +114,7 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         # dvcignore will ignore subrepos, therefore using `use_dvcignore=False`
         return self._main_repo.tree.isdir(repo_path, use_dvcignore=False)
 
-    def _get_tree_pair(
-        self, path
-    ) -> Tuple[Union["GitTree", "LocalTree"], DvcTree]:
+    def _get_tree_pair(self, path) -> Tuple[BaseTree, Optional[DvcTree]]:
         """
         Returns a pair of trees based on repo the path falls in, using prefix.
         """
