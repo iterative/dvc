@@ -75,7 +75,7 @@ def test_open(tmp_dir, dvc, remote):
     [
         pytest.lazy_fixture(cloud)
         for cloud in [
-            "real_s3",  # NOTE: moto's s3 fails in some tests
+            "s3",
             "gs",
             "azure",
             "gdrive",
@@ -128,7 +128,7 @@ def test_open_granular(tmp_dir, dvc, remote):
     [
         pytest.lazy_fixture(cloud)
         for cloud in [
-            "real_s3",  # NOTE: moto's s3 fails in some tests
+            "s3",
             "gs",
             "azure",
             "gdrive",
