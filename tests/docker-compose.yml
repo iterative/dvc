@@ -2,7 +2,7 @@
 version: '3.2'
 services:
   azurite:
-    image: mcr.microsoft.com/azure-storage/azurite:3.3.0-preview
+    image: mcr.microsoft.com/azure-storage/azurite:3.9.0
     ports:
       - "10000"
   oss:
