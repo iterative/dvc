@@ -1,5 +1,6 @@
 from multiprocessing import Process
 
+from dvc.exceptions import NotDvcRepoError
 from dvc.repo import Repo
 from dvc.visualization import embed
 
@@ -19,7 +20,12 @@ def summary(path: str, debug: bool = False):
         assert os.path.exists(path)
         assert os.path.exists(metrics_path)
 
-        repo = Repo(Repo.find_root())
+        try:
+            root = Repo.find_root()
+        except NotDvcRepoError:
+            root = os.getcwd()
+
+        repo = Repo(root_dir=root, uninitialized=True)
 
         metrics = repo.metrics.show(targets=[metrics_path])
         metrics_html = metrics_embedding(metrics)
