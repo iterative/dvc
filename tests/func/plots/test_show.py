@@ -824,3 +824,6 @@ def test_show_dir_plots(tmp_dir, dvc, run_copy_metrics):
     p2_content = json.loads(result[os.path.join("subdir", "p2.json")])
 
     assert p1_content == p2_content
+
+    result = dvc.plots.show(targets=[os.path.join("subdir", "p1.json")])
+    assert set(result.keys()) == {os.path.join("subdir", "p1.json")}

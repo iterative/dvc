@@ -59,7 +59,7 @@ def _read_metrics(repo, metrics, rev):
 
     res = {}
     for metric in metrics:
-        if not tree.exists(metric):
+        if not tree.isfile(metric):
             continue
 
         try:

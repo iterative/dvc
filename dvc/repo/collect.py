@@ -59,10 +59,9 @@ def _filter_duplicates(
     res_infos = set(path_infos)
 
     for out in outs:
-        for p in path_infos:
-            if out.path_info.overlaps(p):
-                res_outs.add(out)
-                res_infos.remove(p)
+        if out.path_info in path_infos:
+            res_outs.add(out)
+            res_infos.remove(out.path_info)
 
     return res_outs, res_infos
 
