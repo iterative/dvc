@@ -3,19 +3,6 @@ import subprocess
 import pytest
 
 from .azure import Azure, azure, azure_server  # noqa: F401
-from .hdfs import HDFS, hadoop, hdfs, hdfs_server, webhdfs  # noqa: F401
-from .http import HTTP, http, http_server  # noqa: F401
-from .local import Local, local_cloud, local_remote  # noqa: F401
-from .oss import (  # noqa: F401
-    OSS,
-    TEST_OSS_REPO_BUCKET,
-    oss,
-    oss_server,
-    real_oss,
-)
-from .s3 import S3, TEST_AWS_REPO_BUCKET, real_s3, s3  # noqa: F401
-from .webdav import Webdav, webdav, webdav_server  # noqa: F401
-
 from .gdrive import (  # noqa: F401; noqa: F401
     TEST_GDRIVE_REPO_BUCKET,
     GDrive,
@@ -27,12 +14,24 @@ from .gs import (  # noqa: F401; noqa: F401
     TEST_GCP_REPO_BUCKET,
     gs,
 )
+from .hdfs import HDFS, hadoop, hdfs, hdfs_server, webhdfs  # noqa: F401
+from .http import HTTP, http, http_server  # noqa: F401
+from .local import Local, local_cloud, local_remote  # noqa: F401
+from .oss import (  # noqa: F401
+    OSS,
+    TEST_OSS_REPO_BUCKET,
+    oss,
+    oss_server,
+    real_oss,
+)
+from .s3 import S3, TEST_AWS_REPO_BUCKET, real_s3, s3  # noqa: F401
 from .ssh import (  # noqa: F401; noqa: F401
     SSHMocked,
     ssh,
     ssh_connection,
     ssh_server,
 )
+from .webdav import Webdav, webdav, webdav_server  # noqa: F401
 
 TEST_REMOTE = "upstream"
 TEST_CONFIG = {
