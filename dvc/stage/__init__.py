@@ -143,7 +143,7 @@ class Stage(params.StageParams):
 
         self.repo = repo
         self._path = path
-        self.cmd = " && ".join(cmd) if isinstance(cmd, list) else cmd
+        self.cmd = cmd
         self.wdir = wdir
         self.outs = outs
         self.deps = deps
