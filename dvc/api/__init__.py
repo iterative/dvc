@@ -3,7 +3,6 @@ from contextlib import _GeneratorContextManager as GCM
 from contextlib import contextmanager
 
 from funcy import reraise
-from tabulate import tabulate
 
 from dvc.exceptions import (
     NotDvcRepoError,
@@ -141,67 +140,3 @@ def make_checkpoint():
         os.fsync(fobj.fileno())
     while os.path.exists(signal_file):
         sleep(1)
-
-
-PAGE_HTML = """<!DOCTYPE html>
-<html>
-<head>
-    <title>DVC Plot</title>
-    <script src="https://cdn.jsdelivr.net/npm/vega@5.10.0"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-lite@4.8.1"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.5.1"></script>
-</head>
-<body>
-    {metrics}
-    <br>
-    {divs}
-</body>
-</html>"""
-
-DIV_HTML = """<div id = "{id}"></div>
-<script type = "text/javascript">
-    var spec = {vega_json};
-    vegaEmbed('#{id}', spec);
-</script>"""
-
-
-def _metrics_to_table(metrics):
-    header = []
-    rows = []
-    for _, rev_data in metrics.items():
-        for _, data in rev_data.items():
-            if not header:
-                header.extend(sorted(data.keys()))
-            else:
-                assert set(header) == set(data.keys())
-
-            row = []
-            for key in header:
-                row.append(data[key])
-
-            rows.append(row)
-    return tabulate(rows, header, tablefmt="html")
-
-
-def produce_dvclive_summary(path):
-    metrics_path = path + ".json"
-
-    assert os.path.exists(path)
-    assert os.path.exists(metrics_path)
-
-    repo = Repo(Repo.find_root())
-
-    metrics = repo.metrics.show(targets=[metrics_path])
-    metrics_html = _metrics_to_table(metrics)
-
-    plots = repo.plots.show(targets=[path], recursive=True)
-    divs = [
-        DIV_HTML.format(id=f"plot{i}", vega_json=plot)
-        for i, plot in enumerate(plots.values())
-    ]
-    html = PAGE_HTML.format(metrics=metrics_html, divs="\n".join(divs))
-
-    import builtins
-
-    with builtins.open(path + ".html", "w") as fd:
-        fd.write(html)

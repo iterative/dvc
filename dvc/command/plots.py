@@ -7,27 +7,9 @@ from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
 from dvc.schema import PLOT_PROPS
 from dvc.utils import format_link
+from dvc.visualization import embed, plots_embeddings
 
 logger = logging.getLogger(__name__)
-
-PAGE_HTML = """<!DOCTYPE html>
-<html>
-<head>
-    <title>DVC Plot</title>
-    <script src="https://cdn.jsdelivr.net/npm/vega@5.10.0"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-lite@4.8.1"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.5.1"></script>
-</head>
-<body>
-    {divs}
-</body>
-</html>"""
-
-DIV_HTML = """<div id = "{id}"></div>
-<script type = "text/javascript">
-    var spec = {vega_json};
-    vegaEmbed('#{id}', spec);
-</script>"""
 
 
 class CmdPlots(CmdBase):
@@ -58,11 +40,7 @@ class CmdPlots(CmdBase):
                 logger.info(plots[target])
                 return 0
 
-            divs = [
-                DIV_HTML.format(id=f"plot{i}", vega_json=plot)
-                for i, plot in enumerate(plots.values())
-            ]
-            html = PAGE_HTML.format(divs="\n".join(divs))
+            html = embed(plots_embeddings(plots))
             path = self.args.out or "plots.html"
 
             path = os.path.join(os.getcwd(), path)
