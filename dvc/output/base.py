@@ -333,8 +333,8 @@ class BaseOutput:
     def verify_metric(self):
         raise DvcException(f"verify metric is not supported for {self.scheme}")
 
-    def download(self, to):
-        self.tree.download(self.path_info, to.path_info)
+    def download(self, to, jobs=None):
+        self.tree.download(self.path_info, to.path_info, jobs=jobs)
 
     def checkout(
         self,
