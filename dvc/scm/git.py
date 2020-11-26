@@ -724,15 +724,17 @@ class Git(Base):
     def stash_workspace(self, **kwargs):
         """Stash restore any workspace changes.
 
-        Yields revision of the stash commit.
+        Yields revision of the stash commit. Yields None if there were no
+        changes to stash.
         """
         logger.debug("Stashing workspace")
         rev = self.stash.push(**kwargs)
         try:
             yield rev
         finally:
-            logger.debug("Restoring stashed workspace")
-            self.stash.pop()
+            if rev:
+                logger.debug("Restoring stashed workspace")
+                self.stash.pop()
 
 
 class Stash:
@@ -773,7 +775,12 @@ class Stash:
         self,
         message: Optional[str] = None,
         include_untracked: Optional[bool] = False,
-    ):
+    ) -> Optional[str]:
+
+        if not self.scm.is_dirty(untracked_files=include_untracked):
+            logger.debug("No changes to stash")
+            return None
+
         # dulwich stash.push does not support include_untracked and does not
         # touch working tree
         logger.debug("Stashing changes in '%s'", self.ref)
