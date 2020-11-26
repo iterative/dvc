@@ -183,7 +183,7 @@ class Git(Base):
 
         return entry, gitignore
 
-    def _ignored(self, path):
+    def is_ignored(self, path):
         from dulwich import ignore
         from dulwich.repo import Repo
 
@@ -194,7 +194,7 @@ class Git(Base):
     def ignore(self, path):
         entry, gitignore = self._get_gitignore(path)
 
-        if self._ignored(path):
+        if self.is_ignored(path):
             return
 
         msg = "Adding '{}' to '{}'.".format(relpath(path), relpath(gitignore))

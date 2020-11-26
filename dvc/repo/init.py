@@ -7,6 +7,7 @@ from dvc.ignore import init as init_dvcignore
 from dvc.repo import Repo
 from dvc.scm import SCM
 from dvc.scm.base import SCMError
+from dvc.scm.git import Git
 from dvc.utils import relpath
 from dvc.utils.fs import remove
 
@@ -50,6 +51,16 @@ def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
             "`--subdir` if initializing inside a subdirectory of a parent SCM "
             "repository.".format(repo=root_dir)
         )
+
+    if isinstance(scm, Git):
+        if scm.is_ignored(dvc_dir):
+            raise InitError(
+                "{dvc_dir} is ignored by Git. \n"
+                "Make sure that it's tracked, "
+                "for example, by adding '!.dvc' to .gitignore.".format(
+                    dvc_dir=dvc_dir
+                )
+            )
 
     if os.path.isdir(dvc_dir):
         if not force:
