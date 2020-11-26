@@ -1,8 +1,7 @@
+import fnmatch
 import logging
 import typing
 from typing import Iterable, List
-
-from funcy.strings import re_tester
 
 from dvc.dvcfile import PIPELINE_FILE, Dvcfile
 from dvc.utils import parse_target
@@ -20,21 +19,15 @@ class StageLoad:
         self.repo = repo
 
     def from_target(
-        self,
-        target: str,
-        accept_group: bool = False,
-        filter_regex: bool = False,
+        self, target: str, accept_group: bool = False, glob: bool = False,
     ) -> List["Stage"]:
         """
         Returns a list of stage from the provided target.
         (see load method below for further details)
         """
-        path, name = parse_target(target, isa_regex=filter_regex)
+        path, name = parse_target(target, isa_regex=glob)
         return self.load_all(
-            path=path,
-            name=name,
-            accept_group=accept_group,
-            filter_regex=filter_regex,
+            path=path, name=name, accept_group=accept_group, glob=glob,
         )
 
     def get_target(self, target: str) -> "Stage":
@@ -68,19 +61,18 @@ class StageLoad:
         stages: "StageLoader",
         name: str = None,
         accept_group: bool = False,
-        filter_regex: bool = False,
+        glob: bool = False,
     ) -> Iterable[str]:
 
-        assert not (accept_group and filter_regex)
+        assert not (accept_group and glob)
 
         if not name:
             return stages.keys()
 
         if accept_group and stages.is_foreach_generated(name):
             return self._get_group_keys(stages, name)
-        elif filter_regex:
-            filter_fn = re_tester(name)
-            return filter(filter_fn, stages.keys())
+        elif glob:
+            return fnmatch.filter(stages.keys(), name)
         return [name]
 
     def load_all(
@@ -88,7 +80,7 @@ class StageLoad:
         path: str = None,
         name: str = None,
         accept_group: bool = False,
-        filter_regex: bool = False,
+        glob: bool = False,
     ) -> List["Stage"]:
         """Load a list of stages from a file.
 
@@ -97,7 +89,7 @@ class StageLoad:
             name: required for `dvc.yaml` files, ignored for `.dvc` files.
             accept_group: if true, all of the the stages generated from `name`
                 foreach are returned.
-            filter_regex: if true, `name` is considered as regex, which is
+            glob: if true, `name` is considered as regex, which is
                 used to filter list of stages from the given `path`.
         """
         from dvc.stage.loader import SingleStageLoader, StageLoader
@@ -111,7 +103,7 @@ class StageLoad:
             return [stages[name]]
 
         assert isinstance(stages, StageLoader)
-        keys = self._get_keys(stages, name, accept_group, filter_regex)
+        keys = self._get_keys(stages, name, accept_group, glob)
         return [stages[key] for key in keys]
 
     def load_one(self, path: str = None, name: str = None) -> "Stage":
@@ -134,4 +126,4 @@ class StageLoad:
 
     def load_glob(self, path: str, expr: str = None):
         """Load stages from `path`, filtered with `expr` provided."""
-        return self.load_all(path, expr, filter_regex=True)
+        return self.load_all(path, expr, glob=True)

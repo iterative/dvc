@@ -302,7 +302,7 @@ class Repo:
         recursive=False,
         graph=None,
         accept_group: bool = False,
-        filter_regex: bool = False,
+        glob: bool = False,
     ):
         if not target:
             return list(graph) if graph else self.stages
@@ -313,7 +313,7 @@ class Repo:
             )
 
         stages = self.stage.from_target(
-            target, accept_group=accept_group, filter_regex=filter_regex
+            target, accept_group=accept_group, glob=glob
         )
         if not with_deps:
             return stages
@@ -335,7 +335,7 @@ class Repo:
         with_deps: bool,
         recursive: bool,
         accept_group: bool,
-        filter_regex: bool,
+        glob: bool,
     ):
         # Optimization: do not collect the graph for a specific target
         file, name = parse_target(target)
@@ -357,10 +357,7 @@ class Repo:
                     )
         elif not with_deps and is_valid_filename(file):
             stages = self.stage.load_all(
-                file,
-                name,
-                accept_group=accept_group,
-                filter_regex=filter_regex,
+                file, name, accept_group=accept_group, glob=glob,
             )
 
         return stages, file, name
@@ -372,7 +369,7 @@ class Repo:
         recursive=False,
         graph=None,
         accept_group: bool = False,
-        filter_regex: bool = False,
+        glob: bool = False,
     ):
         """
         Priority is in the order of following in case of ambiguity:
@@ -385,7 +382,7 @@ class Repo:
             return [(stage, None) for stage in self.stages]
 
         stages, file, _ = self._collect_specific_target(
-            target, with_deps, recursive, accept_group, filter_regex
+            target, with_deps, recursive, accept_group, glob
         )
         if not stages:
             if not (recursive and self.tree.isdir(target)):
@@ -403,7 +400,7 @@ class Repo:
                     recursive,
                     graph,
                     accept_group=accept_group,
-                    filter_regex=filter_regex,
+                    glob=glob,
                 )
             except StageFileDoesNotExistError as exc:
                 # collect() might try to use `target` as a stage name

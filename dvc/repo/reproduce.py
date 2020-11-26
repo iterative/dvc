@@ -119,7 +119,7 @@ def reproduce(
             recursive=recursive,
             graph=active_graph,
             accept_group=accept_group,
-            filter_regex=glob,
+            glob=glob,
         )
 
     return _reproduce_stages(active_graph, targets, **kwargs)
