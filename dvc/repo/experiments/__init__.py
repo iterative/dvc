@@ -1,17 +1,18 @@
 import logging
 import os
 import re
-from collections import namedtuple
+from collections import defaultdict, namedtuple
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from contextlib import contextmanager
 from functools import wraps
-from typing import Iterable, Optional
+from typing import Iterable, Mapping, Optional
 
 from funcy import cached_property, first
 
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 from dvc.repo.experiments.base import (
+    EXEC_CHECKPOINT,
     EXEC_HEAD,
     EXEC_MERGE,
     EXPS_NAMESPACE,
@@ -170,46 +171,11 @@ class Experiments:
         """
         return get_exps_refname(self.scm, baseline, name=name)
 
-    def _scm_checkout(self, rev, **kwargs):
-        self.scm.repo.git.reset(hard=True)
-        self.scm.repo.git.clean(force=True)
-        logger.debug("Checking out experiment commit '%s'", rev)
-        self.scm.checkout(rev, **kwargs)
-
-    def _checkout_default_branch(self):
-        from git.refs.symbolic import SymbolicReference
-
-        # switch to default branch
-        git_repo = self.scm.repo
-        git_repo.git.reset(hard=True)
-        git_repo.git.clean(force=True)
-        origin_refs = git_repo.remotes["origin"].refs
-
-        # origin/HEAD will point to tip of the default branch unless we
-        # initially cloned a repo that was in a detached-HEAD state.
-        #
-        # If we are currently detached because we cloned a detached
-        # repo, we can't actually tell what branch should be considered
-        # default, so we just fall back to the first available reference.
-        if "HEAD" in origin_refs:
-            ref = origin_refs["HEAD"].reference
-        else:
-            ref = origin_refs[0]
-            if not isinstance(ref, SymbolicReference):
-                ref = ref.reference
-        branch_name = ref.name.split("/")[-1]
-
-        if branch_name in git_repo.heads:
-            branch = git_repo.heads[branch_name]
-        else:
-            branch = git_repo.create_head(branch_name, ref)
-            branch.set_tracking_branch(ref)
-        branch.checkout()
-
     def _stash_exp(
         self,
         *args,
         params: Optional[dict] = None,
+        detach_rev: Optional[str] = None,
         baseline_rev: Optional[str] = None,
         branch: Optional[str] = None,
         **kwargs,
@@ -233,7 +199,13 @@ class Experiments:
                 self.stash.apply(workspace)
 
             # checkout and detach at branch (or current HEAD)
-            with self.scm.detach_head(branch) as rev:
+            if detach_rev:
+                head = detach_rev
+            elif branch:
+                head = branch
+            else:
+                head = None
+            with self.scm.detach_head(head) as rev:
                 if baseline_rev is None:
                     baseline_rev = rev
 
@@ -265,7 +237,9 @@ class Experiments:
 
         return stash_rev
 
-    def _stash_msg(self, rev: str, baseline_rev: str, branch=None):
+    def _stash_msg(
+        self, rev: str, baseline_rev: str, branch: Optional[str] = None
+    ):
         if not baseline_rev:
             baseline_rev = rev
         msg = self.STASH_EXPERIMENT_FORMAT.format(
@@ -299,13 +273,6 @@ class Experiments:
         # ignored when we `git stash` them since mtime is used to determine
         # whether the file is dirty
         self.scm.add(list(params.keys()))
-
-    def _reset_checkpoint_branch(self, branch, rev, branch_tip, reset):
-        if not reset:
-            raise CheckpointExistsError(rev, branch_tip)
-        self._checkout_default_branch()
-        logger.debug("Removing existing checkpoint branch '%s'", branch)
-        self.scm.repo.git.branch(branch, D=True)
 
     def reproduce_one(self, queue=False, **kwargs):
         """Reproduce and checkout a single experiment."""
@@ -360,20 +327,17 @@ class Experiments:
         """
         assert checkpoint_resume
 
-        branch = None
         if checkpoint_resume == self.LAST_CHECKPOINT:
             # Continue from most recently committed checkpoint
-            branch = self._get_last_checkpoint()
-            resume_rev = self.scm.resolve_rev(branch)
+            resume_rev = self._get_last_checkpoint()
         else:
-            rev = self.scm.resolve_rev(checkpoint_resume)
-            resume_rev = rev
-            branch = self._get_branch_containing(rev)
-            if not branch:
-                raise DvcException(
-                    "Could not find checkpoint experiment "
-                    f"'{checkpoint_resume}'"
-                )
+            resume_rev = self.scm.resolve_rev(checkpoint_resume)
+        branch = self._get_branch_containing(resume_rev)
+        if not branch:
+            raise DvcException(
+                "Could not find checkpoint experiment "
+                f"'{checkpoint_resume}'"
+            )
 
         baseline_rev = self._get_baseline(branch)
         if kwargs.get("params", None):
@@ -381,37 +345,26 @@ class Experiments:
                 "Branching from checkpoint '%s' with modified params",
                 checkpoint_resume,
             )
-            rev = resume_rev
+            detach_rev = resume_rev
             branch = None
         else:
             logger.debug(
-                "Continuing checkpoint experiment '%s'", checkpoint_resume
+                "Continuing from tip of checkpoint '%s'", checkpoint_resume
             )
-            rev = self.scm.resolve_rev(branch)
-            logger.debug(
-                "Using '%s' (tip of branch '%s') as baseline", rev, branch
-            )
-        self._scm_checkout(rev)
+            detach_rev = None
 
-        kwargs["apply_workspace"] = False
-        stash_rev = self._stash_exp(
-            *args, baseline_rev=baseline_rev, branch=branch, **kwargs
+        return self._stash_exp(
+            *args,
+            detach_rev=detach_rev,
+            baseline_rev=baseline_rev,
+            branch=branch,
+            **kwargs,
         )
-        logger.debug(
-            "Stashed experiment '%s' for future execution.", stash_rev[:7]
-        )
-        return stash_rev
 
     def _get_last_checkpoint(self):
-        for head in sorted(
-            self.scm.repo.heads,
-            key=lambda h: h.commit.committed_date,
-            reverse=True,
-        ):
-            exp_branch = head.name
-            m = self.BRANCH_RE.match(exp_branch)
-            if m and m.group("checkpoint"):
-                return exp_branch
+        rev = self.scm.get_ref(EXEC_CHECKPOINT)
+        if rev:
+            return rev
         raise DvcException("No existing checkpoint experiment to continue")
 
     @scm_locked
@@ -504,14 +457,16 @@ class Experiments:
             result.update(exp_result)
         return result
 
-    def _reproduce(self, executors: dict, jobs: Optional[int] = 1) -> dict:
+    def _reproduce(
+        self, executors: dict, jobs: Optional[int] = 1
+    ) -> Mapping[str, Mapping[str, str]]:
         """Run dvc repro for the specified BaseExecutors in parallel.
 
         Returns dict containing successfully executed experiments.
         """
         from multiprocessing import get_context
 
-        result: dict = {}
+        result = defaultdict(dict)
 
         with ProcessPoolExecutor(
             max_workers=jobs, mp_context=get_context("spawn")
@@ -527,8 +482,10 @@ class Experiments:
 
                 try:
                     if exc is None:
-                        exp_hash = future.result()
-                        self._collect_executor(executor, rev, exp_hash, result)
+                        exp_hash, force = future.result()
+                        result[rev].update(
+                            self._collect_executor(executor, exp_hash, force)
+                        )
                     else:
                         # Checkpoint errors have already been logged
                         if not isinstance(exc, CheckpointKilledError):
@@ -542,7 +499,9 @@ class Experiments:
 
         return result
 
-    def _collect_executor(self, executor, rev, exp_hash, result):
+    def _collect_executor(
+        self, executor, exp_hash, force
+    ) -> Mapping[str, str]:
         # NOTE: GitPython Repo instances cannot be re-used
         # after process has received SIGINT or SIGTERM, so we
         # need this hack to re-instantiate git instances after
@@ -550,11 +509,15 @@ class Experiments:
         # https://github.com/gitpython-developers/GitPython/issues/427
         del self.repo.scm
 
-        for ref in executor.fetch_exps(self.scm):
+        results = {}
+
+        for ref in executor.fetch_exps(self.scm, force=force):
             exp_rev = self.scm.get_ref(ref)
             if exp_rev:
                 logger.info("Reproduced experiment '%s'.", exp_rev[:7])
-                result[rev] = {exp_rev: exp_hash}
+                results[exp_rev] = exp_hash
+
+        return results
 
     @scm_locked
     def checkout_exp(self, rev, **kwargs):

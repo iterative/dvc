@@ -3,7 +3,7 @@ import os
 import pickle
 from functools import partial
 from tempfile import TemporaryDirectory
-from typing import Iterable, Optional, Union
+from typing import Iterable, Optional, Tuple, Union
 
 from funcy import cached_property
 
@@ -12,6 +12,7 @@ from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.repo.experiments.base import (
     EXEC_BRANCH,
+    EXEC_CHECKPOINT,
     EXEC_HEAD,
     EXEC_MERGE,
     EXEC_NAMESPACE,
@@ -145,7 +146,7 @@ class BaseExecutor:
             data = pickle.load(fobj)
         return data["args"], data["kwargs"]
 
-    def fetch_exps(self, scm: SCM) -> Iterable[str]:
+    def fetch_exps(self, dest_scm: SCM, force: bool = False) -> Iterable[str]:
         """Fetch reproduced experiments into the specified SCM."""
         refs = []
         for key in self.scm.dulwich_repo.refs.keys(
@@ -156,25 +157,40 @@ class BaseExecutor:
                 refs.append(ref)
 
         def on_diverged(orig_ref, _new_ref):
+            if force:
+                logger.debug(
+                    "Replacing existing experiment '%s'", os.fsdecode(orig_ref)
+                )
+                return True
             logger.debug(
                 "Reproduced existing experiment '%s'", os.fsdecode(orig_ref)
             )
             return False
 
-        scm.fetch_refspecs(
+        # fetch experiments
+        dest_scm.fetch_refspecs(
             self.git_url,
             [f"{ref}:{ref}" for ref in refs],
             on_diverged=on_diverged,
         )
+        # update last run checkpoint (if it exists)
+        if self.scm.get_ref(EXEC_CHECKPOINT):
+            dest_scm.fetch_refspecs(
+                self.git_url,
+                [f"{EXEC_CHECKPOINT}:{EXEC_CHECKPOINT}"],
+                force=True,
+            )
         return refs
 
     @classmethod
     def reproduce(
         cls, dvc_dir: str, cwd: Optional[str] = None
-    ) -> Optional[str]:
+    ) -> Tuple[bool, Optional[str]]:
         """Run dvc repro and return the result.
 
-        Returns the hashed experiment or None if an error occured.
+        Returns tuple of (exp_hash, force) where exp_hash is the experiment
+            hash (or None on error) and force is a bool specifying whether or
+            not this experiment should force overwrite any existing duplicates.
         """
         unchanged = []
 
@@ -182,6 +198,9 @@ class BaseExecutor:
             unchanged.extend(
                 [stage for stage in stages if isinstance(stage, PipelineStage)]
             )
+
+        result = None
+        force = False
 
         try:
             dvc = Repo(dvc_dir)
@@ -202,6 +221,8 @@ class BaseExecutor:
             else:
                 args = []
                 kwargs = {}
+
+            force = kwargs.get("force", False)
 
             # NOTE: for checkpoint experiments we handle persist outs slightly
             # differently than normal:
@@ -227,11 +248,11 @@ class BaseExecutor:
                 checkpoint_func=checkpoint_func,
                 **kwargs,
             )
-            logger.debug("before hash")
 
             exp_hash = cls.hash_exp(stages)
-            cls.commit(scm, exp_hash)
-            # logger.debug("done")
+            exp_rev = cls.commit(scm, exp_hash)
+            if scm.get_ref(EXEC_CHECKPOINT):
+                scm.set_ref(EXEC_CHECKPOINT, exp_rev)
         except UnchangedExperimentError:
             pass
         finally:
@@ -241,7 +262,7 @@ class BaseExecutor:
         # ideally we would return stages here like a normal repro() call, but
         # stages is not currently picklable and cannot be returned across
         # multiprocessing calls
-        return exp_hash
+        return result, force
 
     @classmethod
     def checkpoint_callback(
@@ -253,6 +274,7 @@ class BaseExecutor:
         try:
             exp_hash = cls.hash_exp(stages + unchanged)
             exp_rev = cls.commit(scm, exp_hash)
+            scm.set_ref(EXEC_CHECKPOINT, exp_rev)
             logger.info("Checkpoint experiment iteration '%s'.", exp_rev[:7])
         except UnchangedExperimentError:
             pass
