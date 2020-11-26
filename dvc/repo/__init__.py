@@ -307,7 +307,7 @@ class Repo:
         if not target:
             return list(graph) if graph else self.stages
 
-        if recursive and os.path.isdir(target):
+        if recursive and self.tree.isdir(target):
             return self._collect_inside(
                 os.path.abspath(target), graph or self.graph
             )
@@ -388,7 +388,7 @@ class Repo:
             target, with_deps, recursive, accept_group, filter_regex
         )
         if not stages:
-            if not (recursive and os.path.isdir(target)):
+            if not (recursive and self.tree.isdir(target)):
                 try:
                     (out,) = self.find_outs_by_path(target, strict=False)
                     filter_info = PathInfo(os.path.abspath(target))
