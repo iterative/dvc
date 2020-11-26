@@ -19,6 +19,7 @@ def imp_url(
     frozen=True,
     no_exec=False,
     desc=None,
+    jobs=None,
 ):
     from dvc.dvcfile import Dvcfile
     from dvc.stage import Stage, create_stage
@@ -42,6 +43,7 @@ def imp_url(
         deps=[url],
         outs=[out],
         erepo=erepo,
+        jobs=jobs,
     )
 
     if stage is None:
