@@ -180,7 +180,7 @@ def add_arguments(repro_parser):
         "--glob",
         action="store_true",
         default=False,
-        help="Allows targets containing regex filter to repro.",
+        help="Allows targets containing shell-style wildcards.",
     )
 
 
