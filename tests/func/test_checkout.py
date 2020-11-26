@@ -7,7 +7,6 @@ import shutil
 import pytest
 from mock import patch
 
-from dvc.cache.base import CloudCache
 from dvc.dvcfile import DVC_FILE_SUFFIX, PIPELINE_FILE, Dvcfile
 from dvc.exceptions import (
     CheckoutError,
@@ -17,19 +16,16 @@ from dvc.exceptions import (
     NoOutputOrStageError,
 )
 from dvc.main import main
-from dvc.remote.base import Remote
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
 from dvc.tree.local import LocalTree
-from dvc.tree.s3 import S3Tree
 from dvc.utils import relpath
 from dvc.utils.fs import walk_files
 from dvc.utils.serialize import dump_yaml, load_yaml
 from tests.basic_env import TestDvc, TestDvcGit
 from tests.func.test_repro import TestRepro
-from tests.remotes import S3
 
 logger = logging.getLogger("dvc")
 
@@ -757,32 +753,28 @@ def test_checkout_recursive(tmp_dir, dvc):
     }
 
 
-@pytest.mark.skipif(
-    not S3.should_test(), reason="Only run with S3 credentials"
+@pytest.mark.parametrize(
+    "workspace", [pytest.lazy_fixture("s3")], indirect=True
 )
-def test_checkout_for_external_outputs(tmp_dir, dvc):
-    dvc.cache.s3 = CloudCache(S3Tree(dvc, {"url": S3.get_url()}))
+def test_checkout_for_external_outputs(tmp_dir, dvc, workspace):
+    workspace.gen("foo", "foo")
 
-    remote = Remote(S3Tree(dvc, {"url": S3.get_url()}))
-    file_path = remote.tree.path_info / "foo"
-    remote.tree.s3.meta.client.put_object(
-        Bucket=remote.tree.path_info.bucket, Key=file_path.path, Body="foo"
-    )
+    file_path = workspace / "foo"
+    dvc.add("remote://workspace/foo")
 
-    dvc.add(str(remote.tree.path_info / "foo"), external=True)
-
+    remote = dvc.cloud.get_remote("workspace")
     remote.tree.remove(file_path)
+    assert not file_path.exists()
+
     stats = dvc.checkout(force=True)
     assert stats == {**empty_checkout, "added": [str(file_path)]}
-    assert remote.tree.exists(file_path)
+    assert file_path.exists()
 
-    remote.tree.s3.meta.client.put_object(
-        Bucket=remote.tree.path_info.bucket,
-        Key=file_path.path,
-        Body="foo\nfoo",
-    )
+    workspace.gen("foo", "foo\nfoo")
+
     stats = dvc.checkout(force=True)
     assert stats == {**empty_checkout, "modified": [str(file_path)]}
+    assert file_path.read_text() == "foo"
 
 
 def test_checkouts_with_different_addressing(tmp_dir, dvc, run_copy):
