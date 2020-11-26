@@ -307,33 +307,33 @@ def test_collect_granular_not_existing_stage_name(tmp_dir, dvc, run_copy):
 
 def test_get_stages(tmp_dir, dvc, run_copy):
     with pytest.raises(StageFileDoesNotExistError):
-        dvc.get_stages()
+        dvc.stage.load_all()
 
     tmp_dir.gen("foo", "foo")
     stage1 = run_copy("foo", "bar", name="copy-foo-bar")
     stage2 = run_copy("bar", "foobar", name="copy-bar-foobar")
 
-    assert set(dvc.get_stages()) == {stage1, stage2}
-    assert set(dvc.get_stages(path=PIPELINE_FILE)) == {stage1, stage2}
-    assert set(dvc.get_stages(name="copy-bar-foobar")) == {stage2}
-    assert set(dvc.get_stages(path=PIPELINE_FILE, name="copy-bar-foobar")) == {
-        stage2
-    }
+    assert set(dvc.stage.load_all()) == {stage1, stage2}
+    assert set(dvc.stage.load_all(path=PIPELINE_FILE)) == {stage1, stage2}
+    assert set(dvc.stage.load_all(name="copy-bar-foobar")) == {stage2}
+    assert set(
+        dvc.stage.load_all(path=PIPELINE_FILE, name="copy-bar-foobar")
+    ) == {stage2}
 
     with pytest.raises(StageFileDoesNotExistError):
-        dvc.get_stages(path=relpath(tmp_dir / ".." / PIPELINE_FILE))
+        dvc.stage.load_all(path=relpath(tmp_dir / ".." / PIPELINE_FILE))
 
     with pytest.raises(StageNotFound):
-        dvc.get_stages(path=PIPELINE_FILE, name="copy")
+        dvc.stage.load_all(path=PIPELINE_FILE, name="copy")
 
 
 def test_get_stages_old_dvcfile(tmp_dir, dvc):
     (stage1,) = tmp_dir.dvc_gen("foo", "foo")
-    assert set(dvc.get_stages("foo.dvc")) == {stage1}
-    assert set(dvc.get_stages("foo.dvc", name="foo-generate")) == {stage1}
+    assert set(dvc.stage.load_all("foo.dvc")) == {stage1}
+    assert set(dvc.stage.load_all("foo.dvc", name="foo-generate")) == {stage1}
 
     with pytest.raises(StageFileDoesNotExistError):
-        dvc.get_stages(path=relpath(tmp_dir / ".." / "foo.dvc"))
+        dvc.stage.load_all(path=relpath(tmp_dir / ".." / "foo.dvc"))
 
 
 def test_get_stage(tmp_dir, dvc, run_copy):
@@ -341,24 +341,26 @@ def test_get_stage(tmp_dir, dvc, run_copy):
     stage1 = run_copy("foo", "bar", name="copy-foo-bar")
 
     with pytest.raises(StageNameUnspecified):
-        dvc.get_stage()
+        dvc.stage.load_one()
 
     with pytest.raises(StageNameUnspecified):
-        dvc.get_stage(path=PIPELINE_FILE)
+        dvc.stage.load_one(path=PIPELINE_FILE)
 
-    assert dvc.get_stage(path=PIPELINE_FILE, name="copy-foo-bar") == stage1
-    assert dvc.get_stage(name="copy-foo-bar") == stage1
+    assert (
+        dvc.stage.load_one(path=PIPELINE_FILE, name="copy-foo-bar") == stage1
+    )
+    assert dvc.stage.load_one(name="copy-foo-bar") == stage1
 
     with pytest.raises(StageFileDoesNotExistError):
-        dvc.get_stage(path="something.yaml", name="name")
+        dvc.stage.load_one(path="something.yaml", name="name")
 
     with pytest.raises(StageNotFound):
-        dvc.get_stage(name="random_name")
+        dvc.stage.load_one(name="random_name")
 
 
 def test_get_stage_single_stage_dvcfile(tmp_dir, dvc):
     (stage1,) = tmp_dir.dvc_gen("foo", "foo")
-    assert dvc.get_stage("foo.dvc") == stage1
-    assert dvc.get_stage("foo.dvc", name="jpt") == stage1
+    assert dvc.stage.load_one("foo.dvc") == stage1
+    assert dvc.stage.load_one("foo.dvc", name="jpt") == stage1
     with pytest.raises(StageFileDoesNotExistError):
-        dvc.get_stage(path="bar.dvc", name="name")
+        dvc.stage.load_one(path="bar.dvc", name="name")

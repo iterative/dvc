@@ -1,6 +1,6 @@
 import logging
 import os
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from functools import wraps
 from typing import TYPE_CHECKING
 
@@ -8,7 +8,7 @@ from funcy import cached_property, cat
 from git import InvalidGitRepositoryError
 
 from dvc.config import Config
-from dvc.dvcfile import PIPELINE_FILE, Dvcfile, is_valid_filename
+from dvc.dvcfile import PIPELINE_FILE, is_valid_filename
 from dvc.exceptions import FileMissingError
 from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
 from dvc.exceptions import (
@@ -17,6 +17,7 @@ from dvc.exceptions import (
     OutputNotFoundError,
 )
 from dvc.path_info import PathInfo
+from dvc.repo.stage import StageLoad
 from dvc.scm import Base
 from dvc.scm.base import SCMError
 from dvc.tree.repo import RepoTree
@@ -165,6 +166,7 @@ class Repo:
 
         self.cache = Cache(self)
         self.cloud = DataCloud(self)
+        self.stage = StageLoad(self)
 
         if scm or not self.dvc_dir:
             self.lock = LockNoop()
@@ -270,25 +272,6 @@ class Repo:
 
         self.scm.ignore_list(flist)
 
-    def get_stage(self, path=None, name=None):
-        if not path:
-            path = PIPELINE_FILE
-            logger.debug("Assuming '%s' to be a stage inside '%s'", name, path)
-
-        dvcfile = Dvcfile(self, path)
-        return dvcfile.stages[name]
-
-    def get_stages(self, path=None, name=None):
-        if not path:
-            path = PIPELINE_FILE
-            logger.debug("Assuming '%s' to be a stage inside '%s'", name, path)
-
-        if name:
-            return [self.get_stage(path, name)]
-
-        dvcfile = Dvcfile(self, path)
-        return list(dvcfile.stages.values())
-
     def check_modified_graph(self, new_stages):
         """Generate graph including the new stage to check for errors"""
         # Building graph might be costly for the ones with many DVC-files,
@@ -313,7 +296,13 @@ class Repo:
         return [stage for stage in stages if path_isin(stage.path, path)]
 
     def collect(
-        self, target=None, with_deps=False, recursive=False, graph=None
+        self,
+        target=None,
+        with_deps=False,
+        recursive=False,
+        graph=None,
+        accept_group: bool = False,
+        filter_regex: bool = False,
     ):
         if not target:
             return list(graph) if graph else self.stages
@@ -323,8 +312,9 @@ class Repo:
                 os.path.abspath(target), graph or self.graph
             )
 
-        path, name = parse_target(target)
-        stages = self.get_stages(path, name)
+        stages = self.stage.from_target(
+            target, accept_group=accept_group, filter_regex=filter_regex
+        )
         if not with_deps:
             return stages
 
@@ -339,13 +329,50 @@ class Repo:
         pipeline = get_pipeline(get_pipelines(graph or self.graph), stage)
         return nx.dfs_postorder_nodes(pipeline, stage)
 
-    def _collect_from_default_dvcfile(self, target):
-        dvcfile = Dvcfile(self, PIPELINE_FILE)
-        if dvcfile.exists():
-            return dvcfile.stages.get(target)
+    def _collect_specific_target(
+        self,
+        target: str,
+        with_deps: bool,
+        recursive: bool,
+        accept_group: bool,
+        filter_regex: bool,
+    ):
+        # Optimization: do not collect the graph for a specific target
+        file, name = parse_target(target)
+        stages = []
+        if not file:
+            # parsing is ambiguous when it does not have a colon
+            # or if it's not a dvcfile, as it can be a stage name
+            # in `dvc.yaml` or, an output in a stage.
+            logger.debug(
+                "Checking if stage '%s' is in '%s'", target, PIPELINE_FILE
+            )
+            if not (
+                recursive and self.tree.isdir(target)
+            ) and self.tree.exists(PIPELINE_FILE):
+                with suppress(StageNotFound):
+                    stage = self.stage.load_one(PIPELINE_FILE, target)
+                    stages = (
+                        self._collect_pipeline(stage) if with_deps else [stage]
+                    )
+        elif not with_deps and is_valid_filename(file):
+            stages = self.stage.load_all(
+                file,
+                name,
+                accept_group=accept_group,
+                filter_regex=filter_regex,
+            )
+
+        return stages, file, name
 
     def collect_granular(
-        self, target=None, with_deps=False, recursive=False, graph=None
+        self,
+        target=None,
+        with_deps=False,
+        recursive=False,
+        graph=None,
+        accept_group: bool = False,
+        filter_regex: bool = False,
     ):
         """
         Priority is in the order of following in case of ambiguity:
@@ -357,26 +384,9 @@ class Repo:
         if not target:
             return [(stage, None) for stage in self.stages]
 
-        file, name = parse_target(target)
-        stages = []
-
-        # Optimization: do not collect the graph for a specific target
-        if not file:
-            # parsing is ambiguous when it does not have a colon
-            # or if it's not a dvcfile, as it can be a stage name
-            # in `dvc.yaml` or, an output in a stage.
-            logger.debug(
-                "Checking if stage '%s' is in '%s'", target, PIPELINE_FILE
-            )
-            if not (recursive and os.path.isdir(target)):
-                stage = self._collect_from_default_dvcfile(target)
-                if stage:
-                    stages = (
-                        self._collect_pipeline(stage) if with_deps else [stage]
-                    )
-        elif not with_deps and is_valid_filename(file):
-            stages = self.get_stages(file, name)
-
+        stages, file, _ = self._collect_specific_target(
+            target, with_deps, recursive, accept_group, filter_regex
+        )
         if not stages:
             if not (recursive and os.path.isdir(target)):
                 try:
@@ -387,7 +397,14 @@ class Repo:
                     pass
 
             try:
-                stages = self.collect(target, with_deps, recursive, graph)
+                stages = self.collect(
+                    target,
+                    with_deps,
+                    recursive,
+                    graph,
+                    accept_group=accept_group,
+                    filter_regex=filter_regex,
+                )
             except StageFileDoesNotExistError as exc:
                 # collect() might try to use `target` as a stage name
                 # and throw error that dvc.yaml does not exist, whereas it
@@ -498,7 +515,9 @@ class Repo:
 
         for root, dirs, files in self.tree.walk(self.root_dir):
             for file_name in filter(is_valid_filename, files):
-                new_stages = self.get_stages(os.path.join(root, file_name))
+                new_stages = self.stage.load_file(
+                    os.path.join(root, file_name)
+                )
                 stages.extend(new_stages)
                 outs.update(
                     out.fspath

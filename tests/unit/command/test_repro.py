@@ -15,6 +15,7 @@ default_arguments = {
     "recursive": False,
     "force_downstream": False,
     "pull": False,
+    "glob": False,
 }
 
 
