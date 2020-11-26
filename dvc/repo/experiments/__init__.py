@@ -195,7 +195,7 @@ class Experiments:
         with self.scm.stash_workspace(include_untracked=True) as workspace:
             # If we are not extending an existing branch, apply current
             # workspace changes to be made in new branch
-            if not branch:
+            if not branch and workspace:
                 self.stash.apply(workspace)
 
             # checkout and detach at branch (or current HEAD)
