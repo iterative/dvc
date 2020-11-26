@@ -318,7 +318,8 @@ class Experiments:
         results = self.reproduce([stash_rev], keep_stash=False)
         exp_rev = first(results)
         if exp_rev is not None:
-            self.checkout_exp(exp_rev)
+            # TODO: suggest branch/apply
+            pass
         return results
 
     def reproduce_queued(self, **kwargs):
