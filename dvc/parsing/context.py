@@ -310,7 +310,7 @@ class Context(CtxDict):
         return node.value if unwrap else node
 
     @classmethod
-    def load_from(cls, tree, path: PathInfo) -> "Context":
+    def load_from(cls, tree, path: PathInfo, select_keys=None) -> "Context":
         file = relpath(path)
         if not tree.exists(path):
             raise ParamsFileNotFound(f"'{file}' does not exist")
@@ -318,11 +318,26 @@ class Context(CtxDict):
         _, ext = os.path.splitext(file)
         loader = LOADERS[ext]
 
-        meta = Meta(source=file, local=False)
-        return cls(loader(path, tree=tree), meta=meta)
+        data = loader(path, tree=tree)
+        select_keys = select_keys or []
+        if select_keys:
+            try:
+                data = {key: data[key] for key in select_keys}
+            except KeyError as exc:
+                key, *_ = exc.args
+                raise ContextError(
+                    f"could not find '{key}' in '{file}'"
+                ) from exc
 
-    def merge_from(self, tree, path: PathInfo, overwrite=False):
-        self.merge_update(Context.load_from(tree, path), overwrite=overwrite)
+        meta = Meta(source=file, local=False)
+        return cls(data, meta=meta)
+
+    def merge_from(
+        self, tree, path: PathInfo, overwrite=False, select_keys=None,
+    ):
+        self.merge_update(
+            Context.load_from(tree, path, select_keys), overwrite=overwrite
+        )
 
     @classmethod
     def clone(cls, ctx: "Context") -> "Context":

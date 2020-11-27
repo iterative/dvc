@@ -343,3 +343,42 @@ def test_interpolate_non_string(tmp_dir, repo):
         "failed to parse 'stages.build.cmd' in 'dvc.yaml':\n"
         "Cannot interpolate data of type 'dict'"
     )
+
+
+@pytest.mark.parametrize("local", [True, False])
+@pytest.mark.parametrize(
+    "vars_",
+    [
+        ["test_params.yaml", "test_params.yaml:sub1"],
+        ["test_params.yaml:sub1", "test_params.yaml"],
+        ["test_params.yaml:sub1", "test_params.yaml:sub1,sub2"],
+    ],
+)
+def test_vars_already_loaded_message(tmp_dir, repo, local, vars_):
+    d = {"stages": {"build": {"cmd": "echo ${sub1} ${sub2}"}}}
+    dump_yaml("test_params.yaml", {"sub1": "sub1", "sub2": "sub2"})
+    if not local:
+        d["vars"] = vars_
+    else:
+        d["stages"]["build"]["vars"] = vars_
+
+    with pytest.raises(ResolveError) as exc_info:
+        resolver = DataResolver(repo, tmp_dir, d)
+        resolver.resolve()
+
+    assert "partially" in str(exc_info.value)
+
+
+@pytest.mark.parametrize("local", [False, True])
+def test_partial_vars_doesnot_exist(tmp_dir, repo, local):
+    d = {"stages": {"build": {"cmd": "echo ${sub1} ${sub2}"}}}
+    dump_yaml("test_params.yaml", {"sub1": "sub1", "sub2": "sub2"})
+    vars_ = ["test_params.yaml:sub3"]
+    if not local:
+        d["vars"] = vars_
+    else:
+        d["stages"]["build"]["vars"] = vars_
+
+    with pytest.raises(ResolveError):
+        resolver = DataResolver(repo, tmp_dir, d)
+        resolver.resolve()

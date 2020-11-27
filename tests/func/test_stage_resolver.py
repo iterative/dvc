@@ -502,3 +502,25 @@ def test_vars_relpath_overwrite(tmp_dir, dvc):
     }
     resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
     resolver.resolve()
+
+
+@pytest.mark.parametrize("local", [True, False])
+@pytest.mark.parametrize(
+    "vars_",
+    [
+        ["test_params.yaml:bar", "test_params.yaml:foo"],
+        ["test_params.yaml:foo,bar"],
+        ["test_params.yaml"],
+        ["test_params.yaml", "test_params.yaml"],
+    ],
+)
+def test_vars_load_partial(tmp_dir, dvc, local, vars_):
+    iterable = {"bar": "bar", "foo": "foo"}
+    dump_yaml(tmp_dir / "test_params.yaml", iterable)
+    d = {"stages": {"build": {"cmd": "echo ${bar}"}}}
+    if local:
+        d["stages"]["build"]["vars"] = vars_
+    else:
+        d["vars"] = vars_
+    resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
+    resolver.resolve()
