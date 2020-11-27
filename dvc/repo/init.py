@@ -7,7 +7,6 @@ from dvc.ignore import init as init_dvcignore
 from dvc.repo import Repo
 from dvc.scm import SCM
 from dvc.scm.base import SCMError
-from dvc.scm.git import Git
 from dvc.utils import relpath
 from dvc.utils.fs import remove
 
@@ -61,9 +60,7 @@ def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
 
     if os.path.isdir(dvc_dir):
         if not force:
-            raise InitError(
-                f"'{relpath(dvc_dir)}' exists. Use `-f` to force."
-            )
+            raise InitError(f"'{relpath(dvc_dir)}' exists. Use `-f` to force.")
 
         remove(dvc_dir)
 
