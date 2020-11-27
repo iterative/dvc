@@ -12,7 +12,7 @@ if os.name == "nt":
 
     import win32file  # pylint: disable=import-error
 
-    win32file._setmaxstdio(2048)
+    win32file._setmaxstdio(4096)
 
     # Workaround for two bugs:
     #
@@ -41,7 +41,7 @@ if os.name == "nt":
 else:
     import resource
 
-    resource.setrlimit(resource.RLIMIT_NOFILE, (2048, 2048))
+    resource.setrlimit(resource.RLIMIT_NOFILE, (4096, 4096))
 
     nproc_soft, nproc_hard = resource.getrlimit(resource.RLIMIT_NPROC)
     resource.setrlimit(resource.RLIMIT_NPROC, (nproc_hard, nproc_hard))

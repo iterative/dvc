@@ -1,4 +1,4 @@
-name: Tests build
+name: Tests
 
 on:
   pull_request:
@@ -23,7 +23,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2.3.2
     - name: Set up Python 3.8
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v2.1.4
       with:
         python-version: 3.8
     - name: Install requirements
@@ -39,10 +39,17 @@ jobs:
       matrix:
         os: [ubuntu-18.04, windows-2019, macos-10.15]
         pyv: ["3.6", "3.7", "3.8", "3.9"]
+        include:
+          - os: "macos-11.0"
+            pyv: "3.9"
+        exclude:
+          - os: macos-10.15
+            pyv: "3.9"
+
     steps:
     - uses: actions/checkout@v2.3.2
     - name: Set up Python
-      uses: actions/setup-python@v2.1.2
+      uses: actions/setup-python@v2.1.4
       with:
         python-version: ${{ matrix.pyv }}
     - name: install
@@ -60,12 +67,12 @@ jobs:
         mkdir -p scripts/ci
         echo "$GS_CREDS_JSON" > scripts/ci/gcp-creds.json
     - name: run tests
-      run: python -m tests -ra --cov-report=xml --cov-report=term --tap-combined
+      run: python -m tests --all --cov-report=xml --cov-report=term --tap-combined
     - name: upload coverage report
       uses: codecov/codecov-action@v1.0.13
       with:
         file: ./coverage.xml
-        fail_ci_if_error: true
+        fail_ci_if_error: false
     - name: Post TAP
       # Running custom fork with an option, that does not fail CI on error
       uses: skshetry/flaky-service/packages/action@master

@@ -199,6 +199,7 @@ def get_dump(stage):
     return {
         key: value
         for key, value in {
+            stage.PARAM_DESC: stage.desc,
             stage.PARAM_MD5: stage.md5,
             stage.PARAM_CMD: stage.cmd,
             stage.PARAM_WDIR: resolve_wdir(stage.wdir, stage.path),

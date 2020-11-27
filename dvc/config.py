@@ -103,6 +103,7 @@ class RelPath(str):
 REMOTE_COMMON = {
     "url": str,
     "checksum_jobs": All(Coerce(int), Range(1)),
+    "jobs": All(Coerce(int), Range(1)),
     Optional("no_traverse"): Bool,  # obsoleted
     "verify": Bool,
 }
@@ -148,6 +149,7 @@ SCHEMA = {
         "s3": str,
         "gs": str,
         "hdfs": str,
+        "webhdfs": str,
         "ssh": str,
         "azure": str,
         # This is for default local cache
@@ -201,6 +203,13 @@ SCHEMA = {
                     "client_id": str,
                     "client_secret": str,
                     "tenant_id": str,
+                    **REMOTE_COMMON,
+                },
+                "webhdfs": {
+                    "hdfscli_config": str,
+                    "webhdfs_token": str,
+                    "user": str,
+                    "webhdfs_alias": str,
                     **REMOTE_COMMON,
                 },
                 "oss": {

@@ -16,6 +16,7 @@ class CmdImportUrl(CmdBase):
                 out=self.args.out,
                 fname=self.args.file,
                 no_exec=self.args.no_exec,
+                desc=self.args.desc,
             )
         except DvcException:
             logger.exception(
@@ -66,5 +67,14 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Only create DVC-file without actually downloading it.",
+    )
+    import_parser.add_argument(
+        "--desc",
+        type=str,
+        metavar="<text>",
+        help=(
+            "User description of the data (optional). "
+            "This doesn't affect any DVC operations."
+        ),
     )
     import_parser.set_defaults(func=CmdImportUrl)

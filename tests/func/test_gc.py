@@ -356,6 +356,7 @@ def test_gc_not_collect_pipeline_tracked_files(tmp_dir, dvc, run_copy):
         pytest.lazy_fixture("s3"),
         pytest.lazy_fixture("gs"),
         pytest.lazy_fixture("hdfs"),
+        pytest.lazy_fixture("webhdfs"),
         pytest.param(
             pytest.lazy_fixture("ssh"),
             marks=pytest.mark.skipif(

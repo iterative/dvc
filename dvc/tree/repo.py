@@ -4,15 +4,15 @@ import stat
 import threading
 from contextlib import suppress
 from itertools import takewhile
-from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Optional, Tuple, Type, Union
 
 from funcy import lfilter, wrap_with
-from pygtrie import StringTrie
 
 from dvc.dvcfile import is_valid_filename
 from dvc.hash_info import HashInfo
 from dvc.path_info import PathInfo
 from dvc.utils import file_md5, is_exec
+from dvc.utils.collections import PathStringTrie
 from dvc.utils.fs import copy_fobj_to_file, makedirs
 
 from ._metadata import Metadata
@@ -22,11 +22,9 @@ from .dvc import DvcTree
 if TYPE_CHECKING:
     from dvc.repo import Repo
 
-    from .git import GitTree
-    from .local import LocalTree
-
-
 logger = logging.getLogger(__name__)
+
+RepoFactory = Union[Callable[[str], "Repo"], Type["Repo"]]
 
 
 class RepoTree(BaseTree):  # pylint:disable=abstract-method
@@ -43,18 +41,14 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
     PARAM_CHECKSUM = "md5"
 
     def __init__(
-        self,
-        repo,
-        subrepos=False,
-        repo_factory: Callable[[str], "Repo"] = None,
-        **kwargs
+        self, repo, subrepos=False, repo_factory: RepoFactory = None, **kwargs
     ):
         super().__init__(repo, {"url": repo.root_dir})
 
         if not repo_factory:
             from dvc.repo import Repo
 
-            self.repo_factory = Repo
+            self.repo_factory: RepoFactory = Repo
         else:
             self.repo_factory = repo_factory
 
@@ -62,7 +56,7 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         self.root_dir = repo.root_dir
         self._traverse_subrepos = subrepos
 
-        self._subrepos_trie = StringTrie(separator=os.sep)
+        self._subrepos_trie = PathStringTrie()
         """Keeps track of each and every path with the corresponding repo."""
 
         self._subrepos_trie[self.root_dir] = repo
@@ -120,9 +114,7 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         # dvcignore will ignore subrepos, therefore using `use_dvcignore=False`
         return self._main_repo.tree.isdir(repo_path, use_dvcignore=False)
 
-    def _get_tree_pair(
-        self, path
-    ) -> Tuple[Union["GitTree", "LocalTree"], DvcTree]:
+    def _get_tree_pair(self, path) -> Tuple[BaseTree, Optional[DvcTree]]:
         """
         Returns a pair of trees based on repo the path falls in, using prefix.
         """

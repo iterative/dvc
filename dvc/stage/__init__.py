@@ -2,6 +2,8 @@ import logging
 import os
 import string
 from collections import defaultdict
+from dataclasses import dataclass
+from typing import Optional
 
 from funcy import cached_property, project
 
@@ -52,11 +54,18 @@ def loads_from(cls, repo, path, wdir, data):
                 Stage.PARAM_FROZEN,
                 Stage.PARAM_ALWAYS_CHANGED,
                 Stage.PARAM_MD5,
+                Stage.PARAM_DESC,
                 "name",
             ],
         ),
     }
     return cls(**kw)
+
+
+@dataclass
+class RawData:
+    parametrized: bool = False
+    generated_from: Optional[str] = None
 
 
 def create_stage(cls, repo, path, external=False, **kwargs):
@@ -111,6 +120,7 @@ class Stage(params.StageParams):
         always_changed=False,
         stage_text=None,
         dvcfile=None,
+        desc=None,
     ):
         if deps is None:
             deps = []
@@ -128,13 +138,15 @@ class Stage(params.StageParams):
         self.always_changed = always_changed
         self._stage_text = stage_text
         self._dvcfile = dvcfile
+        self.desc = desc
+        self.raw_data = RawData()
 
     @property
-    def path(self):
+    def path(self) -> str:
         return self._path
 
     @path.setter
-    def path(self, path):
+    def path(self, path: str):
         self._path = path
         self.__dict__.pop("path_in_repo", None)
         self.__dict__.pop("relpath", None)
@@ -166,7 +178,7 @@ class Stage(params.StageParams):
         return f"stage: '{self.addressing}'"
 
     @property
-    def addressing(self):
+    def addressing(self) -> str:
         """
         Useful for alternative presentations where we don't need
         `Stage:` prefix.

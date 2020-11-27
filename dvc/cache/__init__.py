@@ -36,7 +36,13 @@ class Cache:
     """
 
     CACHE_DIR = "cache"
-    CLOUD_SCHEMES = [Schemes.S3, Schemes.GS, Schemes.SSH, Schemes.HDFS]
+    CLOUD_SCHEMES = [
+        Schemes.S3,
+        Schemes.GS,
+        Schemes.SSH,
+        Schemes.HDFS,
+        Schemes.WEBHDFS,
+    ]
 
     def __init__(self, repo):
         self.repo = repo

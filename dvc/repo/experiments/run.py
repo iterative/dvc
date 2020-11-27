@@ -63,4 +63,6 @@ def run(
         )
     except UnchangedExperimentError:
         # If experiment contains no changes, just run regular repro
+        kwargs.pop("queue", None)
+        kwargs.pop("checkpoint_resume", None)
         return {None: repo.reproduce(target=target, **kwargs)}

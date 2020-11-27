@@ -6,6 +6,7 @@ from tests.unit.dependency.test_local import TestLocalDependency
 
 
 @pytest.mark.skipif(PY39, reason=PYARROW_NOT_AVAILABLE)
+@pytest.mark.hdfs
 class TestHDFSDependency(TestLocalDependency):
     def _get_cls(self):
         return HDFSDependency

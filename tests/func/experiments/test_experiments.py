@@ -1,25 +1,12 @@
 import logging
+import os
+import stat
 
 import pytest
 from funcy import first
 
 from dvc.utils.serialize import PythonFileCorruptedError
 from tests.func.test_repro_multistage import COPY_SCRIPT
-
-
-@pytest.fixture
-def exp_stage(tmp_dir, scm, dvc):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
-    tmp_dir.gen("params.yaml", "foo: 1")
-    stage = dvc.run(
-        cmd="python copy.py params.yaml metrics.yaml",
-        metrics_no_cache=["metrics.yaml"],
-        params=["foo"],
-        name="copy-file",
-    )
-    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
-    scm.commit("init")
-    return stage
 
 
 def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker):
@@ -32,6 +19,18 @@ def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker):
     assert (
         tmp_dir / ".dvc" / "experiments" / "metrics.yaml"
     ).read_text() == "foo: 2"
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Not supported for Windows.")
+def test_file_permissions(tmp_dir, scm, dvc, exp_stage, mocker):
+    mode = 0o755
+    os.chmod(tmp_dir / "copy.py", mode)
+    scm.add(["copy.py"])
+    scm.commit("set exec")
+
+    tmp_dir.gen("params.yaml", "foo: 2")
+    dvc.experiments.run(exp_stage.addressing)
+    assert stat.S_IMODE(os.stat(tmp_dir / "copy.py").st_mode) == mode
 
 
 def test_failed_exp(tmp_dir, scm, dvc, exp_stage, mocker, caplog):
@@ -112,20 +111,34 @@ def test_modify_params(tmp_dir, scm, dvc, mocker, changes, expected):
     ).read_text().strip() == expected
 
 
-def test_checkout(tmp_dir, scm, dvc, exp_stage):
-    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
+@pytest.mark.parametrize("queue", [True, False])
+def test_checkout(tmp_dir, scm, dvc, exp_stage, queue):
+    metrics_original = (tmp_dir / "metrics.yaml").read_text().strip()
+    results = dvc.experiments.run(
+        exp_stage.addressing, params=["foo=2"], queue=queue
+    )
     exp_a = first(results)
 
-    results = dvc.experiments.run(exp_stage.addressing, params=["foo=3"])
+    results = dvc.experiments.run(
+        exp_stage.addressing, params=["foo=3"], queue=queue
+    )
     exp_b = first(results)
 
     dvc.experiments.checkout(exp_a)
     assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 2"
-    assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 2"
+    assert (
+        (tmp_dir / "metrics.yaml").read_text().strip() == metrics_original
+        if queue
+        else "foo: 2"
+    )
 
     dvc.experiments.checkout(exp_b)
     assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 3"
-    assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 3"
+    assert (
+        (tmp_dir / "metrics.yaml").read_text().strip() == metrics_original
+        if queue
+        else "foo: 3"
+    )
 
 
 def test_get_baseline(tmp_dir, scm, dvc, exp_stage):

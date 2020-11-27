@@ -3,7 +3,13 @@ import textwrap
 
 import pytest
 
-from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK, Dvcfile, SingleStageFile
+from dvc.dvcfile import (
+    PIPELINE_FILE,
+    PIPELINE_LOCK,
+    Dvcfile,
+    ParametrizedDumpError,
+    SingleStageFile,
+)
 from dvc.stage.exceptions import (
     StageFileDoesNotExistError,
     StageFileFormatError,
@@ -317,6 +323,27 @@ def test_dvcfile_dump_preserves_meta(tmp_dir, dvc, run_copy):
     assert dvcfile._load()[0]["stages"]["run_copy"]["meta"] == metadata
 
 
+def test_dvcfile_dump_preserves_desc(tmp_dir, dvc, run_copy):
+    tmp_dir.gen("foo", "foo")
+    stage_desc = "test stage description"
+    out_desc = "test out description"
+
+    stage = run_copy("foo", "bar", name="run_copy", desc=stage_desc)
+    dvcfile = stage.dvcfile
+
+    data = dvcfile._load()[0]
+    data["stages"]["run_copy"]["outs"][0] = {"bar": {"desc": out_desc}}
+    dump_yaml(dvcfile.path, data)
+
+    assert stage.desc == stage_desc
+    stage.outs[0].desc = out_desc
+    dvcfile.dump(stage)
+    loaded = dvcfile._load()[0]
+    assert loaded == data
+    assert loaded["stages"]["run_copy"]["desc"] == stage_desc
+    assert loaded["stages"]["run_copy"]["outs"][0]["bar"]["desc"] == out_desc
+
+
 def test_dvcfile_dump_preserves_comments(tmp_dir, dvc):
     text = textwrap.dedent(
         """\
@@ -334,3 +361,26 @@ def test_dvcfile_dump_preserves_comments(tmp_dir, dvc):
 
     dvcfile.dump(stage)
     assert dvcfile._load()[1] == (text + ":\n\tcache: false\n".expandtabs())
+
+
+@pytest.mark.parametrize(
+    "data, name",
+    [
+        ({"build-us": {"cmd": "echo ${foo}"}}, "build-us"),
+        (
+            {"build": {"foreach": ["us", "gb"], "do": {"cmd": "echo ${foo}"}}},
+            "build@us",
+        ),
+    ],
+)
+def test_dvcfile_try_dumping_parametrized_stage(tmp_dir, dvc, data, name):
+    dump_yaml("dvc.yaml", {"stages": data, "vars": [{"foo": "foobar"}]})
+    dvc.config["feature"]["parametrization"] = True
+
+    stage = dvc.get_stage(name=name)
+    dvcfile = stage.dvcfile
+
+    with pytest.raises(ParametrizedDumpError) as exc:
+        dvcfile.dump(stage)
+
+    assert str(exc.value) == f"cannot dump a parametrized stage: '{name}'"

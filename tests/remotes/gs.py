@@ -102,7 +102,8 @@ class GCP(Base, CloudURLInfo):
 
 
 @pytest.fixture
-def gs():
+def gs(test_config):
+    test_config.requires("gs")
     if not GCP.should_test():
         pytest.skip("no gs")
     yield GCP(GCP.get_url())

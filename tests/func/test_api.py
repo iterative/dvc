@@ -20,6 +20,7 @@ cloud_names = [
     "http",
     "hdfs",
     "webdav",
+    "webhdfs",
 ]
 clouds = [pytest.lazy_fixture(cloud) for cloud in cloud_names]
 all_clouds = [pytest.lazy_fixture("local_cloud")] + clouds
@@ -74,7 +75,7 @@ def test_open(tmp_dir, dvc, remote):
     [
         pytest.lazy_fixture(cloud)
         for cloud in [
-            "real_s3",  # NOTE: moto's s3 fails in some tests
+            "s3",
             "gs",
             "azure",
             "gdrive",
@@ -127,7 +128,7 @@ def test_open_granular(tmp_dir, dvc, remote):
     [
         pytest.lazy_fixture(cloud)
         for cloud in [
-            "real_s3",  # NOTE: moto's s3 fails in some tests
+            "s3",
             "gs",
             "azure",
             "gdrive",

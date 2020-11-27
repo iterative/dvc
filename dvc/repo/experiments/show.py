@@ -44,12 +44,21 @@ def _collect_experiment(repo, rev, stash=False, sha_only=True):
     return res
 
 
-def _collect_checkpoint_experiment(repo, branch, baseline, **kwargs):
-    res = OrderedDict()
+def _collect_checkpoint_experiment(res, repo, branch, baseline, **kwargs):
     exp_rev = repo.scm.resolve_rev(branch)
+    prev = None
     for rev in repo.scm.branch_revs(exp_rev, baseline):
-        res[rev] = _collect_experiment(repo, rev, **kwargs)
-        res[rev]["checkpoint_tip"] = exp_rev
+        exp = {"checkpoint_tip": exp_rev}
+        if prev:
+            res[prev]["checkpoint_parent"] = rev
+        if rev in res:
+            res[rev].update(exp)
+            res.move_to_end(rev)
+        else:
+            exp.update(_collect_experiment(repo, rev, **kwargs))
+            res[rev] = exp
+        prev = rev
+    res[prev]["checkpoint_parent"] = baseline
     return res
 
 
@@ -96,10 +105,9 @@ def show(
             if rev in revs:
                 with repo.experiments.chdir():
                     if m.group("checkpoint"):
-                        checkpoint_exps = _collect_checkpoint_experiment(
-                            repo.experiments.exp_dvc, exp_branch, rev
+                        _collect_checkpoint_experiment(
+                            res[rev], repo.experiments.exp_dvc, exp_branch, rev
                         )
-                        res[rev].update(checkpoint_exps)
                     else:
                         exp_rev = repo.experiments.scm.resolve_rev(exp_branch)
                         experiment = _collect_experiment(

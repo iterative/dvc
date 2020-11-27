@@ -3,6 +3,7 @@ import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy
+from typing import Optional
 
 from funcy import decorator
 from shortuuid import uuid
@@ -16,7 +17,9 @@ from dvc.exceptions import (
     DvcException,
 )
 from dvc.progress import Tqdm
-from dvc.remote.slow_link_detection import slow_link_guard
+from dvc.remote.slow_link_detection import (  # type: ignore[attr-defined]
+    slow_link_guard,
+)
 
 from ..tree.base import RemoteActionNotImplemented
 
@@ -41,7 +44,7 @@ class CloudCache:
     """Cloud cache class."""
 
     DEFAULT_CACHE_TYPES = ["copy"]
-    CACHE_MODE = None
+    CACHE_MODE: Optional[int] = None
 
     def __init__(self, tree):
         self.tree = tree

@@ -2,7 +2,7 @@ from math import pi
 
 import pytest
 
-from dvc.parsing import DataResolver
+from dvc.parsing import DataResolver, ResolveError
 from dvc.parsing.context import Context, Value
 
 TEMPLATED_DVC_YAML_DATA = {
@@ -11,7 +11,7 @@ TEMPLATED_DVC_YAML_DATA = {
             "cmd": "python script.py ${dict.foo} --out ${dict.bar}",
             "outs": ["${dict.bar}"],
             "deps": ["${dict.foo}"],
-            "params": ["${list.0}", "${list.1}"],
+            "params": ["${list[0]}", "${list[1]}"],
             "frozen": "${freeze}",
         },
         "stage2": {"cmd": "echo ${dict.foo} ${dict.bar}"},
@@ -75,17 +75,24 @@ def test_set():
 )
 def test_set_nested_coll(coll):
     context = Context(CONTEXT_DATA)
-    with pytest.raises(ValueError, match="Cannot set 'item', has nested"):
+    with pytest.raises(ResolveError) as exc_info:
         DataResolver.set_context_from(context, {"thresh": 10, "item": coll})
+
+    assert (
+        str(exc_info.value) == "Failed to set 'item': Cannot set 'item', "
+        "has nested dict/list"
+    )
 
 
 def test_set_already_exists():
     context = Context({"item": "foo"})
-    with pytest.raises(
-        ValueError, match="Cannot set 'item', key already exists"
-    ):
+    with pytest.raises(ResolveError) as exc_info:
         DataResolver.set_context_from(context, {"item": "bar"})
 
+    assert (
+        str(exc_info.value) == "Failed to set 'item': Cannot set 'item', "
+        "key already exists"
+    )
     assert context["item"] == Value("foo")
 
 
@@ -94,10 +101,14 @@ def test_set_already_exists():
 )
 def test_set_collection_interpolation(coll):
     context = Context(CONTEXT_DATA)
-    with pytest.raises(
-        ValueError, match="Cannot set 'item', having interpolation inside"
-    ):
+    with pytest.raises(ResolveError) as exc_info:
         DataResolver.set_context_from(context, {"thresh": 10, "item": coll})
+
+    assert (
+        str(exc_info.value) == "Failed to set 'item': Cannot set 'item', "
+        f"having interpolation inside '{type(coll).__name__}' "
+        "is not supported."
+    )
 
 
 def test_set_interpolated_string():
@@ -107,8 +118,8 @@ def test_set_interpolated_string():
         {
             "foo": "${dict.foo}",
             "bar": "${dict.bar}",
-            "param1": "${list.0}",
-            "param2": "${list.1}",
+            "param1": "${list[0]}",
+            "param2": "${list[1]}",
             "frozen": "${freeze}",
             "dict2": "${dict}",
             "list2": "${list}",
@@ -168,8 +179,10 @@ def test_set_ladder():
 )
 def test_set_multiple_interpolations(value):
     context = Context(CONTEXT_DATA)
-    with pytest.raises(
-        ValueError,
-        match=r"Cannot set 'item', joining string with interpolated string",
-    ):
+    with pytest.raises(ResolveError,) as exc_info:
         DataResolver.set_context_from(context, {"thresh": 10, "item": value})
+
+    assert str(exc_info.value) == (
+        "Failed to set 'item': Cannot set 'item', "
+        "joining string with interpolated string is not supported"
+    )

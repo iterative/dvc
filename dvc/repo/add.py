@@ -23,13 +23,7 @@ logger = logging.getLogger(__name__)
 @locked
 @scm_context
 def add(
-    repo,
-    targets,
-    recursive=False,
-    no_commit=False,
-    fname=None,
-    external=False,
-    glob=False,
+    repo, targets, recursive=False, no_commit=False, fname=None, **kwargs,
 ):
     if recursive and fname:
         raise RecursiveAddingWhileUsingFilename()
@@ -63,12 +57,7 @@ def add(
                 )
 
             stages = _create_stages(
-                repo,
-                sub_targets,
-                fname,
-                pbar=pbar,
-                external=external,
-                glob=glob,
+                repo, sub_targets, fname, pbar=pbar, **kwargs,
             )
 
             try:
@@ -161,7 +150,7 @@ def _find_all_targets(repo, target, recursive):
 
 
 def _create_stages(
-    repo, targets, fname, pbar=None, external=False, glob=False
+    repo, targets, fname, pbar=None, external=False, glob=False, desc=None,
 ):
     from glob import iglob
 
@@ -194,6 +183,8 @@ def _create_stages(
         )
         if stage:
             Dvcfile(repo, stage.path).remove()
+            if desc:
+                stage.outs[0].desc = desc
 
         repo._reset()  # pylint: disable=protected-access
 

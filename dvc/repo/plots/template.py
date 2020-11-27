@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Any, Dict, Optional
 
 from funcy import cached_property
 
@@ -29,8 +30,8 @@ class Template:
     EXTENSION = ".json"
     ANCHOR = "<DVC_METRIC_{}>"
 
-    DEFAULT_CONTENT = None
-    DEFAULT_NAME = None
+    DEFAULT_CONTENT: Optional[Dict[str, Any]] = None
+    DEFAULT_NAME: Optional[str] = None
 
     def __init__(self, content=None, name=None):
         if content:

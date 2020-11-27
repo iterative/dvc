@@ -4,7 +4,6 @@ from dvc.exceptions import PathMissingError
 from dvc.path_info import PathInfo
 
 
-@staticmethod
 def ls(
     url, path=None, rev=None, recursive=None, dvc_only=False,
 ):

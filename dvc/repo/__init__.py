@@ -2,8 +2,9 @@ import logging
 import os
 from contextlib import contextmanager
 from functools import wraps
+from typing import TYPE_CHECKING
 
-from funcy import cached_property, cat, first
+from funcy import cached_property, cat
 from git import InvalidGitRepositoryError
 
 from dvc.config import Config
@@ -23,16 +24,21 @@ from dvc.utils.fs import path_isin
 
 from ..stage.exceptions import StageFileDoesNotExistError, StageNotFound
 from ..utils import parse_target
-from .graph import check_acyclic, get_pipeline, get_pipelines
+from .graph import build_graph, build_outs_graph, get_pipeline, get_pipelines
+from .trie import build_outs_trie
+
+if TYPE_CHECKING:
+    from dvc.tree.base import BaseTree
+
 
 logger = logging.getLogger(__name__)
 
 
 @contextmanager
-def lock_repo(repo):
+def lock_repo(repo: "Repo"):
     # pylint: disable=protected-access
-    depth = getattr(repo, "_lock_depth", 0)
-    repo._lock_depth = depth + 1
+    depth = repo._lock_depth
+    repo._lock_depth += 1
 
     try:
         if depth > 0:
@@ -68,12 +74,12 @@ class Repo:
     from dvc.repo.fetch import fetch
     from dvc.repo.freeze import freeze, unfreeze
     from dvc.repo.gc import gc
-    from dvc.repo.get import get
-    from dvc.repo.get_url import get_url
+    from dvc.repo.get import get as _get
+    from dvc.repo.get_url import get_url as _get_url
     from dvc.repo.imp import imp
     from dvc.repo.imp_url import imp_url
     from dvc.repo.install import install
-    from dvc.repo.ls import ls
+    from dvc.repo.ls import ls as _ls
     from dvc.repo.move import move
     from dvc.repo.pull import pull
     from dvc.repo.push import push
@@ -82,6 +88,10 @@ class Repo:
     from dvc.repo.run import run
     from dvc.repo.status import status
     from dvc.repo.update import update
+
+    ls = staticmethod(_ls)
+    get = staticmethod(_get)
+    get_url = staticmethod(_get_url)
 
     def _get_repo_dirs(
         self,
@@ -93,25 +103,29 @@ class Repo:
         assert bool(scm) == bool(rev)
 
         from dvc.scm import SCM
+        from dvc.scm.git import Git
         from dvc.utils.fs import makedirs
 
+        dvc_dir = None
+        tmp_dir = None
         try:
-            tree = scm.get_tree(rev) if rev else None
+            tree = scm.get_tree(rev) if isinstance(scm, Git) and rev else None
             root_dir = self.find_root(root_dir, tree)
             dvc_dir = os.path.join(root_dir, self.DVC_DIR)
             tmp_dir = os.path.join(dvc_dir, "tmp")
             makedirs(tmp_dir, exist_ok=True)
-
         except NotDvcRepoError:
             if not uninitialized:
                 raise
-            try:
-                root_dir = SCM(root_dir or os.curdir).root_dir
-            except (SCMError, InvalidGitRepositoryError):
-                root_dir = SCM(os.curdir, no_scm=True).root_dir
 
-            dvc_dir = None
-            tmp_dir = None
+            try:
+                scm = SCM(root_dir or os.curdir)
+            except (SCMError, InvalidGitRepositoryError):
+                scm = SCM(os.curdir, no_scm=True)
+
+            assert isinstance(scm, Base)
+            root_dir = scm.root_dir
+
         return root_dir, dvc_dir, tmp_dir
 
     def __init__(
@@ -179,6 +193,7 @@ class Repo:
         self.metrics = Metrics(self)
         self.plots = Plots(self)
         self.params = Params(self)
+        self._lock_depth = 0
 
     @cached_property
     def scm(self):
@@ -188,11 +203,11 @@ class Repo:
         return self._scm if self._scm else SCM(self.root_dir, no_scm=no_scm)
 
     @property
-    def tree(self):
+    def tree(self) -> "BaseTree":
         return self._tree
 
     @tree.setter
-    def tree(self, tree):
+    def tree(self, tree: "BaseTree"):
         self._tree = tree
         # Our graph cache is no longer valid, as it was based on the previous
         # tree.
@@ -202,7 +217,7 @@ class Repo:
         return f"{self.__class__.__name__}: '{self.root_dir}'"
 
     @classmethod
-    def find_root(cls, root=None, tree=None):
+    def find_root(cls, root=None, tree=None) -> str:
         root_dir = os.path.realpath(root or os.curdir)
 
         if tree:
@@ -289,7 +304,7 @@ class Repo:
         #
         # [1] https://github.com/iterative/dvc/issues/2671
         if not getattr(self, "_skip_graph_checks", False):
-            self._collect_graph(self.stages + new_stages)
+            build_graph(self.stages + new_stages)
 
     def _collect_inside(self, path, graph):
         import networkx as nx
@@ -448,114 +463,17 @@ class Repo:
 
         return cache
 
-    def _collect_graph(self, stages):
-        """Generate a graph by using the given stages on the given directory
-
-        The nodes of the graph are the stage's path relative to the root.
-
-        Edges are created when the output of one stage is used as a
-        dependency in other stage.
-
-        The direction of the edges goes from the stage to its dependency:
-
-        For example, running the following:
-
-            $ dvc run -o A "echo A > A"
-            $ dvc run -d A -o B "echo B > B"
-            $ dvc run -d B -o C "echo C > C"
-
-        Will create the following graph:
-
-               ancestors <--
-                           |
-                C.dvc -> B.dvc -> A.dvc
-                |          |
-                |          --> descendants
-                |
-                ------- pipeline ------>
-                           |
-                           v
-              (weakly connected components)
-
-        Args:
-            stages (list): used to build a graph, if None given, collect stages
-                in the repository.
-
-        Raises:
-            OutputDuplicationError: two outputs with the same path
-            StagePathAsOutputError: stage inside an output directory
-            OverlappingOutputPathsError: output inside output directory
-            CyclicGraphError: resulting graph has cycles
-        """
-        import networkx as nx
-        from pygtrie import Trie
-
-        from dvc.exceptions import (
-            OutputDuplicationError,
-            OverlappingOutputPathsError,
-            StagePathAsOutputError,
-        )
-
-        G = nx.DiGraph()
-        stages = stages or self.stages
-        outs = Trie()  # Use trie to efficiently find overlapping outs and deps
-
-        for stage in filter(bool, stages):  # bug? not using it later
-            for out in stage.outs:
-                out_key = out.path_info.parts
-
-                # Check for dup outs
-                if out_key in outs:
-                    dup_stages = [stage, outs[out_key].stage]
-                    raise OutputDuplicationError(str(out), dup_stages)
-
-                # Check for overlapping outs
-                if outs.has_subtrie(out_key):
-                    parent = out
-                    overlapping = first(outs.values(prefix=out_key))
-                else:
-                    parent = outs.shortest_prefix(out_key).value
-                    overlapping = out
-                if parent and overlapping:
-                    msg = (
-                        "Paths for outs:\n'{}'('{}')\n'{}'('{}')\n"
-                        "overlap. To avoid unpredictable behaviour, "
-                        "rerun command with non overlapping outs paths."
-                    ).format(
-                        str(parent),
-                        parent.stage.addressing,
-                        str(overlapping),
-                        overlapping.stage.addressing,
-                    )
-                    raise OverlappingOutputPathsError(parent, overlapping, msg)
-
-                outs[out_key] = out
-
-        for stage in stages:
-            out = outs.shortest_prefix(PathInfo(stage.path).parts).value
-            if out:
-                raise StagePathAsOutputError(stage, str(out))
-
-        # Building graph
-        G.add_nodes_from(stages)
-        for stage in stages:
-            for dep in stage.deps:
-                if dep.path_info is None:
-                    continue
-
-                dep_key = dep.path_info.parts
-                overlapping = [n.value for n in outs.prefixes(dep_key)]
-                if outs.has_subtrie(dep_key):
-                    overlapping.extend(outs.values(prefix=dep_key))
-
-                G.add_edges_from((stage, out.stage) for out in overlapping)
-        check_acyclic(G)
-
-        return G
+    @cached_property
+    def outs_trie(self):
+        return build_outs_trie(self.stages)
 
     @cached_property
     def graph(self):
-        return self._collect_graph(self.stages)
+        return build_graph(self.stages, self.outs_trie)
+
+    @cached_property
+    def outs_graph(self):
+        return build_outs_graph(self.graph, self.outs_trie)
 
     @cached_property
     def pipelines(self):
@@ -648,6 +566,8 @@ class Repo:
         self.scm.close()
 
     def _reset(self):
+        self.__dict__.pop("outs_trie", None)
+        self.__dict__.pop("outs_graph", None)
         self.__dict__.pop("graph", None)
         self.__dict__.pop("stages", None)
         self.__dict__.pop("pipelines", None)

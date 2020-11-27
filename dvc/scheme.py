@@ -1,6 +1,7 @@
 class Schemes:
     SSH = "ssh"
     HDFS = "hdfs"
+    WEBHDFS = "webhdfs"
     S3 = "s3"
     AZURE = "azure"
     HTTP = "http"

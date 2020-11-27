@@ -1,7 +1,7 @@
-from dvc.output.s3 import S3Output
+from dvc.output.base import BaseOutput
 
 from ..tree.gs import GSTree
 
 
-class GSOutput(S3Output):
+class GSOutput(BaseOutput):
     TREE_CLS = GSTree

@@ -21,6 +21,7 @@ class CmdAdd(CmdBase):
                 fname=self.args.file,
                 external=self.args.external,
                 glob=self.args.glob,
+                desc=self.args.desc,
             )
 
         except DvcException:
@@ -68,6 +69,15 @@ def add_parser(subparsers, parent_parser):
         "--file",
         help="Specify name of the DVC-file this command will generate.",
         metavar="<filename>",
+    )
+    parser.add_argument(
+        "--desc",
+        type=str,
+        metavar="<text>",
+        help=(
+            "User description of the data (optional). "
+            "This doesn't affect any DVC operations."
+        ),
     )
     parser.add_argument(
         "targets", nargs="+", help="Input files/directories to add.",

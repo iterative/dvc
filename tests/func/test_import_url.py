@@ -122,6 +122,7 @@ def test_import_url_with_no_exec(tmp_dir, dvc, erepo_dir):
         pytest.lazy_fixture("s3"),
         pytest.lazy_fixture("gs"),
         pytest.lazy_fixture("hdfs"),
+        pytest.lazy_fixture("webhdfs"),
         pytest.param(
             pytest.lazy_fixture("ssh"),
             marks=pytest.mark.skipif(

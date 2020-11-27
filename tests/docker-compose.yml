@@ -2,7 +2,7 @@
 version: '3.2'
 services:
   azurite:
-    image: mcr.microsoft.com/azure-storage/azurite:3.3.0-preview
+    image: mcr.microsoft.com/azure-storage/azurite:3.9.0
     ports:
       - "10000"
   oss:
@@ -11,9 +11,12 @@ services:
       - "8880"
   hdfs:
     image: rkuprieiev/docker-hdfs
+    hostname: localhost
     ports:
       - "8020"
       # NOTE: having this port as dynamic one will require modifying
       # `dfs.datanode.address` in `hdfs-site.xml` and probably something
       # else, so using default one for now.
       - "50010:50010"
+      - "50075:50075"
+      - "50070"

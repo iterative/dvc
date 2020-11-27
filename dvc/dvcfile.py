@@ -3,12 +3,9 @@ import contextlib
 import logging
 import os
 
-from funcy import log_durations
 from voluptuous import MultipleInvalid
 
 from dvc.exceptions import DvcException
-from dvc.parsing import DataResolver
-from dvc.path_info import PathInfo
 from dvc.stage import serialize
 from dvc.stage.exceptions import (
     StageFileBadNameError,
@@ -36,6 +33,10 @@ PIPELINE_LOCK = "dvc.lock"
 
 
 class LockfileCorruptedError(DvcException):
+    pass
+
+
+class ParametrizedDumpError(DvcException):
     pass
 
 
@@ -200,7 +201,13 @@ class PipelineFile(FileMixin):
     def _dump_lockfile(self, stage):
         self._lockfile.dump(stage)
 
+    @staticmethod
+    def _check_if_parametrized(stage):
+        if stage.raw_data.parametrized:
+            raise ParametrizedDumpError(f"cannot dump a parametrized {stage}")
+
     def _dump_pipeline_file(self, stage):
+        self._check_if_parametrized(stage)
         stage_data = serialize.to_pipeline_file(stage)
 
         with modify_yaml(self.path, tree=self.repo.tree) as data:
@@ -233,16 +240,8 @@ class PipelineFile(FileMixin):
     @property
     def stages(self):
         data, _ = self._load()
-
-        if self.repo.config["feature"]["parametrization"]:
-            with log_durations(logger.debug, "resolving values"):
-                resolver = DataResolver(
-                    self.repo, PathInfo(self.path).parent, data
-                )
-                data = resolver.resolve()
-
         lockfile_data = self._lockfile.load()
-        return StageLoader(self, data.get("stages", {}), lockfile_data)
+        return StageLoader(self, data, lockfile_data)
 
     def remove(self, force=False):
         if not force:

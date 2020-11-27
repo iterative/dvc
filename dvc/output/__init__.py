@@ -11,18 +11,21 @@ from dvc.output.hdfs import HDFSOutput
 from dvc.output.local import LocalOutput
 from dvc.output.s3 import S3Output
 from dvc.output.ssh import SSHOutput
+from dvc.output.webhdfs import WebHDFSOutput
 from dvc.scheme import Schemes
 
 from ..tree import get_cloud_tree
 from ..tree.hdfs import HDFSTree
 from ..tree.local import LocalTree
 from ..tree.s3 import S3Tree
+from ..tree.webhdfs import WebHDFSTree
 
 OUTS = [
     HDFSOutput,
     S3Output,
     GSOutput,
     SSHOutput,
+    WebHDFSOutput,
     # NOTE: LocalOutput is the default choice
 ]
 
@@ -32,6 +35,7 @@ OUTS_MAP = {
     Schemes.GS: GSOutput,
     Schemes.SSH: SSHOutput,
     Schemes.LOCAL: LocalOutput,
+    Schemes.WEBHDFS: WebHDFSOutput,
 }
 
 CHECKSUM_SCHEMA = Any(
@@ -52,6 +56,7 @@ CHECKSUMS_SCHEMA = {
     LocalTree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
     S3Tree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
     HDFSTree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    WebHDFSTree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
 }
 
 SCHEMA = CHECKSUMS_SCHEMA.copy()
@@ -63,6 +68,7 @@ SCHEMA[BaseOutput.PARAM_PERSIST] = bool
 SCHEMA[BaseOutput.PARAM_CHECKPOINT] = bool
 SCHEMA[HashInfo.PARAM_SIZE] = int
 SCHEMA[HashInfo.PARAM_NFILES] = int
+SCHEMA[BaseOutput.PARAM_DESC] = str
 
 
 def _get(
@@ -74,6 +80,7 @@ def _get(
     plot=False,
     persist=False,
     checkpoint=False,
+    desc=None,
 ):
     parsed = urlparse(p)
 
@@ -89,6 +96,7 @@ def _get(
             plot=plot,
             persist=persist,
             checkpoint=checkpoint,
+            desc=desc,
         )
 
     for o in OUTS:
@@ -103,6 +111,7 @@ def _get(
                 plot=plot,
                 persist=persist,
                 checkpoint=checkpoint,
+                desc=desc,
             )
     return LocalOutput(
         stage,
@@ -114,6 +123,7 @@ def _get(
         plot=plot,
         persist=persist,
         checkpoint=checkpoint,
+        desc=desc,
     )
 
 
@@ -126,6 +136,7 @@ def loadd_from(stage, d_list):
         plot = d.pop(BaseOutput.PARAM_PLOT, False)
         persist = d.pop(BaseOutput.PARAM_PERSIST, False)
         checkpoint = d.pop(BaseOutput.PARAM_CHECKPOINT, False)
+        desc = d.pop(BaseOutput.PARAM_DESC, False)
         ret.append(
             _get(
                 stage,
@@ -136,6 +147,7 @@ def loadd_from(stage, d_list):
                 plot=plot,
                 persist=persist,
                 checkpoint=checkpoint,
+                desc=desc,
             )
         )
     return ret

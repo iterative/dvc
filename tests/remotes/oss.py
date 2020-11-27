@@ -35,9 +35,10 @@ class OSS(Base, CloudURLInfo):
 
 
 @pytest.fixture(scope="session")
-def oss_server(docker_compose, docker_services):
+def oss_server(test_config, docker_compose, docker_services):
     import oss2
 
+    test_config.requires("oss")
     port = docker_services.port_for("oss", 8880)
     endpoint = EMULATOR_OSS_ENDPOINT.format(port=port)
 
@@ -72,7 +73,8 @@ def oss(oss_server):
 
 
 @pytest.fixture
-def real_oss():
+def real_oss(test_config):
+    test_config.requires("oss")
     if not OSS.should_test():
         pytest.skip("no real OSS")
 

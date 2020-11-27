@@ -74,7 +74,7 @@ install_requires = [
     "networkx>=2.1,<2.5",
     "pydot>=1.2.4",
     "speedcopy>=2.0.1; python_version < '3.8' and sys_platform == 'win32'",
-    "dataclasses; python_version < '3.7'",
+    "dataclasses==0.7; python_version < '3.7'",
     "flatten_dict>=0.3.0,<1",
     "tabulate>=0.8.7",
     "pygtrie==2.3.2",
@@ -83,6 +83,8 @@ install_requires = [
     "rich>=3.0.5",
     "dictdiffer>=0.8.1",
     "python-benedict>=0.21.1",
+    "pyparsing==2.4.7",
+    "typing_extensions>=3.7.4",
 ]
 
 
@@ -98,13 +100,14 @@ ssh = ["paramiko[invoke]>=2.7.0"]
 
 # Remove the env marker if/when pyarrow is available for Python3.9
 hdfs = ["pyarrow>=2.0.0;  python_version < '3.9'"]
+webhdfs = ["hdfs==2.5.8"]
 webdav = ["webdavclient3>=3.14.5"]
 # gssapi should not be included in all_remotes, because it doesn't have wheels
 # for linux and mac, so it will fail to compile if user doesn't have all the
 # requirements, including kerberos itself. Once all the wheels are available,
 # we can start shipping it by default.
 ssh_gssapi = ["paramiko[invoke,gssapi]>=2.7.0"]
-all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs + webdav
+all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs + webhdfs + webdav
 
 # Extra dependecies to run tests
 tests_requirements = [
@@ -126,13 +129,11 @@ tests_requirements = [
     "google-compute-engine==2.8.13",
     "Pygments",  # required by collective.checkdocs,
     "collective.checkdocs",
-    "flake8==3.8.3",
     "psutil",
-    "flake8-docstrings",
     "pydocstyle<4.0",
     "jaraco.windows==3.9.2",
     "mock-ssh-server>=0.8.2",
-    "moto==1.3.16.dev110",
+    "moto==1.3.16.dev122",
     # moto's indirect dependency that is causing problems with flufl.lock's
     # dependency (atpublic). See https://github.com/iterative/dvc/pull/4853
     "aws-sam-translator<1.29.0",
@@ -141,15 +142,12 @@ tests_requirements = [
     "urllib3<1.26.0",
     "rangehttpserver==1.2.0",
     "beautifulsoup4==4.4.0",
-    "flake8-bugbear",
-    "flake8-comprehensions==3.3.0",
-    "flake8-string-format",
     "pylint==2.5.3",
     "pylint-pytest>=0.3.0",
     "pylint-plugin-utils",
     "wget",
     "filelock",
-    "black==19.10b0",
+    "mypy",
     "wsgidav",
 ]
 
@@ -173,6 +171,7 @@ setup(
         "ssh": ssh,
         "ssh_gssapi": ssh_gssapi,
         "hdfs": hdfs,
+        "webhdfs": webhdfs,
         "webdav": webdav,
         "tests": tests_requirements,
     },

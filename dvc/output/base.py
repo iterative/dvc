@@ -1,6 +1,7 @@
 import logging
 import os
 from copy import copy
+from typing import Type
 from urllib.parse import urlparse
 
 from voluptuous import Any
@@ -74,6 +75,7 @@ class BaseOutput:
     PARAM_PLOT_TITLE = "title"
     PARAM_PLOT_HEADER = "header"
     PARAM_PERSIST = "persist"
+    PARAM_DESC = "desc"
 
     METRIC_SCHEMA = Any(
         None,
@@ -84,10 +86,10 @@ class BaseOutput:
         },
     )
 
-    DoesNotExistError = OutputDoesNotExistError
-    IsNotFileOrDirError = OutputIsNotFileOrDirError
-    IsStageFileError = OutputIsStageFileError
-    IsIgnoredError = OutputIsIgnoredError
+    DoesNotExistError = OutputDoesNotExistError  # type: Type[DvcException]
+    IsNotFileOrDirError = OutputIsNotFileOrDirError  # type: Type[DvcException]
+    IsStageFileError = OutputIsStageFileError  # type: Type[DvcException]
+    IsIgnoredError = OutputIsIgnoredError  # type: Type[DvcException]
 
     sep = "/"
 
@@ -102,6 +104,7 @@ class BaseOutput:
         plot=False,
         persist=False,
         checkpoint=False,
+        desc=None,
     ):
         self._validate_output_path(path, stage)
         # This output (and dependency) objects have too many paths/urls
@@ -127,6 +130,7 @@ class BaseOutput:
         self.plot = False if self.IS_DEPENDENCY else plot
         self.persist = persist
         self.checkpoint = checkpoint
+        self.desc = desc
 
         self.path_info = self._parse_path(tree, path)
         if self.use_cache and self.cache is None:
@@ -298,6 +302,9 @@ class BaseOutput:
 
         if self.IS_DEPENDENCY:
             return ret
+
+        if self.desc:
+            ret[self.PARAM_DESC] = self.desc
 
         if not self.use_cache:
             ret[self.PARAM_CACHE] = self.use_cache

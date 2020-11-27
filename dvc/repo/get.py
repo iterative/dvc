@@ -18,7 +18,6 @@ class GetDVCFileError(DvcException):
         )
 
 
-@staticmethod
 def get(url, path, out=None, rev=None):
     from dvc.dvcfile import is_valid_filename
     from dvc.external_repo import external_repo

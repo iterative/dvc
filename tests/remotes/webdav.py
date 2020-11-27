@@ -33,7 +33,9 @@ class Webdav(Base, WebDAVURLInfo):
 
 
 @pytest.fixture
-def webdav_server(tmp_path_factory):
+def webdav_server(test_config, tmp_path_factory):
+    test_config.requires("webdav")
+
     host, port = "localhost", 0
     directory = os.fspath(tmp_path_factory.mktemp("http"))
     dirmap = {"/": directory}

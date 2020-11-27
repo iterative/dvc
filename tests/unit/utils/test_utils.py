@@ -149,6 +149,31 @@ def test_resolve_output(inp, out, is_dir, expected, mocker):
         ["something.dvc:name", ("something.dvc", "name"), None],
         ["../something.dvc:name", ("../something.dvc", "name"), None],
         ["file", (None, "file"), None],
+        ["build@15", (None, "build@15"), None],
+        ["build@{'level': 35}", (None, "build@{'level': 35}"), None],
+        [":build@15", ("dvc.yaml", "build@15"), None],
+        [":build@{'level': 35}", ("dvc.yaml", "build@{'level': 35}"), None],
+        ["dvc.yaml:build@15", ("dvc.yaml", "build@15"), None],
+        [
+            "dvc.yaml:build@{'level': 35}",
+            ("dvc.yaml", "build@{'level': 35}"),
+            None,
+        ],
+        [
+            "build2@{'level': [1, 2, 3]}",
+            (None, "build2@{'level': [1, 2, 3]}"),
+            None,
+        ],
+        [
+            ":build2@{'level': [1, 2, 3]}",
+            ("dvc.yaml", "build2@{'level': [1, 2, 3]}"),
+            None,
+        ],
+        [
+            "dvc.yaml:build2@{'level': [1, 2, 3]}",
+            ("dvc.yaml", "build2@{'level': [1, 2, 3]}"),
+            None,
+        ],
     ],
 )
 def test_parse_target(inp, out, default):

@@ -2,6 +2,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partial
 from multiprocessing import cpu_count
+from typing import Any, ClassVar, Dict, Optional
 from urllib.parse import urlparse
 
 from funcy import cached_property, decorator
@@ -46,8 +47,8 @@ def use_state(call):
 
 class BaseTree:
     scheme = "base"
-    REQUIRES = {}
-    PATH_CLS = URLInfo
+    REQUIRES: ClassVar[Dict[str, str]] = {}
+    PATH_CLS = URLInfo  # type: Any
     JOBS = 4 * cpu_count()
 
     CHECKSUM_DIR_SUFFIX = ".dir"
@@ -59,9 +60,9 @@ class BaseTree:
     TRAVERSE_THRESHOLD_SIZE = 500000
     CAN_TRAVERSE = True
 
-    CACHE_MODE = None
+    CACHE_MODE: Optional[int] = None
     SHARED_MODE_MAP = {None: (None, None), "group": (None, None)}
-    PARAM_CHECKSUM = None
+    PARAM_CHECKSUM: ClassVar[Optional[str]] = None
 
     state = StateNoop()
 
@@ -76,6 +77,14 @@ class BaseTree:
 
         self.verify = config.get("verify", self.DEFAULT_VERIFY)
         self.path_info = None
+
+    @cached_property
+    def jobs(self):
+        return (
+            self.config.get("jobs")
+            or (self.repo and self.repo.config["core"].get("jobs"))
+            or self.JOBS
+        )
 
     @cached_property
     def hash_jobs(self):
@@ -147,15 +156,16 @@ class BaseTree:
     def cache(self):
         return getattr(self.repo.cache, self.scheme)
 
-    def open(self, path_info, mode="r", encoding=None):
+    def open(self, path_info, mode: str = "r", encoding: str = None):
         if hasattr(self, "_generate_download_url"):
-            func = self._generate_download_url  # noqa,pylint:disable=no-member
+            # pylint:disable=no-member
+            func = self._generate_download_url  # type: ignore[attr-defined]
             get_url = partial(func, path_info)
             return open_url(get_url, mode=mode, encoding=encoding)
 
         raise RemoteActionNotImplemented("open", self.scheme)
 
-    def exists(self, path_info, use_dvcignore=True):
+    def exists(self, path_info, use_dvcignore=True) -> bool:
         raise NotImplementedError
 
     # pylint: disable=unused-argument
@@ -330,7 +340,14 @@ class BaseTree:
         hash_info.size = dir_info.size
         return hash_info
 
-    def upload(self, from_info, to_info, name=None, no_progress_bar=False):
+    def upload(
+        self,
+        from_info,
+        to_info,
+        name=None,
+        no_progress_bar=False,
+        file_mode=None,
+    ):
         if not hasattr(self, "_upload"):
             raise RemoteActionNotImplemented("upload", self.scheme)
 
@@ -349,6 +366,7 @@ class BaseTree:
             to_info,
             name=name,
             no_progress_bar=no_progress_bar,
+            file_mode=file_mode,
         )
 
     def download(
@@ -404,7 +422,7 @@ class BaseTree:
                     dir_mode=dir_mode,
                 )
             )
-            with ThreadPoolExecutor(max_workers=self.JOBS) as executor:
+            with ThreadPoolExecutor(max_workers=self.jobs) as executor:
                 futures = [
                     executor.submit(download_files, from_info, to_info)
                     for from_info, to_info in zip(from_infos, to_infos)

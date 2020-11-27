@@ -82,10 +82,10 @@ def test_resolve_primitives_list_access():
         }
     )
 
-    assert context.resolve("${dict.0.f}") == "f"
-    assert context.resolve("${dict.1.fo}") == "fo"
-    assert context.resolve("${dict.2.foo}") == "foo"
-    assert context.resolve("${dict.3.foo.0}") == "f"
+    assert context.resolve("${dict[0].f}") == "f"
+    assert context.resolve("${dict[1].fo}") == "fo"
+    assert context.resolve("${dict[2].foo}") == "foo"
+    assert context.resolve("${dict[3].foo[0]}") == "f"
 
     assert context.resolve("${ dict.1.fo}${dict.3.foo.1}bar") == "foobar"
 
@@ -101,3 +101,11 @@ def test_resolve_collection():
     resolved = context.resolve(TEMPLATED_DVC_YAML_DATA)
     assert resolved == RESOLVED_DVC_YAML_DATA
     assert recurse_not_a_node(resolved)
+
+
+def test_resolve_unicode():
+    context = Context({"नेपाली": {"चिया": ["चि", "या"]}})
+    assert context.resolve_str("${नेपाली.चिया[0]}${नेपाली.चिया[1]}") == "चिया"
+    assert (
+        context.resolve_str("${नेपाली[चिया][0]}${नेपाली[चिया][1]}") == "चिया"
+    )

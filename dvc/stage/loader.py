@@ -3,10 +3,12 @@ from collections.abc import Mapping
 from copy import deepcopy
 from itertools import chain
 
-from funcy import get_in, lcat, project
+from funcy import cached_property, get_in, lcat, log_durations, project
 
 from dvc import dependency, output
 from dvc.hash_info import HashInfo
+from dvc.parsing import JOIN, DataResolver
+from dvc.path_info import PathInfo
 
 from . import PipelineStage, Stage, loads_from
 from .exceptions import StageNameUnspecified, StageNotFound
@@ -17,10 +19,25 @@ logger = logging.getLogger(__name__)
 
 
 class StageLoader(Mapping):
-    def __init__(self, dvcfile, stages_data, lockfile_data=None):
+    def __init__(self, dvcfile, data, lockfile_data=None):
         self.dvcfile = dvcfile
-        self.stages_data = stages_data or {}
+        self.data = data or {}
+        self.stages_data = self.data.get("stages", {})
+        self.repo = self.dvcfile.repo
+        self._enable_parametrization = self.repo.config["feature"][
+            "parametrization"
+        ]
         self.lockfile_data = lockfile_data or {}
+
+    @cached_property
+    def resolved_data(self):
+        data = self.data
+        if self._enable_parametrization:
+            wdir = PathInfo(self.dvcfile.path).parent
+            with log_durations(logger.debug, "resolving values"):
+                resolver = DataResolver(self.repo, wdir, data)
+                data = resolver.resolve()
+        return data.get("stages", {})
 
     @staticmethod
     def fill_from_lock(stage, lock_data=None):
@@ -58,6 +75,7 @@ class StageLoader(Mapping):
         )
         stage = loads_from(PipelineStage, dvcfile.repo, path, wdir, stage_data)
         stage.name = name
+        stage.desc = stage_data.get(Stage.PARAM_DESC)
 
         deps = project(stage_data, [stage.PARAM_DEPS, stage.PARAM_PARAMS])
         fill_stage_dependencies(stage, **deps)
@@ -89,21 +107,31 @@ class StageLoader(Mapping):
                 "No lock entry found for '%s:%s'", self.dvcfile.relpath, name,
             )
 
-        return self.load_stage(
+        stage = self.load_stage(
             self.dvcfile,
             name,
-            self.stages_data[name],
+            self.resolved_data[name],
             self.lockfile_data.get(name, {}),
         )
 
+        group, *keys = name.rsplit(JOIN, maxsplit=1)
+        if group and keys and name not in self.stages_data:
+            stage.raw_data.generated_from = group
+
+        stage.raw_data.parametrized = (
+            self.stages_data.get(name, {}) != self.resolved_data[name]
+        )
+
+        return stage
+
     def __iter__(self):
-        return iter(self.stages_data)
+        return iter(self.resolved_data)
 
     def __len__(self):
-        return len(self.stages_data)
+        return len(self.resolved_data)
 
     def __contains__(self, name):
-        return name in self.stages_data
+        return name in self.resolved_data
 
 
 class SingleStageLoader(Mapping):

@@ -1,3 +1,5 @@
+from typing import Type
+
 from dvc.exceptions import DvcException
 
 
@@ -21,9 +23,11 @@ class DependencyIsStageFileError(DvcException):
 class BaseDependency:
     IS_DEPENDENCY = True
 
-    DoesNotExistError = DependencyDoesNotExistError
-    IsNotFileOrDirError = DependencyIsNotFileOrDirError
-    IsStageFileError = DependencyIsStageFileError
+    DoesNotExistError = DependencyDoesNotExistError  # type: Type[DvcException]
+    IsNotFileOrDirError = (
+        DependencyIsNotFileOrDirError
+    )  # type: Type[DvcException]
+    IsStageFileError = DependencyIsStageFileError  # type: Type[DvcException]
 
     def update(self, rev=None):
         pass

@@ -105,29 +105,29 @@ def test_collect_optimization_on_stage_name(tmp_dir, dvc, mocker, run_copy):
 
 def test_skip_graph_checks(tmp_dir, dvc, mocker, run_copy):
     # See https://github.com/iterative/dvc/issues/2671 for more info
-    mock_collect_graph = mocker.patch("dvc.repo.Repo._collect_graph")
+    mock_build_graph = mocker.patch("dvc.repo.build_graph")
 
     # sanity check
     tmp_dir.gen("foo", "foo text")
     dvc.add("foo")
     run_copy("foo", "bar", single_stage=True)
-    assert mock_collect_graph.called
+    assert mock_build_graph.called
 
     # check that our hack can be enabled
-    mock_collect_graph.reset_mock()
+    mock_build_graph.reset_mock()
     dvc._skip_graph_checks = True
     tmp_dir.gen("baz", "baz text")
     dvc.add("baz")
     run_copy("baz", "qux", single_stage=True)
-    assert not mock_collect_graph.called
+    assert not mock_build_graph.called
 
     # check that our hack can be disabled
-    mock_collect_graph.reset_mock()
+    mock_build_graph.reset_mock()
     dvc._skip_graph_checks = False
     tmp_dir.gen("quux", "quux text")
     dvc.add("quux")
     run_copy("quux", "quuz", single_stage=True)
-    assert mock_collect_graph.called
+    assert mock_build_graph.called
 
 
 def test_branch_config(tmp_dir, scm):

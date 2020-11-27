@@ -5,25 +5,8 @@ from dvc.tree.repo import RepoTree
 from tests.unit.tree.test_repo import make_subrepo
 
 
-@pytest.fixture(scope="module")
-def monkey_mod():
-    # using internal API, `monkeypatch` is a `function` scoped fixture
-    from _pytest.monkeypatch import MonkeyPatch
-
-    patch = MonkeyPatch()
-    yield patch
-    patch.undo()
-
-
-@pytest.fixture(scope="module")
-def temp_repo(tmp_path_factory, make_tmp_dir, monkey_mod):
-    path = tmp_path_factory.mktemp("temp-repo")
-    monkey_mod.chdir(path)
-    return make_tmp_dir(path, scm=True, dvc=True)
-
-
-@pytest.fixture(scope="module")
-def repo_tree(temp_repo):
+@pytest.fixture
+def repo_tree(tmp_dir, dvc, scm):
     fs_structure = {
         "models": {  # mixed dvc + git directory
             "train.py": "train dot py",
@@ -51,10 +34,10 @@ def repo_tree(temp_repo):
         "models/transform.pickle": "model model",  # file
     }
 
-    temp_repo.scm_gen(fs_structure, commit="repo init")
-    temp_repo.dvc_gen(dvc_structure, commit="use dvc")
+    tmp_dir.scm_gen(fs_structure, commit="repo init")
+    tmp_dir.dvc_gen(dvc_structure, commit="use dvc")
 
-    yield RepoTree(temp_repo.dvc, fetch=True, subrepos=True)
+    yield RepoTree(dvc, fetch=True, subrepos=True)
 
 
 def test_metadata_not_existing(repo_tree):
@@ -201,14 +184,14 @@ def test_metadata_dvc_only_dirs(repo_tree, path, is_output):
     assert {out.path_info for out in meta.outs} == {data}
 
 
-def test_metadata_on_subrepos(make_tmp_dir, temp_repo, repo_tree):
-    subrepo = temp_repo / "subrepo"
-    make_subrepo(subrepo, temp_repo.scm)
+def test_metadata_on_subrepos(make_tmp_dir, tmp_dir, dvc, scm, repo_tree):
+    subrepo = tmp_dir / "subrepo"
+    make_subrepo(subrepo, scm)
     subrepo.scm_gen("foo", "foo", commit="add foo on subrepo")
     subrepo.dvc_gen("foobar", "foobar", commit="add foobar on subrepo")
 
     for path in ["subrepo", "subrepo/foo", "subrepo/foobar"]:
-        meta = repo_tree.metadata(temp_repo / path)
+        meta = repo_tree.metadata(tmp_dir / path)
         assert meta.repo.root_dir == str(
             subrepo
         ), f"repo root didn't match for {path}"
@@ -216,6 +199,6 @@ def test_metadata_on_subrepos(make_tmp_dir, temp_repo, repo_tree):
     # supports external outputs on top-level DVC repo
     external_dir = make_tmp_dir("external-output")
     external_dir.gen("bar", "bar")
-    temp_repo.dvc.add(str(external_dir / "bar"), external=True)
+    dvc.add(str(external_dir / "bar"), external=True)
     meta = repo_tree.metadata(external_dir / "bar")
-    assert meta.repo.root_dir == str(temp_repo)
+    assert meta.repo.root_dir == str(tmp_dir)

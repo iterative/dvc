@@ -2,7 +2,7 @@ import argparse
 import logging
 
 from dvc.command.base import CmdBase, append_doc_link
-from dvc.exceptions import DvcException
+from dvc.stage import Stage
 
 logger = logging.getLogger(__name__)
 
@@ -30,80 +30,83 @@ def _show_dot(G):
     return dot_file.getvalue()
 
 
-def _build(G, target=None, full=False, outs=False):
+def _collect_targets(repo, target, outs):
+    if not target:
+        return []
+
+    pairs = repo.collect_granular(target)
+    if not outs:
+        return [stage.addressing for stage, _ in pairs]
+
+    targets = []
+    for stage, info in pairs:
+        if not info:
+            targets.extend([str(out) for out in stage.outs])
+            continue
+
+        for out in repo.outs_trie.itervalues(prefix=info.parts):  # noqa: B301
+            targets.extend(str(out))
+
+    return targets
+
+
+def _transform(repo, outs):
     import networkx as nx
 
-    from dvc.repo.graph import get_pipeline, get_pipelines
-
-    if target:
-        H = get_pipeline(get_pipelines(G), target)
-        if not full:
-            descendants = nx.descendants(G, target)
-            descendants.add(target)
-            H.remove_nodes_from(set(G.nodes()) - descendants)
-    else:
-        H = G
-
-    if outs:
-        G = nx.DiGraph()
-        for stage in H.nodes:
-            G.add_nodes_from(stage.outs)
-
-        for from_stage, to_stage in nx.edge_dfs(H):
-            G.add_edges_from(
-                [
-                    (from_out, to_out)
-                    for from_out in from_stage.outs
-                    for to_out in to_stage.outs
-                ]
-            )
-        H = G
-
-    def _relabel(node):
-        from dvc.stage import Stage
-
+    def _relabel(node) -> str:
         return node.addressing if isinstance(node, Stage) else str(node)
 
-    return nx.relabel_nodes(H, _relabel, copy=False)
+    G = repo.outs_graph if outs else repo.graph
+    return nx.relabel_nodes(G, _relabel, copy=True)
+
+
+def _filter(G, targets, full):
+    import networkx as nx
+
+    if not targets:
+        return G
+
+    H = G.copy()
+    if not full:
+        descendants = set()
+        for target in targets:
+            descendants.update(nx.descendants(G, target))
+            descendants.add(target)
+        H.remove_nodes_from(set(G.nodes()) - descendants)
+
+    undirected = H.to_undirected()
+    connected = set()
+    for target in targets:
+        connected.update(nx.node_connected_component(undirected, target))
+
+    H.remove_nodes_from(set(H.nodes()) - connected)
+
+    return H
+
+
+def _build(repo, target=None, full=False, outs=False):
+    targets = _collect_targets(repo, target, outs)
+    G = _transform(repo, outs)
+    return _filter(G, targets, full)
 
 
 class CmdDAG(CmdBase):
     def run(self):
-        try:
-            target = None
-            if self.args.target:
-                stages = self.repo.collect(self.args.target)
-                if len(stages) > 1:
-                    logger.error(
-                        f"'{self.args.target}' contains more than one stage "
-                        "{stages}, please specify one stage"
-                    )
-                    return 1
-                target = stages[0]
+        G = _build(
+            self.repo,
+            target=self.args.target,
+            full=self.args.full,
+            outs=self.args.outs,
+        )
 
-            G = _build(
-                self.repo.graph,
-                target=target,
-                full=self.args.full,
-                outs=self.args.outs,
-            )
+        if self.args.dot:
+            logger.info(_show_dot(G))
+        else:
+            from dvc.utils.pager import pager
 
-            if self.args.dot:
-                logger.info(_show_dot(G))
-            else:
-                from dvc.utils.pager import pager
+            pager(_show_ascii(G))
 
-                pager(_show_ascii(G))
-
-            return 0
-        except DvcException:
-            msg = "failed to show "
-            if self.args.target:
-                msg += f"a pipeline for '{target}'"
-            else:
-                msg += "pipelines"
-            logger.exception(msg)
-            return 1
+        return 0
 
 
 def add_parser(subparsers, parent_parser):
