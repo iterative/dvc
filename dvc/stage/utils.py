@@ -1,6 +1,5 @@
 import os
 import pathlib
-from collections import defaultdict
 from itertools import product
 
 from funcy import lsplit, rpartial
@@ -42,33 +41,8 @@ def check_stage_path(repo, path, is_wdir=False):
         raise StagePathOutsideError(error_msg.format("is outside of DVC repo"))
 
 
-def _resolve_dvclive_integration(**kwargs):
-    """
-        dvclive results structure:
-        .
-        ├── {logs_path}
-        │   ├── m1.tsv
-        │   └── m2.tsv
-        └── {logs_path}.json
-    """
-    result = defaultdict(list, kwargs)
-    for key, paths in kwargs.items():
-        if "logs" in key:
-            no_cache = "no_cache" in key
-            plots_key = "plots_no_cache" if no_cache else "plots"
-            metrics_key = "metrics_no_cache" if no_cache else "metrics"
-
-            for log_path in paths:
-                result[plots_key].append(log_path)
-                result[metrics_key].append(log_path + ".json")
-
-    return dict(result)
-
-
 def fill_stage_outputs(stage, **kwargs):
     assert not stage.outs
-
-    kwargs = _resolve_dvclive_integration(**kwargs)
 
     keys = [
         "outs_persist",
