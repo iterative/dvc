@@ -1,4 +1,5 @@
 import logging
+import typing
 from functools import partial
 
 from dvc.exceptions import InvalidArgumentError, ReproductionError
@@ -7,6 +8,9 @@ from dvc.stage.run import CheckpointKilledError
 
 from . import locked
 from .graph import get_pipeline, get_pipelines
+
+if typing.TYPE_CHECKING:
+    from . import Repo
 
 logger = logging.getLogger(__name__)
 
@@ -75,15 +79,15 @@ def _get_active_graph(G):
 @locked
 @scm_context
 def reproduce(
-    self,
+    self: "Repo",
     target=None,
     recursive=False,
     pipeline=False,
     all_pipelines=False,
     **kwargs,
 ):
-    from dvc.utils import parse_target
-
+    glob = kwargs.pop("glob", False)
+    accept_group = not glob
     assert target is None or isinstance(target, str)
     if not target and not all_pipelines:
         raise InvalidArgumentError(
@@ -97,12 +101,11 @@ def reproduce(
     active_graph = _get_active_graph(self.graph)
     active_pipelines = get_pipelines(active_graph)
 
-    path, name = parse_target(target)
     if pipeline or all_pipelines:
         if all_pipelines:
             pipelines = active_pipelines
         else:
-            stage = self.get_stage(path, name)
+            stage = self.stage.get_target(target)
             pipelines = [get_pipeline(active_pipelines, stage)]
 
         targets = []
@@ -111,7 +114,13 @@ def reproduce(
                 if pipeline.in_degree(stage) == 0:
                     targets.append(stage)
     else:
-        targets = self.collect(target, recursive=recursive, graph=active_graph)
+        targets = self.collect(
+            target,
+            recursive=recursive,
+            graph=active_graph,
+            accept_group=accept_group,
+            glob=glob,
+        )
 
     return _reproduce_stages(active_graph, targets, **kwargs)
 

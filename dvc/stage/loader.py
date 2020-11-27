@@ -7,7 +7,7 @@ from funcy import cached_property, get_in, lcat, log_durations, project
 
 from dvc import dependency, output
 from dvc.hash_info import HashInfo
-from dvc.parsing import JOIN, DataResolver
+from dvc.parsing import FOREACH_KWD, JOIN, DataResolver
 from dvc.path_info import PathInfo
 
 from . import PipelineStage, Stage, loads_from
@@ -132,6 +132,11 @@ class StageLoader(Mapping):
 
     def __contains__(self, name):
         return name in self.resolved_data
+
+    def is_foreach_generated(self, name: str):
+        return (
+            name in self.stages_data and FOREACH_KWD in self.stages_data[name]
+        )
 
 
 class SingleStageLoader(Mapping):

@@ -1,12 +1,14 @@
+import typing
+
 from . import locked
+
+if typing.TYPE_CHECKING:
+    from . import Repo
 
 
 @locked
-def _set(repo, target, frozen):
-    from dvc.utils import parse_target
-
-    path, name = parse_target(target)
-    stage = repo.get_stage(path, name)
+def _set(repo: "Repo", target, frozen):
+    stage = repo.stage.get_target(target)
     stage.frozen = frozen
     stage.dvcfile.dump(stage, update_lock=False)
 

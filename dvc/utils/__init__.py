@@ -9,6 +9,7 @@ import re
 import stat
 import sys
 import time
+from typing import Optional, Tuple
 
 import colorama
 import nanotime
@@ -409,7 +410,9 @@ def error_link(name):
     return format_link(f"https://error.dvc.org/{name}")
 
 
-def parse_target(target: str, default: str = None):
+def parse_target(
+    target: str, default: str = None, isa_glob: bool = False
+) -> Tuple[Optional[str], Optional[str]]:
     from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK, is_valid_filename
     from dvc.exceptions import DvcException
     from dvc.parsing import JOIN
@@ -417,9 +420,14 @@ def parse_target(target: str, default: str = None):
     if not target:
         return None, None
 
+    default = default or PIPELINE_FILE
+    if isa_glob:
+        path, _, glob = target.rpartition(":")
+        return path or default, glob or None
+
     # look for first "@", so as not to assume too much about stage name
     # eg: it might contain ":" in a generated stages from dict which might
-    # affect further parsings with the regex.
+    # affect further parsing with the regex.
     group, _, key = target.partition(JOIN)
     match = TARGET_REGEX.match(group)
 
@@ -446,10 +454,9 @@ def parse_target(target: str, default: str = None):
             return ret if is_valid_filename(target) else ret[::-1]
 
     if not path:
-        path = default or PIPELINE_FILE
-        logger.debug("Assuming file to be '%s'", path)
+        logger.debug("Assuming file to be '%s'", default)
 
-    return path, name
+    return path or default, name
 
 
 def is_exec(mode):

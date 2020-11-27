@@ -63,6 +63,7 @@ class CmdRepro(CmdBase):
             "recursive": self.args.recursive,
             "force_downstream": self.args.force_downstream,
             "pull": self.args.pull,
+            "glob": self.args.glob,
         }
 
 
@@ -174,6 +175,12 @@ def add_arguments(repro_parser):
             "Try automatically pulling missing cache for outputs restored "
             "from the run-cache."
         ),
+    )
+    repro_parser.add_argument(
+        "--glob",
+        action="store_true",
+        default=False,
+        help="Allows targets containing shell-style wildcards.",
     )
 
 
