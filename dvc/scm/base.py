@@ -66,7 +66,7 @@ class Base:
         """
         return True
 
-    def is_ignored(self, path):
+    def is_ignored(self, path):  # pylint: disable=unused-argument
         """Returns whether or not path is ignored by SCM."""
         return False
 
