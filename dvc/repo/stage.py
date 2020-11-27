@@ -25,7 +25,7 @@ class StageLoad:
         Returns a list of stage from the provided target.
         (see load method below for further details)
         """
-        path, name = parse_target(target, isa_regex=glob)
+        path, name = parse_target(target, isa_glob=glob)
         return self.load_all(
             path=path, name=name, accept_group=accept_group, glob=glob,
         )
@@ -89,7 +89,7 @@ class StageLoad:
             name: required for `dvc.yaml` files, ignored for `.dvc` files.
             accept_group: if true, all of the the stages generated from `name`
                 foreach are returned.
-            glob: if true, `name` is considered as regex, which is
+            glob: if true, `name` is considered as a glob, which is
                 used to filter list of stages from the given `path`.
         """
         from dvc.stage.loader import SingleStageLoader, StageLoader

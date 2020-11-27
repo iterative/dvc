@@ -411,7 +411,7 @@ def error_link(name):
 
 
 def parse_target(
-    target: str, default: str = None, isa_regex: bool = False
+    target: str, default: str = None, isa_glob: bool = False
 ) -> Tuple[Optional[str], Optional[str]]:
     from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK, is_valid_filename
     from dvc.exceptions import DvcException
@@ -421,13 +421,13 @@ def parse_target(
         return None, None
 
     default = default or PIPELINE_FILE
-    if isa_regex:
-        path, _, regex = target.rpartition(":")
-        return path or default, regex
+    if isa_glob:
+        path, _, glob = target.rpartition(":")
+        return path or default, glob or None
 
     # look for first "@", so as not to assume too much about stage name
     # eg: it might contain ":" in a generated stages from dict which might
-    # affect further parsings with the regex.
+    # affect further parsing with the regex.
     group, _, key = target.partition(JOIN)
     match = TARGET_REGEX.match(group)
 
