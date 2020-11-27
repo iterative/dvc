@@ -1,45 +1,34 @@
-from multiprocessing import Process
+import os
+from typing import List
 
 from dvc.exceptions import NotDvcRepoError
 from dvc.repo import Repo
-from dvc.visualization import embed
+from dvc.visualization import embed, metrics_embedding, plots_embeddings
 
 
-def summary(path: str, debug: bool = False):
-    def make_summary(path):
-        import os
+def summary(path: str, revs: List[str] = None):
+    if revs:
+        revs = ["workspace", *revs]
 
-        if not debug and os.fork() != 0:
-            return
+    metrics_path = path + ".json"
+    assert os.path.exists(path)
+    assert os.path.exists(metrics_path)
 
-        import builtins
+    try:
+        root = Repo.find_root()
+    except NotDvcRepoError:
+        root = os.getcwd()
 
-        from dvc.visualization import metrics_embedding, plots_embeddings
+    repo = Repo(root_dir=root, uninitialized=True)
 
-        metrics_path = path + ".json"
-        assert os.path.exists(path)
-        assert os.path.exists(metrics_path)
+    metrics = repo.metrics.show(targets=[metrics_path])
+    metrics_html = metrics_embedding(metrics)
 
-        try:
-            root = Repo.find_root()
-        except NotDvcRepoError:
-            root = os.getcwd()
+    plots = repo.plots.show(targets=[path], recursive=True, revs=revs)
+    embeddigns = plots_embeddings(plots)
 
-        repo = Repo(root_dir=root, uninitialized=True)
+    parts = [metrics_html, "<br>", *embeddigns]
+    html = embed(parts)
 
-        metrics = repo.metrics.show(targets=[metrics_path])
-        metrics_html = metrics_embedding(metrics)
-
-        plots = repo.plots.show(targets=[path], recursive=True)
-        embeddigns = plots_embeddings(plots)
-
-        parts = [metrics_html, "<br>", *embeddigns]
-        html = embed(parts)
-        with builtins.open(path + ".html", "w") as fd:
-            fd.write(html)
-
-    if debug:
-        make_summary(path)
-    else:
-        p = Process(target=make_summary, args=(path,), daemon=True)
-        p.start()
+    with open(path + ".html", "w") as fd:
+        fd.write(html)
