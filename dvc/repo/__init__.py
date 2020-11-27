@@ -2,7 +2,7 @@ import logging
 import os
 from contextlib import contextmanager, suppress
 from functools import wraps
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from funcy import cached_property, cat
 from git import InvalidGitRepositoryError
@@ -29,6 +29,9 @@ from .graph import build_graph, build_outs_graph, get_pipeline, get_pipelines
 from .trie import build_outs_trie
 
 if TYPE_CHECKING:
+    from networkx import DiGraph
+
+    from dvc.stage import Stage
     from dvc.tree.base import BaseTree
 
 
@@ -289,7 +292,8 @@ class Repo:
         if not getattr(self, "_skip_graph_checks", False):
             build_graph(self.stages + new_stages)
 
-    def _collect_inside(self, path, graph):
+    @staticmethod
+    def _collect_inside(path: str, graph: "DiGraph"):
         import networkx as nx
 
         stages = nx.dfs_postorder_nodes(graph)
@@ -297,10 +301,10 @@ class Repo:
 
     def collect(
         self,
-        target=None,
-        with_deps=False,
-        recursive=False,
-        graph=None,
+        target: str = None,
+        with_deps: bool = False,
+        recursive: bool = False,
+        graph: "DiGraph" = None,
         accept_group: bool = False,
         glob: bool = False,
     ):
@@ -318,24 +322,24 @@ class Repo:
         if not with_deps:
             return stages
 
+        return self._collect_stages_with_deps(stages, graph=graph)
+
+    def _collect_stages_with_deps(
+        self, stages: List["Stage"], graph: "DiGraph" = None
+    ):
         res = set()
         for stage in stages:
             res.update(self._collect_pipeline(stage, graph=graph))
         return res
 
-    def _collect_pipeline(self, stage, graph=None):
+    def _collect_pipeline(self, stage: "Stage", graph: "DiGraph" = None):
         import networkx as nx
 
         pipeline = get_pipeline(get_pipelines(graph or self.graph), stage)
         return nx.dfs_postorder_nodes(pipeline, stage)
 
     def _collect_specific_target(
-        self,
-        target: str,
-        with_deps: bool,
-        recursive: bool,
-        accept_group: bool,
-        glob: bool,
+        self, target: str, with_deps: bool, recursive: bool, accept_group: bool
     ):
         # Optimization: do not collect the graph for a specific target
         file, name = parse_target(target)
@@ -351,25 +355,26 @@ class Repo:
                 recursive and self.tree.isdir(target)
             ) and self.tree.exists(PIPELINE_FILE):
                 with suppress(StageNotFound):
-                    stage = self.stage.load_one(PIPELINE_FILE, target)
-                    stages = (
-                        self._collect_pipeline(stage) if with_deps else [stage]
+                    stages = self.stage.load_all(
+                        PIPELINE_FILE, target, accept_group=accept_group
                     )
+                    if with_deps:
+                        stages = self._collect_stages_with_deps(stages)
+
         elif not with_deps and is_valid_filename(file):
             stages = self.stage.load_all(
-                file, name, accept_group=accept_group, glob=glob,
+                file, name, accept_group=accept_group,
             )
 
         return stages, file, name
 
     def collect_granular(
         self,
-        target=None,
-        with_deps=False,
-        recursive=False,
-        graph=None,
+        target: str = None,
+        with_deps: bool = False,
+        recursive: bool = False,
+        graph: "DiGraph" = None,
         accept_group: bool = False,
-        glob: bool = False,
     ):
         """
         Priority is in the order of following in case of ambiguity:
@@ -382,7 +387,7 @@ class Repo:
             return [(stage, None) for stage in self.stages]
 
         stages, file, _ = self._collect_specific_target(
-            target, with_deps, recursive, accept_group, glob
+            target, with_deps, recursive, accept_group
         )
         if not stages:
             if not (recursive and self.tree.isdir(target)):
@@ -400,7 +405,6 @@ class Repo:
                     recursive,
                     graph,
                     accept_group=accept_group,
-                    glob=glob,
                 )
             except StageFileDoesNotExistError as exc:
                 # collect() might try to use `target` as a stage name

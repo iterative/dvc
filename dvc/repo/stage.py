@@ -100,7 +100,8 @@ class StageLoad:
         stages = dvcfile.stages  # type: ignore
 
         if isinstance(stages, SingleStageLoader):
-            return [stages[name]]
+            stage = stages[name]
+            return [stage]
 
         assert isinstance(stages, StageLoader)
         keys = self._get_keys(stages, name, accept_group, glob)
