@@ -4,9 +4,9 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from itertools import starmap
-from typing import TYPE_CHECKING, List, Set
+from typing import TYPE_CHECKING, Dict, List, Optional
 
-from funcy import join
+from funcy import join, lfilter
 
 from dvc.dependency.param import ParamsDependency
 from dvc.exceptions import DvcException
@@ -21,7 +21,6 @@ from .context import (
     MergeError,
     Meta,
     Node,
-    ParamsFileNotFound,
     SetError,
 )
 
@@ -44,13 +43,25 @@ DEFAULT_SENTINEL = object()
 JOIN = "@"
 
 
+class VarsAlreadyLoaded(DvcException):
+    pass
+
+
 class ResolveError(DvcException):
     pass
 
 
+def _format_preamble(msg, path, spacing=" "):
+    return f"failed to parse {msg} in '{path}':{spacing}"
+
+
 def format_and_raise(exc, msg, path):
-    spacing = "\n" if isinstance(exc, (ParseError, MergeError)) else " "
-    message = f"failed to parse {msg} in '{path}':{spacing}{str(exc)}"
+    spacing = (
+        "\n"
+        if isinstance(exc, (ParseError, MergeError, VarsAlreadyLoaded))
+        else " "
+    )
+    message = _format_preamble(msg, path, spacing) + str(exc)
 
     # FIXME: cannot reraise because of how we log "cause" of the exception
     # the error message is verbose, hence need control over the spacing
@@ -70,12 +81,12 @@ class DataResolver:
         self.wdir = wdir
         self.repo = repo
         self.tree = self.repo.tree
-        self.imported_files: Set[str] = set()
+        self.imported_files: Dict[str, Optional[List[str]]] = {}
         self.relpath = relpath(self.wdir / "dvc.yaml")
 
         to_import: PathInfo = wdir / DEFAULT_PARAMS_FILE
         if self.tree.exists(to_import):
-            self.imported_files = {os.path.abspath(to_import)}
+            self.imported_files = {os.path.abspath(to_import): None}
             self.global_ctx = Context.load_from(self.tree, to_import)
         else:
             self.global_ctx = Context()
@@ -89,28 +100,51 @@ class DataResolver:
             self.load_from_vars(
                 self.global_ctx, vars_, wdir, skip_imports=self.imported_files
             )
-        except (ParamsFileNotFound, MergeError) as exc:
+        except (ContextError, VarsAlreadyLoaded) as exc:
             format_and_raise(exc, "'vars'", self.relpath)
+
+    @staticmethod
+    def check_loaded(path, item, keys, skip_imports):
+        if not keys and isinstance(skip_imports[path], list):
+            raise VarsAlreadyLoaded(
+                f"cannot load '{item}' as it's partially loaded already"
+            )
+        elif keys and skip_imports[path] is None:
+            raise VarsAlreadyLoaded(
+                f"cannot partially load '{item}' as it's already loaded."
+            )
+        elif keys and isinstance(skip_imports[path], list):
+            if not set(keys).isdisjoint(set(skip_imports[path])):
+                raise VarsAlreadyLoaded(
+                    f"cannot load '{item}' as it's partially loaded already"
+                )
 
     def load_from_vars(
         self,
         context: "Context",
         vars_: List,
         wdir: PathInfo,
-        skip_imports: Set[str],
+        skip_imports: Dict[str, Optional[List[str]]],
         stage_name: str = None,
     ):
         stage_name = stage_name or ""
         for index, item in enumerate(vars_):
             assert isinstance(item, (str, dict))
             if isinstance(item, str):
-                path_info = wdir / item
-                path = os.path.abspath(path_info)
-                if path in skip_imports:
-                    continue
+                path, _, keys_str = item.partition(":")
+                keys = lfilter(bool, keys_str.split(","))
 
-                context.merge_from(self.tree, path_info)
-                skip_imports.add(path)
+                path_info = wdir / path
+                path = os.path.abspath(path_info)
+
+                if path in skip_imports:
+                    if not keys and skip_imports[path] is None:
+                        # allow specifying complete filepath multiple times
+                        continue
+                    self.check_loaded(path, item, keys, skip_imports)
+
+                context.merge_from(self.tree, path_info, select_keys=keys)
+                skip_imports[path] = keys if keys else None
             else:
                 joiner = "." if stage_name else ""
                 meta = Meta(source=f"{stage_name}{joiner}vars[{index}]")
@@ -151,13 +185,16 @@ class DataResolver:
 
         vars_ = definition.pop(VARS_KWD, [])
         # FIXME: Should `vars` be templatized?
-        self.load_from_vars(
-            context,
-            vars_,
-            wdir,
-            skip_imports=deepcopy(self.imported_files),
-            stage_name=name,
-        )
+        try:
+            self.load_from_vars(
+                context,
+                vars_,
+                wdir,
+                skip_imports=deepcopy(self.imported_files),
+                stage_name=name,
+            )
+        except VarsAlreadyLoaded as exc:
+            format_and_raise(exc, f"'stages.{name}.vars'", self.relpath)
 
         logger.trace(  # type: ignore[attr-defined]
             "Context during resolution of stage %s:\n%s", name, context
