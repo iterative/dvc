@@ -91,46 +91,54 @@ class DvcIgnorePatterns(DvcIgnore):
             path = normalize_file(path)
         return path
 
-    def matches(self, dirname, basename, is_dir=False):
+    def matches(self, dirname, basename, is_dir=False, details: bool = False):
         path = self._get_normalize_path(dirname, basename)
         if not path:
             return False
-        return self.ignore(path, is_dir)
+
+        if details:
+            return self._ignore_details(path, is_dir)
+        else:
+            return self.ignore(path, is_dir)
 
     def ignore(self, path, is_dir):
-        result = False
-        if is_dir:
-            path_dir = f"{path}/"
-            for ignore, pattern in self.ignore_spec:
-                if pattern.match(path) or pattern.match(path_dir):
-                    result = ignore
-        else:
-            for ignore, pattern in self.ignore_spec:
-                if pattern.match(path):
-                    result = ignore
-        return result
+        def matches(pattern, path, is_dir) -> bool:
+            matches_ = bool(pattern.match(path))
 
-    def match_details(self, dirname, basename, is_dir=False):
-        path = self._get_normalize_path(dirname, basename)
-        if not path:
-            return False
-        return self._ignore_details(path, is_dir)
+            if is_dir:
+                matches_ |= bool(pattern.match(f"{path}/"))
+
+            return matches_
+
+        result = False
+
+        for ignore, pattern in self.ignore_spec[::-1]:
+            if matches(pattern, path, is_dir):
+                result = ignore
+                break
+        return result
 
     def _ignore_details(self, path, is_dir):
         result = []
-        for ignore, pattern in zip(self.regex_pattern_list, self.pattern_list):
-            regex = re.compile(ignore[0])
+        for (regex, ignore), pattern_info in list(
+            zip(self.regex_pattern_list, self.pattern_list)
+        )[::-1]:
             # skip system pattern
-            if not pattern.file_info:
+            if not pattern_info.file_info:
                 continue
+
+            regex = re.compile(regex)
+
+            matches = bool(regex.match(path))
             if is_dir:
-                path_dir = f"{path}/"
-                if regex.match(path) or regex.match(path_dir):
-                    result.append(pattern.file_info)
-            else:
-                if regex.match(path):
-                    result.append(pattern.file_info)
-        return result
+                matches |= bool(regex.match(f"{path}/"))
+
+            if matches:
+                if not ignore and len(result) == 0:
+                    break
+                result.append(pattern_info.file_info)
+
+        return result[::-1]
 
     def __hash__(self):
         return hash(self.dirname + ":" + str(self.pattern_list))
@@ -328,8 +336,8 @@ class DvcIgnoreFilter:
             dirname, basename = os.path.split(os.path.normpath(full_target))
             pattern = self._get_trie_pattern(dirname)
             if pattern:
-                matches = pattern.match_details(
-                    dirname, basename, os.path.isdir(full_target)
+                matches = pattern.matches(
+                    dirname, basename, os.path.isdir(full_target), True,
                 )
 
                 if matches:
