@@ -9,6 +9,7 @@ from dvc.hash_info import HashInfo
 from dvc.path_info import URLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
+from dvc.utils import format_link
 
 from .base import BaseTree
 
@@ -18,9 +19,9 @@ logger = logging.getLogger(__name__)
 class OSFAuthError(DvcException):
     def __init__(self):
         message = (
-            "OSF authorization failed. Please check or provide"
+            f"OSF authorization failed. Please check or provide"
             " user and password. See "
-            "https://dvc.org/doc/command-reference/remote"
+            f"{format_link('https://man.dvc.org/remote/modify')}"
             " for details"
         )
         super().__init__(message)
