@@ -1,5 +1,6 @@
 import os
 import shutil
+from pathlib import Path
 
 import pytest
 
@@ -408,3 +409,11 @@ def test_ignored_output(tmp_dir, scm, dvc, run_copy):
 
     with pytest.raises(OutputIsIgnoredError):
         run_copy("foo", "foo.log", name="copy")
+
+
+def test_ignored_output_nested(tmp_dir, scm, dvc, run_copy):
+    tmp_dir.gen({".dvcignore": "/*.log", "copy": {"foo": "foo content"}})
+
+    run_copy("foo", "foo.log", name="copy", wdir="copy")
+
+    assert Path("copy/foo.log").exists()

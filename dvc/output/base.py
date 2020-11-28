@@ -559,7 +559,9 @@ class BaseOutput:
             raise cls.IsStageFileError(path)
 
         if stage:
-            check = stage.repo.tree.dvcignore.check_ignore(path)
+            check = stage.repo.tree.dvcignore.check_ignore(
+                os.path.join(stage.wdir, path)
+            )
             if check.match:
                 raise cls.IsIgnoredError(check)
 
