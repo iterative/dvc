@@ -5,6 +5,7 @@ import os
 
 import colorama
 
+from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
 
@@ -128,7 +129,7 @@ class CmdDiff(CmdBase):
     def run(self):
         try:
             diff = self.repo.diff(
-                self.args.a_rev, self.args.b_rev, self.args.target
+                self.args.a_rev, self.args.b_rev, self.args.targets
             )
             show_hash = self.args.show_hash
             hide_missing = self.args.b_rev or self.args.hide_missing
@@ -170,14 +171,14 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     diff_parser.add_argument(
-        "-t",
-        "--target",
+        "--targets",
+        nargs="*",
         help=(
-            "Source path to a data file or directory. Default None. "
-            "If not specified, compares all files and directories "
+            "Source paths to a data files or directories. Default None. "
+            "If not specified, compares all files and directories `). "
             "that are under DVC control in the current working space."
         ),
-    )
+    ).complete = completion.FILE
     diff_parser.add_argument(
         "a_rev",
         help="Old Git commit to compare (defaults to HEAD)",

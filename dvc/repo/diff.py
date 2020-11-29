@@ -1,6 +1,8 @@
 import logging
 import os
 
+from dvc.exceptions import PathMissingError
+from dvc.path_info import PathInfo
 from dvc.repo import locked
 from dvc.tree.local import LocalTree
 from dvc.tree.repo import RepoTree
@@ -9,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 @locked
-def diff(self, a_rev="HEAD", b_rev=None, target=None):
+def diff(self, a_rev="HEAD", b_rev=None, targets=None):
     """
     By default, it compares the workspace with the last commit's tree.
 
@@ -28,10 +30,13 @@ def diff(self, a_rev="HEAD", b_rev=None, target=None):
             # brancher always returns workspace, but we only need to compute
             # workspace paths/checksums if b_rev was None
             continue
-        results[rev] = _paths_checksums(self, target)
+        results[rev] = _paths_checksums(self)
 
     old = results[a_rev]
     new = results[b_rev]
+
+    if targets is not None and len(targets):
+        old, new = _filter_diff_targets(self, targets, old, new)
 
     # Compare paths between the old and new tree.
     # set() efficiently converts dict keys to a set
@@ -62,7 +67,7 @@ def diff(self, a_rev="HEAD", b_rev=None, target=None):
     return ret if any(ret.values()) else {}
 
 
-def _paths_checksums(repo, target):
+def _paths_checksums(repo):
     """
     A dictionary of checksums addressed by relpaths collected from
     the current tree outputs.
@@ -74,10 +79,10 @@ def _paths_checksums(repo, target):
         file:      "data"
     """
 
-    return dict(_output_paths(repo, target))
+    return dict(_output_paths(repo))
 
 
-def _output_paths(repo, target):
+def _output_paths(repo):
     repo_tree = RepoTree(repo, stream=True)
     on_working_tree = isinstance(repo.tree, LocalTree)
 
@@ -101,9 +106,6 @@ def _output_paths(repo, target):
     for stage in repo.stages:
         for output in stage.outs:
             if _exists(output):
-                # if a target was supplied, filter out non-target files
-                if target is not None and not str(output).startswith(target):
-                    continue
                 yield _to_path(output), _to_checksum(output)
                 if output.is_dir_checksum:
                     yield from _dir_output_paths(repo_tree, output)
@@ -127,3 +129,33 @@ def _filter_missing(repo, paths):
             out = metadata.outs[0]
             if out.status().get(str(out)) == "not in cache":
                 yield path
+
+
+def _filter_diff_targets(repo, targets, old, new):
+    filtered_old = {}
+    filtered_new = {}
+
+    for target_path in targets:
+        target_path_info = PathInfo(target_path)
+        target_not_path_found = True
+
+        # filter out targets in old
+        for old_path, old_hash in old.items():
+            old_path_info = PathInfo(old_path)
+
+            if old_path_info.isin_or_eq(target_path_info):
+                filtered_old[old_path] = old_hash
+                target_not_path_found = False
+
+        # filter out targets in new
+        for new_path, new_hash in new.items():
+            new_path_info = PathInfo(new_path)
+
+            if new_path_info.isin_or_eq(target_path_info):
+                filtered_new[new_path] = new_hash
+                target_not_path_found = False
+
+        if target_not_path_found:
+            raise PathMissingError(target_path, repo)
+
+    return filtered_old, filtered_new
