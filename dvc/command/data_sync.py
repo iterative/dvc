@@ -238,8 +238,8 @@ def add_parser(subparsers, _parent_parser):
 
     # Fetch
     FETCH_HELP = (
-        "Get tracked files or directories from remote storage"
-        " into the cache."
+        "Download cached files or directories from remote storage"
+        " based on the current dvc.yaml and .dvc files."
     )
 
     fetch_parser = subparsers.add_parser(
