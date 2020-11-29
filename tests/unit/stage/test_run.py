@@ -9,6 +9,5 @@ def test_run_stage_dry(caplog):
         stage = Stage(None, "stage.dvc", cmd="mycmd arg1 arg2")
         run_stage(stage, dry=True)
         assert caplog.messages == [
-            "Running callback stage 'stage.dvc' with command:",
-            "\t" + "mycmd arg1 arg2",
+            "Running callback stage 'stage.dvc':",
         ]
