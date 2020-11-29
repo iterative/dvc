@@ -33,7 +33,9 @@ def test_import(tmp_dir, scm, dvc, erepo_dir):
 
 
 @pytest.mark.parametrize("src_is_dvc", [True, False])
-def test_import_git_file(tmp_dir, scm, dvc, git_dir, src_is_dvc):
+def test_import_git_file(
+    tmp_dir, scm, dvc, git_dir, src_is_dvc
+):  # pylint:disable=unused-argument
     if src_is_dvc:
         git_dir.init(dvc=True)
 
@@ -49,7 +51,9 @@ def test_import_git_file(tmp_dir, scm, dvc, git_dir, src_is_dvc):
     }
 
 
-def test_import_cached_file(erepo_dir, tmp_dir, dvc, scm, monkeypatch):
+def test_import_cached_file(
+    erepo_dir, tmp_dir, dvc, scm, monkeypatch
+):  # pylint:disable=unused-argument
     src = "some_file"
     dst = "some_file_imported"
 
@@ -68,7 +72,9 @@ def test_import_cached_file(erepo_dir, tmp_dir, dvc, scm, monkeypatch):
 
 
 @pytest.mark.parametrize("src_is_dvc", [True, False])
-def test_import_git_dir(tmp_dir, scm, dvc, git_dir, src_is_dvc):
+def test_import_git_dir(
+    tmp_dir, scm, dvc, git_dir, src_is_dvc
+):  # pylint:disable=unused-argument
     if src_is_dvc:
         git_dir.init(dvc=True)
 
@@ -136,7 +142,9 @@ def test_import_file_from_dir(tmp_dir, scm, dvc, erepo_dir):
     assert (tmp_dir / "X.dvc").exists()
 
 
-def test_import_file_from_dir_to_dir(tmp_dir, scm, dvc, erepo_dir):
+def test_import_file_from_dir_to_dir(
+    tmp_dir, scm, dvc, erepo_dir
+):  # pylint:disable=unused-argument
     with erepo_dir.chdir():
         erepo_dir.dvc_gen({"dir": {"foo": "foo"}}, commit="create dir")
 
@@ -158,7 +166,9 @@ def test_import_file_from_dir_to_dir(tmp_dir, scm, dvc, erepo_dir):
     assert (tmp_dir / "dir" / "foo.dvc").exists()
 
 
-def test_import_non_cached(erepo_dir, tmp_dir, dvc, scm):
+def test_import_non_cached(
+    erepo_dir, tmp_dir, dvc, scm
+):  # pylint:disable=unused-argument
     src = "non_cached_output"
     dst = src + "_imported"
 
@@ -199,7 +209,9 @@ def test_import_rev(tmp_dir, scm, dvc, erepo_dir):
     }
 
 
-def test_pull_imported_stage(tmp_dir, dvc, erepo_dir):
+def test_pull_imported_stage(
+    tmp_dir, dvc, erepo_dir
+):  # pylint:disable=unused-argument
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
     dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported")
@@ -248,7 +260,9 @@ def test_pull_imported_directory_stage(tmp_dir, dvc, erepo_dir):
     assert (tmp_dir / "dir_imported").read_text() == {"foo": "foo content"}
 
 
-def test_download_error_pulling_imported_stage(tmp_dir, dvc, erepo_dir):
+def test_download_error_pulling_imported_stage(
+    tmp_dir, dvc, erepo_dir
+):  # pylint:disable=unused-argument
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
     dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported")
@@ -300,7 +314,9 @@ def test_pull_non_workspace(tmp_dir, scm, dvc, erepo_dir):
     assert os.path.exists(stage.outs[0].cache_path)
 
 
-def test_import_non_existing(erepo_dir, tmp_dir, dvc):
+def test_import_non_existing(
+    erepo_dir, tmp_dir, dvc
+):  # pylint:disable=unused-argument
     with pytest.raises(PathMissingError):
         tmp_dir.dvc.imp(os.fspath(erepo_dir), "invalid_output")
 
@@ -330,7 +346,7 @@ def test_pull_no_rev_lock(erepo_dir, tmp_dir, dvc):
 
 def test_import_from_bare_git_repo(
     tmp_dir, make_tmp_dir, erepo_dir, local_cloud
-):
+):  # pylint:disable=unused-argument
     import git
 
     git.Repo.init(os.fspath(tmp_dir), bare=True)
@@ -350,7 +366,7 @@ def test_import_from_bare_git_repo(
 
 def test_import_pipeline_tracked_outs(
     tmp_dir, dvc, scm, erepo_dir, run_copy, local_remote
-):
+):  # pylint:disable=unused-argument
     from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
 
     tmp_dir.gen("foo", "foo")
@@ -367,7 +383,7 @@ def test_import_pipeline_tracked_outs(
         assert (erepo_dir / "baz").read_text() == "foo"
 
 
-def test_local_import(tmp_dir, dvc, scm):
+def test_local_import(tmp_dir, dvc, scm):  # pylint:disable=unused-argument
     tmp_dir.dvc_gen("foo", "foo", commit="init")
     (tmp_dir / "outdir").mkdir()
     dvc.imp(".", "foo", out="outdir")
@@ -388,7 +404,9 @@ def test_import_mixed_dir(tmp_dir, dvc, erepo_dir):
 
 @pytest.mark.parametrize("is_dvc", [True, False])
 @pytest.mark.parametrize("files", [{"foo": "foo"}, {"dir": {"bar": "bar"}}])
-def test_import_subrepos(tmp_dir, erepo_dir, dvc, scm, is_dvc, files):
+def test_import_subrepos(
+    tmp_dir, erepo_dir, dvc, scm, is_dvc, files
+):  # pylint:disable=unused-argument
     subrepo = erepo_dir / "subrepo"
     make_subrepo(subrepo, erepo_dir.scm)
     gen = subrepo.dvc_gen if is_dvc else subrepo.scm_gen
@@ -451,7 +469,9 @@ def test_pull_imported_stage_from_subrepos(
     assert (tmp_dir / "out").read_text() == files[key]
 
 
-def test_try_import_complete_repo(tmp_dir, dvc, erepo_dir):
+def test_try_import_complete_repo(
+    tmp_dir, dvc, erepo_dir
+):  # pylint:disable=unused-argument
     subrepo = erepo_dir / "subrepo"
     make_subrepo(subrepo, erepo_dir.scm)
     with subrepo.chdir():
@@ -475,3 +495,25 @@ def test_import_with_no_exec(tmp_dir, dvc, erepo_dir):
 
     dst = tmp_dir / "foo_imported"
     assert not dst.exists()
+
+
+def test_import_with_jobs(mocker, dvc, erepo_dir):
+    from dvc.data_cloud import DataCloud
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen(
+            {
+                "dir1": {
+                    "file1": "file1",
+                    "file2": "file2",
+                    "file3": "file3",
+                    "file4": "file4",
+                },
+            },
+            commit="init",
+        )
+
+    spy = mocker.spy(DataCloud, "pull")
+    dvc.imp(os.fspath(erepo_dir), "dir1", jobs=3)
+    run_jobs = tuple(spy.call_args_list[0])[1].get("jobs")
+    assert run_jobs == 3
