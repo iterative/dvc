@@ -1,7 +1,6 @@
 import os
 
 import pytest
-from funcy import raiser
 
 from dvc.repo import NotDvcRepoError, Repo, locked
 from dvc.utils.fs import remove
@@ -71,36 +70,6 @@ def test_locked(mocker):
         mocker.call.method(repo, args, kwargs),
         mocker.call._reset(),
     ]
-
-
-def test_collect_optimization(tmp_dir, dvc, mocker):
-    (stage,) = tmp_dir.dvc_gen("foo", "foo text")
-
-    # Forget cached stages and graph and error out on collection
-    dvc._reset()
-    mocker.patch(
-        "dvc.repo.Repo.stages",
-        property(raiser(Exception("Should not collect"))),
-    )
-
-    # Should read stage directly instead of collecting the whole graph
-    dvc.collect(stage.path)
-    dvc.collect_granular(stage.path)
-
-
-def test_collect_optimization_on_stage_name(tmp_dir, dvc, mocker, run_copy):
-    tmp_dir.dvc_gen("foo", "foo")
-    stage = run_copy("foo", "bar", name="copy-foo-bar")
-    # Forget cached stages and graph and error out on collection
-    dvc._reset()
-    mocker.patch(
-        "dvc.repo.Repo.stages",
-        property(raiser(Exception("Should not collect"))),
-    )
-
-    # Should read stage directly instead of collecting the whole graph
-    assert dvc.collect("copy-foo-bar") == [stage]
-    assert dvc.collect_granular("copy-foo-bar") == [(stage, None)]
 
 
 def test_skip_graph_checks(tmp_dir, dvc, mocker, run_copy):
