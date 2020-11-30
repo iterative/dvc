@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from dvc.path_info import PathInfo, URLInfo
 
@@ -8,3 +8,5 @@ if TYPE_CHECKING:
 StrPath = Union[str, "PathLike[str]"]
 DvcPath = Union[PathInfo, URLInfo]
 AnyPath = Union[str, DvcPath, StrPath]
+
+OptStr = Optional[str]

@@ -29,7 +29,9 @@ def _joint_status(pairs):
 def _local_status(self, targets=None, with_deps=False, recursive=False):
     targets = targets or [None]
     pairs = cat(
-        self.collect_granular(t, with_deps=with_deps, recursive=recursive)
+        self.stage.collect_granular(
+            t, with_deps=with_deps, recursive=recursive
+        )
         for t in targets
     )
 

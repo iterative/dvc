@@ -36,8 +36,12 @@ def prompt_to_commit(stage, changes, force=False):
 
 
 @locked
-def commit(self, target, with_deps=False, recursive=False, force=False):
-    stages = self.collect(target, with_deps=with_deps, recursive=recursive)
+def commit(
+    self, target, with_deps=False, recursive=False, force=False,
+):
+    stages = self.stage.collect(
+        target, with_deps=with_deps, recursive=recursive
+    )
     for stage in stages:
         changes = stage.changed_entries()
         if any(changes):
