@@ -11,7 +11,7 @@ from dvc.tree.osf import OSFTree
 
 username = "example@mail.com"
 data_dir = "data"
-url = f"osf://odf.io/{data_dir}"
+url = f"osf://osf.io/{data_dir}"
 project = "abcd"
 password = "12345"
 config = {
@@ -84,29 +84,42 @@ def test_list_paths(OSFCore_get, dvc):
     OSFCore_get.assert_called_once_with(_files_url)
 
 
-@patch.object(OSFCore, "_get")
-def test_get_file_obj(OSFCore_get, dvc):
-    _files_url = (
-        f"https://api.osf.io/v2//nodes/{project}/files/osfstorage/data123"
+def test_get_file_obj(dvc):
+    store = Storage({})
+    store._files_url = (
+        f"https://api.osf.io/v2//nodes/{project}/files/osfstorage"
     )
-    json = files_node(
-        project, "osfstorage", ["data/hello.txt", "data/bye.txt"]
+
+    json1 = files_node(
+        project,
+        "osfstorage",
+        file_names=["hello.txt", "bye.txt"],
+        folder_names=["data"],
     )
-    response = mocks.FakeResponse(200, json)
-    OSFCore_get.return_value = response
+    top_level_response = mocks.FakeResponse(200, json1)
 
-    store = Folder({})
-    store._files_url = _files_url
+    second_level_url = (
+        "https://api.osf.io/v2/nodes/9zpcy/files/osfstorage/data123/"
+    )
+    json2 = files_node(
+        project, "osfstorage", file_names=["hello2.txt", "bye2.txt"]
+    )
+    second_level_response = mocks.FakeResponse(200, json2)
 
-    path_info = URLInfo(url) / "hello.txt"
+    def simple_OSFCore_get(request_url):
+        if request_url == store._files_url:
+            return top_level_response
+        elif request_url == second_level_url:
+            return second_level_response
 
-    with patch.object(OSFTree, "storage", new=store):
+    with patch.object(
+        OSFCore, "_get", side_effect=simple_OSFCore_get
+    ), patch.object(OSFTree, "storage", new=store):
+        path_info = URLInfo(url) / "hello2.txt"
         tree = OSFTree(dvc, config)
         file = tree._get_file_obj(path_info)
         assert isinstance(file, File)
-        assert file.path == "/data/hello.txt"
-
-    OSFCore_get.assert_called_once_with(_files_url)
+        assert file.name == "hello2.txt"
 
 
 def test_is_dir(dvc):
@@ -134,8 +147,8 @@ def test_walk_files(dvc):
     with patch.object(OSFTree, "_list_paths", return_value=[f1, f2, f3]):
         tree = OSFTree(dvc, config)
         files = [i.url for i in tree.walk_files(path_info)]
-        assert "osf://odf.io/data/file1" in files
-        assert "osf://odf.io/data/file2" in files
+        assert "osf://osf.io/data/file1" in files
+        assert "osf://osf.io/data/file2" in files
 
 
 def test_get_md5(dvc):

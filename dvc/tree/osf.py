@@ -70,9 +70,17 @@ class OSFTree(BaseTree):
         return self.project.storage()
 
     def _get_file_obj(self, path_info):
-        for file in self.storage.files:
-            if file.path == path_info.path:
-                return file
+        folder_names = path_info.path.split("/")[1:-1]
+        file_name = path_info.path.split("/")[-1]
+        folders = self.storage.folders
+        for name in folder_names:
+            try:
+                item = next((i for i in folders if i.name == name))
+            except StopIteration:
+                return None
+            folders = item.folders
+        file = next((i for i in item.files if i.name == file_name), None)
+        return file
 
     def get_md5(self, path_info):
         file = self._get_file_obj(path_info)
