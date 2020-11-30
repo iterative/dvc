@@ -107,7 +107,11 @@ def run_stage(stage, dry=False, force=False, checkpoint_func=None, **kwargs):
         from .cache import RunCacheNotFoundError
 
         try:
-            stage.repo.stage_cache.restore(stage, **kwargs)
+            stage.repo.stage_cache.restore(
+                stage,
+                run_cache=kwargs.get("run_cache", True),
+                pull=kwargs.get("pull", False),
+            )
             return
         except RunCacheNotFoundError:
             pass

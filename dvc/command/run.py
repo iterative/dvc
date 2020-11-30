@@ -255,10 +255,7 @@ def add_parser(subparsers, parent_parser):
         "--no-shell",
         action="store_true",
         default=False,
-        help=(
-            "Executes command without shell, directly "
-            "feeding it to subprocess"
-        ),
+        help="Executes command without shell, directly.",
     )
     run_parser.add_argument(
         "command", nargs=argparse.REMAINDER, help="Command to execute."

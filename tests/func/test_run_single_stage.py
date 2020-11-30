@@ -1035,7 +1035,7 @@ def test_run_force_doesnot_preserve_comments_and_meta(tmp_dir, dvc, run_copy):
 
 
 def test_run_noshell_skips_extra_quoting(dvc, mocker):
-    cmd = "Rscript -e 'saveRDS(1:10, \"ops-data.rds\")'"
+    cmd = 'sample_script arg1 arg2 "literal_arg"'
     proc = mocker.Mock()
     communicate = mocker.Mock()
     proc.configure_mock(returncode=0, communicate=communicate)

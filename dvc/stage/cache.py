@@ -166,7 +166,7 @@ class StageCache:
         dump_yaml(tmp, cache)
         self.tree.move(PathInfo(tmp), path)
 
-    def restore(self, stage, run_cache=True, pull=False, **kwargs):
+    def restore(self, stage, run_cache=True, pull=False):
         if stage.is_callback or stage.always_changed:
             raise RunCacheNotFoundError(stage)
 
