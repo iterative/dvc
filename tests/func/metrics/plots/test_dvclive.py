@@ -30,7 +30,8 @@ def test_live_plots(tmp_dir, scm, dvc):
         deps=["log.py"],
         params=["multiplier"],
         name="run_logger",
-        logs_no_cache=["logs"],
+        plots_no_cache=["logs"],
+        metrics_no_cache=["logs.json"],
     )
     scm.add(["params.yaml", "log.py", "dvc.lock", "dvc.yaml", "logs"])
     scm.commit("init")
