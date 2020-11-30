@@ -237,10 +237,7 @@ def add_parser(subparsers, _parent_parser):
     push_parser.set_defaults(func=CmdDataPush)
 
     # Fetch
-    FETCH_HELP = (
-        "Download cached files or directories from remote storage"
-        " based on the current dvc.yaml and .dvc files."
-    )
+    FETCH_HELP = "Download cached files or directories from remote storage."
 
     fetch_parser = subparsers.add_parser(
         "fetch",
