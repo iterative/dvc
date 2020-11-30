@@ -1,6 +1,6 @@
 import os
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Iterable, Optional, Tuple
+from typing import TYPE_CHECKING, Callable, Iterable, Optional, Tuple
 
 from dvc.scm.base import SCMError
 
@@ -82,7 +82,11 @@ class BaseGitBackend(ABC):
 
     @abstractmethod
     def fetch_refspecs(
-        self, url: str, refspecs: Iterable[str], force: Optional[bool] = False
+        self,
+        url: str,
+        refspecs: Iterable[str],
+        force: Optional[bool] = False,
+        on_diverged: Optional[Callable[[bytes, bytes], bool]] = None,
     ):
         """Fetch refspecs from a remote Git repo.
 
@@ -92,6 +96,9 @@ class BaseGitBackend(ABC):
             refspecs: Iterable containing refspecs to fetch.
                 Note that this will not match subkeys.
             force: If True, local refs will be overwritten.
+            on_diverged: Callback function which will be called if local ref
+                and remote have diverged and force is False. If the callback
+                returns True the local ref will be overwritten.
         """
 
     @abstractmethod

@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import TYPE_CHECKING, Iterable, Optional, Tuple
+from typing import TYPE_CHECKING, Callable, Iterable, Optional, Tuple
 
 from dvc.scm.base import SCMError
 from dvc.utils import relpath
@@ -126,7 +126,11 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         )
 
     def fetch_refspecs(
-        self, url: str, refspecs: Iterable[str], force: Optional[bool] = False
+        self,
+        url: str,
+        refspecs: Iterable[str],
+        force: Optional[bool] = False,
+        on_diverged: Optional[Callable[[bytes, bytes], bool]] = None,
     ):
         from dulwich.client import get_transport_and_path
         from dulwich.objectspec import parse_reftuples
@@ -166,8 +170,13 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
                     check_diverged(
                         self.repo, self.repo.refs[rh], fetch_result.refs[lh]
                     )
-            except DivergedBranches as exc:
-                raise SCMError("Experiment branch has diverged") from exc
+            except DivergedBranches:
+                if not force:
+                    overwrite = False
+                    if on_diverged:
+                        overwrite = on_diverged(rh, fetch_result.refs[lh])
+                    if not overwrite:
+                        continue
             self.repo.refs[rh] = fetch_result.refs[lh]
 
     def _stash_iter(self, ref: str):

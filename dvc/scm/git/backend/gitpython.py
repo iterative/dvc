@@ -1,5 +1,5 @@
 import logging
-from typing import Iterable, Optional, Tuple
+from typing import Callable, Iterable, Optional, Tuple
 
 from .base import BaseGitBackend
 
@@ -53,7 +53,11 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         raise NotImplementedError
 
     def fetch_refspecs(
-        self, url: str, refspecs: Iterable[str], force: Optional[bool] = False
+        self,
+        url: str,
+        refspecs: Iterable[str],
+        force: Optional[bool] = False,
+        on_diverged: Optional[Callable[[bytes, bytes], bool]] = None,
     ):
         raise NotImplementedError
 
