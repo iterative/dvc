@@ -315,8 +315,8 @@ def test_dvcfile_dump_preserves_meta(tmp_dir, dvc, run_copy):
 
     data = dvcfile._load()[0]
     metadata = {"name": "copy-file"}
+    stage.meta = metadata
     data["stages"]["run_copy"]["meta"] = metadata
-    dump_yaml(dvcfile.path, data)
 
     dvcfile.dump(stage)
     assert dvcfile._load()[0] == data

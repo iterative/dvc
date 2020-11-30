@@ -1005,10 +1005,7 @@ def test_metrics_dir(tmp_dir, dvc, caplog, run_copy_metrics, metrics_type):
     )
 
 
-def test_run_force_doesnot_preserve_comments_and_meta(tmp_dir, dvc, run_copy):
-    """Depends on loading of stage on `run` where we don't check the file
-    for stage already exists, so we don't copy `stage_text` over due to which
-    `meta` and `comments` don't get preserved."""
+def test_run_force_preserves_comments_and_meta(tmp_dir, dvc, run_copy):
     tmp_dir.gen({"foo": "foo", "foo1": "foo1"})
     text = textwrap.dedent(
         """\
@@ -1017,7 +1014,7 @@ def test_run_force_doesnot_preserve_comments_and_meta(tmp_dir, dvc, run_copy):
       - path: copy.py
       - path: foo
       outs:
-      # comment not preserved
+      # comment preserved
       - path: bar
       meta:
         name: copy-foo-bar
@@ -1030,5 +1027,5 @@ def test_run_force_doesnot_preserve_comments_and_meta(tmp_dir, dvc, run_copy):
 
     run_copy("foo1", "bar1", single_stage=True, force=True, fname="bar.dvc")
 
-    assert "comment" not in (tmp_dir / "bar.dvc").read_text()
-    assert "meta" not in (tmp_dir / "bar.dvc").read_text()
+    assert "comment" in (tmp_dir / "bar.dvc").read_text()
+    assert "meta" in (tmp_dir / "bar.dvc").read_text()

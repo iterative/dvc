@@ -76,6 +76,7 @@ class StageLoader(Mapping):
         stage = loads_from(PipelineStage, dvcfile.repo, path, wdir, stage_data)
         stage.name = name
         stage.desc = stage_data.get(Stage.PARAM_DESC)
+        stage.meta = stage_data.get(Stage.PARAM_META)
 
         deps = project(stage_data, [stage.PARAM_DEPS, stage.PARAM_PARAMS])
         fill_stage_dependencies(stage, **deps)

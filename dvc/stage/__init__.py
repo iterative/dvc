@@ -55,6 +55,7 @@ def loads_from(cls, repo, path, wdir, data):
                 Stage.PARAM_ALWAYS_CHANGED,
                 Stage.PARAM_MD5,
                 Stage.PARAM_DESC,
+                Stage.PARAM_META,
                 "name",
             ],
         ),
@@ -90,6 +91,24 @@ def create_stage(cls, repo, path, external=False, **kwargs):
     return stage
 
 
+def restore_meta(stage):
+    from .exceptions import StageNotFound
+
+    if not stage.dvcfile.exists():
+        return
+
+    try:
+        old = stage.reload()
+    except StageNotFound:
+        return
+
+    # will be used to restore comments later
+    # noqa, pylint: disable=protected-access
+    stage._stage_text = old._stage_text
+
+    stage.meta = old.meta
+
+
 class Stage(params.StageParams):
     # pylint:disable=no-value-for-parameter
     # rwlocked() confuses pylint
@@ -109,6 +128,7 @@ class Stage(params.StageParams):
         stage_text=None,
         dvcfile=None,
         desc=None,
+        meta=None,
     ):
         if deps is None:
             deps = []
@@ -127,6 +147,7 @@ class Stage(params.StageParams):
         self._stage_text = stage_text
         self._dvcfile = dvcfile
         self.desc = desc
+        self.meta = meta
         self.raw_data = RawData()
 
     @property
