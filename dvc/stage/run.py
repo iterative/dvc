@@ -45,13 +45,13 @@ def warn_if_fish(executable):
 
 @unlocked_repo
 def cmd_run(stage, *args, checkpoint_func=None, **kwargs):
-    kwargs = {"cwd": stage.wdir, "env": fix_env(None), "close_fds": True}
+    popen_kwargs = {"cwd": stage.wdir, "env": fix_env(None), "close_fds": True}
     if checkpoint_func:
         # indicate that checkpoint cmd is being run inside DVC
-        kwargs["env"].update(_checkpoint_env(stage))
+        popen_kwargs["env"].update(_checkpoint_env(stage))
 
     if os.name == "nt":
-        kwargs["shell"] = True
+        popen_kwargs["shell"] = True
         cmd = stage.cmd
     else:
         # NOTE: when you specify `shell=True`, `Popen` [1] will default to
@@ -67,10 +67,14 @@ def cmd_run(stage, *args, checkpoint_func=None, **kwargs):
         #                                                            #L1426
         # [2] https://github.com/iterative/dvc/issues/2506
         #                                           #issuecomment-535396799
-        kwargs["shell"] = False
+        popen_kwargs["shell"] = False
         executable = os.getenv("SHELL") or "/bin/sh"
         warn_if_fish(executable)
         cmd = _nix_cmd(executable, stage.cmd)
+
+    if not kwargs.get("use_shell", True):
+        cmd = stage.cmd
+        popen_kwargs["shell"] = False
 
     main_thread = isinstance(
         threading.current_thread(),
@@ -80,7 +84,7 @@ def cmd_run(stage, *args, checkpoint_func=None, **kwargs):
     p = None
 
     try:
-        p = subprocess.Popen(cmd, **kwargs)
+        p = subprocess.Popen(cmd, **popen_kwargs)
         if main_thread:
             old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
@@ -116,7 +120,7 @@ def run_stage(stage, dry=False, force=False, checkpoint_func=None, **kwargs):
     )
     logger.info("\t%s", stage.cmd)
     if not dry:
-        cmd_run(stage, checkpoint_func=checkpoint_func)
+        cmd_run(stage, checkpoint_func=checkpoint_func, **kwargs)
 
 
 def _checkpoint_env(stage):

@@ -133,6 +133,7 @@ def run(self, fname=None, no_exec=False, single_stage=False, **kwargs):
         stage.run(
             no_commit=kwargs.get("no_commit", False),
             run_cache=kwargs.get("run_cache", True),
+            use_shell=kwargs.get("use_shell", True),
         )
 
     dvcfile.dump(stage, update_lock=not no_exec)

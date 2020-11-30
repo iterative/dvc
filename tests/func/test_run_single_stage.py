@@ -1032,3 +1032,18 @@ def test_run_force_doesnot_preserve_comments_and_meta(tmp_dir, dvc, run_copy):
 
     assert "comment" not in (tmp_dir / "bar.dvc").read_text()
     assert "meta" not in (tmp_dir / "bar.dvc").read_text()
+
+
+def test_run_noshell_skips_extra_quoting(dvc, mocker):
+    cmd = "Rscript -e 'saveRDS(1:10, \"ops-data.rds\")'"
+    proc = mocker.Mock()
+    communicate = mocker.Mock()
+    proc.configure_mock(returncode=0, communicate=communicate)
+    popen_mock = mocker.patch("subprocess.Popen", return_value=proc)
+
+    ret = main(["run", "--no-shell", "-f", "-n test", cmd])
+
+    assert ret == 0
+    popen_mock.assert_called_with(
+        cmd, cwd=mock.ANY, env=mock.ANY, close_fds=mock.ANY, shell=False,
+    )

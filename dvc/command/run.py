@@ -58,6 +58,7 @@ class CmdRun(CmdBase):
                 single_stage=self.args.single_stage,
                 external=self.args.external,
                 desc=self.args.desc,
+                use_shell=not self.args.no_shell,
             )
         except DvcException:
             logger.exception("")
@@ -248,6 +249,15 @@ def add_parser(subparsers, parent_parser):
         help=(
             "User description of the stage (optional). "
             "This doesn't affect any DVC operations."
+        ),
+    )
+    run_parser.add_argument(
+        "--no-shell",
+        action="store_true",
+        default=False,
+        help=(
+            "Executes command without shell, directly "
+            "feeding it to subprocess"
         ),
     )
     run_parser.add_argument(

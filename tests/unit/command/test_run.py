@@ -78,6 +78,7 @@ def test_run(mocker, dvc):
         single_stage=False,
         external=True,
         desc="description",
+        use_shell=True,
     )
 
 
@@ -110,6 +111,7 @@ def test_run_args_from_cli(mocker, dvc):
         single_stage=False,
         external=False,
         desc=None,
+        use_shell=True,
     )
 
 
@@ -142,4 +144,5 @@ def test_run_args_with_spaces(mocker, dvc):
         single_stage=False,
         external=False,
         desc=None,
+        use_shell=True,
     )
