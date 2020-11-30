@@ -1,4 +1,14 @@
-def check_acyclic(graph):
+from typing import TYPE_CHECKING, Iterator, List, Set
+
+from dvc.utils.fs import path_isin
+
+if TYPE_CHECKING:
+    from networkx import DiGraph
+
+    from dvc.stage import Stage
+
+
+def check_acyclic(graph: "DiGraph") -> None:
     import networkx as nx
 
     from dvc.exceptions import CyclicGraphError
@@ -8,7 +18,7 @@ def check_acyclic(graph):
     except nx.NetworkXNoCycle:
         return
 
-    stages = set()
+    stages: Set["Stage"] = set()
     for from_node, to_node, _ in edges:
         stages.add(from_node)
         stages.add(to_node)
@@ -26,6 +36,20 @@ def get_pipelines(G):
     import networkx as nx
 
     return [G.subgraph(c).copy() for c in nx.weakly_connected_components(G)]
+
+
+def collect_pipeline(stage: "Stage", graph: "DiGraph") -> Iterator["Stage"]:
+    import networkx as nx
+
+    pipeline = get_pipeline(get_pipelines(graph), stage)
+    return nx.dfs_postorder_nodes(pipeline, stage)
+
+
+def collect_inside_path(path: str, graph: "DiGraph") -> List["Stage"]:
+    import networkx as nx
+
+    stages = nx.dfs_postorder_nodes(graph)
+    return [stage for stage in stages if path_isin(stage.path, path)]
 
 
 def build_graph(stages, outs_trie=None):

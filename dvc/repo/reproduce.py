@@ -114,7 +114,7 @@ def reproduce(
                 if pipeline.in_degree(stage) == 0:
                     targets.append(stage)
     else:
-        targets = self.collect(
+        targets = self.stage.collect(
             target,
             recursive=recursive,
             graph=active_graph,

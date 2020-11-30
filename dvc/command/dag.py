@@ -34,7 +34,7 @@ def _collect_targets(repo, target, outs):
     if not target:
         return []
 
-    pairs = repo.collect_granular(target)
+    pairs = repo.stage.collect_granular(target)
     if not outs:
         return [stage.addressing for stage, _ in pairs]
 
