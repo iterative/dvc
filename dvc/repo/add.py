@@ -181,7 +181,9 @@ def _create_stages(
             outs=[out],
             external=external,
         )
-        if stage:
+        if stage.can_be_skipped:
+            stage = None
+        else:
             Dvcfile(repo, stage.path).remove()
             if desc:
                 stage.outs[0].desc = desc
