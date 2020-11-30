@@ -4,14 +4,16 @@ import logging
 import os
 import shlex
 from contextlib import contextmanager
-from functools import partial
-from typing import Iterable, Optional
+from functools import partial, partialmethod
+from typing import Optional
 
 from funcy import cached_property, first
 from pathspec.patterns import GitWildMatchPattern
 
 from dvc.exceptions import GitHookAlreadyExistsError
 from dvc.progress import Tqdm
+from dvc.scm.backend.base import NoGitBackendError
+from dvc.scm.backend.dulwich import DulwichBackend
 from dvc.scm.base import (
     Base,
     CloneError,
@@ -63,6 +65,8 @@ class Git(Base):
 
     GITIGNORE = ".gitignore"
     GIT_DIR = ".git"
+    DEFAULT_BACKENDS = (DulwichBackend,)
+    LOCAL_BRANCH_PREFIX = "refs/heads"
 
     def __init__(self, root_dir=os.curdir, search_parent_directories=True):
         """Git class constructor.
@@ -90,15 +94,9 @@ class Git(Base):
         self.ignored_paths = []
         self.files_to_track = set()
 
-        self._dulwich_repo = None
-
-    @property
-    def dulwich_repo(self):
-        from dulwich.repo import Repo
-
-        if self._dulwich_repo is None:
-            self._dulwich_repo = Repo(self.root_dir)
-        return self._dulwich_repo
+        self.backends = [
+            backend(self.root_dir) for backend in self.DEFAULT_BACKENDS
+        ]
 
     @property
     def root_dir(self) -> str:
@@ -197,12 +195,6 @@ class Git(Base):
             raise FileNotInRepoError(path)
 
         return entry, gitignore
-
-    def is_ignored(self, path):
-        from dulwich import ignore
-
-        manager = ignore.IgnoreFilterManager.from_repo(self.dulwich_repo)
-        return manager.is_ignored(relpath(path, self.root_dir))
 
     def ignore(self, path):
         entry, gitignore = self._get_gitignore(path)
@@ -461,8 +453,8 @@ class Git(Base):
             return False
 
     def close(self):
-        if self._dulwich_repo is not None:
-            self._dulwich_repo.close()
+        for backend in self.backends:
+            backend.close()
         self.repo.close()
 
     @cached_property
@@ -507,73 +499,23 @@ class Git(Base):
             commit = commit.object
         return commit
 
-    def set_ref(
-        self,
-        name: str,
-        new_ref: str,
-        old_ref: Optional[str] = None,
-        message: Optional[str] = None,
-        symbolic: Optional[bool] = False,
-    ):
-        """Set the specified git ref.
-
-        Optional kwargs:
-            old_ref: If specified, ref will only be set if it currently equals
-                old_ref. Has no effect is symbolic is True.
-            message: Optional reflog message.
-            symbolic: If True, ref will be set as a symbolic ref to new_ref
-                rather than the dereferenced object.
-        """
-        name_b = os.fsencode(name)
-        new_ref_b = os.fsencode(new_ref)
-        old_ref_b = os.fsencode(old_ref) if old_ref else None
-        message_b = message.encode("utf-8") if message else None
-        if symbolic:
-            return self.dulwich_repo.refs.set_symbolic_ref(
-                name_b, new_ref_b, message=message
-            )
-        if not self.dulwich_repo.refs.set_if_equals(
-            name_b, old_ref_b, new_ref_b, message=message_b
-        ):
-            raise SCMError(f"Failed to set '{name}'")
-
-    def get_ref(self, name, follow: Optional[bool] = True):
-        """Return the value of specified ref.
-
-        If follow is false, symbolic refs will not be dereferenced.
-        Returns None if the ref does not exist.
-        """
-        from dulwich.refs import parse_symref_value
-
-        name = os.fsencode(name)
-        if follow:
+    def _backend_func(self, name, *args, **kwargs):
+        for backend in self.backends:
             try:
-                ref = self.dulwich_repo.refs[name]
-            except KeyError:
-                ref = None
-        else:
-            ref = self.dulwich_repo.refs.read_ref(name)
-            try:
-                if ref:
-                    ref = parse_symref_value(ref)
-            except ValueError:
+                func = getattr(backend, name)
+                return func(*args, **kwargs)
+            except (AttributeError, NotImplementedError):
                 pass
-        if ref:
-            ref = os.fsdecode(ref)
-        return ref
+        raise NoGitBackendError(name)
 
-    def remove_ref(self, name: str, old_ref: Optional[str] = None):
-        """Remove the specified git ref.
+    is_ignored = partialmethod(_backend_func, "is_ignored")
+    set_ref = partialmethod(_backend_func, "set_ref")
+    get_ref = partialmethod(_backend_func, "get_ref")
+    remove_ref = partialmethod(_backend_func, "remove_ref")
+    push_refspec = partialmethod(_backend_func, "push_refspec")
+    fetch_refspecs = partialmethod(_backend_func, "fetch_refspecs")
 
-        If old_ref is specified, ref will only be removed if it currently
-        equals old_ref.
-        """
-        name_b = name.encode("utf-8")
-        old_ref_b = old_ref.encode("utf-8") if old_ref else None
-        if not self.dulwich_repo.refs.remove_if_equals(name_b, old_ref_b):
-            raise SCMError(f"Failed to remove '{name}'")
-
-    def get_refs_containing(self, rev: str, pattern: Optional[str]):
+    def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
         """Iterate over all git refs containing the specfied revision."""
         from git.exc import GitCommandError
 
@@ -591,108 +533,6 @@ class Git(Base):
         except GitCommandError:
             pass
 
-    def push_refspec(self, url: str, src: Optional[str], dest: str):
-        """Push refspec to a remote Git repo.
-
-        Args:
-            url: Remote repo Git URL (Note this must be a Git URL and not
-                a remote name).
-            src: Local refspec. If src ends with "/" it will be treated as a
-                prefix, and all refs inside src will be pushed using dest
-                as destination refspec prefix. If src is None, dest will be
-                deleted from the remote.
-            dest: Remote refspec.
-        """
-        from dulwich.client import get_transport_and_path
-        from dulwich.objects import ZERO_SHA
-
-        if src is not None and src.endswith("/"):
-            src_b = os.fsencode(src)
-            keys = self.dulwich_repo.refs.subkeys(src_b)
-            values = [
-                self.dulwich_repo.refs[b"".join([src_b, key])] for key in keys
-            ]
-            dest_refs = [b"".join([os.fsencode(dest), key]) for key in keys]
-        else:
-            if src is None:
-                values = [ZERO_SHA]
-            else:
-                values = [self.dulwich_repo.refs[os.fsencode(src)]]
-            dest_refs = [os.fsencode(dest)]
-
-        def update_refs(refs):
-            for ref, value in zip(dest_refs, values):
-                refs[ref] = value
-            return refs
-
-        try:
-            client, path = get_transport_and_path(url)
-        except Exception as exc:
-            raise SCMError("Could not get remote client") from exc
-
-        def progress(msg):
-            logger.trace("git send_pack: %s", msg)
-
-        client.send_pack(
-            path,
-            update_refs,
-            self.dulwich_repo.object_store.generate_pack_data,
-            progress=progress,
-        )
-
-    def fetch_refspecs(
-        self, url: str, refspecs: Iterable[str], force: Optional[bool] = False
-    ):
-        """Fetch refspecs from a remote Git repo.
-
-        Args:
-            url: Remote repo Git URL (Note this must be a Git URL and not
-                a remote name).
-            refspecs: Iterable containing refspecs to fetch.
-                Note that this will not match subkeys.
-            force: If True, local refs will be overwritten.
-        """
-        from dulwich.client import get_transport_and_path
-        from dulwich.objectspec import parse_reftuples
-        from dulwich.porcelain import DivergedBranches, check_diverged
-
-        fetch_refs = []
-        repo = self.dulwich_repo
-
-        def determine_wants(remote_refs):
-            fetch_refs.extend(
-                parse_reftuples(
-                    remote_refs,
-                    repo.refs,
-                    [os.fsencode(refspec) for refspec in refspecs],
-                    force=force,
-                )
-            )
-            return [
-                remote_refs[lh]
-                for (lh, _, _) in fetch_refs
-                if remote_refs[lh] not in repo.object_store
-            ]
-
-        try:
-            client, path = get_transport_and_path(url)
-        except Exception as exc:
-            raise SCMError("Could not get remote client") from exc
-
-        def progress(msg):
-            logger.trace("git fetch: %s", msg)
-
-        fetch_result = client.fetch(
-            path, repo, progress=progress, determine_wants=determine_wants
-        )
-        for (lh, rh, _) in fetch_refs:
-            try:
-                if rh in repo.refs:
-                    check_diverged(repo, repo.refs[rh], fetch_result.refs[lh])
-            except DivergedBranches as exc:
-                raise SCMError("Experiment branch has diverged") from exc
-            repo.refs[rh] = fetch_result.refs[lh]
-
     @contextmanager
     def detach_head(self, rev: Optional[str] = None):
         """Context manager for performing detached HEAD SCM operations.
@@ -704,8 +544,6 @@ class Git(Base):
 
         Yields revision of detached head.
         """
-        from dulwich.refs import LOCAL_BRANCH_PREFIX
-
         if not rev:
             rev = "HEAD"
         orig_head = self.get_ref("HEAD", follow=False)
@@ -714,7 +552,7 @@ class Git(Base):
         try:
             yield self.get_ref("HEAD")
         finally:
-            prefix = os.fsdecode(LOCAL_BRANCH_PREFIX)
+            prefix = os.fsdecode(self.LOCAL_BRANCH_PREFIX)
             if orig_head.startswith(prefix):
                 orig_head = orig_head[len(prefix) :]
             logger.debug("Restore HEAD to '%s'", orig_head)
