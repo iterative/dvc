@@ -55,7 +55,6 @@ def loads_from(cls, repo, path, wdir, data):
                 Stage.PARAM_ALWAYS_CHANGED,
                 Stage.PARAM_MD5,
                 Stage.PARAM_DESC,
-                Stage.PARAM_JOBS,
                 "name",
             ],
         ),
@@ -122,7 +121,6 @@ class Stage(params.StageParams):
         stage_text=None,
         dvcfile=None,
         desc=None,
-        jobs=None,
     ):
         if deps is None:
             deps = []
@@ -141,7 +139,6 @@ class Stage(params.StageParams):
         self._stage_text = stage_text
         self._dvcfile = dvcfile
         self.desc = desc
-        self.jobs = jobs
         self.raw_data = RawData()
 
     @property
@@ -475,7 +472,8 @@ class Stage(params.StageParams):
             self.remove_outs(ignore_remove=False, force=False)
 
         if not self.frozen and self.is_import:
-            sync_import(self, dry, force, jobs=self.jobs)
+            jobs = kwargs.get("jobs", None)
+            sync_import(self, dry, force, jobs)
         elif not self.frozen and self.cmd:
             run_stage(self, dry, force, **kwargs)
         else:

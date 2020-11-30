@@ -43,7 +43,6 @@ def imp_url(
         deps=[url],
         outs=[out],
         erepo=erepo,
-        jobs=jobs,
     )
 
     if stage is None:
@@ -63,7 +62,7 @@ def imp_url(
     if no_exec:
         stage.ignore_outs()
     else:
-        stage.run()
+        stage.run(jobs=jobs)
 
     stage.frozen = frozen
 
