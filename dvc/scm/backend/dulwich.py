@@ -1,28 +1,36 @@
 import logging
 import os
-from typing import TYPE_CHECKING, Iterable, Optional, Union
+from typing import TYPE_CHECKING, Iterable, Optional, Tuple
 
-from dvc.scm.backend.base import GitBackend
+from dvc.scm.backend.base import BaseGitBackend
 from dvc.scm.base import SCMError
 from dvc.utils import relpath
 
 if TYPE_CHECKING:
-    from dvc.path_info import PathInfo
+    from dvc.scm.git import Git
 
 logger = logging.getLogger(__name__)
 
 
-class DulwichBackend(GitBackend):
+class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     """Dulwich Git backend."""
 
-    def __init__(self, root_dir: Union["PathInfo", str], **kwargs):
+    def __init__(self, scm: "Git", **kwargs):
         from dulwich.repo import Repo
 
-        super().__init__(root_dir)
+        super().__init__(scm, **kwargs)
         self.repo = Repo(self.root_dir)
+        self._stashes: dict = {}
 
     def close(self):
         self.repo.close()
+
+    def _get_stash(self, ref: str):
+        from dulwich.stash import Stash as DulwichStash
+
+        if ref not in self._stashes:
+            self._stashes[ref] = DulwichStash(self.repo, ref=os.fsencode(ref))
+        return self._stashes[ref]
 
     def is_ignored(self, path):
         from dulwich import ignore
@@ -157,3 +165,25 @@ class DulwichBackend(GitBackend):
             except DivergedBranches as exc:
                 raise SCMError("Experiment branch has diverged") from exc
             self.repo.refs[rh] = fetch_result.refs[lh]
+
+    def _stash_iter(self, ref: str):
+        stash = self._get_stash(ref)
+        yield from stash.stashes()
+
+    def _stash_push(
+        self,
+        ref: str,
+        message: Optional[str] = None,
+        include_untracked: Optional[bool] = False,
+    ) -> Tuple[Optional[str], bool]:
+        from dvc.scm.git import Stash
+
+        if include_untracked or ref == Stash.DEFAULT_STASH:
+            # dulwich stash.push does not support include_untracked and does
+            # not touch working tree
+            raise NotImplementedError
+
+        stash = self._get_stash(ref)
+        message_b = message.encode("utf-8") if message else None
+        stash.push(message=message_b)
+        return os.fsdecode(stash[0].new_sha), True

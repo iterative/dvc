@@ -14,6 +14,7 @@ from dvc.exceptions import GitHookAlreadyExistsError
 from dvc.progress import Tqdm
 from dvc.scm.backend.base import NoGitBackendError
 from dvc.scm.backend.dulwich import DulwichBackend
+from dvc.scm.backend.gitpython import GitPythonBackend
 from dvc.scm.base import (
     Base,
     CloneError,
@@ -65,8 +66,8 @@ class Git(Base):
 
     GITIGNORE = ".gitignore"
     GIT_DIR = ".git"
-    DEFAULT_BACKENDS = (DulwichBackend,)
-    LOCAL_BRANCH_PREFIX = "refs/heads"
+    DEFAULT_BACKENDS = (DulwichBackend, GitPythonBackend)
+    LOCAL_BRANCH_PREFIX = "refs/heads/"
 
     def __init__(self, root_dir=os.curdir, search_parent_directories=True):
         """Git class constructor.
@@ -94,9 +95,7 @@ class Git(Base):
         self.ignored_paths = []
         self.files_to_track = set()
 
-        self.backends = [
-            backend(self.root_dir) for backend in self.DEFAULT_BACKENDS
-        ]
+        self.backends = [backend(self) for backend in self.DEFAULT_BACKENDS]
 
     @property
     def root_dir(self) -> str:
@@ -514,6 +513,10 @@ class Git(Base):
     remove_ref = partialmethod(_backend_func, "remove_ref")
     push_refspec = partialmethod(_backend_func, "push_refspec")
     fetch_refspecs = partialmethod(_backend_func, "fetch_refspecs")
+    _stash_iter = partialmethod(_backend_func, "_stash_iter")
+    _stash_push = partialmethod(_backend_func, "_stash_push")
+    _stash_apply = partialmethod(_backend_func, "_stash_apply")
+    reflog_delete = partialmethod(_backend_func, "reflog_delete")
 
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
         """Iterate over all git refs containing the specfied revision."""
@@ -585,95 +588,60 @@ class Stash:
     DEFAULT_STASH = "refs/stash"
 
     def __init__(self, scm, ref: Optional[str] = None):
-        from dulwich.stash import Stash as DulwichStash
-
         self.ref = ref if ref else self.DEFAULT_STASH
         self.scm = scm
-        self._stash = DulwichStash(
-            self.scm.dulwich_repo, ref=os.fsencode(self.ref)
-        )
 
     @property
     def git(self):
         return self.scm.repo.git
 
     def __iter__(self):
-        yield from self._stash.stashes()
+        yield from self.scm._stash_iter(self.ref)
 
     def __len__(self):
-        return len(self._stash)
+        return len(self.list())
 
     def __getitem__(self, index):
-        return self._stash.__getitem__(index)
+        return self.list()[index]
 
     def list(self):
-        return self._stash.stashes()
+        return list(iter(self))
 
     def push(
         self,
         message: Optional[str] = None,
         include_untracked: Optional[bool] = False,
     ) -> Optional[str]:
-
         if not self.scm.is_dirty(untracked_files=include_untracked):
             logger.debug("No changes to stash")
             return None
 
-        # dulwich stash.push does not support include_untracked and does not
-        # touch working tree
         logger.debug("Stashing changes in '%s'", self.ref)
-        if include_untracked:
-            self._git_push(
-                message=message, include_untracked=include_untracked
-            )
-        else:
-            message_b = message.encode("utf-8") if message else None
-            self._stash.push(message=message_b)
+        rev, reset = self.scm._stash_push(  # pylint: disable=protected-access
+            self.ref, message=message, include_untracked=include_untracked
+        )
+        if reset:
             self.git.reset(hard=True)
-        return os.fsdecode(self[0].new_sha)
-
-    def _git_push(
-        self,
-        message: Optional[str] = None,
-        include_untracked: Optional[bool] = False,
-    ):
-        args = ["push"]
-        if message:
-            args.extend(["-m", message])
-        if include_untracked:
-            args.append("--include-untracked")
-        self.git.stash(*args)
-        if self.ref != self.DEFAULT_STASH:
-            # `git stash` CLI doesn't support using custom refspecs,
-            # so we push a commit onto refs/stash, make our refspec
-            # point to the new commit, then pop it from refs/stash
-            # `git stash create` is intended to be used for this kind of
-            # behavior but it doesn't support --include-untracked so we need to
-            # use push
-            commit = self.scm.resolve_commit("stash@{0}")
-            self.scm.set_ref(self.ref, commit.hexsha, message=commit.message)
-            self.git.stash("drop")
+        return rev
 
     def pop(self):
         logger.debug("Popping from stash '%s'", self.ref)
-        rev = os.fsdecode(self[0].new_sha)
-        if self.ref == self.DEFAULT_STASH:
-            self.git.stash("pop")
-        else:
-            self.apply(rev)
-            self.drop()
+        ref = "{0}@{{0}}".format(self.ref)
+        rev = self.scm.resolve_rev(ref)
+        self.apply(rev)
+        self.drop()
         return rev
 
     def apply(self, rev):
         logger.debug("Applying stash commit '%s'", rev)
-        self.git.stash("apply", rev)
+        self.scm._stash_apply(rev)  # pylint: disable=protected-access
 
     def drop(self, index: int = 0):
         ref = "{0}@{{{1}}}".format(self.ref, index)
         if index < 0 or index >= len(self):
             raise SCMError(f"Invalid stash ref '{ref}'")
         logger.debug("Dropping '%s'", ref)
-        self.git.reflog("delete", "--updateref", ref)
+        self.scm.reflog_delete(ref, updateref=True)
 
         # if we removed the last reflog entry, delete the ref and reflog
         if len(self) == 0:

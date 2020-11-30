@@ -1,10 +1,10 @@
 import os
-from typing import TYPE_CHECKING, Iterable, Optional, Union
+from typing import TYPE_CHECKING, Iterable, Optional, Tuple
 
 from dvc.scm.base import SCMError
 
 if TYPE_CHECKING:
-    from dvc.path_info import PathInfo
+    from dvc.scm.git import Git
 
 
 class NoGitBackendError(SCMError):
@@ -12,8 +12,15 @@ class NoGitBackendError(SCMError):
         super().__init__(f"No valid Git backend for '{func}'")
 
 
-class BackendMethodMixin:
-    """Backend methods which should be overridden."""
+class BaseGitBackend:
+    """Base Git backend class."""
+
+    def __init__(self, scm: "Git", **kwargs):
+        self.scm = scm
+        self.root_dir = os.fspath(scm.root_dir)
+
+    def close(self):
+        pass
 
     def is_ignored(self, path):
         raise NotImplementedError
@@ -81,14 +88,19 @@ class BackendMethodMixin:
         """
         raise NotImplementedError
 
+    def _stash_iter(self, ref: str):
+        raise NotImplementedError
 
-class GitBackend(BackendMethodMixin):  # pylint:disable=abstract-method
-    """Base Git backend class."""
+    def _stash_push(
+        self,
+        ref: str,
+        message: Optional[str] = None,
+        include_untracked: Optional[bool] = False,
+    ) -> Tuple[Optional[str], bool]:
+        raise NotImplementedError
 
-    def __init__(
-        self, root_dir: Union["PathInfo", str], **kwargs,
-    ):
-        self.root_dir = os.fspath(root_dir)
+    def _stash_apply(self, rev: str):
+        raise NotImplementedError
 
-    def close(self):
-        pass
+    def reflog_delete(self, ref: str, updateref: bool = False):
+        raise NotImplementedError
