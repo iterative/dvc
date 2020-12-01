@@ -655,6 +655,7 @@ class PipelineStage(Stage):
         super().__init__(*args, **kwargs)
         self.name = name
         self.cmd_changed = False
+        self.tracked_vars = {}
 
     def __eq__(self, other):
         return super().__eq__(other) and self.name == other.name

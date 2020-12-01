@@ -3,7 +3,14 @@ from collections.abc import Mapping
 from copy import deepcopy
 from itertools import chain
 
-from funcy import cached_property, get_in, lcat, log_durations, project
+from funcy import (
+    cached_property,
+    get_in,
+    lcat,
+    log_durations,
+    nullcontext,
+    project,
+)
 
 from dvc import dependency, output
 from dvc.hash_info import HashInfo
@@ -18,6 +25,15 @@ from .utils import fill_stage_dependencies, resolve_paths
 logger = logging.getLogger(__name__)
 
 
+class NoopResolver:
+    def __init__(self, _repo, _wdir, d):
+        self.d = d
+        self.tracked_vars = {}
+
+    def resolve(self):
+        return self.d
+
+
 class StageLoader(Mapping):
     def __init__(self, dvcfile, data, lockfile_data=None):
         self.dvcfile = dvcfile
@@ -30,13 +46,23 @@ class StageLoader(Mapping):
         self.lockfile_data = lockfile_data or {}
 
     @cached_property
+    def resolver(self):
+        resolver_cls = (
+            DataResolver if self._enable_parametrization else NoopResolver
+        )
+        wdir = PathInfo(self.dvcfile.path).parent
+        return resolver_cls(self.repo, wdir, self.data)
+
+    @cached_property
     def resolved_data(self):
         data = self.data
-        if self._enable_parametrization:
-            wdir = PathInfo(self.dvcfile.path).parent
-            with log_durations(logger.debug, "resolving values"):
-                resolver = DataResolver(self.repo, wdir, data)
-                data = resolver.resolve()
+        log = (
+            log_durations(logger.debug, "resolving values")
+            if self._enable_parametrization
+            else nullcontext()
+        )
+        with log:
+            data = self.resolver.resolve()
         return data.get("stages", {})
 
     @staticmethod
@@ -115,6 +141,7 @@ class StageLoader(Mapping):
             self.lockfile_data.get(name, {}),
         )
 
+        stage.tracked_vars = self.resolver.tracked_vars.get(name, {})
         group, *keys = name.rsplit(JOIN, maxsplit=1)
         if group and keys and name not in self.stages_data:
             stage.raw_data.generated_from = group
