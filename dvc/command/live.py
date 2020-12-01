@@ -8,10 +8,10 @@ from dvc.exceptions import DvcException
 logger = logging.getLogger(__name__)
 
 
-class CmdLogs(CmdBase):
+class CmdLive(CmdBase):
     def run(self):
         try:
-            self.repo.logs.summarize(self.args.target, self.args.rev)
+            self.repo.dvclive.summarize(self.args.target, self.args.rev)
         except DvcException:
             logger.exception("")
             return 1
@@ -23,7 +23,7 @@ def add_parser(subparsers, parent_parser):
     # LOGS_HELP = "Generating logs summary for dvclive."
 
     logs_parser = subparsers.add_parser(
-        "logs",
+        "live",
         parents=[parent_parser],
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -40,4 +40,4 @@ def add_parser(subparsers, parent_parser):
     logs_parser.add_argument(
         "-f", "--file", default=None, help="Name of the generated file."
     )
-    logs_parser.set_defaults(func=CmdLogs)
+    logs_parser.set_defaults(func=CmdLive)

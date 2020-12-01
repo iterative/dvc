@@ -27,7 +27,7 @@ from .command import (
     imp_url,
     init,
     install,
-    logs,
+    live,
     ls,
     metrics,
     move,
@@ -83,7 +83,7 @@ COMMANDS = [
     plots,
     experiments,
     check_ignore,
-    logs,
+    live,
 ]
 
 

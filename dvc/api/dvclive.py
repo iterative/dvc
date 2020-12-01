@@ -11,4 +11,4 @@ def summary(path: str, revs: List[str] = None):
     except NotDvcRepoError:
         root = os.getcwd()
 
-    Repo(root_dir=root, uninitialized=True).logs.summarize(path, revs)
+    Repo(root_dir=root, uninitialized=True).dvclive.summarize(path, revs)
