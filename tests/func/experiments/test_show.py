@@ -67,6 +67,8 @@ def test_show_experiment(tmp_dir, scm, dvc):
 
 
 def test_show_queued(tmp_dir, scm, dvc):
+    from dvc.repo.experiments.base import EXPS_STASH
+
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("params.yaml", "foo: 1")
     stage = dvc.run(
@@ -80,7 +82,7 @@ def test_show_queued(tmp_dir, scm, dvc):
     baseline_rev = scm.get_rev()
 
     dvc.experiments.run(stage.addressing, params=["foo=2"], queue=True)
-    exp_rev = dvc.experiments.scm.resolve_rev("stash@{0}")
+    exp_rev = dvc.experiments.scm.resolve_rev(f"{EXPS_STASH}@{{0}}")
 
     results = dvc.experiments.show()[baseline_rev]
     assert len(results) == 2
@@ -95,7 +97,7 @@ def test_show_queued(tmp_dir, scm, dvc):
     new_rev = scm.get_rev()
 
     dvc.experiments.run(stage.addressing, params=["foo=3"], queue=True)
-    exp_rev = dvc.experiments.scm.resolve_rev("stash@{0}")
+    exp_rev = dvc.experiments.scm.resolve_rev(f"{EXPS_STASH}@{{0}}")
 
     results = dvc.experiments.show()[new_rev]
     assert len(results) == 2
