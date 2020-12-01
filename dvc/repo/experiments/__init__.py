@@ -43,7 +43,7 @@ class BaselineMismatchError(DvcException):
     def __init__(self, rev, expected):
         if hasattr(rev, "hexsha"):
             rev = rev.hexsha
-        rev_str = f"{rev[:7]}" if rev is not None else "dangling commit"
+        rev_str = f"{rev[:7]}" if rev is not None else "invalid commit"
         super().__init__(
             f"Experiment derived from '{rev_str}', expected '{expected[:7]}'."
         )
@@ -333,7 +333,7 @@ class Experiments:
             resume_rev = self._get_last_checkpoint()
         else:
             resume_rev = self.scm.resolve_rev(checkpoint_resume)
-        branch = self._get_branch_containing(resume_rev)
+        branch = self.get_branch_containing(resume_rev)
         if not branch:
             raise DvcException(
                 "Could not find checkpoint experiment "
@@ -516,37 +516,7 @@ class Experiments:
 
         return results
 
-    @scm_locked
-    def checkout_exp(self, rev, **kwargs):
-        """Checkout an experiment to the user's workspace."""
-        from git.exc import GitCommandError
-
-        from dvc.repo.checkout import checkout as dvc_checkout
-
-        self._check_baseline(rev)
-        branch = self._get_branch_containing(rev)
-
-        if self.scm.is_dirty(untracked_files=True):
-            logger.debug("Stashing workspace")
-            workspace = self.scm.stash.push(include_untracked=True)
-        else:
-            workspace = None
-
-        # merge experiment branch into working copy without committing
-        self.scm.repo.git.merge(branch, squash=True, no_commit=True)
-        if workspace:
-            try:
-                self.scm.stash.apply(workspace)
-            except GitCommandError:
-                # if stash apply returns merge conflicts, prefer experiment
-                # changes over prior stashed changes
-                self.scm.repo.git.checkout("--ours", "--", ".")
-            self.scm.stash.drop()
-        self.scm.repo.git.reset()
-
-        dvc_checkout(self.repo, **kwargs)
-
-    def _check_baseline(self, exp_rev):
+    def check_baseline(self, exp_rev):
         baseline_sha = self.repo.scm.get_rev()
         if exp_rev == baseline_sha:
             return exp_rev
@@ -554,8 +524,9 @@ class Experiments:
         exp_baseline = self._get_baseline(exp_rev)
         if exp_baseline is None:
             # if we can't tell from branch name, fall back to parent commit
-            exp_commit = self.scm.repo.rev_parse(exp_rev)
-            exp_baseline = first(exp_commit.parents).hexsha
+            exp_commit = self.scm.resolve_commit(exp_rev)
+            if exp_commit:
+                exp_baseline = first(exp_commit.parents).hexsha
         if exp_baseline == baseline_sha:
             return exp_baseline
         raise BaselineMismatchError(exp_baseline, baseline_sha)
@@ -580,7 +551,7 @@ class Experiments:
         except ValueError:
             return None
 
-    def _get_branch_containing(self, rev):
+    def get_branch_containing(self, rev: str) -> str:
         names = [
             ref
             for ref in self.scm.get_refs_containing(rev, EXPS_NAMESPACE)
@@ -596,10 +567,10 @@ class Experiments:
             raise MultipleBranchError(rev)
         return names[0]
 
-    def checkout(self, *args, **kwargs):
-        from dvc.repo.experiments.checkout import checkout
+    def apply(self, *args, **kwargs):
+        from dvc.repo.experiments.apply import apply
 
-        return checkout(self.repo, *args, **kwargs)
+        return apply(self.repo, *args, **kwargs)
 
     def diff(self, *args, **kwargs):
         from dvc.repo.experiments.diff import diff

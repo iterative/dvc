@@ -352,12 +352,12 @@ class CmdExperimentsShow(CmdBase):
         return 0
 
 
-class CmdExperimentsCheckout(CmdBase):
+class CmdExperimentsApply(CmdBase):
     def run(self):
         if not self.repo.experiments:
             return 0
 
-        self.repo.experiments.checkout(self.args.experiment)
+        self.repo.experiments.apply(self.args.experiment)
 
         return 0
 
@@ -653,20 +653,22 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_show_parser.set_defaults(func=CmdExperimentsShow)
 
-    EXPERIMENTS_CHECKOUT_HELP = "Checkout experiments."
-    experiments_checkout_parser = experiments_subparsers.add_parser(
-        "checkout",
+    EXPERIMENTS_APPLY_HELP = (
+        "Apply the changes from an experiment to your workspace."
+    )
+    experiments_apply_parser = experiments_subparsers.add_parser(
+        "apply",
         parents=[parent_parser],
         description=append_doc_link(
-            EXPERIMENTS_CHECKOUT_HELP, "experiments/checkout"
+            EXPERIMENTS_APPLY_HELP, "experiments/apply"
         ),
-        help=EXPERIMENTS_CHECKOUT_HELP,
+        help=EXPERIMENTS_APPLY_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    experiments_checkout_parser.add_argument(
-        "experiment", help="Checkout this experiment.",
+    experiments_apply_parser.add_argument(
+        "experiment", help="Experiment to be applied.",
     )
-    experiments_checkout_parser.set_defaults(func=CmdExperimentsCheckout)
+    experiments_apply_parser.set_defaults(func=CmdExperimentsApply)
 
     EXPERIMENTS_DIFF_HELP = (
         "Show changes between experiments in the DVC repository."
