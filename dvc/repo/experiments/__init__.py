@@ -534,16 +534,17 @@ class Experiments:
     @scm_locked
     def get_baseline(self, rev):
         """Return the baseline rev for an experiment rev."""
+        rev = self.scm.resolve_rev(rev)
         return self._get_baseline(rev)
 
     def _get_baseline(self, rev):
-        ref = first(self.scm.get_refs_containing(rev, EXPS_NAMESPACE))
-        if not ref:
-            return None
-        if ref == EXPS_STASH:
+        if rev in self.stash_revs:
             entry = self.stash_revs.get(rev)
             if entry:
                 return entry.baseline_rev
+            return None
+        ref = first(self._get_exps_containing(rev))
+        if not ref:
             return None
         try:
             _, sha, _ = split_exps_refname(ref)
@@ -551,16 +552,17 @@ class Experiments:
         except ValueError:
             return None
 
-    def get_branch_containing(self, rev: str) -> str:
-        names = [
-            ref
-            for ref in self.scm.get_refs_containing(rev, EXPS_NAMESPACE)
+    def _get_exps_containing(self, rev):
+        for ref in self.scm.get_refs_containing(rev, EXPS_NAMESPACE):
             if not (
                 ref.startswith(EXEC_NAMESPACE)
                 or ref == EXPS_STASH
                 or ref == EXEC_CHECKPOINT
-            )
-        ]
+            ):
+                yield ref
+
+    def get_branch_containing(self, rev: str) -> str:
+        names = list(self._get_exps_containing(rev))
         if not names:
             return None
         if len(names) > 1:
