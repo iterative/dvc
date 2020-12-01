@@ -3,7 +3,14 @@ from collections.abc import Mapping
 from copy import deepcopy
 from itertools import chain
 
-from funcy import cached_property, get_in, lcat, log_durations, project
+from funcy import (
+    cached_property,
+    get_in,
+    lcat,
+    log_durations,
+    nullcontext,
+    project,
+)
 
 from dvc import dependency, output
 from dvc.hash_info import HashInfo
@@ -49,7 +56,12 @@ class StageLoader(Mapping):
     @cached_property
     def resolved_data(self):
         data = self.data
-        with log_durations(logger.debug, "resolving values"):
+        log = (
+            log_durations(logger.debug, "resolving values")
+            if self._enable_parametrization
+            else nullcontext()
+        )
+        with log:
             data = self.resolver.resolve()
         return data.get("stages", {})
 

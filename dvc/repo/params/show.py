@@ -50,14 +50,13 @@ def _read_params(repo, configs, rev):
     return res
 
 
-def _add_vars(repo, params):
-    params_files = set(params)
+def _add_vars(repo, configs, params):
     for stage in repo.stages:
         if isinstance(stage, PipelineStage) and stage.tracked_vars:
             for file, vars_ in stage.tracked_vars.items():
                 # `params` file are shown regardless of `tracked` or not
                 # to reduce noise and duplication, they are skipped
-                if file in params_files:
+                if file in configs:
                     continue
 
                 params[file] = params.get(file, {})
@@ -71,7 +70,7 @@ def show(repo, revs=None):
     for branch in repo.brancher(revs=revs):
         configs = _collect_configs(repo, branch)
         params = _read_params(repo, configs, branch)
-        _add_vars(repo, params)
+        _add_vars(repo, configs, params)
 
         if params:
             res[branch] = params
