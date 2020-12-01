@@ -9,6 +9,7 @@ from dvc.hash_info import HashInfo
 from dvc.path_info import URLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
+from dvc.tree.base import RemoteActionNotImplemented
 from dvc.utils import format_link
 
 from .base import BaseTree
@@ -148,3 +149,6 @@ class OSFTree(BaseTree):
                 self.storage.create_file(
                     to_info.path, wrapped, force=False, update=False
                 )
+
+    def open(self, path_info, mode="r", encoding=None):
+        raise RemoteActionNotImplemented("open", self.scheme)
