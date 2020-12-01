@@ -3,7 +3,8 @@
 import logging
 import os
 import shlex
-from functools import partial
+from contextlib import contextmanager
+from functools import partial, partialmethod
 from typing import Optional
 
 from funcy import cached_property, first
@@ -21,6 +22,11 @@ from dvc.scm.base import (
 from dvc.utils import fix_env, is_binary, relpath
 from dvc.utils.fs import path_isin
 from dvc.utils.serialize import modify_yaml
+
+from .backend.base import NoGitBackendError
+from .backend.dulwich import DulwichBackend
+from .backend.gitpython import GitPythonBackend
+from .stash import Stash
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +68,8 @@ class Git(Base):
 
     GITIGNORE = ".gitignore"
     GIT_DIR = ".git"
+    DEFAULT_BACKENDS = (DulwichBackend, GitPythonBackend)
+    LOCAL_BRANCH_PREFIX = "refs/heads/"
 
     def __init__(self, root_dir=os.curdir, search_parent_directories=True):
         """Git class constructor.
@@ -89,9 +97,15 @@ class Git(Base):
         self.ignored_paths = []
         self.files_to_track = set()
 
+        self.backends = [backend(self) for backend in self.DEFAULT_BACKENDS]
+
     @property
     def root_dir(self) -> str:
         return self.repo.working_tree_dir
+
+    @cached_property
+    def stash(self):
+        return Stash(self)
 
     @staticmethod
     def clone(url, to_path, rev=None, shallow_branch=None):
@@ -183,14 +197,6 @@ class Git(Base):
 
         return entry, gitignore
 
-    def is_ignored(self, path):
-        from dulwich import ignore
-        from dulwich.repo import Repo
-
-        repo = Repo(self.root_dir)
-        manager = ignore.IgnoreFilterManager.from_repo(repo)
-        return manager.is_ignored(relpath(path, self.root_dir))
-
     def ignore(self, path):
         entry, gitignore = self._get_gitignore(path)
 
@@ -257,11 +263,11 @@ class Git(Base):
     def commit(self, msg):
         self.repo.index.commit(msg)
 
-    def checkout(self, branch, create_new=False):
+    def checkout(self, branch, create_new=False, **kwargs):
         if create_new:
-            self.repo.git.checkout("HEAD", b=branch)
+            self.repo.git.checkout("HEAD", b=branch, **kwargs)
         else:
-            self.repo.git.checkout(branch)
+            self.repo.git.checkout(branch, **kwargs)
 
     def pull(self, **kwargs):
         infos = self.repo.remote().pull(**kwargs)
@@ -448,6 +454,8 @@ class Git(Base):
             return False
 
     def close(self):
+        for backend in self.backends:
+            backend.close()
         self.repo.close()
 
     @cached_property
@@ -491,3 +499,65 @@ class Git(Base):
         if isinstance(commit, TagObject):
             commit = commit.object
         return commit
+
+    def _backend_func(self, name, *args, **kwargs):
+        for backend in self.backends:
+            try:
+                func = getattr(backend, name)
+                return func(*args, **kwargs)
+            except (AttributeError, NotImplementedError):
+                pass
+        raise NoGitBackendError(name)
+
+    is_ignored = partialmethod(_backend_func, "is_ignored")
+    set_ref = partialmethod(_backend_func, "set_ref")
+    get_ref = partialmethod(_backend_func, "get_ref")
+    remove_ref = partialmethod(_backend_func, "remove_ref")
+    get_refs_containing = partialmethod(_backend_func, "get_refs_containing")
+    push_refspec = partialmethod(_backend_func, "push_refspec")
+    fetch_refspecs = partialmethod(_backend_func, "fetch_refspecs")
+    _stash_iter = partialmethod(_backend_func, "_stash_iter")
+    _stash_push = partialmethod(_backend_func, "_stash_push")
+    _stash_apply = partialmethod(_backend_func, "_stash_apply")
+    reflog_delete = partialmethod(_backend_func, "reflog_delete")
+
+    @contextmanager
+    def detach_head(self, rev: Optional[str] = None):
+        """Context manager for performing detached HEAD SCM operations.
+
+        Detaches and restores HEAD similar to interactive git rebase.
+        Restore is equivalent to 'reset --soft', meaning the caller is
+        is responsible for preserving & restoring working tree state
+        (i.e. via stash) when applicable.
+
+        Yields revision of detached head.
+        """
+        if not rev:
+            rev = "HEAD"
+        orig_head = self.get_ref("HEAD", follow=False)
+        logger.debug("Detaching HEAD at '%s'", rev)
+        self.checkout(rev, detach=True)
+        try:
+            yield self.get_ref("HEAD")
+        finally:
+            prefix = self.LOCAL_BRANCH_PREFIX
+            if orig_head.startswith(prefix):
+                orig_head = orig_head[len(prefix) :]
+            logger.debug("Restore HEAD to '%s'", orig_head)
+            self.checkout(orig_head)
+
+    @contextmanager
+    def stash_workspace(self, **kwargs):
+        """Stash and restore any workspace changes.
+
+        Yields revision of the stash commit. Yields None if there were no
+        changes to stash.
+        """
+        logger.debug("Stashing workspace")
+        rev = self.stash.push(**kwargs)
+        try:
+            yield rev
+        finally:
+            if rev:
+                logger.debug("Restoring stashed workspace")
+                self.stash.pop()
