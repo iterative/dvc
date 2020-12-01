@@ -149,10 +149,7 @@ class BaseExecutor:
     def fetch_exps(self, dest_scm: SCM, force: bool = False) -> Iterable[str]:
         """Fetch reproduced experiments into the specified SCM."""
         refs = []
-        for key in self.scm.dulwich_repo.refs.keys(
-            base=os.fsencode(EXPS_NAMESPACE)
-        ):
-            ref = "/".join([EXPS_NAMESPACE, os.fsdecode(key)])
+        for ref in self.scm.iter_refs(base=EXPS_NAMESPACE):
             if not ref.startswith(EXEC_NAMESPACE) and ref != EXPS_STASH:
                 refs.append(ref)
 

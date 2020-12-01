@@ -15,6 +15,7 @@ from dvc.repo.experiments.base import (
     EXEC_CHECKPOINT,
     EXEC_HEAD,
     EXEC_MERGE,
+    EXEC_NAMESPACE,
     EXPS_NAMESPACE,
     EXPS_STASH,
     get_exps_refname,
@@ -404,33 +405,7 @@ class Experiments:
             ", ".join((rev[:7] for rev in to_run)),
         )
 
-        # setup executors - unstash experiment, generate executor, upload
-        # contents of (unstashed) exp workspace to the executor tree
-        executors = {}
-        with self.scm.stash_workspace(include_untracked=True):
-            with self.scm.detach_head():
-                for stash_rev, item in to_run.items():
-                    self.scm.set_ref(EXEC_HEAD, item.rev)
-                    self.scm.set_ref(EXEC_MERGE, stash_rev)
-
-                    # Executor will be initialized with an empty git repo that
-                    # we populate by pushing:
-                    #   1. EXEC_HEAD - the base commit for this experiment
-                    #   2. EXEC_MERGE - the unmerged changes (from our stash)
-                    #       to be reproduced
-                    #   3. the existing experiment branch (if it exists)
-                    executor = LocalExecutor(
-                        self.scm,
-                        self.dvc_dir,
-                        branch=item.branch,
-                        cache_dir=self.repo.cache.local.cache_dir,
-                    )
-
-                    executors[item.rev] = executor
-
-            self.scm.repo.git.reset(hard=True)
-            self.scm.repo.git.clean(force=True)
-
+        executors = self._init_executors(to_run)
         exec_results = self._reproduce(executors, **kwargs)
 
         if keep_stash:
@@ -457,6 +432,32 @@ class Experiments:
             result.update(exp_result)
         return result
 
+    def _init_executors(self, to_run):
+        executors = {}
+        with self.scm.stash_workspace(include_untracked=True):
+            with self.scm.detach_head():
+                for stash_rev, item in to_run.items():
+                    self.scm.set_ref(EXEC_HEAD, item.rev)
+                    self.scm.set_ref(EXEC_MERGE, stash_rev)
+
+                    # Executor will be initialized with an empty git repo that
+                    # we populate by pushing:
+                    #   1. EXEC_HEAD - the base commit for this experiment
+                    #   2. EXEC_MERGE - the unmerged changes (from our stash)
+                    #       to be reproduced
+                    #   3. the existing experiment branch (if it exists)
+                    executor = LocalExecutor(
+                        self.scm,
+                        self.dvc_dir,
+                        branch=item.branch,
+                        cache_dir=self.repo.cache.local.cache_dir,
+                    )
+                    executors[item.rev] = executor
+
+            self.scm.repo.git.reset(hard=True)
+            self.scm.repo.git.clean(force=True)
+        return executors
+
     def _reproduce(
         self, executors: dict, jobs: Optional[int] = 1
     ) -> Mapping[str, Mapping[str, str]]:
@@ -464,13 +465,9 @@ class Experiments:
 
         Returns dict containing successfully executed experiments.
         """
-        from multiprocessing import get_context
-
         result = defaultdict(dict)
 
-        with ProcessPoolExecutor(
-            max_workers=jobs, mp_context=get_context("spawn")
-        ) as workers:
+        with ProcessPoolExecutor(max_workers=jobs) as workers:
             futures = {}
             for rev, executor in executors.items():
                 future = workers.submit(executor.reproduce, executor.dvc_dir,)
@@ -587,7 +584,11 @@ class Experiments:
         names = [
             ref
             for ref in self.scm.get_refs_containing(rev, EXPS_NAMESPACE)
-            if ref != EXPS_STASH
+            if not (
+                ref.startswith(EXEC_NAMESPACE)
+                or ref == EXPS_STASH
+                or ref == EXEC_CHECKPOINT
+            )
         ]
         if not names:
             return None

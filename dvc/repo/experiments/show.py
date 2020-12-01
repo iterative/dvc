@@ -103,13 +103,14 @@ def show(
         if rev == "workspace":
             continue
 
-        common_path = repo.experiments.get_refname(rev)
-        for ref in sorted(
-            repo.experiments.scm.iter_refs(common_path),
-            key=lambda r: r.commit.committed_date,
-            reverse=True,
+        base_path = repo.experiments.get_refname(rev)
+        commits = [
+            (ref, repo.scm.resolve_commit(ref))
+            for ref in repo.scm.iter_refs(base_path)
+        ]
+        for exp_ref, _ in sorted(
+            commits, key=lambda x: x[1].committed_date, reverse=True,
         ):
-            exp_ref = "/".join([EXPS_NAMESPACE, ref.name])
             _, sha, _exp_branch = split_exps_refname(exp_ref)
             assert sha == rev
             _collect_experiment_branch(res[rev], repo, exp_ref, rev)
