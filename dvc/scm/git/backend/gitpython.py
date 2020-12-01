@@ -13,7 +13,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def git(self):
         return self.scm.repo.git
 
-    def _ignored(self, path):
+    def is_ignored(self, path):
         raise NotImplementedError
 
     def set_ref(
