@@ -10,7 +10,7 @@ from dvc.repo.params.show import _collect_configs, _read_params
 logger = logging.getLogger(__name__)
 
 
-def _collect_experiment(repo, rev, stash=False, sha_only=True):
+def _collect_experiment_commit(repo, rev, stash=False, sha_only=True):
     from git.exc import GitCommandError
 
     res = defaultdict(dict)
@@ -46,21 +46,27 @@ def _collect_experiment(repo, rev, stash=False, sha_only=True):
     return res
 
 
-def _collect_checkpoint_experiment(res, repo, branch, baseline, **kwargs):
+def _collect_experiment_branch(res, repo, branch, baseline, **kwargs):
     exp_rev = repo.scm.resolve_rev(branch)
     prev = None
-    for rev in repo.scm.branch_revs(exp_rev, baseline):
-        exp = {"checkpoint_tip": exp_rev}
-        if prev:
-            res[prev]["checkpoint_parent"] = rev
-        if rev in res:
-            res[rev].update(exp)
-            res.move_to_end(rev)
+    revs = list(repo.scm.branch_revs(exp_rev, baseline))
+    for rev in revs:
+        collected_exp = _collect_experiment_commit(repo, rev, **kwargs)
+        if len(revs) > 1:
+            exp = {"checkpoint_tip": exp_rev}
+            if prev:
+                res[prev]["checkpoint_parent"] = rev
+            if rev in res:
+                res[rev].update(exp)
+                res.move_to_end(rev)
+            else:
+                exp.update(collected_exp)
         else:
-            exp.update(_collect_experiment(repo, rev, **kwargs))
-            res[rev] = exp
+            exp = collected_exp
+        res[rev] = exp
         prev = rev
-    res[prev]["checkpoint_parent"] = baseline
+    if len(revs) > 1:
+        res[prev]["checkpoint_parent"] = baseline
     return res
 
 
@@ -90,7 +96,7 @@ def show(
     )
 
     for rev in revs:
-        res[rev]["baseline"] = _collect_experiment(
+        res[rev]["baseline"] = _collect_experiment_commit(
             repo, rev, sha_only=sha_only
         )
 
@@ -106,12 +112,14 @@ def show(
             exp_ref = "/".join([EXPS_NAMESPACE, ref.name])
             _, sha, _exp_branch = split_exps_refname(exp_ref)
             assert sha == rev
-            _collect_checkpoint_experiment(res[rev], repo, exp_ref, rev)
+            _collect_experiment_branch(res[rev], repo, exp_ref, rev)
 
     # collect queued (not yet reproduced) experiments
     for stash_rev, entry in repo.experiments.stash_revs.items():
         if entry.baseline_rev in revs:
-            experiment = _collect_experiment(repo, stash_rev, stash=True)
+            experiment = _collect_experiment_commit(
+                repo, stash_rev, stash=True
+            )
             res[entry.baseline_rev][stash_rev] = experiment
 
     return res
