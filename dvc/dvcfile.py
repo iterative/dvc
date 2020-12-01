@@ -223,8 +223,6 @@ class PipelineFile(FileMixin):
 
             if existing_entry:
                 orig_stage_data = data["stages"][stage.name]
-                if "meta" in orig_stage_data:
-                    stage_data[stage.name]["meta"] = orig_stage_data["meta"]
                 apply_diff(stage_data[stage.name], orig_stage_data)
             else:
                 data["stages"].update(stage_data)

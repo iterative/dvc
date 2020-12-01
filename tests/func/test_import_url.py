@@ -1,4 +1,5 @@
 import os
+import textwrap
 from uuid import uuid4
 
 import pytest
@@ -207,3 +208,36 @@ def test_import_url_dir(tmp_dir, dvc, workspace, stage_md5, dir_md5):
     )
 
     assert dvc.status() == {}
+
+
+def test_import_url_preserve_meta(tmp_dir, dvc):
+    text = textwrap.dedent(
+        """\
+        # top comment
+        deps:
+        - path: foo # dep comment
+        outs:
+        - path: bar # out comment
+        meta: some metadata
+    """
+    )
+    tmp_dir.gen("bar.dvc", text)
+
+    tmp_dir.gen("foo", "foo")
+    dvc.imp_url("foo", out="bar")
+    assert (tmp_dir / "bar.dvc").read_text() == textwrap.dedent(
+        """\
+        # top comment
+        deps:
+        - path: foo # dep comment
+          md5: acbd18db4cc2f85cedef654fccc4a4d8
+          size: 3
+        outs:
+        - path: bar # out comment
+          md5: acbd18db4cc2f85cedef654fccc4a4d8
+          size: 3
+        meta: some metadata
+        md5: be7ade0aa89cc8d56e320867a9de9740
+        frozen: true
+    """
+    )

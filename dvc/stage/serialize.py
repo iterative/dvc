@@ -134,6 +134,7 @@ def to_pipeline_file(stage: "PipelineStage"):
         (stage.PARAM_PLOTS, plots),
         (stage.PARAM_FROZEN, stage.frozen),
         (stage.PARAM_ALWAYS_CHANGED, stage.always_changed),
+        (stage.PARAM_META, stage.meta),
     ]
     return {
         stage.name: OrderedDict([(key, value) for key, value in res if value])
@@ -185,10 +186,6 @@ def to_single_stage_file(stage: "Stage"):
     text = stage._stage_text  # noqa, pylint: disable=protected-access
     if text is not None:
         saved_state = parse_yaml_for_update(text, stage.path)
-        # Stage doesn't work with meta in any way, so .dumpd() doesn't
-        # have it. We simply copy it over.
-        if "meta" in saved_state:
-            state["meta"] = saved_state["meta"]
         apply_diff(state, saved_state)
         state = saved_state
     return state

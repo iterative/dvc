@@ -2,6 +2,7 @@ import filecmp
 import logging
 import os
 import shutil
+import textwrap
 import time
 
 import colorama
@@ -922,3 +923,27 @@ def test_add_with_cache_link_error(tmp_dir, dvc, mocker, caplog):
     assert (tmp_dir / ".dvc" / "cache").read_text() == {
         "ac": {"bd18db4cc2f85cedef654fccc4a4d8": "foo"}
     }
+
+
+def test_add_preserve_meta(tmp_dir, dvc):
+    text = textwrap.dedent(
+        """\
+        # top comment
+        outs:
+        - path: foo # out comment
+        meta: some metadata
+    """
+    )
+    tmp_dir.gen("foo.dvc", text)
+
+    tmp_dir.dvc_gen("foo", "foo")
+    assert (tmp_dir / "foo.dvc").read_text() == textwrap.dedent(
+        """\
+        # top comment
+        outs:
+        - path: foo # out comment
+          md5: acbd18db4cc2f85cedef654fccc4a4d8
+          size: 3
+        meta: some metadata
+    """
+    )
