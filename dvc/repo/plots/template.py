@@ -107,13 +107,15 @@ class Template:
             raise NoFieldInDataError(field)
 
 
-class DefaultLinearTemplate(Template):
+class DefaultTemplate(Template):
     DEFAULT_NAME = "default"
 
     DEFAULT_CONTENT = {
         "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
         "data": {"values": Template.anchor("data")},
         "title": Template.anchor("title"),
+        "width": 300,
+        "height": 300,
         "mark": {"type": "line"},
         "encoding": {
             "x": {
@@ -132,7 +134,7 @@ class DefaultLinearTemplate(Template):
     }
 
 
-class DefaultConfusionTemplate(Template):
+class ConfusionTemplate(Template):
     DEFAULT_NAME = "confusion"
     DEFAULT_CONTENT = {
         "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
@@ -300,27 +302,95 @@ class NormalizedConfusionTemplate(Template):
     }
 
 
-class DefaultScatterTemplate(Template):
+class ScatterTemplate(Template):
     DEFAULT_NAME = "scatter"
+
     DEFAULT_CONTENT = {
         "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
         "data": {"values": Template.anchor("data")},
         "title": Template.anchor("title"),
-        "mark": "point",
-        "encoding": {
-            "x": {
-                "field": Template.anchor("x"),
-                "type": "quantitative",
-                "title": Template.anchor("x_label"),
+        "width": 300,
+        "height": 300,
+        "layer": [
+            {
+                "encoding": {
+                    "x": {
+                        "field": Template.anchor("x"),
+                        "type": "quantitative",
+                        "title": Template.anchor("x_label"),
+                    },
+                    "y": {
+                        "field": Template.anchor("y"),
+                        "type": "quantitative",
+                        "title": Template.anchor("y_label"),
+                        "scale": {"zero": False},
+                    },
+                    "color": {"field": "rev", "type": "nominal"},
+                },
+                "layer": [
+                    {"mark": "point"},
+                    {
+                        "selection": {
+                            "label": {
+                                "type": "single",
+                                "nearest": True,
+                                "on": "mouseover",
+                                "encodings": ["x"],
+                                "empty": "none",
+                                "clear": "mouseout",
+                            }
+                        },
+                        "mark": "point",
+                        "encoding": {
+                            "opacity": {
+                                "condition": {
+                                    "selection": "label",
+                                    "value": 1,
+                                },
+                                "value": 0,
+                            }
+                        },
+                    },
+                ],
             },
-            "y": {
-                "field": Template.anchor("y"),
-                "type": "quantitative",
-                "title": Template.anchor("y_label"),
-                "scale": {"zero": False},
+            {
+                "transform": [{"filter": {"selection": "label"}}],
+                "layer": [
+                    {
+                        "encoding": {
+                            "text": {
+                                "type": "quantitative",
+                                "field": Template.anchor("y"),
+                            },
+                            "x": {
+                                "field": Template.anchor("x"),
+                                "type": "quantitative",
+                            },
+                            "y": {
+                                "field": Template.anchor("y"),
+                                "type": "quantitative",
+                            },
+                        },
+                        "layer": [
+                            {
+                                "mark": {
+                                    "type": "text",
+                                    "align": "left",
+                                    "dx": 5,
+                                    "dy": -5,
+                                },
+                                "encoding": {
+                                    "color": {
+                                        "type": "nominal",
+                                        "field": "rev",
+                                    }
+                                },
+                            }
+                        ],
+                    },
+                ],
             },
-            "color": {"field": "rev", "type": "nominal"},
-        },
+        ],
     }
 
 
@@ -357,13 +427,115 @@ class SmoothLinearTemplate(Template):
     }
 
 
+class LinearTemplate(Template):
+    DEFAULT_NAME = "linear"
+
+    DEFAULT_CONTENT = {
+        "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
+        "data": {"values": Template.anchor("data")},
+        "title": Template.anchor("title"),
+        "width": 300,
+        "height": 300,
+        "layer": [
+            {
+                "encoding": {
+                    "x": {
+                        "field": Template.anchor("x"),
+                        "type": "quantitative",
+                        "title": Template.anchor("x_label"),
+                    },
+                    "y": {
+                        "field": Template.anchor("y"),
+                        "type": "quantitative",
+                        "title": Template.anchor("y_label"),
+                        "scale": {"zero": False},
+                    },
+                    "color": {"field": "rev", "type": "nominal"},
+                },
+                "layer": [
+                    {"mark": "line"},
+                    {
+                        "selection": {
+                            "label": {
+                                "type": "single",
+                                "nearest": True,
+                                "on": "mouseover",
+                                "encodings": ["x"],
+                                "empty": "none",
+                                "clear": "mouseout",
+                            }
+                        },
+                        "mark": "point",
+                        "encoding": {
+                            "opacity": {
+                                "condition": {
+                                    "selection": "label",
+                                    "value": 1,
+                                },
+                                "value": 0,
+                            }
+                        },
+                    },
+                ],
+            },
+            {
+                "transform": [{"filter": {"selection": "label"}}],
+                "layer": [
+                    {
+                        "mark": {"type": "rule", "color": "gray"},
+                        "encoding": {
+                            "x": {
+                                "field": Template.anchor("x"),
+                                "type": "quantitative",
+                            }
+                        },
+                    },
+                    {
+                        "encoding": {
+                            "text": {
+                                "type": "quantitative",
+                                "field": Template.anchor("y"),
+                            },
+                            "x": {
+                                "field": Template.anchor("x"),
+                                "type": "quantitative",
+                            },
+                            "y": {
+                                "field": Template.anchor("y"),
+                                "type": "quantitative",
+                            },
+                        },
+                        "layer": [
+                            {
+                                "mark": {
+                                    "type": "text",
+                                    "align": "left",
+                                    "dx": 5,
+                                    "dy": -5,
+                                },
+                                "encoding": {
+                                    "color": {
+                                        "type": "nominal",
+                                        "field": "rev",
+                                    }
+                                },
+                            }
+                        ],
+                    },
+                ],
+            },
+        ],
+    }
+
+
 class PlotTemplates:
     TEMPLATES_DIR = "plots"
     TEMPLATES = [
-        DefaultLinearTemplate,
-        DefaultConfusionTemplate,
+        DefaultTemplate,
+        LinearTemplate,
+        ConfusionTemplate,
         NormalizedConfusionTemplate,
-        DefaultScatterTemplate,
+        ScatterTemplate,
         SmoothLinearTemplate,
     ]
 
