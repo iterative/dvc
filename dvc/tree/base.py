@@ -70,7 +70,7 @@ class BaseTree:
         self.repo = repo
         self.config = config
 
-        self._check_requires(config)
+        self._check_requires()
 
         shared = config.get("shared")
         self._file_mode, self._dir_mode = self.SHARED_MODE_MAP[shared]
@@ -107,31 +107,44 @@ class BaseTree:
 
         return missing
 
-    def _check_requires(self, config):
+    def _check_requires(self):
+        from ..scheme import Schemes
+        from ..utils import format_link
+        from ..utils.pkg import PKG
+
         missing = self.get_missing_deps()
         if not missing:
             return
 
-        url = config.get("url", f"{self.scheme}://")
-        msg = (
-            "URL '{}' is supported but requires these missing "
-            "dependencies: {}. If you have installed dvc using pip, "
-            "choose one of these options to proceed: \n"
-            "\n"
-            "    1) Install specific missing dependencies:\n"
-            "        pip install {}\n"
-            "    2) Install dvc package that includes those missing "
-            "dependencies: \n"
-            "        pip install 'dvc[{}]'\n"
-            "    3) Install dvc package with all possible "
-            "dependencies included: \n"
-            "        pip install 'dvc[all]'\n"
-            "\n"
-            "If you have installed dvc from a binary package and you "
-            "are still seeing this message, please report it to us "
-            "using https://github.com/iterative/dvc/issues. Thank you!"
-        ).format(url, missing, " ".join(missing), self.scheme)
-        raise RemoteMissingDepsError(msg)
+        url = self.config.get("url", f"{self.scheme}://")
+
+        scheme = self.scheme
+        if scheme == Schemes.WEBDAVS:
+            scheme = Schemes.WEBDAV
+
+        by_pkg = {
+            "pip": f"pip install 'dvc[{scheme}]'",
+            "conda": f"conda install -c conda-forge dvc-{scheme}",
+        }
+
+        cmd = by_pkg.get(PKG)
+        if cmd:
+            link = format_link("https://dvc.org/doc/install")
+            hint = (
+                f"To install dvc with those dependencies, run:\n"
+                "\n"
+                f"\t{cmd}\n"
+                "\n"
+                f"See {link} for more info."
+            )
+        else:
+            link = format_link("https://github.com/iterative/dvc/issues")
+            hint = f"Please report this bug to {link}. Thank you!"
+
+        raise RemoteMissingDepsError(
+            f"URL '{url}' is supported but requires these missing "
+            f"dependencies: {missing}. {hint}"
+        )
 
     @classmethod
     def supported(cls, config):

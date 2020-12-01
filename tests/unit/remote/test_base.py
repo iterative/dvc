@@ -5,7 +5,7 @@ import pytest
 
 from dvc.cache.base import CloudCache
 from dvc.path_info import PathInfo
-from dvc.tree.base import BaseTree, RemoteCmdError, RemoteMissingDepsError
+from dvc.tree.base import BaseTree, RemoteCmdError
 
 
 class _CallableOrNone:
@@ -16,13 +16,6 @@ class _CallableOrNone:
 
 
 CallableOrNone = _CallableOrNone()
-
-
-def test_missing_deps(dvc):
-    requires = {"missing": "missing"}
-    with mock.patch.object(BaseTree, "REQUIRES", requires):
-        with pytest.raises(RemoteMissingDepsError):
-            BaseTree(dvc, {})
 
 
 def test_cmd_error(dvc):
