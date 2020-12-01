@@ -493,9 +493,13 @@ class Git(Base):
 
     def resolve_commit(self, rev):
         """Return Commit object for the specified revision."""
+        from git.exc import BadName, GitCommandError
         from git.objects.tag import TagObject
 
-        commit = self.repo.rev_parse(rev)
+        try:
+            commit = self.repo.rev_parse(rev)
+        except (BadName, GitCommandError):
+            commit = None
         if isinstance(commit, TagObject):
             commit = commit.object
         return commit
