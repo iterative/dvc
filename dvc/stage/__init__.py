@@ -509,6 +509,8 @@ class Stage(params.StageParams):
                 check_missing_outputs(self)
 
         if not dry:
+            if kwargs.get("checkpoint_func", None):
+                allow_missing = True
             self.save(allow_missing=allow_missing)
             if not no_commit:
                 self.commit(allow_missing=allow_missing)

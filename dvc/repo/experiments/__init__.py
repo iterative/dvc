@@ -1,10 +1,12 @@
 import logging
 import os
 import re
+import signal
 from collections import defaultdict, namedtuple
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import CancelledError, ProcessPoolExecutor, wait
 from contextlib import contextmanager
 from functools import wraps
+from multiprocessing import Manager
 from typing import Iterable, Mapping, Optional
 
 from funcy import cached_property, first
@@ -467,13 +469,32 @@ class Experiments:
         """
         result = defaultdict(dict)
 
+        manager = Manager()
+        pid_q = manager.Queue()
         with ProcessPoolExecutor(max_workers=jobs) as workers:
             futures = {}
             for rev, executor in executors.items():
-                future = workers.submit(executor.reproduce, executor.dvc_dir,)
+                future = workers.submit(
+                    executor.reproduce, executor.dvc_dir, pid_q, rev,
+                )
                 futures[future] = (rev, executor)
 
-            for future in as_completed(futures):
+            try:
+                wait(futures)
+            except KeyboardInterrupt:
+                # forward SIGINT to any running executor processes and
+                # cancel any remaining futures
+                pids = {}
+                while not pid_q.empty():
+                    rev, pid = pid_q.get()
+                    pids[rev] = pid
+                for future, (rev, _) in futures.items():
+                    if future.running():
+                        os.kill(pids[rev], signal.SIGINT)
+                    elif not future.done():
+                        future.cancel()
+
+            for future, (rev, executor) in futures.items():
                 rev, executor = futures[future]
                 exc = future.exception()
 
@@ -491,6 +512,12 @@ class Experiments:
                                 rev[:7],
                                 exc_info=exc,
                             )
+                except CancelledError:
+                    logger.error(
+                        "Cancelled before attempting to reproduce experiment "
+                        "'%s'",
+                        rev[:7],
+                    )
                 finally:
                     executor.cleanup()
 

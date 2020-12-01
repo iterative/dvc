@@ -3,7 +3,7 @@ import os
 import pickle
 from functools import partial
 from tempfile import TemporaryDirectory
-from typing import Iterable, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Iterable, Optional, Tuple, Union
 
 from funcy import cached_property
 
@@ -28,6 +28,9 @@ from dvc.stage import PipelineStage
 from dvc.stage.serialize import to_lockfile
 from dvc.utils import dict_sha256
 from dvc.utils.fs import remove
+
+if TYPE_CHECKING:
+    from multiprocessing import Queue
 
 logger = logging.getLogger(__name__)
 
@@ -181,7 +184,7 @@ class BaseExecutor:
 
     @classmethod
     def reproduce(
-        cls, dvc_dir: str, cwd: Optional[str] = None
+        cls, dvc_dir: str, queue: "Queue", rev: str, cwd: Optional[str] = None
     ) -> Tuple[bool, Optional[str]]:
         """Run dvc repro and return the result.
 
@@ -190,6 +193,8 @@ class BaseExecutor:
             not this experiment should force overwrite any existing duplicates.
         """
         unchanged = []
+
+        queue.put((rev, os.getpid()))
 
         def filter_pipeline(stages):
             unchanged.extend(
