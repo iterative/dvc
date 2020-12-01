@@ -20,6 +20,7 @@ from dvc.repo.experiments.base import (
     EXEC_NAMESPACE,
     EXPS_NAMESPACE,
     EXPS_STASH,
+    CheckpointExistsError,
     get_exps_refname,
     split_exps_refname,
 )
@@ -51,19 +52,6 @@ class BaselineMismatchError(DvcException):
         )
         self.rev = rev
         self.expected_rev = expected
-
-
-class CheckpointExistsError(DvcException):
-    def __init__(self, rev, continue_rev):
-        msg = (
-            f"Checkpoint experiment containing '{rev[:7]}' already exists."
-            " To restart the experiment run:\n\n"
-            "\tdvc exp run -f ...\n\n"
-            "To resume the experiment, run:\n\n"
-            f"\tdvc exp resume {continue_rev[:7]}\n"
-        )
-        super().__init__(msg)
-        self.rev = rev
 
 
 class MultipleBranchError(DvcException):
@@ -535,7 +523,15 @@ class Experiments:
 
         results = {}
 
-        for ref in executor.fetch_exps(self.scm, force=force):
+        def on_diverged_checkpoint(ref: str):
+            orig_rev = self.scm.get_ref(ref)
+            raise CheckpointExistsError(orig_rev, orig_rev)
+
+        for ref in executor.fetch_exps(
+            self.scm,
+            force=force,
+            on_diverged_checkpoint=on_diverged_checkpoint,
+        ):
             exp_rev = self.scm.get_ref(ref)
             if exp_rev:
                 logger.info("Reproduced experiment '%s'.", exp_rev[:7])
@@ -581,11 +577,7 @@ class Experiments:
 
     def _get_exps_containing(self, rev):
         for ref in self.scm.get_refs_containing(rev, EXPS_NAMESPACE):
-            if not (
-                ref.startswith(EXEC_NAMESPACE)
-                or ref == EXPS_STASH
-                or ref == EXEC_CHECKPOINT
-            ):
+            if not (ref.startswith(EXEC_NAMESPACE) or ref == EXPS_STASH):
                 yield ref
 
     def get_branch_containing(self, rev: str) -> str:

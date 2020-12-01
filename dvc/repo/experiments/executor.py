@@ -3,7 +3,7 @@ import os
 import pickle
 from functools import partial
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING, Iterable, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Iterable, Optional, Tuple, Union
 
 from funcy import cached_property
 
@@ -149,7 +149,12 @@ class BaseExecutor:
             data = pickle.load(fobj)
         return data["args"], data["kwargs"]
 
-    def fetch_exps(self, dest_scm: SCM, force: bool = False) -> Iterable[str]:
+    def fetch_exps(
+        self,
+        dest_scm: SCM,
+        force: bool = False,
+        on_diverged_checkpoint: Callable[[str], None] = None,
+    ) -> Iterable[str]:
         """Fetch reproduced experiments into the specified SCM."""
         refs = []
         for ref in self.scm.iter_refs(base=EXPS_NAMESPACE):
@@ -162,6 +167,8 @@ class BaseExecutor:
                     "Replacing existing experiment '%s'", os.fsdecode(orig_ref)
                 )
                 return True
+            if self.scm.get_ref(EXEC_CHECKPOINT) and on_diverged_checkpoint:
+                on_diverged_checkpoint(orig_ref)
             logger.debug(
                 "Reproduced existing experiment '%s'", os.fsdecode(orig_ref)
             )
@@ -172,6 +179,7 @@ class BaseExecutor:
             self.git_url,
             [f"{ref}:{ref}" for ref in refs],
             on_diverged=on_diverged,
+            force=force,
         )
         # update last run checkpoint (if it exists)
         if self.scm.get_ref(EXEC_CHECKPOINT):
@@ -335,7 +343,10 @@ class LocalExecutor(BaseExecutor):
 
     @property
     def git_url(self) -> str:
-        return "file://{}".format(os.path.abspath(self.root_dir))
+        root_dir = os.path.abspath(self.root_dir)
+        if os.name == "nt":
+            root_dir = root_dir.replace(os.sep, "/")
+        return f"file://{root_dir}"
 
     def cleanup(self):
         logger.debug("Removing tmpdir '%s'", self._tmp_dir)

@@ -8,7 +8,7 @@ from dvc.scm import SCM
 EXPS_NAMESPACE = "refs/exps"
 EXPS_STASH = f"{EXPS_NAMESPACE}/stash"
 EXEC_NAMESPACE = f"{EXPS_NAMESPACE}/exec"
-EXEC_CHECKPOINT = f"{EXPS_NAMESPACE}/EXEC_CHECKPOINT"
+EXEC_CHECKPOINT = f"{EXEC_NAMESPACE}/EXEC_CHECKPOINT"
 EXEC_BRANCH = f"{EXEC_NAMESPACE}/EXEC_BRANCH"
 EXEC_HEAD = f"{EXEC_NAMESPACE}/EXEC_HEAD"
 EXEC_MERGE = f"{EXEC_NAMESPACE}/EXEC_MERGE"
@@ -17,6 +17,21 @@ EXEC_MERGE = f"{EXEC_NAMESPACE}/EXEC_MERGE"
 class UnchangedExperimentError(DvcException):
     def __init__(self, rev):
         super().__init__(f"Experiment identical to baseline '{rev[:7]}'.")
+        self.rev = rev
+
+
+class CheckpointExistsError(DvcException):
+    def __init__(self, rev: str, continue_rev: Optional[str] = None):
+        if not continue_rev:
+            continue_rev = rev
+        msg = (
+            f"Checkpoint experiment containing '{rev[:7]}' already exists."
+            " To restart the experiment run:\n\n"
+            "\tdvc exp run -f ...\n\n"
+            "To resume the experiment, run:\n\n"
+            f"\tdvc exp resume {continue_rev[:7]}\n"
+        )
+        super().__init__(msg)
         self.rev = rev
 
 
