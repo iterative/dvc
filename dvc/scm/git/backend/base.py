@@ -1,4 +1,5 @@
 import os
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Iterable, Optional, Tuple
 
 from dvc.scm.base import SCMError
@@ -12,7 +13,7 @@ class NoGitBackendError(SCMError):
         super().__init__(f"No valid Git backend for '{func}'")
 
 
-class BaseGitBackend:
+class BaseGitBackend(ABC):
     """Base Git backend class."""
 
     def __init__(self, scm: "Git", **kwargs):
@@ -22,9 +23,11 @@ class BaseGitBackend:
     def close(self):
         pass
 
+    @abstractmethod
     def is_ignored(self, path):
-        raise NotImplementedError
+        """Return True if the specified path is gitignored."""
 
+    @abstractmethod
     def set_ref(
         self,
         name: str,
@@ -42,24 +45,24 @@ class BaseGitBackend:
             symbolic: If True, ref will be set as a symbolic ref to new_ref
                 rather than the dereferenced object.
         """
-        raise NotImplementedError
 
+    @abstractmethod
     def get_ref(self, name, follow: Optional[bool] = True) -> Optional[str]:
         """Return the value of specified ref.
 
         If follow is false, symbolic refs will not be dereferenced.
         Returns None if the ref does not exist.
         """
-        raise NotImplementedError
 
+    @abstractmethod
     def remove_ref(self, name: str, old_ref: Optional[str] = None):
         """Remove the specified git ref.
 
         If old_ref is specified, ref will only be removed if it currently
         equals old_ref.
         """
-        raise NotImplementedError
 
+    @abstractmethod
     def push_refspec(self, url: str, src: Optional[str], dest: str):
         """Push refspec to a remote Git repo.
 
@@ -72,8 +75,8 @@ class BaseGitBackend:
                 deleted from the remote.
             dest: Remote refspec.
         """
-        raise NotImplementedError
 
+    @abstractmethod
     def fetch_refspecs(
         self, url: str, refspecs: Iterable[str], force: Optional[bool] = False
     ):
@@ -86,21 +89,24 @@ class BaseGitBackend:
                 Note that this will not match subkeys.
             force: If True, local refs will be overwritten.
         """
-        raise NotImplementedError
 
+    @abstractmethod
     def _stash_iter(self, ref: str):
-        raise NotImplementedError
+        """Iterate over stash commits in the specified ref."""
 
+    @abstractmethod
     def _stash_push(
         self,
         ref: str,
         message: Optional[str] = None,
         include_untracked: Optional[bool] = False,
     ) -> Tuple[Optional[str], bool]:
-        raise NotImplementedError
+        """Push a commit onto the specified stash."""
 
+    @abstractmethod
     def _stash_apply(self, rev: str):
-        raise NotImplementedError
+        """Apply the specified stash revision."""
 
+    @abstractmethod
     def reflog_delete(self, ref: str, updateref: bool = False):
-        raise NotImplementedError
+        """Delete the specified reflog entry."""

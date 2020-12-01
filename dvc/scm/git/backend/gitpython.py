@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Tuple
+from typing import Iterable, Optional, Tuple
 
 from .base import BaseGitBackend
 
@@ -12,6 +12,36 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
     @property
     def git(self):
         return self.scm.repo.git
+
+    def _ignored(self, path):
+        raise NotImplementedError
+
+    def set_ref(
+        self,
+        name: str,
+        new_ref: str,
+        old_ref: Optional[str] = None,
+        message: Optional[str] = None,
+        symbolic: Optional[bool] = False,
+    ):
+        raise NotImplementedError
+
+    def get_ref(self, name, follow: Optional[bool] = True) -> Optional[str]:
+        raise NotImplementedError
+
+    def remove_ref(self, name: str, old_ref: Optional[str] = None):
+        raise NotImplementedError
+
+    def push_refspec(self, url: str, src: Optional[str], dest: str):
+        raise NotImplementedError
+
+    def fetch_refspecs(
+        self, url: str, refspecs: Iterable[str], force: Optional[bool] = False
+    ):
+        raise NotImplementedError
+
+    def _stash_iter(self, ref: str):
+        raise NotImplementedError
 
     def _stash_push(
         self,
