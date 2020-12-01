@@ -208,7 +208,7 @@ def test_push_refspec(tmp_dir, scm, make_tmp_dir):
         }
     )
     remote_dir = make_tmp_dir("git-remote", scm=True)
-    url = "file://{}".format(remote_dir.resolve())
+    url = "file://{}".format(remote_dir.resolve().as_posix())
 
     scm.push_refspec(url, "refs/foo/bar", "refs/foo/bar")
     assert init_rev == remote_dir.scm.get_ref("refs/foo/bar")
@@ -226,7 +226,7 @@ def test_push_refspec(tmp_dir, scm, make_tmp_dir):
 
 def test_fetch_refspecs(tmp_dir, scm, make_tmp_dir):
     remote_dir = make_tmp_dir("git-remote", scm=True)
-    url = "file://{}".format(remote_dir.resolve())
+    url = "file://{}".format(remote_dir.resolve().as_posix())
 
     remote_dir.scm_gen({"file": "0"}, commit="init")
     init_rev = remote_dir.scm.get_rev()
