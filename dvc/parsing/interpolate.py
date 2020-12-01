@@ -1,5 +1,6 @@
 import re
 import typing
+from functools import singledispatch
 
 from pyparsing import (
     CharsNotIn,
@@ -57,6 +58,16 @@ def format_and_raise_parse_error(exc):
     raise ParseError(_format_exc_msg(exc))
 
 
+@singledispatch
+def to_str(obj):
+    return str(obj)
+
+
+@to_str.register(bool)
+def _(obj: bool):
+    return "true" if obj else "false"
+
+
 def _format_exc_msg(exc: ParseException):
     exc.loc += 2  # 2 because we append `${` at the start of expr below
 
@@ -103,7 +114,7 @@ def str_interpolate(template: str, matches: "List[Match]", context: "Context"):
             raise ParseError(
                 f"Cannot interpolate data of type '{type(value).__name__}'"
             )
-        buf += template[index:start] + str(value)
+        buf += template[index:start] + to_str(value)
         index = end
     buf += template[index:]
     # regex already backtracks and avoids any `${` starting with

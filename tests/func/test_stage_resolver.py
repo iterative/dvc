@@ -343,12 +343,16 @@ def test_set(tmp_dir, dvc, value):
         }
     }
     resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
+    if isinstance(value, bool):
+        stringified_value = "true" if value else "false"
+    else:
+        stringified_value = str(value)
     assert_stage_equal(
         resolver.resolve(),
         {
             "stages": {
                 "build": {
-                    "cmd": f"python script.py --thresh {value}",
+                    "cmd": f"python script.py --thresh {stringified_value}",
                     "always_changed": value,
                 }
             }
