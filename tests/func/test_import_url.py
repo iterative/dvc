@@ -214,10 +214,12 @@ def test_import_url_preserve_meta(tmp_dir, dvc):
     text = textwrap.dedent(
         """\
         # top comment
+        desc: top desc
         deps:
         - path: foo # dep comment
         outs:
         - path: bar # out comment
+          desc: out desc
         meta: some metadata
     """
     )
@@ -228,12 +230,14 @@ def test_import_url_preserve_meta(tmp_dir, dvc):
     assert (tmp_dir / "bar.dvc").read_text() == textwrap.dedent(
         """\
         # top comment
+        desc: top desc
         deps:
         - path: foo # dep comment
           md5: acbd18db4cc2f85cedef654fccc4a4d8
           size: 3
         outs:
         - path: bar # out comment
+          desc: out desc
           md5: acbd18db4cc2f85cedef654fccc4a4d8
           size: 3
         meta: some metadata
