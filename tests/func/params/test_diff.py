@@ -1,3 +1,7 @@
+from dvc.utils import relpath
+from dvc.utils.serialize import dump_yaml
+
+
 def test_diff_no_params(tmp_dir, scm, dvc):
     assert dvc.params.diff() == {}
 
@@ -144,3 +148,45 @@ def test_no_commits(tmp_dir):
     assert Git().no_commits
 
     assert Repo.init().params.diff() == {}
+
+
+def test_vars_shows_on_params_diff(tmp_dir, scm, dvc):
+    dvc.config["feature"]["parametrization"] = True
+    params_file = tmp_dir / "test_params.yaml"
+    param_data = {"vars": {"model1": {"epoch": 15}, "model2": {"epoch": 35}}}
+    dump_yaml(params_file, param_data)
+    d = {
+        "vars": ["test_params.yaml"],
+        "stages": {
+            "build": {
+                "foreach": "${vars}",
+                "do": {"cmd": "script --epoch ${item.epoch}"},
+            }
+        },
+    }
+    dump_yaml("dvc.yaml", d)
+    assert dvc.params.diff() == {
+        "test_params.yaml": {
+            "vars.model1.epoch": {"new": 15, "old": None},
+            "vars.model2.epoch": {"new": 35, "old": None},
+        }
+    }
+    scm.add(["dvc.yaml", "test_params.yaml"])
+    scm.commit("added stages")
+
+    param_data["vars"]["model1"]["epoch"] = 20
+    dump_yaml(params_file, param_data)
+    assert dvc.params.diff() == {
+        "test_params.yaml": {
+            "vars.model1.epoch": {"new": 20, "old": 15, "diff": 5},
+        }
+    }
+
+    data_dir = tmp_dir / "data"
+    data_dir.mkdir()
+    with data_dir.chdir():
+        assert dvc.params.diff() == {
+            relpath(params_file): {
+                "vars.model1.epoch": {"new": 20, "old": 15, "diff": 5},
+            }
+        }
