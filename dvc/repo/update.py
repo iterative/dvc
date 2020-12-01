@@ -3,7 +3,7 @@ from . import locked
 
 
 @locked
-def update(self, targets, rev=None, recursive=False):
+def update(self, targets=None, rev=None, recursive=False):
     if not targets:
         targets = [None]
 
@@ -12,7 +12,7 @@ def update(self, targets, rev=None, recursive=False):
 
     stages = set()
     for target in targets:
-        stages.update(self.collect(target, recursive=recursive))
+        stages.update(self.stage.collect(target, recursive=recursive))
 
     for stage in stages:
         stage.update(rev)

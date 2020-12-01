@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import TYPE_CHECKING, Set
 
 from dvc.exceptions import (
     CheckoutError,
@@ -10,6 +11,10 @@ from dvc.progress import Tqdm
 from dvc.utils import relpath
 
 from . import locked
+
+if TYPE_CHECKING:
+    from . import Repo
+    from .stage import StageInfo
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +43,34 @@ def get_all_files_numbers(pairs):
     )
 
 
+def _collect_pairs(
+    self: "Repo", targets, with_deps: bool, recursive: bool
+) -> Set["StageInfo"]:
+    from dvc.stage.exceptions import (
+        StageFileBadNameError,
+        StageFileDoesNotExistError,
+    )
+
+    pairs: Set["StageInfo"] = set()
+    for target in targets:
+        try:
+            pairs.update(
+                self.stage.collect_granular(
+                    target, with_deps=with_deps, recursive=recursive
+                )
+            )
+        except (
+            StageFileDoesNotExistError,
+            StageFileBadNameError,
+            NoOutputOrStageError,
+        ) as exc:
+            if not target:
+                raise
+            raise CheckoutErrorSuggestGit(target) from exc
+
+    return pairs
+
+
 @locked
 def checkout(
     self,
@@ -49,10 +82,6 @@ def checkout(
     allow_missing=False,
     **kwargs,
 ):
-    from dvc.stage.exceptions import (
-        StageFileBadNameError,
-        StageFileDoesNotExistError,
-    )
 
     unused = []
     stats = {
@@ -71,23 +100,7 @@ def checkout(
     if isinstance(targets, str):
         targets = [targets]
 
-    pairs = set()
-    for target in targets:
-        try:
-            pairs.update(
-                self.collect_granular(
-                    target, with_deps=with_deps, recursive=recursive
-                )
-            )
-        except (
-            StageFileDoesNotExistError,
-            StageFileBadNameError,
-            NoOutputOrStageError,
-        ) as exc:
-            if not target:
-                raise
-            raise CheckoutErrorSuggestGit(target) from exc
-
+    pairs = _collect_pairs(self, targets, with_deps, recursive)
     total = get_all_files_numbers(pairs)
     with Tqdm(
         total=total, unit="file", desc="Checkout", disable=total == 0

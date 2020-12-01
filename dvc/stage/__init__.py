@@ -87,18 +87,6 @@ def create_stage(cls, repo, path, external=False, **kwargs):
     check_circular_dependency(stage)
     check_duplicated_arguments(stage)
 
-    if stage and stage.dvcfile.exists():
-        has_persist_outs = any(out.persist for out in stage.outs)
-        ignore_run_cache = (
-            not kwargs.get("run_cache", True) or has_persist_outs
-        )
-        if has_persist_outs:
-            logger.warning("Build cache is ignored when persisting outputs.")
-
-        if not ignore_run_cache and stage.can_be_skipped:
-            logger.info("Stage is cached, skipping")
-            return None
-
     return stage
 
 
@@ -361,9 +349,19 @@ class Stage(params.StageParams):
 
     @property
     def can_be_skipped(self):
-        return (
-            self.is_cached and not self.is_callback and not self.always_changed
-        )
+        if not self.dvcfile.exists():
+            return False
+
+        has_persist_outs = any(out.persist for out in self.outs)
+        if has_persist_outs:
+            logger.warning("Build cache is ignored when persisting outputs.")
+            return False
+
+        if self.is_cached and not self.is_callback and not self.always_changed:
+            logger.info("Stage is cached, skipping")
+            return True
+
+        return False
 
     def reload(self):
         return self.dvcfile.stage

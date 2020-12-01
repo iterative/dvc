@@ -5,6 +5,7 @@ neatlynx/__pycache__
 *.pyc
 .env/
 .env2.7/
+.python-version
 
 .dvc.conf.lock
 .DS_Store

@@ -113,7 +113,7 @@ def run(self, fname=None, no_exec=False, single_stage=False, **kwargs):
     stage = create_stage(
         stage_cls, repo=self, path=path, params=params, **kwargs
     )
-    if stage is None:
+    if kwargs.get("run_cache", True) and stage.can_be_skipped:
         return None
 
     dvcfile = Dvcfile(self, stage.path)

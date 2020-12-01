@@ -44,7 +44,7 @@ def imp_url(
         erepo=erepo,
     )
 
-    if stage is None:
+    if stage.can_be_skipped:
         return None
 
     if desc:

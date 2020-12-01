@@ -45,19 +45,22 @@ def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
         scm = SCM(root_dir, search_parent_directories=subdir, no_scm=no_scm)
     except SCMError:
         raise InitError(
-            "{repo} is not tracked by any supported SCM tool (e.g. Git). "
+            f"{root_dir} is not tracked by any supported SCM tool (e.g. Git). "
             "Use `--no-scm` if you don't want to use any SCM or "
             "`--subdir` if initializing inside a subdirectory of a parent SCM "
-            "repository.".format(repo=root_dir)
+            "repository."
+        )
+
+    if scm.is_ignored(dvc_dir):
+        raise InitError(
+            f"{dvc_dir} is ignored by your SCM tool. \n"
+            "Make sure that it's tracked, "
+            "for example, by adding '!.dvc' to .gitignore."
         )
 
     if os.path.isdir(dvc_dir):
         if not force:
-            raise InitError(
-                "'{repo}' exists. Use `-f` to force.".format(
-                    repo=relpath(dvc_dir)
-                )
-            )
+            raise InitError(f"'{relpath(dvc_dir)}' exists. Use `-f` to force.")
 
         remove(dvc_dir)
 
