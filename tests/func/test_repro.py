@@ -2,8 +2,10 @@ import filecmp
 import os
 import re
 import shutil
+import textwrap
 from pathlib import Path
 
+import mock
 import pytest
 from mock import patch
 
@@ -1308,3 +1310,27 @@ def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy, mocker):
     }
     assert dvc.reproduce(stage.addressing)[0] == stage
     m.assert_called_once_with(stage, checkpoint_func=None)
+
+
+def test_run_with_noshell_skips_extra_quoting(dvc, tmp_dir, mocker):
+    cmd = "echo 123"
+    proc = mocker.Mock()
+    communicate = mocker.Mock()
+    proc.configure_mock(returncode=0, communicate=communicate)
+    popen_mock = mocker.patch("subprocess.Popen", return_value=proc)
+    tmp_dir.gen(
+        "dvc.yaml",
+        textwrap.dedent(
+            f"""\
+            stages:
+                foo:
+                    cmd: "{cmd}"
+            """
+        ),
+    )
+    ret = main(["repro", "--no-shell"])
+
+    assert ret == 0
+    popen_mock.assert_called_with(
+        cmd, cwd=mock.ANY, env=mock.ANY, close_fds=mock.ANY, shell=False,
+    )

@@ -77,6 +77,7 @@ def test_experiments_run(dvc, mocker, args, resume):
         "run_all": False,
         "jobs": None,
         "checkpoint_resume": resume,
+        "use_shell": True,
     }
 
     default_arguments.update(repro_arguments)

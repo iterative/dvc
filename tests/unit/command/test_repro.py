@@ -16,6 +16,7 @@ default_arguments = {
     "force_downstream": False,
     "pull": False,
     "glob": False,
+    "use_shell": True,
 }
 
 

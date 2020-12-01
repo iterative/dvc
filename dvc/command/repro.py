@@ -64,6 +64,7 @@ class CmdRepro(CmdBase):
             "force_downstream": self.args.force_downstream,
             "pull": self.args.pull,
             "glob": self.args.glob,
+            "use_shell": not self.args.no_shell,
         }
 
 
@@ -181,6 +182,12 @@ def add_arguments(repro_parser):
         action="store_true",
         default=False,
         help="Allows targets containing shell-style wildcards.",
+    )
+    repro_parser.add_argument(
+        "--no-shell",
+        action="store_true",
+        default=False,
+        help="Executes command without shell, directly.",
     )
 
 
