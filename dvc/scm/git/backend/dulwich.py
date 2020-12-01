@@ -2,9 +2,10 @@ import logging
 import os
 from typing import TYPE_CHECKING, Iterable, Optional, Tuple
 
-from dvc.scm.backend.base import BaseGitBackend
 from dvc.scm.base import SCMError
 from dvc.utils import relpath
+
+from .base import BaseGitBackend
 
 if TYPE_CHECKING:
     from dvc.scm.git import Git

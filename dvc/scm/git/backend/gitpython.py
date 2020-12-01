@@ -1,7 +1,7 @@
 import logging
 from typing import Optional, Tuple
 
-from dvc.scm.backend.base import BaseGitBackend
+from .base import BaseGitBackend
 
 logger = logging.getLogger(__name__)
 
