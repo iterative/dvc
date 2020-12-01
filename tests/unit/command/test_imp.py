@@ -33,6 +33,7 @@ def test_import(mocker):
         rev="version",
         no_exec=False,
         desc="description",
+        glob=False,
     )
 
 
@@ -67,4 +68,5 @@ def test_import_no_exec(mocker):
         rev="version",
         no_exec=True,
         desc="description",
+        glob=False,
     )

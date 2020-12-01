@@ -9,7 +9,7 @@ import dvc.data_cloud as cloud
 from dvc.cache import Cache
 from dvc.config import NoRemoteError
 from dvc.dvcfile import Dvcfile
-from dvc.exceptions import DownloadError, PathMissingError
+from dvc.exceptions import DownloadError, DvcException, PathMissingError
 from dvc.external_repo import IsADVCRepoError
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.system import System
@@ -26,6 +26,36 @@ def test_import(tmp_dir, scm, dvc, erepo_dir):
     assert os.path.isfile("foo_imported")
     assert (tmp_dir / "foo_imported").read_text() == "foo content"
     assert scm.is_ignored("foo_imported")
+    assert stage.deps[0].def_repo == {
+        "url": os.fspath(erepo_dir),
+        "rev_lock": erepo_dir.scm.get_rev(),
+    }
+
+
+def test_import_wildcard_exception(tmp_dir, scm, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
+        erepo_dir.dvc_gen("foo123", "foo 123 content", commit="create foo")
+        erepo_dir.dvc_gen("efoo", "extra foo content", commit="create foo")
+
+    with pytest.raises(DvcException):
+        dvc.imp(os.fspath(erepo_dir), "foo*", "foo_imported", glob=True)
+
+
+def test_import_wildcard(tmp_dir, scm, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
+        erepo_dir.dvc_gen("foo123", "foo 123 content", commit="create foo")
+        erepo_dir.dvc_gen(
+            "efoothisistoocomplicatedtotype",
+            "extra foo content",
+            commit="create foo",
+        )
+
+    stage = dvc.imp(os.fspath(erepo_dir), "efoo*", "efoo_imported", glob=True)
+    assert os.path.isfile("efoo_imported")
+    assert (tmp_dir / "efoo_imported").read_text() == "extra foo content"
+    assert scm.repo.git.check_ignore("efoo_imported")
     assert stage.deps[0].def_repo == {
         "url": os.fspath(erepo_dir),
         "rev_lock": erepo_dir.scm.get_rev(),
@@ -92,6 +122,43 @@ def test_import_dir(tmp_dir, scm, dvc, erepo_dir):
 
     assert (tmp_dir / "dir_imported").read_text() == {"foo": "foo content"}
     assert scm.is_ignored("dir_imported")
+    assert stage.deps[0].def_repo == {
+        "url": os.fspath(erepo_dir),
+        "rev_lock": erepo_dir.scm.get_rev(),
+    }
+
+
+def test_import_dir_wildcard_exception(tmp_dir, scm, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen(
+            {
+                "dir": {"foo": "foo content"},
+                "dir123": {"foo123": "foo 123 content"},
+                "edir": {"efoo": "extra foo content"},
+            },
+            commit="create dir",
+        )
+    with pytest.raises(DvcException):
+        dvc.imp(os.fspath(erepo_dir), "dir*", "dir_imported")
+
+
+def test_import_dir_wildcard(tmp_dir, scm, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen(
+            {
+                "dir": {"foo": "foo content"},
+                "dir123": {"foo123": "foo 123 content"},
+                "edirthisisalongdirname": {"efoo": "extra foo content"},
+            },
+            commit="create dir",
+        )
+
+    stage = dvc.imp(os.fspath(erepo_dir), "edir*", "dir_imported", glob=True)
+
+    assert (tmp_dir / "dir_imported").read_text() == {
+        "efoo": "extra foo content"
+    }
+    assert scm.repo.git.check_ignore("dir_imported")
     assert stage.deps[0].def_repo == {
         "url": os.fspath(erepo_dir),
         "rev_lock": erepo_dir.scm.get_rev(),

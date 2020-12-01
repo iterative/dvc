@@ -19,6 +19,7 @@ class CmdImport(CmdBase):
                 rev=self.args.rev,
                 no_exec=self.args.no_exec,
                 desc=self.args.desc,
+                glob=self.args.glob,
             )
         except DvcException:
             logger.exception(
@@ -81,5 +82,11 @@ def add_parser(subparsers, parent_parser):
             "User description of the data (optional). "
             "This doesn't affect any DVC operations."
         ),
+    )
+    import_parser.add_argument(
+        "--glob",
+        action="store_true",
+        default=False,
+        help="Allows importing paths containing shell-style wildcards.",
     )
     import_parser.set_defaults(func=CmdImport)
