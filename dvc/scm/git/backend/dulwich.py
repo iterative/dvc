@@ -86,6 +86,12 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         if not self.repo.refs.remove_if_equals(name_b, old_ref_b):
             raise SCMError(f"Failed to remove '{name}'")
 
+    def iter_refs(self, base: Optional[str] = None):
+        for key in self.repo.refs.keys(base=os.fsencode(base)):
+            if base and base.endswith("/"):
+                base = base[:-1]
+            yield "/".join([base, os.fsdecode(key)])
+
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
         raise NotImplementedError
 

@@ -63,6 +63,13 @@ class BaseGitBackend(ABC):
         """
 
     @abstractmethod
+    def iter_refs(self, base: Optional[str] = None):
+        """Iterate over all refs in this git repo.
+
+        If base is specified, only refs which begin with base will be yielded.
+        """
+
+    @abstractmethod
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
         """Iterate over all git refs containing the specfied revision."""
 

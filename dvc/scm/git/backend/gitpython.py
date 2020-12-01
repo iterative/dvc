@@ -32,6 +32,14 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def remove_ref(self, name: str, old_ref: Optional[str] = None):
         raise NotImplementedError
 
+    def iter_refs(self, base: Optional[str] = None):
+        from git import Reference
+
+        for ref in Reference.iter_items(self.scm.repo, common_path=base):
+            if base and base.endswith("/"):
+                base = base[:-1]
+            yield "/".join([base, ref.name])
+
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
         from git.exc import GitCommandError
 
