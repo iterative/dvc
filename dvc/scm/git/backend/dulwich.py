@@ -86,6 +86,9 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         if not self.repo.refs.remove_if_equals(name_b, old_ref_b):
             raise SCMError(f"Failed to remove '{name}'")
 
+    def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
+        raise NotImplementedError
+
     def push_refspec(self, url: str, src: Optional[str], dest: str):
         from dulwich.client import get_transport_and_path
         from dulwich.objects import ZERO_SHA

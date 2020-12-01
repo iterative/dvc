@@ -513,30 +513,13 @@ class Git(Base):
     set_ref = partialmethod(_backend_func, "set_ref")
     get_ref = partialmethod(_backend_func, "get_ref")
     remove_ref = partialmethod(_backend_func, "remove_ref")
+    get_refs_containing = partialmethod(_backend_func, "get_refs_containing")
     push_refspec = partialmethod(_backend_func, "push_refspec")
     fetch_refspecs = partialmethod(_backend_func, "fetch_refspecs")
     _stash_iter = partialmethod(_backend_func, "_stash_iter")
     _stash_push = partialmethod(_backend_func, "_stash_push")
     _stash_apply = partialmethod(_backend_func, "_stash_apply")
     reflog_delete = partialmethod(_backend_func, "reflog_delete")
-
-    def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
-        """Iterate over all git refs containing the specfied revision."""
-        from git.exc import GitCommandError
-
-        try:
-            if pattern:
-                args = [pattern]
-            else:
-                args = []
-            for line in self.repo.git.for_each_ref(
-                *args, contains=rev, format=r"%(refname)"
-            ).splitlines():
-                line = line.strip()
-                if line:
-                    yield line
-        except GitCommandError:
-            pass
 
     @contextmanager
     def detach_head(self, rev: Optional[str] = None):
@@ -557,7 +540,7 @@ class Git(Base):
         try:
             yield self.get_ref("HEAD")
         finally:
-            prefix = os.fsdecode(self.LOCAL_BRANCH_PREFIX)
+            prefix = self.LOCAL_BRANCH_PREFIX
             if orig_head.startswith(prefix):
                 orig_head = orig_head[len(prefix) :]
             logger.debug("Restore HEAD to '%s'", orig_head)
@@ -565,7 +548,7 @@ class Git(Base):
 
     @contextmanager
     def stash_workspace(self, **kwargs):
-        """Stash restore any workspace changes.
+        """Stash and restore any workspace changes.
 
         Yields revision of the stash commit. Yields None if there were no
         changes to stash.

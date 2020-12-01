@@ -63,6 +63,10 @@ class BaseGitBackend(ABC):
         """
 
     @abstractmethod
+    def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
+        """Iterate over all git refs containing the specfied revision."""
+
+    @abstractmethod
     def push_refspec(self, url: str, src: Optional[str], dest: str):
         """Push refspec to a remote Git repo.
 
