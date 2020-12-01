@@ -39,8 +39,8 @@ class OSFTree(BaseTree):
 
         self.path_info = self.PATH_CLS(config["url"])
 
-        self.user = config.get("user")
-        self.project_guid = config.get("project")
+        self.user = os.getenv("OSF_USER", config.get("user"))
+        self.project_guid = os.getenv("OSF_PROJECT", config.get("project"))
         self.password = os.getenv("OSF_PASSWORD", config.get("password"))
         logger.debug(OSFTree)
 

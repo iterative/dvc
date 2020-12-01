@@ -25,9 +25,13 @@ config = {
 @pytest.fixture
 def passwd_env_var():
     os.environ["OSF_PASSWORD"] = password
+    os.environ["OSF_USER"] = username
+    os.environ["OSF_PROJECT0"] = project
     yield
 
     del os.environ["OSF_PASSWORD"]
+    del os.environ["OSF_USER"]
+    del os.environ["OSF_PROJECT0"]
 
 
 def test_init(dvc):
