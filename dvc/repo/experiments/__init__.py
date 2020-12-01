@@ -14,6 +14,7 @@ from funcy import cached_property, first
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 from dvc.repo.experiments.base import (
+    EXEC_BASELINE,
     EXEC_CHECKPOINT,
     EXEC_HEAD,
     EXEC_MERGE,
@@ -323,7 +324,10 @@ class Experiments:
             resume_rev = self._get_last_checkpoint()
         else:
             resume_rev = self.scm.resolve_rev(checkpoint_resume)
-        branch = self.get_branch_containing(resume_rev)
+        allow_multiple = "params" in kwargs
+        branch = self.get_branch_containing(
+            resume_rev, allow_multiple=allow_multiple
+        )
         if not branch:
             raise DvcException(
                 "Could not find checkpoint experiment "
@@ -333,8 +337,10 @@ class Experiments:
         baseline_rev = self._get_baseline(branch)
         if kwargs.get("params", None):
             logger.debug(
-                "Branching from checkpoint '%s' with modified params",
+                "Branching from checkpoint '%s' with modified params, "
+                "baseline '%s'",
                 checkpoint_resume,
+                baseline_rev[:7],
             )
             detach_rev = resume_rev
             branch = None
@@ -429,13 +435,14 @@ class Experiments:
                 for stash_rev, item in to_run.items():
                     self.scm.set_ref(EXEC_HEAD, item.rev)
                     self.scm.set_ref(EXEC_MERGE, stash_rev)
+                    self.scm.set_ref(EXEC_BASELINE, item.baseline_rev)
 
                     # Executor will be initialized with an empty git repo that
                     # we populate by pushing:
-                    #   1. EXEC_HEAD - the base commit for this experiment
-                    #   2. EXEC_MERGE - the unmerged changes (from our stash)
+                    #   EXEC_HEAD - the base commit for this experiment
+                    #   EXEC_MERGE - the unmerged changes (from our stash)
                     #       to be reproduced
-                    #   3. the existing experiment branch (if it exists)
+                    #   EXEC_BASELINE - the baseline commit for this experiment
                     executor = LocalExecutor(
                         self.scm,
                         self.dvc_dir,
@@ -443,6 +450,9 @@ class Experiments:
                         cache_dir=self.repo.cache.local.cache_dir,
                     )
                     executors[item.rev] = executor
+
+                for ref in (EXEC_HEAD, EXEC_MERGE, EXEC_BASELINE):
+                    self.scm.remove_ref(ref)
 
             self.scm.repo.git.reset(hard=True)
             self.scm.repo.git.clean(force=True)
@@ -580,11 +590,13 @@ class Experiments:
             if not (ref.startswith(EXEC_NAMESPACE) or ref == EXPS_STASH):
                 yield ref
 
-    def get_branch_containing(self, rev: str) -> str:
+    def get_branch_containing(
+        self, rev: str, allow_multiple: bool = False
+    ) -> str:
         names = list(self._get_exps_containing(rev))
         if not names:
             return None
-        if len(names) > 1:
+        if len(names) > 1 and not allow_multiple:
             raise MultipleBranchError(rev)
         return names[0]
 

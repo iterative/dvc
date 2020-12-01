@@ -11,6 +11,7 @@ from dvc.dvcfile import is_lock_file
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.repo.experiments.base import (
+    EXEC_BASELINE,
     EXEC_BRANCH,
     EXEC_CHECKPOINT,
     EXEC_HEAD,
@@ -39,21 +40,18 @@ class BaseExecutor:
     """Base class for executing experiments in parallel.
 
     Args:
-        baseline_rev: Baseline revision that this experiment is derived from.
+        src: source SCM instance.
+        dvc_dir: relpath to DVC root from SCM root.
 
     Optional keyword args:
         branch: Existing git branch for this experiment.
-        rev: Git revision to be checked out for this experiment, defaults to
-            branch, baseline_rev in that order.
-        repro_args: Args to be passed into reproduce.
-        repro_kwargs: Keyword args to be passed into reproduce.
     """
 
     PACKED_ARGS_FILE = "repro.dat"
 
     def __init__(
         self,
-        src: SCM,
+        src: "SCM",
         dvc_dir: str,
         root_dir: Optional[Union[str, PathInfo]] = None,
         branch: Optional[str] = None,
@@ -78,6 +76,9 @@ class BaseExecutor:
             if branch:
                 scm.push_refspec(self.git_url, branch, branch)
                 self.scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
+
+            if self.scm.get_ref(EXEC_CHECKPOINT):
+                self.scm.remove_ref(EXEC_CHECKPOINT)
 
             # checkout EXEC_HEAD and apply EXEC_MERGE on top of it without
             # committing
@@ -303,7 +304,7 @@ class BaseExecutor:
             old_ref = rev
             logger.debug("Commit to current experiment branch '%s'", branch)
         else:
-            baseline_rev = scm.get_ref(EXEC_HEAD)
+            baseline_rev = scm.get_ref(EXEC_BASELINE)
             branch = get_exps_refname(scm, baseline_rev, exp_hash)
             old_ref = None
             logger.debug("Commit to new experiment branch '%s'", branch)
