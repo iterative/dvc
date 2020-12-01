@@ -1,7 +1,9 @@
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from dvc.exceptions import DvcException
-from dvc.scm import SCM
+
+if TYPE_CHECKING:
+    from dvc.scm.git import Git
 
 # Experiment refs are stored according baseline git SHA:
 #   refs/exps/01/234abcd.../<exp_name>
@@ -42,11 +44,11 @@ def split_exps_refname(refname):
     return "/".join([refs, namespace]), sha1 + sha2, name
 
 
-def get_exps_refname(scm: SCM, baseline: str, name: Optional[str] = None):
+def get_exps_refname(scm: "Git", baseline: str, name: Optional[str] = None):
     """Return git ref name for the specified experiment.
 
     Args:
-        scm: SCM instance
+        scm: Git SCM instance
         baseline: baseline git commit SHA (or named ref)
         name: experiment name
     """

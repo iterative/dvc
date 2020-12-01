@@ -87,10 +87,14 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             raise SCMError(f"Failed to remove '{name}'")
 
     def iter_refs(self, base: Optional[str] = None):
-        for key in self.repo.refs.keys(base=os.fsencode(base)):
-            if base and base.endswith("/"):
-                base = base[:-1]
-            yield "/".join([base, os.fsdecode(key)])
+        base_b = os.fsencode(base) if base else None
+        for key in self.repo.refs.keys(base=base_b):
+            if base:
+                if base.endswith("/"):
+                    base = base[:-1]
+                yield "/".join([base, os.fsdecode(key)])
+            else:
+                yield os.fsdecode(key)
 
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
         raise NotImplementedError

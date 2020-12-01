@@ -40,7 +40,7 @@ class BaseExecutor:
     """Base class for executing experiments in parallel.
 
     Args:
-        src: source SCM instance.
+        src: source Git SCM instance.
         dvc_dir: relpath to DVC root from SCM root.
 
     Optional keyword args:
@@ -51,7 +51,7 @@ class BaseExecutor:
 
     def __init__(
         self,
-        src: "SCM",
+        src: "Git",
         dvc_dir: str,
         root_dir: Optional[Union[str, PathInfo]] = None,
         branch: Optional[str] = None,
@@ -62,7 +62,7 @@ class BaseExecutor:
         self.root_dir = root_dir
         self._init_git(src, branch)
 
-    def _init_git(self, scm: SCM, branch: Optional[str] = None):
+    def _init_git(self, scm: "Git", branch: Optional[str] = None):
         """Init git repo and collect executor refs from the specified SCM."""
         from dulwich.repo import Repo as DulwichRepo
 
@@ -152,7 +152,7 @@ class BaseExecutor:
 
     def fetch_exps(
         self,
-        dest_scm: SCM,
+        dest_scm: "Git",
         force: bool = False,
         on_diverged_checkpoint: Callable[[str], None] = None,
     ) -> Iterable[str]:
@@ -215,12 +215,9 @@ class BaseExecutor:
 
         try:
             dvc = Repo(dvc_dir)
-            if cwd:
-                old_cwd = os.getcwd()
-            else:
-                cwd = dvc.root_dir
-                old_cwd = None
-            os.chdir(cwd)
+            old_cwd = os.getcwd()
+            new_cwd = cwd if cwd else dvc.root_dir
+            os.chdir(new_cwd)
             logger.debug("Running repro in '%s'", cwd)
 
             args_path = os.path.join(
@@ -246,7 +243,6 @@ class BaseExecutor:
             #   be removed/does not yet exist) so that our executor workspace
             #   is not polluted with the (persistent) out from an unrelated
             #   experiment run
-            exp_hash = None
             dvc.checkout(force=True, quiet=True)
 
             # We cannot use dvc.scm to make commits inside the executor since
@@ -267,7 +263,7 @@ class BaseExecutor:
         except UnchangedExperimentError:
             pass
         finally:
-            if old_cwd is not None:
+            if old_cwd:
                 os.chdir(old_cwd)
 
         # ideally we would return stages here like a normal repro() call, but
@@ -278,7 +274,7 @@ class BaseExecutor:
     @classmethod
     def checkpoint_callback(
         cls,
-        scm: SCM,
+        scm: "Git",
         unchanged: Iterable[PipelineStage],
         stages: Iterable[PipelineStage],
     ):
@@ -291,7 +287,7 @@ class BaseExecutor:
             pass
 
     @classmethod
-    def commit(cls, scm: SCM, exp_hash: str):
+    def commit(cls, scm: "Git", exp_hash: str):
         """Commit stages as an experiment and return the commit SHA."""
         rev = scm.get_rev()
         if not scm.is_dirty(untracked_files=True):
