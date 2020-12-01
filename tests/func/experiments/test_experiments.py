@@ -13,12 +13,13 @@ def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker):
     tmp_dir.gen("params.yaml", "foo: 2")
 
     new_mock = mocker.spy(dvc.experiments, "new")
-    dvc.experiments.run(exp_stage.addressing)
+    results = dvc.experiments.run(exp_stage.addressing)
+    exp = first(results)
 
     new_mock.assert_called_once()
-    assert (
-        tmp_dir / ".dvc" / "experiments" / "metrics.yaml"
-    ).read_text() == "foo: 2"
+    tree = scm.get_tree(exp)
+    with tree.open(tmp_dir / "metrics.yaml") as fobj:
+        assert fobj.read().strip() == "foo: 2"
 
 
 @pytest.mark.skipif(os.name == "nt", reason="Not supported for Windows.")
@@ -34,34 +35,17 @@ def test_file_permissions(tmp_dir, scm, dvc, exp_stage, mocker):
 
 
 def test_failed_exp(tmp_dir, scm, dvc, exp_stage, mocker, caplog):
-    from dvc.stage.exceptions import StageCmdFailedError
+    from dvc.exceptions import ReproductionError
 
     tmp_dir.gen("params.yaml", "foo: 2")
 
     mocker.patch(
-        "dvc.stage.run.cmd_run",
-        side_effect=StageCmdFailedError(exp_stage.cmd, -1),
+        "concurrent.futures.Future.exception",
+        return_value=ReproductionError(exp_stage.relpath),
     )
     with caplog.at_level(logging.ERROR):
         dvc.experiments.run(exp_stage.addressing)
         assert "Failed to reproduce experiment" in caplog.text
-
-
-def test_update_with_pull(tmp_dir, scm, dvc, exp_stage, mocker):
-    expected_revs = [scm.get_rev()]
-
-    tmp_dir.gen("params.yaml", "foo: 2")
-    dvc.experiments.run(exp_stage.addressing)
-    scm.add(["dvc.yaml", "dvc.lock", "params.yaml", "metrics.yaml"])
-    scm.commit("promote experiment")
-    expected_revs.append(scm.get_rev())
-
-    tmp_dir.gen("params.yaml", "foo: 3")
-    dvc.experiments.run(exp_stage.addressing)
-
-    exp_scm = dvc.experiments.scm
-    for rev in expected_revs:
-        assert exp_scm.has_rev(rev)
 
 
 @pytest.mark.parametrize(
@@ -103,16 +87,19 @@ def test_modify_params(tmp_dir, scm, dvc, mocker, changes, expected):
     scm.commit("init")
 
     new_mock = mocker.spy(dvc.experiments, "new")
-    dvc.experiments.run(stage.addressing, params=changes)
+    results = dvc.experiments.run(stage.addressing, params=changes)
+    exp = first(results)
 
     new_mock.assert_called_once()
-    assert (
-        tmp_dir / ".dvc" / "experiments" / "metrics.yaml"
-    ).read_text().strip() == expected
+    tree = scm.get_tree(exp)
+    with tree.open(tmp_dir / "metrics.yaml") as fobj:
+        assert fobj.read().strip() == expected
 
 
 @pytest.mark.parametrize("queue", [True, False])
-def test_checkout(tmp_dir, scm, dvc, exp_stage, queue):
+def test_apply(tmp_dir, scm, dvc, exp_stage, queue):
+    from dvc.exceptions import InvalidArgumentError
+
     metrics_original = (tmp_dir / "metrics.yaml").read_text().strip()
     results = dvc.experiments.run(
         exp_stage.addressing, params=["foo=2"], queue=queue
@@ -124,7 +111,10 @@ def test_checkout(tmp_dir, scm, dvc, exp_stage, queue):
     )
     exp_b = first(results)
 
-    dvc.experiments.checkout(exp_a)
+    with pytest.raises(InvalidArgumentError):
+        dvc.experiments.apply("foo")
+
+    dvc.experiments.apply(exp_a)
     assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 2"
     assert (
         (tmp_dir / "metrics.yaml").read_text().strip() == metrics_original
@@ -132,7 +122,7 @@ def test_checkout(tmp_dir, scm, dvc, exp_stage, queue):
         else "foo: 2"
     )
 
-    dvc.experiments.checkout(exp_b)
+    dvc.experiments.apply(exp_b)
     assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 3"
     assert (
         (tmp_dir / "metrics.yaml").read_text().strip() == metrics_original
@@ -142,6 +132,8 @@ def test_checkout(tmp_dir, scm, dvc, exp_stage, queue):
 
 
 def test_get_baseline(tmp_dir, scm, dvc, exp_stage):
+    from dvc.repo.experiments.base import EXPS_STASH
+
     init_rev = scm.get_rev()
     assert dvc.experiments.get_baseline(init_rev) is None
 
@@ -150,21 +142,22 @@ def test_get_baseline(tmp_dir, scm, dvc, exp_stage):
     assert dvc.experiments.get_baseline(exp_rev) == init_rev
 
     dvc.experiments.run(exp_stage.addressing, params=["foo=3"], queue=True)
-    assert dvc.experiments.get_baseline("stash@{0}") == init_rev
+    assert dvc.experiments.get_baseline(f"{EXPS_STASH}@{{0}}") == init_rev
 
-    dvc.experiments.checkout(exp_rev)
+    dvc.experiments.apply(exp_rev)
     scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
     scm.commit("promote exp")
     promote_rev = scm.get_rev()
+    assert dvc.experiments.get_baseline(promote_rev) is None
 
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=4"])
     exp_rev = first(results)
-    assert dvc.experiments.get_baseline(promote_rev) is None
     assert dvc.experiments.get_baseline(exp_rev) == promote_rev
 
     dvc.experiments.run(exp_stage.addressing, params=["foo=5"], queue=True)
-    assert dvc.experiments.get_baseline("stash@{0}") == promote_rev
-    assert dvc.experiments.get_baseline("stash@{1}") == init_rev
+    assert dvc.experiments.get_baseline(f"{EXPS_STASH}@{{0}}") == promote_rev
+    print("stash 1")
+    assert dvc.experiments.get_baseline(f"{EXPS_STASH}@{{1}}") == init_rev
 
 
 def test_update_py_params(tmp_dir, scm, dvc):
@@ -182,9 +175,11 @@ def test_update_py_params(tmp_dir, scm, dvc):
     results = dvc.experiments.run(stage.addressing, params=["params.py:INT=2"])
     exp_a = first(results)
 
-    dvc.experiments.checkout(exp_a)
-    assert (tmp_dir / "params.py").read_text().strip() == "INT = 2"
-    assert (tmp_dir / "metrics.py").read_text().strip() == "INT = 2"
+    tree = scm.get_tree(exp_a)
+    with tree.open(tmp_dir / "params.py") as fobj:
+        assert fobj.read().strip() == "INT = 2"
+    with tree.open(tmp_dir / "metrics.py") as fobj:
+        assert fobj.read().strip() == "INT = 2"
 
     tmp_dir.gen(
         "params.py",
@@ -213,9 +208,11 @@ def test_update_py_params(tmp_dir, scm, dvc):
         "class Klass:\n    def __init__(self):\n        self.a = 222"
     )
 
-    dvc.experiments.checkout(exp_a)
-    assert (tmp_dir / "params.py").read_text().strip() == result
-    assert (tmp_dir / "metrics.py").read_text().strip() == result
+    tree = scm.get_tree(exp_a)
+    with tree.open(tmp_dir / "params.py") as fobj:
+        assert fobj.read().strip() == result
+    with tree.open(tmp_dir / "metrics.py") as fobj:
+        assert fobj.read().strip() == result
 
     tmp_dir.gen("params.py", "INT = 1\n")
     stage = dvc.run(
@@ -229,31 +226,6 @@ def test_update_py_params(tmp_dir, scm, dvc):
 
     with pytest.raises(PythonFileCorruptedError):
         dvc.experiments.run(stage.addressing, params=["params.py:INT=2a"])
-
-
-def test_extend_branch(tmp_dir, scm, dvc, exp_stage):
-    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
-    exp_a = first(results)
-    exp_branch = dvc.experiments._get_branch_containing(exp_a)
-
-    results = dvc.experiments.run(
-        exp_stage.addressing,
-        params=["foo=3"],
-        branch=exp_branch,
-        apply_workspace=False,
-    )
-    exp_b = first(results)
-
-    assert exp_a != exp_b
-    assert dvc.experiments._get_branch_containing(exp_b) == exp_branch
-
-    dvc.experiments.checkout(exp_a)
-    assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 2"
-    assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 2"
-
-    dvc.experiments.checkout(exp_b)
-    assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 3"
-    assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 3"
 
 
 def test_detached_parent(tmp_dir, scm, dvc, exp_stage, mocker):
@@ -270,5 +242,6 @@ def test_detached_parent(tmp_dir, scm, dvc, exp_stage, mocker):
 
     exp_rev = first(results)
     assert dvc.experiments.get_baseline(exp_rev) == detached_rev
+
+    dvc.experiments.apply(exp_rev)
     assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 3"
-    assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 3"

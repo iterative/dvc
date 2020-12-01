@@ -2,6 +2,7 @@ import pytest
 
 from dvc.cli import parse_args
 from dvc.command.experiments import (
+    CmdExperimentsApply,
     CmdExperimentsDiff,
     CmdExperimentsGC,
     CmdExperimentsRun,
@@ -11,6 +12,18 @@ from dvc.dvcfile import PIPELINE_FILE
 from dvc.exceptions import InvalidArgumentError
 
 from .test_repro import default_arguments as repro_arguments
+
+
+def test_experiments_apply(dvc, mocker):
+    cli_args = parse_args(["experiments", "apply", "exp_rev"])
+    assert cli_args.func == CmdExperimentsApply
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch("dvc.repo.experiments.apply.apply", return_value={})
+
+    assert cmd.run() == 0
+
+    m.assert_called_once_with(cmd.repo, "exp_rev")
 
 
 def test_experiments_diff(dvc, mocker):
