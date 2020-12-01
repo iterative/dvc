@@ -161,6 +161,7 @@ def compute_md5(stage):
     # Remove md5 and meta, these should not affect stage md5
     d.pop(stage.PARAM_MD5, None)
     d.pop(stage.PARAM_META, None)
+    d.pop(stage.PARAM_DESC, None)
 
     # Ignore the wdir default value. In this case DVC-file w/o
     # wdir has the same md5 as a file with the default value specified.
@@ -174,6 +175,7 @@ def compute_md5(stage):
         exclude=[
             stage.PARAM_LOCKED,  # backward compatibility
             stage.PARAM_FROZEN,
+            BaseOutput.PARAM_DESC,
             BaseOutput.PARAM_METRIC,
             BaseOutput.PARAM_PERSIST,
             BaseOutput.PARAM_CHECKPOINT,

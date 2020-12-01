@@ -1009,6 +1009,7 @@ def test_run_force_preserves_comments_and_meta(tmp_dir, dvc, run_copy):
     tmp_dir.gen({"foo": "foo", "foo1": "foo1"})
     text = textwrap.dedent(
         """\
+      desc: top desc
       cmd: python copy.py foo bar
       deps:
       - path: copy.py
@@ -1016,16 +1017,58 @@ def test_run_force_preserves_comments_and_meta(tmp_dir, dvc, run_copy):
       outs:
       # comment preserved
       - path: bar
+        desc: out desc
       meta:
         name: copy-foo-bar
     """
     )
     (tmp_dir / "bar.dvc").write_text(text)
     dvc.reproduce("bar.dvc")
-    assert "comment" in (tmp_dir / "bar.dvc").read_text()
-    assert "meta" in (tmp_dir / "bar.dvc").read_text()
+
+    # CRLF on windows makes the generated file bigger in size
+    code_size = 143 if os.name == "nt" else 142
+    assert (tmp_dir / "bar.dvc").read_text() == textwrap.dedent(
+        f"""\
+        desc: top desc
+        cmd: python copy.py foo bar
+        deps:
+        - path: copy.py
+          md5: 90c27dd80b698fe766f0c3ee0b6b9729
+          size: {code_size}
+        - path: foo
+          md5: acbd18db4cc2f85cedef654fccc4a4d8
+          size: 3
+        outs:
+        # comment preserved
+        - path: bar
+          desc: out desc
+          md5: acbd18db4cc2f85cedef654fccc4a4d8
+          size: 3
+        meta:
+          name: copy-foo-bar
+        md5: be659ce4a33cebb85d4e8e1335d394ad
+    """
+    )
 
     run_copy("foo1", "bar1", single_stage=True, force=True, fname="bar.dvc")
-
-    assert "comment" in (tmp_dir / "bar.dvc").read_text()
-    assert "meta" in (tmp_dir / "bar.dvc").read_text()
+    assert (tmp_dir / "bar.dvc").read_text() == textwrap.dedent(
+        f"""\
+        desc: top desc
+        cmd: python copy.py foo1 bar1
+        deps:
+        - path: foo1
+          md5: 299a0be4a5a79e6a59fdd251b19d78bb
+          size: 4
+        - path: copy.py
+          md5: 90c27dd80b698fe766f0c3ee0b6b9729
+          size: {code_size}
+        outs:
+        # comment preserved
+        - path: bar1
+          md5: 299a0be4a5a79e6a59fdd251b19d78bb
+          size: 4
+        meta:
+          name: copy-foo-bar
+        md5: 9e725b11cb393e6a7468369fa50328b7
+    """
+    )

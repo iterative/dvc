@@ -107,6 +107,12 @@ def restore_meta(stage):
     stage._stage_text = old._stage_text
 
     stage.meta = old.meta
+    stage.desc = old.desc
+
+    old_desc = {out.def_path: out.desc for out in old.outs}
+
+    for out in stage.outs:
+        out.desc = old_desc.get(out.def_path, None)
 
 
 class Stage(params.StageParams):
