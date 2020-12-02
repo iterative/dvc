@@ -19,7 +19,23 @@ class _BasePath:
         return self.isin_or_eq(other) or other.isin(self)
 
     def isin_or_eq(self, other):
+        if isinstance(other, list):
+            others = other
+
+            for other in others:
+                if self.isin_or_eq(other):
+                    return True
+
+            return False
+
         return self == other or self.isin(other)  # pylint: disable=no-member
+
+    def isinside(self, others):
+        for other in others:
+            if other.isin(self):
+                return True
+
+        return False
 
 
 class PathInfo(pathlib.PurePath, _BasePath):

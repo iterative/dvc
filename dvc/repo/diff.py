@@ -2,7 +2,6 @@ import logging
 import os
 
 from dvc.exceptions import PathMissingError
-from dvc.path_info import PathInfo
 from dvc.repo import locked
 from dvc.tree.local import LocalTree
 from dvc.tree.repo import RepoTree
@@ -25,18 +24,35 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
 
     b_rev = b_rev if b_rev else "workspace"
     results = {}
+    missing_targets = {}
     for rev in self.brancher(revs=[a_rev, b_rev]):
         if rev == "workspace" and rev != b_rev:
             # brancher always returns workspace, but we only need to compute
             # workspace paths/checksums if b_rev was None
             continue
-        results[rev] = _paths_checksums(self)
+
+        targets_path_infos = None
+        if targets is not None:
+            # convert targets to path_infos, and capture any missing targets
+            targets_path_infos, missing_targets[rev] = _targets_to_path_infos(
+                self, targets
+            )
+
+        results[rev] = _paths_checksums(self, targets_path_infos)
+
+    if targets is not None:
+        # check for overlapping missing targets between a_rev and b_rev
+        missing_targets = list(
+            set(missing_targets[a_rev]) & set(missing_targets[b_rev])
+        )
+
+        if len(missing_targets):
+            # invalid targets supplied, raise error
+            for missing_target in missing_targets:
+                raise PathMissingError(missing_target, self)
 
     old = results[a_rev]
     new = results[b_rev]
-
-    if targets is not None and len(targets):
-        old, new = _filter_diff_targets(self, targets, old, new)
 
     # Compare paths between the old and new tree.
     # set() efficiently converts dict keys to a set
@@ -67,7 +83,7 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
     return ret if any(ret.values()) else {}
 
 
-def _paths_checksums(repo):
+def _paths_checksums(repo, targets):
     """
     A dictionary of checksums addressed by relpaths collected from
     the current tree outputs.
@@ -79,12 +95,13 @@ def _paths_checksums(repo):
         file:      "data"
     """
 
-    return dict(_output_paths(repo))
+    return dict(_output_paths(repo, targets))
 
 
-def _output_paths(repo):
+def _output_paths(repo, targets):
     repo_tree = RepoTree(repo, stream=True)
     on_working_tree = isinstance(repo.tree, LocalTree)
+    no_targets = targets is None
 
     def _exists(output):
         if on_working_tree:
@@ -106,17 +123,25 @@ def _output_paths(repo):
     for stage in repo.stages:
         for output in stage.outs:
             if _exists(output):
-                yield _to_path(output), _to_checksum(output)
-                if output.is_dir_checksum:
-                    yield from _dir_output_paths(repo_tree, output)
+                yield_output = no_targets or output.path_info.isin_or_eq(
+                    targets
+                )
+                if yield_output:
+                    yield _to_path(output), _to_checksum(output)
+
+                if output.is_dir_checksum and (
+                    yield_output or output.path_info.isinside(targets)
+                ):
+                    yield from _dir_output_paths(repo_tree, output, targets)
 
 
-def _dir_output_paths(repo_tree, output):
+def _dir_output_paths(repo_tree, output, targets=None):
     from dvc.config import NoRemoteError
 
     try:
         for fname in repo_tree.walk_files(output.path_info):
-            yield str(fname), repo_tree.get_file_hash(fname).value
+            if targets is None or fname.isin_or_eq(targets):
+                yield str(fname), repo_tree.get_file_hash(fname).value
     except NoRemoteError:
         logger.warning("dir cache entry for '%s' is missing", output)
 
@@ -131,31 +156,16 @@ def _filter_missing(repo, paths):
                 yield path
 
 
-def _filter_diff_targets(repo, targets, old, new):
-    filtered_old = {}
-    filtered_new = {}
+def _targets_to_path_infos(repo, targets):
+    path_infos = []
+    missing = []
 
-    for target_path in targets:
-        target_path_info = PathInfo(target_path)
-        target_not_path_found = True
+    repo_tree = RepoTree(repo, stream=True)
 
-        # filter out targets in old
-        for old_path, old_hash in old.items():
-            old_path_info = PathInfo(old_path)
+    for target in targets:
+        if repo_tree.exists(target):
+            path_infos.append(repo_tree.metadata(target).path_info)
+        else:
+            missing.append(target)
 
-            if old_path_info.isin_or_eq(target_path_info):
-                filtered_old[old_path] = old_hash
-                target_not_path_found = False
-
-        # filter out targets in new
-        for new_path, new_hash in new.items():
-            new_path_info = PathInfo(new_path)
-
-            if new_path_info.isin_or_eq(target_path_info):
-                filtered_new[new_path] = new_hash
-                target_not_path_found = False
-
-        if target_not_path_found:
-            raise PathMissingError(target_path, repo)
-
-    return filtered_old, filtered_new
+    return path_infos, missing
