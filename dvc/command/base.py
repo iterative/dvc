@@ -50,7 +50,7 @@ class CmdBase(ABC):
         """Default targets for `dvc repro`."""
         from dvc.dvcfile import PIPELINE_FILE
 
-        logger.debug(f"assuming default target '{PIPELINE_FILE}'.")
+        logger.trace(f"assuming default target '{PIPELINE_FILE}'.")
         return [PIPELINE_FILE]
 
     @abstractmethod
