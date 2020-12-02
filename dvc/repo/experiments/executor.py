@@ -127,7 +127,8 @@ class BaseExecutor:
         return dict_sha256(exp_data)
 
     def cleanup(self):
-        pass
+        self.scm.close()
+        del self.scm
 
     # TODO: come up with better way to stash repro arguments
     @staticmethod
@@ -273,6 +274,9 @@ class BaseExecutor:
         except UnchangedExperimentError:
             pass
         finally:
+            if scm:
+                scm.close()
+                del scm
             if old_cwd:
                 os.chdir(old_cwd)
 
@@ -357,6 +361,6 @@ class LocalExecutor(BaseExecutor):
         return f"file://{root_dir}"
 
     def cleanup(self):
+        super().cleanup()
         logger.debug("Removing tmpdir '%s'", self._tmp_dir)
         self._tmp_dir.cleanup()
-        super().cleanup()
