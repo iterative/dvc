@@ -226,9 +226,107 @@ def test_metrics_show_with_valid_falsey_values():
         all_branches=True,
     ) == textwrap.dedent(
         """\
-        branch_1:
-        \tmetrics.json:
-        \t\ta: 0
-        \t\tb.ad: 0.0
-        \t\tb.bc: 0.0"""
+        Revision    Path          a    b.ad    b.bc
+        branch_1    metrics.json  0    0.0     0.0"""
+    )
+
+
+def test_metrics_show_with_no_revision():
+    assert _show_metrics(
+        {"branch_1": {"metrics.json": {"a": 0, "b": {"ad": 0.0, "bc": 0.0}}}},
+        all_branches=False,
+    ) == textwrap.dedent(
+        """\
+        Path          a    b.ad    b.bc
+        metrics.json  0    0.0     0.0"""
+    )
+
+
+def test_metrics_show_with_non_dict_values():
+    assert _show_metrics(
+        {"branch_1": {"metrics.json": 1}}, all_branches=True,
+    ) == textwrap.dedent(
+        """\
+        Revision    Path
+        branch_1    metrics.json  1"""
+    )
+
+
+def test_metrics_show_with_multiple_revision():
+    assert _show_metrics(
+        {
+            "branch_1": {"metrics.json": {"a": 1, "b": {"ad": 1, "bc": 2}}},
+            "branch_2": {"metrics.json": {"a": 1, "b": {"ad": 3, "bc": 4}}},
+        },
+        all_branches=True,
+    ) == textwrap.dedent(
+        """\
+        Revision    Path          a    b.ad    b.bc
+        branch_1    metrics.json  1    1       2
+        branch_2    metrics.json  1    3       4"""
+    )
+
+
+def test_metrics_show_with_one_revision_multiple_paths():
+    assert _show_metrics(
+        {
+            "branch_1": {
+                "metrics.json": {"a": 1, "b": {"ad": 0.1, "bc": 1.03}},
+                "metrics_1.json": {"a": 2.3, "b": {"ad": 6.5, "bc": 7.9}},
+            }
+        },
+        all_branches=True,
+    ) == textwrap.dedent(
+        """\
+        Revision    Path            a    b.ad    b.bc
+        branch_1    metrics.json    1    0.1     1.03
+        branch_1    metrics_1.json  2.3  6.5     7.9"""
+    )
+
+
+def test_metrics_show_with_different_metrics_header():
+    assert _show_metrics(
+        {
+            "branch_1": {"metrics.json": {"b": {"ad": 1, "bc": 2}, "c": 4}},
+            "branch_2": {"metrics.json": {"a": 1, "b": {"ad": 3, "bc": 4}}},
+        },
+        all_branches=True,
+    ) == textwrap.dedent(
+        """\
+        Revision    Path          a    b.ad    b.bc    c
+        branch_1    metrics.json  —    1       2       4
+        branch_2    metrics.json  1    3       4       —"""
+    )
+
+
+def test_metrics_show_precision():
+    metrics = {
+        "branch_1": {
+            "metrics.json": {
+                "a": 1.098765366365355,
+                "b": {"ad": 1.5342673, "bc": 2.987725527},
+            }
+        }
+    }
+
+    assert _show_metrics(metrics, all_branches=True,) == textwrap.dedent(
+        """\
+        Revision    Path          a        b.ad     b.bc
+        branch_1    metrics.json  1.09877  1.53427  2.98773"""
+    )
+
+    assert _show_metrics(
+        metrics, all_branches=True, precision=4
+    ) == textwrap.dedent(
+        """\
+        Revision    Path          a       b.ad    b.bc
+        branch_1    metrics.json  1.0988  1.5343  2.9877"""
+    )
+
+    assert _show_metrics(
+        metrics, all_branches=True, precision=7
+    ) == textwrap.dedent(
+        """\
+        Revision    Path          a          b.ad       b.bc
+        branch_1    metrics.json  1.0987654  1.5342673  2.9877255"""
     )

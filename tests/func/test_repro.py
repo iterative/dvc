@@ -982,7 +982,7 @@ class TestShouldDisplayMetricsOnReproWithMetricsOption(TestDvc):
         )
         self.assertEqual(0, ret)
 
-        expected_metrics_display = f"{metrics_file}: {metrics_value}"
+        expected_metrics_display = f"Path\n{metrics_file}  {metrics_value}\n"
         self.assertIn(expected_metrics_display, self._caplog.text)
 
 
