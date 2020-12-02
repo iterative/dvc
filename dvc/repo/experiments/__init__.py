@@ -455,6 +455,7 @@ class Experiments:
                     executor = LocalExecutor(
                         self.scm,
                         self.dvc_dir,
+                        name=item.name,
                         branch=item.branch,
                         cache_dir=self.repo.cache.local.cache_dir,
                     )
@@ -482,7 +483,11 @@ class Experiments:
             futures = {}
             for rev, executor in executors.items():
                 future = workers.submit(
-                    executor.reproduce, executor.dvc_dir, pid_q, rev,
+                    executor.reproduce,
+                    executor.dvc_dir,
+                    pid_q,
+                    rev,
+                    name=executor.name,
                 )
                 futures[future] = (rev, executor)
 

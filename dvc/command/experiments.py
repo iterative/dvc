@@ -462,6 +462,7 @@ class CmdExperimentsRun(CmdRepro):
             try:
                 self.repo.experiments.run(
                     target,
+                    name=self.args.name,
                     queue=self.args.queue,
                     run_all=self.args.run_all,
                     jobs=self.args.jobs,
@@ -837,6 +838,15 @@ def _add_run_common(parser):
     """Add common args for 'exp run' and 'exp resume'."""
     # inherit arguments from `dvc repro`
     add_repro_arguments(parser)
+    parser.add_argument(
+        "-n",
+        "--name",
+        default=None,
+        help=(
+            "Human-readable experiment name. If not specified, a name will "
+            "be auto-generated."
+        ),
+    )
     parser.add_argument(
         "--params",
         action="append",
