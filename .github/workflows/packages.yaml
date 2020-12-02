@@ -119,18 +119,11 @@ jobs:
       with:
         store_login: ${{ secrets.STORE_LOGIN }}
         snap: ${{ steps.snapcraft.outputs.snap }}
-        release: edge
+        release: edge,v1/edge
     - name: Publish to the stable channel
       uses: snapcore/action-publish@v1
       if: github.event_name == 'release'
       with:
         store_login: ${{ secrets.STORE_LOGIN }}
         snap: ${{ steps.snapcraft.outputs.snap }}
-        release: stable
-    - name: Publish to the v1/stable channel
-      uses: snapcore/action-publish@v1
-      if: github.event_name == 'release'
-      with:
-        store_login: ${{ secrets.STORE_LOGIN }}
-        snap: ${{ steps.snapcraft.outputs.snap }}
-        release: v1/stable
+        release: stable,v1/stable
