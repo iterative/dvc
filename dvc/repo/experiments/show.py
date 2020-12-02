@@ -3,7 +3,7 @@ from collections import OrderedDict, defaultdict
 from datetime import datetime
 
 from dvc.repo import locked
-from dvc.repo.experiments.base import EXPS_NAMESPACE, split_exps_refname
+from dvc.repo.experiments.base import ExpRefInfo
 from dvc.repo.metrics.show import _collect_metrics, _read_metrics
 from dvc.repo.params.show import _collect_configs, _read_params
 
@@ -11,8 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 def _collect_experiment_commit(repo, rev, stash=False, sha_only=True):
-    from git.exc import GitCommandError
-
     res = defaultdict(dict)
     for rev in repo.brancher(revs=[rev]):
         if rev == "workspace":
@@ -33,15 +31,18 @@ def _collect_experiment_commit(repo, rev, stash=False, sha_only=True):
             res["metrics"] = vals
 
         if not sha_only and rev != "workspace":
-            try:
-                exclude = f"{EXPS_NAMESPACE}/*"
-                name = repo.scm.repo.git.describe(
-                    rev, all=True, exact_match=True, exclude=exclude
-                )
+            for refspec in ["refs/tags", "refs/heads"]:
+                name = repo.scm.describe(rev, base=refspec)
+                if name:
+                    break
+            if not name:
+                if stash:
+                    pass
+                else:
+                    name = repo.experiments.get_exact_name(rev)
+            if name:
                 name = name.rsplit("/")[-1]
                 res["name"] = name
-            except GitCommandError:
-                pass
 
     return res
 
@@ -103,17 +104,19 @@ def show(
         if rev == "workspace":
             continue
 
-        base_path = repo.experiments.get_refname(rev)
+        ref_info = ExpRefInfo(baseline_sha=rev)
         commits = [
             (ref, repo.scm.resolve_commit(ref))
-            for ref in repo.scm.iter_refs(base_path)
+            for ref in repo.scm.iter_refs(base=str(ref_info))
         ]
         for exp_ref, _ in sorted(
             commits, key=lambda x: x[1].committed_date, reverse=True,
         ):
-            _, sha, _exp_branch = split_exps_refname(exp_ref)
-            assert sha == rev
-            _collect_experiment_branch(res[rev], repo, exp_ref, rev)
+            ref_info = ExpRefInfo.from_ref(exp_ref)
+            assert ref_info.baseline_sha == rev
+            _collect_experiment_branch(
+                res[rev], repo, exp_ref, rev, sha_only=sha_only
+            )
 
     # collect queued (not yet reproduced) experiments
     for stash_rev, entry in repo.experiments.stash_revs.items():

@@ -6,7 +6,7 @@ from dvc.repo.experiments.base import (
     EXEC_NAMESPACE,
     EXPS_NAMESPACE,
     EXPS_STASH,
-    split_exps_refname,
+    ExpRefInfo,
 )
 
 logger = logging.getLogger(__name__)
@@ -39,8 +39,8 @@ def gc(
     for ref in repo.scm.iter_refs(EXPS_NAMESPACE):
         if ref.startswith(EXEC_NAMESPACE) or ref == EXPS_STASH:
             continue
-        _, sha, _ = split_exps_refname(ref)
-        if sha not in keep_revs:
+        ref_info = ExpRefInfo.from_ref(ref)
+        if ref_info.baseline_sha not in keep_revs:
             repo.scm.remove_ref(ref)
             removed += 1
 

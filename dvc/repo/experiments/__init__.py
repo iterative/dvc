@@ -22,8 +22,9 @@ from dvc.repo.experiments.base import (
     EXPS_NAMESPACE,
     EXPS_STASH,
     CheckpointExistsError,
-    get_exps_refname,
-    split_exps_refname,
+    ExperimentExistsError,
+    ExpRefInfo,
+    InvalidExpRefError,
 )
 from dvc.repo.experiments.executor import BaseExecutor, LocalExecutor
 from dvc.stage.run import CheckpointKilledError
@@ -72,10 +73,11 @@ class Experiments:
     """
 
     EXPERIMENTS_DIR = "experiments"
-    STASH_EXPERIMENT_FORMAT = "dvc-exp:{rev}:{baseline_rev}"
+    STASH_EXPERIMENT_FORMAT = "dvc-exp:{rev}:{baseline_rev}:{name}"
     STASH_EXPERIMENT_RE = re.compile(
         r"(?:commit: )"
         r"dvc-exp:(?P<rev>[0-9a-f]+):(?P<baseline_rev>[0-9a-f]+)"
+        r":(?P<name>[^~^:\\?\[\]*]*)"
         r"(:(?P<branch>.+))?$"
     )
     BRANCH_RE = re.compile(
@@ -85,7 +87,7 @@ class Experiments:
     LAST_CHECKPOINT = ":last"
 
     StashEntry = namedtuple(
-        "StashEntry", ["index", "rev", "baseline_rev", "branch"]
+        "StashEntry", ["index", "rev", "baseline_rev", "branch", "name"]
     )
 
     def __init__(self, repo):
@@ -151,17 +153,9 @@ class Experiments:
                     m.group("rev"),
                     m.group("baseline_rev"),
                     m.group("branch"),
+                    m.group("name"),
                 )
         return revs
-
-    def get_refname(self, baseline: str, name: Optional[str] = None):
-        """Return git ref name for the specified experiment.
-
-        Args:
-            baseline: baseline git commit SHA (or named ref)
-            name: experiment name
-        """
-        return get_exps_refname(self.scm, baseline, name=name)
 
     def _stash_exp(
         self,
@@ -170,6 +164,7 @@ class Experiments:
         detach_rev: Optional[str] = None,
         baseline_rev: Optional[str] = None,
         branch: Optional[str] = None,
+        name: Optional[str] = None,
         **kwargs,
     ):
         """Stash changes from the workspace as an experiment.
@@ -183,6 +178,9 @@ class Experiments:
             branch: Optional experiment branch name. If specified, the
                 experiment will be added to `branch` instead of creating
                 a new branch.
+            name: Optional experiment name. If specified this will be used as
+                the human-readable name in the experiment branch ref. Has no
+                effect of branch is specified.
         """
         with self.scm.stash_workspace(include_untracked=True) as workspace:
             # If we are not extending an existing branch, apply current
@@ -210,7 +208,7 @@ class Experiments:
 
                 # save experiment as a stash commit
                 msg = self._stash_msg(
-                    rev, baseline_rev=baseline_rev, branch=branch
+                    rev, baseline_rev=baseline_rev, branch=branch, name=name
                 )
                 stash_rev = self.stash.push(message=msg)
 
@@ -230,12 +228,16 @@ class Experiments:
         return stash_rev
 
     def _stash_msg(
-        self, rev: str, baseline_rev: str, branch: Optional[str] = None
+        self,
+        rev: str,
+        baseline_rev: str,
+        branch: Optional[str] = None,
+        name: Optional[str] = None,
     ):
         if not baseline_rev:
             baseline_rev = rev
         msg = self.STASH_EXPERIMENT_FORMAT.format(
-            rev=rev, baseline_rev=baseline_rev
+            rev=rev, baseline_rev=baseline_rev, name=name if name else ""
         )
         if branch:
             return f"{msg}:{branch}"
@@ -277,21 +279,28 @@ class Experiments:
         results = self.reproduce([stash_rev], keep_stash=False)
         exp_rev = first(results)
         if exp_rev is not None:
-            # TODO: suggest branch/apply
-            pass
+            self._log_reproduced(results)
         return results
 
     def reproduce_queued(self, **kwargs):
         results = self.reproduce(**kwargs)
         if results:
-            revs = [f"{rev[:7]}" for rev in results]
-            logger.info(
-                "Successfully reproduced experiment(s) '%s'.\n"
-                "Use `dvc exp checkout <exp_rev>` to apply the results of "
-                "a specific experiment to your workspace.",
-                ", ".join(revs),
-            )
+            self._log_reproduced(results)
         return results
+
+    def _log_reproduced(self, revs: Iterable[str]):
+        names = []
+        for rev in revs:
+            name = self.get_exact_name(rev)
+            names.append(name if name else rev[:7])
+        msg = (
+            "\nReproduced experiment(s): {}\n"
+            "To promote an experiment to a Git branch run:\n\n"
+            "\tdvc exp branch <exp>\n\n"
+            "To apply the results of an experiment to your workspace run:\n\n"
+            "\tdvc exp apply <exp>"
+        ).format(", ".join(names))
+        logger.info(msg)
 
     @scm_locked
     def new(
@@ -392,7 +401,7 @@ class Experiments:
             to_run = {
                 rev: stash_revs[rev]
                 if rev in stash_revs
-                else self.StashEntry(None, rev, rev, None)
+                else self.StashEntry(None, rev, rev, None, None)
                 for rev in revs
             }
 
@@ -533,18 +542,18 @@ class Experiments:
 
         results = {}
 
-        def on_diverged_checkpoint(ref: str):
-            orig_rev = self.scm.get_ref(ref)
-            raise CheckpointExistsError(orig_rev, orig_rev)
+        def on_diverged(ref: str, checkpoint: bool):
+            ref_info = ExpRefInfo.from_ref(ref)
+            if checkpoint:
+                raise CheckpointExistsError(ref_info.name)
+            raise ExperimentExistsError(ref_info.name)
 
         for ref in executor.fetch_exps(
-            self.scm,
-            force=force,
-            on_diverged_checkpoint=on_diverged_checkpoint,
+            self.scm, force=force, on_diverged=on_diverged,
         ):
             exp_rev = self.scm.get_ref(ref)
             if exp_rev:
-                logger.info("Reproduced experiment '%s'.", exp_rev[:7])
+                logger.debug("Collected experiment '%s'.", exp_rev[:7])
                 results[exp_rev] = exp_hash
 
         return results
@@ -580,9 +589,9 @@ class Experiments:
         if not ref:
             return None
         try:
-            _, sha, _ = split_exps_refname(ref)
-            return sha
-        except ValueError:
+            ref_info = ExpRefInfo.from_ref(ref)
+            return ref_info.baseline_sha
+        except InvalidExpRefError:
             return None
 
     def _get_exps_containing(self, rev):
@@ -599,6 +608,13 @@ class Experiments:
         if len(names) > 1 and not allow_multiple:
             raise MultipleBranchError(rev)
         return names[0]
+
+    def get_exact_name(self, rev: str):
+        exclude = f"{EXEC_NAMESPACE}/*"
+        ref = self.scm.describe(rev, base=EXPS_NAMESPACE, exclude=exclude)
+        if ref:
+            return ExpRefInfo.from_ref(ref).name
+        return None
 
     def apply(self, *args, **kwargs):
         from dvc.repo.experiments.apply import apply

@@ -19,9 +19,8 @@ from dvc.repo.experiments.base import (
     EXEC_NAMESPACE,
     EXPS_NAMESPACE,
     EXPS_STASH,
+    ExpRefInfo,
     UnchangedExperimentError,
-    get_exps_refname,
-    split_exps_refname,
 )
 from dvc.scm import SCM
 from dvc.scm.git import Git
@@ -55,12 +54,14 @@ class BaseExecutor:
         dvc_dir: str,
         root_dir: Optional[Union[str, PathInfo]] = None,
         branch: Optional[str] = None,
+        name: Optional[str] = None,
         **kwargs,
     ):
         assert root_dir is not None
         self._dvc_dir = dvc_dir
         self.root_dir = root_dir
         self._init_git(src, branch)
+        self.name = name
 
     def _init_git(self, scm: "Git", branch: Optional[str] = None):
         """Init git repo and collect executor refs from the specified SCM."""
@@ -154,7 +155,7 @@ class BaseExecutor:
         self,
         dest_scm: "Git",
         force: bool = False,
-        on_diverged_checkpoint: Callable[[str], None] = None,
+        on_diverged: Callable[[str], None] = None,
     ) -> Iterable[str]:
         """Fetch reproduced experiments into the specified SCM."""
         refs = []
@@ -162,14 +163,18 @@ class BaseExecutor:
             if not ref.startswith(EXEC_NAMESPACE) and ref != EXPS_STASH:
                 refs.append(ref)
 
-        def on_diverged(orig_ref, _new_ref):
-            if force:
-                logger.debug(
-                    "Replacing existing experiment '%s'", os.fsdecode(orig_ref)
-                )
-                return True
-            if self.scm.get_ref(EXEC_CHECKPOINT) and on_diverged_checkpoint:
-                on_diverged_checkpoint(orig_ref)
+        def on_diverged_ref(orig_ref, new_rev):
+            orig_rev = dest_scm.get_ref(orig_ref)
+            if dest_scm.diff(orig_rev, new_rev):
+                if force:
+                    logger.debug(
+                        "Replacing existing experiment '%s'",
+                        os.fsdecode(orig_ref),
+                    )
+                    return True
+                if on_diverged:
+                    checkpoint = self.scm.get_ref(EXEC_CHECKPOINT) is not None
+                    on_diverged(orig_ref, checkpoint)
             logger.debug(
                 "Reproduced existing experiment '%s'", os.fsdecode(orig_ref)
             )
@@ -179,7 +184,7 @@ class BaseExecutor:
         dest_scm.fetch_refspecs(
             self.git_url,
             [f"{ref}:{ref}" for ref in refs],
-            on_diverged=on_diverged,
+            on_diverged=on_diverged_ref,
             force=force,
         )
         # update last run checkpoint (if it exists)
@@ -193,7 +198,12 @@ class BaseExecutor:
 
     @classmethod
     def reproduce(
-        cls, dvc_dir: str, queue: "Queue", rev: str, cwd: Optional[str] = None
+        cls,
+        dvc_dir: str,
+        queue: "Queue",
+        rev: str,
+        cwd: Optional[str] = None,
+        name: Optional[str] = None,
     ) -> Tuple[bool, Optional[str]]:
         """Run dvc repro and return the result.
 
@@ -248,7 +258,7 @@ class BaseExecutor:
             # We cannot use dvc.scm to make commits inside the executor since
             # cached props are not picklable.
             scm = Git()
-            checkpoint_func = partial(cls.checkpoint_callback, scm)
+            checkpoint_func = partial(cls.checkpoint_callback, scm, name)
             stages = dvc.reproduce(
                 *args,
                 on_unchanged=filter_pipeline,
@@ -257,7 +267,7 @@ class BaseExecutor:
             )
 
             exp_hash = cls.hash_exp(stages)
-            exp_rev = cls.commit(scm, exp_hash)
+            exp_rev = cls.commit(scm, exp_hash, exp_name=name)
             if scm.get_ref(EXEC_CHECKPOINT):
                 scm.set_ref(EXEC_CHECKPOINT, exp_rev)
         except UnchangedExperimentError:
@@ -275,19 +285,20 @@ class BaseExecutor:
     def checkpoint_callback(
         cls,
         scm: "Git",
+        name: Optional[str],
         unchanged: Iterable[PipelineStage],
         stages: Iterable[PipelineStage],
     ):
         try:
             exp_hash = cls.hash_exp(stages + unchanged)
-            exp_rev = cls.commit(scm, exp_hash)
+            exp_rev = cls.commit(scm, exp_hash, exp_name=name)
             scm.set_ref(EXEC_CHECKPOINT, exp_rev)
             logger.info("Checkpoint experiment iteration '%s'.", exp_rev[:7])
         except UnchangedExperimentError:
             pass
 
     @classmethod
-    def commit(cls, scm: "Git", exp_hash: str):
+    def commit(cls, scm: "Git", exp_hash: str, exp_name: Optional[str] = None):
         """Commit stages as an experiment and return the commit SHA."""
         rev = scm.get_rev()
         if not scm.is_dirty(untracked_files=True):
@@ -296,12 +307,12 @@ class BaseExecutor:
 
         branch = scm.get_ref(EXEC_BRANCH, follow=False)
         if branch:
-            _, baseline_rev, _ = split_exps_refname(branch)
             old_ref = rev
             logger.debug("Commit to current experiment branch '%s'", branch)
         else:
             baseline_rev = scm.get_ref(EXEC_BASELINE)
-            branch = get_exps_refname(scm, baseline_rev, exp_hash)
+            name = exp_name if exp_name else f"exp-{exp_hash[:5]}"
+            branch = str(ExpRefInfo(baseline_rev, name))
             old_ref = None
             logger.debug("Commit to new experiment branch '%s'", branch)
 

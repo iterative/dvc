@@ -1,9 +1,6 @@
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 from dvc.exceptions import DvcException
-
-if TYPE_CHECKING:
-    from dvc.scm.git import Git
 
 # Experiment refs are stored according baseline git SHA:
 #   refs/exps/01/234abcd.../<exp_name>
@@ -19,41 +16,81 @@ EXEC_MERGE = f"{EXEC_NAMESPACE}/EXEC_MERGE"
 
 class UnchangedExperimentError(DvcException):
     def __init__(self, rev):
-        super().__init__(f"Experiment identical to baseline '{rev[:7]}'.")
+        super().__init__(f"Experiment unchanged from '{rev[:7]}'.")
         self.rev = rev
+
+
+class ExperimentExistsError(DvcException):
+    def __init__(self, name: str):
+        msg = (
+            "Reproduced experiment conflicts with existing experiment "
+            f"'{name}'. To overwrite the existing experiment run:\n\n"
+            "\tdvc exp run -f ...\n\n"
+            "To run this experiment with a different name run:\n\n"
+            f"\tdvc exp run -n <new_name> ...\n"
+        )
+        super().__init__(msg)
+        self.name = name
 
 
 class CheckpointExistsError(DvcException):
-    def __init__(self, rev: str, continue_rev: Optional[str] = None):
-        if not continue_rev:
-            continue_rev = rev
+    def __init__(self, name: str):
         msg = (
-            f"Checkpoint experiment containing '{rev[:7]}' already exists."
-            " To restart the experiment run:\n\n"
+            "Reproduced checkpoint experiment conflicts with existing "
+            f"experiment '{name}'. To restart (and overwrite) the existing "
+            "experiment run:\n\n"
             "\tdvc exp run -f ...\n\n"
-            "To resume the experiment, run:\n\n"
-            f"\tdvc exp resume {continue_rev[:7]}\n"
+            "To resume the existing experiment, run:\n\n"
+            f"\tdvc exp resume {name}\n"
         )
         super().__init__(msg)
-        self.rev = rev
+        self.name = name
 
 
-def split_exps_refname(refname):
-    """Return (namespace, sha, name) ref name tuple."""
-    refs, namespace, sha1, sha2, name = refname.split("/", maxsplit=4)
-    return "/".join([refs, namespace]), sha1 + sha2, name
+class InvalidExpRefError(DvcException):
+    def __init__(self, ref):
+        super().__init__(f"'{ref}' is not a valid experiment refname.")
+        self.ref = ref
 
 
-def get_exps_refname(scm: "Git", baseline: str, name: Optional[str] = None):
-    """Return git ref name for the specified experiment.
+class ExpRefInfo:
 
-    Args:
-        scm: Git SCM instance
-        baseline: baseline git commit SHA (or named ref)
-        name: experiment name
-    """
-    sha = scm.resolve_rev(baseline)
-    parts = [EXPS_NAMESPACE, sha[:2], sha[2:]]
-    if name is not None:
-        parts.append(name)
-    return "/".join(parts)
+    namespace = EXPS_NAMESPACE
+
+    def __init__(
+        self, baseline_sha: Optional[str] = None, name: Optional[str] = None,
+    ):
+        self.baseline_sha = baseline_sha
+        self.name = name
+
+    def __str__(self):
+        return "/".join(self.parts)
+
+    @property
+    def parts(self):
+        return (
+            (self.namespace,)
+            + (
+                (self.baseline_sha[:2], self.baseline_sha[2:])
+                if self.baseline_sha
+                else ()
+            )
+            + ((self.name,) if self.name else ())
+        )
+
+    @classmethod
+    def from_ref(cls, ref: str):
+        try:
+            parts = ref.split("/")
+            if (
+                len(parts) < 2
+                or len(parts) == 3
+                or len(parts) > 5
+                or "/".join(parts[:2]) != EXPS_NAMESPACE
+            ):
+                InvalidExpRefError(ref)
+        except ValueError:
+            raise InvalidExpRefError(ref)
+        baseline_sha = parts[2] + parts[3] if len(parts) >= 4 else None
+        name = parts[4] if len(parts) == 5 else None
+        return cls(baseline_sha, name)

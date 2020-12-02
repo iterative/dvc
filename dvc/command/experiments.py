@@ -156,7 +156,8 @@ def _collect_rows(
                 else:
                     tree = "└──"
                 new_checkpoint = True
-            row.append(f"{tree} {queued}{rev[:7]}{parent}")
+            name = exp.get("name", rev[:7])
+            row.append(f"{tree} {queued}{name}{parent}")
 
         if not no_timestamp:
             row.append(_format_time(exp.get("timestamp")))
