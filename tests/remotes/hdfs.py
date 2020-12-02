@@ -1,7 +1,6 @@
 import locale
 import os
 import platform
-import subprocess
 import uuid
 from contextlib import contextmanager
 
@@ -119,15 +118,6 @@ def hadoop(test_config):
     os.environ["JAVA_HOME"] = java_home
     os.environ["HADOOP_HOME"] = hadoop_home
     os.environ["PATH"] += f":{hadoop_home}/bin:{hadoop_home}/sbin"
-
-    # NOTE: must set CLASSPATH to connect using pyarrow.fs.HadoopFileSystem
-    result = subprocess.run(
-        [f"{hadoop_home}/bin/hdfs", "classpath", "--glob"],
-        universal_newlines=True,
-        stdout=subprocess.PIPE,
-        check=False,
-    )
-    os.environ["CLASSPATH"] = result.stdout
 
 
 @pytest.fixture(scope="session")
