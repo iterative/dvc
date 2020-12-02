@@ -830,14 +830,15 @@ class TestShouldRaiseOnOverlappingOutputPaths(TestDvc):
         data_dir_stage = self.DATA_DIR + DVC_FILE_SUFFIX
         data_stage = os.path.basename(self.DATA) + DVC_FILE_SUFFIX
 
-        self.assertIn("Paths for outs:\n", error_output)
+        self.assertIn("The output paths:\n", error_output)
         self.assertIn(
             f"\n'{self.DATA_DIR}'('{data_dir_stage}')\n", error_output,
         )
         self.assertIn(f"\n'{self.DATA}'('{data_stage}')\n", error_output)
         self.assertIn(
-            "\noverlap. To avoid unpredictable behaviour, rerun "
-            "command with non overlapping outs paths.",
+            "overlap and are thus in the same tracked directory.\n"
+            "To keep reproducibility, outputs should be in separate "
+            "tracked directories or tracked individually.",
             error_output,
         )
 
