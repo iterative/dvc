@@ -7,22 +7,20 @@ logger = logging.getLogger(__name__)
 
 
 def diff(repo, *args, a_rev=None, b_rev=None, **kwargs):
-    from dvc.repo.experiments.show import _collect_experiment
+    from dvc.repo.experiments.show import _collect_experiment_commit
 
     if repo.scm.no_commits:
         return {}
 
     if a_rev:
-        with repo.experiments.chdir():
-            old = _collect_experiment(repo.experiments.exp_dvc, a_rev)
+        old = _collect_experiment_commit(repo, a_rev)
     else:
-        old = _collect_experiment(repo, "HEAD")
+        old = _collect_experiment_commit(repo, "HEAD")
 
     if b_rev:
-        with repo.experiments.chdir():
-            new = _collect_experiment(repo.experiments.exp_dvc, b_rev)
+        new = _collect_experiment_commit(repo, b_rev)
     else:
-        new = _collect_experiment(repo, "workspace")
+        new = _collect_experiment_commit(repo, "workspace")
 
     with_unchanged = kwargs.pop("all", False)
 

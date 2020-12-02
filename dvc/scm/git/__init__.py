@@ -493,9 +493,13 @@ class Git(Base):
 
     def resolve_commit(self, rev):
         """Return Commit object for the specified revision."""
+        from git.exc import BadName, GitCommandError
         from git.objects.tag import TagObject
 
-        commit = self.repo.rev_parse(rev)
+        try:
+            commit = self.repo.rev_parse(rev)
+        except (BadName, GitCommandError):
+            commit = None
         if isinstance(commit, TagObject):
             commit = commit.object
         return commit
@@ -505,7 +509,7 @@ class Git(Base):
             try:
                 func = getattr(backend, name)
                 return func(*args, **kwargs)
-            except (AttributeError, NotImplementedError):
+            except NotImplementedError:
                 pass
         raise NoGitBackendError(name)
 
@@ -513,6 +517,7 @@ class Git(Base):
     set_ref = partialmethod(_backend_func, "set_ref")
     get_ref = partialmethod(_backend_func, "get_ref")
     remove_ref = partialmethod(_backend_func, "remove_ref")
+    iter_refs = partialmethod(_backend_func, "iter_refs")
     get_refs_containing = partialmethod(_backend_func, "get_refs_containing")
     push_refspec = partialmethod(_backend_func, "push_refspec")
     fetch_refspecs = partialmethod(_backend_func, "fetch_refspecs")
@@ -520,6 +525,8 @@ class Git(Base):
     _stash_push = partialmethod(_backend_func, "_stash_push")
     _stash_apply = partialmethod(_backend_func, "_stash_apply")
     reflog_delete = partialmethod(_backend_func, "reflog_delete")
+    describe = partialmethod(_backend_func, "describe")
+    diff = partialmethod(_backend_func, "diff")
 
     @contextmanager
     def detach_head(self, rev: Optional[str] = None):

@@ -1,5 +1,7 @@
+import fnmatch
 import logging
 import os
+from io import BytesIO
 from typing import TYPE_CHECKING, Callable, Iterable, Optional, Tuple
 
 from dvc.scm.base import SCMError
@@ -86,6 +88,16 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         if not self.repo.refs.remove_if_equals(name_b, old_ref_b):
             raise SCMError(f"Failed to remove '{name}'")
 
+    def iter_refs(self, base: Optional[str] = None):
+        base_b = os.fsencode(base) if base else None
+        for key in self.repo.refs.keys(base=base_b):
+            if base:
+                if base.endswith("/"):
+                    base = base[:-1]
+                yield "/".join([base, os.fsdecode(key)])
+            else:
+                yield os.fsdecode(key)
+
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
         raise NotImplementedError
 
@@ -156,6 +168,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         try:
             client, path = get_transport_and_path(url)
         except Exception as exc:
+
             raise SCMError("Could not get remote client") from exc
 
         def progress(msg):
@@ -174,7 +187,9 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 if not force:
                     overwrite = False
                     if on_diverged:
-                        overwrite = on_diverged(rh, fetch_result.refs[lh])
+                        overwrite = on_diverged(
+                            os.fsdecode(rh), os.fsdecode(fetch_result.refs[lh])
+                        )
                     if not overwrite:
                         continue
             self.repo.refs[rh] = fetch_result.refs[lh]
@@ -206,3 +221,33 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
 
     def reflog_delete(self, ref: str, updateref: bool = False):
         raise NotImplementedError
+
+    def describe(
+        self,
+        rev: str,
+        base: Optional[str] = None,
+        match: Optional[str] = None,
+        exclude: Optional[str] = None,
+    ) -> Optional[str]:
+        if not base:
+            base = "refs/tags"
+        for ref in self.iter_refs(base=base):
+            if (match and not fnmatch.fnmatch(ref, match)) or (
+                exclude and fnmatch.fnmatch(ref, exclude)
+            ):
+                continue
+            if self.scm.get_ref(ref, follow=False) == rev:
+                return ref
+        return None
+
+    def diff(self, rev_a: str, rev_b: str, binary=False) -> str:
+        from dulwich.patch import write_tree_diff
+
+        commit_a = self.repo[os.fsencode(rev_a)]
+        commit_b = self.repo[os.fsencode(rev_b)]
+
+        buf = BytesIO()
+        write_tree_diff(
+            buf, self.repo.object_store, commit_a.tree, commit_b.tree
+        )
+        return buf.getvalue().decode("utf-8")

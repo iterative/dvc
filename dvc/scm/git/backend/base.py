@@ -63,6 +63,13 @@ class BaseGitBackend(ABC):
         """
 
     @abstractmethod
+    def iter_refs(self, base: Optional[str] = None):
+        """Iterate over all refs in this git repo.
+
+        If base is specified, only refs which begin with base will be yielded.
+        """
+
+    @abstractmethod
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
         """Iterate over all git refs containing the specfied revision."""
 
@@ -121,3 +128,29 @@ class BaseGitBackend(ABC):
     @abstractmethod
     def reflog_delete(self, ref: str, updateref: bool = False):
         """Delete the specified reflog entry."""
+
+    @abstractmethod
+    def describe(
+        self,
+        rev: str,
+        base: Optional[str] = None,
+        match: Optional[str] = None,
+        exclude: Optional[str] = None,
+    ) -> Optional[str]:
+        """Return the first ref which points to rev.
+
+        Roughly equivalent to `git describe --all --exact-match`.
+
+        If no matching ref was found, returns None.
+
+        Optional kwargs:
+            base: Base ref prefix to search, defaults to "refs/tags"
+            match: Glob pattern. If specified only refs matching this glob
+                pattern will be returned.
+            exclude: Glob pattern. If specified, only refs which do not match
+                this pattern will be returned.
+        """
+
+    @abstractmethod
+    def diff(self, rev_a: str, rev_b: str, binary=False) -> str:
+        """Return the git diff for two commits."""

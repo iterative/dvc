@@ -4,6 +4,7 @@ from funcy import first
 
 from dvc.dvcfile import PIPELINE_FILE
 from dvc.main import main
+from dvc.repo.experiments.base import ExpRefInfo
 from tests.func.test_repro_multistage import COPY_SCRIPT
 
 
@@ -67,6 +68,8 @@ def test_show_experiment(tmp_dir, scm, dvc):
 
 
 def test_show_queued(tmp_dir, scm, dvc):
+    from dvc.repo.experiments.base import EXPS_STASH
+
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("params.yaml", "foo: 1")
     stage = dvc.run(
@@ -80,7 +83,7 @@ def test_show_queued(tmp_dir, scm, dvc):
     baseline_rev = scm.get_rev()
 
     dvc.experiments.run(stage.addressing, params=["foo=2"], queue=True)
-    exp_rev = dvc.experiments.scm.resolve_rev("stash@{0}")
+    exp_rev = dvc.experiments.scm.resolve_rev(f"{EXPS_STASH}@{{0}}")
 
     results = dvc.experiments.show()[baseline_rev]
     assert len(results) == 2
@@ -95,7 +98,7 @@ def test_show_queued(tmp_dir, scm, dvc):
     new_rev = scm.get_rev()
 
     dvc.experiments.run(stage.addressing, params=["foo=3"], queue=True)
-    exp_rev = dvc.experiments.scm.resolve_rev("stash@{0}")
+    exp_rev = dvc.experiments.scm.resolve_rev(f"{EXPS_STASH}@{{0}}")
 
     results = dvc.experiments.show()[new_rev]
     assert len(results) == 2
@@ -126,12 +129,15 @@ def test_show_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, capsys):
 
     for i, rev in enumerate(checkpoints):
         if i == 0:
+            name = dvc.experiments.get_exact_name(rev)
             tree = "╓"
         elif i == len(checkpoints) - 1:
+            name = rev[:7]
             tree = "╨"
         else:
+            name = rev[:7]
             tree = "╟"
-        assert f"{tree} {rev[:7]}" in cap.out
+        assert f"{tree} {name}" in cap.out
 
 
 def test_show_checkpoint_branch(tmp_dir, scm, dvc, checkpoint_stage, capsys):
@@ -157,5 +163,8 @@ def test_show_checkpoint_branch(tmp_dir, scm, dvc, checkpoint_stage, capsys):
     cap = capsys.readouterr()
 
     for rev in (checkpoint_a, checkpoint_b):
-        assert f"╓ {rev[:7]}" in cap.out
+        ref = dvc.experiments.get_branch_containing(rev)
+        ref_info = ExpRefInfo.from_ref(ref)
+        name = ref_info.name
+        assert f"╓ {name}" in cap.out
     assert f"({branch_rev[:7]})" in cap.out

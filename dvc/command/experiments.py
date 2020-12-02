@@ -156,7 +156,8 @@ def _collect_rows(
                 else:
                     tree = "└──"
                 new_checkpoint = True
-            row.append(f"{tree} {queued}{rev[:7]}{parent}")
+            name = exp.get("name", rev[:7])
+            row.append(f"{tree} {queued}{name}{parent}")
 
         if not no_timestamp:
             row.append(_format_time(exp.get("timestamp")))
@@ -352,12 +353,12 @@ class CmdExperimentsShow(CmdBase):
         return 0
 
 
-class CmdExperimentsCheckout(CmdBase):
+class CmdExperimentsApply(CmdBase):
     def run(self):
         if not self.repo.experiments:
             return 0
 
-        self.repo.experiments.checkout(self.args.experiment)
+        self.repo.experiments.apply(self.args.experiment)
 
         return 0
 
@@ -461,6 +462,7 @@ class CmdExperimentsRun(CmdRepro):
             try:
                 self.repo.experiments.run(
                     target,
+                    name=self.args.name,
                     queue=self.args.queue,
                     run_all=self.args.run_all,
                     jobs=self.args.jobs,
@@ -529,6 +531,16 @@ class CmdExperimentsGC(CmdRepro):
             )
         else:
             logger.info("No experiments to remove.")
+        return 0
+
+
+class CmdExperimentsBranch(CmdBase):
+    def run(self):
+        if not self.repo.experiments:
+            return 0
+
+        self.repo.experiments.branch(self.args.experiment, self.args.branch)
+
         return 0
 
 
@@ -653,20 +665,22 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_show_parser.set_defaults(func=CmdExperimentsShow)
 
-    EXPERIMENTS_CHECKOUT_HELP = "Checkout experiments."
-    experiments_checkout_parser = experiments_subparsers.add_parser(
-        "checkout",
+    EXPERIMENTS_APPLY_HELP = (
+        "Apply the changes from an experiment to your workspace."
+    )
+    experiments_apply_parser = experiments_subparsers.add_parser(
+        "apply",
         parents=[parent_parser],
         description=append_doc_link(
-            EXPERIMENTS_CHECKOUT_HELP, "experiments/checkout"
+            EXPERIMENTS_APPLY_HELP, "experiments/apply"
         ),
-        help=EXPERIMENTS_CHECKOUT_HELP,
+        help=EXPERIMENTS_APPLY_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    experiments_checkout_parser.add_argument(
-        "experiment", help="Checkout this experiment.",
+    experiments_apply_parser.add_argument(
+        "experiment", help="Experiment to be applied.",
     )
-    experiments_checkout_parser.set_defaults(func=CmdExperimentsCheckout)
+    experiments_apply_parser.set_defaults(func=CmdExperimentsApply)
 
     EXPERIMENTS_DIFF_HELP = (
         "Show changes between experiments in the DVC repository."
@@ -829,11 +843,38 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_gc_parser.set_defaults(func=CmdExperimentsGC)
 
+    EXPERIMENTS_BRANCH_HELP = "Promote an experiment to a Git branch."
+    experiments_branch_parser = experiments_subparsers.add_parser(
+        "branch",
+        parents=[parent_parser],
+        description=append_doc_link(
+            EXPERIMENTS_BRANCH_HELP, "experiments/branch"
+        ),
+        help=EXPERIMENTS_BRANCH_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    experiments_branch_parser.add_argument(
+        "experiment", help="Experiment to be promoted.",
+    )
+    experiments_branch_parser.add_argument(
+        "branch", help="Git branch name to use.",
+    )
+    experiments_branch_parser.set_defaults(func=CmdExperimentsBranch)
+
 
 def _add_run_common(parser):
     """Add common args for 'exp run' and 'exp resume'."""
     # inherit arguments from `dvc repro`
     add_repro_arguments(parser)
+    parser.add_argument(
+        "-n",
+        "--name",
+        default=None,
+        help=(
+            "Human-readable experiment name. If not specified, a name will "
+            "be auto-generated."
+        ),
+    )
     parser.add_argument(
         "--params",
         action="append",
