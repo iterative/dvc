@@ -1,6 +1,5 @@
 import os
 from copy import deepcopy
-from pathlib import Path
 from textwrap import dedent
 
 import pytest
@@ -522,8 +521,8 @@ def test_repro_list_of_commands_in_order(tmp_dir, dvc):
         "stages": {
             "multi_commands": {
                 "cmd": [
-                    """echo "First command" > foo""",
-                    """echo "Second command" >> foo""",
+                    'echo "First command" > foo',
+                    'echo "Second command" >> foo',
                 ],
                 "outs": ["foo"],
             }
@@ -531,9 +530,7 @@ def test_repro_list_of_commands_in_order(tmp_dir, dvc):
     }
     dump_yaml(PIPELINE_FILE, dvcfile_content)
     dvc.reproduce(target="multi_commands")
-    with open(Path(tmp_dir) / "foo", "r") as foo:
-        lines = foo.read().splitlines()
-    assert lines == ["First command", "Second command"]
+    assert (tmp_dir / "foo").read_text() == "First command\nSecond command\n"
 
 
 def test_repro_list_of_commands_raise_and_stops_after_failure(tmp_dir, dvc):
@@ -553,6 +550,4 @@ def test_repro_list_of_commands_raise_and_stops_after_failure(tmp_dir, dvc):
 
     with pytest.raises(ReproductionError):
         dvc.reproduce(target="multi_commands")
-    with open(Path(tmp_dir) / "foo", "r") as foo:
-        lines = foo.read().splitlines()
-    assert lines == ["First command"]
+    assert (tmp_dir / "foo").read_text() == "First command\n"
