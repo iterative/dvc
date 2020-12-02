@@ -129,3 +129,10 @@ jobs:
         store_login: ${{ secrets.STORE_LOGIN }}
         snap: ${{ steps.snapcraft.outputs.snap }}
         release: stable
+    - name: Publish to the v1 channel
+      uses: snapcore/action-publish@v1
+      if: github.event_name == 'release'
+      with:
+        store_login: ${{ secrets.STORE_LOGIN }}
+        snap: ${{ steps.snapcraft.outputs.snap }}
+        release: v1
