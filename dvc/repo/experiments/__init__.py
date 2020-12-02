@@ -293,14 +293,14 @@ class Experiments:
         for rev in revs:
             name = self.get_exact_name(rev)
             names.append(name if name else rev[:7])
-        msg = (
-            "\nReproduced experiment(s): {}\n"
+        fmt = (
+            "\nReproduced experiment(s): %s\n"
             "To promote an experiment to a Git branch run:\n\n"
             "\tdvc exp branch <exp>\n\n"
             "To apply the results of an experiment to your workspace run:\n\n"
             "\tdvc exp apply <exp>"
-        ).format(", ".join(names))
-        logger.info(msg)
+        )
+        logger.info(fmt, ", ".join(names))
 
     @scm_locked
     def new(
@@ -621,10 +621,23 @@ class Experiments:
             return ExpRefInfo.from_ref(ref).name
         return None
 
+    def iter_ref_infos_by_name(self, name: str):
+        for ref in self.scm.iter_refs(base=EXPS_NAMESPACE):
+            if ref.startswith(EXEC_NAMESPACE) or ref == EXPS_STASH:
+                continue
+            ref_info = ExpRefInfo.from_ref(ref)
+            if ref_info.name == name:
+                yield ref_info
+
     def apply(self, *args, **kwargs):
         from dvc.repo.experiments.apply import apply
 
         return apply(self.repo, *args, **kwargs)
+
+    def branch(self, *args, **kwargs):
+        from dvc.repo.experiments.branch import branch
+
+        return branch(self.repo, *args, **kwargs)
 
     def diff(self, *args, **kwargs):
         from dvc.repo.experiments.diff import diff

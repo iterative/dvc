@@ -3,6 +3,7 @@ import pytest
 from dvc.cli import parse_args
 from dvc.command.experiments import (
     CmdExperimentsApply,
+    CmdExperimentsBranch,
     CmdExperimentsDiff,
     CmdExperimentsGC,
     CmdExperimentsRun,
@@ -137,3 +138,15 @@ def test_experiments_gc(dvc, mocker):
     cmd = cli_args.func(cli_args)
     with pytest.raises(InvalidArgumentError):
         cmd.run()
+
+
+def test_experiments_branch(dvc, mocker):
+    cli_args = parse_args(["experiments", "branch", "expname", "branchname"])
+    assert cli_args.func == CmdExperimentsBranch
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch("dvc.repo.experiments.branch.branch", return_value={})
+
+    assert cmd.run() == 0
+
+    m.assert_called_once_with(cmd.repo, "expname", "branchname")

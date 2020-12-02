@@ -534,6 +534,16 @@ class CmdExperimentsGC(CmdRepro):
         return 0
 
 
+class CmdExperimentsBranch(CmdBase):
+    def run(self):
+        if not self.repo.experiments:
+            return 0
+
+        self.repo.experiments.branch(self.args.experiment, self.args.branch)
+
+        return 0
+
+
 def add_parser(subparsers, parent_parser):
     EXPERIMENTS_HELP = "Commands to display and compare experiments."
 
@@ -832,6 +842,24 @@ def add_parser(subparsers, parent_parser):
         help="Force garbage collection - automatically agree to all prompts.",
     )
     experiments_gc_parser.set_defaults(func=CmdExperimentsGC)
+
+    EXPERIMENTS_BRANCH_HELP = "Promote an experiment to a Git branch."
+    experiments_branch_parser = experiments_subparsers.add_parser(
+        "branch",
+        parents=[parent_parser],
+        description=append_doc_link(
+            EXPERIMENTS_BRANCH_HELP, "experiments/branch"
+        ),
+        help=EXPERIMENTS_BRANCH_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    experiments_branch_parser.add_argument(
+        "experiment", help="Experiment to be promoted.",
+    )
+    experiments_branch_parser.add_argument(
+        "branch", help="Git branch name to use.",
+    )
+    experiments_branch_parser.set_defaults(func=CmdExperimentsBranch)
 
 
 def _add_run_common(parser):

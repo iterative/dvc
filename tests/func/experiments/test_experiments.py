@@ -266,3 +266,42 @@ def test_detached_parent(tmp_dir, scm, dvc, exp_stage, mocker):
 
     dvc.experiments.apply(exp_rev)
     assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 3"
+
+
+def test_branch(tmp_dir, scm, dvc, exp_stage):
+    from dvc.exceptions import InvalidArgumentError
+
+    with pytest.raises(InvalidArgumentError):
+        dvc.experiments.branch("foo", "branch")
+
+    scm.branch("branch-exists")
+
+    results = dvc.experiments.run(
+        exp_stage.addressing, params=["foo=2"], name="foo"
+    )
+    exp_a = first(results)
+    ref_a = dvc.experiments.get_branch_containing(exp_a)
+
+    with pytest.raises(InvalidArgumentError):
+        dvc.experiments.branch("foo", "branch-exists")
+    dvc.experiments.branch("foo", "branch-name")
+    dvc.experiments.branch(exp_a, "branch-rev")
+    dvc.experiments.branch(ref_a, "branch-ref")
+
+    for name in ["branch-name", "branch-rev", "branch-ref"]:
+        assert name in scm.list_branches()
+        assert scm.resolve_rev(name) == exp_a
+
+    tmp_dir.scm_gen({"new_file": "new_file"}, commit="new baseline")
+    results = dvc.experiments.run(
+        exp_stage.addressing, params=["foo=2"], name="foo"
+    )
+    exp_b = first(results)
+    ref_b = dvc.experiments.get_branch_containing(exp_b)
+
+    with pytest.raises(InvalidArgumentError):
+        dvc.experiments.branch("foo", "branch-name")
+    dvc.experiments.branch(ref_b, "branch-ref-b")
+
+    assert "branch-ref-b" in scm.list_branches()
+    assert scm.resolve_rev("branch-ref-b") == exp_b
