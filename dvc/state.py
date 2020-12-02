@@ -174,7 +174,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
 
     def _fetchall(self):
         ret = self.cursor.fetchall()
-        logger.debug("fetched: %s", ret)
+        logger.trace("fetched: %s", ret)
         return ret
 
     def _to_sqlite(self, num):

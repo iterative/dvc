@@ -26,7 +26,7 @@ def fs_copy(src, dst):
 
 def get_inode(path):
     inode = System.inode(path)
-    logger.debug("Path '%s' inode '%d'", path, inode)
+    logger.trace("Path '%s' inode '%d'", path, inode)
     return inode
 
 
