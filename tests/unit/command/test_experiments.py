@@ -86,6 +86,7 @@ def test_experiments_show(dvc, mocker):
 def test_experiments_run(dvc, mocker, args, resume):
     default_arguments = {
         "params": [],
+        "name": None,
         "queue": False,
         "run_all": False,
         "jobs": None,

@@ -9,17 +9,38 @@ from dvc.utils.serialize import PythonFileCorruptedError
 from tests.func.test_repro_multistage import COPY_SCRIPT
 
 
-def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker):
+@pytest.mark.parametrize("name", [None, "foo"])
+def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker, name):
     tmp_dir.gen("params.yaml", "foo: 2")
 
     new_mock = mocker.spy(dvc.experiments, "new")
-    results = dvc.experiments.run(exp_stage.addressing)
+    results = dvc.experiments.run(exp_stage.addressing, name=name)
     exp = first(results)
 
     new_mock.assert_called_once()
     tree = scm.get_tree(exp)
     with tree.open(tmp_dir / "metrics.yaml") as fobj:
         assert fobj.read().strip() == "foo: 2"
+    if name:
+        assert dvc.experiments.get_exact_name(exp) == name
+
+
+def test_experiment_exists(tmp_dir, scm, dvc, exp_stage, mocker):
+    from dvc.repo.experiments.base import ExperimentExistsError
+
+    dvc.experiments.run(exp_stage.addressing, name="foo", params=["foo=2"])
+
+    with pytest.raises(ExperimentExistsError):
+        dvc.experiments.run(exp_stage.addressing, name="foo", params=["foo=3"])
+
+    results = dvc.experiments.run(
+        exp_stage.addressing, name="foo", params=["foo=3"], force=True
+    )
+    exp = first(results)
+
+    tree = scm.get_tree(exp)
+    with tree.open(tmp_dir / "metrics.yaml") as fobj:
+        assert fobj.read().strip() == "foo: 3"
 
 
 @pytest.mark.skipif(os.name == "nt", reason="Not supported for Windows.")

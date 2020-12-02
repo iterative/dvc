@@ -59,21 +59,25 @@ def test_resume_checkpoint(
 def test_reset_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, caplog):
     from dvc.repo.experiments.base import CheckpointExistsError
 
-    dvc.experiments.run(checkpoint_stage.addressing)
+    dvc.experiments.run(checkpoint_stage.addressing, name="foo")
     scm.repo.git.reset(hard=True)
     scm.repo.git.clean(force=True)
 
     with pytest.raises(CheckpointExistsError):
-        dvc.experiments.run(checkpoint_stage.addressing)
+        dvc.experiments.run(
+            checkpoint_stage.addressing, name="foo", params=["foo=2"]
+        )
 
-    results = dvc.experiments.run(checkpoint_stage.addressing, force=True)
+    results = dvc.experiments.run(
+        checkpoint_stage.addressing, params=["foo=2"], name="foo", force=True
+    )
     exp = first(results)
 
     tree = scm.get_tree(exp)
     with tree.open(tmp_dir / "foo") as fobj:
         assert fobj.read().strip() == "5"
     with tree.open(tmp_dir / "metrics.yaml") as fobj:
-        assert fobj.read().strip() == "foo: 1"
+        assert fobj.read().strip() == "foo: 2"
 
 
 def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage):
