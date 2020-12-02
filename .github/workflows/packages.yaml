@@ -1,8 +1,6 @@
 name: Build packages
 on:
-  push:
-    branches:
-    - master
+  push: {}
   release:
     types: [released]
 jobs:
