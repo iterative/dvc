@@ -46,10 +46,17 @@ class HDFSTree(BaseTree):
 
     @staticmethod
     def hdfs(path_info):
-        import pyarrow
+        import pyarrow.fs
+
+        # NOTE: HadoopFileSystem is not meant to be closed by us and doesn't
+        # have close() method or alternative, so we add a noop one to satisfy
+        # our connection pool.
+        class HDFSConnection(pyarrow.fs.HadoopFileSystem):
+            def close(self):
+                pass
 
         return get_connection(
-            pyarrow.hdfs.connect,
+            HDFSConnection,
             path_info.host,
             path_info.port,
             user=path_info.user,
@@ -61,7 +68,7 @@ class HDFSTree(BaseTree):
 
         try:
             with self.hdfs(path_info) as hdfs, closing(
-                hdfs.open(path_info.path, mode="rb")
+                hdfs.open_input_stream(path_info.path)
             ) as fd:
                 if mode == "rb":
                     yield fd
@@ -78,31 +85,51 @@ class HDFSTree(BaseTree):
         assert not isinstance(path_info, list)
         assert path_info.scheme == "hdfs"
         with self.hdfs(path_info) as hdfs:
-            return hdfs.exists(path_info.path)
+            import pyarrow.fs
 
-    def walk_files(self, path_info, **kwargs):
-        if not self.exists(path_info):
+            file_info = hdfs.get_file_info(path_info.path)
+            return file_info.type != pyarrow.fs.FileType.NotFound
+
+    def _walk(self, hdfs, root, topdown=True):
+        import posixpath
+
+        from pyarrow.fs import FileSelector, FileType
+
+        dirs = deque()
+        nondirs = deque()
+
+        selector = FileSelector(root)
+        for entry in hdfs.get_file_info(selector):
+            if entry.type == FileType.Directory:
+                dirs.append(entry.base_name)
+            else:
+                nondirs.append(entry.base_name)
+
+        if topdown:
+            yield root, dirs, nondirs
+
+        for dname in dirs:
+            # NOTE: posixpath.join() is slower
+            yield from self._walk(
+                hdfs, f"{root}{posixpath.sep}{dname}", topdown=topdown
+            )
+
+        if not topdown:
+            yield root, dirs, nondirs
+
+    def walk(self, path_info, **kwargs):
+        if not self.isdir(path_info):
             return
 
-        root = path_info.path
-        dirs = deque([root])
+        with self.hdfs(path_info) as hdfs:
+            for root, dnames, fnames in self._walk(
+                hdfs, path_info.path, **kwargs
+            ):
+                yield path_info.replace(path=root), dnames, fnames
 
-        with self.hdfs(self.path_info) as hdfs:
-            if not hdfs.exists(root):
-                return
-            while dirs:
-                try:
-                    entries = hdfs.ls(dirs.pop(), detail=True)
-                    for entry in entries:
-                        if entry["kind"] == "directory":
-                            dirs.append(urlparse(entry["name"]).path)
-                        elif entry["kind"] == "file":
-                            path = urlparse(entry["name"]).path
-                            yield path_info.replace(path=path)
-                except OSError:
-                    # When searching for a specific prefix pyarrow raises an
-                    # exception if the specified cache dir does not exist
-                    pass
+    def walk_files(self, path_info, **kwargs):
+        for root, _, fnames in self.walk(path_info):
+            yield from (root / fname for fname in fnames)
 
     def remove(self, path_info):
         if path_info.scheme != "hdfs":
@@ -111,34 +138,49 @@ class HDFSTree(BaseTree):
         if self.exists(path_info):
             logger.debug(f"Removing {path_info.path}")
             with self.hdfs(path_info) as hdfs:
-                hdfs.rm(path_info.path)
+                import pyarrow.fs
+
+                file_info = hdfs.get_file_info(path_info.path)
+                if file_info.type == pyarrow.fs.FileType.Directory:
+                    hdfs.delete_dir(path_info.path)
+                else:
+                    hdfs.delete_file(path_info.path)
 
     def makedirs(self, path_info):
         with self.hdfs(path_info) as hdfs:
-            # NOTE: hdfs.mkdir creates parents by default
-            hdfs.mkdir(path_info.path)
+            # NOTE: fs.create_dir creates parents by default
+            hdfs.create_dir(path_info.path)
 
     def copy(self, from_info, to_info, **_kwargs):
+        # NOTE: hdfs.copy_file is not supported yet in pyarrow
         with self.hdfs(to_info) as hdfs:
             # NOTE: this is how `hadoop fs -cp` works too: it copies through
             # your local machine.
-            with hdfs.open(from_info.path, "rb") as from_fobj:
+            with closing(hdfs.open_input_stream(from_info.path)) as from_fobj:
                 tmp_info = to_info.parent / tmp_fname(to_info.name)
                 try:
-                    with hdfs.open(tmp_info.path, "wb") as tmp_fobj:
-                        tmp_fobj.upload(from_fobj)
-                    hdfs.rename(tmp_info.path, to_info.path)
+                    with closing(
+                        hdfs.open_output_stream(tmp_info.path)
+                    ) as tmp_fobj:
+                        tmp_fobj.write(from_fobj.read())
+                    hdfs.move(tmp_info.path, to_info.path)
                 except Exception:
                     self.remove(tmp_info)
                     raise
 
     def isfile(self, path_info):
         with self.hdfs(path_info) as hdfs:
-            return hdfs.isfile(path_info.path)
+            import pyarrow.fs
+
+            file_info = hdfs.get_file_info(path_info.path)
+            return file_info.type == pyarrow.fs.FileType.File
 
     def isdir(self, path_info):
         with self.hdfs(path_info) as hdfs:
-            return hdfs.isdir(path_info.path)
+            import pyarrow.fs
+
+            file_info = hdfs.get_file_info(path_info.path)
+            return file_info.type == pyarrow.fs.FileType.Directory
 
     def hadoop_fs(self, cmd, user=None):
         cmd = "hadoop fs -" + cmd
@@ -182,7 +224,8 @@ class HDFSTree(BaseTree):
         )
 
         with self.hdfs(path_info) as hdfs:
-            hash_info.size = hdfs.info(path_info.path)["size"]
+            file_info = hdfs.get_file_info(path_info.path)
+            hash_info.size = file_info.size
 
         return hash_info
 
@@ -200,14 +243,16 @@ class HDFSTree(BaseTree):
                     total=total,
                     disable=no_progress_bar,
                 ) as wrapped:
-                    hdfs.upload(tmp_file, wrapped)
-            hdfs.rename(tmp_file, to_info.path)
+                    with hdfs.open_output_stream(tmp_file) as sobj:
+                        sobj.write(wrapped.read())
+            hdfs.move(tmp_file, to_info.path)
 
     def _download(
         self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
     ):
         with self.hdfs(from_info) as hdfs:
-            total = hdfs.info(from_info.path)["size"]
+            file_info = hdfs.get_file_info(from_info.path)
+            total = file_info.size
             with open(to_file, "wb+") as fobj:
                 with Tqdm.wrapattr(
                     fobj,
@@ -216,4 +261,5 @@ class HDFSTree(BaseTree):
                     total=total,
                     disable=no_progress_bar,
                 ) as wrapped:
-                    hdfs.download(from_info.path, wrapped)
+                    with hdfs.open_input_stream(from_info.path) as sobj:
+                        wrapped.write(sobj.read())
