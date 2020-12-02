@@ -79,7 +79,7 @@ def cmd_run(stage, *args, checkpoint_func=None, **kwargs):
         threading._MainThread,  # pylint: disable=protected-access
     )
     for _cmd in cmd:
-        logger.info("> %s", _cmd)
+        logger.info("$ %s", _cmd)
         old_handler = None
         p = None
 
