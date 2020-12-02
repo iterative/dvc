@@ -9,6 +9,8 @@ logger = logging.getLogger(__name__)
 
 
 class CmdLive(CmdBase):
+    UNINITIALIZED = True
+
     def run(self):
         try:
             self.repo.dvclive.summarize(self.args.target, self.args.rev)

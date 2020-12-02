@@ -35,4 +35,4 @@ class DvcLive:
         result_path = path + ".html"
         with open(result_path, "w") as fd:
             fd.write(html)
-        logger.info(f"file://{os.path.abspath(result_path)}")
+        logger.info(f"\nfile://{os.path.abspath(result_path)}")
