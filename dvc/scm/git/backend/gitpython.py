@@ -107,3 +107,15 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
             args.append("--updateref")
         args.append(ref)
         self.git.reflog(*args)
+
+    def describe(
+        self,
+        rev: str,
+        base: Optional[str] = None,
+        match: Optional[str] = None,
+        exclude: Optional[str] = None,
+    ) -> Optional[str]:
+        raise NotImplementedError
+
+    def diff(self, rev_a: str, rev_b: str, binary=False) -> str:
+        raise NotImplementedError

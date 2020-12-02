@@ -509,7 +509,7 @@ class Git(Base):
             try:
                 func = getattr(backend, name)
                 return func(*args, **kwargs)
-            except (AttributeError, NotImplementedError):
+            except NotImplementedError:
                 pass
         raise NoGitBackendError(name)
 
@@ -525,6 +525,8 @@ class Git(Base):
     _stash_push = partialmethod(_backend_func, "_stash_push")
     _stash_apply = partialmethod(_backend_func, "_stash_apply")
     reflog_delete = partialmethod(_backend_func, "reflog_delete")
+    describe = partialmethod(_backend_func, "describe")
+    diff = partialmethod(_backend_func, "diff")
 
     @contextmanager
     def detach_head(self, rev: Optional[str] = None):
