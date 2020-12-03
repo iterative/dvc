@@ -2,15 +2,13 @@ import fnmatch
 import logging
 import os
 from io import BytesIO
-from typing import TYPE_CHECKING, Callable, Iterable, Optional, Tuple
+from typing import Callable, Iterable, Optional, Tuple
 
 from dvc.scm.base import SCMError
+from dvc.tree.base import BaseTree
 from dvc.utils import relpath
 
 from .base import BaseGitBackend
-
-if TYPE_CHECKING:
-    from dvc.scm.git import Git
 
 logger = logging.getLogger(__name__)
 
@@ -18,15 +16,106 @@ logger = logging.getLogger(__name__)
 class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     """Dulwich Git backend."""
 
-    def __init__(self, scm: "Git", **kwargs):
+    def __init__(  # pylint:disable=W0231
+        self, scm, root_dir=os.curdir, search_parent_directories=True
+    ):
+        from dulwich.errors import NotGitRepository
         from dulwich.repo import Repo
 
-        super().__init__(scm, **kwargs)
-        self.repo = Repo(self.root_dir)
+        self.scm = scm
+
+        try:
+            if search_parent_directories:
+                self.repo = Repo.discover(start=root_dir)
+            else:
+                self.repo = Repo(root_dir)
+        except NotGitRepository as exc:
+            raise SCMError(f"{root_dir} is not a git repository") from exc
+
         self._stashes: dict = {}
 
     def close(self):
         self.repo.close()
+
+    @property
+    def root_dir(self) -> str:
+        return self.repo.path
+
+    @staticmethod
+    def clone(
+        url: str,
+        to_path: str,
+        rev: Optional[str] = None,
+        shallow_branch: Optional[str] = None,
+    ):
+        raise NotImplementedError
+
+    @staticmethod
+    def is_sha(rev: str) -> bool:
+        raise NotImplementedError
+
+    @property
+    def dir(self) -> str:
+        raise NotImplementedError
+
+    def add(self, paths: Iterable[str]):
+        raise NotImplementedError
+
+    def commit(self, msg: str):
+        raise NotImplementedError
+
+    def checkout(
+        self, branch: str, create_new: Optional[bool] = False, **kwargs,
+    ):
+        raise NotImplementedError
+
+    def pull(self, **kwargs):
+        raise NotImplementedError
+
+    def push(self):
+        raise NotImplementedError
+
+    def branch(self, branch: str):
+        raise NotImplementedError
+
+    def tag(self, tag: str):
+        raise NotImplementedError
+
+    def untracked_files(self) -> Iterable[str]:
+        raise NotImplementedError
+
+    def is_tracked(self, path: str) -> bool:
+        raise NotImplementedError
+
+    def is_dirty(self, **kwargs) -> bool:
+        raise NotImplementedError
+
+    def active_branch(self) -> str:
+        raise NotImplementedError
+
+    def list_branches(self) -> Iterable[str]:
+        raise NotImplementedError
+
+    def list_tags(self) -> Iterable[str]:
+        raise NotImplementedError
+
+    def list_all_commits(self) -> Iterable[str]:
+        raise NotImplementedError
+
+    def get_tree(self, rev: str, **kwargs) -> BaseTree:
+        raise NotImplementedError
+
+    def get_rev(self) -> str:
+        raise NotImplementedError
+
+    def resolve_rev(self, rev: str) -> str:
+        raise NotImplementedError
+
+    def resolve_commit(self, rev: str) -> str:
+        raise NotImplementedError
+
+    def branch_revs(self, branch: str, end_rev: Optional[str] = None):
+        raise NotImplementedError
 
     def _get_stash(self, ref: str):
         from dulwich.stash import Stash as DulwichStash

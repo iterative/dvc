@@ -3,23 +3,17 @@
 import logging
 import os
 import shlex
+from collections import OrderedDict
 from contextlib import contextmanager
-from functools import partial, partialmethod
+from functools import partialmethod
 from typing import Optional
 
-from funcy import cached_property, first
+from funcy import cached_property
 from pathspec.patterns import GitWildMatchPattern
 
 from dvc.exceptions import GitHookAlreadyExistsError
-from dvc.progress import Tqdm
-from dvc.scm.base import (
-    Base,
-    CloneError,
-    FileNotInRepoError,
-    RevError,
-    SCMError,
-)
-from dvc.utils import fix_env, is_binary, relpath
+from dvc.scm.base import Base, FileNotInRepoError, RevError
+from dvc.utils import relpath
 from dvc.utils.fs import path_isin
 from dvc.utils.serialize import modify_yaml
 
@@ -31,149 +25,67 @@ from .stash import Stash
 logger = logging.getLogger(__name__)
 
 
-class TqdmGit(Tqdm):
-    def update_git(self, op_code, cur_count, max_count=None, message=""):
-        op_code = self.code2desc(op_code)
-        if op_code:
-            message = (op_code + " | " + message) if message else op_code
-        if message:
-            self.postfix["info"] = f" {message} | "
-        self.update_to(cur_count, max_count)
-
-    @staticmethod
-    def code2desc(op_code):
-        from git import RootUpdateProgress as OP
-
-        ops = {
-            OP.COUNTING: "Counting",
-            OP.COMPRESSING: "Compressing",
-            OP.WRITING: "Writing",
-            OP.RECEIVING: "Receiving",
-            OP.RESOLVING: "Resolving",
-            OP.FINDING_SOURCES: "Finding sources",
-            OP.CHECKING_OUT: "Checking out",
-            OP.CLONE: "Cloning",
-            OP.FETCH: "Fetching",
-            OP.UPDWKTREE: "Updating working tree",
-            OP.REMOVE: "Removing",
-            OP.PATHCHANGE: "Changing path",
-            OP.URLCHANGE: "Changing URL",
-            OP.BRANCHCHANGE: "Changing branch",
-        }
-        return ops.get(op_code & OP.OP_MASK, "")
-
-
 class Git(Base):
     """Class for managing Git."""
 
     GITIGNORE = ".gitignore"
     GIT_DIR = ".git"
-    DEFAULT_BACKENDS = (DulwichBackend, GitPythonBackend)
+    DEFAULT_BACKENDS = OrderedDict(
+        [("dulwich", DulwichBackend), ("gitpython", GitPythonBackend)]
+    )
     LOCAL_BRANCH_PREFIX = "refs/heads/"
 
-    def __init__(self, root_dir=os.curdir, search_parent_directories=True):
-        """Git class constructor.
-        Requires `Repo` class from `git` module (from gitpython package).
-        """
-        super().__init__(root_dir)
-
-        import git
-        from git.exc import InvalidGitRepositoryError
-
-        try:
-            self.repo = git.Repo(
-                root_dir, search_parent_directories=search_parent_directories
-            )
-        except InvalidGitRepositoryError:
-            msg = "{} is not a git repository"
-            raise SCMError(msg.format(root_dir))
-
-        # NOTE: fixing LD_LIBRARY_PATH for binary built by PyInstaller.
-        # http://pyinstaller.readthedocs.io/en/stable/runtime-information.html
-        env = fix_env(None)
-        libpath = env.get("LD_LIBRARY_PATH", None)
-        self.repo.git.update_environment(LD_LIBRARY_PATH=libpath)
-
+    def __init__(self, *args, **kwargs):
         self.ignored_paths = []
         self.files_to_track = set()
 
-        self.backends = [backend(self) for backend in self.DEFAULT_BACKENDS]
+        self.backends = OrderedDict(
+            [
+                (name, cls(self, *args, **kwargs))
+                for name, cls in self.DEFAULT_BACKENDS.items()
+            ]
+        )
+
+        super().__init__(self.gitpython.root_dir)
 
     @property
-    def root_dir(self) -> str:
-        return self.repo.working_tree_dir
+    def dir(self):
+        return self.gitpython.repo.git_dir
+
+    @property
+    def gitpython(self):
+        return self.backends["gitpython"]
+
+    @property
+    def dulwich(self):
+        return self.backends["dulwich"]
 
     @cached_property
     def stash(self):
         return Stash(self)
 
-    @staticmethod
-    def clone(url, to_path, rev=None, shallow_branch=None):
-        import git
-
-        ld_key = "LD_LIBRARY_PATH"
-
-        env = fix_env(None)
-        if is_binary() and ld_key not in env.keys():
-            # In fix_env, we delete LD_LIBRARY_PATH key if it was empty before
-            # PyInstaller modified it. GitPython, in git.Repo.clone_from, uses
-            # env to update its own internal state. When there is no key in
-            # env, this value is not updated and GitPython re-uses
-            # LD_LIBRARY_PATH that has been set by PyInstaller.
-            # See [1] for more info.
-            # [1] https://github.com/gitpython-developers/GitPython/issues/924
-            env[ld_key] = ""
-
-        try:
-            if shallow_branch is not None and os.path.exists(url):
-                # git disables --depth for local clones unless file:// url
-                # scheme is used
-                url = f"file://{url}"
-            with TqdmGit(desc="Cloning", unit="obj") as pbar:
-                clone_from = partial(
-                    git.Repo.clone_from,
-                    url,
-                    to_path,
-                    env=env,  # needed before we can fix it in __init__
-                    no_single_branch=True,
-                    progress=pbar.update_git,
-                )
-                if shallow_branch is None:
-                    tmp_repo = clone_from()
-                else:
-                    tmp_repo = clone_from(branch=shallow_branch, depth=1)
-            tmp_repo.close()
-        except git.exc.GitCommandError as exc:  # pylint: disable=no-member
-            raise CloneError(url, to_path) from exc
-
-        # NOTE: using our wrapper to make sure that env is fixed in __init__
-        repo = Git(to_path)
-
-        if rev:
+    @classmethod
+    def clone(cls, url, to_path, **kwargs):
+        for _, backend in cls.DEFAULT_BACKENDS.items():
             try:
-                repo.checkout(rev)
-            except git.exc.GitCommandError as exc:  # pylint: disable=no-member
-                raise RevError(
-                    "failed to access revision '{}' for repo '{}'".format(
-                        rev, url
-                    )
-                ) from exc
+                backend.clone(url, to_path, **kwargs)
+                return Git(to_path)
+            except NotImplementedError:
+                pass
+        raise NoGitBackendError("clone")
 
-        return repo
-
-    @staticmethod
-    def is_sha(rev):
-        import git
-
-        return rev and git.Repo.re_hexsha_shortened.search(rev)
+    @classmethod
+    def is_sha(cls, rev):
+        for _, backend in cls.DEFAULT_BACKENDS.items():
+            try:
+                return backend.is_sha(rev)
+            except NotImplementedError:
+                pass
+        raise NoGitBackendError("is_sha")
 
     @staticmethod
     def _get_git_dir(root_dir):
         return os.path.join(root_dir, Git.GIT_DIR)
-
-    @property
-    def dir(self):
-        return self.repo.git_dir
 
     @property
     def ignore_file(self):
@@ -245,70 +157,6 @@ class Git(Base):
 
         self.track_file(relpath(gitignore))
 
-    def add(self, paths):
-        # NOTE: GitPython is not currently able to handle index version >= 3.
-        # See https://github.com/iterative/dvc/issues/610 for more details.
-        try:
-            self.repo.index.add(paths)
-        except AssertionError:
-            msg = (
-                "failed to add '{}' to git. You can add those files "
-                "manually using `git add`. See "
-                "https://github.com/iterative/dvc/issues/610 for more "
-                "details.".format(str(paths))
-            )
-
-            logger.exception(msg)
-
-    def commit(self, msg):
-        self.repo.index.commit(msg)
-
-    def checkout(self, branch, create_new=False, **kwargs):
-        if create_new:
-            self.repo.git.checkout("HEAD", b=branch, **kwargs)
-        else:
-            self.repo.git.checkout(branch, **kwargs)
-
-    def pull(self, **kwargs):
-        infos = self.repo.remote().pull(**kwargs)
-        for info in infos:
-            if info.flags & info.ERROR:
-                raise SCMError(f"pull failed: {info.note}")
-
-    def push(self):
-        infos = self.repo.remote().push()
-        for info in infos:
-            if info.flags & info.ERROR:
-                raise SCMError(f"push failed: {info.summary}")
-
-    def branch(self, branch):
-        self.repo.git.branch(branch)
-
-    def tag(self, tag):
-        self.repo.git.tag(tag)
-
-    def untracked_files(self):
-        files = self.repo.untracked_files
-        return [os.path.join(self.repo.working_dir, fname) for fname in files]
-
-    def is_tracked(self, path):
-        return bool(self.repo.git.ls_files(path))
-
-    def is_dirty(self, **kwargs):
-        return self.repo.is_dirty(**kwargs)
-
-    def active_branch(self):
-        return self.repo.active_branch.name
-
-    def list_branches(self):
-        return [h.name for h in self.repo.heads]
-
-    def list_tags(self):
-        return [t.name for t in self.repo.tags]
-
-    def list_all_commits(self):
-        return [c.hexsha for c in self.repo.iter_commits("--all")]
-
     def _install_hook(self, name):
         hook = self._hook_path(name)
         with open(hook, "w+") as fobj:
@@ -317,8 +165,8 @@ class Git(Base):
         os.chmod(hook, 0o777)
 
     def _install_merge_driver(self):
-        self.repo.git.config("merge.dvc.name", "DVC merge driver")
-        self.repo.git.config(
+        self.gitpython.repo.git.config("merge.dvc.name", "DVC merge driver")
+        self.gitpython.repo.git.config(
             "merge.dvc.driver",
             (
                 "dvc git-hook merge-driver "
@@ -404,48 +252,6 @@ class Git(Base):
         path_parts = os.path.normpath(path).split(os.path.sep)
         return basename == self.ignore_file or Git.GIT_DIR in path_parts
 
-    def get_tree(self, rev, **kwargs):
-        from dvc.tree.git import GitTree
-
-        return GitTree(self.repo, self.resolve_rev(rev), **kwargs)
-
-    def get_rev(self):
-        return self.repo.rev_parse("HEAD").hexsha
-
-    def resolve_rev(self, rev):
-        from contextlib import suppress
-
-        from git.exc import BadName, GitCommandError
-
-        def _resolve_rev(name):
-            with suppress(BadName, GitCommandError):
-                try:
-                    # Try python implementation of rev-parse first, it's faster
-                    return self.repo.rev_parse(name).hexsha
-                except NotImplementedError:
-                    # Fall back to `git rev-parse` for advanced features
-                    return self.repo.git.rev_parse(name)
-                except ValueError:
-                    raise RevError(f"unknown Git revision '{name}'")
-
-        # Resolve across local names
-        sha = _resolve_rev(rev)
-        if sha:
-            return sha
-
-        # Try all the remotes and if it resolves unambiguously then take it
-        if not Git.is_sha(rev):
-            shas = {
-                _resolve_rev(f"{remote.name}/{rev}")
-                for remote in self.repo.remotes
-            } - {None}
-            if len(shas) > 1:
-                raise RevError(f"ambiguous Git revision '{rev}'")
-            if len(shas) == 1:
-                return shas.pop()
-
-        raise RevError(f"unknown Git revision '{rev}'")
-
     def has_rev(self, rev):
         try:
             self.resolve_rev(rev)
@@ -454,9 +260,8 @@ class Git(Base):
             return False
 
     def close(self):
-        for backend in self.backends:
+        for backend in self.backends.values():
             backend.close()
-        self.repo.close()
 
     @cached_property
     def _hooks_home(self):
@@ -478,34 +283,8 @@ class Git(Base):
     def no_commits(self):
         return not self.list_all_commits()
 
-    def branch_revs(self, branch: str, end_rev: Optional[str] = None):
-        """Iterate over revisions in a given branch (from newest to oldest).
-
-        If end_rev is set, iterator will stop when the specified revision is
-        reached.
-        """
-        commit = self.resolve_commit(branch)
-        while commit is not None:
-            yield commit.hexsha
-            commit = first(commit.parents)
-            if commit and commit.hexsha == end_rev:
-                return
-
-    def resolve_commit(self, rev):
-        """Return Commit object for the specified revision."""
-        from git.exc import BadName, GitCommandError
-        from git.objects.tag import TagObject
-
-        try:
-            commit = self.repo.rev_parse(rev)
-        except (BadName, GitCommandError):
-            commit = None
-        if isinstance(commit, TagObject):
-            commit = commit.object
-        return commit
-
     def _backend_func(self, name, *args, **kwargs):
-        for backend in self.backends:
+        for backend in self.backends.values():
             try:
                 func = getattr(backend, name)
                 return func(*args, **kwargs)
@@ -514,6 +293,26 @@ class Git(Base):
         raise NoGitBackendError(name)
 
     is_ignored = partialmethod(_backend_func, "is_ignored")
+    add = partialmethod(_backend_func, "add")
+    commit = partialmethod(_backend_func, "commit")
+    checkout = partialmethod(_backend_func, "checkout")
+    pull = partialmethod(_backend_func, "pull")
+    push = partialmethod(_backend_func, "push")
+    branch = partialmethod(_backend_func, "branch")
+    tag = partialmethod(_backend_func, "tag")
+    untracked_files = partialmethod(_backend_func, "untracked_files")
+    is_tracked = partialmethod(_backend_func, "is_tracked")
+    is_dirty = partialmethod(_backend_func, "is_dirty")
+    active_branch = partialmethod(_backend_func, "active_branch")
+    list_branches = partialmethod(_backend_func, "list_branches")
+    list_tags = partialmethod(_backend_func, "list_tags")
+    list_all_commits = partialmethod(_backend_func, "list_all_commits")
+    get_tree = partialmethod(_backend_func, "get_tree")
+    get_rev = partialmethod(_backend_func, "get_rev")
+    resolve_rev = partialmethod(_backend_func, "resolve_rev")
+    resolve_commit = partialmethod(_backend_func, "resolve_commit")
+    branch_revs = partialmethod(_backend_func, "branch_revs")
+
     set_ref = partialmethod(_backend_func, "set_ref")
     get_ref = partialmethod(_backend_func, "get_ref")
     remove_ref = partialmethod(_backend_func, "remove_ref")

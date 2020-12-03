@@ -41,7 +41,7 @@ def test_show_experiment(tmp_dir, scm, dvc):
     scm.commit("baseline")
     baseline_rev = scm.get_rev()
     timestamp = datetime.fromtimestamp(
-        scm.repo.rev_parse(baseline_rev).committed_date
+        scm.gitpython.repo.rev_parse(baseline_rev).committed_date
     )
 
     dvc.experiments.run(PIPELINE_FILE, params=["foo=2"])

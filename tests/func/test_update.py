@@ -97,7 +97,7 @@ def test_update_import_after_remote_updates_to_dvc(tmp_dir, dvc, erepo_dir):
 
     new_rev = None
     with erepo_dir.branch("branch", new=False), erepo_dir.chdir():
-        erepo_dir.scm.repo.index.remove(["version"])
+        erepo_dir.scm.gitpython.repo.index.remove(["version"])
         erepo_dir.dvc_gen(
             "version", "updated", commit="upgrade to DVC tracking"
         )
@@ -134,7 +134,7 @@ def test_update_before_and_after_dvc_init(tmp_dir, dvc, git_dir):
 
     with git_dir.chdir():
         git_dir.init(dvc=True)
-        git_dir.scm.repo.index.remove(["file"])
+        git_dir.scm.gitpython.repo.index.remove(["file"])
         os.remove("file")
         git_dir.dvc_gen("file", "second version", commit="with dvc")
         new_rev = git_dir.scm.get_rev()

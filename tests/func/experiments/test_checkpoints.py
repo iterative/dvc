@@ -60,8 +60,8 @@ def test_reset_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, caplog):
     from dvc.repo.experiments.base import CheckpointExistsError
 
     dvc.experiments.run(checkpoint_stage.addressing, name="foo")
-    scm.repo.git.reset(hard=True)
-    scm.repo.git.clean(force=True)
+    scm.gitpython.repo.git.reset(hard=True)
+    scm.gitpython.repo.git.clean(force=True)
 
     with pytest.raises(CheckpointExistsError):
         dvc.experiments.run(
@@ -113,6 +113,6 @@ def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage):
     with pytest.raises(MultipleBranchError):
         dvc.experiments.get_branch_containing(branch_rev)
 
-    assert branch_rev == dvc.experiments.scm.repo.git.merge_base(
+    assert branch_rev == dvc.experiments.scm.gitpython.repo.git.merge_base(
         checkpoint_a, checkpoint_b
     )

@@ -1,11 +1,9 @@
 import os
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Callable, Iterable, Optional, Tuple
+from typing import Callable, Iterable, Optional, Tuple
 
 from dvc.scm.base import SCMError
-
-if TYPE_CHECKING:
-    from dvc.scm.git import Git
+from dvc.tree.base import BaseTree
 
 
 class NoGitBackendError(SCMError):
@@ -16,9 +14,11 @@ class NoGitBackendError(SCMError):
 class BaseGitBackend(ABC):
     """Base Git backend class."""
 
-    def __init__(self, scm: "Git", **kwargs):
-        self.scm = scm
-        self.root_dir = os.fspath(scm.root_dir)
+    @abstractmethod
+    def __init__(
+        self, scm, root_dir=os.curdir, search_parent_directories=True
+    ):
+        pass
 
     def close(self):
         pass
@@ -26,6 +26,111 @@ class BaseGitBackend(ABC):
     @abstractmethod
     def is_ignored(self, path):
         """Return True if the specified path is gitignored."""
+
+    @property
+    @abstractmethod
+    def root_dir(self) -> str:
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def clone(
+        url: str,
+        to_path: str,
+        rev: Optional[str] = None,
+        shallow_branch: Optional[str] = None,
+    ):
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def is_sha(rev: str) -> bool:
+        pass
+
+    @property
+    @abstractmethod
+    def dir(self) -> str:
+        pass
+
+    @abstractmethod
+    def add(self, paths: Iterable[str]):
+        pass
+
+    @abstractmethod
+    def commit(self, msg: str):
+        pass
+
+    @abstractmethod
+    def checkout(
+        self, branch: str, create_new: Optional[bool] = False, **kwargs,
+    ):
+        pass
+
+    @abstractmethod
+    def pull(self, **kwargs):
+        pass
+
+    @abstractmethod
+    def push(self):
+        pass
+
+    @abstractmethod
+    def branch(self, branch: str):
+        pass
+
+    @abstractmethod
+    def tag(self, tag: str):
+        pass
+
+    @abstractmethod
+    def untracked_files(self) -> Iterable[str]:
+        pass
+
+    @abstractmethod
+    def is_tracked(self, path: str) -> bool:
+        pass
+
+    @abstractmethod
+    def is_dirty(self, **kwargs) -> bool:
+        pass
+
+    @abstractmethod
+    def active_branch(self) -> str:
+        pass
+
+    @abstractmethod
+    def list_branches(self) -> Iterable[str]:
+        pass
+
+    @abstractmethod
+    def list_tags(self) -> Iterable[str]:
+        pass
+
+    @abstractmethod
+    def list_all_commits(self) -> Iterable[str]:
+        pass
+
+    @abstractmethod
+    def get_tree(self, rev: str, **kwargs) -> BaseTree:
+        pass
+
+    @abstractmethod
+    def get_rev(self) -> str:
+        pass
+
+    @abstractmethod
+    def resolve_rev(self, rev: str) -> str:
+        pass
+
+    @abstractmethod
+    def resolve_commit(self, rev: str) -> str:
+        pass
+
+    @abstractmethod
+    def branch_revs(
+        self, branch: str, end_rev: Optional[str] = None
+    ) -> Iterable[str]:
+        pass
 
     @abstractmethod
     def set_ref(

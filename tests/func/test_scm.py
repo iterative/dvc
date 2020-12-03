@@ -50,7 +50,7 @@ class TestSCMGit(TestGit):
         G.commit("add")
         self.assertTrue(G.is_tracked(foo))
         self.assertTrue(G.is_tracked(self.FOO))
-        G.repo.index.remove([self.FOO], working_tree=True)
+        G.gitpython.repo.index.remove([self.FOO], working_tree=True)
         self.assertFalse(G.is_tracked(foo))
         self.assertFalse(G.is_tracked(self.FOO))
         self.assertFalse(G.is_tracked("not-existing-file"))
@@ -183,9 +183,9 @@ def test_git_stash_workspace(tmp_dir, scm):
     tmp_dir.gen("file", "1")
 
     with scm.stash_workspace():
-        assert not scm.repo.is_dirty()
+        assert not scm.is_dirty()
         assert "0" == (tmp_dir / "file").read_text()
-    assert scm.repo.is_dirty()
+    assert scm.is_dirty()
     assert "1" == (tmp_dir / "file").read_text()
 
 
