@@ -369,13 +369,13 @@ def _clone_default_branch(url, rev, for_write=False):
 
 
 def _unshallow(git):
-    if git.repo.head.is_detached:
+    if git.gitpython.repo.head.is_detached:
         # If this is a detached head (i.e. we shallow cloned a tag) switch to
         # the default branch
-        origin_refs = git.repo.remotes["origin"].refs
+        origin_refs = git.gitpython.repo.remotes["origin"].refs
         ref = origin_refs["HEAD"].reference
         branch_name = ref.name.split("/")[-1]
-        branch = git.repo.create_head(branch_name, ref)
+        branch = git.gitpython.repo.create_head(branch_name, ref)
         branch.set_tracking_branch(ref)
         branch.checkout()
     git.pull(unshallow=True)

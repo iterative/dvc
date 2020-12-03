@@ -85,8 +85,10 @@ class BaseExecutor:
             # committing
             head = EXEC_BRANCH if branch else EXEC_HEAD
             self.scm.checkout(head, detach=True)
-            self.scm.repo.git.merge(EXEC_MERGE, squash=True, no_commit=True)
-            self.scm.repo.git.reset()
+            self.scm.gitpython.repo.git.merge(
+                EXEC_MERGE, squash=True, no_commit=True
+            )
+            self.scm.gitpython.repo.git.reset()
             self._prune_lockfiles()
         finally:
             os.chdir(cwd)
@@ -94,11 +96,13 @@ class BaseExecutor:
     def _prune_lockfiles(self):
         # NOTE: dirty DVC lock files must be restored to index state to
         # avoid checking out incorrect persist or checkpoint outs
-        dirty = [diff.a_path for diff in self.scm.repo.index.diff(None)]
+        dirty = [
+            diff.a_path for diff in self.scm.gitpython.repo.index.diff(None)
+        ]
         to_checkout = [fname for fname in dirty if is_lock_file(fname)]
-        self.scm.repo.index.checkout(paths=to_checkout, force=True)
+        self.scm.gitpython.repo.index.checkout(paths=to_checkout, force=True)
 
-        untracked = self.scm.repo.untracked_files
+        untracked = self.scm.gitpython.repo.untracked_files
         to_remove = [fname for fname in untracked if is_lock_file(fname)]
         for fname in to_remove:
             remove(fname)
@@ -320,7 +324,7 @@ class BaseExecutor:
             old_ref = None
             logger.debug("Commit to new experiment branch '%s'", branch)
 
-        scm.repo.git.add(A=True)
+        scm.gitpython.repo.git.add(A=True)
         scm.commit(f"dvc: commit experiment {exp_hash}")
         new_rev = scm.get_rev()
         scm.set_ref(branch, new_rev, old_ref=old_ref)

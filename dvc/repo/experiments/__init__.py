@@ -205,8 +205,8 @@ class Experiments:
             )
 
             # Reset/clean any changes before prior workspace is unstashed
-            self.scm.repo.git.reset(hard=True)
-            self.scm.repo.git.clean(force=True)
+            self.scm.gitpython.repo.git.reset(hard=True)
+            self.scm.gitpython.repo.git.clean(force=True)
 
         return stash_rev
 
@@ -447,8 +447,8 @@ class Experiments:
                 for ref in (EXEC_HEAD, EXEC_MERGE, EXEC_BASELINE):
                     self.scm.remove_ref(ref)
 
-            self.scm.repo.git.reset(hard=True)
-            self.scm.repo.git.clean(force=True)
+            self.scm.gitpython.repo.git.reset(hard=True)
+            self.scm.gitpython.repo.git.clean(force=True)
         return executors
 
     def _reproduce(

@@ -48,7 +48,7 @@ def apply(repo, rev, *args, **kwargs):
     else:
         workspace = None
 
-    repo.scm.repo.git.merge(branch, squash=True, no_commit=True)
+    repo.scm.gitpython.repo.git.merge(branch, squash=True, no_commit=True)
 
     if workspace:
         try:
@@ -56,9 +56,9 @@ def apply(repo, rev, *args, **kwargs):
         except GitCommandError:
             # if stash apply returns merge conflicts, prefer experiment
             # changes over prior stashed changes
-            repo.scm.repo.git.checkout("--ours", "--", ".")
+            repo.scm.gitpython.repo.git.checkout("--ours", "--", ".")
         repo.scm.stash.drop()
-    repo.scm.repo.git.reset()
+    repo.scm.gitpython.repo.git.reset()
 
     if stash_rev:
         args_path = os.path.join(repo.tmp_dir, BaseExecutor.PACKED_ARGS_FILE)

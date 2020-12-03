@@ -19,10 +19,6 @@ class Stash:
         self.ref = ref if ref else self.DEFAULT_STASH
         self.scm = scm
 
-    @property
-    def git(self):
-        return self.scm.repo.git
-
     def __iter__(self):
         yield from self.scm._stash_iter(self.ref)
 
@@ -49,7 +45,7 @@ class Stash:
             self.ref, message=message, include_untracked=include_untracked
         )
         if reset:
-            self.git.reset(hard=True)
+            self.scm.gitpython.repo.git.reset(hard=True)
         return rev
 
     def pop(self):

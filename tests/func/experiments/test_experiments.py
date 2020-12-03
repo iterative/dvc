@@ -258,7 +258,7 @@ def test_detached_parent(tmp_dir, scm, dvc, exp_stage, mocker):
     scm.commit("v2")
 
     scm.checkout(detached_rev)
-    assert scm.repo.head.is_detached
+    assert scm.gitpython.repo.head.is_detached
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=3"])
 
     exp_rev = first(results)

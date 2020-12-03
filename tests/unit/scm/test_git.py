@@ -25,7 +25,9 @@ def test_walk_with_submodules(tmp_dir, scm, git_dir):
         {"foo": "foo", "bar": "bar", "dir": {"data": "data"}},
         commit="add dir and files",
     )
-    scm.repo.create_submodule("submodule", "submodule", url=os.fspath(git_dir))
+    scm.gitpython.repo.create_submodule(
+        "submodule", "submodule", url=os.fspath(git_dir)
+    )
     scm.commit("added submodule")
 
     files = []
