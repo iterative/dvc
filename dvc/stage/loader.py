@@ -3,14 +3,7 @@ from collections.abc import Mapping
 from copy import deepcopy
 from itertools import chain
 
-from funcy import (
-    cached_property,
-    get_in,
-    lcat,
-    log_durations,
-    nullcontext,
-    project,
-)
+from funcy import cached_property, get_in, lcat, log_durations, project
 
 from dvc import dependency, output
 from dvc.hash_info import HashInfo
@@ -25,43 +18,23 @@ from .utils import fill_stage_dependencies, resolve_paths
 logger = logging.getLogger(__name__)
 
 
-class NoopResolver:
-    def __init__(self, _repo, _wdir, d):
-        self.d = d
-        self.tracked_vars = {}
-
-    def resolve(self):
-        return self.d
-
-
 class StageLoader(Mapping):
     def __init__(self, dvcfile, data, lockfile_data=None):
         self.dvcfile = dvcfile
         self.data = data or {}
         self.stages_data = self.data.get("stages", {})
         self.repo = self.dvcfile.repo
-        self._enable_parametrization = self.repo.config["feature"][
-            "parametrization"
-        ]
         self.lockfile_data = lockfile_data or {}
 
     @cached_property
     def resolver(self):
-        resolver_cls = (
-            DataResolver if self._enable_parametrization else NoopResolver
-        )
         wdir = PathInfo(self.dvcfile.path).parent
-        return resolver_cls(self.repo, wdir, self.data)
+        return DataResolver(self.repo, wdir, self.data)
 
     @cached_property
     def resolved_data(self):
         data = self.data
-        log = (
-            log_durations(logger.debug, "resolving values")
-            if self._enable_parametrization
-            else nullcontext()
-        )
-        with log:
+        with log_durations(logger.debug, "resolving values"):
             data = self.resolver.resolve()
         return data.get("stages", {})
 
