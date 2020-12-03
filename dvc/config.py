@@ -234,7 +234,7 @@ SCHEMA = {
         "row_cleanup_quota": All(Coerce(int), Range(0, 100)),
     },
     # section for experimental features
-    "feature": {Optional("parametrization", default=False): Bool},
+    "feature": {Optional("parametrization", default=True): Bool},
 }
 COMPILED_SCHEMA = Schema(SCHEMA)
 

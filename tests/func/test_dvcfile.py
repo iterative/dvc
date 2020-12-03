@@ -375,7 +375,6 @@ def test_dvcfile_dump_preserves_comments(tmp_dir, dvc):
 )
 def test_dvcfile_try_dumping_parametrized_stage(tmp_dir, dvc, data, name):
     dump_yaml("dvc.yaml", {"stages": data, "vars": [{"foo": "foobar"}]})
-    dvc.config["feature"]["parametrization"] = True
 
     stage = dvc.stage.load_one(name=name)
     dvcfile = stage.dvcfile
