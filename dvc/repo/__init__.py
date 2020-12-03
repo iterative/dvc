@@ -8,7 +8,6 @@ from funcy import cached_property, cat
 from git import InvalidGitRepositoryError
 
 from dvc.config import Config
-from dvc.dvcfile import is_valid_filename
 from dvc.exceptions import FileMissingError
 from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
 from dvc.exceptions import NotDvcRepoError, OutputNotFoundError
@@ -183,6 +182,7 @@ class Repo:
         self.metrics = Metrics(self)
         self.plots = Plots(self)
         self.params = Params(self)
+        self.stage_collection_error_handler = None
         self._lock_depth = 0
 
     @cached_property
@@ -371,25 +371,8 @@ class Repo:
         NOTE: For large repos, this could be an expensive
               operation. Consider using some memoization.
         """
-        return self._collect_stages()
-
-    def _collect_stages(self):
-        stages = []
-        outs = set()
-
-        for root, dirs, files in self.tree.walk(self.root_dir):
-            for file_name in filter(is_valid_filename, files):
-                file_path = os.path.join(root, file_name)
-                new_stages = self.stage.load_file(file_path)
-                stages.extend(new_stages)
-                outs.update(
-                    out.fspath
-                    for stage in new_stages
-                    for out in stage.outs
-                    if out.scheme == "local"
-                )
-            dirs[:] = [d for d in dirs if os.path.join(root, d) not in outs]
-        return stages
+        error_handler = self.stage_collection_error_handler
+        return self.stage.collect_repo(onerror=error_handler)
 
     def find_outs_by_path(self, path, outs=None, recursive=False, strict=True):
         if not outs:

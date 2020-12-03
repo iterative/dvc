@@ -6,11 +6,15 @@ from contextlib import suppress
 from typing import Iterable, List, NamedTuple, Optional, Set, Tuple
 
 from dvc.dvcfile import PIPELINE_FILE, Dvcfile, is_valid_filename
-from dvc.exceptions import NoOutputOrStageError, OutputNotFoundError
+from dvc.exceptions import (
+    DvcException,
+    NoOutputOrStageError,
+    OutputNotFoundError,
+)
 from dvc.path_info import PathInfo
 from dvc.repo.graph import collect_inside_path, collect_pipeline
 from dvc.stage.exceptions import StageFileDoesNotExistError, StageNotFound
-from dvc.utils import parse_target
+from dvc.utils import parse_target, relpath
 
 logger = logging.getLogger(__name__)
 
@@ -316,3 +320,37 @@ class StageLoad:
                 raise NoOutputOrStageError(target, exc.file) from exc
 
         return [StageInfo(stage) for stage in stages]
+
+    def collect_repo(self, onerror=None):
+        """Collects all of the stages present in the DVC repo.
+
+        Args:
+            onerror (optional): callable that will be called with two args:
+                the filepath whose collection failed and the exc instance.
+                The decision to raise error is with the callback.
+                Otherwise, the file will be skipped, and dvc will partially
+                load the stages.
+        """
+        stages = []
+        outs = set()
+        for root, dirs, files in self.tree.walk(self.repo.root_dir):
+            for file_name in filter(is_valid_filename, files):
+                file_path = os.path.join(root, file_name)
+
+                try:
+                    new_stages = self.load_file(file_path)
+                except DvcException as exc:
+                    if onerror:
+                        onerror(relpath(file_path), exc)
+                        continue
+                    raise
+
+                stages.extend(new_stages)
+                outs.update(
+                    out.fspath
+                    for stage in new_stages
+                    for out in stage.outs
+                    if out.scheme == "local"
+                )
+            dirs[:] = [d for d in dirs if os.path.join(root, d) not in outs]
+        return stages
