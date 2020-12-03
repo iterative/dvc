@@ -517,37 +517,36 @@ def test_repro_multiple_params(tmp_dir, dvc):
 
 
 def test_repro_list_of_commands_in_order(tmp_dir, dvc):
-    dvcfile_content = {
-        "stages": {
-            "multi_commands": {
-                "cmd": [
-                    'echo "First command" > foo',
-                    'echo "Second command" >> foo',
-                ],
-                "outs": ["foo"],
-            }
-        }
-    }
-    dump_yaml(PIPELINE_FILE, dvcfile_content)
-    dvc.reproduce(target="multi_commands")
-    assert (tmp_dir / "foo").read_text() == "First command\nSecond command\n"
+    (tmp_dir / "dvc.yaml").write_text(
+        dedent(
+            """\
+            stages:
+              multi:
+                cmd:
+                - echo foo>foo
+                - echo bar>bar
+        """
+        )
+    )
+    dvc.reproduce(target="multi")
+    assert (tmp_dir / "foo").read_text() == "foo\n"
+    assert (tmp_dir / "bar").read_text() == "bar\n"
 
 
 def test_repro_list_of_commands_raise_and_stops_after_failure(tmp_dir, dvc):
-    dvcfile_content = {
-        "stages": {
-            "multi_commands": {
-                "cmd": [
-                    """echo "First command" > foo""",
-                    """ehco "Second command" >> foo""",
-                    """echo "Third command" >> foo""",
-                ],
-                "outs": ["foo"],
-            }
-        }
-    }
-    dump_yaml(PIPELINE_FILE, dvcfile_content)
-
+    (tmp_dir / "dvc.yaml").write_text(
+        dedent(
+            """\
+            stages:
+              multi:
+                cmd:
+                - echo foo>foo
+                - failed_command
+                - echo baz>bar
+        """
+        )
+    )
     with pytest.raises(ReproductionError):
-        dvc.reproduce(target="multi_commands")
-    assert (tmp_dir / "foo").read_text() == "First command\n"
+        dvc.reproduce(target="multi")
+    assert (tmp_dir / "foo").read_text() == "foo\n"
+    assert not (tmp_dir / "bar").exists()
