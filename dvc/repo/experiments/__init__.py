@@ -28,7 +28,7 @@ from dvc.repo.experiments.base import (
 )
 from dvc.repo.experiments.executor import BaseExecutor, LocalExecutor
 from dvc.stage.run import CheckpointKilledError
-from dvc.utils import env2bool, relpath
+from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +72,6 @@ class Experiments:
         repo (dvc.repo.Repo): repo instance that these experiments belong to.
     """
 
-    EXPERIMENTS_DIR = "experiments"
     STASH_EXPERIMENT_FORMAT = "dvc-exp:{rev}:{baseline_rev}:{name}"
     STASH_EXPERIMENT_RE = re.compile(
         r"(?:commit: )"
@@ -92,22 +91,16 @@ class Experiments:
 
     def __init__(self, repo):
         from dvc.lock import make_lock
+        from dvc.scm.base import NoSCMError
 
-        if not (
-            env2bool("DVC_TEST")
-            or repo.config["core"].get("experiments", False)
-        ):
-            raise NotImplementedError
+        if repo.config["core"].get("no_scm", False):
+            raise NoSCMError
 
         self.repo = repo
         self.scm_lock = make_lock(
             os.path.join(self.repo.tmp_dir, "exp_scm_lock"),
             tmp_dir=self.repo.tmp_dir,
         )
-
-    @cached_property
-    def exp_dir(self):
-        return os.path.join(self.repo.dvc_dir, self.EXPERIMENTS_DIR)
 
     @property
     def scm(self):
@@ -117,23 +110,13 @@ class Experiments:
     def dvc_dir(self):
         return relpath(self.repo.dvc_dir, self.repo.scm.root_dir)
 
-    @cached_property
-    def exp_dvc_dir(self):
-        return os.path.join(self.exp_dir, self.dvc_dir)
-
-    @property
-    def exp_dvc(self):
-        return self.repo
-
     @contextmanager
     def chdir(self):
         yield
 
     @cached_property
     def args_file(self):
-        return os.path.join(
-            self.exp_dvc.tmp_dir, BaseExecutor.PACKED_ARGS_FILE
-        )
+        return os.path.join(self.repo.tmp_dir, BaseExecutor.PACKED_ARGS_FILE)
 
     @cached_property
     def stash(self):
@@ -256,10 +239,10 @@ class Experiments:
         logger.debug("Using experiment params '%s'", params)
 
         for params_fname in params:
-            path = PathInfo(self.exp_dvc.root_dir) / params_fname
+            path = PathInfo(self.repo.root_dir) / params_fname
             suffix = path.suffix.lower()
             modify_data = MODIFIERS[suffix]
-            with modify_data(path, tree=self.exp_dvc.tree) as data:
+            with modify_data(path, tree=self.repo.tree) as data:
                 benedict(data).merge(params[params_fname], overwrite=True)
 
         # Force params file changes to be staged in git

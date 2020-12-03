@@ -133,7 +133,6 @@ class Repo:
         from dvc.cache import Cache
         from dvc.data_cloud import DataCloud
         from dvc.lock import LockNoop, make_lock
-        from dvc.repo.experiments import Experiments
         from dvc.repo.metrics import Metrics
         from dvc.repo.params import Params
         from dvc.repo.plots import Plots
@@ -179,11 +178,6 @@ class Repo:
             self.state = State(self)
             self.stage_cache = StageCache(self)
 
-            try:
-                self.experiments = Experiments(self)
-            except NotImplementedError:
-                self.experiments = None
-
             self._ignore()
 
         self.metrics = Metrics(self)
@@ -197,6 +191,12 @@ class Repo:
 
         no_scm = self.config["core"].get("no_scm", False)
         return self._scm if self._scm else SCM(self.root_dir, no_scm=no_scm)
+
+    @cached_property
+    def experiments(self):
+        from dvc.repo.experiments import Experiments
+
+        return Experiments(self)
 
     @property
     def tree(self) -> "BaseTree":
@@ -258,8 +258,6 @@ class Repo:
             self.config.files["local"],
             self.tmp_dir,
         ]
-        if self.experiments:
-            flist.append(self.experiments.exp_dir)
 
         if path_isin(self.cache.local.cache_dir, self.root_dir):
             flist += [self.cache.local.cache_dir]
