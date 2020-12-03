@@ -305,3 +305,28 @@ def test_branch(tmp_dir, scm, dvc, exp_stage):
 
     assert "branch-ref-b" in scm.list_branches()
     assert scm.resolve_rev("branch-ref-b") == exp_b
+
+
+def test_no_scm(tmp_dir):
+    from dvc.repo import Repo as DvcRepo
+    from dvc.scm.base import NoSCMError
+
+    dvc = DvcRepo.init(no_scm=True)
+
+    with pytest.raises(NoSCMError):
+        dvc.experiments.run()
+
+    with pytest.raises(NoSCMError):
+        dvc.experiments.apply()
+
+    with pytest.raises(NoSCMError):
+        dvc.experiments.branch()
+
+    with pytest.raises(NoSCMError):
+        dvc.experiments.diff()
+
+    with pytest.raises(NoSCMError):
+        dvc.experiments.show()
+
+    with pytest.raises(NoSCMError):
+        dvc.experiments.gc()

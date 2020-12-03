@@ -300,9 +300,6 @@ class CmdExperimentsShow(CmdBase):
 
         from dvc.utils.pager import pager
 
-        if not self.repo.experiments:
-            return 0
-
         try:
             all_experiments = self.repo.experiments.show(
                 all_branches=self.args.all_branches,
@@ -355,8 +352,6 @@ class CmdExperimentsShow(CmdBase):
 
 class CmdExperimentsApply(CmdBase):
     def run(self):
-        if not self.repo.experiments:
-            return 0
 
         self.repo.experiments.apply(self.args.experiment)
 
@@ -402,8 +397,6 @@ def _show_diff(
 
 class CmdExperimentsDiff(CmdBase):
     def run(self):
-        if not self.repo.experiments:
-            return 0
 
         try:
             diff = self.repo.experiments.diff(
@@ -445,8 +438,6 @@ class CmdExperimentsDiff(CmdBase):
 
 class CmdExperimentsRun(CmdRepro):
     def run(self):
-        if not self.repo.experiments:
-            return 0
 
         saved_dir = os.path.realpath(os.curdir)
         os.chdir(self.args.cwd)
@@ -482,9 +473,6 @@ class CmdExperimentsRun(CmdRepro):
 class CmdExperimentsGC(CmdRepro):
     def run(self):
         from dvc.repo.gc import _raise_error_if_all_disabled
-
-        if not self.repo.experiments:
-            return 0
 
         _raise_error_if_all_disabled(
             all_branches=self.args.all_branches,
@@ -536,8 +524,6 @@ class CmdExperimentsGC(CmdRepro):
 
 class CmdExperimentsBranch(CmdBase):
     def run(self):
-        if not self.repo.experiments:
-            return 0
 
         self.repo.experiments.branch(self.args.experiment, self.args.branch)
 
@@ -545,7 +531,7 @@ class CmdExperimentsBranch(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    EXPERIMENTS_HELP = "Commands to display and compare experiments."
+    EXPERIMENTS_HELP = "Commands to run and compare experiments."
 
     experiments_parser = subparsers.add_parser(
         "experiments",
@@ -553,6 +539,7 @@ def add_parser(subparsers, parent_parser):
         aliases=["exp"],
         description=append_doc_link(EXPERIMENTS_HELP, "experiments"),
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        help=EXPERIMENTS_HELP,
     )
 
     experiments_subparsers = experiments_parser.add_subparsers(

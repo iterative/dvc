@@ -15,7 +15,7 @@ from dvc.exceptions import InvalidArgumentError
 from .test_repro import default_arguments as repro_arguments
 
 
-def test_experiments_apply(dvc, mocker):
+def test_experiments_apply(dvc, scm, mocker):
     cli_args = parse_args(["experiments", "apply", "exp_rev"])
     assert cli_args.func == CmdExperimentsApply
 
@@ -27,7 +27,7 @@ def test_experiments_apply(dvc, mocker):
     m.assert_called_once_with(cmd.repo, "exp_rev")
 
 
-def test_experiments_diff(dvc, mocker):
+def test_experiments_diff(dvc, scm, mocker):
     cli_args = parse_args(
         [
             "experiments",
@@ -54,7 +54,7 @@ def test_experiments_diff(dvc, mocker):
     )
 
 
-def test_experiments_show(dvc, mocker):
+def test_experiments_show(dvc, scm, mocker):
     cli_args = parse_args(
         [
             "experiments",
@@ -84,7 +84,7 @@ def test_experiments_show(dvc, mocker):
 @pytest.mark.parametrize(
     "args, resume", [(["exp", "run"], None), (["exp", "resume"], ":last")]
 )
-def test_experiments_run(dvc, mocker, args, resume):
+def test_experiments_run(dvc, scm, mocker, args, resume):
     default_arguments = {
         "params": [],
         "name": None,
@@ -105,7 +105,7 @@ def test_experiments_run(dvc, mocker, args, resume):
     )
 
 
-def test_experiments_gc(dvc, mocker):
+def test_experiments_gc(dvc, scm, mocker):
     cli_args = parse_args(
         [
             "exp",
@@ -140,7 +140,7 @@ def test_experiments_gc(dvc, mocker):
         cmd.run()
 
 
-def test_experiments_branch(dvc, mocker):
+def test_experiments_branch(dvc, scm, mocker):
     cli_args = parse_args(["experiments", "branch", "expname", "branchname"])
     assert cli_args.func == CmdExperimentsBranch
 
