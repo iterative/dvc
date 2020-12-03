@@ -6,7 +6,7 @@ import pytest
 from funcy import lsplit
 
 from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
-from dvc.exceptions import CyclicGraphError
+from dvc.exceptions import CyclicGraphError, ReproductionError
 from dvc.main import main
 from dvc.stage import PipelineStage
 from dvc.utils.serialize import dump_yaml, load_yaml
@@ -382,8 +382,6 @@ def test_repro_when_new_out_overlaps_others_stage_outs(tmp_dir, dvc):
 
 
 def test_repro_when_new_deps_added_does_not_exist(tmp_dir, dvc):
-    from dvc.exceptions import ReproductionError
-
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("foo", "foo")
     dump_yaml(
@@ -403,8 +401,6 @@ def test_repro_when_new_deps_added_does_not_exist(tmp_dir, dvc):
 
 
 def test_repro_when_new_outs_added_does_not_exist(tmp_dir, dvc):
-    from dvc.exceptions import ReproductionError
-
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("foo", "foo")
     dump_yaml(
@@ -518,3 +514,39 @@ def test_repro_multiple_params(tmp_dir, dvc):
     dump_yaml(tmp_dir / "params.yaml", params)
 
     assert dvc.reproduce(stage.addressing) == [stage]
+
+
+def test_repro_list_of_commands_in_order(tmp_dir, dvc):
+    (tmp_dir / "dvc.yaml").write_text(
+        dedent(
+            """\
+            stages:
+              multi:
+                cmd:
+                - echo foo>foo
+                - echo bar>bar
+        """
+        )
+    )
+    dvc.reproduce(target="multi")
+    assert (tmp_dir / "foo").read_text() == "foo\n"
+    assert (tmp_dir / "bar").read_text() == "bar\n"
+
+
+def test_repro_list_of_commands_raise_and_stops_after_failure(tmp_dir, dvc):
+    (tmp_dir / "dvc.yaml").write_text(
+        dedent(
+            """\
+            stages:
+              multi:
+                cmd:
+                - echo foo>foo
+                - failed_command
+                - echo baz>bar
+        """
+        )
+    )
+    with pytest.raises(ReproductionError):
+        dvc.reproduce(target="multi")
+    assert (tmp_dir / "foo").read_text() == "foo\n"
+    assert not (tmp_dir / "bar").exists()

@@ -21,7 +21,9 @@ class CheckpointKilledError(StageCmdFailedError):
     pass
 
 
-def _nix_cmd(executable, cmd):
+def _make_cmd(executable, cmd):
+    if executable is None:
+        return cmd
     opts = {"zsh": ["--no-rcs"], "bash": ["--noprofile", "--norc"]}
     name = os.path.basename(executable).lower()
     return [executable] + opts.get(name, []) + ["-c", cmd]
@@ -46,13 +48,14 @@ def warn_if_fish(executable):
 @unlocked_repo
 def cmd_run(stage, *args, checkpoint_func=None, **kwargs):
     kwargs = {"cwd": stage.wdir, "env": fix_env(None), "close_fds": True}
+    cmd = stage.cmd if isinstance(stage.cmd, list) else [stage.cmd]
     if checkpoint_func:
         # indicate that checkpoint cmd is being run inside DVC
         kwargs["env"].update(_checkpoint_env(stage))
 
     if os.name == "nt":
         kwargs["shell"] = True
-        cmd = stage.cmd
+        executable = None
     else:
         # NOTE: when you specify `shell=True`, `Popen` [1] will default to
         # `/bin/sh` on *nix and will add ["/bin/sh", "-c"] to your command.
@@ -70,32 +73,33 @@ def cmd_run(stage, *args, checkpoint_func=None, **kwargs):
         kwargs["shell"] = False
         executable = os.getenv("SHELL") or "/bin/sh"
         warn_if_fish(executable)
-        cmd = _nix_cmd(executable, stage.cmd)
 
     main_thread = isinstance(
         threading.current_thread(),
         threading._MainThread,  # pylint: disable=protected-access
     )
-    old_handler = None
-    p = None
+    for _cmd in cmd:
+        logger.info("$ %s", _cmd)
+        old_handler = None
+        p = None
 
-    try:
-        p = subprocess.Popen(cmd, **kwargs)
-        if main_thread:
-            old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        try:
+            p = subprocess.Popen(_make_cmd(executable, _cmd), **kwargs)
+            if main_thread:
+                old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-        killed = threading.Event()
-        with checkpoint_monitor(stage, checkpoint_func, p, killed):
-            p.communicate()
-    finally:
-        if old_handler:
-            signal.signal(signal.SIGINT, old_handler)
+            killed = threading.Event()
+            with checkpoint_monitor(stage, checkpoint_func, p, killed):
+                p.communicate()
+        finally:
+            if old_handler:
+                signal.signal(signal.SIGINT, old_handler)
 
-    retcode = None if not p else p.returncode
-    if retcode != 0:
-        if killed.is_set():
-            raise CheckpointKilledError(stage.cmd, retcode)
-        raise StageCmdFailedError(stage.cmd, retcode)
+        retcode = None if not p else p.returncode
+        if retcode != 0:
+            if killed.is_set():
+                raise CheckpointKilledError(_cmd, retcode)
+            raise StageCmdFailedError(_cmd, retcode)
 
 
 def run_stage(stage, dry=False, force=False, checkpoint_func=None, **kwargs):
@@ -110,11 +114,8 @@ def run_stage(stage, dry=False, force=False, checkpoint_func=None, **kwargs):
 
     callback_str = "callback " if stage.is_callback else ""
     logger.info(
-        "Running %s" "stage '%s' with command:",
-        callback_str,
-        stage.addressing,
+        "Running %s" "stage '%s':", callback_str, stage.addressing,
     )
-    logger.info("\t%s", stage.cmd)
     if not dry:
         cmd_run(stage, checkpoint_func=checkpoint_func)
 

@@ -160,6 +160,13 @@ def test_load_stage(dvc, stage_data, lock_data):
     assert stage.outs[0].hash_info == HashInfo("md5", "bar_checksum")
 
 
+def test_load_stage_cmd_with_list(dvc, stage_data, lock_data):
+    stage_data["cmd"] = ["cmd-0", "cmd-1"]
+    dvcfile = Dvcfile(dvc, PIPELINE_FILE)
+    stage = StageLoader.load_stage(dvcfile, "stage-1", stage_data, lock_data)
+    assert stage.cmd == ["cmd-0", "cmd-1"]
+
+
 def test_load_stage_outs_with_flags(dvc, stage_data, lock_data):
     stage_data["outs"] = [{"foo": {"cache": False}}]
     dvcfile = Dvcfile(dvc, PIPELINE_FILE)
