@@ -151,7 +151,6 @@ def test_no_commits(tmp_dir):
 
 
 def test_vars_shows_on_params_diff(tmp_dir, scm, dvc):
-    dvc.config["feature"]["parametrization"] = True
     params_file = tmp_dir / "test_params.yaml"
     param_data = {"vars": {"model1": {"epoch": 15}, "model2": {"epoch": 35}}}
     dump_yaml(params_file, param_data)

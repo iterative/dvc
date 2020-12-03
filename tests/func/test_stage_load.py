@@ -147,7 +147,6 @@ def test_collect_not_a_group_stage_with_group_flag(tmp_dir, dvc, stages):
 
 
 def test_collect_generated(tmp_dir, dvc):
-    dvc.config["feature"]["parametrization"] = True
     d = {
         "vars": [{"vars": [1, 2, 3, 4, 5]}],
         "stages": {

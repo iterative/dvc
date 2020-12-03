@@ -234,7 +234,10 @@ SCHEMA = {
         "row_cleanup_quota": All(Coerce(int), Range(0, 100)),
     },
     # section for experimental features
-    "feature": {Optional("parametrization", default=False): Bool},
+    "feature": {
+        # enabled by default. It's of no use, kept for backward compatibility.
+        Optional("parametrization", default=True): Bool
+    },
 }
 COMPILED_SCHEMA = Schema(SCHEMA)
 
