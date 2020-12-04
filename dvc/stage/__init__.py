@@ -472,7 +472,7 @@ class Stage(params.StageParams):
             self.remove_outs(ignore_remove=False, force=False)
 
         if not self.frozen and self.is_import:
-            jobs = kwargs.get("jobs", None)
+            jobs = kwargs.get("jobs")
             sync_import(self, dry, force, jobs)
         elif not self.frozen and self.cmd:
             run_stage(self, dry, force, **kwargs)
