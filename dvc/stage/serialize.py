@@ -59,15 +59,17 @@ def _serialize_out(out):
 
 @no_type_check
 def _serialize_outs(outputs: List[BaseOutput]):
-    outs, metrics, plots = [], [], []
+    outs, metrics, plots, dvclive = [], [], [], []
     for out in sort_by_path(outputs):
         bucket = outs
         if out.plot:
             bucket = plots
         elif out.metric:
             bucket = metrics
+        elif out.dvclive:
+            bucket = dvclive
         bucket.append(_serialize_out(out))
-    return outs, metrics, plots
+    return outs, metrics, plots, dvclive
 
 
 def _serialize_params_keys(params):
@@ -122,7 +124,7 @@ def to_pipeline_file(stage: "PipelineStage"):
     deps = sorted(d.def_path for d in deps)
     params = _serialize_params_keys(params)
 
-    outs, metrics, plots = _serialize_outs(stage.outs)
+    outs, metrics, plots, dvclive = _serialize_outs(stage.outs)
     res = [
         (stage.PARAM_DESC, stage.desc),
         (stage.PARAM_CMD, stage.cmd),
@@ -132,6 +134,7 @@ def to_pipeline_file(stage: "PipelineStage"):
         (stage.PARAM_OUTS, outs),
         (stage.PARAM_METRICS, metrics),
         (stage.PARAM_PLOTS, plots),
+        (stage.PARAM_DVCLIVE, dvclive),
         (stage.PARAM_FROZEN, stage.frozen),
         (stage.PARAM_ALWAYS_CHANGED, stage.always_changed),
         (stage.PARAM_META, stage.meta),

@@ -82,7 +82,12 @@ class StageLoader(Mapping):
 
         outs = project(
             stage_data,
-            [stage.PARAM_OUTS, stage.PARAM_METRICS, stage.PARAM_PLOTS],
+            [
+                stage.PARAM_OUTS,
+                stage.PARAM_METRICS,
+                stage.PARAM_PLOTS,
+                stage.PARAM_DVCLIVE,
+            ],
         )
         stage.outs = lcat(
             output.load_from_pipeline(stage, data, typ=key)

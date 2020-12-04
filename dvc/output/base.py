@@ -77,6 +77,8 @@ class BaseOutput:
     PARAM_PERSIST = "persist"
     PARAM_DESC = "desc"
     PARAM_ISEXEC = "isexec"
+    PARAM_DVCLIVE = "dvclive"
+    PARAM_DVCLIVE_SUMMARY = "summary"
 
     METRIC_SCHEMA = Any(
         None,
@@ -105,6 +107,7 @@ class BaseOutput:
         plot=False,
         persist=False,
         checkpoint=False,
+        dvclive=False,
         desc=None,
         isexec=False,
     ):
@@ -132,6 +135,7 @@ class BaseOutput:
         self.plot = False if self.IS_DEPENDENCY else plot
         self.persist = persist
         self.checkpoint = checkpoint
+        self.dvclive = dvclive
         self.desc = desc
 
         self.path_info = self._parse_path(tree, path)
@@ -340,6 +344,9 @@ class BaseOutput:
 
         if self.isexec:
             ret[self.PARAM_ISEXEC] = self.isexec
+
+        if self.dvclive:
+            ret[self.PARAM_DVCLIVE] = self.dvclive
 
         return ret
 

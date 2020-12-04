@@ -54,6 +54,7 @@ def fill_stage_outputs(stage, **kwargs):
         "outs_no_cache",
         "outs",
         "checkpoints",
+        "dvclive",
     ]
 
     stage.outs = []
@@ -66,6 +67,7 @@ def fill_stage_outputs(stage, **kwargs):
             metric="metrics" in key,
             plot="plots" in key,
             checkpoint="checkpoints" in key,
+            dvclive="dvclive" in key,
         )
 
 
