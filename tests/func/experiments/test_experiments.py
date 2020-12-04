@@ -365,3 +365,21 @@ def test_untracked(tmp_dir, scm, dvc, caplog):
     assert tree.exists("copy.py")
     with tree.open(tmp_dir / "metrics.yaml") as fobj:
         assert fobj.read().strip() == "foo: 2"
+
+
+def test_dirty_lockfile(tmp_dir, scm, dvc, exp_stage):
+    from dvc.dvcfile import LockfileCorruptedError
+
+    tmp_dir.gen("dvc.lock", "foo")
+
+    with pytest.raises(LockfileCorruptedError):
+        dvc.reproduce(exp_stage.addressing)
+
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
+    exp = first(results)
+
+    tree = scm.get_tree(exp)
+    with tree.open(tmp_dir / "metrics.yaml") as fobj:
+        assert fobj.read().strip() == "foo: 2"
+
+    assert (tmp_dir / "dvc.lock").read_text() == "foo"
