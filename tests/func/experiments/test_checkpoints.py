@@ -7,6 +7,9 @@ from dvc.exceptions import DvcException
 from dvc.repo.experiments import Experiments, MultipleBranchError
 
 
+@pytest.mark.skipif(
+    os.name == "nt" and os.getenv("CI"), reason="Crashes GHA worker"
+)
 def test_new_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker):
     new_mock = mocker.spy(dvc.experiments, "new")
     results = dvc.experiments.run(
@@ -22,7 +25,9 @@ def test_new_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker):
         assert fobj.read().strip() == "foo: 2"
 
 
-@pytest.mark.skipif(os.name == "nt", reason="Crashes GHA worker")
+@pytest.mark.skipif(
+    os.name == "nt" and os.getenv("CI"), reason="Crashes GHA worker"
+)
 @pytest.mark.parametrize(
     "checkpoint_resume", [Experiments.LAST_CHECKPOINT, "foo"]
 )
@@ -59,7 +64,9 @@ def test_resume_checkpoint(
         assert fobj.read().strip() == "foo: 2"
 
 
-@pytest.mark.skipif(os.name == "nt", reason="Crashes GHA worker")
+@pytest.mark.skipif(
+    os.name == "nt" and os.getenv("CI"), reason="Crashes GHA worker"
+)
 def test_reset_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, caplog):
     from dvc.repo.experiments.base import CheckpointExistsError
 
@@ -84,7 +91,9 @@ def test_reset_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, caplog):
         assert fobj.read().strip() == "foo: 2"
 
 
-@pytest.mark.skipif(os.name == "nt", reason="Crashes GHA worker")
+@pytest.mark.skipif(
+    os.name == "nt" and os.getenv("CI"), reason="Crashes GHA worker"
+)
 def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage):
     results = dvc.experiments.run(
         checkpoint_stage.addressing, params=["foo=2"]
