@@ -340,3 +340,6 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             buf, self.repo.object_store, commit_a.tree, commit_b.tree
         )
         return buf.getvalue().decode("utf-8")
+
+    def reset(self, hard: bool = False):
+        raise NotImplementedError

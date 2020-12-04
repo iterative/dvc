@@ -259,3 +259,7 @@ class BaseGitBackend(ABC):
     @abstractmethod
     def diff(self, rev_a: str, rev_b: str, binary=False) -> str:
         """Return the git diff for two commits."""
+
+    @abstractmethod
+    def reset(self, hard: bool = False):
+        """Reset current git HEAD."""

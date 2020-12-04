@@ -394,3 +394,10 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
 
     def diff(self, rev_a: str, rev_b: str, binary=False) -> str:
         raise NotImplementedError
+
+    def reset(self, hard: bool = False):
+        reset = partial(self.git.reset)
+        if hard:
+            reset(hard=hard)
+        else:
+            reset()
