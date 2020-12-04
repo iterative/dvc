@@ -111,7 +111,7 @@ def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage):
         assert fobj.read().strip() == "foo: 100"
 
     with pytest.raises(MultipleBranchError):
-        dvc.experiments.get_branch_containing(branch_rev)
+        dvc.experiments.get_branch_by_rev(branch_rev)
 
     assert branch_rev == dvc.experiments.scm.gitpython.repo.git.merge_base(
         checkpoint_a, checkpoint_b
