@@ -57,6 +57,7 @@ class CmdDataPush(CmdDataBase):
                 with_deps=self.args.with_deps,
                 recursive=self.args.recursive,
                 run_cache=self.args.run_cache,
+                glob=self.args.glob,
             )
             self.log_summary({"pushed": processed_files_count})
         except DvcException:
@@ -239,6 +240,12 @@ def add_parser(subparsers, _parent_parser):
         action="store_true",
         default=False,
         help="Push run history for all stages.",
+    )
+    push_parser.add_argument(
+        "--glob",
+        action="store_true",
+        default=False,
+        help="Allows targets containing shell-style wildcards.",
     )
     push_parser.set_defaults(func=CmdDataPush)
 
