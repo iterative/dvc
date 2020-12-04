@@ -11,18 +11,25 @@ from tests.func.test_repro_multistage import COPY_SCRIPT
 
 @pytest.mark.parametrize("name", [None, "foo"])
 def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker, name):
+    from dvc.repo.experiments.utils import exp_refs_by_rev
+
+    baseline = scm.get_rev()
     tmp_dir.gen("params.yaml", "foo: 2")
 
     new_mock = mocker.spy(dvc.experiments, "new")
     results = dvc.experiments.run(exp_stage.addressing, name=name)
     exp = first(results)
+    ref_info = first(exp_refs_by_rev(scm, exp))
+    assert ref_info and ref_info.baseline_sha == baseline
 
     new_mock.assert_called_once()
     tree = scm.get_tree(exp)
     with tree.open(tmp_dir / "metrics.yaml") as fobj:
         assert fobj.read().strip() == "foo: 2"
-    if name:
-        assert dvc.experiments.get_exact_name(exp) == name
+
+    exp_name = name if name else ref_info.name
+    assert dvc.experiments.get_exact_name(exp) == exp_name
+    assert scm.resolve_rev(exp_name) == exp
 
 
 def test_experiment_exists(tmp_dir, scm, dvc, exp_stage, mocker):
@@ -280,7 +287,7 @@ def test_branch(tmp_dir, scm, dvc, exp_stage):
         exp_stage.addressing, params=["foo=2"], name="foo"
     )
     exp_a = first(results)
-    ref_a = dvc.experiments.get_branch_containing(exp_a)
+    ref_a = dvc.experiments.get_branch_by_rev(exp_a)
 
     with pytest.raises(InvalidArgumentError):
         dvc.experiments.branch("foo", "branch-exists")
@@ -297,7 +304,7 @@ def test_branch(tmp_dir, scm, dvc, exp_stage):
         exp_stage.addressing, params=["foo=2"], name="foo"
     )
     exp_b = first(results)
-    ref_b = dvc.experiments.get_branch_containing(exp_b)
+    ref_b = dvc.experiments.get_branch_by_rev(exp_b)
 
     with pytest.raises(InvalidArgumentError):
         dvc.experiments.branch("foo", "branch-name")

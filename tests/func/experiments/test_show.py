@@ -163,7 +163,7 @@ def test_show_checkpoint_branch(tmp_dir, scm, dvc, checkpoint_stage, capsys):
     cap = capsys.readouterr()
 
     for rev in (checkpoint_a, checkpoint_b):
-        ref = dvc.experiments.get_branch_containing(rev)
+        ref = dvc.experiments.get_branch_by_rev(rev)
         ref_info = ExpRefInfo.from_ref(ref)
         name = ref_info.name
         assert f"╓ {name}" in cap.out

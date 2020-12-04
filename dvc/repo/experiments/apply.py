@@ -1,20 +1,15 @@
 import logging
 import os
 
-from dvc.exceptions import InvalidArgumentError
 from dvc.repo import locked
-from dvc.repo.experiments.executor import BaseExecutor
 from dvc.repo.scm_context import scm_context
+from dvc.scm.base import RevError
 from dvc.utils.fs import remove
 
+from .base import BaselineMismatchError, InvalidExpRevError
+from .executor import BaseExecutor
+
 logger = logging.getLogger(__name__)
-
-
-class ApplyError(InvalidArgumentError):
-    def __init__(self, rev):
-        super().__init__(
-            f"'{rev}' does not appear to be an experiment commit."
-        )
 
 
 @locked
@@ -23,22 +18,22 @@ def apply(repo, rev, *args, **kwargs):
     from git.exc import GitCommandError
 
     from dvc.repo.checkout import checkout as dvc_checkout
-    from dvc.repo.experiments import BaselineMismatchError
 
     exps = repo.experiments
 
     try:
+        rev = repo.scm.resolve_rev(rev)
         exps.check_baseline(rev)
-    except BaselineMismatchError as exc:
-        raise ApplyError(rev) from exc
+    except (RevError, BaselineMismatchError) as exc:
+        raise InvalidExpRevError(rev) from exc
 
     stash_rev = rev in exps.stash_revs
     if stash_rev:
         branch = rev
     else:
-        branch = exps.get_branch_containing(rev)
+        branch = exps.get_branch_by_rev(rev)
         if not branch:
-            raise ApplyError(rev)
+            raise InvalidExpRevError(rev)
 
     # Note that we don't use stash_workspace() here since we need finer control
     # over the merge behavior when we unstash everything

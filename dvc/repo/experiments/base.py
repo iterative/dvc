@@ -1,6 +1,6 @@
 from typing import Optional
 
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, InvalidArgumentError
 
 # Experiment refs are stored according baseline git SHA:
 #   refs/exps/01/234abcd.../<exp_name>
@@ -18,6 +18,18 @@ class UnchangedExperimentError(DvcException):
     def __init__(self, rev):
         super().__init__(f"Experiment unchanged from '{rev[:7]}'.")
         self.rev = rev
+
+
+class BaselineMismatchError(DvcException):
+    def __init__(self, rev, expected):
+        if hasattr(rev, "hexsha"):
+            rev = rev.hexsha
+        rev_str = f"{rev[:7]}" if rev is not None else "invalid commit"
+        super().__init__(
+            f"Experiment derived from '{rev_str}', expected '{expected[:7]}'."
+        )
+        self.rev = rev
+        self.expected_rev = expected
 
 
 class ExperimentExistsError(DvcException):
@@ -51,6 +63,22 @@ class InvalidExpRefError(DvcException):
     def __init__(self, ref):
         super().__init__(f"'{ref}' is not a valid experiment refname.")
         self.ref = ref
+
+
+class InvalidExpRevError(InvalidArgumentError):
+    def __init__(self, rev):
+        super().__init__(
+            f"'{rev}' does not appear to be an experiment commit."
+        )
+
+
+class MultipleBranchError(DvcException):
+    def __init__(self, rev):
+        super().__init__(
+            f"Ambiguous commit '{rev[:7]}' belongs to multiple experiment "
+            "branches."
+        )
+        self.rev = rev
 
 
 class ExpRefInfo:

@@ -2,12 +2,8 @@ import logging
 from typing import Optional
 
 from dvc.repo import locked
-from dvc.repo.experiments.base import (
-    EXEC_NAMESPACE,
-    EXPS_NAMESPACE,
-    EXPS_STASH,
-    ExpRefInfo,
-)
+
+from .utils import exp_refs
 
 logger = logging.getLogger(__name__)
 
@@ -36,12 +32,9 @@ def gc(
         return 0
 
     removed = 0
-    for ref in repo.scm.iter_refs(EXPS_NAMESPACE):
-        if ref.startswith(EXEC_NAMESPACE) or ref == EXPS_STASH:
-            continue
-        ref_info = ExpRefInfo.from_ref(ref)
+    for ref_info in exp_refs(repo.scm):
         if ref_info.baseline_sha not in keep_revs:
-            repo.scm.remove_ref(ref)
+            repo.scm.remove_ref(str(ref_info))
             removed += 1
 
     delete_stashes = []

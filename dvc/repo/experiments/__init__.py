@@ -13,7 +13,10 @@ from funcy import cached_property, first
 
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
-from dvc.repo.experiments.base import (
+from dvc.stage.run import CheckpointKilledError
+from dvc.utils import relpath
+
+from .base import (
     EXEC_BASELINE,
     EXEC_CHECKPOINT,
     EXEC_HEAD,
@@ -21,14 +24,14 @@ from dvc.repo.experiments.base import (
     EXEC_NAMESPACE,
     EXPS_NAMESPACE,
     EXPS_STASH,
+    BaselineMismatchError,
     CheckpointExistsError,
     ExperimentExistsError,
     ExpRefInfo,
-    InvalidExpRefError,
+    MultipleBranchError,
 )
-from dvc.repo.experiments.executor import BaseExecutor, LocalExecutor
-from dvc.stage.run import CheckpointKilledError
-from dvc.utils import relpath
+from .executor import BaseExecutor, LocalExecutor
+from .utils import exp_refs_by_rev
 
 logger = logging.getLogger(__name__)
 
@@ -42,27 +45,6 @@ def scm_locked(f):
             return f(exp, *args, **kwargs)
 
     return wrapper
-
-
-class BaselineMismatchError(DvcException):
-    def __init__(self, rev, expected):
-        if hasattr(rev, "hexsha"):
-            rev = rev.hexsha
-        rev_str = f"{rev[:7]}" if rev is not None else "invalid commit"
-        super().__init__(
-            f"Experiment derived from '{rev_str}', expected '{expected[:7]}'."
-        )
-        self.rev = rev
-        self.expected_rev = expected
-
-
-class MultipleBranchError(DvcException):
-    def __init__(self, rev):
-        super().__init__(
-            f"Ambiguous commit '{rev[:7]}' belongs to multiple experiment "
-            "branches."
-        )
-        self.rev = rev
 
 
 class Experiments:
@@ -317,7 +299,7 @@ class Experiments:
         else:
             resume_rev = self.scm.resolve_rev(checkpoint_resume)
         allow_multiple = "params" in kwargs
-        branch = self.get_branch_containing(
+        branch = self.get_branch_by_rev(
             resume_rev, allow_multiple=allow_multiple
         )
         if not branch:
@@ -564,53 +546,41 @@ class Experiments:
     @scm_locked
     def get_baseline(self, rev):
         """Return the baseline rev for an experiment rev."""
-        rev = self.scm.resolve_rev(rev)
         return self._get_baseline(rev)
 
     def _get_baseline(self, rev):
+        rev = self.scm.resolve_rev(rev)
+
         if rev in self.stash_revs:
             entry = self.stash_revs.get(rev)
             if entry:
                 return entry.baseline_rev
             return None
-        ref = first(self._get_exps_containing(rev))
-        if not ref:
-            return None
-        try:
-            ref_info = ExpRefInfo.from_ref(ref)
+
+        ref_info = first(exp_refs_by_rev(self.scm, rev))
+        if ref_info:
             return ref_info.baseline_sha
-        except InvalidExpRefError:
-            return None
+        return None
 
-    def _get_exps_containing(self, rev):
-        for ref in self.scm.get_refs_containing(rev, EXPS_NAMESPACE):
-            if not (ref.startswith(EXEC_NAMESPACE) or ref == EXPS_STASH):
-                yield ref
-
-    def get_branch_containing(
-        self, rev: str, allow_multiple: bool = False
-    ) -> str:
-        names = list(self._get_exps_containing(rev))
-        if not names:
+    def get_branch_by_rev(self, rev: str, allow_multiple: bool = False) -> str:
+        """Returns full refname for the experiment branch containing rev."""
+        ref_infos = list(exp_refs_by_rev(self.scm, rev))
+        if not ref_infos:
             return None
-        if len(names) > 1 and not allow_multiple:
+        if len(ref_infos) > 1 and not allow_multiple:
             raise MultipleBranchError(rev)
-        return names[0]
+        return str(ref_infos[0])
 
     def get_exact_name(self, rev: str):
+        """Returns preferred name for the specified revision.
+
+        Prefers tags, branches (heads), experiments in that orer.
+        """
         exclude = f"{EXEC_NAMESPACE}/*"
         ref = self.scm.describe(rev, base=EXPS_NAMESPACE, exclude=exclude)
         if ref:
             return ExpRefInfo.from_ref(ref).name
         return None
-
-    def iter_ref_infos_by_name(self, name: str):
-        for ref in self.scm.iter_refs(base=EXPS_NAMESPACE):
-            if ref.startswith(EXEC_NAMESPACE) or ref == EXPS_STASH:
-                continue
-            ref_info = ExpRefInfo.from_ref(ref)
-            if ref_info.name == name:
-                yield ref_info
 
     def apply(self, *args, **kwargs):
         from dvc.repo.experiments.apply import apply
