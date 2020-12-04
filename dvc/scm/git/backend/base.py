@@ -259,3 +259,11 @@ class BaseGitBackend(ABC):
     @abstractmethod
     def diff(self, rev_a: str, rev_b: str, binary=False) -> str:
         """Return the git diff for two commits."""
+
+    @abstractmethod
+    def reset(self, hard: bool = False, paths: Iterable[str] = None):
+        """Reset current git HEAD."""
+
+    @abstractmethod
+    def checkout_paths(self, paths: Iterable[str], force: bool = False):
+        """Checkout the specified paths from HEAD index."""

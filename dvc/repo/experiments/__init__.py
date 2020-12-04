@@ -11,6 +11,7 @@ from typing import Iterable, Mapping, Optional
 
 from funcy import cached_property, first
 
+from dvc.dvcfile import is_lock_file
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 from dvc.stage.run import CheckpointKilledError
@@ -147,11 +148,14 @@ class Experiments:
                 the human-readable name in the experiment branch ref. Has no
                 effect of branch is specified.
         """
-        with self.scm.stash_workspace(include_untracked=True) as workspace:
+        with self.scm.stash_workspace(
+            include_untracked=detach_rev or branch
+        ) as workspace:
             # If we are not extending an existing branch, apply current
             # workspace changes to be made in new branch
-            if not branch and workspace:
+            if not (branch or detach_rev) and workspace:
                 self.stash.apply(workspace)
+                self._prune_lockfiles()
 
             # checkout and detach at branch (or current HEAD)
             if detach_rev:
@@ -186,11 +190,23 @@ class Experiments:
                 baseline_rev[:7],
             )
 
-            # Reset/clean any changes before prior workspace is unstashed
-            self.scm.gitpython.repo.git.reset(hard=True)
-            self.scm.gitpython.repo.git.clean(force=True)
+            # Reset any changes before prior workspace is unstashed
+            self.scm.reset(hard=True)
 
         return stash_rev
+
+    def _prune_lockfiles(self):
+        # NOTE: dirty DVC lock files must be restored to index state to
+        # avoid checking out incorrect persist or checkpoint outs
+        tree = self.scm.get_tree("HEAD")
+        lock_files = [
+            str(fname)
+            for fname in tree.walk_files(self.scm.root_dir)
+            if is_lock_file(fname)
+        ]
+        if lock_files:
+            self.scm.reset(paths=lock_files)
+            self.scm.checkout_paths(lock_files, force=True)
 
     def _stash_msg(
         self,
@@ -404,33 +420,29 @@ class Experiments:
 
     def _init_executors(self, to_run):
         executors = {}
-        with self.scm.stash_workspace(include_untracked=True):
-            with self.scm.detach_head():
-                for stash_rev, item in to_run.items():
-                    self.scm.set_ref(EXEC_HEAD, item.rev)
-                    self.scm.set_ref(EXEC_MERGE, stash_rev)
-                    self.scm.set_ref(EXEC_BASELINE, item.baseline_rev)
+        for stash_rev, item in to_run.items():
+            self.scm.set_ref(EXEC_HEAD, item.rev)
+            self.scm.set_ref(EXEC_MERGE, stash_rev)
+            self.scm.set_ref(EXEC_BASELINE, item.baseline_rev)
 
-                    # Executor will be initialized with an empty git repo that
-                    # we populate by pushing:
-                    #   EXEC_HEAD - the base commit for this experiment
-                    #   EXEC_MERGE - the unmerged changes (from our stash)
-                    #       to be reproduced
-                    #   EXEC_BASELINE - the baseline commit for this experiment
-                    executor = LocalExecutor(
-                        self.scm,
-                        self.dvc_dir,
-                        name=item.name,
-                        branch=item.branch,
-                        cache_dir=self.repo.cache.local.cache_dir,
-                    )
-                    executors[item.rev] = executor
+            # Executor will be initialized with an empty git repo that
+            # we populate by pushing:
+            #   EXEC_HEAD - the base commit for this experiment
+            #   EXEC_MERGE - the unmerged changes (from our stash)
+            #       to be reproduced
+            #   EXEC_BASELINE - the baseline commit for this experiment
+            executor = LocalExecutor(
+                self.scm,
+                self.dvc_dir,
+                name=item.name,
+                branch=item.branch,
+                cache_dir=self.repo.cache.local.cache_dir,
+            )
+            executors[item.rev] = executor
 
-                for ref in (EXEC_HEAD, EXEC_MERGE, EXEC_BASELINE):
-                    self.scm.remove_ref(ref)
+        for ref in (EXEC_HEAD, EXEC_MERGE, EXEC_BASELINE):
+            self.scm.remove_ref(ref)
 
-            self.scm.gitpython.repo.git.reset(hard=True)
-            self.scm.gitpython.repo.git.clean(force=True)
         return executors
 
     def _reproduce(

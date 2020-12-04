@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Callable, Iterable, Optional, Tuple, Union
 
 from funcy import cached_property
 
-from dvc.dvcfile import is_lock_file
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.repo.experiments.base import (
@@ -23,7 +22,6 @@ from dvc.repo.experiments.base import (
     UnchangedExperimentError,
 )
 from dvc.scm import SCM
-from dvc.scm.git import Git
 from dvc.stage import PipelineStage
 from dvc.stage.serialize import to_lockfile
 from dvc.utils import dict_sha256
@@ -31,6 +29,8 @@ from dvc.utils.fs import remove
 
 if TYPE_CHECKING:
     from multiprocessing import Queue
+
+    from dvc.scm.git import Git
 
 logger = logging.getLogger(__name__)
 
@@ -88,27 +88,8 @@ class BaseExecutor:
             self.scm.gitpython.repo.git.merge(
                 EXEC_MERGE, squash=True, no_commit=True
             )
-            self.scm.gitpython.repo.git.reset()
-            self._prune_lockfiles()
         finally:
             os.chdir(cwd)
-
-    def _prune_lockfiles(self):
-        # NOTE: dirty DVC lock files must be restored to index state to
-        # avoid checking out incorrect persist or checkpoint outs
-        dirty = [
-            diff.a_path for diff in self.scm.gitpython.repo.index.diff(None)
-        ]
-        to_checkout = [fname for fname in dirty if is_lock_file(fname)]
-        self.scm.gitpython.repo.index.checkout(paths=to_checkout, force=True)
-
-        untracked = self.scm.gitpython.repo.untracked_files
-        to_remove = [fname for fname in untracked if is_lock_file(fname)]
-        for fname in to_remove:
-            remove(fname)
-        return (
-            len(dirty) - len(to_checkout) + len(untracked) - len(to_remove)
-        ) != 0
 
     @cached_property
     def scm(self):
@@ -260,10 +241,7 @@ class BaseExecutor:
             #   experiment run
             dvc.checkout(force=True, quiet=True)
 
-            # We cannot use dvc.scm to make commits inside the executor since
-            # cached props are not picklable.
-            scm = Git()
-            checkpoint_func = partial(cls.checkpoint_callback, scm, name)
+            checkpoint_func = partial(cls.checkpoint_callback, dvc.scm, name)
             stages = dvc.reproduce(
                 *args,
                 on_unchanged=filter_pipeline,
@@ -272,15 +250,14 @@ class BaseExecutor:
             )
 
             exp_hash = cls.hash_exp(stages)
-            exp_rev = cls.commit(scm, exp_hash, exp_name=name)
-            if scm.get_ref(EXEC_CHECKPOINT):
-                scm.set_ref(EXEC_CHECKPOINT, exp_rev)
+            exp_rev = cls.commit(dvc.scm, exp_hash, exp_name=name)
+            if dvc.scm.get_ref(EXEC_CHECKPOINT):
+                dvc.scm.set_ref(EXEC_CHECKPOINT, exp_rev)
         except UnchangedExperimentError:
             pass
         finally:
-            if scm:
-                scm.close()
-                del scm
+            if dvc:
+                dvc.scm.close()
             if old_cwd:
                 os.chdir(old_cwd)
 
@@ -324,7 +301,7 @@ class BaseExecutor:
             old_ref = None
             logger.debug("Commit to new experiment branch '%s'", branch)
 
-        scm.gitpython.repo.git.add(A=True)
+        scm.gitpython.repo.git.add(update=True)
         scm.commit(f"dvc: commit experiment {exp_hash}")
         new_rev = scm.get_rev()
         scm.set_ref(branch, new_rev, old_ref=old_ref)
@@ -354,7 +331,6 @@ class LocalExecutor(BaseExecutor):
         local_config = os.path.join(self.dvc_dir, "config.local")
         logger.debug("Writing experiments local config '%s'", local_config)
         with open(local_config, "w") as fobj:
-            fobj.write("[core]\n    no_scm = true\n")
             fobj.write(f"[cache]\n    dir = {cache_dir}")
 
     @property

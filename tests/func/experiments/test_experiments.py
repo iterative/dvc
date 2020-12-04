@@ -337,3 +337,49 @@ def test_no_scm(tmp_dir):
 
     with pytest.raises(NoSCMError):
         dvc.experiments.gc()
+
+
+def test_untracked(tmp_dir, scm, dvc, caplog):
+    tmp_dir.gen("copy.py", COPY_SCRIPT)
+    tmp_dir.gen("params.yaml", "foo: 1")
+    stage = dvc.run(
+        cmd="python copy.py params.yaml metrics.yaml",
+        metrics_no_cache=["metrics.yaml"],
+        params=["foo"],
+        name="copy-file",
+    )
+    scm.add(["dvc.yaml", "dvc.lock", "params.yaml", "metrics.yaml"])
+    scm.commit("init")
+
+    # copy.py is untracked
+    with caplog.at_level(logging.ERROR):
+        results = dvc.experiments.run(stage.addressing, params=["foo=2"])
+        assert "Failed to reproduce experiment" in caplog.text
+        assert not results
+
+    # copy.py is staged as new file but not committed
+    scm.add(["copy.py"])
+    results = dvc.experiments.run(stage.addressing, params=["foo=2"])
+    exp = first(results)
+    tree = scm.get_tree(exp)
+    assert tree.exists("copy.py")
+    with tree.open(tmp_dir / "metrics.yaml") as fobj:
+        assert fobj.read().strip() == "foo: 2"
+
+
+def test_dirty_lockfile(tmp_dir, scm, dvc, exp_stage):
+    from dvc.dvcfile import LockfileCorruptedError
+
+    tmp_dir.gen("dvc.lock", "foo")
+
+    with pytest.raises(LockfileCorruptedError):
+        dvc.reproduce(exp_stage.addressing)
+
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
+    exp = first(results)
+
+    tree = scm.get_tree(exp)
+    with tree.open(tmp_dir / "metrics.yaml") as fobj:
+        assert fobj.read().strip() == "foo: 2"
+
+    assert (tmp_dir / "dvc.lock").read_text() == "foo"

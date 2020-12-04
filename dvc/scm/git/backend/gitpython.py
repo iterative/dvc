@@ -394,3 +394,11 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
 
     def diff(self, rev_a: str, rev_b: str, binary=False) -> str:
         raise NotImplementedError
+
+    def reset(self, hard: bool = False, paths: Iterable[str] = None):
+        self.repo.head.reset(index=True, working_tree=hard, paths=paths)
+
+    def checkout_paths(self, paths: Iterable[str], force: bool = False):
+        """Checkout the specified paths from HEAD index."""
+        if paths:
+            self.repo.index.checkout(paths=paths, force=force)

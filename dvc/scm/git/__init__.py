@@ -326,6 +326,8 @@ class Git(Base):
     reflog_delete = partialmethod(_backend_func, "reflog_delete")
     describe = partialmethod(_backend_func, "describe")
     diff = partialmethod(_backend_func, "diff")
+    reset = partialmethod(_backend_func, "reset")
+    checkout_paths = partialmethod(_backend_func, "checkout_paths")
 
     def resolve_rev(self, rev: str) -> str:
         from dvc.repo.experiments.utils import exp_refs_by_name
