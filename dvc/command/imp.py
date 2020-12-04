@@ -87,6 +87,6 @@ def add_parser(subparsers, parent_parser):
         "--glob",
         action="store_true",
         default=False,
-        help="Allows importing paths containing shell-style wildcards.",
+        help="Allows import paths containing shell-style wildcards.",
     )
     import_parser.set_defaults(func=CmdImport)
