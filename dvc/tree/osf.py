@@ -37,12 +37,23 @@ class OSFTree(BaseTree):
     def __init__(self, repo, config):
         super().__init__(repo, config)
 
-        self.path_info = self.PATH_CLS(config["url"])
+        url = config.get("url", "osf://")
+        self.path_info = self.PATH_CLS(url)
 
         self.user = os.getenv("OSF_USER", config.get("user"))
         self.project_guid = os.getenv("OSF_PROJECT", config.get("project"))
         self.password = os.getenv("OSF_PASSWORD", config.get("password"))
-        logger.debug(OSFTree)
+
+        if (
+            self.user is None
+            or self.password is None
+            or self.project_guid is None
+        ):
+            raise DvcException(
+                f"Empty OSF user, project or password."
+                f" Learn more at "
+                f"{format_link('https://man.dvc.org/remote/modify')}"
+            )
 
     @wrap_prop(threading.Lock())
     @cached_property
