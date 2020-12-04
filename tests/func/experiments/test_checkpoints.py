@@ -13,11 +13,14 @@ def test_new_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker):
     exp = first(results)
 
     new_mock.assert_called_once()
-    tree = scm.get_tree(exp)
-    with tree.open(tmp_dir / "foo") as fobj:
-        assert fobj.read().strip() == "5"
-    with tree.open(tmp_dir / "metrics.yaml") as fobj:
-        assert fobj.read().strip() == "foo: 2"
+    for rev in dvc.brancher([exp]):
+        if rev == "workspace":
+            continue
+        tree = dvc.repo_tree
+        with tree.open(tmp_dir / "foo") as fobj:
+            assert fobj.read().strip() == "5"
+        with tree.open(tmp_dir / "metrics.yaml") as fobj:
+            assert fobj.read().strip() == "foo: 2"
 
 
 @pytest.mark.parametrize(
@@ -49,11 +52,14 @@ def test_resume_checkpoint(
     )
     exp = first(results)
 
-    tree = scm.get_tree(exp)
-    with tree.open(tmp_dir / "foo") as fobj:
-        assert fobj.read().strip() == "10"
-    with tree.open(tmp_dir / "metrics.yaml") as fobj:
-        assert fobj.read().strip() == "foo: 2"
+    for rev in dvc.brancher([exp]):
+        if rev == "workspace":
+            continue
+        tree = dvc.repo_tree
+        with tree.open(tmp_dir / "foo") as fobj:
+            assert fobj.read().strip() == "10"
+        with tree.open(tmp_dir / "metrics.yaml") as fobj:
+            assert fobj.read().strip() == "foo: 2"
 
 
 def test_reset_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, caplog):
@@ -73,11 +79,14 @@ def test_reset_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, caplog):
     )
     exp = first(results)
 
-    tree = scm.get_tree(exp)
-    with tree.open(tmp_dir / "foo") as fobj:
-        assert fobj.read().strip() == "5"
-    with tree.open(tmp_dir / "metrics.yaml") as fobj:
-        assert fobj.read().strip() == "foo: 2"
+    for rev in dvc.brancher([exp]):
+        if rev == "workspace":
+            continue
+        tree = dvc.repo_tree
+        with tree.open(tmp_dir / "foo") as fobj:
+            assert fobj.read().strip() == "5"
+        with tree.open(tmp_dir / "metrics.yaml") as fobj:
+            assert fobj.read().strip() == "foo: 2"
 
 
 def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage):
@@ -98,17 +107,23 @@ def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage):
     )
     checkpoint_b = first(results)
 
-    tree = scm.get_tree(checkpoint_a)
-    with tree.open(tmp_dir / "foo") as fobj:
-        assert fobj.read().strip() == "10"
-    with tree.open(tmp_dir / "metrics.yaml") as fobj:
-        assert fobj.read().strip() == "foo: 2"
+    for rev in dvc.brancher([checkpoint_a]):
+        if rev == "workspace":
+            continue
+        tree = dvc.repo_tree
+        with tree.open(tmp_dir / "foo") as fobj:
+            assert fobj.read().strip() == "10"
+        with tree.open(tmp_dir / "metrics.yaml") as fobj:
+            assert fobj.read().strip() == "foo: 2"
 
-    tree = scm.get_tree(checkpoint_b)
-    with tree.open(tmp_dir / "foo") as fobj:
-        assert fobj.read().strip() == "10"
-    with tree.open(tmp_dir / "metrics.yaml") as fobj:
-        assert fobj.read().strip() == "foo: 100"
+    for rev in dvc.brancher([checkpoint_b]):
+        if rev == "workspace":
+            continue
+        tree = dvc.repo_tree
+        with tree.open(tmp_dir / "foo") as fobj:
+            assert fobj.read().strip() == "10"
+        with tree.open(tmp_dir / "metrics.yaml") as fobj:
+            assert fobj.read().strip() == "foo: 100"
 
     with pytest.raises(MultipleBranchError):
         dvc.experiments.get_branch_by_rev(branch_rev)
