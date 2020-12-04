@@ -11,6 +11,7 @@ from typing import Iterable, Mapping, Optional
 
 from funcy import cached_property, first
 
+from dvc.dvcfile import is_lock_file
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 from dvc.stage.run import CheckpointKilledError
@@ -152,6 +153,7 @@ class Experiments:
             # workspace changes to be made in new branch
             if not branch and workspace:
                 self.stash.apply(workspace)
+                self._prune_lockfiles()
 
             # checkout and detach at branch (or current HEAD)
             if detach_rev:
@@ -190,6 +192,19 @@ class Experiments:
             self.scm.reset(hard=True)
 
         return stash_rev
+
+    def _prune_lockfiles(self):
+        # NOTE: dirty DVC lock files must be restored to index state to
+        # avoid checking out incorrect persist or checkpoint outs
+        tree = self.scm.get_tree("HEAD")
+        lock_files = [
+            str(fname)
+            for fname in tree.walk_files(self.scm.root_dir)
+            if is_lock_file(fname)
+        ]
+        if lock_files:
+            self.scm.reset(paths=lock_files)
+            self.scm.checkout_paths(lock_files, force=True)
 
     def _stash_msg(
         self,

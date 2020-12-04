@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Callable, Iterable, Optional, Tuple, Union
 
 from funcy import cached_property
 
-from dvc.dvcfile import is_lock_file
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.repo.experiments.base import (
@@ -88,27 +87,8 @@ class BaseExecutor:
             self.scm.gitpython.repo.git.merge(
                 EXEC_MERGE, squash=True, no_commit=True
             )
-            self.scm.reset()
-            self._prune_lockfiles()
         finally:
             os.chdir(cwd)
-
-    def _prune_lockfiles(self):
-        # NOTE: dirty DVC lock files must be restored to index state to
-        # avoid checking out incorrect persist or checkpoint outs
-        dirty = [
-            diff.a_path for diff in self.scm.gitpython.repo.index.diff(None)
-        ]
-        to_checkout = [fname for fname in dirty if is_lock_file(fname)]
-        self.scm.gitpython.repo.index.checkout(paths=to_checkout, force=True)
-
-        untracked = self.scm.gitpython.repo.untracked_files
-        to_remove = [fname for fname in untracked if is_lock_file(fname)]
-        for fname in to_remove:
-            remove(fname)
-        return (
-            len(dirty) - len(to_checkout) + len(untracked) - len(to_remove)
-        ) != 0
 
     @cached_property
     def scm(self):
@@ -324,7 +304,7 @@ class BaseExecutor:
             old_ref = None
             logger.debug("Commit to new experiment branch '%s'", branch)
 
-        scm.gitpython.repo.git.add(A=True)
+        scm.gitpython.repo.git.add(update=True)
         scm.commit(f"dvc: commit experiment {exp_hash}")
         new_rev = scm.get_rev()
         scm.set_ref(branch, new_rev, old_ref=old_ref)
