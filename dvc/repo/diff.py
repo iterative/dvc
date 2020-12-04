@@ -118,16 +118,16 @@ def _output_paths(repo, targets):
     for stage in repo.stages:
         for output in stage.outs:
             if _exists(output):
-                if targets is None or any(
-                    output.path_info == target for target in targets
-                ):
+                yield_output = targets is None or any(
+                    output.path_info.isin_or_eq(target) for target in targets
+                )
+
+                if yield_output:
                     yield _to_path(output), _to_checksum(output)
 
-                    if output.is_dir_checksum:
-                        yield from _dir_output_paths(repo_tree, output)
-
-                elif output.is_dir_checksum and any(
-                    target.isin(output.path_info) for target in targets
+                if output.is_dir_checksum and (
+                    yield_output
+                    or any(target.isin(output.path_info) for target in targets)
                 ):
                     yield from _dir_output_paths(repo_tree, output, targets)
 
