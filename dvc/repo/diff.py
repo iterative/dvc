@@ -42,14 +42,10 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
 
     if targets is not None:
         # check for overlapping missing targets between a_rev and b_rev
-        missing_targets = list(
-            set(missing_targets[a_rev]) & set(missing_targets[b_rev])
-        )
-
-        if len(missing_targets):
-            # invalid targets supplied, raise error
-            for missing_target in missing_targets:
-                raise PathMissingError(missing_target, self)
+        for target in set(missing_targets[a_rev]) & set(
+            missing_targets[b_rev]
+        ):
+            raise PathMissingError(target, self)
 
     old = results[a_rev]
     new = results[b_rev]
@@ -101,7 +97,6 @@ def _paths_checksums(repo, targets):
 def _output_paths(repo, targets):
     repo_tree = RepoTree(repo, stream=True)
     on_working_tree = isinstance(repo.tree, LocalTree)
-    no_targets = targets is None
 
     def _exists(output):
         if on_working_tree:
@@ -123,14 +118,16 @@ def _output_paths(repo, targets):
     for stage in repo.stages:
         for output in stage.outs:
             if _exists(output):
-                yield_output = no_targets or output.path_info.isin_or_eq(
-                    targets
-                )
-                if yield_output:
+                if targets is None or any(
+                    output.path_info == target for target in targets
+                ):
                     yield _to_path(output), _to_checksum(output)
 
-                if output.is_dir_checksum and (
-                    yield_output or output.path_info.isinside(targets)
+                    if output.is_dir_checksum:
+                        yield from _dir_output_paths(repo_tree, output)
+
+                elif output.is_dir_checksum and any(
+                    target.isin(output.path_info) for target in targets
                 ):
                     yield from _dir_output_paths(repo_tree, output, targets)
 
@@ -140,7 +137,9 @@ def _dir_output_paths(repo_tree, output, targets=None):
 
     try:
         for fname in repo_tree.walk_files(output.path_info):
-            if targets is None or fname.isin_or_eq(targets):
+            if targets is None or any(
+                fname.isin_or_eq(target) for target in targets
+            ):
                 yield str(fname), repo_tree.get_file_hash(fname).value
     except NoRemoteError:
         logger.warning("dir cache entry for '%s' is missing", output)
