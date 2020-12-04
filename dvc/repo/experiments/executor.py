@@ -88,7 +88,7 @@ class BaseExecutor:
             self.scm.gitpython.repo.git.merge(
                 EXEC_MERGE, squash=True, no_commit=True
             )
-            self.scm.gitpython.repo.git.reset()
+            self.scm.reset()
             self._prune_lockfiles()
         finally:
             os.chdir(cwd)

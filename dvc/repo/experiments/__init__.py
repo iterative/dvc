@@ -147,7 +147,7 @@ class Experiments:
                 the human-readable name in the experiment branch ref. Has no
                 effect of branch is specified.
         """
-        with self.scm.stash_workspace(include_untracked=True) as workspace:
+        with self.scm.stash_workspace() as workspace:
             # If we are not extending an existing branch, apply current
             # workspace changes to be made in new branch
             if not branch and workspace:
@@ -186,9 +186,8 @@ class Experiments:
                 baseline_rev[:7],
             )
 
-            # Reset/clean any changes before prior workspace is unstashed
-            self.scm.gitpython.repo.git.reset(hard=True)
-            self.scm.gitpython.repo.git.clean(force=True)
+            # Reset any changes before prior workspace is unstashed
+            self.scm.reset(hard=True)
 
         return stash_rev
 
@@ -404,33 +403,29 @@ class Experiments:
 
     def _init_executors(self, to_run):
         executors = {}
-        with self.scm.stash_workspace(include_untracked=True):
-            with self.scm.detach_head():
-                for stash_rev, item in to_run.items():
-                    self.scm.set_ref(EXEC_HEAD, item.rev)
-                    self.scm.set_ref(EXEC_MERGE, stash_rev)
-                    self.scm.set_ref(EXEC_BASELINE, item.baseline_rev)
+        for stash_rev, item in to_run.items():
+            self.scm.set_ref(EXEC_HEAD, item.rev)
+            self.scm.set_ref(EXEC_MERGE, stash_rev)
+            self.scm.set_ref(EXEC_BASELINE, item.baseline_rev)
 
-                    # Executor will be initialized with an empty git repo that
-                    # we populate by pushing:
-                    #   EXEC_HEAD - the base commit for this experiment
-                    #   EXEC_MERGE - the unmerged changes (from our stash)
-                    #       to be reproduced
-                    #   EXEC_BASELINE - the baseline commit for this experiment
-                    executor = LocalExecutor(
-                        self.scm,
-                        self.dvc_dir,
-                        name=item.name,
-                        branch=item.branch,
-                        cache_dir=self.repo.cache.local.cache_dir,
-                    )
-                    executors[item.rev] = executor
+            # Executor will be initialized with an empty git repo that
+            # we populate by pushing:
+            #   EXEC_HEAD - the base commit for this experiment
+            #   EXEC_MERGE - the unmerged changes (from our stash)
+            #       to be reproduced
+            #   EXEC_BASELINE - the baseline commit for this experiment
+            executor = LocalExecutor(
+                self.scm,
+                self.dvc_dir,
+                name=item.name,
+                branch=item.branch,
+                cache_dir=self.repo.cache.local.cache_dir,
+            )
+            executors[item.rev] = executor
 
-                for ref in (EXEC_HEAD, EXEC_MERGE, EXEC_BASELINE):
-                    self.scm.remove_ref(ref)
+        for ref in (EXEC_HEAD, EXEC_MERGE, EXEC_BASELINE):
+            self.scm.remove_ref(ref)
 
-            self.scm.gitpython.repo.git.reset(hard=True)
-            self.scm.gitpython.repo.git.clean(force=True)
         return executors
 
     def _reproduce(
