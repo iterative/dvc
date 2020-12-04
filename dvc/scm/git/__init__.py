@@ -309,7 +309,7 @@ class Git(Base):
     list_all_commits = partialmethod(_backend_func, "list_all_commits")
     get_tree = partialmethod(_backend_func, "get_tree")
     get_rev = partialmethod(_backend_func, "get_rev")
-    resolve_rev = partialmethod(_backend_func, "resolve_rev")
+    _resolve_rev = partialmethod(_backend_func, "resolve_rev")
     resolve_commit = partialmethod(_backend_func, "resolve_commit")
     branch_revs = partialmethod(_backend_func, "branch_revs")
 
@@ -326,6 +326,22 @@ class Git(Base):
     reflog_delete = partialmethod(_backend_func, "reflog_delete")
     describe = partialmethod(_backend_func, "describe")
     diff = partialmethod(_backend_func, "diff")
+
+    def resolve_rev(self, rev: str) -> str:
+        from dvc.repo.experiments.utils import exp_refs_by_name
+
+        try:
+            return self._resolve_rev(rev)
+        except RevError:
+            # backends will only resolve git branch and tag names,
+            # if rev is not a sha it may be an abbreviated experiment name
+            if not self.is_sha(rev) and not rev.startswith("refs/"):
+                ref_infos = list(exp_refs_by_name(self, rev))
+                if len(ref_infos) == 1:
+                    return self.get_ref(str(ref_infos[0]))
+                if len(ref_infos) > 1:
+                    raise RevError(f"ambiguous Git revision '{rev}'")
+            raise
 
     @contextmanager
     def detach_head(self, rev: Optional[str] = None):
