@@ -148,10 +148,12 @@ class Experiments:
                 the human-readable name in the experiment branch ref. Has no
                 effect of branch is specified.
         """
-        with self.scm.stash_workspace() as workspace:
+        with self.scm.stash_workspace(
+            include_untracked=detach_rev or branch
+        ) as workspace:
             # If we are not extending an existing branch, apply current
             # workspace changes to be made in new branch
-            if not branch and workspace:
+            if not (branch or detach_rev) and workspace:
                 self.stash.apply(workspace)
                 self._prune_lockfiles()
 

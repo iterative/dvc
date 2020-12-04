@@ -22,7 +22,6 @@ from dvc.repo.experiments.base import (
     UnchangedExperimentError,
 )
 from dvc.scm import SCM
-from dvc.scm.git import Git
 from dvc.stage import PipelineStage
 from dvc.stage.serialize import to_lockfile
 from dvc.utils import dict_sha256
@@ -30,6 +29,8 @@ from dvc.utils.fs import remove
 
 if TYPE_CHECKING:
     from multiprocessing import Queue
+
+    from dvc.scm.git import Git
 
 logger = logging.getLogger(__name__)
 
@@ -240,10 +241,7 @@ class BaseExecutor:
             #   experiment run
             dvc.checkout(force=True, quiet=True)
 
-            # We cannot use dvc.scm to make commits inside the executor since
-            # cached props are not picklable.
-            scm = Git()
-            checkpoint_func = partial(cls.checkpoint_callback, scm, name)
+            checkpoint_func = partial(cls.checkpoint_callback, dvc.scm, name)
             stages = dvc.reproduce(
                 *args,
                 on_unchanged=filter_pipeline,
@@ -252,15 +250,14 @@ class BaseExecutor:
             )
 
             exp_hash = cls.hash_exp(stages)
-            exp_rev = cls.commit(scm, exp_hash, exp_name=name)
-            if scm.get_ref(EXEC_CHECKPOINT):
-                scm.set_ref(EXEC_CHECKPOINT, exp_rev)
+            exp_rev = cls.commit(dvc.scm, exp_hash, exp_name=name)
+            if dvc.scm.get_ref(EXEC_CHECKPOINT):
+                dvc.scm.set_ref(EXEC_CHECKPOINT, exp_rev)
         except UnchangedExperimentError:
             pass
         finally:
-            if scm:
-                scm.close()
-                del scm
+            if dvc:
+                dvc.scm.close()
             if old_cwd:
                 os.chdir(old_cwd)
 
@@ -334,7 +331,6 @@ class LocalExecutor(BaseExecutor):
         local_config = os.path.join(self.dvc_dir, "config.local")
         logger.debug("Writing experiments local config '%s'", local_config)
         with open(local_config, "w") as fobj:
-            fobj.write("[core]\n    no_scm = true\n")
             fobj.write(f"[cache]\n    dir = {cache_dir}")
 
     @property
