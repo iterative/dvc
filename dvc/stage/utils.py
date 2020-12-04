@@ -62,7 +62,7 @@ def fill_stage_outputs(stage, **kwargs):
         stage.outs += output.loads_from(
             stage,
             kwargs.get(key, []),
-            use_cache="no_cache" not in key,
+            use_cache=not ("no_cache" in key or "dvclive" in key),
             persist="persist" in key,
             metric="metrics" in key,
             plot="plots" in key,

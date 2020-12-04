@@ -232,11 +232,15 @@ def load_from_pipeline(stage, s_list, typ="outs"):
     d = _merge_data(s_list)
 
     for path, flags in d.items():
-        plt_d = {}
+        plt_d, dvclive_d = {}, {}
         if plot:
             from dvc.schema import PLOT_PROPS
 
             plt_d, flags = _split_dict(flags, keys=PLOT_PROPS.keys())
+        if dvclive:
+            from dvc.schema import DVCLIVE_PROPS
+
+            dvclive_d, flags = _split_dict(flags, keys=DVCLIVE_PROPS.keys())
         extra = project(
             flags,
             [
@@ -245,12 +249,13 @@ def load_from_pipeline(stage, s_list, typ="outs"):
                 BaseOutput.PARAM_CHECKPOINT,
             ],
         )
+
         yield _get(
             stage,
             path,
             {},
             plot=plt_d or plot,
             metric=metric,
-            dvclive=dvclive,
+            dvclive=dvclive_d or dvclive,
             **extra,
         )

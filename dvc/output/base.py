@@ -1,13 +1,16 @@
+import json
 import logging
 import os
 from copy import copy
 from typing import Type
 from urllib.parse import urlparse
 
+from funcy import project
 from voluptuous import Any
 
 import dvc.prompt as prompt
 from dvc.cache import NamedCache
+from dvc.env import DVCLIVE_CONFIG
 from dvc.exceptions import (
     CheckoutError,
     CollectCacheError,
@@ -598,3 +601,17 @@ class BaseOutput:
         self.hash_info = self.cache.merge(
             ancestor_info, self.hash_info, other.hash_info
         )
+
+    @property
+    def environment(self):
+        if self.dvclive:
+            from dvc.schema import DVCLIVE_PROPS
+
+            if isinstance(self.dvclive, dict):
+                config = project(self.dvclive, DVCLIVE_PROPS)
+            else:
+                config = dict.fromkeys(DVCLIVE_PROPS)
+            config["path"] = str(self.path_info)
+            return {DVCLIVE_CONFIG: json.dumps(config)}
+        # TODO checkpoints?
+        return {}

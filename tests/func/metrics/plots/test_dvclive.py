@@ -21,6 +21,12 @@ DVCLIVE_SCRITP = dedent(
 )
 
 
+# TODO
+def test_pass_config():
+    # check "DVCLIVE_CONFIG"
+    pass
+
+
 def test_live_plots(tmp_dir, scm, dvc):
     tmp_dir.gen("params.yaml", "multiplier: 1")
     tmp_dir.gen("log.py", DVCLIVE_SCRITP.format(log_path="logs"))
@@ -53,4 +59,5 @@ def test_live_plots(tmp_dir, scm, dvc):
     # assert (
     #     main(["plots", "diff", "master", "--targets", "logs/accuracy.tsv"])
     #     == 0
-    # )
+    # "--dvclive",
+    #             "dvclive")

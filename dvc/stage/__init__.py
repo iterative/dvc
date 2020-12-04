@@ -251,6 +251,16 @@ class Stage(params.StageParams):
         """
         return any(out.checkpoint for out in self.outs)
 
+    @property
+    def environment(self):
+        env = {}
+        for out in self.outs:
+            out_env = out.environment
+            if any(out_env.keys() and env.keys()):
+                raise DvcException("Duplicated env variable")
+            env.update(out_env)
+        return env
+
     def changed_deps(self):
         if self.frozen:
             return False

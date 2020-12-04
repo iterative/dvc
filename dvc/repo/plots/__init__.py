@@ -194,7 +194,7 @@ class Plots:
 
 
 def _is_plot(out):
-    return bool(out.plot)
+    return bool(out.plot) or bool(out.dvclive)
 
 
 def _collect_plots(repo, targets=None, rev=None, recursive=False):
@@ -211,7 +211,9 @@ def _collect_plots(repo, targets=None, rev=None, recursive=False):
 
 
 def _plot_props(out):
-    if not out.plot:
+    # TODO - is it possible to have both plot and dvclive?
+    if not (out.plot or out.dvclive):
+        logger.error(f"{str(out)} {out.dvclive}")
         raise NotAPlotError(out)
     if isinstance(out.plot, list):
         raise DvcException("Multiple plots per data file not supported.")

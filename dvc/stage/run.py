@@ -56,6 +56,8 @@ def prepare_kwargs(stage, checkpoint_func=None):
         # indicate that checkpoint cmd is being run inside DVC
         kwargs["env"].update(_checkpoint_env(stage))
 
+    kwargs["env"].update(stage.environment)
+
     # NOTE: when you specify `shell=True`, `Popen` [1] will default to
     # `/bin/sh` on *nix and will add ["/bin/sh", "-c"] to your command.
     # But we actually want to run the same shell that we are running
