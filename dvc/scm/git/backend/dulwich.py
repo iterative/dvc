@@ -1,16 +1,53 @@
 import fnmatch
+import locale
 import logging
 import os
-from io import BytesIO
+import stat
+from io import BytesIO, StringIO
 from typing import Callable, Iterable, Optional, Tuple
 
 from dvc.scm.base import SCMError
-from dvc.tree.base import BaseTree
 from dvc.utils import relpath
 
+from ..objects import GitObject
 from .base import BaseGitBackend
 
 logger = logging.getLogger(__name__)
+
+
+class DulwichObject(GitObject):
+    def __init__(self, repo, name, mode, sha):
+        self.repo = repo
+        self._name = name
+        self._mode = mode
+        self.sha = sha
+
+    def open(self, mode: str = "r", encoding: str = None):
+        if not encoding:
+            encoding = locale.getpreferredencoding(False)
+        # NOTE: we didn't load the object before as Dulwich will also try to
+        # load the contents of it into memory, which will slow down Trie
+        # building considerably.
+        obj = self.repo[self.sha]
+        data = obj.as_raw_string()
+        if mode == "rb":
+            return BytesIO(data)
+        return StringIO(data.decode(encoding))
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def mode(self) -> int:
+        return self._mode
+
+    def scandir(self) -> Iterable["DulwichObject"]:
+        tree = self.repo[self.sha]
+        for entry in tree.iteritems():  # noqa: B301
+            yield DulwichObject(
+                self.repo, entry.path.decode(), entry.mode, entry.sha
+            )
 
 
 class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
@@ -125,8 +162,11 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def list_all_commits(self) -> Iterable[str]:
         raise NotImplementedError
 
-    def get_tree(self, rev: str, **kwargs) -> BaseTree:
-        raise NotImplementedError
+    def get_tree_obj(self, rev: str, **kwargs) -> DulwichObject:
+        from dulwich.objectspec import parse_tree
+
+        tree = parse_tree(self.repo, rev)
+        return DulwichObject(self.repo, ".", stat.S_IFDIR, tree.id)
 
     def get_rev(self) -> str:
         raise NotImplementedError

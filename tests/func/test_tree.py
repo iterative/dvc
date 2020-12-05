@@ -5,7 +5,6 @@ from os.path import join
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.scm import SCM
-from dvc.tree.git import GitTree
 from dvc.tree.local import LocalTree
 from dvc.tree.repo import RepoTree
 from dvc.utils.fs import remove
@@ -45,7 +44,7 @@ class GitTreeTests:
         self.scm.add([self.FOO, self.UNICODE, self.DATA_DIR])
         self.scm.commit("add")
 
-        tree = GitTree(self.git, "master")
+        tree = self.scm.get_tree("master")
         with tree.open(self.FOO) as fd:
             self.assertEqual(fd.read(), self.FOO_CONTENTS)
         with tree.open(self.UNICODE) as fd:
@@ -56,14 +55,14 @@ class GitTreeTests:
             tree.open(self.DATA_DIR)
 
     def test_exists(self):
-        tree = GitTree(self.git, "master")
+        tree = self.scm.get_tree("master")
         self.assertFalse(tree.exists(self.FOO))
         self.assertFalse(tree.exists(self.UNICODE))
         self.assertFalse(tree.exists(self.DATA_DIR))
         self.scm.add([self.FOO, self.UNICODE, self.DATA])
         self.scm.commit("add")
 
-        tree = GitTree(self.git, "master")
+        tree = self.scm.get_tree("master")
         self.assertTrue(tree.exists(self.FOO))
         self.assertTrue(tree.exists(self.UNICODE))
         self.assertTrue(tree.exists(self.DATA_DIR))
@@ -73,7 +72,7 @@ class GitTreeTests:
         self.scm.add([self.FOO, self.DATA_DIR])
         self.scm.commit("add")
 
-        tree = GitTree(self.git, "master")
+        tree = self.scm.get_tree("master")
         self.assertTrue(tree.isdir(self.DATA_DIR))
         self.assertFalse(tree.isdir(self.FOO))
         self.assertFalse(tree.isdir("non-existing-file"))
@@ -82,7 +81,7 @@ class GitTreeTests:
         self.scm.add([self.FOO, self.DATA_DIR])
         self.scm.commit("add")
 
-        tree = GitTree(self.git, "master")
+        tree = self.scm.get_tree("master")
         self.assertTrue(tree.isfile(self.FOO))
         self.assertFalse(tree.isfile(self.DATA_DIR))
         self.assertFalse(tree.isfile("not-existing-file"))
@@ -162,7 +161,7 @@ class TestWalkInGit(AssertWalkEqualMixin, TestGit):
         scm = SCM(self._root_dir)
         scm.add([self.DATA_SUB_DIR])
         scm.commit("add data_dir/data_sub_dir/data_sub")
-        tree = GitTree(self.git, "master")
+        tree = scm.get_tree("master")
         self.assertWalkEqual(
             tree.walk("."),
             [
