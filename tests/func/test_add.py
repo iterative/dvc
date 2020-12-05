@@ -38,6 +38,8 @@ def test_add(tmp_dir, dvc):
 
     assert stage is not None
 
+    mode = oct(os.stat(stage.path).st_mode)
+
     assert isinstance(stage, Stage)
     assert os.path.isfile(stage.path)
     assert len(stage.outs) == 1
@@ -52,6 +54,7 @@ def test_add(tmp_dir, dvc):
                 "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
                 "path": "foo",
                 "size": 3,
+                "mode": mode
             }
         ],
     }

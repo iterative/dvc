@@ -210,6 +210,7 @@ def get_dump(stage):
             stage.PARAM_OUTS: [o.dumpd() for o in stage.outs],
             stage.PARAM_ALWAYS_CHANGED: stage.always_changed,
             stage.PARAM_META: stage.meta,
+            stage.PARAM_MODE: stage.mode,
         }.items()
         if value
     }

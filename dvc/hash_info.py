@@ -11,12 +11,14 @@ DirInfo = Dict[str, str]
 class HashInfo:
     PARAM_SIZE = "size"
     PARAM_NFILES = "nfiles"
+    PARAM_MODE = "mode"
 
     name: Optional[str]
     value: Optional[str]
     dir_info: Optional[DirInfo] = field(default=None, compare=False)
     size: Optional[int] = field(default=None, compare=False)
     nfiles: Optional[int] = field(default=None, compare=False)
+    mode: Optional[str] = field(default=None, compare=False)
 
     def __bool__(self):
         return bool(self.value)
@@ -43,6 +45,9 @@ class HashInfo:
             ret[self.PARAM_SIZE] = self.size
         if self.nfiles is not None:
             ret[self.PARAM_NFILES] = self.nfiles
+        if self.mode is not None:
+            ret[self.PARAM_MODE] = self.mode
+
         return ret
 
     @property

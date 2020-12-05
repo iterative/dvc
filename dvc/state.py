@@ -455,7 +455,10 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             return None
 
         self._update_state_record_timestamp_for_inode(actual_inode)
-        return HashInfo("md5", value, size=int(actual_size))
+
+        mode = oct(os.stat(path).st_mode)
+
+        return HashInfo("md5", value, size=int(actual_size), mode=mode)
 
     def save_link(self, path_info):
         """Adds the specified path to the list of links created by dvc. This
