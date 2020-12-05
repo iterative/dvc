@@ -293,6 +293,7 @@ class Repo:
         jobs=None,
         recursive=False,
         used_run_cache=None,
+        ignore_dvc_exceptions=False,
     ):
         """Get the stages related to the given target and collect
         the `info` of its outputs.
@@ -338,6 +339,10 @@ class Repo:
                     cache.update(used_cache, suffix=suffix)
             except DvcException as e:
                 logger.error(f"Cache for '{branch}' could not be collected")
+                if ignore_dvc_exceptions:
+                    logger.debug(e)
+                    continue
+
                 raise e
 
         if used_run_cache:
