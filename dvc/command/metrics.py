@@ -12,33 +12,60 @@ DEFAULT_PRECISION = 5
 
 
 def _show_metrics(
-    metrics, all_branches=False, all_tags=False, all_commits=False
+    metrics,
+    all_branches=False,
+    all_tags=False,
+    all_commits=False,
+    precision=None,
 ):
-    from dvc.utils.diff import format_dict
+    from dvc.utils.diff import format_dict, table
     from dvc.utils.flatten import flatten
 
     # When `metrics` contains a `None` key, it means that some files
     # specified as `targets` in `repo.metrics.show` didn't contain any metrics.
     missing = metrics.pop(None, None)
+    with_rev = any([all_branches, all_tags, all_commits])
+    header_set = set()
+    rows = []
 
-    lines = []
-    for branch, val in metrics.items():
-        if all_branches or all_tags or all_commits:
-            lines.append(f"{branch}:")
+    if precision is None:
+        precision = DEFAULT_PRECISION
 
-        for fname, metric in val.items():
+    def _round(val):
+        if isinstance(val, float):
+            return round(val, precision)
+        return val
+
+    for _branch, val in metrics.items():
+        for _fname, metric in val.items():
             if not isinstance(metric, dict):
-                lines.append("\t{}: {}".format(fname, str(metric)))
+                header_set.add("")
                 continue
+            for key, _val in flatten(format_dict(metric)).items():
+                header_set.add(key)
+    header = sorted(header_set)
+    for branch, val in metrics.items():
+        for fname, metric in val.items():
+            row = []
+            if with_rev:
+                row.append(branch)
+            row.append(fname)
+            if not isinstance(metric, dict):
+                row.append(str(metric))
+                rows.append(row)
+                continue
+            flattened_val = flatten(format_dict(metric))
 
-            lines.append(f"\t{fname}:")
-            for key, value in flatten(format_dict(metric)).items():
-                lines.append(f"\t\t{key}: {value}")
+            for i in header:
+                row.append(_round(flattened_val.get(i)))
+            rows.append(row)
+    header.insert(0, "Path")
+    if with_rev:
+        header.insert(0, "Revision")
 
     if missing:
         raise BadMetricError(missing)
-
-    return "\n".join(lines)
+    return table(header, rows, markdown=False)
 
 
 class CmdMetricsBase(CmdBase):
@@ -210,6 +237,15 @@ def add_parser(subparsers, parent_parser):
             "If any target is a directory, recursively search and process "
             "metrics files."
         ),
+    )
+    metrics_show_parser.add_argument(
+        "--precision",
+        type=int,
+        help=(
+            "Round metrics to `n` digits precision after the decimal point. "
+            f"Rounds to {DEFAULT_PRECISION} digits by default."
+        ),
+        metavar="<n>",
     )
     metrics_show_parser.set_defaults(func=CmdMetricsShow)
 

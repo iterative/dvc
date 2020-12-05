@@ -9,7 +9,7 @@ from dvc.stage.params import StageParams
 STAGES = "stages"
 SINGLE_STAGE_SCHEMA = {
     StageParams.PARAM_MD5: output.CHECKSUM_SCHEMA,
-    StageParams.PARAM_CMD: Any(str, None),
+    StageParams.PARAM_CMD: Any(str, list, None),
     StageParams.PARAM_WDIR: Any(str, None),
     StageParams.PARAM_DEPS: Any([dependency.SCHEMA], None),
     StageParams.PARAM_OUTS: Any([output.SCHEMA], None),
@@ -27,7 +27,7 @@ DATA_SCHEMA = {
     HashInfo.PARAM_NFILES: int,
 }
 LOCK_FILE_STAGE_SCHEMA = {
-    Required(StageParams.PARAM_CMD): str,
+    Required(StageParams.PARAM_CMD): Any(str, list),
     StageParams.PARAM_DEPS: [DATA_SCHEMA],
     StageParams.PARAM_PARAMS: {str: {str: object}},
     StageParams.PARAM_OUTS: [DATA_SCHEMA],
@@ -63,7 +63,7 @@ PARAM_PSTAGE_NON_DEFAULT_SCHEMA = {str: [str]}
 VARS_SCHEMA = [str, dict]
 
 STAGE_DEFINITION = {
-    StageParams.PARAM_CMD: str,
+    StageParams.PARAM_CMD: Any(str, list),
     Optional(SET_KWD): dict,
     Optional(StageParams.PARAM_WDIR): str,
     Optional(StageParams.PARAM_DEPS): [str],

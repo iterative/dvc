@@ -315,8 +315,8 @@ def test_dvcfile_dump_preserves_meta(tmp_dir, dvc, run_copy):
 
     data = dvcfile._load()[0]
     metadata = {"name": "copy-file"}
+    stage.meta = metadata
     data["stages"]["run_copy"]["meta"] = metadata
-    dump_yaml(dvcfile.path, data)
 
     dvcfile.dump(stage)
     assert dvcfile._load()[0] == data
@@ -375,7 +375,6 @@ def test_dvcfile_dump_preserves_comments(tmp_dir, dvc):
 )
 def test_dvcfile_try_dumping_parametrized_stage(tmp_dir, dvc, data, name):
     dump_yaml("dvc.yaml", {"stages": data, "vars": [{"foo": "foobar"}]})
-    dvc.config["feature"]["parametrization"] = True
 
     stage = dvc.stage.load_one(name=name)
     dvcfile = stage.dvcfile

@@ -55,6 +55,7 @@ def loads_from(cls, repo, path, wdir, data):
                 Stage.PARAM_ALWAYS_CHANGED,
                 Stage.PARAM_MD5,
                 Stage.PARAM_DESC,
+                Stage.PARAM_META,
                 "name",
             ],
         ),
@@ -90,6 +91,30 @@ def create_stage(cls, repo, path, external=False, **kwargs):
     return stage
 
 
+def restore_meta(stage):
+    from .exceptions import StageNotFound
+
+    if not stage.dvcfile.exists():
+        return
+
+    try:
+        old = stage.reload()
+    except StageNotFound:
+        return
+
+    # will be used to restore comments later
+    # noqa, pylint: disable=protected-access
+    stage._stage_text = old._stage_text
+
+    stage.meta = old.meta
+    stage.desc = old.desc
+
+    old_desc = {out.def_path: out.desc for out in old.outs}
+
+    for out in stage.outs:
+        out.desc = old_desc.get(out.def_path, None)
+
+
 class Stage(params.StageParams):
     # pylint:disable=no-value-for-parameter
     # rwlocked() confuses pylint
@@ -109,6 +134,7 @@ class Stage(params.StageParams):
         stage_text=None,
         dvcfile=None,
         desc=None,
+        meta=None,
     ):
         if deps is None:
             deps = []
@@ -127,6 +153,7 @@ class Stage(params.StageParams):
         self._stage_text = stage_text
         self._dvcfile = dvcfile
         self.desc = desc
+        self.meta = meta
         self.raw_data = RawData()
 
     @property
@@ -482,6 +509,8 @@ class Stage(params.StageParams):
                 check_missing_outputs(self)
 
         if not dry:
+            if kwargs.get("checkpoint_func", None):
+                allow_missing = True
             self.save(allow_missing=allow_missing)
             if not no_commit:
                 self.commit(allow_missing=allow_missing)
@@ -628,6 +657,7 @@ class PipelineStage(Stage):
         super().__init__(*args, **kwargs)
         self.name = name
         self.cmd_changed = False
+        self.tracked_vars = {}
 
     def __eq__(self, other):
         return super().__eq__(other) and self.name == other.name

@@ -1,6 +1,7 @@
 import locale
 import os
 import platform
+import subprocess
 import uuid
 from contextlib import contextmanager
 
@@ -15,25 +16,31 @@ from .base import Base
 class HDFS(Base, URLInfo):  # pylint: disable=abstract-method
     @contextmanager
     def _hdfs(self):
-        import pyarrow
+        import pyarrow.fs
 
-        conn = pyarrow.hdfs.connect(self.host, self.port)
-        try:
-            yield conn
-        finally:
-            conn.close()
+        conn = pyarrow.fs.HadoopFileSystem(self.host, self.port)
+        yield conn
 
     def is_file(self):
         with self._hdfs() as _hdfs:
-            return _hdfs.isfile(self.path)
+            import pyarrow.fs
+
+            file_info = _hdfs.get_file_info(self.path)
+            return file_info.type == pyarrow.fs.FileType.File
 
     def is_dir(self):
         with self._hdfs() as _hdfs:
-            return _hdfs.isfile(self.path)
+            import pyarrow.fs
+
+            file_info = _hdfs.get_file_info(self.path)
+            return file_info.type == pyarrow.fs.FileType.Directory
 
     def exists(self):
         with self._hdfs() as _hdfs:
-            return _hdfs.exists(self.path)
+            import pyarrow.fs
+
+            file_info = _hdfs.get_file_info(self.path)
+            return file_info.type != pyarrow.fs.FileType.NotFound
 
     def mkdir(self, mode=0o777, parents=False, exist_ok=False):
         assert mode == 0o777
@@ -41,13 +48,12 @@ class HDFS(Base, URLInfo):  # pylint: disable=abstract-method
         assert not exist_ok
 
         with self._hdfs() as _hdfs:
-            # NOTE: hdfs.mkdir always creates parents
-            _hdfs.mkdir(self.path)
+            # NOTE: fs.create_dir creates parents by default
+            _hdfs.create_dir(self.path)
 
     def write_bytes(self, contents):
         with self._hdfs() as _hdfs:
-            # NOTE: hdfs.open only supports 'rb', 'wb' or 'ab'
-            with _hdfs.open(self.path, "wb") as fobj:
+            with _hdfs.open_output_stream(self.path) as fobj:
                 fobj.write(contents)
 
     def write_text(self, contents, encoding=None, errors=None):
@@ -58,8 +64,7 @@ class HDFS(Base, URLInfo):  # pylint: disable=abstract-method
 
     def read_bytes(self):
         with self._hdfs() as _hdfs:
-            # NOTE: hdfs.open only supports 'rb', 'wb' or 'ab'
-            with _hdfs.open(self.path, "rb") as fobj:
+            with _hdfs.open_input_stream(self.path) as fobj:
                 return fobj.read()
 
     def read_text(self, encoding=None, errors=None):
@@ -115,10 +120,19 @@ def hadoop(test_config):
     os.environ["HADOOP_HOME"] = hadoop_home
     os.environ["PATH"] += f":{hadoop_home}/bin:{hadoop_home}/sbin"
 
+    # NOTE: must set CLASSPATH to connect using pyarrow.fs.HadoopFileSystem
+    result = subprocess.run(
+        [f"{hadoop_home}/bin/hdfs", "classpath", "--glob"],
+        universal_newlines=True,
+        stdout=subprocess.PIPE,
+        check=False,
+    )
+    os.environ["CLASSPATH"] = result.stdout
+
 
 @pytest.fixture(scope="session")
 def hdfs_server(hadoop, docker_compose, docker_services):
-    import pyarrow
+    import pyarrow.fs
 
     port = docker_services.port_for("hdfs", 8020)
     web_port = docker_services.port_for("hdfs", 50070)
@@ -127,12 +141,9 @@ def hdfs_server(hadoop, docker_compose, docker_services):
         try:
             # NOTE: just connecting or even opening something is not enough,
             # we need to make sure that we are able to write something.
-            conn = pyarrow.hdfs.connect("127.0.0.1", port)
-            try:
-                with conn.open(str(uuid.uuid4()), "wb") as fobj:
-                    fobj.write(b"test")
-            finally:
-                conn.close()
+            conn = pyarrow.fs.HadoopFileSystem("hdfs://127.0.0.1", port)
+            with conn.open_output_stream(str(uuid.uuid4())) as fobj:
+                fobj.write(b"test")
             return True
         except (pyarrow.ArrowException, OSError):
             return False

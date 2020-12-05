@@ -580,7 +580,7 @@ def test_stats_on_checkout(tmp_dir, dvc, scm):
 
     tmp_dir.gen({"lorem": "lorem", "bar": "new bar", "dir2": {"file": "file"}})
     (tmp_dir / "foo").unlink()
-    scm.repo.git.rm("foo.dvc")
+    scm.gitpython.repo.git.rm("foo.dvc")
     tmp_dir.dvc_add(["bar", "lorem", "dir2"], commit="second")
 
     scm.checkout("HEAD~")

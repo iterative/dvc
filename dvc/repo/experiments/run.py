@@ -3,7 +3,7 @@ from typing import Iterable, Optional
 
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo import locked
-from dvc.repo.experiments import UnchangedExperimentError
+from dvc.repo.experiments.base import UnchangedExperimentError
 
 logger = logging.getLogger(__name__)
 

@@ -25,7 +25,7 @@ def test_import(tmp_dir, scm, dvc, erepo_dir):
 
     assert os.path.isfile("foo_imported")
     assert (tmp_dir / "foo_imported").read_text() == "foo content"
-    assert scm.repo.git.check_ignore("foo_imported")
+    assert scm.is_ignored("foo_imported")
     assert stage.deps[0].def_repo == {
         "url": os.fspath(erepo_dir),
         "rev_lock": erepo_dir.scm.get_rev(),
@@ -42,7 +42,7 @@ def test_import_git_file(tmp_dir, scm, dvc, git_dir, src_is_dvc):
     stage = tmp_dir.dvc.imp(os.fspath(git_dir), "src", "dst")
 
     assert (tmp_dir / "dst").read_text() == "hello"
-    assert tmp_dir.scm.repo.git.check_ignore(os.fspath(tmp_dir / "dst"))
+    assert tmp_dir.scm.is_ignored(os.fspath(tmp_dir / "dst"))
     assert stage.deps[0].def_repo == {
         "url": os.fspath(git_dir),
         "rev_lock": git_dir.scm.get_rev(),
@@ -77,7 +77,7 @@ def test_import_git_dir(tmp_dir, scm, dvc, git_dir, src_is_dvc):
     stage = dvc.imp(os.fspath(git_dir), "src", "dst")
 
     assert (tmp_dir / "dst").read_text() == {"file.txt": "hello"}
-    assert tmp_dir.scm.repo.git.check_ignore(os.fspath(tmp_dir / "dst"))
+    assert tmp_dir.scm.is_ignored(os.fspath(tmp_dir / "dst"))
     assert stage.deps[0].def_repo == {
         "url": os.fspath(git_dir),
         "rev_lock": git_dir.scm.get_rev(),
@@ -91,7 +91,7 @@ def test_import_dir(tmp_dir, scm, dvc, erepo_dir):
     stage = dvc.imp(os.fspath(erepo_dir), "dir", "dir_imported")
 
     assert (tmp_dir / "dir_imported").read_text() == {"foo": "foo content"}
-    assert scm.repo.git.check_ignore("dir_imported")
+    assert scm.is_ignored("dir_imported")
     assert stage.deps[0].def_repo == {
         "url": os.fspath(erepo_dir),
         "rev_lock": erepo_dir.scm.get_rev(),
@@ -114,7 +114,7 @@ def test_import_file_from_dir(tmp_dir, scm, dvc, erepo_dir):
     stage = dvc.imp(os.fspath(erepo_dir), os.path.join("dir", "1"))
 
     assert (tmp_dir / "1").read_text() == "1"
-    assert scm.repo.git.check_ignore("1")
+    assert scm.is_ignored("1")
     assert stage.deps[0].def_repo == {
         "url": os.fspath(erepo_dir),
         "rev_lock": erepo_dir.scm.get_rev(),
@@ -175,7 +175,7 @@ def test_import_non_cached(erepo_dir, tmp_dir, dvc, scm):
 
     assert (tmp_dir / dst).is_file()
     assert filecmp.cmp(erepo_dir / src, tmp_dir / dst, shallow=False)
-    assert tmp_dir.scm.repo.git.check_ignore(dst)
+    assert tmp_dir.scm.is_ignored(dst)
     assert stage.deps[0].def_repo == {
         "url": os.fspath(erepo_dir),
         "rev_lock": erepo_dir.scm.get_rev(),
@@ -191,7 +191,7 @@ def test_import_rev(tmp_dir, scm, dvc, erepo_dir):
     stage = dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported", rev="branch")
 
     assert (tmp_dir / "foo_imported").read_text() == "foo content"
-    assert scm.repo.git.check_ignore("foo_imported")
+    assert scm.is_ignored("foo_imported")
     assert stage.deps[0].def_repo == {
         "url": os.fspath(erepo_dir),
         "rev": "branch",
@@ -231,7 +231,7 @@ def test_cache_type_is_properly_overridden(tmp_dir, scm, dvc, erepo_dir):
 
     assert not System.is_symlink("foo_imported")
     assert (tmp_dir / "foo_imported").read_text() == "foo content"
-    assert scm.repo.git.check_ignore("foo_imported")
+    assert scm.is_ignored("foo_imported")
 
 
 def test_pull_imported_directory_stage(tmp_dir, dvc, erepo_dir):
@@ -340,8 +340,8 @@ def test_import_from_bare_git_repo(
         erepo_dir.dvc_gen({"foo": "foo"}, commit="initial")
     erepo_dir.dvc.push()
 
-    erepo_dir.scm.repo.create_remote("origin", os.fspath(tmp_dir))
-    erepo_dir.scm.repo.remote("origin").push("master")
+    erepo_dir.scm.gitpython.repo.create_remote("origin", os.fspath(tmp_dir))
+    erepo_dir.scm.gitpython.repo.remote("origin").push("master")
 
     dvc_repo = make_tmp_dir("dvc-repo", scm=True, dvc=True)
     with dvc_repo.chdir():

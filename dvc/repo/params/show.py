@@ -6,6 +6,7 @@ from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 from dvc.repo import locked
 from dvc.repo.collect import collect
+from dvc.stage import PipelineStage
 from dvc.utils.serialize import LOADERS, ParseError
 
 if TYPE_CHECKING:
@@ -49,6 +50,19 @@ def _read_params(repo, configs, rev):
     return res
 
 
+def _add_vars(repo, configs, params):
+    for stage in repo.stages:
+        if isinstance(stage, PipelineStage) and stage.tracked_vars:
+            for file, vars_ in stage.tracked_vars.items():
+                # `params` file are shown regardless of `tracked` or not
+                # to reduce noise and duplication, they are skipped
+                if file in configs:
+                    continue
+
+                params[file] = params.get(file, {})
+                params[file].update(vars_)
+
+
 @locked
 def show(repo, revs=None):
     res = {}
@@ -56,6 +70,7 @@ def show(repo, revs=None):
     for branch in repo.brancher(revs=revs):
         configs = _collect_configs(repo, branch)
         params = _read_params(repo, configs, branch)
+        _add_vars(repo, configs, params)
 
         if params:
             res[branch] = params

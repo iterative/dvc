@@ -24,19 +24,18 @@ class StageLoader(Mapping):
         self.data = data or {}
         self.stages_data = self.data.get("stages", {})
         self.repo = self.dvcfile.repo
-        self._enable_parametrization = self.repo.config["feature"][
-            "parametrization"
-        ]
         self.lockfile_data = lockfile_data or {}
+
+    @cached_property
+    def resolver(self):
+        wdir = PathInfo(self.dvcfile.path).parent
+        return DataResolver(self.repo, wdir, self.data)
 
     @cached_property
     def resolved_data(self):
         data = self.data
-        if self._enable_parametrization:
-            wdir = PathInfo(self.dvcfile.path).parent
-            with log_durations(logger.debug, "resolving values"):
-                resolver = DataResolver(self.repo, wdir, data)
-                data = resolver.resolve()
+        with log_durations(logger.debug, "resolving values"):
+            data = self.resolver.resolve()
         return data.get("stages", {})
 
     @staticmethod
@@ -76,6 +75,7 @@ class StageLoader(Mapping):
         stage = loads_from(PipelineStage, dvcfile.repo, path, wdir, stage_data)
         stage.name = name
         stage.desc = stage_data.get(Stage.PARAM_DESC)
+        stage.meta = stage_data.get(Stage.PARAM_META)
 
         deps = project(stage_data, [stage.PARAM_DEPS, stage.PARAM_PARAMS])
         fill_stage_dependencies(stage, **deps)
@@ -114,6 +114,7 @@ class StageLoader(Mapping):
             self.lockfile_data.get(name, {}),
         )
 
+        stage.tracked_vars = self.resolver.tracked_vars.get(name, {})
         group, *keys = name.rsplit(JOIN, maxsplit=1)
         if group and keys and name not in self.stages_data:
             stage.raw_data.generated_from = group

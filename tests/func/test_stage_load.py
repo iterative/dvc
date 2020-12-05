@@ -10,6 +10,7 @@ from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.stage.exceptions import (
     StageFileDoesNotExistError,
+    StageFileFormatError,
     StageNameUnspecified,
     StageNotFound,
 )
@@ -147,7 +148,6 @@ def test_collect_not_a_group_stage_with_group_flag(tmp_dir, dvc, stages):
 
 
 def test_collect_generated(tmp_dir, dvc):
-    dvc.config["feature"]["parametrization"] = True
     d = {
         "vars": [{"vars": [1, 2, 3, 4, 5]}],
         "stages": {
@@ -435,3 +435,19 @@ def test_collect_optimization_on_stage_name(tmp_dir, dvc, mocker, run_copy):
     # Should read stage directly instead of collecting the whole graph
     assert dvc.stage.collect("copy-foo-bar") == [stage]
     assert dvc.stage.collect_granular("copy-foo-bar") == [(stage, None)]
+
+
+def test_collect_repo_callback(tmp_dir, dvc, mocker):
+    mock = mocker.Mock()
+    dvc.stage_collection_error_handler = mock
+
+    (stage,) = tmp_dir.dvc_gen("foo", "foo")
+    dump_yaml(tmp_dir / PIPELINE_FILE, {"stages": {"cmd": "echo hello world"}})
+
+    dvc._reset()
+    assert dvc.stages == [stage]
+    mock.assert_called_once()
+
+    file_path, exc = mock.call_args[0]
+    assert file_path == PIPELINE_FILE
+    assert isinstance(exc, StageFileFormatError)

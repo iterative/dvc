@@ -141,7 +141,7 @@ SCHEMA = {
         Optional("hardlink_lock", default=False): Bool,
         Optional("no_scm", default=False): Bool,
         Optional("autostage", default=False): Bool,
-        Optional("experiments", default=False): Bool,
+        Optional("experiments"): Bool,  # obsoleted
         Optional("check_update", default=True): Bool,
     },
     "cache": {
@@ -234,7 +234,10 @@ SCHEMA = {
         "row_cleanup_quota": All(Coerce(int), Range(0, 100)),
     },
     # section for experimental features
-    "feature": {Optional("parametrization", default=False): Bool},
+    "feature": {
+        # enabled by default. It's of no use, kept for backward compatibility.
+        Optional("parametrization", default=True): Bool
+    },
 }
 COMPILED_SCHEMA = Schema(SCHEMA)
 

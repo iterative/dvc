@@ -103,6 +103,8 @@ class DataResolver:
         except (ContextError, VarsAlreadyLoaded) as exc:
             format_and_raise(exc, "'vars'", self.relpath)
 
+        self.tracked_vars = {}
+
     @staticmethod
     def check_loaded(path, item, keys, skip_imports):
         if not keys and isinstance(skip_imports[path], list):
@@ -216,20 +218,15 @@ class DataResolver:
                         exc, f"'stages.{name}.{key}'", self.relpath
                     )
 
-        # FIXME: Decide if we should track them or not (it does right now)
-        params = resolved.get(PARAMS_KWD, []) + self._resolve_params(
-            context, wdir
-        )
-        if params:
-            resolved[PARAMS_KWD] = params
+        self.tracked_vars[name] = self._get_vars(context)
         return {name: resolved}
 
-    def _resolve_params(self, context: Context, wdir):
-        tracked = defaultdict(set)
-        for src, keys in context.tracked.items():
-            tracked[str(PathInfo(src).relative_to(wdir))].update(keys)
-
-        return [{file: list(keys)} for file, keys in tracked.items()]
+    def _get_vars(self, context: Context):
+        tracked = defaultdict(dict)
+        for path, vars_ in context.tracked.items():
+            for var in vars_:
+                tracked[path][var] = context.select(var, unwrap=True)
+        return tracked
 
     def _resolve_wdir(
         self, context: Context, name: str, wdir: str = None

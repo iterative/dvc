@@ -43,7 +43,7 @@ class TestInstall:
 
         # scm.commit bypasses hooks
         with pytest.raises(GitCommandError, match=r"modified:\s*file"):
-            scm.repo.git.commit(m="file modified")
+            scm.gitpython.repo.git.commit(m="file modified")
 
     def test_post_checkout(self, tmp_dir, scm, dvc):
         tmp_dir.dvc_gen({"file": "file content"}, commit="add")
@@ -69,13 +69,13 @@ class TestInstall:
             storage_path / file_checksum[:2] / file_checksum[2:]
         )
 
-        scm.repo.clone(os.fspath(git_remote))
-        scm.repo.create_remote("origin", os.fspath(git_remote))
+        scm.gitpython.repo.clone(os.fspath(git_remote))
+        scm.gitpython.repo.create_remote("origin", os.fspath(git_remote))
 
         scm.install()
 
         assert not expected_storage_path.is_file()
-        scm.repo.git.push("origin", "master")
+        scm.gitpython.repo.git.push("origin", "master")
         assert expected_storage_path.is_file()
         assert expected_storage_path.read_text() == "file_content"
 
@@ -97,7 +97,9 @@ def test_merge_driver_no_ancestor(tmp_dir, scm, dvc):
     scm.install()
     (tmp_dir / ".gitattributes").write_text("*.dvc merge=dvc")
 
-    scm.repo.git.merge("one", m="merged", no_gpg_sign=True, no_signoff=True)
+    scm.gitpython.repo.git.merge(
+        "one", m="merged", no_gpg_sign=True, no_signoff=True
+    )
 
     # NOTE: dvc shouldn't checkout automatically as it might take a long time
     assert (tmp_dir / "data").read_text() == {"bar": "bar"}
@@ -132,7 +134,9 @@ def test_merge_driver(tmp_dir, scm, dvc):
     scm.install()
     (tmp_dir / ".gitattributes").write_text("*.dvc merge=dvc")
 
-    scm.repo.git.merge("one", m="merged", no_gpg_sign=True, no_signoff=True)
+    scm.gitpython.repo.git.merge(
+        "one", m="merged", no_gpg_sign=True, no_signoff=True
+    )
 
     # NOTE: dvc shouldn't checkout automatically as it might take a long time
     assert (tmp_dir / "data").read_text() == {"master": "master", "two": "two"}

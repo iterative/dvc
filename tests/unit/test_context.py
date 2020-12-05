@@ -411,6 +411,17 @@ def test_resolve_resolves_dict_keys():
     }
 
 
+def test_resolve_resolves_boolean_value():
+    d = {"enabled": True, "disabled": False}
+    context = Context(d)
+
+    assert context.resolve_str("${enabled}") is True
+    assert context.resolve_str("${disabled}") is False
+
+    assert context.resolve_str("--flag ${enabled}") == "--flag true"
+    assert context.resolve_str("--flag ${disabled}") == "--flag false"
+
+
 def test_merge_from_raises_if_file_not_exist(tmp_dir, dvc):
     context = Context(foo="bar")
     with pytest.raises(ParamsFileNotFound):

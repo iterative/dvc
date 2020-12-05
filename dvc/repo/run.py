@@ -78,7 +78,7 @@ def _check_stage_exists(dvcfile, stage):
 @scm_context
 def run(self, fname=None, no_exec=False, single_stage=False, **kwargs):
     from dvc.dvcfile import PIPELINE_FILE, Dvcfile
-    from dvc.stage import Stage, create_stage
+    from dvc.stage import Stage, create_stage, restore_meta
 
     if not kwargs.get("cmd"):
         raise InvalidArgumentError("command is not specified")
@@ -113,6 +113,7 @@ def run(self, fname=None, no_exec=False, single_stage=False, **kwargs):
     stage = create_stage(
         stage_cls, repo=self, path=path, params=params, **kwargs
     )
+    restore_meta(stage)
     if kwargs.get("run_cache", True) and stage.can_be_skipped:
         return None
 
