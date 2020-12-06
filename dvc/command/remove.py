@@ -21,8 +21,8 @@ class CmdRemove(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     REMOVE_HELP = (
-        "Remove stages or .dvc files, unprotect their outputs, and"
-        " erase .gitignore entries."
+        "Remove stages from dvc.yaml and/or"
+        " stop tracking files or directories."
     )
     remove_parser = subparsers.add_parser(
         "remove",
