@@ -84,15 +84,23 @@ class OSFTree(BaseTree):
     def _get_file_obj(self, path_info):
         folder_names = path_info.path.split("/")[1:-1]
         file_name = path_info.path.split("/")[-1]
-        folders = self.storage.folders
-        for name in folder_names:
-            try:
-                item = next((i for i in folders if i.name == name))
-            except StopIteration:
-                return None
-            folders = item.folders
-        file = next((i for i in item.files if i.name == file_name), None)
-        return file
+        try:
+            folders = self.storage.folders
+            for name in folder_names:
+                try:
+                    item = next((i for i in folders if i.name == name))
+                except StopIteration:
+                    return None
+                folders = item.folders
+            file = next((i for i in item.files if i.name == file_name), None)
+            return file
+        except RuntimeError as e:
+            message = (
+                f"OSF API error. {str(e)} See "
+                f"https://developer.osf.io/#tag/Errors-and-Error-Codes"
+                f" for details."
+            )
+            raise DvcException(message) from e
 
     def get_md5(self, path_info):
         file = self._get_file_obj(path_info)
@@ -103,8 +111,16 @@ class OSFTree(BaseTree):
         return self._get_file_obj(path_info) is not None
 
     def _list_paths(self):
-        for file in self.storage.files:
-            yield file.path
+        try:
+            for file in self.storage.files:
+                yield file.path
+        except RuntimeError as e:
+            message = (
+                f"OSF API error. {str(e)} See "
+                f"https://developer.osf.io/#tag/Errors-and-Error-Codes"
+                f" for details."
+            )
+            raise DvcException(message) from e
 
     def isdir(self, path_info):
         file = self._get_file_obj(path_info)
@@ -122,7 +138,15 @@ class OSFTree(BaseTree):
             raise NotImplementedError
 
         file = self._get_file_obj(path_info)
-        file.remove()
+        try:
+            file.remove()
+        except RuntimeError as e:
+            message = (
+                f"OSF API error. {str(e)} See "
+                f"https://developer.osf.io/#tag/Errors-and-Error-Codes"
+                f" for details."
+            )
+            raise DvcException(message) from e
         logger.debug(f"Removing {path_info}")
 
     def get_file_hash(self, path_info):
@@ -147,7 +171,15 @@ class OSFTree(BaseTree):
             with Tqdm.wrapattr(
                 fobj, "write", desc=name, total=total, disable=no_progress_bar
             ) as wrapped:
-                file.write_to(wrapped)
+                try:
+                    file.write_to(wrapped)
+                except RuntimeError as e:
+                    message = (
+                        f"OSF API error. {str(e)} See "
+                        f"https://developer.osf.io/#tag/Errors-and-Error-Codes"
+                        f" for details."
+                    )
+                    raise DvcException(message) from e
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
@@ -157,9 +189,17 @@ class OSFTree(BaseTree):
             with Tqdm.wrapattr(
                 fobj, "read", desc=name, total=total, disable=no_progress_bar
             ) as wrapped:
-                self.storage.create_file(
-                    to_info.path, wrapped, force=False, update=False
-                )
+                try:
+                    self.storage.create_file(
+                        to_info.path, wrapped, force=False, update=False
+                    )
+                except RuntimeError as e:
+                    message = (
+                        f"OSF API error. {str(e)} See "
+                        f"https://developer.osf.io/#tag/Errors-and-Error-Codes"
+                        f" for details."
+                    )
+                    raise DvcException(message) from e
 
     def open(self, path_info, mode="r", encoding=None):
         raise RemoteActionNotImplemented("open", self.scheme)

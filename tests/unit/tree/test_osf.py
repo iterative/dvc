@@ -6,6 +6,7 @@ from osfclient.models import File, Folder, OSFCore, Project, Storage
 from osfclient.tests import mocks
 from osfclient.tests.fake_responses import files_node, project_node
 
+from dvc.exceptions import DvcException
 from dvc.path_info import URLInfo
 from dvc.tree.osf import OSFTree
 
@@ -213,3 +214,61 @@ def test_upload(Storage_create_file, dvc, tmp_dir):
         tree._upload(from_file, to_info, no_progress_bar=True)
 
     Storage_create_file.assert_called_once()
+
+
+def test_get_file_obj_exception(dvc):
+    store = Storage({})
+    store._files_url = (
+        f"https://api.osf.io/v2//nodes/{project}/files/osfstorage"
+    )
+
+    json1 = files_node(
+        project,
+        "osfstorage",
+        file_names=["hello.txt", "bye.txt"],
+        folder_names=["data"],
+    )
+    response = mocks.FakeResponse(429, json1)
+
+    with patch.object(OSFCore, "_get", return_value=response), patch.object(
+        OSFTree, "storage", new=store
+    ):
+        path_info = URLInfo(url) / "hello.txt"
+        tree = OSFTree(dvc, config)
+        with pytest.raises(DvcException):
+            tree._get_file_obj(path_info)
+
+
+def test_upload_exception(dvc, tmp_dir):
+    to_info = URLInfo(url) / "data"
+    from_file = tmp_dir / "file"
+    with open(from_file, "w") as f:
+        f.write("test")
+
+    def mock_create_file(*args, **kwargs):
+        raise RuntimeError
+
+    with patch.object(Storage, "create_file", new=mock_create_file):
+        store = Storage({})
+
+        with patch.object(OSFTree, "storage", new=store):
+            tree = OSFTree(dvc, config)
+            with pytest.raises(DvcException):
+                tree._upload(from_file, to_info, no_progress_bar=True)
+
+
+def test_download_exception(dvc, tmp_dir):
+    def write_mock(*args, **kwargs):
+        raise RuntimeError
+
+    path_info = URLInfo(url) / "data/file"
+    f = File({})
+    f.path = "/data/file"
+    f.write_to = write_mock
+
+    to_file = tmp_dir / "file"
+
+    with patch.object(OSFTree, "_get_file_obj", return_value=f):
+        tree = OSFTree(dvc, config)
+        with pytest.raises(DvcException):
+            tree._download(path_info, to_file, no_progress_bar=True)
