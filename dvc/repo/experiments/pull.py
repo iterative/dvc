@@ -24,14 +24,9 @@ def pull(repo, git_remote, exp_name, *args, force=False, **kwargs):
         )
 
     refspec = f"{exp_ref}:{exp_ref}"
+    logger.debug("Pull '%s' -> '%s'", git_remote, refspec)
     repo.scm.fetch_refspecs(
         git_remote, [refspec], force=force, on_diverged=on_diverged
-    )
-
-    logger.info(
-        f"Pulled experiment '{exp_name}' from Git remote '{git_remote}'. "
-        "To pull cache for this experiment from a DVC remote run:\n\n"
-        "\tdvc pull ..."
     )
 
 
@@ -42,7 +37,7 @@ def _get_exp_ref(repo, git_remote, exp_name):
     exp_refs = list(remote_exp_refs_by_name(repo.scm, git_remote, exp_name))
     if not exp_refs:
         raise InvalidArgumentError(
-            f"'{exp_name}' is not a valid experiment name"
+            f"Experiment '{exp_name}' does not exist in '{git_remote}'"
         )
     if len(exp_refs) > 1:
         cur_rev = repo.scm.get_rev()

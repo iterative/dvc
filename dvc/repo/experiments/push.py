@@ -24,14 +24,9 @@ def push(repo, git_remote, exp_name, *args, force=False, **kwargs):
         )
 
     refname = str(exp_ref)
+    logger.debug("Push '%s' -> '%s'", exp_ref, git_remote)
     repo.scm.push_refspec(
         git_remote, refname, refname, force=force, on_diverged=on_diverged
-    )
-
-    logger.info(
-        f"Pushed experiment '{exp_name}' to Git remote '{git_remote}'. "
-        "To push cache for this experiment to a DVC remote run:\n\n"
-        "\tdvc push ..."
     )
 
 
