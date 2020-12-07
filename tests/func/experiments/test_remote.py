@@ -68,3 +68,42 @@ def test_push_checkpoint(tmp_dir, scm, dvc, git_remote, checkpoint_stage):
 
     dvc.experiments.push(git_remote.remote, ref_info_b.name, force=True)
     assert git_remote.scm.get_ref(str(ref_info_b)) == exp_b
+
+
+@pytest.mark.parametrize("use_url", [True, False])
+def test_list_remote(tmp_dir, scm, dvc, git_remote, exp_stage, use_url):
+    from dvc.repo.experiments.utils import exp_refs
+
+    baseline_a = scm.get_rev()
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
+    exp_a = first(results)
+    ref_info_a = first(exp_refs_by_rev(scm, exp_a))
+
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=3"])
+    exp_b = first(results)
+    ref_info_b = first(exp_refs_by_rev(scm, exp_b))
+
+    tmp_dir.scm_gen("new", "new", commit="new")
+    baseline_c = scm.get_rev()
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=4"])
+    exp_c = first(results)
+    ref_info_c = first(exp_refs_by_rev(scm, exp_c))
+
+    for info in exp_refs(scm):
+        dvc.experiments.push(git_remote.remote, str(info))
+
+    remote = git_remote.url if use_url else git_remote.remote
+    assert dvc.experiments.list(git_remote=remote) == {
+        baseline_c: [ref_info_c.name],
+    }
+
+    exp_list = dvc.experiments.list(rev=baseline_a, git_remote=remote)
+    assert {key: set(val) for key, val in exp_list.items()} == {
+        baseline_a: {ref_info_a.name, ref_info_b.name}
+    }
+
+    exp_list = dvc.experiments.list(all_=True, git_remote=remote)
+    assert {key: set(val) for key, val in exp_list.items()} == {
+        baseline_a: {ref_info_a.name, ref_info_b.name},
+        baseline_c: {ref_info_c.name},
+    }

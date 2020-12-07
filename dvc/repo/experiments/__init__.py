@@ -657,3 +657,8 @@ class Experiments:
         from dvc.repo.experiments.push import push
 
         return push(self.repo, *args, **kwargs)
+
+    def list(self, *args, **kwargs):
+        from dvc.repo.experiments.list import list_
+
+        return list_(self.repo, *args, **kwargs)
