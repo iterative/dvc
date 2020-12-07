@@ -175,6 +175,14 @@ class BaseGitBackend(ABC):
         """
 
     @abstractmethod
+    def iter_remote_refs(self, url: str, base: Optional[str] = None):
+        """Iterate over all refs in the specified remote Git repo.
+
+        If base is specified, only refs which begin with base will be yielded.
+        URL can be a named Git remote or URL.
+        """
+
+    @abstractmethod
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
         """Iterate over all git refs containing the specfied revision."""
 

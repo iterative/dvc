@@ -362,6 +362,9 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 base = base[:-1]
             yield "/".join([base, ref.name])
 
+    def iter_remote_refs(self, url: str, base: Optional[str] = None):
+        raise NotImplementedError
+
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
         from git.exc import GitCommandError
 
