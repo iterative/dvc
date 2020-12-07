@@ -6,7 +6,7 @@ import pytest
 from dvc.dvcfile import SingleStageFile
 from dvc.main import main
 from dvc.output.local import LocalOutput
-from dvc.repo import Repo
+from dvc.repo import Repo, lock_repo
 from dvc.stage import PipelineStage, Stage
 from dvc.stage.exceptions import StageFileFormatError
 from dvc.stage.run import run_stage
@@ -306,5 +306,7 @@ def test_stage_run_checkpoint(tmp_dir, dvc, mocker, checkpoint):
         callback = mocker.Mock()
     else:
         callback = None
-    run_stage(stage, checkpoint_func=callback)
-    mock_cmd_run.assert_called_with(stage, checkpoint_func=callback)
+
+    with lock_repo(dvc):
+        run_stage(stage, checkpoint_func=callback)
+    mock_cmd_run.assert_called_with(stage, checkpoint_func=callback, dry=False)

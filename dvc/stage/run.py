@@ -78,7 +78,7 @@ def display_command(cmd):
 
 
 def get_executable():
-    return os.getenv("SHELL") or "/bin/sh" if os.name != "nt" else None
+    return (os.getenv("SHELL") or "/bin/sh") if os.name != "nt" else None
 
 
 def _run(stage, executable, cmd, checkpoint_func, **kwargs):
