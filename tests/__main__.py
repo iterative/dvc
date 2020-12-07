@@ -15,6 +15,8 @@ os.putenv(
 os.putenv("DVC_HOME", REPO_ROOT)
 
 params = " ".join(sys.argv[1:])
+if os.name != "nt":
+    params += " -n=4"
 
-cmd = "pytest -v -n=4 --cov=dvc --durations=0 {params}".format(params=params)
+cmd = "pytest -v --cov=dvc --durations=0 {params}".format(params=params)
 check_call(cmd, shell=True)
