@@ -20,6 +20,7 @@ from dvc.utils.serialize import modify_yaml
 from .backend.base import NoGitBackendError
 from .backend.dulwich import DulwichBackend
 from .backend.gitpython import GitPythonBackend
+from .backend.pygit2 import Pygit2Backend
 from .stash import Stash
 
 logger = logging.getLogger(__name__)
@@ -31,7 +32,11 @@ class Git(Base):
     GITIGNORE = ".gitignore"
     GIT_DIR = ".git"
     DEFAULT_BACKENDS = OrderedDict(
-        [("dulwich", DulwichBackend), ("gitpython", GitPythonBackend)]
+        [
+            ("dulwich", DulwichBackend),
+            ("pygit2", Pygit2Backend),
+            ("gitpython", GitPythonBackend),
+        ]
     )
     LOCAL_BRANCH_PREFIX = "refs/heads/"
 
@@ -63,6 +68,10 @@ class Git(Base):
     @property
     def dulwich(self):
         return self.backends["dulwich"]
+
+    @property
+    def pygit2(self):
+        return self.backends["pygit2"]
 
     @cached_property
     def stash(self):

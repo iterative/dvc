@@ -51,6 +51,7 @@ install_requires = [
     "configobj>=5.0.6",
     "gitpython>3",
     "dulwich>=0.20.14",
+    "pygit2>=1.4.0",
     "setuptools>=34.0.0",
     "nanotime>=0.5.2",
     "pyasn1>=0.4.1",
