@@ -211,7 +211,8 @@ def test_refs_containing(tmp_dir, scm):
     assert expected == set(scm.get_refs_containing(init_rev))
 
 
-def test_push_refspec(tmp_dir, scm, make_tmp_dir):
+@pytest.mark.parametrize("use_url", [True, False])
+def test_push_refspec(tmp_dir, scm, make_tmp_dir, use_url):
     tmp_dir.scm_gen({"file": "0"}, commit="init")
     init_rev = scm.get_rev()
     tmp_dir.gen(
@@ -222,18 +223,23 @@ def test_push_refspec(tmp_dir, scm, make_tmp_dir):
     )
     remote_dir = make_tmp_dir("git-remote", scm=True)
     url = "file://{}".format(remote_dir.resolve().as_posix())
+    scm.gitpython.repo.create_remote("origin", url)
 
-    scm.push_refspec(url, "refs/foo/bar", "refs/foo/bar")
+    with pytest.raises(SCMError):
+        scm.push_refspec("bad-remote", "refs/foo/bar", "refs/foo/bar")
+
+    remote = url if use_url else "origin"
+    scm.push_refspec(remote, "refs/foo/bar", "refs/foo/bar")
     assert init_rev == remote_dir.scm.get_ref("refs/foo/bar")
 
     remote_dir.scm.checkout("refs/foo/bar")
     assert init_rev == remote_dir.scm.get_rev()
     assert "0" == (remote_dir / "file").read_text()
 
-    scm.push_refspec(url, "refs/foo/", "refs/foo/")
+    scm.push_refspec(remote, "refs/foo/", "refs/foo/")
     assert init_rev == remote_dir.scm.get_ref("refs/foo/baz")
 
-    scm.push_refspec(url, None, "refs/foo/baz")
+    scm.push_refspec(remote, None, "refs/foo/baz")
     assert remote_dir.scm.get_ref("refs/foo/baz") is None
 
 
