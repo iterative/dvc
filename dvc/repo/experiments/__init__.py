@@ -652,3 +652,8 @@ class Experiments:
         from dvc.repo.experiments.gc import gc
 
         return gc(self.repo, *args, **kwargs)
+
+    def push(self, *args, **kwargs):
+        from dvc.repo.experiments.push import push
+
+        return push(self.repo, *args, **kwargs)
