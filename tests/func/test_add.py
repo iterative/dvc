@@ -52,6 +52,7 @@ def test_add(tmp_dir, dvc):
                 "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
                 "path": "foo",
                 "size": 3,
+                "is_user_executable": False,
             }
         ],
     }

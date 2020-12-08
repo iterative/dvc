@@ -76,6 +76,7 @@ class BaseOutput:
     PARAM_PLOT_HEADER = "header"
     PARAM_PERSIST = "persist"
     PARAM_DESC = "desc"
+    PARAM_IS_USER_EXECUTABLE = "is_user_executable"
 
     METRIC_SCHEMA = Any(
         None,
@@ -135,6 +136,9 @@ class BaseOutput:
         self.path_info = self._parse_path(tree, path)
         if self.use_cache and self.cache is None:
             raise RemoteCacheRequiredError(self.path_info)
+        self.is_user_executable = os.path.isfile(path) and os.access(
+            path, os.X_OK
+        )
 
     def _parse_path(self, tree, path):
         if tree:
@@ -327,6 +331,8 @@ class BaseOutput:
 
         if self.checkpoint:
             ret[self.PARAM_CHECKPOINT] = self.checkpoint
+
+        ret[self.PARAM_IS_USER_EXECUTABLE] = self.is_user_executable
 
         return ret
 
