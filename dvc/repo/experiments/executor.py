@@ -117,7 +117,7 @@ class BaseExecutor:
 
     # TODO: come up with better way to stash repro arguments
     @staticmethod
-    def pack_repro_args(path, *args, tree=None, **kwargs):
+    def pack_repro_args(path, *args, tree=None, extra=None, **kwargs):
         dpath = os.path.dirname(path)
         if tree:
             open_func = tree.open
@@ -127,7 +127,10 @@ class BaseExecutor:
 
             open_func = open
             makedirs(dpath, exist_ok=True)
+
         data = {"args": args, "kwargs": kwargs}
+        if extra is not None:
+            data["extra"] = extra
         with open_func(path, "wb") as fobj:
             pickle.dump(data, fobj)
 

@@ -302,8 +302,8 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
 
         stash = self._get_stash(ref)
         message_b = message.encode("utf-8") if message else None
-        stash.push(message=message_b)
-        return os.fsdecode(stash[0].new_sha), True
+        rev = stash.push(message=message_b)
+        return os.fsdecode(rev), True
 
     def _stash_apply(self, rev: str):
         raise NotImplementedError

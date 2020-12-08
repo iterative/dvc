@@ -383,3 +383,17 @@ def test_dirty_lockfile(tmp_dir, scm, dvc, exp_stage):
         assert fobj.read().strip() == "foo: 2"
 
     assert (tmp_dir / "dvc.lock").read_text() == "foo"
+
+
+def test_packed_args_exists(tmp_dir, scm, dvc, exp_stage, caplog):
+    from dvc.repo.experiments.executor import BaseExecutor
+
+    tmp_dir.scm_gen(
+        tmp_dir / ".dvc" / "tmp" / BaseExecutor.PACKED_ARGS_FILE,
+        "",
+        commit="commit args file",
+    )
+
+    with caplog.at_level(logging.WARNING):
+        dvc.experiments.run(exp_stage.addressing)
+        assert "Temporary DVC file" in caplog.text
