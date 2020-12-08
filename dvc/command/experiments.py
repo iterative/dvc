@@ -524,6 +524,68 @@ class CmdExperimentsBranch(CmdBase):
         return 0
 
 
+class CmdExperimentsList(CmdBase):
+    def run(self):
+
+        exps = self.repo.experiments.ls(
+            rev=self.args.rev,
+            git_remote=self.args.git_remote,
+            all_=self.args.all,
+        )
+        for baseline in exps:
+            tag = self.repo.scm.describe(baseline)
+            if not tag:
+                branch = self.repo.scm.describe(baseline, base="refs/heads")
+                if branch:
+                    tag = branch.split("/")[-1]
+            name = tag if tag else baseline[:7]
+            logger.info(f"{name}:")
+            for exp_name in exps[baseline]:
+                logger.info(f"\t{exp_name}")
+
+        return 0
+
+
+class CmdExperimentsPush(CmdBase):
+    def run(self):
+
+        self.repo.experiments.push(
+            self.args.git_remote, self.args.experiment, force=self.args.force
+        )
+
+        logger.info(
+            (
+                "Pushed experiment '%s' to Git remote '%s'. "
+                "To push cache for this experiment to a DVC remote run:\n\n"
+                "\tdvc push ..."
+            ),
+            self.args.experiment,
+            self.args.git_remote,
+        )
+
+        return 0
+
+
+class CmdExperimentsPull(CmdBase):
+    def run(self):
+
+        self.repo.experiments.pull(
+            self.args.git_remote, self.args.experiment, force=self.args.force
+        )
+
+        logger.info(
+            (
+                "Pulled experiment '%s' from Git remote '%s'. "
+                "To pull cache for this experiment from a DVC remote run:\n\n"
+                "\tdvc pull ..."
+            ),
+            self.args.experiment,
+            self.args.git_remote,
+        )
+
+        return 0
+
+
 def add_parser(subparsers, parent_parser):
     EXPERIMENTS_HELP = "Commands to run and compare experiments."
 
@@ -841,6 +903,88 @@ def add_parser(subparsers, parent_parser):
         "branch", help="Git branch name to use.",
     )
     experiments_branch_parser.set_defaults(func=CmdExperimentsBranch)
+
+    EXPERIMENTS_LIST_HELP = "List local and remote experiments."
+    experiments_list_parser = experiments_subparsers.add_parser(
+        "list",
+        parents=[parent_parser],
+        description=append_doc_link(EXPERIMENTS_LIST_HELP, "experiments/list"),
+        help=EXPERIMENTS_LIST_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    experiments_list_parser.add_argument(
+        "--rev",
+        type=str,
+        default=None,
+        help=(
+            "List experiments derived from the specified revision. "
+            "Defaults to HEAD if neither `--rev` nor `--all` are specified."
+        ),
+        metavar="<rev>",
+    )
+    experiments_list_parser.add_argument(
+        "--all", action="store_true", help="List all experiments.",
+    )
+    experiments_list_parser.add_argument(
+        "git_remote",
+        nargs="?",
+        default=None,
+        help=(
+            "Optional Git remote name or Git URL. If provided, experiments "
+            "from the specified Git repository will be listed instead of "
+            "local experiments."
+        ),
+        metavar="[<git_remote>]",
+    )
+    experiments_list_parser.set_defaults(func=CmdExperimentsList)
+
+    EXPERIMENTS_PUSH_HELP = "Push a local experiment to a Git remote."
+    experiments_push_parser = experiments_subparsers.add_parser(
+        "push",
+        parents=[parent_parser],
+        description=append_doc_link(EXPERIMENTS_PUSH_HELP, "experiments/push"),
+        help=EXPERIMENTS_PUSH_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    experiments_push_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Replace experiment in the remote if it already exists.",
+    )
+    experiments_push_parser.add_argument(
+        "git_remote",
+        help="Git remote name or Git URL.",
+        metavar="<git_remote>",
+    )
+    experiments_push_parser.add_argument(
+        "experiment", help="Experiment to push.", metavar="<experiment>",
+    )
+    experiments_push_parser.set_defaults(func=CmdExperimentsPush)
+
+    EXPERIMENTS_PULL_HELP = "Pull an experiment from a Git remote."
+    experiments_pull_parser = experiments_subparsers.add_parser(
+        "pull",
+        parents=[parent_parser],
+        description=append_doc_link(EXPERIMENTS_PULL_HELP, "experiments/pull"),
+        help=EXPERIMENTS_PULL_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    experiments_pull_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Replace local experiment already exists.",
+    )
+    experiments_pull_parser.add_argument(
+        "git_remote",
+        help="Git remote name or Git URL.",
+        metavar="<git_remote>",
+    )
+    experiments_pull_parser.add_argument(
+        "experiment", help="Experiment to pull.", metavar="<experiment>",
+    )
+    experiments_pull_parser.set_defaults(func=CmdExperimentsPull)
 
 
 def _add_run_common(parser):

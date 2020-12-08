@@ -362,6 +362,9 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 base = base[:-1]
             yield "/".join([base, ref.name])
 
+    def iter_remote_refs(self, url: str, base: Optional[str] = None):
+        raise NotImplementedError
+
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
         from git.exc import GitCommandError
 
@@ -379,7 +382,14 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         except GitCommandError:
             pass
 
-    def push_refspec(self, url: str, src: Optional[str], dest: str):
+    def push_refspec(
+        self,
+        url: str,
+        src: Optional[str],
+        dest: str,
+        force: bool = False,
+        on_diverged: Optional[Callable[[str, str], bool]] = None,
+    ):
         raise NotImplementedError
 
     def fetch_refspecs(
@@ -387,7 +397,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         url: str,
         refspecs: Iterable[str],
         force: Optional[bool] = False,
-        on_diverged: Optional[Callable[[bytes, bytes], bool]] = None,
+        on_diverged: Optional[Callable[[str, str], bool]] = None,
     ):
         raise NotImplementedError
 

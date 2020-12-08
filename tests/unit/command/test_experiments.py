@@ -6,6 +6,9 @@ from dvc.command.experiments import (
     CmdExperimentsBranch,
     CmdExperimentsDiff,
     CmdExperimentsGC,
+    CmdExperimentsList,
+    CmdExperimentsPull,
+    CmdExperimentsPush,
     CmdExperimentsRun,
     CmdExperimentsShow,
 )
@@ -150,3 +153,47 @@ def test_experiments_branch(dvc, scm, mocker):
     assert cmd.run() == 0
 
     m.assert_called_once_with(cmd.repo, "expname", "branchname")
+
+
+def test_experiments_list(dvc, scm, mocker):
+    cli_args = parse_args(
+        ["experiments", "list", "origin", "--rev", "foo", "--all"]
+    )
+    assert cli_args.func == CmdExperimentsList
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch("dvc.repo.experiments.ls.ls", return_value={})
+
+    assert cmd.run() == 0
+
+    m.assert_called_once_with(
+        cmd.repo, git_remote="origin", rev="foo", all_=True
+    )
+
+
+def test_experiments_push(dvc, scm, mocker):
+    cli_args = parse_args(
+        ["experiments", "push", "origin", "experiment", "--force"]
+    )
+    assert cli_args.func == CmdExperimentsPush
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch("dvc.repo.experiments.push.push", return_value={})
+
+    assert cmd.run() == 0
+
+    m.assert_called_once_with(cmd.repo, "origin", "experiment", force=True)
+
+
+def test_experiments_pull(dvc, scm, mocker):
+    cli_args = parse_args(
+        ["experiments", "pull", "origin", "experiment", "--force"]
+    )
+    assert cli_args.func == CmdExperimentsPull
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch("dvc.repo.experiments.pull.pull", return_value={})
+
+    assert cmd.run() == 0
+
+    m.assert_called_once_with(cmd.repo, "origin", "experiment", force=True)

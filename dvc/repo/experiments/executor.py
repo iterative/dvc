@@ -152,21 +152,18 @@ class BaseExecutor:
             if not ref.startswith(EXEC_NAMESPACE) and ref != EXPS_STASH:
                 refs.append(ref)
 
-        def on_diverged_ref(orig_ref, new_rev):
+        def on_diverged_ref(orig_ref: str, new_rev: str):
             orig_rev = dest_scm.get_ref(orig_ref)
             if dest_scm.diff(orig_rev, new_rev):
                 if force:
                     logger.debug(
-                        "Replacing existing experiment '%s'",
-                        os.fsdecode(orig_ref),
+                        "Replacing existing experiment '%s'", orig_ref,
                     )
                     return True
                 if on_diverged:
                     checkpoint = self.scm.get_ref(EXEC_CHECKPOINT) is not None
                     on_diverged(orig_ref, checkpoint)
-            logger.debug(
-                "Reproduced existing experiment '%s'", os.fsdecode(orig_ref)
-            )
+            logger.debug("Reproduced existing experiment '%s'", orig_ref)
             return False
 
         # fetch experiments

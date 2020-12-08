@@ -5,14 +5,13 @@ import stat
 import pytest
 from funcy import first
 
+from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.utils.serialize import PythonFileCorruptedError
 from tests.func.test_repro_multistage import COPY_SCRIPT
 
 
 @pytest.mark.parametrize("name", [None, "foo"])
 def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker, name):
-    from dvc.repo.experiments.utils import exp_refs_by_rev
-
     baseline = scm.get_rev()
     tmp_dir.gen("params.yaml", "foo: 2")
 
@@ -397,3 +396,35 @@ def test_packed_args_exists(tmp_dir, scm, dvc, exp_stage, caplog):
     with caplog.at_level(logging.WARNING):
         dvc.experiments.run(exp_stage.addressing)
         assert "Temporary DVC file" in caplog.text
+
+
+def test_list(tmp_dir, scm, dvc, exp_stage):
+    baseline_a = scm.get_rev()
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
+    exp_a = first(results)
+    ref_info_a = first(exp_refs_by_rev(scm, exp_a))
+
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=3"])
+    exp_b = first(results)
+    ref_info_b = first(exp_refs_by_rev(scm, exp_b))
+
+    tmp_dir.scm_gen("new", "new", commit="new")
+    baseline_c = scm.get_rev()
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=4"])
+    exp_c = first(results)
+    ref_info_c = first(exp_refs_by_rev(scm, exp_c))
+
+    assert dvc.experiments.ls() == {
+        baseline_c: [ref_info_c.name],
+    }
+
+    exp_list = dvc.experiments.ls(rev=ref_info_a.baseline_sha)
+    assert {key: set(val) for key, val in exp_list.items()} == {
+        baseline_a: {ref_info_a.name, ref_info_b.name}
+    }
+
+    exp_list = dvc.experiments.ls(all_=True)
+    assert {key: set(val) for key, val in exp_list.items()} == {
+        baseline_a: {ref_info_a.name, ref_info_b.name},
+        baseline_c: {ref_info_c.name},
+    }

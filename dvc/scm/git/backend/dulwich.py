@@ -185,11 +185,92 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             else:
                 yield os.fsdecode(key)
 
+    def iter_remote_refs(self, url: str, base: Optional[str] = None):
+        from dulwich.client import get_transport_and_path
+        from dulwich.porcelain import get_remote_repo
+
+        try:
+            _remote, location = get_remote_repo(self.repo, url)
+            client, path = get_transport_and_path(location)
+        except Exception as exc:
+            raise SCMError(
+                f"'{url}' is not a valid Git remote or URL"
+            ) from exc
+
+        if base:
+            yield from (
+                os.fsdecode(ref)
+                for ref in client.get_refs(path)
+                if ref.startswith(os.fsencode(base))
+            )
+        else:
+            yield from (os.fsdecode(ref) for ref in client.get_refs(path))
+
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
         raise NotImplementedError
 
-    def push_refspec(self, url: str, src: Optional[str], dest: str):
+    def push_refspec(
+        self,
+        url: str,
+        src: Optional[str],
+        dest: str,
+        force: bool = False,
+        on_diverged: Optional[Callable[[str, str], bool]] = None,
+    ):
         from dulwich.client import get_transport_and_path
+        from dulwich.errors import NotGitRepository, SendPackError
+        from dulwich.porcelain import (
+            DivergedBranches,
+            check_diverged,
+            get_remote_repo,
+        )
+
+        dest_refs, values = self._push_dest_refs(src, dest)
+
+        try:
+            _remote, location = get_remote_repo(self.repo, url)
+            client, path = get_transport_and_path(location)
+        except Exception as exc:
+            raise SCMError(
+                f"'{url}' is not a valid Git remote or URL"
+            ) from exc
+
+        def update_refs(refs):
+            new_refs = {}
+            for ref, value in zip(dest_refs, values):
+                if ref in refs:
+                    local_sha = self.repo.refs[ref]
+                    remote_sha = refs[ref]
+                    try:
+                        check_diverged(self.repo, remote_sha, local_sha)
+                    except DivergedBranches:
+                        if not force:
+                            overwrite = False
+                            if on_diverged:
+                                overwrite = on_diverged(
+                                    os.fsdecode(ref), os.fsdecode(remote_sha),
+                                )
+                            if not overwrite:
+                                continue
+                new_refs[ref] = value
+            return new_refs
+
+        def progress(msg):
+            logger.trace("git send_pack: %s", msg)
+
+        try:
+            client.send_pack(
+                path,
+                update_refs,
+                self.repo.object_store.generate_pack_data,
+                progress=progress,
+            )
+        except (NotGitRepository, SendPackError) as exc:
+            raise SCMError("Git failed to push '{src}' to '{url}'") from exc
+
+    def _push_dest_refs(
+        self, src: str, dest: str
+    ) -> Tuple[Iterable[bytes], Iterable[bytes]]:
         from dulwich.objects import ZERO_SHA
 
         if src is not None and src.endswith("/"):
@@ -203,37 +284,22 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             else:
                 values = [self.repo.refs[os.fsencode(src)]]
             dest_refs = [os.fsencode(dest)]
-
-        def update_refs(refs):
-            for ref, value in zip(dest_refs, values):
-                refs[ref] = value
-            return refs
-
-        try:
-            client, path = get_transport_and_path(url)
-        except Exception as exc:
-            raise SCMError("Could not get remote client") from exc
-
-        def progress(msg):
-            logger.trace("git send_pack: %s", msg)
-
-        client.send_pack(
-            path,
-            update_refs,
-            self.repo.object_store.generate_pack_data,
-            progress=progress,
-        )
+        return dest_refs, values
 
     def fetch_refspecs(
         self,
         url: str,
         refspecs: Iterable[str],
         force: Optional[bool] = False,
-        on_diverged: Optional[Callable[[bytes, bytes], bool]] = None,
+        on_diverged: Optional[Callable[[str, str], bool]] = None,
     ):
         from dulwich.client import get_transport_and_path
         from dulwich.objectspec import parse_reftuples
-        from dulwich.porcelain import DivergedBranches, check_diverged
+        from dulwich.porcelain import (
+            DivergedBranches,
+            check_diverged,
+            get_remote_repo,
+        )
 
         fetch_refs = []
 
@@ -253,10 +319,12 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             ]
 
         try:
-            client, path = get_transport_and_path(url)
+            _remote, location = get_remote_repo(self.repo, url)
+            client, path = get_transport_and_path(location)
         except Exception as exc:
-
-            raise SCMError("Could not get remote client") from exc
+            raise SCMError(
+                f"'{url}' is not a valid Git remote or URL"
+            ) from exc
 
         def progress(msg):
             logger.trace("git fetch: %s", msg)

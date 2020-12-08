@@ -321,6 +321,7 @@ class Git(Base):
     get_ref = partialmethod(_backend_func, "get_ref")
     remove_ref = partialmethod(_backend_func, "remove_ref")
     iter_refs = partialmethod(_backend_func, "iter_refs")
+    iter_remote_refs = partialmethod(_backend_func, "iter_remote_refs")
     get_refs_containing = partialmethod(_backend_func, "get_refs_containing")
     push_refspec = partialmethod(_backend_func, "push_refspec")
     fetch_refspecs = partialmethod(_backend_func, "fetch_refspecs")

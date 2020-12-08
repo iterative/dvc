@@ -175,21 +175,41 @@ class BaseGitBackend(ABC):
         """
 
     @abstractmethod
+    def iter_remote_refs(self, url: str, base: Optional[str] = None):
+        """Iterate over all refs in the specified remote Git repo.
+
+        If base is specified, only refs which begin with base will be yielded.
+        URL can be a named Git remote or URL.
+        """
+
+    @abstractmethod
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
         """Iterate over all git refs containing the specfied revision."""
 
     @abstractmethod
-    def push_refspec(self, url: str, src: Optional[str], dest: str):
+    def push_refspec(
+        self,
+        url: str,
+        src: Optional[str],
+        dest: str,
+        force: bool = False,
+        on_diverged: Optional[Callable[[str, str], bool]] = None,
+    ):
         """Push refspec to a remote Git repo.
 
         Args:
-            url: Remote repo Git URL (Note this must be a Git URL and not
-                a remote name).
+            url: Git remote name or absolute Git URL.
             src: Local refspec. If src ends with "/" it will be treated as a
                 prefix, and all refs inside src will be pushed using dest
                 as destination refspec prefix. If src is None, dest will be
                 deleted from the remote.
             dest: Remote refspec.
+            force: If True, remote refs will be overwritten.
+            on_diverged: Callback function which will be called if local ref
+                and remote have diverged and force is False. If the callback
+                returns True the remote ref will be overwritten.
+                Callback will be of the form:
+                    on_diverged(local_refname, remote_sha)
         """
 
     @abstractmethod
@@ -198,7 +218,7 @@ class BaseGitBackend(ABC):
         url: str,
         refspecs: Iterable[str],
         force: Optional[bool] = False,
-        on_diverged: Optional[Callable[[bytes, bytes], bool]] = None,
+        on_diverged: Optional[Callable[[str, str], bool]] = None,
     ):
         """Fetch refspecs from a remote Git repo.
 
@@ -211,6 +231,8 @@ class BaseGitBackend(ABC):
             on_diverged: Callback function which will be called if local ref
                 and remote have diverged and force is False. If the callback
                 returns True the local ref will be overwritten.
+                Callback will be of the form:
+                    on_diverged(local_refname, remote_sha)
         """
 
     @abstractmethod
