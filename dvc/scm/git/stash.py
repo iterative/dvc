@@ -32,9 +32,7 @@ class Stash:
         return list(iter(self))
 
     def push(
-        self,
-        message: Optional[str] = None,
-        include_untracked: Optional[bool] = False,
+        self, message: Optional[str] = None, include_untracked: bool = False,
     ) -> Optional[str]:
         if not self.scm.is_dirty(untracked_files=include_untracked):
             logger.debug("No changes to stash")
