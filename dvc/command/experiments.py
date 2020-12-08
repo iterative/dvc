@@ -913,7 +913,6 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     experiments_list_parser.add_argument(
-        "-r",
         "--rev",
         type=str,
         default=None,
@@ -924,7 +923,7 @@ def add_parser(subparsers, parent_parser):
         metavar="<rev>",
     )
     experiments_list_parser.add_argument(
-        "-a", "--all", action="store_true", help="List all experiments.",
+        "--all", action="store_true", help="List all experiments.",
     )
     experiments_list_parser.add_argument(
         "git_remote",
