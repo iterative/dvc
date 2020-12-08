@@ -663,7 +663,7 @@ class Experiments:
 
         return pull(self.repo, *args, **kwargs)
 
-    def list(self, *args, **kwargs):
-        from dvc.repo.experiments.list import list_
+    def ls(self, *args, **kwargs):
+        from dvc.repo.experiments.ls import ls
 
-        return list_(self.repo, *args, **kwargs)
+        return ls(self.repo, *args, **kwargs)

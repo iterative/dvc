@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 @locked
 @scm_context
-def list_(repo, *args, rev=None, git_remote=None, all_=False, **kwargs):
+def ls(repo, *args, rev=None, git_remote=None, all_=False, **kwargs):
 
     if rev:
         rev = repo.scm.resolve_rev(rev)
@@ -32,9 +32,6 @@ def list_(repo, *args, rev=None, git_remote=None, all_=False, **kwargs):
             gen = exp_refs_by_baseline(repo.scm, rev)
         for info in gen:
             results[rev].append(info.name)
-        # results[rev].extend(
-        #     [info.name for info in gen]
-        # )
     elif all_:
         if git_remote:
             gen = remote_exp_refs(repo.scm, git_remote)

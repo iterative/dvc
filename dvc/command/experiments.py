@@ -527,7 +527,7 @@ class CmdExperimentsBranch(CmdBase):
 class CmdExperimentsList(CmdBase):
     def run(self):
 
-        exps = self.repo.experiments.list(
+        exps = self.repo.experiments.ls(
             rev=self.args.rev,
             git_remote=self.args.git_remote,
             all_=self.args.all,
