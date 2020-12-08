@@ -164,34 +164,38 @@ class Experiments:
                 head = branch
             else:
                 head = None
-            with self.scm.detach_head(head) as rev:
-                if baseline_rev is None:
-                    baseline_rev = rev
 
-                # update experiment params from command line
-                if params:
-                    self._update_params(params)
+            try:
+                with self.scm.detach_head(head) as rev:
+                    if baseline_rev is None:
+                        baseline_rev = rev
 
-                # save additional repro command line arguments
-                self._pack_args(*args, **kwargs)
+                    # update experiment params from command line
+                    if params:
+                        self._update_params(params)
 
-                # save experiment as a stash commit
-                msg = self._stash_msg(
-                    rev, baseline_rev=baseline_rev, branch=branch, name=name
-                )
-                stash_rev = self.stash.push(message=msg)
+                    # save additional repro command line arguments
+                    self._pack_args(*args, **kwargs)
 
-            logger.debug(
-                (
-                    "Stashed experiment '%s' with baseline '%s' "
-                    "for future execution."
-                ),
-                stash_rev[:7],
-                baseline_rev[:7],
-            )
-
-            # Reset any changes before prior workspace is unstashed
-            self.scm.reset(hard=True)
+                    # save experiment as a stash commit
+                    msg = self._stash_msg(
+                        rev,
+                        baseline_rev=baseline_rev,
+                        branch=branch,
+                        name=name,
+                    )
+                    stash_rev = self.stash.push(message=msg)
+                    logger.debug(
+                        (
+                            "Stashed experiment '%s' with baseline '%s' "
+                            "for future execution."
+                        ),
+                        stash_rev[:7],
+                        baseline_rev[:7],
+                    )
+            finally:
+                # Reset any changes before prior workspace is unstashed
+                self.scm.reset(hard=True)
 
         return stash_rev
 
@@ -225,7 +229,32 @@ class Experiments:
         return msg
 
     def _pack_args(self, *args, **kwargs):
-        BaseExecutor.pack_repro_args(self.args_file, *args, **kwargs)
+        import pickle
+
+        if os.path.exists(self.args_file) and self.scm.is_tracked(
+            self.args_file
+        ):
+            logger.warning(
+                (
+                    "Temporary DVC file '.dvc/tmp/%s' exists and was "
+                    "likely committed to Git by mistake. It should be removed "
+                    "with:\n"
+                    "\tgit rm .dvc/tmp/%s"
+                ),
+                BaseExecutor.PACKED_ARGS_FILE,
+                BaseExecutor.PACKED_ARGS_FILE,
+            )
+            with open(self.args_file, "rb") as fobj:
+                try:
+                    data = pickle.load(fobj)
+                except Exception:  # pylint: disable=broad-except
+                    data = {}
+            extra = int(data.get("extra", 0)) + 1
+        else:
+            extra = None
+        BaseExecutor.pack_repro_args(
+            self.args_file, *args, extra=extra, **kwargs
+        )
         self.scm.add(self.args_file)
 
     def _update_params(self, params: dict):
