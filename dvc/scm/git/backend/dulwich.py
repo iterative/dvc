@@ -17,12 +17,10 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     """Dulwich Git backend."""
 
     def __init__(  # pylint:disable=W0231
-        self, scm, root_dir=os.curdir, search_parent_directories=True
+        self, root_dir=os.curdir, search_parent_directories=True
     ):
         from dulwich.errors import NotGitRepository
         from dulwich.repo import Repo
-
-        self.scm = scm
 
         try:
             if search_parent_directories:
@@ -56,7 +54,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
 
     @property
     def dir(self) -> str:
-        raise NotImplementedError
+        return self.repo.commondir()
 
     def add(self, paths: Iterable[str]):
         raise NotImplementedError

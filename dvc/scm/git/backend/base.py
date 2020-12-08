@@ -15,9 +15,7 @@ class BaseGitBackend(ABC):
     """Base Git backend class."""
 
     @abstractmethod
-    def __init__(
-        self, scm, root_dir=os.curdir, search_parent_directories=True
-    ):
+    def __init__(self, root_dir=os.curdir, search_parent_directories=True):
         pass
 
     def close(self):

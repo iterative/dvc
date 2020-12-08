@@ -51,12 +51,10 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
     """git-python Git backend."""
 
     def __init__(  # pylint:disable=W0231
-        self, scm, root_dir=os.curdir, search_parent_directories=True
+        self, root_dir=os.curdir, search_parent_directories=True
     ):
         import git
         from git.exc import InvalidGitRepositoryError
-
-        self.scm = scm
 
         try:
             self.repo = git.Repo(
@@ -131,7 +129,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
             raise CloneError(url, to_path) from exc
 
         # NOTE: using our wrapper to make sure that env is fixed in __init__
-        repo = GitPythonBackend(None, to_path)
+        repo = GitPythonBackend(to_path)
 
         if rev:
             try:
@@ -367,7 +365,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
             # `git stash create` is intended to be used for this kind of
             # behavior but it doesn't support --include-untracked so we need to
             # use push
-            self.scm.dulwich.set_ref(
+            self.set_ref(
                 ref, commit.hexsha, message=commit.message
             )
             self.git.stash("drop")

@@ -6,9 +6,9 @@ import shlex
 from collections import OrderedDict
 from contextlib import contextmanager
 from functools import partialmethod
-from typing import Optional
+from typing import Iterable, Optional
 
-from funcy import cached_property
+from funcy import cached_property, first
 from pathspec.patterns import GitWildMatchPattern
 
 from dvc.exceptions import GitHookAlreadyExistsError
@@ -35,22 +35,26 @@ class Git(Base):
     )
     LOCAL_BRANCH_PREFIX = "refs/heads/"
 
-    def __init__(self, *args, **kwargs):
+    def __init__(
+        self, *args, backends: Optional[Iterable[str]] = None, **kwargs
+    ):
         self.ignored_paths = []
         self.files_to_track = set()
 
+        selected = backends if backends else self.DEFAULT_BACKENDS.keys()
         self.backends = OrderedDict(
             [
-                (name, cls(self, *args, **kwargs))
-                for name, cls in self.DEFAULT_BACKENDS.items()
+                (name, self.DEFAULT_BACKENDS[name](*args, **kwargs))
+                for name in selected
             ]
         )
 
-        super().__init__(self.gitpython.root_dir)
+        first_ = first(self.backends.values())
+        super().__init__(first_.root_dir)
 
     @property
     def dir(self):
-        return self.gitpython.repo.git_dir
+        return first(self.backends.values()).dir
 
     @property
     def gitpython(self):
