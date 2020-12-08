@@ -1,6 +1,7 @@
 import logging
 import os
 import pickle
+import sys
 from functools import partial
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, Callable, Iterable, Optional, Tuple, Union
@@ -343,4 +344,11 @@ class LocalExecutor(BaseExecutor):
     def cleanup(self):
         super().cleanup()
         logger.debug("Removing tmpdir '%s'", self._tmp_dir)
-        self._tmp_dir.cleanup()
+        try:
+            self._tmp_dir.cleanup()
+        except PermissionError:
+            if os.name == "nt" and sys.version_info < (3, 8):
+                # see https://bugs.python.org/issue26660
+                remove(self._tmp_dir.name)
+                return
+            raise
