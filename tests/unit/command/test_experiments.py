@@ -162,7 +162,7 @@ def test_experiments_list(dvc, scm, mocker):
     assert cli_args.func == CmdExperimentsList
 
     cmd = cli_args.func(cli_args)
-    m = mocker.patch("dvc.repo.experiments.list.list_", return_value={})
+    m = mocker.patch("dvc.repo.experiments.ls.ls", return_value={})
 
     assert cmd.run() == 0
 
