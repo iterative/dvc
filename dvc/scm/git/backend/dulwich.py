@@ -57,10 +57,28 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         return self.repo.commondir()
 
     def add(self, paths: Iterable[str]):
-        raise NotImplementedError
+        from dvc.utils.fs import walk_files
+
+        if isinstance(paths, str):
+            paths = [paths]
+
+        files = []
+        for path in paths:
+            if not os.path.isabs(path):
+                path = os.path.join(self.root_dir, path)
+            if os.path.isdir(path):
+                files.extend(walk_files(path))
+            else:
+                files.append(path)
+
+        for fpath in files:
+            # NOTE: this doesn't check gitignore, same as GitPythonBackend.add
+            self.repo.stage(relpath(fpath, self.root_dir))
 
     def commit(self, msg: str):
-        raise NotImplementedError
+        from dulwich.porcelain import commit
+
+        commit(self.root_dir, message=msg)
 
     def checkout(
         self, branch: str, create_new: Optional[bool] = False, **kwargs,
@@ -83,7 +101,14 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         raise NotImplementedError
 
     def is_tracked(self, path: str) -> bool:
-        raise NotImplementedError
+        from dvc.path_info import PathInfo
+
+        rel = PathInfo(path).relative_to(self.root_dir).as_posix().encode()
+        rel_dir = rel + b"/"
+        for path in self.repo.open_index():
+            if path == rel or path.startswith(rel_dir):
+                return True
+        return False
 
     def is_dirty(self, **kwargs) -> bool:
         raise NotImplementedError

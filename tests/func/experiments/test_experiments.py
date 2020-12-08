@@ -235,11 +235,19 @@ def test_update_py_params(tmp_dir, scm, dvc):
         "class Klass:\n    def __init__(self):\n        self.a = 222"
     )
 
+    def _dos2unix(text):
+        if os.name != "nt":
+            return text
+
+        # NOTE: git on windows will use CRLF, so we have to convert it to LF
+        # in order to compare with the original
+        return text.replace("\r\n", "\n")
+
     tree = scm.get_tree(exp_a)
     with tree.open(tmp_dir / "params.py") as fobj:
-        assert fobj.read().strip() == result
+        assert _dos2unix(fobj.read().strip()) == result
     with tree.open(tmp_dir / "metrics.py") as fobj:
-        assert fobj.read().strip() == result
+        assert _dos2unix(fobj.read().strip()) == result
 
     tmp_dir.gen("params.py", "INT = 1\n")
     stage = dvc.run(
