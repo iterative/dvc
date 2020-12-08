@@ -423,10 +423,14 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def _stash_apply(self, rev: str):
         self.git.stash("apply", rev)
 
-    def reflog_delete(self, ref: str, updateref: bool = False):
+    def reflog_delete(
+        self, ref: str, updateref: bool = False, rewrite: bool = False
+    ):
         args = ["delete"]
         if updateref:
             args.append("--updateref")
+        if rewrite:
+            args.append("--rewrite")
         args.append(ref)
         self.git.reflog(*args)
 

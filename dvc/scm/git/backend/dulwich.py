@@ -306,7 +306,9 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def _stash_apply(self, rev: str):
         raise NotImplementedError
 
-    def reflog_delete(self, ref: str, updateref: bool = False):
+    def reflog_delete(
+        self, ref: str, updateref: bool = False, rewrite: bool = False
+    ):
         raise NotImplementedError
 
     def describe(

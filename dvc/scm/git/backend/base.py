@@ -231,7 +231,9 @@ class BaseGitBackend(ABC):
         """Apply the specified stash revision."""
 
     @abstractmethod
-    def reflog_delete(self, ref: str, updateref: bool = False):
+    def reflog_delete(
+        self, ref: str, updateref: bool = False, rewrite: bool = False
+    ):
         """Delete the specified reflog entry."""
 
     @abstractmethod
