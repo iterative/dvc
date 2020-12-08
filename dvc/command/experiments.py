@@ -1,7 +1,6 @@
 import argparse
 import io
 import logging
-import os
 from collections import OrderedDict
 from collections.abc import Mapping
 from datetime import date, datetime
@@ -438,10 +437,6 @@ class CmdExperimentsDiff(CmdBase):
 
 class CmdExperimentsRun(CmdRepro):
     def run(self):
-
-        saved_dir = os.path.realpath(os.curdir)
-        os.chdir(self.args.cwd)
-
         # Dirty hack so the for loop below can at least enter once
         if self.args.all_pipelines:
             self.args.targets = [None]
@@ -466,7 +461,6 @@ class CmdExperimentsRun(CmdRepro):
                 ret = 1
                 break
 
-        os.chdir(saved_dir)
         return ret
 
 

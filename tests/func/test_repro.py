@@ -781,45 +781,6 @@ class TestCmdRepro(TestReproChangedData):
         self.assertNotEqual(ret, 0)
 
 
-class TestCmdReproChdir(TestDvc):
-    def test(self):
-        dname = "dir"
-        os.mkdir(dname)
-        foo = os.path.join(dname, self.FOO)
-        bar = os.path.join(dname, self.BAR)
-        code = os.path.join(dname, self.CODE)
-        shutil.copyfile(self.FOO, foo)
-        shutil.copyfile(self.CODE, code)
-
-        ret = main(
-            [
-                "run",
-                "--single-stage",
-                "--file",
-                f"{dname}/Dvcfile",
-                "-w",
-                f"{dname}",
-                "-d",
-                self.FOO,
-                "-o",
-                self.BAR,
-                f"python {self.CODE} {self.FOO} {self.BAR}",
-            ]
-        )
-        self.assertEqual(ret, 0)
-        self.assertTrue(os.path.isfile(foo))
-        self.assertTrue(os.path.isfile(bar))
-        self.assertTrue(filecmp.cmp(foo, bar, shallow=False))
-
-        os.unlink(bar)
-
-        ret = main(["repro", "-c", dname, DVC_FILE])
-        self.assertEqual(ret, 0)
-        self.assertTrue(os.path.isfile(foo))
-        self.assertTrue(os.path.isfile(bar))
-        self.assertTrue(filecmp.cmp(foo, bar, shallow=False))
-
-
 class TestReproShell(TestDvc):
     def test(self):
         if os.name == "nt":
