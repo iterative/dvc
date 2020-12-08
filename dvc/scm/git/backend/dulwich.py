@@ -17,12 +17,10 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     """Dulwich Git backend."""
 
     def __init__(  # pylint:disable=W0231
-        self, scm, root_dir=os.curdir, search_parent_directories=True
+        self, root_dir=os.curdir, search_parent_directories=True
     ):
         from dulwich.errors import NotGitRepository
         from dulwich.repo import Repo
-
-        self.scm = scm
 
         try:
             if search_parent_directories:
@@ -56,13 +54,31 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
 
     @property
     def dir(self) -> str:
-        raise NotImplementedError
+        return self.repo.commondir()
 
     def add(self, paths: Iterable[str]):
-        raise NotImplementedError
+        from dvc.utils.fs import walk_files
+
+        if isinstance(paths, str):
+            paths = [paths]
+
+        files = []
+        for path in paths:
+            if not os.path.isabs(path):
+                path = os.path.join(self.root_dir, path)
+            if os.path.isdir(path):
+                files.extend(walk_files(path))
+            else:
+                files.append(path)
+
+        for fpath in files:
+            # NOTE: this doesn't check gitignore, same as GitPythonBackend.add
+            self.repo.stage(relpath(fpath, self.root_dir))
 
     def commit(self, msg: str):
-        raise NotImplementedError
+        from dulwich.porcelain import commit
+
+        commit(self.root_dir, message=msg)
 
     def checkout(
         self, branch: str, create_new: Optional[bool] = False, **kwargs,
@@ -85,7 +101,14 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         raise NotImplementedError
 
     def is_tracked(self, path: str) -> bool:
-        raise NotImplementedError
+        from dvc.path_info import PathInfo
+
+        rel = PathInfo(path).relative_to(self.root_dir).as_posix().encode()
+        rel_dir = rel + b"/"
+        for path in self.repo.open_index():
+            if path == rel or path.startswith(rel_dir):
+                return True
+        return False
 
     def is_dirty(self, **kwargs) -> bool:
         raise NotImplementedError
@@ -187,11 +210,92 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             else:
                 yield os.fsdecode(key)
 
+    def iter_remote_refs(self, url: str, base: Optional[str] = None):
+        from dulwich.client import get_transport_and_path
+        from dulwich.porcelain import get_remote_repo
+
+        try:
+            _remote, location = get_remote_repo(self.repo, url)
+            client, path = get_transport_and_path(location)
+        except Exception as exc:
+            raise SCMError(
+                f"'{url}' is not a valid Git remote or URL"
+            ) from exc
+
+        if base:
+            yield from (
+                os.fsdecode(ref)
+                for ref in client.get_refs(path)
+                if ref.startswith(os.fsencode(base))
+            )
+        else:
+            yield from (os.fsdecode(ref) for ref in client.get_refs(path))
+
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
         raise NotImplementedError
 
-    def push_refspec(self, url: str, src: Optional[str], dest: str):
+    def push_refspec(
+        self,
+        url: str,
+        src: Optional[str],
+        dest: str,
+        force: bool = False,
+        on_diverged: Optional[Callable[[str, str], bool]] = None,
+    ):
         from dulwich.client import get_transport_and_path
+        from dulwich.errors import NotGitRepository, SendPackError
+        from dulwich.porcelain import (
+            DivergedBranches,
+            check_diverged,
+            get_remote_repo,
+        )
+
+        dest_refs, values = self._push_dest_refs(src, dest)
+
+        try:
+            _remote, location = get_remote_repo(self.repo, url)
+            client, path = get_transport_and_path(location)
+        except Exception as exc:
+            raise SCMError(
+                f"'{url}' is not a valid Git remote or URL"
+            ) from exc
+
+        def update_refs(refs):
+            new_refs = {}
+            for ref, value in zip(dest_refs, values):
+                if ref in refs:
+                    local_sha = self.repo.refs[ref]
+                    remote_sha = refs[ref]
+                    try:
+                        check_diverged(self.repo, remote_sha, local_sha)
+                    except DivergedBranches:
+                        if not force:
+                            overwrite = False
+                            if on_diverged:
+                                overwrite = on_diverged(
+                                    os.fsdecode(ref), os.fsdecode(remote_sha),
+                                )
+                            if not overwrite:
+                                continue
+                new_refs[ref] = value
+            return new_refs
+
+        def progress(msg):
+            logger.trace("git send_pack: %s", msg)
+
+        try:
+            client.send_pack(
+                path,
+                update_refs,
+                self.repo.object_store.generate_pack_data,
+                progress=progress,
+            )
+        except (NotGitRepository, SendPackError) as exc:
+            raise SCMError("Git failed to push '{src}' to '{url}'") from exc
+
+    def _push_dest_refs(
+        self, src: str, dest: str
+    ) -> Tuple[Iterable[bytes], Iterable[bytes]]:
         from dulwich.objects import ZERO_SHA
 
         if src is not None and src.endswith("/"):
@@ -205,37 +309,22 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             else:
                 values = [self.repo.refs[os.fsencode(src)]]
             dest_refs = [os.fsencode(dest)]
-
-        def update_refs(refs):
-            for ref, value in zip(dest_refs, values):
-                refs[ref] = value
-            return refs
-
-        try:
-            client, path = get_transport_and_path(url)
-        except Exception as exc:
-            raise SCMError("Could not get remote client") from exc
-
-        def progress(msg):
-            logger.trace("git send_pack: %s", msg)
-
-        client.send_pack(
-            path,
-            update_refs,
-            self.repo.object_store.generate_pack_data,
-            progress=progress,
-        )
+        return dest_refs, values
 
     def fetch_refspecs(
         self,
         url: str,
         refspecs: Iterable[str],
         force: Optional[bool] = False,
-        on_diverged: Optional[Callable[[bytes, bytes], bool]] = None,
+        on_diverged: Optional[Callable[[str, str], bool]] = None,
     ):
         from dulwich.client import get_transport_and_path
         from dulwich.objectspec import parse_reftuples
-        from dulwich.porcelain import DivergedBranches, check_diverged
+        from dulwich.porcelain import (
+            DivergedBranches,
+            check_diverged,
+            get_remote_repo,
+        )
 
         fetch_refs = []
 
@@ -255,10 +344,12 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             ]
 
         try:
-            client, path = get_transport_and_path(url)
+            _remote, location = get_remote_repo(self.repo, url)
+            client, path = get_transport_and_path(location)
         except Exception as exc:
-
-            raise SCMError("Could not get remote client") from exc
+            raise SCMError(
+                f"'{url}' is not a valid Git remote or URL"
+            ) from exc
 
         def progress(msg):
             logger.trace("git fetch: %s", msg)
@@ -302,13 +393,15 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
 
         stash = self._get_stash(ref)
         message_b = message.encode("utf-8") if message else None
-        stash.push(message=message_b)
-        return os.fsdecode(stash[0].new_sha), True
+        rev = stash.push(message=message_b)
+        return os.fsdecode(rev), True
 
     def _stash_apply(self, rev: str):
         raise NotImplementedError
 
-    def reflog_delete(self, ref: str, updateref: bool = False):
+    def reflog_delete(
+        self, ref: str, updateref: bool = False, rewrite: bool = False
+    ):
         raise NotImplementedError
 
     def describe(
@@ -325,7 +418,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 exclude and fnmatch.fnmatch(ref, exclude)
             ):
                 continue
-            if self.scm.get_ref(ref, follow=False) == rev:
+            if self.get_ref(ref, follow=False) == rev:
                 return ref
         return None
 

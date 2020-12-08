@@ -1,6 +1,5 @@
 import argparse
 import logging
-import os
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
@@ -14,9 +13,6 @@ logger = logging.getLogger(__name__)
 
 class CmdRepro(CmdBase):
     def run(self):
-        saved_dir = os.path.realpath(os.curdir)
-        os.chdir(self.args.cwd)
-
         # Dirty hack so the for loop below can at least enter once
         if self.args.all_pipelines:
             self.args.targets = [None]
@@ -45,7 +41,6 @@ class CmdRepro(CmdBase):
                 ret = 1
                 break
 
-        os.chdir(saved_dir)
         return ret
 
     @property
@@ -87,14 +82,6 @@ def add_arguments(repro_parser):
         default=False,
         help="Reproduce only single data item without recursive dependencies "
         "check.",
-    )
-    repro_parser.add_argument(
-        "-c",
-        "--cwd",
-        default=os.path.curdir,
-        help="Directory within your repo to reproduce from. Note: deprecated "
-        "by `dvc --cd <path>`.",
-        metavar="<path>",
     )
     repro_parser.add_argument(
         "-m",

@@ -1,6 +1,7 @@
 import logging
 import os
 import pickle
+import sys
 from functools import partial
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, Callable, Iterable, Optional, Tuple, Union
@@ -117,7 +118,7 @@ class BaseExecutor:
 
     # TODO: come up with better way to stash repro arguments
     @staticmethod
-    def pack_repro_args(path, *args, tree=None, **kwargs):
+    def pack_repro_args(path, *args, tree=None, extra=None, **kwargs):
         dpath = os.path.dirname(path)
         if tree:
             open_func = tree.open
@@ -127,7 +128,10 @@ class BaseExecutor:
 
             open_func = open
             makedirs(dpath, exist_ok=True)
+
         data = {"args": args, "kwargs": kwargs}
+        if extra is not None:
+            data["extra"] = extra
         with open_func(path, "wb") as fobj:
             pickle.dump(data, fobj)
 
@@ -149,21 +153,18 @@ class BaseExecutor:
             if not ref.startswith(EXEC_NAMESPACE) and ref != EXPS_STASH:
                 refs.append(ref)
 
-        def on_diverged_ref(orig_ref, new_rev):
+        def on_diverged_ref(orig_ref: str, new_rev: str):
             orig_rev = dest_scm.get_ref(orig_ref)
             if dest_scm.diff(orig_rev, new_rev):
                 if force:
                     logger.debug(
-                        "Replacing existing experiment '%s'",
-                        os.fsdecode(orig_ref),
+                        "Replacing existing experiment '%s'", orig_ref,
                     )
                     return True
                 if on_diverged:
                     checkpoint = self.scm.get_ref(EXEC_CHECKPOINT) is not None
                     on_diverged(orig_ref, checkpoint)
-            logger.debug(
-                "Reproduced existing experiment '%s'", os.fsdecode(orig_ref)
-            )
+            logger.debug("Reproduced existing experiment '%s'", orig_ref)
             return False
 
         # fetch experiments
@@ -343,4 +344,11 @@ class LocalExecutor(BaseExecutor):
     def cleanup(self):
         super().cleanup()
         logger.debug("Removing tmpdir '%s'", self._tmp_dir)
-        self._tmp_dir.cleanup()
+        try:
+            self._tmp_dir.cleanup()
+        except PermissionError:
+            if os.name == "nt" and sys.version_info < (3, 8):
+                # see https://bugs.python.org/issue26660
+                remove(self._tmp_dir.name)
+                return
+            raise

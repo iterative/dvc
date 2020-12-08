@@ -25,9 +25,10 @@ def build_outs_trie(stages):
                 overlapping = out
             if parent and overlapping:
                 msg = (
-                    "Paths for outs:\n'{}'('{}')\n'{}'('{}')\n"
-                    "overlap. To avoid unpredictable behaviour, "
-                    "rerun command with non overlapping outs paths."
+                    "The output paths:\n'{}'('{}')\n'{}'('{}')\n"
+                    "overlap and are thus in the same tracked directory.\n"
+                    "To keep reproducibility, outputs should be in separate "
+                    "tracked directories or tracked individually."
                 ).format(
                     str(parent),
                     parent.stage.addressing,
