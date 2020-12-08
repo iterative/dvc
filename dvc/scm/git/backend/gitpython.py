@@ -51,12 +51,10 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
     """git-python Git backend."""
 
     def __init__(  # pylint:disable=W0231
-        self, scm, root_dir=os.curdir, search_parent_directories=True
+        self, root_dir=os.curdir, search_parent_directories=True
     ):
         import git
         from git.exc import InvalidGitRepositoryError
-
-        self.scm = scm
 
         try:
             self.repo = git.Repo(
@@ -131,7 +129,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
             raise CloneError(url, to_path) from exc
 
         # NOTE: using our wrapper to make sure that env is fixed in __init__
-        repo = GitPythonBackend(None, to_path)
+        repo = GitPythonBackend(to_path)
 
         if rev:
             try:
@@ -297,13 +295,64 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         message: Optional[str] = None,
         symbolic: Optional[bool] = False,
     ):
-        raise NotImplementedError
+        from git.exc import GitCommandError
 
-    def get_ref(self, name, follow: Optional[bool] = True) -> Optional[str]:
-        raise NotImplementedError
+        if old_ref and self.get_ref(name) != old_ref:
+            raise SCMError(f"Failed to set ref '{name}'")
+        try:
+            if symbolic:
+                if message:
+                    self.git.symbolic_ref(name, new_ref, m=message)
+                else:
+                    self.git.symbolic_ref(name, new_ref)
+            else:
+                args = [name, new_ref]
+                if old_ref:
+                    args.append(old_ref)
+                if message:
+                    self.git.update_ref(*args, m=message, create_reflog=True)
+                else:
+                    self.git.update_ref(*args)
+        except GitCommandError as exc:
+            raise SCMError(f"Failed to set ref '{name}'") from exc
+
+    def get_ref(
+        self, name: str, follow: Optional[bool] = True
+    ) -> Optional[str]:
+        from git.exc import GitCommandError
+
+        if name.startswith("refs/heads/"):
+            name = name[11:]
+            if name in self.repo.heads:
+                return self.repo.heads[name].commit.hexsha
+        elif name.startswith("refs/tags/"):
+            name = name[10:]
+            if name in self.repo.tags:
+                return self.repo.tags[name].commit.hexsha
+        else:
+            if not follow:
+                try:
+                    return self.git.symbolic_ref(name).strip()
+                except GitCommandError:
+                    pass
+            try:
+                return self.git.show_ref(name, hash=True).strip()
+            except GitCommandError:
+                pass
+        return None
 
     def remove_ref(self, name: str, old_ref: Optional[str] = None):
-        raise NotImplementedError
+        from git.exc import GitCommandError
+
+        if old_ref and self.get_ref(name) != old_ref:
+            raise SCMError(f"Failed to set ref '{name}'")
+        try:
+            args = [name]
+            if old_ref:
+                args.append(old_ref)
+            self.git.update_ref(*args, d=True)
+        except GitCommandError as exc:
+            raise SCMError(f"Failed to set ref '{name}'") from exc
 
     def iter_refs(self, base: Optional[str] = None):
         from git import Reference
@@ -367,19 +416,21 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
             # `git stash create` is intended to be used for this kind of
             # behavior but it doesn't support --include-untracked so we need to
             # use push
-            self.scm.dulwich.set_ref(
-                ref, commit.hexsha, message=commit.message
-            )
+            self.set_ref(ref, commit.hexsha, message=commit.message)
             self.git.stash("drop")
         return commit.hexsha, False
 
     def _stash_apply(self, rev: str):
         self.git.stash("apply", rev)
 
-    def reflog_delete(self, ref: str, updateref: bool = False):
+    def reflog_delete(
+        self, ref: str, updateref: bool = False, rewrite: bool = False
+    ):
         args = ["delete"]
         if updateref:
             args.append("--updateref")
+        if rewrite:
+            args.append("--rewrite")
         args.append(ref)
         self.git.reflog(*args)
 

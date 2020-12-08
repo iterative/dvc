@@ -15,9 +15,7 @@ class BaseGitBackend(ABC):
     """Base Git backend class."""
 
     @abstractmethod
-    def __init__(
-        self, scm, root_dir=os.curdir, search_parent_directories=True
-    ):
+    def __init__(self, root_dir=os.curdir, search_parent_directories=True):
         pass
 
     def close(self):
@@ -152,7 +150,9 @@ class BaseGitBackend(ABC):
         """
 
     @abstractmethod
-    def get_ref(self, name, follow: Optional[bool] = True) -> Optional[str]:
+    def get_ref(
+        self, name: str, follow: Optional[bool] = True
+    ) -> Optional[str]:
         """Return the value of specified ref.
 
         If follow is false, symbolic refs will not be dereferenced.
@@ -231,7 +231,9 @@ class BaseGitBackend(ABC):
         """Apply the specified stash revision."""
 
     @abstractmethod
-    def reflog_delete(self, ref: str, updateref: bool = False):
+    def reflog_delete(
+        self, ref: str, updateref: bool = False, rewrite: bool = False
+    ):
         """Delete the specified reflog entry."""
 
     @abstractmethod

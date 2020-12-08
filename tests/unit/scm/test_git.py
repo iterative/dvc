@@ -6,6 +6,17 @@ from dvc.scm.base import SCMError
 from tests.basic_env import TestDvcGit
 
 
+# Behaves the same as SCM but will test against all suported Git backends.
+# tmp_dir.scm will still contain a default SCM instance.
+@pytest.fixture(params=["gitpython", "dulwich"])
+def git(tmp_dir, scm, request):
+    from dvc.scm.git import Git
+
+    git_ = Git(os.fspath(tmp_dir), backends=[request.param])
+    yield git_
+    git_.close()
+
+
 class TestGit(TestDvcGit):
     def test_belongs_to_scm_true_on_gitignore(self):
         path = os.path.join("path", "to", ".gitignore")
@@ -128,36 +139,36 @@ def test_branch_revs(tmp_dir, scm):
     assert len(expected) == 0
 
 
-def test_set_ref(tmp_dir, scm):
+def test_set_ref(tmp_dir, git):
     tmp_dir.scm_gen({"file": "0"}, commit="init")
-    init_rev = scm.get_rev()
+    init_rev = tmp_dir.scm.get_rev()
     tmp_dir.scm_gen({"file": "1"}, commit="commit")
-    commit_rev = scm.get_rev()
+    commit_rev = tmp_dir.scm.get_rev()
 
-    scm.set_ref("refs/foo/bar", init_rev)
+    git.set_ref("refs/foo/bar", init_rev)
     assert (
         init_rev
         == (tmp_dir / ".git" / "refs" / "foo" / "bar").read_text().strip()
     )
 
     with pytest.raises(SCMError):
-        scm.set_ref("refs/foo/bar", commit_rev, old_ref=commit_rev)
-    scm.set_ref("refs/foo/bar", commit_rev, old_ref=init_rev)
+        git.set_ref("refs/foo/bar", commit_rev, old_ref=commit_rev)
+    git.set_ref("refs/foo/bar", commit_rev, old_ref=init_rev)
     assert (
         commit_rev
         == (tmp_dir / ".git" / "refs" / "foo" / "bar").read_text().strip()
     )
 
-    scm.set_ref("refs/foo/baz", "refs/heads/master", symbolic=True)
+    git.set_ref("refs/foo/baz", "refs/heads/master", symbolic=True)
     assert (
         "ref: refs/heads/master"
         == (tmp_dir / ".git" / "refs" / "foo" / "baz").read_text().strip()
     )
 
 
-def test_get_ref(tmp_dir, scm):
+def test_get_ref(tmp_dir, git):
     tmp_dir.scm_gen({"file": "0"}, commit="init")
-    init_rev = scm.get_rev()
+    init_rev = tmp_dir.scm.get_rev()
     tmp_dir.gen(
         {
             os.path.join(".git", "refs", "foo", "bar"): init_rev,
@@ -167,22 +178,22 @@ def test_get_ref(tmp_dir, scm):
         }
     )
 
-    assert init_rev == scm.get_ref("refs/foo/bar")
-    assert init_rev == scm.get_ref("refs/foo/baz")
-    assert "refs/heads/master" == scm.get_ref("refs/foo/baz", follow=False)
-    assert scm.get_ref("refs/foo/qux") is None
+    assert init_rev == git.get_ref("refs/foo/bar")
+    assert init_rev == git.get_ref("refs/foo/baz")
+    assert "refs/heads/master" == git.get_ref("refs/foo/baz", follow=False)
+    assert git.get_ref("refs/foo/qux") is None
 
 
-def test_remove_ref(tmp_dir, scm):
+def test_remove_ref(tmp_dir, git):
     tmp_dir.scm_gen({"file": "0"}, commit="init")
-    init_rev = scm.get_rev()
+    init_rev = tmp_dir.scm.get_rev()
     tmp_dir.gen(os.path.join(".git", "refs", "foo", "bar"), init_rev)
     tmp_dir.scm_gen({"file": "1"}, commit="commit")
-    commit_rev = scm.get_rev()
+    commit_rev = tmp_dir.scm.get_rev()
 
     with pytest.raises(SCMError):
-        scm.remove_ref("refs/foo/bar", old_ref=commit_rev)
-    scm.remove_ref("refs/foo/bar", old_ref=init_rev)
+        git.remove_ref("refs/foo/bar", old_ref=commit_rev)
+    git.remove_ref("refs/foo/bar", old_ref=init_rev)
     assert not (tmp_dir / ".git" / "refs" / "foo" / "bar").exists()
 
 
