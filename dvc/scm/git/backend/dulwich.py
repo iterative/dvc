@@ -218,7 +218,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         on_diverged: Optional[Callable[[str, str], bool]] = None,
     ):
         from dulwich.client import get_transport_and_path
-        from dulwich.errors import SendPackError
+        from dulwich.errors import NotGitRepository, SendPackError
         from dulwich.porcelain import (
             DivergedBranches,
             check_diverged,
@@ -265,7 +265,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 self.repo.object_store.generate_pack_data,
                 progress=progress,
             )
-        except SendPackError as exc:
+        except (NotGitRepository, SendPackError) as exc:
             raise SCMError("Git failed to push '{src}' to '{url}'") from exc
 
     def _push_dest_refs(
