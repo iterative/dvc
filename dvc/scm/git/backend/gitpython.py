@@ -310,7 +310,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 if old_ref:
                     args.append(old_ref)
                 if message:
-                    self.git.update_ref(*args, m=message)
+                    self.git.update_ref(*args, m=message, create_reflog=True)
                 else:
                     self.git.update_ref(*args)
         except GitCommandError as exc:

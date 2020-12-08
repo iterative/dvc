@@ -45,7 +45,7 @@ class Stash:
             self.ref, message=message, include_untracked=include_untracked
         )
         if reset:
-            self.scm.gitpython.repo.git.reset(hard=True)
+            self.scm.reset(hard=True)
         return rev
 
     def pop(self):
