@@ -101,7 +101,14 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         raise NotImplementedError
 
     def is_tracked(self, path: str) -> bool:
-        raise NotImplementedError
+        from dvc.path_info import PathInfo
+
+        rel = PathInfo(path).relative_to(self.root_dir).as_posix().encode()
+        rel_dir = rel + b"/"
+        for path in self.repo.open_index():
+            if path == rel or path.startswith(rel_dir):
+                return True
+        return False
 
     def is_dirty(self, **kwargs) -> bool:
         raise NotImplementedError
