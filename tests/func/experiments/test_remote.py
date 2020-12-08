@@ -6,25 +6,21 @@ from dvc.repo.experiments.utils import exp_refs_by_rev
 
 
 @pytest.fixture
-def git_upstream(tmp_dir, scm, make_tmp_dir):
-    name = "git-upstream"
-    remote_dir = make_tmp_dir(name, scm=True)
-    url = "file://{}".format(remote_dir.resolve().as_posix())
+def git_upstream(tmp_dir, erepo_dir):
+    url = "file://{}".format(erepo_dir.resolve().as_posix())
     tmp_dir.scm.gitpython.repo.create_remote("upstream", url)
-    remote_dir.remote = "upstream"
-    remote_dir.url = url
-    return remote_dir
+    erepo_dir.remote = "upstream"
+    erepo_dir.url = url
+    return erepo_dir
 
 
 @pytest.fixture
-def git_downstream(tmp_dir, scm, dvc, make_tmp_dir):
-    name = "git-downstream"
-    remote_dir = make_tmp_dir(name, scm=True, dvc=True)
+def git_downstream(tmp_dir, erepo_dir):
     url = "file://{}".format(tmp_dir.resolve().as_posix())
-    remote_dir.scm.gitpython.repo.create_remote("upstream", url)
-    remote_dir.remote = "upstream"
-    remote_dir.url = url
-    return remote_dir
+    erepo_dir.scm.gitpython.repo.create_remote("upstream", url)
+    erepo_dir.remote = "upstream"
+    erepo_dir.url = url
+    return erepo_dir
 
 
 @pytest.mark.parametrize("use_url", [True, False])
@@ -107,14 +103,14 @@ def test_list_remote(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
 
     assert git_downstream.scm.get_ref("HEAD") != scm.get_ref("HEAD")
     downstream_exp = git_downstream.dvc.experiments
-    assert downstream_exp.ls(git_upstream=remote) == {}
+    assert downstream_exp.ls(git_remote=remote) == {}
 
-    exp_list = downstream_exp.ls(rev=baseline_a, git_upstream=remote)
+    exp_list = downstream_exp.ls(rev=baseline_a, git_remote=remote)
     assert {key: set(val) for key, val in exp_list.items()} == {
         baseline_a: {ref_info_a.name, ref_info_b.name}
     }
 
-    exp_list = downstream_exp.ls(all_=True, git_upstream=remote)
+    exp_list = downstream_exp.ls(all_=True, git_remote=remote)
     assert {key: set(val) for key, val in exp_list.items()} == {
         baseline_a: {ref_info_a.name, ref_info_b.name},
         baseline_c: {ref_info_c.name},
