@@ -150,7 +150,9 @@ class BaseGitBackend(ABC):
         """
 
     @abstractmethod
-    def get_ref(self, name, follow: Optional[bool] = True) -> Optional[str]:
+    def get_ref(
+        self, name: str, follow: Optional[bool] = True
+    ) -> Optional[str]:
         """Return the value of specified ref.
 
         If follow is false, symbolic refs will not be dereferenced.

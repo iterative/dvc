@@ -323,7 +323,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 exclude and fnmatch.fnmatch(ref, exclude)
             ):
                 continue
-            if self.scm.get_ref(ref, follow=False) == rev:
+            if self.get_ref(ref, follow=False) == rev:
                 return ref
         return None
 
