@@ -78,8 +78,40 @@ def test_push_checkpoint(tmp_dir, scm, dvc, git_upstream, checkpoint_stage):
     exp_b = first(results)
     ref_info_b = first(exp_refs_by_rev(scm, exp_b))
 
+    tmp_dir.scm_gen("new", "new", commit="new")
+
     dvc.experiments.push(git_upstream.remote, ref_info_b.name, force=True)
     assert git_upstream.scm.get_ref(str(ref_info_b)) == exp_b
+
+
+def test_push_ambiguous_name(tmp_dir, scm, dvc, git_upstream, exp_stage):
+    from dvc.exceptions import InvalidArgumentError
+
+    remote = git_upstream.remote
+
+    results = dvc.experiments.run(
+        exp_stage.addressing, params=["foo=2"], name="foo"
+    )
+    exp_a = first(results)
+    ref_info_a = first(exp_refs_by_rev(scm, exp_a))
+
+    tmp_dir.scm_gen("new", "new", commit="new")
+    results = dvc.experiments.run(
+        exp_stage.addressing, params=["foo=3"], name="foo"
+    )
+    exp_b = first(results)
+    ref_info_b = first(exp_refs_by_rev(scm, exp_b))
+
+    dvc.experiments.push(remote, "foo")
+    assert git_upstream.scm.get_ref(str(ref_info_b)) == exp_b
+
+    tmp_dir.scm_gen("new", "new 2", commit="new 2")
+
+    with pytest.raises(InvalidArgumentError):
+        dvc.experiments.push(remote, "foo")
+
+    dvc.experiments.push(remote, str(ref_info_a))
+    assert git_upstream.scm.get_ref(str(ref_info_a)) == exp_a
 
 
 @pytest.mark.parametrize("use_url", [True, False])
@@ -177,3 +209,32 @@ def test_pull_checkpoint(tmp_dir, scm, dvc, git_downstream, checkpoint_stage):
 
     downstream_exp.pull(git_downstream.remote, ref_info_b.name, force=True)
     assert git_downstream.scm.get_ref(str(ref_info_b)) == exp_b
+
+
+def test_pull_ambiguous_name(tmp_dir, scm, dvc, git_downstream, exp_stage):
+    from dvc.exceptions import InvalidArgumentError
+
+    results = dvc.experiments.run(
+        exp_stage.addressing, params=["foo=2"], name="foo"
+    )
+    exp_a = first(results)
+    ref_info_a = first(exp_refs_by_rev(scm, exp_a))
+
+    tmp_dir.scm_gen("new", "new", commit="new")
+    results = dvc.experiments.run(
+        exp_stage.addressing, params=["foo=3"], name="foo"
+    )
+    exp_b = first(results)
+    ref_info_b = first(exp_refs_by_rev(scm, exp_b))
+
+    remote = git_downstream.remote
+    downstream_exp = git_downstream.dvc.experiments
+    with pytest.raises(InvalidArgumentError):
+        downstream_exp.pull(remote, "foo")
+
+    downstream_exp.pull(remote, str(ref_info_b))
+    assert git_downstream.scm.get_ref(str(ref_info_b)) == exp_b
+
+    with git_downstream.scm.detach_head(ref_info_a.baseline_sha):
+        downstream_exp.pull(remote, "foo")
+    assert git_downstream.scm.get_ref(str(ref_info_a)) == exp_a
