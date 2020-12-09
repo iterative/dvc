@@ -215,7 +215,17 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         return [t.name for t in self.repo.tags]
 
     def list_all_commits(self):
-        return [c.hexsha for c in self.repo.iter_commits("--all")]
+        head = self.get_ref("HEAD")
+        if not head:
+            # Empty repo
+            return []
+
+        return [
+            c.hexsha
+            for c in self.repo.iter_commits(
+                rev=head, branches=True, tags=True, remotes=True,
+            )
+        ]
 
     def get_tree(self, rev: str, **kwargs) -> BaseTree:
         from dvc.tree.git import GitTree
@@ -321,7 +331,12 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
     ) -> Optional[str]:
         from git.exc import GitCommandError
 
-        if name.startswith("refs/heads/"):
+        if name == "HEAD":
+            try:
+                return self.repo.head.commit.hexsha
+            except (GitCommandError, ValueError):
+                return None
+        elif name.startswith("refs/heads/"):
             name = name[11:]
             if name in self.repo.heads:
                 return self.repo.heads[name].commit.hexsha
@@ -332,11 +347,13 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         else:
             if not follow:
                 try:
-                    return self.git.symbolic_ref(name).strip()
+                    rev = self.git.symbolic_ref(name).strip()
+                    return rev if rev else None
                 except GitCommandError:
                     pass
             try:
-                return self.git.show_ref(name, hash=True).strip()
+                rev = self.git.show_ref(name, hash=True).strip()
+                return rev if rev else None
             except GitCommandError:
                 pass
         return None

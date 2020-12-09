@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Generator
+from typing import TYPE_CHECKING, Generator, Iterable
 
 from .base import EXEC_NAMESPACE, EXPS_NAMESPACE, EXPS_STASH, ExpRefInfo
 
@@ -71,3 +71,15 @@ def remote_exp_refs_by_baseline(
         if ref.startswith(EXEC_NAMESPACE) or ref == EXPS_STASH:
             continue
         yield ExpRefInfo.from_ref(ref)
+
+
+def exp_commits(
+    scm: "Git", ref_infos: Iterable["ExpRefInfo"] = None
+) -> Generator[str, None, None]:
+    """Iterate over all experiment commits."""
+    shas = set()
+    refs = ref_infos if ref_infos else exp_refs(scm)
+    for ref_info in refs:
+        shas.update(scm.branch_revs(str(ref_info), ref_info.baseline_sha))
+        shas.add(ref_info.baseline_sha)
+    yield from shas
