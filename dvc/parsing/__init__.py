@@ -313,6 +313,7 @@ class DataResolver:
 
     @classmethod
     def set_context_from(cls, context: Context, to_set, source=None):
+        # NOTE: `set` is disabled in the schema
         try:
             for key, value in to_set.items():
                 src_set = [*(source or []), key]
