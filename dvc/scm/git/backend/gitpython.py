@@ -215,7 +215,12 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         return [t.name for t in self.repo.tags]
 
     def list_all_commits(self):
-        return [c.hexsha for c in self.repo.iter_commits("--all")]
+        return [
+            c.hexsha
+            for c in self.repo.iter_commits(
+                rev="HEAD", branches=True, tags=True, remotes=True,
+            )
+        ]
 
     def get_tree(self, rev: str, **kwargs) -> BaseTree:
         from dvc.tree.git import GitTree
