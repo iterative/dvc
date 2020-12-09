@@ -288,6 +288,7 @@ class Repo:
         with_deps=False,
         all_tags=False,
         all_commits=False,
+        all_experiments=False,
         remote=None,
         force=False,
         jobs=None,
@@ -301,7 +302,8 @@ class Repo:
         (namely, a file described as an output on a stage).
 
         The scope is, by default, the working directory, but you can use
-        `all_branches`/`all_tags`/`all_commits` to expand the scope.
+        `all_branches`/`all_tags`/`all_commits`/`all_experiments` to expand
+        the scope.
 
         Returns:
             A dictionary with Schemes (representing output's location) mapped
@@ -316,6 +318,7 @@ class Repo:
             all_branches=all_branches,
             all_tags=all_tags,
             all_commits=all_commits,
+            all_experiments=all_experiments,
         ):
             targets = targets or [None]
 
