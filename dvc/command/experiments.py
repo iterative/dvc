@@ -550,18 +550,25 @@ class CmdExperimentsPush(CmdBase):
     def run(self):
 
         self.repo.experiments.push(
-            self.args.git_remote, self.args.experiment, force=self.args.force
+            self.args.git_remote,
+            self.args.experiment,
+            force=self.args.force,
+            push_cache=self.args.push_cache,
+            dvc_remote=self.args.dvc_remote,
+            jobs=self.args.jobs,
+            run_cache=self.args.run_cache,
         )
 
         logger.info(
-            (
-                "Pushed experiment '%s' to Git remote '%s'. "
-                "To push cache for this experiment to a DVC remote run:\n\n"
-                "\tdvc push ..."
-            ),
+            "Pushed experiment '%s' to Git remote '%s'.",
             self.args.experiment,
             self.args.git_remote,
         )
+        if not self.args.push_cache:
+            logger.info(
+                "To push cached outputs for this experiment to DVC remote "
+                "storage, re-run this command without '--no-cache'."
+            )
 
         return 0
 
@@ -950,7 +957,39 @@ def add_parser(subparsers, parent_parser):
         "-f",
         "--force",
         action="store_true",
-        help="Replace experiment in the remote if it already exists.",
+        help="Replace experiment in the Git remote if it already exists.",
+    )
+    experiments_push_parser.add_argument(
+        "--no-cache",
+        action="store_false",
+        dest="push_cache",
+        help=(
+            "Do not push cached outputs for this experiment to DVC remote "
+            "storage."
+        ),
+    )
+    experiments_push_parser.add_argument(
+        "-r",
+        "--remote",
+        dest="dvc_remote",
+        metavar="<name>",
+        help="Name of the DVC remote to use when pushing cached outputs.",
+    )
+    experiments_push_parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        metavar="<number>",
+        help=(
+            "Number of jobs to run simultaneously when pushing to DVC remote "
+            "storage."
+        ),
+    )
+    experiments_push_parser.add_argument(
+        "--run-cache",
+        action="store_true",
+        default=False,
+        help="Push run history for all stages.",
     )
     experiments_push_parser.add_argument(
         "git_remote",
