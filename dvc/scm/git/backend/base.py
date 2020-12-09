@@ -3,7 +3,8 @@ from abc import ABC, abstractmethod
 from typing import Callable, Iterable, Optional, Tuple
 
 from dvc.scm.base import SCMError
-from dvc.tree.base import BaseTree
+
+from ..objects import GitObject
 
 
 class NoGitBackendError(SCMError):
@@ -109,7 +110,7 @@ class BaseGitBackend(ABC):
         pass
 
     @abstractmethod
-    def get_tree(self, rev: str, **kwargs) -> BaseTree:
+    def get_tree_obj(self, rev: str, **kwargs) -> GitObject:
         pass
 
     @abstractmethod

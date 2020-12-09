@@ -296,6 +296,16 @@ class Git(Base):
                 pass
         raise NoGitBackendError(name)
 
+    def get_tree(self, rev: str, **kwargs):
+        from dvc.tree.git import GitTree
+
+        from .objects import GitTrie
+
+        resolved = self.resolve_rev(rev)
+        tree_obj = self._backend_func("get_tree_obj", rev=resolved)
+        trie = GitTrie(tree_obj, resolved)
+        return GitTree(self.root_dir, trie, **kwargs)
+
     is_ignored = partialmethod(_backend_func, "is_ignored")
     add = partialmethod(_backend_func, "add")
     commit = partialmethod(_backend_func, "commit")
@@ -311,7 +321,6 @@ class Git(Base):
     list_branches = partialmethod(_backend_func, "list_branches")
     list_tags = partialmethod(_backend_func, "list_tags")
     list_all_commits = partialmethod(_backend_func, "list_all_commits")
-    get_tree = partialmethod(_backend_func, "get_tree")
     get_rev = partialmethod(_backend_func, "get_rev")
     _resolve_rev = partialmethod(_backend_func, "resolve_rev")
     resolve_commit = partialmethod(_backend_func, "resolve_commit")
