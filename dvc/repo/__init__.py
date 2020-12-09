@@ -294,6 +294,7 @@ class Repo:
         jobs=None,
         recursive=False,
         used_run_cache=None,
+        revs=None,
     ):
         """Get the stages related to the given target and collect
         the `info` of its outputs.
@@ -315,6 +316,7 @@ class Repo:
         cache = NamedCache()
 
         for branch in self.brancher(
+            revs=revs,
             all_branches=all_branches,
             all_tags=all_tags,
             all_commits=all_commits,
