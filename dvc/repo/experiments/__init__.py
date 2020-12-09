@@ -31,7 +31,6 @@ from .base import (
     ExpRefInfo,
     MultipleBranchError,
 )
-from .executor import BaseExecutor, LocalExecutor
 from .utils import exp_refs_by_rev
 
 logger = logging.getLogger(__name__)
@@ -99,6 +98,8 @@ class Experiments:
 
     @cached_property
     def args_file(self):
+        from .executor import BaseExecutor
+
         return os.path.join(self.repo.tmp_dir, BaseExecutor.PACKED_ARGS_FILE)
 
     @cached_property
@@ -230,6 +231,8 @@ class Experiments:
 
     def _pack_args(self, *args, **kwargs):
         import pickle
+
+        from .executor import BaseExecutor
 
         if os.path.exists(self.args_file) and self.scm.is_tracked(
             self.args_file
@@ -448,6 +451,8 @@ class Experiments:
         return result
 
     def _init_executors(self, to_run):
+        from .executor import LocalExecutor
+
         executors = {}
         for stash_rev, item in to_run.items():
             self.scm.set_ref(EXEC_HEAD, item.rev)
