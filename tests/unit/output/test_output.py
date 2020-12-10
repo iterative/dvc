@@ -74,6 +74,9 @@ def test_get_used_cache(exists, expected_message, mocker, caplog):
     mocker.patch.object(stage, "__str__", return_value="stage: 'stage.dvc'")
     mocker.patch.object(stage, "addressing", "stage.dvc")
     mocker.patch.object(
+        stage.repo.tree.dvcignore, "is_ignored", return_value=False,
+    )
+    mocker.patch.object(
         stage.repo.tree.dvcignore,
         "check_ignore",
         return_value=_no_match("path"),
