@@ -334,7 +334,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             raise SCMError("Git failed to push '{src}' to '{url}'") from exc
 
     def _push_dest_refs(
-        self, src: str, dest: str
+        self, src: Optional[str], dest: str
     ) -> Tuple[Iterable[bytes], Iterable[bytes]]:
         from dulwich.objects import ZERO_SHA
 

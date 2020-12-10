@@ -6,7 +6,7 @@ import shlex
 from collections import OrderedDict
 from contextlib import contextmanager
 from functools import partialmethod
-from typing import Iterable, Optional
+from typing import Iterable, List, Optional, Set
 
 from funcy import cached_property, first
 from pathspec.patterns import GitWildMatchPattern
@@ -38,8 +38,8 @@ class Git(Base):
     def __init__(
         self, *args, backends: Optional[Iterable[str]] = None, **kwargs
     ):
-        self.ignored_paths = []
-        self.files_to_track = set()
+        self.ignored_paths: List[str] = []
+        self.files_to_track: Set[str] = set()
 
         selected = backends if backends else self.DEFAULT_BACKENDS.keys()
         self.backends = OrderedDict(
@@ -248,7 +248,7 @@ class Git(Base):
 
         self.add(self.files_to_track)
 
-    def track_file(self, path):
+    def track_file(self, path: str):
         self.files_to_track.add(path)
 
     def belongs_to_scm(self, path):

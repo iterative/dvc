@@ -408,9 +408,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         from git import Reference
 
         for ref in Reference.iter_items(self.repo, common_path=base):
-            if base and base.endswith("/"):
-                base = base[:-1]
-            yield "/".join([base, ref.name])
+            yield ref.path
 
     def iter_remote_refs(self, url: str, base: Optional[str] = None):
         raise NotImplementedError
