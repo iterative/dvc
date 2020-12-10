@@ -56,7 +56,11 @@ def _filter_names(
         ret = OrderedDict({name: None for name in names})
 
     if exclude:
-        _filter(exclude, ret.difference_update)  # type: ignore[attr-defined]
+        to_remove = {}
+        _filter(exclude, to_remove.update)
+        for key in to_remove:
+            if key in ret:
+                del ret[key]
 
     return [".".join(name) for name in ret]
 
