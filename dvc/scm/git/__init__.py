@@ -285,7 +285,7 @@ class Git(Base):
 
     @property
     def no_commits(self):
-        return not self.list_all_commits()
+        return not bool(self.get_ref("HEAD"))
 
     def _backend_func(self, name, *args, **kwargs):
         for backend in self.backends.values():
