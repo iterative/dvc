@@ -105,7 +105,7 @@ class BaseExecutor:
         return os.path.join(self.root_dir, self._dvc_dir)
 
     @staticmethod
-    def hash_exp(stages):
+    def hash_exp(stages: Iterable["PipelineStage"]):
         exp_data = {}
         for stage in stages:
             if isinstance(stage, PipelineStage):
@@ -145,9 +145,16 @@ class BaseExecutor:
         self,
         dest_scm: "Git",
         force: bool = False,
-        on_diverged: Callable[[str], None] = None,
+        on_diverged: Callable[[str, bool], None] = None,
     ) -> Iterable[str]:
-        """Fetch reproduced experiments into the specified SCM."""
+        """Fetch reproduced experiments into the specified SCM.
+
+        Args:
+            dest_scm: Destination Git instance.
+            force: If True, diverged refs will be overwritten
+            on_diverged: Callback in the form on_diverged(ref, is_checkpoint)
+                to be called when an experiment ref has diverged.
+        """
         refs = []
         for ref in self.scm.iter_refs(base=EXPS_NAMESPACE):
             if not ref.startswith(EXEC_NAMESPACE) and ref != EXPS_STASH:
@@ -191,13 +198,16 @@ class BaseExecutor:
         rev: str,
         cwd: Optional[str] = None,
         name: Optional[str] = None,
-    ) -> Tuple[bool, Optional[str]]:
+    ) -> Tuple[Optional[str], bool]:
         """Run dvc repro and return the result.
 
         Returns tuple of (exp_hash, force) where exp_hash is the experiment
             hash (or None on error) and force is a bool specifying whether or
             not this experiment should force overwrite any existing duplicates.
         """
+        from dvc.repo.checkout import checkout as dvc_checkout
+        from dvc.repo.reproduce import reproduce as dvc_reproduce
+
         unchanged = []
 
         queue.put((rev, os.getpid()))
@@ -207,8 +217,8 @@ class BaseExecutor:
                 [stage for stage in stages if isinstance(stage, PipelineStage)]
             )
 
-        result = None
-        force = False
+        result: Optional[str] = None
+        repro_force: bool = False
 
         try:
             dvc = Repo(dvc_dir)
@@ -227,7 +237,7 @@ class BaseExecutor:
                 args = []
                 kwargs = {}
 
-            force = kwargs.get("force", False)
+            repro_force = kwargs.get("force", False)
 
             # NOTE: for checkpoint experiments we handle persist outs slightly
             # differently than normal:
@@ -240,10 +250,11 @@ class BaseExecutor:
             #   be removed/does not yet exist) so that our executor workspace
             #   is not polluted with the (persistent) out from an unrelated
             #   experiment run
-            dvc.checkout(force=True, quiet=True)
+            dvc_checkout(dvc, force=True, quiet=True)
 
             checkpoint_func = partial(cls.checkpoint_callback, dvc.scm, name)
-            stages = dvc.reproduce(
+            stages = dvc_reproduce(
+                dvc,
                 *args,
                 on_unchanged=filter_pipeline,
                 checkpoint_func=checkpoint_func,
@@ -251,6 +262,7 @@ class BaseExecutor:
             )
 
             exp_hash = cls.hash_exp(stages)
+            result = exp_hash
             exp_rev = cls.commit(dvc.scm, exp_hash, exp_name=name)
             if dvc.scm.get_ref(EXEC_CHECKPOINT):
                 dvc.scm.set_ref(EXEC_CHECKPOINT, exp_rev)
@@ -265,18 +277,18 @@ class BaseExecutor:
         # ideally we would return stages here like a normal repro() call, but
         # stages is not currently picklable and cannot be returned across
         # multiprocessing calls
-        return result, force
+        return result, repro_force
 
     @classmethod
     def checkpoint_callback(
         cls,
         scm: "Git",
         name: Optional[str],
-        unchanged: Iterable[PipelineStage],
-        stages: Iterable[PipelineStage],
+        unchanged: Iterable["PipelineStage"],
+        stages: Iterable["PipelineStage"],
     ):
         try:
-            exp_hash = cls.hash_exp(stages + unchanged)
+            exp_hash = cls.hash_exp(list(stages) + list(unchanged))
             exp_rev = cls.commit(scm, exp_hash, exp_name=name)
             scm.set_ref(EXEC_CHECKPOINT, exp_rev)
             logger.info("Checkpoint experiment iteration '%s'.", exp_rev[:7])
@@ -321,7 +333,8 @@ class LocalExecutor(BaseExecutor):
         **kwargs,
     ):
         self._tmp_dir = TemporaryDirectory(dir=tmp_dir)
-        super().__init__(*args, root_dir=self._tmp_dir.name, **kwargs)
+        kwargs["root_dir"] = self._tmp_dir.name
+        super().__init__(*args, **kwargs)
         if cache_dir:
             self._config(cache_dir)
         logger.debug(
