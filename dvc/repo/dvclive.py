@@ -2,10 +2,21 @@ import logging
 import os
 from typing import List
 
+from dvc.output import BaseOutput
 from dvc.repo import Repo
 from dvc.visualization import embed, metrics_embedding, plots_embeddings
 
 logger = logging.getLogger(__name__)
+
+
+def summary_path_info(out):
+    assert out.dvclive
+    has_summary = True
+    if isinstance(out.dvclive, dict):
+        has_summary = out.dvclive.get(BaseOutput.PARAM_DVCLIVE_SUMMARY, True)
+    if has_summary:
+        return out.path_info.with_suffix(".json")
+    return None
 
 
 class DvcLive:

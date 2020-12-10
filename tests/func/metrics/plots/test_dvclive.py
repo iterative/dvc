@@ -2,45 +2,52 @@ import shutil
 from textwrap import dedent
 
 DVCLIVE_SCRITP = dedent(
-    """\
+    """
         from dvclive import dvclive
         import sys
-        from ruamel import yaml
-
-        with open("params.yaml", "r") as fd:
-            params = yaml.load(fd)
-
-        multiplier = float(params["multiplier"])
-
-        dvclive.init("{log_path}")
+        
         for i in range(5):
-           dvclive.log("loss", -i/5/multiplier)
-           dvclive.log("accuracy", i/5*multiplier)
-           dvclive.next_step()
-"""
+           dvclive.log("loss", -i/5)
+           dvclive.log("accuracy", i/5)"""
 )
 
 
-# TODO
-def test_pass_config():
+def test_export_config():
     # check "DVCLIVE_CONFIG"
     pass
 
 
-def test_live_plots(tmp_dir, scm, dvc):
-    tmp_dir.gen("params.yaml", "multiplier: 1")
+def test_summary_is_metric(tmp_dir, dvc):
     tmp_dir.gen("log.py", DVCLIVE_SCRITP.format(log_path="logs"))
     dvc.run(
         cmd="python log.py",
         deps=["log.py"],
-        params=["multiplier"],
+        name="run_logger",
+        dvclive=["logs"],
+    )
+
+    assert dvc.metrics.show() == {
+        "": {"logs.json": {"step": 3, "loss": -0.6, "accuracy": 0.6}}
+    }
+
+    plots = dvc.plots.show()
+    assert "logs/accuracy.tsv" in plots
+    assert "logs/loss.tsv" in plots
+
+
+def test_live_plots(tmp_dir, scm, dvc):
+    tmp_dir.gen("log.py", DVCLIVE_SCRITP.format(log_path="logs"))
+    dvc.run(
+        cmd="python log.py",
+        deps=["log.py"],
         name="run_logger",
         dvclive=["logs"],
     )
     shutil.rmtree(".dvc/cache")
     shutil.rmtree("logs")
 
-    assert dvc.status()
+    dvc.metrics.show()
+    pass
     # scm.add(["params.yaml", "log.py", "dvc.lock", "dvc.yaml", "logs"])
     # scm.commit("init")
     #
