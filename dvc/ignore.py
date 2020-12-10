@@ -353,6 +353,7 @@ class DvcIgnoreFilter:
             return self.is_ignored_file(path)
         if os.path.isdir(path):
             return self.is_ignored_dir(path)
+        return self.is_ignored_file(path) or self.is_ignored_dir(path)
 
 
 def init(path):
