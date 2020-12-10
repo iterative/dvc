@@ -380,8 +380,8 @@ class Repo:
         return self.stage.collect_repo(onerror=error_handler)
 
     def find_outs_by_path(self, path, outs=None, recursive=False, strict=True):
-        if not outs:
-            outs = [out for stage in self.stages for out in stage.outs]
+        # using `outs_graph` to ensure graph checks are run
+        outs = outs or self.outs_graph
 
         abs_path = os.path.abspath(path)
         path_info = PathInfo(abs_path)

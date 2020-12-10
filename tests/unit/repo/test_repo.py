@@ -1,7 +1,9 @@
 import os
+import shutil
 
 import pytest
 
+from dvc.exceptions import OutputDuplicationError
 from dvc.repo import NotDvcRepoError, Repo, locked
 from dvc.utils.fs import remove
 
@@ -27,6 +29,15 @@ def test_find_outs_by_path(tmp_dir, dvc, path):
     outs = dvc.find_outs_by_path(path, strict=False)
     assert len(outs) == 1
     assert outs[0].path_info == stage.outs[0].path_info
+
+
+def test_find_outs_by_path_does_graph_checks(tmp_dir, dvc):
+    tmp_dir.dvc_gen("foo", "foo")
+    shutil.copyfile("foo.dvc", "foo-2.dvc")
+
+    dvc._reset()
+    with pytest.raises(OutputDuplicationError):
+        dvc.find_outs_by_path("foo")
 
 
 @pytest.mark.parametrize(
