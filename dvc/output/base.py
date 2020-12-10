@@ -530,8 +530,8 @@ class BaseOutput:
             raise cls.IsStageFileError(path)
 
         if stage:
-            check = stage.repo.tree.dvcignore.check_ignore(path)
-            if check.match:
+            if stage.repo.tree.dvcignore.is_ignored(path):
+                check = stage.repo.tree.dvcignore.check_ignore(path)
                 raise cls.IsIgnoredError(check)
 
     def _check_can_merge(self, out):

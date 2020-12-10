@@ -324,6 +324,8 @@ class DvcIgnoreFilter:
         return False
 
     def check_ignore(self, target):
+        # NOTE: can only be used in `dvc check-ignore`, see
+        # https://github.com/iterative/dvc/issues/5046
         full_target = os.path.abspath(target)
         if not self._outside_repo(full_target):
             dirname, basename = os.path.split(os.path.normpath(full_target))
@@ -340,7 +342,10 @@ class DvcIgnoreFilter:
     def is_ignored(self, path):
         # NOTE: can't use self.check_ignore(path).match for now, see
         # https://github.com/iterative/dvc/issues/4555
-        return self.is_ignored_dir(path) or self.is_ignored_file(path)
+        if os.path.isfile(path):
+            return self.is_ignored_file(path)
+        if os.path.isdir(path):
+            return self.is_ignored_dir(path)
 
 
 def init(path):
