@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 
 from funcy import first
@@ -156,7 +157,8 @@ def test_show_filter(tmp_dir, scm, dvc, exp_stage, capsys):
     )
     cap = capsys.readouterr()
 
-    assert "┃ foo ┃ foo ┃" in cap.out
+    div = "│" if os.name == "nt" else "┃"
+    assert f"{div} foo {div} foo {div}" in cap.out
 
     assert (
         main(
@@ -173,4 +175,4 @@ def test_show_filter(tmp_dir, scm, dvc, exp_stage, capsys):
     )
     cap = capsys.readouterr()
 
-    assert "┃ foo ┃" not in cap.out
+    assert f"{div} foo {div}" not in cap.out
