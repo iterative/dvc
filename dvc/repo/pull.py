@@ -1,6 +1,7 @@
 import logging
 
 from dvc.repo import locked
+from dvc.utils import glob_targets
 
 logger = logging.getLogger(__name__)
 
@@ -23,16 +24,7 @@ def pull(
     if isinstance(targets, str):
         targets = [targets]
 
-    if glob:
-        from glob import iglob
-
-        expanded_targets = [
-            exp_target
-            for target in targets
-            for exp_target in iglob(target, recursive=True)
-        ]
-    else:
-        expanded_targets = targets
+    expanded_targets = glob_targets(targets, glob=glob)
 
     processed_files_count = self.fetch(
         expanded_targets,
