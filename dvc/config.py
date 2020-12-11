@@ -23,7 +23,6 @@ from voluptuous import (
 from dvc.exceptions import DvcException, NotDvcRepoError
 from dvc.path_info import PathInfo
 from dvc.utils import relpath
-from dvc.utils.flatten import flatten
 
 logger = logging.getLogger(__name__)
 
@@ -467,11 +466,6 @@ class Config(dict):
             return COMPILED_SCHEMA(data)
         except Invalid as exc:
             raise ConfigError(str(exc)) from None
-
-
-def _format_config(config):
-    for key, value in flatten(config).items():
-        yield f"{key}={value}"
 
 
 def _parse_remotes(conf):

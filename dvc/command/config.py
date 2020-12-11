@@ -2,7 +2,8 @@ import argparse
 import logging
 
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
-from dvc.config import Config, ConfigError, _format_config
+from dvc.config import Config, ConfigError
+from dvc.utils.flatten import flatten
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ class CmdConfig(CmdBaseNoRepo):
                 return 1
 
             conf = self.config.load_one(self.args.level)
-            logger.info("\n".join(_format_config(conf)))
+            logger.info("\n".join(self._format_config(conf)))
             return 0
 
         if self.args.name is None:
@@ -63,6 +64,11 @@ class CmdConfig(CmdBaseNoRepo):
         if opt and opt not in conf[section]:
             msg = "option {} doesn't exist"
             raise ConfigError(msg.format(self.args.name))
+
+    @staticmethod
+    def _format_config(config):
+        for key, value in flatten(config).items():
+            yield f"{key}={value}"
 
 
 parent_config_parser = argparse.ArgumentParser(add_help=False)

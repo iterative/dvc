@@ -3,7 +3,7 @@ import os
 import configobj
 import pytest
 
-from dvc.config import Config, ConfigError, _format_config
+from dvc.config import Config, ConfigError
 from dvc.main import main
 from tests.basic_env import TestDvc
 
@@ -157,23 +157,4 @@ def test_load_relative_paths(dvc, field, remote_url):
     cfg = Config(dvc_dir)
     assert cfg["remote"]["test"][field] == os.path.join(
         dvc_dir, "..", "file.txt"
-    )
-
-
-def test_config_formatter():
-    example_config = {
-        "section_foo": {"option_bar": True, "option_baz": False},
-        "section_foo2": {
-            "option_bar2": {"option_baz2": True},
-            "option_baz3": {"option_baz4": False},
-        },
-        "section_foo3": {},
-    }
-
-    config_lines = tuple(_format_config(example_config))
-    assert config_lines == (
-        "section_foo.option_bar=True",
-        "section_foo.option_baz=False",
-        "section_foo2.option_bar2.option_baz2=True",
-        "section_foo2.option_baz3.option_baz4=False",
     )
