@@ -201,7 +201,12 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
             logger.exception(msg)
 
     def commit(self, msg: str, no_verify: bool = False):
-        self.repo.index.commit(msg, skip_hooks=no_verify)
+        from git.exc import HookExecutionError
+
+        try:
+            self.repo.index.commit(msg, skip_hooks=no_verify)
+        except HookExecutionError as exc:
+            raise SCMError("Git pre-commit hook failed") from exc
 
     def checkout(
         self, branch: str, create_new: Optional[bool] = False, **kwargs
