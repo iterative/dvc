@@ -468,6 +468,19 @@ class Config(dict):
             raise ConfigError(str(exc)) from None
 
 
+def _format_config(config, parent=None):
+    for section, options in config.items():
+        for option, value in options.items():
+            key = f"{section}.{option}"
+            if parent is not None:
+                key = f"{parent}.{key}"
+
+            if isinstance(value, dict):
+                yield from _format_config({option: value}, parent=section)
+            else:
+                yield f"{key}={value!r}"
+
+
 def _parse_remotes(conf):
     result = {"remote": {}}
 
