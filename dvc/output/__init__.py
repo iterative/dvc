@@ -81,6 +81,7 @@ def _get(
     persist=False,
     checkpoint=False,
     desc=None,
+    isexec=False,
 ):
     parsed = urlparse(p)
 
@@ -97,6 +98,7 @@ def _get(
             persist=persist,
             checkpoint=checkpoint,
             desc=desc,
+            isexec=isexec,
         )
 
     for o in OUTS:
@@ -112,6 +114,7 @@ def _get(
                 persist=persist,
                 checkpoint=checkpoint,
                 desc=desc,
+                isexec=isexec,
             )
     return LocalOutput(
         stage,
@@ -124,6 +127,7 @@ def _get(
         persist=persist,
         checkpoint=checkpoint,
         desc=desc,
+        isexec=isexec,
     )
 
 
@@ -161,6 +165,7 @@ def loads_from(
     plot=False,
     persist=False,
     checkpoint=False,
+    isexec=False,
 ):
     return [
         _get(
@@ -172,6 +177,7 @@ def loads_from(
             plot=plot,
             persist=persist,
             checkpoint=checkpoint,
+            isexec=isexec,
         )
         for s in s_list
     ]

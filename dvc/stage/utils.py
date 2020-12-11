@@ -66,6 +66,7 @@ def fill_stage_outputs(stage, **kwargs):
             metric="metrics" in key,
             plot="plots" in key,
             checkpoint="checkpoints" in key,
+            isexec="isexec" in key,
         )
 
 

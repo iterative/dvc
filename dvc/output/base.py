@@ -76,7 +76,7 @@ class BaseOutput:
     PARAM_PLOT_HEADER = "header"
     PARAM_PERSIST = "persist"
     PARAM_DESC = "desc"
-    PARAM_IS_USER_EXECUTABLE = "is_user_executable"
+    PARAM_ISEXEC = "isexec"
 
     METRIC_SCHEMA = Any(
         None,
@@ -106,6 +106,7 @@ class BaseOutput:
         persist=False,
         checkpoint=False,
         desc=None,
+        isexec=False,
     ):
         self._validate_output_path(path, stage)
         # This output (and dependency) objects have too many paths/urls
@@ -136,9 +137,8 @@ class BaseOutput:
         self.path_info = self._parse_path(tree, path)
         if self.use_cache and self.cache is None:
             raise RemoteCacheRequiredError(self.path_info)
-        self.is_user_executable = os.path.isfile(path) and os.access(
-            path, os.X_OK
-        )
+
+        self.isexec = False if self.IS_DEPENDENCY else isexec
 
     def _parse_path(self, tree, path):
         if tree:
@@ -291,6 +291,9 @@ class BaseOutput:
             return
 
         self.hash_info = self.get_hash()
+        self.isexec = os.path.isfile(self.def_path) and os.access(
+            self.def_path, os.X_OK
+        )
 
     def commit(self):
         if not self.exists:
@@ -332,7 +335,8 @@ class BaseOutput:
         if self.checkpoint:
             ret[self.PARAM_CHECKPOINT] = self.checkpoint
 
-        ret[self.PARAM_IS_USER_EXECUTABLE] = self.is_user_executable
+        if self.isexec:
+            ret[self.PARAM_ISEXEC] = self.isexec
 
         return ret
 
