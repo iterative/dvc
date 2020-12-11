@@ -274,9 +274,6 @@ def setup_targets_test(tmp_dir):
 
     tmp_dir.dvc_gen(os.path.join("dir_with", "file.txt"), "first")
 
-    remove(tmp_dir / ".dvc" / "cache")
-    (tmp_dir / ".dvc" / "tmp" / "state").unlink()
-
 
 def test_targets_missing_path(tmp_dir, scm, dvc):
     from dvc.exceptions import PathMissingError
@@ -326,8 +323,6 @@ def test_targets_single_dir(tmp_dir, scm, dvc):
 def test_targets_single_file_in_dir(tmp_dir, scm, dvc):
     setup_targets_test(tmp_dir)
 
-    dvc.diff(targets=["dir" + os.path.sep])
-
     assert dvc.diff(targets=[os.path.join("dir", "1")]) == {
         "added": [{"path": os.path.join("dir", "1"), "hash": digest("1")}],
         "deleted": [],
@@ -338,8 +333,6 @@ def test_targets_single_file_in_dir(tmp_dir, scm, dvc):
 
 def test_targets_two_files_in_dir(tmp_dir, scm, dvc):
     setup_targets_test(tmp_dir)
-
-    dvc.diff(targets=["dir" + os.path.sep])
 
     assert dvc.diff(
         targets=[os.path.join("dir", "1"), os.path.join("dir", "2")]
