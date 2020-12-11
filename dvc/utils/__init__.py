@@ -454,7 +454,9 @@ def parse_target(
             return ret if is_valid_filename(target) else ret[::-1]
 
     if not path:
-        logger.trace("Assuming file to be '%s'", default)
+        logger.trace(  # type: ignore[attr-defined]
+            "Assuming file to be '%s'", default
+        )
 
     return path or default, name
 

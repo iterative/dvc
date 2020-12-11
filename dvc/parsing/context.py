@@ -5,7 +5,7 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
-from typing import Any, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from funcy import identity, rpartial
 
@@ -283,7 +283,7 @@ class Context(CtxDict):
             params_file.update(keys)
 
     @property
-    def tracked(self):
+    def tracked(self) -> Dict[str, set]:
         return self._tracked_data
 
     def select(
