@@ -5,7 +5,7 @@ from collections import OrderedDict
 from collections.abc import Mapping
 from datetime import date, datetime
 from itertools import groupby
-from typing import Iterable, Optional
+from typing import Dict, Iterable, Optional
 
 import dvc.prompt as prompt
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
@@ -56,7 +56,7 @@ def _filter_names(
         ret = OrderedDict({name: None for name in names})
 
     if exclude:
-        to_remove = {}
+        to_remove: Dict[str, Optional[str]] = {}
         _filter(exclude, to_remove.update)
         for key in to_remove:
             if key in ret:
