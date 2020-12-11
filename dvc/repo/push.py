@@ -1,3 +1,4 @@
+from ..utils import glob_targets
 from . import locked
 
 
@@ -21,16 +22,7 @@ def push(
     if isinstance(targets, str):
         targets = [targets]
 
-    if glob:
-        from glob import iglob
-
-        expanded_targets = [
-            exp_target
-            for target in targets
-            for exp_target in iglob(target, recursive=True)
-        ]
-    else:
-        expanded_targets = targets
+    expanded_targets = glob_targets(targets, glob=glob)
 
     used = self.used_cache(
         expanded_targets,
