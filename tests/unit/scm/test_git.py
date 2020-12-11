@@ -311,7 +311,7 @@ def test_commit_no_verify(tmp_dir, scm, git, hook):
     tmp_dir.gen(
         hook_file, "#!/usr/bin/env python\nimport sys\nsys.exit(1)",
     )
-    os.chmod(hook_file, stat.S_IREAD | stat.S_IEXEC)
+    os.chmod(hook_file, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
 
     tmp_dir.gen("foo", "foo")
     git.add(["foo"])
