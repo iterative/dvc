@@ -2,8 +2,7 @@ from math import inf, pi
 
 import pytest
 
-from dvc.parsing import Context
-from tests.func.test_stage_resolver import recurse_not_a_node
+from dvc.parsing.context import Context, recurse_not_a_node
 
 
 @pytest.mark.parametrize(
@@ -91,7 +90,7 @@ def test_resolve_primitives_list_access():
 
 
 def test_resolve_collection():
-    from .test_stage_resolver import (
+    from tests.func.parsing import (
         CONTEXT_DATA,
         RESOLVED_DVC_YAML_DATA,
         TEMPLATED_DVC_YAML_DATA,
