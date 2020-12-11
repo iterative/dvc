@@ -390,6 +390,7 @@ class BaseTree:
         no_progress_bar=False,
         file_mode=None,
         dir_mode=None,
+        jobs=None,
     ):
         if not hasattr(self, "_download"):
             raise RemoteActionNotImplemented("download", self.scheme)
@@ -406,14 +407,27 @@ class BaseTree:
 
         if self.isdir(from_info):
             return self._download_dir(
-                from_info, to_info, name, no_progress_bar, file_mode, dir_mode
+                from_info,
+                to_info,
+                name,
+                no_progress_bar,
+                file_mode,
+                dir_mode,
+                jobs,
             )
         return self._download_file(
             from_info, to_info, name, no_progress_bar, file_mode, dir_mode
         )
 
     def _download_dir(
-        self, from_info, to_info, name, no_progress_bar, file_mode, dir_mode
+        self,
+        from_info,
+        to_info,
+        name,
+        no_progress_bar,
+        file_mode,
+        dir_mode,
+        jobs,
     ):
         from_infos = list(self.walk_files(from_info))
         to_infos = (
@@ -435,7 +449,8 @@ class BaseTree:
                     dir_mode=dir_mode,
                 )
             )
-            with ThreadPoolExecutor(max_workers=self.jobs) as executor:
+            max_workers = jobs or self.jobs
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = [
                     executor.submit(download_files, from_info, to_info)
                     for from_info, to_info in zip(from_infos, to_infos)

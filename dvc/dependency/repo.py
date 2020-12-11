@@ -68,14 +68,14 @@ class RepoDependency(LocalDependency):
     def dumpd(self):
         return {self.PARAM_PATH: self.def_path, self.PARAM_REPO: self.def_repo}
 
-    def download(self, to):
+    def download(self, to, jobs=None):
         cache = self.repo.cache.local
 
         with self._make_repo(cache_dir=cache.cache_dir) as repo:
             if self.def_repo.get(self.PARAM_REV_LOCK) is None:
                 self.def_repo[self.PARAM_REV_LOCK] = repo.get_rev()
 
-            _, _, cache_infos = repo.fetch_external([self.def_path])
+            _, _, cache_infos = repo.fetch_external([self.def_path], jobs=jobs)
 
         cache.checkout(to.path_info, cache_infos[0])
 

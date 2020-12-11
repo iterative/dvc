@@ -19,6 +19,7 @@ def imp_url(
     frozen=True,
     no_exec=False,
     desc=None,
+    jobs=None,
 ):
     from dvc.dvcfile import Dvcfile
     from dvc.stage import Stage, create_stage, restore_meta
@@ -61,7 +62,7 @@ def imp_url(
     if no_exec:
         stage.ignore_outs()
     else:
-        stage.run()
+        stage.run(jobs=jobs)
 
     stage.frozen = frozen
 
