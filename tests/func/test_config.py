@@ -60,6 +60,9 @@ class TestConfigCLI(TestDvc):
         self.assertEqual(ret, 0)
         self.assertFalse(self._contains(section, field, value, local))
 
+        ret = main(base + ["--list"])
+        self.assertEqual(ret, 0)
+
     def test(self):
         self._do_test(False)
 
