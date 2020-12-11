@@ -101,24 +101,20 @@ def add_parser(subparsers, parent_parser):
         help=CONFIG_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    config_parser.set_defaults(func=CmdConfig)
-
-    edit_group = config_parser.add_argument_group("edit")
-    edit_group.add_argument(
+    config_parser.add_argument(
         "-u",
         "--unset",
         default=False,
         action="store_true",
         help="Unset option.",
     )
-    edit_group.add_argument("name", nargs="?", help="Option name.")
-    edit_group.add_argument("value", nargs="?", help="Option value.")
-
-    list_group = config_parser.add_argument_group("list")
-    list_group.add_argument(
+    config_parser.add_argument("name", nargs="?", help="Option name.")
+    config_parser.add_argument("value", nargs="?", help="Option value.")
+    config_parser.add_argument(
         "-l",
         "--list",
         default=False,
         action="store_true",
         help="list all defined config values",
     )
+    config_parser.set_defaults(func=CmdConfig)

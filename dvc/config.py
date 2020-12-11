@@ -23,6 +23,7 @@ from voluptuous import (
 from dvc.exceptions import DvcException, NotDvcRepoError
 from dvc.path_info import PathInfo
 from dvc.utils import relpath
+from dvc.utils.flatten import flatten
 
 logger = logging.getLogger(__name__)
 
@@ -468,17 +469,9 @@ class Config(dict):
             raise ConfigError(str(exc)) from None
 
 
-def _format_config(config, parent=None):
-    for section, options in config.items():
-        for option, value in options.items():
-            key = f"{section}.{option}"
-            if parent is not None:
-                key = f"{parent}.{key}"
-
-            if isinstance(value, dict):
-                yield from _format_config({option: value}, parent=section)
-            else:
-                yield f"{key}={value!r}"
+def _format_config(config):
+    for key, value in flatten(config).items():
+        yield f"{key}={value}"
 
 
 def _parse_remotes(conf):
