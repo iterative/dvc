@@ -151,6 +151,13 @@ class TestConfig(TestDvc):
         self.assertEqual(args.name, name)
         self.assertEqual(args.value, value)
 
+    def test_config_list(self):
+        args = parse_args(["config", "--list"])
+
+        self.assertTrue(args.list)
+        self.assertIsNone(args.name)
+        self.assertIsNone(args.value)
+
 
 class TestCheckout(TestDvc):
     def test(self):
