@@ -219,6 +219,7 @@ def add_parser(subparsers, parent_parser):
         description=append_doc_link(REMOTE_MODIFY_HELP, "remote/modify"),
         help=REMOTE_MODIFY_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        exit_on_error=False,
     )
     remote_modify_parser.add_argument("name", help="Name of the remote")
     remote_modify_parser.add_argument(
