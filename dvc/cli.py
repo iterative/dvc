@@ -142,17 +142,16 @@ class DvcParser(argparse.ArgumentParser):
         _find_parser(self, cmd_cls)
 
     def parse_args(self, args=None, namespace=None):
-        if args is None:
-            args = sys.argv[1:]
-        else:
-            args = list(args)
-
         # NOTE: overriding to provide a more granular help message.
         # E.g. `dvc plots diff --bad-flag` would result in a `dvc plots diff`
         # help message instead of generic `dvc` usage.
         try:
             args, argv = self.parse_known_args(args, namespace)
         except argparse.ArgumentError:
+            if args is None:
+                args = sys.argv[1:]
+            else:
+                args = list(args)
             self._find_cmd_suggestions(args)
         else:
             if argv:
