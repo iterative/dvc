@@ -147,16 +147,18 @@ class DvcParser(argparse.ArgumentParser):
         else:
             args = list(args)
 
-        self._find_cmd_suggestions(args)
-
         # NOTE: overriding to provide a more granular help message.
         # E.g. `dvc plots diff --bad-flag` would result in a `dvc plots diff`
         # help message instead of generic `dvc` usage.
-        args, argv = self.parse_known_args(args, namespace)
-        if argv:
-            msg = "unrecognized arguments: %s"
-            self.error(msg % " ".join(argv), getattr(args, "func", None))
-        return args
+        try:
+            args, argv = self.parse_known_args(args, namespace)
+        except argparse.ArgumentError:
+            self._find_cmd_suggestions(args)
+        else:
+            if argv:
+                msg = "unrecognized arguments: %s"
+                self.error(msg % " ".join(argv), getattr(args, "func", None))
+            return args
 
     def _get_cmd_choices(self):
         """Keep track of public dvc commands and hidden dvc commands.
@@ -290,6 +292,7 @@ def get_main_parser():
         parents=[parent_parser],
         formatter_class=argparse.RawTextHelpFormatter,
         add_help=False,
+        exit_on_error=False,
     )
 
     # NOTE: We are doing this to capitalize help message.
