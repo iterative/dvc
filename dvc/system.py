@@ -71,8 +71,8 @@ class System:
         clonefile.restype = ctypes.c_int
 
         return clonefile(
-            ctypes.c_char_p(src.encode("utf-8")),
-            ctypes.c_char_p(dst.encode("utf-8")),
+            ctypes.c_char_p(os.fsencode(src)),
+            ctypes.c_char_p(os.fsencode(dst)),
             ctypes.c_int(0),
         )
 
