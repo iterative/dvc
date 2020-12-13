@@ -121,6 +121,6 @@ def add_parser(subparsers, parent_parser):
         "--list",
         default=False,
         action="store_true",
-        help="list all defined config values",
+        help="List all defined config values.",
     )
     config_parser.set_defaults(func=CmdConfig)
