@@ -6,6 +6,25 @@ from dvc.config import Config, ConfigError
 
 logger = logging.getLogger(__name__)
 
+NAME_REGEX = r"^(?P<remote>remote\.)?(?P<section>[^\.]*)\.(?P<option>[^\.]*)$"
+
+
+def _name_type(value):
+    import re
+
+    match = re.match(NAME_REGEX, value)
+    if not match:
+        raise argparse.ArgumentTypeError(
+            "name argument should look like "
+            "remote.name.option or "
+            "section.option"
+        )
+    return (
+        bool(match.group("remote")),
+        match.group("section").lower(),
+        match.group("option").lower(),
+    )
+
 
 class CmdConfig(CmdBaseNoRepo):
     def __init__(self, args):
@@ -14,20 +33,24 @@ class CmdConfig(CmdBaseNoRepo):
         self.config = Config(validate=False)
 
     def run(self):
-        section, opt = self.args.name.lower().strip().split(".", 1)
+        remote, section, opt = self.args.name
 
         if self.args.value is None and not self.args.unset:
             conf = self.config.load_one(self.args.level)
-            self._check(conf, section, opt)
+            if remote:
+                conf = conf["remote"]
+            self._check(conf, remote, section, opt)
             logger.info(conf[section][opt])
             return 0
 
         with self.config.edit(self.args.level) as conf:
+            if remote:
+                conf = conf["remote"]
             if self.args.unset:
-                self._check(conf, section, opt)
+                self._check(conf, remote, section, opt)
                 del conf[section][opt]
             else:
-                self._check(conf, section)
+                self._check(conf, remote, section)
                 conf[section][opt] = self.args.value
 
         if self.args.name == "cache.type":
@@ -39,14 +62,15 @@ class CmdConfig(CmdBaseNoRepo):
 
         return 0
 
-    def _check(self, conf, section, opt=None):
+    def _check(self, conf, remote, section, opt=None):
+        name = "remote" if remote else "section"
         if section not in conf:
-            msg = "section {} doesn't exist"
-            raise ConfigError(msg.format(self.args.name))
+            raise ConfigError(f"{name} '{section}' doesn't exist")
 
         if opt and opt not in conf[section]:
-            msg = "option {} doesn't exist"
-            raise ConfigError(msg.format(self.args.name))
+            raise ConfigError(
+                f"option '{opt}' doesn't exist in {name} '{section}'"
+            )
 
 
 parent_config_parser = argparse.ArgumentParser(add_help=False)
@@ -92,6 +116,10 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         help="Unset option.",
     )
-    config_parser.add_argument("name", help="Option name.")
+    config_parser.add_argument(
+        "name",
+        type=_name_type,
+        help="Option name (remote.name.option or section.option).",
+    )
     config_parser.add_argument("value", nargs="?", help="Option value.")
     config_parser.set_defaults(func=CmdConfig)
