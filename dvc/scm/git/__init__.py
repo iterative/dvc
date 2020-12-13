@@ -6,7 +6,7 @@ import shlex
 from collections import OrderedDict
 from contextlib import contextmanager
 from functools import partialmethod
-from typing import Iterable, Optional
+from typing import Iterable, List, Optional, Set
 
 from funcy import cached_property, first
 from pathspec.patterns import GitWildMatchPattern
@@ -38,8 +38,8 @@ class Git(Base):
     def __init__(
         self, *args, backends: Optional[Iterable[str]] = None, **kwargs
     ):
-        self.ignored_paths = []
-        self.files_to_track = set()
+        self.ignored_paths: List[str] = []
+        self.files_to_track: Set[str] = set()
 
         selected = backends if backends else self.DEFAULT_BACKENDS.keys()
         self.backends = OrderedDict(
@@ -248,7 +248,7 @@ class Git(Base):
 
         self.add(self.files_to_track)
 
-    def track_file(self, path):
+    def track_file(self, path: str):
         self.files_to_track.add(path)
 
     def belongs_to_scm(self, path):
@@ -285,7 +285,7 @@ class Git(Base):
 
     @property
     def no_commits(self):
-        return not self.list_all_commits()
+        return not bool(self.get_ref("HEAD"))
 
     def _backend_func(self, name, *args, **kwargs):
         for backend in self.backends.values():
@@ -295,6 +295,16 @@ class Git(Base):
             except NotImplementedError:
                 pass
         raise NoGitBackendError(name)
+
+    def get_tree(self, rev: str, **kwargs):
+        from dvc.tree.git import GitTree
+
+        from .objects import GitTrie
+
+        resolved = self.resolve_rev(rev)
+        tree_obj = self._backend_func("get_tree_obj", rev=resolved)
+        trie = GitTrie(tree_obj, resolved)
+        return GitTree(self.root_dir, trie, **kwargs)
 
     is_ignored = partialmethod(_backend_func, "is_ignored")
     add = partialmethod(_backend_func, "add")
@@ -311,7 +321,6 @@ class Git(Base):
     list_branches = partialmethod(_backend_func, "list_branches")
     list_tags = partialmethod(_backend_func, "list_tags")
     list_all_commits = partialmethod(_backend_func, "list_all_commits")
-    get_tree = partialmethod(_backend_func, "get_tree")
     get_rev = partialmethod(_backend_func, "get_rev")
     _resolve_rev = partialmethod(_backend_func, "resolve_rev")
     resolve_commit = partialmethod(_backend_func, "resolve_commit")

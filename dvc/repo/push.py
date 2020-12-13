@@ -13,6 +13,7 @@ def push(
     recursive=False,
     all_commits=False,
     run_cache=False,
+    revs=None,
 ):
     used_run_cache = self.stage_cache.push(remote) if run_cache else []
 
@@ -30,6 +31,7 @@ def push(
         jobs=jobs,
         recursive=recursive,
         used_run_cache=used_run_cache,
+        revs=revs,
     )
 
     return len(used_run_cache) + self.cloud.push(used, jobs, remote=remote)

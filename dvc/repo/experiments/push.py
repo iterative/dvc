@@ -4,14 +4,16 @@ from dvc.exceptions import DvcException, InvalidArgumentError
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 
-from .utils import exp_refs_by_name
+from .utils import exp_commits, exp_refs_by_name
 
 logger = logging.getLogger(__name__)
 
 
 @locked
 @scm_context
-def push(repo, git_remote, exp_name, *args, force=False, **kwargs):
+def push(
+    repo, git_remote, exp_name, *args, force=False, push_cache=False, **kwargs,
+):
     exp_ref = _get_exp_ref(repo, exp_name)
 
     def on_diverged(refname: str, rev: str) -> bool:
@@ -24,10 +26,13 @@ def push(repo, git_remote, exp_name, *args, force=False, **kwargs):
         )
 
     refname = str(exp_ref)
-    logger.debug("Push '%s' -> '%s'", exp_ref, git_remote)
+    logger.debug("git push experiment '%s' -> '%s'", exp_ref, git_remote)
     repo.scm.push_refspec(
         git_remote, refname, refname, force=force, on_diverged=on_diverged
     )
+
+    if push_cache:
+        _push_cache(repo, exp_ref, **kwargs)
 
 
 def _get_exp_ref(repo, exp_name):
@@ -55,3 +60,13 @@ def _get_exp_ref(repo, exp_name):
         msg.extend([f"\t{info}" for info in exp_refs])
         raise InvalidArgumentError("\n".join(msg))
     return exp_refs[0]
+
+
+def _push_cache(
+    repo, exp_ref, dvc_remote=None, jobs=None, run_cache=False,
+):
+    revs = list(exp_commits(repo.scm, [exp_ref]))
+    logger.debug("dvc push experiment '%s'", exp_ref)
+    repo.push(
+        jobs=jobs, remote=dvc_remote, run_cache=run_cache, revs=revs,
+    )

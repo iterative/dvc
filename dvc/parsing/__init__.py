@@ -103,7 +103,7 @@ class DataResolver:
         except (ContextError, VarsAlreadyLoaded) as exc:
             format_and_raise(exc, "'vars'", self.relpath)
 
-        self.tracked_vars = {}
+        self.tracked_vars: Dict[str, Mapping] = {}
 
     @staticmethod
     def check_loaded(path, item, keys, skip_imports):
@@ -222,7 +222,7 @@ class DataResolver:
         return {name: resolved}
 
     def _get_vars(self, context: Context):
-        tracked = defaultdict(dict)
+        tracked: Dict[str, dict] = defaultdict(dict)
         for path, vars_ in context.tracked.items():
             for var in vars_:
                 tracked[path][var] = context.select(var, unwrap=True)
@@ -313,6 +313,7 @@ class DataResolver:
 
     @classmethod
     def set_context_from(cls, context: Context, to_set, source=None):
+        # NOTE: `set` is disabled in the schema
         try:
             for key, value in to_set.items():
                 src_set = [*(source or []), key]

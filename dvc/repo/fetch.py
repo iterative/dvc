@@ -22,6 +22,7 @@ def fetch(
     recursive=False,
     all_commits=False,
     run_cache=False,
+    revs=None,
 ):
     """Download data items from a cloud and imported repositories
 
@@ -49,6 +50,7 @@ def fetch(
         remote=remote,
         jobs=jobs,
         recursive=recursive,
+        revs=revs,
     )
 
     downloaded = 0

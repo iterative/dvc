@@ -60,6 +60,9 @@ class TestConfigCLI(TestDvc):
         self.assertEqual(ret, 0)
         self.assertFalse(self._contains(section, field, value, local))
 
+        ret = main(base + ["--list"])
+        self.assertEqual(ret, 0)
+
     def test(self):
         self._do_test(False)
 
@@ -84,6 +87,16 @@ class TestConfigCLI(TestDvc):
 
         ret = main(["config", "core.non_existing_field", "-u"])
         self.assertEqual(ret, 251)
+
+    def test_invalid_config_list(self):
+        ret = main(["config"])
+        self.assertEqual(ret, 1)
+
+        ret = main(["config", "--list", "core.analytics"])
+        self.assertEqual(ret, 1)
+
+        ret = main(["config", "--list", "-u"])
+        self.assertEqual(ret, 1)
 
 
 def test_set_invalid_key(dvc):

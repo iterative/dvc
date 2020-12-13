@@ -7,7 +7,7 @@ from concurrent.futures import CancelledError, ProcessPoolExecutor, wait
 from contextlib import contextmanager
 from functools import wraps
 from multiprocessing import Manager
-from typing import Iterable, Mapping, Optional
+from typing import Dict, Iterable, Mapping, Optional
 
 from funcy import cached_property, first
 
@@ -31,7 +31,6 @@ from .base import (
     ExpRefInfo,
     MultipleBranchError,
 )
-from .executor import BaseExecutor, LocalExecutor
 from .utils import exp_refs_by_rev
 
 logger = logging.getLogger(__name__)
@@ -99,6 +98,8 @@ class Experiments:
 
     @cached_property
     def args_file(self):
+        from .executor import BaseExecutor
+
         return os.path.join(self.repo.tmp_dir, BaseExecutor.PACKED_ARGS_FILE)
 
     @cached_property
@@ -159,7 +160,7 @@ class Experiments:
 
             # checkout and detach at branch (or current HEAD)
             if detach_rev:
-                head = detach_rev
+                head: Optional[str] = detach_rev
             elif branch:
                 head = branch
             else:
@@ -230,6 +231,8 @@ class Experiments:
 
     def _pack_args(self, *args, **kwargs):
         import pickle
+
+        from .executor import BaseExecutor
 
         if os.path.exists(self.args_file) and self.scm.is_tracked(
             self.args_file
@@ -344,7 +347,7 @@ class Experiments:
         else:
             resume_rev = self.scm.resolve_rev(checkpoint_resume)
         allow_multiple = "params" in kwargs
-        branch = self.get_branch_by_rev(
+        branch: Optional[str] = self.get_branch_by_rev(
             resume_rev, allow_multiple=allow_multiple
         )
         if not branch:
@@ -389,7 +392,7 @@ class Experiments:
         revs: Optional[Iterable] = None,
         keep_stash: Optional[bool] = True,
         **kwargs,
-    ):
+    ) -> Mapping[str, str]:
         """Reproduce the specified experiments.
 
         Args:
@@ -397,6 +400,10 @@ class Experiments:
                 reproduced.
             keep_stash: If True, stashed experiments will be preserved if they
                 fail to reproduce successfully.
+
+        Returns:
+            dict mapping successfully reproduced experiment revs to their
+            hashes.
         """
         stash_revs = self.stash_revs
 
@@ -442,12 +449,14 @@ class Experiments:
         for index in to_drop:
             self.stash.drop(index)
 
-        result = {}
+        result: Dict[str, str] = {}
         for _, exp_result in exec_results.items():
             result.update(exp_result)
         return result
 
     def _init_executors(self, to_run):
+        from .executor import LocalExecutor
+
         executors = {}
         for stash_rev, item in to_run.items():
             self.scm.set_ref(EXEC_HEAD, item.rev)
@@ -467,7 +476,7 @@ class Experiments:
                 branch=item.branch,
                 cache_dir=self.repo.cache.local.cache_dir,
             )
-            executors[item.rev] = executor
+            executors[stash_rev] = executor
 
         for ref in (EXEC_HEAD, EXEC_MERGE, EXEC_BASELINE):
             self.scm.remove_ref(ref)
@@ -479,9 +488,11 @@ class Experiments:
     ) -> Mapping[str, Mapping[str, str]]:
         """Run dvc repro for the specified BaseExecutors in parallel.
 
-        Returns dict containing successfully executed experiments.
+        Returns:
+            dict mapping stash revs to the successfully executed experiments
+            for each stash rev.
         """
-        result = defaultdict(dict)
+        result: Dict[str, Dict[str, str]] = defaultdict(dict)
 
         manager = Manager()
         pid_q = manager.Queue()
@@ -603,7 +614,9 @@ class Experiments:
             return ref_info.baseline_sha
         return None
 
-    def get_branch_by_rev(self, rev: str, allow_multiple: bool = False) -> str:
+    def get_branch_by_rev(
+        self, rev: str, allow_multiple: bool = False
+    ) -> Optional[str]:
         """Returns full refname for the experiment branch containing rev."""
         ref_infos = list(exp_refs_by_rev(self.scm, rev))
         if not ref_infos:

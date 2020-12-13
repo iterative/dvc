@@ -3,6 +3,7 @@ import logging
 
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.config import Config, ConfigError
+from dvc.utils.flatten import flatten
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +15,22 @@ class CmdConfig(CmdBaseNoRepo):
         self.config = Config(validate=False)
 
     def run(self):
+        if self.args.list:
+            if any((self.args.name, self.args.value, self.args.unset)):
+                logger.error(
+                    "-l/--list can't be used together with any of these "
+                    "options: -u/--unset, name, value"
+                )
+                return 1
+
+            conf = self.config.load_one(self.args.level)
+            logger.info("\n".join(self._format_config(conf)))
+            return 0
+
+        if self.args.name is None:
+            logger.error("name argument is required")
+            return 1
+
         section, opt = self.args.name.lower().strip().split(".", 1)
 
         if self.args.value is None and not self.args.unset:
@@ -47,6 +64,11 @@ class CmdConfig(CmdBaseNoRepo):
         if opt and opt not in conf[section]:
             msg = "option {} doesn't exist"
             raise ConfigError(msg.format(self.args.name))
+
+    @staticmethod
+    def _format_config(config):
+        for key, value in flatten(config).items():
+            yield f"{key}={value}"
 
 
 parent_config_parser = argparse.ArgumentParser(add_help=False)
@@ -92,6 +114,13 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         help="Unset option.",
     )
-    config_parser.add_argument("name", help="Option name.")
+    config_parser.add_argument("name", nargs="?", help="Option name.")
     config_parser.add_argument("value", nargs="?", help="Option value.")
+    config_parser.add_argument(
+        "-l",
+        "--list",
+        default=False,
+        action="store_true",
+        help="List all defined config values.",
+    )
     config_parser.set_defaults(func=CmdConfig)

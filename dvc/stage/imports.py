@@ -13,7 +13,7 @@ def update_import(stage, rev=None):
         stage.frozen = frozen
 
 
-def sync_import(stage, dry=False, force=False):
+def sync_import(stage, dry=False, force=False, jobs=None):
     """Synchronize import's outs to the workspace."""
     logger.info(
         "Importing '{dep}' -> '{out}'".format(
@@ -27,4 +27,4 @@ def sync_import(stage, dry=False, force=False):
         stage.outs[0].checkout()
     else:
         stage.save_deps()
-        stage.deps[0].download(stage.outs[0])
+        stage.deps[0].download(stage.outs[0], jobs=jobs)

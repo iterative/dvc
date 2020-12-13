@@ -1,3 +1,5 @@
+import io
+import locale
 import logging
 import os
 from functools import partial
@@ -7,9 +9,9 @@ from funcy import first
 
 from dvc.progress import Tqdm
 from dvc.scm.base import CloneError, RevError, SCMError
-from dvc.tree.base import BaseTree
 from dvc.utils import fix_env, is_binary
 
+from ..objects import GitObject
 from .base import BaseGitBackend
 
 logger = logging.getLogger(__name__)
@@ -45,6 +47,38 @@ class TqdmGit(Tqdm):
             OP.BRANCHCHANGE: "Changing branch",
         }
         return ops.get(op_code & OP.OP_MASK, "")
+
+
+class GitPythonObject(GitObject):
+    def __init__(self, obj):
+        self.obj = obj
+
+    def open(self, mode: str = "r", encoding: str = None):
+        if not encoding:
+            encoding = locale.getpreferredencoding(False)
+        # GitPython's obj.data_stream is a fragile thing, it is better to
+        # read it immediately, also it needs to be to decoded if we follow
+        # the `open()` behavior (since data_stream.read() returns bytes,
+        # and `open` with default "r" mode returns str)
+        data = self.obj.data_stream.read()
+        if mode == "rb":
+            return io.BytesIO(data)
+        return io.StringIO(data.decode(encoding))
+
+    @property
+    def name(self) -> str:
+        # NOTE: `obj.name` is not always a basename. See [1] for more details.
+        #
+        # [1] https://github.com/iterative/dvc/issues/3481
+        return os.path.basename(self.obj.path)
+
+    @property
+    def mode(self) -> int:
+        return self.obj.mode
+
+    def scandir(self) -> Iterable["GitPythonObject"]:
+        for obj in self.obj:
+            yield GitPythonObject(obj)
 
 
 class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
@@ -215,12 +249,21 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         return [t.name for t in self.repo.tags]
 
     def list_all_commits(self):
-        return [c.hexsha for c in self.repo.iter_commits("--all")]
+        head = self.get_ref("HEAD")
+        if not head:
+            # Empty repo
+            return []
 
-    def get_tree(self, rev: str, **kwargs) -> BaseTree:
-        from dvc.tree.git import GitTree
+        return [
+            c.hexsha
+            for c in self.repo.iter_commits(
+                rev=head, branches=True, tags=True, remotes=True,
+            )
+        ]
 
-        return GitTree(self.repo, self.resolve_rev(rev), **kwargs)
+    def get_tree_obj(self, rev: str, **kwargs) -> GitPythonObject:
+        tree = self.repo.tree(rev)
+        return GitPythonObject(tree)
 
     def get_rev(self):
         return self.repo.rev_parse("HEAD").hexsha
@@ -321,7 +364,12 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
     ) -> Optional[str]:
         from git.exc import GitCommandError
 
-        if name.startswith("refs/heads/"):
+        if name == "HEAD":
+            try:
+                return self.repo.head.commit.hexsha
+            except (GitCommandError, ValueError):
+                return None
+        elif name.startswith("refs/heads/"):
             name = name[11:]
             if name in self.repo.heads:
                 return self.repo.heads[name].commit.hexsha
@@ -332,11 +380,13 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         else:
             if not follow:
                 try:
-                    return self.git.symbolic_ref(name).strip()
+                    rev = self.git.symbolic_ref(name).strip()
+                    return rev if rev else None
                 except GitCommandError:
                     pass
             try:
-                return self.git.show_ref(name, hash=True).strip()
+                rev = self.git.show_ref(name, hash=True).strip()
+                return rev if rev else None
             except GitCommandError:
                 pass
         return None
@@ -358,9 +408,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         from git import Reference
 
         for ref in Reference.iter_items(self.repo, common_path=base):
-            if base and base.endswith("/"):
-                base = base[:-1]
-            yield "/".join([base, ref.name])
+            yield ref.path
 
     def iter_remote_refs(self, url: str, base: Optional[str] = None):
         raise NotImplementedError

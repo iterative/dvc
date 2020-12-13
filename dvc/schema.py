@@ -3,7 +3,7 @@ from voluptuous import Any, Optional, Required, Schema
 from dvc import dependency, output
 from dvc.hash_info import HashInfo
 from dvc.output import CHECKSUMS_SCHEMA, BaseOutput
-from dvc.parsing import DO_KWD, FOREACH_KWD, SET_KWD, VARS_KWD
+from dvc.parsing import DO_KWD, FOREACH_KWD, VARS_KWD
 from dvc.stage.params import StageParams
 
 STAGES = "stages"
@@ -64,7 +64,6 @@ VARS_SCHEMA = [str, dict]
 
 STAGE_DEFINITION = {
     StageParams.PARAM_CMD: Any(str, list),
-    Optional(SET_KWD): dict,
     Optional(StageParams.PARAM_WDIR): str,
     Optional(StageParams.PARAM_DEPS): [str],
     Optional(StageParams.PARAM_PARAMS): [Any(str, dict)],
@@ -81,7 +80,6 @@ STAGE_DEFINITION = {
 }
 
 FOREACH_IN = {
-    Optional(SET_KWD): dict,
     Required(FOREACH_KWD): Any(dict, list, str),
     Required(DO_KWD): STAGE_DEFINITION,
 }
