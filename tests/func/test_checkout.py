@@ -56,6 +56,35 @@ class TestCheckout(TestRepro):
         self.assertTrue(filecmp.cmp(self.FOO, self.orig, shallow=False))
 
 
+class TestCheckoutExecutable(TestRepro):
+
+    EXECUTABLE = "executable"
+    EXECUTABLE_CONTENT = "executable content"
+
+    def setUp(self):
+        super().setUp()
+
+        self.create_executable(self.EXECUTABLE, self.EXECUTABLE_CONTENT)
+        self.dvc.add(self.EXECUTABLE)
+
+        self.orig = "orig"
+        shutil.copy(self.FOO, self.orig)
+        os.unlink(self.FOO)
+
+        self.orig_executable = "orig_executable"
+        shutil.copy(self.EXECUTABLE, self.orig_executable)
+        os.unlink(self.EXECUTABLE)
+
+    def test(self):
+        self.dvc.checkout(force=True)
+        self._test_checkout()
+
+    def _test_checkout(self):
+        self.assertTrue(os.path.isfile(self.FOO))
+        self.assertTrue(os.path.isfile(self.EXECUTABLE))
+        # TODO: test that self.EXECUTABLE is executable and make it pass
+
+
 class TestCheckoutSingleStage(TestCheckout):
     def test(self):
         ret = main(["checkout", "--force", self.foo_stage.path])

@@ -69,6 +69,7 @@ SCHEMA[BaseOutput.PARAM_CHECKPOINT] = bool
 SCHEMA[HashInfo.PARAM_SIZE] = int
 SCHEMA[HashInfo.PARAM_NFILES] = int
 SCHEMA[BaseOutput.PARAM_DESC] = str
+SCHEMA[BaseOutput.PARAM_ISEXEC] = bool
 
 
 def _get(

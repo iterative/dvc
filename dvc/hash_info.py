@@ -11,6 +11,7 @@ DirInfo = Dict[str, str]
 class HashInfo:
     PARAM_SIZE = "size"
     PARAM_NFILES = "nfiles"
+    PARAMS_TO_IGNORE = ("isexec",)
 
     name: Optional[str]
     value: Optional[str]
@@ -26,6 +27,9 @@ class HashInfo:
         _d = d.copy() if d else {}
         size = _d.pop(cls.PARAM_SIZE, None)
         nfiles = _d.pop(cls.PARAM_NFILES, None)
+
+        for p in cls.PARAMS_TO_IGNORE:
+            _d.pop(p, None)
 
         if not _d:
             return cls(None, None)
