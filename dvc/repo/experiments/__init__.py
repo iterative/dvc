@@ -508,6 +508,7 @@ class Experiments:
                     rev,
                     name=executor.name,
                     rel_cwd=rel_cwd,
+                    log_level=logger.getEffectiveLevel(),
                 )
                 futures[future] = (rev, executor)
 

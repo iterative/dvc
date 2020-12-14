@@ -198,6 +198,7 @@ class BaseExecutor:
         rev: str,
         rel_cwd: Optional[str] = None,
         name: Optional[str] = None,
+        log_level: Optional[int] = None,
     ) -> Tuple[Optional[str], bool]:
         """Run dvc repro and return the result.
 
@@ -211,6 +212,7 @@ class BaseExecutor:
         unchanged = []
 
         queue.put((rev, os.getpid()))
+        cls._set_log_level(log_level)
 
         def filter_pipeline(stages):
             unchanged.extend(
@@ -322,6 +324,18 @@ class BaseExecutor:
         scm.set_ref(branch, new_rev, old_ref=old_ref)
         scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
         return new_rev
+
+    @staticmethod
+    def _set_log_level(level):
+        from dvc.logger import disable_other_loggers
+
+        # When executor.reproduce is run in a multiprocessing child process,
+        # dvc.main will not be called for that child process so we need to
+        # setup logging ourselves
+        dvc_logger = logging.getLogger("dvc")
+        disable_other_loggers()
+        if level is not None:
+            dvc_logger.setLevel(level)
 
 
 class LocalExecutor(BaseExecutor):
