@@ -101,8 +101,6 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
 
         files = []
         for path in paths:
-            if not os.path.isabs(path):
-                path = os.path.join(self.root_dir, path)
             if os.path.isdir(path):
                 files.extend(walk_files(path))
             else:
