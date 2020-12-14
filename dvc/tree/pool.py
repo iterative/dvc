@@ -11,7 +11,7 @@ def get_connection(conn_func, *args, **kwargs):
     conn = pool.get_connection()
     try:
         yield conn
-    except BaseException:
+    except Exception:
         conn.close()
         raise
     else:
