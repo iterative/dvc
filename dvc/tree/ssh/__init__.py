@@ -173,11 +173,7 @@ class SSHTree(BaseTree):
     def walk_files(self, path_info, **kwargs):
         with self.ssh(path_info) as ssh:
             for fname in ssh.walk_files(path_info.path):
-                try:
-                    yield path_info.replace(path=fname)
-                except GeneratorExit:
-                    # raised when generator is dropped in the middle of walk
-                    break
+                yield path_info.replace(path=fname)
 
     def remove(self, path_info):
         if path_info.scheme != self.scheme:
