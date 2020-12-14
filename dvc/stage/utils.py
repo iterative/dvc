@@ -54,10 +54,27 @@ def fill_stage_outputs(stage, **kwargs):
         "outs_no_cache",
         "outs",
         "checkpoints",
-        "dvclive",
     ]
 
     stage.outs = []
+
+    dvclive_l = kwargs.get("dvclive", [])
+    if dvclive_l:
+        assert len(dvclive_l) == 1
+
+        from dvc.output import BaseOutput
+
+        stage.outs += output.loads_from(
+            stage,
+            dvclive_l,
+            use_cache=False,
+            dvclive={
+                BaseOutput.PARAM_DVCLIVE_SUMMARY: kwargs.get(
+                    "dvclive_summary", False
+                )
+            },
+        )
+
     for key in keys:
         stage.outs += output.loads_from(
             stage,
@@ -67,7 +84,6 @@ def fill_stage_outputs(stage, **kwargs):
             metric="metrics" in key,
             plot="plots" in key,
             checkpoint="checkpoints" in key,
-            dvclive="dvclive" in key,
         )
 
 

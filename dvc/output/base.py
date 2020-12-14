@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 from copy import copy
@@ -10,7 +9,7 @@ from voluptuous import Any
 
 import dvc.prompt as prompt
 from dvc.cache import NamedCache
-from dvc.env import DVCLIVE_CONFIG
+from dvc.env import DVCLIVE_PATH, DVCLIVE_SUMMARY
 from dvc.exceptions import (
     CheckoutError,
     CollectCacheError,
@@ -607,11 +606,13 @@ class BaseOutput:
         if self.dvclive:
             from dvc.schema import DVCLIVE_PROPS
 
+            env = {DVCLIVE_PATH: str(self.path_info)}
             if isinstance(self.dvclive, dict):
+
                 config = project(self.dvclive, DVCLIVE_PROPS)
-            else:
-                config = dict.fromkeys(DVCLIVE_PROPS)
-            config["path"] = str(self.path_info)
-            return {DVCLIVE_CONFIG: json.dumps(config)}
-        # TODO checkpoints?
+
+                env[DVCLIVE_SUMMARY] = str(
+                    config.get(BaseOutput.PARAM_DVCLIVE_SUMMARY, True)
+                ).lower()
+            return env
         return {}

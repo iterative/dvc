@@ -1,70 +1,78 @@
-import shutil
+import subprocess
 from textwrap import dedent
+
+import pytest
+
+from dvc.exceptions import NoMetricsError
 
 DVCLIVE_SCRITP = dedent(
     """
         from dvclive import dvclive
         import sys
-        
-        for i in range(5):
+        r = 5
+        for i in range(r):
            dvclive.log("loss", -i/5)
            dvclive.log("accuracy", i/5)"""
 )
 
 
-def test_export_config():
-    # check "DVCLIVE_CONFIG"
-    pass
-
-
-def test_summary_is_metric(tmp_dir, dvc):
+@pytest.mark.parametrize("summary", (True, False))
+def test_export_config(tmp_dir, dvc, mocker, summary):
+    proc_spy = mocker.spy(subprocess, "Popen")
     tmp_dir.gen("log.py", DVCLIVE_SCRITP.format(log_path="logs"))
     dvc.run(
         cmd="python log.py",
         deps=["log.py"],
         name="run_logger",
         dvclive=["logs"],
+        dvclive_summary=summary,
+    )
+    assert proc_spy.call_count == 1
+    _, kwargs = proc_spy.call_args
+
+    assert "DVCLIVE_PATH" in kwargs["env"]
+    assert kwargs["env"]["DVCLIVE_PATH"] == "logs"
+
+    assert "DVCLIVE_SUMMARY" in kwargs["env"]
+    assert kwargs["env"]["DVCLIVE_SUMMARY"] == str(summary).lower()
+
+
+def test_dvclive_provides_metrics(tmp_dir, dvc):
+    tmp_dir.gen("log.py", DVCLIVE_SCRITP.format(log_path="logs"))
+    dvc.run(
+        cmd="python log.py",
+        deps=["log.py"],
+        name="run_logger",
+        dvclive=["logs"],
+        dvclive_summary=True,
     )
 
+    assert (tmp_dir / "logs.json").is_file()
     assert dvc.metrics.show() == {
         "": {"logs.json": {"step": 3, "loss": -0.6, "accuracy": 0.6}}
     }
 
+    assert (tmp_dir / "logs").is_dir()
     plots = dvc.plots.show()
     assert "logs/accuracy.tsv" in plots
     assert "logs/loss.tsv" in plots
 
 
-def test_live_plots(tmp_dir, scm, dvc):
+def test_dvclive_provides_no_metrics(tmp_dir, dvc):
     tmp_dir.gen("log.py", DVCLIVE_SCRITP.format(log_path="logs"))
     dvc.run(
         cmd="python log.py",
         deps=["log.py"],
         name="run_logger",
         dvclive=["logs"],
+        dvclive_summary=False,
     )
-    shutil.rmtree(".dvc/cache")
-    shutil.rmtree("logs")
 
-    dvc.metrics.show()
-    pass
-    # scm.add(["params.yaml", "log.py", "dvc.lock", "dvc.yaml", "logs"])
-    # scm.commit("init")
-    #
-    # scm.checkout("improved", create_new=True)
-    # tmp_dir.gen("params.yaml", "multiplier: 1.4")
-    # dvc.reproduce("run_logger")
-    #
-    # assert (tmp_dir / "logs").is_dir()
-    # assert (tmp_dir / "logs.json").is_file()
-    #
-    # assert main(["plots", "diff", "master"]) == 0
+    assert not (tmp_dir / "logs.json").is_file()
+    with pytest.raises(NoMetricsError):
+        assert dvc.metrics.show() == {}
 
-    # whole dir seems to not be working
-    # assert main(["plots", "diff", "master", "--targets", "logs/history"]) ==
-    # 0
-    # assert (
-    #     main(["plots", "diff", "master", "--targets", "logs/accuracy.tsv"])
-    #     == 0
-    # "--dvclive",
-    #             "dvclive")
+    assert (tmp_dir / "logs").is_dir()
+    plots = dvc.plots.show()
+    assert "logs/accuracy.tsv" in plots
+    assert "logs/loss.tsv" in plots

@@ -50,6 +50,8 @@ def _get_flags(out):
         # `out.plot` is in the same order as is in the file when read
         # and, should be dumped as-is without any sorting
         yield from out.plot.items()
+    if out.dvclive and isinstance(out.dvclive, dict):
+        yield from out.dvclive.items()
 
 
 def _serialize_out(out):

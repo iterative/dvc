@@ -1,6 +1,5 @@
 import json
 import os
-from textwrap import dedent
 
 import pytest
 
@@ -105,40 +104,3 @@ def test_dir_plots(tmp_dir, dvc, run_copy_metrics):
 
     assert p1_content["title"] == p2_content["title"] == "TITLE"
     assert p1_content == p2_content
-
-
-def test_live_plots(tmp_dir, scm, dvc):
-    tmp_dir.gen("file", "just a dep file")
-
-    DVCLIVE_SCRITP = dedent(
-        """\
-        from dvclive import dvclive
-        import sys
-
-        dvclive.init("{log_path}")
-        for i in range(10):
-           dvclive.log("loss", 2**(1/(i+1)/{improvement}))
-           dvclive.log("accuracy", i/10*{improvement})
-           dvclive.next_epoch()
-        """
-    )
-
-    tmp_dir.gen(
-        "log.py", DVCLIVE_SCRITP.format(log_path="logs", improvement=1)
-    )
-    dvc.run(
-        cmd="python log.py",
-        deps=["file", "log.py"],
-        name="run_logger",
-        dvclive=["logs"],
-    )
-    scm.add(["file", "log.py", "dvc.lock", "dvc.yaml", "logs"])
-    scm.commit("init")
-
-    scm.checkout("improved", create_new=True)
-    tmp_dir.gen(
-        "log.py", DVCLIVE_SCRITP.format(log_path="logs", improvement=1.2)
-    )
-    dvc.reproduce("run_logger")
-
-    print(f"##### OPEN ME!!! {str(tmp_dir)}")
