@@ -1,4 +1,5 @@
 import logging
+import os
 import typing
 from functools import partial
 
@@ -18,6 +19,7 @@ logger = logging.getLogger(__name__)
 def _reproduce_stage(stage, **kwargs):
     def _run_callback(repro_callback):
         _dump_stage(stage)
+        _track_stage(stage)
         repro_callback([stage])
 
     checkpoint_func = kwargs.pop("checkpoint_func", None)
@@ -42,7 +44,10 @@ def _reproduce_stage(stage, **kwargs):
         return []
 
     if not kwargs.get("dry", False):
+        track = checkpoint_func is not None
         _dump_stage(stage)
+        if track:
+            _track_stage(stage)
 
     return [stage]
 
@@ -52,6 +57,13 @@ def _dump_stage(stage):
 
     dvcfile = Dvcfile(stage.repo, stage.path)
     dvcfile.dump(stage, update_pipeline=False)
+
+
+def _track_stage(stage):
+    for out in stage.outs:
+        if not out.use_scm_ignore and out.is_in_repo:
+            stage.repo.scm.track_file(os.fspath(out.path_info))
+    stage.repo.scm.track_changed_files()
 
 
 def _get_active_graph(G):
