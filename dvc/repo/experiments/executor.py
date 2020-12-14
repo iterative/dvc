@@ -196,7 +196,7 @@ class BaseExecutor:
         dvc_dir: str,
         queue: "Queue",
         rev: str,
-        cwd: Optional[str] = None,
+        rel_cwd: Optional[str] = None,
         name: Optional[str] = None,
     ) -> Tuple[Optional[str], bool]:
         """Run dvc repro and return the result.
@@ -223,9 +223,11 @@ class BaseExecutor:
         try:
             dvc = Repo(dvc_dir)
             old_cwd = os.getcwd()
-            new_cwd = cwd if cwd else dvc.root_dir
-            os.chdir(new_cwd)
-            logger.debug("Running repro in '%s'", cwd)
+            if rel_cwd:
+                os.chdir(os.path.join(dvc.root_dir, rel_cwd))
+            else:
+                os.chdir(dvc.root_dir)
+            logger.debug("Running repro in '%s'", os.getcwd())
 
             args_path = os.path.join(
                 dvc.tmp_dir, BaseExecutor.PACKED_ARGS_FILE

@@ -269,7 +269,7 @@ class Experiments:
         logger.debug("Using experiment params '%s'", params)
 
         for params_fname in params:
-            path = PathInfo(self.repo.root_dir) / params_fname
+            path = PathInfo(params_fname)
             suffix = path.suffix.lower()
             modify_data = MODIFIERS[suffix]
             with modify_data(path, tree=self.repo.tree) as data:
@@ -496,6 +496,8 @@ class Experiments:
 
         manager = Manager()
         pid_q = manager.Queue()
+
+        rel_cwd = relpath(os.getcwd(), self.repo.root_dir)
         with ProcessPoolExecutor(max_workers=jobs) as workers:
             futures = {}
             for rev, executor in executors.items():
@@ -505,6 +507,7 @@ class Experiments:
                     pid_q,
                     rev,
                     name=executor.name,
+                    rel_cwd=rel_cwd,
                 )
                 futures[future] = (rev, executor)
 
