@@ -177,12 +177,6 @@ class DvcIgnoreFilterNoop:
 
 
 class DvcIgnoreFilter:
-    @staticmethod
-    def _is_dvc_repo(root, directory):
-        from dvc.repo import Repo
-
-        return os.path.isdir(os.path.join(root, directory, Repo.DVC_DIR))
-
     def __init__(self, tree, root_dir):
         from dvc.repo import Repo
 
@@ -198,6 +192,8 @@ class DvcIgnoreFilter:
         self._update(self.root_dir)
 
     def _update(self, dirname):
+        self._update_sub_repo(dirname)
+
         old_pattern = self.ignores_trie_tree.longest_prefix(dirname).value
         matches = old_pattern.matches(dirname, DvcIgnore.DVCIGNORE_FILE, False)
 
@@ -222,35 +218,39 @@ class DvcIgnoreFilter:
         elif old_pattern:
             self.ignores_trie_tree[dirname] = old_pattern
 
-        # NOTE: using `walk` + `break` because tree doesn't have `listdir()`
-        for root, dirs, _ in self.tree.walk(dirname, use_dvcignore=False):
-            self._update_sub_repo(root, dirs)
-            break
+    def _update_sub_repo(self, path):
+        from dvc.repo import Repo
 
-    def _update_sub_repo(self, root, dirs):
-        for d in dirs:
-            if self._is_dvc_repo(root, d):
-                self._ignored_subrepos[root] = self._ignored_subrepos.get(
-                    root, set()
-                ) | {d}
-                pattern_info = PatternInfo(
-                    f"/{d}/", "in sub_repo:{}".format(d)
+        if path == self.root_dir:
+            return
+
+        dvc_dir = os.path.join(path, Repo.DVC_DIR)
+        if not os.path.exists(dvc_dir):
+            return
+
+        root, dname = os.path.split(path)
+        self._ignored_subrepos[root] = self._ignored_subrepos.get(
+            root, set()
+        ) | {dname}
+        pattern_info = PatternInfo(f"/{dname}/", f"in sub_repo:{dname}")
+        new_pattern = DvcIgnorePatterns([pattern_info], root)
+        old_pattern = self.ignores_trie_tree.longest_prefix(root).value
+        if old_pattern:
+            self.ignores_trie_tree[root] = DvcIgnorePatterns(
+                *merge_patterns(
+                    old_pattern.pattern_list,
+                    old_pattern.dirname,
+                    new_pattern.pattern_list,
+                    new_pattern.dirname,
                 )
-                new_pattern = DvcIgnorePatterns([pattern_info], root)
-                old_pattern = self.ignores_trie_tree.longest_prefix(root).value
-                if old_pattern:
-                    self.ignores_trie_tree[root] = DvcIgnorePatterns(
-                        *merge_patterns(
-                            old_pattern.pattern_list,
-                            old_pattern.dirname,
-                            new_pattern.pattern_list,
-                            new_pattern.dirname,
-                        )
-                    )
-                else:
-                    self.ignores_trie_tree[root] = new_pattern
+            )
+        else:
+            self.ignores_trie_tree[root] = new_pattern
 
     def __call__(self, root, dirs, files, ignore_subrepos=True):
+        for dname in dirs:
+            self._update_sub_repo(os.path.join(root, dname))
+
         ignore_pattern = self._get_trie_pattern(root)
         if ignore_pattern:
             dirs, files = ignore_pattern(root, dirs, files)
