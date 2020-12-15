@@ -12,7 +12,6 @@ from dvc.command.experiments import (
     CmdExperimentsRun,
     CmdExperimentsShow,
 )
-from dvc.dvcfile import PIPELINE_FILE
 from dvc.exceptions import InvalidArgumentError
 
 from .test_repro import default_arguments as repro_arguments
@@ -103,9 +102,7 @@ def test_experiments_run(dvc, scm, mocker, args, resume):
     mocker.patch.object(cmd.repo, "reproduce")
     mocker.patch.object(cmd.repo.experiments, "run")
     cmd.run()
-    cmd.repo.experiments.run.assert_called_with(
-        PIPELINE_FILE, **default_arguments
-    )
+    cmd.repo.experiments.run.assert_called_with(**default_arguments)
 
 
 def test_experiments_gc(dvc, scm, mocker):
