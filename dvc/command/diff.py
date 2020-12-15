@@ -174,9 +174,8 @@ def add_parser(subparsers, parent_parser):
         "--targets",
         nargs="*",
         help=(
-            "Source paths to a data files or directories. Default None. "
-            "If not specified, compares all files and directories `). "
-            "that are under DVC control in the current working space."
+            "Limit command scope to these tracked files or directories. "
+            "Accepts one or more file paths."
         ),
     ).complete = completion.FILE
     diff_parser.add_argument(
