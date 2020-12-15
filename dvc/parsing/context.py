@@ -3,12 +3,13 @@ import os
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from typing import Any, List, Optional, Union
 
 from funcy import identity, lfilter
+from funcy.colls import select
 
 from dvc.exceptions import DvcException
 from dvc.parsing.interpolate import (
@@ -21,6 +22,7 @@ from dvc.parsing.interpolate import (
 )
 from dvc.path_info import PathInfo
 from dvc.utils import relpath
+from dvc.utils.humanize import join
 from dvc.utils.serialize import LOADERS
 
 logger = logging.getLogger(__name__)
@@ -28,6 +30,10 @@ SeqOrMap = Union[Sequence, Mapping]
 
 
 class ContextError(DvcException):
+    pass
+
+
+class ReservedKeyError(ContextError):
     pass
 
 
@@ -259,9 +265,8 @@ class CtxDict(Container, MutableMapping):
             return
         return super().__setitem__(key, value)
 
-    def merge_update(self, *args, overwrite=False):
-        for d in args:
-            _merge(self, d, overwrite=overwrite)
+    def merge_update(self, other, overwrite=False):
+        _merge(self, other, overwrite=overwrite)
 
     @property
     def value(self):
@@ -285,6 +290,7 @@ class Context(CtxDict):
         self._track = False
         self._tracked_data = defaultdict(dict)
         self.imports = {}
+        self._reserved_keys = {}
 
     @contextmanager
     def track(self):
@@ -357,6 +363,14 @@ class Context(CtxDict):
         ctx.imports[os.path.abspath(path)] = select_keys or None
         return ctx
 
+    def merge_update(self, other: "Context", overwrite=False):
+        matches = select(lambda key: key in other, self._reserved_keys.keys())
+        if matches:
+            msg = f"Cannot modify reserved keyword {join(matches)}"
+            raise ReservedKeyError(msg)
+
+        return super().merge_update(other, overwrite=overwrite)
+
     def merge_from(
         self, tree, item: str, wdir: PathInfo, overwrite=False,
     ):
@@ -424,6 +438,7 @@ class Context(CtxDict):
         new = Context(super().__deepcopy__(_))
         new.meta = deepcopy(self.meta)
         new.imports = deepcopy(self.imports)
+        new._reserved_keys = deepcopy(self._reserved_keys)
         return new
 
     @classmethod
@@ -432,14 +447,36 @@ class Context(CtxDict):
         return deepcopy(ctx)
 
     @contextmanager
-    def set_temporarily(self, to_set):
+    def reserved(self, *keys: str):
+        """Allow reserving some keys so that they cannot be overwritten.
+
+        Ideally, we should delegate this to a separate container
+        and support proper namespacing so that we could support `env` features.
+        But for now, just `item` and `key`, this should do.
+        """
+        # using dict to make the error messages ordered
+        new = dict.fromkeys(
+            [key for key in keys if key not in self._reserved_keys]
+        )
+        self._reserved_keys.update(new)
+        try:
+            yield
+        finally:
+            for key in new.keys():
+                self._reserved_keys.pop(key)
+
+    @contextmanager
+    def set_temporarily(self, to_set, reserve=False):
+        cm = self.reserved(*to_set) if reserve else nullcontext()
+
         non_existing = frozenset(to_set.keys() - self.keys())
         prev = {key: self[key] for key in to_set if key not in non_existing}
         to_set = CtxDict(to_set)
         self.update(to_set)
 
         try:
-            yield
+            with cm:
+                yield
         finally:
             self.update(prev)
             for key in non_existing:

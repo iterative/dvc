@@ -401,7 +401,6 @@ class ForeachDefinition:
         return self._each_iter(key)
 
     def _each_iter(self, key):
-        name = self.name
         err_message = f"Could not find '{key}' in foreach group '{self.name}'"
         with reraise(KeyError, EntryNotFound(err_message)):
             value = self.normalized_iterable[key]
@@ -414,7 +413,7 @@ class ForeachDefinition:
         if "key" in inserted:
             temp_dict["key"] = key
 
-        with self.context.set_temporarily(temp_dict):
+        with self.context.set_temporarily(temp_dict, reserve=True):
             # optimization: item and key can be removed on __exit__() as they
             # are top-level values, and are not merged recursively.
             # This helps us avoid cloning context, which is slower
@@ -430,14 +429,6 @@ class ForeachDefinition:
                 # generated stages. We do it once when accessing do_definition.
                 return entry.resolve_stage(skip_checks=True)
             except ContextError as exc:
-                # pylint: disable=no-member
-                if isinstance(exc, MergeError) and exc.key in inserted:
-                    raise ResolveError(
-                        f"attempted to redefine '{exc.key}' "
-                        f"in stage '{generated}' generated through 'foreach'"
-                    )
                 format_and_raise(
-                    exc,
-                    f"stage '{generated}' (gen. from '{name}')",
-                    self.relpath,
+                    exc, f"stage '{generated}'", self.relpath,
                 )
