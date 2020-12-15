@@ -5,6 +5,7 @@ import stat
 import pytest
 from funcy import first
 
+from dvc.dvcfile import PIPELINE_FILE
 from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.utils.serialize import PythonFileCorruptedError
 from tests.func.test_repro_multistage import COPY_SCRIPT
@@ -436,3 +437,79 @@ def test_list(tmp_dir, scm, dvc, exp_stage):
         baseline_a: {ref_info_a.name, ref_info_b.name},
         baseline_c: {ref_info_c.name},
     }
+
+
+def test_subdir(tmp_dir, scm, dvc):
+    subdir = tmp_dir / "dir"
+    subdir.gen("copy.py", COPY_SCRIPT)
+    subdir.gen("params.yaml", "foo: 1")
+
+    with subdir.chdir():
+        dvc.run(
+            cmd="python copy.py params.yaml metrics.yaml",
+            metrics_no_cache=["metrics.yaml"],
+            params=["foo"],
+            name="copy-file",
+            no_exec=True,
+        )
+        scm.add(
+            [subdir / "dvc.yaml", subdir / "copy.py", subdir / "params.yaml"]
+        )
+        scm.commit("init")
+
+        results = dvc.experiments.run(PIPELINE_FILE, params=["foo=2"])
+        assert results
+
+    exp = first(results)
+    ref_info = first(exp_refs_by_rev(scm, exp))
+
+    tree = scm.get_tree(exp)
+    for fname in ["metrics.yaml", "dvc.lock"]:
+        assert tree.exists(subdir / fname)
+    with tree.open(subdir / "metrics.yaml") as fobj:
+        assert fobj.read().strip() == "foo: 2"
+
+    assert dvc.experiments.get_exact_name(exp) == ref_info.name
+    assert scm.resolve_rev(ref_info.name) == exp
+
+
+def test_subrepo(tmp_dir, scm):
+    from tests.unit.tree.test_repo import make_subrepo
+
+    subrepo = tmp_dir / "dir" / "repo"
+    make_subrepo(subrepo, scm)
+
+    subrepo.gen("copy.py", COPY_SCRIPT)
+    subrepo.gen("params.yaml", "foo: 1")
+
+    with subrepo.chdir():
+        subrepo.dvc.run(
+            cmd="python copy.py params.yaml metrics.yaml",
+            metrics_no_cache=["metrics.yaml"],
+            params=["foo"],
+            name="copy-file",
+            no_exec=True,
+        )
+        scm.add(
+            [
+                subrepo / "dvc.yaml",
+                subrepo / "copy.py",
+                subrepo / "params.yaml",
+            ]
+        )
+        scm.commit("init")
+
+        results = subrepo.dvc.experiments.run(PIPELINE_FILE, params=["foo=2"])
+        assert results
+
+    exp = first(results)
+    ref_info = first(exp_refs_by_rev(scm, exp))
+
+    tree = scm.get_tree(exp)
+    for fname in ["metrics.yaml", "dvc.lock"]:
+        assert tree.exists(subrepo / fname)
+    with tree.open(subrepo / "metrics.yaml") as fobj:
+        assert fobj.read().strip() == "foo: 2"
+
+    assert subrepo.dvc.experiments.get_exact_name(exp) == ref_info.name
+    assert scm.resolve_rev(ref_info.name) == exp

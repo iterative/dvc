@@ -196,8 +196,9 @@ class BaseExecutor:
         dvc_dir: str,
         queue: "Queue",
         rev: str,
-        cwd: Optional[str] = None,
+        rel_cwd: Optional[str] = None,
         name: Optional[str] = None,
+        log_level: Optional[int] = None,
     ) -> Tuple[Optional[str], bool]:
         """Run dvc repro and return the result.
 
@@ -211,6 +212,7 @@ class BaseExecutor:
         unchanged = []
 
         queue.put((rev, os.getpid()))
+        cls._set_log_level(log_level)
 
         def filter_pipeline(stages):
             unchanged.extend(
@@ -223,9 +225,11 @@ class BaseExecutor:
         try:
             dvc = Repo(dvc_dir)
             old_cwd = os.getcwd()
-            new_cwd = cwd if cwd else dvc.root_dir
-            os.chdir(new_cwd)
-            logger.debug("Running repro in '%s'", cwd)
+            if rel_cwd:
+                os.chdir(os.path.join(dvc.root_dir, rel_cwd))
+            else:
+                os.chdir(dvc.root_dir)
+            logger.debug("Running repro in '%s'", os.getcwd())
 
             args_path = os.path.join(
                 dvc.tmp_dir, BaseExecutor.PACKED_ARGS_FILE
@@ -320,6 +324,18 @@ class BaseExecutor:
         scm.set_ref(branch, new_rev, old_ref=old_ref)
         scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
         return new_rev
+
+    @staticmethod
+    def _set_log_level(level):
+        from dvc.logger import disable_other_loggers
+
+        # When executor.reproduce is run in a multiprocessing child process,
+        # dvc.main will not be called for that child process so we need to
+        # setup logging ourselves
+        dvc_logger = logging.getLogger("dvc")
+        disable_other_loggers()
+        if level is not None:
+            dvc_logger.setLevel(level)
 
 
 class LocalExecutor(BaseExecutor):
