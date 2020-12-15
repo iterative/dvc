@@ -136,6 +136,9 @@ def build_outs_graph(graph, outs_trie):
     G.add_nodes_from(outs_trie.values())
     for stage in graph.nodes():
         for dep in stage.deps:
+            if dep.path_info is None:
+                # RepoDependency don't have a path_info
+                continue
             dep_key = dep.path_info.parts
             overlapping = [n.value for n in outs_trie.prefixes(dep_key)]
             if outs_trie.has_subtrie(dep_key):
