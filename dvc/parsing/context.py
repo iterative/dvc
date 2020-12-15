@@ -3,13 +3,12 @@ import os
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
-from contextlib import contextmanager, nullcontext
+from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from typing import Any, List, Optional, Union
 
-from funcy import identity, lfilter
-from funcy.colls import select
+from funcy import identity, lfilter, nullcontext, select
 
 from dvc.exceptions import DvcException
 from dvc.parsing.interpolate import (
