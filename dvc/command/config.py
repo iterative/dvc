@@ -142,7 +142,7 @@ def add_parser(subparsers, parent_parser):
         "name",
         nargs="?",
         type=_name_type,
-        help="Option name (remote.name.option or section.option).",
+        help="Option name (section.option or remote.name.option).",
     )
     config_parser.add_argument("value", nargs="?", help="Option value.")
     config_parser.add_argument(
