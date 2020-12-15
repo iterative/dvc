@@ -33,7 +33,15 @@ class ContextError(DvcException):
 
 
 class ReservedKeyError(ContextError):
-    pass
+    def __init__(self, keys, path=None):
+        self.keys = keys
+        self.path = path
+
+        n = "key" + ("s" if len(keys) > 1 else "")
+        msg = f"attempted to modify reserved {n} {join(keys)}"
+        if path:
+            msg += f" in '{path}'"
+        super().__init__(msg)
 
 
 class MergeError(ContextError):
@@ -365,9 +373,7 @@ class Context(CtxDict):
     def merge_update(self, other: "Context", overwrite=False):
         matches = select(lambda key: key in other, self._reserved_keys.keys())
         if matches:
-            msg = f"Cannot modify reserved keyword {join(matches)}"
-            raise ReservedKeyError(msg)
-
+            raise ReservedKeyError(matches)
         return super().merge_update(other, overwrite=overwrite)
 
     def merge_from(
@@ -384,7 +390,11 @@ class Context(CtxDict):
             self.check_loaded(abspath, item, select_keys)
 
         ctx = Context.load_from(tree, path_info, select_keys)
-        self.merge_update(ctx, overwrite=overwrite)
+
+        try:
+            self.merge_update(ctx, overwrite=overwrite)
+        except ReservedKeyError as exc:
+            raise ReservedKeyError(exc.keys, item) from exc
 
         cp = ctx.imports[abspath]
         if abspath not in self.imports:

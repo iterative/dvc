@@ -294,10 +294,17 @@ def test_item_key_in_generated_stage_vars(tmp_dir, dvc, redefine, from_file):
 
     with pytest.raises(ResolveError) as exc_info:
         definition.resolve_all()
-    assert str(exc_info.value) == (
+
+    message = str(exc_info.value)
+    assert (
         "failed to parse stage 'build@model1' in 'dvc.yaml': "
-        f"Cannot modify reserved keyword {join(redefine.keys())}"
-    )
+        "attempted to modify reserved"
+    ) in message
+
+    key_or_keys = "keys" if len(redefine) > 1 else "key"
+    assert f"{key_or_keys} {join(redefine)}" in message
+    if from_file:
+        assert "in 'test_params.yaml'" in message
     assert context == {"foo": "bar"}
 
 
