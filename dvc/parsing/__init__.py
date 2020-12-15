@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, Dict, Union
+from typing import TYPE_CHECKING, Any, Dict, NamedTuple, Union
 
 from funcy import cached_property, collecting, first, isa, join, reraise
 
@@ -295,6 +295,11 @@ class EntryDefinition:
             )
 
 
+class IterationPair(NamedTuple):
+    key: str = "key"
+    value: str = "item"
+
+
 class ForeachDefinition:
     def __init__(
         self,
@@ -313,6 +318,7 @@ class ForeachDefinition:
         self.foreach_data = definition[FOREACH_KWD]
         self._do_definition = definition[DO_KWD]
 
+        self.pair = IterationPair()
         self.where = where
 
     @cached_property
@@ -363,11 +369,10 @@ class ForeachDefinition:
                 self.name,
             )
 
-    @staticmethod
-    def _inserted_keys(iterable):
-        keys = ["item"]
+    def _inserted_keys(self, iterable):
+        keys = [self.pair.value]
         if isinstance(iterable, Mapping):
-            keys.append("key")
+            keys.append(self.pair.key)
         return keys
 
     @cached_property
@@ -410,9 +415,10 @@ class ForeachDefinition:
         # not the normalized ones to figure out whether to make item/key
         # available
         inserted = self._inserted_keys(self.resolved_iterable)
-        temp_dict = {"item": value}
-        if "key" in inserted:
-            temp_dict["key"] = key
+        temp_dict = {self.pair.value: value}
+        key_str = self.pair.key
+        if key_str in inserted:
+            temp_dict[key_str] = key
 
         with self.context.set_temporarily(temp_dict):
             # optimization: item and key can be removed on __exit__() as they
