@@ -6,10 +6,13 @@ class IterStream(io.RawIOBase):
 
     def __init__(self, iterator):  # pylint: disable=super-init-not-called
         self.iterator = iterator
-        self.leftover = None
+        self.leftover = b""
 
     def readable(self):
         return True
+
+    def writable(self) -> bool:
+        return False
 
     # Python 3 requires only .readinto() method, it still uses other ones
     # under some circumstances and falls back if those are absent. Since
@@ -38,8 +41,16 @@ class IterStream(io.RawIOBase):
 
         # Return an arbitrary number or bytes
         if n <= 0:
-            self.leftover = None
+            self.leftover = b""
             return chunk
 
         output, self.leftover = chunk[:n], chunk[n:]
         return output
+
+    def peek(self, n):
+        while len(self.leftover) < n:
+            try:
+                self.leftover += next(self.iterator)
+            except StopIteration:
+                break
+        return self.leftover[:n]
