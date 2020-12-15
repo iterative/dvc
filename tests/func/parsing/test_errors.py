@@ -5,11 +5,11 @@ import logging
 import re
 
 import pytest
-from funcy import first
 
 from dvc.parsing import ResolveError
 from dvc.parsing.context import Context
 from dvc.parsing.interpolate import embrace
+from dvc.utils.humanize import join
 from dvc.utils.serialize import dump_yaml
 
 from . import make_entry_definition, make_foreach_def
@@ -268,7 +268,13 @@ def test_foreach_do_definition_item_does_not_exist(tmp_dir, dvc, key, loc):
 
 
 @pytest.mark.parametrize(
-    "redefine", [{"item": 5}, {"key": 5}, {"item": 5, "key": 10}],
+    "redefine",
+    [
+        {"item": 5},
+        {"key": 5},
+        {"item": 5, "key": 10},
+        {"item": {"epochs": 10}},
+    ],
 )
 @pytest.mark.parametrize("from_file", [True, False])
 def test_item_key_in_generated_stage_vars(tmp_dir, dvc, redefine, from_file):
@@ -288,10 +294,17 @@ def test_item_key_in_generated_stage_vars(tmp_dir, dvc, redefine, from_file):
 
     with pytest.raises(ResolveError) as exc_info:
         definition.resolve_all()
-    assert str(exc_info.value) == (
-        f"attempted to redefine '{first(redefine)}' in stage 'build@model1'"
-        " generated through 'foreach'"
-    )
+
+    message = str(exc_info.value)
+    assert (
+        "failed to parse stage 'build@model1' in 'dvc.yaml': "
+        "attempted to modify reserved"
+    ) in message
+
+    key_or_keys = "keys" if len(redefine) > 1 else "key"
+    assert f"{key_or_keys} {join(redefine)}" in message
+    if from_file:
+        assert "in 'test_params.yaml'" in message
     assert context == {"foo": "bar"}
 
 
