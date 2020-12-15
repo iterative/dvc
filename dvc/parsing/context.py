@@ -355,6 +355,12 @@ class Context(CtxDict):
         loader = LOADERS[ext]
 
         data = loader(path, tree=tree)
+        if not isinstance(data, Mapping):
+            typ = type(data).__name__
+            raise ContextError(
+                f"expected a dictionary, got '{typ}' in file '{file}'"
+            )
+
         select_keys = select_keys or []
         if select_keys:
             try:
