@@ -158,3 +158,19 @@ def test_load_relative_paths(dvc, field, remote_url):
     assert cfg["remote"]["test"][field] == os.path.join(
         dvc_dir, "..", "file.txt"
     )
+
+
+def test_config_remote(tmp_dir, dvc, caplog):
+    (tmp_dir / ".dvc" / "config").write_text(
+        "['remote \"myremote\"']\n"
+        "  url = s3://bucket/path\n"
+        "  region = myregion\n"
+    )
+
+    caplog.clear()
+    assert main(["config", "remote.myremote.url"]) == 0
+    assert "s3://bucket/path" in caplog.text
+
+    caplog.clear()
+    assert main(["config", "remote.myremote.region"]) == 0
+    assert "myregion" in caplog.text

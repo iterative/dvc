@@ -1,3 +1,4 @@
+import logging
 import os
 from abc import ABC, abstractmethod
 from collections import defaultdict
@@ -5,31 +6,28 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, List, Optional, Union
 
-from funcy import identity, rpartial
+from funcy import identity, lfilter
 
 from dvc.exceptions import DvcException
 from dvc.parsing.interpolate import (
-    ParseError,
     get_expression,
     get_matches,
     is_exact_string,
-    is_interpolated_string,
+    normalize_key,
+    recurse,
     str_interpolate,
 )
 from dvc.path_info import PathInfo
 from dvc.utils import relpath
 from dvc.utils.serialize import LOADERS
 
+logger = logging.getLogger(__name__)
 SeqOrMap = Union[Sequence, Mapping]
 
 
 class ContextError(DvcException):
-    pass
-
-
-class SetError(ContextError):
     pass
 
 
@@ -61,6 +59,10 @@ class KeyNotInContext(ContextError):
         super().__init__(f"Could not find '{key}'")
 
 
+class VarsAlreadyLoaded(ContextError):
+    pass
+
+
 def _merge(into, update, overwrite):
     for key, val in update.items():
         if isinstance(into.get(key), Mapping) and isinstance(val, Mapping):
@@ -70,6 +72,13 @@ def _merge(into, update, overwrite):
                 raise MergeError(key, val, into)
             into[key] = val
             assert isinstance(into[key], Node)
+
+
+def recurse_not_a_node(data: dict):
+    def func(item):
+        assert not isinstance(item, Node)
+
+    return recurse(func)(data)
 
 
 @dataclass
@@ -227,6 +236,12 @@ class CtxList(Container, MutableSequence):
     def value(self):
         return [node.value for node in self]
 
+    def __deepcopy__(self, _):
+        # optimization: we don't support overriding a list
+        new = CtxList([])
+        new.data = self.data[:]  # shortcircuting __setitem__
+        return new
+
 
 class CtxDict(Container, MutableMapping):
     def __init__(self, mapping: Mapping = None, meta: Meta = None, **kwargs):
@@ -252,6 +267,14 @@ class CtxDict(Container, MutableMapping):
     def value(self):
         return {key: node.value for key, node in self.items()}
 
+    def __deepcopy__(self, _):
+        new = CtxDict()
+        for k, v in self.items():
+            new.data[k] = (
+                deepcopy(v) if isinstance(v, Container) else v
+            )  # shortcircuting __setitem__
+        return new
+
 
 class Context(CtxDict):
     def __init__(self, *args, **kwargs):
@@ -260,13 +283,16 @@ class Context(CtxDict):
         """
         super().__init__(*args, **kwargs)
         self._track = False
-        self._tracked_data = defaultdict(set)
+        self._tracked_data = defaultdict(dict)
+        self.imports = {}
 
     @contextmanager
     def track(self):
         self._track = True
-        yield
+        yield self._tracked_data
+
         self._track = False
+        self._tracked_data = defaultdict(dict)
 
     def _track_data(self, node):
         if not self._track:
@@ -280,11 +306,7 @@ class Context(CtxDict):
                 continue
             params_file = self._tracked_data[source]
             keys = [keys] if isinstance(keys, str) else keys
-            params_file.update(keys)
-
-    @property
-    def tracked(self) -> Dict[str, set]:
-        return self._tracked_data
+            params_file.update({key: node.value for key in keys})
 
     def select(
         self, key: str, unwrap=False
@@ -300,13 +322,14 @@ class Context(CtxDict):
                     Defaults to False. Note that the default is different from
                     `resolve`.
         """
+        key = normalize_key(key)
         try:
             node = super().select(key)
         except ValueError as exc:
             raise KeyNotInContext(key) from exc
 
-        self._track_data(node)
         assert isinstance(node, Node)
+        self._track_data(node)
         return node.value if unwrap else node
 
     @classmethod
@@ -330,48 +353,99 @@ class Context(CtxDict):
                 ) from exc
 
         meta = Meta(source=file, local=False)
-        return cls(data, meta=meta)
+        ctx = cls(data, meta=meta)
+        ctx.imports[os.path.abspath(path)] = select_keys or None
+        return ctx
 
     def merge_from(
-        self, tree, path: PathInfo, overwrite=False, select_keys=None,
+        self, tree, item: str, wdir: PathInfo, overwrite=False,
     ):
-        self.merge_update(
-            Context.load_from(tree, path, select_keys), overwrite=overwrite
-        )
+        path, _, keys_str = item.partition(":")
+        select_keys = lfilter(bool, keys_str.split(","))
+        path_info = wdir / path
+
+        abspath = os.path.abspath(path_info)
+        if abspath in self.imports:
+            if not select_keys and self.imports[abspath] is None:
+                return  # allow specifying complete filepath multiple times
+            self.check_loaded(abspath, item, select_keys)
+
+        ctx = Context.load_from(tree, path_info, select_keys)
+        self.merge_update(ctx, overwrite=overwrite)
+
+        cp = ctx.imports[abspath]
+        if abspath not in self.imports:
+            self.imports[abspath] = cp
+        elif cp:
+            self.imports[abspath].extend(cp)
+
+    def check_loaded(self, path, item, keys):
+        if not keys and isinstance(self.imports[path], list):
+            raise VarsAlreadyLoaded(
+                f"cannot load '{item}' as it's partially loaded already"
+            )
+        elif keys and self.imports[path] is None:
+            raise VarsAlreadyLoaded(
+                f"cannot partially load '{item}' as it's already loaded."
+            )
+        elif keys and isinstance(self.imports[path], list):
+            if not set(keys).isdisjoint(set(self.imports[path])):
+                raise VarsAlreadyLoaded(
+                    f"cannot load '{item}' as it's partially loaded already"
+                )
+
+    def load_from_vars(
+        self,
+        tree,
+        vars_: List,
+        wdir: PathInfo,
+        stage_name: str = None,
+        default: str = None,
+    ):
+        if default:
+            to_import = wdir / default
+            if tree.exists(to_import):
+                self.merge_from(tree, default, wdir)
+            else:
+                msg = "%s does not exist, it won't be used in parametrization"
+                logger.trace(msg, to_import)  # type: ignore[attr-defined]
+
+        stage_name = stage_name or ""
+        for index, item in enumerate(vars_):
+            assert isinstance(item, (str, dict))
+            if isinstance(item, str):
+                self.merge_from(tree, item, wdir)
+            else:
+                joiner = "." if stage_name else ""
+                meta = Meta(source=f"{stage_name}{joiner}vars[{index}]")
+                self.merge_update(Context(item, meta=meta))
+
+    def __deepcopy__(self, _):
+        new = Context(super().__deepcopy__(_))
+        new.meta = deepcopy(self.meta)
+        new.imports = deepcopy(self.imports)
+        return new
 
     @classmethod
     def clone(cls, ctx: "Context") -> "Context":
         """Clones given context."""
-        return cls(deepcopy(ctx.data))
+        return deepcopy(ctx)
 
-    def set(self, key, value, source=None):
-        """
-        Sets a value, either non-interpolated values to a key,
-        or an interpolated string after resolving it.
+    @contextmanager
+    def set_temporarily(self, to_set):
+        non_existing = frozenset(to_set.keys() - self.keys())
+        prev = {key: self[key] for key in to_set if key not in non_existing}
+        to_set = CtxDict(to_set)
+        self.update(to_set)
 
-        >>> c = Context({"foo": "foo", "bar": [1, 2], "lorem": {"a": "z"}})
-        >>> c.set("foobar", "${bar}")
-        >>> c
-        {'foo': 'foo', 'bar': [1, 2], 'lorem': {'a': 'z'}, 'foobar': [1, 2]}
-        """
         try:
-            self._set(key, value, source)
-        except (ParseError, ValueError, ContextError) as exc:
-            sp = "\n" if isinstance(exc, ParseError) else " "
-            raise SetError(f"Failed to set '{source}':{sp}{str(exc)}") from exc
+            yield
+        finally:
+            self.update(prev)
+            for key in non_existing:
+                self.data.pop(key, None)
 
-    def _set(self, key, value, source):
-        if key in self:
-            raise ValueError(f"Cannot set '{key}', key already exists")
-        if isinstance(value, str):
-            self._check_joined_with_interpolation(key, value)
-            value = self.resolve_str(value, unwrap=False)
-        elif isinstance(value, (Sequence, Mapping)):
-            self._check_not_nested_collection(key, value)
-            self._check_interpolation_collection(key, value)
-        self[key] = self._convert_with_meta(value, Meta(source=source))
-
-    def resolve(self, src, unwrap=True):
+    def resolve(self, src, unwrap=True, skip_interpolation_checks=False):
         """Recursively resolves interpolation and returns resolved data.
 
         Args:
@@ -383,18 +457,12 @@ class Context(CtxDict):
         >>> c.resolve({"lst": [1, 2, "${three}"]})
         {'lst': [1, 2, 3]}
         """
-        Seq = (list, tuple, set)
+        func = recurse(self.resolve_str)
+        return func(src, unwrap, skip_interpolation_checks)
 
-        resolve = rpartial(self.resolve, unwrap)
-        if isinstance(src, Mapping):
-            return dict(map(resolve, kv) for kv in src.items())
-        elif isinstance(src, Seq):
-            return type(src)(map(resolve, src))
-        elif isinstance(src, str):
-            return self.resolve_str(src, unwrap=unwrap)
-        return src
-
-    def resolve_str(self, src: str, unwrap=True):
+    def resolve_str(
+        self, src: str, unwrap=True, skip_interpolation_checks=False
+    ):
         """Resolves interpolated string to it's original value,
         or in case of multiple interpolations, a combined string.
 
@@ -402,47 +470,20 @@ class Context(CtxDict):
         >>> c.resolve_str("${enabled}")
         True
         >>> c.resolve_str("enabled? ${enabled}")
-        'enabled? True'
+        'enabled? true'
         """
         matches = get_matches(src)
         if is_exact_string(src, matches):
             # replace "${enabled}", if `enabled` is a boolean, with it's actual
             # value rather than it's string counterparts.
-            expr = get_expression(matches[0])
+            expr = get_expression(
+                matches[0], skip_checks=skip_interpolation_checks
+            )
             return self.select(expr, unwrap=unwrap)
         # but not "${num} days"
-        return str_interpolate(src, matches, self)
-
-    @staticmethod
-    def _check_not_nested_collection(key: str, value: SeqOrMap):
-        values = value.values() if isinstance(value, Mapping) else value
-        has_nested = any(
-            not isinstance(item, str) and isinstance(item, (Mapping, Sequence))
-            for item in values
+        return str_interpolate(
+            src, matches, self, skip_checks=skip_interpolation_checks
         )
-        if has_nested:
-            raise ValueError(f"Cannot set '{key}', has nested dict/list")
-
-    @staticmethod
-    def _check_interpolation_collection(key: str, value: SeqOrMap):
-        values = value.values() if isinstance(value, Mapping) else value
-        interpolated = any(is_interpolated_string(item) for item in values)
-        if interpolated:
-            raise ValueError(
-                f"Cannot set '{key}', "
-                "having interpolation inside "
-                f"'{type(value).__name__}' is not supported."
-            )
-
-    @staticmethod
-    def _check_joined_with_interpolation(key: str, value: str):
-        matches = get_matches(value)
-        if matches and not is_exact_string(value, matches):
-            raise ValueError(
-                f"Cannot set '{key}', "
-                "joining string with interpolated string "
-                "is not supported"
-            )
 
 
 if __name__ == "__main__":
