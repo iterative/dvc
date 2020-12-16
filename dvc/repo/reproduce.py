@@ -54,6 +54,7 @@ def _dump_stage(stage):
     dvcfile.dump(stage, update_pipeline=False)
 
 
+<<<<<<< HEAD
 def _get_active_graph(G):
     import networkx as nx
 
@@ -74,6 +75,13 @@ def _get_active_graph(G):
                     active.remove_node(node)
 
     return active
+=======
+def _track_stage(stage):
+    for out in stage.outs:
+        if not out.use_scm_ignore and out.is_in_repo:
+            stage.repo.scm.track_file(os.fspath(out.path_info))
+    stage.repo.scm.track_changed_files()
+>>>>>>> 64dfaffd7... [WIP] repro: simplify the logic for frozen stages (#5114)
 
 
 @locked
@@ -92,7 +100,7 @@ def reproduce(
     if isinstance(targets, str):
         targets = [targets]
 
-    if not all_pipelines and targets is None:
+    if not all_pipelines and not targets:
         from dvc.dvcfile import PIPELINE_FILE
 
         targets = [PIPELINE_FILE]
@@ -101,22 +109,20 @@ def reproduce(
     if not interactive:
         kwargs["interactive"] = self.config["core"].get("interactive", False)
 
-    active_graph = _get_active_graph(self.graph)
-    active_pipelines = get_pipelines(active_graph)
-
     stages = set()
     if pipeline or all_pipelines:
+        pipelines = get_pipelines(self.graph)
         if all_pipelines:
-            pipelines = active_pipelines
+            used_pipelines = pipelines
         else:
-            pipelines = []
+            used_pipelines = []
             for target in targets:
                 stage = self.stage.get_target(target)
-                pipelines.append(get_pipeline(active_pipelines, stage))
+                used_pipelines.append(get_pipeline(pipelines, stage))
 
-        for pipeline in pipelines:
-            for stage in pipeline:
-                if pipeline.in_degree(stage) == 0:
+        for pline in used_pipelines:
+            for stage in pline:
+                if pline.in_degree(stage) == 0:
                     stages.add(stage)
     else:
         for target in targets:
@@ -124,13 +130,12 @@ def reproduce(
                 self.stage.collect(
                     target,
                     recursive=recursive,
-                    graph=active_graph,
                     accept_group=accept_group,
                     glob=glob,
                 )
             )
 
-    return _reproduce_stages(active_graph, list(stages), **kwargs)
+    return _reproduce_stages(self.graph, list(stages), **kwargs)
 
 
 def _reproduce_stages(
@@ -171,7 +176,7 @@ def _reproduce_stages(
 
     The derived evaluation of _downstream_ B would be: [B, D, E]
     """
-    pipeline = _get_pipeline(G, stages, downstream, single_item)
+    steps = _get_steps(G, stages, downstream, single_item)
 
     force_downstream = kwargs.pop("force_downstream", False)
     result = []
@@ -179,7 +184,7 @@ def _reproduce_stages(
     # `ret` is used to add a cosmetic newline.
     ret = []
     checkpoint_func = kwargs.pop("checkpoint_func", None)
-    for stage in pipeline:
+    for stage in steps:
         if ret:
             logger.info("")
 
@@ -213,8 +218,16 @@ def _reproduce_stages(
     return result
 
 
-def _get_pipeline(G, stages, downstream, single_item):
+def _get_steps(G, stages, downstream, single_item):
     import networkx as nx
+
+    active = G.copy()
+    if not single_item:
+        # NOTE: frozen stages don't matter for single_item
+        for stage in G:
+            if stage.frozen:
+                # NOTE: disconnect frozen stage from its dependencies
+                active.remove_edges_from(G.out_edges(stage))
 
     all_pipelines = []
     for stage in stages:
@@ -227,20 +240,21 @@ def _get_pipeline(G, stages, downstream, single_item):
             # itself, and then reverse it, instead of using
             # graph.reverse() directly because it calls `deepcopy`
             # underneath -- unless copy=False is specified.
-            nodes = nx.dfs_postorder_nodes(G.copy().reverse(copy=False), stage)
+            nodes = nx.dfs_postorder_nodes(active.reverse(copy=False), stage)
             all_pipelines += reversed(list(nodes))
         else:
-            all_pipelines += nx.dfs_postorder_nodes(G, stage)
+            all_pipelines += nx.dfs_postorder_nodes(active, stage)
 
-    pipeline = []
+    steps = []
     for stage in all_pipelines:
-        if stage not in pipeline:
+        if stage not in steps:
+            # NOTE: order of steps still matters for single_item
             if single_item and stage not in stages:
                 continue
 
-            pipeline.append(stage)
+            steps.append(stage)
 
-    return pipeline
+    return steps
 
 
 def _repro_callback(experiments_callback, unchanged, stages):
