@@ -4,7 +4,7 @@ from copy import copy
 from typing import Type
 from urllib.parse import urlparse
 
-from funcy import project
+from funcy import cached_property, project
 from voluptuous import Any
 
 import dvc.prompt as prompt
@@ -601,7 +601,7 @@ class BaseOutput:
             ancestor_info, self.hash_info, other.hash_info
         )
 
-    @property
+    @cached_property
     def environment(self):
         if self.dvclive:
             from dvc.schema import DVCLIVE_PROPS
@@ -612,7 +612,7 @@ class BaseOutput:
                 config = project(self.dvclive, DVCLIVE_PROPS)
 
                 env[DVCLIVE_SUMMARY] = str(
-                    config.get(BaseOutput.PARAM_DVCLIVE_SUMMARY, True)
-                ).lower()
+                    int(config.get(BaseOutput.PARAM_DVCLIVE_SUMMARY, True))
+                )
             return env
         return {}

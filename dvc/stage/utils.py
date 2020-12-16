@@ -60,7 +60,10 @@ def fill_stage_outputs(stage, **kwargs):
 
     dvclive_l = kwargs.get("dvclive", [])
     if dvclive_l:
-        assert len(dvclive_l) == 1
+        if len(dvclive_l) != 1:
+            from dvc.exceptions import DvcException
+
+            raise DvcException("Only one dvclive output allowed!")
 
         from dvc.output import BaseOutput
 
@@ -79,7 +82,7 @@ def fill_stage_outputs(stage, **kwargs):
         stage.outs += output.loads_from(
             stage,
             kwargs.get(key, []),
-            use_cache=not ("no_cache" in key or "dvclive" in key),
+            use_cache="no_cache" not in key,
             persist="persist" in key,
             metric="metrics" in key,
             plot="plots" in key,

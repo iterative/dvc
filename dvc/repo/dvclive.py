@@ -1,7 +1,9 @@
+import contextlib
 import logging
 import os
 from typing import List
 
+from dvc.exceptions import NoMetricsError
 from dvc.output import BaseOutput
 from dvc.repo import Repo
 from dvc.visualization import embed, metrics_embedding, plots_embeddings
@@ -32,7 +34,7 @@ class DvcLive:
         parts = []
 
         metrics_path = path + ".json"
-        if os.path.exists(metrics_path):
+        with contextlib.suppress(NoMetricsError):
             metrics = self.repo.metrics.show(targets=[metrics_path])
             metrics_html = metrics_embedding(metrics)
             parts.extend([metrics_html, "<br>"])

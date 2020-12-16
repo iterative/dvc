@@ -35,7 +35,7 @@ def test_export_config_tmp(tmp_dir, dvc, mocker, summary):
     assert kwargs["env"]["DVCLIVE_PATH"] == "logs"
 
     assert "DVCLIVE_SUMMARY" in kwargs["env"]
-    assert kwargs["env"]["DVCLIVE_SUMMARY"] == str(summary).lower()
+    assert kwargs["env"]["DVCLIVE_SUMMARY"] == str(int(summary))
 
 
 @pytest.mark.skip(reason="dvclive does not exist yet")
@@ -57,7 +57,7 @@ def test_export_config(tmp_dir, dvc, mocker, summary):
     assert kwargs["env"]["DVCLIVE_PATH"] == "logs"
 
     assert "DVCLIVE_SUMMARY" in kwargs["env"]
-    assert kwargs["env"]["DVCLIVE_SUMMARY"] == str(summary).lower()
+    assert kwargs["env"]["DVCLIVE_SUMMARY"] == str(int(summary))
 
 
 @pytest.mark.skip(reason="dvclive does not exist yet")
