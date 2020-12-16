@@ -22,7 +22,6 @@ class CmdLive(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    # LOGS_HELP = "Generating logs summary for dvclive."
 
     logs_parser = subparsers.add_parser(
         "live",
