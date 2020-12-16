@@ -3,7 +3,7 @@ import os
 import typing
 from functools import partial
 
-from dvc.exceptions import InvalidArgumentError, ReproductionError
+from dvc.exceptions import ReproductionError
 from dvc.repo.scm_context import scm_context
 from dvc.stage.run import CheckpointKilledError
 
@@ -92,7 +92,7 @@ def _get_active_graph(G):
 @scm_context
 def reproduce(
     self: "Repo",
-    target=None,
+    targets=None,
     recursive=False,
     pipeline=False,
     all_pipelines=False,
@@ -100,11 +100,14 @@ def reproduce(
 ):
     glob = kwargs.pop("glob", False)
     accept_group = not glob
-    assert target is None or isinstance(target, str)
-    if not target and not all_pipelines:
-        raise InvalidArgumentError(
-            "Neither `target` nor `--all-pipelines` are specified."
-        )
+
+    if isinstance(targets, str):
+        targets = [targets]
+
+    if not all_pipelines and targets is None:
+        from dvc.dvcfile import PIPELINE_FILE
+
+        targets = [PIPELINE_FILE]
 
     interactive = kwargs.get("interactive", False)
     if not interactive:
@@ -113,28 +116,33 @@ def reproduce(
     active_graph = _get_active_graph(self.graph)
     active_pipelines = get_pipelines(active_graph)
 
+    stages = set()
     if pipeline or all_pipelines:
         if all_pipelines:
             pipelines = active_pipelines
         else:
-            stage = self.stage.get_target(target)
-            pipelines = [get_pipeline(active_pipelines, stage)]
+            pipelines = []
+            for target in targets:
+                stage = self.stage.get_target(target)
+                pipelines.append(get_pipeline(active_pipelines, stage))
 
-        targets = []
         for pipeline in pipelines:
             for stage in pipeline:
                 if pipeline.in_degree(stage) == 0:
-                    targets.append(stage)
+                    stages.add(stage)
     else:
-        targets = self.stage.collect(
-            target,
-            recursive=recursive,
-            graph=active_graph,
-            accept_group=accept_group,
-            glob=glob,
-        )
+        for target in targets:
+            stages.update(
+                self.stage.collect(
+                    target,
+                    recursive=recursive,
+                    graph=active_graph,
+                    accept_group=accept_group,
+                    glob=glob,
+                )
+            )
 
-    return _reproduce_stages(active_graph, targets, **kwargs)
+    return _reproduce_stages(active_graph, list(stages), **kwargs)
 
 
 def _reproduce_stages(
@@ -220,30 +228,28 @@ def _reproduce_stages(
 def _get_pipeline(G, stages, downstream, single_item):
     import networkx as nx
 
-    if single_item:
-        all_pipelines = stages
-    else:
-        all_pipelines = []
-        for stage in stages:
-            if downstream:
-                # NOTE (py3 only):
-                # Python's `deepcopy` defaults to pickle/unpickle the object.
-                # Stages are complex objects (with references to `repo`,
-                # `outs`, and `deps`) that cause struggles when you try
-                # to serialize them. We need to create a copy of the graph
-                # itself, and then reverse it, instead of using
-                # graph.reverse() directly because it calls `deepcopy`
-                # underneath -- unless copy=False is specified.
-                nodes = nx.dfs_postorder_nodes(
-                    G.copy().reverse(copy=False), stage
-                )
-                all_pipelines += reversed(list(nodes))
-            else:
-                all_pipelines += nx.dfs_postorder_nodes(G, stage)
+    all_pipelines = []
+    for stage in stages:
+        if downstream:
+            # NOTE (py3 only):
+            # Python's `deepcopy` defaults to pickle/unpickle the object.
+            # Stages are complex objects (with references to `repo`,
+            # `outs`, and `deps`) that cause struggles when you try
+            # to serialize them. We need to create a copy of the graph
+            # itself, and then reverse it, instead of using
+            # graph.reverse() directly because it calls `deepcopy`
+            # underneath -- unless copy=False is specified.
+            nodes = nx.dfs_postorder_nodes(G.copy().reverse(copy=False), stage)
+            all_pipelines += reversed(list(nodes))
+        else:
+            all_pipelines += nx.dfs_postorder_nodes(G, stage)
 
     pipeline = []
     for stage in all_pipelines:
         if stage not in pipeline:
+            if single_item and stage not in stages:
+                continue
+
             pipeline.append(stage)
 
     return pipeline

@@ -528,7 +528,7 @@ def test_repro_list_of_commands_in_order(tmp_dir, dvc):
         """
         )
     )
-    dvc.reproduce(target="multi")
+    dvc.reproduce(targets=["multi"])
     assert (tmp_dir / "foo").read_text() == "foo\n"
     assert (tmp_dir / "bar").read_text() == "bar\n"
 
@@ -547,6 +547,6 @@ def test_repro_list_of_commands_raise_and_stops_after_failure(tmp_dir, dvc):
         )
     )
     with pytest.raises(ReproductionError):
-        dvc.reproduce(target="multi")
+        dvc.reproduce(targets=["multi"])
     assert (tmp_dir / "foo").read_text() == "foo\n"
     assert not (tmp_dir / "bar").exists()
