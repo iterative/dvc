@@ -277,7 +277,8 @@ class BaseOutput:
             self.verify_metric()
 
         if not self.use_cache:
-            self.hash_info = self.get_hash()
+            if self.repo:
+                self.hash_info = self.get_hash()
             if not self.IS_DEPENDENCY:
                 logger.debug(
                     "Output '%s' doesn't use cache. Skipping saving.", self

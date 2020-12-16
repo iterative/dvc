@@ -18,4 +18,3 @@ def get_url(url, out=None):
     if not dep.exists:
         raise dep.DoesNotExistError(dep)
     dep.download(out)
-    out.save()
