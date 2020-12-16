@@ -54,36 +54,6 @@ def _dump_stage(stage):
     dvcfile.dump(stage, update_pipeline=False)
 
 
-<<<<<<< HEAD
-def _get_active_graph(G):
-    import networkx as nx
-
-    active = G.copy()
-    for stage in G:
-        if not stage.frozen:
-            continue
-        active.remove_edges_from(G.out_edges(stage))
-        for edge in G.out_edges(stage):
-            _, to_stage = edge
-            for node in nx.dfs_preorder_nodes(G, to_stage):
-                # NOTE: `in_degree` will return InDegreeView({}) if stage
-                # no longer exists in the `active` DAG.
-                if not active.in_degree(node):
-                    # NOTE: if some edge no longer exists `remove_edges_from`
-                    # will ignore it without error.
-                    active.remove_edges_from(G.out_edges(node))
-                    active.remove_node(node)
-
-    return active
-=======
-def _track_stage(stage):
-    for out in stage.outs:
-        if not out.use_scm_ignore and out.is_in_repo:
-            stage.repo.scm.track_file(os.fspath(out.path_info))
-    stage.repo.scm.track_changed_files()
->>>>>>> 64dfaffd7... [WIP] repro: simplify the logic for frozen stages (#5114)
-
-
 @locked
 @scm_context
 def reproduce(
