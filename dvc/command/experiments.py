@@ -451,32 +451,18 @@ class CmdExperimentsRun(CmdRepro):
         saved_dir = os.path.realpath(os.curdir)
         os.chdir(self.args.cwd)
 
-        # Dirty hack so the for loop below can at least enter once
-        if self.args.all_pipelines:
-            self.args.targets = [None]
-        elif not self.args.targets:
-            self.args.targets = self.default_targets
-
-        ret = 0
-        for target in self.args.targets:
-            try:
-                self.repo.experiments.run(
-                    target,
-                    name=self.args.name,
-                    queue=self.args.queue,
-                    run_all=self.args.run_all,
-                    jobs=self.args.jobs,
-                    params=self.args.params,
-                    checkpoint_resume=self.args.checkpoint_resume,
-                    **self._repro_kwargs,
-                )
-            except DvcException:
-                logger.exception("")
-                ret = 1
-                break
+        self.repo.experiments.run(
+            name=self.args.name,
+            queue=self.args.queue,
+            run_all=self.args.run_all,
+            jobs=self.args.jobs,
+            params=self.args.params,
+            checkpoint_resume=self.args.checkpoint_resume,
+            **self._repro_kwargs,
+        )
 
         os.chdir(saved_dir)
-        return ret
+        return 0
 
 
 class CmdExperimentsGC(CmdRepro):

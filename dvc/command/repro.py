@@ -7,7 +7,6 @@ from dvc.command.base import CmdBase, append_doc_link
 from dvc.command.metrics import _show_metrics
 from dvc.command.status import CmdDataStatus
 from dvc.dvcfile import PIPELINE_FILE
-from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
 
@@ -17,40 +16,25 @@ class CmdRepro(CmdBase):
         saved_dir = os.path.realpath(os.curdir)
         os.chdir(self.args.cwd)
 
-        # Dirty hack so the for loop below can at least enter once
-        if self.args.all_pipelines:
-            self.args.targets = [None]
-        elif not self.args.targets:
-            self.args.targets = self.default_targets
+        stages = self.repo.reproduce(**self._repro_kwargs)
+        if len(stages) == 0:
+            logger.info(CmdDataStatus.UP_TO_DATE_MSG)
+        else:
+            logger.info(
+                "Use `dvc push` to send your updates to " "remote storage."
+            )
 
-        ret = 0
-        for target in self.args.targets:
-            try:
-                stages = self.repo.reproduce(target, **self._repro_kwargs)
-
-                if len(stages) == 0:
-                    logger.info(CmdDataStatus.UP_TO_DATE_MSG)
-                else:
-                    logger.info(
-                        "Use `dvc push` to send your updates to "
-                        "remote storage."
-                    )
-
-                if self.args.metrics:
-                    metrics = self.repo.metrics.show()
-                    logger.info(_show_metrics(metrics))
-
-            except DvcException:
-                logger.exception("")
-                ret = 1
-                break
+        if self.args.metrics:
+            metrics = self.repo.metrics.show()
+            logger.info(_show_metrics(metrics))
 
         os.chdir(saved_dir)
-        return ret
+        return 0
 
     @property
     def _repro_kwargs(self):
         return {
+            "targets": self.args.targets,
             "single_item": self.args.single_item,
             "force": self.args.force,
             "dry": self.args.dry,
