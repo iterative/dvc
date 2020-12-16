@@ -394,7 +394,7 @@ def test_dirty_lockfile(tmp_dir, scm, dvc, exp_stage):
 
 
 def test_packed_args_exists(tmp_dir, scm, dvc, exp_stage, caplog):
-    from dvc.repo.experiments.executor import BaseExecutor
+    from dvc.repo.experiments.executor.base import BaseExecutor
 
     tmp_dir.scm_gen(
         tmp_dir / ".dvc" / "tmp" / BaseExecutor.PACKED_ARGS_FILE,

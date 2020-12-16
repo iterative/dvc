@@ -98,7 +98,7 @@ class Experiments:
 
     @cached_property
     def args_file(self):
-        from .executor import BaseExecutor
+        from .executor.base import BaseExecutor
 
         return os.path.join(self.repo.tmp_dir, BaseExecutor.PACKED_ARGS_FILE)
 
@@ -232,7 +232,7 @@ class Experiments:
     def _pack_args(self, *args, **kwargs):
         import pickle
 
-        from .executor import BaseExecutor
+        from .executor.base import BaseExecutor
 
         if os.path.exists(self.args_file) and self.scm.is_tracked(
             self.args_file
@@ -455,7 +455,7 @@ class Experiments:
         return result
 
     def _init_executors(self, to_run):
-        from .executor import LocalExecutor
+        from .executor.local import TempDirExecutor
 
         executors = {}
         for stash_rev, item in to_run.items():
@@ -469,11 +469,12 @@ class Experiments:
             #   EXEC_MERGE - the unmerged changes (from our stash)
             #       to be reproduced
             #   EXEC_BASELINE - the baseline commit for this experiment
-            executor = LocalExecutor(
+            executor = TempDirExecutor(
                 self.scm,
                 self.dvc_dir,
                 name=item.name,
                 branch=item.branch,
+                tmp_dir=os.path.join(self.repo.tmp_dir, "exp"),
                 cache_dir=self.repo.cache.local.cache_dir,
             )
             executors[stash_rev] = executor

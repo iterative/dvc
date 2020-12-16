@@ -7,7 +7,7 @@ from dvc.scm.base import RevError
 from dvc.utils.fs import remove
 
 from .base import BaselineMismatchError, InvalidExpRevError
-from .executor import BaseExecutor
+from .executor.base import BaseExecutor
 
 logger = logging.getLogger(__name__)
 

@@ -11,8 +11,19 @@ from .base import BaseExecutor
 logger = logging.getLogger(__name__)
 
 
-class LocalExecutor(BaseExecutor):
-    """Local machine experiment executor."""
+class BaseLocalExecutor(BaseExecutor):
+    """Base local machine executor."""
+
+    @property
+    def git_url(self) -> str:
+        root_dir = os.path.abspath(self.root_dir)
+        if os.name == "nt":
+            root_dir = root_dir.replace(os.sep, "/")
+        return f"file://{root_dir}"
+
+
+class TempDirExecutor(BaseLocalExecutor):
+    """Temp directory experiment executor."""
 
     def __init__(
         self,
@@ -27,7 +38,7 @@ class LocalExecutor(BaseExecutor):
         if cache_dir:
             self._config(cache_dir)
         logger.debug(
-            "Init local executor in dir '%s'", self._tmp_dir,
+            "Init temp dir executor in dir '%s'", self._tmp_dir,
         )
 
     def _config(self, cache_dir):
@@ -35,13 +46,6 @@ class LocalExecutor(BaseExecutor):
         logger.debug("Writing experiments local config '%s'", local_config)
         with open(local_config, "w") as fobj:
             fobj.write(f"[cache]\n    dir = {cache_dir}")
-
-    @property
-    def git_url(self) -> str:
-        root_dir = os.path.abspath(self.root_dir)
-        if os.name == "nt":
-            root_dir = root_dir.replace(os.sep, "/")
-        return f"file://{root_dir}"
 
     def cleanup(self):
         super().cleanup()
