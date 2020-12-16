@@ -445,6 +445,7 @@ class CmdExperimentsDiff(CmdBase):
 
 class CmdExperimentsRun(CmdRepro):
     def run(self):
+<<<<<<< HEAD
         if not self.repo.experiments:
             return 0
 
@@ -477,6 +478,19 @@ class CmdExperimentsRun(CmdRepro):
 
         os.chdir(saved_dir)
         return ret
+=======
+        self.repo.experiments.run(
+            name=self.args.name,
+            queue=self.args.queue,
+            run_all=self.args.run_all,
+            jobs=self.args.jobs,
+            params=self.args.params,
+            checkpoint_resume=self.args.checkpoint_resume,
+            **self._repro_kwargs,
+        )
+
+        return 0
+>>>>>>> aec8d6579... repro: accept multiple targets (#5111)
 
 
 class CmdExperimentsGC(CmdRepro):

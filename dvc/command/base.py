@@ -45,6 +45,7 @@ class CmdBase(ABC):
             updater = Updater(self.repo.tmp_dir, hardlink_lock=hardlink_lock)
             updater.check()
 
+<<<<<<< HEAD
     @property
     def default_targets(self):
         """Default targets for `dvc repro`."""
@@ -53,6 +54,8 @@ class CmdBase(ABC):
         logger.debug(f"assuming default target '{PIPELINE_FILE}'.")
         return [PIPELINE_FILE]
 
+=======
+>>>>>>> aec8d6579... repro: accept multiple targets (#5111)
     @abstractmethod
     def run(self):
         pass

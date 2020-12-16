@@ -37,13 +37,13 @@ def _parse_params(path_params: Iterable):
 @locked
 def run(
     repo,
-    target: Optional[str] = None,
+    targets: Optional[Iterable] = None,
     params: Optional[Iterable] = None,
     run_all: Optional[bool] = False,
     jobs: Optional[int] = 1,
     **kwargs,
 ) -> dict:
-    """Reproduce the specified target as an experiment.
+    """Reproduce the specified targets as an experiment.
 
     Accepts the same additional kwargs as Repo.reproduce.
 
@@ -59,10 +59,10 @@ def run(
         params = []
     try:
         return repo.experiments.reproduce_one(
-            target=target, params=params, **kwargs
+            targets=targets, params=params, **kwargs
         )
     except UnchangedExperimentError:
         # If experiment contains no changes, just run regular repro
         kwargs.pop("queue", None)
         kwargs.pop("checkpoint_resume", None)
-        return {None: repo.reproduce(target=target, **kwargs)}
+        return {None: repo.reproduce(targets=targets, **kwargs)}
