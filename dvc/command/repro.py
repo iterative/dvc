@@ -13,16 +13,9 @@ logger = logging.getLogger(__name__)
 
 class CmdRepro(CmdBase):
     def run(self):
-<<<<<<< HEAD
         saved_dir = os.path.realpath(os.curdir)
         os.chdir(self.args.cwd)
 
-        # Dirty hack so the for loop below can at least enter once
-        if self.args.all_pipelines:
-            self.args.targets = [None]
-        elif not self.args.targets:
-            self.args.targets = self.default_targets
-=======
         stages = self.repo.reproduce(**self._repro_kwargs)
         if len(stages) == 0:
             logger.info(CmdDataStatus.UP_TO_DATE_MSG)
@@ -30,35 +23,13 @@ class CmdRepro(CmdBase):
             logger.info(
                 "Use `dvc push` to send your updates to " "remote storage."
             )
->>>>>>> aec8d6579... repro: accept multiple targets (#5111)
 
         if self.args.metrics:
             metrics = self.repo.metrics.show()
             logger.info(_show_metrics(metrics))
 
-<<<<<<< HEAD
-                if len(stages) == 0:
-                    logger.info(CmdDataStatus.UP_TO_DATE_MSG)
-                else:
-                    logger.info(
-                        "Use `dvc push` to send your updates to "
-                        "remote storage."
-                    )
-
-                if self.args.metrics:
-                    metrics = self.repo.metrics.show()
-                    logger.info(_show_metrics(metrics))
-
-            except DvcException:
-                logger.exception("")
-                ret = 1
-                break
-
         os.chdir(saved_dir)
-        return ret
-=======
         return 0
->>>>>>> aec8d6579... repro: accept multiple targets (#5111)
 
     @property
     def _repro_kwargs(self):
