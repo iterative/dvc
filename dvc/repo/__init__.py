@@ -134,7 +134,6 @@ class Repo:
         from dvc.data_cloud import DataCloud
         from dvc.lock import LockNoop, make_lock
         from dvc.repo.dvclive import DvcLive
-        from dvc.repo.experiments import Experiments
         from dvc.repo.metrics import Metrics
         from dvc.repo.params import Params
         from dvc.repo.plots import Plots
