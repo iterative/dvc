@@ -19,6 +19,7 @@ from dvc.utils import relpath
 from dvc.utils.fs import makedirs
 
 from .base import (
+    EXEC_APPLY,
     EXEC_BASELINE,
     EXEC_BRANCH,
     EXEC_CHECKPOINT,
@@ -147,7 +148,7 @@ class Experiments:
         self,
         *args,
         params: Optional[dict] = None,
-        detach_rev: Optional[str] = None,
+        resume_rev: Optional[str] = None,
         baseline_rev: Optional[str] = None,
         branch: Optional[str] = None,
         name: Optional[str] = None,
@@ -159,6 +160,7 @@ class Experiments:
             params: Optional dictionary of parameter values to be used.
                 Values take priority over any parameters specified in the
                 user's workspace.
+            resume_rev: Optional checkpoint resume rev.
             baseline_rev: Optional baseline rev for this experiment, defaults
                 to the current SCM rev.
             branch: Optional experiment branch name. If specified, the
@@ -168,38 +170,52 @@ class Experiments:
                 the human-readable name in the experiment branch ref. Has no
                 effect of branch is specified.
         """
-        with self.scm.stash_workspace(
-            include_untracked=detach_rev or branch
-        ) as workspace:
-            # If we are not extending an existing branch, apply current
-            # workspace changes to be made in new branch
-            if not (branch or detach_rev) and workspace:
-                self.stash.apply(workspace)
-                self._prune_lockfiles()
+        with self.scm.detach_head() as orig_head:
+            stash_head = orig_head
+            if baseline_rev is None:
+                baseline_rev = orig_head
 
-            # checkout and detach at branch (or current HEAD)
-            if detach_rev:
-                head: Optional[str] = detach_rev
-            elif branch:
-                head = branch
-            else:
-                head = None
+            with self.scm.stash_workspace() as workspace:
+                try:
+                    if workspace:
+                        self.stash.apply(workspace)
 
-            try:
-                with self.scm.detach_head(head) as rev:
-                    if baseline_rev is None:
-                        baseline_rev = rev
+                    if resume_rev:
+                        # move HEAD to the resume rev so that the stashed diff
+                        # only contains changes relative to resume rev
+                        stash_head = resume_rev
+                        self.scm.set_ref(
+                            "HEAD",
+                            resume_rev,
+                            message=f"dvc: resume from HEAD {resume_rev[:7]}",
+                        )
+                        self.scm.reset()
+
+                    self._prune_lockfiles()
 
                     # update experiment params from command line
                     if params:
                         self._update_params(params)
+
+                    if resume_rev:
+                        if self.scm.is_dirty():
+                            logger.debug(
+                                "Resume new checkpoint branch with "
+                                "modifications"
+                            )
+                            branch = None
+                        else:
+                            logger.debug(
+                                "Resuming from tip of existing branch '%s'",
+                                branch,
+                            )
 
                     # save additional repro command line arguments
                     self._pack_args(*args, **kwargs)
 
                     # save experiment as a stash commit
                     msg = self._stash_msg(
-                        rev,
+                        stash_head,
                         baseline_rev=baseline_rev,
                         branch=branch,
                         name=name,
@@ -213,9 +229,13 @@ class Experiments:
                         stash_rev[:7],
                         baseline_rev[:7],
                     )
-            finally:
-                # Reset any changes before prior workspace is unstashed
-                self.scm.reset(hard=True)
+                finally:
+                    # Reset any of our changes before prior unstashing
+                    if resume_rev:
+                        self.scm.set_ref(
+                            "HEAD", orig_head, message="dvc: restore HEAD"
+                        )
+                    self.scm.reset(hard=True)
 
         return stash_rev
 
@@ -375,6 +395,7 @@ class Experiments:
             resume_rev = self._get_last_checkpoint()
         else:
             resume_rev = self.scm.resolve_rev(checkpoint_resume)
+
         allow_multiple = "params" in kwargs
         branch: Optional[str] = self.get_branch_by_rev(
             resume_rev, allow_multiple=allow_multiple
@@ -385,25 +406,34 @@ class Experiments:
                 f"'{checkpoint_resume}'"
             )
 
+        last_applied = self.scm.get_ref(EXEC_APPLY)
+        if resume_rev != last_applied:
+            if last_applied is None:
+                msg = "Current workspace does not contain an experiment. "
+            else:
+                msg = (
+                    f"Checkpoint '{checkpoint_resume[:7]}' does not match the "
+                    "most recently applied experiment in your workspace "
+                    f"('{last_applied[:7]}')."
+                )
+
+            raise DvcException(
+                f"{msg}\n"
+                "To resume this experiment run:\n\n"
+                f"\tdvc exp apply {checkpoint_resume[:7]}\n\n"
+                "And then retry this 'dvc exp res' command."
+            )
+
         baseline_rev = self._get_baseline(branch)
-        if kwargs.get("params", None):
-            logger.debug(
-                "Branching from checkpoint '%s' with modified params, "
-                "baseline '%s'",
-                checkpoint_resume,
-                baseline_rev[:7],
-            )
-            detach_rev = resume_rev
-            branch = None
-        else:
-            logger.debug(
-                "Continuing from tip of checkpoint '%s'", checkpoint_resume
-            )
-            detach_rev = None
+        logger.debug(
+            "Resume from checkpoint '%s' with baseline '%s'",
+            checkpoint_resume,
+            baseline_rev,
+        )
 
         return self._stash_exp(
             *args,
-            detach_rev=detach_rev,
+            resume_rev=resume_rev,
             baseline_rev=baseline_rev,
             branch=branch,
             **kwargs,
@@ -616,9 +646,7 @@ class Experiments:
         return results
 
     @unlocked_repo
-    def _workspace_repro(
-        self, resume_rev: Optional[str] = None
-    ) -> Mapping[str, str]:
+    def _workspace_repro(self) -> Mapping[str, str]:
         """Run the most recently stashed experiment in the workspace."""
         from .executor.base import BaseExecutor
 
@@ -630,8 +658,8 @@ class Experiments:
         # `reset --hard` here will not lose any data (pop without reset would
         # result in conflict between workspace params and stashed CLI params).
         self.scm.reset(hard=True)
-        rev = self.stash.pop()
-        with self.scm.detach_head(resume_rev):
+        with self.scm.detach_head(entry.rev):
+            rev = self.stash.pop()
             self.scm.set_ref(EXEC_BASELINE, entry.baseline_rev)
             if entry.branch:
                 self.scm.set_ref(EXEC_BRANCH, entry.branch, symbolic=True)
@@ -645,11 +673,16 @@ class Experiments:
                     rel_cwd=relpath(os.getcwd(), self.scm.root_dir),
                 )
 
+                if not exec_result.exp_hash or not exec_result.ref_info:
+                    raise DvcException(
+                        f"Failed to reproduce experiment '{rev[:7]}'"
+                    )
                 exp_rev = self.scm.get_ref(str(exec_result.ref_info))
+                self.scm.set_ref(EXEC_APPLY, exp_rev)
                 return {exp_rev: exec_result.exp_hash}
             except CheckpointKilledError:
                 # Checkpoint errors have already been logged
-                pass
+                return {}
             except DvcException:
                 raise
             except Exception as exc:

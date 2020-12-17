@@ -6,7 +6,7 @@ from dvc.repo.scm_context import scm_context
 from dvc.scm.base import RevError
 from dvc.utils.fs import remove
 
-from .base import BaselineMismatchError, InvalidExpRevError
+from .base import EXEC_APPLY, BaselineMismatchError, InvalidExpRevError
 from .executor.base import BaseExecutor
 
 logger = logging.getLogger(__name__)
@@ -28,12 +28,8 @@ def apply(repo, rev, *args, **kwargs):
         raise InvalidExpRevError(rev) from exc
 
     stash_rev = rev in exps.stash_revs
-    if stash_rev:
-        branch = rev
-    else:
-        branch = exps.get_branch_by_rev(rev)
-        if not branch:
-            raise InvalidExpRevError(rev)
+    if not stash_rev and not exps.get_branch_by_rev(rev):
+        raise InvalidExpRevError(rev)
 
     # Note that we don't use stash_workspace() here since we need finer control
     # over the merge behavior when we unstash everything
@@ -43,7 +39,7 @@ def apply(repo, rev, *args, **kwargs):
     else:
         workspace = None
 
-    repo.scm.gitpython.repo.git.merge(branch, squash=True, no_commit=True)
+    repo.scm.gitpython.repo.git.merge(rev, squash=True, no_commit=True)
 
     if workspace:
         try:
@@ -62,6 +58,7 @@ def apply(repo, rev, *args, **kwargs):
 
     dvc_checkout(repo, **kwargs)
 
+    repo.scm.set_ref(EXEC_APPLY, rev)
     logger.info(
         "Changes for experiment '%s' have been applied to your current "
         "workspace.",

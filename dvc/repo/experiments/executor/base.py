@@ -24,6 +24,7 @@ from dvc.repo.experiments.base import (
     EXEC_NAMESPACE,
     EXPS_NAMESPACE,
     EXPS_STASH,
+    CheckpointExistsError,
     ExperimentExistsError,
     ExpRefInfo,
     UnchangedExperimentError,
@@ -263,6 +264,7 @@ class BaseExecutor(ABC):
                 kwargs = {}
 
             repro_force = kwargs.get("force", False)
+            logger.debug("force = %s", str(repro_force))
 
             # NOTE: for checkpoint experiments we handle persist outs slightly
             # differently than normal:
@@ -289,16 +291,19 @@ class BaseExecutor(ABC):
             )
 
             exp_hash = cls.hash_exp(stages)
-            exp_rev = cls.commit(
-                dvc.scm, exp_hash, exp_name=name, force=repro_force
-            )
+            try:
+                cls.commit(
+                    dvc.scm,
+                    exp_hash,
+                    exp_name=name,
+                    force=repro_force,
+                    checkpoint=any(stage.is_checkpoint for stage in stages),
+                )
+            except UnchangedExperimentError:
+                pass
             ref = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
             if ref:
                 exp_ref = ExpRefInfo.from_ref(ref)
-            if dvc.scm.get_ref(EXEC_CHECKPOINT):
-                dvc.scm.set_ref(EXEC_CHECKPOINT, exp_rev)
-        except UnchangedExperimentError:
-            pass
         finally:
             if dvc:
                 dvc.scm.close()
@@ -321,8 +326,9 @@ class BaseExecutor(ABC):
     ):
         try:
             exp_hash = cls.hash_exp(list(stages) + list(unchanged))
-            exp_rev = cls.commit(scm, exp_hash, exp_name=name, force=force)
-            scm.set_ref(EXEC_CHECKPOINT, exp_rev)
+            exp_rev = cls.commit(
+                scm, exp_hash, exp_name=name, force=force, checkpoint=True
+            )
             logger.info("Checkpoint experiment iteration '%s'.", exp_rev[:7])
         except UnchangedExperimentError:
             pass
@@ -334,6 +340,7 @@ class BaseExecutor(ABC):
         exp_hash: str,
         exp_name: Optional[str] = None,
         force: bool = False,
+        checkpoint: bool = False,
     ):
         """Commit stages as an experiment and return the commit SHA."""
         rev = scm.get_rev()
@@ -352,6 +359,8 @@ class BaseExecutor(ABC):
             branch = str(ref_info)
             old_ref = None
             if not force and scm.get_ref(branch):
+                if checkpoint:
+                    raise CheckpointExistsError(ref_info.name)
                 raise ExperimentExistsError(ref_info.name)
             logger.debug("Commit to new experiment branch '%s'", branch)
 
@@ -360,6 +369,8 @@ class BaseExecutor(ABC):
         new_rev = scm.get_rev()
         scm.set_ref(branch, new_rev, old_ref=old_ref)
         scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
+        if checkpoint:
+            scm.set_ref(EXEC_CHECKPOINT, new_rev)
         return new_rev
 
     @staticmethod
