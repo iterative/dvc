@@ -380,9 +380,19 @@ class Git(Base):
         finally:
             prefix = self.LOCAL_BRANCH_PREFIX
             if orig_head.startswith(prefix):
-                orig_head = orig_head[len(prefix) :]
-            logger.debug("Restore HEAD to '%s'", orig_head)
-            self.checkout(orig_head)
+                symbolic = True
+                name = orig_head[len(prefix) :]
+            else:
+                symbolic = False
+                name = orig_head
+            self.set_ref(
+                "HEAD",
+                orig_head,
+                symbolic=symbolic,
+                message=f"dvc: Restore HEAD to '{name}'",
+            )
+            logger.debug("Restore HEAD to '%s'", name)
+            self.reset()
 
     @contextmanager
     def stash_workspace(self, **kwargs):

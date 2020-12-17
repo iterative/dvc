@@ -233,7 +233,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         message_b = message.encode("utf-8") if message else None
         if symbolic:
             return self.repo.refs.set_symbolic_ref(
-                name_b, new_ref_b, message=message
+                name_b, new_ref_b, message=message_b
             )
         if not self.repo.refs.set_if_equals(
             name_b, old_ref_b, new_ref_b, message=message_b
