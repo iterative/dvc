@@ -51,7 +51,7 @@ def _read_params(repo, configs, rev):
     return res
 
 
-def _add_vars(repo, params):
+def _collect_vars(repo, params):
     vars_params = defaultdict(dict)
     for stage in repo.stages:
         if isinstance(stage, PipelineStage) and stage.tracked_vars:
@@ -72,7 +72,7 @@ def show(repo, revs=None):
     for branch in repo.brancher(revs=revs):
         configs = _collect_configs(repo, branch)
         params = _read_params(repo, configs, branch)
-        vars_params = _add_vars(repo, params)
+        vars_params = _collect_vars(repo, params)
 
         # NOTE: only those that are not added as a ParamDependency are included
         # so we don't need to recursively merge them yet.
