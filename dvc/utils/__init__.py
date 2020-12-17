@@ -461,3 +461,17 @@ def parse_target(
 
 def is_exec(mode):
     return mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+
+def glob_targets(targets, glob=True, recursive=True):
+    if not glob:
+        return targets
+
+    from glob import iglob
+
+    expanded_targets = [
+        exp_target
+        for target in targets
+        for exp_target in iglob(target, recursive=recursive)
+    ]
+    return expanded_targets
