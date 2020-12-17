@@ -1,4 +1,5 @@
 import logging
+from collections import defaultdict
 from typing import TYPE_CHECKING, List
 
 from dvc.dependency.param import ParamsDependency
@@ -51,7 +52,7 @@ def _read_params(repo, configs, rev):
 
 
 def _add_vars(repo, params):
-    vars_params = {}
+    vars_params = defaultdict(dict)
     for stage in repo.stages:
         if isinstance(stage, PipelineStage) and stage.tracked_vars:
             for file, vars_ in stage.tracked_vars.items():
@@ -60,9 +61,7 @@ def _add_vars(repo, params):
                 if file in params:
                     continue
 
-                vars_params[file] = vars_params.get(file, {})
                 vars_params[file].update(vars_)
-
     return vars_params
 
 
