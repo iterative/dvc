@@ -54,9 +54,7 @@ class CmdConfig(CmdBaseNoRepo):
 
             conf = self.config.load_one(self.args.level)
             prefix = self._config_file_prefix(
-                self.args.show_origin,
-                self.config,
-                self.args.level
+                self.args.show_origin, self.config, self.args.level
             )
 
             logger.info("\n".join(self._format_config(conf, prefix)))
@@ -71,9 +69,7 @@ class CmdConfig(CmdBaseNoRepo):
         if self.args.value is None and not self.args.unset:
             conf = self.config.load_one(self.args.level)
             prefix = self._config_file_prefix(
-                self.args.show_origin,
-                self.config,
-                self.args.level
+                self.args.show_origin, self.config, self.args.level
             )
 
             if remote:
@@ -112,22 +108,22 @@ class CmdConfig(CmdBaseNoRepo):
             )
 
     @staticmethod
-    def _format_config(config, prefix):
+    def _format_config(config, prefix=""):
         for key, value in flatten(config).items():
             yield f"{prefix}{key}={value}"
 
     @staticmethod
     def _config_file_prefix(show_origin, config, level):
         if not show_origin:
-            return ''
+            return ""
 
         fname = config.files[level]
 
-        if level in ['local', 'repo']:
+        if level in ["local", "repo"]:
             common = os.path.commonprefix([fname, Repo.find_root()])
-            fname = fname[len(common) + 1:]
+            fname = fname[len(common) + 1 :]
 
-        return fname + '\t'
+        return fname + "\t"
 
 
 parent_config_parser = argparse.ArgumentParser(add_help=False)
@@ -191,6 +187,6 @@ def add_parser(subparsers, parent_parser):
         "--show-origin",
         default=False,
         action="store_true",
-        help="Show the source file containing each config value."
+        help="Show the source file containing each config value.",
     )
     config_parser.set_defaults(func=CmdConfig)
