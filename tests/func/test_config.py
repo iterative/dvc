@@ -48,7 +48,13 @@ class TestConfigCLI(TestDvc):
         self.assertEqual(ret, 0)
         self.assertTrue(self._contains(section, field, value, local))
 
+        ret = main(base + [section_field, value, "--show-origin"])
+        self.assertEqual(ret, 1)
+
         ret = main(base + [section_field])
+        self.assertEqual(ret, 0)
+
+        ret = main(base + ["--show-origin", section_field])
         self.assertEqual(ret, 0)
 
         ret = main(base + [section_field, newvalue])
@@ -60,7 +66,13 @@ class TestConfigCLI(TestDvc):
         self.assertEqual(ret, 0)
         self.assertFalse(self._contains(section, field, value, local))
 
+        ret = main(base + [section_field, "--unset", "--show-origin"])
+        self.assertEqual(ret, 1)
+
         ret = main(base + ["--list"])
+        self.assertEqual(ret, 0)
+
+        ret = main(base + ["--list", "--show-origin"])
         self.assertEqual(ret, 0)
 
     def test(self):
