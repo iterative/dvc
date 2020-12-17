@@ -3,7 +3,14 @@ import os
 import pickle
 from abc import ABC, abstractmethod
 from functools import partial
-from typing import TYPE_CHECKING, Callable, Iterable, Optional, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Iterable,
+    NamedTuple,
+    Optional,
+    Union,
+)
 
 from funcy import cached_property
 
@@ -17,6 +24,7 @@ from dvc.repo.experiments.base import (
     EXEC_NAMESPACE,
     EXPS_NAMESPACE,
     EXPS_STASH,
+    ExperimentExistsError,
     ExpRefInfo,
     UnchangedExperimentError,
 )
@@ -32,6 +40,12 @@ if TYPE_CHECKING:
     from dvc.scm.git import Git
 
 logger = logging.getLogger(__name__)
+
+
+class ExecutorResult(NamedTuple):
+    exp_hash: Optional[str]
+    ref_info: Optional["ExpRefInfo"]
+    force: bool
 
 
 class BaseExecutor(ABC):
@@ -192,18 +206,19 @@ class BaseExecutor(ABC):
     @classmethod
     def reproduce(
         cls,
-        dvc_dir: str,
-        queue: "Queue",
+        dvc_dir: Optional[str],
         rev: str,
+        queue: Optional["Queue"] = None,
         rel_cwd: Optional[str] = None,
         name: Optional[str] = None,
         log_level: Optional[int] = None,
-    ) -> Tuple[Optional[str], bool]:
+    ) -> "ExecutorResult":
         """Run dvc repro and return the result.
 
-        Returns tuple of (exp_hash, force) where exp_hash is the experiment
-            hash (or None on error) and force is a bool specifying whether or
-            not this experiment should force overwrite any existing duplicates.
+        Returns tuple of (exp_hash, exp_ref, force) where exp_hash is the
+            experiment hash (or None on error), exp_ref is the experiment ref,
+            and force is a bool specifying whether or not this experiment
+            should force overwrite any existing duplicates.
         """
         from dvc.repo import Repo
         from dvc.repo.checkout import checkout as dvc_checkout
@@ -211,24 +226,30 @@ class BaseExecutor(ABC):
 
         unchanged = []
 
-        queue.put((rev, os.getpid()))
-        cls._set_log_level(log_level)
+        if queue is not None:
+            queue.put((rev, os.getpid()))
+        if log_level is not None:
+            cls._set_log_level(log_level)
 
         def filter_pipeline(stages):
             unchanged.extend(
                 [stage for stage in stages if isinstance(stage, PipelineStage)]
             )
 
-        result: Optional[str] = None
+        exp_hash: Optional[str] = None
+        exp_ref: Optional["ExpRefInfo"] = None
         repro_force: bool = False
 
         try:
             dvc = Repo(dvc_dir)
-            old_cwd = os.getcwd()
-            if rel_cwd:
-                os.chdir(os.path.join(dvc.root_dir, rel_cwd))
+            if dvc_dir is not None:
+                old_cwd = os.getcwd()
+                if rel_cwd:
+                    os.chdir(os.path.join(dvc.root_dir, rel_cwd))
+                else:
+                    os.chdir(dvc.root_dir)
             else:
-                os.chdir(dvc.root_dir)
+                old_cwd = None
             logger.debug("Running repro in '%s'", os.getcwd())
 
             args_path = os.path.join(
@@ -256,7 +277,9 @@ class BaseExecutor(ABC):
             #   experiment run
             dvc_checkout(dvc, force=True, quiet=True)
 
-            checkpoint_func = partial(cls.checkpoint_callback, dvc.scm, name)
+            checkpoint_func = partial(
+                cls.checkpoint_callback, dvc.scm, name, repro_force
+            )
             stages = dvc_reproduce(
                 dvc,
                 *args,
@@ -266,8 +289,12 @@ class BaseExecutor(ABC):
             )
 
             exp_hash = cls.hash_exp(stages)
-            result = exp_hash
-            exp_rev = cls.commit(dvc.scm, exp_hash, exp_name=name)
+            exp_rev = cls.commit(
+                dvc.scm, exp_hash, exp_name=name, force=repro_force
+            )
+            ref = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
+            if ref:
+                exp_ref = ExpRefInfo.from_ref(ref)
             if dvc.scm.get_ref(EXEC_CHECKPOINT):
                 dvc.scm.set_ref(EXEC_CHECKPOINT, exp_rev)
         except UnchangedExperimentError:
@@ -281,26 +308,33 @@ class BaseExecutor(ABC):
         # ideally we would return stages here like a normal repro() call, but
         # stages is not currently picklable and cannot be returned across
         # multiprocessing calls
-        return result, repro_force
+        return ExecutorResult(exp_hash, exp_ref, repro_force)
 
     @classmethod
     def checkpoint_callback(
         cls,
         scm: "Git",
         name: Optional[str],
+        force: bool,
         unchanged: Iterable["PipelineStage"],
         stages: Iterable["PipelineStage"],
     ):
         try:
             exp_hash = cls.hash_exp(list(stages) + list(unchanged))
-            exp_rev = cls.commit(scm, exp_hash, exp_name=name)
+            exp_rev = cls.commit(scm, exp_hash, exp_name=name, force=force)
             scm.set_ref(EXEC_CHECKPOINT, exp_rev)
             logger.info("Checkpoint experiment iteration '%s'.", exp_rev[:7])
         except UnchangedExperimentError:
             pass
 
     @classmethod
-    def commit(cls, scm: "Git", exp_hash: str, exp_name: Optional[str] = None):
+    def commit(
+        cls,
+        scm: "Git",
+        exp_hash: str,
+        exp_name: Optional[str] = None,
+        force: bool = False,
+    ):
         """Commit stages as an experiment and return the commit SHA."""
         rev = scm.get_rev()
         if not scm.is_dirty(untracked_files=True):
@@ -314,8 +348,11 @@ class BaseExecutor(ABC):
         else:
             baseline_rev = scm.get_ref(EXEC_BASELINE)
             name = exp_name if exp_name else f"exp-{exp_hash[:5]}"
-            branch = str(ExpRefInfo(baseline_rev, name))
+            ref_info = ExpRefInfo(baseline_rev, name)
+            branch = str(ref_info)
             old_ref = None
+            if not force and scm.get_ref(branch):
+                raise ExperimentExistsError(ref_info.name)
             logger.debug("Commit to new experiment branch '%s'", branch)
 
         scm.gitpython.repo.git.add(update=True)
