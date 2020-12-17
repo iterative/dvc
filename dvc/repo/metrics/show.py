@@ -1,6 +1,10 @@
 import logging
 
-from dvc.exceptions import NoMetricsFoundError, NoMetricsParsedError
+from dvc.exceptions import (
+    MetricDoesNotExistError,
+    NoMetricsFoundError,
+    NoMetricsParsedError,
+)
 from dvc.repo import locked
 from dvc.repo.collect import collect
 from dvc.scm.base import SCMError
@@ -105,6 +109,8 @@ def show(
     if not res:
         if metrics_found:
             raise NoMetricsParsedError("metrics")
+        elif targets:
+            raise MetricDoesNotExistError(targets)
         else:
             raise NoMetricsFoundError("metrics", "-m/-M")
 

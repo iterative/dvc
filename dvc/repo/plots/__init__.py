@@ -4,6 +4,7 @@ from funcy import cached_property, first, project
 
 from dvc.exceptions import (
     DvcException,
+    MetricDoesNotExistError,
     NoMetricsFoundError,
     NoMetricsParsedError,
 )
@@ -96,7 +97,6 @@ class Plots:
         return result
 
     def show(self, targets=None, revs=None, props=None, templates=None):
-        from .data import NoMetricInHistoryError
 
         data = self.collect(targets, revs)
 
@@ -105,7 +105,7 @@ class Plots:
         for target in targets:
             rpath = relpath(target, self.repo.root_dir)
             if not any("data" in d[rpath] for d in data.values()):
-                raise NoMetricInHistoryError(target)
+                raise MetricDoesNotExistError([target])
 
         # No data at all is a special error with a special message
         if not data:

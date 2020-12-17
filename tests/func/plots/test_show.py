@@ -6,13 +6,16 @@ from collections import OrderedDict
 
 import pytest
 
-from dvc.exceptions import NoMetricsParsedError, OverlappingOutputPathsError
+from dvc.exceptions import (
+    MetricDoesNotExistError,
+    NoMetricsParsedError,
+    OverlappingOutputPathsError,
+)
 from dvc.main import main
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.repo.plots.data import (
     JSONPlotData,
-    NoMetricInHistoryError,
     PlotData,
     PlotMetricTypeError,
     YAMLPlotData,
@@ -401,15 +404,15 @@ def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc, caplog):
     tmp_dir.gen("some_file", "make repo dirty")
 
     caplog.clear()
-    with pytest.raises(NoMetricInHistoryError) as error, caplog.at_level(
+    with pytest.raises(MetricDoesNotExistError) as error, caplog.at_level(
         logging.WARNING, "dvc"
     ):
-        dvc.plots.show(targets="metric.json", revs=["v1"])
+        dvc.plots.show(targets="plot.json", revs=["v1"])
 
         # do not warn if none found
         assert len(caplog.messages) == 0
 
-    assert str(error.value) == "Could not find 'metric.json'."
+    assert str(error.value) == "File: 'plot.json' does not exist."
 
 
 def test_custom_template(tmp_dir, scm, dvc, custom_template, run_copy_metrics):

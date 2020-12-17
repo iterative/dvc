@@ -26,11 +26,6 @@ class PlotDataStructureError(DvcException):
         )
 
 
-class NoMetricInHistoryError(DvcException):
-    def __init__(self, path):
-        super().__init__(f"Could not find '{path}'.")
-
-
 class PlotParsingError(ParseError):
     def __init__(self, path, revision):
         self.path = path

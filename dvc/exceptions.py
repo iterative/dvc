@@ -1,4 +1,6 @@
 """Exceptions raised by the dvc."""
+from typing import List
+
 from funcy import first
 
 from dvc.utils import error_link, format_link, relpath
@@ -170,11 +172,11 @@ class BadMetricError(DvcException):
         )
 
 
-class NoMetricsError(DvcException):
+class MetricsError(DvcException):
     pass
 
 
-class NoMetricsParsedError(NoMetricsError):
+class NoMetricsParsedError(MetricsError):
     def __init__(self, command):
         super().__init__(
             f"Could not parse {command} files. Use `-v` option to see more "
@@ -182,13 +184,22 @@ class NoMetricsParsedError(NoMetricsError):
         )
 
 
-class NoMetricsFoundError(NoMetricsError):
+class NoMetricsFoundError(MetricsError):
     def __init__(self, command, run_options):
         super().__init__(
             f"No {command} files in this repository. "
             f"Use `{run_options}` options for "
             f"`dvc run` to mark stage outputs as {command}."
         )
+
+
+class MetricDoesNotExistError(MetricsError):
+    def __init__(self, targets: List[str]):
+        if len(targets) == 1:
+            msg = "File: '{}' does not exist."
+        else:
+            msg = "Files: '{}' do not exist."
+        super().__init__(msg.format(", ".join(targets)))
 
 
 class RecursiveAddingWhileUsingFilename(DvcException):
