@@ -16,9 +16,11 @@ from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 from dvc.stage.run import CheckpointKilledError
 from dvc.utils import relpath
+from dvc.utils.fs import makedirs
 
 from .base import (
     EXEC_BASELINE,
+    EXEC_BRANCH,
     EXEC_CHECKPOINT,
     EXEC_HEAD,
     EXEC_MERGE,
@@ -47,6 +49,22 @@ def scm_locked(f):
     return wrapper
 
 
+def unlocked_repo(f):
+    @wraps(f)
+    def wrapper(exp, *args, **kwargs):
+        exp.repo.state.dump()
+        exp.repo.lock.unlock()
+        exp.repo._reset()  # pylint: disable=protected-access
+        try:
+            ret = f(exp, *args, **kwargs)
+        finally:
+            exp.repo.lock.lock()
+            exp.repo.state.load()
+        return ret
+
+    return wrapper
+
+
 class Experiments:
     """Class that manages experiments in a DVC repo.
 
@@ -66,6 +84,7 @@ class Experiments:
         r"(?P<checkpoint>-checkpoint)?$"
     )
     LAST_CHECKPOINT = ":last"
+    EXEC_TMP_DIR = "exps"
 
     StashEntry = namedtuple(
         "StashEntry", ["index", "rev", "baseline_rev", "branch", "name"]
@@ -281,39 +300,49 @@ class Experiments:
         # whether the file is dirty
         self.scm.add(list(params.keys()))
 
-    def reproduce_one(self, queue=False, **kwargs):
+    def reproduce_one(self, queue=False, tmp_dir=False, **kwargs):
         """Reproduce and checkout a single experiment."""
         stash_rev = self.new(**kwargs)
         if queue:
             logger.info(
-                "Queued experiment '%s' for future execution.", stash_rev[:7]
+                "Queued experiment '%s' for future execution.", stash_rev[:7],
             )
             return [stash_rev]
-        results = self.reproduce([stash_rev], keep_stash=False)
+        if tmp_dir or queue:
+            results = self._reproduce_revs(revs=[stash_rev], keep_stash=False)
+        else:
+            results = self._workspace_repro()
         exp_rev = first(results)
         if exp_rev is not None:
-            self._log_reproduced(results)
+            self._log_reproduced(results, tmp_dir=tmp_dir)
         return results
 
     def reproduce_queued(self, **kwargs):
-        results = self.reproduce(**kwargs)
+        results = self._reproduce_revs(**kwargs)
         if results:
-            self._log_reproduced(results)
+            self._log_reproduced(results, tmp_dir=True)
         return results
 
-    def _log_reproduced(self, revs: Iterable[str]):
+    def _log_reproduced(self, revs: Iterable[str], tmp_dir: bool = False):
         names = []
         for rev in revs:
             name = self.get_exact_name(rev)
             names.append(name if name else rev[:7])
-        fmt = (
-            "\nReproduced experiment(s): %s\n"
-            "To promote an experiment to a Git branch run:\n\n"
-            "\tdvc exp branch <exp>\n\n"
-            "To apply the results of an experiment to your workspace run:\n\n"
-            "\tdvc exp apply <exp>"
+        logger.info("\nReproduced experiment(s): %s", ", ".join(names))
+        if tmp_dir:
+            logger.info(
+                "To apply the results of an experiment to your workspace "
+                "run:\n\n"
+                "\tdvc exp apply <exp>"
+            )
+        else:
+            logger.info(
+                "Experiment results have been applied to your workspace."
+            )
+        logger.info(
+            "\nTo promote an experiment to a Git branch run:\n\n"
+            "\tdvc exp branch <exp>\n"
         )
-        logger.info(fmt, ", ".join(names))
 
     @scm_locked
     def new(
@@ -387,7 +416,7 @@ class Experiments:
         raise DvcException("No existing checkpoint experiment to continue")
 
     @scm_locked
-    def reproduce(
+    def _reproduce_revs(
         self,
         revs: Optional[Iterable] = None,
         keep_stash: Optional[bool] = True,
@@ -428,7 +457,7 @@ class Experiments:
         )
 
         executors = self._init_executors(to_run)
-        exec_results = self._reproduce(executors, **kwargs)
+        exec_results = self._executors_repro(executors, **kwargs)
 
         if keep_stash:
             # only drop successfully run stashed experiments
@@ -458,6 +487,9 @@ class Experiments:
         from .executor.local import TempDirExecutor
 
         executors = {}
+        base_tmp_dir = os.path.join(self.repo.tmp_dir, self.EXEC_TMP_DIR)
+        if not os.path.exists(base_tmp_dir):
+            makedirs(base_tmp_dir)
         for stash_rev, item in to_run.items():
             self.scm.set_ref(EXEC_HEAD, item.rev)
             self.scm.set_ref(EXEC_MERGE, stash_rev)
@@ -474,7 +506,7 @@ class Experiments:
                 self.dvc_dir,
                 name=item.name,
                 branch=item.branch,
-                tmp_dir=os.path.join(self.repo.tmp_dir, "exp"),
+                tmp_dir=base_tmp_dir,
                 cache_dir=self.repo.cache.local.cache_dir,
             )
             executors[stash_rev] = executor
@@ -484,7 +516,7 @@ class Experiments:
 
         return executors
 
-    def _reproduce(
+    def _executors_repro(
         self, executors: dict, jobs: Optional[int] = 1
     ) -> Mapping[str, Mapping[str, str]]:
         """Run dvc repro for the specified BaseExecutors in parallel.
@@ -505,8 +537,8 @@ class Experiments:
                 future = workers.submit(
                     executor.reproduce,
                     executor.dvc_dir,
-                    pid_q,
                     rev,
+                    queue=pid_q,
                     name=executor.name,
                     rel_cwd=rel_cwd,
                     log_level=logger.getEffectiveLevel(),
@@ -534,9 +566,9 @@ class Experiments:
 
                 try:
                     if exc is None:
-                        exp_hash, force = future.result()
+                        exec_result = future.result()
                         result[rev].update(
-                            self._collect_executor(executor, exp_hash, force)
+                            self._collect_executor(executor, exec_result)
                         )
                     else:
                         # Checkpoint errors have already been logged
@@ -557,9 +589,7 @@ class Experiments:
 
         return result
 
-    def _collect_executor(
-        self, executor, exp_hash, force
-    ) -> Mapping[str, str]:
+    def _collect_executor(self, executor, exec_result) -> Mapping[str, str]:
         # NOTE: GitPython Repo instances cannot be re-used
         # after process has received SIGINT or SIGTERM, so we
         # need this hack to re-instantiate git instances after
@@ -576,14 +606,60 @@ class Experiments:
             raise ExperimentExistsError(ref_info.name)
 
         for ref in executor.fetch_exps(
-            self.scm, force=force, on_diverged=on_diverged,
+            self.scm, force=exec_result.force, on_diverged=on_diverged,
         ):
             exp_rev = self.scm.get_ref(ref)
             if exp_rev:
                 logger.debug("Collected experiment '%s'.", exp_rev[:7])
-                results[exp_rev] = exp_hash
+                results[exp_rev] = exec_result.exp_hash
 
         return results
+
+    @unlocked_repo
+    def _workspace_repro(
+        self, resume_rev: Optional[str] = None
+    ) -> Mapping[str, str]:
+        """Run the most recently stashed experiment in the workspace."""
+        from .executor.base import BaseExecutor
+
+        entry = first(self.stash_revs.values())
+        assert entry.index == 0
+
+        # NOTE: the stash commit to be popped already contains all the current
+        # workspace changes plus CLI modifed --params changes.
+        # `reset --hard` here will not lose any data (pop without reset would
+        # result in conflict between workspace params and stashed CLI params).
+        self.scm.reset(hard=True)
+        rev = self.stash.pop()
+        with self.scm.detach_head(resume_rev):
+            self.scm.set_ref(EXEC_BASELINE, entry.baseline_rev)
+            if entry.branch:
+                self.scm.set_ref(EXEC_BRANCH, entry.branch, symbolic=True)
+            elif self.scm.get_ref(EXEC_BRANCH):
+                self.scm.remove_ref(EXEC_BRANCH)
+            try:
+                exec_result = BaseExecutor.reproduce(
+                    None,
+                    rev,
+                    name=entry.name,
+                    rel_cwd=relpath(os.getcwd(), self.scm.root_dir),
+                )
+
+                exp_rev = self.scm.get_ref(str(exec_result.ref_info))
+                return {exp_rev: exec_result.exp_hash}
+            except CheckpointKilledError:
+                # Checkpoint errors have already been logged
+                pass
+            except DvcException:
+                raise
+            except Exception as exc:
+                raise DvcException(
+                    f"Failed to reproduce experiment '{rev[:7]}'"
+                ) from exc
+            finally:
+                self.scm.remove_ref(EXEC_BASELINE)
+                if entry.branch:
+                    self.scm.remove_ref(EXEC_BRANCH)
 
     def check_baseline(self, exp_rev):
         baseline_sha = self.repo.scm.get_rev()

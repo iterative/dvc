@@ -94,6 +94,11 @@ class ExpRefInfo:
     def __str__(self):
         return "/".join(self.parts)
 
+    def __repr__(self):
+        baseline = f"'{self.baseline_sha}'" if self.baseline_sha else "None"
+        name = f"'{self.name}'" if self.name else "None"
+        return f"ExpRefInfo(baseline_sha={baseline}, name={name})"
+
     @property
     def parts(self):
         return (
