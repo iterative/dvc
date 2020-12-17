@@ -142,6 +142,7 @@ def loadd_from(stage, d_list):
         persist = d.pop(BaseOutput.PARAM_PERSIST, False)
         checkpoint = d.pop(BaseOutput.PARAM_CHECKPOINT, False)
         desc = d.pop(BaseOutput.PARAM_DESC, False)
+        isexec = d.pop(BaseOutput.PARAM_ISEXEC, False)
         ret.append(
             _get(
                 stage,
@@ -153,6 +154,7 @@ def loadd_from(stage, d_list):
                 persist=persist,
                 checkpoint=checkpoint,
                 desc=desc,
+                isexec=isexec,
             )
         )
     return ret
