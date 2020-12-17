@@ -1,5 +1,9 @@
 import logging
+from typing import List
 
+from dvc.exceptions import NoMetricsFoundError, NoMetricsParsedError
+from dvc.output import BaseOutput
+from dvc.path_info import PathInfo
 from dvc.exceptions import (
     MetricDoesNotExistError,
     NoMetricsFoundError,
@@ -15,11 +19,11 @@ from dvc.utils.serialize import YAMLFileCorruptedError, load_yaml
 logger = logging.getLogger(__name__)
 
 
-def _is_metric(out):
+def _is_metric(out: BaseOutput) -> bool:
     return bool(out.metric) or bool(out.dvclive)
 
 
-def _to_path_infos(metrics):
+def _to_path_infos(metrics: List[BaseOutput]) -> List[PathInfo]:
     result = []
     for out in metrics:
         if out.metric:

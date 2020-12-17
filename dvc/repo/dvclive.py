@@ -5,13 +5,14 @@ from typing import List
 
 from dvc.exceptions import NoMetricsError
 from dvc.output import BaseOutput
+from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.visualization import embed, metrics_embedding, plots_embeddings
 
 logger = logging.getLogger(__name__)
 
 
-def summary_path_info(out):
+def summary_path_info(out: BaseOutput) -> PathInfo:
     assert out.dvclive
     has_summary = True
     if isinstance(out.dvclive, dict):

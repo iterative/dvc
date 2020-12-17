@@ -1,4 +1,5 @@
 import logging
+from typing import Dict, List
 
 from funcy import cached_property, first, project
 
@@ -8,6 +9,8 @@ from dvc.exceptions import (
     NoMetricsFoundError,
     NoMetricsParsedError,
 )
+from dvc.output import BaseOutput
+from dvc.repo import Repo
 from dvc.repo.collect import collect
 from dvc.repo.plots.data import PlotParsingError
 from dvc.schema import PLOT_PROPS
@@ -33,7 +36,12 @@ class Plots:
     def __init__(self, repo):
         self.repo = repo
 
-    def collect(self, targets=None, revs=None, recursive=False):
+    def collect(
+        self,
+        targets: List[str] = None,
+        revs: List[str] = None,
+        recursive: bool = False,
+    ) -> Dict[str, Dict]:
         """Collects all props and data for plots.
 
         Returns a structure like:
@@ -193,11 +201,16 @@ class Plots:
         return PlotTemplates(self.repo.dvc_dir)
 
 
-def _is_plot(out):
+def _is_plot(out: BaseOutput) -> bool:
     return bool(out.plot) or bool(out.dvclive)
 
 
-def _collect_plots(repo, targets=None, rev=None, recursive=False):
+def _collect_plots(
+    repo: Repo,
+    targets: List[str] = None,
+    rev: str = None,
+    recursive: bool = False,
+) -> Dict[str, Dict]:
     plots, path_infos = collect(
         repo,
         output_filter=_is_plot,
@@ -210,7 +223,7 @@ def _collect_plots(repo, targets=None, rev=None, recursive=False):
     return result
 
 
-def _plot_props(out):
+def _plot_props(out: BaseOutput) -> Dict:
     if not (out.plot or out.dvclive):
         raise NotAPlotError(out)
     if isinstance(out.plot, list):
