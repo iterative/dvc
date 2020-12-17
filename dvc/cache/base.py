@@ -1,6 +1,8 @@
 import itertools
 import json
 import logging
+import os
+import stat
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from typing import Optional
@@ -420,7 +422,13 @@ class CloudCache:
         self.tree.remove(path_info)
 
     def _checkout_file(
-        self, path_info, hash_info, force, progress_callback=None, relink=False
+        self,
+        path_info,
+        hash_info,
+        force,
+        progress_callback=None,
+        relink=False,
+        isexec=False,
     ):
         """The file is changed we need to checkout a new copy"""
         added, modified = True, False
@@ -435,6 +443,10 @@ class CloudCache:
         self.tree.state.save(path_info, hash_info)
         if progress_callback:
             progress_callback(str(path_info))
+
+        if isexec:
+            st = os.stat(path_info.fspath)
+            os.chmod(path_info.fspath, st.st_mode | stat.S_IEXEC)
 
         return added, modified and not relink
 
@@ -505,6 +517,7 @@ class CloudCache:
         relink=False,
         filter_info=None,
         quiet=False,
+        isexec=False,
     ):
         if path_info.scheme not in ["local", self.tree.scheme]:
             raise NotImplementedError
@@ -559,6 +572,7 @@ class CloudCache:
             progress_callback,
             relink,
             filter_info,
+            isexec,
         )
 
     def _checkout(
@@ -569,10 +583,11 @@ class CloudCache:
         progress_callback=None,
         relink=False,
         filter_info=None,
+        isexec=False,
     ):
         if not hash_info.isdir:
             return self._checkout_file(
-                path_info, hash_info, force, progress_callback, relink
+                path_info, hash_info, force, progress_callback, relink, isexec
             )
 
         return self._checkout_dir(

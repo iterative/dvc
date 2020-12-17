@@ -370,6 +370,7 @@ class BaseOutput:
                 progress_callback=progress_callback,
                 relink=relink,
                 filter_info=filter_info,
+                isexec=self.isexec,
                 **kwargs,
             )
         except CheckoutError:

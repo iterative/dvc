@@ -82,7 +82,7 @@ class TestCheckoutExecutable(TestRepro):
     def _test_checkout(self):
         self.assertTrue(os.path.isfile(self.FOO))
         self.assertTrue(os.path.isfile(self.EXECUTABLE))
-        # TODO: test that self.EXECUTABLE is executable and make it pass
+        self.assertTrue(os.access(self.EXECUTABLE, os.X_OK))
 
 
 class TestCheckoutSingleStage(TestCheckout):
