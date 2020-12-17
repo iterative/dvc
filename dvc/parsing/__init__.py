@@ -246,11 +246,6 @@ class EntryDefinition:
         definition = deepcopy(self.definition)
 
         wdir = self._resolve_wdir(context, name, definition.get(WDIR_KWD))
-        if self.wdir != wdir:
-            logger.debug(
-                "Stage %s has different wdir than dvc.yaml file", name
-            )
-
         vars_ = definition.pop(VARS_KWD, [])
         # FIXME: Should `vars` be templatized?
         check_interpolations(vars_, f"{self.where}.{name}.vars", self.relpath)

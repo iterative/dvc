@@ -256,12 +256,7 @@ class Stage(params.StageParams):
             return False
 
         if self.is_callback:
-            logger.debug(
-                '%s is a "callback" stage '
-                "(has a command and no dependencies) and thus always "
-                "considered as changed.",
-                self,
-            )
+            logger.debug("%s has no command and dependencies", self.addressing)
             return True
 
         if self.always_changed or self.is_checkpoint:
