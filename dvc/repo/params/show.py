@@ -7,8 +7,8 @@ from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 from dvc.repo import locked
 from dvc.repo.collect import collect
-from dvc.stage import PipelineStage
 from dvc.scm.base import SCMError
+from dvc.stage import PipelineStage
 from dvc.utils.serialize import LOADERS, ParseError
 
 if TYPE_CHECKING:
