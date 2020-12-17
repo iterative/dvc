@@ -50,17 +50,20 @@ def _read_params(repo, configs, rev):
     return res
 
 
-def _add_vars(repo, configs, params):
+def _add_vars(repo, params):
+    vars_params = {}
     for stage in repo.stages:
         if isinstance(stage, PipelineStage) and stage.tracked_vars:
             for file, vars_ in stage.tracked_vars.items():
                 # `params` file are shown regardless of `tracked` or not
                 # to reduce noise and duplication, they are skipped
-                if file in configs:
+                if file in params:
                     continue
 
-                params[file] = params.get(file, {})
-                params[file].update(vars_)
+                vars_params[file] = vars_params.get(file, {})
+                vars_params[file].update(vars_)
+
+    return vars_params
 
 
 @locked
@@ -70,7 +73,11 @@ def show(repo, revs=None):
     for branch in repo.brancher(revs=revs):
         configs = _collect_configs(repo, branch)
         params = _read_params(repo, configs, branch)
-        _add_vars(repo, configs, params)
+        vars_params = _add_vars(repo, params)
+
+        # NOTE: only those that are not added as a ParamDependency are included
+        # so we don't need to recursively merge them yet.
+        params.update(vars_params)
 
         if params:
             res[branch] = params
