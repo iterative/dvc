@@ -135,7 +135,7 @@ def test_show_checkpoint_branch(
     )
     checkpoint_a = first(results)
 
-    dvc.experiments.apply(branch_rev)
+    dvc.experiments.apply(branch_rev, force=True)
     results = dvc.experiments.run(
         checkpoint_stage.addressing,
         checkpoint_resume=branch_rev,

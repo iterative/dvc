@@ -6,7 +6,12 @@ from dvc.repo.scm_context import scm_context
 from dvc.scm.base import RevError
 from dvc.utils.fs import remove
 
-from .base import EXEC_APPLY, BaselineMismatchError, InvalidExpRevError
+from .base import (
+    EXEC_APPLY,
+    ApplyConflictError,
+    BaselineMismatchError,
+    InvalidExpRevError,
+)
 from .executor.base import BaseExecutor
 
 logger = logging.getLogger(__name__)
@@ -14,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 @locked
 @scm_context
-def apply(repo, rev, *args, **kwargs):
+def apply(repo, rev, force=False, **kwargs):
     from git.exc import GitCommandError
 
     from dvc.repo.checkout import checkout as dvc_checkout
@@ -22,14 +27,14 @@ def apply(repo, rev, *args, **kwargs):
     exps = repo.experiments
 
     try:
-        rev = repo.scm.resolve_rev(rev)
-        exps.check_baseline(rev)
+        exp_rev = repo.scm.resolve_rev(rev)
+        exps.check_baseline(exp_rev)
     except (RevError, BaselineMismatchError) as exc:
         raise InvalidExpRevError(rev) from exc
 
-    stash_rev = rev in exps.stash_revs
-    if not stash_rev and not exps.get_branch_by_rev(rev):
-        raise InvalidExpRevError(rev)
+    stash_rev = exp_rev in exps.stash_revs
+    if not stash_rev and not exps.get_branch_by_rev(exp_rev):
+        raise InvalidExpRevError(exp_rev)
 
     # Note that we don't use stash_workspace() here since we need finer control
     # over the merge behavior when we unstash everything
@@ -39,15 +44,21 @@ def apply(repo, rev, *args, **kwargs):
     else:
         workspace = None
 
-    repo.scm.gitpython.repo.git.merge(rev, squash=True, no_commit=True)
+    repo.scm.gitpython.repo.git.merge(exp_rev, squash=True, no_commit=True)
 
     if workspace:
         try:
             repo.scm.stash.apply(workspace)
         except GitCommandError:
-            # if stash apply returns merge conflicts, prefer experiment
-            # changes over prior stashed changes
-            repo.scm.gitpython.repo.git.checkout("--ours", "--", ".")
+            # Applied experiment conflicts with user's workspace changes
+            if force:
+                # prefer applied experiment changes over prior stashed changes
+                repo.scm.gitpython.repo.git.checkout("--ours", "--", ".")
+            else:
+                # revert applied changes and restore user's workspace
+                repo.scm.reset(hard=True)
+                repo.scm.stash.pop()
+                raise ApplyConflictError(rev)
         repo.scm.stash.drop()
     repo.scm.gitpython.repo.git.reset()
 

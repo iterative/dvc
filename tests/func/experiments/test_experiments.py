@@ -150,6 +150,7 @@ def test_modify_params(tmp_dir, scm, dvc, mocker, changes, expected):
 @pytest.mark.parametrize("queue", [True, False])
 def test_apply(tmp_dir, scm, dvc, exp_stage, queue):
     from dvc.exceptions import InvalidArgumentError
+    from dvc.repo.experiments.base import ApplyConflictError
 
     metrics_original = (tmp_dir / "metrics.yaml").read_text().strip()
     results = dvc.experiments.run(
@@ -173,7 +174,17 @@ def test_apply(tmp_dir, scm, dvc, exp_stage, queue):
         else "foo: 2"
     )
 
-    dvc.experiments.apply(exp_b)
+    with pytest.raises(ApplyConflictError):
+        dvc.experiments.apply(exp_b)
+        # failed apply should revert everything to prior state
+        assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 2"
+        assert (
+            (tmp_dir / "metrics.yaml").read_text().strip() == metrics_original
+            if queue
+            else "foo: 2"
+        )
+
+    dvc.experiments.apply(exp_b, force=True)
     assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 3"
     assert (
         (tmp_dir / "metrics.yaml").read_text().strip() == metrics_original

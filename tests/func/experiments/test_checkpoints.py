@@ -176,7 +176,7 @@ def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage, workspace):
             tmp_dir=not workspace,
         )
 
-    dvc.experiments.apply(branch_rev)
+    dvc.experiments.apply(branch_rev, force=True)
     results = dvc.experiments.run(
         checkpoint_stage.addressing,
         checkpoint_resume=branch_rev,

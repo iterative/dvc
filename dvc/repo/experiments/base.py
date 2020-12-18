@@ -82,6 +82,18 @@ class MultipleBranchError(DvcException):
         self.rev = rev
 
 
+class ApplyConflictError(InvalidArgumentError):
+    def __init__(self, name):
+        super().__init__(
+            f"Experiment '{name}' cannot be applied to because your current "
+            "workspace contains changes which would be overwritten. Either "
+            "'git stash' your current changes before applying this "
+            "experiment, or re-run this command with '--force' to overwrite "
+            "your current changes."
+        )
+        self.name = name
+
+
 class ExpRefInfo:
 
     namespace = EXPS_NAMESPACE
