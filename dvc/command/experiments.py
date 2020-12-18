@@ -450,6 +450,7 @@ class CmdExperimentsRun(CmdRepro):
             jobs=self.args.jobs,
             params=self.args.params,
             checkpoint_resume=self.args.checkpoint_resume,
+            tmp_dir=self.args.tmp_dir,
             **self._repro_kwargs,
         )
 
@@ -1101,4 +1102,14 @@ def _add_run_common(parser):
         type=int,
         help="Run the specified number of experiments at a time in parallel.",
         metavar="<number>",
+    )
+    parser.add_argument(
+        "--temp",
+        action="store_true",
+        dest="tmp_dir",
+        help=(
+            "Run this experiment in a separate temporary directory instead of "
+            "your workspace. Only applies when running a single experiment "
+            "without --queue."
+        ),
     )
