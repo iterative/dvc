@@ -8,6 +8,7 @@ import pytest
 
 from dvc.exceptions import (
     MetricDoesNotExistError,
+    NoMetricsFoundError,
     NoMetricsParsedError,
     OverlappingOutputPathsError,
 )
@@ -711,17 +712,25 @@ def test_show_from_subdir(tmp_dir, dvc, caplog):
     assert (subdir / "plots.html").exists()
 
 
-def test_show_malformed_plot(tmp_dir, scm, dvc, caplog):
+def test_show_malformed_plots(tmp_dir, scm, dvc, caplog):
     tmp_dir.gen("plot.json", '[{"m":1]')
 
     with pytest.raises(NoMetricsParsedError):
         dvc.metrics.show(targets=["plot.json"])
 
 
+def test_plots_show_no_target(tmp_dir, dvc):
+    with pytest.raises(MetricDoesNotExistError):
+        dvc.plots.show(targets=["plot.json"])
+
+
+def test_show_no_plots_files(tmp_dir, dvc, caplog):
+    with pytest.raises(NoMetricsFoundError):
+        dvc.metrics.show()
+
+
 @pytest.mark.parametrize("clear_before_run", [True, False])
-def test_metrics_show_overlap(
-    tmp_dir, dvc, run_copy_metrics, clear_before_run
-):
+def test_plots_show_overlap(tmp_dir, dvc, run_copy_metrics, clear_before_run):
     data_dir = PathInfo("data")
     (tmp_dir / data_dir).mkdir()
 

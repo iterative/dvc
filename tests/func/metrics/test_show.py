@@ -3,6 +3,7 @@ import os
 import pytest
 
 from dvc.exceptions import (
+    MetricDoesNotExistError,
     NoMetricsFoundError,
     NoMetricsParsedError,
     OverlappingOutputPathsError,
@@ -180,6 +181,11 @@ def test_show_malformed_metric(tmp_dir, scm, dvc, caplog):
 
     with pytest.raises(NoMetricsParsedError):
         dvc.metrics.show(targets=["metric.json"])
+
+
+def test_metrics_show_no_target(tmp_dir, dvc):
+    with pytest.raises(MetricDoesNotExistError):
+        dvc.metrics.show(targets=["metrics.json"])
 
 
 def test_show_no_metrics_files(tmp_dir, dvc, caplog):
