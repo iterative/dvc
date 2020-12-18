@@ -120,8 +120,7 @@ class CmdConfig(CmdBaseNoRepo):
         fname = config.files[level]
 
         if level in ["local", "repo"]:
-            common = os.path.commonprefix([fname, Repo.find_root()])
-            fname = fname[len(common) + 1 :]
+            fname = os.path.relpath(fname, start=Repo.find_root())
 
         return fname + "\t"
 
