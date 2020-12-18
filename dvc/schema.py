@@ -4,6 +4,7 @@ from dvc import dependency, output
 from dvc.hash_info import HashInfo
 from dvc.output import CHECKSUMS_SCHEMA, BaseOutput
 from dvc.parsing import DO_KWD, FOREACH_KWD, VARS_KWD
+from dvc.parsing.versions import META_KWD, VERSION_KWD, lockfile_version_schema
 from dvc.stage.params import StageParams
 
 STAGES = "stages"
@@ -13,7 +14,7 @@ SINGLE_STAGE_SCHEMA = {
     StageParams.PARAM_WDIR: Any(str, None),
     StageParams.PARAM_DEPS: Any([dependency.SCHEMA], None),
     StageParams.PARAM_OUTS: Any([output.SCHEMA], None),
-    StageParams.PARAM_LOCKED: bool,  # backard compatibility
+    StageParams.PARAM_LOCKED: bool,  # backward compatibility
     StageParams.PARAM_FROZEN: bool,
     StageParams.PARAM_META: object,
     StageParams.PARAM_ALWAYS_CHANGED: bool,
@@ -33,7 +34,14 @@ LOCK_FILE_STAGE_SCHEMA = {
     StageParams.PARAM_PARAMS: {str: {str: object}},
     StageParams.PARAM_OUTS: [DATA_SCHEMA],
 }
-LOCKFILE_SCHEMA = {str: LOCK_FILE_STAGE_SCHEMA}
+
+LOCKFILE_STAGES_SCHEMA = {str: LOCK_FILE_STAGE_SCHEMA}
+
+LOCKFILE_V1_SCHEMA = LOCKFILE_STAGES_SCHEMA
+LOCKFILE_V2_SCHEMA = {
+    STAGES: LOCKFILE_STAGES_SCHEMA,
+    META_KWD: {Required(VERSION_KWD): lockfile_version_schema},
+}
 
 OUT_PSTAGE_DETAILED_SCHEMA = {
     str: {
@@ -100,4 +108,5 @@ MULTI_STAGE_SCHEMA = {
 COMPILED_SINGLE_STAGE_SCHEMA = Schema(SINGLE_STAGE_SCHEMA)
 COMPILED_MULTI_STAGE_SCHEMA = Schema(MULTI_STAGE_SCHEMA)
 COMPILED_LOCK_FILE_STAGE_SCHEMA = Schema(LOCK_FILE_STAGE_SCHEMA)
-COMPILED_LOCKFILE_SCHEMA = Schema(LOCKFILE_SCHEMA)
+COMPILED_LOCKFILE_V1_SCHEMA = Schema(LOCKFILE_V1_SCHEMA)
+COMPILED_LOCKFILE_V2_SCHEMA = Schema(LOCKFILE_V2_SCHEMA)
