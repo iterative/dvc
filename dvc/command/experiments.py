@@ -356,7 +356,9 @@ class CmdExperimentsShow(CmdBase):
 class CmdExperimentsApply(CmdBase):
     def run(self):
 
-        self.repo.experiments.apply(self.args.experiment)
+        self.repo.experiments.apply(
+            self.args.experiment, force=self.args.force
+        )
 
         return 0
 
@@ -723,6 +725,12 @@ def add_parser(subparsers, parent_parser):
         ),
         help=EXPERIMENTS_APPLY_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    experiments_apply_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Overwrite any conflicting changes.",
     )
     experiments_apply_parser.add_argument(
         "experiment", help="Experiment to be applied.",
