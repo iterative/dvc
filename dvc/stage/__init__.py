@@ -257,10 +257,7 @@ class Stage(params.StageParams):
 
         if self.is_callback:
             logger.debug(
-                '%s is a "callback" stage '
-                "(has a command and no dependencies) and thus always "
-                "considered as changed.",
-                self,
+                "%s has a command but no dependencies", self.addressing
             )
             return True
 
