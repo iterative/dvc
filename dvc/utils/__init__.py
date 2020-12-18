@@ -469,9 +469,8 @@ def glob_targets(targets, glob=True, recursive=True):
 
     from glob import iglob
 
-    expanded_targets = [
+    return [
         exp_target
         for target in targets
         for exp_target in iglob(target, recursive=recursive)
     ]
-    return expanded_targets
