@@ -166,7 +166,7 @@ def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage, workspace):
     )
     checkpoint_a = first(results)
     if not workspace:
-        dvc.experiments.apply(checkpoint_a)
+        dvc.experiments.apply(checkpoint_a, force=True)
 
     with pytest.raises(DvcException):
         results = dvc.experiments.run(
