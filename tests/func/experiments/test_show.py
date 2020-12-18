@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 
+import pytest
 from funcy import first
 
 from dvc.main import main
@@ -18,13 +19,16 @@ def test_show_simple(tmp_dir, scm, dvc, exp_stage):
     }
 
 
-def test_show_experiment(tmp_dir, scm, dvc, exp_stage):
+@pytest.mark.parametrize("workspace", [True, False])
+def test_show_experiment(tmp_dir, scm, dvc, exp_stage, workspace):
     baseline_rev = scm.get_rev()
     timestamp = datetime.fromtimestamp(
         scm.gitpython.repo.rev_parse(baseline_rev).committed_date
     )
 
-    dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
+    dvc.experiments.run(
+        exp_stage.addressing, params=["foo=2"], tmp_dir=not workspace
+    )
     results = dvc.experiments.show()
 
     expected_baseline = {
@@ -77,10 +81,13 @@ def test_show_queued(tmp_dir, scm, dvc, exp_stage):
     assert exp["params"]["params.yaml"] == {"foo": 3}
 
 
-def test_show_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, capsys):
+@pytest.mark.parametrize("workspace", [True, False])
+def test_show_checkpoint(
+    tmp_dir, scm, dvc, checkpoint_stage, capsys, workspace
+):
     baseline_rev = scm.get_rev()
     results = dvc.experiments.run(
-        checkpoint_stage.addressing, params=["foo=2"]
+        checkpoint_stage.addressing, params=["foo=2"], tmp_dir=not workspace
     )
     exp_rev = first(results)
 
@@ -110,21 +117,30 @@ def test_show_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, capsys):
         assert f"{tree} {name}" in cap.out
 
 
-def test_show_checkpoint_branch(tmp_dir, scm, dvc, checkpoint_stage, capsys):
+@pytest.mark.parametrize("workspace", [True, False])
+def test_show_checkpoint_branch(
+    tmp_dir, scm, dvc, checkpoint_stage, capsys, workspace
+):
     results = dvc.experiments.run(
-        checkpoint_stage.addressing, params=["foo=2"]
+        checkpoint_stage.addressing, params=["foo=2"], tmp_dir=not workspace
     )
     branch_rev = first(results)
-
-    results = dvc.experiments.run(
-        checkpoint_stage.addressing, checkpoint_resume=branch_rev
-    )
-    checkpoint_a = first(results)
+    if not workspace:
+        dvc.experiments.apply(branch_rev)
 
     results = dvc.experiments.run(
         checkpoint_stage.addressing,
         checkpoint_resume=branch_rev,
+        tmp_dir=not workspace,
+    )
+    checkpoint_a = first(results)
+
+    dvc.experiments.apply(branch_rev)
+    results = dvc.experiments.run(
+        checkpoint_stage.addressing,
+        checkpoint_resume=branch_rev,
         params=["foo=100"],
+        tmp_dir=not workspace,
     )
     checkpoint_b = first(results)
 
