@@ -356,7 +356,9 @@ class CmdExperimentsShow(CmdBase):
 class CmdExperimentsApply(CmdBase):
     def run(self):
 
-        self.repo.experiments.apply(self.args.experiment)
+        self.repo.experiments.apply(
+            self.args.experiment, force=self.args.force
+        )
 
         return 0
 
@@ -448,6 +450,7 @@ class CmdExperimentsRun(CmdRepro):
             jobs=self.args.jobs,
             params=self.args.params,
             checkpoint_resume=self.args.checkpoint_resume,
+            tmp_dir=self.args.tmp_dir,
             **self._repro_kwargs,
         )
 
@@ -723,6 +726,12 @@ def add_parser(subparsers, parent_parser):
         ),
         help=EXPERIMENTS_APPLY_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    experiments_apply_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Overwrite any conflicting changes.",
     )
     experiments_apply_parser.add_argument(
         "experiment", help="Experiment to be applied.",
@@ -1093,4 +1102,14 @@ def _add_run_common(parser):
         type=int,
         help="Run the specified number of experiments at a time in parallel.",
         metavar="<number>",
+    )
+    parser.add_argument(
+        "--temp",
+        action="store_true",
+        dest="tmp_dir",
+        help=(
+            "Run this experiment in a separate temporary directory instead of "
+            "your workspace. Only applies when running a single experiment "
+            "without --queue."
+        ),
     )

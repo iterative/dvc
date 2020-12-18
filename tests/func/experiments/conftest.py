@@ -51,7 +51,16 @@ def exp_stage(tmp_dir, scm, dvc):
         params=["foo"],
         name="copy-file",
     )
-    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
+    scm.add(
+        [
+            "dvc.yaml",
+            "dvc.lock",
+            "copy.py",
+            "params.yaml",
+            "metrics.yaml",
+            ".gitignore",
+        ]
+    )
     scm.commit("init")
     return stage
 
@@ -68,6 +77,6 @@ def checkpoint_stage(tmp_dir, scm, dvc):
         no_exec=True,
         name="checkpoint-file",
     )
-    scm.add(["dvc.yaml", "checkpoint.py", "params.yaml"])
+    scm.add(["dvc.yaml", "checkpoint.py", "params.yaml", ".gitignore"])
     scm.commit("init")
     return stage

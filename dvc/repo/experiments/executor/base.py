@@ -1,15 +1,20 @@
 import logging
 import os
 import pickle
-import sys
+from abc import ABC, abstractmethod
 from functools import partial
-from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING, Callable, Iterable, Optional, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Iterable,
+    NamedTuple,
+    Optional,
+    Union,
+)
 
 from funcy import cached_property
 
 from dvc.path_info import PathInfo
-from dvc.repo import Repo
 from dvc.repo.experiments.base import (
     EXEC_BASELINE,
     EXEC_BRANCH,
@@ -19,6 +24,8 @@ from dvc.repo.experiments.base import (
     EXEC_NAMESPACE,
     EXPS_NAMESPACE,
     EXPS_STASH,
+    CheckpointExistsError,
+    ExperimentExistsError,
     ExpRefInfo,
     UnchangedExperimentError,
 )
@@ -36,7 +43,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class BaseExecutor:
+class ExecutorResult(NamedTuple):
+    exp_hash: Optional[str]
+    ref_info: Optional["ExpRefInfo"]
+    force: bool
+
+
+class BaseExecutor(ABC):
     """Base class for executing experiments in parallel.
 
     Args:
@@ -97,8 +110,9 @@ class BaseExecutor:
         return SCM(self.root_dir)
 
     @property
+    @abstractmethod
     def git_url(self) -> str:
-        raise NotImplementedError
+        pass
 
     @property
     def dvc_dir(self) -> str:
@@ -193,42 +207,50 @@ class BaseExecutor:
     @classmethod
     def reproduce(
         cls,
-        dvc_dir: str,
-        queue: "Queue",
+        dvc_dir: Optional[str],
         rev: str,
+        queue: Optional["Queue"] = None,
         rel_cwd: Optional[str] = None,
         name: Optional[str] = None,
         log_level: Optional[int] = None,
-    ) -> Tuple[Optional[str], bool]:
+    ) -> "ExecutorResult":
         """Run dvc repro and return the result.
 
-        Returns tuple of (exp_hash, force) where exp_hash is the experiment
-            hash (or None on error) and force is a bool specifying whether or
-            not this experiment should force overwrite any existing duplicates.
+        Returns tuple of (exp_hash, exp_ref, force) where exp_hash is the
+            experiment hash (or None on error), exp_ref is the experiment ref,
+            and force is a bool specifying whether or not this experiment
+            should force overwrite any existing duplicates.
         """
+        from dvc.repo import Repo
         from dvc.repo.checkout import checkout as dvc_checkout
         from dvc.repo.reproduce import reproduce as dvc_reproduce
 
         unchanged = []
 
-        queue.put((rev, os.getpid()))
-        cls._set_log_level(log_level)
+        if queue is not None:
+            queue.put((rev, os.getpid()))
+        if log_level is not None:
+            cls._set_log_level(log_level)
 
         def filter_pipeline(stages):
             unchanged.extend(
                 [stage for stage in stages if isinstance(stage, PipelineStage)]
             )
 
-        result: Optional[str] = None
+        exp_hash: Optional[str] = None
+        exp_ref: Optional["ExpRefInfo"] = None
         repro_force: bool = False
 
         try:
             dvc = Repo(dvc_dir)
-            old_cwd = os.getcwd()
-            if rel_cwd:
-                os.chdir(os.path.join(dvc.root_dir, rel_cwd))
+            if dvc_dir is not None:
+                old_cwd = os.getcwd()
+                if rel_cwd:
+                    os.chdir(os.path.join(dvc.root_dir, rel_cwd))
+                else:
+                    os.chdir(dvc.root_dir)
             else:
-                os.chdir(dvc.root_dir)
+                old_cwd = None
             logger.debug("Running repro in '%s'", os.getcwd())
 
             args_path = os.path.join(
@@ -242,6 +264,7 @@ class BaseExecutor:
                 kwargs = {}
 
             repro_force = kwargs.get("force", False)
+            logger.debug("force = %s", str(repro_force))
 
             # NOTE: for checkpoint experiments we handle persist outs slightly
             # differently than normal:
@@ -256,7 +279,9 @@ class BaseExecutor:
             #   experiment run
             dvc_checkout(dvc, force=True, quiet=True)
 
-            checkpoint_func = partial(cls.checkpoint_callback, dvc.scm, name)
+            checkpoint_func = partial(
+                cls.checkpoint_callback, dvc.scm, name, repro_force
+            )
             stages = dvc_reproduce(
                 dvc,
                 *args,
@@ -266,12 +291,19 @@ class BaseExecutor:
             )
 
             exp_hash = cls.hash_exp(stages)
-            result = exp_hash
-            exp_rev = cls.commit(dvc.scm, exp_hash, exp_name=name)
-            if dvc.scm.get_ref(EXEC_CHECKPOINT):
-                dvc.scm.set_ref(EXEC_CHECKPOINT, exp_rev)
-        except UnchangedExperimentError:
-            pass
+            try:
+                cls.commit(
+                    dvc.scm,
+                    exp_hash,
+                    exp_name=name,
+                    force=repro_force,
+                    checkpoint=any(stage.is_checkpoint for stage in stages),
+                )
+            except UnchangedExperimentError:
+                pass
+            ref = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
+            if ref:
+                exp_ref = ExpRefInfo.from_ref(ref)
         finally:
             if dvc:
                 dvc.scm.close()
@@ -281,26 +313,35 @@ class BaseExecutor:
         # ideally we would return stages here like a normal repro() call, but
         # stages is not currently picklable and cannot be returned across
         # multiprocessing calls
-        return result, repro_force
+        return ExecutorResult(exp_hash, exp_ref, repro_force)
 
     @classmethod
     def checkpoint_callback(
         cls,
         scm: "Git",
         name: Optional[str],
+        force: bool,
         unchanged: Iterable["PipelineStage"],
         stages: Iterable["PipelineStage"],
     ):
         try:
             exp_hash = cls.hash_exp(list(stages) + list(unchanged))
-            exp_rev = cls.commit(scm, exp_hash, exp_name=name)
-            scm.set_ref(EXEC_CHECKPOINT, exp_rev)
+            exp_rev = cls.commit(
+                scm, exp_hash, exp_name=name, force=force, checkpoint=True
+            )
             logger.info("Checkpoint experiment iteration '%s'.", exp_rev[:7])
         except UnchangedExperimentError:
             pass
 
     @classmethod
-    def commit(cls, scm: "Git", exp_hash: str, exp_name: Optional[str] = None):
+    def commit(
+        cls,
+        scm: "Git",
+        exp_hash: str,
+        exp_name: Optional[str] = None,
+        force: bool = False,
+        checkpoint: bool = False,
+    ):
         """Commit stages as an experiment and return the commit SHA."""
         rev = scm.get_rev()
         if not scm.is_dirty(untracked_files=True):
@@ -314,8 +355,13 @@ class BaseExecutor:
         else:
             baseline_rev = scm.get_ref(EXEC_BASELINE)
             name = exp_name if exp_name else f"exp-{exp_hash[:5]}"
-            branch = str(ExpRefInfo(baseline_rev, name))
+            ref_info = ExpRefInfo(baseline_rev, name)
+            branch = str(ref_info)
             old_ref = None
+            if not force and scm.get_ref(branch):
+                if checkpoint:
+                    raise CheckpointExistsError(ref_info.name)
+                raise ExperimentExistsError(ref_info.name)
             logger.debug("Commit to new experiment branch '%s'", branch)
 
         scm.gitpython.repo.git.add(update=True)
@@ -323,6 +369,8 @@ class BaseExecutor:
         new_rev = scm.get_rev()
         scm.set_ref(branch, new_rev, old_ref=old_ref)
         scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
+        if checkpoint:
+            scm.set_ref(EXEC_CHECKPOINT, new_rev)
         return new_rev
 
     @staticmethod
@@ -336,48 +384,3 @@ class BaseExecutor:
         disable_other_loggers()
         if level is not None:
             dvc_logger.setLevel(level)
-
-
-class LocalExecutor(BaseExecutor):
-    """Local machine experiment executor."""
-
-    def __init__(
-        self,
-        *args,
-        tmp_dir: Optional[str] = None,
-        cache_dir: Optional[str] = None,
-        **kwargs,
-    ):
-        self._tmp_dir = TemporaryDirectory(dir=tmp_dir)
-        kwargs["root_dir"] = self._tmp_dir.name
-        super().__init__(*args, **kwargs)
-        if cache_dir:
-            self._config(cache_dir)
-        logger.debug(
-            "Init local executor in dir '%s'", self._tmp_dir,
-        )
-
-    def _config(self, cache_dir):
-        local_config = os.path.join(self.dvc_dir, "config.local")
-        logger.debug("Writing experiments local config '%s'", local_config)
-        with open(local_config, "w") as fobj:
-            fobj.write(f"[cache]\n    dir = {cache_dir}")
-
-    @property
-    def git_url(self) -> str:
-        root_dir = os.path.abspath(self.root_dir)
-        if os.name == "nt":
-            root_dir = root_dir.replace(os.sep, "/")
-        return f"file://{root_dir}"
-
-    def cleanup(self):
-        super().cleanup()
-        logger.debug("Removing tmpdir '%s'", self._tmp_dir)
-        try:
-            self._tmp_dir.cleanup()
-        except PermissionError:
-            if os.name == "nt" and sys.version_info < (3, 8):
-                # see https://bugs.python.org/issue26660
-                remove(self._tmp_dir.name)
-                return
-            raise

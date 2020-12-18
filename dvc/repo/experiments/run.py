@@ -3,7 +3,6 @@ from typing import Iterable, Optional
 
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo import locked
-from dvc.repo.experiments.base import UnchangedExperimentError
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +40,7 @@ def run(
     params: Optional[Iterable] = None,
     run_all: Optional[bool] = False,
     jobs: Optional[int] = 1,
+    tmp_dir: Optional[bool] = False,
     **kwargs,
 ) -> dict:
     """Reproduce the specified targets as an experiment.
@@ -57,12 +57,6 @@ def run(
         params = _parse_params(params)
     else:
         params = []
-    try:
-        return repo.experiments.reproduce_one(
-            targets=targets, params=params, **kwargs
-        )
-    except UnchangedExperimentError:
-        # If experiment contains no changes, just run regular repro
-        kwargs.pop("queue", None)
-        kwargs.pop("checkpoint_resume", None)
-        return {None: repo.reproduce(targets=targets, **kwargs)}
+    return repo.experiments.reproduce_one(
+        targets=targets, params=params, tmp_dir=tmp_dir, **kwargs
+    )
