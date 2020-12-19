@@ -157,7 +157,7 @@ class LocalTree(BaseTree):
         self.chmod(path_info, mode | stat.S_IEXEC)
 
     def isexec(self, path_info):
-        mode = os.stat(path_info).st_mode
+        mode = self.stat(path_info).st_mode
         return is_exec(mode)
 
     def stat(self, path):
