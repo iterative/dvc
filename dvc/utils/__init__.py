@@ -460,4 +460,4 @@ def parse_target(
 
 
 def is_exec(mode):
-    return mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    return bool(mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))

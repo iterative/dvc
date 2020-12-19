@@ -66,7 +66,6 @@ def fill_stage_outputs(stage, **kwargs):
             metric="metrics" in key,
             plot="plots" in key,
             checkpoint="checkpoints" in key,
-            isexec="isexec" in key,
         )
 
 
@@ -180,6 +179,7 @@ def compute_md5(stage):
             BaseOutput.PARAM_METRIC,
             BaseOutput.PARAM_PERSIST,
             BaseOutput.PARAM_CHECKPOINT,
+            BaseOutput.PARAM_ISEXEC,
             HashInfo.PARAM_SIZE,
             HashInfo.PARAM_NFILES,
         ],

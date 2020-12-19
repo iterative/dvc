@@ -1,5 +1,6 @@
 import logging
 import os
+import stat
 from copy import copy
 from typing import Type
 from urllib.parse import urlparse
@@ -291,8 +292,8 @@ class BaseOutput:
             return
 
         self.hash_info = self.get_hash()
-        self.isexec = os.path.isfile(self.def_path) and os.access(
-            self.def_path, os.X_OK
+        self.isexec = self.tree.isfile(self.path_info) and self.tree.isexec(
+            self.path_info
         )
 
     def commit(self):
@@ -363,16 +364,19 @@ class BaseOutput:
             return None
 
         try:
-            return self.cache.checkout(
+            res = self.cache.checkout(
                 self.path_info,
                 self.hash_info,
                 force=force,
                 progress_callback=progress_callback,
                 relink=relink,
                 filter_info=filter_info,
-                isexec=self.isexec,
                 **kwargs,
             )
+            if self.isexec:
+                st = os.stat(self.path_info.fspath)
+                os.chmod(self.path_info.fspath, st.st_mode | stat.S_IEXEC)
+            return res
         except CheckoutError:
             if allow_missing or self.checkpoint:
                 return None
