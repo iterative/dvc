@@ -59,7 +59,6 @@ def test_add(tmp_dir, dvc):
 
 
 def test_add_executable(tmp_dir, dvc):
-
     tmp_dir.gen("foo", "foo")
     st = os.stat("foo")
     os.chmod("foo", st.st_mode | stat.S_IEXEC)
