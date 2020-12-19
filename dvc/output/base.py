@@ -296,6 +296,10 @@ class BaseOutput:
             self.path_info
         )
 
+    def set_exec(self):
+        if self.isexec:
+            self.tree.set_exec(self.path_info)
+
     def commit(self):
         if not self.exists:
             raise self.DoesNotExistError(self)
@@ -303,6 +307,7 @@ class BaseOutput:
         assert self.hash_info
         if self.use_cache:
             self.cache.save(self.path_info, self.cache.tree, self.hash_info)
+            self.set_exec()
 
     def dumpd(self):
         ret = copy(self.hash_info.to_dict())
@@ -373,14 +378,12 @@ class BaseOutput:
                 filter_info=filter_info,
                 **kwargs,
             )
-            if self.isexec:
-                st = os.stat(self.path_info.fspath)
-                os.chmod(self.path_info.fspath, st.st_mode | stat.S_IEXEC)
             return res
         except CheckoutError:
             if allow_missing or self.checkpoint:
                 return None
             raise
+        self.set_exec()
 
     def remove(self, ignore_remove=False):
         self.tree.remove(self.path_info)

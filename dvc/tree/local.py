@@ -152,6 +152,10 @@ class LocalTree(BaseTree):
     def makedirs(self, path_info):
         makedirs(path_info, exist_ok=True, mode=self.dir_mode)
 
+    def set_exec(self, path_info):
+        mode = self.stat(path_info).st_mode
+        self.chmod(path_info, mode | stat.S_IEXEC)
+
     def isexec(self, path_info):
         mode = os.stat(path_info).st_mode
         return is_exec(mode)
