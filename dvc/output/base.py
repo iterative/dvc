@@ -378,12 +378,12 @@ class BaseOutput:
                 filter_info=filter_info,
                 **kwargs,
             )
-            return res
         except CheckoutError:
             if allow_missing or self.checkpoint:
                 return None
             raise
         self.set_exec()
+        return res
 
     def remove(self, ignore_remove=False):
         self.tree.remove(self.path_info)
