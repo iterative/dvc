@@ -294,7 +294,7 @@ class BaseOutput:
         self.isexec = self.isfile() and self.tree.isexec(self.path_info)
 
     def set_exec(self):
-        if self.isexec:
+        if self.isfile() and self.isexec:
             self.tree.set_exec(self.path_info)
 
     def commit(self):
