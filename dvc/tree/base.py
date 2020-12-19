@@ -195,7 +195,7 @@ class BaseTree:
         """
         return True
 
-    def isexec(self, path_info):
+    def isexec(self, path):
         """Optional: Overwrite only if the remote has a way to distinguish
         between executable and non-executable file.
         """

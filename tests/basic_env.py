@@ -1,6 +1,5 @@
 import logging
 import os
-import stat
 import tempfile
 import warnings
 from unittest import TestCase
@@ -73,11 +72,6 @@ class TestDirFixture:
                 if isinstance(contents, str)
                 else contents.decode("utf-8")
             )
-
-    def create_executable(self, name, contents):
-        self.create(name, contents)
-        st = os.stat(name)
-        os.chmod(name, st.st_mode | stat.S_IEXEC)
 
     @staticmethod
     def mkdtemp(base_directory=None):

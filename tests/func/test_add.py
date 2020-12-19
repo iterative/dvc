@@ -2,6 +2,7 @@ import filecmp
 import logging
 import os
 import shutil
+import stat
 import textwrap
 import time
 
@@ -58,7 +59,13 @@ def test_add(tmp_dir, dvc):
 
 
 def test_add_executable(tmp_dir, dvc):
-    tmp_dir.dvc_gen_exec({"foo": "foo"})
+
+    paths = tmp_dir.gen({"foo": "foo"}, "")
+    # make files executable
+    for p in paths:
+        st = os.stat(p)
+        os.chmod(p, st.st_mode | stat.S_IEXEC)
+    tmp_dir.dvc_add(paths, commit=None)
 
     assert load_yaml("foo.dvc") == {
         "outs": [

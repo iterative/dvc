@@ -3,6 +3,7 @@ import filecmp
 import logging
 import os
 import shutil
+import stat
 
 import pytest
 from mock import patch
@@ -64,7 +65,9 @@ class TestCheckoutExecutable(TestRepro):
     def setUp(self):
         super().setUp()
 
-        self.create_executable(self.EXECUTABLE, self.EXECUTABLE_CONTENT)
+        self.create(self.EXECUTABLE, self.EXECUTABLE_CONTENT)
+        st = os.stat(self.EXECUTABLE)
+        os.chmod(self.EXECUTABLE, st.st_mode | stat.S_IEXEC)
         self.dvc.add(self.EXECUTABLE)
 
         self.orig = "orig"

@@ -47,7 +47,6 @@ from global repo template to creating everything inplace, which:
 
 import os
 import pathlib
-import stat
 from contextlib import contextmanager
 from textwrap import dedent
 
@@ -151,14 +150,6 @@ class TmpDir(pathlib.Path):
 
     def dvc_gen(self, struct, text="", commit=None):
         paths = self.gen(struct, text)
-        return self.dvc_add(paths, commit=commit)
-
-    def dvc_gen_exec(self, struct, text="", commit=None):
-        paths = self.gen(struct, text)
-        # make files executable
-        for p in paths:
-            st = os.stat(p)
-            os.chmod(p, st.st_mode | stat.S_IEXEC)
         return self.dvc_add(paths, commit=commit)
 
     def scm_gen(self, struct, text="", commit=None):
