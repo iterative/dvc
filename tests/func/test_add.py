@@ -76,6 +76,7 @@ def test_add_executable(tmp_dir, dvc):
     }
     assert os.stat("foo").st_mode & stat.S_IEXEC
 
+
 def test_add_unicode(tmp_dir, dvc):
     with open("\xe1", "wb") as fd:
         fd.write(b"something")
