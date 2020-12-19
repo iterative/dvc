@@ -291,9 +291,7 @@ class BaseOutput:
             return
 
         self.hash_info = self.get_hash()
-        self.isexec = self.tree.isfile(self.path_info) and self.tree.isexec(
-            self.path_info
-        )
+        self.isexec = self.isfile() and self.tree.isexec(self.path_info)
 
     def set_exec(self):
         if self.isexec:
