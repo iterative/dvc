@@ -64,7 +64,8 @@ def test_add_executable(tmp_dir, dvc):
     os.chmod("foo", st.st_mode | stat.S_IEXEC)
     dvc.add("foo")
 
-    assert load_yaml("foo.dvc") == {
+    actual = load_yaml("foo.dvc")
+    expected = {
         "outs": [
             {
                 "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
@@ -74,11 +75,15 @@ def test_add_executable(tmp_dir, dvc):
             }
         ],
     }
+
     isexec = os.stat("foo").st_mode & stat.S_IEXEC
     if os.name == "nt":
         # NOTE: you can't set exec bits on Windows
+        assert actual == expected
         assert not isexec
     else:
+        expected["outs"][0]["isexec"] = True
+        assert actual == expected
         assert isexec
 
 
