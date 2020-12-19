@@ -874,4 +874,9 @@ def test_checkout_executable(tmp_dir, dvc):
 
     dvc.checkout("foo")
 
-    assert os.stat("foo").st_mode & stat.S_IEXEC
+    isexec = os.stat("foo").st_mode & stat.S_IEXEC
+    if os.name == "nt":
+        # NOTE: you can't set exec bits on Windows
+        assert not isexec
+    else:
+        assert isexec
