@@ -248,6 +248,22 @@ def test_pull_imported_directory_stage(tmp_dir, dvc, erepo_dir):
     assert (tmp_dir / "dir_imported").read_text() == {"foo": "foo content"}
 
 
+def test_pull_wildcard_imported_directory_stage(tmp_dir, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen(
+            {"dir123": {"foo": "foo content"}}, commit="create dir"
+        )
+
+    dvc.imp(os.fspath(erepo_dir), "dir123", "dir_imported123")
+
+    remove("dir_imported123")
+    remove(dvc.cache.local.cache_dir)
+
+    dvc.pull(["dir_imported*.dvc"], glob=True)
+
+    assert (tmp_dir / "dir_imported123").read_text() == {"foo": "foo content"}
+
+
 def test_download_error_pulling_imported_stage(tmp_dir, dvc, erepo_dir):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
@@ -475,3 +491,25 @@ def test_import_with_no_exec(tmp_dir, dvc, erepo_dir):
 
     dst = tmp_dir / "foo_imported"
     assert not dst.exists()
+
+
+def test_import_with_jobs(mocker, dvc, erepo_dir):
+    from dvc.data_cloud import DataCloud
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen(
+            {
+                "dir1": {
+                    "file1": "file1",
+                    "file2": "file2",
+                    "file3": "file3",
+                    "file4": "file4",
+                },
+            },
+            commit="init",
+        )
+
+    spy = mocker.spy(DataCloud, "pull")
+    dvc.imp(os.fspath(erepo_dir), "dir1", jobs=3)
+    run_jobs = tuple(spy.call_args_list[0])[1].get("jobs")
+    assert run_jobs == 3

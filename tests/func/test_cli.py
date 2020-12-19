@@ -141,15 +141,22 @@ class TestGCMultipleDvcRepos(TestDvc):
 
 class TestConfig(TestDvc):
     def test(self):
-        name = "param"
+        name = "section.option"
         value = "1"
 
         args = parse_args(["config", "-u", "--unset", name, value])
 
         self.assertIsInstance(args.func(args), CmdConfig)
         self.assertEqual(args.unset, True)
-        self.assertEqual(args.name, name)
+        self.assertEqual(args.name, (False, "section", "option"))
         self.assertEqual(args.value, value)
+
+    def test_config_list(self):
+        args = parse_args(["config", "--list"])
+
+        self.assertTrue(args.list)
+        self.assertIsNone(args.name)
+        self.assertIsNone(args.value)
 
 
 class TestCheckout(TestDvc):

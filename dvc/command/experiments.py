@@ -5,7 +5,7 @@ from collections import OrderedDict
 from collections.abc import Mapping
 from datetime import date, datetime
 from itertools import groupby
-from typing import Iterable, Optional
+from typing import Dict, Iterable, Optional
 
 import dvc.prompt as prompt
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
@@ -56,7 +56,11 @@ def _filter_names(
         ret = OrderedDict({name: None for name in names})
 
     if exclude:
-        _filter(exclude, ret.difference_update)  # type: ignore[attr-defined]
+        to_remove: Dict[str, Optional[str]] = {}
+        _filter(exclude, to_remove.update)
+        for key in to_remove:
+            if key in ret:
+                del ret[key]
 
     return [".".join(name) for name in ret]
 
@@ -352,7 +356,9 @@ class CmdExperimentsShow(CmdBase):
 class CmdExperimentsApply(CmdBase):
     def run(self):
 
-        self.repo.experiments.apply(self.args.experiment)
+        self.repo.experiments.apply(
+            self.args.experiment, force=self.args.force
+        )
 
         return 0
 
@@ -437,31 +443,18 @@ class CmdExperimentsDiff(CmdBase):
 
 class CmdExperimentsRun(CmdRepro):
     def run(self):
-        # Dirty hack so the for loop below can at least enter once
-        if self.args.all_pipelines:
-            self.args.targets = [None]
-        elif not self.args.targets:
-            self.args.targets = self.default_targets
+        self.repo.experiments.run(
+            name=self.args.name,
+            queue=self.args.queue,
+            run_all=self.args.run_all,
+            jobs=self.args.jobs,
+            params=self.args.params,
+            checkpoint_resume=self.args.checkpoint_resume,
+            tmp_dir=self.args.tmp_dir,
+            **self._repro_kwargs,
+        )
 
-        ret = 0
-        for target in self.args.targets:
-            try:
-                self.repo.experiments.run(
-                    target,
-                    name=self.args.name,
-                    queue=self.args.queue,
-                    run_all=self.args.run_all,
-                    jobs=self.args.jobs,
-                    params=self.args.params,
-                    checkpoint_resume=self.args.checkpoint_resume,
-                    **self._repro_kwargs,
-                )
-            except DvcException:
-                logger.exception("")
-                ret = 1
-                break
-
-        return ret
+        return 0
 
 
 class CmdExperimentsGC(CmdRepro):
@@ -550,18 +543,25 @@ class CmdExperimentsPush(CmdBase):
     def run(self):
 
         self.repo.experiments.push(
-            self.args.git_remote, self.args.experiment, force=self.args.force
+            self.args.git_remote,
+            self.args.experiment,
+            force=self.args.force,
+            push_cache=self.args.push_cache,
+            dvc_remote=self.args.dvc_remote,
+            jobs=self.args.jobs,
+            run_cache=self.args.run_cache,
         )
 
         logger.info(
-            (
-                "Pushed experiment '%s' to Git remote '%s'. "
-                "To push cache for this experiment to a DVC remote run:\n\n"
-                "\tdvc push ..."
-            ),
+            "Pushed experiment '%s' to Git remote '%s'.",
             self.args.experiment,
             self.args.git_remote,
         )
+        if not self.args.push_cache:
+            logger.info(
+                "To push cached outputs for this experiment to DVC remote "
+                "storage, re-run this command without '--no-cache'."
+            )
 
         return 0
 
@@ -570,18 +570,25 @@ class CmdExperimentsPull(CmdBase):
     def run(self):
 
         self.repo.experiments.pull(
-            self.args.git_remote, self.args.experiment, force=self.args.force
+            self.args.git_remote,
+            self.args.experiment,
+            force=self.args.force,
+            pull_cache=self.args.pull_cache,
+            dvc_remote=self.args.dvc_remote,
+            jobs=self.args.jobs,
+            run_cache=self.args.run_cache,
         )
 
         logger.info(
-            (
-                "Pulled experiment '%s' from Git remote '%s'. "
-                "To pull cache for this experiment from a DVC remote run:\n\n"
-                "\tdvc pull ..."
-            ),
+            "Pulled experiment '%s' from Git remote '%s'. ",
             self.args.experiment,
             self.args.git_remote,
         )
+        if not self.args.pull_cache:
+            logger.info(
+                "To pull cached outputs for this experiment from DVC remote "
+                "storage, re-run this command without '--no-cache'."
+            )
 
         return 0
 
@@ -719,6 +726,12 @@ def add_parser(subparsers, parent_parser):
         ),
         help=EXPERIMENTS_APPLY_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    experiments_apply_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Overwrite any conflicting changes.",
     )
     experiments_apply_parser.add_argument(
         "experiment", help="Experiment to be applied.",
@@ -950,7 +963,39 @@ def add_parser(subparsers, parent_parser):
         "-f",
         "--force",
         action="store_true",
-        help="Replace experiment in the remote if it already exists.",
+        help="Replace experiment in the Git remote if it already exists.",
+    )
+    experiments_push_parser.add_argument(
+        "--no-cache",
+        action="store_false",
+        dest="push_cache",
+        help=(
+            "Do not push cached outputs for this experiment to DVC remote "
+            "storage."
+        ),
+    )
+    experiments_push_parser.add_argument(
+        "-r",
+        "--remote",
+        dest="dvc_remote",
+        metavar="<name>",
+        help="Name of the DVC remote to use when pushing cached outputs.",
+    )
+    experiments_push_parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        metavar="<number>",
+        help=(
+            "Number of jobs to run simultaneously when pushing to DVC remote "
+            "storage."
+        ),
+    )
+    experiments_push_parser.add_argument(
+        "--run-cache",
+        action="store_true",
+        default=False,
+        help="Push run history for all stages.",
     )
     experiments_push_parser.add_argument(
         "git_remote",
@@ -975,6 +1020,38 @@ def add_parser(subparsers, parent_parser):
         "--force",
         action="store_true",
         help="Replace local experiment already exists.",
+    )
+    experiments_pull_parser.add_argument(
+        "--no-cache",
+        action="store_false",
+        dest="pull_cache",
+        help=(
+            "Do not pull cached outputs for this experiment from DVC remote "
+            "storage."
+        ),
+    )
+    experiments_pull_parser.add_argument(
+        "-r",
+        "--remote",
+        dest="dvc_remote",
+        metavar="<name>",
+        help="Name of the DVC remote to use when pulling cached outputs.",
+    )
+    experiments_pull_parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        metavar="<number>",
+        help=(
+            "Number of jobs to run simultaneously when pulling from DVC "
+            "remote storage."
+        ),
+    )
+    experiments_pull_parser.add_argument(
+        "--run-cache",
+        action="store_true",
+        default=False,
+        help="Pull run history for all stages.",
     )
     experiments_pull_parser.add_argument(
         "git_remote",
@@ -1025,4 +1102,14 @@ def _add_run_common(parser):
         type=int,
         help="Run the specified number of experiments at a time in parallel.",
         metavar="<number>",
+    )
+    parser.add_argument(
+        "--temp",
+        action="store_true",
+        dest="tmp_dir",
+        help=(
+            "Run this experiment in a separate temporary directory instead of "
+            "your workspace. Only applies when running a single experiment "
+            "without --queue."
+        ),
     )

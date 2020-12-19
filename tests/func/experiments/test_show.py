@@ -1,23 +1,14 @@
+import os
 from datetime import datetime
 
+import pytest
 from funcy import first
 
-from dvc.dvcfile import PIPELINE_FILE
 from dvc.main import main
 from dvc.repo.experiments.base import ExpRefInfo
-from tests.func.test_repro_multistage import COPY_SCRIPT
 
 
-def test_show_simple(tmp_dir, scm, dvc):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
-    tmp_dir.gen("params.yaml", "foo: 1")
-    dvc.run(
-        cmd="python copy.py params.yaml metrics.yaml",
-        metrics_no_cache=["metrics.yaml"],
-        params=["foo"],
-        single_stage=True,
-    )
-
+def test_show_simple(tmp_dir, scm, dvc, exp_stage):
     assert dvc.experiments.show()["workspace"] == {
         "baseline": {
             "metrics": {"metrics.yaml": {"foo": 1}},
@@ -28,23 +19,16 @@ def test_show_simple(tmp_dir, scm, dvc):
     }
 
 
-def test_show_experiment(tmp_dir, scm, dvc):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
-    tmp_dir.gen("params.yaml", "foo: 1")
-    dvc.run(
-        cmd="python copy.py params.yaml metrics.yaml",
-        metrics_no_cache=["metrics.yaml"],
-        params=["foo"],
-        name="foo",
-    )
-    scm.add(["copy.py", "params.yaml", "metrics.yaml", "dvc.yaml", "dvc.lock"])
-    scm.commit("baseline")
+@pytest.mark.parametrize("workspace", [True, False])
+def test_show_experiment(tmp_dir, scm, dvc, exp_stage, workspace):
     baseline_rev = scm.get_rev()
     timestamp = datetime.fromtimestamp(
         scm.gitpython.repo.rev_parse(baseline_rev).committed_date
     )
 
-    dvc.experiments.run(PIPELINE_FILE, params=["foo=2"])
+    dvc.experiments.run(
+        exp_stage.addressing, params=["foo=2"], tmp_dir=not workspace
+    )
     results = dvc.experiments.show()
 
     expected_baseline = {
@@ -67,22 +51,12 @@ def test_show_experiment(tmp_dir, scm, dvc):
             assert exp["params"]["params.yaml"] == expected_params
 
 
-def test_show_queued(tmp_dir, scm, dvc):
+def test_show_queued(tmp_dir, scm, dvc, exp_stage):
     from dvc.repo.experiments.base import EXPS_STASH
 
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
-    tmp_dir.gen("params.yaml", "foo: 1")
-    stage = dvc.run(
-        cmd="python copy.py params.yaml metrics.yaml",
-        metrics_no_cache=["metrics.yaml"],
-        params=["foo"],
-        name="foo",
-    )
-    scm.add(["copy.py", "params.yaml", "metrics.yaml", "dvc.yaml", "dvc.lock"])
-    scm.commit("baseline")
     baseline_rev = scm.get_rev()
 
-    dvc.experiments.run(stage.addressing, params=["foo=2"], queue=True)
+    dvc.experiments.run(exp_stage.addressing, params=["foo=2"], queue=True)
     exp_rev = dvc.experiments.scm.resolve_rev(f"{EXPS_STASH}@{{0}}")
 
     results = dvc.experiments.show()[baseline_rev]
@@ -97,7 +71,7 @@ def test_show_queued(tmp_dir, scm, dvc):
     scm.commit("new commit")
     new_rev = scm.get_rev()
 
-    dvc.experiments.run(stage.addressing, params=["foo=3"], queue=True)
+    dvc.experiments.run(exp_stage.addressing, params=["foo=3"], queue=True)
     exp_rev = dvc.experiments.scm.resolve_rev(f"{EXPS_STASH}@{{0}}")
 
     results = dvc.experiments.show()[new_rev]
@@ -107,10 +81,13 @@ def test_show_queued(tmp_dir, scm, dvc):
     assert exp["params"]["params.yaml"] == {"foo": 3}
 
 
-def test_show_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, capsys):
+@pytest.mark.parametrize("workspace", [True, False])
+def test_show_checkpoint(
+    tmp_dir, scm, dvc, checkpoint_stage, capsys, workspace
+):
     baseline_rev = scm.get_rev()
     results = dvc.experiments.run(
-        checkpoint_stage.addressing, params=["foo=2"]
+        checkpoint_stage.addressing, params=["foo=2"], tmp_dir=not workspace
     )
     exp_rev = first(results)
 
@@ -140,21 +117,30 @@ def test_show_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, capsys):
         assert f"{tree} {name}" in cap.out
 
 
-def test_show_checkpoint_branch(tmp_dir, scm, dvc, checkpoint_stage, capsys):
+@pytest.mark.parametrize("workspace", [True, False])
+def test_show_checkpoint_branch(
+    tmp_dir, scm, dvc, checkpoint_stage, capsys, workspace
+):
     results = dvc.experiments.run(
-        checkpoint_stage.addressing, params=["foo=2"]
+        checkpoint_stage.addressing, params=["foo=2"], tmp_dir=not workspace
     )
     branch_rev = first(results)
-
-    results = dvc.experiments.run(
-        checkpoint_stage.addressing, checkpoint_resume=branch_rev
-    )
-    checkpoint_a = first(results)
+    if not workspace:
+        dvc.experiments.apply(branch_rev)
 
     results = dvc.experiments.run(
         checkpoint_stage.addressing,
         checkpoint_resume=branch_rev,
+        tmp_dir=not workspace,
+    )
+    checkpoint_a = first(results)
+
+    dvc.experiments.apply(branch_rev, force=True)
+    results = dvc.experiments.run(
+        checkpoint_stage.addressing,
+        checkpoint_resume=branch_rev,
         params=["foo=100"],
+        tmp_dir=not workspace,
     )
     checkpoint_b = first(results)
 
@@ -168,3 +154,41 @@ def test_show_checkpoint_branch(tmp_dir, scm, dvc, checkpoint_stage, capsys):
         name = ref_info.name
         assert f"╓ {name}" in cap.out
     assert f"({branch_rev[:7]})" in cap.out
+
+
+def test_show_filter(tmp_dir, scm, dvc, exp_stage, capsys):
+    capsys.readouterr()
+    assert (
+        main(
+            [
+                "exp",
+                "show",
+                "--no-pager",
+                "--no-timestamp",
+                "--include-metrics=foo",
+                "--include-params=foo",
+            ]
+        )
+        == 0
+    )
+    cap = capsys.readouterr()
+
+    div = "│" if os.name == "nt" else "┃"
+    assert f"{div} foo {div} foo {div}" in cap.out
+
+    assert (
+        main(
+            [
+                "exp",
+                "show",
+                "--no-pager",
+                "--no-timestamp",
+                "--exclude-metrics=foo",
+                "--exclude-params=foo",
+            ]
+        )
+        == 0
+    )
+    cap = capsys.readouterr()
+
+    assert f"{div} foo {div}" not in cap.out

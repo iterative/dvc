@@ -16,6 +16,8 @@ def test_import(mocker):
             "version",
             "--desc",
             "description",
+            "--jobs",
+            "3",
         ]
     )
     assert cli_args.func == CmdImport
@@ -33,6 +35,7 @@ def test_import(mocker):
         rev="version",
         no_exec=False,
         desc="description",
+        jobs=3,
     )
 
 
@@ -67,4 +70,5 @@ def test_import_no_exec(mocker):
         rev="version",
         no_exec=True,
         desc="description",
+        jobs=None,
     )

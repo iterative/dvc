@@ -170,6 +170,19 @@ def test_non_existing_stage_name(tmp_dir, dvc, run_copy):
     assert main(["freeze", ":copy-file1-file3"]) != 0
 
 
+def test_repro_frozen(tmp_dir, dvc, run_copy):
+    (data_stage,) = tmp_dir.dvc_gen("data", "foo")
+    stage0 = run_copy("data", "stage0", name="copy-data-stage0")
+    run_copy("stage0", "stage1", name="copy-data-stage1")
+    run_copy("stage1", "stage2", name="copy-data-stage2")
+
+    dvc.freeze("copy-data-stage1")
+
+    tmp_dir.gen("data", "bar")
+    stages = dvc.reproduce()
+    assert stages == [data_stage, stage0]
+
+
 def test_downstream(tmp_dir, dvc):
     # The dependency graph should look like this:
     #
@@ -528,7 +541,7 @@ def test_repro_list_of_commands_in_order(tmp_dir, dvc):
         """
         )
     )
-    dvc.reproduce(target="multi")
+    dvc.reproduce(targets=["multi"])
     assert (tmp_dir / "foo").read_text() == "foo\n"
     assert (tmp_dir / "bar").read_text() == "bar\n"
 
@@ -547,6 +560,6 @@ def test_repro_list_of_commands_raise_and_stops_after_failure(tmp_dir, dvc):
         )
     )
     with pytest.raises(ReproductionError):
-        dvc.reproduce(target="multi")
+        dvc.reproduce(targets=["multi"])
     assert (tmp_dir / "foo").read_text() == "foo\n"
     assert not (tmp_dir / "bar").exists()

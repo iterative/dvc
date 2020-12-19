@@ -257,10 +257,7 @@ class Stage(params.StageParams):
 
         if self.is_callback:
             logger.debug(
-                '%s is a "callback" stage '
-                "(has a command and no dependencies) and thus always "
-                "considered as changed.",
-                self,
+                "%s has a command but no dependencies", self.addressing
             )
             return True
 
@@ -497,7 +494,8 @@ class Stage(params.StageParams):
             self.remove_outs(ignore_remove=False, force=False)
 
         if not self.frozen and self.is_import:
-            sync_import(self, dry, force)
+            jobs = kwargs.get("jobs", None)
+            sync_import(self, dry, force, jobs)
         elif not self.frozen and self.cmd:
             run_stage(self, dry, force, **kwargs)
         else:

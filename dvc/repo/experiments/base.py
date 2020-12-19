@@ -7,6 +7,7 @@ from dvc.exceptions import DvcException, InvalidArgumentError
 EXPS_NAMESPACE = "refs/exps"
 EXPS_STASH = f"{EXPS_NAMESPACE}/stash"
 EXEC_NAMESPACE = f"{EXPS_NAMESPACE}/exec"
+EXEC_APPLY = f"{EXEC_NAMESPACE}/EXEC_APPLY"
 EXEC_CHECKPOINT = f"{EXEC_NAMESPACE}/EXEC_CHECKPOINT"
 EXEC_BRANCH = f"{EXEC_NAMESPACE}/EXEC_BRANCH"
 EXEC_BASELINE = f"{EXEC_NAMESPACE}/EXEC_BASELINE"
@@ -81,6 +82,18 @@ class MultipleBranchError(DvcException):
         self.rev = rev
 
 
+class ApplyConflictError(InvalidArgumentError):
+    def __init__(self, name):
+        super().__init__(
+            f"Experiment '{name}' cannot be applied to because your current "
+            "workspace contains changes which would be overwritten. Either "
+            "'git stash' your current changes before applying this "
+            "experiment, or re-run this command with '--force' to overwrite "
+            "your current changes."
+        )
+        self.name = name
+
+
 class ExpRefInfo:
 
     namespace = EXPS_NAMESPACE
@@ -93,6 +106,11 @@ class ExpRefInfo:
 
     def __str__(self):
         return "/".join(self.parts)
+
+    def __repr__(self):
+        baseline = f"'{self.baseline_sha}'" if self.baseline_sha else "None"
+        name = f"'{self.name}'" if self.name else "None"
+        return f"ExpRefInfo(baseline_sha={baseline}, name={name})"
 
     @property
     def parts(self):

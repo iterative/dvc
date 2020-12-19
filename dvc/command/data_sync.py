@@ -179,6 +179,12 @@ def add_parser(subparsers, _parent_parser):
         default=False,
         help="Fetch run history for all stages.",
     )
+    pull_parser.add_argument(
+        "--glob",
+        action="store_true",
+        default=False,
+        help="Pull cache for targets matching shell-style wildcards.",
+    )
     pull_parser.set_defaults(func=CmdDataPull)
 
     # Push

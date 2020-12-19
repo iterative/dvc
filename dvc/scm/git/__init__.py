@@ -6,7 +6,7 @@ import shlex
 from collections import OrderedDict
 from contextlib import contextmanager
 from functools import partialmethod
-from typing import Iterable, Optional
+from typing import Iterable, List, Optional, Set
 
 from funcy import cached_property, first
 from pathspec.patterns import GitWildMatchPattern
@@ -20,6 +20,7 @@ from dvc.utils.serialize import modify_yaml
 from .backend.base import NoGitBackendError
 from .backend.dulwich import DulwichBackend
 from .backend.gitpython import GitPythonBackend
+from .backend.pygit2 import Pygit2Backend
 from .stash import Stash
 
 logger = logging.getLogger(__name__)
@@ -31,15 +32,19 @@ class Git(Base):
     GITIGNORE = ".gitignore"
     GIT_DIR = ".git"
     DEFAULT_BACKENDS = OrderedDict(
-        [("dulwich", DulwichBackend), ("gitpython", GitPythonBackend)]
+        [
+            ("dulwich", DulwichBackend),
+            ("pygit2", Pygit2Backend),
+            ("gitpython", GitPythonBackend),
+        ]
     )
     LOCAL_BRANCH_PREFIX = "refs/heads/"
 
     def __init__(
         self, *args, backends: Optional[Iterable[str]] = None, **kwargs
     ):
-        self.ignored_paths = []
-        self.files_to_track = set()
+        self.ignored_paths: List[str] = []
+        self.files_to_track: Set[str] = set()
 
         selected = backends if backends else self.DEFAULT_BACKENDS.keys()
         self.backends = OrderedDict(
@@ -63,6 +68,10 @@ class Git(Base):
     @property
     def dulwich(self):
         return self.backends["dulwich"]
+
+    @property
+    def pygit2(self):
+        return self.backends["pygit2"]
 
     @cached_property
     def stash(self):
@@ -248,7 +257,7 @@ class Git(Base):
 
         self.add(self.files_to_track)
 
-    def track_file(self, path):
+    def track_file(self, path: str):
         self.files_to_track.add(path)
 
     def belongs_to_scm(self, path):
@@ -285,7 +294,7 @@ class Git(Base):
 
     @property
     def no_commits(self):
-        return not self.list_all_commits()
+        return not bool(self.get_ref("HEAD"))
 
     def _backend_func(self, name, *args, **kwargs):
         for backend in self.backends.values():
@@ -295,6 +304,16 @@ class Git(Base):
             except NotImplementedError:
                 pass
         raise NoGitBackendError(name)
+
+    def get_tree(self, rev: str, **kwargs):
+        from dvc.tree.git import GitTree
+
+        from .objects import GitTrie
+
+        resolved = self.resolve_rev(rev)
+        tree_obj = self._backend_func("get_tree_obj", rev=resolved)
+        trie = GitTrie(tree_obj, resolved)
+        return GitTree(self.root_dir, trie, **kwargs)
 
     is_ignored = partialmethod(_backend_func, "is_ignored")
     add = partialmethod(_backend_func, "add")
@@ -311,7 +330,6 @@ class Git(Base):
     list_branches = partialmethod(_backend_func, "list_branches")
     list_tags = partialmethod(_backend_func, "list_tags")
     list_all_commits = partialmethod(_backend_func, "list_all_commits")
-    get_tree = partialmethod(_backend_func, "get_tree")
     get_rev = partialmethod(_backend_func, "get_rev")
     _resolve_rev = partialmethod(_backend_func, "resolve_rev")
     resolve_commit = partialmethod(_backend_func, "resolve_commit")
@@ -371,9 +389,19 @@ class Git(Base):
         finally:
             prefix = self.LOCAL_BRANCH_PREFIX
             if orig_head.startswith(prefix):
-                orig_head = orig_head[len(prefix) :]
-            logger.debug("Restore HEAD to '%s'", orig_head)
-            self.checkout(orig_head)
+                symbolic = True
+                name = orig_head[len(prefix) :]
+            else:
+                symbolic = False
+                name = orig_head
+            self.set_ref(
+                "HEAD",
+                orig_head,
+                symbolic=symbolic,
+                message=f"dvc: Restore HEAD to '{name}'",
+            )
+            logger.debug("Restore HEAD to '%s'", name)
+            self.reset()
 
     @contextmanager
     def stash_workspace(self, **kwargs):

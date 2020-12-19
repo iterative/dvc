@@ -21,7 +21,7 @@ def _collect_outs(
 ) -> Outputs:
     outs = {
         out
-        for stage in repo.stages
+        for stage in repo.graph  # using `graph` to ensure graph checks run
         for out in (stage.deps if deps else stage.outs)
     }
     return set(filter(output_filter, outs)) if output_filter else outs

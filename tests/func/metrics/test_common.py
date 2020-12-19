@@ -2,7 +2,14 @@ import logging
 
 import pytest
 
-from dvc.exceptions import NoMetricsFoundError, NoMetricsParsedError
+from dvc.exceptions import (
+    NoMetricsFoundError,
+    NoMetricsParsedError,
+    OverlappingOutputPathsError,
+)
+from dvc.path_info import PathInfo
+from dvc.utils.fs import remove
+from dvc.utils.serialize import dump_yaml, modify_yaml
 from tests.func.metrics.utils import _write_json
 
 
@@ -61,3 +68,41 @@ def test_show_malformed_metric(
 def test_show_no_metrics_files(tmp_dir, dvc, caplog, show):
     with pytest.raises(NoMetricsFoundError):
         show(dvc)
+
+
+@pytest.mark.parametrize("clear_before_run", [True, False])
+@pytest.mark.parametrize("typ", ["metrics", "plots"])
+def test_metrics_show_overlap(
+    tmp_dir, dvc, run_copy_metrics, clear_before_run, typ
+):
+    data_dir = PathInfo("data")
+    (tmp_dir / data_dir).mkdir()
+
+    outs = {typ: [str(data_dir / "m1.yaml")]}
+    dump_yaml(data_dir / "m1_temp.yaml", {"a": {"b": {"c": 2, "d": 1}}})
+    run_copy_metrics(
+        str(data_dir / "m1_temp.yaml"),
+        str(data_dir / "m1.yaml"),
+        single_stage=False,
+        commit=f"add m1 {typ}",
+        name="cp-m1",
+        **outs,
+    )
+    with modify_yaml("dvc.yaml") as d:
+        # trying to make an output overlaps error
+        d["stages"]["corrupted-stage"] = {
+            "cmd": "mkdir data",
+            "outs": ["data"],
+        }
+
+    # running by clearing and not clearing stuffs
+    # so as it works even for optimized cases
+    if clear_before_run:
+        remove(data_dir)
+        remove(dvc.cache.local.cache_dir)
+
+    dvc._reset()
+
+    show = dvc.metrics.show if typ == "metrics" else dvc.plots.show
+    with pytest.raises(OverlappingOutputPathsError):
+        show()

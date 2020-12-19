@@ -1,16 +1,54 @@
 import fnmatch
+import locale
 import logging
 import os
-from io import BytesIO
-from typing import Callable, Iterable, Optional, Tuple
+import stat
+from io import BytesIO, StringIO
+from typing import Callable, Dict, Iterable, Optional, Tuple
 
+from dvc.path_info import PathInfo
 from dvc.scm.base import SCMError
-from dvc.tree.base import BaseTree
 from dvc.utils import relpath
 
+from ..objects import GitObject
 from .base import BaseGitBackend
 
 logger = logging.getLogger(__name__)
+
+
+class DulwichObject(GitObject):
+    def __init__(self, repo, name, mode, sha):
+        self.repo = repo
+        self._name = name
+        self._mode = mode
+        self.sha = sha
+
+    def open(self, mode: str = "r", encoding: str = None):
+        if not encoding:
+            encoding = locale.getpreferredencoding(False)
+        # NOTE: we didn't load the object before as Dulwich will also try to
+        # load the contents of it into memory, which will slow down Trie
+        # building considerably.
+        obj = self.repo[self.sha]
+        data = obj.as_raw_string()
+        if mode == "rb":
+            return BytesIO(data)
+        return StringIO(data.decode(encoding))
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def mode(self) -> int:
+        return self._mode
+
+    def scandir(self) -> Iterable["DulwichObject"]:
+        tree = self.repo[self.sha]
+        for entry in tree.iteritems():  # noqa: B301
+            yield DulwichObject(
+                self.repo, entry.path.decode(), entry.mode, entry.sha
+            )
 
 
 class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
@@ -30,7 +68,23 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         except NotGitRepository as exc:
             raise SCMError(f"{root_dir} is not a git repository") from exc
 
+        self._submodules: Dict[str, "PathInfo"] = self._find_submodules()
         self._stashes: dict = {}
+
+    def _find_submodules(self) -> Dict[str, "PathInfo"]:
+        """Return dict mapping submodule names to submodule paths.
+
+        Submodule paths will be relative to Git repo root.
+        """
+        from dulwich.config import ConfigFile, parse_submodules
+
+        submodules: Dict[str, "PathInfo"] = {}
+        config_path = os.path.join(self.root_dir, ".gitmodules")
+        if os.path.isfile(config_path):
+            config = ConfigFile.from_path(config_path)
+            for path, _url, section in parse_submodules(config):
+                submodules[os.fsdecode(section)] = PathInfo(os.fsdecode(path))
+        return submodules
 
     def close(self):
         self.repo.close()
@@ -57,10 +111,39 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         return self.repo.commondir()
 
     def add(self, paths: Iterable[str]):
-        raise NotImplementedError
+        from dvc.utils.fs import walk_files
+
+        if isinstance(paths, str):
+            paths = [paths]
+
+        files = []
+        for path in paths:
+            if not os.path.isabs(path) and self._submodules:
+                # NOTE: If path is inside a submodule, Dulwich expects the
+                # staged paths to be relative to the submodule root (not the
+                # parent git repo root). We append path to root_dir here so
+                # that the result of relpath(path, root_dir) is actually the
+                # path relative to the submodule root.
+                path_info = PathInfo(path).relative_to(self.root_dir)
+                for sm_path in self._submodules.values():
+                    if path_info.isin(sm_path):
+                        path = os.path.join(
+                            self.root_dir, path_info.relative_to(sm_path)
+                        )
+                        break
+            if os.path.isdir(path):
+                files.extend(walk_files(path))
+            else:
+                files.append(path)
+
+        for fpath in files:
+            # NOTE: this doesn't check gitignore, same as GitPythonBackend.add
+            self.repo.stage(relpath(fpath, self.root_dir))
 
     def commit(self, msg: str):
-        raise NotImplementedError
+        from dulwich.porcelain import commit
+
+        commit(self.root_dir, message=msg)
 
     def checkout(
         self, branch: str, create_new: Optional[bool] = False, **kwargs,
@@ -83,7 +166,12 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         raise NotImplementedError
 
     def is_tracked(self, path: str) -> bool:
-        raise NotImplementedError
+        rel = PathInfo(path).relative_to(self.root_dir).as_posix().encode()
+        rel_dir = rel + b"/"
+        for path in self.repo.open_index():
+            if path == rel or path.startswith(rel_dir):
+                return True
+        return False
 
     def is_dirty(self, **kwargs) -> bool:
         raise NotImplementedError
@@ -100,8 +188,11 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def list_all_commits(self) -> Iterable[str]:
         raise NotImplementedError
 
-    def get_tree(self, rev: str, **kwargs) -> BaseTree:
-        raise NotImplementedError
+    def get_tree_obj(self, rev: str, **kwargs) -> DulwichObject:
+        from dulwich.objectspec import parse_tree
+
+        tree = parse_tree(self.repo, rev)
+        return DulwichObject(self.repo, ".", stat.S_IFDIR, tree.id)
 
     def get_rev(self) -> str:
         raise NotImplementedError
@@ -142,7 +233,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         message_b = message.encode("utf-8") if message else None
         if symbolic:
             return self.repo.refs.set_symbolic_ref(
-                name_b, new_ref_b, message=message
+                name_b, new_ref_b, message=message_b
             )
         if not self.repo.refs.set_if_equals(
             name_b, old_ref_b, new_ref_b, message=message_b
@@ -269,7 +360,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             raise SCMError("Git failed to push '{src}' to '{url}'") from exc
 
     def _push_dest_refs(
-        self, src: str, dest: str
+        self, src: Optional[str], dest: str
     ) -> Tuple[Iterable[bytes], Iterable[bytes]]:
         from dulwich.objects import ZERO_SHA
 

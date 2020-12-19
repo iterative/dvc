@@ -14,7 +14,7 @@ from ..exceptions import (
 from ..output.base import OutputDoesNotExistError
 from ..progress import Tqdm
 from ..repo.scm_context import scm_context
-from ..utils import LARGE_DIR_SIZE, resolve_paths
+from ..utils import LARGE_DIR_SIZE, glob_targets, resolve_paths
 from . import locked
 
 logger = logging.getLogger(__name__)
@@ -152,18 +152,9 @@ def _find_all_targets(repo, target, recursive):
 def _create_stages(
     repo, targets, fname, pbar=None, external=False, glob=False, desc=None,
 ):
-    from glob import iglob
-
     from dvc.stage import Stage, create_stage, restore_meta
 
-    if glob:
-        expanded_targets = [
-            exp_target
-            for target in targets
-            for exp_target in iglob(target, recursive=True)
-        ]
-    else:
-        expanded_targets = targets
+    expanded_targets = glob_targets(targets, glob=glob)
 
     stages = []
     for out in Tqdm(

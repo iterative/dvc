@@ -1,7 +1,9 @@
 import re
 import typing
+from collections.abc import Mapping
 from functools import singledispatch
 
+from funcy import rpartial
 from pyparsing import (
     CharsNotIn,
     ParseException,
@@ -18,6 +20,8 @@ if typing.TYPE_CHECKING:
 
     from .context import Context
 
+BRACE_OPEN = "${"
+BRACE_CLOSE = "}"
 LBRACK = "["
 RBRACK = "]"
 PERIOD = "."
@@ -51,15 +55,23 @@ def get_matches(template: str):
 
 
 def is_interpolated_string(val):
-    return bool(get_matches(val)) if isinstance(val, str) else False
+    return isinstance(val, str) and bool(get_matches(val))
+
+
+def normalize_key(key: str):
+    return key.replace(LBRACK, PERIOD).replace(RBRACK, "")
 
 
 def format_and_raise_parse_error(exc):
     raise ParseError(_format_exc_msg(exc))
 
 
+def embrace(s: str):
+    return BRACE_OPEN + s + BRACE_CLOSE
+
+
 @singledispatch
-def to_str(obj):
+def to_str(obj) -> str:
     return str(obj)
 
 
@@ -72,18 +84,45 @@ def _format_exc_msg(exc: ParseException):
     exc.loc += 2  # 2 because we append `${` at the start of expr below
 
     expr = exc.pstr
-    exc.pstr = "${" + exc.pstr + "}"
+    exc.pstr = embrace(exc.pstr)
     error = ParseException.explain(exc, depth=0)
 
     _, pointer, *explains = error.splitlines()
     pstr = "{brace_open}{expr}{brace_close}".format(
-        brace_open=colorize("${", color="blue"),
+        brace_open=colorize(BRACE_OPEN, color="blue"),
         expr=colorize(expr, color="magenta"),
-        brace_close=colorize("}", color="blue"),
+        brace_close=colorize(BRACE_CLOSE, color="blue"),
     )
     msg = "\n".join(explains)
     pointer = colorize(pointer, color="red")
     return "\n".join([pstr, pointer, colorize(msg, color="red", style="bold")])
+
+
+def recurse(f):
+    Seq = (list, tuple, set)
+
+    def wrapper(data, *args):
+        g = rpartial(wrapper, *args)
+        if isinstance(data, Mapping):
+            return {g(k): g(v) for k, v in data.items()}
+        elif isinstance(data, Seq):
+            return type(data)(map(g, data))
+        elif isinstance(data, str):
+            return f(data, *args)
+        return data
+
+    return wrapper
+
+
+def check_recursive_parse_errors(data: dict):
+    func = recurse(check_expression)
+    return func(data)
+
+
+def check_expression(s: str):
+    matches = get_matches(s)
+    for match in matches:
+        get_expression(match)
 
 
 def parse_expr(s: str):
@@ -97,18 +136,23 @@ def parse_expr(s: str):
     return joined[0]
 
 
-def get_expression(match: "Match"):
+def get_expression(match: "Match", skip_checks: bool = False):
     _, _, inner = match.groups()
-    return parse_expr(inner)
+    return inner if skip_checks else parse_expr(inner)
 
 
-def str_interpolate(template: str, matches: "List[Match]", context: "Context"):
+def str_interpolate(
+    template: str,
+    matches: "List[Match]",
+    context: "Context",
+    skip_checks: bool = False,
+):
     from .context import PRIMITIVES
 
     index, buf = 0, ""
     for match in matches:
         start, end = match.span(0)
-        expr = get_expression(match)
+        expr = get_expression(match, skip_checks=skip_checks)
         value = context.select(expr, unwrap=True)
         if value is not None and not isinstance(value, PRIMITIVES):
             raise ParseError(
@@ -119,7 +163,7 @@ def str_interpolate(template: str, matches: "List[Match]", context: "Context"):
     buf += template[index:]
     # regex already backtracks and avoids any `${` starting with
     # backslashes(`\`). We just need to replace those by `${`.
-    return buf.replace(r"\${", "${")
+    return buf.replace(r"\${", BRACE_OPEN)
 
 
 def is_exact_string(src: str, matches: "List[Match]"):

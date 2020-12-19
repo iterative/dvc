@@ -142,7 +142,8 @@ def get_fs_type(path):
         for part in psutil.disk_partitions(all=True)
     }
 
-    path = pathlib.Path(path)
+    # need to follow the symlink: https://github.com/iterative/dvc/issues/5065
+    path = pathlib.Path(path).resolve()
 
     for parent in itertools.chain([path], path.parents):
         if parent in partition:

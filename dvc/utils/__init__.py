@@ -454,10 +454,25 @@ def parse_target(
             return ret if is_valid_filename(target) else ret[::-1]
 
     if not path:
-        logger.trace("Assuming file to be '%s'", default)
+        logger.trace(  # type: ignore[attr-defined]
+            "Assuming file to be '%s'", default
+        )
 
     return path or default, name
 
 
 def is_exec(mode):
     return bool(mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
+
+
+def glob_targets(targets, glob=True, recursive=True):
+    if not glob:
+        return targets
+
+    from glob import iglob
+
+    return [
+        exp_target
+        for target in targets
+        for exp_target in iglob(target, recursive=recursive)
+    ]

@@ -264,3 +264,141 @@ def test_no_commits(tmp_dir):
     assert Git().no_commits
 
     assert Repo.init().diff() == {}
+
+
+def setup_targets_test(tmp_dir):
+    tmp_dir.dvc_gen("file", "first", commit="add a file")
+
+    tmp_dir.dvc_gen({"dir": {"1": "1", "2": "2"}})
+    tmp_dir.dvc_gen("file", "second")
+
+    tmp_dir.dvc_gen(os.path.join("dir_with", "file.txt"), "first")
+
+
+def test_targets_missing_path(tmp_dir, scm, dvc):
+    from dvc.exceptions import PathMissingError
+
+    setup_targets_test(tmp_dir)
+
+    with pytest.raises(PathMissingError):
+        dvc.diff(targets=["missing"])
+
+
+def test_targets_single_file(tmp_dir, scm, dvc):
+    setup_targets_test(tmp_dir)
+
+    assert dvc.diff(targets=["file"]) == {
+        "added": [],
+        "deleted": [],
+        "modified": [
+            {
+                "path": "file",
+                "hash": {"old": digest("first"), "new": digest("second")},
+            }
+        ],
+        "not in cache": [],
+    }
+
+
+def test_targets_single_dir(tmp_dir, scm, dvc):
+    setup_targets_test(tmp_dir)
+
+    dir_checksum = "5fb6b29836c388e093ca0715c872fe2a.dir"
+
+    expected_result = {
+        "added": [
+            {"path": os.path.join("dir", ""), "hash": dir_checksum},
+            {"path": os.path.join("dir", "1"), "hash": digest("1")},
+            {"path": os.path.join("dir", "2"), "hash": digest("2")},
+        ],
+        "deleted": [],
+        "modified": [],
+        "not in cache": [],
+    }
+
+    assert dvc.diff(targets=["dir"]) == expected_result
+    assert dvc.diff(targets=["dir" + os.path.sep]) == expected_result
+
+
+def test_targets_single_file_in_dir(tmp_dir, scm, dvc):
+    setup_targets_test(tmp_dir)
+
+    assert dvc.diff(targets=[os.path.join("dir", "1")]) == {
+        "added": [{"path": os.path.join("dir", "1"), "hash": digest("1")}],
+        "deleted": [],
+        "modified": [],
+        "not in cache": [],
+    }
+
+
+def test_targets_two_files_in_dir(tmp_dir, scm, dvc):
+    setup_targets_test(tmp_dir)
+
+    assert dvc.diff(
+        targets=[os.path.join("dir", "1"), os.path.join("dir", "2")]
+    ) == {
+        "added": [
+            {"path": os.path.join("dir", "1"), "hash": digest("1")},
+            {"path": os.path.join("dir", "2"), "hash": digest("2")},
+        ],
+        "deleted": [],
+        "modified": [],
+        "not in cache": [],
+    }
+
+
+def test_targets_file_and_dir(tmp_dir, scm, dvc):
+    setup_targets_test(tmp_dir)
+
+    dir_checksum = "5fb6b29836c388e093ca0715c872fe2a.dir"
+
+    assert dvc.diff(targets=["file", "dir"]) == {
+        "added": [
+            {"path": os.path.join("dir", ""), "hash": dir_checksum},
+            {"path": os.path.join("dir", "1"), "hash": digest("1")},
+            {"path": os.path.join("dir", "2"), "hash": digest("2")},
+        ],
+        "deleted": [],
+        "modified": [
+            {
+                "path": "file",
+                "hash": {"old": digest("first"), "new": digest("second")},
+            }
+        ],
+        "not in cache": [],
+    }
+
+
+def test_targets_single_dir_with_file(tmp_dir, scm, dvc):
+    setup_targets_test(tmp_dir)
+
+    expected_result = {
+        "added": [
+            {
+                "path": os.path.join("dir_with", "file.txt"),
+                "hash": digest("first"),
+            },
+        ],
+        "deleted": [],
+        "modified": [],
+        "not in cache": [],
+    }
+
+    assert dvc.diff(targets=["dir_with"]) == expected_result
+    assert dvc.diff(targets=["dir_with" + os.path.sep]) == expected_result
+
+
+def test_targets_single_file_in_dir_with_file(tmp_dir, scm, dvc):
+    setup_targets_test(tmp_dir)
+
+    assert dvc.diff(targets=[os.path.join("dir_with", "file.txt")]) == {
+        "added": [
+            {
+                "path": os.path.join("dir_with", "file.txt"),
+                "hash": digest("first"),
+            },
+        ],
+        "deleted": [],
+        "modified": [],
+        "not in cache": [],
+    }

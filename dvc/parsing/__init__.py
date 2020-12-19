@@ -1,12 +1,9 @@
 import logging
-import os
-from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
-from itertools import starmap
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, NamedTuple, Union
 
-from funcy import join, lfilter
+from funcy import cached_property, collecting, first, isa, join, reraise
 
 from dvc.dependency.param import ParamsDependency
 from dvc.exceptions import DvcException
@@ -19,9 +16,14 @@ from .context import (
     ContextError,
     KeyNotInContext,
     MergeError,
-    Meta,
     Node,
-    SetError,
+    VarsAlreadyLoaded,
+)
+from .interpolate import (
+    check_recursive_parse_errors,
+    is_interpolated_string,
+    recurse,
+    to_str,
 )
 
 if TYPE_CHECKING:
@@ -36,18 +38,17 @@ DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
 PARAMS_KWD = "params"
 FOREACH_KWD = "foreach"
 DO_KWD = "do"
-SET_KWD = "set"
 
 DEFAULT_SENTINEL = object()
 
 JOIN = "@"
 
 
-class VarsAlreadyLoaded(DvcException):
+class ResolveError(DvcException):
     pass
 
 
-class ResolveError(DvcException):
+class EntryNotFound(DvcException):
     pass
 
 
@@ -75,158 +76,144 @@ def _reraise_err(exc_cls, *args, from_exc=None):
     raise err
 
 
+def check_syntax_errors(
+    definition: dict, name: str, path: str, where: str = "stages"
+):
+    for key, d in definition.items():
+        try:
+            check_recursive_parse_errors(d)
+        except ParseError as exc:
+            format_and_raise(exc, f"'{where}.{name}.{key}'", path)
+
+
+def is_map_or_seq(data):
+    _is_map_or_seq = isa(Mapping, Sequence)
+    return not isinstance(data, str) and _is_map_or_seq(data)
+
+
+def split_foreach_name(name):
+    group, *keys = name.rsplit(JOIN, maxsplit=1)
+    return group, first(keys)
+
+
+def check_interpolations(data, where, path):
+    def func(s):
+        if is_interpolated_string(s):
+            raise ResolveError(
+                _format_preamble(f"'{where}'", path)
+                + "interpolating is not allowed"
+            )
+
+    return recurse(func)(data)
+
+
+Definition = Union["ForeachDefinition", "EntryDefinition"]
+DictStr = Dict[str, Any]
+
+
+def make_definition(
+    resolver: "DataResolver", name: str, definition: DictStr, **kwargs
+) -> Definition:
+    args = resolver, resolver.context, name, definition
+    if FOREACH_KWD in definition:
+        return ForeachDefinition(*args, **kwargs)
+    return EntryDefinition(*args, **kwargs)
+
+
 class DataResolver:
     def __init__(self, repo: "Repo", wdir: PathInfo, d: dict):
-        self.data: dict = d
+        self.tree = tree = repo.tree
         self.wdir = wdir
-        self.repo = repo
-        self.tree = self.repo.tree
-        self.imported_files: Dict[str, Optional[List[str]]] = {}
         self.relpath = relpath(self.wdir / "dvc.yaml")
 
-        to_import: PathInfo = wdir / DEFAULT_PARAMS_FILE
-        if self.tree.exists(to_import):
-            self.imported_files = {os.path.abspath(to_import): None}
-            self.global_ctx = Context.load_from(self.tree, to_import)
-        else:
-            self.global_ctx = Context()
-            logger.debug(
-                "%s does not exist, it won't be used in parametrization",
-                to_import,
-            )
-
         vars_ = d.get(VARS_KWD, [])
+        check_interpolations(vars_, VARS_KWD, self.relpath)
+        self.context: Context = Context()
+
         try:
-            self.load_from_vars(
-                self.global_ctx, vars_, wdir, skip_imports=self.imported_files
-            )
-        except (ContextError, VarsAlreadyLoaded) as exc:
+            args = tree, vars_, wdir  # load from `vars` section
+            self.context.load_from_vars(*args, default=DEFAULT_PARAMS_FILE)
+        except ContextError as exc:
             format_and_raise(exc, "'vars'", self.relpath)
 
-        self.tracked_vars = {}
+        # we wrap the definitions into ForeachDefinition and EntryDefinition,
+        # that helps us to optimize, cache and selectively load each one of
+        # them as we need, and simplify all of this DSL/parsing logic.
+        # we use `tracked_vars` to keep a dictionary of used variables
+        # by the interpolated entries.
+        self.tracked_vars: Dict[str, Mapping] = {}
 
-    @staticmethod
-    def check_loaded(path, item, keys, skip_imports):
-        if not keys and isinstance(skip_imports[path], list):
-            raise VarsAlreadyLoaded(
-                f"cannot load '{item}' as it's partially loaded already"
-            )
-        elif keys and skip_imports[path] is None:
-            raise VarsAlreadyLoaded(
-                f"cannot partially load '{item}' as it's already loaded."
-            )
-        elif keys and isinstance(skip_imports[path], list):
-            if not set(keys).isdisjoint(set(skip_imports[path])):
-                raise VarsAlreadyLoaded(
-                    f"cannot load '{item}' as it's partially loaded already"
-                )
+        stages_data = d.get(STAGES_KWD, {})
+        self.definitions: Dict[str, Definition] = {
+            name: make_definition(self, name, definition)
+            for name, definition in stages_data.items()
+        }
 
-    def load_from_vars(
-        self,
-        context: "Context",
-        vars_: List,
-        wdir: PathInfo,
-        skip_imports: Dict[str, Optional[List[str]]],
-        stage_name: str = None,
-    ):
-        stage_name = stage_name or ""
-        for index, item in enumerate(vars_):
-            assert isinstance(item, (str, dict))
-            if isinstance(item, str):
-                path, _, keys_str = item.partition(":")
-                keys = lfilter(bool, keys_str.split(","))
+    def resolve_one(self, name):
+        group, key = split_foreach_name(name)
 
-                path_info = wdir / path
-                path = os.path.abspath(path_info)
+        if not self._has_group_and_key(group, key):
+            raise EntryNotFound(f"Could not find '{name}'")
 
-                if path in skip_imports:
-                    if not keys and skip_imports[path] is None:
-                        # allow specifying complete filepath multiple times
-                        continue
-                    self.check_loaded(path, item, keys, skip_imports)
-
-                context.merge_from(self.tree, path_info, select_keys=keys)
-                skip_imports[path] = keys if keys else None
-            else:
-                joiner = "." if stage_name else ""
-                meta = Meta(source=f"{stage_name}{joiner}vars[{index}]")
-                context.merge_update(Context(item, meta=meta))
-
-    def _resolve_entry(self, name: str, definition):
-        context = Context.clone(self.global_ctx)
-        if FOREACH_KWD in definition:
-            assert DO_KWD in definition
-            self.set_context_from(
-                context, definition.get(SET_KWD, {}), source=[name, "set"]
-            )
-            return self._foreach(
-                context, name, definition[FOREACH_KWD], definition[DO_KWD]
-            )
-
-        try:
-            return self._resolve_stage(context, name, definition)
-        except ContextError as exc:
-            format_and_raise(exc, f"stage '{name}'", self.relpath)
+        # all of the checks for `key` not being None for `ForeachDefinition`
+        # and/or `group` not existing in the `interim`, etc. should be
+        # handled by the `self.has_key()` above.
+        definition = self.definitions[group]
+        if isinstance(definition, EntryDefinition):
+            return definition.resolve()
+        return definition.resolve_one(key)
 
     def resolve(self):
-        stages = self.data.get(STAGES_KWD, {})
-        data = join(starmap(self._resolve_entry, stages.items())) or {}
-        logger.trace("Resolved dvc.yaml:\n%s", data)
+        """Used for testing purposes, otherwise use resolve_one()."""
+        data = join(map(self.resolve_one, self.get_keys()))
+        logger.trace(  # type: ignore[attr-defined]
+            "Resolved dvc.yaml:\n%s", data
+        )
         return {STAGES_KWD: data}
 
-    def _resolve_stage(self, context: Context, name: str, definition) -> dict:
-        definition = deepcopy(definition)
-        self.set_context_from(
-            context, definition.pop(SET_KWD, {}), source=[name, "set"]
-        )
-        wdir = self._resolve_wdir(context, name, definition.get(WDIR_KWD))
-        if self.wdir != wdir:
-            logger.debug(
-                "Stage %s has different wdir than dvc.yaml file", name
-            )
+    def has_key(self, key):
+        return self._has_group_and_key(*split_foreach_name(key))
 
-        vars_ = definition.pop(VARS_KWD, [])
-        # FIXME: Should `vars` be templatized?
+    def _has_group_and_key(self, group, key=None):
         try:
-            self.load_from_vars(
-                context,
-                vars_,
-                wdir,
-                skip_imports=deepcopy(self.imported_files),
-                stage_name=name,
-            )
-        except VarsAlreadyLoaded as exc:
-            format_and_raise(exc, f"'stages.{name}.vars'", self.relpath)
+            definition = self.definitions[group]
+        except KeyError:
+            return False
 
-        logger.trace(  # type: ignore[attr-defined]
-            "Context during resolution of stage %s:\n%s", name, context
-        )
+        if key:
+            return isinstance(
+                definition, ForeachDefinition
+            ) and definition.has_member(key)
+        return not isinstance(definition, ForeachDefinition)
 
-        with context.track():
-            resolved = {}
-            for key, value in definition.items():
-                # NOTE: we do not pop "wdir", and resolve it again
-                # this does not affect anything and is done to try to
-                # track the source of `wdir` interpolation.
-                # This works because of the side-effect that we do not
-                # allow overwriting and/or str interpolating complex objects.
-                # Fix if/when those assumptions are no longer valid.
-                try:
-                    resolved[key] = context.resolve(value)
-                except (ParseError, KeyNotInContext) as exc:
-                    format_and_raise(
-                        exc, f"'stages.{name}.{key}'", self.relpath
-                    )
+    @collecting
+    def get_keys(self):
+        for name, definition in self.definitions.items():
+            if isinstance(definition, ForeachDefinition):
+                yield from definition.get_generated_names()
+                continue
+            yield name
 
-        self.tracked_vars[name] = self._get_vars(context)
-        return {name: resolved}
+    def track_vars(self, name, vars_):
+        self.tracked_vars[name] = vars_
 
-    def _get_vars(self, context: Context):
-        tracked = defaultdict(dict)
-        for path, vars_ in context.tracked.items():
-            for var in vars_:
-                tracked[path][var] = context.select(var, unwrap=True)
-        return tracked
+
+class EntryDefinition:
+    def __init__(
+        self,
+        resolver: DataResolver,
+        context: Context,
+        name: str,
+        definition: dict,
+        where: str = STAGES_KWD,
+    ):
+        self.resolver = resolver
+        self.wdir = self.resolver.wdir
+        self.relpath = self.resolver.relpath
+        self.context = context
+        self.name = name
+        self.definition = definition
+        self.where = where
 
     def _resolve_wdir(
         self, context: Context, name: str, wdir: str = None
@@ -235,87 +222,214 @@ class DataResolver:
             return self.wdir
 
         try:
-            wdir = str(context.resolve_str(wdir, unwrap=True))
+            wdir = to_str(context.resolve_str(wdir, unwrap=True))
         except (ContextError, ParseError) as exc:
-            format_and_raise(exc, f"'stages.{name}.wdir'", self.relpath)
-        return self.wdir / str(wdir)
+            format_and_raise(exc, f"'{self.where}.{name}.wdir'", self.relpath)
+        return self.wdir / wdir
 
-    def _foreach(self, context: Context, name: str, foreach_data, do_data):
-        iterable = self._resolve_foreach_data(context, name, foreach_data)
-        args = (context, name, do_data, iterable)
-        it = (
-            range(len(iterable))
-            if not isinstance(iterable, Mapping)
-            else iterable
-        )
-        gen = (self._each_iter(*args, i) for i in it)
-        return join(gen)
-
-    def _each_iter(self, context: Context, name: str, do_data, iterable, key):
-        value = iterable[key]
-        c = Context.clone(context)
-        suffix = c["item"] = value
-        if isinstance(iterable, Mapping):
-            suffix = c["key"] = key
-
-        generated = f"{name}{JOIN}{suffix}"
+    def resolve(self, **kwargs):
         try:
-            return self._resolve_stage(c, generated, do_data)
+            return self.resolve_stage(**kwargs)
         except ContextError as exc:
-            # pylint: disable=no-member
-            if isinstance(exc, MergeError) and exc.key in self._inserted_keys(
-                iterable
-            ):
-                raise ResolveError(
-                    f"attempted to redefine '{exc.key}' in stage '{generated}'"
-                    " generated through 'foreach'"
-                )
-            format_and_raise(
-                exc, f"stage '{generated}' (gen. from '{name}')", self.relpath
-            )
+            format_and_raise(exc, f"stage '{self.name}'", self.relpath)
 
-    def _resolve_foreach_data(
-        self, context: "Context", name: str, foreach_data
-    ):
+    def resolve_stage(self, skip_checks=False):
+        context = self.context
+        name = self.name
+        if not skip_checks:
+            # we can check for syntax errors as we go for interpolated entries,
+            # but for foreach-generated ones, once is enough, which it does
+            # that itself. See `ForeachDefinition.do_definition`.
+            check_syntax_errors(self.definition, name, self.relpath)
+
+        # we need to pop vars from generated/evaluated data
+        definition = deepcopy(self.definition)
+
+        wdir = self._resolve_wdir(context, name, definition.get(WDIR_KWD))
+        vars_ = definition.pop(VARS_KWD, [])
+        # FIXME: Should `vars` be templatized?
+        check_interpolations(vars_, f"{self.where}.{name}.vars", self.relpath)
+        if vars_:
+            # Optimization: Lookahead if it has any vars, if it does not, we
+            # don't need to clone them.
+            context = Context.clone(context)
+
         try:
-            iterable = context.resolve(foreach_data, unwrap=False)
-        except (ContextError, ParseError) as exc:
-            format_and_raise(exc, f"'stages.{name}.foreach'", self.relpath)
-        if isinstance(iterable, str) or not isinstance(
-            iterable, (Sequence, Mapping)
-        ):
-            raise ResolveError(
-                f"failed to resolve 'stages.{name}.foreach'"
-                f" in '{self.relpath}': expected list/dictionary, got "
-                + type(
-                    iterable.value if isinstance(iterable, Node) else iterable
-                ).__name__
+            tree = self.resolver.tree
+            context.load_from_vars(tree, vars_, wdir, stage_name=name)
+        except VarsAlreadyLoaded as exc:
+            format_and_raise(exc, f"'{self.where}.{name}.vars'", self.relpath)
+
+        logger.trace(  # type: ignore[attr-defined]
+            "Context during resolution of stage %s:\n%s", name, context
+        )
+
+        with context.track() as tracked_data:
+            # NOTE: we do not pop "wdir", and resolve it again
+            # this does not affect anything and is done to try to
+            # track the source of `wdir` interpolation.
+            # This works because of the side-effect that we do not
+            # allow overwriting and/or str interpolating complex objects.
+            # Fix if/when those assumptions are no longer valid.
+            resolved = {
+                key: self._resolve(context, value, key, skip_checks)
+                for key, value in definition.items()
+            }
+
+        self.resolver.track_vars(name, tracked_data)
+        return {name: resolved}
+
+    def _resolve(self, context, value, key, skip_checks):
+        try:
+            return context.resolve(
+                value, skip_interpolation_checks=skip_checks
+            )
+        except (ParseError, KeyNotInContext) as exc:
+            format_and_raise(
+                exc, f"'{self.where}.{self.name}.{key}'", self.relpath
             )
 
-        warn_for = [k for k in self._inserted_keys(iterable) if k in context]
+
+class IterationPair(NamedTuple):
+    key: str = "key"
+    value: str = "item"
+
+
+class ForeachDefinition:
+    def __init__(
+        self,
+        resolver: DataResolver,
+        context: Context,
+        name: str,
+        definition: dict,
+        where: str = STAGES_KWD,
+    ):
+        self.resolver = resolver
+        self.relpath = self.resolver.relpath
+        self.context = context
+        self.name = name
+
+        assert DO_KWD in definition
+        self.foreach_data = definition[FOREACH_KWD]
+        self._do_definition = definition[DO_KWD]
+
+        self.pair = IterationPair()
+        self.where = where
+
+    @cached_property
+    def do_definition(self):
+        # optimization: check for syntax errors only once for `foreach` stages
+        check_syntax_errors(self._do_definition, self.name, self.relpath)
+        return self._do_definition
+
+    @cached_property
+    def resolved_iterable(self):
+        return self._resolve_foreach_data()
+
+    def _resolve_foreach_data(self):
+        try:
+            iterable = self.context.resolve(self.foreach_data, unwrap=False)
+        except (ContextError, ParseError) as exc:
+            format_and_raise(
+                exc, f"'{self.where}.{self.name}.foreach'", self.relpath
+            )
+
+        # foreach data can be a resolved dictionary/list.
+        self._check_is_map_or_seq(iterable)
+        # foreach stages will have `item` and `key` added to the context
+        # so, we better warn them if they have them already in the context
+        # from the global vars. We could add them in `set_temporarily`, but
+        # that'd make it display for each iteration.
+        self._warn_if_overwriting(self._inserted_keys(iterable))
+        return iterable
+
+    def _check_is_map_or_seq(self, iterable):
+        if not is_map_or_seq(iterable):
+            node = iterable.value if isinstance(iterable, Node) else iterable
+            typ = type(node).__name__
+            raise ResolveError(
+                f"failed to resolve '{self.where}.{self.name}.foreach'"
+                f" in '{self.relpath}': expected list/dictionary, got " + typ
+            )
+
+    def _warn_if_overwriting(self, keys):
+        warn_for = [k for k in keys if k in self.context]
         if warn_for:
+            linking_verb = "is" if len(warn_for) == 1 else "are"
             logger.warning(
                 "%s %s already specified, "
                 "will be overwritten for stages generated from '%s'",
                 " and ".join(warn_for),
-                "is" if len(warn_for) == 1 else "are",
-                name,
+                linking_verb,
+                self.name,
             )
 
-        return iterable
-
-    @staticmethod
-    def _inserted_keys(iterable):
-        keys = ["item"]
+    def _inserted_keys(self, iterable):
+        keys = [self.pair.value]
         if isinstance(iterable, Mapping):
-            keys.append("key")
+            keys.append(self.pair.key)
         return keys
 
-    @classmethod
-    def set_context_from(cls, context: Context, to_set, source=None):
-        try:
-            for key, value in to_set.items():
-                src_set = [*(source or []), key]
-                context.set(key, value, source=".".join(src_set))
-        except SetError as exc:
-            _reraise_err(ResolveError, str(exc), from_exc=exc)
+    @cached_property
+    def normalized_iterable(self):
+        """Convert sequence to Mapping with keys normalized."""
+        iterable = self.resolved_iterable
+        if isinstance(iterable, Mapping):
+            return iterable
+
+        assert isinstance(iterable, Sequence)
+        if any(map(is_map_or_seq, iterable)):
+            # if the list contains composite data, index are the keys
+            return {to_str(idx): value for idx, value in enumerate(iterable)}
+
+        # for simple lists, eg: ["foo", "bar"],  contents are the key itself
+        return {to_str(value): value for value in iterable}
+
+    def has_member(self, key):
+        return key in self.normalized_iterable
+
+    def get_generated_names(self):
+        return list(map(self._generate_name, self.normalized_iterable))
+
+    def _generate_name(self, key):
+        return f"{self.name}{JOIN}{key}"
+
+    def resolve_all(self):
+        return join(map(self.resolve_one, self.normalized_iterable))
+
+    def resolve_one(self, key):
+        return self._each_iter(key)
+
+    def _each_iter(self, key):
+        err_message = f"Could not find '{key}' in foreach group '{self.name}'"
+        with reraise(KeyError, EntryNotFound(err_message)):
+            value = self.normalized_iterable[key]
+
+        # NOTE: we need to use resolved iterable/foreach-data,
+        # not the normalized ones to figure out whether to make item/key
+        # available
+        inserted = self._inserted_keys(self.resolved_iterable)
+        temp_dict = {self.pair.value: value}
+        key_str = self.pair.key
+        if key_str in inserted:
+            temp_dict[key_str] = key
+
+        with self.context.set_temporarily(temp_dict, reserve=True):
+            # optimization: item and key can be removed on __exit__() as they
+            # are top-level values, and are not merged recursively.
+            # This helps us avoid cloning context, which is slower
+            # (increasing the size of the context might increase
+            # the no. of items to be generated which means more cloning,
+            # i.e. quadratic complexity).
+            generated = self._generate_name(key)
+            entry = EntryDefinition(
+                self.resolver, self.context, generated, self.do_definition
+            )
+            try:
+                # optimization: skip checking for syntax errors on each foreach
+                # generated stages. We do it once when accessing do_definition.
+                return entry.resolve_stage(skip_checks=True)
+            except ContextError as exc:
+                format_and_raise(
+                    exc, f"stage '{generated}'", self.relpath,
+                )

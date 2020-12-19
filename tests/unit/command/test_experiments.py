@@ -12,14 +12,13 @@ from dvc.command.experiments import (
     CmdExperimentsRun,
     CmdExperimentsShow,
 )
-from dvc.dvcfile import PIPELINE_FILE
 from dvc.exceptions import InvalidArgumentError
 
 from .test_repro import default_arguments as repro_arguments
 
 
 def test_experiments_apply(dvc, scm, mocker):
-    cli_args = parse_args(["experiments", "apply", "exp_rev"])
+    cli_args = parse_args(["experiments", "apply", "--force", "exp_rev"])
     assert cli_args.func == CmdExperimentsApply
 
     cmd = cli_args.func(cli_args)
@@ -27,7 +26,7 @@ def test_experiments_apply(dvc, scm, mocker):
 
     assert cmd.run() == 0
 
-    m.assert_called_once_with(cmd.repo, "exp_rev")
+    m.assert_called_once_with(cmd.repo, "exp_rev", force=True)
 
 
 def test_experiments_diff(dvc, scm, mocker):
@@ -95,6 +94,7 @@ def test_experiments_run(dvc, scm, mocker, args, resume):
         "run_all": False,
         "jobs": None,
         "checkpoint_resume": resume,
+        "tmp_dir": False,
     }
 
     default_arguments.update(repro_arguments)
@@ -103,9 +103,7 @@ def test_experiments_run(dvc, scm, mocker, args, resume):
     mocker.patch.object(cmd.repo, "reproduce")
     mocker.patch.object(cmd.repo.experiments, "run")
     cmd.run()
-    cmd.repo.experiments.run.assert_called_with(
-        PIPELINE_FILE, **default_arguments
-    )
+    cmd.repo.experiments.run.assert_called_with(**default_arguments)
 
 
 def test_experiments_gc(dvc, scm, mocker):
@@ -173,7 +171,19 @@ def test_experiments_list(dvc, scm, mocker):
 
 def test_experiments_push(dvc, scm, mocker):
     cli_args = parse_args(
-        ["experiments", "push", "origin", "experiment", "--force"]
+        [
+            "experiments",
+            "push",
+            "origin",
+            "experiment",
+            "--force",
+            "--no-cache",
+            "--remote",
+            "my-remote",
+            "--jobs",
+            "1",
+            "--run-cache",
+        ]
     )
     assert cli_args.func == CmdExperimentsPush
 
@@ -182,12 +192,33 @@ def test_experiments_push(dvc, scm, mocker):
 
     assert cmd.run() == 0
 
-    m.assert_called_once_with(cmd.repo, "origin", "experiment", force=True)
+    m.assert_called_once_with(
+        cmd.repo,
+        "origin",
+        "experiment",
+        force=True,
+        push_cache=False,
+        dvc_remote="my-remote",
+        jobs=1,
+        run_cache=True,
+    )
 
 
 def test_experiments_pull(dvc, scm, mocker):
     cli_args = parse_args(
-        ["experiments", "pull", "origin", "experiment", "--force"]
+        [
+            "experiments",
+            "pull",
+            "origin",
+            "experiment",
+            "--force",
+            "--no-cache",
+            "--remote",
+            "my-remote",
+            "--jobs",
+            "1",
+            "--run-cache",
+        ]
     )
     assert cli_args.func == CmdExperimentsPull
 
@@ -196,4 +227,13 @@ def test_experiments_pull(dvc, scm, mocker):
 
     assert cmd.run() == 0
 
-    m.assert_called_once_with(cmd.repo, "origin", "experiment", force=True)
+    m.assert_called_once_with(
+        cmd.repo,
+        "origin",
+        "experiment",
+        force=True,
+        pull_cache=False,
+        dvc_remote="my-remote",
+        jobs=1,
+        run_cache=True,
+    )
