@@ -57,37 +57,6 @@ class TestCheckout(TestRepro):
         self.assertTrue(filecmp.cmp(self.FOO, self.orig, shallow=False))
 
 
-class TestCheckoutExecutable(TestRepro):
-
-    EXECUTABLE = "executable"
-    EXECUTABLE_CONTENT = "executable content"
-
-    def setUp(self):
-        super().setUp()
-
-        self.create(self.EXECUTABLE, self.EXECUTABLE_CONTENT)
-        st = os.stat(self.EXECUTABLE)
-        os.chmod(self.EXECUTABLE, st.st_mode | stat.S_IEXEC)
-        self.dvc.add(self.EXECUTABLE)
-
-        self.orig = "orig"
-        shutil.copy(self.FOO, self.orig)
-        os.unlink(self.FOO)
-
-        self.orig_executable = "orig_executable"
-        shutil.copy(self.EXECUTABLE, self.orig_executable)
-        os.unlink(self.EXECUTABLE)
-
-    def test(self):
-        self.dvc.checkout(force=True)
-        self._test_checkout()
-
-    def _test_checkout(self):
-        self.assertTrue(os.path.isfile(self.FOO))
-        self.assertTrue(os.path.isfile(self.EXECUTABLE))
-        self.assertTrue(os.access(self.EXECUTABLE, os.X_OK))
-
-
 class TestCheckoutSingleStage(TestCheckout):
     def test(self):
         ret = main(["checkout", "--force", self.foo_stage.path])
@@ -894,3 +863,15 @@ def test_checkout_external_modified_file(tmp_dir, dvc, scm, mocker, workspace):
     dvc.checkout()
 
     assert (workspace / "foo").read_text() == "foo"
+
+
+def test_checkout_executable(tmp_dir, dvc):
+    tmp_dir.dvc_gen("foo", "foo")
+
+    contents = load_yaml("foo.dvc")
+    contents["outs"][0]["isexec"] = True
+    dump_yaml("foo.dvc", contents)
+
+    dvc.checkout("foo")
+
+    assert os.stat("foo").st_mode & stat.S_IEXEC

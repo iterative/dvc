@@ -1,6 +1,5 @@
 import logging
 import os
-import stat
 from copy import copy
 from typing import Type
 from urllib.parse import urlparse
