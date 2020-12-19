@@ -60,11 +60,9 @@ def test_add(tmp_dir, dvc):
 
 def test_add_executable(tmp_dir, dvc):
 
-    paths = tmp_dir.gen({"foo": "foo"}, "")
-    # make files executable
-    for p in paths:
-        st = os.stat(p)
-        os.chmod(p, st.st_mode | stat.S_IEXEC)
+    tmp_dir.gen("foo", "foo")
+    st = os.stat("foo")
+    os.chmod("foo", st.st_mode | stat.S_IEXEC)
     tmp_dir.dvc_add(paths, commit=None)
 
     assert load_yaml("foo.dvc") == {
