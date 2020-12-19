@@ -63,7 +63,7 @@ def test_add_executable(tmp_dir, dvc):
     tmp_dir.gen("foo", "foo")
     st = os.stat("foo")
     os.chmod("foo", st.st_mode | stat.S_IEXEC)
-    tmp_dir.dvc_add(paths, commit=None)
+    dvc.add("foo")
 
     assert load_yaml("foo.dvc") == {
         "outs": [
