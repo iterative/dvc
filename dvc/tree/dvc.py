@@ -234,7 +234,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
         recurse = recursive or not strict
         return meta.output_exists if recurse else meta.is_output
 
-    def isexec(self, path):  # pylint: disable=unused-argument
+    def isexec(self, path_info):  # pylint: disable=unused-argument
         return False
 
     def get_dir_hash(self, path_info, **kwargs):

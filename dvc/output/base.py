@@ -293,7 +293,7 @@ class BaseOutput:
 
         self.hash_info = self.get_hash()
         self.isexec = self.tree.isfile(self.path_info) and self.tree.isexec(
-            self.path_info.fspath
+            self.path_info
         )
 
     def commit(self):
