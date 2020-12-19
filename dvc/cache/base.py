@@ -420,12 +420,7 @@ class CloudCache:
         self.tree.remove(path_info)
 
     def _checkout_file(
-        self,
-        path_info,
-        hash_info,
-        force,
-        progress_callback=None,
-        relink=False,
+        self, path_info, hash_info, force, progress_callback=None, relink=False
     ):
         """The file is changed we need to checkout a new copy"""
         added, modified = True, False
