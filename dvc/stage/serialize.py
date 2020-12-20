@@ -150,6 +150,9 @@ def to_single_stage_lockfile(stage: "Stage") -> dict:
             *item.hash_info.to_dict().items(),
         ]
 
+        if item.isexec:
+            ret.append((item.PARAM_ISEXEC, True))
+
         return OrderedDict(ret)
 
     res = OrderedDict([("cmd", stage.cmd)])

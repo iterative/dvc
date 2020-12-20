@@ -3,6 +3,7 @@ import filecmp
 import logging
 import os
 import shutil
+import stat
 
 import pytest
 from mock import patch
@@ -862,3 +863,20 @@ def test_checkout_external_modified_file(tmp_dir, dvc, scm, mocker, workspace):
     dvc.checkout()
 
     assert (workspace / "foo").read_text() == "foo"
+
+
+def test_checkout_executable(tmp_dir, dvc):
+    tmp_dir.dvc_gen("foo", "foo")
+
+    contents = load_yaml("foo.dvc")
+    contents["outs"][0]["isexec"] = True
+    dump_yaml("foo.dvc", contents)
+
+    dvc.checkout("foo")
+
+    isexec = os.stat("foo").st_mode & stat.S_IEXEC
+    if os.name == "nt":
+        # NOTE: you can't set exec bits on Windows
+        assert not isexec
+    else:
+        assert isexec

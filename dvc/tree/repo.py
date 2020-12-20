@@ -225,11 +225,11 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
             return False
         return meta.isfile
 
-    def isexec(self, path):
-        tree, dvc_tree = self._get_tree_pair(path)
-        if dvc_tree and dvc_tree.exists(path):
-            return dvc_tree.isexec(path)
-        return tree.isexec(path)
+    def isexec(self, path_info):
+        tree, dvc_tree = self._get_tree_pair(path_info)
+        if dvc_tree and dvc_tree.exists(path_info):
+            return dvc_tree.isexec(path_info)
+        return tree.isexec(path_info)
 
     def stat(self, path):
         tree, _ = self._get_tree_pair(path)

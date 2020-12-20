@@ -61,6 +61,7 @@ class StageLoader(Mapping):
             info = get_in(checksums, [key, path], {})
             info = info.copy()
             info.pop("path", None)
+            item.isexec = info.pop("isexec", None)
             item.hash_info = HashInfo.from_dict(info)
 
     @classmethod

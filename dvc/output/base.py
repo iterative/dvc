@@ -76,6 +76,7 @@ class BaseOutput:
     PARAM_PLOT_HEADER = "header"
     PARAM_PERSIST = "persist"
     PARAM_DESC = "desc"
+    PARAM_ISEXEC = "isexec"
 
     METRIC_SCHEMA = Any(
         None,
@@ -105,6 +106,7 @@ class BaseOutput:
         persist=False,
         checkpoint=False,
         desc=None,
+        isexec=False,
     ):
         self._validate_output_path(path, stage)
         # This output (and dependency) objects have too many paths/urls
@@ -135,6 +137,8 @@ class BaseOutput:
         self.path_info = self._parse_path(tree, path)
         if self.use_cache and self.cache is None:
             raise RemoteCacheRequiredError(self.path_info)
+
+        self.isexec = False if self.IS_DEPENDENCY else isexec
 
     def _parse_path(self, tree, path):
         if tree:
@@ -287,6 +291,11 @@ class BaseOutput:
             return
 
         self.hash_info = self.get_hash()
+        self.isexec = self.isfile() and self.tree.isexec(self.path_info)
+
+    def set_exec(self):
+        if self.isfile() and self.isexec:
+            self.tree.set_exec(self.path_info)
 
     def commit(self):
         if not self.exists:
@@ -295,6 +304,7 @@ class BaseOutput:
         assert self.hash_info
         if self.use_cache:
             self.cache.save(self.path_info, self.cache.tree, self.hash_info)
+            self.set_exec()
 
     def dumpd(self):
         ret = copy(self.hash_info.to_dict())
@@ -328,6 +338,9 @@ class BaseOutput:
         if self.checkpoint:
             ret[self.PARAM_CHECKPOINT] = self.checkpoint
 
+        if self.isexec:
+            ret[self.PARAM_ISEXEC] = self.isexec
+
         return ret
 
     def verify_metric(self):
@@ -353,7 +366,7 @@ class BaseOutput:
             return None
 
         try:
-            return self.cache.checkout(
+            res = self.cache.checkout(
                 self.path_info,
                 self.hash_info,
                 force=force,
@@ -366,6 +379,8 @@ class BaseOutput:
             if allow_missing or self.checkpoint:
                 return None
             raise
+        self.set_exec()
+        return res
 
     def remove(self, ignore_remove=False):
         self.tree.remove(self.path_info)

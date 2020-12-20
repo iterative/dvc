@@ -133,6 +133,30 @@ def test_lock_outs(dvc, typ):
 
 
 @pytest.mark.parametrize("typ", ["plots", "metrics", "outs"])
+def test_lock_outs_isexec(dvc, typ):
+    stage = create_stage(PipelineStage, dvc, **{typ: ["input"]}, **kwargs)
+    stage.outs[0].hash_info = HashInfo("md5", "md-five")
+    stage.outs[0].isexec = True
+    assert to_single_stage_lockfile(stage) == OrderedDict(
+        [
+            ("cmd", "command"),
+            (
+                "outs",
+                [
+                    OrderedDict(
+                        [
+                            ("path", "input"),
+                            ("md5", "md-five"),
+                            ("isexec", True),
+                        ]
+                    )
+                ],
+            ),
+        ]
+    )
+
+
+@pytest.mark.parametrize("typ", ["plots", "metrics", "outs"])
 def test_lock_outs_order(dvc, typ):
     stage = create_stage(
         PipelineStage, dvc, **{typ: ["input1", "input0"]}, **kwargs

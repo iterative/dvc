@@ -2,6 +2,7 @@ import filecmp
 import logging
 import os
 import shutil
+import stat
 import textwrap
 import time
 
@@ -55,6 +56,26 @@ def test_add(tmp_dir, dvc):
             }
         ],
     }
+
+
+@pytest.mark.skipif(os.name == "nt", reason="can't set exec bit on Windows")
+def test_add_executable(tmp_dir, dvc):
+    tmp_dir.gen("foo", "foo")
+    st = os.stat("foo")
+    os.chmod("foo", st.st_mode | stat.S_IEXEC)
+    dvc.add("foo")
+
+    assert load_yaml("foo.dvc") == {
+        "outs": [
+            {
+                "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
+                "path": "foo",
+                "size": 3,
+                "isexec": True,
+            }
+        ],
+    }
+    assert os.stat("foo").st_mode & stat.S_IEXEC
 
 
 def test_add_unicode(tmp_dir, dvc):

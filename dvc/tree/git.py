@@ -131,8 +131,12 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
                 )
             yield root, dirs, files
 
-    def isexec(self, path):
-        return is_exec(self.stat(path).st_mode)
+    def isexec(self, path_info):
+        if not self.exists(path_info):
+            return False
+
+        mode = self.stat(path_info).st_mode
+        return is_exec(mode)
 
     def stat(self, path):
         key = self._get_key(path)
