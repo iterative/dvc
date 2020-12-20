@@ -128,12 +128,10 @@ class LocalTree(BaseTree):
                 yield PathInfo(f"{root}{os.sep}{file}")
 
     def is_empty(self, path_info):
-        path = path_info.fspath
-
-        if self.isfile(path_info) and os.path.getsize(path) == 0:
+        if self.isfile(path_info) and os.path.getsize(path_info) == 0:
             return True
 
-        if self.isdir(path_info) and len(os.listdir(path)) == 0:
+        if self.isdir(path_info) and len(os.listdir(path_info)) == 0:
             return True
 
         return False
@@ -142,12 +140,7 @@ class LocalTree(BaseTree):
         if isinstance(path_info, PathInfo):
             if path_info.scheme != "local":
                 raise NotImplementedError
-            path = path_info.fspath
-        else:
-            path = path_info
-
-        if self.exists(path):
-            remove(path)
+        remove(path_info)
 
     def makedirs(self, path_info):
         makedirs(path_info, exist_ok=True, mode=self.dir_mode)
@@ -226,11 +219,7 @@ class LocalTree(BaseTree):
         if self.getsize(from_info) == 0:
             self.open(to_info, "w").close()
 
-            logger.debug(
-                "Created empty file: {src} -> {dest}".format(
-                    src=str(from_info), dest=str(to_info)
-                )
-            )
+            logger.debug("Created empty file: %s -> %s", from_info, to_info)
             return
 
         System.hardlink(from_info, to_info)
@@ -248,9 +237,8 @@ class LocalTree(BaseTree):
         os.rename(tmp_info, to_info)
 
     def chmod(self, path_info, mode):
-        path = os.fspath(path_info)
         try:
-            os.chmod(path, mode)
+            os.chmod(path_info, mode)
         except OSError as exc:
             # There is nothing we need to do in case of a read-only file system
             if exc.errno == errno.EROFS:
@@ -261,13 +249,13 @@ class LocalTree(BaseTree):
             if exc.errno not in [errno.EPERM, errno.EACCES]:
                 raise
 
-            actual = stat.S_IMODE(os.stat(path).st_mode)
+            actual = stat.S_IMODE(os.stat(path_info).st_mode)
             if actual != mode:
                 raise
 
     def _unprotect_file(self, path):
         if System.is_symlink(path) or System.is_hardlink(path):
-            logger.debug(f"Unprotecting '{path}'")
+            logger.debug("Unprotecting '%s'", path)
             tmp = os.path.join(os.path.dirname(path), "." + uuid())
 
             # The operations order is important here - if some application
@@ -281,8 +269,9 @@ class LocalTree(BaseTree):
 
         else:
             logger.debug(
-                "Skipping copying for '{}', since it is not "
-                "a symlink or a hardlink.".format(path)
+                "Skipping copying for '%s', since it is not "
+                "a symlink or a hardlink.",
+                path,
             )
 
         os.chmod(path, self.file_mode)
@@ -292,14 +281,15 @@ class LocalTree(BaseTree):
             self._unprotect_file(fname)
 
     def unprotect(self, path_info):
-        path = path_info.fspath
-        if not os.path.exists(path):
-            raise DvcException(f"can't unprotect non-existing data '{path}'")
+        if not os.path.exists(path_info):
+            raise DvcException(
+                f"can't unprotect non-existing data '{path_info}'"
+            )
 
-        if os.path.isdir(path):
-            self._unprotect_dir(path)
+        if os.path.isdir(path_info):
+            self._unprotect_dir(path_info)
         else:
-            self._unprotect_file(path)
+            self._unprotect_file(path_info)
 
     def protect(self, path_info):
         self.chmod(path_info, self.CACHE_MODE)
