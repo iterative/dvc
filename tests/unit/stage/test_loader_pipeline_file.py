@@ -40,9 +40,7 @@ def test_fill_from_lock_deps_outs(dvc, lock_data):
 
 
 def test_fill_from_lock_outs_isexec(dvc):
-    stage = create_stage(
-        PipelineStage, dvc, PIPELINE_FILE, outs=["foo"]
-    )
+    stage = create_stage(PipelineStage, dvc, PIPELINE_FILE, outs=["foo"])
 
     assert not stage.outs[0].isexec
 

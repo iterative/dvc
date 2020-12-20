@@ -140,7 +140,18 @@ def test_lock_outs_isexec(dvc, typ):
     assert to_single_stage_lockfile(stage) == OrderedDict(
         [
             ("cmd", "command"),
-            ("outs", [OrderedDict([("path", "input"), ("md5", "md-five"), ("isexec", True)])]),
+            (
+                "outs",
+                [
+                    OrderedDict(
+                        [
+                            ("path", "input"),
+                            ("md5", "md-five"),
+                            ("isexec", True),
+                        ]
+                    )
+                ],
+            ),
         ]
     )
 
