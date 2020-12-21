@@ -86,7 +86,7 @@ class StageLoader(Mapping):
                 stage.PARAM_OUTS,
                 stage.PARAM_METRICS,
                 stage.PARAM_PLOTS,
-                stage.PARAM_DVCLIVE,
+                stage.PARAM_LIVE,
             ],
         )
         stage.outs = lcat(

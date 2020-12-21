@@ -136,7 +136,7 @@ def to_pipeline_file(stage: "PipelineStage"):
         (stage.PARAM_OUTS, outs),
         (stage.PARAM_METRICS, metrics),
         (stage.PARAM_PLOTS, plots),
-        (stage.PARAM_DVCLIVE, dvclive),
+        (stage.PARAM_LIVE, dvclive),
         (stage.PARAM_FROZEN, stage.frozen),
         (stage.PARAM_ALWAYS_CHANGED, stage.always_changed),
         (stage.PARAM_META, stage.meta),

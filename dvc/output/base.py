@@ -348,7 +348,7 @@ class BaseOutput:
             ret[self.PARAM_ISEXEC] = self.isexec
 
         if self.dvclive:
-            ret[self.PARAM_DVCLIVE] = self.dvclive
+            ret[self.PARAM_LIVE] = self.dvclive
 
         return ret
 
@@ -604,15 +604,15 @@ class BaseOutput:
     @cached_property
     def environment(self) -> Dict[str, str]:
         if self.dvclive:
-            from dvc.schema import DVCLIVE_PROPS
+            from dvc.schema import LIVE_PROPS
 
             env = {DVCLIVE_PATH: str(self.path_info)}
             if isinstance(self.dvclive, dict):
 
-                config = project(self.dvclive, DVCLIVE_PROPS)
+                config = project(self.dvclive, LIVE_PROPS)
 
                 env[DVCLIVE_SUMMARY] = str(
-                    int(config.get(BaseOutput.PARAM_DVCLIVE_SUMMARY, True))
+                    int(config.get(BaseOutput.PARAM_LIVE_SUMMARY, True))
                 )
             return env
         return {}

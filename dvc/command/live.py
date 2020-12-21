@@ -1,9 +1,10 @@
 import argparse
 import logging
+import os
 
 from dvc.command import completion
 from dvc.command.base import CmdBase
-from dvc.exceptions import DvcException
+from dvc.utils.html import write
 
 logger = logging.getLogger(__name__)
 
@@ -12,21 +13,26 @@ class CmdLive(CmdBase):
     UNINITIALIZED = True
 
     def run(self):
-        try:
-            self.repo.dvclive.summarize(self.args.target, self.args.rev)
-        except DvcException:
-            logger.exception("")
-            return 1
+        metrics, plots = self.repo.dvclive.show(
+            self.args.target, self.args.rev
+        )
+        html_path = self.args.target + ".html"
+        write(html_path, plots, metrics)
+        logger.info(f"\nfile://{os.path.abspath(html_path)}")
 
         return 0
 
 
 def add_parser(subparsers, parent_parser):
+    LIVE_DESCRIPTION = (
+        "Commands to visualize and compare dvclive-produced logs."
+    )
 
     logs_parser = subparsers.add_parser(
         "live",
         parents=[parent_parser],
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=LIVE_DESCRIPTION,
     )
     logs_parser.add_argument(
         "target", help="Logs dir to produce summary from",

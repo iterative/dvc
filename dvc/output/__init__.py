@@ -147,7 +147,7 @@ def loadd_from(stage, d_list):
         checkpoint = d.pop(BaseOutput.PARAM_CHECKPOINT, False)
         desc = d.pop(BaseOutput.PARAM_DESC, False)
         isexec = d.pop(BaseOutput.PARAM_ISEXEC, False)
-        dvclive = d.pop(BaseOutput.PARAM_DVCLIVE, False)
+        dvclive = d.pop(BaseOutput.PARAM_LIVE, False)
         ret.append(
             _get(
                 stage,
@@ -222,13 +222,13 @@ def load_from_pipeline(stage, s_list, typ="outs"):
         stage.PARAM_OUTS,
         stage.PARAM_METRICS,
         stage.PARAM_PLOTS,
-        stage.PARAM_DVCLIVE,
+        stage.PARAM_LIVE,
     ):
         raise ValueError(f"'{typ}' key is not allowed for pipeline files.")
 
     metric = typ == stage.PARAM_METRICS
     plot = typ == stage.PARAM_PLOTS
-    dvclive = typ == stage.PARAM_DVCLIVE
+    dvclive = typ == stage.PARAM_LIVE
 
     d = _merge_data(s_list)
 
@@ -239,9 +239,9 @@ def load_from_pipeline(stage, s_list, typ="outs"):
 
             plt_d, flags = _split_dict(flags, keys=PLOT_PROPS.keys())
         if dvclive:
-            from dvc.schema import DVCLIVE_PROPS
+            from dvc.schema import LIVE_PROPS
 
-            dvclive_d, flags = _split_dict(flags, keys=DVCLIVE_PROPS.keys())
+            dvclive_d, flags = _split_dict(flags, keys=LIVE_PROPS.keys())
         extra = project(
             flags,
             [

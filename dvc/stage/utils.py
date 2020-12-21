@@ -42,6 +42,9 @@ def check_stage_path(repo, path, is_wdir=False):
 
 
 def fill_stage_outputs(stage, **kwargs):
+    from dvc.exceptions import DvcException
+    from dvc.output import BaseOutput
+
     assert not stage.outs
 
     keys = [
@@ -61,18 +64,14 @@ def fill_stage_outputs(stage, **kwargs):
     dvclive_l = kwargs.get("dvclive", [])
     if dvclive_l:
         if len(dvclive_l) != 1:
-            from dvc.exceptions import DvcException
-
             raise DvcException("Only one dvclive output allowed!")
-
-        from dvc.output import BaseOutput
 
         stage.outs += output.loads_from(
             stage,
             dvclive_l,
             use_cache=False,
             dvclive={
-                BaseOutput.PARAM_DVCLIVE_SUMMARY: kwargs.get(
+                BaseOutput.PARAM_LIVE_SUMMARY: kwargs.get(
                     "dvclive_summary", False
                 )
             },

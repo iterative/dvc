@@ -7,7 +7,7 @@ from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
 from dvc.schema import PLOT_PROPS
 from dvc.utils import format_link
-from dvc.visualization import embed, plots_embeddings
+from dvc.utils.html import write
 
 logger = logging.getLogger(__name__)
 
@@ -40,12 +40,10 @@ class CmdPlots(CmdBase):
                 logger.info(plots[target])
                 return 0
 
-            html = embed(plots_embeddings(plots))
             path = self.args.out or "plots.html"
-
             path = os.path.join(os.getcwd(), path)
-            with open(path, "w") as fobj:
-                fobj.write(html)
+
+            write(path, plots)
 
             logger.info(f"file://{path}")
 
