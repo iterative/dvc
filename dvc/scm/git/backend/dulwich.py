@@ -7,6 +7,7 @@ from io import BytesIO, StringIO
 from typing import Callable, Dict, Iterable, Optional, Tuple
 
 from dvc.path_info import PathInfo
+from dvc.progress import Tqdm
 from dvc.scm.base import SCMError
 from dvc.utils import relpath
 
@@ -53,6 +54,10 @@ class DulwichObject(GitObject):
 
 class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     """Dulwich Git backend."""
+
+    # Dulwich progress will return messages equivalent to git CLI,
+    # our pbars should just display the messages as formatted by dulwich
+    BAR_FMT_NOTOTAL = "{desc}{bar:b}|{postfix[info]} [{elapsed}]"
 
     def __init__(  # pylint:disable=W0231
         self, root_dir=os.curdir, search_parent_directories=True
@@ -346,16 +351,23 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 new_refs[ref] = value
             return new_refs
 
-        def progress(msg):
-            logger.trace("git send_pack: %s", msg)
-
         try:
-            client.send_pack(
-                path,
-                update_refs,
-                self.repo.object_store.generate_pack_data,
-                progress=progress,
-            )
+            with Tqdm(
+                desc="Pushing git refs", bar_format=self.BAR_FMT_NOTOTAL
+            ) as pbar:
+
+                def progress(msg_b):
+                    msg = msg_b.decode("ascii").strip()
+                    pbar.update_msg(msg)
+                    pbar.refresh()
+                    logger.trace(msg)
+
+                client.send_pack(
+                    path,
+                    update_refs,
+                    self.repo.object_store.generate_pack_data,
+                    progress=progress,
+                )
         except (NotGitRepository, SendPackError) as exc:
             raise SCMError("Git failed to push '{src}' to '{url}'") from exc
 
@@ -417,12 +429,22 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 f"'{url}' is not a valid Git remote or URL"
             ) from exc
 
-        def progress(msg):
-            logger.trace("git fetch: %s", msg)
+        with Tqdm(
+            desc="Fetching git refs", bar_format=self.BAR_FMT_NOTOTAL
+        ) as pbar:
 
-        fetch_result = client.fetch(
-            path, self.repo, progress=progress, determine_wants=determine_wants
-        )
+            def progress(msg_b):
+                msg = msg_b.decode("ascii").strip()
+                pbar.update_msg(msg)
+                pbar.refresh()
+                logger.trace(msg)
+
+            fetch_result = client.fetch(
+                path,
+                self.repo,
+                progress=progress,
+                determine_wants=determine_wants,
+            )
         for (lh, rh, _) in fetch_refs:
             try:
                 if rh in self.repo.refs:
