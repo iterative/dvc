@@ -84,7 +84,7 @@ STAGE_DEFINITION = {
         Any(str, OUT_PSTAGE_DETAILED_SCHEMA)
     ],
     Optional(StageParams.PARAM_PLOTS): [Any(str, PLOT_PSTAGE_SCHEMA)],
-    Optional(StageParams.PARAM_LIVE): Any(str, LIVE_PSTAGE_SCHEMA),
+    Optional(StageParams.PARAM_LIVE): [Any(str, LIVE_PSTAGE_SCHEMA)],
 }
 
 FOREACH_IN = {
