@@ -60,6 +60,7 @@ class Repo:
     from dvc.repo.commit import commit
     from dvc.repo.destroy import destroy
     from dvc.repo.diff import diff
+    from dvc.repo.export_to_remote import export_to_remote
     from dvc.repo.fetch import fetch
     from dvc.repo.freeze import freeze, unfreeze
     from dvc.repo.gc import gc
