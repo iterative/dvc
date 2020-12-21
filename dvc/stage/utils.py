@@ -42,9 +42,6 @@ def check_stage_path(repo, path, is_wdir=False):
 
 
 def fill_stage_outputs(stage, **kwargs):
-    from dvc.exceptions import DvcException
-    from dvc.output import BaseOutput
-
     assert not stage.outs
 
     keys = [
@@ -61,21 +58,9 @@ def fill_stage_outputs(stage, **kwargs):
 
     stage.outs = []
 
-    live_l = kwargs.get("live", [])
-    if live_l:
-        if len(live_l) != 1:
-            raise DvcException("Only one live output allowed!")
-
-        stage.outs += output.loads_from(
-            stage,
-            live_l,
-            use_cache=False,
-            live={
-                BaseOutput.PARAM_LIVE_SUMMARY: kwargs.get(
-                    "live_summary", False
-                )
-            },
-        )
+    stage.outs += _load_live_outputs(
+        stage, kwargs.get("live", []), kwargs.get("live_summary", False)
+    )
 
     for key in keys:
         stage.outs += output.loads_from(
@@ -87,6 +72,25 @@ def fill_stage_outputs(stage, **kwargs):
             plot="plots" in key,
             checkpoint="checkpoints" in key,
         )
+
+
+def _load_live_outputs(stage, live_l, live_summary):
+    from dvc.exceptions import DvcException
+    from dvc.output import BaseOutput
+
+    outs = []
+    if live_l:
+        if len(live_l) != 1:
+            raise DvcException("Only one live output allowed!")
+
+        outs += output.loads_from(
+            stage,
+            live_l,
+            use_cache=False,
+            live={BaseOutput.PARAM_LIVE_SUMMARY: live_summary},
+        )
+
+    return outs
 
 
 def fill_stage_dependencies(stage, deps=None, erepo=None, params=None):
