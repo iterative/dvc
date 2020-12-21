@@ -136,14 +136,14 @@ class DataResolver:
         except ContextError as exc:
             format_and_raise(exc, "'vars'", self.relpath)
 
-        # we wrap the definitions into ForeachDefinition and EntryDefinition,
-        # that helps us to optimize, cache and selectively load each one of
-        # them as we need, and simplify all of this DSL/parsing logic.
         # we use `tracked_vars` to keep a dictionary of used variables
         # by the interpolated entries.
         self.tracked_vars: Dict[str, Mapping] = {}
 
         stages_data = d.get(STAGES_KWD, {})
+        # we wrap the definitions into ForeachDefinition and EntryDefinition,
+        # that helps us to optimize, cache and selectively load each one of
+        # them as we need, and simplify all of this DSL/parsing logic.
         self.definitions: Dict[str, Definition] = {
             name: make_definition(self, name, definition)
             for name, definition in stages_data.items()
