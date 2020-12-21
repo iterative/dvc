@@ -79,8 +79,8 @@ class BaseOutput:
     PARAM_PERSIST = "persist"
     PARAM_DESC = "desc"
     PARAM_ISEXEC = "isexec"
-    PARAM_DVCLIVE = "dvclive"
-    PARAM_DVCLIVE_SUMMARY = "summary"
+    PARAM_LIVE = "live"
+    PARAM_LIVE_SUMMARY = "summary"
 
     METRIC_SCHEMA = Any(
         None,
@@ -109,7 +109,7 @@ class BaseOutput:
         plot=False,
         persist=False,
         checkpoint=False,
-        dvclive=False,
+        live=False,
         desc=None,
         isexec=False,
     ):
@@ -137,7 +137,7 @@ class BaseOutput:
         self.plot = False if self.IS_DEPENDENCY else plot
         self.persist = persist
         self.checkpoint = checkpoint
-        self.dvclive = dvclive
+        self.live = live
         self.desc = desc
 
         self.path_info = self._parse_path(tree, path)
@@ -347,8 +347,8 @@ class BaseOutput:
         if self.isexec:
             ret[self.PARAM_ISEXEC] = self.isexec
 
-        if self.dvclive:
-            ret[self.PARAM_LIVE] = self.dvclive
+        if self.live:
+            ret[self.PARAM_LIVE] = self.live
 
         return ret
 
@@ -603,13 +603,13 @@ class BaseOutput:
 
     @cached_property
     def environment(self) -> Dict[str, str]:
-        if self.dvclive:
+        if self.live:
             from dvc.schema import LIVE_PROPS
 
             env = {DVCLIVE_PATH: str(self.path_info)}
-            if isinstance(self.dvclive, dict):
+            if isinstance(self.live, dict):
 
-                config = project(self.dvclive, LIVE_PROPS)
+                config = project(self.live, LIVE_PROPS)
 
                 env[DVCLIVE_SUMMARY] = str(
                     int(config.get(BaseOutput.PARAM_LIVE_SUMMARY, True))

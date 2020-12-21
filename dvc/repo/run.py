@@ -49,7 +49,7 @@ def _get_file_path(kwargs):
             kwargs.get("outs_persist", []),
             kwargs.get("outs_persist_no_cache", []),
             kwargs.get("checkpoints", []),
-            kwargs.get("dvclive", []),
+            kwargs.get("live", []),
         )
     )
 

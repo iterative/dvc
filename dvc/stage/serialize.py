@@ -50,8 +50,8 @@ def _get_flags(out):
         # `out.plot` is in the same order as is in the file when read
         # and, should be dumped as-is without any sorting
         yield from out.plot.items()
-    if out.dvclive and isinstance(out.dvclive, dict):
-        yield from out.dvclive.items()
+    if out.live and isinstance(out.live, dict):
+        yield from out.live.items()
 
 
 def _serialize_out(out):
@@ -61,17 +61,17 @@ def _serialize_out(out):
 
 @no_type_check
 def _serialize_outs(outputs: List[BaseOutput]):
-    outs, metrics, plots, dvclive = [], [], [], []
+    outs, metrics, plots, live = [], [], [], []
     for out in sort_by_path(outputs):
         bucket = outs
         if out.plot:
             bucket = plots
         elif out.metric:
             bucket = metrics
-        elif out.dvclive:
-            bucket = dvclive
+        elif out.live:
+            bucket = live
         bucket.append(_serialize_out(out))
-    return outs, metrics, plots, dvclive
+    return outs, metrics, plots, live
 
 
 def _serialize_params_keys(params):
@@ -126,7 +126,7 @@ def to_pipeline_file(stage: "PipelineStage"):
     deps = sorted(d.def_path for d in deps)
     params = _serialize_params_keys(params)
 
-    outs, metrics, plots, dvclive = _serialize_outs(stage.outs)
+    outs, metrics, plots, live = _serialize_outs(stage.outs)
     res = [
         (stage.PARAM_DESC, stage.desc),
         (stage.PARAM_CMD, stage.cmd),
@@ -136,7 +136,7 @@ def to_pipeline_file(stage: "PipelineStage"):
         (stage.PARAM_OUTS, outs),
         (stage.PARAM_METRICS, metrics),
         (stage.PARAM_PLOTS, plots),
-        (stage.PARAM_LIVE, dvclive),
+        (stage.PARAM_LIVE, live),
         (stage.PARAM_FROZEN, stage.frozen),
         (stage.PARAM_ALWAYS_CHANGED, stage.always_changed),
         (stage.PARAM_META, stage.meta),

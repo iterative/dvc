@@ -61,18 +61,18 @@ def fill_stage_outputs(stage, **kwargs):
 
     stage.outs = []
 
-    dvclive_l = kwargs.get("dvclive", [])
-    if dvclive_l:
-        if len(dvclive_l) != 1:
-            raise DvcException("Only one dvclive output allowed!")
+    live_l = kwargs.get("live", [])
+    if live_l:
+        if len(live_l) != 1:
+            raise DvcException("Only one live output allowed!")
 
         stage.outs += output.loads_from(
             stage,
-            dvclive_l,
+            live_l,
             use_cache=False,
-            dvclive={
+            live={
                 BaseOutput.PARAM_LIVE_SUMMARY: kwargs.get(
-                    "dvclive_summary", False
+                    "live_summary", False
                 )
             },
         )

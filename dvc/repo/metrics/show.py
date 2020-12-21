@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 def _is_metric(out: BaseOutput) -> bool:
-    return bool(out.metric) or bool(out.dvclive)
+    return bool(out.metric) or bool(out.live)
 
 
 def _to_path_infos(metrics: List[BaseOutput]) -> List[PathInfo]:
@@ -28,7 +28,7 @@ def _to_path_infos(metrics: List[BaseOutput]) -> List[PathInfo]:
     for out in metrics:
         if out.metric:
             result.append(out.path_info)
-        elif out.dvclive:
+        elif out.live:
             path_info = summary_path_info(out)
             if path_info:
                 result.append(path_info)

@@ -81,7 +81,7 @@ def _get(
     plot=False,
     persist=False,
     checkpoint=False,
-    dvclive=False,
+    live=False,
     desc=None,
     isexec=False,
 ):
@@ -99,7 +99,7 @@ def _get(
             plot=plot,
             persist=persist,
             checkpoint=checkpoint,
-            dvclive=dvclive,
+            live=live,
             desc=desc,
             isexec=isexec,
         )
@@ -116,7 +116,7 @@ def _get(
                 plot=plot,
                 persist=persist,
                 checkpoint=checkpoint,
-                dvclive=dvclive,
+                live=live,
                 desc=desc,
                 isexec=isexec,
             )
@@ -130,7 +130,7 @@ def _get(
         plot=plot,
         persist=persist,
         checkpoint=checkpoint,
-        dvclive=dvclive,
+        live=live,
         desc=desc,
         isexec=isexec,
     )
@@ -147,7 +147,7 @@ def loadd_from(stage, d_list):
         checkpoint = d.pop(BaseOutput.PARAM_CHECKPOINT, False)
         desc = d.pop(BaseOutput.PARAM_DESC, False)
         isexec = d.pop(BaseOutput.PARAM_ISEXEC, False)
-        dvclive = d.pop(BaseOutput.PARAM_LIVE, False)
+        live = d.pop(BaseOutput.PARAM_LIVE, False)
         ret.append(
             _get(
                 stage,
@@ -160,7 +160,7 @@ def loadd_from(stage, d_list):
                 checkpoint=checkpoint,
                 desc=desc,
                 isexec=isexec,
-                dvclive=dvclive,
+                live=live,
             )
         )
     return ret
@@ -175,7 +175,7 @@ def loads_from(
     persist=False,
     checkpoint=False,
     isexec=False,
-    dvclive=False,
+    live=False,
 ):
     return [
         _get(
@@ -188,7 +188,7 @@ def loads_from(
             persist=persist,
             checkpoint=checkpoint,
             isexec=isexec,
-            dvclive=dvclive,
+            live=live,
         )
         for s in s_list
     ]
@@ -228,20 +228,20 @@ def load_from_pipeline(stage, s_list, typ="outs"):
 
     metric = typ == stage.PARAM_METRICS
     plot = typ == stage.PARAM_PLOTS
-    dvclive = typ == stage.PARAM_LIVE
+    live = typ == stage.PARAM_LIVE
 
     d = _merge_data(s_list)
 
     for path, flags in d.items():
-        plt_d, dvclive_d = {}, {}
+        plt_d, live_d = {}, {}
         if plot:
             from dvc.schema import PLOT_PROPS
 
             plt_d, flags = _split_dict(flags, keys=PLOT_PROPS.keys())
-        if dvclive:
+        if live:
             from dvc.schema import LIVE_PROPS
 
-            dvclive_d, flags = _split_dict(flags, keys=LIVE_PROPS.keys())
+            live_d, flags = _split_dict(flags, keys=LIVE_PROPS.keys())
         extra = project(
             flags,
             [
@@ -257,6 +257,6 @@ def load_from_pipeline(stage, s_list, typ="outs"):
             {},
             plot=plt_d or plot,
             metric=metric,
-            dvclive=dvclive_d or dvclive,
+            live=live_d or live,
             **extra,
         )

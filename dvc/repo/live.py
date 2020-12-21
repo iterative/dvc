@@ -9,16 +9,16 @@ from dvc.repo import Repo
 
 
 def summary_path_info(out: BaseOutput) -> PathInfo:
-    assert out.dvclive
+    assert out.live
     has_summary = True
-    if isinstance(out.dvclive, dict):
-        has_summary = out.dvclive.get(BaseOutput.PARAM_LIVE_SUMMARY, True)
+    if isinstance(out.live, dict):
+        has_summary = out.live.get(BaseOutput.PARAM_LIVE_SUMMARY, True)
     if has_summary:
         return out.path_info.with_suffix(".json")
     return None
 
 
-class DvcLive:
+class Live:
     def __init__(self, repo: Repo):
         self.repo = repo
 

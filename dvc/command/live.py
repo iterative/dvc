@@ -13,9 +13,7 @@ class CmdLive(CmdBase):
     UNINITIALIZED = True
 
     def run(self):
-        metrics, plots = self.repo.dvclive.show(
-            self.args.target, self.args.rev
-        )
+        metrics, plots = self.repo.live.show(self.args.target, self.args.rev)
         html_path = self.args.target + ".html"
         write(html_path, plots, metrics)
         logger.info(f"\nfile://{os.path.abspath(html_path)}")

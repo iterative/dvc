@@ -24,8 +24,8 @@ def test_export_config_tmp(tmp_dir, dvc, mocker, summary):
         cmd="mkdir logs && touch logs.json",
         deps=["src"],
         name="run_logger",
-        dvclive=["logs"],
-        dvclive_summary=summary,
+        live=["logs"],
+        live_summary=summary,
     )
 
     assert proc_spy.call_count == 1
@@ -47,8 +47,8 @@ def test_export_config(tmp_dir, dvc, mocker, summary):
         cmd="python log.py",
         deps=["log.py"],
         name="run_logger",
-        dvclive=["logs"],
-        dvclive_summary=summary,
+        live=["logs"],
+        live_summary=summary,
     )
     assert proc_spy.call_count == 1
     _, kwargs = proc_spy.call_args
@@ -61,14 +61,14 @@ def test_export_config(tmp_dir, dvc, mocker, summary):
 
 
 @pytest.mark.skip(reason="dvclive does not exist yet")
-def test_dvclive_provides_metrics(tmp_dir, dvc):
+def test_live_provides_metrics(tmp_dir, dvc):
     tmp_dir.gen("log.py", DVCLIVE_SCRITP.format(log_path="logs"))
     dvc.run(
         cmd="python log.py",
         deps=["log.py"],
         name="run_logger",
-        dvclive=["logs"],
-        dvclive_summary=True,
+        live=["logs"],
+        live_summary=True,
     )
 
     assert (tmp_dir / "logs.json").is_file()
@@ -83,14 +83,14 @@ def test_dvclive_provides_metrics(tmp_dir, dvc):
 
 
 @pytest.mark.skip(reason="dvclive does not exist yet")
-def test_dvclive_provides_no_metrics(tmp_dir, dvc):
+def test_live_provides_no_metrics(tmp_dir, dvc):
     tmp_dir.gen("log.py", DVCLIVE_SCRITP.format(log_path="logs"))
     dvc.run(
         cmd="python log.py",
         deps=["log.py"],
         name="run_logger",
-        dvclive=["logs"],
-        dvclive_summary=False,
+        live=["logs"],
+        live_summary=False,
     )
 
     assert not (tmp_dir / "logs.json").is_file()

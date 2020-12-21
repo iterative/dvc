@@ -15,7 +15,7 @@ def summary(path: str, revs: List[str] = None):
     except NotDvcRepoError:
         root = os.getcwd()
 
-    metrics, plots = Repo(root_dir=root, uninitialized=True).dvclive.show(
+    metrics, plots = Repo(root_dir=root, uninitialized=True).live.show(
         path, revs
     )
 

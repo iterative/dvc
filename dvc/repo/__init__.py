@@ -133,7 +133,7 @@ class Repo:
         from dvc.cache import Cache
         from dvc.data_cloud import DataCloud
         from dvc.lock import LockNoop, make_lock
-        from dvc.repo.live import DvcLive
+        from dvc.repo.live import Live
         from dvc.repo.metrics import Metrics
         from dvc.repo.params import Params
         from dvc.repo.plots import Plots
@@ -185,7 +185,7 @@ class Repo:
         self.plots = Plots(self)
         self.params = Params(self)
         self.stage_collection_error_handler = None
-        self.dvclive = DvcLive(self)
+        self.live = Live(self)
         self._lock_depth = 0
 
     @cached_property
