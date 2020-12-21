@@ -335,9 +335,9 @@ class Context(CtxDict):
                     Defaults to False. Note that the default is different from
                     `resolve`.
         """
-        key = normalize_key(key)
+        normalized = normalize_key(key)
         try:
-            node = super().select(key)
+            node = super().select(normalized)
         except ValueError as exc:
             raise KeyNotInContext(key) from exc
 
