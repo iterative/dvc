@@ -72,14 +72,14 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     live_diff_parser.add_argument(
-        "--rev",
+        "--revs",
         nargs="*",
         default=None,
         help="Git revision (e.g. SHA, branch, tag)",
         metavar="<commit>",
     )
     _add_common_arguments(live_diff_parser)
-    live_show_parser.set_defaults(func=CmdLiveDiff)
+    live_diff_parser.set_defaults(func=CmdLiveDiff)
 
 
 def _add_common_arguments(parser):
