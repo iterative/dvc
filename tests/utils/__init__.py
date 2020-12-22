@@ -8,8 +8,10 @@ def get_gitignore_content():
     with open(Git.GITIGNORE) as gitignore:
         return gitignore.read().splitlines()
 
+
 def gitignore_exists():
     return os.path.exists(Git.GITIGNORE)
+
 
 @contextmanager
 def cd(newdir):
