@@ -413,7 +413,7 @@ def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc, caplog):
         # do not warn if none found
         assert len(caplog.messages) == 0
 
-    assert str(error.value) == "File: 'plot.json' does not exist."
+    assert str(error.value) == "'plot.json' does not exist."
 
 
 def test_custom_template(tmp_dir, scm, dvc, custom_template, run_copy_metrics):
@@ -716,7 +716,7 @@ def test_show_malformed_plots(tmp_dir, scm, dvc, caplog):
     tmp_dir.gen("plot.json", '[{"m":1]')
 
     with pytest.raises(NoMetricsParsedError):
-        dvc.metrics.show(targets=["plot.json"])
+        dvc.plots.show(targets=["plot.json"])
 
 
 def test_plots_show_no_target(tmp_dir, dvc):
@@ -726,7 +726,7 @@ def test_plots_show_no_target(tmp_dir, dvc):
 
 def test_show_no_plots_files(tmp_dir, dvc, caplog):
     with pytest.raises(NoMetricsFoundError):
-        dvc.metrics.show()
+        dvc.plots.show()
 
 
 @pytest.mark.parametrize("clear_before_run", [True, False])
@@ -789,8 +789,8 @@ def test_dir_plots(tmp_dir, dvc, run_copy_metrics):
     dvc.plots.modify("subdir", {"title": "TITLE"})
 
     result = dvc.plots.show()
-    p1_content = json.loads(result["subdir/p1.json"])
-    p2_content = json.loads(result["subdir/p2.json"])
+    p1_content = json.loads(result[p1])
+    p2_content = json.loads(result[p2])
 
     assert p1_content["title"] == p2_content["title"] == "TITLE"
 
@@ -820,10 +820,10 @@ def test_show_dir_plots(tmp_dir, dvc, run_copy_metrics):
     )
 
     result = dvc.plots.show(targets=["subdir"])
-    p1_content = json.loads(result[os.path.join("subdir", "p1.json")])
-    p2_content = json.loads(result[os.path.join("subdir", "p2.json")])
+    p1_content = json.loads(result[p1])
+    p2_content = json.loads(result[p2])
 
     assert p1_content == p2_content
 
-    result = dvc.plots.show(targets=[os.path.join("subdir", "p1.json")])
-    assert set(result.keys()) == {os.path.join("subdir", "p1.json")}
+    result = dvc.plots.show(targets=[p1])
+    assert set(result.keys()) == {p1}

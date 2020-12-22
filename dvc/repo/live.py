@@ -2,7 +2,7 @@ import contextlib
 import os
 from typing import List
 
-from dvc.exceptions import MetricsError
+from dvc.exceptions import MetricDoesNotExistError, MetricsError
 from dvc.output import BaseOutput
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
@@ -22,18 +22,19 @@ class Live:
     def __init__(self, repo: Repo):
         self.repo = repo
 
-    def show(self, path: str, revs: List[str] = None):
+    def show(self, target: str, revs: List[str] = None):
         if revs:
             revs = ["workspace", *revs]
 
-        assert os.path.exists(path)
+        if not os.path.exists(target):
+            raise MetricDoesNotExistError([target])
 
-        metrics_path = path + ".json"
+        metrics_path = target + ".json"
 
         metrics = None
         with contextlib.suppress(MetricsError):
             metrics = self.repo.metrics.show(targets=[metrics_path])
 
-        plots = self.repo.plots.show(path, recursive=True, revs=revs)
+        plots = self.repo.plots.show(target, recursive=True, revs=revs)
 
         return metrics, plots

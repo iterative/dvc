@@ -196,9 +196,9 @@ class NoMetricsFoundError(MetricsError):
 class MetricDoesNotExistError(MetricsError):
     def __init__(self, targets: List[str]):
         if len(targets) == 1:
-            msg = "File: '{}' does not exist."
+            msg = "'{}' does not exist."
         else:
-            msg = "Files: '{}' do not exist."
+            msg = "'{}' do not exist."
         super().__init__(msg.format(", ".join(targets)))
 
 

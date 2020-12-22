@@ -231,6 +231,7 @@ def load_from_pipeline(stage, data, typ="outs"):
     live = typ == stage.PARAM_LIVE
 
     if live:
+        # `live` is single object
         data = [data]
 
     d = _merge_data(data)

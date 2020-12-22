@@ -13,7 +13,7 @@ class CmdLive(CmdBase):
     UNINITIALIZED = True
 
     def _run(self, target, revs=None):
-        metrics, plots = self.repo.live.show(target, revs)
+        metrics, plots = self.repo.live.show(target=target, revs=revs)
 
         html_path = self.args.target + ".html"
         write(html_path, plots, metrics)
@@ -25,12 +25,12 @@ class CmdLive(CmdBase):
 
 class CmdLiveShow(CmdLive):
     def run(self):
-        self._run(self.args.target)
+        return self._run(self.args.target)
 
 
 class CmdLiveDiff(CmdLive):
     def run(self):
-        self._run(self.args.target, self.args.revs)
+        return self._run(self.args.target, self.args.revs)
 
 
 def add_parser(subparsers, parent_parser):
@@ -87,5 +87,9 @@ def _add_common_arguments(parser):
         "target", help="Logs dir to produce summary from",
     ).complete = completion.DIR
     parser.add_argument(
-        "-f", "--file", default=None, help="Name of the generated file."
-    )
+        "-o",
+        "--out",
+        default=None,
+        help="Destination path to save plots to",
+        metavar="<path>",
+    ).complete = completion.DIR
