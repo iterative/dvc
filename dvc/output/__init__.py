@@ -217,7 +217,7 @@ def _merge_data(s_list):
 
 
 @collecting
-def load_from_pipeline(stage, s_list, typ="outs"):
+def load_from_pipeline(stage, data, typ="outs"):
     if typ not in (
         stage.PARAM_OUTS,
         stage.PARAM_METRICS,
@@ -230,7 +230,10 @@ def load_from_pipeline(stage, s_list, typ="outs"):
     plot = typ == stage.PARAM_PLOTS
     live = typ == stage.PARAM_LIVE
 
-    d = _merge_data(s_list)
+    if live:
+        data = [data]
+
+    d = _merge_data(data)
 
     for path, flags in d.items():
         plt_d, live_d = {}, {}

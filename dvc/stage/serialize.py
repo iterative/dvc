@@ -61,7 +61,7 @@ def _serialize_out(out):
 
 @no_type_check
 def _serialize_outs(outputs: List[BaseOutput]):
-    outs, metrics, plots, live = [], [], [], []
+    outs, metrics, plots, live = [], [], [], None
     for out in sort_by_path(outputs):
         bucket = outs
         if out.plot:
@@ -69,7 +69,8 @@ def _serialize_outs(outputs: List[BaseOutput]):
         elif out.metric:
             bucket = metrics
         elif out.live:
-            bucket = live
+            live = _serialize_out(out)
+            continue
         bucket.append(_serialize_out(out))
     return outs, metrics, plots, live
 
