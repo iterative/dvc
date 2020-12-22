@@ -479,13 +479,13 @@ class Stage(params.StageParams):
         )
 
     @rwlocked(write=["outs"])
-    def commit(self, allow_missing=False):
+    def commit(self, allow_missing=False, filter_info=None):
         from dvc.output.base import OutputDoesNotExistError
 
         link_failures = []
         for out in self.outs:
             try:
-                out.commit()
+                out.commit(filter_info)
             except OutputDoesNotExistError:
                 if not (allow_missing or out.checkpoint):
                     raise

@@ -83,6 +83,12 @@ def test_commit_no_exec(tmp_dir, dvc):
     assert dvc.status(stage.path) == {}
 
 
+def test_commit_granularity(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen("foo", "foo", commit="add files")
+    dvc.commit("foo")
+    assert dvc.status() == {}
+
+
 def test_commit_no_exec_missing_dep(tmp_dir, dvc):
     stage = dvc.run(
         name="my", cmd="mycmd", deps=["dep"], outs=["out"], no_exec=True

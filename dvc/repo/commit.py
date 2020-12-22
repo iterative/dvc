@@ -41,15 +41,16 @@ def commit(
 ):
     from dvc.dvcfile import Dvcfile
 
-    stages = self.stage.collect(
+    stages_info = self.stage.collect_granular(
         target, with_deps=with_deps, recursive=recursive
     )
-    for stage in stages:
+    for stage_info in stages_info:
+        stage = stage_info.stage
         changes = stage.changed_entries()
         if any(changes):
             prompt_to_commit(stage, changes, force=force)
             stage.save()
-        stage.commit()
+        stage.commit(filter_info=stage_info.filter_info)
 
         Dvcfile(self, stage.path).dump(stage, update_pipeline=False)
-    return stages
+    return [s.stage for s in stages_info]
