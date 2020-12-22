@@ -1,5 +1,6 @@
 import pytest
 
+from dvc.repo import Repo
 from dvc.repo.params.show import NoParamsError
 
 
@@ -92,4 +93,14 @@ def test_pipeline_tracked_params(tmp_dir, scm, dvc, run_copy):
 
     assert dvc.params.show(revs=["master"]) == {
         "master": {"params.yaml": {"foo": "qux", "xyz": "val"}}
+    }
+
+
+def test_show_no_repo(tmp_dir):
+    tmp_dir.gen({"foo": "foo", "params_file.yaml": "foo: bar\nxyz: val"})
+
+    dvc = Repo(uninitialized=True)
+
+    assert dvc.params.show(targets=["params_file.yaml"]) == {
+        "": {"params_file.yaml": {"foo": "bar", "xyz": "val"}}
     }

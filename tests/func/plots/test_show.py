@@ -6,11 +6,17 @@ from collections import OrderedDict
 
 import pytest
 
+from dvc.exceptions import (
+    MetricDoesNotExistError,
+    NoMetricsFoundError,
+    NoMetricsParsedError,
+    OverlappingOutputPathsError,
+)
 from dvc.main import main
+from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.repo.plots.data import (
     JSONPlotData,
-    NoMetricInHistoryError,
     PlotData,
     PlotMetricTypeError,
     YAMLPlotData,
@@ -21,8 +27,8 @@ from dvc.repo.plots.template import (
     TemplateNotFoundError,
 )
 from dvc.utils.fs import remove
-from dvc.utils.serialize import dump_yaml, dumps_yaml
-from tests.func.metrics.utils import _write_csv, _write_json
+from dvc.utils.serialize import dump_yaml, dumps_yaml, modify_yaml
+from tests.func.plots.utils import _write_csv, _write_json
 
 
 def test_plot_csv_one_column(tmp_dir, scm, dvc, run_copy_metrics):
@@ -399,15 +405,15 @@ def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc, caplog):
     tmp_dir.gen("some_file", "make repo dirty")
 
     caplog.clear()
-    with pytest.raises(NoMetricInHistoryError) as error, caplog.at_level(
+    with pytest.raises(MetricDoesNotExistError) as error, caplog.at_level(
         logging.WARNING, "dvc"
     ):
-        dvc.plots.show(targets="metric.json", revs=["v1"])
+        dvc.plots.show(targets="plot.json", revs=["v1"])
 
         # do not warn if none found
         assert len(caplog.messages) == 0
 
-    assert str(error.value) == "Could not find 'metric.json'."
+    assert str(error.value) == "File: 'plot.json' does not exist."
 
 
 def test_custom_template(tmp_dir, scm, dvc, custom_template, run_copy_metrics):
@@ -704,3 +710,53 @@ def test_show_from_subdir(tmp_dir, dvc, caplog):
 
     assert f"file://{str(subdir)}" in caplog.text
     assert (subdir / "plots.html").exists()
+
+
+def test_show_malformed_plots(tmp_dir, scm, dvc, caplog):
+    tmp_dir.gen("plot.json", '[{"m":1]')
+
+    with pytest.raises(NoMetricsParsedError):
+        dvc.metrics.show(targets=["plot.json"])
+
+
+def test_plots_show_no_target(tmp_dir, dvc):
+    with pytest.raises(MetricDoesNotExistError):
+        dvc.plots.show(targets=["plot.json"])
+
+
+def test_show_no_plots_files(tmp_dir, dvc, caplog):
+    with pytest.raises(NoMetricsFoundError):
+        dvc.metrics.show()
+
+
+@pytest.mark.parametrize("clear_before_run", [True, False])
+def test_plots_show_overlap(tmp_dir, dvc, run_copy_metrics, clear_before_run):
+    data_dir = PathInfo("data")
+    (tmp_dir / data_dir).mkdir()
+
+    dump_yaml(data_dir / "m1_temp.yaml", {"a": {"b": {"c": 2, "d": 1}}})
+    run_copy_metrics(
+        str(data_dir / "m1_temp.yaml"),
+        str(data_dir / "m1.yaml"),
+        single_stage=False,
+        commit="add m1",
+        name="cp-m1",
+        plots=[str(data_dir / "m1.yaml")],
+    )
+    with modify_yaml("dvc.yaml") as d:
+        # trying to make an output overlaps error
+        d["stages"]["corrupted-stage"] = {
+            "cmd": "mkdir data",
+            "outs": ["data"],
+        }
+
+    # running by clearing and not clearing stuffs
+    # so as it works even for optimized cases
+    if clear_before_run:
+        remove(data_dir)
+        remove(dvc.cache.local.cache_dir)
+
+    dvc._reset()
+
+    with pytest.raises(OverlappingOutputPathsError):
+        dvc.plots.show()

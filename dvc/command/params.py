@@ -2,6 +2,7 @@ import argparse
 import logging
 from collections import OrderedDict
 
+from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
 
@@ -30,11 +31,14 @@ def _show_diff(diff, markdown=False, no_path=False):
 
 
 class CmdParamsDiff(CmdBase):
+    UNINITIALIZED = True
+
     def run(self):
         try:
             diff = self.repo.params.diff(
                 a_rev=self.args.a_rev,
                 b_rev=self.args.b_rev,
+                targets=self.args.targets,
                 all=self.args.all,
             )
 
@@ -91,6 +95,12 @@ def add_parser(subparsers, parent_parser):
         nargs="?",
         help=("New Git commit to compare (defaults to the current workspace)"),
     )
+    params_diff_parser.add_argument(
+        "--targets",
+        nargs="*",
+        help="Limit command scope to these params files.",
+        metavar="<path>",
+    ).complete = completion.FILE
     params_diff_parser.add_argument(
         "--all",
         action="store_true",

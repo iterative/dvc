@@ -1,4 +1,4 @@
-from dvc.exceptions import NoMetricsError
+from dvc.exceptions import MetricsError
 from dvc.utils.diff import diff as _diff
 from dvc.utils.diff import format_dict
 
@@ -7,7 +7,7 @@ def _get_metrics(repo, *args, revs=None, **kwargs):
     try:
         metrics = repo.metrics.show(*args, **kwargs, revs=revs)
         return metrics
-    except NoMetricsError:
+    except MetricsError:
         return {}
 
 

@@ -189,3 +189,46 @@ def test_vars_shows_on_params_diff(tmp_dir, scm, dvc):
                 "vars.model1.epoch": {"new": 20, "old": 15, "diff": 5},
             }
         }
+
+
+def test_diff_targeted(tmp_dir, scm, dvc, run_copy):
+    from dvc.dvcfile import PIPELINE_FILE
+
+    tmp_dir.gen(
+        {
+            "foo": "foo",
+            "params.yaml": "foo: bar",
+            "other_params.yaml": "xyz: val",
+        }
+    )
+    run_copy(
+        "foo",
+        "bar",
+        name="copy-foo-bar",
+        params=["foo", "other_params.yaml:xyz"],
+    )
+
+    scm.add(["params.yaml", "other_params.yaml", PIPELINE_FILE])
+    scm.commit("add stage")
+
+    tmp_dir.scm_gen(
+        {"params.yaml": "foo: baz", "other_params.yaml": "xyz: val2"},
+        commit="baz",
+    )
+    tmp_dir.scm_gen(
+        {"params.yaml": "foo: qux", "other_params.yaml": "xyz: val3"},
+        commit="qux",
+    )
+
+    assert dvc.params.diff(a_rev="HEAD~2") == {
+        "params.yaml": {"foo": {"old": "bar", "new": "qux"}},
+        "other_params.yaml": {"xyz": {"old": "val", "new": "val3"}},
+    }
+
+    assert dvc.params.diff(a_rev="HEAD~2", targets=["params.yaml"]) == {
+        "params.yaml": {"foo": {"old": "bar", "new": "qux"}}
+    }
+
+    assert dvc.params.diff(a_rev="HEAD~2", targets=["other_params.yaml"]) == {
+        "other_params.yaml": {"xyz": {"old": "val", "new": "val3"}},
+    }
