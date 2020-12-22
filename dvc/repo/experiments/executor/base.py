@@ -61,6 +61,7 @@ class BaseExecutor(ABC):
     """
 
     PACKED_ARGS_FILE = "repro.dat"
+    WARN_UNTRACKED = False
 
     def __init__(
         self,
@@ -304,6 +305,16 @@ class BaseExecutor(ABC):
             ref = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
             if ref:
                 exp_ref = ExpRefInfo.from_ref(ref)
+            if cls.WARN_UNTRACKED:
+                untracked = dvc.scm.untracked_files()
+                if untracked:
+                    logger.warning(
+                        "The following untracked files were present in the "
+                        "experiment directory after reproduction but will "
+                        "not be included in experiment commits:\n"
+                        "\t%s",
+                        ", ".join(untracked),
+                    )
         finally:
             if dvc:
                 dvc.scm.close()

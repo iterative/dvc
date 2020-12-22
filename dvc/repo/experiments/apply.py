@@ -69,7 +69,7 @@ def apply(repo, rev, force=False, **kwargs):
 
     dvc_checkout(repo, **kwargs)
 
-    repo.scm.set_ref(EXEC_APPLY, rev)
+    repo.scm.set_ref(EXEC_APPLY, exp_rev)
     logger.info(
         "Changes for experiment '%s' have been applied to your current "
         "workspace.",

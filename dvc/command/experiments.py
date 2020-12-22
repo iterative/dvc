@@ -457,10 +457,16 @@ class CmdExperimentsRun(CmdRepro):
         return 0
 
 
+def _raise_error_if_all_disabled(**kwargs):
+    if not any(kwargs.values()):
+        raise InvalidArgumentError(
+            "Either of `-w|--workspace`, `-a|--all-branches`, `-T|--all-tags` "
+            "or `--all-commits` needs to be set."
+        )
+
+
 class CmdExperimentsGC(CmdRepro):
     def run(self):
-        from dvc.repo.gc import _raise_error_if_all_disabled
-
         _raise_error_if_all_disabled(
             all_branches=self.args.all_branches,
             all_tags=self.args.all_tags,
@@ -600,7 +606,7 @@ def add_parser(subparsers, parent_parser):
         "experiments",
         parents=[parent_parser],
         aliases=["exp"],
-        description=append_doc_link(EXPERIMENTS_HELP, "experiments"),
+        description=append_doc_link(EXPERIMENTS_HELP, "exp"),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         help=EXPERIMENTS_HELP,
     )
@@ -617,7 +623,7 @@ def add_parser(subparsers, parent_parser):
     experiments_show_parser = experiments_subparsers.add_parser(
         "show",
         parents=[parent_parser],
-        description=append_doc_link(EXPERIMENTS_SHOW_HELP, "experiments/show"),
+        description=append_doc_link(EXPERIMENTS_SHOW_HELP, "exp/show"),
         help=EXPERIMENTS_SHOW_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -626,20 +632,20 @@ def add_parser(subparsers, parent_parser):
         "--all-branches",
         action="store_true",
         default=False,
-        help="Show metrics for all branches.",
+        help="Show experiments derived from the tip of all Git branches.",
     )
     experiments_show_parser.add_argument(
         "-T",
         "--all-tags",
         action="store_true",
         default=False,
-        help="Show metrics for all tags.",
+        help="Show experiments derived from all Git tags.",
     )
     experiments_show_parser.add_argument(
         "--all-commits",
         action="store_true",
         default=False,
-        help="Show metrics for all commits.",
+        help="Show experiments derived from all Git commits.",
     )
     experiments_show_parser.add_argument(
         "--no-pager",
@@ -721,9 +727,7 @@ def add_parser(subparsers, parent_parser):
     experiments_apply_parser = experiments_subparsers.add_parser(
         "apply",
         parents=[parent_parser],
-        description=append_doc_link(
-            EXPERIMENTS_APPLY_HELP, "experiments/apply"
-        ),
+        description=append_doc_link(EXPERIMENTS_APPLY_HELP, "exp/apply"),
         help=EXPERIMENTS_APPLY_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -744,7 +748,7 @@ def add_parser(subparsers, parent_parser):
     experiments_diff_parser = experiments_subparsers.add_parser(
         "diff",
         parents=[parent_parser],
-        description=append_doc_link(EXPERIMENTS_DIFF_HELP, "experiments/diff"),
+        description=append_doc_link(EXPERIMENTS_DIFF_HELP, "exp/diff"),
         help=EXPERIMENTS_DIFF_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -803,7 +807,7 @@ def add_parser(subparsers, parent_parser):
     experiments_run_parser = experiments_subparsers.add_parser(
         "run",
         parents=[parent_parser],
-        description=append_doc_link(EXPERIMENTS_RUN_HELP, "experiments/run"),
+        description=append_doc_link(EXPERIMENTS_RUN_HELP, "exp/run"),
         help=EXPERIMENTS_RUN_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -818,9 +822,7 @@ def add_parser(subparsers, parent_parser):
         "resume",
         parents=[parent_parser],
         aliases=["res"],
-        description=append_doc_link(
-            EXPERIMENTS_RESUME_HELP, "experiments/resume"
-        ),
+        description=append_doc_link(EXPERIMENTS_RESUME_HELP, "exp/resume"),
         help=EXPERIMENTS_RESUME_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -848,9 +850,7 @@ def add_parser(subparsers, parent_parser):
     experiments_gc_parser = experiments_subparsers.add_parser(
         "gc",
         parents=[parent_parser],
-        description=append_doc_link(
-            EXPERIMENTS_GC_DESCRIPTION, "experiments/gc"
-        ),
+        description=append_doc_link(EXPERIMENTS_GC_DESCRIPTION, "exp/gc"),
         help=EXPERIMENTS_GC_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -903,9 +903,7 @@ def add_parser(subparsers, parent_parser):
     experiments_branch_parser = experiments_subparsers.add_parser(
         "branch",
         parents=[parent_parser],
-        description=append_doc_link(
-            EXPERIMENTS_BRANCH_HELP, "experiments/branch"
-        ),
+        description=append_doc_link(EXPERIMENTS_BRANCH_HELP, "exp/branch"),
         help=EXPERIMENTS_BRANCH_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -921,7 +919,7 @@ def add_parser(subparsers, parent_parser):
     experiments_list_parser = experiments_subparsers.add_parser(
         "list",
         parents=[parent_parser],
-        description=append_doc_link(EXPERIMENTS_LIST_HELP, "experiments/list"),
+        description=append_doc_link(EXPERIMENTS_LIST_HELP, "exp/list"),
         help=EXPERIMENTS_LIST_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -955,7 +953,7 @@ def add_parser(subparsers, parent_parser):
     experiments_push_parser = experiments_subparsers.add_parser(
         "push",
         parents=[parent_parser],
-        description=append_doc_link(EXPERIMENTS_PUSH_HELP, "experiments/push"),
+        description=append_doc_link(EXPERIMENTS_PUSH_HELP, "exp/push"),
         help=EXPERIMENTS_PUSH_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -1011,7 +1009,7 @@ def add_parser(subparsers, parent_parser):
     experiments_pull_parser = experiments_subparsers.add_parser(
         "pull",
         parents=[parent_parser],
-        description=append_doc_link(EXPERIMENTS_PULL_HELP, "experiments/pull"),
+        description=append_doc_link(EXPERIMENTS_PULL_HELP, "exp/pull"),
         help=EXPERIMENTS_PULL_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -1076,6 +1074,7 @@ def _add_run_common(parser):
             "Human-readable experiment name. If not specified, a name will "
             "be auto-generated."
         ),
+        metavar="<name>",
     )
     parser.add_argument(
         "--params",

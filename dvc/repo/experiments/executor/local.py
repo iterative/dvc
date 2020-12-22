@@ -25,6 +25,8 @@ class BaseLocalExecutor(BaseExecutor):
 class TempDirExecutor(BaseLocalExecutor):
     """Temp directory experiment executor."""
 
+    WARN_UNTRACKED = True
+
     def __init__(
         self,
         *args,

@@ -209,6 +209,12 @@ class Experiments:
                                 "Resuming from tip of existing branch '%s'",
                                 branch,
                             )
+                            if name:
+                                logger.warning(
+                                    "Ignoring option '--name %s' for resumed "
+                                    "experiment. Existing experiment name will"
+                                    "be preserved instead."
+                                )
 
                     # save additional repro command line arguments
                     self._pack_args(*args, **kwargs)
