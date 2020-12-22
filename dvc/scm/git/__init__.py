@@ -165,6 +165,10 @@ class Git(Base):
 
         filtered = list(filter(lambda x: x.strip() != entry.strip(), lines))
 
+        if not filtered:
+            os.unlink(gitignore)
+            return
+
         with open(gitignore, "w") as fobj:
             fobj.writelines(filtered)
 

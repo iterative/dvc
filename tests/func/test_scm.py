@@ -7,7 +7,7 @@ from dvc.scm import SCM, Git, NoSCM
 from dvc.scm.base import SCMError
 from dvc.system import System
 from tests.basic_env import TestGit, TestGitSubmodule
-from tests.utils import get_gitignore_content
+from tests.utils import get_gitignore_content, gitignore_exists
 
 
 def test_init_none(tmp_dir):
@@ -85,7 +85,7 @@ def test_ignore(tmp_dir, scm):
     assert _count_gitignore_entries(target) == 1
 
     scm.ignore_remove(foo)
-    assert _count_gitignore_entries(target) == 0
+    assert not gitignore_exists()
 
 
 def test_ignored(tmp_dir, scm):

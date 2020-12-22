@@ -7,7 +7,7 @@ from dvc.main import main
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
 from dvc.utils.fs import remove
-from tests.utils import get_gitignore_content
+from tests.utils import get_gitignore_content, gitignore_exists
 
 
 @pytest.mark.parametrize("remove_outs", [True, False])
@@ -29,8 +29,7 @@ def test_remove(tmp_dir, scm, dvc, run_copy, remove_outs):
         else:
             assert all(out_exists)
 
-        assert not any(out in get_gitignore_content() for out in stage.outs)
-
+    assert not gitignore_exists()
 
 def test_remove_non_existent_file(tmp_dir, dvc):
     with pytest.raises(StageFileDoesNotExistError):
@@ -69,3 +68,31 @@ def test_cmd_remove(tmp_dir, dvc):
     assert main(["remove", stage.addressing, "--outs"]) == 0
     assert not (tmp_dir / stage.relpath).exists()
     assert not (tmp_dir / "foo").exists()
+
+
+def test_cmd_remove_gitignore_single_stage(tmp_dir, scm, dvc, run_copy):  
+  stage = dvc.run(
+        name="my", 
+        cmd="echo \"hello\" > out", 
+        deps=[], 
+        outs=["out"], 
+    )
+  
+  assert (tmp_dir/".gitignore").exists(),  ".gitignore does not exist"
+  
+  assert main(["remove", stage.addressing]) == 0
+  assert not (tmp_dir / stage.relpath ).exists(), "Pipeline file does exists"
+  assert not (stage.dvcfile._lockfile).exists(), "Pipeline lock file does exists"
+  assert not (tmp_dir/".gitignore").exists(),  ".gitignore exist when not expected to"
+
+def test_cmd_remove_gitignore_multistage(tmp_dir, scm, dvc, run_copy):
+  (stage,)  = tmp_dir.dvc_gen("foo", "foo")
+  stage1 = run_copy("foo", "foo1", single_stage=True)
+  stage2 = run_copy("foo1", "foo2", name="copy-foo1-foo2")
+
+  assert (tmp_dir/".gitignore").exists(),     ".gitignore does not exist"
+
+  assert main(["remove", stage2.addressing]) == 0
+  assert main(["remove", stage1.addressing]) == 0
+  assert main(["remove", stage.addressing]) == 0
+  assert not (tmp_dir/".gitignore").exists(), ".gitignore file exist when not expected to"
