@@ -309,7 +309,13 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
                 yield from self._walk(repo_walk, None, dvcfiles=dvcfiles)
 
     def walk(
-        self, top, topdown=True, onerror=None, dvcfiles=False, **kwargs
+        self,
+        top,
+        topdown=True,
+        onerror=None,
+        dvcfiles=False,
+        follow_subrepos=None,
+        **kwargs
     ):  # pylint: disable=arguments-differ
         """Walk and merge both DVC and repo trees.
 
@@ -336,13 +342,17 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
                 onerror(NotADirectoryError(top))
             return
 
+        ignore_subrepos = not self._traverse_subrepos
+        if follow_subrepos is not None:
+            ignore_subrepos = not follow_subrepos
+
         tree, dvc_tree = self._get_tree_pair(top)
         repo_exists = tree.exists(top)
         repo_walk = tree.walk(
             top,
             topdown=topdown,
             onerror=onerror,
-            ignore_subrepos=not self._traverse_subrepos,
+            ignore_subrepos=ignore_subrepos,
         )
 
         if not dvc_tree or (repo_exists and dvc_tree.isdvc(top)):
@@ -363,10 +373,14 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
             for fname in files:
                 yield PathInfo(root) / fname
 
-    def get_dir_hash(self, path_info, **kwargs):
+    def get_dir_hash(
+        self, path_info, follow_subrepos=None, **kwargs
+    ):  # pylint: disable=arguments-differ
         tree, dvc_tree = self._get_tree_pair(path_info)
         if tree.exists(path_info):
-            return super().get_dir_hash(path_info, **kwargs)
+            return super().get_dir_hash(
+                path_info, follow_subrepos=follow_subrepos, **kwargs
+            )
         if not dvc_tree:
             raise FileNotFoundError
         return dvc_tree.get_dir_hash(path_info, **kwargs)

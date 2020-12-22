@@ -1,5 +1,7 @@
 from voluptuous import Required
 
+from dvc.path_info import PathInfo
+
 from .local import LocalDependency
 
 
@@ -48,7 +50,8 @@ class RepoDependency(LocalDependency):
         # we want stream but not fetch, so DVC out directories are
         # walked, but dir contents is not fetched
         with self._make_repo(locked=locked, fetch=False, stream=True) as repo:
-            return repo.get_checksum(self.def_path)
+            path_info = PathInfo(repo.root_dir) / self.def_path
+            return repo.repo_tree.get_hash(path_info, follow_subrepos=False)
 
     def workspace_status(self):
         current = self._get_hash(locked=True)
