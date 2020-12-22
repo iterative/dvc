@@ -457,10 +457,16 @@ class CmdExperimentsRun(CmdRepro):
         return 0
 
 
+def _raise_error_if_all_disabled(**kwargs):
+    if not any(kwargs.values()):
+        raise InvalidArgumentError(
+            "Either of `-w|--workspace`, `-a|--all-branches`, `-T|--all-tags` "
+            "or `--all-commits` needs to be set."
+        )
+
+
 class CmdExperimentsGC(CmdRepro):
     def run(self):
-        from dvc.repo.gc import _raise_error_if_all_disabled
-
         _raise_error_if_all_disabled(
             all_branches=self.args.all_branches,
             all_tags=self.args.all_tags,
