@@ -194,7 +194,9 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
 
         expected_hash = HashInfo("md5", "e1d9e8eae5374860ae025ec84cfd85c7.dir")
         assert (
-            repo.get_checksum(os.path.join(repo.root_dir, "dir"))
+            repo.repo_tree.get_hash(
+                os.path.join(repo.root_dir, "dir"), follow_subrepos=False
+            )
             == expected_hash
         )
 

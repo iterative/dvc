@@ -218,15 +218,6 @@ class ExternalRepo(Repo):
             kw["fetch"] = True
         return RepoTree(repo, **kw)
 
-    def get_checksum(self, path):
-        path_info = PathInfo(self.root_dir) / path
-        with reraise(FileNotFoundError, PathMissingError(path, self.url)):
-            metadata = self.repo_tree.metadata(path_info)
-
-        # skip subrepos to check for
-        tree = self._get_tree_for(metadata.repo)
-        return tree.get_hash(path_info)
-
     @staticmethod
     def _fix_local_remote(orig_repo, src_repo, remote_name):
         # If a remote URL is relative to the source repo,
