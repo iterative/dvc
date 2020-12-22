@@ -2,7 +2,7 @@ import contextlib
 import os
 from typing import List
 
-from dvc.exceptions import NoMetricsError
+from dvc.exceptions import MetricsError
 from dvc.output import BaseOutput
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
@@ -31,7 +31,7 @@ class Live:
         metrics_path = path + ".json"
 
         metrics = None
-        with contextlib.suppress(NoMetricsError):
+        with contextlib.suppress(MetricsError):
             metrics = self.repo.metrics.show(targets=[metrics_path])
 
         plots = self.repo.plots.show(path, recursive=True, revs=revs)

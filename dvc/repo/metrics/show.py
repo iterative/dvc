@@ -1,14 +1,13 @@
 import logging
 from typing import List
 
-from dvc.exceptions import NoMetricsFoundError, NoMetricsParsedError
-from dvc.output import BaseOutput
-from dvc.path_info import PathInfo
 from dvc.exceptions import (
     MetricDoesNotExistError,
     NoMetricsFoundError,
     NoMetricsParsedError,
 )
+from dvc.output import BaseOutput
+from dvc.path_info import PathInfo
 from dvc.repo import locked
 from dvc.repo.collect import collect
 from dvc.repo.live import summary_path_info

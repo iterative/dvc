@@ -3,7 +3,7 @@ from textwrap import dedent
 
 import pytest
 
-from dvc.exceptions import NoMetricsError
+from dvc.exceptions import MetricsError
 
 LIVE_SCRITP = dedent(
     """
@@ -94,7 +94,7 @@ def test_live_provides_no_metrics(tmp_dir, dvc):
     )
 
     assert not (tmp_dir / "logs.json").is_file()
-    with pytest.raises(NoMetricsError):
+    with pytest.raises(MetricsError):
         assert dvc.metrics.show() == {}
 
     assert (tmp_dir / "logs").is_dir()
