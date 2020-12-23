@@ -29,6 +29,7 @@ def add_parser(subparsers, parent_parser):
         description=append_doc_link(CACHE_HELP, "cache"),
         help=CACHE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        exit_on_error=False,
     )
 
     cache_subparsers = cache_parser.add_subparsers(
