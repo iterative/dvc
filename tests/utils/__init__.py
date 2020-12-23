@@ -9,10 +9,6 @@ def get_gitignore_content():
         return gitignore.read().splitlines()
 
 
-def gitignore_exists():
-    return os.path.exists(Git.GITIGNORE)
-
-
 @contextmanager
 def cd(newdir):
     prevdir = os.getcwd()

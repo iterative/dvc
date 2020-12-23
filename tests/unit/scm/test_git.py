@@ -281,10 +281,7 @@ def test_list_all_commits(tmp_dir, scm):
     assert {rev_a, rev_b} == set(scm.list_all_commits())
 
 
-def test_ignore_remove_empty(tmp_dir, scm):
-    from dvc.scm.git import Git
-
-    git_ = Git(os.fspath(tmp_dir))
+def test_ignore_remove_empty(tmp_dir, scm, git):
 
     test_entries = [
         {"entry": "/foo1", "path": f"{tmp_dir}/foo1"},
@@ -297,18 +294,10 @@ def test_ignore_remove_empty(tmp_dir, scm):
         for entry in test_entries:
             f.write(entry["entry"] + "\n")
 
-    assert (
-        path_to_gitignore.exists()
-    ), "gitignore not found. expected to be found."
+    assert path_to_gitignore.exists()
 
-    git_.ignore_remove(test_entries[0]["path"])
-    assert (
-        path_to_gitignore.exists()
-    ), "gitignore not found. expected to be found."
+    git.ignore_remove(test_entries[0]["path"])
+    assert path_to_gitignore.exists()
 
-    git_.ignore_remove(test_entries[1]["path"])
-    assert (
-        not path_to_gitignore.exists()
-    ), "gitignore found, expected to not be found."
-
-    git_.close()
+    git.ignore_remove(test_entries[1]["path"])
+    assert not path_to_gitignore.exists()
