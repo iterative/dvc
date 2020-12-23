@@ -148,9 +148,8 @@ class HardlinkLock(flufl.lock.Lock, LockBase):
     ):  # pylint: disable=super-init-not-called
         import socket
 
-        super().__init__(lockfile)
-
         self._tmp_dir = tmp_dir
+        super().__init__(lockfile)
 
         # NOTE: this is basically Lock.__init__ copy-paste, except that
         # instead of using `socket.getfqdn()` we use `socket.gethostname()`
