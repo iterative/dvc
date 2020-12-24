@@ -520,11 +520,14 @@ class Stage(params.StageParams):
         return filter(_func, self.outs) if path_info else self.outs
 
     @rwlocked(write=["outs"])
-    def checkout(self, **kwargs):
+    def checkout(self, allow_missing=False, **kwargs):
         stats = defaultdict(list)
-        kwargs["allow_missing"] = self.is_checkpoint
         for out in self.filter_outs(kwargs.get("filter_info")):
-            key, outs = self._checkout(out, **kwargs)
+            key, outs = self._checkout(
+                out,
+                allow_missing=allow_missing or self.is_checkpoint,
+                **kwargs,
+            )
             if key:
                 stats[key].extend(outs)
         return stats
