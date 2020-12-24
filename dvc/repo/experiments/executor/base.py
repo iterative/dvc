@@ -92,6 +92,8 @@ class BaseExecutor(ABC):
             if branch:
                 scm.push_refspec(self.git_url, branch, branch)
                 self.scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
+            elif self.scm.get_ref(EXEC_BRANCH):
+                self.scm.remove_ref(EXEC_BRANCH)
 
             if self.scm.get_ref(EXEC_CHECKPOINT):
                 self.scm.remove_ref(EXEC_CHECKPOINT)
@@ -278,7 +280,7 @@ class BaseExecutor(ABC):
             #   be removed/does not yet exist) so that our executor workspace
             #   is not polluted with the (persistent) out from an unrelated
             #   experiment run
-            dvc_checkout(dvc, force=True, quiet=True)
+            dvc_checkout(dvc, force=True, quiet=True, allow_missing=True)
 
             checkpoint_func = partial(
                 cls.checkpoint_callback, dvc.scm, name, repro_force
