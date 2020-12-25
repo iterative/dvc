@@ -243,7 +243,9 @@ def add_parser(subparsers, _parent_parser):
     push_parser.set_defaults(func=CmdDataPush)
 
     # Fetch
-    FETCH_HELP = "Download cached files or directories from remote storage."
+    FETCH_HELP = (
+        "Download files or directories from remote storage to the cache."
+    )
 
     fetch_parser = subparsers.add_parser(
         "fetch",
