@@ -9,7 +9,7 @@ import dvc.data_cloud as cloud
 from dvc.cache import Cache
 from dvc.config import NoRemoteError
 from dvc.dvcfile import Dvcfile
-from dvc.exceptions import DownloadError, PathMissingError
+from dvc.exceptions import CollectCacheError, DownloadError, PathMissingError
 from dvc.external_repo import IsADVCRepoError
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.system import System
@@ -262,6 +262,36 @@ def test_pull_wildcard_imported_directory_stage(tmp_dir, dvc, erepo_dir):
     dvc.pull(["dir_imported*.dvc"], glob=True)
 
     assert (tmp_dir / "dir_imported123").read_text() == {"foo": "foo content"}
+
+
+def test_push_wildcard_from_bare_git_repo(
+    tmp_dir, make_tmp_dir, erepo_dir, local_cloud
+):
+    import git
+
+    git.Repo.init(os.fspath(tmp_dir), bare=True)
+
+    erepo_dir.add_remote(config=local_cloud.config)
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen(
+            {
+                "dir123": {"foo": "foo content"},
+                "dirextra": {"extrafoo": "extra foo content"},
+            },
+            commit="initial",
+        )
+    erepo_dir.dvc.push(
+        [os.path.join(os.fspath(erepo_dir), "dire*")], glob=True
+    )
+
+    erepo_dir.scm.gitpython.repo.create_remote("origin", os.fspath(tmp_dir))
+    erepo_dir.scm.gitpython.repo.remote("origin").push("master")
+
+    dvc_repo = make_tmp_dir("dvc-repo", scm=True, dvc=True)
+    with dvc_repo.chdir():
+        dvc_repo.dvc.imp(os.fspath(tmp_dir), "dirextra")
+        with pytest.raises(CollectCacheError):
+            dvc_repo.dvc.imp(os.fspath(tmp_dir), "dir123")
 
 
 def test_download_error_pulling_imported_stage(tmp_dir, dvc, erepo_dir):

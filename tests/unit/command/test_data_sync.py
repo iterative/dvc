@@ -96,6 +96,7 @@ def test_push(mocker):
             "--with-deps",
             "--recursive",
             "--run-cache",
+            "--glob",
         ]
     )
     assert cli_args.func == CmdDataPush
@@ -115,4 +116,5 @@ def test_push(mocker):
         with_deps=True,
         recursive=True,
         run_cache=True,
+        glob=True,
     )
