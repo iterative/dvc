@@ -29,6 +29,7 @@ def test_added(tmp_dir, scm, dvc):
         "deleted": [],
         "modified": [],
         "not in cache": [],
+        "renamed": [],
     }
 
 
@@ -57,6 +58,7 @@ def test_no_cache_entry(tmp_dir, scm, dvc):
             }
         ],
         "not in cache": [],
+        "renamed": [],
     }
 
 
@@ -72,6 +74,7 @@ def test_deleted(tmp_dir, scm, dvc, delete_data):
         "deleted": [{"path": "file", "hash": digest("text")}],
         "modified": [],
         "not in cache": [],
+        "renamed": [],
     }
 
 
@@ -89,6 +92,7 @@ def test_modified(tmp_dir, scm, dvc):
             }
         ],
         "not in cache": [],
+        "renamed": [],
     }
 
 
@@ -106,6 +110,7 @@ def test_refs(tmp_dir, scm, dvc):
         "deleted": [],
         "modified": [{"path": "file", "hash": {"old": HEAD_1, "new": HEAD}}],
         "not in cache": [],
+        "renamed": [],
     }
 
     assert dvc.diff("HEAD~2", "HEAD~1") == {
@@ -113,6 +118,7 @@ def test_refs(tmp_dir, scm, dvc):
         "deleted": [],
         "modified": [{"path": "file", "hash": {"old": HEAD_2, "new": HEAD_1}}],
         "not in cache": [],
+        "renamed": [],
     }
 
     with pytest.raises(DvcException, match=r"unknown Git revision 'missing'"):
@@ -144,6 +150,7 @@ def test_directories(tmp_dir, scm, dvc):
         "deleted": [],
         "modified": [],
         "not in cache": [],
+        "renamed": [],
     }
 
     assert dvc.diff(":/directory", ":/modify") == {
@@ -163,6 +170,7 @@ def test_directories(tmp_dir, scm, dvc):
             },
         ],
         "not in cache": [],
+        "renamed": [],
     }
 
     assert dvc.diff(":/modify", ":/delete") == {
@@ -180,6 +188,7 @@ def test_directories(tmp_dir, scm, dvc):
             }
         ],
         "not in cache": [],
+        "renamed": [],
     }
 
 
@@ -208,6 +217,7 @@ def test_diff_no_cache(tmp_dir, scm, dvc):
     diff = dvc.diff()
     assert diff["added"] == []
     assert diff["deleted"] == []
+    assert diff["renamed"] == []
     assert diff["modified"] == []
     assert diff["not in cache"] == [
         {
@@ -250,6 +260,7 @@ def test_diff_dirty(tmp_dir, scm, dvc):
             }
         ],
         "not in cache": [],
+        "renamed": [],
     }
 
 
@@ -300,6 +311,7 @@ def test_targets_single_file(tmp_dir, scm, dvc):
             }
         ],
         "not in cache": [],
+        "renamed": [],
     }
 
 
@@ -317,6 +329,7 @@ def test_targets_single_dir(tmp_dir, scm, dvc):
         "deleted": [],
         "modified": [],
         "not in cache": [],
+        "renamed": [],
     }
 
     assert dvc.diff(targets=["dir"]) == expected_result
@@ -331,6 +344,7 @@ def test_targets_single_file_in_dir(tmp_dir, scm, dvc):
         "deleted": [],
         "modified": [],
         "not in cache": [],
+        "renamed": [],
     }
 
 
@@ -347,6 +361,7 @@ def test_targets_two_files_in_dir(tmp_dir, scm, dvc):
         "deleted": [],
         "modified": [],
         "not in cache": [],
+        "renamed": [],
     }
 
 
@@ -369,6 +384,7 @@ def test_targets_file_and_dir(tmp_dir, scm, dvc):
             }
         ],
         "not in cache": [],
+        "renamed": [],
     }
 
 
@@ -385,6 +401,7 @@ def test_targets_single_dir_with_file(tmp_dir, scm, dvc):
         "deleted": [],
         "modified": [],
         "not in cache": [],
+        "renamed": [],
     }
 
     assert dvc.diff(targets=["dir_with"]) == expected_result
@@ -404,4 +421,5 @@ def test_targets_single_file_in_dir_with_file(tmp_dir, scm, dvc):
         "deleted": [],
         "modified": [],
         "not in cache": [],
+        "renamed": [],
     }
