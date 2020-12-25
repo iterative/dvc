@@ -13,6 +13,7 @@ DEFAULT_PRECISION = 5
 
 def _show_metrics(
     metrics,
+    markdown=False,
     all_branches=False,
     all_tags=False,
     all_commits=False,
@@ -65,7 +66,7 @@ def _show_metrics(
 
     if missing:
         raise BadMetricError(missing)
-    return table(header, rows, markdown=False)
+    return table(header, rows, markdown)
 
 
 class CmdMetricsBase(CmdBase):
@@ -90,6 +91,7 @@ class CmdMetricsShow(CmdMetricsBase):
             else:
                 table = _show_metrics(
                     metrics,
+                    self.args.show_md,
                     self.args.all_branches,
                     self.args.all_tags,
                     self.args.all_commits,
@@ -227,6 +229,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Show output in JSON format.",
+    )
+    metrics_show_parser.add_argument(
+        "--show-md",
+        action="store_true",
+        default=False,
+        help="Show tabulated output in the Markdown format (GFM).",
     )
     metrics_show_parser.add_argument(
         "-R",

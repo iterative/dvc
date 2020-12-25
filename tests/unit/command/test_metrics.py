@@ -19,6 +19,7 @@ def test_metrics_diff(dvc, mocker):
             "-R",
             "--all",
             "--show-json",
+            "--show-md",
             "--targets",
             "target1",
             "target2",
@@ -329,4 +330,43 @@ def test_metrics_show_precision():
         """\
         Revision    Path          a          b.ad       b.bc
         branch_1    metrics.json  1.0987654  1.5342673  2.9877255"""
+    )
+
+
+def test_metrics_show_default():
+    assert _show_metrics(
+        {
+            "metrics.yaml": {
+                "x.b": {"old": 5, "new": 6},
+                "a.d.e": {"old": 3, "new": 4, "diff": 1},
+                "a.b.c": {"old": 1, "new": 2, "diff": 1},
+            }
+        },
+    ) == textwrap.dedent(
+        """\
+        Path    diff    new    old
+        x.b     —       6      5
+        a.d.e   1       4      3
+        a.b.c   1       2      1"""
+    )
+
+
+def test_metrics_show_md():
+    assert _show_metrics(
+        {
+            "metrics.yaml": {
+                "x.b": {"old": 5, "new": 6},
+                "a.d.e": {"old": 3, "new": 4, "diff": 1},
+                "a.b.c": {"old": 1, "new": 2, "diff": 1},
+            }
+        },
+        markdown=True,
+    ) == textwrap.dedent(
+        """\
+        | Path   | diff   | new   | old   |
+        |--------|--------|-------|-------|
+        | x.b    | —      | 6     | 5     |
+        | a.d.e  | 1      | 4     | 3     |
+        | a.b.c  | 1      | 2     | 1     |
+        """
     )
