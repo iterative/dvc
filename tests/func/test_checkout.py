@@ -68,6 +68,37 @@ class TestCheckoutSingleStage(TestCheckout):
         self._test_checkout()
 
 
+class TestCheckoutPartial(TestRepro):
+
+    CO_DIR = "checkout_partial"
+
+    def test(self):
+
+        files = [
+            os.path.join(self.CO_DIR, filename)
+            for filename in ("a.txt", "b.txt")
+        ]
+        for file in files:
+            self.create(file, file)
+
+        stages = self.dvc.add(self.CO_DIR)
+        self.assertEqual(len(stages), 1)
+
+        for file in files:
+            os.unlink(file)
+        os.rmdir(self.CO_DIR)
+
+        file1, file2 = files
+
+        self.dvc.checkout(targets=file1)
+        self.assertTrue(os.path.exists(self.CO_DIR))
+        self.assertTrue(os.path.exists(file1))
+        self.assertFalse(os.path.exists(file2))
+
+        self.dvc.checkout(targets=file2)
+        self.assertTrue(os.path.exists(file2))
+
+
 class TestCheckoutCorruptedCacheFile(TestRepro):
     def test(self):
         cache = self.foo_stage.outs[0].cache_path

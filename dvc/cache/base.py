@@ -520,7 +520,9 @@ class CloudCache:
             self.safe_remove(path_info, force=force)
             failed = path_info
 
-        elif not relink and not self.changed(path_info, hash_info):
+        elif not relink and not self.changed(
+            filter_info or path_info, hash_info
+        ):
             logger.trace("Data '%s' didn't change.", path_info)
             skip = True
 
