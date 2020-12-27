@@ -68,37 +68,6 @@ class TestCheckoutSingleStage(TestCheckout):
         self._test_checkout()
 
 
-class TestCheckoutPartial(TestRepro):
-
-    CO_DIR = "checkout_partial"
-
-    def test(self):
-
-        files = [
-            os.path.join(self.CO_DIR, filename)
-            for filename in ("a.txt", "b.txt")
-        ]
-        for file in files:
-            self.create(file, file)
-
-        stages = self.dvc.add(self.CO_DIR)
-        self.assertEqual(len(stages), 1)
-
-        for file in files:
-            os.unlink(file)
-        os.rmdir(self.CO_DIR)
-
-        file1, file2 = files
-
-        self.dvc.checkout(targets=file1)
-        self.assertTrue(os.path.exists(self.CO_DIR))
-        self.assertTrue(os.path.exists(file1))
-        self.assertFalse(os.path.exists(file2))
-
-        self.dvc.checkout(targets=file2)
-        self.assertTrue(os.path.exists(file2))
-
-
 class TestCheckoutCorruptedCacheFile(TestRepro):
     def test(self):
         cache = self.foo_stage.outs[0].cache_path
@@ -911,3 +880,31 @@ def test_checkout_executable(tmp_dir, dvc):
         assert not isexec
     else:
         assert isexec
+
+
+def test_checkout_partial(tmp_dir, dvc):
+    tmp_dir.dvc_gen(
+        {"db": {"a.txt": "a", "b.txt": "b", "sub_dir": {"c.txt": "c"}}}
+    )
+
+    db_dir = tmp_dir / "db"
+    sub_dir = db_dir / "sub_dir"
+    file_1, file_2, sub_dir_file = [
+        db_dir / filename for filename in ("a.txt", "b.txt", sub_dir / "c.txt")
+    ]
+
+    shutil.rmtree(db_dir)
+
+    dvc.checkout(targets=[str(file_1)])
+    assert db_dir.exists()
+    assert file_1.exists()
+    assert not file_2.exists()
+    assert not sub_dir.exists()
+
+    dvc.checkout(targets=[str(sub_dir_file)])
+    assert sub_dir.exists()
+    assert sub_dir_file.exists()
+    assert not file_2.exists()
+
+    dvc.checkout(targets=[str(file_2)])
+    assert file_2.exists()
