@@ -13,6 +13,7 @@
 |PyPI| |Packages| |Brew| |Conda| |Choco| |Snap|
 
 |
+``**Point:** Animated Video explaining key features can be added here. You tube link can be inserted here. This makes readers to know the things better as visuals makes the things very simple. Same also holds for **Quick start section**, **Installation**. Even a seperate blog link can be added in the **Comparison to related technologies** which makes the documentation looks more better. Along with citation any reference to work can be added which helped in creating the ReadMe file. This is what I observed. Hope small change can bring more progress.``
 
 **Data Version Control** or **DVC** is an **open-source** tool for data science and machine
 learning projects. Key features:
