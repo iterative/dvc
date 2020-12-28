@@ -303,6 +303,9 @@ def test_ignore_remove_empty(tmp_dir, scm, git):
     assert not path_to_gitignore.exists()
 
 
+@pytest.mark.skipif(
+    os.name == "nt", reason="Git hooks not supported on Windows"
+)
 @pytest.mark.parametrize("hook", ["pre-commit", "commit-msg"])
 def test_commit_no_verify(tmp_dir, scm, git, hook):
     import stat
