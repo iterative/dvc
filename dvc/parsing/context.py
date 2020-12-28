@@ -350,16 +350,13 @@ class Context(CtxDict):
         file = relpath(path)
         if not tree.exists(path):
             raise ParamsLoadError(f"'{file}' does not exist")
+        if tree.isdir(path):
+            raise ParamsLoadError(f"'{file}' is a directory")
 
         _, ext = os.path.splitext(file)
         loader = LOADERS[ext]
 
-        try:
-            data = loader(path, tree=tree)
-        except IsADirectoryError as exc:
-            msg = f"Cannot load '{file}', '{file}' is a directory"
-            raise ParamsLoadError(msg) from exc
-
+        data = loader(path, tree=tree)
         if not isinstance(data, Mapping):
             typ = type(data).__name__
             raise ParamsLoadError(

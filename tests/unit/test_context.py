@@ -221,12 +221,12 @@ def test_load_from(mocker):
 
     mocker.patch("dvc.parsing.context.LOADERS", {".yaml": _yaml_load})
 
-    class tree:
-        def exists(self, _):
-            return True
+    tree = mocker.Mock(
+        **{"exists.return_value": True, "isdir.return_value": False}
+    )
 
     file = "params.yaml"
-    c = Context.load_from(tree(), file)
+    c = Context.load_from(tree, file)
 
     assert asdict(c["x"].meta) == {
         "source": file,
@@ -444,4 +444,4 @@ def test_load_from_raises_if_file_is_directory(tmp_dir, dvc):
     with pytest.raises(ParamsLoadError) as exc_info:
         Context.load_from(dvc.tree, data_dir)
 
-    assert str(exc_info.value) == "Cannot load 'data', 'data' is a directory"
+    assert str(exc_info.value) == "'data' is a directory"
