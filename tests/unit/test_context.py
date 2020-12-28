@@ -1,5 +1,6 @@
 from dataclasses import asdict
 from math import pi
+from unittest.mock import mock_open
 
 import pytest
 
@@ -16,7 +17,7 @@ from dvc.parsing.context import (
 )
 from dvc.tree.local import LocalTree
 from dvc.utils import relpath
-from dvc.utils.serialize import dump_yaml
+from dvc.utils.serialize import dump_yaml, dumps_yaml
 
 
 def test_context():
@@ -216,15 +217,11 @@ def test_overwrite_with_setitem():
 
 
 def test_load_from(mocker):
-    def _yaml_load(*args, **kwargs):
-        return {"x": {"y": {"z": 5}, "lst": [1, 2, 3]}, "foo": "foo"}
-
-    mocker.patch("dvc.parsing.context.LOADERS", {".yaml": _yaml_load})
-
+    d = {"x": {"y": {"z": 5}, "lst": [1, 2, 3]}, "foo": "foo"}
     tree = mocker.Mock(
-        **{"exists.return_value": True, "isdir.return_value": False}
+        open=mock_open(read_data=dumps_yaml(d)),
+        **{"exists.return_value": True, "isdir.return_value": False},
     )
-
     file = "params.yaml"
     c = Context.load_from(tree, file)
 
