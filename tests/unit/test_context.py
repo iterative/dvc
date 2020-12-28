@@ -10,7 +10,7 @@ from dvc.parsing.context import (
     CtxList,
     KeyNotInContext,
     MergeError,
-    ParamsFileNotFound,
+    ParamsLoadError,
     Value,
     recurse_not_a_node,
 )
@@ -430,7 +430,18 @@ def test_resolve_resolves_boolean_value():
     assert context.resolve_str("--flag ${disabled}") == "--flag false"
 
 
-def test_merge_from_raises_if_file_not_exist(tmp_dir, dvc):
-    context = Context(foo="bar")
-    with pytest.raises(ParamsFileNotFound):
-        context.merge_from(dvc.tree, DEFAULT_PARAMS_FILE, tmp_dir)
+def test_load_from_raises_if_file_not_exist(tmp_dir, dvc):
+    with pytest.raises(ParamsLoadError) as exc_info:
+        Context.load_from(dvc.tree, tmp_dir / DEFAULT_PARAMS_FILE)
+
+    assert str(exc_info.value) == "'params.yaml' does not exist"
+
+
+def test_load_from_raises_if_file_is_directory(tmp_dir, dvc):
+    data_dir = tmp_dir / "data"
+    data_dir.mkdir()
+
+    with pytest.raises(ParamsLoadError) as exc_info:
+        Context.load_from(dvc.tree, data_dir)
+
+    assert str(exc_info.value) == "Cannot load 'data', 'data' is a directory"
