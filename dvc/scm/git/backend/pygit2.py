@@ -86,7 +86,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
     def add(self, paths: Iterable[str]):
         raise NotImplementedError
 
-    def commit(self, msg: str):
+    def commit(self, msg: str, no_verify: bool = False):
         raise NotImplementedError
 
     def checkout(
