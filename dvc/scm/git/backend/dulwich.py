@@ -145,10 +145,14 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             # NOTE: this doesn't check gitignore, same as GitPythonBackend.add
             self.repo.stage(relpath(fpath, self.root_dir))
 
-    def commit(self, msg: str):
+    def commit(self, msg: str, no_verify: bool = False):
+        from dulwich.errors import CommitError
         from dulwich.porcelain import commit
 
-        commit(self.root_dir, message=msg)
+        try:
+            commit(self.root_dir, message=msg, no_verify=no_verify)
+        except CommitError as exc:
+            raise SCMError("Git commit failed") from exc
 
     def checkout(
         self, branch: str, create_new: Optional[bool] = False, **kwargs,

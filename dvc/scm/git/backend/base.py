@@ -56,7 +56,7 @@ class BaseGitBackend(ABC):
         pass
 
     @abstractmethod
-    def commit(self, msg: str):
+    def commit(self, msg: str, no_verify: bool = False):
         pass
 
     @abstractmethod

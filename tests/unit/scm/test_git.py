@@ -301,3 +301,23 @@ def test_ignore_remove_empty(tmp_dir, scm, git):
 
     git.ignore_remove(test_entries[1]["path"])
     assert not path_to_gitignore.exists()
+
+
+@pytest.mark.skipif(
+    os.name == "nt", reason="Git hooks not supported on Windows"
+)
+@pytest.mark.parametrize("hook", ["pre-commit", "commit-msg"])
+def test_commit_no_verify(tmp_dir, scm, git, hook):
+    import stat
+
+    hook_file = os.path.join(".git", "hooks", hook)
+    tmp_dir.gen(
+        hook_file, "#!/usr/bin/env python\nimport sys\nsys.exit(1)",
+    )
+    os.chmod(hook_file, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+
+    tmp_dir.gen("foo", "foo")
+    git.add(["foo"])
+    with pytest.raises(SCMError):
+        git.commit("commit foo")
+    git.commit("commit foo", no_verify=True)

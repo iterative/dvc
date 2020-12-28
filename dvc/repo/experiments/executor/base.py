@@ -376,7 +376,7 @@ class BaseExecutor(ABC):
             logger.debug("Commit to new experiment branch '%s'", branch)
 
         scm.gitpython.repo.git.add(update=True)
-        scm.commit(f"dvc: commit experiment {exp_hash}")
+        scm.commit(f"dvc: commit experiment {exp_hash}", no_verify=True)
         new_rev = scm.get_rev()
         scm.set_ref(branch, new_rev, old_ref=old_ref)
         scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
