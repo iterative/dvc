@@ -101,15 +101,25 @@ class CloudCache:
         Args:
             path_info: dict with path information.
             hash: expected hash value for this data.
-            filter_info: an optional argument to target a specific file.
+            filter_info: an optional argument to target a specific path.
 
         Returns:
             bool: True if data has changed, False otherwise.
         """
 
-        path = filter_info or path_info
+        hash_origin = path_info
+        if filter_info:
+            path = filter_info
+            dir_info = self.get_dir_cache(hash_info)
+            hash_key = path.relative_to(path_info).parts
+            if hash_key in dir_info.trie:
+                hash_info = dir_info.trie[hash_key]
+                hash_origin = filter_info
+        else:
+            path = path_info
+
         logger.trace(
-            "checking if '%s' ('%s') has changed.", path_info, hash_info
+            "checking if '%s'('%s') has changed.", path_info, hash_info
         )
 
         if not self.tree.exists(path):
@@ -126,13 +136,13 @@ class CloudCache:
             )
             return True
 
-        actual = self.tree.get_hash(path_info)
+        actual = self.tree.get_hash(hash_origin)
         if hash_info != actual:
             logger.debug(
                 "hash value '%s' for '%s' has changed (actual '%s').",
                 hash_info,
                 actual,
-                path_info,
+                hash_origin,
             )
             return True
 

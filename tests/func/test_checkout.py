@@ -907,3 +907,55 @@ def test_checkout_partial(tmp_dir, dvc):
         "b.txt": "b",
         "sub_dir": {"c.txt": "c"},
     }
+
+
+def test_checkout_partial_unchanged(tmp_dir, dvc):
+    original_dir_shape = {"a.txt": "a", "b.txt": "b"}
+    tmp_dir.dvc_gen({"db": original_dir_shape})
+
+    db_dir = tmp_dir / "db"
+    file_1, file_2 = [db_dir / filename for filename in ("a.txt", "b.txt")]
+
+    # Nothing changed, nothing added/deleted/modified
+    stats = dvc.checkout(targets=str(file_2))
+    assert not any(stats.values())
+
+    # Irrelevant file changed, still nothing added/deleted/modified
+    file_1.unlink()
+    stats = dvc.checkout(targets=str(file_2))
+    assert not any(stats.values())
+
+    # Relevant change, one modified
+    file_2.unlink()
+    stats = dvc.checkout(targets=str(file_2))
+    assert len(stats["modified"]) == 1
+
+    dvc.checkout(targets=str(db_dir))
+
+    # Everything is in place, no action taken
+    stats = dvc.checkout(targets=str(db_dir))
+    assert not any(stats.values())
+
+
+def test_checkout_partial_subdir(tmp_dir, dvc):
+    tmp_dir.dvc_gen(
+        {"db": {"a.txt": "a", "sub_dir": {"b.txt": "b", "c.txt": "c"}}}
+    )
+
+    db_dir = tmp_dir / "db"
+    sub_dir = db_dir / "sub_dir"
+    sub_dir_file_2 = sub_dir / "c.txt"
+
+    shutil.rmtree(sub_dir)
+    dvc.checkout(targets=str(sub_dir))
+    assert db_dir.read_text() == {
+        "a.txt": "a",
+        "sub_dir": {"b.txt": "b", "c.txt": "c"},
+    }
+
+    sub_dir_file_2.unlink()
+    dvc.checkout(targets=str(sub_dir_file_2))
+    assert db_dir.read_text() == {
+        "a.txt": "a",
+        "sub_dir": {"b.txt": "b", "c.txt": "c"},
+    }
