@@ -1,5 +1,6 @@
 from dataclasses import asdict
 from math import pi
+from unittest.mock import mock_open
 
 import pytest
 
@@ -10,13 +11,13 @@ from dvc.parsing.context import (
     CtxList,
     KeyNotInContext,
     MergeError,
-    ParamsFileNotFound,
+    ParamsLoadError,
     Value,
     recurse_not_a_node,
 )
 from dvc.tree.local import LocalTree
 from dvc.utils import relpath
-from dvc.utils.serialize import dump_yaml
+from dvc.utils.serialize import dump_yaml, dumps_yaml
 
 
 def test_context():
@@ -216,17 +217,13 @@ def test_overwrite_with_setitem():
 
 
 def test_load_from(mocker):
-    def _yaml_load(*args, **kwargs):
-        return {"x": {"y": {"z": 5}, "lst": [1, 2, 3]}, "foo": "foo"}
-
-    mocker.patch("dvc.parsing.context.LOADERS", {".yaml": _yaml_load})
-
-    class tree:
-        def exists(self, _):
-            return True
-
+    d = {"x": {"y": {"z": 5}, "lst": [1, 2, 3]}, "foo": "foo"}
+    tree = mocker.Mock(
+        open=mock_open(read_data=dumps_yaml(d)),
+        **{"exists.return_value": True, "isdir.return_value": False},
+    )
     file = "params.yaml"
-    c = Context.load_from(tree(), file)
+    c = Context.load_from(tree, file)
 
     assert asdict(c["x"].meta) == {
         "source": file,
@@ -430,7 +427,18 @@ def test_resolve_resolves_boolean_value():
     assert context.resolve_str("--flag ${disabled}") == "--flag false"
 
 
-def test_merge_from_raises_if_file_not_exist(tmp_dir, dvc):
-    context = Context(foo="bar")
-    with pytest.raises(ParamsFileNotFound):
-        context.merge_from(dvc.tree, DEFAULT_PARAMS_FILE, tmp_dir)
+def test_load_from_raises_if_file_not_exist(tmp_dir, dvc):
+    with pytest.raises(ParamsLoadError) as exc_info:
+        Context.load_from(dvc.tree, tmp_dir / DEFAULT_PARAMS_FILE)
+
+    assert str(exc_info.value) == "'params.yaml' does not exist"
+
+
+def test_load_from_raises_if_file_is_directory(tmp_dir, dvc):
+    data_dir = tmp_dir / "data"
+    data_dir.mkdir()
+
+    with pytest.raises(ParamsLoadError) as exc_info:
+        Context.load_from(dvc.tree, data_dir)
+
+    assert str(exc_info.value) == "'data' is a directory"

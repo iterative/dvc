@@ -62,7 +62,7 @@ class MergeError(ContextError):
         )
 
 
-class ParamsFileNotFound(ContextError):
+class ParamsLoadError(ContextError):
     pass
 
 
@@ -349,7 +349,9 @@ class Context(CtxDict):
     def load_from(cls, tree, path: PathInfo, select_keys=None) -> "Context":
         file = relpath(path)
         if not tree.exists(path):
-            raise ParamsFileNotFound(f"'{file}' does not exist")
+            raise ParamsLoadError(f"'{file}' does not exist")
+        if tree.isdir(path):
+            raise ParamsLoadError(f"'{file}' is a directory")
 
         _, ext = os.path.splitext(file)
         loader = LOADERS[ext]
@@ -357,7 +359,7 @@ class Context(CtxDict):
         data = loader(path, tree=tree)
         if not isinstance(data, Mapping):
             typ = type(data).__name__
-            raise ContextError(
+            raise ParamsLoadError(
                 f"expected a dictionary, got '{typ}' in file '{file}'"
             )
 
@@ -367,7 +369,7 @@ class Context(CtxDict):
                 data = {key: data[key] for key in select_keys}
             except KeyError as exc:
                 key, *_ = exc.args
-                raise ContextError(
+                raise ParamsLoadError(
                     f"could not find '{key}' in '{file}'"
                 ) from exc
 
