@@ -895,16 +895,15 @@ def test_checkout_partial(tmp_dir, dvc):
 
     shutil.rmtree(db_dir)
 
-    dvc.checkout(targets=[str(file_1)])
-    assert db_dir.exists()
-    assert file_1.exists()
-    assert not file_2.exists()
-    assert not sub_dir.exists()
+    dvc.checkout(targets=str(file_1))
+    assert db_dir.read_text() == {"a.txt": "a"}
 
-    dvc.checkout(targets=[str(sub_dir_file)])
-    assert sub_dir.exists()
-    assert sub_dir_file.exists()
-    assert not file_2.exists()
+    dvc.checkout(targets=str(sub_dir_file))
+    assert db_dir.read_text() == {"a.txt": "a", "sub_dir": {"c.txt": "c"}}
 
-    dvc.checkout(targets=[str(file_2)])
-    assert file_2.exists()
+    dvc.checkout(targets=str(file_2))
+    assert db_dir.read_text() == {
+        "a.txt": "a",
+        "b.txt": "b",
+        "sub_dir": {"c.txt": "c"},
+    }

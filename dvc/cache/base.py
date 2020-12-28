@@ -107,22 +107,22 @@ class CloudCache:
             bool: True if data has changed, False otherwise.
         """
 
-        real_path_info = filter_info or path_info
+        path = filter_info or path_info
         logger.trace(
             "checking if '%s' ('%s') has changed.", path_info, hash_info
         )
 
-        if not self.tree.exists(real_path_info):
-            logger.debug("'%s' doesn't exist.", real_path_info)
+        if not self.tree.exists(path):
+            logger.debug("'%s' doesn't exist.", path)
             return True
 
         if not hash_info:
-            logger.debug("hash value for '%s' is missing.", real_path_info)
+            logger.debug("hash value for '%s' is missing.", path_info)
             return True
 
         if self.changed_cache(hash_info, filter_info=filter_info):
             logger.debug(
-                "cache for '%s'('%s') has changed.", real_path_info, hash_info
+                "cache for '%s'('%s') has changed.", path_info, hash_info
             )
             return True
 
@@ -136,7 +136,7 @@ class CloudCache:
             )
             return True
 
-        logger.trace("'%s' hasn't changed.", path_info)
+        logger.trace("'%s' hasn't changed.", path)
         return False
 
     def link(self, from_info, to_info):
