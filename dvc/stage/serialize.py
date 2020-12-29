@@ -69,6 +69,7 @@ def _serialize_outs(outputs: List[BaseOutput]):
         elif out.metric:
             bucket = metrics
         elif out.live:
+            assert live is None
             live = _serialize_out(out)
             continue
         bucket.append(_serialize_out(out))
