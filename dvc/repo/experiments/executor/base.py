@@ -122,7 +122,7 @@ class BaseExecutor(ABC):
         return os.path.join(self.root_dir, self._dvc_dir)
 
     @staticmethod
-    def hash_exp(stages: Iterable["PipelineStage"]):
+    def hash_exp(stages: Iterable["PipelineStage"]) -> str:
         exp_data = {}
         for stage in stages:
             if isinstance(stage, PipelineStage):
@@ -247,7 +247,7 @@ class BaseExecutor(ABC):
         try:
             dvc = Repo(dvc_dir)
             if dvc_dir is not None:
-                old_cwd = os.getcwd()
+                old_cwd: Optional[str] = os.getcwd()
                 if rel_cwd:
                     os.chdir(os.path.join(dvc.root_dir, rel_cwd))
                 else:
