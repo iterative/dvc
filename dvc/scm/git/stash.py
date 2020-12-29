@@ -50,7 +50,10 @@ class Stash:
         logger.debug("Popping from stash '%s'", self.ref)
         ref = "{0}@{{0}}".format(self.ref)
         rev = self.scm.resolve_rev(ref)
-        self.apply(rev)
+        try:
+            self.apply(rev)
+        except Exception as exc:
+            raise SCMError("Could not apply stash commit") from exc
         self.drop()
         return rev
 
