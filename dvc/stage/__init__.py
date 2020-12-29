@@ -252,7 +252,7 @@ class Stage(params.StageParams):
         return any(out.checkpoint for out in self.outs)
 
     @property
-    def environment(self) -> Dict[str, str]:
+    def env(self) -> Dict[str, str]:
         env = {}
         for out in self.outs:
             if any(out.environment.keys() and env.keys()):
