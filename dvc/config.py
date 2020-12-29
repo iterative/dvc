@@ -446,8 +446,16 @@ class Config(dict):
                 merge(merged_conf, self.load_one(merge_level))
         return merged_conf
 
+    def read(self, level=None):
+        # NOTE: we read from a merged config by default, same as git config
+        if level is None:
+            return self.load_config_to_level()
+        return self.load_one(level)
+
     @contextmanager
-    def edit(self, level="repo"):
+    def edit(self, level=None):
+        # NOTE: we write to repo config by default, same as git config
+        level = level or "repo"
         if level in {"repo", "local"} and self.dvc_dir is None:
             raise ConfigError("Not inside a DVC repo")
 

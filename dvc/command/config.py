@@ -52,11 +52,10 @@ class CmdConfig(CmdBaseNoRepo):
                 )
                 return 1
 
-            conf = self.config.load_one(self.args.level)
+            conf = self.config.read(self.args.level)
             prefix = self._config_file_prefix(
                 self.args.show_origin, self.config, self.args.level
             )
-
             logger.info("\n".join(self._format_config(conf, prefix)))
             return 0
 
@@ -67,11 +66,10 @@ class CmdConfig(CmdBaseNoRepo):
         remote, section, opt = self.args.name
 
         if self.args.value is None and not self.args.unset:
-            conf = self.config.load_one(self.args.level)
+            conf = self.config.read(self.args.level)
             prefix = self._config_file_prefix(
                 self.args.show_origin, self.config, self.args.level
             )
-
             if remote:
                 conf = conf["remote"]
             self._check(conf, remote, section, opt)
@@ -117,6 +115,7 @@ class CmdConfig(CmdBaseNoRepo):
         if not show_origin:
             return ""
 
+        level = level or "repo"
         fname = config.files[level]
 
         if level in ["local", "repo"]:
@@ -142,13 +141,20 @@ level_group.add_argument(
     help="Use system config.",
 )
 level_group.add_argument(
+    "--repo",
+    dest="level",
+    action="store_const",
+    const="repo",
+    help="Use repo config (.dvc/config).",
+)
+level_group.add_argument(
     "--local",
     dest="level",
     action="store_const",
     const="local",
-    help="Use local config.",
+    help="Use local config (.dvc/config.local).",
 )
-parent_config_parser.set_defaults(level="repo")
+parent_config_parser.set_defaults(level=None)
 
 
 def add_parser(subparsers, parent_parser):

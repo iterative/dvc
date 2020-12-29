@@ -46,13 +46,14 @@ class CmdRemoteRemove(CmdRemote):
             self._check_exists(conf)
             del conf["remote"][self.args.name]
 
+        up_to_level = self.args.level or "repo"
         # Remove core.remote refs to this remote in any shadowing configs
         for level in reversed(self.config.LEVELS):
             with self.config.edit(level) as conf:
                 if conf["core"].get("remote") == self.args.name:
                     del conf["core"]["remote"]
 
-            if level == self.args.level:
+            if level == up_to_level:
                 break
 
         return 0
@@ -79,7 +80,7 @@ class CmdRemoteDefault(CmdRemote):
     def run(self):
 
         if self.args.name is None and not self.args.unset:
-            conf = self.config.load_one(self.args.level)
+            conf = self.config.read(self.args.level)
             try:
                 print(conf["core"]["remote"])
             except KeyError:
@@ -107,7 +108,7 @@ class CmdRemoteDefault(CmdRemote):
 
 class CmdRemoteList(CmdRemote):
     def run(self):
-        conf = self.config.load_one(self.args.level)
+        conf = self.config.read(self.args.level)
         for name, conf in conf["remote"].items():
             logger.info("{}\t{}".format(name, conf["url"]))
         return 0
@@ -133,8 +134,9 @@ class CmdRemoteRename(CmdRemote):
             del conf["remote"][self.args.name]
             self._rename_default(conf)
 
+        up_to_level = self.args.level or "repo"
         for level in reversed(self.config.LEVELS):
-            if level == self.args.level:
+            if level == up_to_level:
                 break
             with self.config.edit(level) as level_conf:
                 self._rename_default(level_conf)
