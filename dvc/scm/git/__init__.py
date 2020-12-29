@@ -355,6 +355,7 @@ class Git(Base):
     diff = partialmethod(_backend_func, "diff")
     reset = partialmethod(_backend_func, "reset")
     checkout_paths = partialmethod(_backend_func, "checkout_paths")
+    status = partialmethod(_backend_func, "status")
 
     def resolve_rev(self, rev: str) -> str:
         from dvc.repo.experiments.utils import exp_refs_by_name

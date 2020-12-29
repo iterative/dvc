@@ -4,7 +4,7 @@ import logging
 import os
 import stat
 from io import BytesIO, StringIO
-from typing import Callable, Dict, Iterable, Optional, Tuple
+from typing import Callable, Dict, Iterable, Mapping, Optional, Tuple
 
 from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
@@ -172,7 +172,8 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         raise NotImplementedError
 
     def untracked_files(self) -> Iterable[str]:
-        raise NotImplementedError
+        _staged, _unstaged, untracked = self.status()
+        return untracked
 
     def is_tracked(self, path: str) -> bool:
         rel = PathInfo(path).relative_to(self.root_dir).as_posix().encode()
@@ -531,3 +532,21 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
 
     def checkout_paths(self, paths: Iterable[str], force: bool = False):
         raise NotImplementedError
+
+    def status(
+        self, ignored: bool = False
+    ) -> Tuple[Mapping[str, Iterable[str]], Iterable[str], Iterable[str]]:
+        from dulwich.porcelain import status as git_status
+
+        staged, unstaged, untracked = git_status(
+            self.root_dir, ignored=ignored
+        )
+        return (
+            {
+                status: [os.fsdecode(name)]
+                for status, paths in staged.items()
+                for name in paths
+            },
+            [os.fsdecode(name) for name in unstaged],
+            [os.fsdecode(name) for name in untracked],
+        )

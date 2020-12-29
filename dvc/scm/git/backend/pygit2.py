@@ -2,7 +2,7 @@ import locale
 import logging
 import os
 from io import BytesIO, StringIO
-from typing import Callable, Iterable, Optional, Tuple
+from typing import Callable, Iterable, Mapping, Optional, Tuple
 
 from dvc.scm.base import SCMError
 
@@ -228,4 +228,9 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         raise NotImplementedError
 
     def iter_remote_refs(self, url: str, base: Optional[str] = None):
+        raise NotImplementedError
+
+    def status(
+        self, ignored: bool = False
+    ) -> Tuple[Mapping[str, Iterable[str]], Iterable[str], Iterable[str]]:
         raise NotImplementedError
