@@ -888,9 +888,8 @@ def test_checkout_partial(tmp_dir, dvc):
     )
 
     db_dir = tmp_dir / "db"
-    sub_dir = db_dir / "sub_dir"
     file_1, file_2, sub_dir_file = [
-        db_dir / filename for filename in ("a.txt", "b.txt", sub_dir / "c.txt")
+        db_dir / filename for filename in ("a.txt", "b.txt", "sub_dir/c.txt")
     ]
 
     shutil.rmtree(db_dir)
@@ -910,11 +909,18 @@ def test_checkout_partial(tmp_dir, dvc):
 
 
 def test_checkout_partial_unchanged(tmp_dir, dvc):
-    original_dir_shape = {"a.txt": "a", "b.txt": "b"}
+    original_dir_shape = {
+        "a.txt": "a",
+        "b.txt": "b",
+        "sub_dir": {"c.txt": "c"},
+    }
     tmp_dir.dvc_gen({"db": original_dir_shape})
 
     db_dir = tmp_dir / "db"
-    file_1, file_2 = [db_dir / filename for filename in ("a.txt", "b.txt")]
+    sub_dir = db_dir / "sub_dir"
+    file_1, file_2, sub_dir_file = [
+        db_dir / filename for filename in ("a.txt", "b.txt", "sub_dir/c.txt")
+    ]
 
     # Nothing changed, nothing added/deleted/modified
     stats = dvc.checkout(targets=str(file_2))
@@ -928,6 +934,15 @@ def test_checkout_partial_unchanged(tmp_dir, dvc):
     # Relevant change, one modified
     file_2.unlink()
     stats = dvc.checkout(targets=str(file_2))
+    assert len(stats["modified"]) == 1
+
+    # No changes inside db/sub
+    stats = dvc.checkout(targets=str(sub_dir))
+    assert not any(stats.values())
+
+    # Relevant change, one modified
+    sub_dir_file.unlink()
+    stats = dvc.checkout(targets=str(sub_dir))
     assert len(stats["modified"]) == 1
 
     dvc.checkout(targets=str(db_dir))

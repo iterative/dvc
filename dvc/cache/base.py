@@ -89,6 +89,22 @@ class CloudCache:
 
         return DirInfo.from_list(d)
 
+    def _get_specialized_hash_info(self, path_info, hash_info, hash_origin):
+        dir_info = self.get_dir_cache(hash_info)
+        hash_key = path_info.relative_to(hash_origin).parts
+        if hash_key in dir_info.trie:
+            return path_info, dir_info.trie[hash_key]
+        else:
+            depth = len(hash_key)
+            specialized_dir_info = DirInfo()
+            try:
+                for key, value in dir_info.trie.items(hash_key):
+                    specialized_dir_info.trie[key[depth:]] = value
+            except KeyError:
+                return hash_origin, hash_info
+            else:
+                return path_info, self._get_dir_info_hash(specialized_dir_info)
+
     def changed(self, path_info, hash_info, filter_info=None):
         """Checks if data has changed.
 
@@ -108,15 +124,7 @@ class CloudCache:
         """
 
         hash_origin = path_info
-        if filter_info:
-            path = filter_info
-            dir_info = self.get_dir_cache(hash_info)
-            hash_key = path.relative_to(path_info).parts
-            if hash_key in dir_info.trie:
-                hash_info = dir_info.trie[hash_key]
-                hash_origin = filter_info
-        else:
-            path = path_info
+        path = filter_info or path_info
 
         logger.trace(
             "checking if '%s'('%s') has changed.", path_info, hash_info
@@ -135,6 +143,15 @@ class CloudCache:
                 "cache for '%s'('%s') has changed.", path_info, hash_info
             )
             return True
+
+        # Instead of directly checking whether filter_info is present or not,
+        # we compare the target path with the path_info because sometimes
+        # filter_info might be equal to the path_info and in those cases we do
+        # not need to specialize the hash.
+        if path != path_info:
+            hash_origin, hash_info = self._get_specialized_hash_info(
+                path, hash_info, hash_origin
+            )
 
         actual = self.tree.get_hash(hash_origin)
         if hash_info != actual:
