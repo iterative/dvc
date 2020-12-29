@@ -913,6 +913,7 @@ def test_checkout_partial_unchanged(tmp_dir, dvc):
         "a.txt": "a",
         "b.txt": "b",
         "sub_dir": {"c.txt": "c"},
+        "empty_sub_dir": {},
     }
     tmp_dir.dvc_gen({"db": original_dir_shape})
 
@@ -944,6 +945,9 @@ def test_checkout_partial_unchanged(tmp_dir, dvc):
     sub_dir_file.unlink()
     stats = dvc.checkout(targets=str(sub_dir))
     assert len(stats["modified"]) == 1
+
+    stats = dvc.checkout(targets=str(db_dir / "empty_sub_dir"))
+    assert not any(stats.values())
 
     dvc.checkout(targets=str(db_dir))
 
