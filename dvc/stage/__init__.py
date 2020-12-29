@@ -255,9 +255,9 @@ class Stage(params.StageParams):
     def env(self) -> Dict[str, str]:
         env = {}
         for out in self.outs:
-            if any(out.environment.keys() and env.keys()):
+            if any(out.env.keys() and env.keys()):
                 raise DvcException("Duplicated env variable")
-            env.update(out.environment)
+            env.update(out.env)
         return env
 
     def changed_deps(self):

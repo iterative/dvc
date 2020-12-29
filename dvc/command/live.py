@@ -33,11 +33,25 @@ class CmdLiveDiff(CmdLive):
         return self._run(self.args.target, self.args.revs)
 
 
+def shared_parent_parser():
+    parent_parser = argparse.ArgumentParser(add_help=False)
+    parent_parser.add_argument(
+        "target", help="Logs dir to produce summary from",
+    ).complete = completion.DIR
+    parent_parser.add_argument(
+        "-o",
+        "--out",
+        default=None,
+        help="Destination path to save plots to",
+        metavar="<path>",
+    ).complete = completion.DIR
+    return parent_parser
+
+
 def add_parser(subparsers, parent_parser):
     LIVE_DESCRIPTION = (
         "Commands to visualize and compare dvclive-produced logs."
     )
-
     live_parser = subparsers.add_parser(
         "live",
         parents=[parent_parser],
@@ -54,11 +68,10 @@ def add_parser(subparsers, parent_parser):
     SHOW_HELP = "Visualize dvclive directory content."
     live_show_parser = live_subparsers.add_parser(
         "show",
-        parents=[parent_parser],
+        parents=[parent_parser, shared_parent_parser()],
         help=SHOW_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    _add_common_arguments(live_show_parser)
     live_show_parser.set_defaults(func=CmdLiveShow)
 
     DIFF_HELP = (
@@ -67,7 +80,7 @@ def add_parser(subparsers, parent_parser):
     )
     live_diff_parser = live_subparsers.add_parser(
         "diff",
-        parents=[parent_parser],
+        parents=[parent_parser, shared_parent_parser()],
         help=DIFF_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -78,18 +91,4 @@ def add_parser(subparsers, parent_parser):
         help="Git revision (e.g. SHA, branch, tag)",
         metavar="<commit>",
     )
-    _add_common_arguments(live_diff_parser)
     live_diff_parser.set_defaults(func=CmdLiveDiff)
-
-
-def _add_common_arguments(parser):
-    parser.add_argument(
-        "target", help="Logs dir to produce summary from",
-    ).complete = completion.DIR
-    parser.add_argument(
-        "-o",
-        "--out",
-        default=None,
-        help="Destination path to save plots to",
-        metavar="<path>",
-    ).complete = completion.DIR
