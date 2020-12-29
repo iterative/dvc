@@ -102,7 +102,7 @@ class ExpRefInfo:
         self, baseline_sha: Optional[str] = None, name: Optional[str] = None,
     ):
         self.baseline_sha = baseline_sha
-        self.name = name
+        self.name: str = name if name else ""
 
     def __str__(self):
         return "/".join(self.parts)

@@ -3,7 +3,7 @@ import locale
 import logging
 import os
 from functools import partial
-from typing import Callable, Iterable, Optional, Tuple
+from typing import Callable, Iterable, Mapping, Optional, Tuple
 
 from funcy import first
 
@@ -516,3 +516,8 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         """Checkout the specified paths from HEAD index."""
         if paths:
             self.repo.index.checkout(paths=paths, force=force)
+
+    def status(
+        self, ignored: bool = False
+    ) -> Tuple[Mapping[str, Iterable[str]], Iterable[str], Iterable[str]]:
+        raise NotImplementedError

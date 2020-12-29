@@ -50,6 +50,7 @@ def exp_stage(tmp_dir, scm, dvc):
         metrics_no_cache=["metrics.yaml"],
         params=["foo"],
         name="copy-file",
+        deps=["copy.py"],
     )
     scm.add(
         [
@@ -74,6 +75,7 @@ def checkpoint_stage(tmp_dir, scm, dvc):
         metrics_no_cache=["metrics.yaml"],
         params=["foo"],
         checkpoints=["foo"],
+        deps=["checkpoint.py"],
         no_exec=True,
         name="checkpoint-file",
     )

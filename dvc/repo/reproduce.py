@@ -60,6 +60,10 @@ def _dump_stage(stage):
 
 
 def _track_stage(stage):
+    stage.repo.scm.track_file(stage.dvcfile.path)
+    for dep in stage.deps:
+        if not dep.use_scm_ignore and dep.is_in_repo:
+            stage.repo.scm.track_file(os.fspath(dep.path_info))
     for out in stage.outs:
         if not out.use_scm_ignore and out.is_in_repo:
             stage.repo.scm.track_file(os.fspath(out.path_info))

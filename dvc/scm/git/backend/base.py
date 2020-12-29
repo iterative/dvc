@@ -1,6 +1,6 @@
 import os
 from abc import ABC, abstractmethod
-from typing import Callable, Iterable, Optional, Tuple
+from typing import Callable, Iterable, Mapping, Optional, Tuple
 
 from dvc.scm.base import SCMError
 
@@ -292,3 +292,16 @@ class BaseGitBackend(ABC):
     @abstractmethod
     def checkout_paths(self, paths: Iterable[str], force: bool = False):
         """Checkout the specified paths from HEAD index."""
+
+    @abstractmethod
+    def status(
+        self, ignored: bool = False
+    ) -> Tuple[Mapping[str, Iterable[str]], Iterable[str], Iterable[str]]:
+        """Return tuple of (staged_files, unstaged_files, untracked_files).
+
+        staged_files will be a dict mapping status (add, delete, modify) to a
+        list of paths.
+
+        If ignored is True, gitignored files will be included in
+        untracked_paths.
+        """

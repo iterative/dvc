@@ -379,17 +379,18 @@ def test_no_scm(tmp_dir):
             getattr(dvc.experiments, cmd)()
 
 
-def test_untracked(tmp_dir, scm, dvc, caplog):
+@pytest.mark.parametrize("workspace", [True, False])
+def test_untracked(tmp_dir, scm, dvc, caplog, workspace):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("params.yaml", "foo: 1")
     stage = dvc.run(
         cmd="python copy.py params.yaml metrics.yaml",
         metrics_no_cache=["metrics.yaml"],
         params=["foo"],
+        deps=["copy.py"],
         name="copy-file",
+        no_exec=True,
     )
-    scm.add(["dvc.yaml", "dvc.lock", "params.yaml", "metrics.yaml"])
-    scm.commit("init")
 
     # copy.py is untracked
     with caplog.at_level(logging.ERROR):
@@ -399,13 +400,15 @@ def test_untracked(tmp_dir, scm, dvc, caplog):
         assert "Failed to reproduce experiment" in caplog.text
         assert not results
 
-    # copy.py is staged as new file but not committed
-    scm.add(["copy.py"])
+    # dvc.yaml, copy.py are staged as new file but not committed
+    scm.add(["dvc.yaml", "copy.py"])
     results = dvc.experiments.run(
-        stage.addressing, params=["foo=2"], tmp_dir=True
+        stage.addressing, params=["foo=2"], tmp_dir=not workspace
     )
     exp = first(results)
     tree = scm.get_tree(exp)
+    assert tree.exists("dvc.yaml")
+    assert tree.exists("dvc.lock")
     assert tree.exists("copy.py")
     with tree.open(tmp_dir / "metrics.yaml") as fobj:
         assert fobj.read().strip() == "foo: 2"

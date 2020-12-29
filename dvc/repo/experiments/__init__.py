@@ -328,6 +328,15 @@ class Experiments:
 
     def reproduce_one(self, queue=False, tmp_dir=False, **kwargs):
         """Reproduce and checkout a single experiment."""
+        if not (queue or tmp_dir):
+            staged, _, _ = self.scm.status()
+            if staged:
+                logger.warning(
+                    "Your workspace contains staged Git changes which will be "
+                    "unstaged before running this experiment."
+                )
+                self.scm.reset()
+
         stash_rev = self.new(**kwargs)
         if queue:
             logger.info(
