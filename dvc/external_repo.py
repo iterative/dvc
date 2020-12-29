@@ -8,7 +8,6 @@ from typing import Dict, Iterable
 
 from funcy import cached_property, reraise, retry, wrap_with
 
-from dvc.cache import Cache
 from dvc.config import NoRemoteError, NotDvcRepoError
 from dvc.exceptions import (
     DvcException,
@@ -87,6 +86,30 @@ def clean_repos():
         _remove(path)
 
 
+def _get_remote_config(url):
+    try:
+        repo = Repo(url)
+    except NotDvcRepoError:
+        return {}
+
+    try:
+        name = repo.config["core"].get("remote")
+        if not name:
+            # Fill the empty upstream entry with a new remote pointing to the
+            # original repo's cache location.
+            name = "auto-generated-upstream"
+            return {
+                "core": {"remote": name},
+                "remote": {name: {"url": repo.cache.local.cache_dir}},
+            }
+
+        # Use original remote to make sure that we are using correct url,
+        # credential paths, etc if they are relative to the config location.
+        return {"remote": {name: repo.config["remote"][name]}}
+    finally:
+        repo.close()
+
+
 class ExternalRepo(Repo):
     # pylint: disable=no-member
 
@@ -102,18 +125,28 @@ class ExternalRepo(Repo):
         uninitialized=False,
         **kwargs,
     ):
-        super().__init__(
-            root_dir, scm=scm, rev=rev, uninitialized=uninitialized
-        )
-
         self.url = url
         self.for_write = for_write
-        self.cache_dir = cache_dir or self._get_cache_dir()
-        self.cache_types = cache_types
-
-        self._setup_cache(self)
-        self._fix_upstream(self)
         self.tree_confs = kwargs
+
+        self._cache_config = {
+            "cache": {
+                "dir": cache_dir or self._get_cache_dir(),
+                "type": cache_types,
+            }
+        }
+
+        config = self._cache_config.copy()
+        if os.path.isdir(url):
+            config.update(_get_remote_config(url))
+
+        super().__init__(
+            root_dir,
+            scm=scm,
+            rev=rev,
+            uninitialized=uninitialized,
+            config=config,
+        )
 
     def __str__(self):
         return self.url
@@ -218,58 +251,13 @@ class ExternalRepo(Repo):
             kw["fetch"] = True
         return RepoTree(repo, **kw)
 
-    @staticmethod
-    def _fix_local_remote(orig_repo, src_repo, remote_name):
-        # If a remote URL is relative to the source repo,
-        # it will have changed upon config load and made
-        # relative to this new repo. Restore the old one here.
-        new_remote = orig_repo.config["remote"][remote_name]
-        old_remote = src_repo.config["remote"][remote_name]
-        if new_remote["url"] != old_remote["url"]:
-            new_remote["url"] = old_remote["url"]
-
-    @staticmethod
-    def _add_upstream(orig_repo, src_repo):
-        # Fill the empty upstream entry with a new remote pointing to the
-        # original repo's cache location.
-        cache_dir = src_repo.cache.local.cache_dir
-        orig_repo.config["remote"]["auto-generated-upstream"] = {
-            "url": cache_dir
-        }
-        orig_repo.config["core"]["remote"] = "auto-generated-upstream"
-
     def make_repo(self, path):
-        repo = Repo(path, scm=self.scm, rev=self.get_rev())
-
-        self._setup_cache(repo)
-        self._fix_upstream(repo)
-
-        return repo
-
-    def _setup_cache(self, repo):
-        repo.config["cache"]["dir"] = self.cache_dir
-        repo.cache = Cache(repo)
-        if self.cache_types:
-            repo.cache.local.cache_types = self.cache_types
-
-    def _fix_upstream(self, repo):
-        if not os.path.isdir(self.url):
-            return
-
-        try:
-            rel_path = os.path.relpath(repo.root_dir, self.root_dir)
-            src_repo = Repo(PathInfo(self.url) / rel_path)
-        except NotDvcRepoError:
-            return
-
-        try:
-            remote_name = repo.config["core"].get("remote")
-            if remote_name:
-                self._fix_local_remote(repo, src_repo, remote_name)
-            else:
-                self._add_upstream(repo, src_repo)
-        finally:
-            src_repo.close()
+        config = self._cache_config.copy()
+        if os.path.isdir(self.url):
+            rel = os.path.relpath(path, self.root_dir)
+            repo_path = os.path.join(self.url, rel)
+            config.update(_get_remote_config(repo_path))
+        return Repo(path, scm=self.scm, rev=self.get_rev(), config=config)
 
     @wrap_with(threading.Lock())
     def _get_cache_dir(self):

@@ -266,7 +266,7 @@ class Config(dict):
     CONFIG_LOCAL = "config.local"
 
     def __init__(
-        self, dvc_dir=None, validate=True, tree=None,
+        self, dvc_dir=None, validate=True, tree=None, config=None,
     ):  # pylint: disable=super-init-not-called
         from dvc.tree.local import LocalTree
 
@@ -285,7 +285,7 @@ class Config(dict):
         self.wtree = LocalTree(None, {"url": self.dvc_dir})
         self.tree = tree or self.wtree
 
-        self.load(validate=validate)
+        self.load(validate=validate, config=config)
 
     @classmethod
     def get_dir(cls, level):
@@ -325,13 +325,16 @@ class Config(dict):
         open(config_file, "w+").close()
         return Config(dvc_dir)
 
-    def load(self, validate=True):
+    def load(self, validate=True, config=None):
         """Loads config from all the config files.
 
         Raises:
             ConfigError: thrown if config has an invalid format.
         """
         conf = self.load_config_to_level()
+
+        if config is not None:
+            merge(conf, config)
 
         if validate:
             conf = self.validate(conf)

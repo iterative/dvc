@@ -128,6 +128,7 @@ class Repo:
         rev=None,
         subrepos=False,
         uninitialized=False,
+        config=None,
     ):
         from dvc.cache import Cache
         from dvc.data_cloud import DataCloud
@@ -150,7 +151,7 @@ class Repo:
         else:
             self.tree = LocalTree(self, {"url": self.root_dir}, **tree_kwargs)
 
-        self.config = Config(self.dvc_dir, tree=self.tree)
+        self.config = Config(self.dvc_dir, tree=self.tree, config=config)
         self._scm = scm
 
         # used by RepoTree to determine if it should traverse subrepos

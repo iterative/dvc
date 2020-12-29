@@ -60,11 +60,11 @@ def test_subrepo_is_constructed_properly(
         subrepo = spy.return_value
 
         assert repo.url == str(tmp_dir)
-        assert repo.cache_dir == str(cache_dir)
+        assert repo._cache_config["cache"]["dir"] == str(cache_dir)
         assert repo.cache.local.cache_dir == str(cache_dir)
         assert subrepo.cache.local.cache_dir == str(cache_dir)
 
-        assert repo.cache_types == ["symlink"]
+        assert repo._cache_config["cache"]["type"] == ["symlink"]
         assert repo.cache.local.cache_types == ["symlink"]
         assert subrepo.cache.local.cache_types == ["symlink"]
 
