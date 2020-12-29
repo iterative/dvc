@@ -602,7 +602,7 @@ class BaseOutput:
         )
 
     @cached_property
-    def environment(self) -> Dict[str, str]:
+    def env(self) -> Dict[str, str]:
         if self.live:
             from dvc.schema import LIVE_PROPS
 
