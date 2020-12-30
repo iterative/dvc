@@ -43,6 +43,12 @@ class CmdConfig(CmdBaseNoRepo):
                     "options: -u/--unset, value"
                 )
                 return 1
+            if not self.args.level:
+                logger.error(
+                    "--show-origin requires one of these options: "
+                    "--system, --global, --repo, --local"
+                )
+                return 1
 
         if self.args.list:
             if any((self.args.name, self.args.value, self.args.unset)):
