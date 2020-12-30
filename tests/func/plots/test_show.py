@@ -716,7 +716,7 @@ def test_show_malformed_plots(tmp_dir, scm, dvc, caplog):
     tmp_dir.gen("plot.json", '[{"m":1]')
 
     with pytest.raises(NoMetricsParsedError):
-        dvc.plots.show(targets=["plot.json"])
+        dvc.metrics.show(targets=["plot.json"])
 
 
 def test_plots_show_no_target(tmp_dir, dvc):
@@ -726,7 +726,7 @@ def test_plots_show_no_target(tmp_dir, dvc):
 
 def test_show_no_plots_files(tmp_dir, dvc, caplog):
     with pytest.raises(NoMetricsFoundError):
-        dvc.plots.show()
+        dvc.metrics.show()
 
 
 @pytest.mark.parametrize("clear_before_run", [True, False])

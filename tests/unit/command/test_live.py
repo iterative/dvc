@@ -27,7 +27,7 @@ def test_live_diff(dvc, mocker):
     )
 
 
-def test_plots_show(dvc, mocker):
+def test_live_show(dvc, mocker):
     cli_args = parse_args(
         ["live", "show", "-o", "result.extension", "datafile"]
     )
