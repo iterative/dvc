@@ -59,7 +59,7 @@ def fill_stage_outputs(stage, **kwargs):
     stage.outs = []
 
     stage.outs += _load_live_outputs(
-        stage, kwargs.get("live", []), kwargs.get("live_summary", False)
+        stage, kwargs.get("live", None), kwargs.get("live_summary", False)
     )
 
     for key in keys:
@@ -74,18 +74,15 @@ def fill_stage_outputs(stage, **kwargs):
         )
 
 
-def _load_live_outputs(stage, live_l, live_summary):
-    from dvc.exceptions import DvcException
+def _load_live_outputs(stage, live_l=None, live_summary=False):
     from dvc.output import BaseOutput
 
     outs = []
     if live_l:
-        if len(live_l) != 1:
-            raise DvcException("Only one live output allowed!")
 
         outs += output.loads_from(
             stage,
-            live_l,
+            [live_l],
             use_cache=False,
             live={BaseOutput.PARAM_LIVE_SUMMARY: live_summary},
         )
