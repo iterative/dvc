@@ -186,3 +186,28 @@ def test_config_remote(tmp_dir, dvc, caplog):
     caplog.clear()
     assert main(["config", "remote.myremote.region"]) == 0
     assert "myregion" in caplog.text
+
+
+def test_config_list(tmp_dir, dvc, caplog):
+    (tmp_dir / ".dvc" / "config").write_text(
+        "['remote \"myremote\"']\n"
+        "  url = s3://bucket/path\n"
+        "  region = myregion\n"
+    )
+
+    caplog.clear()
+    assert main(["config", "--show-origin", "remote.myremote.url"]) == 0
+    assert (
+        "{}\t{}\n".format(os.path.join(".dvc", "config"), "s3://bucket/path")
+        in caplog.text
+    )
+
+    caplog.clear()
+    assert main(["config", "--list", "--show-origin"]) == 0
+    assert (
+        "{}\t{}\n".format(
+            os.path.join(".dvc", "config"),
+            "remote.myremote.url=s3://bucket/path",
+        )
+        in caplog.text
+    )
