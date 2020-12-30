@@ -1,114 +1,179 @@
 import os
+import textwrap
 
-import configobj
 import pytest
 
 from dvc.config import Config, ConfigError
 from dvc.main import main
-from tests.basic_env import TestDvc
 
 
-class TestConfigCLI(TestDvc):
-    def _contains(self, section, field, value, local=False):
-        fname = self.dvc.config.files["local" if local else "repo"]
+def test_config_set(tmp_dir, dvc):
+    assert main(["config", "core.analytics", "false"]) == 0
+    assert (tmp_dir / ".dvc" / "config").read_text() == textwrap.dedent(
+        """\
+        [core]
+            no_scm = True
+            analytics = false
+        """
+    )
+    assert not (tmp_dir / ".dvc" / "config.local").exists()
 
-        config = configobj.ConfigObj(fname)
-        if section not in config.keys():
-            return False
+    assert main(["config", "core.analytics", "true"]) == 0
+    assert (tmp_dir / ".dvc" / "config").read_text() == textwrap.dedent(
+        """\
+        [core]
+            no_scm = True
+            analytics = true
+        """
+    )
+    assert not (tmp_dir / ".dvc" / "config.local").exists()
 
-        if field not in config[section].keys():
-            return False
+    assert main(["config", "core.analytics", "--unset"]) == 0
+    assert (tmp_dir / ".dvc" / "config").read_text() == textwrap.dedent(
+        """\
+        [core]
+            no_scm = True
+        """
+    )
+    assert not (tmp_dir / ".dvc" / "config.local").exists()
 
-        if config[section][field] != value:
-            return False
 
-        return True
+def test_config_set_local(tmp_dir, dvc):
+    assert main(["config", "core.analytics", "false", "--local"]) == 0
+    assert (tmp_dir / ".dvc" / "config").read_text() == textwrap.dedent(
+        """\
+        [core]
+            no_scm = True
+        """
+    )
+    assert (tmp_dir / ".dvc" / "config.local").read_text() == textwrap.dedent(
+        """\
+        [core]
+            analytics = false
+        """
+    )
 
-    def test_root(self):
-        ret = main(["root"])
-        self.assertEqual(ret, 0)
+    assert main(["config", "core.analytics", "true", "--local"]) == 0
+    assert (tmp_dir / ".dvc" / "config").read_text() == textwrap.dedent(
+        """\
+        [core]
+            no_scm = True
+        """
+    )
+    assert (tmp_dir / ".dvc" / "config.local").read_text() == textwrap.dedent(
+        """\
+        [core]
+            analytics = true
+        """
+    )
 
-        # NOTE: check that `dvc root` is not blocked with dvc lock
-        with self.dvc.lock:
-            ret = main(["root"])
-        self.assertEqual(ret, 0)
+    assert main(["config", "core.analytics", "--unset", "--local"]) == 0
+    assert (tmp_dir / ".dvc" / "config").read_text() == textwrap.dedent(
+        """\
+        [core]
+            no_scm = True
+        """
+    )
+    assert (tmp_dir / ".dvc" / "config.local").read_text() == "\n"
 
-    def _do_test(self, local=False):
-        section = "core"
-        field = "analytics"
-        section_field = f"{section}.{field}"
-        value = "True"
-        newvalue = "False"
 
-        base = ["config"]
-        if local:
-            base.append("--local")
+@pytest.mark.parametrize(
+    "args, ret, msg",
+    [
+        (["core.analytics"], 0, "False"),
+        (["core.remote"], 0, "myremote"),
+        (["remote.myremote.profile"], 0, "iterative"),
+        (["remote.myremote.profile", "--local"], 0, "iterative"),
+        (
+            ["remote.myremote.profile", "--repo"],
+            251,
+            "option 'profile' doesn't exist",
+        ),
+        (["remote.other.url"], 0, "gs://bucket/path"),
+        (["remote.other.url", "--local"], 0, "gs://bucket/path"),
+        (["remote.other.url", "--repo"], 251, "remote 'other' doesn't exist"),
+    ],
+)
+def test_config_get(tmp_dir, dvc, caplog, args, ret, msg):
+    (tmp_dir / ".dvc" / "config").write_text(
+        textwrap.dedent(
+            """\
+        [core]
+            no_scm = true
+            analytics = False
+            remote = myremote
+        ['remote "myremote"']
+            url = s3://bucket/path
+            region = us-east-2
+        """
+        )
+    )
+    (tmp_dir / ".dvc" / "config.local").write_text(
+        textwrap.dedent(
+            """\
+        ['remote "myremote"']
+            profile = iterative
+        ['remote "other"']
+            url = gs://bucket/path
+        """
+        )
+    )
 
-        ret = main(base + [section_field, value])
-        self.assertEqual(ret, 0)
-        self.assertTrue(self._contains(section, field, value, local))
+    caplog.clear()
+    assert main(["config"] + args) == ret
+    assert msg in caplog.text
 
-        ret = main(base + [section_field, value, "--show-origin"])
-        self.assertEqual(ret, 1)
 
-        ret = main(base + [section_field])
-        self.assertEqual(ret, 0)
+def test_config_list(tmp_dir, dvc, caplog):
+    (tmp_dir / ".dvc" / "config").write_text(
+        textwrap.dedent(
+            """\
+        [core]
+            no_scm = true
+            analytics = False
+            remote = myremote
+        ['remote "myremote"']
+            url = s3://bucket/path
+            region = us-east-2
+        """
+        )
+    )
+    (tmp_dir / ".dvc" / "config.local").write_text(
+        textwrap.dedent(
+            """\
+        ['remote "myremote"']
+            profile = iterative
+            access_key_id = abcde
+            secret_access_key = 123456
+        ['remote "other"']
+            url = gs://bucket/path
+        """
+        )
+    )
 
-        ret = main(base + ["--show-origin", section_field])
-        self.assertEqual(ret, 0)
+    caplog.clear()
+    assert main(["config", "--list"]) == 0
+    assert "remote.myremote.url=s3://bucket/path" in caplog.text
+    assert "remote.myremote.region=us-east-2" in caplog.text
+    assert "remote.myremote.profile=iterative" in caplog.text
+    assert "remote.myremote.access_key_id=abcde" in caplog.text
+    assert "remote.myremote.secret_access_key=123456" in caplog.text
+    assert "remote.other.url=gs://bucket/path" in caplog.text
+    assert "core.analytics=False" in caplog.text
+    assert "core.no_scm=true" in caplog.text
+    assert "core.remote=myremote" in caplog.text
 
-        ret = main(base + [section_field, newvalue])
-        self.assertEqual(ret, 0)
-        self.assertTrue(self._contains(section, field, newvalue, local))
-        self.assertFalse(self._contains(section, field, value, local))
 
-        ret = main(base + [section_field, "--unset"])
-        self.assertEqual(ret, 0)
-        self.assertFalse(self._contains(section, field, value, local))
-
-        ret = main(base + [section_field, "--unset", "--show-origin"])
-        self.assertEqual(ret, 1)
-
-        ret = main(base + ["--list"])
-        self.assertEqual(ret, 0)
-
-        ret = main(base + ["--list", "--show-origin"])
-        self.assertEqual(ret, 0)
-
-    def test(self):
-        self._do_test(False)
-
-    def test_local(self):
-        self._do_test(True)
-
-    def test_non_existing(self):
-        ret = main(["config", "non_existing_section.field"])
-        self.assertEqual(ret, 251)
-
-        ret = main(["config", "global.non_existing_field"])
-        self.assertEqual(ret, 251)
-
-        ret = main(["config", "non_existing_section.field", "-u"])
-        self.assertEqual(ret, 251)
-
-        ret = main(["config", "global.non_existing_field", "-u"])
-        self.assertEqual(ret, 251)
-
-        ret = main(["config", "core.remote", "myremote"])
-        self.assertEqual(ret, 0)
-
-        ret = main(["config", "core.non_existing_field", "-u"])
-        self.assertEqual(ret, 251)
-
-    def test_invalid_config_list(self):
-        ret = main(["config"])
-        self.assertEqual(ret, 1)
-
-        ret = main(["config", "--list", "core.analytics"])
-        self.assertEqual(ret, 1)
-
-        ret = main(["config", "--list", "-u"])
-        self.assertEqual(ret, 1)
+@pytest.mark.parametrize(
+    "args", [["core.analytics"], ["core.analytics", "false"], ["--unset"]]
+)
+def test_list_bad_args(tmp_dir, dvc, caplog, args):
+    caplog.clear()
+    assert main(["config", "--list"] + args) == 1
+    assert (
+        "-l/--list can't be used together with any of these options: "
+        "-u/--unset, name, value"
+    ) in caplog.text
 
 
 def test_set_invalid_key(dvc):
