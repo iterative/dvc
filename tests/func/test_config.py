@@ -48,7 +48,13 @@ class TestConfigCLI(TestDvc):
         self.assertEqual(ret, 0)
         self.assertTrue(self._contains(section, field, value, local))
 
+        ret = main(base + [section_field, value, "--show-origin"])
+        self.assertEqual(ret, 1)
+
         ret = main(base + [section_field])
+        self.assertEqual(ret, 0)
+
+        ret = main(base + ["--show-origin", section_field])
         self.assertEqual(ret, 0)
 
         ret = main(base + [section_field, newvalue])
@@ -60,7 +66,13 @@ class TestConfigCLI(TestDvc):
         self.assertEqual(ret, 0)
         self.assertFalse(self._contains(section, field, value, local))
 
+        ret = main(base + [section_field, "--unset", "--show-origin"])
+        self.assertEqual(ret, 1)
+
         ret = main(base + ["--list"])
+        self.assertEqual(ret, 0)
+
+        ret = main(base + ["--list", "--show-origin"])
         self.assertEqual(ret, 0)
 
     def test(self):
@@ -174,3 +186,28 @@ def test_config_remote(tmp_dir, dvc, caplog):
     caplog.clear()
     assert main(["config", "remote.myremote.region"]) == 0
     assert "myregion" in caplog.text
+
+
+def test_config_show_origin(tmp_dir, dvc, caplog):
+    (tmp_dir / ".dvc" / "config").write_text(
+        "['remote \"myremote\"']\n"
+        "  url = s3://bucket/path\n"
+        "  region = myregion\n"
+    )
+
+    caplog.clear()
+    assert main(["config", "--show-origin", "remote.myremote.url"]) == 0
+    assert (
+        "{}\t{}\n".format(os.path.join(".dvc", "config"), "s3://bucket/path")
+        in caplog.text
+    )
+
+    caplog.clear()
+    assert main(["config", "--list", "--show-origin"]) == 0
+    assert (
+        "{}\t{}\n".format(
+            os.path.join(".dvc", "config"),
+            "remote.myremote.url=s3://bucket/path",
+        )
+        in caplog.text
+    )
