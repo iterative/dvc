@@ -11,10 +11,21 @@ logger = logging.getLogger(__name__)
 class CmdCacheDir(CmdConfig):
     def run(self):
         if self.args.value is None and not self.args.unset:
-            logger.info(self.config["cache"]["dir"])
+            if self.args.level:
+                conf = self.config.read(level=self.args.level)
+            else:
+                # Use merged config with default values
+                conf = self.config
+            self._check(conf, False, "cache", "dir")
+            logger.info(conf["cache"]["dir"])
             return 0
-        with self.config.edit(level=self.args.level) as edit:
-            edit["cache"]["dir"] = self.args.value
+        with self.config.edit(level=self.args.level) as conf:
+            if self.args.unset:
+                self._check(conf, False, "cache", "dir")
+                del conf["cache"]["dir"]
+            else:
+                self._check(conf, False, "cache")
+                conf["cache"]["dir"] = self.args.value
         return 0
 
 
