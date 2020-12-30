@@ -1,10 +1,16 @@
+import csv
+import io
+import json
+import logging
 import os
+from typing import Dict, List
 
 import pytest
 from flaky.flaky_decorator import flaky
-from funcy import first, get_in
+from funcy import first, get_in, last
 
 from dvc import api
+from dvc.api.live import summary
 from dvc.exceptions import FileMissingError, OutputNotFoundError
 from dvc.path_info import URLInfo
 from dvc.utils.fs import remove
@@ -271,3 +277,54 @@ def test_get_url_subrepos(tmp_dir, scm, local_cloud):
 
     expected_url = os.path.join(path, "37", "b51d194a7513e45b56f6524f2d51f2")
     assert api.get_url("subrepo/bar") == expected_url
+
+
+def _dumps_sv(metrics: List[Dict], delimiter=","):
+    stream = io.StringIO()
+    writer = csv.DictWriter(
+        stream, fieldnames=list(first(metrics).keys()), delimiter=delimiter
+    )
+    writer.writeheader()
+    writer.writerows(metrics)
+    stream.seek(0)
+    return stream.read()
+
+
+@pytest.fixture
+def live_results(tmp_dir):
+    def make(path="logs"):
+        datapoints = [{"metric": 0.0, "step": 0}, {"metric": 0.5, "step": 1}]
+        tmp_dir.gen(
+            {
+                (tmp_dir / path).with_suffix(".json"): json.dumps(
+                    last(datapoints)
+                ),
+                (tmp_dir / path / "metric.tsv"): _dumps_sv(
+                    datapoints, delimiter="\t",
+                ),
+            }
+        )
+
+    yield make
+
+
+def test_live_summary_no_repo(tmp_dir, live_results, caplog):
+    live_results("logs")
+
+    with caplog.at_level(logging.INFO, logger="dvc"):
+        summary("logs")
+
+    summary_path = tmp_dir / "logs.html"
+    assert summary_path.exists()
+    assert f"file://{str(summary_path)}" in caplog.text
+
+
+def test_live_summary(tmp_dir, dvc, live_results, caplog):
+    live_results("logs")
+
+    with caplog.at_level(logging.INFO, logger="dvc"):
+        summary("logs")
+
+    summary_path = tmp_dir / "logs.html"
+    assert summary_path.exists()
+    assert f"file://{str(summary_path)}" in caplog.text
