@@ -188,7 +188,7 @@ def test_config_remote(tmp_dir, dvc, caplog):
     assert "myregion" in caplog.text
 
 
-def test_config_list(tmp_dir, dvc, caplog):
+def test_config_show_origin(tmp_dir, dvc, caplog):
     (tmp_dir / ".dvc" / "config").write_text(
         "['remote \"myremote\"']\n"
         "  url = s3://bucket/path\n"
