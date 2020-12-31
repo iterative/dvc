@@ -139,7 +139,7 @@ def run_stage(stage, dry=False, force=False, checkpoint_func=None, **kwargs):
             stage.repo.stage_cache.restore(stage, **kwargs)
             return
         except RunCacheNotFoundError:
-            pass
+            stage.save_deps()
 
     run = cmd_run if dry else unlocked_repo(cmd_run)
     run(stage, dry=dry, checkpoint_func=checkpoint_func)
