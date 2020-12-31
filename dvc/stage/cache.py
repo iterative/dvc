@@ -34,18 +34,26 @@ def _get_cache_hash(cache, key=False):
     )
 
 
-def _get_stage_hash(stage):
-    if not (stage.cmd and stage.deps and stage.outs):
-        return None
+def _can_hash(stage):
+    if stage.is_callback or stage.always_changed:
+        return False
+
+    if not all([stage.cmd, stage.deps, stage.outs]):
+        return False
 
     for dep in stage.deps:
         if not (dep.scheme == "local" and dep.def_path and dep.get_hash()):
-            return None
+            return False
 
     for out in stage.outs:
         if out.scheme != "local" or not out.def_path or out.persist:
-            return None
+            return False
 
+    return True
+
+
+def _get_stage_hash(stage):
+    assert _can_hash(stage)
     return _get_cache_hash(to_single_stage_lockfile(stage), key=True)
 
 
@@ -136,13 +144,10 @@ class StageCache:
                     yield out
 
     def save(self, stage):
-        if stage.is_callback or stage.always_changed:
+        if not _can_hash(stage):
             return
 
         cache_key = _get_stage_hash(stage)
-        if not cache_key:
-            return
-
         cache = to_single_stage_lockfile(stage)
         cache_value = _get_cache_hash(cache)
 
@@ -167,7 +172,7 @@ class StageCache:
         self.tree.move(PathInfo(tmp), path)
 
     def restore(self, stage, run_cache=True, pull=False):
-        if stage.is_callback or stage.always_changed:
+        if not _can_hash(stage):
             raise RunCacheNotFoundError(stage)
 
         if (

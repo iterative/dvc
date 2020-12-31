@@ -208,14 +208,22 @@ def test_shared_stage_cache(tmp_dir, dvc, run_copy):
     assert _mode(cache_file) == file_mode
 
 
-def test_always_changed(mocker):
-    from dvc.repo import Repo
-    from dvc.stage import Stage
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {},
+        {"cmd": "cmd"},
+        {"cmd": "cmd", "deps": ["path"]},
+        {"cmd": "cmd", "outs": ["path"]},
+        {"always_changed": True},
+    ],
+)
+def test_unhashable(tmp_dir, dvc, mocker, kwargs):
+    from dvc.stage import Stage, create_stage
     from dvc.stage.cache import RunCacheNotFoundError, StageCache
 
-    repo = mocker.Mock(spec=Repo)
-    cache = StageCache(repo)
-    stage = Stage(repo, always_changed=True)
+    cache = StageCache(dvc)
+    stage = create_stage(Stage, path="stage.dvc", repo=dvc, **kwargs)
     get_stage_hash = mocker.patch("dvc.stage.cache._get_stage_hash")
     assert cache.save(stage) is None
     assert get_stage_hash.not_called
