@@ -270,7 +270,23 @@ def test_config_show_origin(tmp_dir, dvc, caplog):
     )
 
     caplog.clear()
+    assert (
+        main(["config", "--show-origin", "--local", "remote.myremote.url"])
+        == 251
+    )
+
+    caplog.clear()
     assert main(["config", "--list", "--repo", "--show-origin"]) == 0
+    assert (
+        "{}\t{}\n".format(
+            os.path.join(".dvc", "config"),
+            "remote.myremote.url=s3://bucket/path",
+        )
+        in caplog.text
+    )
+
+    caplog.clear()
+    assert main(["config", "--list", "--show-origin"]) == 0
     assert (
         "{}\t{}\n".format(
             os.path.join(".dvc", "config"),
