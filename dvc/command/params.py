@@ -98,8 +98,12 @@ def add_parser(subparsers, parent_parser):
     params_diff_parser.add_argument(
         "--targets",
         nargs="*",
-        help="Limit command scope to these params files.",
-        metavar="<path>",
+        help=(
+            "Specific params file(s) to compare "
+            "(even if not found as `params` in `dvc.yaml`). "
+            "Shows all tracked params by default.",
+        ),
+        metavar="<paths>",
     ).complete = completion.FILE
     params_diff_parser.add_argument(
         "--all",
