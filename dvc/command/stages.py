@@ -171,18 +171,16 @@ def prepare_graph_text(
 def prepare_title(stage: "Stage") -> Text:
     title = Text(overflow="fold")
     address = stage.addressing
-    file_style = Style(
-        color=DVC_BLUE,
-        bold=True,
-        underline=False,
-        link=f"file://{os.path.abspath(stage.relpath)}",
+    linked = Style(link="file://" + os.path.abspath(stage.relpath))
+    file_style = Style(color=DVC_BLUE, bold=True, underline=False).chain(
+        linked
     )
     name_style = Style(color=DVC_BLUE, bold=False, underline=False)
     no_style = Style(underline=False, bold=False)
     if isinstance(stage, PipelineStage):
         from_pwd = stage.name == address
         if from_pwd:
-            title.append(address, style=name_style)
+            title.append(address, style=name_style.chain(linked))
         else:
             title.append(stage.relpath, style=file_style)
             title.append(":", style=no_style)
