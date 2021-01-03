@@ -6,6 +6,8 @@ import networkx as nx
 from funcy.seqs import cat
 from rich.align import Align
 from rich.console import Console, render_group
+from rich.markdown import Markdown
+from rich.padding import Padding
 from rich.rule import Rule
 from rich.style import Style
 from rich.table import Table
@@ -139,7 +141,7 @@ def prepare_graph_text(
     text = None
     if graph:
         ancestors = nx.ancestors(graph, stage)
-        fork = Text("⎇ ", style="bold blue")
+        fork = Text("⎇  ", style="bold blue")
 
         def gen_name(up, down, *args):
             name = (
@@ -159,10 +161,9 @@ def prepare_graph_text(
             fragments.append(Text.styled(gen_name(ancestor, stage)))
 
         if fragments:
-            text = Text("\t")
+            text = Text()
             for fragment in fragments:
                 text.append(fragment)
-            text.expand_tabs(4)
             text.truncate(80, overflow="ellipsis")
 
     return text
@@ -192,10 +193,21 @@ def prepare_title(stage: "Stage") -> Text:
     return title
 
 
+def prepare_description(stage: Stage):
+    # Description
+    if stage.desc:
+        # not sure if this was ever intended, but markdown looks nice
+        return Markdown(stage.desc)
+
+    description = generate_description(stage)
+    return Text(description.strip(), style=DVC_GREEN)
+
+
 def list_layout(stages: Iterable[Stage], graph: "nx.DiGraph" = None) -> None:
     """ Displays stages in list layout using rich """
 
     LAYOUT_WIDTH = 80
+    LEFT_PAD = (0, 0, 0, 4)
 
     @render_group()
     def render_stage(stage: "Stage", idx: int):
@@ -227,17 +239,14 @@ def list_layout(stages: Iterable[Stage], graph: "nx.DiGraph" = None) -> None:
 
         # Table of ancestor nodes
         nodes_table = Table.grid(padding=(0, 1), expand=True)
-        typ = prepare_graph_text(stage, graph)
-        if typ:
-            nodes_table.add_row(typ)
+        nodes_text = prepare_graph_text(stage, graph)
+        if nodes_text:
+            nodes_table.add_row(Padding(nodes_text, LEFT_PAD))
             yield nodes_table
             yield ""
 
-        # Description
-        description = stage.desc or generate_description(stage)
-        desc = Text("\t" + description.strip(), style=DVC_GREEN)
-        desc.expand_tabs(4)
-        yield desc
+        desc = prepare_description(stage)
+        yield Padding(desc, LEFT_PAD)
 
     def column(renderable):
         """Constrain width and align to center to create a column."""
