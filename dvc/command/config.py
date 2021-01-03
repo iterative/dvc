@@ -45,7 +45,7 @@ class CmdConfig(CmdBaseNoRepo):
                 return 1
 
         if self.args.list:
-            return self._handle_list()
+            return self._list()
 
         if self.args.name is None:
             logger.error("name argument is required")
@@ -54,11 +54,11 @@ class CmdConfig(CmdBaseNoRepo):
         remote, section, opt = self.args.name
 
         if self.args.value is None and not self.args.unset:
-            return self._handle_get(remote, section, opt)
+            return self._get(remote, section, opt)
 
-        return self._handle_set(remote, section, opt)
+        return self._set(remote, section, opt)
 
-    def _handle_list(self):
+    def _list(self):
         if any((self.args.name, self.args.value, self.args.unset)):
             logger.error(
                 "-l/--list can't be used together with any of these "
@@ -76,7 +76,7 @@ class CmdConfig(CmdBaseNoRepo):
 
         return 0
 
-    def _handle_get(self, remote, section, opt):
+    def _get(self, remote, section, opt):
         levels = [self.args.level] if self.args.level else Config.LEVELS[::-1]
 
         for level in levels:
@@ -98,7 +98,7 @@ class CmdConfig(CmdBaseNoRepo):
 
         return 0
 
-    def _handle_set(self, remote, section, opt):
+    def _set(self, remote, section, opt):
         with self.config.edit(self.args.level) as conf:
             if remote:
                 conf = conf["remote"]
