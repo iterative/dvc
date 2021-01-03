@@ -53,7 +53,7 @@ def sizeof_fmt(size: int, suffix: str = "B", decimal_places: int = 1) -> str:
 
 
 def generate_description(stage: "Stage") -> str:
-    MAX_LENGTH = 90
+    MAX_LENGTH = 120
     ELLIPSIS = "…"
 
     def part_desc(outs, length=MAX_LENGTH, show_size=True):
@@ -141,12 +141,8 @@ def prepare_graph_text(
         fork = Text("⎇  ", style="bold blue")
 
         def gen_name(up, down, *args):
-            name = (
-                up.name
-                if up.path == down.path and isinstance(down, PipelineStage)
-                else up.addressing
-            )
-            return name
+            use_name = up.path == down.path and isinstance(up, PipelineStage)
+            return prepare_stage_name(up, link=False, use_name=use_name)
 
         fragments = []
         for idx, ancestor in enumerate(ancestors):
@@ -155,27 +151,32 @@ def prepare_graph_text(
             if idx > 0:
                 fragments.append(", ")
             fragments.append(fork)
-            fragments.append(Text.styled(gen_name(ancestor, stage)))
+            fragments.append(gen_name(ancestor, stage))
 
         if fragments:
             text = Text()
             for fragment in fragments:
                 text.append(fragment)
-            text.truncate(80, overflow="ellipsis")
+            text.truncate(120, overflow="ellipsis")
 
     return text
 
 
-def prepare_title(stage: "Stage") -> Text:
+def prepare_stage_name(stage: "Stage", link=False, use_name=False) -> Text:
     title = Text(overflow="fold")
     address = stage.addressing
 
     linked = Style(link="file://" + os.path.abspath(stage.relpath))
-    file_style = Style(color=DVC_BLUE, bold=True, underline=False) + linked
+    file_style = Style(color=DVC_BLUE, bold=True, underline=False)
+    name_style = None
+    if link:
+        name_style = linked
+        file_style += linked
+
     if isinstance(stage, PipelineStage):
         from_pwd = stage.name == address
-        if from_pwd:
-            title.append(address, style=Style.chain(linked))
+        if from_pwd or use_name:
+            title.append(stage.name, style=name_style)
         else:
             title.append(stage.relpath, style=file_style)
             title.append(f":{stage.name}")
@@ -210,7 +211,7 @@ def list_layout(stages: Iterable[Stage], graph: "nx.DiGraph" = None) -> None:
 
         # title
         title_table = Table.grid(padding=(0, 1), expand=True)
-        title = prepare_title(stage)
+        title = prepare_stage_name(stage, link=True)
 
         # basic info at the right side of the table
         info = Text()
