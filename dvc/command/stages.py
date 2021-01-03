@@ -171,13 +171,13 @@ def prepare_title(stage: "Stage") -> Text:
     address = stage.addressing
 
     linked = Style(link="file://" + os.path.abspath(stage.relpath))
-    file_style = Style(color=DVC_BLUE, bold=True, underline=False)
+    file_style = Style(color=DVC_BLUE, bold=True, underline=False) + linked
     if isinstance(stage, PipelineStage):
         from_pwd = stage.name == address
         if from_pwd:
             title.append(address, style=Style.chain(linked))
         else:
-            title.append(stage.relpath, style=Style.chain(file_style, linked))
+            title.append(stage.relpath, style=file_style)
             title.append(f":{stage.name}")
     else:
         title.append(address, style=file_style)
