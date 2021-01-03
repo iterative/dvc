@@ -23,11 +23,8 @@ from dvc.stage import PipelineStage, Stage
 
 logger = logging.getLogger(__name__)
 
-DVC_ORANGE = "#F46837"
 DVC_BLUE = "#88D5E2"
 DVC_LIGHT_ORANGE = "#F8A689"
-# Not checked with the logo
-DVC_GREEN = "green"
 
 
 def pluralize(key: str, value: int) -> str:
@@ -172,24 +169,18 @@ def prepare_graph_text(
 def prepare_title(stage: "Stage") -> Text:
     title = Text(overflow="fold")
     address = stage.addressing
+
     linked = Style(link="file://" + os.path.abspath(stage.relpath))
-    file_style = Style(color=DVC_BLUE, bold=True, underline=False).chain(
-        linked
-    )
-    name_style = Style(color=DVC_BLUE, bold=False, underline=False)
-    no_style = Style(underline=False, bold=False)
+    file_style = Style(color=DVC_BLUE, bold=True, underline=False)
     if isinstance(stage, PipelineStage):
         from_pwd = stage.name == address
         if from_pwd:
-            title.append(address, style=name_style.chain(linked))
+            title.append(address, style=Style.chain(linked))
         else:
-            title.append(stage.relpath, style=file_style)
-            title.append(":", style=no_style)
-            title.append(stage.name, style=name_style)
+            title.append(stage.relpath, style=Style.chain(file_style, linked))
+            title.append(f":{stage.name}")
     else:
         title.append(address, style=file_style)
-    # using `underline=False` hack to only underline `addressing` field
-    title.append(Text(":", style=no_style))
     return title
 
 
@@ -200,7 +191,7 @@ def prepare_description(stage: Stage):
         return Markdown(stage.desc)
 
     description = generate_description(stage)
-    return Text(description.strip(), style=DVC_GREEN)
+    return Text(description.strip(), style="blue")
 
 
 def list_layout(stages: Iterable[Stage], graph: "nx.DiGraph" = None) -> None:
