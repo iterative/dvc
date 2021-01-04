@@ -1,13 +1,15 @@
 import logging
 import os
 from copy import copy
-from typing import Type
+from typing import Dict, Type
 from urllib.parse import urlparse
 
+from funcy import cached_property, project
 from voluptuous import Any
 
 import dvc.prompt as prompt
 from dvc.cache import NamedCache
+from dvc.env import DVCLIVE_PATH, DVCLIVE_SUMMARY
 from dvc.exceptions import (
     CheckoutError,
     CollectCacheError,
@@ -77,6 +79,8 @@ class BaseOutput:
     PARAM_PERSIST = "persist"
     PARAM_DESC = "desc"
     PARAM_ISEXEC = "isexec"
+    PARAM_LIVE = "live"
+    PARAM_LIVE_SUMMARY = "summary"
 
     METRIC_SCHEMA = Any(
         None,
@@ -105,6 +109,7 @@ class BaseOutput:
         plot=False,
         persist=False,
         checkpoint=False,
+        live=False,
         desc=None,
         isexec=False,
     ):
@@ -132,6 +137,7 @@ class BaseOutput:
         self.plot = False if self.IS_DEPENDENCY else plot
         self.persist = persist
         self.checkpoint = checkpoint
+        self.live = live
         self.desc = desc
 
         self.path_info = self._parse_path(tree, path)
@@ -340,6 +346,9 @@ class BaseOutput:
 
         if self.isexec:
             ret[self.PARAM_ISEXEC] = self.isexec
+
+        if self.live:
+            ret[self.PARAM_LIVE] = self.live
 
         return ret
 
@@ -591,3 +600,19 @@ class BaseOutput:
         self.hash_info = self.cache.merge(
             ancestor_info, self.hash_info, other.hash_info
         )
+
+    @cached_property
+    def env(self) -> Dict[str, str]:
+        if self.live:
+            from dvc.schema import LIVE_PROPS
+
+            env = {DVCLIVE_PATH: str(self.path_info)}
+            if isinstance(self.live, dict):
+
+                config = project(self.live, LIVE_PROPS)
+
+                env[DVCLIVE_SUMMARY] = str(
+                    int(config.get(BaseOutput.PARAM_LIVE_SUMMARY, True))
+                )
+            return env
+        return {}

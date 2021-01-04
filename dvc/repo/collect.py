@@ -42,7 +42,7 @@ def _collect_paths(
         if recursive and tree.isdir(path_info):
             target_infos.update(set(tree.walk_files(path_info)))
 
-        if not tree.isfile(path_info):
+        if not tree.exists(path_info):
             if not recursive:
                 logger.warning(
                     "'%s' was not found at: '%s'.", path_info, rev,

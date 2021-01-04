@@ -1,22 +1,11 @@
-import csv
 import json
 
-from funcy import first
+from tests.utils import dump_sv
 
 
 def _write_csv(metric, filename, header=True):
     with open(filename, "w", newline="") as csvobj:
-        if header:
-            writer = csv.DictWriter(
-                csvobj, fieldnames=list(first(metric).keys())
-            )
-            writer.writeheader()
-            writer.writerows(metric)
-        else:
-            writer = csv.writer(csvobj)
-            for d in metric:
-                assert len(d) == 1
-                writer.writerow(list(d.values()))
+        dump_sv(csvobj, metric, delimiter=",", header=header)
 
 
 def _write_json(tmp_dir, metric, filename):

@@ -67,6 +67,12 @@ def _track_stage(stage):
     for out in stage.outs:
         if not out.use_scm_ignore and out.is_in_repo:
             stage.repo.scm.track_file(os.fspath(out.path_info))
+            if out.live:
+                from dvc.repo.live import summary_path_info
+
+                summary = summary_path_info(out)
+                if summary:
+                    stage.repo.scm.track_file(os.fspath(summary))
     stage.repo.scm.track_changed_files()
 
 

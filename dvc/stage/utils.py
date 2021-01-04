@@ -57,6 +57,11 @@ def fill_stage_outputs(stage, **kwargs):
     ]
 
     stage.outs = []
+
+    stage.outs += _load_live_outputs(
+        stage, kwargs.get("live", None), kwargs.get("live_summary", False)
+    )
+
     for key in keys:
         stage.outs += output.loads_from(
             stage,
@@ -67,6 +72,22 @@ def fill_stage_outputs(stage, **kwargs):
             plot="plots" in key,
             checkpoint="checkpoints" in key,
         )
+
+
+def _load_live_outputs(stage, live_l=None, live_summary=False):
+    from dvc.output import BaseOutput
+
+    outs = []
+    if live_l:
+
+        outs += output.loads_from(
+            stage,
+            [live_l],
+            use_cache=False,
+            live={BaseOutput.PARAM_LIVE_SUMMARY: live_summary},
+        )
+
+    return outs
 
 
 def fill_stage_dependencies(stage, deps=None, erepo=None, params=None):

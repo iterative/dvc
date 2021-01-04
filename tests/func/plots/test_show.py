@@ -413,7 +413,7 @@ def test_throw_on_no_metric_at_all(tmp_dir, scm, dvc, caplog):
         # do not warn if none found
         assert len(caplog.messages) == 0
 
-    assert str(error.value) == "File: 'plot.json' does not exist."
+    assert str(error.value) == "'plot.json' does not exist."
 
 
 def test_custom_template(tmp_dir, scm, dvc, custom_template, run_copy_metrics):
@@ -760,3 +760,70 @@ def test_plots_show_overlap(tmp_dir, dvc, run_copy_metrics, clear_before_run):
 
     with pytest.raises(OverlappingOutputPathsError):
         dvc.plots.show()
+
+
+def test_dir_plots(tmp_dir, dvc, run_copy_metrics):
+    subdir = tmp_dir / "subdir"
+    subdir.mkdir()
+
+    metric = [
+        {"first_val": 100, "val": 2},
+        {"first_val": 200, "val": 3},
+    ]
+
+    fname = "file.json"
+    _write_json(tmp_dir, metric, fname)
+
+    p1 = os.path.join("subdir", "p1.json")
+    p2 = os.path.join("subdir", "p2.json")
+    tmp_dir.dvc.run(
+        cmd=(
+            f"mkdir subdir && python copy.py {fname} {p1} && "
+            f"python copy.py {fname} {p2}"
+        ),
+        deps=[fname],
+        single_stage=False,
+        plots=["subdir"],
+        name="copy_double",
+    )
+    dvc.plots.modify("subdir", {"title": "TITLE"})
+
+    result = dvc.plots.show()
+    p1_content = json.loads(result[p1])
+    p2_content = json.loads(result[p2])
+
+    assert p1_content["title"] == p2_content["title"] == "TITLE"
+
+
+def test_show_dir_plots(tmp_dir, dvc, run_copy_metrics):
+    subdir = tmp_dir / "subdir"
+    subdir.mkdir()
+    metric = [
+        {"first_val": 100, "val": 2},
+        {"first_val": 200, "val": 3},
+    ]
+
+    fname = "file.json"
+    _write_json(tmp_dir, metric, fname)
+
+    p1 = os.path.join("subdir", "p1.json")
+    p2 = os.path.join("subdir", "p2.json")
+    tmp_dir.dvc.run(
+        cmd=(
+            f"mkdir subdir && python copy.py {fname} {p1} && "
+            f"python copy.py {fname} {p2}"
+        ),
+        deps=[fname],
+        single_stage=False,
+        plots=["subdir"],
+        name="copy_double",
+    )
+
+    result = dvc.plots.show(targets=["subdir"])
+    p1_content = json.loads(result[p1])
+    p2_content = json.loads(result[p2])
+
+    assert p1_content == p2_content
+
+    result = dvc.plots.show(targets=[p1])
+    assert set(result.keys()) == {p1}

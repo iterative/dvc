@@ -1,4 +1,5 @@
 import logging
+from typing import Dict, List
 
 from funcy import cached_property, first, project
 
@@ -8,6 +9,8 @@ from dvc.exceptions import (
     NoMetricsFoundError,
     NoMetricsParsedError,
 )
+from dvc.output import BaseOutput
+from dvc.repo import Repo
 from dvc.repo.collect import collect
 from dvc.repo.plots.data import PlotParsingError
 from dvc.schema import PLOT_PROPS
@@ -33,7 +36,12 @@ class Plots:
     def __init__(self, repo):
         self.repo = repo
 
-    def collect(self, targets=None, revs=None):
+    def collect(
+        self,
+        targets: List[str] = None,
+        revs: List[str] = None,
+        recursive: bool = False,
+    ) -> Dict[str, Dict]:
         """Collects all props and data for plots.
 
         Returns a structure like:
@@ -52,20 +60,33 @@ class Plots:
             rev = rev or "workspace"
 
             tree = RepoTree(self.repo)
-            plots = _collect_plots(self.repo, targets, rev)
+            plots = _collect_plots(self.repo, targets, rev, recursive)
             for path_info, props in plots.items():
-                datafile = relpath(path_info, self.repo.root_dir)
+
                 if rev not in data:
                     data[rev] = {}
-                data[rev].update({datafile: {"props": props}})
 
-                # Load data from git or dvc cache
-                try:
-                    with tree.open(path_info) as fd:
-                        data[rev][datafile]["data"] = fd.read()
-                except FileNotFoundError:
-                    # This might happen simply because cache is absent
-                    pass
+                if tree.isdir(path_info):
+                    plot_files = []
+                    for pi in tree.walk_files(path_info):
+                        plot_files.append(
+                            (pi, relpath(pi, self.repo.root_dir))
+                        )
+                else:
+                    plot_files = [
+                        (path_info, relpath(path_info, self.repo.root_dir))
+                    ]
+
+                for path, repo_path in plot_files:
+                    data[rev].update({repo_path: {"props": props}})
+
+                    # Load data from git or dvc cache
+                    try:
+                        with tree.open(path) as fd:
+                            data[rev][repo_path]["data"] = fd.read()
+                    except FileNotFoundError:
+                        # This might happen simply because cache is absent
+                        pass
 
         return data
 
@@ -78,7 +99,7 @@ class Plots:
         plots = _prepare_plots(data, revs, props)
 
         result = {}
-        for datafile, desc in plots.items():
+        for datafile, desc in sorted(plots.items()):
             try:
                 result[datafile] = _render(
                     datafile, desc["data"], desc["props"], templates
@@ -96,15 +117,27 @@ class Plots:
 
         return result
 
-    def show(self, targets=None, revs=None, props=None, templates=None):
+    def show(
+        self,
+        targets=None,
+        revs=None,
+        props=None,
+        templates=None,
+        recursive=False,
+    ):
 
-        data = self.collect(targets, revs)
+        data = self.collect(targets, revs, recursive)
 
         # If any mentioned plot doesn't have any data then that's an error
         targets = [targets] if isinstance(targets, str) else targets or []
         for target in targets:
             rpath = relpath(target, self.repo.root_dir)
-            if not any("data" in d[rpath] for d in data.values()):
+            if not any(
+                "data" in rev_data[key]
+                for rev_data in data.values()
+                for key, d in rev_data.items()
+                if rpath in key
+            ):
                 raise MetricDoesNotExistError([target])
 
         # No data at all is a special error with a special message
@@ -168,21 +201,30 @@ class Plots:
         return PlotTemplates(self.repo.dvc_dir)
 
 
-def _is_plot(out):
-    return bool(out.plot)
+def _is_plot(out: BaseOutput) -> bool:
+    return bool(out.plot) or bool(out.live)
 
 
-def _collect_plots(repo, targets=None, rev=None):
+def _collect_plots(
+    repo: Repo,
+    targets: List[str] = None,
+    rev: str = None,
+    recursive: bool = False,
+) -> Dict[str, Dict]:
     plots, path_infos = collect(
-        repo, output_filter=_is_plot, targets=targets, rev=rev
+        repo,
+        output_filter=_is_plot,
+        targets=targets,
+        rev=rev,
+        recursive=recursive,
     )
     result = {plot.path_info: _plot_props(plot) for plot in plots}
     result.update({path_info: {} for path_info in path_infos})
     return result
 
 
-def _plot_props(out):
-    if not out.plot:
+def _plot_props(out: BaseOutput) -> Dict:
+    if not (out.plot or out.live):
         raise NotAPlotError(out)
     if isinstance(out.plot, list):
         raise DvcException("Multiple plots per data file not supported.")

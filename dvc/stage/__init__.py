@@ -3,7 +3,7 @@ import os
 import string
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Optional
+from typing import Dict, Optional
 
 from funcy import cached_property, project
 
@@ -250,6 +250,15 @@ class Stage(params.StageParams):
         since the checkpoint out is a circular dependency.
         """
         return any(out.checkpoint for out in self.outs)
+
+    @property
+    def env(self) -> Dict[str, str]:
+        env = {}
+        for out in self.outs:
+            if any(out.env.keys() and env.keys()):
+                raise DvcException("Duplicated env variable")
+            env.update(out.env)
+        return env
 
     def changed_deps(self):
         if self.frozen:

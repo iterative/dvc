@@ -42,6 +42,8 @@ class CmdRun(CmdBase):
                 metrics_no_cache=self.args.metrics_no_cache,
                 plots=self.args.plots,
                 plots_no_cache=self.args.plots_no_cache,
+                live=self.args.live,
+                live_summary=not self.args.live_no_summary,
                 deps=self.args.deps,
                 params=self.args.params,
                 fname=self.args.file,
@@ -161,6 +163,15 @@ def add_parser(subparsers, parent_parser):
         default=[],
         help="Declare output plot file (do not put into DVC cache).",
         metavar="<path>",
+    )
+    run_parser.add_argument(
+        "--live", help=argparse.SUPPRESS, metavar="<path>",
+    )
+    run_parser.add_argument(
+        "--live-no-summary",
+        action="store_true",
+        default=False,
+        help=argparse.SUPPRESS,
     )
     run_parser.add_argument(
         "--file", metavar="<filename>", help=argparse.SUPPRESS,

@@ -1,7 +1,7 @@
 import os
 from contextlib import suppress
 
-from funcy import concat, first, lfilter
+from funcy import concat, first, lfilter, without
 
 from dvc.exceptions import InvalidArgumentError
 from dvc.stage import PipelineStage
@@ -49,6 +49,7 @@ def _get_file_path(kwargs):
             kwargs.get("outs_persist", []),
             kwargs.get("outs_persist_no_cache", []),
             kwargs.get("checkpoints", []),
+            without([kwargs.get("live", None)], None),
         )
     )
 
