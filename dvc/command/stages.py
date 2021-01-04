@@ -1,8 +1,7 @@
 import logging
 import os
-from typing import Iterable, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Iterable, List, Optional, Tuple, Union
 
-import networkx as nx
 from funcy.seqs import cat
 from rich.align import Align
 from rich.console import Console, render_group
@@ -20,6 +19,9 @@ from dvc.exceptions import DvcException
 from dvc.repo.graph import build_graph
 from dvc.repo.trie import build_outs_trie
 from dvc.stage import PipelineStage, Stage
+
+if TYPE_CHECKING:
+    import networkx as nx
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +106,7 @@ def prepare_graph_text(
 ) -> Optional[Text]:
     text = None
     if graph:
-        ancestors = nx.ancestors(graph, stage)
+        predecessors = graph.predecessors(stage)
         fork = Text(FORK, style="bold blue")
 
         def gen_name(up, down, *args):
@@ -113,13 +115,13 @@ def prepare_graph_text(
             return prepare_stage_name(up, link=False, use_name=use_name)
 
         fragments = []
-        for idx, ancestor in enumerate(ancestors):
-            if ancestor is stage:
+        for idx, predecessor in enumerate(predecessors):
+            if predecessors is stage:
                 continue
             if idx > 0:
                 fragments.append(", ")
             fragments.append(fork)
-            fragments.append(gen_name(ancestor, stage))
+            fragments.append(gen_name(predecessor, stage))
 
         if fragments:
             text = Text()
