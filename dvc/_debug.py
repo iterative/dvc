@@ -6,7 +6,7 @@ from contextlib import ExitStack, contextmanager
 def instrument(html_output):
     """Run a statistical profiler"""
     try:
-        from pyinstrument import Profiler
+        from pyinstrument import Profiler  # pylint: disable=import-error
     except ImportError:
         print("Failed to run profiler, pyinstrument is not installed")
         yield
@@ -47,7 +47,7 @@ def debug():
         yield
     except Exception:  # pylint: disable=broad-except
         try:
-            import ipdb as pdb  # noqa: T100
+            import ipdb as pdb  # noqa: T100, pylint: disable=import-error
         except ImportError:
             import pdb  # noqa: T100
         pdb.post_mortem()
