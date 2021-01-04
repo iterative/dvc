@@ -1,6 +1,4 @@
 import logging
-import tempfile
-import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partial
 from multiprocessing import cpu_count
@@ -9,7 +7,6 @@ from urllib.parse import urlparse
 
 from funcy import cached_property, decorator
 
-from dvc import tree as dvc_tree
 from dvc.dir_info import DirInfo
 from dvc.exceptions import DvcException, DvcIgnoreInCollectedDirError
 from dvc.ignore import DvcIgnore
@@ -19,7 +16,6 @@ from dvc.state import StateNoop
 from dvc.utils import tmp_fname
 from dvc.utils.fs import makedirs, move
 from dvc.utils.http import open_url
-from dvc.utils.stream import HashedIterStream
 
 logger = logging.getLogger(__name__)
 
@@ -510,100 +506,3 @@ class BaseTree:
         )
 
         move(tmp_file, to_info, mode=file_mode)
-
-    def _get_cache_location(self, to_info, hash_info):
-        return to_info / hash_info.value[:2] / hash_info.value[2:]
-
-    def _export_file_fallback(self, remote_tree, file_info, to_info, repo):
-        with tempfile.NamedTemporaryFile() as temp_file:
-            temp_tree = dvc_tree.get_cloud_tree(repo, url=temp_file.name)
-            self.download(file_info, temp_tree.path_info, no_progress_bar=True)
-
-            hash_info = temp_tree.get_file_hash(temp_tree.path_info)
-            remote_tree.upload(
-                temp_tree.path_info,
-                self._get_cache_location(to_info, hash_info),
-                no_progress_bar=True,
-            )
-
-            return hash_info
-
-    def _export_file_chunked(self, remote_tree, file_info, to_info):
-        temporary_location = to_info / str(uuid.uuid4())
-        with self.open(
-            file_info, mode="rb", stream_cls=HashedIterStream
-        ) as hashed_file:
-            # Since we don't know the hash beforehand, we'll
-            # upload it to a temporary location and then move
-            # it.
-            remote_tree.upload_multipart(hashed_file, temporary_location)
-            hash_info = hashed_file.hash_info
-
-        self.move(
-            temporary_location, self._get_cache_location(to_info, hash_info)
-        )
-        return hash_info
-
-    def _export_file(self, remote_tree, from_info, to_info, file_info, repo):
-        try:
-            hash_info = self._export_file_chunked(
-                remote_tree, file_info, to_info
-            )
-        except RemoteActionNotImplemented:
-            hash_info = self._export_file_fallback(
-                remote_tree, file_info, to_info, repo
-            )
-
-        rel_target_filename = file_info.relative_to(from_info)
-        return rel_target_filename.parts, hash_info
-
-    def export(
-        self, remote_tree, from_info, to_info, repo, no_progress_bar=False,
-    ):
-        try:
-            file_infos = list(self.walk_files(from_info))
-        except NotImplementedError:
-            file_infos = [from_info]
-
-        with Tqdm(
-            total=len(file_infos),
-            desc="Exporting files",
-            unit="Files",
-            disable=no_progress_bar,
-        ) as pbar:
-            export_single = pbar.wrap_fn(
-                partial(
-                    self._export_file,
-                    remote_tree,
-                    from_info,
-                    to_info,
-                    repo=repo,
-                )
-            )
-
-            if self.isdir(from_info):
-                dir_info = DirInfo()
-                with ThreadPoolExecutor(max_workers=self.jobs) as executor:
-                    futures = [
-                        executor.submit(export_single, file_info)
-                        for file_info in file_infos
-                    ]
-                    for future in futures:
-                        key, file_hash_info = future.result()
-                        dir_info.trie[key] = file_hash_info
-
-                (
-                    hash_info,
-                    hash_file_info,
-                ) = repo.cache.local._get_dir_info_hash(  # noqa, pylint: disable=protected-access
-                    dir_info
-                )
-                remote_tree.upload(
-                    hash_file_info,
-                    to_info / hash_info.value[:2] / hash_info.value[2:],
-                    no_progress_bar=True,
-                )
-            else:
-                _, hash_info = export_single(from_info)
-
-            return hash_info

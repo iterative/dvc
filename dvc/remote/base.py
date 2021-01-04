@@ -1,13 +1,19 @@
 import errno
 import hashlib
 import logging
+import tempfile
+import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partial, wraps
 
 from funcy import concat
 
+from dvc import tree as dvc_tree
+from dvc.dir_info import DirInfo
 from dvc.exceptions import DownloadError, UploadError
 from dvc.hash_info import HashInfo
+from dvc.tree.base import RemoteActionNotImplemented
+from dvc.utils.stream import HashedIterStream
 
 from ..progress import Tqdm
 from .index import RemoteIndex, RemoteIndexNoop
@@ -471,6 +477,133 @@ class Remote:
                         cache.tree.state.save(cache_file, hash_info)
 
         return ret
+
+    def _hash_to_cache_path(self, to_info, hash_info):
+        return to_info / hash_info.value[:2] / hash_info.value[2:]
+
+    def _transfer_file_as_whole(
+        self, from_tree, to_tree, file_info, to_info, repo
+    ):
+        # When we can't use the chunked upload, we have to first download
+        # and then calculate the hash as if it were a local file and then
+        # upload it.
+        with tempfile.NamedTemporaryFile() as temp_file:
+            temp_tree = dvc_tree.get_cloud_tree(repo, url=temp_file.name)
+            from_tree.download(
+                file_info, temp_tree.path_info, no_progress_bar=True
+            )
+
+            hash_info = temp_tree.get_file_hash(temp_tree.path_info)
+            to_tree.upload(
+                temp_tree.path_info,
+                self._hash_to_cache_path(to_info, hash_info),
+                no_progress_bar=True,
+            )
+
+            return hash_info
+
+    def _transfer_file_as_chunked(
+        self, from_tree, to_tree, file_info, to_info
+    ):
+        temporary_location = to_info / str(uuid.uuid4())
+        with from_tree.open(
+            file_info, mode="rb", stream_cls=HashedIterStream
+        ) as hashed_file:
+            # Since we don't know the hash beforehand, we'll
+            # upload it to a temporary location and then move
+            # it.
+            to_tree.upload_multipart(hashed_file, temporary_location)
+            hash_info = hashed_file.hash_info
+
+        to_tree.move(
+            temporary_location, self._hash_to_cache_path(to_info, hash_info)
+        )
+        return hash_info
+
+    def _transfer_file(
+        self, from_tree, to_tree, from_info, to_info, file_info, repo
+    ):
+        try:
+            hash_info = self._transfer_file_as_chunked(
+                from_tree, to_tree, file_info, to_info
+            )
+        except RemoteActionNotImplemented:
+            hash_info = self._transfer_file_as_whole(
+                from_tree, to_tree, file_info, to_info, repo
+            )
+
+        rel_target_filename = file_info.relative_to(from_info)
+        return rel_target_filename.parts, hash_info
+
+    def _transfer_directory(
+        self, from_tree, to_tree, to_info, repo, transfer_func, file_infos
+    ):
+        dir_info = DirInfo()
+        with ThreadPoolExecutor(max_workers=from_tree.jobs) as executor:
+            futures = [
+                executor.submit(transfer_func, file_info)
+                for file_info in file_infos
+            ]
+            for future in as_completed(futures):
+                key, file_hash_info = future.result()
+                dir_info.trie[key] = file_hash_info
+
+        (
+            hash_info,
+            hash_file_info,
+        ) = repo.cache.local._get_dir_info_hash(  # noqa, pylint: disable=protected-access
+            dir_info
+        )
+        to_tree.upload(
+            hash_file_info,
+            self._hash_to_cache_path(to_info, hash_info),
+            no_progress_bar=True,
+        )
+        return hash_info
+
+    def transfer_straight_to_remote(
+        self,
+        from_tree,
+        to_tree,
+        from_info,
+        to_info,
+        repo,
+        no_progress_bar=False,
+    ):
+        try:
+            file_infos = list(from_tree.walk_files(from_info))
+        except NotImplementedError:
+            file_infos = [from_info]
+
+        with Tqdm(
+            total=len(file_infos),
+            desc="Transfering files to the remote",
+            unit="Files",
+            disable=no_progress_bar,
+        ) as pbar:
+            transfer_single = pbar.wrap_fn(
+                partial(
+                    self._transfer_file,
+                    from_tree,
+                    to_tree,
+                    from_info,
+                    to_info,
+                    repo=repo,
+                )
+            )
+            if from_tree.isdir(from_info):
+                hash_info = self._transfer_directory(
+                    from_tree,
+                    to_tree,
+                    to_info,
+                    repo,
+                    transfer_single,
+                    file_infos,
+                )
+            else:
+                _, hash_info = transfer_single(from_info)
+
+        return hash_info
 
     @staticmethod
     def _log_missing_caches(hash_info_dict):
