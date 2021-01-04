@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple, Union
 
 import networkx as nx
 from funcy.seqs import cat
@@ -25,6 +25,9 @@ logger = logging.getLogger(__name__)
 
 DVC_BLUE = "#88D5E2"
 DVC_LIGHT_ORANGE = "#F8A689"
+FORK = "⎇  "
+PIPE = " | "
+MAX_TEXT_LENGTH = 120
 
 
 def pluralize(key: str, value: int) -> str:
@@ -32,7 +35,7 @@ def pluralize(key: str, value: int) -> str:
     return key + "s" if value > 1 else key
 
 
-def get_stats(stage) -> List[Tuple[str, int]]:
+def get_info(stage: "Stage") -> List[Tuple[str, int]]:
     num_metrics = len([out for out in stage.outs if out.metric])
     num_plots = len([out for out in stage.outs if out.plot])
     return [
@@ -53,80 +56,44 @@ def sizeof_fmt(size: int, suffix: str = "B", decimal_places: int = 1) -> str:
 
 
 def generate_description(stage: "Stage") -> str:
-    MAX_LENGTH = 120
-    ELLIPSIS = "…"
-
-    def part_desc(outs, length=MAX_LENGTH, show_size=True):
+    def part_desc(outs, show_size=True) -> str:
         desc = ""
         for index, out in enumerate(outs):
-            size = ""
             text = ", " if index != 0 else ""
-            text += f"{out.def_path}"
+            text += out.def_path
             size = out.hash_info.size
             if size and show_size:
                 text += f" ({sizeof_fmt(size)})"
-            if index == 0 or len(desc) + len(text) <= length:
-                desc += text
-            else:
-                return desc + " " + ELLIPSIS
+            desc += text
         return desc
 
     if not stage.deps and not stage.outs:
         return "No outputs or dependencies."
 
     if not stage.outs and stage.deps:
-        intro = "Stage depends on "
-        length = MAX_LENGTH - len(intro)
-        return intro + part_desc(stage.deps, length, show_size=False)
+        return "Stage depends on " + part_desc(stage.deps, show_size=False)
 
-    metrics = [out for out in stage.outs if out.metric]
-    plots = [out for out in stage.outs if out.plot]
+    plots_and_metrics = [out for out in stage.outs if out.plot or out.metric]
     outs = [out for out in stage.outs if not (out.plot or out.metric)]
 
     outs_desc = ""
     if outs:
-        intro = "Produces "
-        outs_desc = intro + part_desc(outs, MAX_LENGTH - len(intro))
+        outs_desc = "Produces " + part_desc(outs)
 
     other_outs_desc = ""
-    if plots or metrics:
-        intro = "Generates "
-        length = MAX_LENGTH - len(intro)
-        other_outs_desc = intro + part_desc(metrics + plots, length, False)
+    if plots_and_metrics:
+        other_outs_desc = "Generates " + part_desc(plots_and_metrics, False)
 
-    # if either of the one exists, return it
-    if bool(other_outs_desc) != bool(outs_desc):
-        return outs_desc or other_outs_desc
-    # both of those cannot be empty because of the checks above
-    assert outs_desc and other_outs_desc
-
-    msglen = len(outs_desc)
-    if msglen <= MAX_LENGTH:
-        # if both of those output formats are within the width, return it
-        if (msglen + len(other_outs_desc)) <= MAX_LENGTH:
-            return f"{outs_desc}, {other_outs_desc}"
-
-        # otherwise, we fallback to any one of the fallback ones
-        fallback = ""
-        if plots and metrics:
-            fallback = ", has plots/metrics"
-        elif not plots:
-            fallback = ", has metrics"
-        elif not metrics:
-            fallback = ", has plots"
-        return f"{outs_desc}{fallback}"
-
-    return outs_desc
+    return ", ".join(filter(None, [outs_desc, other_outs_desc]))
 
 
-def prepare_stats(stats: List[Tuple[str, int]]) -> List[Text]:
+def prepare_info(stats: List[Tuple[str, int]]) -> List[Text]:
     ret = []
-    pipe = " | "
     for key, value in stats:
         if not value:
             continue
-        if ret and ret[-1] != pipe:
-            ret.append(pipe)
+        if ret and ret[-1] != PIPE:
+            ret.append(PIPE)
         ret.append(Text.styled(str(value), style="blue"))
         ret.append(Text.styled(f" {pluralize(key, value)}", style="dim blue"))
     return ret
@@ -138,9 +105,10 @@ def prepare_graph_text(
     text = None
     if graph:
         ancestors = nx.ancestors(graph, stage)
-        fork = Text("⎇  ", style="bold blue")
+        fork = Text(FORK, style="bold blue")
 
         def gen_name(up, down, *args):
+            # if they are both in the same file, let's only show up the names
             use_name = up.path == down.path and isinstance(up, PipelineStage)
             return prepare_stage_name(up, link=False, use_name=use_name)
 
@@ -157,7 +125,7 @@ def prepare_graph_text(
             text = Text()
             for fragment in fragments:
                 text.append(fragment)
-            text.truncate(120, overflow="ellipsis")
+            text.truncate(MAX_TEXT_LENGTH, overflow="ellipsis")
 
     return text
 
@@ -185,14 +153,16 @@ def prepare_stage_name(stage: "Stage", link=False, use_name=False) -> Text:
     return title
 
 
-def prepare_description(stage: Stage):
+def prepare_description(stage: Stage) -> Union[Markdown, Text]:
     # Description
     if stage.desc:
         # not sure if this was ever intended, but markdown looks nice
         return Markdown(stage.desc)
 
     description = generate_description(stage)
-    return Text(description.strip(), style="blue")
+    text = Text(description.strip(), style="blue")
+    text.truncate(MAX_TEXT_LENGTH, overflow="ellipsis")
+    return text
 
 
 def list_layout(stages: Iterable[Stage], graph: "nx.DiGraph" = None) -> None:
@@ -214,11 +184,11 @@ def list_layout(stages: Iterable[Stage], graph: "nx.DiGraph" = None) -> None:
         title = prepare_stage_name(stage, link=True)
 
         # basic info at the right side of the table
-        info = Text()
-        stats = get_stats(stage)
-        for fragment in prepare_stats(stats):
-            info.append(fragment)
-        title_table.add_row(title, info)
+        info_text = Text()
+        info = get_info(stage)
+        for fragment in prepare_info(info):
+            info_text.append(fragment)
+        title_table.add_row(title, info_text)
 
         # pushing all columns except the first one with title, to the right
         for idx, column in enumerate(title_table.columns):
