@@ -52,6 +52,8 @@ def debug():
             import pdb  # noqa: T100
         pdb.post_mortem()
 
+        raise  # prevent from jumping ahead
+
 
 @contextmanager
 def debugtools(args):
