@@ -2,9 +2,9 @@
 
 import errno
 import logging
-from contextlib import contextmanager
 
 from dvc import analytics
+from dvc._debug import debugtools
 from dvc.cli import parse_args
 from dvc.config import ConfigError
 from dvc.exceptions import DvcException, DvcParserError, NotDvcRepoError
@@ -20,39 +20,6 @@ from dvc.utils import error_link
 "".encode("idna")
 
 logger = logging.getLogger("dvc")
-
-
-@contextmanager
-def profile(enable, dump):
-    if not enable:
-        yield
-        return
-
-    import cProfile
-
-    prof = cProfile.Profile()
-    prof.enable()
-
-    yield
-
-    prof.disable()
-    if not dump:
-        prof.print_stats(sort="cumtime")
-        return
-    prof.dump_stats(dump)
-
-
-@contextmanager
-def debug(enable):
-    try:
-        yield
-        return
-    except Exception:
-        if enable:
-            import pdb  # noqa: T100
-
-            pdb.post_mortem()
-        raise
 
 
 def main(argv=None):  # noqa: C901
@@ -84,10 +51,9 @@ def main(argv=None):  # noqa: C901
 
         logger.trace(args)
 
-        with profile(enable=args.cprofile, dump=args.cprofile_dump):
-            with debug(args.pdb):
-                cmd = args.func(args)
-                ret = cmd.run()
+        with debugtools(args):
+            cmd = args.func(args)
+            ret = cmd.run()
     except ConfigError:
         logger.exception("configuration error")
         ret = 251
