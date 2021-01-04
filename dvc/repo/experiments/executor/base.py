@@ -2,6 +2,7 @@ import logging
 import os
 import pickle
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 from functools import partial
 from typing import (
     TYPE_CHECKING,
@@ -14,6 +15,7 @@ from typing import (
 
 from funcy import cached_property
 
+from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 from dvc.repo.experiments.base import (
     EXEC_BASELINE,
@@ -31,6 +33,7 @@ from dvc.repo.experiments.base import (
 )
 from dvc.scm import SCM
 from dvc.stage import PipelineStage
+from dvc.stage.run import CheckpointKilledError
 from dvc.stage.serialize import to_lockfile
 from dvc.utils import dict_sha256
 from dvc.utils.fs import remove
@@ -225,7 +228,6 @@ class BaseExecutor(ABC):
             and force is a bool specifying whether or not this experiment
             should force overwrite any existing duplicates.
         """
-        from dvc.repo import Repo
         from dvc.repo.checkout import checkout as dvc_checkout
         from dvc.repo.reproduce import reproduce as dvc_reproduce
 
@@ -245,30 +247,8 @@ class BaseExecutor(ABC):
         exp_ref: Optional["ExpRefInfo"] = None
         repro_force: bool = False
 
-        try:
-            dvc = Repo(dvc_dir)
-            if dvc_dir is not None:
-                old_cwd: Optional[str] = os.getcwd()
-                if rel_cwd:
-                    os.chdir(os.path.join(dvc.root_dir, rel_cwd))
-                else:
-                    os.chdir(dvc.root_dir)
-            else:
-                old_cwd = None
-            logger.debug("Running repro in '%s'", os.getcwd())
-
-            if cls.QUIET:
-                dvc.scm.quiet = cls.QUIET
-
-            args_path = os.path.join(
-                dvc.tmp_dir, BaseExecutor.PACKED_ARGS_FILE
-            )
-            if os.path.exists(args_path):
-                args, kwargs = BaseExecutor.unpack_repro_args(args_path)
-                remove(args_path)
-            else:
-                args = []
-                kwargs = {}
+        with cls._repro_dvc(dvc_dir, rel_cwd) as dvc:
+            args, kwargs = cls._repro_args(dvc)
 
             repro_force = kwargs.get("force", False)
             logger.debug("force = %s", str(repro_force))
@@ -321,16 +301,55 @@ class BaseExecutor(ABC):
                         "\t%s",
                         ", ".join(untracked),
                     )
-        finally:
-            if dvc:
-                dvc.scm.close()
-            if old_cwd:
-                os.chdir(old_cwd)
 
         # ideally we would return stages here like a normal repro() call, but
         # stages is not currently picklable and cannot be returned across
         # multiprocessing calls
         return ExecutorResult(exp_hash, exp_ref, repro_force)
+
+    @classmethod
+    @contextmanager
+    def _repro_dvc(cls, dvc_dir: Optional[str], rel_cwd: Optional[str]):
+        from dvc.repo import Repo
+
+        dvc = Repo(dvc_dir)
+        if cls.QUIET:
+            dvc.scm.quiet = cls.QUIET
+        if dvc_dir is not None:
+            old_cwd: Optional[str] = os.getcwd()
+            if rel_cwd:
+                os.chdir(os.path.join(dvc.root_dir, rel_cwd))
+            else:
+                os.chdir(dvc.root_dir)
+        else:
+            old_cwd = None
+        logger.debug("Running repro in '%s'", os.getcwd())
+
+        try:
+            yield dvc
+        except CheckpointKilledError:
+            raise
+        except DvcException:
+            logger.exception("")
+            raise
+        except Exception:
+            logger.exception("unexpected error")
+            raise
+        finally:
+            dvc.scm.close()
+            if old_cwd:
+                os.chdir(old_cwd)
+
+    @classmethod
+    def _repro_args(cls, dvc):
+        args_path = os.path.join(dvc.tmp_dir, cls.PACKED_ARGS_FILE)
+        if os.path.exists(args_path):
+            args, kwargs = cls.unpack_repro_args(args_path)
+            remove(args_path)
+        else:
+            args = []
+            kwargs = {}
+        return args, kwargs
 
     @classmethod
     def checkpoint_callback(

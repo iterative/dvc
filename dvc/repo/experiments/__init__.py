@@ -4,7 +4,6 @@ import re
 import signal
 from collections import defaultdict, namedtuple
 from concurrent.futures import CancelledError, ProcessPoolExecutor, wait
-from contextlib import contextmanager
 from functools import wraps
 from multiprocessing import Manager
 from typing import Dict, Iterable, Mapping, Optional
@@ -111,10 +110,6 @@ class Experiments:
     @cached_property
     def dvc_dir(self):
         return relpath(self.repo.dvc_dir, self.repo.scm.root_dir)
-
-    @contextmanager
-    def chdir(self):
-        yield
 
     @cached_property
     def args_file(self):
@@ -607,22 +602,18 @@ class Experiments:
 
             for future, (rev, executor) in futures.items():
                 rev, executor = futures[future]
-                exc = future.exception()
 
                 try:
+                    exc = future.exception()
                     if exc is None:
                         exec_result = future.result()
                         result[rev].update(
                             self._collect_executor(executor, exec_result)
                         )
-                    else:
-                        # Checkpoint errors have already been logged
-                        if not isinstance(exc, CheckpointKilledError):
-                            logger.exception(
-                                "Failed to reproduce experiment '%s'",
-                                rev[:7],
-                                exc_info=exc,
-                            )
+                    elif not isinstance(exc, CheckpointKilledError):
+                        logger.error(
+                            "Failed to reproduce experiment '%s'", rev[:7],
+                        )
                 except CancelledError:
                     logger.error(
                         "Cancelled before attempting to reproduce experiment "
