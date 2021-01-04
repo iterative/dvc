@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import TYPE_CHECKING, Iterable, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Iterable, List, Tuple, Union
 
 from funcy.seqs import cat
 from rich.align import Align
@@ -40,11 +40,14 @@ def pluralize(key: str, value: int) -> str:
 def get_info(stage: "Stage") -> List[Tuple[str, int]]:
     num_metrics = len([out for out in stage.outs if out.metric])
     num_plots = len([out for out in stage.outs if out.plot])
+    info = {
+        "dep": len(stage.deps),
+        "out": len(stage.outs) - num_metrics - num_plots,
+        "metric": num_metrics,
+        "plot": num_plots,
+    }
     return [
-        ("dep", len(stage.deps)),
-        ("out", len(stage.outs) - num_metrics - num_plots),
-        ("metric", num_metrics),
-        ("plot", num_plots),
+        (pluralize(key, value), value) for key, value in info.items() if value
     ]
 
 
@@ -89,46 +92,35 @@ def generate_description(stage: "Stage") -> str:
     return ", ".join(filter(None, [outs_desc, other_outs_desc]))
 
 
-def prepare_info(stats: List[Tuple[str, int]]) -> List[Text]:
-    ret = []
-    for key, value in stats:
-        if not value:
-            continue
-        if ret and ret[-1] != PIPE:
+def prepare_info(info: List[Tuple[str, int]]) -> Text:
+    ret = Text()
+    for index, (key, value) in enumerate(info):
+        if index:
             ret.append(PIPE)
-        ret.append(Text.styled(str(value), style="blue"))
-        ret.append(Text.styled(f" {pluralize(key, value)}", style="dim blue"))
+        ret.append_text(Text.styled(str(value), style="blue"))
+        ret.append_text(Text.styled(f" {key}", style="dim blue"))
     return ret
 
 
-def prepare_graph_text(
-    stage: "Stage", graph: "nx.DiGraph" = None
-) -> Optional[Text]:
-    text = None
-    if graph:
-        predecessors = graph.predecessors(stage)
-        fork = Text(FORK, style="bold blue")
+def prepare_graph_text(stage: "Stage", graph: "nx.DiGraph" = None) -> Text:
+    def gen_name(up):
+        # only displaying the name if they are both in the same file
+        # though this might be confusing with the stages in the current
+        # directory as they don't display the path as well.
+        # went to this logic for simplicity and aesthetics.
+        use_name = up.path == stage.path and isinstance(up, PipelineStage)
+        return prepare_stage_name(up, use_name=use_name)
 
-        def gen_name(up, down, *args):
-            # if they are both in the same file, let's only show up the names
-            use_name = up.path == down.path and isinstance(up, PipelineStage)
-            return prepare_stage_name(up, link=False, use_name=use_name)
-
-        fragments = []
-        for idx, predecessor in enumerate(predecessors):
-            if predecessors is stage:
-                continue
-            if idx > 0:
-                fragments.append(", ")
-            fragments.append(fork)
-            fragments.append(gen_name(predecessor, stage))
-
-        if fragments:
-            text = Text()
-            for fragment in fragments:
-                text.append(fragment)
-            text.truncate(MAX_TEXT_LENGTH, overflow="ellipsis")
-
+    text = Text()
+    fork = Text(FORK, style="bold blue")
+    # show only the direct dependents of the `stage`
+    predecessors = graph.predecessors(stage) if graph else []
+    for index, display_name in enumerate(map(gen_name, predecessors)):
+        if index:
+            text.append(", ")
+        text.append_text(fork)
+        text.append(display_name)
+    text.truncate(MAX_TEXT_LENGTH, overflow="ellipsis")
     return text
 
 
@@ -140,6 +132,8 @@ def prepare_stage_name(stage: "Stage", link=False, use_name=False) -> Text:
     file_style = Style(color=DVC_BLUE, bold=True, underline=False)
     name_style = None
     if link:
+        # we show a link to the dvc.yaml file in the terminal for the stages
+        # need to hover over their name
         name_style = linked
         file_style += linked
 
@@ -186,10 +180,8 @@ def list_layout(stages: Iterable[Stage], graph: "nx.DiGraph" = None) -> None:
         title = prepare_stage_name(stage, link=True)
 
         # basic info at the right side of the table
-        info_text = Text()
         info = get_info(stage)
-        for fragment in prepare_info(info):
-            info_text.append(fragment)
+        info_text = prepare_info(info)
         title_table.add_row(title, info_text)
 
         # pushing all columns except the first one with title, to the right
