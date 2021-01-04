@@ -3,10 +3,10 @@
 import logging
 import os
 import shlex
-from collections import OrderedDict
+from collections.abc import Mapping
 from contextlib import contextmanager
 from functools import partialmethod
-from typing import Iterable, List, Optional, Set
+from typing import Dict, Iterable, List, Optional, Set, Type
 
 from funcy import cached_property, first
 from pathspec.patterns import GitWildMatchPattern
@@ -17,7 +17,7 @@ from dvc.utils import relpath
 from dvc.utils.fs import path_isin
 from dvc.utils.serialize import modify_yaml
 
-from .backend.base import NoGitBackendError
+from .backend.base import BaseGitBackend, NoGitBackendError
 from .backend.dulwich import DulwichBackend
 from .backend.gitpython import GitPythonBackend
 from .backend.pygit2 import Pygit2Backend
@@ -25,19 +25,52 @@ from .stash import Stash
 
 logger = logging.getLogger(__name__)
 
+BackendCls = Type[BaseGitBackend]
+
+
+class GitBackends(Mapping):
+    DEFAULT: Dict[str, BackendCls] = {
+        "dulwich": DulwichBackend,
+        "pygit2": Pygit2Backend,
+        "gitpython": GitPythonBackend,
+    }
+
+    def __getitem__(self, key: str) -> BaseGitBackend:
+        """Lazily initialize backends and cache it afterwards"""
+        initialized = self.initialized.get(key)
+        if not initialized:
+            backend = self.backends[key]
+            initialized = backend(*self.args, **self.kwargs)
+            self.initialized[key] = initialized
+        return initialized
+
+    def __init__(
+        self, selected: Optional[Iterable[str]], *args, **kwargs
+    ) -> None:
+        selected = selected or list(self.DEFAULT)
+        self.backends = {key: self.DEFAULT[key] for key in selected}
+
+        self.initialized: Dict[str, BaseGitBackend] = {}
+
+        self.args = args
+        self.kwargs = kwargs
+
+    def __iter__(self):
+        return iter(self.backends)
+
+    def __len__(self) -> int:
+        return len(self.backends)
+
+    def close_initialized(self) -> None:
+        for backend in self.initialized.values():
+            backend.close()
+
 
 class Git(Base):
     """Class for managing Git."""
 
     GITIGNORE = ".gitignore"
     GIT_DIR = ".git"
-    DEFAULT_BACKENDS = OrderedDict(
-        [
-            ("dulwich", DulwichBackend),
-            ("pygit2", Pygit2Backend),
-            ("gitpython", GitPythonBackend),
-        ]
-    )
     LOCAL_BRANCH_PREFIX = "refs/heads/"
 
     def __init__(
@@ -47,14 +80,7 @@ class Git(Base):
         self.files_to_track: Set[str] = set()
         self.quiet: bool = False
 
-        selected = backends if backends else self.DEFAULT_BACKENDS.keys()
-        self.backends = OrderedDict(
-            [
-                (name, self.DEFAULT_BACKENDS[name](*args, **kwargs))
-                for name in selected
-            ]
-        )
-
+        self.backends = GitBackends(backends, *args, **kwargs)
         first_ = first(self.backends.values())
         super().__init__(first_.root_dir)
 
@@ -80,7 +106,7 @@ class Git(Base):
 
     @classmethod
     def clone(cls, url, to_path, **kwargs):
-        for _, backend in cls.DEFAULT_BACKENDS.items():
+        for _, backend in GitBackends.DEFAULT.items():
             try:
                 backend.clone(url, to_path, **kwargs)
                 return Git(to_path)
@@ -90,7 +116,7 @@ class Git(Base):
 
     @classmethod
     def is_sha(cls, rev):
-        for _, backend in cls.DEFAULT_BACKENDS.items():
+        for _, backend in GitBackends.DEFAULT.items():
             try:
                 return backend.is_sha(rev)
             except NotImplementedError:
@@ -278,8 +304,7 @@ class Git(Base):
             return False
 
     def close(self):
-        for backend in self.backends.values():
-            backend.close()
+        self.backends.close_initialized()
 
     @cached_property
     def _hooks_home(self):

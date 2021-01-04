@@ -186,7 +186,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         url: str,
         refspecs: Iterable[str],
         force: Optional[bool] = False,
-        on_diverged: Optional[Callable[[bytes, bytes], bool]] = None,
+        on_diverged: Optional[Callable[[str, str], bool]] = None,
     ):
         raise NotImplementedError
 
