@@ -1093,7 +1093,7 @@ def _add_run_common(parser):
         "--run-all",
         action="store_true",
         default=False,
-        help="Execute all experiments in the run queue.",
+        help="Execute all experiments in the run queue. Implies --temp.",
     )
     parser.add_argument(
         "-j",
@@ -1108,7 +1108,6 @@ def _add_run_common(parser):
         dest="tmp_dir",
         help=(
             "Run this experiment in a separate temporary directory instead of "
-            "your workspace. Only applies when running a single experiment "
-            "without --queue."
+            "your workspace."
         ),
     )

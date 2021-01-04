@@ -25,7 +25,11 @@ class BaseLocalExecutor(BaseExecutor):
 class TempDirExecutor(BaseLocalExecutor):
     """Temp directory experiment executor."""
 
+    # Temp dir executors should warn if untracked files exist (to help with
+    # debugging user code), and suppress other DVC hints (like `git add`
+    # suggestions) that are not applicable outside of workspace runs
     WARN_UNTRACKED = True
+    QUIET = True
 
     def __init__(
         self,

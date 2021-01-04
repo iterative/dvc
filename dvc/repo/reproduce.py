@@ -1,11 +1,11 @@
 import logging
-import os
 import typing
 from functools import partial
 
 from dvc.exceptions import ReproductionError
 from dvc.repo.scm_context import scm_context
 from dvc.stage.run import CheckpointKilledError
+from dvc.utils import relpath
 
 from . import locked
 from .graph import get_pipeline, get_pipelines
@@ -60,19 +60,19 @@ def _dump_stage(stage):
 
 
 def _track_stage(stage):
-    stage.repo.scm.track_file(stage.dvcfile.path)
+    stage.repo.scm.track_file(stage.dvcfile.relpath)
     for dep in stage.deps:
         if not dep.use_scm_ignore and dep.is_in_repo:
-            stage.repo.scm.track_file(os.fspath(dep.path_info))
+            stage.repo.scm.track_file(relpath(dep.path_info))
     for out in stage.outs:
         if not out.use_scm_ignore and out.is_in_repo:
-            stage.repo.scm.track_file(os.fspath(out.path_info))
+            stage.repo.scm.track_file(relpath(out.path_info))
             if out.live:
                 from dvc.repo.live import summary_path_info
 
                 summary = summary_path_info(out)
                 if summary:
-                    stage.repo.scm.track_file(os.fspath(summary))
+                    stage.repo.scm.track_file(relpath(summary))
     stage.repo.scm.track_changed_files()
 
 
