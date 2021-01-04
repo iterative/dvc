@@ -156,13 +156,13 @@ def prepare_stage_name(stage: "Stage", link=False, use_name=False) -> Text:
 
 
 def prepare_description(stage: Stage) -> Union[Markdown, Text]:
-    # Description
+    style = "blue"
     if stage.desc:
         # not sure if this was ever intended, but markdown looks nice
-        return Markdown(stage.desc)
+        return Markdown(stage.desc, style=style)
 
     description = generate_description(stage)
-    text = Text(description.strip(), style="blue")
+    text = Text(description.strip(), style=style)
     text.truncate(MAX_TEXT_LENGTH, overflow="ellipsis")
     return text
 
