@@ -45,6 +45,7 @@ class Git(Base):
     ):
         self.ignored_paths: List[str] = []
         self.files_to_track: Set[str] = set()
+        self.quiet: bool = False
 
         selected = backends if backends else self.DEFAULT_BACKENDS.keys()
         self.backends = OrderedDict(
@@ -243,7 +244,7 @@ class Git(Base):
         self.files_to_track = set()
 
     def remind_to_track(self):
-        if not self.files_to_track:
+        if self.quiet or not self.files_to_track:
             return
 
         files = " ".join(shlex.quote(path) for path in self.files_to_track)

@@ -62,6 +62,7 @@ class BaseExecutor(ABC):
 
     PACKED_ARGS_FILE = "repro.dat"
     WARN_UNTRACKED = False
+    QUIET = False
 
     def __init__(
         self,
@@ -255,6 +256,9 @@ class BaseExecutor(ABC):
             else:
                 old_cwd = None
             logger.debug("Running repro in '%s'", os.getcwd())
+
+            if cls.QUIET:
+                dvc.scm.quiet = cls.QUIET
 
             args_path = os.path.join(
                 dvc.tmp_dir, BaseExecutor.PACKED_ARGS_FILE
