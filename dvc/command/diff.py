@@ -174,9 +174,10 @@ def add_parser(subparsers, parent_parser):
         "--targets",
         nargs="*",
         help=(
-            "Limit command scope to these tracked files or directories. "
+            "Specific DVC-tracked files to compare. "
             "Accepts one or more file paths."
         ),
+        metavar="<paths>",
     ).complete = completion.FILE
     diff_parser.add_argument(
         "a_rev",

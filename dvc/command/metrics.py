@@ -280,8 +280,11 @@ def add_parser(subparsers, parent_parser):
         "--targets",
         nargs="*",
         help=(
-            "Limit command scope to these metrics files. Using -R, "
-            "directories to search metrics files in can also be given."
+            "Specific metrics file(s) to compare "
+            "(even if not found as `metrics` in `dvc.yaml`). "
+            "Using -R, directories to search metrics files in "
+            "can also be given."
+            "Shows all tracked metrics by default.",
         ),
         metavar="<paths>",
     ).complete = completion.FILE
