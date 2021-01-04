@@ -46,8 +46,10 @@ def debug():
     try:
         yield
     except Exception:  # pylint: disable=broad-except
-        import pdb  # noqa: T100
-
+        try:
+            import ipdb as pdb  # noqa: T100
+        except ImportError:
+            import pdb  # noqa: T100
         pdb.post_mortem()
 
 
