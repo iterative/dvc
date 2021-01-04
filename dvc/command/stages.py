@@ -173,7 +173,7 @@ def list_layout(stages: Iterable[Stage], graph: "nx.DiGraph" = None) -> None:
 
     @render_group()
     def render_stage(stage: "Stage", idx: int):
-        """Yields renderables for a single repo."""
+        """Yields renderables for a single stage."""
         if idx:
             # separator
             yield Rule(style=DVC_LIGHT_ORANGE)
