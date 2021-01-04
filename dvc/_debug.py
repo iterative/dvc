@@ -3,7 +3,7 @@ from contextlib import ExitStack, contextmanager
 
 
 @contextmanager
-def instrument(html_output):
+def instrument(html_output=False):
     """Run a statistical profiler"""
     try:
         from pyinstrument import Profiler  # pylint: disable=import-error
@@ -25,7 +25,7 @@ def instrument(html_output):
 
 
 @contextmanager
-def profile(dump):
+def profile(dump_path: str = None):
     """Run a cprofile"""
     import cProfile
 
@@ -35,10 +35,10 @@ def profile(dump):
     yield
 
     prof.disable()
-    if not dump:
+    if not dump_path:
         prof.print_stats(sort="cumtime")
         return
-    prof.dump_stats(dump)
+    prof.dump_stats(dump_path)
 
 
 @contextmanager
@@ -56,14 +56,17 @@ def debug():
 
 
 @contextmanager
-def debugtools(args):
+def debugtools(args: "argparse.Namespace" = None, **kwargs):
+    kw = vars(args) if args else {}
+    kw.update(kwargs)
+
     with ExitStack() as stack:
-        if args.pdb:
+        if kw.get("pdb"):
             stack.enter_context(debug())
-        if args.cprofile:
-            stack.enter_context(profile(args.cprofile_dump))
-        if args.instrument:
-            stack.enter_context(instrument(args.instrument_open))
+        if kw.get("cprofile") or kw.get("cprofile_dump"):
+            stack.enter_context(profile(kw.get("cprofile_dump")))
+        if kw.get("instrument") or kw.get("instrument_open"):
+            stack.enter_context(instrument(kw.get("instrument_open", False)))
         yield
 
 
