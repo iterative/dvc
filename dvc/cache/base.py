@@ -127,16 +127,13 @@ class CloudCache:
             bool: True if data has changed, False otherwise.
         """
 
-        path = filter_info or path_info
-
-        # Instead of directly checking whether filter_info is present or not,
-        # we compare the target path with the path_info because sometimes
-        # filter_info might be equal to the path_info and in those cases we do
-        # not need to filter the hash.
-        if path != path_info:
+        if filter_info is not None and filter_info != path_info:
+            path = filter_info
             path_info, hash_info = self._get_filtered_hash_info(
                 path, hash_info, path_info
             )
+        else:
+            path = path_info
 
         logger.trace(
             "checking if '%s'('%s') has changed.", path_info, hash_info
