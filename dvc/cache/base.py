@@ -89,15 +89,13 @@ class CloudCache:
 
         return DirInfo.from_list(d)
 
-    def _get_filtered_hash_info(
-        self, filtered_path_info, hash_info, hash_origin
-    ):
+    def _get_filtered_hash_info(self, filter_info, hash_info, path_info):
         dir_info = self.get_dir_cache(hash_info)
-        hash_key = filtered_path_info.relative_to(hash_origin).parts
+        hash_key = filter_info.relative_to(path_info).parts
 
         # Check whether it is a file that exists on the trie
         if hash_key in dir_info.trie:
-            return filtered_path_info, dir_info.trie[hash_key]
+            return filter_info, dir_info.trie[hash_key]
 
         depth = len(hash_key)
         filtered_dir_info = DirInfo()
@@ -106,10 +104,10 @@ class CloudCache:
                 filtered_dir_info.trie[key[depth:]] = value
         except KeyError:
             # The directory doesn't exist on the trie, fallback to the original
-            return hash_origin, hash_info
+            return path_info, hash_info
         else:
             filtered_hash_info, _ = self._get_dir_info_hash(filtered_dir_info)
-            return (filtered_path_info, filtered_hash_info)
+            return filter_info, filtered_hash_info
 
     def changed(self, path_info, hash_info, filter_info=None):
         """Checks if data has changed.
@@ -129,7 +127,6 @@ class CloudCache:
             bool: True if data has changed, False otherwise.
         """
 
-        hash_origin = path_info
         path = filter_info or path_info
 
         # Instead of directly checking whether filter_info is present or not,
@@ -137,12 +134,12 @@ class CloudCache:
         # filter_info might be equal to the path_info and in those cases we do
         # not need to filter the hash.
         if path != path_info:
-            hash_origin, hash_info = self._get_filtered_hash_info(
-                path, hash_info, hash_origin
+            path_info, hash_info = self._get_filtered_hash_info(
+                path, hash_info, path_info
             )
 
         logger.trace(
-            "checking if '%s'('%s') has changed.", hash_origin, hash_info
+            "checking if '%s'('%s') has changed.", path_info, hash_info
         )
 
         if not self.tree.exists(path):
@@ -150,22 +147,22 @@ class CloudCache:
             return True
 
         if not hash_info:
-            logger.debug("hash value for '%s' is missing.", hash_origin)
+            logger.debug("hash value for '%s' is missing.", path_info)
             return True
 
         if self.changed_cache(hash_info):
             logger.debug(
-                "cache for '%s'('%s') has changed.", hash_origin, hash_info
+                "cache for '%s'('%s') has changed.", path_info, hash_info
             )
             return True
 
-        actual = self.tree.get_hash(hash_origin)
+        actual = self.tree.get_hash(path_info)
         if hash_info != actual:
             logger.debug(
                 "hash value '%s' for '%s' has changed (actual '%s').",
                 hash_info,
                 actual,
-                hash_origin,
+                path_info,
             )
             return True
 
