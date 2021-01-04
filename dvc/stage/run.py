@@ -47,7 +47,7 @@ def warn_if_fish(executable):
 
 def _enforce_cmd_list(cmd):
     assert cmd
-    return cmd if isinstance(cmd, list) else [cmd]
+    return cmd if isinstance(cmd, list) else cmd.splitlines()
 
 
 def prepare_kwargs(stage, checkpoint_func=None):
