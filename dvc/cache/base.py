@@ -41,7 +41,6 @@ def use_state(call):
 
 
 class CloudCache:
-    """Cloud cache class."""
 
     DEFAULT_CACHE_TYPES = ["copy"]
     CACHE_MODE: Optional[int] = None
