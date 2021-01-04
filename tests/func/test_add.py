@@ -1,3 +1,4 @@
+import errno
 import filecmp
 import logging
 import os
@@ -972,3 +973,21 @@ def test_add_preserve_meta(tmp_dir, dvc):
         meta: some metadata
     """
     )
+
+
+# NOTE: unless long paths are enabled on Windows, PATH_MAX and NAME_MAX
+# are the same 260 chars, which makes the test unnecessarily complex
+@pytest.mark.skipif(os.name == "nt", reason="unsupported on Windows")
+def test_add_long_fname(tmp_dir, dvc):
+    name_max = os.pathconf(tmp_dir, "PC_NAME_MAX")
+    name = "a" * name_max
+    tmp_dir.gen({"data": {name: "foo"}})
+
+    # nothing we can do in this case, as the resulting dvcfile
+    # will definitely exceed NAME_MAX
+    with pytest.raises(OSError) as info:
+        dvc.add(os.path.join("data", name))
+    assert info.value.errno == errno.ENAMETOOLONG
+
+    dvc.add("data")
+    assert (tmp_dir / "data").read_text() == {name: "foo"}
