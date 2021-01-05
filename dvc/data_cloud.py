@@ -92,20 +92,11 @@ class DataCloud:
             show_checksums=show_checksums,
         )
 
-    def transfer_straight_to_remote(self, source, jobs=None, remote=None):
-        from dvc.tree import get_cloud_tree
-
+    def transfer(self, source, jobs=None, remote=None):
         from_tree = get_cloud_tree(self.repo, url=source)
         from_tree.config["jobs"] = jobs
         remote = self.get_remote(remote, "export-to-remote")
-
-        return remote.transfer_straight_to_remote(
-            from_tree,
-            remote.tree,
-            from_tree.path_info,
-            remote.tree.path_info,
-            self.repo,
-        )
+        return remote.transfer(from_tree)
 
     def status(
         self,

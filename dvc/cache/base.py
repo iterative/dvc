@@ -3,7 +3,8 @@ import itertools
 import json
 import logging
 import os
-from concurrent.futures import ThreadPoolExecutor
+import tempfile
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import copy
 from typing import Optional
 
@@ -11,6 +12,7 @@ from funcy import decorator
 from shortuuid import uuid
 
 import dvc.prompt as prompt
+from dvc import tree as dvc_tree
 from dvc.dir_info import DirInfo
 from dvc.exceptions import (
     CacheLinkError,
@@ -22,6 +24,7 @@ from dvc.progress import Tqdm
 from dvc.remote.slow_link_detection import (  # type: ignore[attr-defined]
     slow_link_guard,
 )
+from dvc.utils.stream import HashedIterStream
 
 from ..tree.base import RemoteActionNotImplemented
 
@@ -247,6 +250,73 @@ class CloudCache:
 
         self.tree.state.save(cache_info, hash_info)
 
+    def _transfer_file_as_whole(self, from_tree, from_info):
+        # When we can't use the chunked upload, we have to first download
+        # and then calculate the hash as if it were a local file and then
+        # upload it.
+        with tempfile.NamedTemporaryFile() as temp_file:
+            temp_tree = dvc_tree.get_cloud_tree(self.repo, url=temp_file.name)
+            from_tree.download(
+                from_info, temp_tree.path_info, no_progress_bar=True
+            )
+
+            hash_info = temp_tree.get_file_hash(temp_tree.path_info)
+            self.tree.upload(
+                temp_tree.path_info,
+                self.hash_to_path(hash_info),
+                no_progress_bar=True,
+            )
+
+            return hash_info
+
+    def _transfer_file_as_chunked(self, from_tree, from_info):
+        temporary_location = self.tree.path_info / uuid()
+        with from_tree.open(
+            from_info,
+            mode="rb",
+            stream_cls=HashedIterStream,
+            chunk_size=from_tree.CHUNK_SIZE,
+        ) as hashed_file:
+            # Since we don't know the hash beforehand, we'll
+            # upload it to a temporary location and then move
+            # it.
+            self.tree.upload_multipart(hashed_file, temporary_location)
+            hash_info = hashed_file.hash_info
+
+        self.tree.move(temporary_location, self.hash_to_path(hash_info.value))
+        return hash_info
+
+    def transfer_file(self, from_tree, from_info):
+        try:
+            hash_info = self._transfer_file_as_chunked(from_tree, from_info)
+        except RemoteActionNotImplemented:
+            hash_info = self._transfer_file_as_whole(from_tree, from_info)
+
+        rel_target_filename = from_info.relative_to(from_tree.path_info)
+        return rel_target_filename.parts, hash_info
+
+    def transfer_directory(self, from_tree, from_infos, func):
+        dir_info = DirInfo()
+        with ThreadPoolExecutor(max_workers=from_tree.jobs) as executor:
+            futures = [
+                executor.submit(func, from_tree, from_info)
+                for from_info in from_infos
+            ]
+            for future in as_completed(futures):
+                key, file_hash_info = future.result()
+                dir_info.trie[key] = file_hash_info
+
+        (
+            hash_info,
+            hash_path_info,
+        ) = self._get_dir_info_hash(  # noqa, pylint: disable=protected-access
+            dir_info
+        )
+        self.tree.move(
+            hash_path_info, self.hash_to_path(hash_info.value),
+        )
+        return hash_info
+
     def _cache_is_copy(self, path_info):
         """Checks whether cache uses copies."""
         if self.cache_type_confirmed:
@@ -270,8 +340,6 @@ class CloudCache:
         return self.cache_types[0] == "copy"
 
     def _get_dir_info_hash(self, dir_info):
-        import tempfile
-
         from dvc.path_info import PathInfo
         from dvc.utils import tmp_fname
 

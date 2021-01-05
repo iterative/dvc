@@ -8,9 +8,7 @@ def export_to_remote(self, source, destination, remote=None, jobs=None):
     from dvc.dvcfile import Dvcfile
     from dvc.stage import Stage, create_stage
 
-    hash_info = self.cloud.transfer_straight_to_remote(
-        source, jobs=jobs, remote=remote
-    )
+    hash_info = self.cloud.transfer(source, jobs=jobs, remote=remote)
 
     path, _, _ = resolve_paths(self, destination)
     stage = create_stage(Stage, self, path, outs=[destination])
