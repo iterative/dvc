@@ -5,7 +5,7 @@ from dvc.utils.stream import IterStream
 
 
 @contextmanager
-def open_url(url, mode="r", encoding=None, stream_cls=None):
+def open_url(url, mode="r", encoding=None, stream_cls=None, **kwargs):
     """Opens an url as a readable stream.
 
     Resumes on connection error.
@@ -14,7 +14,7 @@ def open_url(url, mode="r", encoding=None, stream_cls=None):
     stream_cls = stream_cls or IterStream
     assert mode in {"r", "rt", "rb"}
 
-    with iter_url(url) as (response, it):
+    with iter_url(url, **kwargs) as (response, it):
         bytes_stream = stream_cls(it)
 
         if mode == "rb":

@@ -365,10 +365,15 @@ class S3Tree(BaseTree):
     def _upload_multipart(self, stream, to_info, chunk_size):
         from boto3.s3.transfer import TransferConfig
 
-        config = TransferConfig(multipart_threshold=chunk_size)
+        config = TransferConfig(
+            multipart_threshold=chunk_size,
+            multipart_chunksize=chunk_size,
+            max_concurrency=1,
+            use_threads=False,
+        )
         with self._get_s3() as s3:
             s3.meta.client.upload_fileobj(
-                stream, to_info.bucket, to_info.path, Config=config
+                stream, to_info.bucket, to_info.path, Config=config,
             )
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):

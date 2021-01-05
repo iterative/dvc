@@ -59,7 +59,7 @@ class BaseTree:
     TRAVERSE_PREFIX_LEN = 3
     TRAVERSE_THRESHOLD_SIZE = 500000
     CAN_TRAVERSE = True
-    CHUNK_SIZE = 5 * 1024 ** 3
+    CHUNK_SIZE = 512 * 1024 * 1024
 
     SHARED_MODE_MAP = {None: (None, None), "group": (None, None)}
     PARAM_CHECKSUM: ClassVar[Optional[str]] = None
@@ -175,13 +175,18 @@ class BaseTree:
         mode: str = "r",
         encoding: str = None,
         stream_cls: Optional[Type] = None,
+        **kwargs,
     ):
         if hasattr(self, "_generate_download_url"):
             # pylint:disable=no-member
             func = self._generate_download_url  # type: ignore[attr-defined]
             get_url = partial(func, path_info)
             return open_url(
-                get_url, mode=mode, encoding=encoding, stream_cls=stream_cls
+                get_url,
+                mode=mode,
+                encoding=encoding,
+                stream_cls=stream_cls,
+                **kwargs,
             )
 
         raise RemoteActionNotImplemented("open", self.scheme)

@@ -507,7 +507,10 @@ class Remote:
     ):
         temporary_location = to_info / str(uuid.uuid4())
         with from_tree.open(
-            file_info, mode="rb", stream_cls=HashedIterStream
+            file_info,
+            mode="rb",
+            stream_cls=HashedIterStream,
+            chunk_size=from_tree.CHUNK_SIZE,
         ) as hashed_file:
             # Since we don't know the hash beforehand, we'll
             # upload it to a temporary location and then move

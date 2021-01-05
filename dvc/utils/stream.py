@@ -60,6 +60,7 @@ class IterStream(io.RawIOBase):
                 break
         return self.leftover[:n]
 
+
 class HashedIterStream(IterStream):
 
     PARAM_CHECKSUM = "md5"
@@ -70,7 +71,7 @@ class HashedIterStream(IterStream):
         self.is_text_file = None
 
     def read(self, n=-1):
-        chunk = super().read(n)
+        chunk = super().read1(n)
         if self.is_text_file is None:
             self.is_text_file = istextblock(chunk)
 
