@@ -166,18 +166,19 @@ def list_layout(stages: Iterable[Stage], graph: "nx.DiGraph" = None) -> None:
 
     LAYOUT_WIDTH = 80
     LEFT_PAD = (0, 0, 0, 4)
+    SHORT_LEFT_PAD = (0, 0, 0, 2)
 
     @render_group()
     def render_stage(stage: "Stage", idx: int):
         """Yields renderables for a single stage."""
         if idx:
             # separator
-            yield Rule(style=DVC_LIGHT_ORANGE)
+            yield Padding(Rule(style=DVC_LIGHT_ORANGE), SHORT_LEFT_PAD)
             yield ""
 
         # title
         title_table = Table.grid(padding=(0, 1), expand=True)
-        title = Padding(prepare_stage_name(stage, link=True), (0, 0, 0, 2))
+        title = Padding(prepare_stage_name(stage, link=True), SHORT_LEFT_PAD)
 
         # basic info at the right side of the table
         info = get_info(stage)
