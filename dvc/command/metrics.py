@@ -179,7 +179,6 @@ def add_parser(subparsers, parent_parser):
         description=append_doc_link(METRICS_HELP, "metrics"),
         help=METRICS_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        exit_on_error=False,
     )
 
     metrics_subparsers = metrics_parser.add_subparsers(

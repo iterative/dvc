@@ -94,7 +94,6 @@ def add_parser(subparsers, parent_parser):
         description=append_doc_link(PLOTS_HELP, "plots"),
         help=PLOTS_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        exit_on_error=False,
     )
     plots_subparsers = plots_parser.add_subparsers(
         dest="cmd",

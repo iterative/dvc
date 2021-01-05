@@ -162,7 +162,6 @@ def add_parser(subparsers, parent_parser):
         description=append_doc_link(REMOTE_HELP, "remote"),
         help=REMOTE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        exit_on_error=False,
     )
 
     remote_subparsers = remote_parser.add_subparsers(
