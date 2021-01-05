@@ -60,8 +60,8 @@ def sizeof_fmt(size: int, suffix: str = "B", decimal_places: int = 1) -> str:
     return f"{size:.{decimal_places}f} {unit}{suffix}"
 
 
-def generate_description(stage: "Stage") -> str:
-    def part_desc(outs, show_size=True) -> str:
+def generate_description(stage: "Stage", with_size=True) -> str:
+    def part_desc(outs, show_size=with_size) -> str:
         desc = ""
         for index, out in enumerate(outs):
             text = ", " if index != 0 else ""
@@ -214,10 +214,21 @@ def list_layout(stages: Iterable[Stage], graph: "nx.DiGraph" = None) -> None:
 
 
 class CmdStages(CmdBase):
-    def _display_short(self, stages: List["Stage"]):
+    def _display_short(self, stages: List["Stage"], with_desc=False):
         if self.args.short:
             for stage in stages:
-                print(stage.addressing)
+                # note that zsh's `_describe` uses `:` to split the command
+                # and the description which might make `--all` unusable
+                # if we choose to do it later, manual parsing on completion
+                # script is required.
+                print(stage.addressing, end=":" if with_desc else "\n")
+                if with_desc:
+                    desc = stage.desc or generate_description(
+                        stage, with_size=False
+                    )
+                    # need to quote, otherwise zsh only shows the first word
+                    print(f"'{desc}'")
+
             return 0
 
     def run(self):
@@ -247,7 +258,7 @@ class CmdStages(CmdBase):
             )
 
         if self.args.short:
-            return self._display_short(stages)
+            return self._display_short(stages, with_desc=self.args.with_desc)
 
         # if graph checks fail, skip showing downstream nodes
         try:
@@ -302,5 +313,11 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="List only the names of the stage",
+    )
+    stages_parser.add_argument(
+        "--with-desc",
+        action="store_true",
+        default=False,
+        help="Print description of the stage (applies only on --short output)",
     )
     stages_parser.set_defaults(func=CmdStages)
