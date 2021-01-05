@@ -206,7 +206,7 @@ def list_layout(stages: Iterable[Stage], graph: "nx.DiGraph" = None) -> None:
         yield Padding(desc, LEFT_PAD)
 
     def column(renderable):
-        """Constrain width and align to center to create a column."""
+        """Constrain width and align column to the left."""
         return Align.left(renderable, width=LAYOUT_WIDTH, pad=False)
 
     console = Console()
