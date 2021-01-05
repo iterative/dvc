@@ -37,7 +37,7 @@ _dvc_compadd_DVCFiles() {
 
 _dvc_compadd_stages() {
     # this will also show up the description of the stages
-    _describe 'command' "($(dvc stages -sq --with-desc))"
+    _describe 'stages' "($(dvc stages -sq --with-desc))"
 }
 
 _dvc_compadd_stages_and_files() {
