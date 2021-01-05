@@ -214,22 +214,24 @@ def list_layout(stages: Iterable[Stage], graph: "nx.DiGraph" = None) -> None:
         console.print(column(render_stage(stage, idx)))
 
 
+def short_output(stage: "Stage", with_desc=False):
+    address = stage.addressing
+    if not with_desc:
+        return address
+    # ZSH's `_describe` uses `:` to split the command which might make `--all`
+    # unusable. If we choose to do it later, manual parsing on completion
+    # script will be required.
+    sep = ":"
+    desc = stage.desc or generate_description(stage, with_size=False)
+    # need to quote, otherwise zsh only shows the first word
+    return "{address}{sep}'{desc}'".format(address=address, sep=sep, desc=desc)
+
+
 class CmdStages(CmdBase):
     def _display_short(self, stages: List["Stage"], with_desc=False):
         if self.args.short:
             for stage in stages:
-                # note that zsh's `_describe` uses `:` to split the command
-                # and the description which might make `--all` unusable
-                # if we choose to do it later, manual parsing on completion
-                # script is required.
-                print(stage.addressing, end=":" if with_desc else "\n")
-                if with_desc:
-                    desc = stage.desc or generate_description(
-                        stage, with_size=False
-                    )
-                    # need to quote, otherwise zsh only shows the first word
-                    print(f"'{desc}'")
-
+                print(short_output(stage, with_desc=with_desc))
             return 0
 
     def run(self):
