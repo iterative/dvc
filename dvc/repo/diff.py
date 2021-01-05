@@ -148,11 +148,14 @@ def _dir_output_paths(repo_tree, output, targets=None):
 def _filter_missing(repo, paths):
     repo_tree = RepoTree(repo, stream=True)
     for path in paths:
-        metadata = repo_tree.metadata(path)
-        if metadata.is_dvc:
-            out = metadata.outs[0]
-            if out.status().get(str(out)) == "not in cache":
-                yield path
+        try:
+            metadata = repo_tree.metadata(path)
+            if metadata.is_dvc:
+                out = metadata.outs[0]
+                if out.status().get(str(out)) == "not in cache":
+                    yield path
+        except FileNotFoundError:
+            pass
 
 
 def _targets_to_path_infos(repo, targets):
