@@ -104,9 +104,9 @@ class CloudCache:
                 filtered_dir_info.trie[key[depth:]] = value
         except KeyError:
             return None
-        else:
-            filtered_hash_info, _ = self._get_dir_info_hash(filtered_dir_info)
-            return filtered_hash_info
+
+        filtered_hash_info, _ = self._get_dir_info_hash(filtered_dir_info)
+        return filtered_hash_info
 
     def changed(self, path_info, hash_info, filter_info=None):
         """Checks if data has changed.
