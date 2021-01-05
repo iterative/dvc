@@ -56,7 +56,7 @@ class LocalTree(BaseTree):
         return cls(self, root)
 
     @staticmethod
-    def open(path_info, mode="r", encoding=None):
+    def open(path_info, mode="r", encoding=None, **kwargs):
         return open(path_info, mode=mode, encoding=encoding)
 
     def exists(self, path_info, use_dvcignore=True):

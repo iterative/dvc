@@ -5,17 +5,16 @@ from dvc.utils.stream import IterStream
 
 
 @contextmanager
-def open_url(url, mode="r", encoding=None, stream_cls=None, **kwargs):
+def open_url(url, mode="r", encoding=None, **iter_opts):
     """Opens an url as a readable stream.
 
     Resumes on connection error.
     Url could be a string or a callable returning a string.
     """
-    stream_cls = stream_cls or IterStream
     assert mode in {"r", "rt", "rb"}
 
-    with iter_url(url, **kwargs) as (response, it):
-        bytes_stream = stream_cls(it)
+    with iter_url(url, **iter_opts) as (response, it):
+        bytes_stream = IterStream(it)
 
         if mode == "rb":
             yield bytes_stream

@@ -2,7 +2,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partial
 from multiprocessing import cpu_count
-from typing import Any, ClassVar, Dict, Optional, Type
+from typing import Any, ClassVar, Dict, Optional
 from urllib.parse import urlparse
 
 from funcy import cached_property, decorator
@@ -170,24 +170,13 @@ class BaseTree:
         return getattr(self.repo.cache, self.scheme)
 
     def open(
-        self,
-        path_info,
-        mode: str = "r",
-        encoding: str = None,
-        stream_cls: Optional[Type] = None,
-        **kwargs,
+        self, path_info, mode: str = "r", encoding: str = None, **kwargs,
     ):
         if hasattr(self, "_generate_download_url"):
             # pylint:disable=no-member
             func = self._generate_download_url  # type: ignore[attr-defined]
             get_url = partial(func, path_info)
-            return open_url(
-                get_url,
-                mode=mode,
-                encoding=encoding,
-                stream_cls=stream_cls,
-                **kwargs,
-            )
+            return open_url(get_url, mode=mode, encoding=encoding, **kwargs,)
 
         raise RemoteActionNotImplemented("open", self.scheme)
 
