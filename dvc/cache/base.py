@@ -256,16 +256,10 @@ class CloudCache:
         # upload it.
         with tempfile.NamedTemporaryFile() as temp_file:
             temp_tree = dvc_tree.get_cloud_tree(self.repo, url=temp_file.name)
-            from_tree.download(
-                from_info, temp_tree.path_info, no_progress_bar=True
-            )
+            from_tree.download(from_info, temp_tree.path_info)
 
             hash_info = temp_tree.get_file_hash(temp_tree.path_info)
-            self.tree.upload(
-                temp_tree.path_info,
-                self.hash_to_path(hash_info),
-                no_progress_bar=True,
-            )
+            self.tree.upload(temp_tree.path_info, self.hash_to_path(hash_info))
 
             return hash_info
 

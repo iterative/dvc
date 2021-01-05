@@ -362,7 +362,9 @@ class S3Tree(BaseTree):
                     from_file, Callback=pbar.update, ExtraArgs=self.extra_args,
                 )
 
-    def _upload_multipart(self, stream, to_info, chunk_size):
+    def _upload_multipart(
+        self, stream, to_info, chunk_size, no_progress_bar=False
+    ):
         from boto3.s3.transfer import TransferConfig
 
         config = TransferConfig(
@@ -372,9 +374,14 @@ class S3Tree(BaseTree):
             use_threads=False,
         )
         with self._get_s3() as s3:
-            s3.meta.client.upload_fileobj(
-                stream, to_info.bucket, to_info.path, Config=config,
-            )
+            with Tqdm(disable=no_progress_bar, bytes=True) as pbar:
+                s3.meta.client.upload_fileobj(
+                    stream,
+                    to_info.bucket,
+                    to_info.path,
+                    Config=config,
+                    Callback=pbar.update,
+                )
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         with self._get_obj(from_info) as obj:
