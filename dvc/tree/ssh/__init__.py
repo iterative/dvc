@@ -10,6 +10,7 @@ from funcy import first, memoize, silent, wrap_with
 
 import dvc.prompt as prompt
 from dvc.hash_info import HashInfo
+from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 
 from ..base import BaseTree
@@ -259,6 +260,18 @@ class SSHTree(BaseTree):
                 progress_title=name,
                 no_progress_bar=no_progress_bar,
             )
+
+    def _upload_multipart(
+        self, stream, to_info, chunk_size, no_progress_bar=False
+    ):
+        with self.ssh(to_info) as ssh:
+            with Tqdm(disable=no_progress_bar, bytes=True) as pbar:
+                while True:
+                    data = stream.read(chunk_size)
+                    if not data:
+                        break
+                    ssh.write(data)
+                    pbar.update(len(data))
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
