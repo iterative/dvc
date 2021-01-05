@@ -2,6 +2,7 @@ import itertools
 import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import suppress
 from copy import copy
 from typing import Optional
 
@@ -31,6 +32,10 @@ class DirCacheError(DvcException):
         super().__init__(
             f"Failed to load dir cache for hash value: '{hash_}'."
         )
+
+
+class _CantFilterCache(ValueError):
+    ...
 
 
 @decorator
@@ -103,8 +108,7 @@ class CloudCache:
             for key, value in dir_info.trie.items(hash_key):
                 filtered_dir_info.trie[key[depth:]] = value
         except KeyError:
-            # The directory doesn't exist on the trie, fallback to the original
-            return path_info, hash_info
+            raise _CantFilterCache
         else:
             filtered_hash_info, _ = self._get_dir_info_hash(filtered_dir_info)
             return filter_info, filtered_hash_info
@@ -127,14 +131,7 @@ class CloudCache:
             bool: True if data has changed, False otherwise.
         """
 
-        if filter_info is not None and filter_info != path_info:
-            path = filter_info
-            path_info, hash_info = self._get_filtered_hash_info(
-                path, hash_info, path_info
-            )
-        else:
-            path = path_info
-
+        path = filter_info or path_info
         logger.trace(
             "checking if '%s'('%s') has changed.", path_info, hash_info
         )
@@ -146,6 +143,12 @@ class CloudCache:
         if not hash_info:
             logger.debug("hash value for '%s' is missing.", path_info)
             return True
+
+        with suppress(_CantFilterCache):
+            if path != path_info:
+                path_info, hash_info = self._get_filtered_hash_info(
+                    path, hash_info, path_info
+                )
 
         if self.changed_cache(hash_info):
             logger.debug(
