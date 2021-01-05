@@ -91,7 +91,7 @@ class WebHDFSTree(BaseTree):
         return client
 
     @contextmanager
-    def open(self, path_info, mode="r", encoding=None):
+    def open(self, path_info, mode="r", encoding=None, **kwargs):
         assert mode in {"r", "rt", "rb"}
 
         with self.hdfs_client.read(

@@ -147,7 +147,7 @@ class SSHTree(BaseTree):
         )
 
     @contextmanager
-    def open(self, path_info, mode="r", encoding=None):
+    def open(self, path_info, mode="r", encoding=None, **kwargs):
         assert mode in {"r", "rt", "rb", "wb"}
 
         with self.ssh(path_info) as ssh, closing(
