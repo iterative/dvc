@@ -177,7 +177,7 @@ def list_layout(stages: Iterable[Stage], graph: "nx.DiGraph" = None) -> None:
 
         # title
         title_table = Table.grid(padding=(0, 1), expand=True)
-        title = prepare_stage_name(stage, link=True)
+        title = Padding(prepare_stage_name(stage, link=True), (0, 0, 0, 2))
 
         # basic info at the right side of the table
         info = get_info(stage)
@@ -206,7 +206,7 @@ def list_layout(stages: Iterable[Stage], graph: "nx.DiGraph" = None) -> None:
 
     def column(renderable):
         """Constrain width and align to center to create a column."""
-        return Align.center(renderable, width=LAYOUT_WIDTH, pad=False)
+        return Align.left(renderable, width=LAYOUT_WIDTH, pad=False)
 
     console = Console()
     for idx, stage in enumerate(stages):
