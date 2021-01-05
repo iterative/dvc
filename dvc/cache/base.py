@@ -94,8 +94,9 @@ class CloudCache:
         hash_key = filter_info.relative_to(path_info).parts
 
         # Check whether it is a file that exists on the trie
-        if hash_key in dir_info.trie:
-            return dir_info.trie[hash_key]
+        hi = dir_info.trie.get(hash_key)
+        if hi:
+            return hi
 
         depth = len(hash_key)
         filtered_dir_info = DirInfo()
@@ -105,8 +106,7 @@ class CloudCache:
         except KeyError:
             return None
 
-        filtered_hash_info, _ = self._get_dir_info_hash(filtered_dir_info)
-        return filtered_hash_info
+        return self._get_dir_info_hash(filtered_dir_info)[0]
 
     def changed(self, path_info, hash_info, filter_info=None):
         """Checks if data has changed.
