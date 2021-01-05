@@ -279,7 +279,7 @@ def add_parser_exit_on_error(self, name, **kwargs):
     Python 3.9. See more info at:
         https://github.com/python/cpython/blob/master/Lib/argparse.py
     """
-    if sys.version_info >= (3, 9, 0):
+    if sys.version_info >= (3, 9, 0) and name not in ["config"]:
         kwargs["exit_on_error"] = False
 
     # set prog from the existing prefix
