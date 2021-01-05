@@ -94,9 +94,8 @@ class DataCloud:
 
     def transfer(self, source, jobs=None, remote=None):
         from_tree = get_cloud_tree(self.repo, url=source)
-        from_tree.config["jobs"] = jobs
         remote = self.get_remote(remote, "export-to-remote")
-        return remote.transfer(from_tree)
+        return remote.transfer(from_tree, jobs=jobs)
 
     def status(
         self,

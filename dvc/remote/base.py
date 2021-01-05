@@ -472,7 +472,8 @@ class Remote:
 
         return ret
 
-    def transfer(self, from_tree, no_progress_bar=False):
+    def transfer(self, from_tree, jobs=None, no_progress_bar=False):
+        jobs = jobs or min((from_tree.jobs, self.tree.jobs))
         from_info = from_tree.path_info
         try:
             from_infos = list(from_tree.walk_files(from_info))
@@ -488,7 +489,7 @@ class Remote:
             transfer_file = pbar.wrap_fn(self.cache.transfer_file)
             if from_tree.isdir(from_info):
                 hash_info = self.cache.transfer_directory(
-                    from_tree, from_infos, transfer_file
+                    from_tree, from_infos, transfer_file, jobs=jobs
                 )
             else:
                 _, hash_info = transfer_file(from_tree, from_info)

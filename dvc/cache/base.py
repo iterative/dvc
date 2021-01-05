@@ -289,9 +289,9 @@ class CloudCache:
         rel_target_filename = from_info.relative_to(from_tree.path_info)
         return rel_target_filename.parts, hash_info
 
-    def transfer_directory(self, from_tree, from_infos, func):
+    def transfer_directory(self, from_tree, from_infos, func, jobs):
         dir_info = DirInfo()
-        with ThreadPoolExecutor(max_workers=from_tree.jobs) as executor:
+        with ThreadPoolExecutor(max_workers=jobs) as executor:
             futures = [
                 executor.submit(func, from_tree, from_info)
                 for from_info in from_infos
