@@ -203,6 +203,7 @@ class TestCd(TestDvc):
         self.assertEqual(parent_dir, current_dir)
 
 
+@pytest.mark.skipif(sys.version_info < (3, 9, 0), reason="Requires Python 3.9")
 def test_unknown_command_help(caplog, capsys):
     try:
         _ = parse_args(["unknown"])
