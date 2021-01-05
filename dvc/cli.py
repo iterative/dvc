@@ -3,6 +3,7 @@ import argparse
 import logging
 import os
 import sys
+import types
 from difflib import get_close_matches
 
 from ._debug import add_debugging_flags
@@ -273,19 +274,68 @@ def get_parent_parser():
     return parent_parser
 
 
+def add_parser_exit_on_error(self, name, **kwargs):
+    """Workaround for dynamically setting exit_on_error for subparsers on
+    Python 3.9. See more info at:
+        https://github.com/python/cpython/blob/master/Lib/argparse.py
+    """
+    if sys.version_info >= (3, 9, 0):
+        kwargs["exit_on_error"] = False
+
+    # set prog from the existing prefix
+    if kwargs.get("prog") is None:
+        kwargs["prog"] = "%s %s" % (
+            self._prog_prefix,  # pylint: disable=protected-access
+            name,
+        )  # pylint: disable=protected-access
+
+    aliases = kwargs.pop("aliases", ())
+
+    # create a pseudo-action to hold the choice help
+    if "help" in kwargs:
+        help = kwargs.pop("help")  # pylint: disable=redefined-builtin
+        choice_action = self._ChoicesPseudoAction(
+            name, aliases, help
+        )  # pylint: disable=protected-access
+        self._choices_actions.append(
+            choice_action
+        )  # pylint: disable=protected-access
+
+    # create the parser and add it to the map
+    parser = self._parser_class(**kwargs)
+    self._name_parser_map[name] = parser  # pylint: disable=protected-access
+
+    # make parser available under aliases also
+    for alias in aliases:
+        self._name_parser_map[
+            alias
+        ] = parser  # pylint: disable=protected-access
+
+    return parser
+
+
 def get_main_parser():
     parent_parser = get_parent_parser()
 
     # Main parser
     desc = "Data Version Control"
-    parser = DvcParser(
-        prog="dvc",
-        description=desc,
-        parents=[parent_parser],
-        formatter_class=argparse.RawTextHelpFormatter,
-        add_help=False,
-        exit_on_error=False,
-    )
+    if sys.version_info >= (3, 9, 0):
+        parser = DvcParser(
+            prog="dvc",
+            description=desc,
+            parents=[parent_parser],
+            formatter_class=argparse.RawTextHelpFormatter,
+            add_help=False,
+            exit_on_error=False,
+        )
+    else:
+        parser = DvcParser(
+            prog="dvc",
+            description=desc,
+            parents=[parent_parser],
+            formatter_class=argparse.RawTextHelpFormatter,
+            add_help=False,
+        )
 
     # NOTE: We are doing this to capitalize help message.
     # Unfortunately, there is no easier and clearer way to do it,
@@ -326,6 +376,10 @@ def get_main_parser():
     )
 
     fix_subparsers(subparsers)
+
+    subparsers.add_parser = types.MethodType(
+        add_parser_exit_on_error, subparsers
+    )
 
     for cmd in COMMANDS:
         cmd.add_parser(subparsers, parent_parser)

@@ -1,4 +1,5 @@
 import os
+import sys
 
 import pytest
 
@@ -241,6 +242,7 @@ def test_unknown_subcommand_help(capsys):
     assert output == help_output
 
 
+@pytest.mark.skipif(sys.version_info < (3, 9, 0), reason="Requires Python 3.9")
 @pytest.mark.parametrize(
     "typo,suggestion", [("addd", "add"), ("stats", "status")],
 )
@@ -252,6 +254,7 @@ def test_similar_command_single_suggestion(typo, suggestion, caplog):
     assert f"\n\nThe most similar command is\n\t{suggestion}\n" in caplog.text
 
 
+@pytest.mark.skipif(sys.version_info < (3, 9, 0), reason="Requires Python 3.9")
 def test_similar_command_multiple_suggestions(caplog):
     try:
         _ = parse_args(["remot"])
@@ -263,6 +266,7 @@ def test_similar_command_multiple_suggestions(caplog):
     assert "root" in caplog.text
 
 
+@pytest.mark.skipif(sys.version_info < (3, 9, 0), reason="Requires Python 3.9")
 def test_similar_subcommand_single_suggestion(caplog):
     try:
         _ = parse_args(["remote", "modfiy"])
@@ -271,6 +275,7 @@ def test_similar_subcommand_single_suggestion(caplog):
     assert "\n\nThe most similar command is\n\tremote modify\n" in caplog.text
 
 
+@pytest.mark.skipif(sys.version_info < (3, 9, 0), reason="Requires Python 3.9")
 def test_similar_subcommand_multiple_suggestions(caplog):
     try:
         _ = parse_args(["plots", "dif"])
