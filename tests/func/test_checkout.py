@@ -884,58 +884,58 @@ def test_checkout_executable(tmp_dir, dvc):
 
 def test_checkout_partial(tmp_dir, dvc):
     tmp_dir.dvc_gen(
-        {"db": {"a.txt": "a", "b.txt": "b", "sub_dir": {"c.txt": "c"}}}
+        {"data": {"foo": "a", "bar": "b", "sub_dir": {"c.txt": "c"}}}
     )
 
-    db_dir = tmp_dir / "db"
-    shutil.rmtree(db_dir)
+    data_dir = tmp_dir / "data"
+    shutil.rmtree(data_dir)
 
-    dvc.checkout(targets=os.path.join(db_dir, "a.txt"))
-    assert db_dir.read_text() == {"a.txt": "a"}
+    dvc.checkout(targets=os.path.join(data_dir, "foo"))
+    assert data_dir.read_text() == {"foo": "a"}
 
     dvc.checkout(
-        targets=os.path.join(db_dir, os.path.join("sub_dir", "c.txt"))
+        targets=os.path.join(data_dir, os.path.join("sub_dir", "c.txt"))
     )
-    assert db_dir.read_text() == {"a.txt": "a", "sub_dir": {"c.txt": "c"}}
+    assert data_dir.read_text() == {"foo": "a", "sub_dir": {"c.txt": "c"}}
 
-    dvc.checkout(targets=os.path.join(db_dir, "b.txt"))
-    assert db_dir.read_text() == {
-        "a.txt": "a",
-        "b.txt": "b",
+    dvc.checkout(targets=os.path.join(data_dir, "bar"))
+    assert data_dir.read_text() == {
+        "foo": "a",
+        "bar": "b",
         "sub_dir": {"c.txt": "c"},
     }
 
 
 def test_checkout_partial_unchanged(tmp_dir, dvc):
     original_dir_shape = {
-        "a.txt": "a",
-        "b.txt": "b",
+        "foo": "a",
+        "bar": "b",
         "sub_dir": {"c.txt": "c"},
         "empty_sub_dir": {},
     }
-    tmp_dir.dvc_gen({"db": original_dir_shape})
+    tmp_dir.dvc_gen({"data": original_dir_shape})
 
-    db_dir = tmp_dir / "db"
-    sub_dir = db_dir / "sub_dir"
-    file_1 = db_dir / "a.txt"
-    file_2 = db_dir / "b.txt"
+    data_dir = tmp_dir / "data"
+    sub_dir = data_dir / "sub_dir"
+    foo = data_dir / "foo"
+    bar = data_dir / "bar"
     sub_dir_file = sub_dir / "c.txt"
 
     # Nothing changed, nothing added/deleted/modified
-    stats = dvc.checkout(targets=str(file_2))
+    stats = dvc.checkout(targets=str(bar))
     assert not any(stats.values())
 
     # Irrelevant file changed, still nothing added/deleted/modified
-    file_1.unlink()
-    stats = dvc.checkout(targets=str(file_2))
+    foo.unlink()
+    stats = dvc.checkout(targets=str(bar))
     assert not any(stats.values())
 
     # Relevant change, one modified
-    file_2.unlink()
-    stats = dvc.checkout(targets=str(file_2))
+    bar.unlink()
+    stats = dvc.checkout(targets=str(bar))
     assert len(stats["modified"]) == 1
 
-    # No changes inside db/sub
+    # No changes inside data/sub
     stats = dvc.checkout(targets=str(sub_dir))
     assert not any(stats.values())
 
@@ -944,35 +944,35 @@ def test_checkout_partial_unchanged(tmp_dir, dvc):
     stats = dvc.checkout(targets=str(sub_dir))
     assert len(stats["modified"]) == 1
 
-    stats = dvc.checkout(targets=str(db_dir / "empty_sub_dir"))
+    stats = dvc.checkout(targets=str(data_dir / "empty_sub_dir"))
     assert not any(stats.values())
 
-    dvc.checkout(targets=str(db_dir))
+    dvc.checkout(targets=str(data_dir))
 
     # Everything is in place, no action taken
-    stats = dvc.checkout(targets=str(db_dir))
+    stats = dvc.checkout(targets=str(data_dir))
     assert not any(stats.values())
 
 
 def test_checkout_partial_subdir(tmp_dir, dvc):
     tmp_dir.dvc_gen(
-        {"db": {"a.txt": "a", "sub_dir": {"b.txt": "b", "c.txt": "c"}}}
+        {"data": {"foo": "a", "sub_dir": {"bar": "b", "c.txt": "c"}}}
     )
 
-    db_dir = tmp_dir / "db"
-    sub_dir = db_dir / "sub_dir"
-    sub_dir_file_2 = sub_dir / "c.txt"
+    data_dir = tmp_dir / "data"
+    sub_dir = data_dir / "sub_dir"
+    sub_dir_bar = sub_dir / "c.txt"
 
     shutil.rmtree(sub_dir)
     dvc.checkout(targets=str(sub_dir))
-    assert db_dir.read_text() == {
-        "a.txt": "a",
-        "sub_dir": {"b.txt": "b", "c.txt": "c"},
+    assert data_dir.read_text() == {
+        "foo": "a",
+        "sub_dir": {"bar": "b", "c.txt": "c"},
     }
 
-    sub_dir_file_2.unlink()
-    dvc.checkout(targets=str(sub_dir_file_2))
-    assert db_dir.read_text() == {
-        "a.txt": "a",
-        "sub_dir": {"b.txt": "b", "c.txt": "c"},
+    sub_dir_bar.unlink()
+    dvc.checkout(targets=str(sub_dir_bar))
+    assert data_dir.read_text() == {
+        "foo": "a",
+        "sub_dir": {"bar": "b", "c.txt": "c"},
     }
