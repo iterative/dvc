@@ -88,7 +88,29 @@ class CloudCache:
 
         return DirInfo.from_list(d)
 
-    def changed(self, path_info, hash_info):
+    def _filter_hash_info(self, hash_info, path_info, filter_info):
+        if not filter_info:
+            return hash_info
+
+        dir_info = self.get_dir_cache(hash_info)
+        hash_key = filter_info.relative_to(path_info).parts
+
+        # Check whether it is a file that exists on the trie
+        hi = dir_info.trie.get(hash_key)
+        if hi:
+            return hi
+
+        depth = len(hash_key)
+        filtered_dir_info = DirInfo()
+        try:
+            for key, value in dir_info.trie.items(hash_key):
+                filtered_dir_info.trie[key[depth:]] = value
+        except KeyError:
+            return None
+
+        return self._get_dir_info_hash(filtered_dir_info)[0]
+
+    def changed(self, path_info, hash_info, filter_info=None):
         """Checks if data has changed.
 
         A file is considered changed if:
@@ -100,40 +122,41 @@ class CloudCache:
         Args:
             path_info: dict with path information.
             hash: expected hash value for this data.
+            filter_info: an optional argument to target a specific path.
 
         Returns:
             bool: True if data has changed, False otherwise.
         """
 
+        path = filter_info or path_info
         logger.trace(
             "checking if '%s'('%s') has changed.", path_info, hash_info
         )
 
-        if not self.tree.exists(path_info):
-            logger.debug("'%s' doesn't exist.", path_info)
+        if not self.tree.exists(path):
+            logger.debug("'%s' doesn't exist.", path)
             return True
 
-        if not hash_info:
-            logger.debug("hash value for '%s' is missing.", path_info)
+        hi = self._filter_hash_info(hash_info, path_info, filter_info)
+        if not hi:
+            logger.debug("hash value for '%s' is missing.", path)
             return True
 
-        if self.changed_cache(hash_info):
-            logger.debug(
-                "cache for '%s'('%s') has changed.", path_info, hash_info
-            )
+        if self.changed_cache(hi):
+            logger.debug("cache for '%s'('%s') has changed.", path, hi)
             return True
 
-        actual = self.tree.get_hash(path_info)
-        if hash_info != actual:
+        actual = self.tree.get_hash(path)
+        if hi != actual:
             logger.debug(
                 "hash value '%s' for '%s' has changed (actual '%s').",
-                hash_info,
+                hi,
                 actual,
-                path_info,
+                path,
             )
             return True
 
-        logger.trace("'%s' hasn't changed.", path_info)
+        logger.trace("'%s' hasn't changed.", path)
         return False
 
     def link(self, from_info, to_info):
@@ -519,7 +542,9 @@ class CloudCache:
             self.safe_remove(path_info, force=force)
             failed = path_info
 
-        elif not relink and not self.changed(path_info, hash_info):
+        elif not relink and not self.changed(
+            path_info, hash_info, filter_info=filter_info
+        ):
             logger.trace("Data '%s' didn't change.", path_info)
             skip = True
 
