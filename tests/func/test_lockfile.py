@@ -206,15 +206,14 @@ def test_migrates_v1_lockfile_to_v2_during_dump(
 
     assert "Migrating lock file 'dvc.lock' from v1 to v2" in caplog.messages
     d = load_yaml(tmp_dir / "dvc.lock")
-    assert d == {"stages": v1_repo_lock, "meta": {"version": "2.0"}}
+    assert d == {"stages": v1_repo_lock, "schema": "2.0"}
 
 
 @pytest.mark.parametrize(
-    "version_info",
-    [{"version": "1.1"}, {"version": "2.1"}, {"version": "3.0"}],
+    "version_info", [{"schema": "1.1"}, {"schema": "2.1"}, {"schema": "3.0"}],
 )
 def test_lockfile_invalid_versions(tmp_dir, dvc, version_info):
-    lockdata = {"meta": version_info, "stages": {"foo": {"cmd": "echo foo"}}}
+    lockdata = {**version_info, "stages": {"foo": {"cmd": "echo foo"}}}
     dump_yaml("dvc.lock", lockdata)
     with pytest.raises(LockfileCorruptedError) as exc_info:
         Lockfile(dvc, tmp_dir / "dvc.lock").load()
@@ -222,7 +221,7 @@ def test_lockfile_invalid_versions(tmp_dir, dvc, version_info):
     assert str(exc_info.value) == "Lockfile 'dvc.lock' is corrupted."
     assert (
         str(exc_info.value.__cause__) == "'dvc.lock' format error: "
-        f"invalid version {version_info['version']}, "
+        f"invalid schema version {version_info['schema']}, "
         "expected one of ['2.0'] for dictionary value @ "
-        "data['meta']['version']"
+        "data['schema']"
     )
