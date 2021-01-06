@@ -888,19 +888,17 @@ def test_checkout_partial(tmp_dir, dvc):
     )
 
     db_dir = tmp_dir / "db"
-    file_1, file_2, sub_dir_file = [
-        db_dir / filename for filename in ("a.txt", "b.txt", "sub_dir/c.txt")
-    ]
-
     shutil.rmtree(db_dir)
 
-    dvc.checkout(targets=str(file_1))
+    dvc.checkout(targets=os.path.join(db_dir, "a.txt"))
     assert db_dir.read_text() == {"a.txt": "a"}
 
-    dvc.checkout(targets=str(sub_dir_file))
+    dvc.checkout(
+        targets=os.path.join(db_dir, os.path.join("sub_dir", "c.txt"))
+    )
     assert db_dir.read_text() == {"a.txt": "a", "sub_dir": {"c.txt": "c"}}
 
-    dvc.checkout(targets=str(file_2))
+    dvc.checkout(targets=os.path.join(db_dir, "b.txt"))
     assert db_dir.read_text() == {
         "a.txt": "a",
         "b.txt": "b",
@@ -919,9 +917,9 @@ def test_checkout_partial_unchanged(tmp_dir, dvc):
 
     db_dir = tmp_dir / "db"
     sub_dir = db_dir / "sub_dir"
-    file_1, file_2, sub_dir_file = [
-        db_dir / filename for filename in ("a.txt", "b.txt", "sub_dir/c.txt")
-    ]
+    file_1 = db_dir / "a.txt"
+    file_2 = db_dir / "b.txt"
+    sub_dir_file = sub_dir / "c.txt"
 
     # Nothing changed, nothing added/deleted/modified
     stats = dvc.checkout(targets=str(file_2))
