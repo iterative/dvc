@@ -11,15 +11,14 @@ from dvc.exceptions import FileMissingError
 from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
 from dvc.exceptions import NotDvcRepoError, OutputNotFoundError
 from dvc.path_info import PathInfo
-from dvc.scm import Base
 from dvc.scm.base import SCMError
-from dvc.tree.repo import RepoTree
 from dvc.utils.fs import path_isin
 
 from .graph import build_graph, build_outs_graph, get_pipelines
 from .trie import build_outs_trie
 
 if TYPE_CHECKING:
+    from dvc.scm import Base
     from dvc.tree.base import BaseTree
 
 
@@ -88,7 +87,7 @@ class Repo:
     def _get_repo_dirs(
         self,
         root_dir: str = None,
-        scm: Base = None,
+        scm: "Base" = None,
         rev: str = None,
         uninitialized: bool = False,
     ):
@@ -114,6 +113,8 @@ class Repo:
                 scm = SCM(root_dir or os.curdir)
             except SCMError:
                 scm = SCM(os.curdir, no_scm=True)
+
+            from dvc.scm import Base
 
             assert isinstance(scm, Base)
             root_dir = scm.root_dir
@@ -415,11 +416,14 @@ class Repo:
 
     @cached_property
     def repo_tree(self):
+        from dvc.tree.repo import RepoTree
+
         return RepoTree(self, subrepos=self.subrepos, fetch=True)
 
     @contextmanager
     def open_by_relpath(self, path, remote=None, mode="r", encoding=None):
         """Opens a specified resource as a file descriptor"""
+        from dvc.tree.repo import RepoTree
 
         tree = RepoTree(self, stream=True, subrepos=True)
         path = PathInfo(self.root_dir) / path

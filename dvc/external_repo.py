@@ -3,28 +3,22 @@ import os
 import tempfile
 import threading
 from contextlib import contextmanager
-from distutils.dir_util import copy_tree
 from typing import Dict, Iterable
 
 from funcy import cached_property, reraise, retry, wrap_with
 
-from dvc.config import NoRemoteError, NotDvcRepoError
 from dvc.exceptions import (
     DvcException,
     FileMissingError,
     NoOutputInExternalRepoError,
     NoRemoteInExternalRepoError,
+    NotDvcRepoError,
     OutputNotFoundError,
     PathMissingError,
 )
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
-from dvc.scm.base import CloneError
-from dvc.scm.git import Git
-from dvc.tree.local import LocalTree
-from dvc.tree.repo import RepoTree
 from dvc.utils import relpath
-from dvc.utils.fs import remove
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +29,9 @@ class IsADVCRepoError(DvcException):
 
 @contextmanager
 def external_repo(url, rev=None, for_write=False, **kwargs):
+    from dvc.config import NoRemoteError
+    from dvc.scm.git import Git
+
     logger.debug("Creating external repo %s@%s", url, rev)
     path = _cached_clone(url, rev, for_write=for_write)
     # Local HEAD points to the tip of whatever branch we first cloned from
@@ -158,6 +155,8 @@ class ExternalRepo(Repo):
         )
 
     def get_rev(self):
+        from dvc.tree.local import LocalTree
+
         assert self.scm
         if isinstance(self.tree, LocalTree):
             return self.scm.get_rev()
@@ -246,6 +245,8 @@ class ExternalRepo(Repo):
         """
         Provides a combined tree of a single repo with dvc + git/local tree.
         """
+        from dvc.tree.repo import RepoTree
+
         kw = {**self.tree_confs, **kwargs}
         if "fetch" not in kw:
             kw["fetch"] = True
@@ -275,6 +276,8 @@ def _cached_clone(url, rev, for_write=False):
     revision checked out. If for_write is set prevents reusing this dir via
     cache.
     """
+    from distutils.dir_util import copy_tree
+
     # even if we have already cloned this repo, we may need to
     # fetch/fast-forward to get specified rev
     clone_path, shallow = _clone_default_branch(url, rev, for_write=for_write)
@@ -301,6 +304,8 @@ def _clone_default_branch(url, rev, for_write=False):
 
     The cloned is reactualized with git pull unless rev is a known sha.
     """
+    from dvc.scm.git import Git
+
     clone_path, shallow = CLONES.get(url, (None, False))
 
     git = None
@@ -328,6 +333,8 @@ def _clone_default_branch(url, rev, for_write=False):
             clone_path = tempfile.mkdtemp("dvc-clone")
             if not for_write and rev and not Git.is_sha(rev):
                 # If rev is a tag or branch name try shallow clone first
+                from dvc.scm.base import CloneError
+
                 try:
                     git = Git.clone(url, clone_path, shallow_branch=rev)
                     shallow = True
@@ -361,6 +368,8 @@ def _unshallow(git):
 
 
 def _git_checkout(repo_path, rev):
+    from dvc.scm.git import Git
+
     logger.debug("erepo: git checkout %s@%s", repo_path, rev)
     git = Git(repo_path)
     try:
@@ -370,6 +379,8 @@ def _git_checkout(repo_path, rev):
 
 
 def _remove(path):
+    from dvc.utils.fs import remove
+
     if os.name == "nt":
         # git.exe may hang for a while not permitting to remove temp dir
         os_retry = retry(5, errors=OSError, timeout=0.1)
