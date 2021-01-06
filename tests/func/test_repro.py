@@ -266,28 +266,6 @@ class TestReproDepDirWithOutputsUnderIt(SingleStageRun, TestDvc):
         self.assertEqual(len(stages), 2)
 
 
-class TestReproNoDeps(TestRepro):
-    def test(self):
-        out = "out"
-        code_file = "out.py"
-        stage_file = "out.dvc"
-        code = (
-            'import uuid\nwith open("{}", "w+") as fd:\n'
-            "\tfd.write(str(uuid.uuid4()))\n".format(out)
-        )
-        with open(code_file, "w+") as fd:
-            fd.write(code)
-        stage = self._run(
-            fname=stage_file,
-            outs=[out],
-            cmd=f"python {code_file}",
-            name="uuid",
-        )
-
-        stages = self.dvc.reproduce(self._get_stage_target(stage))
-        self.assertEqual(len(stages), 1)
-
-
 class TestReproForce(TestRepro):
     def test(self):
         stages = self.dvc.reproduce(
@@ -572,11 +550,10 @@ class TestReproFrozenCallback(SingleStageRun, TestDvc):
     def test(self):
         file1 = "file1"
         file1_stage = file1 + ".dvc"
-        # NOTE: purposefully not specifying dependencies
+        # NOTE: purposefully not specifying deps or outs
         # to create a callback stage.
         stage = self._run(
             fname=file1_stage,
-            outs=[file1],
             cmd=f"python {self.CODE} {self.FOO} {file1}",
             name="copy-FOO-file1",
         )
@@ -864,6 +841,7 @@ class TestReproAlreadyCached(TestRepro):
     def test(self):
         stage = self._run(
             fname="datetime.dvc",
+            always_changed=True,
             deps=[],
             outs=["datetime.txt"],
             cmd='python -c "import time; print(time.time())" > datetime.txt',

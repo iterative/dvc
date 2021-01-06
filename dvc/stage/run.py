@@ -113,11 +113,7 @@ def _run(stage, executable, cmd, checkpoint_func, **kwargs):
 
 
 def cmd_run(stage, dry=False, checkpoint_func=None):
-    logger.info(
-        "Running %s" "stage '%s':",
-        "callback " if stage.is_callback else "",
-        stage.addressing,
-    )
+    logger.info("Running stage '%s':", stage.addressing)
     commands = _enforce_cmd_list(stage.cmd)
     kwargs = prepare_kwargs(stage, checkpoint_func=checkpoint_func)
     executable = get_executable()

@@ -189,10 +189,7 @@ def v1_repo_lock(tmp_dir, dvc):
 
 def test_can_read_v1_lockfile(tmp_dir, dvc, v1_repo_lock):
     assert dvc.status() == {
-        "bar": [
-            {"changed outs": {"bar.txt": "not in cache"}},
-            "always changed",
-        ],
+        "bar": [{"changed outs": {"bar.txt": "not in cache"}}],
         "foo": ["always changed"],
     }
 
