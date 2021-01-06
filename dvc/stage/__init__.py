@@ -7,7 +7,6 @@ from typing import Dict, Optional
 
 from funcy import cached_property, project
 
-import dvc.dependency as dependency
 import dvc.prompt as prompt
 from dvc.exceptions import (
     CacheLinkError,
@@ -15,7 +14,6 @@ from dvc.exceptions import (
     DvcException,
     MergeError,
 )
-from dvc.output.base import OutputDoesNotExistError
 from dvc.utils import relpath
 
 from . import params
@@ -241,7 +239,9 @@ class Stage(params.StageParams):
         if not self.is_import:
             return False
 
-        return isinstance(self.deps[0], dependency.RepoDependency)
+        from dvc.dependency import RepoDependency
+
+        return isinstance(self.deps[0], RepoDependency)
 
     @property
     def is_checkpoint(self):
@@ -449,6 +449,8 @@ class Stage(params.StageParams):
             dep.save()
 
     def save_outs(self, allow_missing=False):
+        from dvc.output.base import OutputDoesNotExistError
+
         for out in self.outs:
             try:
                 out.save()
@@ -478,6 +480,8 @@ class Stage(params.StageParams):
 
     @rwlocked(write=["outs"])
     def commit(self, allow_missing=False):
+        from dvc.output.base import OutputDoesNotExistError
+
         link_failures = []
         for out in self.outs:
             try:

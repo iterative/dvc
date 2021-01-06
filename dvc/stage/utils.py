@@ -4,14 +4,7 @@ from itertools import product
 
 from funcy import lsplit, rpartial
 
-from dvc import dependency, output
-from dvc.utils.fs import path_isin
-
-from ..dependency import ParamsDependency
 from ..hash_info import HashInfo
-from ..tree.local import LocalTree
-from ..tree.s3 import S3Tree
-from ..utils import dict_md5, format_link, relpath
 from .exceptions import (
     MissingDataSource,
     StageExternalOutputsError,
@@ -22,6 +15,8 @@ from .exceptions import (
 
 
 def check_stage_path(repo, path, is_wdir=False):
+    from dvc.utils.fs import path_isin
+
     assert repo is not None
 
     error_msg = "{wdir_or_path} '{path}' {{}}".format(
@@ -42,6 +37,8 @@ def check_stage_path(repo, path, is_wdir=False):
 
 
 def fill_stage_outputs(stage, **kwargs):
+    from dvc.output import loads_from
+
     assert not stage.outs
 
     keys = [
@@ -63,7 +60,7 @@ def fill_stage_outputs(stage, **kwargs):
     )
 
     for key in keys:
-        stage.outs += output.loads_from(
+        stage.outs += loads_from(
             stage,
             kwargs.get(key, []),
             use_cache="no_cache" not in key,
@@ -75,12 +72,12 @@ def fill_stage_outputs(stage, **kwargs):
 
 
 def _load_live_outputs(stage, live_l=None, live_summary=False):
-    from dvc.output import BaseOutput
+    from dvc.output import BaseOutput, loads_from
 
     outs = []
     if live_l:
 
-        outs += output.loads_from(
+        outs += loads_from(
             stage,
             [live_l],
             use_cache=False,
@@ -91,14 +88,18 @@ def _load_live_outputs(stage, live_l=None, live_summary=False):
 
 
 def fill_stage_dependencies(stage, deps=None, erepo=None, params=None):
+    from dvc.dependency import loads_from, loads_params
+
     assert not stage.deps
     stage.deps = []
-    stage.deps += dependency.loads_from(stage, deps or [], erepo=erepo)
-    stage.deps += dependency.loads_params(stage, params or [])
+    stage.deps += loads_from(stage, deps or [], erepo=erepo)
+    stage.deps += loads_params(stage, params or [])
 
 
 def check_no_externals(stage):
     from urllib.parse import urlparse
+
+    from dvc.utils import format_link
 
     # NOTE: preventing users from accidentally using external outputs. See
     # https://github.com/iterative/dvc/issues/1545 for more details.
@@ -154,6 +155,9 @@ def check_missing_outputs(stage):
 def stage_dump_eq(stage_cls, old_d, new_d):
     # NOTE: need to remove checksums from old dict in order to compare
     # it to the new one, since the new one doesn't have checksums yet.
+    from ..tree.local import LocalTree
+    from ..tree.s3 import S3Tree
+
     old_d.pop(stage_cls.PARAM_MD5, None)
     new_d.pop(stage_cls.PARAM_MD5, None)
     outs = old_d.get(stage_cls.PARAM_OUTS, [])
@@ -176,6 +180,8 @@ def stage_dump_eq(stage_cls, old_d, new_d):
 
 def compute_md5(stage):
     from dvc.output.base import BaseOutput
+
+    from ..utils import dict_md5
 
     d = stage.dumpd()
 
@@ -208,6 +214,8 @@ def compute_md5(stage):
 
 
 def resolve_wdir(wdir, path):
+    from ..utils import relpath
+
     rel_wdir = relpath(wdir, os.path.dirname(path))
     return pathlib.PurePath(rel_wdir).as_posix() if rel_wdir != "." else None
 
@@ -238,4 +246,6 @@ def get_dump(stage):
 
 
 def split_params_deps(stage):
+    from ..dependency import ParamsDependency
+
     return lsplit(rpartial(isinstance, ParamsDependency), stage.deps)

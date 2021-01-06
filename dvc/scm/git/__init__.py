@@ -15,7 +15,6 @@ from dvc.exceptions import GitHookAlreadyExistsError
 from dvc.scm.base import Base, FileNotInRepoError, RevError
 from dvc.utils import relpath
 from dvc.utils.fs import path_isin
-from dvc.utils.serialize import modify_yaml
 
 from .backend.base import BaseGitBackend, NoGitBackendError
 from .backend.dulwich import DulwichBackend
@@ -229,6 +228,8 @@ class Git(Base):
             self._install_hook("pre-commit")
             self._install_hook("pre-push")
             return
+
+        from dvc.utils.serialize import modify_yaml
 
         config_path = os.path.join(self.root_dir, ".pre-commit-config.yaml")
         with modify_yaml(config_path) as config:
