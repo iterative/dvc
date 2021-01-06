@@ -8,14 +8,9 @@ from typing import TYPE_CHECKING, Callable, Optional, Tuple, Type, Union
 
 from funcy import lfilter, wrap_with
 
-from dvc.dvcfile import is_valid_filename
 from dvc.hash_info import HashInfo
 from dvc.path_info import PathInfo
-from dvc.utils import file_md5, is_exec
-from dvc.utils.collections import PathStringTrie
-from dvc.utils.fs import copy_fobj_to_file, makedirs
 
-from ._metadata import Metadata
 from .base import BaseTree
 from .dvc import DvcTree
 
@@ -44,6 +39,8 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         self, repo, subrepos=False, repo_factory: RepoFactory = None, **kwargs
     ):
         super().__init__(repo, {"url": repo.root_dir})
+
+        from dvc.utils.collections import PathStringTrie
 
         if not repo_factory:
             from dvc.repo import Repo
@@ -261,6 +258,8 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         yield from self._walk(tree_walk, dvc_walk, **kwargs)
 
     def _walk(self, repo_walk, dvc_walk=None, dvcfiles=False):
+        from dvc.dvcfile import is_valid_filename
+
         assert repo_walk
         try:
             _, dvc_dirs, dvc_fnames = (
@@ -392,6 +391,8 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         will be used. If path_info is a git file, MD5 will be computed for
         the git object.
         """
+        from dvc.utils import file_md5
+
         if not self.exists(path_info):
             raise FileNotFoundError
         _, dvc_tree = self._get_tree_pair(path_info)
@@ -403,6 +404,8 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         return HashInfo(self.PARAM_CHECKSUM, file_md5(path_info, self)[0])
 
     def copytree(self, top, dest):
+        from dvc.utils.fs import copy_fobj_to_file, makedirs
+
         top = PathInfo(top)
         dest = PathInfo(dest)
 
@@ -445,6 +448,8 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         if not stat_result and not dvc_meta:
             raise FileNotFoundError
 
+        from ._metadata import Metadata
+
         meta = dvc_meta or Metadata(
             path_info=path_info,
             repo=self._get_repo(abspath) or self._main_repo,
@@ -454,5 +459,7 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         meta.isdir = meta.isdir or isdir
 
         if not dvc_meta:
+            from dvc.utils import is_exec
+
             meta.is_exec = bool(stat_result) and is_exec(stat_result.st_mode)
         return meta
