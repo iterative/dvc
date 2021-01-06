@@ -1,5 +1,4 @@
 import os
-import sys
 
 import pytest
 
@@ -16,6 +15,7 @@ from dvc.command.repro import CmdRepro
 from dvc.command.run import CmdRun
 from dvc.command.status import CmdDataStatus
 from dvc.exceptions import DvcException, DvcParserError
+from tests import PY39
 from tests.basic_env import TestDvc
 
 
@@ -204,7 +204,7 @@ class TestCd(TestDvc):
 
 
 @pytest.mark.skipif(
-    sys.version_info < (3, 9, 0),
+    not PY39,
     reason="exit_on_error for command suggestions requires Python 3.9",
 )
 def test_unknown_command_help(caplog, capsys):
@@ -247,7 +247,7 @@ def test_unknown_subcommand_help(capsys):
 
 
 @pytest.mark.skipif(
-    sys.version_info < (3, 9, 0),
+    not PY39,
     reason="exit_on_error for command suggestions requires Python 3.9",
 )
 @pytest.mark.parametrize(
@@ -262,7 +262,7 @@ def test_similar_command_single_suggestion(typo, suggestion, caplog):
 
 
 @pytest.mark.skipif(
-    sys.version_info < (3, 9, 0),
+    not PY39,
     reason="exit_on_error for command suggestions requires Python 3.9",
 )
 def test_similar_command_multiple_suggestions(caplog):
@@ -277,7 +277,7 @@ def test_similar_command_multiple_suggestions(caplog):
 
 
 @pytest.mark.skipif(
-    sys.version_info < (3, 9, 0),
+    not PY39,
     reason="exit_on_error for command suggestions requires Python 3.9",
 )
 def test_similar_subcommand_single_suggestion(caplog):
@@ -289,7 +289,7 @@ def test_similar_subcommand_single_suggestion(caplog):
 
 
 @pytest.mark.skipif(
-    sys.version_info < (3, 9, 0),
+    not PY39,
     reason="exit_on_error for command suggestions requires Python 3.9",
 )
 def test_similar_subcommand_multiple_suggestions(caplog):
