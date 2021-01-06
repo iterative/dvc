@@ -20,7 +20,7 @@ _dvc_compgen_DVCFiles() {
 }
 
 _dvc_compgen_stages() {
-    local _dvc_stages=($(dvc stages -sq))
+    local _dvc_stages=($(dvc stages -q --list-names))
     compgen -W "${_dvc_stages[*]}" -- $1
 }
 
@@ -37,7 +37,7 @@ _dvc_compadd_DVCFiles() {
 
 _dvc_compadd_stages() {
     # this will also show up the description of the stages
-    _describe 'stages' "($(dvc stages -sq --with-desc))"
+    _describe 'stages' "($(dvc stages -q --compact))"
 }
 
 _dvc_compadd_stages_and_files() {

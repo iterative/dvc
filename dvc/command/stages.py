@@ -214,25 +214,46 @@ def list_layout(stages: Iterable[Stage], graph: "nx.DiGraph" = None) -> None:
         console.print(column(render_stage(stage, idx)))
 
 
-def short_output(stage: "Stage", with_desc=False):
-    address = stage.addressing
-    if not with_desc:
-        return address
-    # ZSH's `_describe` uses `:` to split the command which might make `--all`
-    # unusable. If we choose to do it later, manual parsing on completion
-    # script will be required.
-    sep = ":"
+def short_output(stage: "Stage") -> Tuple[str, str]:
     desc = stage.desc or generate_description(stage, with_size=False)
-    # need to quote, otherwise zsh only shows the first word
-    return "{address}{sep}'{desc}'".format(address=address, sep=sep, desc=desc)
+    return stage.addressing, desc
+
+
+def get_stages_list(stages: List["Stage"]) -> List[Tuple[str, str]]:
+    ret: List[Tuple[str, str]] = []
+    for stage in stages:
+        ret.append(short_output(stage))
+    return ret
 
 
 class CmdStages(CmdBase):
-    def _display_short(self, stages: List["Stage"], with_desc=False):
-        if self.args.short:
+    def _display_short(
+        self,
+        stages: List["Stage"],
+        compact=False,
+        names_only=False,
+        table=False,
+    ):
+        if names_only:
+            # NOTE: this output format is used for autocompletion as well
             for stage in stages:
-                print(short_output(stage, with_desc=with_desc))
-            return 0
+                print(stage.addressing)
+            return
+
+        data = get_stages_list(stages)
+        if compact:
+            # NOTE: compact format is used in zsh autocompletion
+            for name, desc in data:
+                print(f"{name}:'{desc}'")
+            return
+
+        table = Table() if table else Table.grid((0, 1))
+        table.add_column("Stages")
+        table.add_column("Description")
+        console = Console()
+        for name, desc in data:
+            table.add_row(name, desc)
+        console.print(table)
 
     def run(self):
         def log_error(relpath: str, exc: Exception):
@@ -260,8 +281,19 @@ class CmdStages(CmdBase):
                 )
             )
 
-        if self.args.short:
-            return self._display_short(stages, with_desc=self.args.with_desc)
+        if (
+            self.args.short
+            or self.args.list_names
+            or self.args.compact
+            or self.args.table
+        ):
+            self._display_short(
+                stages,
+                compact=self.args.compact,
+                names_only=self.args.list_names,
+                table=self.args.table,
+            )
+            return 0
 
         # if graph checks fail, skip showing downstream nodes
         try:
@@ -315,12 +347,24 @@ def add_parser(subparsers, parent_parser):
         "--short",
         action="store_true",
         default=False,
-        help="List only the names of the stage",
+        help="Prints short output",
     )
     stages_parser.add_argument(
-        "--with-desc",
+        "--list-names",
         action="store_true",
         default=False,
-        help="Print description of the stage (applies only on --short output)",
+        help="List only the names of the stages",
+    )
+    stages_parser.add_argument(
+        "--table",
+        action="store_true",
+        default=False,
+        help="Display as a table",
+    )
+    stages_parser.add_argument(
+        "--compact",
+        action="store_true",
+        default=False,
+        help="Show a compact list of names and description",
     )
     stages_parser.set_defaults(func=CmdStages)
