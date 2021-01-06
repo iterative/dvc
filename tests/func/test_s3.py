@@ -1,3 +1,4 @@
+import io
 from functools import wraps
 
 import boto3
@@ -113,9 +114,25 @@ def test_copy_multipart_preserve_etag():
     S3Tree._copy(s3, from_info, to_info, {})
 
 
+@mock_s3
 def test_s3_isdir(tmp_dir, dvc, s3):
     s3.gen({"data": {"foo": "foo"}})
     tree = S3Tree(dvc, s3.config)
 
     assert not tree.isdir(s3 / "data" / "foo")
     assert tree.isdir(s3 / "data")
+
+@mock_s3
+def test_multipart_upload(dvc):
+    from_info, to_info = _get_src_dst()
+    s3 = boto3.client("s3")
+    s3.create_bucket(Bucket=from_info.bucket)
+
+    tree = S3Tree(dvc, {"url": str(to_info)})
+
+    stream = io.BytesIO(b"data")
+    tree._upload_multipart(stream, to_info, 1)
+
+    assert tree.exists(to_info)
+    with tree.open(to_info) as stream:
+        assert stream.read() == "data"
