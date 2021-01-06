@@ -173,14 +173,12 @@ def v1_repo_lock(tmp_dir, dvc):
     v1_lockdata = {
         "foo": {"cmd": "echo foo"},
         "bar": {
-            "cmd": "echo bar > bar.txt",
+            "cmd": "echo bar>bar.txt",
             "outs": [{"path": "bar.txt", **hi.to_dict()}],
         },
     }
     dvc.run(cmd="echo foo", name="foo", no_exec=True)
-    dvc.run(
-        cmd="echo bar > bar.txt", outs=["bar.txt"], name="bar", no_exec=True
-    )
+    dvc.run(cmd="echo bar>bar.txt", outs=["bar.txt"], name="bar", no_exec=True)
     dump_yaml(tmp_dir / "dvc.lock", v1_lockdata)
     yield v1_lockdata
 

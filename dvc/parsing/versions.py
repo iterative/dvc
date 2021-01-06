@@ -28,7 +28,7 @@ class LOCKFILE_VERSION(VersionEnum):
         # 1) if it's empty or or is not a dict, use the latest one (V2).
         # 2) use the `meta.version`
         # 3) if it's not in any of the supported version, use the latest schema
-        # 3) if there's no version identifier, it's a V1
+        # 4) if there's no version identifier, it's a V1
         if not data or not isinstance(data, Mapping):
             return cls(cls.V2)
 
