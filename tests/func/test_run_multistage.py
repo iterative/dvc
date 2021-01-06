@@ -420,8 +420,7 @@ def test_run_external_outputs(
 
     assert (tmp_dir / "dvc.yaml").read_text() == dvc_yaml
     assert (tmp_dir / "dvc.lock").read_text() == (
-        "meta:\n"
-        "  version: '2.0'\n"
+        "schema: '2.0'\n"
         "stages:\n"
         "  mystage:\n"
         "    cmd: mycmd\n"

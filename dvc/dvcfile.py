@@ -6,7 +6,7 @@ import os
 from voluptuous import MultipleInvalid
 
 from dvc.exceptions import DvcException
-from dvc.parsing.versions import LOCKFILE_VERSION, META_KWD
+from dvc.parsing.versions import LOCKFILE_VERSION, SCHEMA_KWD
 from dvc.stage import serialize
 from dvc.stage.exceptions import (
     StageFileBadNameError,
@@ -289,14 +289,14 @@ def get_lockfile_schema(d):
     return schema[version]
 
 
-def migrate_lock_v1_to_v2(d, meta):
+def migrate_lock_v1_to_v2(d, version_info):
     stages = {k: v for k, v in d.items()}
 
     for key in stages:
         d.pop(key)
 
     # forcing order, meta should always be at the top
-    d.update(meta)
+    d.update(version_info)
     d["stages"] = stages
 
 
@@ -323,9 +323,9 @@ class Lockfile(FileMixin):
         return data
 
     @property
-    def meta(self):
+    def latest_version_info(self):
         version = LOCKFILE_VERSION.V2.value  # pylint:disable=no-member
-        return {META_KWD: {"version": version}}
+        return {SCHEMA_KWD: version}
 
     def dump(self, stage, **kwargs):
         stage_data = serialize.to_lockfile(stage)
@@ -336,10 +336,10 @@ class Lockfile(FileMixin):
                 logger.info(
                     "Migrating lock file '%s' from v1 to v2", self.relpath
                 )
-                migrate_lock_v1_to_v2(data, self.meta)
+                migrate_lock_v1_to_v2(data, self.latest_version_info)
             else:
                 if not data:
-                    data.update(self.meta)
+                    data.update(self.latest_version_info)
                     # order is important, meta should always be at the top
                     logger.info("Generating lock file '%s'", self.relpath)
 

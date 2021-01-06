@@ -10,8 +10,8 @@ def test_stage_dump_no_outs_deps(tmp_dir, dvc):
     lockfile = Lockfile(dvc, "path.lock")
     lockfile.dump(stage)
     assert lockfile.load() == {
+        "schema": "2.0",
         "stages": {"s1": {"cmd": "command"}},
-        "meta": {"version": "2.0"},
     }
 
 
@@ -22,8 +22,8 @@ def test_stage_dump_when_already_exists(tmp_dir, dvc):
     lockfile = Lockfile(dvc, "path.lock")
     lockfile.dump(stage)
     assert lockfile.load() == {
+        "schema": "2.0",
         "stages": {**data, "s2": {"cmd": "command2"}},
-        "meta": {"version": "2.0"},
     }
 
 
@@ -40,8 +40,8 @@ def test_stage_dump_with_deps_and_outs(tmp_dir, dvc):
     stage = PipelineStage(name="s2", repo=dvc, path="path", cmd="command2")
     lockfile.dump(stage)
     assert lockfile.load() == {
+        "schema": "2.0",
         "stages": {**data, "s2": {"cmd": "command2"}},
-        "meta": {"version": "2.0"},
     }
 
 
@@ -52,8 +52,8 @@ def test_stage_overwrites_if_already_exists(tmp_dir, dvc):
     stage = PipelineStage(name="s2", repo=dvc, path="path", cmd="command3")
     lockfile.dump(stage)
     assert lockfile.load() == {
+        "schema": "2.0",
         "stages": {"s2": {"cmd": "command3"}},
-        "meta": {"version": "2.0"},
     }
 
 
