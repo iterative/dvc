@@ -307,17 +307,15 @@ class BaseOutput:
         if not self.exists:
             raise self.DoesNotExistError(self)
 
-        hash_info = (
-            self.cache.get_hash(self.tree, filter_info)
-            if filter_info
-            else self.hash_info
-        )
-        path_info = filter_info if filter_info else self.path_info
-
-        assert hash_info
+        assert self.hash_info
 
         if self.use_cache:
-            self.cache.save(path_info, self.cache.tree, hash_info)
+            self.cache.save(
+                self.path_info,
+                self.cache.tree,
+                self.hash_info,
+                filter_info=filter_info,
+            )
             self.set_exec()
 
     def dumpd(self):

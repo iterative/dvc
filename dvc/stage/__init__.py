@@ -483,9 +483,9 @@ class Stage(params.StageParams):
         from dvc.output.base import OutputDoesNotExistError
 
         link_failures = []
-        for out in self.outs:
+        for out in self.filter_outs(filter_info):
             try:
-                out.commit(filter_info)
+                out.commit(filter_info=filter_info)
             except OutputDoesNotExistError:
                 if not (allow_missing or out.checkpoint):
                     raise
