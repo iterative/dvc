@@ -7,9 +7,6 @@ import colorama
 from packaging import version
 
 from dvc import __version__
-from dvc.config import Config, to_bool
-from dvc.lock import LockError, make_lock
-from dvc.utils import boxify, env2bool
 from dvc.utils.pkg import PKG
 
 logger = logging.getLogger(__name__)
@@ -22,6 +19,8 @@ class Updater:  # pragma: no cover
     TIMEOUT_GET = 10
 
     def __init__(self, tmp_dir, friendly=False, hardlink_lock=False):
+        from dvc.lock import make_lock
+
         self.updater_file = os.path.join(tmp_dir, self.UPDATER_FILE)
         self.lock = make_lock(
             self.updater_file + ".lock",
@@ -39,6 +38,8 @@ class Updater:  # pragma: no cover
         return outdated
 
     def _with_lock(self, func, action):
+        from dvc.lock import LockError
+
         try:
             with self.lock:
                 func()
@@ -47,6 +48,8 @@ class Updater:  # pragma: no cover
             logger.debug(msg.format(self.lock.lockfile, action))
 
     def check(self):
+        from dvc.utils import env2bool
+
         if (
             os.getenv("CI")
             or env2bool("DVC_TEST")
@@ -120,6 +123,8 @@ class Updater:  # pragma: no cover
             latest=latest,
         )
 
+        from dvc.utils import boxify
+
         logger.info(boxify(message, border_color="yellow"))
 
     def _get_update_instructions(self):
@@ -153,6 +158,8 @@ class Updater:  # pragma: no cover
         return instructions[package_manager]
 
     def is_enabled(self):
+        from dvc.config import Config, to_bool
+
         enabled = to_bool(
             Config(validate=False).get("core", {}).get("check_update", "true")
         )

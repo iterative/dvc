@@ -1,8 +1,5 @@
 from funcy import group_by
 
-from dvc.repo.experiments.utils import exp_commits
-from dvc.tree.local import LocalTree
-
 
 def brancher(  # noqa: E302
     self,
@@ -32,6 +29,8 @@ def brancher(  # noqa: E302
         yield ""
         return
 
+    from dvc.tree.local import LocalTree
+
     saved_tree = self.tree
     revs = revs.copy() if revs else []
 
@@ -53,6 +52,8 @@ def brancher(  # noqa: E302
             revs.extend(scm.list_tags())
 
     if all_experiments:
+        from dvc.repo.experiments.utils import exp_commits
+
         revs.extend(exp_commits(scm))
 
     try:

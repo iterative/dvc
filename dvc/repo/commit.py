@@ -1,6 +1,4 @@
 from dvc import prompt
-from dvc.dvcfile import Dvcfile
-from dvc.stage.exceptions import StageCommitError
 
 from . import locked
 
@@ -28,6 +26,8 @@ def _prepare_message(stage, changes):
 
 
 def prompt_to_commit(stage, changes, force=False):
+    from dvc.stage.exceptions import StageCommitError
+
     if not (force or prompt.confirm(_prepare_message(stage, changes))):
         raise StageCommitError(
             "unable to commit changed {}. Use `-f|--force` to "
@@ -39,6 +39,8 @@ def prompt_to_commit(stage, changes, force=False):
 def commit(
     self, target, with_deps=False, recursive=False, force=False,
 ):
+    from dvc.dvcfile import Dvcfile
+
     stages = self.stage.collect(
         target, with_deps=with_deps, recursive=recursive
     )

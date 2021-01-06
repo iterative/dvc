@@ -3,15 +3,12 @@ import os
 
 import colorama
 
-from dvc.dvcfile import Dvcfile, is_dvc_file
-
 from ..exceptions import (
     CacheLinkError,
     OutputDuplicationError,
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
 )
-from ..output.base import OutputDoesNotExistError
 from ..progress import Tqdm
 from ..repo.scm_context import scm_context
 from ..utils import LARGE_DIR_SIZE, glob_targets, resolve_paths
@@ -105,6 +102,9 @@ def add(
 
 def _process_stages(repo, stages, no_commit, pbar):
     link_failures = []
+    from dvc.dvcfile import Dvcfile
+
+    from ..output.base import OutputDoesNotExistError
 
     with Tqdm(
         total=len(stages),
@@ -132,6 +132,8 @@ def _process_stages(repo, stages, no_commit, pbar):
 
 
 def _find_all_targets(repo, target, recursive):
+    from dvc.dvcfile import is_dvc_file
+
     if os.path.isdir(target) and recursive:
         return [
             os.fspath(path)
@@ -152,6 +154,7 @@ def _find_all_targets(repo, target, recursive):
 def _create_stages(
     repo, targets, fname, pbar=None, external=False, glob=False, desc=None,
 ):
+    from dvc.dvcfile import Dvcfile
     from dvc.stage import Stage, create_stage, restore_meta
 
     expanded_targets = glob_targets(targets, glob=glob)
