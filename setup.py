@@ -80,7 +80,7 @@ install_requires = [
     "tabulate>=0.8.7",
     "pygtrie==2.3.2",
     "dpath>=2.0.1,<3",
-    "shtab>=1.3.2,<2",
+    "shtab>=1.3.4,<2",
     "rich>=3.0.5",
     "dictdiffer>=0.8.1",
     "python-benedict>=0.21.1",
