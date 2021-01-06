@@ -5,7 +5,6 @@ import os
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
-from dvc.schema import PLOT_PROPS
 from dvc.utils import format_link
 from dvc.utils.html import write
 
@@ -17,6 +16,8 @@ class CmdPlots(CmdBase):
         raise NotImplementedError
 
     def _props(self):
+        from dvc.schema import PLOT_PROPS
+
         # Pass only props specified by user, to not shadow ones from plot def
         props = {p: getattr(self.args, p) for p in PLOT_PROPS}
         return {k: v for k, v in props.items() if v is not None}

@@ -5,7 +5,6 @@ from functools import wraps
 from typing import TYPE_CHECKING
 
 from funcy import cached_property, cat
-from git import InvalidGitRepositoryError
 
 from dvc.config import Config
 from dvc.exceptions import FileMissingError
@@ -113,7 +112,7 @@ class Repo:
 
             try:
                 scm = SCM(root_dir or os.curdir)
-            except (SCMError, InvalidGitRepositoryError):
+            except SCMError:
                 scm = SCM(os.curdir, no_scm=True)
 
             assert isinstance(scm, Base)
