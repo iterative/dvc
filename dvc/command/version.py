@@ -2,13 +2,14 @@ import argparse
 import logging
 
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
-from dvc.info import get_dvc_info
 
 logger = logging.getLogger(__name__)
 
 
 class CmdVersion(CmdBaseNoRepo):
     def run(self):
+        from dvc.info import get_dvc_info
+
         dvc_info = get_dvc_info()
         logger.info(dvc_info)
         return 0
