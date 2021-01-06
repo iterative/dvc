@@ -2,7 +2,6 @@ import argparse
 import logging
 
 from dvc.command.base import CmdBase, append_doc_link
-from dvc.stage import Stage
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +51,8 @@ def _collect_targets(repo, target, outs):
 
 def _transform(repo, outs):
     import networkx as nx
+
+    from dvc.stage import Stage
 
     def _relabel(node) -> str:
         return node.addressing if isinstance(node, Stage) else str(node)

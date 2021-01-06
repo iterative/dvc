@@ -14,7 +14,6 @@ from dvc.stage.exceptions import (
     StageFileFormatError,
     StageFileIsNotDvcFileError,
 )
-from dvc.stage.loader import SingleStageLoader, StageLoader
 from dvc.utils import relpath
 from dvc.utils.collections import apply_diff
 from dvc.utils.serialize import (
@@ -137,16 +136,17 @@ class FileMixin:
 
 class SingleStageFile(FileMixin):
     from dvc.schema import COMPILED_SINGLE_STAGE_SCHEMA as SCHEMA
+    from dvc.stage.loader import SingleStageLoader as LOADER
 
     @property
     def stage(self):
         data, raw = self._load()
-        return SingleStageLoader.load_stage(self, data, raw)
+        return self.LOADER.load_stage(self, data, raw)
 
     @property
     def stages(self):
         data, raw = self._load()
-        return SingleStageLoader(self, data, raw)
+        return self.LOADER(self, data, raw)
 
     def dump(self, stage, **kwargs):
         """Dumps given stage appropriately in the dvcfile."""
@@ -177,6 +177,7 @@ class PipelineFile(FileMixin):
     """Abstraction for pipelines file, .yaml + .lock combined."""
 
     from dvc.schema import COMPILED_MULTI_STAGE_SCHEMA as SCHEMA
+    from dvc.stage.loader import StageLoader as LOADER
 
     @property
     def _lockfile(self):
@@ -239,7 +240,7 @@ class PipelineFile(FileMixin):
     def stages(self):
         data, _ = self._load()
         lockfile_data = self._lockfile.load()
-        return StageLoader(self, data, lockfile_data)
+        return self.LOADER(self, data, lockfile_data)
 
     def remove(self, force=False):
         if not force:

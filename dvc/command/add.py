@@ -3,13 +3,17 @@ import logging
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
-from dvc.exceptions import DvcException, RecursiveAddingWhileUsingFilename
 
 logger = logging.getLogger(__name__)
 
 
 class CmdAdd(CmdBase):
     def run(self):
+        from dvc.exceptions import (
+            DvcException,
+            RecursiveAddingWhileUsingFilename,
+        )
+
         try:
             if len(self.args.targets) > 1 and self.args.file:
                 raise RecursiveAddingWhileUsingFilename()

@@ -3,8 +3,6 @@ from typing import List
 
 from funcy import first
 
-from dvc.utils import error_link, format_link, relpath
-
 
 class DvcException(Exception):
     """Base class for all dvc exceptions."""
@@ -51,6 +49,8 @@ class OutputNotFoundError(DvcException):
     """
 
     def __init__(self, output, repo=None):
+        from dvc.utils import relpath
+
         self.output = output
         self.repo = repo
         super().__init__(
@@ -253,6 +253,8 @@ class DvcIgnoreInCollectedDirError(DvcException):
 
 class GitHookAlreadyExistsError(DvcException):
     def __init__(self, hook_name):
+        from dvc.utils import format_link
+
         super().__init__(
             "Hook '{}' already exists. Please refer to {} for more "
             "info.".format(
@@ -277,6 +279,8 @@ class UploadError(DvcException):
 
 class CheckoutError(DvcException):
     def __init__(self, target_infos, stats=None):
+        from dvc.utils import error_link
+
         self.target_infos = target_infos
         self.stats = stats
         targets = [str(t) for t in target_infos]
@@ -302,6 +306,8 @@ class NoRemoteInExternalRepoError(DvcException):
 
 class NoOutputInExternalRepoError(DvcException):
     def __init__(self, path, external_repo_path, external_repo_url):
+        from dvc.utils import relpath
+
         super().__init__(
             "Output '{}' not found in target repository '{}'".format(
                 relpath(path, external_repo_path), external_repo_url
@@ -332,6 +338,8 @@ class PathMissingError(DvcException):
 
 class RemoteCacheRequiredError(DvcException):
     def __init__(self, path_info):
+        from dvc.utils import format_link
+
         super().__init__(
             (
                 "Current operation was unsuccessful because '{}' requires "
@@ -366,6 +374,8 @@ class MergeError(DvcException):
 
 
 class CacheLinkError(DvcException):
+    from dvc.utils import format_link
+
     SUPPORT_LINK = "See {} for more information.".format(
         format_link(
             "https://dvc.org/doc/user-guide/troubleshooting#cache-types"

@@ -5,7 +5,6 @@ from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.command.metrics import _show_metrics
 from dvc.command.status import CmdDataStatus
-from dvc.dvcfile import PIPELINE_FILE
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +49,7 @@ def add_arguments(repro_parser):
     repro_parser.add_argument(
         "targets",
         nargs="*",
-        help=f"Stages to reproduce. '{PIPELINE_FILE}' by default.",
+        help="Stages to reproduce. 'dvc.yaml' by default.",
     ).complete = completion.DVC_FILE
     repro_parser.add_argument(
         "-f",
