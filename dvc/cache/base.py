@@ -89,7 +89,10 @@ class CloudCache:
 
         return DirInfo.from_list(d)
 
-    def _get_filtered_hash_info(self, filter_info, hash_info, path_info):
+    def _filter_hash_info(self, hash_info, path_info, filter_info):
+        if not filter_info:
+            return hash_info
+
         dir_info = self.get_dir_cache(hash_info)
         hash_key = filter_info.relative_to(path_info).parts
 
@@ -135,31 +138,22 @@ class CloudCache:
             logger.debug("'%s' doesn't exist.", path)
             return True
 
-        if not hash_info:
-            logger.debug("hash value for '%s' is missing.", path_info)
+        hi = self._filter_hash_info(hash_info, path_info, filter_info)
+        if not hi:
+            logger.debug("hash value for '%s' is missing.", path)
             return True
 
-        if path != path_info:
-            filtered_hash_info = self._get_filtered_hash_info(
-                path, hash_info, path_info
-            )
-            if filtered_hash_info is not None:
-                path_info = filter_info
-                hash_info = filtered_hash_info
-
-        if self.changed_cache(hash_info):
-            logger.debug(
-                "cache for '%s'('%s') has changed.", path_info, hash_info
-            )
+        if self.changed_cache(hi):
+            logger.debug("cache for '%s'('%s') has changed.", path, hi)
             return True
 
-        actual = self.tree.get_hash(path_info)
-        if hash_info != actual:
+        actual = self.tree.get_hash(path)
+        if hi != actual:
             logger.debug(
                 "hash value '%s' for '%s' has changed (actual '%s').",
-                hash_info,
+                hi,
                 actual,
-                path_info,
+                path,
             )
             return True
 
