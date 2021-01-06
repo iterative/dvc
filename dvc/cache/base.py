@@ -302,12 +302,10 @@ class CloudCache:
         (
             hash_info,
             hash_path_info,
-        ) = self._get_dir_info_hash(  # noqa, pylint: disable=protected-access
+        ) = self.repo.cache.local._get_dir_info_hash(  # noqa, pylint: disable=protected-access
             dir_info
         )
-        self.tree.move(
-            hash_path_info, self.hash_to_path(hash_info.value),
-        )
+        self.tree.upload(hash_path_info, self.hash_to_path(hash_info.value))
         return hash_info
 
     def _cache_is_copy(self, path_info):
