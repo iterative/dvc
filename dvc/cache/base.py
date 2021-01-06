@@ -307,7 +307,15 @@ class CloudCache:
 
         return hi
 
-    def _save_dir(self, path_info, tree, hash_info, save_link=True, **kwargs):
+    def _save_dir(
+        self,
+        path_info,
+        tree,
+        hash_info,
+        save_link=True,
+        filter_info=None,
+        **kwargs,
+    ):
         if not hash_info.dir_info:
             hash_info.dir_info = tree.cache.get_dir_cache(hash_info)
         hi = self.save_dir_info(hash_info.dir_info, hash_info)
@@ -316,6 +324,9 @@ class CloudCache:
             desc="Saving " + path_info.name,
             unit="file",
         ):
+            if filter_info and not entry_info.isin_or_eq(filter_info):
+                continue
+
             self._save_file(
                 entry_info, tree, entry_hash, save_link=False, **kwargs
             )

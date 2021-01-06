@@ -1,4 +1,4 @@
-from os import fspath
+import os
 
 import pytest
 
@@ -83,6 +83,77 @@ def test_commit_no_exec(tmp_dir, dvc):
     assert dvc.status(stage.path) == {}
 
 
+def test_commit_granular_output(tmp_dir, dvc):
+    dvc.run(
+        name="mystage",
+        cmd=["echo foo>foo", "echo bar>bar"],
+        outs=["foo", "bar"],
+        no_commit=True,
+    )
+
+    cache = tmp_dir / ".dvc" / "cache"
+    assert not list(cache.glob("*/*"))
+
+    dvc.commit("foo")
+    assert list(cache.glob("*/*")) == [
+        cache / "d3" / "b07384d113edec49eaa6238ad5ff00"
+    ]
+
+
+def test_commit_granular_output_file(tmp_dir, dvc):
+    tmp_dir.gen("foo", "foo")
+    dvc.add("foo", no_commit=True)
+    dvc.commit("foo")
+    assert dvc.status() == {}
+
+
+def test_commit_granular_output_dir(tmp_dir, dvc):
+    tmp_dir.gen(
+        {
+            "data": {
+                "foo": "foo",
+                "bar": "bar",
+                "subdir": {"subfoo": "subfoo", "subbar": "subbar"},
+            }
+        }
+    )
+    dvc.add("data", no_commit=True)
+    dvc.commit("data")
+    assert dvc.status() == {}
+
+
+def test_commit_granular_dir(tmp_dir, dvc):
+    tmp_dir.gen(
+        {
+            "data": {
+                "foo": "foo",
+                "bar": "bar",
+                "subdir": {"subfoo": "subfoo", "subbar": "subbar"},
+            }
+        }
+    )
+    dvc.add("data", no_commit=True)
+
+    cache = tmp_dir / ".dvc" / "cache"
+    assert set(cache.glob("*/*")) == {
+        cache / "1a" / "ca2c799df82929bbdd976557975546.dir"
+    }
+
+    dvc.commit(os.path.join("data", "foo"))
+    assert set(cache.glob("*/*")) == {
+        cache / "1a" / "ca2c799df82929bbdd976557975546.dir",
+        cache / "ac" / "bd18db4cc2f85cedef654fccc4a4d8",
+    }
+
+    dvc.commit(os.path.join("data", "subdir"))
+    assert set(cache.glob("*/*")) == {
+        cache / "1a" / "ca2c799df82929bbdd976557975546.dir",
+        cache / "ac" / "bd18db4cc2f85cedef654fccc4a4d8",
+        cache / "4c" / "e8d2a2cf314a52fa7f315ca37ca445",
+        cache / "68" / "dde2c3c4e7953c2290f176bbdc9a54",
+    }
+
+
 def test_commit_no_exec_missing_dep(tmp_dir, dvc):
     stage = dvc.run(
         name="my", cmd="mycmd", deps=["dep"], outs=["out"], no_exec=True
@@ -118,6 +189,6 @@ def test_imported_entries_unchanged(tmp_dir, dvc, erepo_dir):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("file", "file content", "initial commit")
 
-    stage = dvc.imp(fspath(erepo_dir), "file")
+    stage = dvc.imp(os.fspath(erepo_dir), "file")
 
     assert stage.changed_entries() == ([], [], None)
